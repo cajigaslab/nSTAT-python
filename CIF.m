@@ -910,7 +910,7 @@ classdef CIF < handle
                 assignin('base','simTypeSelect',simTypeSelect);
                 
                 options = simget;
-                CIF.verifySimulinkModelAvailable('PointProcessSimulationThinning');
+                thinningModelName = CIF.resolveSimulinkModelName('PointProcessSimulationThinning');
                 lambdaData = zeros(length(inputStimSignal.time),numRealizations);
                 t=inputStimSignal.time;
                 u=[inputStimSignal.data, inputEnsSignal.data];
@@ -919,7 +919,7 @@ classdef CIF < handle
 %                 options.T
                 for i=1:numRealizations
                     
-                    simOut = sim('PointProcessSimulationThinning','SimulationMode','normal','AbsTol','1e-5',...
+                    simOut = sim(thinningModelName,'SimulationMode','normal','AbsTol','1e-5',...
                                 'SaveState','on','StateSaveName','xout',...
                                 'SaveOutput','on','OutputSaveName','yout',...
                                 'SaveTime','on','TimeSaveName','tout',...
@@ -999,15 +999,15 @@ classdef CIF < handle
                 assignin('base','simTypeSelect',simTypeSelect);
                 
                 options = simget;
-                CIF.verifySimulinkModelAvailable('PointProcessSimulation');
+                simModelName = CIF.resolveSimulinkModelName('PointProcessSimulation');
                 lambdaData = zeros(length(inputStimSignal.time),numRealizations);
                 for i=1:numRealizations
                     try
-                        [tout,~,yout] = sim('PointProcessSimulation',[inputStimSignal.minTime inputStimSignal.maxTime],options,inputStimSignal.dataToStructure, inputEnsSignal.dataToStructure);
+                        [tout,~,yout] = sim(simModelName,[inputStimSignal.minTime inputStimSignal.maxTime],options,inputStimSignal.dataToStructure, inputEnsSignal.dataToStructure);
                     catch simErr
                         error('CIF:PointProcessSimulationFailed',...
-                            ['PointProcessSimulation failed. In MATLAB 2025b run Simulink Upgrade Advisor for this model ',...
-                             'and verify model dependencies are on path. Original error: %s'], simErr.message);
+                            ['PointProcessSimulation failed (model: %s). In MATLAB 2025b run Simulink Upgrade Advisor for this model ',...
+                             'and verify model dependencies are on path. Original error: %s'], simModelName, simErr.message);
                     end
                     spikeTimes = tout(yout(:,1)>.5);
                     nst{i} = nspikeTrain(spikeTimes);
@@ -1035,20 +1035,33 @@ classdef CIF < handle
             outVal = funHandle(args{:});
         end
 
-        function verifySimulinkModelAvailable(modelName)
-            hasSLX = (exist([modelName '.slx'],'file') == 2);
-            hasMDL = (exist([modelName '.mdl'],'file') == 2);
-            if(~hasSLX && ~hasMDL)
-                error('CIF:MissingSimulinkModel',...
-                    'Simulink model %s was not found on the MATLAB path.',modelName);
+        function modelName = resolveSimulinkModelName(baseModelName)
+            if(exist([baseModelName '.slx'],'file') == 2)
+                modelPath = [baseModelName '.slx'];
+            elseif(exist([baseModelName '.mdl'],'file') == 2)
+                modelPath = [baseModelName '.mdl'];
+            else
+                legacyModelPath = [baseModelName '.mdl.r2011a'];
+                if(exist(legacyModelPath,'file') ~= 2)
+                    error('CIF:MissingSimulinkModel',...
+                        'Simulink model %s (.slx/.mdl) was not found on the MATLAB path.',baseModelName);
+                end
+
+                compatDir = fullfile(tempdir,'nstat_compat_models');
+                if(exist(compatDir,'dir') ~= 7)
+                    mkdir(compatDir);
+                end
+                modelPath = fullfile(compatDir,[baseModelName '.mdl']);
+                copyfile(legacyModelPath,modelPath,'f');
             end
 
             try
-                load_system(modelName);
+                modelHandle = load_system(modelPath);
+                modelName = get_param(modelHandle,'Name');
             catch modelErr
                 error('CIF:SimulinkModelLoadFailed',...
                     ['Could not load Simulink model %s. In MATLAB 2025b run Simulink Upgrade Advisor for this model. ',...
-                     'Original error: %s'],modelName,modelErr.message);
+                     'Original error: %s'],baseModelName,modelErr.message);
             end
         end
     end
