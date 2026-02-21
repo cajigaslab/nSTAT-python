@@ -1498,8 +1498,7 @@ function [rst,varargout] = ksdiscrete(pk,st,spikeflag)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
 
     % initialize random number generator
-    s = RandStream('mt19937ar','Seed', sum(100*clock));
-    RandStream.setGlobalStream(s);
+    rng('shuffle','twister');
     %rand('twister',sum(100*clock));
 
     % make the qk's

@@ -2016,7 +2016,7 @@ classdef SignalObj < handle
                         axes(handle);
                         evalstring = strcat('h(',num2str(find(sArray==i)),')=plot(sObj.time,sObj.data(:,',num2str(i),'));');
 %                         evalstring = strcat('h(',num2str(find(sArray==i)),')=plot(handle,sObj.time,sObj.data(:,',num2str(i),'));');
-                        eval(evalstring); hold all;
+                        eval(evalstring); hold on;
                     end
                     %evalstring
                     %eval(evalstring); hold on;

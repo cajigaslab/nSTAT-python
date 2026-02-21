@@ -48,7 +48,11 @@ str = char(str');
 fclose(fid);
 
 % Find where the line types are defined
-id   = findstr(str, '% line types:');
+id = strfind(str, '% line types:');
+if isempty(id)
+  error('Could not locate line type definitions in PostScript file.');
+end
+id = id(1);
 str1 = str(1:id-1);
 [line1     , remline ] = strtok(str(id:end), '/');
 [replacestr, remline2] = strtok(remline    , '%');

@@ -154,7 +154,12 @@ classdef FitResSummary < handle
                     currLabels = currFitResult.covLabels{j};
                     index=zeros(1,length(currLabels));
                         for i=1:length(currLabels)
-                            index(i)=strmatch(currLabels{i}, frsObj.uniqueCovLabels, 'exact');
+                            idx = find(strcmp(currLabels{i}, frsObj.uniqueCovLabels),1,'first');
+                            if(isempty(idx))
+                                error('FitResSummary:UnknownCovariateLabel',...
+                                    'Unable to map covariate label "%s" to unique labels.',currLabels{i});
+                            end
+                            index(i)=idx;
                         end
 
                         frsObj.indicesToUniqueLabels{j,n} = index;
@@ -379,7 +384,7 @@ classdef FitResSummary < handle
 % %                   handle=errorbar(Xaxis,squeeze(bAct(:,:,i)),squeeze(seAct(:,:,i)),'.');%strcat('.',FitResult.colors{mod(i-1,length(FitResult.colors))+1})); 
 % %                  boxplot(frsObj.KSStats,frsObj.fitNames);
 %                     boxplot(squeeze(bAct(i,j,:)))
-%                     hold all;
+%                     hold on;
 %                 end
 %            end
 %            
@@ -505,14 +510,14 @@ classdef FitResSummary < handle
             % Plot mean +/- 1 standard error from the mean for the AIC for
             % each fit.
            AICdata=frsObj.AIC;
-           mData=nanmean(AICdata,1);
+           mData=mean(AICdata,1,'omitnan');
            numNeurons = size(AICdata,1);
-           sData=nanstd(AICdata,0,1)./sqrt(numNeurons);
+           sData=std(AICdata,0,1,'omitnan')./sqrt(numNeurons);
            ciUp = mData+sData;
            ciDown = mData-sData;
            
            x=1:frsObj.numResults;
-           plot(x,mData,'r','Linewidth',3); hold all;
+           plot(x,mData,'r','Linewidth',3); hold on;
            faceColor='r';
            p=patch([x, fliplr(x)],[ciUp fliplr(ciDown)],faceColor);
            set(p,'facecolor',faceColor,'edgecolor','none');
@@ -530,14 +535,14 @@ classdef FitResSummary < handle
             % Plot mean +/- 1 standard error from the mean for the BIC for
             % each fit.
            BICdata=frsObj.BIC;
-           mData=nanmean(BICdata,1);
+           mData=mean(BICdata,1,'omitnan');
            numNeurons = size(BICdata,1);
-           sData=nanstd(BICdata,0,1)./sqrt(numNeurons);
+           sData=std(BICdata,0,1,'omitnan')./sqrt(numNeurons);
            ciUp = mData+sData;
            ciDown = mData-sData;
            
            x=1:frsObj.numResults;
-           plot(x,mData,'r','Linewidth',3); hold all;
+           plot(x,mData,'r','Linewidth',3); hold on;
            faceColor='r';
            p=patch([x, fliplr(x)],[ciUp fliplr(ciDown)],faceColor);
            set(p,'facecolor',faceColor,'edgecolor','none');
@@ -554,14 +559,14 @@ classdef FitResSummary < handle
             % Plot mean +/- 1 standard error from the mean for the logLL for
             % each fit.
            logLLdata=frsObj.logLL;
-           mData=nanmean(logLLdata,1);
+           mData=mean(logLLdata,1,'omitnan');
            numNeurons = size(logLLdata,1);
-           sData=nanstd(logLLdata,0,1)./sqrt(numNeurons);
+           sData=std(logLLdata,0,1,'omitnan')./sqrt(numNeurons);
            ciUp = mData+sData;
            ciDown = mData-sData;
            
            x=1:frsObj.numResults;
-           plot(x,mData,'r','Linewidth',3); hold all;
+           plot(x,mData,'r','Linewidth',3); hold on;
            faceColor='r';
            p=patch([x, fliplr(x)],[ciUp fliplr(ciDown)],faceColor);
            set(p,'facecolor',faceColor,'edgecolor','none');

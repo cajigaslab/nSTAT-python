@@ -409,7 +409,12 @@ classdef FitResult < handle
                 currLabels = fitObj.covLabels{j};
                 index=zeros(1,length(currLabels));
                 for i=1:length(currLabels)
-                    index(i)=strmatch(currLabels{i}, fitObj.uniqueCovLabels, 'exact');
+                    idx = find(strcmp(currLabels{i}, fitObj.uniqueCovLabels),1,'first');
+                    if(isempty(idx))
+                        error('FitResult:UnknownCovariateLabel',...
+                            'Unable to map covariate label "%s" to unique labels.',currLabels{i});
+                    end
+                    index(i)=idx;
                 end
                 
                 fitObj.indicesToUniqueLabels{j} = index;

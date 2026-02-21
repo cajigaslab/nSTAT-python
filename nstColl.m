@@ -1187,7 +1187,7 @@ classdef nstColl < handle
             if(reverseOrderPlot==0)
                 for i=1:length(selectorArray)
                     currentObj = nstCollObj.getNST(selectorArray(i));
-                    currentObj.plot(dHeight, yOffset(i), handle); hold all;
+                    currentObj.plot(dHeight, yOffset(i), handle); hold on;
                     yticklabels{i} = currentObj.name;
                     if(strcmp(yticklabels{i},''));
                         yticklabels{i} = num2str(selectorArray(i));
@@ -1196,7 +1196,7 @@ classdef nstColl < handle
             else
                 for i=1:length(selectorArray)
                     currentObj = nstCollObj.getNST(selectorArray(i));
-                    currentObj.plot(dHeight, yOffset(end-(i-1)), handle); hold all;
+                    currentObj.plot(dHeight, yOffset(end-(i-1)), handle); hold on;
                     yticklabels{i} = currentObj.name;
                     if(strcmp(yticklabels{i},''));
                         yticklabels{i} = num2str(selectorArray(i));
@@ -1321,7 +1321,7 @@ classdef nstColl < handle
                 else
                     subplot(f(1),prod(f(2:end)),i);
                 end
-                currentObj.plotISIHistogram(minTime,maxTime); %hold all;
+                currentObj.plotISIHistogram(minTime,maxTime); %hold on;
                 yticklabels{i} = currentObj.name;
                 if(strcmp(yticklabels{i},''));
                     yticklabels{i} = num2str(selectorArray(i));
@@ -1363,7 +1363,7 @@ classdef nstColl < handle
             for i=1:length(selectorArray)
                 currentObj = nstCollObj.getNST(selectorArray(i));
                 
-                currentObj.plotExponentialFit(minTime,maxTime,numBins); %hold all;
+                currentObj.plotExponentialFit(minTime,maxTime,numBins); %hold on;
                 yticklabels{i} = currentObj.name;
                 if(strcmp(yticklabels{i},''));
                     yticklabels{i} = num2str(selectorArray(i));
