@@ -33,3 +33,4 @@ The Python port is in active development.
 Use this page for Python scope, status, and development guidance:
 
 - docs/python-nstat.md
+- python/examples/README.md

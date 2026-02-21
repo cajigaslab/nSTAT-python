@@ -63,3 +63,19 @@ Each major Python module should be validated against MATLAB reference outputs fo
 2. Implement base data structures (`SignalObj`, `Covariate`, `nspikeTrain` equivalents).
 3. Implement point-process GLM fitting pipeline.
 4. Port one end-to-end simulation + fit example.
+
+## Example uses
+
+Runnable examples are available in `python/examples/`.
+
+- `python/examples/basic_data_workflow.py`
+- `python/examples/simulate_population_psth.py`
+- `python/examples/fit_poisson_glm.py`
+
+Run from repository root:
+
+```bash
+python3 python/examples/basic_data_workflow.py
+python3 python/examples/simulate_population_psth.py
+python3 python/examples/fit_poisson_glm.py
+```
