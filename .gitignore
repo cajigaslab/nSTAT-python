@@ -1,10 +1,6 @@
+.DS_Store
 __pycache__/
 *.pyc
 .pytest_cache/
-.ipynb_checkpoints/
-
 docs/_build/
 plots/
-
-reports/pytest.log
-reports/pytest.xml
