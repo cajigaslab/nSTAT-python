@@ -1,36 +1,149 @@
-nSTAT
-=====
+# Python nSTAT
 
-Neural Spike Train Analysis Toolbox for Matlab
+This directory contains the standalone Python implementation of nSTAT.
 
+## Canonical API modules
 
-nSTAT is an open-source, object-oriented Matlab toolbox that implements a range of models and algorithms for neural spike train data analysis. Such data are frequently obtained from neuroscience experiments and our intention in writing nSTAT is to facilitate quick, easy and consistent neural data analysis.
+- `nstat.signal`: `Signal`, `Covariate`
+- `nstat.spikes`: `SpikeTrain`, `SpikeTrainCollection`
+- `nstat.events`: `Events`
+- `nstat.history`: `HistoryBasis`
+- `nstat.trial`: `CovariateCollection`, `TrialConfig`, `ConfigCollection`, `Trial`
+- `nstat.cif`: `CIFModel`
+- `nstat.analysis`: `Analysis`
+- `nstat.fit`: `FitResult`, `FitSummary`
+- `nstat.decoding`: `DecoderSuite`
+- `nstat.datasets`: dataset registry and checksum verification
 
-One of nSTAT's key strengths is point process generalized linear models for spike train signals that provide a formal statistical framework for processing signals recorded from ensembles of single neurons. It also has extensive support for model fitting, model order analysis, and adaptive decoding. In addition to point process algorithms, nSTAT also provides tools for Gaussian signals, ranging from correlation analysis to the Kalman filter, which can be applied to continuous normally-distributed neural signals such as local field potentials, EEG, ECoG, etc.
+MATLAB-style entry points remain importable as compatibility adapters with `DeprecationWarning` messages.
 
-Although created with neural signal processing in mind, nSTAT can be used as a generic tool for analyzing any types of discrete and continuous signals, and thus has wide applicability.
+## Install
 
-Like all open-source projects, nSTAT will benefit from your involvement, suggestions and contributions. This platform is intended as a repository for extensions to the toolbox based on your code contributions as well as for flagging and tracking open issues.
+```bash
+cd python
+python3 -m pip install -e .
+```
 
-The current release version of nSTAT can be downloaded from http://www.neurostat.mit.edu/nstat .
+## Run paper examples equivalent
 
-For mathematical and programmatic details of the toolbox, see:
+```bash
+cd python
+python3 examples/nstat_paper_examples.py --repo-root ..
+```
 
-Cajigas I, Malik WQ, Brown EN. nSTAT: Open-source neural spike train analysis toolbox for Matlab. Journal of Neuroscience Methods 211: 245–264, Nov. 2012
-http://doi.org/10.1016/j.jneumeth.2012.08.009
+## Generate docs and notebooks
 
-If you use nSTAT in your work, please remember to cite the above paper in any publications.
-nSTAT is protected by the GPL v2 Open Source License.
+```bash
+python3 python/tools/generate_help_topic_docs.py
+python3 python/tools/generate_example_notebooks.py
+```
 
-The code repository for nSTAT is hosted on GitHub at https://github.com/cajigaslab/nSTAT.
-You can download the example data file from the paper at: https://doi.org/10.6084/m9.figshare.4834640
+## Validation
 
-Python nSTAT
-============
+```bash
+python3 python/tools/freeze_port_baseline.py
+python3 python/tools/generate_method_parity_matrix.py
+python3 python/tools/generate_implemented_method_coverage.py
+python3 python/tools/verify_examples_notebooks.py
+NSTAT_MATLAB_EXTRA_ARGS='-maca64 -nodisplay -noFigureWindows -softwareopengl' \
+  python3 python/tools/verify_python_vs_matlab_similarity.py --enforce-gate
+python3 python/tools/freeze_similarity_baseline.py
+python3 python/tools/verify_offline_standalone.py
+cd python && python3 -m pytest
+```
 
-The Python port is in active development.
+If Git LFS assets are unavailable (for example, CI quota exhaustion), set
+`NSTAT_ALLOW_SYNTHETIC_DATA=1` to use deterministic synthetic fallbacks for
+data-heavy paper example loaders.
 
-Use this page for Python scope, status, and development guidance:
+### Local parity block debugging
 
-- docs/python-nstat.md
-- python/examples/README.md
+```bash
+python3 python/tools/debug_parity_blocks.py \
+  --set-actions-runner-svc \
+  --matlab-extra-args "-maca64 -nodisplay -noFigureWindows -softwareopengl"
+```
+
+Single wrapper command (fail-fast ladder):
+
+```bash
+python/tools/run_parity_ladder.sh
+```
+
+Single preflight command (Stage A ladder + selected Stage B topics):
+
+```bash
+python/tools/run_parity_preflight.sh
+```
+
+Notes:
+
+- Runs blocks in order: `core_smoke -> timeout_front -> graphics_mid -> heavy_tail -> full_suite`.
+- Exits immediately if a block regresses (`python_ok`, `matlab_ok`, scalar overlap, parity contract, or regression gate).
+- Includes runtime regression guard using machine baseline block times with multiplier `NSTAT_PARITY_RUNTIME_MULTIPLIER` (default `2.5`).
+- Set `NSTAT_PARITY_RUNTIME_MULTIPLIER=0` to disable runtime regression checks.
+- Pass specific block names as args to run subset ladders, e.g.:
+  `python/tools/run_parity_ladder.sh core_smoke timeout_front`.
+- Ladder writes retry telemetry to `python/reports/parity_retry_summary.json` (block, attempt count, retry reason, timeout-topic list).
+- Retry behavior is controlled by `NSTAT_PARITY_RETRY_TIMEOUT_BLOCKS` and `NSTAT_PARITY_TIMEOUT_RETRY_BLOCKS`.
+- Set `NSTAT_MATLAB_TOPIC_MAX_ATTEMPTS=2` to retry per-topic MATLAB timeouts/crashes once before failing.
+- Set `NSTAT_PARITY_RETRY_RECOVERABLE_BLOCKS=1` and `NSTAT_PARITY_RECOVERABLE_RETRY_BLOCKS` to retry block failures caused by recoverable MATLAB failures (timeouts/crash signatures).
+- Preflight topic selection can be overridden with `NSTAT_PARITY_PREFLIGHT_STAGEB_TOPICS`.
+
+See `python/docs/parity_runbook.rst` for the exact locally validated parity command set.
+
+Use targeted blocks to debug delays locally before running remote CI:
+
+```bash
+# 1) Fast API/parity smoke
+python3 python/tools/debug_parity_blocks.py --blocks core_smoke \
+  --set-actions-runner-svc --matlab-extra-args "-maca64 -nodisplay -noFigureWindows -softwareopengl"
+
+# 2) Former timeout-prone front topics
+python3 python/tools/debug_parity_blocks.py --blocks timeout_front \
+  --set-actions-runner-svc --matlab-extra-args "-maca64 -nodisplay -noFigureWindows -softwareopengl"
+
+# 3) Graphics-sensitive middle topics
+python3 python/tools/debug_parity_blocks.py --blocks graphics_mid \
+  --set-actions-runner-svc --matlab-extra-args "-maca64 -nodisplay -noFigureWindows -softwareopengl"
+
+# 4) Heavy tail topics
+python3 python/tools/debug_parity_blocks.py --blocks heavy_tail \
+  --set-actions-runner-svc --matlab-extra-args "-maca64 -nodisplay -noFigureWindows -softwareopengl"
+
+# 5) Full gate-equivalent suite
+python3 python/tools/debug_parity_blocks.py --blocks full_suite \
+  --set-actions-runner-svc --matlab-extra-args "-maca64 -nodisplay -noFigureWindows -softwareopengl"
+```
+
+Summarize a parity report quickly:
+
+```bash
+python3 python/tools/summarize_parity_report.py python/reports/parity_block_full_suite.json
+```
+
+Recent local baseline on this machine (MATLAB R2025b, no figure windows, software OpenGL):
+
+- `core_smoke`: ~47s
+- `timeout_front`: ~122s
+- `graphics_mid`: ~291s
+- `heavy_tail`: ~385s
+- `full_suite` (25 topics): ~826s
+
+## CI
+
+- `.github/workflows/python-ci.yml` runs docs, notebook verification, offline standalone checks, and `pytest`.
+- `.github/workflows/matlab-parity-gate.yml` runs MATLAB/Python parity gate on self-hosted macOS runners with MATLAB installed.
+
+## Repo split inventory
+
+Snapshot MATLAB/Python help and example coverage before splitting `nSTAT` and `nSTAT-python`:
+
+```bash
+python3 python/tools/generate_repo_split_inventory.py
+```
+
+Outputs:
+- `python/reports/repo_split_inventory/summary.json`
+- `python/reports/repo_split_inventory/topic_coverage_matrix.json`
+- `python/reports/repo_split_inventory/split_readiness_gates.json`
