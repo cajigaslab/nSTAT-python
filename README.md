@@ -36,13 +36,33 @@ python3 tools/generate_help_topic_docs.py
 python3 tools/generate_example_notebooks.py
 ```
 
+## Notebook figure parity
+
+```bash
+# One-time baseline sync from local MATLAB helpfiles PNG assets.
+python3 tools/sync_matlab_reference_figures.py \
+  --matlab-helpfiles /path/to/nSTAT/helpfiles --clean
+
+# Validate expected MATLAB-topic figure counts in help assets.
+python3 tools/validate_matlab_topic_figure_counts.py \
+  --matlab-helpfiles /path/to/nSTAT/helpfiles
+
+# Execute 25/25 example notebooks and enforce figure-count contracts.
+python3 tools/verify_examples_notebooks.py
+
+# Compare generated notebook figures to vendored MATLAB baselines.
+python3 tools/compare_notebook_figures_to_matlab.py --enforce-gate
+```
+
 ## Validation
 
 ```bash
 python3 tools/freeze_port_baseline.py
 python3 tools/generate_method_parity_matrix.py
 python3 tools/generate_implemented_method_coverage.py
+python3 tools/generate_example_notebooks.py
 python3 tools/verify_examples_notebooks.py
+python3 tools/compare_notebook_figures_to_matlab.py --enforce-gate
 NSTAT_MATLAB_EXTRA_ARGS='-maca64 -nodisplay -noFigureWindows -softwareopengl' \
   python3 tools/verify_python_vs_matlab_similarity.py --enforce-gate
 python3 tools/freeze_similarity_baseline.py

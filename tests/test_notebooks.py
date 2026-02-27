@@ -23,3 +23,5 @@ def test_generated_notebooks_execute(project_root) -> None:
     assert report["python_modules_ok"] == 25
     assert report["notebooks_ok"] == 25
     assert report["topic_alignment_ok"] == 25
+    assert report["figure_contract_ok"] == 25
+    assert report["zero_figure_contract_ok"] == 4

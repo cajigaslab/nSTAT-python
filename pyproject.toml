@@ -22,6 +22,8 @@ dev = [
   "pytest>=8.0",
   "nbformat>=5.9",
   "sphinx>=7.0",
+  "scikit-image>=0.22",
+  "Pillow>=10.0",
 ]
 
 [tool.setuptools.packages.find]

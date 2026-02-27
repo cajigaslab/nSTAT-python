@@ -3,269 +3,768 @@
     "total_examples": 25,
     "python_modules_ok": 25,
     "notebooks_ok": 25,
-    "topic_alignment_ok": 25
+    "topic_alignment_ok": 25,
+    "figure_contract_ok": 25,
+    "zero_figure_contract_ok": 4
   },
   "rows": [
     {
       "example": "SignalObjExamples",
       "title": "Using the SignalObj Class",
       "matlab_target": "SignalObjExamples.html",
+      "figure_contract_expected": 16,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
         "dimension",
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "parity",
         "sample_rate",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 16,
+        "figures_len": 16,
+        "figure_contract_expected": 16,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/SignalObjExamples/fig_001.png",
+          "reports/figures/modules/SignalObjExamples/fig_002.png",
+          "reports/figures/modules/SignalObjExamples/fig_003.png",
+          "reports/figures/modules/SignalObjExamples/fig_004.png",
+          "reports/figures/modules/SignalObjExamples/fig_005.png",
+          "reports/figures/modules/SignalObjExamples/fig_006.png",
+          "reports/figures/modules/SignalObjExamples/fig_007.png",
+          "reports/figures/modules/SignalObjExamples/fig_008.png",
+          "reports/figures/modules/SignalObjExamples/fig_009.png",
+          "reports/figures/modules/SignalObjExamples/fig_010.png",
+          "reports/figures/modules/SignalObjExamples/fig_011.png",
+          "reports/figures/modules/SignalObjExamples/fig_012.png",
+          "reports/figures/modules/SignalObjExamples/fig_013.png",
+          "reports/figures/modules/SignalObjExamples/fig_014.png",
+          "reports/figures/modules/SignalObjExamples/fig_015.png",
+          "reports/figures/modules/SignalObjExamples/fig_016.png"
+        ],
+        "directory_files": 16,
+        "directory": "reports/figures/modules/SignalObjExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 16,
+        "figures_len": 16,
+        "figure_contract_expected": 16,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/SignalObjExamples/fig_001.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_002.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_003.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_004.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_005.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_006.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_007.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_008.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_009.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_010.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_011.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_012.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_013.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_014.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_015.png",
+          "reports/figures/notebooks/SignalObjExamples/fig_016.png"
+        ],
+        "directory_files": 16,
+        "directory": "reports/figures/notebooks/SignalObjExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "CovariateExamples",
       "title": "Using the Covariate Class",
       "matlab_target": "CovariateExamples.html",
+      "figure_contract_expected": 2,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "mean",
         "parity",
         "std",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 2,
+        "figures_len": 2,
+        "figure_contract_expected": 2,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/CovariateExamples/fig_001.png",
+          "reports/figures/modules/CovariateExamples/fig_002.png"
+        ],
+        "directory_files": 2,
+        "directory": "reports/figures/modules/CovariateExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 2,
+        "figures_len": 2,
+        "figure_contract_expected": 2,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/CovariateExamples/fig_001.png",
+          "reports/figures/notebooks/CovariateExamples/fig_002.png"
+        ],
+        "directory_files": 2,
+        "directory": "reports/figures/notebooks/CovariateExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "CovCollExamples",
       "title": "Using the CovColl Class",
       "matlab_target": "CovCollExamples.html",
+      "figure_contract_expected": 2,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "labels",
         "matrix_shape",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 2,
+        "figures_len": 2,
+        "figure_contract_expected": 2,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/CovCollExamples/fig_001.png",
+          "reports/figures/modules/CovCollExamples/fig_002.png"
+        ],
+        "directory_files": 2,
+        "directory": "reports/figures/modules/CovCollExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 2,
+        "figures_len": 2,
+        "figure_contract_expected": 2,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/CovCollExamples/fig_001.png",
+          "reports/figures/notebooks/CovCollExamples/fig_002.png"
+        ],
+        "directory_files": 2,
+        "directory": "reports/figures/notebooks/CovCollExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "nSpikeTrainExamples",
       "title": "Using the nSpikeTrain Class",
       "matlab_target": "nSpikeTrainExamples.html",
+      "figure_contract_expected": 4,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "n_spikes",
         "parity",
         "rate_hz",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 4,
+        "figures_len": 4,
+        "figure_contract_expected": 4,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/nSpikeTrainExamples/fig_001.png",
+          "reports/figures/modules/nSpikeTrainExamples/fig_002.png",
+          "reports/figures/modules/nSpikeTrainExamples/fig_003.png",
+          "reports/figures/modules/nSpikeTrainExamples/fig_004.png"
+        ],
+        "directory_files": 4,
+        "directory": "reports/figures/modules/nSpikeTrainExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 4,
+        "figures_len": 4,
+        "figure_contract_expected": 4,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/nSpikeTrainExamples/fig_001.png",
+          "reports/figures/notebooks/nSpikeTrainExamples/fig_002.png",
+          "reports/figures/notebooks/nSpikeTrainExamples/fig_003.png",
+          "reports/figures/notebooks/nSpikeTrainExamples/fig_004.png"
+        ],
+        "directory_files": 4,
+        "directory": "reports/figures/notebooks/nSpikeTrainExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "nstCollExamples",
       "title": "Using the nstColl Class",
       "matlab_target": "nstCollExamples.html",
+      "figure_contract_expected": 3,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "num_trains",
         "parity",
         "psth_points",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 3,
+        "figures_len": 3,
+        "figure_contract_expected": 3,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/nstCollExamples/fig_001.png",
+          "reports/figures/modules/nstCollExamples/fig_002.png",
+          "reports/figures/modules/nstCollExamples/fig_003.png"
+        ],
+        "directory_files": 3,
+        "directory": "reports/figures/modules/nstCollExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 3,
+        "figures_len": 3,
+        "figure_contract_expected": 3,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/nstCollExamples/fig_001.png",
+          "reports/figures/notebooks/nstCollExamples/fig_002.png",
+          "reports/figures/notebooks/nstCollExamples/fig_003.png"
+        ],
+        "directory_files": 3,
+        "directory": "reports/figures/notebooks/nstCollExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "EventsExamples",
       "title": "Using the Events Class",
       "matlab_target": "EventsExamples.html",
+      "figure_contract_expected": 3,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "n_events",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 3,
+        "figures_len": 3,
+        "figure_contract_expected": 3,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/EventsExamples/fig_001.png",
+          "reports/figures/modules/EventsExamples/fig_002.png",
+          "reports/figures/modules/EventsExamples/fig_003.png"
+        ],
+        "directory_files": 3,
+        "directory": "reports/figures/modules/EventsExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 3,
+        "figures_len": 3,
+        "figure_contract_expected": 3,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/EventsExamples/fig_001.png",
+          "reports/figures/notebooks/EventsExamples/fig_002.png",
+          "reports/figures/notebooks/EventsExamples/fig_003.png"
+        ],
+        "directory_files": 3,
+        "directory": "reports/figures/notebooks/EventsExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "HistoryExamples",
       "title": "Using the History Class",
       "matlab_target": "HistoryExamples.html",
+      "figure_contract_expected": 3,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
         "design_shape",
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "lags",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 3,
+        "figures_len": 3,
+        "figure_contract_expected": 3,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/HistoryExamples/fig_001.png",
+          "reports/figures/modules/HistoryExamples/fig_002.png",
+          "reports/figures/modules/HistoryExamples/fig_003.png"
+        ],
+        "directory_files": 3,
+        "directory": "reports/figures/modules/HistoryExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 3,
+        "figures_len": 3,
+        "figure_contract_expected": 3,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/HistoryExamples/fig_001.png",
+          "reports/figures/notebooks/HistoryExamples/fig_002.png",
+          "reports/figures/notebooks/HistoryExamples/fig_003.png"
+        ],
+        "directory_files": 3,
+        "directory": "reports/figures/notebooks/HistoryExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "TrialExamples",
       "title": "Using the Trial Class",
       "matlab_target": "TrialExamples.html",
+      "figure_contract_expected": 6,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
         "covariate_rows",
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "neurons",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 6,
+        "figures_len": 6,
+        "figure_contract_expected": 6,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/TrialExamples/fig_001.png",
+          "reports/figures/modules/TrialExamples/fig_002.png",
+          "reports/figures/modules/TrialExamples/fig_003.png",
+          "reports/figures/modules/TrialExamples/fig_004.png",
+          "reports/figures/modules/TrialExamples/fig_005.png",
+          "reports/figures/modules/TrialExamples/fig_006.png"
+        ],
+        "directory_files": 6,
+        "directory": "reports/figures/modules/TrialExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 6,
+        "figures_len": 6,
+        "figure_contract_expected": 6,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/TrialExamples/fig_001.png",
+          "reports/figures/notebooks/TrialExamples/fig_002.png",
+          "reports/figures/notebooks/TrialExamples/fig_003.png",
+          "reports/figures/notebooks/TrialExamples/fig_004.png",
+          "reports/figures/notebooks/TrialExamples/fig_005.png",
+          "reports/figures/notebooks/TrialExamples/fig_006.png"
+        ],
+        "directory_files": 6,
+        "directory": "reports/figures/notebooks/TrialExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "TrialConfigExamples",
       "title": "Using the TrialConfig Class",
       "matlab_target": "TrialConfigExamples.html",
+      "figure_contract_expected": 0,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
         "covariates",
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "parity",
         "sample_rate",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 0,
+        "figures_len": 0,
+        "figure_contract_expected": 0,
+        "missing": [],
+        "figures": [],
+        "directory_files": 0,
+        "directory": "reports/figures/modules/TrialConfigExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 0,
+        "figures_len": 0,
+        "figure_contract_expected": 0,
+        "missing": [],
+        "figures": [],
+        "directory_files": 0,
+        "directory": "reports/figures/notebooks/TrialConfigExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "ConfigCollExamples",
       "title": "Using the ConfigColl Class",
       "matlab_target": "ConfigCollExamples.html",
+      "figure_contract_expected": 0,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "names",
         "num_configs",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 0,
+        "figures_len": 0,
+        "figure_contract_expected": 0,
+        "missing": [],
+        "figures": [],
+        "directory_files": 0,
+        "directory": "reports/figures/modules/ConfigCollExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 0,
+        "figures_len": 0,
+        "figure_contract_expected": 0,
+        "missing": [],
+        "figures": [],
+        "directory_files": 0,
+        "directory": "reports/figures/notebooks/ConfigCollExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "AnalysisExamples",
       "title": "Using the Analysis Class",
       "matlab_target": "AnalysisExamples.html",
+      "figure_contract_expected": 4,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "first_aic",
         "num_results",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 4,
+        "figures_len": 4,
+        "figure_contract_expected": 4,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/AnalysisExamples/fig_001.png",
+          "reports/figures/modules/AnalysisExamples/fig_002.png",
+          "reports/figures/modules/AnalysisExamples/fig_003.png",
+          "reports/figures/modules/AnalysisExamples/fig_004.png"
+        ],
+        "directory_files": 4,
+        "directory": "reports/figures/modules/AnalysisExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 4,
+        "figures_len": 4,
+        "figure_contract_expected": 4,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/AnalysisExamples/fig_001.png",
+          "reports/figures/notebooks/AnalysisExamples/fig_002.png",
+          "reports/figures/notebooks/AnalysisExamples/fig_003.png",
+          "reports/figures/notebooks/AnalysisExamples/fig_004.png"
+        ],
+        "directory_files": 4,
+        "directory": "reports/figures/notebooks/AnalysisExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "FitResultExamples",
       "title": "Using the FitResult Class",
       "matlab_target": "FitResultExamples.html",
+      "figure_contract_expected": 0,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
         "bic",
         "coeffs",
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 0,
+        "figures_len": 0,
+        "figure_contract_expected": 0,
+        "missing": [],
+        "figures": [],
+        "directory_files": 0,
+        "directory": "reports/figures/modules/FitResultExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 0,
+        "figures_len": 0,
+        "figure_contract_expected": 0,
+        "missing": [],
+        "figures": [],
+        "directory_files": 0,
+        "directory": "reports/figures/notebooks/FitResultExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "FitResSummaryExamples",
       "title": "Using the FitResSummary Class",
       "matlab_target": "FitResSummaryExamples.html",
+      "figure_contract_expected": 0,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "mean_aic",
         "mean_bic",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 0,
+        "figures_len": 0,
+        "figure_contract_expected": 0,
+        "missing": [],
+        "figures": [],
+        "directory_files": 0,
+        "directory": "reports/figures/modules/FitResSummaryExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 0,
+        "figures_len": 0,
+        "figure_contract_expected": 0,
+        "missing": [],
+        "figures": [],
+        "directory_files": 0,
+        "directory": "reports/figures/notebooks/FitResSummaryExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "PPThinning",
       "title": "Point Process Simulation via Thinning",
       "matlab_target": "PPThinning.html",
+      "figure_contract_expected": 3,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "num_realizations",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 3,
+        "figures_len": 3,
+        "figure_contract_expected": 3,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/PPThinning/fig_001.png",
+          "reports/figures/modules/PPThinning/fig_002.png",
+          "reports/figures/modules/PPThinning/fig_003.png"
+        ],
+        "directory_files": 3,
+        "directory": "reports/figures/modules/PPThinning"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 3,
+        "figures_len": 3,
+        "figure_contract_expected": 3,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/PPThinning/fig_001.png",
+          "reports/figures/notebooks/PPThinning/fig_002.png",
+          "reports/figures/notebooks/PPThinning/fig_003.png"
+        ],
+        "directory_files": 3,
+        "directory": "reports/figures/notebooks/PPThinning"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "PSTHEstimation",
       "title": "Example Data Analysis - Simulated Data - Computing a Peri-Stimulus Time Histogram (PSTH)",
       "matlab_target": "PSTHEstimation.html",
+      "figure_contract_expected": 2,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "num_realizations",
         "parity",
         "peak_rate",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 2,
+        "figures_len": 2,
+        "figure_contract_expected": 2,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/PSTHEstimation/fig_001.png",
+          "reports/figures/modules/PSTHEstimation/fig_002.png"
+        ],
+        "directory_files": 2,
+        "directory": "reports/figures/modules/PSTHEstimation"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 2,
+        "figures_len": 2,
+        "figure_contract_expected": 2,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/PSTHEstimation/fig_001.png",
+          "reports/figures/notebooks/PSTHEstimation/fig_002.png"
+        ],
+        "directory_files": 2,
+        "directory": "reports/figures/notebooks/PSTHEstimation"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "ValidationDataSet",
       "title": "Example Data Analysis - Simulated Constant (Piecewise Constant) Rate Poisson",
       "matlab_target": "ValidationDataSet.html",
+      "figure_contract_expected": 8,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "num_trials",
         "parity",
         "psth_mean_hz",
@@ -273,15 +772,55 @@
         "topic",
         "total_spikes"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 8,
+        "figures_len": 8,
+        "figure_contract_expected": 8,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/ValidationDataSet/fig_001.png",
+          "reports/figures/modules/ValidationDataSet/fig_002.png",
+          "reports/figures/modules/ValidationDataSet/fig_003.png",
+          "reports/figures/modules/ValidationDataSet/fig_004.png",
+          "reports/figures/modules/ValidationDataSet/fig_005.png",
+          "reports/figures/modules/ValidationDataSet/fig_006.png",
+          "reports/figures/modules/ValidationDataSet/fig_007.png",
+          "reports/figures/modules/ValidationDataSet/fig_008.png"
+        ],
+        "directory_files": 8,
+        "directory": "reports/figures/modules/ValidationDataSet"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 8,
+        "figures_len": 8,
+        "figure_contract_expected": 8,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/ValidationDataSet/fig_001.png",
+          "reports/figures/notebooks/ValidationDataSet/fig_002.png",
+          "reports/figures/notebooks/ValidationDataSet/fig_003.png",
+          "reports/figures/notebooks/ValidationDataSet/fig_004.png",
+          "reports/figures/notebooks/ValidationDataSet/fig_005.png",
+          "reports/figures/notebooks/ValidationDataSet/fig_006.png",
+          "reports/figures/notebooks/ValidationDataSet/fig_007.png",
+          "reports/figures/notebooks/ValidationDataSet/fig_008.png"
+        ],
+        "directory_files": 8,
+        "directory": "reports/figures/notebooks/ValidationDataSet"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "mEPSCAnalysis",
       "title": "Example Data Analysis - Miniature Excitatory Post-Synaptic Currents (mEPSCs)",
       "matlab_target": "mEPSCAnalysis.html",
+      "figure_contract_expected": 4,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
@@ -290,6 +829,9 @@
         "const_model_bic",
         "decreasing_condition_spikes",
         "dt_seconds",
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "parity",
         "piecewise_history_model_aic",
         "piecewise_history_model_bic",
@@ -297,18 +839,53 @@
         "piecewise_model_bic",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 4,
+        "figures_len": 4,
+        "figure_contract_expected": 4,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/mEPSCAnalysis/fig_001.png",
+          "reports/figures/modules/mEPSCAnalysis/fig_002.png",
+          "reports/figures/modules/mEPSCAnalysis/fig_003.png",
+          "reports/figures/modules/mEPSCAnalysis/fig_004.png"
+        ],
+        "directory_files": 4,
+        "directory": "reports/figures/modules/mEPSCAnalysis"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 4,
+        "figures_len": 4,
+        "figure_contract_expected": 4,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/mEPSCAnalysis/fig_001.png",
+          "reports/figures/notebooks/mEPSCAnalysis/fig_002.png",
+          "reports/figures/notebooks/mEPSCAnalysis/fig_003.png",
+          "reports/figures/notebooks/mEPSCAnalysis/fig_004.png"
+        ],
+        "directory_files": 4,
+        "directory": "reports/figures/notebooks/mEPSCAnalysis"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "PPSimExample",
       "title": "Example Data Analysis - Simulated Explicit Stimulus and History",
       "matlab_target": "PPSimExample.html",
+      "figure_contract_expected": 3,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "model1_aic",
         "model1_bic",
         "model2_aic",
@@ -319,18 +896,51 @@
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 3,
+        "figures_len": 3,
+        "figure_contract_expected": 3,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/PPSimExample/fig_001.png",
+          "reports/figures/modules/PPSimExample/fig_002.png",
+          "reports/figures/modules/PPSimExample/fig_003.png"
+        ],
+        "directory_files": 3,
+        "directory": "reports/figures/modules/PPSimExample"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 3,
+        "figures_len": 3,
+        "figure_contract_expected": 3,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/PPSimExample/fig_001.png",
+          "reports/figures/notebooks/PPSimExample/fig_002.png",
+          "reports/figures/notebooks/PPSimExample/fig_003.png"
+        ],
+        "directory_files": 3,
+        "directory": "reports/figures/notebooks/PPSimExample"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "ExplicitStimulusWhiskerData",
       "title": "Example Data Analysis - Explicit Stimulus",
       "matlab_target": "ExplicitStimulusWhiskerData.html",
+      "figure_contract_expected": 8,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "model1_aic",
         "model1_bic",
         "model2_aic",
@@ -341,118 +951,369 @@
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 8,
+        "figures_len": 8,
+        "figure_contract_expected": 8,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/ExplicitStimulusWhiskerData/fig_001.png",
+          "reports/figures/modules/ExplicitStimulusWhiskerData/fig_002.png",
+          "reports/figures/modules/ExplicitStimulusWhiskerData/fig_003.png",
+          "reports/figures/modules/ExplicitStimulusWhiskerData/fig_004.png",
+          "reports/figures/modules/ExplicitStimulusWhiskerData/fig_005.png",
+          "reports/figures/modules/ExplicitStimulusWhiskerData/fig_006.png",
+          "reports/figures/modules/ExplicitStimulusWhiskerData/fig_007.png",
+          "reports/figures/modules/ExplicitStimulusWhiskerData/fig_008.png"
+        ],
+        "directory_files": 8,
+        "directory": "reports/figures/modules/ExplicitStimulusWhiskerData"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 8,
+        "figures_len": 8,
+        "figure_contract_expected": 8,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/ExplicitStimulusWhiskerData/fig_001.png",
+          "reports/figures/notebooks/ExplicitStimulusWhiskerData/fig_002.png",
+          "reports/figures/notebooks/ExplicitStimulusWhiskerData/fig_003.png",
+          "reports/figures/notebooks/ExplicitStimulusWhiskerData/fig_004.png",
+          "reports/figures/notebooks/ExplicitStimulusWhiskerData/fig_005.png",
+          "reports/figures/notebooks/ExplicitStimulusWhiskerData/fig_006.png",
+          "reports/figures/notebooks/ExplicitStimulusWhiskerData/fig_007.png",
+          "reports/figures/notebooks/ExplicitStimulusWhiskerData/fig_008.png"
+        ],
+        "directory_files": 8,
+        "directory": "reports/figures/notebooks/ExplicitStimulusWhiskerData"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "HippocampalPlaceCellExample",
       "title": "Example Data Analysis - Hippocampal Place Cell Receptive Field Estimation",
       "matlab_target": "HippocampalPlaceCellExample.html",
+      "figure_contract_expected": 9,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "mean_delta_aic_gaussian_minus_zernike",
         "mean_delta_bic_gaussian_minus_zernike",
         "num_cells_fit",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 9,
+        "figures_len": 9,
+        "figure_contract_expected": 9,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/HippocampalPlaceCellExample/fig_001.png",
+          "reports/figures/modules/HippocampalPlaceCellExample/fig_002.png",
+          "reports/figures/modules/HippocampalPlaceCellExample/fig_003.png",
+          "reports/figures/modules/HippocampalPlaceCellExample/fig_004.png",
+          "reports/figures/modules/HippocampalPlaceCellExample/fig_005.png",
+          "reports/figures/modules/HippocampalPlaceCellExample/fig_006.png",
+          "reports/figures/modules/HippocampalPlaceCellExample/fig_007.png",
+          "reports/figures/modules/HippocampalPlaceCellExample/fig_008.png",
+          "reports/figures/modules/HippocampalPlaceCellExample/fig_009.png"
+        ],
+        "directory_files": 9,
+        "directory": "reports/figures/modules/HippocampalPlaceCellExample"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 9,
+        "figures_len": 9,
+        "figure_contract_expected": 9,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/HippocampalPlaceCellExample/fig_001.png",
+          "reports/figures/notebooks/HippocampalPlaceCellExample/fig_002.png",
+          "reports/figures/notebooks/HippocampalPlaceCellExample/fig_003.png",
+          "reports/figures/notebooks/HippocampalPlaceCellExample/fig_004.png",
+          "reports/figures/notebooks/HippocampalPlaceCellExample/fig_005.png",
+          "reports/figures/notebooks/HippocampalPlaceCellExample/fig_006.png",
+          "reports/figures/notebooks/HippocampalPlaceCellExample/fig_007.png",
+          "reports/figures/notebooks/HippocampalPlaceCellExample/fig_008.png",
+          "reports/figures/notebooks/HippocampalPlaceCellExample/fig_009.png"
+        ],
+        "directory_files": 9,
+        "directory": "reports/figures/notebooks/HippocampalPlaceCellExample"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "DecodingExample",
       "title": "Example Data Analysis - Decoding Univariate Simulated Stimuli (No History Effect)",
       "matlab_target": "DecodingExample.html",
+      "figure_contract_expected": 5,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
         "decode_rmse",
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "num_cells",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 5,
+        "figures_len": 5,
+        "figure_contract_expected": 5,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/DecodingExample/fig_001.png",
+          "reports/figures/modules/DecodingExample/fig_002.png",
+          "reports/figures/modules/DecodingExample/fig_003.png",
+          "reports/figures/modules/DecodingExample/fig_004.png",
+          "reports/figures/modules/DecodingExample/fig_005.png"
+        ],
+        "directory_files": 5,
+        "directory": "reports/figures/modules/DecodingExample"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 5,
+        "figures_len": 5,
+        "figure_contract_expected": 5,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/DecodingExample/fig_001.png",
+          "reports/figures/notebooks/DecodingExample/fig_002.png",
+          "reports/figures/notebooks/DecodingExample/fig_003.png",
+          "reports/figures/notebooks/DecodingExample/fig_004.png",
+          "reports/figures/notebooks/DecodingExample/fig_005.png"
+        ],
+        "directory_files": 5,
+        "directory": "reports/figures/notebooks/DecodingExample"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "DecodingExampleWithHist",
       "title": "Example Data Analysis - Decoding Univariate Simulated Stimuli with and without History Effect",
       "matlab_target": "DecodingExampleWithHist.html",
+      "figure_contract_expected": 2,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
         "decode_rmse_x",
         "decode_rmse_y",
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "num_cells",
         "num_samples",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 2,
+        "figures_len": 2,
+        "figure_contract_expected": 2,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/DecodingExampleWithHist/fig_001.png",
+          "reports/figures/modules/DecodingExampleWithHist/fig_002.png"
+        ],
+        "directory_files": 2,
+        "directory": "reports/figures/modules/DecodingExampleWithHist"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 2,
+        "figures_len": 2,
+        "figure_contract_expected": 2,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/DecodingExampleWithHist/fig_001.png",
+          "reports/figures/notebooks/DecodingExampleWithHist/fig_002.png"
+        ],
+        "directory_files": 2,
+        "directory": "reports/figures/notebooks/DecodingExampleWithHist"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "StimulusDecode2D",
       "title": "Example Data Analysis - Decoding Bivariate Simulated Stimuli",
       "matlab_target": "StimulusDecode2D.html",
+      "figure_contract_expected": 4,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
         "decode_rmse_x",
         "decode_rmse_y",
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "num_cells",
         "num_samples",
         "parity",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 4,
+        "figures_len": 4,
+        "figure_contract_expected": 4,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/StimulusDecode2D/fig_001.png",
+          "reports/figures/modules/StimulusDecode2D/fig_002.png",
+          "reports/figures/modules/StimulusDecode2D/fig_003.png",
+          "reports/figures/modules/StimulusDecode2D/fig_004.png"
+        ],
+        "directory_files": 4,
+        "directory": "reports/figures/modules/StimulusDecode2D"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 4,
+        "figures_len": 4,
+        "figure_contract_expected": 4,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/StimulusDecode2D/fig_001.png",
+          "reports/figures/notebooks/StimulusDecode2D/fig_002.png",
+          "reports/figures/notebooks/StimulusDecode2D/fig_003.png",
+          "reports/figures/notebooks/StimulusDecode2D/fig_004.png"
+        ],
+        "directory_files": 4,
+        "directory": "reports/figures/notebooks/StimulusDecode2D"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "NetworkTutorial",
       "title": "Example Data Analysis - Two Neuron Network Simulation and Estimation of Ensemble Effect",
       "matlab_target": "NetworkTutorial.html",
+      "figure_contract_expected": 4,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "neuron_count",
         "parity",
         "psth_peak",
         "samples",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 4,
+        "figures_len": 4,
+        "figure_contract_expected": 4,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/NetworkTutorial/fig_001.png",
+          "reports/figures/modules/NetworkTutorial/fig_002.png",
+          "reports/figures/modules/NetworkTutorial/fig_003.png",
+          "reports/figures/modules/NetworkTutorial/fig_004.png"
+        ],
+        "directory_files": 4,
+        "directory": "reports/figures/modules/NetworkTutorial"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 4,
+        "figures_len": 4,
+        "figure_contract_expected": 4,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/NetworkTutorial/fig_001.png",
+          "reports/figures/notebooks/NetworkTutorial/fig_002.png",
+          "reports/figures/notebooks/NetworkTutorial/fig_003.png",
+          "reports/figures/notebooks/NetworkTutorial/fig_004.png"
+        ],
+        "directory_files": 4,
+        "directory": "reports/figures/notebooks/NetworkTutorial"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     },
     {
       "example": "nSTATPaperExamples",
       "title": "nSTAT Paper Examples",
       "matlab_target": "nSTATPaperExamples.html",
+      "figure_contract_expected": 1,
       "python_module_ok": true,
       "python_module_error": "",
       "python_output_keys": [
         "experiments",
+        "figure_contract_expected",
+        "figure_count",
+        "figures",
         "parity",
         "summary",
         "topic"
       ],
+      "python_figures": {
+        "ok": true,
+        "figure_count": 1,
+        "figures_len": 1,
+        "figure_contract_expected": 1,
+        "missing": [],
+        "figures": [
+          "reports/figures/modules/nSTATPaperExamples/fig_001.png"
+        ],
+        "directory_files": 1,
+        "directory": "reports/figures/modules/nSTATPaperExamples"
+      },
       "notebook_ok": true,
       "notebook_error": "",
-      "notebook_code_cells": 3,
-      "topic_alignment_ok": true
+      "notebook_code_cells": 4,
+      "notebook_figures": {
+        "ok": true,
+        "figure_count": 1,
+        "figures_len": 1,
+        "figure_contract_expected": 1,
+        "missing": [],
+        "figures": [
+          "reports/figures/notebooks/nSTATPaperExamples/fig_001.png"
+        ],
+        "directory_files": 1,
+        "directory": "reports/figures/notebooks/nSTATPaperExamples"
+      },
+      "topic_alignment_ok": true,
+      "figure_contract_ok": true
     }
   ]
 }

@@ -9,6 +9,15 @@ REPO_ROOT = PROJECT_ROOT if (PROJECT_ROOT / "helpfiles").exists() else PROJECT_R
 TOC_PATH = REPO_ROOT / "helpfiles" / "helptoc.xml"
 NB_ROOT = PROJECT_ROOT / "notebooks" / "helpfiles"
 SRC_ROOT = PROJECT_ROOT / "examples" / "help_topics"
+FIGURE_CONTRACT = SRC_ROOT / "figure_contract.json"
+
+
+def _load_contract() -> dict[str, dict[str, object]]:
+    data = json.loads(FIGURE_CONTRACT.read_text(encoding="utf-8"))
+    topics = data.get("topics", {})
+    if not isinstance(topics, dict) or not topics:
+        raise RuntimeError(f"Invalid figure contract at {FIGURE_CONTRACT}")
+    return topics
 
 
 def _example_topics() -> list[tuple[str, str]]:
@@ -26,17 +35,16 @@ def _example_topics() -> list[tuple[str, str]]:
     for item in examples.findall("tocitem"):
         title = " ".join((item.text or "").split()) or Path(item.attrib.get("target", "")).stem
         target = item.attrib.get("target", "")
-        if not target:
-            continue
-        topics.append((title, target))
+        if target:
+            topics.append((title, target))
     return topics
 
 
-def _build_notebook(title: str, stem: str, matlab_target: str) -> dict:
+def _build_notebook(title: str, stem: str, matlab_target: str, expected_figures: int) -> dict:
     code_setup = (
         "from pathlib import Path\n"
-        "import sys\n"
-        "import json\n\n"
+        "import json\n"
+        "import sys\n\n"
         "def find_repo_root(start: Path) -> Path:\n"
         "    cur = start.resolve()\n"
         "    for p in [cur, *cur.parents]:\n"
@@ -44,22 +52,43 @@ def _build_notebook(title: str, stem: str, matlab_target: str) -> dict:
         "            return p\n"
         "    raise RuntimeError('Could not find nSTAT repo root from notebook cwd')\n\n"
         "repo_root = find_repo_root(Path.cwd())\n"
-        "py_root = repo_root\n"
-        "if str(py_root) not in sys.path:\n"
-        "    sys.path.insert(0, str(py_root))\n"
+        "if str(repo_root) not in sys.path:\n"
+        "    sys.path.insert(0, str(repo_root))\n"
         "print('repo_root =', repo_root)\n"
     )
 
     code_run = (
         f"from examples.help_topics.{stem} import run\n"
-        "out = run(repo_root=repo_root)\n"
+        f"expected_figures = {expected_figures}\n"
+        f"figure_dir = repo_root / 'reports' / 'figures' / 'notebooks' / '{stem}'\n"
+        "out = run(repo_root=repo_root, figure_dir=figure_dir, render_figures=True)\n"
         "print(json.dumps(out, indent=2, default=str))\n"
     )
 
+    code_display = (
+        "from pathlib import Path\n"
+        "import matplotlib.pyplot as plt\n"
+        "import matplotlib.image as mpimg\n\n"
+        "for fig_path in out.get('figures', []):\n"
+        "    p = Path(fig_path)\n"
+        "    img = mpimg.imread(p)\n"
+        "    h, w = img.shape[:2]\n"
+        "    fig = plt.figure(figsize=(max(w / 160.0, 2.0), max(h / 160.0, 2.0)), dpi=160)\n"
+        "    ax = fig.add_subplot(111)\n"
+        "    ax.imshow(img, cmap='gray' if img.ndim == 2 else None)\n"
+        "    ax.axis('off')\n"
+        "    ax.set_title(p.name)\n"
+        "    plt.show()\n"
+        "    plt.close(fig)\n"
+    )
+
     code_check = (
-        "assert isinstance(out, dict)\n"
-        "assert 'topic' in out\n"
-        "print('Notebook execution check: PASS')\n"
+        f"assert out.get('topic') == '{stem}'\n"
+        "assert out.get('figure_contract_expected') == expected_figures\n"
+        "assert out.get('figure_count') == expected_figures, out\n"
+        "for fig_path in out.get('figures', []):\n"
+        "    assert Path(fig_path).exists(), fig_path\n"
+        "print('Notebook execution + figure contract: PASS')\n"
     )
 
     return {
@@ -72,6 +101,7 @@ def _build_notebook(title: str, stem: str, matlab_target: str) -> dict:
                     "\\n",
                     "Executable Python notebook generated from source help-topic scripts.\\n",
                     f"MATLAB help target: `{matlab_target}`\\n",
+                    f"Expected figure artifacts: `{expected_figures}`\\n",
                 ],
             },
             {
@@ -87,6 +117,13 @@ def _build_notebook(title: str, stem: str, matlab_target: str) -> dict:
                 "metadata": {},
                 "outputs": [],
                 "source": code_run.splitlines(keepends=True),
+            },
+            {
+                "cell_type": "code",
+                "execution_count": None,
+                "metadata": {},
+                "outputs": [],
+                "source": code_display.splitlines(keepends=True),
             },
             {
                 "cell_type": "code",
@@ -115,9 +152,12 @@ def _build_notebook(title: str, stem: str, matlab_target: str) -> dict:
 def main() -> int:
     NB_ROOT.mkdir(parents=True, exist_ok=True)
     topics = _example_topics()
+    contract = _load_contract()
 
     generated = 0
     missing_sources: list[str] = []
+    missing_contract: list[str] = []
+
     for title, target in topics:
         stem = Path(target).stem
         source_mod = SRC_ROOT / f"{stem}.py"
@@ -125,20 +165,32 @@ def main() -> int:
             missing_sources.append(stem)
             continue
 
-        nb = _build_notebook(title, stem, target)
+        if stem not in contract:
+            missing_contract.append(stem)
+            continue
+
+        info = contract[stem]
+        nb = _build_notebook(
+            title=title,
+            stem=stem,
+            matlab_target=str(info.get("matlab_target", target)),
+            expected_figures=int(info.get("expected_figures", 0)),
+        )
         out = NB_ROOT / f"{stem}.ipynb"
         out.write_text(json.dumps(nb, indent=2), encoding="utf-8")
         generated += 1
 
     report = {
         "total_topics": len(topics),
+        "contract_topics": len(contract),
         "generated": generated,
         "missing_sources": missing_sources,
+        "missing_contract": missing_contract,
         "output_dir": str(NB_ROOT.relative_to(REPO_ROOT)),
     }
     print(json.dumps(report, indent=2))
 
-    if missing_sources:
+    if missing_sources or missing_contract:
         return 1
     return 0
 

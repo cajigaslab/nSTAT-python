@@ -1,0 +1,54 @@
+name: Notebook Figure Parity
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  notebook-figure-parity:
+    runs-on: ubuntu-latest
+    env:
+      NSTAT_ALLOW_SYNTHETIC_DATA: "1"
+      NSTAT_EXPECTED_EXAMPLE_NOTEBOOKS: "25"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+
+      - name: Generate example notebooks
+        run: |
+          python tools/generate_example_notebooks.py
+
+      - name: Verify notebook execution and figure contracts
+        run: |
+          python tools/verify_examples_notebooks.py
+
+      - name: Compare notebook figures to MATLAB baselines
+        run: |
+          python tools/compare_notebook_figures_to_matlab.py --enforce-gate
+
+      - name: Upload figure parity artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notebook-figure-parity-artifacts
+          path: |
+            reports/examples_notebook_verification.json
+            reports/notebook_figure_parity.json
+            reports/figures

@@ -8,3 +8,6 @@ plots/
 
 reports/pytest.log
 reports/pytest.xml
+reports/figures/
+reports/notebook_figure_parity.json
+reports/matlab_topic_figure_count_validation.json

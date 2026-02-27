@@ -1,0 +1,6 @@
+{
+  "ssim_min": 0.45,
+  "psnr_min": 12.0,
+  "hist_intersection_min": 0.7,
+  "pair_pass_rule": "2_of_3"
+}

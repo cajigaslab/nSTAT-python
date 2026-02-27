@@ -1,0 +1,104 @@
+{
+  "topics": {
+    "SignalObjExamples": {
+      "expected_figures": 16,
+      "matlab_target": "SignalObjExamples.html"
+    },
+    "CovariateExamples": {
+      "expected_figures": 2,
+      "matlab_target": "CovariateExamples.html"
+    },
+    "CovCollExamples": {
+      "expected_figures": 2,
+      "matlab_target": "CovCollExamples.html"
+    },
+    "nSpikeTrainExamples": {
+      "expected_figures": 4,
+      "matlab_target": "nSpikeTrainExamples.html"
+    },
+    "nstCollExamples": {
+      "expected_figures": 3,
+      "matlab_target": "nstCollExamples.html"
+    },
+    "EventsExamples": {
+      "expected_figures": 3,
+      "matlab_target": "EventsExamples.html"
+    },
+    "HistoryExamples": {
+      "expected_figures": 3,
+      "matlab_target": "HistoryExamples.html"
+    },
+    "TrialExamples": {
+      "expected_figures": 6,
+      "matlab_target": "TrialExamples.html"
+    },
+    "TrialConfigExamples": {
+      "expected_figures": 0,
+      "matlab_target": "TrialConfigExamples.html"
+    },
+    "ConfigCollExamples": {
+      "expected_figures": 0,
+      "matlab_target": "ConfigCollExamples.html"
+    },
+    "AnalysisExamples": {
+      "expected_figures": 4,
+      "matlab_target": "AnalysisExamples.html"
+    },
+    "FitResultExamples": {
+      "expected_figures": 0,
+      "matlab_target": "FitResultExamples.html"
+    },
+    "FitResSummaryExamples": {
+      "expected_figures": 0,
+      "matlab_target": "FitResSummaryExamples.html"
+    },
+    "PPThinning": {
+      "expected_figures": 3,
+      "matlab_target": "PPThinning.html"
+    },
+    "PSTHEstimation": {
+      "expected_figures": 2,
+      "matlab_target": "PSTHEstimation.html"
+    },
+    "ValidationDataSet": {
+      "expected_figures": 8,
+      "matlab_target": "ValidationDataSet.html"
+    },
+    "mEPSCAnalysis": {
+      "expected_figures": 4,
+      "matlab_target": "mEPSCAnalysis.html"
+    },
+    "PPSimExample": {
+      "expected_figures": 3,
+      "matlab_target": "PPSimExample.html"
+    },
+    "ExplicitStimulusWhiskerData": {
+      "expected_figures": 8,
+      "matlab_target": "ExplicitStimulusWhiskerData.html"
+    },
+    "HippocampalPlaceCellExample": {
+      "expected_figures": 9,
+      "matlab_target": "HippocampalPlaceCellExample.html"
+    },
+    "DecodingExample": {
+      "expected_figures": 5,
+      "matlab_target": "DecodingExample.html"
+    },
+    "DecodingExampleWithHist": {
+      "expected_figures": 2,
+      "matlab_target": "DecodingExampleWithHist.html"
+    },
+    "StimulusDecode2D": {
+      "expected_figures": 4,
+      "matlab_target": "StimulusDecode2D.html"
+    },
+    "NetworkTutorial": {
+      "expected_figures": 4,
+      "matlab_target": "NetworkTutorial.html"
+    },
+    "nSTATPaperExamples": {
+      "expected_figures": 1,
+      "matlab_target": "nSTATPaperExamples.html"
+    }
+  }
+}
