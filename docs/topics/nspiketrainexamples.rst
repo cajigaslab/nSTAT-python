@@ -37,10 +37,52 @@ Expected Outputs
 ----------------
 This topic should execute without MATLAB and produce deterministic summary metrics where applicable.
 
+Debugging Notes
+---------------
+- Confirm dataset paths with ``nstat.datasets.list_datasets()`` and ``nstat.datasets.get_dataset_path(...)``.
+- For notebook execution in CI/headless runs, set ``MPLBACKEND=Agg``.
+- If parity checks fail, inspect generated reports under ``reports/`` for topic-level details.
+
 Known Differences
 -----------------
 - Some legacy plotting helpers are represented via notebooks/docs instead of full method parity.
 - Numerical outputs may vary if random seeds, bin widths, or sample rates differ from MATLAB defaults.
+
+Example Utility
+---------------
+This example demonstrates how `nSpikeTrain` workflows map to standalone Python execution and why the resulting outputs are useful for model debugging and interpretation.
+
+Paper Nomenclature
+------------------
+Use terminology consistent with Cajigas et al. (2012): conditional intensity function (CIF), point process generalized linear model (PP-GLM), maximum likelihood estimation (MLE), and related decoding/network terms where applicable.
+Primary paper URL: https://pmc.ncbi.nlm.nih.gov/articles/PMC3491120/
+
+Workflow Summary
+----------------
+1. Load data (or deterministic synthetic fallback) and configure the example pipeline.
+2. Execute the Python topic workflow from ``examples/help_topics``.
+3. Review structured outputs and generated notebook figures.
+4. Compare behavior against MATLAB intent using parity reports when needed.
+
+MATLAB MLX Alignment
+--------------------
+Reference Live Script: ``nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples.mlx``
+MATLAB Live Script title: ``Test the nspikeTrain Class``
+Key Live Script headings:
+- Example 1: Using the nspikeTrain Class
+
+Paper Section Alignment
+-----------------------
+- Section 2.2.1
+- Section 2.1.1
+
+Topic-specific paper terms:
+- spike train
+- inter-spike interval
+
+Section-aligned Interpretation
+-----------------------------
+Core single-neuron spike train representation and descriptive statistics.
 
 Notebook
 --------

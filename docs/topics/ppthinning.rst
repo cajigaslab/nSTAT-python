@@ -37,6 +37,12 @@ Expected Outputs
 ----------------
 This topic should execute without MATLAB and produce deterministic summary metrics where applicable.
 
+Debugging Notes
+---------------
+- Confirm dataset paths with ``nstat.datasets.list_datasets()`` and ``nstat.datasets.get_dataset_path(...)``.
+- For notebook execution in CI/headless runs, set ``MPLBACKEND=Agg``.
+- If parity checks fail, inspect generated reports under ``reports/`` for topic-level details.
+
 Known Differences
 -----------------
 - Some legacy plotting helpers are represented via notebooks/docs instead of full method parity.

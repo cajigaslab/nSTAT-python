@@ -17,6 +17,7 @@ jobs:
     env:
       NSTAT_ALLOW_SYNTHETIC_DATA: "1"
       NSTAT_EXPECTED_EXAMPLE_NOTEBOOKS: "25"
+      PYDEVD_DISABLE_FILE_VALIDATION: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +36,14 @@ jobs:
         run: |
           python tools/generate_example_notebooks.py
 
+      - name: Publish example notebooks with embedded outputs
+        run: |
+          python tools/publish_example_notebooks.py
+
+      - name: Verify published notebook narrative sections and outputs
+        run: |
+          python tools/verify_published_notebooks.py --enforce-gate
+
       - name: Verify notebook execution and figure contracts
         run: |
           python tools/verify_examples_notebooks.py
@@ -49,6 +58,9 @@ jobs:
         with:
           name: notebook-figure-parity-artifacts
           path: |
+            reports/published_notebook_execution.json
+            reports/published_notebook_check.json
             reports/examples_notebook_verification.json
             reports/notebook_figure_parity.json
             reports/figures
+            notebooks/helpfiles/*.ipynb

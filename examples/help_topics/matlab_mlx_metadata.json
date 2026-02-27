@@ -1,0 +1,207 @@
+{
+  "source_helpfiles": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles",
+  "topics": {
+    "AnalysisExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/AnalysisExamples.mlx",
+      "title": "Analysis Examples",
+      "intro": "This is an example on the standard approach to fitting GLM models to spike train data. This data set was obtained at the Society For Neuroscience '08 Workshop on Workshop on Neural Signal Processing Compare to analysis with Neural Spike Analysis Toolbox",
+      "headings": [
+        "Example 1: Tradition Preliminary Analysis"
+      ]
+    },
+    "AnalysisExamples2": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2.mlx",
+      "title": "Analysis Examples 2",
+      "intro": "Compare with traditional Neural Spike Train Analysis here",
+      "headings": [
+        "Toolbox vs. Standard GLM comparison",
+        "Compute the history effect"
+      ]
+    },
+    "ConfigCollExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/ConfigCollExamples.mlx",
+      "title": "ConfigColl Examples",
+      "intro": "tcObj=TrialConfig(covMask,sampleRate, history,minTime,maxTime)",
+      "headings": []
+    },
+    "CovCollExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/CovCollExamples.mlx",
+      "title": "Test CovColl",
+      "intro": "",
+      "headings": []
+    },
+    "CovariateExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/CovariateExamples.mlx",
+      "title": "Test the Cov class",
+      "intro": "Covariates are just like signals with a mean and a standard deviation They have two representations, the default (original representation) and a zero-mean representation",
+      "headings": [
+        "Example 1: Using Covariates"
+      ]
+    },
+    "DecodingExample": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/DecodingExample.mlx",
+      "title": "STIMULUS DECODING",
+      "intro": "In this example we show how to decode a univariate and a bivariate stimulus based on a point process observations using nSTAT. Even though due to the simulated nature of the data, we know the exact condition intensity function, we estimate the parameters before moving on to the decoding stage.",
+      "headings": [
+        "Generate the conditional Intensity Function",
+        "Fit a model to the spikedata to obtain a model CIF"
+      ]
+    },
+    "DecodingExampleWithHist": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/DecodingExampleWithHist.mlx",
+      "title": "1-D Stimulus Decode with History Effect",
+      "intro": "In the above decoding example, the simulated neurons did not have memory. That is their previous firing activity did not modulate their current probability of firing. In reality the firing history does affect the probabilty of neuronal firing (eg. refractory period, bursting, etc.). In this example, we simulate a population a neurons that exhibit this type of history dependence. We then decode the stimulus activity based on a conditional intensity function that includes the correct history terms and one that assumes no history dependence.",
+      "headings": []
+    },
+    "EventsExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/EventsExamples.mlx",
+      "title": "Events",
+      "intro": "Events are simple object to use and are aimed to facilitate illustration of epochs in any time of data.",
+      "headings": []
+    },
+    "Examples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/Examples.mlx",
+      "title": "Examples",
+      "intro": "Example files are provided for each of the classes defined in the Neural Spike Analysis Toolbox so that the user can understand the functionality of each in more detail.",
+      "headings": []
+    },
+    "FitResSummaryExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/FitResSummaryExamples.mlx",
+      "title": "FitResSummary Examples",
+      "intro": "",
+      "headings": []
+    },
+    "FitResultExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/FitResultExamples.mlx",
+      "title": "FitResult Examples",
+      "intro": "",
+      "headings": []
+    },
+    "HippocampalPlaceCellExample": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample.mlx",
+      "title": "HIPPOCAMPAL PLACE CELL - RECEPTIVE FIELD ESTIMATION",
+      "intro": "Estimation of receptive fields of neurons is a very common data analysis problem in neuroscience. Here we use the nSTAT software to perform an estimation of the receptive fields of hippocampal place cells using a bivariate Gaussian model and Zernike polynomials. The number of zernike polynomials is based on \"An Analysis of Hippocampal Spatio-Temporal Representations Using a Bayesian Algorithm for Neural Spike Train Decoding\" Barbieri et. al 2005. The data used herein in was provided by Dr. Ricardo Barbieri on 2/28/2011.",
+      "headings": [
+        "Example Data",
+        "Analyze All Cells",
+        "View Summary Statistics",
+        "Visualize the results"
+      ]
+    },
+    "HistoryExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/HistoryExamples.mlx",
+      "title": "Test History",
+      "intro": "Generete a nspikeTrain and define a set of history windows of interest. We desire windows from 1-2ms, 2-3ms, 3-5ms, and 5ms-10ms. The history object with this windows in created below and then the",
+      "headings": [
+        "/",
+        "Example 2: History covariates for a collection of Neural Spikes (nstColl)"
+      ]
+    },
+    "HybridFilterExample": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/HybridFilterExample.mlx",
+      "title": "Hybrid Point Process Filter Example",
+      "intro": "This example is based on an implementation of the Hybrid Point Process filter described in General-purpose filter design for neural prosthetic devices by Srinivasan L, Eden UT, Mitter SK, Brown EN in J Neurophysiol. 2007 Oct, 98(4):2456-75.",
+      "headings": [
+        "Problem Statement",
+        "Generated Simulated Arm Reach",
+        "Simulate Neural Firing"
+      ]
+    },
+    "PPSimExample": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/PPSimExample.mlx",
+      "title": "General Point Process Simulation",
+      "intro": "In this demo, we show how sample-paths of a point process (PP) can be generated from specification of its conditional intensity function (CIF). We then use the generated PP data to validate the outputs of the Neural Spike Analysis Toolbox.",
+      "headings": [
+        "Point Process Sample Path Generation",
+        "History Effect",
+        "Stimulus Effect",
+        "Ensemble Effect",
+        "GLM Model Fitting Setup",
+        "GLM Model Fitting and Results",
+        "Results for sample neuron",
+        "Results for across all sample paths"
+      ]
+    },
+    "SignalObjExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/SignalObjExamples.mlx",
+      "title": "Using the SignalObj Class",
+      "intro": "In this file we will give several examples of how the SignalObj can be used. A description of all of the properties of SignalObj can be found at: SignalObj Class Definition",
+      "headings": [
+        "Example 1: Defining and Plotting Signals",
+        "Example 2: Changing Signal Properties",
+        "Example 3: Resampling and Windowing SignalObjs",
+        "Example 4: SignalObj Mathematical Operations",
+        "Example 5: Spectra",
+        "Example 6: View signal variability"
+      ]
+    },
+    "TrialConfigExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/TrialConfigExamples.mlx",
+      "title": "TrialConfig Examples",
+      "intro": "tcObj=TrialConfig(covMask,sampleRate, history,minTime,maxTime)",
+      "headings": []
+    },
+    "TrialExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/TrialExamples.mlx",
+      "title": "Trial Examples",
+      "intro": "Create History windows of interest",
+      "headings": [
+        "Example 1: A simple data set",
+        "Example 2: Analyzing Trial Data"
+      ]
+    },
+    "nSTATPaperExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples.mlx",
+      "title": "nSTAT J. Neuroscience Methods Paper Examples",
+      "intro": "Author: Iahn Cajigas",
+      "headings": [
+        "Experiment 1",
+        "Constant Magnesium Concentration - Constant rate poisson",
+        "Varying Magnesium Concentration - Piecewise Constant rate poisson",
+        "Data Visualization",
+        "Define Covariates for the analysis",
+        "Define how we want to analyze the data",
+        "Perform Analysis",
+        "Experiment 2",
+        "Load the data",
+        "Compare constant rate model with model including stimulus effect",
+        "History Effect",
+        "Example 3 - PSTH Data",
+        "Estimate the PSTH with 50ms windows",
+        "Example 3b - SSGLM Example",
+        "Summarize Simulated Data",
+        "Estimation of the Stimulus Response",
+        "Run the SSGLM Filter",
+        "Compare differences across trials",
+        "Example 4 - HIPPOCAMPAL PLACE CELL - RECEPTIVE FIELD ESTIMATION",
+        "Example Data",
+        "Analyze All Cells",
+        "View Summary Statistics",
+        "Visualize the results",
+        "Example 5 - STIMULUS DECODING",
+        "Generate the conditional Intensity Function",
+        "Example 5b - Arm reaching to target Simulation",
+        "Experiment 6 - Hybrid Point Process Filter Example",
+        "Problem Statement",
+        "Generated Simulated Arm Reach",
+        "Simulate Neural Firing"
+      ]
+    },
+    "nSpikeTrainExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples.mlx",
+      "title": "Test the nspikeTrain Class",
+      "intro": "Lets create some pseudo data and plot it.",
+      "headings": [
+        "Example 1: Using the nspikeTrain Class"
+      ]
+    },
+    "nstCollExamples": {
+      "file": "nSTAT_currentRelease_Local/helpfiles/nstCollExamples.mlx",
+      "title": "nstCollExamples",
+      "intro": "Create pseudo spike data and create a neural spike collection (nstColl).",
+      "headings": [
+        "Test the nstColl Class"
+      ]
+    }
+  }
+}

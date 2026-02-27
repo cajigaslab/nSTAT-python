@@ -10,6 +10,18 @@ TOC_PATH = REPO_ROOT / "helpfiles" / "helptoc.xml"
 NB_ROOT = PROJECT_ROOT / "notebooks" / "helpfiles"
 SRC_ROOT = PROJECT_ROOT / "examples" / "help_topics"
 FIGURE_CONTRACT = SRC_ROOT / "figure_contract.json"
+PAPER_NOMENCLATURE = SRC_ROOT / "paper_nomenclature.json"
+MLX_METADATA = SRC_ROOT / "matlab_mlx_metadata.json"
+
+REQUIRED_NOTEBOOK_SECTIONS = [
+    "## What this example demonstrates",
+    "## Data and assumptions",
+    "## Step-by-step workflow",
+    "## Expected figures and interpretation",
+    "## Debug tips",
+    "## MATLAB Live Script alignment",
+    "## Paper terminology and section references",
+]
 
 
 def _load_contract() -> dict[str, dict[str, object]]:
@@ -18,6 +30,13 @@ def _load_contract() -> dict[str, dict[str, object]]:
     if not isinstance(topics, dict) or not topics:
         raise RuntimeError(f"Invalid figure contract at {FIGURE_CONTRACT}")
     return topics
+
+
+def _load_json(path: Path, default: dict[str, object]) -> dict[str, object]:
+    if not path.exists():
+        return default
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else default
 
 
 def _example_topics() -> list[tuple[str, str]]:
@@ -38,6 +57,143 @@ def _example_topics() -> list[tuple[str, str]]:
         if target:
             topics.append((title, target))
     return topics
+
+
+def _narrative_cells(
+    title: str,
+    stem: str,
+    matlab_target: str,
+    expected_figures: int,
+    paper_payload: dict[str, object],
+    mlx_payload: dict[str, object],
+) -> list[dict]:
+    figure_phrase = (
+        "This notebook intentionally produces no figures; focus on object state and summary outputs."
+        if expected_figures == 0
+        else f"This notebook renders {expected_figures} figure(s) to illustrate the modeled behavior and analysis pipeline."
+    )
+    has_mlx_payload = bool(mlx_payload)
+    mlx_title = str(mlx_payload.get("title", title)).strip() or title
+    if has_mlx_payload:
+        mlx_file = str(mlx_payload.get("file", f"helpfiles/{stem}.mlx")).strip() or f"helpfiles/{stem}.mlx"
+    else:
+        mlx_file = f"helpfiles/{stem}.m"
+    mlx_intro = str(mlx_payload.get("intro", "")).strip()
+    mlx_headings = mlx_payload.get("headings", [])
+    if not isinstance(mlx_headings, list):
+        mlx_headings = []
+    mlx_headings = [str(h).strip() for h in mlx_headings if str(h).strip()][:6]
+
+    paper_sections = paper_payload.get("paper_sections", [])
+    if not isinstance(paper_sections, list):
+        paper_sections = []
+    paper_sections = [str(s).strip() for s in paper_sections if str(s).strip()]
+
+    paper_terms = paper_payload.get("paper_terms", [])
+    if not isinstance(paper_terms, list):
+        paper_terms = []
+    paper_terms = [str(t).strip() for t in paper_terms if str(t).strip()]
+
+    paper_focus = str(paper_payload.get("narrative_focus", "")).strip()
+
+    mlx_lines = [
+        "## MATLAB Live Script alignment\n",
+        f"MATLAB Live Script source: `{mlx_file}`\n",
+        f"MLX title: **{mlx_title}**\n",
+    ]
+    if not has_mlx_payload:
+        mlx_lines.append("No `.mlx` metadata was found for this topic in the synced MATLAB helpfiles; alignment is based on the MATLAB help script naming convention.\n")
+    if mlx_intro:
+        mlx_lines.append(f"MLX intent summary: {mlx_intro}\n")
+    if mlx_headings:
+        mlx_lines.append("Key MLX section headings:\n")
+        for heading in mlx_headings:
+            mlx_lines.append(f"- {heading}\n")
+
+    paper_lines = [
+        "## Paper terminology and section references\n",
+        "Reference: **Cajigas et al. (2012), *Journal of Neuroscience Methods***\n",
+        "Paper URL: https://pmc.ncbi.nlm.nih.gov/articles/PMC3491120/\n",
+    ]
+    if paper_sections:
+        paper_lines.append("Most relevant paper sections for this topic:\n")
+        for section in paper_sections:
+            paper_lines.append(f"- {section}\n")
+    if paper_terms:
+        paper_lines.append("nSTAT paper terms used in this notebook:\n")
+        for term in paper_terms:
+            paper_lines.append(f"- {term}\n")
+    if paper_focus:
+        paper_lines.append(f"Section-aligned interpretation: {paper_focus}\n")
+
+    return [
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                f"# {title}\n",
+                "\n",
+                "Executable Python notebook generated from source help-topic scripts.\n",
+                f"MATLAB help target: `{matlab_target}`\n",
+                f"Topic module: `examples.help_topics.{stem}`\n",
+            ],
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## What this example demonstrates\n",
+                f"This example shows the standalone Python equivalent of `{stem}` using the paper's point-process nomenclature (for example CIF, PP-GLM, history dependence, and decoding/network terms when applicable).\n",
+            ],
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## Data and assumptions\n",
+                "The run uses bundled nSTAT datasets or deterministic synthetic fallbacks where needed, with fixed seeds for reproducibility.\n",
+            ],
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## Step-by-step workflow\n",
+                "1. Resolve repository root and Python path.\n",
+                f"2. Run `examples.help_topics.{stem}.run(...)` with figure rendering enabled.\n",
+                "3. Print structured output for debugging and parity review.\n",
+                "4. Display rendered figure files inline for interpretation and web publication.\n",
+                "5. Assert figure-count contract and artifact existence.\n",
+            ],
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## Expected figures and interpretation\n",
+                f"{figure_phrase}\n",
+                "Interpretation should focus on trend consistency, event timing, and qualitative agreement with MATLAB reference outputs rather than pixel-identical rendering.\n",
+            ],
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": mlx_lines,
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": paper_lines,
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## Debug tips\n",
+                "If execution fails, verify dataset availability, run with `MPLBACKEND=Agg` in headless mode, and inspect the JSON payload keys (`topic`, `figure_count`, `figures`) for mismatches.\n",
+            ],
+        },
+    ]
 
 
 def _build_notebook(title: str, stem: str, matlab_target: str, expected_figures: int) -> dict:
@@ -67,19 +223,11 @@ def _build_notebook(title: str, stem: str, matlab_target: str, expected_figures:
 
     code_display = (
         "from pathlib import Path\n"
-        "import matplotlib.pyplot as plt\n"
-        "import matplotlib.image as mpimg\n\n"
+        "from IPython.display import Image, display\n\n"
         "for fig_path in out.get('figures', []):\n"
         "    p = Path(fig_path)\n"
-        "    img = mpimg.imread(p)\n"
-        "    h, w = img.shape[:2]\n"
-        "    fig = plt.figure(figsize=(max(w / 160.0, 2.0), max(h / 160.0, 2.0)), dpi=160)\n"
-        "    ax = fig.add_subplot(111)\n"
-        "    ax.imshow(img, cmap='gray' if img.ndim == 2 else None)\n"
-        "    ax.axis('off')\n"
-        "    ax.set_title(p.name)\n"
-        "    plt.show()\n"
-        "    plt.close(fig)\n"
+        "    print(p.name)\n"
+        "    display(Image(filename=str(p)))\n"
     )
 
     code_check = (
@@ -91,19 +239,30 @@ def _build_notebook(title: str, stem: str, matlab_target: str, expected_figures:
         "print('Notebook execution + figure contract: PASS')\n"
     )
 
-    return {
-        "cells": [
-            {
-                "cell_type": "markdown",
-                "metadata": {},
-                "source": [
-                    f"# {title}\\n",
-                    "\\n",
-                    "Executable Python notebook generated from source help-topic scripts.\\n",
-                    f"MATLAB help target: `{matlab_target}`\\n",
-                    f"Expected figure artifacts: `{expected_figures}`\\n",
-                ],
-            },
+    paper_meta = _load_json(PAPER_NOMENCLATURE, default={})
+    topic_paper = {}
+    if isinstance(paper_meta.get("topic_alignment"), dict):
+        topic_paper = paper_meta["topic_alignment"].get(stem, {})  # type: ignore[index]
+    if not isinstance(topic_paper, dict):
+        topic_paper = {}
+
+    mlx_meta = _load_json(MLX_METADATA, default={})
+    topic_mlx = {}
+    if isinstance(mlx_meta.get("topics"), dict):
+        topic_mlx = mlx_meta["topics"].get(stem, {})  # type: ignore[index]
+    if not isinstance(topic_mlx, dict):
+        topic_mlx = {}
+
+    cells = _narrative_cells(
+        title=title,
+        stem=stem,
+        matlab_target=matlab_target,
+        expected_figures=expected_figures,
+        paper_payload=topic_paper,
+        mlx_payload=topic_mlx,
+    )
+    cells.extend(
+        [
             {
                 "cell_type": "code",
                 "execution_count": None,
@@ -132,7 +291,13 @@ def _build_notebook(title: str, stem: str, matlab_target: str, expected_figures:
                 "outputs": [],
                 "source": code_check.splitlines(keepends=True),
             },
-        ],
+        ]
+    )
+    for idx, cell in enumerate(cells, start=1):
+        cell.setdefault("id", f"{stem.lower()}-{idx:02d}")
+
+    return {
+        "cells": cells,
         "metadata": {
             "kernelspec": {
                 "display_name": "Python 3",
@@ -184,6 +349,7 @@ def main() -> int:
         "total_topics": len(topics),
         "contract_topics": len(contract),
         "generated": generated,
+        "required_sections": REQUIRED_NOTEBOOK_SECTIONS,
         "missing_sources": missing_sources,
         "missing_contract": missing_contract,
         "output_dir": str(NB_ROOT.relative_to(REPO_ROOT)),

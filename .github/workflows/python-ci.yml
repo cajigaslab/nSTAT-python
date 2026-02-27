@@ -16,6 +16,7 @@ jobs:
     env:
       NSTAT_ALLOW_SYNTHETIC_DATA: "1"
       NSTAT_EXPECTED_EXAMPLE_NOTEBOOKS: "25"
+      PYDEVD_DISABLE_FILE_VALIDATION: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,6 +37,7 @@ jobs:
         run: |
           python tools/generate_help_topic_docs.py
           python tools/generate_example_notebooks.py
+          python tools/publish_example_notebooks.py
           python tools/freeze_port_baseline.py
           python tools/generate_method_parity_matrix.py
           python tools/generate_implemented_method_coverage.py
@@ -43,6 +45,10 @@ jobs:
       - name: Verify help docs coverage
         run: |
           python tools/verify_help_docs_coverage.py
+
+      - name: Verify published notebook narratives and outputs
+        run: |
+          python tools/verify_published_notebooks.py --enforce-gate
 
       - name: Verify notebook execution and topic alignment (25/25)
         run: |

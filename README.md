@@ -47,12 +47,31 @@ python3 tools/sync_matlab_reference_figures.py \
 python3 tools/validate_matlab_topic_figure_counts.py \
   --matlab-helpfiles /path/to/nSTAT/helpfiles
 
+# Extract MATLAB Live Script title/heading metadata for notebook alignment.
+python3 tools/extract_mlx_metadata.py \
+  --matlab-helpfiles /path/to/nSTAT/helpfiles
+
+# Regenerate notebooks with required narrative sections.
+python3 tools/generate_example_notebooks.py
+
+# Execute notebooks in-place and persist outputs for GitHub rendering.
+python3 tools/publish_example_notebooks.py
+
+# Verify published notebooks include required sections and embedded outputs.
+python3 tools/verify_published_notebooks.py --enforce-gate
+
 # Execute 25/25 example notebooks and enforce figure-count contracts.
 python3 tools/verify_examples_notebooks.py
 
 # Compare generated notebook figures to vendored MATLAB baselines.
 python3 tools/compare_notebook_figures_to_matlab.py --enforce-gate
 ```
+
+Published notebook policy:
+- Keep outputs embedded in `notebooks/helpfiles/*.ipynb` on the default branch so GitHub web rendering shows figures and execution context.
+- Do not strip notebook outputs in PRs that update help examples.
+- Keep terminology consistent with Cajigas et al. (2012) and retain paper section references in notebook/help narratives.
+- Keep notebook narrative aligned to MATLAB Live Script headings for each corresponding topic.
 
 ## Validation
 
@@ -61,6 +80,8 @@ python3 tools/freeze_port_baseline.py
 python3 tools/generate_method_parity_matrix.py
 python3 tools/generate_implemented_method_coverage.py
 python3 tools/generate_example_notebooks.py
+python3 tools/publish_example_notebooks.py
+python3 tools/verify_published_notebooks.py --enforce-gate
 python3 tools/verify_examples_notebooks.py
 python3 tools/compare_notebook_figures_to_matlab.py --enforce-gate
 NSTAT_MATLAB_EXTRA_ARGS='-maca64 -nodisplay -noFigureWindows -softwareopengl' \

@@ -1,0 +1,164 @@
+{
+  "paper": {
+    "citation_short": "Cajigas et al., Journal of Neuroscience Methods (2012)",
+    "title": "nSTAT: Open-source neural spike train analysis toolbox for Matlab",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3491120/"
+  },
+  "global_terms": {
+    "conditional intensity function (CIF)": {
+      "section": "Section 2.1.2",
+      "description": "Instantaneous spiking propensity in a point-process model conditioned on stimulus/history/ensemble covariates."
+    },
+    "point process generalized linear model (PP-GLM)": {
+      "section": "Section 2.1.2",
+      "description": "GLM formulation for spike train analysis using point-process likelihood."
+    },
+    "maximum likelihood estimation (MLE)": {
+      "section": "Section 2.1.3",
+      "description": "Parameter estimation framework used for fitting CIF models."
+    },
+    "time-rescaling theorem": {
+      "section": "Section 2.1.4",
+      "description": "Goodness-of-fit principle used to validate model adequacy for point-process data."
+    },
+    "Akaike information criterion (AIC)": {
+      "section": "Section 2.1.5",
+      "description": "Model comparison criterion used by nSTAT fit summaries."
+    },
+    "decoding": {
+      "section": "Section 2.1.6",
+      "description": "Reconstructing latent stimulus variables from observed spiking activity."
+    },
+    "ensemble / network effects": {
+      "section": "Section 2.1.7",
+      "description": "Modeling coupling and interaction structure across multiple neurons."
+    }
+  },
+  "topic_alignment": {
+    "SignalObjExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.3"],
+      "paper_terms": ["signal", "covariate", "visualization"],
+      "narrative_focus": "Signal representations used as building blocks for CIF modeling workflows."
+    },
+    "CovariateExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.2"],
+      "paper_terms": ["covariate", "stimulus", "history"],
+      "narrative_focus": "Construction and manipulation of stimulus/history covariates used by PP-GLM models."
+    },
+    "CovCollExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.2"],
+      "paper_terms": ["covariate collection", "design matrix"],
+      "narrative_focus": "Assembling aligned covariates into matrix form for model fitting."
+    },
+    "nSpikeTrainExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.1"],
+      "paper_terms": ["spike train", "inter-spike interval"],
+      "narrative_focus": "Core single-neuron spike train representation and descriptive statistics."
+    },
+    "nstCollExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.1"],
+      "paper_terms": ["spike train collection", "population activity"],
+      "narrative_focus": "Population-level spike train handling and PSTH-style summaries."
+    },
+    "EventsExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.2"],
+      "paper_terms": ["event", "external covariate"],
+      "narrative_focus": "Encoding event-aligned structure for use in conditional intensity models."
+    },
+    "HistoryExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.2"],
+      "paper_terms": ["history dependence", "basis expansion"],
+      "narrative_focus": "History basis construction for refractory and post-spike dependence effects."
+    },
+    "TrialExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.2"],
+      "paper_terms": ["trial", "aligned covariates"],
+      "narrative_focus": "Trial-level integration of spikes and covariates for fitting workflows."
+    },
+    "TrialConfigExamples": {
+      "paper_sections": ["Section 2.2.1"],
+      "paper_terms": ["model configuration"],
+      "narrative_focus": "Configuration of covariate masks and sampling assumptions used during fitting."
+    },
+    "ConfigCollExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.5"],
+      "paper_terms": ["model set", "candidate models"],
+      "narrative_focus": "Managing competing model configurations for AIC/BIC-based comparison."
+    },
+    "AnalysisExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.3", "Section 2.1.5"],
+      "paper_terms": ["MLE", "AIC", "fit diagnostics"],
+      "narrative_focus": "End-to-end model fitting and criterion-based evaluation across neurons."
+    },
+    "FitResultExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.3", "Section 2.1.4"],
+      "paper_terms": ["fit result", "parameter estimates", "goodness-of-fit"],
+      "narrative_focus": "Inspection of fitted model parameters and diagnostics at single-neuron level."
+    },
+    "FitResSummaryExamples": {
+      "paper_sections": ["Section 2.2.1", "Section 2.1.5"],
+      "paper_terms": ["fit summary", "model comparison"],
+      "narrative_focus": "Aggregated model-comparison summaries across fitted analyses."
+    },
+    "PPThinning": {
+      "paper_sections": ["Section 2.1.2", "Section 2.1.4"],
+      "paper_terms": ["point-process simulation", "thinning"],
+      "narrative_focus": "Simulating spike trains from specified CIFs for validation and pedagogy."
+    },
+    "PSTHEstimation": {
+      "paper_sections": ["Section 2.1.1", "Section 2.3.3"],
+      "paper_terms": ["PSTH", "rate estimation"],
+      "narrative_focus": "Peri-stimulus rate estimation for quick baseline validation checks."
+    },
+    "ValidationDataSet": {
+      "paper_sections": ["Section 2.3.3", "Section 2.1.4"],
+      "paper_terms": ["software validation", "constant-rate Poisson", "piecewise-constant rate"],
+      "narrative_focus": "Validation datasets that test expected recovery of known generating processes."
+    },
+    "mEPSCAnalysis": {
+      "paper_sections": ["Section 2.3.1", "Section 3.1"],
+      "paper_terms": ["miniature excitatory post-synaptic currents", "goodness-of-fit"],
+      "narrative_focus": "mEPSC interval/amplitude modeling as a representative biophysical point-process application."
+    },
+    "PPSimExample": {
+      "paper_sections": ["Section 2.3.2", "Section 3.2"],
+      "paper_terms": ["explicit stimulus", "history effect", "CIF"],
+      "narrative_focus": "Simulated explicit stimulus/history effects for controlled CIF model validation."
+    },
+    "ExplicitStimulusWhiskerData": {
+      "paper_sections": ["Section 2.3.2", "Section 3.2"],
+      "paper_terms": ["whisker stimulation", "stimulus lag", "history effect"],
+      "narrative_focus": "Thalamic whisker dataset demonstrating explicit stimulus and history covariates."
+    },
+    "HippocampalPlaceCellExample": {
+      "paper_sections": ["Section 2.3.4", "Section 3.4"],
+      "paper_terms": ["receptive field", "place cell", "spatial decoding context"],
+      "narrative_focus": "Receptive-field style modeling for hippocampal place-cell responses."
+    },
+    "DecodingExample": {
+      "paper_sections": ["Section 2.1.6", "Section 2.3.5", "Section 3.5"],
+      "paper_terms": ["decoding", "posterior estimate", "stimulus reconstruction"],
+      "narrative_focus": "Univariate stimulus decoding without history terms as baseline decoder."
+    },
+    "DecodingExampleWithHist": {
+      "paper_sections": ["Section 2.1.6", "Section 2.3.5", "Section 3.5"],
+      "paper_terms": ["decoding", "history dependence", "stimulus reconstruction"],
+      "narrative_focus": "Comparison of decoding performance with and without spike-history effects."
+    },
+    "StimulusDecode2D": {
+      "paper_sections": ["Section 2.1.6", "Section 2.3.5", "Section 3.5"],
+      "paper_terms": ["2D decoding", "place fields", "trajectory reconstruction"],
+      "narrative_focus": "Bivariate spatial decoding scenario for multi-feature stimulus reconstruction."
+    },
+    "NetworkTutorial": {
+      "paper_sections": ["Section 2.1.7", "Section 2.3.5", "Section 3.5"],
+      "paper_terms": ["ensemble analysis", "network coupling", "connectivity"],
+      "narrative_focus": "Two-neuron network simulation illustrating ensemble coupling inference."
+    },
+    "nSTATPaperExamples": {
+      "paper_sections": ["Section 2.3", "Section 3"],
+      "paper_terms": ["integrated workflow", "encoding", "decoding", "network"],
+      "narrative_focus": "Compact replay of representative workflows reported in the paper."
+    }
+  }
+}
