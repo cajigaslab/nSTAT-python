@@ -4,18 +4,20 @@ import contextlib
 import importlib
 import io
 import json
+import os
 import sys
 import traceback
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-NOTEBOOK_ROOT = REPO_ROOT / "python" / "notebooks" / "helpfiles"
-SRC_ROOT = REPO_ROOT / "python" / "examples" / "help_topics"
-REPORT_DIR = REPO_ROOT / "python" / "reports"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT if (PROJECT_ROOT / "helpfiles").exists() else PROJECT_ROOT.parent
+NOTEBOOK_ROOT = PROJECT_ROOT / "notebooks" / "helpfiles"
+SRC_ROOT = PROJECT_ROOT / "examples" / "help_topics"
+REPORT_DIR = PROJECT_ROOT / "reports"
 TOC_PATH = REPO_ROOT / "helpfiles" / "helptoc.xml"
-PY_ROOT = REPO_ROOT / "python"
+PY_ROOT = PROJECT_ROOT
 if str(PY_ROOT) not in sys.path:
     sys.path.insert(0, str(PY_ROOT))
 
@@ -33,7 +35,7 @@ def example_topics() -> list[tuple[str, str]]:
 
     out: list[tuple[str, str]] = []
     for item in examples.findall("tocitem"):
-        title = " ".join("".join(item.itertext()).split())
+        title = " ".join((item.text or "").split()) or Path(item.attrib.get("target", "")).stem
         target = item.attrib.get("target", "")
         if target:
             out.append((title, target))
@@ -85,6 +87,7 @@ def execute_notebook(path: Path) -> dict[str, Any]:
 
 def main() -> int:
     topics = example_topics()
+    expected_total = int(os.environ.get("NSTAT_EXPECTED_EXAMPLE_NOTEBOOKS", "25"))
     rows: list[dict[str, Any]] = []
     summary = {
         "total_examples": len(topics),
@@ -126,8 +129,14 @@ def main() -> int:
     out = REPORT_DIR / "examples_notebook_verification.json"
     out.write_text(json.dumps({"summary": summary, "rows": rows}, indent=2), encoding="utf-8")
 
-    print(json.dumps({"report": str(out.relative_to(REPO_ROOT)), **summary}, indent=2))
-    return 0
+    pass_gate = (
+        summary["total_examples"] == expected_total
+        and summary["python_modules_ok"] == expected_total
+        and summary["notebooks_ok"] == expected_total
+        and summary["topic_alignment_ok"] == expected_total
+    )
+    print(json.dumps({"report": str(out.relative_to(REPO_ROOT)), "expected_examples": expected_total, "pass": pass_gate, **summary}, indent=2))
+    return 0 if pass_gate else 1
 
 
 if __name__ == "__main__":

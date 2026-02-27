@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-REPORT_PATH = REPO_ROOT / "python" / "reports" / "offline_standalone_verification.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT if (PROJECT_ROOT / "helpfiles").exists() else PROJECT_ROOT.parent
+REPORT_PATH = PROJECT_ROOT / "reports" / "offline_standalone_verification.json"
 
 
 def _run(cmd: list[str], *, cwd: Path, env: dict[str, str]) -> dict[str, Any]:
@@ -33,7 +34,7 @@ def _sanitize_path(path_value: str) -> str:
 
 
 def _runtime_matlab_dependency_scan() -> dict[str, Any]:
-    py_root = REPO_ROOT / "python" / "nstat"
+    py_root = PROJECT_ROOT / "nstat"
     bad_hits: list[str] = []
     pattern = re.compile(r"(/Applications/MATLAB|subprocess\..*matlab|MATLAB_BIN)", re.IGNORECASE)
     for p in py_root.rglob("*.py"):
@@ -56,7 +57,7 @@ def verify(full_notebooks: bool = False) -> dict[str, Any]:
         env["PYTHONPATH"] = str(site_dir)
 
         install_env = {**env, "PYTHONPATH": str(site_dir)}
-        source_env = {**env, "PYTHONPATH": str(REPO_ROOT / "python")}
+        source_env = {**env, "PYTHONPATH": str(PROJECT_ROOT)}
         steps = []
         steps.append(
             _run(
@@ -66,11 +67,11 @@ def verify(full_notebooks: bool = False) -> dict[str, Any]:
                     "pip",
                     "install",
                     "--no-deps",
-                    "./python",
+                    ".",
                     "--target",
                     str(site_dir),
                 ],
-                cwd=REPO_ROOT,
+                cwd=PROJECT_ROOT,
                 env=install_env,
             )
         )
@@ -87,7 +88,7 @@ def verify(full_notebooks: bool = False) -> dict[str, Any]:
                         "'nstat_path': str(pathlib.Path(nstat.__file__).resolve())}))"
                     ),
                 ],
-                cwd=REPO_ROOT,
+                cwd=PROJECT_ROOT,
                 env=install_env,
             )
         )
@@ -104,7 +105,7 @@ def verify(full_notebooks: bool = False) -> dict[str, Any]:
                         "print(sig.dimension)"
                     ),
                 ],
-                cwd=REPO_ROOT,
+                cwd=PROJECT_ROOT,
                 env=install_env,
             )
         )
@@ -122,15 +123,15 @@ def verify(full_notebooks: bool = False) -> dict[str, Any]:
                         "'nstat_path': str(pathlib.Path(nstat.__file__).resolve())}))"
                     ),
                 ],
-                cwd=REPO_ROOT,
+                cwd=PROJECT_ROOT,
                 env=source_env,
             )
         )
         if full_notebooks:
             steps.append(
                 _run(
-                    [str(py), "python/tools/verify_examples_notebooks.py"],
-                    cwd=REPO_ROOT,
+                    [str(py), "tools/verify_examples_notebooks.py"],
+                    cwd=PROJECT_ROOT,
                     env=source_env,
                 )
             )

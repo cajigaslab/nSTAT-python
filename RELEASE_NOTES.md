@@ -15,17 +15,17 @@
 - Added source-driven notebook generation for all MATLAB help `Examples` topics.
 - Added Sphinx docs generation from `helpfiles/helptoc.xml`.
 - Added parity/baseline reporting tools:
-  - `python/tools/freeze_port_baseline.py`
-  - `python/tools/generate_method_parity_matrix.py`
-  - `python/tools/verify_python_vs_matlab_similarity.py --enforce-gate`
-  - `python/tools/freeze_similarity_baseline.py`
-  - `python/tools/generate_implemented_method_coverage.py`
-  - `python/tools/verify_offline_standalone.py`
+  - `tools/freeze_port_baseline.py`
+  - `tools/generate_method_parity_matrix.py`
+  - `tools/verify_python_vs_matlab_similarity.py --enforce-gate`
+  - `tools/freeze_similarity_baseline.py`
+  - `tools/generate_implemented_method_coverage.py`
+  - `tools/verify_offline_standalone.py`
 - Added CI workflows:
   - `.github/workflows/python-ci.yml`
   - `.github/workflows/matlab-parity-gate.yml`
 - Standardized docs artifact policy:
-  - Generated Sphinx output under `python/docs/_build/` is now treated as a build artifact and excluded from source control.
+  - Generated Sphinx output under `docs/_build/` is now treated as a build artifact and excluded from source control.
 - Expanded parity contract coverage:
   - The MATLAB/Python scalar parity contract now requires one numeric parity key for all 25 help topics.
 
@@ -74,4 +74,4 @@ MATLAB-style adapters remain importable under `nstat/*.py` compatibility modules
 |---|---|
 | Legacy plotting helpers | Not all MATLAB plotting helpers are direct API ports; plotting is primarily notebook/doc-driven. |
 | Parity tolerance | MATLAB/Python scalar comparisons are tolerance-based; stochastic workflows rely on seeded aggregate metrics. |
-| Method surface differences | Some low-value legacy MATLAB methods are intentionally omitted and documented in `python/reports/method_parity_matrix.json`. |
+| Method surface differences | Some low-value legacy MATLAB methods are intentionally omitted and documented in `reports/method_parity_matrix.json`. |

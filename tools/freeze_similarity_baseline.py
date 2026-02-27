@@ -5,9 +5,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-REPORT_PATH = REPO_ROOT / "python" / "reports" / "python_vs_matlab_similarity_report.json"
-BASELINE_PATH = REPO_ROOT / "python" / "reports" / "python_vs_matlab_similarity_baseline.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT if (PROJECT_ROOT / "helpfiles").exists() else PROJECT_ROOT.parent
+REPORT_PATH = PROJECT_ROOT / "reports" / "python_vs_matlab_similarity_report.json"
+BASELINE_PATH = PROJECT_ROOT / "reports" / "python_vs_matlab_similarity_baseline.json"
 
 
 def main() -> int:

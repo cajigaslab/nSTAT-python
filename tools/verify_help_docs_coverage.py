@@ -6,9 +6,10 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT if (PROJECT_ROOT / "helpfiles").exists() else PROJECT_ROOT.parent
 TOC_PATH = REPO_ROOT / "helpfiles" / "helptoc.xml"
-DOCS_ROOT = REPO_ROOT / "python" / "docs"
+DOCS_ROOT = PROJECT_ROOT / "docs"
 TOPICS_DIR = DOCS_ROOT / "topics"
 HELP_TOPICS_INDEX = DOCS_ROOT / "help_topics.rst"
 

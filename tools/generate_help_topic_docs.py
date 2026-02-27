@@ -4,9 +4,10 @@ import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT if (PROJECT_ROOT / "helpfiles").exists() else PROJECT_ROOT.parent
 TOC_PATH = REPO_ROOT / "helpfiles" / "helptoc.xml"
-DOCS_ROOT = REPO_ROOT / "python" / "docs"
+DOCS_ROOT = PROJECT_ROOT / "docs"
 TOPICS_DIR = DOCS_ROOT / "topics"
 
 CLASS_API_MAP = {
@@ -41,7 +42,9 @@ def _slugify(value: str) -> str:
 def _iter_topics(root: ET.Element):
     for item in root.iter("tocitem"):
         target = item.attrib.get("target", "").strip()
-        title = " ".join("".join(item.itertext()).split())
+        title = " ".join((item.text or "").split())
+        if not title:
+            title = Path(target).stem
         if not target:
             continue
         yield title, target
@@ -49,7 +52,7 @@ def _iter_topics(root: ET.Element):
 
 def _mapping_for_target(target: str) -> tuple[str, str]:
     stem = Path(target).stem
-    base = stem[:-8] if stem.endswith("Examples") else stem
+    base = stem[:-8] if (stem.endswith("Examples") and stem != "Examples") else stem
     matlab_api = base
     python_api = CLASS_API_MAP.get(base, "nstat (canonical module by topic)")
     return matlab_api, python_api
@@ -111,7 +114,7 @@ def _topic_body(title: str, target: str) -> str:
             [
                 "Notebook",
                 "--------",
-                f"A generated executable notebook is available at ``python/notebooks/helpfiles/{notebook_name}.ipynb``.",
+                f"A generated executable notebook is available at ``notebooks/helpfiles/{notebook_name}.ipynb``.",
                 "",
             ]
         )
@@ -158,7 +161,7 @@ def generate_docs() -> list[Path]:
 
     api_lines = [
         "API Reference",
-        "============",
+        "=============",
         "",
         ".. code-block:: python",
         "",
@@ -189,6 +192,8 @@ def generate_docs() -> list[Path]:
         "",
         "   api",
         "   help_topics",
+        "   parity_runbook",
+        "   repo_split_status",
     ]
     (DOCS_ROOT / "index.rst").write_text("\n".join(index_lines) + "\n", encoding="utf-8")
 

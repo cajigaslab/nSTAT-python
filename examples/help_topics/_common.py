@@ -35,7 +35,11 @@ from nstat.paper_examples_full import (
 
 def _resolve_repo_root(repo_root: Path | str | None) -> Path:
     if repo_root is None:
-        return Path(__file__).resolve().parents[3]
+        cur = Path(__file__).resolve()
+        for candidate in [cur, *cur.parents]:
+            if (candidate / "nstat").exists() and (candidate / "data").exists():
+                return candidate
+        raise RuntimeError(f"Unable to locate repository root from {__file__}")
     return Path(repo_root).resolve()
 
 

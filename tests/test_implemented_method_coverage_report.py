@@ -8,12 +8,12 @@ import sys
 import pytest
 
 
-def test_implemented_method_coverage_report(repo_root) -> None:
+def test_implemented_method_coverage_report(project_root) -> None:
     if os.environ.get("NSTAT_CI_LIGHT") == "1":
         pytest.skip("Method coverage report already generated in dedicated CI workflow step")
     cp = subprocess.run(
-        [sys.executable, "python/tools/generate_implemented_method_coverage.py"],
-        cwd=str(repo_root),
+        [sys.executable, "tools/generate_implemented_method_coverage.py"],
+        cwd=str(project_root),
         capture_output=True,
         text=True,
         check=True,

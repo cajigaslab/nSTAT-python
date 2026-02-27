@@ -147,7 +147,7 @@
     {
       "matlab_class": "SignalObj",
       "matlab_source": "SignalObj.m",
-      "python_target": "python/nstat/signal.py",
+      "python_target": "nstat/signal.py",
       "python_class": "Signal",
       "python_methods": [
         "as_array",
@@ -651,7 +651,7 @@
     {
       "matlab_class": "Covariate",
       "matlab_source": "Covariate.m",
-      "python_target": "python/nstat/signal.py",
+      "python_target": "nstat/signal.py",
       "python_class": "Covariate",
       "python_methods": [
         "from_values",
@@ -733,7 +733,7 @@
     {
       "matlab_class": "nspikeTrain",
       "matlab_source": "nspikeTrain.m",
-      "python_target": "python/nstat/spikes.py",
+      "python_target": "nstat/spikes.py",
       "python_class": "SpikeTrain",
       "python_methods": [
         "inter_spike_intervals",
@@ -890,7 +890,7 @@
     {
       "matlab_class": "nstColl",
       "matlab_source": "nstColl.m",
-      "python_target": "python/nstat/spikes.py",
+      "python_target": "nstat/spikes.py",
       "python_class": "SpikeTrainCollection",
       "python_methods": [
         "__iter__",
@@ -1167,7 +1167,7 @@
     {
       "matlab_class": "CovColl",
       "matlab_source": "CovColl.m",
-      "python_target": "python/nstat/trial.py",
+      "python_target": "nstat/trial.py",
       "python_class": "CovariateCollection",
       "python_methods": [
         "__init__",
@@ -1460,7 +1460,7 @@
     {
       "matlab_class": "TrialConfig",
       "matlab_source": "TrialConfig.m",
-      "python_target": "python/nstat/trial.py",
+      "python_target": "nstat/trial.py",
       "python_class": "TrialConfig",
       "python_methods": [
         "covariate_names",
@@ -1502,7 +1502,7 @@
     {
       "matlab_class": "ConfigColl",
       "matlab_source": "ConfigColl.m",
-      "python_target": "python/nstat/trial.py",
+      "python_target": "nstat/trial.py",
       "python_class": "ConfigCollection",
       "python_methods": [
         "__init__",
@@ -1565,7 +1565,7 @@
     {
       "matlab_class": "Trial",
       "matlab_source": "Trial.m",
-      "python_target": "python/nstat/trial.py",
+      "python_target": "nstat/trial.py",
       "python_class": "Trial",
       "python_methods": [
         "__init__",
@@ -1920,7 +1920,7 @@
     {
       "matlab_class": "History",
       "matlab_source": "History.m",
-      "python_target": "python/nstat/history.py",
+      "python_target": "nstat/history.py",
       "python_class": "HistoryBasis",
       "python_methods": [
         "__init__",
@@ -1974,7 +1974,7 @@
     {
       "matlab_class": "Events",
       "matlab_source": "Events.m",
-      "python_target": "python/nstat/events.py",
+      "python_target": "nstat/events.py",
       "python_class": "Events",
       "python_methods": [
         "__init__",
@@ -2013,7 +2013,7 @@
     {
       "matlab_class": "ConfidenceInterval",
       "matlab_source": "ConfidenceInterval.m",
-      "python_target": "python/nstat/confidence_interval.py",
+      "python_target": "nstat/confidence_interval.py",
       "python_class": "ConfidenceInterval",
       "python_methods": [
         "__init__",
@@ -2052,7 +2052,7 @@
     {
       "matlab_class": "CIF",
       "matlab_source": "CIF.m",
-      "python_target": "python/nstat/cif.py",
+      "python_target": "nstat/cif.py",
       "python_class": "CIFModel",
       "python_methods": [
         "__post_init__",
@@ -2171,7 +2171,7 @@
     {
       "matlab_class": "FitResult",
       "matlab_source": "FitResult.m",
-      "python_target": "python/nstat/fit.py",
+      "python_target": "nstat/fit.py",
       "python_class": "FitResult",
       "python_methods": [
         "KSPlot",
@@ -2370,7 +2370,7 @@
     {
       "matlab_class": "FitResSummary",
       "matlab_source": "FitResSummary.m",
-      "python_target": "python/nstat/fit.py",
+      "python_target": "nstat/fit.py",
       "python_class": "FitSummary",
       "python_methods": [
         "__init__",
@@ -2534,7 +2534,7 @@
     {
       "matlab_class": "Analysis",
       "matlab_source": "Analysis.m",
-      "python_target": "python/nstat/analysis.py",
+      "python_target": "nstat/analysis.py",
       "python_class": "Analysis",
       "python_methods": [
         "RunAnalysisForAllNeurons",
@@ -2659,7 +2659,7 @@
     {
       "matlab_class": "DecodingAlgorithms",
       "matlab_source": "DecodingAlgorithms.m",
-      "python_target": "python/nstat/decoding_algorithms.py",
+      "python_target": "nstat/decoding_algorithms.py",
       "python_class": "DecodingAlgorithms",
       "python_methods": [
         "kalman_filter",

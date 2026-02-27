@@ -44,4 +44,4 @@ Known Differences
 
 Notebook
 --------
-A generated executable notebook is available at ``python/notebooks/helpfiles/HistoryExamples.ipynb``.
+A generated executable notebook is available at ``notebooks/helpfiles/HistoryExamples.ipynb``.

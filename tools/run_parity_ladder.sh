@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="${PROJECT_ROOT}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 MATLAB_EXTRA_ARGS="${NSTAT_MATLAB_EXTRA_ARGS:--maca64 -nodisplay -noFigureWindows -softwareopengl}"
 MATLAB_BIN="${NSTAT_MATLAB_BIN:-/Applications/MATLAB_R2025b.app/bin/matlab}"
@@ -12,7 +13,7 @@ RETRY_TIMEOUT_BLOCKS="${NSTAT_PARITY_RETRY_TIMEOUT_BLOCKS:-0}"
 TIMEOUT_RETRY_BLOCKS="${NSTAT_PARITY_TIMEOUT_RETRY_BLOCKS:-timeout_front}"
 RETRY_RECOVERABLE_BLOCKS="${NSTAT_PARITY_RETRY_RECOVERABLE_BLOCKS:-1}"
 RECOVERABLE_RETRY_BLOCKS="${NSTAT_PARITY_RECOVERABLE_RETRY_BLOCKS:-graphics_mid,heavy_tail,full_suite}"
-RETRY_SUMMARY_PATH="${NSTAT_PARITY_RETRY_SUMMARY_PATH:-python/reports/parity_retry_summary.json}"
+RETRY_SUMMARY_PATH="${NSTAT_PARITY_RETRY_SUMMARY_PATH:-reports/parity_retry_summary.json}"
 
 DEFAULT_BLOCKS=(core_smoke timeout_front graphics_mid heavy_tail full_suite)
 if [[ $# -gt 0 ]]; then
@@ -243,7 +244,7 @@ for block in "${BLOCKS[@]}"; do
   fi
 
   echo "[ladder] running block: ${block}"
-  report_path="${REPO_ROOT}/python/reports/parity_block_${block}.json"
+  report_path="${PROJECT_ROOT}/reports/parity_block_${block}.json"
   max_attempts=1
   if block_retry_enabled "${block}" || block_recoverable_retry_enabled "${block}"; then
     max_attempts=2
@@ -252,10 +253,10 @@ for block in "${BLOCKS[@]}"; do
   while true; do
     cmd=(
       "${PYTHON_BIN}"
-      "${REPO_ROOT}/python/tools/debug_parity_blocks.py"
+      "${PROJECT_ROOT}/tools/debug_parity_blocks.py"
       --blocks "${block}"
       --matlab-extra-args "${MATLAB_EXTRA_ARGS}"
-      --output "python/reports/parity_block_benchmark_report_ladder_${block}.json"
+      --output "reports/parity_block_benchmark_report_ladder_${block}.json"
     )
     if [[ "${SET_ACTIONS_RUNNER_SVC}" == "1" ]]; then
       cmd+=(--set-actions-runner-svc)

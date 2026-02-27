@@ -44,4 +44,4 @@ Known Differences
 
 Notebook
 --------
-A generated executable notebook is available at ``python/notebooks/helpfiles/FitResultExamples.ipynb``.
+A generated executable notebook is available at ``notebooks/helpfiles/FitResultExamples.ipynb``.

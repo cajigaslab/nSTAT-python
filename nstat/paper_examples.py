@@ -20,6 +20,14 @@ Results = dict[str, Summary]
 PlotPayloads = dict[str, Payload]
 
 
+def _default_repo_root() -> Path:
+    cur = Path(__file__).resolve()
+    for candidate in [cur, *cur.parents]:
+        if (candidate / "nstat").exists() and (candidate / "data").exists():
+            return candidate
+    return cur.parents[1]
+
+
 def _aic_bic(log_likelihood: float, n_obs: int, n_params: int) -> tuple[float, float]:
     aic = 2.0 * n_params - 2.0 * log_likelihood
     bic = np.log(max(n_obs, 1)) * n_params - 2.0 * log_likelihood
@@ -424,14 +432,14 @@ def _save_paper_example_plots(plot_payloads: PlotPayloads, plots_dir: Path) -> l
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Python nSTAT paper examples equivalent")
-    parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--repo-root", type=Path, default=_default_repo_root())
     parser.add_argument("--no-plots", action="store_true", help="Run metrics only without generating plots")
     parser.add_argument("--plots-dir", type=Path, default=None, help="Directory for generated PNG plots")
     parser.add_argument("--output-json", type=Path, default=None)
     args = parser.parse_args()
 
     repo_root = args.repo_root.resolve()
-    default_plots_dir = repo_root / "python" / "plots" / "nstat_paper_examples"
+    default_plots_dir = repo_root / "plots" / "nstat_paper_examples"
     plots_dir = (args.plots_dir or default_plots_dir).resolve()
 
     if args.no_plots:

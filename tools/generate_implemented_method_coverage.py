@@ -7,11 +7,12 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-MATRIX_PATH = REPO_ROOT / "python" / "reports" / "method_parity_matrix.json"
-SMOKE_TEST_PATH = REPO_ROOT / "python" / "tests" / "test_implemented_method_smoke.py"
-DOCS_TOPICS_DIR = REPO_ROOT / "python" / "docs" / "topics"
-OUT_PATH = REPO_ROOT / "python" / "reports" / "implemented_method_coverage.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT if (PROJECT_ROOT / "helpfiles").exists() else PROJECT_ROOT.parent
+MATRIX_PATH = PROJECT_ROOT / "reports" / "method_parity_matrix.json"
+SMOKE_TEST_PATH = PROJECT_ROOT / "tests" / "test_implemented_method_smoke.py"
+DOCS_TOPICS_DIR = PROJECT_ROOT / "docs" / "topics"
+OUT_PATH = PROJECT_ROOT / "reports" / "implemented_method_coverage.json"
 
 DOC_CLASS_TOKENS = {
     "SignalObj": ["signalobj", "classdefinitions"],
@@ -66,7 +67,7 @@ def _doc_class_coverage(classes: set[str]) -> dict[str, bool]:
 
 def main() -> int:
     if not MATRIX_PATH.exists():
-        subprocess.run(["python3", "python/tools/generate_method_parity_matrix.py"], cwd=str(REPO_ROOT), check=True)
+        subprocess.run(["python3", "tools/generate_method_parity_matrix.py"], cwd=str(PROJECT_ROOT), check=True)
 
     matrix = json.loads(MATRIX_PATH.read_text(encoding="utf-8"))
     implemented = _implemented_methods(matrix)

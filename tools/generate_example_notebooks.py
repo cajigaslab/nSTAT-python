@@ -4,10 +4,11 @@ import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT if (PROJECT_ROOT / "helpfiles").exists() else PROJECT_ROOT.parent
 TOC_PATH = REPO_ROOT / "helpfiles" / "helptoc.xml"
-NB_ROOT = REPO_ROOT / "python" / "notebooks" / "helpfiles"
-SRC_ROOT = REPO_ROOT / "python" / "examples" / "help_topics"
+NB_ROOT = PROJECT_ROOT / "notebooks" / "helpfiles"
+SRC_ROOT = PROJECT_ROOT / "examples" / "help_topics"
 
 
 def _example_topics() -> list[tuple[str, str]]:
@@ -23,7 +24,7 @@ def _example_topics() -> list[tuple[str, str]]:
 
     topics: list[tuple[str, str]] = []
     for item in examples.findall("tocitem"):
-        title = " ".join("".join(item.itertext()).split())
+        title = " ".join((item.text or "").split()) or Path(item.attrib.get("target", "")).stem
         target = item.attrib.get("target", "")
         if not target:
             continue
@@ -39,11 +40,11 @@ def _build_notebook(title: str, stem: str, matlab_target: str) -> dict:
         "def find_repo_root(start: Path) -> Path:\n"
         "    cur = start.resolve()\n"
         "    for p in [cur, *cur.parents]:\n"
-        "        if (p / '.git').exists() and (p / 'python').exists() and (p / 'helpfiles').exists():\n"
+        "        if (p / '.git').exists() and (p / 'nstat').exists() and (p / 'helpfiles').exists():\n"
         "            return p\n"
         "    raise RuntimeError('Could not find nSTAT repo root from notebook cwd')\n\n"
         "repo_root = find_repo_root(Path.cwd())\n"
-        "py_root = repo_root / 'python'\n"
+        "py_root = repo_root\n"
         "if str(py_root) not in sys.path:\n"
         "    sys.path.insert(0, str(py_root))\n"
         "print('repo_root =', repo_root)\n"

@@ -72,7 +72,8 @@ def _build_trial_and_fits() -> tuple[Trial, ConfigCollection, list[FitResult]]:
 
 
 def _implemented_from_matrix(repo_root: Path) -> set[tuple[str, str]]:
-    matrix_path = repo_root / "python" / "reports" / "method_parity_matrix.json"
+    project_root = repo_root if (repo_root / "nstat").exists() else (repo_root / "python")
+    matrix_path = project_root / "reports" / "method_parity_matrix.json"
     payload = json.loads(matrix_path.read_text(encoding="utf-8"))
     out: set[tuple[str, str]] = set()
     for cls in payload.get("classes", []):

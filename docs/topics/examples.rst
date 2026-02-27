@@ -1,5 +1,5 @@
-Examples Using the SignalObj Class Using the Covariate Class Using the CovColl Class Using the nSpikeTrain Class Using the nstColl Class Using the Events Class Using the History Class Using the Trial Class Using the TrialConfig Class Using the ConfigColl Class Using the Analysis Class Using the FitResult Class Using the FitResSummary Class Point Process Simulation via Thinning Example Data Analysis - Simulated Data - Computing a Peri-Stimulus Time Histogram (PSTH) Example Data Analysis - Simulated Constant (Piecewise Constant) Rate Poisson Example Data Analysis - Miniature Excitatory Post-Synaptic Currents (mEPSCs) Example Data Analysis - Simulated Explicit Stimulus and History Example Data Analysis - Explicit Stimulus Example Data Analysis - Hippocampal Place Cell Receptive Field Estimation Example Data Analysis - Decoding Univariate Simulated Stimuli (No History Effect) Example Data Analysis - Decoding Univariate Simulated Stimuli with and without History Effect Example Data Analysis - Decoding Bivariate Simulated Stimuli Example Data Analysis - Two Neuron Network Simulation and Estimation of Ensemble Effect nSTAT Paper Examples
-============================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
+Examples
+========
 
 MATLAB help target: ``Examples.html``
 
@@ -14,7 +14,7 @@ API Mapping (MATLAB -> Python)
 
    * - MATLAB API
      - Python API
-   * - ````
+   * - ``Examples``
      - ``nstat (canonical module by topic)``
 
 Migration Callout
@@ -44,4 +44,4 @@ Known Differences
 
 Notebook
 --------
-A generated executable notebook is available at ``python/notebooks/helpfiles/Examples.ipynb``.
+A generated executable notebook is available at ``notebooks/helpfiles/Examples.ipynb``.

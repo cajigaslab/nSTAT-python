@@ -27,7 +27,7 @@ Run Stage A + selected Stage B preflight:
    NSTAT_FORCE_M_HELP_SCRIPTS=1 \
    NSTAT_MATLAB_EXTRA_ARGS='-maca64 -nodisplay -noFigureWindows -softwareopengl' \
    NSTAT_MATLAB_TOPIC_MAX_ATTEMPTS=2 \
-   python/tools/run_parity_preflight.sh
+   tools/run_parity_preflight.sh
 
 Run the staged ladder (core -> timeout -> graphics -> heavy-tail):
 
@@ -41,7 +41,7 @@ Run the staged ladder (core -> timeout -> graphics -> heavy-tail):
    NSTAT_PARITY_TIMEOUT_RETRY_BLOCKS=timeout_front \
    NSTAT_PARITY_RETRY_RECOVERABLE_BLOCKS=1 \
    NSTAT_PARITY_RECOVERABLE_RETRY_BLOCKS='graphics_mid,heavy_tail' \
-   python/tools/run_parity_ladder.sh core_smoke timeout_front graphics_mid heavy_tail
+   tools/run_parity_ladder.sh core_smoke timeout_front graphics_mid heavy_tail
 
 Full Stage C gate
 -----------------
@@ -56,20 +56,20 @@ Run full-suite parity gate report:
    NSTAT_MATLAB_TOPIC_MAX_ATTEMPTS=2 \
    NSTAT_MATLAB_FORCE_TOPIC_ISOLATION=1 \
    NSTAT_MATLAB_HARD_CLEANUP_ON_FAILURE=1 \
-   python3 python/tools/verify_python_vs_matlab_similarity.py \
+   python3 tools/verify_python_vs_matlab_similarity.py \
      --enforce-gate \
      --matlab-max-attempts 2 \
-     --report-path python/reports/python_vs_matlab_similarity_report.json
+     --report-path reports/python_vs_matlab_similarity_report.json
 
 Useful outputs
 --------------
 
-- Full report: ``python/reports/python_vs_matlab_similarity_report.json``
-- Ladder retry telemetry: ``python/reports/parity_retry_summary.json``
-- Block reports: ``python/reports/parity_block_*.json``
+- Full report: ``reports/python_vs_matlab_similarity_report.json``
+- Ladder retry telemetry: ``reports/parity_retry_summary.json``
+- Block reports: ``reports/parity_block_*.json``
 - Summary helper:
 
 .. code-block:: bash
 
-   python3 python/tools/summarize_parity_report.py \
-     python/reports/python_vs_matlab_similarity_report.json --json
+   python3 tools/summarize_parity_report.py \
+     reports/python_vs_matlab_similarity_report.json --json

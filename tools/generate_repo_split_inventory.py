@@ -5,8 +5,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-PY_ROOT = REPO_ROOT / "python"
+PY_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PY_ROOT if (PY_ROOT / "helpfiles").exists() else PY_ROOT.parent
 HELPFILES_ROOT = REPO_ROOT / "helpfiles"
 TOC_PATH = HELPFILES_ROOT / "helptoc.xml"
 OUT_ROOT = PY_ROOT / "reports" / "repo_split_inventory"
@@ -56,7 +56,7 @@ def _iter_toc_targets() -> list[dict[str, str]]:
         seen.add(key)
         rows.append(
             {
-                "title": " ".join("".join(item.itertext()).split()),
+                "title": " ".join((item.text or "").split()) or stem,
                 "target": target,
                 "stem": stem,
                 "is_example_topic": stem in example_stems,

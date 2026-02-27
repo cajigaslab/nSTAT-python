@@ -12,7 +12,7 @@ MANIFEST_PATH = Path(__file__).resolve().parent / "data" / "manifest.json"
 def _repo_root() -> Path:
     cur = Path(__file__).resolve()
     for candidate in [cur, *cur.parents]:
-        if (candidate / "data").exists() and (candidate / "helpfiles").exists():
+        if (candidate / "data").exists() and (candidate / "nstat" / "data" / "manifest.json").exists():
             return candidate
     raise RuntimeError("Could not locate nSTAT repository root from installed package path.")
 

@@ -2,12 +2,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="${PROJECT_ROOT}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 MATLAB_EXTRA_ARGS="${NSTAT_MATLAB_EXTRA_ARGS:--maca64 -nodisplay -noFigureWindows -softwareopengl}"
 STAGE_A_BLOCKS_RAW="${NSTAT_PARITY_PREFLIGHT_STAGEA_BLOCKS:-core_smoke timeout_front}"
 STAGE_B_TOPICS_RAW="${NSTAT_PARITY_PREFLIGHT_STAGEB_TOPICS:-PPThinning,ValidationDataSet,DecodingExample,StimulusDecode2D}"
-STAGE_B_REPORT_PATH="${NSTAT_PARITY_PREFLIGHT_STAGEB_REPORT:-python/reports/parity_preflight_stageb_selected.json}"
+STAGE_B_REPORT_PATH="${NSTAT_PARITY_PREFLIGHT_STAGEB_REPORT:-reports/parity_preflight_stageb_selected.json}"
 
 stage_a_tokens="${STAGE_A_BLOCKS_RAW//,/ }"
 read -r -a STAGE_A_BLOCKS <<< "${stage_a_tokens}"
@@ -37,13 +38,13 @@ echo "[preflight] stage A blocks: ${STAGE_A_BLOCKS[*]}"
 echo "[preflight] stage B selected topics: ${STAGE_B_TOPICS[*]}"
 echo "[preflight] stage B report: ${STAGE_B_REPORT_PATH}"
 
-python/tools/run_parity_ladder.sh "${STAGE_A_BLOCKS[@]}"
+tools/run_parity_ladder.sh "${STAGE_A_BLOCKS[@]}"
 
-"${PYTHON_BIN}" python/tools/verify_python_vs_matlab_similarity.py \
+"${PYTHON_BIN}" tools/verify_python_vs_matlab_similarity.py \
   --enforce-gate \
   --report-path "${STAGE_B_REPORT_PATH}" \
   --topics "${STAGE_B_TOPICS[@]}"
 
-"${PYTHON_BIN}" python/tools/summarize_parity_report.py "${STAGE_B_REPORT_PATH}" || true
+"${PYTHON_BIN}" tools/summarize_parity_report.py "${STAGE_B_REPORT_PATH}" || true
 
 echo "[preflight] complete"

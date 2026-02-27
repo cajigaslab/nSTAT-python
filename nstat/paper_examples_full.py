@@ -14,6 +14,14 @@ from .glm import fit_poisson_glm
 from .simulation import simulate_poisson_from_rate
 
 
+def _default_repo_root() -> Path:
+    cur = Path(__file__).resolve()
+    for candidate in [cur, *cur.parents]:
+        if (candidate / "nstat").exists() and (candidate / "data").exists():
+            return candidate
+    return cur.parents[1]
+
+
 def _allow_synthetic_data() -> bool:
     return os.environ.get("NSTAT_ALLOW_SYNTHETIC_DATA", "").strip().lower() in {"1", "true", "yes", "on"}
 
@@ -437,7 +445,7 @@ def run_full_paper_examples(repo_root: Path) -> dict[str, dict[str, float]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Native Python approximation of nSTATPaperExamples.m")
-    parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--repo-root", type=Path, default=_default_repo_root())
     parser.add_argument("--output-json", type=Path, default=None)
     args = parser.parse_args()
 

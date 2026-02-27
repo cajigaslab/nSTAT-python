@@ -17,12 +17,13 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT if (PROJECT_ROOT / "helpfiles").exists() else PROJECT_ROOT.parent
 MATLAB_BIN = Path("/Applications/MATLAB_R2025b.app/bin/matlab")
 MATLAB_EXTRA_ARGS = [arg for arg in os.environ.get("NSTAT_MATLAB_EXTRA_ARGS", "").split() if arg]
 FORCE_M_HELP_SCRIPTS = os.environ.get("NSTAT_FORCE_M_HELP_SCRIPTS", "").strip().lower() in {"1", "true", "yes", "on"}
 TOC_PATH = REPO_ROOT / "helpfiles" / "helptoc.xml"
-PY_ROOT = REPO_ROOT / "python"
+PY_ROOT = PROJECT_ROOT
 if str(PY_ROOT) not in sys.path:
     sys.path.insert(0, str(PY_ROOT))
 
@@ -1074,7 +1075,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--report-path",
-        default="python/reports/python_vs_matlab_similarity_report.json",
+        default="reports/python_vs_matlab_similarity_report.json",
         help="Output report path (absolute or repo-relative).",
     )
     return parser.parse_args(argv)

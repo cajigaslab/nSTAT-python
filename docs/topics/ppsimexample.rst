@@ -44,4 +44,4 @@ Known Differences
 
 Notebook
 --------
-A generated executable notebook is available at ``python/notebooks/helpfiles/PPSimExample.ipynb``.
+A generated executable notebook is available at ``notebooks/helpfiles/PPSimExample.ipynb``.

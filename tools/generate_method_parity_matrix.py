@@ -6,26 +6,32 @@ import re
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-REPORT_DIR = REPO_ROOT / "python" / "reports"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT if (PROJECT_ROOT / "helpfiles").exists() else PROJECT_ROOT.parent
+REPORT_DIR = PROJECT_ROOT / "reports"
+PROJECT_PREFIX = "python/" if PROJECT_ROOT != REPO_ROOT else ""
+
+
+def _project_rel(rel: str) -> str:
+    return f"{PROJECT_PREFIX}{rel}" if PROJECT_PREFIX else rel
 
 CLASS_MAPPING = {
-    "SignalObj": ("SignalObj.m", "python/nstat/signal.py", "Signal"),
-    "Covariate": ("Covariate.m", "python/nstat/signal.py", "Covariate"),
-    "nspikeTrain": ("nspikeTrain.m", "python/nstat/spikes.py", "SpikeTrain"),
-    "nstColl": ("nstColl.m", "python/nstat/spikes.py", "SpikeTrainCollection"),
-    "CovColl": ("CovColl.m", "python/nstat/trial.py", "CovariateCollection"),
-    "TrialConfig": ("TrialConfig.m", "python/nstat/trial.py", "TrialConfig"),
-    "ConfigColl": ("ConfigColl.m", "python/nstat/trial.py", "ConfigCollection"),
-    "Trial": ("Trial.m", "python/nstat/trial.py", "Trial"),
-    "History": ("History.m", "python/nstat/history.py", "HistoryBasis"),
-    "Events": ("Events.m", "python/nstat/events.py", "Events"),
-    "ConfidenceInterval": ("ConfidenceInterval.m", "python/nstat/confidence_interval.py", "ConfidenceInterval"),
-    "CIF": ("CIF.m", "python/nstat/cif.py", "CIFModel"),
-    "FitResult": ("FitResult.m", "python/nstat/fit.py", "FitResult"),
-    "FitResSummary": ("FitResSummary.m", "python/nstat/fit.py", "FitSummary"),
-    "Analysis": ("Analysis.m", "python/nstat/analysis.py", "Analysis"),
-    "DecodingAlgorithms": ("DecodingAlgorithms.m", "python/nstat/decoding_algorithms.py", "DecodingAlgorithms"),
+    "SignalObj": ("SignalObj.m", "nstat/signal.py", "Signal"),
+    "Covariate": ("Covariate.m", "nstat/signal.py", "Covariate"),
+    "nspikeTrain": ("nspikeTrain.m", "nstat/spikes.py", "SpikeTrain"),
+    "nstColl": ("nstColl.m", "nstat/spikes.py", "SpikeTrainCollection"),
+    "CovColl": ("CovColl.m", "nstat/trial.py", "CovariateCollection"),
+    "TrialConfig": ("TrialConfig.m", "nstat/trial.py", "TrialConfig"),
+    "ConfigColl": ("ConfigColl.m", "nstat/trial.py", "ConfigCollection"),
+    "Trial": ("Trial.m", "nstat/trial.py", "Trial"),
+    "History": ("History.m", "nstat/history.py", "HistoryBasis"),
+    "Events": ("Events.m", "nstat/events.py", "Events"),
+    "ConfidenceInterval": ("ConfidenceInterval.m", "nstat/confidence_interval.py", "ConfidenceInterval"),
+    "CIF": ("CIF.m", "nstat/cif.py", "CIFModel"),
+    "FitResult": ("FitResult.m", "nstat/fit.py", "FitResult"),
+    "FitResSummary": ("FitResSummary.m", "nstat/fit.py", "FitSummary"),
+    "Analysis": ("Analysis.m", "nstat/analysis.py", "Analysis"),
+    "DecodingAlgorithms": ("DecodingAlgorithms.m", "nstat/decoding_algorithms.py", "DecodingAlgorithms"),
 }
 
 IMPLEMENTED_ALIAS_MAP = {
@@ -63,6 +69,30 @@ def _python_methods(path: Path, class_name: str) -> list[str]:
     return []
 
 
+def _fallback_matlab_methods() -> dict[str, list[str]]:
+    path = REPORT_DIR / "method_parity_matrix.json"
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+
+    out: dict[str, list[str]] = {}
+    for cls in payload.get("classes", []):
+        matlab_class = str(cls.get("matlab_class", "")).strip()
+        if not matlab_class:
+            continue
+        methods = []
+        for row in cls.get("methods", []):
+            mm = str(row.get("matlab_method", "")).strip()
+            if mm:
+                methods.append(mm)
+        if methods:
+            out[matlab_class] = sorted(set(methods))
+    return out
+
+
 def _status_for_method(m_method: str, py_methods_norm: set[str]) -> tuple[str, str]:
     m_norm = _normalize(m_method)
     mapped = IMPLEMENTED_ALIAS_MAP.get(m_norm)
@@ -82,12 +112,13 @@ def build_matrix() -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     implemented_methods: list[dict[str, str]] = []
     summary = {"implemented": 0, "planned": 0, "intentionally_omitted": 0, "total": 0}
+    fallback_catalog = _fallback_matlab_methods()
 
     for matlab_class, (m_rel, py_rel, py_class) in CLASS_MAPPING.items():
         m_path = REPO_ROOT / m_rel
-        py_path = REPO_ROOT / py_rel
+        py_path = PROJECT_ROOT / py_rel
 
-        m_methods = _matlab_methods(m_path) if m_path.exists() else []
+        m_methods = _matlab_methods(m_path) if m_path.exists() else fallback_catalog.get(matlab_class, [])
         py_methods = _python_methods(py_path, py_class) if py_path.exists() else []
         py_norm = {_normalize(x) for x in py_methods}
 
@@ -110,7 +141,7 @@ def build_matrix() -> dict[str, Any]:
             {
                 "matlab_class": matlab_class,
                 "matlab_source": m_rel,
-                "python_target": py_rel,
+                "python_target": _project_rel(py_rel),
                 "python_class": py_class,
                 "python_methods": py_methods,
                 "methods": method_rows,

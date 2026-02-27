@@ -16,11 +16,12 @@ Generated via:
 
 .. code-block:: bash
 
-   python3 python/tools/generate_repo_split_inventory.py
+   python3 tools/generate_repo_split_inventory.py
 
 Output directory:
 
 - ``python/reports/repo_split_inventory``
+- ``reports/repo_split_inventory``
 
 Current Snapshot
 ----------------
@@ -50,7 +51,7 @@ Immediate Next Actions
 ----------------------
 
 1. Keep ``nSTAT`` as source-of-truth for MATLAB ``helpfiles`` and create missing ``.mlx`` examples for the 7 topics above.
-2. Bootstrap ``nSTAT-python`` from the ``python/`` subtree and move parity/docs/notebook CI there.
+2. Keep ``nSTAT-python`` standalone and run parity/docs/notebook CI in this repository.
 3. Update cross-repo README links:
    - ``nSTAT`` -> points Python users to ``nSTAT-python``.
    - ``nSTAT-python`` -> points MATLAB users to ``nSTAT``.
