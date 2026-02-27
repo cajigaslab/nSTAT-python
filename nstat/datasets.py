@@ -14,7 +14,8 @@ def _repo_root() -> Path:
     for candidate in [cur, *cur.parents]:
         if (candidate / "data").exists() and (candidate / "helpfiles").exists():
             return candidate
-    raise RuntimeError("Could not locate nSTAT repository root from installed package path.")
+    # Standalone Python checkouts may not include MATLAB-side data/helpfiles trees.
+    return MANIFEST_PATH.parents[2]
 
 
 def _load_manifest() -> dict[str, dict[str, str]]:
