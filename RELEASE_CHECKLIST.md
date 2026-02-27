@@ -1,0 +1,41 @@
+# nSTAT Python Release Checklist
+
+- [ ] Install from source in a clean environment:
+  - `python3 -m pip install -e .`
+- [ ] Refresh parity and coverage artifacts:
+  - `python3 tools/freeze_port_baseline.py`
+  - `python3 tools/generate_method_parity_matrix.py`
+  - `python3 tools/generate_implemented_method_coverage.py`
+- [ ] Generate docs and notebooks:
+  - `python3 tools/generate_help_topic_docs.py`
+  - `python3 tools/generate_example_notebooks.py`
+- [ ] Confirm docs build artifacts are not tracked:
+  - `docs/_build/` must remain gitignored and excluded from commits.
+- [ ] Build docs and execute examples:
+  - `python3 tools/verify_examples_notebooks.py`
+  - `sphinx-build -b html docs docs/_build/html`
+- [ ] Run similarity gate (requires MATLAB):
+  - `NSTAT_MATLAB_EXTRA_ARGS='-maca64 -nodisplay -noFigureWindows' python3 tools/verify_python_vs_matlab_similarity.py --enforce-gate`
+- [ ] Freeze similarity baseline:
+  - `python3 tools/freeze_similarity_baseline.py`
+- [ ] Verify standalone offline workflow:
+  - `python3 tools/verify_offline_standalone.py`
+  - Strict install gate (release hardening): `python3 tools/verify_offline_standalone.py --require-target-install`
+- [ ] Run full test suite:
+  - `python3 -m pytest -q`
+- [ ] Confirm release criteria:
+  - Class parity: `9/9`
+  - Help/notebook parity: `25/25` Python and `25/25` MATLAB
+  - Scalar parity contract: `25/25` help topics pass required keys
+  - Regression gate: pass with no allowlist-required failures
+- [ ] Confirm compatibility adapters still import and emit `DeprecationWarning`.
+- [ ] Update `RELEASE_NOTES.md` with API changes and known differences.
+- [ ] Verify both release-gate workflows complete on the release candidate commit:
+  - `.github/workflows/python-ci.yml`
+  - `.github/workflows/matlab-parity-gate.yml`
+- [ ] Run MATLAB preflight before parity verification:
+  - Trigger `.github/workflows/matlab-smoke.yml` on the target branch and confirm success.
+- [ ] Verify required branch checks are enforced on `master`:
+  - `Python CI / test-and-build`
+  - `MATLAB Parity Gate / parity-gate`
+- [ ] Create and tag GitHub release.
