@@ -28,3 +28,7 @@ docs/_build/
 
 # Local data cache
 .data_cache/
+
+# Local report artifacts
+output/
+tmp/
