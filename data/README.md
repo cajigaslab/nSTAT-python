@@ -11,3 +11,6 @@ Recommended flow:
 1. Publish immutable data artifacts (for example, GitHub Release assets).
 2. Add records to `datasets_manifest.json` with URL and checksum.
 3. Update `tools/compliance/shared_data_allowlist.yml` with approved overlaps.
+
+Current shared records:
+- `mEPSC-epsc2` (source: `cajigaslab/nSTAT`, path `data/mEPSCs/epsc2.txt`)
