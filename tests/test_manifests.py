@@ -44,3 +44,10 @@ def test_example_inventory_has_expected_topics() -> None:
 def test_paper_mapping_mentions_reference() -> None:
     payload = yaml.safe_load(Path("baseline/paper_section_mapping.yml").read_text(encoding="utf-8"))
     assert payload["paper"]["doi"] == "10.1016/j.jneumeth.2012.08.009"
+
+
+def test_parity_manifest_exists_and_includes_vertical_slice() -> None:
+    payload = yaml.safe_load(Path("baseline/parity_manifest.yml").read_text(encoding="utf-8"))
+    assert payload["policy"]["clean_room"] is True
+    assert len(payload["classes"]) == 16
+    assert any(row["topic"] == "nSTATPaperExamples" for row in payload["workflows"])

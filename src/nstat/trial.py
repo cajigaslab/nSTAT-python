@@ -6,6 +6,7 @@ The trial module ties spike observations and covariates together for fitting.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 import numpy as np
 
@@ -82,14 +83,17 @@ class Trial:
     spikes: SpikeTrainCollection
     covariates: CovariateCollection
 
-    def aligned_binned_observation(self, bin_size_s: float, unit_index: int = 0) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def aligned_binned_observation(
+        self, bin_size_s: float, unit_index: int = 0, mode: Literal["binary", "count"] = "binary"
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return aligned `(time, y, X)` for one unit.
 
-        `y` is binary spike presence in each bin. `X` is covariate matrix
-        sampled to nearest available covariate time index.
+        `X` is covariate matrix sampled to nearest available covariate time
+        index. ``mode`` controls whether `y` contains binary indicators or
+        integer spike counts per bin.
         """
 
-        t_bins, mat = self.spikes.to_binned_matrix(bin_size_s=bin_size_s)
+        t_bins, mat = self.spikes.to_binned_matrix(bin_size_s=bin_size_s, mode=mode)
         if unit_index < 0 or unit_index >= mat.shape[0]:
             raise IndexError("unit_index out of range")
         y = mat[unit_index]

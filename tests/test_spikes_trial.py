@@ -12,6 +12,10 @@ def test_spike_train_binarize() -> None:
     assert y.ndim == 1
     assert y.max() <= 1.0
 
+    tc, counts = st.bin_counts(0.1)
+    assert tc.shape == t.shape
+    assert np.sum(counts) == 3.0
+
 
 def test_trial_alignment() -> None:
     t = np.linspace(0.0, 1.0, 101)
@@ -26,3 +30,6 @@ def test_trial_alignment() -> None:
     tb, y, X = trial.aligned_binned_observation(0.01)
     assert tb.shape[0] == y.shape[0]
     assert X.shape[0] == y.shape[0]
+
+    _, yc, _ = trial.aligned_binned_observation(0.01, mode="count")
+    assert np.all(yc >= 0.0)

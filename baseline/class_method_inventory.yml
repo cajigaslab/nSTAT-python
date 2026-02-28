@@ -40,6 +40,7 @@ classes:
     methods:
       - duration_s
       - firing_rate_hz
+      - bin_counts
       - binarize
 
   - matlab_class: nstColl
@@ -74,17 +75,22 @@ classes:
   - matlab_class: CIF
     python_class: nstat.cif.CIFModel
     methods:
+      - linear_predictor
       - evaluate
+      - log_likelihood
       - simulate_by_thinning
 
   - matlab_class: Analysis
     python_class: nstat.analysis.Analysis
     methods:
+      - fit_glm
       - fit_trial
 
   - matlab_class: FitResult
     python_class: nstat.fit.FitResult
     methods:
+      - as_cif_model
+      - predict
       - aic
       - bic
 
@@ -99,3 +105,4 @@ classes:
     methods:
       - compute_spike_rate_cis
       - decode_weighted_center
+      - decode_state_posterior

@@ -7,6 +7,7 @@ providing explicit NumPy-based interfaces.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 import numpy as np
 
@@ -47,8 +48,8 @@ class SpikeTrain:
             return 0.0
         return float(self.spike_times.size / dur)
 
-    def binarize(self, bin_size_s: float) -> tuple[np.ndarray, np.ndarray]:
-        """Return bin centers and binary spike presence vector."""
+    def bin_counts(self, bin_size_s: float) -> tuple[np.ndarray, np.ndarray]:
+        """Return bin centers and integer spike-count vector."""
 
         if bin_size_s <= 0.0:
             raise ValueError("bin_size_s must be positive")
@@ -57,7 +58,13 @@ class SpikeTrain:
         edges = np.arange(self.t_start, self.t_end + bin_size_s, bin_size_s)
         counts, _ = np.histogram(self.spike_times, bins=edges)
         centers = 0.5 * (edges[:-1] + edges[1:])
-        return centers, (counts > 0).astype(float)
+        return centers, counts.astype(float)
+
+    def binarize(self, bin_size_s: float) -> tuple[np.ndarray, np.ndarray]:
+        """Return bin centers and binary spike-presence vector."""
+
+        centers, counts = self.bin_counts(bin_size_s=bin_size_s)
+        return centers, (counts > 0.0).astype(float)
 
 
 @dataclass(slots=True)
@@ -74,8 +81,24 @@ class SpikeTrainCollection:
     def n_units(self) -> int:
         return len(self.trains)
 
-    def to_binned_matrix(self, bin_size_s: float) -> tuple[np.ndarray, np.ndarray]:
-        """Convert collection to `(n_units, n_bins)` binary matrix."""
+    def to_binned_matrix(
+        self, bin_size_s: float, mode: Literal["binary", "count"] = "binary"
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Convert collection to `(n_units, n_bins)` matrix.
+
+        Parameters
+        ----------
+        bin_size_s:
+            Width of each time bin in seconds.
+        mode:
+            ``"binary"`` for per-bin event indicators or ``"count"`` for
+            integer spike counts per bin.
+        """
+
+        if bin_size_s <= 0.0:
+            raise ValueError("bin_size_s must be positive")
+        if mode not in {"binary", "count"}:
+            raise ValueError("mode must be 'binary' or 'count'")
 
         ref_t_start = min(train.t_start for train in self.trains)
         ref_t_end = max(train.t_end if train.t_end is not None else train.t_start for train in self.trains)
@@ -85,5 +108,8 @@ class SpikeTrainCollection:
         mat = np.zeros((self.n_units, centers.size), dtype=float)
         for i, train in enumerate(self.trains):
             counts, _ = np.histogram(train.spike_times, bins=edges)
-            mat[i, :] = (counts > 0).astype(float)
+            if mode == "binary":
+                mat[i, :] = (counts > 0).astype(float)
+            else:
+                mat[i, :] = counts.astype(float)
         return centers, mat

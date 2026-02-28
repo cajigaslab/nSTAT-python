@@ -6,6 +6,11 @@ Python implementation: `nstat.fit.FitResult`
 This class preserves MATLAB-facing structure while using a Python-native,
 fully independent implementation in `nSTAT-python`.
 
+## Core methods
+- `as_cif_model()`: convert fitted parameters to `nstat.cif.CIFModel`.
+- `predict(X)`: compute model-predicted mean response for design matrix `X`.
+- `aic()` / `bic()`: information-criterion model comparison statistics.
+
 ## References
 - [API reference](../../api.md)
 - [Paper overview](../paper_overview.md)

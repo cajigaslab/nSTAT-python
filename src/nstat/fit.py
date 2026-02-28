@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .cif import CIFModel
+
 
 @dataclass(slots=True)
 class FitResult:
@@ -17,6 +19,16 @@ class FitResult:
     log_likelihood: float
     n_samples: int
     n_parameters: int
+
+    def as_cif_model(self) -> CIFModel:
+        """Return a :class:`nstat.cif.CIFModel` view of this fitted model."""
+
+        return CIFModel(coefficients=self.coefficients.copy(), intercept=self.intercept, link=self.fit_type)
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Predict mean response from feature matrix ``X``."""
+
+        return self.as_cif_model().evaluate(X)
 
     def aic(self) -> float:
         """Akaike information criterion."""

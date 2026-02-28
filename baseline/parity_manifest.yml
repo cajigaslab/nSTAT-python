@@ -1,0 +1,172 @@
+version: 1
+policy:
+  clean_room: true
+  matlab_runtime_dependency: false
+  copied_non_data_files_allowed: false
+
+metadata:
+  source: "Derived behavior specification authored for nSTAT-python"
+  doi: "10.1016/j.jneumeth.2012.08.009"
+  pmid: "22981419"
+
+classes:
+  - matlab_class: SignalObj
+    python_class: nstat.signal.Signal
+    public_methods:
+      - name: copy
+        signature: "()"
+      - name: n_samples
+        signature: "property"
+      - name: n_channels
+        signature: "property"
+      - name: sample_rate_hz
+        signature: "property"
+      - name: duration_s
+        signature: "property"
+
+  - matlab_class: Covariate
+    python_class: nstat.signal.Covariate
+    public_methods:
+      - name: labels
+        signature: "attribute[list[str]]"
+      - name: n_channels
+        signature: "property"
+
+  - matlab_class: ConfidenceInterval
+    python_class: nstat.confidence.ConfidenceInterval
+    public_methods:
+      - name: width
+        signature: "()"
+      - name: contains
+        signature: "(values)"
+
+  - matlab_class: Events
+    python_class: nstat.events.Events
+    public_methods:
+      - name: subset
+        signature: "(start_s, end_s)"
+
+  - matlab_class: History
+    python_class: nstat.history.HistoryBasis
+    public_methods:
+      - name: n_bins
+        signature: "property"
+      - name: design_matrix
+        signature: "(spike_times_s, time_grid_s)"
+
+  - matlab_class: nspikeTrain
+    python_class: nstat.spikes.SpikeTrain
+    public_methods:
+      - name: duration_s
+        signature: "()"
+      - name: firing_rate_hz
+        signature: "()"
+      - name: bin_counts
+        signature: "(bin_size_s)"
+      - name: binarize
+        signature: "(bin_size_s)"
+
+  - matlab_class: nstColl
+    python_class: nstat.spikes.SpikeTrainCollection
+    public_methods:
+      - name: n_units
+        signature: "property"
+      - name: to_binned_matrix
+        signature: "(bin_size_s, mode='binary')"
+
+  - matlab_class: CovColl
+    python_class: nstat.trial.CovariateCollection
+    public_methods:
+      - name: time
+        signature: "property"
+      - name: design_matrix
+        signature: "()"
+
+  - matlab_class: TrialConfig
+    python_class: nstat.trial.TrialConfig
+    public_methods:
+      - name: covariate_labels
+        signature: "attribute[list[str]]"
+      - name: sample_rate_hz
+        signature: "attribute[float]"
+      - name: fit_type
+        signature: "attribute[str]"
+
+  - matlab_class: ConfigColl
+    python_class: nstat.trial.ConfigCollection
+    public_methods:
+      - name: configs
+        signature: "attribute[list[TrialConfig]]"
+
+  - matlab_class: Trial
+    python_class: nstat.trial.Trial
+    public_methods:
+      - name: aligned_binned_observation
+        signature: "(bin_size_s, unit_index=0, mode='binary')"
+
+  - matlab_class: CIF
+    python_class: nstat.cif.CIFModel
+    public_methods:
+      - name: linear_predictor
+        signature: "(X)"
+      - name: evaluate
+        signature: "(X)"
+      - name: log_likelihood
+        signature: "(y, X, dt=1.0)"
+      - name: simulate_by_thinning
+        signature: "(time, X, rng=None)"
+
+  - matlab_class: Analysis
+    python_class: nstat.analysis.Analysis
+    public_methods:
+      - name: fit_glm
+        signature: "(X, y, fit_type='poisson', dt=1.0, l2_penalty=0.0)"
+      - name: fit_trial
+        signature: "(trial, config, unit_index=0)"
+
+  - matlab_class: FitResult
+    python_class: nstat.fit.FitResult
+    public_methods:
+      - name: as_cif_model
+        signature: "()"
+      - name: predict
+        signature: "(X)"
+      - name: aic
+        signature: "()"
+      - name: bic
+        signature: "()"
+
+  - matlab_class: FitResSummary
+    python_class: nstat.fit.FitSummary
+    public_methods:
+      - name: best_by_aic
+        signature: "()"
+      - name: best_by_bic
+        signature: "()"
+
+  - matlab_class: DecodingAlgorithms
+    python_class: nstat.decoding.DecodingAlgorithms
+    public_methods:
+      - name: compute_spike_rate_cis
+        signature: "(spike_matrix, alpha=0.05)"
+      - name: decode_weighted_center
+        signature: "(spike_counts, tuning_curves)"
+      - name: decode_state_posterior
+        signature: "(spike_counts, tuning_rates, transition=None, prior=None)"
+
+workflows:
+  - topic: nSTATPaperExamples
+    notebook: notebooks/nSTATPaperExamples.ipynb
+    help_page: docs/help/examples/nSTATPaperExamples.md
+    modules:
+      - nstat.spikes
+      - nstat.cif
+      - nstat.analysis
+      - nstat.fit
+      - nstat.decoding
+    expected_metrics:
+      - name: poisson_coefficient_error
+        tolerance_key: "poisson_glm.coefficient_abs_tol"
+      - name: decoding_normalized_rmse
+        tolerance_key: "decoding.normalized_rmse_tol"
+
