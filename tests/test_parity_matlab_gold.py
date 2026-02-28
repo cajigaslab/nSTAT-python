@@ -37,7 +37,7 @@ def _mat(path: str) -> dict:
 def test_matlab_gold_manifest_and_checksums() -> None:
     payload = _load_manifest()
     assert payload["version"] == 1
-    assert len(payload["fixtures"]) == 3
+    assert len(payload["fixtures"]) == 4
 
     for row in payload["fixtures"]:
         path = Path(row["path"])
@@ -97,3 +97,23 @@ def test_hippocampal_placecell_matlab_gold_comparison() -> None:
 
     expected = np.asarray(m["expected_decoded_weighted"], dtype=float).reshape(-1)
     assert np.allclose(decoded, expected, atol=1e-8)
+
+
+
+def test_spikerate_diff_cis_matlab_gold_comparison() -> None:
+    m = _mat("tests/parity/fixtures/matlab_gold/SpikeRateDiffCIs_gold.mat")
+    spike_a = np.asarray(m["spike_matrix_a"], dtype=float)
+    spike_b = np.asarray(m["spike_matrix_b"], dtype=float)
+    alpha = float(np.asarray(m["alpha_diff"], dtype=float).reshape(-1)[0])
+
+    diff, lo, hi = DecodingAlgorithms.compute_spike_rate_diff_cis(
+        spike_matrix_a=spike_a, spike_matrix_b=spike_b, alpha=alpha
+    )
+
+    expected_diff = np.asarray(m["expected_diff"], dtype=float).reshape(-1)
+    expected_lo = np.asarray(m["expected_lo"], dtype=float).reshape(-1)
+    expected_hi = np.asarray(m["expected_hi"], dtype=float).reshape(-1)
+
+    assert np.allclose(diff, expected_diff, atol=1e-8)
+    assert np.allclose(lo, expected_lo, atol=1e-8)
+    assert np.allclose(hi, expected_hi, atol=1e-8)

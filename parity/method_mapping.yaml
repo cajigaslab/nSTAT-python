@@ -5,6 +5,7 @@ classes:
     python_class: nstat.signal.Signal
     compat_class: nstat.compat.matlab.SignalObj
     alias_methods:
+      SignalObj: copy
       copy: copy
       getData: data
       getName: name
@@ -59,6 +60,7 @@ classes:
     python_class: nstat.spikes.SpikeTrainCollection
     compat_class: nstat.compat.matlab.nstColl
     alias_methods:
+      nstColl: copy
       getNumUnits: n_units
       getBinnedMatrix: to_binned_matrix
   - matlab_class: CovColl
@@ -66,6 +68,7 @@ classes:
     python_class: nstat.trial.CovariateCollection
     compat_class: nstat.compat.matlab.CovColl
     alias_methods:
+      CovColl: copy
       getTime: time
       getDesignMatrix: design_matrix
   - matlab_class: TrialConfig
@@ -73,6 +76,7 @@ classes:
     python_class: nstat.trial.TrialConfig
     compat_class: nstat.compat.matlab.TrialConfig
     alias_methods:
+      TrialConfig: getName
       getFitType: fit_type
       getSampleRate: sample_rate_hz
       getCovariateLabels: covariate_labels
@@ -87,6 +91,7 @@ classes:
     python_class: nstat.trial.Trial
     compat_class: nstat.compat.matlab.Trial
     alias_methods:
+      Trial: getDesignMatrix
       getAlignedBinnedObservation: aligned_binned_observation
   - matlab_class: CIF
     matlab_file: CIF.m

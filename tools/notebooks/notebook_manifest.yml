@@ -17,7 +17,7 @@ notebooks:
   run_group: smoke
 - topic: DecodingExampleWithHist
   file: notebooks/DecodingExampleWithHist.ipynb
-  run_group: full
+  run_group: smoke
 - topic: EventsExamples
   file: notebooks/EventsExamples.ipynb
   run_group: full
@@ -41,7 +41,7 @@ notebooks:
   run_group: full
 - topic: PPSimExample
   file: notebooks/PPSimExample.ipynb
-  run_group: full
+  run_group: smoke
 - topic: PPThinning
   file: notebooks/PPThinning.ipynb
   run_group: full
@@ -59,7 +59,7 @@ notebooks:
   run_group: full
 - topic: TrialExamples
   file: notebooks/TrialExamples.ipynb
-  run_group: full
+  run_group: smoke
 - topic: ValidationDataSet
   file: notebooks/ValidationDataSet.ipynb
   run_group: full

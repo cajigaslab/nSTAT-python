@@ -4,7 +4,7 @@ Python-native tutorial page for `DecodingExampleWithHist`.
 
 ## Notebook
 - [DecodingExampleWithHist.ipynb](https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/DecodingExampleWithHist.ipynb)
-- Execution group: `full`
+- Execution group: `smoke`
 
 ## Linked references
 - [Examples index](../examples_index.md)

@@ -4,7 +4,7 @@ Python-native tutorial page for `PPSimExample`.
 
 ## Notebook
 - [PPSimExample.ipynb](https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/PPSimExample.ipynb)
-- Execution group: `full`
+- Execution group: `smoke`
 
 ## Linked references
 - [Examples index](../examples_index.md)

@@ -2,10 +2,11 @@
 """Export MATLAB-gold fixtures for canonical parity workflows.
 
 This script runs MATLAB in batch mode to generate deterministic fixture files
-for three workflow families:
+for four workflow families:
 - PPSimExample
 - DecodingExampleWithHist
 - HippocampalPlaceCellExample
+- SpikeRateDiffCIs
 """
 
 from __future__ import annotations
@@ -151,6 +152,31 @@ end
 save(fullfile(out_dir, 'HippocampalPlaceCellExample_gold.mat'), ...
     'spike_counts_pc', 'tuning_curves', 'expected_decoded_weighted', '-v7');
 
+% ------------------------------------------------------
+% Fixture 4: Spike rate-difference confidence intervals
+% ------------------------------------------------------
+n_trials_diff = 20;
+n_bins_diff = 300;
+alpha_diff = 0.05;
+p_a = 0.08;
+p_b = 0.06;
+spike_matrix_a = binornd(1, p_a, n_trials_diff, n_bins_diff);
+spike_matrix_b = binornd(1, p_b, n_trials_diff, n_bins_diff);
+
+rate_a = sum(spike_matrix_a, 2) / n_bins_diff;
+rate_b = sum(spike_matrix_b, 2) / n_bins_diff;
+expected_diff = rate_a - rate_b;
+var_term = (rate_a .* (1-rate_a) + rate_b .* (1-rate_b)) / n_bins_diff;
+var_term = max(var_term, 1e-12);
+z = 1.959963984540054;
+half = z * sqrt(var_term);
+expected_lo = expected_diff - half;
+expected_hi = expected_diff + half;
+
+save(fullfile(out_dir, 'SpikeRateDiffCIs_gold.mat'), ...
+    'spike_matrix_a', 'spike_matrix_b', 'alpha_diff', ...
+    'expected_diff', 'expected_lo', 'expected_hi', '-v7');
+
 fprintf('MATLAB gold fixtures exported to %s\n', out_dir);
 """
 
@@ -213,6 +239,7 @@ def main() -> int:
         "PPSimExample_gold.mat",
         "DecodingExampleWithHist_gold.mat",
         "HippocampalPlaceCellExample_gold.mat",
+        "SpikeRateDiffCIs_gold.mat",
     ]:
         path = out_dir / file_name
         if not path.exists():
