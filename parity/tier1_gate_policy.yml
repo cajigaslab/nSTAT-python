@@ -1,0 +1,20 @@
+version: 1
+policy_name: tier1_progress_gate
+
+min_coverage_ratio:
+  Analysis: 0.30
+  DecodingAlgorithms: 0.15
+  Trial: 0.14
+  CovColl: 0.24
+  nstColl: 0.30
+  FitResult: 0.17
+  FitResSummary: 0.12
+
+max_missing_methods:
+  Analysis: 15
+  DecodingAlgorithms: 38
+  Trial: 58
+  CovColl: 41
+  nstColl: 36
+  FitResult: 27
+  FitResSummary: 26

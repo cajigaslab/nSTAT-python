@@ -1,0 +1,14 @@
+version: 1
+fixtures:
+- name: PPSimExample
+  path: tests/parity/fixtures/matlab_gold/PPSimExample_gold.mat
+  sha256: 5903d9df367801f2866fb3c17443162da4615e0e8f05c733720ba3d2bb905c18
+  source: matlab_batch_export
+- name: DecodingExampleWithHist
+  path: tests/parity/fixtures/matlab_gold/DecodingExampleWithHist_gold.mat
+  sha256: 056c9cb10adec0ab177b7332b9f27fe1c425f313fb42316fa5d37c66d539a3cf
+  source: matlab_batch_export
+- name: HippocampalPlaceCellExample
+  path: tests/parity/fixtures/matlab_gold/HippocampalPlaceCellExample_gold.mat
+  sha256: 5d12c9cc9667eaae0c67c45b958ddf8486ab122b48e58f2b490dbc382cc97e76
+  source: matlab_batch_export

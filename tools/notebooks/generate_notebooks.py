@@ -128,6 +128,29 @@ print("Best model by AIC:", summary.best_by_aic().fit_type)
 """
 
 
+ASSERTION_CELL = """# Execution checkpoints: fail fast in CI if core expectations break.
+assert np.all(np.isfinite(probability)), "Model output contains non-finite values"
+assert fit_result.n_parameters >= 2, "Unexpected parameter count"
+assert H.ndim == 2 and H.shape[1] == history.n_bins, "History design dimensions mismatch"
+assert np.allclose(prob_mat, prob_mat.T, atol=1e-12), "Pairwise p-value matrix must be symmetric"
+assert np.all(np.diag(prob_mat) == 1.0), "Diagonal p-values must be one"
+print("Notebook checkpoints passed for", TOPIC)
+"""
+
+
+TOPIC_ASSERTIONS = """# Topic-specific checkpoint for additional parity confidence.
+if TOPIC in {
+    "AnalysisExamples2",
+    "DocumentationSetup2025b",
+    "FitResultReference",
+    "HybridFilterExample",
+    "publish_all_helpfiles",
+}:
+    assert np.mean(probability) > 0.0, "Topic-specific probability sanity check failed"
+    print("Topic-specific checkpoint passed.")
+"""
+
+
 TAIL_MARKDOWN = (
     "## Next steps\n\n"
     "- Compare this notebook with the corresponding help page for concept-level context.\n"
@@ -172,6 +195,8 @@ def build_notebook(topic: str, run_group: str, output_path: Path) -> None:
         nbf.v4.new_code_cell(COMMON_DEMO),
         nbf.v4.new_code_cell(MODEL_EVAL),
         nbf.v4.new_code_cell(HISTORY_AND_DECODING),
+        nbf.v4.new_code_cell(ASSERTION_CELL),
+        nbf.v4.new_code_cell(TOPIC_ASSERTIONS),
         nbf.v4.new_markdown_cell(TAIL_MARKDOWN),
     ]
 

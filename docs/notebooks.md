@@ -27,3 +27,8 @@ The notebooks below are generated from a clean-room manifest and executed in CI.
 - [nSTATPaperExamples.ipynb](https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nSTATPaperExamples.ipynb) (`smoke`)
 - [nSpikeTrainExamples.ipynb](https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nSpikeTrainExamples.ipynb) (`smoke`)
 - [nstCollExamples.ipynb](https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nstCollExamples.ipynb) (`full`)
+- [AnalysisExamples2.ipynb](https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/AnalysisExamples2.ipynb) (`full`)
+- [DocumentationSetup2025b.ipynb](https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/DocumentationSetup2025b.ipynb) (`full`)
+- [FitResultReference.ipynb](https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/FitResultReference.ipynb) (`full`)
+- [HybridFilterExample.ipynb](https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/HybridFilterExample.ipynb) (`full`)
+- [publish_all_helpfiles.ipynb](https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/publish_all_helpfiles.ipynb) (`full`)

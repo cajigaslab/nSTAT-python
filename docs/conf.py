@@ -35,4 +35,5 @@ html_title = "nSTAT-python Documentation"
 linkcheck_ignore = [
     r"https://pubmed\.ncbi\.nlm\.nih\.gov/.*",
     r"https://pmc\.ncbi\.nlm\.nih\.gov/articles/.*",
+    r"https://github\.com/cajigaslab/nSTAT-python/blob/main/notebooks/.*",
 ]

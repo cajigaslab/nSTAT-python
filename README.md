@@ -61,5 +61,32 @@ print(cov.sample_rate_hz, spikes.firing_rate_hz())
 ## Data policy
 Only example data may be shared with MATLAB nSTAT. All non-data files are unique to this repository.
 
+## MATLAB parity workflow
+
+Generate parity inventories and the machine-readable gap report:
+
+```bash
+python tools/parity/build_parity_snapshot.py \
+  --matlab-root /path/to/matlab/nSTAT \
+  --fail-on high
+```
+
+Artifacts are written to:
+- `parity/matlab_api_inventory.json`
+- `parity/python_api_inventory.json`
+- `parity/parity_gap_report.json`
+- `parity/TIER1_PORT_BACKLOG.md`
+
+Tier-1 progress gate:
+
+```bash
+python tools/parity/check_tier1_progress.py \
+  --report parity/parity_gap_report.json \
+  --policy parity/tier1_gate_policy.yml
+```
+
+MATLAB-style adapters are available under:
+- `nstat.compat.matlab`
+
 ## Paper reference
 Cajigas I, Malik WQ, Brown EN. nSTAT: Open-source neural spike train analysis toolbox for Matlab. *J Neurosci Methods* (2012), DOI: `10.1016/j.jneumeth.2012.08.009`, PMID: `22981419`.

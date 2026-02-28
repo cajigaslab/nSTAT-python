@@ -90,6 +90,11 @@
     "mEPSCAnalysis",
     "nSTATPaperExamples",
     "nSpikeTrainExamples",
-    "nstCollExamples"
+    "nstCollExamples",
+    "AnalysisExamples2",
+    "DocumentationSetup2025b",
+    "FitResultReference",
+    "HybridFilterExample",
+    "publish_all_helpfiles"
   ]
 }

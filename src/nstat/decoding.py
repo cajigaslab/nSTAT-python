@@ -209,3 +209,167 @@ class DecodingAlgorithms:
         posterior = np.exp(log_post)
         decoded_state = np.argmax(posterior, axis=0).astype(int)
         return decoded_state, posterior
+
+    @staticmethod
+    def compute_spike_rate_diff_cis(
+        spike_matrix_a: np.ndarray, spike_matrix_b: np.ndarray, alpha: float = 0.05
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Compute trial-wise rate differences and Wald-style confidence intervals.
+
+        Parameters
+        ----------
+        spike_matrix_a:
+            First trial matrix, shape `(n_trials, n_time_bins)`.
+        spike_matrix_b:
+            Second trial matrix, shape `(n_trials, n_time_bins)`.
+        alpha:
+            Two-sided confidence level parameter.
+        """
+
+        a = np.asarray(spike_matrix_a, dtype=float)
+        b = np.asarray(spike_matrix_b, dtype=float)
+        if a.shape != b.shape:
+            raise ValueError("spike_matrix_a and spike_matrix_b must have matching shape")
+        if a.ndim != 2:
+            raise ValueError("inputs must be 2D trial matrices")
+        if np.any(a < 0.0) or np.any(b < 0.0):
+            raise ValueError("spike matrices cannot contain negative counts")
+        if not (0.0 < alpha < 1.0):
+            raise ValueError("alpha must be in (0, 1)")
+
+        n_bins = float(a.shape[1])
+        rate_a = np.sum(a, axis=1) / n_bins
+        rate_b = np.sum(b, axis=1) / n_bins
+        diff = rate_a - rate_b
+
+        var = np.clip((rate_a * (1.0 - rate_a) + rate_b * (1.0 - rate_b)) / n_bins, 1e-12, None)
+        z = float(norm.ppf(1.0 - alpha / 2.0))
+        half = z * np.sqrt(var)
+        lo = diff - half
+        hi = diff + half
+        return diff, lo, hi
+
+    @staticmethod
+    def compute_stimulus_cis(
+        posterior: np.ndarray, state_values: np.ndarray, alpha: float = 0.05
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Approximate posterior mean and confidence intervals of a decoded stimulus."""
+
+        post = np.asarray(posterior, dtype=float)
+        values = np.asarray(state_values, dtype=float)
+        if post.ndim != 2:
+            raise ValueError("posterior must be 2D (n_states, n_time)")
+        if values.ndim != 1 or values.size != post.shape[0]:
+            raise ValueError("state_values must match number of states")
+        if not (0.0 < alpha < 1.0):
+            raise ValueError("alpha must be in (0, 1)")
+
+        normed = np.clip(post, 1e-15, None)
+        normed = normed / np.sum(normed, axis=0, keepdims=True)
+
+        mean = values @ normed
+        centered = values[:, None] - mean[None, :]
+        var = np.sum((centered**2) * normed, axis=0)
+        z = float(norm.ppf(1.0 - alpha / 2.0))
+        half = z * np.sqrt(np.clip(var, 0.0, None))
+        return mean, mean - half, mean + half
+
+    @staticmethod
+    def kalman_predict(
+        x_prev: np.ndarray, p_prev: np.ndarray, a: np.ndarray, q: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Linear-Gaussian Kalman prediction step."""
+
+        x_prev = np.asarray(x_prev, dtype=float)
+        p_prev = np.asarray(p_prev, dtype=float)
+        a = np.asarray(a, dtype=float)
+        q = np.asarray(q, dtype=float)
+        x_pred = a @ x_prev
+        p_pred = a @ p_prev @ a.T + q
+        return x_pred, p_pred
+
+    @staticmethod
+    def kalman_update(
+        x_pred: np.ndarray,
+        p_pred: np.ndarray,
+        y_t: np.ndarray,
+        h: np.ndarray,
+        r: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Linear-Gaussian Kalman update step."""
+
+        x_pred = np.asarray(x_pred, dtype=float)
+        p_pred = np.asarray(p_pred, dtype=float)
+        y_t = np.asarray(y_t, dtype=float)
+        h = np.asarray(h, dtype=float)
+        r = np.asarray(r, dtype=float)
+
+        innov = y_t - (h @ x_pred)
+        s = h @ p_pred @ h.T + r
+        k = p_pred @ h.T @ np.linalg.inv(s)
+        x_filt = x_pred + k @ innov
+        p_filt = p_pred - k @ h @ p_pred
+        return x_filt, p_filt
+
+    @staticmethod
+    def kalman_filter(
+        y: np.ndarray,
+        a: np.ndarray,
+        h: np.ndarray,
+        q: np.ndarray,
+        r: np.ndarray,
+        x0: np.ndarray,
+        p0: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Run Kalman filtering over all time points."""
+
+        y = np.asarray(y, dtype=float)
+        if y.ndim == 1:
+            y = y[:, None]
+        n_time = y.shape[0]
+        n_state = np.asarray(x0).size
+
+        xf = np.zeros((n_time, n_state), dtype=float)
+        pf = np.zeros((n_time, n_state, n_state), dtype=float)
+        xp = np.zeros((n_time, n_state), dtype=float)
+        pp = np.zeros((n_time, n_state, n_state), dtype=float)
+
+        x_prev = np.asarray(x0, dtype=float)
+        p_prev = np.asarray(p0, dtype=float)
+        for t in range(n_time):
+            x_pred, p_pred = DecodingAlgorithms.kalman_predict(x_prev=x_prev, p_prev=p_prev, a=a, q=q)
+            x_filt, p_filt = DecodingAlgorithms.kalman_update(
+                x_pred=x_pred, p_pred=p_pred, y_t=y[t], h=h, r=r
+            )
+            xp[t] = x_pred
+            pp[t] = p_pred
+            xf[t] = x_filt
+            pf[t] = p_filt
+            x_prev, p_prev = x_filt, p_filt
+
+        return xf, pf, xp, pp
+
+    @staticmethod
+    def kalman_fixed_interval_smoother(
+        xf: np.ndarray, pf: np.ndarray, xp: np.ndarray, pp: np.ndarray, a: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Rauch-Tung-Striebel fixed-interval smoother."""
+
+        xf = np.asarray(xf, dtype=float)
+        pf = np.asarray(pf, dtype=float)
+        xp = np.asarray(xp, dtype=float)
+        pp = np.asarray(pp, dtype=float)
+        a = np.asarray(a, dtype=float)
+
+        n_time, n_state = xf.shape
+        xs = np.zeros_like(xf)
+        ps = np.zeros_like(pf)
+        xs[-1] = xf[-1]
+        ps[-1] = pf[-1]
+
+        for t in range(n_time - 2, -1, -1):
+            c = pf[t] @ a.T @ np.linalg.inv(pp[t + 1])
+            xs[t] = xf[t] + c @ (xs[t + 1] - xp[t + 1])
+            ps[t] = pf[t] + c @ (ps[t + 1] - pp[t + 1]) @ c.T
+
+        return xs, ps

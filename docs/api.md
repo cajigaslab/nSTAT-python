@@ -19,3 +19,4 @@
 - `nstat.decoding`
 - `nstat.datasets`
 - `nstat.install`
+- `nstat.compat.matlab`

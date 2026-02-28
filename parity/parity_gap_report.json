@@ -1,0 +1,885 @@
+{
+  "class_coverage": [
+    {
+      "coverage_ratio": 0.02040816326530612,
+      "mapped_method_count": 2,
+      "matlab_class": "SignalObj",
+      "matlab_method_count": 98,
+      "missing_method_count": 96
+    },
+    {
+      "coverage_ratio": 0.0,
+      "mapped_method_count": 0,
+      "matlab_class": "Covariate",
+      "matlab_method_count": 14,
+      "missing_method_count": 14
+    },
+    {
+      "coverage_ratio": 0.0,
+      "mapped_method_count": 0,
+      "matlab_class": "ConfidenceInterval",
+      "matlab_method_count": 5,
+      "missing_method_count": 5
+    },
+    {
+      "coverage_ratio": 0.0,
+      "mapped_method_count": 0,
+      "matlab_class": "Events",
+      "matlab_method_count": 5,
+      "missing_method_count": 5
+    },
+    {
+      "coverage_ratio": 0.0,
+      "mapped_method_count": 0,
+      "matlab_class": "History",
+      "matlab_method_count": 8,
+      "missing_method_count": 8
+    },
+    {
+      "coverage_ratio": 0.10344827586206896,
+      "mapped_method_count": 3,
+      "matlab_class": "nspikeTrain",
+      "matlab_method_count": 29,
+      "missing_method_count": 26
+    },
+    {
+      "coverage_ratio": 0.32075471698113206,
+      "mapped_method_count": 17,
+      "matlab_class": "nstColl",
+      "matlab_method_count": 53,
+      "missing_method_count": 36
+    },
+    {
+      "coverage_ratio": 0.2545454545454545,
+      "mapped_method_count": 14,
+      "matlab_class": "CovColl",
+      "matlab_method_count": 55,
+      "missing_method_count": 41
+    },
+    {
+      "coverage_ratio": 0.0,
+      "mapped_method_count": 0,
+      "matlab_class": "TrialConfig",
+      "matlab_method_count": 6,
+      "missing_method_count": 6
+    },
+    {
+      "coverage_ratio": 0.0,
+      "mapped_method_count": 0,
+      "matlab_class": "ConfigColl",
+      "matlab_method_count": 9,
+      "missing_method_count": 9
+    },
+    {
+      "coverage_ratio": 0.14705882352941177,
+      "mapped_method_count": 10,
+      "matlab_class": "Trial",
+      "matlab_method_count": 68,
+      "missing_method_count": 58
+    },
+    {
+      "coverage_ratio": 0.0,
+      "mapped_method_count": 0,
+      "matlab_class": "CIF",
+      "matlab_method_count": 21,
+      "missing_method_count": 21
+    },
+    {
+      "coverage_ratio": 0.3181818181818182,
+      "mapped_method_count": 7,
+      "matlab_class": "Analysis",
+      "matlab_method_count": 22,
+      "missing_method_count": 15
+    },
+    {
+      "coverage_ratio": 0.18181818181818182,
+      "mapped_method_count": 6,
+      "matlab_class": "FitResult",
+      "matlab_method_count": 33,
+      "missing_method_count": 27
+    },
+    {
+      "coverage_ratio": 0.13333333333333333,
+      "mapped_method_count": 4,
+      "matlab_class": "FitResSummary",
+      "matlab_method_count": 30,
+      "missing_method_count": 26
+    },
+    {
+      "coverage_ratio": 0.15555555555555556,
+      "mapped_method_count": 7,
+      "matlab_class": "DecodingAlgorithms",
+      "matlab_method_count": 45,
+      "missing_method_count": 38
+    }
+  ],
+  "example_coverage": [
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "AnalysisExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "AnalysisExamples2"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "ConfigCollExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "CovCollExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "CovariateExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "DecodingExample"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "DecodingExampleWithHist"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "DocumentationSetup2025b"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "EventsExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "ExplicitStimulusWhiskerData"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "FitResSummaryExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "FitResultExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "FitResultReference"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "HippocampalPlaceCellExample"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "HistoryExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "HybridFilterExample"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "NetworkTutorial"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "PPSimExample"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "PPThinning"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "PSTHEstimation"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "SignalObjExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "StimulusDecode2D"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "TrialConfigExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "TrialExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "ValidationDataSet"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "mEPSCAnalysis"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "nSTATPaperExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "nSpikeTrainExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "nstCollExamples"
+    },
+    {
+      "help_exists": true,
+      "notebook_exists": true,
+      "topic": "publish_all_helpfiles"
+    }
+  ],
+  "fail_on": "high",
+  "generated_at_utc": "2026-02-28T21:00:10.524824+00:00",
+  "issues": [
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "SignalObj",
+        "matlab_method_count": 98,
+        "missing_methods": [
+          "MTMspectrum",
+          "SignalObj",
+          "abs",
+          "alignTime",
+          "alignToMax",
+          "areDataLabelsEmpty",
+          "autocorrelation",
+          "cell2str",
+          "clearPlotProps",
+          "convertNamesToIndices",
+          "convertSigStructureToStructure",
+          "convertSimpleStructureToSigStructure",
+          "copySignal",
+          "crosscorrelation",
+          "ctranspose",
+          "dataToMatrix",
+          "dataToStructure",
+          "derivative",
+          "derivativeAt",
+          "filter",
+          "filtfilt",
+          "findGlobalPeak",
+          "findIndFromDataMask",
+          "findMaxima",
+          "findMinima",
+          "findNearestTimeIndex",
+          "findNearestTimeIndices",
+          "findPeaks",
+          "getAvailableColor",
+          "getIndexFromLabel",
+          "getIndicesFromLabels",
+          "getOrigDataSig",
+          "getOriginalData",
+          "getPlotProps",
+          "getSigInTimeWindow",
+          "getSubSignal",
+          "getSubSignalFromInd",
+          "getSubSignalFromNames",
+          "getSubSignalsWithinNStd",
+          "getValueAt",
+          "integral",
+          "isLabelPresent",
+          "isMaskSet",
+          "ldivide",
+          "log",
+          "makeCompatible",
+          "max",
+          "mean",
+          "median",
+          "merge",
+          "min",
+          "minus",
+          "mode",
+          "mtimes",
+          "normWindowedSignal",
+          "periodogram",
+          "plot",
+          "plotAllVariability",
+          "plotPropsSet",
+          "plotVariability",
+          "plus",
+          "power",
+          "rdivide",
+          "resample",
+          "resampleMe",
+          "resetMask",
+          "restoreToOriginal",
+          "setDataLabels",
+          "setDataMask",
+          "setMask",
+          "setMaskByInd",
+          "setMaskByLabels",
+          "setMaxTime",
+          "setMinTime",
+          "setName",
+          "setPlotProps",
+          "setSampleRate",
+          "setUnits",
+          "setXUnits",
+          "setXlabel",
+          "setYLabel",
+          "setYUnits",
+          "setupPlots",
+          "shift",
+          "shiftMe",
+          "signalFromStruct",
+          "spectrogram",
+          "sqrt",
+          "std",
+          "times",
+          "transpose",
+          "uminus",
+          "uplus",
+          "windowedSignal",
+          "xcorr",
+          "xcov"
+        ]
+      },
+      "message": "SignalObj has 96 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "Covariate",
+        "matlab_method_count": 14,
+        "missing_methods": [
+          "Covariate",
+          "computeMeanPlusCI",
+          "copySignal",
+          "dataToStructure",
+          "filtfilt",
+          "fromStructure",
+          "getSigRep",
+          "getSubSignal",
+          "isConfIntervalSet",
+          "minus",
+          "plot",
+          "plus",
+          "setConfInterval",
+          "toStructure"
+        ]
+      },
+      "message": "Covariate has 14 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "ConfidenceInterval",
+        "matlab_method_count": 5,
+        "missing_methods": [
+          "ConfidenceInterval",
+          "fromStructure",
+          "plot",
+          "setColor",
+          "setValue"
+        ]
+      },
+      "message": "ConfidenceInterval has 5 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "Events",
+        "matlab_method_count": 5,
+        "missing_methods": [
+          "Events",
+          "dsxy2figxy",
+          "fromStructure",
+          "plot",
+          "toStructure"
+        ]
+      },
+      "message": "Events has 5 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "History",
+        "matlab_method_count": 8,
+        "missing_methods": [
+          "History",
+          "computeHistory",
+          "computeNSTHistoryWindow",
+          "fromStructure",
+          "plot",
+          "setWindow",
+          "toFilter",
+          "toStructure"
+        ]
+      },
+      "message": "History has 8 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "nspikeTrain",
+        "matlab_method_count": 29,
+        "missing_methods": [
+          "clearSigRep",
+          "computeRate",
+          "computeStatistics",
+          "fromStructure",
+          "getFieldVal",
+          "getISIs",
+          "getLStatistic",
+          "getMaxBinSizeBinary",
+          "getMinISI",
+          "getSigRep",
+          "isSigRepBinary",
+          "nspikeTrain",
+          "nstCopy",
+          "partitionNST",
+          "plot",
+          "plotExponentialFit",
+          "plotISIHistogram",
+          "plotISISpectrumFunction",
+          "plotJointISIHistogram",
+          "plotProbPlot",
+          "resample",
+          "restoreToOriginal",
+          "setMER",
+          "setName",
+          "setSigRep",
+          "toStructure"
+        ]
+      },
+      "message": "nspikeTrain has 26 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "nstColl",
+        "matlab_method_count": 53,
+        "missing_methods": [
+          "BinarySigRep",
+          "addNeuronNamesToEnsCovColl",
+          "areNeighborsSet",
+          "enforceSampleRate",
+          "ensureConsistancy",
+          "estimateVarianceAcrossTrials",
+          "findMaxSampleRate",
+          "fromStructure",
+          "generateUnitImpulseBasis",
+          "getEnsembleNeuronCovariates",
+          "getFieldVal",
+          "getISIs",
+          "getIndFromMask",
+          "getIndFromMaskMinusOne",
+          "getMaxBinSizeBinary",
+          "getMinISIs",
+          "getNeighbors",
+          "isNeuronMaskSet",
+          "isSigRepBinary",
+          "nstColl",
+          "plot",
+          "plotExponentialFit",
+          "plotISIHistogram",
+          "psth",
+          "psthBars",
+          "psthGLM",
+          "resample",
+          "resetMask",
+          "restoreToOriginal",
+          "setMask",
+          "setNeighbors",
+          "setNeuronMask",
+          "setNeuronMaskFromInd",
+          "ssglm",
+          "toStructure",
+          "updateTimes"
+        ]
+      },
+      "message": "nstColl has 36 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "CovColl",
+        "matlab_method_count": 55,
+        "missing_methods": [
+          "CovColl",
+          "addCovCellToColl",
+          "addCovCollection",
+          "addSingleCovToColl",
+          "containsChars",
+          "covIndFromSelector",
+          "dataToStructure",
+          "enforceSampleRate",
+          "findMaxTime",
+          "findMinTime",
+          "flattenCovMask",
+          "fromStructure",
+          "generateRemainingIndex",
+          "generateSelectorCell",
+          "getCovDataMask",
+          "getCovLabelsFromMask",
+          "getCovMaskFromSelector",
+          "getSelectorFromMasks",
+          "isCovMaskSet",
+          "isaSelectorCell",
+          "maskAwayAllExcept",
+          "maskAwayCov",
+          "maskAwayOnlyCov",
+          "parseDataSelectorArray",
+          "plot",
+          "removeCovariate",
+          "removeFromColl",
+          "removeFromCollByIndices",
+          "resample",
+          "resetCovShift",
+          "resetMask",
+          "restoreToOriginal",
+          "restrictToTimeWindow",
+          "setCovShift",
+          "setMask",
+          "setMasksFromSelector",
+          "setMaxTime",
+          "setMinTime",
+          "setSampleRate",
+          "toStructure",
+          "updateTimes"
+        ]
+      },
+      "message": "CovColl has 41 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "TrialConfig",
+        "matlab_method_count": 6,
+        "missing_methods": [
+          "TrialConfig",
+          "fromStructure",
+          "getName",
+          "setConfig",
+          "setName",
+          "toStructure"
+        ]
+      },
+      "message": "TrialConfig has 6 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "ConfigColl",
+        "matlab_method_count": 9,
+        "missing_methods": [
+          "ConfigColl",
+          "addConfig",
+          "fromStructure",
+          "getConfig",
+          "getConfigNames",
+          "getSubsetConfigs",
+          "setConfig",
+          "setConfigNames",
+          "toStructure"
+        ]
+      },
+      "message": "ConfigColl has 9 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "Trial",
+        "matlab_method_count": 68,
+        "missing_methods": [
+          "Trial",
+          "addCov",
+          "flattenCovMask",
+          "flattenMask",
+          "fromStructure",
+          "getAllLabels",
+          "getCovLabelsFromMask",
+          "getCovSelectorFromMask",
+          "getEnsCovLabels",
+          "getEnsCovLabelsFromMask",
+          "getEnsCovMatrix",
+          "getEnsembleNeuronCovariates",
+          "getEvents",
+          "getHistForNeurons",
+          "getHistLabels",
+          "getHistMatrices",
+          "getLabelsFromMask",
+          "getNeuronIndFromMask",
+          "getNeuronIndFromName",
+          "getNeuronNames",
+          "getNeuronNeighbors",
+          "getNumHist",
+          "getNumUniqueNeurons",
+          "getTrialPartition",
+          "getUniqueNeuronNames",
+          "isCovMaskSet",
+          "isEnsCovHistSet",
+          "isHistSet",
+          "isMaskSet",
+          "isNeuronMaskSet",
+          "makeConsistentSampleRate",
+          "makeConsistentTime",
+          "plot",
+          "plotCovariates",
+          "plotRaster",
+          "removeCov",
+          "resample",
+          "resampleEnsColl",
+          "resetCovMask",
+          "resetEnsCovMask",
+          "resetHistory",
+          "resetNeuronMask",
+          "restoreToOriginal",
+          "setCovMask",
+          "setEnsCovHist",
+          "setEnsCovMask",
+          "setHistory",
+          "setMaxTime",
+          "setMinTime",
+          "setNeighbors",
+          "setNeuronMask",
+          "setSampleRate",
+          "setTrialEvents",
+          "setTrialPartition",
+          "setTrialTimesFor",
+          "shiftCovariates",
+          "toStructure",
+          "updateTimePartitions"
+        ]
+      },
+      "message": "Trial has 58 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "CIF",
+        "matlab_method_count": 21,
+        "missing_methods": [
+          "CIF",
+          "CIFCopy",
+          "evalFunctionWithVectorArgs",
+          "evalGradient",
+          "evalGradientLDGamma",
+          "evalGradientLog",
+          "evalGradientLogLDGamma",
+          "evalJacobian",
+          "evalJacobianLDGamma",
+          "evalJacobianLog",
+          "evalJacobianLogLDGamma",
+          "evalLDGamma",
+          "evalLambdaDelta",
+          "evalLogLDGamma",
+          "isSymBeta",
+          "resolveSimulinkModelName",
+          "setHistory",
+          "setSpikeTrain",
+          "simulateCIF",
+          "simulateCIFByThinning",
+          "simulateCIFByThinningFromLambda"
+        ]
+      },
+      "message": "CIF has 21 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "Analysis",
+        "matlab_method_count": 22,
+        "missing_methods": [
+          "KSPlot",
+          "bnlrCG",
+          "compHistEnsCoeff",
+          "compHistEnsCoeffForAll",
+          "computeGrangerCausalityMatrix",
+          "computeHistLag",
+          "computeHistLagForAll",
+          "computeNeighbors",
+          "flatMaskCellToMat",
+          "ksdiscrete",
+          "plotCoeffs",
+          "plotFitResidual",
+          "plotInvGausTrans",
+          "plotSeqCorr",
+          "spikeTrigAvg"
+        ]
+      },
+      "message": "Analysis has 15 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "FitResult",
+        "matlab_method_count": 33,
+        "missing_methods": [
+          "CellArrayToStructure",
+          "FitResult",
+          "KSPlot",
+          "addParamsToFit",
+          "computePlotParams",
+          "fromStructure",
+          "getHistCoeffs",
+          "getHistIndex",
+          "getPlotParams",
+          "getSubsetFitResult",
+          "isValDataPresent",
+          "mapCovLabelsToUniqueLabels",
+          "mergeResults",
+          "plotCoeffs",
+          "plotCoeffsWithoutHistory",
+          "plotHistCoeffs",
+          "plotInvGausTrans",
+          "plotResidual",
+          "plotResults",
+          "plotSeqCorr",
+          "plotValidation",
+          "setFitResidual",
+          "setInvGausStats",
+          "setKSStats",
+          "setNeuronName",
+          "toStructure",
+          "xticklabel_rotate"
+        ]
+      },
+      "message": "FitResult has 27 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "FitResSummary",
+        "matlab_method_count": 30,
+        "missing_methods": [
+          "FitResSummary",
+          "binCoeffs",
+          "boxPlot",
+          "fromStructure",
+          "getCoeffIndex",
+          "getCoeffs",
+          "getHistCoeffs",
+          "getHistIndex",
+          "getSigCoeffs",
+          "getUniqueLabels",
+          "mapCovLabelsToUniqueLabels",
+          "plot2dCoeffSummary",
+          "plot3dCoeffSummary",
+          "plotAIC",
+          "plotAllCoeffs",
+          "plotBIC",
+          "plotCoeffsWithoutHistory",
+          "plotHistCoeffs",
+          "plotIC",
+          "plotKSSummary",
+          "plotResidualSummary",
+          "plotSummary",
+          "plotlogLL",
+          "setCoeffRange",
+          "toStructure",
+          "xticklabel_rotate"
+        ]
+      },
+      "message": "FitResSummary has 26 unmapped MATLAB methods",
+      "severity": "medium"
+    },
+    {
+      "check": "missing_method_mappings",
+      "details": {
+        "matlab_class": "DecodingAlgorithms",
+        "matlab_method_count": 45,
+        "missing_methods": [
+          "KF_ComputeParamStandardErrors",
+          "KF_EM",
+          "KF_EMCreateConstraints",
+          "KF_EStep",
+          "KF_MStep",
+          "PPDecodeFilter",
+          "PPDecodeFilterLinear",
+          "PPDecode_predict",
+          "PPDecode_update",
+          "PPDecode_updateLinear",
+          "PPHybridFilter",
+          "PPHybridFilterLinear",
+          "PPSS_EM",
+          "PPSS_EMFB",
+          "PPSS_EStep",
+          "PPSS_MStep",
+          "PP_ComputeParamStandardErrors",
+          "PP_EM",
+          "PP_EMCreateConstraints",
+          "PP_EStep",
+          "PP_MStep",
+          "PP_fixedIntervalSmoother",
+          "estimateInfoMat",
+          "kalman_smoother",
+          "kalman_smootherFromFiltered",
+          "mPPCODecodeLinear",
+          "mPPCODecode_predict",
+          "mPPCODecode_update",
+          "mPPCO_ComputeParamStandardErrors",
+          "mPPCO_EM",
+          "mPPCO_EMCreateConstraints",
+          "mPPCO_EStep",
+          "mPPCO_MStep",
+          "mPPCO_fixedIntervalSmoother",
+          "prepareEMResults",
+          "ukf",
+          "ukf_sigmas",
+          "ukf_ut"
+        ]
+      },
+      "message": "DecodingAlgorithms has 38 unmapped MATLAB methods",
+      "severity": "medium"
+    }
+  ],
+  "summary": {
+    "high": 0,
+    "low": 0,
+    "medium": 16,
+    "total": 16
+  }
+}

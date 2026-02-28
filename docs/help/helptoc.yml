@@ -94,3 +94,13 @@ entries:
     target: help/examples/nSpikeTrainExamples.md
   - title: nstCollExamples
     target: help/examples/nstCollExamples.md
+  - title: AnalysisExamples2
+    target: help/examples/AnalysisExamples2.md
+  - title: DocumentationSetup2025b
+    target: help/examples/DocumentationSetup2025b.md
+  - title: FitResultReference
+    target: help/examples/FitResultReference.md
+  - title: HybridFilterExample
+    target: help/examples/HybridFilterExample.md
+  - title: publish_all_helpfiles
+    target: help/examples/publish_all_helpfiles.md

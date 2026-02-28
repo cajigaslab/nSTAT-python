@@ -83,9 +83,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install compliance dependencies
+      - name: Install package and compliance dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install -e .
           python -m pip install pyyaml
 
       - name: Checkout upstream MATLAB nSTAT repo snapshot
@@ -98,3 +99,15 @@ jobs:
             --project-root "$GITHUB_WORKSPACE" \
             --upstream-root /tmp/upstream-nstat \
             --allowlist tools/compliance/shared_data_allowlist.yml
+
+      - name: Build parity snapshot and enforce high-severity gate
+        run: |
+          python tools/parity/build_parity_snapshot.py \
+            --matlab-root /tmp/upstream-nstat \
+            --fail-on high
+
+      - name: Enforce Tier-1 parity progress gate
+        run: |
+          python tools/parity/check_tier1_progress.py \
+            --report parity/parity_gap_report.json \
+            --policy parity/tier1_gate_policy.yml

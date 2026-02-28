@@ -27,6 +27,11 @@ The topics below map clean-room Python workflows to executable notebooks.
 - [nSTATPaperExamples](examples/nSTATPaperExamples.md)
 - [nSpikeTrainExamples](examples/nSpikeTrainExamples.md)
 - [nstCollExamples](examples/nstCollExamples.md)
+- [AnalysisExamples2](examples/AnalysisExamples2.md)
+- [DocumentationSetup2025b](examples/DocumentationSetup2025b.md)
+- [FitResultReference](examples/FitResultReference.md)
+- [HybridFilterExample](examples/HybridFilterExample.md)
+- [publish_all_helpfiles](examples/publish_all_helpfiles.md)
 
 All notebooks are available in the repository's `notebooks/` directory and are
 validated in CI.

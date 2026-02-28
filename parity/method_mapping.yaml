@@ -1,0 +1,130 @@
+version: 1
+classes:
+  - matlab_class: SignalObj
+    matlab_file: SignalObj.m
+    python_class: nstat.signal.Signal
+    compat_class: nstat.compat.matlab.SignalObj
+    alias_methods:
+      copy: copy
+      getData: data
+      getName: name
+      getNumSamples: n_samples
+      getNumSignals: n_channels
+      getSampleRate: sample_rate_hz
+      getTime: time
+      getDuration: duration_s
+  - matlab_class: Covariate
+    matlab_file: Covariate.m
+    python_class: nstat.signal.Covariate
+    compat_class: nstat.compat.matlab.Covariate
+    alias_methods:
+      getData: data
+      getNumSignals: n_channels
+      getSampleRate: sample_rate_hz
+      getTime: time
+      getLabels: labels
+  - matlab_class: ConfidenceInterval
+    matlab_file: ConfidenceInterval.m
+    python_class: nstat.confidence.ConfidenceInterval
+    compat_class: nstat.compat.matlab.ConfidenceInterval
+    alias_methods:
+      getWidth: width
+      contains: contains
+  - matlab_class: Events
+    matlab_file: Events.m
+    python_class: nstat.events.Events
+    compat_class: nstat.compat.matlab.Events
+    alias_methods:
+      subset: subset
+      getTimes: times
+  - matlab_class: History
+    matlab_file: History.m
+    python_class: nstat.history.HistoryBasis
+    compat_class: nstat.compat.matlab.History
+    alias_methods:
+      getNumBins: n_bins
+      getDesignMatrix: design_matrix
+  - matlab_class: nspikeTrain
+    matlab_file: nspikeTrain.m
+    python_class: nstat.spikes.SpikeTrain
+    compat_class: nstat.compat.matlab.nspikeTrain
+    alias_methods:
+      getDuration: duration_s
+      getSpikeTimes: spike_times
+      getFiringRate: firing_rate_hz
+      binCounts: bin_counts
+      binarize: binarize
+  - matlab_class: nstColl
+    matlab_file: nstColl.m
+    python_class: nstat.spikes.SpikeTrainCollection
+    compat_class: nstat.compat.matlab.nstColl
+    alias_methods:
+      getNumUnits: n_units
+      getBinnedMatrix: to_binned_matrix
+  - matlab_class: CovColl
+    matlab_file: CovColl.m
+    python_class: nstat.trial.CovariateCollection
+    compat_class: nstat.compat.matlab.CovColl
+    alias_methods:
+      getTime: time
+      getDesignMatrix: design_matrix
+  - matlab_class: TrialConfig
+    matlab_file: TrialConfig.m
+    python_class: nstat.trial.TrialConfig
+    compat_class: nstat.compat.matlab.TrialConfig
+    alias_methods:
+      getFitType: fit_type
+      getSampleRate: sample_rate_hz
+      getCovariateLabels: covariate_labels
+  - matlab_class: ConfigColl
+    matlab_file: ConfigColl.m
+    python_class: nstat.trial.ConfigCollection
+    compat_class: nstat.compat.matlab.ConfigColl
+    alias_methods:
+      getConfigs: configs
+  - matlab_class: Trial
+    matlab_file: Trial.m
+    python_class: nstat.trial.Trial
+    compat_class: nstat.compat.matlab.Trial
+    alias_methods:
+      getAlignedBinnedObservation: aligned_binned_observation
+  - matlab_class: CIF
+    matlab_file: CIF.m
+    python_class: nstat.cif.CIFModel
+    compat_class: nstat.compat.matlab.CIF
+    alias_methods:
+      evalLambda: evaluate
+      computeLinearPredictor: linear_predictor
+      logLikelihood: log_likelihood
+      simulateByThinning: simulate_by_thinning
+  - matlab_class: Analysis
+    matlab_file: Analysis.m
+    python_class: nstat.analysis.Analysis
+    compat_class: nstat.compat.matlab.Analysis
+    alias_methods:
+      fitGLM: fit_glm
+      fitTrial: fit_trial
+  - matlab_class: FitResult
+    matlab_file: FitResult.m
+    python_class: nstat.fit.FitResult
+    compat_class: nstat.compat.matlab.FitResult
+    alias_methods:
+      evalLambda: predict
+      getAIC: aic
+      getBIC: bic
+      asCIFModel: as_cif_model
+  - matlab_class: FitResSummary
+    matlab_file: FitResSummary.m
+    python_class: nstat.fit.FitSummary
+    compat_class: nstat.compat.matlab.FitResSummary
+    alias_methods:
+      bestByAIC: best_by_aic
+      bestByBIC: best_by_bic
+  - matlab_class: DecodingAlgorithms
+    matlab_file: DecodingAlgorithms.m
+    python_class: nstat.decoding.DecodingAlgorithms
+    compat_class: nstat.compat.matlab.DecodingAlgorithms
+    alias_methods:
+      computeSpikeRateCIs: compute_spike_rate_cis
+      decodeWeightedCenter: decode_weighted_center
+      decodeStatePosterior: decode_state_posterior

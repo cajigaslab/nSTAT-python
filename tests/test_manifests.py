@@ -36,8 +36,10 @@ def test_class_method_inventory_has_all_required_classes() -> None:
 def test_example_inventory_has_expected_topics() -> None:
     payload = yaml.safe_load(Path("baseline/example_workflow_inventory.yml").read_text(encoding="utf-8"))
     workflows = payload["workflows"]
-    assert len(workflows) == 25
+    assert len(workflows) == 30
     assert any(row["topic"] == "nSTATPaperExamples" for row in workflows)
+    assert any(row["topic"] == "AnalysisExamples2" for row in workflows)
+    assert any(row["topic"] == "publish_all_helpfiles" for row in workflows)
 
 
 

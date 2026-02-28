@@ -1,0 +1,122 @@
+version: 1
+examples:
+  - matlab_topic: AnalysisExamples
+    python_notebook: notebooks/AnalysisExamples.ipynb
+    python_help_page: docs/help/examples/AnalysisExamples.md
+    status: implemented
+  - matlab_topic: AnalysisExamples2
+    python_notebook: notebooks/AnalysisExamples2.ipynb
+    python_help_page: docs/help/examples/AnalysisExamples2.md
+    status: implemented
+  - matlab_topic: ConfigCollExamples
+    python_notebook: notebooks/ConfigCollExamples.ipynb
+    python_help_page: docs/help/examples/ConfigCollExamples.md
+    status: implemented
+  - matlab_topic: CovCollExamples
+    python_notebook: notebooks/CovCollExamples.ipynb
+    python_help_page: docs/help/examples/CovCollExamples.md
+    status: implemented
+  - matlab_topic: CovariateExamples
+    python_notebook: notebooks/CovariateExamples.ipynb
+    python_help_page: docs/help/examples/CovariateExamples.md
+    status: implemented
+  - matlab_topic: DecodingExample
+    python_notebook: notebooks/DecodingExample.ipynb
+    python_help_page: docs/help/examples/DecodingExample.md
+    status: implemented
+  - matlab_topic: DecodingExampleWithHist
+    python_notebook: notebooks/DecodingExampleWithHist.ipynb
+    python_help_page: docs/help/examples/DecodingExampleWithHist.md
+    status: implemented
+  - matlab_topic: DocumentationSetup2025b
+    python_notebook: notebooks/DocumentationSetup2025b.ipynb
+    python_help_page: docs/help/examples/DocumentationSetup2025b.md
+    status: implemented
+  - matlab_topic: EventsExamples
+    python_notebook: notebooks/EventsExamples.ipynb
+    python_help_page: docs/help/examples/EventsExamples.md
+    status: implemented
+  - matlab_topic: ExplicitStimulusWhiskerData
+    python_notebook: notebooks/ExplicitStimulusWhiskerData.ipynb
+    python_help_page: docs/help/examples/ExplicitStimulusWhiskerData.md
+    status: implemented
+  - matlab_topic: FitResSummaryExamples
+    python_notebook: notebooks/FitResSummaryExamples.ipynb
+    python_help_page: docs/help/examples/FitResSummaryExamples.md
+    status: implemented
+  - matlab_topic: FitResultExamples
+    python_notebook: notebooks/FitResultExamples.ipynb
+    python_help_page: docs/help/examples/FitResultExamples.md
+    status: implemented
+  - matlab_topic: FitResultReference
+    python_notebook: notebooks/FitResultReference.ipynb
+    python_help_page: docs/help/examples/FitResultReference.md
+    status: implemented
+  - matlab_topic: HippocampalPlaceCellExample
+    python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
+    python_help_page: docs/help/examples/HippocampalPlaceCellExample.md
+    status: implemented
+  - matlab_topic: HistoryExamples
+    python_notebook: notebooks/HistoryExamples.ipynb
+    python_help_page: docs/help/examples/HistoryExamples.md
+    status: implemented
+  - matlab_topic: HybridFilterExample
+    python_notebook: notebooks/HybridFilterExample.ipynb
+    python_help_page: docs/help/examples/HybridFilterExample.md
+    status: implemented
+  - matlab_topic: NetworkTutorial
+    python_notebook: notebooks/NetworkTutorial.ipynb
+    python_help_page: docs/help/examples/NetworkTutorial.md
+    status: implemented
+  - matlab_topic: PPSimExample
+    python_notebook: notebooks/PPSimExample.ipynb
+    python_help_page: docs/help/examples/PPSimExample.md
+    status: implemented
+  - matlab_topic: PPThinning
+    python_notebook: notebooks/PPThinning.ipynb
+    python_help_page: docs/help/examples/PPThinning.md
+    status: implemented
+  - matlab_topic: PSTHEstimation
+    python_notebook: notebooks/PSTHEstimation.ipynb
+    python_help_page: docs/help/examples/PSTHEstimation.md
+    status: implemented
+  - matlab_topic: SignalObjExamples
+    python_notebook: notebooks/SignalObjExamples.ipynb
+    python_help_page: docs/help/examples/SignalObjExamples.md
+    status: implemented
+  - matlab_topic: StimulusDecode2D
+    python_notebook: notebooks/StimulusDecode2D.ipynb
+    python_help_page: docs/help/examples/StimulusDecode2D.md
+    status: implemented
+  - matlab_topic: TrialConfigExamples
+    python_notebook: notebooks/TrialConfigExamples.ipynb
+    python_help_page: docs/help/examples/TrialConfigExamples.md
+    status: implemented
+  - matlab_topic: TrialExamples
+    python_notebook: notebooks/TrialExamples.ipynb
+    python_help_page: docs/help/examples/TrialExamples.md
+    status: implemented
+  - matlab_topic: ValidationDataSet
+    python_notebook: notebooks/ValidationDataSet.ipynb
+    python_help_page: docs/help/examples/ValidationDataSet.md
+    status: implemented
+  - matlab_topic: mEPSCAnalysis
+    python_notebook: notebooks/mEPSCAnalysis.ipynb
+    python_help_page: docs/help/examples/mEPSCAnalysis.md
+    status: implemented
+  - matlab_topic: nSTATPaperExamples
+    python_notebook: notebooks/nSTATPaperExamples.ipynb
+    python_help_page: docs/help/examples/nSTATPaperExamples.md
+    status: implemented
+  - matlab_topic: nSpikeTrainExamples
+    python_notebook: notebooks/nSpikeTrainExamples.ipynb
+    python_help_page: docs/help/examples/nSpikeTrainExamples.md
+    status: implemented
+  - matlab_topic: nstCollExamples
+    python_notebook: notebooks/nstCollExamples.ipynb
+    python_help_page: docs/help/examples/nstCollExamples.md
+    status: implemented
+  - matlab_topic: publish_all_helpfiles
+    python_notebook: notebooks/publish_all_helpfiles.ipynb
+    python_help_page: docs/help/examples/publish_all_helpfiles.md
+    status: implemented

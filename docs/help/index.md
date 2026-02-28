@@ -57,4 +57,9 @@ examples/mEPSCAnalysis
 examples/nSTATPaperExamples
 examples/nSpikeTrainExamples
 examples/nstCollExamples
+examples/AnalysisExamples2
+examples/DocumentationSetup2025b
+examples/FitResultReference
+examples/HybridFilterExample
+examples/publish_all_helpfiles
 ```

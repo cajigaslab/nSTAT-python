@@ -1,104 +1,123 @@
 version: 1
-source: "Derived clean-room workflow inventory authored for nSTAT-python"
-
+source: Derived clean-room workflow inventory authored for nSTAT-python
 workflows:
-  - topic: AnalysisExamples
-    notebook: notebooks/AnalysisExamples.ipynb
-    help_page: docs/help/examples/AnalysisExamples.md
-    run_group: smoke
-  - topic: ConfigCollExamples
-    notebook: notebooks/ConfigCollExamples.ipynb
-    help_page: docs/help/examples/ConfigCollExamples.md
-    run_group: full
-  - topic: CovCollExamples
-    notebook: notebooks/CovCollExamples.ipynb
-    help_page: docs/help/examples/CovCollExamples.md
-    run_group: full
-  - topic: CovariateExamples
-    notebook: notebooks/CovariateExamples.ipynb
-    help_page: docs/help/examples/CovariateExamples.md
-    run_group: smoke
-  - topic: DecodingExample
-    notebook: notebooks/DecodingExample.ipynb
-    help_page: docs/help/examples/DecodingExample.md
-    run_group: smoke
-  - topic: DecodingExampleWithHist
-    notebook: notebooks/DecodingExampleWithHist.ipynb
-    help_page: docs/help/examples/DecodingExampleWithHist.md
-    run_group: full
-  - topic: EventsExamples
-    notebook: notebooks/EventsExamples.ipynb
-    help_page: docs/help/examples/EventsExamples.md
-    run_group: full
-  - topic: ExplicitStimulusWhiskerData
-    notebook: notebooks/ExplicitStimulusWhiskerData.ipynb
-    help_page: docs/help/examples/ExplicitStimulusWhiskerData.md
-    run_group: full
-  - topic: FitResSummaryExamples
-    notebook: notebooks/FitResSummaryExamples.ipynb
-    help_page: docs/help/examples/FitResSummaryExamples.md
-    run_group: full
-  - topic: FitResultExamples
-    notebook: notebooks/FitResultExamples.ipynb
-    help_page: docs/help/examples/FitResultExamples.md
-    run_group: full
-  - topic: HippocampalPlaceCellExample
-    notebook: notebooks/HippocampalPlaceCellExample.ipynb
-    help_page: docs/help/examples/HippocampalPlaceCellExample.md
-    run_group: full
-  - topic: HistoryExamples
-    notebook: notebooks/HistoryExamples.ipynb
-    help_page: docs/help/examples/HistoryExamples.md
-    run_group: full
-  - topic: NetworkTutorial
-    notebook: notebooks/NetworkTutorial.ipynb
-    help_page: docs/help/examples/NetworkTutorial.md
-    run_group: full
-  - topic: PPSimExample
-    notebook: notebooks/PPSimExample.ipynb
-    help_page: docs/help/examples/PPSimExample.md
-    run_group: full
-  - topic: PPThinning
-    notebook: notebooks/PPThinning.ipynb
-    help_page: docs/help/examples/PPThinning.md
-    run_group: full
-  - topic: PSTHEstimation
-    notebook: notebooks/PSTHEstimation.ipynb
-    help_page: docs/help/examples/PSTHEstimation.md
-    run_group: full
-  - topic: SignalObjExamples
-    notebook: notebooks/SignalObjExamples.ipynb
-    help_page: docs/help/examples/SignalObjExamples.md
-    run_group: smoke
-  - topic: StimulusDecode2D
-    notebook: notebooks/StimulusDecode2D.ipynb
-    help_page: docs/help/examples/StimulusDecode2D.md
-    run_group: full
-  - topic: TrialConfigExamples
-    notebook: notebooks/TrialConfigExamples.ipynb
-    help_page: docs/help/examples/TrialConfigExamples.md
-    run_group: full
-  - topic: TrialExamples
-    notebook: notebooks/TrialExamples.ipynb
-    help_page: docs/help/examples/TrialExamples.md
-    run_group: full
-  - topic: ValidationDataSet
-    notebook: notebooks/ValidationDataSet.ipynb
-    help_page: docs/help/examples/ValidationDataSet.md
-    run_group: full
-  - topic: mEPSCAnalysis
-    notebook: notebooks/mEPSCAnalysis.ipynb
-    help_page: docs/help/examples/mEPSCAnalysis.md
-    run_group: full
-  - topic: nSTATPaperExamples
-    notebook: notebooks/nSTATPaperExamples.ipynb
-    help_page: docs/help/examples/nSTATPaperExamples.md
-    run_group: smoke
-  - topic: nSpikeTrainExamples
-    notebook: notebooks/nSpikeTrainExamples.ipynb
-    help_page: docs/help/examples/nSpikeTrainExamples.md
-    run_group: smoke
-  - topic: nstCollExamples
-    notebook: notebooks/nstCollExamples.ipynb
-    help_page: docs/help/examples/nstCollExamples.md
-    run_group: full
+- topic: AnalysisExamples
+  notebook: notebooks/AnalysisExamples.ipynb
+  help_page: docs/help/examples/AnalysisExamples.md
+  run_group: smoke
+- topic: ConfigCollExamples
+  notebook: notebooks/ConfigCollExamples.ipynb
+  help_page: docs/help/examples/ConfigCollExamples.md
+  run_group: full
+- topic: CovCollExamples
+  notebook: notebooks/CovCollExamples.ipynb
+  help_page: docs/help/examples/CovCollExamples.md
+  run_group: full
+- topic: CovariateExamples
+  notebook: notebooks/CovariateExamples.ipynb
+  help_page: docs/help/examples/CovariateExamples.md
+  run_group: smoke
+- topic: DecodingExample
+  notebook: notebooks/DecodingExample.ipynb
+  help_page: docs/help/examples/DecodingExample.md
+  run_group: smoke
+- topic: DecodingExampleWithHist
+  notebook: notebooks/DecodingExampleWithHist.ipynb
+  help_page: docs/help/examples/DecodingExampleWithHist.md
+  run_group: full
+- topic: EventsExamples
+  notebook: notebooks/EventsExamples.ipynb
+  help_page: docs/help/examples/EventsExamples.md
+  run_group: full
+- topic: ExplicitStimulusWhiskerData
+  notebook: notebooks/ExplicitStimulusWhiskerData.ipynb
+  help_page: docs/help/examples/ExplicitStimulusWhiskerData.md
+  run_group: full
+- topic: FitResSummaryExamples
+  notebook: notebooks/FitResSummaryExamples.ipynb
+  help_page: docs/help/examples/FitResSummaryExamples.md
+  run_group: full
+- topic: FitResultExamples
+  notebook: notebooks/FitResultExamples.ipynb
+  help_page: docs/help/examples/FitResultExamples.md
+  run_group: full
+- topic: HippocampalPlaceCellExample
+  notebook: notebooks/HippocampalPlaceCellExample.ipynb
+  help_page: docs/help/examples/HippocampalPlaceCellExample.md
+  run_group: full
+- topic: HistoryExamples
+  notebook: notebooks/HistoryExamples.ipynb
+  help_page: docs/help/examples/HistoryExamples.md
+  run_group: full
+- topic: NetworkTutorial
+  notebook: notebooks/NetworkTutorial.ipynb
+  help_page: docs/help/examples/NetworkTutorial.md
+  run_group: full
+- topic: PPSimExample
+  notebook: notebooks/PPSimExample.ipynb
+  help_page: docs/help/examples/PPSimExample.md
+  run_group: full
+- topic: PPThinning
+  notebook: notebooks/PPThinning.ipynb
+  help_page: docs/help/examples/PPThinning.md
+  run_group: full
+- topic: PSTHEstimation
+  notebook: notebooks/PSTHEstimation.ipynb
+  help_page: docs/help/examples/PSTHEstimation.md
+  run_group: full
+- topic: SignalObjExamples
+  notebook: notebooks/SignalObjExamples.ipynb
+  help_page: docs/help/examples/SignalObjExamples.md
+  run_group: smoke
+- topic: StimulusDecode2D
+  notebook: notebooks/StimulusDecode2D.ipynb
+  help_page: docs/help/examples/StimulusDecode2D.md
+  run_group: full
+- topic: TrialConfigExamples
+  notebook: notebooks/TrialConfigExamples.ipynb
+  help_page: docs/help/examples/TrialConfigExamples.md
+  run_group: full
+- topic: TrialExamples
+  notebook: notebooks/TrialExamples.ipynb
+  help_page: docs/help/examples/TrialExamples.md
+  run_group: full
+- topic: ValidationDataSet
+  notebook: notebooks/ValidationDataSet.ipynb
+  help_page: docs/help/examples/ValidationDataSet.md
+  run_group: full
+- topic: mEPSCAnalysis
+  notebook: notebooks/mEPSCAnalysis.ipynb
+  help_page: docs/help/examples/mEPSCAnalysis.md
+  run_group: full
+- topic: nSTATPaperExamples
+  notebook: notebooks/nSTATPaperExamples.ipynb
+  help_page: docs/help/examples/nSTATPaperExamples.md
+  run_group: smoke
+- topic: nSpikeTrainExamples
+  notebook: notebooks/nSpikeTrainExamples.ipynb
+  help_page: docs/help/examples/nSpikeTrainExamples.md
+  run_group: smoke
+- topic: nstCollExamples
+  notebook: notebooks/nstCollExamples.ipynb
+  help_page: docs/help/examples/nstCollExamples.md
+  run_group: full
+- topic: AnalysisExamples2
+  notebook: notebooks/AnalysisExamples2.ipynb
+  help_page: docs/help/examples/AnalysisExamples2.md
+  run_group: full
+- topic: DocumentationSetup2025b
+  notebook: notebooks/DocumentationSetup2025b.ipynb
+  help_page: docs/help/examples/DocumentationSetup2025b.md
+  run_group: full
+- topic: FitResultReference
+  notebook: notebooks/FitResultReference.ipynb
+  help_page: docs/help/examples/FitResultReference.md
+  run_group: full
+- topic: HybridFilterExample
+  notebook: notebooks/HybridFilterExample.ipynb
+  help_page: docs/help/examples/HybridFilterExample.md
+  run_group: full
+- topic: publish_all_helpfiles
+  notebook: notebooks/publish_all_helpfiles.ipynb
+  help_page: docs/help/examples/publish_all_helpfiles.md
+  run_group: full

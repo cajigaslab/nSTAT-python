@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import math
-import os
 import subprocess
 import sys
 import time
@@ -29,7 +28,6 @@ if str(REPO_ROOT / "src") not in sys.path:
 from nstat.analysis import Analysis  # noqa: E402
 from nstat.cif import CIFModel  # noqa: E402
 from nstat.decoding import DecodingAlgorithms  # noqa: E402
-from nstat.history import HistoryBasis  # noqa: E402
 from nstat.signal import Covariate  # noqa: E402
 from nstat.spikes import SpikeTrain, SpikeTrainCollection  # noqa: E402
 from nstat.trial import CovariateCollection, Trial, TrialConfig  # noqa: E402
@@ -244,7 +242,6 @@ def _make_decoding_history_figure(tmp_dir: Path, tolerances: dict[str, Any]) -> 
     n_units = 14
     n_states = 15
     n_time = 260
-    dt = 0.02
 
     transition = np.zeros((n_states, n_states), dtype=float)
     for i in range(n_states):

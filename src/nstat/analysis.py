@@ -134,3 +134,100 @@ class Analysis:
             fit_type=config.fit_type,
             dt=dt,
         )
+
+    @staticmethod
+    def glm_fit(
+        X: np.ndarray,
+        y: np.ndarray,
+        fit_type: str = "poisson",
+        dt: float = 1.0,
+        l2_penalty: float = 0.0,
+    ) -> FitResult:
+        """MATLAB-style alias for :meth:`fit_glm`."""
+
+        return Analysis.fit_glm(X=X, y=y, fit_type=fit_type, dt=dt, l2_penalty=l2_penalty)
+
+    @staticmethod
+    def run_analysis_for_neuron(trial: Trial, config: TrialConfig, unit_index: int = 0) -> FitResult:
+        """High-level wrapper matching MATLAB naming for per-neuron analysis."""
+
+        return Analysis.fit_trial(trial=trial, config=config, unit_index=unit_index)
+
+    @staticmethod
+    def run_analysis_for_all_neurons(trial: Trial, config: TrialConfig) -> list[FitResult]:
+        """Fit one model per unit in a trial using the same configuration."""
+
+        return [
+            Analysis.fit_trial(trial=trial, config=config, unit_index=i)
+            for i in range(trial.spikes.n_units)
+        ]
+
+    @staticmethod
+    def compute_fit_residual(
+        y: np.ndarray, X: np.ndarray, fit_result: FitResult, dt: float = 1.0
+    ) -> np.ndarray:
+        """Return Pearson-like residuals for fitted GLM observations."""
+
+        y = np.asarray(y, dtype=float)
+        mu = np.asarray(fit_result.predict(X), dtype=float)
+        if fit_result.fit_type == "poisson":
+            mu = np.clip(mu * dt, 1e-12, None)
+            var = mu
+        else:
+            mu = np.clip(mu, 1e-9, 1.0 - 1e-9)
+            var = np.clip(mu * (1.0 - mu), 1e-12, None)
+        return (y - mu) / np.sqrt(var)
+
+    @staticmethod
+    def compute_inv_gaus_trans(
+        y: np.ndarray, X: np.ndarray, fit_result: FitResult, dt: float = 1.0
+    ) -> np.ndarray:
+        """Compute integrated-intensity transform surrogate used in GOF diagnostics."""
+
+        y = np.asarray(y, dtype=float)
+        mu = np.asarray(fit_result.predict(X), dtype=float)
+        if fit_result.fit_type == "poisson":
+            increments = np.clip(mu * dt, 1e-12, None)
+        else:
+            increments = np.clip(mu, 1e-9, 1.0 - 1e-9)
+        # Return cumulative expected intensity sampled at spike/event bins.
+        cumsum = np.cumsum(increments)
+        spike_bins = np.where(y > 0.0)[0]
+        if spike_bins.size == 0:
+            return np.array([], dtype=float)
+        return cumsum[spike_bins]
+
+    @staticmethod
+    def compute_ks_stats(transformed_events: np.ndarray) -> dict[str, float]:
+        """Compute one-sample KS statistic against Uniform(0, 1) after rescaling."""
+
+        z = np.asarray(transformed_events, dtype=float)
+        if z.size == 0:
+            return {"d_stat": 0.0, "n_events": 0.0}
+        z = np.sort(z / max(float(np.max(z)), 1e-12))
+        n = z.size
+        ecdf = np.arange(1, n + 1, dtype=float) / float(n)
+        d_plus = np.max(ecdf - z)
+        d_minus = np.max(z - np.arange(0, n, dtype=float) / float(n))
+        return {"d_stat": float(max(d_plus, d_minus)), "n_events": float(n)}
+
+    @staticmethod
+    def fdr_bh(p_values: np.ndarray, alpha: float = 0.05) -> np.ndarray:
+        """Benjamini-Hochberg FDR control for one-dimensional p-value arrays."""
+
+        p = np.asarray(p_values, dtype=float).ravel()
+        if p.size == 0:
+            return np.array([], dtype=bool)
+        if np.any((p < 0.0) | (p > 1.0)):
+            raise ValueError("p_values must be in [0, 1]")
+        if not (0.0 < alpha < 1.0):
+            raise ValueError("alpha must be in (0, 1)")
+        order = np.argsort(p)
+        ranked = p[order]
+        threshold = alpha * (np.arange(1, p.size + 1) / p.size)
+        passing = np.where(ranked <= threshold)[0]
+        mask = np.zeros_like(p, dtype=bool)
+        if passing.size > 0:
+            cutoff = ranked[int(np.max(passing))]
+            mask = p <= cutoff
+        return mask
