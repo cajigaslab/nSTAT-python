@@ -1,4 +1,4 @@
-name: ci
+name: test-and-build
 
 on:
   pull_request:
@@ -64,8 +64,14 @@ jobs:
       - name: Build docs with warnings-as-errors
         run: sphinx-build -W -b html docs docs/_build/html
 
+      - name: Verify docs search index coverage
+        run: python tools/docs/verify_search_index.py
+
       - name: Run smoke notebooks
         run: python tools/notebooks/run_notebooks.py --group smoke --timeout 600
+
+      - name: Run release gate checks
+        run: python tools/release/check_release_gate.py
 
   cleanroom-compliance:
     runs-on: ubuntu-latest
@@ -84,7 +90,7 @@ jobs:
 
       - name: Checkout upstream MATLAB nSTAT repo snapshot
         run: |
-          git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
+          GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
 
       - name: Run clean-room overlap check
         run: |

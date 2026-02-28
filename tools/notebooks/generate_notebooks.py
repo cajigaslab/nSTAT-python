@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 import nbformat as nbf
@@ -135,6 +136,11 @@ TAIL_MARKDOWN = (
 )
 
 
+def _cell_id(topic: str, index: int) -> str:
+    base = re.sub(r"[^a-zA-Z0-9_-]", "-", topic.lower())
+    return f"{base}-{index:02d}"
+
+
 def build_notebook(topic: str, run_group: str, output_path: Path) -> None:
     notebook = nbf.v4.new_notebook()
     notebook.metadata.update(
@@ -168,6 +174,9 @@ def build_notebook(topic: str, run_group: str, output_path: Path) -> None:
         nbf.v4.new_code_cell(HISTORY_AND_DECODING),
         nbf.v4.new_markdown_cell(TAIL_MARKDOWN),
     ]
+
+    for i, cell in enumerate(notebook.cells):
+        cell["id"] = _cell_id(topic, i)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     nbf.write(notebook, output_path)
