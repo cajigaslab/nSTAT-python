@@ -9,3 +9,6 @@ binomial_glm:
 decoding:
   normalized_rmse_tol: 0.20
   ci_coverage_tol: 0.10
+
+place_decoding:
+  normalized_rmse_tol: 0.30

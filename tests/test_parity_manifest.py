@@ -90,6 +90,9 @@ def test_parity_manifest_class_contracts() -> None:
 
 def test_parity_manifest_workflow_links_and_tolerances() -> None:
     payload = _load_yaml("baseline/parity_manifest.yml")
+    behavior_path = Path(payload["metadata"]["behavior_contracts_file"])
+    assert behavior_path.exists()
+
     workflows = payload["workflows"]
     assert any(row["topic"] == "nSTATPaperExamples" for row in workflows)
 

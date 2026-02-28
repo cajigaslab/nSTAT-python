@@ -8,6 +8,7 @@ metadata:
   source: "Derived behavior specification authored for nSTAT-python"
   doi: "10.1016/j.jneumeth.2012.08.009"
   pmid: "22981419"
+  behavior_contracts_file: tests/parity/class_behavior_specs.yml
 
 classes:
   - matlab_class: SignalObj
@@ -155,6 +156,39 @@ classes:
         signature: "(spike_counts, tuning_rates, transition=None, prior=None)"
 
 workflows:
+  - topic: PPSimExample
+    notebook: notebooks/PPSimExample.ipynb
+    help_page: docs/help/examples/PPSimExample.md
+    modules:
+      - nstat.spikes
+      - nstat.cif
+      - nstat.analysis
+      - nstat.fit
+    expected_metrics:
+      - name: poisson_coefficient_error
+        tolerance_key: "poisson_glm.coefficient_abs_tol"
+      - name: poisson_rate_relative_error
+        tolerance_key: "poisson_glm.rate_rel_tol"
+
+  - topic: DecodingExampleWithHist
+    notebook: notebooks/DecodingExampleWithHist.ipynb
+    help_page: docs/help/examples/DecodingExampleWithHist.md
+    modules:
+      - nstat.history
+      - nstat.decoding
+    expected_metrics:
+      - name: history_corrected_normalized_rmse
+        tolerance_key: "decoding.normalized_rmse_tol"
+
+  - topic: HippocampalPlaceCellExample
+    notebook: notebooks/HippocampalPlaceCellExample.ipynb
+    help_page: docs/help/examples/HippocampalPlaceCellExample.md
+    modules:
+      - nstat.decoding
+    expected_metrics:
+      - name: place_decoding_normalized_rmse
+        tolerance_key: "place_decoding.normalized_rmse_tol"
+
   - topic: nSTATPaperExamples
     notebook: notebooks/nSTATPaperExamples.ipynb
     help_page: docs/help/examples/nSTATPaperExamples.md
@@ -169,4 +203,3 @@ workflows:
         tolerance_key: "poisson_glm.coefficient_abs_tol"
       - name: decoding_normalized_rmse
         tolerance_key: "decoding.normalized_rmse_tol"
-
