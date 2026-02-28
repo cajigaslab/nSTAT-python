@@ -1,0 +1,96 @@
+root: help/index.md
+entries:
+- title: Home
+  target: help/index.md
+- title: Class Definitions
+  target: help/class_definitions.md
+- title: Examples Index
+  target: help/examples_index.md
+- title: Paper Overview
+  target: help/paper_overview.md
+- title: Classes
+  children:
+  - title: SignalObj
+    target: help/classes/SignalObj.md
+  - title: Covariate
+    target: help/classes/Covariate.md
+  - title: ConfidenceInterval
+    target: help/classes/ConfidenceInterval.md
+  - title: Events
+    target: help/classes/Events.md
+  - title: History
+    target: help/classes/History.md
+  - title: nspikeTrain
+    target: help/classes/nspikeTrain.md
+  - title: nstColl
+    target: help/classes/nstColl.md
+  - title: CovColl
+    target: help/classes/CovColl.md
+  - title: TrialConfig
+    target: help/classes/TrialConfig.md
+  - title: ConfigColl
+    target: help/classes/ConfigColl.md
+  - title: Trial
+    target: help/classes/Trial.md
+  - title: CIF
+    target: help/classes/CIF.md
+  - title: Analysis
+    target: help/classes/Analysis.md
+  - title: FitResult
+    target: help/classes/FitResult.md
+  - title: FitResSummary
+    target: help/classes/FitResSummary.md
+  - title: DecodingAlgorithms
+    target: help/classes/DecodingAlgorithms.md
+- title: Examples
+  children:
+  - title: AnalysisExamples
+    target: help/examples/AnalysisExamples.md
+  - title: ConfigCollExamples
+    target: help/examples/ConfigCollExamples.md
+  - title: CovCollExamples
+    target: help/examples/CovCollExamples.md
+  - title: CovariateExamples
+    target: help/examples/CovariateExamples.md
+  - title: DecodingExample
+    target: help/examples/DecodingExample.md
+  - title: DecodingExampleWithHist
+    target: help/examples/DecodingExampleWithHist.md
+  - title: EventsExamples
+    target: help/examples/EventsExamples.md
+  - title: ExplicitStimulusWhiskerData
+    target: help/examples/ExplicitStimulusWhiskerData.md
+  - title: FitResSummaryExamples
+    target: help/examples/FitResSummaryExamples.md
+  - title: FitResultExamples
+    target: help/examples/FitResultExamples.md
+  - title: HippocampalPlaceCellExample
+    target: help/examples/HippocampalPlaceCellExample.md
+  - title: HistoryExamples
+    target: help/examples/HistoryExamples.md
+  - title: NetworkTutorial
+    target: help/examples/NetworkTutorial.md
+  - title: PPSimExample
+    target: help/examples/PPSimExample.md
+  - title: PPThinning
+    target: help/examples/PPThinning.md
+  - title: PSTHEstimation
+    target: help/examples/PSTHEstimation.md
+  - title: SignalObjExamples
+    target: help/examples/SignalObjExamples.md
+  - title: StimulusDecode2D
+    target: help/examples/StimulusDecode2D.md
+  - title: TrialConfigExamples
+    target: help/examples/TrialConfigExamples.md
+  - title: TrialExamples
+    target: help/examples/TrialExamples.md
+  - title: ValidationDataSet
+    target: help/examples/ValidationDataSet.md
+  - title: mEPSCAnalysis
+    target: help/examples/mEPSCAnalysis.md
+  - title: nSTATPaperExamples
+    target: help/examples/nSTATPaperExamples.md
+  - title: nSpikeTrainExamples
+    target: help/examples/nSpikeTrainExamples.md
+  - title: nstCollExamples
+    target: help/examples/nstCollExamples.md

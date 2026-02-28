@@ -1,0 +1,28 @@
+name: notebooks-full
+
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+jobs:
+  full-notebooks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install notebook dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[notebooks]
+
+      - name: Generate notebooks
+        run: python tools/notebooks/generate_notebooks.py
+
+      - name: Execute full notebook suite
+        run: python tools/notebooks/run_notebooks.py --group full --timeout 900

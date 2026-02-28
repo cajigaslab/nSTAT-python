@@ -1,0 +1,36 @@
+version: 1
+paper:
+  citation: "Cajigas I, Malik WQ, Brown EN. J Neurosci Methods. 2012;211(2):245-264"
+  doi: "10.1016/j.jneumeth.2012.08.009"
+  pmid: "22981419"
+
+sections:
+  - section: "Point-process conditional intensity modeling"
+    modules:
+      - nstat.cif
+      - nstat.analysis
+    notes: "CIF construction and likelihood-based fitting"
+
+  - section: "History-dependent and covariate-driven models"
+    modules:
+      - nstat.history
+      - nstat.trial
+      - nstat.signal
+    notes: "History basis and trial design matrix assembly"
+
+  - section: "Model quality and comparison"
+    modules:
+      - nstat.fit
+    notes: "AIC/BIC and likelihood summaries"
+
+  - section: "Decoding and comparative inference"
+    modules:
+      - nstat.decoding
+      - nstat.confidence
+    notes: "Decoding utilities and confidence summaries"
+
+  - section: "Workflow organization and examples"
+    modules:
+      - notebooks
+      - docs/help
+    notes: "End-to-end pedagogical workflows and searchable help"

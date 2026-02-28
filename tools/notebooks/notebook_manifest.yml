@@ -1,0 +1,78 @@
+version: 1
+
+notebooks:
+  - topic: AnalysisExamples
+    file: notebooks/AnalysisExamples.ipynb
+    run_group: smoke
+  - topic: ConfigCollExamples
+    file: notebooks/ConfigCollExamples.ipynb
+    run_group: full
+  - topic: CovCollExamples
+    file: notebooks/CovCollExamples.ipynb
+    run_group: full
+  - topic: CovariateExamples
+    file: notebooks/CovariateExamples.ipynb
+    run_group: smoke
+  - topic: DecodingExample
+    file: notebooks/DecodingExample.ipynb
+    run_group: smoke
+  - topic: DecodingExampleWithHist
+    file: notebooks/DecodingExampleWithHist.ipynb
+    run_group: full
+  - topic: EventsExamples
+    file: notebooks/EventsExamples.ipynb
+    run_group: full
+  - topic: ExplicitStimulusWhiskerData
+    file: notebooks/ExplicitStimulusWhiskerData.ipynb
+    run_group: full
+  - topic: FitResSummaryExamples
+    file: notebooks/FitResSummaryExamples.ipynb
+    run_group: full
+  - topic: FitResultExamples
+    file: notebooks/FitResultExamples.ipynb
+    run_group: full
+  - topic: HippocampalPlaceCellExample
+    file: notebooks/HippocampalPlaceCellExample.ipynb
+    run_group: full
+  - topic: HistoryExamples
+    file: notebooks/HistoryExamples.ipynb
+    run_group: full
+  - topic: NetworkTutorial
+    file: notebooks/NetworkTutorial.ipynb
+    run_group: full
+  - topic: PPSimExample
+    file: notebooks/PPSimExample.ipynb
+    run_group: full
+  - topic: PPThinning
+    file: notebooks/PPThinning.ipynb
+    run_group: full
+  - topic: PSTHEstimation
+    file: notebooks/PSTHEstimation.ipynb
+    run_group: full
+  - topic: SignalObjExamples
+    file: notebooks/SignalObjExamples.ipynb
+    run_group: smoke
+  - topic: StimulusDecode2D
+    file: notebooks/StimulusDecode2D.ipynb
+    run_group: full
+  - topic: TrialConfigExamples
+    file: notebooks/TrialConfigExamples.ipynb
+    run_group: full
+  - topic: TrialExamples
+    file: notebooks/TrialExamples.ipynb
+    run_group: full
+  - topic: ValidationDataSet
+    file: notebooks/ValidationDataSet.ipynb
+    run_group: full
+  - topic: mEPSCAnalysis
+    file: notebooks/mEPSCAnalysis.ipynb
+    run_group: full
+  - topic: nSTATPaperExamples
+    file: notebooks/nSTATPaperExamples.ipynb
+    run_group: smoke
+  - topic: nSpikeTrainExamples
+    file: notebooks/nSpikeTrainExamples.ipynb
+    run_group: smoke
+  - topic: nstCollExamples
+    file: notebooks/nstCollExamples.ipynb
+    run_group: full

@@ -1,10 +1,30 @@
+# Byte-compiled / optimized
 __pycache__/
-*.pyc
-.pytest_cache/
+*.py[cod]
+*.so
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# Virtualenvs
+.venv/
+venv/
+
+# Jupyter
 .ipynb_checkpoints/
 
-docs/_build/
-plots/
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-reports/pytest.log
-reports/pytest.xml
+# Sphinx
+_site/
+docs/_build/
+
+# Local data cache
+.data_cache/

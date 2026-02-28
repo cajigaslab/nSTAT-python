@@ -1,0 +1,10 @@
+version: 1
+
+# Only shared example data is allowed to overlap with the MATLAB nSTAT repository.
+# Non-data files must never overlap by content hash.
+shared_data:
+  # Example entry:
+  # - python_path: data/place-cells/PlaceCellDataAnimal1.mat
+  #   upstream_repo: cajigaslab/nSTAT
+  #   upstream_path: data/Place Cells/PlaceCellDataAnimal1.mat
+  #   sha256: "<sha256>"

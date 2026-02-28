@@ -1,25 +1,25 @@
 from __future__ import annotations
 
-import json
-import os
-import subprocess
-import sys
+from pathlib import Path
 
-import pytest
+import nbformat
+import yaml
 
 
-def test_generated_notebooks_execute(project_root) -> None:
-    if os.environ.get("NSTAT_CI_LIGHT") == "1":
-        pytest.skip("Notebook validation already executed in dedicated CI workflow step")
-    cp = subprocess.run(
-        [sys.executable, "tools/verify_examples_notebooks.py"],
-        cwd=str(project_root),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    report = json.loads(cp.stdout)
-    assert report["total_examples"] == 25
-    assert report["python_modules_ok"] == 25
-    assert report["notebooks_ok"] == 25
-    assert report["topic_alignment_ok"] == 25
+
+def test_notebook_manifest_entries_exist() -> None:
+    manifest = yaml.safe_load(Path("tools/notebooks/notebook_manifest.yml").read_text(encoding="utf-8"))
+    for row in manifest["notebooks"]:
+        path = Path(row["file"])
+        assert path.exists(), f"missing notebook file: {path}"
+
+
+
+def test_notebook_metadata_matches_manifest() -> None:
+    manifest = yaml.safe_load(Path("tools/notebooks/notebook_manifest.yml").read_text(encoding="utf-8"))
+    for row in manifest["notebooks"]:
+        path = Path(row["file"])
+        nb = nbformat.read(path, as_version=4)
+        meta = nb.metadata.get("nstat", {})
+        assert meta.get("topic") == row["topic"]
+        assert meta.get("run_group") == row["run_group"]

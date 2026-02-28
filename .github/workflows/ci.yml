@@ -1,0 +1,94 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  unit-lint:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+
+      - name: Lint
+        run: ruff check src tests tools
+
+      - name: Type check
+        run: mypy src/nstat
+
+      - name: Unit tests
+        run: pytest
+
+      - name: Verify no MATLAB dependency
+        run: python tools/compliance/check_no_matlab_dependency.py
+
+  docs-smoke-notebooks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package, docs, and notebook dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev,docs,notebooks]
+
+      - name: Rebuild generated docs/notebooks
+        run: |
+          python tools/docs/generate_help_pages.py
+          python tools/notebooks/generate_notebooks.py
+
+      - name: Ensure generated artifacts are committed
+        run: |
+          git diff --exit-code
+
+      - name: Build docs with warnings-as-errors
+        run: sphinx-build -W -b html docs docs/_build/html
+
+      - name: Run smoke notebooks
+        run: python tools/notebooks/run_notebooks.py --group smoke --timeout 600
+
+  cleanroom-compliance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install compliance dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyyaml
+
+      - name: Checkout upstream MATLAB nSTAT repo snapshot
+        run: |
+          git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
+
+      - name: Run clean-room overlap check
+        run: |
+          python tools/compliance/check_cleanroom_overlap.py \
+            --project-root "$GITHUB_WORKSPACE" \
+            --upstream-root /tmp/upstream-nstat \
+            --allowlist tools/compliance/shared_data_allowlist.yml

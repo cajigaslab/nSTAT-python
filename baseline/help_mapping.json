@@ -1,0 +1,95 @@
+{
+  "classes": [
+    {
+      "matlab": "SignalObj",
+      "python": "nstat.signal.Signal"
+    },
+    {
+      "matlab": "Covariate",
+      "python": "nstat.signal.Covariate"
+    },
+    {
+      "matlab": "ConfidenceInterval",
+      "python": "nstat.confidence.ConfidenceInterval"
+    },
+    {
+      "matlab": "Events",
+      "python": "nstat.events.Events"
+    },
+    {
+      "matlab": "History",
+      "python": "nstat.history.HistoryBasis"
+    },
+    {
+      "matlab": "nspikeTrain",
+      "python": "nstat.spikes.SpikeTrain"
+    },
+    {
+      "matlab": "nstColl",
+      "python": "nstat.spikes.SpikeTrainCollection"
+    },
+    {
+      "matlab": "CovColl",
+      "python": "nstat.trial.CovariateCollection"
+    },
+    {
+      "matlab": "TrialConfig",
+      "python": "nstat.trial.TrialConfig"
+    },
+    {
+      "matlab": "ConfigColl",
+      "python": "nstat.trial.ConfigCollection"
+    },
+    {
+      "matlab": "Trial",
+      "python": "nstat.trial.Trial"
+    },
+    {
+      "matlab": "CIF",
+      "python": "nstat.cif.CIFModel"
+    },
+    {
+      "matlab": "Analysis",
+      "python": "nstat.analysis.Analysis"
+    },
+    {
+      "matlab": "FitResult",
+      "python": "nstat.fit.FitResult"
+    },
+    {
+      "matlab": "FitResSummary",
+      "python": "nstat.fit.FitSummary"
+    },
+    {
+      "matlab": "DecodingAlgorithms",
+      "python": "nstat.decoding.DecodingAlgorithms"
+    }
+  ],
+  "topics": [
+    "AnalysisExamples",
+    "ConfigCollExamples",
+    "CovCollExamples",
+    "CovariateExamples",
+    "DecodingExample",
+    "DecodingExampleWithHist",
+    "EventsExamples",
+    "ExplicitStimulusWhiskerData",
+    "FitResSummaryExamples",
+    "FitResultExamples",
+    "HippocampalPlaceCellExample",
+    "HistoryExamples",
+    "NetworkTutorial",
+    "PPSimExample",
+    "PPThinning",
+    "PSTHEstimation",
+    "SignalObjExamples",
+    "StimulusDecode2D",
+    "TrialConfigExamples",
+    "TrialExamples",
+    "ValidationDataSet",
+    "mEPSCAnalysis",
+    "nSTATPaperExamples",
+    "nSpikeTrainExamples",
+    "nstCollExamples"
+  ]
+}
