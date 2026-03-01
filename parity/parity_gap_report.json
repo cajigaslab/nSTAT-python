@@ -92,18 +92,18 @@
       "missing_method_count": 15
     },
     {
-      "coverage_ratio": 0.18181818181818182,
-      "mapped_method_count": 6,
+      "coverage_ratio": 0.30303030303030304,
+      "mapped_method_count": 10,
       "matlab_class": "FitResult",
       "matlab_method_count": 33,
-      "missing_method_count": 27
+      "missing_method_count": 23
     },
     {
-      "coverage_ratio": 0.13333333333333333,
-      "mapped_method_count": 4,
+      "coverage_ratio": 0.43333333333333335,
+      "mapped_method_count": 13,
       "matlab_class": "FitResSummary",
       "matlab_method_count": 30,
-      "missing_method_count": 26
+      "missing_method_count": 17
     },
     {
       "coverage_ratio": 1.0,
@@ -265,8 +265,8 @@
       "topic": "publish_all_helpfiles"
     }
   ],
-  "fail_on": "high",
-  "generated_at_utc": "2026-02-28T21:13:03.543092+00:00",
+  "fail_on": "none",
+  "generated_at_utc": "2026-03-01T18:30:37.831470+00:00",
   "issues": [
     {
       "check": "missing_method_mappings",
@@ -618,12 +618,9 @@
         "matlab_class": "FitResult",
         "matlab_method_count": 33,
         "missing_methods": [
-          "CellArrayToStructure",
-          "FitResult",
           "KSPlot",
           "addParamsToFit",
           "computePlotParams",
-          "fromStructure",
           "getHistCoeffs",
           "getHistIndex",
           "getPlotParams",
@@ -643,11 +640,10 @@
           "setInvGausStats",
           "setKSStats",
           "setNeuronName",
-          "toStructure",
           "xticklabel_rotate"
         ]
       },
-      "message": "FitResult has 27 unmapped MATLAB methods",
+      "message": "FitResult has 23 unmapped MATLAB methods",
       "severity": "medium"
     },
     {
@@ -656,17 +652,9 @@
         "matlab_class": "FitResSummary",
         "matlab_method_count": 30,
         "missing_methods": [
-          "FitResSummary",
-          "binCoeffs",
-          "boxPlot",
-          "fromStructure",
-          "getCoeffIndex",
-          "getCoeffs",
           "getHistCoeffs",
           "getHistIndex",
           "getSigCoeffs",
-          "getUniqueLabels",
-          "mapCovLabelsToUniqueLabels",
           "plot2dCoeffSummary",
           "plot3dCoeffSummary",
           "plotAIC",
@@ -680,11 +668,10 @@
           "plotSummary",
           "plotlogLL",
           "setCoeffRange",
-          "toStructure",
           "xticklabel_rotate"
         ]
       },
-      "message": "FitResSummary has 26 unmapped MATLAB methods",
+      "message": "FitResSummary has 17 unmapped MATLAB methods",
       "severity": "medium"
     }
   ],

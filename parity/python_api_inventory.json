@@ -851,15 +851,20 @@
           "n_samples",
           "parameter_labels"
         ],
-        "method_count": 18,
+        "method_count": 25,
         "methods": [
+          "CellArrayToStructure",
+          "FitResult",
           "aic",
           "asCIFModel",
           "as_cif_model",
           "bic",
+          "cell_array_to_structure",
           "computeValLambda",
           "compute_val_lambda",
           "evalLambda",
+          "fromStructure",
+          "from_structure",
           "getAIC",
           "getBIC",
           "getCoeffIndex",
@@ -870,7 +875,9 @@
           "get_coeffs",
           "get_param",
           "get_unique_labels",
-          "predict"
+          "predict",
+          "toStructure",
+          "to_structure"
         ],
         "properties": []
       },
@@ -886,17 +893,20 @@
           "n_samples",
           "parameter_labels"
         ],
-        "method_count": 9,
+        "method_count": 12,
         "methods": [
           "aic",
           "as_cif_model",
           "bic",
+          "cell_array_to_structure",
           "compute_val_lambda",
+          "from_structure",
           "get_coeff_index",
           "get_coeffs",
           "get_param",
           "get_unique_labels",
-          "predict"
+          "predict",
+          "to_structure"
         ],
         "properties": []
       },
@@ -907,20 +917,36 @@
         "fields": [
           "results"
         ],
-        "method_count": 12,
+        "method_count": 28,
         "methods": [
+          "FitResSummary",
           "bestByAIC",
           "bestByBIC",
           "best_by_aic",
           "best_by_bic",
+          "binCoeffs",
+          "bin_coeffs",
+          "boxPlot",
+          "box_plot",
           "computeDiffMat",
           "compute_diff_mat",
+          "fromStructure",
+          "from_structure",
+          "getCoeffIndex",
+          "getCoeffs",
           "getDiffAIC",
           "getDiffBIC",
           "getDifflogLL",
+          "getUniqueLabels",
+          "get_coeff_index",
+          "get_coeffs",
           "get_diff_aic",
           "get_diff_bic",
-          "get_diff_log_likelihood"
+          "get_diff_log_likelihood",
+          "get_unique_labels",
+          "mapCovLabelsToUniqueLabels",
+          "toStructure",
+          "to_structure"
         ],
         "properties": []
       },
@@ -930,14 +956,21 @@
         "fields": [
           "results"
         ],
-        "method_count": 6,
+        "method_count": 13,
         "methods": [
           "best_by_aic",
           "best_by_bic",
+          "bin_coeffs",
+          "box_plot",
           "compute_diff_mat",
+          "from_structure",
+          "get_coeff_index",
+          "get_coeffs",
           "get_diff_aic",
           "get_diff_bic",
-          "get_diff_log_likelihood"
+          "get_diff_log_likelihood",
+          "get_unique_labels",
+          "to_structure"
         ],
         "properties": []
       },
@@ -1019,6 +1052,6 @@
       "python_class": "nstat.decoding.DecodingAlgorithms"
     }
   ],
-  "generated_at_utc": "2026-02-28T21:13:02.244813+00:00",
+  "generated_at_utc": "2026-03-01T18:30:36.754351+00:00",
   "python_root": "/private/tmp/nSTAT-python-cleanroom"
 }

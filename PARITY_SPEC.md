@@ -43,6 +43,30 @@ CI enforces `--fail-on high` for parity discovery so missing critical artifacts 
 - Example mapping: `parity/example_mapping.yaml`
 - Discovery scripts: `tools/parity/`
 
+## Current Status (2026-03-01)
+- Latest validated Python target commit: `e89dbf4`
+- GitHub Actions:
+  - `test-and-build`: success ([run 22549570356](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549570356))
+  - `pages`: success ([run 22549570320](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549570320))
+  - `notebooks-full`: success ([run 22549674330](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549674330))
+- Latest parity snapshot:
+  - `summary.high = 0`
+  - `summary.medium = 14`
+  - `summary.low = 0`
+- Tier-1 closure completed in this tranche:
+  - `FitResSummary` method coverage improved from `4/30` to `13/30`
+  - Missing methods reduced from `26` to `17`
+- Updated visual validation report:
+  - `output/pdf/nstat_python_validation_report_20260301_133058.pdf`
+
+## Acceptance Checklist
+- [x] Class and example inventory artifacts regenerate successfully.
+- [x] High-severity parity issues remain at zero.
+- [x] Full notebook suite is passing on the validated commit.
+- [x] Visual validation PDF has been regenerated after parity changes.
+- [ ] Medium-severity method-mapping gaps are fully closed.
+- [ ] Tier-1 parity classes (`Analysis`, `Trial`, `CovColl`, `nstColl`, `FitResult`, `FitResSummary`) reach target coverage.
+
 ## Notes
 - This repository is a clean-room implementation. MATLAB code is a behavioral reference only.
 - Runtime MATLAB dependency is prohibited for normal package use.

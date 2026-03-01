@@ -2,7 +2,7 @@
   "classes": [
     {
       "matlab_class": "SignalObj",
-      "matlab_file": "/private/tmp/upstream-nstat/SignalObj.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/SignalObj.m",
       "method_count": 98,
       "methods": [
         "SignalObj",
@@ -107,7 +107,7 @@
     },
     {
       "matlab_class": "Covariate",
-      "matlab_file": "/private/tmp/upstream-nstat/Covariate.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/Covariate.m",
       "method_count": 14,
       "methods": [
         "Covariate",
@@ -128,7 +128,7 @@
     },
     {
       "matlab_class": "ConfidenceInterval",
-      "matlab_file": "/private/tmp/upstream-nstat/ConfidenceInterval.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/ConfidenceInterval.m",
       "method_count": 5,
       "methods": [
         "ConfidenceInterval",
@@ -140,7 +140,7 @@
     },
     {
       "matlab_class": "Events",
-      "matlab_file": "/private/tmp/upstream-nstat/Events.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/Events.m",
       "method_count": 5,
       "methods": [
         "Events",
@@ -152,7 +152,7 @@
     },
     {
       "matlab_class": "History",
-      "matlab_file": "/private/tmp/upstream-nstat/History.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/History.m",
       "method_count": 8,
       "methods": [
         "History",
@@ -167,7 +167,7 @@
     },
     {
       "matlab_class": "nspikeTrain",
-      "matlab_file": "/private/tmp/upstream-nstat/nspikeTrain.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/nspikeTrain.m",
       "method_count": 29,
       "methods": [
         "nspikeTrain",
@@ -203,7 +203,7 @@
     },
     {
       "matlab_class": "nstColl",
-      "matlab_file": "/private/tmp/upstream-nstat/nstColl.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/nstColl.m",
       "method_count": 53,
       "methods": [
         "nstColl",
@@ -263,7 +263,7 @@
     },
     {
       "matlab_class": "CovColl",
-      "matlab_file": "/private/tmp/upstream-nstat/CovColl.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/CovColl.m",
       "method_count": 55,
       "methods": [
         "CovColl",
@@ -325,7 +325,7 @@
     },
     {
       "matlab_class": "TrialConfig",
-      "matlab_file": "/private/tmp/upstream-nstat/TrialConfig.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/TrialConfig.m",
       "method_count": 6,
       "methods": [
         "TrialConfig",
@@ -338,7 +338,7 @@
     },
     {
       "matlab_class": "ConfigColl",
-      "matlab_file": "/private/tmp/upstream-nstat/ConfigColl.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/ConfigColl.m",
       "method_count": 9,
       "methods": [
         "ConfigColl",
@@ -354,7 +354,7 @@
     },
     {
       "matlab_class": "Trial",
-      "matlab_file": "/private/tmp/upstream-nstat/Trial.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/Trial.m",
       "method_count": 68,
       "methods": [
         "Trial",
@@ -429,7 +429,7 @@
     },
     {
       "matlab_class": "CIF",
-      "matlab_file": "/private/tmp/upstream-nstat/CIF.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/CIF.m",
       "method_count": 21,
       "methods": [
         "CIF",
@@ -457,7 +457,7 @@
     },
     {
       "matlab_class": "Analysis",
-      "matlab_file": "/private/tmp/upstream-nstat/Analysis.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/Analysis.m",
       "method_count": 22,
       "methods": [
         "RunAnalysisForNeuron",
@@ -486,7 +486,7 @@
     },
     {
       "matlab_class": "FitResult",
-      "matlab_file": "/private/tmp/upstream-nstat/FitResult.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/FitResult.m",
       "method_count": 33,
       "methods": [
         "FitResult",
@@ -526,7 +526,7 @@
     },
     {
       "matlab_class": "FitResSummary",
-      "matlab_file": "/private/tmp/upstream-nstat/FitResSummary.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/FitResSummary.m",
       "method_count": 30,
       "methods": [
         "FitResSummary",
@@ -563,7 +563,7 @@
     },
     {
       "matlab_class": "DecodingAlgorithms",
-      "matlab_file": "/private/tmp/upstream-nstat/DecodingAlgorithms.m",
+      "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/DecodingAlgorithms.m",
       "method_count": 45,
       "methods": [
         "PPDecodeFilter",
@@ -614,6 +614,6 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-02-28T21:13:01.055339+00:00",
-  "matlab_root": "/private/tmp/upstream-nstat"
+  "generated_at_utc": "2026-03-01T18:30:35.718895+00:00",
+  "matlab_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local"
 }

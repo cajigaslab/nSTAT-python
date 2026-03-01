@@ -1134,6 +1134,21 @@ class Analysis:
 
 
 class FitResult(_FitResult):
+    @staticmethod
+    def FitResult(structure: dict[str, Any]) -> _FitResult:
+        return _FitResult.from_structure(structure)
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any]) -> _FitResult:
+        return _FitResult.from_structure(structure)
+
+    @staticmethod
+    def CellArrayToStructure(results: list[_FitResult]) -> list[dict[str, Any]]:
+        return _FitResult.cell_array_to_structure(results)
+
+    def toStructure(self) -> dict[str, Any]:
+        return self.to_structure()
+
     def evalLambda(self, X_or_modelIndex: Any, maybe_X: Any = None) -> np.ndarray:
         if maybe_X is None:
             X = np.asarray(X_or_modelIndex, dtype=float)
@@ -1167,6 +1182,48 @@ class FitResult(_FitResult):
 
 
 class FitResSummary(_FitSummary):
+    @staticmethod
+    def FitResSummary(fitResultsCell: list[_FitResult] | _FitResult) -> _FitSummary:
+        if isinstance(fitResultsCell, _FitResult):
+            return FitResSummary([fitResultsCell])
+        return FitResSummary(list(fitResultsCell))
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any]) -> _FitSummary:
+        native = _FitSummary.from_structure(structure)
+        return FitResSummary(native.results)
+
+    def toStructure(self) -> dict[str, Any]:
+        return self.to_structure()
+
+    def mapCovLabelsToUniqueLabels(self) -> list[str]:
+        return self.get_unique_labels()
+
+    def getUniqueLabels(self) -> list[str]:
+        return self.get_unique_labels()
+
+    def getCoeffIndex(self, fitNum: int = 1, sortByEpoch: bool = False) -> tuple[np.ndarray, np.ndarray, int]:
+        return self.get_coeff_index(fit_num=fitNum, sort_by_epoch=sortByEpoch)
+
+    def getCoeffs(self, fitNum: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
+        return self.get_coeffs(fit_num=fitNum)
+
+    def binCoeffs(self, minVal: float, maxVal: float, binSize: float = 0.1) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return self.bin_coeffs(min_val=minVal, max_val=maxVal, bin_size=binSize)
+
+    def boxPlot(
+        self,
+        X: np.ndarray | None = None,
+        diffIndex: int = 1,
+        h: Any = None,
+        dataLabels: list[str] | None = None,
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> dict[str, np.ndarray]:
+        _ = h
+        _ = dataLabels
+        return self.box_plot(X=X, diff_index=diffIndex)
+
     def bestByAIC(self) -> _FitResult:
         return self.best_by_aic()
 

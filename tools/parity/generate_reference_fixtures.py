@@ -18,6 +18,7 @@ import yaml
 
 from nstat.analysis import Analysis
 from nstat.decoding import DecodingAlgorithms
+from nstat.fit import FitResult, FitSummary
 from nstat.signal import Covariate
 from nstat.spikes import SpikeTrain, SpikeTrainCollection
 from nstat.trial import CovariateCollection, Trial
@@ -159,6 +160,68 @@ def _fixture_trial_alignment(output_dir: Path) -> dict[str, Any]:
 
 
 
+def _fixture_fit_summary_structure(output_dir: Path) -> dict[str, Any]:
+    coefficients = np.array(
+        [
+            [0.20, -0.10],
+            [0.45, 0.30],
+            [-0.05, 0.25],
+        ],
+        dtype=float,
+    )
+    intercepts = np.array([-1.0, -0.7, -0.9], dtype=float)
+    log_likelihoods = np.array([-12.0, -10.8, -11.5], dtype=float)
+    n_samples = np.array([200, 200, 200], dtype=int)
+    n_parameters = np.array([3, 3, 3], dtype=int)
+    fit_types = np.array(["binomial", "binomial", "binomial"], dtype="<U16")
+    labels = np.array(
+        [
+            ["stim", "hist"],
+            ["stim", "hist"],
+            ["stim", "ctx"],
+        ],
+        dtype="<U16",
+    )
+
+    results: list[FitResult] = []
+    for i in range(coefficients.shape[0]):
+        results.append(
+            FitResult(
+                coefficients=coefficients[i],
+                intercept=float(intercepts[i]),
+                fit_type=str(fit_types[i]),
+                log_likelihood=float(log_likelihoods[i]),
+                n_samples=int(n_samples[i]),
+                n_parameters=int(n_parameters[i]),
+                parameter_labels=[str(labels[i, 0]), str(labels[i, 1])],
+            )
+        )
+
+    summary = FitSummary(results=results)
+    coeff_mat, unique_labels, se_mat = summary.get_coeffs()
+    hist_counts, hist_edges, hist_percent_sig = summary.bin_coeffs(min_val=-1.0, max_val=1.0, bin_size=0.2)
+
+    file_info = _write_npz(
+        output_dir / "fit_summary_structure.npz",
+        result_coefficients=coefficients,
+        result_intercepts=intercepts,
+        result_log_likelihoods=log_likelihoods,
+        result_n_samples=n_samples,
+        result_n_parameters=n_parameters,
+        result_fit_types=fit_types,
+        result_labels=labels,
+        expected_unique_labels=np.array(unique_labels, dtype="<U16"),
+        expected_coeff_matrix=coeff_mat,
+        expected_se_matrix=se_mat,
+        expected_hist_counts=hist_counts,
+        expected_hist_edges=hist_edges,
+        expected_hist_percent_sig=hist_percent_sig,
+    )
+    file_info["name"] = "fit_summary_structure"
+    file_info["source"] = "python_seeded_reference"
+    return file_info
+
+
 def main() -> int:
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[2]
@@ -169,6 +232,7 @@ def main() -> int:
         _fixture_analysis_poisson(output_dir),
         _fixture_decoding_posterior(output_dir),
         _fixture_trial_alignment(output_dir),
+        _fixture_fit_summary_structure(output_dir),
     ]
 
     for row in fixtures:

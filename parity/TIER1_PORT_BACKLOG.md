@@ -4,13 +4,13 @@ Generated from `parity/parity_gap_report.json`.
 
 | Priority | MATLAB Class | Missing Methods | Coverage | Next Implementation Focus |
 |---|---:|---:|---:|---|
-| P1 | `DecodingAlgorithms` | 38 | 0.156 | KF_ComputeParamStandardErrors, KF_EM, KF_EMCreateConstraints, KF_EStep, KF_MStep, PPDecodeFilter |
+| P2 | `DecodingAlgorithms` | 0 | 1.000 | n/a |
 | P2 | `Analysis` | 15 | 0.318 | KSPlot, bnlrCG, compHistEnsCoeff, compHistEnsCoeffForAll, computeGrangerCausalityMatrix, computeHistLag |
-| P0 | `Trial` | 58 | 0.147 | Trial, addCov, flattenCovMask, flattenMask, fromStructure, getAllLabels |
-| P1 | `CovColl` | 41 | 0.255 | CovColl, addCovCellToColl, addCovCollection, addSingleCovToColl, containsChars, covIndFromSelector |
-| P1 | `nstColl` | 36 | 0.321 | BinarySigRep, addNeuronNamesToEnsCovColl, areNeighborsSet, enforceSampleRate, ensureConsistancy, estimateVarianceAcrossTrials |
-| P1 | `FitResult` | 27 | 0.182 | CellArrayToStructure, FitResult, KSPlot, addParamsToFit, computePlotParams, fromStructure |
-| P1 | `FitResSummary` | 26 | 0.133 | FitResSummary, binCoeffs, boxPlot, fromStructure, getCoeffIndex, getCoeffs |
+| P1 | `Trial` | 32 | 0.529 | flattenCovMask, flattenMask, getAllLabels, getCovSelectorFromMask, getEnsCovLabels, getEnsCovLabelsFromMask |
+| P2 | `CovColl` | 21 | 0.618 | containsChars, covIndFromSelector, dataToStructure, enforceSampleRate, findMaxTime, findMinTime |
+| P1 | `nstColl` | 25 | 0.528 | addNeuronNamesToEnsCovColl, areNeighborsSet, enforceSampleRate, ensureConsistancy, estimateVarianceAcrossTrials, findMaxSampleRate |
+| P2 | `FitResult` | 23 | 0.303 | KSPlot, addParamsToFit, computePlotParams, getHistCoeffs, getHistIndex, getPlotParams |
+| P2 | `FitResSummary` | 17 | 0.433 | getHistCoeffs, getHistIndex, getSigCoeffs, plot2dCoeffSummary, plot3dCoeffSummary, plotAIC |
 
 ## Implementation Order
 1. `DecodingAlgorithms` and `Analysis` (numerical behavior parity)

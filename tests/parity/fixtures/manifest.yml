@@ -15,3 +15,7 @@ fixtures:
   sha256: fcfd4eb5d871f3395ee4b3c77afec873a3a226ff24410f3dde4e80f22f90b343
   name: trial_alignment
   source: python_seeded_reference
+- path: tests/parity/fixtures/fit_summary_structure.npz
+  sha256: 6471af684b4acd0dad0092435e13c8afd0c8b0115577396893bb822a96131834
+  name: fit_summary_structure
+  source: python_seeded_reference

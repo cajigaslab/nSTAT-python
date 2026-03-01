@@ -7,7 +7,9 @@ import numpy as np
 import yaml
 
 from nstat.analysis import Analysis
+from nstat.compat.matlab import FitResSummary as MatlabFitResSummary
 from nstat.decoding import DecodingAlgorithms
+from nstat.fit import FitSummary
 from nstat.signal import Covariate
 from nstat.spikes import SpikeTrain, SpikeTrainCollection
 from nstat.trial import CovariateCollection, Trial
@@ -105,3 +107,39 @@ def test_trial_alignment_fixture_regression() -> None:
     assert np.allclose(tb, fixture["expected_time_bins"], atol=1e-12)
     assert np.array_equal(y, fixture["expected_counts"])
     assert np.allclose(X, fixture["expected_design"], atol=1e-12)
+
+
+def test_fit_summary_structure_fixture_regression() -> None:
+    fixture = np.load("tests/parity/fixtures/fit_summary_structure.npz")
+
+    structures = []
+    for i in range(fixture["result_coefficients"].shape[0]):
+        structures.append(
+            {
+                "coefficients": fixture["result_coefficients"][i],
+                "intercept": float(fixture["result_intercepts"][i]),
+                "fit_type": str(fixture["result_fit_types"][i]),
+                "log_likelihood": float(fixture["result_log_likelihoods"][i]),
+                "n_samples": int(fixture["result_n_samples"][i]),
+                "n_parameters": int(fixture["result_n_parameters"][i]),
+                "parameter_labels": [str(v) for v in fixture["result_labels"][i]],
+            }
+        )
+    payload = {"results": structures}
+
+    native = FitSummary.from_structure(payload)
+    coeff_mat, labels, se_mat = native.get_coeffs()
+    hist_counts, hist_edges, hist_percent_sig = native.bin_coeffs(min_val=-1.0, max_val=1.0, bin_size=0.2)
+
+    assert np.array_equal(np.array(labels, dtype="<U16"), fixture["expected_unique_labels"])
+    assert np.allclose(coeff_mat, fixture["expected_coeff_matrix"], atol=1e-12, equal_nan=True)
+    assert np.allclose(se_mat, fixture["expected_se_matrix"], atol=1e-12, equal_nan=True)
+    assert np.array_equal(hist_counts, fixture["expected_hist_counts"])
+    assert np.allclose(hist_edges, fixture["expected_hist_edges"], atol=1e-12)
+    assert np.allclose(hist_percent_sig, fixture["expected_hist_percent_sig"], atol=1e-12)
+
+    compat = MatlabFitResSummary.fromStructure(payload)
+    coeff_mat_compat, labels_compat, _se_compat = compat.getCoeffs(1)
+    assert np.allclose(coeff_mat_compat, fixture["expected_coeff_matrix"], atol=1e-12, equal_nan=True)
+    assert labels_compat == labels
+    assert len(compat.toStructure()["results"]) == len(structures)
