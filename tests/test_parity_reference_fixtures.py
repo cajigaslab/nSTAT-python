@@ -14,6 +14,7 @@ from nstat.trial import CovariateCollection, Trial
 
 
 FIXTURE_MANIFEST = Path("tests/parity/fixtures/manifest.yml")
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 
@@ -42,9 +43,19 @@ def test_fixture_manifest_present() -> None:
 def test_fixture_checksums_match_manifest() -> None:
     payload = _load_manifest()
     for row in payload["fixtures"]:
-        path = Path(row["path"])
+        path = (REPO_ROOT / Path(row["path"])).resolve()
         assert path.exists(), f"missing fixture file: {path}"
         assert _sha256(path) == row["sha256"], f"checksum mismatch for {path}"
+
+
+
+def test_fixture_manifest_paths_are_repo_relative() -> None:
+    payload = _load_manifest()
+    for row in payload["fixtures"]:
+        path_text = str(row["path"])
+        path = Path(path_text)
+        assert not path.is_absolute(), f"fixture path must be relative: {path_text}"
+        assert not path_text.startswith(".."), f"fixture path cannot escape repo root: {path_text}"
 
 
 

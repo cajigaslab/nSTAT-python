@@ -161,6 +161,7 @@ def _fixture_trial_alignment(output_dir: Path) -> dict[str, Any]:
 
 def main() -> int:
     args = parse_args()
+    repo_root = Path(__file__).resolve().parents[2]
     output_dir = args.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -169,6 +170,10 @@ def main() -> int:
         _fixture_decoding_posterior(output_dir),
         _fixture_trial_alignment(output_dir),
     ]
+
+    for row in fixtures:
+        fixture_path = Path(row["path"]).resolve()
+        row["path"] = fixture_path.relative_to(repo_root).as_posix()
 
     manifest = {
         "version": 1,

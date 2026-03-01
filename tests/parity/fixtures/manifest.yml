@@ -3,15 +3,15 @@ policy:
   purpose: regression_guard
   matlab_reference_upgrade_expected: true
 fixtures:
-- path: /private/tmp/nSTAT-python-cleanroom/tests/parity/fixtures/analysis_poisson_glm.npz
+- path: tests/parity/fixtures/analysis_poisson_glm.npz
   sha256: 556257628fff2df24e6471a0e5fb76a29754762cdaeffe009c3e3cce0e6b58bb
   name: analysis_poisson_glm
   source: python_seeded_reference
-- path: /private/tmp/nSTAT-python-cleanroom/tests/parity/fixtures/decoding_state_posterior.npz
+- path: tests/parity/fixtures/decoding_state_posterior.npz
   sha256: e01cd0b6911332db18790dfd6a43e6fe3e8784471c5b59ff7eeef67d78ba4ecf
   name: decoding_state_posterior
   source: python_seeded_reference
-- path: /private/tmp/nSTAT-python-cleanroom/tests/parity/fixtures/trial_alignment.npz
+- path: tests/parity/fixtures/trial_alignment.npz
   sha256: fcfd4eb5d871f3395ee4b3c77afec873a3a226ff24410f3dde4e80f22f90b343
   name: trial_alignment
   source: python_seeded_reference
