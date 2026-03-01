@@ -23,3 +23,7 @@ fixtures:
   sha256: 1f86bc65628abfd544b9587c4b1b1594fd2395e442aaa4b5dae3ab9bf34b493e
   name: fit_result_roundtrip
   source: python_seeded_reference
+- path: tests/parity/fixtures/confidence_interval_compat.npz
+  sha256: a0628ae325371bc30a8e1c4ea0f1f760ca33a4c13f28c28051adb88f9fbeeb95
+  name: confidence_interval_compat
+  source: python_seeded_reference

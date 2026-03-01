@@ -9,7 +9,7 @@ Generated from `parity/parity_gap_report.json`.
 | P1 | `Trial` | 32 | 0.529 | flattenCovMask, flattenMask, getAllLabels, getCovSelectorFromMask, getEnsCovLabels, getEnsCovLabelsFromMask |
 | P2 | `CovColl` | 21 | 0.618 | containsChars, covIndFromSelector, dataToStructure, enforceSampleRate, findMaxTime, findMinTime |
 | P1 | `nstColl` | 25 | 0.528 | addNeuronNamesToEnsCovColl, areNeighborsSet, enforceSampleRate, ensureConsistancy, estimateVarianceAcrossTrials, findMaxSampleRate |
-| P2 | `FitResult` | 15 | 0.545 | KSPlot, getHistCoeffs, getHistIndex, getSubsetFitResult, isValDataPresent, mergeResults |
+| P2 | `FitResult` | 0 | 1.000 | n/a |
 | P2 | `FitResSummary` | 17 | 0.433 | getHistCoeffs, getHistIndex, getSigCoeffs, plot2dCoeffSummary, plot3dCoeffSummary, plotAIC |
 
 ## Implementation Order

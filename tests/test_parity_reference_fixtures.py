@@ -7,6 +7,7 @@ import numpy as np
 import yaml
 
 from nstat.analysis import Analysis
+from nstat.compat.matlab import ConfidenceInterval as MatlabConfidenceInterval
 from nstat.compat.matlab import FitResult as MatlabFitResult
 from nstat.compat.matlab import FitResSummary as MatlabFitResSummary
 from nstat.decoding import DecodingAlgorithms
@@ -190,3 +191,26 @@ def test_fit_result_roundtrip_fixture_regression() -> None:
     assert np.allclose(roundtrip.ks_stats["ks_stat"], fixture["expected_roundtrip_ks_stat"], atol=1e-12)
     assert roundtrip.neuron_name == str(fixture["expected_roundtrip_neuron_name"][0])
     assert np.allclose(compat_plot["bAct"], fixture["expected_roundtrip_plot_bact"], atol=1e-12)
+
+
+def test_confidence_interval_compat_fixture_regression() -> None:
+    fixture = np.load("tests/parity/fixtures/confidence_interval_compat.npz")
+    ci = MatlabConfidenceInterval(
+        time=fixture["time"],
+        lower=fixture["lower"],
+        upper=fixture["upper"],
+        level=0.95,
+    )
+    ci.setColor("red").setValue(fixture["values"])
+
+    assert np.allclose(ci.getWidth(), fixture["expected_width"], atol=1e-12)
+    assert np.array_equal(ci.contains(fixture["values"]), fixture["expected_contains"])
+
+    structure = ci.toStructure()
+    assert np.allclose(structure["lower"], fixture["expected_structure_lower"], atol=1e-12)
+    assert np.allclose(structure["upper"], fixture["expected_structure_upper"], atol=1e-12)
+
+    restored = MatlabConfidenceInterval.fromStructure(structure)
+    assert np.allclose(restored.lower, fixture["expected_restored_lower"], atol=1e-12)
+    assert np.allclose(restored.upper, fixture["expected_restored_upper"], atol=1e-12)
+    assert np.isclose(restored.level, float(fixture["expected_restored_level"][0]), atol=1e-12)

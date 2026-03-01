@@ -26,6 +26,8 @@ class FitResult:
     inv_gaus_stats: dict[str, np.ndarray | float] = field(default_factory=dict)
     neuron_name: str = ""
     plot_params: dict[str, Any] = field(default_factory=dict)
+    xval_data: list[np.ndarray] = field(default_factory=list)
+    xval_time: list[np.ndarray] = field(default_factory=list)
 
     def as_cif_model(self) -> CIFModel:
         """Return a :class:`nstat.cif.CIFModel` view of this fitted model."""
@@ -200,6 +202,12 @@ class FitResult:
             self.plot_params = {
                 str(key): value for key, value in normalized.items()
             }
+        if "xval_data" in payload:
+            rows = cast(list[Any], payload["xval_data"])
+            self.xval_data = [np.asarray(row, dtype=float) for row in rows]
+        if "xval_time" in payload:
+            rows = cast(list[Any], payload["xval_time"])
+            self.xval_time = [np.asarray(row, dtype=float) for row in rows]
 
     def to_structure(self) -> dict[str, Any]:
         """Serialize this fit result to a MATLAB-like plain structure."""
@@ -228,6 +236,8 @@ class FitResult:
                 key: (value.copy() if isinstance(value, np.ndarray) else value)
                 for key, value in self.get_plot_params().items()
             },
+            "xval_data": [np.asarray(row, dtype=float).copy() for row in self.xval_data],
+            "xval_time": [np.asarray(row, dtype=float).copy() for row in self.xval_time],
         }
 
     @classmethod
@@ -257,6 +267,8 @@ class FitResult:
             },
             neuron_name=str(payload.get("neuron_name", "")),
             plot_params=cls._coerce_plot_params(cast(dict[str, Any], payload.get("plot_params", {}))),
+            xval_data=[np.asarray(row, dtype=float) for row in cast(list[Any], payload.get("xval_data", []))],
+            xval_time=[np.asarray(row, dtype=float) for row in cast(list[Any], payload.get("xval_time", []))],
         )
 
     @staticmethod

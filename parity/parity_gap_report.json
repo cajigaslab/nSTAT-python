@@ -15,11 +15,11 @@
       "missing_method_count": 0
     },
     {
-      "coverage_ratio": 0.0,
-      "mapped_method_count": 0,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 5,
       "matlab_class": "ConfidenceInterval",
       "matlab_method_count": 5,
-      "missing_method_count": 5
+      "missing_method_count": 0
     },
     {
       "coverage_ratio": 0.0,
@@ -92,11 +92,11 @@
       "missing_method_count": 15
     },
     {
-      "coverage_ratio": 0.5454545454545454,
-      "mapped_method_count": 18,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 33,
       "matlab_class": "FitResult",
       "matlab_method_count": 33,
-      "missing_method_count": 15
+      "missing_method_count": 0
     },
     {
       "coverage_ratio": 0.43333333333333335,
@@ -266,7 +266,7 @@
     }
   ],
   "fail_on": "none",
-  "generated_at_utc": "2026-03-01T18:39:28.950267+00:00",
+  "generated_at_utc": "2026-03-01T19:46:41.996406+00:00",
   "issues": [
     {
       "check": "missing_method_mappings",
@@ -319,22 +319,6 @@
         ]
       },
       "message": "SignalObj has 42 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "ConfidenceInterval",
-        "matlab_method_count": 5,
-        "missing_methods": [
-          "ConfidenceInterval",
-          "fromStructure",
-          "plot",
-          "setColor",
-          "setValue"
-        ]
-      },
-      "message": "ConfidenceInterval has 5 unmapped MATLAB methods",
       "severity": "medium"
     },
     {
@@ -599,32 +583,6 @@
     {
       "check": "missing_method_mappings",
       "details": {
-        "matlab_class": "FitResult",
-        "matlab_method_count": 33,
-        "missing_methods": [
-          "KSPlot",
-          "getHistCoeffs",
-          "getHistIndex",
-          "getSubsetFitResult",
-          "isValDataPresent",
-          "mergeResults",
-          "plotCoeffs",
-          "plotCoeffsWithoutHistory",
-          "plotHistCoeffs",
-          "plotInvGausTrans",
-          "plotResidual",
-          "plotResults",
-          "plotSeqCorr",
-          "plotValidation",
-          "xticklabel_rotate"
-        ]
-      },
-      "message": "FitResult has 15 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
         "matlab_class": "FitResSummary",
         "matlab_method_count": 30,
         "missing_methods": [
@@ -654,7 +612,7 @@
   "summary": {
     "high": 0,
     "low": 0,
-    "medium": 13,
-    "total": 13
+    "medium": 11,
+    "total": 11
   }
 }

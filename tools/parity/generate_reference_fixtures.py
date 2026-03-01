@@ -17,6 +17,7 @@ import numpy as np
 import yaml
 
 from nstat.analysis import Analysis
+from nstat.compat.matlab import ConfidenceInterval as MatlabConfidenceInterval
 from nstat.decoding import DecodingAlgorithms
 from nstat.fit import FitResult, FitSummary
 from nstat.signal import Covariate
@@ -277,6 +278,39 @@ def _fixture_fit_result_roundtrip(output_dir: Path) -> dict[str, Any]:
     return file_info
 
 
+def _fixture_confidence_interval_compat(output_dir: Path) -> dict[str, Any]:
+    time = np.linspace(0.0, 1.0, 51)
+    center = 0.5 + 0.1 * np.sin(2.0 * np.pi * 2.0 * time)
+    half_width = 0.2 + 0.05 * np.cos(2.0 * np.pi * time)
+    lower = center - half_width
+    upper = center + half_width
+    values = center + 0.02 * np.cos(2.0 * np.pi * 3.0 * time)
+
+    ci = MatlabConfidenceInterval(time=time, lower=lower, upper=upper, level=0.95)
+    ci.setColor("red")
+    ci.setValue(values)
+    structure = ci.toStructure()
+    restored = MatlabConfidenceInterval.fromStructure(structure)
+
+    file_info = _write_npz(
+        output_dir / "confidence_interval_compat.npz",
+        time=time,
+        lower=lower,
+        upper=upper,
+        values=values,
+        expected_width=np.asarray(ci.getWidth(), dtype=float),
+        expected_contains=np.asarray(ci.contains(values), dtype=bool),
+        expected_structure_lower=np.asarray(structure["lower"], dtype=float),
+        expected_structure_upper=np.asarray(structure["upper"], dtype=float),
+        expected_restored_lower=np.asarray(restored.lower, dtype=float),
+        expected_restored_upper=np.asarray(restored.upper, dtype=float),
+        expected_restored_level=np.array([restored.level], dtype=float),
+    )
+    file_info["name"] = "confidence_interval_compat"
+    file_info["source"] = "python_seeded_reference"
+    return file_info
+
+
 def main() -> int:
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[2]
@@ -289,6 +323,7 @@ def main() -> int:
         _fixture_trial_alignment(output_dir),
         _fixture_fit_summary_structure(output_dir),
         _fixture_fit_result_roundtrip(output_dir),
+        _fixture_confidence_interval_compat(output_dir),
     ]
 
     for row in fixtures:

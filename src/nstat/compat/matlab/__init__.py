@@ -496,6 +496,50 @@ class Covariate(_Covariate):
 
 
 class ConfidenceInterval(_ConfidenceInterval):
+    @staticmethod
+    def ConfidenceInterval(*args: Any, **kwargs: Any) -> _ConfidenceInterval:
+        if len(args) == 1 and isinstance(args[0], dict):
+            return ConfidenceInterval.fromStructure(args[0])
+        return ConfidenceInterval(*args, **kwargs)
+
+    @staticmethod
+    def fromStructure(payload: dict[str, Any]) -> _ConfidenceInterval:
+        return ConfidenceInterval(
+            time=np.asarray(payload["time"], dtype=float),
+            lower=np.asarray(payload["lower"], dtype=float),
+            upper=np.asarray(payload["upper"], dtype=float),
+            level=float(payload.get("level", 0.95)),
+        )
+
+    def toStructure(self) -> dict[str, Any]:
+        return {
+            "time": self.time.copy(),
+            "lower": self.lower.copy(),
+            "upper": self.upper.copy(),
+            "level": float(self.level),
+        }
+
+    def setColor(self, color: str) -> _ConfidenceInterval:
+        setattr(self, "_color", str(color))
+        return self
+
+    def setValue(self, values: np.ndarray | float) -> _ConfidenceInterval:
+        arr = np.asarray(values, dtype=float)
+        if arr.ndim == 0:
+            arr = np.full(self.time.shape, float(arr), dtype=float)
+        if arr.shape != self.time.shape:
+            raise ValueError("values shape must match time shape")
+        half_width = 0.5 * self.width()
+        self.lower = arr - half_width
+        self.upper = arr + half_width
+        return self
+
+    def plot(self, *_args: Any, **_kwargs: Any) -> Any:
+        import matplotlib.pyplot as plt
+
+        color = getattr(self, "_color", "tab:blue")
+        return plt.fill_between(self.time, self.lower, self.upper, color=color, alpha=0.25)
+
     def getWidth(self) -> np.ndarray:
         return self.width()
 
@@ -1296,6 +1340,160 @@ class FitResult(_FitResult):
 
     def getUniqueLabels(self) -> list[str]:
         return self.get_unique_labels()
+
+    def isValDataPresent(self) -> bool:
+        return len(self.xval_data) > 0 and len(self.xval_time) > 0
+
+    def getSubsetFitResult(self, subfits: int | list[int] | np.ndarray) -> _FitResult:
+        if isinstance(subfits, int):
+            keep = [subfits]
+        else:
+            keep = [int(v) for v in np.asarray(subfits).reshape(-1)]
+        if 1 not in keep:
+            raise ValueError("single-fit Python adapter only supports subset index 1")
+        return self
+
+    def mergeResults(self, newFitObj: Any) -> _FitSummary:
+        rows: list[_FitResult] = [self]
+        if isinstance(newFitObj, _FitResult):
+            rows.append(newFitObj)
+        elif isinstance(newFitObj, (list, tuple)):
+            for item in newFitObj:
+                if not isinstance(item, _FitResult):
+                    raise TypeError("mergeResults expects FitResult or list of FitResult")
+                rows.append(item)
+        else:
+            raise TypeError("mergeResults expects FitResult or list of FitResult")
+        return FitResSummary(rows)
+
+    def getHistIndex(self, fitNum: int = 1, sortByEpoch: bool = False) -> tuple[np.ndarray, np.ndarray, int]:
+        _ = fitNum
+        _ = sortByEpoch
+        return np.array([], dtype=int), np.array([], dtype=int), 1
+
+    def getHistCoeffs(self, fitNum: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
+        _ = fitNum
+        empty = np.zeros((0, 1), dtype=float)
+        return empty, [], empty
+
+    def plotCoeffs(
+        self,
+        handle: Any = None,
+        fitNum: int = 1,
+        plotProps: dict[str, Any] | None = None,
+        plotSignificance: bool = True,
+        subIndex: Any = None,
+    ) -> Any:
+        _ = handle
+        _ = fitNum
+        _ = plotProps
+        _ = plotSignificance
+        _ = subIndex
+        import matplotlib.pyplot as plt
+
+        labels = self.get_unique_labels() or [f"coef_{i+1}" for i in range(self.coefficients.size)]
+        x = np.arange(len(labels))
+        h = plt.bar(x, self.coefficients)
+        plt.xticks(x, labels, rotation=45, ha="right")
+        return h
+
+    def plotCoeffsWithoutHistory(
+        self,
+        fitNum: int = 1,
+        sortByEpoch: bool = False,
+        plotSignificance: bool = True,
+    ) -> Any:
+        _ = sortByEpoch
+        return self.plotCoeffs(fitNum=fitNum, plotSignificance=plotSignificance)
+
+    def plotHistCoeffs(
+        self,
+        fitNum: int = 1,
+        sortByEpoch: bool = False,
+        plotSignificance: bool = True,
+    ) -> Any:
+        _ = fitNum
+        _ = sortByEpoch
+        _ = plotSignificance
+        import matplotlib.pyplot as plt
+
+        return plt.plot([], [])
+
+    def plotInvGausTrans(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        if not self.inv_gaus_stats:
+            return plt.plot([], [])
+        first_key = next(iter(self.inv_gaus_stats.keys()))
+        y = np.asarray(self.inv_gaus_stats[first_key], dtype=float).reshape(-1)
+        x = np.arange(y.size)
+        return plt.plot(x, y, "k-")
+
+    def plotResidual(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        if self.fit_residual is None:
+            return plt.plot([], [])
+        y = np.asarray(self.fit_residual, dtype=float).reshape(-1)
+        x = np.arange(y.size)
+        return plt.plot(x, y, "k-")
+
+    def plotSeqCorr(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        if self.fit_residual is None:
+            return plt.plot([], [])
+        y = np.asarray(self.fit_residual, dtype=float).reshape(-1)
+        y = y - np.mean(y)
+        corr = np.correlate(y, y, mode="full")
+        corr = corr[corr.size // 2 :]
+        if corr[0] != 0:
+            corr = corr / corr[0]
+        lags = np.arange(corr.size)
+        return plt.plot(lags, corr, "k-")
+
+    def KSPlot(self, fitNum: int = 1) -> Any:
+        _ = fitNum
+        import matplotlib.pyplot as plt
+
+        ks = np.asarray(self.ks_stats.get("ks_stat", []), dtype=float).reshape(-1)
+        if ks.size == 0:
+            return plt.plot([], [])
+        x = np.arange(ks.size)
+        return plt.plot(x, ks, "k-")
+
+    def plotValidation(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        if not self.isValDataPresent():
+            return plt.plot([], [])
+        y = np.asarray(self.xval_data[0], dtype=float).reshape(-1)
+        t = np.asarray(self.xval_time[0], dtype=float).reshape(-1)
+        if t.size != y.size:
+            t = np.arange(y.size, dtype=float)
+        return plt.plot(t, y, "k-")
+
+    def plotResults(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        plt.figure()
+        plt.subplot(2, 1, 1)
+        self.plotCoeffs()
+        plt.subplot(2, 1, 2)
+        self.plotResidual()
+        return plt.gca()
+
+    @staticmethod
+    def xticklabel_rotate(XTick: np.ndarray, rot: float, *args: Any, **kwargs: Any) -> Any:
+        _ = args
+        _ = kwargs
+        import matplotlib.pyplot as plt
+
+        ax = plt.gca()
+        ax.set_xticks(np.asarray(XTick, dtype=float))
+        for label in ax.get_xticklabels():
+            label.set_rotation(rot)
+        return ax.get_xticklabels()
 
 
 class FitResSummary(_FitSummary):

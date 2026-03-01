@@ -282,10 +282,16 @@
           "time",
           "upper"
         ],
-        "method_count": 3,
+        "method_count": 9,
         "methods": [
+          "ConfidenceInterval",
           "contains",
+          "fromStructure",
           "getWidth",
+          "plot",
+          "setColor",
+          "setValue",
+          "toStructure",
           "width"
         ],
         "properties": []
@@ -859,12 +865,15 @@
           "n_samples",
           "neuron_name",
           "parameter_labels",
-          "plot_params"
+          "plot_params",
+          "xval_data",
+          "xval_time"
         ],
-        "method_count": 41,
+        "method_count": 56,
         "methods": [
           "CellArrayToStructure",
           "FitResult",
+          "KSPlot",
           "addParamsToFit",
           "add_params_to_fit",
           "aic",
@@ -883,16 +892,29 @@
           "getBIC",
           "getCoeffIndex",
           "getCoeffs",
+          "getHistCoeffs",
+          "getHistIndex",
           "getParam",
           "getPlotParams",
+          "getSubsetFitResult",
           "getUniqueLabels",
           "get_coeff_index",
           "get_coeffs",
           "get_param",
           "get_plot_params",
           "get_unique_labels",
+          "isValDataPresent",
           "mapCovLabelsToUniqueLabels",
           "map_cov_labels_to_unique_labels",
+          "mergeResults",
+          "plotCoeffs",
+          "plotCoeffsWithoutHistory",
+          "plotHistCoeffs",
+          "plotInvGausTrans",
+          "plotResidual",
+          "plotResults",
+          "plotSeqCorr",
+          "plotValidation",
           "predict",
           "setFitResidual",
           "setInvGausStats",
@@ -903,7 +925,8 @@
           "set_ks_stats",
           "set_neuron_name",
           "toStructure",
-          "to_structure"
+          "to_structure",
+          "xticklabel_rotate"
         ],
         "properties": []
       },
@@ -922,7 +945,9 @@
           "n_samples",
           "neuron_name",
           "parameter_labels",
-          "plot_params"
+          "plot_params",
+          "xval_data",
+          "xval_time"
         ],
         "method_count": 20,
         "methods": [
@@ -1091,6 +1116,6 @@
       "python_class": "nstat.decoding.DecodingAlgorithms"
     }
   ],
-  "generated_at_utc": "2026-03-01T18:39:27.664434+00:00",
+  "generated_at_utc": "2026-03-01T19:46:40.819861+00:00",
   "python_root": "/private/tmp/nSTAT-python-cleanroom"
 }
