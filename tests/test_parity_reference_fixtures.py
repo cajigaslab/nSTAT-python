@@ -7,8 +7,10 @@ import numpy as np
 import yaml
 
 from nstat.analysis import Analysis
+from nstat.compat.matlab import FitResult as MatlabFitResult
 from nstat.compat.matlab import FitResSummary as MatlabFitResSummary
 from nstat.decoding import DecodingAlgorithms
+from nstat.fit import FitResult
 from nstat.fit import FitSummary
 from nstat.signal import Covariate
 from nstat.spikes import SpikeTrain, SpikeTrainCollection
@@ -143,3 +145,48 @@ def test_fit_summary_structure_fixture_regression() -> None:
     assert np.allclose(coeff_mat_compat, fixture["expected_coeff_matrix"], atol=1e-12, equal_nan=True)
     assert labels_compat == labels
     assert len(compat.toStructure()["results"]) == len(structures)
+
+
+def test_fit_result_roundtrip_fixture_regression() -> None:
+    fixture = np.load("tests/parity/fixtures/fit_result_roundtrip.npz")
+
+    payload = {
+        "coefficients": fixture["coefficients"],
+        "intercept": float(fixture["intercept"][0]),
+        "fit_type": str(fixture["fit_type"][0]),
+        "log_likelihood": float(fixture["log_likelihood"][0]),
+        "n_samples": int(fixture["n_samples"][0]),
+        "n_parameters": int(fixture["n_parameters"][0]),
+        "parameter_labels": [str(v) for v in fixture["parameter_labels"]],
+        "ks_stats": {
+            "ks_stat": fixture["ks_stat"],
+            "pValue": fixture["p_value"],
+            "withinConfInt": fixture["within_conf_int"],
+        },
+        "fit_residual": fixture["fit_residual"],
+        "inv_gaus_stats": {"z": fixture["inv_gaus_z"]},
+        "neuron_name": str(fixture["neuron_name"][0]),
+    }
+
+    native = FitResult.from_structure(payload)
+    plot = native.get_plot_params()
+    assert np.isclose(native.aic(), float(fixture["expected_aic"][0]), atol=1e-12)
+    assert np.isclose(native.bic(), float(fixture["expected_bic"][0]), atol=1e-12)
+    assert np.allclose(plot["bAct"], fixture["expected_plot_bact"], atol=1e-12)
+    assert np.allclose(plot["seAct"], fixture["expected_plot_seact"], atol=1e-12)
+    assert np.allclose(plot["sigIndex"], fixture["expected_plot_sigindex"], atol=1e-12)
+    assert np.array_equal(np.array(plot["xLabels"], dtype="<U32"), fixture["expected_plot_xlabels"])
+
+    compat = MatlabFitResult.fromStructure(payload)
+    compat.setKSStats(
+        fixture["ks_stat"],
+        fixture["p_value"],
+        fixture["within_conf_int"],
+    ).setFitResidual(fixture["fit_residual"]).setNeuronName(str(fixture["neuron_name"][0]))
+    compat_plot = compat.getPlotParams()
+    roundtrip = MatlabFitResult.fromStructure(compat.toStructure())
+    assert np.allclose(roundtrip.coefficients, fixture["expected_roundtrip_coefficients"], atol=1e-12)
+    assert np.allclose(roundtrip.fit_residual, fixture["expected_roundtrip_fit_residual"], atol=1e-12)
+    assert np.allclose(roundtrip.ks_stats["ks_stat"], fixture["expected_roundtrip_ks_stat"], atol=1e-12)
+    assert roundtrip.neuron_name == str(fixture["expected_roundtrip_neuron_name"][0])
+    assert np.allclose(compat_plot["bAct"], fixture["expected_roundtrip_plot_bact"], atol=1e-12)

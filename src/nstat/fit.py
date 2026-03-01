@@ -21,6 +21,11 @@ class FitResult:
     n_samples: int
     n_parameters: int
     parameter_labels: list[str] = field(default_factory=list)
+    ks_stats: dict[str, np.ndarray | float] = field(default_factory=dict)
+    fit_residual: np.ndarray | None = None
+    inv_gaus_stats: dict[str, np.ndarray | float] = field(default_factory=dict)
+    neuron_name: str = ""
+    plot_params: dict[str, Any] = field(default_factory=dict)
 
     def as_cif_model(self) -> CIFModel:
         """Return a :class:`nstat.cif.CIFModel` view of this fitted model."""
@@ -91,6 +96,111 @@ class FitResult:
             ordered.append(label)
         return ordered
 
+    def set_ks_stats(
+        self,
+        ks_stat: np.ndarray | float | dict[str, Any],
+        p_value: np.ndarray | float | None = None,
+        within_conf_int: np.ndarray | float | None = None,
+    ) -> None:
+        """Store KS statistics in MATLAB-compatible key layout."""
+
+        if isinstance(ks_stat, dict):
+            payload = dict(ks_stat)
+            self.ks_stats = {
+                "ks_stat": np.asarray(payload.get("ks_stat", payload.get("ksStat", [])), dtype=float),
+                "pValue": np.asarray(payload.get("pValue", payload.get("p_value", [])), dtype=float),
+                "withinConfInt": np.asarray(
+                    payload.get("withinConfInt", payload.get("within_conf_int", [])),
+                    dtype=float,
+                ),
+            }
+            return
+
+        self.ks_stats = {
+            "ks_stat": np.asarray(ks_stat, dtype=float),
+            "pValue": np.asarray([] if p_value is None else p_value, dtype=float),
+            "withinConfInt": np.asarray([] if within_conf_int is None else within_conf_int, dtype=float),
+        }
+
+    def set_fit_residual(self, residual: np.ndarray) -> None:
+        """Attach residual vector used by MATLAB diagnostics."""
+
+        self.fit_residual = np.asarray(residual, dtype=float).reshape(-1)
+
+    def set_inv_gaus_stats(self, payload: dict[str, Any]) -> None:
+        """Attach inverse-Gaussian transform stats if available."""
+
+        self.inv_gaus_stats = {
+            str(key): np.asarray(value, dtype=float) for key, value in payload.items()
+        }
+
+    def set_neuron_name(self, name: str) -> None:
+        """Assign a stable neuron identifier."""
+
+        self.neuron_name = str(name)
+
+    def map_cov_labels_to_unique_labels(self) -> list[str]:
+        """Return unique covariate labels for MATLAB parity call sites."""
+
+        return self.get_unique_labels()
+
+    def compute_plot_params(self) -> dict[str, Any]:
+        """Compute MATLAB-style coefficient plotting payload."""
+
+        labels = self.parameter_labels or [f"coef_{i+1}" for i in range(self.coefficients.size)]
+        b_act = np.asarray(self.coefficients, dtype=float).reshape(-1, 1)
+        se_act = np.zeros_like(b_act)
+        sig_index = (np.abs(b_act) > 0.0).astype(float)
+        payload: dict[str, Any] = {
+            "bAct": b_act,
+            "seAct": se_act,
+            "sigIndex": sig_index,
+            "xLabels": list(labels),
+            "numResultsCoeffPresent": np.ones(b_act.shape[0], dtype=float),
+        }
+        self.plot_params = payload
+        return payload
+
+    def get_plot_params(self) -> dict[str, Any]:
+        """Return cached plot parameters, computing if necessary."""
+
+        if not self.plot_params:
+            return self.compute_plot_params()
+        return {
+            key: (value.copy() if isinstance(value, np.ndarray) else value)
+            for key, value in self.plot_params.items()
+        }
+
+    def add_params_to_fit(self, payload: dict[str, Any]) -> None:
+        """Update optional FitResult metadata in-place."""
+
+        if "ks_stats" in payload:
+            self.set_ks_stats(cast(dict[str, Any], payload["ks_stats"]))
+        if "fit_residual" in payload:
+            self.set_fit_residual(np.asarray(payload["fit_residual"], dtype=float))
+        if "inv_gaus_stats" in payload:
+            self.set_inv_gaus_stats(cast(dict[str, Any], payload["inv_gaus_stats"]))
+        if "neuron_name" in payload:
+            self.set_neuron_name(str(payload["neuron_name"]))
+        if "plot_params" in payload:
+            source = cast(dict[str, Any], payload["plot_params"])
+            normalized: dict[str, Any] = {}
+            for key, value in source.items():
+                if key == "xLabels":
+                    normalized[str(key)] = [str(v) for v in value]
+                elif isinstance(value, np.ndarray):
+                    normalized[str(key)] = np.asarray(value, dtype=float)
+                elif isinstance(value, (list, tuple)):
+                    try:
+                        normalized[str(key)] = np.asarray(value, dtype=float)
+                    except (TypeError, ValueError):
+                        normalized[str(key)] = [str(v) for v in value]
+                else:
+                    normalized[str(key)] = value
+            self.plot_params = {
+                str(key): value for key, value in normalized.items()
+            }
+
     def to_structure(self) -> dict[str, Any]:
         """Serialize this fit result to a MATLAB-like plain structure."""
 
@@ -102,6 +212,22 @@ class FitResult:
             "n_samples": int(self.n_samples),
             "n_parameters": int(self.n_parameters),
             "parameter_labels": list(self.parameter_labels),
+            "ks_stats": {
+                key: np.asarray(value, dtype=float).copy()
+                for key, value in self.ks_stats.items()
+            },
+            "fit_residual": (
+                None if self.fit_residual is None else np.asarray(self.fit_residual, dtype=float).copy()
+            ),
+            "inv_gaus_stats": {
+                key: np.asarray(value, dtype=float).copy()
+                for key, value in self.inv_gaus_stats.items()
+            },
+            "neuron_name": str(self.neuron_name),
+            "plot_params": {
+                key: (value.copy() if isinstance(value, np.ndarray) else value)
+                for key, value in self.get_plot_params().items()
+            },
         }
 
     @classmethod
@@ -116,7 +242,39 @@ class FitResult:
             n_samples=int(payload["n_samples"]),
             n_parameters=int(payload["n_parameters"]),
             parameter_labels=[str(v) for v in payload.get("parameter_labels", [])],
+            ks_stats={
+                str(key): np.asarray(value, dtype=float)
+                for key, value in cast(dict[str, Any], payload.get("ks_stats", {})).items()
+            },
+            fit_residual=(
+                None
+                if payload.get("fit_residual", None) is None
+                else np.asarray(payload["fit_residual"], dtype=float).reshape(-1)
+            ),
+            inv_gaus_stats={
+                str(key): np.asarray(value, dtype=float)
+                for key, value in cast(dict[str, Any], payload.get("inv_gaus_stats", {})).items()
+            },
+            neuron_name=str(payload.get("neuron_name", "")),
+            plot_params=cls._coerce_plot_params(cast(dict[str, Any], payload.get("plot_params", {}))),
         )
+
+    @staticmethod
+    def _coerce_plot_params(source: dict[str, Any]) -> dict[str, Any]:
+        normalized: dict[str, Any] = {}
+        for key, value in source.items():
+            if key == "xLabels":
+                normalized[str(key)] = [str(v) for v in value]
+            elif isinstance(value, np.ndarray):
+                normalized[str(key)] = np.asarray(value, dtype=float)
+            elif isinstance(value, (list, tuple)):
+                try:
+                    normalized[str(key)] = np.asarray(value, dtype=float)
+                except (TypeError, ValueError):
+                    normalized[str(key)] = [str(v) for v in value]
+            else:
+                normalized[str(key)] = value
+        return normalized
 
     @staticmethod
     def cell_array_to_structure(results: list["FitResult"]) -> list[dict[str, Any]]:

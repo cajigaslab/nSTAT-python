@@ -358,10 +358,14 @@ class SignalObj(_Signal):
 
 
 class Covariate(_Covariate):
+    @staticmethod
+    def Covariate(payload: dict[str, Any]) -> _Covariate:
+        return Covariate.fromStructure(payload)
+
     def computeMeanPlusCI(self, axis: int = 1, level: float = 0.95) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         return self.compute_mean_plus_ci(axis=axis, level=level)
 
-    def getSubSignal(self, selector: int | str | list[int] | list[str]) -> "Covariate":
+    def getSubSignal(self, selector: int | str | list[int] | list[str]) -> _Covariate:
         out = super().get_sub_signal(selector)
         return Covariate(
             time=out.time,
@@ -377,7 +381,7 @@ class Covariate(_Covariate):
             plot_props=out.plot_props,
         )
 
-    def setConfInterval(self, interval: Any) -> "Covariate":
+    def setConfInterval(self, interval: Any) -> _Covariate:
         self.set_conf_interval(interval)
         return self
 
@@ -394,7 +398,7 @@ class Covariate(_Covariate):
         return self.to_structure()
 
     @staticmethod
-    def fromStructure(payload: dict[str, Any]) -> "Covariate":
+    def fromStructure(payload: dict[str, Any]) -> _Covariate:
         out = _Covariate.from_structure(payload)
         return Covariate(
             time=out.time,
@@ -424,6 +428,71 @@ class Covariate(_Covariate):
 
     def getSampleRate(self) -> float:
         return self.sample_rate_hz
+
+    def copySignal(self) -> _Covariate:
+        out = super().copy_signal()
+        return Covariate(
+            time=out.time,
+            data=out.data,
+            name=out.name,
+            units=out.units,
+            labels=self.labels.copy(),
+            conf_interval=self.conf_interval,
+            x_label=out.x_label,
+            y_label=out.y_label,
+            x_units=out.x_units,
+            y_units=out.y_units,
+            plot_props=out.plot_props,
+        )
+
+    def plus(self, other: float | np.ndarray | _Signal) -> _Covariate:
+        if isinstance(other, _Signal):
+            rhs = other.data_to_matrix()
+        else:
+            rhs = np.asarray(other, dtype=float)
+        lhs = self.data_to_matrix()
+        out = lhs + rhs
+        data = out[:, 0] if out.ndim == 2 and out.shape[1] == 1 else out
+        return Covariate(
+            time=self.time.copy(),
+            data=data,
+            name=f"{self.name}+",
+            units=self.units,
+            labels=self.labels.copy(),
+            conf_interval=self.conf_interval,
+            x_label=self.x_label,
+            y_label=self.y_label,
+            x_units=self.x_units,
+            y_units=self.y_units,
+            plot_props=dict(self.plot_props),
+        )
+
+    def minus(self, other: float | np.ndarray | _Signal) -> _Covariate:
+        if isinstance(other, _Signal):
+            rhs = other.data_to_matrix()
+        else:
+            rhs = np.asarray(other, dtype=float)
+        lhs = self.data_to_matrix()
+        out = lhs - rhs
+        data = out[:, 0] if out.ndim == 2 and out.shape[1] == 1 else out
+        return Covariate(
+            time=self.time.copy(),
+            data=data,
+            name=f"{self.name}-",
+            units=self.units,
+            labels=self.labels.copy(),
+            conf_interval=self.conf_interval,
+            x_label=self.x_label,
+            y_label=self.y_label,
+            x_units=self.x_units,
+            y_units=self.y_units,
+            plot_props=dict(self.plot_props),
+        )
+
+    def plot(self, *_args: Any, **_kwargs: Any) -> Any:
+        import matplotlib.pyplot as plt
+
+        return plt.plot(self.time, self.data_to_matrix())
 
 
 class ConfidenceInterval(_ConfidenceInterval):
@@ -1136,11 +1205,25 @@ class Analysis:
 class FitResult(_FitResult):
     @staticmethod
     def FitResult(structure: dict[str, Any]) -> _FitResult:
-        return _FitResult.from_structure(structure)
+        return FitResult.fromStructure(structure)
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> _FitResult:
-        return _FitResult.from_structure(structure)
+        native = _FitResult.from_structure(structure)
+        return FitResult(
+            coefficients=native.coefficients,
+            intercept=native.intercept,
+            fit_type=native.fit_type,
+            log_likelihood=native.log_likelihood,
+            n_samples=native.n_samples,
+            n_parameters=native.n_parameters,
+            parameter_labels=native.parameter_labels,
+            ks_stats=native.ks_stats,
+            fit_residual=native.fit_residual,
+            inv_gaus_stats=native.inv_gaus_stats,
+            neuron_name=native.neuron_name,
+            plot_params=native.plot_params,
+        )
 
     @staticmethod
     def CellArrayToStructure(results: list[_FitResult]) -> list[dict[str, Any]]:
@@ -1148,6 +1231,40 @@ class FitResult(_FitResult):
 
     def toStructure(self) -> dict[str, Any]:
         return self.to_structure()
+
+    def setKSStats(
+        self,
+        ksStat: np.ndarray | float | dict[str, Any],
+        pValue: np.ndarray | float | None = None,
+        withinConfInt: np.ndarray | float | None = None,
+    ) -> _FitResult:
+        self.set_ks_stats(ks_stat=ksStat, p_value=pValue, within_conf_int=withinConfInt)
+        return self
+
+    def setFitResidual(self, fitResidual: np.ndarray) -> _FitResult:
+        self.set_fit_residual(fitResidual)
+        return self
+
+    def setInvGausStats(self, stats: dict[str, Any]) -> _FitResult:
+        self.set_inv_gaus_stats(stats)
+        return self
+
+    def setNeuronName(self, neuronName: str) -> _FitResult:
+        self.set_neuron_name(neuronName)
+        return self
+
+    def mapCovLabelsToUniqueLabels(self) -> list[str]:
+        return self.map_cov_labels_to_unique_labels()
+
+    def computePlotParams(self) -> dict[str, Any]:
+        return self.compute_plot_params()
+
+    def getPlotParams(self) -> dict[str, Any]:
+        return self.get_plot_params()
+
+    def addParamsToFit(self, payload: dict[str, Any]) -> _FitResult:
+        self.add_params_to_fit(payload)
+        return self
 
     def evalLambda(self, X_or_modelIndex: Any, maybe_X: Any = None) -> np.ndarray:
         if maybe_X is None:

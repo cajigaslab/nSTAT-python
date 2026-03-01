@@ -44,20 +44,22 @@ CI enforces `--fail-on high` for parity discovery so missing critical artifacts 
 - Discovery scripts: `tools/parity/`
 
 ## Current Status (2026-03-01)
-- Latest validated Python target commit: `e89dbf4`
+- Latest validated Python target commit: `6e58f23`
 - GitHub Actions:
-  - `test-and-build`: success ([run 22549570356](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549570356))
-  - `pages`: success ([run 22549570320](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549570320))
-  - `notebooks-full`: success ([run 22549674330](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549674330))
+  - `test-and-build`: success ([run 22549822032](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549822032))
+  - `pages`: success ([run 22549822034](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549822034))
+  - `notebooks-full`: success ([run 22549862478](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549862478))
 - Latest parity snapshot:
   - `summary.high = 0`
-  - `summary.medium = 14`
+  - `summary.medium = 13`
   - `summary.low = 0`
 - Tier-1 closure completed in this tranche:
   - `FitResSummary` method coverage improved from `4/30` to `13/30`
   - Missing methods reduced from `26` to `17`
+  - `FitResult` method coverage improved from `10/33` to `18/33`
+  - `Covariate` is fully mapped (`14/14`)
 - Updated visual validation report:
-  - `output/pdf/nstat_python_validation_report_20260301_133058.pdf`
+  - `output/pdf/nstat_python_validation_report_20260301_133939.pdf`
 
 ## Acceptance Checklist
 - [x] Class and example inventory artifacts regenerate successfully.

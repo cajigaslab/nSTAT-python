@@ -222,6 +222,61 @@ def _fixture_fit_summary_structure(output_dir: Path) -> dict[str, Any]:
     return file_info
 
 
+def _fixture_fit_result_roundtrip(output_dir: Path) -> dict[str, Any]:
+    result = FitResult(
+        coefficients=np.array([0.35, -0.12], dtype=float),
+        intercept=-0.80,
+        fit_type="binomial",
+        log_likelihood=-15.2,
+        n_samples=240,
+        n_parameters=3,
+        parameter_labels=["stim", "hist"],
+    )
+    result.set_ks_stats(
+        ks_stat=np.array([0.12, 0.09], dtype=float),
+        p_value=np.array([0.84, 0.63], dtype=float),
+        within_conf_int=np.array([1.0, 0.0], dtype=float),
+    )
+    result.set_fit_residual(np.array([0.2, -0.1, 0.05, -0.03], dtype=float))
+    result.set_inv_gaus_stats({"z": np.array([0.1, -0.2, 0.05], dtype=float)})
+    result.set_neuron_name("unit-17")
+    plot = result.compute_plot_params()
+
+    roundtrip = FitResult.from_structure(result.to_structure())
+    roundtrip_plot = roundtrip.get_plot_params()
+
+    file_info = _write_npz(
+        output_dir / "fit_result_roundtrip.npz",
+        coefficients=result.coefficients,
+        intercept=np.array([result.intercept], dtype=float),
+        fit_type=np.array([result.fit_type], dtype="<U32"),
+        log_likelihood=np.array([result.log_likelihood], dtype=float),
+        n_samples=np.array([result.n_samples], dtype=int),
+        n_parameters=np.array([result.n_parameters], dtype=int),
+        parameter_labels=np.array(result.parameter_labels, dtype="<U32"),
+        ks_stat=np.asarray(result.ks_stats["ks_stat"], dtype=float),
+        p_value=np.asarray(result.ks_stats["pValue"], dtype=float),
+        within_conf_int=np.asarray(result.ks_stats["withinConfInt"], dtype=float),
+        fit_residual=np.asarray(result.fit_residual, dtype=float),
+        inv_gaus_z=np.asarray(result.inv_gaus_stats["z"], dtype=float),
+        neuron_name=np.array([result.neuron_name], dtype="<U32"),
+        expected_aic=np.array([result.aic()], dtype=float),
+        expected_bic=np.array([result.bic()], dtype=float),
+        expected_plot_bact=np.asarray(plot["bAct"], dtype=float),
+        expected_plot_seact=np.asarray(plot["seAct"], dtype=float),
+        expected_plot_sigindex=np.asarray(plot["sigIndex"], dtype=float),
+        expected_plot_xlabels=np.array(plot["xLabels"], dtype="<U32"),
+        expected_roundtrip_coefficients=roundtrip.coefficients,
+        expected_roundtrip_fit_residual=np.asarray(roundtrip.fit_residual, dtype=float),
+        expected_roundtrip_ks_stat=np.asarray(roundtrip.ks_stats["ks_stat"], dtype=float),
+        expected_roundtrip_neuron_name=np.array([roundtrip.neuron_name], dtype="<U32"),
+        expected_roundtrip_plot_bact=np.asarray(roundtrip_plot["bAct"], dtype=float),
+    )
+    file_info["name"] = "fit_result_roundtrip"
+    file_info["source"] = "python_seeded_reference"
+    return file_info
+
+
 def main() -> int:
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[2]
@@ -233,6 +288,7 @@ def main() -> int:
         _fixture_decoding_posterior(output_dir),
         _fixture_trial_alignment(output_dir),
         _fixture_fit_summary_structure(output_dir),
+        _fixture_fit_result_roundtrip(output_dir),
     ]
 
     for row in fixtures:

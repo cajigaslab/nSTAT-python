@@ -8,11 +8,11 @@
       "missing_method_count": 42
     },
     {
-      "coverage_ratio": 0.6428571428571429,
-      "mapped_method_count": 9,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 14,
       "matlab_class": "Covariate",
       "matlab_method_count": 14,
-      "missing_method_count": 5
+      "missing_method_count": 0
     },
     {
       "coverage_ratio": 0.0,
@@ -92,11 +92,11 @@
       "missing_method_count": 15
     },
     {
-      "coverage_ratio": 0.30303030303030304,
-      "mapped_method_count": 10,
+      "coverage_ratio": 0.5454545454545454,
+      "mapped_method_count": 18,
       "matlab_class": "FitResult",
       "matlab_method_count": 33,
-      "missing_method_count": 23
+      "missing_method_count": 15
     },
     {
       "coverage_ratio": 0.43333333333333335,
@@ -266,7 +266,7 @@
     }
   ],
   "fail_on": "none",
-  "generated_at_utc": "2026-03-01T18:30:37.831470+00:00",
+  "generated_at_utc": "2026-03-01T18:39:28.950267+00:00",
   "issues": [
     {
       "check": "missing_method_mappings",
@@ -319,22 +319,6 @@
         ]
       },
       "message": "SignalObj has 42 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "Covariate",
-        "matlab_method_count": 14,
-        "missing_methods": [
-          "Covariate",
-          "copySignal",
-          "minus",
-          "plot",
-          "plus"
-        ]
-      },
-      "message": "Covariate has 5 unmapped MATLAB methods",
       "severity": "medium"
     },
     {
@@ -619,14 +603,10 @@
         "matlab_method_count": 33,
         "missing_methods": [
           "KSPlot",
-          "addParamsToFit",
-          "computePlotParams",
           "getHistCoeffs",
           "getHistIndex",
-          "getPlotParams",
           "getSubsetFitResult",
           "isValDataPresent",
-          "mapCovLabelsToUniqueLabels",
           "mergeResults",
           "plotCoeffs",
           "plotCoeffsWithoutHistory",
@@ -636,14 +616,10 @@
           "plotResults",
           "plotSeqCorr",
           "plotValidation",
-          "setFitResidual",
-          "setInvGausStats",
-          "setKSStats",
-          "setNeuronName",
           "xticklabel_rotate"
         ]
       },
-      "message": "FitResult has 23 unmapped MATLAB methods",
+      "message": "FitResult has 15 unmapped MATLAB methods",
       "severity": "medium"
     },
     {
@@ -678,7 +654,7 @@
   "summary": {
     "high": 0,
     "low": 0,
-    "medium": 14,
-    "total": 14
+    "medium": 13,
+    "total": 13
   }
 }

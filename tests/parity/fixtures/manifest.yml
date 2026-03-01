@@ -19,3 +19,7 @@ fixtures:
   sha256: 6471af684b4acd0dad0092435e13c8afd0c8b0115577396893bb822a96131834
   name: fit_summary_structure
   source: python_seeded_reference
+- path: tests/parity/fixtures/fit_result_roundtrip.npz
+  sha256: 1f86bc65628abfd544b9587c4b1b1594fd2395e442aaa4b5dae3ab9bf34b493e
+  name: fit_result_roundtrip
+  source: python_seeded_reference
