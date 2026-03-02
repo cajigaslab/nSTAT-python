@@ -541,11 +541,26 @@ class SignalObj(_Signal):
 
     def filtfilt(self, b: np.ndarray, a: np.ndarray) -> "SignalObj":
         from scipy.signal import filtfilt
+        from scipy.signal import lfilter
 
         b_arr = np.asarray(b, dtype=float).reshape(-1)
         a_arr = np.asarray(a, dtype=float).reshape(-1)
         mat = self.data_to_matrix()
-        out = np.column_stack([filtfilt(b_arr, a_arr, mat[:, i]) for i in range(mat.shape[1])])
+        filtered_cols: list[np.ndarray] = []
+        for i in range(mat.shape[1]):
+            x = np.asarray(mat[:, i], dtype=float).reshape(-1)
+            if x.size < 2:
+                filtered_cols.append(lfilter(b_arr, a_arr, x))
+                continue
+            ntaps = max(int(a_arr.size), int(b_arr.size))
+            padlen = min(3 * ntaps, int(x.size) - 1)
+            try:
+                filtered_cols.append(filtfilt(b_arr, a_arr, x, padlen=padlen))
+            except ValueError:
+                fwd = lfilter(b_arr, a_arr, x)
+                bwd = lfilter(b_arr, a_arr, fwd[::-1])
+                filtered_cols.append(bwd[::-1])
+        out = np.column_stack(filtered_cols)
         return self._with_data(out, name=f"filtfilt({self.name})")
 
     def periodogram(self) -> tuple[np.ndarray, np.ndarray]:

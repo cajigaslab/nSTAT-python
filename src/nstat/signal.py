@@ -11,10 +11,31 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+from scipy.signal import lfilter as scipy_lfilter
 from scipy.signal import filtfilt as scipy_filtfilt
 
 
 ArrayLike = np.ndarray
+
+
+def _safe_zero_phase_filter(b: np.ndarray, a: np.ndarray, x: np.ndarray) -> np.ndarray:
+    """Apply filtfilt with a conservative padlen fallback for short vectors."""
+
+    b_arr = np.asarray(b, dtype=float).reshape(-1)
+    a_arr = np.asarray(a, dtype=float).reshape(-1)
+    x_arr = np.asarray(x, dtype=float).reshape(-1)
+    if x_arr.size < 2:
+        return scipy_lfilter(b_arr, a_arr, x_arr)
+
+    ntaps = max(int(a_arr.size), int(b_arr.size))
+    padlen = min(3 * ntaps, int(x_arr.size) - 1)
+    try:
+        return scipy_filtfilt(b_arr, a_arr, x_arr, padlen=padlen)
+    except ValueError:
+        # Fallback for pathological short-signal/filter combinations.
+        fwd = scipy_lfilter(b_arr, a_arr, x_arr)
+        bwd = scipy_lfilter(b_arr, a_arr, fwd[::-1])
+        return bwd[::-1]
 
 
 @dataclass(slots=True)
@@ -375,7 +396,7 @@ class Covariate(Signal):
         """Zero-phase filter each covariate channel."""
 
         mat = self.data_to_matrix()
-        filtered = np.column_stack([scipy_filtfilt(b, a, mat[:, i]) for i in range(mat.shape[1])])
+        filtered = np.column_stack([_safe_zero_phase_filter(b, a, mat[:, i]) for i in range(mat.shape[1])])
         if filtered.shape[1] == 1:
             out_data: np.ndarray = filtered[:, 0]
         else:

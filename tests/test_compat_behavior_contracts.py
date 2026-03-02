@@ -118,6 +118,9 @@ def _build_compat_signal_basic() -> tuple[Any, dict[str, Any]]:
         "signal_mask_args": [[1]],
         "signal_names_args": [["ch1"]],
         "signal_cell2str_args": [["a", "b", "c"]],
+        "signal_plot_props_args": [{"LineWidth": 2.0}],
+        "signal_filter_args": [np.array([0.2, 0.2]), np.array([1.0, -0.3])],
+        "signal_crosscorr_args": [other, 1],
     }
 
 
@@ -129,7 +132,17 @@ def _build_compat_covariate_basic() -> tuple[Any, dict[str, Any]]:
         name="stim",
         labels=["stim1", "stim2"],
     )
-    return obj, {"cov_from_structure_args": [obj.toStructure()]}
+    ci = M.ConfidenceInterval(
+        time=time,
+        lower=np.array([0.0, 0.1, 0.2, 0.3, 0.4]),
+        upper=np.array([0.2, 0.3, 0.4, 0.5, 0.6]),
+        level=0.95,
+    )
+    return obj, {
+        "cov_from_structure_args": [obj.toStructure()],
+        "cov_filter_args": [np.array([0.2, 0.2]), np.array([1.0, -0.3])],
+        "cov_set_ci_args": [ci],
+    }
 
 
 def _build_compat_confidence_basic() -> tuple[Any, dict[str, Any]]:
@@ -144,16 +157,22 @@ def _build_compat_confidence_basic() -> tuple[Any, dict[str, Any]]:
         "ci_set_color_args": ["r"],
         "ci_set_value_args": [1.0],
         "ci_from_structure_args": [obj.toStructure()],
+        "ci_ctor_args": [obj.toStructure()],
     }
 
 
 def _build_compat_events_basic() -> tuple[Any, dict[str, Any]]:
     obj = M.Events(times=np.array([0.1, 0.4, 0.9]), labels=["a", "b", "c"])
-    return obj, {"events_from_structure_args": [obj.toStructure()]}
+    return obj, {
+        "events_from_structure_args": [obj.toStructure()],
+        "events_ctor_args": [obj.toStructure()],
+        "events_dsxy_args": [0.2, 0.3],
+    }
 
 
 def _build_compat_history_basic() -> tuple[Any, dict[str, Any]]:
     obj = M.History(bin_edges_s=np.array([0.0, 0.05, 0.1, 0.2]))
+    spike = M.nspikeTrain(spike_times=np.array([0.12, 0.28]), t_start=0.0, t_end=1.0, name="u1")
     return obj, {
         "history_compute_args": [
             np.array([0.12, 0.28]),
@@ -161,6 +180,8 @@ def _build_compat_history_basic() -> tuple[Any, dict[str, Any]]:
         ],
         "history_set_window_args": [0.0, 0.3, 3],
         "history_from_structure_args": [obj.toStructure()],
+        "history_ctor_args": [obj.toStructure()],
+        "history_nst_window_args": [spike, np.array([0.15, 0.25, 0.30, 0.40])],
     }
 
 
@@ -170,6 +191,9 @@ def _build_compat_spike_train_basic() -> tuple[Any, dict[str, Any]]:
         "spike_sigrep_args": [0.1, "count"],
         "spike_isbinary_args": [0.01],
         "spike_from_structure_args": [obj.toStructure()],
+        "spike_ctor_args": [obj.toStructure()],
+        "spike_set_sigrep_args": [np.array([0.0, 1.0, 0.0, 1.0])],
+        "spike_get_field_name_args": ["name"],
     }
 
 
@@ -242,19 +266,30 @@ def _build_compat_covcoll_basic() -> tuple[Any, dict[str, Any]]:
 
 def _build_compat_trial_config_basic() -> tuple[Any, dict[str, Any]]:
     obj = M.TrialConfig(covariate_labels=["stim"], sample_rate_hz=1000.0, fit_type="poisson", name="cfg")
+    time = np.linspace(0.0, 1.0, 5)
+    cov = M.Covariate(time=time, data=time, name="stim", labels=["stim"])
+    spike = M.nspikeTrain(spike_times=np.array([0.2, 0.4]), t_start=0.0, t_end=1.0, name="u1")
+    trial = M.Trial(spikes=M.nstColl([spike]), covariates=M.CovColl([cov]))
     return obj, {
         "trial_cfg_set_name_args": ["cfg2"],
         "trial_cfg_from_structure_args": [obj.toStructure()],
+        "trial_cfg_set_config_args": [trial],
     }
 
 
 def _build_compat_config_coll_basic() -> tuple[Any, dict[str, Any]]:
     cfg = M.TrialConfig(covariate_labels=["stim"], sample_rate_hz=1000.0, fit_type="poisson", name="cfg")
     obj = M.ConfigColl([cfg])
+    cfg2 = M.TrialConfig(covariate_labels=["stim"], sample_rate_hz=1000.0, fit_type="poisson", name="cfg2")
+    cfg3 = M.TrialConfig(covariate_labels=["stim"], sample_rate_hz=1000.0, fit_type="poisson", name="cfg3")
     return obj, {
         "config_get_args": [1],
         "config_subset_args": [[1]],
         "config_from_structure_args": [obj.toStructure()],
+        "config_ctor_args": [obj.toStructure()],
+        "config_add_args": [cfg2],
+        "config_set_args": [2, cfg3],
+        "config_set_names_args": [["cfgA", "cfgB"]],
     }
 
 
@@ -383,6 +418,10 @@ def _build_compat_fit_result_basic() -> tuple[Any, dict[str, Any]]:
         "fit_from_structure_args": [obj.toStructure()],
         "fit_cell_array_args": [[obj]],
         "fit_subset_args": [[1]],
+        "fit_set_ks_args": [np.array([0.1, 0.2]), np.array([0.9, 0.8]), np.array([1.0, 1.0])],
+        "fit_set_resid_args": [np.array([0.1, -0.2, 0.0])],
+        "fit_set_inv_args": [{"z": np.array([0.1, 0.2])}],
+        "fit_xtick_rotate_args": [np.array([0.0, 1.0]), 15.0],
     }
 
 
@@ -410,6 +449,9 @@ def _build_compat_fit_summary_basic() -> tuple[Any, dict[str, Any]]:
         "summary_bin_coeffs_args": [-1.0, 1.0, 0.2],
         "summary_diff_metric_args": ["aic"],
         "summary_from_structure_args": [obj.toStructure()],
+        "summary_ctor_args": [[f1, f2]],
+        "summary_set_coeff_range_args": [-1.0, 1.0],
+        "summary_xtick_rotate_args": [np.array([0.0, 1.0]), 15.0],
     }
 
 

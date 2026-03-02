@@ -5018,81 +5018,81 @@
       }
     ]
   },
-  "generated_at_utc": "2026-03-02T16:59:14.209554+00:00",
+  "generated_at_utc": "2026-03-02T17:08:35.182208+00:00",
   "matlab_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local",
   "method_functional_audit": {
     "class_summary": [
       {
-        "contract_coverage_ratio": 0.9591836734693877,
-        "contract_verified_count": 94,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 98,
         "eligible_method_count": 98,
-        "eligible_verified_ratio": 0.9591836734693877,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "SignalObj",
         "matlab_method_count": 98,
         "missing_symbol_count": 0,
         "probe_verified_count": 57,
-        "unverified_behavior_count": 4
+        "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.8571428571428571,
-        "contract_verified_count": 12,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 14,
         "eligible_method_count": 14,
-        "eligible_verified_ratio": 0.8571428571428571,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "Covariate",
         "matlab_method_count": 14,
         "missing_symbol_count": 0,
         "probe_verified_count": 3,
-        "unverified_behavior_count": 2
+        "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.8,
-        "contract_verified_count": 4,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 5,
         "eligible_method_count": 5,
-        "eligible_verified_ratio": 0.8,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "ConfidenceInterval",
         "matlab_method_count": 5,
         "missing_symbol_count": 0,
         "probe_verified_count": 1,
-        "unverified_behavior_count": 1
+        "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.6,
-        "contract_verified_count": 3,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 5,
         "eligible_method_count": 5,
-        "eligible_verified_ratio": 0.6,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "Events",
         "matlab_method_count": 5,
         "missing_symbol_count": 0,
         "probe_verified_count": 1,
-        "unverified_behavior_count": 2
+        "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.75,
-        "contract_verified_count": 6,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 8,
         "eligible_method_count": 8,
-        "eligible_verified_ratio": 0.75,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "History",
         "matlab_method_count": 8,
         "missing_symbol_count": 0,
         "probe_verified_count": 1,
-        "unverified_behavior_count": 2
+        "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.896551724137931,
-        "contract_verified_count": 26,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 29,
         "eligible_method_count": 29,
-        "eligible_verified_ratio": 0.896551724137931,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "nspikeTrain",
         "matlab_method_count": 29,
         "missing_symbol_count": 0,
         "probe_verified_count": 16,
-        "unverified_behavior_count": 3
+        "unverified_behavior_count": 0
       },
       {
         "contract_coverage_ratio": 1.0,
@@ -5119,28 +5119,28 @@
         "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.8333333333333334,
-        "contract_verified_count": 5,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 6,
         "eligible_method_count": 6,
-        "eligible_verified_ratio": 0.8333333333333334,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "TrialConfig",
         "matlab_method_count": 6,
         "missing_symbol_count": 0,
         "probe_verified_count": 0,
-        "unverified_behavior_count": 1
+        "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.5555555555555556,
-        "contract_verified_count": 5,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 9,
         "eligible_method_count": 9,
-        "eligible_verified_ratio": 0.5555555555555556,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "ConfigColl",
         "matlab_method_count": 9,
         "missing_symbol_count": 0,
         "probe_verified_count": 0,
-        "unverified_behavior_count": 4
+        "unverified_behavior_count": 0
       },
       {
         "contract_coverage_ratio": 1.0,
@@ -5179,28 +5179,28 @@
         "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.8787878787878788,
-        "contract_verified_count": 29,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 33,
         "eligible_method_count": 33,
-        "eligible_verified_ratio": 0.8787878787878788,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "FitResult",
         "matlab_method_count": 33,
         "missing_symbol_count": 0,
         "probe_verified_count": 16,
-        "unverified_behavior_count": 4
+        "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.9,
-        "contract_verified_count": 27,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 30,
         "eligible_method_count": 30,
-        "eligible_verified_ratio": 0.9,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "FitResSummary",
         "matlab_method_count": 30,
         "missing_symbol_count": 0,
         "probe_verified_count": 14,
-        "unverified_behavior_count": 3
+        "unverified_behavior_count": 0
       },
       {
         "contract_coverage_ratio": 0.5333333333333333,
@@ -5350,8 +5350,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setPlotProps",
         "mapped_via_alias": false,
@@ -5638,8 +5638,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "filter",
         "mapped_via_alias": false,
@@ -5650,8 +5650,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "filtfilt",
         "mapped_via_alias": false,
@@ -5782,8 +5782,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "crosscorrelation",
         "mapped_via_alias": false,
@@ -6454,8 +6454,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "filtfilt",
         "mapped_via_alias": false,
@@ -6490,8 +6490,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setConfInterval",
         "mapped_via_alias": false,
@@ -6562,8 +6562,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "ConfidenceInterval",
         "mapped_via_alias": false,
@@ -6622,8 +6622,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "Events",
         "mapped_via_alias": false,
@@ -6670,8 +6670,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "dsxy2figxy",
         "mapped_via_alias": false,
@@ -6682,8 +6682,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "History",
         "mapped_via_alias": false,
@@ -6766,8 +6766,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "computeNSTHistoryWindow",
         "mapped_via_alias": false,
@@ -6778,8 +6778,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "nspikeTrain",
         "mapped_via_alias": false,
@@ -6838,8 +6838,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setSigRep",
         "mapped_via_alias": false,
@@ -6958,8 +6958,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "getFieldVal",
         "mapped_via_alias": false,
@@ -8434,8 +8434,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setConfig",
         "mapped_via_alias": false,
@@ -8494,8 +8494,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "ConfigColl",
         "mapped_via_alias": false,
@@ -8506,8 +8506,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "addConfig",
         "mapped_via_alias": false,
@@ -8530,8 +8530,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setConfig",
         "mapped_via_alias": false,
@@ -8554,8 +8554,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setConfigNames",
         "mapped_via_alias": false,
@@ -10234,8 +10234,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setKSStats",
         "mapped_via_alias": false,
@@ -10246,8 +10246,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setInvGausStats",
         "mapped_via_alias": false,
@@ -10258,8 +10258,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setFitResidual",
         "mapped_via_alias": false,
@@ -10306,8 +10306,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "xticklabel_rotate",
         "mapped_via_alias": false,
@@ -10330,8 +10330,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "FitResSummary",
         "mapped_via_alias": false,
@@ -10402,8 +10402,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setCoeffRange",
         "mapped_via_alias": false,
@@ -10678,8 +10678,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "xticklabel_rotate",
         "mapped_via_alias": false,
@@ -11230,16 +11230,16 @@
       }
     ],
     "summary": {
-      "contract_explicit_verified_methods": 251,
-      "contract_verified_methods": 454,
-      "contract_verified_ratio": 0.906187624750499,
+      "contract_explicit_verified_methods": 277,
+      "contract_verified_methods": 480,
+      "contract_verified_ratio": 0.9580838323353293,
       "eligible_methods": 480,
-      "eligible_verified_ratio": 0.9458333333333333,
+      "eligible_verified_ratio": 1.0,
       "excluded_methods": 21,
       "missing_symbol_methods": 0,
       "probe_verified_methods": 203,
       "total_methods": 501,
-      "unverified_behavior_methods": 26
+      "unverified_behavior_methods": 0
     }
   },
   "repo_root": "/private/tmp/nSTAT-python-cleanroom"

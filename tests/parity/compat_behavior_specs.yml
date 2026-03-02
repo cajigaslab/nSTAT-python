@@ -60,6 +60,11 @@ classes:
         args: [spikes/sec]
         expect:
           instance_of: nstat.compat.matlab.SignalObj
+      - member: setPlotProps
+        access: method
+        args_key: signal_plot_props_args
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
       - member: setXUnits
         access: method
         args: [s]
@@ -205,6 +210,25 @@ classes:
         extract: n_channels
         expect:
           equals: 1
+      - member: filter
+        access: method
+        args_key: signal_filter_args
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: filtfilt
+        access: method
+        args_key: signal_filter_args
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: crosscorrelation
+        access: method
+        args_key: signal_crosscorr_args
+        select: 0
+        expect:
+          equals:
+            - -1
+            - 0
+            - 1
       - member: cell2str
         access: method
         args_key: signal_cell2str_args
@@ -248,6 +272,17 @@ classes:
         args_key: cov_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.Covariate
+      - member: setConfInterval
+        access: method
+        args_key: cov_set_ci_args
+        expect:
+          instance_of: nstat.compat.matlab.Covariate
+      - member: filtfilt
+        access: method
+        args_key: cov_filter_args
+        extract: data
+        expect:
+          shape: [5, 2]
       - member: plus
         access: method
         args: [0.5]
@@ -267,6 +302,11 @@ classes:
     python_class: nstat.compat.matlab.ConfidenceInterval
     scenario: compat_confidence_basic
     contracts:
+      - member: ConfidenceInterval
+        access: method
+        args_key: ci_ctor_args
+        expect:
+          instance_of: nstat.compat.matlab.ConfidenceInterval
       - member: setColor
         access: method
         args_key: ci_set_color_args
@@ -287,6 +327,11 @@ classes:
     python_class: nstat.compat.matlab.Events
     scenario: compat_events_basic
     contracts:
+      - member: Events
+        access: method
+        args_key: events_ctor_args
+        expect:
+          instance_of: nstat.compat.matlab.Events
       - member: toStructure
         access: method
         expect:
@@ -296,11 +341,21 @@ classes:
         args_key: events_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.Events
+      - member: dsxy2figxy
+        access: method
+        args_key: events_dsxy_args
+        expect:
+          shape: [1, 2]
 
   - matlab_class: History
     python_class: nstat.compat.matlab.History
     scenario: compat_history_basic
     contracts:
+      - member: History
+        access: method
+        args_key: history_ctor_args
+        expect:
+          instance_of: nstat.compat.matlab.History
       - member: computeHistory
         access: method
         args_key: history_compute_args
@@ -308,6 +363,11 @@ classes:
           shape: [4, 3]
           sum_approx: 5.0
           abs_tol: 1.0e-12
+      - member: computeNSTHistoryWindow
+        access: method
+        args_key: history_nst_window_args
+        expect:
+          shape: [4, 3]
       - member: toFilter
         access: method
         expect:
@@ -334,6 +394,11 @@ classes:
     python_class: nstat.compat.matlab.nspikeTrain
     scenario: compat_spike_train_basic
     contracts:
+      - member: nspikeTrain
+        access: method
+        args_key: spike_ctor_args
+        expect:
+          instance_of: nstat.compat.matlab.nspikeTrain
       - member: computeRate
         access: method
         expect:
@@ -384,6 +449,16 @@ classes:
         args_key: spike_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.nspikeTrain
+      - member: setSigRep
+        access: method
+        args_key: spike_set_sigrep_args
+        expect:
+          instance_of: nstat.compat.matlab.nspikeTrain
+      - member: getFieldVal
+        access: method
+        args_key: spike_get_field_name_args
+        expect:
+          equals: unit
 
   - matlab_class: nstColl
     python_class: nstat.compat.matlab.nstColl
@@ -750,11 +825,21 @@ classes:
         args_key: trial_cfg_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.TrialConfig
+      - member: setConfig
+        access: method
+        args_key: trial_cfg_set_config_args
+        expect:
+          instance_of: nstat.compat.matlab.TrialConfig
 
   - matlab_class: ConfigColl
     python_class: nstat.compat.matlab.ConfigColl
     scenario: compat_config_coll_basic
     contracts:
+      - member: ConfigColl
+        access: method
+        args_key: config_ctor_args
+        expect:
+          instance_of: nstat.compat.matlab.ConfigColl
       - member: getConfigNames
         access: method
         expect:
@@ -781,6 +866,21 @@ classes:
       - member: fromStructure
         access: method
         args_key: config_from_structure_args
+        expect:
+          instance_of: nstat.compat.matlab.ConfigColl
+      - member: addConfig
+        access: method
+        args_key: config_add_args
+        expect:
+          instance_of: nstat.compat.matlab.ConfigColl
+      - member: setConfig
+        access: method
+        args_key: config_set_args
+        expect:
+          instance_of: nstat.compat.matlab.ConfigColl
+      - member: setConfigNames
+        access: method
+        args_key: config_set_names_args
         expect:
           instance_of: nstat.compat.matlab.ConfigColl
 
@@ -1244,6 +1344,26 @@ classes:
         args_key: fit_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.FitResult
+      - member: setKSStats
+        access: method
+        args_key: fit_set_ks_args
+        expect:
+          instance_of: nstat.compat.matlab.FitResult
+      - member: setFitResidual
+        access: method
+        args_key: fit_set_resid_args
+        expect:
+          instance_of: nstat.compat.matlab.FitResult
+      - member: setInvGausStats
+        access: method
+        args_key: fit_set_inv_args
+        expect:
+          instance_of: nstat.compat.matlab.FitResult
+      - member: xticklabel_rotate
+        access: method
+        args_key: fit_xtick_rotate_args
+        expect:
+          instance_of: builtins.list
       - member: CellArrayToStructure
         access: method
         args_key: fit_cell_array_args
@@ -1259,6 +1379,11 @@ classes:
     python_class: nstat.compat.matlab.FitResSummary
     scenario: compat_fit_summary_basic
     contracts:
+      - member: FitResSummary
+        access: method
+        args_key: summary_ctor_args
+        expect:
+          instance_of: nstat.compat.matlab.FitResSummary
       - member: mapCovLabelsToUniqueLabels
         access: method
         expect:
@@ -1318,6 +1443,16 @@ classes:
         args_key: summary_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.FitResSummary
+      - member: setCoeffRange
+        access: method
+        args_key: summary_set_coeff_range_args
+        expect:
+          instance_of: nstat.compat.matlab.FitResSummary
+      - member: xticklabel_rotate
+        access: method
+        args_key: summary_xtick_rotate_args
+        expect:
+          instance_of: builtins.list
       - member: computeDiffMat
         access: method
         args_key: summary_diff_metric_args
