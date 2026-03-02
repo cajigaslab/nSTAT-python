@@ -1,0 +1,3 @@
+data/shared/matlab_gold_*/**/*.mat filter=lfs diff=lfs merge=lfs -text
+data/shared/matlab_gold_*/**/*.pdf filter=lfs diff=lfs merge=lfs -text
+data/shared/matlab_gold_*/**/*.eps filter=lfs diff=lfs merge=lfs -text

@@ -6,6 +6,8 @@ from pathlib import Path
 
 import yaml
 
+from nstat.datasets import fetch_dataset
+
 
 
 def _sha256(path: Path) -> str:
@@ -33,3 +35,10 @@ def test_allowlisted_shared_data_file_matches_checksum() -> None:
         path = Path(row["python_path"])
         assert path.exists(), f"missing allowlisted data file: {path}"
         assert _sha256(path) == row["sha256"]
+
+
+def test_fetch_dataset_prefers_local_matlab_mirror_for_mepsc() -> None:
+    path = fetch_dataset("mEPSC-epsc2")
+    resolved = path.resolve()
+    assert "data/shared/matlab_gold_" in resolved.as_posix()
+    assert resolved.name == "epsc2.txt"

@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "dataset_name": "matlab_example_data",
+  "dataset_version": "20260302",
+  "generated_at_utc": "2026-03-02T18:59:52.210633+00:00",
+  "generated_by": "tools/data_mirror/sync_matlab_data.py",
+  "source_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/data",
+  "file_count": 42,
+  "total_size_bytes": 504513862,
+  "files": [
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron1/Stim1/testdataBis.mat",
+      "size_bytes": 27547,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "cbf9dfa3b39b1bf4b712eb2bde37320b9d58d451504c5620519cd6cacec90431"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron1/Stim1/trngdataBis.mat",
+      "size_bytes": 14290,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "effc8975d3b8ea8f423a5e5476bb5becd7cbee9fcddf0c2cb5bf1f06dadf9a31"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron1/Stim2/testdataBis.mat",
+      "size_bytes": 41710,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "e00711145e693815e6d7f92968fab06c0833680c32a6eca13190d9a00e91fae1"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron1/Stim2/trngdataBis.mat",
+      "size_bytes": 21532,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "ef9d41d34ca7ab49fe34022dda24220b41f6814d6220d4b7f111d39ccaf0159f"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron1/Stim3/testdataBis.mat",
+      "size_bytes": 77726,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "f45bb73ba9fc1129e1134e3c28d238ed0df72d3b2ff94f62d26b231358f0a957"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron1/Stim3/trngdataBis.mat",
+      "size_bytes": 40262,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "c9161723ded0cb9ef4044e518d4bc6605666a4d3a92343d418964179c71516b5"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron2/Stim1/testdataBis.mat",
+      "size_bytes": 25419,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "c579c52b0d6f979177992ef0c382a55b867de02ec8b17275b695a10c04779c67"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron2/Stim1/trngdataBis.mat",
+      "size_bytes": 13203,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "0e3557598c0ac2777d8d0c9af7d6f92d019d905b73742fe1a472549594f17325"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron2/Stim2/testdataBis.mat",
+      "size_bytes": 39588,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "9faf006a195ac193015aead58f3e541e4840ff4e7bb376f4e27fcab664049210"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron2/Stim2/trngdataBis.mat",
+      "size_bytes": 20564,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "b0db8069ed3c4c800e0c5b3fe1aa6406415035ddba4f486d1548383b1e2e1093"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron2/Stim3/testdataBis.mat",
+      "size_bytes": 75178,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "24b79facf077f68c5b16b9778a2cce8c2df61d3c9124064826aa7696c9472c17"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir16/Neuron2/Stim3/trngdataBis.mat",
+      "size_bytes": 39038,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "824e3cde647b97e6c7c6f1649d56d52f79f17e6274610fafce817cc844770e5d"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron1/Stim1/testdataBis.mat",
+      "size_bytes": 25075,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "c848a13bef8f4e5a47dd027c0abf0f3904911cf699c698dfd5621ac7b602b324"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron1/Stim1/trngdataBis.mat",
+      "size_bytes": 13115,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "ad2e4a639155382b7462c0dc0f43663f6b94ca69b5cfe618d439926bceecec9a"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron1/Stim2/Experiment2-Data.eps",
+      "size_bytes": 167205,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "839dd534e216d5d31b266b7efd18b96f934cac86cef4d65da93d8c58551ed772"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron1/Stim2/Experiment2-Results.eps",
+      "size_bytes": 67314,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "d972186f79323f89d021d17a50f746fbbcd431d196d4685fb26d0998aea2d893"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron1/Stim2/testdataBis.mat",
+      "size_bytes": 38760,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "440ec83724ae2a9a707eb1db33b9ebc3d9260cef15c9fb4b280a352a70432321"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron1/Stim2/trngdataBis.mat",
+      "size_bytes": 20190,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "f4b4299a1e977db37bab8a11d107b6d2a73541d3e5bb017ab68b1d9885def3f2"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron1/Stim3/testdataBis.mat",
+      "size_bytes": 75629,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "998568271174ffbb79abd850846d3a38b193221689aa8c2a7f6f1b247721851f"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron1/Stim3/trngdataBis.mat",
+      "size_bytes": 39102,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "3561b3c90931f1a06d757624717ace69686767630918e18cac0b118ef5b9d370"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron2/Stim1/testdataBis.mat",
+      "size_bytes": 25255,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "48d34a2478f310d0becb92e03fc47c56598529d6bae67f4f8c097ffb5d1328a1"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron2/Stim1/trngdataBis.mat",
+      "size_bytes": 13217,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "ae2c905af5c95881fbef989cbd175404b287723186ffacdbdaa7a13488202e23"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron2/Stim2/testdataBis.mat",
+      "size_bytes": 39257,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "9047cf6ea92d4d0dcf1215c4b41addf312d156dd22777958343607db1c440161"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron2/Stim2/trngdataBis.mat",
+      "size_bytes": 20186,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "6f26dd402d2893b8ae06dcb8514ef82a9ece6373ae6da974bde99895bc57f1d3"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron2/Stim3/testdataBis.mat",
+      "size_bytes": 75026,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "b243c1091d2d97efd291871cae2b4793bf2bb381fe6741748ccb95b9e32b6da7"
+    },
+    {
+      "relative_path": "Explicit Stimulus/Dir3/Neuron2/Stim3/trngdataBis.mat",
+      "size_bytes": 38830,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "ae1a19ba2ad50b69bad1ff8a9927cbf6e18f541a8ad332c4d51334e576abc8b7"
+    },
+    {
+      "relative_path": "Explicit Stimulus/GenCovMat.m",
+      "size_bytes": 1706,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "79a87fc52fe5637b351bc8565f576989d9ef1a23b44522621b1a33facfcf89b4"
+    },
+    {
+      "relative_path": "PSTH/Data Description.pdf",
+      "size_bytes": 78971,
+      "mtime_epoch_s": 1499022216.0,
+      "sha256": "79574d56122d0aab30aad7cf13120916f278b28b7f84052689e8c58da4818140"
+    },
+    {
+      "relative_path": "PSTH/Results.mat",
+      "size_bytes": 23426906,
+      "mtime_epoch_s": 1499022216.0,
+      "sha256": "685438f83a6df49cb9b5d260749107d401c14f1d1bc5cbabf6f00f16ebddb4fb"
+    },
+    {
+      "relative_path": "Place Cells/PlaceCellDataAnimal1.mat",
+      "size_bytes": 2722517,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "8806ab38c62a04ee1bec9cabab907a8f9fa3d66e0799fa09de8acd01789fc77b"
+    },
+    {
+      "relative_path": "Place Cells/PlaceCellDataAnimal2.mat",
+      "size_bytes": 2045164,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "e8f22ab469ae30427cac8401dbeacfc2a7a5d4ba1a62fd339a8834ab489e750f"
+    },
+    {
+      "relative_path": "Place Cells/Readme.txt",
+      "size_bytes": 148,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "53c6d51d6b2a64b622da3a60e9f5d9ad8c9b7362480635c9a6460a30c29044de"
+    },
+    {
+      "relative_path": "Place Cells/license.txt",
+      "size_bytes": 1551,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "4587991e9404c291513292886f98dd432cbb772a9f873da1d406a799646fe377"
+    },
+    {
+      "relative_path": "PlaceCellAnimal1Results.mat",
+      "size_bytes": 266683050,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "15b53a0da12338551d7edfce03666195c7f95b355e2b1f483f0ba0850f8915d5"
+    },
+    {
+      "relative_path": "PlaceCellAnimal2Results.mat",
+      "size_bytes": 190070438,
+      "mtime_epoch_s": 1499022216.0,
+      "sha256": "fef2a2a0ad54012d5e1ecab96dde72a8c7ce0116afa0df038c0aed9437021f77"
+    },
+    {
+      "relative_path": "SSGLMExampleData.mat",
+      "size_bytes": 13832869,
+      "mtime_epoch_s": 1499022216.0,
+      "sha256": "fc1d4730267b49e3af534f6572b28ce1ba746708a49a1e4f1e8fb082cdabc360"
+    },
+    {
+      "relative_path": "glm_data.mat",
+      "size_bytes": 2420384,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "4152d93a660acf62b46b77f2dee3f14d2147dd100748c16fa3922f6c2f8ad577"
+    },
+    {
+      "relative_path": "glm_data_orig.mat",
+      "size_bytes": 1870988,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "a11ab318f9c8042453c043ed79764b18ba727ceac31672e42b7ed30024ab2a4b"
+    },
+    {
+      "relative_path": "mEPSCs/epsc2.txt",
+      "size_bytes": 59770,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "65a130b7af4bc34eeaf943da76df6ebf9ba0ae9720eb98b6813f9f44a43ff435"
+    },
+    {
+      "relative_path": "mEPSCs/mEPSCAnalysis.asv",
+      "size_bytes": 4992,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "c3d99d7de863a501f2d57ffbe09ff2c94fdf6b7ea8c6292641337b9a80ee7249"
+    },
+    {
+      "relative_path": "mEPSCs/washout1.txt",
+      "size_bytes": 72338,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "4791531b54dd3f98c8cf756bd253d61d09113338b0dbe98ed09ef2df2d18e00e"
+    },
+    {
+      "relative_path": "mEPSCs/washout2.txt",
+      "size_bytes": 127852,
+      "mtime_epoch_s": 1499022214.0,
+      "sha256": "ab35f26d4bccc48d2dc91e5007ba64d2527891666d2653e0a6118e397a4985fa"
+    }
+  ],
+  "mirror_root": "data/shared/matlab_gold_20260302"
+}

@@ -15,6 +15,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: actions/setup-python@v5
         with:
@@ -73,11 +75,31 @@ jobs:
       - name: Run release gate checks
         run: python tools/release/check_release_gate.py
 
+  matlab-data-integrity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify mirrored MATLAB data manifest
+        run: |
+          python tools/data_mirror/verify_matlab_data.py \
+            --manifest data/shared/matlab_gold_20260302.manifest.json \
+            --strict
+
   cleanroom-compliance:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: actions/setup-python@v5
         with:
