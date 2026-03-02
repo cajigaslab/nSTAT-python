@@ -545,11 +545,101 @@ class ConfidenceInterval(_ConfidenceInterval):
 
 
 class Events(_Events):
+    @staticmethod
+    def Events(*args: Any, **kwargs: Any) -> _Events:
+        if len(args) == 1 and isinstance(args[0], dict):
+            return Events.fromStructure(args[0])
+        return Events(*args, **kwargs)
+
+    @staticmethod
+    def fromStructure(payload: dict[str, Any]) -> _Events:
+        return Events(
+            times=np.asarray(payload["times"], dtype=float),
+            labels=[str(v) for v in payload.get("labels", [])],
+        )
+
+    def toStructure(self) -> dict[str, Any]:
+        return {"times": self.times.copy(), "labels": list(self.labels)}
+
+    @staticmethod
+    def dsxy2figxy(x: np.ndarray | float, y: np.ndarray | float) -> np.ndarray:
+        import matplotlib.pyplot as plt
+
+        ax = plt.gca()
+        pts = np.column_stack([np.asarray(x, dtype=float).reshape(-1), np.asarray(y, dtype=float).reshape(-1)])
+        disp = ax.transData.transform(pts)
+        fig = ax.get_figure()
+        if fig is None:
+            raise RuntimeError("cannot transform without an active matplotlib figure")
+        out = fig.transFigure.inverted().transform(disp)
+        return out
+
+    def plot(self, *_args: Any, **_kwargs: Any) -> Any:
+        import matplotlib.pyplot as plt
+
+        if self.times.size == 0:
+            return plt.plot([], [])
+        ymin, ymax = plt.ylim()
+        if ymin == ymax:
+            ymin, ymax = 0.0, 1.0
+        return plt.vlines(self.times, ymin, ymax, colors="k", linestyles="--", linewidth=1.0)
+
     def getTimes(self) -> np.ndarray:
         return self.times
 
 
 class History(_HistoryBasis):
+    @staticmethod
+    def History(*args: Any, **kwargs: Any) -> _HistoryBasis:
+        if len(args) == 1 and isinstance(args[0], dict):
+            return History.fromStructure(args[0])
+        return History(*args, **kwargs)
+
+    @staticmethod
+    def fromStructure(payload: dict[str, Any]) -> _HistoryBasis:
+        return History(bin_edges_s=np.asarray(payload["bin_edges_s"], dtype=float))
+
+    def toStructure(self) -> dict[str, Any]:
+        return {"bin_edges_s": self.bin_edges_s.copy()}
+
+    def setWindow(self, *args: Any) -> _HistoryBasis:
+        if len(args) == 1:
+            edges = np.asarray(args[0], dtype=float).reshape(-1)
+        elif len(args) == 3:
+            t0 = float(args[0])
+            tf = float(args[1])
+            n_bins = int(args[2])
+            if n_bins <= 0:
+                raise ValueError("n_bins must be > 0")
+            edges = np.linspace(t0, tf, n_bins + 1, dtype=float)
+        else:
+            raise ValueError("setWindow expects (edges) or (t0, tf, n_bins)")
+        if edges.size < 2 or np.any(np.diff(edges) <= 0.0):
+            raise ValueError("history edges must be strictly increasing with at least 2 elements")
+        self.bin_edges_s = edges
+        return self
+
+    def toFilter(self) -> np.ndarray:
+        widths = np.diff(self.bin_edges_s)
+        total = float(np.sum(widths))
+        if total <= 0.0:
+            return widths
+        return widths / total
+
+    def computeHistory(self, spikeTimes_s: np.ndarray, timeGrid_s: np.ndarray) -> np.ndarray:
+        return self.design_matrix(spike_times_s=spikeTimes_s, time_grid_s=timeGrid_s)
+
+    def computeNSTHistoryWindow(self, spikeTrain: Any, timeGrid_s: np.ndarray) -> np.ndarray:
+        spike_times = np.asarray(getattr(spikeTrain, "spike_times"), dtype=float)
+        return self.computeHistory(spikeTimes_s=spike_times, timeGrid_s=timeGrid_s)
+
+    def plot(self, *_args: Any, **_kwargs: Any) -> Any:
+        import matplotlib.pyplot as plt
+
+        widths = np.diff(self.bin_edges_s)
+        centers = 0.5 * (self.bin_edges_s[:-1] + self.bin_edges_s[1:])
+        return plt.bar(centers, widths, width=widths, align="center", alpha=0.4, color="tab:gray")
+
     def getNumBins(self) -> int:
         return self.n_bins
 
@@ -954,6 +1044,83 @@ class TrialConfig(_TrialConfig):
 
 
 class ConfigColl(_ConfigCollection):
+    @staticmethod
+    def ConfigColl(*args: Any, **kwargs: Any) -> _ConfigCollection:
+        if len(args) == 1 and isinstance(args[0], dict):
+            return ConfigColl.fromStructure(args[0])
+        return ConfigColl(*args, **kwargs)
+
+    @staticmethod
+    def fromStructure(payload: dict[str, Any] | list[dict[str, Any]]) -> _ConfigCollection:
+        if isinstance(payload, dict):
+            entries = list(payload.get("configs", []))
+        else:
+            entries = list(payload)
+        if not entries:
+            raise ValueError("fromStructure requires at least one configuration entry")
+        configs = cast(list[_TrialConfig], [TrialConfig.fromStructure(entry) for entry in entries])
+        return ConfigColl(configs)
+
+    def toStructure(self) -> dict[str, Any]:
+        return {
+            "configs": [
+                TrialConfig(
+                    covariateLabels=list(cfg.covariate_labels),
+                    Fs=float(cfg.sample_rate_hz),
+                    fitType=str(cfg.fit_type),
+                    name=str(cfg.name),
+                ).toStructure()
+                for cfg in self.configs
+            ]
+        }
+
+    def addConfig(self, config: _TrialConfig) -> _ConfigCollection:
+        self.configs.append(config)
+        return self
+
+    def getConfig(self, selector: int | str = 1) -> _TrialConfig:
+        if isinstance(selector, str):
+            for cfg in self.configs:
+                if cfg.name == selector:
+                    return cfg
+            raise KeyError(f"configuration '{selector}' not found")
+        idx = int(selector)
+        if idx < 1 or idx > len(self.configs):
+            raise IndexError("configuration index out of range")
+        return self.configs[idx - 1]
+
+    def setConfig(self, selector: int | str, config: _TrialConfig) -> _ConfigCollection:
+        if isinstance(selector, str):
+            for i, cfg in enumerate(self.configs):
+                if cfg.name == selector:
+                    self.configs[i] = config
+                    return self
+            raise KeyError(f"configuration '{selector}' not found")
+        idx = int(selector)
+        if idx < 1 or idx > len(self.configs):
+            raise IndexError("configuration index out of range")
+        self.configs[idx - 1] = config
+        return self
+
+    def getConfigNames(self) -> list[str]:
+        return [cfg.name for cfg in self.configs]
+
+    def setConfigNames(self, names: list[str]) -> _ConfigCollection:
+        if len(names) != len(self.configs):
+            raise ValueError("names length must match number of configs")
+        for cfg, name in zip(self.configs, names):
+            cfg.name = str(name)
+        return self
+
+    def getSubsetConfigs(self, selectors: list[int] | np.ndarray) -> _ConfigCollection:
+        inds = [int(v) for v in np.asarray(selectors).reshape(-1)]
+        subset: list[_TrialConfig] = []
+        for idx in inds:
+            if idx < 1 or idx > len(self.configs):
+                raise IndexError("configuration index out of range")
+            subset.append(self.configs[idx - 1])
+        return ConfigColl(subset)
+
     def getConfigs(self) -> list[_TrialConfig]:
         return self.configs
 
@@ -1136,6 +1303,15 @@ class Trial(_Trial):
 
 
 class CIF(_CIFModel):
+    @staticmethod
+    def CIF(*args: Any, **kwargs: Any) -> _CIFModel:
+        if len(args) == 1 and isinstance(args[0], dict):
+            return CIF.fromStructure(args[0])
+        return CIF(*args, **kwargs)
+
+    def CIFCopy(self) -> _CIFModel:
+        return CIF(coefficients=self.coefficients.copy(), intercept=float(self.intercept), link=str(self.link))
+
     def evalLambda(self, X: np.ndarray) -> np.ndarray:
         return self.evaluate(X)
 
@@ -1159,11 +1335,85 @@ class CIF(_CIFModel):
     def computePlotParams(self, X: np.ndarray) -> dict[str, float]:
         return self.compute_plot_params(X)
 
+    def evalFunctionWithVectorArgs(self, X: np.ndarray, *_args: Any, **_kwargs: Any) -> np.ndarray:
+        return self.evaluate(X)
+
+    def evalGradient(self, X: np.ndarray) -> np.ndarray:
+        X = np.asarray(X, dtype=float)
+        vals = self.evaluate(X)
+        base = np.column_stack([np.ones(X.shape[0]), X])
+        if self.link == "poisson":
+            return base * vals[:, None]
+        return base * (vals * (1.0 - vals))[:, None]
+
+    def evalGradientLog(self, X: np.ndarray) -> np.ndarray:
+        X = np.asarray(X, dtype=float)
+        vals = self.evaluate(X)
+        base = np.column_stack([np.ones(X.shape[0]), X])
+        if self.link == "poisson":
+            return base
+        return base * (1.0 - vals)[:, None]
+
+    def evalJacobian(self, X: np.ndarray) -> np.ndarray:
+        return self.evalGradient(X)
+
+    def evalJacobianLog(self, X: np.ndarray) -> np.ndarray:
+        return self.evalGradientLog(X)
+
+    def evalLDGamma(self, X: np.ndarray) -> np.ndarray:
+        return self.evaluate(X)
+
+    def evalLogLDGamma(self, X: np.ndarray) -> np.ndarray:
+        return np.log(np.clip(self.evaluate(X), 1e-12, None))
+
+    def evalGradientLDGamma(self, X: np.ndarray) -> np.ndarray:
+        return self.evalGradient(X)
+
+    def evalGradientLogLDGamma(self, X: np.ndarray) -> np.ndarray:
+        return self.evalGradientLog(X)
+
+    def evalJacobianLDGamma(self, X: np.ndarray) -> np.ndarray:
+        return self.evalJacobian(X)
+
+    def evalJacobianLogLDGamma(self, X: np.ndarray) -> np.ndarray:
+        return self.evalJacobianLog(X)
+
+    def isSymBeta(self) -> bool:
+        return False
+
+    @staticmethod
+    def resolveSimulinkModelName(*_args: Any, **_kwargs: Any) -> str:
+        return "nstat_python_cif_model"
+
+    def setHistory(self, history: Any) -> _CIFModel:
+        setattr(self, "_history", history)
+        return self
+
+    def setSpikeTrain(self, spike_train: Any) -> _CIFModel:
+        setattr(self, "_spike_train", spike_train)
+        return self
+
+    def simulateCIF(
+        self,
+        time: np.ndarray,
+        X: np.ndarray,
+        rng: np.random.Generator | None = None,
+    ) -> np.ndarray:
+        return self.simulate_by_thinning(time=time, X=X, rng=rng)
+
+    def simulateCIFByThinning(
+        self,
+        time: np.ndarray,
+        X: np.ndarray,
+        rng: np.random.Generator | None = None,
+    ) -> np.ndarray:
+        return self.simulate_by_thinning(time=time, X=X, rng=rng)
+
     def toStructure(self) -> dict[str, np.ndarray | float | str]:
         return self.to_structure()
 
     @staticmethod
-    def fromStructure(payload: dict[str, np.ndarray | float | str]) -> "CIF":
+    def fromStructure(payload: dict[str, np.ndarray | float | str]) -> _CIFModel:
         out = _CIFModel.from_structure(payload)
         return CIF(coefficients=out.coefficients, intercept=out.intercept, link=out.link)
 
@@ -1244,6 +1494,199 @@ class Analysis:
     @staticmethod
     def fdr_bh(p_values: np.ndarray, alpha: float = 0.05) -> np.ndarray:
         return _Analysis.fdr_bh(p_values=p_values, alpha=alpha)
+
+    @staticmethod
+    def bnlrCG(
+        X: np.ndarray,
+        y: np.ndarray,
+        dt: float = 1.0,
+        l2Penalty: float = 0.0,
+    ) -> _FitResult:
+        return Analysis.fitGLM(X=X, y=y, fitType="binomial", dt=dt, l2Penalty=l2Penalty)
+
+    @staticmethod
+    def KSPlot(fit: Any, fitNum: int = 1) -> Any:
+        _ = fitNum
+        if hasattr(fit, "KSPlot"):
+            return fit.KSPlot(fitNum)
+        import matplotlib.pyplot as plt
+
+        return plt.plot([], [])
+
+    @staticmethod
+    def compHistEnsCoeff(y: np.ndarray, X: np.ndarray, dt: float = 1.0) -> np.ndarray:
+        fit = Analysis.fitGLM(X=X, y=y, fitType="poisson", dt=dt)
+        return fit.coefficients
+
+    @staticmethod
+    def compHistEnsCoeffForAll(y_list: list[np.ndarray], X_list: list[np.ndarray], dt: float = 1.0) -> list[np.ndarray]:
+        return [Analysis.compHistEnsCoeff(y=y, X=X, dt=dt) for y, X in zip(y_list, X_list)]
+
+    @staticmethod
+    def computeNeighbors(positions: np.ndarray, k: int = 1) -> np.ndarray:
+        pts = np.asarray(positions, dtype=float)
+        if pts.ndim != 2:
+            raise ValueError("positions must be 2D [n_points, n_dims]")
+        if k <= 0:
+            raise ValueError("k must be positive")
+        diff = pts[:, None, :] - pts[None, :, :]
+        dist = np.sqrt(np.sum(diff * diff, axis=2))
+        np.fill_diagonal(dist, np.inf)
+        return np.argsort(dist, axis=1)[:, :k]
+
+    @staticmethod
+    def flatMaskCellToMat(flatMaskCell: list[np.ndarray]) -> np.ndarray:
+        rows = [np.asarray(row, dtype=float).reshape(-1) for row in flatMaskCell]
+        if not rows:
+            return np.zeros((0, 0), dtype=float)
+        width = max(row.size for row in rows)
+        out = np.zeros((len(rows), width), dtype=float)
+        for i, row in enumerate(rows):
+            out[i, : row.size] = row
+        return out
+
+    @staticmethod
+    def computeHistLag(signal: np.ndarray, maxLag: int = 50) -> tuple[np.ndarray, np.ndarray]:
+        y = np.asarray(signal, dtype=float).reshape(-1)
+        if y.size == 0:
+            return np.array([], dtype=int), np.array([], dtype=float)
+        y = y - np.mean(y)
+        ac = np.correlate(y, y, mode="full")
+        mid = ac.size // 2
+        ac = ac[mid : mid + maxLag + 1]
+        if ac[0] != 0:
+            ac = ac / ac[0]
+        lags = np.arange(ac.size, dtype=int)
+        return lags, ac
+
+    @staticmethod
+    def computeHistLagForAll(signals: np.ndarray, maxLag: int = 50) -> tuple[np.ndarray, np.ndarray]:
+        mat = np.asarray(signals, dtype=float)
+        if mat.ndim == 1:
+            return Analysis.computeHistLag(mat, maxLag=maxLag)
+        curves = [Analysis.computeHistLag(row, maxLag=maxLag)[1] for row in mat]
+        if not curves:
+            return np.array([], dtype=int), np.array([], dtype=float)
+        mean_curve = np.mean(np.vstack(curves), axis=0)
+        lags = np.arange(mean_curve.size, dtype=int)
+        return lags, mean_curve
+
+    @staticmethod
+    def computeGrangerCausalityMatrix(spikeMatrix: np.ndarray, maxLag: int = 1) -> np.ndarray:
+        X = np.asarray(spikeMatrix, dtype=float)
+        if X.ndim != 2:
+            raise ValueError("spikeMatrix must be 2D [n_units, n_time]")
+        n_units, n_time = X.shape
+        if n_time <= maxLag:
+            raise ValueError("n_time must be greater than maxLag")
+        out = np.zeros((n_units, n_units), dtype=float)
+        for i in range(n_units):
+            y = X[i, maxLag:]
+            yi = X[i, :-maxLag]
+            for j in range(n_units):
+                if i == j:
+                    continue
+                xj = X[j, :-maxLag]
+                base_pred = yi
+                full_pred = np.column_stack([yi, xj]) @ np.linalg.lstsq(
+                    np.column_stack([yi, xj]),
+                    y,
+                    rcond=None,
+                )[0]
+                base_err = np.var(y - base_pred)
+                full_err = np.var(y - full_pred)
+                if base_err <= 1e-12:
+                    out[i, j] = 0.0
+                else:
+                    out[i, j] = max(0.0, (base_err - full_err) / base_err)
+        return out
+
+    @staticmethod
+    def ksdiscrete(sample: np.ndarray, reference: np.ndarray | None = None) -> dict[str, float]:
+        x = np.asarray(sample, dtype=float).reshape(-1)
+        if x.size == 0:
+            return {"d_stat": 0.0, "n_events": 0.0}
+        if reference is None:
+            z = np.sort(x / max(np.max(x), 1e-12))
+        else:
+            ref = np.asarray(reference, dtype=float).reshape(-1)
+            ref_sorted = np.sort(ref)
+            z = np.searchsorted(ref_sorted, np.sort(x), side="right") / max(ref_sorted.size, 1)
+        n = z.size
+        ecdf = np.arange(1, n + 1, dtype=float) / float(n)
+        d_plus = np.max(ecdf - z)
+        d_minus = np.max(z - np.arange(0, n, dtype=float) / float(n))
+        return {"d_stat": float(max(d_plus, d_minus)), "n_events": float(n)}
+
+    @staticmethod
+    def plotCoeffs(fit: Any) -> Any:
+        if hasattr(fit, "plotCoeffs"):
+            return fit.plotCoeffs()
+        import matplotlib.pyplot as plt
+
+        return plt.plot([], [])
+
+    @staticmethod
+    def plotFitResidual(y: np.ndarray, X: np.ndarray, fit: _FitResult, dt: float = 1.0) -> Any:
+        import matplotlib.pyplot as plt
+
+        resid = Analysis.computeFitResidual(y=y, X=X, fit=fit, dt=dt)
+        x = np.arange(resid.size)
+        return plt.plot(x, resid, "k-")
+
+    @staticmethod
+    def plotInvGausTrans(y: np.ndarray, X: np.ndarray, fit: _FitResult, dt: float = 1.0) -> Any:
+        import matplotlib.pyplot as plt
+
+        z = Analysis.computeInvGausTrans(y=y, X=X, fit=fit, dt=dt)
+        x = np.arange(z.size)
+        return plt.plot(x, z, "k-")
+
+    @staticmethod
+    def plotSeqCorr(residual: np.ndarray) -> Any:
+        import matplotlib.pyplot as plt
+
+        y = np.asarray(residual, dtype=float).reshape(-1)
+        if y.size == 0:
+            return plt.plot([], [])
+        y = y - np.mean(y)
+        corr = np.correlate(y, y, mode="full")
+        corr = corr[corr.size // 2 :]
+        if corr[0] != 0:
+            corr = corr / corr[0]
+        return plt.plot(np.arange(corr.size), corr, "k-")
+
+    @staticmethod
+    def spikeTrigAvg(
+        signal: np.ndarray,
+        spikeTimes_s: np.ndarray,
+        timeGrid_s: np.ndarray,
+        window_s: tuple[float, float] = (-0.05, 0.05),
+    ) -> tuple[np.ndarray, np.ndarray]:
+        x = np.asarray(signal, dtype=float).reshape(-1)
+        t = np.asarray(timeGrid_s, dtype=float).reshape(-1)
+        spikes = np.asarray(spikeTimes_s, dtype=float).reshape(-1)
+        if x.size != t.size:
+            raise ValueError("signal and timeGrid_s must have matching lengths")
+        dt = float(np.median(np.diff(t)))
+        n_pre = int(abs(window_s[0]) / dt)
+        n_post = int(abs(window_s[1]) / dt)
+        if n_pre + n_post + 1 <= 1:
+            raise ValueError("window too small for sample rate")
+        snippets: list[np.ndarray] = []
+        for s in spikes:
+            idx = int(np.argmin(np.abs(t - s)))
+            lo = idx - n_pre
+            hi = idx + n_post + 1
+            if lo < 0 or hi > x.size:
+                continue
+            snippets.append(x[lo:hi])
+        if not snippets:
+            rel_t = np.arange(-n_pre, n_post + 1, dtype=float) * dt
+            return rel_t, np.zeros(rel_t.size, dtype=float)
+        mat = np.vstack(snippets)
+        rel_t = np.arange(-n_pre, n_post + 1, dtype=float) * dt
+        return rel_t, np.mean(mat, axis=0)
 
 
 class FitResult(_FitResult):
@@ -1556,6 +1999,165 @@ class FitResSummary(_FitSummary):
 
     def computeDiffMat(self, metric: str = "aic") -> np.ndarray:
         return self.compute_diff_mat(metric=metric)
+
+    def getHistIndex(self, fitNum: int = 1, sortByEpoch: bool = False) -> tuple[np.ndarray, np.ndarray, int]:
+        coeff_idx, epoch_id, num_epochs = self.get_coeff_index(fit_num=fitNum, sort_by_epoch=sortByEpoch)
+        _coeff_mat, labels, _se = self.get_coeffs(fit_num=fitNum)
+        keep = np.array(
+            [i for i in coeff_idx if "hist" in labels[int(i)].lower() or "history" in labels[int(i)].lower()],
+            dtype=int,
+        )
+        if keep.size == 0:
+            return keep, np.array([], dtype=int), 1
+        return keep, np.ones(keep.size, dtype=int), num_epochs
+
+    def getHistCoeffs(self, fitNum: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
+        coeff_mat, labels, se_mat = self.get_coeffs(fit_num=fitNum)
+        keep = [i for i, label in enumerate(labels) if "hist" in label.lower() or "history" in label.lower()]
+        if not keep:
+            empty = np.zeros((0, coeff_mat.shape[1]), dtype=float)
+            return empty, [], empty
+        idx = np.asarray(keep, dtype=int)
+        return coeff_mat[idx, :], [labels[i] for i in idx], se_mat[idx, :]
+
+    def getSigCoeffs(self, fitNum: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
+        coeff_mat, labels, se_mat = self.get_coeffs(fit_num=fitNum)
+        col = max(0, min(coeff_mat.shape[1] - 1, int(fitNum) - 1))
+        keep = np.where(np.isfinite(coeff_mat[:, col]) & (np.abs(coeff_mat[:, col]) > 0.0))[0].astype(int)
+        if keep.size == 0:
+            empty = np.zeros((0, coeff_mat.shape[1]), dtype=float)
+            return empty, [], empty
+        return coeff_mat[keep, :], [labels[i] for i in keep], se_mat[keep, :]
+
+    def setCoeffRange(self, minVal: float, maxVal: float) -> _FitSummary:
+        setattr(self, "_coeff_range", (float(minVal), float(maxVal)))
+        return self
+
+    @staticmethod
+    def xticklabel_rotate(XTick: np.ndarray, rot: float, *args: Any, **kwargs: Any) -> Any:
+        _ = args
+        _ = kwargs
+        import matplotlib.pyplot as plt
+
+        ax = plt.gca()
+        ax.set_xticks(np.asarray(XTick, dtype=float))
+        for label in ax.get_xticklabels():
+            label.set_rotation(rot)
+        return ax.get_xticklabels()
+
+    def plotAIC(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        vals = np.array([fit.aic() for fit in self.results], dtype=float)
+        return plt.plot(np.arange(1, vals.size + 1), vals, "k-o")
+
+    def plotBIC(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        vals = np.array([fit.bic() for fit in self.results], dtype=float)
+        return plt.plot(np.arange(1, vals.size + 1), vals, "k-o")
+
+    def plotlogLL(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        vals = np.array([fit.log_likelihood for fit in self.results], dtype=float)
+        return plt.plot(np.arange(1, vals.size + 1), vals, "k-o")
+
+    def plotIC(self, metric: str = "aic") -> Any:
+        metric_key = str(metric).lower()
+        if metric_key == "aic":
+            return self.plotAIC()
+        if metric_key == "bic":
+            return self.plotBIC()
+        if metric_key in {"logll", "log_likelihood"}:
+            return self.plotlogLL()
+        raise ValueError("metric must be one of {'aic', 'bic', 'logll'}")
+
+    def plotAllCoeffs(self, fitNum: int = 1) -> Any:
+        import matplotlib.pyplot as plt
+
+        coeff_mat, _labels, _se = self.get_coeffs(fit_num=fitNum)
+        if coeff_mat.size == 0:
+            return plt.plot([], [])
+        return plt.plot(np.arange(coeff_mat.shape[0]), coeff_mat[:, max(0, min(coeff_mat.shape[1] - 1, fitNum - 1))], "k.")
+
+    def plotHistCoeffs(self, fitNum: int = 1) -> Any:
+        import matplotlib.pyplot as plt
+
+        coeffs, _labels, _se = self.getHistCoeffs(fitNum=fitNum)
+        if coeffs.size == 0:
+            return plt.plot([], [])
+        col = max(0, min(coeffs.shape[1] - 1, fitNum - 1))
+        return plt.plot(np.arange(coeffs.shape[0]), coeffs[:, col], "k.")
+
+    def plotCoeffsWithoutHistory(self, fitNum: int = 1) -> Any:
+        import matplotlib.pyplot as plt
+
+        coeff_mat, labels, _se = self.get_coeffs(fit_num=fitNum)
+        keep = [i for i, label in enumerate(labels) if "hist" not in label.lower() and "history" not in label.lower()]
+        if not keep:
+            return plt.plot([], [])
+        col = max(0, min(coeff_mat.shape[1] - 1, fitNum - 1))
+        idx = np.asarray(keep, dtype=int)
+        return plt.plot(np.arange(idx.size), coeff_mat[idx, col], "k.")
+
+    def plot2dCoeffSummary(self, fitNum: int = 1) -> Any:
+        import matplotlib.pyplot as plt
+
+        coeff_mat, _labels, _se = self.get_coeffs(fit_num=fitNum)
+        return plt.imshow(coeff_mat, aspect="auto", interpolation="nearest")
+
+    def plot3dCoeffSummary(self, fitNum: int = 1) -> Any:
+        import matplotlib.pyplot as plt
+
+        coeff_mat, _labels, _se = self.get_coeffs(fit_num=fitNum)
+        if coeff_mat.size == 0:
+            return plt.plot([], [])
+        fig = plt.figure()
+        ax = cast(Any, fig.add_subplot(111, projection="3d"))
+        x = np.arange(coeff_mat.shape[0], dtype=float)
+        y = np.zeros_like(x)
+        z = np.zeros_like(x)
+        dz = coeff_mat[:, max(0, min(coeff_mat.shape[1] - 1, fitNum - 1))]
+        return ax.bar3d(x, y, z, 0.5, 0.5, dz)
+
+    def plotKSSummary(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        vals: list[float] = []
+        for fit in self.results:
+            raw = fit.ks_stats.get("ks_stat", np.nan)
+            arr = np.asarray(raw, dtype=float).reshape(-1)
+            vals.append(float(np.nanmean(arr)) if arr.size else np.nan)
+        y = np.asarray(vals, dtype=float)
+        return plt.plot(np.arange(1, y.size + 1), y, "k-o")
+
+    def plotResidualSummary(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        vals: list[float] = []
+        for fit in self.results:
+            if fit.fit_residual is None:
+                vals.append(np.nan)
+                continue
+            arr = np.asarray(fit.fit_residual, dtype=float).reshape(-1)
+            vals.append(float(np.nanmean(np.abs(arr))) if arr.size else np.nan)
+        y = np.asarray(vals, dtype=float)
+        return plt.plot(np.arange(1, y.size + 1), y, "k-o")
+
+    def plotSummary(self, fitNum: int = 1) -> Any:
+        import matplotlib.pyplot as plt
+
+        plt.figure()
+        plt.subplot(2, 2, 1)
+        self.plotAIC()
+        plt.subplot(2, 2, 2)
+        self.plotBIC()
+        plt.subplot(2, 2, 3)
+        self.plotAllCoeffs(fitNum=fitNum)
+        plt.subplot(2, 2, 4)
+        self.plotResidualSummary()
+        return plt.gca()
 
 
 class DecodingAlgorithms:

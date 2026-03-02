@@ -320,10 +320,15 @@
           "labels",
           "times"
         ],
-        "method_count": 2,
+        "method_count": 7,
         "methods": [
+          "Events",
+          "dsxy2figxy",
+          "fromStructure",
           "getTimes",
-          "subset"
+          "plot",
+          "subset",
+          "toStructure"
         ],
         "properties": []
       },
@@ -347,11 +352,19 @@
         "fields": [
           "bin_edges_s"
         ],
-        "method_count": 3,
+        "method_count": 11,
         "methods": [
+          "History",
+          "computeHistory",
+          "computeNSTHistoryWindow",
           "design_matrix",
+          "fromStructure",
           "getDesignMatrix",
-          "getNumBins"
+          "getNumBins",
+          "plot",
+          "setWindow",
+          "toFilter",
+          "toStructure"
         ],
         "properties": [
           "n_bins"
@@ -659,9 +672,18 @@
         "fields": [
           "configs"
         ],
-        "method_count": 1,
+        "method_count": 10,
         "methods": [
-          "getConfigs"
+          "ConfigColl",
+          "addConfig",
+          "fromStructure",
+          "getConfig",
+          "getConfigNames",
+          "getConfigs",
+          "getSubsetConfigs",
+          "setConfig",
+          "setConfigNames",
+          "toStructure"
         ],
         "properties": []
       },
@@ -767,21 +789,40 @@
           "intercept",
           "link"
         ],
-        "method_count": 18,
+        "method_count": 37,
         "methods": [
+          "CIF",
+          "CIFCopy",
           "computeLinearPredictor",
           "computePlotParams",
           "compute_plot_params",
+          "evalFunctionWithVectorArgs",
+          "evalGradient",
+          "evalGradientLDGamma",
+          "evalGradientLog",
+          "evalGradientLogLDGamma",
+          "evalJacobian",
+          "evalJacobianLDGamma",
+          "evalJacobianLog",
+          "evalJacobianLogLDGamma",
+          "evalLDGamma",
           "evalLambda",
           "evalLambdaDelta",
+          "evalLogLDGamma",
           "eval_lambda_delta",
           "evaluate",
           "fromStructure",
           "from_structure",
+          "isSymBeta",
           "linear_predictor",
           "logLikelihood",
           "log_likelihood",
+          "resolveSimulinkModelName",
+          "setHistory",
+          "setSpikeTrain",
           "simulateByThinning",
+          "simulateCIF",
+          "simulateCIFByThinning",
           "simulateCIFByThinningFromLambda",
           "simulate_by_thinning",
           "simulate_cif_by_thinning_from_lambda",
@@ -817,17 +858,32 @@
     {
       "compat": {
         "fields": [],
-        "method_count": 9,
+        "method_count": 24,
         "methods": [
           "GLMFit",
+          "KSPlot",
           "RunAnalysisForAllNeurons",
           "RunAnalysisForNeuron",
+          "bnlrCG",
+          "compHistEnsCoeff",
+          "compHistEnsCoeffForAll",
           "computeFitResidual",
+          "computeGrangerCausalityMatrix",
+          "computeHistLag",
+          "computeHistLagForAll",
           "computeInvGausTrans",
           "computeKSStats",
+          "computeNeighbors",
           "fdr_bh",
           "fitGLM",
-          "fitTrial"
+          "fitTrial",
+          "flatMaskCellToMat",
+          "ksdiscrete",
+          "plotCoeffs",
+          "plotFitResidual",
+          "plotInvGausTrans",
+          "plotSeqCorr",
+          "spikeTrigAvg"
         ],
         "properties": []
       },
@@ -981,7 +1037,7 @@
         "fields": [
           "results"
         ],
-        "method_count": 28,
+        "method_count": 45,
         "methods": [
           "FitResSummary",
           "bestByAIC",
@@ -1001,6 +1057,9 @@
           "getDiffAIC",
           "getDiffBIC",
           "getDifflogLL",
+          "getHistCoeffs",
+          "getHistIndex",
+          "getSigCoeffs",
           "getUniqueLabels",
           "get_coeff_index",
           "get_coeffs",
@@ -1009,8 +1068,22 @@
           "get_diff_log_likelihood",
           "get_unique_labels",
           "mapCovLabelsToUniqueLabels",
+          "plot2dCoeffSummary",
+          "plot3dCoeffSummary",
+          "plotAIC",
+          "plotAllCoeffs",
+          "plotBIC",
+          "plotCoeffsWithoutHistory",
+          "plotHistCoeffs",
+          "plotIC",
+          "plotKSSummary",
+          "plotResidualSummary",
+          "plotSummary",
+          "plotlogLL",
+          "setCoeffRange",
           "toStructure",
-          "to_structure"
+          "to_structure",
+          "xticklabel_rotate"
         ],
         "properties": []
       },
@@ -1116,6 +1189,6 @@
       "python_class": "nstat.decoding.DecodingAlgorithms"
     }
   ],
-  "generated_at_utc": "2026-03-01T19:46:40.819861+00:00",
+  "generated_at_utc": "2026-03-01T20:04:31.366743+00:00",
   "python_root": "/private/tmp/nSTAT-python-cleanroom"
 }

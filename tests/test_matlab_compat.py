@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from nstat.compat.matlab import Analysis
+from nstat.compat.matlab import ConfigColl
 from nstat.compat.matlab import CovColl
 from nstat.compat.matlab import DecodingAlgorithms
 from nstat.compat.matlab import FitResSummary
@@ -35,6 +36,30 @@ def test_trialconfig_matlab_style_constructor() -> None:
     assert cfg.getFitType() == "binomial"
     assert cfg.getCovariateLabels() == ["stim"]
 
+
+
+def test_configcoll_matlab_aliases() -> None:
+    cfg1 = TrialConfig(covariateLabels=["stim"], Fs=1000.0, fitType="poisson", name="cfg_a")
+    cfg2 = TrialConfig(covariateLabels=["ctx"], Fs=500.0, fitType="binomial", name="cfg_b")
+    coll = ConfigColl([cfg1, cfg2])
+
+    assert coll.getConfigNames() == ["cfg_a", "cfg_b"]
+    assert coll.getConfig(2).name == "cfg_b"
+    assert coll.getConfig("cfg_a").fit_type == "poisson"
+
+    cfg3 = TrialConfig(covariateLabels=["stim", "ctx"], Fs=250.0, fitType="poisson", name="cfg_c")
+    coll.addConfig(cfg3)
+    assert coll.getConfig(3).name == "cfg_c"
+
+    coll.setConfigNames(["a", "b", "c"])
+    assert coll.getConfigNames() == ["a", "b", "c"]
+
+    subset = coll.getSubsetConfigs([1, 3])
+    assert [cfg.name for cfg in subset.configs] == ["a", "c"]
+
+    payload = coll.toStructure()
+    restored = ConfigColl.fromStructure(payload)
+    assert restored.getConfigNames() == ["a", "b", "c"]
 
 
 def test_analysis_fitglm_alias() -> None:

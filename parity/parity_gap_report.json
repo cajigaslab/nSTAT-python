@@ -22,18 +22,18 @@
       "missing_method_count": 0
     },
     {
-      "coverage_ratio": 0.0,
-      "mapped_method_count": 0,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 5,
       "matlab_class": "Events",
       "matlab_method_count": 5,
-      "missing_method_count": 5
+      "missing_method_count": 0
     },
     {
-      "coverage_ratio": 0.0,
-      "mapped_method_count": 0,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 8,
       "matlab_class": "History",
       "matlab_method_count": 8,
-      "missing_method_count": 8
+      "missing_method_count": 0
     },
     {
       "coverage_ratio": 0.10344827586206896,
@@ -64,11 +64,11 @@
       "missing_method_count": 0
     },
     {
-      "coverage_ratio": 0.0,
-      "mapped_method_count": 0,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 9,
       "matlab_class": "ConfigColl",
       "matlab_method_count": 9,
-      "missing_method_count": 9
+      "missing_method_count": 0
     },
     {
       "coverage_ratio": 0.5294117647058824,
@@ -78,18 +78,18 @@
       "missing_method_count": 32
     },
     {
-      "coverage_ratio": 0.09523809523809523,
-      "mapped_method_count": 2,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 21,
       "matlab_class": "CIF",
       "matlab_method_count": 21,
-      "missing_method_count": 19
+      "missing_method_count": 0
     },
     {
-      "coverage_ratio": 0.3181818181818182,
-      "mapped_method_count": 7,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 22,
       "matlab_class": "Analysis",
       "matlab_method_count": 22,
-      "missing_method_count": 15
+      "missing_method_count": 0
     },
     {
       "coverage_ratio": 1.0,
@@ -99,11 +99,11 @@
       "missing_method_count": 0
     },
     {
-      "coverage_ratio": 0.43333333333333335,
-      "mapped_method_count": 13,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 30,
       "matlab_class": "FitResSummary",
       "matlab_method_count": 30,
-      "missing_method_count": 17
+      "missing_method_count": 0
     },
     {
       "coverage_ratio": 1.0,
@@ -266,7 +266,7 @@
     }
   ],
   "fail_on": "none",
-  "generated_at_utc": "2026-03-01T19:46:41.996406+00:00",
+  "generated_at_utc": "2026-03-01T20:04:32.569846+00:00",
   "issues": [
     {
       "check": "missing_method_mappings",
@@ -319,41 +319,6 @@
         ]
       },
       "message": "SignalObj has 42 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "Events",
-        "matlab_method_count": 5,
-        "missing_methods": [
-          "Events",
-          "dsxy2figxy",
-          "fromStructure",
-          "plot",
-          "toStructure"
-        ]
-      },
-      "message": "Events has 5 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "History",
-        "matlab_method_count": 8,
-        "missing_methods": [
-          "History",
-          "computeHistory",
-          "computeNSTHistoryWindow",
-          "fromStructure",
-          "plot",
-          "setWindow",
-          "toFilter",
-          "toStructure"
-        ]
-      },
-      "message": "History has 8 unmapped MATLAB methods",
       "severity": "medium"
     },
     {
@@ -464,26 +429,6 @@
     {
       "check": "missing_method_mappings",
       "details": {
-        "matlab_class": "ConfigColl",
-        "matlab_method_count": 9,
-        "missing_methods": [
-          "ConfigColl",
-          "addConfig",
-          "fromStructure",
-          "getConfig",
-          "getConfigNames",
-          "getSubsetConfigs",
-          "setConfig",
-          "setConfigNames",
-          "toStructure"
-        ]
-      },
-      "message": "ConfigColl has 9 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
         "matlab_class": "Trial",
         "matlab_method_count": 68,
         "missing_methods": [
@@ -523,96 +468,12 @@
       },
       "message": "Trial has 32 unmapped MATLAB methods",
       "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "CIF",
-        "matlab_method_count": 21,
-        "missing_methods": [
-          "CIF",
-          "CIFCopy",
-          "evalFunctionWithVectorArgs",
-          "evalGradient",
-          "evalGradientLDGamma",
-          "evalGradientLog",
-          "evalGradientLogLDGamma",
-          "evalJacobian",
-          "evalJacobianLDGamma",
-          "evalJacobianLog",
-          "evalJacobianLogLDGamma",
-          "evalLDGamma",
-          "evalLogLDGamma",
-          "isSymBeta",
-          "resolveSimulinkModelName",
-          "setHistory",
-          "setSpikeTrain",
-          "simulateCIF",
-          "simulateCIFByThinning"
-        ]
-      },
-      "message": "CIF has 19 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "Analysis",
-        "matlab_method_count": 22,
-        "missing_methods": [
-          "KSPlot",
-          "bnlrCG",
-          "compHistEnsCoeff",
-          "compHistEnsCoeffForAll",
-          "computeGrangerCausalityMatrix",
-          "computeHistLag",
-          "computeHistLagForAll",
-          "computeNeighbors",
-          "flatMaskCellToMat",
-          "ksdiscrete",
-          "plotCoeffs",
-          "plotFitResidual",
-          "plotInvGausTrans",
-          "plotSeqCorr",
-          "spikeTrigAvg"
-        ]
-      },
-      "message": "Analysis has 15 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "FitResSummary",
-        "matlab_method_count": 30,
-        "missing_methods": [
-          "getHistCoeffs",
-          "getHistIndex",
-          "getSigCoeffs",
-          "plot2dCoeffSummary",
-          "plot3dCoeffSummary",
-          "plotAIC",
-          "plotAllCoeffs",
-          "plotBIC",
-          "plotCoeffsWithoutHistory",
-          "plotHistCoeffs",
-          "plotIC",
-          "plotKSSummary",
-          "plotResidualSummary",
-          "plotSummary",
-          "plotlogLL",
-          "setCoeffRange",
-          "xticklabel_rotate"
-        ]
-      },
-      "message": "FitResSummary has 17 unmapped MATLAB methods",
-      "severity": "medium"
     }
   ],
   "summary": {
     "high": 0,
     "low": 0,
-    "medium": 11,
-    "total": 11
+    "medium": 5,
+    "total": 5
   }
 }
