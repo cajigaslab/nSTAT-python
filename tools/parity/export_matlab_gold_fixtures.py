@@ -2,11 +2,16 @@
 """Export MATLAB-gold fixtures for canonical parity workflows.
 
 This script runs MATLAB in batch mode to generate deterministic fixture files
-for four workflow families:
+for parity-critical workflow families:
 - PPSimExample
 - DecodingExampleWithHist
 - HippocampalPlaceCellExample
 - SpikeRateDiffCIs
+- PSTHEstimation
+- nstCollExamples
+- TrialExamples
+- CovCollExamples
+- EventsExamples
 """
 
 from __future__ import annotations
@@ -177,8 +182,165 @@ save(fullfile(out_dir, 'SpikeRateDiffCIs_gold.mat'), ...
     'spike_matrix_a', 'spike_matrix_b', 'alpha_diff', ...
     'expected_diff', 'expected_lo', 'expected_hi', '-v7');
 
+% ----------------------------------------
+% Fixture 5: PSTHEstimation (rate + FDR)
+% ----------------------------------------
+n_trials_psth = 16;
+n_bins_psth = 240;
+alpha_psth = 0.05;
+t = linspace(0, 1, n_bins_psth);
+base_p = 0.03 + 0.02*(t > 0.35) + 0.01*sin(2*pi*2*t);
+base_p = min(max(base_p, 0.001), 0.75);
+
+spike_matrix_psth = zeros(n_trials_psth, n_bins_psth);
+for k=1:n_trials_psth
+    scale = 0.65 + 0.04*k;
+    p = min(max(base_p * scale, 0.001), 0.85);
+    spike_matrix_psth(k,:) = binornd(1, p);
+end
+
+counts_psth = sum(spike_matrix_psth, 2);
+expected_rate_psth = counts_psth / n_bins_psth;
+expected_prob_psth = ones(n_trials_psth, n_trials_psth);
+upper_idx = zeros(n_trials_psth*(n_trials_psth-1)/2, 2);
+upper_p = zeros(n_trials_psth*(n_trials_psth-1)/2, 1);
+idx = 1;
+for i=1:n_trials_psth
+    for j=i+1:n_trials_psth
+        p1 = expected_rate_psth(i);
+        p2 = expected_rate_psth(j);
+        pooled = (counts_psth(i) + counts_psth(j)) / (2.0 * n_bins_psth);
+        se = sqrt(max(pooled * (1.0 - pooled) * (2.0 / n_bins_psth), 0.0));
+        if se <= 0.0
+            if abs(p1-p2) <= 1e-12
+                pval = 1.0;
+            else
+                pval = 0.0;
+            end
+        else
+            zstat = (p1 - p2) / se;
+            pval = 2.0 * (1.0 - normcdf(abs(zstat), 0, 1));
+        end
+        expected_prob_psth(i,j) = pval;
+        expected_prob_psth(j,i) = pval;
+        upper_idx(idx,:) = [i j];
+        upper_p(idx) = pval;
+        idx = idx + 1;
+    end
+end
+
+expected_sig_psth = zeros(n_trials_psth, n_trials_psth);
+[sorted_p, order] = sort(upper_p, 'ascend');
+m = numel(sorted_p);
+thresholds = alpha_psth * ((1:m)' / m);
+pass = find(sorted_p <= thresholds);
+if ~isempty(pass)
+    cutoff = sorted_p(max(pass));
+    selected = upper_p <= cutoff;
+    for q=1:numel(selected)
+        if selected(q)
+            i = upper_idx(q,1);
+            j = upper_idx(q,2);
+            expected_sig_psth(i,j) = 1;
+            expected_sig_psth(j,i) = 1;
+        end
+    end
+end
+expected_prob_psth(1:n_trials_psth+1:end) = 1.0;
+expected_sig_psth(1:n_trials_psth+1:end) = 0.0;
+
+save(fullfile(out_dir, 'PSTHEstimation_gold.mat'), ...
+    'spike_matrix_psth', 'alpha_psth', ...
+    'expected_rate_psth', 'expected_prob_psth', 'expected_sig_psth', '-v7');
+
+% ---------------------------------------------------------
+% Fixture 6: nstCollExamples (binned/count collection ops)
+% ---------------------------------------------------------
+spike_times_1 = [0.02 0.08 0.30 0.45 0.75]';
+spike_times_2 = [0.01 0.10 0.40 0.41 0.95]';
+t_start_coll = 0.0;
+t_end_coll = 1.0;
+bin_size_coll = 0.1;
+edges_coll = t_start_coll:bin_size_coll:t_end_coll;
+
+c1 = histcounts(spike_times_1, edges_coll);
+c2 = histcounts(spike_times_2, edges_coll);
+expected_count_matrix = [c1; c2];
+expected_binary_matrix = double(expected_count_matrix > 0);
+expected_centers = (edges_coll(1:end-1) + edges_coll(2:end))/2;
+expected_first_spike = min([spike_times_1; spike_times_2]);
+expected_last_spike = max([spike_times_1; spike_times_2]);
+expected_merged_spikes = sort([spike_times_1; spike_times_2]);
+
+save(fullfile(out_dir, 'nstCollExamples_gold.mat'), ...
+    'spike_times_1', 'spike_times_2', 't_start_coll', 't_end_coll', 'bin_size_coll', ...
+    'expected_count_matrix', 'expected_binary_matrix', 'expected_centers', ...
+    'expected_first_spike', 'expected_last_spike', 'expected_merged_spikes', '-v7');
+
+% ------------------------------------------------------
+% Fixture 7: CovCollExamples (design matrix + selectors)
+% ------------------------------------------------------
+time_cov = (0:0.01:1.0)';
+cov_stim = sin(2*pi*1.0*time_cov);
+cov_ctx = [cos(2*pi*1.0*time_cov), time_cov];
+expected_design_cov = [cov_stim, cov_ctx];
+expected_ctx_only = cov_ctx;
+expected_stim_only = cov_stim;
+
+save(fullfile(out_dir, 'CovCollExamples_gold.mat'), ...
+    'time_cov', 'cov_stim', 'cov_ctx', 'expected_design_cov', ...
+    'expected_ctx_only', 'expected_stim_only', '-v7');
+
+% --------------------------------------------------------------
+% Fixture 8: TrialExamples (aligned binned observations + X map)
+% --------------------------------------------------------------
+spike_times_trial = [0.02 0.08 0.13 0.21 0.32 0.55 0.72 0.91]';
+bin_size_trial = 0.05;
+edges_trial = t_start_coll:bin_size_trial:t_end_coll;
+expected_t_bins_trial = (edges_trial(1:end-1) + edges_trial(2:end))/2;
+expected_y_trial = histcounts(spike_times_trial, edges_trial)';
+
+idx_trial = zeros(numel(expected_t_bins_trial), 1);
+for k=1:numel(expected_t_bins_trial)
+    idx = find(time_cov >= expected_t_bins_trial(k), 1, 'first');
+    if isempty(idx)
+        idx = numel(time_cov);
+    end
+    idx_trial(k) = idx;
+end
+expected_X_trial = expected_design_cov(idx_trial, :);
+
+save(fullfile(out_dir, 'TrialExamples_gold.mat'), ...
+    'time_cov', 'cov_stim', 'cov_ctx', 'spike_times_trial', 'bin_size_trial', ...
+    'expected_t_bins_trial', 'expected_y_trial', 'expected_X_trial', '-v7');
+
+% ----------------------------------------------
+% Fixture 9: EventsExamples (subset extraction)
+% ----------------------------------------------
+event_times = [0.079 0.579 0.997]';
+subset_start = 0.1;
+subset_end = 0.7;
+mask = event_times >= subset_start & event_times <= subset_end;
+expected_subset_times = event_times(mask);
+
+save(fullfile(out_dir, 'EventsExamples_gold.mat'), ...
+    'event_times', 'subset_start', 'subset_end', 'expected_subset_times', '-v7');
+
 fprintf('MATLAB gold fixtures exported to %s\n', out_dir);
 """
+
+
+FIXTURE_FILES = [
+    "PPSimExample_gold.mat",
+    "DecodingExampleWithHist_gold.mat",
+    "HippocampalPlaceCellExample_gold.mat",
+    "SpikeRateDiffCIs_gold.mat",
+    "PSTHEstimation_gold.mat",
+    "nstCollExamples_gold.mat",
+    "TrialExamples_gold.mat",
+    "CovCollExamples_gold.mat",
+    "EventsExamples_gold.mat",
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -198,14 +360,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
 
 
 def main() -> int:
@@ -235,12 +395,7 @@ def main() -> int:
             pass
 
     fixtures = []
-    for file_name in [
-        "PPSimExample_gold.mat",
-        "DecodingExampleWithHist_gold.mat",
-        "HippocampalPlaceCellExample_gold.mat",
-        "SpikeRateDiffCIs_gold.mat",
-    ]:
+    for file_name in FIXTURE_FILES:
         path = out_dir / file_name
         if not path.exists():
             raise FileNotFoundError(f"expected fixture missing: {path}")

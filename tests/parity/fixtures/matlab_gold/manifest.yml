@@ -2,17 +2,37 @@ version: 1
 fixtures:
 - name: PPSimExample
   path: tests/parity/fixtures/matlab_gold/PPSimExample_gold.mat
-  sha256: 0c312e52d779571d7081c81841fff8b0dc86165475289f01911cdfcdd38506a9
+  sha256: 8d7a28f791b76bf6b6ed61fc9ab0beaddfdc118e5e409325a477678c02781a94
   source: matlab_batch_export
 - name: DecodingExampleWithHist
   path: tests/parity/fixtures/matlab_gold/DecodingExampleWithHist_gold.mat
-  sha256: fb268c08ea15fef339c007d3327417459940d51ca13b0c2f0454cf6ac67e6f69
+  sha256: 700f2a8dfba1399d393c6d83f57e955a61c4aa1bd4a9bba8be9b1a68789d7117
   source: matlab_batch_export
 - name: HippocampalPlaceCellExample
   path: tests/parity/fixtures/matlab_gold/HippocampalPlaceCellExample_gold.mat
-  sha256: 87826cec387ae5b095c17141cddc26e0ac8793e5b6ca09c44558cf3f11996f1c
+  sha256: 9c8350d697c1347134ccf68208881d26d381445d82e02a9b96411e5e37f7d544
   source: matlab_batch_export
 - name: SpikeRateDiffCIs
   path: tests/parity/fixtures/matlab_gold/SpikeRateDiffCIs_gold.mat
-  sha256: 382db404f51e6b09ae11753cfe3a15a2a5f6673670c3f9ad4bc77290ac8ca0bd
+  sha256: 626561ea83b7a1fd1ee753b8457e51862fbd6b397ba73e7e672aafaf191a3f29
+  source: matlab_batch_export
+- name: PSTHEstimation
+  path: tests/parity/fixtures/matlab_gold/PSTHEstimation_gold.mat
+  sha256: 8f45c8d463663d3a70cc70bf8b95a3d0493964f30d73a0e395db85f67158d86b
+  source: matlab_batch_export
+- name: nstCollExamples
+  path: tests/parity/fixtures/matlab_gold/nstCollExamples_gold.mat
+  sha256: 9701f14c46d244fd3b31365b06cfe656a080539bba7d6cc3370021fcd468e4d6
+  source: matlab_batch_export
+- name: TrialExamples
+  path: tests/parity/fixtures/matlab_gold/TrialExamples_gold.mat
+  sha256: 5369b411b211340a2c10b25145f8fd304dfc7e0b3fef82be5b03b37e6b9430a6
+  source: matlab_batch_export
+- name: CovCollExamples
+  path: tests/parity/fixtures/matlab_gold/CovCollExamples_gold.mat
+  sha256: 45a409c7aa285be36fd2bcd0b5913a9ace31d918fc8e50cdab139b7beabdc06e
+  source: matlab_batch_export
+- name: EventsExamples
+  path: tests/parity/fixtures/matlab_gold/EventsExamples_gold.mat
+  sha256: 730aa2586b86030e9349de4c3149982bf671abf152b7d4449f61fe4876aff414
   source: matlab_batch_export

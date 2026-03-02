@@ -100,6 +100,10 @@ jobs:
             --upstream-root /tmp/upstream-nstat \
             --allowlist tools/compliance/shared_data_allowlist.yml
 
+      - name: Prepare deterministic validation images
+        run: |
+          python tools/parity/prepare_validation_images.py
+
       - name: Build parity snapshot and enforce high/medium-severity gate
         run: |
           python tools/parity/build_parity_snapshot.py \
