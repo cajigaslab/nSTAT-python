@@ -40,10 +40,12 @@ artifacts in the `parity/` directory.
 ## Numeric drift
 | Metric | Value |
 |---|---:|
-| Topics checked | 13 |
-| Topics passed | 13 |
+| Topics checked | 31 |
+| Required notebook topics | 30 |
+| Required topics checked | 30 |
+| Topics passed | 31 |
 | Topics failed | 0 |
-| Metrics checked | 36 |
+| Metrics checked | 126 |
 | Metrics failed | 0 |
 
 ## Frozen MATLAB data snapshot
@@ -62,3 +64,4 @@ artifacts in the `parity/` directory.
 - [numeric_drift_report.json](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/numeric_drift_report.json)
 - [example_output_spec.yml](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/example_output_spec.yml)
 - [method_closure_sprint.md](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/method_closure_sprint.md)
+- [Full validation report PDF](../assets/reports/nstat_python_validation_report_full_latest.pdf)

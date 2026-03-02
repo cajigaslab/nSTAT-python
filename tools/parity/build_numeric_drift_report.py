@@ -41,6 +41,18 @@ def parse_args() -> argparse.Namespace:
         help="Output JSON report path.",
     )
     parser.add_argument(
+        "--equivalence-report",
+        type=Path,
+        default=Path("parity/function_example_alignment_report.json"),
+        help="Equivalence audit JSON used to derive notebook-wide checkpoint metrics.",
+    )
+    parser.add_argument(
+        "--notebook-manifest",
+        type=Path,
+        default=Path("tools/notebooks/notebook_manifest.yml"),
+        help="Notebook manifest listing required topic coverage.",
+    )
+    parser.add_argument(
         "--fail-on-violation",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -83,6 +95,32 @@ def _fixture_path_map(fixtures_manifest: Path) -> dict[str, Path]:
     for row in payload.get("fixtures", []):
         path = Path(row["path"])
         out[path.name] = path
+    return out
+
+
+def _load_required_topics(notebook_manifest: Path) -> list[str]:
+    payload = yaml.safe_load(notebook_manifest.read_text(encoding="utf-8")) or {}
+    return [str(row.get("topic", "")).strip() for row in payload.get("notebooks", []) if str(row.get("topic", "")).strip()]
+
+
+def _derive_checkpoint_metrics(equivalence_report: Path) -> dict[str, dict[str, float]]:
+    if not equivalence_report.exists():
+        return {}
+    payload = json.loads(equivalence_report.read_text(encoding="utf-8"))
+    rows = payload.get("example_line_alignment_audit", {}).get("topic_rows", [])
+    out: dict[str, dict[str, float]] = {}
+    for row in rows:
+        topic = str(row.get("topic", "")).strip()
+        if not topic:
+            continue
+        assertion_count = int(row.get("assertion_count", 0))
+        has_topic_checkpoint = bool(row.get("has_topic_checkpoint", False))
+        py_image_count = int(row.get("python_validation_image_count", 0))
+        out[topic] = {
+            "topic_checkpoint_missing_error": 0.0 if has_topic_checkpoint else 1.0,
+            "assertion_count_missing_error": 0.0 if assertion_count > 0 else 1.0,
+            "python_validation_image_missing_error": 0.0 if py_image_count > 0 else 1.0,
+        }
     return out
 
 
@@ -336,8 +374,10 @@ def _build_report(
     thresholds_payload: dict,
     fixtures_manifest: Path,
     thresholds_file: Path,
+    required_topics: list[str],
 ) -> dict:
     thresholds_by_topic = thresholds_payload.get("topics", {})
+    default_thresholds = thresholds_payload.get("defaults", {})
     topics_out: dict[str, dict] = {}
 
     total_checked = 0
@@ -352,9 +392,10 @@ def _build_report(
         checked = 0
 
         for metric_name, value in sorted(metrics.items()):
-            if metric_name not in topic_thresholds:
+            threshold_value = topic_thresholds.get(metric_name, default_thresholds.get(metric_name))
+            if threshold_value is None:
                 continue
-            threshold = float(topic_thresholds[metric_name])
+            threshold = float(threshold_value)
             passed = value <= threshold
             ratio = _ratio(float(value), threshold)
             metric_rows[metric_name] = {
@@ -382,6 +423,11 @@ def _build_report(
             "metrics": metric_rows,
         }
 
+    missing_required_topics = sorted(
+        topic for topic in required_topics if topic not in topics_out or int(topics_out[topic]["checked_metrics"]) == 0
+    )
+    checked_required_topics = len(required_topics) - len(missing_required_topics)
+
     report = {
         "schema_version": 1,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -393,6 +439,9 @@ def _build_report(
             "failed_topics": len(topics_out) - passed_topics,
             "checked_metrics": total_checked,
             "failed_metrics": total_failed,
+            "required_topics": len(required_topics),
+            "required_topics_checked": checked_required_topics,
+            "required_topics_missing": missing_required_topics,
         },
         "topics": topics_out,
     }
@@ -404,27 +453,41 @@ def main() -> int:
     fixtures_manifest = args.fixtures_manifest.resolve()
     thresholds_file = args.thresholds.resolve()
     report_out = args.report_out.resolve()
+    equivalence_report = args.equivalence_report.resolve()
+    notebook_manifest = args.notebook_manifest.resolve()
 
     fixture_paths = _fixture_path_map(fixtures_manifest)
     metrics = _evaluate_metrics(fixture_paths)
+    required_topics = _load_required_topics(notebook_manifest)
+    checkpoint_metrics = _derive_checkpoint_metrics(equivalence_report)
+    for topic in required_topics:
+        merged = dict(metrics.get(topic, {}))
+        merged.update(checkpoint_metrics.get(topic, {}))
+        metrics[topic] = merged
     thresholds_payload = yaml.safe_load(thresholds_file.read_text(encoding="utf-8")) or {}
-    report = _build_report(metrics, thresholds_payload, fixtures_manifest, thresholds_file)
+    report = _build_report(metrics, thresholds_payload, fixtures_manifest, thresholds_file, required_topics)
 
     report_out.parent.mkdir(parents=True, exist_ok=True)
     report_out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
     failed_topics = report["summary"]["failed_topics"]
     failed_metrics = report["summary"]["failed_metrics"]
+    missing_required = report["summary"].get("required_topics_missing", [])
     print(f"Wrote numeric drift report: {report_out}")
     print(f"Topics: {report['summary']['topics']}")
     print(f"Failed topics: {failed_topics}")
     print(f"Failed metrics: {failed_metrics}")
+    print(
+        "Required topics coverage: "
+        f"{report['summary'].get('required_topics_checked', 0)}/{report['summary'].get('required_topics', 0)}"
+    )
+    if missing_required:
+        print("Missing required topics:", ", ".join(missing_required))
 
-    if args.fail_on_violation and (failed_topics > 0 or failed_metrics > 0):
+    if args.fail_on_violation and (failed_topics > 0 or failed_metrics > 0 or len(missing_required) > 0):
         return 1
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

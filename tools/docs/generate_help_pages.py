@@ -288,6 +288,8 @@ artifacts in the `parity/` directory.
 | Metric | Value |
 |---|---:|
 | Topics checked | {int(numeric.get("topics", 0))} |
+| Required notebook topics | {int(numeric.get("required_topics", 0))} |
+| Required topics checked | {int(numeric.get("required_topics_checked", 0))} |
 | Topics passed | {int(numeric.get("passed_topics", 0))} |
 | Topics failed | {int(numeric.get("failed_topics", 0))} |
 | Metrics checked | {int(numeric.get("checked_metrics", 0))} |
@@ -309,6 +311,7 @@ artifacts in the `parity/` directory.
 - [numeric_drift_report.json]({REPO_PARITY_BASE}/numeric_drift_report.json)
 - [example_output_spec.yml]({REPO_PARITY_BASE}/example_output_spec.yml)
 - [method_closure_sprint.md]({REPO_PARITY_BASE}/method_closure_sprint.md)
+- [Full validation report PDF](../assets/reports/nstat_python_validation_report_full_latest.pdf)
 """
     write_text(help_root / "parity_dashboard.md", content)
 

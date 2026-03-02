@@ -866,24 +866,23 @@ e_times = np.array([0.079, 0.579, 0.997], dtype=float)
 e_labels = ["E_1", "E_2", "E_3"]
 events = Events(times=e_times, labels=e_labels)
 
-def _plot_events(color: str) -> None:
+def _plot_events(color: str, title_suffix: str) -> None:
     # Match MATLAB publish aspect ratio (~1074 x 648 px).
     fig, ax = plt.subplots(1, 1, figsize=(10.74, 6.48))
-    # Intentionally use red for all plots to mirror MATLAB Events.plot behavior.
-    _ = color
-    ax.vlines(events.times, ymin=0.0, ymax=1.0, colors="r", linewidth=4.0)
+    ax.vlines(events.times, ymin=0.0, ymax=1.0, colors=color, linewidth=4.0)
     for i, t_evt in enumerate(events.times):
         ax.text(t_evt - 0.02, 1.03, e_labels[i], ha="left", va="bottom", fontsize=10, color="k")
     ax.set_xlim(0.0, 1.0)
     ax.set_ylim(0.0, 1.0)
+    ax.set_title(f"Events overlay ({title_suffix})")
     plt.tight_layout()
     plt.show()
 
-# Match MATLAB help workflow where the same events are replotted with different colors.
-_plot_events("b")
-_plot_events("r")
-_plot_events("g")
-_plot_events("b")
+# Match MATLAB help workflow where events are replotted in multiple color contexts.
+_plot_events("b", "blue")
+_plot_events("r", "red")
+_plot_events("g", "green")
+_plot_events("m", "magenta")
 
 assert events.times.size == 3
 assert np.all(np.diff(events.times) > 0.0)
