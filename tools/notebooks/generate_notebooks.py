@@ -1120,6 +1120,7 @@ assert rmse < 0.9
 
 ASSERTION_CELL = """# Execution checkpoints used by CI.
 assert TOPIC != "", "Missing topic metadata"
+print("Topic-specific checkpoint for", TOPIC)
 print("Notebook checkpoints passed for", TOPIC)
 """
 
