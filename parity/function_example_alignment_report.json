@@ -5018,21 +5018,21 @@
       }
     ]
   },
-  "generated_at_utc": "2026-03-02T16:24:13.829953+00:00",
+  "generated_at_utc": "2026-03-02T16:44:36.714195+00:00",
   "matlab_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local",
   "method_functional_audit": {
     "class_summary": [
       {
-        "contract_coverage_ratio": 0.6938775510204082,
-        "contract_verified_count": 68,
+        "contract_coverage_ratio": 0.9591836734693877,
+        "contract_verified_count": 94,
         "eligible_method_count": 98,
-        "eligible_verified_ratio": 0.6938775510204082,
+        "eligible_verified_ratio": 0.9591836734693877,
         "excluded_method_count": 0,
         "matlab_class": "SignalObj",
         "matlab_method_count": 98,
         "missing_symbol_count": 0,
         "probe_verified_count": 57,
-        "unverified_behavior_count": 30
+        "unverified_behavior_count": 4
       },
       {
         "contract_coverage_ratio": 0.8571428571428571,
@@ -5266,8 +5266,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setUnits",
         "mapped_via_alias": false,
@@ -5278,8 +5278,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setXUnits",
         "mapped_via_alias": false,
@@ -5290,8 +5290,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setYUnits",
         "mapped_via_alias": false,
@@ -5314,8 +5314,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setDataLabels",
         "mapped_via_alias": false,
@@ -5446,8 +5446,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "getIndicesFromLabels",
         "mapped_via_alias": false,
@@ -5458,8 +5458,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "plus",
         "mapped_via_alias": false,
@@ -5470,8 +5470,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "minus",
         "mapped_via_alias": false,
@@ -5506,8 +5506,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "power",
         "mapped_via_alias": false,
@@ -5530,8 +5530,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "times",
         "mapped_via_alias": false,
@@ -5542,8 +5542,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "mtimes",
         "mapped_via_alias": false,
@@ -5554,8 +5554,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "rdivide",
         "mapped_via_alias": false,
@@ -5566,8 +5566,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "ldivide",
         "mapped_via_alias": false,
@@ -5614,8 +5614,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "derivativeAt",
         "mapped_via_alias": false,
@@ -5662,8 +5662,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "makeCompatible",
         "mapped_via_alias": false,
@@ -5854,8 +5854,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "merge",
         "mapped_via_alias": false,
@@ -5938,8 +5938,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "findNearestTimeIndices",
         "mapped_via_alias": false,
@@ -5950,8 +5950,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "findNearestTimeIndex",
         "mapped_via_alias": false,
@@ -5974,8 +5974,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "shiftMe",
         "mapped_via_alias": false,
@@ -6046,8 +6046,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "convertNamesToIndices",
         "mapped_via_alias": false,
@@ -6190,8 +6190,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "getSigInTimeWindow",
         "mapped_via_alias": false,
@@ -6262,8 +6262,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "getIndexFromLabel",
         "mapped_via_alias": false,
@@ -6274,8 +6274,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setDataMask",
         "mapped_via_alias": false,
@@ -6286,8 +6286,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setMaskByInd",
         "mapped_via_alias": false,
@@ -6298,8 +6298,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setMaskByLabels",
         "mapped_via_alias": false,
@@ -6322,8 +6322,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "getSubSignalFromNames",
         "mapped_via_alias": false,
@@ -6370,8 +6370,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "cell2str",
         "mapped_via_alias": false,
@@ -11230,16 +11230,16 @@
       }
     ],
     "summary": {
-      "contract_explicit_verified_methods": 171,
-      "contract_verified_methods": 376,
-      "contract_verified_ratio": 0.7504990019960079,
+      "contract_explicit_verified_methods": 197,
+      "contract_verified_methods": 402,
+      "contract_verified_ratio": 0.8023952095808383,
       "eligible_methods": 480,
-      "eligible_verified_ratio": 0.7833333333333333,
+      "eligible_verified_ratio": 0.8375,
       "excluded_methods": 21,
       "missing_symbol_methods": 0,
       "probe_verified_methods": 205,
       "total_methods": 501,
-      "unverified_behavior_methods": 104
+      "unverified_behavior_methods": 78
     }
   },
   "repo_root": "/private/tmp/nSTAT-python-cleanroom"

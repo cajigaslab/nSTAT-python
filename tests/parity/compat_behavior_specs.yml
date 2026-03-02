@@ -55,6 +55,161 @@ classes:
         access: method
         expect:
           instance_of: nstat.compat.matlab.SignalObj
+      - member: setUnits
+        access: method
+        args: [spikes/sec]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: setXUnits
+        access: method
+        args: [s]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: setYUnits
+        access: method
+        args: [Hz]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: setDataLabels
+        access: method
+        args_key: signal_labels_args
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: getIndexFromLabel
+        access: method
+        args_key: signal_index_arg
+        expect:
+          equals: 0
+      - member: getIndicesFromLabels
+        access: method
+        args_key: signal_label_lookup_args
+        expect:
+          equals:
+            - 0
+      - member: convertNamesToIndices
+        access: method
+        args_key: signal_label_lookup_args
+        expect:
+          equals:
+            - 0
+      - member: plus
+        access: method
+        args: [1.0]
+        extract: data
+        expect:
+          shape: [5, 1]
+          min: 2.0
+      - member: minus
+        access: method
+        args: [1.0]
+        extract: data
+        expect:
+          shape: [5, 1]
+          max: 2.0
+      - member: times
+        access: method
+        args: [2.0]
+        extract: data
+        expect:
+          shape: [5, 1]
+          max: 6.0
+      - member: mtimes
+        access: method
+        args: [2.0]
+        extract: data
+        expect:
+          shape: [5, 1]
+          max: 6.0
+      - member: rdivide
+        access: method
+        args: [2.0]
+        extract: data
+        expect:
+          shape: [5, 1]
+          max: 1.5
+      - member: ldivide
+        access: method
+        args: [2.0]
+        extract: data
+        expect:
+          shape: [5, 1]
+          min: 0.6666666
+      - member: power
+        access: method
+        args: [2.0]
+        extract: data
+        expect:
+          shape: [5, 1]
+          max: 9.0
+      - member: derivativeAt
+        access: method
+        args: [1.0]
+        expect:
+          shape: [1]
+      - member: findNearestTimeIndex
+        access: method
+        args: [1.0]
+        expect:
+          equals: 1
+      - member: findNearestTimeIndices
+        access: method
+        args_key: signal_times_args
+        expect:
+          equals:
+            - 0
+            - 1
+            - 3
+      - member: getSigInTimeWindow
+        access: method
+        args_key: signal_time_window_args
+        extract: n_samples
+        expect:
+          equals: 3
+      - member: merge
+        access: method
+        args_key: signal_other_shifted_args
+        extract: n_channels
+        expect:
+          equals: 2
+      - member: makeCompatible
+        access: method
+        args_key: signal_other_args
+        select: 0
+        extract: n_samples
+        expect:
+          equals: 4
+      - member: shiftMe
+        access: method
+        args: [0.25]
+        extract: time
+        expect:
+          shape: [5]
+      - member: setDataMask
+        access: method
+        args_key: signal_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: setMaskByInd
+        access: method
+        args_key: signal_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: setMaskByLabels
+        access: method
+        args_key: signal_names_args
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: getSubSignalFromNames
+        access: method
+        args_key: signal_names_args
+        extract: n_channels
+        expect:
+          equals: 1
+      - member: cell2str
+        access: method
+        args_key: signal_cell2str_args
+        expect:
+          equals: a,b,c
 
   - matlab_class: Covariate
     python_class: nstat.compat.matlab.Covariate

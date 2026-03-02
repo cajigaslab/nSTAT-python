@@ -11,8 +11,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import nbformat
 import yaml
+
+try:
+    import nbformat
+except ModuleNotFoundError:  # pragma: no cover - exercised in minimal CI envs
+    nbformat = None
 
 
 IMG_SRC_RE = re.compile(r'<img[^>]+src="([^"]+)"', flags=re.IGNORECASE)
@@ -191,13 +195,23 @@ def _extract_notebook_code_stats(path: Path) -> NotebookCodeStats:
     if not path.exists():
         return NotebookCodeStats(total_code_lines=0, cells=[])
 
-    payload = nbformat.read(path, as_version=4)
+    if nbformat is not None:
+        payload = nbformat.read(path, as_version=4)
+        notebook_cells = payload.cells
+    else:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        notebook_cells = raw.get("cells", [])
+
     cells: list[dict[str, Any]] = []
     total = 0
-    for i, cell in enumerate(payload.cells, start=1):
+    for i, cell in enumerate(notebook_cells, start=1):
         if cell.get("cell_type") != "code":
             continue
-        src = str(cell.get("source", ""))
+        src_raw = cell.get("source", "")
+        if isinstance(src_raw, list):
+            src = "".join(str(part) for part in src_raw)
+        else:
+            src = str(src_raw)
         filtered = []
         for line in src.splitlines():
             stripped = line.strip()

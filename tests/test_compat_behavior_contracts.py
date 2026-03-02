@@ -103,7 +103,22 @@ def _execute_contract(obj: Any, context: dict[str, Any], contract: dict[str, Any
 def _build_compat_signal_basic() -> tuple[Any, dict[str, Any]]:
     time = np.linspace(0.0, 2.0, 5)
     obj = M.SignalObj(time=time, data=np.array([1.0, 2.0, 3.0, 2.0, 1.0]), name="sig")
-    return obj, {}
+    other = M.SignalObj(time=time, data=np.array([0.5, 1.0, 1.5, 1.0, 0.5]), name="sig2")
+    other_shifted = M.SignalObj(
+        time=time + 0.5, data=np.array([0.5, 1.0, 1.5, 1.0, 0.5]), name="sig2_shifted"
+    )
+    return obj, {
+        "signal_labels_args": [["ch1"]],
+        "signal_label_lookup_args": [["ch1"]],
+        "signal_index_arg": ["ch1"],
+        "signal_times_args": [np.array([0.0, 1.0, 2.0])],
+        "signal_time_window_args": [0.5, 1.5],
+        "signal_other_args": [other],
+        "signal_other_shifted_args": [other_shifted],
+        "signal_mask_args": [[1]],
+        "signal_names_args": [["ch1"]],
+        "signal_cell2str_args": [["a", "b", "c"]],
+    }
 
 
 def _build_compat_covariate_basic() -> tuple[Any, dict[str, Any]]:

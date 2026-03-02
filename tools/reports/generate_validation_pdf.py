@@ -465,6 +465,41 @@ def _draw_image_fit(pdf: canvas.Canvas, image_path: Path, x: float, y: float, ma
     pdf.drawImage(reader, x, y, width=w, height=h)
 
 
+def _draw_image_gallery(
+    pdf: canvas.Canvas,
+    images: list[Path],
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    max_items: int = 4,
+) -> None:
+    subset = images[:max_items]
+    if not subset:
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(x, y + height - 12, "No images available.")
+        return
+
+    n = len(subset)
+    if n == 1:
+        _draw_image_fit(pdf, subset[0], x, y, width, height)
+        return
+
+    cols = 2
+    rows = 2 if n > 2 else 1
+    cell_w = (width - 8) / cols
+    cell_h = (height - 8) / rows
+
+    for idx, image_path in enumerate(subset):
+        col = idx % cols
+        row = idx // cols
+        if row >= rows:
+            break
+        cell_x = x + col * (cell_w + 8)
+        cell_y = y + (rows - 1 - row) * (cell_h + 8)
+        _draw_image_fit(pdf, image_path, cell_x, cell_y, cell_w, cell_h)
+
+
 def draw_cover_page(
     pdf: canvas.Canvas,
     repo_root: Path,
@@ -621,39 +656,34 @@ def draw_example_page(pdf: canvas.Canvas, report: NotebookReport, index: int, to
         pdf.showPage()
         return
 
-    # Side-by-side principal comparison
-    primary_py = report.matched_python_image or (report.image_paths[0] if report.image_paths else None)
-    primary_mat = report.matched_matlab_image or (report.matlab_ref_images[0] if report.matlab_ref_images else None)
+    # Side-by-side galleries so each example page contains distinct visual evidence.
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(40, 664, "Python output gallery")
+    _draw_image_gallery(pdf, report.image_paths, 40, 350, 250, 300, max_items=4)
 
-    if primary_py is not None:
-        pdf.setFont("Helvetica-Bold", 10)
-        pdf.drawString(40, 664, "Python output (primary)")
-        _draw_image_fit(pdf, primary_py, 40, 350, 250, 300)
-    else:
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(40, 650, "No Python figure output captured.")
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(310, 664, "MATLAB reference gallery")
+    _draw_image_gallery(pdf, report.matlab_ref_images, 310, 350, 250, 300, max_items=4)
 
-    if primary_mat is not None:
-        pdf.setFont("Helvetica-Bold", 10)
-        pdf.drawString(310, 664, "MATLAB reference (primary)")
-        _draw_image_fit(pdf, primary_mat, 310, 350, 250, 300)
-    else:
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(310, 650, "No MATLAB reference image found.")
+    pdf.setFont("Helvetica", 8)
+    pdf.drawString(40, 336, f"Python figures shown: {min(report.image_count, 4)} / {report.image_count}")
+    pdf.drawString(
+        310,
+        336,
+        f"MATLAB refs shown: {min(len(report.matlab_ref_images), 4)} / {len(report.matlab_ref_images)}",
+    )
 
-    # Optional secondary comparisons
-    if len(report.image_paths) > 1:
+    if report.matched_python_image is not None and report.matched_matlab_image is not None:
         pdf.setFont("Helvetica", 8)
-        pdf.drawString(40, 334, f"Additional Python notebook figures: {report.image_count - 1}")
-    if len(report.matlab_ref_images) > 1:
-        pdf.setFont("Helvetica", 8)
-        pdf.drawString(310, 334, f"Additional MATLAB reference figures: {len(report.matlab_ref_images) - 1}")
+        py_name = report.matched_python_image.name
+        mat_name = report.matched_matlab_image.name
+        pdf.drawString(40, 322, f"Best-match pair: {py_name} vs {mat_name}")
 
     if report.text_snippet:
         pdf.setFont("Helvetica-Bold", 11)
-        pdf.drawString(40, 316, "Output snippet")
+        pdf.drawString(40, 304, "Output snippet")
         pdf.setFont("Helvetica", 9)
-        _draw_wrapped_lines(pdf, 48, 302, report.text_snippet, wrap_width=102, line_step=10)
+        _draw_wrapped_lines(pdf, 48, 290, report.text_snippet, wrap_width=102, line_step=10)
 
     pdf.showPage()
 
