@@ -5,7 +5,8 @@ Steps:
 1. Build source snapshot manifest.
 2. Sync source data into mirrored tree.
 3. Regenerate shared-data allowlist entries.
-4. Verify mirrored tree against checksum manifest.
+4. Regenerate datasets manifest mirror rows.
+5. Verify mirrored tree against checksum manifest.
 """
 
 from __future__ import annotations
@@ -92,6 +93,18 @@ def main() -> int:
     _run(
         [
             "python",
+            "tools/compliance/update_datasets_manifest_from_mirror.py",
+            "--manifest",
+            mirror_manifest.as_posix(),
+            "--datasets-manifest",
+            "data/datasets_manifest.json",
+        ],
+        repo_root,
+    )
+
+    _run(
+        [
+            "python",
             "tools/data_mirror/verify_matlab_data.py",
             "--manifest",
             mirror_manifest.as_posix(),
@@ -104,9 +117,9 @@ def main() -> int:
     print(f"Source manifest: {source_manifest}")
     print(f"Mirror manifest: {mirror_manifest}")
     print(f"Allowlist: {args.allowlist}")
+    print("Datasets manifest: data/datasets_manifest.json")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

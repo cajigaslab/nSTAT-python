@@ -1,0 +1,335 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-03-02T19:58:09.689236+00:00",
+  "fixtures_manifest": "/private/tmp/nSTAT-python-cleanroom/tests/parity/fixtures/matlab_gold/manifest.yml",
+  "thresholds_file": "/private/tmp/nSTAT-python-cleanroom/parity/numeric_drift_thresholds.yml",
+  "summary": {
+    "topics": 13,
+    "passed_topics": 13,
+    "failed_topics": 0,
+    "checked_metrics": 36,
+    "failed_metrics": 0
+  },
+  "topics": {
+    "AnalysisExamples": {
+      "checked_metrics": 4,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 4.076575977102997e-06,
+      "pass": true,
+      "metrics": {
+        "coeff_max_abs_error": {
+          "value": 7.80078663947456e-09,
+          "threshold": 0.35,
+          "pass": true,
+          "ratio_to_threshold": 2.2287961827070176e-08
+        },
+        "intercept_abs_error": {
+          "value": 1.867400660771068e-07,
+          "threshold": 0.35,
+          "pass": true,
+          "ratio_to_threshold": 5.335430459345909e-07
+        },
+        "rate_max_abs_error": {
+          "value": 1.4268015919860488e-06,
+          "threshold": 0.35,
+          "pass": true,
+          "ratio_to_threshold": 4.076575977102997e-06
+        },
+        "rmse_abs_error": {
+          "value": 4.0125002875868176e-08,
+          "threshold": 0.25,
+          "pass": true,
+          "ratio_to_threshold": 1.605000115034727e-07
+        }
+      }
+    },
+    "CovCollExamples": {
+      "checked_metrics": 3,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 0.0,
+      "pass": true,
+      "metrics": {
+        "ctx_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "design_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "stim_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        }
+      }
+    },
+    "DecodingExample": {
+      "checked_metrics": 3,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 0.022530207586461248,
+      "pass": true,
+      "metrics": {
+        "decoded_mismatch_count": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "posterior_max_abs_error": {
+          "value": 2.2530207586461248e-10,
+          "threshold": 1e-08,
+          "pass": true,
+          "ratio_to_threshold": 0.022530207586461248
+        },
+        "rmse_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-08,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        }
+      }
+    },
+    "DecodingExampleWithHist": {
+      "checked_metrics": 2,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 0.04167062250814979,
+      "pass": true,
+      "metrics": {
+        "decoded_mismatch_count": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "posterior_max_abs_error": {
+          "value": 4.167062250814979e-10,
+          "threshold": 1e-08,
+          "pass": true,
+          "ratio_to_threshold": 0.04167062250814979
+        }
+      }
+    },
+    "EventsExamples": {
+      "checked_metrics": 1,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 0.0,
+      "pass": true,
+      "metrics": {
+        "subset_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        }
+      }
+    },
+    "ExplicitStimulusWhiskerData": {
+      "checked_metrics": 4,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 1.0307532605224878e-09,
+      "pass": true,
+      "metrics": {
+        "coeff_abs_error": {
+          "value": 1.4483514387819696e-10,
+          "threshold": 0.2,
+          "pass": true,
+          "ratio_to_threshold": 7.241757193909848e-10
+        },
+        "intercept_abs_error": {
+          "value": 2.0615065210449757e-10,
+          "threshold": 0.2,
+          "pass": true,
+          "ratio_to_threshold": 1.0307532605224878e-09
+        },
+        "prob_max_abs_error": {
+          "value": 2.3744395338809454e-11,
+          "threshold": 0.1,
+          "pass": true,
+          "ratio_to_threshold": 2.3744395338809454e-10
+        },
+        "rmse_abs_error": {
+          "value": 8.271161533457416e-15,
+          "threshold": 0.1,
+          "pass": true,
+          "ratio_to_threshold": 8.271161533457416e-14
+        }
+      }
+    },
+    "HippocampalPlaceCellExample": {
+      "checked_metrics": 1,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 1.4210854715202004e-06,
+      "pass": true,
+      "metrics": {
+        "weighted_center_max_abs_error": {
+          "value": 1.4210854715202004e-14,
+          "threshold": 1e-08,
+          "pass": true,
+          "ratio_to_threshold": 1.4210854715202004e-06
+        }
+      }
+    },
+    "PPSimExample": {
+      "checked_metrics": 1,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 2.2090814743799897e-06,
+      "pass": true,
+      "metrics": {
+        "mean_relative_rate_error": {
+          "value": 5.522703685949974e-07,
+          "threshold": 0.25,
+          "pass": true,
+          "ratio_to_threshold": 2.2090814743799897e-06
+        }
+      }
+    },
+    "PSTHEstimation": {
+      "checked_metrics": 3,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 2.220446049250313e-06,
+      "pass": true,
+      "metrics": {
+        "prob_max_abs_error": {
+          "value": 2.220446049250313e-16,
+          "threshold": 1e-10,
+          "pass": true,
+          "ratio_to_threshold": 2.220446049250313e-06
+        },
+        "rate_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-10,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "sig_mismatch_count": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        }
+      }
+    },
+    "SpikeRateDiffCIs": {
+      "checked_metrics": 3,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 0.0,
+      "pass": true,
+      "metrics": {
+        "diff_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-08,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "hi_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-08,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "lo_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-08,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        }
+      }
+    },
+    "TrialExamples": {
+      "checked_metrics": 3,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 0.00011102230246251565,
+      "pass": true,
+      "metrics": {
+        "X_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "t_bins_max_abs_error": {
+          "value": 1.1102230246251565e-16,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.00011102230246251565
+        },
+        "y_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        }
+      }
+    },
+    "mEPSCAnalysis": {
+      "checked_metrics": 4,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 5.551115123125782e-08,
+      "pass": true,
+      "metrics": {
+        "detected_amp_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-09,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "detected_time_max_abs_error": {
+          "value": 0.0,
+          "threshold": 0.001,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "event_count_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "mean_amp_abs_error": {
+          "value": 5.551115123125783e-17,
+          "threshold": 1e-09,
+          "pass": true,
+          "ratio_to_threshold": 5.551115123125782e-08
+        }
+      }
+    },
+    "nstCollExamples": {
+      "checked_metrics": 4,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 0.0002220446049250313,
+      "pass": true,
+      "metrics": {
+        "binary_mismatch_count": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "center_max_abs_error": {
+          "value": 2.220446049250313e-16,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0002220446049250313
+        },
+        "count_matrix_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "merged_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        }
+      }
+    }
+  }
+}

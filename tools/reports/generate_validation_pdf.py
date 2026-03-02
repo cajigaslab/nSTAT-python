@@ -146,6 +146,12 @@ def parse_args() -> argparse.Namespace:
         help="Example output policy spec used to resolve allowed alignment statuses.",
     )
     parser.add_argument(
+        "--numeric-drift-report",
+        type=Path,
+        default=REPO_ROOT / "parity" / "numeric_drift_report.json",
+        help="Numeric drift report JSON used to enforce metric-based parity gates.",
+    )
+    parser.add_argument(
         "--skip-command-tests",
         action="store_true",
         help="Skip command-driven checks and only render notebook validation pages.",
@@ -246,6 +252,28 @@ def load_parity_topic_metrics(equivalence_report: Path) -> dict[str, dict[str, o
             "assertion_count": row.get("assertion_count"),
             "has_plot_call": row.get("has_plot_call"),
             "has_topic_checkpoint": row.get("has_topic_checkpoint"),
+        }
+    return out
+
+
+def load_numeric_drift_summary(numeric_drift_report: Path) -> dict[str, dict[str, object]]:
+    """Load per-topic numeric drift summary from MATLAB fixture audit."""
+
+    if not numeric_drift_report.exists():
+        return {}
+    payload = json.loads(numeric_drift_report.read_text(encoding="utf-8"))
+    topics = payload.get("topics", {})
+    out: dict[str, dict[str, object]] = {}
+    for topic, row in topics.items():
+        metrics = row.get("metrics", {})
+        failed = list(row.get("failed_metrics", []))
+        out[str(topic)] = {
+            "numeric_drift_pass": bool(row.get("pass", False)),
+            "numeric_drift_checked_metrics": int(row.get("checked_metrics", 0)),
+            "numeric_drift_failed_metrics": int(len(failed)),
+            "numeric_drift_worst_ratio": float(row.get("worst_ratio_to_threshold", 0.0)),
+            "numeric_drift_first_failed": failed[0] if failed else "-",
+            "numeric_drift_metric_count": int(len(metrics)),
         }
     return out
 
@@ -490,12 +518,17 @@ def execute_notebook_capture(
     alignment_status: str | None = gate_status[0] if gate_status is not None else None
     matched_python_image: Path | None = None
     matched_matlab_image: Path | None = None
+    numeric_gate_ok: bool | None = None
+    if parity_metrics is not None and "numeric_drift_pass" in parity_metrics:
+        numeric_gate_ok = bool(parity_metrics["numeric_drift_pass"])
 
     if parity_mode == "gate":
         if gate_status is not None:
             parity_pass = bool(gate_status[1])
         else:
             parity_pass = False
+        if numeric_gate_ok is not None:
+            parity_pass = parity_pass and numeric_gate_ok
     else:
         if not skip_parity_check:
             if image_paths and matlab_ref_images:
@@ -622,6 +655,11 @@ def _draw_metrics_table(
         ("assertion_count", "Checkpoint assertions"),
         ("has_plot_call", "Contains plotting logic"),
         ("has_topic_checkpoint", "Has topic checkpoint"),
+        ("numeric_drift_pass", "Numeric drift pass"),
+        ("numeric_drift_checked_metrics", "Numeric metrics checked"),
+        ("numeric_drift_failed_metrics", "Numeric metrics failed"),
+        ("numeric_drift_worst_ratio", "Worst ratio to threshold"),
+        ("numeric_drift_first_failed", "First failed numeric metric"),
     ]
     row_h = 12.0
     table_h = row_h * (len(rows) + 1)
@@ -716,6 +754,16 @@ def draw_summary_pages(
     with_matlab_refs = sum(1 for report in reports if len(report.matlab_ref_images) > 0)
     parity_checked = sum(1 for report in reports if report.parity_pass is not None)
     parity_passed = sum(1 for report in reports if report.parity_pass is True)
+    numeric_checked = sum(
+        1
+        for report in reports
+        if report.parity_metrics is not None and "numeric_drift_pass" in report.parity_metrics
+    )
+    numeric_passed = sum(
+        1
+        for report in reports
+        if report.parity_metrics is not None and bool(report.parity_metrics.get("numeric_drift_pass", False))
+    )
 
     pdf.setFont("Helvetica-Bold", 16)
     pdf.drawString(40, 760, "Example Coverage Summary")
@@ -731,8 +779,9 @@ def draw_summary_pages(
         pdf.drawString(260, 722, "Parity scoring: skipped")
     else:
         pdf.drawString(260, 722, f"Parity pass: {parity_passed}/{parity_checked}")
+    pdf.drawString(40, 706, f"Numeric drift pass: {numeric_passed}/{numeric_checked}")
 
-    y = 694
+    y = 688
     pdf.setFont("Helvetica-Bold", 9)
     pdf.drawString(40, y, "Exec")
     pdf.drawString(74, y, "Parity")
@@ -881,6 +930,7 @@ def generate_pdf_report(
     parity_mode: str,
     equivalence_report: Path,
     example_output_spec: Path,
+    numeric_drift_report: Path,
 ) -> tuple[Path, list[NotebookReport], list[CommandResult], Path | None]:
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -903,10 +953,13 @@ def generate_pdf_report(
     resolved_matlab_help_root = resolve_matlab_help_root(repo_root, matlab_help_root)
     parity_gate_status = load_parity_gate_status(equivalence_report, example_output_spec)
     parity_topic_metrics = load_parity_topic_metrics(equivalence_report)
+    numeric_drift_by_topic = load_numeric_drift_summary(numeric_drift_report)
 
     targets = load_targets(manifest_path, repo_root, notebook_group)
     reports: list[NotebookReport] = []
     for target in targets:
+        merged_metrics = dict(parity_topic_metrics.get(target.topic, {}))
+        merged_metrics.update(numeric_drift_by_topic.get(target.topic, {}))
         reports.append(
             execute_notebook_capture(
                 target=target,
@@ -917,7 +970,7 @@ def generate_pdf_report(
                 skip_parity_check=skip_parity_check,
                 parity_mode=parity_mode,
                 gate_status=parity_gate_status.get(target.topic),
-                parity_metrics=parity_topic_metrics.get(target.topic),
+                parity_metrics=(merged_metrics or None),
             )
         )
 
@@ -978,6 +1031,7 @@ def main() -> int:
         parity_mode=args.parity_mode,
         equivalence_report=args.equivalence_report,
         example_output_spec=args.example_output_spec,
+        numeric_drift_report=args.numeric_drift_report,
     )
 
     executed = sum(1 for report in reports if report.executed)
@@ -986,6 +1040,16 @@ def main() -> int:
     parity_checked = sum(1 for report in reports if report.parity_pass is not None)
     parity_failures = sum(1 for report in reports if report.parity_pass is False)
     command_failures = sum(1 for result in command_results if not result.passed)
+    numeric_checked = sum(
+        1
+        for report in reports
+        if report.parity_metrics is not None and "numeric_drift_pass" in report.parity_metrics
+    )
+    numeric_failures = sum(
+        1
+        for report in reports
+        if report.parity_metrics is not None and report.parity_metrics.get("numeric_drift_pass") is False
+    )
 
     print(f"Generated PDF report: {report_path}")
     print(f"MATLAB help root: {matlab_help_root}")
@@ -994,6 +1058,7 @@ def main() -> int:
         f"with_images={with_images}"
     )
     print(f"Parity results ({args.parity_mode} mode): checked={parity_checked} failures={parity_failures}")
+    print(f"Numeric drift topic results: checked={numeric_checked} failures={numeric_failures}")
     print(f"Command checks: total={len(command_results)} failed={command_failures}")
 
     return 0 if exec_failures == 0 and command_failures == 0 and parity_failures == 0 else 1

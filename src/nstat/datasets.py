@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.request import urlretrieve
@@ -21,6 +22,9 @@ class DatasetRecord:
     url: str
     sha256: str
     filename: str
+
+
+MIRROR_NAME_RE = re.compile(r"^matlab_gold_(\d{8})/(.+)$")
 
 
 def _manifest_path() -> Path:
@@ -73,6 +77,41 @@ def list_datasets() -> list[str]:
     return [row.name for row in _load_manifest()]
 
 
+def list_matlab_gold_files(version: str | None = None) -> list[str]:
+    """List mirrored MATLAB files available in datasets manifest.
+
+    Parameters
+    ----------
+    version:
+        Optional mirror version label (for example ``"20260302"``).
+        When omitted, rows across all mirrored versions are returned.
+    """
+
+    files: list[str] = []
+    for row in _load_manifest():
+        match = MIRROR_NAME_RE.match(row.name)
+        if not match:
+            continue
+        row_version = match.group(1)
+        rel_path = match.group(2)
+        if version is None or version == row_version:
+            files.append(rel_path)
+    return sorted(set(files))
+
+
+def latest_matlab_gold_version() -> str | None:
+    """Return latest mirrored MATLAB version known by datasets manifest."""
+
+    versions: set[str] = set()
+    for row in _load_manifest():
+        match = MIRROR_NAME_RE.match(row.name)
+        if match:
+            versions.add(match.group(1))
+    if not versions:
+        return None
+    return sorted(versions)[-1]
+
+
 def get_cache_dir() -> Path:
     """Return dataset cache directory."""
 
@@ -116,3 +155,22 @@ def fetch_dataset(name: str, version: str | None = None) -> Path:
         raise RuntimeError(f"checksum mismatch for {record.filename}: {digest} != {record.sha256}")
 
     return out
+
+
+def fetch_matlab_gold_file(relative_path: str, version: str | None = None) -> Path:
+    """Fetch one file from mirrored MATLAB data via the datasets API.
+
+    Parameters
+    ----------
+    relative_path:
+        File path relative to MATLAB ``data/`` root, for example
+        ``"PlaceCellAnimal1Results.mat"``.
+    version:
+        Optional mirror version (default: latest available).
+    """
+
+    selected_version = version or latest_matlab_gold_version()
+    if selected_version is None:
+        raise KeyError("No mirrored MATLAB dataset version found in datasets manifest.")
+    name = f"matlab_gold_{selected_version}/{relative_path}"
+    return fetch_dataset(name=name, version=selected_version)

@@ -76,7 +76,8 @@ This command performs:
 1. Source snapshot manifest generation.
 2. Byte-for-byte mirrored copy into `data/shared/matlab_gold_<version>/`.
 3. Shared-data allowlist regeneration.
-4. Strict checksum verification.
+4. Dataset API manifest regeneration (`data/datasets_manifest.json`).
+5. Strict checksum verification.
 
 To re-verify later:
 

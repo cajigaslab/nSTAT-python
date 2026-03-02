@@ -25,5 +25,7 @@ MATLAB example-data mirror workflow:
    - `python tools/data_mirror/sync_matlab_data.py --source-root <matlab_data_dir> --version <YYYYMMDD> --dest-root data/shared --clean`
 3. Regenerate clean-room allowlist entries from mirror manifest:
    - `python tools/compliance/update_shared_data_allowlist.py --manifest data/shared/matlab_gold_<YYYYMMDD>.manifest.json --allowlist tools/compliance/shared_data_allowlist.yml`
-4. Verify the mirrored tree against manifest:
+4. Regenerate dataset API manifest entries:
+   - `python tools/compliance/update_datasets_manifest_from_mirror.py --manifest data/shared/matlab_gold_<YYYYMMDD>.manifest.json --datasets-manifest data/datasets_manifest.json`
+5. Verify the mirrored tree against manifest:
    - `python tools/data_mirror/verify_matlab_data.py --manifest data/shared/matlab_gold_<YYYYMMDD>.manifest.json --strict`

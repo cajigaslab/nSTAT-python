@@ -1,0 +1,51 @@
+version: 1
+topics:
+  PPSimExample:
+    mean_relative_rate_error: 0.25
+  DecodingExampleWithHist:
+    posterior_max_abs_error: 1.0e-8
+    decoded_mismatch_count: 0
+  HippocampalPlaceCellExample:
+    weighted_center_max_abs_error: 1.0e-8
+  SpikeRateDiffCIs:
+    diff_max_abs_error: 1.0e-8
+    lo_max_abs_error: 1.0e-8
+    hi_max_abs_error: 1.0e-8
+  PSTHEstimation:
+    rate_max_abs_error: 1.0e-10
+    prob_max_abs_error: 1.0e-10
+    sig_mismatch_count: 0
+  nstCollExamples:
+    center_max_abs_error: 1.0e-12
+    count_matrix_max_abs_error: 1.0e-12
+    binary_mismatch_count: 0
+    merged_max_abs_error: 1.0e-12
+  CovCollExamples:
+    design_max_abs_error: 1.0e-12
+    ctx_max_abs_error: 1.0e-12
+    stim_max_abs_error: 1.0e-12
+  TrialExamples:
+    t_bins_max_abs_error: 1.0e-12
+    y_max_abs_error: 1.0e-12
+    X_max_abs_error: 1.0e-12
+  EventsExamples:
+    subset_max_abs_error: 1.0e-12
+  AnalysisExamples:
+    intercept_abs_error: 0.35
+    coeff_max_abs_error: 0.35
+    rate_max_abs_error: 0.35
+    rmse_abs_error: 0.25
+  DecodingExample:
+    posterior_max_abs_error: 1.0e-8
+    decoded_mismatch_count: 0
+    rmse_abs_error: 1.0e-8
+  ExplicitStimulusWhiskerData:
+    intercept_abs_error: 0.2
+    coeff_abs_error: 0.2
+    prob_max_abs_error: 0.1
+    rmse_abs_error: 0.1
+  mEPSCAnalysis:
+    detected_time_max_abs_error: 0.001
+    detected_amp_max_abs_error: 1.0e-9
+    mean_amp_abs_error: 1.0e-9
+    event_count_mismatch: 0

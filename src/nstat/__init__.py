@@ -8,6 +8,7 @@ from .analysis import Analysis
 from .cif import CIFModel
 from .confidence import ConfidenceInterval
 from .decoding import DecodingAlgorithms
+from .datasets import fetch_matlab_gold_file, latest_matlab_gold_version, list_matlab_gold_files
 from .events import Events
 from .fit import FitResult, FitSummary
 from .history import HistoryBasis
@@ -35,4 +36,7 @@ __all__ = [
     "ConfigCollection",
     "Trial",
     "nstat_install",
+    "list_matlab_gold_files",
+    "latest_matlab_gold_version",
+    "fetch_matlab_gold_file",
 ]

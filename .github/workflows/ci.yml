@@ -87,11 +87,23 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install integrity-check dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyyaml
+
       - name: Verify mirrored MATLAB data manifest
         run: |
           python tools/data_mirror/verify_matlab_data.py \
             --manifest data/shared/matlab_gold_20260302.manifest.json \
             --strict
+
+      - name: Enforce mirror-regeneration consistency
+        run: |
+          python tools/compliance/check_mirror_regeneration.py \
+            --shared-root data/shared \
+            --allowlist tools/compliance/shared_data_allowlist.yml \
+            --datasets-manifest data/datasets_manifest.json
 
   cleanroom-compliance:
     runs-on: ubuntu-latest
@@ -137,6 +149,14 @@ jobs:
           python tools/parity/check_tier1_progress.py \
             --report parity/parity_gap_report.json \
             --policy parity/tier1_gate_policy.yml
+
+      - name: Enforce MATLAB numeric drift thresholds
+        run: |
+          python tools/parity/build_numeric_drift_report.py \
+            --fixtures-manifest tests/parity/fixtures/matlab_gold/manifest.yml \
+            --thresholds parity/numeric_drift_thresholds.yml \
+            --report-out parity/numeric_drift_report.json \
+            --fail-on-violation
 
       - name: Enforce functional parity progress gate
         run: |
