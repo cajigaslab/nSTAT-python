@@ -99,12 +99,15 @@ jobs:
 
       - name: Generate RC release notes
         run: |
+          PREV_TAG="$(git tag --list 'v*-rc*' | sort -V | grep -vx "$TAG_NAME" | tail -n 1)"
+          echo "Using previous RC tag: ${PREV_TAG}"
           python tools/release/generate_rc_release_notes.py \
             --repo-root "$GITHUB_WORKSPACE" \
             --tag "$TAG_NAME" \
             --commit "$GITHUB_SHA" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             --validation-pdf "${{ steps.pdf.outputs.name }}" \
+            --previous-tag "${PREV_TAG}" \
             --output release_notes.md
 
       - name: Publish RC release

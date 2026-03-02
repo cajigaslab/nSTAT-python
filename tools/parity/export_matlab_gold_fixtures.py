@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export MATLAB-gold fixtures for canonical parity workflows.
+"""Export MATLAB-gold fixtures for parity workflows and topic audit coverage.
 
 This script runs MATLAB in batch mode to generate deterministic fixture files
 for parity-critical workflow families and representative examples, including:
@@ -11,12 +11,17 @@ for parity-critical workflow families and representative examples, including:
 - AnalysisExamples
 - ExplicitStimulusWhiskerData
 - mEPSCAnalysis
+
+In addition to numeric `.mat` fixtures, this exporter also emits per-topic
+audit JSON fixtures for notebook topics not covered by numeric fixtures so
+that numeric drift gating remains fixture-backed across all examples.
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import subprocess
 import tempfile
 from pathlib import Path
@@ -495,7 +500,7 @@ fprintf('MATLAB gold fixtures exported to %s\n', out_dir);
 """
 
 
-FIXTURE_FILES = [
+NUMERIC_FIXTURE_FILES = [
     "PPSimExample_gold.mat",
     "DecodingExampleWithHist_gold.mat",
     "HippocampalPlaceCellExample_gold.mat",
@@ -526,6 +531,23 @@ def parse_args() -> argparse.Namespace:
         default=Path("tests/parity/fixtures/matlab_gold/manifest.yml"),
         help="Output manifest path",
     )
+    parser.add_argument(
+        "--notebook-manifest",
+        type=Path,
+        default=Path("tools/notebooks/notebook_manifest.yml"),
+        help="Notebook manifest used to define required topic coverage",
+    )
+    parser.add_argument(
+        "--equivalence-report",
+        type=Path,
+        default=Path("parity/function_example_alignment_report.json"),
+        help="Equivalence audit JSON used to export topic-audit fixtures",
+    )
+    parser.add_argument(
+        "--skip-matlab-export",
+        action="store_true",
+        help="Skip MATLAB batch execution and only rebuild manifest/topic-audit fixtures.",
+    )
     return parser.parse_args()
 
 
@@ -537,34 +559,58 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _load_required_topics(notebook_manifest: Path) -> list[str]:
+    payload = yaml.safe_load(notebook_manifest.read_text(encoding="utf-8")) or {}
+    topics: list[str] = []
+    for row in payload.get("notebooks", []):
+        topic = str(row.get("topic", "")).strip()
+        if topic:
+            topics.append(topic)
+    return topics
+
+
+def _load_equivalence_rows(equivalence_report: Path) -> dict[str, dict]:
+    payload = json.loads(equivalence_report.read_text(encoding="utf-8"))
+    rows = payload.get("example_line_alignment_audit", {}).get("topic_rows", [])
+    out: dict[str, dict] = {}
+    for row in rows:
+        topic = str(row.get("topic", "")).strip()
+        if topic:
+            out[topic] = row
+    return out
+
+
 def main() -> int:
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[2]
     out_dir = args.output_dir.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
+    notebook_manifest = args.notebook_manifest.resolve()
+    equivalence_report = args.equivalence_report.resolve()
 
-    script_content = MATLAB_SCRIPT_TEMPLATE.format(out_dir=str(out_dir).replace("'", "''"))
+    if not args.skip_matlab_export:
+        script_content = MATLAB_SCRIPT_TEMPLATE.format(out_dir=str(out_dir).replace("'", "''"))
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".m", delete=False, encoding="utf-8") as tmp:
-        tmp.write(script_content)
-        tmp_path = Path(tmp.name)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".m", delete=False, encoding="utf-8") as tmp:
+            tmp.write(script_content)
+            tmp_path = Path(tmp.name)
 
-    try:
-        escaped_tmp = str(tmp_path).replace("'", "''")
-        cmd = ["matlab", "-batch", f"run('{escaped_tmp}')"]
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-        if proc.returncode != 0:
-            print(proc.stdout)
-            print(proc.stderr)
-            raise RuntimeError("MATLAB fixture export failed")
-    finally:
         try:
-            tmp_path.unlink(missing_ok=True)
-        except Exception:
-            pass
+            escaped_tmp = str(tmp_path).replace("'", "''")
+            cmd = ["matlab", "-batch", f"run('{escaped_tmp}')"]
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            if proc.returncode != 0:
+                print(proc.stdout)
+                print(proc.stderr)
+                raise RuntimeError("MATLAB fixture export failed")
+        finally:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
 
     fixtures = []
-    for file_name in FIXTURE_FILES:
+    for file_name in NUMERIC_FIXTURE_FILES:
         path = out_dir / file_name
         if not path.exists():
             raise FileNotFoundError(f"expected fixture missing: {path}")
@@ -574,6 +620,40 @@ def main() -> int:
                 "path": str(path.relative_to(repo_root).as_posix()),
                 "sha256": _sha256(path),
                 "source": "matlab_batch_export",
+                "fixture_type": "numeric",
+            }
+        )
+
+    required_topics = _load_required_topics(notebook_manifest)
+    topic_rows = _load_equivalence_rows(equivalence_report)
+    covered_numeric_topics = {row["name"] for row in fixtures}
+    audit_topics = sorted(topic for topic in required_topics if topic not in covered_numeric_topics)
+    for topic in audit_topics:
+        row = topic_rows.get(topic)
+        if row is None:
+            raise KeyError(f"topic {topic!r} missing from equivalence report: {equivalence_report}")
+        audit_payload = {
+            "schema_version": 1,
+            "topic": topic,
+            "alignment_status": str(row.get("alignment_status", "")),
+            "matlab_code_lines": int(row.get("matlab_code_lines", 0)),
+            "matlab_reference_image_count": int(row.get("matlab_reference_image_count", 0)),
+            "min_assertion_count": int(row.get("assertion_count", 0)),
+            "require_topic_checkpoint": bool(row.get("has_topic_checkpoint", False)),
+            "min_python_validation_image_count": int(row.get("python_validation_image_count", 0)),
+            "require_plot_call": bool(row.get("has_plot_call", False)),
+            "source": "equivalence_audit_report",
+            "equivalence_report": str(equivalence_report.relative_to(repo_root).as_posix()),
+        }
+        audit_path = out_dir / f"{topic}_audit_gold.json"
+        audit_path.write_text(json.dumps(audit_payload, indent=2) + "\n", encoding="utf-8")
+        fixtures.append(
+            {
+                "name": topic,
+                "path": str(audit_path.relative_to(repo_root).as_posix()),
+                "sha256": _sha256(audit_path),
+                "source": "equivalence_audit_export",
+                "fixture_type": "topic_audit",
             }
         )
 
