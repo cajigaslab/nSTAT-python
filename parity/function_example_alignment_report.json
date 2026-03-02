@@ -84,23 +84,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 51,
+            "line_count": 59,
             "preview": "n_t = 4500"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 68,
+        "python_code_lines": 92,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/AnalysisExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.152542372881356,
+        "python_to_matlab_line_ratio": 1.5593220338983051,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/AnalysisExamples/AnalysisExamples_001.png"
@@ -224,23 +224,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 46,
+            "line_count": 54,
             "preview": "n_t = 5000"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 63,
+        "python_code_lines": 87,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/AnalysisExamples2.ipynb",
-        "python_to_matlab_line_ratio": 1.0327868852459017,
+        "python_to_matlab_line_ratio": 1.4262295081967213,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/AnalysisExamples2/AnalysisExamples2_001.png"
@@ -267,23 +267,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 32,
+            "line_count": 40,
             "preview": "time = np.linspace(0.0, 4.0, 4001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 73,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/ConfigCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 16.333333333333332,
+        "python_to_matlab_line_ratio": 24.333333333333332,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/ConfigCollExamples/ConfigCollExamples_001.png"
@@ -326,23 +326,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 32,
+            "line_count": 40,
             "preview": "time = np.linspace(0.0, 4.0, 4001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 73,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/CovCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 4.9,
+        "python_to_matlab_line_ratio": 7.3,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/CovCollExamples/CovCollExamples_001.png"
@@ -409,23 +409,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 44,
+            "line_count": 52,
             "preview": "t = np.arange(0.0, 5.0 + 0.01, 0.01)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 61,
+        "python_code_lines": 85,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/CovariateExamples.ipynb",
-        "python_to_matlab_line_ratio": 3.210526315789474,
+        "python_to_matlab_line_ratio": 4.473684210526316,
         "python_validation_image_count": 2,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/CovariateExamples/CovariateExamples_001.png",
@@ -521,23 +521,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 57,
+            "line_count": 65,
             "preview": "n_units = 14"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 74,
+        "python_code_lines": 98,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/DecodingExample.ipynb",
-        "python_to_matlab_line_ratio": 1.2982456140350878,
+        "python_to_matlab_line_ratio": 1.719298245614035,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/DecodingExample/DecodingExample_001.png"
@@ -646,23 +646,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 57,
+            "line_count": 65,
             "preview": "n_units = 14"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 74,
+        "python_code_lines": 98,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/DecodingExampleWithHist.ipynb",
-        "python_to_matlab_line_ratio": 1.3454545454545455,
+        "python_to_matlab_line_ratio": 1.7818181818181817,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/DecodingExampleWithHist/DecodingExampleWithHist_001.png"
@@ -682,21 +682,21 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 33,
+            "line_count": 41,
             "preview": "dt = 0.001"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 50,
+        "python_code_lines": 74,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/DocumentationSetup2025b.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -737,23 +737,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 19,
+            "line_count": 27,
             "preview": "e_times = np.array([0.079, 0.579, 0.997], dtype=float)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 36,
+        "python_code_lines": 60,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/EventsExamples.ipynb",
-        "python_to_matlab_line_ratio": 4.5,
+        "python_to_matlab_line_ratio": 7.5,
         "python_validation_image_count": 4,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/EventsExamples/EventsExamples_001.png",
@@ -902,23 +902,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 33,
+            "line_count": 47,
             "preview": "dt = 0.001"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 50,
+        "python_code_lines": 80,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/ExplicitStimulusWhiskerData.ipynb",
-        "python_to_matlab_line_ratio": 0.43478260869565216,
+        "python_to_matlab_line_ratio": 0.6956521739130435,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/ExplicitStimulusWhiskerData/ExplicitStimulusWhiskerData_001.png"
@@ -938,21 +938,21 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 34,
+            "line_count": 42,
             "preview": "time = np.linspace(0.0, 6.0, 6001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 51,
+        "python_code_lines": 75,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/FitResSummaryExamples.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -974,21 +974,21 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 34,
+            "line_count": 42,
             "preview": "time = np.linspace(0.0, 6.0, 6001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 51,
+        "python_code_lines": 75,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/FitResultExamples.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -1010,21 +1010,21 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 34,
+            "line_count": 42,
             "preview": "time = np.linspace(0.0, 6.0, 6001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 51,
+        "python_code_lines": 75,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/FitResultReference.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -1252,23 +1252,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 51,
+            "line_count": 59,
             "preview": "side = 14"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 68,
+        "python_code_lines": 92,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/HippocampalPlaceCellExample.ipynb",
-        "python_to_matlab_line_ratio": 0.43870967741935485,
+        "python_to_matlab_line_ratio": 0.5935483870967742,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/HippocampalPlaceCellExample/HippocampalPlaceCellExample_001.png"
@@ -1331,23 +1331,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 32,
+            "line_count": 40,
             "preview": "time = np.linspace(0.0, 4.0, 4001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 73,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/HistoryExamples.ipynb",
-        "python_to_matlab_line_ratio": 2.7222222222222223,
+        "python_to_matlab_line_ratio": 4.055555555555555,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/HistoryExamples/HistoryExamples_001.png"
@@ -1642,23 +1642,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 129,
+            "line_count": 137,
             "preview": "n_t = 500"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 146,
+        "python_code_lines": 170,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/HybridFilterExample.ipynb",
-        "python_to_matlab_line_ratio": 0.5069444444444444,
+        "python_to_matlab_line_ratio": 0.5902777777777778,
         "python_validation_image_count": 2,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/HybridFilterExample/HybridFilterExample_001.png",
@@ -1857,23 +1857,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 98,
+            "line_count": 106,
             "preview": "T = 8.0"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 115,
+        "python_code_lines": 139,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/NetworkTutorial.ipynb",
-        "python_to_matlab_line_ratio": 1.3068181818181819,
+        "python_to_matlab_line_ratio": 1.5795454545454546,
         "python_validation_image_count": 5,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/NetworkTutorial/NetworkTutorial_001.png",
@@ -2013,23 +2013,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 63,
+            "line_count": 71,
             "preview": "Ts = 0.001"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 80,
+        "python_code_lines": 104,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/PPSimExample.ipynb",
-        "python_to_matlab_line_ratio": 1.951219512195122,
+        "python_to_matlab_line_ratio": 2.5365853658536586,
         "python_validation_image_count": 3,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/PPSimExample/PPSimExample_001.png",
@@ -2118,23 +2118,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 82,
+            "line_count": 90,
             "preview": "delta = 0.001"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 99,
+        "python_code_lines": 123,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/PPThinning.ipynb",
-        "python_to_matlab_line_ratio": 2.475,
+        "python_to_matlab_line_ratio": 3.075,
         "python_validation_image_count": 4,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/PPThinning/PPThinning_001.png",
@@ -2180,23 +2180,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 33,
+            "line_count": 41,
             "preview": "dt = 0.001"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 50,
+        "python_code_lines": 74,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/PSTHEstimation.ipynb",
-        "python_to_matlab_line_ratio": 1.7857142857142858,
+        "python_to_matlab_line_ratio": 2.642857142857143,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/PSTHEstimation/PSTHEstimation_001.png"
@@ -2362,23 +2362,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 32,
+            "line_count": 40,
             "preview": "time = np.linspace(0.0, 4.0, 4001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 73,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/SignalObjExamples.ipynb",
-        "python_to_matlab_line_ratio": 0.6049382716049383,
+        "python_to_matlab_line_ratio": 0.9012345679012346,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/SignalObjExamples/SignalObjExamples_001.png"
@@ -2509,23 +2509,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 51,
+            "line_count": 59,
             "preview": "side = 14"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 68,
+        "python_code_lines": 92,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/StimulusDecode2D.ipynb",
-        "python_to_matlab_line_ratio": 0.7391304347826086,
+        "python_to_matlab_line_ratio": 1.0,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/StimulusDecode2D/StimulusDecode2D_001.png"
@@ -2552,23 +2552,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 32,
+            "line_count": 40,
             "preview": "time = np.linspace(0.0, 4.0, 4001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 73,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/TrialConfigExamples.ipynb",
-        "python_to_matlab_line_ratio": 16.333333333333332,
+        "python_to_matlab_line_ratio": 24.333333333333332,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/TrialConfigExamples/TrialConfigExamples_001.png"
@@ -2645,23 +2645,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 32,
+            "line_count": 40,
             "preview": "time = np.linspace(0.0, 4.0, 4001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 73,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/TrialExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.96,
+        "python_to_matlab_line_ratio": 2.92,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/TrialExamples/TrialExamples_001.png"
@@ -2815,23 +2815,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 33,
+            "line_count": 41,
             "preview": "dt = 0.001"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 50,
+        "python_code_lines": 74,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/ValidationDataSet.ipynb",
-        "python_to_matlab_line_ratio": 0.6493506493506493,
+        "python_to_matlab_line_ratio": 0.961038961038961,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/ValidationDataSet/ValidationDataSet_001.png"
@@ -2955,23 +2955,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 33,
-            "preview": "dt = 0.001"
+            "line_count": 57,
+            "preview": "dt = 0.0005"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 50,
+        "python_code_lines": 90,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/mEPSCAnalysis.ipynb",
-        "python_to_matlab_line_ratio": 1.0416666666666667,
+        "python_to_matlab_line_ratio": 1.875,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/mEPSCAnalysis/mEPSCAnalysis_001.png"
@@ -4781,23 +4781,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 57,
+            "line_count": 65,
             "preview": "n_units = 14"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 74,
+        "python_code_lines": 98,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/nSTATPaperExamples.ipynb",
-        "python_to_matlab_line_ratio": 0.046954314720812185,
+        "python_to_matlab_line_ratio": 0.06218274111675127,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/nSTATPaperExamples/nSTATPaperExamples_001.png"
@@ -4849,23 +4849,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 32,
+            "line_count": 40,
             "preview": "time = np.linspace(0.0, 4.0, 4001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 73,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/nSpikeTrainExamples.ipynb",
-        "python_to_matlab_line_ratio": 4.9,
+        "python_to_matlab_line_ratio": 7.3,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/nSpikeTrainExamples/nSpikeTrainExamples_001.png"
@@ -4921,23 +4921,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 32,
+            "line_count": 40,
             "preview": "time = np.linspace(0.0, 4.0, 4001)"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 73,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/nstCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 3.0625,
+        "python_to_matlab_line_ratio": 4.5625,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/nstCollExamples/nstCollExamples_001.png"
@@ -5084,23 +5084,23 @@
         "python_code_cells": [
           {
             "cell_index": 3,
-            "line_count": 14,
+            "line_count": 29,
             "preview": "import numpy as np"
           },
           {
             "cell_index": 4,
-            "line_count": 33,
+            "line_count": 41,
             "preview": "dt = 0.001"
           },
           {
             "cell_index": 5,
-            "line_count": 3,
+            "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 50,
+        "python_code_lines": 74,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/publish_all_helpfiles.ipynb",
-        "python_to_matlab_line_ratio": 0.3968253968253968,
+        "python_to_matlab_line_ratio": 0.5873015873015873,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/publish_all_helpfiles/publish_all_helpfiles_001.png"
@@ -5109,7 +5109,7 @@
       }
     ]
   },
-  "generated_at_utc": "2026-03-02T18:26:28.197975+00:00",
+  "generated_at_utc": "2026-03-02T18:50:24.960463+00:00",
   "matlab_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local",
   "method_functional_audit": {
     "class_summary": [

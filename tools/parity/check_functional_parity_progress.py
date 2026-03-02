@@ -46,6 +46,14 @@ def main() -> int:
             f"overall verified ratio {ratio:.3f} below required {min_verified_ratio_overall:.3f}"
         )
 
+    min_eligible_ratio_overall = float(method_policy.get("min_eligible_verified_ratio_overall", 0.0))
+    eligible_ratio = float(method_summary.get("eligible_verified_ratio", 0.0))
+    if eligible_ratio < min_eligible_ratio_overall:
+        failures.append(
+            "overall eligible verified ratio "
+            f"{eligible_ratio:.3f} below required {min_eligible_ratio_overall:.3f}"
+        )
+
     max_missing = int(method_policy.get("max_missing_symbol_methods", 0))
     missing = int(method_summary.get("missing_symbol_methods", 0))
     if missing > max_missing:
@@ -60,6 +68,17 @@ def main() -> int:
         if verified < int(min_count):
             failures.append(
                 f"{klass}: verified method count {verified} below required {int(min_count)}"
+            )
+
+    for klass, min_ratio in method_policy.get("class_min_eligible_verified_ratio", {}).items():
+        row = class_rows.get(klass)
+        if row is None:
+            failures.append(f"missing class in functional report: {klass}")
+            continue
+        ratio_val = float(row.get("eligible_verified_ratio", 0.0))
+        if ratio_val < float(min_ratio):
+            failures.append(
+                f"{klass}: eligible verified ratio {ratio_val:.3f} below required {float(min_ratio):.3f}"
             )
 
     example_policy = policy.get("example_thresholds", {})

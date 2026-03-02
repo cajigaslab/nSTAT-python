@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import functools
+import json
 import os
 import re
 import subprocess
@@ -61,6 +62,7 @@ class NotebookReport:
     matlab_ref_images: list[Path]
     similarity_score: float | None
     parity_pass: bool | None
+    alignment_status: str | None
     matched_python_image: Path | None
     matched_matlab_image: Path | None
 
@@ -121,6 +123,28 @@ def parse_args() -> argparse.Namespace:
         help="Skip MATLAB-reference image parity scoring.",
     )
     parser.add_argument(
+        "--parity-mode",
+        choices=["gate", "image"],
+        default="gate",
+        help=(
+            "Parity pass/fail mode: "
+            "'gate' follows parity/function_example_alignment_report.json statuses; "
+            "'image' uses Python-vs-MATLAB image similarity threshold."
+        ),
+    )
+    parser.add_argument(
+        "--equivalence-report",
+        type=Path,
+        default=REPO_ROOT / "parity" / "function_example_alignment_report.json",
+        help="Equivalence audit report JSON used when --parity-mode=gate.",
+    )
+    parser.add_argument(
+        "--example-output-spec",
+        type=Path,
+        default=REPO_ROOT / "parity" / "example_output_spec.yml",
+        help="Example output policy spec used to resolve allowed alignment statuses.",
+    )
+    parser.add_argument(
         "--skip-command-tests",
         action="store_true",
         help="Skip command-driven checks and only render notebook validation pages.",
@@ -170,6 +194,34 @@ def load_targets(manifest_path: Path, repo_root: Path, group: str) -> list[Noteb
     if group in {"full", "all"}:
         return all_targets
     return [target for target in all_targets if target.run_group == "smoke"]
+
+
+def load_parity_gate_status(
+    equivalence_report: Path,
+    example_output_spec: Path,
+) -> dict[str, tuple[str, bool]]:
+    if not equivalence_report.exists() or not example_output_spec.exists():
+        return {}
+
+    report = json.loads(equivalence_report.read_text(encoding="utf-8"))
+    spec = yaml.safe_load(example_output_spec.read_text(encoding="utf-8")) or {}
+
+    defaults = spec.get("defaults", {})
+    per_topic = spec.get("topics", {})
+    rows = report.get("example_line_alignment_audit", {}).get("topic_rows", [])
+
+    out: dict[str, tuple[str, bool]] = {}
+    for row in rows:
+        topic = str(row.get("topic", ""))
+        if not topic:
+            continue
+        status = str(row.get("alignment_status", ""))
+        cfg = dict(defaults)
+        cfg.update(per_topic.get(topic, {}))
+        allowed = set(cfg.get("allowed_alignment_statuses", []))
+        allowed_ok = status in allowed if allowed else True
+        out[topic] = (status, allowed_ok)
+    return out
 
 
 def _short_text(output_text: str, max_chars: int = 280) -> str:
@@ -315,6 +367,8 @@ def execute_notebook_capture(
     matlab_help_root: Path | None,
     parity_threshold: float,
     skip_parity_check: bool,
+    parity_mode: str,
+    gate_status: tuple[str, bool] | None,
 ) -> NotebookReport:
     start = time.perf_counter()
     image_dir = tmp_dir / "notebook_images" / target.topic
@@ -337,6 +391,7 @@ def execute_notebook_capture(
             matlab_ref_images=matlab_ref_images,
             similarity_score=None,
             parity_pass=None,
+            alignment_status=(gate_status[0] if gate_status is not None else None),
             matched_python_image=None,
             matched_matlab_image=None,
         )
@@ -366,6 +421,7 @@ def execute_notebook_capture(
             matlab_ref_images=matlab_ref_images,
             similarity_score=None,
             parity_pass=None,
+            alignment_status=(gate_status[0] if gate_status is not None else None),
             matched_python_image=None,
             matched_matlab_image=None,
         )
@@ -402,22 +458,30 @@ def execute_notebook_capture(
 
     similarity_score: float | None = None
     parity_pass: bool | None = None
+    alignment_status: str | None = gate_status[0] if gate_status is not None else None
     matched_python_image: Path | None = None
     matched_matlab_image: Path | None = None
-    if not skip_parity_check:
-        if image_paths and matlab_ref_images:
-            best = -1.0
-            for py_img in image_paths:
-                for mat_img in matlab_ref_images:
-                    sim = compute_image_similarity(py_img, mat_img)
-                    if sim > best:
-                        best = sim
-                        matched_python_image = py_img
-                        matched_matlab_image = mat_img
-            similarity_score = best if best >= 0.0 else None
-            parity_pass = similarity_score >= parity_threshold
+
+    if parity_mode == "gate":
+        if gate_status is not None:
+            parity_pass = bool(gate_status[1])
         else:
-            parity_pass = None
+            parity_pass = False
+    else:
+        if not skip_parity_check:
+            if image_paths and matlab_ref_images:
+                best = -1.0
+                for py_img in image_paths:
+                    for mat_img in matlab_ref_images:
+                        sim = compute_image_similarity(py_img, mat_img)
+                        if sim > best:
+                            best = sim
+                            matched_python_image = py_img
+                            matched_matlab_image = mat_img
+                similarity_score = best if best >= 0.0 else None
+                parity_pass = similarity_score >= parity_threshold
+            else:
+                parity_pass = None
 
     duration = time.perf_counter() - start
     return NotebookReport(
@@ -433,6 +497,7 @@ def execute_notebook_capture(
         matlab_ref_images=matlab_ref_images,
         similarity_score=similarity_score,
         parity_pass=parity_pass,
+        alignment_status=alignment_status,
         matched_python_image=matched_python_image,
         matched_matlab_image=matched_matlab_image,
     )
@@ -511,6 +576,7 @@ def draw_cover_page(
     matlab_help_root: Path | None,
     parity_threshold: float,
     skip_parity_check: bool,
+    parity_mode: str,
 ) -> None:
     pdf.setFont("Helvetica-Bold", 18)
     pdf.drawString(40, 760, "nSTAT-python Validation Report (All Examples)")
@@ -522,8 +588,11 @@ def draw_cover_page(
     pdf.drawString(40, 672, f"Examples included: {selected_count}")
     matlab_root_msg = str(matlab_help_root) if matlab_help_root is not None else "NOT FOUND"
     pdf.drawString(40, 656, f"MATLAB helpfiles root: {matlab_root_msg}")
-    parity_msg = "SKIPPED" if skip_parity_check else f"threshold={parity_threshold:.2f}"
-    pdf.drawString(40, 640, f"MATLAB parity mode: {parity_msg}")
+    if parity_mode == "gate":
+        parity_msg = "gate-status (equivalence audit + output spec)"
+    else:
+        parity_msg = "SKIPPED" if skip_parity_check else f"image similarity threshold={parity_threshold:.2f}"
+    pdf.drawString(40, 640, f"Parity mode: {parity_mode} ({parity_msg})")
 
     y = 612
     pdf.setFont("Helvetica-Bold", 13)
@@ -550,7 +619,12 @@ def draw_cover_page(
     pdf.showPage()
 
 
-def draw_summary_pages(pdf: canvas.Canvas, reports: list[NotebookReport], skip_parity_check: bool) -> None:
+def draw_summary_pages(
+    pdf: canvas.Canvas,
+    reports: list[NotebookReport],
+    skip_parity_check: bool,
+    parity_mode: str,
+) -> None:
     total = len(reports)
     executed = sum(1 for report in reports if report.executed)
     failed_exec = total - executed
@@ -567,7 +641,9 @@ def draw_summary_pages(pdf: canvas.Canvas, reports: list[NotebookReport], skip_p
     pdf.drawString(300, 738, f"Exec failures: {failed_exec}")
     pdf.drawString(430, 738, f"Py figs: {with_py_images}")
     pdf.drawString(40, 722, f"MATLAB refs available: {with_matlab_refs}")
-    if skip_parity_check:
+    if parity_mode == "gate":
+        pdf.drawString(260, 722, f"Parity gate pass: {parity_passed}/{parity_checked}")
+    elif skip_parity_check:
         pdf.drawString(260, 722, "Parity scoring: skipped")
     else:
         pdf.drawString(260, 722, f"Parity pass: {parity_passed}/{parity_checked}")
@@ -580,8 +656,9 @@ def draw_summary_pages(pdf: canvas.Canvas, reports: list[NotebookReport], skip_p
     pdf.drawString(308, y, "Py")
     pdf.drawString(332, y, "MAT")
     pdf.drawString(360, y, "Score")
-    pdf.drawString(408, y, "Run")
-    pdf.drawString(448, y, "Sec")
+    pdf.drawString(402, y, "Run")
+    pdf.drawString(438, y, "Sec")
+    pdf.drawString(472, y, "Status")
     y -= 12
     pdf.setFont("Helvetica", 9)
 
@@ -595,8 +672,9 @@ def draw_summary_pages(pdf: canvas.Canvas, reports: list[NotebookReport], skip_p
             pdf.drawString(308, 760, "Py")
             pdf.drawString(332, 760, "MAT")
             pdf.drawString(360, 760, "Score")
-            pdf.drawString(408, 760, "Run")
-            pdf.drawString(448, 760, "Sec")
+            pdf.drawString(402, 760, "Run")
+            pdf.drawString(438, 760, "Sec")
+            pdf.drawString(472, 760, "Status")
             y = 748
             pdf.setFont("Helvetica", 9)
 
@@ -614,8 +692,10 @@ def draw_summary_pages(pdf: canvas.Canvas, reports: list[NotebookReport], skip_p
         pdf.drawString(308, y, str(report.image_count))
         pdf.drawString(332, y, str(len(report.matlab_ref_images)))
         pdf.drawString(360, y, score_text)
-        pdf.drawString(408, y, report.run_group)
-        pdf.drawString(448, y, f"{report.duration_s:.2f}")
+        pdf.drawString(402, y, report.run_group)
+        pdf.drawString(438, y, f"{report.duration_s:.2f}")
+        status_text = report.alignment_status if report.alignment_status is not None else "-"
+        pdf.drawString(472, y, status_text[:16])
         y -= 12
 
     pdf.showPage()
@@ -640,13 +720,18 @@ def draw_example_page(pdf: canvas.Canvas, report: NotebookReport, index: int, to
         f"Runtime: {report.duration_s:.2f}s"
     )
     pdf.drawString(40, 714, header)
+    if report.alignment_status is not None:
+        pdf.drawString(40, 700, f"Equivalence status: {report.alignment_status}")
+        y_header = 686
+    else:
+        y_header = 700
     pdf.drawString(
         40,
-        700,
+        y_header,
         f"Python figs: {report.image_count} | MATLAB refs: {len(report.matlab_ref_images)}",
     )
 
-    y = 680
+    y = y_header - 20
     if report.error:
         pdf.setFont("Helvetica-Bold", 11)
         pdf.drawString(40, y, "Execution error")
@@ -699,6 +784,9 @@ def generate_pdf_report(
     matlab_help_root: Path | None,
     parity_threshold: float,
     skip_parity_check: bool,
+    parity_mode: str,
+    equivalence_report: Path,
+    example_output_spec: Path,
 ) -> tuple[Path, list[NotebookReport], list[CommandResult], Path | None]:
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -719,6 +807,7 @@ def generate_pdf_report(
             command_results.append(run_command(name=name, cmd=cmd, cwd=repo_root))
 
     resolved_matlab_help_root = resolve_matlab_help_root(repo_root, matlab_help_root)
+    parity_gate_status = load_parity_gate_status(equivalence_report, example_output_spec)
 
     targets = load_targets(manifest_path, repo_root, notebook_group)
     reports: list[NotebookReport] = []
@@ -731,6 +820,8 @@ def generate_pdf_report(
                 matlab_help_root=resolved_matlab_help_root,
                 parity_threshold=parity_threshold,
                 skip_parity_check=skip_parity_check,
+                parity_mode=parity_mode,
+                gate_status=parity_gate_status.get(target.topic),
             )
         )
 
@@ -755,8 +846,14 @@ def generate_pdf_report(
         matlab_help_root=resolved_matlab_help_root,
         parity_threshold=parity_threshold,
         skip_parity_check=skip_parity_check,
+        parity_mode=parity_mode,
     )
-    draw_summary_pages(pdf=pdf, reports=reports, skip_parity_check=skip_parity_check)
+    draw_summary_pages(
+        pdf=pdf,
+        reports=reports,
+        skip_parity_check=skip_parity_check,
+        parity_mode=parity_mode,
+    )
 
     total = len(reports)
     for index, report in enumerate(reports, start=1):
@@ -782,6 +879,9 @@ def main() -> int:
         matlab_help_root=args.matlab_help_root,
         parity_threshold=args.parity_threshold,
         skip_parity_check=args.skip_parity_check,
+        parity_mode=args.parity_mode,
+        equivalence_report=args.equivalence_report,
+        example_output_spec=args.example_output_spec,
     )
 
     executed = sum(1 for report in reports if report.executed)
@@ -797,7 +897,7 @@ def main() -> int:
         f"Notebook results: total={len(reports)} executed={executed} exec_failures={exec_failures} "
         f"with_images={with_images}"
     )
-    print(f"Parity results: checked={parity_checked} failures={parity_failures}")
+    print(f"Parity results ({args.parity_mode} mode): checked={parity_checked} failures={parity_failures}")
     print(f"Command checks: total={len(command_results)} failed={command_failures}")
 
     return 0 if exec_failures == 0 and command_failures == 0 and parity_failures == 0 else 1

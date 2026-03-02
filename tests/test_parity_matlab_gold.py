@@ -45,7 +45,7 @@ def _scalar(m: dict, key: str) -> float:
 def test_matlab_gold_manifest_and_checksums() -> None:
     payload = _load_manifest()
     assert payload["version"] == 1
-    assert len(payload["fixtures"]) == 9
+    assert len(payload["fixtures"]) == 13
 
     for row in payload["fixtures"]:
         path = Path(row["path"])
@@ -229,3 +229,97 @@ def test_events_matlab_gold_comparison() -> None:
 
     assert np.allclose(events.times, times, atol=1e-12)
     assert np.allclose(subset.times, _vec(m, "expected_subset_times"), atol=1e-12)
+
+
+def test_analysis_examples_matlab_gold_comparison() -> None:
+    m = _mat("tests/parity/fixtures/matlab_gold/AnalysisExamples_gold.mat")
+    X = np.asarray(m["X_analysis"], dtype=float)
+    y = _vec(m, "counts_analysis")
+    dt = _scalar(m, "dt_analysis")
+    b = _vec(m, "b_analysis")
+
+    fit = Analysis.fit_glm(X=X, y=y, fit_type="poisson", dt=dt)
+    pred = np.asarray(fit.predict(X), dtype=float).reshape(-1)
+
+    assert np.isclose(fit.intercept, b[0], atol=0.35)
+    assert np.allclose(fit.coefficients, b[1:], atol=0.35)
+    assert np.allclose(pred, _vec(m, "expected_rate_analysis"), atol=0.35)
+
+    rmse = float(np.sqrt(np.mean((pred - _vec(m, "true_rate_analysis")) ** 2)))
+    assert np.isclose(rmse, _scalar(m, "expected_rmse_analysis"), atol=0.25)
+
+
+def test_decoding_example_matlab_gold_comparison() -> None:
+    m = _mat("tests/parity/fixtures/matlab_gold/DecodingExample_gold.mat")
+    spike_counts = np.asarray(m["spike_counts_dec"], dtype=float)
+    tuning = np.asarray(m["tuning_dec"], dtype=float)
+    transition = np.asarray(m["transition_dec"], dtype=float)
+
+    decoded, posterior = DecodingAlgorithms.decode_state_posterior(
+        spike_counts=spike_counts,
+        tuning_rates=tuning,
+        transition=transition,
+    )
+
+    expected_decoded = np.asarray(m["expected_decoded_dec"], dtype=int).reshape(-1)
+    expected_posterior = np.asarray(m["expected_posterior_dec"], dtype=float)
+    expected_rmse = _scalar(m, "expected_rmse_dec")
+    latent = _vec(m, "latent_zero_dec").astype(int)
+
+    rmse = float(np.sqrt(np.mean((decoded - latent) ** 2)) / max(tuning.shape[1] - 1, 1))
+    assert np.array_equal(decoded, expected_decoded)
+    assert np.allclose(posterior, expected_posterior, atol=1e-8)
+    assert np.isclose(rmse, expected_rmse, atol=1e-8)
+
+
+def test_explicit_stimulus_whisker_matlab_gold_comparison() -> None:
+    m = _mat("tests/parity/fixtures/matlab_gold/ExplicitStimulusWhiskerData_gold.mat")
+    stimulus = _vec(m, "stimulus_ws")
+    y = _vec(m, "spike_ws")
+    b = _vec(m, "b_ws")
+
+    fit = Analysis.fit_glm(X=stimulus[:, None], y=y, fit_type="binomial", dt=1.0)
+    pred = np.asarray(fit.predict(stimulus[:, None]), dtype=float).reshape(-1)
+    expected_pred = _vec(m, "expected_prob_ws")
+    expected_rmse = _scalar(m, "expected_rmse_ws")
+
+    rmse = float(np.sqrt(np.mean((pred - y) ** 2)))
+    assert np.isclose(fit.intercept, b[0], atol=0.2)
+    assert np.isclose(fit.coefficients[0], b[1], atol=0.2)
+    assert np.allclose(pred, expected_pred, atol=0.1)
+    assert np.isclose(rmse, expected_rmse, atol=0.1)
+
+
+def _detect_mepsc_events(trace: np.ndarray, dt: float) -> tuple[np.ndarray, np.ndarray]:
+    threshold = -0.12
+    refractory = int(round(0.006 / dt))
+    candidate = np.where(trace < threshold)[0]
+    detected_idx: list[int] = []
+    last = -refractory
+    for idx in candidate:
+        if idx - last >= refractory:
+            window_end = min(idx + int(round(0.004 / dt)) + 1, trace.size)
+            local = idx + int(np.argmin(trace[idx:window_end]))
+            detected_idx.append(local)
+            last = local
+    det = np.asarray(detected_idx, dtype=int)
+    return det * dt, -trace[det]
+
+
+def test_mepsc_analysis_matlab_gold_comparison() -> None:
+    m = _mat("tests/parity/fixtures/matlab_gold/mEPSCAnalysis_gold.mat")
+    dt = _scalar(m, "dt_mepsc")
+    trace = _vec(m, "trace_mepsc")
+    exp_times = _vec(m, "detected_times_mepsc")
+    exp_amps = _vec(m, "detected_amps_mepsc")
+    exp_count = int(round(_scalar(m, "expected_event_count_mepsc")))
+    exp_mean_amp = _scalar(m, "expected_mean_amp_mepsc")
+
+    det_times, det_amps = _detect_mepsc_events(trace, dt)
+    events = Events(times=det_times, labels=[f"e{i}" for i in range(det_times.size)])
+
+    assert det_times.size == exp_count
+    assert np.allclose(det_times, exp_times, atol=dt)
+    assert np.allclose(det_amps, exp_amps, atol=1e-9)
+    assert np.isclose(float(np.mean(det_amps)), exp_mean_amp, atol=1e-9)
+    assert events.times.size == exp_count

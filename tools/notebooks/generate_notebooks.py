@@ -113,6 +113,22 @@ TOPIC = \"{topic}\"
 FAMILY = \"{family}\"
 rng = np.random.default_rng(2026)
 print(f\"Running notebook topic: {{TOPIC}} (family={{FAMILY}})\")
+
+def validate_numeric_checkpoints(metrics: dict[str, float], limits: dict[str, tuple[float, float]], topic: str) -> None:
+    if not metrics:
+        raise AssertionError(f\"{topic}: CHECKPOINT_METRICS is empty\")
+    for key, value in metrics.items():
+        if not np.isfinite(value):
+            raise AssertionError(f\"{topic}: metric '{{key}}' is not finite: {{value}}\")
+    for key, (lo, hi) in limits.items():
+        if key not in metrics:
+            raise AssertionError(f\"{topic}: missing checkpoint metric '{{key}}'\")
+        value = float(metrics[key])
+        if value < float(lo) or value > float(hi):
+            raise AssertionError(
+                f\"{topic}: metric '{{key}}'={{value:.6f}} outside [{{float(lo):.6f}}, {{float(hi):.6f}}]\"
+            )
+    print(f\"Numeric checkpoints for {{topic}}:\", metrics)
 """
 
 
@@ -158,6 +174,15 @@ coef_error = float(np.linalg.norm(fit.coefficients - np.array([0.45, -0.25])))
 print("AIC", float(fit.aic()), "BIC", float(fit.bic()), "coef_error", coef_error)
 assert np.isfinite(coef_error)
 assert coef_error < 1.5, "Coefficient fit drifted too far from simulation truth"
+
+CHECKPOINT_METRICS = {
+    "coef_error": float(coef_error),
+    "mean_rate_hz": float(np.mean(true_rate)),
+}
+CHECKPOINT_LIMITS = {
+    "coef_error": (0.0, 1.5),
+    "mean_rate_hz": (1.0, 40.0),
+}
 """
 
 
@@ -202,6 +227,15 @@ plt.show()
 
 assert H.ndim == 2 and H.shape[1] == history.n_bins
 assert spikes.spike_times.size > 5, "Not enough spikes generated"
+
+CHECKPOINT_METRICS = {
+    "history_rows": float(H.shape[0]),
+    "spike_count": float(spikes.spike_times.size),
+}
+CHECKPOINT_LIMITS = {
+    "history_rows": (50.0, 5000.0),
+    "spike_count": (6.0, 6000.0),
+}
 """
 
 
@@ -273,6 +307,15 @@ print("rmse_raw", rmse_raw, "rmse_final", rmse_dec)
 assert np.max(np.abs(np.sum(posterior, axis=0) - 1.0)) < 1e-6
 if use_history:
     assert rmse_dec <= rmse_raw + 0.03
+
+CHECKPOINT_METRICS = {
+    "rmse_raw": float(rmse_raw),
+    "rmse_dec": float(rmse_dec),
+}
+CHECKPOINT_LIMITS = {
+    "rmse_raw": (0.0, 0.65),
+    "rmse_dec": (0.0, 0.65),
+}
 """
 
 
@@ -338,6 +381,15 @@ plt.show()
 
 print("trajectory rmse", rmse)
 assert rmse < 1.25
+
+CHECKPOINT_METRICS = {
+    "trajectory_rmse": float(rmse),
+    "decoded_unique_states": float(np.unique(decoded).size),
+}
+CHECKPOINT_LIMITS = {
+    "trajectory_rmse": (0.0, 1.25),
+    "decoded_unique_states": (2.0, float(n_states)),
+}
 """
 
 
@@ -400,6 +452,15 @@ plt.show()
 mean_rate = spikes.mean(axis=1) / dt
 print("mean firing rates", mean_rate)
 assert np.all(mean_rate > 0.1)
+
+CHECKPOINT_METRICS = {
+    "mean_rate_unit0": float(mean_rate[0]),
+    "mean_rate_unit1": float(mean_rate[1]),
+}
+CHECKPOINT_LIMITS = {
+    "mean_rate_unit0": (0.1, 120.0),
+    "mean_rate_unit1": (0.1, 120.0),
+}
 """
 
 
@@ -446,6 +507,146 @@ plt.show()
 print("significant pair count", int(sig_mat.sum()))
 assert np.allclose(prob_mat, prob_mat.T, atol=1e-12)
 assert np.all(np.diag(prob_mat) == 1.0)
+
+CHECKPOINT_METRICS = {
+    "psth_mean_hz": float(np.mean(psth)),
+    "significant_pairs": float(np.sum(sig_mat)),
+}
+CHECKPOINT_LIMITS = {
+    "psth_mean_hz": (0.1, 50.0),
+    "significant_pairs": (0.0, float(sig_mat.size)),
+}
+"""
+
+
+EXPLICIT_STIMULUS_WHISKER_TEMPLATE = """# ExplicitStimulusWhiskerData: stimulus-locked spiking with binomial GLM fit.
+dt = 0.001
+time = np.arange(0.0, 4.0, dt)
+n_trials = 12
+
+# Whisker-like drive: low-frequency envelope + punctate transients.
+envelope = 0.8 * np.sin(2.0 * np.pi * 1.2 * time)
+transients = np.zeros_like(time)
+for center in [0.7, 1.5, 2.3, 3.2]:
+    transients += np.exp(-0.5 * ((time - center) / 0.035) ** 2)
+stimulus = envelope + 1.1 * transients
+stimulus = (stimulus - np.mean(stimulus)) / np.std(stimulus)
+
+spike_mat = np.zeros((n_trials, time.size), dtype=float)
+for k in range(n_trials):
+    trial_gain = 0.85 + 0.3 * rng.random()
+    eta = -3.2 + trial_gain * (1.0 * stimulus)
+    p = 1.0 / (1.0 + np.exp(-eta))
+    spike_mat[k] = rng.binomial(1, p)
+
+spike_prob = np.mean(spike_mat, axis=0)
+X = np.column_stack([np.ones(time.size), stimulus])
+fit = Analysis.fit_glm(X=X[:, 1:], y=spike_mat[0], fit_type="binomial", dt=1.0)
+pred_prob = fit.predict(X[:, 1:])
+
+fig, axes = plt.subplots(3, 1, figsize=(9.5, 7.2), sharex=False)
+axes[0].plot(time, stimulus, color="k", linewidth=1.0)
+axes[0].set_title(f"{TOPIC}: explicit stimulus")
+axes[0].set_ylabel("z-score")
+
+for k in range(min(10, n_trials)):
+    t_spk = time[spike_mat[k] > 0]
+    axes[1].vlines(t_spk, k + 0.6, k + 1.4, linewidth=0.4)
+axes[1].set_ylabel("trial")
+axes[1].set_title("Spike raster")
+
+axes[2].plot(time, spike_prob, color="tab:blue", linewidth=1.0, label="trial mean")
+axes[2].plot(time, pred_prob, color="tab:red", linewidth=1.0, label="binomial fit (trial 1)")
+axes[2].set_title("Observed and fitted spike probability")
+axes[2].set_xlabel("time [s]")
+axes[2].set_ylabel("p(spike)")
+axes[2].legend(loc="upper right")
+plt.tight_layout()
+plt.show()
+
+fit_rmse = float(np.sqrt(np.mean((pred_prob - spike_mat[0]) ** 2)))
+assert 0.9 < float(np.std(stimulus)) < 1.1
+assert fit_rmse < 0.6
+CHECKPOINT_METRICS = {
+    "stimulus_std": float(np.std(stimulus)),
+    "fit_rmse": float(fit_rmse),
+}
+CHECKPOINT_LIMITS = {
+    "stimulus_std": (0.9, 1.1),
+    "fit_rmse": (0.0, 0.6),
+}
+"""
+
+
+MEPSC_ANALYSIS_TEMPLATE = """# mEPSCAnalysis: synthetic current trace and event detection summary.
+dt = 0.0005
+time = np.arange(0.0, 12.0, dt)
+n = time.size
+
+# Generate baseline noise and negative-going mEPSC-like events.
+trace = 0.025 * rng.standard_normal(n)
+event_times_true = np.sort(rng.uniform(0.4, 11.6, size=75))
+event_amps = rng.uniform(0.12, 0.42, size=event_times_true.size)
+tau_rise = 0.0015
+tau_decay = 0.010
+
+kernel_t = np.arange(0.0, 0.060, dt)
+kernel = (1.0 - np.exp(-kernel_t / tau_rise)) * np.exp(-kernel_t / tau_decay)
+kernel = kernel / np.max(kernel)
+
+for t_evt, amp in zip(event_times_true, event_amps, strict=False):
+    idx = int(round(t_evt / dt))
+    end = min(idx + kernel.size, n)
+    k = kernel[: end - idx]
+    trace[idx:end] -= amp * k
+
+# Simple threshold-crossing detection with refractory period.
+threshold = -0.12
+refractory = int(round(0.006 / dt))
+candidate = np.where(trace < threshold)[0]
+detected_idx: list[int] = []
+last = -refractory
+for idx in candidate:
+    if idx - last >= refractory:
+        window_end = min(idx + int(round(0.004 / dt)) + 1, n)
+        local = idx + int(np.argmin(trace[idx:window_end]))
+        detected_idx.append(local)
+        last = local
+detected_idx = np.array(detected_idx, dtype=int)
+detected_times = detected_idx * dt
+detected_amps = -trace[detected_idx]
+events = Events(times=detected_times, labels=[f"e{i}" for i in range(detected_times.size)])
+
+fig, axes = plt.subplots(3, 1, figsize=(10, 7.2), sharex=False)
+axes[0].plot(time, trace, color="0.15", linewidth=0.7)
+axes[0].scatter(detected_times, trace[detected_idx], color="tab:red", s=10, alpha=0.8)
+axes[0].set_title(f"{TOPIC}: synthetic mEPSC trace with detections")
+axes[0].set_ylabel("current [a.u.]")
+
+axes[1].hist(detected_amps, bins=25, color="tab:blue", alpha=0.85)
+axes[1].set_title("Detected event amplitudes")
+axes[1].set_xlabel("amplitude [a.u.]")
+axes[1].set_ylabel("count")
+
+iei = np.diff(events.times) if events.times.size > 1 else np.array([0.0])
+axes[2].hist(iei, bins=25, color="tab:green", alpha=0.85)
+axes[2].set_title("Inter-event interval distribution")
+axes[2].set_xlabel("interval [s]")
+axes[2].set_ylabel("count")
+
+plt.tight_layout()
+plt.show()
+
+assert events.times.size > 30
+assert float(np.mean(detected_amps) if detected_amps.size else 0.0) > 0.08
+CHECKPOINT_METRICS = {
+    "detected_event_count": float(events.times.size),
+    "mean_detected_amplitude": float(np.mean(detected_amps) if detected_amps.size else 0.0),
+}
+CHECKPOINT_LIMITS = {
+    "detected_event_count": (30.0, 220.0),
+    "mean_detected_amplitude": (0.08, 0.6),
+}
 """
 
 
@@ -512,6 +713,15 @@ rmse_rate = float(np.sqrt(np.mean((est_rate - true_rate) ** 2)))
 print("rmse_rate", rmse_rate, "aic", float(fit_lin.aic()))
 assert np.isfinite(rmse_rate)
 assert rmse_rate < 8.0
+
+CHECKPOINT_METRICS = {
+    "rmse_rate": float(rmse_rate),
+    "mean_true_rate": float(np.mean(true_rate)),
+}
+CHECKPOINT_LIMITS = {
+    "rmse_rate": (0.0, 8.0),
+    "mean_true_rate": (0.2, 30.0),
+}
 """
 
 
@@ -573,6 +783,15 @@ rmse_lin = float(np.sqrt(np.mean((fit_lin.predict(X_lin) - true_rate) ** 2)))
 rmse_quad = float(np.sqrt(np.mean((fit_quad.predict(X_quad) - true_rate) ** 2)))
 print("rmse_lin", rmse_lin, "rmse_quad", rmse_quad)
 assert rmse_quad <= rmse_lin + 0.8
+
+CHECKPOINT_METRICS = {
+    "rmse_lin": float(rmse_lin),
+    "rmse_quad": float(rmse_quad),
+}
+CHECKPOINT_LIMITS = {
+    "rmse_lin": (0.0, 20.0),
+    "rmse_quad": (0.0, 20.0),
+}
 """
 
 
@@ -629,6 +848,15 @@ plt.show()
 
 assert position.data.shape == (t.size, 3)
 assert force.data.shape == (t.size, 2)
+
+CHECKPOINT_METRICS = {
+    "position_var": float(np.var(position.data[:, 1])),
+    "force_mean": float(np.mean(force.data[:, 0])),
+}
+CHECKPOINT_LIMITS = {
+    "position_var": (0.05, 2.0),
+    "force_mean": (0.0, 2.0),
+}
 """
 
 
@@ -659,6 +887,15 @@ _plot_events("b")
 
 assert events.times.size == 3
 assert np.all(np.diff(events.times) > 0.0)
+
+CHECKPOINT_METRICS = {
+    "event_count": float(events.times.size),
+    "event_span": float(events.times[-1] - events.times[0]),
+}
+CHECKPOINT_LIMITS = {
+    "event_count": (3.0, 3.0),
+    "event_span": (0.8, 1.0),
+}
 """
 
 
@@ -761,6 +998,15 @@ accept_ratio = float(t_spikes_thin.size / max(t_spikes.size, 1))
 print("accepted", t_spikes_thin.size, "candidates", t_spikes.size, "ratio", accept_ratio)
 assert t_spikes_thin.size > 20
 assert 0.0 < accept_ratio < 1.0
+
+CHECKPOINT_METRICS = {
+    "accepted_spike_count": float(t_spikes_thin.size),
+    "accept_ratio": float(accept_ratio),
+}
+CHECKPOINT_LIMITS = {
+    "accepted_spike_count": (20.0, 50000.0),
+    "accept_ratio": (0.01, 0.99),
+}
 """
 
 
@@ -839,6 +1085,15 @@ mean_rate = float(np.mean(lambdas))
 print("mean simulated rate", mean_rate)
 assert mean_rate > 1.0
 assert len(raster) == num_realizations
+
+CHECKPOINT_METRICS = {
+    "mean_simulated_rate": float(mean_rate),
+    "num_realizations": float(num_realizations),
+}
+CHECKPOINT_LIMITS = {
+    "mean_simulated_rate": (1.0, 500.0),
+    "num_realizations": (5.0, 5.0),
+}
 """
 
 
@@ -957,6 +1212,15 @@ plt.show()
 rates = spikes.mean(axis=1) / dt
 print("rates", rates, "xc", xc)
 assert np.all(rates > 0.1)
+
+CHECKPOINT_METRICS = {
+    "rate_unit1": float(rates[0]),
+    "rate_unit2": float(rates[1]),
+}
+CHECKPOINT_LIMITS = {
+    "rate_unit1": (0.1, 200.0),
+    "rate_unit2": (0.1, 200.0),
+}
 """
 
 
@@ -1115,11 +1379,21 @@ rmse = float(np.sqrt(np.mean(err**2)))
 rmse_nt = float(np.sqrt(np.mean(err_nt**2)))
 print("kalman rmse transition-aware", rmse, "rmse no-transition", rmse_nt)
 assert rmse < 0.9
+
+CHECKPOINT_METRICS = {
+    "rmse_transition": float(rmse),
+    "rmse_notransition": float(rmse_nt),
+}
+CHECKPOINT_LIMITS = {
+    "rmse_transition": (0.0, 0.9),
+    "rmse_notransition": (0.0, 2.0),
+}
 """
 
 
 ASSERTION_CELL = """# Execution checkpoints used by CI.
 assert TOPIC != "", "Missing topic metadata"
+validate_numeric_checkpoints(CHECKPOINT_METRICS, CHECKPOINT_LIMITS, TOPIC)
 print("Topic-specific checkpoint for", TOPIC)
 print("Notebook checkpoints passed for", TOPIC)
 """
@@ -1151,7 +1425,9 @@ TOPIC_TEMPLATE_OVERRIDES = {
     "AnalysisExamples": ANALYSIS_EXAMPLES_TEMPLATE,
     "AnalysisExamples2": ANALYSIS_EXAMPLES2_TEMPLATE,
     "CovariateExamples": COVARIATE_EXAMPLES_TEMPLATE,
+    "ExplicitStimulusWhiskerData": EXPLICIT_STIMULUS_WHISKER_TEMPLATE,
     "EventsExamples": EVENTS_EXAMPLES_TEMPLATE,
+    "mEPSCAnalysis": MEPSC_ANALYSIS_TEMPLATE,
     "PPThinning": PPTHINNING_TEMPLATE,
     "PPSimExample": PPSIM_EXAMPLE_TEMPLATE,
     "NetworkTutorial": NETWORK_TUTORIAL_TEMPLATE,

@@ -40,6 +40,8 @@ notebooks = [
   "nbformat>=5.9",
   "nbclient>=0.9",
   "jupyter>=1.0",
+  "Pillow>=10.0",
+  "reportlab>=4.0",
   "pyyaml>=6.0"
 ]
 

@@ -1,0 +1,72 @@
+name: validation-pdf
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+jobs:
+  build-validation-pdf:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev,notebooks]
+          python -m pip install reportlab pillow
+
+      - name: Regenerate notebooks
+        run: |
+          python tools/notebooks/generate_notebooks.py
+          git diff --exit-code
+
+      - name: Checkout upstream MATLAB nSTAT repo snapshot
+        run: |
+          GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
+
+      - name: Prepare deterministic validation images
+        run: |
+          python tools/parity/prepare_validation_images.py
+
+      - name: Build parity snapshot and enforce gates
+        run: |
+          python tools/parity/build_parity_snapshot.py \
+            --matlab-root /tmp/upstream-nstat \
+            --fail-on medium
+          python tools/parity/check_functional_parity_progress.py \
+            --report parity/function_example_alignment_report.json \
+            --policy parity/functional_gate_policy.yml
+          python tools/parity/check_example_output_spec.py \
+            --report parity/function_example_alignment_report.json \
+            --spec parity/example_output_spec.yml
+
+      - name: Generate full validation PDF
+        run: |
+          python tools/reports/generate_validation_pdf.py \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --matlab-help-root /tmp/upstream-nstat/helpfiles \
+            --notebook-group all \
+            --timeout 900 \
+            --skip-command-tests \
+            --parity-mode gate
+
+      - name: Upload validation PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nstat-python-validation-pdf
+          path: output/pdf/*.pdf
+          if-no-files-found: error
+
+      - name: Upload notebook image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nstat-python-validation-images
+          path: tmp/pdfs/validation_report/notebook_images
+          if-no-files-found: error

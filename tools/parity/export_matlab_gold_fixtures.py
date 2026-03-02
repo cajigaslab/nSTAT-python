@@ -2,16 +2,15 @@
 """Export MATLAB-gold fixtures for canonical parity workflows.
 
 This script runs MATLAB in batch mode to generate deterministic fixture files
-for parity-critical workflow families:
+for parity-critical workflow families and representative examples, including:
 - PPSimExample
-- DecodingExampleWithHist
+- DecodingExample / DecodingExampleWithHist
 - HippocampalPlaceCellExample
-- SpikeRateDiffCIs
-- PSTHEstimation
-- nstCollExamples
-- TrialExamples
-- CovCollExamples
-- EventsExamples
+- SpikeRateDiffCIs / PSTHEstimation
+- nstCollExamples / TrialExamples / CovCollExamples / EventsExamples
+- AnalysisExamples
+- ExplicitStimulusWhiskerData
+- mEPSCAnalysis
 """
 
 from __future__ import annotations
@@ -326,6 +325,172 @@ expected_subset_times = event_times(mask);
 save(fullfile(out_dir, 'EventsExamples_gold.mat'), ...
     'event_times', 'subset_start', 'subset_end', 'expected_subset_times', '-v7');
 
+% ------------------------------------------------------
+% Fixture 10: AnalysisExamples (spatial Poisson GLM fit)
+% ------------------------------------------------------
+n_t_analysis = 1800;
+dt_analysis = 0.01;
+xy = zeros(n_t_analysis, 2);
+xy(1,:) = [45 55];
+vel = [0 0];
+for t=2:n_t_analysis
+    vel = 0.92 * vel + 2.0 * randn(1,2);
+    xy(t,:) = min(max(xy(t-1,:) + vel, 0.0), 100.0);
+end
+
+xc = 62.0; yc = 38.0; sigma = 16.0;
+r2 = (xy(:,1)-xc).^2 + (xy(:,2)-yc).^2;
+true_rate_analysis = 1.2 + 18.0 * exp(-0.5 * r2 / (sigma^2));
+counts_analysis = poissrnd(true_rate_analysis * dt_analysis);
+X_analysis = [xy(:,1), xy(:,2)];
+offset_analysis = log(dt_analysis) * ones(n_t_analysis,1);
+b_analysis = glmfit(X_analysis, counts_analysis, 'poisson', 'constant', 'on', 'offset', offset_analysis);
+expected_rate_analysis = exp(b_analysis(1) + X_analysis * b_analysis(2:end));
+expected_rmse_analysis = sqrt(mean((expected_rate_analysis - true_rate_analysis).^2));
+
+save(fullfile(out_dir, 'AnalysisExamples_gold.mat'), ...
+    'X_analysis', 'counts_analysis', 'dt_analysis', 'b_analysis', ...
+    'true_rate_analysis', 'expected_rate_analysis', 'expected_rmse_analysis', '-v7');
+
+% ----------------------------------------------------
+% Fixture 11: DecodingExample (no-history Bayes decode)
+% ----------------------------------------------------
+n_units_dec = 10;
+n_states_dec = 15;
+n_time_dec = 150;
+centers_dec = linspace(0, n_states_dec-1, n_units_dec)';
+widths_dec = 2.0 * ones(n_units_dec,1);
+states_dec = 0:(n_states_dec-1);
+tuning_dec = zeros(n_units_dec, n_states_dec);
+for i=1:n_units_dec
+    tuning_dec(i,:) = 0.06 + 0.42*exp(-0.5*((states_dec-centers_dec(i))./widths_dec(i)).^2);
+end
+
+transition_dec = zeros(n_states_dec, n_states_dec);
+for i=1:n_states_dec
+    if i>1
+        transition_dec(i,i-1) = 0.2;
+    end
+    transition_dec(i,i) = 0.6;
+    if i<n_states_dec
+        transition_dec(i,i+1) = 0.2;
+    end
+    transition_dec(i,:) = transition_dec(i,:) / sum(transition_dec(i,:));
+end
+
+latent_dec = zeros(1, n_time_dec);
+latent_dec(1) = floor(n_states_dec/2) + 1;
+for t=2:n_time_dec
+    cdf = cumsum(transition_dec(latent_dec(t-1),:));
+    r = rand();
+    latent_dec(t) = find(r <= cdf, 1, 'first');
+end
+
+spike_counts_dec = zeros(n_units_dec, n_time_dec);
+for t=1:n_time_dec
+    spike_counts_dec(:,t) = poissrnd(tuning_dec(:, latent_dec(t)));
+end
+
+log_emit_dec = zeros(n_states_dec, n_time_dec);
+for s=1:n_states_dec
+    rr = tuning_dec(:,s);
+    log_emit_dec(s,:) = sum(spike_counts_dec .* log(rr) - rr - gammaln(spike_counts_dec + 1), 1);
+end
+log_prior_dec = log((1.0/n_states_dec) * ones(n_states_dec,1));
+log_post_dec = zeros(n_states_dec, n_time_dec);
+log_post_dec(:,1) = log_prior_dec + log_emit_dec(:,1);
+log_post_dec(:,1) = log_post_dec(:,1) - log(sum(exp(log_post_dec(:,1))));
+
+for t=2:n_time_dec
+    pred = zeros(n_states_dec,1);
+    for s_next=1:n_states_dec
+        vals = log_post_dec(:,t-1) + log(transition_dec(:,s_next));
+        maxv = max(vals);
+        pred(s_next) = maxv + log(sum(exp(vals - maxv)));
+    end
+    log_post_dec(:,t) = pred + log_emit_dec(:,t);
+    maxv = max(log_post_dec(:,t));
+    log_post_dec(:,t) = log_post_dec(:,t) - (maxv + log(sum(exp(log_post_dec(:,t)-maxv))));
+end
+
+expected_posterior_dec = exp(log_post_dec);
+[~, idx_dec] = max(expected_posterior_dec, [], 1);
+expected_decoded_dec = idx_dec - 1;
+latent_zero_dec = latent_dec - 1;
+expected_rmse_dec = sqrt(mean((expected_decoded_dec - latent_zero_dec).^2)) / (n_states_dec - 1);
+
+save(fullfile(out_dir, 'DecodingExample_gold.mat'), ...
+    'spike_counts_dec', 'tuning_dec', 'transition_dec', 'latent_zero_dec', ...
+    'expected_posterior_dec', 'expected_decoded_dec', 'expected_rmse_dec', '-v7');
+
+% ------------------------------------------------------------
+% Fixture 12: ExplicitStimulusWhiskerData (binomial GLM proxy)
+% ------------------------------------------------------------
+dt_ws = 0.001;
+time_ws = (0:dt_ws:2.0-dt_ws)';
+envelope_ws = 0.8 * sin(2*pi*1.2*time_ws);
+transients_ws = exp(-0.5*((time_ws-0.55)/0.03).^2) ...
+    + exp(-0.5*((time_ws-1.15)/0.03).^2) ...
+    + exp(-0.5*((time_ws-1.75)/0.03).^2);
+stimulus_ws = envelope_ws + 1.1 * transients_ws;
+stimulus_ws = (stimulus_ws - mean(stimulus_ws)) / std(stimulus_ws);
+eta_ws = -3.2 + 1.0 * stimulus_ws;
+p_ws = 1.0 ./ (1.0 + exp(-eta_ws));
+spike_ws = binornd(1, p_ws);
+b_ws = glmfit(stimulus_ws, spike_ws, 'binomial');
+expected_prob_ws = 1.0 ./ (1.0 + exp(-(b_ws(1) + b_ws(2) * stimulus_ws)));
+expected_rmse_ws = sqrt(mean((expected_prob_ws - spike_ws).^2));
+
+save(fullfile(out_dir, 'ExplicitStimulusWhiskerData_gold.mat'), ...
+    'time_ws', 'stimulus_ws', 'spike_ws', 'b_ws', 'expected_prob_ws', 'expected_rmse_ws', '-v7');
+
+% ---------------------------------------------------
+% Fixture 13: mEPSCAnalysis (event-detection metrics)
+% ---------------------------------------------------
+dt_mepsc = 0.0005;
+time_mepsc = (0:dt_mepsc:6.0-dt_mepsc)';
+n_mepsc = numel(time_mepsc);
+trace_mepsc = 0.025 * randn(n_mepsc,1);
+event_times_mepsc = sort(0.4 + (5.2 * rand(45,1)));
+event_amps_mepsc = 0.12 + 0.30 * rand(45,1);
+
+kernel_t = (0:dt_mepsc:0.060)';
+kernel = (1.0 - exp(-kernel_t/0.0015)) .* exp(-kernel_t/0.010);
+kernel = kernel ./ max(kernel);
+
+for i=1:numel(event_times_mepsc)
+    idx = round(event_times_mepsc(i) / dt_mepsc) + 1;
+    idx_end = min(idx + numel(kernel) - 1, n_mepsc);
+    k = kernel(1:(idx_end-idx+1));
+    trace_mepsc(idx:idx_end) = trace_mepsc(idx:idx_end) - event_amps_mepsc(i) * k;
+end
+
+threshold_mepsc = -0.12;
+refractory_mepsc = round(0.006 / dt_mepsc);
+candidate_idx = find(trace_mepsc < threshold_mepsc);
+detected_idx = [];
+last_idx = -refractory_mepsc;
+for i=1:numel(candidate_idx)
+    idx = candidate_idx(i);
+    if idx - last_idx >= refractory_mepsc
+        w_end = min(idx + round(0.004 / dt_mepsc), n_mepsc);
+        [~, local_rel] = min(trace_mepsc(idx:w_end));
+        local_idx = idx + local_rel - 1;
+        detected_idx = [detected_idx; local_idx]; %#ok<AGROW>
+        last_idx = local_idx;
+    end
+end
+
+detected_times_mepsc = (detected_idx - 1) * dt_mepsc;
+detected_amps_mepsc = -trace_mepsc(detected_idx);
+expected_event_count_mepsc = numel(detected_idx);
+expected_mean_amp_mepsc = mean(detected_amps_mepsc);
+
+save(fullfile(out_dir, 'mEPSCAnalysis_gold.mat'), ...
+    'dt_mepsc', 'time_mepsc', 'trace_mepsc', 'event_times_mepsc', ...
+    'detected_times_mepsc', 'detected_amps_mepsc', ...
+    'expected_event_count_mepsc', 'expected_mean_amp_mepsc', '-v7');
+
 fprintf('MATLAB gold fixtures exported to %s\n', out_dir);
 """
 
@@ -340,6 +505,10 @@ FIXTURE_FILES = [
     "TrialExamples_gold.mat",
     "CovCollExamples_gold.mat",
     "EventsExamples_gold.mat",
+    "AnalysisExamples_gold.mat",
+    "DecodingExample_gold.mat",
+    "ExplicitStimulusWhiskerData_gold.mat",
+    "mEPSCAnalysis_gold.mat",
 ]
 
 

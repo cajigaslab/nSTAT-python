@@ -3,6 +3,7 @@ policy_name: functional_equivalence_gate
 
 method_thresholds:
   min_verified_ratio_overall: 0.95
+  min_eligible_verified_ratio_overall: 1.0
   max_missing_symbol_methods: 0
   class_min_verified_methods:
     SignalObj: 25
