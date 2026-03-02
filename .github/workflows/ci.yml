@@ -111,3 +111,15 @@ jobs:
           python tools/parity/check_tier1_progress.py \
             --report parity/parity_gap_report.json \
             --policy parity/tier1_gate_policy.yml
+
+      - name: Enforce functional parity progress gate
+        run: |
+          python tools/parity/check_functional_parity_progress.py \
+            --report parity/function_example_alignment_report.json \
+            --policy parity/functional_gate_policy.yml
+
+      - name: Enforce example output spec
+        run: |
+          python tools/parity/check_example_output_spec.py \
+            --report parity/function_example_alignment_report.json \
+            --spec parity/example_output_spec.yml

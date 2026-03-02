@@ -1,0 +1,1252 @@
+{
+  "class_rows": [
+    {
+      "attempted_method_count": 72,
+      "failed_methods": [
+        {
+          "error": "ValueError",
+          "mapped_member": "setDataLabels"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "getIndicesFromLabels"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "convertNamesToIndices"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "getIndexFromLabel"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "setMaskByLabels"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "getSubSignalFromNames"
+        }
+      ],
+      "matlab_class": "SignalObj",
+      "matlab_method_count": 98,
+      "skipped_methods": [
+        {
+          "mapped_member": "setUnits",
+          "reason": "unresolved_arg:units"
+        },
+        {
+          "mapped_member": "setXUnits",
+          "reason": "unresolved_arg:units"
+        },
+        {
+          "mapped_member": "setYUnits",
+          "reason": "unresolved_arg:units"
+        },
+        {
+          "mapped_member": "setPlotProps",
+          "reason": "unresolved_arg:props"
+        },
+        {
+          "mapped_member": "getValueAt",
+          "reason": "unresolved_arg:queryTime"
+        },
+        {
+          "mapped_member": "plus",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "minus",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "power",
+          "reason": "unresolved_arg:exponent"
+        },
+        {
+          "mapped_member": "times",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "mtimes",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "rdivide",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "ldivide",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "derivativeAt",
+          "reason": "unresolved_arg:queryTime"
+        },
+        {
+          "mapped_member": "filter",
+          "reason": "unresolved_arg:b"
+        },
+        {
+          "mapped_member": "filtfilt",
+          "reason": "unresolved_arg:b"
+        },
+        {
+          "mapped_member": "makeCompatible",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "crosscorrelation",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "merge",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "findNearestTimeIndices",
+          "reason": "unresolved_arg:queryTimes"
+        },
+        {
+          "mapped_member": "findNearestTimeIndex",
+          "reason": "unresolved_arg:queryTime"
+        },
+        {
+          "mapped_member": "shift",
+          "reason": "unresolved_arg:offset_s"
+        },
+        {
+          "mapped_member": "shiftMe",
+          "reason": "unresolved_arg:offset_s"
+        },
+        {
+          "mapped_member": "getSigInTimeWindow",
+          "reason": "unresolved_arg:t0"
+        },
+        {
+          "mapped_member": "setDataMask",
+          "reason": "unresolved_arg:mask"
+        },
+        {
+          "mapped_member": "setMaskByInd",
+          "reason": "unresolved_arg:mask"
+        },
+        {
+          "mapped_member": "cell2str",
+          "reason": "unresolved_arg:cells"
+        }
+      ],
+      "success_methods": [
+        "MTMspectrum",
+        "abs",
+        "alignTime",
+        "alignToMax",
+        "areDataLabelsEmpty",
+        "autocorrelation",
+        "clearPlotProps",
+        "convertSigStructureToStructure",
+        "convertSimpleStructureToSigStructure",
+        "copy",
+        "copySignal",
+        "ctranspose",
+        "data",
+        "dataToMatrix",
+        "dataToStructure",
+        "derivative",
+        "findGlobalPeak",
+        "findIndFromDataMask",
+        "findMaxima",
+        "findMinima",
+        "findPeaks",
+        "getAvailableColor",
+        "getOrigDataSig",
+        "getOriginalData",
+        "getPlotProps",
+        "getSubSignal",
+        "getSubSignalFromInd",
+        "getSubSignalsWithinNStd",
+        "integral",
+        "isLabelPresent",
+        "isMaskSet",
+        "log",
+        "max",
+        "mean",
+        "median",
+        "min",
+        "mode",
+        "normWindowedSignal",
+        "periodogram",
+        "plot",
+        "plotAllVariability",
+        "plotPropsSet",
+        "plotVariability",
+        "resample",
+        "resampleMe",
+        "resetMask",
+        "restoreToOriginal",
+        "setMask",
+        "setMaxTime",
+        "setMinTime",
+        "setName",
+        "setSampleRate",
+        "setXlabel",
+        "setYLabel",
+        "setupPlots",
+        "signalFromStruct",
+        "spectrogram",
+        "sqrt",
+        "std",
+        "time",
+        "transpose",
+        "uminus",
+        "uplus",
+        "windowedSignal",
+        "xcorr",
+        "xcov"
+      ],
+      "success_ratio_attempted": 0.9166666666666666,
+      "success_ratio_total": 0.673469387755102,
+      "successful_method_count": 66
+    },
+    {
+      "attempted_method_count": 10,
+      "failed_methods": [],
+      "matlab_class": "Covariate",
+      "matlab_method_count": 14,
+      "skipped_methods": [
+        {
+          "mapped_member": "filtfilt",
+          "reason": "unresolved_arg:b"
+        },
+        {
+          "mapped_member": "setConfInterval",
+          "reason": "unresolved_arg:interval"
+        },
+        {
+          "mapped_member": "plus",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "minus",
+          "reason": "unresolved_arg:other"
+        }
+      ],
+      "success_methods": [
+        "Covariate",
+        "computeMeanPlusCI",
+        "copySignal",
+        "dataToStructure",
+        "fromStructure",
+        "getSigRep",
+        "getSubSignal",
+        "isConfIntervalSet",
+        "plot",
+        "toStructure"
+      ],
+      "success_ratio_attempted": 1.0,
+      "success_ratio_total": 0.7142857142857143,
+      "successful_method_count": 10
+    },
+    {
+      "attempted_method_count": 5,
+      "failed_methods": [
+        {
+          "error": "TypeError",
+          "mapped_member": "ConfidenceInterval"
+        }
+      ],
+      "matlab_class": "ConfidenceInterval",
+      "matlab_method_count": 5,
+      "skipped_methods": [],
+      "success_methods": [
+        "fromStructure",
+        "plot",
+        "setColor",
+        "setValue"
+      ],
+      "success_ratio_attempted": 0.8,
+      "success_ratio_total": 0.8,
+      "successful_method_count": 4
+    },
+    {
+      "attempted_method_count": 4,
+      "failed_methods": [
+        {
+          "error": "TypeError",
+          "mapped_member": "Events"
+        }
+      ],
+      "matlab_class": "Events",
+      "matlab_method_count": 5,
+      "skipped_methods": [
+        {
+          "mapped_member": "dsxy2figxy",
+          "reason": "unresolved_arg:x"
+        }
+      ],
+      "success_methods": [
+        "fromStructure",
+        "plot",
+        "toStructure"
+      ],
+      "success_ratio_attempted": 0.75,
+      "success_ratio_total": 0.6,
+      "successful_method_count": 3
+    },
+    {
+      "attempted_method_count": 6,
+      "failed_methods": [
+        {
+          "error": "TypeError",
+          "mapped_member": "History"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "setWindow"
+        }
+      ],
+      "matlab_class": "History",
+      "matlab_method_count": 8,
+      "skipped_methods": [
+        {
+          "mapped_member": "computeHistory",
+          "reason": "unresolved_arg:timeGrid_s"
+        },
+        {
+          "mapped_member": "computeNSTHistoryWindow",
+          "reason": "unresolved_arg:spikeTrain"
+        }
+      ],
+      "success_methods": [
+        "fromStructure",
+        "plot",
+        "toFilter",
+        "toStructure"
+      ],
+      "success_ratio_attempted": 0.6666666666666666,
+      "success_ratio_total": 0.5,
+      "successful_method_count": 4
+    },
+    {
+      "attempted_method_count": 28,
+      "failed_methods": [
+        {
+          "error": "TypeError",
+          "mapped_member": "nspikeTrain"
+        },
+        {
+          "error": "KeyError",
+          "mapped_member": "getFieldVal"
+        }
+      ],
+      "matlab_class": "nspikeTrain",
+      "matlab_method_count": 29,
+      "skipped_methods": [
+        {
+          "mapped_member": "setSigRep",
+          "reason": "unresolved_arg:sigRep"
+        }
+      ],
+      "success_methods": [
+        "clearSigRep",
+        "computeRate",
+        "computeStatistics",
+        "fromStructure",
+        "getISIs",
+        "getLStatistic",
+        "getMaxBinSizeBinary",
+        "getMinISI",
+        "getSigRep",
+        "isSigRepBinary",
+        "nstCopy",
+        "partitionNST",
+        "plot",
+        "plotExponentialFit",
+        "plotISIHistogram",
+        "plotISISpectrumFunction",
+        "plotJointISIHistogram",
+        "plotProbPlot",
+        "resample",
+        "restoreToOriginal",
+        "setMER",
+        "setMaxTime",
+        "setMinTime",
+        "setName",
+        "spike_times",
+        "toStructure"
+      ],
+      "success_ratio_attempted": 0.9285714285714286,
+      "success_ratio_total": 0.896551724137931,
+      "successful_method_count": 26
+    },
+    {
+      "attempted_method_count": 45,
+      "failed_methods": [
+        {
+          "error": "KeyError",
+          "mapped_member": "getFieldVal"
+        },
+        {
+          "error": "TypeError",
+          "mapped_member": "setMask"
+        },
+        {
+          "error": "TypeError",
+          "mapped_member": "setNeuronMask"
+        }
+      ],
+      "matlab_class": "nstColl",
+      "matlab_method_count": 53,
+      "skipped_methods": [
+        {
+          "mapped_member": "merge",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "shiftTime",
+          "reason": "unresolved_arg:offset_s"
+        },
+        {
+          "mapped_member": "setNeuronMaskFromInd",
+          "reason": "unresolved_arg:indices"
+        },
+        {
+          "mapped_member": "setNeighbors",
+          "reason": "unresolved_arg:neighbors"
+        },
+        {
+          "mapped_member": "addToColl",
+          "reason": "unresolved_arg:train"
+        },
+        {
+          "mapped_member": "addNeuronNamesToEnsCovColl",
+          "reason": "unresolved_arg:covColl"
+        },
+        {
+          "mapped_member": "generateUnitImpulseBasis",
+          "reason": "unresolved_arg:basisWidth_s"
+        },
+        {
+          "mapped_member": "addSingleSpikeToColl",
+          "reason": "unresolved_arg:unitInd"
+        }
+      ],
+      "success_methods": [
+        "BinarySigRep",
+        "areNeighborsSet",
+        "copy",
+        "dataToMatrix",
+        "enforceSampleRate",
+        "ensureConsistancy",
+        "estimateVarianceAcrossTrials",
+        "findMaxSampleRate",
+        "fromStructure",
+        "getEnsembleNeuronCovariates",
+        "getFirstSpikeTime",
+        "getISIs",
+        "getIndFromMask",
+        "getIndFromMaskMinusOne",
+        "getLastSpikeTime",
+        "getMaxBinSizeBinary",
+        "getMinISIs",
+        "getNST",
+        "getNSTFromName",
+        "getNSTIndicesFromName",
+        "getNSTnameFromInd",
+        "getNSTnames",
+        "getNeighbors",
+        "getSpikeTimes",
+        "getUniqueNSTnames",
+        "isNeuronMaskSet",
+        "isSigRepBinary",
+        "plot",
+        "plotExponentialFit",
+        "plotISIHistogram",
+        "psth",
+        "psthBars",
+        "psthGLM",
+        "resample",
+        "resetMask",
+        "restoreToOriginal",
+        "setMaxTime",
+        "setMinTime",
+        "ssglm",
+        "toSpikeTrain",
+        "toStructure",
+        "updateTimes"
+      ],
+      "success_ratio_attempted": 0.9333333333333333,
+      "success_ratio_total": 0.7924528301886793,
+      "successful_method_count": 42
+    },
+    {
+      "attempted_method_count": 46,
+      "failed_methods": [
+        {
+          "error": "TypeError",
+          "mapped_member": "setMask"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "dataToMatrixFromNames"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "dataToMatrixFromSel"
+        },
+        {
+          "error": "TypeError",
+          "mapped_member": "setMasksFromSelector"
+        },
+        {
+          "error": "KeyError",
+          "mapped_member": "getCovIndFromName"
+        },
+        {
+          "error": "IndexError",
+          "mapped_member": "generateRemainingIndex"
+        },
+        {
+          "error": "IndexError",
+          "mapped_member": "covIndFromSelector"
+        },
+        {
+          "error": "IndexError",
+          "mapped_member": "parseDataSelectorArray"
+        }
+      ],
+      "matlab_class": "CovColl",
+      "matlab_method_count": 55,
+      "skipped_methods": [
+        {
+          "mapped_member": "addToColl",
+          "reason": "unresolved_arg:cov"
+        },
+        {
+          "mapped_member": "addCovCollection",
+          "reason": "unresolved_arg:other"
+        },
+        {
+          "mapped_member": "flattenCovMask",
+          "reason": "unresolved_arg:mask"
+        },
+        {
+          "mapped_member": "getSelectorFromMasks",
+          "reason": "unresolved_arg:mask"
+        },
+        {
+          "mapped_member": "generateSelectorCell",
+          "reason": "unresolved_arg:mask"
+        },
+        {
+          "mapped_member": "addCovCellToColl",
+          "reason": "unresolved_arg:covariates"
+        },
+        {
+          "mapped_member": "addSingleCovToColl",
+          "reason": "unresolved_arg:cov"
+        },
+        {
+          "mapped_member": "removeFromCollByIndices",
+          "reason": "unresolved_arg:indices"
+        },
+        {
+          "mapped_member": "containsChars",
+          "reason": "unresolved_arg:text"
+        }
+      ],
+      "success_methods": [
+        "copy",
+        "dataToMatrix",
+        "dataToStructure",
+        "enforceSampleRate",
+        "findMaxTime",
+        "findMinTime",
+        "fromStructure",
+        "getAllCovLabels",
+        "getCov",
+        "getCovDataMask",
+        "getCovDimension",
+        "getCovIndicesFromNames",
+        "getCovLabelsFromMask",
+        "getCovMaskFromSelector",
+        "isCovMaskSet",
+        "isCovPresent",
+        "isaSelectorCell",
+        "maskAwayAllExcept",
+        "maskAwayCov",
+        "maskAwayOnlyCov",
+        "nActCovar",
+        "numActCov",
+        "plot",
+        "removeCovariate",
+        "removeFromColl",
+        "resample",
+        "resetCovShift",
+        "resetMask",
+        "restoreToOriginal",
+        "restrictToTimeWindow",
+        "setCovShift",
+        "setMaxTime",
+        "setMinTime",
+        "setSampleRate",
+        "sumDimensions",
+        "toStructure",
+        "updateTimes"
+      ],
+      "success_ratio_attempted": 0.8260869565217391,
+      "success_ratio_total": 0.6909090909090909,
+      "successful_method_count": 38
+    },
+    {
+      "attempted_method_count": 6,
+      "failed_methods": [
+        {
+          "error": "ValueError",
+          "mapped_member": "setConfig"
+        }
+      ],
+      "matlab_class": "TrialConfig",
+      "matlab_method_count": 6,
+      "skipped_methods": [],
+      "success_methods": [
+        "fromStructure",
+        "getName",
+        "setName",
+        "toStructure"
+      ],
+      "success_ratio_attempted": 0.8333333333333334,
+      "success_ratio_total": 0.8333333333333334,
+      "successful_method_count": 5
+    },
+    {
+      "attempted_method_count": 7,
+      "failed_methods": [
+        {
+          "error": "TypeError",
+          "mapped_member": "ConfigColl"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "setConfigNames"
+        },
+        {
+          "error": "IndexError",
+          "mapped_member": "getSubsetConfigs"
+        }
+      ],
+      "matlab_class": "ConfigColl",
+      "matlab_method_count": 9,
+      "skipped_methods": [
+        {
+          "mapped_member": "addConfig",
+          "reason": "unresolved_arg:config"
+        },
+        {
+          "mapped_member": "setConfig",
+          "reason": "unresolved_arg:config"
+        }
+      ],
+      "success_methods": [
+        "fromStructure",
+        "getConfig",
+        "getConfigNames",
+        "toStructure"
+      ],
+      "success_ratio_attempted": 0.5714285714285714,
+      "success_ratio_total": 0.4444444444444444,
+      "successful_method_count": 4
+    },
+    {
+      "attempted_method_count": 59,
+      "failed_methods": [
+        {
+          "error": "ValueError",
+          "mapped_member": "getDesignMatrix"
+        },
+        {
+          "error": "TypeError",
+          "mapped_member": "getTrialPartition"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "setTrialTimesFor"
+        },
+        {
+          "error": "IndexError",
+          "mapped_member": "updateTimePartitions"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "setEnsCovMask"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "setCovMask"
+        },
+        {
+          "error": "TypeError",
+          "mapped_member": "setNeuronMask"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "removeCov"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "getSpikeVector"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "getDesignMatrix"
+        },
+        {
+          "error": "IndexError",
+          "mapped_member": "getCov"
+        },
+        {
+          "error": "AttributeError",
+          "mapped_member": "restoreToOriginal"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "makeConsistentSampleRate"
+        },
+        {
+          "error": "IndexError",
+          "mapped_member": "makeConsistentTime"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "plotCovariates"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "toStructure"
+        },
+        {
+          "error": "IndexError",
+          "mapped_member": "isSampleRateConsistent"
+        },
+        {
+          "error": "IndexError",
+          "mapped_member": "findMinTime"
+        },
+        {
+          "error": "IndexError",
+          "mapped_member": "findMaxTime"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "findMinSampleRate"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "findMaxSampleRate"
+        }
+      ],
+      "matlab_class": "Trial",
+      "matlab_method_count": 68,
+      "skipped_methods": [
+        {
+          "mapped_member": "setTrialEvents",
+          "reason": "unresolved_arg:events"
+        },
+        {
+          "mapped_member": "setNeighbors",
+          "reason": "unresolved_arg:neighbors"
+        },
+        {
+          "mapped_member": "setHistory",
+          "reason": "unresolved_arg:history"
+        },
+        {
+          "mapped_member": "setEnsCovHist",
+          "reason": "unresolved_arg:ensCovHist"
+        },
+        {
+          "mapped_member": "addCov",
+          "reason": "unresolved_arg:cov"
+        },
+        {
+          "mapped_member": "getHistForNeurons",
+          "reason": "unresolved_arg:neuronIndices"
+        },
+        {
+          "mapped_member": "flattenCovMask",
+          "reason": "unresolved_arg:mask"
+        },
+        {
+          "mapped_member": "flattenMask",
+          "reason": "unresolved_arg:mask"
+        },
+        {
+          "mapped_member": "shiftCovariates",
+          "reason": "unresolved_arg:lag_s"
+        }
+      ],
+      "success_methods": [
+        "fromStructure",
+        "getAllCovLabels",
+        "getAllLabels",
+        "getCovLabelsFromMask",
+        "getCovSelectorFromMask",
+        "getEnsCovLabels",
+        "getEnsCovLabelsFromMask",
+        "getEnsCovMatrix",
+        "getEnsembleNeuronCovariates",
+        "getEvents",
+        "getHistLabels",
+        "getHistMatrices",
+        "getLabelsFromMask",
+        "getNeuron",
+        "getNeuronIndFromMask",
+        "getNeuronIndFromName",
+        "getNeuronNames",
+        "getNeuronNeighbors",
+        "getNumHist",
+        "getNumUniqueNeurons",
+        "getUniqueNeuronNames",
+        "isCovMaskSet",
+        "isEnsCovHistSet",
+        "isHistSet",
+        "isMaskSet",
+        "isNeuronMaskSet",
+        "plot",
+        "plotRaster",
+        "resample",
+        "resampleEnsColl",
+        "resetCovMask",
+        "resetEnsCovMask",
+        "resetHistory",
+        "resetNeuronMask",
+        "setMaxTime",
+        "setMinTime",
+        "setSampleRate",
+        "setTrialPartition"
+      ],
+      "success_ratio_attempted": 0.6440677966101694,
+      "success_ratio_total": 0.5588235294117647,
+      "successful_method_count": 38
+    },
+    {
+      "attempted_method_count": 18,
+      "failed_methods": [
+        {
+          "error": "TypeError",
+          "mapped_member": "CIF"
+        }
+      ],
+      "matlab_class": "CIF",
+      "matlab_method_count": 21,
+      "skipped_methods": [
+        {
+          "mapped_member": "setSpikeTrain",
+          "reason": "unresolved_arg:spike_train"
+        },
+        {
+          "mapped_member": "setHistory",
+          "reason": "unresolved_arg:history"
+        },
+        {
+          "mapped_member": "simulateCIFByThinningFromLambda",
+          "reason": "unresolved_arg:lambda_signal"
+        }
+      ],
+      "success_methods": [
+        "CIFCopy",
+        "evalFunctionWithVectorArgs",
+        "evalGradient",
+        "evalGradientLDGamma",
+        "evalGradientLog",
+        "evalGradientLogLDGamma",
+        "evalJacobian",
+        "evalJacobianLDGamma",
+        "evalJacobianLog",
+        "evalJacobianLogLDGamma",
+        "evalLDGamma",
+        "evalLambdaDelta",
+        "evalLogLDGamma",
+        "isSymBeta",
+        "resolveSimulinkModelName",
+        "simulateCIF",
+        "simulateCIFByThinning"
+      ],
+      "success_ratio_attempted": 0.9444444444444444,
+      "success_ratio_total": 0.8095238095238095,
+      "successful_method_count": 17
+    },
+    {
+      "attempted_method_count": 15,
+      "failed_methods": [
+        {
+          "error": "ValueError",
+          "mapped_member": "RunAnalysisForNeuron"
+        },
+        {
+          "error": "ValueError",
+          "mapped_member": "RunAnalysisForAllNeurons"
+        }
+      ],
+      "matlab_class": "Analysis",
+      "matlab_method_count": 22,
+      "skipped_methods": [
+        {
+          "mapped_member": "plotSeqCorr",
+          "reason": "unresolved_arg:residual"
+        },
+        {
+          "mapped_member": "computeKSStats",
+          "reason": "unresolved_arg:transformed"
+        },
+        {
+          "mapped_member": "compHistEnsCoeffForAll",
+          "reason": "unresolved_arg:y_list"
+        },
+        {
+          "mapped_member": "computeGrangerCausalityMatrix",
+          "reason": "unresolved_arg:spikeMatrix"
+        },
+        {
+          "mapped_member": "spikeTrigAvg",
+          "reason": "unresolved_arg:timeGrid_s"
+        },
+        {
+          "mapped_member": "flatMaskCellToMat",
+          "reason": "unresolved_arg:flatMaskCell"
+        },
+        {
+          "mapped_member": "ksdiscrete",
+          "reason": "unresolved_arg:sample"
+        }
+      ],
+      "success_methods": [
+        "GLMFit",
+        "KSPlot",
+        "bnlrCG",
+        "compHistEnsCoeff",
+        "computeFitResidual",
+        "computeHistLag",
+        "computeHistLagForAll",
+        "computeInvGausTrans",
+        "computeNeighbors",
+        "fdr_bh",
+        "plotCoeffs",
+        "plotFitResidual",
+        "plotInvGausTrans"
+      ],
+      "success_ratio_attempted": 0.8666666666666667,
+      "success_ratio_total": 0.5909090909090909,
+      "successful_method_count": 13
+    },
+    {
+      "attempted_method_count": 26,
+      "failed_methods": [
+        {
+          "error": "ValueError",
+          "mapped_member": "getCoeffIndex"
+        }
+      ],
+      "matlab_class": "FitResult",
+      "matlab_method_count": 33,
+      "skipped_methods": [
+        {
+          "mapped_member": "getSubsetFitResult",
+          "reason": "unresolved_arg:subfits"
+        },
+        {
+          "mapped_member": "setKSStats",
+          "reason": "unresolved_arg:ksStat"
+        },
+        {
+          "mapped_member": "setInvGausStats",
+          "reason": "unresolved_arg:stats"
+        },
+        {
+          "mapped_member": "setFitResidual",
+          "reason": "unresolved_arg:fitResidual"
+        },
+        {
+          "mapped_member": "getParam",
+          "reason": "unresolved_arg:key"
+        },
+        {
+          "mapped_member": "CellArrayToStructure",
+          "reason": "unresolved_arg:results"
+        },
+        {
+          "mapped_member": "xticklabel_rotate",
+          "reason": "unresolved_arg:XTick"
+        }
+      ],
+      "success_methods": [
+        "FitResult",
+        "KSPlot",
+        "addParamsToFit",
+        "computePlotParams",
+        "computeValLambda",
+        "fromStructure",
+        "getCoeffs",
+        "getHistCoeffs",
+        "getHistIndex",
+        "getPlotParams",
+        "getUniqueLabels",
+        "isValDataPresent",
+        "mapCovLabelsToUniqueLabels",
+        "mergeResults",
+        "plotCoeffs",
+        "plotCoeffsWithoutHistory",
+        "plotHistCoeffs",
+        "plotInvGausTrans",
+        "plotResidual",
+        "plotResults",
+        "plotSeqCorr",
+        "plotValidation",
+        "predict",
+        "setNeuronName",
+        "toStructure"
+      ],
+      "success_ratio_attempted": 0.9615384615384616,
+      "success_ratio_total": 0.7575757575757576,
+      "successful_method_count": 25
+    },
+    {
+      "attempted_method_count": 26,
+      "failed_methods": [],
+      "matlab_class": "FitResSummary",
+      "matlab_method_count": 30,
+      "skipped_methods": [
+        {
+          "mapped_member": "FitResSummary",
+          "reason": "unresolved_arg:fitResultsCell"
+        },
+        {
+          "mapped_member": "binCoeffs",
+          "reason": "unresolved_arg:minVal"
+        },
+        {
+          "mapped_member": "setCoeffRange",
+          "reason": "unresolved_arg:minVal"
+        },
+        {
+          "mapped_member": "xticklabel_rotate",
+          "reason": "unresolved_arg:XTick"
+        }
+      ],
+      "success_methods": [
+        "boxPlot",
+        "computeDiffMat",
+        "fromStructure",
+        "getCoeffIndex",
+        "getCoeffs",
+        "getDiffAIC",
+        "getDiffBIC",
+        "getDifflogLL",
+        "getHistCoeffs",
+        "getHistIndex",
+        "getSigCoeffs",
+        "getUniqueLabels",
+        "mapCovLabelsToUniqueLabels",
+        "plot2dCoeffSummary",
+        "plot3dCoeffSummary",
+        "plotAIC",
+        "plotAllCoeffs",
+        "plotBIC",
+        "plotCoeffsWithoutHistory",
+        "plotHistCoeffs",
+        "plotIC",
+        "plotKSSummary",
+        "plotResidualSummary",
+        "plotSummary",
+        "plotlogLL",
+        "toStructure"
+      ],
+      "success_ratio_attempted": 1.0,
+      "success_ratio_total": 0.8666666666666667,
+      "successful_method_count": 26
+    },
+    {
+      "attempted_method_count": 28,
+      "failed_methods": [
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "PPSS_EMFB"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "PPSS_EM"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "PPSS_EStep"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "PPSS_MStep"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "prepareEMResults"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "estimateInfoMat"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "KF_EMCreateConstraints"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "KF_EM"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "KF_ComputeParamStandardErrors"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "KF_EStep"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "KF_MStep"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "mPPCO_EMCreateConstraints"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "mPPCO_ComputeParamStandardErrors"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "mPPCO_EM"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "mPPCO_EStep"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "mPPCO_MStep"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "PP_EMCreateConstraints"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "PP_ComputeParamStandardErrors"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "PP_EM"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "PP_EStep"
+        },
+        {
+          "error": "NotImplementedError",
+          "mapped_member": "PP_MStep"
+        }
+      ],
+      "matlab_class": "DecodingAlgorithms",
+      "matlab_method_count": 45,
+      "skipped_methods": [
+        {
+          "mapped_member": "PP_fixedIntervalSmoother",
+          "reason": "unresolved_arg:xf"
+        },
+        {
+          "mapped_member": "PPDecode_predict",
+          "reason": "unresolved_arg:x_prev"
+        },
+        {
+          "mapped_member": "PPDecode_update",
+          "reason": "unresolved_arg:x_pred"
+        },
+        {
+          "mapped_member": "PPDecode_updateLinear",
+          "reason": "unresolved_arg:x_pred"
+        },
+        {
+          "mapped_member": "ukf",
+          "reason": "unresolved_arg:x_prev"
+        },
+        {
+          "mapped_member": "ukf_ut",
+          "reason": "unresolved_arg:sigmas"
+        },
+        {
+          "mapped_member": "ukf_sigmas",
+          "reason": "unresolved_arg:x"
+        },
+        {
+          "mapped_member": "kalman_filter",
+          "reason": "unresolved_arg:y"
+        },
+        {
+          "mapped_member": "kalman_update",
+          "reason": "unresolved_arg:x_pred"
+        },
+        {
+          "mapped_member": "kalman_predict",
+          "reason": "unresolved_arg:x_prev"
+        },
+        {
+          "mapped_member": "kalman_fixedIntervalSmoother",
+          "reason": "unresolved_arg:xf"
+        },
+        {
+          "mapped_member": "kalman_smootherFromFiltered",
+          "reason": "unresolved_arg:y"
+        },
+        {
+          "mapped_member": "kalman_smoother",
+          "reason": "unresolved_arg:xf"
+        },
+        {
+          "mapped_member": "compute_spike_rate_cis",
+          "reason": "missing_member"
+        },
+        {
+          "mapped_member": "mPPCO_fixedIntervalSmoother",
+          "reason": "unresolved_arg:xf"
+        },
+        {
+          "mapped_member": "mPPCODecode_predict",
+          "reason": "unresolved_arg:x_prev"
+        },
+        {
+          "mapped_member": "mPPCODecode_update",
+          "reason": "unresolved_arg:x_pred"
+        }
+      ],
+      "success_methods": [
+        "ComputeStimulusCIs",
+        "PPDecodeFilter",
+        "PPDecodeFilterLinear",
+        "PPHybridFilter",
+        "PPHybridFilterLinear",
+        "computeSpikeRateDiffCIs",
+        "mPPCODecodeLinear"
+      ],
+      "success_ratio_attempted": 0.25,
+      "success_ratio_total": 0.15555555555555556,
+      "successful_method_count": 7
+    }
+  ],
+  "generated_at_utc": "2026-03-02T16:24:13.226778+00:00",
+  "repo_root": "/private/tmp/nSTAT-python-cleanroom",
+  "summary": {
+    "attempt_ratio": 0.8003992015968064,
+    "attempted_methods": 401,
+    "success_ratio_attempted": 0.8179551122194514,
+    "success_ratio_total": 0.654690618762475,
+    "successful_methods": 328,
+    "total_methods": 501
+  }
+}

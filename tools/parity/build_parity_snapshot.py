@@ -39,9 +39,25 @@ def main() -> int:
         "--fail-on",
         args.fail_on,
     ]
+    probe_cmd = [
+        sys.executable,
+        str(repo_root / "tools" / "parity" / "generate_method_probe_report.py"),
+        "--repo-root",
+        str(repo_root),
+    ]
+    audit_cmd = [
+        sys.executable,
+        str(repo_root / "tools" / "parity" / "generate_equivalence_audit.py"),
+        "--repo-root",
+        str(repo_root),
+        "--matlab-root",
+        str(args.matlab_root.resolve()),
+    ]
 
     subprocess.run(inventory_cmd, check=True)
     result = subprocess.run(report_cmd, check=False)
+    subprocess.run(probe_cmd, check=True)
+    subprocess.run(audit_cmd, check=True)
     return int(result.returncode)
 
 

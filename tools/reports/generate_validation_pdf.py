@@ -1,36 +1,30 @@
 #!/usr/bin/env python3
-"""Generate a visual PDF validation report for the standalone nSTAT-python toolbox."""
+"""Generate a complete visual PDF validation report for nSTAT-python examples."""
 
 from __future__ import annotations
 
 import argparse
-import math
+import base64
+import functools
+import os
+import re
 import subprocess
-import sys
+import textwrap
 import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
-import matplotlib.pyplot as plt
+import nbformat
 import numpy as np
 import yaml
+from nbclient import NotebookClient
+from PIL import Image
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(REPO_ROOT / "src") not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT / "src"))
-
-from nstat.analysis import Analysis  # noqa: E402
-from nstat.cif import CIFModel  # noqa: E402
-from nstat.decoding import DecodingAlgorithms  # noqa: E402
-from nstat.signal import Covariate  # noqa: E402
-from nstat.spikes import SpikeTrain, SpikeTrainCollection  # noqa: E402
-from nstat.trial import CovariateCollection, Trial, TrialConfig  # noqa: E402
 
 
 @dataclass(slots=True)
@@ -46,6 +40,31 @@ class CommandResult:
         return self.returncode == 0
 
 
+@dataclass(slots=True)
+class NotebookTarget:
+    topic: str
+    file: Path
+    run_group: str
+
+
+@dataclass(slots=True)
+class NotebookReport:
+    topic: str
+    file: Path
+    run_group: str
+    executed: bool
+    duration_s: float
+    image_paths: list[Path]
+    image_count: int
+    text_snippet: str
+    error: str
+    matlab_ref_images: list[Path]
+    similarity_score: float | None
+    parity_pass: bool | None
+    matched_python_image: Path | None
+    matched_matlab_image: Path | None
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -53,6 +72,18 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=REPO_ROOT,
         help="Path to nSTAT-python repository root.",
+    )
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=REPO_ROOT / "tools" / "notebooks" / "notebook_manifest.yml",
+        help="Notebook manifest path.",
+    )
+    parser.add_argument(
+        "--matlab-help-root",
+        type=Path,
+        default=None,
+        help="Path to MATLAB nSTAT helpfiles folder (for reference parity images).",
     )
     parser.add_argument(
         "--output-dir",
@@ -64,18 +95,35 @@ def parse_args() -> argparse.Namespace:
         "--tmp-dir",
         type=Path,
         default=REPO_ROOT / "tmp" / "pdfs" / "validation_report",
-        help="Directory for intermediate plots.",
+        help="Directory for intermediate images.",
     )
     parser.add_argument(
         "--notebook-group",
-        choices=["smoke", "full"],
-        default="smoke",
-        help="Notebook validation group to execute in report.",
+        choices=["smoke", "full", "all"],
+        default="full",
+        help="Notebook group to include in the report.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=900,
+        help="Per-cell timeout in seconds when executing notebooks.",
+    )
+    parser.add_argument(
+        "--parity-threshold",
+        type=float,
+        default=0.80,
+        help="Minimum image similarity score in [0,1] for Python-vs-MATLAB pass.",
+    )
+    parser.add_argument(
+        "--skip-parity-check",
+        action="store_true",
+        help="Skip MATLAB-reference image parity scoring.",
     )
     parser.add_argument(
         "--skip-command-tests",
         action="store_true",
-        help="Skip command-driven checks and only render visual example pages.",
+        help="Skip command-driven checks and only render notebook validation pages.",
     )
     return parser.parse_args()
 
@@ -108,355 +156,522 @@ def run_command(name: str, cmd: list[str], cwd: Path) -> CommandResult:
     )
 
 
-def load_tolerances(repo_root: Path) -> dict[str, Any]:
-    tol_path = repo_root / "tests" / "parity" / "tolerances.yml"
-    return yaml.safe_load(tol_path.read_text(encoding="utf-8"))
+def load_targets(manifest_path: Path, repo_root: Path, group: str) -> list[NotebookTarget]:
+    payload = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    all_targets: list[NotebookTarget] = []
+    for row in payload.get("notebooks", []):
+        all_targets.append(
+            NotebookTarget(
+                topic=str(row["topic"]),
+                file=repo_root / str(row["file"]),
+                run_group=str(row["run_group"]),
+            )
+        )
+    if group in {"full", "all"}:
+        return all_targets
+    return [target for target in all_targets if target.run_group == "smoke"]
 
 
-def _save_figure(path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    plt.tight_layout()
-    plt.savefig(path, dpi=180)
-    plt.close()
+def _short_text(output_text: str, max_chars: int = 280) -> str:
+    clean = " ".join(output_text.split())
+    if len(clean) <= max_chars:
+        return clean
+    return clean[: max_chars - 3] + "..."
 
 
-def _make_nstatpaper_figure(tmp_dir: Path, tolerances: dict[str, Any]) -> tuple[Path, dict[str, float | bool]]:
-    rng = np.random.default_rng(2026)
+def resolve_matlab_help_root(repo_root: Path, provided: Path | None) -> Path | None:
+    candidates: list[Path] = []
+    if provided is not None:
+        candidates.append(provided)
 
-    time_grid = np.linspace(0.0, 20.0, 20001)
-    dt = float(time_grid[1] - time_grid[0])
-    stimulus = np.sin(2.0 * np.pi * 1.5 * time_grid) + 0.3 * np.cos(2.0 * np.pi * 0.5 * time_grid)
-    X = stimulus[:, None]
+    env_help = os.environ.get("NSTAT_MATLAB_HELP_ROOT")
+    if env_help:
+        candidates.append(Path(env_help))
 
-    true_intercept = float(np.log(20.0))
-    true_beta = np.array([0.55])
-    true_model = CIFModel(coefficients=true_beta, intercept=true_intercept, link="poisson")
-    true_rate = true_model.evaluate(X)
-    spike_times = true_model.simulate_by_thinning(time_grid, X, rng=rng)
+    env_root = os.environ.get("NSTAT_MATLAB_ROOT")
+    if env_root:
+        candidates.append(Path(env_root) / "helpfiles")
 
-    cov = Covariate(time=time_grid, data=stimulus, name="stimulus", labels=["stim"])
-    train = SpikeTrain(spike_times=spike_times, t_start=float(time_grid[0]), t_end=float(time_grid[-1]))
-    trial = Trial(spikes=SpikeTrainCollection([train]), covariates=CovariateCollection([cov]))
-    cfg = TrialConfig(covariate_labels=["stim"], sample_rate_hz=1.0 / dt, fit_type="poisson")
-    fit = Analysis.fit_trial(trial, cfg)
-    est_rate = fit.predict(X)
-
-    coef_error = abs(float(fit.coefficients[0]) - float(true_beta[0]))
-    rel_rate_err = float(np.mean(np.abs(est_rate - true_rate) / np.maximum(true_rate, 1e-9)))
-    pass_coef = coef_error <= float(tolerances["poisson_glm"]["coefficient_abs_tol"])
-    pass_rate = rel_rate_err <= float(tolerances["poisson_glm"]["rate_rel_tol"])
-
-    fig, axes = plt.subplots(3, 1, figsize=(9, 7))
-    axes[0].plot(time_grid, stimulus, color="black", linewidth=1.0)
-    axes[0].set_title("nSTATPaperExamples: stimulus")
-    axes[0].set_ylabel("a.u.")
-
-    axes[1].plot(time_grid, true_rate, label="true rate", linewidth=1.1)
-    axes[1].plot(time_grid, est_rate, label="estimated rate", linewidth=1.1)
-    axes[1].set_title("Poisson CIF fit")
-    axes[1].set_ylabel("Hz")
-    axes[1].legend(loc="upper right")
-
-    raster_train = SpikeTrain(spike_times=spike_times, t_start=0.0, t_end=float(time_grid[-1]))
-    centers, counts = raster_train.bin_counts(bin_size_s=0.05)
-    axes[2].bar(centers, counts, width=0.045, color="tab:gray")
-    axes[2].set_title("Binned spike counts")
-    axes[2].set_xlabel("time [s]")
-    axes[2].set_ylabel("count/bin")
-
-    out = tmp_dir / "nstatpaper_examples.png"
-    _save_figure(out)
-    metrics = {
-        "coefficient_abs_error": coef_error,
-        "rate_relative_error": rel_rate_err,
-        "pass_coefficient_tolerance": bool(pass_coef),
-        "pass_rate_tolerance": bool(pass_rate),
-    }
-    return out, metrics
-
-
-def _make_ppsim_figure(tmp_dir: Path, tolerances: dict[str, Any]) -> tuple[Path, dict[str, float | bool]]:
-    rng = np.random.default_rng(2026)
-    time_grid = np.linspace(0.0, 8.0, 8001)
-    dt = float(time_grid[1] - time_grid[0])
-    stimulus = np.sin(2.0 * np.pi * 1.4 * time_grid) + 0.35 * np.cos(2.0 * np.pi * 0.4 * time_grid)
-    X = stimulus[:, None]
-
-    true_intercept = float(np.log(14.0))
-    true_beta = np.array([0.50])
-    model = CIFModel(coefficients=true_beta, intercept=true_intercept, link="poisson")
-    true_rate = model.evaluate(X)
-
-    n_trials = 18
-    spike_trains: list[SpikeTrain] = []
-    counts_all: list[np.ndarray] = []
-    for _ in range(n_trials):
-        spikes = model.simulate_by_thinning(time_grid, X, rng=rng)
-        st = SpikeTrain(spike_times=spikes, t_start=float(time_grid[0]), t_end=float(time_grid[-1]))
-        centers, counts = st.bin_counts(bin_size_s=dt)
-        spike_trains.append(st)
-        counts_all.append(counts)
-
-    X_bins = np.interp(centers, time_grid, stimulus)[:, None]
-    X_stack = np.tile(X_bins, (n_trials, 1))
-    y_stack = np.concatenate(counts_all)
-    fit = Analysis.fit_glm(X=X_stack, y=y_stack, fit_type="poisson", dt=dt)
-    est_rate = fit.predict(X)
-
-    coef_error = abs(float(fit.coefficients[0]) - float(true_beta[0]))
-    rel_rate_err = float(np.mean(np.abs(est_rate - true_rate) / np.maximum(true_rate, 1e-9)))
-    pass_coef = coef_error <= float(tolerances["poisson_glm"]["coefficient_abs_tol"])
-    pass_rate = rel_rate_err <= float(tolerances["poisson_glm"]["rate_rel_tol"])
-
-    fig, axes = plt.subplots(3, 1, figsize=(9, 7))
-    axes[0].plot(time_grid, stimulus, color="black", linewidth=1.0)
-    axes[0].set_title("PPSimExample: driving stimulus")
-    axes[0].set_ylabel("a.u.")
-
-    axes[1].plot(time_grid, true_rate, label="true rate", linewidth=1.1)
-    axes[1].plot(time_grid, est_rate, label="estimated rate", linewidth=1.1)
-    axes[1].set_title("Estimated vs. true CIF")
-    axes[1].set_ylabel("Hz")
-    axes[1].legend(loc="upper right")
-
-    for i, st in enumerate(spike_trains[:10]):
-        axes[2].vlines(st.spike_times, i + 0.6, i + 1.4, color="black", linewidth=0.6)
-    axes[2].set_title("Spike raster, first 10 trials")
-    axes[2].set_xlabel("time [s]")
-    axes[2].set_ylabel("trial")
-
-    out = tmp_dir / "ppsim_example.png"
-    _save_figure(out)
-    metrics = {
-        "coefficient_abs_error": coef_error,
-        "rate_relative_error": rel_rate_err,
-        "total_spikes": float(sum(st.spike_times.size for st in spike_trains)),
-        "pass_coefficient_tolerance": bool(pass_coef),
-        "pass_rate_tolerance": bool(pass_rate),
-    }
-    return out, metrics
-
-
-def _make_decoding_history_figure(tmp_dir: Path, tolerances: dict[str, Any]) -> tuple[Path, dict[str, float | bool]]:
-    rng = np.random.default_rng(2026)
-    n_units = 14
-    n_states = 15
-    n_time = 260
-
-    transition = np.zeros((n_states, n_states), dtype=float)
-    for i in range(n_states):
-        for j, w in ((i - 1, 0.2), (i, 0.6), (i + 1, 0.2)):
-            if 0 <= j < n_states:
-                transition[i, j] += w
-        transition[i, :] /= np.sum(transition[i, :])
-
-    latent = np.zeros(n_time, dtype=int)
-    latent[0] = n_states // 2
-    for t in range(1, n_time):
-        latent[t] = rng.choice(n_states, p=transition[latent[t - 1]])
-
-    centers = np.linspace(0.0, n_states - 1, n_units)
-    widths = np.full(n_units, 2.2)
-    state_axis = np.arange(n_states)[None, :]
-    tuning = 0.06 + 0.42 * np.exp(-0.5 * ((state_axis - centers[:, None]) / widths[:, None]) ** 2)
-
-    history_weight = 0.55
-    history_gain = np.ones(n_time, dtype=float)
-    spike_counts = np.zeros((n_units, n_time), dtype=float)
-    prev_global = 0.0
-    for t in range(n_time):
-        history_gain[t] = math.exp(history_weight * prev_global)
-        lam = tuning[:, latent[t]] * history_gain[t]
-        spike_counts[:, t] = rng.poisson(lam)
-        prev_global = float(np.mean(spike_counts[:, t]))
-
-    decoded_raw, _ = DecodingAlgorithms.decode_state_posterior(
-        spike_counts=spike_counts,
-        tuning_rates=tuning,
-        transition=transition,
+    candidates.append(
+        Path.home()
+        / "Library"
+        / "CloudStorage"
+        / "Dropbox"
+        / "Research"
+        / "Matlab"
+        / "nSTAT_currentRelease_Local"
+        / "helpfiles"
     )
-    corrected = spike_counts / history_gain[None, :]
-    decoded_hist, posterior = DecodingAlgorithms.decode_state_posterior(
-        spike_counts=corrected,
-        tuning_rates=tuning,
-        transition=transition,
+    candidates.append(repo_root / ".." / "nSTAT_currentRelease_Local" / "helpfiles")
+
+    for cand in candidates:
+        resolved = cand.expanduser().resolve()
+        if resolved.is_dir():
+            return resolved
+    return None
+
+
+def collect_matlab_reference_images(topic: str, matlab_help_root: Path | None) -> list[Path]:
+    if matlab_help_root is None:
+        return []
+
+    topic_lower = topic.lower()
+    found: list[Path] = []
+    seen: set[Path] = set()
+
+    def add_if_valid(path: Path) -> None:
+        if not path.exists():
+            return
+        name = path.name.lower()
+        if name.startswith(f"{topic_lower}_eq"):
+            return
+        if "eq" in name and name.startswith(topic_lower):
+            return
+        if name.startswith("logo"):
+            return
+        if path not in seen:
+            seen.add(path)
+            found.append(path)
+
+    html_path = matlab_help_root / f"{topic}.html"
+    if html_path.exists():
+        html = html_path.read_text(encoding="utf-8", errors="ignore")
+        srcs = re.findall(r'<img[^>]+src="([^"]+)"', html, flags=re.IGNORECASE)
+        for src in srcs:
+            src_name = Path(src).name
+            ext = src_name.lower().rsplit(".", 1)[-1] if "." in src_name else ""
+            if ext not in {"png", "jpg", "jpeg", "gif"}:
+                continue
+            candidate = matlab_help_root / src_name
+            add_if_valid(candidate)
+
+    for pattern in (f"{topic}_*.png", f"{topic}.png", f"{topic}-*.png"):
+        for candidate in sorted(matlab_help_root.glob(pattern)):
+            add_if_valid(candidate)
+
+    if found:
+        priority: list[Path] = []
+        secondary: list[Path] = []
+        for path in found:
+            name = path.name.lower()
+            if name.startswith(f"{topic_lower}_") or name == f"{topic_lower}.png":
+                priority.append(path)
+            else:
+                secondary.append(path)
+        found = priority + secondary
+
+    return found[:8]
+
+
+@functools.lru_cache(maxsize=1024)
+def _load_similarity_array(path: Path) -> np.ndarray:
+    image = Image.open(path).convert("L").resize((256, 256), Image.Resampling.BILINEAR)
+    return np.asarray(image, dtype=np.float32) / 255.0
+
+
+def _ncc_score(arr_a: np.ndarray, arr_b: np.ndarray) -> float:
+    va = arr_a.ravel() - float(np.mean(arr_a))
+    vb = arr_b.ravel() - float(np.mean(arr_b))
+    denom = float(np.linalg.norm(va) * np.linalg.norm(vb))
+    if denom <= 1e-12:
+        return 0.0
+    ncc = float(np.dot(va, vb) / denom)
+    return max(0.0, min(1.0, (ncc + 1.0) / 2.0))
+
+
+def compute_image_similarity(path_a: Path, path_b: Path, max_shift_px: int = 12) -> float:
+    arr_a = _load_similarity_array(path_a)
+    arr_b = _load_similarity_array(path_b)
+
+    # Allow small translation tolerance so margin/layout shifts do not
+    # dominate similarity scoring for otherwise equivalent plots.
+    best = 0.0
+    min_overlap = 96
+    for dy in range(-max_shift_px, max_shift_px + 1):
+        for dx in range(-max_shift_px, max_shift_px + 1):
+            y1a = max(0, dy)
+            y2a = min(256, 256 + dy)
+            x1a = max(0, dx)
+            x2a = min(256, 256 + dx)
+
+            y1b = max(0, -dy)
+            y2b = min(256, 256 - dy)
+            x1b = max(0, -dx)
+            x2b = min(256, 256 - dx)
+
+            if (y2a - y1a) < min_overlap or (x2a - x1a) < min_overlap:
+                continue
+
+            score = _ncc_score(arr_a[y1a:y2a, x1a:x2a], arr_b[y1b:y2b, x1b:x2b])
+            if score > best:
+                best = score
+    return best
+
+
+def execute_notebook_capture(
+    target: NotebookTarget,
+    tmp_dir: Path,
+    timeout: int,
+    matlab_help_root: Path | None,
+    parity_threshold: float,
+    skip_parity_check: bool,
+) -> NotebookReport:
+    start = time.perf_counter()
+    image_dir = tmp_dir / "notebook_images" / target.topic
+    image_dir.mkdir(parents=True, exist_ok=True)
+
+    matlab_ref_images = collect_matlab_reference_images(target.topic, matlab_help_root)
+
+    if not target.file.exists():
+        duration = time.perf_counter() - start
+        return NotebookReport(
+            topic=target.topic,
+            file=target.file,
+            run_group=target.run_group,
+            executed=False,
+            duration_s=duration,
+            image_paths=[],
+            image_count=0,
+            text_snippet="",
+            error=f"Notebook not found: {target.file}",
+            matlab_ref_images=matlab_ref_images,
+            similarity_score=None,
+            parity_pass=None,
+            matched_python_image=None,
+            matched_matlab_image=None,
+        )
+
+    notebook = nbformat.read(target.file, as_version=4)
+    client = NotebookClient(
+        notebook,
+        timeout=timeout,
+        kernel_name="python3",
+        resources={"metadata": {"path": str(target.file.parent)}},
     )
 
-    nrmse_raw = float(np.sqrt(np.mean((decoded_raw - latent) ** 2)) / (n_states - 1))
-    nrmse_hist = float(np.sqrt(np.mean((decoded_hist - latent) ** 2)) / (n_states - 1))
-    posterior_err = float(np.max(np.abs(np.sum(posterior, axis=0) - 1.0)))
-    tol = float(tolerances["decoding"]["normalized_rmse_tol"])
+    try:
+        client.execute()
+    except Exception as exc:  # noqa: BLE001
+        duration = time.perf_counter() - start
+        return NotebookReport(
+            topic=target.topic,
+            file=target.file,
+            run_group=target.run_group,
+            executed=False,
+            duration_s=duration,
+            image_paths=[],
+            image_count=0,
+            text_snippet="",
+            error=str(exc),
+            matlab_ref_images=matlab_ref_images,
+            similarity_score=None,
+            parity_pass=None,
+            matched_python_image=None,
+            matched_matlab_image=None,
+        )
 
-    fig, axes = plt.subplots(2, 1, figsize=(9, 7), sharex=True)
-    axes[0].plot(latent, label="true state", linewidth=1.2)
-    axes[0].plot(decoded_raw, label="decoded raw", linewidth=1.0)
-    axes[0].plot(decoded_hist, label="decoded history-corrected", linewidth=1.0)
-    axes[0].set_ylabel("state")
-    axes[0].set_title("DecodingExampleWithHist: state decoding")
-    axes[0].legend(loc="upper right")
+    image_paths: list[Path] = []
+    text_snippet = ""
+    image_index = 0
 
-    axes[1].plot(history_gain, color="tab:purple", linewidth=1.2)
-    axes[1].set_title("Applied global history gain")
-    axes[1].set_xlabel("time bin")
-    axes[1].set_ylabel("gain")
+    for cell in notebook.cells:
+        for output in cell.get("outputs", []):
+            output_type = output.get("output_type", "")
+            if output_type in {"display_data", "execute_result"}:
+                data = output.get("data", {})
+                png_b64 = data.get("image/png")
+                if png_b64 is not None:
+                    if isinstance(png_b64, list):
+                        png_b64 = "".join(png_b64)
+                    try:
+                        png_bytes = base64.b64decode(png_b64)
+                    except Exception:  # noqa: BLE001
+                        png_bytes = b""
+                    if png_bytes:
+                        image_index += 1
+                        image_path = image_dir / f"{target.topic}_{image_index:03d}.png"
+                        image_path.write_bytes(png_bytes)
+                        image_paths.append(image_path)
+                if not text_snippet and "text/plain" in data:
+                    text_plain = data["text/plain"]
+                    if isinstance(text_plain, list):
+                        text_plain = "\n".join(text_plain)
+                    text_snippet = _short_text(str(text_plain))
+            elif output_type == "stream" and not text_snippet:
+                text_snippet = _short_text(str(output.get("text", "")))
 
-    out = tmp_dir / "decoding_with_history.png"
-    _save_figure(out)
-    metrics = {
-        "normalized_rmse_raw": nrmse_raw,
-        "normalized_rmse_history_corrected": nrmse_hist,
-        "posterior_normalization_error": posterior_err,
-        "pass_history_improves_or_matches": bool(nrmse_hist <= nrmse_raw + 1e-8),
-        "pass_rmse_tolerance": bool(nrmse_hist <= tol),
-    }
-    return out, metrics
+    similarity_score: float | None = None
+    parity_pass: bool | None = None
+    matched_python_image: Path | None = None
+    matched_matlab_image: Path | None = None
+    if not skip_parity_check:
+        if image_paths and matlab_ref_images:
+            best = -1.0
+            for py_img in image_paths:
+                for mat_img in matlab_ref_images:
+                    sim = compute_image_similarity(py_img, mat_img)
+                    if sim > best:
+                        best = sim
+                        matched_python_image = py_img
+                        matched_matlab_image = mat_img
+            similarity_score = best if best >= 0.0 else None
+            parity_pass = similarity_score >= parity_threshold
+        else:
+            parity_pass = None
 
-
-def _make_placecell_figure(tmp_dir: Path, tolerances: dict[str, Any]) -> tuple[Path, dict[str, float | bool]]:
-    rng = np.random.default_rng(2026)
-    n_units = 30
-    n_time = 320
-    grid_side = 14
-    grid = np.linspace(0.0, 1.0, grid_side)
-    gx, gy = np.meshgrid(grid, grid, indexing="xy")
-    states_xy = np.column_stack([gx.ravel(), gy.ravel()])
-    n_states = states_xy.shape[0]
-
-    traj = np.zeros((n_time, 2), dtype=float)
-    traj[0] = np.array([0.5, 0.5])
-    velocity = np.zeros(2, dtype=float)
-    for t in range(1, n_time):
-        velocity = 0.85 * velocity + 0.12 * rng.normal(size=2)
-        traj[t] = np.clip(traj[t - 1] + velocity, 0.0, 1.0)
-
-    d2 = np.sum((states_xy[None, :, :] - traj[:, None, :]) ** 2, axis=2)
-    true_state = np.argmin(d2, axis=1)
-
-    centers = rng.uniform(0.0, 1.0, size=(n_units, 2))
-    sigma = 0.18
-    dist2 = np.sum((states_xy[None, :, :] - centers[:, None, :]) ** 2, axis=2)
-    tuning = 0.03 + 0.80 * np.exp(-0.5 * dist2 / (sigma**2))
-
-    spike_counts = np.zeros((n_units, n_time), dtype=float)
-    for t in range(n_time):
-        spike_counts[:, t] = rng.poisson(tuning[:, true_state[t]])
-
-    decoded_wc = DecodingAlgorithms.decode_weighted_center(spike_counts, tuning)
-    decoded_wc = np.clip(np.rint(decoded_wc), 0, n_states - 1).astype(int)
-
-    log_tuning = np.log(np.clip(tuning, 1e-12, None))
-    decoded_ml = np.zeros(n_time, dtype=int)
-    for t in range(n_time):
-        k = spike_counts[:, t][:, None]
-        ll = np.sum(k * log_tuning - tuning, axis=0)
-        decoded_ml[t] = int(np.argmax(ll))
-
-    xy_true = states_xy[true_state]
-    xy_wc = states_xy[decoded_wc]
-    xy_ml = states_xy[decoded_ml]
-    rmse_wc = float(np.sqrt(np.mean(np.sum((xy_wc - xy_true) ** 2, axis=1))))
-    rmse_ml = float(np.sqrt(np.mean(np.sum((xy_ml - xy_true) ** 2, axis=1))))
-    rmse_norm = rmse_ml / math.sqrt(2.0)
-    tol = float(tolerances["place_decoding"]["normalized_rmse_tol"])
-
-    fig, axes = plt.subplots(1, 2, figsize=(9, 4.5))
-    axes[0].plot(xy_true[:, 0], xy_true[:, 1], label="true", linewidth=1.2)
-    axes[0].plot(xy_ml[:, 0], xy_ml[:, 1], label="decoded ML", linewidth=1.0)
-    axes[0].set_title("HippocampalPlaceCellExample: trajectory")
-    axes[0].set_xlabel("x")
-    axes[0].set_ylabel("y")
-    axes[0].set_aspect("equal", adjustable="box")
-    axes[0].legend(loc="upper right")
-
-    im = axes[1].imshow(
-        tuning[8].reshape(grid_side, grid_side),
-        origin="lower",
-        extent=[0.0, 1.0, 0.0, 1.0],
-        cmap="jet",
-        aspect="equal",
+    duration = time.perf_counter() - start
+    return NotebookReport(
+        topic=target.topic,
+        file=target.file,
+        run_group=target.run_group,
+        executed=True,
+        duration_s=duration,
+        image_paths=image_paths,
+        image_count=len(image_paths),
+        text_snippet=text_snippet,
+        error="",
+        matlab_ref_images=matlab_ref_images,
+        similarity_score=similarity_score,
+        parity_pass=parity_pass,
+        matched_python_image=matched_python_image,
+        matched_matlab_image=matched_matlab_image,
     )
-    axes[1].set_title("Example place field")
-    axes[1].set_xlabel("x")
-    axes[1].set_ylabel("y")
-    fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
-
-    out = tmp_dir / "placecell_example.png"
-    _save_figure(out)
-    metrics = {
-        "rmse_weighted_center": rmse_wc,
-        "rmse_ml": rmse_ml,
-        "normalized_rmse_ml": rmse_norm,
-        "pass_ml_beats_or_matches_wc": bool(rmse_ml <= rmse_wc + 1e-8),
-        "pass_rmse_tolerance": bool(rmse_norm <= tol),
-    }
-    return out, metrics
 
 
-def _draw_wrapped_text(pdf: canvas.Canvas, x: float, y: float, text: str, width_chars: int = 95) -> float:
+def _draw_wrapped_lines(
+    pdf: canvas.Canvas,
+    x: float,
+    y: float,
+    text: str,
+    wrap_width: int = 100,
+    line_step: float = 12.0,
+) -> float:
     lines: list[str] = []
-    for block in text.splitlines():
-        if len(block) <= width_chars:
-            lines.append(block)
-            continue
-        while len(block) > width_chars:
-            split = block.rfind(" ", 0, width_chars)
-            if split <= 0:
-                split = width_chars
-            lines.append(block[:split])
-            block = block[split:].lstrip()
-        if block:
-            lines.append(block)
+    for block in text.splitlines() or [""]:
+        wrapped = textwrap.wrap(block, width=wrap_width) or [""]
+        lines.extend(wrapped)
     for line in lines:
         pdf.drawString(x, y, line)
-        y -= 12
+        y -= line_step
     return y
 
 
-def _draw_image_page(
-    pdf: canvas.Canvas,
-    title: str,
-    subtitle: str,
-    image_path: Path,
-    metrics: dict[str, float | bool],
-) -> None:
-    pdf.setFont("Helvetica-Bold", 16)
-    pdf.drawString(40, 760, title)
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(40, 744, subtitle)
-
-    image_reader = ImageReader(str(image_path))
-    iw, ih = image_reader.getSize()
-    max_w = 520.0
-    max_h = 430.0
+def _draw_image_fit(pdf: canvas.Canvas, image_path: Path, x: float, y: float, max_w: float, max_h: float) -> None:
+    reader = ImageReader(str(image_path))
+    iw, ih = reader.getSize()
     scale = min(max_w / iw, max_h / ih)
     w = iw * scale
     h = ih * scale
-    pdf.drawImage(image_reader, 40, 280, width=w, height=h)
+    pdf.drawImage(reader, x, y, width=w, height=h)
 
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(40, 250, "Metrics")
+
+def draw_cover_page(
+    pdf: canvas.Canvas,
+    repo_root: Path,
+    commit: str,
+    generated_at: str,
+    notebook_group: str,
+    selected_count: int,
+    command_results: list[CommandResult],
+    matlab_help_root: Path | None,
+    parity_threshold: float,
+    skip_parity_check: bool,
+) -> None:
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(40, 760, "nSTAT-python Validation Report (All Examples)")
+    pdf.setFont("Helvetica", 11)
+    pdf.drawString(40, 736, f"Generated: {generated_at}")
+    pdf.drawString(40, 720, f"Repository: {repo_root}")
+    pdf.drawString(40, 704, f"Commit: {commit}")
+    pdf.drawString(40, 688, f"Notebook group: {notebook_group}")
+    pdf.drawString(40, 672, f"Examples included: {selected_count}")
+    matlab_root_msg = str(matlab_help_root) if matlab_help_root is not None else "NOT FOUND"
+    pdf.drawString(40, 656, f"MATLAB helpfiles root: {matlab_root_msg}")
+    parity_msg = "SKIPPED" if skip_parity_check else f"threshold={parity_threshold:.2f}"
+    pdf.drawString(40, 640, f"MATLAB parity mode: {parity_msg}")
+
+    y = 612
+    pdf.setFont("Helvetica-Bold", 13)
+    pdf.drawString(40, y, "Command checks")
+    y -= 18
     pdf.setFont("Helvetica", 10)
-    y = 234
-    for key, value in metrics.items():
-        if isinstance(value, float):
-            msg = f"- {key}: {value:.6f}"
-        else:
-            msg = f"- {key}: {value}"
-        pdf.drawString(50, y, msg)
+
+    if not command_results:
+        pdf.drawString(46, y, "- Skipped by --skip-command-tests")
         y -= 14
+    else:
+        for result in command_results:
+            status = "PASS" if result.passed else "FAIL"
+            pdf.drawString(46, y, f"- {result.name}: {status} ({result.duration_s:.2f}s)")
+            y -= 14
+            if result.stdout_tail:
+                y = _draw_wrapped_lines(pdf, 58, y, result.stdout_tail, wrap_width=90)
+                y -= 6
+            if y < 90:
+                pdf.showPage()
+                y = 760
+                pdf.setFont("Helvetica", 10)
+
+    pdf.showPage()
+
+
+def draw_summary_pages(pdf: canvas.Canvas, reports: list[NotebookReport], skip_parity_check: bool) -> None:
+    total = len(reports)
+    executed = sum(1 for report in reports if report.executed)
+    failed_exec = total - executed
+    with_py_images = sum(1 for report in reports if report.image_count > 0)
+    with_matlab_refs = sum(1 for report in reports if len(report.matlab_ref_images) > 0)
+    parity_checked = sum(1 for report in reports if report.parity_pass is not None)
+    parity_passed = sum(1 for report in reports if report.parity_pass is True)
+
+    pdf.setFont("Helvetica-Bold", 16)
+    pdf.drawString(40, 760, "Example Coverage Summary")
+    pdf.setFont("Helvetica", 11)
+    pdf.drawString(40, 738, f"Total examples: {total}")
+    pdf.drawString(180, 738, f"Executed: {executed}")
+    pdf.drawString(300, 738, f"Exec failures: {failed_exec}")
+    pdf.drawString(430, 738, f"Py figs: {with_py_images}")
+    pdf.drawString(40, 722, f"MATLAB refs available: {with_matlab_refs}")
+    if skip_parity_check:
+        pdf.drawString(260, 722, "Parity scoring: skipped")
+    else:
+        pdf.drawString(260, 722, f"Parity pass: {parity_passed}/{parity_checked}")
+
+    y = 694
+    pdf.setFont("Helvetica-Bold", 9)
+    pdf.drawString(40, y, "Exec")
+    pdf.drawString(74, y, "Parity")
+    pdf.drawString(126, y, "Topic")
+    pdf.drawString(308, y, "Py")
+    pdf.drawString(332, y, "MAT")
+    pdf.drawString(360, y, "Score")
+    pdf.drawString(408, y, "Run")
+    pdf.drawString(448, y, "Sec")
+    y -= 12
+    pdf.setFont("Helvetica", 9)
+
+    for report in reports:
+        if y < 70:
+            pdf.showPage()
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawString(40, 760, "Exec")
+            pdf.drawString(74, 760, "Parity")
+            pdf.drawString(126, 760, "Topic")
+            pdf.drawString(308, 760, "Py")
+            pdf.drawString(332, 760, "MAT")
+            pdf.drawString(360, 760, "Score")
+            pdf.drawString(408, 760, "Run")
+            pdf.drawString(448, 760, "Sec")
+            y = 748
+            pdf.setFont("Helvetica", 9)
+
+        exec_status = "PASS" if report.executed else "FAIL"
+        if report.parity_pass is None:
+            parity_status = "N/A"
+        else:
+            parity_status = "PASS" if report.parity_pass else "FAIL"
+
+        score_text = f"{report.similarity_score:.3f}" if report.similarity_score is not None else "-"
+
+        pdf.drawString(40, y, exec_status)
+        pdf.drawString(74, y, parity_status)
+        pdf.drawString(126, y, report.topic[:30])
+        pdf.drawString(308, y, str(report.image_count))
+        pdf.drawString(332, y, str(len(report.matlab_ref_images)))
+        pdf.drawString(360, y, score_text)
+        pdf.drawString(408, y, report.run_group)
+        pdf.drawString(448, y, f"{report.duration_s:.2f}")
+        y -= 12
+
+    pdf.showPage()
+
+
+def draw_example_page(pdf: canvas.Canvas, report: NotebookReport, index: int, total: int) -> None:
+    pdf.setFont("Helvetica-Bold", 15)
+    pdf.drawString(40, 760, f"Example {index}/{total}: {report.topic}")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(40, 742, f"Notebook: {report.file}")
+    pdf.drawString(40, 728, f"Run group: {report.run_group}")
+
+    exec_status = "PASS" if report.executed else "FAIL"
+    if report.parity_pass is None:
+        parity_status = "N/A"
+    else:
+        parity_status = "PASS" if report.parity_pass else "FAIL"
+
+    score_text = f"{report.similarity_score:.3f}" if report.similarity_score is not None else "-"
+    header = (
+        f"Execution: {exec_status} | Parity: {parity_status} | Similarity: {score_text} | "
+        f"Runtime: {report.duration_s:.2f}s"
+    )
+    pdf.drawString(40, 714, header)
+    pdf.drawString(
+        40,
+        700,
+        f"Python figs: {report.image_count} | MATLAB refs: {len(report.matlab_ref_images)}",
+    )
+
+    y = 680
+    if report.error:
+        pdf.setFont("Helvetica-Bold", 11)
+        pdf.drawString(40, y, "Execution error")
+        y -= 16
+        pdf.setFont("Helvetica", 10)
+        _draw_wrapped_lines(pdf, 48, y, report.error, wrap_width=92)
+        pdf.showPage()
+        return
+
+    # Side-by-side principal comparison
+    primary_py = report.matched_python_image or (report.image_paths[0] if report.image_paths else None)
+    primary_mat = report.matched_matlab_image or (report.matlab_ref_images[0] if report.matlab_ref_images else None)
+
+    if primary_py is not None:
+        pdf.setFont("Helvetica-Bold", 10)
+        pdf.drawString(40, 664, "Python output (primary)")
+        _draw_image_fit(pdf, primary_py, 40, 350, 250, 300)
+    else:
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(40, 650, "No Python figure output captured.")
+
+    if primary_mat is not None:
+        pdf.setFont("Helvetica-Bold", 10)
+        pdf.drawString(310, 664, "MATLAB reference (primary)")
+        _draw_image_fit(pdf, primary_mat, 310, 350, 250, 300)
+    else:
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(310, 650, "No MATLAB reference image found.")
+
+    # Optional secondary comparisons
+    if len(report.image_paths) > 1:
+        pdf.setFont("Helvetica", 8)
+        pdf.drawString(40, 334, f"Additional Python notebook figures: {report.image_count - 1}")
+    if len(report.matlab_ref_images) > 1:
+        pdf.setFont("Helvetica", 8)
+        pdf.drawString(310, 334, f"Additional MATLAB reference figures: {len(report.matlab_ref_images) - 1}")
+
+    if report.text_snippet:
+        pdf.setFont("Helvetica-Bold", 11)
+        pdf.drawString(40, 316, "Output snippet")
+        pdf.setFont("Helvetica", 9)
+        _draw_wrapped_lines(pdf, 48, 302, report.text_snippet, wrap_width=102, line_step=10)
+
     pdf.showPage()
 
 
 def generate_pdf_report(
     repo_root: Path,
+    manifest_path: Path,
     output_pdf: Path,
     tmp_dir: Path,
     notebook_group: str,
+    timeout: int,
     run_commands: bool,
-) -> Path:
-    tolerances = load_tolerances(repo_root)
-    tmp_dir.mkdir(parents=True, exist_ok=True)
+    matlab_help_root: Path | None,
+    parity_threshold: float,
+    skip_parity_check: bool,
+) -> tuple[Path, list[NotebookReport], list[CommandResult], Path | None]:
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
 
     command_results: list[CommandResult] = []
     if run_commands:
@@ -466,10 +681,6 @@ def generate_pdf_report(
                 ["pytest", "-q", "tests/test_parity_numerics.py", "tests/test_behavior_contracts.py"],
             ),
             (
-                f"Notebook execution ({notebook_group})",
-                ["python", "tools/notebooks/run_notebooks.py", "--group", notebook_group, "--timeout", "900"],
-            ),
-            (
                 "No MATLAB dependency gate",
                 ["python", "tools/compliance/check_no_matlab_dependency.py"],
             ),
@@ -477,76 +688,52 @@ def generate_pdf_report(
         for name, cmd in commands:
             command_results.append(run_command(name=name, cmd=cmd, cwd=repo_root))
 
-    fig_builders = [
-        ("nSTATPaperExamples", _make_nstatpaper_figure),
-        ("PPSimExample", _make_ppsim_figure),
-        ("DecodingExampleWithHist", _make_decoding_history_figure),
-        ("HippocampalPlaceCellExample", _make_placecell_figure),
-    ]
-    pages: list[tuple[str, Path, dict[str, float | bool]]] = []
-    for title, builder in fig_builders:
-        image_path, metrics = builder(tmp_dir=tmp_dir, tolerances=tolerances)
-        pages.append((title, image_path, metrics))
+    resolved_matlab_help_root = resolve_matlab_help_root(repo_root, matlab_help_root)
+
+    targets = load_targets(manifest_path, repo_root, notebook_group)
+    reports: list[NotebookReport] = []
+    for target in targets:
+        reports.append(
+            execute_notebook_capture(
+                target=target,
+                tmp_dir=tmp_dir,
+                timeout=timeout,
+                matlab_help_root=resolved_matlab_help_root,
+                parity_threshold=parity_threshold,
+                skip_parity_check=skip_parity_check,
+            )
+        )
 
     commit = (
         subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=repo_root, capture_output=True, text=True)
         .stdout.strip()
         or "unknown"
     )
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     pdf = canvas.Canvas(str(output_pdf), pagesize=letter)
-    pdf.setTitle("nSTAT-python Standalone Validation Report")
+    pdf.setTitle("nSTAT-python Validation Report")
 
-    pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(40, 760, "nSTAT-python Standalone Validation Report")
-    pdf.setFont("Helvetica", 11)
-    pdf.drawString(40, 736, f"Generated: {now}")
-    pdf.drawString(40, 720, f"Repository: {repo_root}")
-    pdf.drawString(40, 704, f"Commit: {commit}")
-    pdf.drawString(40, 688, "Objective: verify that the standalone Python toolbox generates expected examples and outputs.")
+    draw_cover_page(
+        pdf=pdf,
+        repo_root=repo_root,
+        commit=commit,
+        generated_at=generated_at,
+        notebook_group=notebook_group,
+        selected_count=len(targets),
+        command_results=command_results,
+        matlab_help_root=resolved_matlab_help_root,
+        parity_threshold=parity_threshold,
+        skip_parity_check=skip_parity_check,
+    )
+    draw_summary_pages(pdf=pdf, reports=reports, skip_parity_check=skip_parity_check)
 
-    y = 658
-    pdf.setFont("Helvetica-Bold", 13)
-    pdf.drawString(40, y, "Command-driven validation checks")
-    y -= 18
-    pdf.setFont("Helvetica", 10)
-    if command_results:
-        for result in command_results:
-            status = "PASS" if result.passed else "FAIL"
-            pdf.drawString(
-                46,
-                y,
-                f"- {result.name}: {status} ({result.duration_s:.2f}s) | {' '.join(result.command)}",
-            )
-            y -= 14
-            if result.stdout_tail:
-                y = _draw_wrapped_text(pdf, 58, y, result.stdout_tail, width_chars=92)
-                y -= 6
-            if y < 80:
-                pdf.showPage()
-                y = 760
-                pdf.setFont("Helvetica", 10)
-    else:
-        pdf.drawString(46, y, "- Command checks skipped by user option.")
-        y -= 14
-
-    if y < 120:
-        pdf.showPage()
-    else:
-        pdf.showPage()
-
-    for title, image_path, metrics in pages:
-        _draw_image_page(
-            pdf=pdf,
-            title=title,
-            subtitle="Visual output and deterministic metrics from standalone nSTAT-python code paths.",
-            image_path=image_path,
-            metrics=metrics,
-        )
+    total = len(reports)
+    for index, report in enumerate(reports, start=1):
+        draw_example_page(pdf=pdf, report=report, index=index, total=total)
 
     pdf.save()
-    return output_pdf
+    return output_pdf, reports, command_results, resolved_matlab_help_root
 
 
 def main() -> int:
@@ -554,15 +741,36 @@ def main() -> int:
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_pdf = args.output_dir / f"nstat_python_validation_report_{stamp}.pdf"
 
-    report_path = generate_pdf_report(
+    report_path, reports, command_results, matlab_help_root = generate_pdf_report(
         repo_root=args.repo_root,
+        manifest_path=args.manifest,
         output_pdf=output_pdf,
         tmp_dir=args.tmp_dir,
         notebook_group=args.notebook_group,
+        timeout=args.timeout,
         run_commands=not args.skip_command_tests,
+        matlab_help_root=args.matlab_help_root,
+        parity_threshold=args.parity_threshold,
+        skip_parity_check=args.skip_parity_check,
     )
+
+    executed = sum(1 for report in reports if report.executed)
+    exec_failures = len(reports) - executed
+    with_images = sum(1 for report in reports if report.image_count > 0)
+    parity_checked = sum(1 for report in reports if report.parity_pass is not None)
+    parity_failures = sum(1 for report in reports if report.parity_pass is False)
+    command_failures = sum(1 for result in command_results if not result.passed)
+
     print(f"Generated PDF report: {report_path}")
-    return 0
+    print(f"MATLAB help root: {matlab_help_root}")
+    print(
+        f"Notebook results: total={len(reports)} executed={executed} exec_failures={exec_failures} "
+        f"with_images={with_images}"
+    )
+    print(f"Parity results: checked={parity_checked} failures={parity_failures}")
+    print(f"Command checks: total={len(command_results)} failed={command_failures}")
+
+    return 0 if exec_failures == 0 and command_failures == 0 and parity_failures == 0 else 1
 
 
 if __name__ == "__main__":

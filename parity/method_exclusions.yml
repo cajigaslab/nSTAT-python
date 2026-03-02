@@ -1,0 +1,28 @@
+version: 1
+policy_name: matlab_stub_exclusions
+
+classes:
+  - matlab_class: DecodingAlgorithms
+    rationale: "Documented as not yet ported in compat layer and intentionally raises NotImplementedError."
+    methods:
+      - PPSS_EMFB
+      - PPSS_EM
+      - PPSS_EStep
+      - PPSS_MStep
+      - prepareEMResults
+      - estimateInfoMat
+      - KF_EMCreateConstraints
+      - KF_EM
+      - KF_ComputeParamStandardErrors
+      - KF_EStep
+      - KF_MStep
+      - mPPCO_EMCreateConstraints
+      - mPPCO_ComputeParamStandardErrors
+      - mPPCO_EM
+      - mPPCO_EStep
+      - mPPCO_MStep
+      - PP_EMCreateConstraints
+      - PP_ComputeParamStandardErrors
+      - PP_EM
+      - PP_EStep
+      - PP_MStep

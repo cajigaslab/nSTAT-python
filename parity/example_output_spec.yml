@@ -1,0 +1,27 @@
+version: 1
+policy_name: example_output_spec
+
+defaults:
+  min_python_code_lines: 20
+  min_python_code_cells: 3
+  min_matlab_reference_images: 0
+  min_python_validation_images: 0
+  enforce_validation_images: false
+  allowed_alignment_statuses:
+    - pending_manual_review
+    - matlab_doc_only
+    - doc_only
+
+topics:
+  DocumentationSetup2025b:
+    min_python_code_lines: 20
+    min_python_code_cells: 3
+  FitResSummaryExamples:
+    min_python_code_lines: 20
+    min_python_code_cells: 3
+  FitResultExamples:
+    min_python_code_lines: 20
+    min_python_code_cells: 3
+  FitResultReference:
+    min_python_code_lines: 20
+    min_python_code_cells: 3

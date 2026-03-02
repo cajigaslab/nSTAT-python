@@ -30,6 +30,8 @@ This document defines how `nSTAT-python` is measured against MATLAB `nSTAT`.
    - `parity/matlab_api_inventory.json`
    - `parity/python_api_inventory.json`
    - `parity/parity_gap_report.json`
+   - `parity/method_probe_report.json`
+   - `parity/function_example_alignment_report.json`
 
 ## Severity Model
 - `high`: missing class implementation route, missing notebook/help artifact, missing mapped class help page.
@@ -43,31 +45,39 @@ CI enforces `--fail-on high` for parity discovery so missing critical artifacts 
 - Example mapping: `parity/example_mapping.yaml`
 - Discovery scripts: `tools/parity/`
 
-## Current Status (2026-03-01)
-- Latest validated Python target commit: `6e58f23`
-- GitHub Actions:
-  - `test-and-build`: success ([run 22549822032](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549822032))
-  - `pages`: success ([run 22549822034](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549822034))
-  - `notebooks-full`: success ([run 22549862478](https://github.com/cajigaslab/nSTAT-python/actions/runs/22549862478))
-- Latest parity snapshot:
+## Current Status (2026-03-02)
+- Baseline lock refreshed:
+  - MATLAB commit: `1b5237b3176f6fc8aa3199d471e4bb7845a3ad5a`
+  - Python commit: `8b69adf11dc0ff340e416ce97ffc90eebc011c41`
+- Latest structural parity snapshot (`parity/parity_gap_report.json`):
   - `summary.high = 0`
-  - `summary.medium = 13`
+  - `summary.medium = 0`
   - `summary.low = 0`
-- Tier-1 closure completed in this tranche:
-  - `FitResSummary` method coverage improved from `4/30` to `13/30`
-  - Missing methods reduced from `26` to `17`
-  - `FitResult` method coverage improved from `10/33` to `18/33`
-  - `Covariate` is fully mapped (`14/14`)
+- Latest functional equivalence audit (`parity/function_example_alignment_report.json`):
+  - Method-level audit:
+    - `total_methods = 501`
+    - `contract_verified_methods = 355`
+    - `contract_explicit_verified_methods = 152`
+    - `probe_verified_methods = 203`
+    - `unverified_behavior_methods = 146`
+    - `missing_symbol_methods = 0`
+  - Example-level audit:
+    - `total_topics = 30`
+    - `pending_manual_review_topics = 26`
+    - `missing_artifact_topics = 0`
+    - `missing_executable_topics = 0`
+    - `matlab_doc_only_topics = 4`
 - Updated visual validation report:
-  - `output/pdf/nstat_python_validation_report_20260301_133939.pdf`
+  - `output/pdf/nstat_python_validation_report_20260302_111346.pdf` (smoke-set execution)
 
 ## Acceptance Checklist
 - [x] Class and example inventory artifacts regenerate successfully.
 - [x] High-severity parity issues remain at zero.
 - [x] Full notebook suite is passing on the validated commit.
 - [x] Visual validation PDF has been regenerated after parity changes.
-- [ ] Medium-severity method-mapping gaps are fully closed.
-- [ ] Tier-1 parity classes (`Analysis`, `Trial`, `CovColl`, `nstColl`, `FitResult`, `FitResSummary`) reach target coverage.
+- [x] Structural method-mapping gaps are closed (`parity/parity_gap_report.json`).
+- [ ] Functional parity contracts cover all mapped methods (`parity/function_example_alignment_report.json` currently 355/501).
+- [ ] Example workflows complete line-by-line manual review and output-lock verification (26 topics pending).
 
 ## Notes
 - This repository is a clean-room implementation. MATLAB code is a behavioral reference only.

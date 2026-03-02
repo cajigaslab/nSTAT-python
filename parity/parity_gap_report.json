@@ -265,8 +265,8 @@
       "topic": "publish_all_helpfiles"
     }
   ],
-  "fail_on": "medium",
-  "generated_at_utc": "2026-03-02T02:24:03.028067+00:00",
+  "fail_on": "high",
+  "generated_at_utc": "2026-03-02T16:24:11.228953+00:00",
   "issues": [],
   "summary": {
     "high": 0,
