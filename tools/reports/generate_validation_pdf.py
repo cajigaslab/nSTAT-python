@@ -65,6 +65,7 @@ class NotebookReport:
     alignment_status: str | None
     matched_python_image: Path | None
     matched_matlab_image: Path | None
+    parity_metrics: dict[str, object] | None
 
 
 def parse_args() -> argparse.Namespace:
@@ -224,6 +225,31 @@ def load_parity_gate_status(
     return out
 
 
+def load_parity_topic_metrics(equivalence_report: Path) -> dict[str, dict[str, object]]:
+    """Load per-topic parity metrics used in the PDF comparison table."""
+
+    if not equivalence_report.exists():
+        return {}
+    report = json.loads(equivalence_report.read_text(encoding="utf-8"))
+    rows = report.get("example_line_alignment_audit", {}).get("topic_rows", [])
+    out: dict[str, dict[str, object]] = {}
+    for row in rows:
+        topic = str(row.get("topic", ""))
+        if not topic:
+            continue
+        out[topic] = {
+            "matlab_code_lines": row.get("matlab_code_lines"),
+            "python_code_lines": row.get("python_code_lines"),
+            "python_to_matlab_line_ratio": row.get("python_to_matlab_line_ratio"),
+            "matlab_reference_image_count": row.get("matlab_reference_image_count"),
+            "python_validation_image_count": row.get("python_validation_image_count"),
+            "assertion_count": row.get("assertion_count"),
+            "has_plot_call": row.get("has_plot_call"),
+            "has_topic_checkpoint": row.get("has_topic_checkpoint"),
+        }
+    return out
+
+
 def _short_text(output_text: str, max_chars: int = 280) -> str:
     clean = " ".join(output_text.split())
     if len(clean) <= max_chars:
@@ -369,6 +395,7 @@ def execute_notebook_capture(
     skip_parity_check: bool,
     parity_mode: str,
     gate_status: tuple[str, bool] | None,
+    parity_metrics: dict[str, object] | None,
 ) -> NotebookReport:
     start = time.perf_counter()
     image_dir = tmp_dir / "notebook_images" / target.topic
@@ -394,6 +421,7 @@ def execute_notebook_capture(
             alignment_status=(gate_status[0] if gate_status is not None else None),
             matched_python_image=None,
             matched_matlab_image=None,
+            parity_metrics=parity_metrics,
         )
 
     notebook = nbformat.read(target.file, as_version=4)
@@ -424,6 +452,7 @@ def execute_notebook_capture(
             alignment_status=(gate_status[0] if gate_status is not None else None),
             matched_python_image=None,
             matched_matlab_image=None,
+            parity_metrics=parity_metrics,
         )
 
     image_paths: list[Path] = []
@@ -500,6 +529,7 @@ def execute_notebook_capture(
         alignment_status=alignment_status,
         matched_python_image=matched_python_image,
         matched_matlab_image=matched_matlab_image,
+        parity_metrics=parity_metrics,
     )
 
 
@@ -563,6 +593,60 @@ def _draw_image_gallery(
         cell_x = x + col * (cell_w + 8)
         cell_y = y + (rows - 1 - row) * (cell_h + 8)
         _draw_image_fit(pdf, image_path, cell_x, cell_y, cell_w, cell_h)
+
+
+def _format_metric_value(value: object | None) -> str:
+    if value is None:
+        return "-"
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, float):
+        return f"{value:.3f}"
+    return str(value)
+
+
+def _draw_metrics_table(
+    pdf: canvas.Canvas,
+    metrics: dict[str, object] | None,
+    *,
+    x: float,
+    top_y: float,
+    width: float,
+) -> None:
+    rows = [
+        ("matlab_code_lines", "MATLAB code lines"),
+        ("python_code_lines", "Python code lines"),
+        ("python_to_matlab_line_ratio", "Python/MATLAB line ratio"),
+        ("matlab_reference_image_count", "MATLAB reference images"),
+        ("python_validation_image_count", "Python validation images"),
+        ("assertion_count", "Checkpoint assertions"),
+        ("has_plot_call", "Contains plotting logic"),
+        ("has_topic_checkpoint", "Has topic checkpoint"),
+    ]
+    row_h = 12.0
+    table_h = row_h * (len(rows) + 1)
+    key_col_w = width * 0.68
+
+    pdf.setLineWidth(0.6)
+    pdf.rect(x, top_y - table_h, width, table_h)
+    pdf.line(x + key_col_w, top_y, x + key_col_w, top_y - table_h)
+    for idx in range(1, len(rows) + 1):
+        y = top_y - idx * row_h
+        pdf.line(x, y, x + width, y)
+
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawString(x + 4, top_y - 9, "Metric")
+    pdf.drawString(x + key_col_w + 4, top_y - 9, "Value")
+
+    pdf.setFont("Helvetica", 8)
+    if metrics is None:
+        pdf.drawString(x + 4, top_y - row_h - 9, "No parity metric row available")
+        return
+
+    for idx, (key, label) in enumerate(rows, start=1):
+        y = top_y - idx * row_h - 9
+        pdf.drawString(x + 4, y, label)
+        pdf.drawString(x + key_col_w + 4, y, _format_metric_value(metrics.get(key)))
 
 
 def draw_cover_page(
@@ -770,6 +854,16 @@ def draw_example_page(pdf: canvas.Canvas, report: NotebookReport, index: int, to
         pdf.setFont("Helvetica", 9)
         _draw_wrapped_lines(pdf, 48, 290, report.text_snippet, wrap_width=102, line_step=10)
 
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(40, 190, "MATLAB vs Python key metrics")
+    _draw_metrics_table(
+        pdf,
+        report.parity_metrics,
+        x=40,
+        top_y=182,
+        width=520,
+    )
+
     pdf.showPage()
 
 
@@ -808,6 +902,7 @@ def generate_pdf_report(
 
     resolved_matlab_help_root = resolve_matlab_help_root(repo_root, matlab_help_root)
     parity_gate_status = load_parity_gate_status(equivalence_report, example_output_spec)
+    parity_topic_metrics = load_parity_topic_metrics(equivalence_report)
 
     targets = load_targets(manifest_path, repo_root, notebook_group)
     reports: list[NotebookReport] = []
@@ -822,6 +917,7 @@ def generate_pdf_report(
                 skip_parity_check=skip_parity_check,
                 parity_mode=parity_mode,
                 gate_status=parity_gate_status.get(target.topic),
+                parity_metrics=parity_topic_metrics.get(target.topic),
             )
         )
 

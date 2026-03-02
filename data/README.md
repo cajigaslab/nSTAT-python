@@ -16,6 +16,9 @@ Current shared records:
 - `mEPSC-epsc2` (source: `cajigaslab/nSTAT`, path `data/mEPSCs/epsc2.txt`)
 
 MATLAB example-data mirror workflow:
+0. One-command workflow (recommended):
+   - `python tools/data_mirror/run_mirror_workflow.py --source-root <matlab_data_dir> --version <YYYYMMDD> --clean`
+
 1. Build source snapshot manifest:
    - `python tools/data_mirror/build_manifest.py --source-root <matlab_data_dir> --version <YYYYMMDD> --out data/shared/matlab_source_<YYYYMMDD>.manifest.json`
 2. Sync exact mirrored copy into this repository:

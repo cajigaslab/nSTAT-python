@@ -61,6 +61,31 @@ print(cov.sample_rate_hz, spikes.firing_rate_hz())
 ## Data policy
 Only example data may be shared with MATLAB nSTAT. All non-data files are unique to this repository.
 
+## MATLAB Data Mirror
+
+Use the bundled workflow to mirror MATLAB toolbox example data into this repo with checksums:
+
+```bash
+python tools/data_mirror/run_mirror_workflow.py \
+  --source-root /path/to/matlab/nSTAT/data \
+  --version 20260302 \
+  --clean
+```
+
+This command performs:
+1. Source snapshot manifest generation.
+2. Byte-for-byte mirrored copy into `data/shared/matlab_gold_<version>/`.
+3. Shared-data allowlist regeneration.
+4. Strict checksum verification.
+
+To re-verify later:
+
+```bash
+python tools/data_mirror/verify_matlab_data.py \
+  --manifest data/shared/matlab_gold_20260302.manifest.json \
+  --strict
+```
+
 ## MATLAB parity workflow
 
 Generate parity inventories and the machine-readable gap report:

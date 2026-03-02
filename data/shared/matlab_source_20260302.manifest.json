@@ -2,7 +2,7 @@
   "schema_version": 1,
   "dataset_name": "matlab_example_data",
   "dataset_version": "20260302",
-  "generated_at_utc": "2026-03-02T18:59:45.492498+00:00",
+  "generated_at_utc": "2026-03-02T19:27:09.812399+00:00",
   "generated_by": "tools/data_mirror/build_manifest.py",
   "source_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/data",
   "file_count": 42,
