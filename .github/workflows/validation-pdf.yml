@@ -20,6 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
           python -m pip install --upgrade pip
           python -m pip install -e .[dev,notebooks]
           python -m pip install reportlab pillow
@@ -63,6 +65,14 @@ jobs:
             --timeout 900 \
             --skip-command-tests \
             --parity-mode gate
+
+      - name: Enforce visual validation gate
+        run: |
+          python tools/reports/check_validation_visuals.py \
+            --report-pdf 'output/pdf/*.pdf' \
+            --images-root tmp/pdfs/validation_report/notebook_images \
+            --min-unique-images-per-topic 1 \
+            --max-duplicate-pdf-pages 0
 
       - name: Upload validation PDF artifact
         uses: actions/upload-artifact@v4

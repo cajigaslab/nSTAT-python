@@ -5134,7 +5134,7 @@
         "matlab_class": "Covariate",
         "matlab_method_count": 14,
         "missing_symbol_count": 0,
-        "probe_verified_count": 3,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -5146,7 +5146,7 @@
         "matlab_class": "ConfidenceInterval",
         "matlab_method_count": 5,
         "missing_symbol_count": 0,
-        "probe_verified_count": 1,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -5158,7 +5158,7 @@
         "matlab_class": "Events",
         "matlab_method_count": 5,
         "missing_symbol_count": 0,
-        "probe_verified_count": 1,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -5170,7 +5170,7 @@
         "matlab_class": "History",
         "matlab_method_count": 8,
         "missing_symbol_count": 0,
-        "probe_verified_count": 1,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -5194,7 +5194,7 @@
         "matlab_class": "nstColl",
         "matlab_method_count": 53,
         "missing_symbol_count": 0,
-        "probe_verified_count": 1,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -5254,7 +5254,7 @@
         "matlab_class": "CIF",
         "matlab_method_count": 21,
         "missing_symbol_count": 0,
-        "probe_verified_count": 2,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -5266,7 +5266,7 @@
         "matlab_class": "Analysis",
         "matlab_method_count": 22,
         "missing_symbol_count": 0,
-        "probe_verified_count": 7,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -5290,7 +5290,7 @@
         "matlab_class": "FitResSummary",
         "matlab_method_count": 30,
         "missing_symbol_count": 0,
-        "probe_verified_count": 14,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -6485,8 +6485,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "Covariate",
         "mapped_via_alias": false,
@@ -6509,8 +6509,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plot",
         "mapped_via_alias": false,
@@ -6557,8 +6557,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "toStructure",
         "mapped_via_alias": false,
@@ -6689,8 +6689,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plot",
         "mapped_via_alias": false,
@@ -6725,8 +6725,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plot",
         "mapped_via_alias": false,
@@ -6809,8 +6809,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plot",
         "mapped_via_alias": false,
@@ -7217,8 +7217,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "copy",
         "mapped_via_alias": true,
@@ -9713,8 +9713,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "simulateCIFByThinning",
         "mapped_via_alias": false,
@@ -9725,8 +9725,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "simulateCIF",
         "mapped_via_alias": false,
@@ -9797,8 +9797,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotInvGausTrans",
         "mapped_via_alias": false,
@@ -9809,8 +9809,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotFitResidual",
         "mapped_via_alias": false,
@@ -9821,8 +9821,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "KSPlot",
         "mapped_via_alias": false,
@@ -9845,8 +9845,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotCoeffs",
         "mapped_via_alias": false,
@@ -9905,8 +9905,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "compHistEnsCoeff",
         "mapped_via_alias": false,
@@ -9941,8 +9941,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "computeHistLagForAll",
         "mapped_via_alias": false,
@@ -9989,8 +9989,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "bnlrCG",
         "mapped_via_alias": false,
@@ -10517,8 +10517,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotIC",
         "mapped_via_alias": false,
@@ -10529,8 +10529,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotAllCoeffs",
         "mapped_via_alias": false,
@@ -10541,8 +10541,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plot3dCoeffSummary",
         "mapped_via_alias": false,
@@ -10553,8 +10553,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plot2dCoeffSummary",
         "mapped_via_alias": false,
@@ -10565,8 +10565,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotKSSummary",
         "mapped_via_alias": false,
@@ -10577,8 +10577,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotAIC",
         "mapped_via_alias": false,
@@ -10589,8 +10589,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotBIC",
         "mapped_via_alias": false,
@@ -10601,8 +10601,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotlogLL",
         "mapped_via_alias": false,
@@ -10613,8 +10613,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotResidualSummary",
         "mapped_via_alias": false,
@@ -10625,8 +10625,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotSummary",
         "mapped_via_alias": false,
@@ -10637,8 +10637,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "boxPlot",
         "mapped_via_alias": false,
@@ -10673,8 +10673,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotCoeffsWithoutHistory",
         "mapped_via_alias": false,
@@ -10685,8 +10685,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "getHistIndex",
         "mapped_via_alias": false,
@@ -10721,8 +10721,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotHistCoeffs",
         "mapped_via_alias": false,
@@ -11321,14 +11321,14 @@
       }
     ],
     "summary": {
-      "contract_explicit_verified_methods": 450,
+      "contract_explicit_verified_methods": 480,
       "contract_verified_methods": 480,
       "contract_verified_ratio": 0.9580838323353293,
       "eligible_methods": 480,
       "eligible_verified_ratio": 1.0,
       "excluded_methods": 21,
       "missing_symbol_methods": 0,
-      "probe_verified_methods": 30,
+      "probe_verified_methods": 0,
       "total_methods": 501,
       "unverified_behavior_methods": 0
     }

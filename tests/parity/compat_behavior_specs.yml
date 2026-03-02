@@ -526,6 +526,11 @@ classes:
     python_class: nstat.compat.matlab.Covariate
     scenario: compat_covariate_basic
     contracts:
+      - member: Covariate
+        access: method
+        args_key: cov_ctor_args
+        expect:
+          instance_of: nstat.compat.matlab.Covariate
       - member: computeMeanPlusCI
         access: method
         select: 0
@@ -559,6 +564,13 @@ classes:
         args_key: cov_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.Covariate
+      - member: toStructure
+        access: method
+        expect:
+          instance_of: builtins.dict
+      - member: plot
+        access: method
+        expect: {}
       - member: setConfInterval
         access: method
         args_key: cov_set_ci_args
@@ -609,6 +621,9 @@ classes:
         args_key: ci_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.ConfidenceInterval
+      - member: plot
+        access: method
+        expect: {}
 
   - matlab_class: Events
     python_class: nstat.compat.matlab.Events
@@ -633,6 +648,9 @@ classes:
         args_key: events_dsxy_args
         expect:
           shape: [1, 2]
+      - member: plot
+        access: method
+        expect: {}
 
   - matlab_class: History
     python_class: nstat.compat.matlab.History
@@ -676,6 +694,9 @@ classes:
         args_key: history_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.History
+      - member: plot
+        access: method
+        expect: {}
 
   - matlab_class: nspikeTrain
     python_class: nstat.compat.matlab.nspikeTrain
@@ -832,6 +853,15 @@ classes:
     python_class: nstat.compat.matlab.nstColl
     scenario: compat_spike_coll_basic
     contracts:
+      - member: nstColl
+        access: method
+        args_key: coll_ctor_args
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: copy
+        access: method
+        expect:
+          instance_of: nstat.spikes.SpikeTrainCollection
       - member: getFirstSpikeTime
         access: method
         expect:
@@ -2024,6 +2054,14 @@ classes:
         args_key: cif_set_history_args
         expect:
           instance_of: nstat.compat.matlab.CIF
+      - member: simulateCIF
+        access: method
+        args_key: cif_sim_args
+        expect: {}
+      - member: simulateCIFByThinning
+        access: method
+        args_key: cif_sim_args
+        expect: {}
       - member: simulateCIFByThinningFromLambda
         access: method
         args_key: cif_lambda_sim_args
@@ -2098,6 +2136,37 @@ classes:
         args_key: analysis_plot_seq_args
         expect:
           length: 1
+      - member: plotFitResidual
+        access: method
+        args_key: residual_args
+        expect: {}
+      - member: plotInvGausTrans
+        access: method
+        args_key: inv_args
+        expect: {}
+      - member: KSPlot
+        access: method
+        args_key: analysis_ksplot_args
+        expect: {}
+      - member: plotCoeffs
+        access: method
+        args_key: analysis_plot_coeffs_args
+        expect: {}
+      - member: compHistEnsCoeff
+        access: method
+        args_key: analysis_comp_hist_args
+        expect:
+          finite: true
+      - member: computeHistLagForAll
+        access: method
+        args_key: analysis_hist_lag_all_args
+        expect:
+          instance_of: builtins.tuple
+      - member: bnlrCG
+        access: method
+        args_key: analysis_bnlrcg_args
+        expect:
+          instance_of: nstat.fit.FitResult
       - member: compHistEnsCoeffForAll
         access: method
         args_key: analysis_comp_hist_all_args
@@ -2371,6 +2440,50 @@ classes:
           equals:
             - stim
             - hist
+      - member: plotIC
+        access: method
+        expect: {}
+      - member: plotAllCoeffs
+        access: method
+        expect: {}
+      - member: plot3dCoeffSummary
+        access: method
+        expect: {}
+      - member: plot2dCoeffSummary
+        access: method
+        expect: {}
+      - member: plotKSSummary
+        access: method
+        expect: {}
+      - member: plotAIC
+        access: method
+        expect: {}
+      - member: plotBIC
+        access: method
+        expect: {}
+      - member: plotlogLL
+        access: method
+        expect: {}
+      - member: plotResidualSummary
+        access: method
+        expect: {}
+      - member: plotSummary
+        access: method
+        expect: {}
+      - member: boxPlot
+        access: method
+        expect:
+          instance_of: builtins.dict
+      - member: plotCoeffsWithoutHistory
+        access: method
+        expect: {}
+      - member: getHistIndex
+        access: method
+        expect:
+          instance_of: builtins.tuple
+      - member: plotHistCoeffs
+        access: method
+        expect: {}
 
   - matlab_class: DecodingAlgorithms
     python_class: nstat.compat.matlab.DecodingAlgorithms
