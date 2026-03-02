@@ -1,5 +1,10 @@
 version: 1
 defaults:
+  topic_row_missing_error: 0
+  alignment_status_mismatch: 0
+  matlab_code_lines_abs_error: 0
+  matlab_reference_image_count_abs_error: 0
+  plot_call_missing_error: 0
   topic_checkpoint_missing_error: 0
   assertion_count_missing_error: 0
   python_validation_image_missing_error: 0

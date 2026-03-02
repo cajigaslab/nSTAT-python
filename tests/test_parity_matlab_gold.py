@@ -16,6 +16,7 @@ from nstat.trial import CovariateCollection, Trial
 
 
 MANIFEST = Path("tests/parity/fixtures/matlab_gold/manifest.yml")
+NOTEBOOK_MANIFEST = Path("tools/notebooks/notebook_manifest.yml")
 
 
 def _sha256(path: Path) -> str:
@@ -45,12 +46,27 @@ def _scalar(m: dict, key: str) -> float:
 def test_matlab_gold_manifest_and_checksums() -> None:
     payload = _load_manifest()
     assert payload["version"] == 1
-    assert len(payload["fixtures"]) == 13
+    assert len(payload["fixtures"]) >= 30
 
     for row in payload["fixtures"]:
         path = Path(row["path"])
         assert path.exists(), f"missing fixture {path}"
         assert _sha256(path) == row["sha256"], f"checksum mismatch for {path}"
+
+
+def test_matlab_gold_manifest_covers_all_notebook_topics() -> None:
+    payload = _load_manifest()
+    fixture_topics = {str(row["name"]) for row in payload["fixtures"]}
+    notebook_payload = yaml.safe_load(NOTEBOOK_MANIFEST.read_text(encoding="utf-8")) or {}
+    notebook_topics = {
+        str(row.get("topic", "")).strip()
+        for row in notebook_payload.get("notebooks", [])
+        if str(row.get("topic", "")).strip()
+    }
+    assert notebook_topics.issubset(fixture_topics), (
+        "Missing fixture coverage for topics: "
+        + ", ".join(sorted(notebook_topics - fixture_topics))
+    )
 
 
 def test_ppsimexample_matlab_gold_comparison() -> None:

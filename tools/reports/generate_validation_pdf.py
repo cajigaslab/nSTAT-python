@@ -278,6 +278,18 @@ def load_numeric_drift_summary(numeric_drift_report: Path) -> dict[str, dict[str
     for topic, row in topics.items():
         metrics = row.get("metrics", {})
         failed = list(row.get("failed_metrics", []))
+        metric_rows: list[dict[str, object]] = []
+        for metric_name, metric_data in metrics.items():
+            metric_rows.append(
+                {
+                    "name": str(metric_name),
+                    "value": float(metric_data.get("value", 0.0)),
+                    "threshold": float(metric_data.get("threshold", 0.0)),
+                    "pass": bool(metric_data.get("pass", False)),
+                    "ratio_to_threshold": float(metric_data.get("ratio_to_threshold", 0.0)),
+                }
+            )
+        metric_rows.sort(key=lambda item: float(item.get("ratio_to_threshold", 0.0)), reverse=True)
         out[str(topic)] = {
             "numeric_drift_pass": bool(row.get("pass", False)),
             "numeric_drift_checked_metrics": int(row.get("checked_metrics", 0)),
@@ -285,6 +297,7 @@ def load_numeric_drift_summary(numeric_drift_report: Path) -> dict[str, dict[str
             "numeric_drift_worst_ratio": float(row.get("worst_ratio_to_threshold", 0.0)),
             "numeric_drift_first_failed": failed[0] if failed else "-",
             "numeric_drift_metric_count": int(len(metrics)),
+            "numeric_drift_metric_rows": metric_rows,
         }
     return out
 
@@ -729,7 +742,7 @@ def _draw_metrics_table(
         ("numeric_drift_worst_ratio", "Worst ratio to threshold"),
         ("numeric_drift_first_failed", "First failed numeric metric"),
     ]
-    row_h = 12.0
+    row_h = 10.0
     table_h = row_h * (len(rows) + 1)
     key_col_w = width * 0.68
 
@@ -753,6 +766,36 @@ def _draw_metrics_table(
         y = top_y - idx * row_h - 9
         pdf.drawString(x + 4, y, label)
         pdf.drawString(x + key_col_w + 4, y, _format_metric_value(metrics.get(key)))
+
+
+def _draw_numeric_metric_detail(
+    pdf: canvas.Canvas,
+    metrics: dict[str, object] | None,
+    *,
+    x: float,
+    y: float,
+    max_rows: int = 4,
+) -> None:
+    if metrics is None:
+        return
+    rows = metrics.get("numeric_drift_metric_rows")
+    if not isinstance(rows, list) or not rows:
+        return
+
+    shown = rows[:max_rows]
+    pdf.setFont("Helvetica-Bold", 9)
+    pdf.drawString(x, y, "Numeric drift metric detail (worst ratios)")
+    y -= 11
+    pdf.setFont("Helvetica", 8)
+    for row in shown:
+        name = str(row.get("name", "-"))
+        value = float(row.get("value", 0.0))
+        threshold = float(row.get("threshold", 0.0))
+        passed = bool(row.get("pass", False))
+        ratio = float(row.get("ratio_to_threshold", 0.0))
+        status = "PASS" if passed else "FAIL"
+        line = f"- {name}: value={value:.4g}, threshold={threshold:.4g}, ratio={ratio:.3f}, {status}"
+        y = _draw_wrapped_lines(pdf, x + 2, y, line, wrap_width=100, line_step=9)
 
 
 def draw_cover_page(
@@ -1012,6 +1055,7 @@ def draw_example_page(pdf: canvas.Canvas, report: NotebookReport, index: int, to
 
     pdf.setFont("Helvetica-Bold", 10)
     pdf.drawString(40, 190, "MATLAB vs Python key metrics")
+    _draw_numeric_metric_detail(pdf, metrics, x=40, y=230, max_rows=4)
     _draw_metrics_table(
         pdf,
         metrics,

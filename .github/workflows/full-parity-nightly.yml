@@ -1,0 +1,100 @@
+name: full-parity-nightly
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  full-parity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev,docs,notebooks]
+          python -m pip install reportlab pillow
+
+      - name: Checkout upstream MATLAB nSTAT repo snapshot
+        run: |
+          GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
+
+      - name: Prepare deterministic validation images
+        run: |
+          python tools/parity/prepare_validation_images.py
+
+      - name: Run full parity and notebook gates
+        run: |
+          python tools/parity/build_parity_snapshot.py \
+            --matlab-root /tmp/upstream-nstat \
+            --fail-on medium
+          python tools/parity/build_numeric_drift_report.py \
+            --fixtures-manifest tests/parity/fixtures/matlab_gold/manifest.yml \
+            --thresholds parity/numeric_drift_thresholds.yml \
+            --report-out parity/numeric_drift_report.json \
+            --fail-on-violation
+          python tools/parity/check_functional_parity_progress.py \
+            --report parity/function_example_alignment_report.json \
+            --policy parity/functional_gate_policy.yml
+          python tools/parity/check_example_output_spec.py \
+            --report parity/function_example_alignment_report.json \
+            --spec parity/example_output_spec.yml
+          python tools/notebooks/run_notebooks.py --group all --timeout 900
+
+      - name: Generate full validation PDF
+        run: |
+          python tools/reports/generate_validation_pdf.py \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --matlab-help-root /tmp/upstream-nstat/helpfiles \
+            --notebook-group all \
+            --timeout 900 \
+            --skip-command-tests \
+            --parity-mode gate
+
+      - name: Enforce visual validation gate
+        run: |
+          python tools/reports/check_validation_visuals.py \
+            --report-pdf 'output/pdf/*.pdf' \
+            --images-root tmp/pdfs/validation_report/notebook_images \
+            --min-unique-images-per-topic 1 \
+            --max-duplicate-pdf-pages 0
+
+      - name: Upload parity artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-parity-artifacts
+          path: |
+            parity/function_example_alignment_report.json
+            parity/numeric_drift_report.json
+            parity/parity_gap_report.json
+            parity/method_probe_report.json
+            parity/method_closure_sprint.md
+          if-no-files-found: warn
+
+      - name: Upload validation PDF artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-validation-pdf
+          path: output/pdf/*.pdf
+          if-no-files-found: warn
+
+      - name: Upload notebook image artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-validation-images
+          path: tmp/pdfs/validation_report/notebook_images
+          if-no-files-found: warn

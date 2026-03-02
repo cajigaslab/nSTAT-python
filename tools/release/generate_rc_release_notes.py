@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -38,6 +39,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("parity/example_output_spec.yml"),
     )
+    parser.add_argument(
+        "--previous-tag",
+        type=str,
+        default="",
+        help="Optional previous RC tag (for explicit RC-to-RC deltas).",
+    )
     return parser.parse_args()
 
 
@@ -52,6 +59,29 @@ def _read_yaml(path: Path) -> dict:
         return {}
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     return payload or {}
+
+
+def _read_json_from_tag(repo_root: Path, tag: str, relpath: Path) -> dict:
+    if not tag:
+        return {}
+    proc = subprocess.run(
+        ["git", "-C", str(repo_root), "show", f"{tag}:{relpath.as_posix()}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return {}
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return {}
+
+
+def _delta_line(label: str, current: int, previous: int) -> str:
+    delta = current - previous
+    sign = "+" if delta >= 0 else ""
+    return f"- {label}: `{previous} -> {current}` (`{sign}{delta}`)"
 
 
 def _latest_snapshot(parity_dir: Path) -> Path | None:
@@ -71,6 +101,10 @@ def main() -> int:
     spec = _read_yaml(repo_root / args.example_output_spec)
     snapshot_path = _latest_snapshot(repo_root / "parity")
     snapshot = _read_yaml(snapshot_path) if snapshot_path is not None else {}
+    previous_tag = args.previous_tag.strip()
+    previous_eq = _read_json_from_tag(repo_root, previous_tag, args.equivalence_report)
+    previous_drift = _read_json_from_tag(repo_root, previous_tag, args.numeric_drift_report)
+    previous_gap = _read_json_from_tag(repo_root, previous_tag, args.gap_report)
 
     gap = gap_report.get("summary", {})
     method = eq_report.get("method_functional_audit", {}).get("summary", {})
@@ -127,6 +161,98 @@ def main() -> int:
     lines.append(f"- Metrics checked: `{int(drift.get('checked_metrics', 0))}`")
     lines.append(f"- Metrics failed: `{int(drift.get('failed_metrics', 0))}`")
     lines.append("")
+
+    if previous_tag:
+        prev_gap = previous_gap.get("summary", {})
+        prev_method = previous_eq.get("method_functional_audit", {}).get("summary", {})
+        prev_example = previous_eq.get("example_line_alignment_audit", {}).get("summary", {})
+        prev_drift = previous_drift.get("summary", {})
+        lines.append(f"### RC delta vs `{previous_tag}`")
+        lines.append(
+            _delta_line(
+                "Structural high gaps",
+                int(gap.get("high", 0)),
+                int(prev_gap.get("high", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "Structural medium gaps",
+                int(gap.get("medium", 0)),
+                int(prev_gap.get("medium", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "Validated example topics",
+                int(example.get("validated_topics", 0)),
+                int(prev_example.get("validated_topics", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "MATLAB doc-only topics",
+                int(example.get("matlab_doc_only_topics", 0)),
+                int(prev_example.get("matlab_doc_only_topics", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "Contract-explicit verified methods",
+                int(method.get("contract_explicit_verified_methods", 0)),
+                int(prev_method.get("contract_explicit_verified_methods", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "Probe-verified methods",
+                int(method.get("probe_verified_methods", 0)),
+                int(prev_method.get("probe_verified_methods", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "Unverified behavior methods",
+                int(method.get("unverified_behavior_methods", 0)),
+                int(prev_method.get("unverified_behavior_methods", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "Numeric topics checked",
+                int(drift.get("topics", 0)),
+                int(prev_drift.get("topics", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "Numeric topics passed",
+                int(drift.get("passed_topics", 0)),
+                int(prev_drift.get("passed_topics", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "Numeric topics failed",
+                int(drift.get("failed_topics", 0)),
+                int(prev_drift.get("failed_topics", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "Numeric metrics checked",
+                int(drift.get("checked_metrics", 0)),
+                int(prev_drift.get("checked_metrics", 0)),
+            )
+        )
+        lines.append(
+            _delta_line(
+                "Numeric metrics failed",
+                int(drift.get("failed_metrics", 0)),
+                int(prev_drift.get("failed_metrics", 0)),
+            )
+        )
+        lines.append("")
 
     if snapshot:
         source = snapshot.get("source", {})

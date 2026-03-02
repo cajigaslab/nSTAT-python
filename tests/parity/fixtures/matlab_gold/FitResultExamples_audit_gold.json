@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "topic": "FitResultExamples",
+  "alignment_status": "matlab_doc_only",
+  "matlab_code_lines": 0,
+  "matlab_reference_image_count": 0,
+  "min_assertion_count": 3,
+  "require_topic_checkpoint": true,
+  "min_python_validation_image_count": 1,
+  "require_plot_call": true,
+  "source": "equivalence_audit_report",
+  "equivalence_report": "parity/function_example_alignment_report.json"
+}

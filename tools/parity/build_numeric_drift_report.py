@@ -89,12 +89,21 @@ def _detect_mepsc_events(trace: np.ndarray, dt: float) -> tuple[np.ndarray, np.n
     return det * dt, -trace[det]
 
 
-def _fixture_path_map(fixtures_manifest: Path) -> dict[str, Path]:
+def _fixture_manifest_index(fixtures_manifest: Path) -> dict[str, dict]:
     payload = yaml.safe_load(fixtures_manifest.read_text(encoding="utf-8"))
-    out: dict[str, Path] = {}
+    out: dict[str, dict] = {}
     for row in payload.get("fixtures", []):
+        topic = str(row["name"])
         path = Path(row["path"])
-        out[path.name] = path
+        fixture_type = str(row.get("fixture_type", "")).strip()
+        if not fixture_type:
+            if path.suffix.lower() == ".json":
+                fixture_type = "topic_audit"
+            elif path.suffix.lower() == ".mat":
+                fixture_type = "numeric"
+            else:
+                fixture_type = "unknown"
+        out[topic] = {"path": path, "fixture_type": fixture_type}
     return out
 
 
@@ -103,24 +112,16 @@ def _load_required_topics(notebook_manifest: Path) -> list[str]:
     return [str(row.get("topic", "")).strip() for row in payload.get("notebooks", []) if str(row.get("topic", "")).strip()]
 
 
-def _derive_checkpoint_metrics(equivalence_report: Path) -> dict[str, dict[str, float]]:
+def _load_equivalence_rows(equivalence_report: Path) -> dict[str, dict]:
     if not equivalence_report.exists():
         return {}
     payload = json.loads(equivalence_report.read_text(encoding="utf-8"))
     rows = payload.get("example_line_alignment_audit", {}).get("topic_rows", [])
-    out: dict[str, dict[str, float]] = {}
+    out: dict[str, dict] = {}
     for row in rows:
         topic = str(row.get("topic", "")).strip()
-        if not topic:
-            continue
-        assertion_count = int(row.get("assertion_count", 0))
-        has_topic_checkpoint = bool(row.get("has_topic_checkpoint", False))
-        py_image_count = int(row.get("python_validation_image_count", 0))
-        out[topic] = {
-            "topic_checkpoint_missing_error": 0.0 if has_topic_checkpoint else 1.0,
-            "assertion_count_missing_error": 0.0 if assertion_count > 0 else 1.0,
-            "python_validation_image_missing_error": 0.0 if py_image_count > 0 else 1.0,
-        }
+        if topic:
+            out[topic] = row
     return out
 
 
@@ -128,6 +129,87 @@ def _ratio(value: float, threshold: float) -> float:
     if threshold == 0.0:
         return 0.0 if value == 0.0 else float("inf")
     return value / threshold
+
+
+def _numeric_fixture_paths(fixture_index: dict[str, dict]) -> dict[str, Path]:
+    required = [
+        "PPSimExample",
+        "DecodingExampleWithHist",
+        "HippocampalPlaceCellExample",
+        "SpikeRateDiffCIs",
+        "PSTHEstimation",
+        "nstCollExamples",
+        "CovCollExamples",
+        "TrialExamples",
+        "EventsExamples",
+        "AnalysisExamples",
+        "DecodingExample",
+        "ExplicitStimulusWhiskerData",
+        "mEPSCAnalysis",
+    ]
+    out: dict[str, Path] = {}
+    for topic in required:
+        row = fixture_index.get(topic)
+        if row is None:
+            continue
+        if str(row.get("fixture_type", "")) != "numeric":
+            continue
+        out[f"{topic}_gold.mat"] = Path(row["path"])
+    return out
+
+
+def _topic_audit_fixtures(fixture_index: dict[str, dict]) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for topic, row in fixture_index.items():
+        if str(row.get("fixture_type", "")) != "topic_audit":
+            continue
+        fixture_path = Path(row["path"])
+        payload = json.loads(fixture_path.read_text(encoding="utf-8"))
+        out[topic] = payload
+    return out
+
+
+def _evaluate_topic_audit_metrics(
+    audit_fixtures: dict[str, dict],
+    equivalence_rows: dict[str, dict],
+) -> dict[str, dict[str, float]]:
+    out: dict[str, dict[str, float]] = {}
+    for topic, expected in sorted(audit_fixtures.items()):
+        observed = equivalence_rows.get(topic, {})
+        if not observed:
+            out[topic] = {
+                "topic_row_missing_error": 1.0,
+            }
+            continue
+
+        expected_status = str(expected.get("alignment_status", ""))
+        observed_status = str(observed.get("alignment_status", ""))
+        expected_matlab_lines = int(expected.get("matlab_code_lines", 0))
+        observed_matlab_lines = int(observed.get("matlab_code_lines", 0))
+        expected_matlab_refs = int(expected.get("matlab_reference_image_count", 0))
+        observed_matlab_refs = int(observed.get("matlab_reference_image_count", 0))
+        min_assertions = int(expected.get("min_assertion_count", 0))
+        observed_assertions = int(observed.get("assertion_count", 0))
+        require_checkpoint = bool(expected.get("require_topic_checkpoint", False))
+        observed_checkpoint = bool(observed.get("has_topic_checkpoint", False))
+        min_py_images = int(expected.get("min_python_validation_image_count", 0))
+        observed_py_images = int(observed.get("python_validation_image_count", 0))
+        require_plot = bool(expected.get("require_plot_call", False))
+        observed_plot = bool(observed.get("has_plot_call", False))
+
+        out[topic] = {
+            "topic_row_missing_error": 0.0,
+            "alignment_status_mismatch": 0.0 if observed_status == expected_status else 1.0,
+            "matlab_code_lines_abs_error": float(abs(observed_matlab_lines - expected_matlab_lines)),
+            "matlab_reference_image_count_abs_error": float(abs(observed_matlab_refs - expected_matlab_refs)),
+            "assertion_count_missing_error": 0.0 if observed_assertions >= min_assertions else 1.0,
+            "topic_checkpoint_missing_error": 0.0
+            if (not require_checkpoint or observed_checkpoint)
+            else 1.0,
+            "python_validation_image_missing_error": 0.0 if observed_py_images >= min_py_images else 1.0,
+            "plot_call_missing_error": 0.0 if (not require_plot or observed_plot) else 1.0,
+        }
+    return out
 
 
 def _evaluate_metrics(fixture_paths: dict[str, Path]) -> dict[str, dict[str, float]]:
@@ -456,14 +538,18 @@ def main() -> int:
     equivalence_report = args.equivalence_report.resolve()
     notebook_manifest = args.notebook_manifest.resolve()
 
-    fixture_paths = _fixture_path_map(fixtures_manifest)
-    metrics = _evaluate_metrics(fixture_paths)
-    required_topics = _load_required_topics(notebook_manifest)
-    checkpoint_metrics = _derive_checkpoint_metrics(equivalence_report)
-    for topic in required_topics:
+    fixture_index = _fixture_manifest_index(fixtures_manifest)
+    numeric_fixture_paths = _numeric_fixture_paths(fixture_index)
+    metrics = _evaluate_metrics(numeric_fixture_paths)
+    topic_audit_fixtures = _topic_audit_fixtures(fixture_index)
+    equivalence_rows = _load_equivalence_rows(equivalence_report)
+    topic_audit_metrics = _evaluate_topic_audit_metrics(topic_audit_fixtures, equivalence_rows)
+    for topic, topic_metrics in topic_audit_metrics.items():
         merged = dict(metrics.get(topic, {}))
-        merged.update(checkpoint_metrics.get(topic, {}))
+        merged.update(topic_metrics)
         metrics[topic] = merged
+
+    required_topics = _load_required_topics(notebook_manifest)
     thresholds_payload = yaml.safe_load(thresholds_file.read_text(encoding="utf-8")) or {}
     report = _build_report(metrics, thresholds_payload, fixtures_manifest, thresholds_file, required_topics)
 
