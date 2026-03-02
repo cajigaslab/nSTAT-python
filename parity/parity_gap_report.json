@@ -1,11 +1,11 @@
 {
   "class_coverage": [
     {
-      "coverage_ratio": 0.5714285714285714,
-      "mapped_method_count": 56,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 98,
       "matlab_class": "SignalObj",
       "matlab_method_count": 98,
-      "missing_method_count": 42
+      "missing_method_count": 0
     },
     {
       "coverage_ratio": 1.0,
@@ -71,11 +71,11 @@
       "missing_method_count": 0
     },
     {
-      "coverage_ratio": 0.5294117647058824,
-      "mapped_method_count": 36,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 68,
       "matlab_class": "Trial",
       "matlab_method_count": 68,
-      "missing_method_count": 32
+      "missing_method_count": 0
     },
     {
       "coverage_ratio": 1.0,
@@ -265,110 +265,13 @@
       "topic": "publish_all_helpfiles"
     }
   ],
-  "fail_on": "none",
-  "generated_at_utc": "2026-03-02T01:42:15.337842+00:00",
-  "issues": [
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "SignalObj",
-        "matlab_method_count": 98,
-        "missing_methods": [
-          "MTMspectrum",
-          "alignToMax",
-          "areDataLabelsEmpty",
-          "autocorrelation",
-          "cell2str",
-          "convertNamesToIndices",
-          "crosscorrelation",
-          "ctranspose",
-          "filter",
-          "filtfilt",
-          "findIndFromDataMask",
-          "getAvailableColor",
-          "getIndexFromLabel",
-          "getIndicesFromLabels",
-          "getOrigDataSig",
-          "getOriginalData",
-          "getSubSignalFromInd",
-          "getSubSignalFromNames",
-          "getSubSignalsWithinNStd",
-          "isLabelPresent",
-          "isMaskSet",
-          "ldivide",
-          "makeCompatible",
-          "mtimes",
-          "normWindowedSignal",
-          "periodogram",
-          "plotAllVariability",
-          "plotVariability",
-          "resetMask",
-          "restoreToOriginal",
-          "setDataLabels",
-          "setDataMask",
-          "setMask",
-          "setMaskByInd",
-          "setMaskByLabels",
-          "spectrogram",
-          "transpose",
-          "uminus",
-          "uplus",
-          "windowedSignal",
-          "xcorr",
-          "xcov"
-        ]
-      },
-      "message": "SignalObj has 42 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "Trial",
-        "matlab_method_count": 68,
-        "missing_methods": [
-          "flattenCovMask",
-          "flattenMask",
-          "getAllLabels",
-          "getCovSelectorFromMask",
-          "getEnsCovLabels",
-          "getEnsCovLabelsFromMask",
-          "getEnsCovMatrix",
-          "getEnsembleNeuronCovariates",
-          "getHistForNeurons",
-          "getHistLabels",
-          "getHistMatrices",
-          "getLabelsFromMask",
-          "getNeuronIndFromMask",
-          "getNeuronNeighbors",
-          "getNumHist",
-          "isEnsCovHistSet",
-          "isHistSet",
-          "isMaskSet",
-          "isNeuronMaskSet",
-          "makeConsistentSampleRate",
-          "makeConsistentTime",
-          "resampleEnsColl",
-          "resetEnsCovMask",
-          "resetHistory",
-          "resetNeuronMask",
-          "restoreToOriginal",
-          "setEnsCovHist",
-          "setEnsCovMask",
-          "setHistory",
-          "setNeighbors",
-          "setNeuronMask",
-          "setTrialTimesFor"
-        ]
-      },
-      "message": "Trial has 32 unmapped MATLAB methods",
-      "severity": "medium"
-    }
-  ],
+  "fail_on": "medium",
+  "generated_at_utc": "2026-03-02T02:24:03.028067+00:00",
+  "issues": [],
   "summary": {
     "high": 0,
     "low": 0,
-    "medium": 2,
-    "total": 2
+    "medium": 0,
+    "total": 0
   }
 }

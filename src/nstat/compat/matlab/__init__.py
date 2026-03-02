@@ -30,6 +30,16 @@ from ...trial import TrialConfig as _TrialConfig
 
 
 class SignalObj(_Signal):
+    def _ensure_signalobj_state(self) -> None:
+        if not hasattr(self, "_original_time"):
+            self._original_time = self.time.copy()
+            self._original_data = self.data.copy()
+            self._original_name = str(self.name)
+        if not hasattr(self, "_data_labels"):
+            self._data_labels = [f"sig_{i+1}" for i in range(self.n_channels)]
+        if not hasattr(self, "_data_mask"):
+            self._data_mask = list(range(self.n_channels))
+
     def setName(self, name: str) -> "SignalObj":
         self.set_name(name)
         return self
@@ -355,6 +365,292 @@ class SignalObj(_Signal):
     def mode(self) -> float:
         vals, counts = np.unique(self.data_to_matrix().reshape(-1), return_counts=True)
         return float(vals[np.argmax(counts)])
+
+    @staticmethod
+    def cell2str(cells: list[Any], delimiter: str = ",") -> str:
+        return delimiter.join(str(v) for v in cells)
+
+    @staticmethod
+    def getAvailableColor(index: int = 0) -> str:
+        palette = ["b", "g", "r", "c", "m", "y", "k"]
+        return palette[int(index) % len(palette)]
+
+    def setDataLabels(self, labels: list[str]) -> "SignalObj":
+        self._ensure_signalobj_state()
+        if len(labels) != self.n_channels:
+            raise ValueError("labels length must match number of channels")
+        self._data_labels = [str(v) for v in labels]
+        return self
+
+    def areDataLabelsEmpty(self) -> bool:
+        self._ensure_signalobj_state()
+        return len(self._data_labels) == 0
+
+    def getIndexFromLabel(self, label: str) -> int:
+        self._ensure_signalobj_state()
+        return self._data_labels.index(str(label))
+
+    def getIndicesFromLabels(self, labels: list[str]) -> list[int]:
+        self._ensure_signalobj_state()
+        return [self.getIndexFromLabel(label) for label in labels]
+
+    def isLabelPresent(self, label: str) -> bool:
+        self._ensure_signalobj_state()
+        return str(label) in self._data_labels
+
+    def convertNamesToIndices(self, labels: list[str]) -> list[int]:
+        return self.getIndicesFromLabels(labels)
+
+    def setDataMask(self, mask: list[int] | np.ndarray) -> "SignalObj":
+        self._ensure_signalobj_state()
+        idx = [int(v) for v in np.asarray(mask, dtype=int).reshape(-1)]
+        clean: list[int] = []
+        for i in idx:
+            if i >= 1 and i <= self.n_channels:
+                clean.append(i - 1)
+            elif i >= 0 and i < self.n_channels:
+                clean.append(i)
+            else:
+                raise IndexError("mask index out of range")
+        self._data_mask = sorted(set(clean))
+        return self
+
+    def setMask(self, selector: list[int] | list[str] | np.ndarray) -> "SignalObj":
+        vals = np.asarray(selector, dtype=object).reshape(-1).tolist()
+        if vals and all(isinstance(v, (str, np.str_)) for v in vals):
+            self._ensure_signalobj_state()
+            idx = self.getIndicesFromLabels([str(v) for v in vals])
+            self._data_mask = sorted(set(idx))
+            return self
+        return self.setDataMask([int(v) for v in vals])
+
+    def setMaskByInd(self, mask: list[int] | np.ndarray) -> "SignalObj":
+        return self.setDataMask(mask)
+
+    def setMaskByLabels(self, labels: list[str]) -> "SignalObj":
+        return self.setMask(labels)
+
+    def isMaskSet(self) -> bool:
+        self._ensure_signalobj_state()
+        return self._data_mask != list(range(self.n_channels))
+
+    def findIndFromDataMask(self) -> list[int]:
+        self._ensure_signalobj_state()
+        return list(self._data_mask)
+
+    def resetMask(self) -> "SignalObj":
+        self._ensure_signalobj_state()
+        self._data_mask = list(range(self.n_channels))
+        return self
+
+    def getSubSignalFromInd(self, selector: int | list[int] | np.ndarray) -> "SignalObj":
+        return self.getSubSignal(selector)
+
+    def getSubSignalFromNames(self, labels: list[str]) -> "SignalObj":
+        return self.getSubSignal(self.getIndicesFromLabels(labels))
+
+    def getSubSignalsWithinNStd(self, nStd: float = 1.0) -> "SignalObj":
+        mat = self.data_to_matrix()
+        means = np.mean(mat, axis=0)
+        mu = float(np.mean(means))
+        sigma = float(np.std(means))
+        if sigma <= 0.0:
+            idx = list(range(mat.shape[1]))
+        else:
+            idx = [i for i, m in enumerate(means) if abs(float(m) - mu) <= float(nStd) * sigma]
+        if not idx:
+            idx = [int(np.argmin(np.abs(means - mu)))]
+        return self.getSubSignal(idx)
+
+    def getOrigDataSig(self) -> "SignalObj":
+        self._ensure_signalobj_state()
+        return SignalObj(
+            time=self._original_time.copy(),
+            data=np.asarray(self._original_data, dtype=float).copy(),
+            name=str(self._original_name),
+            units=self.units,
+            x_label=self.x_label,
+            y_label=self.y_label,
+            x_units=self.x_units,
+            y_units=self.y_units,
+            plot_props=dict(self.plot_props),
+        )
+
+    def getOriginalData(self) -> np.ndarray:
+        self._ensure_signalobj_state()
+        return np.asarray(self._original_data, dtype=float).copy()
+
+    def restoreToOriginal(self) -> "SignalObj":
+        self._ensure_signalobj_state()
+        self.time = self._original_time.copy()
+        self.data = np.asarray(self._original_data, dtype=float).copy()
+        self.name = str(self._original_name)
+        self.resetMask()
+        return self
+
+    def makeCompatible(self, other: _Signal) -> tuple["SignalObj", "SignalObj"]:
+        rhs = SignalObj(
+            time=other.time.copy(),
+            data=other.data.copy(),
+            name=other.name,
+            units=other.units,
+            x_label=other.x_label,
+            y_label=other.y_label,
+            x_units=other.x_units,
+            y_units=other.y_units,
+            plot_props=dict(other.plot_props),
+        )
+        fs = max(float(self.sample_rate_hz), float(rhs.sample_rate_hz))
+        lhs_r = self.resample(fs)
+        rhs_r = rhs.resample(fs)
+        t0 = max(float(lhs_r.time[0]), float(rhs_r.time[0]))
+        tf = min(float(lhs_r.time[-1]), float(rhs_r.time[-1]))
+        if tf <= t0:
+            raise ValueError("signals do not overlap in time")
+        return lhs_r.getSigInTimeWindow(t0, tf), rhs_r.getSigInTimeWindow(t0, tf)
+
+    def alignToMax(self, targetTime: float = 0.0) -> "SignalObj":
+        _max_val, t_max, _idx = self.findGlobalPeak()
+        return self.shiftTime(float(targetTime) - t_max)
+
+    def windowedSignal(self, windowSamples: int = 11) -> "SignalObj":
+        win = int(windowSamples)
+        if win <= 0:
+            raise ValueError("windowSamples must be positive")
+        kernel = np.ones(win, dtype=float) / float(win)
+        mat = self.data_to_matrix()
+        out = np.column_stack([np.convolve(mat[:, i], kernel, mode="same") for i in range(mat.shape[1])])
+        return self._with_data(out, name=f"windowed({self.name})")
+
+    def normWindowedSignal(self, windowSamples: int = 11) -> "SignalObj":
+        smoothed = self.windowedSignal(windowSamples=windowSamples).data_to_matrix()
+        mat = self.data_to_matrix()
+        centered = mat - smoothed
+        scale = np.std(centered, axis=0, keepdims=True)
+        scale = np.where(scale <= 1e-12, 1.0, scale)
+        return self._with_data(centered / scale, name=f"norm_windowed({self.name})")
+
+    def filter(self, b: np.ndarray, a: np.ndarray) -> "SignalObj":
+        from scipy.signal import lfilter
+
+        b_arr = np.asarray(b, dtype=float).reshape(-1)
+        a_arr = np.asarray(a, dtype=float).reshape(-1)
+        mat = self.data_to_matrix()
+        out = np.column_stack([lfilter(b_arr, a_arr, mat[:, i]) for i in range(mat.shape[1])])
+        return self._with_data(out, name=f"filter({self.name})")
+
+    def filtfilt(self, b: np.ndarray, a: np.ndarray) -> "SignalObj":
+        from scipy.signal import filtfilt
+
+        b_arr = np.asarray(b, dtype=float).reshape(-1)
+        a_arr = np.asarray(a, dtype=float).reshape(-1)
+        mat = self.data_to_matrix()
+        out = np.column_stack([filtfilt(b_arr, a_arr, mat[:, i]) for i in range(mat.shape[1])])
+        return self._with_data(out, name=f"filtfilt({self.name})")
+
+    def periodogram(self) -> tuple[np.ndarray, np.ndarray]:
+        from scipy.signal import periodogram
+
+        fs = float(self.sample_rate_hz)
+        mat = self.data_to_matrix()
+        f, p = periodogram(mat[:, 0], fs=fs)
+        return np.asarray(f, dtype=float), np.asarray(p, dtype=float)
+
+    def MTMspectrum(self) -> tuple[np.ndarray, np.ndarray]:
+        return self.periodogram()
+
+    def spectrogram(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        from scipy.signal import spectrogram
+
+        fs = float(self.sample_rate_hz)
+        mat = self.data_to_matrix()
+        f, t, s = spectrogram(mat[:, 0], fs=fs)
+        return np.asarray(f, dtype=float), np.asarray(t, dtype=float), np.asarray(s, dtype=float)
+
+    def _crosscorr_core(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        maxLag: int | None = None,
+        demean: bool = False,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        x_arr = np.asarray(x, dtype=float).reshape(-1)
+        y_arr = np.asarray(y, dtype=float).reshape(-1)
+        if demean:
+            x_arr = x_arr - np.mean(x_arr)
+            y_arr = y_arr - np.mean(y_arr)
+        c = np.correlate(x_arr, y_arr, mode="full")
+        lags = np.arange(-x_arr.size + 1, y_arr.size, dtype=int)
+        if maxLag is not None:
+            mask = (lags >= -int(maxLag)) & (lags <= int(maxLag))
+            lags = lags[mask]
+            c = c[mask]
+        return lags, c.astype(float)
+
+    def xcorr(self, other: "SignalObj | None" = None, maxLag: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+        lhs = self.data_to_matrix()[:, 0]
+        rhs = lhs if other is None else other.data_to_matrix()[:, 0]
+        return self._crosscorr_core(lhs, rhs, maxLag=maxLag, demean=False)
+
+    def xcov(self, other: "SignalObj | None" = None, maxLag: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+        lhs = self.data_to_matrix()[:, 0]
+        rhs = lhs if other is None else other.data_to_matrix()[:, 0]
+        return self._crosscorr_core(lhs, rhs, maxLag=maxLag, demean=True)
+
+    def autocorrelation(self, maxLag: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+        return self.xcorr(other=None, maxLag=maxLag)
+
+    def crosscorrelation(self, other: "SignalObj", maxLag: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+        return self.xcorr(other=other, maxLag=maxLag)
+
+    def plotVariability(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        mat = self.data_to_matrix()
+        mu = np.mean(mat, axis=1)
+        sd = np.std(mat, axis=1)
+        plt.plot(self.time, mu, "k-")
+        return plt.fill_between(self.time, mu - sd, mu + sd, color="k", alpha=0.2)
+
+    def plotAllVariability(self) -> Any:
+        return self.plotVariability()
+
+    def transpose(self) -> "SignalObj":
+        return self.copySignal()
+
+    def ctranspose(self) -> "SignalObj":
+        return self.transpose()
+
+    def uminus(self) -> "SignalObj":
+        return self._with_data(-self.data_to_matrix(), name=f"-({self.name})")
+
+    def uplus(self) -> "SignalObj":
+        return self.copySignal()
+
+    def mtimes(self, other: float | np.ndarray | "SignalObj") -> "SignalObj":
+        lhs = self.data_to_matrix()
+        if isinstance(other, SignalObj):
+            rhs = other.data_to_matrix()
+            out = lhs @ rhs if lhs.shape[1] == rhs.shape[0] else lhs * rhs
+            return self._with_data(out, name=f"{self.name}*")
+        if np.isscalar(other):
+            scalar = float(np.asarray(other, dtype=float).reshape(()).item())
+            out = lhs * scalar
+            return self._with_data(out, name=f"{self.name}*")
+        rhs = np.asarray(other, dtype=float)
+        if rhs.ndim == 1:
+            out = lhs * rhs.reshape(1, -1)
+        else:
+            out = lhs @ rhs
+        return self._with_data(out, name=f"{self.name}*")
+
+    def ldivide(self, other: float | np.ndarray | "SignalObj") -> "SignalObj":
+        if isinstance(other, SignalObj):
+            rhs = other.data_to_matrix()
+        else:
+            rhs = np.asarray(other, dtype=float)
+        lhs = np.clip(self.data_to_matrix(), 1e-12, None)
+        return self._with_data(rhs / lhs, name=f"{self.name}\\")
 
 
 class Covariate(_Covariate):
@@ -1654,6 +1950,23 @@ class ConfigColl(_ConfigCollection):
 
 
 class Trial(_Trial):
+    def _ensure_trial_state(self) -> None:
+        if not hasattr(self, "_orig_spikes"):
+            self._orig_spikes = nstColl(self.spikes.trains).copy()
+            self._orig_covariates = CovColl(self.covariates.covariates).copy()
+        if not hasattr(self, "_neuron_mask"):
+            self._neuron_mask = list(range(self.spikes.n_units))
+        if not hasattr(self, "_ens_cov_mask"):
+            self._ens_cov_mask = list(range(self.spikes.n_units))
+        if not hasattr(self, "_cov_mask"):
+            self._cov_mask = list(range(len(self.covariates.covariates)))
+        if not hasattr(self, "_history"):
+            self._history = None
+        if not hasattr(self, "_ens_cov_hist"):
+            self._ens_cov_hist = None
+        if not hasattr(self, "_neighbors"):
+            self._neighbors = None
+
     def getAlignedBinnedObservation(
         self,
         binSize_s: float,
@@ -1800,6 +2113,220 @@ class Trial(_Trial):
 
     def getEvents(self) -> _Events | None:
         return getattr(self, "_events", None)
+
+    def flattenCovMask(self, mask: list[int] | list[list[int]] | np.ndarray) -> list[int]:
+        out = np.asarray(mask, dtype=int).reshape(-1)
+        return [int(v) for v in out]
+
+    def flattenMask(self, mask: list[int] | list[list[int]] | np.ndarray) -> list[int]:
+        return self.flattenCovMask(mask)
+
+    def getLabelsFromMask(self) -> list[str]:
+        self._ensure_trial_state()
+        mask = getattr(self, "_cov_mask", list(range(len(self.covariates.covariates))))
+        return [self.covariates.covariates[i].name for i in mask]
+
+    def getCovSelectorFromMask(self) -> list[str]:
+        return self.getLabelsFromMask()
+
+    def getEnsembleNeuronCovariates(
+        self,
+        binSize_s: float = 0.001,
+        mode: Literal["binary", "count"] = "binary",
+    ) -> CovColl:
+        return nstColl(self.spikes.trains).getEnsembleNeuronCovariates(binSize_s=binSize_s, mode=mode)
+
+    def getEnsCovLabels(self, binSize_s: float = 0.001) -> list[str]:
+        coll = self.getEnsembleNeuronCovariates(binSize_s=binSize_s, mode="binary")
+        return coll.getAllCovLabels()
+
+    def setEnsCovMask(self, selector: list[int] | list[str] | np.ndarray) -> "Trial":
+        self._ensure_trial_state()
+        ens = self.getEnsembleNeuronCovariates()
+        idx = ens.covIndFromSelector(selector)
+        self._ens_cov_mask = idx
+        return self
+
+    def resetEnsCovMask(self) -> "Trial":
+        self._ensure_trial_state()
+        self._ens_cov_mask = list(range(self.spikes.n_units))
+        return self
+
+    def getEnsCovLabelsFromMask(self, binSize_s: float = 0.001) -> list[str]:
+        self._ensure_trial_state()
+        labels = self.getEnsCovLabels(binSize_s=binSize_s)
+        return [labels[i] for i in self._ens_cov_mask if i < len(labels)]
+
+    def getEnsCovMatrix(
+        self,
+        binSize_s: float = 0.001,
+        mode: Literal["binary", "count"] = "binary",
+    ) -> tuple[np.ndarray, list[str]]:
+        self._ensure_trial_state()
+        ens = self.getEnsembleNeuronCovariates(binSize_s=binSize_s, mode=mode)
+        X, labels = ens.dataToMatrix()
+        if self._ens_cov_mask:
+            X = X[:, self._ens_cov_mask]
+            labels = [labels[i] for i in self._ens_cov_mask]
+        return X, labels
+
+    def setEnsCovHist(self, ensCovHist: Any) -> "Trial":
+        self._ensure_trial_state()
+        self._ens_cov_hist = ensCovHist
+        return self
+
+    def isEnsCovHistSet(self) -> bool:
+        self._ensure_trial_state()
+        return self._ens_cov_hist is not None
+
+    def setHistory(self, history: Any) -> "Trial":
+        self._ensure_trial_state()
+        self._history = history
+        return self
+
+    def isHistSet(self) -> bool:
+        self._ensure_trial_state()
+        return self._history is not None
+
+    def resetHistory(self) -> "Trial":
+        self._ensure_trial_state()
+        self._history = None
+        self._ens_cov_hist = None
+        return self
+
+    def getNumHist(self) -> int:
+        self._ensure_trial_state()
+        if self._history is None:
+            return 0
+        if isinstance(self._history, (list, tuple)):
+            return len(self._history)
+        return 1
+
+    def getHistLabels(self) -> list[str]:
+        n_hist = self.getNumHist()
+        return [f"hist_{i+1}" for i in range(n_hist)]
+
+    def getHistMatrices(self, binSize_s: float = 0.001) -> list[np.ndarray]:
+        self._ensure_trial_state()
+        if self._history is None:
+            return []
+        history_obj = self._history
+        if isinstance(history_obj, (list, tuple)):
+            history_obj = history_obj[0] if history_obj else None
+        if history_obj is None or not hasattr(history_obj, "design_matrix"):
+            return []
+        t_bins, _ = self.spikes.to_binned_matrix(bin_size_s=binSize_s, mode="binary")
+        mats: list[np.ndarray] = []
+        for train in self.spikes.trains:
+            mats.append(history_obj.design_matrix(spike_times_s=train.spike_times, time_grid_s=t_bins))
+        return mats
+
+    def getHistForNeurons(self, neuronIndices: list[int] | np.ndarray, binSize_s: float = 0.001) -> list[np.ndarray]:
+        mats = self.getHistMatrices(binSize_s=binSize_s)
+        if not mats:
+            return []
+        inds = [int(v) for v in np.asarray(neuronIndices).reshape(-1)]
+        out: list[np.ndarray] = []
+        for i in inds:
+            j = i - 1 if i >= 1 else i
+            if j < 0 or j >= len(mats):
+                raise IndexError("neuron index out of range")
+            out.append(mats[j])
+        return out
+
+    def setNeuronMask(self, selector: list[int] | list[str] | np.ndarray) -> "Trial":
+        self._ensure_trial_state()
+        if isinstance(selector, np.ndarray):
+            vals = selector.reshape(-1).tolist()
+        else:
+            vals = list(selector)
+        if vals and all(isinstance(v, (str, np.str_)) for v in vals):
+            idx = [self.spikes.get_nst_indices_from_name(str(v))[0] for v in vals]
+        else:
+            idx_raw = [int(v) for v in vals]
+            idx = []
+            for v in idx_raw:
+                if v >= 1 and v <= self.spikes.n_units:
+                    idx.append(v - 1)
+                elif v >= 0 and v < self.spikes.n_units:
+                    idx.append(v)
+                else:
+                    raise IndexError("neuron index out of range")
+        self._neuron_mask = sorted(set(idx))
+        return self
+
+    def resetNeuronMask(self) -> "Trial":
+        self._ensure_trial_state()
+        self._neuron_mask = list(range(self.spikes.n_units))
+        return self
+
+    def isNeuronMaskSet(self) -> bool:
+        self._ensure_trial_state()
+        return self._neuron_mask != list(range(self.spikes.n_units))
+
+    def getNeuronIndFromMask(self) -> list[int]:
+        self._ensure_trial_state()
+        return list(self._neuron_mask)
+
+    def setNeighbors(self, neighbors: Any) -> "Trial":
+        self._ensure_trial_state()
+        self._neighbors = neighbors
+        return self
+
+    def getNeuronNeighbors(self) -> Any:
+        self._ensure_trial_state()
+        return self._neighbors
+
+    def isMaskSet(self) -> bool:
+        self._ensure_trial_state()
+        cov_set = self._cov_mask != list(range(len(self.covariates.covariates)))
+        ens_set = self._ens_cov_mask != list(range(self.spikes.n_units))
+        neu_set = self._neuron_mask != list(range(self.spikes.n_units))
+        return bool(cov_set or ens_set or neu_set)
+
+    def getAllLabels(self, binSize_s: float = 0.001) -> list[str]:
+        labels: list[str] = []
+        labels.extend(self.getAllCovLabels())
+        labels.extend(self.getEnsCovLabels(binSize_s=binSize_s))
+        labels.extend(self.getHistLabels())
+        return labels
+
+    def makeConsistentSampleRate(self, sampleRate: float | None = None) -> "Trial":
+        if sampleRate is None:
+            sampleRate = float(self.findMinSampleRate())
+        return self.setSampleRate(float(sampleRate))
+
+    def makeConsistentTime(self) -> "Trial":
+        t0 = self.findMinTime()
+        tf = self.findMaxTime()
+        return self.setMinTime(t0).setMaxTime(tf)
+
+    def resampleEnsColl(self, sampleRate: float) -> CovColl:
+        ens = self.getEnsembleNeuronCovariates()
+        return ens.resample(sampleRate)
+
+    def restoreToOriginal(self) -> "Trial":
+        self._ensure_trial_state()
+        self.spikes = nstColl(self._orig_spikes.trains).copy()
+        self.covariates = CovColl(self._orig_covariates.covariates).copy()
+        self._cov_mask = list(range(len(self.covariates.covariates)))
+        self._ens_cov_mask = list(range(self.spikes.n_units))
+        self._neuron_mask = list(range(self.spikes.n_units))
+        self._history = None
+        self._ens_cov_hist = None
+        self._neighbors = None
+        return self
+
+    def setTrialTimesFor(self, *args: Any) -> "Trial":
+        if len(args) == 2:
+            t0, tf = float(args[0]), float(args[1])
+        elif len(args) == 3:
+            t0, tf = float(args[1]), float(args[2])
+        else:
+            raise ValueError("setTrialTimesFor expects (t0, tf) or (unitIndex, t0, tf)")
+        self.setMinTime(t0)
+        self.setMaxTime(tf)
+        return self
 
     def plotCovariates(self, *_args: Any, **_kwargs: Any) -> Any:
         import matplotlib.pyplot as plt

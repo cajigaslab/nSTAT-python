@@ -100,11 +100,11 @@ jobs:
             --upstream-root /tmp/upstream-nstat \
             --allowlist tools/compliance/shared_data_allowlist.yml
 
-      - name: Build parity snapshot and enforce high-severity gate
+      - name: Build parity snapshot and enforce high/medium-severity gate
         run: |
           python tools/parity/build_parity_snapshot.py \
             --matlab-root /tmp/upstream-nstat \
-            --fail-on high
+            --fail-on medium
 
       - name: Enforce Tier-1 parity progress gate
         run: |

@@ -6,7 +6,7 @@ Generated from `parity/parity_gap_report.json`.
 |---|---:|---:|---:|---|
 | P2 | `DecodingAlgorithms` | 0 | 1.000 | n/a |
 | P2 | `Analysis` | 0 | 1.000 | n/a |
-| P1 | `Trial` | 32 | 0.529 | flattenCovMask, flattenMask, getAllLabels, getCovSelectorFromMask, getEnsCovLabels, getEnsCovLabelsFromMask |
+| P2 | `Trial` | 0 | 1.000 | n/a |
 | P2 | `CovColl` | 0 | 1.000 | n/a |
 | P2 | `nstColl` | 0 | 1.000 | n/a |
 | P2 | `FitResult` | 0 | 1.000 | n/a |

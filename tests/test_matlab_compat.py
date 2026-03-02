@@ -8,7 +8,9 @@ from nstat.compat.matlab import CovColl
 from nstat.compat.matlab import DecodingAlgorithms
 from nstat.compat.matlab import FitResSummary
 from nstat.compat.matlab import FitResult
+from nstat.compat.matlab import History
 from nstat.compat.matlab import SignalObj
+from nstat.compat.matlab import Trial
 from nstat.compat.matlab import nspikeTrain
 from nstat.compat.matlab import nstColl
 from nstat.compat.matlab import TrialConfig
@@ -27,6 +29,50 @@ def test_signalobj_alias_methods() -> None:
     assert np.isclose(sig.getSampleRate(), 4.0)
     assert np.isclose(sig.getDuration(), 1.0)
     assert sig.getData().shape == (5,)
+
+
+def test_signalobj_extended_parity_aliases() -> None:
+    t = np.linspace(0.0, 1.0, 201)
+    data = np.column_stack([np.sin(2.0 * np.pi * t), np.cos(2.0 * np.pi * t)])
+    sig = SignalObj(time=t, data=data, name="sig")
+    sig.setDataLabels(["sin", "cos"])
+
+    assert sig.getIndexFromLabel("cos") == 1
+    assert sig.getIndicesFromLabels(["sin", "cos"]) == [0, 1]
+    assert sig.isLabelPresent("sin")
+    assert not sig.areDataLabelsEmpty()
+
+    sig.setMaskByLabels(["cos"])
+    assert sig.isMaskSet()
+    assert sig.findIndFromDataMask() == [1]
+    sub = sig.getSubSignalFromNames(["cos"])
+    assert sub.getNumSignals() == 1
+    sig.resetMask()
+    assert not sig.isMaskSet()
+
+    _f, _p = sig.periodogram()
+    _lags, _corr = sig.autocorrelation(maxLag=10)
+    _lags2, _cov = sig.xcov(maxLag=10)
+    assert _f.ndim == 1
+    assert _p.ndim == 1
+    assert _lags.size == _corr.size
+    assert _lags2.size == _cov.size
+
+    filt = sig.filter(np.array([1.0]), np.array([1.0]))
+    ff = sig.filtfilt(np.array([0.5, 0.5]), np.array([1.0]))
+    assert filt.getData().shape[0] == sig.getData().shape[0]
+    assert ff.getData().shape[0] == sig.getData().shape[0]
+
+    win = sig.windowedSignal(windowSamples=9)
+    nwin = sig.normWindowedSignal(windowSamples=9)
+    assert win.getData().shape == sig.getData().shape
+    assert nwin.getData().shape == sig.getData().shape
+
+    orig = sig.getOriginalData()
+    sig.setMinTime(0.2)
+    sig.restoreToOriginal()
+    assert np.allclose(sig.getData(), orig)
+    assert SignalObj.cell2str(["a", "b"], ":") == "a:b"
 
 
 
@@ -218,3 +264,52 @@ def test_fit_aliases() -> None:
     assert diff.shape == (2,)
     mat = summary.computeDiffMat("bic")
     assert mat.shape == (2, 2)
+
+
+def test_trial_extended_parity_aliases() -> None:
+    t = np.linspace(0.0, 1.0, 101)
+    c1 = Covariate(time=t, data=np.sin(2 * np.pi * t), name="stim", labels=["stim"])
+    c2 = Covariate(time=t, data=np.cos(2 * np.pi * t), name="ctx", labels=["ctx"])
+    covs = CovColl([c1, c2])
+    st1 = nspikeTrain(spike_times=np.array([0.1, 0.3, 0.7]), t_start=0.0, t_end=1.0, name="u1")
+    st2 = nspikeTrain(spike_times=np.array([0.2, 0.4, 0.8]), t_start=0.0, t_end=1.0, name="u2")
+    spikes = nstColl([st1, st2])
+    trial = Trial(spikes=spikes, covariates=covs)
+
+    trial.setCovMask(["stim"])
+    assert trial.getLabelsFromMask() == ["stim"]
+    assert trial.getCovSelectorFromMask() == ["stim"]
+    assert trial.flattenCovMask([[1, 2]]) == [1, 2]
+
+    trial.setNeuronMask([1])
+    assert trial.isNeuronMaskSet()
+    assert trial.getNeuronIndFromMask() == [0]
+    trial.resetNeuronMask()
+    assert trial.getNeuronIndFromMask() == [0, 1]
+
+    trial.setEnsCovMask([1])
+    labels_mask = trial.getEnsCovLabelsFromMask(binSize_s=0.1)
+    assert len(labels_mask) == 1
+    X_ens, labs = trial.getEnsCovMatrix(binSize_s=0.1, mode="count")
+    assert X_ens.shape[1] == len(labs)
+
+    trial.setNeighbors([[1], [0]])
+    assert trial.getNeuronNeighbors() == [[1], [0]]
+
+    hist = History(bin_edges_s=np.array([0.0, 0.05, 0.1]))
+    trial.setHistory(hist)
+    assert trial.isHistSet()
+    mats = trial.getHistMatrices(binSize_s=0.1)
+    assert len(mats) == 2
+    assert trial.getNumHist() >= 1
+    trial.resetHistory()
+    assert not trial.isHistSet()
+
+    all_labels = trial.getAllLabels(binSize_s=0.1)
+    assert "stim" in all_labels
+    assert "ctx" in all_labels
+
+    trial.setTrialTimesFor(0.1, 0.9)
+    trial.restoreToOriginal()
+    assert np.isclose(trial.findMinTime(), 0.0)
+    assert np.isclose(trial.findMaxTime(), 1.0)
