@@ -60,6 +60,24 @@ def main() -> int:
         if py_cells < min_code_cells:
             failures.append(f"{topic}: python_code_cells={py_cells} below required {min_code_cells}")
 
+        if bool(cfg.get("require_topic_checkpoint", False)):
+            has_checkpoint = bool(row.get("has_topic_checkpoint", False))
+            if not has_checkpoint:
+                failures.append(f"{topic}: missing topic checkpoint cell marker")
+
+        min_assertions = int(cfg.get("min_assertion_count", 0))
+        if min_assertions > 0:
+            assertion_count = int(row.get("assertion_count", 0))
+            if assertion_count < min_assertions:
+                failures.append(
+                    f"{topic}: assertion_count={assertion_count} below required {min_assertions}"
+                )
+
+        if bool(cfg.get("require_plot_call", False)):
+            has_plot = bool(row.get("has_plot_call", False))
+            if not has_plot:
+                failures.append(f"{topic}: no plotting call detected in notebook code")
+
         min_mat_refs = int(cfg.get("min_matlab_reference_images", 0))
         mat_refs = int(row.get("matlab_reference_image_count", 0))
         if mat_refs < min_mat_refs:

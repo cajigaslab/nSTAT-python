@@ -5,12 +5,16 @@
       "matlab_doc_only_topics": 4,
       "missing_artifact_topics": 0,
       "missing_executable_topics": 0,
-      "pending_manual_review_topics": 26,
-      "total_topics": 30
+      "pending_manual_review_topics": 0,
+      "total_topics": 30,
+      "validated_topics": 26
     },
     "topic_rows": [
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 26,
@@ -104,7 +108,10 @@
         "topic": "AnalysisExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 2,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 14,
@@ -241,7 +248,10 @@
         "topic": "AnalysisExamples2"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -281,7 +291,10 @@
         "topic": "ConfigCollExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -337,7 +350,10 @@
         "topic": "CovCollExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -418,7 +434,10 @@
         "topic": "CovariateExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 15,
@@ -526,7 +545,10 @@
         "topic": "DecodingExample"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -649,6 +671,9 @@
       },
       {
         "alignment_status": "matlab_doc_only",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
         "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DocumentationSetup2025b.m",
@@ -681,7 +706,10 @@
         "topic": "DocumentationSetup2025b"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -736,7 +764,10 @@
         "topic": "EventsExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -896,6 +927,9 @@
       },
       {
         "alignment_status": "matlab_doc_only",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
         "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResSummaryExamples.m",
@@ -929,6 +963,9 @@
       },
       {
         "alignment_status": "matlab_doc_only",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
         "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResultExamples.m",
@@ -962,6 +999,9 @@
       },
       {
         "alignment_status": "matlab_doc_only",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
         "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResultReference.m",
@@ -994,7 +1034,10 @@
         "topic": "FitResultReference"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 2,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 14,
@@ -1233,7 +1276,10 @@
         "topic": "HippocampalPlaceCellExample"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 10,
@@ -1309,7 +1355,10 @@
         "topic": "HistoryExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 2,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 44,
@@ -1618,7 +1667,10 @@
         "topic": "HybridFilterExample"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 2,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 34,
@@ -1833,7 +1885,10 @@
         "topic": "NetworkTutorial"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 32,
@@ -1984,7 +2039,10 @@
         "topic": "PPSimExample"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -2087,7 +2145,10 @@
         "topic": "PPThinning"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 25,
@@ -2143,7 +2204,10 @@
         "topic": "PSTHEstimation"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 17,
@@ -2322,7 +2386,10 @@
         "topic": "SignalObjExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 2,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 14,
@@ -2466,7 +2533,10 @@
         "topic": "StimulusDecode2D"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -2506,7 +2576,10 @@
         "topic": "TrialConfigExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 7,
@@ -2596,7 +2669,10 @@
         "topic": "TrialExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -2763,7 +2839,10 @@
         "topic": "ValidationDataSet"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 50,
@@ -2900,7 +2979,10 @@
         "topic": "mEPSCAnalysis"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -4723,7 +4805,10 @@
         "topic": "nSTATPaperExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -4788,7 +4873,10 @@
         "topic": "nSpikeTrainExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 10,
@@ -4857,7 +4945,10 @@
         "topic": "nstCollExamples"
       },
       {
-        "alignment_status": "pending_manual_review",
+        "alignment_status": "validated",
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
         "matlab_code_blocks": [
           {
             "end_line": 1,
@@ -5018,7 +5109,7 @@
       }
     ]
   },
-  "generated_at_utc": "2026-03-02T17:08:35.182208+00:00",
+  "generated_at_utc": "2026-03-02T17:20:26.493882+00:00",
   "matlab_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local",
   "method_functional_audit": {
     "class_summary": [

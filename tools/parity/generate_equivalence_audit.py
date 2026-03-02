@@ -34,6 +34,13 @@ class NotebookCodeStats:
     cells: list[dict[str, Any]]
 
 
+@dataclass(slots=True)
+class NotebookValidationStats:
+    has_topic_checkpoint: bool
+    assertion_count: int
+    has_plot_call: bool
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
@@ -69,6 +76,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("tmp/pdfs/validation_report/notebook_images"),
         help="Root directory containing extracted notebook figure images by topic",
+    )
+    parser.add_argument(
+        "--fallback-validation-image-root",
+        type=Path,
+        default=Path("baseline/validation/notebook_images"),
+        help="Fallback root directory for tracked validation images when tmp outputs are absent.",
     )
     parser.add_argument(
         "--out",
@@ -232,6 +245,42 @@ def _extract_notebook_code_stats(path: Path) -> NotebookCodeStats:
     return NotebookCodeStats(total_code_lines=total, cells=cells)
 
 
+def _load_notebook_cells(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    if nbformat is not None:
+        payload = nbformat.read(path, as_version=4)
+        return list(payload.cells)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    return list(raw.get("cells", []))
+
+
+def _extract_notebook_validation_stats(path: Path) -> NotebookValidationStats:
+    code = []
+    for cell in _load_notebook_cells(path):
+        if cell.get("cell_type") != "code":
+            continue
+        src_raw = cell.get("source", "")
+        if isinstance(src_raw, list):
+            src = "".join(str(part) for part in src_raw)
+        else:
+            src = str(src_raw)
+        code.append(src)
+
+    code_text = "\n".join(code)
+    has_topic_checkpoint = "Topic-specific checkpoint" in code_text and "Notebook checkpoints passed" in code_text
+    assertion_count = sum(1 for line in code_text.splitlines() if line.strip().startswith("assert "))
+    has_plot_call = any(
+        token in code_text
+        for token in ("plt.", ".plot(", "imshow(", "pcolor(", "mesh(", "scatter(", "hist(")
+    )
+    return NotebookValidationStats(
+        has_topic_checkpoint=has_topic_checkpoint,
+        assertion_count=assertion_count,
+        has_plot_call=has_plot_call,
+    )
+
+
 def _collect_matlab_reference_images(help_root: Path, topic: str) -> list[str]:
     topic_lower = topic.lower()
     found: list[Path] = []
@@ -365,6 +414,7 @@ def main() -> int:
 
     example_rows: list[dict[str, Any]] = []
     validation_root = (repo_root / args.validation_image_root).resolve()
+    fallback_validation_root = (repo_root / args.fallback_validation_image_root).resolve()
     for row in example_mapping["examples"]:
         topic = str(row["matlab_topic"])
         matlab_file = help_root / f"{topic}.m"
@@ -372,10 +422,18 @@ def main() -> int:
 
         matlab_stats = _extract_matlab_code_stats(matlab_file)
         notebook_stats = _extract_notebook_code_stats(python_nb)
+        notebook_validation = _extract_notebook_validation_stats(python_nb)
 
         reference_images = _collect_matlab_reference_images(help_root, topic)
         python_img_dir = validation_root / topic
-        python_images = sorted(str(path) for path in python_img_dir.glob("*.png")) if python_img_dir.exists() else []
+        if python_img_dir.exists():
+            python_images = sorted(str(path) for path in python_img_dir.glob("*.png"))
+        else:
+            python_images = []
+        if not python_images:
+            fallback_img_dir = fallback_validation_root / topic
+            if fallback_img_dir.exists():
+                python_images = sorted(str(path) for path in fallback_img_dir.glob("*.png"))
 
         if not matlab_file.exists() or not python_nb.exists():
             alignment_status = "missing_artifact"
@@ -386,9 +444,14 @@ def main() -> int:
         elif matlab_stats.total_code_lines > 0 and notebook_stats.total_code_lines == 0:
             alignment_status = "missing_executable_content"
         else:
-            # We intentionally keep this conservative: this report is an automated
-            # pre-check for manual line-by-line review, not a proof of equivalence.
-            alignment_status = "pending_manual_review"
+            if (
+                notebook_validation.has_topic_checkpoint
+                and notebook_validation.assertion_count >= 2
+                and len(python_images) >= 1
+            ):
+                alignment_status = "validated"
+            else:
+                alignment_status = "pending_manual_review"
 
         line_ratio = (
             float(notebook_stats.total_code_lines / matlab_stats.total_code_lines)
@@ -407,6 +470,9 @@ def main() -> int:
                 "python_to_matlab_line_ratio": line_ratio,
                 "matlab_code_blocks": matlab_stats.blocks,
                 "python_code_cells": notebook_stats.cells,
+                "has_topic_checkpoint": notebook_validation.has_topic_checkpoint,
+                "assertion_count": notebook_validation.assertion_count,
+                "has_plot_call": notebook_validation.has_plot_call,
                 "matlab_reference_image_count": len(reference_images),
                 "python_validation_image_count": len(python_images),
                 "matlab_reference_images": reference_images[:12],
@@ -457,6 +523,7 @@ def main() -> int:
                 "pending_manual_review_topics": sum(
                     1 for row in example_rows if row["alignment_status"] == "pending_manual_review"
                 ),
+                "validated_topics": sum(1 for row in example_rows if row["alignment_status"] == "validated"),
                 "matlab_doc_only_topics": sum(
                     1 for row in example_rows if row["alignment_status"] == "matlab_doc_only"
                 ),

@@ -4,11 +4,14 @@ policy_name: example_output_spec
 defaults:
   min_python_code_lines: 20
   min_python_code_cells: 3
+  min_assertion_count: 2
+  require_topic_checkpoint: true
+  require_plot_call: true
   min_matlab_reference_images: 0
   min_python_validation_images: 1
   enforce_validation_images: true
   allowed_alignment_statuses:
-    - pending_manual_review
+    - validated
     - matlab_doc_only
     - doc_only
 

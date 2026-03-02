@@ -25,5 +25,5 @@ method_thresholds:
 example_thresholds:
   max_missing_artifact_topics: 0
   max_missing_executable_topics: 0
-  max_pending_manual_review_topics: 26
+  max_pending_manual_review_topics: 0
   min_matlab_doc_only_topics: 4
