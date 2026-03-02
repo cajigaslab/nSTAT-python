@@ -141,6 +141,7 @@ def _build_compat_covariate_basic() -> tuple[Any, dict[str, Any]]:
     )
     return obj, {
         "cov_from_structure_args": [obj.toStructure()],
+        "cov_ctor_args": [obj.toStructure()],
         "cov_filter_args": [np.array([0.2, 0.2]), np.array([1.0, -0.3])],
         "cov_set_ci_args": [ci],
     }
@@ -368,6 +369,7 @@ def _build_compat_cif_basic() -> tuple[Any, dict[str, Any]]:
         "cif_eval_args": [X, 1.0],
         "cif_grad_args": [X],
         "cif_fn_args": [X],
+        "cif_sim_args": [np.linspace(0.0, 1.0, X.shape[0]), X],
         "cif_set_spike_args": [spike],
         "cif_set_history_args": [history],
         "cif_lambda_sim_args": [lam, 2],
@@ -398,6 +400,11 @@ def _build_compat_analysis_basic() -> tuple[Any, dict[str, Any]]:
         "residual_args": [y, X, fit, 1.0],
         "inv_args": [y, X, fit, 1.0],
         "ks_args": [np.sort(np.random.default_rng(1).uniform(size=50))],
+        "analysis_ksplot_args": [fit, 1],
+        "analysis_plot_coeffs_args": [fit],
+        "analysis_comp_hist_args": [y1, Xh, 1.0],
+        "analysis_hist_lag_all_args": [np.column_stack([y1, y2]), 12],
+        "analysis_bnlrcg_args": [X, y, 1.0, 0.0],
         "analysis_run_neuron_args": [trial, config, 0],
         "analysis_run_all_args": [trial, config],
         "analysis_plot_seq_args": [np.array([0.2, -0.1, 0.05, 0.0])],

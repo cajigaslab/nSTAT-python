@@ -4,8 +4,8 @@ policy_name: functional_equivalence_gate
 method_thresholds:
   min_verified_ratio_overall: 0.958
   min_eligible_verified_ratio_overall: 1.0
-  min_contract_explicit_verified_methods: 450
-  max_probe_verified_methods: 30
+  min_contract_explicit_verified_methods: 480
+  max_probe_verified_methods: 0
   max_unverified_behavior_methods: 0
   max_missing_symbol_methods: 0
   class_min_verified_methods:
@@ -44,20 +44,20 @@ method_thresholds:
     DecodingAlgorithms: 1.0
   class_max_probe_verified_methods:
     SignalObj: 0
-    Covariate: 3
-    ConfidenceInterval: 1
-    Events: 1
-    History: 1
+    Covariate: 0
+    ConfidenceInterval: 0
+    Events: 0
+    History: 0
     nspikeTrain: 0
-    nstColl: 1
+    nstColl: 0
     CovColl: 0
     TrialConfig: 0
     ConfigColl: 0
     Trial: 0
-    CIF: 2
-    Analysis: 7
+    CIF: 0
+    Analysis: 0
     FitResult: 0
-    FitResSummary: 14
+    FitResSummary: 0
     DecodingAlgorithms: 0
 
 example_thresholds:
