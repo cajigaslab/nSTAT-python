@@ -90,13 +90,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 67,
+        "python_code_lines": 68,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/AnalysisExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.1355932203389831,
+        "python_to_matlab_line_ratio": 1.152542372881356,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/AnalysisExamples/AnalysisExamples_001.png"
@@ -227,13 +227,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 62,
+        "python_code_lines": 63,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/AnalysisExamples2.ipynb",
-        "python_to_matlab_line_ratio": 1.0163934426229508,
+        "python_to_matlab_line_ratio": 1.0327868852459017,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/AnalysisExamples2/AnalysisExamples2_001.png"
@@ -267,13 +267,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 48,
+        "python_code_lines": 49,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/ConfigCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 16.0,
+        "python_to_matlab_line_ratio": 16.333333333333332,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/ConfigCollExamples/ConfigCollExamples_001.png"
@@ -323,13 +323,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 48,
+        "python_code_lines": 49,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/CovCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 4.8,
+        "python_to_matlab_line_ratio": 4.9,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/CovCollExamples/CovCollExamples_001.png"
@@ -403,13 +403,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 60,
+        "python_code_lines": 61,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/CovariateExamples.ipynb",
-        "python_to_matlab_line_ratio": 3.1578947368421053,
+        "python_to_matlab_line_ratio": 3.210526315789474,
         "python_validation_image_count": 2,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/CovariateExamples/CovariateExamples_001.png",
@@ -512,13 +512,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 73,
+        "python_code_lines": 74,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/DecodingExample.ipynb",
-        "python_to_matlab_line_ratio": 1.280701754385965,
+        "python_to_matlab_line_ratio": 1.2982456140350878,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/DecodingExample/DecodingExample_001.png"
@@ -634,13 +634,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 73,
+        "python_code_lines": 74,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/DecodingExampleWithHist.ipynb",
-        "python_to_matlab_line_ratio": 1.3272727272727274,
+        "python_to_matlab_line_ratio": 1.3454545454545455,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/DecodingExampleWithHist/DecodingExampleWithHist_001.png"
@@ -667,11 +667,11 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 50,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/DocumentationSetup2025b.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -719,13 +719,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 35,
+        "python_code_lines": 36,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/EventsExamples.ipynb",
-        "python_to_matlab_line_ratio": 4.375,
+        "python_to_matlab_line_ratio": 4.5,
         "python_validation_image_count": 4,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/EventsExamples/EventsExamples_001.png",
@@ -881,13 +881,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 50,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/ExplicitStimulusWhiskerData.ipynb",
-        "python_to_matlab_line_ratio": 0.4260869565217391,
+        "python_to_matlab_line_ratio": 0.43478260869565216,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/ExplicitStimulusWhiskerData/ExplicitStimulusWhiskerData_001.png"
@@ -914,11 +914,11 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 50,
+        "python_code_lines": 51,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/FitResSummaryExamples.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -947,11 +947,11 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 50,
+        "python_code_lines": 51,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/FitResultExamples.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -980,11 +980,11 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 50,
+        "python_code_lines": 51,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/FitResultReference.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -1219,13 +1219,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 67,
+        "python_code_lines": 68,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/HippocampalPlaceCellExample.ipynb",
-        "python_to_matlab_line_ratio": 0.432258064516129,
+        "python_to_matlab_line_ratio": 0.43870967741935485,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/HippocampalPlaceCellExample/HippocampalPlaceCellExample_001.png"
@@ -1295,13 +1295,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 48,
+        "python_code_lines": 49,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/HistoryExamples.ipynb",
-        "python_to_matlab_line_ratio": 2.6666666666666665,
+        "python_to_matlab_line_ratio": 2.7222222222222223,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/HistoryExamples/HistoryExamples_001.png"
@@ -1603,13 +1603,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 145,
+        "python_code_lines": 146,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/HybridFilterExample.ipynb",
-        "python_to_matlab_line_ratio": 0.5034722222222222,
+        "python_to_matlab_line_ratio": 0.5069444444444444,
         "python_validation_image_count": 2,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/HybridFilterExample/HybridFilterExample_001.png",
@@ -1815,13 +1815,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 114,
+        "python_code_lines": 115,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/NetworkTutorial.ipynb",
-        "python_to_matlab_line_ratio": 1.2954545454545454,
+        "python_to_matlab_line_ratio": 1.3068181818181819,
         "python_validation_image_count": 5,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/NetworkTutorial/NetworkTutorial_001.png",
@@ -1968,13 +1968,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 79,
+        "python_code_lines": 80,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/PPSimExample.ipynb",
-        "python_to_matlab_line_ratio": 1.9268292682926829,
+        "python_to_matlab_line_ratio": 1.951219512195122,
         "python_validation_image_count": 3,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/PPSimExample/PPSimExample_001.png",
@@ -2070,13 +2070,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 98,
+        "python_code_lines": 99,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/PPThinning.ipynb",
-        "python_to_matlab_line_ratio": 2.45,
+        "python_to_matlab_line_ratio": 2.475,
         "python_validation_image_count": 4,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/PPThinning/PPThinning_001.png",
@@ -2129,13 +2129,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 50,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/PSTHEstimation.ipynb",
-        "python_to_matlab_line_ratio": 1.75,
+        "python_to_matlab_line_ratio": 1.7857142857142858,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/PSTHEstimation/PSTHEstimation_001.png"
@@ -2308,13 +2308,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 48,
+        "python_code_lines": 49,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/SignalObjExamples.ipynb",
-        "python_to_matlab_line_ratio": 0.5925925925925926,
+        "python_to_matlab_line_ratio": 0.6049382716049383,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/SignalObjExamples/SignalObjExamples_001.png"
@@ -2452,13 +2452,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 67,
+        "python_code_lines": 68,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/StimulusDecode2D.ipynb",
-        "python_to_matlab_line_ratio": 0.7282608695652174,
+        "python_to_matlab_line_ratio": 0.7391304347826086,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/StimulusDecode2D/StimulusDecode2D_001.png"
@@ -2492,13 +2492,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 48,
+        "python_code_lines": 49,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/TrialConfigExamples.ipynb",
-        "python_to_matlab_line_ratio": 16.0,
+        "python_to_matlab_line_ratio": 16.333333333333332,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/TrialConfigExamples/TrialConfigExamples_001.png"
@@ -2582,13 +2582,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 48,
+        "python_code_lines": 49,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/TrialExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.92,
+        "python_to_matlab_line_ratio": 1.96,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/TrialExamples/TrialExamples_001.png"
@@ -2749,13 +2749,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 50,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/ValidationDataSet.ipynb",
-        "python_to_matlab_line_ratio": 0.6363636363636364,
+        "python_to_matlab_line_ratio": 0.6493506493506493,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/ValidationDataSet/ValidationDataSet_001.png"
@@ -2886,13 +2886,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 50,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/mEPSCAnalysis.ipynb",
-        "python_to_matlab_line_ratio": 1.0208333333333333,
+        "python_to_matlab_line_ratio": 1.0416666666666667,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/mEPSCAnalysis/mEPSCAnalysis_001.png"
@@ -4709,13 +4709,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 73,
+        "python_code_lines": 74,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/nSTATPaperExamples.ipynb",
-        "python_to_matlab_line_ratio": 0.04631979695431472,
+        "python_to_matlab_line_ratio": 0.046954314720812185,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/nSTATPaperExamples/nSTATPaperExamples_001.png"
@@ -4774,13 +4774,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 48,
+        "python_code_lines": 49,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/nSpikeTrainExamples.ipynb",
-        "python_to_matlab_line_ratio": 4.8,
+        "python_to_matlab_line_ratio": 4.9,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/nSpikeTrainExamples/nSpikeTrainExamples_001.png"
@@ -4843,13 +4843,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 48,
+        "python_code_lines": 49,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/nstCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 3.0,
+        "python_to_matlab_line_ratio": 3.0625,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/nstCollExamples/nstCollExamples_001.png"
@@ -5003,13 +5003,13 @@
           },
           {
             "cell_index": 5,
-            "line_count": 2,
+            "line_count": 3,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 49,
+        "python_code_lines": 50,
         "python_notebook": "/private/tmp/nSTAT-python-cleanroom/notebooks/publish_all_helpfiles.ipynb",
-        "python_to_matlab_line_ratio": 0.3888888888888889,
+        "python_to_matlab_line_ratio": 0.3968253968253968,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "/private/tmp/nSTAT-python-cleanroom/tmp/pdfs/validation_report/notebook_images/publish_all_helpfiles/publish_all_helpfiles_001.png"
@@ -5018,7 +5018,7 @@
       }
     ]
   },
-  "generated_at_utc": "2026-03-02T16:44:36.714195+00:00",
+  "generated_at_utc": "2026-03-02T16:59:14.209554+00:00",
   "matlab_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local",
   "method_functional_audit": {
     "class_summary": [
@@ -5095,28 +5095,28 @@
         "unverified_behavior_count": 3
       },
       {
-        "contract_coverage_ratio": 0.7924528301886793,
-        "contract_verified_count": 42,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 53,
         "eligible_method_count": 53,
-        "eligible_verified_ratio": 0.7924528301886793,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "nstColl",
         "matlab_method_count": 53,
         "missing_symbol_count": 0,
-        "probe_verified_count": 29,
-        "unverified_behavior_count": 11
+        "probe_verified_count": 28,
+        "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.7454545454545455,
-        "contract_verified_count": 41,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 55,
         "eligible_method_count": 55,
-        "eligible_verified_ratio": 0.7454545454545455,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "CovColl",
         "matlab_method_count": 55,
         "missing_symbol_count": 0,
         "probe_verified_count": 27,
-        "unverified_behavior_count": 14
+        "unverified_behavior_count": 0
       },
       {
         "contract_coverage_ratio": 0.8333333333333334,
@@ -5143,16 +5143,16 @@
         "unverified_behavior_count": 4
       },
       {
-        "contract_coverage_ratio": 0.7058823529411765,
-        "contract_verified_count": 48,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 68,
         "eligible_method_count": 68,
-        "eligible_verified_ratio": 0.7058823529411765,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "Trial",
         "matlab_method_count": 68,
         "missing_symbol_count": 0,
-        "probe_verified_count": 31,
-        "unverified_behavior_count": 20
+        "probe_verified_count": 30,
+        "unverified_behavior_count": 0
       },
       {
         "contract_coverage_ratio": 1.0,
@@ -5167,16 +5167,16 @@
         "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.6818181818181818,
-        "contract_verified_count": 15,
+        "contract_coverage_ratio": 1.0,
+        "contract_verified_count": 22,
         "eligible_method_count": 22,
-        "eligible_verified_ratio": 0.6818181818181818,
+        "eligible_verified_ratio": 1.0,
         "excluded_method_count": 0,
         "matlab_class": "Analysis",
         "matlab_method_count": 22,
         "missing_symbol_count": 0,
         "probe_verified_count": 7,
-        "unverified_behavior_count": 7
+        "unverified_behavior_count": 0
       },
       {
         "contract_coverage_ratio": 0.8787878787878788,
@@ -7138,8 +7138,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "merge",
         "mapped_via_alias": false,
@@ -7198,8 +7198,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "getFieldVal",
         "mapped_via_alias": false,
@@ -7210,8 +7210,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "shiftTime",
         "mapped_via_alias": false,
@@ -7246,8 +7246,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setMask",
         "mapped_via_alias": false,
@@ -7258,8 +7258,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setNeuronMaskFromInd",
         "mapped_via_alias": false,
@@ -7270,8 +7270,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setNeuronMask",
         "mapped_via_alias": false,
@@ -7282,8 +7282,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setNeighbors",
         "mapped_via_alias": false,
@@ -7330,8 +7330,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "areNeighborsSet",
         "mapped_via_alias": false,
@@ -7378,8 +7378,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "addToColl",
         "mapped_via_alias": false,
@@ -7510,8 +7510,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "addNeuronNamesToEnsCovColl",
         "mapped_via_alias": false,
@@ -7702,8 +7702,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "generateUnitImpulseBasis",
         "mapped_via_alias": false,
@@ -7714,8 +7714,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "addSingleSpikeToColl",
         "mapped_via_alias": false,
@@ -7810,8 +7810,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setMask",
         "mapped_via_alias": false,
@@ -8002,8 +8002,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "addToColl",
         "mapped_via_alias": false,
@@ -8014,8 +8014,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "addCovCollection",
         "mapped_via_alias": false,
@@ -8134,8 +8134,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "flattenCovMask",
         "mapped_via_alias": false,
@@ -8206,8 +8206,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setMasksFromSelector",
         "mapped_via_alias": false,
@@ -8230,8 +8230,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "getSelectorFromMasks",
         "mapped_via_alias": false,
@@ -8254,8 +8254,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "generateSelectorCell",
         "mapped_via_alias": false,
@@ -8266,8 +8266,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "addCovCellToColl",
         "mapped_via_alias": false,
@@ -8278,8 +8278,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "addSingleCovToColl",
         "mapped_via_alias": false,
@@ -8326,8 +8326,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "removeFromCollByIndices",
         "mapped_via_alias": false,
@@ -8338,8 +8338,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "generateRemainingIndex",
         "mapped_via_alias": false,
@@ -8362,8 +8362,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "covIndFromSelector",
         "mapped_via_alias": false,
@@ -8398,8 +8398,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "parseDataSelectorArray",
         "mapped_via_alias": false,
@@ -8410,8 +8410,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "containsChars",
         "mapped_via_alias": false,
@@ -8614,8 +8614,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setTrialEvents",
         "mapped_via_alias": false,
@@ -8626,8 +8626,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "setTrialPartition",
         "mapped_via_alias": false,
@@ -8638,8 +8638,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "getTrialPartition",
         "mapped_via_alias": false,
@@ -8650,8 +8650,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setTrialTimesFor",
         "mapped_via_alias": false,
@@ -8686,8 +8686,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "updateTimePartitions",
         "mapped_via_alias": false,
@@ -8710,8 +8710,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setEnsCovMask",
         "mapped_via_alias": false,
@@ -8722,8 +8722,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setCovMask",
         "mapped_via_alias": false,
@@ -8734,8 +8734,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setNeuronMask",
         "mapped_via_alias": false,
@@ -8746,8 +8746,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setNeighbors",
         "mapped_via_alias": false,
@@ -8758,8 +8758,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setHistory",
         "mapped_via_alias": false,
@@ -8770,8 +8770,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "setEnsCovHist",
         "mapped_via_alias": false,
@@ -8842,8 +8842,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "addCov",
         "mapped_via_alias": false,
@@ -8854,8 +8854,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "removeCov",
         "mapped_via_alias": false,
@@ -8902,8 +8902,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "getHistForNeurons",
         "mapped_via_alias": false,
@@ -9154,8 +9154,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "flattenCovMask",
         "mapped_via_alias": false,
@@ -9166,8 +9166,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "flattenMask",
         "mapped_via_alias": false,
@@ -9178,8 +9178,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "shiftCovariates",
         "mapped_via_alias": false,
@@ -9262,8 +9262,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "restoreToOriginal",
         "mapped_via_alias": false,
@@ -9274,8 +9274,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "makeConsistentSampleRate",
         "mapped_via_alias": false,
@@ -9286,8 +9286,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "makeConsistentTime",
         "mapped_via_alias": false,
@@ -9310,8 +9310,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "plotCovariates",
         "mapped_via_alias": false,
@@ -9670,8 +9670,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "RunAnalysisForNeuron",
         "mapped_via_alias": false,
@@ -9682,8 +9682,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "RunAnalysisForAllNeurons",
         "mapped_via_alias": false,
@@ -9742,8 +9742,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "plotSeqCorr",
         "mapped_via_alias": false,
@@ -9802,8 +9802,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "compHistEnsCoeffForAll",
         "mapped_via_alias": false,
@@ -9826,8 +9826,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "computeGrangerCausalityMatrix",
         "mapped_via_alias": false,
@@ -9886,8 +9886,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "flatMaskCellToMat",
         "mapped_via_alias": false,
@@ -9910,8 +9910,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "unverified_behavior",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": false,
         "mapped_python_member": "ksdiscrete",
         "mapped_via_alias": false,
@@ -11230,16 +11230,16 @@
       }
     ],
     "summary": {
-      "contract_explicit_verified_methods": 197,
-      "contract_verified_methods": 402,
-      "contract_verified_ratio": 0.8023952095808383,
+      "contract_explicit_verified_methods": 251,
+      "contract_verified_methods": 454,
+      "contract_verified_ratio": 0.906187624750499,
       "eligible_methods": 480,
-      "eligible_verified_ratio": 0.8375,
+      "eligible_verified_ratio": 0.9458333333333333,
       "excluded_methods": 21,
       "missing_symbol_methods": 0,
-      "probe_verified_methods": 205,
+      "probe_verified_methods": 203,
       "total_methods": 501,
-      "unverified_behavior_methods": 78
+      "unverified_behavior_methods": 26
     }
   },
   "repo_root": "/private/tmp/nSTAT-python-cleanroom"

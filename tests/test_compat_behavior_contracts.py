@@ -177,10 +177,32 @@ def _build_compat_spike_coll_basic() -> tuple[Any, dict[str, Any]]:
     st1 = M.nspikeTrain(spike_times=np.array([0.1, 0.2, 0.25, 0.9]), t_start=0.0, t_end=1.0, name="u1")
     st2 = M.nspikeTrain(spike_times=np.array([0.15, 0.4, 0.8]), t_start=0.0, t_end=1.0, name="u2")
     obj = M.nstColl([st1, st2])
+    st_merge = M.nspikeTrain(spike_times=np.array([0.05, 0.35]), t_start=0.0, t_end=1.0, name="u3m")
+    st_add = M.nspikeTrain(spike_times=np.array([0.12, 0.22]), t_start=0.0, t_end=1.0, name="u3")
+    merge_coll = M.nstColl([st_merge])
+    ens_time = np.linspace(0.0, 1.0, 11)
+    ens_cov = M.CovColl(
+        [
+            M.Covariate(time=ens_time, data=np.zeros_like(ens_time), name="c1", labels=["c1"]),
+            M.Covariate(time=ens_time, data=np.ones_like(ens_time), name="c2", labels=["c2"]),
+        ]
+    )
     return obj, {
         "coll_name_args": ["u1"],
+        "coll_ind0_args": [0],
         "coll_ind_args": [1],
         "coll_binned_args": [0.1, "count"],
+        "coll_merge_args": [merge_coll],
+        "coll_field_arg": ["name"],
+        "coll_shift_args": [0.1],
+        "coll_setmask_args": [["u1"]],
+        "coll_setneuronmask_ind_args": [[1]],
+        "coll_setneuronmask_args": [["u2"]],
+        "coll_neighbors_args": [np.array([[1], [0]])],
+        "coll_add_args": [st_add],
+        "coll_addspike_args": [0, 0.95],
+        "coll_addnames_args": [ens_cov],
+        "coll_basis_args": [0.2, 10.0, 1.0, "basis"],
         "coll_from_structure_args": [obj.toStructure()],
     }
 
@@ -190,12 +212,30 @@ def _build_compat_covcoll_basic() -> tuple[Any, dict[str, Any]]:
     cov1 = M.Covariate(time=time, data=np.sin(2 * np.pi * time), name="sine", labels=["sine"])
     cov2 = M.Covariate(time=time, data=np.column_stack([time, time**2]), name="poly", labels=["t", "t2"])
     obj = M.CovColl([cov1, cov2])
+    cov3 = M.Covariate(time=time, data=np.cos(2 * np.pi * time), name="cosine", labels=["cosine"])
+    cov4 = M.Covariate(time=time, data=time**3, name="cube", labels=["cube"])
+    cov5 = M.Covariate(time=time, data=time**4, name="quartic", labels=["quartic"])
+    cov6 = M.Covariate(time=time, data=time**5, name="quintic", labels=["quintic"])
+    cov_extra_coll = M.CovColl([cov6])
     return obj, {
         "covcoll_names_args": [["sine", "poly"]],
         "covcoll_sel_args": [[1]],
         "covcoll_name_arg": ["poly"],
         "covcoll_names_lookup_args": [["sine", "poly"]],
         "covcoll_present_args": ["sine"],
+        "covcoll_contains_args": ["abc", "b"],
+        "covcoll_parse_args": [[1]],
+        "covcoll_from_selector_args": [["sine"]],
+        "covcoll_remaining_args": [["sine"]],
+        "covcoll_mask_args": [["sine"]],
+        "covcoll_masks_selector_args": [["poly"]],
+        "covcoll_flat_mask_args": [[[0], [1]]],
+        "covcoll_selector_mask_args": [[0, 1]],
+        "covcoll_add_single_args": [cov3],
+        "covcoll_add_args": [cov4],
+        "covcoll_add_cell_args": [[cov5]],
+        "covcoll_add_collection_args": [cov_extra_coll],
+        "covcoll_remove_indices_args": [[5]],
         "covcoll_from_structure_args": [obj.toStructure()],
     }
 
@@ -226,12 +266,36 @@ def _build_compat_trial_basic() -> tuple[Any, dict[str, Any]]:
     st1 = M.nspikeTrain(spike_times=np.array([0.1, 0.2, 0.25, 0.9]), t_start=0.0, t_end=1.0, name="u1")
     st2 = M.nspikeTrain(spike_times=np.array([0.15, 0.4, 0.8]), t_start=0.0, t_end=1.0, name="u2")
     obj = M.Trial(spikes=M.nstColl([st1, st2]), covariates=cc)
+    events = M.Events(times=np.array([0.2, 0.6]), labels=["e1", "e2"])
+    history = M.History(bin_edges_s=np.array([0.0, 0.05, 0.1]))
+    extra_time = time[(time >= 0.2) & (time <= 0.8)]
+    cov_extra = M.Covariate(
+        time=extra_time,
+        data=np.cos(2 * np.pi * extra_time),
+        name="extra",
+        labels=["extra"],
+    )
     return obj, {
         "trial_spike_vector_args": [0.1, 0, "count"],
         "trial_cov_args": [0],
         "trial_neuron_args": [0],
         "trial_all_labels_args": [0.1],
         "trial_aligned_args": [0.1, 0, "count"],
+        "trial_events_args": [events],
+        "trial_partition_args": [{"task": (0.2, 0.8)}],
+        "trial_times_for_args": [0.2, 0.8],
+        "trial_cov_mask_args": [["sine"]],
+        "trial_ens_cov_mask_args": [[1]],
+        "trial_neuron_mask_args": [["u1"]],
+        "trial_neighbors_args": [np.array([[1], [0]])],
+        "trial_history_args": [history],
+        "trial_ens_hist_args": [np.array([1.0, 2.0])],
+        "trial_add_cov_args": [cov_extra],
+        "trial_remove_cov_args": ["extra"],
+        "trial_hist_for_neurons_args": [[0], 0.1],
+        "trial_flat_mask_args": [[[0], [1]]],
+        "trial_shift_cov_args": [0.1],
+        "trial_consistent_sr_args": [10.0],
         "trial_from_structure_args": [obj.toStructure()],
     }
 
@@ -265,11 +329,30 @@ def _build_compat_analysis_basic() -> tuple[Any, dict[str, Any]]:
     p = 1.0 / (1.0 + np.exp(-(-1.2 + 1.15 * x)))
     y = rng.binomial(1, p).astype(float)
     fit = M.Analysis.GLMFit(X, y, "binomial", 1.0, 0.0)
+    time = np.linspace(0.0, 1.0, 101)
+    cov1 = M.Covariate(time=time, data=np.sin(2 * np.pi * time), name="sine", labels=["sine"])
+    cov2 = M.Covariate(time=time, data=np.cos(2 * np.pi * time), name="cos", labels=["cos"])
+    cc = M.CovColl([cov1, cov2])
+    st1 = M.nspikeTrain(spike_times=np.array([0.1, 0.2, 0.45, 0.7]), t_start=0.0, t_end=1.0, name="u1")
+    st2 = M.nspikeTrain(spike_times=np.array([0.15, 0.4, 0.8]), t_start=0.0, t_end=1.0, name="u2")
+    trial = M.Trial(spikes=M.nstColl([st1, st2]), covariates=cc)
+    config = M.TrialConfig(covariate_labels=["sine", "cos"], sample_rate_hz=100.0, fit_type="poisson", name="cfgA")
+    y1 = (rng.random(200) < 0.25).astype(float)
+    y2 = (rng.random(200) < 0.20).astype(float)
+    Xh = rng.normal(size=(200, 2))
+    spike_mat = rng.poisson(0.2, size=(3, 60)).astype(float)
     return M.Analysis, {
         "glm_args": [X, y, "binomial", 1.0, 0.0],
         "residual_args": [y, X, fit, 1.0],
         "inv_args": [y, X, fit, 1.0],
         "ks_args": [np.sort(np.random.default_rng(1).uniform(size=50))],
+        "analysis_run_neuron_args": [trial, config, 0],
+        "analysis_run_all_args": [trial, config],
+        "analysis_plot_seq_args": [np.array([0.2, -0.1, 0.05, 0.0])],
+        "analysis_comp_hist_all_args": [[y1, y2], [Xh, Xh], 1.0],
+        "analysis_granger_args": [spike_mat, 1],
+        "analysis_flat_mask_args": [[np.array([1, 0]), np.array([0, 1, 1])]],
+        "analysis_ksdisc_args": [np.array([1, 2, 2, 3]), np.array([1, 1, 2, 2, 3, 4])],
         "fdr_args": [np.array([0.001, 0.02, 0.04, 0.2]), 0.05],
         "hist_lag_args": [np.array([1.0, 0.0, 0.0, 1.0, 0.0, 1.0]), 2],
         "neighbors_args": [np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]), 1],

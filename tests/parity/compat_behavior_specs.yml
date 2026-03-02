@@ -466,6 +466,76 @@ classes:
         args_key: coll_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.nstColl
+      - member: merge
+        access: method
+        args_key: coll_merge_args
+        extract: n_units
+        expect:
+          equals: 3
+      - member: getFieldVal
+        access: method
+        args_key: coll_field_arg
+        expect:
+          length: 2
+      - member: shiftTime
+        access: method
+        args_key: coll_shift_args
+        extract: trains.0.spike_times.0
+        expect:
+          approx: 0.2
+          abs_tol: 1.0e-12
+      - member: setMask
+        access: method
+        args_key: coll_setmask_args
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: setNeuronMaskFromInd
+        access: method
+        args_key: coll_setneuronmask_ind_args
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: setNeuronMask
+        access: method
+        args_key: coll_setneuronmask_args
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: setNeighbors
+        access: method
+        args_key: coll_neighbors_args
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: areNeighborsSet
+        access: method
+        expect:
+          equals: true
+      - member: addToColl
+        access: method
+        args_key: coll_add_args
+        extract: n_units
+        expect:
+          equals: 3
+      - member: addSingleSpikeToColl
+        access: method
+        args_key: coll_addspike_args
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: getNST
+        access: method
+        args_key: coll_ind0_args
+        extract: spike_times
+        expect:
+          shape: [5]
+      - member: addNeuronNamesToEnsCovColl
+        access: method
+        args_key: coll_addnames_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: generateUnitImpulseBasis
+        access: method
+        args_key: coll_basis_args
+        extract: data
+        expect:
+          shape: [11, 5]
 
   - matlab_class: CovColl
     python_class: nstat.compat.matlab.CovColl
@@ -543,6 +613,105 @@ classes:
         args_key: covcoll_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.CovColl
+      - member: containsChars
+        access: method
+        args_key: covcoll_contains_args
+        expect:
+          equals: true
+      - member: parseDataSelectorArray
+        access: method
+        args_key: covcoll_parse_args
+        expect:
+          equals:
+            - 0
+      - member: covIndFromSelector
+        access: method
+        args_key: covcoll_from_selector_args
+        expect:
+          equals:
+            - 0
+      - member: generateRemainingIndex
+        access: method
+        args_key: covcoll_remaining_args
+        expect:
+          equals:
+            - 1
+      - member: flattenCovMask
+        access: method
+        args_key: covcoll_flat_mask_args
+        expect:
+          equals:
+            - 0
+            - 1
+      - member: generateSelectorCell
+        access: method
+        args_key: covcoll_selector_mask_args
+        expect:
+          equals:
+            - sine
+            - poly
+      - member: getSelectorFromMasks
+        access: method
+        args_key: covcoll_selector_mask_args
+        expect:
+          equals:
+            - sine
+            - poly
+      - member: setMask
+        access: method
+        args_key: covcoll_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: setMasksFromSelector
+        access: method
+        args_key: covcoll_masks_selector_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: addSingleCovToColl
+        access: method
+        args_key: covcoll_add_single_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: numActCov
+        access: method
+        expect:
+          equals: 3
+      - member: addToColl
+        access: method
+        args_key: covcoll_add_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: numActCov
+        access: method
+        expect:
+          equals: 4
+      - member: addCovCellToColl
+        access: method
+        args_key: covcoll_add_cell_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: numActCov
+        access: method
+        expect:
+          equals: 5
+      - member: addCovCollection
+        access: method
+        args_key: covcoll_add_collection_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: numActCov
+        access: method
+        expect:
+          equals: 6
+      - member: removeFromCollByIndices
+        access: method
+        args_key: covcoll_remove_indices_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: numActCov
+        access: method
+        expect:
+          equals: 5
 
   - matlab_class: TrialConfig
     python_class: nstat.compat.matlab.TrialConfig
@@ -711,6 +880,112 @@ classes:
         args_key: trial_from_structure_args
         expect:
           instance_of: nstat.compat.matlab.Trial
+      - member: setTrialEvents
+        access: method
+        args_key: trial_events_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setTrialPartition
+        access: method
+        args_key: trial_partition_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: getTrialPartition
+        access: method
+        expect:
+          length: 1
+      - member: setTrialTimesFor
+        access: method
+        args_key: trial_times_for_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: updateTimePartitions
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setEnsCovMask
+        access: method
+        args_key: trial_ens_cov_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setCovMask
+        access: method
+        args_key: trial_cov_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setNeuronMask
+        access: method
+        args_key: trial_neuron_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setNeighbors
+        access: method
+        args_key: trial_neighbors_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setHistory
+        access: method
+        args_key: trial_history_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setEnsCovHist
+        access: method
+        args_key: trial_ens_hist_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: getHistForNeurons
+        access: method
+        args_key: trial_hist_for_neurons_args
+        expect:
+          length: 1
+      - member: flattenCovMask
+        access: method
+        args_key: trial_flat_mask_args
+        expect:
+          equals:
+            - 0
+            - 1
+      - member: flattenMask
+        access: method
+        args_key: trial_flat_mask_args
+        expect:
+          equals:
+            - 0
+            - 1
+      - member: addCov
+        access: method
+        args_key: trial_add_cov_args
+        extract: covariates.covariates
+        expect:
+          length: 3
+      - member: removeCov
+        access: method
+        args_key: trial_remove_cov_args
+        extract: covariates.covariates
+        expect:
+          length: 2
+      - member: shiftCovariates
+        access: method
+        args_key: trial_shift_cov_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: makeConsistentSampleRate
+        access: method
+        args_key: trial_consistent_sr_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: makeConsistentTime
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: plotCovariates
+        access: method
+        expect:
+          length: 3
+      - member: restoreToOriginal
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.Trial
 
   - matlab_class: CIF
     python_class: nstat.compat.matlab.CIF
@@ -875,6 +1150,42 @@ classes:
         select: 0
         expect:
           shape: [9]
+      - member: RunAnalysisForNeuron
+        access: method
+        args_key: analysis_run_neuron_args
+        expect:
+          instance_of: nstat.fit.FitResult
+      - member: RunAnalysisForAllNeurons
+        access: method
+        args_key: analysis_run_all_args
+        expect:
+          length: 2
+      - member: plotSeqCorr
+        access: method
+        args_key: analysis_plot_seq_args
+        expect:
+          length: 1
+      - member: compHistEnsCoeffForAll
+        access: method
+        args_key: analysis_comp_hist_all_args
+        expect:
+          length: 2
+      - member: computeGrangerCausalityMatrix
+        access: method
+        args_key: analysis_granger_args
+        expect:
+          shape: [3, 3]
+          finite: true
+      - member: flatMaskCellToMat
+        access: method
+        args_key: analysis_flat_mask_args
+        expect:
+          shape: [2, 3]
+      - member: ksdiscrete
+        access: method
+        args_key: analysis_ksdisc_args
+        expect:
+          instance_of: builtins.dict
 
   - matlab_class: FitResult
     python_class: nstat.compat.matlab.FitResult
