@@ -215,6 +215,7 @@ def load_parity_gate_status(
 
     defaults = spec.get("defaults", {})
     per_topic = spec.get("topics", {})
+    out_of_scope_topics = set(spec.get("out_of_scope_topics", []))
     rows = report.get("example_line_alignment_audit", {}).get("topic_rows", [])
 
     out: dict[str, tuple[str, bool]] = {}
@@ -225,7 +226,12 @@ def load_parity_gate_status(
         status = str(row.get("alignment_status", ""))
         cfg = dict(defaults)
         cfg.update(per_topic.get(topic, {}))
-        allowed = set(cfg.get("allowed_alignment_statuses", []))
+        if topic in out_of_scope_topics:
+            allowed = set(cfg.get("out_of_scope_allowed_alignment_statuses", []))
+            if not allowed:
+                allowed = set(cfg.get("allowed_alignment_statuses", []))
+        else:
+            allowed = set(cfg.get("allowed_alignment_statuses", []))
         allowed_ok = status in allowed if allowed else True
         out[topic] = (status, allowed_ok)
     return out

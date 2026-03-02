@@ -5,6 +5,7 @@ This document defines how `nSTAT-python` is measured against MATLAB `nSTAT`.
 ## Gold Standard Baseline
 - MATLAB reference repository: `/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local`
 - Baseline lock file: `baseline/baseline_lock.yml`
+- Frozen MATLAB example-data snapshot: `parity/matlab_gold_snapshot_20260302.yml`
 - MATLAB commit hash is pinned in the lock file and must be updated intentionally.
 
 ## Scope
@@ -16,6 +17,12 @@ This document defines how `nSTAT-python` is measured against MATLAB `nSTAT`.
 - Out of scope:
   - MATLAB desktop help-browser internals
   - Simulink-only integrations
+  - MATLAB documentation-only setup/reference examples that have no executable
+    computational workflow parity target in Python:
+    - `DocumentationSetup2025b`
+    - `FitResSummaryExamples`
+    - `FitResultExamples`
+    - `FitResultReference`
 
 ## Parity Contract
 1. Every in-scope MATLAB class has a Python implementation route through:
@@ -56,19 +63,20 @@ CI enforces `--fail-on high` for parity discovery so missing critical artifacts 
 - Latest functional equivalence audit (`parity/function_example_alignment_report.json`):
   - Method-level audit:
     - `total_methods = 501`
-    - `contract_verified_methods = 355`
-    - `contract_explicit_verified_methods = 152`
+    - `contract_verified_methods = 480`
+    - `contract_explicit_verified_methods = 277`
     - `probe_verified_methods = 203`
-    - `unverified_behavior_methods = 146`
+    - `unverified_behavior_methods = 0`
     - `missing_symbol_methods = 0`
   - Example-level audit:
     - `total_topics = 30`
-    - `pending_manual_review_topics = 26`
+    - `pending_manual_review_topics = 0`
     - `missing_artifact_topics = 0`
     - `missing_executable_topics = 0`
     - `matlab_doc_only_topics = 4`
+    - `validated_topics = 26`
 - Updated visual validation report:
-  - `output/pdf/nstat_python_validation_report_20260302_111346.pdf` (smoke-set execution)
+  - `output/pdf/nstat_python_validation_report_20260302_145510.pdf` (all notebooks, gate mode)
 
 ## Acceptance Checklist
 - [x] Class and example inventory artifacts regenerate successfully.
@@ -76,8 +84,8 @@ CI enforces `--fail-on high` for parity discovery so missing critical artifacts 
 - [x] Full notebook suite is passing on the validated commit.
 - [x] Visual validation PDF has been regenerated after parity changes.
 - [x] Structural method-mapping gaps are closed (`parity/parity_gap_report.json`).
-- [ ] Functional parity contracts cover all mapped methods (`parity/function_example_alignment_report.json` currently 355/501).
-- [ ] Example workflows complete line-by-line manual review and output-lock verification (26 topics pending).
+- [ ] Functional parity contracts cover all mapped methods (`parity/function_example_alignment_report.json` currently 480/501; 21 methods explicitly excluded by policy).
+- [x] Example workflows complete line-by-line manual review and output-lock verification for in-scope topics (0 pending manual review).
 
 ## Notes
 - This repository is a clean-room implementation. MATLAB code is a behavioral reference only.

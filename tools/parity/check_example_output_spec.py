@@ -38,17 +38,28 @@ def main() -> int:
     report = json.loads(args.report.read_text(encoding="utf-8"))
     spec = yaml.safe_load(args.spec.read_text(encoding="utf-8"))
     rows = report["example_line_alignment_audit"]["topic_rows"]
+    out_of_scope_topics = set(spec.get("out_of_scope_topics", []))
 
     failures: list[str] = []
 
     for row in rows:
         topic = str(row["topic"])
         cfg = _topic_cfg(spec, topic)
+        is_out_of_scope = topic in out_of_scope_topics
 
-        allowed = set(cfg.get("allowed_alignment_statuses", []))
+        if is_out_of_scope:
+            allowed = set(cfg.get("out_of_scope_allowed_alignment_statuses", []))
+            if not allowed:
+                allowed = set(cfg.get("allowed_alignment_statuses", []))
+        else:
+            allowed = set(cfg.get("allowed_alignment_statuses", []))
+
         status = str(row["alignment_status"])
         if allowed and status not in allowed:
-            failures.append(f"{topic}: alignment_status '{status}' not in allowed set {sorted(allowed)}")
+            scope_label = "out-of-scope" if is_out_of_scope else "in-scope"
+            failures.append(
+                f"{topic}: {scope_label} alignment_status '{status}' not in allowed set {sorted(allowed)}"
+            )
 
         min_code_lines = int(cfg.get("min_python_code_lines", 0))
         py_lines = int(row.get("python_code_lines", 0))

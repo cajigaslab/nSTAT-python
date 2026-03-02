@@ -1,0 +1,21 @@
+version: 1
+snapshot_id: matlab_gold_20260302
+captured_on: 2026-03-02
+
+source:
+  repo_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/data
+  manifest_path: data/shared/matlab_source_20260302.manifest.json
+  manifest_sha256: 578a20db6433efed11466eb64ab23d77a1f106f3a2da8937c28849511e9385e7
+  file_count: 42
+  total_size_bytes: 504513862
+
+mirror:
+  root_path: data/shared/matlab_gold_20260302
+  manifest_path: data/shared/matlab_gold_20260302.manifest.json
+  manifest_sha256: b980cb16f5872b53e841f360e9a81a34c9e6b4a5149a9ef3b7fd96314899bfe4
+  file_count: 42
+  total_size_bytes: 504513862
+
+notes:
+  - This snapshot is used as the frozen MATLAB data baseline for nSTAT-python parity validation.
+  - Example-data parity checks must reference this snapshot unless intentionally updated.

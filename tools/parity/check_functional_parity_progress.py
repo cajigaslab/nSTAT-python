@@ -100,6 +100,12 @@ def main() -> int:
         if observed < minimum:
             failures.append(f"matlab_doc_only_topics={observed} below required {minimum}")
 
+    if "max_matlab_doc_only_topics" in example_policy:
+        observed = int(example_summary.get("matlab_doc_only_topics", 0))
+        maximum = int(example_policy["max_matlab_doc_only_topics"])
+        if observed > maximum:
+            failures.append(f"matlab_doc_only_topics={observed} exceeds allowed {maximum}")
+
     if failures:
         print("Functional parity gate FAILED")
         for item in failures:

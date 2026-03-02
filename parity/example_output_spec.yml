@@ -12,8 +12,16 @@ defaults:
   enforce_validation_images: true
   allowed_alignment_statuses:
     - validated
+  out_of_scope_allowed_alignment_statuses:
+    - validated
     - matlab_doc_only
     - doc_only
+
+out_of_scope_topics:
+  - DocumentationSetup2025b
+  - FitResSummaryExamples
+  - FitResultExamples
+  - FitResultReference
 
 topics:
   DocumentationSetup2025b:
