@@ -7,8 +7,8 @@ Generated from `parity/parity_gap_report.json`.
 | P2 | `DecodingAlgorithms` | 0 | 1.000 | n/a |
 | P2 | `Analysis` | 0 | 1.000 | n/a |
 | P1 | `Trial` | 32 | 0.529 | flattenCovMask, flattenMask, getAllLabels, getCovSelectorFromMask, getEnsCovLabels, getEnsCovLabelsFromMask |
-| P2 | `CovColl` | 21 | 0.618 | containsChars, covIndFromSelector, dataToStructure, enforceSampleRate, findMaxTime, findMinTime |
-| P1 | `nstColl` | 25 | 0.528 | addNeuronNamesToEnsCovColl, areNeighborsSet, enforceSampleRate, ensureConsistancy, estimateVarianceAcrossTrials, findMaxSampleRate |
+| P2 | `CovColl` | 0 | 1.000 | n/a |
+| P2 | `nstColl` | 0 | 1.000 | n/a |
 | P2 | `FitResult` | 0 | 1.000 | n/a |
 | P2 | `FitResSummary` | 0 | 1.000 | n/a |
 

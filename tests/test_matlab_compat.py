@@ -102,6 +102,62 @@ def test_collection_and_covariate_aliases() -> None:
     assert coll.isCovPresent("stim")
 
 
+def test_covcoll_extended_aliases() -> None:
+    t = np.linspace(0.0, 1.0, 101)
+    c1 = Covariate(time=t, data=np.sin(2 * np.pi * t), name="stim", labels=["stim"])
+    c2 = Covariate(time=t, data=np.cos(2 * np.pi * t), name="ctx", labels=["ctx"])
+    coll = CovColl([c1, c2])
+
+    assert coll.containsChars("stimulus", "tu")
+    assert coll.isaSelectorCell(["stim", "ctx"])
+    assert coll.covIndFromSelector(["ctx"]) == [1]
+    assert coll.getCovMaskFromSelector([2]) == [1]
+    assert coll.generateRemainingIndex(["stim"]) == [1]
+    assert coll.generateSelectorCell([0, 1]) == ["stim", "ctx"]
+    assert coll.getSelectorFromMasks([1]) == ["ctx"]
+
+    coll.setMasksFromSelector(["stim"])
+    assert coll.getCovDataMask() == [0]
+    coll.maskAwayCov(["stim"])
+    assert coll.getCovDataMask() == [1]
+    coll.maskAwayAllExcept(["ctx"])
+    assert coll.getCovDataMask() == [1]
+
+    coll.setCovShift(0.1)
+    assert np.isclose(coll.getTime()[0], 0.1)
+    coll.resetCovShift()
+    assert np.isclose(coll.getTime()[0], 0.0)
+    assert np.isclose(coll.findMinTime(), 0.0)
+    assert np.isclose(coll.findMaxTime(), 1.0)
+
+    payload = coll.dataToStructure()
+    restored = CovColl.fromStructure(payload)
+    assert restored.getAllCovLabels() == ["stim", "ctx"]
+
+
+def test_nspiketrain_extended_aliases() -> None:
+    st = nspikeTrain(spike_times=np.array([0.1, 0.3, 0.55]), t_start=0.0, t_end=1.0, name="u1")
+    assert np.isclose(st.computeRate(), st.getFiringRate())
+    assert np.isclose(st.getMinISI(), 0.2)
+    assert st.getMaxBinSizeBinary() > 0.0
+    assert st.getLStatistic() >= 0.0
+    assert st.computeStatistics()["n_spikes"] == 3.0
+
+    st.setSigRep(np.array([0, 1, 0, 1], dtype=float))
+    assert st.isSigRepBinary()
+    st.clearSigRep()
+    assert st.getSigRep(binSize_s=0.1).ndim == 1
+
+    st_copy = st.nstCopy()
+    assert np.allclose(st_copy.spike_times, st.spike_times)
+    parts = st.partitionNST([0.0, 0.5, 1.0])
+    assert len(parts) == 2
+
+    payload = st.toStructure()
+    restored = nspikeTrain.fromStructure(payload)
+    assert np.allclose(restored.spike_times, st.spike_times)
+
+
 def test_spike_collection_aliases() -> None:
     st1 = nspikeTrain(spike_times=np.array([0.1, 0.3]), t_start=0.0, t_end=1.0, name="u1")
     st2 = nspikeTrain(spike_times=np.array([0.2, 0.4]), t_start=0.0, t_end=1.0, name="u2")
@@ -112,6 +168,27 @@ def test_spike_collection_aliases() -> None:
     assert coll.getNSTnameFromInd(1) == "u2"
     merged = coll.toSpikeTrain()
     assert merged.spike_times.size == 4
+
+    assert coll.ensureConsistancy()
+    assert coll.getMaxBinSizeBinary() > 0.0
+    assert coll.findMaxSampleRate() > 0.0
+    assert coll.estimateVarianceAcrossTrials(binSize_s=0.1).ndim == 1
+
+    coll.setNeuronMaskFromInd([1])
+    assert coll.isNeuronMaskSet()
+    assert coll.getIndFromMask() == [0]
+    assert coll.getIndFromMaskMinusOne() == [0]
+    coll.resetMask()
+    assert coll.getIndFromMask() == [0, 1]
+
+    coll.setNeighbors([[1], [0]])
+    assert coll.areNeighborsSet()
+    assert coll.getNeighbors() == [[1], [0]]
+
+    basis = nstColl.generateUnitImpulseBasis(basisWidth_s=0.2, sampleRate_hz=100.0, totalTime_s=1.0)
+    assert basis.data.ndim == 2
+    ens = coll.getEnsembleNeuronCovariates(binSize_s=0.1, mode="count")
+    assert ens.nActCovar() == 2
 
 
 def test_fit_aliases() -> None:

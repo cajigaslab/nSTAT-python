@@ -648,8 +648,87 @@ class History(_HistoryBasis):
 
 
 class nspikeTrain(_SpikeTrain):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self._original_spike_times = self.spike_times.copy()
+        self._original_t_start = float(self.t_start)
+        self._original_t_end = float(self.t_end) if self.t_end is not None else None
+        self._original_name = str(self.name)
+        self._sig_rep: np.ndarray | None = None
+        self._mer: float | None = None
+
+    @staticmethod
+    def nspikeTrain(*args: Any, **kwargs: Any) -> _SpikeTrain:
+        if len(args) == 1 and isinstance(args[0], dict):
+            return nspikeTrain.fromStructure(args[0])
+        return nspikeTrain(*args, **kwargs)
+
+    @staticmethod
+    def fromStructure(payload: dict[str, Any]) -> _SpikeTrain:
+        t_end_raw = payload.get("t_end", payload.get("maxTime"))
+        return nspikeTrain(
+            spike_times=np.asarray(payload.get("spike_times", payload.get("spikeTimes", [])), dtype=float),
+            t_start=float(payload.get("t_start", payload.get("minTime", 0.0))),
+            t_end=float(t_end_raw) if t_end_raw is not None else None,
+            name=str(payload.get("name", "unit")),
+        )
+
+    def toStructure(self) -> dict[str, Any]:
+        return {
+            "spike_times": self.spike_times.copy(),
+            "t_start": float(self.t_start),
+            "t_end": float(self.t_end) if self.t_end is not None else None,
+            "name": str(self.name),
+            "MER": self._mer,
+        }
+
+    def setName(self, name: str) -> _SpikeTrain:
+        self.name = str(name)
+        return self
+
+    def setMER(self, mer: float) -> _SpikeTrain:
+        self._mer = float(mer)
+        return self
+
+    def setSigRep(self, sigRep: np.ndarray) -> _SpikeTrain:
+        self._sig_rep = np.asarray(sigRep, dtype=float).copy()
+        return self
+
+    def clearSigRep(self) -> _SpikeTrain:
+        self._sig_rep = None
+        return self
+
+    def getSigRep(self, binSize_s: float = 0.001, mode: Literal["binary", "count"] = "binary") -> np.ndarray:
+        if self._sig_rep is not None:
+            return self._sig_rep.copy()
+        if mode == "binary":
+            _, y = self.binarize(bin_size_s=binSize_s)
+        else:
+            _, y = self.bin_counts(bin_size_s=binSize_s)
+        return y
+
+    def isSigRepBinary(self, binSize_s: float = 0.001) -> bool:
+        y = self.getSigRep(binSize_s=binSize_s, mode="count")
+        return bool(np.all((y == 0.0) | (y == 1.0)))
+
     def getSpikeTimes(self) -> np.ndarray:
         return self.spike_times
+
+    def getISIs(self) -> np.ndarray:
+        return np.diff(self.spike_times)
+
+    def getMinISI(self) -> float:
+        isi = self.getISIs()
+        if isi.size == 0:
+            return float(np.inf)
+        return float(np.min(isi))
+
+    def getMaxBinSizeBinary(self) -> float:
+        min_isi = self.getMinISI()
+        if not np.isfinite(min_isi) or min_isi <= 0.0:
+            dur = float(self.duration_s())
+            return dur if dur > 0.0 else 1.0
+        return float(min_isi)
 
     def getDuration(self) -> float:
         return self.duration_s()
@@ -657,20 +736,147 @@ class nspikeTrain(_SpikeTrain):
     def getFiringRate(self) -> float:
         return self.firing_rate_hz()
 
-    def shiftTime(self, offset_s: float) -> "nspikeTrain":
+    def computeRate(self) -> float:
+        return self.getFiringRate()
+
+    def computeStatistics(self) -> dict[str, float]:
+        isi = self.getISIs()
+        return {
+            "n_spikes": float(self.spike_times.size),
+            "duration_s": float(self.duration_s()),
+            "rate_hz": float(self.getFiringRate()),
+            "mean_isi": float(np.mean(isi)) if isi.size else float(np.nan),
+            "std_isi": float(np.std(isi)) if isi.size else float(np.nan),
+        }
+
+    def getFieldVal(self, fieldName: str) -> Any:
+        if hasattr(self, fieldName):
+            return getattr(self, fieldName)
+        raise KeyError(f"field '{fieldName}' not found")
+
+    def getLStatistic(self) -> float:
+        isi = self.getISIs()
+        if isi.size == 0:
+            return 0.0
+        mu = float(np.mean(isi))
+        if mu <= 0.0:
+            return 0.0
+        return float(np.std(isi) / mu)
+
+    def nstCopy(self) -> _SpikeTrain:
+        return nspikeTrain(
+            spike_times=self.spike_times.copy(),
+            t_start=float(self.t_start),
+            t_end=float(self.t_end) if self.t_end is not None else None,
+            name=str(self.name),
+        )
+
+    def resample(self, sampleRate: float) -> _SpikeTrain:
+        if sampleRate <= 0.0:
+            raise ValueError("sampleRate must be positive")
+        dt = 1.0 / float(sampleRate)
+        snapped = np.round(self.spike_times / dt) * dt
+        self.spike_times = np.unique(snapped)
+        return self
+
+    def restoreToOriginal(self) -> _SpikeTrain:
+        self.spike_times = self._original_spike_times.copy()
+        self.t_start = float(self._original_t_start)
+        self.t_end = float(self._original_t_end) if self._original_t_end is not None else None
+        self.name = str(self._original_name)
+        self._sig_rep = None
+        return self
+
+    def partitionNST(self, partitionEdges_s: np.ndarray | list[float]) -> list[_SpikeTrain]:
+        edges = np.asarray(partitionEdges_s, dtype=float).reshape(-1)
+        if edges.size < 2:
+            raise ValueError("partition edges must contain at least two values")
+        out: list[_SpikeTrain] = []
+        for i in range(edges.size - 1):
+            lo = float(edges[i])
+            hi = float(edges[i + 1])
+            mask = (self.spike_times >= lo) & (self.spike_times <= hi)
+            out.append(
+                nspikeTrain(spike_times=self.spike_times[mask], t_start=lo, t_end=hi, name=f"{self.name}_{i+1}")
+            )
+        return out
+
+    def shiftTime(self, offset_s: float) -> _SpikeTrain:
         self.shift_time(offset_s)
         return self
 
-    def setMinTime(self, t_min: float) -> "nspikeTrain":
+    def setMinTime(self, t_min: float) -> _SpikeTrain:
         self.set_min_time(t_min)
         return self
 
-    def setMaxTime(self, t_max: float) -> "nspikeTrain":
+    def setMaxTime(self, t_max: float) -> _SpikeTrain:
         self.set_max_time(t_max)
         return self
 
+    def plot(self, *_args: Any, **_kwargs: Any) -> Any:
+        import matplotlib.pyplot as plt
+
+        y = np.ones(self.spike_times.size, dtype=float)
+        return plt.plot(self.spike_times, y, "k.")
+
+    def plotISIHistogram(self, bins: int = 20) -> Any:
+        import matplotlib.pyplot as plt
+
+        isi = self.getISIs()
+        if isi.size == 0:
+            return plt.hist([], bins=bins)
+        return plt.hist(isi, bins=bins, color="tab:blue", alpha=0.6)
+
+    def plotExponentialFit(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        isi = self.getISIs()
+        if isi.size == 0:
+            return plt.plot([], [])
+        lam = 1.0 / max(float(np.mean(isi)), 1e-12)
+        x = np.linspace(0.0, float(np.max(isi)), 200)
+        y = lam * np.exp(-lam * x)
+        return plt.plot(x, y, "r-")
+
+    def plotJointISIHistogram(self, bins: int = 20) -> Any:
+        import matplotlib.pyplot as plt
+
+        isi = self.getISIs()
+        if isi.size < 2:
+            return plt.hist2d([], [], bins=bins)
+        return plt.hist2d(isi[:-1], isi[1:], bins=bins, cmap="Blues")
+
+    def plotISISpectrumFunction(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        isi = self.getISIs()
+        if isi.size < 2:
+            return plt.plot([], [])
+        centered = isi - np.mean(isi)
+        spec = np.abs(np.fft.rfft(centered)) ** 2
+        freq = np.fft.rfftfreq(centered.size, d=max(float(np.mean(isi)), 1e-6))
+        return plt.plot(freq, spec, "k-")
+
+    def plotProbPlot(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        isi = np.sort(self.getISIs())
+        if isi.size == 0:
+            return plt.plot([], [])
+        q = (np.arange(1, isi.size + 1) - 0.5) / isi.size
+        return plt.plot(q, isi, "k.")
+
 
 class nstColl(_SpikeTrainCollection):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self._original_trains = [
+            train.copy() if hasattr(train, "copy") else _SpikeTrain(train.spike_times.copy(), train.t_start, train.t_end, train.name)
+            for train in self.trains
+        ]
+        self._neighbors: Any = None
+        self._neuron_mask: list[int] | None = None
+
     def getNumUnits(self) -> int:
         return self.n_units
 
@@ -822,8 +1028,218 @@ class nstColl(_SpikeTrainCollection):
             plt.plot(train.spike_times, y, "k.", markersize=3)
         return plt.gca()
 
+    def getFieldVal(self, fieldName: str) -> list[Any]:
+        out: list[Any] = []
+        for train in self.trains:
+            if not hasattr(train, fieldName):
+                raise KeyError(f"field '{fieldName}' not found")
+            out.append(getattr(train, fieldName))
+        return out
+
+    def findMaxSampleRate(self) -> float:
+        min_isi = float(np.min(self.getMinISIs()))
+        if not np.isfinite(min_isi) or min_isi <= 0.0:
+            return float(np.inf)
+        return float(1.0 / min_isi)
+
+    def getMaxBinSizeBinary(self) -> float:
+        min_isi = float(np.min(self.getMinISIs()))
+        if not np.isfinite(min_isi) or min_isi <= 0.0:
+            return 1.0
+        return min_isi
+
+    def setMask(self, selector: list[int] | list[str]) -> "nstColl":
+        if selector and isinstance(selector[0], str):
+            idx = [self.get_nst_indices_from_name(str(name))[0] for name in cast(list[str], selector)]
+        else:
+            idx_raw = [int(v) for v in cast(list[int], selector)]
+            idx = []
+            for v in idx_raw:
+                if v >= 1 and v <= self.n_units:
+                    idx.append(v - 1)
+                elif v >= 0 and v < self.n_units:
+                    idx.append(v)
+                else:
+                    raise IndexError("mask index out of range")
+        self._neuron_mask = sorted(set(idx))
+        return self
+
+    def setNeuronMask(self, selector: list[int] | list[str]) -> "nstColl":
+        return self.setMask(selector)
+
+    def setNeuronMaskFromInd(self, indices: list[int] | np.ndarray) -> "nstColl":
+        idx = [int(v) for v in np.asarray(indices).reshape(-1)]
+        return self.setMask(idx)
+
+    def resetMask(self) -> "nstColl":
+        self._neuron_mask = list(range(self.n_units))
+        return self
+
+    def isNeuronMaskSet(self) -> bool:
+        return self._neuron_mask is not None
+
+    def getIndFromMask(self) -> list[int]:
+        if self._neuron_mask is None:
+            return list(range(self.n_units))
+        return list(self._neuron_mask)
+
+    def getIndFromMaskMinusOne(self) -> list[int]:
+        return self.getIndFromMask()
+
+    def setNeighbors(self, neighbors: Any) -> "nstColl":
+        self._neighbors = neighbors
+        return self
+
+    def getNeighbors(self) -> Any:
+        return self._neighbors
+
+    def areNeighborsSet(self) -> bool:
+        return self._neighbors is not None
+
+    def restoreToOriginal(self) -> "nstColl":
+        self.trains = [
+            train.copy() if hasattr(train, "copy") else _SpikeTrain(train.spike_times.copy(), train.t_start, train.t_end, train.name)
+            for train in self._original_trains
+        ]
+        self._neuron_mask = None
+        self._neighbors = None
+        return self
+
+    def resample(self, sampleRate: float) -> "nstColl":
+        if sampleRate <= 0.0:
+            raise ValueError("sampleRate must be positive")
+        dt = 1.0 / float(sampleRate)
+        for train in self.trains:
+            snapped = np.round(train.spike_times / dt) * dt
+            train.spike_times = np.unique(snapped)
+        return self
+
+    def enforceSampleRate(self, sampleRate: float) -> "nstColl":
+        return self.resample(sampleRate)
+
+    def ensureConsistancy(self) -> bool:
+        for train in self.trains:
+            if np.any(np.diff(train.spike_times) < 0.0):
+                return False
+            if np.any(train.spike_times < train.t_start):
+                return False
+            if train.t_end is not None and np.any(train.spike_times > train.t_end):
+                return False
+        return True
+
+    def estimateVarianceAcrossTrials(self, binSize_s: float = 0.01) -> np.ndarray:
+        _t, mat = self.to_binned_matrix(bin_size_s=binSize_s, mode="count")
+        if mat.size == 0:
+            return np.array([], dtype=float)
+        return np.var(mat, axis=0)
+
+    def plotISIHistogram(self, bins: int = 20) -> Any:
+        import matplotlib.pyplot as plt
+
+        isi = [np.diff(train.spike_times) for train in self.trains if train.spike_times.size > 1]
+        if not isi:
+            return plt.hist([], bins=bins)
+        return plt.hist(np.concatenate(isi), bins=bins, color="tab:blue", alpha=0.6)
+
+    def plotExponentialFit(self) -> Any:
+        import matplotlib.pyplot as plt
+
+        isi = [np.diff(train.spike_times) for train in self.trains if train.spike_times.size > 1]
+        if not isi:
+            return plt.plot([], [])
+        vals = np.concatenate(isi)
+        lam = 1.0 / max(float(np.mean(vals)), 1e-12)
+        x = np.linspace(0.0, float(np.max(vals)), 200)
+        y = lam * np.exp(-lam * x)
+        return plt.plot(x, y, "r-")
+
+    def psthGLM(self, binSize_s: float = 0.01) -> tuple[np.ndarray, np.ndarray]:
+        return self.psth(binSize_s=binSize_s)
+
+    def ssglm(self, binSize_s: float = 0.01) -> tuple[np.ndarray, np.ndarray]:
+        return self.psth(binSize_s=binSize_s)
+
+    @staticmethod
+    def generateUnitImpulseBasis(
+        basisWidth_s: float,
+        sampleRate_hz: float,
+        totalTime_s: float = 1.0,
+        name: str = "unit_impulse_basis",
+    ) -> _Covariate:
+        if basisWidth_s <= 0.0:
+            raise ValueError("basisWidth_s must be positive")
+        if sampleRate_hz <= 0.0:
+            raise ValueError("sampleRate_hz must be positive")
+        dt = 1.0 / float(sampleRate_hz)
+        time = np.arange(0.0, float(totalTime_s) + 0.5 * dt, dt)
+        n_basis = max(1, int(np.ceil(float(totalTime_s) / float(basisWidth_s))))
+        basis = np.zeros((time.size, n_basis), dtype=float)
+        for j in range(n_basis):
+            lo = j * basisWidth_s
+            hi = min((j + 1) * basisWidth_s, totalTime_s + dt)
+            mask = (time >= lo) & (time < hi)
+            basis[mask, j] = 1.0
+        labels = [f"basis_{j+1}" for j in range(n_basis)]
+        return Covariate(time=time, data=basis, name=name, labels=labels)
+
+    def getEnsembleNeuronCovariates(self, binSize_s: float = 0.001, mode: Literal["binary", "count"] = "binary") -> "CovColl":
+        t, mat = self.to_binned_matrix(bin_size_s=binSize_s, mode=mode)
+        covs: list[_Covariate] = []
+        for i in range(mat.shape[0]):
+            covs.append(
+                Covariate(
+                    time=t.copy(),
+                    data=mat[i, :].copy(),
+                    name=self.trains[i].name,
+                    labels=[self.trains[i].name],
+                    units="spikes/bin",
+                )
+            )
+        return CovColl(cast(list[_Covariate], covs))
+
+    def addNeuronNamesToEnsCovColl(self, covColl: "CovColl") -> "CovColl":
+        for i, cov in enumerate(covColl.covariates):
+            if i < len(self.trains):
+                cov.name = self.trains[i].name
+                cov.labels = [self.trains[i].name]
+        return covColl
+
 
 class CovColl(_CovariateCollection):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self._original_covariates = [
+            _Covariate(
+                time=cov.time.copy(),
+                data=cov.data.copy(),
+                name=str(cov.name),
+                units=str(cov.units),
+                labels=list(cov.labels),
+                x_label=str(cov.x_label),
+                y_label=str(cov.y_label),
+                x_units=str(cov.x_units),
+                y_units=str(cov.y_units),
+                plot_props=dict(cov.plot_props),
+            )
+            for cov in self.covariates
+        ]
+        self._cov_shift = 0.0
+
+    @staticmethod
+    def containsChars(text: str, chars: str | list[str]) -> bool:
+        if isinstance(chars, str):
+            chars_list = list(chars)
+        else:
+            chars_list = [str(v) for v in chars]
+        return any(ch in text for ch in chars_list)
+
+    @staticmethod
+    def isaSelectorCell(selector: Any) -> bool:
+        if not isinstance(selector, (list, tuple, np.ndarray)):
+            return False
+        vals = list(np.asarray(selector, dtype=object).reshape(-1))
+        return all(isinstance(v, (int, str, np.integer)) for v in vals)
+
     def getTime(self) -> np.ndarray:
         return self.time
 
@@ -873,6 +1289,46 @@ class CovColl(_CovariateCollection):
 
     def dataToMatrixFromSel(self, selectors: list[int]) -> tuple[np.ndarray, list[str]]:
         return self.data_to_matrix_from_sel(selectors)
+
+    def parseDataSelectorArray(self, selector: Any) -> list[int]:
+        vals = list(np.asarray(selector, dtype=object).reshape(-1))
+        if not vals:
+            return []
+        if all(isinstance(v, (str, np.str_)) for v in vals):
+            return self.get_cov_indices_from_names([str(v) for v in vals])
+        out: list[int] = []
+        for v in vals:
+            idx = int(v)
+            if idx >= 1 and idx <= len(self.covariates):
+                out.append(idx - 1)
+            elif idx >= 0 and idx < len(self.covariates):
+                out.append(idx)
+            else:
+                raise IndexError("selector index out of range")
+        return out
+
+    def covIndFromSelector(self, selector: int | str | list[int] | list[str] | np.ndarray) -> list[int]:
+        if isinstance(selector, (int, str)):
+            return self.parseDataSelectorArray([selector])
+        return self.parseDataSelectorArray(selector)
+
+    def getCovMaskFromSelector(self, selector: int | str | list[int] | list[str] | np.ndarray) -> list[int]:
+        return self.covIndFromSelector(selector)
+
+    def flattenCovMask(self, mask: list[int] | np.ndarray | list[list[int]]) -> list[int]:
+        arr = np.asarray(mask, dtype=int).reshape(-1)
+        return [int(v) for v in arr]
+
+    def generateRemainingIndex(self, selector: int | str | list[int] | list[str] | np.ndarray) -> list[int]:
+        masked = set(self.covIndFromSelector(selector))
+        return [i for i in range(len(self.covariates)) if i not in masked]
+
+    def generateSelectorCell(self, mask: list[int] | np.ndarray) -> list[str]:
+        idx = self.flattenCovMask(mask)
+        return [self.covariates[i].name for i in idx]
+
+    def getSelectorFromMasks(self, mask: list[int] | np.ndarray) -> list[str]:
+        return self.generateSelectorCell(mask)
 
     def addSingleCovToColl(self, cov: _Covariate) -> "CovColl":
         return self.addToColl(cov)
@@ -926,12 +1382,18 @@ class CovColl(_CovariateCollection):
     def resample(self, sampleRate: float) -> "CovColl":
         return self.setSampleRate(sampleRate)
 
+    def enforceSampleRate(self, sampleRate: float) -> "CovColl":
+        return self.setSampleRate(sampleRate)
+
     def updateTimes(self) -> "CovColl":
         _ = self.time
         return self
 
     def toStructure(self) -> dict[str, Any]:
         return {"covariates": [cov.to_structure() for cov in self.covariates]}
+
+    def dataToStructure(self) -> dict[str, Any]:
+        return self.toStructure()
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> "CovColl":
@@ -952,6 +1414,13 @@ class CovColl(_CovariateCollection):
     def resetMask(self) -> "CovColl":
         self._cov_mask = list(range(len(self.covariates)))
         return self
+
+    def setMasksFromSelector(self, selector: list[int] | list[str] | np.ndarray) -> "CovColl":
+        if isinstance(selector, np.ndarray):
+            vals = selector.reshape(-1).tolist()
+        else:
+            vals = selector
+        return self.setMask(cast(list[int] | list[str], vals))
 
     def isCovMaskSet(self) -> bool:
         return hasattr(self, "_cov_mask")
@@ -979,6 +1448,65 @@ class CovColl(_CovariateCollection):
         for i in sorted(set(indices), reverse=True):
             del self.covariates[i]
         return self
+
+    def maskAwayCov(self, selector: int | str | list[int] | list[str] | np.ndarray) -> "CovColl":
+        remaining = self.generateRemainingIndex(selector)
+        self._cov_mask = remaining
+        return self
+
+    def maskAwayOnlyCov(self, selector: int | str | list[int] | list[str] | np.ndarray) -> "CovColl":
+        return self.maskAwayCov(selector)
+
+    def maskAwayAllExcept(self, selector: int | str | list[int] | list[str] | np.ndarray) -> "CovColl":
+        self._cov_mask = self.covIndFromSelector(selector)
+        return self
+
+    def setCovShift(self, shift_s: float) -> "CovColl":
+        shift = float(shift_s)
+        self._cov_shift += shift
+        for cov in self.covariates:
+            cov.time = cov.time + shift
+        return self
+
+    def resetCovShift(self) -> "CovColl":
+        if self._cov_shift == 0.0:
+            return self
+        for cov in self.covariates:
+            cov.time = cov.time - self._cov_shift
+        self._cov_shift = 0.0
+        return self
+
+    def restoreToOriginal(self) -> "CovColl":
+        self.covariates = [
+            _Covariate(
+                time=cov.time.copy(),
+                data=cov.data.copy(),
+                name=str(cov.name),
+                units=str(cov.units),
+                labels=list(cov.labels),
+                x_label=str(cov.x_label),
+                y_label=str(cov.y_label),
+                x_units=str(cov.x_units),
+                y_units=str(cov.y_units),
+                plot_props=dict(cov.plot_props),
+            )
+            for cov in self._original_covariates
+        ]
+        self._cov_shift = 0.0
+        self.resetMask()
+        return self
+
+    def findMinTime(self) -> float:
+        return self.find_min_time()
+
+    def findMaxTime(self) -> float:
+        return self.find_max_time()
+
+    def plot(self, *_args: Any, **_kwargs: Any) -> Any:
+        import matplotlib.pyplot as plt
+
+        X, _labels = self.design_matrix()
+        return plt.plot(self.time, X)
 
 
 class TrialConfig(_TrialConfig):

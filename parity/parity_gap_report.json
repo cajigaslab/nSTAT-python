@@ -36,25 +36,25 @@
       "missing_method_count": 0
     },
     {
-      "coverage_ratio": 0.10344827586206896,
-      "mapped_method_count": 3,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 29,
       "matlab_class": "nspikeTrain",
       "matlab_method_count": 29,
-      "missing_method_count": 26
+      "missing_method_count": 0
     },
     {
-      "coverage_ratio": 0.5283018867924528,
-      "mapped_method_count": 28,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 53,
       "matlab_class": "nstColl",
       "matlab_method_count": 53,
-      "missing_method_count": 25
+      "missing_method_count": 0
     },
     {
-      "coverage_ratio": 0.6181818181818182,
-      "mapped_method_count": 34,
+      "coverage_ratio": 1.0,
+      "mapped_method_count": 55,
       "matlab_class": "CovColl",
       "matlab_method_count": 55,
-      "missing_method_count": 21
+      "missing_method_count": 0
     },
     {
       "coverage_ratio": 1.0,
@@ -266,7 +266,7 @@
     }
   ],
   "fail_on": "none",
-  "generated_at_utc": "2026-03-01T20:04:32.569846+00:00",
+  "generated_at_utc": "2026-03-02T01:42:15.337842+00:00",
   "issues": [
     {
       "check": "missing_method_mappings",
@@ -324,111 +324,6 @@
     {
       "check": "missing_method_mappings",
       "details": {
-        "matlab_class": "nspikeTrain",
-        "matlab_method_count": 29,
-        "missing_methods": [
-          "clearSigRep",
-          "computeRate",
-          "computeStatistics",
-          "fromStructure",
-          "getFieldVal",
-          "getISIs",
-          "getLStatistic",
-          "getMaxBinSizeBinary",
-          "getMinISI",
-          "getSigRep",
-          "isSigRepBinary",
-          "nspikeTrain",
-          "nstCopy",
-          "partitionNST",
-          "plot",
-          "plotExponentialFit",
-          "plotISIHistogram",
-          "plotISISpectrumFunction",
-          "plotJointISIHistogram",
-          "plotProbPlot",
-          "resample",
-          "restoreToOriginal",
-          "setMER",
-          "setName",
-          "setSigRep",
-          "toStructure"
-        ]
-      },
-      "message": "nspikeTrain has 26 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "nstColl",
-        "matlab_method_count": 53,
-        "missing_methods": [
-          "addNeuronNamesToEnsCovColl",
-          "areNeighborsSet",
-          "enforceSampleRate",
-          "ensureConsistancy",
-          "estimateVarianceAcrossTrials",
-          "findMaxSampleRate",
-          "generateUnitImpulseBasis",
-          "getEnsembleNeuronCovariates",
-          "getFieldVal",
-          "getIndFromMask",
-          "getIndFromMaskMinusOne",
-          "getMaxBinSizeBinary",
-          "getNeighbors",
-          "isNeuronMaskSet",
-          "plotExponentialFit",
-          "plotISIHistogram",
-          "psthGLM",
-          "resample",
-          "resetMask",
-          "restoreToOriginal",
-          "setMask",
-          "setNeighbors",
-          "setNeuronMask",
-          "setNeuronMaskFromInd",
-          "ssglm"
-        ]
-      },
-      "message": "nstColl has 25 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
-        "matlab_class": "CovColl",
-        "matlab_method_count": 55,
-        "missing_methods": [
-          "containsChars",
-          "covIndFromSelector",
-          "dataToStructure",
-          "enforceSampleRate",
-          "findMaxTime",
-          "findMinTime",
-          "flattenCovMask",
-          "generateRemainingIndex",
-          "generateSelectorCell",
-          "getCovMaskFromSelector",
-          "getSelectorFromMasks",
-          "isaSelectorCell",
-          "maskAwayAllExcept",
-          "maskAwayCov",
-          "maskAwayOnlyCov",
-          "parseDataSelectorArray",
-          "plot",
-          "resetCovShift",
-          "restoreToOriginal",
-          "setCovShift",
-          "setMasksFromSelector"
-        ]
-      },
-      "message": "CovColl has 21 unmapped MATLAB methods",
-      "severity": "medium"
-    },
-    {
-      "check": "missing_method_mappings",
-      "details": {
         "matlab_class": "Trial",
         "matlab_method_count": 68,
         "missing_methods": [
@@ -473,7 +368,7 @@
   "summary": {
     "high": 0,
     "low": 0,
-    "medium": 5,
-    "total": 5
+    "medium": 2,
+    "total": 2
   }
 }
