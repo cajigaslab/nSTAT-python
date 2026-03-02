@@ -2512,11 +2512,22 @@ class CIF(_CIFModel):
         spikes = _CIFModel.simulate_cif_by_thinning_from_lambda(
             time=time, lambda_values=lam, num_realizations=numRealizations
         )
+        t_start = float(time[0])
+        t_end = float(time[-1])
+
+        # Numeric roundoff in thinning can place the last event infinitesimally past
+        # the terminal grid value. Clamp to the declared support before constructing
+        # SpikeTrain so MATLAB-style helper remains robust.
+        clipped_spikes = []
+        for sp in spikes:
+            sp_arr = np.asarray(sp, dtype=float)
+            mask = (sp_arr >= t_start) & (sp_arr <= t_end)
+            clipped_spikes.append(sp_arr[mask])
         trains = cast(
             list[_SpikeTrain],
             [
-            nspikeTrain(spike_times=sp, t_start=float(time[0]), t_end=float(time[-1]), name=f"unit_{i+1}")
-            for i, sp in enumerate(spikes)
+            nspikeTrain(spike_times=sp, t_start=t_start, t_end=t_end, name=f"unit_{i+1}")
+            for i, sp in enumerate(clipped_spikes)
             ],
         )
         return nstColl(trains)
