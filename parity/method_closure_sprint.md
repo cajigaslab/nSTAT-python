@@ -4,89 +4,24 @@ This sprint backlog targets methods that are probe-verified but not yet explicit
 
 ## Functional Summary
 - Total methods: `501`
-- Contract-explicit verified methods: `391`
-- Probe-verified methods: `89`
+- Contract-explicit verified methods: `450`
+- Probe-verified methods: `30`
 - Eligible verified ratio: `1.000`
 - Excluded methods: `21`
 
 ## Priority Class Queue
 | Class | Probe-verified | Contract-verified | Probe-only methods |
 |---|---:|---:|---:|
-| CovColl | 27 | 55 | 27 |
-| FitResult | 16 | 33 | 16 |
-| nspikeTrain | 16 | 29 | 16 |
 | FitResSummary | 14 | 30 | 14 |
 | Analysis | 7 | 22 | 7 |
 | Covariate | 3 | 14 | 3 |
 | CIF | 2 | 21 | 2 |
 | nstColl | 1 | 53 | 1 |
+| History | 1 | 8 | 1 |
+| ConfidenceInterval | 1 | 5 | 1 |
+| Events | 1 | 5 | 1 |
 
 ## Sprint Work Packages
-
-### CovColl
-- Goal: Convert probe-only functional verification to explicit behavior contracts.
-- Candidate methods:
-  - `CovColl`
-  - `copy`
-  - `dataToStructure`
-  - `enforceSampleRate`
-  - `getCov`
-  - `getCovDataMask`
-  - `getCovLabelsFromMask`
-  - `getCovMaskFromSelector`
-  - `isCovMaskSet`
-  - `isaSelectorCell`
-  - `maskAwayAllExcept`
-  - `maskAwayCov`
-  - `maskAwayOnlyCov`
-  - `nActCovar`
-  - `plot`
-  - `removeCovariate`
-  - `removeFromColl`
-  - `resample`
-  - `resetCovShift`
-  - `resetMask`
-  - `... (+7 additional methods)`
-
-### FitResult
-- Goal: Convert probe-only functional verification to explicit behavior contracts.
-- Candidate methods:
-  - `FitResult`
-  - `KSPlot`
-  - `addParamsToFit`
-  - `getHistCoeffs`
-  - `getHistIndex`
-  - `mapCovLabelsToUniqueLabels`
-  - `mergeResults`
-  - `plotCoeffs`
-  - `plotCoeffsWithoutHistory`
-  - `plotHistCoeffs`
-  - `plotInvGausTrans`
-  - `plotResidual`
-  - `plotResults`
-  - `plotSeqCorr`
-  - `plotValidation`
-  - `setNeuronName`
-
-### nspikeTrain
-- Goal: Convert probe-only functional verification to explicit behavior contracts.
-- Candidate methods:
-  - `clearSigRep`
-  - `computeStatistics`
-  - `getLStatistic`
-  - `partitionNST`
-  - `plot`
-  - `plotExponentialFit`
-  - `plotISIHistogram`
-  - `plotISISpectrumFunction`
-  - `plotJointISIHistogram`
-  - `plotProbPlot`
-  - `resample`
-  - `restoreToOriginal`
-  - `setMER`
-  - `setMaxTime`
-  - `setMinTime`
-  - `setName`
 
 ### FitResSummary
 - Goal: Convert probe-only functional verification to explicit behavior contracts.
@@ -134,6 +69,21 @@ This sprint backlog targets methods that are probe-verified but not yet explicit
 - Goal: Convert probe-only functional verification to explicit behavior contracts.
 - Candidate methods:
   - `nstColl`
+
+### History
+- Goal: Convert probe-only functional verification to explicit behavior contracts.
+- Candidate methods:
+  - `plot`
+
+### ConfidenceInterval
+- Goal: Convert probe-only functional verification to explicit behavior contracts.
+- Candidate methods:
+  - `plot`
+
+### Events
+- Goal: Convert probe-only functional verification to explicit behavior contracts.
+- Candidate methods:
+  - `plot`
 
 ## Excluded MATLAB Stub Methods
 - `DecodingAlgorithms`

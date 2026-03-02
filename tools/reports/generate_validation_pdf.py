@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import functools
+import hashlib
 import json
 import os
 import re
@@ -56,7 +57,11 @@ class NotebookReport:
     executed: bool
     duration_s: float
     image_paths: list[Path]
+    unique_image_paths: list[Path]
+    image_hashes: list[str]
     image_count: int
+    unique_image_count: int
+    duplicate_image_count: int
     text_snippet: str
     error: str
     matlab_ref_images: list[Path]
@@ -446,7 +451,11 @@ def execute_notebook_capture(
             executed=False,
             duration_s=duration,
             image_paths=[],
+            unique_image_paths=[],
+            image_hashes=[],
             image_count=0,
+            unique_image_count=0,
+            duplicate_image_count=0,
             text_snippet="",
             error=f"Notebook not found: {target.file}",
             matlab_ref_images=matlab_ref_images,
@@ -477,7 +486,11 @@ def execute_notebook_capture(
             executed=False,
             duration_s=duration,
             image_paths=[],
+            unique_image_paths=[],
+            image_hashes=[],
             image_count=0,
+            unique_image_count=0,
+            duplicate_image_count=0,
             text_snippet="",
             error=str(exc),
             matlab_ref_images=matlab_ref_images,
@@ -519,6 +532,7 @@ def execute_notebook_capture(
             elif output_type == "stream" and not text_snippet:
                 text_snippet = _short_text(str(output.get("text", "")))
 
+    unique_image_paths, image_hashes = _select_unique_images(image_paths)
     similarity_score: float | None = None
     parity_pass: bool | None = None
     alignment_status: str | None = gate_status[0] if gate_status is not None else None
@@ -559,7 +573,11 @@ def execute_notebook_capture(
         executed=True,
         duration_s=duration,
         image_paths=image_paths,
+        unique_image_paths=unique_image_paths,
+        image_hashes=image_hashes,
         image_count=len(image_paths),
+        unique_image_count=len(unique_image_paths),
+        duplicate_image_count=max(0, len(image_paths) - len(unique_image_paths)),
         text_snippet=text_snippet,
         error="",
         matlab_ref_images=matlab_ref_images,
@@ -570,6 +588,47 @@ def execute_notebook_capture(
         matched_matlab_image=matched_matlab_image,
         parity_metrics=parity_metrics,
     )
+
+
+@functools.lru_cache(maxsize=2048)
+def _image_fingerprint(path: Path) -> str:
+    arr = _load_similarity_array(path)
+    quantized = np.rint(arr * 255.0).astype(np.uint8)
+    return hashlib.sha256(quantized.tobytes()).hexdigest()
+
+
+def _select_unique_images(image_paths: list[Path]) -> tuple[list[Path], list[str]]:
+    seen: set[str] = set()
+    unique_paths: list[Path] = []
+    hashes: list[str] = []
+    for path in image_paths:
+        fingerprint = _image_fingerprint(path)
+        hashes.append(fingerprint)
+        if fingerprint in seen:
+            continue
+        seen.add(fingerprint)
+        unique_paths.append(path)
+    return unique_paths, hashes
+
+
+def _cross_topic_duplicate_stats(reports: list[NotebookReport]) -> dict[str, int]:
+    hash_to_topics: dict[str, set[str]] = {}
+    total_image_instances = 0
+    total_unique_hashes = 0
+    for report in reports:
+        total_image_instances += len(report.image_hashes)
+        for image_hash in report.image_hashes:
+            topics = hash_to_topics.setdefault(image_hash, set())
+            topics.add(report.topic)
+    total_unique_hashes = len(hash_to_topics)
+    cross_topic_reused = sum(1 for topics in hash_to_topics.values() if len(topics) > 1)
+    repeated_instances = max(0, total_image_instances - total_unique_hashes)
+    return {
+        "total_image_instances": total_image_instances,
+        "total_unique_hashes": total_unique_hashes,
+        "cross_topic_reused_hashes": cross_topic_reused,
+        "repeated_instances": repeated_instances,
+    }
 
 
 def _draw_wrapped_lines(
@@ -656,6 +715,9 @@ def _draw_metrics_table(
         ("matlab_code_lines", "MATLAB code lines"),
         ("python_code_lines", "Python code lines"),
         ("python_to_matlab_line_ratio", "Python/MATLAB line ratio"),
+        ("python_total_image_count", "Python image instances"),
+        ("python_unique_image_count", "Python unique images"),
+        ("python_duplicate_image_count", "Python duplicate images"),
         ("matlab_reference_image_count", "MATLAB reference images"),
         ("python_validation_image_count", "Python validation images"),
         ("assertion_count", "Checkpoint assertions"),
@@ -757,6 +819,8 @@ def draw_summary_pages(
     executed = sum(1 for report in reports if report.executed)
     failed_exec = total - executed
     with_py_images = sum(1 for report in reports if report.image_count > 0)
+    with_unique_py_images = sum(1 for report in reports if report.unique_image_count > 0)
+    topics_with_py_duplicates = sum(1 for report in reports if report.duplicate_image_count > 0)
     with_matlab_refs = sum(1 for report in reports if len(report.matlab_ref_images) > 0)
     parity_checked = sum(1 for report in reports if report.parity_pass is not None)
     parity_passed = sum(1 for report in reports if report.parity_pass is True)
@@ -770,6 +834,7 @@ def draw_summary_pages(
         for report in reports
         if report.parity_metrics is not None and bool(report.parity_metrics.get("numeric_drift_pass", False))
     )
+    duplicate_stats = _cross_topic_duplicate_stats(reports)
 
     pdf.setFont("Helvetica-Bold", 16)
     pdf.drawString(40, 760, "Example Coverage Summary")
@@ -777,27 +842,39 @@ def draw_summary_pages(
     pdf.drawString(40, 738, f"Total examples: {total}")
     pdf.drawString(180, 738, f"Executed: {executed}")
     pdf.drawString(300, 738, f"Exec failures: {failed_exec}")
-    pdf.drawString(430, 738, f"Py figs: {with_py_images}")
+    pdf.drawString(430, 738, f"Py fig topics: {with_py_images}")
     pdf.drawString(40, 722, f"MATLAB refs available: {with_matlab_refs}")
+    pdf.drawString(40, 706, f"Unique-py topics: {with_unique_py_images}")
+    pdf.drawString(220, 706, f"Topics with py duplicates: {topics_with_py_duplicates}")
+    pdf.drawString(
+        40,
+        690,
+        "Image dedupe: "
+        f"instances={duplicate_stats['total_image_instances']} "
+        f"unique={duplicate_stats['total_unique_hashes']} "
+        f"cross-topic={duplicate_stats['cross_topic_reused_hashes']} "
+        f"repeated={duplicate_stats['repeated_instances']}",
+    )
     if parity_mode == "gate":
         pdf.drawString(260, 722, f"Parity gate pass: {parity_passed}/{parity_checked}")
     elif skip_parity_check:
         pdf.drawString(260, 722, "Parity scoring: skipped")
     else:
         pdf.drawString(260, 722, f"Parity pass: {parity_passed}/{parity_checked}")
-    pdf.drawString(40, 706, f"Numeric drift pass: {numeric_passed}/{numeric_checked}")
+    pdf.drawString(40, 674, f"Numeric drift pass: {numeric_passed}/{numeric_checked}")
 
-    y = 688
+    y = 654
     pdf.setFont("Helvetica-Bold", 9)
     pdf.drawString(40, y, "Exec")
     pdf.drawString(74, y, "Parity")
     pdf.drawString(126, y, "Topic")
-    pdf.drawString(308, y, "Py")
-    pdf.drawString(332, y, "MAT")
-    pdf.drawString(360, y, "Score")
-    pdf.drawString(402, y, "Run")
-    pdf.drawString(438, y, "Sec")
-    pdf.drawString(472, y, "Status")
+    pdf.drawString(300, y, "PyT")
+    pdf.drawString(326, y, "PyU")
+    pdf.drawString(352, y, "MAT")
+    pdf.drawString(380, y, "Score")
+    pdf.drawString(422, y, "Run")
+    pdf.drawString(458, y, "Sec")
+    pdf.drawString(492, y, "Status")
     y -= 12
     pdf.setFont("Helvetica", 9)
 
@@ -808,12 +885,13 @@ def draw_summary_pages(
             pdf.drawString(40, 760, "Exec")
             pdf.drawString(74, 760, "Parity")
             pdf.drawString(126, 760, "Topic")
-            pdf.drawString(308, 760, "Py")
-            pdf.drawString(332, 760, "MAT")
-            pdf.drawString(360, 760, "Score")
-            pdf.drawString(402, 760, "Run")
-            pdf.drawString(438, 760, "Sec")
-            pdf.drawString(472, 760, "Status")
+            pdf.drawString(300, 760, "PyT")
+            pdf.drawString(326, 760, "PyU")
+            pdf.drawString(352, 760, "MAT")
+            pdf.drawString(380, 760, "Score")
+            pdf.drawString(422, 760, "Run")
+            pdf.drawString(458, 760, "Sec")
+            pdf.drawString(492, 760, "Status")
             y = 748
             pdf.setFont("Helvetica", 9)
 
@@ -828,13 +906,14 @@ def draw_summary_pages(
         pdf.drawString(40, y, exec_status)
         pdf.drawString(74, y, parity_status)
         pdf.drawString(126, y, report.topic[:30])
-        pdf.drawString(308, y, str(report.image_count))
-        pdf.drawString(332, y, str(len(report.matlab_ref_images)))
-        pdf.drawString(360, y, score_text)
-        pdf.drawString(402, y, report.run_group)
-        pdf.drawString(438, y, f"{report.duration_s:.2f}")
+        pdf.drawString(300, y, str(report.image_count))
+        pdf.drawString(326, y, str(report.unique_image_count))
+        pdf.drawString(352, y, str(len(report.matlab_ref_images)))
+        pdf.drawString(380, y, score_text)
+        pdf.drawString(422, y, report.run_group)
+        pdf.drawString(458, y, f"{report.duration_s:.2f}")
         status_text = report.alignment_status if report.alignment_status is not None else "-"
-        pdf.drawString(472, y, status_text[:16])
+        pdf.drawString(492, y, status_text[:14])
         y -= 12
 
     pdf.showPage()
@@ -867,7 +946,9 @@ def draw_example_page(pdf: canvas.Canvas, report: NotebookReport, index: int, to
     pdf.drawString(
         40,
         y_header,
-        f"Python figs: {report.image_count} | MATLAB refs: {len(report.matlab_ref_images)}",
+        "Python figs (total/unique/duplicate): "
+        f"{report.image_count}/{report.unique_image_count}/{report.duplicate_image_count} | "
+        f"MATLAB refs: {len(report.matlab_ref_images)}",
     )
 
     y = y_header - 20
@@ -882,38 +963,58 @@ def draw_example_page(pdf: canvas.Canvas, report: NotebookReport, index: int, to
 
     # Side-by-side galleries so each example page contains distinct visual evidence.
     pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(40, 664, "Python output gallery")
-    _draw_image_gallery(pdf, report.image_paths, 40, 350, 250, 300, max_items=4)
+    pdf.drawString(40, 664, "Python output gallery (unique figures)")
+    _draw_image_gallery(pdf, report.unique_image_paths, 40, 350, 250, 300, max_items=4)
 
     pdf.setFont("Helvetica-Bold", 10)
     pdf.drawString(310, 664, "MATLAB reference gallery")
     _draw_image_gallery(pdf, report.matlab_ref_images, 310, 350, 250, 300, max_items=4)
 
     pdf.setFont("Helvetica", 8)
-    pdf.drawString(40, 336, f"Python figures shown: {min(report.image_count, 4)} / {report.image_count}")
+    pdf.drawString(
+        40,
+        336,
+        f"Python unique figures shown: {min(report.unique_image_count, 4)} / {report.unique_image_count}",
+    )
     pdf.drawString(
         310,
         336,
         f"MATLAB refs shown: {min(len(report.matlab_ref_images), 4)} / {len(report.matlab_ref_images)}",
     )
+    if report.duplicate_image_count > 0:
+        pdf.drawString(
+            40,
+            324,
+            f"Duplicate Python figures collapsed for display: {report.duplicate_image_count}",
+        )
 
     if report.matched_python_image is not None and report.matched_matlab_image is not None:
         pdf.setFont("Helvetica", 8)
         py_name = report.matched_python_image.name
         mat_name = report.matched_matlab_image.name
-        pdf.drawString(40, 322, f"Best-match pair: {py_name} vs {mat_name}")
+        pair_y = 310 if report.duplicate_image_count > 0 else 322
+        pdf.drawString(40, pair_y, f"Best-match pair: {py_name} vs {mat_name}")
+    else:
+        pair_y = None
 
+    metrics = dict(report.parity_metrics or {})
+    metrics.setdefault("python_total_image_count", report.image_count)
+    metrics.setdefault("python_unique_image_count", report.unique_image_count)
+    metrics.setdefault("python_duplicate_image_count", report.duplicate_image_count)
     if report.text_snippet:
+        snippet_title_y = 304
+        if pair_y is not None:
+            snippet_title_y = min(snippet_title_y, pair_y - 14)
         pdf.setFont("Helvetica-Bold", 11)
-        pdf.drawString(40, 304, "Output snippet")
+        pdf.drawString(40, snippet_title_y, "Output snippet")
         pdf.setFont("Helvetica", 9)
-        _draw_wrapped_lines(pdf, 48, 290, report.text_snippet, wrap_width=102, line_step=10)
+        _draw_wrapped_lines(pdf, 48, snippet_title_y - 14, report.text_snippet, wrap_width=102, line_step=10)
 
     pdf.setFont("Helvetica-Bold", 10)
     pdf.drawString(40, 190, "MATLAB vs Python key metrics")
     _draw_metrics_table(
         pdf,
-        report.parity_metrics,
+        metrics,
         x=40,
         top_y=182,
         width=520,
@@ -1043,6 +1144,8 @@ def main() -> int:
     executed = sum(1 for report in reports if report.executed)
     exec_failures = len(reports) - executed
     with_images = sum(1 for report in reports if report.image_count > 0)
+    with_unique_images = sum(1 for report in reports if report.unique_image_count > 0)
+    duplicate_topics = sum(1 for report in reports if report.duplicate_image_count > 0)
     parity_checked = sum(1 for report in reports if report.parity_pass is not None)
     parity_failures = sum(1 for report in reports if report.parity_pass is False)
     command_failures = sum(1 for result in command_results if not result.passed)
@@ -1061,7 +1164,7 @@ def main() -> int:
     print(f"MATLAB help root: {matlab_help_root}")
     print(
         f"Notebook results: total={len(reports)} executed={executed} exec_failures={exec_failures} "
-        f"with_images={with_images}"
+        f"with_images={with_images} with_unique_images={with_unique_images} duplicate_topics={duplicate_topics}"
     )
     print(f"Parity results ({args.parity_mode} mode): checked={parity_checked} failures={parity_failures}")
     print(f"Numeric drift topic results: checked={numeric_checked} failures={numeric_failures}")

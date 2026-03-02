@@ -7,7 +7,6 @@ import argparse
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -316,6 +315,15 @@ def _collect_matlab_reference_images(help_root: Path, topic: str) -> list[str]:
     return [str(path) for path in ordered]
 
 
+def _portable_path(path: Path, *, root: Path) -> str:
+    """Return repo/matlab-root relative POSIX paths for deterministic artifacts."""
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        # Keep output deterministic even when the path is outside the root.
+        return path.name
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -424,16 +432,24 @@ def main() -> int:
         notebook_stats = _extract_notebook_code_stats(python_nb)
         notebook_validation = _extract_notebook_validation_stats(python_nb)
 
-        reference_images = _collect_matlab_reference_images(help_root, topic)
-        python_img_dir = validation_root / topic
-        if python_img_dir.exists():
-            python_images = sorted(str(path) for path in python_img_dir.glob("*.png"))
-        else:
-            python_images = []
+        reference_images = [
+            _portable_path(Path(path), root=matlab_root)
+            for path in _collect_matlab_reference_images(help_root, topic)
+        ]
+
+        # Prefer tracked baseline images so audit output stays stable across environments.
+        fallback_img_dir = fallback_validation_root / topic
+        python_images: list[str] = []
+        if fallback_img_dir.exists():
+            python_images = sorted(
+                _portable_path(path, root=repo_root) for path in fallback_img_dir.glob("*.png")
+            )
         if not python_images:
-            fallback_img_dir = fallback_validation_root / topic
-            if fallback_img_dir.exists():
-                python_images = sorted(str(path) for path in fallback_img_dir.glob("*.png"))
+            python_img_dir = validation_root / topic
+            if python_img_dir.exists():
+                python_images = sorted(
+                    _portable_path(path, root=repo_root) for path in python_img_dir.glob("*.png")
+                )
 
         if not matlab_file.exists() or not python_nb.exists():
             alignment_status = "missing_artifact"
@@ -462,8 +478,8 @@ def main() -> int:
         example_rows.append(
             {
                 "topic": topic,
-                "matlab_file": str(matlab_file),
-                "python_notebook": str(python_nb),
+                "matlab_file": _portable_path(matlab_file, root=matlab_root),
+                "python_notebook": _portable_path(python_nb, root=repo_root),
                 "alignment_status": alignment_status,
                 "matlab_code_lines": matlab_stats.total_code_lines,
                 "python_code_lines": notebook_stats.total_code_lines,
@@ -492,9 +508,9 @@ def main() -> int:
     total_eligible = total_methods - total_excluded
 
     report = {
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "matlab_root": str(matlab_root),
-        "repo_root": str(repo_root),
+        "generated_at_utc": "deterministic",
+        "matlab_root": "<matlab_root>",
+        "repo_root": ".",
         "method_functional_audit": {
             "summary": {
                 "total_methods": total_methods,

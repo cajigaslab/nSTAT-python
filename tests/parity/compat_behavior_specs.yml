@@ -746,6 +746,87 @@ classes:
         args_key: spike_get_field_name_args
         expect:
           equals: unit
+      - member: getLStatistic
+        access: method
+        expect:
+          approx: 1.0193441518937558
+          abs_tol: 1.0e-12
+      - member: setMER
+        access: method
+        args_key: spike_set_mer_args
+        extract: _mer
+        expect:
+          approx: 3.0
+          abs_tol: 1.0e-12
+      - member: setName
+        access: method
+        args_key: spike_set_name_args
+        extract: name
+        expect:
+          equals: unit
+      - member: computeStatistics
+        access: method
+        expect:
+          instance_of: builtins.dict
+      - member: setMinTime
+        access: method
+        args_key: spike_set_min_args
+        extract: t_start
+        expect:
+          approx: 0.05
+          abs_tol: 1.0e-12
+      - member: setMaxTime
+        access: method
+        args_key: spike_set_max_args
+        extract: t_end
+        expect:
+          approx: 0.95
+          abs_tol: 1.0e-12
+      - member: clearSigRep
+        access: method
+        extract: _sig_rep
+        expect:
+          equals: null
+      - member: resample
+        access: method
+        args_key: spike_resample_args
+        expect:
+          instance_of: nstat.compat.matlab.nspikeTrain
+      - member: plotISISpectrumFunction
+        access: method
+        expect:
+          length: 1
+      - member: plotJointISIHistogram
+        access: method
+        expect:
+          instance_of: builtins.tuple
+      - member: plotISIHistogram
+        access: method
+        expect:
+          instance_of: builtins.tuple
+      - member: plotExponentialFit
+        access: method
+        expect:
+          length: 1
+      - member: plotProbPlot
+        access: method
+        expect:
+          length: 1
+      - member: partitionNST
+        access: method
+        args_key: spike_partition_args
+        expect:
+          length: 2
+      - member: restoreToOriginal
+        access: method
+        extract: t_start
+        expect:
+          approx: 0.0
+          abs_tol: 1.0e-12
+      - member: plot
+        access: method
+        expect:
+          length: 1
 
   - matlab_class: nstColl
     python_class: nstat.compat.matlab.nstColl
@@ -1221,6 +1302,134 @@ classes:
         access: method
         expect:
           equals: 5
+      - member: copy
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: getCov
+        access: method
+        args_key: covcoll_get_cov_args
+        expect:
+          instance_of: nstat.compat.matlab.Covariate
+      - member: getCovMaskFromSelector
+        access: method
+        args_key: covcoll_mask_args
+        expect:
+          equals:
+            - 0
+      - member: isaSelectorCell
+        access: method
+        args_key: covcoll_selector_cell_args
+        expect:
+          equals: true
+      - member: setMinTime
+        access: method
+        args_key: covcoll_set_min_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: setMaxTime
+        access: method
+        args_key: covcoll_set_max_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: restrictToTimeWindow
+        access: method
+        args_key: covcoll_restrict_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: setSampleRate
+        access: method
+        args_key: covcoll_sample_rate_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: resample
+        access: method
+        args_key: covcoll_sample_rate_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: enforceSampleRate
+        access: method
+        args_key: covcoll_sample_rate_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: updateTimes
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: setCovShift
+        access: method
+        args_key: covcoll_shift_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: resetCovShift
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: dataToStructure
+        access: method
+        expect:
+          instance_of: builtins.dict
+      - member: resetMask
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: isCovMaskSet
+        access: method
+        expect:
+          equals: true
+      - member: getCovDataMask
+        access: method
+        expect:
+          length: 5
+      - member: getCovLabelsFromMask
+        access: method
+        expect:
+          length: 5
+      - member: nActCovar
+        access: method
+        expect:
+          equals: 5
+      - member: maskAwayCov
+        access: method
+        args_key: covcoll_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: maskAwayOnlyCov
+        access: method
+        args_key: covcoll_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: maskAwayAllExcept
+        access: method
+        args_key: covcoll_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: plot
+        access: method
+        expect:
+          instance_of: builtins.list
+      - member: removeCovariate
+        access: method
+        args_key: covcoll_remove_name_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: removeFromColl
+        access: method
+        args_key: covcoll_remove_from_coll_args
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: numActCov
+        access: method
+        expect:
+          equals: 3
+      - member: restoreToOriginal
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: numActCov
+        access: method
+        expect:
+          equals: 2
 
   - matlab_class: TrialConfig
     python_class: nstat.compat.matlab.TrialConfig
@@ -1998,6 +2207,80 @@ classes:
         args_key: fit_subset_args
         expect:
           instance_of: nstat.compat.matlab.FitResult
+      - member: FitResult
+        access: method
+        args_key: fit_ctor_args
+        expect:
+          instance_of: nstat.compat.matlab.FitResult
+      - member: setNeuronName
+        access: method
+        args_key: fit_set_name_args
+        extract: neuron_name
+        expect:
+          equals: n1
+      - member: mergeResults
+        access: method
+        args_key: fit_merge_args
+        expect:
+          instance_of: nstat.compat.matlab.FitResSummary
+      - member: addParamsToFit
+        access: method
+        args_key: fit_add_params_args
+        extract: neuron_name
+        expect:
+          equals: n2
+      - member: mapCovLabelsToUniqueLabels
+        access: method
+        expect:
+          equals:
+            - stim
+            - hist
+      - member: getHistIndex
+        access: method
+        select: 2
+        expect:
+          equals: 1
+      - member: getHistCoeffs
+        access: method
+        select: 0
+        expect:
+          shape: [0, 1]
+      - member: plotHistCoeffs
+        access: method
+        expect:
+          length: 1
+      - member: plotCoeffs
+        access: method
+        expect:
+          instance_of: matplotlib.container.BarContainer
+      - member: plotCoeffsWithoutHistory
+        access: method
+        expect:
+          instance_of: matplotlib.container.BarContainer
+      - member: plotResults
+        access: method
+        expect:
+          instance_of: matplotlib.axes._axes.Axes
+      - member: KSPlot
+        access: method
+        expect:
+          length: 1
+      - member: plotSeqCorr
+        access: method
+        expect:
+          length: 1
+      - member: plotInvGausTrans
+        access: method
+        expect:
+          length: 1
+      - member: plotResidual
+        access: method
+        expect:
+          length: 1
+      - member: plotValidation
+        access: method
+        expect:
+          length: 1
 
   - matlab_class: FitResSummary
     python_class: nstat.compat.matlab.FitResSummary

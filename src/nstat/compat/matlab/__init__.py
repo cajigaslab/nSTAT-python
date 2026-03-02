@@ -1192,7 +1192,7 @@ class nstColl(_SpikeTrainCollection):
         return self.n_units
 
     @staticmethod
-    def nstColl(*args: Any, **kwargs: Any) -> "nstColl":
+    def nstColl(*args: Any, **kwargs: Any) -> _SpikeTrainCollection:
         if len(args) == 1 and isinstance(args[0], dict):
             return nstColl.fromStructure(args[0])
         return nstColl(*args, **kwargs)
@@ -1202,7 +1202,7 @@ class nstColl(_SpikeTrainCollection):
     ) -> tuple[np.ndarray, np.ndarray]:
         return self.to_binned_matrix(bin_size_s=binSize_s, mode=mode)
 
-    def merge(self, other: _SpikeTrainCollection) -> "nstColl":
+    def merge(self, other: _SpikeTrainCollection) -> _SpikeTrainCollection:
         merged = super().merge(other)
         return nstColl(merged.trains)
 
@@ -1247,11 +1247,11 @@ class nstColl(_SpikeTrainCollection):
             name=match.name,
         )
 
-    def addToColl(self, train: _SpikeTrain) -> "nstColl":
+    def addToColl(self, train: _SpikeTrain) -> _SpikeTrainCollection:
         self.add_to_coll(train)
         return self
 
-    def addSingleSpikeToColl(self, unitInd: int, spikeTime: float) -> "nstColl":
+    def addSingleSpikeToColl(self, unitInd: int, spikeTime: float) -> _SpikeTrainCollection:
         self.add_single_spike_to_coll(unit_index=unitInd, spike_time_s=spikeTime)
         return self
 
@@ -1267,15 +1267,15 @@ class nstColl(_SpikeTrainCollection):
             name=merged.name,
         )
 
-    def shiftTime(self, offset_s: float) -> "nstColl":
+    def shiftTime(self, offset_s: float) -> _SpikeTrainCollection:
         self.shift_time(offset_s)
         return self
 
-    def setMinTime(self, t_min: float) -> "nstColl":
+    def setMinTime(self, t_min: float) -> _SpikeTrainCollection:
         self.set_min_time(t_min)
         return self
 
-    def setMaxTime(self, t_max: float) -> "nstColl":
+    def setMaxTime(self, t_max: float) -> _SpikeTrainCollection:
         self.set_max_time(t_max)
         return self
 
@@ -1293,7 +1293,7 @@ class nstColl(_SpikeTrainCollection):
         }
 
     @staticmethod
-    def fromStructure(payload: dict[str, Any]) -> "nstColl":
+    def fromStructure(payload: dict[str, Any]) -> _SpikeTrainCollection:
         trains = [
             nspikeTrain(
                 spike_times=np.asarray(row["spike_times"], dtype=float),
@@ -1307,7 +1307,7 @@ class nstColl(_SpikeTrainCollection):
             raise ValueError("fromStructure requires at least one train")
         return nstColl(cast(list[_SpikeTrain], trains))
 
-    def updateTimes(self) -> "nstColl":
+    def updateTimes(self) -> _SpikeTrainCollection:
         for train in self.trains:
             if train.spike_times.size:
                 train.t_start = min(train.t_start, float(train.spike_times.min()))
@@ -1365,7 +1365,7 @@ class nstColl(_SpikeTrainCollection):
             return 1.0
         return min_isi
 
-    def setMask(self, selector: list[int] | list[str]) -> "nstColl":
+    def setMask(self, selector: list[int] | list[str]) -> _SpikeTrainCollection:
         if selector and isinstance(selector[0], str):
             idx = [self.get_nst_indices_from_name(str(name))[0] for name in cast(list[str], selector)]
         else:
@@ -1381,14 +1381,14 @@ class nstColl(_SpikeTrainCollection):
         self._neuron_mask = sorted(set(idx))
         return self
 
-    def setNeuronMask(self, selector: list[int] | list[str]) -> "nstColl":
+    def setNeuronMask(self, selector: list[int] | list[str]) -> _SpikeTrainCollection:
         return self.setMask(selector)
 
-    def setNeuronMaskFromInd(self, indices: list[int] | np.ndarray) -> "nstColl":
+    def setNeuronMaskFromInd(self, indices: list[int] | np.ndarray) -> _SpikeTrainCollection:
         idx = [int(v) for v in np.asarray(indices).reshape(-1)]
         return self.setMask(idx)
 
-    def resetMask(self) -> "nstColl":
+    def resetMask(self) -> _SpikeTrainCollection:
         self._neuron_mask = list(range(self.n_units))
         return self
 
@@ -1403,7 +1403,7 @@ class nstColl(_SpikeTrainCollection):
     def getIndFromMaskMinusOne(self) -> list[int]:
         return self.getIndFromMask()
 
-    def setNeighbors(self, neighbors: Any) -> "nstColl":
+    def setNeighbors(self, neighbors: Any) -> _SpikeTrainCollection:
         self._neighbors = neighbors
         return self
 
@@ -1413,7 +1413,7 @@ class nstColl(_SpikeTrainCollection):
     def areNeighborsSet(self) -> bool:
         return self._neighbors is not None
 
-    def restoreToOriginal(self) -> "nstColl":
+    def restoreToOriginal(self) -> _SpikeTrainCollection:
         self.trains = [
             train.copy() if hasattr(train, "copy") else _SpikeTrain(train.spike_times.copy(), train.t_start, train.t_end, train.name)
             for train in self._original_trains
@@ -1422,7 +1422,7 @@ class nstColl(_SpikeTrainCollection):
         self._neighbors = None
         return self
 
-    def resample(self, sampleRate: float) -> "nstColl":
+    def resample(self, sampleRate: float) -> _SpikeTrainCollection:
         if sampleRate <= 0.0:
             raise ValueError("sampleRate must be positive")
         dt = 1.0 / float(sampleRate)
@@ -1431,7 +1431,7 @@ class nstColl(_SpikeTrainCollection):
             train.spike_times = np.unique(snapped)
         return self
 
-    def enforceSampleRate(self, sampleRate: float) -> "nstColl":
+    def enforceSampleRate(self, sampleRate: float) -> _SpikeTrainCollection:
         return self.resample(sampleRate)
 
     def ensureConsistancy(self) -> bool:

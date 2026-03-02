@@ -16,8 +16,8 @@ artifacts in the `parity/` directory.
 |---|---:|
 | Total methods | 501 |
 | Contract-verified | 480 |
-| Contract-explicit verified | 391 |
-| Probe-verified | 89 |
+| Contract-explicit verified | 450 |
+| Probe-verified | 30 |
 | Excluded methods | 21 |
 | Missing symbols | 0 |
 | Unverified behavior | 0 |

@@ -72,14 +72,14 @@
           }
         ],
         "matlab_code_lines": 59,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples.m",
+        "matlab_file": "helpfiles/AnalysisExamples.m",
         "matlab_reference_image_count": 5,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples_04.png"
+          "helpfiles/AnalysisExamples.png",
+          "helpfiles/AnalysisExamples_01.png",
+          "helpfiles/AnalysisExamples_02.png",
+          "helpfiles/AnalysisExamples_03.png",
+          "helpfiles/AnalysisExamples_04.png"
         ],
         "python_code_cells": [
           {
@@ -99,11 +99,11 @@
           }
         ],
         "python_code_lines": 92,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/AnalysisExamples.ipynb",
+        "python_notebook": "notebooks/AnalysisExamples.ipynb",
         "python_to_matlab_line_ratio": 1.5593220338983051,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/AnalysisExamples/AnalysisExamples_001.png"
+          "baseline/validation/notebook_images/AnalysisExamples/AnalysisExamples_001.png"
         ],
         "topic": "AnalysisExamples"
       },
@@ -211,15 +211,15 @@
           }
         ],
         "matlab_code_lines": 61,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2.m",
+        "matlab_file": "helpfiles/AnalysisExamples2.m",
         "matlab_reference_image_count": 6,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2_05.png"
+          "helpfiles/AnalysisExamples2.png",
+          "helpfiles/AnalysisExamples2_01.png",
+          "helpfiles/AnalysisExamples2_02.png",
+          "helpfiles/AnalysisExamples2_03.png",
+          "helpfiles/AnalysisExamples2_04.png",
+          "helpfiles/AnalysisExamples2_05.png"
         ],
         "python_code_cells": [
           {
@@ -239,11 +239,11 @@
           }
         ],
         "python_code_lines": 87,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/AnalysisExamples2.ipynb",
+        "python_notebook": "notebooks/AnalysisExamples2.ipynb",
         "python_to_matlab_line_ratio": 1.4262295081967213,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/AnalysisExamples2/AnalysisExamples2_001.png"
+          "baseline/validation/notebook_images/AnalysisExamples2/AnalysisExamples2_001.png"
         ],
         "topic": "AnalysisExamples2"
       },
@@ -261,7 +261,7 @@
           }
         ],
         "matlab_code_lines": 3,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ConfigCollExamples.m",
+        "matlab_file": "helpfiles/ConfigCollExamples.m",
         "matlab_reference_image_count": 0,
         "matlab_reference_images": [],
         "python_code_cells": [
@@ -282,11 +282,11 @@
           }
         ],
         "python_code_lines": 73,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/ConfigCollExamples.ipynb",
+        "python_notebook": "notebooks/ConfigCollExamples.ipynb",
         "python_to_matlab_line_ratio": 24.333333333333332,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/ConfigCollExamples/ConfigCollExamples_001.png"
+          "baseline/validation/notebook_images/ConfigCollExamples/ConfigCollExamples_001.png"
         ],
         "topic": "ConfigCollExamples"
       },
@@ -316,12 +316,12 @@
           }
         ],
         "matlab_code_lines": 10,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovCollExamples.m",
+        "matlab_file": "helpfiles/CovCollExamples.m",
         "matlab_reference_image_count": 3,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovCollExamples.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovCollExamples_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovCollExamples_02.png"
+          "helpfiles/CovCollExamples.png",
+          "helpfiles/CovCollExamples_01.png",
+          "helpfiles/CovCollExamples_02.png"
         ],
         "python_code_cells": [
           {
@@ -341,11 +341,11 @@
           }
         ],
         "python_code_lines": 73,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/CovCollExamples.ipynb",
+        "python_notebook": "notebooks/CovCollExamples.ipynb",
         "python_to_matlab_line_ratio": 7.3,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/CovCollExamples/CovCollExamples_001.png"
+          "baseline/validation/notebook_images/CovCollExamples/CovCollExamples_001.png"
         ],
         "topic": "CovCollExamples"
       },
@@ -399,12 +399,12 @@
           }
         ],
         "matlab_code_lines": 19,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovariateExamples.m",
+        "matlab_file": "helpfiles/CovariateExamples.m",
         "matlab_reference_image_count": 3,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovariateExamples.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovariateExamples_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovariateExamples_02.png"
+          "helpfiles/CovariateExamples.png",
+          "helpfiles/CovariateExamples_01.png",
+          "helpfiles/CovariateExamples_02.png"
         ],
         "python_code_cells": [
           {
@@ -424,12 +424,12 @@
           }
         ],
         "python_code_lines": 85,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/CovariateExamples.ipynb",
+        "python_notebook": "notebooks/CovariateExamples.ipynb",
         "python_to_matlab_line_ratio": 4.473684210526316,
         "python_validation_image_count": 2,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/CovariateExamples/CovariateExamples_001.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/CovariateExamples/CovariateExamples_002.png"
+          "baseline/validation/notebook_images/CovariateExamples/CovariateExamples_001.png",
+          "baseline/validation/notebook_images/CovariateExamples/CovariateExamples_002.png"
         ],
         "topic": "CovariateExamples"
       },
@@ -507,16 +507,16 @@
           }
         ],
         "matlab_code_lines": 57,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample.m",
+        "matlab_file": "helpfiles/DecodingExample.m",
         "matlab_reference_image_count": 7,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample_05.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample_06.png"
+          "helpfiles/DecodingExample.png",
+          "helpfiles/DecodingExample_01.png",
+          "helpfiles/DecodingExample_02.png",
+          "helpfiles/DecodingExample_03.png",
+          "helpfiles/DecodingExample_04.png",
+          "helpfiles/DecodingExample_05.png",
+          "helpfiles/DecodingExample_06.png"
         ],
         "python_code_cells": [
           {
@@ -536,11 +536,11 @@
           }
         ],
         "python_code_lines": 98,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/DecodingExample.ipynb",
+        "python_notebook": "notebooks/DecodingExample.ipynb",
         "python_to_matlab_line_ratio": 1.719298245614035,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/DecodingExample/DecodingExample_001.png"
+          "baseline/validation/notebook_images/DecodingExample/DecodingExample_001.png"
         ],
         "topic": "DecodingExample"
       },
@@ -636,12 +636,12 @@
           }
         ],
         "matlab_code_lines": 55,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExampleWithHist.m",
+        "matlab_file": "helpfiles/DecodingExampleWithHist.m",
         "matlab_reference_image_count": 3,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExampleWithHist.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExampleWithHist_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExampleWithHist_02.png"
+          "helpfiles/DecodingExampleWithHist.png",
+          "helpfiles/DecodingExampleWithHist_01.png",
+          "helpfiles/DecodingExampleWithHist_02.png"
         ],
         "python_code_cells": [
           {
@@ -661,11 +661,11 @@
           }
         ],
         "python_code_lines": 98,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/DecodingExampleWithHist.ipynb",
+        "python_notebook": "notebooks/DecodingExampleWithHist.ipynb",
         "python_to_matlab_line_ratio": 1.7818181818181817,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/DecodingExampleWithHist/DecodingExampleWithHist_001.png"
+          "baseline/validation/notebook_images/DecodingExampleWithHist/DecodingExampleWithHist_001.png"
         ],
         "topic": "DecodingExampleWithHist"
       },
@@ -676,7 +676,7 @@
         "has_topic_checkpoint": true,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DocumentationSetup2025b.m",
+        "matlab_file": "helpfiles/DocumentationSetup2025b.m",
         "matlab_reference_image_count": 0,
         "matlab_reference_images": [],
         "python_code_cells": [
@@ -697,11 +697,11 @@
           }
         ],
         "python_code_lines": 74,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/DocumentationSetup2025b.ipynb",
+        "python_notebook": "notebooks/DocumentationSetup2025b.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/DocumentationSetup2025b/DocumentationSetup2025b_001.png"
+          "baseline/validation/notebook_images/DocumentationSetup2025b/DocumentationSetup2025b_001.png"
         ],
         "topic": "DocumentationSetup2025b"
       },
@@ -725,14 +725,14 @@
           }
         ],
         "matlab_code_lines": 8,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/EventsExamples.m",
+        "matlab_file": "helpfiles/EventsExamples.m",
         "matlab_reference_image_count": 5,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/EventsExamples.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/EventsExamples_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/EventsExamples_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/EventsExamples_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/EventsExamples_04.png"
+          "helpfiles/EventsExamples.png",
+          "helpfiles/EventsExamples_01.png",
+          "helpfiles/EventsExamples_02.png",
+          "helpfiles/EventsExamples_03.png",
+          "helpfiles/EventsExamples_04.png"
         ],
         "python_code_cells": [
           {
@@ -752,14 +752,14 @@
           }
         ],
         "python_code_lines": 60,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/EventsExamples.ipynb",
+        "python_notebook": "notebooks/EventsExamples.ipynb",
         "python_to_matlab_line_ratio": 7.5,
         "python_validation_image_count": 4,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/EventsExamples/EventsExamples_001.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/EventsExamples/EventsExamples_002.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/EventsExamples/EventsExamples_003.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/EventsExamples/EventsExamples_004.png"
+          "baseline/validation/notebook_images/EventsExamples/EventsExamples_001.png",
+          "baseline/validation/notebook_images/EventsExamples/EventsExamples_002.png",
+          "baseline/validation/notebook_images/EventsExamples/EventsExamples_003.png",
+          "baseline/validation/notebook_images/EventsExamples/EventsExamples_004.png"
         ],
         "topic": "EventsExamples"
       },
@@ -885,19 +885,19 @@
           }
         ],
         "matlab_code_lines": 115,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData.m",
+        "matlab_file": "helpfiles/ExplicitStimulusWhiskerData.m",
         "matlab_reference_image_count": 10,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData_05.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData_06.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData_07.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData_08.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData_09.png"
+          "helpfiles/ExplicitStimulusWhiskerData.png",
+          "helpfiles/ExplicitStimulusWhiskerData_01.png",
+          "helpfiles/ExplicitStimulusWhiskerData_02.png",
+          "helpfiles/ExplicitStimulusWhiskerData_03.png",
+          "helpfiles/ExplicitStimulusWhiskerData_04.png",
+          "helpfiles/ExplicitStimulusWhiskerData_05.png",
+          "helpfiles/ExplicitStimulusWhiskerData_06.png",
+          "helpfiles/ExplicitStimulusWhiskerData_07.png",
+          "helpfiles/ExplicitStimulusWhiskerData_08.png",
+          "helpfiles/ExplicitStimulusWhiskerData_09.png"
         ],
         "python_code_cells": [
           {
@@ -917,11 +917,11 @@
           }
         ],
         "python_code_lines": 80,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/ExplicitStimulusWhiskerData.ipynb",
+        "python_notebook": "notebooks/ExplicitStimulusWhiskerData.ipynb",
         "python_to_matlab_line_ratio": 0.6956521739130435,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/ExplicitStimulusWhiskerData/ExplicitStimulusWhiskerData_001.png"
+          "baseline/validation/notebook_images/ExplicitStimulusWhiskerData/ExplicitStimulusWhiskerData_001.png"
         ],
         "topic": "ExplicitStimulusWhiskerData"
       },
@@ -932,7 +932,7 @@
         "has_topic_checkpoint": true,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResSummaryExamples.m",
+        "matlab_file": "helpfiles/FitResSummaryExamples.m",
         "matlab_reference_image_count": 0,
         "matlab_reference_images": [],
         "python_code_cells": [
@@ -953,11 +953,11 @@
           }
         ],
         "python_code_lines": 75,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/FitResSummaryExamples.ipynb",
+        "python_notebook": "notebooks/FitResSummaryExamples.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/FitResSummaryExamples/FitResSummaryExamples_001.png"
+          "baseline/validation/notebook_images/FitResSummaryExamples/FitResSummaryExamples_001.png"
         ],
         "topic": "FitResSummaryExamples"
       },
@@ -968,7 +968,7 @@
         "has_topic_checkpoint": true,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResultExamples.m",
+        "matlab_file": "helpfiles/FitResultExamples.m",
         "matlab_reference_image_count": 0,
         "matlab_reference_images": [],
         "python_code_cells": [
@@ -989,11 +989,11 @@
           }
         ],
         "python_code_lines": 75,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/FitResultExamples.ipynb",
+        "python_notebook": "notebooks/FitResultExamples.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/FitResultExamples/FitResultExamples_001.png"
+          "baseline/validation/notebook_images/FitResultExamples/FitResultExamples_001.png"
         ],
         "topic": "FitResultExamples"
       },
@@ -1004,7 +1004,7 @@
         "has_topic_checkpoint": true,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResultReference.m",
+        "matlab_file": "helpfiles/FitResultReference.m",
         "matlab_reference_image_count": 0,
         "matlab_reference_images": [],
         "python_code_cells": [
@@ -1025,11 +1025,11 @@
           }
         ],
         "python_code_lines": 75,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/FitResultReference.ipynb",
+        "python_notebook": "notebooks/FitResultReference.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/FitResultReference/FitResultReference_001.png"
+          "baseline/validation/notebook_images/FitResultReference/FitResultReference_001.png"
         ],
         "topic": "FitResultReference"
       },
@@ -1233,21 +1233,21 @@
           }
         ],
         "matlab_code_lines": 155,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample.m",
+        "matlab_file": "helpfiles/HippocampalPlaceCellExample.m",
         "matlab_reference_image_count": 12,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_05.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_06.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_07.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_08.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_09.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_10.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample_11.png"
+          "helpfiles/HippocampalPlaceCellExample.png",
+          "helpfiles/HippocampalPlaceCellExample_01.png",
+          "helpfiles/HippocampalPlaceCellExample_02.png",
+          "helpfiles/HippocampalPlaceCellExample_03.png",
+          "helpfiles/HippocampalPlaceCellExample_04.png",
+          "helpfiles/HippocampalPlaceCellExample_05.png",
+          "helpfiles/HippocampalPlaceCellExample_06.png",
+          "helpfiles/HippocampalPlaceCellExample_07.png",
+          "helpfiles/HippocampalPlaceCellExample_08.png",
+          "helpfiles/HippocampalPlaceCellExample_09.png",
+          "helpfiles/HippocampalPlaceCellExample_10.png",
+          "helpfiles/HippocampalPlaceCellExample_11.png"
         ],
         "python_code_cells": [
           {
@@ -1267,11 +1267,11 @@
           }
         ],
         "python_code_lines": 92,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/HippocampalPlaceCellExample.ipynb",
+        "python_notebook": "notebooks/HippocampalPlaceCellExample.ipynb",
         "python_to_matlab_line_ratio": 0.5935483870967742,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/HippocampalPlaceCellExample/HippocampalPlaceCellExample_001.png"
+          "baseline/validation/notebook_images/HippocampalPlaceCellExample/HippocampalPlaceCellExample_001.png"
         ],
         "topic": "HippocampalPlaceCellExample"
       },
@@ -1319,14 +1319,14 @@
           }
         ],
         "matlab_code_lines": 18,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HistoryExamples.m",
+        "matlab_file": "helpfiles/HistoryExamples.m",
         "matlab_reference_image_count": 5,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HistoryExamples.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HistoryExamples_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HistoryExamples_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HistoryExamples_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HistoryExamples_04.png"
+          "helpfiles/HistoryExamples.png",
+          "helpfiles/HistoryExamples_01.png",
+          "helpfiles/HistoryExamples_02.png",
+          "helpfiles/HistoryExamples_03.png",
+          "helpfiles/HistoryExamples_04.png"
         ],
         "python_code_cells": [
           {
@@ -1346,11 +1346,11 @@
           }
         ],
         "python_code_lines": 73,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/HistoryExamples.ipynb",
+        "python_notebook": "notebooks/HistoryExamples.ipynb",
         "python_to_matlab_line_ratio": 4.055555555555555,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/HistoryExamples/HistoryExamples_001.png"
+          "baseline/validation/notebook_images/HistoryExamples/HistoryExamples_001.png"
         ],
         "topic": "HistoryExamples"
       },
@@ -1632,12 +1632,12 @@
           }
         ],
         "matlab_code_lines": 288,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HybridFilterExample.m",
+        "matlab_file": "helpfiles/HybridFilterExample.m",
         "matlab_reference_image_count": 3,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HybridFilterExample.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HybridFilterExample_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HybridFilterExample_02.png"
+          "helpfiles/HybridFilterExample.png",
+          "helpfiles/HybridFilterExample_01.png",
+          "helpfiles/HybridFilterExample_02.png"
         ],
         "python_code_cells": [
           {
@@ -1657,12 +1657,12 @@
           }
         ],
         "python_code_lines": 170,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/HybridFilterExample.ipynb",
+        "python_notebook": "notebooks/HybridFilterExample.ipynb",
         "python_to_matlab_line_ratio": 0.5902777777777778,
         "python_validation_image_count": 2,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/HybridFilterExample/HybridFilterExample_001.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/HybridFilterExample/HybridFilterExample_002.png"
+          "baseline/validation/notebook_images/HybridFilterExample/HybridFilterExample_001.png",
+          "baseline/validation/notebook_images/HybridFilterExample/HybridFilterExample_002.png"
         ],
         "topic": "HybridFilterExample"
       },
@@ -1842,17 +1842,17 @@
           }
         ],
         "matlab_code_lines": 88,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/NetworkTutorial.m",
+        "matlab_file": "helpfiles/NetworkTutorial.m",
         "matlab_reference_image_count": 8,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/NetworkTutorial.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/NetworkTutorial_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/NetworkTutorial_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/NetworkTutorial_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/NetworkTutorial_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/NetworkTutorial_05.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample-BlockDiagram.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SimulatedNetwork2.png"
+          "helpfiles/NetworkTutorial.png",
+          "helpfiles/NetworkTutorial_01.png",
+          "helpfiles/NetworkTutorial_02.png",
+          "helpfiles/NetworkTutorial_03.png",
+          "helpfiles/NetworkTutorial_04.png",
+          "helpfiles/NetworkTutorial_05.png",
+          "helpfiles/PPSimExample-BlockDiagram.png",
+          "helpfiles/SimulatedNetwork2.png"
         ],
         "python_code_cells": [
           {
@@ -1872,15 +1872,15 @@
           }
         ],
         "python_code_lines": 139,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/NetworkTutorial.ipynb",
+        "python_notebook": "notebooks/NetworkTutorial.ipynb",
         "python_to_matlab_line_ratio": 1.5795454545454546,
         "python_validation_image_count": 5,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_001.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_002.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_003.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_004.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_005.png"
+          "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_001.png",
+          "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_002.png",
+          "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_003.png",
+          "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_004.png",
+          "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_005.png"
         ],
         "topic": "NetworkTutorial"
       },
@@ -2000,15 +2000,15 @@
           }
         ],
         "matlab_code_lines": 41,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample.m",
+        "matlab_file": "helpfiles/PPSimExample.m",
         "matlab_reference_image_count": 6,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample-BlockDiagram.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample_04.png"
+          "helpfiles/PPSimExample-BlockDiagram.png",
+          "helpfiles/PPSimExample.png",
+          "helpfiles/PPSimExample_01.png",
+          "helpfiles/PPSimExample_02.png",
+          "helpfiles/PPSimExample_03.png",
+          "helpfiles/PPSimExample_04.png"
         ],
         "python_code_cells": [
           {
@@ -2028,13 +2028,13 @@
           }
         ],
         "python_code_lines": 104,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/PPSimExample.ipynb",
+        "python_notebook": "notebooks/PPSimExample.ipynb",
         "python_to_matlab_line_ratio": 2.5365853658536586,
         "python_validation_image_count": 3,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/PPSimExample/PPSimExample_001.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/PPSimExample/PPSimExample_002.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/PPSimExample/PPSimExample_003.png"
+          "baseline/validation/notebook_images/PPSimExample/PPSimExample_001.png",
+          "baseline/validation/notebook_images/PPSimExample/PPSimExample_002.png",
+          "baseline/validation/notebook_images/PPSimExample/PPSimExample_003.png"
         ],
         "topic": "PPSimExample"
       },
@@ -2106,14 +2106,14 @@
           }
         ],
         "matlab_code_lines": 40,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPThinning.m",
+        "matlab_file": "helpfiles/PPThinning.m",
         "matlab_reference_image_count": 5,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPThinning.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPThinning_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPThinning_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPThinning_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPThinning_04.png"
+          "helpfiles/PPThinning.png",
+          "helpfiles/PPThinning_01.png",
+          "helpfiles/PPThinning_02.png",
+          "helpfiles/PPThinning_03.png",
+          "helpfiles/PPThinning_04.png"
         ],
         "python_code_cells": [
           {
@@ -2133,14 +2133,14 @@
           }
         ],
         "python_code_lines": 123,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/PPThinning.ipynb",
+        "python_notebook": "notebooks/PPThinning.ipynb",
         "python_to_matlab_line_ratio": 3.075,
         "python_validation_image_count": 4,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/PPThinning/PPThinning_001.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/PPThinning/PPThinning_002.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/PPThinning/PPThinning_003.png",
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/PPThinning/PPThinning_004.png"
+          "baseline/validation/notebook_images/PPThinning/PPThinning_001.png",
+          "baseline/validation/notebook_images/PPThinning/PPThinning_002.png",
+          "baseline/validation/notebook_images/PPThinning/PPThinning_003.png",
+          "baseline/validation/notebook_images/PPThinning/PPThinning_004.png"
         ],
         "topic": "PPThinning"
       },
@@ -2170,12 +2170,12 @@
           }
         ],
         "matlab_code_lines": 28,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PSTHEstimation.m",
+        "matlab_file": "helpfiles/PSTHEstimation.m",
         "matlab_reference_image_count": 3,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PSTHEstimation.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PSTHEstimation_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PSTHEstimation_02.png"
+          "helpfiles/PSTHEstimation.png",
+          "helpfiles/PSTHEstimation_01.png",
+          "helpfiles/PSTHEstimation_02.png"
         ],
         "python_code_cells": [
           {
@@ -2195,11 +2195,11 @@
           }
         ],
         "python_code_lines": 74,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/PSTHEstimation.ipynb",
+        "python_notebook": "notebooks/PSTHEstimation.ipynb",
         "python_to_matlab_line_ratio": 2.642857142857143,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/PSTHEstimation/PSTHEstimation_001.png"
+          "baseline/validation/notebook_images/PSTHEstimation/PSTHEstimation_001.png"
         ],
         "topic": "PSTHEstimation"
       },
@@ -2343,21 +2343,21 @@
           }
         ],
         "matlab_code_lines": 81,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples.m",
+        "matlab_file": "helpfiles/SignalObjExamples.m",
         "matlab_reference_image_count": 21,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_05.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_06.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_07.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_08.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_09.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_10.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples_11.png"
+          "helpfiles/SignalObjExamples.png",
+          "helpfiles/SignalObjExamples_01.png",
+          "helpfiles/SignalObjExamples_02.png",
+          "helpfiles/SignalObjExamples_03.png",
+          "helpfiles/SignalObjExamples_04.png",
+          "helpfiles/SignalObjExamples_05.png",
+          "helpfiles/SignalObjExamples_06.png",
+          "helpfiles/SignalObjExamples_07.png",
+          "helpfiles/SignalObjExamples_08.png",
+          "helpfiles/SignalObjExamples_09.png",
+          "helpfiles/SignalObjExamples_10.png",
+          "helpfiles/SignalObjExamples_11.png"
         ],
         "python_code_cells": [
           {
@@ -2377,11 +2377,11 @@
           }
         ],
         "python_code_lines": 73,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/SignalObjExamples.ipynb",
+        "python_notebook": "notebooks/SignalObjExamples.ipynb",
         "python_to_matlab_line_ratio": 0.9012345679012346,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_001.png"
+          "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_001.png"
         ],
         "topic": "SignalObjExamples"
       },
@@ -2495,16 +2495,16 @@
           }
         ],
         "matlab_code_lines": 92,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D.m",
+        "matlab_file": "helpfiles/StimulusDecode2D.m",
         "matlab_reference_image_count": 7,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D_05.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D_06.png"
+          "helpfiles/StimulusDecode2D.png",
+          "helpfiles/StimulusDecode2D_01.png",
+          "helpfiles/StimulusDecode2D_02.png",
+          "helpfiles/StimulusDecode2D_03.png",
+          "helpfiles/StimulusDecode2D_04.png",
+          "helpfiles/StimulusDecode2D_05.png",
+          "helpfiles/StimulusDecode2D_06.png"
         ],
         "python_code_cells": [
           {
@@ -2524,11 +2524,11 @@
           }
         ],
         "python_code_lines": 92,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/StimulusDecode2D.ipynb",
+        "python_notebook": "notebooks/StimulusDecode2D.ipynb",
         "python_to_matlab_line_ratio": 1.0,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/StimulusDecode2D/StimulusDecode2D_001.png"
+          "baseline/validation/notebook_images/StimulusDecode2D/StimulusDecode2D_001.png"
         ],
         "topic": "StimulusDecode2D"
       },
@@ -2546,7 +2546,7 @@
           }
         ],
         "matlab_code_lines": 3,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialConfigExamples.m",
+        "matlab_file": "helpfiles/TrialConfigExamples.m",
         "matlab_reference_image_count": 0,
         "matlab_reference_images": [],
         "python_code_cells": [
@@ -2567,11 +2567,11 @@
           }
         ],
         "python_code_lines": 73,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/TrialConfigExamples.ipynb",
+        "python_notebook": "notebooks/TrialConfigExamples.ipynb",
         "python_to_matlab_line_ratio": 24.333333333333332,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/TrialConfigExamples/TrialConfigExamples_001.png"
+          "baseline/validation/notebook_images/TrialConfigExamples/TrialConfigExamples_001.png"
         ],
         "topic": "TrialConfigExamples"
       },
@@ -2631,16 +2631,16 @@
           }
         ],
         "matlab_code_lines": 25,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples.m",
+        "matlab_file": "helpfiles/TrialExamples.m",
         "matlab_reference_image_count": 7,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples_05.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples_06.png"
+          "helpfiles/TrialExamples.png",
+          "helpfiles/TrialExamples_01.png",
+          "helpfiles/TrialExamples_02.png",
+          "helpfiles/TrialExamples_03.png",
+          "helpfiles/TrialExamples_04.png",
+          "helpfiles/TrialExamples_05.png",
+          "helpfiles/TrialExamples_06.png"
         ],
         "python_code_cells": [
           {
@@ -2660,11 +2660,11 @@
           }
         ],
         "python_code_lines": 73,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/TrialExamples.ipynb",
+        "python_notebook": "notebooks/TrialExamples.ipynb",
         "python_to_matlab_line_ratio": 2.92,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/TrialExamples/TrialExamples_001.png"
+          "baseline/validation/notebook_images/TrialExamples/TrialExamples_001.png"
         ],
         "topic": "TrialExamples"
       },
@@ -2796,21 +2796,21 @@
           }
         ],
         "matlab_code_lines": 77,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet.m",
+        "matlab_file": "helpfiles/ValidationDataSet.m",
         "matlab_reference_image_count": 13,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_05.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_06.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_07.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_08.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_09.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_10.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet_11.png"
+          "helpfiles/ValidationDataSet.png",
+          "helpfiles/ValidationDataSet_01.png",
+          "helpfiles/ValidationDataSet_02.png",
+          "helpfiles/ValidationDataSet_03.png",
+          "helpfiles/ValidationDataSet_04.png",
+          "helpfiles/ValidationDataSet_05.png",
+          "helpfiles/ValidationDataSet_06.png",
+          "helpfiles/ValidationDataSet_07.png",
+          "helpfiles/ValidationDataSet_08.png",
+          "helpfiles/ValidationDataSet_09.png",
+          "helpfiles/ValidationDataSet_10.png",
+          "helpfiles/ValidationDataSet_11.png"
         ],
         "python_code_cells": [
           {
@@ -2830,11 +2830,11 @@
           }
         ],
         "python_code_lines": 74,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/ValidationDataSet.ipynb",
+        "python_notebook": "notebooks/ValidationDataSet.ipynb",
         "python_to_matlab_line_ratio": 0.961038961038961,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/ValidationDataSet/ValidationDataSet_001.png"
+          "baseline/validation/notebook_images/ValidationDataSet/ValidationDataSet_001.png"
         ],
         "topic": "ValidationDataSet"
       },
@@ -2942,15 +2942,15 @@
           }
         ],
         "matlab_code_lines": 48,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/mEPSCAnalysis.m",
+        "matlab_file": "helpfiles/mEPSCAnalysis.m",
         "matlab_reference_image_count": 6,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/mEPSCAnalysis.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/mEPSCAnalysis_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/mEPSCAnalysis_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/mEPSCAnalysis_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/mEPSCAnalysis_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/mEPSCAnalysis_05.png"
+          "helpfiles/mEPSCAnalysis.png",
+          "helpfiles/mEPSCAnalysis_01.png",
+          "helpfiles/mEPSCAnalysis_02.png",
+          "helpfiles/mEPSCAnalysis_03.png",
+          "helpfiles/mEPSCAnalysis_04.png",
+          "helpfiles/mEPSCAnalysis_05.png"
         ],
         "python_code_cells": [
           {
@@ -2970,11 +2970,11 @@
           }
         ],
         "python_code_lines": 90,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/mEPSCAnalysis.ipynb",
+        "python_notebook": "notebooks/mEPSCAnalysis.ipynb",
         "python_to_matlab_line_ratio": 1.875,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/mEPSCAnalysis/mEPSCAnalysis_001.png"
+          "baseline/validation/notebook_images/mEPSCAnalysis/mEPSCAnalysis_001.png"
         ],
         "topic": "mEPSCAnalysis"
       },
@@ -4762,21 +4762,21 @@
           }
         ],
         "matlab_code_lines": 1576,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples.m",
+        "matlab_file": "helpfiles/nSTATPaperExamples.m",
         "matlab_reference_image_count": 26,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_05.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_06.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_07.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_08.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_09.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_10.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples_11.png"
+          "helpfiles/nSTATPaperExamples.png",
+          "helpfiles/nSTATPaperExamples_01.png",
+          "helpfiles/nSTATPaperExamples_02.png",
+          "helpfiles/nSTATPaperExamples_03.png",
+          "helpfiles/nSTATPaperExamples_04.png",
+          "helpfiles/nSTATPaperExamples_05.png",
+          "helpfiles/nSTATPaperExamples_06.png",
+          "helpfiles/nSTATPaperExamples_07.png",
+          "helpfiles/nSTATPaperExamples_08.png",
+          "helpfiles/nSTATPaperExamples_09.png",
+          "helpfiles/nSTATPaperExamples_10.png",
+          "helpfiles/nSTATPaperExamples_11.png"
         ],
         "python_code_cells": [
           {
@@ -4796,11 +4796,11 @@
           }
         ],
         "python_code_lines": 98,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/nSTATPaperExamples.ipynb",
+        "python_notebook": "notebooks/nSTATPaperExamples.ipynb",
         "python_to_matlab_line_ratio": 0.06218274111675127,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/nSTATPaperExamples/nSTATPaperExamples_001.png"
+          "baseline/validation/notebook_images/nSTATPaperExamples/nSTATPaperExamples_001.png"
         ],
         "topic": "nSTATPaperExamples"
       },
@@ -4836,15 +4836,15 @@
           }
         ],
         "matlab_code_lines": 10,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples.m",
+        "matlab_file": "helpfiles/nSpikeTrainExamples.m",
         "matlab_reference_image_count": 6,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples_03.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples_04.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples_05.png"
+          "helpfiles/nSpikeTrainExamples.png",
+          "helpfiles/nSpikeTrainExamples_01.png",
+          "helpfiles/nSpikeTrainExamples_02.png",
+          "helpfiles/nSpikeTrainExamples_03.png",
+          "helpfiles/nSpikeTrainExamples_04.png",
+          "helpfiles/nSpikeTrainExamples_05.png"
         ],
         "python_code_cells": [
           {
@@ -4864,11 +4864,11 @@
           }
         ],
         "python_code_lines": 73,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/nSpikeTrainExamples.ipynb",
+        "python_notebook": "notebooks/nSpikeTrainExamples.ipynb",
         "python_to_matlab_line_ratio": 7.3,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/nSpikeTrainExamples/nSpikeTrainExamples_001.png"
+          "baseline/validation/notebook_images/nSpikeTrainExamples/nSpikeTrainExamples_001.png"
         ],
         "topic": "nSpikeTrainExamples"
       },
@@ -4910,13 +4910,13 @@
           }
         ],
         "matlab_code_lines": 16,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nstCollExamples.m",
+        "matlab_file": "helpfiles/nstCollExamples.m",
         "matlab_reference_image_count": 4,
         "matlab_reference_images": [
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nstCollExamples.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nstCollExamples_01.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nstCollExamples_02.png",
-          "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nstCollExamples_03.png"
+          "helpfiles/nstCollExamples.png",
+          "helpfiles/nstCollExamples_01.png",
+          "helpfiles/nstCollExamples_02.png",
+          "helpfiles/nstCollExamples_03.png"
         ],
         "python_code_cells": [
           {
@@ -4936,11 +4936,11 @@
           }
         ],
         "python_code_lines": 73,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/nstCollExamples.ipynb",
+        "python_notebook": "notebooks/nstCollExamples.ipynb",
         "python_to_matlab_line_ratio": 4.5625,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/nstCollExamples/nstCollExamples_001.png"
+          "baseline/validation/notebook_images/nstCollExamples/nstCollExamples_001.png"
         ],
         "topic": "nstCollExamples"
       },
@@ -5078,7 +5078,7 @@
           }
         ],
         "matlab_code_lines": 126,
-        "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/publish_all_helpfiles.m",
+        "matlab_file": "helpfiles/publish_all_helpfiles.m",
         "matlab_reference_image_count": 0,
         "matlab_reference_images": [],
         "python_code_cells": [
@@ -5099,18 +5099,18 @@
           }
         ],
         "python_code_lines": 74,
-        "python_notebook": "/private/tmp/nstat_python_work_20260302/notebooks/publish_all_helpfiles.ipynb",
+        "python_notebook": "notebooks/publish_all_helpfiles.ipynb",
         "python_to_matlab_line_ratio": 0.5873015873015873,
         "python_validation_image_count": 1,
         "python_validation_images": [
-          "/private/tmp/nstat_python_work_20260302/baseline/validation/notebook_images/publish_all_helpfiles/publish_all_helpfiles_001.png"
+          "baseline/validation/notebook_images/publish_all_helpfiles/publish_all_helpfiles_001.png"
         ],
         "topic": "publish_all_helpfiles"
       }
     ]
   },
-  "generated_at_utc": "2026-03-02T21:30:20.704450+00:00",
-  "matlab_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local",
+  "generated_at_utc": "deterministic",
+  "matlab_root": "<matlab_root>",
   "method_functional_audit": {
     "class_summary": [
       {
@@ -5182,7 +5182,7 @@
         "matlab_class": "nspikeTrain",
         "matlab_method_count": 29,
         "missing_symbol_count": 0,
-        "probe_verified_count": 16,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -5206,7 +5206,7 @@
         "matlab_class": "CovColl",
         "matlab_method_count": 55,
         "missing_symbol_count": 0,
-        "probe_verified_count": 27,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -5278,7 +5278,7 @@
         "matlab_class": "FitResult",
         "matlab_method_count": 33,
         "missing_symbol_count": 0,
-        "probe_verified_count": 16,
+        "probe_verified_count": 0,
         "unverified_behavior_count": 0
       },
       {
@@ -6881,8 +6881,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "getLStatistic",
         "mapped_via_alias": false,
@@ -6893,8 +6893,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "setMER",
         "mapped_via_alias": false,
@@ -6905,8 +6905,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "setName",
         "mapped_via_alias": false,
@@ -6917,8 +6917,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "computeStatistics",
         "mapped_via_alias": false,
@@ -6941,8 +6941,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "setMinTime",
         "mapped_via_alias": false,
@@ -6953,8 +6953,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "setMaxTime",
         "mapped_via_alias": false,
@@ -6965,8 +6965,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "clearSigRep",
         "mapped_via_alias": false,
@@ -6977,8 +6977,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "resample",
         "mapped_via_alias": false,
@@ -7013,8 +7013,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotISISpectrumFunction",
         "mapped_via_alias": false,
@@ -7037,8 +7037,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotJointISIHistogram",
         "mapped_via_alias": false,
@@ -7061,8 +7061,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotISIHistogram",
         "mapped_via_alias": false,
@@ -7073,8 +7073,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotExponentialFit",
         "mapped_via_alias": false,
@@ -7085,8 +7085,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotProbPlot",
         "mapped_via_alias": false,
@@ -7121,8 +7121,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "partitionNST",
         "mapped_via_alias": false,
@@ -7157,8 +7157,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "restoreToOriginal",
         "mapped_via_alias": false,
@@ -7181,8 +7181,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plot",
         "mapped_via_alias": false,
@@ -7853,8 +7853,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "copy",
         "mapped_via_alias": true,
@@ -7865,8 +7865,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "setMinTime",
         "mapped_via_alias": false,
@@ -7877,8 +7877,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "setMaxTime",
         "mapped_via_alias": false,
@@ -7889,8 +7889,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "setSampleRate",
         "mapped_via_alias": false,
@@ -7913,8 +7913,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "getCovDataMask",
         "mapped_via_alias": false,
@@ -7925,8 +7925,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "isCovMaskSet",
         "mapped_via_alias": false,
@@ -7937,8 +7937,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "nActCovar",
         "mapped_via_alias": false,
@@ -7949,8 +7949,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "maskAwayCov",
         "mapped_via_alias": false,
@@ -7961,8 +7961,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "copy",
         "mapped_via_alias": false,
@@ -7973,8 +7973,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "maskAwayOnlyCov",
         "mapped_via_alias": false,
@@ -7985,8 +7985,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "maskAwayAllExcept",
         "mapped_via_alias": false,
@@ -7997,8 +7997,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "getCov",
         "mapped_via_alias": false,
@@ -8045,8 +8045,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "getCovLabelsFromMask",
         "mapped_via_alias": false,
@@ -8129,8 +8129,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "resample",
         "mapped_via_alias": false,
@@ -8141,8 +8141,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "restoreToOriginal",
         "mapped_via_alias": false,
@@ -8153,8 +8153,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "restrictToTimeWindow",
         "mapped_via_alias": false,
@@ -8165,8 +8165,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "removeCovariate",
         "mapped_via_alias": false,
@@ -8177,8 +8177,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "resetMask",
         "mapped_via_alias": false,
@@ -8189,8 +8189,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "enforceSampleRate",
         "mapped_via_alias": false,
@@ -8201,8 +8201,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "setCovShift",
         "mapped_via_alias": false,
@@ -8213,8 +8213,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "resetCovShift",
         "mapped_via_alias": false,
@@ -8273,8 +8273,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "dataToStructure",
         "mapped_via_alias": false,
@@ -8285,8 +8285,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plot",
         "mapped_via_alias": false,
@@ -8309,8 +8309,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "getCovMaskFromSelector",
         "mapped_via_alias": false,
@@ -8333,8 +8333,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "isaSelectorCell",
         "mapped_via_alias": false,
@@ -8381,8 +8381,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "updateTimes",
         "mapped_via_alias": false,
@@ -8405,8 +8405,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "removeFromColl",
         "mapped_via_alias": false,
@@ -10025,8 +10025,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "FitResult",
         "mapped_via_alias": false,
@@ -10037,8 +10037,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "setNeuronName",
         "mapped_via_alias": false,
@@ -10049,8 +10049,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "mergeResults",
         "mapped_via_alias": false,
@@ -10073,8 +10073,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "addParamsToFit",
         "mapped_via_alias": false,
@@ -10097,8 +10097,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "mapCovLabelsToUniqueLabels",
         "mapped_via_alias": false,
@@ -10121,8 +10121,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotValidation",
         "mapped_via_alias": false,
@@ -10181,8 +10181,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotCoeffsWithoutHistory",
         "mapped_via_alias": false,
@@ -10193,8 +10193,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "getHistIndex",
         "mapped_via_alias": false,
@@ -10217,8 +10217,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "getHistCoeffs",
         "mapped_via_alias": false,
@@ -10229,8 +10229,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotHistCoeffs",
         "mapped_via_alias": false,
@@ -10241,8 +10241,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotCoeffs",
         "mapped_via_alias": false,
@@ -10253,8 +10253,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotResults",
         "mapped_via_alias": false,
@@ -10265,8 +10265,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "KSPlot",
         "mapped_via_alias": false,
@@ -10289,8 +10289,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotSeqCorr",
         "mapped_via_alias": false,
@@ -10301,8 +10301,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotInvGausTrans",
         "mapped_via_alias": false,
@@ -10313,8 +10313,8 @@
       },
       {
         "excluded_method": false,
-        "functional_status": "probe_verified",
-        "has_behavior_contract": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
         "has_probe_verification": true,
         "mapped_python_member": "plotResidual",
         "mapped_via_alias": false,
@@ -11321,17 +11321,17 @@
       }
     ],
     "summary": {
-      "contract_explicit_verified_methods": 391,
+      "contract_explicit_verified_methods": 450,
       "contract_verified_methods": 480,
       "contract_verified_ratio": 0.9580838323353293,
       "eligible_methods": 480,
       "eligible_verified_ratio": 1.0,
       "excluded_methods": 21,
       "missing_symbol_methods": 0,
-      "probe_verified_methods": 89,
+      "probe_verified_methods": 30,
       "total_methods": 501,
       "unverified_behavior_methods": 0
     }
   },
-  "repo_root": "/private/tmp/nstat_python_work_20260302"
+  "repo_root": "."
 }

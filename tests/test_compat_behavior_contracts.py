@@ -195,6 +195,12 @@ def _build_compat_spike_train_basic() -> tuple[Any, dict[str, Any]]:
         "spike_ctor_args": [obj.toStructure()],
         "spike_set_sigrep_args": [np.array([0.0, 1.0, 0.0, 1.0])],
         "spike_get_field_name_args": ["name"],
+        "spike_set_mer_args": [3.0],
+        "spike_set_name_args": ["unit"],
+        "spike_set_min_args": [0.05],
+        "spike_set_max_args": [0.95],
+        "spike_resample_args": [10.0],
+        "spike_partition_args": [[0.0, 0.3, 1.0]],
     }
 
 
@@ -263,6 +269,15 @@ def _build_compat_covcoll_basic() -> tuple[Any, dict[str, Any]]:
         "covcoll_add_collection_args": [cov_extra_coll],
         "covcoll_remove_indices_args": [[5]],
         "covcoll_from_structure_args": [obj.toStructure()],
+        "covcoll_set_min_args": [0.1],
+        "covcoll_set_max_args": [0.9],
+        "covcoll_restrict_args": [0.2, 0.8],
+        "covcoll_sample_rate_args": [8.0],
+        "covcoll_shift_args": [0.1],
+        "covcoll_get_cov_args": ["poly"],
+        "covcoll_remove_name_args": ["sine"],
+        "covcoll_remove_from_coll_args": ["poly"],
+        "covcoll_selector_cell_args": [[1, "sine"]],
     }
 
 
@@ -413,16 +428,37 @@ def _build_compat_fit_result_basic() -> tuple[Any, dict[str, Any]]:
         parameter_labels=["stim", "hist"],
     )
     X = np.array([[-1.0, 0.5], [0.0, 0.0], [1.0, -0.5]])
+    merge_obj = M.FitResult(
+        coefficients=np.array([0.2, 0.1]),
+        intercept=-0.5,
+        fit_type="binomial",
+        log_likelihood=-8.0,
+        n_samples=100,
+        n_parameters=3,
+        parameter_labels=["stim", "hist"],
+    )
     return obj, {
         "fit_coeff_index_args": ["stim"],
         "fit_param_args": ["fit_type"],
         "fit_eval_args": [X],
         "fit_from_structure_args": [obj.toStructure()],
+        "fit_ctor_args": [obj.toStructure()],
         "fit_cell_array_args": [[obj]],
         "fit_subset_args": [[1]],
         "fit_set_ks_args": [np.array([0.1, 0.2]), np.array([0.9, 0.8]), np.array([1.0, 1.0])],
         "fit_set_resid_args": [np.array([0.1, -0.2, 0.0])],
         "fit_set_inv_args": [{"z": np.array([0.1, 0.2])}],
+        "fit_set_name_args": ["n1"],
+        "fit_add_params_args": [
+            {
+                "neuron_name": "n2",
+                "fit_residual": np.array([0.2, 0.1, -0.1]),
+                "inv_gaus_stats": {"z": np.array([0.1, 0.2])},
+                "xval_data": [np.array([0.0, 1.0, 0.0])],
+                "xval_time": [np.array([0.0, 0.5, 1.0])],
+            }
+        ],
+        "fit_merge_args": [merge_obj],
         "fit_xtick_rotate_args": [np.array([0.0, 1.0]), 15.0],
     }
 
