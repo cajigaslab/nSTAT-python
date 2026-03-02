@@ -2,26 +2,63 @@ version: 1
 policy_name: functional_equivalence_gate
 
 method_thresholds:
-  min_verified_ratio_overall: 0.95
+  min_verified_ratio_overall: 0.958
   min_eligible_verified_ratio_overall: 1.0
+  min_contract_explicit_verified_methods: 391
+  max_probe_verified_methods: 89
+  max_unverified_behavior_methods: 0
   max_missing_symbol_methods: 0
   class_min_verified_methods:
-    SignalObj: 25
-    Covariate: 10
-    ConfidenceInterval: 4
-    Events: 3
-    History: 6
-    nspikeTrain: 12
-    nstColl: 22
-    CovColl: 23
-    TrialConfig: 5
-    ConfigColl: 5
-    Trial: 28
-    CIF: 15
-    Analysis: 12
-    FitResult: 17
-    FitResSummary: 16
-    DecodingAlgorithms: 9
+    SignalObj: 98
+    Covariate: 14
+    ConfidenceInterval: 5
+    Events: 5
+    History: 8
+    nspikeTrain: 29
+    nstColl: 53
+    CovColl: 55
+    TrialConfig: 6
+    ConfigColl: 9
+    Trial: 68
+    CIF: 21
+    Analysis: 22
+    FitResult: 33
+    FitResSummary: 30
+    DecodingAlgorithms: 24
+  class_min_eligible_verified_ratio:
+    SignalObj: 1.0
+    Covariate: 1.0
+    ConfidenceInterval: 1.0
+    Events: 1.0
+    History: 1.0
+    nspikeTrain: 1.0
+    nstColl: 1.0
+    CovColl: 1.0
+    TrialConfig: 1.0
+    ConfigColl: 1.0
+    Trial: 1.0
+    CIF: 1.0
+    Analysis: 1.0
+    FitResult: 1.0
+    FitResSummary: 1.0
+    DecodingAlgorithms: 1.0
+  class_max_probe_verified_methods:
+    SignalObj: 0
+    Covariate: 3
+    ConfidenceInterval: 1
+    Events: 1
+    History: 1
+    nspikeTrain: 16
+    nstColl: 1
+    CovColl: 27
+    TrialConfig: 0
+    ConfigColl: 0
+    Trial: 0
+    CIF: 2
+    Analysis: 7
+    FitResult: 16
+    FitResSummary: 14
+    DecodingAlgorithms: 0
 
 example_thresholds:
   max_missing_artifact_topics: 0

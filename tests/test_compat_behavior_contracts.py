@@ -121,6 +121,7 @@ def _build_compat_signal_basic() -> tuple[Any, dict[str, Any]]:
         "signal_plot_props_args": [{"LineWidth": 2.0}],
         "signal_filter_args": [np.array([0.2, 0.2]), np.array([1.0, -0.3])],
         "signal_crosscorr_args": [other, 1],
+        "signal_from_structure_args": [obj.dataToStructure()],
     }
 
 
@@ -228,6 +229,7 @@ def _build_compat_spike_coll_basic() -> tuple[Any, dict[str, Any]]:
         "coll_addnames_args": [ens_cov],
         "coll_basis_args": [0.2, 10.0, 1.0, "basis"],
         "coll_from_structure_args": [obj.toStructure()],
+        "coll_ctor_args": [obj.toStructure()],
     }
 
 

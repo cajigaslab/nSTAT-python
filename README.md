@@ -119,6 +119,13 @@ python tools/parity/check_tier1_progress.py \
 MATLAB-style adapters are available under:
 - `nstat.compat.matlab`
 
+Sync parity artifacts (functional audit + sprint backlog + help dashboard/docs):
+
+```bash
+python tools/parity/sync_parity_artifacts.py \
+  --matlab-root /path/to/matlab/nSTAT
+```
+
 ## RC Release Automation
 
 Use the GitHub Actions workflow `.github/workflows/release-rc.yml` to:
@@ -151,7 +158,7 @@ Inputs:
 - Numeric drift thresholds
 - Functional parity policy
 - Example-output parity policy
-- Up-to-date method-closure sprint backlog
+- Synchronized parity artifacts (`parity/*`, `docs/help/*`, `docs/notebooks.md`, `baseline/help_mapping.json`)
 
 ## Branch Protection Automation
 

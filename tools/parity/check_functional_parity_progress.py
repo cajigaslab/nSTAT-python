@@ -46,6 +46,31 @@ def main() -> int:
             f"overall verified ratio {ratio:.3f} below required {min_verified_ratio_overall:.3f}"
         )
 
+    if "min_contract_explicit_verified_methods" in method_policy:
+        minimum = int(method_policy["min_contract_explicit_verified_methods"])
+        observed = int(method_summary.get("contract_explicit_verified_methods", 0))
+        if observed < minimum:
+            failures.append(
+                "contract explicit verified methods "
+                f"{observed} below required {minimum}"
+            )
+
+    if "max_probe_verified_methods" in method_policy:
+        maximum = int(method_policy["max_probe_verified_methods"])
+        observed = int(method_summary.get("probe_verified_methods", 0))
+        if observed > maximum:
+            failures.append(
+                f"probe verified methods {observed} exceeds allowed {maximum}"
+            )
+
+    if "max_unverified_behavior_methods" in method_policy:
+        maximum = int(method_policy["max_unverified_behavior_methods"])
+        observed = int(method_summary.get("unverified_behavior_methods", 0))
+        if observed > maximum:
+            failures.append(
+                f"unverified behavior methods {observed} exceeds allowed {maximum}"
+            )
+
     min_eligible_ratio_overall = float(method_policy.get("min_eligible_verified_ratio_overall", 0.0))
     eligible_ratio = float(method_summary.get("eligible_verified_ratio", 0.0))
     if eligible_ratio < min_eligible_ratio_overall:
@@ -79,6 +104,29 @@ def main() -> int:
         if ratio_val < float(min_ratio):
             failures.append(
                 f"{klass}: eligible verified ratio {ratio_val:.3f} below required {float(min_ratio):.3f}"
+            )
+
+    for klass, min_ratio in method_policy.get("class_min_contract_coverage_ratio", {}).items():
+        row = class_rows.get(klass)
+        if row is None:
+            failures.append(f"missing class in functional report: {klass}")
+            continue
+        ratio_val = float(row.get("contract_coverage_ratio", 0.0))
+        if ratio_val < float(min_ratio):
+            failures.append(
+                f"{klass}: contract coverage ratio {ratio_val:.3f} below required {float(min_ratio):.3f}"
+            )
+
+    for klass, max_count in method_policy.get("class_max_probe_verified_methods", {}).items():
+        row = class_rows.get(klass)
+        if row is None:
+            failures.append(f"missing class in functional report: {klass}")
+            continue
+        observed = int(row.get("probe_verified_count", 0))
+        maximum = int(max_count)
+        if observed > maximum:
+            failures.append(
+                f"{klass}: probe verified count {observed} exceeds allowed {maximum}"
             )
 
     example_policy = policy.get("example_thresholds", {})

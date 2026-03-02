@@ -1191,6 +1191,12 @@ class nstColl(_SpikeTrainCollection):
     def getNumUnits(self) -> int:
         return self.n_units
 
+    @staticmethod
+    def nstColl(*args: Any, **kwargs: Any) -> "nstColl":
+        if len(args) == 1 and isinstance(args[0], dict):
+            return nstColl.fromStructure(args[0])
+        return nstColl(*args, **kwargs)
+
     def getBinnedMatrix(
         self, binSize_s: float, mode: Literal["binary", "count"] = "binary"
     ) -> tuple[np.ndarray, np.ndarray]:

@@ -50,9 +50,13 @@ jobs:
             --report parity/function_example_alignment_report.json \
             --spec parity/example_output_spec.yml
 
-      - name: Ensure method-closure backlog is up to date
+      - name: Ensure parity artifacts are synchronized
         run: |
-          python tools/parity/generate_method_closure_sprint.py \
-            --report parity/function_example_alignment_report.json \
-            --output parity/method_closure_sprint.md
-          git diff --exit-code parity/method_closure_sprint.md
+          python tools/parity/sync_parity_artifacts.py \
+            --matlab-root /tmp/upstream-nstat
+          git diff --exit-code \
+            parity/function_example_alignment_report.json \
+            parity/method_closure_sprint.md \
+            docs/help \
+            docs/notebooks.md \
+            baseline/help_mapping.json

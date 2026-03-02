@@ -312,6 +312,210 @@ classes:
         select: 1
         expect:
           shape: [0]
+      - member: setName
+        access: method
+        args: [sig_updated]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: setXlabel
+        access: method
+        args: [time]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: setYLabel
+        access: method
+        args: [value]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: setSampleRate
+        access: method
+        args: [4.0]
+        extract: n_samples
+        expect:
+          equals: 9
+      - member: setMinTime
+        access: method
+        args: [0.0]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: setMaxTime
+        access: method
+        args: [2.0]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: setMask
+        access: method
+        args_key: signal_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: isMaskSet
+        access: method
+        expect:
+          equals: false
+      - member: uplus
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: uminus
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: sqrt
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: ctranspose
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: transpose
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: abs
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: log
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: median
+        access: method
+        expect:
+          finite: true
+      - member: mode
+        access: method
+        expect:
+          finite: true
+      - member: mean
+        access: method
+        expect:
+          finite: true
+      - member: std
+        access: method
+        expect:
+          finite: true
+      - member: max
+        access: method
+        expect:
+          finite: true
+      - member: min
+        access: method
+        expect:
+          finite: true
+      - member: autocorrelation
+        access: method
+        expect:
+          length: 2
+      - member: periodogram
+        access: method
+        expect:
+          length: 2
+      - member: MTMspectrum
+        access: method
+        expect:
+          length: 2
+      - member: spectrogram
+        access: method
+        expect:
+          length: 3
+      - member: xcorr
+        access: method
+        expect:
+          length: 2
+      - member: xcov
+        access: method
+        expect:
+          length: 2
+      - member: resampleMe
+        access: method
+        args: [4.0]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: restoreToOriginal
+        access: method
+        extract: n_samples
+        expect:
+          equals: 5
+      - member: resetMask
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: findIndFromDataMask
+        access: method
+        expect:
+          equals:
+            - 0
+      - member: alignTime
+        access: method
+        args: [0.1]
+        extract: time
+        expect:
+          shape: [5]
+      - member: findMaxima
+        access: method
+        select: 0
+        expect:
+          shape: [1]
+      - member: clearPlotProps
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: dataToStructure
+        access: method
+        expect:
+          length: 9
+      - member: windowedSignal
+        access: method
+        args: [3]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: normWindowedSignal
+        access: method
+        args: [3]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: getSubSignalsWithinNStd
+        access: method
+        args: [1.0]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: plot
+        access: method
+        expect:
+          length: 1
+      - member: setupPlots
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: plotVariability
+        access: method
+        expect:
+          instance_of: matplotlib.collections.PolyCollection
+      - member: plotAllVariability
+        access: method
+        expect:
+          instance_of: matplotlib.collections.PolyCollection
+      - member: signalFromStruct
+        access: method
+        args_key: signal_from_structure_args
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: convertSigStructureToStructure
+        access: method
+        args_key: signal_from_structure_args
+        expect:
+          length: 9
+      - member: convertSimpleStructureToSigStructure
+        access: method
+        args_key: signal_from_structure_args
+        expect:
+          length: 9
+      - member: getAvailableColor
+        access: method
+        expect:
+          equals: b
       - member: cell2str
         access: method
         args_key: signal_cell2str_args
@@ -822,6 +1026,25 @@ classes:
         access: method
         expect:
           instance_of: nstat.compat.matlab.nstColl
+      - member: nstColl
+        access: method
+        args_key: coll_ctor_args
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: isSigRepBinary
+        access: method
+        args: [0.1]
+        expect:
+          equals: false
+      - member: getEnsembleNeuronCovariates
+        access: method
+        args: [0.1]
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: plot
+        access: method
+        expect:
+          instance_of: matplotlib.axes._axes.Axes
 
   - matlab_class: CovColl
     python_class: nstat.compat.matlab.CovColl
@@ -1451,6 +1674,42 @@ classes:
         extract: covariates.0.time
         expect:
           shape: [6]
+      - member: setNeighbors
+        access: method
+        args_key: trial_neighbors_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: getNeuronNeighbors
+        access: method
+        expect:
+          shape: [2, 1]
+      - member: setMinTime
+        access: method
+        args: [0.1]
+        extract: spikes.trains.0.t_start
+        expect:
+          approx: 0.1
+          abs_tol: 1.0e-12
+      - member: setMaxTime
+        access: method
+        args: [0.9]
+        extract: spikes.trains.0.t_end
+        expect:
+          approx: 0.9
+          abs_tol: 1.0e-12
+      - member: setSampleRate
+        access: method
+        args: [5.0]
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: plotRaster
+        access: method
+        expect:
+          instance_of: matplotlib.axes._axes.Axes
+      - member: plot
+        access: method
+        expect:
+          instance_of: matplotlib.axes._axes.Axes
 
   - matlab_class: CIF
     python_class: nstat.compat.matlab.CIF

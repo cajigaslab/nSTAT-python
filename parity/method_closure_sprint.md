@@ -4,49 +4,24 @@ This sprint backlog targets methods that are probe-verified but not yet explicit
 
 ## Functional Summary
 - Total methods: `501`
-- Contract-explicit verified methods: `336`
-- Probe-verified methods: `144`
+- Contract-explicit verified methods: `391`
+- Probe-verified methods: `89`
 - Eligible verified ratio: `1.000`
 - Excluded methods: `21`
 
 ## Priority Class Queue
 | Class | Probe-verified | Contract-verified | Probe-only methods |
 |---|---:|---:|---:|
-| SignalObj | 46 | 98 | 46 |
 | CovColl | 27 | 55 | 27 |
 | FitResult | 16 | 33 | 16 |
 | nspikeTrain | 16 | 29 | 16 |
 | FitResSummary | 14 | 30 | 14 |
 | Analysis | 7 | 22 | 7 |
-| Trial | 6 | 68 | 6 |
-| nstColl | 4 | 53 | 4 |
+| Covariate | 3 | 14 | 3 |
+| CIF | 2 | 21 | 2 |
+| nstColl | 1 | 53 | 1 |
 
 ## Sprint Work Packages
-
-### SignalObj
-- Goal: Convert probe-only functional verification to explicit behavior contracts.
-- Candidate methods:
-  - `MTMspectrum`
-  - `abs`
-  - `alignTime`
-  - `autocorrelation`
-  - `clearPlotProps`
-  - `convertSigStructureToStructure`
-  - `convertSimpleStructureToSigStructure`
-  - `ctranspose`
-  - `dataToStructure`
-  - `findIndFromDataMask`
-  - `findMaxima`
-  - `getAvailableColor`
-  - `getSubSignalsWithinNStd`
-  - `isMaskSet`
-  - `log`
-  - `max`
-  - `mean`
-  - `median`
-  - `min`
-  - `mode`
-  - `... (+26 additional methods)`
 
 ### CovColl
 - Goal: Convert probe-only functional verification to explicit behavior contracts.
@@ -142,23 +117,23 @@ This sprint backlog targets methods that are probe-verified but not yet explicit
   - `plotFitResidual`
   - `plotInvGausTrans`
 
-### Trial
+### Covariate
 - Goal: Convert probe-only functional verification to explicit behavior contracts.
 - Candidate methods:
-  - `getNeuronNeighbors`
+  - `Covariate`
   - `plot`
-  - `plotRaster`
-  - `setMaxTime`
-  - `setMinTime`
-  - `setSampleRate`
+  - `toStructure`
+
+### CIF
+- Goal: Convert probe-only functional verification to explicit behavior contracts.
+- Candidate methods:
+  - `simulateCIF`
+  - `simulateCIFByThinning`
 
 ### nstColl
 - Goal: Convert probe-only functional verification to explicit behavior contracts.
 - Candidate methods:
-  - `getEnsembleNeuronCovariates`
-  - `isSigRepBinary`
   - `nstColl`
-  - `plot`
 
 ## Excluded MATLAB Stub Methods
 - `DecodingAlgorithms`
