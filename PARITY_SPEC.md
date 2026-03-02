@@ -86,6 +86,7 @@ CI enforces `--fail-on high` for parity discovery so missing critical artifacts 
 - [x] Structural method-mapping gaps are closed (`parity/parity_gap_report.json`).
 - [ ] Functional parity contracts cover all mapped methods (`parity/function_example_alignment_report.json` currently 480/501; 21 methods explicitly excluded by policy).
 - [x] Example workflows complete line-by-line manual review and output-lock verification for in-scope topics (0 pending manual review).
+- [x] Method-closure sprint backlog generated (`parity/method_closure_sprint.md`).
 
 ## Notes
 - This repository is a clean-room implementation. MATLAB code is a behavioral reference only.

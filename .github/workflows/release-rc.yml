@@ -1,0 +1,119 @@
+name: release-rc
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (example: v1.0.0-rc3)"
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*-rc*"
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev,notebooks]
+          python -m pip install reportlab pillow pyyaml
+
+      - name: Regenerate notebooks
+        run: |
+          python tools/notebooks/generate_notebooks.py
+          git diff --exit-code
+
+      - name: Checkout upstream MATLAB nSTAT repo snapshot
+        run: |
+          GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
+
+      - name: Prepare deterministic validation images
+        run: |
+          python tools/parity/prepare_validation_images.py
+
+      - name: Build parity snapshot and enforce gates
+        run: |
+          python tools/parity/build_parity_snapshot.py \
+            --matlab-root /tmp/upstream-nstat \
+            --fail-on medium
+          python tools/parity/build_numeric_drift_report.py \
+            --fixtures-manifest tests/parity/fixtures/matlab_gold/manifest.yml \
+            --thresholds parity/numeric_drift_thresholds.yml \
+            --report-out parity/numeric_drift_report.json \
+            --fail-on-violation
+          python tools/parity/check_functional_parity_progress.py \
+            --report parity/function_example_alignment_report.json \
+            --policy parity/functional_gate_policy.yml
+          python tools/parity/check_example_output_spec.py \
+            --report parity/function_example_alignment_report.json \
+            --spec parity/example_output_spec.yml
+
+      - name: Generate full validation PDF
+        run: |
+          python tools/reports/generate_validation_pdf.py \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --matlab-help-root /tmp/upstream-nstat/helpfiles \
+            --notebook-group all \
+            --timeout 900 \
+            --skip-command-tests \
+            --parity-mode gate \
+            --example-output-spec parity/example_output_spec.yml
+
+      - name: Resolve latest validation PDF
+        id: pdf
+        run: |
+          latest_pdf="$(ls -1t output/pdf/*.pdf | head -n 1)"
+          echo "path=${latest_pdf}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${latest_pdf}")" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure tag exists (workflow_dispatch)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          git fetch --tags
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag already exists: $TAG_NAME"
+          else
+            git tag "$TAG_NAME" "$GITHUB_SHA"
+            git push origin "$TAG_NAME"
+          fi
+
+      - name: Generate RC release notes
+        run: |
+          python tools/release/generate_rc_release_notes.py \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --tag "$TAG_NAME" \
+            --commit "$GITHUB_SHA" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --validation-pdf "${{ steps.pdf.outputs.name }}" \
+            --output release_notes.md
+
+      - name: Publish RC release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.TAG_NAME }}
+          name: nSTAT-python ${{ env.TAG_NAME }}
+          bodyFile: release_notes.md
+          artifacts: ${{ steps.pdf.outputs.path }}
+          artifactErrorsFailBuild: true
+          prerelease: true
+          allowUpdates: true

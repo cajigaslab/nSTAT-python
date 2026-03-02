@@ -114,5 +114,28 @@ python tools/parity/check_tier1_progress.py \
 MATLAB-style adapters are available under:
 - `nstat.compat.matlab`
 
+## RC Release Automation
+
+Use the GitHub Actions workflow `.github/workflows/release-rc.yml` to:
+1. Rebuild parity artifacts and enforce gates.
+2. Generate a full validation PDF.
+3. Auto-generate RC release notes from parity reports.
+4. Publish/update a pre-release with the latest PDF asset attached.
+
+You can trigger it from GitHub Actions (`release-rc`) with an input tag
+like `v1.0.0-rc3`.
+
+## Branch Protection Automation
+
+To apply required checks on `main` (admin token required):
+
+```bash
+python tools/release/apply_branch_protection.py \
+  --repo cajigaslab/nSTAT-python \
+  --branch main \
+  --required-check test-and-build \
+  --required-check validation-pdf
+```
+
 ## Paper reference
 Cajigas I, Malik WQ, Brown EN. nSTAT: Open-source neural spike train analysis toolbox for Matlab. *J Neurosci Methods* (2012), DOI: `10.1016/j.jneumeth.2012.08.009`, PMID: `22981419`.

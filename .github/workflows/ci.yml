@@ -169,3 +169,10 @@ jobs:
           python tools/parity/check_example_output_spec.py \
             --report parity/function_example_alignment_report.json \
             --spec parity/example_output_spec.yml
+
+      - name: Regenerate method-closure sprint backlog
+        run: |
+          python tools/parity/generate_method_closure_sprint.py \
+            --report parity/function_example_alignment_report.json \
+            --output parity/method_closure_sprint.md
+          git diff --exit-code parity/method_closure_sprint.md

@@ -12,6 +12,7 @@ import yaml
 REPO_NOTEBOOK_BASE = "https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks"
 PAPER_OVERVIEW = "../paper_overview.md"
 API_PAGE = "../../api.md"
+REPO_PARITY_BASE = "https://github.com/cajigaslab/nSTAT-python/blob/main/parity"
 
 
 CLASS_MAP = [
@@ -56,6 +57,26 @@ CLASS_NOTEBOOKS = {
 def write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def _read_json(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _read_yaml(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return payload or {}
+
+
+def _latest_snapshot(parity_root: Path) -> Path | None:
+    candidates = sorted(parity_root.glob("matlab_gold_snapshot_*.yml"))
+    if not candidates:
+        return None
+    return candidates[-1]
 
 
 def generate_class_page(help_root: Path, matlab_name: str, python_target: str) -> None:
@@ -148,6 +169,7 @@ def generate_help_toc(help_root: Path, topics: list[str]) -> None:
             {"title": "Class Definitions", "target": "help/class_definitions.md"},
             {"title": "Examples Index", "target": "help/examples_index.md"},
             {"title": "Paper Overview", "target": "help/paper_overview.md"},
+            {"title": "Parity Dashboard", "target": "help/parity_dashboard.md"},
             {
                 "title": "Classes",
                 "children": [
@@ -188,6 +210,7 @@ all implementation, docs, and tooling Python-specific.
 - [Class Definitions](class_definitions.md)
 - [Examples Index](examples_index.md)
 - [Paper Overview](paper_overview.md)
+- [Parity Dashboard](parity_dashboard.md)
 
 ```{{toctree}}
 :maxdepth: 2
@@ -195,11 +218,99 @@ all implementation, docs, and tooling Python-specific.
 class_definitions
 examples_index
 paper_overview
+parity_dashboard
 {class_refs}
 {topic_refs}
 ```
 """
     write_text(help_root / "index.md", content)
+
+
+def generate_parity_dashboard(help_root: Path, repo_root: Path) -> None:
+    parity_root = repo_root / "parity"
+    gap = _read_json(parity_root / "parity_gap_report.json").get("summary", {})
+    functional = _read_json(parity_root / "function_example_alignment_report.json")
+    numeric = _read_json(parity_root / "numeric_drift_report.json").get("summary", {})
+    example_spec = _read_yaml(parity_root / "example_output_spec.yml")
+    snapshot_path = _latest_snapshot(parity_root)
+    snapshot = _read_yaml(snapshot_path) if snapshot_path is not None else {}
+
+    method_summary = functional.get("method_functional_audit", {}).get("summary", {})
+    example_summary = functional.get("example_line_alignment_audit", {}).get("summary", {})
+    out_of_scope_topics = example_spec.get("out_of_scope_topics", [])
+
+    snapshot_name = snapshot_path.name if snapshot_path is not None else "-"
+    snapshot_id = snapshot.get("snapshot_id", "-")
+    snapshot_date = snapshot.get("captured_on", "-")
+    source_sha = snapshot.get("source", {}).get("manifest_sha256", "-")
+    mirror_sha = snapshot.get("mirror", {}).get("manifest_sha256", "-")
+    mirror_count = snapshot.get("mirror", {}).get("file_count", "-")
+
+    oos_lines = "\n".join([f"- `{topic}`" for topic in out_of_scope_topics]) or "- None"
+
+    content = f"""# Parity Dashboard
+
+This dashboard summarizes current MATLAB-to-Python parity status from generated
+artifacts in the `parity/` directory.
+
+## Structural parity
+| Metric | Value |
+|---|---:|
+| High gaps | {int(gap.get("high", 0))} |
+| Medium gaps | {int(gap.get("medium", 0))} |
+| Low gaps | {int(gap.get("low", 0))} |
+| Total gaps | {int(gap.get("total", 0))} |
+
+## Functional parity (methods)
+| Metric | Value |
+|---|---:|
+| Total methods | {int(method_summary.get("total_methods", 0))} |
+| Contract-verified | {int(method_summary.get("contract_verified_methods", 0))} |
+| Contract-explicit verified | {int(method_summary.get("contract_explicit_verified_methods", 0))} |
+| Probe-verified | {int(method_summary.get("probe_verified_methods", 0))} |
+| Excluded methods | {int(method_summary.get("excluded_methods", 0))} |
+| Missing symbols | {int(method_summary.get("missing_symbol_methods", 0))} |
+| Unverified behavior | {int(method_summary.get("unverified_behavior_methods", 0))} |
+
+## Example parity
+| Metric | Value |
+|---|---:|
+| Total topics | {int(example_summary.get("total_topics", 0))} |
+| Validated topics | {int(example_summary.get("validated_topics", 0))} |
+| MATLAB doc-only topics | {int(example_summary.get("matlab_doc_only_topics", 0))} |
+| Pending manual review topics | {int(example_summary.get("pending_manual_review_topics", 0))} |
+| Missing executable topics | {int(example_summary.get("missing_executable_topics", 0))} |
+
+### Out-of-scope example topics
+{oos_lines}
+
+## Numeric drift
+| Metric | Value |
+|---|---:|
+| Topics checked | {int(numeric.get("topics", 0))} |
+| Topics passed | {int(numeric.get("passed_topics", 0))} |
+| Topics failed | {int(numeric.get("failed_topics", 0))} |
+| Metrics checked | {int(numeric.get("checked_metrics", 0))} |
+| Metrics failed | {int(numeric.get("failed_metrics", 0))} |
+
+## Frozen MATLAB data snapshot
+| Metric | Value |
+|---|---|
+| Snapshot file | `{snapshot_name}` |
+| Snapshot id | `{snapshot_id}` |
+| Snapshot date | `{snapshot_date}` |
+| Mirror file count | `{mirror_count}` |
+| Source manifest SHA256 | `{source_sha}` |
+| Mirror manifest SHA256 | `{mirror_sha}` |
+
+## Artifact links
+- [parity_gap_report.json]({REPO_PARITY_BASE}/parity_gap_report.json)
+- [function_example_alignment_report.json]({REPO_PARITY_BASE}/function_example_alignment_report.json)
+- [numeric_drift_report.json]({REPO_PARITY_BASE}/numeric_drift_report.json)
+- [example_output_spec.yml]({REPO_PARITY_BASE}/example_output_spec.yml)
+- [method_closure_sprint.md]({REPO_PARITY_BASE}/method_closure_sprint.md)
+"""
+    write_text(help_root / "parity_dashboard.md", content)
 
 
 def generate_notebook_index(repo_root: Path, manifest_rows: list[dict[str, str]]) -> None:
@@ -239,6 +350,7 @@ def main() -> int:
     generate_class_definitions(help_root=help_root)
     generate_help_toc(help_root=help_root, topics=topics)
     generate_help_home(help_root=help_root, topics=topics)
+    generate_parity_dashboard(help_root=help_root, repo_root=repo_root)
     generate_notebook_index(repo_root=repo_root, manifest_rows=rows)
 
     mapping = {"classes": [{"matlab": m, "python": p} for m, p in CLASS_MAP], "topics": topics}

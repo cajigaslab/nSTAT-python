@@ -9,6 +9,7 @@ all implementation, docs, and tooling Python-specific.
 - [Class Definitions](class_definitions.md)
 - [Examples Index](examples_index.md)
 - [Paper Overview](paper_overview.md)
+- [Parity Dashboard](parity_dashboard.md)
 
 ```{toctree}
 :maxdepth: 2
@@ -16,6 +17,7 @@ all implementation, docs, and tooling Python-specific.
 class_definitions
 examples_index
 paper_overview
+parity_dashboard
 classes/SignalObj
 classes/Covariate
 classes/ConfidenceInterval

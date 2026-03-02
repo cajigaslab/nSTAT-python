@@ -8,6 +8,8 @@ entries:
   target: help/examples_index.md
 - title: Paper Overview
   target: help/paper_overview.md
+- title: Parity Dashboard
+  target: help/parity_dashboard.md
 - title: Classes
   children:
   - title: SignalObj
