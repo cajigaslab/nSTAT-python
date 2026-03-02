@@ -4,22 +4,22 @@ This sprint backlog targets methods that are probe-verified but not yet explicit
 
 ## Functional Summary
 - Total methods: `501`
-- Contract-explicit verified methods: `277`
-- Probe-verified methods: `203`
+- Contract-explicit verified methods: `336`
+- Probe-verified methods: `144`
 - Eligible verified ratio: `1.000`
 - Excluded methods: `21`
 
 ## Priority Class Queue
 | Class | Probe-verified | Contract-verified | Probe-only methods |
 |---|---:|---:|---:|
-| SignalObj | 57 | 98 | 57 |
-| Trial | 30 | 68 | 30 |
-| nstColl | 28 | 53 | 28 |
+| SignalObj | 46 | 98 | 46 |
 | CovColl | 27 | 55 | 27 |
 | FitResult | 16 | 33 | 16 |
 | nspikeTrain | 16 | 29 | 16 |
 | FitResSummary | 14 | 30 | 14 |
 | Analysis | 7 | 22 | 7 |
+| Trial | 6 | 68 | 6 |
+| nstColl | 4 | 53 | 4 |
 
 ## Sprint Work Packages
 
@@ -29,74 +29,24 @@ This sprint backlog targets methods that are probe-verified but not yet explicit
   - `MTMspectrum`
   - `abs`
   - `alignTime`
-  - `alignToMax`
-  - `areDataLabelsEmpty`
   - `autocorrelation`
   - `clearPlotProps`
   - `convertSigStructureToStructure`
   - `convertSimpleStructureToSigStructure`
   - `ctranspose`
-  - `dataToMatrix`
   - `dataToStructure`
-  - `findGlobalPeak`
   - `findIndFromDataMask`
   - `findMaxima`
-  - `findMinima`
-  - `findPeaks`
   - `getAvailableColor`
-  - `getPlotProps`
-  - `getSubSignal`
-  - `... (+37 additional methods)`
-
-### Trial
-- Goal: Convert probe-only functional verification to explicit behavior contracts.
-- Candidate methods:
-  - `getCovLabelsFromMask`
-  - `getCovSelectorFromMask`
-  - `getEnsCovLabels`
-  - `getEnsCovLabelsFromMask`
-  - `getEnsCovMatrix`
-  - `getEnsembleNeuronCovariates`
-  - `getEvents`
-  - `getHistLabels`
-  - `getHistMatrices`
-  - `getLabelsFromMask`
-  - `getNeuronIndFromMask`
-  - `getNeuronIndFromName`
-  - `getNeuronNeighbors`
-  - `getNumHist`
-  - `isCovMaskSet`
-  - `isEnsCovHistSet`
-  - `isHistSet`
+  - `getSubSignalsWithinNStd`
   - `isMaskSet`
-  - `isNeuronMaskSet`
-  - `plot`
-  - `... (+10 additional methods)`
-
-### nstColl
-- Goal: Convert probe-only functional verification to explicit behavior contracts.
-- Candidate methods:
-  - `BinarySigRep`
-  - `enforceSampleRate`
-  - `ensureConsistancy`
-  - `estimateVarianceAcrossTrials`
-  - `getEnsembleNeuronCovariates`
-  - `getISIs`
-  - `getIndFromMask`
-  - `getIndFromMaskMinusOne`
-  - `getMaxBinSizeBinary`
-  - `getNeighbors`
-  - `getUniqueNSTnames`
-  - `isNeuronMaskSet`
-  - `isSigRepBinary`
-  - `nstColl`
-  - `plot`
-  - `plotExponentialFit`
-  - `plotISIHistogram`
-  - `psth`
-  - `psthBars`
-  - `psthGLM`
-  - `... (+8 additional methods)`
+  - `log`
+  - `max`
+  - `mean`
+  - `median`
+  - `min`
+  - `mode`
+  - `... (+26 additional methods)`
 
 ### CovColl
 - Goal: Convert probe-only functional verification to explicit behavior contracts.
@@ -191,6 +141,24 @@ This sprint backlog targets methods that are probe-verified but not yet explicit
   - `plotCoeffs`
   - `plotFitResidual`
   - `plotInvGausTrans`
+
+### Trial
+- Goal: Convert probe-only functional verification to explicit behavior contracts.
+- Candidate methods:
+  - `getNeuronNeighbors`
+  - `plot`
+  - `plotRaster`
+  - `setMaxTime`
+  - `setMinTime`
+  - `setSampleRate`
+
+### nstColl
+- Goal: Convert probe-only functional verification to explicit behavior contracts.
+- Candidate methods:
+  - `getEnsembleNeuronCovariates`
+  - `isSigRepBinary`
+  - `nstColl`
+  - `plot`
 
 ## Excluded MATLAB Stub Methods
 - `DecodingAlgorithms`

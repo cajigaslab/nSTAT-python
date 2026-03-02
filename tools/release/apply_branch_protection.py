@@ -37,7 +37,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    checks = args.required_check or ["test-and-build", "validation-pdf"]
+    checks = args.required_check or ["test-and-build", "parity-gate"]
     payload = {
         "required_status_checks": {
             "strict": bool(args.strict),

@@ -229,6 +229,89 @@ classes:
             - -1
             - 0
             - 1
+      - member: getPlotProps
+        access: method
+        expect:
+          equals:
+            LineWidth: 2.0
+      - member: plotPropsSet
+        access: method
+        expect:
+          equals: true
+      - member: areDataLabelsEmpty
+        access: method
+        expect:
+          equals: false
+      - member: isLabelPresent
+        access: method
+        args: [ch1]
+        expect:
+          equals: true
+      - member: dataToMatrix
+        access: method
+        expect:
+          shape: [5, 1]
+          sum_approx: 9.0
+          abs_tol: 1.0e-12
+      - member: getSubSignal
+        access: method
+        args: [0]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: getSubSignalFromInd
+        access: method
+        args:
+          - [0]
+        expect:
+          instance_of: nstat.compat.matlab.SignalObj
+      - member: alignToMax
+        access: method
+        extract: time
+        expect:
+          shape: [5]
+          min: -1.0
+          max: 1.0
+      - member: findGlobalPeak
+        access: method
+        select: 0
+        expect:
+          approx: 3.0
+          abs_tol: 1.0e-12
+      - member: findGlobalPeak
+        access: method
+        select: 1
+        expect:
+          approx: 0.0
+          abs_tol: 1.0e-12
+      - member: findGlobalPeak
+        access: method
+        select: 2
+        expect:
+          equals: 2
+      - member: findPeaks
+        access: method
+        select: 0
+        expect:
+          shape: [1]
+          sum_approx: 0.0
+          abs_tol: 1.0e-12
+      - member: findPeaks
+        access: method
+        select: 1
+        expect:
+          shape: [1]
+          sum_approx: 3.0
+          abs_tol: 1.0e-12
+      - member: findMinima
+        access: method
+        select: 0
+        expect:
+          shape: [0]
+      - member: findMinima
+        access: method
+        select: 1
+        expect:
+          shape: [0]
       - member: cell2str
         access: method
         args_key: signal_cell2str_args
@@ -611,6 +694,134 @@ classes:
         extract: data
         expect:
           shape: [11, 5]
+      - member: getMaxBinSizeBinary
+        access: method
+        expect:
+          approx: 0.05
+          abs_tol: 1.0e-9
+      - member: getNeighbors
+        access: method
+        expect:
+          shape: [2, 1]
+      - member: getIndFromMask
+        access: method
+        expect:
+          equals:
+            - 1
+      - member: getIndFromMaskMinusOne
+        access: method
+        expect:
+          equals:
+            - 1
+      - member: isNeuronMaskSet
+        access: method
+        expect:
+          equals: true
+      - member: getUniqueNSTnames
+        access: method
+        expect:
+          equals:
+            - u1
+            - u2
+            - u3
+      - member: BinarySigRep
+        access: method
+        args: [0.1]
+        expect:
+          shape: [3, 12]
+          sum_approx: 9.0
+          abs_tol: 1.0e-12
+      - member: toSpikeTrain
+        access: method
+        args: [0]
+        extract: spike_times
+        expect:
+          shape: [10]
+      - member: psth
+        access: method
+        args: [0.1]
+        select: 0
+        expect:
+          shape: [12]
+      - member: psthBars
+        access: method
+        args: [0.1]
+        select: 0
+        expect:
+          shape: [12]
+      - member: ssglm
+        access: method
+        args: [0.1]
+        select: 1
+        expect:
+          shape: [12]
+      - member: psthGLM
+        access: method
+        args: [0.1]
+        select: 1
+        expect:
+          shape: [12]
+      - member: getISIs
+        access: method
+        select: 0
+        expect:
+          shape: [4]
+      - member: plotISIHistogram
+        access: method
+        select: 0
+        expect:
+          shape: [20]
+      - member: plotExponentialFit
+        access: method
+        expect:
+          length: 1
+      - member: estimateVarianceAcrossTrials
+        access: method
+        args: [0.1]
+        expect:
+          shape: [12]
+          sum_approx: 1.7777777777777777
+          abs_tol: 1.0e-12
+      - member: ensureConsistancy
+        access: method
+        expect:
+          equals: true
+      - member: setMinTime
+        access: method
+        args: [0.05]
+        extract: trains.0.t_start
+        expect:
+          approx: 0.05
+          abs_tol: 1.0e-12
+      - member: setMaxTime
+        access: method
+        args: [0.95]
+        extract: trains.0.t_end
+        expect:
+          approx: 0.95
+          abs_tol: 1.0e-12
+      - member: resample
+        access: method
+        args: [5.0]
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: enforceSampleRate
+        access: method
+        args: [10.0]
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: restoreToOriginal
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: resetMask
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
+      - member: updateTimes
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.nstColl
 
   - matlab_class: CovColl
     python_class: nstat.compat.matlab.CovColl
@@ -1086,6 +1297,160 @@ classes:
         access: method
         expect:
           instance_of: nstat.compat.matlab.Trial
+      - member: setEnsCovMask
+        access: method
+        args_key: trial_ens_cov_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setCovMask
+        access: method
+        args_key: trial_cov_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setNeuronMask
+        access: method
+        args_key: trial_neuron_mask_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setHistory
+        access: method
+        args_key: trial_history_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setEnsCovHist
+        access: method
+        args_key: trial_ens_hist_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: setTrialEvents
+        access: method
+        args_key: trial_events_args
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: isNeuronMaskSet
+        access: method
+        expect:
+          equals: true
+      - member: isCovMaskSet
+        access: method
+        expect:
+          equals: true
+      - member: isMaskSet
+        access: method
+        expect:
+          equals: true
+      - member: isHistSet
+        access: method
+        expect:
+          equals: true
+      - member: isEnsCovHistSet
+        access: method
+        expect:
+          equals: true
+      - member: getEnsCovMatrix
+        access: method
+        select: 0
+        expect:
+          shape: [1000, 1]
+      - member: getEnsCovMatrix
+        access: method
+        select: 1
+        expect:
+          equals:
+            - u1
+      - member: getHistMatrices
+        access: method
+        select: 0
+        expect:
+          shape: [1000, 2]
+      - member: getHistMatrices
+        access: method
+        select: 1
+        expect:
+          shape: [1000, 2]
+      - member: getEnsembleNeuronCovariates
+        access: method
+        args: [0.1]
+        expect:
+          instance_of: nstat.compat.matlab.CovColl
+      - member: getNeuronIndFromMask
+        access: method
+        expect:
+          equals:
+            - 0
+      - member: getNeuronIndFromName
+        access: method
+        args: [u1]
+        expect:
+          equals:
+            - 0
+      - member: getCovSelectorFromMask
+        access: method
+        expect:
+          equals:
+            - sine
+      - member: getEvents
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.Events
+      - member: getNumHist
+        access: method
+        expect:
+          equals: 1
+      - member: getCovLabelsFromMask
+        access: method
+        expect:
+          equals:
+            - sine
+      - member: getHistLabels
+        access: method
+        expect:
+          equals:
+            - hist_1
+      - member: getEnsCovLabels
+        access: method
+        expect:
+          equals:
+            - u1
+            - u2
+      - member: getEnsCovLabelsFromMask
+        access: method
+        expect:
+          equals:
+            - u1
+      - member: getLabelsFromMask
+        access: method
+        expect:
+          equals:
+            - sine
+      - member: resetEnsCovMask
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: resetCovMask
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: resetNeuronMask
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: resetHistory
+        access: method
+        expect:
+          instance_of: nstat.compat.matlab.Trial
+      - member: resample
+        access: method
+        args: [5.0]
+        extract: covariates.covariates.0.time
+        expect:
+          shape: [6]
+      - member: resampleEnsColl
+        access: method
+        args: [5.0]
+        extract: covariates.0.time
+        expect:
+          shape: [6]
 
   - matlab_class: CIF
     python_class: nstat.compat.matlab.CIF

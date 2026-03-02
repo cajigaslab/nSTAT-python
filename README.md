@@ -2,6 +2,11 @@
 
 `nSTAT-python` is a clean-room Python implementation of the nSTAT toolbox.
 
+[![test-and-build](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml)
+[![parity-gate](https://github.com/cajigaslab/nSTAT-python/actions/workflows/parity-gate.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/parity-gate.yml)
+[![pages](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml)
+[![validation-pdf](https://github.com/cajigaslab/nSTAT-python/actions/workflows/validation-pdf.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/validation-pdf.yml)
+
 ## Design goals
 - Zero MATLAB runtime dependency
 - Class-structure parity with MATLAB nSTAT
@@ -125,6 +130,29 @@ Use the GitHub Actions workflow `.github/workflows/release-rc.yml` to:
 You can trigger it from GitHub Actions (`release-rc`) with an input tag
 like `v1.0.0-rc3`.
 
+## Stable Release Promotion
+
+Use `.github/workflows/release-stable.yml` to promote a validated RC to a stable release.
+The workflow:
+1. Checks out the RC tag commit.
+2. Runs hard checks (lint, typing, unit tests, docs build).
+3. Runs parity and numeric-drift gates.
+4. Regenerates the validation PDF.
+5. Creates/pushes the stable tag and publishes a non-prerelease release.
+
+Inputs:
+- `rc_tag` (for example `v1.0.0-rc3`)
+- `stable_tag` (for example `v1.0.0`)
+
+## PR-Native Parity Gate
+
+`.github/workflows/parity-gate.yml` runs on every pull request and enforces:
+- Parity snapshot gate (`--fail-on medium`)
+- Numeric drift thresholds
+- Functional parity policy
+- Example-output parity policy
+- Up-to-date method-closure sprint backlog
+
 ## Branch Protection Automation
 
 To apply required checks on `main` (admin token required):
@@ -134,7 +162,7 @@ python tools/release/apply_branch_protection.py \
   --repo cajigaslab/nSTAT-python \
   --branch main \
   --required-check test-and-build \
-  --required-check validation-pdf
+  --required-check parity-gate
 ```
 
 ## Paper reference

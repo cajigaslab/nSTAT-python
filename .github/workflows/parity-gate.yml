@@ -1,0 +1,58 @@
+name: parity-gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  parity-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install parity dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev,notebooks]
+          python -m pip install pyyaml
+
+      - name: Checkout upstream MATLAB nSTAT repo snapshot
+        run: |
+          GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
+
+      - name: Prepare deterministic validation images
+        run: |
+          python tools/parity/prepare_validation_images.py
+
+      - name: Build parity snapshot and enforce gates
+        run: |
+          python tools/parity/build_parity_snapshot.py \
+            --matlab-root /tmp/upstream-nstat \
+            --fail-on medium
+          python tools/parity/build_numeric_drift_report.py \
+            --fixtures-manifest tests/parity/fixtures/matlab_gold/manifest.yml \
+            --thresholds parity/numeric_drift_thresholds.yml \
+            --report-out parity/numeric_drift_report.json \
+            --fail-on-violation
+          python tools/parity/check_functional_parity_progress.py \
+            --report parity/function_example_alignment_report.json \
+            --policy parity/functional_gate_policy.yml
+          python tools/parity/check_example_output_spec.py \
+            --report parity/function_example_alignment_report.json \
+            --spec parity/example_output_spec.yml
+
+      - name: Ensure method-closure backlog is up to date
+        run: |
+          python tools/parity/generate_method_closure_sprint.py \
+            --report parity/function_example_alignment_report.json \
+            --output parity/method_closure_sprint.md
+          git diff --exit-code parity/method_closure_sprint.md
