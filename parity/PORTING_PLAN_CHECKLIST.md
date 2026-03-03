@@ -17,10 +17,10 @@ Status legend:
 | `History` | `nstat.history.HistoryBasis` + `nstat.compat.matlab.History` | `Verified` | `tests/test_history_matlab_parity.py`, `matlab/fixture_gen/History_fixtures.m` |
 | `nspikeTrain` | `nstat.spikes.SpikeTrain` + `nstat.compat.matlab.nspikeTrain` | `Verified` | `tests/test_nspiketrain_matlab_parity.py`, `matlab/fixture_gen/nspikeTrain_fixtures.m` |
 | `nstColl` | `nstat.spikes.SpikeTrainCollection` + `nstat.compat.matlab.nstColl` | `Verified` | `tests/test_nstcoll_matlab_parity.py`, `matlab/fixture_gen/nstColl_fixtures.m` |
-| `CovColl` | `nstat.trial.CovariateCollection` + `nstat.compat.matlab.CovColl` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
+| `CovColl` | `nstat.trial.CovariateCollection` + `nstat.compat.matlab.CovColl` | `Verified` | `tests/test_covcoll_matlab_parity.py`, `matlab/fixture_gen/CovColl_fixtures.m` |
 | `TrialConfig` | `nstat.trial.TrialConfig` + `nstat.compat.matlab.TrialConfig` | `Verified` | `tests/test_trialconfig_matlab_parity.py`, `matlab/fixture_gen/TrialConfig_fixtures.m` |
 | `ConfigColl` | `nstat.trial.ConfigCollection` + `nstat.compat.matlab.ConfigColl` | `Verified` | `tests/test_configcoll_matlab_parity.py`, `matlab/fixture_gen/ConfigColl_fixtures.m` |
-| `Trial` | `nstat.trial.Trial` + `nstat.compat.matlab.Trial` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
+| `Trial` | `nstat.trial.Trial` + `nstat.compat.matlab.Trial` | `Verified` | `tests/test_trial_matlab_parity.py`, `matlab/fixture_gen/Trial_fixtures.m` |
 | `CIF` | `nstat.cif.CIFModel` + `nstat.compat.matlab.CIF` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
 | `Analysis` | `nstat.analysis.Analysis` + `nstat.compat.matlab.Analysis` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
 | `FitResult` | `nstat.fit.FitResult` + `nstat.compat.matlab.FitResult` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
@@ -28,10 +28,8 @@ Status legend:
 | `DecodingAlgorithms` | `nstat.decoding.DecodingAlgorithms` + `nstat.compat.matlab.DecodingAlgorithms` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
 
 ## Next verification order
-1. `CovColl`
-2. `Trial`
-3. `CIF`
-4. `Analysis`
-5. `FitResult`
-6. `FitResSummary`
-7. `DecodingAlgorithms`
+1. `CIF`
+2. `Analysis`
+3. `FitResult`
+4. `FitResSummary`
+5. `DecodingAlgorithms`

@@ -3291,6 +3291,7 @@ class Trial(_Trial):
         return self.setSampleRate(sampleRate)
 
     def shiftCovariates(self, lag_s: float) -> "Trial":
+        self._ensure_trial_state()
         for cov in self.covariates.covariates:
             cov.shift_time(lag_s)
         return self
@@ -3575,19 +3576,132 @@ class Trial(_Trial):
         return self.plotRaster()
 
     def toStructure(self) -> dict[str, Any]:
+        self._ensure_trial_state()
+        spikes_struct = nstColl(self.spikes.trains).toStructure()
+        cov_struct = CovColl(self.covariates.covariates).toStructure()
+
+        cov_mask_idx = list(getattr(self, "_cov_mask", list(range(len(self.covariates.covariates)))))
+        cov_mask = []
+        for i, cov in enumerate(self.covariates.covariates):
+            dim = int(cov.n_channels)
+            if i in cov_mask_idx:
+                cov_mask.append(np.ones((dim,), dtype=int).tolist())
+            else:
+                cov_mask.append(np.zeros((dim,), dtype=int).tolist())
+
+        neuron_mask_idx = list(getattr(self, "_neuron_mask", list(range(self.spikes.n_units))))
+        neuron_mask = np.zeros((self.spikes.n_units,), dtype=int)
+        if neuron_mask_idx:
+            neuron_mask[np.asarray(neuron_mask_idx, dtype=int)] = 1
+
+        partition = self.getTrialPartition()
+        if isinstance(partition, dict) and partition:
+            training_window = list(partition.get("training", (self.findMinTime(), self.findMaxTime())))
+            validation_window = list(partition.get("validation", (self.findMaxTime(), self.findMaxTime())))
+        else:
+            training_window = [self.findMinTime(), self.findMaxTime()]
+            validation_window = [self.findMaxTime(), self.findMaxTime()]
+
+        ev_obj = self.getEvents()
+        ev_payload: Any = []
+        if ev_obj is not None and hasattr(ev_obj, "toStructure"):
+            ev_payload = ev_obj.toStructure()
+
+        hist_payload: Any = []
+        if getattr(self, "_history", None) is not None and hasattr(self._history, "toStructure"):
+            hist_payload = self._history.toStructure()
+
+        ens_hist_payload: Any = []
+        if getattr(self, "_ens_cov_hist", None) is not None and hasattr(self._ens_cov_hist, "toStructure"):
+            ens_hist_payload = self._ens_cov_hist.toStructure()
+
         return {
-            "spikes": nstColl(self.spikes.trains).toStructure(),
-            "covariates": CovColl(self.covariates.covariates).toStructure(),
-            "trial_partition": self.getTrialPartition(),
+            # Python-native keys
+            "spikes": spikes_struct,
+            "covariates": cov_struct,
+            "trial_partition": partition,
+            # MATLAB-style keys
+            "nspikeColl": spikes_struct,
+            "covarColl": cov_struct,
+            "ev": ev_payload,
+            "history": hist_payload,
+            "ensCovHist": ens_hist_payload,
+            "sampleRate": float(self.findMinSampleRate()),
+            "minTime": float(self.findMinTime()),
+            "maxTime": float(self.findMaxTime()),
+            "covMask": cov_mask,
+            "ensCovMask": getattr(self, "_ens_cov_mask", list(range(self.spikes.n_units))),
+            "neuronMask": neuron_mask,
+            "trainingWindow": training_window,
+            "validationWindow": validation_window,
         }
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> "Trial":
-        spikes = nstColl.fromStructure(payload["spikes"])
-        covs = CovColl.fromStructure(payload["covariates"])
+        def _unwrap_single(node: Any) -> Any:
+            if isinstance(node, list) and len(node) == 1:
+                return node[0]
+            if isinstance(node, np.ndarray):
+                arr = np.asarray(node, dtype=object).reshape(-1)
+                if arr.size == 1:
+                    return arr[0]
+            return node
+
+        if hasattr(payload, "_fieldnames"):
+            payload = {name: getattr(payload, name) for name in payload._fieldnames}
+        spikes_payload = _unwrap_single(payload.get("spikes", payload.get("nspikeColl")))
+        covs_payload = _unwrap_single(payload.get("covariates", payload.get("covarColl")))
+        if spikes_payload is None or covs_payload is None:
+            raise ValueError("fromStructure requires spikes/nspikeColl and covariates/covarColl")
+
+        spikes = nstColl.fromStructure(spikes_payload)
+        covs = CovColl.fromStructure(covs_payload)
         trial = Trial(spikes=spikes, covariates=covs)
-        if "trial_partition" in payload:
+
+        if "minTime" in payload and not _is_empty_like(payload.get("minTime")):
+            trial.setMinTime(float(np.asarray(payload["minTime"], dtype=float).reshape(-1)[0]))
+        if "maxTime" in payload and not _is_empty_like(payload.get("maxTime")):
+            trial.setMaxTime(float(np.asarray(payload["maxTime"], dtype=float).reshape(-1)[0]))
+
+        if "trial_partition" in payload and isinstance(payload["trial_partition"], dict):
             trial.setTrialPartition(dict(payload["trial_partition"]))
+        elif ("trainingWindow" in payload) and ("validationWindow" in payload):
+            training = np.asarray(payload.get("trainingWindow"), dtype=float).reshape(-1)
+            validation = np.asarray(payload.get("validationWindow"), dtype=float).reshape(-1)
+            if training.size >= 2 and validation.size >= 2:
+                trial.setTrialPartition(
+                    {
+                        "training": (float(training[0]), float(training[1])),
+                        "validation": (float(validation[0]), float(validation[1])),
+                    }
+                )
+
+        if "covMask" in payload and not _is_empty_like(payload.get("covMask")):
+            raw_cov_mask = _to_python_cell(payload["covMask"])
+            if isinstance(raw_cov_mask, list):
+                cov_idx: list[int] = []
+                for i, row in enumerate(raw_cov_mask):
+                    arr = np.asarray(row, dtype=float).reshape(-1)
+                    if arr.size and np.any(arr > 0):
+                        cov_idx.append(i)
+                if cov_idx:
+                    trial._cov_mask = cov_idx
+
+        if "neuronMask" in payload and not _is_empty_like(payload.get("neuronMask")):
+            arr = np.asarray(payload["neuronMask"], dtype=float).reshape(-1)
+            if arr.size == trial.spikes.n_units:
+                trial._neuron_mask = [int(i) for i in np.where(arr > 0)[0]]
+
+        if "ensCovMask" in payload and not _is_empty_like(payload.get("ensCovMask")):
+            ens = _to_python_cell(payload["ensCovMask"])
+            trial._ens_cov_mask = ens if isinstance(ens, list) else trial._ens_cov_mask
+
+        if "ev" in payload and not _is_empty_like(payload.get("ev")):
+            trial.setTrialEvents(Events.fromStructure(payload["ev"]))
+        if "history" in payload and not _is_empty_like(payload.get("history")):
+            trial.setHistory(History.fromStructure(payload["history"]))
+        if "ensCovHist" in payload and not _is_empty_like(payload.get("ensCovHist")):
+            trial.setEnsCovHist(History.fromStructure(payload["ensCovHist"]))
         return trial
 
 
