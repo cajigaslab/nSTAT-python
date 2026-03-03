@@ -4857,7 +4857,10 @@ class DecodingAlgorithms:
             if np.sum(mask) < 2:
                 integral_vals = np.zeros(K, dtype=float)
             else:
-                integral_vals = np.trapz(rates[mask, :], x=time[mask], axis=0)
+                integrate_fn = getattr(np, "trapezoid", None)
+                if integrate_fn is None:
+                    integrate_fn = np.trapz  # pragma: no cover - NumPy<2 fallback
+                integral_vals = integrate_fn(rates[mask, :], x=time[mask], axis=0)
             spike_rate[c, :] = integral_vals / max(float(tf - t0), np.finfo(float).eps)
 
         CIs = np.zeros((K, 2), dtype=float)
