@@ -1,0 +1,43 @@
+# nSTAT MATLAB -> Python Porting Plan Checklist
+
+Status definitions:
+- `Not started`: Python class missing or unusable.
+- `Partial`: Class exists but method/behavior parity is not complete.
+- `Complete`: Class and mapped methods implemented with contract coverage; per-class MATLAB fixture parity loop not fully closed yet.
+- `Verified`: Full loop completed for this class (`implementation + MATLAB fixture generator + fixture artifact + pytest parity test + related demo`).
+
+| MATLAB Class | Python Counterpart | Contract Coverage | Status | Notes |
+|---|---|---:|---|---|
+| `SignalObj` | `nstat.signal.Signal` + `nstat.compat.matlab.SignalObj` | 98/98 | Complete | Needs dedicated class fixture loop. |
+| `Covariate` | `nstat.signal.Covariate` + `nstat.compat.matlab.Covariate` | 14/14 | Complete | Needs dedicated class fixture loop. |
+| `ConfidenceInterval` | `nstat.confidence.ConfidenceInterval` + `nstat.compat.matlab.ConfidenceInterval` | 5/5 | Complete | Needs dedicated class fixture loop. |
+| `Events` | `nstat.events.Events` + `nstat.compat.matlab.Events` | 5/5 | Verified | Added MATLAB fixtures, parity tests, and demo in this sprint. |
+| `History` | `nstat.history.HistoryBasis` + `nstat.compat.matlab.History` | 8/8 | Complete | Needs dedicated class fixture loop. |
+| `nspikeTrain` | `nstat.spikes.SpikeTrain` + `nstat.compat.matlab.nspikeTrain` | 29/29 | Complete | Needs dedicated class fixture loop. |
+| `nstColl` | `nstat.spikes.SpikeTrainCollection` + `nstat.compat.matlab.nstColl` | 53/53 | Complete | Needs dedicated class fixture loop. |
+| `CovColl` | `nstat.trial.CovariateCollection` + `nstat.compat.matlab.CovColl` | 55/55 | Complete | Needs dedicated class fixture loop. |
+| `TrialConfig` | `nstat.trial.TrialConfig` + `nstat.compat.matlab.TrialConfig` | 6/6 | Complete | Needs dedicated class fixture loop. |
+| `ConfigColl` | `nstat.trial.ConfigCollection` + `nstat.compat.matlab.ConfigColl` | 9/9 | Complete | Needs dedicated class fixture loop. |
+| `Trial` | `nstat.trial.Trial` + `nstat.compat.matlab.Trial` | 68/68 | Complete | Needs dedicated class fixture loop. |
+| `CIF` | `nstat.cif.CIFModel` + `nstat.compat.matlab.CIF` | 21/21 | Complete | Needs dedicated class fixture loop. |
+| `Analysis` | `nstat.analysis.Analysis` + `nstat.compat.matlab.Analysis` | 22/22 | Complete | Needs dedicated class fixture loop. |
+| `FitResult` | `nstat.fit.FitResult` + `nstat.compat.matlab.FitResult` | 33/33 | Complete | Needs dedicated class fixture loop. |
+| `FitResSummary` | `nstat.fit.FitSummary` + `nstat.compat.matlab.FitResSummary` | 30/30 | Complete | Needs dedicated class fixture loop. |
+| `DecodingAlgorithms` | `nstat.decoding.DecodingAlgorithms` + `nstat.compat.matlab.DecodingAlgorithms` | 24/45 (21 excluded) | Partial | Remaining excluded methods require MATLAB-grounded closure. |
+
+## Execution Order (next)
+1. `History`
+2. `ConfidenceInterval`
+3. `SignalObj`
+4. `Covariate`
+5. `nspikeTrain`
+6. `nstColl`
+7. `CovColl`
+8. `TrialConfig`
+9. `ConfigColl`
+10. `Trial`
+11. `CIF`
+12. `Analysis`
+13. `FitResult`
+14. `FitResSummary`
+15. `DecodingAlgorithms`

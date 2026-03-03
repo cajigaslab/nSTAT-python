@@ -864,39 +864,132 @@ class Events(_Events):
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _Events:
+        if not payload:
+            raise ValueError("Missing field in structure. Cant creats Events object!")
+        required = ("eventTimes", "eventLabels", "eventColor")
+        missing = [name for name in required if name not in payload]
+        if missing:
+            raise ValueError("Missing field in structure. Cant creats Events object!")
         return Events(
-            times=np.asarray(payload["times"], dtype=float),
-            labels=[str(v) for v in payload.get("labels", [])],
+            times=np.asarray(payload["eventTimes"], dtype=float),
+            labels=[str(v) for v in payload["eventLabels"]],
+            color=str(payload["eventColor"]),
         )
 
     def toStructure(self) -> dict[str, Any]:
-        return {"times": self.times.copy(), "labels": list(self.labels)}
+        return {
+            "eventTimes": self.times.copy(),
+            "eventLabels": list(self.labels),
+            "eventColor": str(self.color),
+        }
 
     @staticmethod
-    def dsxy2figxy(x: np.ndarray | float, y: np.ndarray | float) -> np.ndarray:
+    def dsxy2figxy(*args: Any) -> np.ndarray:
         import matplotlib.pyplot as plt
 
-        ax = plt.gca()
-        pts = np.column_stack([np.asarray(x, dtype=float).reshape(-1), np.asarray(y, dtype=float).reshape(-1)])
-        disp = ax.transData.transform(pts)
+        if not args:
+            raise ValueError("dsxy2figxy expects at least one coordinate argument")
+        if hasattr(args[0], "transData"):
+            ax = args[0]
+            rem = args[1:]
+        else:
+            ax = plt.gca()
+            rem = args
         fig = ax.get_figure()
         if fig is None:
             raise RuntimeError("cannot transform without an active matplotlib figure")
+        if len(rem) == 1:
+            pos = np.asarray(rem[0], dtype=float).reshape(-1)
+            if pos.size != 4:
+                raise ValueError("single argument form expects [x, y, width, height]")
+            x0, y0, w, h = pos.tolist()
+            corners = np.array([[x0, y0], [x0 + w, y0 + h]], dtype=float)
+            disp = ax.transData.transform(corners)
+            fig_xy = fig.transFigure.inverted().transform(disp)
+            out = np.array(
+                [
+                    fig_xy[0, 0],
+                    fig_xy[0, 1],
+                    fig_xy[1, 0] - fig_xy[0, 0],
+                    fig_xy[1, 1] - fig_xy[0, 1],
+                ],
+                dtype=float,
+            )
+            return out
+        if len(rem) != 2:
+            raise ValueError("dsxy2figxy expects either (x,y) or ([x,y,w,h])")
+        x = np.asarray(rem[0], dtype=float).reshape(-1)
+        y = np.asarray(rem[1], dtype=float).reshape(-1)
+        pts = np.column_stack([x, y])
+        disp = ax.transData.transform(pts)
+        fig = ax.get_figure()
         out = fig.transFigure.inverted().transform(disp)
         return out
 
-    def plot(self, *_args: Any, **_kwargs: Any) -> Any:
+    def plot(self, handle: Any = None, colorString: str | None = None) -> Any:
         import matplotlib.pyplot as plt
 
-        if self.times.size == 0:
-            return plt.plot([], [])
-        ymin, ymax = plt.ylim()
-        if ymin == ymax:
-            ymin, ymax = 0.0, 1.0
-        return plt.vlines(self.times, ymin, ymax, colors="k", linestyles="--", linewidth=1.0)
+        if colorString is None or colorString == "":
+            colorString = self.color
+        _ = colorString  # MATLAB code computes this but plots fixed red lines.
+
+        if handle is None:
+            handles = [plt.gca()]
+        elif isinstance(handle, (list, tuple, np.ndarray)):
+            handles = list(handle)
+        else:
+            handles = [handle]
+
+        h: Any = []
+        for ax in handles:
+            if ax is None:
+                continue
+            plt.sca(ax)
+            v = ax.axis()
+            times = np.vstack([self.times, self.times])
+            y = np.vstack(
+                [
+                    np.full(self.times.size, float(v[2]), dtype=float),
+                    np.full(self.times.size, float(v[3]), dtype=float),
+                ]
+            )
+            if self.times.size:
+                h = ax.plot(times, y, "r", linewidth=4)
+            v = ax.axis()
+            denom = float(v[1] - v[0])
+            if denom == 0.0:
+                continue
+            for i, event_time in enumerate(self.times):
+                if ((event_time - v[0]) / denom >= 0.0) and (event_time <= v[1]):
+                    ax.text(
+                        (event_time - v[0]) / denom - 0.02,
+                        1.03,
+                        self.labels[i],
+                        rotation=0,
+                        fontsize=10,
+                        color=(0.0, 0.0, 0.0),
+                        transform=ax.transAxes,
+                    )
+        return h
+
+    @property
+    def eventTimes(self) -> np.ndarray:
+        return self.times
+
+    @property
+    def eventLabels(self) -> list[str]:
+        return self.labels
+
+    @property
+    def eventColor(self) -> str:
+        return self.color
 
     def getTimes(self) -> np.ndarray:
-        return self.times
+        return self.times.copy()
+
+    def subset(self, start_s: float, end_s: float) -> "Events":
+        out = super().subset(start_s, end_s)
+        return Events(times=out.times, labels=out.labels, color=out.color)
 
 
 class History(_HistoryBasis):
