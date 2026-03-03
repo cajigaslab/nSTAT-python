@@ -10,9 +10,9 @@ Status definitions:
 |---|---|---:|---|---|
 | `SignalObj` | `nstat.signal.Signal` + `nstat.compat.matlab.SignalObj` | 98/98 | Complete | Needs dedicated class fixture loop. |
 | `Covariate` | `nstat.signal.Covariate` + `nstat.compat.matlab.Covariate` | 14/14 | Complete | Needs dedicated class fixture loop. |
-| `ConfidenceInterval` | `nstat.confidence.ConfidenceInterval` + `nstat.compat.matlab.ConfidenceInterval` | 5/5 | Complete | Needs dedicated class fixture loop. |
+| `ConfidenceInterval` | `nstat.confidence.ConfidenceInterval` + `nstat.compat.matlab.ConfidenceInterval` | 5/5 | Verified | Added MATLAB fixtures, parity tests, and demo in this sprint. |
 | `Events` | `nstat.events.Events` + `nstat.compat.matlab.Events` | 5/5 | Verified | Added MATLAB fixtures, parity tests, and demo in this sprint. |
-| `History` | `nstat.history.HistoryBasis` + `nstat.compat.matlab.History` | 8/8 | Complete | Needs dedicated class fixture loop. |
+| `History` | `nstat.history.HistoryBasis` + `nstat.compat.matlab.History` | 8/8 | Verified | Added MATLAB fixtures, parity tests, and demo in this sprint. |
 | `nspikeTrain` | `nstat.spikes.SpikeTrain` + `nstat.compat.matlab.nspikeTrain` | 29/29 | Complete | Needs dedicated class fixture loop. |
 | `nstColl` | `nstat.spikes.SpikeTrainCollection` + `nstat.compat.matlab.nstColl` | 53/53 | Complete | Needs dedicated class fixture loop. |
 | `CovColl` | `nstat.trial.CovariateCollection` + `nstat.compat.matlab.CovColl` | 55/55 | Complete | Needs dedicated class fixture loop. |

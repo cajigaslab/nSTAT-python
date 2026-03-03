@@ -815,41 +815,104 @@ class ConfidenceInterval(_ConfidenceInterval):
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _ConfidenceInterval:
+        if "signals" in payload:
+            sig = payload["signals"]
+            if isinstance(sig, dict):
+                values = np.asarray(sig["values"], dtype=float)
+            elif hasattr(sig, "values"):
+                values = np.asarray(getattr(sig, "values"), dtype=float)
+            else:
+                arr = np.asarray(sig, dtype=object)
+                if arr.size != 1:
+                    raise ValueError("signals payload must be scalar struct-like")
+                s0 = arr.reshape(-1)[0]
+                if hasattr(s0, "values"):
+                    values = np.asarray(getattr(s0, "values"), dtype=float)
+                elif isinstance(s0, dict):
+                    values = np.asarray(s0["values"], dtype=float)
+                else:
+                    raise ValueError("Unsupported signals payload")
+            if values.ndim != 2 or values.shape[1] < 2:
+                raise ValueError("signals.values must be [N,2] for ConfidenceInterval")
+            return ConfidenceInterval(
+                time=np.asarray(payload["time"], dtype=float),
+                lower=values[:, 0],
+                upper=values[:, 1],
+                level=0.95,
+                color="b",
+                value=0.95,
+            )
         return ConfidenceInterval(
             time=np.asarray(payload["time"], dtype=float),
             lower=np.asarray(payload["lower"], dtype=float),
             upper=np.asarray(payload["upper"], dtype=float),
-            level=float(payload.get("level", 0.95)),
+            level=0.95,
+            color="b",
+            value=0.95,
         )
 
     def toStructure(self) -> dict[str, Any]:
+        values = np.column_stack([self.lower, self.upper])
         return {
             "time": self.time.copy(),
             "lower": self.lower.copy(),
             "upper": self.upper.copy(),
             "level": float(self.level),
+            "value": self.value,
+            "color": str(self.color),
+            "signals": {
+                "values": values,
+                "dimensions": np.array([values.shape[0], values.shape[1]], dtype=float),
+            },
+            "name": "ConfidenceInterval",
+            "dimension": 2,
+            "minTime": float(self.time.min()) if self.time.size else 0.0,
+            "maxTime": float(self.time.max()) if self.time.size else 0.0,
+            "xlabelval": "time",
+            "xunits": "s",
+            "yunits": "",
+            "dataLabels": ["lower", "upper"],
+            "dataMask": [],
+            "sampleRate": float((self.time.size - 1) / (self.time[-1] - self.time[0]))
+            if self.time.size > 1 and self.time[-1] != self.time[0]
+            else 1.0,
+            "plotProps": [],
         }
 
     def setColor(self, color: str) -> _ConfidenceInterval:
-        setattr(self, "_color", str(color))
+        self.color = str(color)
         return self
 
     def setValue(self, values: np.ndarray | float) -> _ConfidenceInterval:
         arr = np.asarray(values, dtype=float)
         if arr.ndim == 0:
-            arr = np.full(self.time.shape, float(arr), dtype=float)
-        if arr.shape != self.time.shape:
-            raise ValueError("values shape must match time shape")
-        half_width = 0.5 * self.width()
-        self.lower = arr - half_width
-        self.upper = arr + half_width
+            self.value = float(arr)
+            self.level = float(arr)
+        else:
+            self.value = arr.copy()
         return self
 
-    def plot(self, *_args: Any, **_kwargs: Any) -> Any:
+    def plot(self, color: Any = None, alphaVal: float = 0.2, drawPatches: int = 0) -> Any:
         import matplotlib.pyplot as plt
 
-        color = getattr(self, "_color", "tab:blue")
-        return plt.fill_between(self.time, self.lower, self.upper, color=color, alpha=0.25)
+        color_val = self.color if color is None else color
+        ci_data = np.column_stack([self.lower, self.upper])
+        ci_high = ci_data[:, 1]
+        ci_low = ci_data[:, 0]
+        time = self.time
+
+        if int(drawPatches) == 1:
+            x_poly = np.concatenate([time, np.flip(time)])
+            y_poly = np.concatenate([ci_low, np.flip(ci_high)])
+            patch = plt.fill(x_poly, y_poly, color=color_val, alpha=float(alphaVal), edgecolor="none")
+            return patch
+        lines = plt.plot(time, ci_data)
+        if not isinstance(color_val, str):
+            for line in lines:
+                line.set_color(color_val)
+        for line in lines:
+            line.set_alpha(float(alphaVal))
+        return lines
 
     def getWidth(self) -> np.ndarray:
         return self.width()
@@ -1001,14 +1064,31 @@ class History(_HistoryBasis):
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _HistoryBasis:
-        return History(bin_edges_s=np.asarray(payload["bin_edges_s"], dtype=float))
+        if "windowTimes" in payload:
+            return History(
+                bin_edges_s=np.asarray(payload["windowTimes"], dtype=float),
+                min_time_s=payload.get("minTime"),
+                max_time_s=payload.get("maxTime"),
+            )
+        return History(
+            bin_edges_s=np.asarray(payload["bin_edges_s"], dtype=float),
+            min_time_s=payload.get("min_time_s"),
+            max_time_s=payload.get("max_time_s"),
+        )
 
     def toStructure(self) -> dict[str, Any]:
-        return {"bin_edges_s": self.bin_edges_s.copy()}
+        return {
+            "windowTimes": self.bin_edges_s.copy(),
+            "minTime": self.min_time_s,
+            "maxTime": self.max_time_s,
+            "bin_edges_s": self.bin_edges_s.copy(),
+            "min_time_s": self.min_time_s,
+            "max_time_s": self.max_time_s,
+        }
 
     def setWindow(self, *args: Any) -> _HistoryBasis:
         if len(args) == 1:
-            edges = np.asarray(args[0], dtype=float).reshape(-1)
+            edges = np.sort(np.asarray(args[0], dtype=float).reshape(-1))
         elif len(args) == 3:
             t0 = float(args[0])
             tf = float(args[1])
@@ -1018,12 +1098,31 @@ class History(_HistoryBasis):
             edges = np.linspace(t0, tf, n_bins + 1, dtype=float)
         else:
             raise ValueError("setWindow expects (edges) or (t0, tf, n_bins)")
-        if edges.size < 2 or np.any(np.diff(edges) <= 0.0):
-            raise ValueError("history edges must be strictly increasing with at least 2 elements")
+        if edges.size < 2:
+            raise ValueError("history edges must contain at least 2 entries")
         self.bin_edges_s = edges
         return self
 
-    def toFilter(self) -> np.ndarray:
+    def toFilter(self, delta: float | None = None) -> np.ndarray:
+        if delta is not None:
+            delta_f = float(delta)
+            if delta_f <= 0.0:
+                raise ValueError("delta must be positive")
+            tmin = self.bin_edges_s[:-1]
+            tmax = self.bin_edges_s[1:]
+            time_vec = np.arange(float(np.min(tmin)), float(np.max(tmax)) + delta_f / 2.0, delta_f)
+            filt = np.zeros((tmax.size, time_vec.size), dtype=float)
+            for i, (lo, hi) in enumerate(zip(tmin, tmax)):
+                num_samples = int(np.ceil(hi / delta_f))
+                start_sample = int(np.ceil(lo / delta_f)) + 1
+                # MATLAB uses 1-based indices:
+                #   idx1 = (start_sample:num_samples) + 1
+                # Convert to 0-based Python by subtracting 1, yielding
+                #   idx0 = start_sample:num_samples
+                idx = np.arange(start_sample, num_samples + 1, dtype=int)
+                idx = idx[(idx >= 0) & (idx < time_vec.size)]
+                filt[i, idx] = 1.0
+            return filt
         widths = np.diff(self.bin_edges_s)
         total = float(np.sum(widths))
         if total <= 0.0:

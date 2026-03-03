@@ -10,6 +10,20 @@ This file tracks MATLAB-to-Python parity constraints, known deviations, and fixt
   - Fixture artifact (`tests/fixtures/Events/basic.mat`)
   - Python parity tests (`tests/test_events_matlab_parity.py`)
   - Python demo (`examples/events_demo.py`)
+- Completed full parity loop for `History`:
+  - Python implementation updates (`src/nstat/history.py`)
+  - MATLAB compatibility wrapper updates (`src/nstat/compat/matlab/__init__.py`, `History` section)
+  - MATLAB fixture generator (`matlab/fixture_gen/History_fixtures.m`)
+  - Fixture artifact (`tests/fixtures/History/basic.mat`)
+  - Python parity tests (`tests/test_history_matlab_parity.py`)
+  - Python demo (`examples/history_demo.py`)
+- Completed full parity loop for `ConfidenceInterval`:
+  - Python implementation updates (`src/nstat/confidence.py`)
+  - MATLAB compatibility wrapper updates (`src/nstat/compat/matlab/__init__.py`, `ConfidenceInterval` section)
+  - MATLAB fixture generator (`matlab/fixture_gen/ConfidenceInterval_fixtures.m`)
+  - Fixture artifact (`tests/fixtures/ConfidenceInterval/basic.mat`)
+  - Python parity tests (`tests/test_confidence_matlab_parity.py`)
+  - Python demo (`examples/confidence_interval_demo.py`)
 
 ## Intentional deviations
 - MATLAB indexing is 1-based; Python indexing is 0-based. This does not change `Events` numeric output, but affects user-facing index expectations in general.

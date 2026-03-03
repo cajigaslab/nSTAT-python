@@ -36,6 +36,9 @@ jobs:
       - name: Unit tests
         run: pytest
 
+      - name: Class parity tests
+        run: pytest -q tests/test_*_matlab_parity.py
+
       - name: Verify no MATLAB dependency
         run: python tools/compliance/check_no_matlab_dependency.py
 
