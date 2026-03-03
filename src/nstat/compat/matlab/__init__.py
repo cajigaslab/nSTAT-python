@@ -3742,26 +3742,46 @@ class CIF(_CIFModel):
         return self.evaluate(X)
 
     def evalGradient(self, X: np.ndarray) -> np.ndarray:
-        X = np.asarray(X, dtype=float)
-        vals = self.evaluate(X)
-        base = np.column_stack([np.ones(X.shape[0]), X])
+        Xmat = self._coerce_stim_input(X)
+        vals = self.evaluate(Xmat)
+        coeffs = self.coefficients.reshape(1, -1)
         if self.link == "poisson":
-            return base * vals[:, None]
-        return base * (vals * (1.0 - vals))[:, None]
+            out = vals[:, None] * coeffs
+        else:
+            out = (vals * (1.0 - vals))[:, None] * coeffs
+        return out[0] if out.shape[0] == 1 else out
 
     def evalGradientLog(self, X: np.ndarray) -> np.ndarray:
-        X = np.asarray(X, dtype=float)
-        vals = self.evaluate(X)
-        base = np.column_stack([np.ones(X.shape[0]), X])
+        Xmat = self._coerce_stim_input(X)
+        vals = self.evaluate(Xmat)
+        coeffs = self.coefficients.reshape(1, -1)
         if self.link == "poisson":
-            return base
-        return base * (1.0 - vals)[:, None]
+            out = np.repeat(coeffs, Xmat.shape[0], axis=0)
+        else:
+            out = (1.0 - vals)[:, None] * coeffs
+        return out[0] if out.shape[0] == 1 else out
 
     def evalJacobian(self, X: np.ndarray) -> np.ndarray:
-        return self.evalGradient(X)
+        Xmat = self._coerce_stim_input(X)
+        vals = self.evaluate(Xmat)
+        outer = np.outer(self.coefficients, self.coefficients)
+        if self.link == "poisson":
+            out = vals[:, None, None] * outer[None, :, :]
+        else:
+            factor = vals * (1.0 - vals) * (1.0 - 2.0 * vals)
+            out = factor[:, None, None] * outer[None, :, :]
+        return out[0] if out.shape[0] == 1 else out
 
     def evalJacobianLog(self, X: np.ndarray) -> np.ndarray:
-        return self.evalGradientLog(X)
+        Xmat = self._coerce_stim_input(X)
+        vals = self.evaluate(Xmat)
+        outer = np.outer(self.coefficients, self.coefficients)
+        if self.link == "poisson":
+            out = np.zeros((Xmat.shape[0], outer.shape[0], outer.shape[1]), dtype=float)
+        else:
+            factor = -(vals * (1.0 - vals))
+            out = factor[:, None, None] * outer[None, :, :]
+        return out[0] if out.shape[0] == 1 else out
 
     def evalLDGamma(self, X: np.ndarray) -> np.ndarray:
         return self.evaluate(X)
@@ -3787,6 +3807,17 @@ class CIF(_CIFModel):
     @staticmethod
     def resolveSimulinkModelName(*_args: Any, **_kwargs: Any) -> str:
         return "nstat_python_cif_model"
+
+    @staticmethod
+    def _coerce_stim_input(X: np.ndarray | float | list[float]) -> np.ndarray:
+        arr = np.asarray(X, dtype=float)
+        if arr.ndim == 0:
+            arr = arr.reshape(1, 1)
+        elif arr.ndim == 1:
+            arr = arr.reshape(1, -1)
+        elif arr.ndim != 2:
+            raise ValueError("stimulus input must be scalar, 1D, or 2D")
+        return arr
 
     def setHistory(self, history: Any) -> _CIFModel:
         setattr(self, "_history", history)

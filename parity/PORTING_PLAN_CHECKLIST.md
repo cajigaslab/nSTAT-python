@@ -21,15 +21,13 @@ Status legend:
 | `TrialConfig` | `nstat.trial.TrialConfig` + `nstat.compat.matlab.TrialConfig` | `Verified` | `tests/test_trialconfig_matlab_parity.py`, `matlab/fixture_gen/TrialConfig_fixtures.m` |
 | `ConfigColl` | `nstat.trial.ConfigCollection` + `nstat.compat.matlab.ConfigColl` | `Verified` | `tests/test_configcoll_matlab_parity.py`, `matlab/fixture_gen/ConfigColl_fixtures.m` |
 | `Trial` | `nstat.trial.Trial` + `nstat.compat.matlab.Trial` | `Verified` | `tests/test_trial_matlab_parity.py`, `matlab/fixture_gen/Trial_fixtures.m` |
-| `CIF` | `nstat.cif.CIFModel` + `nstat.compat.matlab.CIF` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
-| `Analysis` | `nstat.analysis.Analysis` + `nstat.compat.matlab.Analysis` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
+| `CIF` | `nstat.cif.CIFModel` + `nstat.compat.matlab.CIF` | `Verified` | `tests/test_cif_matlab_parity.py`, `matlab/fixture_gen/CIF_fixtures.m` |
+| `Analysis` | `nstat.analysis.Analysis` + `nstat.compat.matlab.Analysis` | `Verified` | `tests/test_analysis_matlab_parity.py`, `matlab/fixture_gen/Analysis_fixtures.m` |
 | `FitResult` | `nstat.fit.FitResult` + `nstat.compat.matlab.FitResult` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
 | `FitResSummary` | `nstat.fit.FitSummary` + `nstat.compat.matlab.FitResSummary` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
 | `DecodingAlgorithms` | `nstat.decoding.DecodingAlgorithms` + `nstat.compat.matlab.DecodingAlgorithms` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
 
 ## Next verification order
-1. `CIF`
-2. `Analysis`
-3. `FitResult`
-4. `FitResSummary`
-5. `DecodingAlgorithms`
+1. `FitResult`
+2. `FitResSummary`
+3. `DecodingAlgorithms`

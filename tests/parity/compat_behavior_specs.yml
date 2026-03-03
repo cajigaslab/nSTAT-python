@@ -1981,25 +1981,25 @@ classes:
         access: method
         args_key: cif_grad_args
         expect:
-          shape: [5, 3]
+          shape: [5, 2]
           finite: true
       - member: evalGradientLog
         access: method
         args_key: cif_grad_args
         expect:
-          shape: [5, 3]
+          shape: [5, 2]
           finite: true
       - member: evalJacobian
         access: method
         args_key: cif_grad_args
         expect:
-          shape: [5, 3]
+          shape: [5, 2, 2]
           finite: true
       - member: evalJacobianLog
         access: method
         args_key: cif_grad_args
         expect:
-          shape: [5, 3]
+          shape: [5, 2, 2]
           finite: true
       - member: evalLDGamma
         access: method
@@ -2017,25 +2017,25 @@ classes:
         access: method
         args_key: cif_grad_args
         expect:
-          shape: [5, 3]
+          shape: [5, 2]
           finite: true
       - member: evalGradientLogLDGamma
         access: method
         args_key: cif_grad_args
         expect:
-          shape: [5, 3]
+          shape: [5, 2]
           finite: true
       - member: evalJacobianLogLDGamma
         access: method
         args_key: cif_grad_args
         expect:
-          shape: [5, 3]
+          shape: [5, 2, 2]
           finite: true
       - member: evalJacobianLDGamma
         access: method
         args_key: cif_grad_args
         expect:
-          shape: [5, 3]
+          shape: [5, 2, 2]
           finite: true
       - member: isSymBeta
         access: method
