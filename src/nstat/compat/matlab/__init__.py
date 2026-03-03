@@ -29,6 +29,34 @@ from ...trial import Trial as _Trial
 from ...trial import TrialConfig as _TrialConfig
 
 
+def _is_empty_like(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, (str, bytes)):
+        return False
+    if isinstance(value, (list, tuple, dict, set)):
+        return len(value) == 0
+    if isinstance(value, np.ndarray):
+        return value.size == 0
+    return False
+
+
+def _to_python_cell(value: Any) -> Any:
+    if isinstance(value, np.ndarray):
+        if value.dtype == object:
+            return [_to_python_cell(v) for v in value.reshape(-1)]
+        if value.ndim == 0:
+            return value.item()
+        if value.size == 1:
+            return value.reshape(-1)[0].item() if hasattr(value.reshape(-1)[0], "item") else value.reshape(-1)[0]
+        return value.tolist()
+    if isinstance(value, list):
+        return [_to_python_cell(v) for v in value]
+    if isinstance(value, tuple):
+        return [_to_python_cell(v) for v in value]
+    return value
+
+
 class SignalObj(_Signal):
     def _ensure_signalobj_state(self) -> None:
         if not hasattr(self, "_original_time"):
@@ -2805,30 +2833,53 @@ class CovColl(_CovariateCollection):
 class TrialConfig(_TrialConfig):
     def __init__(
         self,
+        covMask: Any | None = None,
+        sampleRate: Any | None = None,
+        history: Any | None = None,
+        ensCovHist: Any | None = None,
+        ensCovMask: Any | None = None,
+        covLag: Any | None = None,
+        name: str = "",
+        *,
         covariateLabels: list[str] | None = None,
-        Fs: float = 1000.0,
+        Fs: Any | None = None,
         fitType: str = "poisson",
-        name: str = "config",
         **kwargs: Any,
     ) -> None:
-        covariate_labels = kwargs.pop("covariate_labels", covariateLabels or [])
-        sample_rate_hz = kwargs.pop("sample_rate_hz", Fs)
-        fit_type = kwargs.pop("fit_type", fitType)
+        # MATLAB reference: TrialConfig.m constructor
+        # (covMask,sampleRate,history,ensCovHist,ensCovMask,covLag,name)
+        # Also keep Python-side keyword aliases used throughout nSTAT-python.
+        if covMask is None:
+            covMask = kwargs.pop("covariate_labels", covariateLabels)
+        if sampleRate is None:
+            sampleRate = kwargs.pop("sample_rate_hz", Fs)
+        fit_type = str(kwargs.pop("fit_type", fitType))
+
+        self.covMask = [] if _is_empty_like(covMask) else _to_python_cell(covMask)
+        self.sampleRate = [] if _is_empty_like(sampleRate) else float(np.asarray(sampleRate).reshape(-1)[0])
+        self.history = [] if _is_empty_like(history) else _to_python_cell(history)
+        self.ensCovHist = [] if _is_empty_like(ensCovHist) else _to_python_cell(ensCovHist)
+        self.ensCovMask = [] if _is_empty_like(ensCovMask) else _to_python_cell(ensCovMask)
+        self.covLag = [] if _is_empty_like(covLag) else _to_python_cell(covLag)
+        self.name = str(name)
+
+        covariate_labels = self._coerce_covariate_labels(self.covMask)
+        sample_rate_hz = float(self.sampleRate) if not _is_empty_like(self.sampleRate) else 1000.0
         super().__init__(
             covariate_labels=covariate_labels,
             sample_rate_hz=sample_rate_hz,
             fit_type=fit_type,
-            name=name,
+            name=self.name,
         )
 
     def getFitType(self) -> str:
         return self.fit_type
 
-    def getSampleRate(self) -> float:
-        return self.sample_rate_hz
+    def getSampleRate(self) -> Any:
+        return self.sampleRate
 
     def getCovariateLabels(self) -> list[str]:
-        return self.covariate_labels
+        return self._coerce_covariate_labels(self.covMask)
 
     def getName(self) -> str:
         return self.name
@@ -2839,32 +2890,91 @@ class TrialConfig(_TrialConfig):
 
     def toStructure(self) -> dict[str, Any]:
         return {
-            "covMask": list(self.covariate_labels),
-            "sampleRate": float(self.sample_rate_hz),
-            "history": [],
-            "ensCovHist": [],
-            "ensCovMask": [],
-            "covLag": [],
+            "covMask": self._to_structure_cell(self.covMask),
+            "sampleRate": [] if _is_empty_like(self.sampleRate) else float(self.sampleRate),
+            "history": self._to_structure_cell(self.history),
+            "ensCovHist": self._to_structure_cell(self.ensCovHist),
+            "ensCovMask": self._to_structure_cell(self.ensCovMask),
+            "covLag": self._to_structure_cell(self.covLag),
             "name": self.name,
         }
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> "TrialConfig":
+        if isinstance(payload, list):
+            if len(payload) == 1 and isinstance(payload[0], dict):
+                payload = payload[0]
+            else:
+                raise TypeError("TrialConfig.fromStructure expects a dict-like payload")
+        # MATLAB reference: TrialConfig.m fromStructure static method.
+        # NOTE: MATLAB currently calls TrialConfig with six args and therefore
+        # shifts ensCovMask/covLag positions:
+        # TrialConfig(covMask,sampleRate,history,ensCovHist,covLag,name)
+        # We preserve this behavior for strict parity.
         return TrialConfig(
-            covariateLabels=list(payload.get("covMask", [])),
-            Fs=float(payload.get("sampleRate", 1000.0)),
-            name=str(payload.get("name", "config")),
+            payload.get("covMask", []),
+            payload.get("sampleRate", []),
+            payload.get("history", []),
+            payload.get("ensCovHist", []),
+            payload.get("covLag", []),
+            payload.get("name", ""),
         )
 
     def setConfig(self, trial: "Trial") -> "TrialConfig":
-        if self.sample_rate_hz > 0.0:
-            trial.setSampleRate(self.sample_rate_hz)
-        if self.covariate_labels:
-            trial.setCovMask(self.covariate_labels)
+        if not _is_empty_like(self.history):
+            trial.setHistory(self.history)
+        else:
+            trial.resetHistory()
+
+        if not _is_empty_like(self.sampleRate):
+            trial_sample_rate = getattr(trial, "sampleRate", None)
+            if trial_sample_rate is None or not np.isclose(float(trial_sample_rate), float(self.sampleRate)):
+                trial.setSampleRate(float(self.sampleRate))
+
+        trial.setCovMask(self.covMask)
+
+        if not _is_empty_like(self.covLag):
+            trial.shiftCovariates(float(np.asarray(self.covLag).reshape(-1)[0]))
+
+        if not _is_empty_like(self.ensCovHist):
+            trial.setEnsCovHist(self.ensCovHist)
+            trial.setEnsCovMask(self.ensCovMask)
+        else:
+            trial.setEnsCovHist([])
+            trial.resetEnsCovMask()
         return self
+
+    @staticmethod
+    def _coerce_covariate_labels(cov_mask: Any) -> list[str]:
+        if _is_empty_like(cov_mask):
+            return []
+        labels: list[str] = []
+        values = _to_python_cell(cov_mask)
+        for item in values:
+            if isinstance(item, (list, tuple, np.ndarray)):
+                inner = _to_python_cell(item)
+                labels.extend(str(v) for v in inner)
+            else:
+                labels.append(str(item))
+        return labels
+
+    @staticmethod
+    def _to_structure_cell(value: Any) -> Any:
+        if _is_empty_like(value):
+            return []
+        return _to_python_cell(value)
 
 
 class ConfigColl(_ConfigCollection):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.numConfigs = int(len(self.configs))
+        self.configArray = list(self.configs)
+        self.configNames = [
+            str(cfg.name) if str(cfg.name) != "" else f"Fit {i+1}"
+            for i, cfg in enumerate(self.configs)
+        ]
+
     @staticmethod
     def ConfigColl(*args: Any, **kwargs: Any) -> _ConfigCollection:
         if len(args) == 1 and isinstance(args[0], dict):
@@ -2874,29 +2984,56 @@ class ConfigColl(_ConfigCollection):
     @staticmethod
     def fromStructure(payload: dict[str, Any] | list[dict[str, Any]]) -> _ConfigCollection:
         if isinstance(payload, dict):
-            entries = list(payload.get("configs", []))
+            raw_entries = list(payload.get("configArray", payload.get("configs", [])))
         else:
-            entries = list(payload)
+            raw_entries = list(payload)
+        entries: list[dict[str, Any]] = []
+        for entry in raw_entries:
+            parsed = _to_python_cell(entry)
+            if isinstance(parsed, list):
+                if parsed and all(isinstance(v, dict) for v in parsed):
+                    entries.extend(cast(list[dict[str, Any]], parsed))
+                elif len(parsed) == 1 and isinstance(parsed[0], dict):
+                    entries.append(cast(dict[str, Any], parsed[0]))
+            elif isinstance(parsed, dict):
+                entries.append(parsed)
         if not entries:
             raise ValueError("fromStructure requires at least one configuration entry")
         configs = cast(list[_TrialConfig], [TrialConfig.fromStructure(entry) for entry in entries])
-        return ConfigColl(configs)
+        out = ConfigColl(configs)
+        # MATLAB fromStructure ignores stored configNames and rebuilds names
+        # from TrialConfig objects via constructor/addConfig logic.
+        return out
 
     def toStructure(self) -> dict[str, Any]:
+        config_array = [
+            TrialConfig(
+                covMask=getattr(cfg, "covMask", list(cfg.covariate_labels)),
+                sampleRate=getattr(cfg, "sampleRate", float(cfg.sample_rate_hz)),
+                history=getattr(cfg, "history", []),
+                ensCovHist=getattr(cfg, "ensCovHist", []),
+                ensCovMask=getattr(cfg, "ensCovMask", []),
+                covLag=getattr(cfg, "covLag", []),
+                fitType=str(cfg.fit_type),
+                name=str(cfg.name),
+            ).toStructure()
+            for cfg in self.configs
+        ]
         return {
-            "configs": [
-                TrialConfig(
-                    covariateLabels=list(cfg.covariate_labels),
-                    Fs=float(cfg.sample_rate_hz),
-                    fitType=str(cfg.fit_type),
-                    name=str(cfg.name),
-                ).toStructure()
-                for cfg in self.configs
-            ]
+            "numConfigs": int(len(self.configs)),
+            "configNames": list(self.getConfigNames()),
+            "configArray": config_array,
+            # Backward-compatible alias used by existing Python tests/utilities.
+            "configs": config_array,
         }
 
     def addConfig(self, config: _TrialConfig) -> _ConfigCollection:
+        if str(getattr(config, "name", "")) == "":
+            config.name = f"Fit {len(self.configs) + 1}"
         self.configs.append(config)
+        self.numConfigs = int(len(self.configs))
+        self.configArray = list(self.configs)
+        self.configNames.append(str(config.name) if str(config.name) != "" else f"Fit {self.numConfigs}")
         return self
 
     def getConfig(self, selector: int | str = 1) -> _TrialConfig:
@@ -2921,16 +3058,18 @@ class ConfigColl(_ConfigCollection):
         if idx < 1 or idx > len(self.configs):
             raise IndexError("configuration index out of range")
         self.configs[idx - 1] = config
+        self.configArray[idx - 1] = config
+        if str(getattr(config, "name", "")) != "":
+            self.configNames[idx - 1] = str(config.name)
         return self
 
     def getConfigNames(self) -> list[str]:
-        return [cfg.name for cfg in self.configs]
+        return list(self.configNames)
 
     def setConfigNames(self, names: list[str]) -> _ConfigCollection:
         if len(names) != len(self.configs):
             raise ValueError("names length must match number of configs")
-        for cfg, name in zip(self.configs, names):
-            cfg.name = str(name)
+        self.configNames = [str(name) for name in names]
         return self
 
     def getSubsetConfigs(self, selectors: list[int] | np.ndarray) -> _ConfigCollection:
@@ -2943,7 +3082,7 @@ class ConfigColl(_ConfigCollection):
         return ConfigColl(subset)
 
     def getConfigs(self) -> list[_TrialConfig]:
-        return self.configs
+        return list(self.configArray)
 
 
 class Trial(_Trial):

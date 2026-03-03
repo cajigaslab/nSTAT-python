@@ -101,11 +101,11 @@ def test_configcoll_matlab_aliases() -> None:
     assert coll.getConfigNames() == ["a", "b", "c"]
 
     subset = coll.getSubsetConfigs([1, 3])
-    assert [cfg.name for cfg in subset.configs] == ["a", "c"]
+    assert [cfg.name for cfg in subset.configs] == ["cfg_a", "cfg_c"]
 
     payload = coll.toStructure()
     restored = ConfigColl.fromStructure(payload)
-    assert restored.getConfigNames() == ["a", "b", "c"]
+    assert restored.getConfigNames() == ["Fit 1", "Fit 2", "Fit 3"]
 
 
 def test_analysis_fitglm_alias() -> None:
