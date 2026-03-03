@@ -37,6 +37,7 @@ IGNORED_DIRS = {
 class FileDigest:
     relative_path: str
     sha256: str
+    lfs_oid: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +105,19 @@ def compute_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def read_lfs_oid(path: Path) -> str | None:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return None
+    lines = [line.strip() for line in text.splitlines()]
+    if not lines or not lines[0].startswith("version https://git-lfs.github.com/spec"):
+        return None
+    for line in lines:
+        if line.startswith("oid sha256:"):
+            return line.split("oid sha256:", 1)[1].strip()
+    return None
+
 
 def iter_files(root: Path) -> Iterable[Path]:
     for path in root.rglob("*"):
@@ -120,7 +134,13 @@ def build_digest_index(root: Path) -> list[FileDigest]:
     rows: list[FileDigest] = []
     for path in iter_files(root):
         rel = path.relative_to(root).as_posix()
-        rows.append(FileDigest(relative_path=rel, sha256=compute_sha256(path)))
+        rows.append(
+            FileDigest(
+                relative_path=rel,
+                sha256=compute_sha256(path),
+                lfs_oid=read_lfs_oid(path),
+            )
+        )
     return rows
 
 
@@ -155,25 +175,33 @@ def find_collisions(
     upstream_files: list[FileDigest],
     allowlist: set[AllowedDataMatch],
 ) -> list[Collision]:
-    upstream_by_hash: dict[str, list[str]] = {}
+    upstream_by_hash: dict[str, list[FileDigest]] = {}
     for row in upstream_files:
-        upstream_by_hash.setdefault(row.sha256, []).append(row.relative_path)
+        upstream_by_hash.setdefault(row.sha256, []).append(row)
 
     collisions: list[Collision] = []
     for py_row in python_files:
-        upstream_paths = upstream_by_hash.get(py_row.sha256, [])
-        if not upstream_paths:
+        upstream_rows = upstream_by_hash.get(py_row.sha256, [])
+        if not upstream_rows:
             continue
 
-        for upstream_path in upstream_paths:
+        for upstream_row in upstream_rows:
+            upstream_path = upstream_row.relative_path
             both_data = is_data_path(py_row.relative_path) and is_data_path(upstream_path)
             if both_data:
-                allowed = AllowedDataMatch(
-                    python_path=py_row.relative_path,
-                    upstream_path=upstream_path,
-                    sha256=py_row.sha256,
-                )
-                if allowed in allowlist:
+                hash_candidates = {py_row.sha256, upstream_row.sha256}
+                if py_row.lfs_oid:
+                    hash_candidates.add(py_row.lfs_oid)
+                if upstream_row.lfs_oid:
+                    hash_candidates.add(upstream_row.lfs_oid)
+                allow_matches = [
+                    row
+                    for row in allowlist
+                    if row.python_path == py_row.relative_path and row.upstream_path == upstream_path
+                ]
+                if allow_matches and any(row.sha256 in hash_candidates for row in allow_matches):
+                    continue
+                if allow_matches and py_row.lfs_oid and upstream_row.lfs_oid:
                     continue
 
             collisions.append(
