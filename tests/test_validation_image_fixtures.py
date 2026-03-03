@@ -50,16 +50,16 @@ def test_weak_topics_have_topic_specific_assertions() -> None:
             "np.all(np.diag(prob_mat) == 1.0)",
         ],
         "nstCollExamples": [
-            "H.ndim == 2 and H.shape[1] == history.n_bins",
-            "spikes.spike_times.size > 5",
+            "len(masked) == 3",
+            "spikeColl.getNumUnits() == 20",
         ],
         "TrialExamples": [
-            "H.ndim == 2 and H.shape[1] == history.n_bins",
-            "spikes.spike_times.size > 5",
+            "len(hist_rows) >= 1",
+            "hist_rows[0].shape[1] == h.getNumBins()",
         ],
         "CovCollExamples": [
-            "H.ndim == 2 and H.shape[1] == history.n_bins",
-            "spikes.spike_times.size > 5",
+            "X.shape[1] >= 4",
+            "n_after_remove == max(1, n_before_remove - 1)",
         ],
         "EventsExamples": [
             "events.times.size == 3",

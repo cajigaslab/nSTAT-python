@@ -1369,8 +1369,18 @@ DOCUMENTATION_SETUP_TEMPLATE = """# DocumentationSetup2025b: validate Python hel
 from pathlib import Path
 import yaml
 
-repo_root = Path(".").resolve()
+def resolve_repo_root() -> Path:
+    candidates = [Path.cwd().resolve()]
+    candidates.append(candidates[0].parent)
+    candidates.append(candidates[1].parent)
+    for root in candidates:
+        if (root / "docs" / "help").exists():
+            return root
+    return candidates[0]
+
+repo_root = resolve_repo_root()
 help_root = repo_root / "docs" / "help"
+docs_root = repo_root / "docs"
 helptoc_path = help_root / "helptoc.yml"
 payload = yaml.safe_load(helptoc_path.read_text(encoding="utf-8")) if helptoc_path.exists() else {}
 
@@ -1383,9 +1393,20 @@ def walk_nodes(nodes):
         out.extend(walk_nodes(node.get("children", [])))
     return out
 
-targets = walk_nodes(payload.get("toc", []))
+targets = walk_nodes(payload.get("toc", payload.get("entries", [])))
 targets = sorted(set(targets))
-resolved = [(help_root / target).exists() for target in targets if not target.startswith("http")]
+def target_exists(target: str) -> bool:
+    candidate = Path(target)
+    candidates = []
+    if candidate.is_absolute():
+        candidates.append(candidate)
+    else:
+        candidates.append(help_root / candidate)
+        candidates.append(docs_root / candidate)
+        candidates.append(repo_root / candidate)
+    return any(path.exists() for path in candidates)
+
+resolved = [target_exists(target) for target in targets if not target.startswith("http")]
 n_ok = int(sum(resolved))
 n_total = int(len(resolved))
 n_missing = int(n_total - n_ok)
@@ -1422,7 +1443,16 @@ PUBLISH_ALL_HELPFILES_TEMPLATE = """# publish_all_helpfiles: Python-side publish
 from pathlib import Path
 import yaml
 
-repo_root = Path(".").resolve()
+def resolve_repo_root() -> Path:
+    candidates = [Path.cwd().resolve()]
+    candidates.append(candidates[0].parent)
+    candidates.append(candidates[1].parent)
+    for root in candidates:
+        if (root / "docs" / "help").exists() and (root / "parity").exists():
+            return root
+    return candidates[0]
+
+repo_root = resolve_repo_root()
 help_root = repo_root / "docs" / "help"
 example_root = help_root / "examples"
 

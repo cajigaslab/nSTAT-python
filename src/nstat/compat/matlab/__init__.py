@@ -674,7 +674,9 @@ class SignalObj(_Signal):
 
         fs = float(self.sample_rate_hz)
         mat = self.data_to_matrix()
-        f, t, s = spectrogram(mat[:, 0], fs=fs)
+        x = np.asarray(mat[:, 0], dtype=float).reshape(-1)
+        nperseg = min(256, max(1, x.size))
+        f, t, s = spectrogram(x, fs=fs, nperseg=nperseg)
         return np.asarray(f, dtype=float), np.asarray(t, dtype=float), np.asarray(s, dtype=float)
 
     def _crosscorr_core(
@@ -1594,7 +1596,79 @@ class nspikeTrain(_SpikeTrain):
         self._original_t_end = float(self.t_end) if self.t_end is not None else None
         self._original_name = str(self.name)
         self._sig_rep: np.ndarray | None = None
+        self._sig_rep_min_time: float | None = None
+        self._sig_rep_max_time: float | None = None
+        self._sig_rep_sample_rate_hz: float | None = None
+        self._sig_rep_manual: bool = False
         self._mer: float | None = None
+        self._sample_rate_hz: float = 1000.0
+
+    @staticmethod
+    def _to_dict(payload: Any) -> dict[str, Any]:
+        if isinstance(payload, dict):
+            return payload
+        if hasattr(payload, "_fieldnames"):
+            return {name: getattr(payload, name) for name in payload._fieldnames}
+        arr = np.asarray(payload, dtype=object)
+        if arr.size == 1 and hasattr(arr.reshape(-1)[0], "_fieldnames"):
+            s0 = arr.reshape(-1)[0]
+            return {name: getattr(s0, name) for name in s0._fieldnames}
+        raise ValueError("Unsupported structure payload")
+
+    @staticmethod
+    def _round_with_precision(values: np.ndarray, precision: int) -> np.ndarray:
+        if precision < 0:
+            return np.asarray(values, dtype=float)
+        return np.round(np.asarray(values, dtype=float), int(precision))
+
+    @staticmethod
+    def _matlab_count_sigrep(
+        spike_times: np.ndarray,
+        bin_size_s: float,
+        min_time_s: float,
+        max_time_s: float,
+    ) -> np.ndarray:
+        if not np.isfinite(bin_size_s) or bin_size_s <= 0.0:
+            raise ValueError("binSize_s must be positive")
+        duration = float(max_time_s - min_time_s)
+        if not np.isfinite(duration) or duration < 0.0:
+            return np.array([], dtype=float)
+        num_bins = int(np.floor(duration / float(bin_size_s) + 1.0))
+        if num_bins < 1:
+            num_bins = 1
+        max_bins = int(1e6)
+        if num_bins > max_bins:
+            num_bins = max_bins
+
+        time_vec = np.linspace(float(min_time_s), float(max_time_s), num_bins, dtype=float)
+        if time_vec.size > 1:
+            bin_width = float(np.mean(np.diff(time_vec)))
+        else:
+            bin_width = float(bin_size_s)
+        window_times = np.concatenate(
+            [
+                np.array([float(min_time_s) - 0.5 * bin_width], dtype=float),
+                time_vec + 0.5 * bin_width,
+            ]
+        )
+
+        precision = int(max(0.0, 2.0 * np.ceil(np.log10(max(1.0 / float(bin_width), 1.0)))))
+        spike_r = nspikeTrain._round_with_precision(spike_times, precision)
+        window_r = nspikeTrain._round_with_precision(window_times, precision + 1)
+
+        data = np.zeros(time_vec.size, dtype=float)
+        lwindow = int(window_r.size)
+        for j in range(time_vec.size):
+            if j == (lwindow - 2):
+                temp = spike_r[spike_r >= window_r[j]]
+                data[j] = float(np.sum(temp <= window_r[j + 1]))
+            elif (j + 1) > int(np.floor(lwindow / 2.0)):
+                temp = spike_r[spike_r >= window_r[j]]
+                data[j] = float(np.sum(temp < window_r[j + 1]))
+            else:
+                temp = spike_r[spike_r < window_r[j + 1]]
+                data[j] = float(np.sum(temp >= window_r[j]))
+        return data
 
     @staticmethod
     def nspikeTrain(*args: Any, **kwargs: Any) -> _SpikeTrain:
@@ -1604,21 +1678,53 @@ class nspikeTrain(_SpikeTrain):
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _SpikeTrain:
-        t_end_raw = payload.get("t_end", payload.get("maxTime"))
-        return nspikeTrain(
-            spike_times=np.asarray(payload.get("spike_times", payload.get("spikeTimes", [])), dtype=float),
-            t_start=float(payload.get("t_start", payload.get("minTime", 0.0))),
-            t_end=float(t_end_raw) if t_end_raw is not None else None,
-            name=str(payload.get("name", "unit")),
+        structure = nspikeTrain._to_dict(payload)
+        t_end_raw = structure.get("t_end", structure.get("maxTime"))
+        spike_raw = structure.get("spike_times", structure.get("spikeTimes", []))
+        spike_arr = np.asarray(spike_raw, dtype=float).reshape(-1)
+        name_raw = structure.get("name", "unit")
+        name_arr = np.asarray(name_raw, dtype=object).reshape(-1)
+        unit_name = str(name_arr[0]) if name_arr.size else "unit"
+        t_start_raw = structure.get("t_start", structure.get("minTime", 0.0))
+        t_start_arr = np.asarray(t_start_raw, dtype=float).reshape(-1)
+        t_start = float(t_start_arr[0]) if t_start_arr.size else 0.0
+        out = nspikeTrain(
+            spike_times=spike_arr,
+            t_start=t_start,
+            t_end=float(np.asarray(t_end_raw, dtype=float).reshape(-1)[0]) if t_end_raw is not None else None,
+            name=unit_name,
         )
+        sample_rate_raw = structure.get("sampleRate", structure.get("sample_rate_hz"))
+        if sample_rate_raw is not None:
+            sample_rate_arr = np.asarray(sample_rate_raw, dtype=float).reshape(-1)
+            if sample_rate_arr.size:
+                out._sample_rate_hz = float(sample_rate_arr[0])
+        mer_raw = structure.get("MER", structure.get("mer"))
+        if mer_raw is not None:
+            mer_arr = np.asarray(mer_raw, dtype=float).reshape(-1)
+            if mer_arr.size:
+                out._mer = float(mer_arr[0])
+        return out
 
     def toStructure(self) -> dict[str, Any]:
+        sample_rate = float(self._sample_rate_hz)
+        binwidth = 1.0 / sample_rate if sample_rate > 0.0 else np.inf
         return {
             "spike_times": self.spike_times.copy(),
             "t_start": float(self.t_start),
             "t_end": float(self.t_end) if self.t_end is not None else None,
             "name": str(self.name),
             "MER": self._mer,
+            # MATLAB-compatible aliases
+            "spikeTimes": self.spike_times.copy(),
+            "sampleRate": sample_rate,
+            "minTime": float(self.t_start),
+            "maxTime": float(self.t_end) if self.t_end is not None else float(self.t_start),
+            "xlabelval": "time",
+            "xunits": "s",
+            "yunits": "",
+            "dataLabels": "",
+            "binwidth": binwidth,
         }
 
     def setName(self, name: str) -> _SpikeTrain:
@@ -1631,20 +1737,61 @@ class nspikeTrain(_SpikeTrain):
 
     def setSigRep(self, sigRep: np.ndarray) -> _SpikeTrain:
         self._sig_rep = np.asarray(sigRep, dtype=float).copy()
+        self._sig_rep_min_time = None
+        self._sig_rep_max_time = None
+        self._sig_rep_sample_rate_hz = None
+        self._sig_rep_manual = True
         return self
 
     def clearSigRep(self) -> _SpikeTrain:
         self._sig_rep = None
+        self._sig_rep_min_time = None
+        self._sig_rep_max_time = None
+        self._sig_rep_sample_rate_hz = None
+        self._sig_rep_manual = False
         return self
 
-    def getSigRep(self, binSize_s: float = 0.001, mode: Literal["binary", "count"] = "binary") -> np.ndarray:
+    def getSigRep(
+        self,
+        binSize_s: float | None = None,
+        mode: Literal["binary", "count"] = "binary",
+        minTime_s: float | None = None,
+        maxTime_s: float | None = None,
+    ) -> np.ndarray:
+        if binSize_s is None:
+            if self._sample_rate_hz <= 0.0:
+                binSize_s = 0.001
+            else:
+                binSize_s = 1.0 / float(self._sample_rate_hz)
+        min_time = float(self.t_start) if minTime_s is None else float(minTime_s)
+        max_time = float(self.t_end) if self.t_end is not None else float(self.t_start)
+        if maxTime_s is not None:
+            max_time = float(maxTime_s)
         if self._sig_rep is not None:
-            return self._sig_rep.copy()
-        if mode == "binary":
-            _, y = self.binarize(bin_size_s=binSize_s)
-        else:
-            _, y = self.bin_counts(bin_size_s=binSize_s)
-        return y
+            if self._sig_rep_manual:
+                cached = self._sig_rep.copy()
+                return (cached > 0.0).astype(float) if mode == "binary" else cached
+            same_rate = (
+                self._sig_rep_sample_rate_hz is not None
+                and np.isclose(float(self._sig_rep_sample_rate_hz), float(self._sample_rate_hz))
+            )
+            same_min = self._sig_rep_min_time is not None and np.isclose(float(self._sig_rep_min_time), min_time)
+            same_max = self._sig_rep_max_time is not None and np.isclose(float(self._sig_rep_max_time), max_time)
+            if same_rate and same_min and same_max:
+                cached = self._sig_rep.copy()
+                return (cached > 0.0).astype(float) if mode == "binary" else cached
+        counts = self._matlab_count_sigrep(
+            spike_times=np.asarray(self.spike_times, dtype=float).reshape(-1),
+            bin_size_s=float(binSize_s),
+            min_time_s=min_time,
+            max_time_s=max_time,
+        )
+        self._sig_rep = counts.copy()
+        self._sig_rep_min_time = float(min_time)
+        self._sig_rep_max_time = float(max_time)
+        self._sig_rep_sample_rate_hz = float(self._sample_rate_hz)
+        self._sig_rep_manual = False
+        return (counts > 0.0).astype(float) if mode == "binary" else counts
 
     def isSigRepBinary(self, binSize_s: float = 0.001) -> bool:
         y = self.getSigRep(binSize_s=binSize_s, mode="count")
@@ -1691,16 +1838,24 @@ class nspikeTrain(_SpikeTrain):
     def getFieldVal(self, fieldName: str) -> Any:
         if hasattr(self, fieldName):
             return getattr(self, fieldName)
-        raise KeyError(f"field '{fieldName}' not found")
+        return []
 
     def getLStatistic(self) -> float:
         isi = self.getISIs()
         if isi.size == 0:
-            return 0.0
+            return float(np.nan)
         mu = float(np.mean(isi))
-        if mu <= 0.0:
-            return 0.0
-        return float(np.std(isi) / mu)
+        if not np.isfinite(mu) or mu <= 0.0:
+            return float(np.nan)
+        duration = float((self.t_end if self.t_end is not None else self.t_start) - self.t_start)
+        if not np.isfinite(duration) or duration <= 0.0:
+            return float(np.nan)
+        max_bins = float(1e6)
+        est_bins = duration / mu + 1.0
+        if np.isfinite(est_bins) and est_bins > max_bins:
+            mu = duration / (max_bins - 1.0)
+        pt = self.getSigRep(binSize_s=mu, mode="count")
+        return float(np.unique(pt).size)
 
     def nstCopy(self) -> _SpikeTrain:
         return nspikeTrain(
@@ -1713,17 +1868,20 @@ class nspikeTrain(_SpikeTrain):
     def resample(self, sampleRate: float) -> _SpikeTrain:
         if sampleRate <= 0.0:
             raise ValueError("sampleRate must be positive")
-        dt = 1.0 / float(sampleRate)
-        snapped = np.round(self.spike_times / dt) * dt
-        self.spike_times = np.unique(snapped)
+        self._sample_rate_hz = float(sampleRate)
+        self.clearSigRep()
         return self
 
     def restoreToOriginal(self) -> _SpikeTrain:
         self.spike_times = self._original_spike_times.copy()
-        self.t_start = float(self._original_t_start)
-        self.t_end = float(self._original_t_end) if self._original_t_end is not None else None
+        if self.spike_times.size:
+            self.t_start = float(np.min(self.spike_times))
+            self.t_end = float(np.max(self.spike_times))
+        else:
+            self.t_start = float(self._original_t_start)
+            self.t_end = float(self._original_t_end) if self._original_t_end is not None else None
         self.name = str(self._original_name)
-        self._sig_rep = None
+        self.clearSigRep()
         return self
 
     def partitionNST(self, partitionEdges_s: np.ndarray | list[float]) -> list[_SpikeTrain]:
@@ -1734,9 +1892,13 @@ class nspikeTrain(_SpikeTrain):
         for i in range(edges.size - 1):
             lo = float(edges[i])
             hi = float(edges[i + 1])
-            mask = (self.spike_times >= lo) & (self.spike_times <= hi)
+            if i == edges.size - 2:
+                mask = (self.spike_times >= lo) & (self.spike_times <= hi)
+            else:
+                mask = (self.spike_times >= lo) & (self.spike_times < hi)
+            subset = self.spike_times[mask] - lo
             out.append(
-                nspikeTrain(spike_times=self.spike_times[mask], t_start=lo, t_end=hi, name=f"{self.name}_{i+1}")
+                nspikeTrain(spike_times=subset, t_start=0.0, t_end=hi - lo, name=f"{self.name}_{i+1}")
             )
         return out
 
@@ -1745,11 +1907,11 @@ class nspikeTrain(_SpikeTrain):
         return self
 
     def setMinTime(self, t_min: float) -> _SpikeTrain:
-        self.set_min_time(t_min)
+        self.t_start = float(t_min)
         return self
 
     def setMaxTime(self, t_max: float) -> _SpikeTrain:
-        self.set_max_time(t_max)
+        self.t_end = float(t_max)
         return self
 
     def plot(self, *_args: Any, **_kwargs: Any) -> Any:
@@ -1825,20 +1987,59 @@ class nstColl(_SpikeTrainCollection):
             return nstColl.fromStructure(args[0])
         return nstColl(*args, **kwargs)
 
+    def _selected_indices(self) -> list[int]:
+        if self._neuron_mask is None:
+            return list(range(self.n_units))
+        return list(self._neuron_mask)
+
     def getBinnedMatrix(
         self, binSize_s: float, mode: Literal["binary", "count"] = "binary"
     ) -> tuple[np.ndarray, np.ndarray]:
-        return self.to_binned_matrix(bin_size_s=binSize_s, mode=mode)
+        if binSize_s <= 0.0:
+            raise ValueError("binSize_s must be positive")
+        min_time = float(min(train.t_start for train in self.trains))
+        max_time = float(max(train.t_end if train.t_end is not None else train.t_start for train in self.trains))
+        selected = self._selected_indices()
+        out_rows: list[np.ndarray] = []
+        time_vec: np.ndarray | None = None
+        for idx in selected:
+            train = self.getNST(idx)
+            counts = train.getSigRep(
+                binSize_s=float(binSize_s),
+                mode="count",
+                minTime_s=min_time,
+                maxTime_s=max_time,
+            )
+            if mode == "binary":
+                counts = (counts > 0.0).astype(float)
+            out_rows.append(np.asarray(counts, dtype=float).reshape(-1))
+            if time_vec is None:
+                n_bins = out_rows[-1].size
+                time_vec = np.linspace(min_time, max_time, n_bins, dtype=float)
+        if time_vec is None:
+            time_vec = np.array([], dtype=float)
+            mat = np.zeros((0, 0), dtype=float)
+        else:
+            n_bins = time_vec.size
+            mat = np.zeros((len(out_rows), n_bins), dtype=float)
+            for i, row in enumerate(out_rows):
+                if row.size == n_bins:
+                    mat[i, :] = row
+                elif row.size > n_bins:
+                    mat[i, :] = row[:n_bins]
+                else:
+                    mat[i, : row.size] = row
+        return time_vec, mat
 
     def merge(self, other: _SpikeTrainCollection) -> _SpikeTrainCollection:
         merged = super().merge(other)
         return nstColl(merged.trains)
 
     def getFirstSpikeTime(self) -> float:
-        return self.get_first_spike_time()
+        return float(min(train.t_start for train in self.trains))
 
     def getLastSpikeTime(self) -> float:
-        return self.get_last_spike_time()
+        return float(max(train.t_end if train.t_end is not None else train.t_start for train in self.trains))
 
     def getSpikeTimes(self) -> list[np.ndarray]:
         return self.get_spike_times()
@@ -1884,15 +2085,33 @@ class nstColl(_SpikeTrainCollection):
         return self
 
     def dataToMatrix(self, binSize_s: float, mode: Literal["binary", "count"] = "binary") -> np.ndarray:
-        return self.data_to_matrix(bin_size_s=binSize_s, mode=mode)
+        _time, mat = self.getBinnedMatrix(binSize_s=binSize_s, mode=mode)
+        return mat.T
 
     def toSpikeTrain(self, name: str = "merged") -> nspikeTrain:
-        merged = super().to_spike_train(name=name)
+        selected = self._selected_indices()
+        if not selected:
+            selected = list(range(self.n_units))
+        delta = 1.0 / max(float(self.findMaxSampleRate()), 1.0)
+        spike_times: list[np.ndarray] = []
+        offset = 0.0
+        first_train = self.getNST(selected[0])
+        trial_name = first_train.name if first_train.name else name
+        spike_times.append(np.asarray(first_train.spike_times, dtype=float).reshape(-1))
+        for i in range(1, len(selected)):
+            prev = self.getNST(selected[i - 1])
+            prev_max = float(prev.t_end) if prev.t_end is not None else float(prev.t_start)
+            offset = offset + prev_max + delta
+            curr = self.getNST(selected[i])
+            spike_times.append(np.asarray(curr.spike_times, dtype=float).reshape(-1) + offset)
+        merged_vec = np.concatenate(spike_times) if spike_times else np.array([], dtype=float)
+        min_time = float(first_train.t_start)
+        max_time = float(max(train.t_end if train.t_end is not None else train.t_start for train in self.trains))
         return nspikeTrain(
-            spike_times=merged.spike_times.copy(),
-            t_start=merged.t_start,
-            t_end=merged.t_end,
-            name=merged.name,
+            spike_times=np.asarray(merged_vec, dtype=float),
+            t_start=min_time,
+            t_end=max_time * len(selected),
+            name=str(trial_name),
         )
 
     def shiftTime(self, offset_s: float) -> _SpikeTrainCollection:
@@ -1900,40 +2119,86 @@ class nstColl(_SpikeTrainCollection):
         return self
 
     def setMinTime(self, t_min: float) -> _SpikeTrainCollection:
-        self.set_min_time(t_min)
+        for train in self.trains:
+            train.t_start = float(t_min)
         return self
 
     def setMaxTime(self, t_max: float) -> _SpikeTrainCollection:
-        self.set_max_time(t_max)
+        for train in self.trains:
+            train.t_end = float(t_max)
         return self
 
     def toStructure(self) -> dict[str, Any]:
-        return {
-            "trains": [
-                {
-                    "spike_times": train.spike_times.copy(),
-                    "t_start": float(train.t_start),
-                    "t_end": float(train.t_end) if train.t_end is not None else None,
-                    "name": train.name,
-                }
-                for train in self.trains
-            ]
+        trains = [self.getNST(i).toStructure() for i in range(self.n_units)]
+        min_time = float(min(train.t_start for train in self.trains))
+        max_time = float(max(train.t_end if train.t_end is not None else train.t_start for train in self.trains))
+        sample_rate = float(max(getattr(train, "_sample_rate_hz", 1000.0) for train in self.trains))
+        neuron_mask = np.ones(self.n_units, dtype=float)
+        if self._neuron_mask is not None:
+            neuron_mask = np.zeros(self.n_units, dtype=float)
+            neuron_mask[np.asarray(self._neuron_mask, dtype=int)] = 1.0
+        out = {
+            "trains": trains,
+            # MATLAB-compatible fields
+            "nstrain": trains,
+            "numSpikeTrains": int(self.n_units),
+            "minTime": min_time,
+            "maxTime": max_time,
+            "sampleRate": sample_rate,
+            "neuronMask": neuron_mask,
+            "neuronNames": [str(train.name) for train in self.trains],
+            "neighbors": self._neighbors if self._neighbors is not None else [],
         }
+        return out
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _SpikeTrainCollection:
-        trains = [
-            nspikeTrain(
-                spike_times=np.asarray(row["spike_times"], dtype=float),
-                t_start=float(row.get("t_start", 0.0)),
-                t_end=float(row["t_end"]) if row.get("t_end") is not None else None,
-                name=str(row.get("name", f"unit_{i+1}")),
-            )
-            for i, row in enumerate(payload.get("trains", []))
-        ]
+        if hasattr(payload, "_fieldnames"):
+            payload = {name: getattr(payload, name) for name in payload._fieldnames}
+        source = payload.get("trains", payload.get("nstrain", []))
+
+        def _iter_train_entries(node: Any) -> list[Any]:
+            if isinstance(node, nspikeTrain):
+                return [node]
+            if hasattr(node, "_fieldnames") or isinstance(node, dict):
+                return [node]
+            if isinstance(node, np.ndarray):
+                out: list[Any] = []
+                for item in node.reshape(-1):
+                    out.extend(_iter_train_entries(item))
+                return out
+            if isinstance(node, (list, tuple)):
+                out = []
+                for item in node:
+                    out.extend(_iter_train_entries(item))
+                return out
+            return []
+
+        rows = _iter_train_entries(source)
+        trains: list[_SpikeTrain] = []
+        for i, row in enumerate(rows):
+            if isinstance(row, nspikeTrain):
+                trains.append(row.nstCopy())
+                continue
+            if hasattr(row, "_fieldnames"):
+                row_dict = {name: getattr(row, name) for name in row._fieldnames}
+            elif isinstance(row, dict):
+                row_dict = row
+            else:
+                continue
+            trains.append(cast(_SpikeTrain, nspikeTrain.fromStructure(row_dict)))
         if not trains:
             raise ValueError("fromStructure requires at least one train")
-        return nstColl(cast(list[_SpikeTrain], trains))
+        coll = nstColl(cast(list[_SpikeTrain], trains))
+        neigh = payload.get("neighbors")
+        if neigh is not None and np.asarray(neigh, dtype=object).size:
+            coll.setNeighbors(neigh)
+        mask = payload.get("neuronMask")
+        if mask is not None and np.asarray(mask, dtype=float).size:
+            mask_arr = np.asarray(mask, dtype=float).reshape(-1)
+            if mask_arr.size == coll.n_units:
+                coll._neuron_mask = list(np.where(mask_arr > 0)[0].astype(int))
+        return coll
 
     def updateTimes(self) -> _SpikeTrainCollection:
         for train in self.trains:
@@ -1952,15 +2217,35 @@ class nstColl(_SpikeTrainCollection):
         return np.asarray(out, dtype=float)
 
     def isSigRepBinary(self, binSize_s: float = 0.001) -> bool:
-        _, mat = self.to_binned_matrix(bin_size_s=binSize_s, mode="count")
+        _, mat = self.getBinnedMatrix(binSize_s=binSize_s, mode="count")
         return bool(np.all((mat == 0) | (mat == 1)))
 
-    def BinarySigRep(self, binSize_s: float = 0.001) -> np.ndarray:
-        return self.dataToMatrix(binSize_s=binSize_s, mode="binary")
+    def BinarySigRep(self, binSize_s: float = 0.001) -> bool:
+        return self.isSigRepBinary(binSize_s=binSize_s)
 
     def psth(self, binSize_s: float = 0.01) -> tuple[np.ndarray, np.ndarray]:
-        t, mat = self.to_binned_matrix(bin_size_s=binSize_s, mode="count")
-        return t, np.mean(mat, axis=0)
+        if binSize_s <= 0.0:
+            raise ValueError("binSize_s must be positive")
+        selected = self._selected_indices()
+        if not selected:
+            selected = list(range(self.n_units))
+        min_time = float(min(self.trains[i].t_start for i in selected))
+        max_time = float(max(self.trains[i].t_end if self.trains[i].t_end is not None else self.trains[i].t_start for i in selected))
+        window_times = np.arange(min_time, max_time + float(binSize_s), float(binSize_s), dtype=float)
+        if window_times.size == 0:
+            return np.array([], dtype=float), np.array([], dtype=float)
+        if not np.any(np.isclose(window_times, max_time)):
+            window_times = np.append(window_times, max_time)
+        psth_counts = np.zeros(max(window_times.size - 1, 0), dtype=float)
+        for i in selected:
+            spikes = np.asarray(self.trains[i].spike_times, dtype=float).reshape(-1)
+            if spikes.size:
+                counts, _ = np.histogram(spikes, bins=window_times)
+                psth_counts = psth_counts + counts.astype(float)
+        denom = float(binSize_s) * max(len(selected), 1)
+        psth_rate = psth_counts / denom
+        time_centers = 0.5 * (window_times[1:] + window_times[:-1])
+        return time_centers, psth_rate
 
     def psthBars(self, binSize_s: float = 0.01) -> tuple[np.ndarray, np.ndarray]:
         return self.psth(binSize_s=binSize_s)
@@ -1982,10 +2267,10 @@ class nstColl(_SpikeTrainCollection):
         return out
 
     def findMaxSampleRate(self) -> float:
-        min_isi = float(np.min(self.getMinISIs()))
-        if not np.isfinite(min_isi) or min_isi <= 0.0:
-            return float(np.inf)
-        return float(1.0 / min_isi)
+        vals: list[float] = []
+        for train in self.trains:
+            vals.append(float(getattr(train, "_sample_rate_hz", 1000.0)))
+        return float(np.max(np.asarray(vals, dtype=float))) if vals else float("-inf")
 
     def getMaxBinSizeBinary(self) -> float:
         min_isi = float(np.min(self.getMinISIs()))
@@ -1998,6 +2283,10 @@ class nstColl(_SpikeTrainCollection):
             idx = [self.get_nst_indices_from_name(str(name))[0] for name in cast(list[str], selector)]
         else:
             idx_raw = [int(v) for v in cast(list[int], selector)]
+            if len(idx_raw) == self.n_units and all(v in (0, 1) for v in idx_raw):
+                idx = [i for i, flag in enumerate(idx_raw) if flag == 1]
+                self._neuron_mask = idx
+                return self
             idx = []
             for v in idx_raw:
                 if v >= 1 and v <= self.n_units:
@@ -2053,10 +2342,22 @@ class nstColl(_SpikeTrainCollection):
     def resample(self, sampleRate: float) -> _SpikeTrainCollection:
         if sampleRate <= 0.0:
             raise ValueError("sampleRate must be positive")
-        dt = 1.0 / float(sampleRate)
-        for train in self.trains:
-            snapped = np.round(train.spike_times / dt) * dt
-            train.spike_times = np.unique(snapped)
+        min_time = float(min(train.t_start for train in self.trains))
+        max_time = float(max(train.t_end if train.t_end is not None else train.t_start for train in self.trains))
+        for i, train in enumerate(self.trains):
+            if isinstance(train, nspikeTrain):
+                curr = train
+            else:
+                curr = nspikeTrain(
+                    spike_times=np.asarray(train.spike_times, dtype=float).copy(),
+                    t_start=float(train.t_start),
+                    t_end=float(train.t_end) if train.t_end is not None else None,
+                    name=str(train.name),
+                )
+                self.trains[i] = curr
+            curr.resample(float(sampleRate))
+            curr.setMinTime(min_time)
+            curr.setMaxTime(max_time)
         return self
 
     def enforceSampleRate(self, sampleRate: float) -> _SpikeTrainCollection:
@@ -2073,7 +2374,7 @@ class nstColl(_SpikeTrainCollection):
         return True
 
     def estimateVarianceAcrossTrials(self, binSize_s: float = 0.01) -> np.ndarray:
-        _t, mat = self.to_binned_matrix(bin_size_s=binSize_s, mode="count")
+        _t, mat = self.getBinnedMatrix(binSize_s=binSize_s, mode="count")
         if mat.size == 0:
             return np.array([], dtype=float)
         return np.var(mat, axis=0)
@@ -2105,26 +2406,73 @@ class nstColl(_SpikeTrainCollection):
         return self.psth(binSize_s=binSize_s)
 
     @staticmethod
-    def generateUnitImpulseBasis(
-        basisWidth_s: float,
-        sampleRate_hz: float,
-        totalTime_s: float = 1.0,
-        name: str = "unit_impulse_basis",
-    ) -> _Covariate:
+    def generateUnitImpulseBasis(basisWidth_s: float, *args: Any, **kwargs: Any) -> _Covariate:
+        # Supports both Python form:
+        #   generateUnitImpulseBasis(basisWidth_s, sampleRate_hz, totalTime_s=1.0, name=...)
+        # and MATLAB form:
+        #   generateUnitImpulseBasis(basisWidth_s, minTime_s, maxTime_s, sampleRate_hz)
+        name = str(kwargs.pop("name", "unit_impulse_basis"))
+        min_time = float(kwargs.pop("minTime_s", kwargs.pop("min_time_s", 0.0)))
+        sample_rate: float | None = kwargs.pop("sampleRate_hz", kwargs.pop("sample_rate_hz", None))
+        total_time = kwargs.pop("totalTime_s", kwargs.pop("total_time_s", None))
+        max_time = kwargs.pop("maxTime_s", kwargs.pop("max_time_s", None))
+        if kwargs:
+            unknown = ", ".join(sorted(kwargs.keys()))
+            raise TypeError(f"Unknown keyword arguments: {unknown}")
+
+        if len(args) == 0:
+            pass
+        elif len(args) == 1:
+            sample_rate = float(args[0])
+        elif len(args) == 2:
+            # MATLAB form without sampleRate:
+            #   generateUnitImpulseBasis(basisWidth, minTime, maxTime)
+            min_time = float(args[0])
+            max_time = float(args[1])
+            total_time = float(max_time) - float(min_time)
+        elif len(args) == 3:
+            min_time = float(args[0])
+            max_time = float(args[1])
+            # MATLAB form with explicit sampleRate:
+            #   generateUnitImpulseBasis(basisWidth, minTime, maxTime, sampleRate)
+            sample_rate = float(args[2])
+            total_time = float(max_time) - float(min_time)
+        else:
+            raise TypeError("generateUnitImpulseBasis accepts at most 4 positional arguments")
+
+        if max_time is not None and total_time is None:
+            total_time = float(max_time) - float(min_time)
+        if total_time is None:
+            total_time = 1.0
+        if sample_rate is None:
+            sample_rate = 1000.0
+
         if basisWidth_s <= 0.0:
             raise ValueError("basisWidth_s must be positive")
-        if sampleRate_hz <= 0.0:
+        if sample_rate <= 0.0:
             raise ValueError("sampleRate_hz must be positive")
-        dt = 1.0 / float(sampleRate_hz)
-        time = np.arange(0.0, float(totalTime_s) + 0.5 * dt, dt)
-        n_basis = max(1, int(np.ceil(float(totalTime_s) / float(basisWidth_s))))
-        basis = np.zeros((time.size, n_basis), dtype=float)
-        for j in range(n_basis):
-            lo = j * basisWidth_s
-            hi = min((j + 1) * basisWidth_s, totalTime_s + dt)
-            mask = (time >= lo) & (time < hi)
+        start = float(min_time)
+        stop = float(min_time) + float(total_time)
+        step = float(basisWidth_s)
+        window_times = np.arange(start, stop + 0.5 * step, step, dtype=float)
+        if window_times.size == 0:
+            window_times = np.array([start, stop], dtype=float)
+        if not np.any(np.isclose(window_times, stop)):
+            window_times = np.append(window_times, stop)
+
+        dt = 1.0 / float(sample_rate)
+        time = np.arange(start, stop + 0.5 * dt, dt, dtype=float)
+        num_basis = max(int(window_times.size - 1), 1)
+        basis = np.zeros((time.size, num_basis), dtype=float)
+        for j in range(num_basis):
+            lo = float(window_times[j])
+            hi = float(window_times[j + 1])
+            if j == (num_basis - 1):
+                mask = (time >= lo) & (time <= hi)
+            else:
+                mask = (time >= lo) & (time < hi)
             basis[mask, j] = 1.0
-        labels = [f"basis_{j+1}" for j in range(n_basis)]
+        labels = [f"basis_{j+1}" for j in range(num_basis)]
         return Covariate(time=time, data=basis, name=name, labels=labels)
 
     def getEnsembleNeuronCovariates(self, binSize_s: float = 0.001, mode: Literal["binary", "count"] = "binary") -> "CovColl":
@@ -3843,7 +4191,8 @@ class FitResSummary(_FitSummary):
         for fit in self.results:
             raw = fit.ks_stats.get("ks_stat", np.nan)
             arr = np.asarray(raw, dtype=float).reshape(-1)
-            vals.append(float(np.nanmean(arr)) if arr.size else np.nan)
+            finite = arr[np.isfinite(arr)]
+            vals.append(float(np.mean(finite)) if finite.size else np.nan)
         y = np.asarray(vals, dtype=float)
         return plt.plot(np.arange(1, y.size + 1), y, "k-o")
 
@@ -3856,7 +4205,8 @@ class FitResSummary(_FitSummary):
                 vals.append(np.nan)
                 continue
             arr = np.asarray(fit.fit_residual, dtype=float).reshape(-1)
-            vals.append(float(np.nanmean(np.abs(arr))) if arr.size else np.nan)
+            finite = np.abs(arr[np.isfinite(arr)])
+            vals.append(float(np.mean(finite)) if finite.size else np.nan)
         y = np.asarray(vals, dtype=float)
         return plt.plot(np.arange(1, y.size + 1), y, "k-o")
 

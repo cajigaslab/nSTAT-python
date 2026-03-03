@@ -234,7 +234,7 @@ def _build_compat_spike_coll_basic() -> tuple[Any, dict[str, Any]]:
         "coll_add_args": [st_add],
         "coll_addspike_args": [0, 0.95],
         "coll_addnames_args": [ens_cov],
-        "coll_basis_args": [0.2, 10.0, 1.0, "basis"],
+        "coll_basis_args": [0.2, 0.0, 1.0, 10.0],
         "coll_from_structure_args": [obj.toStructure()],
         "coll_ctor_args": [obj.toStructure()],
     }

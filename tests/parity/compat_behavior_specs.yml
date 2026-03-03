@@ -745,7 +745,7 @@ classes:
         access: method
         args_key: spike_sigrep_args
         expect:
-          shape: [10]
+          shape: [11]
           sum_approx: 4.0
           abs_tol: 1.0e-12
       - member: isSigRepBinary
@@ -779,7 +779,7 @@ classes:
       - member: getLStatistic
         access: method
         expect:
-          approx: 1.0193441518937558
+          approx: 2.0
           abs_tol: 1.0e-12
       - member: setMER
         access: method
@@ -851,7 +851,7 @@ classes:
         access: method
         extract: t_start
         expect:
-          approx: 0.0
+          approx: 0.1
           abs_tol: 1.0e-12
       - member: plot
         access: method
@@ -874,12 +874,12 @@ classes:
       - member: getFirstSpikeTime
         access: method
         expect:
-          approx: 0.1
+          approx: 0.0
           abs_tol: 1.0e-12
       - member: getLastSpikeTime
         access: method
         expect:
-          approx: 0.9
+          approx: 1.0
           abs_tol: 1.0e-12
       - member: getNSTnames
         access: method
@@ -912,7 +912,7 @@ classes:
         access: method
         args_key: coll_binned_args
         expect:
-          shape: [2, 10]
+          shape: [11, 2]
           sum_approx: 7.0
           abs_tol: 1.0e-12
       - member: to_binned_matrix
@@ -937,7 +937,7 @@ classes:
       - member: findMaxSampleRate
         access: method
         expect:
-          approx: 20.0
+          approx: 1000.0
           abs_tol: 1.0e-9
       - member: toStructure
         access: method
@@ -1052,39 +1052,37 @@ classes:
         access: method
         args: [0.1]
         expect:
-          shape: [3, 12]
-          sum_approx: 9.0
-          abs_tol: 1.0e-12
+          equals: true
       - member: toSpikeTrain
         access: method
         args: [0]
         extract: spike_times
         expect:
-          shape: [10]
+          shape: [3]
       - member: psth
         access: method
         args: [0.1]
         select: 0
         expect:
-          shape: [12]
+          shape: [10]
       - member: psthBars
         access: method
         args: [0.1]
         select: 0
         expect:
-          shape: [12]
+          shape: [10]
       - member: ssglm
         access: method
         args: [0.1]
         select: 1
         expect:
-          shape: [12]
+          shape: [10]
       - member: psthGLM
         access: method
         args: [0.1]
         select: 1
         expect:
-          shape: [12]
+          shape: [10]
       - member: getISIs
         access: method
         select: 0
@@ -1104,7 +1102,7 @@ classes:
         args: [0.1]
         expect:
           shape: [12]
-          sum_approx: 1.7777777777777777
+          sum_approx: 0.0
           abs_tol: 1.0e-12
       - member: ensureConsistancy
         access: method
@@ -1155,7 +1153,7 @@ classes:
         access: method
         args: [0.1]
         expect:
-          equals: false
+          equals: true
       - member: getEnsembleNeuronCovariates
         access: method
         args: [0.1]

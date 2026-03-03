@@ -209,8 +209,9 @@ def test_spike_collection_aliases() -> None:
     st2 = nspikeTrain(spike_times=np.array([0.2, 0.4]), t_start=0.0, t_end=1.0, name="u2")
     coll = nstColl([st1, st2])
     assert coll.getNumUnits() == 2
-    assert np.isclose(coll.getFirstSpikeTime(), 0.1)
-    assert np.isclose(coll.getLastSpikeTime(), 0.4)
+    # MATLAB nstColl returns collection minTime/maxTime (not min/max spike timestamp).
+    assert np.isclose(coll.getFirstSpikeTime(), 0.0)
+    assert np.isclose(coll.getLastSpikeTime(), 1.0)
     assert coll.getNSTnameFromInd(1) == "u2"
     merged = coll.toSpikeTrain()
     assert merged.spike_times.size == 4
