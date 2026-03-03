@@ -155,15 +155,15 @@ classes:
         access: method
         args: [1.0]
         expect:
-          equals: 1
+          equals: 2
       - member: findNearestTimeIndices
         access: method
         args_key: signal_times_args
         expect:
           equals:
             - 0
-            - 1
-            - 3
+            - 2
+            - 4
       - member: getSigInTimeWindow
         access: method
         args_key: signal_time_window_args
@@ -182,7 +182,7 @@ classes:
         select: 0
         extract: n_samples
         expect:
-          equals: 4
+          equals: 5
       - member: shiftMe
         access: method
         args: [0.25]
@@ -533,7 +533,11 @@ classes:
           instance_of: nstat.compat.matlab.Covariate
       - member: computeMeanPlusCI
         access: method
-        select: 0
+        expect:
+          instance_of: nstat.compat.matlab.Covariate
+      - member: computeMeanPlusCI
+        access: method
+        extract: data
         expect:
           shape: [5]
           sum_approx: 2.1875
@@ -545,6 +549,11 @@ classes:
           instance_of: nstat.compat.matlab.Covariate
       - member: getSigRep
         access: method
+        expect:
+          instance_of: nstat.compat.matlab.Covariate
+      - member: getSigRep
+        access: method
+        extract: data
         expect:
           shape: [5, 2]
       - member: isConfIntervalSet

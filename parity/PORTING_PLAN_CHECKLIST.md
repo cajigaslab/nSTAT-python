@@ -8,8 +8,8 @@ Status definitions:
 
 | MATLAB Class | Python Counterpart | Contract Coverage | Status | Notes |
 |---|---|---:|---|---|
-| `SignalObj` | `nstat.signal.Signal` + `nstat.compat.matlab.SignalObj` | 98/98 | Complete | Needs dedicated class fixture loop. |
-| `Covariate` | `nstat.signal.Covariate` + `nstat.compat.matlab.Covariate` | 14/14 | Complete | Needs dedicated class fixture loop. |
+| `SignalObj` | `nstat.signal.Signal` + `nstat.compat.matlab.SignalObj` | 98/98 | Verified | Added MATLAB fixtures, parity tests, and demo in this sprint. |
+| `Covariate` | `nstat.signal.Covariate` + `nstat.compat.matlab.Covariate` | 14/14 | Verified | Added MATLAB fixtures, parity tests, and demo in this sprint. |
 | `ConfidenceInterval` | `nstat.confidence.ConfidenceInterval` + `nstat.compat.matlab.ConfidenceInterval` | 5/5 | Verified | Added MATLAB fixtures, parity tests, and demo in this sprint. |
 | `Events` | `nstat.events.Events` + `nstat.compat.matlab.Events` | 5/5 | Verified | Added MATLAB fixtures, parity tests, and demo in this sprint. |
 | `History` | `nstat.history.HistoryBasis` + `nstat.compat.matlab.History` | 8/8 | Verified | Added MATLAB fixtures, parity tests, and demo in this sprint. |
@@ -26,18 +26,14 @@ Status definitions:
 | `DecodingAlgorithms` | `nstat.decoding.DecodingAlgorithms` + `nstat.compat.matlab.DecodingAlgorithms` | 24/45 (21 excluded) | Partial | Remaining excluded methods require MATLAB-grounded closure. |
 
 ## Execution Order (next)
-1. `History`
-2. `ConfidenceInterval`
-3. `SignalObj`
-4. `Covariate`
-5. `nspikeTrain`
-6. `nstColl`
-7. `CovColl`
-8. `TrialConfig`
-9. `ConfigColl`
-10. `Trial`
-11. `CIF`
-12. `Analysis`
-13. `FitResult`
-14. `FitResSummary`
-15. `DecodingAlgorithms`
+1. `nspikeTrain`
+2. `nstColl`
+3. `CovColl`
+4. `TrialConfig`
+5. `ConfigColl`
+6. `Trial`
+7. `CIF`
+8. `Analysis`
+9. `FitResult`
+10. `FitResSummary`
+11. `DecodingAlgorithms`

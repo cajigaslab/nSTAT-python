@@ -98,22 +98,37 @@ class SignalObj(_Signal):
         self.shift_time(offset_s)
         return self
 
-    def alignTime(self, newZero: float = 0.0) -> "SignalObj":
-        self.align_time(newZero)
+    def alignTime(self, timeMarker: float = 0.0, newTime: float | None = None) -> "SignalObj":
+        # MATLAB signature: alignTime(sObj, timeMarker, newTime).
+        # Backward-compatible fallback: alignTime(newZero) shifts first sample.
+        if newTime is None:
+            self.align_time(timeMarker)
+            return self
+        marker = float(timeMarker)
+        target = float(newTime)
+        if self.time[0] <= marker <= self.time[-1]:
+            self.shiftTime(target - marker)
         return self
 
     def derivative(self) -> "SignalObj":
-        out = super().derivative()
+        # MATLAB implementation uses forward differences with a leading zero row.
+        mat = self.data_to_matrix()
+        diff_data = np.diff(mat, axis=0) * float(self.sample_rate_hz)
+        deriv = np.vstack([np.zeros((1, mat.shape[1]), dtype=float), diff_data])
+        if deriv.shape[1] == 1:
+            deriv_out: np.ndarray = deriv[:, 0]
+        else:
+            deriv_out = deriv
         return SignalObj(
-            time=out.time,
-            data=out.data,
-            name=out.name,
-            units=out.units,
-            x_label=out.x_label,
-            y_label=out.y_label,
-            x_units=out.x_units,
-            y_units=out.y_units,
-            plot_props=out.plot_props,
+            time=self.time.copy(),
+            data=deriv_out,
+            name=self.name,
+            units=self.units,
+            x_label=self.x_label,
+            y_label=self.y_label,
+            x_units=self.x_units,
+            y_units=self.y_units,
+            plot_props=dict(self.plot_props),
         )
 
     def integral(self) -> np.ndarray:
@@ -136,22 +151,70 @@ class SignalObj(_Signal):
             plot_props=out.plot_props,
         )
 
-    def merge(self, other: _Signal) -> "SignalObj":
-        out = super().merge(other)
-        return SignalObj(
-            time=out.time,
-            data=out.data,
-            name=out.name,
-            units=out.units,
-            x_label=out.x_label,
-            y_label=out.y_label,
-            x_units=out.x_units,
-            y_units=out.y_units,
-            plot_props=out.plot_props,
-        )
+    def merge(self, *args: Any) -> "SignalObj":
+        if not args:
+            raise ValueError("merge expects at least one signal")
+        signals: list[_Signal] = []
+        for idx, arg in enumerate(args):
+            if isinstance(arg, (int, float)) and idx == len(args) - 1:
+                # MATLAB supports optional holdVals argument.
+                continue
+            if not isinstance(arg, _Signal):
+                raise ValueError("merge expects SignalObj arguments")
+            signals.append(arg)
+        if not signals:
+            raise ValueError("merge expects at least one signal")
+
+        merged: SignalObj = self
+        for other in signals:
+            lhs_c, rhs_c = merged.makeCompatible(other)
+            data = np.hstack([lhs_c.dataToMatrix(), rhs_c.dataToMatrix()])
+            merged = SignalObj(
+                time=lhs_c.time.copy(),
+                data=data,
+                name=lhs_c.name,
+                units=lhs_c.units,
+                x_label=lhs_c.x_label,
+                y_label=lhs_c.y_label,
+                x_units=lhs_c.x_units,
+                y_units=lhs_c.y_units,
+                plot_props=dict(lhs_c.plot_props),
+            )
+        return merged
 
     def resample(self, sampleRate: float) -> "SignalObj":
-        out = super().resample(sampleRate)
+        from scipy.interpolate import CubicSpline
+
+        sample_rate = float(sampleRate)
+        if sample_rate <= 0.0:
+            raise ValueError("sampleRate must be positive")
+        if np.isclose(sample_rate, self.sample_rate_hz):
+            return self.copySignal()
+        dt = 1.0 / sample_rate
+        t_new = np.arange(self.time[0], self.time[-1] + 0.5 * dt, dt, dtype=float)
+        mat = self.data_to_matrix()
+        y_new = np.zeros((t_new.size, mat.shape[1]), dtype=float)
+        for idx in range(mat.shape[1]):
+            spline = CubicSpline(self.time, mat[:, idx], extrapolate=False)
+            vals = spline(t_new)
+            vals = np.asarray(vals, dtype=float)
+            vals[~np.isfinite(vals)] = 0.0
+            y_new[:, idx] = vals
+        if y_new.shape[1] == 1:
+            out_data: np.ndarray = y_new[:, 0]
+        else:
+            out_data = y_new
+        out = SignalObj(
+            time=t_new,
+            data=out_data,
+            name=self.name,
+            units=self.units,
+            x_label=self.x_label,
+            y_label=self.y_label,
+            x_units=self.x_units,
+            y_units=self.y_units,
+            plot_props=dict(self.plot_props),
+        )
         return SignalObj(
             time=out.time,
             data=out.data,
@@ -210,16 +273,46 @@ class SignalObj(_Signal):
 
     @staticmethod
     def signalFromStruct(payload: dict[str, Any]) -> "SignalObj":
+        def _text(value: Any, default: str = "") -> str:
+            if value is None:
+                return default
+            arr = np.asarray(value, dtype=object)
+            if arr.size == 1:
+                return str(arr.reshape(-1)[0])
+            return str(value)
+
+        if hasattr(payload, "_fieldnames"):
+            payload = {name: getattr(payload, name) for name in payload._fieldnames}
+        if "signals" in payload:
+            signals = payload["signals"]
+            if hasattr(signals, "_fieldnames"):
+                values = np.asarray(getattr(signals, "values"), dtype=float)
+            else:
+                arr = np.asarray(signals, dtype=object)
+                if arr.size == 1 and hasattr(arr.reshape(-1)[0], "_fieldnames"):
+                    values = np.asarray(getattr(arr.reshape(-1)[0], "values"), dtype=float)
+                elif isinstance(signals, dict):
+                    values = np.asarray(signals["values"], dtype=float)
+                else:
+                    raise ValueError("Unsupported signals structure payload")
+            data_values = values
+        else:
+            data_values = np.asarray(payload["data"], dtype=float)
+        plot_props_raw = payload.get("plot_props", payload.get("plotProps", {}))
+        if isinstance(plot_props_raw, dict):
+            plot_props = dict(plot_props_raw)
+        else:
+            plot_props = {}
         return SignalObj(
-            time=np.asarray(payload["time"], dtype=float),
-            data=np.asarray(payload["data"], dtype=float),
-            name=str(payload.get("name", "signal")),
-            units=str(payload.get("units", "")),
-            x_label=payload.get("x_label"),
+            time=np.asarray(payload["time"], dtype=float).reshape(-1),
+            data=data_values,
+            name=_text(payload.get("name", "signal"), "signal"),
+            units=_text(payload.get("units", ""), ""),
+            x_label=_text(payload.get("x_label", payload.get("xlabelval")), "time"),
             y_label=payload.get("y_label"),
-            x_units=payload.get("x_units"),
-            y_units=payload.get("y_units"),
-            plot_props=dict(payload.get("plot_props", {})),
+            x_units=_text(payload.get("x_units", payload.get("xunits")), ""),
+            y_units=_text(payload.get("y_units", payload.get("yunits")), ""),
+            plot_props=plot_props,
         )
 
     @staticmethod
@@ -305,7 +398,9 @@ class SignalObj(_Signal):
         return self.setSampleRate(sampleRate)
 
     def shift(self, offset_s: float) -> "SignalObj":
-        return self.shiftTime(offset_s)
+        out = self.copySignal()
+        out.shiftTime(offset_s)
+        return out
 
     def shiftMe(self, offset_s: float) -> "SignalObj":
         return self.shiftTime(offset_s)
@@ -673,18 +768,186 @@ class Covariate(_Covariate):
     def Covariate(payload: dict[str, Any]) -> _Covariate:
         return Covariate.fromStructure(payload)
 
-    def computeMeanPlusCI(self, axis: int = 1, level: float = 0.95) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return self.compute_mean_plus_ci(axis=axis, level=level)
+    @staticmethod
+    def _text(value: Any, default: str = "") -> str:
+        if value is None:
+            return default
+        arr = np.asarray(value, dtype=object)
+        if arr.size == 1:
+            return str(arr.reshape(-1)[0])
+        return str(value)
+
+    @staticmethod
+    def _to_dict(payload: Any) -> dict[str, Any]:
+        if isinstance(payload, dict):
+            return payload
+        if hasattr(payload, "_fieldnames"):
+            return {name: getattr(payload, name) for name in payload._fieldnames}
+        arr = np.asarray(payload, dtype=object)
+        if arr.size == 1 and hasattr(arr.reshape(-1)[0], "_fieldnames"):
+            s0 = arr.reshape(-1)[0]
+            return {name: getattr(s0, name) for name in s0._fieldnames}
+        raise ValueError("Unsupported structure payload")
+
+    @staticmethod
+    def _normalize_labels(raw: Any, fallback_name: str, n_channels: int) -> list[str]:
+        if raw is None:
+            raw_labels: list[str] = []
+        else:
+            arr = np.asarray(raw, dtype=object).reshape(-1)
+            raw_labels = [str(v) for v in arr if str(v) != ""]
+        if raw_labels and len(raw_labels) == n_channels:
+            return raw_labels
+        if n_channels == 1:
+            return [fallback_name]
+        return [f"{fallback_name}_{i}" for i in range(n_channels)]
+
+    @staticmethod
+    def _selector_to_indices(selector: int | str | list[int] | list[str], n_channels: int, labels: list[str]) -> np.ndarray:
+        if isinstance(selector, str):
+            return np.asarray([labels.index(selector)], dtype=int)
+        if isinstance(selector, list) and selector and isinstance(selector[0], str):
+            return np.asarray([labels.index(str(item)) for item in selector], dtype=int)
+        idx = np.asarray(np.atleast_1d(selector), dtype=int).reshape(-1)
+        # MATLAB selectors are 1-based.
+        if idx.size and np.all(idx >= 1) and np.max(idx) <= n_channels:
+            idx = idx - 1
+        return idx
+
+    @staticmethod
+    def _as_ci_list(interval: Any) -> list[_ConfidenceInterval]:
+        if interval is None:
+            return []
+        if isinstance(interval, _ConfidenceInterval):
+            return [interval]
+        if isinstance(interval, list):
+            return [item for item in interval if isinstance(item, _ConfidenceInterval)]
+        if isinstance(interval, tuple):
+            return [item for item in list(interval) if isinstance(item, _ConfidenceInterval)]
+        return []
+
+    @staticmethod
+    def _ci_from_operand(operand: Any, ref_time: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        if isinstance(operand, _ConfidenceInterval):
+            return np.asarray(operand.lower, dtype=float), np.asarray(operand.upper, dtype=float)
+        if isinstance(operand, _Signal):
+            vec = np.asarray(operand.data_to_matrix(), dtype=float)[:, 0]
+            return vec, vec
+        arr = np.asarray(operand, dtype=float).reshape(-1)
+        if arr.size == 1:
+            vec = np.full(ref_time.size, float(arr.item()), dtype=float)
+        elif arr.size == ref_time.size:
+            vec = arr
+        else:
+            raise ValueError("Operand size incompatible with confidence interval length")
+        return vec, vec
+
+    @staticmethod
+    def _ci_add(ci: _ConfidenceInterval, operand: Any) -> _ConfidenceInterval:
+        lo_rhs, hi_rhs = Covariate._ci_from_operand(operand, np.asarray(ci.time, dtype=float))
+        return ConfidenceInterval(
+            time=np.asarray(ci.time, dtype=float),
+            lower=np.asarray(ci.lower, dtype=float) + lo_rhs,
+            upper=np.asarray(ci.upper, dtype=float) + hi_rhs,
+            level=float(getattr(ci, "level", 0.95)),
+            color=str(getattr(ci, "color", "b")),
+            value=getattr(ci, "value", getattr(ci, "level", 0.95)),
+        )
+
+    @staticmethod
+    def _ci_sub(ci: _ConfidenceInterval, operand: Any) -> _ConfidenceInterval:
+        lo_rhs, hi_rhs = Covariate._ci_from_operand(operand, np.asarray(ci.time, dtype=float))
+        return ConfidenceInterval(
+            time=np.asarray(ci.time, dtype=float),
+            lower=np.asarray(ci.lower, dtype=float) - lo_rhs,
+            upper=np.asarray(ci.upper, dtype=float) - hi_rhs,
+            level=float(getattr(ci, "level", 0.95)),
+            color=str(getattr(ci, "color", "b")),
+            value=getattr(ci, "value", getattr(ci, "level", 0.95)),
+        )
+
+    @staticmethod
+    def _ci_neg(ci: _ConfidenceInterval) -> _ConfidenceInterval:
+        # Keep interval ordering valid in Python while matching MATLAB arithmetic intent.
+        lower = -np.asarray(ci.upper, dtype=float)
+        upper = -np.asarray(ci.lower, dtype=float)
+        return ConfidenceInterval(
+            time=np.asarray(ci.time, dtype=float),
+            lower=lower,
+            upper=upper,
+            level=float(getattr(ci, "level", 0.95)),
+            color=str(getattr(ci, "color", "b")),
+            value=getattr(ci, "value", getattr(ci, "level", 0.95)),
+        )
+
+    @staticmethod
+    def _ecdf_quantiles(row: np.ndarray, alpha_val: float) -> tuple[float, float]:
+        alpha = float(alpha_val)
+        if row.size == 0:
+            return 0.0, 0.0
+        try:
+            lower = float(np.quantile(row, alpha / 2.0, method="lower"))
+            upper = float(np.quantile(row, 1.0 - alpha / 2.0, method="higher"))
+        except TypeError:
+            lower = float(np.quantile(row, alpha / 2.0, interpolation="lower"))
+            upper = float(np.quantile(row, 1.0 - alpha / 2.0, interpolation="higher"))
+        return lower, upper
+
+    def computeMeanPlusCI(self, alphaVal: float = 0.05) -> _Covariate:
+        mat = self.data_to_matrix()
+        cimat = np.zeros((mat.shape[0], 2), dtype=float)
+        for k in range(mat.shape[0]):
+            cimat[k, 0], cimat[k, 1] = self._ecdf_quantiles(mat[k, :], alphaVal)
+        mean_data = np.mean(mat, axis=1)
+        out = Covariate(
+            time=self.time.copy(),
+            data=mean_data,
+            name=f"\\mu({self.name})",
+            units=self.units,
+            labels=[f"\\mu({self.name})"],
+            conf_interval=None,
+            x_label=self.x_label,
+            y_label=self.y_label,
+            x_units=self.x_units,
+            y_units=self.y_units,
+            plot_props=dict(self.plot_props),
+        )
+        out.setConfInterval(
+            ConfidenceInterval(
+                time=self.time.copy(),
+                lower=cimat[:, 0],
+                upper=cimat[:, 1],
+                level=max(1.0e-12, 1.0 - float(alphaVal)),
+                color="b",
+                value=max(1.0e-12, 1.0 - float(alphaVal)),
+            )
+        )
+        return out
 
     def getSubSignal(self, selector: int | str | list[int] | list[str]) -> _Covariate:
-        out = super().get_sub_signal(selector)
+        idx = self._selector_to_indices(selector, self.n_channels, self.labels)
+        idx_sel: int | list[int]
+        if idx.size == 1:
+            idx_sel = int(idx[0])
+        else:
+            idx_sel = [int(v) for v in idx.tolist()]
+        out = super().get_sub_signal(idx_sel)
+        ci_list = self._as_ci_list(self.conf_interval)
+        sub_ci: list[_ConfidenceInterval] = []
+        for ind in idx.tolist():
+            if not ci_list:
+                break
+            if ind < len(ci_list):
+                sub_ci.append(ci_list[ind])
+            elif len(ci_list) == 1:
+                sub_ci.append(ci_list[0])
         return Covariate(
             time=out.time,
             data=out.data,
             name=out.name,
             units=out.units,
             labels=out.labels,
-            conf_interval=out.conf_interval,
+            conf_interval=sub_ci if sub_ci else None,
             x_label=out.x_label,
             y_label=out.y_label,
             x_units=out.x_units,
@@ -693,36 +956,137 @@ class Covariate(_Covariate):
         )
 
     def setConfInterval(self, interval: Any) -> _Covariate:
-        self.set_conf_interval(interval)
+        ci_list = self._as_ci_list(interval)
+        if ci_list:
+            self.set_conf_interval(ci_list)
+        else:
+            self.set_conf_interval(interval)
         return self
 
     def isConfIntervalSet(self) -> bool:
-        return self.is_conf_interval_set()
+        ci_list = self._as_ci_list(self.conf_interval)
+        return len(ci_list) > 0
 
-    def getSigRep(self) -> np.ndarray:
-        return self.data_to_matrix()
+    def getSigRep(self, repType: str = "standard") -> _Covariate:
+        if repType == "standard":
+            return self
+        if repType == "zero-mean":
+            mat = self.data_to_matrix()
+            centered = mat - np.mean(mat, axis=0, keepdims=True)
+            data = centered[:, 0] if centered.shape[1] == 1 else centered
+            return Covariate(
+                time=self.time.copy(),
+                data=data,
+                name=self.name,
+                units=self.units,
+                labels=self.labels.copy(),
+                conf_interval=None,
+                x_label=self.x_label,
+                y_label=self.y_label,
+                x_units=self.x_units,
+                y_units=self.y_units,
+                plot_props=dict(self.plot_props),
+            )
+        raise ValueError("repType must be either 'zero-mean' or 'standard'")
 
     def dataToStructure(self) -> dict[str, Any]:
-        return self.to_structure()
+        return self.toStructure()
 
     def toStructure(self) -> dict[str, Any]:
-        return self.to_structure()
+        mat = self.data_to_matrix()
+        n_channels = int(mat.shape[1])
+        out: dict[str, Any] = {
+            "time": self.time.copy(),
+            "signals": {
+                "values": mat.copy(),
+                "dimensions": np.array([mat.shape[0], n_channels], dtype=float),
+            },
+            "name": self.name,
+            "dimension": n_channels,
+            "minTime": float(self.time.min()) if self.time.size else 0.0,
+            "maxTime": float(self.time.max()) if self.time.size else 0.0,
+            "xlabelval": self.x_label,
+            "xunits": self.x_units,
+            "yunits": self.y_units,
+            "dataLabels": list(self.labels),
+            "dataMask": list(np.ones(n_channels, dtype=int)),
+            "sampleRate": float(self.sample_rate_hz),
+            "plotProps": [],
+        }
+        ci_list = self._as_ci_list(self.conf_interval)
+        if ci_list:
+            if len(ci_list) == 1:
+                out["ci"] = ci_list[0].to_structure()
+            else:
+                out["ci"] = [ci.to_structure() for ci in ci_list]
+        return out
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _Covariate:
-        out = _Covariate.from_structure(payload)
+        structure = Covariate._to_dict(payload)
+        if "signals" in structure:
+            sig = structure["signals"]
+            if isinstance(sig, dict):
+                values = np.asarray(sig["values"], dtype=float)
+            elif hasattr(sig, "values"):
+                values = np.asarray(getattr(sig, "values"), dtype=float)
+            else:
+                sig_arr = np.asarray(sig, dtype=object)
+                if sig_arr.size != 1:
+                    raise ValueError("signals payload must be scalar struct-like")
+                s0 = sig_arr.reshape(-1)[0]
+                if hasattr(s0, "values"):
+                    values = np.asarray(getattr(s0, "values"), dtype=float)
+                elif isinstance(s0, dict):
+                    values = np.asarray(s0["values"], dtype=float)
+                else:
+                    raise ValueError("Unsupported signals payload")
+        else:
+            values = np.asarray(structure["data"], dtype=float)
+
+        if values.ndim == 2 and values.shape[1] == 1:
+            data: np.ndarray = values[:, 0]
+            n_channels = 1
+        else:
+            data = values
+            n_channels = int(np.asarray(values).shape[1]) if np.asarray(values).ndim == 2 else 1
+
+        name = Covariate._text(structure.get("name", "covariate"), "covariate")
+        labels = Covariate._normalize_labels(structure.get("dataLabels", structure.get("labels")), name, n_channels)
+        units = Covariate._text(structure.get("units", structure.get("yunits", "")), "")
+        x_label = Covariate._text(structure.get("x_label", structure.get("xlabelval", "time")), "time")
+        x_units = Covariate._text(structure.get("x_units", structure.get("xunits", "")), "")
+        y_units = Covariate._text(structure.get("y_units", structure.get("yunits", "")), "")
+
+        ci_list: list[_ConfidenceInterval] = []
+        if "ci" in structure and structure["ci"] is not None:
+            raw_ci = structure["ci"]
+            if isinstance(raw_ci, _ConfidenceInterval):
+                ci_list = [raw_ci]
+            elif isinstance(raw_ci, dict) or hasattr(raw_ci, "_fieldnames"):
+                ci_list = [ConfidenceInterval.fromStructure(Covariate._to_dict(raw_ci))]
+            else:
+                ci_arr = np.asarray(raw_ci, dtype=object).reshape(-1)
+                for entry in ci_arr:
+                    if entry is None:
+                        continue
+                    if isinstance(entry, _ConfidenceInterval):
+                        ci_list.append(entry)
+                    else:
+                        ci_list.append(ConfidenceInterval.fromStructure(Covariate._to_dict(entry)))
+
         return Covariate(
-            time=out.time,
-            data=out.data,
-            name=out.name,
-            units=out.units,
-            labels=out.labels,
-            conf_interval=out.conf_interval,
-            x_label=out.x_label,
-            y_label=out.y_label,
-            x_units=out.x_units,
-            y_units=out.y_units,
-            plot_props=out.plot_props,
+            time=np.asarray(structure["time"], dtype=float).reshape(-1),
+            data=data,
+            name=name,
+            units=units,
+            labels=labels,
+            conf_interval=ci_list if ci_list else None,
+            x_label=x_label,
+            y_label=Covariate._text(structure.get("y_label"), ""),
+            x_units=x_units,
+            y_units=y_units,
+            plot_props={},
         )
 
     def getData(self) -> np.ndarray:
@@ -740,15 +1104,35 @@ class Covariate(_Covariate):
     def getSampleRate(self) -> float:
         return self.sample_rate_hz
 
+    def dataToMatrix(self) -> np.ndarray:
+        return self.data_to_matrix()
+
+    def filtfilt(self, b: np.ndarray, a: np.ndarray) -> _Covariate:
+        out = super().filtfilt(np.asarray(b, dtype=float), np.asarray(a, dtype=float))
+        return Covariate(
+            time=out.time,
+            data=out.data,
+            name=out.name,
+            units=out.units,
+            labels=out.labels,
+            conf_interval=self._as_ci_list(self.conf_interval),
+            x_label=out.x_label,
+            y_label=out.y_label,
+            x_units=out.x_units,
+            y_units=out.y_units,
+            plot_props=out.plot_props,
+        )
+
     def copySignal(self) -> _Covariate:
         out = super().copy_signal()
+        ci_list = self._as_ci_list(self.conf_interval)
         return Covariate(
             time=out.time,
             data=out.data,
             name=out.name,
             units=out.units,
             labels=self.labels.copy(),
-            conf_interval=self.conf_interval,
+            conf_interval=ci_list.copy() if ci_list else None,
             x_label=out.x_label,
             y_label=out.y_label,
             x_units=out.x_units,
@@ -764,19 +1148,41 @@ class Covariate(_Covariate):
         lhs = self.data_to_matrix()
         out = lhs + rhs
         data = out[:, 0] if out.ndim == 2 and out.shape[1] == 1 else out
-        return Covariate(
+        out_cov = Covariate(
             time=self.time.copy(),
             data=data,
             name=f"{self.name}+",
             units=self.units,
             labels=self.labels.copy(),
-            conf_interval=self.conf_interval,
+            conf_interval=self._as_ci_list(self.conf_interval),
             x_label=self.x_label,
             y_label=self.y_label,
             x_units=self.x_units,
             y_units=self.y_units,
             plot_props=dict(self.plot_props),
         )
+        if isinstance(other, Covariate):
+            lhs_ci = self._as_ci_list(self.conf_interval)
+            rhs_ci = self._as_ci_list(other.conf_interval)
+            temp_ci: list[_ConfidenceInterval] = []
+            if lhs_ci and not rhs_ci:
+                for i in range(self.n_channels):
+                    ci = lhs_ci[i] if i < len(lhs_ci) else lhs_ci[0]
+                    temp_ci.append(self._ci_add(ci, other.getSubSignal(i + 1)))
+            elif lhs_ci and rhs_ci:
+                for i in range(self.n_channels):
+                    lci = lhs_ci[i] if i < len(lhs_ci) else lhs_ci[0]
+                    rci = rhs_ci[i] if i < len(rhs_ci) else rhs_ci[0]
+                    temp_ci.append(self._ci_add(lci, rci))
+            elif (not lhs_ci) and rhs_ci:
+                for i in range(other.n_channels):
+                    rci = rhs_ci[i] if i < len(rhs_ci) else rhs_ci[0]
+                    temp_ci.append(self._ci_add(rci, self.getSubSignal(i + 1)))
+            if temp_ci:
+                out_cov.setConfInterval(temp_ci)
+            else:
+                out_cov.set_conf_interval(None)
+        return out_cov
 
     def minus(self, other: float | np.ndarray | _Signal) -> _Covariate:
         if isinstance(other, _Signal):
@@ -786,24 +1192,54 @@ class Covariate(_Covariate):
         lhs = self.data_to_matrix()
         out = lhs - rhs
         data = out[:, 0] if out.ndim == 2 and out.shape[1] == 1 else out
-        return Covariate(
+        out_cov = Covariate(
             time=self.time.copy(),
             data=data,
             name=f"{self.name}-",
             units=self.units,
             labels=self.labels.copy(),
-            conf_interval=self.conf_interval,
+            conf_interval=self._as_ci_list(self.conf_interval),
             x_label=self.x_label,
             y_label=self.y_label,
             x_units=self.x_units,
             y_units=self.y_units,
             plot_props=dict(self.plot_props),
         )
+        if isinstance(other, Covariate):
+            lhs_ci = self._as_ci_list(self.conf_interval)
+            rhs_ci = self._as_ci_list(other.conf_interval)
+            temp_ci: list[_ConfidenceInterval] = []
+            if lhs_ci and not rhs_ci:
+                for i in range(self.n_channels):
+                    ci = lhs_ci[i] if i < len(lhs_ci) else lhs_ci[0]
+                    temp_ci.append(self._ci_sub(ci, other.getSubSignal(i + 1)))
+            elif lhs_ci and rhs_ci:
+                for i in range(self.n_channels):
+                    lci = lhs_ci[i] if i < len(lhs_ci) else lhs_ci[0]
+                    rci = rhs_ci[i] if i < len(rhs_ci) else rhs_ci[0]
+                    temp_ci.append(self._ci_sub(lci, rci))
+            elif (not lhs_ci) and rhs_ci:
+                for i in range(other.n_channels):
+                    rci = rhs_ci[i] if i < len(rhs_ci) else rhs_ci[0]
+                    temp_ci.append(self._ci_add(self._ci_neg(rci), self.getSubSignal(i + 1)))
+            if temp_ci:
+                out_cov.setConfInterval(temp_ci)
+            else:
+                out_cov.set_conf_interval(None)
+        return out_cov
 
     def plot(self, *_args: Any, **_kwargs: Any) -> Any:
         import matplotlib.pyplot as plt
 
-        return plt.plot(self.time, self.data_to_matrix())
+        handles = plt.plot(self.time, self.data_to_matrix())
+        ci_list = self._as_ci_list(self.conf_interval)
+        if ci_list:
+            for i, ci in enumerate(ci_list):
+                color = "k"
+                if i < len(handles):
+                    color = handles[i].get_color()
+                ConfidenceInterval.plot(cast(ConfidenceInterval, ci), color=color)
+        return handles
 
 
 class ConfidenceInterval(_ConfidenceInterval):
