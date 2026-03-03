@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
 
       - uses: actions/setup-python@v5
         with:
@@ -32,6 +32,10 @@ jobs:
       - name: Prepare deterministic validation images
         run: |
           python tools/parity/prepare_validation_images.py
+
+      - name: Run class-level MATLAB parity tests
+        run: |
+          pytest -q tests/test_*_matlab_parity.py
 
       - name: Build parity snapshot and enforce gates
         run: |

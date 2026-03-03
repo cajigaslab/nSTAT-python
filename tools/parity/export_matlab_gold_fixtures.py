@@ -614,9 +614,11 @@ def main() -> int:
         path = out_dir / file_name
         if not path.exists():
             raise FileNotFoundError(f"expected fixture missing: {path}")
+        topic = file_name.replace("_gold.mat", "")
         fixtures.append(
             {
-                "name": file_name.replace("_gold.mat", ""),
+                "name": f"{topic}_numeric",
+                "topic": topic,
                 "path": str(path.relative_to(repo_root).as_posix()),
                 "sha256": _sha256(path),
                 "source": "matlab_batch_export",
@@ -626,8 +628,7 @@ def main() -> int:
 
     required_topics = _load_required_topics(notebook_manifest)
     topic_rows = _load_equivalence_rows(equivalence_report)
-    covered_numeric_topics = {row["name"] for row in fixtures}
-    audit_topics = sorted(topic for topic in required_topics if topic not in covered_numeric_topics)
+    audit_topics = sorted(required_topics)
     for topic in audit_topics:
         row = topic_rows.get(topic)
         if row is None:
@@ -649,7 +650,8 @@ def main() -> int:
         audit_path.write_text(json.dumps(audit_payload, indent=2) + "\n", encoding="utf-8")
         fixtures.append(
             {
-                "name": topic,
+                "name": f"{topic}_topic_audit",
+                "topic": topic,
                 "path": str(audit_path.relative_to(repo_root).as_posix()),
                 "sha256": _sha256(audit_path),
                 "source": "equivalence_audit_export",

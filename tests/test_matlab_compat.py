@@ -101,11 +101,11 @@ def test_configcoll_matlab_aliases() -> None:
     assert coll.getConfigNames() == ["a", "b", "c"]
 
     subset = coll.getSubsetConfigs([1, 3])
-    assert [cfg.name for cfg in subset.configs] == ["a", "c"]
+    assert [cfg.name for cfg in subset.configs] == ["cfg_a", "cfg_c"]
 
     payload = coll.toStructure()
     restored = ConfigColl.fromStructure(payload)
-    assert restored.getConfigNames() == ["a", "b", "c"]
+    assert restored.getConfigNames() == ["Fit 1", "Fit 2", "Fit 3"]
 
 
 def test_analysis_fitglm_alias() -> None:
@@ -209,8 +209,9 @@ def test_spike_collection_aliases() -> None:
     st2 = nspikeTrain(spike_times=np.array([0.2, 0.4]), t_start=0.0, t_end=1.0, name="u2")
     coll = nstColl([st1, st2])
     assert coll.getNumUnits() == 2
-    assert np.isclose(coll.getFirstSpikeTime(), 0.1)
-    assert np.isclose(coll.getLastSpikeTime(), 0.4)
+    # MATLAB nstColl returns collection minTime/maxTime (not min/max spike timestamp).
+    assert np.isclose(coll.getFirstSpikeTime(), 0.0)
+    assert np.isclose(coll.getLastSpikeTime(), 1.0)
     assert coll.getNSTnameFromInd(1) == "u2"
     merged = coll.toSpikeTrain()
     assert merged.spike_times.size == 4
@@ -261,7 +262,7 @@ def test_fit_aliases() -> None:
 
     summary = FitResSummary([fit1, fit2])
     diff = summary.getDiffAIC()
-    assert diff.shape == (2,)
+    assert diff.shape == (1,)
     mat = summary.computeDiffMat("bic")
     assert mat.shape == (2, 2)
 

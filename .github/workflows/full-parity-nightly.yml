@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
 
       - uses: actions/setup-python@v5
         with:
@@ -33,6 +33,10 @@ jobs:
       - name: Prepare deterministic validation images
         run: |
           python tools/parity/prepare_validation_images.py
+
+      - name: Run class-level MATLAB parity tests
+        run: |
+          pytest -q tests/test_*_matlab_parity.py
 
       - name: Run full parity and notebook gates
         run: |
@@ -60,7 +64,10 @@ jobs:
             --notebook-group all \
             --timeout 900 \
             --skip-command-tests \
-            --parity-mode gate
+            --parity-mode gate \
+            --enforce-unique-images \
+            --min-unique-images-per-topic 1 \
+            --max-cross-topic-reuse-ratio 1.0
 
       - name: Enforce visual validation gate
         run: |

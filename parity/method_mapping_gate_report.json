@@ -1,0 +1,235 @@
+{
+  "class_rows": [
+    {
+      "considered_method_count": 98,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 98,
+      "excluded_method_count": 0,
+      "matlab_class": "SignalObj",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "copy",
+        "getDuration",
+        "getName",
+        "getNumSamples",
+        "getNumSignals",
+        "getSampleRate"
+      ]
+    },
+    {
+      "considered_method_count": 14,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 14,
+      "excluded_method_count": 0,
+      "matlab_class": "Covariate",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "getData",
+        "getLabels",
+        "getNumSignals",
+        "getSampleRate",
+        "getTime"
+      ]
+    },
+    {
+      "considered_method_count": 5,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 5,
+      "excluded_method_count": 0,
+      "matlab_class": "ConfidenceInterval",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "contains",
+        "getWidth"
+      ]
+    },
+    {
+      "considered_method_count": 5,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 5,
+      "excluded_method_count": 0,
+      "matlab_class": "Events",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "getTimes",
+        "subset"
+      ]
+    },
+    {
+      "considered_method_count": 8,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 8,
+      "excluded_method_count": 0,
+      "matlab_class": "History",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "getDesignMatrix",
+        "getNumBins"
+      ]
+    },
+    {
+      "considered_method_count": 29,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 29,
+      "excluded_method_count": 0,
+      "matlab_class": "nspikeTrain",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "binCounts",
+        "binarize",
+        "getDuration",
+        "getFiringRate"
+      ]
+    },
+    {
+      "considered_method_count": 53,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 53,
+      "excluded_method_count": 0,
+      "matlab_class": "nstColl",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "getBinnedMatrix",
+        "getNumUnits"
+      ]
+    },
+    {
+      "considered_method_count": 55,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 55,
+      "excluded_method_count": 0,
+      "matlab_class": "CovColl",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "getDesignMatrix",
+        "getTime"
+      ]
+    },
+    {
+      "considered_method_count": 6,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 6,
+      "excluded_method_count": 0,
+      "matlab_class": "TrialConfig",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "getCovariateLabels",
+        "getFitType",
+        "getSampleRate"
+      ]
+    },
+    {
+      "considered_method_count": 9,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 9,
+      "excluded_method_count": 0,
+      "matlab_class": "ConfigColl",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "getConfigs"
+      ]
+    },
+    {
+      "considered_method_count": 68,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 68,
+      "excluded_method_count": 0,
+      "matlab_class": "Trial",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "getAlignedBinnedObservation"
+      ]
+    },
+    {
+      "considered_method_count": 21,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 21,
+      "excluded_method_count": 0,
+      "matlab_class": "CIF",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "computeLinearPredictor",
+        "evalLambda",
+        "logLikelihood",
+        "simulateByThinning"
+      ]
+    },
+    {
+      "considered_method_count": 22,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 22,
+      "excluded_method_count": 0,
+      "matlab_class": "Analysis",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "fitGLM",
+        "fitTrial"
+      ]
+    },
+    {
+      "considered_method_count": 33,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 33,
+      "excluded_method_count": 0,
+      "matlab_class": "FitResult",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "asCIFModel",
+        "getAIC",
+        "getBIC"
+      ]
+    },
+    {
+      "considered_method_count": 30,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 30,
+      "excluded_method_count": 0,
+      "matlab_class": "FitResSummary",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "bestByAIC",
+        "bestByBIC"
+      ]
+    },
+    {
+      "considered_method_count": 24,
+      "coverage_ratio": 1.0,
+      "covered_method_count": 24,
+      "excluded_method_count": 21,
+      "matlab_class": "DecodingAlgorithms",
+      "missing_method_count": 0,
+      "missing_methods": [],
+      "stale_alias_methods": [
+        "decodeStatePosterior",
+        "decodeWeightedCenter"
+      ]
+    }
+  ],
+  "generated_at_utc": "2026-03-03T00:23:41.899221+00:00",
+  "matlab_inventory": "/private/tmp/nstat_python_work_20260302/parity/matlab_api_inventory.json",
+  "method_exclusions": "/private/tmp/nstat_python_work_20260302/parity/method_exclusions.yml",
+  "method_mapping": "/private/tmp/nstat_python_work_20260302/parity/method_mapping.yaml",
+  "python_inventory": "/private/tmp/nstat_python_work_20260302/parity/python_api_inventory.json",
+  "summary": {
+    "classes_with_missing_methods": 0,
+    "overall_coverage_ratio": 1.0,
+    "total_classes": 16,
+    "total_considered_methods": 480,
+    "total_missing_methods": 0
+  }
+}

@@ -231,6 +231,7 @@ def generate_parity_dashboard(help_root: Path, repo_root: Path) -> None:
     gap = _read_json(parity_root / "parity_gap_report.json").get("summary", {})
     functional = _read_json(parity_root / "function_example_alignment_report.json")
     numeric = _read_json(parity_root / "numeric_drift_report.json").get("summary", {})
+    line_review = _read_json(parity_root / "line_by_line_review_report.json").get("summary", {})
     example_spec = _read_yaml(parity_root / "example_output_spec.yml")
     snapshot_path = _latest_snapshot(parity_root)
     snapshot = _read_yaml(snapshot_path) if snapshot_path is not None else {}
@@ -295,6 +296,16 @@ artifacts in the `parity/` directory.
 | Metrics checked | {int(numeric.get("checked_metrics", 0))} |
 | Metrics failed | {int(numeric.get("failed_metrics", 0))} |
 
+## Line-by-line review
+| Metric | Value |
+|---|---:|
+| Topics reviewed | {int(line_review.get("total_topics", 0))} |
+| Aligned topics | {int(line_review.get("aligned_topics", 0))} |
+| Partially aligned topics | {int(line_review.get("partially_aligned_topics", 0))} |
+| Needs review topics | {int(line_review.get("needs_review_topics", 0))} |
+| Missing artifact topics | {int(line_review.get("missing_artifact_topics", 0))} |
+| Average line alignment ratio | {float(line_review.get("average_line_alignment_ratio", 0.0)):.3f} |
+
 ## Frozen MATLAB data snapshot
 | Metric | Value |
 |---|---|
@@ -309,6 +320,8 @@ artifacts in the `parity/` directory.
 - [parity_gap_report.json]({REPO_PARITY_BASE}/parity_gap_report.json)
 - [function_example_alignment_report.json]({REPO_PARITY_BASE}/function_example_alignment_report.json)
 - [numeric_drift_report.json]({REPO_PARITY_BASE}/numeric_drift_report.json)
+- [line_by_line_review_report.json]({REPO_PARITY_BASE}/line_by_line_review_report.json)
+- [line_by_line_review.md]({REPO_PARITY_BASE}/line_by_line_review.md)
 - [example_output_spec.yml]({REPO_PARITY_BASE}/example_output_spec.yml)
 - [method_closure_sprint.md]({REPO_PARITY_BASE}/method_closure_sprint.md)
 - [Full validation report PDF](../assets/reports/nstat_python_validation_report_full_latest.pdf)

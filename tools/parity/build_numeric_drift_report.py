@@ -89,11 +89,13 @@ def _detect_mepsc_events(trace: np.ndarray, dt: float) -> tuple[np.ndarray, np.n
     return det * dt, -trace[det]
 
 
-def _fixture_manifest_index(fixtures_manifest: Path) -> dict[str, dict]:
+def _fixture_manifest_index(fixtures_manifest: Path) -> dict[str, dict[str, Path]]:
     payload = yaml.safe_load(fixtures_manifest.read_text(encoding="utf-8"))
-    out: dict[str, dict] = {}
+    out: dict[str, dict[str, Path]] = {}
     for row in payload.get("fixtures", []):
-        topic = str(row["name"])
+        topic = str(row.get("topic", row.get("name", ""))).strip()
+        if not topic:
+            continue
         path = Path(row["path"])
         fixture_type = str(row.get("fixture_type", "")).strip()
         if not fixture_type:
@@ -103,7 +105,8 @@ def _fixture_manifest_index(fixtures_manifest: Path) -> dict[str, dict]:
                 fixture_type = "numeric"
             else:
                 fixture_type = "unknown"
-        out[topic] = {"path": path, "fixture_type": fixture_type}
+        by_type = out.setdefault(topic, {})
+        by_type[fixture_type] = path
     return out
 
 
@@ -131,7 +134,7 @@ def _ratio(value: float, threshold: float) -> float:
     return value / threshold
 
 
-def _numeric_fixture_paths(fixture_index: dict[str, dict]) -> dict[str, Path]:
+def _numeric_fixture_paths(fixture_index: dict[str, dict[str, Path]]) -> dict[str, Path]:
     required = [
         "PPSimExample",
         "DecodingExampleWithHist",
@@ -149,21 +152,20 @@ def _numeric_fixture_paths(fixture_index: dict[str, dict]) -> dict[str, Path]:
     ]
     out: dict[str, Path] = {}
     for topic in required:
-        row = fixture_index.get(topic)
-        if row is None:
+        row = fixture_index.get(topic, {})
+        numeric_path = row.get("numeric")
+        if numeric_path is None:
             continue
-        if str(row.get("fixture_type", "")) != "numeric":
-            continue
-        out[f"{topic}_gold.mat"] = Path(row["path"])
+        out[f"{topic}_gold.mat"] = Path(numeric_path)
     return out
 
 
-def _topic_audit_fixtures(fixture_index: dict[str, dict]) -> dict[str, dict]:
+def _topic_audit_fixtures(fixture_index: dict[str, dict[str, Path]]) -> dict[str, dict]:
     out: dict[str, dict] = {}
     for topic, row in fixture_index.items():
-        if str(row.get("fixture_type", "")) != "topic_audit":
+        fixture_path = row.get("topic_audit")
+        if fixture_path is None:
             continue
-        fixture_path = Path(row["path"])
         payload = json.loads(fixture_path.read_text(encoding="utf-8"))
         out[topic] = payload
     return out
@@ -550,6 +552,11 @@ def main() -> int:
         metrics[topic] = merged
 
     required_topics = _load_required_topics(notebook_manifest)
+    for topic in required_topics:
+        merged = dict(metrics.get(topic, {}))
+        merged["topic_audit_fixture_missing_error"] = 0.0 if topic in topic_audit_fixtures else 1.0
+        metrics[topic] = merged
+
     thresholds_payload = yaml.safe_load(thresholds_file.read_text(encoding="utf-8")) or {}
     report = _build_report(metrics, thresholds_payload, fixtures_manifest, thresholds_file, required_topics)
 

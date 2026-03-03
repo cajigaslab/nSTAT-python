@@ -512,7 +512,7 @@
         "fields": [
           "trains"
         ],
-        "method_count": 72,
+        "method_count": 73,
         "methods": [
           "BinarySigRep",
           "addNeuronNamesToEnsCovColl",
@@ -561,6 +561,7 @@
           "isNeuronMaskSet",
           "isSigRepBinary",
           "merge",
+          "nstColl",
           "plot",
           "plotExponentialFit",
           "plotISIHistogram",
@@ -1335,6 +1336,6 @@
       "python_class": "nstat.decoding.DecodingAlgorithms"
     }
   ],
-  "generated_at_utc": "2026-03-02T18:50:20.498817+00:00",
-  "python_root": "/private/tmp/nSTAT-python-cleanroom"
+  "generated_at_utc": "2026-03-03T00:23:41.769413+00:00",
+  "python_root": "/private/tmp/nstat_python_work_20260302"
 }

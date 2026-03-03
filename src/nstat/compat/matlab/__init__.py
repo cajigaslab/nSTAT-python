@@ -29,6 +29,34 @@ from ...trial import Trial as _Trial
 from ...trial import TrialConfig as _TrialConfig
 
 
+def _is_empty_like(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, (str, bytes)):
+        return False
+    if isinstance(value, (list, tuple, dict, set)):
+        return len(value) == 0
+    if isinstance(value, np.ndarray):
+        return value.size == 0
+    return False
+
+
+def _to_python_cell(value: Any) -> Any:
+    if isinstance(value, np.ndarray):
+        if value.dtype == object:
+            return [_to_python_cell(v) for v in value.reshape(-1)]
+        if value.ndim == 0:
+            return value.item()
+        if value.size == 1:
+            return value.reshape(-1)[0].item() if hasattr(value.reshape(-1)[0], "item") else value.reshape(-1)[0]
+        return value.tolist()
+    if isinstance(value, list):
+        return [_to_python_cell(v) for v in value]
+    if isinstance(value, tuple):
+        return [_to_python_cell(v) for v in value]
+    return value
+
+
 class SignalObj(_Signal):
     def _ensure_signalobj_state(self) -> None:
         if not hasattr(self, "_original_time"):
@@ -98,22 +126,37 @@ class SignalObj(_Signal):
         self.shift_time(offset_s)
         return self
 
-    def alignTime(self, newZero: float = 0.0) -> "SignalObj":
-        self.align_time(newZero)
+    def alignTime(self, timeMarker: float = 0.0, newTime: float | None = None) -> "SignalObj":
+        # MATLAB signature: alignTime(sObj, timeMarker, newTime).
+        # Backward-compatible fallback: alignTime(newZero) shifts first sample.
+        if newTime is None:
+            self.align_time(timeMarker)
+            return self
+        marker = float(timeMarker)
+        target = float(newTime)
+        if self.time[0] <= marker <= self.time[-1]:
+            self.shiftTime(target - marker)
         return self
 
     def derivative(self) -> "SignalObj":
-        out = super().derivative()
+        # MATLAB implementation uses forward differences with a leading zero row.
+        mat = self.data_to_matrix()
+        diff_data = np.diff(mat, axis=0) * float(self.sample_rate_hz)
+        deriv = np.vstack([np.zeros((1, mat.shape[1]), dtype=float), diff_data])
+        if deriv.shape[1] == 1:
+            deriv_out: np.ndarray = deriv[:, 0]
+        else:
+            deriv_out = deriv
         return SignalObj(
-            time=out.time,
-            data=out.data,
-            name=out.name,
-            units=out.units,
-            x_label=out.x_label,
-            y_label=out.y_label,
-            x_units=out.x_units,
-            y_units=out.y_units,
-            plot_props=out.plot_props,
+            time=self.time.copy(),
+            data=deriv_out,
+            name=self.name,
+            units=self.units,
+            x_label=self.x_label,
+            y_label=self.y_label,
+            x_units=self.x_units,
+            y_units=self.y_units,
+            plot_props=dict(self.plot_props),
         )
 
     def integral(self) -> np.ndarray:
@@ -136,22 +179,70 @@ class SignalObj(_Signal):
             plot_props=out.plot_props,
         )
 
-    def merge(self, other: _Signal) -> "SignalObj":
-        out = super().merge(other)
-        return SignalObj(
-            time=out.time,
-            data=out.data,
-            name=out.name,
-            units=out.units,
-            x_label=out.x_label,
-            y_label=out.y_label,
-            x_units=out.x_units,
-            y_units=out.y_units,
-            plot_props=out.plot_props,
-        )
+    def merge(self, *args: Any) -> "SignalObj":
+        if not args:
+            raise ValueError("merge expects at least one signal")
+        signals: list[_Signal] = []
+        for idx, arg in enumerate(args):
+            if isinstance(arg, (int, float)) and idx == len(args) - 1:
+                # MATLAB supports optional holdVals argument.
+                continue
+            if not isinstance(arg, _Signal):
+                raise ValueError("merge expects SignalObj arguments")
+            signals.append(arg)
+        if not signals:
+            raise ValueError("merge expects at least one signal")
+
+        merged: SignalObj = self
+        for other in signals:
+            lhs_c, rhs_c = merged.makeCompatible(other)
+            data = np.hstack([lhs_c.dataToMatrix(), rhs_c.dataToMatrix()])
+            merged = SignalObj(
+                time=lhs_c.time.copy(),
+                data=data,
+                name=lhs_c.name,
+                units=lhs_c.units,
+                x_label=lhs_c.x_label,
+                y_label=lhs_c.y_label,
+                x_units=lhs_c.x_units,
+                y_units=lhs_c.y_units,
+                plot_props=dict(lhs_c.plot_props),
+            )
+        return merged
 
     def resample(self, sampleRate: float) -> "SignalObj":
-        out = super().resample(sampleRate)
+        from scipy.interpolate import CubicSpline
+
+        sample_rate = float(sampleRate)
+        if sample_rate <= 0.0:
+            raise ValueError("sampleRate must be positive")
+        if np.isclose(sample_rate, self.sample_rate_hz):
+            return self.copySignal()
+        dt = 1.0 / sample_rate
+        t_new = np.arange(self.time[0], self.time[-1] + 0.5 * dt, dt, dtype=float)
+        mat = self.data_to_matrix()
+        y_new = np.zeros((t_new.size, mat.shape[1]), dtype=float)
+        for idx in range(mat.shape[1]):
+            spline = CubicSpline(self.time, mat[:, idx], extrapolate=False)
+            vals = spline(t_new)
+            vals = np.asarray(vals, dtype=float)
+            vals[~np.isfinite(vals)] = 0.0
+            y_new[:, idx] = vals
+        if y_new.shape[1] == 1:
+            out_data: np.ndarray = y_new[:, 0]
+        else:
+            out_data = y_new
+        out = SignalObj(
+            time=t_new,
+            data=out_data,
+            name=self.name,
+            units=self.units,
+            x_label=self.x_label,
+            y_label=self.y_label,
+            x_units=self.x_units,
+            y_units=self.y_units,
+            plot_props=dict(self.plot_props),
+        )
         return SignalObj(
             time=out.time,
             data=out.data,
@@ -210,16 +301,46 @@ class SignalObj(_Signal):
 
     @staticmethod
     def signalFromStruct(payload: dict[str, Any]) -> "SignalObj":
+        def _text(value: Any, default: str = "") -> str:
+            if value is None:
+                return default
+            arr = np.asarray(value, dtype=object)
+            if arr.size == 1:
+                return str(arr.reshape(-1)[0])
+            return str(value)
+
+        if hasattr(payload, "_fieldnames"):
+            payload = {name: getattr(payload, name) for name in payload._fieldnames}
+        if "signals" in payload:
+            signals = payload["signals"]
+            if hasattr(signals, "_fieldnames"):
+                values = np.asarray(getattr(signals, "values"), dtype=float)
+            else:
+                arr = np.asarray(signals, dtype=object)
+                if arr.size == 1 and hasattr(arr.reshape(-1)[0], "_fieldnames"):
+                    values = np.asarray(getattr(arr.reshape(-1)[0], "values"), dtype=float)
+                elif isinstance(signals, dict):
+                    values = np.asarray(signals["values"], dtype=float)
+                else:
+                    raise ValueError("Unsupported signals structure payload")
+            data_values = values
+        else:
+            data_values = np.asarray(payload["data"], dtype=float)
+        plot_props_raw = payload.get("plot_props", payload.get("plotProps", {}))
+        if isinstance(plot_props_raw, dict):
+            plot_props = dict(plot_props_raw)
+        else:
+            plot_props = {}
         return SignalObj(
-            time=np.asarray(payload["time"], dtype=float),
-            data=np.asarray(payload["data"], dtype=float),
-            name=str(payload.get("name", "signal")),
-            units=str(payload.get("units", "")),
-            x_label=payload.get("x_label"),
+            time=np.asarray(payload["time"], dtype=float).reshape(-1),
+            data=data_values,
+            name=_text(payload.get("name", "signal"), "signal"),
+            units=_text(payload.get("units", ""), ""),
+            x_label=_text(payload.get("x_label", payload.get("xlabelval")), "time"),
             y_label=payload.get("y_label"),
-            x_units=payload.get("x_units"),
-            y_units=payload.get("y_units"),
-            plot_props=dict(payload.get("plot_props", {})),
+            x_units=_text(payload.get("x_units", payload.get("xunits")), ""),
+            y_units=_text(payload.get("y_units", payload.get("yunits")), ""),
+            plot_props=plot_props,
         )
 
     @staticmethod
@@ -305,7 +426,9 @@ class SignalObj(_Signal):
         return self.setSampleRate(sampleRate)
 
     def shift(self, offset_s: float) -> "SignalObj":
-        return self.shiftTime(offset_s)
+        out = self.copySignal()
+        out.shiftTime(offset_s)
+        return out
 
     def shiftMe(self, offset_s: float) -> "SignalObj":
         return self.shiftTime(offset_s)
@@ -579,7 +702,9 @@ class SignalObj(_Signal):
 
         fs = float(self.sample_rate_hz)
         mat = self.data_to_matrix()
-        f, t, s = spectrogram(mat[:, 0], fs=fs)
+        x = np.asarray(mat[:, 0], dtype=float).reshape(-1)
+        nperseg = min(256, max(1, x.size))
+        f, t, s = spectrogram(x, fs=fs, nperseg=nperseg)
         return np.asarray(f, dtype=float), np.asarray(t, dtype=float), np.asarray(s, dtype=float)
 
     def _crosscorr_core(
@@ -673,18 +798,186 @@ class Covariate(_Covariate):
     def Covariate(payload: dict[str, Any]) -> _Covariate:
         return Covariate.fromStructure(payload)
 
-    def computeMeanPlusCI(self, axis: int = 1, level: float = 0.95) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return self.compute_mean_plus_ci(axis=axis, level=level)
+    @staticmethod
+    def _text(value: Any, default: str = "") -> str:
+        if value is None:
+            return default
+        arr = np.asarray(value, dtype=object)
+        if arr.size == 1:
+            return str(arr.reshape(-1)[0])
+        return str(value)
+
+    @staticmethod
+    def _to_dict(payload: Any) -> dict[str, Any]:
+        if isinstance(payload, dict):
+            return payload
+        if hasattr(payload, "_fieldnames"):
+            return {name: getattr(payload, name) for name in payload._fieldnames}
+        arr = np.asarray(payload, dtype=object)
+        if arr.size == 1 and hasattr(arr.reshape(-1)[0], "_fieldnames"):
+            s0 = arr.reshape(-1)[0]
+            return {name: getattr(s0, name) for name in s0._fieldnames}
+        raise ValueError("Unsupported structure payload")
+
+    @staticmethod
+    def _normalize_labels(raw: Any, fallback_name: str, n_channels: int) -> list[str]:
+        if raw is None:
+            raw_labels: list[str] = []
+        else:
+            arr = np.asarray(raw, dtype=object).reshape(-1)
+            raw_labels = [str(v) for v in arr if str(v) != ""]
+        if raw_labels and len(raw_labels) == n_channels:
+            return raw_labels
+        if n_channels == 1:
+            return [fallback_name]
+        return [f"{fallback_name}_{i}" for i in range(n_channels)]
+
+    @staticmethod
+    def _selector_to_indices(selector: int | str | list[int] | list[str], n_channels: int, labels: list[str]) -> np.ndarray:
+        if isinstance(selector, str):
+            return np.asarray([labels.index(selector)], dtype=int)
+        if isinstance(selector, list) and selector and isinstance(selector[0], str):
+            return np.asarray([labels.index(str(item)) for item in selector], dtype=int)
+        idx = np.asarray(np.atleast_1d(selector), dtype=int).reshape(-1)
+        # MATLAB selectors are 1-based.
+        if idx.size and np.all(idx >= 1) and np.max(idx) <= n_channels:
+            idx = idx - 1
+        return idx
+
+    @staticmethod
+    def _as_ci_list(interval: Any) -> list[_ConfidenceInterval]:
+        if interval is None:
+            return []
+        if isinstance(interval, _ConfidenceInterval):
+            return [interval]
+        if isinstance(interval, list):
+            return [item for item in interval if isinstance(item, _ConfidenceInterval)]
+        if isinstance(interval, tuple):
+            return [item for item in list(interval) if isinstance(item, _ConfidenceInterval)]
+        return []
+
+    @staticmethod
+    def _ci_from_operand(operand: Any, ref_time: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        if isinstance(operand, _ConfidenceInterval):
+            return np.asarray(operand.lower, dtype=float), np.asarray(operand.upper, dtype=float)
+        if isinstance(operand, _Signal):
+            vec = np.asarray(operand.data_to_matrix(), dtype=float)[:, 0]
+            return vec, vec
+        arr = np.asarray(operand, dtype=float).reshape(-1)
+        if arr.size == 1:
+            vec = np.full(ref_time.size, float(arr.item()), dtype=float)
+        elif arr.size == ref_time.size:
+            vec = arr
+        else:
+            raise ValueError("Operand size incompatible with confidence interval length")
+        return vec, vec
+
+    @staticmethod
+    def _ci_add(ci: _ConfidenceInterval, operand: Any) -> _ConfidenceInterval:
+        lo_rhs, hi_rhs = Covariate._ci_from_operand(operand, np.asarray(ci.time, dtype=float))
+        return ConfidenceInterval(
+            time=np.asarray(ci.time, dtype=float),
+            lower=np.asarray(ci.lower, dtype=float) + lo_rhs,
+            upper=np.asarray(ci.upper, dtype=float) + hi_rhs,
+            level=float(getattr(ci, "level", 0.95)),
+            color=str(getattr(ci, "color", "b")),
+            value=getattr(ci, "value", getattr(ci, "level", 0.95)),
+        )
+
+    @staticmethod
+    def _ci_sub(ci: _ConfidenceInterval, operand: Any) -> _ConfidenceInterval:
+        lo_rhs, hi_rhs = Covariate._ci_from_operand(operand, np.asarray(ci.time, dtype=float))
+        return ConfidenceInterval(
+            time=np.asarray(ci.time, dtype=float),
+            lower=np.asarray(ci.lower, dtype=float) - lo_rhs,
+            upper=np.asarray(ci.upper, dtype=float) - hi_rhs,
+            level=float(getattr(ci, "level", 0.95)),
+            color=str(getattr(ci, "color", "b")),
+            value=getattr(ci, "value", getattr(ci, "level", 0.95)),
+        )
+
+    @staticmethod
+    def _ci_neg(ci: _ConfidenceInterval) -> _ConfidenceInterval:
+        # Keep interval ordering valid in Python while matching MATLAB arithmetic intent.
+        lower = -np.asarray(ci.upper, dtype=float)
+        upper = -np.asarray(ci.lower, dtype=float)
+        return ConfidenceInterval(
+            time=np.asarray(ci.time, dtype=float),
+            lower=lower,
+            upper=upper,
+            level=float(getattr(ci, "level", 0.95)),
+            color=str(getattr(ci, "color", "b")),
+            value=getattr(ci, "value", getattr(ci, "level", 0.95)),
+        )
+
+    @staticmethod
+    def _ecdf_quantiles(row: np.ndarray, alpha_val: float) -> tuple[float, float]:
+        alpha = float(alpha_val)
+        if row.size == 0:
+            return 0.0, 0.0
+        try:
+            lower = float(np.quantile(row, alpha / 2.0, method="lower"))
+            upper = float(np.quantile(row, 1.0 - alpha / 2.0, method="higher"))
+        except TypeError:
+            lower = float(np.quantile(row, alpha / 2.0, interpolation="lower"))
+            upper = float(np.quantile(row, 1.0 - alpha / 2.0, interpolation="higher"))
+        return lower, upper
+
+    def computeMeanPlusCI(self, alphaVal: float = 0.05) -> _Covariate:
+        mat = self.data_to_matrix()
+        cimat = np.zeros((mat.shape[0], 2), dtype=float)
+        for k in range(mat.shape[0]):
+            cimat[k, 0], cimat[k, 1] = self._ecdf_quantiles(mat[k, :], alphaVal)
+        mean_data = np.mean(mat, axis=1)
+        out = Covariate(
+            time=self.time.copy(),
+            data=mean_data,
+            name=f"\\mu({self.name})",
+            units=self.units,
+            labels=[f"\\mu({self.name})"],
+            conf_interval=None,
+            x_label=self.x_label,
+            y_label=self.y_label,
+            x_units=self.x_units,
+            y_units=self.y_units,
+            plot_props=dict(self.plot_props),
+        )
+        out.setConfInterval(
+            ConfidenceInterval(
+                time=self.time.copy(),
+                lower=cimat[:, 0],
+                upper=cimat[:, 1],
+                level=max(1.0e-12, 1.0 - float(alphaVal)),
+                color="b",
+                value=max(1.0e-12, 1.0 - float(alphaVal)),
+            )
+        )
+        return out
 
     def getSubSignal(self, selector: int | str | list[int] | list[str]) -> _Covariate:
-        out = super().get_sub_signal(selector)
+        idx = self._selector_to_indices(selector, self.n_channels, self.labels)
+        idx_sel: int | list[int]
+        if idx.size == 1:
+            idx_sel = int(idx[0])
+        else:
+            idx_sel = [int(v) for v in idx.tolist()]
+        out = super().get_sub_signal(idx_sel)
+        ci_list = self._as_ci_list(self.conf_interval)
+        sub_ci: list[_ConfidenceInterval] = []
+        for ind in idx.tolist():
+            if not ci_list:
+                break
+            if ind < len(ci_list):
+                sub_ci.append(ci_list[ind])
+            elif len(ci_list) == 1:
+                sub_ci.append(ci_list[0])
         return Covariate(
             time=out.time,
             data=out.data,
             name=out.name,
             units=out.units,
             labels=out.labels,
-            conf_interval=out.conf_interval,
+            conf_interval=sub_ci if sub_ci else None,
             x_label=out.x_label,
             y_label=out.y_label,
             x_units=out.x_units,
@@ -693,36 +986,137 @@ class Covariate(_Covariate):
         )
 
     def setConfInterval(self, interval: Any) -> _Covariate:
-        self.set_conf_interval(interval)
+        ci_list = self._as_ci_list(interval)
+        if ci_list:
+            self.set_conf_interval(ci_list)
+        else:
+            self.set_conf_interval(interval)
         return self
 
     def isConfIntervalSet(self) -> bool:
-        return self.is_conf_interval_set()
+        ci_list = self._as_ci_list(self.conf_interval)
+        return len(ci_list) > 0
 
-    def getSigRep(self) -> np.ndarray:
-        return self.data_to_matrix()
+    def getSigRep(self, repType: str = "standard") -> _Covariate:
+        if repType == "standard":
+            return self
+        if repType == "zero-mean":
+            mat = self.data_to_matrix()
+            centered = mat - np.mean(mat, axis=0, keepdims=True)
+            data = centered[:, 0] if centered.shape[1] == 1 else centered
+            return Covariate(
+                time=self.time.copy(),
+                data=data,
+                name=self.name,
+                units=self.units,
+                labels=self.labels.copy(),
+                conf_interval=None,
+                x_label=self.x_label,
+                y_label=self.y_label,
+                x_units=self.x_units,
+                y_units=self.y_units,
+                plot_props=dict(self.plot_props),
+            )
+        raise ValueError("repType must be either 'zero-mean' or 'standard'")
 
     def dataToStructure(self) -> dict[str, Any]:
-        return self.to_structure()
+        return self.toStructure()
 
     def toStructure(self) -> dict[str, Any]:
-        return self.to_structure()
+        mat = self.data_to_matrix()
+        n_channels = int(mat.shape[1])
+        out: dict[str, Any] = {
+            "time": self.time.copy(),
+            "signals": {
+                "values": mat.copy(),
+                "dimensions": np.array([mat.shape[0], n_channels], dtype=float),
+            },
+            "name": self.name,
+            "dimension": n_channels,
+            "minTime": float(self.time.min()) if self.time.size else 0.0,
+            "maxTime": float(self.time.max()) if self.time.size else 0.0,
+            "xlabelval": self.x_label,
+            "xunits": self.x_units,
+            "yunits": self.y_units,
+            "dataLabels": list(self.labels),
+            "dataMask": list(np.ones(n_channels, dtype=int)),
+            "sampleRate": float(self.sample_rate_hz),
+            "plotProps": [],
+        }
+        ci_list = self._as_ci_list(self.conf_interval)
+        if ci_list:
+            if len(ci_list) == 1:
+                out["ci"] = ci_list[0].to_structure()
+            else:
+                out["ci"] = [ci.to_structure() for ci in ci_list]
+        return out
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _Covariate:
-        out = _Covariate.from_structure(payload)
+        structure = Covariate._to_dict(payload)
+        if "signals" in structure:
+            sig = structure["signals"]
+            if isinstance(sig, dict):
+                values = np.asarray(sig["values"], dtype=float)
+            elif hasattr(sig, "values"):
+                values = np.asarray(getattr(sig, "values"), dtype=float)
+            else:
+                sig_arr = np.asarray(sig, dtype=object)
+                if sig_arr.size != 1:
+                    raise ValueError("signals payload must be scalar struct-like")
+                s0 = sig_arr.reshape(-1)[0]
+                if hasattr(s0, "values"):
+                    values = np.asarray(getattr(s0, "values"), dtype=float)
+                elif isinstance(s0, dict):
+                    values = np.asarray(s0["values"], dtype=float)
+                else:
+                    raise ValueError("Unsupported signals payload")
+        else:
+            values = np.asarray(structure["data"], dtype=float)
+
+        if values.ndim == 2 and values.shape[1] == 1:
+            data: np.ndarray = values[:, 0]
+            n_channels = 1
+        else:
+            data = values
+            n_channels = int(np.asarray(values).shape[1]) if np.asarray(values).ndim == 2 else 1
+
+        name = Covariate._text(structure.get("name", "covariate"), "covariate")
+        labels = Covariate._normalize_labels(structure.get("dataLabels", structure.get("labels")), name, n_channels)
+        units = Covariate._text(structure.get("units", structure.get("yunits", "")), "")
+        x_label = Covariate._text(structure.get("x_label", structure.get("xlabelval", "time")), "time")
+        x_units = Covariate._text(structure.get("x_units", structure.get("xunits", "")), "")
+        y_units = Covariate._text(structure.get("y_units", structure.get("yunits", "")), "")
+
+        ci_list: list[_ConfidenceInterval] = []
+        if "ci" in structure and structure["ci"] is not None:
+            raw_ci = structure["ci"]
+            if isinstance(raw_ci, _ConfidenceInterval):
+                ci_list = [raw_ci]
+            elif isinstance(raw_ci, dict) or hasattr(raw_ci, "_fieldnames"):
+                ci_list = [ConfidenceInterval.fromStructure(Covariate._to_dict(raw_ci))]
+            else:
+                ci_arr = np.asarray(raw_ci, dtype=object).reshape(-1)
+                for entry in ci_arr:
+                    if entry is None:
+                        continue
+                    if isinstance(entry, _ConfidenceInterval):
+                        ci_list.append(entry)
+                    else:
+                        ci_list.append(ConfidenceInterval.fromStructure(Covariate._to_dict(entry)))
+
         return Covariate(
-            time=out.time,
-            data=out.data,
-            name=out.name,
-            units=out.units,
-            labels=out.labels,
-            conf_interval=out.conf_interval,
-            x_label=out.x_label,
-            y_label=out.y_label,
-            x_units=out.x_units,
-            y_units=out.y_units,
-            plot_props=out.plot_props,
+            time=np.asarray(structure["time"], dtype=float).reshape(-1),
+            data=data,
+            name=name,
+            units=units,
+            labels=labels,
+            conf_interval=ci_list if ci_list else None,
+            x_label=x_label,
+            y_label=Covariate._text(structure.get("y_label"), ""),
+            x_units=x_units,
+            y_units=y_units,
+            plot_props={},
         )
 
     def getData(self) -> np.ndarray:
@@ -740,15 +1134,35 @@ class Covariate(_Covariate):
     def getSampleRate(self) -> float:
         return self.sample_rate_hz
 
+    def dataToMatrix(self) -> np.ndarray:
+        return self.data_to_matrix()
+
+    def filtfilt(self, b: np.ndarray, a: np.ndarray) -> _Covariate:
+        out = super().filtfilt(np.asarray(b, dtype=float), np.asarray(a, dtype=float))
+        return Covariate(
+            time=out.time,
+            data=out.data,
+            name=out.name,
+            units=out.units,
+            labels=out.labels,
+            conf_interval=self._as_ci_list(self.conf_interval),
+            x_label=out.x_label,
+            y_label=out.y_label,
+            x_units=out.x_units,
+            y_units=out.y_units,
+            plot_props=out.plot_props,
+        )
+
     def copySignal(self) -> _Covariate:
         out = super().copy_signal()
+        ci_list = self._as_ci_list(self.conf_interval)
         return Covariate(
             time=out.time,
             data=out.data,
             name=out.name,
             units=out.units,
             labels=self.labels.copy(),
-            conf_interval=self.conf_interval,
+            conf_interval=ci_list.copy() if ci_list else None,
             x_label=out.x_label,
             y_label=out.y_label,
             x_units=out.x_units,
@@ -764,19 +1178,41 @@ class Covariate(_Covariate):
         lhs = self.data_to_matrix()
         out = lhs + rhs
         data = out[:, 0] if out.ndim == 2 and out.shape[1] == 1 else out
-        return Covariate(
+        out_cov = Covariate(
             time=self.time.copy(),
             data=data,
             name=f"{self.name}+",
             units=self.units,
             labels=self.labels.copy(),
-            conf_interval=self.conf_interval,
+            conf_interval=self._as_ci_list(self.conf_interval),
             x_label=self.x_label,
             y_label=self.y_label,
             x_units=self.x_units,
             y_units=self.y_units,
             plot_props=dict(self.plot_props),
         )
+        if isinstance(other, Covariate):
+            lhs_ci = self._as_ci_list(self.conf_interval)
+            rhs_ci = self._as_ci_list(other.conf_interval)
+            temp_ci: list[_ConfidenceInterval] = []
+            if lhs_ci and not rhs_ci:
+                for i in range(self.n_channels):
+                    ci = lhs_ci[i] if i < len(lhs_ci) else lhs_ci[0]
+                    temp_ci.append(self._ci_add(ci, other.getSubSignal(i + 1)))
+            elif lhs_ci and rhs_ci:
+                for i in range(self.n_channels):
+                    lci = lhs_ci[i] if i < len(lhs_ci) else lhs_ci[0]
+                    rci = rhs_ci[i] if i < len(rhs_ci) else rhs_ci[0]
+                    temp_ci.append(self._ci_add(lci, rci))
+            elif (not lhs_ci) and rhs_ci:
+                for i in range(other.n_channels):
+                    rci = rhs_ci[i] if i < len(rhs_ci) else rhs_ci[0]
+                    temp_ci.append(self._ci_add(rci, self.getSubSignal(i + 1)))
+            if temp_ci:
+                out_cov.setConfInterval(temp_ci)
+            else:
+                out_cov.set_conf_interval(None)
+        return out_cov
 
     def minus(self, other: float | np.ndarray | _Signal) -> _Covariate:
         if isinstance(other, _Signal):
@@ -786,24 +1222,54 @@ class Covariate(_Covariate):
         lhs = self.data_to_matrix()
         out = lhs - rhs
         data = out[:, 0] if out.ndim == 2 and out.shape[1] == 1 else out
-        return Covariate(
+        out_cov = Covariate(
             time=self.time.copy(),
             data=data,
             name=f"{self.name}-",
             units=self.units,
             labels=self.labels.copy(),
-            conf_interval=self.conf_interval,
+            conf_interval=self._as_ci_list(self.conf_interval),
             x_label=self.x_label,
             y_label=self.y_label,
             x_units=self.x_units,
             y_units=self.y_units,
             plot_props=dict(self.plot_props),
         )
+        if isinstance(other, Covariate):
+            lhs_ci = self._as_ci_list(self.conf_interval)
+            rhs_ci = self._as_ci_list(other.conf_interval)
+            temp_ci: list[_ConfidenceInterval] = []
+            if lhs_ci and not rhs_ci:
+                for i in range(self.n_channels):
+                    ci = lhs_ci[i] if i < len(lhs_ci) else lhs_ci[0]
+                    temp_ci.append(self._ci_sub(ci, other.getSubSignal(i + 1)))
+            elif lhs_ci and rhs_ci:
+                for i in range(self.n_channels):
+                    lci = lhs_ci[i] if i < len(lhs_ci) else lhs_ci[0]
+                    rci = rhs_ci[i] if i < len(rhs_ci) else rhs_ci[0]
+                    temp_ci.append(self._ci_sub(lci, rci))
+            elif (not lhs_ci) and rhs_ci:
+                for i in range(other.n_channels):
+                    rci = rhs_ci[i] if i < len(rhs_ci) else rhs_ci[0]
+                    temp_ci.append(self._ci_add(self._ci_neg(rci), self.getSubSignal(i + 1)))
+            if temp_ci:
+                out_cov.setConfInterval(temp_ci)
+            else:
+                out_cov.set_conf_interval(None)
+        return out_cov
 
     def plot(self, *_args: Any, **_kwargs: Any) -> Any:
         import matplotlib.pyplot as plt
 
-        return plt.plot(self.time, self.data_to_matrix())
+        handles = plt.plot(self.time, self.data_to_matrix())
+        ci_list = self._as_ci_list(self.conf_interval)
+        if ci_list:
+            for i, ci in enumerate(ci_list):
+                color = "k"
+                if i < len(handles):
+                    color = handles[i].get_color()
+                ConfidenceInterval.plot(cast(ConfidenceInterval, ci), color=color)
+        return handles
 
 
 class ConfidenceInterval(_ConfidenceInterval):
@@ -815,41 +1281,104 @@ class ConfidenceInterval(_ConfidenceInterval):
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _ConfidenceInterval:
+        if "signals" in payload:
+            sig = payload["signals"]
+            if isinstance(sig, dict):
+                values = np.asarray(sig["values"], dtype=float)
+            elif hasattr(sig, "values"):
+                values = np.asarray(getattr(sig, "values"), dtype=float)
+            else:
+                arr = np.asarray(sig, dtype=object)
+                if arr.size != 1:
+                    raise ValueError("signals payload must be scalar struct-like")
+                s0 = arr.reshape(-1)[0]
+                if hasattr(s0, "values"):
+                    values = np.asarray(getattr(s0, "values"), dtype=float)
+                elif isinstance(s0, dict):
+                    values = np.asarray(s0["values"], dtype=float)
+                else:
+                    raise ValueError("Unsupported signals payload")
+            if values.ndim != 2 or values.shape[1] < 2:
+                raise ValueError("signals.values must be [N,2] for ConfidenceInterval")
+            return ConfidenceInterval(
+                time=np.asarray(payload["time"], dtype=float),
+                lower=values[:, 0],
+                upper=values[:, 1],
+                level=0.95,
+                color="b",
+                value=0.95,
+            )
         return ConfidenceInterval(
             time=np.asarray(payload["time"], dtype=float),
             lower=np.asarray(payload["lower"], dtype=float),
             upper=np.asarray(payload["upper"], dtype=float),
-            level=float(payload.get("level", 0.95)),
+            level=0.95,
+            color="b",
+            value=0.95,
         )
 
     def toStructure(self) -> dict[str, Any]:
+        values = np.column_stack([self.lower, self.upper])
         return {
             "time": self.time.copy(),
             "lower": self.lower.copy(),
             "upper": self.upper.copy(),
             "level": float(self.level),
+            "value": self.value,
+            "color": str(self.color),
+            "signals": {
+                "values": values,
+                "dimensions": np.array([values.shape[0], values.shape[1]], dtype=float),
+            },
+            "name": "ConfidenceInterval",
+            "dimension": 2,
+            "minTime": float(self.time.min()) if self.time.size else 0.0,
+            "maxTime": float(self.time.max()) if self.time.size else 0.0,
+            "xlabelval": "time",
+            "xunits": "s",
+            "yunits": "",
+            "dataLabels": ["lower", "upper"],
+            "dataMask": [],
+            "sampleRate": float((self.time.size - 1) / (self.time[-1] - self.time[0]))
+            if self.time.size > 1 and self.time[-1] != self.time[0]
+            else 1.0,
+            "plotProps": [],
         }
 
     def setColor(self, color: str) -> _ConfidenceInterval:
-        setattr(self, "_color", str(color))
+        self.color = str(color)
         return self
 
     def setValue(self, values: np.ndarray | float) -> _ConfidenceInterval:
         arr = np.asarray(values, dtype=float)
         if arr.ndim == 0:
-            arr = np.full(self.time.shape, float(arr), dtype=float)
-        if arr.shape != self.time.shape:
-            raise ValueError("values shape must match time shape")
-        half_width = 0.5 * self.width()
-        self.lower = arr - half_width
-        self.upper = arr + half_width
+            self.value = float(arr)
+            self.level = float(arr)
+        else:
+            self.value = arr.copy()
         return self
 
-    def plot(self, *_args: Any, **_kwargs: Any) -> Any:
+    def plot(self, color: Any = None, alphaVal: float = 0.2, drawPatches: int = 0) -> Any:
         import matplotlib.pyplot as plt
 
-        color = getattr(self, "_color", "tab:blue")
-        return plt.fill_between(self.time, self.lower, self.upper, color=color, alpha=0.25)
+        color_val = self.color if color is None else color
+        ci_data = np.column_stack([self.lower, self.upper])
+        ci_high = ci_data[:, 1]
+        ci_low = ci_data[:, 0]
+        time = self.time
+
+        if int(drawPatches) == 1:
+            x_poly = np.concatenate([time, np.flip(time)])
+            y_poly = np.concatenate([ci_low, np.flip(ci_high)])
+            patch = plt.fill(x_poly, y_poly, color=color_val, alpha=float(alphaVal), edgecolor="none")
+            return patch
+        lines = plt.plot(time, ci_data)
+        if not isinstance(color_val, str):
+            for line in lines:
+                line.set_color(color_val)
+        for line in lines:
+            line.set_alpha(float(alphaVal))
+        return lines
 
     def getWidth(self) -> np.ndarray:
         return self.width()
@@ -864,39 +1393,132 @@ class Events(_Events):
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _Events:
+        if not payload:
+            raise ValueError("Missing field in structure. Cant creats Events object!")
+        required = ("eventTimes", "eventLabels", "eventColor")
+        missing = [name for name in required if name not in payload]
+        if missing:
+            raise ValueError("Missing field in structure. Cant creats Events object!")
         return Events(
-            times=np.asarray(payload["times"], dtype=float),
-            labels=[str(v) for v in payload.get("labels", [])],
+            times=np.asarray(payload["eventTimes"], dtype=float),
+            labels=[str(v) for v in payload["eventLabels"]],
+            color=str(payload["eventColor"]),
         )
 
     def toStructure(self) -> dict[str, Any]:
-        return {"times": self.times.copy(), "labels": list(self.labels)}
+        return {
+            "eventTimes": self.times.copy(),
+            "eventLabels": list(self.labels),
+            "eventColor": str(self.color),
+        }
 
     @staticmethod
-    def dsxy2figxy(x: np.ndarray | float, y: np.ndarray | float) -> np.ndarray:
+    def dsxy2figxy(*args: Any) -> np.ndarray:
         import matplotlib.pyplot as plt
 
-        ax = plt.gca()
-        pts = np.column_stack([np.asarray(x, dtype=float).reshape(-1), np.asarray(y, dtype=float).reshape(-1)])
-        disp = ax.transData.transform(pts)
+        if not args:
+            raise ValueError("dsxy2figxy expects at least one coordinate argument")
+        if hasattr(args[0], "transData"):
+            ax = args[0]
+            rem = args[1:]
+        else:
+            ax = plt.gca()
+            rem = args
         fig = ax.get_figure()
         if fig is None:
             raise RuntimeError("cannot transform without an active matplotlib figure")
+        if len(rem) == 1:
+            pos = np.asarray(rem[0], dtype=float).reshape(-1)
+            if pos.size != 4:
+                raise ValueError("single argument form expects [x, y, width, height]")
+            x0, y0, w, h = pos.tolist()
+            corners = np.array([[x0, y0], [x0 + w, y0 + h]], dtype=float)
+            disp = ax.transData.transform(corners)
+            fig_xy = fig.transFigure.inverted().transform(disp)
+            out = np.array(
+                [
+                    fig_xy[0, 0],
+                    fig_xy[0, 1],
+                    fig_xy[1, 0] - fig_xy[0, 0],
+                    fig_xy[1, 1] - fig_xy[0, 1],
+                ],
+                dtype=float,
+            )
+            return out
+        if len(rem) != 2:
+            raise ValueError("dsxy2figxy expects either (x,y) or ([x,y,w,h])")
+        x = np.asarray(rem[0], dtype=float).reshape(-1)
+        y = np.asarray(rem[1], dtype=float).reshape(-1)
+        pts = np.column_stack([x, y])
+        disp = ax.transData.transform(pts)
+        fig = ax.get_figure()
         out = fig.transFigure.inverted().transform(disp)
         return out
 
-    def plot(self, *_args: Any, **_kwargs: Any) -> Any:
+    def plot(self, handle: Any = None, colorString: str | None = None) -> Any:
         import matplotlib.pyplot as plt
 
-        if self.times.size == 0:
-            return plt.plot([], [])
-        ymin, ymax = plt.ylim()
-        if ymin == ymax:
-            ymin, ymax = 0.0, 1.0
-        return plt.vlines(self.times, ymin, ymax, colors="k", linestyles="--", linewidth=1.0)
+        if colorString is None or colorString == "":
+            colorString = self.color
+        _ = colorString  # MATLAB code computes this but plots fixed red lines.
+
+        if handle is None:
+            handles = [plt.gca()]
+        elif isinstance(handle, (list, tuple, np.ndarray)):
+            handles = list(handle)
+        else:
+            handles = [handle]
+
+        h: Any = []
+        for ax in handles:
+            if ax is None:
+                continue
+            plt.sca(ax)
+            v = ax.axis()
+            times = np.vstack([self.times, self.times])
+            y = np.vstack(
+                [
+                    np.full(self.times.size, float(v[2]), dtype=float),
+                    np.full(self.times.size, float(v[3]), dtype=float),
+                ]
+            )
+            if self.times.size:
+                h = ax.plot(times, y, "r", linewidth=4)
+            v = ax.axis()
+            denom = float(v[1] - v[0])
+            if denom == 0.0:
+                continue
+            for i, event_time in enumerate(self.times):
+                if ((event_time - v[0]) / denom >= 0.0) and (event_time <= v[1]):
+                    ax.text(
+                        (event_time - v[0]) / denom - 0.02,
+                        1.03,
+                        self.labels[i],
+                        rotation=0,
+                        fontsize=10,
+                        color=(0.0, 0.0, 0.0),
+                        transform=ax.transAxes,
+                    )
+        return h
+
+    @property
+    def eventTimes(self) -> np.ndarray:
+        return self.times
+
+    @property
+    def eventLabels(self) -> list[str]:
+        return self.labels
+
+    @property
+    def eventColor(self) -> str:
+        return self.color
 
     def getTimes(self) -> np.ndarray:
-        return self.times
+        return self.times.copy()
+
+    def subset(self, start_s: float, end_s: float) -> "Events":
+        out = super().subset(start_s, end_s)
+        return Events(times=out.times, labels=out.labels, color=out.color)
 
 
 class History(_HistoryBasis):
@@ -908,14 +1530,31 @@ class History(_HistoryBasis):
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _HistoryBasis:
-        return History(bin_edges_s=np.asarray(payload["bin_edges_s"], dtype=float))
+        if "windowTimes" in payload:
+            return History(
+                bin_edges_s=np.asarray(payload["windowTimes"], dtype=float),
+                min_time_s=payload.get("minTime"),
+                max_time_s=payload.get("maxTime"),
+            )
+        return History(
+            bin_edges_s=np.asarray(payload["bin_edges_s"], dtype=float),
+            min_time_s=payload.get("min_time_s"),
+            max_time_s=payload.get("max_time_s"),
+        )
 
     def toStructure(self) -> dict[str, Any]:
-        return {"bin_edges_s": self.bin_edges_s.copy()}
+        return {
+            "windowTimes": self.bin_edges_s.copy(),
+            "minTime": self.min_time_s,
+            "maxTime": self.max_time_s,
+            "bin_edges_s": self.bin_edges_s.copy(),
+            "min_time_s": self.min_time_s,
+            "max_time_s": self.max_time_s,
+        }
 
     def setWindow(self, *args: Any) -> _HistoryBasis:
         if len(args) == 1:
-            edges = np.asarray(args[0], dtype=float).reshape(-1)
+            edges = np.sort(np.asarray(args[0], dtype=float).reshape(-1))
         elif len(args) == 3:
             t0 = float(args[0])
             tf = float(args[1])
@@ -925,12 +1564,31 @@ class History(_HistoryBasis):
             edges = np.linspace(t0, tf, n_bins + 1, dtype=float)
         else:
             raise ValueError("setWindow expects (edges) or (t0, tf, n_bins)")
-        if edges.size < 2 or np.any(np.diff(edges) <= 0.0):
-            raise ValueError("history edges must be strictly increasing with at least 2 elements")
+        if edges.size < 2:
+            raise ValueError("history edges must contain at least 2 entries")
         self.bin_edges_s = edges
         return self
 
-    def toFilter(self) -> np.ndarray:
+    def toFilter(self, delta: float | None = None) -> np.ndarray:
+        if delta is not None:
+            delta_f = float(delta)
+            if delta_f <= 0.0:
+                raise ValueError("delta must be positive")
+            tmin = self.bin_edges_s[:-1]
+            tmax = self.bin_edges_s[1:]
+            time_vec = np.arange(float(np.min(tmin)), float(np.max(tmax)) + delta_f / 2.0, delta_f)
+            filt = np.zeros((tmax.size, time_vec.size), dtype=float)
+            for i, (lo, hi) in enumerate(zip(tmin, tmax)):
+                num_samples = int(np.ceil(hi / delta_f))
+                start_sample = int(np.ceil(lo / delta_f)) + 1
+                # MATLAB uses 1-based indices:
+                #   idx1 = (start_sample:num_samples) + 1
+                # Convert to 0-based Python by subtracting 1, yielding
+                #   idx0 = start_sample:num_samples
+                idx = np.arange(start_sample, num_samples + 1, dtype=int)
+                idx = idx[(idx >= 0) & (idx < time_vec.size)]
+                filt[i, idx] = 1.0
+            return filt
         widths = np.diff(self.bin_edges_s)
         total = float(np.sum(widths))
         if total <= 0.0:
@@ -966,7 +1624,79 @@ class nspikeTrain(_SpikeTrain):
         self._original_t_end = float(self.t_end) if self.t_end is not None else None
         self._original_name = str(self.name)
         self._sig_rep: np.ndarray | None = None
+        self._sig_rep_min_time: float | None = None
+        self._sig_rep_max_time: float | None = None
+        self._sig_rep_sample_rate_hz: float | None = None
+        self._sig_rep_manual: bool = False
         self._mer: float | None = None
+        self._sample_rate_hz: float = 1000.0
+
+    @staticmethod
+    def _to_dict(payload: Any) -> dict[str, Any]:
+        if isinstance(payload, dict):
+            return payload
+        if hasattr(payload, "_fieldnames"):
+            return {name: getattr(payload, name) for name in payload._fieldnames}
+        arr = np.asarray(payload, dtype=object)
+        if arr.size == 1 and hasattr(arr.reshape(-1)[0], "_fieldnames"):
+            s0 = arr.reshape(-1)[0]
+            return {name: getattr(s0, name) for name in s0._fieldnames}
+        raise ValueError("Unsupported structure payload")
+
+    @staticmethod
+    def _round_with_precision(values: np.ndarray, precision: int) -> np.ndarray:
+        if precision < 0:
+            return np.asarray(values, dtype=float)
+        return np.round(np.asarray(values, dtype=float), int(precision))
+
+    @staticmethod
+    def _matlab_count_sigrep(
+        spike_times: np.ndarray,
+        bin_size_s: float,
+        min_time_s: float,
+        max_time_s: float,
+    ) -> np.ndarray:
+        if not np.isfinite(bin_size_s) or bin_size_s <= 0.0:
+            raise ValueError("binSize_s must be positive")
+        duration = float(max_time_s - min_time_s)
+        if not np.isfinite(duration) or duration < 0.0:
+            return np.array([], dtype=float)
+        num_bins = int(np.floor(duration / float(bin_size_s) + 1.0))
+        if num_bins < 1:
+            num_bins = 1
+        max_bins = int(1e6)
+        if num_bins > max_bins:
+            num_bins = max_bins
+
+        time_vec = np.linspace(float(min_time_s), float(max_time_s), num_bins, dtype=float)
+        if time_vec.size > 1:
+            bin_width = float(np.mean(np.diff(time_vec)))
+        else:
+            bin_width = float(bin_size_s)
+        window_times = np.concatenate(
+            [
+                np.array([float(min_time_s) - 0.5 * bin_width], dtype=float),
+                time_vec + 0.5 * bin_width,
+            ]
+        )
+
+        precision = int(max(0.0, 2.0 * np.ceil(np.log10(max(1.0 / float(bin_width), 1.0)))))
+        spike_r = nspikeTrain._round_with_precision(spike_times, precision)
+        window_r = nspikeTrain._round_with_precision(window_times, precision + 1)
+
+        data = np.zeros(time_vec.size, dtype=float)
+        lwindow = int(window_r.size)
+        for j in range(time_vec.size):
+            if j == (lwindow - 2):
+                temp = spike_r[spike_r >= window_r[j]]
+                data[j] = float(np.sum(temp <= window_r[j + 1]))
+            elif (j + 1) > int(np.floor(lwindow / 2.0)):
+                temp = spike_r[spike_r >= window_r[j]]
+                data[j] = float(np.sum(temp < window_r[j + 1]))
+            else:
+                temp = spike_r[spike_r < window_r[j + 1]]
+                data[j] = float(np.sum(temp >= window_r[j]))
+        return data
 
     @staticmethod
     def nspikeTrain(*args: Any, **kwargs: Any) -> _SpikeTrain:
@@ -976,21 +1706,53 @@ class nspikeTrain(_SpikeTrain):
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _SpikeTrain:
-        t_end_raw = payload.get("t_end", payload.get("maxTime"))
-        return nspikeTrain(
-            spike_times=np.asarray(payload.get("spike_times", payload.get("spikeTimes", [])), dtype=float),
-            t_start=float(payload.get("t_start", payload.get("minTime", 0.0))),
-            t_end=float(t_end_raw) if t_end_raw is not None else None,
-            name=str(payload.get("name", "unit")),
+        structure = nspikeTrain._to_dict(payload)
+        t_end_raw = structure.get("t_end", structure.get("maxTime"))
+        spike_raw = structure.get("spike_times", structure.get("spikeTimes", []))
+        spike_arr = np.asarray(spike_raw, dtype=float).reshape(-1)
+        name_raw = structure.get("name", "unit")
+        name_arr = np.asarray(name_raw, dtype=object).reshape(-1)
+        unit_name = str(name_arr[0]) if name_arr.size else "unit"
+        t_start_raw = structure.get("t_start", structure.get("minTime", 0.0))
+        t_start_arr = np.asarray(t_start_raw, dtype=float).reshape(-1)
+        t_start = float(t_start_arr[0]) if t_start_arr.size else 0.0
+        out = nspikeTrain(
+            spike_times=spike_arr,
+            t_start=t_start,
+            t_end=float(np.asarray(t_end_raw, dtype=float).reshape(-1)[0]) if t_end_raw is not None else None,
+            name=unit_name,
         )
+        sample_rate_raw = structure.get("sampleRate", structure.get("sample_rate_hz"))
+        if sample_rate_raw is not None:
+            sample_rate_arr = np.asarray(sample_rate_raw, dtype=float).reshape(-1)
+            if sample_rate_arr.size:
+                out._sample_rate_hz = float(sample_rate_arr[0])
+        mer_raw = structure.get("MER", structure.get("mer"))
+        if mer_raw is not None:
+            mer_arr = np.asarray(mer_raw, dtype=float).reshape(-1)
+            if mer_arr.size:
+                out._mer = float(mer_arr[0])
+        return out
 
     def toStructure(self) -> dict[str, Any]:
+        sample_rate = float(self._sample_rate_hz)
+        binwidth = 1.0 / sample_rate if sample_rate > 0.0 else np.inf
         return {
             "spike_times": self.spike_times.copy(),
             "t_start": float(self.t_start),
             "t_end": float(self.t_end) if self.t_end is not None else None,
             "name": str(self.name),
             "MER": self._mer,
+            # MATLAB-compatible aliases
+            "spikeTimes": self.spike_times.copy(),
+            "sampleRate": sample_rate,
+            "minTime": float(self.t_start),
+            "maxTime": float(self.t_end) if self.t_end is not None else float(self.t_start),
+            "xlabelval": "time",
+            "xunits": "s",
+            "yunits": "",
+            "dataLabels": "",
+            "binwidth": binwidth,
         }
 
     def setName(self, name: str) -> _SpikeTrain:
@@ -1003,20 +1765,61 @@ class nspikeTrain(_SpikeTrain):
 
     def setSigRep(self, sigRep: np.ndarray) -> _SpikeTrain:
         self._sig_rep = np.asarray(sigRep, dtype=float).copy()
+        self._sig_rep_min_time = None
+        self._sig_rep_max_time = None
+        self._sig_rep_sample_rate_hz = None
+        self._sig_rep_manual = True
         return self
 
     def clearSigRep(self) -> _SpikeTrain:
         self._sig_rep = None
+        self._sig_rep_min_time = None
+        self._sig_rep_max_time = None
+        self._sig_rep_sample_rate_hz = None
+        self._sig_rep_manual = False
         return self
 
-    def getSigRep(self, binSize_s: float = 0.001, mode: Literal["binary", "count"] = "binary") -> np.ndarray:
+    def getSigRep(
+        self,
+        binSize_s: float | None = None,
+        mode: Literal["binary", "count"] = "binary",
+        minTime_s: float | None = None,
+        maxTime_s: float | None = None,
+    ) -> np.ndarray:
+        if binSize_s is None:
+            if self._sample_rate_hz <= 0.0:
+                binSize_s = 0.001
+            else:
+                binSize_s = 1.0 / float(self._sample_rate_hz)
+        min_time = float(self.t_start) if minTime_s is None else float(minTime_s)
+        max_time = float(self.t_end) if self.t_end is not None else float(self.t_start)
+        if maxTime_s is not None:
+            max_time = float(maxTime_s)
         if self._sig_rep is not None:
-            return self._sig_rep.copy()
-        if mode == "binary":
-            _, y = self.binarize(bin_size_s=binSize_s)
-        else:
-            _, y = self.bin_counts(bin_size_s=binSize_s)
-        return y
+            if self._sig_rep_manual:
+                cached = self._sig_rep.copy()
+                return (cached > 0.0).astype(float) if mode == "binary" else cached
+            same_rate = (
+                self._sig_rep_sample_rate_hz is not None
+                and np.isclose(float(self._sig_rep_sample_rate_hz), float(self._sample_rate_hz))
+            )
+            same_min = self._sig_rep_min_time is not None and np.isclose(float(self._sig_rep_min_time), min_time)
+            same_max = self._sig_rep_max_time is not None and np.isclose(float(self._sig_rep_max_time), max_time)
+            if same_rate and same_min and same_max:
+                cached = self._sig_rep.copy()
+                return (cached > 0.0).astype(float) if mode == "binary" else cached
+        counts = self._matlab_count_sigrep(
+            spike_times=np.asarray(self.spike_times, dtype=float).reshape(-1),
+            bin_size_s=float(binSize_s),
+            min_time_s=min_time,
+            max_time_s=max_time,
+        )
+        self._sig_rep = counts.copy()
+        self._sig_rep_min_time = float(min_time)
+        self._sig_rep_max_time = float(max_time)
+        self._sig_rep_sample_rate_hz = float(self._sample_rate_hz)
+        self._sig_rep_manual = False
+        return (counts > 0.0).astype(float) if mode == "binary" else counts
 
     def isSigRepBinary(self, binSize_s: float = 0.001) -> bool:
         y = self.getSigRep(binSize_s=binSize_s, mode="count")
@@ -1063,16 +1866,24 @@ class nspikeTrain(_SpikeTrain):
     def getFieldVal(self, fieldName: str) -> Any:
         if hasattr(self, fieldName):
             return getattr(self, fieldName)
-        raise KeyError(f"field '{fieldName}' not found")
+        return []
 
     def getLStatistic(self) -> float:
         isi = self.getISIs()
         if isi.size == 0:
-            return 0.0
+            return float(np.nan)
         mu = float(np.mean(isi))
-        if mu <= 0.0:
-            return 0.0
-        return float(np.std(isi) / mu)
+        if not np.isfinite(mu) or mu <= 0.0:
+            return float(np.nan)
+        duration = float((self.t_end if self.t_end is not None else self.t_start) - self.t_start)
+        if not np.isfinite(duration) or duration <= 0.0:
+            return float(np.nan)
+        max_bins = float(1e6)
+        est_bins = duration / mu + 1.0
+        if np.isfinite(est_bins) and est_bins > max_bins:
+            mu = duration / (max_bins - 1.0)
+        pt = self.getSigRep(binSize_s=mu, mode="count")
+        return float(np.unique(pt).size)
 
     def nstCopy(self) -> _SpikeTrain:
         return nspikeTrain(
@@ -1085,17 +1896,20 @@ class nspikeTrain(_SpikeTrain):
     def resample(self, sampleRate: float) -> _SpikeTrain:
         if sampleRate <= 0.0:
             raise ValueError("sampleRate must be positive")
-        dt = 1.0 / float(sampleRate)
-        snapped = np.round(self.spike_times / dt) * dt
-        self.spike_times = np.unique(snapped)
+        self._sample_rate_hz = float(sampleRate)
+        self.clearSigRep()
         return self
 
     def restoreToOriginal(self) -> _SpikeTrain:
         self.spike_times = self._original_spike_times.copy()
-        self.t_start = float(self._original_t_start)
-        self.t_end = float(self._original_t_end) if self._original_t_end is not None else None
+        if self.spike_times.size:
+            self.t_start = float(np.min(self.spike_times))
+            self.t_end = float(np.max(self.spike_times))
+        else:
+            self.t_start = float(self._original_t_start)
+            self.t_end = float(self._original_t_end) if self._original_t_end is not None else None
         self.name = str(self._original_name)
-        self._sig_rep = None
+        self.clearSigRep()
         return self
 
     def partitionNST(self, partitionEdges_s: np.ndarray | list[float]) -> list[_SpikeTrain]:
@@ -1106,9 +1920,13 @@ class nspikeTrain(_SpikeTrain):
         for i in range(edges.size - 1):
             lo = float(edges[i])
             hi = float(edges[i + 1])
-            mask = (self.spike_times >= lo) & (self.spike_times <= hi)
+            if i == edges.size - 2:
+                mask = (self.spike_times >= lo) & (self.spike_times <= hi)
+            else:
+                mask = (self.spike_times >= lo) & (self.spike_times < hi)
+            subset = self.spike_times[mask] - lo
             out.append(
-                nspikeTrain(spike_times=self.spike_times[mask], t_start=lo, t_end=hi, name=f"{self.name}_{i+1}")
+                nspikeTrain(spike_times=subset, t_start=0.0, t_end=hi - lo, name=f"{self.name}_{i+1}")
             )
         return out
 
@@ -1117,11 +1935,11 @@ class nspikeTrain(_SpikeTrain):
         return self
 
     def setMinTime(self, t_min: float) -> _SpikeTrain:
-        self.set_min_time(t_min)
+        self.t_start = float(t_min)
         return self
 
     def setMaxTime(self, t_max: float) -> _SpikeTrain:
-        self.set_max_time(t_max)
+        self.t_end = float(t_max)
         return self
 
     def plot(self, *_args: Any, **_kwargs: Any) -> Any:
@@ -1197,20 +2015,59 @@ class nstColl(_SpikeTrainCollection):
             return nstColl.fromStructure(args[0])
         return nstColl(*args, **kwargs)
 
+    def _selected_indices(self) -> list[int]:
+        if self._neuron_mask is None:
+            return list(range(self.n_units))
+        return list(self._neuron_mask)
+
     def getBinnedMatrix(
         self, binSize_s: float, mode: Literal["binary", "count"] = "binary"
     ) -> tuple[np.ndarray, np.ndarray]:
-        return self.to_binned_matrix(bin_size_s=binSize_s, mode=mode)
+        if binSize_s <= 0.0:
+            raise ValueError("binSize_s must be positive")
+        min_time = float(min(train.t_start for train in self.trains))
+        max_time = float(max(train.t_end if train.t_end is not None else train.t_start for train in self.trains))
+        selected = self._selected_indices()
+        out_rows: list[np.ndarray] = []
+        time_vec: np.ndarray | None = None
+        for idx in selected:
+            train = self.getNST(idx)
+            counts = train.getSigRep(
+                binSize_s=float(binSize_s),
+                mode="count",
+                minTime_s=min_time,
+                maxTime_s=max_time,
+            )
+            if mode == "binary":
+                counts = (counts > 0.0).astype(float)
+            out_rows.append(np.asarray(counts, dtype=float).reshape(-1))
+            if time_vec is None:
+                n_bins = out_rows[-1].size
+                time_vec = np.linspace(min_time, max_time, n_bins, dtype=float)
+        if time_vec is None:
+            time_vec = np.array([], dtype=float)
+            mat = np.zeros((0, 0), dtype=float)
+        else:
+            n_bins = time_vec.size
+            mat = np.zeros((len(out_rows), n_bins), dtype=float)
+            for i, row in enumerate(out_rows):
+                if row.size == n_bins:
+                    mat[i, :] = row
+                elif row.size > n_bins:
+                    mat[i, :] = row[:n_bins]
+                else:
+                    mat[i, : row.size] = row
+        return time_vec, mat
 
     def merge(self, other: _SpikeTrainCollection) -> _SpikeTrainCollection:
         merged = super().merge(other)
         return nstColl(merged.trains)
 
     def getFirstSpikeTime(self) -> float:
-        return self.get_first_spike_time()
+        return float(min(train.t_start for train in self.trains))
 
     def getLastSpikeTime(self) -> float:
-        return self.get_last_spike_time()
+        return float(max(train.t_end if train.t_end is not None else train.t_start for train in self.trains))
 
     def getSpikeTimes(self) -> list[np.ndarray]:
         return self.get_spike_times()
@@ -1256,15 +2113,33 @@ class nstColl(_SpikeTrainCollection):
         return self
 
     def dataToMatrix(self, binSize_s: float, mode: Literal["binary", "count"] = "binary") -> np.ndarray:
-        return self.data_to_matrix(bin_size_s=binSize_s, mode=mode)
+        _time, mat = self.getBinnedMatrix(binSize_s=binSize_s, mode=mode)
+        return mat.T
 
     def toSpikeTrain(self, name: str = "merged") -> nspikeTrain:
-        merged = super().to_spike_train(name=name)
+        selected = self._selected_indices()
+        if not selected:
+            selected = list(range(self.n_units))
+        delta = 1.0 / max(float(self.findMaxSampleRate()), 1.0)
+        spike_times: list[np.ndarray] = []
+        offset = 0.0
+        first_train = self.getNST(selected[0])
+        trial_name = first_train.name if first_train.name else name
+        spike_times.append(np.asarray(first_train.spike_times, dtype=float).reshape(-1))
+        for i in range(1, len(selected)):
+            prev = self.getNST(selected[i - 1])
+            prev_max = float(prev.t_end) if prev.t_end is not None else float(prev.t_start)
+            offset = offset + prev_max + delta
+            curr = self.getNST(selected[i])
+            spike_times.append(np.asarray(curr.spike_times, dtype=float).reshape(-1) + offset)
+        merged_vec = np.concatenate(spike_times) if spike_times else np.array([], dtype=float)
+        min_time = float(first_train.t_start)
+        max_time = float(max(train.t_end if train.t_end is not None else train.t_start for train in self.trains))
         return nspikeTrain(
-            spike_times=merged.spike_times.copy(),
-            t_start=merged.t_start,
-            t_end=merged.t_end,
-            name=merged.name,
+            spike_times=np.asarray(merged_vec, dtype=float),
+            t_start=min_time,
+            t_end=max_time * len(selected),
+            name=str(trial_name),
         )
 
     def shiftTime(self, offset_s: float) -> _SpikeTrainCollection:
@@ -1272,40 +2147,86 @@ class nstColl(_SpikeTrainCollection):
         return self
 
     def setMinTime(self, t_min: float) -> _SpikeTrainCollection:
-        self.set_min_time(t_min)
+        for train in self.trains:
+            train.t_start = float(t_min)
         return self
 
     def setMaxTime(self, t_max: float) -> _SpikeTrainCollection:
-        self.set_max_time(t_max)
+        for train in self.trains:
+            train.t_end = float(t_max)
         return self
 
     def toStructure(self) -> dict[str, Any]:
-        return {
-            "trains": [
-                {
-                    "spike_times": train.spike_times.copy(),
-                    "t_start": float(train.t_start),
-                    "t_end": float(train.t_end) if train.t_end is not None else None,
-                    "name": train.name,
-                }
-                for train in self.trains
-            ]
+        trains = [self.getNST(i).toStructure() for i in range(self.n_units)]
+        min_time = float(min(train.t_start for train in self.trains))
+        max_time = float(max(train.t_end if train.t_end is not None else train.t_start for train in self.trains))
+        sample_rate = float(max(getattr(train, "_sample_rate_hz", 1000.0) for train in self.trains))
+        neuron_mask = np.ones(self.n_units, dtype=float)
+        if self._neuron_mask is not None:
+            neuron_mask = np.zeros(self.n_units, dtype=float)
+            neuron_mask[np.asarray(self._neuron_mask, dtype=int)] = 1.0
+        out = {
+            "trains": trains,
+            # MATLAB-compatible fields
+            "nstrain": trains,
+            "numSpikeTrains": int(self.n_units),
+            "minTime": min_time,
+            "maxTime": max_time,
+            "sampleRate": sample_rate,
+            "neuronMask": neuron_mask,
+            "neuronNames": [str(train.name) for train in self.trains],
+            "neighbors": self._neighbors if self._neighbors is not None else [],
         }
+        return out
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> _SpikeTrainCollection:
-        trains = [
-            nspikeTrain(
-                spike_times=np.asarray(row["spike_times"], dtype=float),
-                t_start=float(row.get("t_start", 0.0)),
-                t_end=float(row["t_end"]) if row.get("t_end") is not None else None,
-                name=str(row.get("name", f"unit_{i+1}")),
-            )
-            for i, row in enumerate(payload.get("trains", []))
-        ]
+        if hasattr(payload, "_fieldnames"):
+            payload = {name: getattr(payload, name) for name in payload._fieldnames}
+        source = payload.get("trains", payload.get("nstrain", []))
+
+        def _iter_train_entries(node: Any) -> list[Any]:
+            if isinstance(node, nspikeTrain):
+                return [node]
+            if hasattr(node, "_fieldnames") or isinstance(node, dict):
+                return [node]
+            if isinstance(node, np.ndarray):
+                out: list[Any] = []
+                for item in node.reshape(-1):
+                    out.extend(_iter_train_entries(item))
+                return out
+            if isinstance(node, (list, tuple)):
+                out = []
+                for item in node:
+                    out.extend(_iter_train_entries(item))
+                return out
+            return []
+
+        rows = _iter_train_entries(source)
+        trains: list[_SpikeTrain] = []
+        for i, row in enumerate(rows):
+            if isinstance(row, nspikeTrain):
+                trains.append(row.nstCopy())
+                continue
+            if hasattr(row, "_fieldnames"):
+                row_dict = {name: getattr(row, name) for name in row._fieldnames}
+            elif isinstance(row, dict):
+                row_dict = row
+            else:
+                continue
+            trains.append(cast(_SpikeTrain, nspikeTrain.fromStructure(row_dict)))
         if not trains:
             raise ValueError("fromStructure requires at least one train")
-        return nstColl(cast(list[_SpikeTrain], trains))
+        coll = nstColl(cast(list[_SpikeTrain], trains))
+        neigh = payload.get("neighbors")
+        if neigh is not None and np.asarray(neigh, dtype=object).size:
+            coll.setNeighbors(neigh)
+        mask = payload.get("neuronMask")
+        if mask is not None and np.asarray(mask, dtype=float).size:
+            mask_arr = np.asarray(mask, dtype=float).reshape(-1)
+            if mask_arr.size == coll.n_units:
+                coll._neuron_mask = list(np.where(mask_arr > 0)[0].astype(int))
+        return coll
 
     def updateTimes(self) -> _SpikeTrainCollection:
         for train in self.trains:
@@ -1324,15 +2245,35 @@ class nstColl(_SpikeTrainCollection):
         return np.asarray(out, dtype=float)
 
     def isSigRepBinary(self, binSize_s: float = 0.001) -> bool:
-        _, mat = self.to_binned_matrix(bin_size_s=binSize_s, mode="count")
+        _, mat = self.getBinnedMatrix(binSize_s=binSize_s, mode="count")
         return bool(np.all((mat == 0) | (mat == 1)))
 
-    def BinarySigRep(self, binSize_s: float = 0.001) -> np.ndarray:
-        return self.dataToMatrix(binSize_s=binSize_s, mode="binary")
+    def BinarySigRep(self, binSize_s: float = 0.001) -> bool:
+        return self.isSigRepBinary(binSize_s=binSize_s)
 
     def psth(self, binSize_s: float = 0.01) -> tuple[np.ndarray, np.ndarray]:
-        t, mat = self.to_binned_matrix(bin_size_s=binSize_s, mode="count")
-        return t, np.mean(mat, axis=0)
+        if binSize_s <= 0.0:
+            raise ValueError("binSize_s must be positive")
+        selected = self._selected_indices()
+        if not selected:
+            selected = list(range(self.n_units))
+        min_time = float(min(self.trains[i].t_start for i in selected))
+        max_time = float(max(self.trains[i].t_end if self.trains[i].t_end is not None else self.trains[i].t_start for i in selected))
+        window_times = np.arange(min_time, max_time + float(binSize_s), float(binSize_s), dtype=float)
+        if window_times.size == 0:
+            return np.array([], dtype=float), np.array([], dtype=float)
+        if not np.any(np.isclose(window_times, max_time)):
+            window_times = np.append(window_times, max_time)
+        psth_counts = np.zeros(max(window_times.size - 1, 0), dtype=float)
+        for i in selected:
+            spikes = np.asarray(self.trains[i].spike_times, dtype=float).reshape(-1)
+            if spikes.size:
+                counts, _ = np.histogram(spikes, bins=window_times)
+                psth_counts = psth_counts + counts.astype(float)
+        denom = float(binSize_s) * max(len(selected), 1)
+        psth_rate = psth_counts / denom
+        time_centers = 0.5 * (window_times[1:] + window_times[:-1])
+        return time_centers, psth_rate
 
     def psthBars(self, binSize_s: float = 0.01) -> tuple[np.ndarray, np.ndarray]:
         return self.psth(binSize_s=binSize_s)
@@ -1354,10 +2295,10 @@ class nstColl(_SpikeTrainCollection):
         return out
 
     def findMaxSampleRate(self) -> float:
-        min_isi = float(np.min(self.getMinISIs()))
-        if not np.isfinite(min_isi) or min_isi <= 0.0:
-            return float(np.inf)
-        return float(1.0 / min_isi)
+        vals: list[float] = []
+        for train in self.trains:
+            vals.append(float(getattr(train, "_sample_rate_hz", 1000.0)))
+        return float(np.max(np.asarray(vals, dtype=float))) if vals else float("-inf")
 
     def getMaxBinSizeBinary(self) -> float:
         min_isi = float(np.min(self.getMinISIs()))
@@ -1370,6 +2311,10 @@ class nstColl(_SpikeTrainCollection):
             idx = [self.get_nst_indices_from_name(str(name))[0] for name in cast(list[str], selector)]
         else:
             idx_raw = [int(v) for v in cast(list[int], selector)]
+            if len(idx_raw) == self.n_units and all(v in (0, 1) for v in idx_raw):
+                idx = [i for i, flag in enumerate(idx_raw) if flag == 1]
+                self._neuron_mask = idx
+                return self
             idx = []
             for v in idx_raw:
                 if v >= 1 and v <= self.n_units:
@@ -1425,10 +2370,22 @@ class nstColl(_SpikeTrainCollection):
     def resample(self, sampleRate: float) -> _SpikeTrainCollection:
         if sampleRate <= 0.0:
             raise ValueError("sampleRate must be positive")
-        dt = 1.0 / float(sampleRate)
-        for train in self.trains:
-            snapped = np.round(train.spike_times / dt) * dt
-            train.spike_times = np.unique(snapped)
+        min_time = float(min(train.t_start for train in self.trains))
+        max_time = float(max(train.t_end if train.t_end is not None else train.t_start for train in self.trains))
+        for i, train in enumerate(self.trains):
+            if isinstance(train, nspikeTrain):
+                curr = train
+            else:
+                curr = nspikeTrain(
+                    spike_times=np.asarray(train.spike_times, dtype=float).copy(),
+                    t_start=float(train.t_start),
+                    t_end=float(train.t_end) if train.t_end is not None else None,
+                    name=str(train.name),
+                )
+                self.trains[i] = curr
+            curr.resample(float(sampleRate))
+            curr.setMinTime(min_time)
+            curr.setMaxTime(max_time)
         return self
 
     def enforceSampleRate(self, sampleRate: float) -> _SpikeTrainCollection:
@@ -1445,7 +2402,7 @@ class nstColl(_SpikeTrainCollection):
         return True
 
     def estimateVarianceAcrossTrials(self, binSize_s: float = 0.01) -> np.ndarray:
-        _t, mat = self.to_binned_matrix(bin_size_s=binSize_s, mode="count")
+        _t, mat = self.getBinnedMatrix(binSize_s=binSize_s, mode="count")
         if mat.size == 0:
             return np.array([], dtype=float)
         return np.var(mat, axis=0)
@@ -1477,26 +2434,73 @@ class nstColl(_SpikeTrainCollection):
         return self.psth(binSize_s=binSize_s)
 
     @staticmethod
-    def generateUnitImpulseBasis(
-        basisWidth_s: float,
-        sampleRate_hz: float,
-        totalTime_s: float = 1.0,
-        name: str = "unit_impulse_basis",
-    ) -> _Covariate:
+    def generateUnitImpulseBasis(basisWidth_s: float, *args: Any, **kwargs: Any) -> _Covariate:
+        # Supports both Python form:
+        #   generateUnitImpulseBasis(basisWidth_s, sampleRate_hz, totalTime_s=1.0, name=...)
+        # and MATLAB form:
+        #   generateUnitImpulseBasis(basisWidth_s, minTime_s, maxTime_s, sampleRate_hz)
+        name = str(kwargs.pop("name", "unit_impulse_basis"))
+        min_time = float(kwargs.pop("minTime_s", kwargs.pop("min_time_s", 0.0)))
+        sample_rate: float | None = kwargs.pop("sampleRate_hz", kwargs.pop("sample_rate_hz", None))
+        total_time = kwargs.pop("totalTime_s", kwargs.pop("total_time_s", None))
+        max_time = kwargs.pop("maxTime_s", kwargs.pop("max_time_s", None))
+        if kwargs:
+            unknown = ", ".join(sorted(kwargs.keys()))
+            raise TypeError(f"Unknown keyword arguments: {unknown}")
+
+        if len(args) == 0:
+            pass
+        elif len(args) == 1:
+            sample_rate = float(args[0])
+        elif len(args) == 2:
+            # MATLAB form without sampleRate:
+            #   generateUnitImpulseBasis(basisWidth, minTime, maxTime)
+            min_time = float(args[0])
+            max_time = float(args[1])
+            total_time = float(max_time) - float(min_time)
+        elif len(args) == 3:
+            min_time = float(args[0])
+            max_time = float(args[1])
+            # MATLAB form with explicit sampleRate:
+            #   generateUnitImpulseBasis(basisWidth, minTime, maxTime, sampleRate)
+            sample_rate = float(args[2])
+            total_time = float(max_time) - float(min_time)
+        else:
+            raise TypeError("generateUnitImpulseBasis accepts at most 4 positional arguments")
+
+        if max_time is not None and total_time is None:
+            total_time = float(max_time) - float(min_time)
+        if total_time is None:
+            total_time = 1.0
+        if sample_rate is None:
+            sample_rate = 1000.0
+
         if basisWidth_s <= 0.0:
             raise ValueError("basisWidth_s must be positive")
-        if sampleRate_hz <= 0.0:
+        if sample_rate <= 0.0:
             raise ValueError("sampleRate_hz must be positive")
-        dt = 1.0 / float(sampleRate_hz)
-        time = np.arange(0.0, float(totalTime_s) + 0.5 * dt, dt)
-        n_basis = max(1, int(np.ceil(float(totalTime_s) / float(basisWidth_s))))
-        basis = np.zeros((time.size, n_basis), dtype=float)
-        for j in range(n_basis):
-            lo = j * basisWidth_s
-            hi = min((j + 1) * basisWidth_s, totalTime_s + dt)
-            mask = (time >= lo) & (time < hi)
+        start = float(min_time)
+        stop = float(min_time) + float(total_time)
+        step = float(basisWidth_s)
+        window_times = np.arange(start, stop + 0.5 * step, step, dtype=float)
+        if window_times.size == 0:
+            window_times = np.array([start, stop], dtype=float)
+        if not np.any(np.isclose(window_times, stop)):
+            window_times = np.append(window_times, stop)
+
+        dt = 1.0 / float(sample_rate)
+        time = np.arange(start, stop + 0.5 * dt, dt, dtype=float)
+        num_basis = max(int(window_times.size - 1), 1)
+        basis = np.zeros((time.size, num_basis), dtype=float)
+        for j in range(num_basis):
+            lo = float(window_times[j])
+            hi = float(window_times[j + 1])
+            if j == (num_basis - 1):
+                mask = (time >= lo) & (time <= hi)
+            else:
+                mask = (time >= lo) & (time < hi)
             basis[mask, j] = 1.0
-        labels = [f"basis_{j+1}" for j in range(n_basis)]
+        labels = [f"basis_{j+1}" for j in range(num_basis)]
         return Covariate(time=time, data=basis, name=name, labels=labels)
 
     def getEnsembleNeuronCovariates(self, binSize_s: float = 0.001, mode: Literal["binary", "count"] = "binary") -> "CovColl":
@@ -1541,6 +2545,26 @@ class CovColl(_CovariateCollection):
             for cov in self.covariates
         ]
         self._cov_shift = 0.0
+        self.covShift = 0.0
+        self.originalSampleRate = float(self.covariates[0].sample_rate_hz)
+        self.originalMinTime = float(np.min(self.covariates[0].time))
+        self.originalMaxTime = float(np.max(self.covariates[0].time))
+        self._refresh_covcoll_state()
+
+    def _refresh_covcoll_state(self) -> None:
+        self.covArray = list(self.covariates)
+        self.numCov = int(len(self.covariates))
+        self.covDimensions = [int(cov.n_channels) for cov in self.covariates]
+        self.sampleRate = float(self.covariates[0].sample_rate_hz)
+        self.minTime = float(min(np.min(cov.time) for cov in self.covariates)) + float(self._cov_shift)
+        self.maxTime = float(max(np.max(cov.time) for cov in self.covariates)) + float(self._cov_shift)
+        active = list(getattr(self, "_cov_mask", list(range(self.numCov))))
+        self.covMask = []
+        for i, cov in enumerate(self.covariates):
+            if i in active:
+                self.covMask.append(np.ones((cov.n_channels,), dtype=int).tolist())
+            else:
+                self.covMask.append(np.zeros((cov.n_channels,), dtype=int).tolist())
 
     @staticmethod
     def containsChars(text: str, chars: str | list[str]) -> bool:
@@ -1558,17 +2582,26 @@ class CovColl(_CovariateCollection):
         return all(isinstance(v, (int, str, np.integer)) for v in vals)
 
     def getTime(self) -> np.ndarray:
-        return self.time
+        # CovColl stores shift at the collection level; expose shifted time.
+        return np.asarray(self.time, dtype=float) + float(self._cov_shift)
 
     def getDesignMatrix(self) -> tuple[np.ndarray, list[str]]:
         return self.design_matrix()
 
     def copy(self) -> "CovColl":
         copied = super().copy()
-        return CovColl(copied.covariates)
+        out = CovColl(copied.covariates)
+        out._cov_shift = float(self._cov_shift)
+        out.covShift = float(self.covShift)
+        out.originalSampleRate = float(self.originalSampleRate)
+        out.originalMinTime = float(self.originalMinTime)
+        out.originalMaxTime = float(self.originalMaxTime)
+        out._refresh_covcoll_state()
+        return out
 
     def addToColl(self, cov: _Covariate) -> "CovColl":
         self.add_to_coll(cov)
+        self._refresh_covcoll_state()
         return self
 
     def getCov(self, selector: int | str) -> _Covariate:
@@ -1653,21 +2686,25 @@ class CovColl(_CovariateCollection):
     def addCovCellToColl(self, covariates: list[_Covariate]) -> "CovColl":
         for cov in covariates:
             self.add_to_coll(cov)
+        self._refresh_covcoll_state()
         return self
 
     def addCovCollection(self, other: _CovariateCollection) -> "CovColl":
         for cov in other.covariates:
             self.add_to_coll(cov)
+        self._refresh_covcoll_state()
         return self
 
     def setMinTime(self, t_min: float) -> "CovColl":
         for cov in self.covariates:
             cov.set_min_time(t_min)
+        self._refresh_covcoll_state()
         return self
 
     def setMaxTime(self, t_max: float) -> "CovColl":
         for cov in self.covariates:
             cov.set_max_time(t_max)
+        self._refresh_covcoll_state()
         return self
 
     def restrictToTimeWindow(self, t_min: float, t_max: float) -> "CovColl":
@@ -1694,6 +2731,7 @@ class CovColl(_CovariateCollection):
                 )
             )
         self.covariates = resampled_covariates
+        self._refresh_covcoll_state()
         return self
 
     def resample(self, sampleRate: float) -> "CovColl":
@@ -1707,18 +2745,64 @@ class CovColl(_CovariateCollection):
         return self
 
     def toStructure(self) -> dict[str, Any]:
-        return {"covariates": [cov.to_structure() for cov in self.covariates]}
+        self.resetMask()
+        self._refresh_covcoll_state()
+        cov_structs = [cov.to_structure() for cov in self.covariates]
+        return {
+            "covArray": cov_structs,
+            "covDimensions": list(self.covDimensions),
+            "numCov": int(self.numCov),
+            "minTime": float(self.minTime),
+            "maxTime": float(self.maxTime),
+            "covMask": [list(mask) for mask in self.covMask],
+            "covShift": float(self.covShift),
+            "sampleRate": float(self.sampleRate),
+            "originalSampleRate": float(self.originalSampleRate),
+            "originalMinTime": float(self.originalMinTime),
+            "originalMaxTime": float(self.originalMaxTime),
+            # Backward-compatible alias used by existing Python tests.
+            "covariates": cov_structs,
+        }
 
     def dataToStructure(self) -> dict[str, Any]:
         return self.toStructure()
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> "CovColl":
-        rows = payload.get("covariates", [])
-        covs = [Covariate.fromStructure(row) for row in rows]
+        rows = payload.get("covArray", payload.get("covariates", []))
+
+        def _iter_cov_entries(node: Any) -> list[Any]:
+            if isinstance(node, dict):
+                return [node]
+            if hasattr(node, "_fieldnames"):
+                return [{name: getattr(node, name) for name in node._fieldnames}]
+            if isinstance(node, np.ndarray):
+                out: list[Any] = []
+                for item in node.reshape(-1):
+                    out.extend(_iter_cov_entries(item))
+                return out
+            if isinstance(node, (list, tuple)):
+                out: list[Any] = []
+                for item in node:
+                    out.extend(_iter_cov_entries(item))
+                return out
+            return []
+
+        rows_py = _to_python_cell(rows)
+        rows_flat = _iter_cov_entries(rows_py)
+        covs = [Covariate.fromStructure(cast(dict[str, Any], row)) for row in rows_flat]
         if not covs:
             raise ValueError("fromStructure requires at least one covariate")
-        return CovColl(cast(list[_Covariate], covs))
+        out = CovColl(cast(list[_Covariate], covs))
+        if "minTime" in payload and not _is_empty_like(payload.get("minTime")):
+            out.setMinTime(float(np.asarray(payload["minTime"], dtype=float).reshape(-1)[0]))
+        if "maxTime" in payload and not _is_empty_like(payload.get("maxTime")):
+            out.setMaxTime(float(np.asarray(payload["maxTime"], dtype=float).reshape(-1)[0]))
+        if "covShift" in payload and not _is_empty_like(payload.get("covShift")):
+            out._cov_shift = float(np.asarray(payload["covShift"], dtype=float).reshape(-1)[0])
+            out.covShift = float(out._cov_shift)
+        out._refresh_covcoll_state()
+        return out
 
     def setMask(self, selector: list[int] | list[str]) -> "CovColl":
         if selector and isinstance(selector[0], str):
@@ -1726,10 +2810,12 @@ class CovColl(_CovariateCollection):
         else:
             idx = [int(i) for i in cast(list[int], selector)]
         self._cov_mask = idx
+        self._refresh_covcoll_state()
         return self
 
     def resetMask(self) -> "CovColl":
         self._cov_mask = list(range(len(self.covariates)))
+        self._refresh_covcoll_state()
         return self
 
     def setMasksFromSelector(self, selector: list[int] | list[str] | np.ndarray) -> "CovColl":
@@ -1753,9 +2839,11 @@ class CovColl(_CovariateCollection):
     def removeCovariate(self, selector: int | str) -> "CovColl":
         if isinstance(selector, int):
             del self.covariates[selector]
+            self._refresh_covcoll_state()
             return self
         idx = self.get_cov_ind_from_name(selector)
         del self.covariates[idx]
+        self._refresh_covcoll_state()
         return self
 
     def removeFromColl(self, selector: int | str) -> "CovColl":
@@ -1764,11 +2852,13 @@ class CovColl(_CovariateCollection):
     def removeFromCollByIndices(self, indices: list[int]) -> "CovColl":
         for i in sorted(set(indices), reverse=True):
             del self.covariates[i]
+        self._refresh_covcoll_state()
         return self
 
     def maskAwayCov(self, selector: int | str | list[int] | list[str] | np.ndarray) -> "CovColl":
         remaining = self.generateRemainingIndex(selector)
         self._cov_mask = remaining
+        self._refresh_covcoll_state()
         return self
 
     def maskAwayOnlyCov(self, selector: int | str | list[int] | list[str] | np.ndarray) -> "CovColl":
@@ -1776,21 +2866,21 @@ class CovColl(_CovariateCollection):
 
     def maskAwayAllExcept(self, selector: int | str | list[int] | list[str] | np.ndarray) -> "CovColl":
         self._cov_mask = self.covIndFromSelector(selector)
+        self._refresh_covcoll_state()
         return self
 
     def setCovShift(self, shift_s: float) -> "CovColl":
         shift = float(shift_s)
-        self._cov_shift += shift
-        for cov in self.covariates:
-            cov.time = cov.time + shift
+        self.resetCovShift()
+        self._cov_shift = shift
+        self.covShift = shift
+        self._refresh_covcoll_state()
         return self
 
     def resetCovShift(self) -> "CovColl":
-        if self._cov_shift == 0.0:
-            return self
-        for cov in self.covariates:
-            cov.time = cov.time - self._cov_shift
         self._cov_shift = 0.0
+        self.covShift = 0.0
+        self._refresh_covcoll_state()
         return self
 
     def restoreToOriginal(self) -> "CovColl":
@@ -1810,7 +2900,19 @@ class CovColl(_CovariateCollection):
             for cov in self._original_covariates
         ]
         self._cov_shift = 0.0
-        self.resetMask()
+        self.covShift = 0.0
+        self._cov_mask = list(range(len(self.covariates)))
+        if not _is_empty_like(self.originalSampleRate):
+            self.setSampleRate(float(self.originalSampleRate))
+        if not _is_empty_like(self.originalMinTime):
+            self.setMinTime(float(self.originalMinTime))
+        else:
+            self.setMinTime(float(self.findMinTime()))
+        if not _is_empty_like(self.originalMaxTime):
+            self.setMaxTime(float(self.originalMaxTime))
+        else:
+            self.setMaxTime(float(self.findMaxTime()))
+        self._refresh_covcoll_state()
         return self
 
     def findMinTime(self) -> float:
@@ -1829,30 +2931,53 @@ class CovColl(_CovariateCollection):
 class TrialConfig(_TrialConfig):
     def __init__(
         self,
+        covMask: Any | None = None,
+        sampleRate: Any | None = None,
+        history: Any | None = None,
+        ensCovHist: Any | None = None,
+        ensCovMask: Any | None = None,
+        covLag: Any | None = None,
+        name: str = "",
+        *,
         covariateLabels: list[str] | None = None,
-        Fs: float = 1000.0,
+        Fs: Any | None = None,
         fitType: str = "poisson",
-        name: str = "config",
         **kwargs: Any,
     ) -> None:
-        covariate_labels = kwargs.pop("covariate_labels", covariateLabels or [])
-        sample_rate_hz = kwargs.pop("sample_rate_hz", Fs)
-        fit_type = kwargs.pop("fit_type", fitType)
+        # MATLAB reference: TrialConfig.m constructor
+        # (covMask,sampleRate,history,ensCovHist,ensCovMask,covLag,name)
+        # Also keep Python-side keyword aliases used throughout nSTAT-python.
+        if covMask is None:
+            covMask = kwargs.pop("covariate_labels", covariateLabels)
+        if sampleRate is None:
+            sampleRate = kwargs.pop("sample_rate_hz", Fs)
+        fit_type = str(kwargs.pop("fit_type", fitType))
+
+        self.covMask = [] if _is_empty_like(covMask) else _to_python_cell(covMask)
+        self.sampleRate = [] if _is_empty_like(sampleRate) else float(np.asarray(sampleRate).reshape(-1)[0])
+        self.history = [] if _is_empty_like(history) else _to_python_cell(history)
+        self.ensCovHist = [] if _is_empty_like(ensCovHist) else _to_python_cell(ensCovHist)
+        self.ensCovMask = [] if _is_empty_like(ensCovMask) else _to_python_cell(ensCovMask)
+        self.covLag = [] if _is_empty_like(covLag) else _to_python_cell(covLag)
+        self.name = str(name)
+
+        covariate_labels = self._coerce_covariate_labels(self.covMask)
+        sample_rate_hz = float(self.sampleRate) if not _is_empty_like(self.sampleRate) else 1000.0
         super().__init__(
             covariate_labels=covariate_labels,
             sample_rate_hz=sample_rate_hz,
             fit_type=fit_type,
-            name=name,
+            name=self.name,
         )
 
     def getFitType(self) -> str:
         return self.fit_type
 
-    def getSampleRate(self) -> float:
-        return self.sample_rate_hz
+    def getSampleRate(self) -> Any:
+        return self.sampleRate
 
     def getCovariateLabels(self) -> list[str]:
-        return self.covariate_labels
+        return self._coerce_covariate_labels(self.covMask)
 
     def getName(self) -> str:
         return self.name
@@ -1863,32 +2988,91 @@ class TrialConfig(_TrialConfig):
 
     def toStructure(self) -> dict[str, Any]:
         return {
-            "covMask": list(self.covariate_labels),
-            "sampleRate": float(self.sample_rate_hz),
-            "history": [],
-            "ensCovHist": [],
-            "ensCovMask": [],
-            "covLag": [],
+            "covMask": self._to_structure_cell(self.covMask),
+            "sampleRate": [] if _is_empty_like(self.sampleRate) else float(self.sampleRate),
+            "history": self._to_structure_cell(self.history),
+            "ensCovHist": self._to_structure_cell(self.ensCovHist),
+            "ensCovMask": self._to_structure_cell(self.ensCovMask),
+            "covLag": self._to_structure_cell(self.covLag),
             "name": self.name,
         }
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> "TrialConfig":
+        if isinstance(payload, list):
+            if len(payload) == 1 and isinstance(payload[0], dict):
+                payload = payload[0]
+            else:
+                raise TypeError("TrialConfig.fromStructure expects a dict-like payload")
+        # MATLAB reference: TrialConfig.m fromStructure static method.
+        # NOTE: MATLAB currently calls TrialConfig with six args and therefore
+        # shifts ensCovMask/covLag positions:
+        # TrialConfig(covMask,sampleRate,history,ensCovHist,covLag,name)
+        # We preserve this behavior for strict parity.
         return TrialConfig(
-            covariateLabels=list(payload.get("covMask", [])),
-            Fs=float(payload.get("sampleRate", 1000.0)),
-            name=str(payload.get("name", "config")),
+            payload.get("covMask", []),
+            payload.get("sampleRate", []),
+            payload.get("history", []),
+            payload.get("ensCovHist", []),
+            payload.get("covLag", []),
+            payload.get("name", ""),
         )
 
     def setConfig(self, trial: "Trial") -> "TrialConfig":
-        if self.sample_rate_hz > 0.0:
-            trial.setSampleRate(self.sample_rate_hz)
-        if self.covariate_labels:
-            trial.setCovMask(self.covariate_labels)
+        if not _is_empty_like(self.history):
+            trial.setHistory(self.history)
+        else:
+            trial.resetHistory()
+
+        if not _is_empty_like(self.sampleRate):
+            trial_sample_rate = getattr(trial, "sampleRate", None)
+            if trial_sample_rate is None or not np.isclose(float(trial_sample_rate), float(self.sampleRate)):
+                trial.setSampleRate(float(self.sampleRate))
+
+        trial.setCovMask(self.covMask)
+
+        if not _is_empty_like(self.covLag):
+            trial.shiftCovariates(float(np.asarray(self.covLag).reshape(-1)[0]))
+
+        if not _is_empty_like(self.ensCovHist):
+            trial.setEnsCovHist(self.ensCovHist)
+            trial.setEnsCovMask(self.ensCovMask)
+        else:
+            trial.setEnsCovHist([])
+            trial.resetEnsCovMask()
         return self
+
+    @staticmethod
+    def _coerce_covariate_labels(cov_mask: Any) -> list[str]:
+        if _is_empty_like(cov_mask):
+            return []
+        labels: list[str] = []
+        values = _to_python_cell(cov_mask)
+        for item in values:
+            if isinstance(item, (list, tuple, np.ndarray)):
+                inner = _to_python_cell(item)
+                labels.extend(str(v) for v in inner)
+            else:
+                labels.append(str(item))
+        return labels
+
+    @staticmethod
+    def _to_structure_cell(value: Any) -> Any:
+        if _is_empty_like(value):
+            return []
+        return _to_python_cell(value)
 
 
 class ConfigColl(_ConfigCollection):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.numConfigs = int(len(self.configs))
+        self.configArray = list(self.configs)
+        self.configNames = [
+            str(cfg.name) if str(cfg.name) != "" else f"Fit {i+1}"
+            for i, cfg in enumerate(self.configs)
+        ]
+
     @staticmethod
     def ConfigColl(*args: Any, **kwargs: Any) -> _ConfigCollection:
         if len(args) == 1 and isinstance(args[0], dict):
@@ -1898,29 +3082,56 @@ class ConfigColl(_ConfigCollection):
     @staticmethod
     def fromStructure(payload: dict[str, Any] | list[dict[str, Any]]) -> _ConfigCollection:
         if isinstance(payload, dict):
-            entries = list(payload.get("configs", []))
+            raw_entries = list(payload.get("configArray", payload.get("configs", [])))
         else:
-            entries = list(payload)
+            raw_entries = list(payload)
+        entries: list[dict[str, Any]] = []
+        for entry in raw_entries:
+            parsed = _to_python_cell(entry)
+            if isinstance(parsed, list):
+                if parsed and all(isinstance(v, dict) for v in parsed):
+                    entries.extend(cast(list[dict[str, Any]], parsed))
+                elif len(parsed) == 1 and isinstance(parsed[0], dict):
+                    entries.append(cast(dict[str, Any], parsed[0]))
+            elif isinstance(parsed, dict):
+                entries.append(parsed)
         if not entries:
             raise ValueError("fromStructure requires at least one configuration entry")
         configs = cast(list[_TrialConfig], [TrialConfig.fromStructure(entry) for entry in entries])
-        return ConfigColl(configs)
+        out = ConfigColl(configs)
+        # MATLAB fromStructure ignores stored configNames and rebuilds names
+        # from TrialConfig objects via constructor/addConfig logic.
+        return out
 
     def toStructure(self) -> dict[str, Any]:
+        config_array = [
+            TrialConfig(
+                covMask=getattr(cfg, "covMask", list(cfg.covariate_labels)),
+                sampleRate=getattr(cfg, "sampleRate", float(cfg.sample_rate_hz)),
+                history=getattr(cfg, "history", []),
+                ensCovHist=getattr(cfg, "ensCovHist", []),
+                ensCovMask=getattr(cfg, "ensCovMask", []),
+                covLag=getattr(cfg, "covLag", []),
+                fitType=str(cfg.fit_type),
+                name=str(cfg.name),
+            ).toStructure()
+            for cfg in self.configs
+        ]
         return {
-            "configs": [
-                TrialConfig(
-                    covariateLabels=list(cfg.covariate_labels),
-                    Fs=float(cfg.sample_rate_hz),
-                    fitType=str(cfg.fit_type),
-                    name=str(cfg.name),
-                ).toStructure()
-                for cfg in self.configs
-            ]
+            "numConfigs": int(len(self.configs)),
+            "configNames": list(self.getConfigNames()),
+            "configArray": config_array,
+            # Backward-compatible alias used by existing Python tests/utilities.
+            "configs": config_array,
         }
 
     def addConfig(self, config: _TrialConfig) -> _ConfigCollection:
+        if str(getattr(config, "name", "")) == "":
+            config.name = f"Fit {len(self.configs) + 1}"
         self.configs.append(config)
+        self.numConfigs = int(len(self.configs))
+        self.configArray = list(self.configs)
+        self.configNames.append(str(config.name) if str(config.name) != "" else f"Fit {self.numConfigs}")
         return self
 
     def getConfig(self, selector: int | str = 1) -> _TrialConfig:
@@ -1945,16 +3156,18 @@ class ConfigColl(_ConfigCollection):
         if idx < 1 or idx > len(self.configs):
             raise IndexError("configuration index out of range")
         self.configs[idx - 1] = config
+        self.configArray[idx - 1] = config
+        if str(getattr(config, "name", "")) != "":
+            self.configNames[idx - 1] = str(config.name)
         return self
 
     def getConfigNames(self) -> list[str]:
-        return [cfg.name for cfg in self.configs]
+        return list(self.configNames)
 
     def setConfigNames(self, names: list[str]) -> _ConfigCollection:
         if len(names) != len(self.configs):
             raise ValueError("names length must match number of configs")
-        for cfg, name in zip(self.configs, names):
-            cfg.name = str(name)
+        self.configNames = [str(name) for name in names]
         return self
 
     def getSubsetConfigs(self, selectors: list[int] | np.ndarray) -> _ConfigCollection:
@@ -1967,7 +3180,7 @@ class ConfigColl(_ConfigCollection):
         return ConfigColl(subset)
 
     def getConfigs(self) -> list[_TrialConfig]:
-        return self.configs
+        return list(self.configArray)
 
 
 class Trial(_Trial):
@@ -2078,6 +3291,7 @@ class Trial(_Trial):
         return self.setSampleRate(sampleRate)
 
     def shiftCovariates(self, lag_s: float) -> "Trial":
+        self._ensure_trial_state()
         for cov in self.covariates.covariates:
             cov.shift_time(lag_s)
         return self
@@ -2362,19 +3576,132 @@ class Trial(_Trial):
         return self.plotRaster()
 
     def toStructure(self) -> dict[str, Any]:
+        self._ensure_trial_state()
+        spikes_struct = nstColl(self.spikes.trains).toStructure()
+        cov_struct = CovColl(self.covariates.covariates).toStructure()
+
+        cov_mask_idx = list(getattr(self, "_cov_mask", list(range(len(self.covariates.covariates)))))
+        cov_mask = []
+        for i, cov in enumerate(self.covariates.covariates):
+            dim = int(cov.n_channels)
+            if i in cov_mask_idx:
+                cov_mask.append(np.ones((dim,), dtype=int).tolist())
+            else:
+                cov_mask.append(np.zeros((dim,), dtype=int).tolist())
+
+        neuron_mask_idx = list(getattr(self, "_neuron_mask", list(range(self.spikes.n_units))))
+        neuron_mask = np.zeros((self.spikes.n_units,), dtype=int)
+        if neuron_mask_idx:
+            neuron_mask[np.asarray(neuron_mask_idx, dtype=int)] = 1
+
+        partition = self.getTrialPartition()
+        if isinstance(partition, dict) and partition:
+            training_window = list(partition.get("training", (self.findMinTime(), self.findMaxTime())))
+            validation_window = list(partition.get("validation", (self.findMaxTime(), self.findMaxTime())))
+        else:
+            training_window = [self.findMinTime(), self.findMaxTime()]
+            validation_window = [self.findMaxTime(), self.findMaxTime()]
+
+        ev_obj = self.getEvents()
+        ev_payload: Any = []
+        if ev_obj is not None and hasattr(ev_obj, "toStructure"):
+            ev_payload = ev_obj.toStructure()
+
+        hist_payload: Any = []
+        if getattr(self, "_history", None) is not None and hasattr(self._history, "toStructure"):
+            hist_payload = self._history.toStructure()
+
+        ens_hist_payload: Any = []
+        if getattr(self, "_ens_cov_hist", None) is not None and hasattr(self._ens_cov_hist, "toStructure"):
+            ens_hist_payload = self._ens_cov_hist.toStructure()
+
         return {
-            "spikes": nstColl(self.spikes.trains).toStructure(),
-            "covariates": CovColl(self.covariates.covariates).toStructure(),
-            "trial_partition": self.getTrialPartition(),
+            # Python-native keys
+            "spikes": spikes_struct,
+            "covariates": cov_struct,
+            "trial_partition": partition,
+            # MATLAB-style keys
+            "nspikeColl": spikes_struct,
+            "covarColl": cov_struct,
+            "ev": ev_payload,
+            "history": hist_payload,
+            "ensCovHist": ens_hist_payload,
+            "sampleRate": float(self.findMinSampleRate()),
+            "minTime": float(self.findMinTime()),
+            "maxTime": float(self.findMaxTime()),
+            "covMask": cov_mask,
+            "ensCovMask": getattr(self, "_ens_cov_mask", list(range(self.spikes.n_units))),
+            "neuronMask": neuron_mask,
+            "trainingWindow": training_window,
+            "validationWindow": validation_window,
         }
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> "Trial":
-        spikes = nstColl.fromStructure(payload["spikes"])
-        covs = CovColl.fromStructure(payload["covariates"])
+        def _unwrap_single(node: Any) -> Any:
+            if isinstance(node, list) and len(node) == 1:
+                return node[0]
+            if isinstance(node, np.ndarray):
+                arr = np.asarray(node, dtype=object).reshape(-1)
+                if arr.size == 1:
+                    return arr[0]
+            return node
+
+        if hasattr(payload, "_fieldnames"):
+            payload = {name: getattr(payload, name) for name in payload._fieldnames}
+        spikes_payload = _unwrap_single(payload.get("spikes", payload.get("nspikeColl")))
+        covs_payload = _unwrap_single(payload.get("covariates", payload.get("covarColl")))
+        if spikes_payload is None or covs_payload is None:
+            raise ValueError("fromStructure requires spikes/nspikeColl and covariates/covarColl")
+
+        spikes = nstColl.fromStructure(spikes_payload)
+        covs = CovColl.fromStructure(covs_payload)
         trial = Trial(spikes=spikes, covariates=covs)
-        if "trial_partition" in payload:
+
+        if "minTime" in payload and not _is_empty_like(payload.get("minTime")):
+            trial.setMinTime(float(np.asarray(payload["minTime"], dtype=float).reshape(-1)[0]))
+        if "maxTime" in payload and not _is_empty_like(payload.get("maxTime")):
+            trial.setMaxTime(float(np.asarray(payload["maxTime"], dtype=float).reshape(-1)[0]))
+
+        if "trial_partition" in payload and isinstance(payload["trial_partition"], dict):
             trial.setTrialPartition(dict(payload["trial_partition"]))
+        elif ("trainingWindow" in payload) and ("validationWindow" in payload):
+            training = np.asarray(payload.get("trainingWindow"), dtype=float).reshape(-1)
+            validation = np.asarray(payload.get("validationWindow"), dtype=float).reshape(-1)
+            if training.size >= 2 and validation.size >= 2:
+                trial.setTrialPartition(
+                    {
+                        "training": (float(training[0]), float(training[1])),
+                        "validation": (float(validation[0]), float(validation[1])),
+                    }
+                )
+
+        if "covMask" in payload and not _is_empty_like(payload.get("covMask")):
+            raw_cov_mask = _to_python_cell(payload["covMask"])
+            if isinstance(raw_cov_mask, list):
+                cov_idx: list[int] = []
+                for i, row in enumerate(raw_cov_mask):
+                    arr = np.asarray(row, dtype=float).reshape(-1)
+                    if arr.size and np.any(arr > 0):
+                        cov_idx.append(i)
+                if cov_idx:
+                    trial._cov_mask = cov_idx
+
+        if "neuronMask" in payload and not _is_empty_like(payload.get("neuronMask")):
+            arr = np.asarray(payload["neuronMask"], dtype=float).reshape(-1)
+            if arr.size == trial.spikes.n_units:
+                trial._neuron_mask = [int(i) for i in np.where(arr > 0)[0]]
+
+        if "ensCovMask" in payload and not _is_empty_like(payload.get("ensCovMask")):
+            ens = _to_python_cell(payload["ensCovMask"])
+            trial._ens_cov_mask = ens if isinstance(ens, list) else trial._ens_cov_mask
+
+        if "ev" in payload and not _is_empty_like(payload.get("ev")):
+            trial.setTrialEvents(Events.fromStructure(payload["ev"]))
+        if "history" in payload and not _is_empty_like(payload.get("history")):
+            trial.setHistory(History.fromStructure(payload["history"]))
+        if "ensCovHist" in payload and not _is_empty_like(payload.get("ensCovHist")):
+            trial.setEnsCovHist(History.fromStructure(payload["ensCovHist"]))
         return trial
 
 
@@ -2415,26 +3742,46 @@ class CIF(_CIFModel):
         return self.evaluate(X)
 
     def evalGradient(self, X: np.ndarray) -> np.ndarray:
-        X = np.asarray(X, dtype=float)
-        vals = self.evaluate(X)
-        base = np.column_stack([np.ones(X.shape[0]), X])
+        Xmat = self._coerce_stim_input(X)
+        vals = self.evaluate(Xmat)
+        coeffs = self.coefficients.reshape(1, -1)
         if self.link == "poisson":
-            return base * vals[:, None]
-        return base * (vals * (1.0 - vals))[:, None]
+            out = vals[:, None] * coeffs
+        else:
+            out = (vals * (1.0 - vals))[:, None] * coeffs
+        return out[0] if out.shape[0] == 1 else out
 
     def evalGradientLog(self, X: np.ndarray) -> np.ndarray:
-        X = np.asarray(X, dtype=float)
-        vals = self.evaluate(X)
-        base = np.column_stack([np.ones(X.shape[0]), X])
+        Xmat = self._coerce_stim_input(X)
+        vals = self.evaluate(Xmat)
+        coeffs = self.coefficients.reshape(1, -1)
         if self.link == "poisson":
-            return base
-        return base * (1.0 - vals)[:, None]
+            out = np.repeat(coeffs, Xmat.shape[0], axis=0)
+        else:
+            out = (1.0 - vals)[:, None] * coeffs
+        return out[0] if out.shape[0] == 1 else out
 
     def evalJacobian(self, X: np.ndarray) -> np.ndarray:
-        return self.evalGradient(X)
+        Xmat = self._coerce_stim_input(X)
+        vals = self.evaluate(Xmat)
+        outer = np.outer(self.coefficients, self.coefficients)
+        if self.link == "poisson":
+            out = vals[:, None, None] * outer[None, :, :]
+        else:
+            factor = vals * (1.0 - vals) * (1.0 - 2.0 * vals)
+            out = factor[:, None, None] * outer[None, :, :]
+        return out[0] if out.shape[0] == 1 else out
 
     def evalJacobianLog(self, X: np.ndarray) -> np.ndarray:
-        return self.evalGradientLog(X)
+        Xmat = self._coerce_stim_input(X)
+        vals = self.evaluate(Xmat)
+        outer = np.outer(self.coefficients, self.coefficients)
+        if self.link == "poisson":
+            out = np.zeros((Xmat.shape[0], outer.shape[0], outer.shape[1]), dtype=float)
+        else:
+            factor = -(vals * (1.0 - vals))
+            out = factor[:, None, None] * outer[None, :, :]
+        return out[0] if out.shape[0] == 1 else out
 
     def evalLDGamma(self, X: np.ndarray) -> np.ndarray:
         return self.evaluate(X)
@@ -2460,6 +3807,17 @@ class CIF(_CIFModel):
     @staticmethod
     def resolveSimulinkModelName(*_args: Any, **_kwargs: Any) -> str:
         return "nstat_python_cif_model"
+
+    @staticmethod
+    def _coerce_stim_input(X: np.ndarray | float | list[float]) -> np.ndarray:
+        arr = np.asarray(X, dtype=float)
+        if arr.ndim == 0:
+            arr = arr.reshape(1, 1)
+        elif arr.ndim == 1:
+            arr = arr.reshape(1, -1)
+        elif arr.ndim != 2:
+            raise ValueError("stimulus input must be scalar, 1D, or 2D")
+        return arr
 
     def setHistory(self, history: Any) -> _CIFModel:
         setattr(self, "_history", history)
@@ -2859,20 +4217,87 @@ class FitResult(_FitResult):
     def computeValLambda(self, X: np.ndarray) -> np.ndarray:
         return self.compute_val_lambda(X)
 
-    def getCoeffs(self) -> np.ndarray:
-        return self.get_coeffs()
+    def getCoeffs(self, fitNum: int | None = None) -> np.ndarray | tuple[np.ndarray, list[list[str]], np.ndarray]:
+        if fitNum is None:
+            return self.get_coeffs()
+        _ = fitNum
+        coeff_index, _epoch_id, _num_epochs = self.getCoeffIndex(1, False)
+        if coeff_index.size == 0:
+            empty = np.zeros((0, 1), dtype=float)
+            return empty, [], empty
+        keep = (np.asarray(coeff_index, dtype=int).reshape(-1) - 1).astype(int)
+        coeff = np.asarray(self.coefficients, dtype=float).reshape(-1)
+        plot = self.getPlotParams()
+        se = np.asarray(plot.get("seAct", np.zeros_like(coeff)), dtype=float).reshape(-1)
+        labels = self.getUniqueLabels()
+        coeff_mat = coeff[keep][:, None]
+        se_mat = se[keep][:, None]
+        label_mat = [[labels[i]] for i in keep]
+        return coeff_mat, label_mat, se_mat
 
-    def getCoeffIndex(self, label: str) -> int:
-        return self.get_coeff_index(label)
+    def getCoeffIndex(
+        self, labelOrFitNum: str | int | None = None, sortByEpoch: bool = False
+    ) -> int | tuple[np.ndarray, np.ndarray, int]:
+        if isinstance(labelOrFitNum, str):
+            return self.get_coeff_index(labelOrFitNum)
+        _ = sortByEpoch
+        labels = self.getUniqueLabels()
+        if not labels:
+            return np.array([], dtype=int), np.array([], dtype=int), 1
+        hist_index, _hist_epoch, _hist_num = self.getHistIndex(1, sortByEpoch)
+        hist_zero = {int(v) - 1 for v in np.asarray(hist_index, dtype=int).reshape(-1)}
+        coeff_index = np.array(
+            [i + 1 for i in range(len(labels)) if i not in hist_zero],
+            dtype=int,
+        )
+        epoch_id = np.zeros(coeff_index.size, dtype=int)
+        num_epochs = int(max(1, np.unique(epoch_id).size))
+        return coeff_index, epoch_id, num_epochs
 
-    def getParam(self, key: str) -> float | np.ndarray | str | int:
-        return self.get_param(key)
+    def getParam(
+        self, keyOrLabels: str | list[str] | tuple[str, ...] | np.ndarray, fitNum: int | list[int] | np.ndarray | None = None
+    ) -> float | np.ndarray | str | int | tuple[np.ndarray, np.ndarray, np.ndarray]:
+        if isinstance(keyOrLabels, str):
+            return self.get_param(keyOrLabels)
+        labels = self.getUniqueLabels()
+        label_map = {label: i for i, label in enumerate(labels)}
+        names = [str(v) for v in np.asarray(keyOrLabels, dtype=object).reshape(-1)]
+        if fitNum is None:
+            fit_nums = [1]
+        elif isinstance(fitNum, int):
+            fit_nums = [fitNum]
+        else:
+            fit_nums = [int(v) for v in np.asarray(fitNum).reshape(-1)]
+        fit_nums = [v for v in fit_nums if v == 1]
+        if not fit_nums:
+            raise ValueError("single-fit Python adapter only supports fitNum=1")
+        plot = self.getPlotParams()
+        b_act = np.asarray(plot.get("bAct", np.asarray(self.coefficients, dtype=float).reshape(-1, 1)), dtype=float)
+        se_act = np.asarray(plot.get("seAct", np.zeros_like(b_act)), dtype=float)
+        sig_index = np.asarray(plot.get("sigIndex", np.zeros_like(b_act)), dtype=float)
+        param_vals = np.full((len(names), len(fit_nums)), np.nan, dtype=float)
+        param_se = np.full_like(param_vals, np.nan)
+        param_sig = np.zeros_like(param_vals)
+        for i, name in enumerate(names):
+            if name not in label_map:
+                raise KeyError(f'unknown covariate label "{name}"')
+            idx = label_map[name]
+            param_vals[i, 0] = float(b_act[idx, 0])
+            param_se[i, 0] = float(se_act[idx, 0])
+            param_sig[i, 0] = float(sig_index[idx, 0])
+        return param_vals, param_se, param_sig
 
     def getUniqueLabels(self) -> list[str]:
         return self.get_unique_labels()
 
     def isValDataPresent(self) -> bool:
-        return len(self.xval_data) > 0 and len(self.xval_time) > 0
+        if len(self.xval_data) == 0 or len(self.xval_time) == 0:
+            return False
+        for t in self.xval_time:
+            arr = np.asarray(t, dtype=float).reshape(-1)
+            if arr.size >= 2 and float(arr[-1] - arr[0]) > 0.0:
+                return True
+        return False
 
     def getSubsetFitResult(self, subfits: int | list[int] | np.ndarray) -> _FitResult:
         if isinstance(subfits, int):
@@ -2899,12 +4324,31 @@ class FitResult(_FitResult):
     def getHistIndex(self, fitNum: int = 1, sortByEpoch: bool = False) -> tuple[np.ndarray, np.ndarray, int]:
         _ = fitNum
         _ = sortByEpoch
-        return np.array([], dtype=int), np.array([], dtype=int), 1
+        labels = self.getUniqueLabels()
+        hist = [
+            i + 1
+            for i, label in enumerate(labels)
+            if ("hist" in label.lower()) or ("history" in label.lower()) or ("[" in label and "]" in label)
+        ]
+        if not hist:
+            return np.array([], dtype=int), np.array([], dtype=int), 0
+        hist_index = np.asarray(hist, dtype=int)
+        epoch_id = np.zeros(hist_index.size, dtype=int)
+        num_epochs = int(max(1, np.unique(epoch_id).size))
+        return hist_index, epoch_id, num_epochs
 
     def getHistCoeffs(self, fitNum: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
         _ = fitNum
-        empty = np.zeros((0, 1), dtype=float)
-        return empty, [], empty
+        hist_index, _epoch_id, _num_epochs = self.getHistIndex(1, False)
+        if hist_index.size == 0:
+            empty = np.zeros((0, 1), dtype=float)
+            return empty, [], empty
+        keep = (np.asarray(hist_index, dtype=int).reshape(-1) - 1).astype(int)
+        coeff = np.asarray(self.coefficients, dtype=float).reshape(-1)
+        plot = self.getPlotParams()
+        se = np.asarray(plot.get("seAct", np.zeros_like(coeff)), dtype=float).reshape(-1)
+        labels = self.getUniqueLabels()
+        return coeff[keep][:, None], [labels[i] for i in keep], se[keep][:, None]
 
     def plotCoeffs(
         self,
@@ -3048,7 +4492,10 @@ class FitResSummary(_FitSummary):
         return self.get_unique_labels()
 
     def getCoeffIndex(self, fitNum: int = 1, sortByEpoch: bool = False) -> tuple[np.ndarray, np.ndarray, int]:
-        return self.get_coeff_index(fit_num=fitNum, sort_by_epoch=sortByEpoch)
+        coeff_idx, _epoch_id, num_epochs = self.get_coeff_index(fit_num=fitNum, sort_by_epoch=sortByEpoch)
+        coeff_idx = np.asarray(coeff_idx, dtype=int).reshape(-1) + 1
+        epoch_id = np.zeros(coeff_idx.size, dtype=int)
+        return coeff_idx, epoch_id, int(num_epochs)
 
     def getCoeffs(self, fitNum: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
         return self.get_coeffs(fit_num=fitNum)
@@ -3075,14 +4522,31 @@ class FitResSummary(_FitSummary):
     def bestByBIC(self) -> _FitResult:
         return self.best_by_bic()
 
-    def getDiffAIC(self) -> np.ndarray:
-        return self.get_diff_aic()
+    def _compute_diff_vector(self, values: np.ndarray, diffIndex: int = 1) -> np.ndarray:
+        vec = np.asarray(values, dtype=float).reshape(-1)
+        if vec.size <= 1:
+            return vec.copy()
+        ref = int(max(1, min(vec.size, int(diffIndex)))) - 1
+        keep = np.array([i for i in range(vec.size) if i != ref], dtype=int)
+        return vec[keep] - vec[ref]
 
-    def getDiffBIC(self) -> np.ndarray:
-        return self.get_diff_bic()
+    def getDiffAIC(self, diffIndex: int = 1, makePlot: bool = True, h: Any = None) -> np.ndarray:
+        _ = makePlot
+        _ = h
+        vals = np.array([fit.aic() for fit in self.results], dtype=float)
+        return self._compute_diff_vector(vals, diffIndex=diffIndex)
 
-    def getDifflogLL(self) -> np.ndarray:
-        return self.get_diff_log_likelihood()
+    def getDiffBIC(self, diffIndex: int = 1, makePlot: bool = True, h: Any = None) -> np.ndarray:
+        _ = makePlot
+        _ = h
+        vals = np.array([fit.bic() for fit in self.results], dtype=float)
+        return self._compute_diff_vector(vals, diffIndex=diffIndex)
+
+    def getDifflogLL(self, diffIndex: int = 1, makePlot: bool = True, h: Any = None) -> np.ndarray:
+        _ = makePlot
+        _ = h
+        vals = np.array([fit.log_likelihood for fit in self.results], dtype=float)
+        return self._compute_diff_vector(vals, diffIndex=diffIndex)
 
     def computeDiffMat(self, metric: str = "aic") -> np.ndarray:
         return self.compute_diff_mat(metric=metric)
@@ -3091,12 +4555,16 @@ class FitResSummary(_FitSummary):
         coeff_idx, epoch_id, num_epochs = self.get_coeff_index(fit_num=fitNum, sort_by_epoch=sortByEpoch)
         _coeff_mat, labels, _se = self.get_coeffs(fit_num=fitNum)
         keep = np.array(
-            [i for i in coeff_idx if "hist" in labels[int(i)].lower() or "history" in labels[int(i)].lower()],
+            [
+                int(i) + 1
+                for i in np.asarray(coeff_idx, dtype=int).reshape(-1)
+                if "hist" in labels[int(i)].lower() or "history" in labels[int(i)].lower()
+            ],
             dtype=int,
         )
         if keep.size == 0:
-            return keep, np.array([], dtype=int), 1
-        return keep, np.ones(keep.size, dtype=int), num_epochs
+            return keep, np.array([], dtype=int), 0
+        return keep, np.ones(keep.size, dtype=int), int(num_epochs)
 
     def getHistCoeffs(self, fitNum: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
         coeff_mat, labels, se_mat = self.get_coeffs(fit_num=fitNum)
@@ -3215,7 +4683,8 @@ class FitResSummary(_FitSummary):
         for fit in self.results:
             raw = fit.ks_stats.get("ks_stat", np.nan)
             arr = np.asarray(raw, dtype=float).reshape(-1)
-            vals.append(float(np.nanmean(arr)) if arr.size else np.nan)
+            finite = arr[np.isfinite(arr)]
+            vals.append(float(np.mean(finite)) if finite.size else np.nan)
         y = np.asarray(vals, dtype=float)
         return plt.plot(np.arange(1, y.size + 1), y, "k-o")
 
@@ -3228,7 +4697,8 @@ class FitResSummary(_FitSummary):
                 vals.append(np.nan)
                 continue
             arr = np.asarray(fit.fit_residual, dtype=float).reshape(-1)
-            vals.append(float(np.nanmean(np.abs(arr))) if arr.size else np.nan)
+            finite = np.abs(arr[np.isfinite(arr)])
+            vals.append(float(np.mean(finite)) if finite.size else np.nan)
         y = np.asarray(vals, dtype=float)
         return plt.plot(np.arange(1, y.size + 1), y, "k-o")
 
@@ -3255,7 +4725,214 @@ class DecodingAlgorithms:
         )
 
     @staticmethod
-    def computeSpikeRateCIs(spike_matrix: np.ndarray, alpha: float = 0.05) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _chol_like_matlab(mat: np.ndarray) -> np.ndarray:
+        arr = np.asarray(mat, dtype=float)
+        if arr.ndim == 0:
+            return np.array([[float(np.sqrt(max(arr.item(), 0.0)))]] , dtype=float)
+        if np.allclose(arr, 0.0):
+            return np.zeros_like(arr, dtype=float)
+        try:
+            return np.linalg.cholesky(arr)
+        except np.linalg.LinAlgError:
+            eigvals, eigvecs = np.linalg.eigh(arr)
+            eigvals = np.clip(eigvals, 0.0, None)
+            return eigvecs @ np.diag(np.sqrt(eigvals))
+
+    @staticmethod
+    def _build_unit_impulse_basis(numBasis: int, minTime: float, maxTime: float, delta: float) -> tuple[np.ndarray, np.ndarray]:
+        if numBasis <= 0:
+            raise ValueError("numBasis must be > 0")
+        basis_width = float(maxTime - minTime) / float(numBasis)
+        sample_rate = 1.0 / float(delta)
+        basis_sig = nstColl.generateUnitImpulseBasis(basis_width, minTime, maxTime, sample_rate)
+        basis_mat = np.asarray(basis_sig.data, dtype=float)
+        time = np.asarray(basis_sig.time, dtype=float).reshape(-1)
+        return basis_mat, time
+
+    @staticmethod
+    def _compute_spike_rate_cis_matlab(
+        xK: np.ndarray,
+        Wku: np.ndarray,
+        dN: np.ndarray,
+        t0: float,
+        tf: float,
+        fitType: str,
+        delta: float,
+        gamma: Any = None,
+        windowTimes: Any = None,
+        Mc: int = 500,
+        alphaVal: float = 0.05,
+    ) -> tuple[_Covariate, np.ndarray, np.ndarray]:
+        xK_arr = np.asarray(xK, dtype=float)
+        if xK_arr.ndim != 2:
+            raise ValueError("xK must be 2D with shape (numBasis, K)")
+        dN_arr = np.asarray(dN, dtype=float)
+        if dN_arr.ndim != 2:
+            raise ValueError("dN must be 2D with shape (K, T)")
+        numBasis, K = xK_arr.shape
+        if dN_arr.shape[0] != K:
+            raise ValueError("dN first dimension must match K in xK")
+        fit_type = str(fitType).lower()
+        if fit_type not in {"poisson", "binomial"}:
+            raise ValueError("fitType must be either 'poisson' or 'binomial'")
+        if not (0.0 < float(alphaVal) < 1.0):
+            raise ValueError("alphaVal must be in (0, 1)")
+        if int(Mc) <= 0:
+            raise ValueError("Mc must be > 0")
+
+        min_time = 0.0
+        max_time = float(dN_arr.shape[1] - 1) * float(delta)
+        basis_mat, basis_time = DecodingAlgorithms._build_unit_impulse_basis(numBasis, min_time, max_time, float(delta))
+        if basis_mat.shape[0] < dN_arr.shape[1]:
+            pad = np.zeros((dN_arr.shape[1] - basis_mat.shape[0], basis_mat.shape[1]), dtype=float)
+            basis_mat = np.vstack([basis_mat, pad])
+        elif basis_mat.shape[0] > dN_arr.shape[1]:
+            basis_mat = basis_mat[: dN_arr.shape[1], :]
+            basis_time = basis_time[: dN_arr.shape[1]]
+        time = basis_time
+
+        window_vals = np.asarray([] if windowTimes is None else windowTimes, dtype=float).reshape(-1)
+        if window_vals.size > 0:
+            hist_obj = History(bin_edges_s=window_vals, min_time_s=min_time, max_time_s=max_time)
+            gamma_vec = np.asarray(gamma, dtype=float).reshape(-1)
+            Hk: list[np.ndarray] = []
+            for k in range(K):
+                spikes = np.where(dN_arr[k, :] == 1.0)[0].astype(float) * float(delta)
+                hk = np.asarray(hist_obj.computeHistory(spikes, time), dtype=float)
+                if hk.ndim == 1:
+                    hk = hk[:, None]
+                if hk.shape[0] < dN_arr.shape[1]:
+                    hk = np.vstack([hk, np.zeros((dN_arr.shape[1] - hk.shape[0], hk.shape[1]), dtype=float)])
+                elif hk.shape[0] > dN_arr.shape[1]:
+                    hk = hk[: dN_arr.shape[1], :]
+                Hk.append(hk)
+            if gamma_vec.size == 0:
+                gamma_vec = np.zeros(1, dtype=float)
+        else:
+            Hk = [np.zeros((dN_arr.shape[1], 1), dtype=float) for _ in range(K)]
+            gamma_vec = np.zeros(1, dtype=float)
+
+        Wku_arr = np.asarray(Wku, dtype=float)
+        xK_draw = np.zeros((numBasis, K, int(Mc)), dtype=float)
+        rng = np.random.default_rng(0)
+        for r in range(numBasis):
+            if Wku_arr.ndim == 4:
+                Wku_temp = np.asarray(Wku_arr[r, r, :, :], dtype=float)
+            elif Wku_arr.ndim == 3:
+                Wku_temp = np.asarray(Wku_arr[r, :, :], dtype=float)
+            elif Wku_arr.ndim == 2:
+                Wku_temp = np.asarray(Wku_arr, dtype=float)
+            else:
+                Wku_temp = np.asarray(0.0, dtype=float)
+            if Wku_temp.ndim == 0:
+                chol_m = np.diag(np.repeat(float(np.sqrt(max(Wku_temp.item(), 0.0))), K))
+            else:
+                chol_m = DecodingAlgorithms._chol_like_matlab(Wku_temp)
+                if chol_m.shape != (K, K):
+                    raise ValueError("Wku covariance slice must be KxK")
+            for c in range(int(Mc)):
+                z = rng.normal(0.0, 1.0, size=(K,))
+                xK_draw[r, :, c] = xK_arr[r, :] + (chol_m @ z)
+
+        lambda_delta = np.zeros((dN_arr.shape[1], K, int(Mc)), dtype=float)
+        spike_rate = np.zeros((int(Mc), K), dtype=float)
+        for c in range(int(Mc)):
+            for k in range(K):
+                stim_k = basis_mat @ xK_draw[:, k, c]
+                if window_vals.size > 0 and np.any(np.abs(gamma_vec) > 0.0):
+                    hk = Hk[k]
+                    cols = min(hk.shape[1], gamma_vec.size)
+                    hist_lin = hk[:, :cols] @ gamma_vec[:cols]
+                else:
+                    hist_lin = np.zeros(stim_k.shape[0], dtype=float)
+                eta = stim_k + hist_lin
+                if fit_type == "poisson":
+                    lam = np.exp(eta)
+                else:
+                    exp_eta = np.exp(eta)
+                    lam = exp_eta / (1.0 + exp_eta)
+                lambda_delta[:, k, c] = lam
+            rates = lambda_delta[:, :, c] / float(delta)
+            mask = (time >= float(t0)) & (time <= float(tf))
+            if np.sum(mask) < 2:
+                integral_vals = np.zeros(K, dtype=float)
+            else:
+                integrate_fn = getattr(np, "trapezoid", None)
+                if integrate_fn is None:
+                    integrate_fn = np.trapz  # pragma: no cover - NumPy<2 fallback
+                integral_vals = integrate_fn(rates[mask, :], x=time[mask], axis=0)
+            spike_rate[c, :] = integral_vals / max(float(tf - t0), np.finfo(float).eps)
+
+        CIs = np.zeros((K, 2), dtype=float)
+        for k in range(K):
+            vals = np.sort(spike_rate[:, k])
+            f = (np.arange(vals.size, dtype=float) + 1.0) / float(vals.size)
+            lo = vals[f < float(alphaVal)]
+            hi = vals[f > (1.0 - float(alphaVal))]
+            CIs[k, 0] = float(lo[-1]) if lo.size else float(vals[0])
+            CIs[k, 1] = float(hi[0]) if hi.size else float(vals[-1])
+
+        spike_rate_sig = Covariate(
+            time=np.arange(1, K + 1, dtype=float),
+            data=np.mean(spike_rate, axis=0),
+            name=f"({tf}-{t0})^-1 * \\Lambda({tf}-{t0})",
+            x_label="Trial",
+            x_units="k",
+            y_units="Hz",
+        )
+        ci_obj = ConfidenceInterval(
+            time=np.arange(1, K + 1, dtype=float),
+            lower=CIs[:, 0],
+            upper=CIs[:, 1],
+            level=1.0 - float(alphaVal),
+            color="b",
+            value=1.0 - float(alphaVal),
+        )
+        spike_rate_sig.setConfInterval(ci_obj)
+
+        prob_mat = np.zeros((K, K), dtype=float)
+        for k in range(K):
+            for m in range(k + 1, K):
+                prob_mat[k, m] = float(np.sum(spike_rate[:, m] > spike_rate[:, k])) / float(Mc)
+        sig_mat = (prob_mat > (1.0 - float(alphaVal))).astype(float)
+        return spike_rate_sig, prob_mat, sig_mat
+
+    @staticmethod
+    def computeSpikeRateCIs(*args: Any, **kwargs: Any) -> tuple[Any, np.ndarray, np.ndarray]:
+        # MATLAB signature:
+        #   computeSpikeRateCIs(xK,Wku,dN,t0,tf,fitType,delta,gamma,windowTimes,Mc,alphaVal)
+        # Existing Python compact signature:
+        #   computeSpikeRateCIs(spike_matrix, alpha=0.05)
+        if len(args) >= 7:
+            xK = np.asarray(args[0], dtype=float)
+            Wku = np.asarray(args[1], dtype=float)
+            dN = np.asarray(args[2], dtype=float)
+            t0 = float(args[3])
+            tf = float(args[4])
+            fitType = str(args[5])
+            delta = float(args[6])
+            gamma = args[7] if len(args) >= 8 else kwargs.get("gamma", None)
+            windowTimes = args[8] if len(args) >= 9 else kwargs.get("windowTimes", None)
+            Mc = int(args[9]) if len(args) >= 10 else int(kwargs.get("Mc", 500))
+            alphaVal = float(args[10]) if len(args) >= 11 else float(kwargs.get("alphaVal", 0.05))
+            return DecodingAlgorithms._compute_spike_rate_cis_matlab(
+                xK=xK,
+                Wku=Wku,
+                dN=dN,
+                t0=t0,
+                tf=tf,
+                fitType=fitType,
+                delta=delta,
+                gamma=gamma,
+                windowTimes=windowTimes,
+                Mc=Mc,
+                alphaVal=alphaVal,
+            )
+
+        if len(args) == 0 and "spike_matrix" not in kwargs:
+            raise TypeError("computeSpikeRateCIs requires either MATLAB-style or compact arguments")
+        spike_matrix = np.asarray(args[0] if args else kwargs["spike_matrix"], dtype=float)
+        alpha = float(args[1]) if len(args) >= 2 else float(kwargs.get("alpha", 0.05))
         return _DecodingAlgorithms.compute_spike_rate_cis(spike_matrix=spike_matrix, alpha=alpha)
 
     @staticmethod
