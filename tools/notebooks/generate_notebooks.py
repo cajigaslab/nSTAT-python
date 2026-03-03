@@ -898,6 +898,691 @@ CHECKPOINT_LIMITS = {
 """
 
 
+TRIALCONFIG_EXAMPLES_TEMPLATE = """# TrialConfigExamples: create and inspect trial configurations.
+from nstat.compat.matlab import TrialConfig, ConfigColl
+
+tc1 = TrialConfig(covariateLabels=["Force", "f_x"], Fs=2000.0, fitType="poisson", name="ForceX")
+tc2 = TrialConfig(covariateLabels=["Position", "x"], Fs=2000.0, fitType="poisson", name="PositionX")
+tcc = ConfigColl([tc1, tc2])
+
+config_names = tcc.getConfigNames()
+cfg1 = tcc.getConfig(1)
+cfg2 = tcc.getConfig("PositionX")
+sample_rates = np.array([cfg.sample_rate_hz for cfg in tcc.getConfigs()], dtype=float)
+
+fig, ax = plt.subplots(1, 1, figsize=(7.6, 4.2))
+ax.bar(config_names, sample_rates, color=["tab:blue", "tab:orange"])
+ax.set_ylabel("sample rate [Hz]")
+ax.set_title(f"{TOPIC}: TrialConfig summary")
+plt.tight_layout()
+plt.show()
+
+assert cfg1.getSampleRate() == 2000.0
+assert cfg2.getFitType() == "poisson"
+
+CHECKPOINT_METRICS = {
+    "num_configs": float(len(tcc.getConfigs())),
+    "sample_rate_hz": float(np.mean(sample_rates)),
+}
+CHECKPOINT_LIMITS = {
+    "num_configs": (2.0, 2.0),
+    "sample_rate_hz": (2000.0, 2000.0),
+}
+"""
+
+
+CONFIGCOLL_EXAMPLES_TEMPLATE = """# ConfigCollExamples: compose and edit configuration collections.
+from nstat.compat.matlab import TrialConfig, ConfigColl
+
+tc1 = TrialConfig(covariateLabels=["Force", "f_x"], Fs=2000.0, fitType="poisson", name="cfg_force")
+tc2 = TrialConfig(covariateLabels=["Position", "x"], Fs=2000.0, fitType="poisson", name="cfg_pos")
+tcc = ConfigColl([tc1, tc2])
+
+replacement = TrialConfig(covariateLabels=["Position", "y"], Fs=1000.0, fitType="poisson", name="cfg_pos_y")
+tcc.setConfig(2, replacement)
+subset = tcc.getSubsetConfigs([1, 2])
+
+names = tcc.getConfigNames()
+rates = np.array([cfg.getSampleRate() for cfg in tcc.getConfigs()], dtype=float)
+n_cov = np.array([len(cfg.getCovariateLabels()) for cfg in tcc.getConfigs()], dtype=float)
+
+fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.8))
+axes[0].bar(names, rates, color="tab:purple")
+axes[0].set_title("Config sample rates")
+axes[0].set_ylabel("Hz")
+
+axes[1].bar(names, n_cov, color="tab:green")
+axes[1].set_title("Covariates per config")
+axes[1].set_ylabel("count")
+plt.tight_layout()
+plt.show()
+
+assert len(subset.getConfigs()) == 2
+assert float(rates[1]) == 1000.0
+
+CHECKPOINT_METRICS = {
+    "num_configs": float(len(tcc.getConfigs())),
+    "mean_sample_rate": float(np.mean(rates)),
+}
+CHECKPOINT_LIMITS = {
+    "num_configs": (2.0, 2.0),
+    "mean_sample_rate": (1400.0, 1800.0),
+}
+"""
+
+
+COVCOLL_EXAMPLES_TEMPLATE = """# CovCollExamples: covariate collection queries, masking, and resampling.
+from nstat.compat.matlab import Covariate, CovColl
+
+t = np.arange(0.0, 5.0 + 0.001, 0.001)
+position = Covariate(
+    time=t,
+    data=np.column_stack([np.exp(-t), np.sin(2.0 * np.pi * t), np.sin(2.0 * np.pi * t) ** 3]),
+    name="Position",
+    labels=["x", "y", "z"],
+)
+force = Covariate(
+    time=t,
+    data=np.column_stack([np.abs(np.sin(2.0 * np.pi * t)), np.abs(np.sin(2.0 * np.pi * t)) ** 2]),
+    name="Force",
+    labels=["f_x", "f_y"],
+)
+cc = CovColl([position, force])
+
+fig1 = plt.figure(figsize=(9.0, 4.2))
+cc.plot()
+plt.title(f"{TOPIC}: all covariates")
+plt.xlabel("time [s]")
+plt.tight_layout()
+plt.show()
+
+_pos = cc.getCov("Position")
+_force = cc.getCov("Force")
+cc.resample(200.0)
+cc.setMask(["Position", "Force"])
+
+fig2 = plt.figure(figsize=(9.0, 4.2))
+cc.plot()
+plt.title("Resampled/masked covariates")
+plt.xlabel("time [s]")
+plt.tight_layout()
+plt.show()
+
+X, labels = cc.dataToMatrix()
+n_before_remove = cc.nActCovar()
+cc.removeCovariate("Force")
+n_after_remove = cc.nActCovar()
+
+assert X.shape[1] >= 4
+assert n_after_remove == max(1, n_before_remove - 1)
+
+CHECKPOINT_METRICS = {
+    "matrix_rows": float(X.shape[0]),
+    "matrix_cols": float(X.shape[1]),
+    "active_covariates_after_remove": float(n_after_remove),
+}
+CHECKPOINT_LIMITS = {
+    "matrix_rows": (200.0, 2000.0),
+    "matrix_cols": (4.0, 8.0),
+    "active_covariates_after_remove": (1.0, 3.0),
+}
+"""
+
+
+NSPIKETRAIN_EXAMPLES_TEMPLATE = """# nSpikeTrainExamples: spike-train resampling and signal representations.
+from nstat.compat.matlab import nspikeTrain
+
+spike_times = np.sort(rng.random(100))
+spike_times = np.unique(np.round(spike_times * 10000.0) / 10000.0)
+nst = nspikeTrain(spike_times=spike_times, t_start=0.0, t_end=1.0, name="n1")
+orig_spike_count = int(nst.getSpikeTimes().size)
+
+fig, axes = plt.subplots(4, 1, figsize=(9.0, 7.4), sharex=False)
+plt.sca(axes[0])
+nst.plot()
+axes[0].set_title(f"{TOPIC}: original spike train")
+axes[0].set_xlabel("time [s]")
+
+nst.resample(1.0 / 0.1)
+sig_100ms = nst.getSigRep(binSize_s=0.1, mode="binary")
+axes[1].step(np.arange(sig_100ms.size) * 0.1, sig_100ms, where="post", color="tab:blue")
+axes[1].set_title("100 ms representation")
+
+nst.resample(1.0 / 0.01)
+sig_10ms = nst.getSigRep(binSize_s=0.01, mode="binary")
+axes[2].step(np.arange(sig_10ms.size) * 0.01, sig_10ms, where="post", color="tab:green")
+axes[2].set_title("10 ms representation")
+
+max_bin = float(max(nst.getMaxBinSizeBinary(), 1.0e-3))
+nst.resample(1.0 / max_bin)
+sig_max = nst.getSigRep(binSize_s=max_bin, mode="binary")
+axes[3].step(np.arange(sig_max.size) * max_bin, sig_max, where="post", color="tab:red")
+axes[3].set_title("max binary bin-size representation")
+axes[3].set_xlabel("time [s]")
+plt.tight_layout()
+plt.show()
+
+assert orig_spike_count > 20
+assert 0.0 < max_bin <= 1.0
+
+CHECKPOINT_METRICS = {
+    "num_spikes_initial": float(orig_spike_count),
+    "num_spikes_final": float(nst.getSpikeTimes().size),
+    "max_bin_size": float(max_bin),
+}
+CHECKPOINT_LIMITS = {
+    "num_spikes_initial": (20.0, 150.0),
+    "num_spikes_final": (1.0, 150.0),
+    "max_bin_size": (1.0e-4, 1.0),
+}
+"""
+
+
+NSTCOLL_EXAMPLES_TEMPLATE = """# nstCollExamples: collection masking and single-neuron extraction.
+from nstat.compat.matlab import nspikeTrain, nstColl
+
+trains = []
+for i in range(20):
+    spk = np.sort(rng.random(100))
+    unit = nspikeTrain(spike_times=spk, t_start=0.0, t_end=1.0, name=f"Neuron{i+1}")
+    unit.setName(f"Neuron{i+1}")
+    trains.append(unit)
+spikeColl = nstColl(trains)
+
+fig1 = plt.figure(figsize=(9.0, 4.0))
+spikeColl.plot()
+plt.title(f"{TOPIC}: full collection raster")
+plt.xlabel("time [s]")
+plt.tight_layout()
+plt.show()
+
+spikeColl.setMask([1, 4, 7])
+fig2 = plt.figure(figsize=(9.0, 3.6))
+spikeColl.plot()
+plt.title("Masked collection raster (units 1, 4, 7)")
+plt.xlabel("time [s]")
+plt.tight_layout()
+plt.show()
+
+n1 = spikeColl.getNST(0)
+sig_1ms = n1.getSigRep(binSize_s=0.001, mode="binary")
+sig_10ms = n1.getSigRep(binSize_s=0.01, mode="binary")
+
+fig3, axes = plt.subplots(3, 1, figsize=(9.0, 6.0), sharex=False)
+plt.sca(axes[0])
+n1.plot()
+axes[0].set_title("Unit 1 spikes")
+axes[0].set_xlabel("time [s]")
+axes[1].step(np.arange(sig_1ms.size) * 0.001, sig_1ms, where="post", color="tab:blue")
+axes[1].set_title("Unit 1 binary 1 ms")
+axes[2].step(np.arange(sig_10ms.size) * 0.01, sig_10ms, where="post", color="tab:green")
+axes[2].set_title("Unit 1 binary 10 ms")
+axes[2].set_xlabel("time [s]")
+plt.tight_layout()
+plt.show()
+
+masked = spikeColl.getIndFromMask()
+assert len(masked) == 3
+assert spikeColl.getNumUnits() == 20
+
+CHECKPOINT_METRICS = {
+    "num_units": float(spikeColl.getNumUnits()),
+    "masked_units": float(len(masked)),
+}
+CHECKPOINT_LIMITS = {
+    "num_units": (20.0, 20.0),
+    "masked_units": (3.0, 3.0),
+}
+"""
+
+
+TRIALEXAMPLES_TEMPLATE = """# TrialExamples: build a trial from spikes, covariates, events, and history.
+from nstat.compat.matlab import Covariate, CovColl, Events, History, Trial, nspikeTrain, nstColl
+
+length_trial = 1.0
+window_times = np.array([0.0, 0.1, 0.2, 0.4], dtype=float)
+h = History(bin_edges_s=window_times)
+
+t = np.arange(0.0, length_trial + 0.001, 0.001)
+position = Covariate(
+    time=t,
+    data=np.column_stack([np.cos(2.0 * np.pi * t), np.sin(2.0 * np.pi * t)]),
+    name="Position",
+    labels=["x", "y"],
+)
+force = Covariate(
+    time=t,
+    data=np.column_stack([np.sin(2.0 * np.pi * 4.0 * t), np.cos(2.0 * np.pi * 4.0 * t)]),
+    name="Force",
+    labels=["f_x", "f_y"],
+)
+cc = CovColl([position, force])
+cc.setMaxTime(length_trial)
+
+e_times = np.sort(rng.random(2) * length_trial)
+e = Events(times=e_times, labels=["E_1", "E_2"])
+
+trains = []
+for i in range(4):
+    spk = np.sort(rng.random(100) * length_trial)
+    trains.append(nspikeTrain(spike_times=spk, t_start=0.0, t_end=length_trial, name=f"n{i+1}"))
+spikeColl = nstColl(trains)
+
+trial1 = Trial(spikes=spikeColl, covariates=cc)
+trial1.setTrialEvents(e)
+trial1.setHistory(h)
+
+fig, axes = plt.subplots(2, 2, figsize=(10.0, 7.2))
+plt.sca(axes[0, 0])
+h.plot()
+axes[0, 0].set_title("History windows")
+plt.sca(axes[0, 1])
+cc.plot()
+axes[0, 1].set_title("Covariates")
+plt.sca(axes[1, 0])
+e.plot()
+axes[1, 0].set_title("Events")
+plt.sca(axes[1, 1])
+spikeColl.plot()
+axes[1, 1].set_title("Spike raster")
+for ax in axes.ravel():
+    ax.set_xlabel("time [s]")
+plt.tight_layout()
+plt.show()
+
+trial1.setCovMask(["Position", "Force"])
+hist_rows = trial1.getHistForNeurons([1, 2], binSize_s=0.01)
+
+fig2 = plt.figure(figsize=(8.0, 3.8))
+if hist_rows:
+    plt.imshow(hist_rows[0].T, aspect="auto", origin="lower", cmap="magma")
+    plt.title("Neuron 1 history matrix")
+    plt.xlabel("time-bin index")
+    plt.ylabel("history basis")
+    plt.colorbar(fraction=0.04, pad=0.02)
+else:
+    plt.plot([], [])
+plt.tight_layout()
+plt.show()
+
+assert len(hist_rows) >= 1
+assert hist_rows[0].shape[1] == h.getNumBins()
+
+CHECKPOINT_METRICS = {
+    "history_bins": float(h.getNumBins()),
+    "hist_rows_neuron1": float(hist_rows[0].shape[0] if hist_rows else 0.0),
+}
+CHECKPOINT_LIMITS = {
+    "history_bins": (3.0, 3.0),
+    "hist_rows_neuron1": (50.0, 2000.0),
+}
+"""
+
+
+FITRESULT_EXAMPLES_TEMPLATE = """# FitResultExamples: fit GLM, inspect fit object, and plot diagnostics.
+from nstat.compat.matlab import Analysis, FitResult
+
+dt = 0.01
+t = np.arange(0.0, 10.0, dt)
+x1 = np.sin(2.0 * np.pi * 0.7 * t)
+x2 = np.cos(2.0 * np.pi * 0.2 * t + 0.4)
+X = np.column_stack([x1, x2])
+eta = -1.9 + 0.8 * x1 - 0.45 * x2
+lam = np.exp(eta)
+y = rng.poisson(np.clip(lam * dt, 0.0, 0.9))
+
+fit_native = Analysis.fitGLM(X=X, y=y, fitType="poisson", dt=dt)
+fit = FitResult.fromStructure(fit_native.to_structure())
+fit.parameter_labels = ["x1", "x2"]
+fit.setFitResidual(Analysis.computeFitResidual(y=y, X=X, fit=fit, dt=dt))
+
+lam_hat = fit.evalLambda(X)
+aic = fit.getAIC()
+bic = fit.getBIC()
+
+fig, axes = plt.subplots(2, 1, figsize=(9.0, 6.0), sharex=False)
+plt.sca(axes[0])
+fit.plotCoeffs()
+axes[0].set_title(f"{TOPIC}: coefficients")
+axes[0].set_ylabel("weight")
+axes[1].plot(t, lam, "k", linewidth=1.2, label="true")
+axes[1].plot(t, lam_hat, "tab:blue", linewidth=1.0, label="fit")
+axes[1].set_title("Lambda fit")
+axes[1].set_xlabel("time [s]")
+axes[1].set_ylabel("Hz")
+axes[1].legend(loc="upper right")
+plt.tight_layout()
+plt.show()
+
+assert np.isfinite(aic) and np.isfinite(bic)
+assert lam_hat.shape == lam.shape
+
+CHECKPOINT_METRICS = {
+    "aic": float(aic),
+    "bic": float(bic),
+    "lambda_rmse": float(np.sqrt(np.mean((lam_hat - lam) ** 2))),
+}
+CHECKPOINT_LIMITS = {
+    "aic": (-1.0e6, 1.0e6),
+    "bic": (-1.0e6, 1.0e6),
+    "lambda_rmse": (0.0, 10.0),
+}
+"""
+
+
+FITRESSUMMARY_EXAMPLES_TEMPLATE = """# FitResSummaryExamples: compare multiple fit results with IC summaries.
+from nstat.compat.matlab import Analysis, FitResSummary
+
+dt = 0.01
+t = np.arange(0.0, 10.0, dt)
+x1 = np.sin(2.0 * np.pi * 0.6 * t)
+x2 = np.cos(2.0 * np.pi * 0.2 * t + 0.15)
+x3 = np.sin(2.0 * np.pi * 0.05 * t + 0.2)
+eta = -2.2 + 0.7 * x1 - 0.5 * x2 + 0.3 * x3
+y = rng.poisson(np.exp(eta) * dt)
+
+fit1 = Analysis.fitGLM(X=np.column_stack([x1]), y=y, fitType="poisson", dt=dt)
+fit2 = Analysis.fitGLM(X=np.column_stack([x1, x2]), y=y, fitType="poisson", dt=dt)
+fit3 = Analysis.fitGLM(X=np.column_stack([x1, x2, x3]), y=y, fitType="poisson", dt=dt)
+
+summary = FitResSummary([fit1, fit2, fit3])
+best_aic = summary.bestByAIC()
+best_bic = summary.bestByBIC()
+diff_aic = summary.getDiffAIC()
+diff_bic = summary.getDiffBIC()
+
+fig, axes = plt.subplots(1, 2, figsize=(9.0, 3.8))
+plt.sca(axes[0])
+summary.plotAIC()
+axes[0].set_title(f"{TOPIC}: AIC")
+axes[0].set_xlabel("model index")
+axes[0].set_ylabel("AIC")
+plt.sca(axes[1])
+summary.plotBIC()
+axes[1].set_title("BIC")
+axes[1].set_xlabel("model index")
+axes[1].set_ylabel("BIC")
+plt.tight_layout()
+plt.show()
+
+assert diff_aic.size == diff_bic.size and diff_aic.size > 0
+assert np.isfinite(best_aic.aic()) and np.isfinite(best_bic.bic())
+
+CHECKPOINT_METRICS = {
+    "num_models": float(diff_aic.size),
+    "best_aic_diff": float(np.min(diff_aic)),
+    "best_bic_diff": float(np.min(diff_bic)),
+}
+CHECKPOINT_LIMITS = {
+    "num_models": (2.0, 2.0),
+    "best_aic_diff": (-10.0, 10.0),
+    "best_bic_diff": (-10.0, 10.0),
+}
+"""
+
+
+FITRESULT_REFERENCE_TEMPLATE = """# FitResultReference: serialize/restore fit metadata and inspect fields.
+from nstat.compat.matlab import Analysis, FitResult
+
+dt = 0.02
+t = np.arange(0.0, 12.0, dt)
+x = np.column_stack([np.sin(2.0 * np.pi * 0.35 * t), np.cos(2.0 * np.pi * 0.15 * t)])
+y = rng.poisson(np.exp(-2.0 + 0.9 * x[:, 0] - 0.4 * x[:, 1]) * dt)
+
+fit_native = Analysis.fitGLM(X=x, y=y, fitType="poisson", dt=dt)
+fit_native.parameter_labels = ["stim_sin", "stim_cos"]
+payload = fit_native.to_structure()
+fit = FitResult.fromStructure(payload)
+
+lam_hat = fit.evalLambda(x)
+coef = fit.getCoeffs()
+param = fit.getParam("intercept")
+
+fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.6))
+axes[0].bar(np.arange(coef.size), coef, color="tab:blue")
+axes[0].set_xticks(np.arange(coef.size), labels=fit.parameter_labels or ["c1", "c2"], rotation=35, ha="right")
+axes[0].set_title(f"{TOPIC}: coefficients")
+axes[0].set_ylabel("weight")
+
+axes[1].plot(t, lam_hat, color="tab:green", linewidth=1.1)
+axes[1].set_title("evalLambda output")
+axes[1].set_xlabel("time [s]")
+axes[1].set_ylabel("Hz")
+plt.tight_layout()
+plt.show()
+
+assert np.isfinite(float(param))
+assert lam_hat.size == t.size
+
+CHECKPOINT_METRICS = {
+    "coef_norm": float(np.linalg.norm(coef)),
+    "intercept": float(param),
+}
+CHECKPOINT_LIMITS = {
+    "coef_norm": (0.0, 100.0),
+    "intercept": (-20.0, 20.0),
+}
+"""
+
+
+DOCUMENTATION_SETUP_TEMPLATE = """# DocumentationSetup2025b: validate Python help-file layout and TOC targets.
+from pathlib import Path
+import yaml
+
+def resolve_repo_root() -> Path:
+    candidates = [Path.cwd().resolve()]
+    candidates.append(candidates[0].parent)
+    candidates.append(candidates[1].parent)
+    for root in candidates:
+        if (root / "docs" / "help").exists():
+            return root
+    return candidates[0]
+
+repo_root = resolve_repo_root()
+help_root = repo_root / "docs" / "help"
+docs_root = repo_root / "docs"
+helptoc_path = help_root / "helptoc.yml"
+payload = yaml.safe_load(helptoc_path.read_text(encoding="utf-8")) if helptoc_path.exists() else {}
+
+def walk_nodes(nodes):
+    out = []
+    for node in nodes or []:
+        target = str(node.get("target", "")).strip()
+        if target:
+            out.append(target)
+        out.extend(walk_nodes(node.get("children", [])))
+    return out
+
+targets = walk_nodes(payload.get("toc", payload.get("entries", [])))
+targets = sorted(set(targets))
+def target_exists(target: str) -> bool:
+    candidate = Path(target)
+    candidates = []
+    if candidate.is_absolute():
+        candidates.append(candidate)
+    else:
+        candidates.append(help_root / candidate)
+        candidates.append(docs_root / candidate)
+        candidates.append(repo_root / candidate)
+    return any(path.exists() for path in candidates)
+
+resolved = [target_exists(target) for target in targets if not target.startswith("http")]
+n_ok = int(sum(resolved))
+n_total = int(len(resolved))
+n_missing = int(n_total - n_ok)
+
+md_pages = list(help_root.rglob("*.md"))
+html_pages = list(help_root.rglob("*.html"))
+
+fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.8))
+axes[0].bar(["targets", "valid"], [n_total, n_ok], color=["tab:gray", "tab:blue"])
+axes[0].set_title(f"{TOPIC}: TOC target validation")
+axes[0].set_ylabel("count")
+
+axes[1].bar([".md pages", ".html pages"], [len(md_pages), len(html_pages)], color=["tab:green", "tab:orange"])
+axes[1].set_title("Docs page inventory")
+axes[1].set_ylabel("count")
+plt.tight_layout()
+plt.show()
+
+assert n_total > 0
+assert n_missing == 0
+
+CHECKPOINT_METRICS = {
+    "toc_targets": float(n_total),
+    "missing_targets": float(n_missing),
+}
+CHECKPOINT_LIMITS = {
+    "toc_targets": (1.0, 5000.0),
+    "missing_targets": (0.0, 0.0),
+}
+"""
+
+
+PUBLISH_ALL_HELPFILES_TEMPLATE = """# publish_all_helpfiles: Python-side publish/audit checks for help artifacts.
+from pathlib import Path
+import yaml
+
+def resolve_repo_root() -> Path:
+    candidates = [Path.cwd().resolve()]
+    candidates.append(candidates[0].parent)
+    candidates.append(candidates[1].parent)
+    for root in candidates:
+        if (root / "docs" / "help").exists() and (root / "parity").exists():
+            return root
+    return candidates[0]
+
+repo_root = resolve_repo_root()
+help_root = repo_root / "docs" / "help"
+example_root = help_root / "examples"
+
+manifest_path = repo_root / "parity" / "example_mapping.yaml"
+manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+topics = [str(row.get("matlab_topic")) for row in manifest.get("examples", []) if row.get("matlab_topic")]
+
+missing_example_pages = []
+for topic in topics:
+    page = example_root / f"{topic}.md"
+    if not page.exists():
+        missing_example_pages.append(topic)
+
+help_files = sorted(str(path.relative_to(help_root)) for path in help_root.rglob("*") if path.is_file())
+n_md = sum(1 for name in help_files if name.endswith(".md"))
+n_html = sum(1 for name in help_files if name.endswith(".html"))
+
+fig, axes = plt.subplots(2, 1, figsize=(9.4, 6.0), sharex=False)
+axes[0].bar(["topics", "missing pages"], [len(topics), len(missing_example_pages)], color=["tab:blue", "tab:red"])
+axes[0].set_title(f"{TOPIC}: example-page publish audit")
+axes[0].set_ylabel("count")
+
+axes[1].bar(["markdown", "html"], [n_md, n_html], color=["tab:green", "tab:orange"])
+axes[1].set_title("Help artifact inventory")
+axes[1].set_ylabel("count")
+plt.tight_layout()
+plt.show()
+
+assert len(topics) > 0
+assert len(missing_example_pages) == 0
+
+CHECKPOINT_METRICS = {
+    "topics_in_manifest": float(len(topics)),
+    "missing_example_pages": float(len(missing_example_pages)),
+}
+CHECKPOINT_LIMITS = {
+    "topics_in_manifest": (1.0, 5000.0),
+    "missing_example_pages": (0.0, 0.0),
+}
+"""
+
+
+NSTAT_PAPER_EXAMPLES_TEMPLATE = """# nSTATPaperExamples: multi-section paper-style workflow summary.
+from nstat.compat.matlab import Analysis, Covariate, CovColl, DecodingAlgorithms, Trial, TrialConfig, nspikeTrain, nstColl
+
+# Section 1: constant-baseline point-process fit (mEPSC-style).
+dt = 0.001
+time = np.arange(0.0, 8.0, dt)
+baseline_rate = 12.0
+spike_prob = np.clip(baseline_rate * dt, 0.0, 0.5)
+spike_times_const = time[rng.random(time.size) < spike_prob]
+
+baseline_cov = Covariate(time=time, data=np.ones(time.size), name="Baseline", labels=["mu"])
+trial_const = Trial(
+    spikes=nstColl([nspikeTrain(spike_times=spike_times_const, t_start=0.0, t_end=float(time[-1]), name="epsc")]),
+    covariates=CovColl([baseline_cov]),
+)
+cfg_const = TrialConfig(covariateLabels=["mu"], Fs=1.0 / dt, fitType="poisson", name="Constant Baseline")
+fit_const = Analysis.fitTrial(trial_const, cfg_const, unitIndex=0)
+lam_const = fit_const.predict(np.ones((time.size, 1)))
+
+# Section 2: explicit-stimulus logistic fit.
+stim = np.sin(2.0 * np.pi * 2.0 * time)
+eta = -3.1 + 1.2 * stim
+p_spk = 1.0 / (1.0 + np.exp(-eta))
+y_bin = rng.binomial(1, p_spk)
+fit_stim = Analysis.fitGLM(X=stim[:, None], y=y_bin, fitType="binomial", dt=1.0)
+p_hat = fit_stim.predict(stim[:, None])
+
+# Section 3: trial-difference matrix and significance markers.
+n_trials = 20
+trial_mat = np.zeros((n_trials, time.size), dtype=float)
+for k in range(n_trials):
+    gain = 0.8 + 0.4 * rng.random()
+    pk = np.clip((baseline_rate + 6.0 * (stim > 0.25)) * gain * dt, 0.0, 0.8)
+    trial_mat[k] = rng.binomial(1, pk)
+rate_ci, prob_mat, sig_mat = DecodingAlgorithms.computeSpikeRateCIs(trial_mat)
+
+fig = plt.figure(figsize=(12.0, 9.2))
+ax1 = fig.add_subplot(2, 2, 1)
+ax1.vlines(spike_times_const, 0.0, 1.0, linewidth=0.4)
+ax1.set_title("Paper Exp 1: Constant Mg raster")
+ax1.set_xlabel("time [s]")
+ax1.set_yticks([])
+
+ax2 = fig.add_subplot(2, 2, 2)
+ax2.plot(time, baseline_rate * np.ones_like(time), "k", linewidth=1.1, label="true")
+ax2.plot(time, lam_const, "tab:blue", linewidth=1.0, label="fit")
+ax2.set_title("Constant-rate fit")
+ax2.set_xlabel("time [s]")
+ax2.set_ylabel("Hz")
+ax2.legend(loc="upper right")
+
+ax3 = fig.add_subplot(2, 2, 3)
+ax3.plot(time, p_spk, "k", linewidth=1.1, label="true p(spike)")
+ax3.plot(time, p_hat, "tab:red", linewidth=1.0, label="GLM fit")
+ax3.set_title("Paper Exp 5: stimulus decoding setup")
+ax3.set_xlabel("time [s]")
+ax3.set_ylabel("probability")
+ax3.legend(loc="upper right")
+
+ax4 = fig.add_subplot(2, 2, 4)
+im = ax4.imshow(prob_mat, origin="lower", cmap="gray_r", aspect="auto")
+yy, xx = np.where(sig_mat > 0)
+if xx.size:
+    ax4.plot(xx, yy, "r*", markersize=4)
+ax4.set_title("Paper Exp 4: trial significance matrix")
+ax4.set_xlabel("trial")
+ax4.set_ylabel("trial")
+fig.colorbar(im, ax=ax4, fraction=0.04, pad=0.02)
+plt.tight_layout()
+plt.show()
+
+learning_trial = int(np.argmax(np.any(sig_mat > 0, axis=0)) + 1) if np.any(sig_mat > 0) else 0
+assert rate_ci.size > 0
+assert prob_mat.shape[0] == n_trials
+
+CHECKPOINT_METRICS = {
+    "const_spike_count": float(spike_times_const.size),
+    "stim_fit_rmse": float(np.sqrt(np.mean((p_hat - p_spk) ** 2))),
+    "learning_trial_index": float(learning_trial),
+}
+CHECKPOINT_LIMITS = {
+    "const_spike_count": (5.0, 5000.0),
+    "stim_fit_rmse": (0.0, 0.4),
+    "learning_trial_index": (0.0, float(n_trials)),
+}
+"""
+
+
 PPTHINNING_TEMPLATE = """# PPThinning: thinning-based spike simulation from a known CIF.
 delta = 0.001
 Tmax = 100.0
