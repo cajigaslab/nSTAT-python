@@ -262,7 +262,7 @@ def test_fit_aliases() -> None:
 
     summary = FitResSummary([fit1, fit2])
     diff = summary.getDiffAIC()
-    assert diff.shape == (2,)
+    assert diff.shape == (1,)
     mat = summary.computeDiffMat("bic")
     assert mat.shape == (2, 2)
 

@@ -23,11 +23,11 @@ Status legend:
 | `Trial` | `nstat.trial.Trial` + `nstat.compat.matlab.Trial` | `Verified` | `tests/test_trial_matlab_parity.py`, `matlab/fixture_gen/Trial_fixtures.m` |
 | `CIF` | `nstat.cif.CIFModel` + `nstat.compat.matlab.CIF` | `Verified` | `tests/test_cif_matlab_parity.py`, `matlab/fixture_gen/CIF_fixtures.m` |
 | `Analysis` | `nstat.analysis.Analysis` + `nstat.compat.matlab.Analysis` | `Verified` | `tests/test_analysis_matlab_parity.py`, `matlab/fixture_gen/Analysis_fixtures.m` |
-| `FitResult` | `nstat.fit.FitResult` + `nstat.compat.matlab.FitResult` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
-| `FitResSummary` | `nstat.fit.FitSummary` + `nstat.compat.matlab.FitResSummary` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
-| `DecodingAlgorithms` | `nstat.decoding.DecodingAlgorithms` + `nstat.compat.matlab.DecodingAlgorithms` | `Complete` | API mapped in `parity/method_mapping.yaml`; no class-specific MATLAB fixture loop yet |
+| `FitResult` | `nstat.fit.FitResult` + `nstat.compat.matlab.FitResult` | `Verified` | `tests/test_fitresult_matlab_parity.py`, `matlab/fixture_gen/FitResult_fixtures.m` |
+| `FitResSummary` | `nstat.fit.FitSummary` + `nstat.compat.matlab.FitResSummary` | `Verified` | `tests/test_fitressummary_matlab_parity.py`, `matlab/fixture_gen/FitResSummary_fixtures.m` |
+| `DecodingAlgorithms` | `nstat.decoding.DecodingAlgorithms` + `nstat.compat.matlab.DecodingAlgorithms` | `Verified` | `tests/test_decodingalgorithms_matlab_parity.py`, `matlab/fixture_gen/DecodingAlgorithms_fixtures.m` |
 
 ## Next verification order
-1. `FitResult`
-2. `FitResSummary`
-3. `DecodingAlgorithms`
+1. Expand fixture coverage for `FitResult.fromStructure` and `FitResSummary.fromStructure`.
+2. Add full-history (`windowTimes`/`gamma`) parity fixtures for `DecodingAlgorithms.computeSpikeRateCIs`.
+3. Backfill remaining notebook assertions against the new class-specific fixtures.

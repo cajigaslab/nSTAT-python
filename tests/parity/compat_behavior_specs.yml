@@ -2320,7 +2320,7 @@ classes:
         access: method
         select: 0
         expect:
-          shape: [0, 1]
+          shape: [1, 1]
       - member: plotHistCoeffs
         access: method
         expect:
@@ -2376,20 +2376,20 @@ classes:
       - member: getDiffAIC
         access: method
         expect:
-          shape: [2]
+          shape: [1]
           sum_approx: 20.0
           abs_tol: 1.0e-12
       - member: getDiffBIC
         access: method
         expect:
-          shape: [2]
+          shape: [1]
           sum_approx: 20.0
           abs_tol: 1.0e-12
       - member: getDifflogLL
         access: method
         expect:
-          shape: [2]
-          sum_approx: 10.0
+          shape: [1]
+          sum_approx: -10.0
           abs_tol: 1.0e-12
       - member: binCoeffs
         access: method

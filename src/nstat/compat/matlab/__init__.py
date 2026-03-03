@@ -4217,20 +4217,87 @@ class FitResult(_FitResult):
     def computeValLambda(self, X: np.ndarray) -> np.ndarray:
         return self.compute_val_lambda(X)
 
-    def getCoeffs(self) -> np.ndarray:
-        return self.get_coeffs()
+    def getCoeffs(self, fitNum: int | None = None) -> np.ndarray | tuple[np.ndarray, list[list[str]], np.ndarray]:
+        if fitNum is None:
+            return self.get_coeffs()
+        _ = fitNum
+        coeff_index, _epoch_id, _num_epochs = self.getCoeffIndex(1, False)
+        if coeff_index.size == 0:
+            empty = np.zeros((0, 1), dtype=float)
+            return empty, [], empty
+        keep = (np.asarray(coeff_index, dtype=int).reshape(-1) - 1).astype(int)
+        coeff = np.asarray(self.coefficients, dtype=float).reshape(-1)
+        plot = self.getPlotParams()
+        se = np.asarray(plot.get("seAct", np.zeros_like(coeff)), dtype=float).reshape(-1)
+        labels = self.getUniqueLabels()
+        coeff_mat = coeff[keep][:, None]
+        se_mat = se[keep][:, None]
+        label_mat = [[labels[i]] for i in keep]
+        return coeff_mat, label_mat, se_mat
 
-    def getCoeffIndex(self, label: str) -> int:
-        return self.get_coeff_index(label)
+    def getCoeffIndex(
+        self, labelOrFitNum: str | int | None = None, sortByEpoch: bool = False
+    ) -> int | tuple[np.ndarray, np.ndarray, int]:
+        if isinstance(labelOrFitNum, str):
+            return self.get_coeff_index(labelOrFitNum)
+        _ = sortByEpoch
+        labels = self.getUniqueLabels()
+        if not labels:
+            return np.array([], dtype=int), np.array([], dtype=int), 1
+        hist_index, _hist_epoch, _hist_num = self.getHistIndex(1, sortByEpoch)
+        hist_zero = {int(v) - 1 for v in np.asarray(hist_index, dtype=int).reshape(-1)}
+        coeff_index = np.array(
+            [i + 1 for i in range(len(labels)) if i not in hist_zero],
+            dtype=int,
+        )
+        epoch_id = np.zeros(coeff_index.size, dtype=int)
+        num_epochs = int(max(1, np.unique(epoch_id).size))
+        return coeff_index, epoch_id, num_epochs
 
-    def getParam(self, key: str) -> float | np.ndarray | str | int:
-        return self.get_param(key)
+    def getParam(
+        self, keyOrLabels: str | list[str] | tuple[str, ...] | np.ndarray, fitNum: int | list[int] | np.ndarray | None = None
+    ) -> float | np.ndarray | str | int | tuple[np.ndarray, np.ndarray, np.ndarray]:
+        if isinstance(keyOrLabels, str):
+            return self.get_param(keyOrLabels)
+        labels = self.getUniqueLabels()
+        label_map = {label: i for i, label in enumerate(labels)}
+        names = [str(v) for v in np.asarray(keyOrLabels, dtype=object).reshape(-1)]
+        if fitNum is None:
+            fit_nums = [1]
+        elif isinstance(fitNum, int):
+            fit_nums = [fitNum]
+        else:
+            fit_nums = [int(v) for v in np.asarray(fitNum).reshape(-1)]
+        fit_nums = [v for v in fit_nums if v == 1]
+        if not fit_nums:
+            raise ValueError("single-fit Python adapter only supports fitNum=1")
+        plot = self.getPlotParams()
+        b_act = np.asarray(plot.get("bAct", np.asarray(self.coefficients, dtype=float).reshape(-1, 1)), dtype=float)
+        se_act = np.asarray(plot.get("seAct", np.zeros_like(b_act)), dtype=float)
+        sig_index = np.asarray(plot.get("sigIndex", np.zeros_like(b_act)), dtype=float)
+        param_vals = np.full((len(names), len(fit_nums)), np.nan, dtype=float)
+        param_se = np.full_like(param_vals, np.nan)
+        param_sig = np.zeros_like(param_vals)
+        for i, name in enumerate(names):
+            if name not in label_map:
+                raise KeyError(f'unknown covariate label "{name}"')
+            idx = label_map[name]
+            param_vals[i, 0] = float(b_act[idx, 0])
+            param_se[i, 0] = float(se_act[idx, 0])
+            param_sig[i, 0] = float(sig_index[idx, 0])
+        return param_vals, param_se, param_sig
 
     def getUniqueLabels(self) -> list[str]:
         return self.get_unique_labels()
 
     def isValDataPresent(self) -> bool:
-        return len(self.xval_data) > 0 and len(self.xval_time) > 0
+        if len(self.xval_data) == 0 or len(self.xval_time) == 0:
+            return False
+        for t in self.xval_time:
+            arr = np.asarray(t, dtype=float).reshape(-1)
+            if arr.size >= 2 and float(arr[-1] - arr[0]) > 0.0:
+                return True
+        return False
 
     def getSubsetFitResult(self, subfits: int | list[int] | np.ndarray) -> _FitResult:
         if isinstance(subfits, int):
@@ -4257,12 +4324,31 @@ class FitResult(_FitResult):
     def getHistIndex(self, fitNum: int = 1, sortByEpoch: bool = False) -> tuple[np.ndarray, np.ndarray, int]:
         _ = fitNum
         _ = sortByEpoch
-        return np.array([], dtype=int), np.array([], dtype=int), 1
+        labels = self.getUniqueLabels()
+        hist = [
+            i + 1
+            for i, label in enumerate(labels)
+            if ("hist" in label.lower()) or ("history" in label.lower()) or ("[" in label and "]" in label)
+        ]
+        if not hist:
+            return np.array([], dtype=int), np.array([], dtype=int), 0
+        hist_index = np.asarray(hist, dtype=int)
+        epoch_id = np.zeros(hist_index.size, dtype=int)
+        num_epochs = int(max(1, np.unique(epoch_id).size))
+        return hist_index, epoch_id, num_epochs
 
     def getHistCoeffs(self, fitNum: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
         _ = fitNum
-        empty = np.zeros((0, 1), dtype=float)
-        return empty, [], empty
+        hist_index, _epoch_id, _num_epochs = self.getHistIndex(1, False)
+        if hist_index.size == 0:
+            empty = np.zeros((0, 1), dtype=float)
+            return empty, [], empty
+        keep = (np.asarray(hist_index, dtype=int).reshape(-1) - 1).astype(int)
+        coeff = np.asarray(self.coefficients, dtype=float).reshape(-1)
+        plot = self.getPlotParams()
+        se = np.asarray(plot.get("seAct", np.zeros_like(coeff)), dtype=float).reshape(-1)
+        labels = self.getUniqueLabels()
+        return coeff[keep][:, None], [labels[i] for i in keep], se[keep][:, None]
 
     def plotCoeffs(
         self,
@@ -4406,7 +4492,10 @@ class FitResSummary(_FitSummary):
         return self.get_unique_labels()
 
     def getCoeffIndex(self, fitNum: int = 1, sortByEpoch: bool = False) -> tuple[np.ndarray, np.ndarray, int]:
-        return self.get_coeff_index(fit_num=fitNum, sort_by_epoch=sortByEpoch)
+        coeff_idx, _epoch_id, num_epochs = self.get_coeff_index(fit_num=fitNum, sort_by_epoch=sortByEpoch)
+        coeff_idx = np.asarray(coeff_idx, dtype=int).reshape(-1) + 1
+        epoch_id = np.zeros(coeff_idx.size, dtype=int)
+        return coeff_idx, epoch_id, int(num_epochs)
 
     def getCoeffs(self, fitNum: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
         return self.get_coeffs(fit_num=fitNum)
@@ -4433,14 +4522,31 @@ class FitResSummary(_FitSummary):
     def bestByBIC(self) -> _FitResult:
         return self.best_by_bic()
 
-    def getDiffAIC(self) -> np.ndarray:
-        return self.get_diff_aic()
+    def _compute_diff_vector(self, values: np.ndarray, diffIndex: int = 1) -> np.ndarray:
+        vec = np.asarray(values, dtype=float).reshape(-1)
+        if vec.size <= 1:
+            return vec.copy()
+        ref = int(max(1, min(vec.size, int(diffIndex)))) - 1
+        keep = np.array([i for i in range(vec.size) if i != ref], dtype=int)
+        return vec[keep] - vec[ref]
 
-    def getDiffBIC(self) -> np.ndarray:
-        return self.get_diff_bic()
+    def getDiffAIC(self, diffIndex: int = 1, makePlot: bool = True, h: Any = None) -> np.ndarray:
+        _ = makePlot
+        _ = h
+        vals = np.array([fit.aic() for fit in self.results], dtype=float)
+        return self._compute_diff_vector(vals, diffIndex=diffIndex)
 
-    def getDifflogLL(self) -> np.ndarray:
-        return self.get_diff_log_likelihood()
+    def getDiffBIC(self, diffIndex: int = 1, makePlot: bool = True, h: Any = None) -> np.ndarray:
+        _ = makePlot
+        _ = h
+        vals = np.array([fit.bic() for fit in self.results], dtype=float)
+        return self._compute_diff_vector(vals, diffIndex=diffIndex)
+
+    def getDifflogLL(self, diffIndex: int = 1, makePlot: bool = True, h: Any = None) -> np.ndarray:
+        _ = makePlot
+        _ = h
+        vals = np.array([fit.log_likelihood for fit in self.results], dtype=float)
+        return self._compute_diff_vector(vals, diffIndex=diffIndex)
 
     def computeDiffMat(self, metric: str = "aic") -> np.ndarray:
         return self.compute_diff_mat(metric=metric)
@@ -4449,12 +4555,16 @@ class FitResSummary(_FitSummary):
         coeff_idx, epoch_id, num_epochs = self.get_coeff_index(fit_num=fitNum, sort_by_epoch=sortByEpoch)
         _coeff_mat, labels, _se = self.get_coeffs(fit_num=fitNum)
         keep = np.array(
-            [i for i in coeff_idx if "hist" in labels[int(i)].lower() or "history" in labels[int(i)].lower()],
+            [
+                int(i) + 1
+                for i in np.asarray(coeff_idx, dtype=int).reshape(-1)
+                if "hist" in labels[int(i)].lower() or "history" in labels[int(i)].lower()
+            ],
             dtype=int,
         )
         if keep.size == 0:
-            return keep, np.array([], dtype=int), 1
-        return keep, np.ones(keep.size, dtype=int), num_epochs
+            return keep, np.array([], dtype=int), 0
+        return keep, np.ones(keep.size, dtype=int), int(num_epochs)
 
     def getHistCoeffs(self, fitNum: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
         coeff_mat, labels, se_mat = self.get_coeffs(fit_num=fitNum)
@@ -4615,7 +4725,211 @@ class DecodingAlgorithms:
         )
 
     @staticmethod
-    def computeSpikeRateCIs(spike_matrix: np.ndarray, alpha: float = 0.05) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _chol_like_matlab(mat: np.ndarray) -> np.ndarray:
+        arr = np.asarray(mat, dtype=float)
+        if arr.ndim == 0:
+            return np.array([[float(np.sqrt(max(arr.item(), 0.0)))]] , dtype=float)
+        if np.allclose(arr, 0.0):
+            return np.zeros_like(arr, dtype=float)
+        try:
+            return np.linalg.cholesky(arr)
+        except np.linalg.LinAlgError:
+            eigvals, eigvecs = np.linalg.eigh(arr)
+            eigvals = np.clip(eigvals, 0.0, None)
+            return eigvecs @ np.diag(np.sqrt(eigvals))
+
+    @staticmethod
+    def _build_unit_impulse_basis(numBasis: int, minTime: float, maxTime: float, delta: float) -> tuple[np.ndarray, np.ndarray]:
+        if numBasis <= 0:
+            raise ValueError("numBasis must be > 0")
+        basis_width = float(maxTime - minTime) / float(numBasis)
+        sample_rate = 1.0 / float(delta)
+        basis_sig = nstColl.generateUnitImpulseBasis(basis_width, minTime, maxTime, sample_rate)
+        basis_mat = np.asarray(basis_sig.data, dtype=float)
+        time = np.asarray(basis_sig.time, dtype=float).reshape(-1)
+        return basis_mat, time
+
+    @staticmethod
+    def _compute_spike_rate_cis_matlab(
+        xK: np.ndarray,
+        Wku: np.ndarray,
+        dN: np.ndarray,
+        t0: float,
+        tf: float,
+        fitType: str,
+        delta: float,
+        gamma: Any = None,
+        windowTimes: Any = None,
+        Mc: int = 500,
+        alphaVal: float = 0.05,
+    ) -> tuple[_Covariate, np.ndarray, np.ndarray]:
+        xK_arr = np.asarray(xK, dtype=float)
+        if xK_arr.ndim != 2:
+            raise ValueError("xK must be 2D with shape (numBasis, K)")
+        dN_arr = np.asarray(dN, dtype=float)
+        if dN_arr.ndim != 2:
+            raise ValueError("dN must be 2D with shape (K, T)")
+        numBasis, K = xK_arr.shape
+        if dN_arr.shape[0] != K:
+            raise ValueError("dN first dimension must match K in xK")
+        fit_type = str(fitType).lower()
+        if fit_type not in {"poisson", "binomial"}:
+            raise ValueError("fitType must be either 'poisson' or 'binomial'")
+        if not (0.0 < float(alphaVal) < 1.0):
+            raise ValueError("alphaVal must be in (0, 1)")
+        if int(Mc) <= 0:
+            raise ValueError("Mc must be > 0")
+
+        min_time = 0.0
+        max_time = float(dN_arr.shape[1] - 1) * float(delta)
+        basis_mat, basis_time = DecodingAlgorithms._build_unit_impulse_basis(numBasis, min_time, max_time, float(delta))
+        if basis_mat.shape[0] < dN_arr.shape[1]:
+            pad = np.zeros((dN_arr.shape[1] - basis_mat.shape[0], basis_mat.shape[1]), dtype=float)
+            basis_mat = np.vstack([basis_mat, pad])
+        elif basis_mat.shape[0] > dN_arr.shape[1]:
+            basis_mat = basis_mat[: dN_arr.shape[1], :]
+            basis_time = basis_time[: dN_arr.shape[1]]
+        time = basis_time
+
+        window_vals = np.asarray([] if windowTimes is None else windowTimes, dtype=float).reshape(-1)
+        if window_vals.size > 0:
+            hist_obj = History(bin_edges_s=window_vals, min_time_s=min_time, max_time_s=max_time)
+            gamma_vec = np.asarray(gamma, dtype=float).reshape(-1)
+            Hk: list[np.ndarray] = []
+            for k in range(K):
+                spikes = np.where(dN_arr[k, :] == 1.0)[0].astype(float) * float(delta)
+                hk = np.asarray(hist_obj.computeHistory(spikes, time), dtype=float)
+                if hk.ndim == 1:
+                    hk = hk[:, None]
+                if hk.shape[0] < dN_arr.shape[1]:
+                    hk = np.vstack([hk, np.zeros((dN_arr.shape[1] - hk.shape[0], hk.shape[1]), dtype=float)])
+                elif hk.shape[0] > dN_arr.shape[1]:
+                    hk = hk[: dN_arr.shape[1], :]
+                Hk.append(hk)
+            if gamma_vec.size == 0:
+                gamma_vec = np.zeros(1, dtype=float)
+        else:
+            Hk = [np.zeros((dN_arr.shape[1], 1), dtype=float) for _ in range(K)]
+            gamma_vec = np.zeros(1, dtype=float)
+
+        Wku_arr = np.asarray(Wku, dtype=float)
+        xK_draw = np.zeros((numBasis, K, int(Mc)), dtype=float)
+        rng = np.random.default_rng(0)
+        for r in range(numBasis):
+            if Wku_arr.ndim == 4:
+                Wku_temp = np.asarray(Wku_arr[r, r, :, :], dtype=float)
+            elif Wku_arr.ndim == 3:
+                Wku_temp = np.asarray(Wku_arr[r, :, :], dtype=float)
+            elif Wku_arr.ndim == 2:
+                Wku_temp = np.asarray(Wku_arr, dtype=float)
+            else:
+                Wku_temp = np.asarray(0.0, dtype=float)
+            if Wku_temp.ndim == 0:
+                chol_m = np.diag(np.repeat(float(np.sqrt(max(Wku_temp.item(), 0.0))), K))
+            else:
+                chol_m = DecodingAlgorithms._chol_like_matlab(Wku_temp)
+                if chol_m.shape != (K, K):
+                    raise ValueError("Wku covariance slice must be KxK")
+            for c in range(int(Mc)):
+                z = rng.normal(0.0, 1.0, size=(K,))
+                xK_draw[r, :, c] = xK_arr[r, :] + (chol_m @ z)
+
+        lambda_delta = np.zeros((dN_arr.shape[1], K, int(Mc)), dtype=float)
+        spike_rate = np.zeros((int(Mc), K), dtype=float)
+        for c in range(int(Mc)):
+            for k in range(K):
+                stim_k = basis_mat @ xK_draw[:, k, c]
+                if window_vals.size > 0 and np.any(np.abs(gamma_vec) > 0.0):
+                    hk = Hk[k]
+                    cols = min(hk.shape[1], gamma_vec.size)
+                    hist_lin = hk[:, :cols] @ gamma_vec[:cols]
+                else:
+                    hist_lin = np.zeros(stim_k.shape[0], dtype=float)
+                eta = stim_k + hist_lin
+                if fit_type == "poisson":
+                    lam = np.exp(eta)
+                else:
+                    exp_eta = np.exp(eta)
+                    lam = exp_eta / (1.0 + exp_eta)
+                lambda_delta[:, k, c] = lam
+            rates = lambda_delta[:, :, c] / float(delta)
+            mask = (time >= float(t0)) & (time <= float(tf))
+            if np.sum(mask) < 2:
+                integral_vals = np.zeros(K, dtype=float)
+            else:
+                integral_vals = np.trapz(rates[mask, :], x=time[mask], axis=0)
+            spike_rate[c, :] = integral_vals / max(float(tf - t0), np.finfo(float).eps)
+
+        CIs = np.zeros((K, 2), dtype=float)
+        for k in range(K):
+            vals = np.sort(spike_rate[:, k])
+            f = (np.arange(vals.size, dtype=float) + 1.0) / float(vals.size)
+            lo = vals[f < float(alphaVal)]
+            hi = vals[f > (1.0 - float(alphaVal))]
+            CIs[k, 0] = float(lo[-1]) if lo.size else float(vals[0])
+            CIs[k, 1] = float(hi[0]) if hi.size else float(vals[-1])
+
+        spike_rate_sig = Covariate(
+            time=np.arange(1, K + 1, dtype=float),
+            data=np.mean(spike_rate, axis=0),
+            name=f"({tf}-{t0})^-1 * \\Lambda({tf}-{t0})",
+            x_label="Trial",
+            x_units="k",
+            y_units="Hz",
+        )
+        ci_obj = ConfidenceInterval(
+            time=np.arange(1, K + 1, dtype=float),
+            lower=CIs[:, 0],
+            upper=CIs[:, 1],
+            level=1.0 - float(alphaVal),
+            color="b",
+            value=1.0 - float(alphaVal),
+        )
+        spike_rate_sig.setConfInterval(ci_obj)
+
+        prob_mat = np.zeros((K, K), dtype=float)
+        for k in range(K):
+            for m in range(k + 1, K):
+                prob_mat[k, m] = float(np.sum(spike_rate[:, m] > spike_rate[:, k])) / float(Mc)
+        sig_mat = (prob_mat > (1.0 - float(alphaVal))).astype(float)
+        return spike_rate_sig, prob_mat, sig_mat
+
+    @staticmethod
+    def computeSpikeRateCIs(*args: Any, **kwargs: Any) -> tuple[Any, np.ndarray, np.ndarray]:
+        # MATLAB signature:
+        #   computeSpikeRateCIs(xK,Wku,dN,t0,tf,fitType,delta,gamma,windowTimes,Mc,alphaVal)
+        # Existing Python compact signature:
+        #   computeSpikeRateCIs(spike_matrix, alpha=0.05)
+        if len(args) >= 7:
+            xK = np.asarray(args[0], dtype=float)
+            Wku = np.asarray(args[1], dtype=float)
+            dN = np.asarray(args[2], dtype=float)
+            t0 = float(args[3])
+            tf = float(args[4])
+            fitType = str(args[5])
+            delta = float(args[6])
+            gamma = args[7] if len(args) >= 8 else kwargs.get("gamma", None)
+            windowTimes = args[8] if len(args) >= 9 else kwargs.get("windowTimes", None)
+            Mc = int(args[9]) if len(args) >= 10 else int(kwargs.get("Mc", 500))
+            alphaVal = float(args[10]) if len(args) >= 11 else float(kwargs.get("alphaVal", 0.05))
+            return DecodingAlgorithms._compute_spike_rate_cis_matlab(
+                xK=xK,
+                Wku=Wku,
+                dN=dN,
+                t0=t0,
+                tf=tf,
+                fitType=fitType,
+                delta=delta,
+                gamma=gamma,
+                windowTimes=windowTimes,
+                Mc=Mc,
+                alphaVal=alphaVal,
+            )
+
+        if len(args) == 0 and "spike_matrix" not in kwargs:
+            raise TypeError("computeSpikeRateCIs requires either MATLAB-style or compact arguments")
+        spike_matrix = np.asarray(args[0] if args else kwargs["spike_matrix"], dtype=float)
+        alpha = float(args[1]) if len(args) >= 2 else float(kwargs.get("alpha", 0.05))
         return _DecodingAlgorithms.compute_spike_rate_cis(spike_matrix=spike_matrix, alpha=alpha)
 
     @staticmethod

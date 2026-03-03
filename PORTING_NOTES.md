@@ -48,6 +48,24 @@ This file tracks MATLAB-to-Python parity constraints, known deviations, and fixt
   - Fixture artifact (`tests/fixtures/ConfigColl/basic.mat`)
   - Python parity tests (`tests/test_configcoll_matlab_parity.py`)
   - Python demo (`examples/configcoll_demo.py`)
+- Completed full parity loop for `FitResult`:
+  - MATLAB compatibility wrapper updates (`src/nstat/compat/matlab/__init__.py`, `FitResult` section)
+  - MATLAB fixture generator (`matlab/fixture_gen/FitResult_fixtures.m`)
+  - Fixture artifact (`tests/fixtures/FitResult/basic.mat`)
+  - Python parity tests (`tests/test_fitresult_matlab_parity.py`)
+  - Python demo (`examples/fitresult_demo.py`)
+- Completed full parity loop for `FitResSummary`:
+  - MATLAB compatibility wrapper updates (`src/nstat/compat/matlab/__init__.py`, `FitResSummary` section)
+  - MATLAB fixture generator (`matlab/fixture_gen/FitResSummary_fixtures.m`)
+  - Fixture artifact (`tests/fixtures/FitResSummary/basic.mat`)
+  - Python parity tests (`tests/test_fitressummary_matlab_parity.py`)
+  - Python demo (`examples/fitressummary_demo.py`)
+- Completed full parity loop for `DecodingAlgorithms.computeSpikeRateCIs` (MATLAB full signature overload):
+  - MATLAB compatibility wrapper updates (`src/nstat/compat/matlab/__init__.py`, `DecodingAlgorithms` section)
+  - MATLAB fixture generator (`matlab/fixture_gen/DecodingAlgorithms_fixtures.m`)
+  - Fixture artifact (`tests/fixtures/DecodingAlgorithms/basic.mat`)
+  - Python parity tests (`tests/test_decodingalgorithms_matlab_parity.py`)
+  - Python demo (`examples/decoding_demo.py`)
 
 ## Intentional deviations
 - MATLAB indexing is 1-based; Python indexing is 0-based. This does not change `Events` numeric output, but affects user-facing index expectations in general.
@@ -66,6 +84,9 @@ From repo root (`nSTAT-python`), run:
 matlab -batch "addpath('/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local'); addpath('matlab/fixture_gen'); Events_fixtures('tests/fixtures/Events/basic.mat');"
 matlab -batch "addpath('/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local'); addpath('matlab/fixture_gen'); TrialConfig_fixtures('tests/fixtures/TrialConfig/basic.mat');"
 matlab -batch "addpath('/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local'); addpath('matlab/fixture_gen'); ConfigColl_fixtures('tests/fixtures/ConfigColl/basic.mat');"
+matlab -batch "addpath('/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local'); addpath('matlab/fixture_gen'); FitResult_fixtures('tests/fixtures/FitResult/basic.mat');"
+matlab -batch "addpath('/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local'); addpath('matlab/fixture_gen'); FitResSummary_fixtures('tests/fixtures/FitResSummary/basic.mat');"
+matlab -batch "addpath('/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local'); addpath('matlab/fixture_gen'); DecodingAlgorithms_fixtures('tests/fixtures/DecodingAlgorithms/basic.mat');"
 ```
 
 ## Run parity checks
@@ -74,4 +95,7 @@ matlab -batch "addpath('/Users/iahncajigas/Library/CloudStorage/Dropbox/Research
 pytest -q tests/test_events_matlab_parity.py
 pytest -q tests/test_trialconfig_matlab_parity.py
 pytest -q tests/test_configcoll_matlab_parity.py
+pytest -q tests/test_fitresult_matlab_parity.py
+pytest -q tests/test_fitressummary_matlab_parity.py
+pytest -q tests/test_decodingalgorithms_matlab_parity.py
 ```
