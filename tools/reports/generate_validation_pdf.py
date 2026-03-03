@@ -54,7 +54,7 @@ def _require_reportlab() -> tuple[tuple[float, float], type, type]:
             "reportlab is required to build validation PDFs. "
             "Install notebook extras with `pip install -e .[notebooks]`."
         )
-    return letter, ImageReader, canvas
+    return letter, ImageReader, canvas.Canvas
 
 
 @dataclass(slots=True)

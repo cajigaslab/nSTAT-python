@@ -10,6 +10,17 @@ defaults:
   min_matlab_reference_images: 0
   min_python_validation_images: 1
   enforce_validation_images: true
+  require_line_port_audit: true
+  min_line_port_coverage: 0.0
+  min_line_port_function_recall: 0.0
+  allowed_strict_line_statuses:
+    - line_port_verified
+    - line_port_partial
+    - line_port_gap
+    - matlab_doc_only
+    - doc_only
+    - missing_artifact
+    - missing_executable_content
   allowed_alignment_statuses:
     - validated
   out_of_scope_allowed_alignment_statuses:
@@ -24,6 +35,15 @@ out_of_scope_topics:
   - FitResultReference
 
 topics:
+  nSTATPaperExamples:
+    min_line_port_coverage: 0.45
+    min_line_port_function_recall: 0.95
+  HippocampalPlaceCellExample:
+    min_line_port_coverage: 0.20
+    min_line_port_function_recall: 0.95
+  publish_all_helpfiles:
+    min_line_port_coverage: 0.90
+    min_line_port_function_recall: 0.95
   DocumentationSetup2025b:
     min_python_code_lines: 20
     min_python_code_cells: 3

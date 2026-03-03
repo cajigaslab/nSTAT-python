@@ -65,6 +65,11 @@ fixtures:
   sha256: 55c3d0a74510202b731bd62afc5ca487e727a2ac3a97fc1f6822d403f0df5555
   source: matlab_batch_export
   fixture_type: numeric
+- name: nSTATPaperExamples_plot_arrays
+  path: tests/parity/fixtures/matlab_gold/nSTATPaperExamples_plot_gold.mat
+  sha256: 1e34a6f230c4ef94801b2e7ea825038fd4a27df3d91e7023e51a4d9c7cb669c3
+  source: matlab_batch_export
+  fixture_type: numeric
 - name: AnalysisExamples2
   path: tests/parity/fixtures/matlab_gold/AnalysisExamples2_audit_gold.json
   sha256: dda68f120bffeb4027000ed28a1c9656cad4acf2a3346bc898a945bee25486c6
