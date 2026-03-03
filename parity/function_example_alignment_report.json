@@ -272,8 +272,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 40,
-            "preview": "time = np.linspace(0.0, 4.0, 4001)"
+            "line_count": 29,
+            "preview": "from nstat.compat.matlab import TrialConfig, ConfigColl"
           },
           {
             "cell_index": 5,
@@ -281,9 +281,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 73,
+        "python_code_lines": 62,
         "python_notebook": "notebooks/ConfigCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 24.333333333333332,
+        "python_to_matlab_line_ratio": 20.666666666666668,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/ConfigCollExamples/ConfigCollExamples_001.png"
@@ -292,7 +292,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 5,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "matlab_code_blocks": [
@@ -331,8 +331,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 40,
-            "preview": "time = np.linspace(0.0, 4.0, 4001)"
+            "line_count": 52,
+            "preview": "from nstat.compat.matlab import Covariate, CovColl, History, nspikeTrain"
           },
           {
             "cell_index": 5,
@@ -340,9 +340,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 73,
+        "python_code_lines": 85,
         "python_notebook": "notebooks/CovCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 7.3,
+        "python_to_matlab_line_ratio": 8.5,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/CovCollExamples/CovCollExamples_001.png"
@@ -687,8 +687,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 41,
-            "preview": "dt = 0.001"
+            "line_count": 60,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 5,
@@ -696,7 +696,7 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 74,
+        "python_code_lines": 93,
         "python_notebook": "notebooks/DocumentationSetup2025b.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -943,8 +943,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 42,
-            "preview": "time = np.linspace(0.0, 6.0, 6001)"
+            "line_count": 41,
+            "preview": "from nstat.compat.matlab import Analysis, FitResSummary"
           },
           {
             "cell_index": 5,
@@ -952,7 +952,7 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 75,
+        "python_code_lines": 74,
         "python_notebook": "notebooks/FitResSummaryExamples.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -979,8 +979,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 42,
-            "preview": "time = np.linspace(0.0, 6.0, 6001)"
+            "line_count": 41,
+            "preview": "from nstat.compat.matlab import Analysis, FitResult"
           },
           {
             "cell_index": 5,
@@ -988,7 +988,7 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 75,
+        "python_code_lines": 74,
         "python_notebook": "notebooks/FitResultExamples.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -1015,8 +1015,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 42,
-            "preview": "time = np.linspace(0.0, 6.0, 6001)"
+            "line_count": 33,
+            "preview": "from nstat.compat.matlab import Analysis, FitResult"
           },
           {
             "cell_index": 5,
@@ -1024,7 +1024,7 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 75,
+        "python_code_lines": 66,
         "python_notebook": "notebooks/FitResultReference.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -2557,8 +2557,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 40,
-            "preview": "time = np.linspace(0.0, 4.0, 4001)"
+            "line_count": 24,
+            "preview": "from nstat.compat.matlab import TrialConfig, ConfigColl"
           },
           {
             "cell_index": 5,
@@ -2566,9 +2566,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 73,
+        "python_code_lines": 57,
         "python_notebook": "notebooks/TrialConfigExamples.ipynb",
-        "python_to_matlab_line_ratio": 24.333333333333332,
+        "python_to_matlab_line_ratio": 19.0,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/TrialConfigExamples/TrialConfigExamples_001.png"
@@ -2577,7 +2577,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 5,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "matlab_code_blocks": [
@@ -2650,8 +2650,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 40,
-            "preview": "time = np.linspace(0.0, 4.0, 4001)"
+            "line_count": 74,
+            "preview": "from nstat.compat.matlab import Covariate, CovColl, Events, History, Trial, nspikeTrain, nstColl"
           },
           {
             "cell_index": 5,
@@ -2659,9 +2659,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 73,
+        "python_code_lines": 107,
         "python_notebook": "notebooks/TrialExamples.ipynb",
-        "python_to_matlab_line_ratio": 2.92,
+        "python_to_matlab_line_ratio": 4.28,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/TrialExamples/TrialExamples_001.png"
@@ -4786,8 +4786,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 65,
-            "preview": "n_units = 14"
+            "line_count": 71,
+            "preview": "from nstat.compat.matlab import Analysis, Covariate, CovColl, DecodingAlgorithms, Trial, TrialConfig, nspikeTrain, nstColl"
           },
           {
             "cell_index": 5,
@@ -4795,9 +4795,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 98,
+        "python_code_lines": 104,
         "python_notebook": "notebooks/nSTATPaperExamples.ipynb",
-        "python_to_matlab_line_ratio": 0.06218274111675127,
+        "python_to_matlab_line_ratio": 0.06598984771573604,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/nSTATPaperExamples/nSTATPaperExamples_001.png"
@@ -4854,8 +4854,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 40,
-            "preview": "time = np.linspace(0.0, 4.0, 4001)"
+            "line_count": 38,
+            "preview": "from nstat.compat.matlab import nspikeTrain"
           },
           {
             "cell_index": 5,
@@ -4863,9 +4863,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 73,
+        "python_code_lines": 71,
         "python_notebook": "notebooks/nSpikeTrainExamples.ipynb",
-        "python_to_matlab_line_ratio": 7.3,
+        "python_to_matlab_line_ratio": 7.1,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/nSpikeTrainExamples/nSpikeTrainExamples_001.png"
@@ -4874,7 +4874,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 5,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "matlab_code_blocks": [
@@ -4926,8 +4926,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 40,
-            "preview": "time = np.linspace(0.0, 4.0, 4001)"
+            "line_count": 52,
+            "preview": "from nstat.compat.matlab import History, nspikeTrain, nstColl"
           },
           {
             "cell_index": 5,
@@ -4935,9 +4935,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 73,
+        "python_code_lines": 85,
         "python_notebook": "notebooks/nstCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 4.5625,
+        "python_to_matlab_line_ratio": 5.3125,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/nstCollExamples/nstCollExamples_001.png"
@@ -5089,8 +5089,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 41,
-            "preview": "dt = 0.001"
+            "line_count": 43,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 5,
@@ -5098,9 +5098,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 74,
+        "python_code_lines": 76,
         "python_notebook": "notebooks/publish_all_helpfiles.ipynb",
-        "python_to_matlab_line_ratio": 0.5873015873015873,
+        "python_to_matlab_line_ratio": 0.6031746031746031,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/publish_all_helpfiles/publish_all_helpfiles_001.png"

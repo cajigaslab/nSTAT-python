@@ -20,13 +20,41 @@ from pathlib import Path
 import nbformat
 import numpy as np
 import yaml
-from nbclient import NotebookClient
 from PIL import Image
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfgen import canvas
+
+try:
+    from nbclient import NotebookClient
+except ModuleNotFoundError:  # pragma: no cover - exercised in CI dependency matrix
+    NotebookClient = None  # type: ignore[assignment]
+
+try:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas
+except ModuleNotFoundError:  # pragma: no cover - exercised in CI dependency matrix
+    letter = None  # type: ignore[assignment]
+    ImageReader = None  # type: ignore[assignment]
+    canvas = None  # type: ignore[assignment]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _require_nbclient() -> type:
+    if NotebookClient is None:
+        raise ModuleNotFoundError(
+            "nbclient is required to execute notebooks. "
+            "Install notebook extras with `pip install -e .[notebooks]`."
+        )
+    return NotebookClient
+
+
+def _require_reportlab() -> tuple[tuple[float, float], type, type]:
+    if letter is None or ImageReader is None or canvas is None:
+        raise ModuleNotFoundError(
+            "reportlab is required to build validation PDFs. "
+            "Install notebook extras with `pip install -e .[notebooks]`."
+        )
+    return letter, ImageReader, canvas
 
 
 @dataclass(slots=True)
@@ -160,6 +188,26 @@ def parse_args() -> argparse.Namespace:
         "--skip-command-tests",
         action="store_true",
         help="Skip command-driven checks and only render notebook validation pages.",
+    )
+    parser.add_argument(
+        "--enforce-unique-images",
+        action="store_true",
+        help="Fail when notebook visual uniqueness thresholds are violated.",
+    )
+    parser.add_argument(
+        "--min-unique-images-per-topic",
+        type=int,
+        default=1,
+        help="Minimum required number of unique images per topic when uniqueness enforcement is enabled.",
+    )
+    parser.add_argument(
+        "--max-cross-topic-reuse-ratio",
+        type=float,
+        default=1.0,
+        help=(
+            "Maximum allowed cross-topic image reuse ratio in [0,1], where "
+            "cross_topic_reused_hashes / total_unique_hashes must be <= this value."
+        ),
     )
     return parser.parse_args()
 
@@ -481,7 +529,8 @@ def execute_notebook_capture(
         )
 
     notebook = nbformat.read(target.file, as_version=4)
-    client = NotebookClient(
+    notebook_client_cls = _require_nbclient()
+    client = notebook_client_cls(
         notebook,
         timeout=timeout,
         kernel_name="python3",
@@ -644,6 +693,39 @@ def _cross_topic_duplicate_stats(reports: list[NotebookReport]) -> dict[str, int
     }
 
 
+def _uniqueness_violations(
+    reports: list[NotebookReport],
+    min_unique_images_per_topic: int,
+    max_cross_topic_reuse_ratio: float,
+) -> tuple[list[str], dict[str, float | int]]:
+    violations: list[str] = []
+    for report in reports:
+        if report.unique_image_count < min_unique_images_per_topic:
+            violations.append(
+                f"{report.topic}: unique_images={report.unique_image_count} < "
+                f"min_required={min_unique_images_per_topic}"
+            )
+
+    duplicate_stats = _cross_topic_duplicate_stats(reports)
+    total_unique_hashes = int(duplicate_stats["total_unique_hashes"])
+    if total_unique_hashes == 0:
+        reuse_ratio = 0.0
+    else:
+        reuse_ratio = float(duplicate_stats["cross_topic_reused_hashes"]) / float(total_unique_hashes)
+
+    if reuse_ratio > max_cross_topic_reuse_ratio:
+        violations.append(
+            "cross_topic_reuse_ratio="
+            f"{reuse_ratio:.6f} > max_allowed={max_cross_topic_reuse_ratio:.6f}"
+        )
+
+    stats: dict[str, float | int] = {
+        **duplicate_stats,
+        "cross_topic_reuse_ratio": reuse_ratio,
+    }
+    return violations, stats
+
+
 def _draw_wrapped_lines(
     pdf: canvas.Canvas,
     x: float,
@@ -663,7 +745,8 @@ def _draw_wrapped_lines(
 
 
 def _draw_image_fit(pdf: canvas.Canvas, image_path: Path, x: float, y: float, max_w: float, max_h: float) -> None:
-    reader = ImageReader(str(image_path))
+    _, image_reader_cls, _ = _require_reportlab()
+    reader = image_reader_cls(str(image_path))
     iw, ih = reader.getSize()
     scale = min(max_w / iw, max_h / ih)
     w = iw * scale
@@ -1132,7 +1215,8 @@ def generate_pdf_report(
     )
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    pdf = canvas.Canvas(str(output_pdf), pagesize=letter)
+    letter_size, _, canvas_cls = _require_reportlab()
+    pdf = canvas_cls(str(output_pdf), pagesize=letter_size)
     pdf.setTitle("nSTAT-python Validation Report")
 
     draw_cover_page(
@@ -1203,6 +1287,11 @@ def main() -> int:
         for report in reports
         if report.parity_metrics is not None and report.parity_metrics.get("numeric_drift_pass") is False
     )
+    uniqueness_violations, uniqueness_stats = _uniqueness_violations(
+        reports=reports,
+        min_unique_images_per_topic=args.min_unique_images_per_topic,
+        max_cross_topic_reuse_ratio=args.max_cross_topic_reuse_ratio,
+    )
 
     print(f"Generated PDF report: {report_path}")
     print(f"MATLAB help root: {matlab_help_root}")
@@ -1213,8 +1302,24 @@ def main() -> int:
     print(f"Parity results ({args.parity_mode} mode): checked={parity_checked} failures={parity_failures}")
     print(f"Numeric drift topic results: checked={numeric_checked} failures={numeric_failures}")
     print(f"Command checks: total={len(command_results)} failed={command_failures}")
+    print(
+        "Uniqueness stats: "
+        f"total_instances={uniqueness_stats['total_image_instances']} "
+        f"total_unique={uniqueness_stats['total_unique_hashes']} "
+        f"cross_topic_reused={uniqueness_stats['cross_topic_reused_hashes']} "
+        f"cross_topic_reuse_ratio={uniqueness_stats['cross_topic_reuse_ratio']:.6f}"
+    )
+    print(f"Uniqueness violations: {len(uniqueness_violations)}")
+    if uniqueness_violations:
+        for violation in uniqueness_violations:
+            print(f"  - {violation}")
 
-    return 0 if exec_failures == 0 and command_failures == 0 and parity_failures == 0 else 1
+    enforce_uniqueness_failure = args.enforce_unique_images and bool(uniqueness_violations)
+    return (
+        0
+        if exec_failures == 0 and command_failures == 0 and parity_failures == 0 and not enforce_uniqueness_failure
+        else 1
+    )
 
 
 if __name__ == "__main__":

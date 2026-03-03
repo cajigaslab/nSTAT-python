@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -77,7 +77,10 @@ jobs:
             --timeout 900 \
             --skip-command-tests \
             --parity-mode gate \
-            --example-output-spec parity/example_output_spec.yml
+            --example-output-spec parity/example_output_spec.yml \
+            --enforce-unique-images \
+            --min-unique-images-per-topic 1 \
+            --max-cross-topic-reuse-ratio 1.0
 
       - name: Resolve latest validation PDF
         id: pdf

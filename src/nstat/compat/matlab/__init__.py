@@ -1477,23 +1477,44 @@ class nstColl(_SpikeTrainCollection):
         return self.psth(binSize_s=binSize_s)
 
     @staticmethod
-    def generateUnitImpulseBasis(
-        basisWidth_s: float,
-        sampleRate_hz: float,
-        totalTime_s: float = 1.0,
-        name: str = "unit_impulse_basis",
-    ) -> _Covariate:
+    def generateUnitImpulseBasis(basisWidth_s: float, *args: Any, **kwargs: Any) -> _Covariate:
         if basisWidth_s <= 0.0:
             raise ValueError("basisWidth_s must be positive")
-        if sampleRate_hz <= 0.0:
+
+        name = str(kwargs.pop("name", "unit_impulse_basis"))
+        numeric_types = (int, float, np.integer, np.floating)
+
+        # MATLAB-compatible signatures:
+        #   generateUnitImpulseBasis(basisWidth, sampleRate[, totalTime[, name]])
+        #   generateUnitImpulseBasis(basisWidth, minTime, maxTime, sampleRate[, name])
+        if len(args) >= 3 and isinstance(args[2], numeric_types):
+            min_time_s = float(args[0])
+            max_time_s = float(args[1])
+            sample_rate_hz = float(args[2])
+            if len(args) >= 4:
+                name = str(args[3])
+        else:
+            sample_rate_hz = float(args[0]) if len(args) >= 1 else float(kwargs.pop("sampleRate_hz", 1000.0))
+            total_time_s = float(args[1]) if len(args) >= 2 else float(kwargs.pop("totalTime_s", 1.0))
+            min_time_s = 0.0
+            max_time_s = total_time_s
+
+        if kwargs:
+            unknown = ", ".join(sorted(kwargs.keys()))
+            raise TypeError(f"unexpected keyword arguments: {unknown}")
+        if sample_rate_hz <= 0.0:
             raise ValueError("sampleRate_hz must be positive")
-        dt = 1.0 / float(sampleRate_hz)
-        time = np.arange(0.0, float(totalTime_s) + 0.5 * dt, dt)
-        n_basis = max(1, int(np.ceil(float(totalTime_s) / float(basisWidth_s))))
+        if max_time_s <= min_time_s:
+            raise ValueError("maxTime must be greater than minTime")
+
+        dt = 1.0 / sample_rate_hz
+        time = np.arange(min_time_s, max_time_s + 0.5 * dt, dt)
+        total_time_s = max_time_s - min_time_s
+        n_basis = max(1, int(np.ceil(total_time_s / float(basisWidth_s))))
         basis = np.zeros((time.size, n_basis), dtype=float)
         for j in range(n_basis):
-            lo = j * basisWidth_s
-            hi = min((j + 1) * basisWidth_s, totalTime_s + dt)
+            lo = min_time_s + j * basisWidth_s
+            hi = min(min_time_s + (j + 1) * basisWidth_s, max_time_s + dt)
             mask = (time >= lo) & (time < hi)
             basis[mask, j] = 1.0
         labels = [f"basis_{j+1}" for j in range(n_basis)]
@@ -3255,7 +3276,224 @@ class DecodingAlgorithms:
         )
 
     @staticmethod
-    def computeSpikeRateCIs(spike_matrix: np.ndarray, alpha: float = 0.05) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _chol_like_matlab(mat: np.ndarray) -> np.ndarray:
+        arr = np.asarray(mat, dtype=float)
+        if arr.ndim == 0:
+            return np.array([[float(np.sqrt(max(arr.item(), 0.0)))]] , dtype=float)
+        if np.allclose(arr, 0.0):
+            return np.zeros_like(arr, dtype=float)
+        try:
+            return np.linalg.cholesky(arr)
+        except np.linalg.LinAlgError:
+            eigvals, eigvecs = np.linalg.eigh(arr)
+            eigvals = np.clip(eigvals, 0.0, None)
+            return eigvecs @ np.diag(np.sqrt(eigvals))
+
+    @staticmethod
+    def _build_unit_impulse_basis(numBasis: int, minTime: float, maxTime: float, delta: float) -> tuple[np.ndarray, np.ndarray]:
+        if numBasis <= 0:
+            raise ValueError("numBasis must be > 0")
+        basis_width = float(maxTime - minTime) / float(numBasis)
+        sample_rate = 1.0 / float(delta)
+        basis_sig = nstColl.generateUnitImpulseBasis(basis_width, minTime, maxTime, sample_rate)
+        basis_mat = np.asarray(basis_sig.data, dtype=float)
+        time = np.asarray(basis_sig.time, dtype=float).reshape(-1)
+        return basis_mat, time
+
+    @staticmethod
+    def _compute_spike_rate_cis_matlab(
+        xK: np.ndarray,
+        Wku: np.ndarray,
+        dN: np.ndarray,
+        t0: float,
+        tf: float,
+        fitType: str,
+        delta: float,
+        gamma: Any = None,
+        windowTimes: Any = None,
+        Mc: int = 500,
+        alphaVal: float = 0.05,
+    ) -> tuple[_Covariate, np.ndarray, np.ndarray]:
+        xK_arr = np.asarray(xK, dtype=float)
+        if xK_arr.ndim != 2:
+            raise ValueError("xK must be 2D with shape (numBasis, K)")
+        dN_arr = np.asarray(dN, dtype=float)
+        if dN_arr.ndim != 2:
+            raise ValueError("dN must be 2D with shape (K, T)")
+        numBasis, K = xK_arr.shape
+        if dN_arr.shape[0] != K:
+            raise ValueError("dN first dimension must match K in xK")
+        fit_type = str(fitType).lower()
+        if fit_type not in {"poisson", "binomial"}:
+            raise ValueError("fitType must be either 'poisson' or 'binomial'")
+        if not (0.0 < float(alphaVal) < 1.0):
+            raise ValueError("alphaVal must be in (0, 1)")
+        if int(Mc) <= 0:
+            raise ValueError("Mc must be > 0")
+
+        min_time = 0.0
+        max_time = float(dN_arr.shape[1] - 1) * float(delta)
+        basis_mat, basis_time = DecodingAlgorithms._build_unit_impulse_basis(numBasis, min_time, max_time, float(delta))
+        if basis_mat.shape[0] < dN_arr.shape[1]:
+            pad = np.zeros((dN_arr.shape[1] - basis_mat.shape[0], basis_mat.shape[1]), dtype=float)
+            basis_mat = np.vstack([basis_mat, pad])
+        elif basis_mat.shape[0] > dN_arr.shape[1]:
+            basis_mat = basis_mat[: dN_arr.shape[1], :]
+            basis_time = basis_time[: dN_arr.shape[1]]
+        time = basis_time
+
+        window_vals = np.asarray([] if windowTimes is None else windowTimes, dtype=float).reshape(-1)
+        if window_vals.size > 0:
+            if window_vals.size == 1:
+                window_vals = np.array([0.0, float(window_vals[0])], dtype=float)
+            hist_obj = History(bin_edges_s=window_vals)
+            gamma_vec = np.asarray(gamma, dtype=float).reshape(-1)
+            Hk: list[np.ndarray] = []
+            for k in range(K):
+                spikes = np.where(dN_arr[k, :] == 1.0)[0].astype(float) * float(delta)
+                hk = np.asarray(hist_obj.computeHistory(spikes, time), dtype=float)
+                if hk.ndim == 1:
+                    hk = hk[:, None]
+                if hk.shape[0] < dN_arr.shape[1]:
+                    hk = np.vstack([hk, np.zeros((dN_arr.shape[1] - hk.shape[0], hk.shape[1]), dtype=float)])
+                elif hk.shape[0] > dN_arr.shape[1]:
+                    hk = hk[: dN_arr.shape[1], :]
+                Hk.append(hk)
+            if gamma_vec.size == 0:
+                gamma_vec = np.zeros(1, dtype=float)
+        else:
+            Hk = [np.zeros((dN_arr.shape[1], 1), dtype=float) for _ in range(K)]
+            gamma_vec = np.zeros(1, dtype=float)
+
+        Wku_arr = np.asarray(Wku, dtype=float)
+        xK_draw = np.zeros((numBasis, K, int(Mc)), dtype=float)
+        rng = np.random.default_rng(0)
+        for r in range(numBasis):
+            if Wku_arr.ndim == 4:
+                Wku_temp = np.asarray(Wku_arr[r, r, :, :], dtype=float)
+            elif Wku_arr.ndim == 3:
+                Wku_temp = np.asarray(Wku_arr[r, :, :], dtype=float)
+            elif Wku_arr.ndim == 2:
+                Wku_temp = np.asarray(Wku_arr, dtype=float)
+            else:
+                Wku_temp = np.asarray(0.0, dtype=float)
+            if Wku_temp.ndim == 0:
+                chol_m = np.diag(np.repeat(float(np.sqrt(max(Wku_temp.item(), 0.0))), K))
+            else:
+                chol_m = DecodingAlgorithms._chol_like_matlab(Wku_temp)
+                if chol_m.shape != (K, K):
+                    raise ValueError("Wku covariance slice must be KxK")
+            for c in range(int(Mc)):
+                z = rng.normal(0.0, 1.0, size=(K,))
+                xK_draw[r, :, c] = xK_arr[r, :] + (chol_m @ z)
+
+        lambda_delta = np.zeros((dN_arr.shape[1], K, int(Mc)), dtype=float)
+        spike_rate = np.zeros((int(Mc), K), dtype=float)
+        for c in range(int(Mc)):
+            for k in range(K):
+                stim_k = basis_mat @ xK_draw[:, k, c]
+                if window_vals.size > 0 and np.any(np.abs(gamma_vec) > 0.0):
+                    hk = Hk[k]
+                    cols = min(hk.shape[1], gamma_vec.size)
+                    hist_lin = hk[:, :cols] @ gamma_vec[:cols]
+                else:
+                    hist_lin = np.zeros(stim_k.shape[0], dtype=float)
+                eta = stim_k + hist_lin
+                if fit_type == "poisson":
+                    lam = np.exp(eta)
+                else:
+                    exp_eta = np.exp(eta)
+                    lam = exp_eta / (1.0 + exp_eta)
+                lambda_delta[:, k, c] = lam
+            rates = lambda_delta[:, :, c] / float(delta)
+            mask = (time >= float(t0)) & (time <= float(tf))
+            if np.sum(mask) < 2:
+                integral_vals = np.zeros(K, dtype=float)
+            else:
+                integrate_fn = getattr(np, "trapezoid", None)
+                if integrate_fn is None:
+                    integrate_fn = getattr(np, "trapz", None)  # pragma: no cover - NumPy<2 fallback
+                if integrate_fn is None:  # pragma: no cover - extreme fallback
+                    dt_vec = np.diff(time[mask]).reshape(-1, 1)
+                    y0 = rates[mask, :][:-1, :]
+                    y1 = rates[mask, :][1:, :]
+                    integral_vals = np.sum(0.5 * (y0 + y1) * dt_vec, axis=0)
+                else:
+                    integral_vals = np.asarray(
+                        integrate_fn(rates[mask, :], x=time[mask], axis=0),
+                        dtype=float,
+                    )
+            spike_rate[c, :] = integral_vals / max(float(tf - t0), np.finfo(float).eps)
+
+        CIs = np.zeros((K, 2), dtype=float)
+        for k in range(K):
+            vals = np.sort(spike_rate[:, k])
+            f = (np.arange(vals.size, dtype=float) + 1.0) / float(vals.size)
+            lo = vals[f < float(alphaVal)]
+            hi = vals[f > (1.0 - float(alphaVal))]
+            CIs[k, 0] = float(lo[-1]) if lo.size else float(vals[0])
+            CIs[k, 1] = float(hi[0]) if hi.size else float(vals[-1])
+
+        spike_rate_sig = Covariate(
+            time=np.arange(1, K + 1, dtype=float),
+            data=np.mean(spike_rate, axis=0),
+            name=f"({tf}-{t0})^-1 * \\Lambda({tf}-{t0})",
+            x_label="Trial",
+            x_units="k",
+            y_units="Hz",
+        )
+        ci_obj = ConfidenceInterval(
+            time=np.arange(1, K + 1, dtype=float),
+            lower=CIs[:, 0],
+            upper=CIs[:, 1],
+            level=1.0 - float(alphaVal),
+        )
+        ci_obj.setColor("b")
+        spike_rate_sig.setConfInterval(ci_obj)
+
+        prob_mat = np.zeros((K, K), dtype=float)
+        for k in range(K):
+            for m in range(k + 1, K):
+                prob_mat[k, m] = float(np.sum(spike_rate[:, m] > spike_rate[:, k])) / float(Mc)
+        sig_mat = (prob_mat > (1.0 - float(alphaVal))).astype(float)
+        return spike_rate_sig, prob_mat, sig_mat
+
+    @staticmethod
+    def computeSpikeRateCIs(*args: Any, **kwargs: Any) -> tuple[Any, np.ndarray, np.ndarray]:
+        # MATLAB signature:
+        #   computeSpikeRateCIs(xK,Wku,dN,t0,tf,fitType,delta,gamma,windowTimes,Mc,alphaVal)
+        # Existing Python compact signature:
+        #   computeSpikeRateCIs(spike_matrix, alpha=0.05)
+        if len(args) >= 7:
+            xK = np.asarray(args[0], dtype=float)
+            Wku = np.asarray(args[1], dtype=float)
+            dN = np.asarray(args[2], dtype=float)
+            t0 = float(args[3])
+            tf = float(args[4])
+            fitType = str(args[5])
+            delta = float(args[6])
+            gamma = args[7] if len(args) >= 8 else kwargs.get("gamma", None)
+            windowTimes = args[8] if len(args) >= 9 else kwargs.get("windowTimes", None)
+            Mc = int(args[9]) if len(args) >= 10 else int(kwargs.get("Mc", 500))
+            alphaVal = float(args[10]) if len(args) >= 11 else float(kwargs.get("alphaVal", 0.05))
+            return DecodingAlgorithms._compute_spike_rate_cis_matlab(
+                xK=xK,
+                Wku=Wku,
+                dN=dN,
+                t0=t0,
+                tf=tf,
+                fitType=fitType,
+                delta=delta,
+                gamma=gamma,
+                windowTimes=windowTimes,
+                Mc=Mc,
+                alphaVal=alphaVal,
+            )
+
+        if len(args) == 0 and "spike_matrix" not in kwargs:
+            raise TypeError("computeSpikeRateCIs requires either MATLAB-style or compact arguments")
+        spike_matrix = np.asarray(args[0] if args else kwargs["spike_matrix"], dtype=float)
+        alpha = float(args[1]) if len(args) >= 2 else float(kwargs.get("alpha", 0.05))
         return _DecodingAlgorithms.compute_spike_rate_cis(spike_matrix=spike_matrix, alpha=alpha)
 
     @staticmethod

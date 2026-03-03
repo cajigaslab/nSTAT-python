@@ -46,6 +46,12 @@ def parse_args() -> argparse.Namespace:
         default=300,
         help="Per-cell timeout in seconds",
     )
+    parser.add_argument(
+        "--startup-timeout",
+        type=int,
+        default=180,
+        help="Kernel startup timeout in seconds",
+    )
     return parser.parse_args()
 
 
@@ -72,11 +78,12 @@ def select_targets(targets: list[NotebookTarget], group: str) -> list[NotebookTa
 
 
 
-def execute_notebook(path: Path, timeout: int) -> None:
+def execute_notebook(path: Path, timeout: int, startup_timeout: int) -> None:
     notebook = nbformat.read(path, as_version=4)
     client = NotebookClient(
         notebook,
         timeout=timeout,
+        startup_timeout=startup_timeout,
         kernel_name="python3",
         resources={"metadata": {"path": str(path.parent)}},
     )
@@ -98,7 +105,11 @@ def main() -> int:
             continue
         print(f"Executing [{target.run_group}] {target.topic}: {target.path}")
         try:
-            execute_notebook(target.path, timeout=args.timeout)
+            execute_notebook(
+                target.path,
+                timeout=args.timeout,
+                startup_timeout=args.startup_timeout,
+            )
         except Exception as exc:  # noqa: BLE001
             failures.append(f"{target.path}: {exc}")
 
