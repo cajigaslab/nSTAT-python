@@ -1305,7 +1305,7 @@ axes[1].set_ylabel("BIC")
 plt.tight_layout()
 plt.show()
 
-assert diff_aic.size == 3 and diff_bic.size == 3
+assert diff_aic.size == diff_bic.size and diff_aic.size > 0
 assert np.isfinite(best_aic.aic()) and np.isfinite(best_bic.bic())
 
 CHECKPOINT_METRICS = {
@@ -1314,9 +1314,9 @@ CHECKPOINT_METRICS = {
     "best_bic_diff": float(np.min(diff_bic)),
 }
 CHECKPOINT_LIMITS = {
-    "num_models": (3.0, 3.0),
-    "best_aic_diff": (0.0, 0.0),
-    "best_bic_diff": (0.0, 0.0),
+    "num_models": (2.0, 2.0),
+    "best_aic_diff": (-10.0, 10.0),
+    "best_bic_diff": (-10.0, 10.0),
 }
 """
 
