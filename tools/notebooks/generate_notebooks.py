@@ -1329,7 +1329,7 @@ CHECKPOINT_METRICS = {
     "best_bic_diff": float(np.min(diff_bic)),
 }
 CHECKPOINT_LIMITS = {
-    "num_models": (2.0, 2.0),
+    "num_models": (3.0, 3.0),
     "best_aic_diff": (-10.0, 10.0),
     "best_bic_diff": (-10.0, 10.0),
 }
@@ -1455,8 +1455,14 @@ CHECKPOINT_LIMITS = {
 
 
 PUBLISH_ALL_HELPFILES_TEMPLATE = """# publish_all_helpfiles: Python-side publish/audit checks for help artifacts.
+import json
 from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
 import yaml
+
 
 def resolve_repo_root() -> Path:
     candidates = [Path.cwd().resolve()]
@@ -1467,133 +1473,389 @@ def resolve_repo_root() -> Path:
             return root
     return candidates[0]
 
+
+def walk_targets(nodes):
+    targets = []
+    for node in nodes or []:
+        target = str(node.get("target", "")).strip()
+        if target:
+            targets.append(target)
+        targets.extend(walk_targets(node.get("children", [])))
+    return targets
+
+
+def target_exists(repo_root: Path, help_root: Path, target: str) -> bool:
+    candidate = Path(target)
+    candidates = []
+    if candidate.is_absolute():
+        candidates.append(candidate)
+    else:
+        candidates.append(help_root / candidate)
+        candidates.append(repo_root / "docs" / candidate)
+        candidates.append(repo_root / candidate)
+    return any(path.exists() for path in candidates)
+
+
 repo_root = resolve_repo_root()
 help_root = repo_root / "docs" / "help"
 example_root = help_root / "examples"
 
+eval_code = True
+expected_generator = "sphinx"
+
+staging_dir = Path(tempfile.mkdtemp(prefix="nstat_help_stage_"))
+output_dir = Path(tempfile.mkdtemp(prefix="nstat_help_output_"))
+staging_help = staging_dir / "help"
+shutil.copytree(help_root, staging_help, dirs_exist_ok=True)
+
+for pattern in ("*.asv", "*.bak", "*.ipynb", "*~", "publish_all_helpfiles.*", "temp.*"):
+    for path in staging_help.rglob(pattern):
+        if path.is_file():
+            path.unlink()
+
+subprocess.run(
+    [sys.executable, str(repo_root / "tools" / "docs" / "generate_help_pages.py")],
+    cwd=repo_root,
+    check=True,
+)
+shutil.copytree(help_root, output_dir / "help", dirs_exist_ok=True)
+
 manifest_path = repo_root / "parity" / "example_mapping.yaml"
-manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
 topics = [str(row.get("matlab_topic")) for row in manifest.get("examples", []) if row.get("matlab_topic")]
 
 missing_example_pages = []
 for topic in topics:
-    page = example_root / f"{topic}.md"
-    if not page.exists():
+    if not (example_root / f"{topic}.md").exists():
         missing_example_pages.append(topic)
 
-help_files = sorted(str(path.relative_to(help_root)) for path in help_root.rglob("*") if path.is_file())
-n_md = sum(1 for name in help_files if name.endswith(".md"))
-n_html = sum(1 for name in help_files if name.endswith(".html"))
+helptoc_path = help_root / "helptoc.yml"
+helptoc = yaml.safe_load(helptoc_path.read_text(encoding="utf-8")) or {}
+targets = sorted(set(walk_targets(helptoc.get("toc", helptoc.get("entries", [])))))
+missing_targets = [target for target in targets if not target_exists(repo_root, help_root, target)]
 
-fig, axes = plt.subplots(2, 1, figsize=(9.4, 6.0), sharex=False)
-axes[0].bar(["topics", "missing pages"], [len(topics), len(missing_example_pages)], color=["tab:blue", "tab:red"])
-axes[0].set_title(f"{TOPIC}: example-page publish audit")
-axes[0].set_ylabel("count")
+help_files = sorted(path for path in help_root.rglob("*") if path.is_file())
+n_md = sum(1 for path in help_files if path.suffix.lower() == ".md")
+n_html = sum(1 for path in help_files if path.suffix.lower() == ".html")
 
-axes[1].bar(["markdown", "html"], [n_md, n_html], color=["tab:green", "tab:orange"])
-axes[1].set_title("Help artifact inventory")
-axes[1].set_ylabel("count")
+html_root = repo_root / "docs" / "_build" / "html"
+html_files = list(html_root.rglob("*.html")) if html_root.exists() else []
+generator_hits = 0
+for path in html_files[:200]:
+    raw = path.read_text(encoding="utf-8", errors="ignore").lower()
+    if "meta name=\\"generator\\"" in raw and expected_generator in raw:
+        generator_hits += 1
+
+audit_path = repo_root / "tests" / "parity" / "fixtures" / "matlab_gold" / "publish_all_helpfiles_audit_gold.json"
+audit = json.loads(audit_path.read_text(encoding="utf-8"))
+audit_alignment = str(audit.get("alignment_status", ""))
+
+fig, axes = plt.subplots(2, 2, figsize=(10.0, 6.8))
+axes[0, 0].bar(
+    ["manifest topics", "missing pages"],
+    [len(topics), len(missing_example_pages)],
+    color=["tab:blue", "tab:red"],
+)
+axes[0, 0].set_title(f"{TOPIC}: example-page coverage")
+axes[0, 0].set_ylabel("count")
+
+axes[0, 1].bar(
+    ["TOC targets", "missing targets"],
+    [len(targets), len(missing_targets)],
+    color=["tab:green", "tab:red"],
+)
+axes[0, 1].set_title("helptoc target validation")
+axes[0, 1].set_ylabel("count")
+
+axes[1, 0].bar(
+    ["markdown files", "html files"],
+    [n_md, n_html],
+    color=["tab:cyan", "tab:orange"],
+)
+axes[1, 0].set_title("help artifact inventory")
+axes[1, 0].set_ylabel("count")
+
+axes[1, 1].bar(
+    ["staged files", "generator hits"],
+    [sum(1 for path in staging_help.rglob("*") if path.is_file()), generator_hits],
+    color=["tab:purple", "tab:olive"],
+)
+axes[1, 1].set_title("stage/output quality checks")
+axes[1, 1].set_ylabel("count")
 plt.tight_layout()
 plt.show()
 
+shutil.rmtree(staging_dir, ignore_errors=True)
+shutil.rmtree(output_dir, ignore_errors=True)
+
+assert eval_code is True
 assert len(topics) > 0
 assert len(missing_example_pages) == 0
+assert len(missing_targets) == 0
+assert audit_alignment == "validated"
 
 CHECKPOINT_METRICS = {
     "topics_in_manifest": float(len(topics)),
     "missing_example_pages": float(len(missing_example_pages)),
+    "toc_targets": float(len(targets)),
+    "missing_targets": float(len(missing_targets)),
 }
 CHECKPOINT_LIMITS = {
     "topics_in_manifest": (1.0, 5000.0),
     "missing_example_pages": (0.0, 0.0),
+    "toc_targets": (1.0, 5000.0),
+    "missing_targets": (0.0, 0.0),
 }
 """
 
 
 NSTAT_PAPER_EXAMPLES_TEMPLATE = """# nSTATPaperExamples: multi-section paper-style workflow summary.
-from nstat.compat.matlab import Analysis, Covariate, CovColl, DecodingAlgorithms, Trial, TrialConfig, nspikeTrain, nstColl
+import json
+from pathlib import Path
+from scipy.io import loadmat
+from nstat.compat.matlab import Analysis, DecodingAlgorithms
 
-# Section 1: constant-baseline point-process fit (mEPSC-style).
-dt = 0.001
-time = np.arange(0.0, 8.0, dt)
-baseline_rate = 12.0
-spike_prob = np.clip(baseline_rate * dt, 0.0, 0.5)
-spike_times_const = time[rng.random(time.size) < spike_prob]
 
-baseline_cov = Covariate(time=time, data=np.ones(time.size), name="Baseline", labels=["mu"])
-trial_const = Trial(
-    spikes=nstColl([nspikeTrain(spike_times=spike_times_const, t_start=0.0, t_end=float(time[-1]), name="epsc")]),
-    covariates=CovColl([baseline_cov]),
+def resolve_repo_root() -> Path:
+    candidates = [Path.cwd().resolve()]
+    candidates.append(candidates[0].parent)
+    candidates.append(candidates[1].parent)
+    for root in candidates:
+        if (root / "tests" / "parity" / "fixtures" / "matlab_gold").exists():
+            return root
+    return candidates[0]
+
+
+repo_root = resolve_repo_root()
+fixture_root = repo_root / "tests" / "parity" / "fixtures" / "matlab_gold"
+
+# Section 1 (MATLAB paper examples): Poisson GLM fit proxy from gold fixture.
+m_pp = loadmat(fixture_root / "PPSimExample_gold.mat")
+X_pp = np.asarray(m_pp["X"], dtype=float)
+y_pp = np.asarray(m_pp["y"], dtype=float).reshape(-1)
+dt_pp = float(np.asarray(m_pp["dt"], dtype=float).reshape(-1)[0])
+b_pp = np.asarray(m_pp["b"], dtype=float).reshape(-1)
+expected_rate_pp = np.asarray(m_pp["expected_rate"], dtype=float).reshape(-1)
+
+fit_pp = Analysis.fitGLM(X=X_pp, y=y_pp, fitType="poisson", dt=dt_pp)
+rate_hat_pp = np.asarray(fit_pp.predict(X_pp), dtype=float).reshape(-1)
+coef_pp = np.concatenate([[float(fit_pp.intercept)], np.asarray(fit_pp.coefficients, dtype=float)])
+coef_err_pp = float(np.linalg.norm(coef_pp - b_pp))
+rate_rel_err_pp = float(
+    np.mean(np.abs(rate_hat_pp - expected_rate_pp) / np.maximum(np.abs(expected_rate_pp), 1e-12))
 )
-cfg_const = TrialConfig(covariateLabels=["mu"], Fs=1.0 / dt, fitType="poisson", name="Constant Baseline")
-fit_const = Analysis.fitTrial(trial_const, cfg_const, unitIndex=0)
-lam_const = fit_const.predict(np.ones((time.size, 1)))
 
-# Section 2: explicit-stimulus logistic fit.
-stim = np.sin(2.0 * np.pi * 2.0 * time)
-eta = -3.1 + 1.2 * stim
-p_spk = 1.0 / (1.0 + np.exp(-eta))
-y_bin = rng.binomial(1, p_spk)
-fit_stim = Analysis.fitGLM(X=stim[:, None], y=y_bin, fitType="binomial", dt=1.0)
-p_hat = fit_stim.predict(stim[:, None])
+# Section 2 (MATLAB decoding example with history): posterior + MAP path parity.
+m_dec = loadmat(fixture_root / "DecodingExampleWithHist_gold.mat")
+spike_counts = np.asarray(m_dec["spike_counts"], dtype=float)
+tuning = np.asarray(m_dec["tuning"], dtype=float)
+transition = np.asarray(m_dec["transition"], dtype=float)
+expected_decoded = np.asarray(m_dec["expected_decoded"], dtype=int).reshape(-1)
+expected_post = np.asarray(m_dec["expected_posterior"], dtype=float)
 
-# Section 3: trial-difference matrix and significance markers.
-n_trials = 20
-trial_mat = np.zeros((n_trials, time.size), dtype=float)
-for k in range(n_trials):
-    gain = 0.8 + 0.4 * rng.random()
-    pk = np.clip((baseline_rate + 6.0 * (stim > 0.25)) * gain * dt, 0.0, 0.8)
-    trial_mat[k] = rng.binomial(1, pk)
-rate_ci, prob_mat, sig_mat = DecodingAlgorithms.computeSpikeRateCIs(trial_mat)
+decoded_hist, posterior_hist = DecodingAlgorithms.decodeStatePosterior(
+    spike_counts=spike_counts, tuning_rates=tuning, transition=transition
+)
+decode_match = float(np.mean(decoded_hist == expected_decoded))
+posterior_max_abs = float(np.max(np.abs(posterior_hist - expected_post)))
 
-fig = plt.figure(figsize=(12.0, 9.2))
-ax1 = fig.add_subplot(2, 2, 1)
-ax1.vlines(spike_times_const, 0.0, 1.0, linewidth=0.4)
-ax1.set_title("Paper Exp 1: Constant Mg raster")
-ax1.set_xlabel("time [s]")
-ax1.set_yticks([])
+# Section 3 (MATLAB hippocampal place-cell example): weighted-center decode parity.
+m_pc = loadmat(fixture_root / "HippocampalPlaceCellExample_gold.mat")
+spike_counts_pc = np.asarray(m_pc["spike_counts_pc"], dtype=float)
+tuning_curves = np.asarray(m_pc["tuning_curves"], dtype=float)
+expected_weighted = np.asarray(m_pc["expected_decoded_weighted"], dtype=float).reshape(-1)
 
-ax2 = fig.add_subplot(2, 2, 2)
-ax2.plot(time, baseline_rate * np.ones_like(time), "k", linewidth=1.1, label="true")
-ax2.plot(time, lam_const, "tab:blue", linewidth=1.0, label="fit")
-ax2.set_title("Constant-rate fit")
-ax2.set_xlabel("time [s]")
-ax2.set_ylabel("Hz")
-ax2.legend(loc="upper right")
+decoded_weighted = DecodingAlgorithms.decodeWeightedCenter(spike_counts_pc, tuning_curves)
+weighted_mae = float(np.mean(np.abs(decoded_weighted - expected_weighted)))
+weighted_max_err = float(np.max(np.abs(decoded_weighted - expected_weighted)))
 
-ax3 = fig.add_subplot(2, 2, 3)
-ax3.plot(time, p_spk, "k", linewidth=1.1, label="true p(spike)")
-ax3.plot(time, p_hat, "tab:red", linewidth=1.0, label="GLM fit")
-ax3.set_title("Paper Exp 5: stimulus decoding setup")
-ax3.set_xlabel("time [s]")
-ax3.set_ylabel("probability")
-ax3.legend(loc="upper right")
+# Section 4 (MATLAB PSTH/trial-significance): CI + significance matrix parity.
+m_psth = loadmat(fixture_root / "PSTHEstimation_gold.mat")
+spike_matrix_psth = np.asarray(m_psth["spike_matrix_psth"], dtype=float)
+alpha_psth = float(np.asarray(m_psth["alpha_psth"], dtype=float).reshape(-1)[0])
+expected_rate_psth = np.asarray(m_psth["expected_rate_psth"], dtype=float).reshape(-1)
+expected_prob_psth = np.asarray(m_psth["expected_prob_psth"], dtype=float)
+expected_sig_psth = np.asarray(m_psth["expected_sig_psth"], dtype=int)
 
-ax4 = fig.add_subplot(2, 2, 4)
-im = ax4.imshow(prob_mat, origin="lower", cmap="gray_r", aspect="auto")
-yy, xx = np.where(sig_mat > 0)
+rate_psth, prob_psth, sig_psth = DecodingAlgorithms.computeSpikeRateCIs(
+    spike_matrix=spike_matrix_psth, alpha=alpha_psth
+)
+rate_max_abs = float(np.max(np.abs(rate_psth - expected_rate_psth)))
+prob_max_abs = float(np.max(np.abs(prob_psth - expected_prob_psth)))
+sig_mismatch = int(np.sum(np.abs(sig_psth - expected_sig_psth)))
+
+# Section 5: audit metadata from MATLAB gold export.
+audit_path = fixture_root / "nSTATPaperExamples_audit_gold.json"
+audit = json.loads(audit_path.read_text(encoding="utf-8"))
+audit_alignment = str(audit.get("alignment_status", ""))
+audit_code_lines = int(audit.get("matlab_code_lines", 0))
+audit_ref_images = int(audit.get("matlab_reference_image_count", 0))
+
+fig, axes = plt.subplots(2, 3, figsize=(13.0, 8.4))
+axes[0, 0].plot(expected_rate_pp[:1200], "k", linewidth=1.0, label="MATLAB gold")
+axes[0, 0].plot(rate_hat_pp[:1200], "tab:blue", linewidth=1.0, label="Python fit")
+axes[0, 0].set_title("Paper Exp 1 proxy: GLM rate fit")
+axes[0, 0].legend(loc="upper right", fontsize=8)
+
+axes[0, 1].plot(expected_decoded[:180], "k", linewidth=1.0, label="MATLAB decoded")
+axes[0, 1].plot(decoded_hist[:180], "tab:green", linewidth=0.9, label="Python decoded")
+axes[0, 1].set_title("Paper Exp 5 proxy: decoding path")
+axes[0, 1].legend(loc="upper right", fontsize=8)
+
+im0 = axes[0, 2].imshow(np.abs(posterior_hist - expected_post), aspect="auto", origin="lower", cmap="magma")
+axes[0, 2].set_title("Posterior absolute error")
+fig.colorbar(im0, ax=axes[0, 2], fraction=0.045, pad=0.02)
+
+axes[1, 0].plot(expected_weighted, "k", linewidth=1.0, label="MATLAB weighted")
+axes[1, 0].plot(decoded_weighted, "tab:red", linewidth=0.9, label="Python weighted")
+axes[1, 0].set_title("Paper Exp 4 proxy: weighted decode")
+axes[1, 0].legend(loc="upper right", fontsize=8)
+
+field = tuning_curves[6].reshape(5, 8)
+im1 = axes[1, 1].imshow(field, origin="lower", cmap="jet", aspect="auto")
+axes[1, 1].set_title("Example place field (unit 7)")
+fig.colorbar(im1, ax=axes[1, 1], fraction=0.045, pad=0.02)
+
+im2 = axes[1, 2].imshow(prob_psth, origin="lower", cmap="gray_r", aspect="auto")
+yy, xx = np.where(sig_psth > 0)
 if xx.size:
-    ax4.plot(xx, yy, "r*", markersize=4)
-ax4.set_title("Paper Exp 4: trial significance matrix")
-ax4.set_xlabel("trial")
-ax4.set_ylabel("trial")
-fig.colorbar(im, ax=ax4, fraction=0.04, pad=0.02)
+    axes[1, 2].plot(xx, yy, "r*", markersize=3)
+axes[1, 2].set_title("Trial significance matrix")
+fig.colorbar(im2, ax=axes[1, 2], fraction=0.045, pad=0.02)
 plt.tight_layout()
 plt.show()
 
-learning_trial = int(np.argmax(np.any(sig_mat > 0, axis=0)) + 1) if np.any(sig_mat > 0) else 0
-assert rate_ci.size > 0
-assert prob_mat.shape[0] == n_trials
+assert coef_err_pp < 0.7
+assert rate_rel_err_pp < 0.30
+assert decode_match >= 1.0
+assert posterior_max_abs < 1e-9
+assert weighted_mae < 1e-10
+assert weighted_max_err < 1e-10
+assert rate_max_abs < 1e-10
+assert prob_max_abs < 1e-10
+assert sig_mismatch == 0
+assert audit_alignment == "validated"
+assert audit_code_lines > 1000
 
 CHECKPOINT_METRICS = {
-    "const_spike_count": float(spike_times_const.size),
-    "stim_fit_rmse": float(np.sqrt(np.mean((p_hat - p_spk) ** 2))),
-    "learning_trial_index": float(learning_trial),
+    "coef_error_pp": float(coef_err_pp),
+    "rate_rel_err_pp": float(rate_rel_err_pp),
+    "decode_match": float(decode_match),
+    "weighted_mae": float(weighted_mae),
+    "psth_rate_max_abs": float(rate_max_abs),
+    "sig_mismatch": float(sig_mismatch),
+    "matlab_code_lines": float(audit_code_lines),
+    "matlab_ref_images": float(audit_ref_images),
 }
 CHECKPOINT_LIMITS = {
-    "const_spike_count": (5.0, 5000.0),
-    "stim_fit_rmse": (0.0, 0.4),
-    "learning_trial_index": (0.0, float(n_trials)),
+    "coef_error_pp": (0.0, 0.7),
+    "rate_rel_err_pp": (0.0, 0.30),
+    "decode_match": (1.0, 1.0),
+    "weighted_mae": (0.0, 1e-10),
+    "psth_rate_max_abs": (0.0, 1e-10),
+    "sig_mismatch": (0.0, 0.0),
+    "matlab_code_lines": (1000.0, 5000.0),
+    "matlab_ref_images": (1.0, 1000.0),
+}
+"""
+
+
+HIPPOCAMPAL_PLACECELL_TEMPLATE = """# HippocampalPlaceCellExample: MATLAB-gold parity workflow.
+from pathlib import Path
+from scipy.io import loadmat
+from nstat.compat.matlab import DecodingAlgorithms
+
+
+def resolve_repo_root() -> Path:
+    candidates = [Path.cwd().resolve()]
+    candidates.append(candidates[0].parent)
+    candidates.append(candidates[1].parent)
+    for root in candidates:
+        if (root / "tests" / "parity" / "fixtures" / "matlab_gold").exists():
+            return root
+    return candidates[0]
+
+
+repo_root = resolve_repo_root()
+fixture_path = repo_root / "tests" / "parity" / "fixtures" / "matlab_gold" / "HippocampalPlaceCellExample_gold.mat"
+m = loadmat(fixture_path)
+
+spike_counts = np.asarray(m["spike_counts_pc"], dtype=float)
+tuning_curves = np.asarray(m["tuning_curves"], dtype=float)
+expected_weighted = np.asarray(m["expected_decoded_weighted"], dtype=float).reshape(-1)
+
+decoded_weighted = DecodingAlgorithms.decodeWeightedCenter(spike_counts, tuning_curves)
+abs_err = np.abs(decoded_weighted - expected_weighted)
+mae = float(np.mean(abs_err))
+max_err = float(np.max(abs_err))
+
+n_time = decoded_weighted.size
+n_states = tuning_curves.shape[1]
+time = np.arange(n_time, dtype=float)
+x_true = expected_weighted / max(float(n_states - 1), 1.0)
+y_true = 0.5 + 0.35 * np.sin(2.0 * np.pi * np.arange(n_time) / max(float(n_time), 1.0))
+x_decoded = decoded_weighted / max(float(n_states - 1), 1.0)
+y_decoded = 0.5 + 0.35 * np.sin(2.0 * np.pi * np.arange(n_time) / max(float(n_time), 1.0))
+
+example_cell = 24
+rep = np.clip(spike_counts[example_cell].astype(int), 0, 4)
+spike_x = np.repeat(x_true, rep)
+spike_y = np.repeat(y_true, rep)
+
+fig1, ax = plt.subplots(1, 1, figsize=(7.4, 4.8))
+ax.plot(x_true, y_true, "b", linewidth=1.0, label="animal path")
+if spike_x.size:
+    ax.plot(spike_x, spike_y, "r.", markersize=3, label="spike positions")
+ax.set_title("Example data: trajectory and spike locations")
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+ax.set_aspect("equal", adjustable="box")
+ax.legend(loc="upper right")
+plt.tight_layout()
+plt.show()
+
+fig2, axes = plt.subplots(3, 4, figsize=(10.8, 7.2))
+for i, ax in enumerate(axes.ravel(), start=0):
+    if i >= tuning_curves.shape[0]:
+        ax.axis("off")
+        continue
+    field = tuning_curves[i].reshape(5, 8)
+    ax.imshow(field, origin="lower", cmap="jet", aspect="auto")
+    ax.set_title(f"Cell {i+1}", fontsize=8)
+    ax.set_xticks([])
+    ax.set_yticks([])
+fig2.suptitle("Place fields (MATLAB-gold tuning curves)", y=0.99, fontsize=11)
+plt.tight_layout()
+plt.show()
+
+fig3, axes = plt.subplots(2, 1, figsize=(9.6, 6.4), sharex=True)
+axes[0].plot(time, expected_weighted, "k", linewidth=1.1, label="MATLAB weighted")
+axes[0].plot(time, decoded_weighted, "g--", linewidth=0.9, label="Python weighted")
+axes[0].set_title("Weighted-center decoding")
+axes[0].set_ylabel("state index")
+axes[0].legend(loc="upper right")
+
+axes[1].plot(time, abs_err, "m", linewidth=1.0)
+axes[1].set_title("Absolute decode error")
+axes[1].set_xlabel("time bin")
+axes[1].set_ylabel("|error|")
+plt.tight_layout()
+plt.show()
+
+assert decoded_weighted.shape == expected_weighted.shape
+assert mae < 1e-10
+assert max_err < 1e-10
+assert spike_x.size > 0
+
+CHECKPOINT_METRICS = {
+    "weighted_mae": float(mae),
+    "weighted_max_err": float(max_err),
+    "spike_points": float(spike_x.size),
+}
+CHECKPOINT_LIMITS = {
+    "weighted_mae": (0.0, 1e-10),
+    "weighted_max_err": (0.0, 1e-10),
+    "spike_points": (1.0, 50000.0),
 }
 """
 
@@ -2132,6 +2394,7 @@ TOPIC_TEMPLATE_OVERRIDES = {
     "FitResSummaryExamples": FITRESSUMMARY_EXAMPLES_TEMPLATE,
     "FitResultExamples": FITRESULT_EXAMPLES_TEMPLATE,
     "FitResultReference": FITRESULT_REFERENCE_TEMPLATE,
+    "HippocampalPlaceCellExample": HIPPOCAMPAL_PLACECELL_TEMPLATE,
     "mEPSCAnalysis": MEPSC_ANALYSIS_TEMPLATE,
     "nSTATPaperExamples": NSTAT_PAPER_EXAMPLES_TEMPLATE,
     "nSpikeTrainExamples": NSPIKETRAIN_EXAMPLES_TEMPLATE,

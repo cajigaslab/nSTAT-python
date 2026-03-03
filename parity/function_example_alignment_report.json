@@ -1035,7 +1035,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 2,
+        "assertion_count": 5,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "matlab_code_blocks": [
@@ -1257,8 +1257,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 59,
-            "preview": "side = 14"
+            "line_count": 82,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 5,
@@ -1266,9 +1266,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 92,
+        "python_code_lines": 115,
         "python_notebook": "notebooks/HippocampalPlaceCellExample.ipynb",
-        "python_to_matlab_line_ratio": 0.5935483870967742,
+        "python_to_matlab_line_ratio": 0.7419354838709677,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/HippocampalPlaceCellExample/HippocampalPlaceCellExample_001.png"
@@ -2980,7 +2980,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 12,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "matlab_code_blocks": [
@@ -4786,8 +4786,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 71,
-            "preview": "from nstat.compat.matlab import Analysis, Covariate, CovColl, DecodingAlgorithms, Trial, TrialConfig, nspikeTrain, nstColl"
+            "line_count": 121,
+            "preview": "import json"
           },
           {
             "cell_index": 5,
@@ -4795,9 +4795,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 104,
+        "python_code_lines": 154,
         "python_notebook": "notebooks/nSTATPaperExamples.ipynb",
-        "python_to_matlab_line_ratio": 0.06598984771573604,
+        "python_to_matlab_line_ratio": 0.09771573604060914,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/nSTATPaperExamples/nSTATPaperExamples_001.png"
@@ -4946,7 +4946,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 6,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "matlab_code_blocks": [
@@ -5089,8 +5089,8 @@
           },
           {
             "cell_index": 4,
-            "line_count": 43,
-            "preview": "from pathlib import Path"
+            "line_count": 126,
+            "preview": "import json"
           },
           {
             "cell_index": 5,
@@ -5098,9 +5098,9 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 76,
+        "python_code_lines": 159,
         "python_notebook": "notebooks/publish_all_helpfiles.ipynb",
-        "python_to_matlab_line_ratio": 0.6031746031746031,
+        "python_to_matlab_line_ratio": 1.2619047619047619,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/publish_all_helpfiles/publish_all_helpfiles_001.png"
