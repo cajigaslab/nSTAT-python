@@ -53,6 +53,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev,docs,notebooks]
+          python -m pip install reportlab pillow
 
       - name: Rebuild generated docs/notebooks
         run: |
@@ -71,6 +72,26 @@ jobs:
 
       - name: Run smoke notebooks
         run: python tools/notebooks/run_notebooks.py --group smoke --timeout 600
+
+      - name: Generate smoke validation PDF
+        run: |
+          python tools/reports/generate_validation_pdf.py \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --notebook-group smoke \
+            --timeout 600 \
+            --skip-command-tests \
+            --parity-mode gate \
+            --enforce-unique-images \
+            --min-unique-images-per-topic 1 \
+            --max-cross-topic-reuse-ratio 1.0
+
+      - name: Upload smoke validation PDF artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-smoke-validation-pdf
+          path: output/pdf/*.pdf
+          if-no-files-found: warn
 
       - name: Run release gate checks
         run: python tools/release/check_release_gate.py
