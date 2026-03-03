@@ -60,7 +60,10 @@ jobs:
             --notebook-group all \
             --timeout 900 \
             --skip-command-tests \
-            --parity-mode gate
+            --parity-mode gate \
+            --enforce-unique-images \
+            --min-unique-images-per-topic 1 \
+            --max-cross-topic-reuse-ratio 1.0
 
       - name: Enforce visual validation gate
         run: |
