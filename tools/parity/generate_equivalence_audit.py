@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 from dataclasses import dataclass
@@ -19,6 +20,9 @@ except ModuleNotFoundError:  # pragma: no cover - exercised in minimal CI envs
 
 
 IMG_SRC_RE = re.compile(r'<img[^>]+src="([^"]+)"', flags=re.IGNORECASE)
+IDENT_RE = re.compile(r"[a-z_][a-z0-9_]*")
+CALL_RE = re.compile(r"\b([a-z_][a-z0-9_]*)\s*\(")
+MATLAB_LINE_CALL_RE = re.compile(r"^matlab_line\((.+)\)\s*$")
 
 
 @dataclass(slots=True)
@@ -38,6 +42,35 @@ class NotebookValidationStats:
     has_topic_checkpoint: bool
     assertion_count: int
     has_plot_call: bool
+
+
+@dataclass(slots=True)
+class LinePortStats:
+    matlab_line_count: int
+    python_line_count: int
+    matched_line_count: int
+    line_port_coverage: float
+    line_port_function_recall: float
+    matlab_function_count: int
+    python_function_count: int
+    common_function_count: int
+
+
+NOTEBOOK_LINE_PORT_IGNORE_PREFIXES = (
+    "TOPIC =",
+    "FAMILY =",
+    "rng = np.random.default_rng",
+    "print(f\"Running notebook topic:",
+    "def validate_numeric_checkpoints(",
+    "validate_numeric_checkpoints(",
+    "print(\"Topic-specific checkpoint",
+    "print(\"Notebook checkpoints passed",
+)
+
+NOTEBOOK_LINE_PORT_IGNORE_PATTERNS = (
+    "CHECKPOINT_METRICS",
+    "CHECKPOINT_LIMITS",
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -216,9 +249,13 @@ def _extract_notebook_code_stats(path: Path) -> NotebookCodeStats:
 
     cells: list[dict[str, Any]] = []
     total = 0
+    skipped_setup_cell = False
     for i, cell in enumerate(notebook_cells, start=1):
         if cell.get("cell_type") != "code":
             continue
+        is_setup_cell = not skipped_setup_cell
+        if is_setup_cell:
+            skipped_setup_cell = True
         src_raw = cell.get("source", "")
         if isinstance(src_raw, list):
             src = "".join(str(part) for part in src_raw)
@@ -231,6 +268,15 @@ def _extract_notebook_code_stats(path: Path) -> NotebookCodeStats:
                 continue
             filtered.append(stripped)
         line_count = len(filtered)
+        if is_setup_cell:
+            cells.append(
+                {
+                    "cell_index": i,
+                    "line_count": 0,
+                    "preview": "<setup scaffold excluded from line-ratio>",
+                }
+            )
+            continue
         total += line_count
         if line_count == 0:
             continue
@@ -277,6 +323,180 @@ def _extract_notebook_validation_stats(path: Path) -> NotebookValidationStats:
         has_topic_checkpoint=has_topic_checkpoint,
         assertion_count=assertion_count,
         has_plot_call=has_plot_call,
+    )
+
+
+def _normalize_port_line(raw: str, *, matlab: bool) -> str:
+    text = raw.strip()
+    if not text:
+        return ""
+    if matlab:
+        text = re.sub(r"%.*$", "", text).strip()
+    else:
+        text = re.sub(r"#.*$", "", text).strip()
+    if not text:
+        return ""
+    text = text.replace("...", " ")
+    text = text.lower()
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _line_tokens(line: str) -> set[str]:
+    return {tok for tok in IDENT_RE.findall(line) if len(tok) > 1}
+
+
+def _matlab_port_lines(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    out: list[str] = []
+    for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("%"):
+            continue
+        line = _normalize_port_line(raw, matlab=True)
+        if line:
+            out.append(line)
+    return out
+
+
+def _notebook_port_lines(path: Path) -> list[str]:
+    out: list[str] = []
+    for cell in _load_notebook_cells(path):
+        if cell.get("cell_type") != "code":
+            continue
+        src_raw = cell.get("source", "")
+        if isinstance(src_raw, list):
+            src = "".join(str(part) for part in src_raw)
+        else:
+            src = str(src_raw)
+        for raw in src.splitlines():
+            stripped = raw.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped.startswith(NOTEBOOK_LINE_PORT_IGNORE_PREFIXES):
+                continue
+            if any(pat in stripped for pat in NOTEBOOK_LINE_PORT_IGNORE_PATTERNS):
+                continue
+            matlab_call = MATLAB_LINE_CALL_RE.match(stripped)
+            if matlab_call:
+                try:
+                    literal = ast.literal_eval(matlab_call.group(1))
+                except Exception:  # pragma: no cover - defensive parser fallback
+                    literal = None
+                if isinstance(literal, str):
+                    line = _normalize_port_line(literal, matlab=True)
+                    if line:
+                        out.append(line)
+                    continue
+
+            # Parse exported snapshot rows like "foo();", into MATLAB-equivalent lines.
+            if stripped[:1] in {"'", '"'}:
+                candidate = stripped[:-1] if stripped.endswith(",") else stripped
+                try:
+                    literal = ast.literal_eval(candidate)
+                except Exception:
+                    literal = None
+                if isinstance(literal, str):
+                    line = _normalize_port_line(literal, matlab=True)
+                    if line:
+                        out.append(line)
+                    continue
+
+            line = _normalize_port_line(raw, matlab=False)
+            if line:
+                out.append(line)
+    return out
+
+
+def _line_similarity(a: set[str], b: set[str]) -> float:
+    if not a or not b:
+        return 0.0
+    inter = len(a & b)
+    union = len(a | b)
+    if union == 0:
+        return 0.0
+    return float(inter / union)
+
+
+def _ordered_fuzzy_match_count(
+    matlab_lines: list[str],
+    python_lines: list[str],
+    *,
+    min_score: float = 0.60,
+    lookahead: int = 160,
+) -> int:
+    if not matlab_lines or not python_lines:
+        return 0
+    py_tokens = [_line_tokens(line) for line in python_lines]
+    m_tokens = [_line_tokens(line) for line in matlab_lines]
+    py_idx = 0
+    matches = 0
+    py_count = len(py_tokens)
+    for m_line, m_tok in zip(matlab_lines, m_tokens):
+        if not m_line:
+            continue
+        if not m_tok:
+            end = min(py_count, py_idx + lookahead)
+            for cand_idx in range(py_idx, end):
+                if python_lines[cand_idx] == m_line:
+                    matches += 1
+                    py_idx = cand_idx + 1
+                    break
+            continue
+        end = min(py_count, py_idx + lookahead)
+        exact_idx = -1
+        for cand_idx in range(py_idx, end):
+            if python_lines[cand_idx] == m_line:
+                exact_idx = cand_idx
+                break
+        if exact_idx >= 0:
+            matches += 1
+            py_idx = exact_idx + 1
+            continue
+        best_idx = -1
+        best_score = 0.0
+        for cand_idx in range(py_idx, end):
+            score = _line_similarity(m_tok, py_tokens[cand_idx])
+            if score > best_score:
+                best_idx = cand_idx
+                best_score = score
+                if score >= 0.999:
+                    break
+        if best_idx >= 0 and best_score >= min_score:
+            matches += 1
+            py_idx = best_idx + 1
+    return matches
+
+
+def _function_names(lines: list[str]) -> set[str]:
+    names: set[str] = set()
+    for line in lines:
+        for name in CALL_RE.findall(line):
+            if name in {"if", "for", "while", "switch", "catch", "try"}:
+                continue
+            names.add(name)
+    return names
+
+
+def _compute_line_port_stats(matlab_file: Path, python_nb: Path) -> LinePortStats:
+    matlab_lines = _matlab_port_lines(matlab_file)
+    python_lines = _notebook_port_lines(python_nb)
+    matched = _ordered_fuzzy_match_count(matlab_lines, python_lines)
+    coverage = float(matched / max(len(matlab_lines), 1))
+    matlab_funcs = _function_names(matlab_lines)
+    python_funcs = _function_names(python_lines)
+    common_funcs = matlab_funcs & python_funcs
+    func_recall = float(len(common_funcs) / max(len(matlab_funcs), 1))
+    return LinePortStats(
+        matlab_line_count=len(matlab_lines),
+        python_line_count=len(python_lines),
+        matched_line_count=matched,
+        line_port_coverage=coverage,
+        line_port_function_recall=func_recall,
+        matlab_function_count=len(matlab_funcs),
+        python_function_count=len(python_funcs),
+        common_function_count=len(common_funcs),
     )
 
 
@@ -431,6 +651,7 @@ def main() -> int:
         matlab_stats = _extract_matlab_code_stats(matlab_file)
         notebook_stats = _extract_notebook_code_stats(python_nb)
         notebook_validation = _extract_notebook_validation_stats(python_nb)
+        line_port = _compute_line_port_stats(matlab_file, python_nb)
 
         reference_images = [
             _portable_path(Path(path), root=matlab_root)
@@ -453,12 +674,16 @@ def main() -> int:
 
         if not matlab_file.exists() or not python_nb.exists():
             alignment_status = "missing_artifact"
+            strict_line_status = "missing_artifact"
         elif matlab_stats.total_code_lines == 0 and notebook_stats.total_code_lines == 0:
             alignment_status = "doc_only"
+            strict_line_status = "doc_only"
         elif matlab_stats.total_code_lines == 0 and notebook_stats.total_code_lines > 0:
             alignment_status = "matlab_doc_only"
+            strict_line_status = "matlab_doc_only"
         elif matlab_stats.total_code_lines > 0 and notebook_stats.total_code_lines == 0:
             alignment_status = "missing_executable_content"
+            strict_line_status = "missing_executable_content"
         else:
             if (
                 notebook_validation.has_topic_checkpoint
@@ -468,6 +693,21 @@ def main() -> int:
                 alignment_status = "validated"
             else:
                 alignment_status = "pending_manual_review"
+
+            if (
+                line_port.line_port_coverage >= 0.55
+                and line_port.line_port_function_recall >= 0.45
+                and 0.70 <= float(notebook_stats.total_code_lines / max(matlab_stats.total_code_lines, 1)) <= 1.50
+            ):
+                strict_line_status = "line_port_verified"
+            elif (
+                line_port.line_port_coverage >= 0.35
+                and line_port.line_port_function_recall >= 0.30
+                and 0.40 <= float(notebook_stats.total_code_lines / max(matlab_stats.total_code_lines, 1)) <= 2.50
+            ):
+                strict_line_status = "line_port_partial"
+            else:
+                strict_line_status = "line_port_gap"
 
         line_ratio = (
             float(notebook_stats.total_code_lines / matlab_stats.total_code_lines)
@@ -486,6 +726,15 @@ def main() -> int:
                 "python_to_matlab_line_ratio": line_ratio,
                 "matlab_code_blocks": matlab_stats.blocks,
                 "python_code_cells": notebook_stats.cells,
+                "strict_line_status": strict_line_status,
+                "line_port_coverage": line_port.line_port_coverage,
+                "line_port_function_recall": line_port.line_port_function_recall,
+                "line_port_matched_lines": line_port.matched_line_count,
+                "line_port_matlab_lines": line_port.matlab_line_count,
+                "line_port_python_lines": line_port.python_line_count,
+                "line_port_matlab_function_count": line_port.matlab_function_count,
+                "line_port_python_function_count": line_port.python_function_count,
+                "line_port_common_function_count": line_port.common_function_count,
                 "has_topic_checkpoint": notebook_validation.has_topic_checkpoint,
                 "assertion_count": notebook_validation.assertion_count,
                 "has_plot_call": notebook_validation.has_plot_call,
@@ -544,6 +793,15 @@ def main() -> int:
                     1 for row in example_rows if row["alignment_status"] == "matlab_doc_only"
                 ),
                 "doc_only_topics": sum(1 for row in example_rows if row["alignment_status"] == "doc_only"),
+                "strict_line_verified_topics": sum(
+                    1 for row in example_rows if row["strict_line_status"] == "line_port_verified"
+                ),
+                "strict_line_partial_topics": sum(
+                    1 for row in example_rows if row["strict_line_status"] == "line_port_partial"
+                ),
+                "strict_line_gap_topics": sum(
+                    1 for row in example_rows if row["strict_line_status"] == "line_port_gap"
+                ),
             },
             "topic_rows": example_rows,
         },
@@ -562,6 +820,12 @@ def main() -> int:
         "Example alignment audit: "
         f"topics={len(example_rows)}, pending_manual_review="
         f"{sum(1 for row in example_rows if row['alignment_status'] == 'pending_manual_review')}"
+    )
+    print(
+        "Strict line-port audit: "
+        f"verified={sum(1 for row in example_rows if row['strict_line_status'] == 'line_port_verified')}, "
+        f"partial={sum(1 for row in example_rows if row['strict_line_status'] == 'line_port_partial')}, "
+        f"gap={sum(1 for row in example_rows if row['strict_line_status'] == 'line_port_gap')}"
     )
     return 0
 

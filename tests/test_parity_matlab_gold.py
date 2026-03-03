@@ -265,6 +265,61 @@ def test_analysis_examples_matlab_gold_comparison() -> None:
     assert np.isclose(rmse, _scalar(m, "expected_rmse_analysis"), atol=0.25)
 
 
+def test_nstatpaperexamples_plot_arrays_matlab_gold_comparison() -> None:
+    combo = _mat("tests/parity/fixtures/matlab_gold/nSTATPaperExamples_plot_gold.mat")
+
+    # Stimulus-rate plot arrays (PPSim section).
+    ppsim = _mat("tests/parity/fixtures/matlab_gold/PPSimExample_gold.mat")
+    X = np.asarray(ppsim["X"], dtype=float)
+    y = _vec(ppsim, "y")
+    dt = _scalar(ppsim, "dt")
+    fit = Analysis.fit_glm(X=X, y=y, fit_type="poisson", dt=dt)
+    pred_rate = np.asarray(fit.predict(X), dtype=float).reshape(-1)
+    expected_rate = np.asarray(combo["expected_rate_pp"], dtype=float).reshape(-1)
+    rel_err = np.mean(np.abs(pred_rate - expected_rate) / np.maximum(expected_rate, 1e-12))
+    assert rel_err <= 0.25
+
+    # Decode-with-history plot arrays.
+    dec = _mat("tests/parity/fixtures/matlab_gold/DecodingExampleWithHist_gold.mat")
+    decoded, posterior = DecodingAlgorithms.decode_state_posterior(
+        spike_counts=np.asarray(dec["spike_counts"], dtype=float),
+        tuning_rates=np.asarray(dec["tuning"], dtype=float),
+        transition=np.asarray(dec["transition"], dtype=float),
+    )
+    expected_decoded = np.asarray(combo["expected_decoded_hist"], dtype=int).reshape(-1)
+    expected_post = np.asarray(combo["expected_posterior_hist"], dtype=float)
+    assert np.array_equal(decoded, expected_decoded)
+    assert np.allclose(posterior, expected_post, atol=1e-8)
+
+    # Place-cell weighted decode arrays.
+    place = _mat("tests/parity/fixtures/matlab_gold/HippocampalPlaceCellExample_gold.mat")
+    decoded_weighted = DecodingAlgorithms.decode_weighted_center(
+        spike_counts=np.asarray(place["spike_counts_pc"], dtype=float),
+        tuning_curves=np.asarray(place["tuning_curves"], dtype=float),
+    )
+    expected_weighted = np.asarray(combo["expected_weighted_decode"], dtype=float).reshape(-1)
+    assert np.allclose(decoded_weighted, expected_weighted, atol=1e-8)
+
+    # PSTH significance-matrix arrays.
+    psth = _mat("tests/parity/fixtures/matlab_gold/PSTHEstimation_gold.mat")
+    rate, prob, sig = DecodingAlgorithms.compute_spike_rate_cis(
+        spike_matrix=np.asarray(psth["spike_matrix_psth"], dtype=float),
+        alpha=_scalar(psth, "alpha_psth"),
+    )
+    assert np.allclose(rate, np.asarray(combo["expected_psth_rate"], dtype=float).reshape(-1), atol=1e-10)
+    assert np.allclose(prob, np.asarray(combo["expected_psth_prob"], dtype=float), atol=1e-10)
+    assert np.array_equal(sig, np.asarray(combo["expected_psth_sig"], dtype=int))
+
+    # mEPSC trace arrays used for data-plot panels.
+    trace = np.asarray(combo["trace_mepsc"], dtype=float).reshape(-1)
+    time = np.asarray(combo["time_mepsc"], dtype=float).reshape(-1)
+    event_times = np.asarray(combo["event_times_mepsc"], dtype=float).reshape(-1)
+    assert trace.size == time.size
+    assert trace.size > 1000
+    assert event_times.size >= 40
+    assert np.all(np.diff(time) > 0.0)
+
+
 def test_decoding_example_matlab_gold_comparison() -> None:
     m = _mat("tests/parity/fixtures/matlab_gold/DecodingExample_gold.mat")
     spike_counts = np.asarray(m["spike_counts_dec"], dtype=float)

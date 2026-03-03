@@ -102,6 +102,28 @@ def main() -> int:
                     f"{topic}: python_validation_image_count={py_imgs} below required {min_py_imgs}"
                 )
 
+        if bool(cfg.get("require_line_port_audit", False)):
+            strict_status = str(row.get("strict_line_status", ""))
+            allowed_strict = set(cfg.get("allowed_strict_line_statuses", []))
+            if allowed_strict and strict_status not in allowed_strict:
+                failures.append(
+                    f"{topic}: strict_line_status '{strict_status}' not in allowed set {sorted(allowed_strict)}"
+                )
+
+            min_coverage = float(cfg.get("min_line_port_coverage", 0.0))
+            coverage = float(row.get("line_port_coverage", 0.0))
+            if coverage < min_coverage:
+                failures.append(
+                    f"{topic}: line_port_coverage={coverage:.4f} below required {min_coverage:.4f}"
+                )
+
+            min_func_recall = float(cfg.get("min_line_port_function_recall", 0.0))
+            func_recall = float(row.get("line_port_function_recall", 0.0))
+            if func_recall < min_func_recall:
+                failures.append(
+                    f"{topic}: line_port_function_recall={func_recall:.4f} below required {min_func_recall:.4f}"
+                )
+
     if failures:
         print("Example output spec check FAILED")
         for item in failures:
