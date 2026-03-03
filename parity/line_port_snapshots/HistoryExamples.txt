@@ -1,0 +1,18 @@
+spikeTimes = sort(rand(1,100))*1;
+nst        = nspikeTrain(spikeTimes,'n1',.001);
+windowTimes = [.001 .002 .004];
+h=History(windowTimes);
+histn1=h.computeHistory(nst);
+figure; subplot(3,1,1); h.plot; ylabel('History Windows');
+subplot(3,1,2); histn1.plot;    ylabel('History Covariate for nst');
+figure; nst.plot;               ylabel('Neural Spike Train');
+clear nst;
+for i=1:1
+spikeTimes = sort(rand(1,100))*1;
+nst{i}=nspikeTrain(spikeTimes,'',.001);
+end
+spikeColl=nstColl(nst);
+windowTimes = [.001 .002 .01];
+h=History(windowTimes);
+histColl = h.computeHistory(spikeColl);
+figure; histColl.plot;
