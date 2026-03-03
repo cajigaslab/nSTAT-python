@@ -8,6 +8,7 @@ defaults:
   topic_checkpoint_missing_error: 0
   assertion_count_missing_error: 0
   python_validation_image_missing_error: 0
+  topic_audit_fixture_missing_error: 0
 topics:
   PPSimExample:
     mean_relative_rate_error: 0.25

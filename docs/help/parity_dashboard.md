@@ -45,8 +45,18 @@ artifacts in the `parity/` directory.
 | Required topics checked | 30 |
 | Topics passed | 31 |
 | Topics failed | 0 |
-| Metrics checked | 180 |
+| Metrics checked | 306 |
 | Metrics failed | 0 |
+
+## Line-by-line review
+| Metric | Value |
+|---|---:|
+| Topics reviewed | 30 |
+| Aligned topics | 0 |
+| Partially aligned topics | 2 |
+| Needs review topics | 24 |
+| Missing artifact topics | 0 |
+| Average line alignment ratio | 0.089 |
 
 ## Frozen MATLAB data snapshot
 | Metric | Value |
@@ -62,6 +72,8 @@ artifacts in the `parity/` directory.
 - [parity_gap_report.json](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/parity_gap_report.json)
 - [function_example_alignment_report.json](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/function_example_alignment_report.json)
 - [numeric_drift_report.json](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/numeric_drift_report.json)
+- [line_by_line_review_report.json](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/line_by_line_review_report.json)
+- [line_by_line_review.md](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/line_by_line_review.md)
 - [example_output_spec.yml](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/example_output_spec.yml)
 - [method_closure_sprint.md](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/method_closure_sprint.md)
 - [Full validation report PDF](../assets/reports/nstat_python_validation_report_full_latest.pdf)

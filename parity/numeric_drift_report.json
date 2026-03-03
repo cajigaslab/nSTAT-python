@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-03-02T22:33:03.837159+00:00",
+  "generated_at_utc": "2026-03-02T22:58:21.867936+00:00",
   "fixtures_manifest": "/private/tmp/nstat_python_work_20260302/tests/parity/fixtures/matlab_gold/manifest.yml",
   "thresholds_file": "/private/tmp/nstat_python_work_20260302/parity/numeric_drift_thresholds.yml",
   "summary": {
     "topics": 31,
     "passed_topics": 31,
     "failed_topics": 0,
-    "checked_metrics": 180,
+    "checked_metrics": 306,
     "failed_metrics": 0,
     "required_topics": 30,
     "required_topics_checked": 30,
@@ -15,11 +15,23 @@
   },
   "topics": {
     "AnalysisExamples": {
-      "checked_metrics": 4,
+      "checked_metrics": 13,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 4.076575977102997e-06,
       "pass": true,
       "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "coeff_max_abs_error": {
           "value": 7.80078663947456e-09,
           "threshold": 0.35,
@@ -32,6 +44,30 @@
           "pass": true,
           "ratio_to_threshold": 5.335430459345909e-07
         },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "plot_call_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "rate_max_abs_error": {
           "value": 1.4268015919860488e-06,
           "threshold": 0.35,
@@ -43,11 +79,29 @@
           "threshold": 0.25,
           "pass": true,
           "ratio_to_threshold": 1.605000115034727e-07
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
         }
       }
     },
     "AnalysisExamples2": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -83,6 +137,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -103,7 +163,7 @@
       }
     },
     "ConfigCollExamples": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -139,6 +199,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -159,11 +225,23 @@
       }
     },
     "CovCollExamples": {
-      "checked_metrics": 3,
+      "checked_metrics": 12,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
       "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "ctx_max_abs_error": {
           "value": 0.0,
           "threshold": 1e-12,
@@ -176,16 +254,58 @@
           "pass": true,
           "ratio_to_threshold": 0.0
         },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "plot_call_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "stim_max_abs_error": {
           "value": 0.0,
           "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
           "pass": true,
           "ratio_to_threshold": 0.0
         }
       }
     },
     "CovariateExamples": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -221,6 +341,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -241,12 +367,42 @@
       }
     },
     "DecodingExample": {
-      "checked_metrics": 3,
+      "checked_metrics": 12,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.022530207586461248,
       "pass": true,
       "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "decoded_mismatch_count": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "plot_call_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -258,21 +414,75 @@
           "pass": true,
           "ratio_to_threshold": 0.022530207586461248
         },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "rmse_abs_error": {
           "value": 0.0,
           "threshold": 1e-08,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
           "pass": true,
           "ratio_to_threshold": 0.0
         }
       }
     },
     "DecodingExampleWithHist": {
-      "checked_metrics": 2,
+      "checked_metrics": 11,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.04167062250814979,
       "pass": true,
       "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "decoded_mismatch_count": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "plot_call_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -283,11 +493,35 @@
           "threshold": 1e-08,
           "pass": true,
           "ratio_to_threshold": 0.04167062250814979
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
         }
       }
     },
     "DocumentationSetup2025b": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -323,6 +557,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -343,53 +583,7 @@
       }
     },
     "EventsExamples": {
-      "checked_metrics": 1,
-      "failed_metrics": [],
-      "worst_ratio_to_threshold": 0.0,
-      "pass": true,
-      "metrics": {
-        "subset_max_abs_error": {
-          "value": 0.0,
-          "threshold": 1e-12,
-          "pass": true,
-          "ratio_to_threshold": 0.0
-        }
-      }
-    },
-    "ExplicitStimulusWhiskerData": {
-      "checked_metrics": 4,
-      "failed_metrics": [],
-      "worst_ratio_to_threshold": 1.0307532605224878e-09,
-      "pass": true,
-      "metrics": {
-        "coeff_abs_error": {
-          "value": 1.4483514387819696e-10,
-          "threshold": 0.2,
-          "pass": true,
-          "ratio_to_threshold": 7.241757193909848e-10
-        },
-        "intercept_abs_error": {
-          "value": 2.0615065210449757e-10,
-          "threshold": 0.2,
-          "pass": true,
-          "ratio_to_threshold": 1.0307532605224878e-09
-        },
-        "prob_max_abs_error": {
-          "value": 2.3744395338809454e-11,
-          "threshold": 0.1,
-          "pass": true,
-          "ratio_to_threshold": 2.3744395338809454e-10
-        },
-        "rmse_abs_error": {
-          "value": 8.271161533457416e-15,
-          "threshold": 0.1,
-          "pass": true,
-          "ratio_to_threshold": 8.271161533457416e-14
-        }
-      }
-    },
-    "FitResSummaryExamples": {
-      "checked_metrics": 8,
+      "checked_metrics": 10,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -425,6 +619,166 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "subset_max_abs_error": {
+          "value": 0.0,
+          "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        }
+      }
+    },
+    "ExplicitStimulusWhiskerData": {
+      "checked_metrics": 13,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 1.0307532605224878e-09,
+      "pass": true,
+      "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "coeff_abs_error": {
+          "value": 1.4483514387819696e-10,
+          "threshold": 0.2,
+          "pass": true,
+          "ratio_to_threshold": 7.241757193909848e-10
+        },
+        "intercept_abs_error": {
+          "value": 2.0615065210449757e-10,
+          "threshold": 0.2,
+          "pass": true,
+          "ratio_to_threshold": 1.0307532605224878e-09
+        },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "plot_call_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "prob_max_abs_error": {
+          "value": 2.3744395338809454e-11,
+          "threshold": 0.1,
+          "pass": true,
+          "ratio_to_threshold": 2.3744395338809454e-10
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "rmse_abs_error": {
+          "value": 8.271161533457416e-15,
+          "threshold": 0.1,
+          "pass": true,
+          "ratio_to_threshold": 8.271161533457416e-14
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        }
+      }
+    },
+    "FitResSummaryExamples": {
+      "checked_metrics": 9,
+      "failed_metrics": [],
+      "worst_ratio_to_threshold": 0.0,
+      "pass": true,
+      "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "plot_call_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -445,7 +799,7 @@
       }
     },
     "FitResultExamples": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -481,6 +835,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -501,7 +861,7 @@
       }
     },
     "FitResultReference": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -537,6 +897,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -557,11 +923,65 @@
       }
     },
     "HippocampalPlaceCellExample": {
-      "checked_metrics": 1,
+      "checked_metrics": 10,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 1.4210854715202004e-06,
       "pass": true,
       "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "plot_call_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "weighted_center_max_abs_error": {
           "value": 1.4210854715202004e-14,
           "threshold": 1e-08,
@@ -571,7 +991,7 @@
       }
     },
     "HistoryExamples": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -607,6 +1027,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -627,7 +1053,7 @@
       }
     },
     "HybridFilterExample": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -663,6 +1089,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -683,7 +1115,7 @@
       }
     },
     "NetworkTutorial": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -719,6 +1151,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -739,21 +1177,75 @@
       }
     },
     "PPSimExample": {
-      "checked_metrics": 1,
+      "checked_metrics": 10,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 2.2090814743799897e-06,
       "pass": true,
       "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "mean_relative_rate_error": {
           "value": 5.522703685949974e-07,
           "threshold": 0.25,
           "pass": true,
           "ratio_to_threshold": 2.2090814743799897e-06
+        },
+        "plot_call_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
         }
       }
     },
     "PPThinning": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -789,6 +1281,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -809,16 +1307,52 @@
       }
     },
     "PSTHEstimation": {
-      "checked_metrics": 3,
+      "checked_metrics": 12,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 2.220446049250313e-06,
       "pass": true,
       "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "plot_call_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "prob_max_abs_error": {
           "value": 2.220446049250313e-16,
           "threshold": 1e-10,
           "pass": true,
           "ratio_to_threshold": 2.220446049250313e-06
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
         },
         "rate_max_abs_error": {
           "value": 0.0,
@@ -831,11 +1365,29 @@
           "threshold": 0.0,
           "pass": true,
           "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
         }
       }
     },
     "SignalObjExamples": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -871,6 +1423,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -917,7 +1475,7 @@
       }
     },
     "StimulusDecode2D": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -953,6 +1511,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -973,7 +1537,7 @@
       }
     },
     "TrialConfigExamples": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -1009,6 +1573,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -1029,7 +1599,7 @@
       }
     },
     "TrialExamples": {
-      "checked_metrics": 3,
+      "checked_metrics": 12,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.00011102230246251565,
       "pass": true,
@@ -1040,11 +1610,65 @@
           "pass": true,
           "ratio_to_threshold": 0.0
         },
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "plot_call_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "t_bins_max_abs_error": {
           "value": 1.1102230246251565e-16,
           "threshold": 1e-12,
           "pass": true,
           "ratio_to_threshold": 0.00011102230246251565
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
         },
         "y_max_abs_error": {
           "value": 0.0,
@@ -1055,7 +1679,7 @@
       }
     },
     "ValidationDataSet": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -1091,6 +1715,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -1111,11 +1741,23 @@
       }
     },
     "mEPSCAnalysis": {
-      "checked_metrics": 4,
+      "checked_metrics": 13,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 5.551115123125782e-08,
       "pass": true,
       "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "detected_amp_max_abs_error": {
           "value": 0.0,
           "threshold": 1e-09,
@@ -1134,16 +1776,58 @@
           "pass": true,
           "ratio_to_threshold": 0.0
         },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "mean_amp_abs_error": {
           "value": 5.551115123125783e-17,
           "threshold": 1e-09,
           "pass": true,
           "ratio_to_threshold": 5.551115123125782e-08
+        },
+        "plot_call_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
         }
       }
     },
     "nSTATPaperExamples": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -1179,6 +1863,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -1199,7 +1889,7 @@
       }
     },
     "nSpikeTrainExamples": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -1235,6 +1925,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,
@@ -1255,11 +1951,23 @@
       }
     },
     "nstCollExamples": {
-      "checked_metrics": 4,
+      "checked_metrics": 13,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0002220446049250313,
       "pass": true,
       "metrics": {
+        "alignment_status_mismatch": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "assertion_count_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "binary_mismatch_count": {
           "value": 0.0,
           "threshold": 0.0,
@@ -1278,16 +1986,58 @@
           "pass": true,
           "ratio_to_threshold": 0.0
         },
+        "matlab_code_lines_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "matlab_reference_image_count_abs_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
         "merged_max_abs_error": {
           "value": 0.0,
           "threshold": 1e-12,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "plot_call_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_checkpoint_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_row_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
           "pass": true,
           "ratio_to_threshold": 0.0
         }
       }
     },
     "publish_all_helpfiles": {
-      "checked_metrics": 8,
+      "checked_metrics": 9,
       "failed_metrics": [],
       "worst_ratio_to_threshold": 0.0,
       "pass": true,
@@ -1323,6 +2073,12 @@
           "ratio_to_threshold": 0.0
         },
         "python_validation_image_missing_error": {
+          "value": 0.0,
+          "threshold": 0.0,
+          "pass": true,
+          "ratio_to_threshold": 0.0
+        },
+        "topic_audit_fixture_missing_error": {
           "value": 0.0,
           "threshold": 0.0,
           "pass": true,

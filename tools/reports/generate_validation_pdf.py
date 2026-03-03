@@ -22,6 +22,7 @@ import numpy as np
 import yaml
 from nbclient import NotebookClient
 from PIL import Image
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
@@ -155,6 +156,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=REPO_ROOT / "parity" / "numeric_drift_report.json",
         help="Numeric drift report JSON used to enforce metric-based parity gates.",
+    )
+    parser.add_argument(
+        "--line-review-report",
+        type=Path,
+        default=REPO_ROOT / "parity" / "line_by_line_review_report.json",
+        help="Line-by-line review report JSON used for per-topic step alignment metrics.",
     )
     parser.add_argument(
         "--skip-command-tests",
@@ -298,6 +305,37 @@ def load_numeric_drift_summary(numeric_drift_report: Path) -> dict[str, dict[str
             "numeric_drift_first_failed": failed[0] if failed else "-",
             "numeric_drift_metric_count": int(len(metrics)),
             "numeric_drift_metric_rows": metric_rows,
+        }
+    return out
+
+
+def load_line_review_summary(line_review_report: Path) -> dict[str, dict[str, object]]:
+    """Load per-topic line-by-line review metrics."""
+
+    if not line_review_report.exists():
+        return {}
+    payload = json.loads(line_review_report.read_text(encoding="utf-8"))
+    rows = payload.get("topic_rows", [])
+    out: dict[str, dict[str, object]] = {}
+    for row in rows:
+        topic = str(row.get("topic", "")).strip()
+        if not topic:
+            continue
+        recall = row.get("matlab_step_recall", 0.0)
+        precision = row.get("python_step_precision", 0.0)
+        ratio = row.get("line_alignment_ratio", 0.0)
+        recall_val = float(recall) if isinstance(recall, (int, float)) else 0.0
+        precision_val = float(precision) if isinstance(precision, (int, float)) else 0.0
+        ratio_val = float(ratio) if isinstance(ratio, (int, float)) else 0.0
+        out[topic] = {
+            "line_review_status": str(row.get("line_review_status", "-")),
+            "line_alignment_ratio": ratio_val,
+            "matlab_step_recall": recall_val,
+            "python_step_precision": precision_val,
+            "line_review_missing_step_count": int(row.get("missing_matlab_step_count", 0)),
+            "line_review_extra_step_count": int(row.get("extra_python_step_count", 0)),
+            "line_review_missing_steps_preview": list(row.get("missing_matlab_steps", []))[:3],
+            "line_review_extra_steps_preview": list(row.get("extra_python_steps", []))[:3],
         }
     return out
 
@@ -562,18 +600,20 @@ def execute_notebook_capture(
             parity_pass = False
         if numeric_gate_ok is not None:
             parity_pass = parity_pass and numeric_gate_ok
-    else:
+    if not skip_parity_check and image_paths and matlab_ref_images:
+        best = -1.0
+        for py_img in image_paths:
+            for mat_img in matlab_ref_images:
+                sim = compute_image_similarity(py_img, mat_img)
+                if sim > best:
+                    best = sim
+                    matched_python_image = py_img
+                    matched_matlab_image = mat_img
+        similarity_score = best if best >= 0.0 else None
+
+    if parity_mode == "image":
         if not skip_parity_check:
-            if image_paths and matlab_ref_images:
-                best = -1.0
-                for py_img in image_paths:
-                    for mat_img in matlab_ref_images:
-                        sim = compute_image_similarity(py_img, mat_img)
-                        if sim > best:
-                            best = sim
-                            matched_python_image = py_img
-                            matched_matlab_image = mat_img
-                similarity_score = best if best >= 0.0 else None
+            if similarity_score is not None:
                 parity_pass = similarity_score >= parity_threshold
             else:
                 parity_pass = None
@@ -706,6 +746,140 @@ def _draw_image_gallery(
         _draw_image_fit(pdf, image_path, cell_x, cell_y, cell_w, cell_h)
 
 
+def _draw_status_badge(
+    pdf: canvas.Canvas,
+    *,
+    x: float,
+    y: float,
+    label: str,
+    state: bool | None,
+    width: float = 94.0,
+    height: float = 18.0,
+) -> None:
+    if state is True:
+        fill = colors.Color(0.86, 0.96, 0.88)
+        stroke = colors.Color(0.28, 0.55, 0.30)
+        status_text = "PASS"
+    elif state is False:
+        fill = colors.Color(0.98, 0.88, 0.88)
+        stroke = colors.Color(0.62, 0.20, 0.20)
+        status_text = "FAIL"
+    else:
+        fill = colors.Color(0.92, 0.92, 0.92)
+        stroke = colors.Color(0.45, 0.45, 0.45)
+        status_text = "N/A"
+
+    pdf.setStrokeColor(stroke)
+    pdf.setFillColor(fill)
+    pdf.roundRect(x, y - height, width, height, 4, stroke=1, fill=1)
+    pdf.setFillColor(colors.black)
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawString(x + 4, y - 12, f"{label}: {status_text}")
+
+
+def _paired_reference_images(report: NotebookReport) -> tuple[Path | None, Path | None]:
+    if report.matched_python_image is not None and report.matched_matlab_image is not None:
+        return report.matched_python_image, report.matched_matlab_image
+    py = report.unique_image_paths[0] if report.unique_image_paths else None
+    mat = report.matlab_ref_images[0] if report.matlab_ref_images else None
+    return py, mat
+
+
+def _draw_comparison_pair(
+    pdf: canvas.Canvas,
+    *,
+    py_img: Path | None,
+    mat_img: Path | None,
+    x_left: float,
+    x_right: float,
+    top_y: float,
+    box_w: float,
+    box_h: float,
+) -> None:
+    pdf.setFont("Helvetica-Bold", 9)
+    pdf.drawString(x_left, top_y + 6, "Python output")
+    pdf.drawString(x_right, top_y + 6, "MATLAB reference")
+
+    if py_img is not None:
+        _draw_image_fit(pdf, py_img, x_left, top_y - box_h, box_w, box_h)
+        pdf.setFont("Helvetica", 8)
+        pdf.drawString(x_left, top_y - box_h - 10, py_img.name[:40])
+    else:
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(x_left, top_y - 12, "No Python image")
+
+    if mat_img is not None:
+        _draw_image_fit(pdf, mat_img, x_right, top_y - box_h, box_w, box_h)
+        pdf.setFont("Helvetica", 8)
+        pdf.drawString(x_right, top_y - box_h - 10, mat_img.name[:40])
+    else:
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(x_right, top_y - 12, "No MATLAB reference image")
+
+
+def _draw_delta_table(
+    pdf: canvas.Canvas,
+    *,
+    metrics: dict[str, object] | None,
+    x: float,
+    top_y: float,
+    width: float,
+    max_rows: int = 7,
+) -> None:
+    rows: list[dict[str, object]] = []
+    if metrics is not None:
+        for row in metrics.get("numeric_drift_metric_rows", []):
+            rows.append(
+                {
+                    "name": str(row.get("name", "-")),
+                    "value": float(row.get("value", 0.0)),
+                    "threshold": float(row.get("threshold", 0.0)),
+                    "pass": bool(row.get("pass", False)),
+                    "ratio_to_threshold": float(row.get("ratio_to_threshold", 0.0)),
+                }
+            )
+    if not rows:
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(x, top_y - 12, "No numeric delta metrics available.")
+        return
+
+    shown = rows[:max_rows]
+    row_h = 11.0
+    table_h = row_h * (len(shown) + 1)
+    col_name = width * 0.45
+    col_value = width * 0.18
+    col_threshold = width * 0.18
+
+    c1 = x + col_name
+    c2 = c1 + col_value
+    c3 = c2 + col_threshold
+
+    pdf.setStrokeColor(colors.black)
+    pdf.setLineWidth(0.6)
+    pdf.rect(x, top_y - table_h, width, table_h)
+    pdf.line(c1, top_y, c1, top_y - table_h)
+    pdf.line(c2, top_y, c2, top_y - table_h)
+    pdf.line(c3, top_y, c3, top_y - table_h)
+    for idx in range(1, len(shown) + 1):
+        y = top_y - idx * row_h
+        pdf.line(x, y, x + width, y)
+
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawString(x + 4, top_y - 9, "Delta metric")
+    pdf.drawString(c1 + 4, top_y - 9, "Value")
+    pdf.drawString(c2 + 4, top_y - 9, "Threshold")
+    pdf.drawString(c3 + 4, top_y - 9, "Status")
+
+    pdf.setFont("Helvetica", 8)
+    for idx, row in enumerate(shown, start=1):
+        y = top_y - idx * row_h - 9
+        status = "PASS" if bool(row["pass"]) else "FAIL"
+        pdf.drawString(x + 4, y, str(row["name"])[:34])
+        pdf.drawString(c1 + 4, y, f"{float(row['value']):.4g}")
+        pdf.drawString(c2 + 4, y, f"{float(row['threshold']):.4g}")
+        pdf.drawString(c3 + 4, y, status)
+
+
 def _format_metric_value(value: object | None) -> str:
     if value is None:
         return "-"
@@ -725,6 +899,12 @@ def _draw_metrics_table(
     width: float,
 ) -> None:
     rows = [
+        ("line_review_status", "Line review status"),
+        ("line_alignment_ratio", "Line alignment ratio"),
+        ("matlab_step_recall", "MATLAB step recall"),
+        ("python_step_precision", "Python step precision"),
+        ("line_review_missing_step_count", "Missing MATLAB steps"),
+        ("line_review_extra_step_count", "Extra Python steps"),
         ("matlab_code_lines", "MATLAB code lines"),
         ("python_code_lines", "Python code lines"),
         ("python_to_matlab_line_ratio", "Python/MATLAB line ratio"),
@@ -877,6 +1057,17 @@ def draw_summary_pages(
         for report in reports
         if report.parity_metrics is not None and bool(report.parity_metrics.get("numeric_drift_pass", False))
     )
+    line_review_checked = sum(
+        1
+        for report in reports
+        if report.parity_metrics is not None and str(report.parity_metrics.get("line_review_status", "")).strip() != ""
+    )
+    line_review_aligned = sum(
+        1
+        for report in reports
+        if report.parity_metrics is not None and str(report.parity_metrics.get("line_review_status", "")).strip()
+        in {"aligned", "partially_aligned"}
+    )
     duplicate_stats = _cross_topic_duplicate_stats(reports)
 
     pdf.setFont("Helvetica-Bold", 16)
@@ -905,6 +1096,7 @@ def draw_summary_pages(
     else:
         pdf.drawString(260, 722, f"Parity pass: {parity_passed}/{parity_checked}")
     pdf.drawString(40, 674, f"Numeric drift pass: {numeric_passed}/{numeric_checked}")
+    pdf.drawString(260, 674, f"Line review aligned: {line_review_aligned}/{line_review_checked}")
 
     y = 654
     pdf.setFont("Helvetica-Bold", 9)
@@ -1067,6 +1259,100 @@ def draw_example_page(pdf: canvas.Canvas, report: NotebookReport, index: int, to
     pdf.showPage()
 
 
+def draw_example_comparison_page(pdf: canvas.Canvas, report: NotebookReport, index: int, total: int) -> None:
+    pdf.setFont("Helvetica-Bold", 15)
+    pdf.drawString(40, 760, f"Example {index}/{total}: {report.topic} (Side-by-side)")
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(40, 744, f"Notebook: {report.file}")
+
+    exec_state = bool(report.executed)
+    parity_state = report.parity_pass
+    numeric_state: bool | None = None
+    if report.parity_metrics is not None and "numeric_drift_pass" in report.parity_metrics:
+        numeric_state = bool(report.parity_metrics.get("numeric_drift_pass", False))
+    line_review_state: bool | None = None
+    if report.parity_metrics is not None:
+        status = str(report.parity_metrics.get("line_review_status", "")).strip().lower()
+        if status == "aligned":
+            line_review_state = True
+        elif status == "needs_review":
+            line_review_state = False
+
+    _draw_status_badge(pdf, x=40, y=724, label="Execution", state=exec_state)
+    _draw_status_badge(pdf, x=144, y=724, label="Parity gate", state=parity_state)
+    _draw_status_badge(pdf, x=248, y=724, label="Numeric drift", state=numeric_state)
+    _draw_status_badge(pdf, x=352, y=724, label="Line review", state=line_review_state)
+
+    py_img, mat_img = _paired_reference_images(report)
+    _draw_comparison_pair(
+        pdf,
+        py_img=py_img,
+        mat_img=mat_img,
+        x_left=40,
+        x_right=300,
+        top_y=680,
+        box_w=240,
+        box_h=250,
+    )
+
+    similarity_text = f"{report.similarity_score:.3f}" if report.similarity_score is not None else "-"
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(40, 404, f"Best image similarity score: {similarity_text}")
+    if report.alignment_status is not None:
+        pdf.drawString(260, 404, f"Equivalence status: {report.alignment_status}")
+
+    ratio = None
+    line_ratio = None
+    step_recall = None
+    step_precision = None
+    line_status = "-"
+    if report.parity_metrics is not None:
+        ratio = report.parity_metrics.get("python_to_matlab_line_ratio")
+        line_ratio = report.parity_metrics.get("line_alignment_ratio")
+        step_recall = report.parity_metrics.get("matlab_step_recall")
+        step_precision = report.parity_metrics.get("python_step_precision")
+        line_status = str(report.parity_metrics.get("line_review_status", "-"))
+    ratio_text = f"{float(ratio):.3f}" if isinstance(ratio, (int, float)) else "-"
+    pdf.drawString(40, 390, f"Python/MATLAB line ratio: {ratio_text}")
+    pdf.drawString(
+        260,
+        390,
+        f"Python unique images: {report.unique_image_count} | MATLAB refs: {len(report.matlab_ref_images)}",
+    )
+    line_ratio_text = f"{float(line_ratio):.3f}" if isinstance(line_ratio, (int, float)) else "-"
+    step_recall_text = f"{float(step_recall):.3f}" if isinstance(step_recall, (int, float)) else "-"
+    step_precision_text = f"{float(step_precision):.3f}" if isinstance(step_precision, (int, float)) else "-"
+    pdf.drawString(
+        40,
+        376,
+        f"Line review: {line_status} | alignment={line_ratio_text} | recall={step_recall_text} | precision={step_precision_text}",
+    )
+
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(40, 358, "Metric deltas (MATLAB gold fixture thresholds)")
+    _draw_delta_table(pdf, metrics=report.parity_metrics, x=40, top_y=344, width=520, max_rows=6)
+
+    if report.parity_metrics is not None:
+        missing_steps = report.parity_metrics.get("line_review_missing_steps_preview", [])
+        if isinstance(missing_steps, list) and missing_steps:
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawString(40, 254, "Missing MATLAB step preview:")
+            pdf.setFont("Helvetica", 8)
+            y = 242
+            for step in missing_steps[:2]:
+                y = _draw_wrapped_lines(pdf, 46, y, f"- {str(step)}", wrap_width=98, line_step=9)
+        extra_steps = report.parity_metrics.get("line_review_extra_steps_preview", [])
+        if isinstance(extra_steps, list) and extra_steps:
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawString(40, 212, "Extra Python step preview:")
+            pdf.setFont("Helvetica", 8)
+            y = 200
+            for step in extra_steps[:2]:
+                y = _draw_wrapped_lines(pdf, 46, y, f"- {str(step)}", wrap_width=98, line_step=9)
+
+    pdf.showPage()
+
+
 def generate_pdf_report(
     repo_root: Path,
     manifest_path: Path,
@@ -1082,6 +1368,7 @@ def generate_pdf_report(
     equivalence_report: Path,
     example_output_spec: Path,
     numeric_drift_report: Path,
+    line_review_report: Path,
 ) -> tuple[Path, list[NotebookReport], list[CommandResult], Path | None]:
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -1105,12 +1392,14 @@ def generate_pdf_report(
     parity_gate_status = load_parity_gate_status(equivalence_report, example_output_spec)
     parity_topic_metrics = load_parity_topic_metrics(equivalence_report)
     numeric_drift_by_topic = load_numeric_drift_summary(numeric_drift_report)
+    line_review_by_topic = load_line_review_summary(line_review_report)
 
     targets = load_targets(manifest_path, repo_root, notebook_group)
     reports: list[NotebookReport] = []
     for target in targets:
         merged_metrics = dict(parity_topic_metrics.get(target.topic, {}))
         merged_metrics.update(numeric_drift_by_topic.get(target.topic, {}))
+        merged_metrics.update(line_review_by_topic.get(target.topic, {}))
         reports.append(
             execute_notebook_capture(
                 target=target,
@@ -1158,6 +1447,7 @@ def generate_pdf_report(
     total = len(reports)
     for index, report in enumerate(reports, start=1):
         draw_example_page(pdf=pdf, report=report, index=index, total=total)
+        draw_example_comparison_page(pdf=pdf, report=report, index=index, total=total)
 
     pdf.save()
     return output_pdf, reports, command_results, resolved_matlab_help_root
@@ -1183,6 +1473,7 @@ def main() -> int:
         equivalence_report=args.equivalence_report,
         example_output_spec=args.example_output_spec,
         numeric_drift_report=args.numeric_drift_report,
+        line_review_report=args.line_review_report,
     )
 
     executed = sum(1 for report in reports if report.executed)

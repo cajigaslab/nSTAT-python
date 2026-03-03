@@ -56,7 +56,7 @@ def test_matlab_gold_manifest_and_checksums() -> None:
 
 def test_matlab_gold_manifest_covers_all_notebook_topics() -> None:
     payload = _load_manifest()
-    fixture_topics = {str(row["name"]) for row in payload["fixtures"]}
+    fixture_topics = {str(row.get("topic", row.get("name", ""))).strip() for row in payload["fixtures"]}
     notebook_payload = yaml.safe_load(NOTEBOOK_MANIFEST.read_text(encoding="utf-8")) or {}
     notebook_topics = {
         str(row.get("topic", "")).strip()
@@ -66,6 +66,25 @@ def test_matlab_gold_manifest_covers_all_notebook_topics() -> None:
     assert notebook_topics.issubset(fixture_topics), (
         "Missing fixture coverage for topics: "
         + ", ".join(sorted(notebook_topics - fixture_topics))
+    )
+
+
+def test_matlab_gold_manifest_has_topic_audit_fixture_per_topic() -> None:
+    payload = _load_manifest()
+    topic_audit_topics = {
+        str(row.get("topic", row.get("name", ""))).strip()
+        for row in payload["fixtures"]
+        if str(row.get("fixture_type", "")) == "topic_audit"
+    }
+    notebook_payload = yaml.safe_load(NOTEBOOK_MANIFEST.read_text(encoding="utf-8")) or {}
+    notebook_topics = {
+        str(row.get("topic", "")).strip()
+        for row in notebook_payload.get("notebooks", [])
+        if str(row.get("topic", "")).strip()
+    }
+    assert notebook_topics.issubset(topic_audit_topics), (
+        "Missing topic-audit fixtures for topics: "
+        + ", ".join(sorted(notebook_topics - topic_audit_topics))
     )
 
 

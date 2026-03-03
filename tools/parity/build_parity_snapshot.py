@@ -39,6 +39,13 @@ def main() -> int:
         "--fail-on",
         args.fail_on,
     ]
+    strict_method_gate_cmd = [
+        sys.executable,
+        str(repo_root / "tools" / "parity" / "check_method_mapping_coverage.py"),
+        "--repo-root",
+        str(repo_root),
+        "--fail-on-missing",
+    ]
     probe_cmd = [
         sys.executable,
         str(repo_root / "tools" / "parity" / "generate_method_probe_report.py"),
@@ -53,12 +60,24 @@ def main() -> int:
         "--matlab-root",
         str(args.matlab_root.resolve()),
     ]
+    line_review_cmd = [
+        sys.executable,
+        str(repo_root / "tools" / "parity" / "review_line_by_line_equivalence.py"),
+        "--repo-root",
+        str(repo_root),
+        "--matlab-root",
+        str(args.matlab_root.resolve()),
+    ]
 
     subprocess.run(inventory_cmd, check=True)
-    result = subprocess.run(report_cmd, check=False)
+    strict_gate_result = subprocess.run(strict_method_gate_cmd, check=False)
+    gap_result = subprocess.run(report_cmd, check=False)
     subprocess.run(probe_cmd, check=True)
     subprocess.run(audit_cmd, check=True)
-    return int(result.returncode)
+    subprocess.run(line_review_cmd, check=True)
+    if strict_gate_result.returncode != 0:
+        return int(strict_gate_result.returncode)
+    return int(gap_result.returncode)
 
 
 if __name__ == "__main__":

@@ -1239,8 +1239,8 @@
       "successful_method_count": 7
     }
   ],
-  "generated_at_utc": "2026-03-02T18:50:23.986814+00:00",
-  "repo_root": "/private/tmp/nSTAT-python-cleanroom",
+  "generated_at_utc": "2026-03-03T00:23:44.855279+00:00",
+  "repo_root": "/private/tmp/nstat_python_work_20260302",
   "summary": {
     "attempt_ratio": 0.8003992015968064,
     "attempted_methods": 401,
