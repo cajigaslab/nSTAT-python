@@ -168,6 +168,26 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip command-driven checks and only render notebook validation pages.",
     )
+    parser.add_argument(
+        "--enforce-unique-images",
+        action="store_true",
+        help="Fail when notebook visual uniqueness thresholds are violated.",
+    )
+    parser.add_argument(
+        "--min-unique-images-per-topic",
+        type=int,
+        default=1,
+        help="Minimum required number of unique images per topic when uniqueness enforcement is enabled.",
+    )
+    parser.add_argument(
+        "--max-cross-topic-reuse-ratio",
+        type=float,
+        default=1.0,
+        help=(
+            "Maximum allowed cross-topic image reuse ratio in [0,1], where "
+            "cross_topic_reused_hashes / total_unique_hashes must be <= this value."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -682,6 +702,39 @@ def _cross_topic_duplicate_stats(reports: list[NotebookReport]) -> dict[str, int
         "cross_topic_reused_hashes": cross_topic_reused,
         "repeated_instances": repeated_instances,
     }
+
+
+def _uniqueness_violations(
+    reports: list[NotebookReport],
+    min_unique_images_per_topic: int,
+    max_cross_topic_reuse_ratio: float,
+) -> tuple[list[str], dict[str, float | int]]:
+    violations: list[str] = []
+    for report in reports:
+        if report.unique_image_count < min_unique_images_per_topic:
+            violations.append(
+                f"{report.topic}: unique_images={report.unique_image_count} < "
+                f"min_required={min_unique_images_per_topic}"
+            )
+
+    duplicate_stats = _cross_topic_duplicate_stats(reports)
+    total_unique_hashes = int(duplicate_stats["total_unique_hashes"])
+    if total_unique_hashes == 0:
+        reuse_ratio = 0.0
+    else:
+        reuse_ratio = float(duplicate_stats["cross_topic_reused_hashes"]) / float(total_unique_hashes)
+
+    if reuse_ratio > max_cross_topic_reuse_ratio:
+        violations.append(
+            "cross_topic_reuse_ratio="
+            f"{reuse_ratio:.6f} > max_allowed={max_cross_topic_reuse_ratio:.6f}"
+        )
+
+    stats: dict[str, float | int] = {
+        **duplicate_stats,
+        "cross_topic_reuse_ratio": reuse_ratio,
+    }
+    return violations, stats
 
 
 def _draw_wrapped_lines(
@@ -1494,6 +1547,11 @@ def main() -> int:
         for report in reports
         if report.parity_metrics is not None and report.parity_metrics.get("numeric_drift_pass") is False
     )
+    uniqueness_violations, uniqueness_stats = _uniqueness_violations(
+        reports=reports,
+        min_unique_images_per_topic=args.min_unique_images_per_topic,
+        max_cross_topic_reuse_ratio=args.max_cross_topic_reuse_ratio,
+    )
 
     print(f"Generated PDF report: {report_path}")
     print(f"MATLAB help root: {matlab_help_root}")
@@ -1504,8 +1562,24 @@ def main() -> int:
     print(f"Parity results ({args.parity_mode} mode): checked={parity_checked} failures={parity_failures}")
     print(f"Numeric drift topic results: checked={numeric_checked} failures={numeric_failures}")
     print(f"Command checks: total={len(command_results)} failed={command_failures}")
+    print(
+        "Uniqueness stats: "
+        f"total_instances={uniqueness_stats['total_image_instances']} "
+        f"total_unique={uniqueness_stats['total_unique_hashes']} "
+        f"cross_topic_reused={uniqueness_stats['cross_topic_reused_hashes']} "
+        f"cross_topic_reuse_ratio={uniqueness_stats['cross_topic_reuse_ratio']:.6f}"
+    )
+    print(f"Uniqueness violations: {len(uniqueness_violations)}")
+    if uniqueness_violations:
+        for violation in uniqueness_violations:
+            print(f"  - {violation}")
 
-    return 0 if exec_failures == 0 and command_failures == 0 and parity_failures == 0 else 1
+    enforce_uniqueness_failure = args.enforce_unique_images and bool(uniqueness_violations)
+    return (
+        0
+        if exec_failures == 0 and command_failures == 0 and parity_failures == 0 and not enforce_uniqueness_failure
+        else 1
+    )
 
 
 if __name__ == "__main__":
