@@ -2545,6 +2545,26 @@ class CovColl(_CovariateCollection):
             for cov in self.covariates
         ]
         self._cov_shift = 0.0
+        self.covShift = 0.0
+        self.originalSampleRate = float(self.covariates[0].sample_rate_hz)
+        self.originalMinTime = float(np.min(self.covariates[0].time))
+        self.originalMaxTime = float(np.max(self.covariates[0].time))
+        self._refresh_covcoll_state()
+
+    def _refresh_covcoll_state(self) -> None:
+        self.covArray = list(self.covariates)
+        self.numCov = int(len(self.covariates))
+        self.covDimensions = [int(cov.n_channels) for cov in self.covariates]
+        self.sampleRate = float(self.covariates[0].sample_rate_hz)
+        self.minTime = float(min(np.min(cov.time) for cov in self.covariates)) + float(self._cov_shift)
+        self.maxTime = float(max(np.max(cov.time) for cov in self.covariates)) + float(self._cov_shift)
+        active = list(getattr(self, "_cov_mask", list(range(self.numCov))))
+        self.covMask = []
+        for i, cov in enumerate(self.covariates):
+            if i in active:
+                self.covMask.append(np.ones((cov.n_channels,), dtype=int).tolist())
+            else:
+                self.covMask.append(np.zeros((cov.n_channels,), dtype=int).tolist())
 
     @staticmethod
     def containsChars(text: str, chars: str | list[str]) -> bool:
@@ -2562,17 +2582,26 @@ class CovColl(_CovariateCollection):
         return all(isinstance(v, (int, str, np.integer)) for v in vals)
 
     def getTime(self) -> np.ndarray:
-        return self.time
+        # CovColl stores shift at the collection level; expose shifted time.
+        return np.asarray(self.time, dtype=float) + float(self._cov_shift)
 
     def getDesignMatrix(self) -> tuple[np.ndarray, list[str]]:
         return self.design_matrix()
 
     def copy(self) -> "CovColl":
         copied = super().copy()
-        return CovColl(copied.covariates)
+        out = CovColl(copied.covariates)
+        out._cov_shift = float(self._cov_shift)
+        out.covShift = float(self.covShift)
+        out.originalSampleRate = float(self.originalSampleRate)
+        out.originalMinTime = float(self.originalMinTime)
+        out.originalMaxTime = float(self.originalMaxTime)
+        out._refresh_covcoll_state()
+        return out
 
     def addToColl(self, cov: _Covariate) -> "CovColl":
         self.add_to_coll(cov)
+        self._refresh_covcoll_state()
         return self
 
     def getCov(self, selector: int | str) -> _Covariate:
@@ -2657,21 +2686,25 @@ class CovColl(_CovariateCollection):
     def addCovCellToColl(self, covariates: list[_Covariate]) -> "CovColl":
         for cov in covariates:
             self.add_to_coll(cov)
+        self._refresh_covcoll_state()
         return self
 
     def addCovCollection(self, other: _CovariateCollection) -> "CovColl":
         for cov in other.covariates:
             self.add_to_coll(cov)
+        self._refresh_covcoll_state()
         return self
 
     def setMinTime(self, t_min: float) -> "CovColl":
         for cov in self.covariates:
             cov.set_min_time(t_min)
+        self._refresh_covcoll_state()
         return self
 
     def setMaxTime(self, t_max: float) -> "CovColl":
         for cov in self.covariates:
             cov.set_max_time(t_max)
+        self._refresh_covcoll_state()
         return self
 
     def restrictToTimeWindow(self, t_min: float, t_max: float) -> "CovColl":
@@ -2698,6 +2731,7 @@ class CovColl(_CovariateCollection):
                 )
             )
         self.covariates = resampled_covariates
+        self._refresh_covcoll_state()
         return self
 
     def resample(self, sampleRate: float) -> "CovColl":
@@ -2711,18 +2745,64 @@ class CovColl(_CovariateCollection):
         return self
 
     def toStructure(self) -> dict[str, Any]:
-        return {"covariates": [cov.to_structure() for cov in self.covariates]}
+        self.resetMask()
+        self._refresh_covcoll_state()
+        cov_structs = [cov.to_structure() for cov in self.covariates]
+        return {
+            "covArray": cov_structs,
+            "covDimensions": list(self.covDimensions),
+            "numCov": int(self.numCov),
+            "minTime": float(self.minTime),
+            "maxTime": float(self.maxTime),
+            "covMask": [list(mask) for mask in self.covMask],
+            "covShift": float(self.covShift),
+            "sampleRate": float(self.sampleRate),
+            "originalSampleRate": float(self.originalSampleRate),
+            "originalMinTime": float(self.originalMinTime),
+            "originalMaxTime": float(self.originalMaxTime),
+            # Backward-compatible alias used by existing Python tests.
+            "covariates": cov_structs,
+        }
 
     def dataToStructure(self) -> dict[str, Any]:
         return self.toStructure()
 
     @staticmethod
     def fromStructure(payload: dict[str, Any]) -> "CovColl":
-        rows = payload.get("covariates", [])
-        covs = [Covariate.fromStructure(row) for row in rows]
+        rows = payload.get("covArray", payload.get("covariates", []))
+
+        def _iter_cov_entries(node: Any) -> list[Any]:
+            if isinstance(node, dict):
+                return [node]
+            if hasattr(node, "_fieldnames"):
+                return [{name: getattr(node, name) for name in node._fieldnames}]
+            if isinstance(node, np.ndarray):
+                out: list[Any] = []
+                for item in node.reshape(-1):
+                    out.extend(_iter_cov_entries(item))
+                return out
+            if isinstance(node, (list, tuple)):
+                out: list[Any] = []
+                for item in node:
+                    out.extend(_iter_cov_entries(item))
+                return out
+            return []
+
+        rows_py = _to_python_cell(rows)
+        rows_flat = _iter_cov_entries(rows_py)
+        covs = [Covariate.fromStructure(cast(dict[str, Any], row)) for row in rows_flat]
         if not covs:
             raise ValueError("fromStructure requires at least one covariate")
-        return CovColl(cast(list[_Covariate], covs))
+        out = CovColl(cast(list[_Covariate], covs))
+        if "minTime" in payload and not _is_empty_like(payload.get("minTime")):
+            out.setMinTime(float(np.asarray(payload["minTime"], dtype=float).reshape(-1)[0]))
+        if "maxTime" in payload and not _is_empty_like(payload.get("maxTime")):
+            out.setMaxTime(float(np.asarray(payload["maxTime"], dtype=float).reshape(-1)[0]))
+        if "covShift" in payload and not _is_empty_like(payload.get("covShift")):
+            out._cov_shift = float(np.asarray(payload["covShift"], dtype=float).reshape(-1)[0])
+            out.covShift = float(out._cov_shift)
+        out._refresh_covcoll_state()
+        return out
 
     def setMask(self, selector: list[int] | list[str]) -> "CovColl":
         if selector and isinstance(selector[0], str):
@@ -2730,10 +2810,12 @@ class CovColl(_CovariateCollection):
         else:
             idx = [int(i) for i in cast(list[int], selector)]
         self._cov_mask = idx
+        self._refresh_covcoll_state()
         return self
 
     def resetMask(self) -> "CovColl":
         self._cov_mask = list(range(len(self.covariates)))
+        self._refresh_covcoll_state()
         return self
 
     def setMasksFromSelector(self, selector: list[int] | list[str] | np.ndarray) -> "CovColl":
@@ -2757,9 +2839,11 @@ class CovColl(_CovariateCollection):
     def removeCovariate(self, selector: int | str) -> "CovColl":
         if isinstance(selector, int):
             del self.covariates[selector]
+            self._refresh_covcoll_state()
             return self
         idx = self.get_cov_ind_from_name(selector)
         del self.covariates[idx]
+        self._refresh_covcoll_state()
         return self
 
     def removeFromColl(self, selector: int | str) -> "CovColl":
@@ -2768,11 +2852,13 @@ class CovColl(_CovariateCollection):
     def removeFromCollByIndices(self, indices: list[int]) -> "CovColl":
         for i in sorted(set(indices), reverse=True):
             del self.covariates[i]
+        self._refresh_covcoll_state()
         return self
 
     def maskAwayCov(self, selector: int | str | list[int] | list[str] | np.ndarray) -> "CovColl":
         remaining = self.generateRemainingIndex(selector)
         self._cov_mask = remaining
+        self._refresh_covcoll_state()
         return self
 
     def maskAwayOnlyCov(self, selector: int | str | list[int] | list[str] | np.ndarray) -> "CovColl":
@@ -2780,21 +2866,21 @@ class CovColl(_CovariateCollection):
 
     def maskAwayAllExcept(self, selector: int | str | list[int] | list[str] | np.ndarray) -> "CovColl":
         self._cov_mask = self.covIndFromSelector(selector)
+        self._refresh_covcoll_state()
         return self
 
     def setCovShift(self, shift_s: float) -> "CovColl":
         shift = float(shift_s)
-        self._cov_shift += shift
-        for cov in self.covariates:
-            cov.time = cov.time + shift
+        self.resetCovShift()
+        self._cov_shift = shift
+        self.covShift = shift
+        self._refresh_covcoll_state()
         return self
 
     def resetCovShift(self) -> "CovColl":
-        if self._cov_shift == 0.0:
-            return self
-        for cov in self.covariates:
-            cov.time = cov.time - self._cov_shift
         self._cov_shift = 0.0
+        self.covShift = 0.0
+        self._refresh_covcoll_state()
         return self
 
     def restoreToOriginal(self) -> "CovColl":
@@ -2814,7 +2900,19 @@ class CovColl(_CovariateCollection):
             for cov in self._original_covariates
         ]
         self._cov_shift = 0.0
-        self.resetMask()
+        self.covShift = 0.0
+        self._cov_mask = list(range(len(self.covariates)))
+        if not _is_empty_like(self.originalSampleRate):
+            self.setSampleRate(float(self.originalSampleRate))
+        if not _is_empty_like(self.originalMinTime):
+            self.setMinTime(float(self.originalMinTime))
+        else:
+            self.setMinTime(float(self.findMinTime()))
+        if not _is_empty_like(self.originalMaxTime):
+            self.setMaxTime(float(self.originalMaxTime))
+        else:
+            self.setMaxTime(float(self.findMaxTime()))
+        self._refresh_covcoll_state()
         return self
 
     def findMinTime(self) -> float:
