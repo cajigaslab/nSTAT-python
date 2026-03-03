@@ -972,7 +972,7 @@ CHECKPOINT_LIMITS = {
 
 
 COVCOLL_EXAMPLES_TEMPLATE = """# CovCollExamples: covariate collection queries, masking, and resampling.
-from nstat.compat.matlab import Covariate, CovColl
+from nstat.compat.matlab import Covariate, CovColl, History, nspikeTrain
 
 t = np.arange(0.0, 5.0 + 0.001, 0.001)
 position = Covariate(
@@ -1015,6 +1015,11 @@ n_after_remove = cc.nActCovar()
 
 assert X.shape[1] >= 4
 assert n_after_remove == max(1, n_before_remove - 1)
+history = History(bin_edges_s=np.array([0.0, 0.01, 0.03], dtype=float))
+spikes = nspikeTrain(spike_times=np.sort(rng.random(25) * 0.5), t_start=0.0, t_end=0.5, name="tmp")
+H = history.computeHistory(spikes.spike_times, np.arange(0.0, 0.5, 0.01))
+assert H.ndim == 2 and H.shape[1] == history.n_bins
+assert spikes.spike_times.size > 5
 
 CHECKPOINT_METRICS = {
     "matrix_rows": float(X.shape[0]),
@@ -1079,7 +1084,7 @@ CHECKPOINT_LIMITS = {
 
 
 NSTCOLL_EXAMPLES_TEMPLATE = """# nstCollExamples: collection masking and single-neuron extraction.
-from nstat.compat.matlab import nspikeTrain, nstColl
+from nstat.compat.matlab import History, nspikeTrain, nstColl
 
 trains = []
 for i in range(20):
@@ -1122,6 +1127,11 @@ plt.tight_layout()
 plt.show()
 
 masked = spikeColl.getIndFromMask()
+history = History(bin_edges_s=np.array([0.0, 0.01, 0.03], dtype=float))
+spikes = n1
+H = history.computeHistory(spikes.spike_times, np.arange(0.0, 1.0, 0.01))
+assert H.ndim == 2 and H.shape[1] == history.n_bins
+assert spikes.spike_times.size > 5
 assert len(masked) == 3
 assert spikeColl.getNumUnits() == 20
 
@@ -1207,6 +1217,11 @@ plt.show()
 
 assert len(hist_rows) >= 1
 assert hist_rows[0].shape[1] == h.getNumBins()
+history = h
+spikes = spikeColl.getNST(0)
+H = history.computeHistory(spikes.spike_times, t)
+assert H.ndim == 2 and H.shape[1] == history.n_bins
+assert spikes.spike_times.size > 5
 
 CHECKPOINT_METRICS = {
     "history_bins": float(h.getNumBins()),
@@ -2108,13 +2123,25 @@ def family_template(family: str) -> str:
 TOPIC_TEMPLATE_OVERRIDES = {
     "AnalysisExamples": ANALYSIS_EXAMPLES_TEMPLATE,
     "AnalysisExamples2": ANALYSIS_EXAMPLES2_TEMPLATE,
+    "ConfigCollExamples": CONFIGCOLL_EXAMPLES_TEMPLATE,
+    "CovCollExamples": COVCOLL_EXAMPLES_TEMPLATE,
     "CovariateExamples": COVARIATE_EXAMPLES_TEMPLATE,
+    "DocumentationSetup2025b": DOCUMENTATION_SETUP_TEMPLATE,
     "ExplicitStimulusWhiskerData": EXPLICIT_STIMULUS_WHISKER_TEMPLATE,
     "EventsExamples": EVENTS_EXAMPLES_TEMPLATE,
+    "FitResSummaryExamples": FITRESSUMMARY_EXAMPLES_TEMPLATE,
+    "FitResultExamples": FITRESULT_EXAMPLES_TEMPLATE,
+    "FitResultReference": FITRESULT_REFERENCE_TEMPLATE,
     "mEPSCAnalysis": MEPSC_ANALYSIS_TEMPLATE,
+    "nSTATPaperExamples": NSTAT_PAPER_EXAMPLES_TEMPLATE,
+    "nSpikeTrainExamples": NSPIKETRAIN_EXAMPLES_TEMPLATE,
+    "nstCollExamples": NSTCOLL_EXAMPLES_TEMPLATE,
     "PPThinning": PPTHINNING_TEMPLATE,
     "PPSimExample": PPSIM_EXAMPLE_TEMPLATE,
+    "publish_all_helpfiles": PUBLISH_ALL_HELPFILES_TEMPLATE,
     "NetworkTutorial": NETWORK_TUTORIAL_TEMPLATE,
+    "TrialConfigExamples": TRIALCONFIG_EXAMPLES_TEMPLATE,
+    "TrialExamples": TRIALEXAMPLES_TEMPLATE,
     "HybridFilterExample": HYBRID_FILTER_TEMPLATE,
 }
 

@@ -1477,23 +1477,44 @@ class nstColl(_SpikeTrainCollection):
         return self.psth(binSize_s=binSize_s)
 
     @staticmethod
-    def generateUnitImpulseBasis(
-        basisWidth_s: float,
-        sampleRate_hz: float,
-        totalTime_s: float = 1.0,
-        name: str = "unit_impulse_basis",
-    ) -> _Covariate:
+    def generateUnitImpulseBasis(basisWidth_s: float, *args: Any, **kwargs: Any) -> _Covariate:
         if basisWidth_s <= 0.0:
             raise ValueError("basisWidth_s must be positive")
-        if sampleRate_hz <= 0.0:
+
+        name = str(kwargs.pop("name", "unit_impulse_basis"))
+        numeric_types = (int, float, np.integer, np.floating)
+
+        # MATLAB-compatible signatures:
+        #   generateUnitImpulseBasis(basisWidth, sampleRate[, totalTime[, name]])
+        #   generateUnitImpulseBasis(basisWidth, minTime, maxTime, sampleRate[, name])
+        if len(args) >= 3 and isinstance(args[2], numeric_types):
+            min_time_s = float(args[0])
+            max_time_s = float(args[1])
+            sample_rate_hz = float(args[2])
+            if len(args) >= 4:
+                name = str(args[3])
+        else:
+            sample_rate_hz = float(args[0]) if len(args) >= 1 else float(kwargs.pop("sampleRate_hz", 1000.0))
+            total_time_s = float(args[1]) if len(args) >= 2 else float(kwargs.pop("totalTime_s", 1.0))
+            min_time_s = 0.0
+            max_time_s = total_time_s
+
+        if kwargs:
+            unknown = ", ".join(sorted(kwargs.keys()))
+            raise TypeError(f"unexpected keyword arguments: {unknown}")
+        if sample_rate_hz <= 0.0:
             raise ValueError("sampleRate_hz must be positive")
-        dt = 1.0 / float(sampleRate_hz)
-        time = np.arange(0.0, float(totalTime_s) + 0.5 * dt, dt)
-        n_basis = max(1, int(np.ceil(float(totalTime_s) / float(basisWidth_s))))
+        if max_time_s <= min_time_s:
+            raise ValueError("maxTime must be greater than minTime")
+
+        dt = 1.0 / sample_rate_hz
+        time = np.arange(min_time_s, max_time_s + 0.5 * dt, dt)
+        total_time_s = max_time_s - min_time_s
+        n_basis = max(1, int(np.ceil(total_time_s / float(basisWidth_s))))
         basis = np.zeros((time.size, n_basis), dtype=float)
         for j in range(n_basis):
-            lo = j * basisWidth_s
-            hi = min((j + 1) * basisWidth_s, totalTime_s + dt)
+            lo = min_time_s + j * basisWidth_s
+            hi = min(min_time_s + (j + 1) * basisWidth_s, max_time_s + dt)
             mask = (time >= lo) & (time < hi)
             basis[mask, j] = 1.0
         labels = [f"basis_{j+1}" for j in range(n_basis)]
@@ -3323,7 +3344,9 @@ class DecodingAlgorithms:
 
         window_vals = np.asarray([] if windowTimes is None else windowTimes, dtype=float).reshape(-1)
         if window_vals.size > 0:
-            hist_obj = History(bin_edges_s=window_vals, min_time_s=min_time, max_time_s=max_time)
+            if window_vals.size == 1:
+                window_vals = np.array([0.0, float(window_vals[0])], dtype=float)
+            hist_obj = History(bin_edges_s=window_vals)
             gamma_vec = np.asarray(gamma, dtype=float).reshape(-1)
             Hk: list[np.ndarray] = []
             for k in range(K):
@@ -3415,9 +3438,8 @@ class DecodingAlgorithms:
             lower=CIs[:, 0],
             upper=CIs[:, 1],
             level=1.0 - float(alphaVal),
-            color="b",
-            value=1.0 - float(alphaVal),
         )
+        ci_obj.setColor("b")
         spike_rate_sig.setConfInterval(ci_obj)
 
         prob_mat = np.zeros((K, K), dtype=float)

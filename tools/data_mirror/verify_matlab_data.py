@@ -30,6 +30,20 @@ def _resolve_path(path_arg: str, repo_root: Path) -> Path:
     return path.resolve()
 
 
+def _git_lfs_oid(path: Path) -> str | None:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return None
+    lines = [line.strip() for line in text.splitlines()]
+    if not lines or not lines[0].startswith("version https://git-lfs.github.com/spec"):
+        return None
+    for line in lines:
+        if line.startswith("oid sha256:"):
+            return line.split("oid sha256:", 1)[1].strip()
+    return None
+
+
 def main() -> int:
     args = parse_args()
     repo_root = repo_root_from_tools_script(Path(__file__).resolve())
@@ -55,11 +69,18 @@ def main() -> int:
         if not target.exists():
             missing.append(rel_path)
             continue
-        if target.stat().st_size != int(row["size_bytes"]):
+        expected_size = int(row["size_bytes"])
+        expected_sha = str(row["sha256"])
+        if target.stat().st_size != expected_size:
+            lfs_oid = _git_lfs_oid(target)
+            if lfs_oid == expected_sha:
+                # LFS pointer checkout: allow size mismatch when pointer OID
+                # matches the manifest's content digest.
+                continue
             size_mismatch.append(rel_path)
             continue
         digest = sha256_file(target)
-        if digest != row["sha256"]:
+        if digest != expected_sha:
             hash_mismatch.append(rel_path)
 
     extra: list[str] = []
@@ -105,4 +126,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

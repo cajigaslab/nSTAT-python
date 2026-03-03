@@ -18,6 +18,20 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _git_lfs_oid(path: Path) -> str | None:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return None
+    lines = [line.strip() for line in text.splitlines()]
+    if not lines or not lines[0].startswith("version https://git-lfs.github.com/spec"):
+        return None
+    for line in lines:
+        if line.startswith("oid sha256:"):
+            return line.split("oid sha256:", 1)[1].strip()
+    return None
+
+
 
 def test_shared_dataset_manifest_contains_mepsc_example() -> None:
     payload = json.loads(Path("data/datasets_manifest.json").read_text(encoding="utf-8"))
@@ -53,7 +67,11 @@ def test_allowlisted_shared_data_file_matches_checksum() -> None:
     for row in allowlist["shared_data"]:
         path = Path(row["python_path"])
         assert path.exists(), f"missing allowlisted data file: {path}"
-        assert _sha256(path) == row["sha256"]
+        expected = str(row["sha256"])
+        actual = _sha256(path)
+        if actual != expected:
+            lfs_oid = _git_lfs_oid(path)
+            assert lfs_oid == expected
 
 
 def test_fetch_dataset_prefers_local_matlab_mirror_for_mepsc() -> None:
