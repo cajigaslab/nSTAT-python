@@ -20,13 +20,41 @@ from pathlib import Path
 import nbformat
 import numpy as np
 import yaml
-from nbclient import NotebookClient
 from PIL import Image
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfgen import canvas
+
+try:
+    from nbclient import NotebookClient
+except ModuleNotFoundError:  # pragma: no cover - exercised in CI dependency matrix
+    NotebookClient = None  # type: ignore[assignment]
+
+try:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas
+except ModuleNotFoundError:  # pragma: no cover - exercised in CI dependency matrix
+    letter = None  # type: ignore[assignment]
+    ImageReader = None  # type: ignore[assignment]
+    canvas = None  # type: ignore[assignment]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _require_nbclient() -> type:
+    if NotebookClient is None:
+        raise ModuleNotFoundError(
+            "nbclient is required to execute notebooks. "
+            "Install notebook extras with `pip install -e .[notebooks]`."
+        )
+    return NotebookClient
+
+
+def _require_reportlab() -> tuple[tuple[float, float], type, type]:
+    if letter is None or ImageReader is None or canvas is None:
+        raise ModuleNotFoundError(
+            "reportlab is required to build validation PDFs. "
+            "Install notebook extras with `pip install -e .[notebooks]`."
+        )
+    return letter, ImageReader, canvas
 
 
 @dataclass(slots=True)
@@ -501,7 +529,8 @@ def execute_notebook_capture(
         )
 
     notebook = nbformat.read(target.file, as_version=4)
-    client = NotebookClient(
+    notebook_client_cls = _require_nbclient()
+    client = notebook_client_cls(
         notebook,
         timeout=timeout,
         kernel_name="python3",
@@ -716,7 +745,8 @@ def _draw_wrapped_lines(
 
 
 def _draw_image_fit(pdf: canvas.Canvas, image_path: Path, x: float, y: float, max_w: float, max_h: float) -> None:
-    reader = ImageReader(str(image_path))
+    _, image_reader_cls, _ = _require_reportlab()
+    reader = image_reader_cls(str(image_path))
     iw, ih = reader.getSize()
     scale = min(max_w / iw, max_h / ih)
     w = iw * scale
@@ -1185,7 +1215,8 @@ def generate_pdf_report(
     )
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    pdf = canvas.Canvas(str(output_pdf), pagesize=letter)
+    letter_size, _, canvas_cls = _require_reportlab()
+    pdf = canvas_cls(str(output_pdf), pagesize=letter_size)
     pdf.setTitle("nSTAT-python Validation Report")
 
     draw_cover_page(
