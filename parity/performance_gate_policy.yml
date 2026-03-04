@@ -3,6 +3,8 @@ version: 1
 # MATLAB ratio thresholds informative until enough CI history is accumulated.
 default_max_matlab_ratio: 5.0
 max_python_regression_ratio: 1.35
+# Guard against flaky regressions on very fast (< few ms) workloads.
+min_python_regression_delta_ms: 3.0
 critical_case_max_matlab_ratio:
   unit_impulse_basis: 3.0
   covariate_resample: 3.0

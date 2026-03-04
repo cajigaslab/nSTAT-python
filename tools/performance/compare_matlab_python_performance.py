@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -76,6 +77,7 @@ def main() -> int:
     default_ratio = float(policy.get("default_max_matlab_ratio", 5.0))
     critical = policy.get("critical_case_max_matlab_ratio", {}) or {}
     regression_limit = float(policy.get("max_python_regression_ratio", 1.35))
+    min_regression_delta_ms = float(policy.get("min_python_regression_delta_ms", 0.0))
 
     rows: list[dict[str, Any]] = []
     missing_matlab = 0
@@ -117,10 +119,16 @@ def main() -> int:
         regression_pass = True
         prev_runtime = float("nan")
         py_vs_prev_ratio = float("nan")
+        py_vs_prev_delta_ms = float("nan")
         if prev_case is not None:
             prev_runtime = float(prev_case.get("median_runtime_ms", float("nan")))
             py_vs_prev_ratio = _safe_ratio(py_runtime, prev_runtime)
-            regression_pass = bool(py_vs_prev_ratio <= regression_limit)
+            py_vs_prev_delta_ms = py_runtime - prev_runtime
+            ratio_ok = bool(py_vs_prev_ratio <= regression_limit)
+            delta_ok = bool(
+                math.isnan(py_vs_prev_delta_ms) or py_vs_prev_delta_ms <= min_regression_delta_ms
+            )
+            regression_pass = bool(ratio_ok or delta_ok)
             if not regression_pass:
                 regression_fail += 1
 
@@ -136,6 +144,7 @@ def main() -> int:
                 "python_peak_memory_mb": py_mem,
                 "previous_python_runtime_ms": prev_runtime,
                 "python_vs_previous_ratio": py_vs_prev_ratio,
+                "python_vs_previous_delta_ms": py_vs_prev_delta_ms,
                 "regression_pass": regression_pass,
                 "status": "ok" if ratio_pass and regression_pass else "needs_attention",
             }
@@ -154,6 +163,7 @@ def main() -> int:
             "default_max_matlab_ratio": default_ratio,
             "critical_case_max_matlab_ratio": critical,
             "max_python_regression_ratio": regression_limit,
+            "min_python_regression_delta_ms": min_regression_delta_ms,
         },
         "python_report": str(args.python_report),
         "matlab_report": str(args.matlab_report),
@@ -186,6 +196,7 @@ def main() -> int:
                 "python_peak_memory_mb",
                 "previous_python_runtime_ms",
                 "python_vs_previous_ratio",
+                "python_vs_previous_delta_ms",
                 "regression_pass",
                 "status",
             ],

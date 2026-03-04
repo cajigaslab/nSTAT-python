@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, cast
 
 import numpy as np
 
@@ -42,6 +43,7 @@ def get_case_config(case: str, tier: str) -> CaseConfig:
     if tier not in TIER_ORDER:
         raise ValueError(f"Unknown tier: {tier}")
 
+    vals: dict[str, dict[str, float | int]]
     if case == "unit_impulse_basis":
         vals = {
             "S": dict(max_time_s=1.0, sample_rate_hz=500.0),
@@ -75,7 +77,7 @@ def get_case_config(case: str, tier: str) -> CaseConfig:
     else:
         raise ValueError(f"Unknown case: {case}")
 
-    return CaseConfig(**vals[tier])
+    return CaseConfig(**cast(dict[str, Any], vals[tier]))
 
 
 def _deterministic_spike_times(n_spikes: int, duration_s: float) -> np.ndarray:
