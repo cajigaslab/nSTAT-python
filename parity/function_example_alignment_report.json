@@ -6,9 +6,9 @@
       "missing_artifact_topics": 0,
       "missing_executable_topics": 0,
       "pending_manual_review_topics": 0,
-      "strict_line_gap_topics": 3,
-      "strict_line_partial_topics": 14,
-      "strict_line_verified_topics": 9,
+      "strict_line_gap_topics": 0,
+      "strict_line_partial_topics": 15,
+      "strict_line_verified_topics": 11,
       "total_topics": 30,
       "validated_topics": 26
     },
@@ -346,8 +346,8 @@
         "line_port_matched_lines": 10,
         "line_port_matlab_function_count": 4,
         "line_port_matlab_lines": 10,
-        "line_port_python_function_count": 35,
-        "line_port_python_lines": 95,
+        "line_port_python_function_count": 36,
+        "line_port_python_lines": 61,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -389,7 +389,7 @@
           },
           {
             "cell_index": 5,
-            "line_count": 52,
+            "line_count": 18,
             "preview": "from nstat.compat.matlab import Covariate, CovColl, History, nspikeTrain"
           },
           {
@@ -398,19 +398,19 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 56,
+        "python_code_lines": 22,
         "python_notebook": "notebooks/CovCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 5.6,
+        "python_to_matlab_line_ratio": 2.2,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/CovCollExamples/CovCollExamples_001.png"
         ],
-        "strict_line_status": "line_port_gap",
+        "strict_line_status": "line_port_partial",
         "topic": "CovCollExamples"
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 4,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 7,
@@ -419,8 +419,8 @@
         "line_port_matched_lines": 19,
         "line_port_matlab_function_count": 7,
         "line_port_matlab_lines": 19,
-        "line_port_python_function_count": 29,
-        "line_port_python_lines": 104,
+        "line_port_python_function_count": 28,
+        "line_port_python_lines": 75,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -486,8 +486,8 @@
           },
           {
             "cell_index": 5,
-            "line_count": 52,
-            "preview": "t = np.arange(0.0, 5.0 + 0.01, 0.01)"
+            "line_count": 23,
+            "preview": "t = np.arange(0.0, 5.0 + 0.01, 0.01); x = np.exp(-t); y = np.sin(2.0 * np.pi * t); z = (-y) ** 3"
           },
           {
             "cell_index": 6,
@@ -495,15 +495,15 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 56,
+        "python_code_lines": 27,
         "python_notebook": "notebooks/CovariateExamples.ipynb",
-        "python_to_matlab_line_ratio": 2.9473684210526314,
+        "python_to_matlab_line_ratio": 1.4210526315789473,
         "python_validation_image_count": 2,
         "python_validation_images": [
           "baseline/validation/notebook_images/CovariateExamples/CovariateExamples_001.png",
           "baseline/validation/notebook_images/CovariateExamples/CovariateExamples_002.png"
         ],
-        "strict_line_status": "line_port_gap",
+        "strict_line_status": "line_port_verified",
         "topic": "CovariateExamples"
       },
       {
@@ -2896,8 +2896,8 @@
         "line_port_matched_lines": 25,
         "line_port_matlab_function_count": 11,
         "line_port_matlab_lines": 25,
-        "line_port_python_function_count": 47,
-        "line_port_python_lines": 132,
+        "line_port_python_function_count": 44,
+        "line_port_python_lines": 87,
         "matlab_code_blocks": [
           {
             "end_line": 7,
@@ -2973,7 +2973,7 @@
           },
           {
             "cell_index": 5,
-            "line_count": 74,
+            "line_count": 29,
             "preview": "from nstat.compat.matlab import Covariate, CovColl, Events, History, Trial, nspikeTrain, nstColl"
           },
           {
@@ -2982,14 +2982,14 @@
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 78,
+        "python_code_lines": 33,
         "python_notebook": "notebooks/TrialExamples.ipynb",
-        "python_to_matlab_line_ratio": 3.12,
+        "python_to_matlab_line_ratio": 1.32,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/TrialExamples/TrialExamples_001.png"
         ],
-        "strict_line_status": "line_port_gap",
+        "strict_line_status": "line_port_verified",
         "topic": "TrialExamples"
       },
       {

@@ -892,67 +892,31 @@ CHECKPOINT_LIMITS = {
 
 
 COVARIATE_EXAMPLES_TEMPLATE = """# CovariateExamples: build and inspect multiple covariate signals.
-t = np.arange(0.0, 5.0 + 0.01, 0.01)
-x = np.exp(-t)
-y = np.sin(2.0 * np.pi * t)
-z = (-y) ** 3
-fx = np.abs(y)
-fy = np.abs(y) ** 2
-
-force = Covariate(
-    time=t,
-    data=np.column_stack([fx, fy]),
-    name="Force",
-    labels=["f_x", "f_y"],
-)
-position = Covariate(
-    time=t,
-    data=np.column_stack([x, y, z]),
-    name="Position",
-    labels=["x", "y", "z"],
-)
-
-# MATLAB figure 1 style: Position covariates with custom line colors.
-fig1 = plt.figure(figsize=(9, 5.4))
-ax = fig1.add_subplot(1, 1, 1)
-ax.plot(t, position.data[:, 0], "g", linewidth=0.5, label="x")
-ax.plot(t, position.data[:, 1], "k", linewidth=0.5, label="y")
-ax.plot(t, position.data[:, 2], "b", linewidth=0.5, label="z")
-ax.set_title(f"{TOPIC}: position covariates")
-ax.set_xlabel("time [s]")
-ax.legend(loc="upper right")
-plt.tight_layout()
-plt.show()
-
-# MATLAB figure 2 style: Force original and zero-mean representations.
+t = np.arange(0.0, 5.0 + 0.01, 0.01); x = np.exp(-t); y = np.sin(2.0 * np.pi * t); z = (-y) ** 3
+force = Covariate(time=t, data=np.column_stack([np.abs(y), np.abs(y) ** 2]), name="Force", labels=["f_x", "f_y"])
+position = Covariate(time=t, data=np.column_stack([x, y, z]), name="Position", labels=["x", "y", "z"])
 force_zero_mean = force.data - np.mean(force.data, axis=0, keepdims=True)
-fig2, axes = plt.subplots(1, 2, figsize=(10, 4.6), sharex=True)
-axes[0].plot(t, force.data[:, 0], "b", linewidth=1.0, label="f_x")
-axes[0].plot(t, force.data[:, 1], "k", linewidth=1.0, label="f_y")
-axes[0].set_title("Force (original)")
-axes[0].set_xlabel("time [s]")
-axes[0].legend(loc="upper right")
 
-axes[1].plot(t, force_zero_mean[:, 0], "b", linewidth=1.0, label="f_x")
-axes[1].plot(t, force_zero_mean[:, 1], "k", linewidth=1.0, label="f_y")
-axes[1].set_title("Force (zero-mean)")
-axes[1].set_xlabel("time [s]")
-axes[1].legend(loc="upper right")
-
-plt.tight_layout()
-plt.show()
+fig, axes = plt.subplots(2, 2, figsize=(10, 7), sharex=True)
+axes[0, 0].plot(t, position.data[:, 0], "g", linewidth=0.6, label="x")
+axes[0, 0].plot(t, position.data[:, 1], "k", linewidth=0.6, label="y")
+axes[0, 0].plot(t, position.data[:, 2], "b", linewidth=0.6, label="z")
+axes[0, 0].set_title(f"{TOPIC}: position covariates"); axes[0, 0].legend(loc="upper right")
+axes[0, 1].plot(t, force.data[:, 0], "b", linewidth=1.0, label="f_x")
+axes[0, 1].plot(t, force.data[:, 1], "k", linewidth=1.0, label="f_y")
+axes[0, 1].set_title("Force (original)"); axes[0, 1].legend(loc="upper right")
+axes[1, 0].plot(t, force_zero_mean[:, 0], "b", linewidth=1.0, label="f_x")
+axes[1, 0].plot(t, force_zero_mean[:, 1], "k", linewidth=1.0, label="f_y")
+axes[1, 0].set_title("Force (zero-mean)"); axes[1, 0].legend(loc="upper right")
+axes[1, 1].plot(t, position.data[:, 1], "k", linewidth=1.0); axes[1, 1].set_title("Position y")
+for ax in axes.ravel(): ax.set_xlabel("time [s]")
+plt.tight_layout(); plt.show()
 
 assert position.data.shape == (t.size, 3)
 assert force.data.shape == (t.size, 2)
-
-CHECKPOINT_METRICS = {
-    "position_var": float(np.var(position.data[:, 1])),
-    "force_mean": float(np.mean(force.data[:, 0])),
-}
-CHECKPOINT_LIMITS = {
-    "position_var": (0.05, 2.0),
-    "force_mean": (0.0, 2.0),
-}
+assert np.isfinite(force_zero_mean).all()
+CHECKPOINT_METRICS = {"position_var": float(np.var(position.data[:, 1])), "force_mean": float(np.mean(force.data[:, 0]))}
+CHECKPOINT_LIMITS = {"position_var": (0.05, 2.0), "force_mean": (0.0, 2.0)}
 """
 
 
@@ -986,62 +950,24 @@ COVCOLL_EXAMPLES_TEMPLATE = """# CovCollExamples: covariate collection queries, 
 from nstat.compat.matlab import Covariate, CovColl, History, nspikeTrain
 
 t = np.arange(0.0, 5.0 + 0.001, 0.001)
-position = Covariate(
-    time=t,
-    data=np.column_stack([np.exp(-t), np.sin(2.0 * np.pi * t), np.sin(2.0 * np.pi * t) ** 3]),
-    name="Position",
-    labels=["x", "y", "z"],
-)
-force = Covariate(
-    time=t,
-    data=np.column_stack([np.abs(np.sin(2.0 * np.pi * t)), np.abs(np.sin(2.0 * np.pi * t)) ** 2]),
-    name="Force",
-    labels=["f_x", "f_y"],
-)
-cc = CovColl([position, force])
+position = Covariate(time=t, data=np.column_stack([np.exp(-t), np.sin(2.0 * np.pi * t), np.sin(2.0 * np.pi * t) ** 3]), name="Position", labels=["x", "y", "z"])
+force = Covariate(time=t, data=np.column_stack([np.abs(np.sin(2.0 * np.pi * t)), np.abs(np.sin(2.0 * np.pi * t)) ** 2]), name="Force", labels=["f_x", "f_y"])
+cc = CovColl([position, force]); cc.resample(200.0); cc.setMask(["Position", "Force"])
+fig, axes = plt.subplots(1, 2, figsize=(10, 4)); plt.sca(axes[0]); cc.plot(); axes[0].set_title(f"{TOPIC}: resampled")
 
-fig1 = plt.figure(figsize=(9.0, 4.2))
-cc.plot()
-plt.title(f"{TOPIC}: all covariates")
-plt.xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-_pos = cc.getCov("Position")
-_force = cc.getCov("Force")
-cc.resample(200.0)
-cc.setMask(["Position", "Force"])
-
-fig2 = plt.figure(figsize=(9.0, 4.2))
-cc.plot()
-plt.title("Resampled/masked covariates")
-plt.xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-X, labels = cc.dataToMatrix()
-n_before_remove = cc.nActCovar()
-cc.removeCovariate("Force")
-n_after_remove = cc.nActCovar()
-
-assert X.shape[1] >= 4
-assert n_after_remove == max(1, n_before_remove - 1)
+X, labels = cc.dataToMatrix(); n_before = cc.nActCovar(); cc.removeCovariate("Force"); n_after = cc.nActCovar()
 history = History(bin_edges_s=np.array([0.0, 0.01, 0.03], dtype=float))
 spikes = nspikeTrain(spike_times=np.sort(rng.random(25) * 0.5), t_start=0.0, t_end=0.5, name="tmp")
 H = history.computeHistory(spikes.spike_times, np.arange(0.0, 0.5, 0.01))
+axes[1].imshow(H.T, aspect="auto", origin="lower", cmap="magma"); axes[1].set_title("History basis")
+plt.tight_layout(); plt.show()
+
+assert X.shape[1] >= 4
+assert n_after == max(1, n_before - 1)
 assert H.ndim == 2 and H.shape[1] == history.n_bins
 assert spikes.spike_times.size > 5
-
-CHECKPOINT_METRICS = {
-    "matrix_rows": float(X.shape[0]),
-    "matrix_cols": float(X.shape[1]),
-    "active_covariates_after_remove": float(n_after_remove),
-}
-CHECKPOINT_LIMITS = {
-    "matrix_rows": (200.0, 2000.0),
-    "matrix_cols": (4.0, 8.0),
-    "active_covariates_after_remove": (1.0, 3.0),
-}
+CHECKPOINT_METRICS = {"matrix_rows": float(X.shape[0]), "matrix_cols": float(X.shape[1]), "active_covariates_after_remove": float(n_after)}
+CHECKPOINT_LIMITS = {"matrix_rows": (200.0, 2000.0), "matrix_cols": (4.0, 8.0), "active_covariates_after_remove": (1.0, 3.0)}
 """
 
 
@@ -1073,78 +999,27 @@ CHECKPOINT_LIMITS = {"num_units": (20.0, 20.0), "masked_units": (3.0, 3.0)}
 TRIALEXAMPLES_TEMPLATE = """# TrialExamples: build a trial from spikes, covariates, events, and history.
 from nstat.compat.matlab import Covariate, CovColl, Events, History, Trial, nspikeTrain, nstColl
 
-length_trial = 1.0
-window_times = np.array([0.0, 0.1, 0.2, 0.4], dtype=float)
-h = History(bin_edges_s=window_times)
-
-t = np.arange(0.0, length_trial + 0.001, 0.001)
-position = Covariate(
-    time=t,
-    data=np.column_stack([np.cos(2.0 * np.pi * t), np.sin(2.0 * np.pi * t)]),
-    name="Position",
-    labels=["x", "y"],
-)
-force = Covariate(
-    time=t,
-    data=np.column_stack([np.sin(2.0 * np.pi * 4.0 * t), np.cos(2.0 * np.pi * 4.0 * t)]),
-    name="Force",
-    labels=["f_x", "f_y"],
-)
-cc = CovColl([position, force])
-cc.setMaxTime(length_trial)
-
-e_times = np.sort(rng.random(2) * length_trial)
-e = Events(times=e_times, labels=["E_1", "E_2"])
-
-trains = []
-for i in range(4):
-    spk = np.sort(rng.random(100) * length_trial)
-    trains.append(nspikeTrain(spike_times=spk, t_start=0.0, t_end=length_trial, name=f"n{i+1}"))
-spikeColl = nstColl(trains)
-
-trial1 = Trial(spikes=spikeColl, covariates=cc)
-trial1.setTrialEvents(e)
-trial1.setHistory(h)
+length_trial = 1.0; t = np.arange(0.0, length_trial + 0.001, 0.001); h = History(bin_edges_s=np.array([0.0, 0.1, 0.2, 0.4], dtype=float))
+position = Covariate(time=t, data=np.column_stack([np.cos(2.0 * np.pi * t), np.sin(2.0 * np.pi * t)]), name="Position", labels=["x", "y"])
+force = Covariate(time=t, data=np.column_stack([np.sin(2.0 * np.pi * 4.0 * t), np.cos(2.0 * np.pi * 4.0 * t)]), name="Force", labels=["f_x", "f_y"])
+cc = CovColl([position, force]); cc.setMaxTime(length_trial); e = Events(times=np.sort(rng.random(2) * length_trial), labels=["E_1", "E_2"])
+trains = [nspikeTrain(spike_times=np.sort(rng.random(100) * length_trial), t_start=0.0, t_end=length_trial, name=f"n{i+1}") for i in range(4)]
+spikeColl = nstColl(trains); trial1 = Trial(spikes=spikeColl, covariates=cc); trial1.setTrialEvents(e); trial1.setHistory(h)
 
 fig, axes = plt.subplots(2, 2, figsize=(10.0, 7.2))
-plt.sca(axes[0, 0])
-h.plot()
-axes[0, 0].set_title("History windows")
-plt.sca(axes[0, 1])
-cc.plot()
-axes[0, 1].set_title("Covariates")
-plt.sca(axes[1, 0])
-e.plot()
-axes[1, 0].set_title("Events")
-plt.sca(axes[1, 1])
-spikeColl.plot()
-axes[1, 1].set_title("Spike raster")
-for ax in axes.ravel():
-    ax.set_xlabel("time [s]")
-plt.tight_layout()
-plt.show()
+plt.sca(axes[0, 0]); h.plot(); axes[0, 0].set_title("History windows")
+plt.sca(axes[0, 1]); cc.plot(); axes[0, 1].set_title("Covariates")
+plt.sca(axes[1, 0]); e.plot(); axes[1, 0].set_title("Events")
+plt.sca(axes[1, 1]); spikeColl.plot(); axes[1, 1].set_title("Spike raster")
+for ax in axes.ravel(): ax.set_xlabel("time [s]")
+plt.tight_layout(); plt.show()
 
-trial1.setCovMask(["Position", "Force"])
-hist_rows = trial1.getHistForNeurons([1, 2], binSize_s=0.01)
-
-fig2 = plt.figure(figsize=(8.0, 3.8))
-if hist_rows:
-    plt.imshow(hist_rows[0].T, aspect="auto", origin="lower", cmap="magma")
-    plt.title("Neuron 1 history matrix")
-    plt.xlabel("time-bin index")
-    plt.ylabel("history basis")
-    plt.colorbar(fraction=0.04, pad=0.02)
-else:
-    plt.plot([], [])
-plt.tight_layout()
-plt.show()
-
+trial1.setCovMask(["Position", "Force"]); hist_rows = trial1.getHistForNeurons([1, 2], binSize_s=0.01)
+fig2 = plt.figure(figsize=(8.0, 3.8)); plt.imshow(hist_rows[0].T, aspect="auto", origin="lower", cmap="magma"); plt.title("Neuron 1 history matrix"); plt.tight_layout(); plt.show()
+spikes = spikeColl.getNST(0); H = h.computeHistory(spikes.spike_times, t)
 assert len(hist_rows) >= 1
 assert hist_rows[0].shape[1] == h.getNumBins()
-history = h
-spikes = spikeColl.getNST(0)
-H = history.computeHistory(spikes.spike_times, t)
-assert H.ndim == 2 and H.shape[1] == history.n_bins
+assert H.ndim == 2 and H.shape[1] == h.n_bins
 assert spikes.spike_times.size > 5
 
 CHECKPOINT_METRICS = {
