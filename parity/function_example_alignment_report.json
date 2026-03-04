@@ -6,9 +6,9 @@
       "missing_artifact_topics": 0,
       "missing_executable_topics": 0,
       "pending_manual_review_topics": 0,
-      "strict_line_gap_topics": 0,
-      "strict_line_partial_topics": 0,
-      "strict_line_verified_topics": 26,
+      "strict_line_gap_topics": 10,
+      "strict_line_partial_topics": 11,
+      "strict_line_verified_topics": 5,
       "total_topics": 30,
       "validated_topics": 26
     },
@@ -24,8 +24,8 @@
         "line_port_matched_lines": 59,
         "line_port_matlab_function_count": 39,
         "line_port_matlab_lines": 59,
-        "line_port_python_function_count": 72,
-        "line_port_python_lines": 151,
+        "line_port_python_function_count": 75,
+        "line_port_python_lines": 160,
         "matlab_code_blocks": [
           {
             "end_line": 26,
@@ -94,34 +94,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 59,
             "preview": "n_t = 4500"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 59,
+        "python_code_lines": 97,
         "python_notebook": "notebooks/AnalysisExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.0,
+        "python_to_matlab_line_ratio": 1.6440677966101696,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/AnalysisExamples/AnalysisExamples_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "AnalysisExamples"
       },
       {
@@ -135,8 +140,8 @@
         "line_port_matched_lines": 61,
         "line_port_matlab_function_count": 38,
         "line_port_matlab_lines": 61,
-        "line_port_python_function_count": 73,
-        "line_port_python_lines": 148,
+        "line_port_python_function_count": 76,
+        "line_port_python_lines": 157,
         "matlab_code_blocks": [
           {
             "end_line": 14,
@@ -248,34 +253,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 54,
             "preview": "n_t = 5000"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 54,
+        "python_code_lines": 92,
         "python_notebook": "notebooks/AnalysisExamples2.ipynb",
-        "python_to_matlab_line_ratio": 0.8852459016393442,
+        "python_to_matlab_line_ratio": 1.5081967213114753,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/AnalysisExamples2/AnalysisExamples2_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "AnalysisExamples2"
       },
       {
@@ -289,8 +299,8 @@
         "line_port_matched_lines": 3,
         "line_port_matlab_function_count": 2,
         "line_port_matlab_lines": 3,
-        "line_port_python_function_count": 13,
-        "line_port_python_lines": 41,
+        "line_port_python_function_count": 16,
+        "line_port_python_lines": 50,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -305,34 +315,39 @@
         "matlab_reference_images": [],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 4,
             "preview": "from nstat.compat.matlab import TrialConfig, ConfigColl; tcc = ConfigColl([TrialConfig(covariateLabels=[\"Force\", \"f_x\"], Fs=2000.0, fitType="
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 4,
+        "python_code_lines": 42,
         "python_notebook": "notebooks/ConfigCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.3333333333333333,
+        "python_to_matlab_line_ratio": 14.0,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/ConfigCollExamples/ConfigCollExamples_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_gap",
         "topic": "ConfigCollExamples"
       },
       {
@@ -346,8 +361,8 @@
         "line_port_matched_lines": 10,
         "line_port_matlab_function_count": 4,
         "line_port_matlab_lines": 10,
-        "line_port_python_function_count": 35,
-        "line_port_python_lines": 59,
+        "line_port_python_function_count": 38,
+        "line_port_python_lines": 68,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -378,34 +393,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 15,
             "preview": "from nstat.compat.matlab import Covariate, CovColl, History, nspikeTrain"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 15,
+        "python_code_lines": 53,
         "python_notebook": "notebooks/CovCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.5,
+        "python_to_matlab_line_ratio": 5.3,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/CovCollExamples/CovCollExamples_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_gap",
         "topic": "CovCollExamples"
       },
       {
@@ -419,8 +439,8 @@
         "line_port_matched_lines": 19,
         "line_port_matlab_function_count": 7,
         "line_port_matlab_lines": 19,
-        "line_port_python_function_count": 28,
-        "line_port_python_lines": 75,
+        "line_port_python_function_count": 31,
+        "line_port_python_lines": 84,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -475,35 +495,40 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 23,
             "preview": "t = np.arange(0.0, 5.0 + 0.01, 0.01); x = np.exp(-t); y = np.sin(2.0 * np.pi * t); z = (-y) ** 3"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 23,
+        "python_code_lines": 61,
         "python_notebook": "notebooks/CovariateExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.2105263157894737,
+        "python_to_matlab_line_ratio": 3.210526315789474,
         "python_validation_image_count": 2,
         "python_validation_images": [
           "baseline/validation/notebook_images/CovariateExamples/CovariateExamples_001.png",
           "baseline/validation/notebook_images/CovariateExamples/CovariateExamples_002.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_gap",
         "topic": "CovariateExamples"
       },
       {
@@ -517,8 +542,8 @@
         "line_port_matched_lines": 57,
         "line_port_matlab_function_count": 38,
         "line_port_matlab_lines": 57,
-        "line_port_python_function_count": 66,
-        "line_port_python_lines": 155,
+        "line_port_python_function_count": 69,
+        "line_port_python_lines": 164,
         "matlab_code_blocks": [
           {
             "end_line": 15,
@@ -601,34 +626,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 65,
             "preview": "n_units = 14"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 65,
+        "python_code_lines": 103,
         "python_notebook": "notebooks/DecodingExample.ipynb",
-        "python_to_matlab_line_ratio": 1.1403508771929824,
+        "python_to_matlab_line_ratio": 1.8070175438596492,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/DecodingExample/DecodingExample_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "DecodingExample"
       },
       {
@@ -642,8 +672,8 @@
         "line_port_matched_lines": 55,
         "line_port_matlab_function_count": 28,
         "line_port_matlab_lines": 55,
-        "line_port_python_function_count": 59,
-        "line_port_python_lines": 153,
+        "line_port_python_function_count": 62,
+        "line_port_python_lines": 162,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -740,34 +770,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 65,
             "preview": "n_units = 14"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 65,
+        "python_code_lines": 103,
         "python_notebook": "notebooks/DecodingExampleWithHist.ipynb",
-        "python_to_matlab_line_ratio": 1.1818181818181819,
+        "python_to_matlab_line_ratio": 1.8727272727272728,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/DecodingExampleWithHist/DecodingExampleWithHist_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "DecodingExampleWithHist"
       },
       {
@@ -781,8 +816,8 @@
         "line_port_matched_lines": 0,
         "line_port_matlab_function_count": 0,
         "line_port_matlab_lines": 0,
-        "line_port_python_function_count": 35,
-        "line_port_python_lines": 82,
+        "line_port_python_function_count": 38,
+        "line_port_python_lines": 91,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
         "matlab_file": "helpfiles/DocumentationSetup2025b.m",
@@ -790,22 +825,27 @@
         "matlab_reference_images": [],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 60,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 60,
+        "python_code_lines": 98,
         "python_notebook": "notebooks/DocumentationSetup2025b.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -826,8 +866,8 @@
         "line_port_matched_lines": 8,
         "line_port_matlab_function_count": 4,
         "line_port_matlab_lines": 8,
-        "line_port_python_function_count": 26,
-        "line_port_python_lines": 49,
+        "line_port_python_function_count": 29,
+        "line_port_python_lines": 58,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -854,29 +894,34 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 8,
             "preview": "e_times = np.array([0.079, 0.579, 0.997], dtype=float); events = Events(times=e_times, labels=[\"E_1\", \"E_2\", \"E_3\"])"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 8,
+        "python_code_lines": 46,
         "python_notebook": "notebooks/EventsExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.0,
+        "python_to_matlab_line_ratio": 5.75,
         "python_validation_image_count": 4,
         "python_validation_images": [
           "baseline/validation/notebook_images/EventsExamples/EventsExamples_001.png",
@@ -884,7 +929,7 @@
           "baseline/validation/notebook_images/EventsExamples/EventsExamples_003.png",
           "baseline/validation/notebook_images/EventsExamples/EventsExamples_004.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_gap",
         "topic": "EventsExamples"
       },
       {
@@ -898,8 +943,8 @@
         "line_port_matched_lines": 115,
         "line_port_matlab_function_count": 43,
         "line_port_matlab_lines": 115,
-        "line_port_python_function_count": 74,
-        "line_port_python_lines": 185,
+        "line_port_python_function_count": 77,
+        "line_port_python_lines": 194,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -1033,34 +1078,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 126,
             "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 37,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 163,
+        "python_code_lines": 201,
         "python_notebook": "notebooks/ExplicitStimulusWhiskerData.ipynb",
-        "python_to_matlab_line_ratio": 1.4173913043478261,
+        "python_to_matlab_line_ratio": 1.7478260869565216,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/ExplicitStimulusWhiskerData/ExplicitStimulusWhiskerData_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "ExplicitStimulusWhiskerData"
       },
       {
@@ -1074,8 +1124,8 @@
         "line_port_matched_lines": 0,
         "line_port_matlab_function_count": 0,
         "line_port_matlab_lines": 0,
-        "line_port_python_function_count": 29,
-        "line_port_python_lines": 63,
+        "line_port_python_function_count": 32,
+        "line_port_python_lines": 72,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
         "matlab_file": "helpfiles/FitResSummaryExamples.m",
@@ -1083,22 +1133,27 @@
         "matlab_reference_images": [],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 41,
             "preview": "from nstat.compat.matlab import Analysis, FitResSummary"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 41,
+        "python_code_lines": 79,
         "python_notebook": "notebooks/FitResSummaryExamples.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -1119,8 +1174,8 @@
         "line_port_matched_lines": 0,
         "line_port_matlab_function_count": 0,
         "line_port_matlab_lines": 0,
-        "line_port_python_function_count": 32,
-        "line_port_python_lines": 63,
+        "line_port_python_function_count": 35,
+        "line_port_python_lines": 72,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
         "matlab_file": "helpfiles/FitResultExamples.m",
@@ -1128,22 +1183,27 @@
         "matlab_reference_images": [],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 41,
             "preview": "from nstat.compat.matlab import Analysis, FitResult"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 41,
+        "python_code_lines": 79,
         "python_notebook": "notebooks/FitResultExamples.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -1164,8 +1224,8 @@
         "line_port_matched_lines": 0,
         "line_port_matlab_function_count": 0,
         "line_port_matlab_lines": 0,
-        "line_port_python_function_count": 27,
-        "line_port_python_lines": 55,
+        "line_port_python_function_count": 30,
+        "line_port_python_lines": 64,
         "matlab_code_blocks": [],
         "matlab_code_lines": 0,
         "matlab_file": "helpfiles/FitResultReference.m",
@@ -1173,22 +1233,27 @@
         "matlab_reference_images": [],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 33,
             "preview": "from nstat.compat.matlab import Analysis, FitResult"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 33,
+        "python_code_lines": 71,
         "python_notebook": "notebooks/FitResultReference.ipynb",
         "python_to_matlab_line_ratio": null,
         "python_validation_image_count": 1,
@@ -1209,8 +1274,8 @@
         "line_port_matched_lines": 155,
         "line_port_matlab_function_count": 48,
         "line_port_matlab_lines": 155,
-        "line_port_python_function_count": 105,
-        "line_port_python_lines": 446,
+        "line_port_python_function_count": 108,
+        "line_port_python_lines": 455,
         "matlab_code_blocks": [
           {
             "end_line": 14,
@@ -1424,34 +1489,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 221,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 221,
+        "python_code_lines": 259,
         "python_notebook": "notebooks/HippocampalPlaceCellExample.ipynb",
-        "python_to_matlab_line_ratio": 1.4258064516129032,
+        "python_to_matlab_line_ratio": 1.6709677419354838,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/HippocampalPlaceCellExample/HippocampalPlaceCellExample_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "HippocampalPlaceCellExample"
       },
       {
@@ -1465,8 +1535,8 @@
         "line_port_matched_lines": 18,
         "line_port_matlab_function_count": 8,
         "line_port_matlab_lines": 18,
-        "line_port_python_function_count": 35,
-        "line_port_python_lines": 77,
+        "line_port_python_function_count": 38,
+        "line_port_python_lines": 86,
         "matlab_code_blocks": [
           {
             "end_line": 10,
@@ -1517,34 +1587,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 26,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 26,
+        "python_code_lines": 64,
         "python_notebook": "notebooks/HistoryExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.4444444444444444,
+        "python_to_matlab_line_ratio": 3.5555555555555554,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/HistoryExamples/HistoryExamples_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_gap",
         "topic": "HistoryExamples"
       },
       {
@@ -1558,8 +1633,8 @@
         "line_port_matched_lines": 288,
         "line_port_matlab_function_count": 68,
         "line_port_matlab_lines": 288,
-        "line_port_python_function_count": 102,
-        "line_port_python_lines": 401,
+        "line_port_python_function_count": 105,
+        "line_port_python_lines": 410,
         "matlab_code_blocks": [
           {
             "end_line": 44,
@@ -1842,29 +1917,34 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 299,
             "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 80,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 379,
+        "python_code_lines": 417,
         "python_notebook": "notebooks/HybridFilterExample.ipynb",
-        "python_to_matlab_line_ratio": 1.3159722222222223,
+        "python_to_matlab_line_ratio": 1.4479166666666667,
         "python_validation_image_count": 2,
         "python_validation_images": [
           "baseline/validation/notebook_images/HybridFilterExample/HybridFilterExample_001.png",
@@ -1884,8 +1964,8 @@
         "line_port_matched_lines": 88,
         "line_port_matlab_function_count": 37,
         "line_port_matlab_lines": 88,
-        "line_port_python_function_count": 72,
-        "line_port_python_lines": 164,
+        "line_port_python_function_count": 75,
+        "line_port_python_lines": 173,
         "matlab_code_blocks": [
           {
             "end_line": 34,
@@ -2071,29 +2151,34 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 67,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 67,
+        "python_code_lines": 105,
         "python_notebook": "notebooks/NetworkTutorial.ipynb",
-        "python_to_matlab_line_ratio": 0.7613636363636364,
+        "python_to_matlab_line_ratio": 1.1931818181818181,
         "python_validation_image_count": 5,
         "python_validation_images": [
           "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_001.png",
@@ -2116,8 +2201,8 @@
         "line_port_matched_lines": 41,
         "line_port_matlab_function_count": 18,
         "line_port_matlab_lines": 41,
-        "line_port_python_function_count": 50,
-        "line_port_python_lines": 121,
+        "line_port_python_function_count": 53,
+        "line_port_python_lines": 130,
         "matlab_code_blocks": [
           {
             "end_line": 32,
@@ -2241,36 +2326,41 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 47,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 47,
+        "python_code_lines": 85,
         "python_notebook": "notebooks/PPSimExample.ipynb",
-        "python_to_matlab_line_ratio": 1.146341463414634,
+        "python_to_matlab_line_ratio": 2.073170731707317,
         "python_validation_image_count": 3,
         "python_validation_images": [
           "baseline/validation/notebook_images/PPSimExample/PPSimExample_001.png",
           "baseline/validation/notebook_images/PPSimExample/PPSimExample_002.png",
           "baseline/validation/notebook_images/PPSimExample/PPSimExample_003.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "PPSimExample"
       },
       {
@@ -2284,8 +2374,8 @@
         "line_port_matched_lines": 40,
         "line_port_matlab_function_count": 20,
         "line_port_matlab_lines": 40,
-        "line_port_python_function_count": 47,
-        "line_port_python_lines": 102,
+        "line_port_python_function_count": 50,
+        "line_port_python_lines": 111,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -2360,29 +2450,34 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 29,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 29,
+        "python_code_lines": 67,
         "python_notebook": "notebooks/PPThinning.ipynb",
-        "python_to_matlab_line_ratio": 0.725,
+        "python_to_matlab_line_ratio": 1.675,
         "python_validation_image_count": 4,
         "python_validation_images": [
           "baseline/validation/notebook_images/PPThinning/PPThinning_001.png",
@@ -2390,7 +2485,7 @@
           "baseline/validation/notebook_images/PPThinning/PPThinning_003.png",
           "baseline/validation/notebook_images/PPThinning/PPThinning_004.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "PPThinning"
       },
       {
@@ -2404,8 +2499,8 @@
         "line_port_matched_lines": 28,
         "line_port_matlab_function_count": 14,
         "line_port_matlab_lines": 28,
-        "line_port_python_function_count": 48,
-        "line_port_python_lines": 102,
+        "line_port_python_function_count": 51,
+        "line_port_python_lines": 111,
         "matlab_code_blocks": [
           {
             "end_line": 25,
@@ -2436,34 +2531,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 41,
             "preview": "dt = 0.001"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 41,
+        "python_code_lines": 79,
         "python_notebook": "notebooks/PSTHEstimation.ipynb",
-        "python_to_matlab_line_ratio": 1.4642857142857142,
+        "python_to_matlab_line_ratio": 2.8214285714285716,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/PSTHEstimation/PSTHEstimation_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_gap",
         "topic": "PSTHEstimation"
       },
       {
@@ -2477,8 +2577,8 @@
         "line_port_matched_lines": 81,
         "line_port_matlab_function_count": 24,
         "line_port_matlab_lines": 81,
-        "line_port_python_function_count": 53,
-        "line_port_python_lines": 157,
+        "line_port_python_function_count": 56,
+        "line_port_python_lines": 166,
         "matlab_code_blocks": [
           {
             "end_line": 17,
@@ -2632,29 +2732,34 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 60,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 60,
+        "python_code_lines": 98,
         "python_notebook": "notebooks/SignalObjExamples.ipynb",
-        "python_to_matlab_line_ratio": 0.7407407407407407,
+        "python_to_matlab_line_ratio": 1.2098765432098766,
         "python_validation_image_count": 6,
         "python_validation_images": [
           "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_001.png",
@@ -2678,8 +2783,8 @@
         "line_port_matched_lines": 92,
         "line_port_matlab_function_count": 47,
         "line_port_matlab_lines": 92,
-        "line_port_python_function_count": 80,
-        "line_port_python_lines": 149,
+        "line_port_python_function_count": 83,
+        "line_port_python_lines": 158,
         "matlab_code_blocks": [
           {
             "end_line": 14,
@@ -2798,34 +2903,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 103,
             "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 24,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 127,
+        "python_code_lines": 165,
         "python_notebook": "notebooks/StimulusDecode2D.ipynb",
-        "python_to_matlab_line_ratio": 1.3804347826086956,
+        "python_to_matlab_line_ratio": 1.7934782608695652,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/StimulusDecode2D/StimulusDecode2D_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "StimulusDecode2D"
       },
       {
@@ -2839,8 +2949,8 @@
         "line_port_matched_lines": 3,
         "line_port_matlab_function_count": 2,
         "line_port_matlab_lines": 3,
-        "line_port_python_function_count": 15,
-        "line_port_python_lines": 41,
+        "line_port_python_function_count": 18,
+        "line_port_python_lines": 50,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -2855,34 +2965,39 @@
         "matlab_reference_images": [],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 4,
             "preview": "from nstat.compat.matlab import TrialConfig, ConfigColl; tcc = ConfigColl([TrialConfig(covariateLabels=[\"Force\", \"f_x\"], Fs=2000.0, fitType="
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 4,
+        "python_code_lines": 42,
         "python_notebook": "notebooks/TrialConfigExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.3333333333333333,
+        "python_to_matlab_line_ratio": 14.0,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/TrialConfigExamples/TrialConfigExamples_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_gap",
         "topic": "TrialConfigExamples"
       },
       {
@@ -2896,8 +3011,8 @@
         "line_port_matched_lines": 25,
         "line_port_matlab_function_count": 11,
         "line_port_matlab_lines": 25,
-        "line_port_python_function_count": 44,
-        "line_port_python_lines": 87,
+        "line_port_python_function_count": 47,
+        "line_port_python_lines": 96,
         "matlab_code_blocks": [
           {
             "end_line": 7,
@@ -2962,34 +3077,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 29,
             "preview": "from nstat.compat.matlab import Covariate, CovColl, Events, History, Trial, nspikeTrain, nstColl"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 29,
+        "python_code_lines": 67,
         "python_notebook": "notebooks/TrialExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.16,
+        "python_to_matlab_line_ratio": 2.68,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/TrialExamples/TrialExamples_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_gap",
         "topic": "TrialExamples"
       },
       {
@@ -3003,8 +3123,8 @@
         "line_port_matched_lines": 77,
         "line_port_matlab_function_count": 24,
         "line_port_matlab_lines": 77,
-        "line_port_python_function_count": 54,
-        "line_port_python_lines": 129,
+        "line_port_python_function_count": 57,
+        "line_port_python_lines": 138,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -3146,34 +3266,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 88,
             "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 19,
             "preview": "from pathlib import Path"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 107,
+        "python_code_lines": 145,
         "python_notebook": "notebooks/ValidationDataSet.ipynb",
-        "python_to_matlab_line_ratio": 1.3896103896103895,
+        "python_to_matlab_line_ratio": 1.8831168831168832,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/ValidationDataSet/ValidationDataSet_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "ValidationDataSet"
       },
       {
@@ -3187,8 +3312,8 @@
         "line_port_matched_lines": 48,
         "line_port_matlab_function_count": 27,
         "line_port_matlab_lines": 48,
-        "line_port_python_function_count": 60,
-        "line_port_python_lines": 138,
+        "line_port_python_function_count": 63,
+        "line_port_python_lines": 147,
         "matlab_code_blocks": [
           {
             "end_line": 50,
@@ -3300,34 +3425,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 57,
             "preview": "dt = 0.0005"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 57,
+        "python_code_lines": 95,
         "python_notebook": "notebooks/mEPSCAnalysis.ipynb",
-        "python_to_matlab_line_ratio": 1.1875,
+        "python_to_matlab_line_ratio": 1.9791666666666667,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/mEPSCAnalysis/mEPSCAnalysis_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_partial",
         "topic": "mEPSCAnalysis"
       },
       {
@@ -3341,8 +3471,8 @@
         "line_port_matched_lines": 1576,
         "line_port_matlab_function_count": 187,
         "line_port_matlab_lines": 1576,
-        "line_port_python_function_count": 238,
-        "line_port_python_lines": 1826,
+        "line_port_python_function_count": 241,
+        "line_port_python_lines": 1835,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -5140,29 +5270,34 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 1587,
             "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 217,
             "preview": "import json"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 1804,
+        "python_code_lines": 1842,
         "python_notebook": "notebooks/nSTATPaperExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.1446700507614214,
+        "python_to_matlab_line_ratio": 1.1687817258883249,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/nSTATPaperExamples/nSTATPaperExamples_001.png"
@@ -5181,8 +5316,8 @@
         "line_port_matched_lines": 10,
         "line_port_matlab_function_count": 6,
         "line_port_matlab_lines": 10,
-        "line_port_python_function_count": 27,
-        "line_port_python_lines": 55,
+        "line_port_python_function_count": 30,
+        "line_port_python_lines": 64,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -5222,34 +5357,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 12,
             "preview": "from nstat.compat.matlab import nspikeTrain"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 12,
+        "python_code_lines": 50,
         "python_notebook": "notebooks/nSpikeTrainExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.2,
+        "python_to_matlab_line_ratio": 5.0,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/nSpikeTrainExamples/nSpikeTrainExamples_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_gap",
         "topic": "nSpikeTrainExamples"
       },
       {
@@ -5263,8 +5403,8 @@
         "line_port_matched_lines": 16,
         "line_port_matlab_function_count": 11,
         "line_port_matlab_lines": 16,
-        "line_port_python_function_count": 35,
-        "line_port_python_lines": 72,
+        "line_port_python_function_count": 38,
+        "line_port_python_lines": 81,
         "matlab_code_blocks": [
           {
             "end_line": 10,
@@ -5308,34 +5448,39 @@
         ],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 23,
             "preview": "from nstat.compat.matlab import History, nspikeTrain, nstColl"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 23,
+        "python_code_lines": 61,
         "python_notebook": "notebooks/nstCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.4375,
+        "python_to_matlab_line_ratio": 3.8125,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/nstCollExamples/nstCollExamples_001.png"
         ],
-        "strict_line_status": "line_port_verified",
+        "strict_line_status": "line_port_gap",
         "topic": "nstCollExamples"
       },
       {
@@ -5349,8 +5494,8 @@
         "line_port_matched_lines": 126,
         "line_port_matlab_function_count": 47,
         "line_port_matlab_lines": 126,
-        "line_port_python_function_count": 83,
-        "line_port_python_lines": 253,
+        "line_port_python_function_count": 86,
+        "line_port_python_lines": 262,
         "matlab_code_blocks": [
           {
             "end_line": 1,
@@ -5485,29 +5630,34 @@
         "matlab_reference_images": [],
         "python_code_cells": [
           {
-            "cell_index": 3,
+            "cell_index": 1,
             "line_count": 0,
             "preview": "<setup scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 4,
+            "cell_index": 2,
+            "line_count": 38,
+            "preview": "import matplotlib"
+          },
+          {
+            "cell_index": 3,
             "line_count": 0,
             "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
-            "cell_index": 5,
+            "cell_index": 4,
             "line_count": 94,
             "preview": "import json"
           },
           {
-            "cell_index": 6,
+            "cell_index": 5,
             "line_count": 0,
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 94,
+        "python_code_lines": 132,
         "python_notebook": "notebooks/publish_all_helpfiles.ipynb",
-        "python_to_matlab_line_ratio": 0.746031746031746,
+        "python_to_matlab_line_ratio": 1.0476190476190477,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/publish_all_helpfiles/publish_all_helpfiles_001.png"

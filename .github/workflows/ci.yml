@@ -71,7 +71,11 @@ jobs:
         run: python tools/docs/verify_search_index.py
 
       - name: Run smoke notebooks
-        run: python tools/notebooks/run_notebooks.py --group smoke --timeout 600
+        run: |
+          python tools/notebooks/execute_notebooks.py \
+            --group smoke \
+            --timeout 600 \
+            --out-report output/notebooks/notebook_execution_report.json
 
       - name: Generate smoke validation PDF
         run: |
@@ -91,6 +95,16 @@ jobs:
         with:
           name: ci-smoke-validation-pdf
           path: output/pdf/*.pdf
+          if-no-files-found: warn
+
+      - name: Upload smoke notebook execution artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-smoke-notebook-execution
+          path: |
+            output/notebooks/notebook_execution_report.json
+            output/notebooks/executed/**
           if-no-files-found: warn
 
       - name: Run release gate checks

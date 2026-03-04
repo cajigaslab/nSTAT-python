@@ -98,8 +98,28 @@ def markdown_header(topic: str, run_group: str, family: str) -> str:
     )
 
 
+def code_header_cell(topic: str, run_group: str, family: str) -> str:
+    return (
+        f"# Topic: {topic}\n"
+        f"# Execution group: {run_group}\n"
+        f"# Workflow family: {family}\n"
+        f"# Paper DOI: {PAPER_DOI}\n"
+        f"# PMID: {PAPER_PMID}\n"
+        f"# Help page: docs/help/examples/{topic}.md\n"
+    )
+
+
 def code_cell_setup(topic: str, family: str) -> str:
-    return f"""import numpy as np
+    return f"""import matplotlib
+matplotlib.use("Agg")
+try:
+    from matplotlib_inline.backend_inline import set_matplotlib_formats
+    matplotlib.use("module://matplotlib_inline.backend_inline")
+    set_matplotlib_formats("png")
+except Exception:
+    pass
+
+import numpy as np
 import matplotlib.pyplot as plt
 
 from nstat.analysis import Analysis
@@ -113,6 +133,7 @@ from nstat.trial import CovariateCollection, Trial, TrialConfig
 
 TOPIC = \"{topic}\"
 FAMILY = \"{family}\"
+np.random.seed(2026)
 rng = np.random.default_rng(2026)
 print(f\"Running notebook topic: {{TOPIC}} (family={{FAMILY}})\")
 
@@ -2424,17 +2445,13 @@ def build_notebook(topic: str, run_group: str, output_path: Path, repo_root: Pat
     )
 
     notebook.cells = [
-        nbf.v4.new_markdown_cell(markdown_header(topic, run_group, family)),
-        nbf.v4.new_markdown_cell(
-            f"Notebook source link: [{topic}.ipynb]({REPO_NOTEBOOK_BASE}/{topic}.ipynb)"
-        ),
+        nbf.v4.new_code_cell(code_header_cell(topic, run_group, family)),
         nbf.v4.new_code_cell(code_cell_setup(topic, family)),
     ]
     if snapshot_cell:
         notebook.cells.append(nbf.v4.new_code_cell(snapshot_cell))
     notebook.cells.append(nbf.v4.new_code_cell(template_for_topic(topic, family)))
     notebook.cells.append(nbf.v4.new_code_cell(ASSERTION_CELL))
-    notebook.cells.append(nbf.v4.new_markdown_cell(TAIL_MARKDOWN))
 
     for i, cell in enumerate(notebook.cells):
         cell["id"] = _cell_id(topic, i)

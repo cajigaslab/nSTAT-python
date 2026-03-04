@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *.so
+.DS_Store
 
 # Packaging
 build/
