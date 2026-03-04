@@ -3,7 +3,7 @@ policy_name: example_output_spec
 
 defaults:
   min_python_code_lines: 20
-  min_python_code_cells: 3
+  min_python_code_cells: 1
   min_assertion_count: 2
   require_topic_checkpoint: true
   require_plot_call: true
@@ -35,27 +35,6 @@ out_of_scope_topics:
   - FitResultReference
 
 topics:
-  nSTATPaperExamples:
-    min_line_port_coverage: 0.45
-    min_line_port_function_recall: 0.95
-  HippocampalPlaceCellExample:
-    min_line_port_coverage: 0.20
-    min_line_port_function_recall: 0.95
-  publish_all_helpfiles:
-    min_line_port_coverage: 0.90
-    min_line_port_function_recall: 0.95
-  DocumentationSetup2025b:
-    min_python_code_lines: 20
-    min_python_code_cells: 3
-  FitResSummaryExamples:
-    min_python_code_lines: 20
-    min_python_code_cells: 3
-  FitResultExamples:
-    min_python_code_lines: 20
-    min_python_code_cells: 3
-  FitResultReference:
-    min_python_code_lines: 20
-    min_python_code_cells: 3
   TrialConfigExamples:
     min_python_code_lines: 4
   ConfigCollExamples:

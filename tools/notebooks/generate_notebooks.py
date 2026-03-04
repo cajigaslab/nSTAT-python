@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import re
+import sys
 from pathlib import Path
 
 import nbformat as nbf
@@ -136,6 +138,13 @@ FAMILY = \"{family}\"
 np.random.seed(2026)
 rng = np.random.default_rng(2026)
 print(f\"Running notebook topic: {{TOPIC}} (family={{FAMILY}})\")
+
+if \"MATLAB_LINE_TRACE\" not in globals():
+    MATLAB_LINE_TRACE = []
+
+def matlab_line(line: str):
+    MATLAB_LINE_TRACE.append(line)
+    return line
 
 def validate_numeric_checkpoints(metrics: dict[str, float], limits: dict[str, tuple[float, float]], topic: str) -> None:
     if not metrics:
@@ -2462,17 +2471,22 @@ def build_notebook(topic: str, run_group: str, output_path: Path, repo_root: Pat
 
 def main() -> int:
     args = parse_args()
-    manifest = yaml.safe_load(args.manifest.read_text(encoding="utf-8"))
-
-    for row in manifest.get("notebooks", []):
-        topic = row["topic"]
-        run_group = row["run_group"]
-        rel_file = Path(row["file"])
-        out_path = args.repo_root / rel_file
-        build_notebook(topic=topic, run_group=run_group, output_path=out_path, repo_root=args.repo_root)
-        print(f"Generated {out_path}")
-
-    return 0
+    helper = args.repo_root / "tools" / "notebooks" / "generate_helpfile_notebooks.py"
+    cmd = [
+        sys.executable,
+        str(helper),
+        "--manifest",
+        str(args.manifest),
+        "--helpfile-map",
+        str(args.repo_root / "parity" / "notebook_to_helpfile_map.yml"),
+        "--repo-root",
+        str(args.repo_root),
+        "--out-helpfile-manifest",
+        str(args.repo_root / "parity" / "helpfile_notebook_manifest.yml"),
+        "--rewrite-notebook-manifest",
+    ]
+    proc = subprocess.run(cmd, cwd=args.repo_root)
+    return int(proc.returncode)
 
 
 if __name__ == "__main__":

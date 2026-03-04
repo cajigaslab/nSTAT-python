@@ -20,7 +20,10 @@ WEAK_TOPICS = [
 
 
 def _topic_code(topic: str) -> str:
-    nb_path = Path("notebooks") / f"{topic}.ipynb"
+    payload = yaml.safe_load(MANIFEST.read_text(encoding="utf-8")) or {}
+    rows = payload.get("notebooks", [])
+    by_topic = {str(row["topic"]): Path(str(row["file"])) for row in rows}
+    nb_path = by_topic[topic]
     nb = nbformat.read(nb_path, as_version=4)
     return "\n".join(cell.source for cell in nb.cells if cell.cell_type == "code")
 

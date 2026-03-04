@@ -250,10 +250,11 @@ def _extract_notebook_code_stats(path: Path) -> NotebookCodeStats:
     cells: list[dict[str, Any]] = []
     total = 0
     skipped_setup_cell = False
+    code_cell_total = sum(1 for cell in notebook_cells if cell.get("cell_type") == "code")
     for i, cell in enumerate(notebook_cells, start=1):
         if cell.get("cell_type") != "code":
             continue
-        is_setup_cell = not skipped_setup_cell
+        is_setup_cell = (not skipped_setup_cell) and code_cell_total > 1
         if is_setup_cell:
             skipped_setup_cell = True
         src_raw = cell.get("source", "")
@@ -276,14 +277,29 @@ def _extract_notebook_code_stats(path: Path) -> NotebookCodeStats:
                 )
                 continue
         if "Topic-specific checkpoint" in src and "Notebook checkpoints passed" in src:
-            cells.append(
-                {
-                    "cell_index": i,
-                    "line_count": 0,
-                    "preview": "<checkpoint scaffold excluded from line-ratio>",
-                }
+            non_comment = [
+                line.strip()
+                for line in src.splitlines()
+                if line.strip() and not line.strip().startswith("#")
+            ]
+            checkpoint_only = len(non_comment) <= 8 and all(
+                (
+                    line.startswith("assert TOPIC")
+                    or "validate_numeric_checkpoints" in line
+                    or "Topic-specific checkpoint" in line
+                    or "Notebook checkpoints passed" in line
+                )
+                for line in non_comment
             )
-            continue
+            if checkpoint_only:
+                cells.append(
+                    {
+                        "cell_index": i,
+                        "line_count": 0,
+                        "preview": "<checkpoint scaffold excluded from line-ratio>",
+                    }
+                )
+                continue
         filtered = []
         for line in src.splitlines():
             stripped = line.strip()
