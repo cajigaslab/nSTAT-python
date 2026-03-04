@@ -50,18 +50,18 @@ jobs:
         run: |
           python tools/data/download_example_data.py
 
-      - name: Regenerate notebooks
-        run: |
-          python tools/notebooks/generate_notebooks.py
-          python tools/notebooks/clean_notebooks.py --check
-          git diff --exit-code
-
       - name: Checkout pinned MATLAB nSTAT reference
         run: |
           python tools/parity/checkout_matlab_reference.py \
             --config parity/matlab_reference.yml \
             --dest /tmp/upstream-nstat \
             --metadata-out parity/matlab_reference_checkout.json
+
+      - name: Regenerate notebooks
+        run: |
+          python tools/notebooks/generate_notebooks.py
+          python tools/notebooks/clean_notebooks.py --check
+          git diff --exit-code
 
       - name: Prepare deterministic validation images
         run: |
