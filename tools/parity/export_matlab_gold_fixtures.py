@@ -496,6 +496,205 @@ save(fullfile(out_dir, 'mEPSCAnalysis_gold.mat'), ...
     'detected_times_mepsc', 'detected_amps_mepsc', ...
     'expected_event_count_mepsc', 'expected_mean_amp_mepsc', '-v7');
 
+% ---------------------------------------------------------
+% Fixture 14: HybridFilterExample (state and filter outputs)
+% ---------------------------------------------------------
+n_t_hf = 500;
+dt_hf = 0.02;
+time_hf = (0:n_t_hf-1)' * dt_hf;
+A_hf = [1.0, 0.0, dt_hf, 0.0; 0.0, 1.0, 0.0, dt_hf; 0.0, 0.0, 0.98, 0.0; 0.0, 0.0, 0.0, 0.98];
+H_hf = [1.0, 0.0, 0.0, 0.0; 0.0, 1.0, 0.0, 0.0];
+Q_hf = diag([1e-4, 1e-4, 1.5e-3, 1.5e-3]);
+R_hf = diag([0.12^2, 0.12^2]);
+pij_hf = [0.998, 0.002; 0.001, 0.999];
+
+state_hf = ones(n_t_hf, 1);
+for k=2:n_t_hf
+    stay_p = pij_hf(state_hf(k-1), state_hf(k-1));
+    if rand() < stay_p
+        state_hf(k) = state_hf(k-1);
+    else
+        state_hf(k) = 3 - state_hf(k-1);
+    end
+end
+
+x_true_hf = zeros(n_t_hf, 4);
+x_true_hf(1,:) = [0.0, 0.0, 0.8, 0.35];
+for k=2:n_t_hf
+    if state_hf(k) == 1
+        proc = mvnrnd(zeros(1,4), 0.15 * Q_hf, 1);
+        x_true_hf(k,:) = x_true_hf(k-1,:) + proc;
+    else
+        proc = mvnrnd(zeros(1,4), Q_hf, 1);
+        x_true_hf(k,:) = (A_hf * x_true_hf(k-1,:)')' + proc;
+    end
+end
+
+z_hf = (H_hf * x_true_hf')' + mvnrnd([0.0, 0.0], R_hf, n_t_hf);
+x_hat_hf = zeros(n_t_hf, 4);
+x_hat_nt_hf = zeros(n_t_hf, 4);
+P_hf = eye(4);
+P_nt_hf = eye(4);
+for k=2:n_t_hf
+    if state_hf(k) == 1
+        A_k = eye(4);
+        Q_k = 0.15 * Q_hf;
+    else
+        A_k = A_hf;
+        Q_k = Q_hf;
+    end
+
+    x_pred = (A_k * x_hat_hf(k-1,:)')';
+    P_pred = A_k * P_hf * A_k' + Q_k;
+    S = H_hf * P_pred * H_hf' + R_hf;
+    K = P_pred * H_hf' / S;
+    x_hat_hf(k,:) = x_pred + (K * (z_hf(k,:)' - H_hf * x_pred'))';
+    P_hf = (eye(4) - K * H_hf) * P_pred;
+
+    x_pred_nt = (A_hf * x_hat_nt_hf(k-1,:)')';
+    P_pred_nt = A_hf * P_nt_hf * A_hf' + Q_hf;
+    S_nt = H_hf * P_pred_nt * H_hf' + R_hf;
+    K_nt = P_pred_nt * H_hf' / S_nt;
+    x_hat_nt_hf(k,:) = x_pred_nt + (K_nt * (z_hf(k,:)' - H_hf * x_pred_nt'))';
+    P_nt_hf = (eye(4) - K_nt * H_hf) * P_pred_nt;
+end
+
+err_hf = sqrt(sum((x_hat_hf(:,1:2) - x_true_hf(:,1:2)).^2, 2));
+err_nt_hf = sqrt(sum((x_hat_nt_hf(:,1:2) - x_true_hf(:,1:2)).^2, 2));
+rmse_hf = sqrt(mean(err_hf.^2));
+rmse_nt_hf = sqrt(mean(err_nt_hf.^2));
+
+save(fullfile(out_dir, 'HybridFilterExample_gold.mat'), ...
+    'dt_hf', 'time_hf', 'state_hf', 'x_true_hf', 'z_hf', ...
+    'x_hat_hf', 'x_hat_nt_hf', 'rmse_hf', 'rmse_nt_hf', '-v7');
+
+% ----------------------------------------------------
+% Fixture 15: ValidationDataSet (trial PSTH statistics)
+% ----------------------------------------------------
+dt_val = 0.001;
+time_val = (0:dt_val:1.2-dt_val)';
+n_trials_val = 30;
+rate_val = 5.0 + 8.0 * (time_val > 0.35) + 4.0 * sin(2.0*pi*2.0*time_val);
+rate_val = max(rate_val, 0.2);
+trial_matrix_val = zeros(n_trials_val, numel(time_val));
+for k=1:n_trials_val
+    jitter = 0.6 + 0.8 * rand();
+    p = min(max(rate_val * jitter * dt_val, 0.0), 0.6);
+    trial_matrix_val(k,:) = binornd(1, p)';
+end
+psth_val = mean(trial_matrix_val, 1)' / dt_val;
+sem_val = std(trial_matrix_val, 0, 1)' / sqrt(n_trials_val) / dt_val;
+
+expected_rate_val = sum(trial_matrix_val, 2) / numel(time_val);
+expected_prob_val = ones(n_trials_val, n_trials_val);
+upper_idx_val = zeros(n_trials_val*(n_trials_val-1)/2, 2);
+upper_p_val = zeros(n_trials_val*(n_trials_val-1)/2, 1);
+idx_val = 1;
+for i=1:n_trials_val
+    for j=i+1:n_trials_val
+        p1 = expected_rate_val(i);
+        p2 = expected_rate_val(j);
+        pooled = (sum(trial_matrix_val(i,:)) + sum(trial_matrix_val(j,:))) / (2.0 * numel(time_val));
+        se = sqrt(max(pooled * (1.0 - pooled) * (2.0 / numel(time_val)), 0.0));
+        if se <= 0.0
+            if abs(p1-p2) <= 1e-12
+                pval = 1.0;
+            else
+                pval = 0.0;
+            end
+        else
+            zstat = (p1 - p2) / se;
+            pval = 2.0 * (1.0 - normcdf(abs(zstat), 0, 1));
+        end
+        expected_prob_val(i,j) = pval;
+        expected_prob_val(j,i) = pval;
+        upper_idx_val(idx_val,:) = [i j];
+        upper_p_val(idx_val) = pval;
+        idx_val = idx_val + 1;
+    end
+end
+
+expected_sig_val = zeros(n_trials_val, n_trials_val);
+[sorted_p_val, order_val] = sort(upper_p_val, 'ascend');
+m_val = numel(sorted_p_val);
+thresholds_val = 0.05 * ((1:m_val)' / m_val);
+pass_val = find(sorted_p_val <= thresholds_val);
+if ~isempty(pass_val)
+    cutoff_val = sorted_p_val(max(pass_val));
+    selected_val = upper_p_val <= cutoff_val;
+    for q=1:numel(selected_val)
+        if selected_val(q)
+            i = upper_idx_val(q,1);
+            j = upper_idx_val(q,2);
+            expected_sig_val(i,j) = 1;
+            expected_sig_val(j,i) = 1;
+        end
+    end
+end
+expected_prob_val(1:n_trials_val+1:end) = 1.0;
+expected_sig_val(1:n_trials_val+1:end) = 0.0;
+
+save(fullfile(out_dir, 'ValidationDataSet_gold.mat'), ...
+    'dt_val', 'time_val', 'trial_matrix_val', 'psth_val', 'sem_val', ...
+    'expected_rate_val', 'expected_prob_val', 'expected_sig_val', '-v7');
+
+% -----------------------------------------------------
+% Fixture 16: StimulusDecode2D (trajectory decode arrays)
+% -----------------------------------------------------
+side_sd = 14;
+grid_sd = linspace(0.0, 1.0, side_sd);
+[gx_sd, gy_sd] = meshgrid(grid_sd, grid_sd);
+states_sd = [gx_sd(:), gy_sd(:)];
+n_states_sd = size(states_sd, 1);
+n_units_sd = 24;
+n_time_sd = 280;
+traj_sd = zeros(n_time_sd, 2);
+traj_sd(1,:) = [0.5, 0.5];
+vel_sd = [0.0, 0.0];
+for t=2:n_time_sd
+    vel_sd = 0.82 * vel_sd + 0.12 * randn(1,2);
+    traj_sd(t,:) = min(max(traj_sd(t-1,:) + vel_sd, 0.0), 1.0);
+end
+
+state_match_sd = zeros(n_time_sd, n_states_sd);
+for t=1:n_time_sd
+    delta_sd = states_sd - traj_sd(t,:);
+    state_match_sd(t,:) = sum(delta_sd.^2, 2)';
+end
+[~, latent_idx_sd] = min(state_match_sd, [], 2);
+latent_sd = latent_idx_sd - 1; % zero-based for Python
+
+centers_sd = rand(n_units_sd, 2);
+sigma_sd = 0.16;
+tuning_sd = zeros(n_units_sd, n_states_sd);
+for i=1:n_units_sd
+    dist2_sd = sum((states_sd - centers_sd(i,:)).^2, 2);
+    tuning_sd(i,:) = 0.03 + 0.80 * exp(-0.5 * dist2_sd' / (sigma_sd^2));
+end
+
+spike_counts_sd = zeros(n_units_sd, n_time_sd);
+for t=1:n_time_sd
+    spike_counts_sd(:,t) = poissrnd(tuning_sd(:, latent_idx_sd(t)));
+end
+
+decoded_center_sd = zeros(n_time_sd, 1);
+state_axis_sd = (0:n_states_sd-1)';
+for t=1:n_time_sd
+    weights_sd = spike_counts_sd(:,t) .* tuning_sd;
+    post_sd = sum(weights_sd, 1)';
+    post_sd = post_sd / (sum(post_sd) + 1e-12);
+    decoded_center_sd(t) = sum(post_sd .* state_axis_sd);
+end
+decoded_sd = round(decoded_center_sd);
+decoded_sd = max(min(decoded_sd, n_states_sd-1), 0);
+xy_true_sd = states_sd(latent_idx_sd, :);
+xy_decoded_sd = states_sd(decoded_sd + 1, :);
+rmse_sd = sqrt(mean(sum((xy_decoded_sd - xy_true_sd).^2, 2)));
+
+save(fullfile(out_dir, 'StimulusDecode2D_gold.mat'), ...
+    'side_sd', 'states_sd', 'latent_sd', 'tuning_sd', 'spike_counts_sd', ...
+    'decoded_center_sd', 'decoded_sd', 'xy_true_sd', 'xy_decoded_sd', 'rmse_sd', '-v7');
+
 fprintf('MATLAB gold fixtures exported to %s\n', out_dir);
 """
 
@@ -514,6 +713,9 @@ NUMERIC_FIXTURE_FILES = [
     "DecodingExample_gold.mat",
     "ExplicitStimulusWhiskerData_gold.mat",
     "mEPSCAnalysis_gold.mat",
+    "HybridFilterExample_gold.mat",
+    "ValidationDataSet_gold.mat",
+    "StimulusDecode2D_gold.mat",
 ]
 
 

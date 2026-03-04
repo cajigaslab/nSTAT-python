@@ -13,6 +13,12 @@ from nstat.events import Events
 from nstat.signal import Covariate
 from nstat.spikes import SpikeTrain, SpikeTrainCollection
 from nstat.trial import CovariateCollection, Trial
+from tests.parity_utils import (
+    assert_allclose_scaled,
+    assert_same_shape,
+    canonicalize_numeric,
+    loadmat_normalized,
+)
 
 
 MANIFEST = Path("tests/parity/fixtures/matlab_gold/manifest.yml")
@@ -156,6 +162,79 @@ def test_psthe_stimation_matlab_gold_comparison() -> None:
     assert np.allclose(rate, expected_rate, atol=1e-10)
     assert np.allclose(prob_mat, expected_prob, atol=1e-10)
     assert np.array_equal(sig_mat, expected_sig)
+
+
+def test_validation_dataset_matlab_gold_comparison() -> None:
+    m = _mat("tests/parity/fixtures/matlab_gold/ValidationDataSet_gold.mat")
+    trial_matrix = np.asarray(m["trial_matrix_val"], dtype=float)
+    rate, prob_mat, sig_mat = DecodingAlgorithms.compute_spike_rate_cis(spike_matrix=trial_matrix, alpha=0.05)
+
+    expected_rate = _vec(m, "expected_rate_val")
+    expected_prob = np.asarray(m["expected_prob_val"], dtype=float)
+    expected_sig = np.asarray(m["expected_sig_val"], dtype=int)
+
+    assert np.allclose(rate, expected_rate, atol=1e-10)
+    assert np.allclose(prob_mat, expected_prob, atol=1e-10)
+    assert np.array_equal(sig_mat, expected_sig)
+
+
+def test_stimulus_decode_2d_matlab_gold_comparison() -> None:
+    m = _mat("tests/parity/fixtures/matlab_gold/StimulusDecode2D_gold.mat")
+    spike_counts = np.asarray(m["spike_counts_sd"], dtype=float)
+    tuning = np.asarray(m["tuning_sd"], dtype=float)
+    states = np.asarray(m["states_sd"], dtype=float)
+    expected_center = _vec(m, "decoded_center_sd")
+    expected_decoded = _vec(m, "decoded_sd").astype(int)
+    expected_rmse = _scalar(m, "rmse_sd")
+
+    decoded_center = DecodingAlgorithms.decode_weighted_center(spike_counts=spike_counts, tuning_curves=tuning)
+    decoded = np.clip(np.rint(decoded_center), 0, states.shape[0] - 1).astype(int)
+    xy_true = np.asarray(m["xy_true_sd"], dtype=float)
+    xy_decoded = states[decoded]
+    rmse = float(np.sqrt(np.mean(np.sum((xy_decoded - xy_true) ** 2, axis=1))))
+
+    assert np.allclose(decoded_center, expected_center, atol=1e-8)
+    assert np.array_equal(decoded, expected_decoded)
+    assert np.isclose(rmse, expected_rmse, atol=1e-10)
+
+
+def test_explicit_stimulus_whisker_matlab_gold_comparison() -> None:
+    m = loadmat_normalized("tests/parity/fixtures/matlab_gold/ExplicitStimulusWhiskerData_gold.mat")
+    stimulus = canonicalize_numeric(m["stimulus_ws"], vector_shape="preserve").reshape(-1)
+    spike = canonicalize_numeric(m["spike_ws"], vector_shape="preserve").reshape(-1)
+    expected_prob = canonicalize_numeric(m["expected_prob_ws"], vector_shape="preserve").reshape(-1)
+    expected_rmse = float(canonicalize_numeric(m["expected_rmse_ws"], vector_shape="preserve").reshape(-1)[0])
+
+    fit = Analysis.fit_glm(X=stimulus[:, None], y=spike, fit_type="binomial", dt=1.0)
+    pred_prob = np.asarray(fit.predict(stimulus[:, None]), dtype=float).reshape(-1)
+    rmse = float(np.sqrt(np.mean((pred_prob - spike) ** 2)))
+
+    assert_same_shape(pred_prob, expected_prob)
+    assert_allclose_scaled(pred_prob, expected_prob, rtol=1e-4, atol=5e-2, scale="maxabs")
+    assert_allclose_scaled(np.array([rmse]), np.array([expected_rmse]), rtol=0.0, atol=0.1, scale="maxabs")
+
+
+def test_hybrid_filter_matlab_gold_comparison() -> None:
+    m = loadmat_normalized("tests/parity/fixtures/matlab_gold/HybridFilterExample_gold.mat")
+    time = canonicalize_numeric(m["time_hf"], vector_shape="preserve").reshape(-1)
+    state = canonicalize_numeric(m["state_hf"], vector_shape="preserve").reshape(-1).astype(int)
+    x_true = canonicalize_numeric(m["x_true_hf"])
+    x_hat = canonicalize_numeric(m["x_hat_hf"])
+    x_hat_nt = canonicalize_numeric(m["x_hat_nt_hf"])
+    rmse_expected = float(canonicalize_numeric(m["rmse_hf"], vector_shape="preserve").reshape(-1)[0])
+    rmse_nt_expected = float(canonicalize_numeric(m["rmse_nt_hf"], vector_shape="preserve").reshape(-1)[0])
+
+    assert_same_shape(x_true, x_hat)
+    assert_same_shape(x_true, x_hat_nt)
+    assert time.shape[0] == state.shape[0] == x_true.shape[0]
+
+    err = np.sqrt(np.sum((x_hat[:, :2] - x_true[:, :2]) ** 2, axis=1))
+    err_nt = np.sqrt(np.sum((x_hat_nt[:, :2] - x_true[:, :2]) ** 2, axis=1))
+    rmse = float(np.sqrt(np.mean(err**2)))
+    rmse_nt = float(np.sqrt(np.mean(err_nt**2)))
+
+    assert_allclose_scaled(np.array([rmse]), np.array([rmse_expected]), rtol=0.0, atol=1e-10, scale="maxabs")
+    assert_allclose_scaled(np.array([rmse_nt]), np.array([rmse_nt_expected]), rtol=0.0, atol=1e-10, scale="maxabs")
 
 
 def test_nstcoll_matlab_gold_comparison() -> None:

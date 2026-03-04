@@ -7,8 +7,8 @@
       "missing_executable_topics": 0,
       "pending_manual_review_topics": 0,
       "strict_line_gap_topics": 0,
-      "strict_line_partial_topics": 11,
-      "strict_line_verified_topics": 15,
+      "strict_line_partial_topics": 6,
+      "strict_line_verified_topics": 20,
       "total_topics": 30,
       "validated_topics": 26
     },
@@ -889,7 +889,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 4,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 43,
@@ -898,8 +898,8 @@
         "line_port_matched_lines": 115,
         "line_port_matlab_function_count": 43,
         "line_port_matlab_lines": 115,
-        "line_port_python_function_count": 76,
-        "line_port_python_lines": 195,
+        "line_port_python_function_count": 74,
+        "line_port_python_lines": 185,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -1044,8 +1044,8 @@
           },
           {
             "cell_index": 5,
-            "line_count": 47,
-            "preview": "dt = 0.001"
+            "line_count": 37,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 6,
@@ -1053,14 +1053,14 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 173,
+        "python_code_lines": 163,
         "python_notebook": "notebooks/ExplicitStimulusWhiskerData.ipynb",
-        "python_to_matlab_line_ratio": 1.5043478260869565,
+        "python_to_matlab_line_ratio": 1.4173913043478261,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/ExplicitStimulusWhiskerData/ExplicitStimulusWhiskerData_001.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "ExplicitStimulusWhiskerData"
       },
       {
@@ -1549,7 +1549,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 2,
+        "assertion_count": 5,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 68,
@@ -1558,8 +1558,8 @@
         "line_port_matched_lines": 288,
         "line_port_matlab_function_count": 68,
         "line_port_matlab_lines": 288,
-        "line_port_python_function_count": 99,
-        "line_port_python_lines": 458,
+        "line_port_python_function_count": 102,
+        "line_port_python_lines": 401,
         "matlab_code_blocks": [
           {
             "end_line": 44,
@@ -1853,8 +1853,8 @@
           },
           {
             "cell_index": 5,
-            "line_count": 137,
-            "preview": "n_t = 500"
+            "line_count": 80,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 6,
@@ -1862,15 +1862,15 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 436,
+        "python_code_lines": 379,
         "python_notebook": "notebooks/HybridFilterExample.ipynb",
-        "python_to_matlab_line_ratio": 1.5138888888888888,
+        "python_to_matlab_line_ratio": 1.3159722222222223,
         "python_validation_image_count": 2,
         "python_validation_images": [
           "baseline/validation/notebook_images/HybridFilterExample/HybridFilterExample_001.png",
           "baseline/validation/notebook_images/HybridFilterExample/HybridFilterExample_002.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "HybridFilterExample"
       },
       {
@@ -2107,7 +2107,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 2,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 18,
@@ -2117,7 +2117,7 @@
         "line_port_matlab_function_count": 18,
         "line_port_matlab_lines": 41,
         "line_port_python_function_count": 50,
-        "line_port_python_lines": 145,
+        "line_port_python_lines": 121,
         "matlab_code_blocks": [
           {
             "end_line": 32,
@@ -2252,8 +2252,8 @@
           },
           {
             "cell_index": 5,
-            "line_count": 71,
-            "preview": "Ts = 0.001"
+            "line_count": 47,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 6,
@@ -2261,16 +2261,16 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 71,
+        "python_code_lines": 47,
         "python_notebook": "notebooks/PPSimExample.ipynb",
-        "python_to_matlab_line_ratio": 1.7317073170731707,
+        "python_to_matlab_line_ratio": 1.146341463414634,
         "python_validation_image_count": 3,
         "python_validation_images": [
           "baseline/validation/notebook_images/PPSimExample/PPSimExample_001.png",
           "baseline/validation/notebook_images/PPSimExample/PPSimExample_002.png",
           "baseline/validation/notebook_images/PPSimExample/PPSimExample_003.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "PPSimExample"
       },
       {
@@ -2678,8 +2678,8 @@
         "line_port_matched_lines": 92,
         "line_port_matlab_function_count": 47,
         "line_port_matlab_lines": 92,
-        "line_port_python_function_count": 81,
-        "line_port_python_lines": 184,
+        "line_port_python_function_count": 80,
+        "line_port_python_lines": 149,
         "matlab_code_blocks": [
           {
             "end_line": 14,
@@ -2809,8 +2809,8 @@
           },
           {
             "cell_index": 5,
-            "line_count": 59,
-            "preview": "side = 14"
+            "line_count": 24,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 6,
@@ -2818,14 +2818,14 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 162,
+        "python_code_lines": 127,
         "python_notebook": "notebooks/StimulusDecode2D.ipynb",
-        "python_to_matlab_line_ratio": 1.7608695652173914,
+        "python_to_matlab_line_ratio": 1.3804347826086956,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/StimulusDecode2D/StimulusDecode2D_001.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "StimulusDecode2D"
       },
       {
@@ -2994,7 +2994,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 2,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 24,
@@ -3003,8 +3003,8 @@
         "line_port_matched_lines": 77,
         "line_port_matlab_function_count": 24,
         "line_port_matlab_lines": 77,
-        "line_port_python_function_count": 60,
-        "line_port_python_lines": 151,
+        "line_port_python_function_count": 54,
+        "line_port_python_lines": 129,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -3157,8 +3157,8 @@
           },
           {
             "cell_index": 5,
-            "line_count": 41,
-            "preview": "dt = 0.001"
+            "line_count": 19,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 6,
@@ -3166,14 +3166,14 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 129,
+        "python_code_lines": 107,
         "python_notebook": "notebooks/ValidationDataSet.ipynb",
-        "python_to_matlab_line_ratio": 1.6753246753246753,
+        "python_to_matlab_line_ratio": 1.3896103896103895,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/ValidationDataSet/ValidationDataSet_001.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "ValidationDataSet"
       },
       {

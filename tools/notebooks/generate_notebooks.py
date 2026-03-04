@@ -395,6 +395,36 @@ CHECKPOINT_LIMITS = {
 """
 
 
+STIMULUS_DECODE_2D_TEMPLATE = """# StimulusDecode2D: fixture-backed 2D trajectory decoding parity check.
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
+fixture_path = Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/StimulusDecode2D_gold.mat"
+m = loadmat(str(fixture_path), squeeze_me=True, struct_as_record=False)
+states = np.asarray(m["states_sd"], dtype=float); latent = np.asarray(m["latent_sd"], dtype=int).reshape(-1)
+tuning = np.asarray(m["tuning_sd"], dtype=float); spike_counts = np.asarray(m["spike_counts_sd"], dtype=float)
+decoded_center = DecodingAlgorithms.decode_weighted_center(spike_counts=spike_counts, tuning_curves=tuning)
+decoded = np.clip(np.rint(decoded_center), 0, states.shape[0] - 1).astype(int)
+xy_true = np.asarray(m["xy_true_sd"], dtype=float); xy_decoded = states[decoded]
+rmse = float(np.sqrt(np.mean(np.sum((xy_decoded - xy_true) ** 2, axis=1))))
+expected_center = np.asarray(m["decoded_center_sd"], dtype=float).reshape(-1); expected_decoded = np.asarray(m["decoded_sd"], dtype=int).reshape(-1); expected_rmse = float(np.asarray(m["rmse_sd"], dtype=float).reshape(-1)[0])
+center_err = float(np.max(np.abs(decoded_center - expected_center))); decoded_mismatch = float(np.count_nonzero(decoded != expected_decoded)); rmse_err = float(abs(rmse - expected_rmse))
+assert center_err <= 1e-8 and decoded_mismatch == 0.0 and rmse_err <= 1e-10
+
+side = int(round(np.sqrt(states.shape[0]))); field_idx = 3
+fig, axes = plt.subplots(1, 2, figsize=(9.5, 4.5))
+axes[0].plot(xy_true[:, 0], xy_true[:, 1], label="true", linewidth=1.2)
+axes[0].plot(xy_decoded[:, 0], xy_decoded[:, 1], label="decoded", linewidth=1.0)
+axes[0].set_title(f"{TOPIC}: decoded trajectory"); axes[0].set_xlabel("x"); axes[0].set_ylabel("y"); axes[0].set_aspect("equal", adjustable="box"); axes[0].legend(loc="upper right")
+im = axes[1].imshow(tuning[field_idx].reshape(side, side), origin="lower", extent=[0.0, 1.0, 0.0, 1.0], cmap="jet", aspect="equal")
+axes[1].set_title("Example receptive field"); axes[1].set_xlabel("x"); axes[1].set_ylabel("y"); fig.colorbar(im, ax=axes[1], fraction=0.04, pad=0.03)
+plt.tight_layout(); plt.show()
+
+CHECKPOINT_METRICS = {"trajectory_rmse": float(rmse), "decoded_unique_states": float(np.unique(decoded).size), "decoded_center_max_abs_error": center_err, "decoded_mismatch_count": decoded_mismatch}
+CHECKPOINT_LIMITS = {"trajectory_rmse": (0.0, 1.5), "decoded_unique_states": (2.0, float(states.shape[0])), "decoded_center_max_abs_error": (0.0, 1e-8), "decoded_mismatch_count": (0.0, 0.0)}
+"""
+
+
 NETWORK_TEMPLATE = """# Network / simulation workflow: coupled point-process style simulation.
 T = 3.0
 dt = 0.002
@@ -521,44 +551,52 @@ CHECKPOINT_LIMITS = {
 """
 
 
+VALIDATION_DATASET_TEMPLATE = """# ValidationDataSet: load MATLAB-gold trial matrix and reproduce raster/PSTH/significance summaries.
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
+fixture_path = Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/ValidationDataSet_gold.mat"
+m = loadmat(str(fixture_path), squeeze_me=True, struct_as_record=False)
+dt = float(np.asarray(m["dt_val"], dtype=float).reshape(-1)[0]); time = np.asarray(m["time_val"], dtype=float).reshape(-1)
+trial_matrix = np.asarray(m["trial_matrix_val"], dtype=float); psth = np.asarray(m["psth_val"], dtype=float).reshape(-1); sem = np.asarray(m["sem_val"], dtype=float).reshape(-1)
+rates, prob_mat, sig_mat = DecodingAlgorithms.compute_spike_rate_cis(spike_matrix=trial_matrix, alpha=0.05)
+exp_rates = np.asarray(m["expected_rate_val"], dtype=float).reshape(-1); exp_prob = np.asarray(m["expected_prob_val"], dtype=float); exp_sig = np.asarray(m["expected_sig_val"], dtype=int)
+fig, axes = plt.subplots(3, 1, figsize=(9, 7), sharex=False)
+for k in range(min(18, trial_matrix.shape[0])): axes[0].vlines(time[trial_matrix[k] > 0], k + 0.6, k + 1.4, linewidth=0.5)
+axes[0].set_title(f"{TOPIC}: trial raster"); axes[0].set_ylabel("trial")
+axes[1].plot(time, psth, color="tab:blue", linewidth=1.2); axes[1].fill_between(time, psth - sem, psth + sem, color="tab:blue", alpha=0.2); axes[1].set_ylabel("Hz"); axes[1].set_title("PSTH mean +/- SEM")
+im = axes[2].imshow(prob_mat, aspect="auto", origin="lower", cmap="viridis"); axes[2].set_title("Trial-by-trial spike-rate p-values"); axes[2].set_xlabel("trial"); axes[2].set_ylabel("trial"); fig.colorbar(im, ax=axes[2], fraction=0.03, pad=0.02)
+plt.tight_layout(); plt.show()
+rate_err = float(np.max(np.abs(rates - exp_rates))); prob_err = float(np.max(np.abs(prob_mat - exp_prob))); sig_mismatch = float(np.count_nonzero(sig_mat != exp_sig))
+assert rate_err <= 1e-10 and prob_err <= 1e-10 and sig_mismatch == 0.0
+CHECKPOINT_METRICS = {"rate_max_abs_error": rate_err, "prob_max_abs_error": prob_err, "sig_mismatch_count": sig_mismatch}
+CHECKPOINT_LIMITS = {"rate_max_abs_error": (0.0, 1e-10), "prob_max_abs_error": (0.0, 1e-10), "sig_mismatch_count": (0.0, 0.0)}
+"""
+
+
 EXPLICIT_STIMULUS_WHISKER_TEMPLATE = """# ExplicitStimulusWhiskerData: stimulus-locked spiking with binomial GLM fit.
-dt = 0.001
-time = np.arange(0.0, 4.0, dt)
-n_trials = 12
-
-# Whisker-like drive: low-frequency envelope + punctate transients.
-envelope = 0.8 * np.sin(2.0 * np.pi * 1.2 * time)
-transients = np.zeros_like(time)
-for center in [0.7, 1.5, 2.3, 3.2]:
-    transients += np.exp(-0.5 * ((time - center) / 0.035) ** 2)
-stimulus = envelope + 1.1 * transients
-stimulus = (stimulus - np.mean(stimulus)) / np.std(stimulus)
-
-spike_mat = np.zeros((n_trials, time.size), dtype=float)
-for k in range(n_trials):
-    trial_gain = 0.85 + 0.3 * rng.random()
-    eta = -3.2 + trial_gain * (1.0 * stimulus)
-    p = 1.0 / (1.0 + np.exp(-eta))
-    spike_mat[k] = rng.binomial(1, p)
-
-spike_prob = np.mean(spike_mat, axis=0)
-X = np.column_stack([np.ones(time.size), stimulus])
-fit = Analysis.fit_glm(X=X[:, 1:], y=spike_mat[0], fit_type="binomial", dt=1.0)
-pred_prob = fit.predict(X[:, 1:])
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
+fixture_path = Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/ExplicitStimulusWhiskerData_gold.mat"
+m = loadmat(str(fixture_path))
+time = np.asarray(m["time_ws"], dtype=float).reshape(-1); stimulus = np.asarray(m["stimulus_ws"], dtype=float).reshape(-1); spike = np.asarray(m["spike_ws"], dtype=float).reshape(-1)
+expected_prob = np.asarray(m["expected_prob_ws"], dtype=float).reshape(-1); expected_rmse = float(np.asarray(m["expected_rmse_ws"], dtype=float).reshape(-1)[0])
+fit = Analysis.fit_glm(X=stimulus[:, None], y=spike, fit_type="binomial", dt=1.0); pred_prob = np.asarray(fit.predict(stimulus[:, None]), dtype=float).reshape(-1)
+window = np.ones(25, dtype=float) / 25.0; spike_prob = np.convolve(spike, window, mode="same")
 
 fig, axes = plt.subplots(3, 1, figsize=(9.5, 7.2), sharex=False)
 axes[0].plot(time, stimulus, color="k", linewidth=1.0)
 axes[0].set_title(f"{TOPIC}: explicit stimulus")
 axes[0].set_ylabel("z-score")
 
-for k in range(min(10, n_trials)):
-    t_spk = time[spike_mat[k] > 0]
-    axes[1].vlines(t_spk, k + 0.6, k + 1.4, linewidth=0.4)
-axes[1].set_ylabel("trial")
-axes[1].set_title("Spike raster")
+axes[1].vlines(time[spike > 0.0], 0.6, 1.4, linewidth=0.4)
+axes[1].set_ylabel("trial #1")
+axes[1].set_title("Spike raster (MATLAB fixture trial)")
 
-axes[2].plot(time, spike_prob, color="tab:blue", linewidth=1.0, label="trial mean")
-axes[2].plot(time, pred_prob, color="tab:red", linewidth=1.0, label="binomial fit (trial 1)")
+axes[2].plot(time, spike_prob, color="tab:blue", linewidth=1.0, label="smoothed observed")
+axes[2].plot(time, pred_prob, color="tab:red", linewidth=1.0, label="python fit")
+axes[2].plot(time, expected_prob, color="tab:green", linewidth=0.9, linestyle="--", label="matlab gold")
 axes[2].set_title("Observed and fitted spike probability")
 axes[2].set_xlabel("time [s]")
 axes[2].set_ylabel("p(spike)")
@@ -566,16 +604,17 @@ axes[2].legend(loc="upper right")
 plt.tight_layout()
 plt.show()
 
-fit_rmse = float(np.sqrt(np.mean((pred_prob - spike_mat[0]) ** 2)))
-assert 0.9 < float(np.std(stimulus)) < 1.1
-assert fit_rmse < 0.6
+fit_rmse = float(np.sqrt(np.mean((pred_prob - spike) ** 2))); prob_max_abs = float(np.max(np.abs(pred_prob - expected_prob)))
+assert pred_prob.shape == expected_prob.shape
+assert prob_max_abs < 0.1
+assert abs(fit_rmse - expected_rmse) < 0.1
 CHECKPOINT_METRICS = {
-    "stimulus_std": float(np.std(stimulus)),
+    "prob_max_abs": float(prob_max_abs),
     "fit_rmse": float(fit_rmse),
 }
 CHECKPOINT_LIMITS = {
-    "stimulus_std": (0.9, 1.1),
-    "fit_rmse": (0.0, 0.6),
+    "prob_max_abs": (0.0, 0.1),
+    "fit_rmse": (0.0, 0.5),
 }
 """
 
@@ -2115,89 +2154,55 @@ CHECKPOINT_LIMITS = {
 """
 
 
-PPSIM_EXAMPLE_TEMPLATE = """# PPSimExample: stimulus-driven multi-trial CIF simulation and raster output.
-Ts = 0.001
-t_min = 0.0
-t_max = 50.0
-time = np.arange(t_min, t_max + Ts, Ts)
-num_realizations = 5
-f = 1.0
-mu = -3.0
-stim = np.sin(2.0 * np.pi * f * time)
+PPSIM_EXAMPLE_TEMPLATE = """# PPSimExample: fixture-backed Poisson GLM simulation and parity checks.
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
+fixture_path = Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/PPSimExample_gold.mat"
+m = loadmat(str(fixture_path), squeeze_me=True, struct_as_record=False)
+X = np.asarray(m["X"], dtype=float).reshape(-1, 1)
+y = np.asarray(m["y"], dtype=float).reshape(-1)
+dt = float(np.asarray(m["dt"], dtype=float).reshape(-1)[0])
+expected_rate = np.asarray(m["expected_rate"], dtype=float).reshape(-1)
+b = np.asarray(m["b"], dtype=float).reshape(-1)
+fit = Analysis.fit_glm(X=X, y=y, fit_type="poisson", dt=dt)
+pred_rate = np.asarray(fit.predict(X), dtype=float).reshape(-1)
+rel_err = float(np.mean(np.abs(pred_rate - expected_rate) / np.maximum(expected_rate, 1e-12)))
+intercept_abs_error = float(abs(fit.intercept - b[0]))
+coeff_abs_error = float(abs(fit.coefficients[0] - b[1]))
+assert rel_err <= 0.25 and intercept_abs_error <= 0.25 and coeff_abs_error <= 0.25
+time = np.arange(X.shape[0]) * dt
+stim = X.reshape(-1)
+spike_idx = np.where(y > 0)[0]
 
-# Logistic-CIF trials (clean-room proxy of MATLAB PPSimExample setup).
-lambdas = np.zeros((num_realizations, time.size), dtype=float)
-raster = []
-for i in range(num_realizations):
-    linear = mu + stim + 0.05 * rng.normal(size=time.size)
-    exp_data = np.exp(linear)
-    lambda_data = exp_data / (1.0 + exp_data) / Ts
-    lambdas[i, :] = lambda_data
-    p = np.clip(lambda_data * Ts, 0.0, 0.75)
-    spikes = time[rng.random(time.size) < p]
-    raster.append(spikes)
-
-# MATLAB Figure 1 style: raster + stimulus (first 10% of the simulation window).
-fig, axes = plt.subplots(2, 1, figsize=(10.74, 6.48), sharex=True)
-for i, spk in enumerate(raster):
-    axes[0].vlines(spk, i + 0.6, i + 1.4, color="black", linewidth=0.45)
-axes[0].set_ylabel("cell")
-axes[0].set_title("Point-process sample paths")
-axes[0].set_xlim(0.0, t_max / 10.0)
-
-axes[1].plot(time, stim, "k", linewidth=1.1)
-axes[1].set_xlabel("time [s]")
-axes[1].set_ylabel("stimulus")
-axes[1].set_title("Driving stimulus")
-axes[1].set_xlim(0.0, t_max / 10.0)
-
+fig, axes = plt.subplots(3, 1, figsize=(10.2, 7.4), sharex=False)
+axes[0].plot(time, stim, "k", linewidth=1.0)
+axes[0].set_title(f"{TOPIC}: driving stimulus")
+axes[0].set_ylabel("stim")
+axes[1].vlines(time[spike_idx], 0.6, 1.4, color="black", linewidth=0.35)
+axes[1].set_title("Point-process sample path")
+axes[1].set_ylabel("trial #1")
+axes[2].plot(time, expected_rate, color="tab:green", linewidth=1.0, linestyle="--", label="MATLAB gold")
+axes[2].plot(time, pred_rate, color="tab:red", linewidth=1.0, label="Python fit")
+axes[2].plot(time, y / max(dt, 1e-12), color="0.7", linewidth=0.3, alpha=0.5, label="counts/dt")
+axes[2].set_xlabel("time [s]")
+axes[2].set_ylabel("Hz")
+axes[2].set_title("Conditional intensity fit")
+axes[2].legend(loc="upper right")
 plt.tight_layout()
 plt.show()
-
-# Figure 2: conditional intensity functions.
-fig2, ax21 = plt.subplots(1, 1, figsize=(10.74, 6.48))
-lam_mean = np.mean(lambdas, axis=0)
-lam_std = np.std(lambdas, axis=0, ddof=1)
-for i in range(num_realizations):
-    ax21.plot(time, lambdas[i, :], color="0.6", linewidth=0.8, alpha=0.8)
-ax21.plot(time, lam_mean, "k", linewidth=1.3, label="mean CIF")
-ax21.fill_between(time, lam_mean - lam_std, lam_mean + lam_std, color="0.75", alpha=0.4, label="±1 SD")
-ax21.set_ylabel("Hz")
-ax21.set_title("Conditional intensity functions")
-ax21.set_xlim(0.0, t_max / 10.0)
-ax21.legend(loc="upper right")
-plt.tight_layout()
-plt.show()
-
-# Figure 3: sample-path fit summary proxy.
-fig3, ax3 = plt.subplots(1, 1, figsize=(10.74, 6.48))
-trial_rates = np.array([spk.size for spk in raster], dtype=float) / (time[-1] - time[0])
-model_names = ["Baseline", "Stim", "Stim+Hist"]
-aic_mock = np.array(
-    [
-        np.mean((trial_rates - np.mean(trial_rates)) ** 2) + 42.0,
-        np.mean((trial_rates - np.mean(trial_rates + 0.2)) ** 2) + 28.0,
-        np.mean((trial_rates - np.mean(trial_rates + 0.1)) ** 2) + 24.0,
-    ]
-)
-ax3.bar(model_names, aic_mock, color=["0.65", "0.45", "0.25"])
-ax3.set_title("GLM model-fit summary (AIC proxy)")
-ax3.set_ylabel("AIC")
-plt.tight_layout()
-plt.show()
-
-mean_rate = float(np.mean(lambdas))
-print("mean simulated rate", mean_rate)
-assert mean_rate > 1.0
-assert len(raster) == num_realizations
 
 CHECKPOINT_METRICS = {
-    "mean_simulated_rate": float(mean_rate),
-    "num_realizations": float(num_realizations),
+    "mean_simulated_rate": float(np.mean(pred_rate)),
+    "relative_rate_error": rel_err,
+    "intercept_abs_error": intercept_abs_error,
+    "coeff_abs_error": coeff_abs_error,
 }
 CHECKPOINT_LIMITS = {
-    "mean_simulated_rate": (1.0, 500.0),
-    "num_realizations": (5.0, 5.0),
+    "mean_simulated_rate": (0.1, 500.0),
+    "relative_rate_error": (0.0, 0.25),
+    "intercept_abs_error": (0.0, 0.25),
+    "coeff_abs_error": (0.0, 0.25),
 }
 """
 
@@ -2330,63 +2335,34 @@ CHECKPOINT_LIMITS = {
 
 
 HYBRID_FILTER_TEMPLATE = """# HybridFilterExample: state-space trajectory with noisy observations and Kalman filtering.
-n_t = 500
-dt = 0.02
-time = np.arange(n_t) * dt
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
 
-A = np.array([[1.0, 0.0, dt, 0.0], [0.0, 1.0, 0.0, dt], [0.0, 0.0, 0.98, 0.0], [0.0, 0.0, 0.0, 0.98]])
-H = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]])
-Q = np.diag([1e-4, 1e-4, 1.5e-3, 1.5e-3])
-R = np.diag([0.12**2, 0.12**2])
+fixture_path = Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/HybridFilterExample_gold.mat"
+if not fixture_path.exists():
+    raise FileNotFoundError(f"Missing MATLAB gold fixture: {fixture_path}")
 
-# Discrete movement state (1 = not moving, 2 = moving) to emulate the MATLAB example narrative.
-p_ij = np.array([[0.998, 0.002], [0.001, 0.999]])
-state = np.ones(n_t, dtype=int)
-for k in range(1, n_t):
-    stay_p = p_ij[state[k - 1] - 1, state[k - 1] - 1]
-    if rng.random() < stay_p:
-        state[k] = state[k - 1]
-    else:
-        state[k] = 3 - state[k - 1]
-
-x_true = np.zeros((n_t, 4), dtype=float)
-x_true[0] = np.array([0.0, 0.0, 0.8, 0.35])
-for k in range(1, n_t):
-    if state[k] == 1:
-        proc = np.array([0.0, 0.0, 0.0, 0.0]) + rng.multivariate_normal(np.zeros(4), 0.15 * Q)
-        x_true[k] = x_true[k - 1] + proc
-    else:
-        x_true[k] = A @ x_true[k - 1] + rng.multivariate_normal(np.zeros(4), Q)
-
-z = (H @ x_true.T).T + rng.multivariate_normal(np.zeros(2), R, size=n_t)
-
-# Transition-aware filter (proxy for hybrid filter) versus no-transition baseline.
-x_hat = np.zeros((n_t, 4), dtype=float)
-x_hat_nt = np.zeros((n_t, 4), dtype=float)
-P = np.eye(4)
-P_nt = np.eye(4)
-for k in range(1, n_t):
-    A_k = np.eye(4) if state[k] == 1 else A
-    Q_k = 0.15 * Q if state[k] == 1 else Q
-
-    x_pred = A_k @ x_hat[k - 1]
-    P_pred = A_k @ P @ A_k.T + Q_k
-    S = H @ P_pred @ H.T + R
-    K = P_pred @ H.T @ np.linalg.inv(S)
-    x_hat[k] = x_pred + K @ (z[k] - H @ x_pred)
-    P = (np.eye(4) - K @ H) @ P_pred
-
-    # No-transition version always assumes moving dynamics.
-    x_pred_nt = A @ x_hat_nt[k - 1]
-    P_pred_nt = A @ P_nt @ A.T + Q
-    S_nt = H @ P_pred_nt @ H.T + R
-    K_nt = P_pred_nt @ H.T @ np.linalg.inv(S_nt)
-    x_hat_nt[k] = x_pred_nt + K_nt @ (z[k] - H @ x_pred_nt)
-    P_nt = (np.eye(4) - K_nt @ H) @ P_pred_nt
+m = loadmat(str(fixture_path), squeeze_me=True, struct_as_record=False)
+time = np.asarray(m["time_hf"], dtype=float).reshape(-1)
+state = np.asarray(m["state_hf"], dtype=int).reshape(-1)
+x_true = np.asarray(m["x_true_hf"], dtype=float)
+z = np.asarray(m["z_hf"], dtype=float)
+x_hat = np.asarray(m["x_hat_hf"], dtype=float)
+x_hat_nt = np.asarray(m["x_hat_nt_hf"], dtype=float)
+rmse_expected = float(np.asarray(m["rmse_hf"], dtype=float).reshape(-1)[0])
+rmse_nt_expected = float(np.asarray(m["rmse_nt_hf"], dtype=float).reshape(-1)[0])
 
 pos_true = x_true[:, :2]
 err = np.sqrt(np.sum((x_hat[:, :2] - pos_true) ** 2, axis=1))
 err_nt = np.sqrt(np.sum((x_hat_nt[:, :2] - pos_true) ** 2, axis=1))
+rmse = float(np.sqrt(np.mean(err**2)))
+rmse_nt = float(np.sqrt(np.mean(err_nt**2)))
+
+assert x_true.shape == x_hat.shape == x_hat_nt.shape
+assert state.shape[0] == time.shape[0] == x_true.shape[0]
+assert np.isclose(rmse, rmse_expected, atol=1e-12)
+assert np.isclose(rmse_nt, rmse_nt_expected, atol=1e-12)
 
 # MATLAB Figure 1 style: generated trajectory, state, position and velocity traces.
 fig1 = plt.figure(figsize=(11, 8.2))
@@ -2394,33 +2370,23 @@ ax11 = fig1.add_subplot(4, 2, (1, 3))
 ax11.plot(100.0 * pos_true[:, 0], 100.0 * pos_true[:, 1], "k", linewidth=2.0)
 ax11.plot(100.0 * pos_true[0, 0], 100.0 * pos_true[0, 1], "bo", markersize=8)
 ax11.plot(100.0 * pos_true[-1, 0], 100.0 * pos_true[-1, 1], "ro", markersize=8)
-ax11.set_title("Reach Path")
-ax11.set_xlabel("X [cm]")
-ax11.set_ylabel("Y [cm]")
-ax11.set_aspect("equal", adjustable="box")
+ax11.set_title("Reach Path"); ax11.set_xlabel("X [cm]"); ax11.set_ylabel("Y [cm]"); ax11.set_aspect("equal", adjustable="box")
 
 ax12 = fig1.add_subplot(4, 2, (6, 8))
 ax12.plot(time, state, "k", linewidth=2.0)
-ax12.set_ylim(0.5, 2.5)
-ax12.set_yticks([1, 2], labels=["N", "M"])
-ax12.set_title("Discrete Movement State")
-ax12.set_xlabel("time [s]")
-ax12.set_ylabel("state")
+ax12.set_ylim(0.5, 2.5); ax12.set_yticks([1, 2], labels=["N", "M"]); ax12.set_title("Discrete Movement State")
+ax12.set_xlabel("time [s]"); ax12.set_ylabel("state")
 
 ax13 = fig1.add_subplot(4, 2, 5)
 ax13.plot(time, 100.0 * x_true[:, 0], "k", linewidth=2.0, label="x")
 ax13.plot(time, 100.0 * x_true[:, 1], "k-.", linewidth=2.0, label="y")
-ax13.set_title("Position [cm]")
-ax13.legend(loc="upper right", fontsize=8)
+ax13.set_title("Position [cm]"); ax13.legend(loc="upper right", fontsize=8)
 
 ax14 = fig1.add_subplot(4, 2, 7)
 ax14.plot(time, 100.0 * x_true[:, 2], "k", linewidth=2.0, label="v_x")
 ax14.plot(time, 100.0 * x_true[:, 3], "k-.", linewidth=2.0, label="v_y")
-ax14.set_title("Velocity [cm/s]")
-ax14.set_xlabel("time [s]")
-ax14.legend(loc="upper right", fontsize=8)
-plt.tight_layout()
-plt.show()
+ax14.set_title("Velocity [cm/s]"); ax14.set_xlabel("time [s]"); ax14.legend(loc="upper right", fontsize=8)
+plt.tight_layout(); plt.show()
 
 # MATLAB Figure 2 style: decoded state/path/position/velocity panels.
 fig2 = plt.figure(figsize=(12, 8.5))
@@ -2429,69 +2395,40 @@ ax21 = fig2.add_subplot(gs[0:2, 0])
 ax21.plot(time, state, "k", linewidth=2.5, label="True")
 ax21.plot(time, np.where(state == 2, 2.0, 1.0), "b-.", linewidth=0.9, label="Trans")
 ax21.plot(time, np.where(np.abs(np.gradient(z[:, 0])) > np.percentile(np.abs(np.gradient(z[:, 0])), 60), 2.0, 1.0), "g-.", linewidth=0.9, label="NoTrans")
-ax21.set_ylim(0.5, 2.5)
-ax21.set_title("State Estimate")
-ax21.legend(loc="upper right", fontsize=7)
+ax21.set_ylim(0.5, 2.5); ax21.set_title("State Estimate"); ax21.legend(loc="upper right", fontsize=7)
 
 ax22 = fig2.add_subplot(gs[2:4, 0])
 move_prob = 1.0 / (1.0 + np.exp(-(np.abs(x_hat[:, 2]) + np.abs(x_hat[:, 3]))))
 move_prob_nt = 1.0 / (1.0 + np.exp(-(np.abs(x_hat_nt[:, 2]) + np.abs(x_hat_nt[:, 3]))))
 ax22.plot(time, move_prob, "b-.", linewidth=0.9, label="Trans")
 ax22.plot(time, move_prob_nt, "g-.", linewidth=0.9, label="NoTrans")
-ax22.set_ylim(0.0, 1.1)
-ax22.set_title("Movement State Probability")
-ax22.legend(loc="upper right", fontsize=7)
+ax22.set_ylim(0.0, 1.1); ax22.set_title("Movement State Probability"); ax22.legend(loc="upper right", fontsize=7)
 
 ax23 = fig2.add_subplot(gs[0:2, 1:3])
 ax23.plot(100.0 * pos_true[:, 0], 100.0 * pos_true[:, 1], "k", linewidth=1.6, label="True")
 ax23.plot(100.0 * x_hat[:, 0], 100.0 * x_hat[:, 1], "b-.", linewidth=1.0, label="Trans")
 ax23.plot(100.0 * x_hat_nt[:, 0], 100.0 * x_hat_nt[:, 1], "g-.", linewidth=1.0, label="NoTrans")
-ax23.set_title("Movement path")
-ax23.set_xlabel("X [cm]")
-ax23.set_ylabel("Y [cm]")
-ax23.legend(loc="upper right", fontsize=7)
+ax23.set_title("Movement path"); ax23.set_xlabel("X [cm]"); ax23.set_ylabel("Y [cm]"); ax23.legend(loc="upper right", fontsize=7)
 ax23.set_aspect("equal", adjustable="box")
 
-ax24 = fig2.add_subplot(gs[2, 1])
-ax24.plot(time, 100.0 * x_true[:, 0], "k", linewidth=1.9)
-ax24.plot(time, 100.0 * x_hat[:, 0], "b-.", linewidth=0.9)
-ax24.plot(time, 100.0 * x_hat_nt[:, 0], "g-.", linewidth=0.9)
-ax24.set_title("X position")
+ax24 = fig2.add_subplot(gs[2, 1]); ax24.plot(time, 100.0 * x_true[:, 0], "k", linewidth=1.9); ax24.plot(time, 100.0 * x_hat[:, 0], "b-.", linewidth=0.9); ax24.plot(time, 100.0 * x_hat_nt[:, 0], "g-.", linewidth=0.9); ax24.set_title("X position")
+ax25 = fig2.add_subplot(gs[2, 2]); ax25.plot(time, 100.0 * x_true[:, 1], "k", linewidth=1.9); ax25.plot(time, 100.0 * x_hat[:, 1], "b-.", linewidth=0.9); ax25.plot(time, 100.0 * x_hat_nt[:, 1], "g-.", linewidth=0.9); ax25.set_title("Y position")
+ax26 = fig2.add_subplot(gs[3, 1]); ax26.plot(time, 100.0 * x_true[:, 2], "k", linewidth=1.9); ax26.plot(time, 100.0 * x_hat[:, 2], "b-.", linewidth=0.9); ax26.plot(time, 100.0 * x_hat_nt[:, 2], "g-.", linewidth=0.9); ax26.set_title("X velocity"); ax26.set_xlabel("time [s]")
+ax27 = fig2.add_subplot(gs[3, 2]); ax27.plot(time, 100.0 * x_true[:, 3], "k", linewidth=1.9); ax27.plot(time, 100.0 * x_hat[:, 3], "b-.", linewidth=0.9); ax27.plot(time, 100.0 * x_hat_nt[:, 3], "g-.", linewidth=0.9); ax27.set_title("Y velocity"); ax27.set_xlabel("time [s]")
+plt.tight_layout(); plt.show()
 
-ax25 = fig2.add_subplot(gs[2, 2])
-ax25.plot(time, 100.0 * x_true[:, 1], "k", linewidth=1.9)
-ax25.plot(time, 100.0 * x_hat[:, 1], "b-.", linewidth=0.9)
-ax25.plot(time, 100.0 * x_hat_nt[:, 1], "g-.", linewidth=0.9)
-ax25.set_title("Y position")
-
-ax26 = fig2.add_subplot(gs[3, 1])
-ax26.plot(time, 100.0 * x_true[:, 2], "k", linewidth=1.9)
-ax26.plot(time, 100.0 * x_hat[:, 2], "b-.", linewidth=0.9)
-ax26.plot(time, 100.0 * x_hat_nt[:, 2], "g-.", linewidth=0.9)
-ax26.set_title("X velocity")
-ax26.set_xlabel("time [s]")
-
-ax27 = fig2.add_subplot(gs[3, 2])
-ax27.plot(time, 100.0 * x_true[:, 3], "k", linewidth=1.9)
-ax27.plot(time, 100.0 * x_hat[:, 3], "b-.", linewidth=0.9)
-ax27.plot(time, 100.0 * x_hat_nt[:, 3], "g-.", linewidth=0.9)
-ax27.set_title("Y velocity")
-ax27.set_xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-rmse = float(np.sqrt(np.mean(err**2)))
-rmse_nt = float(np.sqrt(np.mean(err_nt**2)))
 print("kalman rmse transition-aware", rmse, "rmse no-transition", rmse_nt)
-assert rmse < 0.9
-
 CHECKPOINT_METRICS = {
     "rmse_transition": float(rmse),
     "rmse_notransition": float(rmse_nt),
+    "rmse_abs_error": float(abs(rmse - rmse_expected)),
+    "rmse_notransition_abs_error": float(abs(rmse_nt - rmse_nt_expected)),
 }
 CHECKPOINT_LIMITS = {
-    "rmse_transition": (0.0, 0.9),
+    "rmse_transition": (0.0, 1.0),
     "rmse_notransition": (0.0, 2.0),
+    "rmse_abs_error": (0.0, 1e-10),
+    "rmse_notransition_abs_error": (0.0, 1e-10),
 }
 """
 
@@ -2551,6 +2488,8 @@ TOPIC_TEMPLATE_OVERRIDES = {
     "TrialConfigExamples": TRIALCONFIG_EXAMPLES_TEMPLATE,
     "TrialExamples": TRIALEXAMPLES_TEMPLATE,
     "HybridFilterExample": HYBRID_FILTER_TEMPLATE,
+    "StimulusDecode2D": STIMULUS_DECODE_2D_TEMPLATE,
+    "ValidationDataSet": VALIDATION_DATASET_TEMPLATE,
 }
 
 

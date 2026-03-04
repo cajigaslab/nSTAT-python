@@ -2,72 +2,82 @@ version: 1
 fixtures:
 - name: PPSimExample
   path: tests/parity/fixtures/matlab_gold/PPSimExample_gold.mat
-  sha256: 5282cad37ef348e16676b2d0faedfd9e339d419fe52864f6a0d56a6d22846b8d
+  sha256: a25eea395e4a7cb25e3b8b687e94e66e06e9cfb7089a0f630e139e865a832556
   source: matlab_batch_export
   fixture_type: numeric
 - name: DecodingExampleWithHist
   path: tests/parity/fixtures/matlab_gold/DecodingExampleWithHist_gold.mat
-  sha256: d325d00a60cf6289987a6b42e9bac11872a6189dd0899d16bcc6049e5078f638
+  sha256: 9acd76fb6c1c2167e8ccf1c39d078d83134f6b62a3c32b0e90eaa0a48d817fd0
   source: matlab_batch_export
   fixture_type: numeric
 - name: HippocampalPlaceCellExample
   path: tests/parity/fixtures/matlab_gold/HippocampalPlaceCellExample_gold.mat
-  sha256: 52665028a559c66a39d0493370f1dae9455e21a3e236f641e8dd58fdc77013d1
+  sha256: 8c1003a691afee61d7fd444e857ed3ae3278009882b3384a6ed9a6d6b9cf2991
   source: matlab_batch_export
   fixture_type: numeric
 - name: SpikeRateDiffCIs
   path: tests/parity/fixtures/matlab_gold/SpikeRateDiffCIs_gold.mat
-  sha256: e9117d280162303b251401017b1dfdd9cbf7a0aa580fbb849d859f61089e8221
+  sha256: 1434ffe73d6d6b2ec6d4833d6b7ecc65d7b251e3e46cfd0e1085b83f0478f979
   source: matlab_batch_export
   fixture_type: numeric
 - name: PSTHEstimation
   path: tests/parity/fixtures/matlab_gold/PSTHEstimation_gold.mat
-  sha256: a4bd01748790d5facb37efd800729cebf52ad8c6f2acd0c7b73570b1bc931f98
+  sha256: 0d73a2268a4a56da41820e91f59d6e888cc0316dd2eb614940654382e999af1f
   source: matlab_batch_export
   fixture_type: numeric
 - name: nstCollExamples
   path: tests/parity/fixtures/matlab_gold/nstCollExamples_gold.mat
-  sha256: fa7d326a41bb51292d39aa1aabd135b4f72e9ed4060344775526e431cd0c33c0
+  sha256: c51e906162226aae3108a4002a4927399e074c09a3822b45f2e92e863406fb36
   source: matlab_batch_export
   fixture_type: numeric
 - name: TrialExamples
   path: tests/parity/fixtures/matlab_gold/TrialExamples_gold.mat
-  sha256: 0e2d4ba5f930755777c741e14a81aa11465b9f820e5838202a0166334f6bbbaa
+  sha256: b7528440dbbb217e9108aabc849b5b71491d00140f35cf826e1ea496f175ef08
   source: matlab_batch_export
   fixture_type: numeric
 - name: CovCollExamples
   path: tests/parity/fixtures/matlab_gold/CovCollExamples_gold.mat
-  sha256: 5271cce7dbe2d5cd725de8a43fefad42a4254be420d09ac36916c233511f93b1
+  sha256: 49cc8e81a6312d0fe10be75df6b04be6b4da659b7586a12b110e98a5acbfbe4f
   source: matlab_batch_export
   fixture_type: numeric
 - name: EventsExamples
   path: tests/parity/fixtures/matlab_gold/EventsExamples_gold.mat
-  sha256: 5694cfba926df7c6c228ace389c78e50748d9ab6ca83839c0b84aa6b157d0388
+  sha256: db97240056882d56247fde1ff36ad880be8ef270192db98697bf5059ba2fa4c4
   source: matlab_batch_export
   fixture_type: numeric
 - name: AnalysisExamples
   path: tests/parity/fixtures/matlab_gold/AnalysisExamples_gold.mat
-  sha256: b1a49982144831316e557d3c3025843305c017440e17896e16fc3f1316eb8578
+  sha256: b05215da2ca1f88407d9e5dc3efca08d7a434a5f04486492a185d562beb86172
   source: matlab_batch_export
   fixture_type: numeric
 - name: DecodingExample
   path: tests/parity/fixtures/matlab_gold/DecodingExample_gold.mat
-  sha256: 33e914e35d85b991704406ad1f80de9fb58c03258b53f5259cbfd1af15175351
+  sha256: 87a437cac17a1c9c987ac6a637741116f6c7366a76f2610678488e63adddd98f
   source: matlab_batch_export
   fixture_type: numeric
 - name: ExplicitStimulusWhiskerData
   path: tests/parity/fixtures/matlab_gold/ExplicitStimulusWhiskerData_gold.mat
-  sha256: 2986ee2f03f486d0c82066232b77a018e56f42d0ff63b7e2a847c4264ac14e0c
+  sha256: 9992f55a8fe8616774e0444f7d53088cc88dbbbf25d005ba4de2057ce2f81b97
   source: matlab_batch_export
   fixture_type: numeric
 - name: mEPSCAnalysis
   path: tests/parity/fixtures/matlab_gold/mEPSCAnalysis_gold.mat
-  sha256: 55c3d0a74510202b731bd62afc5ca487e727a2ac3a97fc1f6822d403f0df5555
+  sha256: 8b52777af9de4c34c00926b16ff887c029fcff36645300b20e62eab8045fa70f
   source: matlab_batch_export
   fixture_type: numeric
-- name: nSTATPaperExamples_plot_arrays
-  path: tests/parity/fixtures/matlab_gold/nSTATPaperExamples_plot_gold.mat
-  sha256: 1e34a6f230c4ef94801b2e7ea825038fd4a27df3d91e7023e51a4d9c7cb669c3
+- name: HybridFilterExample
+  path: tests/parity/fixtures/matlab_gold/HybridFilterExample_gold.mat
+  sha256: 312750b70ad46896a1830e0ed2614214a31d48994d71fba0b2a88e3286d375df
+  source: matlab_batch_export
+  fixture_type: numeric
+- name: ValidationDataSet
+  path: tests/parity/fixtures/matlab_gold/ValidationDataSet_gold.mat
+  sha256: 86cf0ebcd5f5b32e02c8d24bd0d67a1a3c272ecdfc53c269c6669138df440216
+  source: matlab_batch_export
+  fixture_type: numeric
+- name: StimulusDecode2D
+  path: tests/parity/fixtures/matlab_gold/StimulusDecode2D_gold.mat
+  sha256: 9323fef56cfa0155641d3fecefec71b88ade9947470d8052bee400dec33a103d
   source: matlab_batch_export
   fixture_type: numeric
 - name: AnalysisExamples2
@@ -77,12 +87,12 @@ fixtures:
   fixture_type: topic_audit
 - name: ConfigCollExamples
   path: tests/parity/fixtures/matlab_gold/ConfigCollExamples_audit_gold.json
-  sha256: 1831aa6c3f68039a1ea55b5d05b2f43ba68088b748881b5e6fd148366b00872d
+  sha256: f22515244492366248c3ae5f23d440f54e9a272255e8c74184c60c97a14924df
   source: equivalence_audit_export
   fixture_type: topic_audit
 - name: CovariateExamples
   path: tests/parity/fixtures/matlab_gold/CovariateExamples_audit_gold.json
-  sha256: 27ceffa12f0f8e2df740ca335fb940b7e99e807d0e449b66e983b6cc650881be
+  sha256: 9d3a359d13235aac6dda92ff5913db158be6684dbbf26242cdc4cfab9cd5b91e
   source: equivalence_audit_export
   fixture_type: topic_audit
 - name: DocumentationSetup2025b
@@ -110,11 +120,6 @@ fixtures:
   sha256: d16895ca9d5075ba7884e3dc6bf900c468bb9e1481a978ad63dbb04256289bdc
   source: equivalence_audit_export
   fixture_type: topic_audit
-- name: HybridFilterExample
-  path: tests/parity/fixtures/matlab_gold/HybridFilterExample_audit_gold.json
-  sha256: 5946e358a22e7427b8caa8ea1247fbad60c644134c4d8eafaaac19ecac369d79
-  source: equivalence_audit_export
-  fixture_type: topic_audit
 - name: NetworkTutorial
   path: tests/parity/fixtures/matlab_gold/NetworkTutorial_audit_gold.json
   sha256: 21d76cbd84dd2de17fe9d4e90497040485898f94aeaad209cb6b57cb2acd3473
@@ -127,36 +132,26 @@ fixtures:
   fixture_type: topic_audit
 - name: SignalObjExamples
   path: tests/parity/fixtures/matlab_gold/SignalObjExamples_audit_gold.json
-  sha256: ea72887672045c42917712807c3758d4b8d5db114c1af036760b08188cbac342
-  source: equivalence_audit_export
-  fixture_type: topic_audit
-- name: StimulusDecode2D
-  path: tests/parity/fixtures/matlab_gold/StimulusDecode2D_audit_gold.json
-  sha256: 54b178a3049a46da9f226f60f1568fc8531e8a283053d89cf266660e8f066c3c
+  sha256: 30624d873cbde117750a6a072edc4130f29a32dffee3e178f4aa8da3fa4dad4d
   source: equivalence_audit_export
   fixture_type: topic_audit
 - name: TrialConfigExamples
   path: tests/parity/fixtures/matlab_gold/TrialConfigExamples_audit_gold.json
-  sha256: 74a1c0d7c0d26a2036a4d1de06e911014d28d60b553f40864d4045d4d7e81dc7
-  source: equivalence_audit_export
-  fixture_type: topic_audit
-- name: ValidationDataSet
-  path: tests/parity/fixtures/matlab_gold/ValidationDataSet_audit_gold.json
-  sha256: d62c6b92de20e4b5dfa25b20ed4eea432a159f3a8d475d9a1a743360d3535f0d
+  sha256: 759be3e852251f6bc2a9f8ab524110eafe0603dac356ad3d923b8d3a1c1c5b01
   source: equivalence_audit_export
   fixture_type: topic_audit
 - name: nSTATPaperExamples
   path: tests/parity/fixtures/matlab_gold/nSTATPaperExamples_audit_gold.json
-  sha256: 06c0cf3d47c57917f30d73dc046105a17ca11904bc69bfe96f237027dd254705
+  sha256: 7bf58953de236c90e4b3cf6b796a4512bb0f15c50a46de9968e881f6c2c1c215
   source: equivalence_audit_export
   fixture_type: topic_audit
 - name: nSpikeTrainExamples
   path: tests/parity/fixtures/matlab_gold/nSpikeTrainExamples_audit_gold.json
-  sha256: 89fa96d2709e7586e6d0a15247cd15b04efc1b1881356f6f3dab2afb532eda40
+  sha256: 4db9ab45939e21b1e04365bb47cc3004bb763c1f6c270b1959ade867be123620
   source: equivalence_audit_export
   fixture_type: topic_audit
 - name: publish_all_helpfiles
   path: tests/parity/fixtures/matlab_gold/publish_all_helpfiles_audit_gold.json
-  sha256: 4429af557e1d5092a5ec0ce55014e59b91cdbdf117e61246837c4948f963835e
+  sha256: 6d3519780e6a79668e106a5df0bf347e89412549f630635074e5f323faed2061
   source: equivalence_audit_export
   fixture_type: topic_audit

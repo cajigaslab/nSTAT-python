@@ -48,6 +48,18 @@ topics:
     posterior_max_abs_error: 1.0e-8
     decoded_mismatch_count: 0
     rmse_abs_error: 1.0e-8
+  HybridFilterExample:
+    rmse_abs_error: 1.0e-10
+    rmse_notransition_abs_error: 1.0e-10
+    state_length_mismatch: 0
+  ValidationDataSet:
+    rate_max_abs_error: 1.0e-10
+    prob_max_abs_error: 1.0e-10
+    sig_mismatch_count: 0
+  StimulusDecode2D:
+    decoded_center_max_abs_error: 1.0e-8
+    decoded_mismatch_count: 0
+    rmse_abs_error: 1.0e-10
   ExplicitStimulusWhiskerData:
     intercept_abs_error: 0.2
     coeff_abs_error: 0.2

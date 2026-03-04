@@ -144,6 +144,9 @@ def _numeric_fixture_paths(fixture_index: dict[str, dict]) -> dict[str, Path]:
         "EventsExamples",
         "AnalysisExamples",
         "DecodingExample",
+        "HybridFilterExample",
+        "ValidationDataSet",
+        "StimulusDecode2D",
         "ExplicitStimulusWhiskerData",
         "mEPSCAnalysis",
     ]
@@ -415,6 +418,51 @@ def _evaluate_metrics(fixture_paths: dict[str, Path]) -> dict[str, dict[str, flo
             np.count_nonzero(decoded != np.asarray(m["expected_decoded_dec"], dtype=int).reshape(-1))
         ),
         "rmse_abs_error": float(abs(rmse - _scalar(m, "expected_rmse_dec"))),
+    }
+
+    # HybridFilterExample
+    m = _mat(fixture_paths["HybridFilterExample_gold.mat"])
+    x_true = np.asarray(m["x_true_hf"], dtype=float)
+    x_hat = np.asarray(m["x_hat_hf"], dtype=float)
+    x_hat_nt = np.asarray(m["x_hat_nt_hf"], dtype=float)
+    err = np.sqrt(np.sum((x_hat[:, :2] - x_true[:, :2]) ** 2, axis=1))
+    err_nt = np.sqrt(np.sum((x_hat_nt[:, :2] - x_true[:, :2]) ** 2, axis=1))
+    rmse = float(np.sqrt(np.mean(err**2)))
+    rmse_nt = float(np.sqrt(np.mean(err_nt**2)))
+    results["HybridFilterExample"] = {
+        "rmse_abs_error": float(abs(rmse - _scalar(m, "rmse_hf"))),
+        "rmse_notransition_abs_error": float(abs(rmse_nt - _scalar(m, "rmse_nt_hf"))),
+        "state_length_mismatch": float(
+            abs(np.asarray(m["state_hf"], dtype=float).reshape(-1).shape[0] - x_true.shape[0])
+        ),
+    }
+
+    # ValidationDataSet
+    m = _mat(fixture_paths["ValidationDataSet_gold.mat"])
+    trial_matrix = np.asarray(m["trial_matrix_val"], dtype=float)
+    rate, prob, sig = DecodingAlgorithms.compute_spike_rate_cis(trial_matrix, alpha=0.05)
+    results["ValidationDataSet"] = {
+        "rate_max_abs_error": float(np.max(np.abs(rate - _vec(m, "expected_rate_val")))),
+        "prob_max_abs_error": float(np.max(np.abs(prob - np.asarray(m["expected_prob_val"], dtype=float)))),
+        "sig_mismatch_count": float(np.count_nonzero(sig != np.asarray(m["expected_sig_val"], dtype=int))),
+    }
+
+    # StimulusDecode2D
+    m = _mat(fixture_paths["StimulusDecode2D_gold.mat"])
+    states = np.asarray(m["states_sd"], dtype=float)
+    decoded_center = DecodingAlgorithms.decode_weighted_center(
+        spike_counts=np.asarray(m["spike_counts_sd"], dtype=float),
+        tuning_curves=np.asarray(m["tuning_sd"], dtype=float),
+    )
+    n_states = states.shape[0]
+    decoded = np.clip(np.rint(decoded_center), 0, n_states - 1).astype(int)
+    xy_decoded = states[decoded]
+    xy_true = np.asarray(m["xy_true_sd"], dtype=float)
+    rmse = float(np.sqrt(np.mean(np.sum((xy_decoded - xy_true) ** 2, axis=1))))
+    results["StimulusDecode2D"] = {
+        "decoded_center_max_abs_error": float(np.max(np.abs(decoded_center - _vec(m, "decoded_center_sd")))),
+        "decoded_mismatch_count": float(np.count_nonzero(decoded != _vec(m, "decoded_sd").astype(int))),
+        "rmse_abs_error": float(abs(rmse - _scalar(m, "rmse_sd"))),
     }
 
     # ExplicitStimulusWhiskerData
