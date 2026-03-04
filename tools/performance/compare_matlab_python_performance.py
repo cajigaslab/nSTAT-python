@@ -72,6 +72,14 @@ def main() -> int:
         help="Return non-zero when Python runtime regresses beyond threshold vs previous report.",
     )
     parser.add_argument(
+        "--require-regression-env-match",
+        action="store_true",
+        help=(
+            "When set, fail if previous Python baseline exists but benchmark "
+            "environment metadata is not comparable."
+        ),
+    )
+    parser.add_argument(
         "--fail-on-matlab-ratio",
         action="store_true",
         help="Return non-zero when Python/MATLAB runtime ratio exceeds policy threshold.",
@@ -93,6 +101,12 @@ def main() -> int:
         if regression_env_compatible:
             prev_idx = _index_cases(prev.get("cases", []))
         else:
+            if args.require_regression_env_match:
+                print(
+                    "Regression environment mismatch and --require-regression-env-match was set: "
+                    f"current={py_report.get('environment', {})}, previous={prev.get('environment', {})}"
+                )
+                return 1
             print(
                 "Skipping regression gating: benchmark environments are not comparable "
                 f"(current={py_report.get('environment', {})}, previous={prev.get('environment', {})})"
