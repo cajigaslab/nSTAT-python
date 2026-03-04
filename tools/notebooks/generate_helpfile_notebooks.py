@@ -14,6 +14,8 @@ import argparse
 import importlib.util
 import os
 import re
+import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -64,6 +66,12 @@ def parse_args() -> argparse.Namespace:
         "--rewrite-notebook-manifest",
         action="store_true",
         help="Rewrite tools/notebooks/notebook_manifest.yml notebook paths to notebooks/helpfiles/*.ipynb.",
+    )
+    parser.add_argument(
+        "--normalize",
+        action="store_true",
+        default=True,
+        help="Run notebook cleaner after generation for deterministic formatting.",
     )
     return parser.parse_args()
 
@@ -282,13 +290,7 @@ def main() -> int:
                 setup_code=setup_code,
                 execution_blob=execution_blob,
             )
-            cell = nbf.v4.new_code_cell(cell_source)
-            cell.metadata["nstat"] = {
-                "topic": topic,
-                "section_index": idx,
-                "section_count": len(sections),
-                "section_title": section.title,
-            }
+            cell = nbf.v4.new_code_cell(cell_source.rstrip() + "\n")
             cells.append(cell)
         notebook.cells = cells
         nbf.write(notebook, output_path)
@@ -319,6 +321,21 @@ def main() -> int:
     if args.rewrite_notebook_manifest:
         out_manifest_payload = {"version": 1, "notebooks": rewritten_rows}
         args.manifest.write_text(yaml.safe_dump(out_manifest_payload, sort_keys=False), encoding="utf-8")
+
+    if args.normalize:
+        cleaner = repo_root / "tools" / "notebooks" / "clean_notebooks.py"
+        subprocess.run(
+            [
+                sys.executable,
+                str(cleaner),
+                "--manifest",
+                str(args.manifest),
+                "--repo-root",
+                str(repo_root),
+            ],
+            check=True,
+            cwd=repo_root,
+        )
 
     print(f"Generated {len(help_manifest_rows)} helpfile notebooks under notebooks/helpfiles")
     print(f"MATLAB help root: {matlab_help_root}")
