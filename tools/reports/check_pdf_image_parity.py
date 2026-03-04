@@ -62,6 +62,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional summary JSON path (defaults to <out-dir>/summary.json)",
     )
+    parser.add_argument(
+        "--pairs-json",
+        type=Path,
+        default=None,
+        help="Optional pairs manifest from build_image_parity_pdfs.py for per-topic aggregation.",
+    )
     return parser.parse_args()
 
 
@@ -172,6 +178,15 @@ def main() -> int:
     compare_pages = min(len(py_pages), len(matlab_pages))
     rows: list[PageParity] = []
     diff_dir = out_dir / "diff"
+    pair_rows: list[dict[str, Any]] = []
+    if args.pairs_json is not None and args.pairs_json.exists():
+        try:
+            pair_payload = json.loads(args.pairs_json.read_text(encoding="utf-8"))
+            raw_pairs = pair_payload.get("pairs", [])
+            if isinstance(raw_pairs, list):
+                pair_rows = [dict(item) for item in raw_pairs if isinstance(item, dict)]
+        except Exception:  # noqa: BLE001
+            pair_rows = []
 
     for idx in range(compare_pages):
         page_num = idx + 1
@@ -251,6 +266,35 @@ def main() -> int:
             for r in rows
         ],
     }
+    if pair_rows and len(pair_rows) >= len(rows):
+        topics: dict[str, dict[str, Any]] = {}
+        for idx, row in enumerate(rows):
+            pair = pair_rows[idx]
+            topic = str(pair.get("topic", ""))
+            ordinal = int(pair.get("ordinal", idx + 1) or (idx + 1))
+            block = topics.setdefault(
+                topic,
+                {
+                    "expected_figures": 0,
+                    "produced_figures": 0,
+                    "failing_figures": [],
+                    "figure_scores": [],
+                },
+            )
+            block["expected_figures"] += 1
+            block["produced_figures"] += 1
+            block["figure_scores"].append(
+                {
+                    "ordinal": ordinal,
+                    "metric": row.metric,
+                    "score": row.score,
+                    "passed": row.passed,
+                    "diff_image": row.diff_image,
+                }
+            )
+            if not row.passed:
+                block["failing_figures"].append(ordinal)
+        summary["topics"] = topics
     summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
 
     print(f"Wrote image-mode parity summary: {summary_path}")

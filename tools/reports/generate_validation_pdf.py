@@ -101,6 +101,10 @@ class NotebookReport:
     text_snippet: str
     error: str
     matlab_ref_images: list[Path]
+    expected_figure_count: int
+    produced_figure_count: int
+    figure_scores: list[float]
+    figure_count_match: bool
     similarity_score: float | None
     parity_pass: bool | None
     alignment_status: str | None
@@ -284,6 +288,28 @@ def load_targets(manifest_path: Path, repo_root: Path, group: str) -> list[Noteb
     return [target for target in all_targets if target.run_group == "smoke"]
 
 
+def load_expected_figure_counts(repo_root: Path) -> dict[str, int]:
+    manifest_path = repo_root / "parity" / "helpfile_figure_manifest.json"
+    if not manifest_path.exists():
+        return {}
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+    topics = payload.get("topics", {})
+    out: dict[str, int] = {}
+    if not isinstance(topics, dict):
+        return out
+    for topic, row in topics.items():
+        if not isinstance(row, dict):
+            continue
+        try:
+            out[str(topic)] = int(row.get("total_figures_expected", 0))
+        except Exception:  # noqa: BLE001
+            continue
+    return out
+
+
 def load_parity_gate_status(
     equivalence_report: Path,
     example_output_spec: Path,
@@ -464,9 +490,9 @@ def collect_matlab_reference_images(topic: str, matlab_help_root: Path | None) -
                 priority.append(path)
             else:
                 secondary.append(path)
-        found = priority + secondary
+        found = sorted(priority, key=lambda path: path.name) + sorted(secondary, key=lambda path: path.name)
 
-    return found[:8]
+    return found
 
 
 @functools.lru_cache(maxsize=1024)
@@ -519,6 +545,8 @@ def execute_notebook_capture(
     tmp_dir: Path,
     timeout: int,
     matlab_help_root: Path | None,
+    repo_root: Path,
+    expected_figure_count: int,
     parity_threshold: float,
     skip_parity_check: bool,
     parity_mode: str,
@@ -528,6 +556,7 @@ def execute_notebook_capture(
     start = time.perf_counter()
     image_dir = tmp_dir / "notebook_images" / target.topic
     image_dir.mkdir(parents=True, exist_ok=True)
+    tracker_dir = repo_root / "output" / "notebook_images" / target.topic
 
     matlab_ref_images = collect_matlab_reference_images(target.topic, matlab_help_root)
 
@@ -548,6 +577,10 @@ def execute_notebook_capture(
             text_snippet="",
             error=f"Notebook not found: {target.file}",
             matlab_ref_images=matlab_ref_images,
+            expected_figure_count=expected_figure_count,
+            produced_figure_count=0,
+            figure_scores=[],
+            figure_count_match=(expected_figure_count == 0),
             similarity_score=None,
             parity_pass=None,
             alignment_status=(gate_status[0] if gate_status is not None else None),
@@ -584,6 +617,10 @@ def execute_notebook_capture(
             text_snippet="",
             error=str(exc),
             matlab_ref_images=matlab_ref_images,
+            expected_figure_count=expected_figure_count,
+            produced_figure_count=0,
+            figure_scores=[],
+            figure_count_match=(expected_figure_count == 0),
             similarity_score=None,
             parity_pass=None,
             alignment_status=(gate_status[0] if gate_status is not None else None),
@@ -622,7 +659,15 @@ def execute_notebook_capture(
             elif output_type == "stream" and not text_snippet:
                 text_snippet = _short_text(str(output.get("text", "")))
 
+    tracker_images = sorted(tracker_dir.glob("fig_*.png"))
+    if expected_figure_count >= 0:
+        image_paths = tracker_images
+    elif tracker_images:
+        image_paths = tracker_images
     unique_image_paths, image_hashes = _select_unique_images(image_paths)
+    produced_figure_count = len(image_paths)
+    figure_count_match = produced_figure_count == int(expected_figure_count)
+    figure_scores: list[float] = []
     similarity_score: float | None = None
     parity_pass: bool | None = None
     alignment_status: str | None = gate_status[0] if gate_status is not None else None
@@ -641,19 +686,21 @@ def execute_notebook_capture(
             parity_pass = parity_pass and numeric_gate_ok
     else:
         if not skip_parity_check:
-            if image_paths and matlab_ref_images:
-                best = -1.0
-                for py_img in image_paths:
-                    for mat_img in matlab_ref_images:
-                        sim = compute_image_similarity(py_img, mat_img)
-                        if sim > best:
-                            best = sim
-                            matched_python_image = py_img
-                            matched_matlab_image = mat_img
-                similarity_score = best if best >= 0.0 else None
-                parity_pass = similarity_score >= parity_threshold
+            if image_paths and matlab_ref_images and figure_count_match and len(matlab_ref_images) == produced_figure_count:
+                for idx in range(produced_figure_count):
+                    py_img = image_paths[idx]
+                    mat_img = matlab_ref_images[idx]
+                    sim = compute_image_similarity(py_img, mat_img)
+                    figure_scores.append(sim)
+                if figure_scores:
+                    similarity_score = float(min(figure_scores))
+                    matched_python_image = image_paths[0]
+                    matched_matlab_image = matlab_ref_images[0]
+                    parity_pass = similarity_score >= parity_threshold
+                else:
+                    parity_pass = False
             else:
-                parity_pass = None
+                parity_pass = False
 
     duration = time.perf_counter() - start
     return NotebookReport(
@@ -671,6 +718,10 @@ def execute_notebook_capture(
         text_snippet=text_snippet,
         error="",
         matlab_ref_images=matlab_ref_images,
+        expected_figure_count=expected_figure_count,
+        produced_figure_count=produced_figure_count,
+        figure_scores=figure_scores,
+        figure_count_match=figure_count_match,
         similarity_score=similarity_score,
         parity_pass=parity_pass,
         alignment_status=alignment_status,
@@ -831,6 +882,10 @@ def write_machine_readable_summaries(
                 "numeric_drift_pass": metrics.get("numeric_drift_pass"),
                 "numeric_drift_failed_metric_count": metrics.get("numeric_drift_failed_metric_count"),
                 "similarity_score": report.similarity_score,
+                "expected_figures": int(report.expected_figure_count),
+                "produced_figures": int(report.produced_figure_count),
+                "figure_count_match": bool(report.figure_count_match),
+                "figure_scores": [float(score) for score in report.figure_scores],
                 "image_count": int(report.image_count),
                 "unique_image_count": int(report.unique_image_count),
                 "duplicate_image_count": int(report.duplicate_image_count),
@@ -839,6 +894,15 @@ def write_machine_readable_summaries(
                 "matched_matlab_image": _as_rel(report.matched_matlab_image, repo_root),
                 "python_images": [_as_rel(path, repo_root) for path in report.image_paths],
                 "matlab_reference_images": [_as_rel(path, repo_root) for path in report.matlab_ref_images],
+                "figure_pairs": [
+                    {
+                        "ordinal": idx + 1,
+                        "python_image": _as_rel(report.image_paths[idx], repo_root),
+                        "matlab_image": _as_rel(report.matlab_ref_images[idx], repo_root),
+                        "ssim": float(report.figure_scores[idx]),
+                    }
+                    for idx in range(min(len(report.figure_scores), len(report.image_paths), len(report.matlab_ref_images)))
+                ],
                 "diff_artifacts": diff_artifacts,
                 "parity_metrics": metrics,
             }
@@ -911,6 +975,9 @@ def write_machine_readable_summaries(
         "numeric_drift_pass",
         "numeric_drift_failed_metric_count",
         "similarity_score",
+        "expected_figures",
+        "produced_figures",
+        "figure_count_match",
         "image_count",
         "unique_image_count",
         "duplicate_image_count",
@@ -1411,6 +1478,7 @@ def generate_pdf_report(
     parity_gate_status = load_parity_gate_status(equivalence_report, example_output_spec)
     parity_topic_metrics = load_parity_topic_metrics(equivalence_report)
     numeric_drift_by_topic = load_numeric_drift_summary(numeric_drift_report)
+    expected_figures_by_topic = load_expected_figure_counts(repo_root)
 
     targets = load_targets(manifest_path, repo_root, notebook_group)
     reports: list[NotebookReport] = []
@@ -1423,6 +1491,8 @@ def generate_pdf_report(
                 tmp_dir=tmp_dir,
                 timeout=timeout,
                 matlab_help_root=resolved_matlab_help_root,
+                repo_root=repo_root,
+                expected_figure_count=int(expected_figures_by_topic.get(target.topic, 0)),
                 parity_threshold=parity_threshold,
                 skip_parity_check=skip_parity_check,
                 parity_mode=parity_mode,

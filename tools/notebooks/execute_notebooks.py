@@ -30,6 +30,7 @@ class NotebookTarget:
     topic: str
     path: Path
     run_group: str
+    expected_figures: int | None = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -100,13 +101,27 @@ def _set_deterministic_env() -> None:
 
 def _load_targets(manifest_path: Path, repo_root: Path) -> list[NotebookTarget]:
     payload = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
+    figure_manifest_path = repo_root / "parity" / "helpfile_figure_manifest.json"
+    figure_expected: dict[str, int] = {}
+    if figure_manifest_path.exists():
+        try:
+            fig_payload = json.loads(figure_manifest_path.read_text(encoding="utf-8"))
+            topics = fig_payload.get("topics", {})
+            for topic, row in topics.items():
+                if not isinstance(row, dict):
+                    continue
+                figure_expected[str(topic)] = int(row.get("total_figures_expected", 0))
+        except Exception:  # noqa: BLE001
+            figure_expected = {}
     targets: list[NotebookTarget] = []
     for row in payload.get("notebooks", []):
+        topic = str(row["topic"])
         targets.append(
             NotebookTarget(
-                topic=str(row["topic"]),
+                topic=topic,
                 path=repo_root / str(row["file"]),
                 run_group=str(row["run_group"]),
+                expected_figures=figure_expected.get(topic),
             )
         )
     return targets
@@ -151,6 +166,7 @@ def _execute_one(
     startup_timeout: int,
     executed_dir: Path,
     write_executed: bool,
+    repo_root: Path,
 ) -> dict[str, object]:
     notebook = nbformat.read(target.path, as_version=4)
     start = time.perf_counter()
@@ -167,7 +183,21 @@ def _execute_one(
             resources={"metadata": {"path": str(target.path.parent)}},
         )
         client.execute()
-        image_paths = _extract_images(notebook, executed_dir / target.topic / "images")
+        tracker_dir = repo_root / "output" / "notebook_images" / target.topic
+        tracker_images = sorted(tracker_dir.glob("fig_*.png"))
+        if target.expected_figures is not None:
+            image_paths = tracker_images
+        else:
+            if tracker_images:
+                image_paths = tracker_images
+            else:
+                image_paths = _extract_images(notebook, executed_dir / target.topic / "images")
+        if target.expected_figures is not None and target.expected_figures >= 0:
+            if len(image_paths) != int(target.expected_figures):
+                raise AssertionError(
+                    f"{target.topic}: expected {int(target.expected_figures)} figure(s), "
+                    f"found {len(image_paths)}"
+                )
         if write_executed:
             out_nb = executed_dir / target.topic / target.path.name
             out_nb.parent.mkdir(parents=True, exist_ok=True)
@@ -222,6 +252,7 @@ def main() -> int:
                 startup_timeout=args.startup_timeout,
                 executed_dir=args.executed_dir,
                 write_executed=args.write_executed,
+                repo_root=args.repo_root,
             )
         )
 

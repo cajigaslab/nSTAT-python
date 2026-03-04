@@ -94,6 +94,7 @@ jobs:
           python tools/reports/check_pdf_image_parity.py \
             --python-pdf output/pdf/image_mode_parity/python_pages.pdf \
             --matlab-pdf output/pdf/image_mode_parity/matlab_pages.pdf \
+            --pairs-json output/pdf/image_mode_parity/pairs.json \
             --out-dir output/pdf/image_mode_parity \
             --dpi 150 \
             --ssim-threshold 0.70 \
