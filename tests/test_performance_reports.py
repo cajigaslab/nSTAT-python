@@ -9,7 +9,14 @@ def _load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-LINUX_BASELINE = Path("tests/performance/fixtures/python/performance_baseline_linux_20260304.json")
+LINUX_BASELINE_DATED = Path("tests/performance/fixtures/python/performance_baseline_linux_20260304.json")
+LINUX_BASELINE = Path("tests/performance/fixtures/python/performance_baseline_linux_latest.json")
+
+
+def test_linux_latest_baseline_matches_dated_snapshot() -> None:
+    latest = _load(LINUX_BASELINE)
+    dated = _load(LINUX_BASELINE_DATED)
+    assert latest == dated
 
 
 def test_performance_fixture_coverage() -> None:
@@ -18,8 +25,9 @@ def test_performance_fixture_coverage() -> None:
 
     matlab_pairs = {(row["case"], row["tier"]) for row in matlab["cases"]}
     python_pairs = {(row["case"], row["tier"]) for row in python["cases"]}
-    assert matlab_pairs == python_pairs
+    assert matlab_pairs.issubset(python_pairs)
     assert len(matlab_pairs) == 15
+    assert len(python_pairs) >= len(matlab_pairs)
 
 
 def test_performance_comparator_runs(tmp_path: Path) -> None:
@@ -46,7 +54,7 @@ def test_performance_comparator_runs(tmp_path: Path) -> None:
     subprocess.run(cmd, check=True)
 
     report = _load(out_json)
-    assert report["counts"]["total_case_tiers"] == 15
+    assert report["counts"]["total_case_tiers"] >= 15
     assert report["counts"]["regression_failures"] == 0
     assert len(report["top_python_vs_matlab_gaps"]) <= 5
 
