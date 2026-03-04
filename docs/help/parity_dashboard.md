@@ -14,9 +14,9 @@ artifacts in the `parity/` directory.
 ## Functional parity (methods)
 | Metric | Value |
 |---|---:|
-| Total methods | 502 |
-| Contract-verified | 481 |
-| Contract-explicit verified | 481 |
+| Total methods | 501 |
+| Contract-verified | 480 |
+| Contract-explicit verified | 480 |
 | Probe-verified | 0 |
 | Excluded methods | 21 |
 | Missing symbols | 0 |

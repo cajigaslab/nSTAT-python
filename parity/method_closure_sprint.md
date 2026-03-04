@@ -3,8 +3,8 @@
 This sprint backlog targets methods that are probe-verified but not yet explicitly covered by behavior contracts.
 
 ## Functional Summary
-- Total methods: `502`
-- Contract-explicit verified methods: `481`
+- Total methods: `501`
+- Contract-explicit verified methods: `480`
 - Probe-verified methods: `0`
 - Eligible verified ratio: `1.000`
 - Excluded methods: `21`
@@ -19,7 +19,7 @@ This sprint backlog targets methods that are probe-verified but not yet explicit
 | FitResult | 0 | 33 | 0 |
 | FitResSummary | 0 | 30 | 0 |
 | nspikeTrain | 0 | 29 | 0 |
-| DecodingAlgorithms | 0 | 25 | 0 |
+| DecodingAlgorithms | 0 | 24 | 0 |
 
 ## Sprint Work Packages
 
