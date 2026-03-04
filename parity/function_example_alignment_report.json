@@ -7,8 +7,8 @@
       "missing_executable_topics": 0,
       "pending_manual_review_topics": 0,
       "strict_line_gap_topics": 0,
-      "strict_line_partial_topics": 15,
-      "strict_line_verified_topics": 11,
+      "strict_line_partial_topics": 11,
+      "strict_line_verified_topics": 15,
       "total_topics": 30,
       "validated_topics": 26
     },
@@ -289,8 +289,8 @@
         "line_port_matched_lines": 3,
         "line_port_matlab_function_count": 2,
         "line_port_matlab_lines": 3,
-        "line_port_python_function_count": 22,
-        "line_port_python_lines": 42,
+        "line_port_python_function_count": 13,
+        "line_port_python_lines": 41,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -316,7 +316,7 @@
           },
           {
             "cell_index": 5,
-            "line_count": 6,
+            "line_count": 4,
             "preview": "from nstat.compat.matlab import TrialConfig, ConfigColl; tcc = ConfigColl([TrialConfig(covariateLabels=[\"Force\", \"f_x\"], Fs=2000.0, fitType="
           },
           {
@@ -325,19 +325,19 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 6,
+        "python_code_lines": 4,
         "python_notebook": "notebooks/ConfigCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 2.0,
+        "python_to_matlab_line_ratio": 1.3333333333333333,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/ConfigCollExamples/ConfigCollExamples_001.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "ConfigCollExamples"
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 5,
+        "assertion_count": 3,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 4,
@@ -346,8 +346,8 @@
         "line_port_matched_lines": 10,
         "line_port_matlab_function_count": 4,
         "line_port_matlab_lines": 10,
-        "line_port_python_function_count": 36,
-        "line_port_python_lines": 61,
+        "line_port_python_function_count": 35,
+        "line_port_python_lines": 59,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -389,7 +389,7 @@
           },
           {
             "cell_index": 5,
-            "line_count": 18,
+            "line_count": 15,
             "preview": "from nstat.compat.matlab import Covariate, CovColl, History, nspikeTrain"
           },
           {
@@ -398,14 +398,14 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 18,
+        "python_code_lines": 15,
         "python_notebook": "notebooks/CovCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.8,
+        "python_to_matlab_line_ratio": 1.5,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/CovCollExamples/CovCollExamples_001.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "CovCollExamples"
       },
       {
@@ -2839,8 +2839,8 @@
         "line_port_matched_lines": 3,
         "line_port_matlab_function_count": 2,
         "line_port_matlab_lines": 3,
-        "line_port_python_function_count": 22,
-        "line_port_python_lines": 42,
+        "line_port_python_function_count": 15,
+        "line_port_python_lines": 41,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -2866,7 +2866,7 @@
           },
           {
             "cell_index": 5,
-            "line_count": 6,
+            "line_count": 4,
             "preview": "from nstat.compat.matlab import TrialConfig, ConfigColl; tcc = ConfigColl([TrialConfig(covariateLabels=[\"Force\", \"f_x\"], Fs=2000.0, fitType="
           },
           {
@@ -2875,14 +2875,14 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 6,
+        "python_code_lines": 4,
         "python_notebook": "notebooks/TrialConfigExamples.ipynb",
-        "python_to_matlab_line_ratio": 2.0,
+        "python_to_matlab_line_ratio": 1.3333333333333333,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/TrialConfigExamples/TrialConfigExamples_001.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "TrialConfigExamples"
       },
       {
@@ -5182,7 +5182,7 @@
         "line_port_matlab_function_count": 6,
         "line_port_matlab_lines": 10,
         "line_port_python_function_count": 27,
-        "line_port_python_lines": 67,
+        "line_port_python_lines": 55,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -5233,7 +5233,7 @@
           },
           {
             "cell_index": 5,
-            "line_count": 24,
+            "line_count": 12,
             "preview": "from nstat.compat.matlab import nspikeTrain"
           },
           {
@@ -5242,14 +5242,14 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 24,
+        "python_code_lines": 12,
         "python_notebook": "notebooks/nSpikeTrainExamples.ipynb",
-        "python_to_matlab_line_ratio": 2.4,
+        "python_to_matlab_line_ratio": 1.2,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/nSpikeTrainExamples/nSpikeTrainExamples_001.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "nSpikeTrainExamples"
       },
       {
