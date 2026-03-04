@@ -27,6 +27,22 @@ def _safe_ratio(num: float, den: float) -> float:
     return float(num / den)
 
 
+def _major_minor(version: Any) -> str:
+    text = str(version or "")
+    parts = text.split(".")
+    if len(parts) >= 2:
+        return f"{parts[0]}.{parts[1]}"
+    return text
+
+
+def _is_regression_env_compatible(current: dict[str, Any], previous: dict[str, Any]) -> bool:
+    # Performance regressions are only meaningful when runner platform and Python minor line match.
+    return (
+        str(current.get("platform", "")) == str(previous.get("platform", ""))
+        and _major_minor(current.get("python", "")) == _major_minor(previous.get("python", ""))
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--python-report", type=Path, required=True, help="Python benchmark JSON report.")
@@ -67,9 +83,20 @@ def main() -> int:
     policy = yaml.safe_load(args.policy.read_text(encoding="utf-8")) or {}
 
     prev_idx: dict[tuple[str, str], dict[str, Any]] = {}
+    regression_env_compatible = True
     if args.previous_python_report and args.previous_python_report.exists():
         prev = json.loads(args.previous_python_report.read_text(encoding="utf-8"))
-        prev_idx = _index_cases(prev.get("cases", []))
+        regression_env_compatible = _is_regression_env_compatible(
+            py_report.get("environment", {}) or {},
+            prev.get("environment", {}) or {},
+        )
+        if regression_env_compatible:
+            prev_idx = _index_cases(prev.get("cases", []))
+        else:
+            print(
+                "Skipping regression gating: benchmark environments are not comparable "
+                f"(current={py_report.get('environment', {})}, previous={prev.get('environment', {})})"
+            )
 
     py_idx = _index_cases(py_report.get("cases", []))
     ml_idx = _index_cases(ml_report.get("cases", []))
@@ -164,6 +191,7 @@ def main() -> int:
             "critical_case_max_matlab_ratio": critical,
             "max_python_regression_ratio": regression_limit,
             "min_python_regression_delta_ms": min_regression_delta_ms,
+            "regression_env_compatible": regression_env_compatible,
         },
         "python_report": str(args.python_report),
         "matlab_report": str(args.matlab_report),

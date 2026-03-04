@@ -45,3 +45,43 @@ def test_performance_comparator_runs(tmp_path: Path) -> None:
     assert report["counts"]["total_case_tiers"] == 15
     assert report["counts"]["regression_failures"] == 0
     assert len(report["top_python_vs_matlab_gaps"]) <= 5
+
+
+def test_performance_comparator_skips_regression_on_env_mismatch(tmp_path: Path) -> None:
+    python_report = _load(Path("tests/performance/fixtures/python/performance_baseline_20260303.json"))
+    previous_report = _load(Path("tests/performance/fixtures/python/performance_baseline_20260303.json"))
+
+    # Force a would-be regression while also making previous env non-comparable.
+    python_report["cases"][0]["median_runtime_ms"] = float(python_report["cases"][0]["median_runtime_ms"]) * 5.0
+    previous_report["environment"]["platform"] = "Linux-test-x86_64"
+    previous_report["environment"]["python"] = "3.11.9"
+
+    python_path = tmp_path / "python_report.json"
+    previous_path = tmp_path / "previous_report.json"
+    python_path.write_text(json.dumps(python_report), encoding="utf-8")
+    previous_path.write_text(json.dumps(previous_report), encoding="utf-8")
+
+    out_json = tmp_path / "perf_report_env_mismatch.json"
+    out_csv = tmp_path / "perf_report_env_mismatch.csv"
+    cmd = [
+        "python",
+        "tools/performance/compare_matlab_python_performance.py",
+        "--python-report",
+        str(python_path),
+        "--matlab-report",
+        "tests/performance/fixtures/matlab/performance_baseline_470fde8.json",
+        "--policy",
+        "parity/performance_gate_policy.yml",
+        "--previous-python-report",
+        str(previous_path),
+        "--report-out",
+        str(out_json),
+        "--csv-out",
+        str(out_csv),
+        "--fail-on-regression",
+    ]
+    subprocess.run(cmd, check=True)
+
+    report = _load(out_json)
+    assert report["policy"]["regression_env_compatible"] is False
+    assert report["counts"]["regression_failures"] == 0
