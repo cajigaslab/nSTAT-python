@@ -264,10 +264,17 @@ def _extract_notebook_code_stats(path: Path) -> NotebookCodeStats:
             src = str(src_raw)
         if "MATLAB executable line-port anchors for strict parity audit" in src:
             snapshot_rows = sum(1 for line in src.splitlines() if line.strip().startswith('"'))
+            executable_rows = [
+                line.strip()
+                for line in src.splitlines()
+                if line.strip() and not line.strip().startswith("#")
+            ]
             # Exclude only small snapshot scaffolds from line-ratio accounting;
             # keep large snapshots (e.g., nSTATPaperExamples) counted so
             # notebook/m-file scale remains comparable for strict ratio checks.
-            if snapshot_rows <= 64:
+            # If a cell mixes snapshot anchors with substantive executable code,
+            # keep it in the accounting.
+            if snapshot_rows <= 64 and len(executable_rows) <= 16:
                 cells.append(
                     {
                         "cell_index": i,
