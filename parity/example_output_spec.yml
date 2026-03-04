@@ -56,3 +56,15 @@ topics:
   FitResultReference:
     min_python_code_lines: 20
     min_python_code_cells: 3
+  TrialConfigExamples:
+    min_python_code_lines: 6
+  ConfigCollExamples:
+    min_python_code_lines: 6
+  CovCollExamples:
+    min_python_code_lines: 18
+  EventsExamples:
+    min_python_code_lines: 8
+  nSpikeTrainExamples:
+    min_python_code_lines: 13
+  nstCollExamples:
+    min_python_code_lines: 12

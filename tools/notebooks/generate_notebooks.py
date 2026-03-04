@@ -797,179 +797,158 @@ CHECKPOINT_LIMITS = {
 """
 
 
+SIGNALOBJ_EXAMPLES_TEMPLATE = """# SignalObjExamples: MATLAB-style SignalObj workflow with compact Python parity.
+from nstat.compat.matlab import SignalObj
+
+plt.close("all")
+sample_rate = 100.0; t = np.arange(0.0, 10.0 + 1.0 / sample_rate, 1.0 / sample_rate); freq = 2.0
+v1 = np.sin(2.0 * np.pi * freq * t); v2 = np.sin(v1**2); v = np.column_stack([v1, v2])
+
+def mk_sig(data: np.ndarray, labels: list[str]) -> SignalObj:
+    sig = SignalObj(time=t, data=data, name="Voltage", units="V")
+    return sig.setXlabel("time").setXUnits("s").setYLabel("Voltage").setYUnits("V").setDataLabels(labels)
+
+# Example 1: base signal definitions + masking behavior
+s = mk_sig(v, ["v1", "v2"]); s1 = mk_sig(v1, ["v1"])
+fig1, ax1 = plt.subplots(2, 2, figsize=(10, 6), sharex=False)
+plt.sca(ax1[0, 0]); s.plot(); ax1[0, 0].set_title("s.plot")
+plt.sca(ax1[1, 0]); s1.plot(); ax1[1, 0].set_title("s1.plot")
+s.setMask(["v1"]); plt.sca(ax1[0, 1]); s.plot(); ax1[0, 1].set_title("mask v1")
+s.setMask(["v2"]); plt.sca(ax1[1, 1]); s.plot(); ax1[1, 1].set_title("mask v2")
+masked_channel_count = float(len(s.findIndFromDataMask())); s.resetMask(); plt.tight_layout(); plt.show()
+
+# Repeated labels and sub-signal extraction
+s_repeat = mk_sig(np.column_stack([v1, v1, v2]), ["v1", "v1", "v2"]); s_repeat_v1 = s_repeat.getSubSignal([0, 1])
+fig2 = plt.figure(figsize=(8, 3.5)); plt.sca(fig2.add_subplot(1, 1, 1)); s_repeat_v1.plot()
+plt.title("getSubSignal for repeated v1 labels"); plt.tight_layout(); plt.show()
+
+# Example 2: property edits and plot variants
+s = mk_sig(v, ["v1", "v2"])
+s.setXlabel("distance").setXUnits("cm").setDataLabels(["r1", "r2"]).setYLabel("Temperature").setYUnits("C")
+s.setMaxTime(14.0).setMinTime(-2.0).setName("testName")
+name_set_ok = s.name == "testName"
+fig3, ax3 = plt.subplots(2, 2, figsize=(10, 6))
+for a, args, ttl in [
+    (ax3[0, 0], tuple(), "property-edited plot"),
+    (ax3[0, 1], ("v1", [["'k'"]]), "plot('v1',props)"),
+    (ax3[1, 0], ("all", [["'k'"], ["'-.g'"]]), "plot('all',props)"),
+    (ax3[1, 1], (["v1", "v2"], [["'k'"], ["'-.g'"]]), "plot({'v1','v2'},props)"),
+]:
+    plt.sca(a); s.plot(*args); a.set_title(ttl)
+plt.tight_layout(); plt.show()
+
+# Example 3/4: resample, window, and arithmetic operations
+s = mk_sig(v, ["v1", "v2"]); s_resampled = s.resample(0.1 * sample_rate); s_window = s.getSigInTimeWindow(-2.0, 3.0)
+mean_per_channel = np.mean(s.dataToMatrix(), axis=0); s_zero_mean = s.minus(mean_per_channel); s4 = s.mtimes(2.0).plus(s_zero_mean)
+s_integral = SignalObj(time=t, data=s.integral(), name="integral", units="V*s"); s_derivative = s.derivative(); s6 = s_integral.derivative().minus(s)
+fig4, ax4 = plt.subplots(3, 2, figsize=(10, 8), sharex=False)
+for a, obj, ttl in [
+    (ax4[0, 0], s, "original"),
+    (ax4[0, 1], s_resampled, "resampled"),
+    (ax4[1, 0], s_window, "window [-2,3]"),
+    (ax4[1, 1], s_zero_mean, "zero-mean"),
+    (ax4[2, 0], s4, "2*s + (s-mean)"),
+    (ax4[2, 1], s6, "d/dt(integral)-s"),
+]:
+    plt.sca(a); obj.plot(); a.set_title(ttl)
+plt.tight_layout(); plt.show()
+
+# Example 5: spectra
+f_mtm, p_mtm = s.MTMspectrum(); f_per, p_per = s.periodogram()
+fig5, ax5 = plt.subplots(1, 2, figsize=(9, 3.5)); ax5[0].plot(f_mtm, p_mtm); ax5[0].set_title("MTM")
+ax5[1].plot(f_per, p_per); ax5[1].set_title("Periodogram"); plt.tight_layout(); plt.show()
+
+# Example 6: variability views
+sample_rate_var = 5000.0; t_var = np.arange(0.0, 1.0 + 1.0 / sample_rate_var, 1.0 / sample_rate_var)
+v1_var = np.sin(2.0 * np.pi * freq * t_var); v2_var = np.sin(v1_var**2)
+noise = 0.1 * rng.standard_normal((t_var.size, 6)); data_var = np.column_stack([v1_var, v2_var, v2_var, v1_var, v2_var, v1_var]) + noise
+s_var = SignalObj(time=t_var, data=data_var, name="Voltage", units="V").setDataLabels(["v1", "v2", "v2", "v1", "v1", "v2"])
+fig6, ax6 = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+plt.sca(ax6[0]); s_var.plot(); ax6[0].set_title("noisy realizations")
+plt.sca(ax6[1]); s_var.plotAllVariability(); ax6[1].set_title("plotAllVariability")
+plt.tight_layout(); plt.show()
+
+assert masked_channel_count == 1.0
+assert bool(name_set_ok)
+assert int(s_var.getNumSignals()) == 6
+
+CHECKPOINT_METRICS = {
+    "masked_cols": float(masked_channel_count),
+    "name_set_ok": float(1.0 if name_set_ok else 0.0),
+    "resampled_samples": float(s_resampled.getNumSamples()),
+    "periodogram_bins": float(f_per.size),
+    "variability_channels": float(s_var.getNumSignals()),
+    "window_rows": float(s_window.dataToMatrix().shape[0]),
+}
+CHECKPOINT_LIMITS = {
+    "masked_cols": (1.0, 1.0),
+    "name_set_ok": (1.0, 1.0),
+    "resampled_samples": (90.0, 110.0),
+    "periodogram_bins": (40.0, 2000.0),
+    "variability_channels": (6.0, 6.0),
+    "window_rows": (50.0, 400.0),
+}
+"""
+
+
 COVARIATE_EXAMPLES_TEMPLATE = """# CovariateExamples: build and inspect multiple covariate signals.
-t = np.arange(0.0, 5.0 + 0.01, 0.01)
-x = np.exp(-t)
-y = np.sin(2.0 * np.pi * t)
-z = (-y) ** 3
-fx = np.abs(y)
-fy = np.abs(y) ** 2
-
-force = Covariate(
-    time=t,
-    data=np.column_stack([fx, fy]),
-    name="Force",
-    labels=["f_x", "f_y"],
-)
-position = Covariate(
-    time=t,
-    data=np.column_stack([x, y, z]),
-    name="Position",
-    labels=["x", "y", "z"],
-)
-
-# MATLAB figure 1 style: Position covariates with custom line colors.
-fig1 = plt.figure(figsize=(9, 5.4))
-ax = fig1.add_subplot(1, 1, 1)
-ax.plot(t, position.data[:, 0], "g", linewidth=0.5, label="x")
-ax.plot(t, position.data[:, 1], "k", linewidth=0.5, label="y")
-ax.plot(t, position.data[:, 2], "b", linewidth=0.5, label="z")
-ax.set_title(f"{TOPIC}: position covariates")
-ax.set_xlabel("time [s]")
-ax.legend(loc="upper right")
-plt.tight_layout()
-plt.show()
-
-# MATLAB figure 2 style: Force original and zero-mean representations.
+t = np.arange(0.0, 5.0 + 0.01, 0.01); x = np.exp(-t); y = np.sin(2.0 * np.pi * t); z = (-y) ** 3
+force = Covariate(time=t, data=np.column_stack([np.abs(y), np.abs(y) ** 2]), name="Force", labels=["f_x", "f_y"])
+position = Covariate(time=t, data=np.column_stack([x, y, z]), name="Position", labels=["x", "y", "z"])
 force_zero_mean = force.data - np.mean(force.data, axis=0, keepdims=True)
-fig2, axes = plt.subplots(1, 2, figsize=(10, 4.6), sharex=True)
-axes[0].plot(t, force.data[:, 0], "b", linewidth=1.0, label="f_x")
-axes[0].plot(t, force.data[:, 1], "k", linewidth=1.0, label="f_y")
-axes[0].set_title("Force (original)")
-axes[0].set_xlabel("time [s]")
-axes[0].legend(loc="upper right")
 
-axes[1].plot(t, force_zero_mean[:, 0], "b", linewidth=1.0, label="f_x")
-axes[1].plot(t, force_zero_mean[:, 1], "k", linewidth=1.0, label="f_y")
-axes[1].set_title("Force (zero-mean)")
-axes[1].set_xlabel("time [s]")
-axes[1].legend(loc="upper right")
-
-plt.tight_layout()
-plt.show()
+fig, axes = plt.subplots(2, 2, figsize=(10, 7), sharex=True)
+axes[0, 0].plot(t, position.data[:, 0], "g", linewidth=0.6, label="x")
+axes[0, 0].plot(t, position.data[:, 1], "k", linewidth=0.6, label="y")
+axes[0, 0].plot(t, position.data[:, 2], "b", linewidth=0.6, label="z")
+axes[0, 0].set_title(f"{TOPIC}: position covariates"); axes[0, 0].legend(loc="upper right")
+axes[0, 1].plot(t, force.data[:, 0], "b", linewidth=1.0, label="f_x")
+axes[0, 1].plot(t, force.data[:, 1], "k", linewidth=1.0, label="f_y")
+axes[0, 1].set_title("Force (original)"); axes[0, 1].legend(loc="upper right")
+axes[1, 0].plot(t, force_zero_mean[:, 0], "b", linewidth=1.0, label="f_x")
+axes[1, 0].plot(t, force_zero_mean[:, 1], "k", linewidth=1.0, label="f_y")
+axes[1, 0].set_title("Force (zero-mean)"); axes[1, 0].legend(loc="upper right")
+axes[1, 1].plot(t, position.data[:, 1], "k", linewidth=1.0); axes[1, 1].set_title("Position y")
+for ax in axes.ravel(): ax.set_xlabel("time [s]")
+plt.tight_layout(); plt.show()
 
 assert position.data.shape == (t.size, 3)
 assert force.data.shape == (t.size, 2)
-
-CHECKPOINT_METRICS = {
-    "position_var": float(np.var(position.data[:, 1])),
-    "force_mean": float(np.mean(force.data[:, 0])),
-}
-CHECKPOINT_LIMITS = {
-    "position_var": (0.05, 2.0),
-    "force_mean": (0.0, 2.0),
-}
+assert np.isfinite(force_zero_mean).all()
+CHECKPOINT_METRICS = {"position_var": float(np.var(position.data[:, 1])), "force_mean": float(np.mean(force.data[:, 0]))}
+CHECKPOINT_LIMITS = {"position_var": (0.05, 2.0), "force_mean": (0.0, 2.0)}
 """
 
 
 EVENTS_EXAMPLES_TEMPLATE = """# EventsExamples: visualize event markers over multiple contexts.
-# Fixed times chosen to mirror the MATLAB published reference geometry.
-e_times = np.array([0.079, 0.579, 0.997], dtype=float)
-e_labels = ["E_1", "E_2", "E_3"]
-events = Events(times=e_times, labels=e_labels)
-
-def _plot_events(color: str, title_suffix: str) -> None:
-    # Match MATLAB publish aspect ratio (~1074 x 648 px).
-    fig, ax = plt.subplots(1, 1, figsize=(10.74, 6.48))
-    ax.vlines(events.times, ymin=0.0, ymax=1.0, colors=color, linewidth=4.0)
-    for i, t_evt in enumerate(events.times):
-        ax.text(t_evt - 0.02, 1.03, e_labels[i], ha="left", va="bottom", fontsize=10, color="k")
-    ax.set_xlim(0.0, 1.0)
-    ax.set_ylim(0.0, 1.0)
-    ax.set_title(f"Events overlay ({title_suffix})")
-    plt.tight_layout()
-    plt.show()
-
-# Match MATLAB help workflow where events are replotted in multiple color contexts.
-_plot_events("b", "blue")
-_plot_events("r", "red")
-_plot_events("g", "green")
-_plot_events("m", "magenta")
-
-assert events.times.size == 3
-assert np.all(np.diff(events.times) > 0.0)
-
-CHECKPOINT_METRICS = {
-    "event_count": float(events.times.size),
-    "event_span": float(events.times[-1] - events.times[0]),
-}
-CHECKPOINT_LIMITS = {
-    "event_count": (3.0, 3.0),
-    "event_span": (0.8, 1.0),
-}
+e_times = np.array([0.079, 0.579, 0.997], dtype=float); events = Events(times=e_times, labels=["E_1", "E_2", "E_3"])
+fig, ax = plt.subplots(1, 1, figsize=(10.74, 6.48))
+for c in ["b", "r", "g", "m"]: ax.vlines(events.times, ymin=0.0, ymax=1.0, colors=c, linewidth=2.0, alpha=0.4)
+for i, t_evt in enumerate(events.times): ax.text(t_evt - 0.02, 1.03, f"E_{i+1}", ha="left", va="bottom", fontsize=9, color="k")
+ax.set_xlim(0.0, 1.0); ax.set_ylim(0.0, 1.0); ax.set_title(f"{TOPIC}: event overlays"); plt.tight_layout(); plt.show()
+assert events.times.size == 3 and bool(np.all(np.diff(events.times) > 0.0))
+CHECKPOINT_METRICS = {"event_count": float(events.times.size), "event_span": float(events.times[-1] - events.times[0])}
+CHECKPOINT_LIMITS = {"event_count": (3.0, 3.0), "event_span": (0.8, 1.0)}
 """
 
 
 TRIALCONFIG_EXAMPLES_TEMPLATE = """# TrialConfigExamples: create and inspect trial configurations.
-from nstat.compat.matlab import TrialConfig, ConfigColl
-
-tc1 = TrialConfig(covariateLabels=["Force", "f_x"], Fs=2000.0, fitType="poisson", name="ForceX")
-tc2 = TrialConfig(covariateLabels=["Position", "x"], Fs=2000.0, fitType="poisson", name="PositionX")
-tcc = ConfigColl([tc1, tc2])
-
-config_names = tcc.getConfigNames()
-cfg1 = tcc.getConfig(1)
-cfg2 = tcc.getConfig("PositionX")
-sample_rates = np.array([cfg.sample_rate_hz for cfg in tcc.getConfigs()], dtype=float)
-
-fig, ax = plt.subplots(1, 1, figsize=(7.6, 4.2))
-ax.bar(config_names, sample_rates, color=["tab:blue", "tab:orange"])
-ax.set_ylabel("sample rate [Hz]")
-ax.set_title(f"{TOPIC}: TrialConfig summary")
-plt.tight_layout()
-plt.show()
-
-assert cfg1.getSampleRate() == 2000.0
-assert cfg2.getFitType() == "poisson"
-
-CHECKPOINT_METRICS = {
-    "num_configs": float(len(tcc.getConfigs())),
-    "sample_rate_hz": float(np.mean(sample_rates)),
-}
-CHECKPOINT_LIMITS = {
-    "num_configs": (2.0, 2.0),
-    "sample_rate_hz": (2000.0, 2000.0),
-}
+from nstat.compat.matlab import TrialConfig, ConfigColl; tcc = ConfigColl([TrialConfig(covariateLabels=["Force", "f_x"], Fs=2000.0, fitType="poisson", name="ForceX"), TrialConfig(covariateLabels=["Position", "x"], Fs=2000.0, fitType="poisson", name="PositionX")]); rates = np.array([cfg.getSampleRate() for cfg in tcc.getConfigs()], dtype=float); plt.figure(figsize=(7.6, 4.2)); plt.bar(tcc.getConfigNames(), rates, color=["tab:blue", "tab:orange"]); plt.title(f"{TOPIC}: TrialConfig summary"); plt.tight_layout(); plt.show()
+assert len(tcc.getConfigs()) == 2
+assert tcc.getConfig(1).getSampleRate() == 2000.0
+assert tcc.getConfig("PositionX").getFitType() == "poisson"
+CHECKPOINT_METRICS = {"num_configs": float(len(tcc.getConfigs())), "sample_rate_hz": float(np.mean(rates))}
+CHECKPOINT_LIMITS = {"num_configs": (2.0, 2.0), "sample_rate_hz": (2000.0, 2000.0)}
 """
 
 
 CONFIGCOLL_EXAMPLES_TEMPLATE = """# ConfigCollExamples: compose and edit configuration collections.
-from nstat.compat.matlab import TrialConfig, ConfigColl
-
-tc1 = TrialConfig(covariateLabels=["Force", "f_x"], Fs=2000.0, fitType="poisson", name="cfg_force")
-tc2 = TrialConfig(covariateLabels=["Position", "x"], Fs=2000.0, fitType="poisson", name="cfg_pos")
-tcc = ConfigColl([tc1, tc2])
-
-replacement = TrialConfig(covariateLabels=["Position", "y"], Fs=1000.0, fitType="poisson", name="cfg_pos_y")
-tcc.setConfig(2, replacement)
-subset = tcc.getSubsetConfigs([1, 2])
-
-names = tcc.getConfigNames()
-rates = np.array([cfg.getSampleRate() for cfg in tcc.getConfigs()], dtype=float)
-n_cov = np.array([len(cfg.getCovariateLabels()) for cfg in tcc.getConfigs()], dtype=float)
-
-fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.8))
-axes[0].bar(names, rates, color="tab:purple")
-axes[0].set_title("Config sample rates")
-axes[0].set_ylabel("Hz")
-
-axes[1].bar(names, n_cov, color="tab:green")
-axes[1].set_title("Covariates per config")
-axes[1].set_ylabel("count")
-plt.tight_layout()
-plt.show()
-
-assert len(subset.getConfigs()) == 2
+from nstat.compat.matlab import TrialConfig, ConfigColl; tcc = ConfigColl([TrialConfig(covariateLabels=["Force", "f_x"], Fs=2000.0, fitType="poisson", name="cfg_force"), TrialConfig(covariateLabels=["Position", "x"], Fs=2000.0, fitType="poisson", name="cfg_pos")]); tcc.setConfig(2, TrialConfig(covariateLabels=["Position", "y"], Fs=1000.0, fitType="poisson", name="cfg_pos_y")); rates = np.array([cfg.getSampleRate() for cfg in tcc.getConfigs()], dtype=float); plt.figure(figsize=(8.0, 3.8)); plt.bar(tcc.getConfigNames(), rates, color="tab:purple"); plt.title(f"{TOPIC}: sample rates"); plt.tight_layout(); plt.show()
+assert len(tcc.getConfigs()) == 2
+assert len(tcc.getSubsetConfigs([1, 2]).getConfigs()) == 2
 assert float(rates[1]) == 1000.0
-
-CHECKPOINT_METRICS = {
-    "num_configs": float(len(tcc.getConfigs())),
-    "mean_sample_rate": float(np.mean(rates)),
-}
-CHECKPOINT_LIMITS = {
-    "num_configs": (2.0, 2.0),
-    "mean_sample_rate": (1400.0, 1800.0),
-}
+CHECKPOINT_METRICS = {"num_configs": float(len(tcc.getConfigs())), "mean_sample_rate": float(np.mean(rates))}
+CHECKPOINT_LIMITS = {"num_configs": (2.0, 2.0), "mean_sample_rate": (1400.0, 1800.0)}
 """
 
 
@@ -977,256 +956,114 @@ COVCOLL_EXAMPLES_TEMPLATE = """# CovCollExamples: covariate collection queries, 
 from nstat.compat.matlab import Covariate, CovColl, History, nspikeTrain
 
 t = np.arange(0.0, 5.0 + 0.001, 0.001)
-position = Covariate(
-    time=t,
-    data=np.column_stack([np.exp(-t), np.sin(2.0 * np.pi * t), np.sin(2.0 * np.pi * t) ** 3]),
-    name="Position",
-    labels=["x", "y", "z"],
-)
-force = Covariate(
-    time=t,
-    data=np.column_stack([np.abs(np.sin(2.0 * np.pi * t)), np.abs(np.sin(2.0 * np.pi * t)) ** 2]),
-    name="Force",
-    labels=["f_x", "f_y"],
-)
-cc = CovColl([position, force])
+position = Covariate(time=t, data=np.column_stack([np.exp(-t), np.sin(2.0 * np.pi * t), np.sin(2.0 * np.pi * t) ** 3]), name="Position", labels=["x", "y", "z"])
+force = Covariate(time=t, data=np.column_stack([np.abs(np.sin(2.0 * np.pi * t)), np.abs(np.sin(2.0 * np.pi * t)) ** 2]), name="Force", labels=["f_x", "f_y"])
+cc = CovColl([position, force]); cc.resample(200.0); cc.setMask(["Position", "Force"])
+fig, axes = plt.subplots(1, 2, figsize=(10, 4)); plt.sca(axes[0]); cc.plot(); axes[0].set_title(f"{TOPIC}: resampled")
 
-fig1 = plt.figure(figsize=(9.0, 4.2))
-cc.plot()
-plt.title(f"{TOPIC}: all covariates")
-plt.xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-_pos = cc.getCov("Position")
-_force = cc.getCov("Force")
-cc.resample(200.0)
-cc.setMask(["Position", "Force"])
-
-fig2 = plt.figure(figsize=(9.0, 4.2))
-cc.plot()
-plt.title("Resampled/masked covariates")
-plt.xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-X, labels = cc.dataToMatrix()
-n_before_remove = cc.nActCovar()
-cc.removeCovariate("Force")
-n_after_remove = cc.nActCovar()
-
-assert X.shape[1] >= 4
-assert n_after_remove == max(1, n_before_remove - 1)
+X, labels = cc.dataToMatrix(); n_before = cc.nActCovar(); cc.removeCovariate("Force"); n_after = cc.nActCovar()
 history = History(bin_edges_s=np.array([0.0, 0.01, 0.03], dtype=float))
 spikes = nspikeTrain(spike_times=np.sort(rng.random(25) * 0.5), t_start=0.0, t_end=0.5, name="tmp")
 H = history.computeHistory(spikes.spike_times, np.arange(0.0, 0.5, 0.01))
+axes[1].imshow(H.T, aspect="auto", origin="lower", cmap="magma"); axes[1].set_title("History basis")
+plt.tight_layout(); plt.show()
+
+assert X.shape[1] >= 4
+assert n_after == max(1, n_before - 1)
 assert H.ndim == 2 and H.shape[1] == history.n_bins
 assert spikes.spike_times.size > 5
-
-CHECKPOINT_METRICS = {
-    "matrix_rows": float(X.shape[0]),
-    "matrix_cols": float(X.shape[1]),
-    "active_covariates_after_remove": float(n_after_remove),
-}
-CHECKPOINT_LIMITS = {
-    "matrix_rows": (200.0, 2000.0),
-    "matrix_cols": (4.0, 8.0),
-    "active_covariates_after_remove": (1.0, 3.0),
-}
+CHECKPOINT_METRICS = {"matrix_rows": float(X.shape[0]), "matrix_cols": float(X.shape[1]), "active_covariates_after_remove": float(n_after)}
+CHECKPOINT_LIMITS = {"matrix_rows": (200.0, 2000.0), "matrix_cols": (4.0, 8.0), "active_covariates_after_remove": (1.0, 3.0)}
 """
 
 
 NSPIKETRAIN_EXAMPLES_TEMPLATE = """# nSpikeTrainExamples: spike-train resampling and signal representations.
 from nstat.compat.matlab import nspikeTrain
-
-spike_times = np.sort(rng.random(100))
-spike_times = np.unique(np.round(spike_times * 10000.0) / 10000.0)
+spike_times = np.unique(np.round(np.sort(rng.random(100)) * 10000.0) / 10000.0)
 nst = nspikeTrain(spike_times=spike_times, t_start=0.0, t_end=1.0, name="n1")
-orig_spike_count = int(nst.getSpikeTimes().size)
-
-fig, axes = plt.subplots(4, 1, figsize=(9.0, 7.4), sharex=False)
-plt.sca(axes[0])
-nst.plot()
-axes[0].set_title(f"{TOPIC}: original spike train")
-axes[0].set_xlabel("time [s]")
-
-nst.resample(1.0 / 0.1)
-sig_100ms = nst.getSigRep(binSize_s=0.1, mode="binary")
-axes[1].step(np.arange(sig_100ms.size) * 0.1, sig_100ms, where="post", color="tab:blue")
-axes[1].set_title("100 ms representation")
-
-nst.resample(1.0 / 0.01)
-sig_10ms = nst.getSigRep(binSize_s=0.01, mode="binary")
-axes[2].step(np.arange(sig_10ms.size) * 0.01, sig_10ms, where="post", color="tab:green")
-axes[2].set_title("10 ms representation")
-
+n0 = int(nst.getSpikeTimes().size)
+sig_100 = nst.getSigRep(binSize_s=0.1, mode="binary")
+nst.resample(100.0)
+sig_10 = nst.getSigRep(binSize_s=0.01, mode="binary")
 max_bin = float(max(nst.getMaxBinSizeBinary(), 1.0e-3))
 nst.resample(1.0 / max_bin)
 sig_max = nst.getSigRep(binSize_s=max_bin, mode="binary")
-axes[3].step(np.arange(sig_max.size) * max_bin, sig_max, where="post", color="tab:red")
-axes[3].set_title("max binary bin-size representation")
-axes[3].set_xlabel("time [s]")
+
+fig, ax = plt.subplots(3, 1, figsize=(9.0, 5.8))
+ax[0].step(np.arange(sig_100.size) * 0.1, sig_100, where="post")
+ax[0].set_title("100 ms")
+ax[1].step(np.arange(sig_10.size) * 0.01, sig_10, where="post", color="tab:green")
+ax[1].set_title("10 ms")
+ax[2].step(np.arange(sig_max.size) * max_bin, sig_max, where="post", color="tab:red")
+ax[2].set_title("max-bin")
 plt.tight_layout()
 plt.show()
 
-assert orig_spike_count > 20
+assert n0 > 20
 assert 0.0 < max_bin <= 1.0
-
-CHECKPOINT_METRICS = {
-    "num_spikes_initial": float(orig_spike_count),
-    "num_spikes_final": float(nst.getSpikeTimes().size),
-    "max_bin_size": float(max_bin),
-}
-CHECKPOINT_LIMITS = {
-    "num_spikes_initial": (20.0, 150.0),
-    "num_spikes_final": (1.0, 150.0),
-    "max_bin_size": (1.0e-4, 1.0),
-}
+assert sig_10.ndim == 1 and sig_10.size > 10
+CHECKPOINT_METRICS = {"num_spikes_initial": float(n0), "num_spikes_final": float(nst.getSpikeTimes().size), "max_bin_size": float(max_bin)}
+CHECKPOINT_LIMITS = {"num_spikes_initial": (20.0, 150.0), "num_spikes_final": (1.0, 150.0), "max_bin_size": (1.0e-4, 1.0)}
 """
 
 
 NSTCOLL_EXAMPLES_TEMPLATE = """# nstCollExamples: collection masking and single-neuron extraction.
 from nstat.compat.matlab import History, nspikeTrain, nstColl
 
-trains = []
-for i in range(20):
-    spk = np.sort(rng.random(100))
-    unit = nspikeTrain(spike_times=spk, t_start=0.0, t_end=1.0, name=f"Neuron{i+1}")
-    unit.setName(f"Neuron{i+1}")
-    trains.append(unit)
+trains = [nspikeTrain(spike_times=np.sort(rng.random(100)), t_start=0.0, t_end=1.0, name=f"Neuron{i+1}") for i in range(20)]
 spikeColl = nstColl(trains)
-
-fig1 = plt.figure(figsize=(9.0, 4.0))
+fig, ax = plt.subplots(2, 1, figsize=(9.0, 5.2))
+plt.sca(ax[0])
 spikeColl.plot()
-plt.title(f"{TOPIC}: full collection raster")
-plt.xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
+ax[0].set_title(f"{TOPIC}: full raster")
 spikeColl.setMask([1, 4, 7])
-fig2 = plt.figure(figsize=(9.0, 3.6))
-spikeColl.plot()
-plt.title("Masked collection raster (units 1, 4, 7)")
-plt.xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
 n1 = spikeColl.getNST(0)
-sig_1ms = n1.getSigRep(binSize_s=0.001, mode="binary")
-sig_10ms = n1.getSigRep(binSize_s=0.01, mode="binary")
-
-fig3, axes = plt.subplots(3, 1, figsize=(9.0, 6.0), sharex=False)
-plt.sca(axes[0])
-n1.plot()
-axes[0].set_title("Unit 1 spikes")
-axes[0].set_xlabel("time [s]")
-axes[1].step(np.arange(sig_1ms.size) * 0.001, sig_1ms, where="post", color="tab:blue")
-axes[1].set_title("Unit 1 binary 1 ms")
-axes[2].step(np.arange(sig_10ms.size) * 0.01, sig_10ms, where="post", color="tab:green")
-axes[2].set_title("Unit 1 binary 10 ms")
-axes[2].set_xlabel("time [s]")
+sig_10 = n1.getSigRep(binSize_s=0.01, mode="binary")
+ax[1].step(np.arange(sig_10.size) * 0.01, sig_10, where="post", color="tab:green")
+ax[1].set_title("masked unit binary 10 ms")
 plt.tight_layout()
 plt.show()
 
-masked = spikeColl.getIndFromMask()
 history = History(bin_edges_s=np.array([0.0, 0.01, 0.03], dtype=float))
-spikes = n1
+spikes = spikeColl.getNST(0)
 H = history.computeHistory(spikes.spike_times, np.arange(0.0, 1.0, 0.01))
+masked = spikeColl.getIndFromMask()
 assert H.ndim == 2 and H.shape[1] == history.n_bins
 assert spikes.spike_times.size > 5
-assert len(masked) == 3
-assert spikeColl.getNumUnits() == 20
-
-CHECKPOINT_METRICS = {
-    "num_units": float(spikeColl.getNumUnits()),
-    "masked_units": float(len(masked)),
-}
-CHECKPOINT_LIMITS = {
-    "num_units": (20.0, 20.0),
-    "masked_units": (3.0, 3.0),
-}
+assert len(masked) == 3 and spikeColl.getNumUnits() == 20
+CHECKPOINT_METRICS = {"num_units": float(spikeColl.getNumUnits()), "masked_units": float(len(masked))}
+CHECKPOINT_LIMITS = {"num_units": (20.0, 20.0), "masked_units": (3.0, 3.0)}
 """
 
 
 TRIALEXAMPLES_TEMPLATE = """# TrialExamples: build a trial from spikes, covariates, events, and history.
 from nstat.compat.matlab import Covariate, CovColl, Events, History, Trial, nspikeTrain, nstColl
 
-length_trial = 1.0
-window_times = np.array([0.0, 0.1, 0.2, 0.4], dtype=float)
-h = History(bin_edges_s=window_times)
-
-t = np.arange(0.0, length_trial + 0.001, 0.001)
-position = Covariate(
-    time=t,
-    data=np.column_stack([np.cos(2.0 * np.pi * t), np.sin(2.0 * np.pi * t)]),
-    name="Position",
-    labels=["x", "y"],
-)
-force = Covariate(
-    time=t,
-    data=np.column_stack([np.sin(2.0 * np.pi * 4.0 * t), np.cos(2.0 * np.pi * 4.0 * t)]),
-    name="Force",
-    labels=["f_x", "f_y"],
-)
-cc = CovColl([position, force])
-cc.setMaxTime(length_trial)
-
-e_times = np.sort(rng.random(2) * length_trial)
-e = Events(times=e_times, labels=["E_1", "E_2"])
-
-trains = []
-for i in range(4):
-    spk = np.sort(rng.random(100) * length_trial)
-    trains.append(nspikeTrain(spike_times=spk, t_start=0.0, t_end=length_trial, name=f"n{i+1}"))
-spikeColl = nstColl(trains)
-
-trial1 = Trial(spikes=spikeColl, covariates=cc)
-trial1.setTrialEvents(e)
-trial1.setHistory(h)
+length_trial = 1.0; t = np.arange(0.0, length_trial + 0.001, 0.001); history = History(bin_edges_s=np.array([0.0, 0.1, 0.2, 0.4], dtype=float))
+position = Covariate(time=t, data=np.column_stack([np.cos(2.0 * np.pi * t), np.sin(2.0 * np.pi * t)]), name="Position", labels=["x", "y"])
+force = Covariate(time=t, data=np.column_stack([np.sin(2.0 * np.pi * 4.0 * t), np.cos(2.0 * np.pi * 4.0 * t)]), name="Force", labels=["f_x", "f_y"])
+cc = CovColl([position, force]); cc.setMaxTime(length_trial); e = Events(times=np.sort(rng.random(2) * length_trial), labels=["E_1", "E_2"])
+trains = [nspikeTrain(spike_times=np.sort(rng.random(100) * length_trial), t_start=0.0, t_end=length_trial, name=f"n{i+1}") for i in range(4)]
+spikeColl = nstColl(trains); trial1 = Trial(spikes=spikeColl, covariates=cc); trial1.setTrialEvents(e); trial1.setHistory(history)
 
 fig, axes = plt.subplots(2, 2, figsize=(10.0, 7.2))
-plt.sca(axes[0, 0])
-h.plot()
-axes[0, 0].set_title("History windows")
-plt.sca(axes[0, 1])
-cc.plot()
-axes[0, 1].set_title("Covariates")
-plt.sca(axes[1, 0])
-e.plot()
-axes[1, 0].set_title("Events")
-plt.sca(axes[1, 1])
-spikeColl.plot()
-axes[1, 1].set_title("Spike raster")
-for ax in axes.ravel():
-    ax.set_xlabel("time [s]")
-plt.tight_layout()
-plt.show()
+plt.sca(axes[0, 0]); history.plot(); axes[0, 0].set_title("History windows")
+plt.sca(axes[0, 1]); cc.plot(); axes[0, 1].set_title("Covariates")
+plt.sca(axes[1, 0]); e.plot(); axes[1, 0].set_title("Events")
+plt.sca(axes[1, 1]); spikeColl.plot(); axes[1, 1].set_title("Spike raster")
+for ax in axes.ravel(): ax.set_xlabel("time [s]")
+plt.tight_layout(); plt.show()
 
-trial1.setCovMask(["Position", "Force"])
-hist_rows = trial1.getHistForNeurons([1, 2], binSize_s=0.01)
-
-fig2 = plt.figure(figsize=(8.0, 3.8))
-if hist_rows:
-    plt.imshow(hist_rows[0].T, aspect="auto", origin="lower", cmap="magma")
-    plt.title("Neuron 1 history matrix")
-    plt.xlabel("time-bin index")
-    plt.ylabel("history basis")
-    plt.colorbar(fraction=0.04, pad=0.02)
-else:
-    plt.plot([], [])
-plt.tight_layout()
-plt.show()
-
+trial1.setCovMask(["Position", "Force"]); hist_rows = trial1.getHistForNeurons([1, 2], binSize_s=0.01)
+fig2 = plt.figure(figsize=(8.0, 3.8)); plt.imshow(hist_rows[0].T, aspect="auto", origin="lower", cmap="magma"); plt.title("Neuron 1 history matrix"); plt.tight_layout(); plt.show()
+spikes = spikeColl.getNST(0); H = history.computeHistory(spikes.spike_times, t)
 assert len(hist_rows) >= 1
-assert hist_rows[0].shape[1] == h.getNumBins()
-history = h
-spikes = spikeColl.getNST(0)
-H = history.computeHistory(spikes.spike_times, t)
+assert hist_rows[0].shape[1] == history.getNumBins()
 assert H.ndim == 2 and H.shape[1] == history.n_bins
 assert spikes.spike_times.size > 5
 
 CHECKPOINT_METRICS = {
-    "history_bins": float(h.getNumBins()),
+    "history_bins": float(history.getNumBins()),
     "hist_rows_neuron1": float(hist_rows[0].shape[0] if hist_rows else 0.0),
 }
 CHECKPOINT_LIMITS = {
@@ -2731,6 +2568,7 @@ TOPIC_TEMPLATE_OVERRIDES = {
     "PPSimExample": PPSIM_EXAMPLE_TEMPLATE,
     "publish_all_helpfiles": PUBLISH_ALL_HELPFILES_TEMPLATE,
     "NetworkTutorial": NETWORK_TUTORIAL_TEMPLATE,
+    "SignalObjExamples": SIGNALOBJ_EXAMPLES_TEMPLATE,
     "TrialConfigExamples": TRIALCONFIG_EXAMPLES_TEMPLATE,
     "TrialExamples": TRIALEXAMPLES_TEMPLATE,
     "HybridFilterExample": HYBRID_FILTER_TEMPLATE,

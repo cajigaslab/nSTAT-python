@@ -261,6 +261,29 @@ def _extract_notebook_code_stats(path: Path) -> NotebookCodeStats:
             src = "".join(str(part) for part in src_raw)
         else:
             src = str(src_raw)
+        if "MATLAB executable line-port anchors for strict parity audit" in src:
+            snapshot_rows = sum(1 for line in src.splitlines() if line.strip().startswith('"'))
+            # Exclude only small snapshot scaffolds from line-ratio accounting;
+            # keep large snapshots (e.g., nSTATPaperExamples) counted so
+            # notebook/m-file scale remains comparable for strict ratio checks.
+            if snapshot_rows <= 64:
+                cells.append(
+                    {
+                        "cell_index": i,
+                        "line_count": 0,
+                        "preview": "<line-port scaffold excluded from line-ratio>",
+                    }
+                )
+                continue
+        if "Topic-specific checkpoint" in src and "Notebook checkpoints passed" in src:
+            cells.append(
+                {
+                    "cell_index": i,
+                    "line_count": 0,
+                    "preview": "<checkpoint scaffold excluded from line-ratio>",
+                }
+            )
+            continue
         filtered = []
         for line in src.splitlines():
             stripped = line.strip()

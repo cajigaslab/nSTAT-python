@@ -1,0 +1,28 @@
+close all;
+delta = 0.001;
+Tmax = 10;
+time = 0:delta:Tmax;
+f=.2;
+lambdaData = 10*sin(2*pi*f*time)+10; %lambda >=0
+lambda = Covariate(time,lambdaData, '\Lambda(t)','time','s','Hz',{'\lambda_{1}'},{{' ''b'', ''LineWidth'' ,2'}});
+numRealizations = 20; % Use 20 realization so that lamba and raster plot are the same size
+spikeColl = CIF.simulateCIFByThinningFromLambda(lambda,numRealizations);
+spikeColl.plot; set(gca,'ytickLabel',[]);
+lambda.plot;
+figure;
+binsize = .5; %500ms window
+psth    = spikeColl.psth(binsize);
+psthGLM = spikeColl.psthGLM(binsize);
+trueRate = lambda; %rate*delta = expected number of arrivals per bin
+h1=trueRate.plot;
+h3=psthGLM.plot([],{{' ''k'',''Linewidth'',4'}});
+h2=psth.plot([],{{' ''rx'',''Linewidth'',4'}});
+legend off;
+legend([h1(1) h2(1)  h3(1)],'true','PSTH','PSTH_{glm}');
+psth_mean_hz = mean(psth.data);
+psth_glm_mean_hz = mean(psthGLM.data);
+lambda_mean_hz = mean(lambda.data);
+parity = struct();
+parity.psth_mean_hz = psth_mean_hz;
+parity.psth_glm_mean_hz = psth_glm_mean_hz;
+parity.lambda_mean_hz = lambda_mean_hz;
