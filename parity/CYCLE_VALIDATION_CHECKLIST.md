@@ -34,3 +34,14 @@ Commands used each cycle:
 - image-mode parity (0 failing pages): PASS
 - performance-parity (0 regression failures): PASS
 - Fixes applied in cycle: Linux baseline + strict regression env matching in workflow/tests, decoding `computeSpikeRateCIs` vectorization, and added deterministic performance workloads for `nspikeTrain.getSigRep` and `Analysis.fitGLM`.
+
+## Cycle 3
+- Log: `output/cycle/cycle3.log`
+- `pytest`: PASS
+- numeric drift (0 failed topics): PASS
+- functional parity (no gaps/partials): PASS
+- example output spec: PASS
+- gate-mode validation PDF (0 parity failures, 0 uniqueness violations): PASS
+- image-mode parity (0 failing pages): PASS
+- performance-parity (0 regression failures): PASS
+- Fixes applied in cycle: none required; full acceptance suite rerun clean after Cycle 2 changes.
