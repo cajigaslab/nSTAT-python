@@ -107,9 +107,9 @@
     },
     {
       "coverage_ratio": 1.0,
-      "mapped_method_count": 46,
+      "mapped_method_count": 45,
       "matlab_class": "DecodingAlgorithms",
-      "matlab_method_count": 46,
+      "matlab_method_count": 45,
       "missing_method_count": 0
     }
   ],
@@ -266,7 +266,7 @@
     }
   ],
   "fail_on": "medium",
-  "generated_at_utc": "2026-03-04T14:02:23.928326+00:00",
+  "generated_at_utc": "2026-03-04T14:46:54.270300+00:00",
   "issues": [],
   "summary": {
     "high": 0,

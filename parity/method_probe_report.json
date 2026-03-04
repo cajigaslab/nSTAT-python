@@ -1066,7 +1066,7 @@
       "successful_method_count": 26
     },
     {
-      "attempted_method_count": 29,
+      "attempted_method_count": 28,
       "failed_methods": [
         {
           "error": "NotImplementedError",
@@ -1154,7 +1154,7 @@
         }
       ],
       "matlab_class": "DecodingAlgorithms",
-      "matlab_method_count": 46,
+      "matlab_method_count": 45,
       "skipped_methods": [
         {
           "mapped_member": "PP_fixedIntervalSmoother",
@@ -1232,22 +1232,21 @@
         "PPHybridFilter",
         "PPHybridFilterLinear",
         "computeSpikeRateDiffCIs",
-        "getPoolSizeCompat",
         "mPPCODecodeLinear"
       ],
-      "success_ratio_attempted": 0.27586206896551724,
-      "success_ratio_total": 0.17391304347826086,
-      "successful_method_count": 8
+      "success_ratio_attempted": 0.25,
+      "success_ratio_total": 0.15555555555555556,
+      "successful_method_count": 7
     }
   ],
-  "generated_at_utc": "2026-03-04T14:02:25.752375+00:00",
+  "generated_at_utc": "2026-03-04T14:46:56.303694+00:00",
   "repo_root": "/private/tmp/nstat_python_exec_next",
   "summary": {
-    "attempt_ratio": 0.8007968127490039,
-    "attempted_methods": 402,
-    "success_ratio_attempted": 0.818407960199005,
-    "success_ratio_total": 0.6553784860557769,
-    "successful_methods": 329,
-    "total_methods": 502
+    "attempt_ratio": 0.8003992015968064,
+    "attempted_methods": 401,
+    "success_ratio_attempted": 0.8179551122194514,
+    "success_ratio_total": 0.654690618762475,
+    "successful_methods": 328,
+    "total_methods": 501
   }
 }
