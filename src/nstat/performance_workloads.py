@@ -7,7 +7,7 @@ from typing import Any, cast
 
 import numpy as np
 
-from nstat.compat.matlab import CIF, Covariate, DecodingAlgorithms, History, nstColl
+from nstat.compat.matlab import Analysis, CIF, Covariate, DecodingAlgorithms, History, nspikeTrain, nstColl
 
 
 TIER_ORDER = ("S", "M", "L")
@@ -17,6 +17,8 @@ CASE_ORDER = (
     "history_design_matrix",
     "simulate_cif_thinning",
     "decoding_spike_rate_cis",
+    "nspiketrain_get_sigrep",
+    "analysis_fit_glm_pipeline",
 )
 
 
@@ -36,6 +38,10 @@ class CaseConfig:
     n_bins: int = 120
     mc_draws: int = 30
     decode_delta_s: float = 0.01
+    sigrep_bin_s: float = 0.001
+    glm_n_samples: int = 1000
+    glm_n_features: int = 6
+    glm_dt_s: float = 0.001
 
 
 def get_case_config(case: str, tier: str) -> CaseConfig:
@@ -74,6 +80,18 @@ def get_case_config(case: str, tier: str) -> CaseConfig:
             "M": dict(num_basis=6, num_trials=8, n_bins=200, mc_draws=50, decode_delta_s=0.01),
             "L": dict(num_basis=8, num_trials=12, n_bins=320, mc_draws=80, decode_delta_s=0.01),
         }
+    elif case == "nspiketrain_get_sigrep":
+        vals = {
+            "S": dict(n_spikes=800, duration_s=2.0, sigrep_bin_s=0.002),
+            "M": dict(n_spikes=3000, duration_s=3.0, sigrep_bin_s=0.001),
+            "L": dict(n_spikes=9000, duration_s=5.0, sigrep_bin_s=0.001),
+        }
+    elif case == "analysis_fit_glm_pipeline":
+        vals = {
+            "S": dict(glm_n_samples=900, glm_n_features=6, glm_dt_s=0.001),
+            "M": dict(glm_n_samples=1800, glm_n_features=8, glm_dt_s=0.001),
+            "L": dict(glm_n_samples=3200, glm_n_features=10, glm_dt_s=0.001),
+        }
     else:
         raise ValueError(f"Unknown case: {case}")
 
@@ -99,6 +117,23 @@ def _deterministic_decode_inputs(cfg: CaseConfig) -> tuple[np.ndarray, np.ndarra
     grid = np.arange(cfg.num_trials * cfg.n_bins, dtype=float).reshape(cfg.num_trials, cfg.n_bins)
     d_n = ((np.sin(0.173 * grid) + np.cos(0.037 * grid)) > 1.15).astype(float)
     return xk, wku, d_n
+
+
+def _deterministic_glm_inputs(cfg: CaseConfig) -> tuple[np.ndarray, np.ndarray]:
+    n = int(cfg.glm_n_samples)
+    p = int(cfg.glm_n_features)
+    t = np.linspace(0.0, 1.0, n, dtype=float)
+    X = np.zeros((n, p), dtype=float)
+    for j in range(p):
+        f = float(j + 1)
+        X[:, j] = np.sin(2.0 * np.pi * f * t) + 0.35 * np.cos(2.0 * np.pi * (f + 0.5) * t)
+
+    beta = np.linspace(-0.25, 0.30, p, dtype=float)
+    eta = -2.0 + X @ beta
+    mu = np.exp(np.clip(eta, -25.0, 25.0)) * float(cfg.glm_dt_s)
+    phase = np.sin(np.arange(n, dtype=float) * 0.071) + 1.0
+    y = np.floor(mu + 0.35 * phase).astype(float)
+    return X, y
 
 
 def run_python_workload(case: str, tier: str, seed: int = 20260303) -> dict[str, float]:
@@ -181,6 +216,28 @@ def run_python_workload(case: str, tier: str, seed: int = 20260303) -> dict[str,
             "prob_mean": float(np.mean(prob_mat)),
             "sig_count": float(np.sum(sig_mat)),
             "rate_mean": float(np.mean(rate)),
+        }
+
+    if case == "nspiketrain_get_sigrep":
+        spikes = _deterministic_spike_times(cfg.n_spikes, cfg.duration_s)
+        train = nspikeTrain(spikes, t_start=0.0, t_end=float(cfg.duration_s), name="perf_unit")
+        sig_binary = np.asarray(train.getSigRep(binSize_s=cfg.sigrep_bin_s, mode="binary"), dtype=float)
+        sig_count = np.asarray(train.getSigRep(binSize_s=cfg.sigrep_bin_s, mode="count"), dtype=float)
+        return {
+            "n_bins": float(sig_binary.size),
+            "binary_sum": float(np.sum(sig_binary)),
+            "count_sum": float(np.sum(sig_count)),
+        }
+
+    if case == "analysis_fit_glm_pipeline":
+        X, y = _deterministic_glm_inputs(cfg)
+        fit = Analysis.fitGLM(X=X, y=y, fitType="poisson", dt=float(cfg.glm_dt_s))
+        pred = np.asarray(fit.predict(X), dtype=float)
+        return {
+            "coeff_norm": float(np.linalg.norm(fit.coefficients)),
+            "intercept": float(fit.intercept),
+            "log_likelihood": float(fit.log_likelihood),
+            "pred_mean": float(np.mean(pred)),
         }
 
     raise ValueError(f"Unhandled workload case: {case}")

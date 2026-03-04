@@ -9,9 +9,12 @@ def _load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+LINUX_BASELINE = Path("tests/performance/fixtures/python/performance_baseline_linux_20260304.json")
+
+
 def test_performance_fixture_coverage() -> None:
     matlab = _load(Path("tests/performance/fixtures/matlab/performance_baseline_470fde8.json"))
-    python = _load(Path("tests/performance/fixtures/python/performance_baseline_20260303.json"))
+    python = _load(LINUX_BASELINE)
 
     matlab_pairs = {(row["case"], row["tier"]) for row in matlab["cases"]}
     python_pairs = {(row["case"], row["tier"]) for row in python["cases"]}
@@ -26,18 +29,19 @@ def test_performance_comparator_runs(tmp_path: Path) -> None:
         "python",
         "tools/performance/compare_matlab_python_performance.py",
         "--python-report",
-        "tests/performance/fixtures/python/performance_baseline_20260303.json",
+        str(LINUX_BASELINE),
         "--matlab-report",
         "tests/performance/fixtures/matlab/performance_baseline_470fde8.json",
         "--policy",
         "parity/performance_gate_policy.yml",
         "--previous-python-report",
-        "tests/performance/fixtures/python/performance_baseline_20260303.json",
+        str(LINUX_BASELINE),
         "--report-out",
         str(out_json),
         "--csv-out",
         str(out_csv),
         "--fail-on-regression",
+        "--require-regression-env-match",
     ]
     subprocess.run(cmd, check=True)
 
@@ -48,8 +52,8 @@ def test_performance_comparator_runs(tmp_path: Path) -> None:
 
 
 def test_performance_comparator_skips_regression_on_env_mismatch(tmp_path: Path) -> None:
-    python_report = _load(Path("tests/performance/fixtures/python/performance_baseline_20260303.json"))
-    previous_report = _load(Path("tests/performance/fixtures/python/performance_baseline_20260303.json"))
+    python_report = _load(LINUX_BASELINE)
+    previous_report = _load(LINUX_BASELINE)
 
     # Force a would-be regression while also making previous env non-comparable.
     python_report["cases"][0]["median_runtime_ms"] = float(python_report["cases"][0]["median_runtime_ms"]) * 5.0
@@ -88,8 +92,8 @@ def test_performance_comparator_skips_regression_on_env_mismatch(tmp_path: Path)
 
 
 def test_performance_comparator_can_require_env_match(tmp_path: Path) -> None:
-    python_report = _load(Path("tests/performance/fixtures/python/performance_baseline_20260303.json"))
-    previous_report = _load(Path("tests/performance/fixtures/python/performance_baseline_20260303.json"))
+    python_report = _load(LINUX_BASELINE)
+    previous_report = _load(LINUX_BASELINE)
 
     previous_report["environment"]["platform"] = "Linux-test-x86_64"
     previous_report["environment"]["python"] = "3.11.9"

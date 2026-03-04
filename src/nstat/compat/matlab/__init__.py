@@ -3383,36 +3383,37 @@ class DecodingAlgorithms:
                 chol_m = DecodingAlgorithms._chol_like_matlab(Wku_temp)
                 if chol_m.shape != (K, K):
                     raise ValueError("Wku covariance slice must be KxK")
-            for c in range(int(Mc)):
-                z = rng.normal(0.0, 1.0, size=(K,))
-                xK_draw[r, :, c] = xK_arr[r, :] + (chol_m @ z)
+            # Preserve MATLAB-parity draw ordering by sampling (Mc, K), where each row is one Monte-Carlo draw.
+            z_draw = rng.normal(0.0, 1.0, size=(int(Mc), K))
+            xK_draw[r, :, :] = xK_arr[r, :][:, None] + (chol_m @ z_draw.T)
 
-        lambda_delta = np.zeros((dN_arr.shape[1], K, int(Mc)), dtype=float)
         spike_rate = np.zeros((int(Mc), K), dtype=float)
-        for c in range(int(Mc)):
+        mask = (time >= float(t0)) & (time <= float(tf))
+        interval = max(float(tf - t0), np.finfo(float).eps)
+        integrate_fn = getattr(np, "trapezoid", None)
+        if integrate_fn is None:
+            integrate_fn = getattr(np, "trapz", None)  # pragma: no cover - NumPy<2 fallback
+
+        if window_vals.size > 0 and np.any(np.abs(gamma_vec) > 0.0):
+            hist_term = np.zeros((dN_arr.shape[1], K), dtype=float)
             for k in range(K):
-                stim_k = basis_mat @ xK_draw[:, k, c]
-                if window_vals.size > 0 and np.any(np.abs(gamma_vec) > 0.0):
-                    hk = Hk[k]
-                    cols = min(hk.shape[1], gamma_vec.size)
-                    hist_lin = hk[:, :cols] @ gamma_vec[:cols]
-                else:
-                    hist_lin = np.zeros(stim_k.shape[0], dtype=float)
-                eta = stim_k + hist_lin
-                if fit_type == "poisson":
-                    lam = np.exp(eta)
-                else:
-                    exp_eta = np.exp(eta)
-                    lam = exp_eta / (1.0 + exp_eta)
-                lambda_delta[:, k, c] = lam
-            rates = lambda_delta[:, :, c] / float(delta)
-            mask = (time >= float(t0)) & (time <= float(tf))
+                hk = Hk[k]
+                cols = min(hk.shape[1], gamma_vec.size)
+                hist_term[:, k] = hk[:, :cols] @ gamma_vec[:cols]
+        else:
+            hist_term = np.zeros((dN_arr.shape[1], K), dtype=float)
+
+        for c in range(int(Mc)):
+            stim_ck = basis_mat @ xK_draw[:, :, c]
+            eta = stim_ck + hist_term
+            if fit_type == "poisson":
+                rates = np.exp(eta) / float(delta)
+            else:
+                exp_eta = np.exp(eta)
+                rates = (exp_eta / (1.0 + exp_eta)) / float(delta)
             if np.sum(mask) < 2:
                 integral_vals = np.zeros(K, dtype=float)
             else:
-                integrate_fn = getattr(np, "trapezoid", None)
-                if integrate_fn is None:
-                    integrate_fn = getattr(np, "trapz", None)  # pragma: no cover - NumPy<2 fallback
                 if integrate_fn is None:  # pragma: no cover - extreme fallback
                     dt_vec = np.diff(time[mask]).reshape(-1, 1)
                     y0 = rates[mask, :][:-1, :]
@@ -3423,7 +3424,7 @@ class DecodingAlgorithms:
                         integrate_fn(rates[mask, :], x=time[mask], axis=0),
                         dtype=float,
                     )
-            spike_rate[c, :] = integral_vals / max(float(tf - t0), np.finfo(float).eps)
+            spike_rate[c, :] = integral_vals / interval
 
         CIs = np.zeros((K, 2), dtype=float)
         for k in range(K):
@@ -3451,10 +3452,9 @@ class DecodingAlgorithms:
         ci_obj.setColor("b")
         spike_rate_sig.setConfInterval(ci_obj)
 
-        prob_mat = np.zeros((K, K), dtype=float)
-        for k in range(K):
-            for m in range(k + 1, K):
-                prob_mat[k, m] = float(np.sum(spike_rate[:, m] > spike_rate[:, k])) / float(Mc)
+        # prob_mat(k,m) = P(rate_m > rate_k), with MATLAB-style upper-triangle usage.
+        prob_full = np.mean(spike_rate[:, None, :] > spike_rate[:, :, None], axis=0)
+        prob_mat = np.triu(np.asarray(prob_full, dtype=float), k=1)
         sig_mat = (prob_mat > (1.0 - float(alphaVal))).astype(float)
         return spike_rate_sig, prob_mat, sig_mat
 
