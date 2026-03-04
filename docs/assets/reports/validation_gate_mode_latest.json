@@ -1,0 +1,2807 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-03-04T21:38:42Z",
+  "repo_root": "/home/runner/work/nSTAT-python/nSTAT-python",
+  "report_pdf": "/home/runner/work/nSTAT-python/nSTAT-python/output/pdf/nstat_python_validation_report_20260304_213716.pdf",
+  "matlab_help_root": "/tmp/upstream-nstat/helpfiles",
+  "notebook_group": "all",
+  "parity_mode": "gate",
+  "parity_threshold": 0.8,
+  "aggregate": {
+    "total_notebooks": 30,
+    "executed": 30,
+    "execution_failures": 0,
+    "parity_checked": 30,
+    "parity_failures": 0,
+    "numeric_drift_checked": 30,
+    "numeric_drift_failures": 0,
+    "command_checks_total": 0,
+    "command_checks_failed": 0,
+    "uniqueness_violations": 0,
+    "uniqueness": {
+      "total_image_instances": 174,
+      "total_unique_hashes": 155,
+      "cross_topic_reused_hashes": 3,
+      "repeated_instances": 19,
+      "cross_topic_reuse_ratio": 0.01935483870967742
+    }
+  },
+  "command_checks": [],
+  "notebooks": [
+    {
+      "topic": "AnalysisExamples",
+      "class_hint": "Analysis",
+      "notebook": "notebooks/helpfiles/AnalysisExamples.ipynb",
+      "run_group": "smoke",
+      "executed": true,
+      "duration_s": 3.0821980480000093,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 5,
+      "produced_figures": 5,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 5,
+      "unique_image_count": 5,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/AnalysisExamples/fig_001.png",
+        "output/notebook_images/AnalysisExamples/fig_002.png",
+        "output/notebook_images/AnalysisExamples/fig_003.png",
+        "output/notebook_images/AnalysisExamples/fig_004.png",
+        "output/notebook_images/AnalysisExamples/fig_005.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples.png",
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples_01.png",
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples_02.png",
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples_03.png",
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples_04.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 59,
+        "python_code_lines": 179,
+        "python_to_matlab_line_ratio": 3.0338983050847457,
+        "matlab_reference_image_count": 5,
+        "python_validation_image_count": 1,
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 4,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 4.076575980909476e-06,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 4,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "rate_max_abs_error",
+            "value": 1.4268015933183165e-06,
+            "threshold": 0.35,
+            "pass": true,
+            "ratio_to_threshold": 4.076575980909476e-06
+          },
+          {
+            "name": "intercept_abs_error",
+            "value": 1.8674006518892838e-07,
+            "threshold": 0.35,
+            "pass": true,
+            "ratio_to_threshold": 5.335430433969383e-07
+          },
+          {
+            "name": "rmse_abs_error",
+            "value": 4.0125002875868176e-08,
+            "threshold": 0.25,
+            "pass": true,
+            "ratio_to_threshold": 1.605000115034727e-07
+          },
+          {
+            "name": "coeff_max_abs_error",
+            "value": 7.80078663947456e-09,
+            "threshold": 0.35,
+            "pass": true,
+            "ratio_to_threshold": 2.2287961827070176e-08
+          }
+        ]
+      }
+    },
+    {
+      "topic": "ConfigCollExamples",
+      "class_hint": "ConfigCollection",
+      "notebook": "notebooks/helpfiles/ConfigCollExamples.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.201825616000008,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 0,
+      "produced_figures": 0,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 0,
+      "unique_image_count": 0,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [],
+      "matlab_reference_images": [],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 3,
+        "python_code_lines": 79,
+        "python_to_matlab_line_ratio": 26.333333333333332,
+        "matlab_reference_image_count": 0,
+        "python_validation_image_count": 1,
+        "assertion_count": 4,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "CovCollExamples",
+      "class_hint": "CovariateCollection",
+      "notebook": "notebooks/helpfiles/CovCollExamples.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.3624851680000063,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 3,
+      "produced_figures": 3,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 3,
+      "unique_image_count": 3,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/CovCollExamples/fig_001.png",
+        "output/notebook_images/CovCollExamples/fig_002.png",
+        "output/notebook_images/CovCollExamples/fig_003.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/CovCollExamples.png",
+        "/tmp/upstream-nstat/helpfiles/CovCollExamples_01.png",
+        "/tmp/upstream-nstat/helpfiles/CovCollExamples_02.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 10,
+        "python_code_lines": 118,
+        "python_to_matlab_line_ratio": 11.8,
+        "matlab_reference_image_count": 3,
+        "python_validation_image_count": 1,
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 3,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 3,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "ctx_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "design_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "stim_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "CovariateExamples",
+      "class_hint": "Covariate",
+      "notebook": "notebooks/helpfiles/CovariateExamples.ipynb",
+      "run_group": "smoke",
+      "executed": true,
+      "duration_s": 2.4871463609999864,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 3,
+      "produced_figures": 3,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 3,
+      "unique_image_count": 3,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/CovariateExamples/fig_001.png",
+        "output/notebook_images/CovariateExamples/fig_002.png",
+        "output/notebook_images/CovariateExamples/fig_003.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/CovariateExamples.png",
+        "/tmp/upstream-nstat/helpfiles/CovariateExamples_01.png",
+        "/tmp/upstream-nstat/helpfiles/CovariateExamples_02.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 19,
+        "python_code_lines": 83,
+        "python_to_matlab_line_ratio": 4.368421052631579,
+        "matlab_reference_image_count": 3,
+        "python_validation_image_count": 2,
+        "assertion_count": 4,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "DecodingExample",
+      "class_hint": "DecodingAlgorithms",
+      "notebook": "notebooks/helpfiles/DecodingExample.ipynb",
+      "run_group": "smoke",
+      "executed": true,
+      "duration_s": 2.967853312000017,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 7,
+      "produced_figures": 7,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 7,
+      "unique_image_count": 6,
+      "duplicate_image_count": 1,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/DecodingExample/fig_001.png",
+        "output/notebook_images/DecodingExample/fig_002.png",
+        "output/notebook_images/DecodingExample/fig_003.png",
+        "output/notebook_images/DecodingExample/fig_004.png",
+        "output/notebook_images/DecodingExample/fig_005.png",
+        "output/notebook_images/DecodingExample/fig_006.png",
+        "output/notebook_images/DecodingExample/fig_007.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/DecodingExample.png",
+        "/tmp/upstream-nstat/helpfiles/DecodingExample_01.png",
+        "/tmp/upstream-nstat/helpfiles/DecodingExample_02.png",
+        "/tmp/upstream-nstat/helpfiles/DecodingExample_03.png",
+        "/tmp/upstream-nstat/helpfiles/DecodingExample_04.png",
+        "/tmp/upstream-nstat/helpfiles/DecodingExample_05.png",
+        "/tmp/upstream-nstat/helpfiles/DecodingExample_06.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 57,
+        "python_code_lines": 191,
+        "python_to_matlab_line_ratio": 3.3508771929824563,
+        "matlab_reference_image_count": 7,
+        "python_validation_image_count": 1,
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 3,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.022530207560711446,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 3,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "posterior_max_abs_error",
+            "value": 2.2530207560711446e-10,
+            "threshold": 1e-08,
+            "pass": true,
+            "ratio_to_threshold": 0.022530207560711446
+          },
+          {
+            "name": "decoded_mismatch_count",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "rmse_abs_error",
+            "value": 0.0,
+            "threshold": 1e-08,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "DecodingExampleWithHist",
+      "class_hint": "DecodingAlgorithms",
+      "notebook": "notebooks/helpfiles/DecodingExampleWithHist.ipynb",
+      "run_group": "smoke",
+      "executed": true,
+      "duration_s": 3.4290413390000083,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 3,
+      "produced_figures": 3,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 3,
+      "unique_image_count": 3,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/DecodingExampleWithHist/fig_001.png",
+        "output/notebook_images/DecodingExampleWithHist/fig_002.png",
+        "output/notebook_images/DecodingExampleWithHist/fig_003.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/DecodingExampleWithHist.png",
+        "/tmp/upstream-nstat/helpfiles/DecodingExampleWithHist_01.png",
+        "/tmp/upstream-nstat/helpfiles/DecodingExampleWithHist_02.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 55,
+        "python_code_lines": 143,
+        "python_to_matlab_line_ratio": 2.6,
+        "matlab_reference_image_count": 3,
+        "python_validation_image_count": 1,
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 2,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.04167062250814979,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 2,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "posterior_max_abs_error",
+            "value": 4.167062250814979e-10,
+            "threshold": 1e-08,
+            "pass": true,
+            "ratio_to_threshold": 0.04167062250814979
+          },
+          {
+            "name": "decoded_mismatch_count",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "EventsExamples",
+      "class_hint": "Events",
+      "notebook": "notebooks/helpfiles/EventsExamples.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.247922650999982,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 5,
+      "produced_figures": 5,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 5,
+      "unique_image_count": 2,
+      "duplicate_image_count": 3,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/EventsExamples/fig_001.png",
+        "output/notebook_images/EventsExamples/fig_002.png",
+        "output/notebook_images/EventsExamples/fig_003.png",
+        "output/notebook_images/EventsExamples/fig_004.png",
+        "output/notebook_images/EventsExamples/fig_005.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/EventsExamples.png",
+        "/tmp/upstream-nstat/helpfiles/EventsExamples_01.png",
+        "/tmp/upstream-nstat/helpfiles/EventsExamples_02.png",
+        "/tmp/upstream-nstat/helpfiles/EventsExamples_03.png",
+        "/tmp/upstream-nstat/helpfiles/EventsExamples_04.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 8,
+        "python_code_lines": 67,
+        "python_to_matlab_line_ratio": 8.375,
+        "matlab_reference_image_count": 5,
+        "python_validation_image_count": 4,
+        "assertion_count": 2,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 1,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 1,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "subset_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "ExplicitStimulusWhiskerData",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/ExplicitStimulusWhiskerData.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.645337226999999,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 10,
+      "produced_figures": 10,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 10,
+      "unique_image_count": 10,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/ExplicitStimulusWhiskerData/fig_001.png",
+        "output/notebook_images/ExplicitStimulusWhiskerData/fig_002.png",
+        "output/notebook_images/ExplicitStimulusWhiskerData/fig_003.png",
+        "output/notebook_images/ExplicitStimulusWhiskerData/fig_004.png",
+        "output/notebook_images/ExplicitStimulusWhiskerData/fig_005.png",
+        "output/notebook_images/ExplicitStimulusWhiskerData/fig_006.png",
+        "output/notebook_images/ExplicitStimulusWhiskerData/fig_007.png",
+        "output/notebook_images/ExplicitStimulusWhiskerData/fig_008.png",
+        "output/notebook_images/ExplicitStimulusWhiskerData/fig_009.png",
+        "output/notebook_images/ExplicitStimulusWhiskerData/fig_010.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/ExplicitStimulusWhiskerData.png",
+        "/tmp/upstream-nstat/helpfiles/ExplicitStimulusWhiskerData_01.png",
+        "/tmp/upstream-nstat/helpfiles/ExplicitStimulusWhiskerData_02.png",
+        "/tmp/upstream-nstat/helpfiles/ExplicitStimulusWhiskerData_03.png",
+        "/tmp/upstream-nstat/helpfiles/ExplicitStimulusWhiskerData_04.png",
+        "/tmp/upstream-nstat/helpfiles/ExplicitStimulusWhiskerData_05.png",
+        "/tmp/upstream-nstat/helpfiles/ExplicitStimulusWhiskerData_06.png",
+        "/tmp/upstream-nstat/helpfiles/ExplicitStimulusWhiskerData_07.png",
+        "/tmp/upstream-nstat/helpfiles/ExplicitStimulusWhiskerData_08.png",
+        "/tmp/upstream-nstat/helpfiles/ExplicitStimulusWhiskerData_09.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 115,
+        "python_code_lines": 248,
+        "python_to_matlab_line_ratio": 2.1565217391304348,
+        "matlab_reference_image_count": 10,
+        "python_validation_image_count": 1,
+        "assertion_count": 4,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 4,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 1.0307532605224878e-09,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 4,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "intercept_abs_error",
+            "value": 2.0615065210449757e-10,
+            "threshold": 0.2,
+            "pass": true,
+            "ratio_to_threshold": 1.0307532605224878e-09
+          },
+          {
+            "name": "coeff_abs_error",
+            "value": 1.4483514387819696e-10,
+            "threshold": 0.2,
+            "pass": true,
+            "ratio_to_threshold": 7.241757193909848e-10
+          },
+          {
+            "name": "prob_max_abs_error",
+            "value": 2.3744395338809454e-11,
+            "threshold": 0.1,
+            "pass": true,
+            "ratio_to_threshold": 2.3744395338809454e-10
+          },
+          {
+            "name": "rmse_abs_error",
+            "value": 8.271161533457416e-15,
+            "threshold": 0.1,
+            "pass": true,
+            "ratio_to_threshold": 8.271161533457416e-14
+          }
+        ]
+      }
+    },
+    {
+      "topic": "FitResSummaryExamples",
+      "class_hint": "FitSummary",
+      "notebook": "notebooks/helpfiles/FitResSummaryExamples.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.234180730999981,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "matlab_doc_only",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 0,
+      "produced_figures": 0,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 0,
+      "unique_image_count": 0,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [],
+      "matlab_reference_images": [],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 0,
+        "python_code_lines": 102,
+        "python_to_matlab_line_ratio": null,
+        "matlab_reference_image_count": 0,
+        "python_validation_image_count": 1,
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "FitResultExamples",
+      "class_hint": "FitResult",
+      "notebook": "notebooks/helpfiles/FitResultExamples.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.2499652429999912,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "matlab_doc_only",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 0,
+      "produced_figures": 0,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 0,
+      "unique_image_count": 0,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [],
+      "matlab_reference_images": [],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 0,
+        "python_code_lines": 102,
+        "python_to_matlab_line_ratio": null,
+        "matlab_reference_image_count": 0,
+        "python_validation_image_count": 1,
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "HippocampalPlaceCellExample",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/HippocampalPlaceCellExample.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 3.4273853310000106,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 12,
+      "produced_figures": 12,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 12,
+      "unique_image_count": 10,
+      "duplicate_image_count": 2,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/HippocampalPlaceCellExample/fig_001.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_002.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_003.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_004.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_005.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_006.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_007.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_008.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_009.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_010.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_011.png",
+        "output/notebook_images/HippocampalPlaceCellExample/fig_012.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_01.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_02.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_03.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_04.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_05.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_06.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_07.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_08.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_09.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_10.png",
+        "/tmp/upstream-nstat/helpfiles/HippocampalPlaceCellExample_11.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 155,
+        "python_code_lines": 521,
+        "python_to_matlab_line_ratio": 3.361290322580645,
+        "matlab_reference_image_count": 12,
+        "python_validation_image_count": 1,
+        "assertion_count": 5,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 1,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 1.4210854715202004e-06,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 1,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "weighted_center_max_abs_error",
+            "value": 1.4210854715202004e-14,
+            "threshold": 1e-08,
+            "pass": true,
+            "ratio_to_threshold": 1.4210854715202004e-06
+          }
+        ]
+      }
+    },
+    {
+      "topic": "HistoryExamples",
+      "class_hint": "HistoryBasis",
+      "notebook": "notebooks/helpfiles/HistoryExamples.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.4204823240000053,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 5,
+      "produced_figures": 5,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 5,
+      "unique_image_count": 5,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/HistoryExamples/fig_001.png",
+        "output/notebook_images/HistoryExamples/fig_002.png",
+        "output/notebook_images/HistoryExamples/fig_003.png",
+        "output/notebook_images/HistoryExamples/fig_004.png",
+        "output/notebook_images/HistoryExamples/fig_005.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/HistoryExamples.png",
+        "/tmp/upstream-nstat/helpfiles/HistoryExamples_01.png",
+        "/tmp/upstream-nstat/helpfiles/HistoryExamples_02.png",
+        "/tmp/upstream-nstat/helpfiles/HistoryExamples_03.png",
+        "/tmp/upstream-nstat/helpfiles/HistoryExamples_04.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 18,
+        "python_code_lines": 101,
+        "python_to_matlab_line_ratio": 5.611111111111111,
+        "matlab_reference_image_count": 5,
+        "python_validation_image_count": 1,
+        "assertion_count": 5,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 3,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 3,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "history_bins_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "history_filter_max_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "history_matrix_max_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "NetworkTutorial",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/NetworkTutorial.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.7460317529999827,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 8,
+      "produced_figures": 8,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 8,
+      "unique_image_count": 7,
+      "duplicate_image_count": 1,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/NetworkTutorial/fig_001.png",
+        "output/notebook_images/NetworkTutorial/fig_002.png",
+        "output/notebook_images/NetworkTutorial/fig_003.png",
+        "output/notebook_images/NetworkTutorial/fig_004.png",
+        "output/notebook_images/NetworkTutorial/fig_005.png",
+        "output/notebook_images/NetworkTutorial/fig_006.png",
+        "output/notebook_images/NetworkTutorial/fig_007.png",
+        "output/notebook_images/NetworkTutorial/fig_008.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/NetworkTutorial.png",
+        "/tmp/upstream-nstat/helpfiles/NetworkTutorial_01.png",
+        "/tmp/upstream-nstat/helpfiles/NetworkTutorial_02.png",
+        "/tmp/upstream-nstat/helpfiles/NetworkTutorial_03.png",
+        "/tmp/upstream-nstat/helpfiles/NetworkTutorial_04.png",
+        "/tmp/upstream-nstat/helpfiles/NetworkTutorial_05.png",
+        "/tmp/upstream-nstat/helpfiles/PPSimExample-BlockDiagram.png",
+        "/tmp/upstream-nstat/helpfiles/SimulatedNetwork2.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 88,
+        "python_code_lines": 243,
+        "python_to_matlab_line_ratio": 2.7613636363636362,
+        "matlab_reference_image_count": 8,
+        "python_validation_image_count": 5,
+        "assertion_count": 9,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 3,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0005030698080332741,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 3,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "xc_max_abs_error",
+            "value": 5.030698080332741e-16,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0005030698080332741
+          },
+          {
+            "name": "rates_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "shape_mismatch_count",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "PPSimExample",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/PPSimExample.ipynb",
+      "run_group": "smoke",
+      "executed": true,
+      "duration_s": 2.55882717099999,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 6,
+      "produced_figures": 6,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 6,
+      "unique_image_count": 6,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/PPSimExample/fig_001.png",
+        "output/notebook_images/PPSimExample/fig_002.png",
+        "output/notebook_images/PPSimExample/fig_003.png",
+        "output/notebook_images/PPSimExample/fig_004.png",
+        "output/notebook_images/PPSimExample/fig_005.png",
+        "output/notebook_images/PPSimExample/fig_006.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/PPSimExample.png",
+        "/tmp/upstream-nstat/helpfiles/PPSimExample_01.png",
+        "/tmp/upstream-nstat/helpfiles/PPSimExample_02.png",
+        "/tmp/upstream-nstat/helpfiles/PPSimExample_03.png",
+        "/tmp/upstream-nstat/helpfiles/PPSimExample_04.png",
+        "/tmp/upstream-nstat/helpfiles/PPSimExample-BlockDiagram.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 41,
+        "python_code_lines": 176,
+        "python_to_matlab_line_ratio": 4.2926829268292686,
+        "matlab_reference_image_count": 6,
+        "python_validation_image_count": 3,
+        "assertion_count": 2,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 1,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 2.209081474249503e-06,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 1,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "mean_relative_rate_error",
+            "value": 5.522703685623757e-07,
+            "threshold": 0.25,
+            "pass": true,
+            "ratio_to_threshold": 2.209081474249503e-06
+          }
+        ]
+      }
+    },
+    {
+      "topic": "PPThinning",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/PPThinning.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.384122337000008,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 5,
+      "produced_figures": 5,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 5,
+      "unique_image_count": 4,
+      "duplicate_image_count": 1,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/PPThinning/fig_001.png",
+        "output/notebook_images/PPThinning/fig_002.png",
+        "output/notebook_images/PPThinning/fig_003.png",
+        "output/notebook_images/PPThinning/fig_004.png",
+        "output/notebook_images/PPThinning/fig_005.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/PPThinning.png",
+        "/tmp/upstream-nstat/helpfiles/PPThinning_01.png",
+        "/tmp/upstream-nstat/helpfiles/PPThinning_02.png",
+        "/tmp/upstream-nstat/helpfiles/PPThinning_03.png",
+        "/tmp/upstream-nstat/helpfiles/PPThinning_04.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 40,
+        "python_code_lines": 124,
+        "python_to_matlab_line_ratio": 3.1,
+        "matlab_reference_image_count": 5,
+        "python_validation_image_count": 4,
+        "assertion_count": 5,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 3,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 3,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "accept_ratio_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "accepted_count_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "accepted_spike_max_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "PSTHEstimation",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/PSTHEstimation.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.4936691260000146,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 3,
+      "produced_figures": 3,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 3,
+      "unique_image_count": 3,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/PSTHEstimation/fig_001.png",
+        "output/notebook_images/PSTHEstimation/fig_002.png",
+        "output/notebook_images/PSTHEstimation/fig_003.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/PSTHEstimation.png",
+        "/tmp/upstream-nstat/helpfiles/PSTHEstimation_01.png",
+        "/tmp/upstream-nstat/helpfiles/PSTHEstimation_02.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 28,
+        "python_code_lines": 110,
+        "python_to_matlab_line_ratio": 3.9285714285714284,
+        "matlab_reference_image_count": 3,
+        "python_validation_image_count": 1,
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 3,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 2.220446049250313e-06,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 3,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "prob_max_abs_error",
+            "value": 2.220446049250313e-16,
+            "threshold": 1e-10,
+            "pass": true,
+            "ratio_to_threshold": 2.220446049250313e-06
+          },
+          {
+            "name": "rate_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-10,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "sig_mismatch_count",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "SignalObjExamples",
+      "class_hint": "Signal",
+      "notebook": "notebooks/helpfiles/SignalObjExamples.ipynb",
+      "run_group": "smoke",
+      "executed": true,
+      "duration_s": 2.756258195999976,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 21,
+      "produced_figures": 21,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 21,
+      "unique_image_count": 18,
+      "duplicate_image_count": 3,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/SignalObjExamples/fig_001.png",
+        "output/notebook_images/SignalObjExamples/fig_002.png",
+        "output/notebook_images/SignalObjExamples/fig_003.png",
+        "output/notebook_images/SignalObjExamples/fig_004.png",
+        "output/notebook_images/SignalObjExamples/fig_005.png",
+        "output/notebook_images/SignalObjExamples/fig_006.png",
+        "output/notebook_images/SignalObjExamples/fig_007.png",
+        "output/notebook_images/SignalObjExamples/fig_008.png",
+        "output/notebook_images/SignalObjExamples/fig_009.png",
+        "output/notebook_images/SignalObjExamples/fig_010.png",
+        "output/notebook_images/SignalObjExamples/fig_011.png",
+        "output/notebook_images/SignalObjExamples/fig_012.png",
+        "output/notebook_images/SignalObjExamples/fig_013.png",
+        "output/notebook_images/SignalObjExamples/fig_014.png",
+        "output/notebook_images/SignalObjExamples/fig_015.png",
+        "output/notebook_images/SignalObjExamples/fig_016.png",
+        "output/notebook_images/SignalObjExamples/fig_017.png",
+        "output/notebook_images/SignalObjExamples/fig_018.png",
+        "output/notebook_images/SignalObjExamples/fig_019.png",
+        "output/notebook_images/SignalObjExamples/fig_020.png",
+        "output/notebook_images/SignalObjExamples/fig_021.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_01.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_02.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_03.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_04.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_05.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_06.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_07.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_08.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_09.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_10.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_11.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_12.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_13.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_14.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_15.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_16.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_17.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_18.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_19.png",
+        "/tmp/upstream-nstat/helpfiles/SignalObjExamples_20.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 81,
+        "python_code_lines": 313,
+        "python_to_matlab_line_ratio": 3.8641975308641974,
+        "matlab_reference_image_count": 21,
+        "python_validation_image_count": 6,
+        "assertion_count": 10,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 4,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 4,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "masked_cols_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "periodogram_peak_idx_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "resampled_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "window_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "StimulusDecode2D",
+      "class_hint": "DecodingAlgorithms",
+      "notebook": "notebooks/helpfiles/StimulusDecode2D.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.4795702549999987,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 7,
+      "produced_figures": 7,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 7,
+      "unique_image_count": 6,
+      "duplicate_image_count": 1,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/StimulusDecode2D/fig_001.png",
+        "output/notebook_images/StimulusDecode2D/fig_002.png",
+        "output/notebook_images/StimulusDecode2D/fig_003.png",
+        "output/notebook_images/StimulusDecode2D/fig_004.png",
+        "output/notebook_images/StimulusDecode2D/fig_005.png",
+        "output/notebook_images/StimulusDecode2D/fig_006.png",
+        "output/notebook_images/StimulusDecode2D/fig_007.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/StimulusDecode2D.png",
+        "/tmp/upstream-nstat/helpfiles/StimulusDecode2D_01.png",
+        "/tmp/upstream-nstat/helpfiles/StimulusDecode2D_02.png",
+        "/tmp/upstream-nstat/helpfiles/StimulusDecode2D_03.png",
+        "/tmp/upstream-nstat/helpfiles/StimulusDecode2D_04.png",
+        "/tmp/upstream-nstat/helpfiles/StimulusDecode2D_05.png",
+        "/tmp/upstream-nstat/helpfiles/StimulusDecode2D_06.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 92,
+        "python_code_lines": 178,
+        "python_to_matlab_line_ratio": 1.934782608695652,
+        "matlab_reference_image_count": 7,
+        "python_validation_image_count": 1,
+        "assertion_count": 2,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 3,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 8.526512829121202e-06,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 3,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "decoded_center_max_abs_error",
+            "value": 8.526512829121202e-14,
+            "threshold": 1e-08,
+            "pass": true,
+            "ratio_to_threshold": 8.526512829121202e-06
+          },
+          {
+            "name": "decoded_mismatch_count",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "rmse_abs_error",
+            "value": 0.0,
+            "threshold": 1e-10,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "TrialConfigExamples",
+      "class_hint": "TrialConfig",
+      "notebook": "notebooks/helpfiles/TrialConfigExamples.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.1496448729999997,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 0,
+      "produced_figures": 0,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 0,
+      "unique_image_count": 0,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [],
+      "matlab_reference_images": [],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 3,
+        "python_code_lines": 79,
+        "python_to_matlab_line_ratio": 26.333333333333332,
+        "matlab_reference_image_count": 0,
+        "python_validation_image_count": 1,
+        "assertion_count": 4,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "TrialExamples",
+      "class_hint": "Trial",
+      "notebook": "notebooks/helpfiles/TrialExamples.ipynb",
+      "run_group": "smoke",
+      "executed": true,
+      "duration_s": 2.7361148710000123,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 7,
+      "produced_figures": 7,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 7,
+      "unique_image_count": 7,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/TrialExamples/fig_001.png",
+        "output/notebook_images/TrialExamples/fig_002.png",
+        "output/notebook_images/TrialExamples/fig_003.png",
+        "output/notebook_images/TrialExamples/fig_004.png",
+        "output/notebook_images/TrialExamples/fig_005.png",
+        "output/notebook_images/TrialExamples/fig_006.png",
+        "output/notebook_images/TrialExamples/fig_007.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/TrialExamples.png",
+        "/tmp/upstream-nstat/helpfiles/TrialExamples_01.png",
+        "/tmp/upstream-nstat/helpfiles/TrialExamples_02.png",
+        "/tmp/upstream-nstat/helpfiles/TrialExamples_03.png",
+        "/tmp/upstream-nstat/helpfiles/TrialExamples_04.png",
+        "/tmp/upstream-nstat/helpfiles/TrialExamples_05.png",
+        "/tmp/upstream-nstat/helpfiles/TrialExamples_06.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 25,
+        "python_code_lines": 133,
+        "python_to_matlab_line_ratio": 5.32,
+        "matlab_reference_image_count": 7,
+        "python_validation_image_count": 1,
+        "assertion_count": 5,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 3,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.00011102230246251565,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 3,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "t_bins_max_abs_error",
+            "value": 1.1102230246251565e-16,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.00011102230246251565
+          },
+          {
+            "name": "X_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "y_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "ValidationDataSet",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/ValidationDataSet.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.7128817349999963,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 13,
+      "produced_figures": 13,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 13,
+      "unique_image_count": 11,
+      "duplicate_image_count": 2,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/ValidationDataSet/fig_001.png",
+        "output/notebook_images/ValidationDataSet/fig_002.png",
+        "output/notebook_images/ValidationDataSet/fig_003.png",
+        "output/notebook_images/ValidationDataSet/fig_004.png",
+        "output/notebook_images/ValidationDataSet/fig_005.png",
+        "output/notebook_images/ValidationDataSet/fig_006.png",
+        "output/notebook_images/ValidationDataSet/fig_007.png",
+        "output/notebook_images/ValidationDataSet/fig_008.png",
+        "output/notebook_images/ValidationDataSet/fig_009.png",
+        "output/notebook_images/ValidationDataSet/fig_010.png",
+        "output/notebook_images/ValidationDataSet/fig_011.png",
+        "output/notebook_images/ValidationDataSet/fig_012.png",
+        "output/notebook_images/ValidationDataSet/fig_013.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_01.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_02.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_03.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_04.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_05.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_06.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_07.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_08.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_09.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_10.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_11.png",
+        "/tmp/upstream-nstat/helpfiles/ValidationDataSet_12.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 77,
+        "python_code_lines": 221,
+        "python_to_matlab_line_ratio": 2.8701298701298703,
+        "matlab_reference_image_count": 13,
+        "python_validation_image_count": 1,
+        "assertion_count": 2,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 3,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 2.220446049250313e-06,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 3,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "prob_max_abs_error",
+            "value": 2.220446049250313e-16,
+            "threshold": 1e-10,
+            "pass": true,
+            "ratio_to_threshold": 2.220446049250313e-06
+          },
+          {
+            "name": "rate_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-10,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "sig_mismatch_count",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "mEPSCAnalysis",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/mEPSCAnalysis.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.565191610999989,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 6,
+      "produced_figures": 6,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 6,
+      "unique_image_count": 5,
+      "duplicate_image_count": 1,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/mEPSCAnalysis/fig_001.png",
+        "output/notebook_images/mEPSCAnalysis/fig_002.png",
+        "output/notebook_images/mEPSCAnalysis/fig_003.png",
+        "output/notebook_images/mEPSCAnalysis/fig_004.png",
+        "output/notebook_images/mEPSCAnalysis/fig_005.png",
+        "output/notebook_images/mEPSCAnalysis/fig_006.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/mEPSCAnalysis.png",
+        "/tmp/upstream-nstat/helpfiles/mEPSCAnalysis_01.png",
+        "/tmp/upstream-nstat/helpfiles/mEPSCAnalysis_02.png",
+        "/tmp/upstream-nstat/helpfiles/mEPSCAnalysis_03.png",
+        "/tmp/upstream-nstat/helpfiles/mEPSCAnalysis_04.png",
+        "/tmp/upstream-nstat/helpfiles/mEPSCAnalysis_05.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 48,
+        "python_code_lines": 177,
+        "python_to_matlab_line_ratio": 3.6875,
+        "matlab_reference_image_count": 6,
+        "python_validation_image_count": 1,
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 4,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 5.551115123125782e-08,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 4,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "mean_amp_abs_error",
+            "value": 5.551115123125783e-17,
+            "threshold": 1e-09,
+            "pass": true,
+            "ratio_to_threshold": 5.551115123125782e-08
+          },
+          {
+            "name": "detected_amp_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-09,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "detected_time_max_abs_error",
+            "value": 0.0,
+            "threshold": 0.001,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "event_count_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "nSTATPaperExamples",
+      "class_hint": "nSTATPaper",
+      "notebook": "notebooks/helpfiles/nSTATPaperExamples.ipynb",
+      "run_group": "smoke",
+      "executed": true,
+      "duration_s": 6.260054120999996,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 26,
+      "produced_figures": 26,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 26,
+      "unique_image_count": 26,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/nSTATPaperExamples/fig_001.png",
+        "output/notebook_images/nSTATPaperExamples/fig_002.png",
+        "output/notebook_images/nSTATPaperExamples/fig_003.png",
+        "output/notebook_images/nSTATPaperExamples/fig_004.png",
+        "output/notebook_images/nSTATPaperExamples/fig_005.png",
+        "output/notebook_images/nSTATPaperExamples/fig_006.png",
+        "output/notebook_images/nSTATPaperExamples/fig_007.png",
+        "output/notebook_images/nSTATPaperExamples/fig_008.png",
+        "output/notebook_images/nSTATPaperExamples/fig_009.png",
+        "output/notebook_images/nSTATPaperExamples/fig_010.png",
+        "output/notebook_images/nSTATPaperExamples/fig_011.png",
+        "output/notebook_images/nSTATPaperExamples/fig_012.png",
+        "output/notebook_images/nSTATPaperExamples/fig_013.png",
+        "output/notebook_images/nSTATPaperExamples/fig_014.png",
+        "output/notebook_images/nSTATPaperExamples/fig_015.png",
+        "output/notebook_images/nSTATPaperExamples/fig_016.png",
+        "output/notebook_images/nSTATPaperExamples/fig_017.png",
+        "output/notebook_images/nSTATPaperExamples/fig_018.png",
+        "output/notebook_images/nSTATPaperExamples/fig_019.png",
+        "output/notebook_images/nSTATPaperExamples/fig_020.png",
+        "output/notebook_images/nSTATPaperExamples/fig_021.png",
+        "output/notebook_images/nSTATPaperExamples/fig_022.png",
+        "output/notebook_images/nSTATPaperExamples/fig_023.png",
+        "output/notebook_images/nSTATPaperExamples/fig_024.png",
+        "output/notebook_images/nSTATPaperExamples/fig_025.png",
+        "output/notebook_images/nSTATPaperExamples/fig_026.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_01.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_02.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_03.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_04.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_05.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_06.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_07.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_08.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_09.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_10.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_11.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_12.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_13.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_14.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_15.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_16.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_17.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_18.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_19.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_20.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_21.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_22.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_23.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_24.png",
+        "/tmp/upstream-nstat/helpfiles/nSTATPaperExamples_25.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 1576,
+        "python_code_lines": 2073,
+        "python_to_matlab_line_ratio": 1.3153553299492386,
+        "matlab_reference_image_count": 26,
+        "python_validation_image_count": 1,
+        "assertion_count": 15,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "nSpikeTrainExamples",
+      "class_hint": "SpikeTrain",
+      "notebook": "notebooks/helpfiles/nSpikeTrainExamples.ipynb",
+      "run_group": "smoke",
+      "executed": true,
+      "duration_s": 2.3887158400000317,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 6,
+      "produced_figures": 6,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 6,
+      "unique_image_count": 5,
+      "duplicate_image_count": 1,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/nSpikeTrainExamples/fig_001.png",
+        "output/notebook_images/nSpikeTrainExamples/fig_002.png",
+        "output/notebook_images/nSpikeTrainExamples/fig_003.png",
+        "output/notebook_images/nSpikeTrainExamples/fig_004.png",
+        "output/notebook_images/nSpikeTrainExamples/fig_005.png",
+        "output/notebook_images/nSpikeTrainExamples/fig_006.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/nSpikeTrainExamples.png",
+        "/tmp/upstream-nstat/helpfiles/nSpikeTrainExamples_01.png",
+        "/tmp/upstream-nstat/helpfiles/nSpikeTrainExamples_02.png",
+        "/tmp/upstream-nstat/helpfiles/nSpikeTrainExamples_03.png",
+        "/tmp/upstream-nstat/helpfiles/nSpikeTrainExamples_04.png",
+        "/tmp/upstream-nstat/helpfiles/nSpikeTrainExamples_05.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 10,
+        "python_code_lines": 86,
+        "python_to_matlab_line_ratio": 8.6,
+        "matlab_reference_image_count": 6,
+        "python_validation_image_count": 1,
+        "assertion_count": 4,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "nstCollExamples",
+      "class_hint": "SpikeTrainCollection",
+      "notebook": "notebooks/helpfiles/nstCollExamples.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.343621245999998,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 4,
+      "produced_figures": 4,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 4,
+      "unique_image_count": 4,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/nstCollExamples/fig_001.png",
+        "output/notebook_images/nstCollExamples/fig_002.png",
+        "output/notebook_images/nstCollExamples/fig_003.png",
+        "output/notebook_images/nstCollExamples/fig_004.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/nstCollExamples.png",
+        "/tmp/upstream-nstat/helpfiles/nstCollExamples_01.png",
+        "/tmp/upstream-nstat/helpfiles/nstCollExamples_02.png",
+        "/tmp/upstream-nstat/helpfiles/nstCollExamples_03.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 16,
+        "python_code_lines": 89,
+        "python_to_matlab_line_ratio": 5.5625,
+        "matlab_reference_image_count": 4,
+        "python_validation_image_count": 1,
+        "assertion_count": 4,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 4,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0002220446049250313,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 4,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "center_max_abs_error",
+            "value": 2.220446049250313e-16,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0002220446049250313
+          },
+          {
+            "name": "binary_mismatch_count",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "count_matrix_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "merged_max_abs_error",
+            "value": 0.0,
+            "threshold": 1e-12,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "AnalysisExamples2",
+      "class_hint": "Analysis",
+      "notebook": "notebooks/helpfiles/AnalysisExamples2.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.782037406000029,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 6,
+      "produced_figures": 6,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 6,
+      "unique_image_count": 6,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/AnalysisExamples2/fig_001.png",
+        "output/notebook_images/AnalysisExamples2/fig_002.png",
+        "output/notebook_images/AnalysisExamples2/fig_003.png",
+        "output/notebook_images/AnalysisExamples2/fig_004.png",
+        "output/notebook_images/AnalysisExamples2/fig_005.png",
+        "output/notebook_images/AnalysisExamples2/fig_006.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples2.png",
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples2_01.png",
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples2_02.png",
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples2_03.png",
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples2_04.png",
+        "/tmp/upstream-nstat/helpfiles/AnalysisExamples2_05.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 61,
+        "python_code_lines": 187,
+        "python_to_matlab_line_ratio": 3.0655737704918034,
+        "matlab_reference_image_count": 6,
+        "python_validation_image_count": 1,
+        "assertion_count": 2,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "DocumentationSetup2025b",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/DocumentationSetup2025b.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.2632713059999787,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "matlab_doc_only",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 0,
+      "produced_figures": 0,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 0,
+      "unique_image_count": 0,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [],
+      "matlab_reference_images": [],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 0,
+        "python_code_lines": 71,
+        "python_to_matlab_line_ratio": null,
+        "matlab_reference_image_count": 0,
+        "python_validation_image_count": 1,
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "FitResultReference",
+      "class_hint": "FitResult",
+      "notebook": "notebooks/helpfiles/FitResultReference.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.3238267979999705,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "matlab_doc_only",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 0,
+      "produced_figures": 0,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 0,
+      "unique_image_count": 0,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [],
+      "matlab_reference_images": [],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 0,
+        "python_code_lines": 94,
+        "python_to_matlab_line_ratio": null,
+        "matlab_reference_image_count": 0,
+        "python_validation_image_count": 1,
+        "assertion_count": 3,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "HybridFilterExample",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/HybridFilterExample.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 3.1979228390000003,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 3,
+      "produced_figures": 3,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 3,
+      "unique_image_count": 3,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [
+        "output/notebook_images/HybridFilterExample/fig_001.png",
+        "output/notebook_images/HybridFilterExample/fig_002.png",
+        "output/notebook_images/HybridFilterExample/fig_003.png"
+      ],
+      "matlab_reference_images": [
+        "/tmp/upstream-nstat/helpfiles/HybridFilterExample.png",
+        "/tmp/upstream-nstat/helpfiles/HybridFilterExample_01.png",
+        "/tmp/upstream-nstat/helpfiles/HybridFilterExample_02.png"
+      ],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 288,
+        "python_code_lines": 413,
+        "python_to_matlab_line_ratio": 1.4340277777777777,
+        "matlab_reference_image_count": 3,
+        "python_validation_image_count": 2,
+        "assertion_count": 5,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 3,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 6.938893903907228e-08,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 3,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "rmse_notransition_abs_error",
+            "value": 6.938893903907228e-18,
+            "threshold": 1e-10,
+            "pass": true,
+            "ratio_to_threshold": 6.938893903907228e-08
+          },
+          {
+            "name": "rmse_abs_error",
+            "value": 0.0,
+            "threshold": 1e-10,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "state_length_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "topic": "publish_all_helpfiles",
+      "class_hint": "Workflow",
+      "notebook": "notebooks/helpfiles/publish_all_helpfiles.ipynb",
+      "run_group": "full",
+      "executed": true,
+      "duration_s": 2.4891688220000106,
+      "execution_pass": true,
+      "parity_pass": true,
+      "alignment_status": "validated",
+      "numeric_drift_pass": true,
+      "numeric_drift_failed_metric_count": null,
+      "similarity_score": null,
+      "expected_figures": 0,
+      "produced_figures": 0,
+      "figure_count_match": true,
+      "figure_scores": [],
+      "image_count": 0,
+      "unique_image_count": 0,
+      "duplicate_image_count": 0,
+      "error": "",
+      "matched_python_image": "",
+      "matched_matlab_image": "",
+      "python_images": [],
+      "matlab_reference_images": [],
+      "figure_pairs": [],
+      "diff_artifacts": [],
+      "parity_metrics": {
+        "matlab_code_lines": 126,
+        "python_code_lines": 292,
+        "python_to_matlab_line_ratio": 2.3174603174603177,
+        "matlab_reference_image_count": 0,
+        "python_validation_image_count": 1,
+        "assertion_count": 14,
+        "has_plot_call": true,
+        "has_topic_checkpoint": true,
+        "numeric_drift_pass": true,
+        "numeric_drift_checked_metrics": 8,
+        "numeric_drift_failed_metrics": 0,
+        "numeric_drift_worst_ratio": 0.0,
+        "numeric_drift_first_failed": "-",
+        "numeric_drift_metric_count": 8,
+        "numeric_drift_metric_rows": [
+          {
+            "name": "alignment_status_mismatch",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "assertion_count_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_code_lines_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "matlab_reference_image_count_abs_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "plot_call_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "python_validation_image_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_checkpoint_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          },
+          {
+            "name": "topic_row_missing_error",
+            "value": 0.0,
+            "threshold": 0.0,
+            "pass": true,
+            "ratio_to_threshold": 0.0
+          }
+        ]
+      }
+    }
+  ]
+}
