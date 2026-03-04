@@ -3301,6 +3301,119 @@ class DecodingAlgorithms:
         return basis_mat, time
 
     @staticmethod
+    def _draw_xk_samples_spec(xK_arr: np.ndarray, Wku_arr: np.ndarray, Mc: int, rng: np.random.Generator) -> np.ndarray:
+        # MATLAB mirror: for r=1:numBasis, for c=1:Mc, xKdraw(r,:,c)=xK(r,:)+chol(WkuTemp)*z
+        numBasis, K = xK_arr.shape
+        xK_draw = np.zeros((numBasis, K, int(Mc)), dtype=float)
+        for r in range(numBasis):
+            if Wku_arr.ndim == 4:
+                Wku_temp = np.asarray(Wku_arr[r, r, :, :], dtype=float)
+            elif Wku_arr.ndim == 3:
+                Wku_temp = np.asarray(Wku_arr[r, :, :], dtype=float)
+            elif Wku_arr.ndim == 2:
+                Wku_temp = np.asarray(Wku_arr, dtype=float)
+            else:
+                Wku_temp = np.asarray(0.0, dtype=float)
+            if Wku_temp.ndim == 0:
+                chol_m = np.diag(np.repeat(float(np.sqrt(max(Wku_temp.item(), 0.0))), K))
+            else:
+                chol_m = DecodingAlgorithms._chol_like_matlab(Wku_temp)
+                if chol_m.shape != (K, K):
+                    raise ValueError("Wku covariance slice must be KxK")
+            for c in range(int(Mc)):
+                z = rng.normal(0.0, 1.0, size=(K,))
+                xK_draw[r, :, c] = xK_arr[r, :] + (chol_m @ z)
+        return xK_draw
+
+    @staticmethod
+    def _draw_xk_samples_fast(xK_arr: np.ndarray, Wku_arr: np.ndarray, Mc: int, rng: np.random.Generator) -> np.ndarray:
+        # Fast equivalent of _draw_xk_samples_spec with identical RNG ordering.
+        numBasis, K = xK_arr.shape
+        xK_draw = np.zeros((numBasis, K, int(Mc)), dtype=float)
+        for r in range(numBasis):
+            if Wku_arr.ndim == 4:
+                Wku_temp = np.asarray(Wku_arr[r, r, :, :], dtype=float)
+            elif Wku_arr.ndim == 3:
+                Wku_temp = np.asarray(Wku_arr[r, :, :], dtype=float)
+            elif Wku_arr.ndim == 2:
+                Wku_temp = np.asarray(Wku_arr, dtype=float)
+            else:
+                Wku_temp = np.asarray(0.0, dtype=float)
+            if Wku_temp.ndim == 0:
+                chol_m = np.diag(np.repeat(float(np.sqrt(max(Wku_temp.item(), 0.0))), K))
+            else:
+                chol_m = DecodingAlgorithms._chol_like_matlab(Wku_temp)
+                if chol_m.shape != (K, K):
+                    raise ValueError("Wku covariance slice must be KxK")
+            z_draw = rng.normal(0.0, 1.0, size=(int(Mc), K))
+            xK_draw[r, :, :] = xK_arr[r, :][:, None] + (chol_m @ z_draw.T)
+        return xK_draw
+
+    @staticmethod
+    def _compute_draw_rates_spec(
+        basis_mat: np.ndarray,
+        xK_draw: np.ndarray,
+        draw_index: int,
+        Hk: list[np.ndarray],
+        gamma_vec: np.ndarray,
+        fit_type: str,
+        delta: float,
+    ) -> np.ndarray:
+        # MATLAB mirror: for each draw c and trial k, evaluate lambda_k(t).
+        K = xK_draw.shape[1]
+        n_time = basis_mat.shape[0]
+        rates = np.zeros((n_time, K), dtype=float)
+        for k in range(K):
+            stim_k = basis_mat @ xK_draw[:, k, draw_index]
+            hk = Hk[k]
+            cols = min(hk.shape[1], gamma_vec.size)
+            if cols > 0 and np.any(np.abs(gamma_vec[:cols]) > 0.0):
+                hist_lin = hk[:, :cols] @ gamma_vec[:cols]
+            else:
+                hist_lin = np.zeros(stim_k.shape[0], dtype=float)
+            eta = stim_k + hist_lin
+            if fit_type == "poisson":
+                lam = np.exp(eta)
+            else:
+                exp_eta = np.exp(eta)
+                lam = exp_eta / (1.0 + exp_eta)
+            rates[:, k] = lam / float(delta)
+        return rates
+
+    @staticmethod
+    def _compute_draw_rates_fast(
+        basis_mat: np.ndarray,
+        xK_draw: np.ndarray,
+        draw_index: int,
+        hist_term: np.ndarray,
+        fit_type: str,
+        delta: float,
+    ) -> np.ndarray:
+        stim_ck = basis_mat @ xK_draw[:, :, draw_index]
+        eta = stim_ck + hist_term
+        if fit_type == "poisson":
+            rates = np.exp(eta)
+        else:
+            exp_eta = np.exp(eta)
+            rates = exp_eta / (1.0 + exp_eta)
+        return rates / float(delta)
+
+    @staticmethod
+    def _compute_prob_mat_spec(spike_rate: np.ndarray, Mc: int) -> np.ndarray:
+        # MATLAB mirror: upper-triangle probability matrix P(rate_m > rate_k).
+        K = spike_rate.shape[1]
+        prob_mat = np.zeros((K, K), dtype=float)
+        for k in range(K):
+            for m in range(k + 1, K):
+                prob_mat[k, m] = float(np.sum(spike_rate[:, m] > spike_rate[:, k])) / float(Mc)
+        return prob_mat
+
+    @staticmethod
+    def _compute_prob_mat_fast(spike_rate: np.ndarray) -> np.ndarray:
+        prob_full = np.mean(spike_rate[:, None, :] > spike_rate[:, :, None], axis=0)
+        return np.triu(np.asarray(prob_full, dtype=float), k=1)
+
+    @staticmethod
     def _compute_spike_rate_cis_matlab(
         xK: np.ndarray,
         Wku: np.ndarray,
@@ -3313,7 +3426,10 @@ class DecodingAlgorithms:
         windowTimes: Any = None,
         Mc: int = 500,
         alphaVal: float = 0.05,
+        implementation: str = "fast",
     ) -> tuple[_Covariate, np.ndarray, np.ndarray]:
+        # MATLAB reference block: DecodingAlgorithms.computeSpikeRateCIs
+        # Keep a readable spec path; use fast helpers for CI/runtime workflows.
         xK_arr = np.asarray(xK, dtype=float)
         if xK_arr.ndim != 2:
             raise ValueError("xK must be 2D with shape (numBasis, K)")
@@ -3330,7 +3446,11 @@ class DecodingAlgorithms:
             raise ValueError("alphaVal must be in (0, 1)")
         if int(Mc) <= 0:
             raise ValueError("Mc must be > 0")
+        impl = str(implementation).lower()
+        if impl not in {"spec", "fast"}:
+            raise ValueError("implementation must be 'spec' or 'fast'")
 
+        # MATLAB block: construct unit-impulse basis on [0, Tmax].
         min_time = 0.0
         max_time = float(dN_arr.shape[1] - 1) * float(delta)
         basis_mat, basis_time = DecodingAlgorithms._build_unit_impulse_basis(numBasis, min_time, max_time, float(delta))
@@ -3342,6 +3462,7 @@ class DecodingAlgorithms:
             basis_time = basis_time[: dN_arr.shape[1]]
         time = basis_time
 
+        # MATLAB block: build history design matrices H{k} when windowTimes provided.
         window_vals = np.asarray([] if windowTimes is None else windowTimes, dtype=float).reshape(-1)
         if window_vals.size > 0:
             if window_vals.size == 1:
@@ -3365,27 +3486,13 @@ class DecodingAlgorithms:
             Hk = [np.zeros((dN_arr.shape[1], 1), dtype=float) for _ in range(K)]
             gamma_vec = np.zeros(1, dtype=float)
 
+        # MATLAB block: Monte Carlo coefficient draws xKdraw.
         Wku_arr = np.asarray(Wku, dtype=float)
-        xK_draw = np.zeros((numBasis, K, int(Mc)), dtype=float)
         rng = np.random.default_rng(0)
-        for r in range(numBasis):
-            if Wku_arr.ndim == 4:
-                Wku_temp = np.asarray(Wku_arr[r, r, :, :], dtype=float)
-            elif Wku_arr.ndim == 3:
-                Wku_temp = np.asarray(Wku_arr[r, :, :], dtype=float)
-            elif Wku_arr.ndim == 2:
-                Wku_temp = np.asarray(Wku_arr, dtype=float)
-            else:
-                Wku_temp = np.asarray(0.0, dtype=float)
-            if Wku_temp.ndim == 0:
-                chol_m = np.diag(np.repeat(float(np.sqrt(max(Wku_temp.item(), 0.0))), K))
-            else:
-                chol_m = DecodingAlgorithms._chol_like_matlab(Wku_temp)
-                if chol_m.shape != (K, K):
-                    raise ValueError("Wku covariance slice must be KxK")
-            # Preserve MATLAB-parity draw ordering by sampling (Mc, K), where each row is one Monte-Carlo draw.
-            z_draw = rng.normal(0.0, 1.0, size=(int(Mc), K))
-            xK_draw[r, :, :] = xK_arr[r, :][:, None] + (chol_m @ z_draw.T)
+        if impl == "fast":
+            xK_draw = DecodingAlgorithms._draw_xk_samples_fast(xK_arr, Wku_arr, int(Mc), rng)
+        else:
+            xK_draw = DecodingAlgorithms._draw_xk_samples_spec(xK_arr, Wku_arr, int(Mc), rng)
 
         spike_rate = np.zeros((int(Mc), K), dtype=float)
         mask = (time >= float(t0)) & (time <= float(tf))
@@ -3394,7 +3501,8 @@ class DecodingAlgorithms:
         if integrate_fn is None:
             integrate_fn = getattr(np, "trapz", None)  # pragma: no cover - NumPy<2 fallback
 
-        if window_vals.size > 0 and np.any(np.abs(gamma_vec) > 0.0):
+        use_history = window_vals.size > 0 and np.any(np.abs(gamma_vec) > 0.0)
+        if use_history and impl == "fast":
             hist_term = np.zeros((dN_arr.shape[1], K), dtype=float)
             for k in range(K):
                 hk = Hk[k]
@@ -3403,14 +3511,27 @@ class DecodingAlgorithms:
         else:
             hist_term = np.zeros((dN_arr.shape[1], K), dtype=float)
 
+        # MATLAB block: for each draw c, integrate trial rates over [t0, tf].
         for c in range(int(Mc)):
-            stim_ck = basis_mat @ xK_draw[:, :, c]
-            eta = stim_ck + hist_term
-            if fit_type == "poisson":
-                rates = np.exp(eta) / float(delta)
+            if impl == "fast":
+                rates = DecodingAlgorithms._compute_draw_rates_fast(
+                    basis_mat=basis_mat,
+                    xK_draw=xK_draw,
+                    draw_index=c,
+                    hist_term=hist_term,
+                    fit_type=fit_type,
+                    delta=float(delta),
+                )
             else:
-                exp_eta = np.exp(eta)
-                rates = (exp_eta / (1.0 + exp_eta)) / float(delta)
+                rates = DecodingAlgorithms._compute_draw_rates_spec(
+                    basis_mat=basis_mat,
+                    xK_draw=xK_draw,
+                    draw_index=c,
+                    Hk=Hk,
+                    gamma_vec=gamma_vec,
+                    fit_type=fit_type,
+                    delta=float(delta),
+                )
             if np.sum(mask) < 2:
                 integral_vals = np.zeros(K, dtype=float)
             else:
@@ -3435,6 +3556,7 @@ class DecodingAlgorithms:
             CIs[k, 0] = float(lo[-1]) if lo.size else float(vals[0])
             CIs[k, 1] = float(hi[0]) if hi.size else float(vals[-1])
 
+        # MATLAB block: emit Covariate with attached confidence interval.
         spike_rate_sig = Covariate(
             time=np.arange(1, K + 1, dtype=float),
             data=np.mean(spike_rate, axis=0),
@@ -3452,9 +3574,10 @@ class DecodingAlgorithms:
         ci_obj.setColor("b")
         spike_rate_sig.setConfInterval(ci_obj)
 
-        # prob_mat(k,m) = P(rate_m > rate_k), with MATLAB-style upper-triangle usage.
-        prob_full = np.mean(spike_rate[:, None, :] > spike_rate[:, :, None], axis=0)
-        prob_mat = np.triu(np.asarray(prob_full, dtype=float), k=1)
+        if impl == "fast":
+            prob_mat = DecodingAlgorithms._compute_prob_mat_fast(spike_rate)
+        else:
+            prob_mat = DecodingAlgorithms._compute_prob_mat_spec(spike_rate, int(Mc))
         sig_mat = (prob_mat > (1.0 - float(alphaVal))).astype(float)
         return spike_rate_sig, prob_mat, sig_mat
 

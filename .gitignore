@@ -32,3 +32,10 @@ docs/_build/
 # Local report artifacts
 output/
 tmp/
+
+# Internal-only porting/parity notes (kept outside public repo)
+CLEANROOM_POLICY.md
+PARITY_SPEC.md
+CANONICAL_VALIDATION_ARTIFACTS.md
+DISCREPANCIES.md
+parity/CYCLE_VALIDATION_CHECKLIST.md
