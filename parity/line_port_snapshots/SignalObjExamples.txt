@@ -62,20 +62,3 @@ s6.plot;
 s=SignalObj(t,v,'Voltage','time','s','V',{'v1','v2'});
 figure;
 s.MTMspectrum;
-figure
-s.periodogram;
-sampleRate=5000; t=0:1/sampleRate:1; t=t'; freq=2;
-v1=sin(2*pi*freq*t); v2=sin(v1.^2);
-noise=.1*randn(length(t),6); %gaussian random noise
-data= [v1 v2 v2 v1 v2 v1] + noise;
-s=SignalObj(t,data,'Voltage','time','s','V',{'v1','v2','v2','v1','v1','v2'});
-figure;
-subplot(2,1,1); s.plot;
-subplot(2,1,2); s.plotAllVariability; %disregards labels;
-s.plotVariability; %creates two figures, one for 'v1' and one for 'v2'
-figure;
-subplot(3,1,1); s.plotAllVariability('b');
-subplot(3,1,2); s.plotAllVariability('g',2);
-subplot(3,1,3); s.plotAllVariability('c',3,2,1);
-parity = struct();
-parity.sample_rate_hz = sampleRate;

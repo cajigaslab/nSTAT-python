@@ -1,6 +1,7 @@
 name: validation-pdf
 
 on:
+  pull_request:
   schedule:
     - cron: "0 8 * * *"
   workflow_dispatch:
@@ -8,6 +9,12 @@ on:
 jobs:
   build-validation-pdf:
     runs-on: ubuntu-latest
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -31,9 +38,12 @@ jobs:
           python tools/notebooks/generate_notebooks.py
           git diff --exit-code
 
-      - name: Checkout upstream MATLAB nSTAT repo snapshot
+      - name: Checkout pinned MATLAB nSTAT reference
         run: |
-          GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
+          python tools/parity/checkout_matlab_reference.py \
+            --config parity/matlab_reference.yml \
+            --dest /tmp/upstream-nstat \
+            --metadata-out parity/matlab_reference_checkout.json
 
       - name: Prepare deterministic validation images
         run: |
@@ -69,6 +79,14 @@ jobs:
             --min-unique-images-per-topic 1 \
             --max-cross-topic-reuse-ratio 1.0
 
+      - name: Normalize canonical validation artifact names
+        run: |
+          latest_json="$(ls -1t output/pdf/nstat_python_validation_report_*.json | head -n 1)"
+          latest_base="${latest_json%.json}"
+          cp "${latest_base}.pdf" output/pdf/validation_gate_mode_latest.pdf
+          cp "${latest_base}.json" output/pdf/validation_gate_mode_latest.json
+          cp "${latest_base}.csv" output/pdf/validation_gate_mode_latest.csv
+
       - name: Enforce visual validation gate
         run: |
           python tools/reports/check_validation_visuals.py \
@@ -81,7 +99,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nstat-python-validation-pdf
-          path: output/pdf/*.pdf
+          path: |
+            output/pdf/validation_gate_mode_latest.pdf
+            output/pdf/validation_gate_mode_latest.json
+            output/pdf/validation_gate_mode_latest.csv
           if-no-files-found: error
 
       - name: Upload notebook image artifact

@@ -1,0 +1,7 @@
+version: 1
+name: matlab_nstat_reference
+repo_url: https://github.com/cajigaslab/nSTAT.git
+# Pinned commit used by parity and performance CI to avoid upstream drift.
+ref: 470fde8f9f6b60fe8f9ec51155e34478b6d541f6
+branch_hint: master
+helpfiles_subdir: helpfiles

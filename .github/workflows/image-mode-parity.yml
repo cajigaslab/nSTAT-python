@@ -1,0 +1,91 @@
+name: image-mode-parity
+
+on:
+  pull_request:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  image-mode-parity:
+    runs-on: ubuntu-latest
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev,notebooks]
+          python -m pip install reportlab pillow
+
+      - name: Checkout pinned MATLAB nSTAT reference
+        run: |
+          python tools/parity/checkout_matlab_reference.py \
+            --config parity/matlab_reference.yml \
+            --dest /tmp/upstream-nstat \
+            --metadata-out parity/matlab_reference_checkout.json
+
+      - name: Prepare deterministic validation images
+        run: |
+          python tools/parity/prepare_validation_images.py
+
+      - name: Generate Python validation PDF (image mode)
+        run: |
+          python tools/reports/generate_validation_pdf.py \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --matlab-help-root /tmp/upstream-nstat/helpfiles \
+            --notebook-group all \
+            --timeout 900 \
+            --skip-command-tests \
+            --parity-mode image \
+            --skip-parity-check
+
+      - name: Resolve latest validation JSON
+        id: latest
+        run: |
+          latest_json="$(ls -1t output/pdf/nstat_python_validation_report_*.json | head -n 1)"
+          echo "json=${latest_json}" >> "$GITHUB_OUTPUT"
+
+      - name: Build paired MATLAB/Python image PDFs
+        run: |
+          python tools/reports/build_image_parity_pdfs.py \
+            --report-json "${{ steps.latest.outputs.json }}" \
+            --python-out output/pdf/image_mode_parity/python_pages.pdf \
+            --matlab-out output/pdf/image_mode_parity/matlab_pages.pdf \
+            --pairs-json output/pdf/image_mode_parity/pairs.json
+
+      - name: Run page-by-page SSIM parity gate
+        run: |
+          python tools/reports/check_pdf_image_parity.py \
+            --python-pdf output/pdf/image_mode_parity/python_pages.pdf \
+            --matlab-pdf output/pdf/image_mode_parity/matlab_pages.pdf \
+            --out-dir output/pdf/image_mode_parity \
+            --dpi 150 \
+            --ssim-threshold 0.70 \
+            --max-failing-pages 0
+
+      - name: Upload image-mode parity artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-mode-parity-artifacts
+          path: |
+            output/pdf/image_mode_parity/**
+            output/pdf/*.pdf
+            output/pdf/*.json
+            output/pdf/*.csv
+          if-no-files-found: warn

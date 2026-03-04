@@ -4,6 +4,8 @@
 
 [![test-and-build](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml)
 [![parity-gate](https://github.com/cajigaslab/nSTAT-python/actions/workflows/parity-gate.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/parity-gate.yml)
+[![performance-parity](https://github.com/cajigaslab/nSTAT-python/actions/workflows/performance-parity.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/performance-parity.yml)
+[![image-mode-parity](https://github.com/cajigaslab/nSTAT-python/actions/workflows/image-mode-parity.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/image-mode-parity.yml)
 [![pages](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml)
 [![validation-pdf](https://github.com/cajigaslab/nSTAT-python/actions/workflows/validation-pdf.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/validation-pdf.yml)
 
@@ -62,6 +64,7 @@ print(cov.sample_rate_hz, spikes.firing_rate_hz())
 ## Documentation and help pages
 - Docs home: [cajigaslab.github.io/nSTAT-python](https://cajigaslab.github.io/nSTAT-python/)
 - Help index: [cajigaslab.github.io/nSTAT-python/help](https://cajigaslab.github.io/nSTAT-python/help/)
+- Canonical validation artifacts: [CANONICAL_VALIDATION_ARTIFACTS.md](./CANONICAL_VALIDATION_ARTIFACTS.md)
 
 ## Data policy
 Only example data may be shared with MATLAB nSTAT. All non-data files are unique to this repository.
@@ -159,18 +162,60 @@ Inputs:
 - Functional parity policy
 - Example-output parity policy
 - Synchronized parity artifacts (`parity/*`, `docs/help/*`, `docs/notebooks.md`, `baseline/help_mapping.json`)
+- Full gate-mode validation PDF generation with canonical artifact names:
+  - `output/pdf/validation_gate_mode_latest.pdf`
+  - `output/pdf/validation_gate_mode_latest.json`
+  - `output/pdf/validation_gate_mode_latest.csv`
+
+## Function-Level Performance Parity
+
+Run deterministic Python workload benchmarks:
+
+```bash
+python tools/performance/run_python_benchmarks.py \
+  --tiers S,M,L \
+  --repeats 7 \
+  --warmup 2 \
+  --out-json output/performance/python_performance_report.json \
+  --out-csv output/performance/python_performance_report.csv
+```
+
+Compare Python runtime/memory metrics against MATLAB baseline fixtures:
+
+```bash
+python tools/performance/compare_matlab_python_performance.py \
+  --python-report output/performance/python_performance_report.json \
+  --matlab-report tests/performance/fixtures/matlab/performance_baseline_470fde8.json \
+  --policy parity/performance_gate_policy.yml \
+  --previous-python-report tests/performance/fixtures/python/performance_baseline_20260303.json \
+  --report-out parity/performance_parity_report.json \
+  --csv-out parity/performance_parity_report.csv \
+  --fail-on-regression
+```
+
+Generate MATLAB baseline report (controlled environment):
+
+```bash
+matlab -batch "addpath('matlab/benchmark'); run_matlab_performance_benchmarks( ...
+  'tests/performance/fixtures/matlab/performance_baseline_470fde8.json', ...
+  'tests/performance/fixtures/matlab/performance_baseline_470fde8.csv', ...
+  '/path/to/nSTAT')"
+```
 
 ## Branch Protection Automation
 
 To apply required checks on `main` (admin token required):
 
-```bash
-python tools/release/apply_branch_protection.py \
-  --repo cajigaslab/nSTAT-python \
-  --branch main \
-  --required-check test-and-build \
-  --required-check parity-gate
-```
+Current required checks on `main`:
+- `unit-lint (3.11)`
+- `unit-lint (3.12)`
+- `docs-smoke-notebooks`
+- `matlab-data-integrity`
+- `cleanroom-compliance`
+- `parity-checks`
+- `build-validation-pdf`
+- `image-mode-parity`
+- `performance-parity`
 
 ## Paper reference
 Cajigas I, Malik WQ, Brown EN. nSTAT: Open-source neural spike train analysis toolbox for Matlab. *J Neurosci Methods* (2012), DOI: `10.1016/j.jneumeth.2012.08.009`, PMID: `22981419`.

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import csv
 import functools
 import hashlib
 import json
@@ -208,6 +209,18 @@ def parse_args() -> argparse.Namespace:
             "Maximum allowed cross-topic image reuse ratio in [0,1], where "
             "cross_topic_reused_hashes / total_unique_hashes must be <= this value."
         ),
+    )
+    parser.add_argument(
+        "--summary-json",
+        type=Path,
+        default=None,
+        help="Machine-readable JSON summary output path (defaults beside the PDF).",
+    )
+    parser.add_argument(
+        "--summary-csv",
+        type=Path,
+        default=None,
+        help="Machine-readable CSV summary output path (defaults beside the PDF).",
     )
     return parser.parse_args()
 
@@ -724,6 +737,201 @@ def _uniqueness_violations(
         "cross_topic_reuse_ratio": reuse_ratio,
     }
     return violations, stats
+
+
+def _topic_class_hint(topic: str) -> str:
+    overrides = {
+        "AnalysisExamples": "Analysis",
+        "AnalysisExamples2": "Analysis",
+        "ConfigCollExamples": "ConfigCollection",
+        "CovCollExamples": "CovariateCollection",
+        "CovariateExamples": "Covariate",
+        "DecodingExample": "DecodingAlgorithms",
+        "DecodingExampleWithHist": "DecodingAlgorithms",
+        "EventsExamples": "Events",
+        "FitResSummaryExamples": "FitSummary",
+        "FitResultExamples": "FitResult",
+        "FitResultReference": "FitResult",
+        "HistoryExamples": "HistoryBasis",
+        "SignalObjExamples": "Signal",
+        "StimulusDecode2D": "DecodingAlgorithms",
+        "TrialConfigExamples": "TrialConfig",
+        "TrialExamples": "Trial",
+        "nSpikeTrainExamples": "SpikeTrain",
+        "nstCollExamples": "SpikeTrainCollection",
+    }
+    if topic in overrides:
+        return overrides[topic]
+    if topic.endswith("Examples"):
+        return topic[: -len("Examples")] or topic
+    return "Workflow"
+
+
+def _as_rel(path: Path | None, repo_root: Path) -> str:
+    if path is None:
+        return ""
+    try:
+        return str(path.resolve().relative_to(repo_root.resolve()))
+    except Exception:
+        return str(path)
+
+
+def write_machine_readable_summaries(
+    *,
+    report_path: Path,
+    repo_root: Path,
+    reports: list[NotebookReport],
+    command_results: list[CommandResult],
+    matlab_help_root: Path | None,
+    notebook_group: str,
+    parity_mode: str,
+    parity_threshold: float,
+    uniqueness_stats: dict[str, float | int],
+    uniqueness_violations: list[str],
+    summary_json_path: Path,
+    summary_csv_path: Path,
+) -> tuple[Path, Path]:
+    summary_json_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_csv_path.parent.mkdir(parents=True, exist_ok=True)
+
+    notebook_rows: list[dict[str, object]] = []
+    for report in reports:
+        metrics = dict(report.parity_metrics or {})
+        diff_artifacts: list[str] = []
+        if report.matched_python_image is not None:
+            diff_artifacts.append(_as_rel(report.matched_python_image, repo_root))
+        if report.matched_matlab_image is not None:
+            diff_artifacts.append(_as_rel(report.matched_matlab_image, repo_root))
+        notebook_rows.append(
+            {
+                "topic": report.topic,
+                "class_hint": _topic_class_hint(report.topic),
+                "notebook": _as_rel(report.file, repo_root),
+                "run_group": report.run_group,
+                "executed": bool(report.executed),
+                "duration_s": float(report.duration_s),
+                "execution_pass": bool(report.executed and not bool(report.error)),
+                "parity_pass": report.parity_pass,
+                "alignment_status": report.alignment_status,
+                "numeric_drift_pass": metrics.get("numeric_drift_pass"),
+                "numeric_drift_failed_metric_count": metrics.get("numeric_drift_failed_metric_count"),
+                "similarity_score": report.similarity_score,
+                "image_count": int(report.image_count),
+                "unique_image_count": int(report.unique_image_count),
+                "duplicate_image_count": int(report.duplicate_image_count),
+                "error": report.error,
+                "matched_python_image": _as_rel(report.matched_python_image, repo_root),
+                "matched_matlab_image": _as_rel(report.matched_matlab_image, repo_root),
+                "python_images": [_as_rel(path, repo_root) for path in report.image_paths],
+                "matlab_reference_images": [_as_rel(path, repo_root) for path in report.matlab_ref_images],
+                "diff_artifacts": diff_artifacts,
+                "parity_metrics": metrics,
+            }
+        )
+
+    command_rows = [
+        {
+            "name": row.name,
+            "command": " ".join(row.command),
+            "passed": row.passed,
+            "returncode": int(row.returncode),
+            "duration_s": float(row.duration_s),
+            "stdout_tail": row.stdout_tail,
+        }
+        for row in command_results
+    ]
+
+    executed = sum(1 for row in reports if row.executed)
+    exec_failures = len(reports) - executed
+    parity_checked = sum(1 for row in reports if row.parity_pass is not None)
+    parity_failures = sum(1 for row in reports if row.parity_pass is False)
+    numeric_checked = sum(
+        1
+        for row in reports
+        if row.parity_metrics is not None and "numeric_drift_pass" in row.parity_metrics
+    )
+    numeric_failures = sum(
+        1
+        for row in reports
+        if row.parity_metrics is not None and row.parity_metrics.get("numeric_drift_pass") is False
+    )
+
+    payload = {
+        "schema_version": 1,
+        "generated_at_utc": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "repo_root": str(repo_root),
+        "report_pdf": str(report_path),
+        "matlab_help_root": str(matlab_help_root) if matlab_help_root is not None else "",
+        "notebook_group": notebook_group,
+        "parity_mode": parity_mode,
+        "parity_threshold": float(parity_threshold),
+        "aggregate": {
+            "total_notebooks": len(reports),
+            "executed": executed,
+            "execution_failures": exec_failures,
+            "parity_checked": parity_checked,
+            "parity_failures": parity_failures,
+            "numeric_drift_checked": numeric_checked,
+            "numeric_drift_failures": numeric_failures,
+            "command_checks_total": len(command_results),
+            "command_checks_failed": sum(1 for row in command_results if not row.passed),
+            "uniqueness_violations": len(uniqueness_violations),
+            "uniqueness": uniqueness_stats,
+        },
+        "command_checks": command_rows,
+        "notebooks": notebook_rows,
+    }
+    summary_json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    csv_columns = [
+        "topic",
+        "class_hint",
+        "notebook",
+        "run_group",
+        "executed",
+        "execution_pass",
+        "duration_s",
+        "parity_pass",
+        "alignment_status",
+        "numeric_drift_pass",
+        "numeric_drift_failed_metric_count",
+        "similarity_score",
+        "image_count",
+        "unique_image_count",
+        "duplicate_image_count",
+        "matched_python_image",
+        "matched_matlab_image",
+        "diff_artifacts",
+        "error",
+    ]
+    with summary_csv_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=csv_columns)
+        writer.writeheader()
+        for row in notebook_rows:
+            writer.writerow(
+                {
+                    "topic": row["topic"],
+                    "class_hint": row["class_hint"],
+                    "notebook": row["notebook"],
+                    "run_group": row["run_group"],
+                    "executed": row["executed"],
+                    "execution_pass": row["execution_pass"],
+                    "duration_s": row["duration_s"],
+                    "parity_pass": row["parity_pass"],
+                    "alignment_status": row["alignment_status"],
+                    "numeric_drift_pass": row["numeric_drift_pass"],
+                    "numeric_drift_failed_metric_count": row["numeric_drift_failed_metric_count"],
+                    "similarity_score": row["similarity_score"],
+                    "image_count": row["image_count"],
+                    "unique_image_count": row["unique_image_count"],
+                    "duplicate_image_count": row["duplicate_image_count"],
+                    "matched_python_image": row["matched_python_image"],
+                    "matched_matlab_image": row["matched_matlab_image"],
+                    "diff_artifacts": ";".join(row["diff_artifacts"]),
+                    "error": row["error"],
+                }
+            )
+    return summary_json_path, summary_csv_path
 
 
 def _draw_wrapped_lines(
@@ -1292,8 +1500,26 @@ def main() -> int:
         min_unique_images_per_topic=args.min_unique_images_per_topic,
         max_cross_topic_reuse_ratio=args.max_cross_topic_reuse_ratio,
     )
+    summary_json_path = args.summary_json or output_pdf.with_suffix(".json")
+    summary_csv_path = args.summary_csv or output_pdf.with_suffix(".csv")
+    summary_json_path, summary_csv_path = write_machine_readable_summaries(
+        report_path=report_path,
+        repo_root=args.repo_root,
+        reports=reports,
+        command_results=command_results,
+        matlab_help_root=matlab_help_root,
+        notebook_group=args.notebook_group,
+        parity_mode=args.parity_mode,
+        parity_threshold=args.parity_threshold,
+        uniqueness_stats=uniqueness_stats,
+        uniqueness_violations=uniqueness_violations,
+        summary_json_path=summary_json_path,
+        summary_csv_path=summary_csv_path,
+    )
 
     print(f"Generated PDF report: {report_path}")
+    print(f"Machine-readable summary (JSON): {summary_json_path}")
+    print(f"Machine-readable summary (CSV): {summary_csv_path}")
     print(f"MATLAB help root: {matlab_help_root}")
     print(
         f"Notebook results: total={len(reports)} executed={executed} exec_failures={exec_failures} "

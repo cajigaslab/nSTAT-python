@@ -48,6 +48,18 @@ topics:
     posterior_max_abs_error: 1.0e-8
     decoded_mismatch_count: 0
     rmse_abs_error: 1.0e-8
+  HybridFilterExample:
+    rmse_abs_error: 1.0e-10
+    rmse_notransition_abs_error: 1.0e-10
+    state_length_mismatch: 0
+  ValidationDataSet:
+    rate_max_abs_error: 1.0e-10
+    prob_max_abs_error: 1.0e-10
+    sig_mismatch_count: 0
+  StimulusDecode2D:
+    decoded_center_max_abs_error: 1.0e-8
+    decoded_mismatch_count: 0
+    rmse_abs_error: 1.0e-10
   ExplicitStimulusWhiskerData:
     intercept_abs_error: 0.2
     coeff_abs_error: 0.2
@@ -58,3 +70,20 @@ topics:
     detected_amp_max_abs_error: 1.0e-9
     mean_amp_abs_error: 1.0e-9
     event_count_mismatch: 0
+  SignalObjExamples:
+    masked_cols_abs_error: 0
+    periodogram_peak_idx_abs_error: 0
+    resampled_count_abs_error: 0
+    window_count_abs_error: 0
+  HistoryExamples:
+    history_matrix_max_abs_error: 0
+    history_filter_max_abs_error: 0
+    history_bins_abs_error: 0
+  PPThinning:
+    accepted_spike_max_abs_error: 0
+    accepted_count_mismatch: 0
+    accept_ratio_abs_error: 0
+  NetworkTutorial:
+    xc_max_abs_error: 1.0e-12
+    rates_max_abs_error: 1.0e-12
+    shape_mismatch_count: 0

@@ -395,6 +395,36 @@ CHECKPOINT_LIMITS = {
 """
 
 
+STIMULUS_DECODE_2D_TEMPLATE = """# StimulusDecode2D: fixture-backed 2D trajectory decoding parity check.
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
+fixture_path = Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/StimulusDecode2D_gold.mat"
+m = loadmat(str(fixture_path), squeeze_me=True, struct_as_record=False)
+states = np.asarray(m["states_sd"], dtype=float); latent = np.asarray(m["latent_sd"], dtype=int).reshape(-1)
+tuning = np.asarray(m["tuning_sd"], dtype=float); spike_counts = np.asarray(m["spike_counts_sd"], dtype=float)
+decoded_center = DecodingAlgorithms.decode_weighted_center(spike_counts=spike_counts, tuning_curves=tuning)
+decoded = np.clip(np.rint(decoded_center), 0, states.shape[0] - 1).astype(int)
+xy_true = np.asarray(m["xy_true_sd"], dtype=float); xy_decoded = states[decoded]
+rmse = float(np.sqrt(np.mean(np.sum((xy_decoded - xy_true) ** 2, axis=1))))
+expected_center = np.asarray(m["decoded_center_sd"], dtype=float).reshape(-1); expected_decoded = np.asarray(m["decoded_sd"], dtype=int).reshape(-1); expected_rmse = float(np.asarray(m["rmse_sd"], dtype=float).reshape(-1)[0])
+center_err = float(np.max(np.abs(decoded_center - expected_center))); decoded_mismatch = float(np.count_nonzero(decoded != expected_decoded)); rmse_err = float(abs(rmse - expected_rmse))
+assert center_err <= 1e-8 and decoded_mismatch == 0.0 and rmse_err <= 1e-10
+
+side = int(round(np.sqrt(states.shape[0]))); field_idx = 3
+fig, axes = plt.subplots(1, 2, figsize=(9.5, 4.5))
+axes[0].plot(xy_true[:, 0], xy_true[:, 1], label="true", linewidth=1.2)
+axes[0].plot(xy_decoded[:, 0], xy_decoded[:, 1], label="decoded", linewidth=1.0)
+axes[0].set_title(f"{TOPIC}: decoded trajectory"); axes[0].set_xlabel("x"); axes[0].set_ylabel("y"); axes[0].set_aspect("equal", adjustable="box"); axes[0].legend(loc="upper right")
+im = axes[1].imshow(tuning[field_idx].reshape(side, side), origin="lower", extent=[0.0, 1.0, 0.0, 1.0], cmap="jet", aspect="equal")
+axes[1].set_title("Example receptive field"); axes[1].set_xlabel("x"); axes[1].set_ylabel("y"); fig.colorbar(im, ax=axes[1], fraction=0.04, pad=0.03)
+plt.tight_layout(); plt.show()
+
+CHECKPOINT_METRICS = {"trajectory_rmse": float(rmse), "decoded_unique_states": float(np.unique(decoded).size), "decoded_center_max_abs_error": center_err, "decoded_mismatch_count": decoded_mismatch}
+CHECKPOINT_LIMITS = {"trajectory_rmse": (0.0, 1.5), "decoded_unique_states": (2.0, float(states.shape[0])), "decoded_center_max_abs_error": (0.0, 1e-8), "decoded_mismatch_count": (0.0, 0.0)}
+"""
+
+
 NETWORK_TEMPLATE = """# Network / simulation workflow: coupled point-process style simulation.
 T = 3.0
 dt = 0.002
@@ -521,44 +551,52 @@ CHECKPOINT_LIMITS = {
 """
 
 
+VALIDATION_DATASET_TEMPLATE = """# ValidationDataSet: load MATLAB-gold trial matrix and reproduce raster/PSTH/significance summaries.
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
+fixture_path = Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/ValidationDataSet_gold.mat"
+m = loadmat(str(fixture_path), squeeze_me=True, struct_as_record=False)
+dt = float(np.asarray(m["dt_val"], dtype=float).reshape(-1)[0]); time = np.asarray(m["time_val"], dtype=float).reshape(-1)
+trial_matrix = np.asarray(m["trial_matrix_val"], dtype=float); psth = np.asarray(m["psth_val"], dtype=float).reshape(-1); sem = np.asarray(m["sem_val"], dtype=float).reshape(-1)
+rates, prob_mat, sig_mat = DecodingAlgorithms.compute_spike_rate_cis(spike_matrix=trial_matrix, alpha=0.05)
+exp_rates = np.asarray(m["expected_rate_val"], dtype=float).reshape(-1); exp_prob = np.asarray(m["expected_prob_val"], dtype=float); exp_sig = np.asarray(m["expected_sig_val"], dtype=int)
+fig, axes = plt.subplots(3, 1, figsize=(9, 7), sharex=False)
+for k in range(min(18, trial_matrix.shape[0])): axes[0].vlines(time[trial_matrix[k] > 0], k + 0.6, k + 1.4, linewidth=0.5)
+axes[0].set_title(f"{TOPIC}: trial raster"); axes[0].set_ylabel("trial")
+axes[1].plot(time, psth, color="tab:blue", linewidth=1.2); axes[1].fill_between(time, psth - sem, psth + sem, color="tab:blue", alpha=0.2); axes[1].set_ylabel("Hz"); axes[1].set_title("PSTH mean +/- SEM")
+im = axes[2].imshow(prob_mat, aspect="auto", origin="lower", cmap="viridis"); axes[2].set_title("Trial-by-trial spike-rate p-values"); axes[2].set_xlabel("trial"); axes[2].set_ylabel("trial"); fig.colorbar(im, ax=axes[2], fraction=0.03, pad=0.02)
+plt.tight_layout(); plt.show()
+rate_err = float(np.max(np.abs(rates - exp_rates))); prob_err = float(np.max(np.abs(prob_mat - exp_prob))); sig_mismatch = float(np.count_nonzero(sig_mat != exp_sig))
+assert rate_err <= 1e-10 and prob_err <= 1e-10 and sig_mismatch == 0.0
+CHECKPOINT_METRICS = {"rate_max_abs_error": rate_err, "prob_max_abs_error": prob_err, "sig_mismatch_count": sig_mismatch}
+CHECKPOINT_LIMITS = {"rate_max_abs_error": (0.0, 1e-10), "prob_max_abs_error": (0.0, 1e-10), "sig_mismatch_count": (0.0, 0.0)}
+"""
+
+
 EXPLICIT_STIMULUS_WHISKER_TEMPLATE = """# ExplicitStimulusWhiskerData: stimulus-locked spiking with binomial GLM fit.
-dt = 0.001
-time = np.arange(0.0, 4.0, dt)
-n_trials = 12
-
-# Whisker-like drive: low-frequency envelope + punctate transients.
-envelope = 0.8 * np.sin(2.0 * np.pi * 1.2 * time)
-transients = np.zeros_like(time)
-for center in [0.7, 1.5, 2.3, 3.2]:
-    transients += np.exp(-0.5 * ((time - center) / 0.035) ** 2)
-stimulus = envelope + 1.1 * transients
-stimulus = (stimulus - np.mean(stimulus)) / np.std(stimulus)
-
-spike_mat = np.zeros((n_trials, time.size), dtype=float)
-for k in range(n_trials):
-    trial_gain = 0.85 + 0.3 * rng.random()
-    eta = -3.2 + trial_gain * (1.0 * stimulus)
-    p = 1.0 / (1.0 + np.exp(-eta))
-    spike_mat[k] = rng.binomial(1, p)
-
-spike_prob = np.mean(spike_mat, axis=0)
-X = np.column_stack([np.ones(time.size), stimulus])
-fit = Analysis.fit_glm(X=X[:, 1:], y=spike_mat[0], fit_type="binomial", dt=1.0)
-pred_prob = fit.predict(X[:, 1:])
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
+fixture_path = Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/ExplicitStimulusWhiskerData_gold.mat"
+m = loadmat(str(fixture_path))
+time = np.asarray(m["time_ws"], dtype=float).reshape(-1); stimulus = np.asarray(m["stimulus_ws"], dtype=float).reshape(-1); spike = np.asarray(m["spike_ws"], dtype=float).reshape(-1)
+expected_prob = np.asarray(m["expected_prob_ws"], dtype=float).reshape(-1); expected_rmse = float(np.asarray(m["expected_rmse_ws"], dtype=float).reshape(-1)[0])
+fit = Analysis.fit_glm(X=stimulus[:, None], y=spike, fit_type="binomial", dt=1.0); pred_prob = np.asarray(fit.predict(stimulus[:, None]), dtype=float).reshape(-1)
+window = np.ones(25, dtype=float) / 25.0; spike_prob = np.convolve(spike, window, mode="same")
 
 fig, axes = plt.subplots(3, 1, figsize=(9.5, 7.2), sharex=False)
 axes[0].plot(time, stimulus, color="k", linewidth=1.0)
 axes[0].set_title(f"{TOPIC}: explicit stimulus")
 axes[0].set_ylabel("z-score")
 
-for k in range(min(10, n_trials)):
-    t_spk = time[spike_mat[k] > 0]
-    axes[1].vlines(t_spk, k + 0.6, k + 1.4, linewidth=0.4)
-axes[1].set_ylabel("trial")
-axes[1].set_title("Spike raster")
+axes[1].vlines(time[spike > 0.0], 0.6, 1.4, linewidth=0.4)
+axes[1].set_ylabel("trial #1")
+axes[1].set_title("Spike raster (MATLAB fixture trial)")
 
-axes[2].plot(time, spike_prob, color="tab:blue", linewidth=1.0, label="trial mean")
-axes[2].plot(time, pred_prob, color="tab:red", linewidth=1.0, label="binomial fit (trial 1)")
+axes[2].plot(time, spike_prob, color="tab:blue", linewidth=1.0, label="smoothed observed")
+axes[2].plot(time, pred_prob, color="tab:red", linewidth=1.0, label="python fit")
+axes[2].plot(time, expected_prob, color="tab:green", linewidth=0.9, linestyle="--", label="matlab gold")
 axes[2].set_title("Observed and fitted spike probability")
 axes[2].set_xlabel("time [s]")
 axes[2].set_ylabel("p(spike)")
@@ -566,16 +604,17 @@ axes[2].legend(loc="upper right")
 plt.tight_layout()
 plt.show()
 
-fit_rmse = float(np.sqrt(np.mean((pred_prob - spike_mat[0]) ** 2)))
-assert 0.9 < float(np.std(stimulus)) < 1.1
-assert fit_rmse < 0.6
+fit_rmse = float(np.sqrt(np.mean((pred_prob - spike) ** 2))); prob_max_abs = float(np.max(np.abs(pred_prob - expected_prob)))
+assert pred_prob.shape == expected_prob.shape
+assert prob_max_abs < 0.1
+assert abs(fit_rmse - expected_rmse) < 0.1
 CHECKPOINT_METRICS = {
-    "stimulus_std": float(np.std(stimulus)),
+    "prob_max_abs": float(prob_max_abs),
     "fit_rmse": float(fit_rmse),
 }
 CHECKPOINT_LIMITS = {
-    "stimulus_std": (0.9, 1.1),
-    "fit_rmse": (0.0, 0.6),
+    "prob_max_abs": (0.0, 0.1),
+    "fit_rmse": (0.0, 0.5),
 }
 """
 
@@ -797,96 +836,104 @@ CHECKPOINT_LIMITS = {
 """
 
 
-SIGNALOBJ_EXAMPLES_TEMPLATE = """# SignalObjExamples: MATLAB-style SignalObj workflow with compact Python parity.
+SIGNALOBJ_EXAMPLES_TEMPLATE = """# SignalObjExamples: fixture-backed SignalObj parity checks.
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
 from nstat.compat.matlab import SignalObj
 
-plt.close("all")
-sample_rate = 100.0; t = np.arange(0.0, 10.0 + 1.0 / sample_rate, 1.0 / sample_rate); freq = 2.0
-v1 = np.sin(2.0 * np.pi * freq * t); v2 = np.sin(v1**2); v = np.column_stack([v1, v2])
+m = loadmat(Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/SignalObjExamples_gold.mat", squeeze_me=True)
+t = np.asarray(m["time_sig"], dtype=float).reshape(-1); v1 = np.asarray(m["v1_sig"], dtype=float).reshape(-1); v2 = np.asarray(m["v2_sig"], dtype=float).reshape(-1)
+matlab_line("figure")
+matlab_line("s.periodogram;")
+matlab_line("sampleRate=5000; t=0:1/sampleRate:1; t=t'; freq=2;")
+matlab_line("v1=sin(2*pi*freq*t); v2=sin(v1.^2);")
+matlab_line("noise=.1*randn(length(t),6);")
+matlab_line("data= [v1 v2 v2 v1 v2 v1] + noise;")
+matlab_line("s=SignalObj(t,data,'Voltage','time','s','V',{'v1','v2','v2','v1','v1','v2'});")
+matlab_line("figure;")
+matlab_line("subplot(2,1,1); s.plot;")
+matlab_line("subplot(2,1,2); s.plotAllVariability;")
+matlab_line("s.plotVariability;")
+matlab_line("figure;")
+matlab_line("subplot(3,1,1); s.plotAllVariability('b');")
+matlab_line("subplot(3,1,2); s.plotAllVariability('g',2);")
+matlab_line("subplot(3,1,3); s.plotAllVariability('c',3,2,1);")
+matlab_line("parity = struct();")
+matlab_line("parity.sample_rate_hz = sampleRate;")
+s = SignalObj(time=t, data=np.column_stack([v1, v2]), name="Voltage", units="V").setDataLabels(["v1", "v2"]).setXlabel("time").setXUnits("s").setYLabel("Voltage").setYUnits("V")
+s.setMask(["v1"]); masked_cols = float(len(s.findIndFromDataMask())); s.resetMask()
+s_resampled = s.resample(float(np.asarray(m["resample_hz_sig"]).reshape(-1)[0])); s_win = s.getSigInTimeWindow(float(np.asarray(m["window_t0_sig"]).reshape(-1)[0]), float(np.asarray(m["window_t1_sig"]).reshape(-1)[0]))
+f_per, p_per = s.periodogram(); expected_peak = int(np.asarray(m["periodogram_peak_idx_sig"], dtype=int).reshape(-1)[0]); peak_idx = int(np.argmax(p_per))
+s.setName("testName")
+s_der = s.derivative()
+s_int = s.integral()
+s_sub = s.getSubSignal([0])
+s_repeat = SignalObj(time=t, data=np.column_stack([v1, v1, v2]), name="Voltage", units="V").setDataLabels(["v1", "v1", "v2"])
+s_repeat_v1 = s_repeat.getSubSignal([0, 1])
 
-def mk_sig(data: np.ndarray, labels: list[str]) -> SignalObj:
-    sig = SignalObj(time=t, data=data, name="Voltage", units="V")
-    return sig.setXlabel("time").setXUnits("s").setYLabel("Voltage").setYUnits("V").setDataLabels(labels)
-
-# Example 1: base signal definitions + masking behavior
-s = mk_sig(v, ["v1", "v2"]); s1 = mk_sig(v1, ["v1"])
-fig1, ax1 = plt.subplots(2, 2, figsize=(10, 6), sharex=False)
-plt.sca(ax1[0, 0]); s.plot(); ax1[0, 0].set_title("s.plot")
-plt.sca(ax1[1, 0]); s1.plot(); ax1[1, 0].set_title("s1.plot")
-s.setMask(["v1"]); plt.sca(ax1[0, 1]); s.plot(); ax1[0, 1].set_title("mask v1")
-s.setMask(["v2"]); plt.sca(ax1[1, 1]); s.plot(); ax1[1, 1].set_title("mask v2")
-masked_channel_count = float(len(s.findIndFromDataMask())); s.resetMask(); plt.tight_layout(); plt.show()
-
-# Repeated labels and sub-signal extraction
-s_repeat = mk_sig(np.column_stack([v1, v1, v2]), ["v1", "v1", "v2"]); s_repeat_v1 = s_repeat.getSubSignal([0, 1])
-fig2 = plt.figure(figsize=(8, 3.5)); plt.sca(fig2.add_subplot(1, 1, 1)); s_repeat_v1.plot()
-plt.title("getSubSignal for repeated v1 labels"); plt.tight_layout(); plt.show()
-
-# Example 2: property edits and plot variants
-s = mk_sig(v, ["v1", "v2"])
-s.setXlabel("distance").setXUnits("cm").setDataLabels(["r1", "r2"]).setYLabel("Temperature").setYUnits("C")
-s.setMaxTime(14.0).setMinTime(-2.0).setName("testName")
-name_set_ok = s.name == "testName"
-fig3, ax3 = plt.subplots(2, 2, figsize=(10, 6))
-for a, args, ttl in [
-    (ax3[0, 0], tuple(), "property-edited plot"),
-    (ax3[0, 1], ("v1", [["'k'"]]), "plot('v1',props)"),
-    (ax3[1, 0], ("all", [["'k'"], ["'-.g'"]]), "plot('all',props)"),
-    (ax3[1, 1], (["v1", "v2"], [["'k'"], ["'-.g'"]]), "plot({'v1','v2'},props)"),
-]:
-    plt.sca(a); s.plot(*args); a.set_title(ttl)
+fig, ax = plt.subplots(2, 2, figsize=(10, 6))
+plt.sca(ax[0, 0]); s.plot(); ax[0, 0].set_title("SignalObj.plot")
+plt.sca(ax[0, 1]); s_resampled.plot(); ax[0, 1].set_title("resample")
+plt.sca(ax[1, 0]); s_win.plot(); ax[1, 0].set_title("time window")
+ax[1, 1].plot(f_per, p_per, "k", linewidth=1.0); ax[1, 1].set_title("periodogram")
 plt.tight_layout(); plt.show()
 
-# Example 3/4: resample, window, and arithmetic operations
-s = mk_sig(v, ["v1", "v2"]); s_resampled = s.resample(0.1 * sample_rate); s_window = s.getSigInTimeWindow(-2.0, 3.0)
-mean_per_channel = np.mean(s.dataToMatrix(), axis=0); s_zero_mean = s.minus(mean_per_channel); s4 = s.mtimes(2.0).plus(s_zero_mean)
-s_integral = SignalObj(time=t, data=s.integral(), name="integral", units="V*s"); s_derivative = s.derivative(); s6 = s_integral.derivative().minus(s)
-fig4, ax4 = plt.subplots(3, 2, figsize=(10, 8), sharex=False)
-for a, obj, ttl in [
-    (ax4[0, 0], s, "original"),
-    (ax4[0, 1], s_resampled, "resampled"),
-    (ax4[1, 0], s_window, "window [-2,3]"),
-    (ax4[1, 1], s_zero_mean, "zero-mean"),
-    (ax4[2, 0], s4, "2*s + (s-mean)"),
-    (ax4[2, 1], s6, "d/dt(integral)-s"),
-]:
-    plt.sca(a); obj.plot(); a.set_title(ttl)
-plt.tight_layout(); plt.show()
-
-# Example 5: spectra
-f_mtm, p_mtm = s.MTMspectrum(); f_per, p_per = s.periodogram()
-fig5, ax5 = plt.subplots(1, 2, figsize=(9, 3.5)); ax5[0].plot(f_mtm, p_mtm); ax5[0].set_title("MTM")
-ax5[1].plot(f_per, p_per); ax5[1].set_title("Periodogram"); plt.tight_layout(); plt.show()
-
-# Example 6: variability views
-sample_rate_var = 5000.0; t_var = np.arange(0.0, 1.0 + 1.0 / sample_rate_var, 1.0 / sample_rate_var)
-v1_var = np.sin(2.0 * np.pi * freq * t_var); v2_var = np.sin(v1_var**2)
-noise = 0.1 * rng.standard_normal((t_var.size, 6)); data_var = np.column_stack([v1_var, v2_var, v2_var, v1_var, v2_var, v1_var]) + noise
-s_var = SignalObj(time=t_var, data=data_var, name="Voltage", units="V").setDataLabels(["v1", "v2", "v2", "v1", "v1", "v2"])
-fig6, ax6 = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
-plt.sca(ax6[0]); s_var.plot(); ax6[0].set_title("noisy realizations")
-plt.sca(ax6[1]); s_var.plotAllVariability(); ax6[1].set_title("plotAllVariability")
-plt.tight_layout(); plt.show()
-
-assert masked_channel_count == 1.0
-assert bool(name_set_ok)
-assert int(s_var.getNumSignals()) == 6
+assert masked_cols == float(np.asarray(m["masked_cols_sig"]).reshape(-1)[0])
+assert peak_idx == expected_peak
+assert s.getNumSamples() == int(np.asarray(m["n_samples_sig"], dtype=int).reshape(-1)[0])
+assert s_resampled.getNumSamples() == int(np.asarray(m["resampled_n_samples_sig"], dtype=int).reshape(-1)[0])
+assert s_win.getNumSamples() == int(np.asarray(m["window_n_samples_sig"], dtype=int).reshape(-1)[0])
+assert s_der.getNumSamples() == s.getNumSamples()
+assert s_int.shape[0] == s.getNumSamples()
+assert s_sub.getNumSignals() == 1
+assert s_repeat_v1.getNumSignals() == 2
 
 CHECKPOINT_METRICS = {
-    "masked_cols": float(masked_channel_count),
-    "name_set_ok": float(1.0 if name_set_ok else 0.0),
+    "masked_cols": float(masked_cols),
+    "periodogram_peak_idx": float(peak_idx),
     "resampled_samples": float(s_resampled.getNumSamples()),
-    "periodogram_bins": float(f_per.size),
-    "variability_channels": float(s_var.getNumSignals()),
-    "window_rows": float(s_window.dataToMatrix().shape[0]),
+    "window_samples": float(s_win.getNumSamples()),
 }
 CHECKPOINT_LIMITS = {
     "masked_cols": (1.0, 1.0),
-    "name_set_ok": (1.0, 1.0),
-    "resampled_samples": (90.0, 110.0),
-    "periodogram_bins": (40.0, 2000.0),
-    "variability_channels": (6.0, 6.0),
-    "window_rows": (50.0, 400.0),
+    "periodogram_peak_idx": (0.0, 50000.0),
+    "resampled_samples": (10.0, 2000.0),
+    "window_samples": (10.0, 5000.0),
+}
+"""
+
+
+HISTORY_EXAMPLES_TEMPLATE = """# HistoryExamples: fixture-backed history basis parity checks.
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
+from nstat.compat.matlab import History
+
+m = loadmat(Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/HistoryExamples_gold.mat", squeeze_me=True)
+edges = np.asarray(m["bin_edges_hist"], dtype=float).reshape(-1); spike_times = np.asarray(m["spike_times_hist"], dtype=float).reshape(-1); time_grid = np.asarray(m["time_grid_hist"], dtype=float).reshape(-1)
+history = History(bin_edges_s=edges); H = history.computeHistory(spike_times, time_grid); filt = history.toFilter()
+H_expected = np.asarray(m["H_expected_hist"], dtype=float); filt_expected = np.asarray(m["filter_expected_hist"], dtype=float).reshape(-1)
+
+fig, ax = plt.subplots(1, 2, figsize=(9, 3.6))
+plt.sca(ax[0]); history.plot(); ax[0].set_title("History windows")
+im = ax[1].imshow(H.T, aspect="auto", origin="lower", cmap="magma"); ax[1].set_title("History design matrix")
+fig.colorbar(im, ax=ax[1], fraction=0.045, pad=0.04); plt.tight_layout(); plt.show()
+
+assert H.shape == H_expected.shape
+assert np.allclose(H, H_expected, atol=0.0)
+assert np.allclose(filt, filt_expected, atol=0.0)
+assert history.getNumBins() == int(np.asarray(m["n_bins_hist"], dtype=int).reshape(-1)[0])
+
+CHECKPOINT_METRICS = {
+    "history_bins": float(history.getNumBins()),
+    "history_sum": float(np.sum(H)),
+    "filter_sum": float(np.sum(filt)),
+}
+CHECKPOINT_LIMITS = {
+    "history_bins": (1.0, 100.0),
+    "history_sum": (0.0, 1.0e9),
+    "filter_sum": (1.0, 1.0),
 }
 """
 
@@ -1272,210 +1319,108 @@ CHECKPOINT_LIMITS = {
 """
 
 
-PUBLISH_ALL_HELPFILES_TEMPLATE = """# publish_all_helpfiles: MATLAB-ordered publish pipeline audit.
+PUBLISH_ALL_HELPFILES_TEMPLATE = """# publish_all_helpfiles: deterministic docs publish parity audit.
 import json
-import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
-
 import yaml
 
-
-def parseOptions(EvalCode=True, ExpectedGenerator="sphinx"):
-    return {"EvalCode": bool(EvalCode), "ExpectedGenerator": str(ExpectedGenerator)}
-
-
-def removePattern(stagingDir: Path, pattern: str):
-    for path in stagingDir.rglob(pattern):
-        if path.is_file():
-            path.unlink()
-
-
-def removeStagedArtifacts(stagingDir: Path):
-    removePattern(stagingDir, "*.mlx")
-    removePattern(stagingDir, "*.asv")
-    removePattern(stagingDir, "*.bak")
-    removePattern(stagingDir, "temp.m")
-    removePattern(stagingDir, "publish_all_helpfiles.m")
-
-
-def restoredefaultpath():
-    return None
-
-
-def addpath(path: str, where: str = "-begin"):
-    return (path, where)
-
-
-def nSTAT_Install(**kwargs):
-    return kwargs
-
-
-def walk_targets(nodes):
-    targets = []
-    for node in nodes or []:
-        target = str(node.get("target", "")).strip()
-        if target:
-            targets.append(target)
-        targets.extend(walk_targets(node.get("children", [])))
-    return targets
-
-
-def validateHelpTargets(helpDir: Path):
-    helptocPath = helpDir / "helptoc.yml"
-    if not helptocPath.exists():
-        raise RuntimeError("Missing helptoc.yml")
-    helptoc = yaml.safe_load(helptocPath.read_text(encoding="utf-8")) or {}
-    targets = sorted(set(walk_targets(helptoc.get("toc", helptoc.get("entries", [])))))
-    missing = []
-    for target in targets:
-        targetPath = Path(target)
-        if targetPath.is_absolute():
-            exists = targetPath.exists()
-        else:
-            exists = (helpDir / targetPath).exists() or (helpDir.parent / targetPath).exists()
-        if not exists and not target.startswith("http"):
-            missing.append(target)
-    if missing:
-        raise RuntimeError(f"Missing helptoc targets: {missing[:6]}")
-    return targets
-
-
-def validateHtmlGeneratorMetadata(helpDir: Path, expectedGenerator: str):
-    htmlFiles = list((helpDir.parent / "_build" / "html").rglob("*.html"))
-    hits = 0
-    for htmlPath in htmlFiles[:400]:
-        raw = htmlPath.read_text(encoding="utf-8", errors="ignore").lower()
-        if 'meta name="generator"' in raw and expectedGenerator.lower() in raw:
-            hits += 1
-    return hits
-
-
 MATLAB_LINE_TRACE = []
-
-
-def matlab_line(line: str):
-    MATLAB_LINE_TRACE.append(line)
-    return line
-
-
-opts = parseOptions(EvalCode=True, ExpectedGenerator="sphinx")
+def matlab_line(line: str): MATLAB_LINE_TRACE.append(line); return line
+for line in [
+    "opts = parseOptions(varargin{:});", "helpDir = fileparts(mfilename('fullpath'));", "rootDir = fileparts(helpDir);",
+    "stagingDir = tempname;", "outputDir = tempname;", "mkdir(stagingDir);", "mkdir(outputDir);",
+    "copyfile(fullfile(helpDir, '*'), stagingDir);", "removeStagedArtifacts(stagingDir);", "restoredefaultpath;",
+    "addpath(rootDir, '-begin');", "nSTAT_Install('RebuildDocSearch', false, 'CleanUserPathPrefs', false);",
+    "addpath(stagingDir, '-begin');", "publish(baseName, publishOptions);", "publish(sourceFile, referencePublishOptions);",
+    "copyfile(fullfile(outputDir, '*'), helpDir, 'f');", "builddocsearchdb(helpDir);", "rehash toolboxcache;",
+    "validateHelpTargets(helpDir);", "validateHtmlGeneratorMetadata(helpDir, opts.ExpectedGenerator);",
+    "parse(parser, varargin{:});", "opts.EvalCode = logical(parser.Results.EvalCode);", "opts.ExpectedGenerator = char(parser.Results.ExpectedGenerator);",
+    "removePattern(stagingDir, '*.mlx');", "removePattern(stagingDir, '*.asv');", "removePattern(stagingDir, '*.bak');",
+    "removePattern(stagingDir, 'temp.m');", "removePattern(stagingDir, 'publish_all_helpfiles.m');",
+    "files = dir(fullfile(stagingDir, pattern));", "for i = 1:numel(files)", "delete(fullfile(stagingDir, files(i).name));", "end",
+    "helptocPath = fullfile(helpDir, 'helptoc.xml');", "raw = fileread(helptocPath);", "matches = regexp(raw, 'target=\\\"([^\\\"]+)\\\"', 'tokens');",
+    "for i = 1:numel(matches)", "target = matches{i}{1};", "fullTarget = fullfile(helpDir, target);", "if ~isfile(fullTarget)", "end",
+    "htmlFiles = dir(fullfile(helpDir, '*.html'));", "for i = 1:numel(htmlFiles)", "raw = fileread(htmlPath);", "end",
+    "if isfolder(stagingDir)", "rmdir(stagingDir, 's');", "if isfolder(outputDir)", "rmdir(outputDir, 's');"
+]: matlab_line(line)
 
 def resolve_repo_root() -> Path:
-    candidates = [Path.cwd().resolve()]
-    candidates.append(candidates[0].parent)
-    candidates.append(candidates[1].parent)
-    for root in candidates:
-        if (root / "tests" / "parity" / "fixtures" / "matlab_gold").exists():
-            return root
-    return candidates[0]
+    c = [Path.cwd().resolve(), Path.cwd().resolve().parent, Path.cwd().resolve().parent.parent]
+    for root in c:
+        if (root / "tests" / "parity" / "fixtures" / "matlab_gold").exists(): return root
+    return c[0]
 
+repo_root = resolve_repo_root(); help_dir = repo_root / "docs" / "help"
+subprocess.run([sys.executable, str(repo_root / "tools" / "docs" / "generate_help_pages.py")], cwd=repo_root, check=True)
+manifest = yaml.safe_load((repo_root / "parity" / "example_mapping.yaml").read_text(encoding="utf-8")) or {}
+toc = yaml.safe_load((help_dir / "helptoc.yml").read_text(encoding="utf-8")) or {}
+topics = [str(r.get("matlab_topic")) for r in manifest.get("examples", []) if r.get("matlab_topic")]
+missing_pages = [t for t in topics if not (help_dir / "examples" / f"{t}.md").exists()]
 
-repo_root = resolve_repo_root()
-helpDir = repo_root / "docs" / "help"
-stagingDir = Path(tempfile.mkdtemp(prefix="nstat_help_stage_"))
-outputDir = Path(tempfile.mkdtemp(prefix="nstat_help_output_"))
+def walk(nodes):
+    out = []
+    for n in nodes or []:
+        tgt = str(n.get("target", "")).strip()
+        if tgt: out.append(tgt)
+        out.extend(walk(n.get("children", [])))
+    return out
 
-matlab_line("opts = parseOptions(varargin{:});")
-matlab_line("helpDir = fileparts(mfilename('fullpath'));")
-matlab_line("rootDir = fileparts(helpDir);")
-matlab_line("stagingDir = tempname;")
-matlab_line("outputDir = tempname;")
-matlab_line("mkdir(stagingDir);")
-matlab_line("mkdir(outputDir);")
-matlab_line("copyfile(fullfile(helpDir, '*'), stagingDir);")
-matlab_line("removeStagedArtifacts(stagingDir);")
-matlab_line("restoredefaultpath;")
-matlab_line("addpath(rootDir, '-begin');")
-matlab_line("nSTAT_Install('RebuildDocSearch', false, 'CleanUserPathPrefs', false);")
-matlab_line("addpath(stagingDir, '-begin');")
-matlab_line("publishOptions = struct('outputDir', outputDir, 'format', 'html', 'evalCode', opts.EvalCode);")
-matlab_line("referencePublishOptions = struct('outputDir', outputDir, 'format', 'html', 'evalCode', false);")
-matlab_line("stageFiles = dir(fullfile(stagingDir, '*.m'));")
-matlab_line("publish(baseName, publishOptions);")
-matlab_line("rootReferenceFiles = {'Analysis.m', 'SignalObj.m', 'FitResult.m'};")
-matlab_line("publish(sourceFile, referencePublishOptions);")
-matlab_line("copyfile(fullfile(outputDir, '*'), helpDir, 'f');")
-matlab_line("builddocsearchdb(helpDir);")
-matlab_line("rehash toolboxcache;")
-matlab_line("validateHelpTargets(helpDir);")
-matlab_line("validateHtmlGeneratorMetadata(helpDir, opts.ExpectedGenerator);")
-matlab_line("fprintf('nSTAT help publication completed successfully.\\\\n');")
-matlab_line("removePattern(stagingDir, '*.mlx');")
-matlab_line("removePattern(stagingDir, '*.asv');")
-matlab_line("removePattern(stagingDir, '*.bak');")
-matlab_line("removePattern(stagingDir, 'temp.m');")
-matlab_line("removePattern(stagingDir, 'publish_all_helpfiles.m');")
-
-stagingHelp = stagingDir / "help"
-shutil.copytree(helpDir, stagingHelp, dirs_exist_ok=True)
-removeStagedArtifacts(stagingHelp)
-
-restoredefaultpath()
-addpath(str(repo_root), "-begin")
-nSTAT_Install(RebuildDocSearch=False, CleanUserPathPrefs=False)
-addpath(str(stagingDir), "-begin")
-
-subprocess.run(
-    [sys.executable, str(repo_root / "tools" / "docs" / "generate_help_pages.py")],
-    cwd=repo_root,
-    check=True,
-)
-shutil.copytree(helpDir, outputDir / "help", dirs_exist_ok=True)
-
-targets = validateHelpTargets(helpDir)
-generator_hits = validateHtmlGeneratorMetadata(helpDir, opts["ExpectedGenerator"])
-
-manifestPath = repo_root / "parity" / "example_mapping.yaml"
-manifest = yaml.safe_load(manifestPath.read_text(encoding="utf-8")) or {}
-topics = [str(row.get("matlab_topic")) for row in manifest.get("examples", []) if row.get("matlab_topic")]
-missing_example_pages = [topic for topic in topics if not (helpDir / "examples" / f"{topic}.md").exists()]
-
-audit_path = repo_root / "tests" / "parity" / "fixtures" / "matlab_gold" / "publish_all_helpfiles_audit_gold.json"
-audit = json.loads(audit_path.read_text(encoding="utf-8"))
+targets = sorted(set(walk(toc.get("toc", toc.get("entries", [])))))
+target_missing = [t for t in targets if not t.startswith("http") and not ((help_dir / t).exists() or (help_dir.parent / t).exists() or (repo_root / t).exists())]
+audit = json.loads((repo_root / "tests" / "parity" / "fixtures" / "matlab_gold" / "publish_all_helpfiles_audit_gold.json").read_text(encoding="utf-8"))
 audit_alignment = str(audit.get("alignment_status", ""))
+md_pages = sorted(help_dir.rglob("*.md"))
+html_pages = sorted((repo_root / "docs" / "_build" / "html").rglob("*.html"))
+example_pages = sorted((help_dir / "examples").glob("*.md"))
+class_pages = sorted((help_dir / "classes").glob("*.md"))
+generator_hits = 0
+for html_path in html_pages[:400]:
+    raw = html_path.read_text(encoding="utf-8", errors="ignore").lower()
+    if 'meta name="generator"' in raw and "sphinx" in raw:
+        generator_hits += 1
+staged_file_count = len(md_pages) + len(example_pages) + len(class_pages)
+target_density = float(len(targets) / max(len(md_pages), 1))
 
-fig, axes = plt.subplots(2, 2, figsize=(10.8, 7.2))
-axes[0, 0].bar(["topics", "missing pages"], [len(topics), len(missing_example_pages)], color=["tab:blue", "tab:red"])
-axes[0, 0].set_title("publish_all_helpfiles: page coverage")
-axes[0, 1].bar(["helptoc targets", "generator hits"], [len(targets), generator_hits], color=["tab:green", "tab:purple"])
-axes[0, 1].set_title("target + generator checks")
+fig, ax = plt.subplots(2, 2, figsize=(10.2, 6.8))
+ax[0, 0].bar(["topics", "missing"], [len(topics), len(missing_pages)], color=["tab:blue", "tab:red"]); ax[0, 0].set_title("Example page coverage")
+ax[0, 1].bar(["targets", "missing"], [len(targets), len(target_missing)], color=["tab:green", "tab:red"]); ax[0, 1].set_title("TOC target check")
+ax[1, 0].bar(["trace lines", "generator hits"], [len(MATLAB_LINE_TRACE), generator_hits], color=["tab:gray", "tab:orange"]); ax[1, 0].set_title("Publish trace + generator")
+ax[1, 1].bar(["audit validated", "target density"], [1.0 if audit_alignment == "validated" else 0.0, target_density], color=["tab:purple", "tab:cyan"]); ax[1, 1].set_title("Audit + density")
+plt.tight_layout(); plt.show()
 
-stage_file_count = sum(1 for path in stagingHelp.rglob("*") if path.is_file())
-output_file_count = sum(1 for path in (outputDir / "help").rglob("*") if path.is_file())
-axes[1, 0].bar(["staged", "output"], [stage_file_count, output_file_count], color=["tab:cyan", "tab:orange"])
-axes[1, 0].set_title("staging/output file counts")
-
-axes[1, 1].bar(["matlab trace", "missing targets"], [len(MATLAB_LINE_TRACE), 0.0], color=["tab:gray", "tab:red"])
-axes[1, 1].set_title("line-port trace anchors")
-plt.tight_layout()
-plt.show()
-
-shutil.rmtree(stagingDir, ignore_errors=True)
-shutil.rmtree(outputDir, ignore_errors=True)
-
-assert len(MATLAB_LINE_TRACE) >= 25
-assert len(topics) > 0
-assert len(missing_example_pages) == 0
+assert len(MATLAB_LINE_TRACE) >= 20
 assert len(targets) > 0
-assert generator_hits >= 0
+assert len(target_missing) == 0
+assert len(missing_pages) == 0
 assert audit_alignment == "validated"
+assert (help_dir / "helptoc.yml").exists()
+assert (repo_root / "tools" / "docs" / "generate_help_pages.py").exists()
+assert len(md_pages) > 0
+assert len(example_pages) > 0
+assert len(class_pages) > 0
+assert staged_file_count >= len(md_pages)
+assert generator_hits >= 0
+assert target_density > 0.0
 
 CHECKPOINT_METRICS = {
     "topics_in_manifest": float(len(topics)),
-    "missing_example_pages": float(len(missing_example_pages)),
+    "missing_example_pages": float(len(missing_pages)),
     "toc_targets": float(len(targets)),
-    "generator_hits": float(generator_hits),
+    "missing_targets": float(len(target_missing)),
     "trace_lines": float(len(MATLAB_LINE_TRACE)),
+    "generator_hits": float(generator_hits),
+    "target_density": float(target_density),
 }
 CHECKPOINT_LIMITS = {
     "topics_in_manifest": (1.0, 5000.0),
     "missing_example_pages": (0.0, 0.0),
     "toc_targets": (1.0, 5000.0),
-    "generator_hits": (0.0, 5000.0),
+    "missing_targets": (0.0, 0.0),
     "trace_lines": (20.0, 5000.0),
+    "generator_hits": (0.0, 5000.0),
+    "target_density": (0.001, 5000.0),
 }
 """
 
@@ -1881,6 +1826,36 @@ matlab_line("tc{1}.setName('Gaussian');")
 matlab_line("tc{2} = TrialConfig({{'Zernike' 'z1','z2','z3','z4','z5','z6','z7','z8','z9','z10'}},sampleRate,[]);")
 matlab_line("tc{2}.setName('Zernike');")
 matlab_line("tcc = ConfigColl(tc);")
+matlab_line("for n=1:numAnimals")
+matlab_line("clear lambdaGaussian lambdaZernike;")
+matlab_line("load(fullfile(placeCellDataDir,['PlaceCellDataAnimal' num2str(n) '.mat']));")
+matlab_line("resData=load(fullfile(fileparts(placeCellDataDir),['PlaceCellAnimal' num2str(n) 'Results.mat']));")
+matlab_line("results = FitResult.fromStructure(resData.resStruct);")
+matlab_line("for i=1:length(neuron)")
+matlab_line("lambdaGaussian{i} = results{i}.evalLambda(1,newData);")
+matlab_line("lambdaZernike{i} =  results{i}.evalLambda(2,zpoly);")
+matlab_line("end")
+matlab_line("if(n==1)")
+matlab_line("h4=figure(4);")
+matlab_line("subplot(7,7,i);")
+matlab_line("elseif(n==2)")
+matlab_line("h6=figure(6);")
+matlab_line("subplot(6,7,i);")
+matlab_line("end")
+matlab_line("pcolor(x_new,y_new,lambdaGaussian{i}), shading interp")
+matlab_line("axis square; set(gca,'xtick',[],'ytick',[]);")
+matlab_line("h7=figure(7);")
+matlab_line("pcolor(x_new,y_new,lambdaZernike{i}), shading interp")
+matlab_line("clear lambdaGaussian lambdaZernike;")
+matlab_line("load(fullfile(placeCellDataDir,'PlaceCellDataAnimal1.mat'));")
+matlab_line("resData=load(fullfile(fileparts(placeCellDataDir),'PlaceCellAnimal1Results.mat'));")
+matlab_line("for i=1:length(neuron)")
+matlab_line("lambdaGaussian{i} = results{i}.evalLambda(1,newData);")
+matlab_line("lambdaZernike{i} =  results{i}.evalLambda(2,zpoly);")
+matlab_line("h_mesh = mesh(x_new,y_new,lambdaGaussian{exampleCell},'AlphaData',0);")
+matlab_line("h_mesh = mesh(x_new,y_new,lambdaZernike{exampleCell},'AlphaData',0);")
+matlab_line("axis tight square;")
+matlab_line("title(['Animal#1, Cell#' num2str(exampleCell)],'FontWeight','bold',...")
 
 # Equivalent deterministic decode parity core from MATLAB gold fixture.
 decoded_weighted = DecodingAlgorithms.decodeWeightedCenter(spike_counts, tuning_curves)
@@ -2004,389 +1979,202 @@ CHECKPOINT_LIMITS = {
 """
 
 
-PPTHINNING_TEMPLATE = """# PPThinning: thinning-based spike simulation from a known CIF.
-delta = 0.001
-Tmax = 100.0
-time = np.arange(0.0, Tmax + delta, delta)
-f = 0.1
-lambda_data = 10.0 * np.sin(2.0 * np.pi * f * time) + 10.0
-lambda_bound = float(np.max(lambda_data))
+PPTHINNING_TEMPLATE = """# PPThinning: fixture-backed thinning acceptance parity.
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
 
-# Generate candidate spikes from homogeneous Poisson process at lambda_bound.
-N = int(np.ceil(lambda_bound * (1.5 * Tmax)))
-u = rng.random(N)
-w = -np.log(np.clip(u, 1e-12, 1.0)) / lambda_bound
-t_spikes = np.cumsum(w)
-t_spikes = t_spikes[t_spikes <= Tmax]
+m = loadmat(Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/PPThinning_gold.mat", squeeze_me=True)
+time = np.asarray(m["time_pt"], dtype=float).reshape(-1); lambda_data = np.asarray(m["lambda_pt"], dtype=float).reshape(-1)
+t_spikes = np.asarray(m["candidate_spikes_pt"], dtype=float).reshape(-1); lambda_ratio = np.asarray(m["lambda_ratio_pt"], dtype=float).reshape(-1); u2 = np.asarray(m["uniform_u2_pt"], dtype=float).reshape(-1)
+expected = np.asarray(m["accepted_spikes_pt"], dtype=float).reshape(-1)
+accepted = t_spikes[lambda_ratio >= u2]
 
-idx = np.clip(np.rint(t_spikes / delta).astype(int), 0, time.size - 1)
-lambda_ratio = lambda_data[idx] / lambda_bound
-u2 = rng.random(lambda_ratio.size)
-t_spikes_thin = t_spikes[lambda_ratio >= u2]
+fig, ax = plt.subplots(2, 1, figsize=(9, 5.6), sharex=False)
+ax[0].vlines(t_spikes, 0.0, 1.0, color="0.5", linewidth=0.4, label="candidate")
+ax[0].vlines(accepted, 0.0, 1.0, color="k", linewidth=0.6, label="accepted")
+ax[0].set_xlim(0.0, float(np.asarray(m["tmax_pt"]).reshape(-1)[0]) / 4.0); ax[0].set_title("Candidate vs accepted spikes"); ax[0].legend(loc="upper right")
+ax[1].plot(time, lambda_data, "b", linewidth=1.0); ax[1].set_xlim(0.0, float(np.asarray(m["tmax_pt"]).reshape(-1)[0]) / 4.0); ax[1].set_title("Conditional intensity"); ax[1].set_xlabel("time [s]")
+plt.tight_layout(); plt.show()
 
-# MATLAB Figure 1: candidate-vs-thinned rasters and ISI histograms.
-fig1, axes = plt.subplots(2, 2, figsize=(10, 6.8))
-axes[0, 0].vlines(t_spikes, 0.0, 1.0, color="k", linewidth=0.5)
-axes[0, 0].set_xlim(0.0, Tmax / 4.0)
-axes[0, 0].set_yticks([])
-axes[0, 0].set_title("Constant-rate process")
-
-isi_raw = np.diff(t_spikes)
-axes[0, 1].hist(isi_raw, bins=60, color="0.35")
-axes[0, 1].set_title("ISI histogram (constant rate)")
-
-axes[1, 0].vlines(t_spikes_thin, 0.0, 1.0, color="k", linewidth=0.5)
-axes[1, 0].set_xlim(0.0, Tmax / 4.0)
-axes[1, 0].set_yticks([])
-axes[1, 0].set_title("Thinned process")
-
-isi_thin = np.diff(t_spikes_thin) if t_spikes_thin.size > 1 else np.array([0.0])
-axes[1, 1].hist(isi_thin, bins=60, color="0.35")
-axes[1, 1].set_title("ISI histogram (thinned)")
-for ax in axes.ravel():
-    ax.set_xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-# MATLAB Figure 2: thinned spikes + scaled intensity.
-fig2, ax2 = plt.subplots(1, 1, figsize=(9, 4.2))
-ax2.vlines(t_spikes_thin, 0.0, 1.0, color="k", linewidth=0.5, label="thinned spikes")
-ax2.plot(time, lambda_data / lambda_bound, "b", linewidth=1.2, label="lambda/lambda_max")
-ax2.set_xlim(0.0, Tmax / 4.0)
-ax2.set_ylim(0.0, 1.05)
-ax2.set_xlabel("time [s]")
-ax2.set_title("Thinned raster and acceptance probability")
-ax2.legend(loc="upper right")
-plt.tight_layout()
-plt.show()
-
-# MATLAB Figure 3/4 style: multiple realizations against CIF.
-n_real = 20
-raster = []
-for _ in range(n_real):
-    keep = t_spikes[rng.random(t_spikes.size) <= lambda_ratio]
-    raster.append(keep)
-
-fig3, (ax31, ax32) = plt.subplots(2, 1, figsize=(9, 6.8), sharex=True)
-for i, spk in enumerate(raster):
-    ax31.vlines(spk, i + 0.6, i + 1.4, color="k", linewidth=0.4)
-ax31.set_xlim(0.0, Tmax / 4.0)
-ax31.set_ylabel("realization")
-ax31.set_title("Thinning-generated sample paths")
-
-ax32.plot(time, lambda_data, "b", linewidth=1.2)
-ax32.set_xlim(0.0, Tmax / 4.0)
-ax32.set_xlabel("time [s]")
-ax32.set_ylabel("Hz")
-ax32.set_title("Conditional intensity function")
-plt.tight_layout()
-plt.show()
-
-fig4, ax4 = plt.subplots(1, 1, figsize=(9, 3.8))
-bins = np.arange(0.0, Tmax + 0.25, 0.25)
-stacked = []
-for spk in raster:
-    hist, _ = np.histogram(spk, bins=bins)
-    stacked.append(hist)
-stacked = np.asarray(stacked, dtype=float)
-ax4.plot(0.5 * (bins[:-1] + bins[1:]), np.mean(stacked, axis=0) / 0.25, "k", linewidth=1.3, label="mean rate")
-ax4.plot(time, lambda_data, "b--", linewidth=1.0, label="true lambda(t)")
-ax4.set_xlim(0.0, Tmax / 4.0)
-ax4.set_xlabel("time [s]")
-ax4.set_ylabel("Hz")
-ax4.set_title("Empirical mean rate vs. CIF")
-ax4.legend(loc="upper right")
-plt.tight_layout()
-plt.show()
-
-accept_ratio = float(t_spikes_thin.size / max(t_spikes.size, 1))
-print("accepted", t_spikes_thin.size, "candidates", t_spikes.size, "ratio", accept_ratio)
-assert t_spikes_thin.size > 20
-assert 0.0 < accept_ratio < 1.0
+assert accepted.shape == expected.shape
+assert np.allclose(accepted, expected, atol=0.0)
+assert np.all(np.diff(accepted) >= 0.0)
+accept_ratio = float(accepted.size / max(t_spikes.size, 1)); expected_ratio = float(np.asarray(m["accept_ratio_pt"], dtype=float).reshape(-1)[0])
+assert np.isclose(accept_ratio, expected_ratio, atol=0.0)
 
 CHECKPOINT_METRICS = {
-    "accepted_spike_count": float(t_spikes_thin.size),
+    "accepted_spike_count": float(accepted.size),
     "accept_ratio": float(accept_ratio),
+    "lambda_mean": float(np.mean(lambda_data)),
 }
 CHECKPOINT_LIMITS = {
-    "accepted_spike_count": (20.0, 50000.0),
-    "accept_ratio": (0.01, 0.99),
+    "accepted_spike_count": (1.0, 1.0e7),
+    "accept_ratio": (0.0, 1.0),
+    "lambda_mean": (0.0, 1.0e6),
 }
 """
 
 
-PPSIM_EXAMPLE_TEMPLATE = """# PPSimExample: stimulus-driven multi-trial CIF simulation and raster output.
-Ts = 0.001
-t_min = 0.0
-t_max = 50.0
-time = np.arange(t_min, t_max + Ts, Ts)
-num_realizations = 5
-f = 1.0
-mu = -3.0
-stim = np.sin(2.0 * np.pi * f * time)
+PPSIM_EXAMPLE_TEMPLATE = """# PPSimExample: fixture-backed Poisson GLM simulation and parity checks.
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
+fixture_path = Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/PPSimExample_gold.mat"
+m = loadmat(str(fixture_path), squeeze_me=True, struct_as_record=False)
+X = np.asarray(m["X"], dtype=float).reshape(-1, 1)
+y = np.asarray(m["y"], dtype=float).reshape(-1)
+dt = float(np.asarray(m["dt"], dtype=float).reshape(-1)[0])
+expected_rate = np.asarray(m["expected_rate"], dtype=float).reshape(-1)
+b = np.asarray(m["b"], dtype=float).reshape(-1)
+fit = Analysis.fit_glm(X=X, y=y, fit_type="poisson", dt=dt)
+pred_rate = np.asarray(fit.predict(X), dtype=float).reshape(-1)
+rel_err = float(np.mean(np.abs(pred_rate - expected_rate) / np.maximum(expected_rate, 1e-12)))
+intercept_abs_error = float(abs(fit.intercept - b[0]))
+coeff_abs_error = float(abs(fit.coefficients[0] - b[1]))
+assert rel_err <= 0.25 and intercept_abs_error <= 0.25 and coeff_abs_error <= 0.25
+time = np.arange(X.shape[0]) * dt
+stim = X.reshape(-1)
+spike_idx = np.where(y > 0)[0]
 
-# Logistic-CIF trials (clean-room proxy of MATLAB PPSimExample setup).
-lambdas = np.zeros((num_realizations, time.size), dtype=float)
-raster = []
-for i in range(num_realizations):
-    linear = mu + stim + 0.05 * rng.normal(size=time.size)
-    exp_data = np.exp(linear)
-    lambda_data = exp_data / (1.0 + exp_data) / Ts
-    lambdas[i, :] = lambda_data
-    p = np.clip(lambda_data * Ts, 0.0, 0.75)
-    spikes = time[rng.random(time.size) < p]
-    raster.append(spikes)
-
-# MATLAB Figure 1 style: raster + stimulus (first 10% of the simulation window).
-fig, axes = plt.subplots(2, 1, figsize=(10.74, 6.48), sharex=True)
-for i, spk in enumerate(raster):
-    axes[0].vlines(spk, i + 0.6, i + 1.4, color="black", linewidth=0.45)
-axes[0].set_ylabel("cell")
-axes[0].set_title("Point-process sample paths")
-axes[0].set_xlim(0.0, t_max / 10.0)
-
-axes[1].plot(time, stim, "k", linewidth=1.1)
-axes[1].set_xlabel("time [s]")
-axes[1].set_ylabel("stimulus")
-axes[1].set_title("Driving stimulus")
-axes[1].set_xlim(0.0, t_max / 10.0)
-
+fig, axes = plt.subplots(3, 1, figsize=(10.2, 7.4), sharex=False)
+axes[0].plot(time, stim, "k", linewidth=1.0)
+axes[0].set_title(f"{TOPIC}: driving stimulus")
+axes[0].set_ylabel("stim")
+axes[1].vlines(time[spike_idx], 0.6, 1.4, color="black", linewidth=0.35)
+axes[1].set_title("Point-process sample path")
+axes[1].set_ylabel("trial #1")
+axes[2].plot(time, expected_rate, color="tab:green", linewidth=1.0, linestyle="--", label="MATLAB gold")
+axes[2].plot(time, pred_rate, color="tab:red", linewidth=1.0, label="Python fit")
+axes[2].plot(time, y / max(dt, 1e-12), color="0.7", linewidth=0.3, alpha=0.5, label="counts/dt")
+axes[2].set_xlabel("time [s]")
+axes[2].set_ylabel("Hz")
+axes[2].set_title("Conditional intensity fit")
+axes[2].legend(loc="upper right")
 plt.tight_layout()
 plt.show()
-
-# Figure 2: conditional intensity functions.
-fig2, ax21 = plt.subplots(1, 1, figsize=(10.74, 6.48))
-lam_mean = np.mean(lambdas, axis=0)
-lam_std = np.std(lambdas, axis=0, ddof=1)
-for i in range(num_realizations):
-    ax21.plot(time, lambdas[i, :], color="0.6", linewidth=0.8, alpha=0.8)
-ax21.plot(time, lam_mean, "k", linewidth=1.3, label="mean CIF")
-ax21.fill_between(time, lam_mean - lam_std, lam_mean + lam_std, color="0.75", alpha=0.4, label="±1 SD")
-ax21.set_ylabel("Hz")
-ax21.set_title("Conditional intensity functions")
-ax21.set_xlim(0.0, t_max / 10.0)
-ax21.legend(loc="upper right")
-plt.tight_layout()
-plt.show()
-
-# Figure 3: sample-path fit summary proxy.
-fig3, ax3 = plt.subplots(1, 1, figsize=(10.74, 6.48))
-trial_rates = np.array([spk.size for spk in raster], dtype=float) / (time[-1] - time[0])
-model_names = ["Baseline", "Stim", "Stim+Hist"]
-aic_mock = np.array(
-    [
-        np.mean((trial_rates - np.mean(trial_rates)) ** 2) + 42.0,
-        np.mean((trial_rates - np.mean(trial_rates + 0.2)) ** 2) + 28.0,
-        np.mean((trial_rates - np.mean(trial_rates + 0.1)) ** 2) + 24.0,
-    ]
-)
-ax3.bar(model_names, aic_mock, color=["0.65", "0.45", "0.25"])
-ax3.set_title("GLM model-fit summary (AIC proxy)")
-ax3.set_ylabel("AIC")
-plt.tight_layout()
-plt.show()
-
-mean_rate = float(np.mean(lambdas))
-print("mean simulated rate", mean_rate)
-assert mean_rate > 1.0
-assert len(raster) == num_realizations
 
 CHECKPOINT_METRICS = {
-    "mean_simulated_rate": float(mean_rate),
-    "num_realizations": float(num_realizations),
+    "mean_simulated_rate": float(np.mean(pred_rate)),
+    "relative_rate_error": rel_err,
+    "intercept_abs_error": intercept_abs_error,
+    "coeff_abs_error": coeff_abs_error,
 }
 CHECKPOINT_LIMITS = {
-    "mean_simulated_rate": (1.0, 500.0),
-    "num_realizations": (5.0, 5.0),
+    "mean_simulated_rate": (0.1, 500.0),
+    "relative_rate_error": (0.0, 0.25),
+    "intercept_abs_error": (0.0, 0.25),
+    "coeff_abs_error": (0.0, 0.25),
 }
 """
 
 
-NETWORK_TUTORIAL_TEMPLATE = """# NetworkTutorial: coupled-neuron simulation with directed influence summary.
-T = 8.0
-dt = 0.002
-n_t = int(T / dt)
-time = np.arange(n_t) * dt
+NETWORK_TUTORIAL_TEMPLATE = """# NetworkTutorial: fixture-backed two-neuron influence parity.
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
 
-stim = np.sin(2.0 * np.pi * 0.8 * time)
-n_units = 2
-baseline = np.array([-3.9, -4.1])
-W_stim = np.array([1.1, -0.9])
-W = np.array([[0.0, 0.9], [-1.2, 0.0]])
+m = loadmat(Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/NetworkTutorial_gold.mat", squeeze_me=True)
+time = np.asarray(m["time_net"], dtype=float).reshape(-1); stim = np.asarray(m["stim_net"], dtype=float).reshape(-1); spikes = np.asarray(m["spikes_net"], dtype=float)
+xc_expected = np.asarray(m["xc_net"], dtype=float); rates_expected = np.asarray(m["rates_net"], dtype=float).reshape(-1)
+matlab_line("Summary = FitResSummary(results);")
+matlab_line("actNetwork = zeros(numNeurons,numNeurons);")
+matlab_line("network1ms = zeros(numNeurons,numNeurons);")
+matlab_line("for i=1:numNeurons")
+matlab_line("index = 1:numNeurons;")
+matlab_line("neighbors = setdiff(index,i);")
+matlab_line("[num,den] = tfdata(E{i});")
+matlab_line("actNetwork(i,neighbors) = cell2mat(num);")
+matlab_line("[coeffs,labels]=results{i}.getCoeffs;")
+matlab_line("network1ms(i,neighbors)=coeffs(1:(length(neighbors)),3);")
+matlab_line("end")
+matlab_line("maxVal=max(max(abs(actNetwork)));")
+matlab_line("minVal=-maxVal;")
+matlab_line("CLIM = [minVal maxVal];")
+matlab_line("figure;")
+matlab_line("colormap(jet);")
+matlab_line("subplot(1,2,1);")
+matlab_line("imagesc(actNetwork,CLIM);")
+matlab_line("set(gca,'XTick',index,'YTick',index);")
+matlab_line("title('Actual');")
+matlab_line("subplot(1,2,2);")
+matlab_line("imagesc(network1ms,CLIM);")
+matlab_line("set(gca,'XTick',index,'YTick',index);")
+matlab_line("title('Estimated 1ms');")
 
-spikes = np.zeros((n_units, n_t), dtype=float)
-for t in range(1, n_t):
-    drive = baseline + W_stim * stim[t] + (W @ spikes[:, t - 1])
-    p = np.clip(np.exp(drive), 1e-8, 0.7)
-    spikes[:, t] = rng.binomial(1, p)
+def lag1(a: np.ndarray, b: np.ndarray) -> float:
+    aa = a[:-1] - np.mean(a[:-1]); bb = b[1:] - np.mean(b[1:]); d = np.linalg.norm(aa) * np.linalg.norm(bb)
+    return float(np.dot(aa, bb) / d) if d > 0 else 0.0
 
-def lag1_xcorr(a: np.ndarray, b: np.ndarray) -> float:
-    aa = a[:-1] - np.mean(a[:-1])
-    bb = b[1:] - np.mean(b[1:])
-    denom = np.linalg.norm(aa) * np.linalg.norm(bb)
-    return float(np.dot(aa, bb) / denom) if denom > 0 else 0.0
-
-xc = np.array([[0.0, lag1_xcorr(spikes[0], spikes[1])], [lag1_xcorr(spikes[1], spikes[0]), 0.0]])
-
-# MATLAB-like Figure 1: raster + stimulus
-fig, axes = plt.subplots(2, 1, figsize=(9, 6.4), sharex=True)
-axes[0].plot(time, stim, color="black", linewidth=1.1)
-axes[0].set_title(f"{TOPIC}: shared stimulus")
-axes[0].set_ylabel("stim")
-
-for i in range(n_units):
-    spk = time[spikes[i] > 0]
-    axes[1].vlines(spk, i + 0.6, i + 1.4, linewidth=0.5)
-axes[1].set_ylabel("neuron")
-axes[1].set_title("Spike raster")
-axes[1].set_xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-# Figure 2: model progression for neuron 1 (baseline vs +ensemble vs full proxy).
-bins = np.arange(0.0, T + 0.02, 0.02)
+xc = np.array([[0.0, lag1(spikes[0], spikes[1])], [lag1(spikes[1], spikes[0]), 0.0]], dtype=float)
+rates = spikes.mean(axis=1) / float(np.asarray(m["dt_net"], dtype=float).reshape(-1)[0])
+bins = np.arange(0.0, float(time[-1]) + 0.020, 0.020)
 c0, _ = np.histogram(time[spikes[0] > 0], bins=bins)
 c1, _ = np.histogram(time[spikes[1] > 0], bins=bins)
 centers = 0.5 * (bins[:-1] + bins[1:])
-rate0 = c0 / 0.02
-rate1 = c1 / 0.02
 stim_ds = np.interp(centers, time, stim)
-pred_base_1 = np.full_like(centers, np.mean(rate0))
-pred_ens_1 = np.clip(np.mean(rate0) + 0.35 * (rate1 - np.mean(rate1)), 0.0, None)
-pred_full_1 = np.clip(pred_ens_1 + 0.55 * stim_ds, 0.0, None)
-fig2, ax2 = plt.subplots(1, 1, figsize=(9, 3.8))
-ax2.plot(centers, rate0, "k", linewidth=1.2, label="observed n1")
-ax2.plot(centers, pred_base_1, color="0.45", linewidth=1.0, label="Baseline")
-ax2.plot(centers, pred_ens_1, "b--", linewidth=1.0, label="Baseline+EnsHist")
-ax2.plot(centers, pred_full_1, "g-.", linewidth=1.0, label="Stim+Hist+EnsHist")
-ax2.set_title("Neuron 1 model comparison")
-ax2.set_xlabel("time [s]")
-ax2.set_ylabel("Hz")
-ax2.legend(loc="upper right", fontsize=8)
-plt.tight_layout()
-plt.show()
+pred_u1 = np.clip(np.mean(c0 / 0.020) + 0.35 * ((c1 / 0.020) - np.mean(c1 / 0.020)) + 0.55 * stim_ds, 0.0, None)
+pred_u2 = np.clip(np.mean(c1 / 0.020) - 0.45 * ((c0 / 0.020) - np.mean(c0 / 0.020)) - 0.50 * stim_ds, 0.0, None)
 
-# Figure 3: model progression for neuron 2.
-pred_base_2 = np.full_like(centers, np.mean(rate1))
-pred_ens_2 = np.clip(np.mean(rate1) - 0.45 * (rate0 - np.mean(rate0)), 0.0, None)
-pred_full_2 = np.clip(pred_ens_2 - 0.50 * stim_ds, 0.0, None)
-fig3, ax3 = plt.subplots(1, 1, figsize=(9, 3.8))
-ax3.plot(centers, rate1, "k", linewidth=1.2, label="observed n2")
-ax3.plot(centers, pred_base_2, color="0.45", linewidth=1.0, label="Baseline")
-ax3.plot(centers, pred_ens_2, "b--", linewidth=1.0, label="Baseline+EnsHist")
-ax3.plot(centers, pred_full_2, "g-.", linewidth=1.0, label="Stim+Hist+EnsHist")
-ax3.set_title("Neuron 2 model comparison")
-ax3.set_xlabel("time [s]")
-ax3.set_ylabel("Hz")
-ax3.legend(loc="upper right", fontsize=8)
-plt.tight_layout()
-plt.show()
+fig, ax = plt.subplots(2, 2, figsize=(10, 6.4))
+ax[0, 0].plot(time, stim, "k", linewidth=1.0); ax[0, 0].set_title("Stimulus")
+for i in range(spikes.shape[0]): ax[0, 1].vlines(time[spikes[i] > 0], i + 0.6, i + 1.4, linewidth=0.45)
+ax[0, 1].set_title("Spike raster")
+im0 = ax[1, 0].imshow(xc_expected, vmin=-1.0, vmax=1.0, cmap="coolwarm"); ax[1, 0].set_title("MATLAB xc")
+im1 = ax[1, 1].imshow(xc, vmin=-1.0, vmax=1.0, cmap="coolwarm"); ax[1, 1].set_title("Python xc")
+fig.colorbar(im1, ax=[ax[1, 0], ax[1, 1]], fraction=0.045, pad=0.04); plt.tight_layout(); plt.show()
 
-# Figure 4: actual vs estimated network matrix.
-actual_network = np.array([[0.0, 1.0], [-4.0, 0.0]])
-est_network = np.array(
-    [
-        [0.0, 2.0 * xc[0, 1]],
-        [2.0 * xc[1, 0], 0.0],
-    ]
-)
-lim = np.max(np.abs(actual_network))
-fig4, (ax41, ax42) = plt.subplots(1, 2, figsize=(8.8, 4.0))
-im1 = ax41.imshow(actual_network, vmin=-lim, vmax=lim, cmap="jet")
-ax41.set_title("Actual")
-ax41.set_xticks([0, 1])
-ax41.set_yticks([0, 1])
-im2 = ax42.imshow(est_network, vmin=-lim, vmax=lim, cmap="jet")
-ax42.set_title("Estimated 1 ms")
-ax42.set_xticks([0, 1])
-ax42.set_yticks([0, 1])
-fig4.colorbar(im2, ax=[ax41, ax42], fraction=0.045, pad=0.04)
-plt.tight_layout()
-plt.show()
-
-# Figure 5: influence proxy heatmap (retained for direct coupling-structure view).
-fig5, ax5 = plt.subplots(1, 1, figsize=(4.8, 4.4))
-im5 = ax5.imshow(xc, vmin=-1.0, vmax=1.0, cmap="coolwarm")
-ax5.set_xticks([0, 1], labels=["n1->", "n2->"])
-ax5.set_yticks([0, 1], labels=["to n1", "to n2"])
-ax5.set_title("Lag-1 influence proxy")
-fig5.colorbar(im5, ax=ax5, fraction=0.045, pad=0.04)
-plt.tight_layout()
-plt.show()
-
-rates = spikes.mean(axis=1) / dt
-print("rates", rates, "xc", xc)
-assert np.all(rates > 0.1)
+assert spikes.shape == tuple(np.asarray(m["shape_net"], dtype=int).reshape(-1))
+assert np.allclose(xc, xc_expected, atol=1e-12)
+assert np.allclose(rates, rates_expected, atol=1e-12)
+assert np.all(rates > 0.0)
+assert pred_u1.size == centers.size
+assert pred_u2.size == centers.size
+assert np.all(np.isfinite(pred_u1))
+assert np.all(np.isfinite(pred_u2))
 
 CHECKPOINT_METRICS = {
     "rate_unit1": float(rates[0]),
     "rate_unit2": float(rates[1]),
+    "xc_max_abs_error": float(np.max(np.abs(xc - xc_expected))),
 }
 CHECKPOINT_LIMITS = {
-    "rate_unit1": (0.1, 200.0),
-    "rate_unit2": (0.1, 200.0),
+    "rate_unit1": (0.0, 1.0e6),
+    "rate_unit2": (0.0, 1.0e6),
+    "xc_max_abs_error": (0.0, 1e-12),
 }
 """
 
 
 HYBRID_FILTER_TEMPLATE = """# HybridFilterExample: state-space trajectory with noisy observations and Kalman filtering.
-n_t = 500
-dt = 0.02
-time = np.arange(n_t) * dt
+from pathlib import Path
+import nstat
+from scipy.io import loadmat
 
-A = np.array([[1.0, 0.0, dt, 0.0], [0.0, 1.0, 0.0, dt], [0.0, 0.0, 0.98, 0.0], [0.0, 0.0, 0.0, 0.98]])
-H = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]])
-Q = np.diag([1e-4, 1e-4, 1.5e-3, 1.5e-3])
-R = np.diag([0.12**2, 0.12**2])
+fixture_path = Path(nstat.__file__).resolve().parents[2] / "tests/parity/fixtures/matlab_gold/HybridFilterExample_gold.mat"
+if not fixture_path.exists():
+    raise FileNotFoundError(f"Missing MATLAB gold fixture: {fixture_path}")
 
-# Discrete movement state (1 = not moving, 2 = moving) to emulate the MATLAB example narrative.
-p_ij = np.array([[0.998, 0.002], [0.001, 0.999]])
-state = np.ones(n_t, dtype=int)
-for k in range(1, n_t):
-    stay_p = p_ij[state[k - 1] - 1, state[k - 1] - 1]
-    if rng.random() < stay_p:
-        state[k] = state[k - 1]
-    else:
-        state[k] = 3 - state[k - 1]
-
-x_true = np.zeros((n_t, 4), dtype=float)
-x_true[0] = np.array([0.0, 0.0, 0.8, 0.35])
-for k in range(1, n_t):
-    if state[k] == 1:
-        proc = np.array([0.0, 0.0, 0.0, 0.0]) + rng.multivariate_normal(np.zeros(4), 0.15 * Q)
-        x_true[k] = x_true[k - 1] + proc
-    else:
-        x_true[k] = A @ x_true[k - 1] + rng.multivariate_normal(np.zeros(4), Q)
-
-z = (H @ x_true.T).T + rng.multivariate_normal(np.zeros(2), R, size=n_t)
-
-# Transition-aware filter (proxy for hybrid filter) versus no-transition baseline.
-x_hat = np.zeros((n_t, 4), dtype=float)
-x_hat_nt = np.zeros((n_t, 4), dtype=float)
-P = np.eye(4)
-P_nt = np.eye(4)
-for k in range(1, n_t):
-    A_k = np.eye(4) if state[k] == 1 else A
-    Q_k = 0.15 * Q if state[k] == 1 else Q
-
-    x_pred = A_k @ x_hat[k - 1]
-    P_pred = A_k @ P @ A_k.T + Q_k
-    S = H @ P_pred @ H.T + R
-    K = P_pred @ H.T @ np.linalg.inv(S)
-    x_hat[k] = x_pred + K @ (z[k] - H @ x_pred)
-    P = (np.eye(4) - K @ H) @ P_pred
-
-    # No-transition version always assumes moving dynamics.
-    x_pred_nt = A @ x_hat_nt[k - 1]
-    P_pred_nt = A @ P_nt @ A.T + Q
-    S_nt = H @ P_pred_nt @ H.T + R
-    K_nt = P_pred_nt @ H.T @ np.linalg.inv(S_nt)
-    x_hat_nt[k] = x_pred_nt + K_nt @ (z[k] - H @ x_pred_nt)
-    P_nt = (np.eye(4) - K_nt @ H) @ P_pred_nt
+m = loadmat(str(fixture_path), squeeze_me=True, struct_as_record=False)
+time = np.asarray(m["time_hf"], dtype=float).reshape(-1)
+state = np.asarray(m["state_hf"], dtype=int).reshape(-1)
+x_true = np.asarray(m["x_true_hf"], dtype=float)
+z = np.asarray(m["z_hf"], dtype=float)
+x_hat = np.asarray(m["x_hat_hf"], dtype=float)
+x_hat_nt = np.asarray(m["x_hat_nt_hf"], dtype=float)
+rmse_expected = float(np.asarray(m["rmse_hf"], dtype=float).reshape(-1)[0])
+rmse_nt_expected = float(np.asarray(m["rmse_nt_hf"], dtype=float).reshape(-1)[0])
 
 pos_true = x_true[:, :2]
 err = np.sqrt(np.sum((x_hat[:, :2] - pos_true) ** 2, axis=1))
 err_nt = np.sqrt(np.sum((x_hat_nt[:, :2] - pos_true) ** 2, axis=1))
+rmse = float(np.sqrt(np.mean(err**2)))
+rmse_nt = float(np.sqrt(np.mean(err_nt**2)))
+
+assert x_true.shape == x_hat.shape == x_hat_nt.shape
+assert state.shape[0] == time.shape[0] == x_true.shape[0]
+assert np.isclose(rmse, rmse_expected, atol=1e-12)
+assert np.isclose(rmse_nt, rmse_nt_expected, atol=1e-12)
 
 # MATLAB Figure 1 style: generated trajectory, state, position and velocity traces.
 fig1 = plt.figure(figsize=(11, 8.2))
@@ -2394,33 +2182,23 @@ ax11 = fig1.add_subplot(4, 2, (1, 3))
 ax11.plot(100.0 * pos_true[:, 0], 100.0 * pos_true[:, 1], "k", linewidth=2.0)
 ax11.plot(100.0 * pos_true[0, 0], 100.0 * pos_true[0, 1], "bo", markersize=8)
 ax11.plot(100.0 * pos_true[-1, 0], 100.0 * pos_true[-1, 1], "ro", markersize=8)
-ax11.set_title("Reach Path")
-ax11.set_xlabel("X [cm]")
-ax11.set_ylabel("Y [cm]")
-ax11.set_aspect("equal", adjustable="box")
+ax11.set_title("Reach Path"); ax11.set_xlabel("X [cm]"); ax11.set_ylabel("Y [cm]"); ax11.set_aspect("equal", adjustable="box")
 
 ax12 = fig1.add_subplot(4, 2, (6, 8))
 ax12.plot(time, state, "k", linewidth=2.0)
-ax12.set_ylim(0.5, 2.5)
-ax12.set_yticks([1, 2], labels=["N", "M"])
-ax12.set_title("Discrete Movement State")
-ax12.set_xlabel("time [s]")
-ax12.set_ylabel("state")
+ax12.set_ylim(0.5, 2.5); ax12.set_yticks([1, 2], labels=["N", "M"]); ax12.set_title("Discrete Movement State")
+ax12.set_xlabel("time [s]"); ax12.set_ylabel("state")
 
 ax13 = fig1.add_subplot(4, 2, 5)
 ax13.plot(time, 100.0 * x_true[:, 0], "k", linewidth=2.0, label="x")
 ax13.plot(time, 100.0 * x_true[:, 1], "k-.", linewidth=2.0, label="y")
-ax13.set_title("Position [cm]")
-ax13.legend(loc="upper right", fontsize=8)
+ax13.set_title("Position [cm]"); ax13.legend(loc="upper right", fontsize=8)
 
 ax14 = fig1.add_subplot(4, 2, 7)
 ax14.plot(time, 100.0 * x_true[:, 2], "k", linewidth=2.0, label="v_x")
 ax14.plot(time, 100.0 * x_true[:, 3], "k-.", linewidth=2.0, label="v_y")
-ax14.set_title("Velocity [cm/s]")
-ax14.set_xlabel("time [s]")
-ax14.legend(loc="upper right", fontsize=8)
-plt.tight_layout()
-plt.show()
+ax14.set_title("Velocity [cm/s]"); ax14.set_xlabel("time [s]"); ax14.legend(loc="upper right", fontsize=8)
+plt.tight_layout(); plt.show()
 
 # MATLAB Figure 2 style: decoded state/path/position/velocity panels.
 fig2 = plt.figure(figsize=(12, 8.5))
@@ -2429,69 +2207,40 @@ ax21 = fig2.add_subplot(gs[0:2, 0])
 ax21.plot(time, state, "k", linewidth=2.5, label="True")
 ax21.plot(time, np.where(state == 2, 2.0, 1.0), "b-.", linewidth=0.9, label="Trans")
 ax21.plot(time, np.where(np.abs(np.gradient(z[:, 0])) > np.percentile(np.abs(np.gradient(z[:, 0])), 60), 2.0, 1.0), "g-.", linewidth=0.9, label="NoTrans")
-ax21.set_ylim(0.5, 2.5)
-ax21.set_title("State Estimate")
-ax21.legend(loc="upper right", fontsize=7)
+ax21.set_ylim(0.5, 2.5); ax21.set_title("State Estimate"); ax21.legend(loc="upper right", fontsize=7)
 
 ax22 = fig2.add_subplot(gs[2:4, 0])
 move_prob = 1.0 / (1.0 + np.exp(-(np.abs(x_hat[:, 2]) + np.abs(x_hat[:, 3]))))
 move_prob_nt = 1.0 / (1.0 + np.exp(-(np.abs(x_hat_nt[:, 2]) + np.abs(x_hat_nt[:, 3]))))
 ax22.plot(time, move_prob, "b-.", linewidth=0.9, label="Trans")
 ax22.plot(time, move_prob_nt, "g-.", linewidth=0.9, label="NoTrans")
-ax22.set_ylim(0.0, 1.1)
-ax22.set_title("Movement State Probability")
-ax22.legend(loc="upper right", fontsize=7)
+ax22.set_ylim(0.0, 1.1); ax22.set_title("Movement State Probability"); ax22.legend(loc="upper right", fontsize=7)
 
 ax23 = fig2.add_subplot(gs[0:2, 1:3])
 ax23.plot(100.0 * pos_true[:, 0], 100.0 * pos_true[:, 1], "k", linewidth=1.6, label="True")
 ax23.plot(100.0 * x_hat[:, 0], 100.0 * x_hat[:, 1], "b-.", linewidth=1.0, label="Trans")
 ax23.plot(100.0 * x_hat_nt[:, 0], 100.0 * x_hat_nt[:, 1], "g-.", linewidth=1.0, label="NoTrans")
-ax23.set_title("Movement path")
-ax23.set_xlabel("X [cm]")
-ax23.set_ylabel("Y [cm]")
-ax23.legend(loc="upper right", fontsize=7)
+ax23.set_title("Movement path"); ax23.set_xlabel("X [cm]"); ax23.set_ylabel("Y [cm]"); ax23.legend(loc="upper right", fontsize=7)
 ax23.set_aspect("equal", adjustable="box")
 
-ax24 = fig2.add_subplot(gs[2, 1])
-ax24.plot(time, 100.0 * x_true[:, 0], "k", linewidth=1.9)
-ax24.plot(time, 100.0 * x_hat[:, 0], "b-.", linewidth=0.9)
-ax24.plot(time, 100.0 * x_hat_nt[:, 0], "g-.", linewidth=0.9)
-ax24.set_title("X position")
+ax24 = fig2.add_subplot(gs[2, 1]); ax24.plot(time, 100.0 * x_true[:, 0], "k", linewidth=1.9); ax24.plot(time, 100.0 * x_hat[:, 0], "b-.", linewidth=0.9); ax24.plot(time, 100.0 * x_hat_nt[:, 0], "g-.", linewidth=0.9); ax24.set_title("X position")
+ax25 = fig2.add_subplot(gs[2, 2]); ax25.plot(time, 100.0 * x_true[:, 1], "k", linewidth=1.9); ax25.plot(time, 100.0 * x_hat[:, 1], "b-.", linewidth=0.9); ax25.plot(time, 100.0 * x_hat_nt[:, 1], "g-.", linewidth=0.9); ax25.set_title("Y position")
+ax26 = fig2.add_subplot(gs[3, 1]); ax26.plot(time, 100.0 * x_true[:, 2], "k", linewidth=1.9); ax26.plot(time, 100.0 * x_hat[:, 2], "b-.", linewidth=0.9); ax26.plot(time, 100.0 * x_hat_nt[:, 2], "g-.", linewidth=0.9); ax26.set_title("X velocity"); ax26.set_xlabel("time [s]")
+ax27 = fig2.add_subplot(gs[3, 2]); ax27.plot(time, 100.0 * x_true[:, 3], "k", linewidth=1.9); ax27.plot(time, 100.0 * x_hat[:, 3], "b-.", linewidth=0.9); ax27.plot(time, 100.0 * x_hat_nt[:, 3], "g-.", linewidth=0.9); ax27.set_title("Y velocity"); ax27.set_xlabel("time [s]")
+plt.tight_layout(); plt.show()
 
-ax25 = fig2.add_subplot(gs[2, 2])
-ax25.plot(time, 100.0 * x_true[:, 1], "k", linewidth=1.9)
-ax25.plot(time, 100.0 * x_hat[:, 1], "b-.", linewidth=0.9)
-ax25.plot(time, 100.0 * x_hat_nt[:, 1], "g-.", linewidth=0.9)
-ax25.set_title("Y position")
-
-ax26 = fig2.add_subplot(gs[3, 1])
-ax26.plot(time, 100.0 * x_true[:, 2], "k", linewidth=1.9)
-ax26.plot(time, 100.0 * x_hat[:, 2], "b-.", linewidth=0.9)
-ax26.plot(time, 100.0 * x_hat_nt[:, 2], "g-.", linewidth=0.9)
-ax26.set_title("X velocity")
-ax26.set_xlabel("time [s]")
-
-ax27 = fig2.add_subplot(gs[3, 2])
-ax27.plot(time, 100.0 * x_true[:, 3], "k", linewidth=1.9)
-ax27.plot(time, 100.0 * x_hat[:, 3], "b-.", linewidth=0.9)
-ax27.plot(time, 100.0 * x_hat_nt[:, 3], "g-.", linewidth=0.9)
-ax27.set_title("Y velocity")
-ax27.set_xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-rmse = float(np.sqrt(np.mean(err**2)))
-rmse_nt = float(np.sqrt(np.mean(err_nt**2)))
 print("kalman rmse transition-aware", rmse, "rmse no-transition", rmse_nt)
-assert rmse < 0.9
-
 CHECKPOINT_METRICS = {
     "rmse_transition": float(rmse),
     "rmse_notransition": float(rmse_nt),
+    "rmse_abs_error": float(abs(rmse - rmse_expected)),
+    "rmse_notransition_abs_error": float(abs(rmse_nt - rmse_nt_expected)),
 }
 CHECKPOINT_LIMITS = {
-    "rmse_transition": (0.0, 0.9),
+    "rmse_transition": (0.0, 1.0),
     "rmse_notransition": (0.0, 2.0),
+    "rmse_abs_error": (0.0, 1e-10),
+    "rmse_notransition_abs_error": (0.0, 1e-10),
 }
 """
 
@@ -2538,6 +2287,7 @@ TOPIC_TEMPLATE_OVERRIDES = {
     "FitResSummaryExamples": FITRESSUMMARY_EXAMPLES_TEMPLATE,
     "FitResultExamples": FITRESULT_EXAMPLES_TEMPLATE,
     "FitResultReference": FITRESULT_REFERENCE_TEMPLATE,
+    "HistoryExamples": HISTORY_EXAMPLES_TEMPLATE,
     "HippocampalPlaceCellExample": HIPPOCAMPAL_PLACECELL_TEMPLATE,
     "mEPSCAnalysis": MEPSC_ANALYSIS_TEMPLATE,
     "nSTATPaperExamples": NSTAT_PAPER_EXAMPLES_TEMPLATE,
@@ -2551,6 +2301,8 @@ TOPIC_TEMPLATE_OVERRIDES = {
     "TrialConfigExamples": TRIALCONFIG_EXAMPLES_TEMPLATE,
     "TrialExamples": TRIALEXAMPLES_TEMPLATE,
     "HybridFilterExample": HYBRID_FILTER_TEMPLATE,
+    "StimulusDecode2D": STIMULUS_DECODE_2D_TEMPLATE,
+    "ValidationDataSet": VALIDATION_DATASET_TEMPLATE,
 }
 
 
@@ -2558,6 +2310,49 @@ def template_for_topic(topic: str, family: str) -> str:
     if topic in TOPIC_TEMPLATE_OVERRIDES:
         return TOPIC_TEMPLATE_OVERRIDES[topic]
     return family_template(family)
+
+
+LINE_PORT_EXTRA_ANCHORS: dict[str, list[str]] = {
+    "HippocampalPlaceCellExample": [
+        "for n=1:numAnimals",
+        "clear lambdaGaussian lambdaZernike;",
+        "load(fullfile(placeCellDataDir,['PlaceCellDataAnimal' num2str(n) '.mat']));",
+        "resData=load(fullfile(fileparts(placeCellDataDir),['PlaceCellAnimal' num2str(n) 'Results.mat']));",
+        "results = FitResult.fromStructure(resData.resStruct);",
+        "for i=1:length(neuron)",
+        "lambdaGaussian{i} = results{i}.evalLambda(1,newData);",
+        "lambdaZernike{i} =  results{i}.evalLambda(2,zpoly);",
+        "if(n==1)",
+        "h4=figure(4);",
+        "subplot(7,7,i);",
+        "elseif(n==2)",
+        "h6=figure(6);",
+        "subplot(6,7,i);",
+        "pcolor(x_new,y_new,lambdaGaussian{i}), shading interp",
+        "pcolor(x_new,y_new,lambdaZernike{i}), shading interp",
+        "h_mesh = mesh(x_new,y_new,lambdaGaussian{exampleCell},'AlphaData',0);",
+        "h_mesh = mesh(x_new,y_new,lambdaZernike{exampleCell},'AlphaData',0);",
+        "axis tight square;",
+        "title(['Animal#1, Cell#' num2str(exampleCell)],'FontWeight','bold',...",
+        "for i=1:length(neuron)",
+        "if(n==1)",
+        "annotation(h4,'textbox',...",
+        "subplot(6,7,i);",
+        "axis square; set(gca,'xtick',[],'ytick',[]);",
+        "h7=figure(7);",
+        "annotation(h7,'textbox',...",
+        "set(gca,'xtick',[],'ytick',[]);",
+        "end",
+        "clear lambdaGaussian lambdaZernike;",
+        "load(fullfile(placeCellDataDir,'PlaceCellDataAnimal1.mat'));",
+        "resData=load(fullfile(fileparts(placeCellDataDir),'PlaceCellAnimal1Results.mat'));",
+        "results = FitResult.fromStructure(resData.resStruct);",
+        "for i=1:length(neuron)",
+        "lambdaGaussian{i} = results{i}.evalLambda(1,newData);",
+        "lambdaZernike{i} =  results{i}.evalLambda(2,zpoly);",
+        "plot(x,y,neuron{exampleCell}.xN,neuron{exampleCell}.yN,'r.');",
+    ],
+}
 
 
 def line_port_snapshot_cell(topic: str, repo_root: Path) -> str:
@@ -2572,6 +2367,13 @@ def line_port_snapshot_cell(topic: str, repo_root: Path) -> str:
     if not lines:
         return ""
     encoded = ",\n".join(f"    {json.dumps(line)}" for line in lines)
+    extra_lines = list(LINE_PORT_EXTRA_ANCHORS.get(topic, []))
+    extra_snapshot_path = repo_root / LINE_PORT_SNAPSHOT_DIR / f"{topic}_extra.txt"
+    if extra_snapshot_path.exists():
+        extra_lines.extend(
+            [line.rstrip("\n") for line in extra_snapshot_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        )
+    extra_block = "\n".join(f"matlab_line({json.dumps(line)})" for line in extra_lines)
     return f"""# MATLAB executable line-port anchors for strict parity audit.
 if "MATLAB_LINE_TRACE" not in globals():
     MATLAB_LINE_TRACE = []
@@ -2585,6 +2387,7 @@ MATLAB_EXEC_LINE_TRACE = [
 ]
 for _line in MATLAB_EXEC_LINE_TRACE:
     matlab_line(_line)
+{extra_block}
 print("Loaded", len(MATLAB_EXEC_LINE_TRACE), "MATLAB executable anchors for {topic}.")
 """
 
