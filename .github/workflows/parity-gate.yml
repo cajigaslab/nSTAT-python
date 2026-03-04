@@ -1,0 +1,104 @@
+name: parity-gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  parity-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install parity dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev,notebooks]
+          python -m pip install pyyaml
+
+      - name: Regenerate help notebooks from MATLAB sources
+        run: |
+          python tools/notebooks/generate_notebooks.py --repo-root "$GITHUB_WORKSPACE"
+          git diff --exit-code notebooks parity/help_source_manifest.yml parity/help_source_parsing_report.json parity/helpfile_figure_manifest.json
+
+      - name: Checkout upstream MATLAB nSTAT repo snapshot
+        run: |
+          GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
+
+      - name: Prepare deterministic validation images
+        run: |
+          python tools/parity/prepare_validation_images.py
+
+      - name: Run class-level MATLAB parity tests
+        run: |
+          pytest -q tests/test_*_matlab_parity.py
+
+      - name: Build parity snapshot and enforce gates
+        run: |
+          python tools/parity/build_parity_snapshot.py \
+            --matlab-root /tmp/upstream-nstat \
+            --fail-on medium
+          python tools/parity/build_numeric_drift_report.py \
+            --fixtures-manifest tests/parity/fixtures/matlab_gold/manifest.yml \
+            --thresholds parity/numeric_drift_thresholds.yml \
+            --report-out parity/numeric_drift_report.json \
+            --fail-on-violation
+          python tools/parity/check_functional_parity_progress.py \
+            --report parity/function_example_alignment_report.json \
+            --policy parity/functional_gate_policy.yml
+          python tools/parity/check_example_output_spec.py \
+            --report parity/function_example_alignment_report.json \
+            --spec parity/example_output_spec.yml
+
+      - name: Ensure parity artifacts are synchronized
+        run: |
+          python tools/parity/sync_parity_artifacts.py \
+            --matlab-root /tmp/upstream-nstat
+          git diff --exit-code \
+            parity/function_example_alignment_report.json \
+            parity/method_closure_sprint.md \
+            docs/help \
+            docs/notebooks.md \
+            baseline/help_mapping.json
+
+      - name: Export MATLAB strict-ordinal help figures (if MATLAB is available)
+        run: |
+          if command -v matlab >/dev/null 2>&1; then
+            python tools/reports/export_matlab_helpfile_figures.py \
+              --source-manifest parity/help_source_manifest.yml \
+              --output-root output/matlab_help_images \
+              --report-json output/matlab_help_images/report.json \
+              --topics-batch-size 3 \
+              --resume \
+              --log-dir output/matlab_help_images/logs
+            python tools/reports/check_helpfile_ordinal_image_parity.py \
+              --manifest parity/help_source_manifest.yml \
+              --python-image-root output/notebook_images \
+              --matlab-image-root output/matlab_help_images \
+              --ssim-threshold 0.70 \
+              --diff-root output/pdf/image_mode_parity/diffs \
+              --out-json output/pdf/image_mode_parity/summary.json
+          else
+            echo "MATLAB binary not present; skipping strict ordinal image parity gate."
+          fi
+
+      - name: Upload ordinal parity artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ordinal-image-parity
+          path: |
+            output/pdf/image_mode_parity/summary.json
+            output/pdf/image_mode_parity/diffs
+            output/matlab_help_images/report.json
+            output/matlab_help_images/logs
+          if-no-files-found: warn
