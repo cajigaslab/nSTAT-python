@@ -30,6 +30,7 @@ dev = [
   "mypy>=1.8",
   "ruff>=0.3",
   "nbformat>=5.9",
+  "nbclient>=0.9",
   "PyMuPDF>=1.24",
   "scikit-image>=0.22"
 ]

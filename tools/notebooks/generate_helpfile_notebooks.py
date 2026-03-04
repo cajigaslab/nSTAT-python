@@ -11,6 +11,7 @@ Rules:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -544,6 +545,11 @@ def _line_port_snapshot(module: Any, topic: str, repo_root: Path) -> str:
     return snapshot.strip() if isinstance(snapshot, str) else ""
 
 
+def _cell_id(topic: str, section_index: int) -> str:
+    digest = hashlib.sha1(f"{topic}:section:{section_index}".encode("utf-8")).hexdigest()
+    return digest[:8]
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -621,6 +627,7 @@ def main() -> int:
                 execution_blob=execution_blob,
             )
             cell = nbf.v4.new_code_cell(cell_source.rstrip() + "\n")
+            cell["id"] = _cell_id(topic, idx)
             cells.append(cell)
         notebook.cells = cells
         nbf.write(notebook, output_path)
