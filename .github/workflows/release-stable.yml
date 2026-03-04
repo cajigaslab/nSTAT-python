@@ -56,6 +56,7 @@ jobs:
       - name: Rebuild notebooks and verify clean state
         run: |
           python tools/notebooks/generate_notebooks.py
+          python tools/notebooks/clean_notebooks.py --check
           git diff --exit-code
 
       - name: Hard checks (lint, typing, unit tests, docs)

@@ -43,6 +43,10 @@ jobs:
         run: |
           python tools/parity/prepare_validation_images.py
 
+      - name: Validate notebook cleanliness
+        run: |
+          python tools/notebooks/clean_notebooks.py --check
+
       - name: Generate Python validation PDF (image mode)
         run: |
           python tools/reports/generate_validation_pdf.py \

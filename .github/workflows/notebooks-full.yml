@@ -22,7 +22,9 @@ jobs:
           python -m pip install -e .[notebooks]
 
       - name: Generate notebooks
-        run: python tools/notebooks/generate_notebooks.py
+        run: |
+          python tools/notebooks/generate_notebooks.py
+          python tools/notebooks/clean_notebooks.py --check
 
       - name: Execute full notebook suite
         run: |

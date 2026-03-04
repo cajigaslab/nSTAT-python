@@ -59,6 +59,7 @@ jobs:
         run: |
           python tools/docs/generate_help_pages.py
           python tools/notebooks/generate_notebooks.py
+          python tools/notebooks/clean_notebooks.py --check
 
       - name: Ensure generated artifacts are committed
         run: |

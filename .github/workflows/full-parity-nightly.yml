@@ -43,6 +43,10 @@ jobs:
         run: |
           python tools/parity/prepare_validation_images.py
 
+      - name: Validate notebook cleanliness
+        run: |
+          python tools/notebooks/clean_notebooks.py --check
+
       - name: Run full parity and notebook gates
         run: |
           python tools/parity/build_parity_snapshot.py \
