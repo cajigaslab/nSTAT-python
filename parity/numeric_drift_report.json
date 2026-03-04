@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-03-04T19:32:50.639795+00:00",
+  "generated_at_utc": "2026-03-04T20:54:23.222541+00:00",
   "fixtures_manifest": "/private/tmp/nstat_python_exec_next/tests/parity/fixtures/matlab_gold/manifest.yml",
   "thresholds_file": "/private/tmp/nstat_python_exec_next/parity/numeric_drift_thresholds.yml",
   "summary": {
