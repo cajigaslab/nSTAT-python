@@ -59,6 +59,14 @@ jobs:
             --report parity/function_example_alignment_report.json \
             --spec parity/example_output_spec.yml
 
+      - name: Generate class equivalence inventory/report artifacts
+        run: |
+          mkdir -p output/parity
+          python tools/parity/generate_class_equivalence_inventory.py \
+            --matlab-root /tmp/upstream-nstat \
+            --out-inventory output/parity/class_equivalence_inventory.json \
+            --out-report output/parity/class_equivalence_report.json
+
       - name: Ensure parity artifacts are synchronized
         run: |
           python tools/parity/sync_parity_artifacts.py \
@@ -103,4 +111,6 @@ jobs:
             parity/function_example_alignment_report.json
             parity/numeric_drift_report.json
             parity/performance_parity_report.json
+            output/parity/class_equivalence_inventory.json
+            output/parity/class_equivalence_report.json
           if-no-files-found: warn
