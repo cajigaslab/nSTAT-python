@@ -7,6 +7,7 @@ implementations and interfaces.
 from .analysis import Analysis
 from .cif import CIFModel
 from .confidence import ConfidenceInterval
+from .data_manager import data_is_present, ensure_example_data, get_data_dir
 from .decoding import DecodingAlgorithms
 from .datasets import fetch_matlab_gold_file, latest_matlab_gold_version, list_matlab_gold_files
 from .events import Events
@@ -36,6 +37,9 @@ __all__ = [
     "ConfigCollection",
     "Trial",
     "nstat_install",
+    "get_data_dir",
+    "ensure_example_data",
+    "data_is_present",
     "list_matlab_gold_files",
     "latest_matlab_gold_version",
     "fetch_matlab_gold_file",
