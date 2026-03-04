@@ -380,7 +380,7 @@ def normalize_new_figure_events(
     for ordinal, event in enumerate(selected, start=1):
         ref_path = ""
         if matlab_reference_images and ordinal <= len(matlab_reference_images):
-            ref_path = str(matlab_reference_images[ordinal - 1].resolve())
+            ref_path = matlab_reference_images[ordinal - 1].name
         normalized.append(
             FigureEvent(
                 section_index=event.section_index,
@@ -434,8 +434,11 @@ def _build_cell_source(
             if event.reference_image_path:
                 safe_ref = event.reference_image_path.replace("\\", "\\\\").replace('"', '\\"')
                 event_block_lines.append(
-                    "loaded_ref = FIGURE_TRACKER.save_reference_image("
-                    f'image_path="{safe_ref}")'
+                    f'ref_image = (MATLAB_HELP_ROOT / "{safe_ref}") if MATLAB_HELP_ROOT is not None else None'
+                )
+                event_block_lines.append(
+                    "loaded_ref = bool(ref_image is not None and FIGURE_TRACKER.save_reference_image("
+                    "image_path=ref_image))"
                 )
                 event_block_lines.append("if not loaded_ref:")
                 event_block_lines.append(
@@ -465,6 +468,15 @@ def _build_cell_source(
             "from nstat.notebook_figures import FigureTracker\n"
             "FIGURE_TRACKER = FigureTracker(topic=TOPIC, expected_count=EXPECTED_FIGURE_COUNT)"
         )
+        parts.append(
+            "import os\n"
+            "from pathlib import Path\n"
+            "MATLAB_HELP_ROOT = next((p for p in [\n"
+            "    Path(os.environ['NSTAT_MATLAB_HELP_ROOT']) if os.environ.get('NSTAT_MATLAB_HELP_ROOT') else None,\n"
+            "    Path('/tmp/upstream-nstat/helpfiles'),\n"
+            "    Path('/private/tmp/upstream-nstat/helpfiles'),\n"
+            "] if p is not None and p.exists()), None)"
+        )
         if event_block:
             parts.append(event_block)
         parts.append(execution_blob)
@@ -479,6 +491,15 @@ def _build_cell_source(
         parts.append(
             "from nstat.notebook_figures import FigureTracker\n"
             "FIGURE_TRACKER = FigureTracker(topic=TOPIC, expected_count=EXPECTED_FIGURE_COUNT)"
+        )
+        parts.append(
+            "import os\n"
+            "from pathlib import Path\n"
+            "MATLAB_HELP_ROOT = next((p for p in [\n"
+            "    Path(os.environ['NSTAT_MATLAB_HELP_ROOT']) if os.environ.get('NSTAT_MATLAB_HELP_ROOT') else None,\n"
+            "    Path('/tmp/upstream-nstat/helpfiles'),\n"
+            "    Path('/private/tmp/upstream-nstat/helpfiles'),\n"
+            "] if p is not None and p.exists()), None)"
         )
         if event_block:
             parts.append(event_block)

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 
 
 @dataclass(slots=True)
@@ -57,11 +58,11 @@ class FigureTracker:
         for old in sorted(self.topic_dir.glob("manifest*.json")):
             old.unlink(missing_ok=True)
 
-        self.default_figsize = tuple(default_figsize)
+        self.default_figsize = default_figsize
         self.dpi = int(dpi)
         self.count = 0
         self.records: list[FigureRecord] = []
-        self._current_fig = None
+        self._current_fig: Figure | None = None
         self._current_meta: tuple[int, int, str] | None = None
 
     @property

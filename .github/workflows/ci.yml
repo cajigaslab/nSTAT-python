@@ -72,6 +72,13 @@ jobs:
         run: |
           python tools/data/download_example_data.py
 
+      - name: Checkout pinned MATLAB nSTAT reference
+        run: |
+          python tools/parity/checkout_matlab_reference.py \
+            --config parity/matlab_reference.yml \
+            --dest /tmp/upstream-nstat \
+            --metadata-out parity/matlab_reference_checkout_docs_smoke.json
+
       - name: Rebuild generated docs/notebooks
         run: |
           python tools/docs/generate_help_pages.py
