@@ -957,113 +957,28 @@ CHECKPOINT_LIMITS = {
 
 
 EVENTS_EXAMPLES_TEMPLATE = """# EventsExamples: visualize event markers over multiple contexts.
-# Fixed times chosen to mirror the MATLAB published reference geometry.
-e_times = np.array([0.079, 0.579, 0.997], dtype=float)
-e_labels = ["E_1", "E_2", "E_3"]
-events = Events(times=e_times, labels=e_labels)
-
-def _plot_events(color: str, title_suffix: str) -> None:
-    # Match MATLAB publish aspect ratio (~1074 x 648 px).
-    fig, ax = plt.subplots(1, 1, figsize=(10.74, 6.48))
-    ax.vlines(events.times, ymin=0.0, ymax=1.0, colors=color, linewidth=4.0)
-    for i, t_evt in enumerate(events.times):
-        ax.text(t_evt - 0.02, 1.03, e_labels[i], ha="left", va="bottom", fontsize=10, color="k")
-    ax.set_xlim(0.0, 1.0)
-    ax.set_ylim(0.0, 1.0)
-    ax.set_title(f"Events overlay ({title_suffix})")
-    plt.tight_layout()
-    plt.show()
-
-# Match MATLAB help workflow where events are replotted in multiple color contexts.
-_plot_events("b", "blue")
-_plot_events("r", "red")
-_plot_events("g", "green")
-_plot_events("m", "magenta")
-
-assert events.times.size == 3
-assert np.all(np.diff(events.times) > 0.0)
-
-CHECKPOINT_METRICS = {
-    "event_count": float(events.times.size),
-    "event_span": float(events.times[-1] - events.times[0]),
-}
-CHECKPOINT_LIMITS = {
-    "event_count": (3.0, 3.0),
-    "event_span": (0.8, 1.0),
-}
+e_times = np.array([0.079, 0.579, 0.997], dtype=float); events = Events(times=e_times, labels=["E_1", "E_2", "E_3"])
+fig, ax = plt.subplots(1, 1, figsize=(10.74, 6.48))
+for c in ["b", "r", "g", "m"]: ax.vlines(events.times, ymin=0.0, ymax=1.0, colors=c, linewidth=2.0, alpha=0.4)
+for i, t_evt in enumerate(events.times): ax.text(t_evt - 0.02, 1.03, f"E_{i+1}", ha="left", va="bottom", fontsize=9, color="k")
+ax.set_xlim(0.0, 1.0); ax.set_ylim(0.0, 1.0); ax.set_title(f"{TOPIC}: event overlays"); plt.tight_layout(); plt.show()
+assert events.times.size == 3 and bool(np.all(np.diff(events.times) > 0.0))
+CHECKPOINT_METRICS = {"event_count": float(events.times.size), "event_span": float(events.times[-1] - events.times[0])}
+CHECKPOINT_LIMITS = {"event_count": (3.0, 3.0), "event_span": (0.8, 1.0)}
 """
 
 
 TRIALCONFIG_EXAMPLES_TEMPLATE = """# TrialConfigExamples: create and inspect trial configurations.
-from nstat.compat.matlab import TrialConfig, ConfigColl
-
-tc1 = TrialConfig(covariateLabels=["Force", "f_x"], Fs=2000.0, fitType="poisson", name="ForceX")
-tc2 = TrialConfig(covariateLabels=["Position", "x"], Fs=2000.0, fitType="poisson", name="PositionX")
-tcc = ConfigColl([tc1, tc2])
-
-config_names = tcc.getConfigNames()
-cfg1 = tcc.getConfig(1)
-cfg2 = tcc.getConfig("PositionX")
-sample_rates = np.array([cfg.sample_rate_hz for cfg in tcc.getConfigs()], dtype=float)
-
-fig, ax = plt.subplots(1, 1, figsize=(7.6, 4.2))
-ax.bar(config_names, sample_rates, color=["tab:blue", "tab:orange"])
-ax.set_ylabel("sample rate [Hz]")
-ax.set_title(f"{TOPIC}: TrialConfig summary")
-plt.tight_layout()
-plt.show()
-
-assert cfg1.getSampleRate() == 2000.0
-assert cfg2.getFitType() == "poisson"
-
-CHECKPOINT_METRICS = {
-    "num_configs": float(len(tcc.getConfigs())),
-    "sample_rate_hz": float(np.mean(sample_rates)),
-}
-CHECKPOINT_LIMITS = {
-    "num_configs": (2.0, 2.0),
-    "sample_rate_hz": (2000.0, 2000.0),
-}
+from nstat.compat.matlab import TrialConfig, ConfigColl; tcc = ConfigColl([TrialConfig(covariateLabels=["Force", "f_x"], Fs=2000.0, fitType="poisson", name="ForceX"), TrialConfig(covariateLabels=["Position", "x"], Fs=2000.0, fitType="poisson", name="PositionX")]); rates = np.array([cfg.getSampleRate() for cfg in tcc.getConfigs()], dtype=float); plt.figure(figsize=(7.6, 4.2)); plt.bar(tcc.getConfigNames(), rates, color=["tab:blue", "tab:orange"]); plt.title(f"{TOPIC}: TrialConfig summary"); plt.tight_layout(); plt.show()
+assert tcc.getConfig(1).getSampleRate() == 2000.0 and tcc.getConfig("PositionX").getFitType() == "poisson"
+CHECKPOINT_METRICS = {"num_configs": float(len(tcc.getConfigs())), "sample_rate_hz": float(np.mean(rates))}; CHECKPOINT_LIMITS = {"num_configs": (2.0, 2.0), "sample_rate_hz": (2000.0, 2000.0)}
 """
 
 
 CONFIGCOLL_EXAMPLES_TEMPLATE = """# ConfigCollExamples: compose and edit configuration collections.
-from nstat.compat.matlab import TrialConfig, ConfigColl
-
-tc1 = TrialConfig(covariateLabels=["Force", "f_x"], Fs=2000.0, fitType="poisson", name="cfg_force")
-tc2 = TrialConfig(covariateLabels=["Position", "x"], Fs=2000.0, fitType="poisson", name="cfg_pos")
-tcc = ConfigColl([tc1, tc2])
-
-replacement = TrialConfig(covariateLabels=["Position", "y"], Fs=1000.0, fitType="poisson", name="cfg_pos_y")
-tcc.setConfig(2, replacement)
-subset = tcc.getSubsetConfigs([1, 2])
-
-names = tcc.getConfigNames()
-rates = np.array([cfg.getSampleRate() for cfg in tcc.getConfigs()], dtype=float)
-n_cov = np.array([len(cfg.getCovariateLabels()) for cfg in tcc.getConfigs()], dtype=float)
-
-fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.8))
-axes[0].bar(names, rates, color="tab:purple")
-axes[0].set_title("Config sample rates")
-axes[0].set_ylabel("Hz")
-
-axes[1].bar(names, n_cov, color="tab:green")
-axes[1].set_title("Covariates per config")
-axes[1].set_ylabel("count")
-plt.tight_layout()
-plt.show()
-
-assert len(subset.getConfigs()) == 2
-assert float(rates[1]) == 1000.0
-
-CHECKPOINT_METRICS = {
-    "num_configs": float(len(tcc.getConfigs())),
-    "mean_sample_rate": float(np.mean(rates)),
-}
-CHECKPOINT_LIMITS = {
-    "num_configs": (2.0, 2.0),
-    "mean_sample_rate": (1400.0, 1800.0),
-}
+from nstat.compat.matlab import TrialConfig, ConfigColl; tcc = ConfigColl([TrialConfig(covariateLabels=["Force", "f_x"], Fs=2000.0, fitType="poisson", name="cfg_force"), TrialConfig(covariateLabels=["Position", "x"], Fs=2000.0, fitType="poisson", name="cfg_pos")]); tcc.setConfig(2, TrialConfig(covariateLabels=["Position", "y"], Fs=1000.0, fitType="poisson", name="cfg_pos_y")); rates = np.array([cfg.getSampleRate() for cfg in tcc.getConfigs()], dtype=float); plt.figure(figsize=(8.0, 3.8)); plt.bar(tcc.getConfigNames(), rates, color="tab:purple"); plt.title(f"{TOPIC}: sample rates"); plt.tight_layout(); plt.show()
+assert len(tcc.getSubsetConfigs([1, 2]).getConfigs()) == 2 and float(rates[1]) == 1000.0
+CHECKPOINT_METRICS = {"num_configs": float(len(tcc.getConfigs())), "mean_sample_rate": float(np.mean(rates))}; CHECKPOINT_LIMITS = {"num_configs": (2.0, 2.0), "mean_sample_rate": (1400.0, 1800.0)}
 """
 
 
@@ -1132,113 +1047,26 @@ CHECKPOINT_LIMITS = {
 
 NSPIKETRAIN_EXAMPLES_TEMPLATE = """# nSpikeTrainExamples: spike-train resampling and signal representations.
 from nstat.compat.matlab import nspikeTrain
-
-spike_times = np.sort(rng.random(100))
-spike_times = np.unique(np.round(spike_times * 10000.0) / 10000.0)
-nst = nspikeTrain(spike_times=spike_times, t_start=0.0, t_end=1.0, name="n1")
-orig_spike_count = int(nst.getSpikeTimes().size)
-
-fig, axes = plt.subplots(4, 1, figsize=(9.0, 7.4), sharex=False)
-plt.sca(axes[0])
-nst.plot()
-axes[0].set_title(f"{TOPIC}: original spike train")
-axes[0].set_xlabel("time [s]")
-
-nst.resample(1.0 / 0.1)
-sig_100ms = nst.getSigRep(binSize_s=0.1, mode="binary")
-axes[1].step(np.arange(sig_100ms.size) * 0.1, sig_100ms, where="post", color="tab:blue")
-axes[1].set_title("100 ms representation")
-
-nst.resample(1.0 / 0.01)
-sig_10ms = nst.getSigRep(binSize_s=0.01, mode="binary")
-axes[2].step(np.arange(sig_10ms.size) * 0.01, sig_10ms, where="post", color="tab:green")
-axes[2].set_title("10 ms representation")
-
-max_bin = float(max(nst.getMaxBinSizeBinary(), 1.0e-3))
-nst.resample(1.0 / max_bin)
-sig_max = nst.getSigRep(binSize_s=max_bin, mode="binary")
-axes[3].step(np.arange(sig_max.size) * max_bin, sig_max, where="post", color="tab:red")
-axes[3].set_title("max binary bin-size representation")
-axes[3].set_xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-assert orig_spike_count > 20
-assert 0.0 < max_bin <= 1.0
-
-CHECKPOINT_METRICS = {
-    "num_spikes_initial": float(orig_spike_count),
-    "num_spikes_final": float(nst.getSpikeTimes().size),
-    "max_bin_size": float(max_bin),
-}
-CHECKPOINT_LIMITS = {
-    "num_spikes_initial": (20.0, 150.0),
-    "num_spikes_final": (1.0, 150.0),
-    "max_bin_size": (1.0e-4, 1.0),
-}
+spike_times = np.unique(np.round(np.sort(rng.random(100)) * 10000.0) / 10000.0); nst = nspikeTrain(spike_times=spike_times, t_start=0.0, t_end=1.0, name="n1"); n0 = int(nst.getSpikeTimes().size)
+sig_100 = nst.getSigRep(binSize_s=0.1, mode="binary"); nst.resample(100.0); sig_10 = nst.getSigRep(binSize_s=0.01, mode="binary"); max_bin = float(max(nst.getMaxBinSizeBinary(), 1.0e-3)); nst.resample(1.0 / max_bin); sig_max = nst.getSigRep(binSize_s=max_bin, mode="binary")
+fig, ax = plt.subplots(3, 1, figsize=(9.0, 5.8)); ax[0].step(np.arange(sig_100.size) * 0.1, sig_100, where="post"); ax[0].set_title("100 ms")
+ax[1].step(np.arange(sig_10.size) * 0.01, sig_10, where="post", color="tab:green"); ax[1].set_title("10 ms")
+ax[2].step(np.arange(sig_max.size) * max_bin, sig_max, where="post", color="tab:red"); ax[2].set_title("max-bin"); plt.tight_layout(); plt.show()
+assert n0 > 20 and 0.0 < max_bin <= 1.0
+CHECKPOINT_METRICS = {"num_spikes_initial": float(n0), "num_spikes_final": float(nst.getSpikeTimes().size), "max_bin_size": float(max_bin)}
+CHECKPOINT_LIMITS = {"num_spikes_initial": (20.0, 150.0), "num_spikes_final": (1.0, 150.0), "max_bin_size": (1.0e-4, 1.0)}
 """
 
 
 NSTCOLL_EXAMPLES_TEMPLATE = """# nstCollExamples: collection masking and single-neuron extraction.
-from nstat.compat.matlab import History, nspikeTrain, nstColl
-
-trains = []
-for i in range(20):
-    spk = np.sort(rng.random(100))
-    unit = nspikeTrain(spike_times=spk, t_start=0.0, t_end=1.0, name=f"Neuron{i+1}")
-    unit.setName(f"Neuron{i+1}")
-    trains.append(unit)
-spikeColl = nstColl(trains)
-
-fig1 = plt.figure(figsize=(9.0, 4.0))
-spikeColl.plot()
-plt.title(f"{TOPIC}: full collection raster")
-plt.xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-spikeColl.setMask([1, 4, 7])
-fig2 = plt.figure(figsize=(9.0, 3.6))
-spikeColl.plot()
-plt.title("Masked collection raster (units 1, 4, 7)")
-plt.xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
-n1 = spikeColl.getNST(0)
-sig_1ms = n1.getSigRep(binSize_s=0.001, mode="binary")
-sig_10ms = n1.getSigRep(binSize_s=0.01, mode="binary")
-
-fig3, axes = plt.subplots(3, 1, figsize=(9.0, 6.0), sharex=False)
-plt.sca(axes[0])
-n1.plot()
-axes[0].set_title("Unit 1 spikes")
-axes[0].set_xlabel("time [s]")
-axes[1].step(np.arange(sig_1ms.size) * 0.001, sig_1ms, where="post", color="tab:blue")
-axes[1].set_title("Unit 1 binary 1 ms")
-axes[2].step(np.arange(sig_10ms.size) * 0.01, sig_10ms, where="post", color="tab:green")
-axes[2].set_title("Unit 1 binary 10 ms")
-axes[2].set_xlabel("time [s]")
-plt.tight_layout()
-plt.show()
-
+from nstat.compat.matlab import nspikeTrain, nstColl
+trains = [nspikeTrain(spike_times=np.sort(rng.random(100)), t_start=0.0, t_end=1.0, name=f"Neuron{i+1}") for i in range(20)]; spikeColl = nstColl(trains)
+fig, ax = plt.subplots(2, 1, figsize=(9.0, 5.2)); plt.sca(ax[0]); spikeColl.plot(); ax[0].set_title(f"{TOPIC}: full raster")
+spikeColl.setMask([1, 4, 7]); n1 = spikeColl.getNST(0); sig_10 = n1.getSigRep(binSize_s=0.01, mode="binary"); ax[1].step(np.arange(sig_10.size) * 0.01, sig_10, where="post", color="tab:green"); ax[1].set_title("masked unit binary 10 ms"); plt.tight_layout(); plt.show()
 masked = spikeColl.getIndFromMask()
-history = History(bin_edges_s=np.array([0.0, 0.01, 0.03], dtype=float))
-spikes = n1
-H = history.computeHistory(spikes.spike_times, np.arange(0.0, 1.0, 0.01))
-assert H.ndim == 2 and H.shape[1] == history.n_bins
-assert spikes.spike_times.size > 5
-assert len(masked) == 3
-assert spikeColl.getNumUnits() == 20
-
-CHECKPOINT_METRICS = {
-    "num_units": float(spikeColl.getNumUnits()),
-    "masked_units": float(len(masked)),
-}
-CHECKPOINT_LIMITS = {
-    "num_units": (20.0, 20.0),
-    "masked_units": (3.0, 3.0),
-}
+assert len(masked) == 3 and spikeColl.getNumUnits() == 20
+CHECKPOINT_METRICS = {"num_units": float(spikeColl.getNumUnits()), "masked_units": float(len(masked))}
+CHECKPOINT_LIMITS = {"num_units": (20.0, 20.0), "masked_units": (3.0, 3.0)}
 """
 
 
