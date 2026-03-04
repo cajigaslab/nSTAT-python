@@ -275,6 +275,15 @@ def _extract_notebook_code_stats(path: Path) -> NotebookCodeStats:
                     }
                 )
                 continue
+        if "Topic-specific checkpoint" in src and "Notebook checkpoints passed" in src:
+            cells.append(
+                {
+                    "cell_index": i,
+                    "line_count": 0,
+                    "preview": "<checkpoint scaffold excluded from line-ratio>",
+                }
+            )
+            continue
         filtered = []
         for line in src.splitlines():
             stripped = line.strip()

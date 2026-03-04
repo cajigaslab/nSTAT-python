@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-03-02T22:33:03.837159+00:00",
-  "fixtures_manifest": "/private/tmp/nstat_python_work_20260302/tests/parity/fixtures/matlab_gold/manifest.yml",
-  "thresholds_file": "/private/tmp/nstat_python_work_20260302/parity/numeric_drift_thresholds.yml",
+  "generated_at_utc": "2026-03-04T02:09:05.418013+00:00",
+  "fixtures_manifest": "/private/tmp/nstat_python_exec_next/tests/parity/fixtures/matlab_gold/manifest.yml",
+  "thresholds_file": "/private/tmp/nstat_python_exec_next/parity/numeric_drift_thresholds.yml",
   "summary": {
     "topics": 31,
     "passed_topics": 31,

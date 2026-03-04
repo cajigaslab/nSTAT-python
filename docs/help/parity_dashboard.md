@@ -43,10 +43,10 @@ artifacts in the `parity/` directory.
 | Topics checked | 31 |
 | Required notebook topics | 30 |
 | Required topics checked | 30 |
-| Topics passed | 31 |
-| Topics failed | 0 |
+| Topics passed | 28 |
+| Topics failed | 3 |
 | Metrics checked | 180 |
-| Metrics failed | 0 |
+| Metrics failed | 3 |
 
 ## Frozen MATLAB data snapshot
 | Metric | Value |
