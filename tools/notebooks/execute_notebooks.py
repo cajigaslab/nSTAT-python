@@ -94,6 +94,8 @@ def _set_deterministic_env() -> None:
     for key in THREAD_ENV:
         os.environ.setdefault(key, "1")
     os.environ.setdefault("MPLBACKEND", "Agg")
+    os.environ.setdefault("PYTHONHASHSEED", "0")
+    os.environ.setdefault("PYDEVD_DISABLE_FILE_VALIDATION", "1")
 
 
 def _load_targets(manifest_path: Path, repo_root: Path) -> list[NotebookTarget]:
@@ -255,4 +257,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

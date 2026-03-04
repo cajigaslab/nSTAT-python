@@ -38,6 +38,13 @@ except ModuleNotFoundError:  # pragma: no cover - exercised in CI dependency mat
     canvas = None  # type: ignore[assignment]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+THREAD_ENV = (
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+)
 
 
 def _require_nbclient() -> type:
@@ -223,6 +230,14 @@ def parse_args() -> argparse.Namespace:
         help="Machine-readable CSV summary output path (defaults beside the PDF).",
     )
     return parser.parse_args()
+
+
+def prepare_notebook_exec_env() -> None:
+    for key in THREAD_ENV:
+        os.environ.setdefault(key, "1")
+    os.environ.setdefault("MPLBACKEND", "Agg")
+    os.environ.setdefault("PYTHONHASHSEED", "0")
+    os.environ.setdefault("PYDEVD_DISABLE_FILE_VALIDATION", "1")
 
 
 def run_command(name: str, cmd: list[str], cwd: Path) -> CommandResult:
@@ -1457,6 +1472,7 @@ def generate_pdf_report(
 
 def main() -> int:
     args = parse_args()
+    prepare_notebook_exec_env()
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_pdf = args.output_dir / f"nstat_python_validation_report_{stamp}.pdf"
 
