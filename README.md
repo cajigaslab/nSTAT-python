@@ -35,7 +35,10 @@ from nstat.install import nstat_install
 report = nstat_install()
 ```
 
-## Quick examples
+## Examples
+
+> These examples generate figures with `matplotlib` and save PNGs under `examples/readme_examples/images/`.
+> The images below show the expected output.
 
 Examples below require `matplotlib`:
 
@@ -43,111 +46,156 @@ Examples below require `matplotlib`:
 python -m pip install matplotlib
 ```
 
-### Example 1: History design matrix heatmap
+### Example 1 — Multi-taper spectrum of a signal
+Run:
+
+```bash
+python examples/readme_examples/example1_multitaper_spectrum.py
+```
+
 ```python
 import matplotlib
 matplotlib.use("Agg")
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-from nstat.compat.matlab import History
 
-np.random.seed(0)
-spike_times = np.sort(np.random.uniform(0.05, 0.95, size=40))
-t_grid = np.linspace(0.0, 1.0, 1001)
+from nstat.compat.matlab import SignalObj
 
-hist = History(np.array([0.0, 0.01, 0.02, 0.05, 0.10]))
-H = hist.computeHistory(spike_times, t_grid)
+rng = np.random.default_rng(0)
+fs_hz = 1000.0
+dt = 1.0 / fs_hz
+duration_s = 2.0
+time = np.arange(0.0, duration_s, dt, dtype=float)
 
-fig, ax = plt.subplots(figsize=(7, 4))
-im = ax.imshow(
-    H.T,
-    aspect="auto",
-    origin="lower",
-    extent=[t_grid[0], t_grid[-1], 0, H.shape[1]],
-    cmap="viridis",
+signal = (
+    1.0 * np.sin(2.0 * np.pi * 10.0 * time)
+    + 0.6 * np.sin(2.0 * np.pi * 40.0 * time + 0.3)
+    + 0.2 * np.sin(2.0 * np.pi * 75.0 * time)
+    + 0.12 * rng.standard_normal(time.size)
 )
-ax.set_xlabel("time (s)")
-ax.set_ylabel("history window index")
-fig.colorbar(im, ax=ax, pad=0.02)
+
+sig_obj = SignalObj(time=time, data=signal, name="synthetic_signal", units="a.u.")
+freq_hz, psd = sig_obj.MTMspectrum()
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7.0, 5.0), sharex=False)
+preview_mask = time <= 1.0
+ax1.plot(time[preview_mask], signal[preview_mask], color="black", linewidth=1.0)
+ax1.set_xlabel("time (s)")
+ax1.set_ylabel("amplitude")
+ax1.set_title("Synthetic signal (first 1 s)")
+ax2.plot(freq_hz, psd, color="tab:blue", linewidth=1.2)
+ax2.set_xlim(0.0, 150.0)
+ax2.set_xlabel("frequency (Hz)")
+ax2.set_ylabel("power spectral density")
+ax2.set_title("Multi-taper spectrum")
 fig.tight_layout()
+
+out_dir = Path("examples/readme_examples/images")
+out_dir.mkdir(parents=True, exist_ok=True)
+fig.savefig(out_dir / "readme_example1_multitaper_spectrum.png", dpi=180)
 ```
 
 **Expected output**
-![History design matrix example](docs/images/readme_example1_history_matrix.png)
+![Multi-taper spectrum](examples/readme_examples/images/readme_example1_multitaper_spectrum.png)
 
-### Example 2: CIF simulation and spike rasters
+### Example 2 — Simulate a spike train from a time-varying CIF
+Run:
+
+```bash
+python examples/readme_examples/example2_simulate_cif_spiketrain.py
+```
 
 ```python
 import matplotlib
 matplotlib.use("Agg")
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
+
 from nstat.compat.matlab import CIF, Covariate
 
 np.random.seed(0)
-t = np.linspace(0.0, 1.5, 1501)
-lam = 10.0 + 6.0 * np.sin(2.0 * np.pi * 2.0 * t) + 2.0 * np.cos(2.0 * np.pi * 5.0 * t)
-lam = np.clip(lam, 0.2, None)
+dt = 0.001
+duration_s = 2.0
+time = np.arange(0.0, duration_s + 0.5 * dt, dt, dtype=float)
 
-lambda_sig = Covariate(time=t, data=lam, name="Lambda(t)", labels=["lambda"])
-spike_coll = CIF.simulateCIFByThinningFromLambda(lambda_sig, numRealizations=8)
+lambda_t = 12.0 + 5.5 * np.sin(2.0 * np.pi * 2.0 * time) + 1.5 * np.cos(2.0 * np.pi * 6.0 * time)
+lambda_t = np.clip(lambda_t, 0.1, None)
 
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7, 5), sharex=True, gridspec_kw={"height_ratios": [2, 1.5]})
-ax1.plot(t, lam, color="tab:blue", linewidth=1.8)
+lambda_cov = Covariate(time=time, data=lambda_t, name="Lambda(t)", units="spikes/s", labels=["lambda"])
+coll = CIF.simulateCIFByThinningFromLambda(lambda_cov, 1, dt)
+spike_times = coll.getNST(0).spike_times
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7.0, 5.0), sharex=True, gridspec_kw={"height_ratios": [2.0, 1.0]})
+ax1.plot(time, lambda_t, color="tab:blue", linewidth=1.4)
 ax1.set_ylabel("rate (spikes/s)")
-
-n_show = min(5, spike_coll.getNumUnits())
-raster_data = [spike_coll.trains[i].spike_times for i in range(n_show)]
-ax2.eventplot(raster_data, lineoffsets=np.arange(1, n_show + 1), linelengths=0.75, colors="k")
+ax1.set_title("Time-varying CIF")
+ax2.vlines(spike_times, 0.0, 1.0, color="black", linewidth=0.8)
+ax2.set_ylim(0.0, 1.0)
 ax2.set_xlabel("time (s)")
-ax2.set_ylabel("unit")
+ax2.set_ylabel("spikes")
+ax2.set_title("Simulated spike train")
 fig.tight_layout()
+
+out_dir = Path("examples/readme_examples/images")
+out_dir.mkdir(parents=True, exist_ok=True)
+fig.savefig(out_dir / "readme_example2_simulate_cif_spiketrain.png", dpi=180)
 ```
 
 **Expected output**
-![CIF simulation example](docs/images/readme_example2_cif_simulation.png)
+![CIF spike train simulation](examples/readme_examples/images/readme_example2_simulate_cif_spiketrain.png)
 
-### Example 3: Spike-rate confidence intervals summary
+### Example 3 — Spike-train raster (collection, nstColl.plot)
+Run:
+
+```bash
+python examples/readme_examples/example3_spike_train_raster_nstcoll.py
+```
 
 ```python
 import matplotlib
 matplotlib.use("Agg")
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-from nstat.compat.matlab import DecodingAlgorithms
+
+from nstat.compat.matlab import CIF, Covariate
 
 np.random.seed(0)
-num_basis, num_trials, n_bins = 5, 6, 160
-delta = 0.01
+dt = 0.001
+duration_s = 2.0
+n_units = 20
+time = np.arange(0.0, duration_s + 0.5 * dt, dt, dtype=float)
 
-basis_idx = np.arange(1, num_basis + 1, dtype=float)[:, None]
-trial_idx = np.arange(1, num_trials + 1, dtype=float)[None, :]
-xk = 0.06 * np.sin(0.37 * basis_idx * trial_idx) + 0.04 * np.cos(0.19 * basis_idx * trial_idx)
+lambda_t = 9.0 + 4.0 * np.sin(2.0 * np.pi * 1.5 * time) + 2.0 * np.sin(2.0 * np.pi * 4.0 * time + 0.25)
+lambda_t = np.clip(lambda_t, 0.1, None)
 
-wku = np.zeros((num_basis, num_basis, num_trials, num_trials), dtype=float)
-for r in range(num_basis):
-    wku[r, r, :, :] = 0.05 * np.eye(num_trials, dtype=float)
+lambda_cov = Covariate(time=time, data=lambda_t, name="Lambda(t)", units="spikes/s", labels=["lambda"])
+coll = CIF.simulateCIFByThinningFromLambda(lambda_cov, n_units, dt)
 
-grid = np.arange(num_trials * n_bins, dtype=float).reshape(num_trials, n_bins)
-d_n = ((np.sin(0.173 * grid) + np.cos(0.037 * grid)) > 1.15).astype(float)
-
-_, prob, sig = DecodingAlgorithms.computeSpikeRateCIs(
-    xk, wku, d_n, 0.0, (n_bins - 1) * delta, "binomial", delta, 0.0, [], 40, 0.05
-)
-
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.5, 3.6))
-im1 = ax1.imshow(prob, aspect="auto", origin="lower", cmap="magma", vmin=0.0, vmax=1.0)
-im2 = ax2.imshow(sig, aspect="auto", origin="lower", cmap="gray_r", vmin=0.0, vmax=1.0)
-fig.colorbar(im1, ax=ax1, fraction=0.046, pad=0.04)
-fig.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
+fig, ax = plt.subplots(figsize=(7.0, 4.5))
+plt.sca(ax)
+coll.plot()
+ax.set_xlabel("time (s)")
+ax.set_ylabel("unit index")
+ax.set_title("Spike-train raster (nstColl.plot)")
+ax.set_ylim(0.5, n_units + 0.5)
 fig.tight_layout()
+
+out_dir = Path("examples/readme_examples/images")
+out_dir.mkdir(parents=True, exist_ok=True)
+fig.savefig(out_dir / "readme_example3_spike_train_raster_nstcoll.png", dpi=180)
 ```
 
 **Expected output**
-![Spike-rate CI example](docs/images/readme_example3_spike_rate_ci.png)
+![Spike train raster](examples/readme_examples/images/readme_example3_spike_train_raster_nstcoll.png)
 
 ## Examples and notebooks
 
