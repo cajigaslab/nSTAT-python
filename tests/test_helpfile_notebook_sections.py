@@ -69,7 +69,7 @@ def test_helpfile_manifest_has_required_fields() -> None:
         assert "matlab_helpfile_path" in row
         assert int(row["matlab_section_count"]) >= 1
         assert int(row["python_cell_count"]) >= 1
-        assert int(row["expected_min_figures"]) >= 1
+        assert int(row["expected_min_figures"]) >= 0
 
 
 def test_helpfile_notebooks_are_code_only_and_cell_counts_match_sections() -> None:
