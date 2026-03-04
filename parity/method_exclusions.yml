@@ -2,6 +2,14 @@ version: 1
 policy_name: matlab_stub_exclusions
 
 classes:
+  - matlab_class: Covariate
+    rationale: "MATLAB legacy overloaded `get` accessor is represented by explicit property access in Python."
+    methods:
+      - get
+  - matlab_class: nstColl
+    rationale: "MATLAB legacy overloaded `get` accessor is represented by explicit property access in Python."
+    methods:
+      - get
   - matlab_class: DecodingAlgorithms
     rationale: "Documented as not yet ported in compat layer and intentionally raises NotImplementedError."
     methods:

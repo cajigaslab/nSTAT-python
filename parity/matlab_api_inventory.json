@@ -564,7 +564,7 @@
     {
       "matlab_class": "DecodingAlgorithms",
       "matlab_file": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/DecodingAlgorithms.m",
-      "method_count": 45,
+      "method_count": 46,
       "methods": [
         "PPDecodeFilter",
         "PPDecodeFilterLinear",
@@ -610,10 +610,11 @@
         "PP_ComputeParamStandardErrors",
         "PP_EM",
         "PP_EStep",
-        "PP_MStep"
+        "PP_MStep",
+        "getPoolSizeCompat"
       ]
     }
   ],
-  "generated_at_utc": "2026-03-02T18:50:19.335170+00:00",
+  "generated_at_utc": "2026-03-04T13:51:50.304745+00:00",
   "matlab_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local"
 }

@@ -5702,13 +5702,13 @@
         "unverified_behavior_count": 0
       },
       {
-        "contract_coverage_ratio": 0.5333333333333333,
-        "contract_verified_count": 24,
-        "eligible_method_count": 24,
+        "contract_coverage_ratio": 0.5434782608695652,
+        "contract_verified_count": 25,
+        "eligible_method_count": 25,
         "eligible_verified_ratio": 1.0,
         "excluded_method_count": 21,
         "matlab_class": "DecodingAlgorithms",
-        "matlab_method_count": 45,
+        "matlab_method_count": 46,
         "missing_symbol_count": 0,
         "probe_verified_count": 0,
         "unverified_behavior_count": 0
@@ -11726,18 +11726,30 @@
         "matlab_method": "PP_MStep",
         "present_in_compat_surface": true,
         "present_in_python_surface": false
+      },
+      {
+        "excluded_method": false,
+        "functional_status": "contract_verified",
+        "has_behavior_contract": true,
+        "has_probe_verification": true,
+        "mapped_python_member": "getPoolSizeCompat",
+        "mapped_via_alias": false,
+        "matlab_class": "DecodingAlgorithms",
+        "matlab_method": "getPoolSizeCompat",
+        "present_in_compat_surface": true,
+        "present_in_python_surface": false
       }
     ],
     "summary": {
-      "contract_explicit_verified_methods": 480,
-      "contract_verified_methods": 480,
-      "contract_verified_ratio": 0.9580838323353293,
-      "eligible_methods": 480,
+      "contract_explicit_verified_methods": 481,
+      "contract_verified_methods": 481,
+      "contract_verified_ratio": 0.9581673306772909,
+      "eligible_methods": 481,
       "eligible_verified_ratio": 1.0,
       "excluded_methods": 21,
       "missing_symbol_methods": 0,
       "probe_verified_methods": 0,
-      "total_methods": 501,
+      "total_methods": 502,
       "unverified_behavior_methods": 0
     }
   },

@@ -2489,6 +2489,10 @@ classes:
     python_class: nstat.compat.matlab.DecodingAlgorithms
     scenario: compat_decoding_basic
     contracts:
+      - member: getPoolSizeCompat
+        access: method
+        expect:
+          equals: 0
       - member: computeSpikeRateDiffCIs
         access: method
         args_key: diff_args
