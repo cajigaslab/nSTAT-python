@@ -779,10 +779,12 @@ def _uniqueness_violations(
 ) -> tuple[list[str], dict[str, float | int]]:
     violations: list[str] = []
     for report in reports:
-        if report.unique_image_count < min_unique_images_per_topic:
+        # Topics with zero expected figures are allowed to have zero unique images.
+        min_required = 0 if int(report.expected_figure_count) == 0 else int(min_unique_images_per_topic)
+        if report.unique_image_count < min_required:
             violations.append(
                 f"{report.topic}: unique_images={report.unique_image_count} < "
-                f"min_required={min_unique_images_per_topic}"
+                f"min_required={min_required}"
             )
 
     duplicate_stats = _cross_topic_duplicate_stats(reports)
