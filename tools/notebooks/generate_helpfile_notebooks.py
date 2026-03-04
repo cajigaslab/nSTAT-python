@@ -30,6 +30,9 @@ class Section:
     lines: list[str]
 
 
+DATA_PATH_PATTERN = re.compile(r"""['"]([^'"]*data/[^'"]+)['"]""", flags=re.IGNORECASE)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -170,6 +173,19 @@ def matlab_lines_to_python_comments(lines: list[str]) -> str:
     return "\n".join(out)
 
 
+def _extract_data_relpaths(lines: list[str]) -> list[str]:
+    rels: list[str] = []
+    for raw in lines:
+        for match in DATA_PATH_PATTERN.finditer(raw):
+            token = match.group(1)
+            marker = token.lower().find("data/")
+            rel = token[marker + len("data/") :] if marker >= 0 else token
+            rel = rel.lstrip("./").replace("\\", "/")
+            if rel and rel not in rels:
+                rels.append(rel)
+    return rels
+
+
 def _build_cell_source(
     *,
     topic: str,
@@ -183,6 +199,11 @@ def _build_cell_source(
     parts: list[str] = []
     parts.append(f"# MATLAB section {section_index}/{section_count} for {topic}: {section.title}")
     parts.append(matlab_lines_to_python_comments(section.lines))
+    data_rels = _extract_data_relpaths(section.lines)
+    if data_rels:
+        parts.append("# Python data-path translation for MATLAB data references in this section.")
+        for idx, rel in enumerate(data_rels, start=1):
+            parts.append(f"data_path_{idx} = DATA_DIR / {rel!r}")
 
     if section_count == 1:
         parts.append("# Python translation bootstrap + execution for single-section helpfile.")
@@ -273,7 +294,8 @@ def main() -> int:
         header_code = module.code_header_cell(topic, run_group, family)
         setup_code = module.code_cell_setup(topic, family)
         template_code = module.template_for_topic(topic, family)
-        execution_parts = [template_code, module.ASSERTION_CELL]
+        snapshot_code = _line_port_snapshot(module, topic, repo_root)
+        execution_parts = [snapshot_code, template_code, module.ASSERTION_CELL]
         execution_blob = "\n\n".join(part for part in execution_parts if part and part.strip())
 
         notebook = nbf.v4.new_notebook()
@@ -299,8 +321,14 @@ def main() -> int:
             {
                 "topic": topic,
                 "file": str(output_rel.as_posix()),
+                "notebook_path": str(output_rel.as_posix()),
                 "run_group": run_group,
                 "matlab_helpfile": matlab_helpfile,
+                "matlab_helpfile_path": matlab_helpfile,
+                "matlab_section_count": int(len(sections)),
+                "python_cell_count": int(len(cells)),
+                "expected_min_figures": 1,
+                # Compatibility fields retained for existing tooling.
                 "section_count": int(len(sections)),
                 "cell_count": int(len(cells)),
                 "expected_figure_count": 1,

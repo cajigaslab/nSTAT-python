@@ -11,7 +11,6 @@ import sys
 from pathlib import Path
 
 import nbformat as nbf
-import yaml
 
 
 PAPER_DOI = "10.1016/j.jneumeth.2012.08.009"
@@ -124,6 +123,7 @@ except Exception:
 import numpy as np
 import matplotlib.pyplot as plt
 
+from nstat.data_manager import ensure_example_data
 from nstat.analysis import Analysis
 from nstat.cif import CIFModel
 from nstat.decoding import DecodingAlgorithms
@@ -137,7 +137,9 @@ TOPIC = \"{topic}\"
 FAMILY = \"{family}\"
 np.random.seed(2026)
 rng = np.random.default_rng(2026)
+DATA_DIR = ensure_example_data(download=True)
 print(f\"Running notebook topic: {{TOPIC}} (family={{FAMILY}})\")
+print(f\"Example data directory: {{DATA_DIR}}\")
 
 if \"MATLAB_LINE_TRACE\" not in globals():
     MATLAB_LINE_TRACE = []
