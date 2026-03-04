@@ -3276,6 +3276,13 @@ class DecodingAlgorithms:
         )
 
     @staticmethod
+    def getPoolSizeCompat() -> int:
+        """Return active parallel pool size (MATLAB-compatible fallback)."""
+        # MATLAB returns 0 when no active parallel pool exists. nSTAT-python
+        # executes these workflows serially, so preserve the same default.
+        return 0
+
+    @staticmethod
     def _chol_like_matlab(mat: np.ndarray) -> np.ndarray:
         arr = np.asarray(mat, dtype=float)
         if arr.ndim == 0:

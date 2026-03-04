@@ -512,7 +512,7 @@
         "fields": [
           "trains"
         ],
-        "method_count": 72,
+        "method_count": 73,
         "methods": [
           "BinarySigRep",
           "addNeuronNamesToEnsCovColl",
@@ -561,6 +561,7 @@
           "isNeuronMaskSet",
           "isSigRepBinary",
           "merge",
+          "nstColl",
           "plot",
           "plotExponentialFit",
           "plotISIHistogram",
@@ -1262,7 +1263,7 @@
     {
       "compat": {
         "fields": [],
-        "method_count": 47,
+        "method_count": 48,
         "methods": [
           "ComputeStimulusCIs",
           "KF_ComputeParamStandardErrors",
@@ -1292,6 +1293,7 @@
           "decodeStatePosterior",
           "decodeWeightedCenter",
           "estimateInfoMat",
+          "getPoolSizeCompat",
           "kalman_filter",
           "kalman_fixedIntervalSmoother",
           "kalman_predict",
@@ -1335,6 +1337,6 @@
       "python_class": "nstat.decoding.DecodingAlgorithms"
     }
   ],
-  "generated_at_utc": "2026-03-02T18:50:20.498817+00:00",
-  "python_root": "/private/tmp/nSTAT-python-cleanroom"
+  "generated_at_utc": "2026-03-04T14:50:54.544346+00:00",
+  "python_root": "/private/tmp/nstat_python_exec_next"
 }

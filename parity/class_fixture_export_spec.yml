@@ -1,0 +1,69 @@
+version: 1
+description: >
+  Fixture export specification for per-class equivalence contracts.
+  This file is consumed by class-equivalence inventory/report tooling and
+  test harnesses; it is not referenced by the README.
+
+generators:
+  - name: topic_gold_exporter
+    script: tools/parity/export_matlab_gold_fixtures.py
+    command: >-
+      python tools/parity/export_matlab_gold_fixtures.py
+      --matlab-root <MATLAB_NSTAT_ROOT>
+      --out tests/parity/fixtures/matlab_gold
+  - name: class_gold_exporter
+    script: matlab/fixtures/export_class_equivalence_fixtures.m
+    command: >-
+      matlab -batch "addpath('matlab/fixtures');
+      export_class_equivalence_fixtures('<MATLAB_NSTAT_ROOT>',
+      'tests/parity/fixtures/matlab_gold/classes');"
+
+classes:
+  - matlab_class: SignalObj
+    generator: topic_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/SignalObjExamples_gold.mat
+  - matlab_class: Covariate
+    generator: topic_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/CovCollExamples_gold.mat
+  - matlab_class: ConfidenceInterval
+    generator: class_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/classes/ConfidenceInterval/basic.mat
+  - matlab_class: Events
+    generator: topic_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/EventsExamples_gold.mat
+  - matlab_class: History
+    generator: topic_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/HistoryExamples_gold.mat
+  - matlab_class: nspikeTrain
+    generator: topic_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/nstCollExamples_gold.mat
+  - matlab_class: nstColl
+    generator: topic_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/nstCollExamples_gold.mat
+  - matlab_class: CovColl
+    generator: topic_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/CovCollExamples_gold.mat
+  - matlab_class: TrialConfig
+    generator: class_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/classes/TrialConfig/basic.mat
+  - matlab_class: ConfigColl
+    generator: class_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/classes/ConfigColl/basic.mat
+  - matlab_class: Trial
+    generator: topic_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/TrialExamples_gold.mat
+  - matlab_class: CIF
+    generator: class_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/classes/CIF/basic.mat
+  - matlab_class: Analysis
+    generator: topic_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/AnalysisExamples_gold.mat
+  - matlab_class: FitResult
+    generator: class_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/classes/FitResult/basic.mat
+  - matlab_class: FitResSummary
+    generator: class_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/classes/FitResSummary/basic.mat
+  - matlab_class: DecodingAlgorithms
+    generator: topic_gold_exporter
+    fixture_path: tests/parity/fixtures/matlab_gold/DecodingExample_gold.mat

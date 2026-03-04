@@ -1,0 +1,124 @@
+{
+  "generated_at_utc": "2026-03-04T13:56:22.458597+00:00",
+  "remaining_issues": [],
+  "summary": {
+    "gap_classes": 0,
+    "partial_classes": 0,
+    "required_class_coverage_ok": true,
+    "total_classes": 16,
+    "verified_classes": 16
+  },
+  "top_critical_methods_tested": {
+    "Analysis": [
+      "fit_glm",
+      "fit_trial",
+      "run_analysis_for_neuron",
+      "run_analysis_for_all_neurons",
+      "compute_hist_lag"
+    ],
+    "CIF": [
+      "evaluate",
+      "linear_predictor",
+      "log_likelihood",
+      "simulate_by_thinning",
+      "simulateCIFByThinningFromLambda"
+    ],
+    "ConfidenceInterval": [
+      "width",
+      "contains",
+      "set_color",
+      "set_value",
+      "from_structure"
+    ],
+    "ConfigColl": [
+      "get_config",
+      "add_config",
+      "get_config_names",
+      "to_structure",
+      "from_structure"
+    ],
+    "CovColl": [
+      "design_matrix",
+      "get_cov",
+      "set_mask",
+      "to_structure",
+      "from_structure"
+    ],
+    "Covariate": [
+      "get_sub_signal",
+      "data_to_matrix",
+      "compute_mean_plus_ci",
+      "to_structure",
+      "from_structure"
+    ],
+    "DecodingAlgorithms": [
+      "compute_spike_rate_cis",
+      "compute_spike_rate_diff_cis",
+      "decode_weighted_center",
+      "decode_state_posterior",
+      "computeSpikeRateCIs"
+    ],
+    "Events": [
+      "subset",
+      "merge",
+      "shift",
+      "to_structure",
+      "from_structure"
+    ],
+    "FitResSummary": [
+      "best_by_aic",
+      "best_by_bic",
+      "diff_aic",
+      "diff_bic",
+      "to_structure"
+    ],
+    "FitResult": [
+      "predict",
+      "aic",
+      "bic",
+      "as_cif_model",
+      "to_structure"
+    ],
+    "History": [
+      "design_matrix",
+      "to_filter",
+      "set_window",
+      "to_structure",
+      "from_structure"
+    ],
+    "SignalObj": [
+      "copy",
+      "resample",
+      "periodogram",
+      "get_sub_signal",
+      "merge"
+    ],
+    "Trial": [
+      "aligned_binned_observation",
+      "get_design_matrix",
+      "set_history",
+      "set_trial_partition",
+      "to_structure"
+    ],
+    "TrialConfig": [
+      "get_name",
+      "set_name",
+      "to_structure",
+      "from_structure"
+    ],
+    "nspikeTrain": [
+      "firing_rate_hz",
+      "bin_counts",
+      "binarize",
+      "shift_time",
+      "copy"
+    ],
+    "nstColl": [
+      "to_binned_matrix",
+      "merge",
+      "get_first_spike_time",
+      "get_last_spike_time",
+      "get_spike_times"
+    ]
+  }
+}
