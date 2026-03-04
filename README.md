@@ -187,7 +187,7 @@ python tools/performance/compare_matlab_python_performance.py \
   --python-report output/performance/python_performance_report.json \
   --matlab-report tests/performance/fixtures/matlab/performance_baseline_470fde8.json \
   --policy parity/performance_gate_policy.yml \
-  --previous-python-report tests/performance/fixtures/python/performance_baseline_linux_20260304.json \
+  --previous-python-report tests/performance/fixtures/python/performance_baseline_linux_latest.json \
   --report-out parity/performance_parity_report.json \
   --csv-out parity/performance_parity_report.csv \
   --fail-on-regression \

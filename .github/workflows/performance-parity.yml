@@ -59,7 +59,7 @@ jobs:
             --python-report output/performance/python_performance_report.json \
             --matlab-report tests/performance/fixtures/matlab/performance_baseline_470fde8.json \
             --policy parity/performance_gate_policy.yml \
-            --previous-python-report tests/performance/fixtures/python/performance_baseline_linux_20260304.json \
+            --previous-python-report tests/performance/fixtures/python/performance_baseline_linux_latest.json \
             --report-out output/performance/performance_parity_report.json \
             --csv-out output/performance/performance_parity_report.csv \
             --fail-on-regression \
@@ -81,5 +81,8 @@ jobs:
             output/performance/*.json
             output/performance/*.csv
             tests/performance/fixtures/matlab/performance_baseline_470fde8.json
+            tests/performance/fixtures/python/performance_baseline_linux_latest.json
+            tests/performance/fixtures/python/performance_baseline_linux_latest.csv
             tests/performance/fixtures/python/performance_baseline_linux_20260304.json
+            tests/performance/fixtures/python/performance_baseline_linux_20260304.csv
           if-no-files-found: warn
