@@ -61,6 +61,14 @@ jobs:
             --spec parity/example_output_spec.yml
           python tools/notebooks/run_notebooks.py --group all --timeout 900
 
+      - name: Generate class equivalence inventory/report artifacts
+        run: |
+          mkdir -p output/parity
+          python tools/parity/generate_class_equivalence_inventory.py \
+            --matlab-root /tmp/upstream-nstat \
+            --out-inventory output/parity/class_equivalence_inventory.json \
+            --out-report output/parity/class_equivalence_report.json
+
       - name: Generate full validation PDF
         run: |
           python tools/reports/generate_validation_pdf.py \
@@ -101,6 +109,8 @@ jobs:
             parity/parity_gap_report.json
             parity/method_probe_report.json
             parity/method_closure_sprint.md
+            output/parity/class_equivalence_inventory.json
+            output/parity/class_equivalence_report.json
           if-no-files-found: warn
 
       - name: Upload validation PDF artifact
