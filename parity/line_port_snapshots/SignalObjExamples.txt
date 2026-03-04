@@ -1,0 +1,81 @@
+close all;
+sampleRate=100; t=0:1/sampleRate:10; freq=2;
+v1=sin(2*pi*freq*t); v2=sin(v1.^2); v=[v1;v2];
+s=SignalObj(t,v,'Voltage','time','s','V',{'v1','v2'});
+s1=SignalObj(t,v1,'Voltage','time','s','V',{'v1'});
+subplot(2,1,1); s.plot;
+subplot(2,1,2); s1.plot;
+subplot(2,1,1); s.setMask({'v1'}); s.plot; s.resetMask;
+subplot(2,1,2); s.setMask({'v2'}); s.plot; size(s.dataToMatrix)
+s.resetMask;
+s=SignalObj(t,[v1; v1; v2] ,'Voltage','time','s','V',{'v1','v1','v2'});
+s.getSubSignal({'v1'}); %returns a SignalObj with both realizations of v1
+figure
+s.getSubSignal({'v1'}).plot;
+figure
+s=SignalObj(t,v,'Voltage','time','s','V',{'v1','v2'});
+subplot(2,1,1); s.plot;
+subplot(2,1,2); s.setXlabel('distance'); s.setXUnits('cm'); s.plot;
+figure
+subplot(2,1,1); s.setDataLabels({'r1','r2'}); s.setYLabel('Temperature'); s.setYUnits('C'); s.plot;
+subplot(2,1,2); s.setMaxTime(14); s.setMinTime(-2); s.plot;
+s.setName('testName'); %should work since we are using a method
+if(strcmp(s.name,'testName'))
+fprintf('Name successfully set \n');
+else
+fprintf('Could not set name \n');
+end
+figure
+s=SignalObj(t,v,'Voltage','time','s','V',{'v1','v2'});
+subplot(2,1,1); s.plot('v1',{{' ''k'' '}});
+subplot(2,1,2); s.plot('all',{{' ''k'' '},{' ''-.g'' '}});
+figure
+subplot(2,1,1); s.plot({'v1','v2'});
+subplot(2,1,2); s.plot({'v1','v2'},{{' ''k'' '},{' ''-.g'' '}});
+figure
+s=SignalObj(t,v,'Voltage','time','s','V',{'v1','v2'});
+s1=s.resample(.1*sampleRate);
+subplot(2,1,1); s.plot;
+subplot(2,1,2); s1.plot;
+figure
+subplot(2,1,1); s.getSigInTimeWindow(-2,3).plot;
+subplot(2,1,2); s.plot;
+s=SignalObj(t,v,'Voltage','time','s','V',{'v1','v2'});
+figure
+s2=mean(s); %mean of each dimension;
+s5=s-s2;  %zero mean version of s;
+s5.plot;
+figure
+s2=mean(s,2); %mean of s across its dimensions;
+s2.plot;
+figure
+s4=2*s+s5;
+s4.plot;
+figure
+subplot(3,1,1);
+s.integral.plot;
+subplot(3,1,2);
+s.derivative.plot;
+subplot(3,1,3);
+s6=s.integral.derivative-s; %should equal zero;
+s6.plot;
+s=SignalObj(t,v,'Voltage','time','s','V',{'v1','v2'});
+figure;
+s.MTMspectrum;
+figure
+s.periodogram;
+sampleRate=5000; t=0:1/sampleRate:1; t=t'; freq=2;
+v1=sin(2*pi*freq*t); v2=sin(v1.^2);
+noise=.1*randn(length(t),6); %gaussian random noise
+data= [v1 v2 v2 v1 v2 v1] + noise;
+s=SignalObj(t,data,'Voltage','time','s','V',{'v1','v2','v2','v1','v1','v2'});
+figure;
+subplot(2,1,1); s.plot;
+subplot(2,1,2); s.plotAllVariability; %disregards labels;
+s.plotVariability; %creates two figures, one for 'v1' and one for 'v2'
+figure;
+subplot(3,1,1); s.plotAllVariability('b');
+subplot(3,1,2); s.plotAllVariability('g',2);
+subplot(3,1,3); s.plotAllVariability('c',3,2,1);
+parity = struct();
+parity.sample_rate_hz = sampleRate;

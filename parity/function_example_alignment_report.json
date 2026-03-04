@@ -6,8 +6,8 @@
       "missing_artifact_topics": 0,
       "missing_executable_topics": 0,
       "pending_manual_review_topics": 0,
-      "strict_line_gap_topics": 19,
-      "strict_line_partial_topics": 6,
+      "strict_line_gap_topics": 12,
+      "strict_line_partial_topics": 13,
       "strict_line_verified_topics": 1,
       "total_topics": 30,
       "validated_topics": 26
@@ -18,14 +18,14 @@
         "assertion_count": 3,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 7,
-        "line_port_coverage": 0.0,
-        "line_port_function_recall": 0.1794871794871795,
-        "line_port_matched_lines": 0,
+        "line_port_common_function_count": 39,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 59,
         "line_port_matlab_function_count": 39,
         "line_port_matlab_lines": 59,
-        "line_port_python_function_count": 36,
-        "line_port_python_lines": 81,
+        "line_port_python_function_count": 72,
+        "line_port_python_lines": 151,
         "matlab_code_blocks": [
           {
             "end_line": 26,
@@ -100,23 +100,28 @@
           },
           {
             "cell_index": 4,
+            "line_count": 70,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 59,
             "preview": "n_t = 4500"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 63,
+        "python_code_lines": 133,
         "python_notebook": "notebooks/AnalysisExamples.ipynb",
-        "python_to_matlab_line_ratio": 1.0677966101694916,
+        "python_to_matlab_line_ratio": 2.2542372881355934,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/AnalysisExamples/AnalysisExamples_001.png"
         ],
-        "strict_line_status": "line_port_gap",
+        "strict_line_status": "line_port_partial",
         "topic": "AnalysisExamples"
       },
       {
@@ -279,13 +284,13 @@
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 2,
-        "line_port_coverage": 0.3333333333333333,
+        "line_port_coverage": 1.0,
         "line_port_function_recall": 1.0,
-        "line_port_matched_lines": 1,
+        "line_port_matched_lines": 3,
         "line_port_matlab_function_count": 2,
         "line_port_matlab_lines": 3,
-        "line_port_python_function_count": 22,
-        "line_port_python_lines": 51,
+        "line_port_python_function_count": 25,
+        "line_port_python_lines": 65,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -306,18 +311,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 14,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 29,
             "preview": "from nstat.compat.matlab import TrialConfig, ConfigColl"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 33,
+        "python_code_lines": 47,
         "python_notebook": "notebooks/ConfigCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 11.0,
+        "python_to_matlab_line_ratio": 15.666666666666666,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/ConfigCollExamples/ConfigCollExamples_001.png"
@@ -331,13 +341,13 @@
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 4,
-        "line_port_coverage": 0.7,
+        "line_port_coverage": 1.0,
         "line_port_function_recall": 1.0,
-        "line_port_matched_lines": 7,
+        "line_port_matched_lines": 10,
         "line_port_matlab_function_count": 4,
         "line_port_matlab_lines": 10,
-        "line_port_python_function_count": 31,
-        "line_port_python_lines": 74,
+        "line_port_python_function_count": 35,
+        "line_port_python_lines": 95,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -374,18 +384,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 21,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 52,
             "preview": "from nstat.compat.matlab import Covariate, CovColl, History, nspikeTrain"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 56,
+        "python_code_lines": 77,
         "python_notebook": "notebooks/CovCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 5.6,
+        "python_to_matlab_line_ratio": 7.7,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/CovCollExamples/CovCollExamples_001.png"
@@ -398,14 +413,14 @@
         "assertion_count": 3,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 5,
-        "line_port_coverage": 0.15789473684210525,
-        "line_port_function_recall": 0.7142857142857143,
-        "line_port_matched_lines": 3,
+        "line_port_common_function_count": 7,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 19,
         "line_port_matlab_function_count": 7,
         "line_port_matlab_lines": 19,
-        "line_port_python_function_count": 23,
-        "line_port_python_lines": 74,
+        "line_port_python_function_count": 29,
+        "line_port_python_lines": 104,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -466,18 +481,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 30,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 52,
             "preview": "t = np.arange(0.0, 5.0 + 0.01, 0.01)"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 56,
+        "python_code_lines": 86,
         "python_notebook": "notebooks/CovariateExamples.ipynb",
-        "python_to_matlab_line_ratio": 2.9473684210526314,
+        "python_to_matlab_line_ratio": 4.526315789473684,
         "python_validation_image_count": 2,
         "python_validation_images": [
           "baseline/validation/notebook_images/CovariateExamples/CovariateExamples_001.png",
@@ -491,14 +511,14 @@
         "assertion_count": 3,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 7,
-        "line_port_coverage": 0.0,
-        "line_port_function_recall": 0.18421052631578946,
-        "line_port_matched_lines": 0,
+        "line_port_common_function_count": 38,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 57,
         "line_port_matlab_function_count": 38,
         "line_port_matlab_lines": 57,
-        "line_port_python_function_count": 31,
-        "line_port_python_lines": 87,
+        "line_port_python_function_count": 66,
+        "line_port_python_lines": 155,
         "matlab_code_blocks": [
           {
             "end_line": 15,
@@ -587,23 +607,28 @@
           },
           {
             "cell_index": 4,
+            "line_count": 68,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 65,
             "preview": "n_units = 14"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 69,
+        "python_code_lines": 137,
         "python_notebook": "notebooks/DecodingExample.ipynb",
-        "python_to_matlab_line_ratio": 1.2105263157894737,
+        "python_to_matlab_line_ratio": 2.4035087719298245,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/DecodingExample/DecodingExample_001.png"
         ],
-        "strict_line_status": "line_port_gap",
+        "strict_line_status": "line_port_partial",
         "topic": "DecodingExample"
       },
       {
@@ -611,14 +636,14 @@
         "assertion_count": 3,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 4,
-        "line_port_coverage": 0.0,
-        "line_port_function_recall": 0.14285714285714285,
-        "line_port_matched_lines": 0,
+        "line_port_common_function_count": 28,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 55,
         "line_port_matlab_function_count": 28,
         "line_port_matlab_lines": 55,
-        "line_port_python_function_count": 31,
-        "line_port_python_lines": 87,
+        "line_port_python_function_count": 59,
+        "line_port_python_lines": 153,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -721,23 +746,28 @@
           },
           {
             "cell_index": 4,
+            "line_count": 66,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 65,
             "preview": "n_units = 14"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 69,
+        "python_code_lines": 135,
         "python_notebook": "notebooks/DecodingExampleWithHist.ipynb",
-        "python_to_matlab_line_ratio": 1.2545454545454546,
+        "python_to_matlab_line_ratio": 2.4545454545454546,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/DecodingExampleWithHist/DecodingExampleWithHist_001.png"
         ],
-        "strict_line_status": "line_port_gap",
+        "strict_line_status": "line_port_partial",
         "topic": "DecodingExampleWithHist"
       },
       {
@@ -790,14 +820,14 @@
         "assertion_count": 3,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 1,
-        "line_port_coverage": 0.125,
-        "line_port_function_recall": 0.25,
-        "line_port_matched_lines": 1,
+        "line_port_common_function_count": 4,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 8,
         "line_port_matlab_function_count": 4,
         "line_port_matlab_lines": 8,
-        "line_port_python_function_count": 20,
-        "line_port_python_lines": 49,
+        "line_port_python_function_count": 27,
+        "line_port_python_lines": 68,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -830,18 +860,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 19,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 27,
             "preview": "e_times = np.array([0.079, 0.579, 0.997], dtype=float)"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 31,
+        "python_code_lines": 50,
         "python_notebook": "notebooks/EventsExamples.ipynb",
-        "python_to_matlab_line_ratio": 3.875,
+        "python_to_matlab_line_ratio": 6.25,
         "python_validation_image_count": 4,
         "python_validation_images": [
           "baseline/validation/notebook_images/EventsExamples/EventsExamples_001.png",
@@ -1517,14 +1552,14 @@
         "assertion_count": 2,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 9,
-        "line_port_coverage": 0.006944444444444444,
-        "line_port_function_recall": 0.1323529411764706,
-        "line_port_matched_lines": 2,
+        "line_port_common_function_count": 68,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 288,
         "line_port_matlab_function_count": 68,
         "line_port_matlab_lines": 288,
-        "line_port_python_function_count": 36,
-        "line_port_python_lines": 159,
+        "line_port_python_function_count": 99,
+        "line_port_python_lines": 458,
         "matlab_code_blocks": [
           {
             "end_line": 44,
@@ -1813,24 +1848,29 @@
           },
           {
             "cell_index": 4,
+            "line_count": 299,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 137,
             "preview": "n_t = 500"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 141,
+        "python_code_lines": 440,
         "python_notebook": "notebooks/HybridFilterExample.ipynb",
-        "python_to_matlab_line_ratio": 0.4895833333333333,
+        "python_to_matlab_line_ratio": 1.5277777777777777,
         "python_validation_image_count": 2,
         "python_validation_images": [
           "baseline/validation/notebook_images/HybridFilterExample/HybridFilterExample_001.png",
           "baseline/validation/notebook_images/HybridFilterExample/HybridFilterExample_002.png"
         ],
-        "strict_line_status": "line_port_gap",
+        "strict_line_status": "line_port_partial",
         "topic": "HybridFilterExample"
       },
       {
@@ -1838,14 +1878,14 @@
         "assertion_count": 2,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 4,
-        "line_port_coverage": 0.0,
-        "line_port_function_recall": 0.10810810810810811,
-        "line_port_matched_lines": 0,
+        "line_port_common_function_count": 37,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 88,
         "line_port_matlab_function_count": 37,
         "line_port_matlab_lines": 88,
-        "line_port_python_function_count": 37,
-        "line_port_python_lines": 128,
+        "line_port_python_function_count": 74,
+        "line_port_python_lines": 227,
         "matlab_code_blocks": [
           {
             "end_line": 34,
@@ -2037,18 +2077,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 99,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 106,
             "preview": "T = 8.0"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 110,
+        "python_code_lines": 209,
         "python_notebook": "notebooks/NetworkTutorial.ipynb",
-        "python_to_matlab_line_ratio": 1.25,
+        "python_to_matlab_line_ratio": 2.375,
         "python_validation_image_count": 5,
         "python_validation_images": [
           "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_001.png",
@@ -2057,7 +2102,7 @@
           "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_004.png",
           "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_005.png"
         ],
-        "strict_line_status": "line_port_gap",
+        "strict_line_status": "line_port_partial",
         "topic": "NetworkTutorial"
       },
       {
@@ -2065,14 +2110,14 @@
         "assertion_count": 3,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 2,
-        "line_port_coverage": 0.04878048780487805,
-        "line_port_function_recall": 0.1111111111111111,
-        "line_port_matched_lines": 2,
+        "line_port_common_function_count": 18,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 41,
         "line_port_matlab_function_count": 18,
         "line_port_matlab_lines": 41,
-        "line_port_python_function_count": 32,
-        "line_port_python_lines": 93,
+        "line_port_python_function_count": 50,
+        "line_port_python_lines": 145,
         "matlab_code_blocks": [
           {
             "end_line": 32,
@@ -2202,18 +2247,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 52,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 71,
             "preview": "Ts = 0.001"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 75,
+        "python_code_lines": 127,
         "python_notebook": "notebooks/PPSimExample.ipynb",
-        "python_to_matlab_line_ratio": 1.829268292682927,
+        "python_to_matlab_line_ratio": 3.097560975609756,
         "python_validation_image_count": 3,
         "python_validation_images": [
           "baseline/validation/notebook_images/PPSimExample/PPSimExample_001.png",
@@ -2228,14 +2278,14 @@
         "assertion_count": 3,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 6,
-        "line_port_coverage": 0.075,
-        "line_port_function_recall": 0.3,
-        "line_port_matched_lines": 3,
+        "line_port_common_function_count": 20,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 40,
         "line_port_matlab_function_count": 20,
         "line_port_matlab_lines": 40,
-        "line_port_python_function_count": 39,
-        "line_port_python_lines": 112,
+        "line_port_python_function_count": 56,
+        "line_port_python_lines": 163,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -2316,18 +2366,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 51,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 90,
             "preview": "delta = 0.001"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 94,
+        "python_code_lines": 145,
         "python_notebook": "notebooks/PPThinning.ipynb",
-        "python_to_matlab_line_ratio": 2.35,
+        "python_to_matlab_line_ratio": 3.625,
         "python_validation_image_count": 4,
         "python_validation_images": [
           "baseline/validation/notebook_images/PPThinning/PPThinning_001.png",
@@ -2343,14 +2398,14 @@
         "assertion_count": 3,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 3,
-        "line_port_coverage": 0.0,
-        "line_port_function_recall": 0.21428571428571427,
-        "line_port_matched_lines": 0,
+        "line_port_common_function_count": 14,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 28,
         "line_port_matlab_function_count": 14,
         "line_port_matlab_lines": 28,
-        "line_port_python_function_count": 33,
-        "line_port_python_lines": 63,
+        "line_port_python_function_count": 48,
+        "line_port_python_lines": 102,
         "matlab_code_blocks": [
           {
             "end_line": 25,
@@ -2387,18 +2442,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 39,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 41,
             "preview": "dt = 0.001"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 45,
+        "python_code_lines": 84,
         "python_notebook": "notebooks/PSTHEstimation.ipynb",
-        "python_to_matlab_line_ratio": 1.6071428571428572,
+        "python_to_matlab_line_ratio": 3.0,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/PSTHEstimation/PSTHEstimation_001.png"
@@ -2408,17 +2468,17 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 4,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 2,
-        "line_port_coverage": 0.0,
-        "line_port_function_recall": 0.08333333333333333,
-        "line_port_matched_lines": 0,
+        "line_port_common_function_count": 24,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 81,
         "line_port_matlab_function_count": 24,
         "line_port_matlab_lines": 81,
-        "line_port_python_function_count": 32,
-        "line_port_python_lines": 62,
+        "line_port_python_function_count": 62,
+        "line_port_python_lines": 188,
         "matlab_code_blocks": [
           {
             "end_line": 17,
@@ -2578,23 +2638,33 @@
           },
           {
             "cell_index": 4,
-            "line_count": 40,
-            "preview": "time = np.linspace(0.0, 4.0, 4001)"
+            "line_count": 92,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
           },
           {
             "cell_index": 5,
+            "line_count": 74,
+            "preview": "from nstat.compat.matlab import SignalObj"
+          },
+          {
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 44,
+        "python_code_lines": 170,
         "python_notebook": "notebooks/SignalObjExamples.ipynb",
-        "python_to_matlab_line_ratio": 0.5432098765432098,
-        "python_validation_image_count": 1,
+        "python_to_matlab_line_ratio": 2.0987654320987654,
+        "python_validation_image_count": 6,
         "python_validation_images": [
-          "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_001.png"
+          "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_001.png",
+          "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_002.png",
+          "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_003.png",
+          "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_004.png",
+          "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_005.png",
+          "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_006.png"
         ],
-        "strict_line_status": "line_port_gap",
+        "strict_line_status": "line_port_partial",
         "topic": "SignalObjExamples"
       },
       {
@@ -2602,14 +2672,14 @@
         "assertion_count": 2,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 7,
-        "line_port_coverage": 0.0,
-        "line_port_function_recall": 0.14893617021276595,
-        "line_port_matched_lines": 0,
+        "line_port_common_function_count": 47,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 92,
         "line_port_matlab_function_count": 47,
         "line_port_matlab_lines": 92,
-        "line_port_python_function_count": 37,
-        "line_port_python_lines": 81,
+        "line_port_python_function_count": 81,
+        "line_port_python_lines": 184,
         "matlab_code_blocks": [
           {
             "end_line": 14,
@@ -2734,23 +2804,28 @@
           },
           {
             "cell_index": 4,
+            "line_count": 103,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 59,
             "preview": "side = 14"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 63,
+        "python_code_lines": 166,
         "python_notebook": "notebooks/StimulusDecode2D.ipynb",
-        "python_to_matlab_line_ratio": 0.6847826086956522,
+        "python_to_matlab_line_ratio": 1.8043478260869565,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/StimulusDecode2D/StimulusDecode2D_001.png"
         ],
-        "strict_line_status": "line_port_gap",
+        "strict_line_status": "line_port_partial",
         "topic": "StimulusDecode2D"
       },
       {
@@ -2759,13 +2834,13 @@
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 2,
-        "line_port_coverage": 0.3333333333333333,
+        "line_port_coverage": 1.0,
         "line_port_function_recall": 1.0,
-        "line_port_matched_lines": 1,
+        "line_port_matched_lines": 3,
         "line_port_matlab_function_count": 2,
         "line_port_matlab_lines": 3,
-        "line_port_python_function_count": 21,
-        "line_port_python_lines": 46,
+        "line_port_python_function_count": 24,
+        "line_port_python_lines": 60,
         "matlab_code_blocks": [
           {
             "end_line": 5,
@@ -2786,18 +2861,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 14,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 24,
             "preview": "from nstat.compat.matlab import TrialConfig, ConfigColl"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 28,
+        "python_code_lines": 42,
         "python_notebook": "notebooks/TrialConfigExamples.ipynb",
-        "python_to_matlab_line_ratio": 9.333333333333334,
+        "python_to_matlab_line_ratio": 14.0,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/TrialConfigExamples/TrialConfigExamples_001.png"
@@ -2810,14 +2890,14 @@
         "assertion_count": 5,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 10,
-        "line_port_coverage": 0.16,
-        "line_port_function_recall": 0.9090909090909091,
-        "line_port_matched_lines": 4,
+        "line_port_common_function_count": 11,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 25,
         "line_port_matlab_function_count": 11,
         "line_port_matlab_lines": 25,
-        "line_port_python_function_count": 44,
-        "line_port_python_lines": 96,
+        "line_port_python_function_count": 47,
+        "line_port_python_lines": 132,
         "matlab_code_blocks": [
           {
             "end_line": 7,
@@ -2888,18 +2968,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 36,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 74,
             "preview": "from nstat.compat.matlab import Covariate, CovColl, Events, History, Trial, nspikeTrain, nstColl"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 78,
+        "python_code_lines": 114,
         "python_notebook": "notebooks/TrialExamples.ipynb",
-        "python_to_matlab_line_ratio": 3.12,
+        "python_to_matlab_line_ratio": 4.56,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/TrialExamples/TrialExamples_001.png"
@@ -5090,14 +5175,14 @@
         "assertion_count": 3,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 5,
-        "line_port_coverage": 0.3,
-        "line_port_function_recall": 0.8333333333333334,
-        "line_port_matched_lines": 3,
+        "line_port_common_function_count": 6,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 10,
         "line_port_matlab_function_count": 6,
         "line_port_matlab_lines": 10,
-        "line_port_python_function_count": 25,
-        "line_port_python_lines": 60,
+        "line_port_python_function_count": 30,
+        "line_port_python_lines": 81,
         "matlab_code_blocks": [
           {
             "end_line": 9,
@@ -5143,18 +5228,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 21,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 38,
             "preview": "from nstat.compat.matlab import nspikeTrain"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 42,
+        "python_code_lines": 63,
         "python_notebook": "notebooks/nSpikeTrainExamples.ipynb",
-        "python_to_matlab_line_ratio": 4.2,
+        "python_to_matlab_line_ratio": 6.3,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/nSpikeTrainExamples/nSpikeTrainExamples_001.png"
@@ -5167,14 +5257,14 @@
         "assertion_count": 5,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
-        "line_port_common_function_count": 7,
-        "line_port_coverage": 0.3125,
-        "line_port_function_recall": 0.6363636363636364,
-        "line_port_matched_lines": 5,
+        "line_port_common_function_count": 11,
+        "line_port_coverage": 1.0,
+        "line_port_function_recall": 1.0,
+        "line_port_matched_lines": 16,
         "line_port_matlab_function_count": 11,
         "line_port_matlab_lines": 16,
-        "line_port_python_function_count": 34,
-        "line_port_python_lines": 74,
+        "line_port_python_function_count": 40,
+        "line_port_python_lines": 101,
         "matlab_code_blocks": [
           {
             "end_line": 10,
@@ -5224,18 +5314,23 @@
           },
           {
             "cell_index": 4,
+            "line_count": 27,
+            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+          },
+          {
+            "cell_index": 5,
             "line_count": 52,
             "preview": "from nstat.compat.matlab import History, nspikeTrain, nstColl"
           },
           {
-            "cell_index": 5,
+            "cell_index": 6,
             "line_count": 4,
             "preview": "assert TOPIC != \"\", \"Missing topic metadata\""
           }
         ],
-        "python_code_lines": 56,
+        "python_code_lines": 83,
         "python_notebook": "notebooks/nstCollExamples.ipynb",
-        "python_to_matlab_line_ratio": 3.5,
+        "python_to_matlab_line_ratio": 5.1875,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/nstCollExamples/nstCollExamples_001.png"

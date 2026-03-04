@@ -1,0 +1,41 @@
+close all;
+Ts=.001;            %Sample Time
+tMin=0; tMax=50;    %Simulation duration
+t=tMin:Ts:tMax;
+mu=-3;              %Baseline firing rate of the neurons being modeled
+H=tf([-1 -2 -4],[1],Ts,'Variable','z^-1');
+S=tf([1],1,Ts,'Variable','z^-1');
+E=tf([0],1,Ts,'Variable','z^-1');
+f=1;                    %Stimulus frequency
+u = sin(2*pi*f*t)';       %Make this neuron modulated by a sine wave
+e = zeros(length(t),1);   %No Ensemble input
+stim=Covariate(t',u,'Stimulus','time','s','Voltage',{'sin'});
+ens =Covariate(t',e,'Ensemble','time','s','Spikes',{'n1'});
+numRealizations = 5;    %Number of sample paths to generate
+fitType = 'binomial';
+sC=CIF.simulateCIF(mu,H,S,E,stim,ens,numRealizations,fitType);
+figure;
+subplot(2,1,1); sC.plot;    v=axis; axis([0 tMax/10 v(3) v(4)]);
+subplot(2,1,2); stim.plot;  v=axis; axis([0 tMax/10 v(3) v(4)]);
+baseline=Covariate(t',ones(length(t),1),'Baseline','time','s','',{'mu'});
+spikeColl = sC;               %Use the generated data as our collection of spikes
+cc=CovColl({stim,baseline});  %Use stimulation and baseline as possible covariates
+trial = Trial(spikeColl,cc); sampleRate = 1/Ts; %Create trial
+clear c;
+selfHist = [0:0.001:0.003]; %We know the history effect goes back 3 lag orders
+c{1} = TrialConfig({{'Baseline','mu'}},sampleRate,[],[]);
+c{1}.setName('Baseline');
+c{2} = TrialConfig({{'Baseline','mu'},{'Stimulus','sin'}},sampleRate,[],[]);
+c{2}.setName('Stim');
+c{3} = TrialConfig({{'Baseline','mu'},{'Stimulus','sin'}},sampleRate,selfHist,[]);
+c{3}.setName('Stim+Hist');
+cfgColl= ConfigColl(c);
+if(strcmp(fitType,'binomial'))
+Algorithm = 'BNLRCG';   % BNLRCG - faster Truncated, L-2 Regularized,
+else
+Algorithm = 'GLM';      % Standard Matlab GLM (Can be used for binomial or
+end
+results = Analysis.RunAnalysisForAllNeurons(trial,cfgColl,0,Algorithm);
+results{1}.plotResults;
+Summary = FitResSummary(results);
+Summary.plotSummary;

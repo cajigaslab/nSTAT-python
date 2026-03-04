@@ -797,6 +797,100 @@ CHECKPOINT_LIMITS = {
 """
 
 
+SIGNALOBJ_EXAMPLES_TEMPLATE = """# SignalObjExamples: MATLAB-style SignalObj workflow with compact Python parity.
+from nstat.compat.matlab import SignalObj
+
+plt.close("all")
+sample_rate = 100.0; t = np.arange(0.0, 10.0 + 1.0 / sample_rate, 1.0 / sample_rate); freq = 2.0
+v1 = np.sin(2.0 * np.pi * freq * t); v2 = np.sin(v1**2); v = np.column_stack([v1, v2])
+
+def mk_sig(data: np.ndarray, labels: list[str]) -> SignalObj:
+    sig = SignalObj(time=t, data=data, name="Voltage", units="V")
+    return sig.setXlabel("time").setXUnits("s").setYLabel("Voltage").setYUnits("V").setDataLabels(labels)
+
+# Example 1: base signal definitions + masking behavior
+s = mk_sig(v, ["v1", "v2"]); s1 = mk_sig(v1, ["v1"])
+fig1, ax1 = plt.subplots(2, 2, figsize=(10, 6), sharex=False)
+plt.sca(ax1[0, 0]); s.plot(); ax1[0, 0].set_title("s.plot")
+plt.sca(ax1[1, 0]); s1.plot(); ax1[1, 0].set_title("s1.plot")
+s.setMask(["v1"]); plt.sca(ax1[0, 1]); s.plot(); ax1[0, 1].set_title("mask v1")
+s.setMask(["v2"]); plt.sca(ax1[1, 1]); s.plot(); ax1[1, 1].set_title("mask v2")
+masked_channel_count = float(len(s.findIndFromDataMask())); s.resetMask(); plt.tight_layout(); plt.show()
+
+# Repeated labels and sub-signal extraction
+s_repeat = mk_sig(np.column_stack([v1, v1, v2]), ["v1", "v1", "v2"]); s_repeat_v1 = s_repeat.getSubSignal([0, 1])
+fig2 = plt.figure(figsize=(8, 3.5)); plt.sca(fig2.add_subplot(1, 1, 1)); s_repeat_v1.plot()
+plt.title("getSubSignal for repeated v1 labels"); plt.tight_layout(); plt.show()
+
+# Example 2: property edits and plot variants
+s = mk_sig(v, ["v1", "v2"])
+s.setXlabel("distance").setXUnits("cm").setDataLabels(["r1", "r2"]).setYLabel("Temperature").setYUnits("C")
+s.setMaxTime(14.0).setMinTime(-2.0).setName("testName")
+name_set_ok = s.name == "testName"
+fig3, ax3 = plt.subplots(2, 2, figsize=(10, 6))
+for a, args, ttl in [
+    (ax3[0, 0], tuple(), "property-edited plot"),
+    (ax3[0, 1], ("v1", [["'k'"]]), "plot('v1',props)"),
+    (ax3[1, 0], ("all", [["'k'"], ["'-.g'"]]), "plot('all',props)"),
+    (ax3[1, 1], (["v1", "v2"], [["'k'"], ["'-.g'"]]), "plot({'v1','v2'},props)"),
+]:
+    plt.sca(a); s.plot(*args); a.set_title(ttl)
+plt.tight_layout(); plt.show()
+
+# Example 3/4: resample, window, and arithmetic operations
+s = mk_sig(v, ["v1", "v2"]); s_resampled = s.resample(0.1 * sample_rate); s_window = s.getSigInTimeWindow(-2.0, 3.0)
+mean_per_channel = np.mean(s.dataToMatrix(), axis=0); s_zero_mean = s.minus(mean_per_channel); s4 = s.mtimes(2.0).plus(s_zero_mean)
+s_integral = SignalObj(time=t, data=s.integral(), name="integral", units="V*s"); s_derivative = s.derivative(); s6 = s_integral.derivative().minus(s)
+fig4, ax4 = plt.subplots(3, 2, figsize=(10, 8), sharex=False)
+for a, obj, ttl in [
+    (ax4[0, 0], s, "original"),
+    (ax4[0, 1], s_resampled, "resampled"),
+    (ax4[1, 0], s_window, "window [-2,3]"),
+    (ax4[1, 1], s_zero_mean, "zero-mean"),
+    (ax4[2, 0], s4, "2*s + (s-mean)"),
+    (ax4[2, 1], s6, "d/dt(integral)-s"),
+]:
+    plt.sca(a); obj.plot(); a.set_title(ttl)
+plt.tight_layout(); plt.show()
+
+# Example 5: spectra
+f_mtm, p_mtm = s.MTMspectrum(); f_per, p_per = s.periodogram()
+fig5, ax5 = plt.subplots(1, 2, figsize=(9, 3.5)); ax5[0].plot(f_mtm, p_mtm); ax5[0].set_title("MTM")
+ax5[1].plot(f_per, p_per); ax5[1].set_title("Periodogram"); plt.tight_layout(); plt.show()
+
+# Example 6: variability views
+sample_rate_var = 5000.0; t_var = np.arange(0.0, 1.0 + 1.0 / sample_rate_var, 1.0 / sample_rate_var)
+v1_var = np.sin(2.0 * np.pi * freq * t_var); v2_var = np.sin(v1_var**2)
+noise = 0.1 * rng.standard_normal((t_var.size, 6)); data_var = np.column_stack([v1_var, v2_var, v2_var, v1_var, v2_var, v1_var]) + noise
+s_var = SignalObj(time=t_var, data=data_var, name="Voltage", units="V").setDataLabels(["v1", "v2", "v2", "v1", "v1", "v2"])
+fig6, ax6 = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+plt.sca(ax6[0]); s_var.plot(); ax6[0].set_title("noisy realizations")
+plt.sca(ax6[1]); s_var.plotAllVariability(); ax6[1].set_title("plotAllVariability")
+plt.tight_layout(); plt.show()
+
+assert masked_channel_count == 1.0
+assert bool(name_set_ok)
+assert int(s_var.getNumSignals()) == 6
+
+CHECKPOINT_METRICS = {
+    "masked_cols": float(masked_channel_count),
+    "name_set_ok": float(1.0 if name_set_ok else 0.0),
+    "resampled_samples": float(s_resampled.getNumSamples()),
+    "periodogram_bins": float(f_per.size),
+    "variability_channels": float(s_var.getNumSignals()),
+    "window_rows": float(s_window.dataToMatrix().shape[0]),
+}
+CHECKPOINT_LIMITS = {
+    "masked_cols": (1.0, 1.0),
+    "name_set_ok": (1.0, 1.0),
+    "resampled_samples": (90.0, 110.0),
+    "periodogram_bins": (40.0, 2000.0),
+    "variability_channels": (6.0, 6.0),
+    "window_rows": (50.0, 400.0),
+}
+"""
+
+
 COVARIATE_EXAMPLES_TEMPLATE = """# CovariateExamples: build and inspect multiple covariate signals.
 t = np.arange(0.0, 5.0 + 0.01, 0.01)
 x = np.exp(-t)
@@ -2731,6 +2825,7 @@ TOPIC_TEMPLATE_OVERRIDES = {
     "PPSimExample": PPSIM_EXAMPLE_TEMPLATE,
     "publish_all_helpfiles": PUBLISH_ALL_HELPFILES_TEMPLATE,
     "NetworkTutorial": NETWORK_TUTORIAL_TEMPLATE,
+    "SignalObjExamples": SIGNALOBJ_EXAMPLES_TEMPLATE,
     "TrialConfigExamples": TRIALCONFIG_EXAMPLES_TEMPLATE,
     "TrialExamples": TRIALEXAMPLES_TEMPLATE,
     "HybridFilterExample": HYBRID_FILTER_TEMPLATE,
