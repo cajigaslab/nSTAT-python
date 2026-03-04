@@ -1,0 +1,47 @@
+from __future__ import annotations
+
+import json
+import subprocess
+from pathlib import Path
+
+
+def _load(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_performance_fixture_coverage() -> None:
+    matlab = _load(Path("tests/performance/fixtures/matlab/performance_baseline_470fde8.json"))
+    python = _load(Path("tests/performance/fixtures/python/performance_baseline_20260303.json"))
+
+    matlab_pairs = {(row["case"], row["tier"]) for row in matlab["cases"]}
+    python_pairs = {(row["case"], row["tier"]) for row in python["cases"]}
+    assert matlab_pairs == python_pairs
+    assert len(matlab_pairs) == 15
+
+
+def test_performance_comparator_runs(tmp_path: Path) -> None:
+    out_json = tmp_path / "perf_report.json"
+    out_csv = tmp_path / "perf_report.csv"
+    cmd = [
+        "python",
+        "tools/performance/compare_matlab_python_performance.py",
+        "--python-report",
+        "tests/performance/fixtures/python/performance_baseline_20260303.json",
+        "--matlab-report",
+        "tests/performance/fixtures/matlab/performance_baseline_470fde8.json",
+        "--policy",
+        "parity/performance_gate_policy.yml",
+        "--previous-python-report",
+        "tests/performance/fixtures/python/performance_baseline_20260303.json",
+        "--report-out",
+        str(out_json),
+        "--csv-out",
+        str(out_csv),
+        "--fail-on-regression",
+    ]
+    subprocess.run(cmd, check=True)
+
+    report = _load(out_json)
+    assert report["counts"]["total_case_tiers"] == 15
+    assert report["counts"]["regression_failures"] == 0
+    assert len(report["top_python_vs_matlab_gaps"]) <= 5

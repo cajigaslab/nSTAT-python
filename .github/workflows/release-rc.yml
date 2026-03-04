@@ -21,6 +21,12 @@ env:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -43,9 +49,12 @@ jobs:
           python tools/notebooks/generate_notebooks.py
           git diff --exit-code
 
-      - name: Checkout upstream MATLAB nSTAT repo snapshot
+      - name: Checkout pinned MATLAB nSTAT reference
         run: |
-          GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
+          python tools/parity/checkout_matlab_reference.py \
+            --config parity/matlab_reference.yml \
+            --dest /tmp/upstream-nstat \
+            --metadata-out parity/matlab_reference_checkout.json
 
       - name: Prepare deterministic validation images
         run: |

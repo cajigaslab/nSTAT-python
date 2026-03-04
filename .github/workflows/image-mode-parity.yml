@@ -1,11 +1,10 @@
 name: image-mode-parity
 
 on:
+  pull_request:
   schedule:
     - cron: "0 5 * * *"
   workflow_dispatch:
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
 
 jobs:
   image-mode-parity:
@@ -23,66 +22,28 @@ jobs:
         with:
           lfs: false
 
-      - name: Evaluate changed paths for PRs
-        id: filter
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            image_related:
-              - 'notebooks/**'
-              - 'tools/notebooks/**'
-              - 'tools/reports/**'
-              - 'examples/**'
-              - 'src/nstat/**'
-              - 'parity/**'
-              - '.github/workflows/**'
-
-      - name: Decide whether to run image-mode parity
-        id: decide
-        run: |
-          run_mode="false"
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            run_mode="true"
-          fi
-          labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
-          if [[ "${labels}" == *"parity-image"* ]]; then
-            run_mode="true"
-          fi
-          if [ "${{ steps.filter.outputs.image_related }}" = "true" ]; then
-            run_mode="true"
-          fi
-          echo "run=${run_mode}" >> "$GITHUB_OUTPUT"
-          echo "run_mode=${run_mode}"
-
-      - name: Skip image-mode parity for unrelated PR changes
-        if: ${{ steps.decide.outputs.run != 'true' }}
-        run: echo "Skipping image-mode parity (not labeled and no relevant file changes)."
-
       - uses: actions/setup-python@v5
-        if: ${{ steps.decide.outputs.run == 'true' }}
         with:
           python-version: "3.11"
 
       - name: Install dependencies
-        if: ${{ steps.decide.outputs.run == 'true' }}
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev,notebooks]
           python -m pip install reportlab pillow
 
-      - name: Checkout upstream MATLAB nSTAT repo snapshot
-        if: ${{ steps.decide.outputs.run == 'true' }}
+      - name: Checkout pinned MATLAB nSTAT reference
         run: |
-          GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/cajigaslab/nSTAT.git /tmp/upstream-nstat
+          python tools/parity/checkout_matlab_reference.py \
+            --config parity/matlab_reference.yml \
+            --dest /tmp/upstream-nstat \
+            --metadata-out parity/matlab_reference_checkout.json
 
       - name: Prepare deterministic validation images
-        if: ${{ steps.decide.outputs.run == 'true' }}
         run: |
           python tools/parity/prepare_validation_images.py
 
       - name: Generate Python validation PDF (image mode)
-        if: ${{ steps.decide.outputs.run == 'true' }}
         run: |
           python tools/reports/generate_validation_pdf.py \
             --repo-root "$GITHUB_WORKSPACE" \
@@ -91,17 +52,15 @@ jobs:
             --timeout 900 \
             --skip-command-tests \
             --parity-mode image \
-            --skip-parity-check || true
+            --skip-parity-check
 
       - name: Resolve latest validation JSON
-        if: ${{ steps.decide.outputs.run == 'true' }}
         id: latest
         run: |
-          latest_json="$(ls -1t output/pdf/*.json | head -n 1)"
+          latest_json="$(ls -1t output/pdf/nstat_python_validation_report_*.json | head -n 1)"
           echo "json=${latest_json}" >> "$GITHUB_OUTPUT"
 
       - name: Build paired MATLAB/Python image PDFs
-        if: ${{ steps.decide.outputs.run == 'true' }}
         run: |
           python tools/reports/build_image_parity_pdfs.py \
             --report-json "${{ steps.latest.outputs.json }}" \
@@ -110,7 +69,6 @@ jobs:
             --pairs-json output/pdf/image_mode_parity/pairs.json
 
       - name: Run page-by-page SSIM parity gate
-        if: ${{ steps.decide.outputs.run == 'true' }}
         run: |
           python tools/reports/check_pdf_image_parity.py \
             --python-pdf output/pdf/image_mode_parity/python_pages.pdf \
@@ -121,7 +79,7 @@ jobs:
             --max-failing-pages 0
 
       - name: Upload image-mode parity artifacts
-        if: ${{ steps.decide.outputs.run == 'true' && always() }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: image-mode-parity-artifacts

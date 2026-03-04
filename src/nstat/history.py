@@ -46,12 +46,23 @@ class HistoryBasis:
 
         spike_times_s = np.asarray(spike_times_s, dtype=float)
         time_grid_s = np.asarray(time_grid_s, dtype=float)
+        if spike_times_s.ndim != 1:
+            spike_times_s = spike_times_s.reshape(-1)
+        if time_grid_s.ndim != 1:
+            time_grid_s = time_grid_s.reshape(-1)
+        spike_times_s = np.sort(spike_times_s)
 
         mat = np.zeros((time_grid_s.size, self.n_bins), dtype=float)
-        for i, t_now in enumerate(time_grid_s):
-            lags = t_now - spike_times_s
-            for j in range(self.n_bins):
-                lo = self.bin_edges_s[j]
-                hi = self.bin_edges_s[j + 1]
-                mat[i, j] = float(np.sum((lags > lo) & (lags <= hi)))
+        if spike_times_s.size == 0 or time_grid_s.size == 0:
+            return mat
+
+        # Equivalent to counting lags in (lo, hi], i.e., spikes in [t-hi, t-lo).
+        for j in range(self.n_bins):
+            lo = float(self.bin_edges_s[j])
+            hi = float(self.bin_edges_s[j + 1])
+            lower = time_grid_s - hi
+            upper = time_grid_s - lo
+            lo_idx = np.searchsorted(spike_times_s, lower, side="left")
+            hi_idx = np.searchsorted(spike_times_s, upper, side="left")
+            mat[:, j] = (hi_idx - lo_idx).astype(float)
         return mat
