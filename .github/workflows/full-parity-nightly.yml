@@ -32,6 +32,23 @@ jobs:
           python -m pip install -e .[dev,docs,notebooks]
           python -m pip install reportlab pillow
 
+      - name: Resolve nSTAT data cache directory
+        id: nstat-data-dir
+        run: |
+          echo "dir=$(python tools/data/print_data_dir.py)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache nSTAT example data
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.nstat-data-dir.outputs.dir }}
+          key: nstat-example-data-${{ runner.os }}-doi-10.6084-m9.figshare.4834640-v1
+          restore-keys: |
+            nstat-example-data-${{ runner.os }}-doi-10.6084-m9.figshare.4834640-
+
+      - name: Download nSTAT example data
+        run: |
+          python tools/data/download_example_data.py
+
       - name: Checkout pinned MATLAB nSTAT reference
         run: |
           python tools/parity/checkout_matlab_reference.py \
@@ -42,6 +59,10 @@ jobs:
       - name: Prepare deterministic validation images
         run: |
           python tools/parity/prepare_validation_images.py
+
+      - name: Validate notebook cleanliness
+        run: |
+          python tools/notebooks/clean_notebooks.py --check
 
       - name: Run full parity and notebook gates
         run: |
@@ -59,7 +80,10 @@ jobs:
           python tools/parity/check_example_output_spec.py \
             --report parity/function_example_alignment_report.json \
             --spec parity/example_output_spec.yml
-          python tools/notebooks/run_notebooks.py --group all --timeout 900
+          python tools/notebooks/execute_notebooks.py \
+            --group all \
+            --timeout 900 \
+            --out-report output/notebooks/notebook_execution_report.json
 
       - name: Generate class equivalence inventory/report artifacts
         run: |
@@ -130,4 +154,14 @@ jobs:
         with:
           name: nightly-validation-images
           path: tmp/pdfs/validation_report/notebook_images
+          if-no-files-found: warn
+
+      - name: Upload notebook execution artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-notebook-execution
+          path: |
+            output/notebooks/notebook_execution_report.json
+            output/notebooks/executed/**
           if-no-files-found: warn

@@ -32,6 +32,23 @@ jobs:
           python -m pip install -e .[dev,notebooks]
           python -m pip install reportlab pillow
 
+      - name: Resolve nSTAT data cache directory
+        id: nstat-data-dir
+        run: |
+          echo "dir=$(python tools/data/print_data_dir.py)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache nSTAT example data
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.nstat-data-dir.outputs.dir }}
+          key: nstat-example-data-${{ runner.os }}-doi-10.6084-m9.figshare.4834640-v1
+          restore-keys: |
+            nstat-example-data-${{ runner.os }}-doi-10.6084-m9.figshare.4834640-
+
+      - name: Download nSTAT example data
+        run: |
+          python tools/data/download_example_data.py
+
       - name: Checkout pinned MATLAB nSTAT reference
         run: |
           python tools/parity/checkout_matlab_reference.py \
@@ -42,6 +59,10 @@ jobs:
       - name: Prepare deterministic validation images
         run: |
           python tools/parity/prepare_validation_images.py
+
+      - name: Validate notebook cleanliness
+        run: |
+          python tools/notebooks/clean_notebooks.py --check
 
       - name: Generate Python validation PDF (image mode)
         run: |
@@ -73,6 +94,7 @@ jobs:
           python tools/reports/check_pdf_image_parity.py \
             --python-pdf output/pdf/image_mode_parity/python_pages.pdf \
             --matlab-pdf output/pdf/image_mode_parity/matlab_pages.pdf \
+            --pairs-json output/pdf/image_mode_parity/pairs.json \
             --out-dir output/pdf/image_mode_parity \
             --dpi 150 \
             --ssim-threshold 0.70 \

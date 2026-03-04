@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import re
+import sys
 from pathlib import Path
 
 import nbformat as nbf
-import yaml
 
 
 PAPER_DOI = "10.1016/j.jneumeth.2012.08.009"
@@ -98,10 +99,31 @@ def markdown_header(topic: str, run_group: str, family: str) -> str:
     )
 
 
+def code_header_cell(topic: str, run_group: str, family: str) -> str:
+    return (
+        f"# Topic: {topic}\n"
+        f"# Execution group: {run_group}\n"
+        f"# Workflow family: {family}\n"
+        f"# Paper DOI: {PAPER_DOI}\n"
+        f"# PMID: {PAPER_PMID}\n"
+        f"# Help page: docs/help/examples/{topic}.md\n"
+    )
+
+
 def code_cell_setup(topic: str, family: str) -> str:
-    return f"""import numpy as np
+    return f"""import matplotlib
+matplotlib.use("Agg")
+try:
+    from matplotlib_inline.backend_inline import set_matplotlib_formats
+    matplotlib.use("module://matplotlib_inline.backend_inline")
+    set_matplotlib_formats("png")
+except Exception:
+    pass
+
+import numpy as np
 import matplotlib.pyplot as plt
 
+from nstat.data_manager import ensure_example_data
 from nstat.analysis import Analysis
 from nstat.cif import CIFModel
 from nstat.decoding import DecodingAlgorithms
@@ -113,8 +135,18 @@ from nstat.trial import CovariateCollection, Trial, TrialConfig
 
 TOPIC = \"{topic}\"
 FAMILY = \"{family}\"
+np.random.seed(2026)
 rng = np.random.default_rng(2026)
+DATA_DIR = ensure_example_data(download=True)
 print(f\"Running notebook topic: {{TOPIC}} (family={{FAMILY}})\")
+print(f\"Example data directory: {{DATA_DIR}}\")
+
+if \"MATLAB_LINE_TRACE\" not in globals():
+    MATLAB_LINE_TRACE = []
+
+def matlab_line(line: str):
+    MATLAB_LINE_TRACE.append(line)
+    return line
 
 def validate_numeric_checkpoints(metrics: dict[str, float], limits: dict[str, tuple[float, float]], topic: str) -> None:
     if not metrics:
@@ -2424,17 +2456,13 @@ def build_notebook(topic: str, run_group: str, output_path: Path, repo_root: Pat
     )
 
     notebook.cells = [
-        nbf.v4.new_markdown_cell(markdown_header(topic, run_group, family)),
-        nbf.v4.new_markdown_cell(
-            f"Notebook source link: [{topic}.ipynb]({REPO_NOTEBOOK_BASE}/{topic}.ipynb)"
-        ),
+        nbf.v4.new_code_cell(code_header_cell(topic, run_group, family)),
         nbf.v4.new_code_cell(code_cell_setup(topic, family)),
     ]
     if snapshot_cell:
         notebook.cells.append(nbf.v4.new_code_cell(snapshot_cell))
     notebook.cells.append(nbf.v4.new_code_cell(template_for_topic(topic, family)))
     notebook.cells.append(nbf.v4.new_code_cell(ASSERTION_CELL))
-    notebook.cells.append(nbf.v4.new_markdown_cell(TAIL_MARKDOWN))
 
     for i, cell in enumerate(notebook.cells):
         cell["id"] = _cell_id(topic, i)
@@ -2445,17 +2473,22 @@ def build_notebook(topic: str, run_group: str, output_path: Path, repo_root: Pat
 
 def main() -> int:
     args = parse_args()
-    manifest = yaml.safe_load(args.manifest.read_text(encoding="utf-8"))
-
-    for row in manifest.get("notebooks", []):
-        topic = row["topic"]
-        run_group = row["run_group"]
-        rel_file = Path(row["file"])
-        out_path = args.repo_root / rel_file
-        build_notebook(topic=topic, run_group=run_group, output_path=out_path, repo_root=args.repo_root)
-        print(f"Generated {out_path}")
-
-    return 0
+    helper = args.repo_root / "tools" / "notebooks" / "generate_helpfile_notebooks.py"
+    cmd = [
+        sys.executable,
+        str(helper),
+        "--manifest",
+        str(args.manifest),
+        "--helpfile-map",
+        str(args.repo_root / "parity" / "notebook_to_helpfile_map.yml"),
+        "--repo-root",
+        str(args.repo_root),
+        "--out-helpfile-manifest",
+        str(args.repo_root / "parity" / "helpfile_notebook_manifest.yml"),
+        "--rewrite-notebook-manifest",
+    ]
+    proc = subprocess.run(cmd, cwd=args.repo_root)
+    return int(proc.returncode)
 
 
 if __name__ == "__main__":

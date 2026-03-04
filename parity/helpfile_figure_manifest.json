@@ -1,0 +1,1804 @@
+{
+  "schema_version": 1,
+  "topics": {
+    "AnalysisExamples": {
+      "matlab_helpfile_path": "AnalysisExamples.m",
+      "matlab_reference_image_count": 5,
+      "detected_new_figure_events": 4,
+      "total_figures_expected": 5,
+      "events": [
+        {
+          "section_index": 3,
+          "matlab_line_number": 30,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "AnalysisExamples.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 38,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "AnalysisExamples_01.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 47,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "AnalysisExamples_02.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 103,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "figure",
+          "reference_image_path": "AnalysisExamples_03.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 75,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for AnalysisExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "AnalysisExamples_04.png"
+        }
+      ]
+    },
+    "ConfigCollExamples": {
+      "matlab_helpfile_path": "ConfigCollExamples.m",
+      "matlab_reference_image_count": 0,
+      "detected_new_figure_events": 0,
+      "total_figures_expected": 0,
+      "events": []
+    },
+    "CovCollExamples": {
+      "matlab_helpfile_path": "CovCollExamples.m",
+      "matlab_reference_image_count": 3,
+      "detected_new_figure_events": 2,
+      "total_figures_expected": 3,
+      "events": [
+        {
+          "section_index": 1,
+          "matlab_line_number": 5,
+          "matlab_snippet": "figure; cc.plot; %plots all covariates and their components",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "CovCollExamples.png"
+        },
+        {
+          "section_index": 1,
+          "matlab_line_number": 14,
+          "matlab_snippet": "figure; cc.plot; %plot only x and f_y;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "CovCollExamples_01.png"
+        },
+        {
+          "section_index": 1,
+          "matlab_line_number": 1,
+          "matlab_snippet": "<synthetic MATLAB figure event #3 for CovCollExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "synthetic",
+          "reference_image_path": "CovCollExamples_02.png"
+        }
+      ]
+    },
+    "CovariateExamples": {
+      "matlab_helpfile_path": "CovariateExamples.m",
+      "matlab_reference_image_count": 3,
+      "detected_new_figure_events": 2,
+      "total_figures_expected": 3,
+      "events": [
+        {
+          "section_index": 4,
+          "matlab_line_number": 31,
+          "matlab_snippet": "position.getSigRep.plot('all',plotProps); %same as position.plot",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "plot",
+          "reference_image_path": "CovariateExamples.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 33,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "CovariateExamples_01.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 29,
+          "matlab_snippet": "<synthetic MATLAB figure event #3 for CovariateExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "synthetic",
+          "reference_image_path": "CovariateExamples_02.png"
+        }
+      ]
+    },
+    "DecodingExample": {
+      "matlab_helpfile_path": "DecodingExample.m",
+      "matlab_reference_image_count": 7,
+      "detected_new_figure_events": 4,
+      "total_figures_expected": 7,
+      "events": [
+        {
+          "section_index": 2,
+          "matlab_line_number": 21,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "DecodingExample.png"
+        },
+        {
+          "section_index": 3,
+          "matlab_line_number": 30,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "DecodingExample_01.png"
+        },
+        {
+          "section_index": 3,
+          "matlab_line_number": 45,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "DecodingExample_02.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 80,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "figure",
+          "reference_image_path": "DecodingExample_03.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 52,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for DecodingExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "DecodingExample_04.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 52,
+          "matlab_snippet": "<synthetic MATLAB figure event #6 for DecodingExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "synthetic",
+          "reference_image_path": "DecodingExample_05.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 52,
+          "matlab_snippet": "<synthetic MATLAB figure event #7 for DecodingExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 7,
+          "trigger": "synthetic",
+          "reference_image_path": "DecodingExample_06.png"
+        }
+      ]
+    },
+    "DecodingExampleWithHist": {
+      "matlab_helpfile_path": "DecodingExampleWithHist.m",
+      "matlab_reference_image_count": 3,
+      "detected_new_figure_events": 2,
+      "total_figures_expected": 3,
+      "events": [
+        {
+          "section_index": 1,
+          "matlab_line_number": 34,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "DecodingExampleWithHist.png"
+        },
+        {
+          "section_index": 1,
+          "matlab_line_number": 63,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "DecodingExampleWithHist_01.png"
+        },
+        {
+          "section_index": 2,
+          "matlab_line_number": 90,
+          "matlab_snippet": "<synthetic MATLAB figure event #3 for DecodingExampleWithHist>",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "synthetic",
+          "reference_image_path": "DecodingExampleWithHist_02.png"
+        }
+      ]
+    },
+    "EventsExamples": {
+      "matlab_helpfile_path": "EventsExamples.m",
+      "matlab_reference_image_count": 5,
+      "detected_new_figure_events": 2,
+      "total_figures_expected": 5,
+      "events": [
+        {
+          "section_index": 2,
+          "matlab_line_number": 13,
+          "matlab_snippet": "figure; e.plot([],'r'); %dont specify handle, use red; handel = gca;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "EventsExamples.png"
+        },
+        {
+          "section_index": 2,
+          "matlab_line_number": 14,
+          "matlab_snippet": "figure; e.plot([],'g'); %dont specify handle, use green;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "EventsExamples_01.png"
+        },
+        {
+          "section_index": 2,
+          "matlab_line_number": 11,
+          "matlab_snippet": "<synthetic MATLAB figure event #3 for EventsExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "synthetic",
+          "reference_image_path": "EventsExamples_02.png"
+        },
+        {
+          "section_index": 2,
+          "matlab_line_number": 11,
+          "matlab_snippet": "<synthetic MATLAB figure event #4 for EventsExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "synthetic",
+          "reference_image_path": "EventsExamples_03.png"
+        },
+        {
+          "section_index": 2,
+          "matlab_line_number": 11,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for EventsExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "EventsExamples_04.png"
+        }
+      ]
+    },
+    "ExplicitStimulusWhiskerData": {
+      "matlab_helpfile_path": "ExplicitStimulusWhiskerData.m",
+      "matlab_reference_image_count": 10,
+      "detected_new_figure_events": 4,
+      "total_figures_expected": 10,
+      "events": [
+        {
+          "section_index": 2,
+          "matlab_line_number": 30,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "ExplicitStimulusWhiskerData.png"
+        },
+        {
+          "section_index": 3,
+          "matlab_line_number": 49,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "ExplicitStimulusWhiskerData_01.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 113,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "ExplicitStimulusWhiskerData_02.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 134,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "figure",
+          "reference_image_path": "ExplicitStimulusWhiskerData_03.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 143,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for ExplicitStimulusWhiskerData>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "ExplicitStimulusWhiskerData_04.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 143,
+          "matlab_snippet": "<synthetic MATLAB figure event #6 for ExplicitStimulusWhiskerData>",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "synthetic",
+          "reference_image_path": "ExplicitStimulusWhiskerData_05.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 143,
+          "matlab_snippet": "<synthetic MATLAB figure event #7 for ExplicitStimulusWhiskerData>",
+          "event_type": "new_figure",
+          "figure_ordinal": 7,
+          "trigger": "synthetic",
+          "reference_image_path": "ExplicitStimulusWhiskerData_06.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 143,
+          "matlab_snippet": "<synthetic MATLAB figure event #8 for ExplicitStimulusWhiskerData>",
+          "event_type": "new_figure",
+          "figure_ordinal": 8,
+          "trigger": "synthetic",
+          "reference_image_path": "ExplicitStimulusWhiskerData_07.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 143,
+          "matlab_snippet": "<synthetic MATLAB figure event #9 for ExplicitStimulusWhiskerData>",
+          "event_type": "new_figure",
+          "figure_ordinal": 9,
+          "trigger": "synthetic",
+          "reference_image_path": "ExplicitStimulusWhiskerData_08.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 143,
+          "matlab_snippet": "<synthetic MATLAB figure event #10 for ExplicitStimulusWhiskerData>",
+          "event_type": "new_figure",
+          "figure_ordinal": 10,
+          "trigger": "synthetic",
+          "reference_image_path": "ExplicitStimulusWhiskerData_09.png"
+        }
+      ]
+    },
+    "FitResSummaryExamples": {
+      "matlab_helpfile_path": "FitResSummaryExamples.m",
+      "matlab_reference_image_count": 0,
+      "detected_new_figure_events": 0,
+      "total_figures_expected": 0,
+      "events": []
+    },
+    "FitResultExamples": {
+      "matlab_helpfile_path": "FitResultExamples.m",
+      "matlab_reference_image_count": 0,
+      "detected_new_figure_events": 0,
+      "total_figures_expected": 0,
+      "events": []
+    },
+    "HippocampalPlaceCellExample": {
+      "matlab_helpfile_path": "HippocampalPlaceCellExample.m",
+      "matlab_reference_image_count": 12,
+      "detected_new_figure_events": 7,
+      "total_figures_expected": 12,
+      "events": [
+        {
+          "section_index": 3,
+          "matlab_line_number": 23,
+          "matlab_snippet": "figure(1);",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "HippocampalPlaceCellExample.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 162,
+          "matlab_snippet": "h4=figure(4);",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "HippocampalPlaceCellExample_01.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 172,
+          "matlab_snippet": "h6=figure(6);",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "HippocampalPlaceCellExample_02.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 187,
+          "matlab_snippet": "h5=figure(5);",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "figure",
+          "reference_image_path": "HippocampalPlaceCellExample_03.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 198,
+          "matlab_snippet": "h7=figure(7);",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "figure",
+          "reference_image_path": "HippocampalPlaceCellExample_04.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 234,
+          "matlab_snippet": "figure(8);",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "figure",
+          "reference_image_path": "HippocampalPlaceCellExample_05.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 239,
+          "matlab_snippet": "figure(9);",
+          "event_type": "new_figure",
+          "figure_ordinal": 7,
+          "trigger": "figure",
+          "reference_image_path": "HippocampalPlaceCellExample_06.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 108,
+          "matlab_snippet": "<synthetic MATLAB figure event #8 for HippocampalPlaceCellExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 8,
+          "trigger": "synthetic",
+          "reference_image_path": "HippocampalPlaceCellExample_07.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 108,
+          "matlab_snippet": "<synthetic MATLAB figure event #9 for HippocampalPlaceCellExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 9,
+          "trigger": "synthetic",
+          "reference_image_path": "HippocampalPlaceCellExample_08.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 108,
+          "matlab_snippet": "<synthetic MATLAB figure event #10 for HippocampalPlaceCellExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 10,
+          "trigger": "synthetic",
+          "reference_image_path": "HippocampalPlaceCellExample_09.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 108,
+          "matlab_snippet": "<synthetic MATLAB figure event #11 for HippocampalPlaceCellExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 11,
+          "trigger": "synthetic",
+          "reference_image_path": "HippocampalPlaceCellExample_10.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 108,
+          "matlab_snippet": "<synthetic MATLAB figure event #12 for HippocampalPlaceCellExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 12,
+          "trigger": "synthetic",
+          "reference_image_path": "HippocampalPlaceCellExample_11.png"
+        }
+      ]
+    },
+    "HistoryExamples": {
+      "matlab_helpfile_path": "HistoryExamples.m",
+      "matlab_reference_image_count": 5,
+      "detected_new_figure_events": 3,
+      "total_figures_expected": 5,
+      "events": [
+        {
+          "section_index": 2,
+          "matlab_line_number": 18,
+          "matlab_snippet": "figure; subplot(3,1,1); h.plot; ylabel('History Windows');",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "HistoryExamples.png"
+        },
+        {
+          "section_index": 2,
+          "matlab_line_number": 20,
+          "matlab_snippet": "figure; nst.plot;               ylabel('Neural Spike Train');",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "HistoryExamples_01.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 44,
+          "matlab_snippet": "figure; histColl.plot;",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "HistoryExamples_02.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 39,
+          "matlab_snippet": "<synthetic MATLAB figure event #4 for HistoryExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "synthetic",
+          "reference_image_path": "HistoryExamples_03.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 39,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for HistoryExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "HistoryExamples_04.png"
+        }
+      ]
+    },
+    "NetworkTutorial": {
+      "matlab_helpfile_path": "NetworkTutorial.m",
+      "matlab_reference_image_count": 8,
+      "detected_new_figure_events": 2,
+      "total_figures_expected": 8,
+      "events": [
+        {
+          "section_index": 19,
+          "matlab_line_number": 131,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "NetworkTutorial.png"
+        },
+        {
+          "section_index": 21,
+          "matlab_line_number": 205,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "NetworkTutorial_01.png"
+        },
+        {
+          "section_index": 22,
+          "matlab_line_number": 216,
+          "matlab_snippet": "<synthetic MATLAB figure event #3 for NetworkTutorial>",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "synthetic",
+          "reference_image_path": "NetworkTutorial_02.png"
+        },
+        {
+          "section_index": 22,
+          "matlab_line_number": 216,
+          "matlab_snippet": "<synthetic MATLAB figure event #4 for NetworkTutorial>",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "synthetic",
+          "reference_image_path": "NetworkTutorial_03.png"
+        },
+        {
+          "section_index": 22,
+          "matlab_line_number": 216,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for NetworkTutorial>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "NetworkTutorial_04.png"
+        },
+        {
+          "section_index": 22,
+          "matlab_line_number": 216,
+          "matlab_snippet": "<synthetic MATLAB figure event #6 for NetworkTutorial>",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "synthetic",
+          "reference_image_path": "NetworkTutorial_05.png"
+        },
+        {
+          "section_index": 22,
+          "matlab_line_number": 216,
+          "matlab_snippet": "<synthetic MATLAB figure event #7 for NetworkTutorial>",
+          "event_type": "new_figure",
+          "figure_ordinal": 7,
+          "trigger": "synthetic",
+          "reference_image_path": "PPSimExample-BlockDiagram.png"
+        },
+        {
+          "section_index": 22,
+          "matlab_line_number": 216,
+          "matlab_snippet": "<synthetic MATLAB figure event #8 for NetworkTutorial>",
+          "event_type": "new_figure",
+          "figure_ordinal": 8,
+          "trigger": "synthetic",
+          "reference_image_path": "SimulatedNetwork2.png"
+        }
+      ]
+    },
+    "PPSimExample": {
+      "matlab_helpfile_path": "PPSimExample.m",
+      "matlab_reference_image_count": 6,
+      "detected_new_figure_events": 1,
+      "total_figures_expected": 6,
+      "events": [
+        {
+          "section_index": 9,
+          "matlab_line_number": 66,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "PPSimExample-BlockDiagram.png"
+        },
+        {
+          "section_index": 17,
+          "matlab_line_number": 118,
+          "matlab_snippet": "<synthetic MATLAB figure event #2 for PPSimExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "synthetic",
+          "reference_image_path": "PPSimExample.png"
+        },
+        {
+          "section_index": 17,
+          "matlab_line_number": 118,
+          "matlab_snippet": "<synthetic MATLAB figure event #3 for PPSimExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "synthetic",
+          "reference_image_path": "PPSimExample_01.png"
+        },
+        {
+          "section_index": 17,
+          "matlab_line_number": 118,
+          "matlab_snippet": "<synthetic MATLAB figure event #4 for PPSimExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "synthetic",
+          "reference_image_path": "PPSimExample_02.png"
+        },
+        {
+          "section_index": 17,
+          "matlab_line_number": 118,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for PPSimExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "PPSimExample_03.png"
+        },
+        {
+          "section_index": 17,
+          "matlab_line_number": 118,
+          "matlab_snippet": "<synthetic MATLAB figure event #6 for PPSimExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "synthetic",
+          "reference_image_path": "PPSimExample_04.png"
+        }
+      ]
+    },
+    "PPThinning": {
+      "matlab_helpfile_path": "PPThinning.m",
+      "matlab_reference_image_count": 5,
+      "detected_new_figure_events": 3,
+      "total_figures_expected": 5,
+      "events": [
+        {
+          "section_index": 3,
+          "matlab_line_number": 34,
+          "matlab_snippet": "figure(1);",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "PPThinning.png"
+        },
+        {
+          "section_index": 3,
+          "matlab_line_number": 44,
+          "matlab_snippet": "figure(2);",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "PPThinning_01.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 57,
+          "matlab_snippet": "figure(3);",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "PPThinning_02.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 51,
+          "matlab_snippet": "<synthetic MATLAB figure event #4 for PPThinning>",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "synthetic",
+          "reference_image_path": "PPThinning_03.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 51,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for PPThinning>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "PPThinning_04.png"
+        }
+      ]
+    },
+    "PSTHEstimation": {
+      "matlab_helpfile_path": "PSTHEstimation.m",
+      "matlab_reference_image_count": 3,
+      "detected_new_figure_events": 2,
+      "total_figures_expected": 3,
+      "events": [
+        {
+          "section_index": 2,
+          "matlab_line_number": 24,
+          "matlab_snippet": "spikeColl.plot; set(gca,'ytickLabel',[]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "gcf",
+          "reference_image_path": "PSTHEstimation.png"
+        },
+        {
+          "section_index": 3,
+          "matlab_line_number": 30,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "PSTHEstimation_01.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 57,
+          "matlab_snippet": "<synthetic MATLAB figure event #3 for PSTHEstimation>",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "synthetic",
+          "reference_image_path": "PSTHEstimation_02.png"
+        }
+      ]
+    },
+    "SignalObjExamples": {
+      "matlab_helpfile_path": "SignalObjExamples.m",
+      "matlab_reference_image_count": 21,
+      "detected_new_figure_events": 16,
+      "total_figures_expected": 21,
+      "events": [
+        {
+          "section_index": 2,
+          "matlab_line_number": 16,
+          "matlab_snippet": "subplot(2,1,1); s.plot;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "subplot",
+          "reference_image_path": "SignalObjExamples.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 44,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_01.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 48,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_02.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 54,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_03.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 74,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_04.png"
+        },
+        {
+          "section_index": 8,
+          "matlab_line_number": 80,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_05.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 85,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 7,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_06.png"
+        },
+        {
+          "section_index": 10,
+          "matlab_line_number": 92,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 8,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_07.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 97,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 9,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_08.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 102,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 10,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_09.png"
+        },
+        {
+          "section_index": 12,
+          "matlab_line_number": 108,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 11,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_10.png"
+        },
+        {
+          "section_index": 12,
+          "matlab_line_number": 112,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 12,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_11.png"
+        },
+        {
+          "section_index": 13,
+          "matlab_line_number": 123,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 13,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_12.png"
+        },
+        {
+          "section_index": 13,
+          "matlab_line_number": 126,
+          "matlab_snippet": "figure",
+          "event_type": "new_figure",
+          "figure_ordinal": 14,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_13.png"
+        },
+        {
+          "section_index": 14,
+          "matlab_line_number": 139,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 15,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_14.png"
+        },
+        {
+          "section_index": 15,
+          "matlab_line_number": 155,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 16,
+          "trigger": "figure",
+          "reference_image_path": "SignalObjExamples_15.png"
+        },
+        {
+          "section_index": 15,
+          "matlab_line_number": 144,
+          "matlab_snippet": "<synthetic MATLAB figure event #17 for SignalObjExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 17,
+          "trigger": "synthetic",
+          "reference_image_path": "SignalObjExamples_16.png"
+        },
+        {
+          "section_index": 15,
+          "matlab_line_number": 144,
+          "matlab_snippet": "<synthetic MATLAB figure event #18 for SignalObjExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 18,
+          "trigger": "synthetic",
+          "reference_image_path": "SignalObjExamples_17.png"
+        },
+        {
+          "section_index": 15,
+          "matlab_line_number": 144,
+          "matlab_snippet": "<synthetic MATLAB figure event #19 for SignalObjExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 19,
+          "trigger": "synthetic",
+          "reference_image_path": "SignalObjExamples_18.png"
+        },
+        {
+          "section_index": 15,
+          "matlab_line_number": 144,
+          "matlab_snippet": "<synthetic MATLAB figure event #20 for SignalObjExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 20,
+          "trigger": "synthetic",
+          "reference_image_path": "SignalObjExamples_19.png"
+        },
+        {
+          "section_index": 15,
+          "matlab_line_number": 144,
+          "matlab_snippet": "<synthetic MATLAB figure event #21 for SignalObjExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 21,
+          "trigger": "synthetic",
+          "reference_image_path": "SignalObjExamples_20.png"
+        }
+      ]
+    },
+    "StimulusDecode2D": {
+      "matlab_helpfile_path": "StimulusDecode2D.m",
+      "matlab_reference_image_count": 7,
+      "detected_new_figure_events": 4,
+      "total_figures_expected": 7,
+      "events": [
+        {
+          "section_index": 1,
+          "matlab_line_number": 24,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "StimulusDecode2D.png"
+        },
+        {
+          "section_index": 2,
+          "matlab_line_number": 59,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "StimulusDecode2D_01.png"
+        },
+        {
+          "section_index": 2,
+          "matlab_line_number": 68,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "StimulusDecode2D_02.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 116,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "figure",
+          "reference_image_path": "StimulusDecode2D_03.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 97,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for StimulusDecode2D>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "StimulusDecode2D_04.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 97,
+          "matlab_snippet": "<synthetic MATLAB figure event #6 for StimulusDecode2D>",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "synthetic",
+          "reference_image_path": "StimulusDecode2D_05.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 97,
+          "matlab_snippet": "<synthetic MATLAB figure event #7 for StimulusDecode2D>",
+          "event_type": "new_figure",
+          "figure_ordinal": 7,
+          "trigger": "synthetic",
+          "reference_image_path": "StimulusDecode2D_06.png"
+        }
+      ]
+    },
+    "TrialConfigExamples": {
+      "matlab_helpfile_path": "TrialConfigExamples.m",
+      "matlab_reference_image_count": 0,
+      "detected_new_figure_events": 0,
+      "total_figures_expected": 0,
+      "events": []
+    },
+    "TrialExamples": {
+      "matlab_helpfile_path": "TrialExamples.m",
+      "matlab_reference_image_count": 7,
+      "detected_new_figure_events": 6,
+      "total_figures_expected": 7,
+      "events": [
+        {
+          "section_index": 3,
+          "matlab_line_number": 13,
+          "matlab_snippet": "figure; h.plot;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "TrialExamples.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 20,
+          "matlab_snippet": "figure; cc.plot;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "TrialExamples_01.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 27,
+          "matlab_snippet": "figure; e.plot;",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "TrialExamples_02.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 37,
+          "matlab_snippet": "figure; spikeColl.plot;",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "figure",
+          "reference_image_path": "TrialExamples_03.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 43,
+          "matlab_snippet": "figure; trial1.plot; % plot all the data;",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "figure",
+          "reference_image_path": "TrialExamples_04.png"
+        },
+        {
+          "section_index": 8,
+          "matlab_line_number": 48,
+          "matlab_snippet": "figure; trial1.plot;",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "figure",
+          "reference_image_path": "TrialExamples_05.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 51,
+          "matlab_snippet": "<synthetic MATLAB figure event #7 for TrialExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 7,
+          "trigger": "synthetic",
+          "reference_image_path": "TrialExamples_06.png"
+        }
+      ]
+    },
+    "ValidationDataSet": {
+      "matlab_helpfile_path": "ValidationDataSet.m",
+      "matlab_reference_image_count": 13,
+      "detected_new_figure_events": 3,
+      "total_figures_expected": 13,
+      "events": [
+        {
+          "section_index": 6,
+          "matlab_line_number": 61,
+          "matlab_snippet": "results{1}.plotResults; subplot(2,4,[5 6]); plot(mu,'ro', 'MarkerSize',10);",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "subplot",
+          "reference_image_path": "ValidationDataSet.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 63,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "ValidationDataSet_01.png"
+        },
+        {
+          "section_index": 10,
+          "matlab_line_number": 132,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "ValidationDataSet_02.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 135,
+          "matlab_snippet": "<synthetic MATLAB figure event #4 for ValidationDataSet>",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "synthetic",
+          "reference_image_path": "ValidationDataSet_03.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 135,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for ValidationDataSet>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "ValidationDataSet_04.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 135,
+          "matlab_snippet": "<synthetic MATLAB figure event #6 for ValidationDataSet>",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "synthetic",
+          "reference_image_path": "ValidationDataSet_05.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 135,
+          "matlab_snippet": "<synthetic MATLAB figure event #7 for ValidationDataSet>",
+          "event_type": "new_figure",
+          "figure_ordinal": 7,
+          "trigger": "synthetic",
+          "reference_image_path": "ValidationDataSet_06.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 135,
+          "matlab_snippet": "<synthetic MATLAB figure event #8 for ValidationDataSet>",
+          "event_type": "new_figure",
+          "figure_ordinal": 8,
+          "trigger": "synthetic",
+          "reference_image_path": "ValidationDataSet_07.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 135,
+          "matlab_snippet": "<synthetic MATLAB figure event #9 for ValidationDataSet>",
+          "event_type": "new_figure",
+          "figure_ordinal": 9,
+          "trigger": "synthetic",
+          "reference_image_path": "ValidationDataSet_08.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 135,
+          "matlab_snippet": "<synthetic MATLAB figure event #10 for ValidationDataSet>",
+          "event_type": "new_figure",
+          "figure_ordinal": 10,
+          "trigger": "synthetic",
+          "reference_image_path": "ValidationDataSet_09.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 135,
+          "matlab_snippet": "<synthetic MATLAB figure event #11 for ValidationDataSet>",
+          "event_type": "new_figure",
+          "figure_ordinal": 11,
+          "trigger": "synthetic",
+          "reference_image_path": "ValidationDataSet_10.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 135,
+          "matlab_snippet": "<synthetic MATLAB figure event #12 for ValidationDataSet>",
+          "event_type": "new_figure",
+          "figure_ordinal": 12,
+          "trigger": "synthetic",
+          "reference_image_path": "ValidationDataSet_11.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 135,
+          "matlab_snippet": "<synthetic MATLAB figure event #13 for ValidationDataSet>",
+          "event_type": "new_figure",
+          "figure_ordinal": 13,
+          "trigger": "synthetic",
+          "reference_image_path": "ValidationDataSet_12.png"
+        }
+      ]
+    },
+    "mEPSCAnalysis": {
+      "matlab_helpfile_path": "mEPSCAnalysis.m",
+      "matlab_reference_image_count": 6,
+      "detected_new_figure_events": 1,
+      "total_figures_expected": 6,
+      "events": [
+        {
+          "section_index": 5,
+          "matlab_line_number": 98,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "mEPSCAnalysis.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 146,
+          "matlab_snippet": "<synthetic MATLAB figure event #2 for mEPSCAnalysis>",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "synthetic",
+          "reference_image_path": "mEPSCAnalysis_01.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 146,
+          "matlab_snippet": "<synthetic MATLAB figure event #3 for mEPSCAnalysis>",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "synthetic",
+          "reference_image_path": "mEPSCAnalysis_02.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 146,
+          "matlab_snippet": "<synthetic MATLAB figure event #4 for mEPSCAnalysis>",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "synthetic",
+          "reference_image_path": "mEPSCAnalysis_03.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 146,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for mEPSCAnalysis>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "mEPSCAnalysis_04.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 146,
+          "matlab_snippet": "<synthetic MATLAB figure event #6 for mEPSCAnalysis>",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "synthetic",
+          "reference_image_path": "mEPSCAnalysis_05.png"
+        }
+      ]
+    },
+    "nSTATPaperExamples": {
+      "matlab_helpfile_path": "nSTATPaperExamples.m",
+      "matlab_reference_image_count": 26,
+      "detected_new_figure_events": 25,
+      "total_figures_expected": 26,
+      "events": [
+        {
+          "section_index": 3,
+          "matlab_line_number": 73,
+          "matlab_snippet": "h=figure('OuterPosition',[scrsz(3)*.01 scrsz(4)*.04 ...",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 125,
+          "matlab_snippet": "h=figure('OuterPosition',[scrsz(3)*.01 scrsz(4)*.04 scrsz(3)*.6 ...",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_01.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 195,
+          "matlab_snippet": "h=figure('OuterPosition',[scrsz(3)*.01 scrsz(4)*.04 ...",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_02.png"
+        },
+        {
+          "section_index": 11,
+          "matlab_line_number": 265,
+          "matlab_snippet": "h=figure('Position',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.8 scrsz(4)*.8]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_03.png"
+        },
+        {
+          "section_index": 12,
+          "matlab_line_number": 323,
+          "matlab_snippet": "h=figure('Position',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.8 scrsz(4)*.8]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_04.png"
+        },
+        {
+          "section_index": 15,
+          "matlab_line_number": 489,
+          "matlab_snippet": "h=figure('Position',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.8 scrsz(4)*.8]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_05.png"
+        },
+        {
+          "section_index": 16,
+          "matlab_line_number": 554,
+          "matlab_snippet": "h=figure('Position',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.8 scrsz(4)*.8]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 7,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_06.png"
+        },
+        {
+          "section_index": 18,
+          "matlab_line_number": 686,
+          "matlab_snippet": "h=figure('Position',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.8 scrsz(4)*.8]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 8,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_07.png"
+        },
+        {
+          "section_index": 22,
+          "matlab_line_number": 836,
+          "matlab_snippet": "h=figure('Position',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.8 scrsz(4)*.8]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 9,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_08.png"
+        },
+        {
+          "section_index": 23,
+          "matlab_line_number": 879,
+          "matlab_snippet": "h=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.4 scrsz(4)*.8]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 10,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_09.png"
+        },
+        {
+          "section_index": 23,
+          "matlab_line_number": 901,
+          "matlab_snippet": "h=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.4 scrsz(4)*.8]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 11,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_10.png"
+        },
+        {
+          "section_index": 24,
+          "matlab_line_number": 983,
+          "matlab_snippet": "h=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.8 scrsz(4)*.8]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 12,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_11.png"
+        },
+        {
+          "section_index": 27,
+          "matlab_line_number": 1074,
+          "matlab_snippet": "h=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.6 scrsz(4)*.9]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 13,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_12.png"
+        },
+        {
+          "section_index": 30,
+          "matlab_line_number": 1182,
+          "matlab_snippet": "h=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.6 scrsz(4)*.5]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 14,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_13.png"
+        },
+        {
+          "section_index": 31,
+          "matlab_line_number": 1268,
+          "matlab_snippet": "h4=figure(4);",
+          "event_type": "new_figure",
+          "figure_ordinal": 15,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_14.png"
+        },
+        {
+          "section_index": 31,
+          "matlab_line_number": 1281,
+          "matlab_snippet": "h6=figure(6);",
+          "event_type": "new_figure",
+          "figure_ordinal": 16,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_15.png"
+        },
+        {
+          "section_index": 31,
+          "matlab_line_number": 1299,
+          "matlab_snippet": "h5=figure(5);",
+          "event_type": "new_figure",
+          "figure_ordinal": 17,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_16.png"
+        },
+        {
+          "section_index": 31,
+          "matlab_line_number": 1312,
+          "matlab_snippet": "h7=figure(7);",
+          "event_type": "new_figure",
+          "figure_ordinal": 18,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_17.png"
+        },
+        {
+          "section_index": 32,
+          "matlab_line_number": 1359,
+          "matlab_snippet": "h9=figure(9);",
+          "event_type": "new_figure",
+          "figure_ordinal": 19,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_18.png"
+        },
+        {
+          "section_index": 34,
+          "matlab_line_number": 1418,
+          "matlab_snippet": "h=figure('Position',[scrsz(3)*.1 scrsz(4)*.1 ...",
+          "event_type": "new_figure",
+          "figure_ordinal": 20,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_19.png"
+        },
+        {
+          "section_index": 35,
+          "matlab_line_number": 1470,
+          "matlab_snippet": "h=figure('Position',[scrsz(3)*.1 scrsz(4)*.1 scrsz(3)*.8 scrsz(4)*.6]);",
+          "event_type": "new_figure",
+          "figure_ordinal": 21,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_20.png"
+        },
+        {
+          "section_index": 36,
+          "matlab_line_number": 1557,
+          "matlab_snippet": "fig1=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 ...",
+          "event_type": "new_figure",
+          "figure_ordinal": 22,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_21.png"
+        },
+        {
+          "section_index": 37,
+          "matlab_line_number": 1662,
+          "matlab_snippet": "fig1=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 ...",
+          "event_type": "new_figure",
+          "figure_ordinal": 23,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_22.png"
+        },
+        {
+          "section_index": 42,
+          "matlab_line_number": 1899,
+          "matlab_snippet": "fig1=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 ...",
+          "event_type": "new_figure",
+          "figure_ordinal": 24,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_23.png"
+        },
+        {
+          "section_index": 43,
+          "matlab_line_number": 1996,
+          "matlab_snippet": "fig1=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 ...",
+          "event_type": "new_figure",
+          "figure_ordinal": 25,
+          "trigger": "figure",
+          "reference_image_path": "nSTATPaperExamples_24.png"
+        },
+        {
+          "section_index": 43,
+          "matlab_line_number": 1979,
+          "matlab_snippet": "<synthetic MATLAB figure event #26 for nSTATPaperExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 26,
+          "trigger": "synthetic",
+          "reference_image_path": "nSTATPaperExamples_25.png"
+        }
+      ]
+    },
+    "nSpikeTrainExamples": {
+      "matlab_helpfile_path": "nSpikeTrainExamples.m",
+      "matlab_reference_image_count": 6,
+      "detected_new_figure_events": 4,
+      "total_figures_expected": 6,
+      "events": [
+        {
+          "section_index": 2,
+          "matlab_line_number": 9,
+          "matlab_snippet": "figure; nst.plot;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "nSpikeTrainExamples.png"
+        },
+        {
+          "section_index": 3,
+          "matlab_line_number": 17,
+          "matlab_snippet": "figure; nst.resample(1/.1);",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "nSpikeTrainExamples_01.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 23,
+          "matlab_snippet": "figure; nst.resample(1/.01);",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "nSpikeTrainExamples_02.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 29,
+          "matlab_snippet": "figure; nst.resample(1/nst.getMaxBinSizeBinary);",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "figure",
+          "reference_image_path": "nSpikeTrainExamples_03.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 26,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for nSpikeTrainExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "nSpikeTrainExamples_04.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 26,
+          "matlab_snippet": "<synthetic MATLAB figure event #6 for nSpikeTrainExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "synthetic",
+          "reference_image_path": "nSpikeTrainExamples_05.png"
+        }
+      ]
+    },
+    "nstCollExamples": {
+      "matlab_helpfile_path": "nstCollExamples.m",
+      "matlab_reference_image_count": 4,
+      "detected_new_figure_events": 3,
+      "total_figures_expected": 4,
+      "events": [
+        {
+          "section_index": 3,
+          "matlab_line_number": 14,
+          "matlab_snippet": "figure; spikeColl.plot;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "nstCollExamples.png"
+        },
+        {
+          "section_index": 4,
+          "matlab_line_number": 18,
+          "matlab_snippet": "figure; spikeColl.plot;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "nstCollExamples_01.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 21,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "figure",
+          "reference_image_path": "nstCollExamples_02.png"
+        },
+        {
+          "section_index": 5,
+          "matlab_line_number": 19,
+          "matlab_snippet": "<synthetic MATLAB figure event #4 for nstCollExamples>",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "synthetic",
+          "reference_image_path": "nstCollExamples_03.png"
+        }
+      ]
+    },
+    "AnalysisExamples2": {
+      "matlab_helpfile_path": "AnalysisExamples2.m",
+      "matlab_reference_image_count": 6,
+      "detected_new_figure_events": 2,
+      "total_figures_expected": 6,
+      "events": [
+        {
+          "section_index": 4,
+          "matlab_line_number": 40,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "AnalysisExamples2.png"
+        },
+        {
+          "section_index": 7,
+          "matlab_line_number": 66,
+          "matlab_snippet": "figure;",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "AnalysisExamples2_01.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 102,
+          "matlab_snippet": "<synthetic MATLAB figure event #3 for AnalysisExamples2>",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "synthetic",
+          "reference_image_path": "AnalysisExamples2_02.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 102,
+          "matlab_snippet": "<synthetic MATLAB figure event #4 for AnalysisExamples2>",
+          "event_type": "new_figure",
+          "figure_ordinal": 4,
+          "trigger": "synthetic",
+          "reference_image_path": "AnalysisExamples2_03.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 102,
+          "matlab_snippet": "<synthetic MATLAB figure event #5 for AnalysisExamples2>",
+          "event_type": "new_figure",
+          "figure_ordinal": 5,
+          "trigger": "synthetic",
+          "reference_image_path": "AnalysisExamples2_04.png"
+        },
+        {
+          "section_index": 9,
+          "matlab_line_number": 102,
+          "matlab_snippet": "<synthetic MATLAB figure event #6 for AnalysisExamples2>",
+          "event_type": "new_figure",
+          "figure_ordinal": 6,
+          "trigger": "synthetic",
+          "reference_image_path": "AnalysisExamples2_05.png"
+        }
+      ]
+    },
+    "DocumentationSetup2025b": {
+      "matlab_helpfile_path": "DocumentationSetup2025b.m",
+      "matlab_reference_image_count": 0,
+      "detected_new_figure_events": 0,
+      "total_figures_expected": 0,
+      "events": []
+    },
+    "FitResultReference": {
+      "matlab_helpfile_path": "FitResultReference.m",
+      "matlab_reference_image_count": 0,
+      "detected_new_figure_events": 0,
+      "total_figures_expected": 0,
+      "events": []
+    },
+    "HybridFilterExample": {
+      "matlab_helpfile_path": "HybridFilterExample.m",
+      "matlab_reference_image_count": 3,
+      "detected_new_figure_events": 2,
+      "total_figures_expected": 3,
+      "events": [
+        {
+          "section_index": 5,
+          "matlab_line_number": 110,
+          "matlab_snippet": "fig1=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 ...",
+          "event_type": "new_figure",
+          "figure_ordinal": 1,
+          "trigger": "figure",
+          "reference_image_path": "HybridFilterExample.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 207,
+          "matlab_snippet": "fig1=figure('OuterPosition',[scrsz(3)*.1 scrsz(4)*.1 ...",
+          "event_type": "new_figure",
+          "figure_ordinal": 2,
+          "trigger": "figure",
+          "reference_image_path": "HybridFilterExample_01.png"
+        },
+        {
+          "section_index": 6,
+          "matlab_line_number": 190,
+          "matlab_snippet": "<synthetic MATLAB figure event #3 for HybridFilterExample>",
+          "event_type": "new_figure",
+          "figure_ordinal": 3,
+          "trigger": "synthetic",
+          "reference_image_path": "HybridFilterExample_02.png"
+        }
+      ]
+    },
+    "publish_all_helpfiles": {
+      "matlab_helpfile_path": "publish_all_helpfiles.m",
+      "matlab_reference_image_count": 0,
+      "detected_new_figure_events": 0,
+      "total_figures_expected": 0,
+      "events": []
+    }
+  }
+}

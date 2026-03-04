@@ -43,36 +43,54 @@ def _resolve_img(path_str: str) -> Path | None:
     return p if p.exists() else None
 
 
-def _select_pair(row: dict) -> tuple[Path | None, Path | None]:
-    py = _resolve_img(str(row.get("matched_python_image") or ""))
-    mat = _resolve_img(str(row.get("matched_matlab_image") or ""))
+def _select_ordinal_pairs(row: dict) -> list[dict]:
+    topic = str(row.get("topic", ""))
+    explicit_pairs = row.get("figure_pairs")
+    pairs: list[dict] = []
+    if isinstance(explicit_pairs, list) and explicit_pairs:
+        for item in explicit_pairs:
+            if not isinstance(item, dict):
+                continue
+            ordinal = int(item.get("ordinal", 0) or 0)
+            py = _resolve_img(str(item.get("python_image") or ""))
+            mat = _resolve_img(str(item.get("matlab_image") or ""))
+            pairs.append(
+                {
+                    "topic": topic,
+                    "ordinal": ordinal,
+                    "python_image": str(py) if py is not None else "",
+                    "matlab_image": str(mat) if mat is not None else "",
+                }
+            )
+        return pairs
 
-    if py is None:
-        py_list = row.get("python_images") or []
-        if py_list:
-            py = _resolve_img(str(py_list[0]))
+    py_list = [_resolve_img(str(path)) for path in (row.get("python_images") or [])]
+    mat_list = [_resolve_img(str(path)) for path in (row.get("matlab_reference_images") or [])]
+    max_n = max(len(py_list), len(mat_list))
+    for idx in range(max_n):
+        py = py_list[idx] if idx < len(py_list) else None
+        mat = mat_list[idx] if idx < len(mat_list) else None
+        pairs.append(
+            {
+                "topic": topic,
+                "ordinal": idx + 1,
+                "python_image": str(py) if py is not None else "",
+                "matlab_image": str(mat) if mat is not None else "",
+            }
+        )
+    return pairs
 
-    if mat is None:
-        mat_list = row.get("matlab_reference_images") or []
-        if mat_list:
-            mat = _resolve_img(str(mat_list[0]))
 
-    return py, mat
-
-
-def _draw_page(pdf: canvas.Canvas, *, topic: str, image_path: Path | None, label: str) -> None:
+def _draw_page(pdf: canvas.Canvas, *, topic: str, ordinal: int, image_path: Path | None, label: str) -> None:
     w, h = letter
     pdf.setFont("Helvetica-Bold", 13)
-    pdf.drawString(36, h - 44, f"{label}: {topic}")
+    pdf.drawString(36, h - 44, f"{topic} fig_{ordinal:03d}")
 
     if image_path is None:
         pdf.setFont("Helvetica", 10)
         pdf.drawString(36, h - 72, "Missing image")
         pdf.showPage()
         return
-
-    pdf.setFont("Helvetica", 9)
-    pdf.drawString(36, h - 62, str(image_path))
 
     with Image.open(image_path) as img:
         iw, ih = img.size
@@ -94,15 +112,7 @@ def main() -> int:
 
     pairs: list[dict] = []
     for row in rows:
-        topic = str(row.get("topic", ""))
-        py, mat = _select_pair(row)
-        pairs.append(
-            {
-                "topic": topic,
-                "python_image": str(py) if py is not None else "",
-                "matlab_image": str(mat) if mat is not None else "",
-            }
-        )
+        pairs.extend(_select_ordinal_pairs(row))
 
     args.python_out.parent.mkdir(parents=True, exist_ok=True)
     args.matlab_out.parent.mkdir(parents=True, exist_ok=True)
@@ -113,10 +123,11 @@ def main() -> int:
 
     for pair in pairs:
         topic = pair["topic"]
+        ordinal = int(pair.get("ordinal", 0) or 0)
         py = Path(pair["python_image"]) if pair["python_image"] else None
         mat = Path(pair["matlab_image"]) if pair["matlab_image"] else None
-        _draw_page(pdf_py, topic=topic, image_path=py, label="Python")
-        _draw_page(pdf_mat, topic=topic, image_path=mat, label="MATLAB")
+        _draw_page(pdf_py, topic=topic, ordinal=ordinal, image_path=py, label="Python")
+        _draw_page(pdf_mat, topic=topic, ordinal=ordinal, image_path=mat, label="MATLAB")
 
     pdf_py.save()
     pdf_mat.save()

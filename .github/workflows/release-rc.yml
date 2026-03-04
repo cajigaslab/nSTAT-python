@@ -47,6 +47,7 @@ jobs:
       - name: Regenerate notebooks
         run: |
           python tools/notebooks/generate_notebooks.py
+          python tools/notebooks/clean_notebooks.py --check
           git diff --exit-code
 
       - name: Checkout pinned MATLAB nSTAT reference

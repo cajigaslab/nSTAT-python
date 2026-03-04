@@ -33,10 +33,22 @@ jobs:
           python -m pip install -e .[dev,notebooks]
           python -m pip install reportlab pillow
 
-      - name: Regenerate notebooks
+      - name: Resolve nSTAT data cache directory
+        id: nstat-data-dir
         run: |
-          python tools/notebooks/generate_notebooks.py
-          git diff --exit-code
+          echo "dir=$(python tools/data/print_data_dir.py)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache nSTAT example data
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.nstat-data-dir.outputs.dir }}
+          key: nstat-example-data-${{ runner.os }}-doi-10.6084-m9.figshare.4834640-v1
+          restore-keys: |
+            nstat-example-data-${{ runner.os }}-doi-10.6084-m9.figshare.4834640-
+
+      - name: Download nSTAT example data
+        run: |
+          python tools/data/download_example_data.py
 
       - name: Checkout pinned MATLAB nSTAT reference
         run: |
@@ -44,6 +56,12 @@ jobs:
             --config parity/matlab_reference.yml \
             --dest /tmp/upstream-nstat \
             --metadata-out parity/matlab_reference_checkout.json
+
+      - name: Regenerate notebooks
+        run: |
+          python tools/notebooks/generate_notebooks.py
+          python tools/notebooks/clean_notebooks.py --check
+          git diff --exit-code
 
       - name: Prepare deterministic validation images
         run: |

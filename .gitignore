@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *.so
+.DS_Store
 
 # Packaging
 build/
@@ -28,6 +29,9 @@ docs/_build/
 
 # Local data cache
 .data_cache/
+data_cache/
+output/data_download/
+*.zip
 
 # Local report artifacts
 output/

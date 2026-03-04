@@ -55,10 +55,35 @@ jobs:
           python -m pip install -e .[dev,docs,notebooks]
           python -m pip install reportlab pillow
 
+      - name: Resolve nSTAT data cache directory
+        id: nstat-data-dir
+        run: |
+          echo "dir=$(python tools/data/print_data_dir.py)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache nSTAT example data
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.nstat-data-dir.outputs.dir }}
+          key: nstat-example-data-${{ runner.os }}-doi-10.6084-m9.figshare.4834640-v1
+          restore-keys: |
+            nstat-example-data-${{ runner.os }}-doi-10.6084-m9.figshare.4834640-
+
+      - name: Download nSTAT example data
+        run: |
+          python tools/data/download_example_data.py
+
+      - name: Checkout pinned MATLAB nSTAT reference
+        run: |
+          python tools/parity/checkout_matlab_reference.py \
+            --config parity/matlab_reference.yml \
+            --dest /tmp/upstream-nstat \
+            --metadata-out parity/matlab_reference_checkout_docs_smoke.json
+
       - name: Rebuild generated docs/notebooks
         run: |
           python tools/docs/generate_help_pages.py
           python tools/notebooks/generate_notebooks.py
+          python tools/notebooks/clean_notebooks.py --check
 
       - name: Ensure generated artifacts are committed
         run: |
@@ -71,7 +96,11 @@ jobs:
         run: python tools/docs/verify_search_index.py
 
       - name: Run smoke notebooks
-        run: python tools/notebooks/run_notebooks.py --group smoke --timeout 600
+        run: |
+          python tools/notebooks/execute_notebooks.py \
+            --group smoke \
+            --timeout 600 \
+            --out-report output/notebooks/notebook_execution_report.json
 
       - name: Generate smoke validation PDF
         run: |
@@ -91,6 +120,16 @@ jobs:
         with:
           name: ci-smoke-validation-pdf
           path: output/pdf/*.pdf
+          if-no-files-found: warn
+
+      - name: Upload smoke notebook execution artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-smoke-notebook-execution
+          path: |
+            output/notebooks/notebook_execution_report.json
+            output/notebooks/executed/**
           if-no-files-found: warn
 
       - name: Run release gate checks
