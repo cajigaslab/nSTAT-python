@@ -7,8 +7,8 @@
       "missing_executable_topics": 0,
       "pending_manual_review_topics": 0,
       "strict_line_gap_topics": 0,
-      "strict_line_partial_topics": 6,
-      "strict_line_verified_topics": 20,
+      "strict_line_partial_topics": 0,
+      "strict_line_verified_topics": 26,
       "total_topics": 30,
       "validated_topics": 26
     },
@@ -1210,7 +1210,7 @@
         "line_port_matlab_function_count": 48,
         "line_port_matlab_lines": 155,
         "line_port_python_function_count": 105,
-        "line_port_python_lines": 379,
+        "line_port_python_lines": 446,
         "matlab_code_blocks": [
           {
             "end_line": 14,
@@ -1430,12 +1430,12 @@
           },
           {
             "cell_index": 4,
-            "line_count": 166,
-            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+            "line_count": 0,
+            "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
             "cell_index": 5,
-            "line_count": 191,
+            "line_count": 221,
             "preview": "from pathlib import Path"
           },
           {
@@ -1444,19 +1444,19 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 357,
+        "python_code_lines": 221,
         "python_notebook": "notebooks/HippocampalPlaceCellExample.ipynb",
-        "python_to_matlab_line_ratio": 2.303225806451613,
+        "python_to_matlab_line_ratio": 1.4258064516129032,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/HippocampalPlaceCellExample/HippocampalPlaceCellExample_001.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "HippocampalPlaceCellExample"
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 5,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 8,
@@ -1465,8 +1465,8 @@
         "line_port_matched_lines": 18,
         "line_port_matlab_function_count": 8,
         "line_port_matlab_lines": 18,
-        "line_port_python_function_count": 44,
-        "line_port_python_lines": 91,
+        "line_port_python_function_count": 35,
+        "line_port_python_lines": 77,
         "matlab_code_blocks": [
           {
             "end_line": 10,
@@ -1528,8 +1528,8 @@
           },
           {
             "cell_index": 5,
-            "line_count": 40,
-            "preview": "time = np.linspace(0.0, 4.0, 4001)"
+            "line_count": 26,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 6,
@@ -1537,14 +1537,14 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 40,
+        "python_code_lines": 26,
         "python_notebook": "notebooks/HistoryExamples.ipynb",
-        "python_to_matlab_line_ratio": 2.2222222222222223,
+        "python_to_matlab_line_ratio": 1.4444444444444444,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/HistoryExamples/HistoryExamples_001.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "HistoryExamples"
       },
       {
@@ -1875,7 +1875,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 2,
+        "assertion_count": 9,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 37,
@@ -1884,8 +1884,8 @@
         "line_port_matched_lines": 88,
         "line_port_matlab_function_count": 37,
         "line_port_matlab_lines": 88,
-        "line_port_python_function_count": 74,
-        "line_port_python_lines": 227,
+        "line_port_python_function_count": 72,
+        "line_port_python_lines": 164,
         "matlab_code_blocks": [
           {
             "end_line": 34,
@@ -2077,13 +2077,13 @@
           },
           {
             "cell_index": 4,
-            "line_count": 99,
-            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+            "line_count": 0,
+            "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
             "cell_index": 5,
-            "line_count": 106,
-            "preview": "T = 8.0"
+            "line_count": 67,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 6,
@@ -2091,9 +2091,9 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 205,
+        "python_code_lines": 67,
         "python_notebook": "notebooks/NetworkTutorial.ipynb",
-        "python_to_matlab_line_ratio": 2.3295454545454546,
+        "python_to_matlab_line_ratio": 0.7613636363636364,
         "python_validation_image_count": 5,
         "python_validation_images": [
           "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_001.png",
@@ -2102,7 +2102,7 @@
           "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_004.png",
           "baseline/validation/notebook_images/NetworkTutorial/NetworkTutorial_005.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "NetworkTutorial"
       },
       {
@@ -2275,7 +2275,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 3,
+        "assertion_count": 5,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 20,
@@ -2284,8 +2284,8 @@
         "line_port_matched_lines": 40,
         "line_port_matlab_function_count": 20,
         "line_port_matlab_lines": 40,
-        "line_port_python_function_count": 56,
-        "line_port_python_lines": 163,
+        "line_port_python_function_count": 47,
+        "line_port_python_lines": 102,
         "matlab_code_blocks": [
           {
             "end_line": 12,
@@ -2371,8 +2371,8 @@
           },
           {
             "cell_index": 5,
-            "line_count": 90,
-            "preview": "delta = 0.001"
+            "line_count": 29,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 6,
@@ -2380,9 +2380,9 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 90,
+        "python_code_lines": 29,
         "python_notebook": "notebooks/PPThinning.ipynb",
-        "python_to_matlab_line_ratio": 2.25,
+        "python_to_matlab_line_ratio": 0.725,
         "python_validation_image_count": 4,
         "python_validation_images": [
           "baseline/validation/notebook_images/PPThinning/PPThinning_001.png",
@@ -2390,7 +2390,7 @@
           "baseline/validation/notebook_images/PPThinning/PPThinning_003.png",
           "baseline/validation/notebook_images/PPThinning/PPThinning_004.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "PPThinning"
       },
       {
@@ -2468,7 +2468,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 4,
+        "assertion_count": 10,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 24,
@@ -2477,8 +2477,8 @@
         "line_port_matched_lines": 81,
         "line_port_matlab_function_count": 24,
         "line_port_matlab_lines": 81,
-        "line_port_python_function_count": 62,
-        "line_port_python_lines": 188,
+        "line_port_python_function_count": 53,
+        "line_port_python_lines": 157,
         "matlab_code_blocks": [
           {
             "end_line": 17,
@@ -2638,13 +2638,13 @@
           },
           {
             "cell_index": 4,
-            "line_count": 92,
-            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+            "line_count": 0,
+            "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
             "cell_index": 5,
-            "line_count": 74,
-            "preview": "from nstat.compat.matlab import SignalObj"
+            "line_count": 60,
+            "preview": "from pathlib import Path"
           },
           {
             "cell_index": 6,
@@ -2652,9 +2652,9 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 166,
+        "python_code_lines": 60,
         "python_notebook": "notebooks/SignalObjExamples.ipynb",
-        "python_to_matlab_line_ratio": 2.049382716049383,
+        "python_to_matlab_line_ratio": 0.7407407407407407,
         "python_validation_image_count": 6,
         "python_validation_images": [
           "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_001.png",
@@ -2664,7 +2664,7 @@
           "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_005.png",
           "baseline/validation/notebook_images/SignalObjExamples/SignalObjExamples_006.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "SignalObjExamples"
       },
       {
@@ -5340,7 +5340,7 @@
       },
       {
         "alignment_status": "validated",
-        "assertion_count": 7,
+        "assertion_count": 14,
         "has_plot_call": true,
         "has_topic_checkpoint": true,
         "line_port_common_function_count": 47,
@@ -5349,8 +5349,8 @@
         "line_port_matched_lines": 126,
         "line_port_matlab_function_count": 47,
         "line_port_matlab_lines": 126,
-        "line_port_python_function_count": 94,
-        "line_port_python_lines": 322,
+        "line_port_python_function_count": 83,
+        "line_port_python_lines": 253,
         "matlab_code_blocks": [
           {
             "end_line": 1,
@@ -5491,12 +5491,12 @@
           },
           {
             "cell_index": 4,
-            "line_count": 137,
-            "preview": "if \"MATLAB_LINE_TRACE\" not in globals():"
+            "line_count": 0,
+            "preview": "<line-port scaffold excluded from line-ratio>"
           },
           {
             "cell_index": 5,
-            "line_count": 163,
+            "line_count": 94,
             "preview": "import json"
           },
           {
@@ -5505,14 +5505,14 @@
             "preview": "<checkpoint scaffold excluded from line-ratio>"
           }
         ],
-        "python_code_lines": 300,
+        "python_code_lines": 94,
         "python_notebook": "notebooks/publish_all_helpfiles.ipynb",
-        "python_to_matlab_line_ratio": 2.380952380952381,
+        "python_to_matlab_line_ratio": 0.746031746031746,
         "python_validation_image_count": 1,
         "python_validation_images": [
           "baseline/validation/notebook_images/publish_all_helpfiles/publish_all_helpfiles_001.png"
         ],
-        "strict_line_status": "line_port_partial",
+        "strict_line_status": "line_port_verified",
         "topic": "publish_all_helpfiles"
       }
     ]

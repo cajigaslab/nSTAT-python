@@ -695,6 +695,124 @@ save(fullfile(out_dir, 'StimulusDecode2D_gold.mat'), ...
     'side_sd', 'states_sd', 'latent_sd', 'tuning_sd', 'spike_counts_sd', ...
     'decoded_center_sd', 'decoded_sd', 'xy_true_sd', 'xy_decoded_sd', 'rmse_sd', '-v7');
 
+% -----------------------------------------------------
+% Fixture 17: SignalObjExamples (deterministic signals)
+% -----------------------------------------------------
+sampleRate_sig = 100.0;
+time_sig = (0:1/sampleRate_sig:10.0)';
+freq_sig = 2.0;
+v1_sig = sin(2*pi*freq_sig*time_sig);
+v2_sig = sin(v1_sig.^2);
+resample_hz_sig = 10.0;
+t_resampled_sig = (time_sig(1):1/resample_hz_sig:time_sig(end))';
+v1_resampled_sig = interp1(time_sig, v1_sig, t_resampled_sig, 'linear');
+window_t0_sig = -2.0;
+window_t1_sig = 3.0;
+window_mask_sig = time_sig >= window_t0_sig & time_sig <= window_t1_sig;
+window_n_samples_sig = sum(window_mask_sig);
+n_samples_sig = numel(time_sig);
+resampled_n_samples_sig = numel(t_resampled_sig);
+masked_cols_sig = 1.0;
+
+nfft_sig = 2^nextpow2(numel(v1_sig));
+Y_sig = fft(v1_sig, nfft_sig);
+P2_sig = abs(Y_sig / nfft_sig).^2;
+P1_sig = P2_sig(1:floor(nfft_sig/2) + 1);
+[~, peak_idx_sig] = max(P1_sig);
+periodogram_peak_idx_sig = peak_idx_sig - 1; % zero-based for Python parity checks
+
+save(fullfile(out_dir, 'SignalObjExamples_gold.mat'), ...
+    'sampleRate_sig', 'time_sig', 'v1_sig', 'v2_sig', 'resample_hz_sig', ...
+    'v1_resampled_sig', 'window_t0_sig', 'window_t1_sig', 'window_n_samples_sig', ...
+    'n_samples_sig', 'resampled_n_samples_sig', 'masked_cols_sig', 'periodogram_peak_idx_sig', '-v7');
+
+% ------------------------------------------------------
+% Fixture 18: HistoryExamples (history-basis design matrix)
+% ------------------------------------------------------
+bin_edges_hist = [0.0; 0.01; 0.03; 0.06];
+spike_times_hist = [0.005; 0.021; 0.044; 0.076; 0.088];
+time_grid_hist = (0.0:0.002:0.1)';
+n_bins_hist = numel(bin_edges_hist) - 1;
+H_expected_hist = zeros(numel(time_grid_hist), n_bins_hist);
+for i=1:numel(time_grid_hist)
+    lags = time_grid_hist(i) - spike_times_hist;
+    for j=1:n_bins_hist
+        lo = bin_edges_hist(j);
+        hi = bin_edges_hist(j+1);
+        H_expected_hist(i,j) = sum((lags > lo) & (lags <= hi));
+    end
+end
+filter_expected_hist = diff(bin_edges_hist);
+filter_expected_hist = filter_expected_hist / sum(filter_expected_hist);
+save(fullfile(out_dir, 'HistoryExamples_gold.mat'), ...
+    'bin_edges_hist', 'spike_times_hist', 'time_grid_hist', ...
+    'H_expected_hist', 'filter_expected_hist', 'n_bins_hist', '-v7');
+
+% ---------------------------------------------------------
+% Fixture 19: PPThinning (candidate/acceptance deterministic)
+% ---------------------------------------------------------
+delta_pt = 0.001;
+tmax_pt = 20.0;
+time_pt = (0.0:delta_pt:tmax_pt)';
+f_pt = 0.1;
+lambda_pt = 10.0 * sin(2.0*pi*f_pt*time_pt) + 10.0;
+lambda_bound_pt = max(lambda_pt);
+N_pt = ceil(lambda_bound_pt * (1.5 * tmax_pt));
+u_pt = rand(N_pt,1);
+w_pt = -log(max(u_pt, 1e-12)) / lambda_bound_pt;
+candidate_spikes_pt = cumsum(w_pt);
+candidate_spikes_pt = candidate_spikes_pt(candidate_spikes_pt <= tmax_pt);
+idx_pt = round(candidate_spikes_pt / delta_pt) + 1;
+idx_pt = max(min(idx_pt, numel(time_pt)), 1);
+lambda_ratio_pt = lambda_pt(idx_pt) / lambda_bound_pt;
+uniform_u2_pt = rand(numel(lambda_ratio_pt),1);
+accepted_spikes_pt = candidate_spikes_pt(lambda_ratio_pt >= uniform_u2_pt);
+accept_ratio_pt = numel(accepted_spikes_pt) / max(numel(candidate_spikes_pt), 1);
+save(fullfile(out_dir, 'PPThinning_gold.mat'), ...
+    'delta_pt', 'tmax_pt', 'time_pt', 'lambda_pt', ...
+    'candidate_spikes_pt', 'lambda_ratio_pt', 'uniform_u2_pt', ...
+    'accepted_spikes_pt', 'accept_ratio_pt', '-v7');
+
+% --------------------------------------------------------------
+% Fixture 20: NetworkTutorial (two-neuron influence summaries)
+% --------------------------------------------------------------
+T_net = 8.0;
+dt_net = 0.002;
+n_t_net = floor(T_net / dt_net);
+time_net = ((0:n_t_net-1)' * dt_net);
+stim_net = sin(2.0*pi*0.8*time_net);
+baseline_net = [-3.9; -4.1];
+W_stim_net = [1.1; -0.9];
+W_net = [0.0 0.9; -1.2 0.0];
+spikes_net = zeros(2, n_t_net);
+for t=2:n_t_net
+    drive_net = baseline_net + W_stim_net * stim_net(t) + W_net * spikes_net(:,t-1);
+    p_net = min(max(exp(drive_net), 1e-8), 0.7);
+    spikes_net(:,t) = binornd(1, p_net);
+end
+
+a12 = spikes_net(1,1:end-1) - mean(spikes_net(1,1:end-1));
+b12 = spikes_net(2,2:end) - mean(spikes_net(2,2:end));
+d12 = norm(a12) * norm(b12);
+if d12 > 0
+    lag12 = sum(a12 .* b12) / d12;
+else
+    lag12 = 0.0;
+end
+a21 = spikes_net(2,1:end-1) - mean(spikes_net(2,1:end-1));
+b21 = spikes_net(1,2:end) - mean(spikes_net(1,2:end));
+d21 = norm(a21) * norm(b21);
+if d21 > 0
+    lag21 = sum(a21 .* b21) / d21;
+else
+    lag21 = 0.0;
+end
+xc_net = [0.0 lag12; lag21 0.0];
+rates_net = mean(spikes_net, 2) / dt_net;
+shape_net = size(spikes_net);
+save(fullfile(out_dir, 'NetworkTutorial_gold.mat'), ...
+    'dt_net', 'time_net', 'stim_net', 'spikes_net', 'xc_net', 'rates_net', 'shape_net', '-v7');
+
 fprintf('MATLAB gold fixtures exported to %s\n', out_dir);
 """
 
@@ -716,6 +834,10 @@ NUMERIC_FIXTURE_FILES = [
     "HybridFilterExample_gold.mat",
     "ValidationDataSet_gold.mat",
     "StimulusDecode2D_gold.mat",
+    "SignalObjExamples_gold.mat",
+    "HistoryExamples_gold.mat",
+    "PPThinning_gold.mat",
+    "NetworkTutorial_gold.mat",
 ]
 
 

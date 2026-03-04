@@ -1,0 +1,91 @@
+temp = nan(size(x_new));
+temp(idx) = zernfun(l,m,r_new(idx),theta_new(idx),'norm');
+zpoly{cnt} = temp;
+end
+end
+end
+for n=1:numAnimals
+clear lambdaGaussian lambdaZernike;
+load(fullfile(placeCellDataDir,['PlaceCellDataAnimal' num2str(n) '.mat']));
+resData=load(fullfile(fileparts(placeCellDataDir),['PlaceCellAnimal' num2str(n) 'Results.mat']));
+results = FitResult.fromStructure(resData.resStruct);
+for i=1:length(neuron)
+lambdaGaussian{i} = results{i}.evalLambda(1,newData);
+lambdaZernike{i} =  results{i}.evalLambda(2,zpoly);
+end
+for i=1:length(neuron)
+if(n==1)
+h4=figure(4);
+if(i==1)
+annotation(h4,'textbox',...
+[0.343261904761904 0.928571428571418 ...
+0.392857142857143 0.0595238095238095],...
+'String',{['Gaussian Place Fields - Animal#' ...
+num2str(n)]},'FitBoxToText','on'); hold on;
+end
+subplot(7,7,i);
+elseif(n==2)
+h6=figure(6);
+if(i==1)
+annotation(h6,'textbox',...
+[0.343261904761904 0.928571428571418 ...
+0.392857142857143 0.0595238095238095],...
+'String',{['Gaussian Place Fields - Animal#' ...
+num2str(n)]},'FitBoxToText','on'); hold on;
+end
+subplot(6,7,i);
+end
+pcolor(x_new,y_new,lambdaGaussian{i}), shading interp
+axis square; set(gca,'xtick',[],'ytick',[]);
+if(n==1)
+h5=figure(5);
+if(i==1)
+annotation(h5,'textbox',...
+[0.343261904761904 0.928571428571418 ...
+0.392857142857143 0.0595238095238095],...
+'String',{['Zernike Place Fields - Animal#' ...
+num2str(n)]},'FitBoxToText','on'); hold on;
+end
+subplot(7,7,i);
+elseif(n==2)
+h7=figure(7);
+if(i==1)
+annotation(h7,'textbox',...
+[0.343261904761904 0.928571428571418 ...
+0.392857142857143 0.0595238095238095],...
+'String',{['Zernike Place Fields - Animal#' ...
+num2str(n)]},'FitBoxToText','on'); hold on;
+end
+subplot(6,7,i);
+end
+pcolor(x_new,y_new,lambdaZernike{i}), shading interp
+axis square;
+set(gca,'xtick',[],'ytick',[]);
+end
+end
+clear lambdaGaussian lambdaZernike;
+load(fullfile(placeCellDataDir,'PlaceCellDataAnimal1.mat'));
+resData=load(fullfile(fileparts(placeCellDataDir),'PlaceCellAnimal1Results.mat'));
+results = FitResult.fromStructure(resData.resStruct);
+for i=1:length(neuron)
+lambdaGaussian{i} = results{i}.evalLambda(1,newData);
+lambdaZernike{i} =  results{i}.evalLambda(2,zpoly);
+end
+exampleCell = 25;
+figure(8);
+plot(x,y,'b',neuron{exampleCell}.xN,neuron{exampleCell}.yN,'r.');
+xlabel('x'); ylabel('y');
+title(['Animal#1, Cell#' num2str(exampleCell)]);
+figure(9);
+h_mesh = mesh(x_new,y_new,lambdaGaussian{exampleCell},'AlphaData',0);
+get(h_mesh,'AlphaData');
+set(h_mesh,'FaceAlpha',0.2,'EdgeAlpha',0.2,'EdgeColor','b');
+hold on;
+h_mesh = mesh(x_new,y_new,lambdaZernike{exampleCell},'AlphaData',0);
+get(h_mesh,'AlphaData');
+set(h_mesh,'FaceAlpha',0.2,'EdgeAlpha',0.2,'EdgeColor','g');
+legend(results{exampleCell}.lambda.dataLabels);
+plot(x,y,neuron{exampleCell}.xN,neuron{exampleCell}.yN,'r.');
+axis tight square;
+xlabel('x position'); ylabel('y position');
+title(['Animal#1, Cell#' num2str(exampleCell)]);

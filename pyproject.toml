@@ -27,7 +27,9 @@ dev = [
   "pytest-cov>=4.1",
   "mypy>=1.8",
   "ruff>=0.3",
-  "nbformat>=5.9"
+  "nbformat>=5.9",
+  "PyMuPDF>=1.24",
+  "scikit-image>=0.22"
 ]
 docs = [
   "sphinx>=7.2",
@@ -42,7 +44,9 @@ notebooks = [
   "jupyter>=1.0",
   "Pillow>=10.0",
   "reportlab>=4.0",
-  "pyyaml>=6.0"
+  "pyyaml>=6.0",
+  "PyMuPDF>=1.24",
+  "scikit-image>=0.22"
 ]
 
 [project.urls]

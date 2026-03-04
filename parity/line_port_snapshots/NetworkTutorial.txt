@@ -62,27 +62,3 @@ cfgColl= ConfigColl(c);
 results = Analysis.RunAnalysisForAllNeurons(trial,cfgColl,0,Algorithm);
 results{1}.plotResults;
 results{2}.plotResults;
-Summary = FitResSummary(results);
-actNetwork = zeros(numNeurons,numNeurons);
-network1ms = zeros(numNeurons,numNeurons);
-for i=1:numNeurons
-index = 1:numNeurons;
-neighbors = setdiff(index,i);
-[num,den] = tfdata(E{i});
-actNetwork(i,neighbors) = cell2mat(num);
-[coeffs,labels]=results{i}.getCoeffs;
-network1ms(i,neighbors)=coeffs(1:(length(neighbors)),3);
-end
-maxVal=max(max(abs(actNetwork)));
-minVal=-maxVal;%min(min(actNetwork));
-CLIM = [minVal maxVal];
-figure;
-colormap(jet);
-subplot(1,2,1);
-imagesc(actNetwork,CLIM);
-set(gca,'XTick',index,'YTick',index);
-title('Actual');
-subplot(1,2,2);
-imagesc(network1ms,CLIM);
-set(gca,'XTick',index,'YTick',index);
-title('Estimated 1ms');

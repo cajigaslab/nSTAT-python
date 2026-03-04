@@ -45,7 +45,7 @@ artifacts in the `parity/` directory.
 | Required topics checked | 30 |
 | Topics passed | 31 |
 | Topics failed | 0 |
-| Metrics checked | 165 |
+| Metrics checked | 146 |
 | Metrics failed | 0 |
 
 ## Frozen MATLAB data snapshot

@@ -13,6 +13,7 @@ import scipy.io
 import yaml
 
 from nstat.analysis import Analysis
+from nstat.compat.matlab import History, SignalObj
 from nstat.decoding import DecodingAlgorithms
 from nstat.events import Events
 from nstat.signal import Covariate
@@ -149,6 +150,10 @@ def _numeric_fixture_paths(fixture_index: dict[str, dict]) -> dict[str, Path]:
         "StimulusDecode2D",
         "ExplicitStimulusWhiskerData",
         "mEPSCAnalysis",
+        "SignalObjExamples",
+        "HistoryExamples",
+        "PPThinning",
+        "NetworkTutorial",
     ]
     out: dict[str, Path] = {}
     for topic in required:
@@ -494,6 +499,76 @@ def _evaluate_metrics(fixture_paths: dict[str, Path]) -> dict[str, dict[str, flo
         "detected_amp_max_abs_error": float(np.max(np.abs(det_amps - exp_amps))) if det_amps.size else 0.0,
         "mean_amp_abs_error": float(abs(float(np.mean(det_amps)) - exp_mean_amp)) if det_amps.size else 0.0,
         "event_count_mismatch": float(count_mismatch),
+    }
+
+    # SignalObjExamples
+    m = _mat(fixture_paths["SignalObjExamples_gold.mat"])
+    t = _vec(m, "time_sig")
+    v1 = _vec(m, "v1_sig")
+    v2 = _vec(m, "v2_sig")
+    s = SignalObj(time=t, data=np.column_stack([v1, v2]), name="Voltage", units="V")
+    s.setDataLabels(["v1", "v2"])
+    s.setMask(["v1"])
+    masked_cols = float(len(s.findIndFromDataMask()))
+    s.resetMask()
+    s_resampled = s.resample(_scalar(m, "resample_hz_sig"))
+    s_window = s.getSigInTimeWindow(_scalar(m, "window_t0_sig"), _scalar(m, "window_t1_sig"))
+    _, p_per = s.periodogram()
+    peak_idx = float(np.argmax(p_per))
+    results["SignalObjExamples"] = {
+        "masked_cols_abs_error": float(abs(masked_cols - _scalar(m, "masked_cols_sig"))),
+        "periodogram_peak_idx_abs_error": float(abs(peak_idx - _scalar(m, "periodogram_peak_idx_sig"))),
+        "resampled_count_abs_error": float(
+            abs(float(s_resampled.getNumSamples()) - _scalar(m, "resampled_n_samples_sig"))
+        ),
+        "window_count_abs_error": float(abs(float(s_window.getNumSamples()) - _scalar(m, "window_n_samples_sig"))),
+    }
+
+    # HistoryExamples
+    m = _mat(fixture_paths["HistoryExamples_gold.mat"])
+    history = History(bin_edges_s=_vec(m, "bin_edges_hist"))
+    H = history.computeHistory(_vec(m, "spike_times_hist"), _vec(m, "time_grid_hist"))
+    filt = history.toFilter()
+    results["HistoryExamples"] = {
+        "history_matrix_max_abs_error": float(np.max(np.abs(H - np.asarray(m["H_expected_hist"], dtype=float)))),
+        "history_filter_max_abs_error": float(np.max(np.abs(filt - _vec(m, "filter_expected_hist")))),
+        "history_bins_abs_error": float(abs(float(history.getNumBins()) - _scalar(m, "n_bins_hist"))),
+    }
+
+    # PPThinning
+    m = _mat(fixture_paths["PPThinning_gold.mat"])
+    candidate = _vec(m, "candidate_spikes_pt")
+    ratio = _vec(m, "lambda_ratio_pt")
+    u2 = _vec(m, "uniform_u2_pt")
+    accepted = candidate[ratio >= u2]
+    expected = _vec(m, "accepted_spikes_pt")
+    results["PPThinning"] = {
+        "accepted_spike_max_abs_error": float(np.max(np.abs(accepted - expected))) if accepted.size else 0.0,
+        "accepted_count_mismatch": float(abs(float(accepted.size) - float(expected.size))),
+        "accept_ratio_abs_error": float(
+            abs(float(accepted.size / max(candidate.size, 1)) - _scalar(m, "accept_ratio_pt"))
+        ),
+    }
+
+    # NetworkTutorial
+    m = _mat(fixture_paths["NetworkTutorial_gold.mat"])
+    spikes = np.asarray(m["spikes_net"], dtype=float)
+    dt = _scalar(m, "dt_net")
+
+    def _lag1(a: np.ndarray, b: np.ndarray) -> float:
+        aa = a[:-1] - np.mean(a[:-1])
+        bb = b[1:] - np.mean(b[1:])
+        denom = np.linalg.norm(aa) * np.linalg.norm(bb)
+        return float(np.dot(aa, bb) / denom) if denom > 0 else 0.0
+
+    xc = np.array([[0.0, _lag1(spikes[0], spikes[1])], [_lag1(spikes[1], spikes[0]), 0.0]], dtype=float)
+    rates = spikes.mean(axis=1) / dt
+    results["NetworkTutorial"] = {
+        "xc_max_abs_error": float(np.max(np.abs(xc - np.asarray(m["xc_net"], dtype=float)))),
+        "rates_max_abs_error": float(np.max(np.abs(rates - _vec(m, "rates_net")))),
+        "shape_mismatch_count": float(
+            np.count_nonzero(np.asarray(spikes.shape, dtype=float) - _vec(m, "shape_net"))
+        ),
     }
 
     return results
