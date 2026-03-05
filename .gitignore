@@ -4,3 +4,26 @@ __pycache__/
 .pytest_cache/
 docs/_build/
 plots/
+
+# Generated reports / validation outputs
+output/
+tmp/
+
+# Downloaded/cacheable datasets (not source)
+data_cache/
+.cache/
+*.zip
+
+# Notebook execution artifacts
+.ipynb_checkpoints/
+
+# Python tooling caches
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Packaging artifacts
+build/
+dist/
+*.egg-info/
