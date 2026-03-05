@@ -123,6 +123,7 @@ def main() -> int:
 
     for row in rows:
         topic = str(row["topic"])
+        no_figure_utility = bool(row.get("no_figure_utility", False))
         py_images = sorted((args.python_image_root / topic).glob("fig_*.png"))
         mat_images = sorted((args.matlab_image_root / topic).glob("*.png"))
         topic_result: dict[str, object] = {
@@ -130,8 +131,13 @@ def main() -> int:
             "expected_figures": int(row.get("expected_figure_count", len(mat_images))),
             "produced_figures": len(py_images),
             "reference_figures": len(mat_images),
+            "no_figure_utility": no_figure_utility,
             "pairs": [],
         }
+
+        if no_figure_utility:
+            results.append(topic_result)
+            continue
 
         if len(py_images) != len(mat_images):
             failures.append(

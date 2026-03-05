@@ -23,6 +23,10 @@ PLOT_CALL_RE = re.compile(
 )
 FIGURE_CALL_RE = re.compile(r"\bfigure\b", re.IGNORECASE)
 CLOSE_CALL_RE = re.compile(r"^\s*(close(\s+all)?|clf)\b", re.IGNORECASE)
+METHOD_PLOT_RE = re.compile(
+    r"^\s*[A-Za-z_]\w*\.(plot|plotResults|plotSummary|plotFit|plotResidual|KSPlot)\b",
+    re.IGNORECASE,
+)
 LOAD_CALL_RE = re.compile(r"""^\s*load\((["'])(.+?)\1\)\s*;?\s*$""", re.IGNORECASE)
 SIMPLE_ASSIGN_RE = re.compile(r"^\s*([A-Za-z_]\w*)\s*=\s*(.+?)\s*;?\s*$")
 COLON_RANGE_RE = re.compile(r"^\s*([^:]+)\s*:\s*([^:]+)\s*:\s*([^:]+)\s*$")
@@ -31,6 +35,7 @@ LOAD_ASSIGN_RE = re.compile(
     re.IGNORECASE,
 )
 MLX_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+NO_FIGURE_UTILITY_TOPICS = {"publish_all_helpfiles"}
 
 
 @dataclass(slots=True)
@@ -101,6 +106,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("parity/helpfile_figure_manifest.json"),
         help="JSON figure-event manifest.",
+    )
+    parser.add_argument(
+        "--topics",
+        default="",
+        help="Optional comma-separated topic subset to generate.",
     )
     return parser.parse_args()
 
@@ -231,8 +241,14 @@ def _split_mlx_sections(path: Path) -> list[SourceSection]:
         target = sections[-1]
         if is_code:
             for offset, code_line in enumerate(text.splitlines()):
+                code_stripped = code_line.lstrip()
+                code_is_executable = bool(code_stripped) and not code_stripped.startswith("%")
                 target.lines.append(
-                    SourceLine(line_no=para_no * 100 + offset, raw=code_line.rstrip(), is_code=True)
+                    SourceLine(
+                        line_no=para_no * 100 + offset,
+                        raw=code_line.rstrip(),
+                        is_code=code_is_executable,
+                    )
                 )
         else:
             target.lines.append(
@@ -257,43 +273,20 @@ def _detect_figure_events(topic: str, sections: list[SourceSection]) -> list[Fig
         for line_idx, line in enumerate(section.lines):
             if not line.is_code:
                 continue
-            stripped = line.raw.strip()
+            stripped = _strip_matlab_comment(line.raw).strip()
             if not stripped:
                 continue
-            if CLOSE_CALL_RE.match(stripped):
-                figure_open = False
-                continue
-            has_figure = bool(FIGURE_CALL_RE.search(stripped))
-            has_plot = bool(PLOT_CALL_RE.search(stripped))
-            if has_figure:
-                ordinal += 1
-                figure_open = True
-                events.append(
-                    FigureEvent(
-                        topic=topic,
-                        section_index=section.index,
-                        section_line_index=line_idx,
-                        source_line_no=line.line_no,
-                        source_snippet=stripped[:200],
-                        event_type="new_figure",
-                        figure_ordinal=ordinal,
-                    )
-                )
-                continue
-            if has_plot:
-                if figure_open:
-                    events.append(
-                        FigureEvent(
-                            topic=topic,
-                            section_index=section.index,
-                            section_line_index=line_idx,
-                            source_line_no=line.line_no,
-                            source_snippet=stripped[:200],
-                            event_type="add_to_current",
-                            figure_ordinal=ordinal,
-                        )
-                    )
-                else:
+            statements = _split_matlab_statements(stripped) or [stripped]
+            for statement in statements:
+                stmt = statement.strip()
+                if not stmt:
+                    continue
+                if CLOSE_CALL_RE.match(stmt):
+                    figure_open = False
+                    continue
+                has_figure = bool(FIGURE_CALL_RE.search(stmt))
+                has_plot = bool(PLOT_CALL_RE.search(stmt) or METHOD_PLOT_RE.match(stmt))
+                if has_figure:
                     ordinal += 1
                     figure_open = True
                     events.append(
@@ -302,11 +295,51 @@ def _detect_figure_events(topic: str, sections: list[SourceSection]) -> list[Fig
                             section_index=section.index,
                             section_line_index=line_idx,
                             source_line_no=line.line_no,
-                            source_snippet=stripped[:200],
+                            source_snippet=stmt[:200],
                             event_type="new_figure",
                             figure_ordinal=ordinal,
                         )
                     )
+                    if has_plot:
+                        events.append(
+                            FigureEvent(
+                                topic=topic,
+                                section_index=section.index,
+                                section_line_index=line_idx,
+                                source_line_no=line.line_no,
+                                source_snippet=stmt[:200],
+                                event_type="add_to_current",
+                                figure_ordinal=ordinal,
+                            )
+                        )
+                    continue
+                if has_plot:
+                    if figure_open:
+                        events.append(
+                            FigureEvent(
+                                topic=topic,
+                                section_index=section.index,
+                                section_line_index=line_idx,
+                                source_line_no=line.line_no,
+                                source_snippet=stmt[:200],
+                                event_type="add_to_current",
+                                figure_ordinal=ordinal,
+                            )
+                        )
+                    else:
+                        ordinal += 1
+                        figure_open = True
+                        events.append(
+                            FigureEvent(
+                                topic=topic,
+                                section_index=section.index,
+                                section_line_index=line_idx,
+                                source_line_no=line.line_no,
+                                source_snippet=stmt[:200],
+                                event_type="new_figure",
+                                figure_ordinal=ordinal,
+                            )
+                        )
     return events
 
 
@@ -322,13 +355,24 @@ def _matlab_comment_to_python(raw: str) -> str:
 
 def _translate_code_line(
     raw: str,
-    event_type: str | None,
+    events: list[FigureEvent] | None,
     *,
     source_line_no: int | None = None,
 ) -> list[str]:
     stripped = raw.strip()
+    event_lines: list[str] = []
+    for evt in events or []:
+        snippet = evt.source_snippet if evt.source_snippet else stripped
+        if evt.event_type == "new_figure":
+            event_lines.append(f"__tracker.new_figure({snippet!r})")
+        elif evt.event_type == "add_to_current":
+            event_lines.append(f"__tracker.annotate({snippet!r})")
+
+    def _with_events(lines: list[str]) -> list[str]:
+        return event_lines + lines if event_lines else lines
+
     if not stripped:
-        return [""]
+        return _with_events([""])
     lower = stripped.lower().rstrip(";")
 
     # Targeted MATLAB-mirrored plotting translations used in AnalysisExamples
@@ -338,53 +382,45 @@ def _translate_code_line(
         source_line_no == 701
         and normalized == "plot(xn,yn,x_at_spiketimes,y_at_spiketimes,'r.');"
     ):
-        return [
+        return _with_events([
             "ax = plt.gca()",
             "ax.cla()",
             "plt.gcf().set_size_inches(8.0, 8.0, forward=True)",
             "ax.plot(np.ravel(xN), np.ravel(yN), color=(0.0, 0.4470, 0.7410), linewidth=0.6)",
             "ax.plot(np.ravel(x_at_spiketimes), np.ravel(y_at_spiketimes), 'r.', markersize=2.5)",
-        ]
+        ])
     if lower == "axis tight square":
-        return [
+        return _with_events([
             "ax = plt.gca()",
             "ax.relim()",
             "ax.autoscale_view(tight=True)",
             "ax.set_aspect('equal', adjustable='box')",
             "ax.tick_params(top=True, right=True, direction='in')",
-        ]
+        ])
     if lower.startswith("xlabel(") and "ylabel(" in lower:
         m = re.search(r"xlabel\((['\"])(.*?)\1\)\s*;\s*ylabel\((['\"])(.*?)\3\)\s*;?$", stripped, re.IGNORECASE)
         if m:
-            return [
+            return _with_events([
                 f"plt.xlabel({m.group(1)}{m.group(2)}{m.group(1)})",
                 f"plt.ylabel({m.group(3)}{m.group(4)}{m.group(3)})",
-            ]
-
-    if event_type == "new_figure":
-        out = [f"__tracker.new_figure({stripped!r})"]
-        if PLOT_CALL_RE.search(stripped):
-            out.append(f"__tracker.annotate({stripped!r})")
-        return out
-    if event_type == "add_to_current":
-        return [f"__tracker.annotate({stripped!r})"]
+            ])
 
     if lower.startswith("close all"):
-        return ['plt.close("all")']
+        return _with_events(['plt.close("all")'])
     if lower == "figure":
-        return [f"__tracker.new_figure({stripped!r})"]
+        return _with_events([f"__tracker.new_figure({stripped!r})"])
     if lower.startswith("rng("):
-        return ["np.random.seed(0)"]
+        return _with_events(["np.random.seed(0)"])
     if lower.startswith("clear") or lower == "clc":
-        return ["pass"]
+        return _with_events(["pass"])
 
     translated_stmt = _translate_single_statement(_strip_matlab_comment(stripped).strip())
     if translated_stmt is not None:
-        return translated_stmt
+        return _with_events(translated_stmt)
 
     # Keep source-visible line mapping while preventing syntax errors for
     # MATLAB-only constructs.
-    return [f"_matlab({stripped!r})"]
+    return _with_events([f"_matlab({stripped!r})"])
 
 
 def _split_matlab_statements(line: str) -> list[str]:
@@ -562,7 +598,7 @@ def _build_cell_source(
     *,
     topic: str,
     source_path: Path,
-    event_map: dict[tuple[int, int], FigureEvent],
+    event_map: dict[tuple[int, int], list[FigureEvent]],
     expected_figures: int,
     include_bootstrap: bool,
     is_last_section: bool,
@@ -577,10 +613,10 @@ def _build_cell_source(
         for raw_part in raw_parts:
             lines.append(f"# MATLAB L{src.line_no}: {raw_part}")
         if src.is_code:
-            evt = event_map.get((section.index, line_idx))
+            evts = event_map.get((section.index, line_idx))
             translated = _translate_code_line(
                 src.raw,
-                evt.event_type if evt else None,
+                evts,
                 source_line_no=src.line_no,
             )
             lines.extend(translated)
@@ -599,11 +635,12 @@ def _write_notebook(
     source_path: Path,
     sections: list[SourceSection],
     events: list[FigureEvent],
+    expected_figures: int,
 ) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    event_map = {(evt.section_index, evt.section_line_index): evt for evt in events}
-    expected_figures = len([evt for evt in events if evt.event_type == "new_figure"])
-
+    event_map: dict[tuple[int, int], list[FigureEvent]] = {}
+    for evt in events:
+        event_map.setdefault((evt.section_index, evt.section_line_index), []).append(evt)
     nb = nbf.v4.new_notebook()
     nb.metadata.update(
         {
@@ -640,6 +677,11 @@ def main() -> int:
     repo_root = args.repo_root.resolve()
     help_root = _resolve_help_root(args)
     topics = _load_topics(args.manifest.resolve())
+    if args.topics.strip():
+        wanted = {token.strip() for token in args.topics.split(",") if token.strip()}
+        topics = [row for row in topics if row["topic"] in wanted]
+        if not topics:
+            raise RuntimeError(f"No topics matched --topics={args.topics!r}")
 
     source_manifest_rows: list[dict[str, object]] = []
     parsing_report: dict[str, object] = {
@@ -647,6 +689,7 @@ def main() -> int:
         "topics": [],
     }
     figure_manifest: dict[str, object] = {"topics": []}
+    matlab_image_root = (repo_root / "output" / "matlab_help_images").resolve()
 
     for row in topics:
         topic = row["topic"]
@@ -655,6 +698,12 @@ def main() -> int:
         source_path, source_type = _resolve_source_path(help_root, topic)
         sections = _extract_sections(source_path, source_type)
         events = _detect_figure_events(topic, sections)
+        detected_figures = len([evt for evt in events if evt.event_type == "new_figure"])
+        reference_images = sorted((matlab_image_root / topic).glob("*.png"))
+        expected_figures = len(reference_images) if reference_images else detected_figures
+        is_no_figure_utility = topic in NO_FIGURE_UTILITY_TOPICS
+        if is_no_figure_utility:
+            expected_figures = 0
         _write_notebook(
             topic=topic,
             run_group=run_group,
@@ -662,9 +711,9 @@ def main() -> int:
             source_path=source_path,
             sections=sections,
             events=events,
+            expected_figures=expected_figures,
         )
 
-        expected_figures = len([evt for evt in events if evt.event_type == "new_figure"])
         source_manifest_rows.append(
             {
                 "topic": topic,
@@ -672,8 +721,10 @@ def main() -> int:
                 "source_path": str(source_path),
                 "expected_section_count": len(sections),
                 "expected_figure_count": expected_figures,
+                "detected_figure_count": detected_figures,
                 "notebook_output_path": str(notebook_path),
                 "python_cell_count": len(sections),
+                "no_figure_utility": is_no_figure_utility,
             }
         )
         parsing_report["topics"].append(
@@ -683,6 +734,8 @@ def main() -> int:
                 "source_path": str(source_path),
                 "section_count": len(sections),
                 "figure_count": expected_figures,
+                "detected_figure_count": detected_figures,
+                "no_figure_utility": is_no_figure_utility,
                 "events": [
                     {
                         "section_index": evt.section_index,
@@ -700,6 +753,8 @@ def main() -> int:
             {
                 "topic": topic,
                 "total_figures_expected": expected_figures,
+                "total_figures_detected": detected_figures,
+                "no_figure_utility": is_no_figure_utility,
                 "events": [
                     {
                         "section_index": evt.section_index,
