@@ -19,6 +19,11 @@ import numpy as np
 import yaml
 from PIL import Image
 
+DEFAULT_NO_FIGURE_TOPICS = {
+    "publish_all_helpfiles",
+    "FitResultReference",
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -74,7 +79,7 @@ def _image_fingerprint(path: Path) -> str:
 
 def _load_no_figure_topics(manifest_path: Path) -> set[str]:
     if not manifest_path.exists():
-        return set()
+        return set(DEFAULT_NO_FIGURE_TOPICS)
     payload = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
     rows = payload.get("topics", [])
     out: set[str] = set()
@@ -82,6 +87,7 @@ def _load_no_figure_topics(manifest_path: Path) -> set[str]:
         expected_figs = int(row.get("expected_figure_count", 0) or 0)
         if bool(row.get("no_figure_utility", False)) or expected_figs <= 0:
             out.add(str(row.get("topic", "")).strip())
+    out.update(DEFAULT_NO_FIGURE_TOPICS)
     return {topic for topic in out if topic}
 
 
