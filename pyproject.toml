@@ -1,82 +1,33 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nstat"
+name = "nstat-toolbox"
 version = "0.1.0"
-description = "Clean-room Python implementation of the nSTAT toolbox"
+description = "Python port of the nSTAT toolbox"
 readme = "README.md"
-requires-python = ">=3.11"
-license = {text = "GPL-2.0-or-later"}
-authors = [{name = "Cajigas Lab"}]
-dependencies = [
-  "numpy>=1.26",
-  "scipy>=1.11",
-  "matplotlib>=3.8",
-  "pandas>=2.1",
-  "pyyaml>=6.0",
-  "requests>=2.31"
+requires-python = ">=3.10"
+authors = [
+  { name = "Cajigas Lab" }
 ]
-
-[project.scripts]
-nstat-install = "nstat.install:main"
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "matplotlib>=3.7"
+]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
-  "pytest-benchmark>=4.0",
-  "pytest-cov>=4.1",
-  "mypy>=1.8",
-  "ruff>=0.3",
-  "nbformat>=5.9",
-  "nbclient>=0.9",
-  "ipykernel>=6.29",
-  "PyMuPDF>=1.24",
-  "scikit-image>=0.22"
 ]
-docs = [
-  "sphinx>=7.2",
-  "myst-parser>=2.0",
-  "sphinx-autodoc-typehints>=2.0",
-  "sphinx-rtd-theme>=2.0",
-  "pyyaml>=6.0"
-]
-notebooks = [
-  "nbformat>=5.9",
-  "nbclient>=0.9",
-  "jupyter>=1.0",
-  "Pillow>=10.0",
-  "reportlab>=4.0",
-  "pyyaml>=6.0",
-  "PyMuPDF>=1.24",
-  "scikit-image>=0.22"
-]
-
-[project.urls]
-Homepage = "https://github.com/cajigaslab/nSTAT-python"
-Documentation = "https://cajigaslab.github.io/nSTAT-python/"
-
-[tool.setuptools]
-package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["nstat*"]
 
-[tool.ruff]
-line-length = 100
-target-version = "py311"
+[tool.setuptools.package-data]
+"nstat.data" = ["manifest.json"]
 
-[tool.mypy]
-python_version = "3.11"
-strict = false
-ignore_missing_imports = true
-warn_unused_configs = true
-
-[tool.pytest.ini_options]
-addopts = "-q"
-markers = [
-  "smoke: fast checks for pull requests",
-  "full: heavier checks for nightly and release gating",
-  "performance: runtime benchmark checks for parity monitoring"
-]
+[project.scripts]
+nstat-paper-examples = "nstat.paper_examples:main"

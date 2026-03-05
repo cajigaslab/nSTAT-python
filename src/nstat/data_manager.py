@@ -1,38 +1,34 @@
-"""Example data management for nSTAT notebooks and validation workflows.
+"""Example data directory resolution and DOI-backed download helpers.
 
-This module keeps raw example data out of Git while allowing deterministic
-local/CI setup via an on-demand DOI download cache.
+This module keeps raw example assets out of Git while allowing notebooks and
+tests to materialize the canonical nSTAT example dataset on demand.
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
 import shutil
 import tempfile
+import time
+import urllib.request
 import zipfile
-from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
-
-import requests  # type: ignore[import-untyped]
-from requests.adapters import HTTPAdapter  # type: ignore[import-untyped]
-from urllib3.util.retry import Retry
+from typing import Final
 
 
-DOI_URL = "https://doi.org/10.6084/m9.figshare.4834640"
-FIGSHARE_ARTICLE_FALLBACK = "4834640"
-SENTINEL_FILENAME = ".nstat_data_ok.json"
-EXPECTED_SUBDIRS = ("mEPSCs", "Explicit Stimulus", "PSTH", "Place Cells")
-
-
-@dataclass(frozen=True)
-class DownloadTarget:
-    url: str
-    filename: str
+DOI_URL: Final[str] = "https://doi.org/10.6084/m9.figshare.4834640"
+DEFAULT_RELATIVE_CACHE: Final[Path] = Path("data_cache") / "nstat_data"
+SENTINEL_NAME: Final[str] = ".nstat_data_ok.json"
+REQUIRED_SUBDIRS: Final[tuple[str, ...]] = (
+    "Explicit Stimulus",
+    "Place Cells",
+    "mEPSCs",
+)
+DOWNLOAD_URL_RE: Final[re.Pattern[str]] = re.compile(
+    r"https?://(?:www\.)?figshare\.com/ndownloader/files/\d+"
+)
 
 
 def _repo_root() -> Path:
@@ -40,249 +36,153 @@ def _repo_root() -> Path:
 
 
 def get_data_dir() -> Path:
-    """Return the resolved example-data root.
+    """Return canonical on-disk example-data directory.
 
     Resolution order:
     1. ``NSTAT_DATA_DIR`` environment variable.
-    2. ``<repo_root>/data_cache/nstat_data``.
+    2. ``<repo>/data_cache/nstat_data``
     """
 
-    env = os.environ.get("NSTAT_DATA_DIR")
-    if env:
-        return Path(env).expanduser().resolve()
-    return (_repo_root() / "data_cache" / "nstat_data").resolve()
-
-
-def _sentinel_path(data_dir: Path) -> Path:
-    return data_dir / SENTINEL_FILENAME
-
-
-def _expected_paths(data_dir: Path) -> list[Path]:
-    return [data_dir / name for name in EXPECTED_SUBDIRS]
+    explicit = os.environ.get("NSTAT_DATA_DIR")
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    return (_repo_root() / DEFAULT_RELATIVE_CACHE).resolve()
 
 
 def data_is_present(data_dir: Path) -> bool:
-    """Return True when data dir has expected structure + sentinel."""
+    """Return True when the expected dataset footprint exists."""
 
     if not data_dir.exists() or not data_dir.is_dir():
         return False
-    if not _sentinel_path(data_dir).exists():
-        return False
-    return all(path.exists() and path.is_dir() for path in _expected_paths(data_dir))
+    for subdir in REQUIRED_SUBDIRS:
+        if not (data_dir / subdir).exists():
+            return False
+    return True
 
 
-def _build_session() -> requests.Session:
-    retry = Retry(
-        total=5,
-        backoff_factor=0.5,
-        status_forcelist=(429, 500, 502, 503, 504),
-        allowed_methods=("GET", "HEAD"),
-        raise_on_status=False,
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session = requests.Session()
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    session.headers.update({"User-Agent": "nSTAT-python-data-manager/1.0"})
-    return session
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def _extract_article_ids(url: str) -> list[str]:
-    ids = re.findall(r"/articles/(?:dataset|media)/[^/]+/(\d+)", url)
-    if not ids:
-        ids = re.findall(r"/(\d+)(?:[/?#]|$)", url)
-    unique: list[str] = []
-    for raw in ids:
-        if raw not in unique:
-            unique.append(raw)
-    if FIGSHARE_ARTICLE_FALLBACK not in unique:
-        unique.append(FIGSHARE_ARTICLE_FALLBACK)
-    return unique
-
-
-def _pick_download_target_from_article(session: requests.Session, article_id: str) -> DownloadTarget | None:
-    api = f"https://api.figshare.com/v2/articles/{article_id}"
-    resp = session.get(api, timeout=60)
-    if resp.status_code != 200:
-        return None
-    payload = resp.json()
-    files = payload.get("files", [])
-    if not isinstance(files, list) or not files:
-        return None
-
-    def sort_key(item: dict) -> tuple[int, int]:
-        name = str(item.get("name", "")).lower()
-        size = int(item.get("size", 0) or 0)
-        zip_pref = 0 if name.endswith(".zip") else 1
-        return (zip_pref, -size)
-
-    ordered = sorted((f for f in files if isinstance(f, dict)), key=sort_key)
-    for item in ordered:
-        url = str(item.get("download_url", "")).strip()
-        name = str(item.get("name", "")).strip() or "figshare_data.zip"
-        if url:
-            return DownloadTarget(url=url, filename=name)
-    return None
-
-
-def _resolve_download_target(session: requests.Session) -> DownloadTarget:
-    doi_resp = session.get(DOI_URL, allow_redirects=True, timeout=60)
-    doi_resp.raise_for_status()
-    final_url = doi_resp.url
-
-    for article_id in _extract_article_ids(final_url):
-        target = _pick_download_target_from_article(session, article_id)
-        if target is not None:
-            return target
-
-    html = doi_resp.text
-    links = re.findall(r"https://ndownloader\.figshare\.com/files/\d+", html)
-    if links:
-        url = links[0]
-        return DownloadTarget(url=url, filename=f"figshare_{FIGSHARE_ARTICLE_FALLBACK}.zip")
-
-    raise RuntimeError(f"Could not resolve figshare download target from DOI redirect: {final_url}")
-
-
-def _download_streaming(session: requests.Session, target: DownloadTarget, out_path: Path) -> None:
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with session.get(target.url, stream=True, timeout=120) as resp:
-        resp.raise_for_status()
-        with out_path.open("wb") as f:
-            for chunk in resp.iter_content(chunk_size=1024 * 1024):
-                if chunk:
-                    f.write(chunk)
-
-
-def _contains_expected_structure(path: Path) -> bool:
-    return all((path / name).is_dir() for name in EXPECTED_SUBDIRS)
-
-
-def _find_extracted_root(extract_dir: Path) -> Path:
-    """Find dataset root inside extracted archive.
-
-    Figshare archives sometimes wrap data as:
-    - <root>/<EXPECTED_SUBDIRS...>
-    - <root>/data/<EXPECTED_SUBDIRS...>
-    - <root>/<single-dir>/data/<EXPECTED_SUBDIRS...>
-    """
-
-    direct_candidates: list[Path] = [extract_dir]
-    if extract_dir.is_dir():
-        direct_candidates.extend([p for p in extract_dir.iterdir() if p.is_dir() and p.name != "__MACOSX"])
-
-    for candidate in direct_candidates:
-        if _contains_expected_structure(candidate):
-            return candidate
-        nested_data = candidate / "data"
-        if _contains_expected_structure(nested_data):
-            return nested_data
-
-    for candidate in extract_dir.rglob("*"):
-        if not candidate.is_dir() or candidate.name == "__MACOSX":
-            continue
-        if _contains_expected_structure(candidate):
-            return candidate
-        nested_data = candidate / "data"
-        if _contains_expected_structure(nested_data):
-            return nested_data
-
-    return extract_dir
-
-
-def _ensure_expected_subdirs(data_dir: Path) -> None:
-    missing = [str(path) for path in _expected_paths(data_dir) if not path.exists()]
-    if missing:
-        raise RuntimeError(
-            "Downloaded archive does not contain expected nSTAT example-data structure. "
-            f"Missing: {', '.join(missing)}"
-        )
-
-
-def _write_sentinel(data_dir: Path, source_url: str, archive_sha256: str) -> None:
+def _write_sentinel(data_dir: Path, *, source_url: str) -> None:
     payload = {
         "doi": DOI_URL,
         "source_url": source_url,
-        "archive_sha256": archive_sha256,
-        "downloaded_at_utc": datetime.now(tz=UTC).isoformat(),
+        "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    _sentinel_path(data_dir).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    (data_dir / SENTINEL_NAME).write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def _atomic_replace_dir(src_dir: Path, dst_dir: Path) -> None:
-    if dst_dir.exists():
-        shutil.rmtree(dst_dir)
-    dst_dir.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(src_dir), str(dst_dir))
+def _http_get(url: str, *, timeout: float = 60.0) -> tuple[str, bytes]:
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "nSTAT-python-data-manager/1.0 (+https://github.com/cajigaslab/nSTAT-python)"
+        },
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        final_url = str(resp.geturl())
+        body = resp.read()
+    return final_url, body
+
+
+def _resolve_figshare_download_url() -> str:
+    final_url, body = _http_get(DOI_URL)
+    if DOWNLOAD_URL_RE.search(final_url):
+        return final_url
+    html = body.decode("utf-8", errors="ignore")
+    match = DOWNLOAD_URL_RE.search(html)
+    if match:
+        return match.group(0)
+    raise RuntimeError(
+        f"Could not resolve figshare download URL from DOI landing page: {DOI_URL}"
+    )
+
+
+def _stream_download(url: str, destination: Path, *, retries: int = 3) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "nSTAT-python-data-manager/1.0 (+https://github.com/cajigaslab/nSTAT-python)"
+                },
+            )
+            with urllib.request.urlopen(req, timeout=120.0) as resp, destination.open("wb") as out:
+                shutil.copyfileobj(resp, out, length=1024 * 1024)
+            return
+        except Exception as exc:  # pragma: no cover - network timing dependent
+            last_error = exc
+            if attempt < retries:
+                time.sleep(1.5 * attempt)
+    raise RuntimeError(f"Failed to download dataset from {url}") from last_error
+
+
+def _find_dataset_root(extracted_root: Path) -> Path:
+    if data_is_present(extracted_root):
+        return extracted_root
+    for candidate in extracted_root.rglob("*"):
+        if candidate.is_dir() and data_is_present(candidate):
+            return candidate
+    raise RuntimeError(
+        "Downloaded archive did not contain expected nSTAT data folders: "
+        + ", ".join(REQUIRED_SUBDIRS)
+    )
+
+
+def _atomic_replace_tree(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    backup = destination.with_name(f"{destination.name}.bak")
+    if backup.exists():
+        shutil.rmtree(backup)
+    if destination.exists():
+        destination.rename(backup)
+    try:
+        source.rename(destination)
+    except Exception:
+        if destination.exists():
+            shutil.rmtree(destination)
+        if backup.exists():
+            backup.rename(destination)
+        raise
+    finally:
+        if backup.exists():
+            shutil.rmtree(backup)
 
 
 def ensure_example_data(download: bool = True) -> Path:
-    """Ensure example data are available and return data root.
-
-    Parameters
-    ----------
-    download:
-        When ``True`` (default), download + extract from DOI if missing.
-        When ``False``, raise ``FileNotFoundError`` if data are absent.
-    """
+    """Ensure the canonical example data exists locally and return its path."""
 
     data_dir = get_data_dir()
     if data_is_present(data_dir):
+        if not (data_dir / SENTINEL_NAME).exists():
+            _write_sentinel(data_dir, source_url="local-existing")
         return data_dir
 
     if not download:
         raise FileNotFoundError(
-            f"nSTAT example data not found at {data_dir}. "
-            "Set NSTAT_DATA_DIR to an existing dataset root or run with download=True."
+            f"Example data not found at {data_dir}. "
+            "Set NSTAT_DATA_DIR or call ensure_example_data(download=True)."
         )
 
-    session = _build_session()
-    target = _resolve_download_target(session)
-    temp_parent = (_repo_root() / "output" / "data_download").resolve()
-    temp_parent.mkdir(parents=True, exist_ok=True)
-
-    with tempfile.TemporaryDirectory(prefix="nstat_data_", dir=temp_parent) as tmp_raw:
-        tmp_root = Path(tmp_raw)
-        archive_path = tmp_root / target.filename
-        _download_streaming(session, target, archive_path)
-
-        archive_sha = _sha256(archive_path)
-        try:
-            with zipfile.ZipFile(archive_path, "r") as zf:
-                bad_entry = zf.testzip()
-                if bad_entry is not None:
-                    raise RuntimeError(f"Archive integrity check failed at member: {bad_entry}")
-                extract_dir = tmp_root / "extract"
-                extract_dir.mkdir(parents=True, exist_ok=True)
-                zf.extractall(extract_dir)
-        except zipfile.BadZipFile as exc:
-            raise RuntimeError(f"Downloaded file is not a valid zip archive: {archive_path}") from exc
-
-        extracted_root = _find_extracted_root(tmp_root / "extract")
-        _ensure_expected_subdirs(extracted_root)
-        _write_sentinel(extracted_root, target.url, archive_sha)
-        _atomic_replace_dir(extracted_root, data_dir)
-
-    if not data_is_present(data_dir):
-        raise RuntimeError(f"Example data validation failed after download at {data_dir}")
-
+    # Download to a temp workspace first so partial failures do not pollute
+    # the final cache path.
+    download_tmp_root = (_repo_root() / "output" / "data_download").resolve()
+    download_tmp_root.mkdir(parents=True, exist_ok=True)
+    work_root = Path(tempfile.mkdtemp(prefix="nstat_data_", dir=str(download_tmp_root)))
+    try:
+        archive_path = work_root / "nstat_example_data.zip"
+        download_url = _resolve_figshare_download_url()
+        _stream_download(download_url, archive_path)
+        if not zipfile.is_zipfile(archive_path):
+            raise RuntimeError(f"Downloaded file is not a valid zip archive: {archive_path}")
+        extracted_root = work_root / "extracted"
+        extracted_root.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(archive_path) as zf:
+            zf.extractall(extracted_root)
+        dataset_root = _find_dataset_root(extracted_root)
+        staged = work_root / "staged_data"
+        shutil.copytree(dataset_root, staged)
+        _atomic_replace_tree(staged, data_dir)
+        _write_sentinel(data_dir, source_url=download_url)
+    finally:
+        shutil.rmtree(work_root, ignore_errors=True)
     return data_dir
-
-
-def iter_data_paths_from_matlab_line(matlab_line: str) -> Iterable[str]:
-    for match in re.finditer(r"['\"]([^'\"]*data/[^'\"]+)['\"]", matlab_line, flags=re.IGNORECASE):
-        raw = match.group(1)
-        marker = raw.lower().find("data/")
-        rel = raw[marker + len("data/") :] if marker >= 0 else raw
-        rel = rel.lstrip("./")
-        rel = rel.replace("\\", "/")
-        if rel:
-            yield rel

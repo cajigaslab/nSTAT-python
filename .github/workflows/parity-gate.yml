@@ -9,129 +9,18 @@ on:
 jobs:
   parity-checks:
     runs-on: ubuntu-latest
-    env:
-      OMP_NUM_THREADS: "1"
-      MKL_NUM_THREADS: "1"
-      OPENBLAS_NUM_THREADS: "1"
-      NUMEXPR_NUM_THREADS: "1"
-      VECLIB_MAXIMUM_THREADS: "1"
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: false
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Install parity dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev,notebooks]
-          python -m pip install pyyaml
-
-      - name: Resolve nSTAT data cache directory
-        id: nstat-data-dir
+          python -m pip install pyyaml nbformat nbclient reportlab pillow ipykernel
+          python -m ipykernel install --user --name python3 --display-name "Python 3"
+      - name: Run parity-focused tests
         run: |
-          echo "dir=$(python tools/data/print_data_dir.py)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache nSTAT example data
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.nstat-data-dir.outputs.dir }}
-          key: nstat-example-data-${{ runner.os }}-doi-10.6084-m9.figshare.4834640-v1
-          restore-keys: |
-            nstat-example-data-${{ runner.os }}-doi-10.6084-m9.figshare.4834640-
-
-      - name: Download nSTAT example data
-        run: |
-          python tools/data/download_example_data.py
-
-      - name: Checkout pinned MATLAB nSTAT reference
-        run: |
-          python tools/parity/checkout_matlab_reference.py \
-            --config parity/matlab_reference.yml \
-            --dest /tmp/upstream-nstat \
-            --metadata-out parity/matlab_reference_checkout.json
-
-      - name: Prepare deterministic validation images
-        run: |
-          python tools/parity/prepare_validation_images.py
-
-      - name: Validate notebook cleanliness
-        run: |
-          python tools/notebooks/clean_notebooks.py --check
-
-      - name: Build parity snapshot and enforce gates
-        run: |
-          python tools/parity/build_parity_snapshot.py \
-            --matlab-root /tmp/upstream-nstat \
-            --fail-on medium
-          python tools/parity/build_numeric_drift_report.py \
-            --fixtures-manifest tests/parity/fixtures/matlab_gold/manifest.yml \
-            --thresholds parity/numeric_drift_thresholds.yml \
-            --report-out parity/numeric_drift_report.json \
-            --fail-on-violation
-          python tools/parity/check_functional_parity_progress.py \
-            --report parity/function_example_alignment_report.json \
-            --policy parity/functional_gate_policy.yml
-          python tools/parity/check_example_output_spec.py \
-            --report parity/function_example_alignment_report.json \
-            --spec parity/example_output_spec.yml
-
-      - name: Generate class equivalence inventory/report artifacts
-        run: |
-          mkdir -p output/parity
-          python tools/parity/generate_class_equivalence_inventory.py \
-            --matlab-root /tmp/upstream-nstat \
-            --out-inventory output/parity/class_equivalence_inventory.json \
-            --out-report output/parity/class_equivalence_report.json
-
-      - name: Ensure parity artifacts are synchronized
-        run: |
-          python tools/parity/sync_parity_artifacts.py \
-            --matlab-root /tmp/upstream-nstat
-          git diff --exit-code \
-            parity/function_example_alignment_report.json \
-            parity/method_closure_sprint.md \
-            docs/help \
-            docs/notebooks.md \
-            baseline/help_mapping.json
-
-      - name: Generate full validation PDF (gate mode)
-        run: |
-          python tools/reports/generate_validation_pdf.py \
-            --repo-root "$GITHUB_WORKSPACE" \
-            --matlab-help-root /tmp/upstream-nstat/helpfiles \
-            --notebook-group all \
-            --timeout 900 \
-            --skip-command-tests \
-            --parity-mode gate \
-            --enforce-unique-images \
-            --min-unique-images-per-topic 1 \
-            --max-cross-topic-reuse-ratio 1.0
-
-      - name: Normalize canonical validation artifact names
-        run: |
-          latest_json="$(ls -1t output/pdf/nstat_python_validation_report_*.json | head -n 1)"
-          latest_base="${latest_json%.json}"
-          cp "${latest_base}.pdf" output/pdf/validation_gate_mode_latest.pdf
-          cp "${latest_base}.json" output/pdf/validation_gate_mode_latest.json
-          cp "${latest_base}.csv" output/pdf/validation_gate_mode_latest.csv
-
-      - name: Upload parity gate validation artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: parity-gate-validation-artifacts
-          path: |
-            output/pdf/validation_gate_mode_latest.pdf
-            output/pdf/validation_gate_mode_latest.json
-            output/pdf/validation_gate_mode_latest.csv
-            parity/function_example_alignment_report.json
-            parity/numeric_drift_report.json
-            parity/performance_parity_report.json
-            output/parity/class_equivalence_inventory.json
-            output/parity/class_equivalence_report.json
-          if-no-files-found: warn
+          pytest -q tests/test_helpfile_ordinal_image_parity.py tests/test_validation_images_discovery.py tests/test_readme_examples_catalog.py

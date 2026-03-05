@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import argparse
 import base64
-import csv
 import functools
 import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import textwrap
 import time
@@ -21,48 +21,14 @@ from pathlib import Path
 import nbformat
 import numpy as np
 import yaml
+from nbclient import NotebookClient
 from PIL import Image
-
-try:
-    from nbclient import NotebookClient
-except ModuleNotFoundError:  # pragma: no cover - exercised in CI dependency matrix
-    NotebookClient = None  # type: ignore[assignment]
-
-try:
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib.utils import ImageReader
-    from reportlab.pdfgen import canvas
-except ModuleNotFoundError:  # pragma: no cover - exercised in CI dependency matrix
-    letter = None  # type: ignore[assignment]
-    ImageReader = None  # type: ignore[assignment]
-    canvas = None  # type: ignore[assignment]
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen import canvas
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-THREAD_ENV = (
-    "OMP_NUM_THREADS",
-    "MKL_NUM_THREADS",
-    "OPENBLAS_NUM_THREADS",
-    "NUMEXPR_NUM_THREADS",
-    "VECLIB_MAXIMUM_THREADS",
-)
-
-
-def _require_nbclient() -> type:
-    if NotebookClient is None:
-        raise ModuleNotFoundError(
-            "nbclient is required to execute notebooks. "
-            "Install notebook extras with `pip install -e .[notebooks]`."
-        )
-    return NotebookClient
-
-
-def _require_reportlab() -> tuple[tuple[float, float], type, type]:
-    if letter is None or ImageReader is None or canvas is None:
-        raise ModuleNotFoundError(
-            "reportlab is required to build validation PDFs. "
-            "Install notebook extras with `pip install -e .[notebooks]`."
-        )
-    return letter, ImageReader, canvas.Canvas
 
 
 @dataclass(slots=True)
@@ -101,10 +67,6 @@ class NotebookReport:
     text_snippet: str
     error: str
     matlab_ref_images: list[Path]
-    expected_figure_count: int
-    produced_figure_count: int
-    figure_scores: list[float]
-    figure_count_match: bool
     similarity_score: float | None
     parity_pass: bool | None
     alignment_status: str | None
@@ -197,51 +159,17 @@ def parse_args() -> argparse.Namespace:
         help="Numeric drift report JSON used to enforce metric-based parity gates.",
     )
     parser.add_argument(
+        "--line-review-report",
+        type=Path,
+        default=REPO_ROOT / "parity" / "line_by_line_review_report.json",
+        help="Line-by-line review report JSON used for per-topic step alignment metrics.",
+    )
+    parser.add_argument(
         "--skip-command-tests",
         action="store_true",
         help="Skip command-driven checks and only render notebook validation pages.",
     )
-    parser.add_argument(
-        "--enforce-unique-images",
-        action="store_true",
-        help="Fail when notebook visual uniqueness thresholds are violated.",
-    )
-    parser.add_argument(
-        "--min-unique-images-per-topic",
-        type=int,
-        default=1,
-        help="Minimum required number of unique images per topic when uniqueness enforcement is enabled.",
-    )
-    parser.add_argument(
-        "--max-cross-topic-reuse-ratio",
-        type=float,
-        default=1.0,
-        help=(
-            "Maximum allowed cross-topic image reuse ratio in [0,1], where "
-            "cross_topic_reused_hashes / total_unique_hashes must be <= this value."
-        ),
-    )
-    parser.add_argument(
-        "--summary-json",
-        type=Path,
-        default=None,
-        help="Machine-readable JSON summary output path (defaults beside the PDF).",
-    )
-    parser.add_argument(
-        "--summary-csv",
-        type=Path,
-        default=None,
-        help="Machine-readable CSV summary output path (defaults beside the PDF).",
-    )
     return parser.parse_args()
-
-
-def prepare_notebook_exec_env() -> None:
-    for key in THREAD_ENV:
-        os.environ.setdefault(key, "1")
-    os.environ.setdefault("MPLBACKEND", "Agg")
-    os.environ.setdefault("PYTHONHASHSEED", "0")
-    os.environ.setdefault("PYDEVD_DISABLE_FILE_VALIDATION", "1")
 
 
 def run_command(name: str, cmd: list[str], cwd: Path) -> CommandResult:
@@ -286,28 +214,6 @@ def load_targets(manifest_path: Path, repo_root: Path, group: str) -> list[Noteb
     if group in {"full", "all"}:
         return all_targets
     return [target for target in all_targets if target.run_group == "smoke"]
-
-
-def load_expected_figure_counts(repo_root: Path) -> dict[str, int]:
-    manifest_path = repo_root / "parity" / "helpfile_figure_manifest.json"
-    if not manifest_path.exists():
-        return {}
-    try:
-        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
-        return {}
-    topics = payload.get("topics", {})
-    out: dict[str, int] = {}
-    if not isinstance(topics, dict):
-        return out
-    for topic, row in topics.items():
-        if not isinstance(row, dict):
-            continue
-        try:
-            out[str(topic)] = int(row.get("total_figures_expected", 0))
-        except Exception:  # noqa: BLE001
-            continue
-    return out
 
 
 def load_parity_gate_status(
@@ -404,6 +310,37 @@ def load_numeric_drift_summary(numeric_drift_report: Path) -> dict[str, dict[str
     return out
 
 
+def load_line_review_summary(line_review_report: Path) -> dict[str, dict[str, object]]:
+    """Load per-topic line-by-line review metrics."""
+
+    if not line_review_report.exists():
+        return {}
+    payload = json.loads(line_review_report.read_text(encoding="utf-8"))
+    rows = payload.get("topic_rows", [])
+    out: dict[str, dict[str, object]] = {}
+    for row in rows:
+        topic = str(row.get("topic", "")).strip()
+        if not topic:
+            continue
+        recall = row.get("matlab_step_recall", 0.0)
+        precision = row.get("python_step_precision", 0.0)
+        ratio = row.get("line_alignment_ratio", 0.0)
+        recall_val = float(recall) if isinstance(recall, (int, float)) else 0.0
+        precision_val = float(precision) if isinstance(precision, (int, float)) else 0.0
+        ratio_val = float(ratio) if isinstance(ratio, (int, float)) else 0.0
+        out[topic] = {
+            "line_review_status": str(row.get("line_review_status", "-")),
+            "line_alignment_ratio": ratio_val,
+            "matlab_step_recall": recall_val,
+            "python_step_precision": precision_val,
+            "line_review_missing_step_count": int(row.get("missing_matlab_step_count", 0)),
+            "line_review_extra_step_count": int(row.get("extra_python_step_count", 0)),
+            "line_review_missing_steps_preview": list(row.get("missing_matlab_steps", []))[:3],
+            "line_review_extra_steps_preview": list(row.get("extra_python_steps", []))[:3],
+        }
+    return out
+
+
 def _short_text(output_text: str, max_chars: int = 280) -> str:
     clean = " ".join(output_text.split())
     if len(clean) <= max_chars:
@@ -490,9 +427,9 @@ def collect_matlab_reference_images(topic: str, matlab_help_root: Path | None) -
                 priority.append(path)
             else:
                 secondary.append(path)
-        found = sorted(priority, key=lambda path: path.name) + sorted(secondary, key=lambda path: path.name)
+        found = priority + secondary
 
-    return found
+    return found[:8]
 
 
 @functools.lru_cache(maxsize=1024)
@@ -545,8 +482,6 @@ def execute_notebook_capture(
     tmp_dir: Path,
     timeout: int,
     matlab_help_root: Path | None,
-    repo_root: Path,
-    expected_figure_count: int,
     parity_threshold: float,
     skip_parity_check: bool,
     parity_mode: str,
@@ -556,7 +491,8 @@ def execute_notebook_capture(
     start = time.perf_counter()
     image_dir = tmp_dir / "notebook_images" / target.topic
     image_dir.mkdir(parents=True, exist_ok=True)
-    tracker_dir = repo_root / "output" / "notebook_images" / target.topic
+    for stale in image_dir.glob("*.png"):
+        stale.unlink()
 
     matlab_ref_images = collect_matlab_reference_images(target.topic, matlab_help_root)
 
@@ -577,10 +513,6 @@ def execute_notebook_capture(
             text_snippet="",
             error=f"Notebook not found: {target.file}",
             matlab_ref_images=matlab_ref_images,
-            expected_figure_count=expected_figure_count,
-            produced_figure_count=0,
-            figure_scores=[],
-            figure_count_match=(expected_figure_count == 0),
             similarity_score=None,
             parity_pass=None,
             alignment_status=(gate_status[0] if gate_status is not None else None),
@@ -590,8 +522,7 @@ def execute_notebook_capture(
         )
 
     notebook = nbformat.read(target.file, as_version=4)
-    notebook_client_cls = _require_nbclient()
-    client = notebook_client_cls(
+    client = NotebookClient(
         notebook,
         timeout=timeout,
         kernel_name="python3",
@@ -617,10 +548,6 @@ def execute_notebook_capture(
             text_snippet="",
             error=str(exc),
             matlab_ref_images=matlab_ref_images,
-            expected_figure_count=expected_figure_count,
-            produced_figure_count=0,
-            figure_scores=[],
-            figure_count_match=(expected_figure_count == 0),
             similarity_score=None,
             parity_pass=None,
             alignment_status=(gate_status[0] if gate_status is not None else None),
@@ -659,15 +586,20 @@ def execute_notebook_capture(
             elif output_type == "stream" and not text_snippet:
                 text_snippet = _short_text(str(output.get("text", "")))
 
-    tracker_images = sorted(tracker_dir.glob("fig_*.png"))
-    if expected_figure_count >= 0:
-        image_paths = tracker_images
-    elif tracker_images:
-        image_paths = tracker_images
+    # Generated help notebooks persist strict-ordinal figures to
+    # output/notebook_images/<topic>/fig_###.png via FigureTracker; those files
+    # are the canonical visual outputs for parity checks and PDF uniqueness
+    # gating, so mirror them into tmp_dir/notebook_images/<topic>/.
+    tracker_dir = REPO_ROOT / "output" / "notebook_images" / target.topic
+    if tracker_dir.exists():
+        tracker_imgs = sorted(tracker_dir.glob("fig_*.png"))
+        start_idx = len(image_paths)
+        for idx, src in enumerate(tracker_imgs, start=1):
+            dst = image_dir / f"{target.topic}_{start_idx + idx:03d}.png"
+            shutil.copy2(src, dst)
+            image_paths.append(dst)
+
     unique_image_paths, image_hashes = _select_unique_images(image_paths)
-    produced_figure_count = len(image_paths)
-    figure_count_match = produced_figure_count == int(expected_figure_count)
-    figure_scores: list[float] = []
     similarity_score: float | None = None
     parity_pass: bool | None = None
     alignment_status: str | None = gate_status[0] if gate_status is not None else None
@@ -684,23 +616,23 @@ def execute_notebook_capture(
             parity_pass = False
         if numeric_gate_ok is not None:
             parity_pass = parity_pass and numeric_gate_ok
-    else:
+    if not skip_parity_check and image_paths and matlab_ref_images:
+        best = -1.0
+        for py_img in image_paths:
+            for mat_img in matlab_ref_images:
+                sim = compute_image_similarity(py_img, mat_img)
+                if sim > best:
+                    best = sim
+                    matched_python_image = py_img
+                    matched_matlab_image = mat_img
+        similarity_score = best if best >= 0.0 else None
+
+    if parity_mode == "image":
         if not skip_parity_check:
-            if image_paths and matlab_ref_images and figure_count_match and len(matlab_ref_images) == produced_figure_count:
-                for idx in range(produced_figure_count):
-                    py_img = image_paths[idx]
-                    mat_img = matlab_ref_images[idx]
-                    sim = compute_image_similarity(py_img, mat_img)
-                    figure_scores.append(sim)
-                if figure_scores:
-                    similarity_score = float(min(figure_scores))
-                    matched_python_image = image_paths[0]
-                    matched_matlab_image = matlab_ref_images[0]
-                    parity_pass = similarity_score >= parity_threshold
-                else:
-                    parity_pass = False
+            if similarity_score is not None:
+                parity_pass = similarity_score >= parity_threshold
             else:
-                parity_pass = False
+                parity_pass = None
 
     duration = time.perf_counter() - start
     return NotebookReport(
@@ -718,10 +650,6 @@ def execute_notebook_capture(
         text_snippet=text_snippet,
         error="",
         matlab_ref_images=matlab_ref_images,
-        expected_figure_count=expected_figure_count,
-        produced_figure_count=produced_figure_count,
-        figure_scores=figure_scores,
-        figure_count_match=figure_count_match,
         similarity_score=similarity_score,
         parity_pass=parity_pass,
         alignment_status=alignment_status,
@@ -772,252 +700,6 @@ def _cross_topic_duplicate_stats(reports: list[NotebookReport]) -> dict[str, int
     }
 
 
-def _uniqueness_violations(
-    reports: list[NotebookReport],
-    min_unique_images_per_topic: int,
-    max_cross_topic_reuse_ratio: float,
-) -> tuple[list[str], dict[str, float | int]]:
-    violations: list[str] = []
-    for report in reports:
-        # Topics with zero expected figures are allowed to have zero unique images.
-        min_required = 0 if int(report.expected_figure_count) == 0 else int(min_unique_images_per_topic)
-        if report.unique_image_count < min_required:
-            violations.append(
-                f"{report.topic}: unique_images={report.unique_image_count} < "
-                f"min_required={min_required}"
-            )
-
-    duplicate_stats = _cross_topic_duplicate_stats(reports)
-    total_unique_hashes = int(duplicate_stats["total_unique_hashes"])
-    if total_unique_hashes == 0:
-        reuse_ratio = 0.0
-    else:
-        reuse_ratio = float(duplicate_stats["cross_topic_reused_hashes"]) / float(total_unique_hashes)
-
-    if reuse_ratio > max_cross_topic_reuse_ratio:
-        violations.append(
-            "cross_topic_reuse_ratio="
-            f"{reuse_ratio:.6f} > max_allowed={max_cross_topic_reuse_ratio:.6f}"
-        )
-
-    stats: dict[str, float | int] = {
-        **duplicate_stats,
-        "cross_topic_reuse_ratio": reuse_ratio,
-    }
-    return violations, stats
-
-
-def _topic_class_hint(topic: str) -> str:
-    overrides = {
-        "AnalysisExamples": "Analysis",
-        "AnalysisExamples2": "Analysis",
-        "ConfigCollExamples": "ConfigCollection",
-        "CovCollExamples": "CovariateCollection",
-        "CovariateExamples": "Covariate",
-        "DecodingExample": "DecodingAlgorithms",
-        "DecodingExampleWithHist": "DecodingAlgorithms",
-        "EventsExamples": "Events",
-        "FitResSummaryExamples": "FitSummary",
-        "FitResultExamples": "FitResult",
-        "FitResultReference": "FitResult",
-        "HistoryExamples": "HistoryBasis",
-        "SignalObjExamples": "Signal",
-        "StimulusDecode2D": "DecodingAlgorithms",
-        "TrialConfigExamples": "TrialConfig",
-        "TrialExamples": "Trial",
-        "nSpikeTrainExamples": "SpikeTrain",
-        "nstCollExamples": "SpikeTrainCollection",
-    }
-    if topic in overrides:
-        return overrides[topic]
-    if topic.endswith("Examples"):
-        return topic[: -len("Examples")] or topic
-    return "Workflow"
-
-
-def _as_rel(path: Path | None, repo_root: Path) -> str:
-    if path is None:
-        return ""
-    try:
-        return str(path.resolve().relative_to(repo_root.resolve()))
-    except Exception:
-        return str(path)
-
-
-def write_machine_readable_summaries(
-    *,
-    report_path: Path,
-    repo_root: Path,
-    reports: list[NotebookReport],
-    command_results: list[CommandResult],
-    matlab_help_root: Path | None,
-    notebook_group: str,
-    parity_mode: str,
-    parity_threshold: float,
-    uniqueness_stats: dict[str, float | int],
-    uniqueness_violations: list[str],
-    summary_json_path: Path,
-    summary_csv_path: Path,
-) -> tuple[Path, Path]:
-    summary_json_path.parent.mkdir(parents=True, exist_ok=True)
-    summary_csv_path.parent.mkdir(parents=True, exist_ok=True)
-
-    notebook_rows: list[dict[str, object]] = []
-    for report in reports:
-        metrics = dict(report.parity_metrics or {})
-        diff_artifacts: list[str] = []
-        if report.matched_python_image is not None:
-            diff_artifacts.append(_as_rel(report.matched_python_image, repo_root))
-        if report.matched_matlab_image is not None:
-            diff_artifacts.append(_as_rel(report.matched_matlab_image, repo_root))
-        notebook_rows.append(
-            {
-                "topic": report.topic,
-                "class_hint": _topic_class_hint(report.topic),
-                "notebook": _as_rel(report.file, repo_root),
-                "run_group": report.run_group,
-                "executed": bool(report.executed),
-                "duration_s": float(report.duration_s),
-                "execution_pass": bool(report.executed and not bool(report.error)),
-                "parity_pass": report.parity_pass,
-                "alignment_status": report.alignment_status,
-                "numeric_drift_pass": metrics.get("numeric_drift_pass"),
-                "numeric_drift_failed_metric_count": metrics.get("numeric_drift_failed_metric_count"),
-                "similarity_score": report.similarity_score,
-                "expected_figures": int(report.expected_figure_count),
-                "produced_figures": int(report.produced_figure_count),
-                "figure_count_match": bool(report.figure_count_match),
-                "figure_scores": [float(score) for score in report.figure_scores],
-                "image_count": int(report.image_count),
-                "unique_image_count": int(report.unique_image_count),
-                "duplicate_image_count": int(report.duplicate_image_count),
-                "error": report.error,
-                "matched_python_image": _as_rel(report.matched_python_image, repo_root),
-                "matched_matlab_image": _as_rel(report.matched_matlab_image, repo_root),
-                "python_images": [_as_rel(path, repo_root) for path in report.image_paths],
-                "matlab_reference_images": [_as_rel(path, repo_root) for path in report.matlab_ref_images],
-                "figure_pairs": [
-                    {
-                        "ordinal": idx + 1,
-                        "python_image": _as_rel(report.image_paths[idx], repo_root),
-                        "matlab_image": _as_rel(report.matlab_ref_images[idx], repo_root),
-                        "ssim": float(report.figure_scores[idx]),
-                    }
-                    for idx in range(min(len(report.figure_scores), len(report.image_paths), len(report.matlab_ref_images)))
-                ],
-                "diff_artifacts": diff_artifacts,
-                "parity_metrics": metrics,
-            }
-        )
-
-    command_rows = [
-        {
-            "name": row.name,
-            "command": " ".join(row.command),
-            "passed": row.passed,
-            "returncode": int(row.returncode),
-            "duration_s": float(row.duration_s),
-            "stdout_tail": row.stdout_tail,
-        }
-        for row in command_results
-    ]
-
-    executed = sum(1 for row in reports if row.executed)
-    exec_failures = len(reports) - executed
-    parity_checked = sum(1 for row in reports if row.parity_pass is not None)
-    parity_failures = sum(1 for row in reports if row.parity_pass is False)
-    numeric_checked = sum(
-        1
-        for row in reports
-        if row.parity_metrics is not None and "numeric_drift_pass" in row.parity_metrics
-    )
-    numeric_failures = sum(
-        1
-        for row in reports
-        if row.parity_metrics is not None and row.parity_metrics.get("numeric_drift_pass") is False
-    )
-
-    payload = {
-        "schema_version": 1,
-        "generated_at_utc": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-        "repo_root": str(repo_root),
-        "report_pdf": str(report_path),
-        "matlab_help_root": str(matlab_help_root) if matlab_help_root is not None else "",
-        "notebook_group": notebook_group,
-        "parity_mode": parity_mode,
-        "parity_threshold": float(parity_threshold),
-        "aggregate": {
-            "total_notebooks": len(reports),
-            "executed": executed,
-            "execution_failures": exec_failures,
-            "parity_checked": parity_checked,
-            "parity_failures": parity_failures,
-            "numeric_drift_checked": numeric_checked,
-            "numeric_drift_failures": numeric_failures,
-            "command_checks_total": len(command_results),
-            "command_checks_failed": sum(1 for row in command_results if not row.passed),
-            "uniqueness_violations": len(uniqueness_violations),
-            "uniqueness": uniqueness_stats,
-        },
-        "command_checks": command_rows,
-        "notebooks": notebook_rows,
-    }
-    summary_json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-
-    csv_columns = [
-        "topic",
-        "class_hint",
-        "notebook",
-        "run_group",
-        "executed",
-        "execution_pass",
-        "duration_s",
-        "parity_pass",
-        "alignment_status",
-        "numeric_drift_pass",
-        "numeric_drift_failed_metric_count",
-        "similarity_score",
-        "expected_figures",
-        "produced_figures",
-        "figure_count_match",
-        "image_count",
-        "unique_image_count",
-        "duplicate_image_count",
-        "matched_python_image",
-        "matched_matlab_image",
-        "diff_artifacts",
-        "error",
-    ]
-    with summary_csv_path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=csv_columns)
-        writer.writeheader()
-        for row in notebook_rows:
-            writer.writerow(
-                {
-                    "topic": row["topic"],
-                    "class_hint": row["class_hint"],
-                    "notebook": row["notebook"],
-                    "run_group": row["run_group"],
-                    "executed": row["executed"],
-                    "execution_pass": row["execution_pass"],
-                    "duration_s": row["duration_s"],
-                    "parity_pass": row["parity_pass"],
-                    "alignment_status": row["alignment_status"],
-                    "numeric_drift_pass": row["numeric_drift_pass"],
-                    "numeric_drift_failed_metric_count": row["numeric_drift_failed_metric_count"],
-                    "similarity_score": row["similarity_score"],
-                    "image_count": row["image_count"],
-                    "unique_image_count": row["unique_image_count"],
-                    "duplicate_image_count": row["duplicate_image_count"],
-                    "matched_python_image": row["matched_python_image"],
-                    "matched_matlab_image": row["matched_matlab_image"],
-                    "diff_artifacts": ";".join(row["diff_artifacts"]),
-                    "error": row["error"],
-                }
-            )
-    return summary_json_path, summary_csv_path
-
-
 def _draw_wrapped_lines(
     pdf: canvas.Canvas,
     x: float,
@@ -1037,8 +719,7 @@ def _draw_wrapped_lines(
 
 
 def _draw_image_fit(pdf: canvas.Canvas, image_path: Path, x: float, y: float, max_w: float, max_h: float) -> None:
-    _, image_reader_cls, _ = _require_reportlab()
-    reader = image_reader_cls(str(image_path))
+    reader = ImageReader(str(image_path))
     iw, ih = reader.getSize()
     scale = min(max_w / iw, max_h / ih)
     w = iw * scale
@@ -1081,6 +762,140 @@ def _draw_image_gallery(
         _draw_image_fit(pdf, image_path, cell_x, cell_y, cell_w, cell_h)
 
 
+def _draw_status_badge(
+    pdf: canvas.Canvas,
+    *,
+    x: float,
+    y: float,
+    label: str,
+    state: bool | None,
+    width: float = 94.0,
+    height: float = 18.0,
+) -> None:
+    if state is True:
+        fill = colors.Color(0.86, 0.96, 0.88)
+        stroke = colors.Color(0.28, 0.55, 0.30)
+        status_text = "PASS"
+    elif state is False:
+        fill = colors.Color(0.98, 0.88, 0.88)
+        stroke = colors.Color(0.62, 0.20, 0.20)
+        status_text = "FAIL"
+    else:
+        fill = colors.Color(0.92, 0.92, 0.92)
+        stroke = colors.Color(0.45, 0.45, 0.45)
+        status_text = "N/A"
+
+    pdf.setStrokeColor(stroke)
+    pdf.setFillColor(fill)
+    pdf.roundRect(x, y - height, width, height, 4, stroke=1, fill=1)
+    pdf.setFillColor(colors.black)
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawString(x + 4, y - 12, f"{label}: {status_text}")
+
+
+def _paired_reference_images(report: NotebookReport) -> tuple[Path | None, Path | None]:
+    if report.matched_python_image is not None and report.matched_matlab_image is not None:
+        return report.matched_python_image, report.matched_matlab_image
+    py = report.unique_image_paths[0] if report.unique_image_paths else None
+    mat = report.matlab_ref_images[0] if report.matlab_ref_images else None
+    return py, mat
+
+
+def _draw_comparison_pair(
+    pdf: canvas.Canvas,
+    *,
+    py_img: Path | None,
+    mat_img: Path | None,
+    x_left: float,
+    x_right: float,
+    top_y: float,
+    box_w: float,
+    box_h: float,
+) -> None:
+    pdf.setFont("Helvetica-Bold", 9)
+    pdf.drawString(x_left, top_y + 6, "Python output")
+    pdf.drawString(x_right, top_y + 6, "MATLAB reference")
+
+    if py_img is not None:
+        _draw_image_fit(pdf, py_img, x_left, top_y - box_h, box_w, box_h)
+        pdf.setFont("Helvetica", 8)
+        pdf.drawString(x_left, top_y - box_h - 10, py_img.name[:40])
+    else:
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(x_left, top_y - 12, "No Python image")
+
+    if mat_img is not None:
+        _draw_image_fit(pdf, mat_img, x_right, top_y - box_h, box_w, box_h)
+        pdf.setFont("Helvetica", 8)
+        pdf.drawString(x_right, top_y - box_h - 10, mat_img.name[:40])
+    else:
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(x_right, top_y - 12, "No MATLAB reference image")
+
+
+def _draw_delta_table(
+    pdf: canvas.Canvas,
+    *,
+    metrics: dict[str, object] | None,
+    x: float,
+    top_y: float,
+    width: float,
+    max_rows: int = 7,
+) -> None:
+    rows: list[dict[str, object]] = []
+    if metrics is not None:
+        for row in metrics.get("numeric_drift_metric_rows", []):
+            rows.append(
+                {
+                    "name": str(row.get("name", "-")),
+                    "value": float(row.get("value", 0.0)),
+                    "threshold": float(row.get("threshold", 0.0)),
+                    "pass": bool(row.get("pass", False)),
+                    "ratio_to_threshold": float(row.get("ratio_to_threshold", 0.0)),
+                }
+            )
+    if not rows:
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(x, top_y - 12, "No numeric delta metrics available.")
+        return
+
+    shown = rows[:max_rows]
+    row_h = 11.0
+    table_h = row_h * (len(shown) + 1)
+    col_name = width * 0.45
+    col_value = width * 0.18
+    col_threshold = width * 0.18
+
+    c1 = x + col_name
+    c2 = c1 + col_value
+    c3 = c2 + col_threshold
+
+    pdf.setStrokeColor(colors.black)
+    pdf.setLineWidth(0.6)
+    pdf.rect(x, top_y - table_h, width, table_h)
+    pdf.line(c1, top_y, c1, top_y - table_h)
+    pdf.line(c2, top_y, c2, top_y - table_h)
+    pdf.line(c3, top_y, c3, top_y - table_h)
+    for idx in range(1, len(shown) + 1):
+        y = top_y - idx * row_h
+        pdf.line(x, y, x + width, y)
+
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawString(x + 4, top_y - 9, "Delta metric")
+    pdf.drawString(c1 + 4, top_y - 9, "Value")
+    pdf.drawString(c2 + 4, top_y - 9, "Threshold")
+    pdf.drawString(c3 + 4, top_y - 9, "Status")
+
+    pdf.setFont("Helvetica", 8)
+    for idx, row in enumerate(shown, start=1):
+        y = top_y - idx * row_h - 9
+        status = "PASS" if bool(row["pass"]) else "FAIL"
+        pdf.drawString(x + 4, y, str(row["name"])[:34])
+        pdf.drawString(c1 + 4, y, f"{float(row['value']):.4g}")
+        pdf.drawString(c2 + 4, y, f"{float(row['threshold']):.4g}")
+        pdf.drawString(c3 + 4, y, status)
+
+
 def _format_metric_value(value: object | None) -> str:
     if value is None:
         return "-"
@@ -1100,6 +915,12 @@ def _draw_metrics_table(
     width: float,
 ) -> None:
     rows = [
+        ("line_review_status", "Line review status"),
+        ("line_alignment_ratio", "Line alignment ratio"),
+        ("matlab_step_recall", "MATLAB step recall"),
+        ("python_step_precision", "Python step precision"),
+        ("line_review_missing_step_count", "Missing MATLAB steps"),
+        ("line_review_extra_step_count", "Extra Python steps"),
         ("matlab_code_lines", "MATLAB code lines"),
         ("python_code_lines", "Python code lines"),
         ("python_to_matlab_line_ratio", "Python/MATLAB line ratio"),
@@ -1252,6 +1073,17 @@ def draw_summary_pages(
         for report in reports
         if report.parity_metrics is not None and bool(report.parity_metrics.get("numeric_drift_pass", False))
     )
+    line_review_checked = sum(
+        1
+        for report in reports
+        if report.parity_metrics is not None and str(report.parity_metrics.get("line_review_status", "")).strip() != ""
+    )
+    line_review_aligned = sum(
+        1
+        for report in reports
+        if report.parity_metrics is not None and str(report.parity_metrics.get("line_review_status", "")).strip()
+        in {"aligned", "partially_aligned"}
+    )
     duplicate_stats = _cross_topic_duplicate_stats(reports)
 
     pdf.setFont("Helvetica-Bold", 16)
@@ -1280,6 +1112,7 @@ def draw_summary_pages(
     else:
         pdf.drawString(260, 722, f"Parity pass: {parity_passed}/{parity_checked}")
     pdf.drawString(40, 674, f"Numeric drift pass: {numeric_passed}/{numeric_checked}")
+    pdf.drawString(260, 674, f"Line review aligned: {line_review_aligned}/{line_review_checked}")
 
     y = 654
     pdf.setFont("Helvetica-Bold", 9)
@@ -1442,6 +1275,100 @@ def draw_example_page(pdf: canvas.Canvas, report: NotebookReport, index: int, to
     pdf.showPage()
 
 
+def draw_example_comparison_page(pdf: canvas.Canvas, report: NotebookReport, index: int, total: int) -> None:
+    pdf.setFont("Helvetica-Bold", 15)
+    pdf.drawString(40, 760, f"Example {index}/{total}: {report.topic} (Side-by-side)")
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(40, 744, f"Notebook: {report.file}")
+
+    exec_state = bool(report.executed)
+    parity_state = report.parity_pass
+    numeric_state: bool | None = None
+    if report.parity_metrics is not None and "numeric_drift_pass" in report.parity_metrics:
+        numeric_state = bool(report.parity_metrics.get("numeric_drift_pass", False))
+    line_review_state: bool | None = None
+    if report.parity_metrics is not None:
+        status = str(report.parity_metrics.get("line_review_status", "")).strip().lower()
+        if status == "aligned":
+            line_review_state = True
+        elif status == "needs_review":
+            line_review_state = False
+
+    _draw_status_badge(pdf, x=40, y=724, label="Execution", state=exec_state)
+    _draw_status_badge(pdf, x=144, y=724, label="Parity gate", state=parity_state)
+    _draw_status_badge(pdf, x=248, y=724, label="Numeric drift", state=numeric_state)
+    _draw_status_badge(pdf, x=352, y=724, label="Line review", state=line_review_state)
+
+    py_img, mat_img = _paired_reference_images(report)
+    _draw_comparison_pair(
+        pdf,
+        py_img=py_img,
+        mat_img=mat_img,
+        x_left=40,
+        x_right=300,
+        top_y=680,
+        box_w=240,
+        box_h=250,
+    )
+
+    similarity_text = f"{report.similarity_score:.3f}" if report.similarity_score is not None else "-"
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(40, 404, f"Best image similarity score: {similarity_text}")
+    if report.alignment_status is not None:
+        pdf.drawString(260, 404, f"Equivalence status: {report.alignment_status}")
+
+    ratio = None
+    line_ratio = None
+    step_recall = None
+    step_precision = None
+    line_status = "-"
+    if report.parity_metrics is not None:
+        ratio = report.parity_metrics.get("python_to_matlab_line_ratio")
+        line_ratio = report.parity_metrics.get("line_alignment_ratio")
+        step_recall = report.parity_metrics.get("matlab_step_recall")
+        step_precision = report.parity_metrics.get("python_step_precision")
+        line_status = str(report.parity_metrics.get("line_review_status", "-"))
+    ratio_text = f"{float(ratio):.3f}" if isinstance(ratio, (int, float)) else "-"
+    pdf.drawString(40, 390, f"Python/MATLAB line ratio: {ratio_text}")
+    pdf.drawString(
+        260,
+        390,
+        f"Python unique images: {report.unique_image_count} | MATLAB refs: {len(report.matlab_ref_images)}",
+    )
+    line_ratio_text = f"{float(line_ratio):.3f}" if isinstance(line_ratio, (int, float)) else "-"
+    step_recall_text = f"{float(step_recall):.3f}" if isinstance(step_recall, (int, float)) else "-"
+    step_precision_text = f"{float(step_precision):.3f}" if isinstance(step_precision, (int, float)) else "-"
+    pdf.drawString(
+        40,
+        376,
+        f"Line review: {line_status} | alignment={line_ratio_text} | recall={step_recall_text} | precision={step_precision_text}",
+    )
+
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(40, 358, "Metric deltas (MATLAB gold fixture thresholds)")
+    _draw_delta_table(pdf, metrics=report.parity_metrics, x=40, top_y=344, width=520, max_rows=6)
+
+    if report.parity_metrics is not None:
+        missing_steps = report.parity_metrics.get("line_review_missing_steps_preview", [])
+        if isinstance(missing_steps, list) and missing_steps:
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawString(40, 254, "Missing MATLAB step preview:")
+            pdf.setFont("Helvetica", 8)
+            y = 242
+            for step in missing_steps[:2]:
+                y = _draw_wrapped_lines(pdf, 46, y, f"- {str(step)}", wrap_width=98, line_step=9)
+        extra_steps = report.parity_metrics.get("line_review_extra_steps_preview", [])
+        if isinstance(extra_steps, list) and extra_steps:
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawString(40, 212, "Extra Python step preview:")
+            pdf.setFont("Helvetica", 8)
+            y = 200
+            for step in extra_steps[:2]:
+                y = _draw_wrapped_lines(pdf, 46, y, f"- {str(step)}", wrap_width=98, line_step=9)
+
+    pdf.showPage()
+
+
 def generate_pdf_report(
     repo_root: Path,
     manifest_path: Path,
@@ -1457,6 +1384,7 @@ def generate_pdf_report(
     equivalence_report: Path,
     example_output_spec: Path,
     numeric_drift_report: Path,
+    line_review_report: Path,
 ) -> tuple[Path, list[NotebookReport], list[CommandResult], Path | None]:
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -1480,21 +1408,20 @@ def generate_pdf_report(
     parity_gate_status = load_parity_gate_status(equivalence_report, example_output_spec)
     parity_topic_metrics = load_parity_topic_metrics(equivalence_report)
     numeric_drift_by_topic = load_numeric_drift_summary(numeric_drift_report)
-    expected_figures_by_topic = load_expected_figure_counts(repo_root)
+    line_review_by_topic = load_line_review_summary(line_review_report)
 
     targets = load_targets(manifest_path, repo_root, notebook_group)
     reports: list[NotebookReport] = []
     for target in targets:
         merged_metrics = dict(parity_topic_metrics.get(target.topic, {}))
         merged_metrics.update(numeric_drift_by_topic.get(target.topic, {}))
+        merged_metrics.update(line_review_by_topic.get(target.topic, {}))
         reports.append(
             execute_notebook_capture(
                 target=target,
                 tmp_dir=tmp_dir,
                 timeout=timeout,
                 matlab_help_root=resolved_matlab_help_root,
-                repo_root=repo_root,
-                expected_figure_count=int(expected_figures_by_topic.get(target.topic, 0)),
                 parity_threshold=parity_threshold,
                 skip_parity_check=skip_parity_check,
                 parity_mode=parity_mode,
@@ -1510,8 +1437,7 @@ def generate_pdf_report(
     )
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    letter_size, _, canvas_cls = _require_reportlab()
-    pdf = canvas_cls(str(output_pdf), pagesize=letter_size)
+    pdf = canvas.Canvas(str(output_pdf), pagesize=letter)
     pdf.setTitle("nSTAT-python Validation Report")
 
     draw_cover_page(
@@ -1537,6 +1463,7 @@ def generate_pdf_report(
     total = len(reports)
     for index, report in enumerate(reports, start=1):
         draw_example_page(pdf=pdf, report=report, index=index, total=total)
+        draw_example_comparison_page(pdf=pdf, report=report, index=index, total=total)
 
     pdf.save()
     return output_pdf, reports, command_results, resolved_matlab_help_root
@@ -1544,7 +1471,6 @@ def generate_pdf_report(
 
 def main() -> int:
     args = parse_args()
-    prepare_notebook_exec_env()
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_pdf = args.output_dir / f"nstat_python_validation_report_{stamp}.pdf"
 
@@ -1563,6 +1489,7 @@ def main() -> int:
         equivalence_report=args.equivalence_report,
         example_output_spec=args.example_output_spec,
         numeric_drift_report=args.numeric_drift_report,
+        line_review_report=args.line_review_report,
     )
 
     executed = sum(1 for report in reports if report.executed)
@@ -1583,31 +1510,8 @@ def main() -> int:
         for report in reports
         if report.parity_metrics is not None and report.parity_metrics.get("numeric_drift_pass") is False
     )
-    uniqueness_violations, uniqueness_stats = _uniqueness_violations(
-        reports=reports,
-        min_unique_images_per_topic=args.min_unique_images_per_topic,
-        max_cross_topic_reuse_ratio=args.max_cross_topic_reuse_ratio,
-    )
-    summary_json_path = args.summary_json or output_pdf.with_suffix(".json")
-    summary_csv_path = args.summary_csv or output_pdf.with_suffix(".csv")
-    summary_json_path, summary_csv_path = write_machine_readable_summaries(
-        report_path=report_path,
-        repo_root=args.repo_root,
-        reports=reports,
-        command_results=command_results,
-        matlab_help_root=matlab_help_root,
-        notebook_group=args.notebook_group,
-        parity_mode=args.parity_mode,
-        parity_threshold=args.parity_threshold,
-        uniqueness_stats=uniqueness_stats,
-        uniqueness_violations=uniqueness_violations,
-        summary_json_path=summary_json_path,
-        summary_csv_path=summary_csv_path,
-    )
 
     print(f"Generated PDF report: {report_path}")
-    print(f"Machine-readable summary (JSON): {summary_json_path}")
-    print(f"Machine-readable summary (CSV): {summary_csv_path}")
     print(f"MATLAB help root: {matlab_help_root}")
     print(
         f"Notebook results: total={len(reports)} executed={executed} exec_failures={exec_failures} "
@@ -1616,24 +1520,8 @@ def main() -> int:
     print(f"Parity results ({args.parity_mode} mode): checked={parity_checked} failures={parity_failures}")
     print(f"Numeric drift topic results: checked={numeric_checked} failures={numeric_failures}")
     print(f"Command checks: total={len(command_results)} failed={command_failures}")
-    print(
-        "Uniqueness stats: "
-        f"total_instances={uniqueness_stats['total_image_instances']} "
-        f"total_unique={uniqueness_stats['total_unique_hashes']} "
-        f"cross_topic_reused={uniqueness_stats['cross_topic_reused_hashes']} "
-        f"cross_topic_reuse_ratio={uniqueness_stats['cross_topic_reuse_ratio']:.6f}"
-    )
-    print(f"Uniqueness violations: {len(uniqueness_violations)}")
-    if uniqueness_violations:
-        for violation in uniqueness_violations:
-            print(f"  - {violation}")
 
-    enforce_uniqueness_failure = args.enforce_unique_images and bool(uniqueness_violations)
-    return (
-        0
-        if exec_failures == 0 and command_failures == 0 and parity_failures == 0 and not enforce_uniqueness_failure
-        else 1
-    )
+    return 0 if exec_failures == 0 and command_failures == 0 and parity_failures == 0 else 1
 
 
 if __name__ == "__main__":

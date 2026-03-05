@@ -1,49 +1,6 @@
-# Byte-compiled / optimized
-__pycache__/
-*.py[cod]
-*.so
 .DS_Store
-
-# Packaging
-build/
-dist/
-*.egg-info/
-
-# Virtualenvs
-.venv/
-venv/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Tool caches
+__pycache__/
+*.pyc
 .pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# Sphinx
-_site/
 docs/_build/
-
-# Local data cache
-.data_cache/
-data_cache/
-output/data_download/
-*.zip
-
-# Local report artifacts
-output/
-tmp/
-
-# Internal-only porting/parity notes (kept outside public repo)
-CLEANROOM_POLICY.md
-PARITY_SPEC.md
-CANONICAL_VALIDATION_ARTIFACTS.md
-DISCREPANCIES.md
-parity/CYCLE_VALIDATION_CHECKLIST.md
-parity/class_equivalence_inventory.json
-parity/class_equivalence_report.json
-parity/cycle_validation/
-parity/matlab_reference_checkout.json
+plots/

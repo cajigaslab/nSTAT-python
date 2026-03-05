@@ -1,92 +1,92 @@
 version: 1
 notebooks:
 - topic: AnalysisExamples
-  file: notebooks/helpfiles/AnalysisExamples.ipynb
+  file: notebooks/AnalysisExamples.ipynb
   run_group: smoke
 - topic: ConfigCollExamples
-  file: notebooks/helpfiles/ConfigCollExamples.ipynb
+  file: notebooks/ConfigCollExamples.ipynb
   run_group: full
 - topic: CovCollExamples
-  file: notebooks/helpfiles/CovCollExamples.ipynb
+  file: notebooks/CovCollExamples.ipynb
   run_group: full
 - topic: CovariateExamples
-  file: notebooks/helpfiles/CovariateExamples.ipynb
+  file: notebooks/CovariateExamples.ipynb
   run_group: smoke
 - topic: DecodingExample
-  file: notebooks/helpfiles/DecodingExample.ipynb
+  file: notebooks/DecodingExample.ipynb
   run_group: smoke
 - topic: DecodingExampleWithHist
-  file: notebooks/helpfiles/DecodingExampleWithHist.ipynb
+  file: notebooks/DecodingExampleWithHist.ipynb
   run_group: smoke
 - topic: EventsExamples
-  file: notebooks/helpfiles/EventsExamples.ipynb
+  file: notebooks/EventsExamples.ipynb
   run_group: full
 - topic: ExplicitStimulusWhiskerData
-  file: notebooks/helpfiles/ExplicitStimulusWhiskerData.ipynb
+  file: notebooks/ExplicitStimulusWhiskerData.ipynb
   run_group: full
 - topic: FitResSummaryExamples
-  file: notebooks/helpfiles/FitResSummaryExamples.ipynb
+  file: notebooks/FitResSummaryExamples.ipynb
   run_group: full
 - topic: FitResultExamples
-  file: notebooks/helpfiles/FitResultExamples.ipynb
+  file: notebooks/FitResultExamples.ipynb
   run_group: full
 - topic: HippocampalPlaceCellExample
-  file: notebooks/helpfiles/HippocampalPlaceCellExample.ipynb
+  file: notebooks/HippocampalPlaceCellExample.ipynb
   run_group: full
 - topic: HistoryExamples
-  file: notebooks/helpfiles/HistoryExamples.ipynb
+  file: notebooks/HistoryExamples.ipynb
   run_group: full
 - topic: NetworkTutorial
-  file: notebooks/helpfiles/NetworkTutorial.ipynb
+  file: notebooks/NetworkTutorial.ipynb
   run_group: full
 - topic: PPSimExample
-  file: notebooks/helpfiles/PPSimExample.ipynb
+  file: notebooks/PPSimExample.ipynb
   run_group: smoke
 - topic: PPThinning
-  file: notebooks/helpfiles/PPThinning.ipynb
+  file: notebooks/PPThinning.ipynb
   run_group: full
 - topic: PSTHEstimation
-  file: notebooks/helpfiles/PSTHEstimation.ipynb
+  file: notebooks/PSTHEstimation.ipynb
   run_group: full
 - topic: SignalObjExamples
-  file: notebooks/helpfiles/SignalObjExamples.ipynb
+  file: notebooks/SignalObjExamples.ipynb
   run_group: smoke
 - topic: StimulusDecode2D
-  file: notebooks/helpfiles/StimulusDecode2D.ipynb
+  file: notebooks/StimulusDecode2D.ipynb
   run_group: full
 - topic: TrialConfigExamples
-  file: notebooks/helpfiles/TrialConfigExamples.ipynb
+  file: notebooks/TrialConfigExamples.ipynb
   run_group: full
 - topic: TrialExamples
-  file: notebooks/helpfiles/TrialExamples.ipynb
+  file: notebooks/TrialExamples.ipynb
   run_group: smoke
 - topic: ValidationDataSet
-  file: notebooks/helpfiles/ValidationDataSet.ipynb
+  file: notebooks/ValidationDataSet.ipynb
   run_group: full
 - topic: mEPSCAnalysis
-  file: notebooks/helpfiles/mEPSCAnalysis.ipynb
+  file: notebooks/mEPSCAnalysis.ipynb
   run_group: full
 - topic: nSTATPaperExamples
-  file: notebooks/helpfiles/nSTATPaperExamples.ipynb
+  file: notebooks/nSTATPaperExamples.ipynb
   run_group: smoke
 - topic: nSpikeTrainExamples
-  file: notebooks/helpfiles/nSpikeTrainExamples.ipynb
+  file: notebooks/nSpikeTrainExamples.ipynb
   run_group: smoke
 - topic: nstCollExamples
-  file: notebooks/helpfiles/nstCollExamples.ipynb
+  file: notebooks/nstCollExamples.ipynb
   run_group: full
 - topic: AnalysisExamples2
-  file: notebooks/helpfiles/AnalysisExamples2.ipynb
+  file: notebooks/AnalysisExamples2.ipynb
   run_group: full
 - topic: DocumentationSetup2025b
-  file: notebooks/helpfiles/DocumentationSetup2025b.ipynb
+  file: notebooks/DocumentationSetup2025b.ipynb
   run_group: full
 - topic: FitResultReference
-  file: notebooks/helpfiles/FitResultReference.ipynb
+  file: notebooks/FitResultReference.ipynb
   run_group: full
 - topic: HybridFilterExample
-  file: notebooks/helpfiles/HybridFilterExample.ipynb
+  file: notebooks/HybridFilterExample.ipynb
   run_group: full
 - topic: publish_all_helpfiles
-  file: notebooks/helpfiles/publish_all_helpfiles.ipynb
+  file: notebooks/publish_all_helpfiles.ipynb
   run_group: full

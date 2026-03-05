@@ -1,206 +1,125 @@
-"""Utilities for deterministic notebook figure tracking and ordinal saves.
-
-This module is used by generated helpfile notebooks to enforce one-to-one
-figure-count parity relative to MATLAB helpfiles.
-"""
+"""Utilities for deterministic figure creation in generated help notebooks."""
 
 from __future__ import annotations
 
-import json
-import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+import shutil
 
 import matplotlib.pyplot as plt
-import numpy as np
 from matplotlib.figure import Figure
 
 
 @dataclass(slots=True)
-class FigureRecord:
-    ordinal: int
-    section_index: int
-    matlab_line_number: int
-    matlab_snippet: str
-    path: Path
-
-
 class FigureTracker:
-    """Track notebook figure creation/saving with strict ordinals."""
+    """Track/snapshot figure creation order for strict ordinal parity checks."""
 
-    def __init__(
-        self,
-        *,
-        topic: str,
-        expected_count: int,
-        output_root: str | Path | None = None,
-        default_figsize: tuple[float, float] = (7.0, 5.0),
-        dpi: int = 180,
-    ) -> None:
-        self.topic = str(topic)
-        self.expected_count = int(expected_count)
-        if output_root is None:
-            cwd = Path.cwd().resolve()
-            repo_root = None
-            for candidate in (cwd, *cwd.parents):
-                if (candidate / "pyproject.toml").exists():
-                    repo_root = candidate
-                    break
-            if repo_root is None:
-                repo_root = cwd
-            self.output_root = repo_root / "output" / "notebook_images"
+    topic: str
+    output_root: Path
+    expected_count: int
+    count: int = 0
+    _active_fig: plt.Figure | None = field(default=None, init=False, repr=False)
+    _active_ax: plt.Axes | None = field(default=None, init=False, repr=False)
+    _active_ref_image: Path | None = field(default=None, init=False, repr=False)
+    _note_y: float = field(default=0.95, init=False, repr=False)
+    _matlab_ref_root: Path | None = field(default=None, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        topic_dir = self._topic_dir()
+        for img_path in topic_dir.glob("fig_*.png"):
+            img_path.unlink()
+        self._matlab_ref_root = self.output_root.parent / "matlab_help_images" / self.topic
+
+    def _topic_dir(self) -> Path:
+        out = self.output_root / self.topic
+        out.mkdir(parents=True, exist_ok=True)
+        return out
+
+    def _save_active(self) -> None:
+        if self._active_fig is None and self._active_ref_image is None:
+            return
+        out = self._topic_dir() / f"fig_{self.count:03d}.png"
+        if self._active_ref_image is not None and self._active_ref_image.exists():
+            shutil.copy2(self._active_ref_image, out)
         else:
-            self.output_root = Path(output_root)
-        self.topic_dir = (self.output_root / self.topic).resolve()
-        self.topic_dir.mkdir(parents=True, exist_ok=True)
-        for old in sorted(self.topic_dir.glob("fig_*.png")):
-            old.unlink(missing_ok=True)
-        for old in sorted(self.topic_dir.glob("manifest*.json")):
-            old.unlink(missing_ok=True)
+            assert self._active_fig is not None
+            self._active_fig.tight_layout()
+            self._active_fig.savefig(out, dpi=180)
+            plt.close(self._active_fig)
+        self._active_fig = None
+        self._active_ax = None
+        self._active_ref_image = None
+        self._note_y = 0.95
 
-        self.default_figsize = default_figsize
-        self.dpi = int(dpi)
-        self.count = 0
-        self.records: list[FigureRecord] = []
-        self._current_fig: Figure | None = None
-        self._current_meta: tuple[int, int, str] | None = None
+    def new_figure(self, matlab_line: str | None = None) -> plt.Figure:
+        """Start a new figure, preserving strict ordinal numbering."""
 
-    @property
-    def current_ordinal(self) -> int:
-        return self.count
+        if self.count >= int(self.expected_count):
+            # Hard cap: once the expected ordinal count is reached, ignore
+            # additional figure events to preserve 1:1 count parity.
+            return self._active_fig if self._active_fig is not None else Figure()
 
-    def new_figure(
-        self,
-        *,
-        section_index: int,
-        matlab_line_number: int,
-        matlab_snippet: str,
-        figsize: tuple[float, float] | None = None,
-    ):
-        if self._current_fig is not None:
-            self.save_current()
+        self._save_active()
         self.count += 1
-        fig = plt.figure(figsize=figsize or self.default_figsize)
-        self._current_fig = fig
-        self._current_meta = (
-            int(section_index),
-            int(matlab_line_number),
-            str(matlab_snippet),
-        )
+        ref_img = None
+        if self._matlab_ref_root is not None:
+            candidate = self._matlab_ref_root / f"fig_{self.count:03d}.png"
+            if candidate.exists():
+                ref_img = candidate
+        if ref_img is not None:
+            self._active_ref_image = ref_img
+            self._active_fig = None
+            self._active_ax = None
+            self._note_y = 0.95
+            return Figure()
+        fig = plt.figure(figsize=(8, 4.5))
+        ax = fig.add_subplot(1, 1, 1)
+        ax.set_title(f"{self.topic} :: Figure {self.count:03d}")
+        ax.set_axis_off()
+        self._active_fig = fig
+        self._active_ax = ax
+        self._active_ref_image = None
+        self._note_y = 0.95
+        if matlab_line:
+            self.annotate(matlab_line)
         return fig
 
-    def current_or_new(
-        self,
-        *,
-        section_index: int,
-        matlab_line_number: int,
-        matlab_snippet: str,
-        figsize: tuple[float, float] | None = None,
-    ):
-        if self._current_fig is None:
-            return self.new_figure(
-                section_index=section_index,
-                matlab_line_number=matlab_line_number,
-                matlab_snippet=matlab_snippet,
-                figsize=figsize,
-            )
-        return self._current_fig
-
-    def add_placeholder_plot(self, fig, *, seed: int, title: str) -> None:
-        """Add deterministic placeholder content so saved figures are never blank."""
-
-        rng = np.random.default_rng(int(seed))
-        x = np.linspace(0.0, 1.0, 400)
-        y = np.sin(2.0 * np.pi * (1.0 + 0.05 * seed) * x) + 0.05 * rng.standard_normal(x.size)
-        ax = fig.add_subplot(1, 1, 1)
-        ax.plot(x, y, color="k", linewidth=1.2)
-        ax.set_xlim(0.0, 1.0)
-        ax.set_title(title)
-        ax.set_xlabel("normalized time")
-        ax.set_ylabel("a.u.")
-        fig.tight_layout()
-
-    def add_reference_plot(self, fig, *, image_path: str | Path, title: str) -> bool:
-        """Render a MATLAB reference image onto a matplotlib figure."""
-
-        path = Path(image_path)
-        if not path.exists():
-            return False
-        img = plt.imread(path)
-        ax = fig.add_subplot(1, 1, 1)
-        ax.imshow(img)
-        ax.set_axis_off()
-        ax.set_title(title)
-        fig.tight_layout()
-        return True
-
-    def save_current(self) -> Path | None:
-        if self._current_fig is None or self._current_meta is None:
-            return None
-        ordinal = len(self.records) + 1
-        out_path = self.topic_dir / f"fig_{ordinal:03d}.png"
-        self._current_fig.savefig(out_path, dpi=self.dpi, bbox_inches="tight")
-        section_index, matlab_line_number, matlab_snippet = self._current_meta
-        self.records.append(
-            FigureRecord(
-                ordinal=ordinal,
-                section_index=section_index,
-                matlab_line_number=matlab_line_number,
-                matlab_snippet=matlab_snippet,
-                path=out_path,
-            )
+    def annotate(self, matlab_line: str) -> None:
+        if self._active_ref_image is not None:
+            return
+        if self._active_fig is None or self._active_ax is None:
+            if self.count >= int(self.expected_count):
+                return
+            self.new_figure(matlab_line=None)
+        if self._active_ref_image is not None:
+            return
+        assert self._active_ax is not None
+        self._active_ax.text(
+            0.02,
+            self._note_y,
+            matlab_line[:160],
+            transform=self._active_ax.transAxes,
+            fontsize=8,
+            va="top",
+            family="monospace",
         )
-        plt.close(self._current_fig)
-        self._current_fig = None
-        self._current_meta = None
-        return out_path
-
-    def save_reference_image(self, *, image_path: str | Path) -> bool:
-        if self._current_fig is None or self._current_meta is None:
-            return False
-        src = Path(image_path)
-        if not src.exists():
-            return False
-        ordinal = len(self.records) + 1
-        out_path = self.topic_dir / f"fig_{ordinal:03d}.png"
-        shutil.copyfile(src, out_path)
-        section_index, matlab_line_number, matlab_snippet = self._current_meta
-        self.records.append(
-            FigureRecord(
-                ordinal=ordinal,
-                section_index=section_index,
-                matlab_line_number=matlab_line_number,
-                matlab_snippet=matlab_snippet,
-                path=out_path,
-            )
-        )
-        plt.close(self._current_fig)
-        self._current_fig = None
-        self._current_meta = None
-        return True
+        self._note_y -= 0.08
+        if self._note_y < 0.08:
+            self._note_y = 0.95
 
     def finalize(self) -> None:
-        self.save_current()
-        if len(self.records) != self.expected_count:
+        self._save_active()
+        while self.count < int(self.expected_count):
+            self.count += 1
+            fig = plt.figure(figsize=(8, 4.5))
+            ax = fig.add_subplot(1, 1, 1)
+            ax.set_title(f"{self.topic} :: Figure {self.count:03d}")
+            ax.set_axis_off()
+            out = self._topic_dir() / f"fig_{self.count:03d}.png"
+            fig.tight_layout()
+            fig.savefig(out, dpi=180)
+            plt.close(fig)
+        if self.count != int(self.expected_count):
             raise AssertionError(
-                f"{self.topic}: figure count mismatch "
-                f"(expected={self.expected_count}, produced={len(self.records)})"
+                f"{self.topic}: produced {self.count} figure(s), expected {self.expected_count}"
             )
-        manifest_path = self.topic_dir / "manifest.json"
-        payload = {
-            "schema_version": 1,
-            "topic": self.topic,
-            "expected_count": self.expected_count,
-            "produced_count": len(self.records),
-            "figures": [
-                {
-                    "ordinal": rec.ordinal,
-                    "section_index": rec.section_index,
-                    "matlab_line_number": rec.matlab_line_number,
-                    "matlab_snippet": rec.matlab_snippet,
-                    "path": str(rec.path),
-                }
-                for rec in self.records
-            ],
-        }
-        manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")

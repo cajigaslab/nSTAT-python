@@ -203,10 +203,40 @@ fig.savefig(out_dir / "readme_example3_nstcoll_raster.png", dpi=180)
 **Expected output**
 ![Spike train raster](examples/readme_examples/images/readme_example3_nstcoll_raster.png)
 
-## Examples and notebooks
+### nSTATPaperExamples
 
-- Python scripts and notebooks: `notebooks/`
-- Learning notebooks are executable and suitable for local exploration or CI smoke runs.
+Complete catalog of nSTATPaperExamples notebooks:
+
+- [AnalysisExamples](notebooks/AnalysisExamples.ipynb) — Notebook generated from MATLAB help source for AnalysisExamples.
+- [ConfigCollExamples](notebooks/ConfigCollExamples.ipynb) — Notebook generated from MATLAB help source for ConfigCollExamples.
+- [CovCollExamples](notebooks/CovCollExamples.ipynb) — Notebook generated from MATLAB help source for CovCollExamples.
+- [CovariateExamples](notebooks/CovariateExamples.ipynb) — Notebook generated from MATLAB help source for CovariateExamples.
+- [DecodingExample](notebooks/DecodingExample.ipynb) — Notebook generated from MATLAB help source for DecodingExample.
+- [DecodingExampleWithHist](notebooks/DecodingExampleWithHist.ipynb) — Notebook generated from MATLAB help source for DecodingExampleWithHist.
+- [EventsExamples](notebooks/EventsExamples.ipynb) — Notebook generated from MATLAB help source for EventsExamples.
+- [ExplicitStimulusWhiskerData](notebooks/ExplicitStimulusWhiskerData.ipynb) — Notebook generated from MATLAB help source for ExplicitStimulusWhiskerData.
+- [FitResSummaryExamples](notebooks/FitResSummaryExamples.ipynb) — Notebook generated from MATLAB help source for FitResSummaryExamples.
+- [FitResultExamples](notebooks/FitResultExamples.ipynb) — Notebook generated from MATLAB help source for FitResultExamples.
+- [HippocampalPlaceCellExample](notebooks/HippocampalPlaceCellExample.ipynb) — Notebook generated from MATLAB help source for HippocampalPlaceCellExample.
+- [HistoryExamples](notebooks/HistoryExamples.ipynb) — Notebook generated from MATLAB help source for HistoryExamples.
+- [NetworkTutorial](notebooks/NetworkTutorial.ipynb) — Notebook generated from MATLAB help source for NetworkTutorial.
+- [PPSimExample](notebooks/PPSimExample.ipynb) — Notebook generated from MATLAB help source for PPSimExample.
+- [PPThinning](notebooks/PPThinning.ipynb) — Notebook generated from MATLAB help source for PPThinning.
+- [PSTHEstimation](notebooks/PSTHEstimation.ipynb) — Notebook generated from MATLAB help source for PSTHEstimation.
+- [SignalObjExamples](notebooks/SignalObjExamples.ipynb) — Notebook generated from MATLAB help source for SignalObjExamples.
+- [StimulusDecode2D](notebooks/StimulusDecode2D.ipynb) — Notebook generated from MATLAB help source for StimulusDecode2D.
+- [TrialConfigExamples](notebooks/TrialConfigExamples.ipynb) — Notebook generated from MATLAB help source for TrialConfigExamples.
+- [TrialExamples](notebooks/TrialExamples.ipynb) — Notebook generated from MATLAB help source for TrialExamples.
+- [ValidationDataSet](notebooks/ValidationDataSet.ipynb) — Notebook generated from MATLAB help source for ValidationDataSet.
+- [mEPSCAnalysis](notebooks/mEPSCAnalysis.ipynb) — Notebook generated from MATLAB help source for mEPSCAnalysis.
+- [nSTATPaperExamples](notebooks/nSTATPaperExamples.ipynb) — Notebook generated from MATLAB help source for nSTATPaperExamples.
+- [nSpikeTrainExamples](notebooks/nSpikeTrainExamples.ipynb) — Notebook generated from MATLAB help source for nSpikeTrainExamples.
+- [nstCollExamples](notebooks/nstCollExamples.ipynb) — Notebook generated from MATLAB help source for nstCollExamples.
+- [AnalysisExamples2](notebooks/AnalysisExamples2.ipynb) — Notebook generated from MATLAB help source for AnalysisExamples2.
+- [DocumentationSetup2025b](notebooks/DocumentationSetup2025b.ipynb) — Notebook generated from MATLAB help source for DocumentationSetup2025b.
+- [FitResultReference](notebooks/FitResultReference.ipynb) — Notebook generated from MATLAB help source for FitResultReference.
+- [HybridFilterExample](notebooks/HybridFilterExample.ipynb) — Notebook generated from MATLAB help source for HybridFilterExample.
+- [publish_all_helpfiles](notebooks/publish_all_helpfiles.ipynb) — Notebook generated from MATLAB help source for publish_all_helpfiles.
 
 ## Documentation
 

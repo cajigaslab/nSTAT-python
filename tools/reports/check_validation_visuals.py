@@ -16,6 +16,7 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
+import yaml
 from PIL import Image
 
 
@@ -44,6 +45,12 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Maximum allowed duplicate rendered PDF pages.",
     )
+    parser.add_argument(
+        "--help-source-manifest",
+        type=Path,
+        default=Path("parity/help_source_manifest.yml"),
+        help="Manifest containing no-figure utility topics exempt from image-count checks.",
+    )
     return parser.parse_args()
 
 
@@ -65,7 +72,24 @@ def _image_fingerprint(path: Path) -> str:
     return hashlib.sha256(arr.tobytes()).hexdigest()
 
 
-def _check_topic_images(images_root: Path, min_unique: int) -> tuple[list[str], dict[str, tuple[int, int]]]:
+def _load_no_figure_topics(manifest_path: Path) -> set[str]:
+    if not manifest_path.exists():
+        return set()
+    payload = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
+    rows = payload.get("topics", [])
+    out: set[str] = set()
+    for row in rows:
+        expected_figs = int(row.get("expected_figure_count", 0) or 0)
+        if bool(row.get("no_figure_utility", False)) or expected_figs <= 0:
+            out.add(str(row.get("topic", "")).strip())
+    return {topic for topic in out if topic}
+
+
+def _check_topic_images(
+    images_root: Path,
+    min_unique: int,
+    no_figure_topics: set[str],
+) -> tuple[list[str], dict[str, tuple[int, int]]]:
     if not images_root.exists():
         raise FileNotFoundError(f"Images root not found: {images_root}")
 
@@ -81,6 +105,8 @@ def _check_topic_images(images_root: Path, min_unique: int) -> tuple[list[str], 
         hashes = [_image_fingerprint(p) for p in pngs]
         unique = len(set(hashes))
         stats[topic_dir.name] = (len(pngs), unique)
+        if topic_dir.name in no_figure_topics:
+            continue
         if unique < min_unique:
             failures.append(
                 f"topic={topic_dir.name}: unique_images={unique} < min_required={min_unique}"
@@ -117,10 +143,12 @@ def _check_pdf_page_duplicates(pdf_path: Path, max_dupes: int) -> tuple[list[str
 def main() -> int:
     args = parse_args()
     pdf_path = _resolve_pdf(args.report_pdf)
+    no_figure_topics = _load_no_figure_topics(args.help_source_manifest)
 
     image_failures, topic_stats = _check_topic_images(
         images_root=args.images_root,
         min_unique=args.min_unique_images_per_topic,
+        no_figure_topics=no_figure_topics,
     )
     pdf_failures, total_pages, duplicate_pages = _check_pdf_page_duplicates(
         pdf_path=pdf_path,
