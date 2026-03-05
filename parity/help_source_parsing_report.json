@@ -1,5 +1,23 @@
 {
   "matlab_help_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles",
+  "selected_group": "core",
+  "selected_topics": [
+    "AnalysisExamples",
+    "DecodingExample",
+    "EventsExamples",
+    "ExplicitStimulusWhiskerData",
+    "HippocampalPlaceCellExample",
+    "HistoryExamples",
+    "NetworkTutorial",
+    "PPSimExample",
+    "PPThinning",
+    "SignalObjExamples",
+    "StimulusDecode2D",
+    "TrialExamples",
+    "ValidationDataSet",
+    "nSTATPaperExamples",
+    "nSpikeTrainExamples"
+  ],
   "topics": [
     {
       "topic": "AnalysisExamples",
@@ -466,7 +484,7 @@
       "source_type": "mlx",
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ExplicitStimulusWhiskerData.mlx",
       "section_count": 6,
-      "figure_count": 5,
+      "figure_count": 8,
       "detected_figure_count": 5,
       "no_figure_utility": false,
       "events": [
@@ -689,7 +707,7 @@
       "source_type": "mlx",
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HippocampalPlaceCellExample.mlx",
       "section_count": 5,
-      "figure_count": 7,
+      "figure_count": 9,
       "detected_figure_count": 7,
       "no_figure_utility": false,
       "events": [
@@ -919,7 +937,7 @@
       "source_type": "mlx",
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NetworkTutorial.mlx",
       "section_count": 11,
-      "figure_count": 2,
+      "figure_count": 4,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
@@ -2006,7 +2024,7 @@
       "source_type": "mlx",
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ValidationDataSet.mlx",
       "section_count": 3,
-      "figure_count": 3,
+      "figure_count": 8,
       "detected_figure_count": 3,
       "no_figure_utility": false,
       "events": [

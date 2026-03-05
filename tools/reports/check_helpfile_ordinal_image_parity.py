@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--group",
-        choices=["smoke", "full", "all"],
+        choices=["smoke", "core", "full", "all"],
         default="all",
         help="Notebook run group to validate. Uses tools/notebooks/notebook_manifest.yml.",
     )
@@ -92,7 +92,8 @@ def _topics_from_group(group: str, notebook_manifest: Path) -> list[str]:
         run_group = str(row.get("run_group", "")).strip()
         if not topic:
             continue
-        if group == "full" or run_group == group:
+        is_core = bool(row.get("core", False))
+        if group == "full" or run_group == group or (group == "core" and is_core):
             topics.append(topic)
     return topics
 

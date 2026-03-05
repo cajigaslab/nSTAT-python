@@ -116,6 +116,12 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Optional comma-separated topic subset to generate.",
     )
+    parser.add_argument(
+        "--group",
+        choices=["smoke", "core", "full", "all"],
+        default="all",
+        help="Notebook generation group. 'full' and 'all' both include every topic.",
+    )
     return parser.parse_args()
 
 
@@ -155,17 +161,40 @@ def _resolve_help_root(args: argparse.Namespace) -> Path:
     )
 
 
-def _load_topics(manifest_path: Path) -> list[dict[str, str]]:
+def _load_topics(manifest_path: Path) -> list[dict[str, object]]:
     payload = _load_yaml(manifest_path)
-    topics: list[dict[str, str]] = []
+    topics: list[dict[str, object]] = []
     for row in payload.get("notebooks", []):
         topic = str(row.get("topic", "")).strip()
         file_path = str(row.get("file", "")).strip()
         run_group = str(row.get("run_group", "full")).strip()
         if not topic or not file_path:
             continue
-        topics.append({"topic": topic, "file": file_path, "run_group": run_group})
+        topics.append(
+            {
+                "topic": topic,
+                "file": file_path,
+                "run_group": run_group,
+                "core": bool(row.get("core", False)),
+            }
+        )
     return topics
+
+
+def _select_topic_names(topics: list[dict[str, object]], group: str, topics_csv: str) -> set[str]:
+    if group in {"all", "full"}:
+        selected = {str(row["topic"]) for row in topics}
+    elif group == "smoke":
+        selected = {str(row["topic"]) for row in topics if str(row.get("run_group", "")) == "smoke"}
+    elif group == "core":
+        selected = {str(row["topic"]) for row in topics if bool(row.get("core", False))}
+    else:  # pragma: no cover - argparse constrains choices
+        raise ValueError(f"Unsupported group: {group}")
+
+    if topics_csv.strip():
+        requested = {token.strip() for token in topics_csv.split(",") if token.strip()}
+        selected &= requested
+    return selected
 
 
 def _resolve_source_path(help_root: Path, topic: str) -> tuple[Path, str]:
@@ -695,15 +724,17 @@ def main() -> int:
     repo_root = args.repo_root.resolve()
     help_root = _resolve_help_root(args)
     topics = _load_topics(args.manifest.resolve())
-    if args.topics.strip():
-        wanted = {token.strip() for token in args.topics.split(",") if token.strip()}
-        topics = [row for row in topics if row["topic"] in wanted]
-        if not topics:
-            raise RuntimeError(f"No topics matched --topics={args.topics!r}")
+    selected_topics = _select_topic_names(topics, args.group, args.topics)
+    if not selected_topics:
+        raise RuntimeError(
+            f"No topics selected for --group={args.group!r} --topics={args.topics!r}"
+        )
 
     source_manifest_rows: list[dict[str, object]] = []
     parsing_report: dict[str, object] = {
         "matlab_help_root": str(help_root),
+        "selected_group": args.group,
+        "selected_topics": sorted(selected_topics),
         "topics": [],
     }
     figure_manifest: dict[str, object] = {"topics": []}
@@ -768,15 +799,16 @@ def main() -> int:
         expected_figures = len(reference_images) if reference_images else detected_figures
         if is_no_figure_utility:
             expected_figures = 0
-        _write_notebook(
-            topic=topic,
-            run_group=run_group,
-            out_path=notebook_path,
-            source_path=source_path,
-            sections=sections,
-            events=events,
-            expected_figures=expected_figures,
-        )
+        if topic in selected_topics:
+            _write_notebook(
+                topic=topic,
+                run_group=run_group,
+                out_path=notebook_path,
+                source_path=source_path,
+                sections=sections,
+                events=events,
+                expected_figures=expected_figures,
+            )
 
         source_manifest_rows.append(
             {
@@ -841,7 +873,10 @@ def main() -> int:
     args.out_source_report.write_text(json.dumps(parsing_report, indent=2), encoding="utf-8")
     args.out_figure_manifest.parent.mkdir(parents=True, exist_ok=True)
     args.out_figure_manifest.write_text(json.dumps(figure_manifest, indent=2), encoding="utf-8")
-    print(f"Generated {len(source_manifest_rows)} source-derived notebook(s).")
+    print(
+        f"Generated {len(selected_topics)} source-derived notebook(s) "
+        f"for group={args.group}."
+    )
     return 0
 
 

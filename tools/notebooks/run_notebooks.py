@@ -18,6 +18,7 @@ class NotebookTarget:
     topic: str
     path: Path
     run_group: str
+    is_core: bool
 
 
 
@@ -37,9 +38,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--group",
-        choices=["smoke", "full", "all"],
+        choices=["smoke", "core", "full", "all"],
         default="smoke",
-        help="Execution group: smoke subset, full (all), or all (alias).",
+        help="Execution group: smoke subset, core subset, full (all), or all (alias).",
     )
     parser.add_argument(
         "--timeout",
@@ -65,6 +66,7 @@ def load_targets(manifest_path: Path, repo_root: Path) -> list[NotebookTarget]:
                 topic=str(row["topic"]),
                 path=repo_root / str(row["file"]),
                 run_group=str(row["run_group"]),
+                is_core=bool(row.get("core", False)),
             )
         )
     return targets
@@ -74,6 +76,8 @@ def load_targets(manifest_path: Path, repo_root: Path) -> list[NotebookTarget]:
 def select_targets(targets: list[NotebookTarget], group: str) -> list[NotebookTarget]:
     if group in {"full", "all"}:
         return targets
+    if group == "core":
+        return [target for target in targets if target.is_core]
     return [target for target in targets if target.run_group == "smoke"]
 
 

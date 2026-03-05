@@ -1,0 +1,13 @@
+{
+  "pass": 1,
+  "target_group": "core",
+  "notebooks_executed": 15,
+  "parity_status": "pass",
+  "parity_failures_count": 0,
+  "failing_topics": [],
+  "key_fixes_applied": [
+    "Added core-group support to notebook generation/execution/parity checker",
+    "Exported MATLAB reference images for all core topics with close-all-safe capture",
+    "Regenerated core notebooks from MATLAB sources and refreshed notebook hash manifest"
+  ]
+}
