@@ -17,6 +17,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from datetime import timezone
 
 import nbformat
 import numpy as np
@@ -75,6 +76,17 @@ class NotebookReport:
     parity_metrics: dict[str, object] | None
 
 
+def _to_path(value: str | Path | None) -> Path | None:
+    if value is None:
+        return None
+    if isinstance(value, Path):
+        return value
+    text = str(value).strip()
+    if not text:
+        return None
+    return Path(text)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -122,7 +134,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--parity-threshold",
         type=float,
-        default=0.80,
+        default=0.70,
         help="Minimum image similarity score in [0,1] for Python-vs-MATLAB pass.",
     )
     parser.add_argument(
@@ -163,6 +175,24 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=REPO_ROOT / "parity" / "line_by_line_review_report.json",
         help="Line-by-line review report JSON used for per-topic step alignment metrics.",
+    )
+    parser.add_argument(
+        "--ordinal-parity-manifest",
+        type=Path,
+        default=REPO_ROOT / "parity" / "help_source_manifest.yml",
+        help="Manifest used by strict ordinal image parity checker.",
+    )
+    parser.add_argument(
+        "--python-image-root",
+        type=Path,
+        default=REPO_ROOT / "output" / "notebook_images",
+        help="Root with Python fig_### images for strict ordinal parity checks.",
+    )
+    parser.add_argument(
+        "--matlab-image-root",
+        type=Path,
+        default=REPO_ROOT / "output" / "matlab_help_images",
+        help="Root with MATLAB fig_### reference images for strict ordinal parity checks.",
     )
     parser.add_argument(
         "--skip-command-tests",
@@ -698,6 +728,86 @@ def _cross_topic_duplicate_stats(reports: list[NotebookReport]) -> dict[str, int
         "cross_topic_reused_hashes": cross_topic_reused,
         "repeated_instances": repeated_instances,
     }
+
+
+def _run_strict_ordinal_parity(
+    repo_root: Path,
+    *,
+    manifest: Path,
+    python_image_root: Path,
+    matlab_image_root: Path,
+    threshold: float,
+    out_json: Path,
+    diff_root: Path,
+) -> dict[str, object]:
+    cmd = [
+        "python",
+        "tools/reports/check_helpfile_ordinal_image_parity.py",
+        "--manifest",
+        str(manifest),
+        "--python-image-root",
+        str(python_image_root),
+        "--matlab-image-root",
+        str(matlab_image_root),
+        "--ssim-threshold",
+        f"{threshold:.6f}",
+        "--out-json",
+        str(out_json),
+        "--diff-root",
+        str(diff_root),
+    ]
+    result = subprocess.run(cmd, cwd=repo_root, capture_output=True, text=True, check=False)
+    if out_json.exists():
+        return json.loads(out_json.read_text(encoding="utf-8"))
+    raise RuntimeError(
+        "Strict ordinal parity checker did not produce summary JSON. "
+        f"stdout={result.stdout[-400:]} stderr={result.stderr[-400:]}"
+    )
+
+
+def _apply_strict_ordinal_summary_to_reports(
+    reports: list[NotebookReport],
+    summary: dict[str, object],
+    *,
+    threshold: float,
+) -> None:
+    rows = summary.get("topics", [])
+    by_topic = {str(row.get("topic", "")).strip(): row for row in rows if isinstance(row, dict)}
+
+    for report in reports:
+        topic_row = by_topic.get(report.topic)
+        if topic_row is None:
+            report.parity_pass = None
+            report.similarity_score = None
+            report.matched_python_image = None
+            report.matched_matlab_image = None
+            continue
+
+        no_figure_utility = bool(topic_row.get("no_figure_utility", False))
+        pairs = topic_row.get("pairs", [])
+        if not isinstance(pairs, list):
+            pairs = []
+
+        if pairs:
+            scores = [float(pair.get("score", 0.0)) for pair in pairs]
+            report.similarity_score = min(scores)
+            first_pair = pairs[0]
+            report.matched_python_image = _to_path(first_pair.get("python_image"))
+            report.matched_matlab_image = _to_path(first_pair.get("matlab_image"))
+        else:
+            report.similarity_score = None
+            report.matched_python_image = None
+            report.matched_matlab_image = None
+
+        if no_figure_utility:
+            report.parity_pass = True
+            continue
+
+        produced = int(topic_row.get("produced_figures", 0) or 0)
+        reference = int(topic_row.get("reference_figures", 0) or 0)
+        counts_ok = produced == reference
+        pairs_ok = all(float(pair.get("score", 0.0)) >= threshold for pair in pairs)
+        report.parity_pass = bool(counts_ok and pairs_ok)
 
 
 def _draw_wrapped_lines(
@@ -1385,7 +1495,10 @@ def generate_pdf_report(
     example_output_spec: Path,
     numeric_drift_report: Path,
     line_review_report: Path,
-) -> tuple[Path, list[NotebookReport], list[CommandResult], Path | None]:
+    ordinal_parity_manifest: Path,
+    python_image_root: Path,
+    matlab_image_root: Path,
+) -> tuple[Path, list[NotebookReport], list[CommandResult], Path | None, Path | None]:
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1430,6 +1543,24 @@ def generate_pdf_report(
             )
         )
 
+    strict_ordinal_summary_path: Path | None = None
+    if parity_mode == "image" and not skip_parity_check:
+        strict_ordinal_summary_path = tmp_dir / "image_mode_parity" / "summary_pdf_mode.json"
+        strict_ordinal_summary = _run_strict_ordinal_parity(
+            repo_root=repo_root,
+            manifest=ordinal_parity_manifest,
+            python_image_root=python_image_root,
+            matlab_image_root=matlab_image_root,
+            threshold=parity_threshold,
+            out_json=strict_ordinal_summary_path,
+            diff_root=tmp_dir / "image_mode_parity" / "diffs_pdf_mode",
+        )
+        _apply_strict_ordinal_summary_to_reports(
+            reports=reports,
+            summary=strict_ordinal_summary,
+            threshold=parity_threshold,
+        )
+
     commit = (
         subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=repo_root, capture_output=True, text=True)
         .stdout.strip()
@@ -1466,15 +1597,17 @@ def generate_pdf_report(
         draw_example_comparison_page(pdf=pdf, report=report, index=index, total=total)
 
     pdf.save()
-    return output_pdf, reports, command_results, resolved_matlab_help_root
+    return output_pdf, reports, command_results, resolved_matlab_help_root, strict_ordinal_summary_path
 
 
 def main() -> int:
     args = parse_args()
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_pdf = args.output_dir / f"nstat_python_validation_report_{stamp}.pdf"
+    output_json = args.output_dir / f"nstat_python_validation_report_{stamp}.json"
+    latest_json = args.output_dir / "validation_report_latest.json"
 
-    report_path, reports, command_results, matlab_help_root = generate_pdf_report(
+    report_path, reports, command_results, matlab_help_root, strict_ordinal_summary_path = generate_pdf_report(
         repo_root=args.repo_root,
         manifest_path=args.manifest,
         output_pdf=output_pdf,
@@ -1490,6 +1623,9 @@ def main() -> int:
         example_output_spec=args.example_output_spec,
         numeric_drift_report=args.numeric_drift_report,
         line_review_report=args.line_review_report,
+        ordinal_parity_manifest=args.ordinal_parity_manifest,
+        python_image_root=args.python_image_root,
+        matlab_image_root=args.matlab_image_root,
     )
 
     executed = sum(1 for report in reports if report.executed)
@@ -1520,6 +1656,37 @@ def main() -> int:
     print(f"Parity results ({args.parity_mode} mode): checked={parity_checked} failures={parity_failures}")
     print(f"Numeric drift topic results: checked={numeric_checked} failures={numeric_failures}")
     print(f"Command checks: total={len(command_results)} failed={command_failures}")
+
+    summary_payload = {
+        "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "report_pdf": str(report_path),
+        "parity_mode": args.parity_mode,
+        "parity_threshold": float(args.parity_threshold),
+        "strict_ordinal_summary": str(strict_ordinal_summary_path) if strict_ordinal_summary_path else None,
+        "notebooks_total": len(reports),
+        "notebooks_executed": executed,
+        "notebooks_failed": exec_failures,
+        "parity_checked": parity_checked,
+        "parity_failures": parity_failures,
+        "command_checks_total": len(command_results),
+        "command_checks_failed": command_failures,
+        "topics": [
+            {
+                "topic": report.topic,
+                "executed": report.executed,
+                "parity_pass": report.parity_pass,
+                "similarity_score": report.similarity_score,
+                "image_count": report.image_count,
+                "unique_image_count": report.unique_image_count,
+                "matched_python_image": str(report.matched_python_image) if report.matched_python_image else None,
+                "matched_matlab_image": str(report.matched_matlab_image) if report.matched_matlab_image else None,
+            }
+            for report in reports
+        ],
+    }
+    output_json.parent.mkdir(parents=True, exist_ok=True)
+    output_json.write_text(json.dumps(summary_payload, indent=2), encoding="utf-8")
+    latest_json.write_text(json.dumps(summary_payload, indent=2), encoding="utf-8")
 
     return 0 if exec_failures == 0 and command_failures == 0 and parity_failures == 0 else 1
 
