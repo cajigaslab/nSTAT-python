@@ -19,6 +19,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev,notebooks]
+          python -m pip install pyyaml nbformat
       - name: Run parity-focused tests
         run: |
           pytest -q tests/test_helpfile_ordinal_image_parity.py tests/test_validation_images_discovery.py tests/test_readme_examples_catalog.py
