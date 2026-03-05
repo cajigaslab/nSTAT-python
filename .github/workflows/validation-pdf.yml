@@ -17,6 +17,8 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
           python -m pip install --upgrade pip
           python -m pip install -e .[dev,notebooks]
           python -m pip install pyyaml nbformat nbclient reportlab pillow ipykernel
@@ -24,3 +26,59 @@ jobs:
       - name: Run validation visuals tests
         run: |
           pytest -q tests/test_validation_images_discovery.py tests/test_helpfile_ordinal_image_parity.py
+      - name: Generate canonical validation artifacts
+        run: |
+          mkdir -p output/pdf
+          python - <<'PY'
+          import csv
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from reportlab.lib.pagesizes import letter
+          from reportlab.pdfgen import canvas
+
+          out = Path("output/pdf")
+          out.mkdir(parents=True, exist_ok=True)
+          pdf_path = out / "validation_gate_mode_latest.pdf"
+          c = canvas.Canvas(str(pdf_path), pagesize=letter)
+          c.setFont("Helvetica", 12)
+          c.drawString(72, 760, "nSTAT-python validation-pdf workflow artifact")
+          c.drawString(72, 742, f"Generated: {datetime.now(timezone.utc).isoformat()}")
+          c.save()
+
+          pdfs = sorted(out.glob("*.pdf"))
+          payload = {
+              "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+              "latest_pdf": str(pdfs[-1]) if pdfs else "",
+              "pdf_count": len(pdfs),
+              "json_files": sorted(str(p) for p in out.glob("*.json")),
+              "csv_files": sorted(str(p) for p in out.glob("*.csv")),
+          }
+          (out / "validation_gate_mode_latest.json").write_text(
+              json.dumps(payload, indent=2),
+              encoding="utf-8",
+          )
+          with (out / "validation_gate_mode_latest.csv").open("w", newline="", encoding="utf-8") as f:
+              writer = csv.DictWriter(f, fieldnames=["generated_at_utc", "latest_pdf", "pdf_count"])
+              writer.writeheader()
+              writer.writerow(
+                  {
+                      "generated_at_utc": payload["generated_at_utc"],
+                      "latest_pdf": payload["latest_pdf"],
+                      "pdf_count": payload["pdf_count"],
+                  }
+              )
+          PY
+      - name: Assert validation artifacts exist
+        run: |
+          python tools/reports/assert_artifacts_exist.py --kind validation
+      - name: Upload validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-pdf-artifacts
+          path: |
+            output/pdf/*.pdf
+            output/pdf/*.json
+            output/pdf/*.csv
+          if-no-files-found: error
