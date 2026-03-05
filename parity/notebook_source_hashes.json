@@ -130,7 +130,7 @@
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/mEPSCAnalysis.mlx",
       "notebook_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/mEPSCAnalysis.ipynb",
       "source_hash": "b399deb2cd29b773206fbc230e1cee233104bb8a9262226354774572410f997e",
-      "notebook_hash": "07b399327e2a766e70c955d87da34c2c84490d649ad9862892147ce52a1508b1"
+      "notebook_hash": "a61b5996fed7994afe842c1447f7b125049bee7ef7aa885d9385bdf25fe78308"
     },
     "nSTATPaperExamples": {
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSTATPaperExamples.mlx",
@@ -154,7 +154,7 @@
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples2.mlx",
       "notebook_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/AnalysisExamples2.ipynb",
       "source_hash": "25d34c1da67e47a77772526d3663562cb23b94a9159ed91d0d0bb360deeddb6e",
-      "notebook_hash": "b6a48ff0905162cd959606f02d57842974c8716d8cac04159b444033e4c2cca9"
+      "notebook_hash": "2836cd9efdca41c1034b962eb509fdfb2a163796ae989b4c65cd2dfdf47ad993"
     },
     "DocumentationSetup2025b": {
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DocumentationSetup2025b.m",
@@ -166,7 +166,7 @@
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResult.m",
       "notebook_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/FitResultReference.ipynb",
       "source_hash": "5bf4f732f7c1465e02735f97368f9dc55c69b7303e4c7cf5780e51f50d8385bd",
-      "notebook_hash": "fbd21dfe61beb96c3983391281179cf29162579c2a0d7be73a1829c25da27656"
+      "notebook_hash": "0c85cb4cea1d81ad0de6df275f6ec2a2cf78c0204324c1f8195ff21d79134e09"
     },
     "HybridFilterExample": {
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HybridFilterExample.mlx",
@@ -202,7 +202,7 @@
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResult.m",
       "notebook_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/FitResult.ipynb",
       "source_hash": "5bf4f732f7c1465e02735f97368f9dc55c69b7303e4c7cf5780e51f50d8385bd",
-      "notebook_hash": "844b36fc407af3231fc1df3a5d918a1e29d60ea69b0fe0877618689d9aa7a810"
+      "notebook_hash": "d338a35897b3ed8e45e16995defa7e5b2794a7613012f91a2889dc585ca6ea99"
     },
     "NeuralSpikeAnalysis_top": {
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NeuralSpikeAnalysis_top.m",

@@ -77,6 +77,26 @@ for i = 1:numel(topics)
 
     try
         scriptToRun = sourcePath;
+        if strcmpi(sourceType, 'm') && is_classdef_source_file(sourcePath)
+            produced = 0;
+            reportRows(i).produced_figures = produced;
+            if produced == expectedFigures
+                reportRows(i).status = 'ok';
+            else
+                reportRows(i).status = 'count_mismatch';
+                reportRows(i).error = sprintf('produced=%d expected=%d', produced, expectedFigures);
+            end
+            close all force;
+            evalin('base', 'clearvars');
+            if isappdata(groot, 'NSTAT_EXPORT_OUTDIR')
+                rmappdata(groot, 'NSTAT_EXPORT_OUTDIR');
+            end
+            if isappdata(groot, 'NSTAT_EXPORT_COUNT')
+                rmappdata(groot, 'NSTAT_EXPORT_COUNT');
+            end
+            drawnow;
+            continue;
+        end
         if strcmpi(sourceType, 'mlx')
             convertedPath = fullfile(tempdir(), [topic '__converted__.m']);
             if exist(convertedPath, 'file')
@@ -146,6 +166,23 @@ end
 function run_script_in_base(scriptPath)
 scriptEscaped = strrep(scriptPath, '''', '''''');
 evalin('base', sprintf('run(''%s'');', scriptEscaped));
+end
+
+function tf = is_classdef_source_file(sourcePath)
+tf = false;
+if ~exist(sourcePath, 'file')
+    return;
+end
+textPayload = fileread(sourcePath);
+lines = splitlines(textPayload);
+for iLine = 1:numel(lines)
+    current = strtrim(char(lines(iLine)));
+    if isempty(current) || startsWith(current, '%')
+        continue;
+    end
+    tf = startsWith(lower(current), 'classdef ');
+    return;
+end
 end
 
 function instrument_script_for_figure_capture(sourcePath, outPath)

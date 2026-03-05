@@ -9,6 +9,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/AnalysisExamples.ipynb
   python_cell_count: 2
   no_figure_utility: false
+  classdef_source: false
 - topic: ConfigCollExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ConfigCollExamples.mlx
@@ -18,6 +19,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/ConfigCollExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: false
 - topic: CovCollExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovCollExamples.mlx
@@ -27,6 +29,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/CovCollExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: false
 - topic: CovariateExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovariateExamples.mlx
@@ -36,6 +39,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/CovariateExamples.ipynb
   python_cell_count: 2
   no_figure_utility: false
+  classdef_source: false
 - topic: DecodingExample
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExample.mlx
@@ -45,6 +49,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/DecodingExample.ipynb
   python_cell_count: 3
   no_figure_utility: false
+  classdef_source: false
 - topic: DecodingExampleWithHist
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExampleWithHist.mlx
@@ -54,6 +59,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/DecodingExampleWithHist.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: false
 - topic: EventsExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/EventsExamples.mlx
@@ -63,6 +69,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/EventsExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: false
 - topic: ExplicitStimulusWhiskerData
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ExplicitStimulusWhiskerData.mlx
@@ -72,6 +79,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/ExplicitStimulusWhiskerData.ipynb
   python_cell_count: 6
   no_figure_utility: false
+  classdef_source: false
 - topic: FitResSummaryExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResSummaryExamples.mlx
@@ -81,6 +89,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/FitResSummaryExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: false
 - topic: FitResultExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResultExamples.mlx
@@ -90,6 +99,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/FitResultExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: false
 - topic: HippocampalPlaceCellExample
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HippocampalPlaceCellExample.mlx
@@ -99,6 +109,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/HippocampalPlaceCellExample.ipynb
   python_cell_count: 5
   no_figure_utility: false
+  classdef_source: false
 - topic: HistoryExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HistoryExamples.mlx
@@ -108,6 +119,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/HistoryExamples.ipynb
   python_cell_count: 3
   no_figure_utility: false
+  classdef_source: false
 - topic: NetworkTutorial
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NetworkTutorial.mlx
@@ -117,6 +129,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/NetworkTutorial.ipynb
   python_cell_count: 11
   no_figure_utility: false
+  classdef_source: false
 - topic: PPSimExample
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPSimExample.mlx
@@ -126,6 +139,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/PPSimExample.ipynb
   python_cell_count: 9
   no_figure_utility: false
+  classdef_source: false
 - topic: PPThinning
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPThinning.mlx
@@ -135,6 +149,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/PPThinning.ipynb
   python_cell_count: 4
   no_figure_utility: false
+  classdef_source: false
 - topic: PSTHEstimation
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PSTHEstimation.mlx
@@ -144,6 +159,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/PSTHEstimation.ipynb
   python_cell_count: 3
   no_figure_utility: false
+  classdef_source: false
 - topic: SignalObjExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/SignalObjExamples.mlx
@@ -153,6 +169,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/SignalObjExamples.ipynb
   python_cell_count: 7
   no_figure_utility: false
+  classdef_source: false
 - topic: StimulusDecode2D
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/StimulusDecode2D.mlx
@@ -162,6 +179,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/StimulusDecode2D.ipynb
   python_cell_count: 3
   no_figure_utility: false
+  classdef_source: false
 - topic: TrialConfigExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialConfigExamples.mlx
@@ -171,6 +189,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/TrialConfigExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: false
 - topic: TrialExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialExamples.mlx
@@ -180,6 +199,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/TrialExamples.ipynb
   python_cell_count: 3
   no_figure_utility: false
+  classdef_source: false
 - topic: ValidationDataSet
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ValidationDataSet.mlx
@@ -189,15 +209,17 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/ValidationDataSet.ipynb
   python_cell_count: 3
   no_figure_utility: false
+  classdef_source: false
 - topic: mEPSCAnalysis
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/mEPSCAnalysis.mlx
   expected_section_count: 9
-  expected_figure_count: 2
+  expected_figure_count: 4
   detected_figure_count: 2
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/mEPSCAnalysis.ipynb
   python_cell_count: 9
   no_figure_utility: false
+  classdef_source: false
 - topic: nSTATPaperExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSTATPaperExamples.mlx
@@ -207,6 +229,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/nSTATPaperExamples.ipynb
   python_cell_count: 31
   no_figure_utility: false
+  classdef_source: false
 - topic: nSpikeTrainExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSpikeTrainExamples.mlx
@@ -216,6 +239,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/nSpikeTrainExamples.ipynb
   python_cell_count: 2
   no_figure_utility: false
+  classdef_source: false
 - topic: nstCollExamples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nstCollExamples.mlx
@@ -225,15 +249,17 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/nstCollExamples.ipynb
   python_cell_count: 2
   no_figure_utility: false
+  classdef_source: false
 - topic: AnalysisExamples2
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples2.mlx
   expected_section_count: 3
-  expected_figure_count: 2
+  expected_figure_count: 4
   detected_figure_count: 2
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/AnalysisExamples2.ipynb
   python_cell_count: 3
   no_figure_utility: false
+  classdef_source: false
 - topic: DocumentationSetup2025b
   source_type: m
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DocumentationSetup2025b.m
@@ -243,15 +269,17 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/DocumentationSetup2025b.ipynb
   python_cell_count: 6
   no_figure_utility: false
+  classdef_source: false
 - topic: FitResultReference
   source_type: m
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResult.m
   expected_section_count: 1
-  expected_figure_count: 3
-  detected_figure_count: 3
+  expected_figure_count: 0
+  detected_figure_count: 0
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/FitResultReference.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: true
 - topic: HybridFilterExample
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HybridFilterExample.mlx
@@ -261,6 +289,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/HybridFilterExample.ipynb
   python_cell_count: 4
   no_figure_utility: false
+  classdef_source: false
 - topic: publish_all_helpfiles
   source_type: utility
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/publish_all_helpfiles.ipynb
@@ -279,6 +308,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/ClassDefinitions.ipynb
   python_cell_count: 3
   no_figure_utility: false
+  classdef_source: false
 - topic: ConfidenceIntervalOverview
   source_type: m
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ConfidenceIntervalOverview.m
@@ -288,6 +318,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/ConfidenceIntervalOverview.ipynb
   python_cell_count: 2
   no_figure_utility: false
+  classdef_source: false
 - topic: Examples
   source_type: mlx
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/Examples.mlx
@@ -297,15 +328,17 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/Examples.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: false
 - topic: FitResult
   source_type: m
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResult.m
   expected_section_count: 1
-  expected_figure_count: 3
-  detected_figure_count: 3
+  expected_figure_count: 0
+  detected_figure_count: 0
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/FitResult.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: true
 - topic: NeuralSpikeAnalysis_top
   source_type: m
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NeuralSpikeAnalysis_top.m
@@ -315,6 +348,7 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/NeuralSpikeAnalysis_top.ipynb
   python_cell_count: 2
   no_figure_utility: false
+  classdef_source: false
 - topic: temp
   source_type: m
   source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/temp.m
@@ -324,3 +358,4 @@ topics:
   notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/temp.ipynb
   python_cell_count: 1
   no_figure_utility: false
+  classdef_source: false

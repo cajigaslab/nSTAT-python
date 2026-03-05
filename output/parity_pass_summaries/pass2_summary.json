@@ -1,0 +1,13 @@
+{
+  "pass": 2,
+  "target_group": "all",
+  "notebooks_executed": 36,
+  "parity_status": "pass",
+  "parity_failures_count": 0,
+  "failing_topics": [],
+  "key_fixes_applied": [
+    "Added classdef-source detection so non-script MATLAB class files are treated as non-figure topics",
+    "Hardened MATLAB help image export to skip classdef execution safely",
+    "Regenerated all source-derived notebooks and refreshed notebook consistency hashes"
+  ]
+}

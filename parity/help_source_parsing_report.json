@@ -1,22 +1,43 @@
 {
   "matlab_help_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles",
-  "selected_group": "core",
+  "selected_group": "all",
   "selected_topics": [
     "AnalysisExamples",
+    "AnalysisExamples2",
+    "ClassDefinitions",
+    "ConfidenceIntervalOverview",
+    "ConfigCollExamples",
+    "CovCollExamples",
+    "CovariateExamples",
     "DecodingExample",
+    "DecodingExampleWithHist",
+    "DocumentationSetup2025b",
     "EventsExamples",
+    "Examples",
     "ExplicitStimulusWhiskerData",
+    "FitResSummaryExamples",
+    "FitResult",
+    "FitResultExamples",
+    "FitResultReference",
     "HippocampalPlaceCellExample",
     "HistoryExamples",
+    "HybridFilterExample",
     "NetworkTutorial",
+    "NeuralSpikeAnalysis_top",
     "PPSimExample",
     "PPThinning",
+    "PSTHEstimation",
     "SignalObjExamples",
     "StimulusDecode2D",
+    "TrialConfigExamples",
     "TrialExamples",
     "ValidationDataSet",
+    "mEPSCAnalysis",
     "nSTATPaperExamples",
-    "nSpikeTrainExamples"
+    "nSpikeTrainExamples",
+    "nstCollExamples",
+    "publish_all_helpfiles",
+    "temp"
   ],
   "topics": [
     {
@@ -27,6 +48,7 @@
       "figure_count": 4,
       "detected_figure_count": 4,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -110,6 +132,7 @@
       "figure_count": 0,
       "detected_figure_count": 0,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": []
     },
     {
@@ -120,6 +143,7 @@
       "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 0,
@@ -163,6 +187,7 @@
       "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -222,6 +247,7 @@
       "figure_count": 5,
       "detected_figure_count": 4,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -321,6 +347,7 @@
       "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 0,
@@ -436,6 +463,7 @@
       "figure_count": 3,
       "detected_figure_count": 3,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 0,
@@ -487,6 +515,7 @@
       "figure_count": 8,
       "detected_figure_count": 5,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -690,6 +719,7 @@
       "figure_count": 0,
       "detected_figure_count": 0,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": []
     },
     {
@@ -700,6 +730,7 @@
       "figure_count": 0,
       "detected_figure_count": 0,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": []
     },
     {
@@ -710,6 +741,7 @@
       "figure_count": 9,
       "detected_figure_count": 7,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -857,6 +889,7 @@
       "figure_count": 3,
       "detected_figure_count": 3,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -940,6 +973,7 @@
       "figure_count": 4,
       "detected_figure_count": 2,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 8,
@@ -1039,6 +1073,7 @@
       "figure_count": 3,
       "detected_figure_count": 1,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 4,
@@ -1106,6 +1141,7 @@
       "figure_count": 3,
       "detected_figure_count": 3,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 2,
@@ -1237,6 +1273,7 @@
       "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -1296,6 +1333,7 @@
       "figure_count": 16,
       "detected_figure_count": 16,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -1811,6 +1849,7 @@
       "figure_count": 4,
       "detected_figure_count": 4,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 0,
@@ -1910,6 +1949,7 @@
       "figure_count": 0,
       "detected_figure_count": 0,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": []
     },
     {
@@ -1920,6 +1960,7 @@
       "figure_count": 6,
       "detected_figure_count": 6,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -2027,6 +2068,7 @@
       "figure_count": 8,
       "detected_figure_count": 3,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -2171,9 +2213,10 @@
       "source_type": "mlx",
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/mEPSCAnalysis.mlx",
       "section_count": 9,
-      "figure_count": 2,
+      "figure_count": 4,
       "detected_figure_count": 2,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 2,
@@ -2225,6 +2268,7 @@
       "figure_count": 24,
       "detected_figure_count": 25,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 2,
@@ -4244,6 +4288,7 @@
       "figure_count": 4,
       "detected_figure_count": 4,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -4319,6 +4364,7 @@
       "figure_count": 3,
       "detected_figure_count": 3,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 1,
@@ -4415,9 +4461,10 @@
       "source_type": "mlx",
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples2.mlx",
       "section_count": 3,
-      "figure_count": 2,
+      "figure_count": 4,
       "detected_figure_count": 2,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 0,
@@ -4477,6 +4524,7 @@
       "figure_count": 0,
       "detected_figure_count": 0,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": []
     },
     {
@@ -4484,171 +4532,11 @@
       "source_type": "m",
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResult.m",
       "section_count": 1,
-      "figure_count": 3,
-      "detected_figure_count": 3,
+      "figure_count": 0,
+      "detected_figure_count": 0,
       "no_figure_utility": false,
-      "events": [
-        {
-          "section_index": 0,
-          "section_line_index": 434,
-          "source_line_no": 435,
-          "source_snippet": "display('Validation Data not available to plot')",
-          "event_type": "new_figure",
-          "figure_ordinal": 1
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1085,
-          "source_line_no": 1086,
-          "source_snippet": "plot(handle,find(sigIndex(:,i)==1),vdiff*ones(length(find(sigIndex(:,i)==1)),1)-i*.1,strcat('*',FitResult.colors{mod(i-1,length(FitResult.colors))+1}))",
-          "event_type": "add_to_current",
-          "figure_ordinal": 1
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1125,
-          "source_line_no": 1126,
-          "source_snippet": "h=figure('OuterPosition',[scrsz(3)*.01 scrsz(4)*.04 scrsz(3)*.98 scrsz(4)*.95])",
-          "event_type": "new_figure",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1127,
-          "source_line_no": 1128,
-          "source_snippet": "subplot(2,4,[1 2])",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1127,
-          "source_line_no": 1128,
-          "source_snippet": "fitObj.KSPlot",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1131,
-          "source_line_no": 1132,
-          "source_snippet": "subplot(2,4,3)",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1132,
-          "source_line_no": 1133,
-          "source_snippet": "subplot(2,4,4)",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1133,
-          "source_line_no": 1134,
-          "source_snippet": "subplot(2,4,[7 8])",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1133,
-          "source_line_no": 1134,
-          "source_snippet": "fitObj.plotResidual",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1134,
-          "source_line_no": 1135,
-          "source_snippet": "subplot(2,4,[5 6])",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1147,
-          "source_line_no": 1148,
-          "source_snippet": "figure(h)",
-          "event_type": "new_figure",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1154,
-          "source_line_no": 1155,
-          "source_snippet": "plot(xaxis,xaxis, 'k-.')",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1155,
-          "source_line_no": 1156,
-          "source_snippet": "plot(xaxis, xaxis+1.36/sqrt(N), 'r','Linewidth',1)",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1156,
-          "source_line_no": 1157,
-          "source_snippet": "plot(xaxis,xaxis-1.36/sqrt(N), 'r','Linewidth',1 )",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1157,
-          "source_line_no": 1158,
-          "source_snippet": "handle=plot(fitObj.KSStats.xAxis(:,fitNum),fitObj.KSStats.KSSorted(:,fitNum),'Linewidth',2)",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1170,
-          "source_line_no": 1171,
-          "source_snippet": "title({'KS Plot of Rescaled ISIs'",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1238,
-          "source_line_no": 1239,
-          "source_snippet": "handle = plot(fitObj.U(1:end-1,i),fitObj.U(2:end,i),strcat('.',Analysis.colors{mod(i-1,length(Analysis.colors))+1}))",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1309,
-          "source_line_no": 1310,
-          "source_snippet": "rhoSig.plot",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1320,
-          "source_line_no": 1321,
-          "source_snippet": "confBoundSig.plot",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1337,
-          "source_line_no": 1338,
-          "source_snippet": "handle=fitObj.Residual.plot",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        }
-      ]
+      "classdef_source": true,
+      "events": []
     },
     {
       "topic": "HybridFilterExample",
@@ -4658,6 +4546,7 @@
       "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 2,
@@ -5255,6 +5144,7 @@
       "figure_count": 0,
       "detected_figure_count": 0,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": []
     },
     {
@@ -5265,6 +5155,7 @@
       "figure_count": 0,
       "detected_figure_count": 0,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": []
     },
     {
@@ -5275,6 +5166,7 @@
       "figure_count": 0,
       "detected_figure_count": 0,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": []
     },
     {
@@ -5282,171 +5174,11 @@
       "source_type": "m",
       "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResult.m",
       "section_count": 1,
-      "figure_count": 3,
-      "detected_figure_count": 3,
+      "figure_count": 0,
+      "detected_figure_count": 0,
       "no_figure_utility": false,
-      "events": [
-        {
-          "section_index": 0,
-          "section_line_index": 434,
-          "source_line_no": 435,
-          "source_snippet": "display('Validation Data not available to plot')",
-          "event_type": "new_figure",
-          "figure_ordinal": 1
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1085,
-          "source_line_no": 1086,
-          "source_snippet": "plot(handle,find(sigIndex(:,i)==1),vdiff*ones(length(find(sigIndex(:,i)==1)),1)-i*.1,strcat('*',FitResult.colors{mod(i-1,length(FitResult.colors))+1}))",
-          "event_type": "add_to_current",
-          "figure_ordinal": 1
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1125,
-          "source_line_no": 1126,
-          "source_snippet": "h=figure('OuterPosition',[scrsz(3)*.01 scrsz(4)*.04 scrsz(3)*.98 scrsz(4)*.95])",
-          "event_type": "new_figure",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1127,
-          "source_line_no": 1128,
-          "source_snippet": "subplot(2,4,[1 2])",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1127,
-          "source_line_no": 1128,
-          "source_snippet": "fitObj.KSPlot",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1131,
-          "source_line_no": 1132,
-          "source_snippet": "subplot(2,4,3)",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1132,
-          "source_line_no": 1133,
-          "source_snippet": "subplot(2,4,4)",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1133,
-          "source_line_no": 1134,
-          "source_snippet": "subplot(2,4,[7 8])",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1133,
-          "source_line_no": 1134,
-          "source_snippet": "fitObj.plotResidual",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1134,
-          "source_line_no": 1135,
-          "source_snippet": "subplot(2,4,[5 6])",
-          "event_type": "add_to_current",
-          "figure_ordinal": 2
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1147,
-          "source_line_no": 1148,
-          "source_snippet": "figure(h)",
-          "event_type": "new_figure",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1154,
-          "source_line_no": 1155,
-          "source_snippet": "plot(xaxis,xaxis, 'k-.')",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1155,
-          "source_line_no": 1156,
-          "source_snippet": "plot(xaxis, xaxis+1.36/sqrt(N), 'r','Linewidth',1)",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1156,
-          "source_line_no": 1157,
-          "source_snippet": "plot(xaxis,xaxis-1.36/sqrt(N), 'r','Linewidth',1 )",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1157,
-          "source_line_no": 1158,
-          "source_snippet": "handle=plot(fitObj.KSStats.xAxis(:,fitNum),fitObj.KSStats.KSSorted(:,fitNum),'Linewidth',2)",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1170,
-          "source_line_no": 1171,
-          "source_snippet": "title({'KS Plot of Rescaled ISIs'",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1238,
-          "source_line_no": 1239,
-          "source_snippet": "handle = plot(fitObj.U(1:end-1,i),fitObj.U(2:end,i),strcat('.',Analysis.colors{mod(i-1,length(Analysis.colors))+1}))",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1309,
-          "source_line_no": 1310,
-          "source_snippet": "rhoSig.plot",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1320,
-          "source_line_no": 1321,
-          "source_snippet": "confBoundSig.plot",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        },
-        {
-          "section_index": 0,
-          "section_line_index": 1337,
-          "source_line_no": 1338,
-          "source_snippet": "handle=fitObj.Residual.plot",
-          "event_type": "add_to_current",
-          "figure_ordinal": 3
-        }
-      ]
+      "classdef_source": true,
+      "events": []
     },
     {
       "topic": "NeuralSpikeAnalysis_top",
@@ -5456,6 +5188,7 @@
       "figure_count": 0,
       "detected_figure_count": 0,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": []
     },
     {
@@ -5466,6 +5199,7 @@
       "figure_count": 1,
       "detected_figure_count": 1,
       "no_figure_utility": false,
+      "classdef_source": false,
       "events": [
         {
           "section_index": 0,

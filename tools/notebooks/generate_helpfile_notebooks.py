@@ -305,6 +305,19 @@ def _extract_sections(source_path: Path, source_type: str) -> list[SourceSection
     return _split_m_sections(source_path)
 
 
+def _is_classdef_source(source_path: Path, source_type: str) -> bool:
+    if source_type != "m":
+        return False
+    for raw_line in source_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("%"):
+            continue
+        return stripped.lower().startswith("classdef ")
+    return False
+
+
 def _detect_figure_events(topic: str, sections: list[SourceSection]) -> list[FigureEvent]:
     events: list[FigureEvent] = []
     figure_open = False
@@ -793,7 +806,8 @@ def main() -> int:
             )
             continue
         sections = _extract_sections(source_path, source_type)
-        events = _detect_figure_events(topic, sections)
+        is_classdef_source = _is_classdef_source(source_path, source_type)
+        events = [] if is_classdef_source else _detect_figure_events(topic, sections)
         detected_figures = len([evt for evt in events if evt.event_type == "new_figure"])
         reference_images = sorted((matlab_image_root / topic).glob("*.png"))
         expected_figures = len(reference_images) if reference_images else detected_figures
@@ -821,6 +835,7 @@ def main() -> int:
                 "notebook_output_path": str(notebook_path),
                 "python_cell_count": len(sections),
                 "no_figure_utility": is_no_figure_utility,
+                "classdef_source": is_classdef_source,
             }
         )
         parsing_report["topics"].append(
@@ -832,6 +847,7 @@ def main() -> int:
                 "figure_count": expected_figures,
                 "detected_figure_count": detected_figures,
                 "no_figure_utility": is_no_figure_utility,
+                "classdef_source": is_classdef_source,
                 "events": [
                     {
                         "section_index": evt.section_index,
@@ -851,6 +867,7 @@ def main() -> int:
                 "total_figures_expected": expected_figures,
                 "total_figures_detected": detected_figures,
                 "no_figure_utility": is_no_figure_utility,
+                "classdef_source": is_classdef_source,
                 "events": [
                     {
                         "section_index": evt.section_index,
