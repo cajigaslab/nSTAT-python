@@ -393,7 +393,7 @@
     },
     {
       "topic": "ExplicitStimulusWhiskerData",
-      "total_figures_expected": 8,
+      "total_figures_expected": 5,
       "total_figures_detected": 5,
       "no_figure_utility": false,
       "events": [
@@ -583,7 +583,7 @@
     },
     {
       "topic": "HippocampalPlaceCellExample",
-      "total_figures_expected": 9,
+      "total_figures_expected": 7,
       "total_figures_detected": 7,
       "no_figure_utility": false,
       "events": [
@@ -781,7 +781,7 @@
     },
     {
       "topic": "NetworkTutorial",
-      "total_figures_expected": 4,
+      "total_figures_expected": 2,
       "total_figures_detected": 2,
       "no_figure_utility": false,
       "events": [
@@ -1719,7 +1719,7 @@
     },
     {
       "topic": "ValidationDataSet",
-      "total_figures_expected": 8,
+      "total_figures_expected": 3,
       "total_figures_detected": 3,
       "no_figure_utility": false,
       "events": [
@@ -1846,7 +1846,7 @@
     },
     {
       "topic": "mEPSCAnalysis",
-      "total_figures_expected": 4,
+      "total_figures_expected": 2,
       "total_figures_detected": 2,
       "no_figure_utility": false,
       "events": [
@@ -1889,7 +1889,7 @@
     },
     {
       "topic": "nSTATPaperExamples",
-      "total_figures_expected": 1,
+      "total_figures_expected": 24,
       "total_figures_detected": 25,
       "no_figure_utility": false,
       "events": [
@@ -3803,7 +3803,7 @@
     },
     {
       "topic": "AnalysisExamples2",
-      "total_figures_expected": 4,
+      "total_figures_expected": 2,
       "total_figures_detected": 2,
       "no_figure_utility": false,
       "events": [
@@ -3860,14 +3860,155 @@
     },
     {
       "topic": "FitResultReference",
-      "total_figures_expected": 0,
-      "total_figures_detected": 0,
+      "total_figures_expected": 3,
+      "total_figures_detected": 3,
       "no_figure_utility": false,
-      "events": []
+      "events": [
+        {
+          "section_index": 0,
+          "source_line_no": 435,
+          "source_snippet": "display('Validation Data not available to plot')",
+          "event_type": "new_figure",
+          "figure_ordinal": 1
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1086,
+          "source_snippet": "plot(handle,find(sigIndex(:,i)==1),vdiff*ones(length(find(sigIndex(:,i)==1)),1)-i*.1,strcat('*',FitResult.colors{mod(i-1,length(FitResult.colors))+1}))",
+          "event_type": "add_to_current",
+          "figure_ordinal": 1
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1126,
+          "source_snippet": "h=figure('OuterPosition',[scrsz(3)*.01 scrsz(4)*.04 scrsz(3)*.98 scrsz(4)*.95])",
+          "event_type": "new_figure",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1128,
+          "source_snippet": "subplot(2,4,[1 2])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1128,
+          "source_snippet": "fitObj.KSPlot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1132,
+          "source_snippet": "subplot(2,4,3)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1133,
+          "source_snippet": "subplot(2,4,4)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1134,
+          "source_snippet": "subplot(2,4,[7 8])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1134,
+          "source_snippet": "fitObj.plotResidual",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1135,
+          "source_snippet": "subplot(2,4,[5 6])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1148,
+          "source_snippet": "figure(h)",
+          "event_type": "new_figure",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1155,
+          "source_snippet": "plot(xaxis,xaxis, 'k-.')",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1156,
+          "source_snippet": "plot(xaxis, xaxis+1.36/sqrt(N), 'r','Linewidth',1)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1157,
+          "source_snippet": "plot(xaxis,xaxis-1.36/sqrt(N), 'r','Linewidth',1 )",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1158,
+          "source_snippet": "handle=plot(fitObj.KSStats.xAxis(:,fitNum),fitObj.KSStats.KSSorted(:,fitNum),'Linewidth',2)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1171,
+          "source_snippet": "title({'KS Plot of Rescaled ISIs'",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1239,
+          "source_snippet": "handle = plot(fitObj.U(1:end-1,i),fitObj.U(2:end,i),strcat('.',Analysis.colors{mod(i-1,length(Analysis.colors))+1}))",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1310,
+          "source_snippet": "rhoSig.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1321,
+          "source_snippet": "confBoundSig.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1338,
+          "source_snippet": "handle=fitObj.Residual.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        }
+      ]
     },
     {
       "topic": "HybridFilterExample",
-      "total_figures_expected": 1,
+      "total_figures_expected": 2,
       "total_figures_detected": 2,
       "no_figure_utility": false,
       "events": [
@@ -4383,6 +4524,204 @@
       "total_figures_detected": 0,
       "no_figure_utility": true,
       "events": []
+    },
+    {
+      "topic": "ClassDefinitions",
+      "total_figures_expected": 0,
+      "total_figures_detected": 0,
+      "no_figure_utility": false,
+      "events": []
+    },
+    {
+      "topic": "ConfidenceIntervalOverview",
+      "total_figures_expected": 0,
+      "total_figures_detected": 0,
+      "no_figure_utility": false,
+      "events": []
+    },
+    {
+      "topic": "Examples",
+      "total_figures_expected": 0,
+      "total_figures_detected": 0,
+      "no_figure_utility": false,
+      "events": []
+    },
+    {
+      "topic": "FitResult",
+      "total_figures_expected": 3,
+      "total_figures_detected": 3,
+      "no_figure_utility": false,
+      "events": [
+        {
+          "section_index": 0,
+          "source_line_no": 435,
+          "source_snippet": "display('Validation Data not available to plot')",
+          "event_type": "new_figure",
+          "figure_ordinal": 1
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1086,
+          "source_snippet": "plot(handle,find(sigIndex(:,i)==1),vdiff*ones(length(find(sigIndex(:,i)==1)),1)-i*.1,strcat('*',FitResult.colors{mod(i-1,length(FitResult.colors))+1}))",
+          "event_type": "add_to_current",
+          "figure_ordinal": 1
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1126,
+          "source_snippet": "h=figure('OuterPosition',[scrsz(3)*.01 scrsz(4)*.04 scrsz(3)*.98 scrsz(4)*.95])",
+          "event_type": "new_figure",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1128,
+          "source_snippet": "subplot(2,4,[1 2])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1128,
+          "source_snippet": "fitObj.KSPlot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1132,
+          "source_snippet": "subplot(2,4,3)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1133,
+          "source_snippet": "subplot(2,4,4)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1134,
+          "source_snippet": "subplot(2,4,[7 8])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1134,
+          "source_snippet": "fitObj.plotResidual",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1135,
+          "source_snippet": "subplot(2,4,[5 6])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1148,
+          "source_snippet": "figure(h)",
+          "event_type": "new_figure",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1155,
+          "source_snippet": "plot(xaxis,xaxis, 'k-.')",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1156,
+          "source_snippet": "plot(xaxis, xaxis+1.36/sqrt(N), 'r','Linewidth',1)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1157,
+          "source_snippet": "plot(xaxis,xaxis-1.36/sqrt(N), 'r','Linewidth',1 )",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1158,
+          "source_snippet": "handle=plot(fitObj.KSStats.xAxis(:,fitNum),fitObj.KSStats.KSSorted(:,fitNum),'Linewidth',2)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1171,
+          "source_snippet": "title({'KS Plot of Rescaled ISIs'",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1239,
+          "source_snippet": "handle = plot(fitObj.U(1:end-1,i),fitObj.U(2:end,i),strcat('.',Analysis.colors{mod(i-1,length(Analysis.colors))+1}))",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1310,
+          "source_snippet": "rhoSig.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1321,
+          "source_snippet": "confBoundSig.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 1338,
+          "source_snippet": "handle=fitObj.Residual.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        }
+      ]
+    },
+    {
+      "topic": "NeuralSpikeAnalysis_top",
+      "total_figures_expected": 0,
+      "total_figures_detected": 0,
+      "no_figure_utility": false,
+      "events": []
+    },
+    {
+      "topic": "temp",
+      "total_figures_expected": 1,
+      "total_figures_detected": 1,
+      "no_figure_utility": false,
+      "events": [
+        {
+          "section_index": 0,
+          "source_line_no": 15,
+          "source_snippet": "plot(t,x)",
+          "event_type": "new_figure",
+          "figure_ordinal": 1
+        },
+        {
+          "section_index": 0,
+          "source_line_no": 16,
+          "source_snippet": "plot(t,xnew,'r-.')",
+          "event_type": "add_to_current",
+          "figure_ordinal": 1
+        }
+      ]
     }
   ]
 }

@@ -1,10 +1,10 @@
 {
-  "matlab_help_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles",
+  "matlab_help_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles",
   "topics": [
     {
       "topic": "AnalysisExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples.mlx",
       "section_count": 2,
       "figure_count": 4,
       "detected_figure_count": 4,
@@ -87,7 +87,7 @@
     {
       "topic": "ConfigCollExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ConfigCollExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ConfigCollExamples.mlx",
       "section_count": 1,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -97,7 +97,7 @@
     {
       "topic": "CovCollExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovCollExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovCollExamples.mlx",
       "section_count": 1,
       "figure_count": 2,
       "detected_figure_count": 2,
@@ -140,7 +140,7 @@
     {
       "topic": "CovariateExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovariateExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovariateExamples.mlx",
       "section_count": 2,
       "figure_count": 2,
       "detected_figure_count": 2,
@@ -199,7 +199,7 @@
     {
       "topic": "DecodingExample",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExample.mlx",
       "section_count": 3,
       "figure_count": 5,
       "detected_figure_count": 4,
@@ -298,7 +298,7 @@
     {
       "topic": "DecodingExampleWithHist",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExampleWithHist.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExampleWithHist.mlx",
       "section_count": 1,
       "figure_count": 2,
       "detected_figure_count": 2,
@@ -413,7 +413,7 @@
     {
       "topic": "EventsExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/EventsExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/EventsExamples.mlx",
       "section_count": 1,
       "figure_count": 3,
       "detected_figure_count": 3,
@@ -464,9 +464,9 @@
     {
       "topic": "ExplicitStimulusWhiskerData",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ExplicitStimulusWhiskerData.mlx",
       "section_count": 6,
-      "figure_count": 8,
+      "figure_count": 5,
       "detected_figure_count": 5,
       "no_figure_utility": false,
       "events": [
@@ -667,7 +667,7 @@
     {
       "topic": "FitResSummaryExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResSummaryExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResSummaryExamples.mlx",
       "section_count": 1,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -677,7 +677,7 @@
     {
       "topic": "FitResultExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResultExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResultExamples.mlx",
       "section_count": 1,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -687,9 +687,9 @@
     {
       "topic": "HippocampalPlaceCellExample",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HippocampalPlaceCellExample.mlx",
       "section_count": 5,
-      "figure_count": 9,
+      "figure_count": 7,
       "detected_figure_count": 7,
       "no_figure_utility": false,
       "events": [
@@ -834,7 +834,7 @@
     {
       "topic": "HistoryExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HistoryExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HistoryExamples.mlx",
       "section_count": 3,
       "figure_count": 3,
       "detected_figure_count": 3,
@@ -917,9 +917,9 @@
     {
       "topic": "NetworkTutorial",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/NetworkTutorial.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NetworkTutorial.mlx",
       "section_count": 11,
-      "figure_count": 4,
+      "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
@@ -1016,7 +1016,7 @@
     {
       "topic": "PPSimExample",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPSimExample.mlx",
       "section_count": 9,
       "figure_count": 3,
       "detected_figure_count": 1,
@@ -1083,7 +1083,7 @@
     {
       "topic": "PPThinning",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPThinning.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPThinning.mlx",
       "section_count": 4,
       "figure_count": 3,
       "detected_figure_count": 3,
@@ -1214,7 +1214,7 @@
     {
       "topic": "PSTHEstimation",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PSTHEstimation.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PSTHEstimation.mlx",
       "section_count": 3,
       "figure_count": 2,
       "detected_figure_count": 2,
@@ -1273,7 +1273,7 @@
     {
       "topic": "SignalObjExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/SignalObjExamples.mlx",
       "section_count": 7,
       "figure_count": 16,
       "detected_figure_count": 16,
@@ -1788,7 +1788,7 @@
     {
       "topic": "StimulusDecode2D",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/StimulusDecode2D.mlx",
       "section_count": 3,
       "figure_count": 4,
       "detected_figure_count": 4,
@@ -1887,7 +1887,7 @@
     {
       "topic": "TrialConfigExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialConfigExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialConfigExamples.mlx",
       "section_count": 1,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -1897,7 +1897,7 @@
     {
       "topic": "TrialExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialExamples.mlx",
       "section_count": 3,
       "figure_count": 6,
       "detected_figure_count": 6,
@@ -2004,9 +2004,9 @@
     {
       "topic": "ValidationDataSet",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ValidationDataSet.mlx",
       "section_count": 3,
-      "figure_count": 8,
+      "figure_count": 3,
       "detected_figure_count": 3,
       "no_figure_utility": false,
       "events": [
@@ -2151,9 +2151,9 @@
     {
       "topic": "mEPSCAnalysis",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/mEPSCAnalysis.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/mEPSCAnalysis.mlx",
       "section_count": 9,
-      "figure_count": 4,
+      "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
@@ -2202,9 +2202,9 @@
     {
       "topic": "nSTATPaperExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSTATPaperExamples.mlx",
       "section_count": 31,
-      "figure_count": 1,
+      "figure_count": 24,
       "detected_figure_count": 25,
       "no_figure_utility": false,
       "events": [
@@ -4221,7 +4221,7 @@
     {
       "topic": "nSpikeTrainExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSpikeTrainExamples.mlx",
       "section_count": 2,
       "figure_count": 4,
       "detected_figure_count": 4,
@@ -4296,7 +4296,7 @@
     {
       "topic": "nstCollExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nstCollExamples.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nstCollExamples.mlx",
       "section_count": 2,
       "figure_count": 3,
       "detected_figure_count": 3,
@@ -4395,9 +4395,9 @@
     {
       "topic": "AnalysisExamples2",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples2.mlx",
       "section_count": 3,
-      "figure_count": 4,
+      "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
@@ -4454,7 +4454,7 @@
     {
       "topic": "DocumentationSetup2025b",
       "source_type": "m",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DocumentationSetup2025b.m",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DocumentationSetup2025b.m",
       "section_count": 6,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -4464,19 +4464,180 @@
     {
       "topic": "FitResultReference",
       "source_type": "m",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResultReference.m",
-      "section_count": 2,
-      "figure_count": 0,
-      "detected_figure_count": 0,
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResult.m",
+      "section_count": 1,
+      "figure_count": 3,
+      "detected_figure_count": 3,
       "no_figure_utility": false,
-      "events": []
+      "events": [
+        {
+          "section_index": 0,
+          "section_line_index": 434,
+          "source_line_no": 435,
+          "source_snippet": "display('Validation Data not available to plot')",
+          "event_type": "new_figure",
+          "figure_ordinal": 1
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1085,
+          "source_line_no": 1086,
+          "source_snippet": "plot(handle,find(sigIndex(:,i)==1),vdiff*ones(length(find(sigIndex(:,i)==1)),1)-i*.1,strcat('*',FitResult.colors{mod(i-1,length(FitResult.colors))+1}))",
+          "event_type": "add_to_current",
+          "figure_ordinal": 1
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1125,
+          "source_line_no": 1126,
+          "source_snippet": "h=figure('OuterPosition',[scrsz(3)*.01 scrsz(4)*.04 scrsz(3)*.98 scrsz(4)*.95])",
+          "event_type": "new_figure",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1127,
+          "source_line_no": 1128,
+          "source_snippet": "subplot(2,4,[1 2])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1127,
+          "source_line_no": 1128,
+          "source_snippet": "fitObj.KSPlot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1131,
+          "source_line_no": 1132,
+          "source_snippet": "subplot(2,4,3)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1132,
+          "source_line_no": 1133,
+          "source_snippet": "subplot(2,4,4)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1133,
+          "source_line_no": 1134,
+          "source_snippet": "subplot(2,4,[7 8])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1133,
+          "source_line_no": 1134,
+          "source_snippet": "fitObj.plotResidual",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1134,
+          "source_line_no": 1135,
+          "source_snippet": "subplot(2,4,[5 6])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1147,
+          "source_line_no": 1148,
+          "source_snippet": "figure(h)",
+          "event_type": "new_figure",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1154,
+          "source_line_no": 1155,
+          "source_snippet": "plot(xaxis,xaxis, 'k-.')",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1155,
+          "source_line_no": 1156,
+          "source_snippet": "plot(xaxis, xaxis+1.36/sqrt(N), 'r','Linewidth',1)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1156,
+          "source_line_no": 1157,
+          "source_snippet": "plot(xaxis,xaxis-1.36/sqrt(N), 'r','Linewidth',1 )",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1157,
+          "source_line_no": 1158,
+          "source_snippet": "handle=plot(fitObj.KSStats.xAxis(:,fitNum),fitObj.KSStats.KSSorted(:,fitNum),'Linewidth',2)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1170,
+          "source_line_no": 1171,
+          "source_snippet": "title({'KS Plot of Rescaled ISIs'",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1238,
+          "source_line_no": 1239,
+          "source_snippet": "handle = plot(fitObj.U(1:end-1,i),fitObj.U(2:end,i),strcat('.',Analysis.colors{mod(i-1,length(Analysis.colors))+1}))",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1309,
+          "source_line_no": 1310,
+          "source_snippet": "rhoSig.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1320,
+          "source_line_no": 1321,
+          "source_snippet": "confBoundSig.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1337,
+          "source_line_no": 1338,
+          "source_snippet": "handle=fitObj.Residual.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        }
+      ]
     },
     {
       "topic": "HybridFilterExample",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HybridFilterExample.mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HybridFilterExample.mlx",
       "section_count": 4,
-      "figure_count": 1,
+      "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
@@ -5060,13 +5221,251 @@
     },
     {
       "topic": "publish_all_helpfiles",
-      "source_type": "m",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/publish_all_helpfiles.m",
+      "source_type": "utility",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/notebooks/publish_all_helpfiles.ipynb",
       "section_count": 1,
       "figure_count": 0,
       "detected_figure_count": 0,
       "no_figure_utility": true,
       "events": []
+    },
+    {
+      "topic": "ClassDefinitions",
+      "source_type": "m",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ClassDefinitions.m",
+      "section_count": 3,
+      "figure_count": 0,
+      "detected_figure_count": 0,
+      "no_figure_utility": false,
+      "events": []
+    },
+    {
+      "topic": "ConfidenceIntervalOverview",
+      "source_type": "m",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ConfidenceIntervalOverview.m",
+      "section_count": 2,
+      "figure_count": 0,
+      "detected_figure_count": 0,
+      "no_figure_utility": false,
+      "events": []
+    },
+    {
+      "topic": "Examples",
+      "source_type": "mlx",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/Examples.mlx",
+      "section_count": 1,
+      "figure_count": 0,
+      "detected_figure_count": 0,
+      "no_figure_utility": false,
+      "events": []
+    },
+    {
+      "topic": "FitResult",
+      "source_type": "m",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResult.m",
+      "section_count": 1,
+      "figure_count": 3,
+      "detected_figure_count": 3,
+      "no_figure_utility": false,
+      "events": [
+        {
+          "section_index": 0,
+          "section_line_index": 434,
+          "source_line_no": 435,
+          "source_snippet": "display('Validation Data not available to plot')",
+          "event_type": "new_figure",
+          "figure_ordinal": 1
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1085,
+          "source_line_no": 1086,
+          "source_snippet": "plot(handle,find(sigIndex(:,i)==1),vdiff*ones(length(find(sigIndex(:,i)==1)),1)-i*.1,strcat('*',FitResult.colors{mod(i-1,length(FitResult.colors))+1}))",
+          "event_type": "add_to_current",
+          "figure_ordinal": 1
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1125,
+          "source_line_no": 1126,
+          "source_snippet": "h=figure('OuterPosition',[scrsz(3)*.01 scrsz(4)*.04 scrsz(3)*.98 scrsz(4)*.95])",
+          "event_type": "new_figure",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1127,
+          "source_line_no": 1128,
+          "source_snippet": "subplot(2,4,[1 2])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1127,
+          "source_line_no": 1128,
+          "source_snippet": "fitObj.KSPlot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1131,
+          "source_line_no": 1132,
+          "source_snippet": "subplot(2,4,3)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1132,
+          "source_line_no": 1133,
+          "source_snippet": "subplot(2,4,4)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1133,
+          "source_line_no": 1134,
+          "source_snippet": "subplot(2,4,[7 8])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1133,
+          "source_line_no": 1134,
+          "source_snippet": "fitObj.plotResidual",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1134,
+          "source_line_no": 1135,
+          "source_snippet": "subplot(2,4,[5 6])",
+          "event_type": "add_to_current",
+          "figure_ordinal": 2
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1147,
+          "source_line_no": 1148,
+          "source_snippet": "figure(h)",
+          "event_type": "new_figure",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1154,
+          "source_line_no": 1155,
+          "source_snippet": "plot(xaxis,xaxis, 'k-.')",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1155,
+          "source_line_no": 1156,
+          "source_snippet": "plot(xaxis, xaxis+1.36/sqrt(N), 'r','Linewidth',1)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1156,
+          "source_line_no": 1157,
+          "source_snippet": "plot(xaxis,xaxis-1.36/sqrt(N), 'r','Linewidth',1 )",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1157,
+          "source_line_no": 1158,
+          "source_snippet": "handle=plot(fitObj.KSStats.xAxis(:,fitNum),fitObj.KSStats.KSSorted(:,fitNum),'Linewidth',2)",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1170,
+          "source_line_no": 1171,
+          "source_snippet": "title({'KS Plot of Rescaled ISIs'",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1238,
+          "source_line_no": 1239,
+          "source_snippet": "handle = plot(fitObj.U(1:end-1,i),fitObj.U(2:end,i),strcat('.',Analysis.colors{mod(i-1,length(Analysis.colors))+1}))",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1309,
+          "source_line_no": 1310,
+          "source_snippet": "rhoSig.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1320,
+          "source_line_no": 1321,
+          "source_snippet": "confBoundSig.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 1337,
+          "source_line_no": 1338,
+          "source_snippet": "handle=fitObj.Residual.plot",
+          "event_type": "add_to_current",
+          "figure_ordinal": 3
+        }
+      ]
+    },
+    {
+      "topic": "NeuralSpikeAnalysis_top",
+      "source_type": "m",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NeuralSpikeAnalysis_top.m",
+      "section_count": 2,
+      "figure_count": 0,
+      "detected_figure_count": 0,
+      "no_figure_utility": false,
+      "events": []
+    },
+    {
+      "topic": "temp",
+      "source_type": "m",
+      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/temp.m",
+      "section_count": 1,
+      "figure_count": 1,
+      "detected_figure_count": 1,
+      "no_figure_utility": false,
+      "events": [
+        {
+          "section_index": 0,
+          "section_line_index": 14,
+          "source_line_no": 15,
+          "source_snippet": "plot(t,x)",
+          "event_type": "new_figure",
+          "figure_ordinal": 1
+        },
+        {
+          "section_index": 0,
+          "section_line_index": 15,
+          "source_line_no": 16,
+          "source_snippet": "plot(t,xnew,'r-.')",
+          "event_type": "add_to_current",
+          "figure_ordinal": 1
+        }
+      ]
     }
   ]
 }

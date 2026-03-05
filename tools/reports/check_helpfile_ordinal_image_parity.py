@@ -34,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--matlab-image-root",
         type=Path,
-        default=Path("baseline/validation/notebook_images"),
+        default=Path("output/matlab_help_images"),
         help="Root folder with MATLAB reference fig_###.png assets.",
     )
     parser.add_argument(
@@ -49,10 +49,28 @@ def parse_args() -> argparse.Namespace:
         help="Optional comma-separated topic subset to validate.",
     )
     parser.add_argument(
+        "--group",
+        choices=["smoke", "full", "all"],
+        default="all",
+        help="Notebook run group to validate. Uses tools/notebooks/notebook_manifest.yml.",
+    )
+    parser.add_argument(
+        "--notebook-manifest",
+        type=Path,
+        default=Path("tools/notebooks/notebook_manifest.yml"),
+        help="Notebook manifest used to resolve --group topic sets.",
+    )
+    parser.add_argument(
         "--out-json",
         type=Path,
         default=Path("output/pdf/image_mode_parity/summary.json"),
         help="JSON summary output path.",
+    )
+    parser.add_argument(
+        "--write-summary",
+        type=Path,
+        default=None,
+        help="Alias for --out-json for compatibility with validation wrappers.",
     )
     parser.add_argument(
         "--diff-root",
@@ -61,6 +79,22 @@ def parse_args() -> argparse.Namespace:
         help="Directory for per-figure diff images on failures.",
     )
     return parser.parse_args()
+
+
+def _topics_from_group(group: str, notebook_manifest: Path) -> list[str]:
+    if group == "all":
+        return []
+    payload = yaml.safe_load(notebook_manifest.read_text(encoding="utf-8")) or {}
+    rows = payload.get("notebooks", [])
+    topics: list[str] = []
+    for row in rows:
+        topic = str(row.get("topic", "")).strip()
+        run_group = str(row.get("run_group", "")).strip()
+        if not topic:
+            continue
+        if group == "full" or run_group == group:
+            topics.append(topic)
+    return topics
 
 
 def _load_gray(path: Path) -> np.ndarray:
@@ -110,13 +144,21 @@ def _save_diff_image(py_path: Path, mat_path: Path, out_path: Path) -> None:
 
 def main() -> int:
     args = parse_args()
+    if args.write_summary is not None:
+        args.out_json = args.write_summary
     manifest = yaml.safe_load(args.manifest.read_text(encoding="utf-8")) or {}
     rows = manifest.get("topics", [])
-    if args.topics.strip():
-        wanted = {token.strip() for token in args.topics.split(",") if token.strip()}
+    group_topics = _topics_from_group(args.group, args.notebook_manifest)
+    explicit_topics = [token.strip() for token in args.topics.split(",") if token.strip()]
+    wanted = set(group_topics)
+    if explicit_topics:
+        wanted.update(explicit_topics)
+    if wanted:
         rows = [row for row in rows if str(row.get("topic", "")).strip() in wanted]
         if not rows:
-            raise RuntimeError(f"No topics matched --topics={args.topics!r}")
+            raise RuntimeError(
+                f"No topics matched --topics={args.topics!r} --group={args.group!r}"
+            )
 
     results: list[dict[str, object]] = []
     failures: list[str] = []

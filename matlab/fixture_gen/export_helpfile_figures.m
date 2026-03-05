@@ -76,35 +76,27 @@ for i = 1:numel(topics)
     reportRows(i).expected_figures = expectedFigures;
 
     try
+        scriptToRun = sourcePath;
         if strcmpi(sourceType, 'mlx')
             convertedPath = fullfile(tempdir(), [topic '__converted__.m']);
             if exist(convertedPath, 'file')
                 delete(convertedPath);
             end
             matlab.internal.liveeditor.openAndConvert(sourcePath, convertedPath);
-            run_script_in_base(convertedPath);
-        else
-            run_script_in_base(sourcePath);
+            scriptToRun = convertedPath;
         end
 
-        figs = findall(groot, 'Type', 'figure');
-        if isempty(figs)
+        instrumentedPath = fullfile(tempdir(), [topic '__instrumented__.m']);
+        instrument_script_for_figure_capture(scriptToRun, instrumentedPath);
+
+        setappdata(groot, 'NSTAT_EXPORT_OUTDIR', outDir);
+        setappdata(groot, 'NSTAT_EXPORT_COUNT', 0);
+        run_script_in_base(instrumentedPath);
+        produced = getappdata(groot, 'NSTAT_EXPORT_COUNT');
+        if isempty(produced)
             produced = 0;
-        else
-            figNums = arrayfun(@(h) h.Number, figs);
-            [~, order] = sort(figNums);
-            figs = figs(order);
-            produced = numel(figs);
-            for j = 1:produced
-                outFile = fullfile(outDir, sprintf('fig_%03d.png', j));
-                try
-                    exportgraphics(figs(j), outFile, 'Resolution', 180);
-                catch
-                    % Fallback for older MATLAB releases.
-                    saveas(figs(j), outFile);
-                end
-            end
         end
+        produced = double(produced);
 
         reportRows(i).produced_figures = produced;
         if produced == expectedFigures
@@ -121,6 +113,12 @@ for i = 1:numel(topics)
 
     close all force;
     evalin('base', 'clearvars');
+    if isappdata(groot, 'NSTAT_EXPORT_OUTDIR')
+        rmappdata(groot, 'NSTAT_EXPORT_OUTDIR');
+    end
+    if isappdata(groot, 'NSTAT_EXPORT_COUNT')
+        rmappdata(groot, 'NSTAT_EXPORT_COUNT');
+    end
     drawnow;
 end
 
@@ -148,4 +146,65 @@ end
 function run_script_in_base(scriptPath)
 scriptEscaped = strrep(scriptPath, '''', '''''');
 evalin('base', sprintf('run(''%s'');', scriptEscaped));
+end
+
+function instrument_script_for_figure_capture(sourcePath, outPath)
+sourceText = fileread(sourcePath);
+sourceLines = splitlines(sourceText);
+captureBlock = get_capture_block();
+outLines = cell(0, 1);
+
+for iLine = 1:numel(sourceLines)
+    lineText = char(sourceLines(iLine));
+    trimmed = lower(strtrim(lineText));
+    isCloseAll = startsWith(trimmed, 'close all');
+    isClose = strcmp(trimmed, 'close') || startsWith(trimmed, 'close(');
+    if isCloseAll || isClose
+        outLines = [outLines; captureBlock]; %#ok<AGROW>
+    end
+    outLines{end+1,1} = lineText; %#ok<AGROW>
+end
+outLines = [outLines; captureBlock]; %#ok<AGROW>
+
+fid = fopen(outPath, 'w');
+if fid < 0
+    error('export_helpfile_figures:InstrumentWriteFailed', ...
+        'Could not write instrumented script: %s', outPath);
+end
+cleanupObj = onCleanup(@() fclose(fid)); %#ok<NASGU>
+fprintf(fid, '%s\n', outLines{:});
+end
+
+function block = get_capture_block()
+block = {
+    '% nSTAT export capture block'
+    'if ~isappdata(groot, ''NSTAT_EXPORT_COUNT'')'
+    '    setappdata(groot, ''NSTAT_EXPORT_COUNT'', 0);'
+    'end'
+    'if ~isappdata(groot, ''NSTAT_EXPORT_OUTDIR'')'
+    '    setappdata(groot, ''NSTAT_EXPORT_OUTDIR'', pwd);'
+    'end'
+    'count_capture = getappdata(groot, ''NSTAT_EXPORT_COUNT'');'
+    'outRoot_capture = getappdata(groot, ''NSTAT_EXPORT_OUTDIR'');'
+    'figs_capture = findall(groot, ''Type'', ''figure'');'
+    'if ~isempty(figs_capture)'
+    '    figNums_capture = arrayfun(@(h) h.Number, figs_capture);'
+    '    [~, ord_capture] = sort(figNums_capture);'
+    '    figs_capture = figs_capture(ord_capture);'
+    '    for idx_capture = 1:numel(figs_capture)'
+    '        if ~isappdata(figs_capture(idx_capture), ''nstat_export_saved'')'
+    '            count_capture = count_capture + 1;'
+    '            outFile_capture = fullfile(outRoot_capture, sprintf(''fig_%03d.png'', count_capture));'
+    '            try'
+    '                exportgraphics(figs_capture(idx_capture), outFile_capture, ''Resolution'', 180);'
+    '            catch'
+    '                saveas(figs_capture(idx_capture), outFile_capture);'
+    '            end'
+    '            setappdata(figs_capture(idx_capture), ''nstat_export_saved'', true);'
+    '        end'
+    '    end'
+    'end'
+    'setappdata(groot, ''NSTAT_EXPORT_COUNT'', count_capture);'
+    'clear figs_capture figNums_capture ord_capture idx_capture outFile_capture count_capture outRoot_capture;'
+    };
 end
