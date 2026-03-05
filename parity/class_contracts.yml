@@ -1,0 +1,28 @@
+version: 1
+cases:
+  - id: signalobj_basic
+    class: nstat.SignalObj.SignalObj
+    constructor:
+      args:
+        - [0.0, 1.0, 2.0]
+        - [1.0, 2.0, 3.0]
+        - sig
+    expect:
+      dimension: 1
+      data_shape: [3, 1]
+  - id: covariate_basic
+    class: nstat.Covariate.Covariate
+    constructor:
+      args:
+        - [0.0, 1.0, 2.0]
+        - [0.1, 0.2, 0.3]
+        - cov
+    expect:
+      dimension: 1
+      data_shape: [3, 1]
+  - id: nstcoll_basic
+    class: nstat.nstColl.nstColl
+    constructor:
+      factory: nst_coll_two_trains
+    expect:
+      num_spike_trains: 2

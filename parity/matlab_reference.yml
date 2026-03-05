@@ -1,0 +1,4 @@
+reference:
+  local_path: ../nSTAT-matlab-cleanup
+  helpfiles_subdir: helpfiles
+  data_subdir: data

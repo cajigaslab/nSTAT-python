@@ -1,0 +1,22 @@
+default:
+  min_comment_ratio: 0.0
+  min_pair_ratio: 0.0
+  max_order_violations: 100000
+
+entity_rules:
+  help_m:
+    min_comment_ratio: 0.90
+    min_pair_ratio: 0.0
+    max_order_violations: 0
+  help_mlx:
+    min_comment_ratio: 0.90
+    min_pair_ratio: 0.0
+    max_order_violations: 0
+  class:
+    min_comment_ratio: 0.0
+    min_pair_ratio: 0.0
+    max_order_violations: 100000
+  function:
+    min_comment_ratio: 0.0
+    min_pair_ratio: 0.0
+    max_order_violations: 100000

@@ -29,6 +29,12 @@ REQUIRED_SUBDIRS: Final[tuple[str, ...]] = (
 DOWNLOAD_URL_RE: Final[re.Pattern[str]] = re.compile(
     r"https?://(?:www\.)?figshare\.com/ndownloader/files/\d+"
 )
+ALT_DOWNLOAD_URL_RE: Final[re.Pattern[str]] = re.compile(
+    r"https?://(?:www\.)?ndownloader\.figshare\.com/files/\d+"
+)
+ARTICLE_ID_RE: Final[re.Pattern[str]] = re.compile(
+    r"/articles/(?:dataset|media|figure|fileset)/[^/]+/(?P<id>\d+)"
+)
 
 
 def _repo_root() -> Path:
@@ -84,12 +90,33 @@ def _http_get(url: str, *, timeout: float = 60.0) -> tuple[str, bytes]:
 
 def _resolve_figshare_download_url() -> str:
     final_url, body = _http_get(DOI_URL)
-    if DOWNLOAD_URL_RE.search(final_url):
-        return final_url
-    html = body.decode("utf-8", errors="ignore")
-    match = DOWNLOAD_URL_RE.search(html)
-    if match:
-        return match.group(0)
+    for pattern in (DOWNLOAD_URL_RE, ALT_DOWNLOAD_URL_RE):
+        match = pattern.search(final_url)
+        if match:
+            return match.group(0)
+
+    html = body.decode("utf-8", errors="ignore") if body else ""
+    for pattern in (DOWNLOAD_URL_RE, ALT_DOWNLOAD_URL_RE):
+        match = pattern.search(html)
+        if match:
+            return match.group(0)
+
+    article_match = ARTICLE_ID_RE.search(final_url)
+    if article_match:
+        article_id = article_match.group("id")
+        api_url = f"https://api.figshare.com/v2/articles/{article_id}/files"
+        _, api_body = _http_get(api_url)
+        files = json.loads(api_body.decode("utf-8", errors="ignore"))
+        if isinstance(files, list):
+            for row in files:
+                if not isinstance(row, dict):
+                    continue
+                raw_url = str(row.get("download_url", "")).strip()
+                for pattern in (DOWNLOAD_URL_RE, ALT_DOWNLOAD_URL_RE):
+                    match = pattern.search(raw_url)
+                    if match:
+                        return match.group(0)
+
     raise RuntimeError(
         f"Could not resolve figshare download URL from DOI landing page: {DOI_URL}"
     )

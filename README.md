@@ -205,6 +205,20 @@ fig.savefig(out_dir / "readme_example3_nstcoll_raster.png", dpi=180)
 
 ### nSTATPaperExamples
 
+Python equivalent of `nSTATPaperExamples.mlx`:
+
+- Runnable notebook: [notebooks/nSTATPaperExamples.ipynb](notebooks/nSTATPaperExamples.ipynb)
+- Runnable script: [examples/nSTATPaperExamples.py](examples/nSTATPaperExamples.py)
+
+```python
+from nstat.paper_examples_full import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
+
+![nSTATPaperExamples figure](examples/nSTATPaperExamples/images/nSTATPaperExamples_fig_001.png)
+
 Complete catalog of nSTATPaperExamples notebooks:
 
 - [AnalysisExamples](notebooks/AnalysisExamples.ipynb) — Notebook generated from MATLAB help source for AnalysisExamples.

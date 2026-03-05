@@ -1,0 +1,997 @@
+{
+  "version": 1,
+  "matlab": {
+    "classes": [
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/Analysis.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/CIF.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/ConfidenceInterval.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/ConfigColl.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/CovColl.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/Covariate.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/DecodingAlgorithms.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/Events.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/FitResSummary.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/FitResult.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/History.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/SignalObj.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/Trial.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/TrialConfig.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/nspikeTrain.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/nstColl.m"
+    ],
+    "functions": [
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/getPaperDataDirs.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/nSTAT_Install.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/nstatOpenHelpPage.m"
+    ],
+    "help_sources": [
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples2.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ClassDefinitions.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ConfidenceIntervalOverview.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ConfigCollExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovCollExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovariateExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExample.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExampleWithHist.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DocumentationSetup2025b.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/EventsExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/Examples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ExplicitStimulusWhiskerData.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResSummaryExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResult.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResultExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HippocampalPlaceCellExample.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HistoryExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HybridFilterExample.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NetworkTutorial.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NeuralSpikeAnalysis_top.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPSimExample.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPThinning.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PSTHEstimation.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/SignalObjExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/StimulusDecode2D.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialConfigExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ValidationDataSet.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/mEPSCAnalysis.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSTATPaperExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSpikeTrainExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nstCollExamples.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/temp.m",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples2.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ConfigCollExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovCollExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovariateExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExample.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExampleWithHist.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/EventsExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/Examples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ExplicitStimulusWhiskerData.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResSummaryExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResultExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HippocampalPlaceCellExample.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HistoryExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HybridFilterExample.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NetworkTutorial.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPSimExample.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPThinning.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PSTHEstimation.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/SignalObjExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/StimulusDecode2D.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialConfigExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ValidationDataSet.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/mEPSCAnalysis.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSTATPaperExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSpikeTrainExamples.mlx",
+      "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nstCollExamples.mlx"
+    ]
+  },
+  "python": {
+    "root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nstat-python-main-push/nstat",
+    "entities": {
+      "nstat/ConfidenceInterval.py": {
+        "classes": [
+          "ConfidenceInterval"
+        ],
+        "functions": []
+      },
+      "nstat/ConfigColl.py": {
+        "classes": [
+          "ConfigColl"
+        ],
+        "functions": []
+      },
+      "nstat/CovColl.py": {
+        "classes": [
+          "CovColl"
+        ],
+        "functions": []
+      },
+      "nstat/Covariate.py": {
+        "classes": [
+          "Covariate"
+        ],
+        "functions": []
+      },
+      "nstat/DecodingAlgorithms.py": {
+        "classes": [
+          "DecodingAlgorithms"
+        ],
+        "functions": []
+      },
+      "nstat/FitResSummary.py": {
+        "classes": [
+          "FitResSummary"
+        ],
+        "functions": []
+      },
+      "nstat/FitResult.py": {
+        "classes": [
+          "FitResult"
+        ],
+        "functions": []
+      },
+      "nstat/SignalObj.py": {
+        "classes": [
+          "SignalObj"
+        ],
+        "functions": []
+      },
+      "nstat/TrialConfig.py": {
+        "classes": [
+          "TrialConfig"
+        ],
+        "functions": []
+      },
+      "nstat/analysis.py": {
+        "classes": [
+          "Analysis"
+        ],
+        "functions": [
+          "psth"
+        ]
+      },
+      "nstat/cif.py": {
+        "classes": [
+          "CIFModel",
+          "CIF"
+        ],
+        "functions": []
+      },
+      "nstat/confidence_interval.py": {
+        "classes": [
+          "ConfidenceInterval"
+        ],
+        "functions": []
+      },
+      "nstat/core.py": {
+        "classes": [
+          "SignalObj",
+          "Covariate",
+          "nspikeTrain"
+        ],
+        "functions": [
+          "_as_1d_float"
+        ]
+      },
+      "nstat/datasets.py": {
+        "classes": [],
+        "functions": [
+          "_repo_root",
+          "_load_manifest",
+          "_sha256",
+          "list_datasets",
+          "get_dataset_path",
+          "verify_checksums"
+        ]
+      },
+      "nstat/decoding.py": {
+        "classes": [
+          "DecoderSuite"
+        ],
+        "functions": []
+      },
+      "nstat/decoding_algorithms.py": {
+        "classes": [
+          "DecodingAlgorithms"
+        ],
+        "functions": []
+      },
+      "nstat/errors.py": {
+        "classes": [
+          "NSTATError",
+          "DataNotFoundError",
+          "ParityValidationError",
+          "UnsupportedWorkflowError"
+        ],
+        "functions": []
+      },
+      "nstat/events.py": {
+        "classes": [
+          "Events"
+        ],
+        "functions": []
+      },
+      "nstat/fit.py": {
+        "classes": [
+          "_SingleFit",
+          "FitResult",
+          "FitSummary",
+          "FitResSummary"
+        ],
+        "functions": []
+      },
+      "nstat/glm.py": {
+        "classes": [
+          "PoissonGLMResult"
+        ],
+        "functions": [
+          "fit_poisson_glm"
+        ]
+      },
+      "nstat/history.py": {
+        "classes": [
+          "HistoryBasis"
+        ],
+        "functions": []
+      },
+      "nstat/nspikeTrain.py": {
+        "classes": [
+          "nspikeTrain"
+        ],
+        "functions": []
+      },
+      "nstat/nstColl.py": {
+        "classes": [
+          "nstColl"
+        ],
+        "functions": []
+      },
+      "nstat/nstat_install.py": {
+        "classes": [],
+        "functions": [
+          "nSTAT_Install"
+        ]
+      },
+      "nstat/paper_examples.py": {
+        "classes": [],
+        "functions": [
+          "_default_repo_root",
+          "_aic_bic",
+          "_history_matrix",
+          "_bin_mean",
+          "_bin_sum",
+          "run_experiment2",
+          "run_experiment3",
+          "_spike_indicator_from_times",
+          "_zernike_like_basis",
+          "run_experiment4",
+          "run_experiment5",
+          "run_paper_examples",
+          "_save_paper_example_plots",
+          "main"
+        ]
+      },
+      "nstat/paper_examples_full.py": {
+        "classes": [],
+        "functions": [
+          "_default_repo_root",
+          "_allow_synthetic_data",
+          "_is_lfs_pointer",
+          "_loadmat_checked",
+          "_aic_bic",
+          "_history_matrix",
+          "_load_mepsc_times_seconds",
+          "_bin_spike_times",
+          "run_experiment1",
+          "run_experiment2",
+          "run_experiment3",
+          "run_experiment3b",
+          "_spike_indicator",
+          "_zernike_like_basis",
+          "run_experiment4",
+          "run_experiment5",
+          "run_experiment5b",
+          "_simulate_hybrid_spikes",
+          "_hybrid_state_filter",
+          "run_experiment6",
+          "run_full_paper_examples",
+          "main"
+        ]
+      },
+      "nstat/signal.py": {
+        "classes": [
+          "Signal",
+          "Covariate"
+        ],
+        "functions": []
+      },
+      "nstat/simulation.py": {
+        "classes": [],
+        "functions": [
+          "simulate_poisson_from_rate"
+        ]
+      },
+      "nstat/simulators.py": {
+        "classes": [
+          "PointProcessSimulation",
+          "NetworkSimulationResult"
+        ],
+        "functions": [
+          "simulate_point_process",
+          "simulate_two_neuron_network"
+        ]
+      },
+      "nstat/spikes.py": {
+        "classes": [
+          "SpikeTrain",
+          "SpikeTrainCollection"
+        ],
+        "functions": []
+      },
+      "nstat/trial.py": {
+        "classes": [
+          "CovariateCollection",
+          "SpikeTrainCollection",
+          "TrialConfig",
+          "ConfigCollection",
+          "Trial"
+        ],
+        "functions": []
+      }
+    }
+  },
+  "mapping": [
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/Analysis.m",
+      "entity_name": "Analysis",
+      "entity_type": "class",
+      "python_path": "nstat/analysis.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/CIF.m",
+      "entity_name": "CIF",
+      "entity_type": "class",
+      "python_path": "nstat/cif.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/ConfidenceInterval.m",
+      "entity_name": "ConfidenceInterval",
+      "entity_type": "class",
+      "python_path": "nstat/ConfidenceInterval.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/ConfigColl.m",
+      "entity_name": "ConfigColl",
+      "entity_type": "class",
+      "python_path": "nstat/ConfigColl.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/Covariate.m",
+      "entity_name": "Covariate",
+      "entity_type": "class",
+      "python_path": "nstat/Covariate.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/CovColl.m",
+      "entity_name": "CovColl",
+      "entity_type": "class",
+      "python_path": "nstat/CovColl.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/DecodingAlgorithms.m",
+      "entity_name": "DecodingAlgorithms",
+      "entity_type": "class",
+      "python_path": "nstat/DecodingAlgorithms.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/Events.m",
+      "entity_name": "Events",
+      "entity_type": "class",
+      "python_path": "nstat/events.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/FitResSummary.m",
+      "entity_name": "FitResSummary",
+      "entity_type": "class",
+      "python_path": "nstat/FitResSummary.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/FitResult.m",
+      "entity_name": "FitResult",
+      "entity_type": "class",
+      "python_path": "nstat/FitResult.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/History.m",
+      "entity_name": "History",
+      "entity_type": "class",
+      "python_path": "nstat/history.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/nspikeTrain.m",
+      "entity_name": "nspikeTrain",
+      "entity_type": "class",
+      "python_path": "nstat/nspikeTrain.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/nstColl.m",
+      "entity_name": "nstColl",
+      "entity_type": "class",
+      "python_path": "nstat/nstColl.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/SignalObj.m",
+      "entity_name": "SignalObj",
+      "entity_type": "class",
+      "python_path": "nstat/SignalObj.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/Trial.m",
+      "entity_name": "Trial",
+      "entity_type": "class",
+      "python_path": "nstat/trial.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/TrialConfig.m",
+      "entity_name": "TrialConfig",
+      "entity_type": "class",
+      "python_path": "nstat/TrialConfig.py",
+      "status": "mapped",
+      "notes": "core class mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/getPaperDataDirs.m",
+      "entity_name": "getPaperDataDirs",
+      "entity_type": "function",
+      "python_path": "nstat/paper_examples.py",
+      "status": "mapped",
+      "notes": "core function mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/nSTAT_Install.m",
+      "entity_name": "nSTAT_Install",
+      "entity_type": "function",
+      "python_path": "nstat/nstat_install.py",
+      "status": "mapped",
+      "notes": "core function mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/nstatOpenHelpPage.m",
+      "entity_name": "nstatOpenHelpPage",
+      "entity_type": "function",
+      "python_path": "nstat/nstat_install.py",
+      "status": "mapped",
+      "notes": "core function mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples.m",
+      "entity_name": "AnalysisExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/AnalysisExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples2.m",
+      "entity_name": "AnalysisExamples2",
+      "entity_type": "help_m",
+      "python_path": "notebooks/AnalysisExamples2.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ClassDefinitions.m",
+      "entity_name": "ClassDefinitions",
+      "entity_type": "help_m",
+      "python_path": "notebooks/ClassDefinitions.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ConfidenceIntervalOverview.m",
+      "entity_name": "ConfidenceIntervalOverview",
+      "entity_type": "help_m",
+      "python_path": "notebooks/ConfidenceIntervalOverview.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ConfigCollExamples.m",
+      "entity_name": "ConfigCollExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/ConfigCollExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovariateExamples.m",
+      "entity_name": "CovariateExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/CovariateExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovCollExamples.m",
+      "entity_name": "CovCollExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/CovCollExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExample.m",
+      "entity_name": "DecodingExample",
+      "entity_type": "help_m",
+      "python_path": "notebooks/DecodingExample.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExampleWithHist.m",
+      "entity_name": "DecodingExampleWithHist",
+      "entity_type": "help_m",
+      "python_path": "notebooks/DecodingExampleWithHist.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DocumentationSetup2025b.m",
+      "entity_name": "DocumentationSetup2025b",
+      "entity_type": "help_m",
+      "python_path": "notebooks/DocumentationSetup2025b.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/EventsExamples.m",
+      "entity_name": "EventsExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/EventsExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/Examples.m",
+      "entity_name": "Examples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/Examples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ExplicitStimulusWhiskerData.m",
+      "entity_name": "ExplicitStimulusWhiskerData",
+      "entity_type": "help_m",
+      "python_path": "notebooks/ExplicitStimulusWhiskerData.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResSummaryExamples.m",
+      "entity_name": "FitResSummaryExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/FitResSummaryExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResult.m",
+      "entity_name": "FitResult",
+      "entity_type": "help_m",
+      "python_path": "notebooks/FitResult.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResultExamples.m",
+      "entity_name": "FitResultExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/FitResultExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HippocampalPlaceCellExample.m",
+      "entity_name": "HippocampalPlaceCellExample",
+      "entity_type": "help_m",
+      "python_path": "notebooks/HippocampalPlaceCellExample.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HistoryExamples.m",
+      "entity_name": "HistoryExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/HistoryExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HybridFilterExample.m",
+      "entity_name": "HybridFilterExample",
+      "entity_type": "help_m",
+      "python_path": "notebooks/HybridFilterExample.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/mEPSCAnalysis.m",
+      "entity_name": "mEPSCAnalysis",
+      "entity_type": "help_m",
+      "python_path": "notebooks/mEPSCAnalysis.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NetworkTutorial.m",
+      "entity_name": "NetworkTutorial",
+      "entity_type": "help_m",
+      "python_path": "notebooks/NetworkTutorial.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NeuralSpikeAnalysis_top.m",
+      "entity_name": "NeuralSpikeAnalysis_top",
+      "entity_type": "help_m",
+      "python_path": "notebooks/NeuralSpikeAnalysis_top.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSpikeTrainExamples.m",
+      "entity_name": "nSpikeTrainExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/nSpikeTrainExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSTATPaperExamples.m",
+      "entity_name": "nSTATPaperExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/nSTATPaperExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nstCollExamples.m",
+      "entity_name": "nstCollExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/nstCollExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPSimExample.m",
+      "entity_name": "PPSimExample",
+      "entity_type": "help_m",
+      "python_path": "notebooks/PPSimExample.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPThinning.m",
+      "entity_name": "PPThinning",
+      "entity_type": "help_m",
+      "python_path": "notebooks/PPThinning.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PSTHEstimation.m",
+      "entity_name": "PSTHEstimation",
+      "entity_type": "help_m",
+      "python_path": "notebooks/PSTHEstimation.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/SignalObjExamples.m",
+      "entity_name": "SignalObjExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/SignalObjExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/StimulusDecode2D.m",
+      "entity_name": "StimulusDecode2D",
+      "entity_type": "help_m",
+      "python_path": "notebooks/StimulusDecode2D.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/temp.m",
+      "entity_name": "temp",
+      "entity_type": "help_m",
+      "python_path": "notebooks/temp.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialConfigExamples.m",
+      "entity_name": "TrialConfigExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/TrialConfigExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialExamples.m",
+      "entity_name": "TrialExamples",
+      "entity_type": "help_m",
+      "python_path": "notebooks/TrialExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ValidationDataSet.m",
+      "entity_name": "ValidationDataSet",
+      "entity_type": "help_m",
+      "python_path": "notebooks/ValidationDataSet.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples.mlx",
+      "entity_name": "AnalysisExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/AnalysisExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/AnalysisExamples2.mlx",
+      "entity_name": "AnalysisExamples2",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/AnalysisExamples2.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ConfigCollExamples.mlx",
+      "entity_name": "ConfigCollExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/ConfigCollExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovariateExamples.mlx",
+      "entity_name": "CovariateExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/CovariateExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/CovCollExamples.mlx",
+      "entity_name": "CovCollExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/CovCollExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExample.mlx",
+      "entity_name": "DecodingExample",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/DecodingExample.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/DecodingExampleWithHist.mlx",
+      "entity_name": "DecodingExampleWithHist",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/DecodingExampleWithHist.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/EventsExamples.mlx",
+      "entity_name": "EventsExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/EventsExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/Examples.mlx",
+      "entity_name": "Examples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/Examples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ExplicitStimulusWhiskerData.mlx",
+      "entity_name": "ExplicitStimulusWhiskerData",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/ExplicitStimulusWhiskerData.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResSummaryExamples.mlx",
+      "entity_name": "FitResSummaryExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/FitResSummaryExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/FitResultExamples.mlx",
+      "entity_name": "FitResultExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/FitResultExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HippocampalPlaceCellExample.mlx",
+      "entity_name": "HippocampalPlaceCellExample",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/HippocampalPlaceCellExample.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HistoryExamples.mlx",
+      "entity_name": "HistoryExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/HistoryExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/HybridFilterExample.mlx",
+      "entity_name": "HybridFilterExample",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/HybridFilterExample.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/mEPSCAnalysis.mlx",
+      "entity_name": "mEPSCAnalysis",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/mEPSCAnalysis.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/NetworkTutorial.mlx",
+      "entity_name": "NetworkTutorial",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/NetworkTutorial.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSpikeTrainExamples.mlx",
+      "entity_name": "nSpikeTrainExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/nSpikeTrainExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nSTATPaperExamples.mlx",
+      "entity_name": "nSTATPaperExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/nSTATPaperExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/nstCollExamples.mlx",
+      "entity_name": "nstCollExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/nstCollExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPSimExample.mlx",
+      "entity_name": "PPSimExample",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/PPSimExample.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PPThinning.mlx",
+      "entity_name": "PPThinning",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/PPThinning.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/PSTHEstimation.mlx",
+      "entity_name": "PSTHEstimation",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/PSTHEstimation.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/SignalObjExamples.mlx",
+      "entity_name": "SignalObjExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/SignalObjExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/StimulusDecode2D.mlx",
+      "entity_name": "StimulusDecode2D",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/StimulusDecode2D.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialConfigExamples.mlx",
+      "entity_name": "TrialConfigExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/TrialConfigExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/TrialExamples.mlx",
+      "entity_name": "TrialExamples",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/TrialExamples.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    },
+    {
+      "matlab_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-matlab-cleanup/helpfiles/ValidationDataSet.mlx",
+      "entity_name": "ValidationDataSet",
+      "entity_type": "help_mlx",
+      "python_path": "notebooks/ValidationDataSet.ipynb",
+      "status": "mapped",
+      "notes": "help source to notebook mapping"
+    }
+  ]
+}

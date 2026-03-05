@@ -1,0 +1,20 @@
+version: 1
+cases:
+  - id: psth_counts
+    function: nstat.analysis.psth
+    factory: psth_small
+    expect:
+      rate: [4.0, 2.0]
+      counts: [2.0, 1.0]
+  - id: linear_decode_basic
+    function: nstat.decoding_algorithms.DecodingAlgorithms.linear_decode
+    factory: linear_decode_small
+    expect:
+      coefficients: [-0.33333333333333337, 0.6666666666666666, 0.3333333333333333]
+      decoded: [0.0, 1.0, 2.0, 3.0]
+  - id: kalman_filter_scalar
+    function: nstat.decoding_algorithms.DecodingAlgorithms.kalman_filter
+    factory: kalman_scalar
+    expect:
+      state: [0.9619047619047619, 0.708826702932194, 0.4830115262543576]
+      cov: [0.03847619047619052, 0.021916036547433928, 0.017751833031875573]

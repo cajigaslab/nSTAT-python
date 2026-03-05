@@ -1,0 +1,32 @@
+{
+  "total_entities": 81,
+  "by_type": {
+    "class": {
+      "mapped": 16,
+      "missing": 0,
+      "needs_review": 0,
+      "total": 16
+    },
+    "function": {
+      "mapped": 3,
+      "missing": 0,
+      "needs_review": 0,
+      "total": 3
+    },
+    "help_m": {
+      "mapped": 34,
+      "missing": 0,
+      "needs_review": 0,
+      "total": 34
+    },
+    "help_mlx": {
+      "mapped": 28,
+      "missing": 0,
+      "needs_review": 0,
+      "total": 28
+    }
+  },
+  "core_missing": [],
+  "help_missing": [],
+  "python_modules_indexed": 31
+}
