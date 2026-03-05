@@ -1,0 +1,88 @@
+name: performance-parity
+
+on:
+  pull_request:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  performance-parity:
+    runs-on: ubuntu-latest
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev,notebooks]
+
+      - name: Set benchmark scope
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "tiers=S" >> "$GITHUB_OUTPUT"
+            echo "repeats=5" >> "$GITHUB_OUTPUT"
+            echo "warmup=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "tiers=S,M,L" >> "$GITHUB_OUTPUT"
+            echo "repeats=7" >> "$GITHUB_OUTPUT"
+            echo "warmup=2" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run python performance benchmark harness
+        run: |
+          python tools/performance/run_python_benchmarks.py \
+            --tiers "${{ steps.scope.outputs.tiers }}" \
+            --repeats "${{ steps.scope.outputs.repeats }}" \
+            --warmup "${{ steps.scope.outputs.warmup }}" \
+            --out-json output/performance/python_performance_report.json \
+            --out-csv output/performance/python_performance_report.csv
+
+      - name: Compare Python benchmark report against MATLAB baseline
+        run: |
+          python tools/performance/compare_matlab_python_performance.py \
+            --python-report output/performance/python_performance_report.json \
+            --matlab-report tests/performance/fixtures/matlab/performance_baseline_470fde8.json \
+            --policy parity/performance_gate_policy.yml \
+            --previous-python-report tests/performance/fixtures/python/performance_baseline_linux_latest.json \
+            --report-out output/performance/performance_parity_report.json \
+            --csv-out output/performance/performance_parity_report.csv \
+            --fail-on-regression \
+            --require-regression-env-match
+
+      - name: Run pytest-benchmark smoke suite
+        env:
+          NSTAT_RUN_PERF_BENCHMARKS: "1"
+        run: |
+          pytest tests/performance/test_pytest_benchmarks.py \
+            --benchmark-json=output/performance/pytest_benchmark_smoke.json
+
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-parity-artifacts
+          path: |
+            output/performance/*.json
+            output/performance/*.csv
+            tests/performance/fixtures/matlab/performance_baseline_470fde8.json
+            tests/performance/fixtures/python/performance_baseline_linux_latest.json
+            tests/performance/fixtures/python/performance_baseline_linux_latest.csv
+            tests/performance/fixtures/python/performance_baseline_linux_20260304.json
+            tests/performance/fixtures/python/performance_baseline_linux_20260304.csv
+          if-no-files-found: warn
