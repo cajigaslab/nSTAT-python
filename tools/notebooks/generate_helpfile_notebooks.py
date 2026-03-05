@@ -36,6 +36,10 @@ LOAD_ASSIGN_RE = re.compile(
 )
 MLX_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 NO_FIGURE_UTILITY_TOPICS = {"publish_all_helpfiles"}
+SOURCE_TOPIC_ALIASES = {
+    # Python naming compatibility alias for legacy help topic.
+    "FitResultReference": "FitResult",
+}
 
 
 @dataclass(slots=True)
@@ -171,6 +175,14 @@ def _resolve_source_path(help_root: Path, topic: str) -> tuple[Path, str]:
         return mlx, "mlx"
     if m_file.exists():
         return m_file, "m"
+    alias = SOURCE_TOPIC_ALIASES.get(topic)
+    if alias:
+        alias_mlx = help_root / f"{alias}.mlx"
+        alias_m = help_root / f"{alias}.m"
+        if alias_mlx.exists():
+            return alias_mlx, "mlx"
+        if alias_m.exists():
+            return alias_m, "m"
     raise FileNotFoundError(f"No MATLAB source found for topic={topic} in {help_root}")
 
 
@@ -383,11 +395,14 @@ def _translate_code_line(
         and normalized == "plot(xn,yn,x_at_spiketimes,y_at_spiketimes,'r.');"
     ):
         return _with_events([
-            "ax = plt.gca()",
-            "ax.cla()",
-            "plt.gcf().set_size_inches(8.0, 8.0, forward=True)",
-            "ax.plot(np.ravel(xN), np.ravel(yN), color=(0.0, 0.4470, 0.7410), linewidth=0.6)",
-            "ax.plot(np.ravel(x_at_spiketimes), np.ravel(y_at_spiketimes), 'r.', markersize=2.5)",
+            "if _has_vars('xN', 'yN', 'x_at_spiketimes', 'y_at_spiketimes'):",
+            "    ax = plt.gca()",
+            "    ax.cla()",
+            "    plt.gcf().set_size_inches(8.0, 8.0, forward=True)",
+            "    ax.plot(np.ravel(xN), np.ravel(yN), color=(0.0, 0.4470, 0.7410), linewidth=0.6)",
+            "    ax.plot(np.ravel(x_at_spiketimes), np.ravel(y_at_spiketimes), 'r.', markersize=2.5)",
+            "else:",
+            "    _matlab(\"plot(xN,yN,x_at_spiketimes,y_at_spiketimes,'r.');\")",
         ])
     if lower == "axis tight square":
         return _with_events([
@@ -589,6 +604,9 @@ def _bootstrap_cell(topic: str, source_path: Path, expected_figures: int) -> lis
                     data = loadmat(path)
                     return {{k: v for k, v in data.items() if not k.startswith("__")}}
             return {{}}
+
+        def _has_vars(*names: str) -> bool:
+            return all(name in globals() for name in names)
         """
     ).strip("\n").splitlines()
 
@@ -695,13 +713,59 @@ def main() -> int:
         topic = row["topic"]
         run_group = row["run_group"]
         notebook_path = (repo_root / row["file"]).resolve()
-        source_path, source_type = _resolve_source_path(help_root, topic)
+        is_no_figure_utility = topic in NO_FIGURE_UTILITY_TOPICS
+        try:
+            source_path, source_type = _resolve_source_path(help_root, topic)
+        except FileNotFoundError:
+            if not is_no_figure_utility:
+                raise
+            # Utility notebook with no MATLAB help source counterpart.
+            source_path = notebook_path
+            source_type = "utility"
+            sections = [SourceSection(index=0, title="Utility", lines=[])]
+            events = []
+            detected_figures = 0
+            expected_figures = 0
+            source_manifest_rows.append(
+                {
+                    "topic": topic,
+                    "source_type": source_type,
+                    "source_path": str(source_path),
+                    "expected_section_count": len(sections),
+                    "expected_figure_count": expected_figures,
+                    "detected_figure_count": detected_figures,
+                    "notebook_output_path": str(notebook_path),
+                    "python_cell_count": len(sections),
+                    "no_figure_utility": True,
+                }
+            )
+            parsing_report["topics"].append(
+                {
+                    "topic": topic,
+                    "source_type": source_type,
+                    "source_path": str(source_path),
+                    "section_count": len(sections),
+                    "figure_count": expected_figures,
+                    "detected_figure_count": detected_figures,
+                    "no_figure_utility": True,
+                    "events": [],
+                }
+            )
+            figure_manifest["topics"].append(
+                {
+                    "topic": topic,
+                    "total_figures_expected": expected_figures,
+                    "total_figures_detected": detected_figures,
+                    "no_figure_utility": True,
+                    "events": [],
+                }
+            )
+            continue
         sections = _extract_sections(source_path, source_type)
         events = _detect_figure_events(topic, sections)
         detected_figures = len([evt for evt in events if evt.event_type == "new_figure"])
         reference_images = sorted((matlab_image_root / topic).glob("*.png"))
         expected_figures = len(reference_images) if reference_images else detected_figures
-        is_no_figure_utility = topic in NO_FIGURE_UTILITY_TOPICS
         if is_no_figure_utility:
             expected_figures = 0
         _write_notebook(
