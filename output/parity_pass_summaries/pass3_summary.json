@@ -1,0 +1,13 @@
+{
+  "pass": 3,
+  "target_group": "all",
+  "notebooks_executed": 36,
+  "parity_status": "pass",
+  "parity_failures_count": 0,
+  "failing_topics": [],
+  "key_fixes_applied": [
+    "Refreshed MATLAB reference exports for all non-utility topics",
+    "Regenerated all source-derived notebooks and refreshed consistency hashes",
+    "Revalidated full all-topic execution, strict ordinal parity, and pytest"
+  ]
+}
