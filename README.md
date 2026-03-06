@@ -19,6 +19,25 @@ cd nSTAT-python
 python -m pip install -e .[dev]
 ```
 
+## Example data
+
+`nSTAT-python` does not commit raw example data to the repository.
+
+Install the example dataset with:
+
+```bash
+nstat-install --download-example-data always
+```
+
+Equivalent Python API:
+
+```python
+from nstat.data_manager import ensure_example_data
+
+data_dir = ensure_example_data(download=True)
+print(data_dir)
+```
+
 ## How to install nSTAT (post-install setup)
 
 Run the setup helper:

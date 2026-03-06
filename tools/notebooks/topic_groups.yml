@@ -1,5 +1,9 @@
 version: 1
 groups:
+  ci_smoke:
+    - ConfigCollExamples
+    - CovariateExamples
+    - TrialConfigExamples
   smoke:
     - AnalysisExamples
     - CovariateExamples

@@ -7,3 +7,4 @@ Minimal documentation for the standalone Python nSTAT core package.
    :maxdepth: 2
 
    api
+   data_installation
