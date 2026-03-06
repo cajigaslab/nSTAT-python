@@ -67,7 +67,7 @@ topics:
   source_type: mlx
   source_path: /private/tmp/upstream-nstat-matlab/helpfiles/ExplicitStimulusWhiskerData.mlx
   expected_section_count: 6
-  expected_figure_count: 5
+  expected_figure_count: 9
   detected_figure_count: 5
   notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/ExplicitStimulusWhiskerData.ipynb
   python_cell_count: 6
@@ -94,7 +94,7 @@ topics:
   source_type: mlx
   source_path: /private/tmp/upstream-nstat-matlab/helpfiles/HippocampalPlaceCellExample.mlx
   expected_section_count: 5
-  expected_figure_count: 7
+  expected_figure_count: 9
   detected_figure_count: 7
   notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/HippocampalPlaceCellExample.ipynb
   python_cell_count: 5
@@ -112,7 +112,7 @@ topics:
   source_type: mlx
   source_path: /private/tmp/upstream-nstat-matlab/helpfiles/NetworkTutorial.mlx
   expected_section_count: 11
-  expected_figure_count: 2
+  expected_figure_count: 4
   detected_figure_count: 2
   notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/NetworkTutorial.ipynb
   python_cell_count: 11
@@ -184,7 +184,7 @@ topics:
   source_type: mlx
   source_path: /private/tmp/upstream-nstat-matlab/helpfiles/ValidationDataSet.mlx
   expected_section_count: 3
-  expected_figure_count: 3
+  expected_figure_count: 9
   detected_figure_count: 3
   notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/ValidationDataSet.ipynb
   python_cell_count: 3
@@ -193,7 +193,7 @@ topics:
   source_type: mlx
   source_path: /private/tmp/upstream-nstat-matlab/helpfiles/mEPSCAnalysis.mlx
   expected_section_count: 9
-  expected_figure_count: 2
+  expected_figure_count: 4
   detected_figure_count: 2
   notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/mEPSCAnalysis.ipynb
   python_cell_count: 9

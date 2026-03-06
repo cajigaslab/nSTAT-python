@@ -5,7 +5,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/AnalysisExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/AnalysisExamples.ipynb",
       "source_sha256": "5f2411e32545cbcc8c439400341c880a28658dfae312d5f96c07b7786cf51e15",
-      "notebook_sha256": "e648d25eeeb73b5035506c4ea15c0bfc9bfa0579edf32097a944ae83fbcbe0c8",
+      "notebook_sha256": "f8575eeed2a399b49485515006828609851ae56608ea9383c3b81374140a7dde",
       "expected_sections": 2,
       "status": "ok"
     },
@@ -14,7 +14,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/ConfigCollExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/ConfigCollExamples.ipynb",
       "source_sha256": "78eba18d489e38c821571e0696b683e8e40873e1865ce11544140587a8842645",
-      "notebook_sha256": "e0efcce7976e908bfe0aca650ce15000898c3404f81efd661cf979668508bdfd",
+      "notebook_sha256": "081069e45b558da2a8fb51aeb4012a32fb3607d1aff95bd55913f76c319969e3",
       "expected_sections": 1,
       "status": "ok"
     },
@@ -23,7 +23,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/CovCollExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/CovCollExamples.ipynb",
       "source_sha256": "e40b7a1f347b67a10572f1a518d5e40cb70036df5005ee5c7c82c19abbccb215",
-      "notebook_sha256": "0d8caf4f51095dfc919e01bdca8548fe67507adef90434383a594efcc6a3304d",
+      "notebook_sha256": "300509f328cfab59ee92befa77fd12a049c585a7070ae859d46134fe03f844bc",
       "expected_sections": 1,
       "status": "ok"
     },
@@ -32,7 +32,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/CovariateExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/CovariateExamples.ipynb",
       "source_sha256": "d9112a468b6bc0d909098327e95b7ad31831c64165519b4f090a7941308d6105",
-      "notebook_sha256": "3d0f04599a7cd66ccb6fe3c113db0ea80da3dd2dd6cc2a211fa6686c1bbb47b5",
+      "notebook_sha256": "17ca85d67c3fb484024f89447d8d7361f8c1c5266fe648544da5d09f8ceb2a14",
       "expected_sections": 2,
       "status": "ok"
     },
@@ -41,7 +41,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/DecodingExample.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/DecodingExample.ipynb",
       "source_sha256": "951833445cd7116149d4024b7ae8ee413799495e8fdf5ca92341a1577cdf5d01",
-      "notebook_sha256": "c0eb687804d121276d04e80f74c5cbd2b3bd8f7f363fd4be8a0967cabd9496a2",
+      "notebook_sha256": "db8ab9646a2274a9c767206c4f63c713f5a5ae5ae93fe913b0292713a77843ba",
       "expected_sections": 3,
       "status": "ok"
     },
@@ -50,7 +50,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/DecodingExampleWithHist.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/DecodingExampleWithHist.ipynb",
       "source_sha256": "b742eb38ef86a6f1df0c234b02c1a9fcaa1a013e578d2966303064688fa0df59",
-      "notebook_sha256": "957771da0a967a57cb5e5b2969a615897b3612c02f6ebe82b4197c9e3b7dcaea",
+      "notebook_sha256": "46512bde5e2d468ccaface76a7635ca508fb0ffbb68208993c4c50eeaafc9ce9",
       "expected_sections": 1,
       "status": "ok"
     },
@@ -59,7 +59,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/EventsExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/EventsExamples.ipynb",
       "source_sha256": "77295b58c610ec3275b56a50ffc376daaec5eba3fb765a7d712ea86a066d267c",
-      "notebook_sha256": "edba26c294764990d49c53e4e910a22c691ae7c8075642a45a6b8bc1da34bb4b",
+      "notebook_sha256": "65b3f933038b937d956aafd32983c7e507a8c3bbf988cace7aaa20d1e4e27058",
       "expected_sections": 1,
       "status": "ok"
     },
@@ -68,7 +68,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/ExplicitStimulusWhiskerData.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/ExplicitStimulusWhiskerData.ipynb",
       "source_sha256": "c4a1e5597835ab6cce5de09ab8e7c7b9791335223c8e30027421d1c13e9d6ba6",
-      "notebook_sha256": "bb8fb0bd2bdb84bb634d6fe236c7d1e8f3f7c21e8652f4149937e8286efc70b7",
+      "notebook_sha256": "44aacfc79a870777bead299fd257bd49f51803d4458fa097285697067719ad87",
       "expected_sections": 6,
       "status": "ok"
     },
@@ -77,7 +77,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/FitResSummaryExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/FitResSummaryExamples.ipynb",
       "source_sha256": "0a3dd275c32c4fc69dbb7ef8a00979e1a80b53077aa6c6c53b2360e067bfbb34",
-      "notebook_sha256": "3ca15b627df716fdefd8a0d7ffed3e1b17d0a00e79e4c520a06953827010e3bb",
+      "notebook_sha256": "693435707a689a9638fbafdfd21e285e65bf84c148ffb56922fd018fadb0c743",
       "expected_sections": 1,
       "status": "ok"
     },
@@ -86,7 +86,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/FitResultExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/FitResultExamples.ipynb",
       "source_sha256": "6e1ff30b274a4233153e344be0363ac89eb03e1da8ad2183185f9582c7843710",
-      "notebook_sha256": "0da20db13628b9237fba1d21d309ae84dda9549d61dd53be2eb9fa9a80570789",
+      "notebook_sha256": "39f0a2d6ae8b2c923f7e4fa4faa724a1ab41d39877b5f0f991abb651028a8ab2",
       "expected_sections": 1,
       "status": "ok"
     },
@@ -95,7 +95,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/HippocampalPlaceCellExample.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/HippocampalPlaceCellExample.ipynb",
       "source_sha256": "aec6b769443d61b950ba19d1fa4b9df2b5caf1518ed5127e5cfd195920ab0a46",
-      "notebook_sha256": "5004f92db6d7bd80a1a3cdc7795fc12fa6d7052a945aaccc3d0508a26f8ef989",
+      "notebook_sha256": "43be0fafc46353827e3fd2ac11ddc4b012e25fae1335bf8cf290f6c875718eef",
       "expected_sections": 5,
       "status": "ok"
     },
@@ -104,7 +104,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/HistoryExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/HistoryExamples.ipynb",
       "source_sha256": "a2622507c6b60178fc4e1ac283982539b85af9843c3a6ab915169fe6d281b9fa",
-      "notebook_sha256": "67cb3879564bb6b51e1c40172f9b1e4f2de9fd0353d1afd6843d18e07a3f82d8",
+      "notebook_sha256": "de7323e7dcd322ab78ff5c50b02c41d17a5ad164410ece09d0b09704e71dd747",
       "expected_sections": 3,
       "status": "ok"
     },
@@ -113,7 +113,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/NetworkTutorial.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/NetworkTutorial.ipynb",
       "source_sha256": "e43e41568c793e4aaa4f5539d4ffc78d993b477f2362d254a299ddc0096296ad",
-      "notebook_sha256": "c92696dd856c1094e558674aeae9d78adb7aa96cbff8b84dc752cdd116d8ae0b",
+      "notebook_sha256": "f712241cb73099c07a815599b026382181e284af0eb5f8a1a9c98121b795b5aa",
       "expected_sections": 11,
       "status": "ok"
     },
@@ -122,7 +122,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/PPSimExample.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/PPSimExample.ipynb",
       "source_sha256": "bbe0364031cc290bba3e626df725e7240bd84c37e61a69f49d939d364a7772e6",
-      "notebook_sha256": "12674f367a00bd552165247644235dae305e2d6bab4e2617c2d2c278b67b2228",
+      "notebook_sha256": "d4a8b82f048af23be4d0931b4ed74abc9631c4efee86cbafd4fcb7ebd350cff5",
       "expected_sections": 9,
       "status": "ok"
     },
@@ -131,7 +131,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/PPThinning.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/PPThinning.ipynb",
       "source_sha256": "a7b991c84fd4d473c4a8ced18bd70813c095d2f3e72f715869673fc701805231",
-      "notebook_sha256": "d42a79674ea153674749112582d24a38bb0979eaa66b6f77c6d8ce84b9c9797b",
+      "notebook_sha256": "27e6030225eca182b1f6e20c162c268abd71bc974efb65a98c6bbe2e012dd1fc",
       "expected_sections": 4,
       "status": "ok"
     },
@@ -140,7 +140,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/PSTHEstimation.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/PSTHEstimation.ipynb",
       "source_sha256": "75e981c930b729fdbf4dbdaafb58c40e68f83824974372883bce065833780cf3",
-      "notebook_sha256": "cd3f0860b2f58207f7fc3e6d2a6398babac0be54a6a8d81c74a64868483f45db",
+      "notebook_sha256": "e7f7e7e3d069ecc6e371f41196d51e281c81013ca52431ce65240b84bbcfa311",
       "expected_sections": 3,
       "status": "ok"
     },
@@ -149,7 +149,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/SignalObjExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/SignalObjExamples.ipynb",
       "source_sha256": "a30ee35c92a00f25129d9b730c78ede879de4b1d435069007766e24c28af7f2d",
-      "notebook_sha256": "d249ce524f2a849b23880cec21488a89a3e69cf2b923ab7c8b9b56b106d6252d",
+      "notebook_sha256": "13d8e1a219e43e39837888698fc6a565820e50ecfc5c3d2ad3220e20fe954a36",
       "expected_sections": 7,
       "status": "ok"
     },
@@ -158,7 +158,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/StimulusDecode2D.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/StimulusDecode2D.ipynb",
       "source_sha256": "5f33cc622a3d86bd5c6d6967f215b62a81229afd4d111eb46b3249f3a88ab232",
-      "notebook_sha256": "d96948914b950db641cfd6e1a0665a213053da4a5700bfb2659220709a4e65b3",
+      "notebook_sha256": "f8f362c7ba43446a2ff9efe66ecbafdd682482bb1c4d52e121510b8cb09ac2c4",
       "expected_sections": 3,
       "status": "ok"
     },
@@ -167,7 +167,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/TrialConfigExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/TrialConfigExamples.ipynb",
       "source_sha256": "9d07d123d791fa7a492a3f166567af6e85ad45dcd45c2ca4aa1eba041a9b8c6a",
-      "notebook_sha256": "36ac4b3ae025f0032df98cac85292549c6bb4cd929036ffc35b3396d09bbbf68",
+      "notebook_sha256": "4da33e85d573fc04f05ac5d6dee2fb90e415abd760aced79184b2579c80168c4",
       "expected_sections": 1,
       "status": "ok"
     },
@@ -176,7 +176,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/TrialExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/TrialExamples.ipynb",
       "source_sha256": "73f2227062299af029c538b9b8aea97b501586d7c3a6775a4b0abba6e6f88639",
-      "notebook_sha256": "67a8c6212e11b873b3915961804d6275b27c4b91b29a742d6ad3b43a395d7e38",
+      "notebook_sha256": "eabfc28bd39ee0070d1e76f37a1f66d0479d20b0bb422fdcc2254cd75aa30db2",
       "expected_sections": 3,
       "status": "ok"
     },
@@ -185,7 +185,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/ValidationDataSet.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/ValidationDataSet.ipynb",
       "source_sha256": "593eed6a91c1a6ce1f26640ec0f820e0bdcbd58a70890e17906a96ae71c83975",
-      "notebook_sha256": "39b89deee68af2a166898f3abfc1e50f937c68a864398274fd2e7ea1e7a5ddd9",
+      "notebook_sha256": "c7305218ca350093ec7a6bd1872afc5c2a626cae3381cca2b70e049af65d538d",
       "expected_sections": 3,
       "status": "ok"
     },
@@ -194,7 +194,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/mEPSCAnalysis.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/mEPSCAnalysis.ipynb",
       "source_sha256": "21c53d9fd4f8044a1ffb41c99aae3d0a5b20e10321789fead0125de53180de39",
-      "notebook_sha256": "1ad72d2dae9ceb734a319ba6f09ffe7f6f5caa824d127c677005ea9121a7e5c6",
+      "notebook_sha256": "69b65e9c72b6953b4ca1222dfe88ae34fd8b9936a06e88153fde70f8ef5e33e0",
       "expected_sections": 9,
       "status": "ok"
     },
@@ -203,7 +203,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/nSTATPaperExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/nSTATPaperExamples.ipynb",
       "source_sha256": "88d7f4c4d5ffb97b3915b652edce7f6a295cb9a9e02cfa6f1128f70b7fd4ef4e",
-      "notebook_sha256": "205dbb3a6861f95d33d5050a05e838b6cfeb278d26d5125ae5b092207c1a66a4",
+      "notebook_sha256": "eacb40ce814c818243029bcc774e2360adff4ac5609f68241d135466783eeb21",
       "expected_sections": 31,
       "status": "ok"
     },
@@ -212,7 +212,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/nSpikeTrainExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/nSpikeTrainExamples.ipynb",
       "source_sha256": "4328884d7934a88d2f4f57b6c2224879b2dba809c7633d243a1ba885d766ab73",
-      "notebook_sha256": "3f7636702685b2dae7a60527c023d6c758226555cdb3097ce3b51898eb1a4a47",
+      "notebook_sha256": "c4bdb9383811e05b3a88649cc4d78cc951c8ffe8e68aedf0542ac3c93132404d",
       "expected_sections": 2,
       "status": "ok"
     },
@@ -221,7 +221,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/nstCollExamples.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/nstCollExamples.ipynb",
       "source_sha256": "24df39b05fef1fa52503f66490d2ca258bfdb288d83be148cdeb8a0d6f708d45",
-      "notebook_sha256": "e33e792ebf8906a64318d284db73c2932221b9bf6ce5637dde1585a87846f9fc",
+      "notebook_sha256": "822d9984cb46dd3f2f5406108ee4544eaedb9ba4db8e5367da4f203584770747",
       "expected_sections": 2,
       "status": "ok"
     },
@@ -230,7 +230,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/AnalysisExamples2.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/AnalysisExamples2.ipynb",
       "source_sha256": "dbb89d4dea80f717d86a1baeb30c29fabc1fa58f3cf176897c01439c8ed2ac9a",
-      "notebook_sha256": "ba57513874900982e18738d16daf202cc5eb26ad7d56a99f38026cce4f1adc5c",
+      "notebook_sha256": "710889617922d21b8c8495818603393b99dd6d4f5265b4850ebf615b09f49c79",
       "expected_sections": 3,
       "status": "ok"
     },
@@ -239,7 +239,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/DocumentationSetup2025b.m",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/DocumentationSetup2025b.ipynb",
       "source_sha256": "7bf62941210f06d145d7b7d1aa09dbcf966e8dc9da3da64929b6d7262b8c481c",
-      "notebook_sha256": "502125417401f50bc6d9c1386d6ca5290ae695ca6451fc5c167d9c0c1c60928e",
+      "notebook_sha256": "2a0eca684a6fdbe94cad74caae419b9ae288b898a7a1a4a7e68abf9d22d15a3c",
       "expected_sections": 6,
       "status": "ok"
     },
@@ -248,7 +248,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/FitResultReference.m",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/FitResultReference.ipynb",
       "source_sha256": "3ea64561481ac1849654bef5595ef26b372e7c5507eb970f3fc56e15705ef748",
-      "notebook_sha256": "8a2f2e2d596b90842b41b8a3f764ccf903177159bfd1eae3feb0ed39d1ed9ab2",
+      "notebook_sha256": "2ee135cd8414cd8ff15fd3ff47c6f4f33c9aedea069ac0e98a1ba5538338885f",
       "expected_sections": 2,
       "status": "ok"
     },
@@ -257,7 +257,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/HybridFilterExample.mlx",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/HybridFilterExample.ipynb",
       "source_sha256": "de3ff79724f429df388813078d91fe254c26bd41e3d5401c7358b25702d2da51",
-      "notebook_sha256": "91caebe32e0bae20af87190a4c34416558cf9e08ead45c8eb910380bedea2bfa",
+      "notebook_sha256": "b32a4ac7be2b132fc4fbe09b2f3c0687150c27e86235568d3f6336422e3e5db0",
       "expected_sections": 4,
       "status": "ok"
     },
@@ -266,7 +266,7 @@
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/publish_all_helpfiles.m",
       "notebook_path": "/private/tmp/nstat-python-sync-20260305/notebooks/publish_all_helpfiles.ipynb",
       "source_sha256": "87638a176beb8214c21d12620ee34ed6da253cb56492ba13d9371ae3d473e7b5",
-      "notebook_sha256": "707b75d3b135e4ada5165b68e40e02c91cf8cfc80f91be4b629a8b1af671182f",
+      "notebook_sha256": "83d5fcd2ff1af120401ad610274b65e4c2645a776da26793c4d6dde8d84195a0",
       "expected_sections": 1,
       "status": "ok"
     }

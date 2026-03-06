@@ -466,7 +466,7 @@
       "source_type": "mlx",
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/ExplicitStimulusWhiskerData.mlx",
       "section_count": 6,
-      "figure_count": 5,
+      "figure_count": 9,
       "detected_figure_count": 5,
       "no_figure_utility": false,
       "events": [
@@ -689,7 +689,7 @@
       "source_type": "mlx",
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/HippocampalPlaceCellExample.mlx",
       "section_count": 5,
-      "figure_count": 7,
+      "figure_count": 9,
       "detected_figure_count": 7,
       "no_figure_utility": false,
       "events": [
@@ -919,7 +919,7 @@
       "source_type": "mlx",
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/NetworkTutorial.mlx",
       "section_count": 11,
-      "figure_count": 2,
+      "figure_count": 4,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
@@ -2006,7 +2006,7 @@
       "source_type": "mlx",
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/ValidationDataSet.mlx",
       "section_count": 3,
-      "figure_count": 3,
+      "figure_count": 9,
       "detected_figure_count": 3,
       "no_figure_utility": false,
       "events": [
@@ -2153,7 +2153,7 @@
       "source_type": "mlx",
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/mEPSCAnalysis.mlx",
       "section_count": 9,
-      "figure_count": 2,
+      "figure_count": 4,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
