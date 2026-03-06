@@ -78,15 +78,9 @@ notebooks:
 - topic: AnalysisExamples2
   file: notebooks/AnalysisExamples2.ipynb
   run_group: full
-- topic: DocumentationSetup2025b
-  file: notebooks/DocumentationSetup2025b.ipynb
-  run_group: full
 - topic: FitResultReference
   file: notebooks/FitResultReference.ipynb
   run_group: full
 - topic: HybridFilterExample
   file: notebooks/HybridFilterExample.ipynb
-  run_group: full
-- topic: publish_all_helpfiles
-  file: notebooks/publish_all_helpfiles.ipynb
   run_group: full

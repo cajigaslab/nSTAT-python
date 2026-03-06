@@ -1,4 +1,4 @@
-"""Python installation helper mirroring MATLAB `nSTAT_Install` behavior."""
+"""Python installation helper for the standalone nSTAT package."""
 
 from __future__ import annotations
 
@@ -48,24 +48,16 @@ def nstat_install(
     clean_user_path_prefs: bool = False,
     download_example_data: str | bool = "prompt",
 ) -> dict[str, Any]:
-    """Configure the Python port and optionally install example data.
-
-    The Python port does not modify interpreter search paths the way MATLAB
-    `nSTAT_Install` modifies the MATLAB path. Instead, it reports the resolved
-    package/help/data locations and optionally downloads the external example
-    dataset into the local cache.
-    """
+    """Configure the Python package and optionally install example data."""
 
     mode = _normalize_download_mode(download_example_data)
     repo_root = Path(__file__).resolve().parents[1]
-    help_dir = repo_root / "helpfiles"
     info = get_example_data_info(repo_root)
     data_dir = get_data_dir()
 
     report: dict[str, Any] = {
         "repo_root": str(repo_root),
         "package_root": str(Path(__file__).resolve().parent),
-        "help_dir": str(help_dir),
         "rebuild_doc_search": bool(rebuild_doc_search),
         "clean_user_path_prefs": bool(clean_user_path_prefs),
         "download_example_data": mode,

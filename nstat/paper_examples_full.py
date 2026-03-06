@@ -388,27 +388,20 @@ def _hybrid_state_filter(spikes: np.ndarray, x: np.ndarray, dt: float, p_ij: np.
 
 
 def run_experiment6(repo_root: Path, seed: int = 37) -> dict[str, float]:
-    path = repo_root / "helpfiles" / "paperHybridFilterExample.mat"
-    d = _loadmat_checked(path)
-    if d is None:
-        rng = np.random.default_rng(seed)
-        dt = 0.01
-        t = np.arange(0.0, 30.0, dt, dtype=float)
-        x_pos = 0.3 * np.sin(0.2 * t)
-        y_pos = 0.25 * np.cos(0.15 * t)
-        x_vel = np.gradient(x_pos, dt)
-        y_vel = np.gradient(y_pos, dt)
-        x = np.vstack([x_pos, y_pos, x_vel, y_vel])
-        mstate = np.where(np.sin(0.05 * t + 0.4) > 0.0, 1, 2).astype(int)
-        # Add mild stochasticity so state filter is non-trivial.
-        flip = rng.random(t.shape[0]) < 0.02
-        mstate[flip] = 3 - mstate[flip]
-        p_ij = np.array([[0.985, 0.015], [0.02, 0.98]], dtype=float)
-    else:
-        x = np.asarray(d["X"], dtype=float)
-        mstate = np.asarray(d["mstate"], dtype=int).reshape(-1)
-        p_ij = np.asarray(d["p_ij"], dtype=float)
-        dt = float(np.asarray(d["delta"], dtype=float).reshape(-1)[0])
+    del repo_root
+    rng = np.random.default_rng(seed)
+    dt = 0.01
+    t = np.arange(0.0, 30.0, dt, dtype=float)
+    x_pos = 0.3 * np.sin(0.2 * t)
+    y_pos = 0.25 * np.cos(0.15 * t)
+    x_vel = np.gradient(x_pos, dt)
+    y_vel = np.gradient(y_pos, dt)
+    x = np.vstack([x_pos, y_pos, x_vel, y_vel])
+    mstate = np.where(np.sin(0.05 * t + 0.4) > 0.0, 1, 2).astype(int)
+    # Add mild stochasticity so state filter is non-trivial.
+    flip = rng.random(t.shape[0]) < 0.02
+    mstate[flip] = 3 - mstate[flip]
+    p_ij = np.array([[0.985, 0.015], [0.02, 0.98]], dtype=float)
 
     n_cells = 24
     spikes, wvx, wvy, b1, b2 = _simulate_hybrid_spikes(x, mstate, dt, n_cells=n_cells, seed=seed)

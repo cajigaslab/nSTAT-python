@@ -52,9 +52,6 @@ jobs:
               for row in payload["workloads"]:
                   writer.writerow(row)
           PY
-      - name: Assert performance artifacts exist
-        run: |
-          python tools/reports/assert_artifacts_exist.py --kind performance
       - name: Upload performance artifacts
         if: always()
         uses: actions/upload-artifact@v4

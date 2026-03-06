@@ -17,9 +17,7 @@ dependencies = [
   "matplotlib>=3.7",
   "PyYAML>=6.0",
   "nbformat>=5.10",
-  "nbclient>=0.10",
-  "Pillow>=10.0",
-  "reportlab>=4.0"
+  "nbclient>=0.10"
 ]
 
 [project.optional-dependencies]

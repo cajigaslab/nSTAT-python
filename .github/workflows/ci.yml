@@ -23,30 +23,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev]
-          python -m pip install pyyaml nbformat nbclient reportlab pillow ipykernel
-          python -m ipykernel install --user --name python3 --display-name "Python 3"
       - name: Run unit tests
         run: pytest -q
 
-  docs-smoke-notebooks:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .[dev,notebooks]
-          python -m pip install pyyaml nbformat nbclient reportlab pillow ipykernel
-          python -m ipykernel install --user --name python3 --display-name "Python 3"
-      - name: Run notebook/visual smoke tests
-        run: |
-          pytest -q tests/test_helpfile_ordinal_image_parity.py tests/test_validation_images_discovery.py
-
-  matlab-data-integrity:
+  data-integrity:
     runs-on: ubuntu-latest
 
     steps:
@@ -58,10 +38,25 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev]
-          python -m pip install pyyaml nbformat nbclient reportlab pillow ipykernel
-          python -m ipykernel install --user --name python3 --display-name "Python 3"
       - name: Run dataset integrity tests
         run: pytest -q tests/test_datasets.py
+
+  notebook-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+          python -m pip install ipykernel
+          python -m ipykernel install --user --name python3 --display-name "Python 3"
+      - name: Execute Python notebook smoke group
+        run: python tools/notebooks/run_notebooks.py --group ci_smoke --timeout 600
 
   cleanroom-compliance:
     runs-on: ubuntu-latest
@@ -75,7 +70,5 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev]
-          python -m pip install pyyaml nbformat nbclient reportlab pillow ipykernel
-          python -m ipykernel install --user --name python3 --display-name "Python 3"
       - name: Run API surface checks
         run: pytest -q tests/test_api_surface.py
