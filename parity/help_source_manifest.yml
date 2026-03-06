@@ -157,7 +157,7 @@ topics:
   source_type: mlx
   source_path: /private/tmp/upstream-nstat-matlab/helpfiles/StimulusDecode2D.mlx
   expected_section_count: 3
-  expected_figure_count: 4
+  expected_figure_count: 8
   detected_figure_count: 4
   notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/StimulusDecode2D.ipynb
   python_cell_count: 3
@@ -229,7 +229,7 @@ topics:
   source_type: mlx
   source_path: /private/tmp/upstream-nstat-matlab/helpfiles/AnalysisExamples2.mlx
   expected_section_count: 3
-  expected_figure_count: 2
+  expected_figure_count: 5
   detected_figure_count: 2
   notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/AnalysisExamples2.ipynb
   python_cell_count: 3

@@ -1790,7 +1790,7 @@
       "source_type": "mlx",
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/StimulusDecode2D.mlx",
       "section_count": 3,
-      "figure_count": 4,
+      "figure_count": 8,
       "detected_figure_count": 4,
       "no_figure_utility": false,
       "events": [
@@ -4397,7 +4397,7 @@
       "source_type": "mlx",
       "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/AnalysisExamples2.mlx",
       "section_count": 3,
-      "figure_count": 2,
+      "figure_count": 5,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [

@@ -1535,7 +1535,7 @@
     },
     {
       "topic": "StimulusDecode2D",
-      "total_figures_expected": 4,
+      "total_figures_expected": 8,
       "total_figures_detected": 4,
       "no_figure_utility": false,
       "events": [
@@ -3803,7 +3803,7 @@
     },
     {
       "topic": "AnalysisExamples2",
-      "total_figures_expected": 2,
+      "total_figures_expected": 5,
       "total_figures_detected": 2,
       "no_figure_utility": false,
       "events": [
