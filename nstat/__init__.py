@@ -11,6 +11,7 @@ from .errors import DataNotFoundError, ParityValidationError, UnsupportedWorkflo
 from .fit import FitResSummary, FitResult, FitSummary
 from .glm import PoissonGLMResult, fit_poisson_glm
 from .history import History, HistoryBasis
+from .install import nstat_install
 from .paper_examples_full import run_full_paper_examples
 from .signal import Covariate, Signal
 from .simulation import simulate_poisson_from_rate
@@ -57,6 +58,7 @@ __all__ = [
     "fit_poisson_glm",
     "get_dataset_path",
     "list_datasets",
+    "nstat_install",
     "psth",
     "run_full_paper_examples",
     "simulate_point_process",

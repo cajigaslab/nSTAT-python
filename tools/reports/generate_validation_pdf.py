@@ -24,15 +24,23 @@ import numpy as np
 import yaml
 from nbclient import NotebookClient
 from PIL import Image
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfgen import canvas
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas
+    REPORTLAB_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - environment dependent
+    colors = None
+    letter = None
+    ImageReader = None
+    canvas = None
+    REPORTLAB_AVAILABLE = False
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-@dataclass(slots=True)
+@dataclass
 class CommandResult:
     name: str
     command: list[str]
@@ -45,14 +53,14 @@ class CommandResult:
         return self.returncode == 0
 
 
-@dataclass(slots=True)
+@dataclass
 class NotebookTarget:
     topic: str
     file: Path
     run_group: str
 
 
-@dataclass(slots=True)
+@dataclass
 class NotebookReport:
     topic: str
     file: Path
@@ -1601,6 +1609,11 @@ def generate_pdf_report(
 
 
 def main() -> int:
+    if not REPORTLAB_AVAILABLE:
+        raise ModuleNotFoundError(
+            "reportlab is required to generate the validation PDF. "
+            "Install reportlab or run the non-PDF notebook/parity tools instead."
+        )
     args = parse_args()
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_pdf = args.output_dir / f"nstat_python_validation_report_{stamp}.pdf"

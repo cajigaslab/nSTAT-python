@@ -205,6 +205,31 @@ fig.savefig(out_dir / "readme_example3_nstcoll_raster.png", dpi=180)
 
 ### nSTATPaperExamples
 
+Run:
+
+```bash
+python examples/readme_examples/example4_nstatpaperexamples_overview.py
+```
+
+```python
+import matplotlib
+matplotlib.use("Agg")
+
+from pathlib import Path
+
+from nstat.paper_examples import run_paper_examples
+
+repo_root = Path(".").resolve()
+results, payloads = run_paper_examples(repo_root, return_plot_data=True)
+print(results["experiment2"])
+print(results["experiment3"])
+print(results["experiment4"])
+print(results["experiment5"])
+```
+
+**Expected output**
+![nSTATPaperExamples overview](examples/readme_examples/images/readme_example4_nstatpaperexamples_overview.png)
+
 Complete catalog of nSTATPaperExamples notebooks:
 
 - [AnalysisExamples](notebooks/AnalysisExamples.ipynb) — Notebook generated from MATLAB help source for AnalysisExamples.

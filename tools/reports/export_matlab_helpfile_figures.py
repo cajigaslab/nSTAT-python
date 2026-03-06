@@ -133,7 +133,7 @@ def _write_aggregate_report(
             continue
         ordered_results.append(by_topic.get(topic, _build_report_row_from_topic(row)))
     payload = {
-        "generated_utc": dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "output_root": str(output_root.resolve()),
         "topic_count": len(ordered_results),
         "results": ordered_results,

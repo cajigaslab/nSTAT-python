@@ -1,10 +1,10 @@
 {
-  "matlab_help_root": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles",
+  "matlab_help_root": "/private/tmp/upstream-nstat-matlab/helpfiles",
   "topics": [
     {
       "topic": "AnalysisExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/AnalysisExamples.mlx",
       "section_count": 2,
       "figure_count": 4,
       "detected_figure_count": 4,
@@ -87,7 +87,7 @@
     {
       "topic": "ConfigCollExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ConfigCollExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/ConfigCollExamples.mlx",
       "section_count": 1,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -97,7 +97,7 @@
     {
       "topic": "CovCollExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovCollExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/CovCollExamples.mlx",
       "section_count": 1,
       "figure_count": 2,
       "detected_figure_count": 2,
@@ -140,7 +140,7 @@
     {
       "topic": "CovariateExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovariateExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/CovariateExamples.mlx",
       "section_count": 2,
       "figure_count": 2,
       "detected_figure_count": 2,
@@ -199,7 +199,7 @@
     {
       "topic": "DecodingExample",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/DecodingExample.mlx",
       "section_count": 3,
       "figure_count": 5,
       "detected_figure_count": 4,
@@ -298,7 +298,7 @@
     {
       "topic": "DecodingExampleWithHist",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExampleWithHist.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/DecodingExampleWithHist.mlx",
       "section_count": 1,
       "figure_count": 2,
       "detected_figure_count": 2,
@@ -413,7 +413,7 @@
     {
       "topic": "EventsExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/EventsExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/EventsExamples.mlx",
       "section_count": 1,
       "figure_count": 3,
       "detected_figure_count": 3,
@@ -464,9 +464,9 @@
     {
       "topic": "ExplicitStimulusWhiskerData",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/ExplicitStimulusWhiskerData.mlx",
       "section_count": 6,
-      "figure_count": 8,
+      "figure_count": 5,
       "detected_figure_count": 5,
       "no_figure_utility": false,
       "events": [
@@ -667,7 +667,7 @@
     {
       "topic": "FitResSummaryExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResSummaryExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/FitResSummaryExamples.mlx",
       "section_count": 1,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -677,7 +677,7 @@
     {
       "topic": "FitResultExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResultExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/FitResultExamples.mlx",
       "section_count": 1,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -687,9 +687,9 @@
     {
       "topic": "HippocampalPlaceCellExample",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/HippocampalPlaceCellExample.mlx",
       "section_count": 5,
-      "figure_count": 9,
+      "figure_count": 7,
       "detected_figure_count": 7,
       "no_figure_utility": false,
       "events": [
@@ -834,7 +834,7 @@
     {
       "topic": "HistoryExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HistoryExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/HistoryExamples.mlx",
       "section_count": 3,
       "figure_count": 3,
       "detected_figure_count": 3,
@@ -917,9 +917,9 @@
     {
       "topic": "NetworkTutorial",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/NetworkTutorial.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/NetworkTutorial.mlx",
       "section_count": 11,
-      "figure_count": 4,
+      "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
@@ -1016,7 +1016,7 @@
     {
       "topic": "PPSimExample",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/PPSimExample.mlx",
       "section_count": 9,
       "figure_count": 3,
       "detected_figure_count": 1,
@@ -1083,7 +1083,7 @@
     {
       "topic": "PPThinning",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPThinning.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/PPThinning.mlx",
       "section_count": 4,
       "figure_count": 3,
       "detected_figure_count": 3,
@@ -1214,7 +1214,7 @@
     {
       "topic": "PSTHEstimation",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PSTHEstimation.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/PSTHEstimation.mlx",
       "section_count": 3,
       "figure_count": 2,
       "detected_figure_count": 2,
@@ -1273,7 +1273,7 @@
     {
       "topic": "SignalObjExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/SignalObjExamples.mlx",
       "section_count": 7,
       "figure_count": 16,
       "detected_figure_count": 16,
@@ -1788,7 +1788,7 @@
     {
       "topic": "StimulusDecode2D",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/StimulusDecode2D.mlx",
       "section_count": 3,
       "figure_count": 4,
       "detected_figure_count": 4,
@@ -1887,7 +1887,7 @@
     {
       "topic": "TrialConfigExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialConfigExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/TrialConfigExamples.mlx",
       "section_count": 1,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -1897,7 +1897,7 @@
     {
       "topic": "TrialExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/TrialExamples.mlx",
       "section_count": 3,
       "figure_count": 6,
       "detected_figure_count": 6,
@@ -2004,9 +2004,9 @@
     {
       "topic": "ValidationDataSet",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/ValidationDataSet.mlx",
       "section_count": 3,
-      "figure_count": 8,
+      "figure_count": 3,
       "detected_figure_count": 3,
       "no_figure_utility": false,
       "events": [
@@ -2151,9 +2151,9 @@
     {
       "topic": "mEPSCAnalysis",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/mEPSCAnalysis.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/mEPSCAnalysis.mlx",
       "section_count": 9,
-      "figure_count": 4,
+      "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
@@ -2202,9 +2202,9 @@
     {
       "topic": "nSTATPaperExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/nSTATPaperExamples.mlx",
       "section_count": 31,
-      "figure_count": 1,
+      "figure_count": 25,
       "detected_figure_count": 25,
       "no_figure_utility": false,
       "events": [
@@ -4221,7 +4221,7 @@
     {
       "topic": "nSpikeTrainExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/nSpikeTrainExamples.mlx",
       "section_count": 2,
       "figure_count": 4,
       "detected_figure_count": 4,
@@ -4296,7 +4296,7 @@
     {
       "topic": "nstCollExamples",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nstCollExamples.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/nstCollExamples.mlx",
       "section_count": 2,
       "figure_count": 3,
       "detected_figure_count": 3,
@@ -4395,9 +4395,9 @@
     {
       "topic": "AnalysisExamples2",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/AnalysisExamples2.mlx",
       "section_count": 3,
-      "figure_count": 4,
+      "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
@@ -4454,7 +4454,7 @@
     {
       "topic": "DocumentationSetup2025b",
       "source_type": "m",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DocumentationSetup2025b.m",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/DocumentationSetup2025b.m",
       "section_count": 6,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -4464,7 +4464,7 @@
     {
       "topic": "FitResultReference",
       "source_type": "m",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResultReference.m",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/FitResultReference.m",
       "section_count": 2,
       "figure_count": 0,
       "detected_figure_count": 0,
@@ -4474,9 +4474,9 @@
     {
       "topic": "HybridFilterExample",
       "source_type": "mlx",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HybridFilterExample.mlx",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/HybridFilterExample.mlx",
       "section_count": 4,
-      "figure_count": 1,
+      "figure_count": 2,
       "detected_figure_count": 2,
       "no_figure_utility": false,
       "events": [
@@ -5061,7 +5061,7 @@
     {
       "topic": "publish_all_helpfiles",
       "source_type": "m",
-      "source_path": "/Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/publish_all_helpfiles.m",
+      "source_path": "/private/tmp/upstream-nstat-matlab/helpfiles/publish_all_helpfiles.m",
       "section_count": 1,
       "figure_count": 0,
       "detected_figure_count": 0,

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
+from .install import nstat_install
 
 
-def nSTAT_Install() -> Path:
-    """Return Python package root path (MATLAB nSTAT_Install analogue)."""
-    return Path(__file__).resolve().parents[1]
+def nSTAT_Install(**kwargs):
+    """MATLAB-style alias that delegates to :func:`nstat.install.nstat_install`."""
+
+    return nstat_install(**kwargs)
+
+
+__all__ = ["nSTAT_Install"]

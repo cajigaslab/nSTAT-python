@@ -14,12 +14,18 @@ authors = [
 dependencies = [
   "numpy>=1.24",
   "scipy>=1.10",
-  "matplotlib>=3.7"
+  "matplotlib>=3.7",
+  "PyYAML>=6.0",
+  "nbformat>=5.10",
+  "nbclient>=0.10",
+  "Pillow>=10.0",
+  "reportlab>=4.0"
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
+  "scikit-image>=0.22",
 ]
 
 [tool.setuptools.packages.find]
@@ -31,3 +37,4 @@ include = ["nstat*"]
 
 [project.scripts]
 nstat-paper-examples = "nstat.paper_examples:main"
+nstat-install = "nstat.install:main"

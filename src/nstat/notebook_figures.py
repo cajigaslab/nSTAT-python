@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 
-@dataclass(slots=True)
+@dataclass
 class FigureTracker:
     """Track/snapshot figure creation order for strict ordinal parity checks."""
 

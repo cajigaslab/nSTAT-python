@@ -1,0 +1,26 @@
+version: 1
+groups:
+  smoke:
+    - AnalysisExamples
+    - CovariateExamples
+    - DecodingExample
+    - DecodingExampleWithHist
+    - PPSimExample
+    - SignalObjExamples
+    - TrialExamples
+    - nSTATPaperExamples
+    - nSpikeTrainExamples
+  core:
+    - AnalysisExamples
+    - DecodingExample
+    - DecodingExampleWithHist
+    - ExplicitStimulusWhiskerData
+    - HippocampalPlaceCellExample
+    - NetworkTutorial
+    - PPSimExample
+    - SignalObjExamples
+    - TrialExamples
+    - ValidationDataSet
+    - mEPSCAnalysis
+    - nSTATPaperExamples
+    - nSpikeTrainExamples

@@ -2,271 +2,271 @@ version: 1
 topics:
 - topic: AnalysisExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/AnalysisExamples.mlx
   expected_section_count: 2
   expected_figure_count: 4
   detected_figure_count: 4
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/AnalysisExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/AnalysisExamples.ipynb
   python_cell_count: 2
   no_figure_utility: false
 - topic: ConfigCollExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ConfigCollExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/ConfigCollExamples.mlx
   expected_section_count: 1
   expected_figure_count: 0
   detected_figure_count: 0
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/ConfigCollExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/ConfigCollExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
 - topic: CovCollExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovCollExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/CovCollExamples.mlx
   expected_section_count: 1
   expected_figure_count: 2
   detected_figure_count: 2
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/CovCollExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/CovCollExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
 - topic: CovariateExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/CovariateExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/CovariateExamples.mlx
   expected_section_count: 2
   expected_figure_count: 2
   detected_figure_count: 2
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/CovariateExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/CovariateExamples.ipynb
   python_cell_count: 2
   no_figure_utility: false
 - topic: DecodingExample
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExample.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/DecodingExample.mlx
   expected_section_count: 3
   expected_figure_count: 5
   detected_figure_count: 4
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/DecodingExample.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/DecodingExample.ipynb
   python_cell_count: 3
   no_figure_utility: false
 - topic: DecodingExampleWithHist
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DecodingExampleWithHist.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/DecodingExampleWithHist.mlx
   expected_section_count: 1
   expected_figure_count: 2
   detected_figure_count: 2
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/DecodingExampleWithHist.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/DecodingExampleWithHist.ipynb
   python_cell_count: 1
   no_figure_utility: false
 - topic: EventsExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/EventsExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/EventsExamples.mlx
   expected_section_count: 1
   expected_figure_count: 3
   detected_figure_count: 3
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/EventsExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/EventsExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
 - topic: ExplicitStimulusWhiskerData
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ExplicitStimulusWhiskerData.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/ExplicitStimulusWhiskerData.mlx
   expected_section_count: 6
-  expected_figure_count: 8
+  expected_figure_count: 5
   detected_figure_count: 5
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/ExplicitStimulusWhiskerData.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/ExplicitStimulusWhiskerData.ipynb
   python_cell_count: 6
   no_figure_utility: false
 - topic: FitResSummaryExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResSummaryExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/FitResSummaryExamples.mlx
   expected_section_count: 1
   expected_figure_count: 0
   detected_figure_count: 0
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/FitResSummaryExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/FitResSummaryExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
 - topic: FitResultExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResultExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/FitResultExamples.mlx
   expected_section_count: 1
   expected_figure_count: 0
   detected_figure_count: 0
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/FitResultExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/FitResultExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
 - topic: HippocampalPlaceCellExample
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HippocampalPlaceCellExample.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/HippocampalPlaceCellExample.mlx
   expected_section_count: 5
-  expected_figure_count: 9
+  expected_figure_count: 7
   detected_figure_count: 7
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/HippocampalPlaceCellExample.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/HippocampalPlaceCellExample.ipynb
   python_cell_count: 5
   no_figure_utility: false
 - topic: HistoryExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HistoryExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/HistoryExamples.mlx
   expected_section_count: 3
   expected_figure_count: 3
   detected_figure_count: 3
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/HistoryExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/HistoryExamples.ipynb
   python_cell_count: 3
   no_figure_utility: false
 - topic: NetworkTutorial
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/NetworkTutorial.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/NetworkTutorial.mlx
   expected_section_count: 11
-  expected_figure_count: 4
+  expected_figure_count: 2
   detected_figure_count: 2
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/NetworkTutorial.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/NetworkTutorial.ipynb
   python_cell_count: 11
   no_figure_utility: false
 - topic: PPSimExample
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPSimExample.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/PPSimExample.mlx
   expected_section_count: 9
   expected_figure_count: 3
   detected_figure_count: 1
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/PPSimExample.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/PPSimExample.ipynb
   python_cell_count: 9
   no_figure_utility: false
 - topic: PPThinning
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PPThinning.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/PPThinning.mlx
   expected_section_count: 4
   expected_figure_count: 3
   detected_figure_count: 3
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/PPThinning.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/PPThinning.ipynb
   python_cell_count: 4
   no_figure_utility: false
 - topic: PSTHEstimation
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/PSTHEstimation.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/PSTHEstimation.mlx
   expected_section_count: 3
   expected_figure_count: 2
   detected_figure_count: 2
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/PSTHEstimation.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/PSTHEstimation.ipynb
   python_cell_count: 3
   no_figure_utility: false
 - topic: SignalObjExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/SignalObjExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/SignalObjExamples.mlx
   expected_section_count: 7
   expected_figure_count: 16
   detected_figure_count: 16
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/SignalObjExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/SignalObjExamples.ipynb
   python_cell_count: 7
   no_figure_utility: false
 - topic: StimulusDecode2D
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/StimulusDecode2D.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/StimulusDecode2D.mlx
   expected_section_count: 3
   expected_figure_count: 4
   detected_figure_count: 4
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/StimulusDecode2D.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/StimulusDecode2D.ipynb
   python_cell_count: 3
   no_figure_utility: false
 - topic: TrialConfigExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialConfigExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/TrialConfigExamples.mlx
   expected_section_count: 1
   expected_figure_count: 0
   detected_figure_count: 0
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/TrialConfigExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/TrialConfigExamples.ipynb
   python_cell_count: 1
   no_figure_utility: false
 - topic: TrialExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/TrialExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/TrialExamples.mlx
   expected_section_count: 3
   expected_figure_count: 6
   detected_figure_count: 6
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/TrialExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/TrialExamples.ipynb
   python_cell_count: 3
   no_figure_utility: false
 - topic: ValidationDataSet
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/ValidationDataSet.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/ValidationDataSet.mlx
   expected_section_count: 3
-  expected_figure_count: 8
+  expected_figure_count: 3
   detected_figure_count: 3
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/ValidationDataSet.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/ValidationDataSet.ipynb
   python_cell_count: 3
   no_figure_utility: false
 - topic: mEPSCAnalysis
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/mEPSCAnalysis.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/mEPSCAnalysis.mlx
   expected_section_count: 9
-  expected_figure_count: 4
+  expected_figure_count: 2
   detected_figure_count: 2
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/mEPSCAnalysis.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/mEPSCAnalysis.ipynb
   python_cell_count: 9
   no_figure_utility: false
 - topic: nSTATPaperExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSTATPaperExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/nSTATPaperExamples.mlx
   expected_section_count: 31
-  expected_figure_count: 1
+  expected_figure_count: 25
   detected_figure_count: 25
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/nSTATPaperExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/nSTATPaperExamples.ipynb
   python_cell_count: 31
   no_figure_utility: false
 - topic: nSpikeTrainExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nSpikeTrainExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/nSpikeTrainExamples.mlx
   expected_section_count: 2
   expected_figure_count: 4
   detected_figure_count: 4
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/nSpikeTrainExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/nSpikeTrainExamples.ipynb
   python_cell_count: 2
   no_figure_utility: false
 - topic: nstCollExamples
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/nstCollExamples.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/nstCollExamples.mlx
   expected_section_count: 2
   expected_figure_count: 3
   detected_figure_count: 3
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/nstCollExamples.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/nstCollExamples.ipynb
   python_cell_count: 2
   no_figure_utility: false
 - topic: AnalysisExamples2
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/AnalysisExamples2.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/AnalysisExamples2.mlx
   expected_section_count: 3
-  expected_figure_count: 4
+  expected_figure_count: 2
   detected_figure_count: 2
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/AnalysisExamples2.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/AnalysisExamples2.ipynb
   python_cell_count: 3
   no_figure_utility: false
 - topic: DocumentationSetup2025b
   source_type: m
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/DocumentationSetup2025b.m
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/DocumentationSetup2025b.m
   expected_section_count: 6
   expected_figure_count: 0
   detected_figure_count: 0
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/DocumentationSetup2025b.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/DocumentationSetup2025b.ipynb
   python_cell_count: 6
   no_figure_utility: false
 - topic: FitResultReference
   source_type: m
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/FitResultReference.m
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/FitResultReference.m
   expected_section_count: 2
   expected_figure_count: 0
   detected_figure_count: 0
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/FitResultReference.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/FitResultReference.ipynb
   python_cell_count: 2
   no_figure_utility: false
 - topic: HybridFilterExample
   source_type: mlx
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/HybridFilterExample.mlx
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/HybridFilterExample.mlx
   expected_section_count: 4
-  expected_figure_count: 1
+  expected_figure_count: 2
   detected_figure_count: 2
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/HybridFilterExample.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/HybridFilterExample.ipynb
   python_cell_count: 4
   no_figure_utility: false
 - topic: publish_all_helpfiles
   source_type: m
-  source_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT_currentRelease_Local/helpfiles/publish_all_helpfiles.m
+  source_path: /private/tmp/upstream-nstat-matlab/helpfiles/publish_all_helpfiles.m
   expected_section_count: 1
   expected_figure_count: 0
   detected_figure_count: 0
-  notebook_output_path: /Users/iahncajigas/Library/CloudStorage/Dropbox/Research/Matlab/nSTAT-python/notebooks/publish_all_helpfiles.ipynb
+  notebook_output_path: /private/tmp/nstat-python-sync-20260305/notebooks/publish_all_helpfiles.ipynb
   python_cell_count: 1
   no_figure_utility: true

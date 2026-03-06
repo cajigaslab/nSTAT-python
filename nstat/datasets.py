@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from .data_manager import ensure_example_data
 from .errors import DataNotFoundError
 
 MANIFEST_PATH = Path(__file__).resolve().parent / "data" / "manifest.json"
@@ -40,13 +41,26 @@ def list_datasets() -> list[str]:
     return sorted(_load_manifest().keys())
 
 
+def _resolve_dataset_target(rel_path: str) -> Path:
+    repo_root = _repo_root()
+    rel = Path(rel_path)
+    if not rel.parts:
+        return repo_root / rel
+    if rel.parts[0] == "data":
+        try:
+            data_dir = ensure_example_data(download=False)
+        except FileNotFoundError as exc:
+            raise DataNotFoundError(str(exc)) from exc
+        return data_dir.joinpath(*rel.parts[1:])
+    return repo_root / rel
+
+
 def get_dataset_path(name: str) -> Path:
     entries = _load_manifest()
     if name not in entries:
         raise DataNotFoundError(f"Unknown dataset '{name}'. Available: {', '.join(sorted(entries))}")
 
-    rel = entries[name]["path"]
-    path = _repo_root() / rel
+    path = _resolve_dataset_target(entries[name]["path"])
     if not path.exists():
         raise DataNotFoundError(f"Dataset '{name}' not found at expected path: {path}")
     return path
@@ -54,10 +68,13 @@ def get_dataset_path(name: str) -> Path:
 
 def verify_checksums() -> dict[str, bool]:
     entries = _load_manifest()
-    root = _repo_root()
     result: dict[str, bool] = {}
     for name, item in entries.items():
-        path = root / item["path"]
+        try:
+            path = _resolve_dataset_target(item["path"])
+        except DataNotFoundError:
+            result[name] = False
+            continue
         expected = item.get("sha256", "")
         if not path.exists() or not expected:
             result[name] = False

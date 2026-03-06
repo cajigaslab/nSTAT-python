@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import textwrap
 import xml.etree.ElementTree as ET
@@ -38,21 +39,21 @@ MLX_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 NO_FIGURE_UTILITY_TOPICS = {"publish_all_helpfiles"}
 
 
-@dataclass(slots=True)
+@dataclass
 class SourceLine:
     line_no: int
     raw: str
     is_code: bool
 
 
-@dataclass(slots=True)
+@dataclass
 class SourceSection:
     index: int
     title: str
     lines: list[SourceLine]
 
 
-@dataclass(slots=True)
+@dataclass
 class FigureEvent:
     topic: str
     section_index: int
@@ -136,11 +137,16 @@ def _resolve_help_root(args: argparse.Namespace) -> Path:
     local_path = str(ref.get("local_path", "")).strip()
     help_subdir = str(ref.get("helpfiles_subdir", "helpfiles"))
     candidates: list[Path] = []
+    env_repo_var = str(ref.get("env_repo_var", "NSTAT_MATLAB_REPO")).strip()
+    if env_repo_var and os.environ.get(env_repo_var):
+        candidates.append((Path(os.environ[env_repo_var]).expanduser().resolve() / help_subdir))
     if local_path:
         local = Path(local_path)
         if not local.is_absolute():
             local = (args.repo_root / local).resolve()
         candidates.append(local / help_subdir)
+    candidates.append((args.repo_root.parent / "nSTAT" / help_subdir).resolve())
+    candidates.append((args.repo_root.parent / "nSTAT-matlab" / help_subdir).resolve())
     candidates.append((args.repo_root.parent / "nSTAT_currentRelease_Local" / "helpfiles").resolve())
     candidates.append((Path("/tmp/upstream-nstat") / "helpfiles").resolve())
     for candidate in candidates:
@@ -553,6 +559,8 @@ def _bootstrap_cell(topic: str, source_path: Path, expected_figures: int) -> lis
         import sys
 
         REPO_ROOT = Path.cwd().resolve().parent
+        if str(REPO_ROOT) not in sys.path:
+            sys.path.insert(0, str(REPO_ROOT))
         SRC_PATH = (REPO_ROOT / "src").resolve()
         if str(SRC_PATH) not in sys.path:
             sys.path.insert(0, str(SRC_PATH))

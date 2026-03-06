@@ -9,6 +9,7 @@ import numpy as np
 from scipy.io import loadmat
 
 from .analysis import psth
+from .data_manager import ensure_example_data
 from .decoding_algorithms import DecodingAlgorithms
 from .glm import fit_poisson_glm
 from .simulation import simulate_poisson_from_rate
@@ -17,7 +18,7 @@ from .simulation import simulate_poisson_from_rate
 def _default_repo_root() -> Path:
     cur = Path(__file__).resolve()
     for candidate in [cur, *cur.parents]:
-        if (candidate / "nstat").exists() and (candidate / "data").exists():
+        if (candidate / "nstat").exists():
             return candidate
     return cur.parents[1]
 
@@ -427,9 +428,7 @@ def run_experiment6(repo_root: Path, seed: int = 37) -> dict[str, float]:
 
 
 def run_full_paper_examples(repo_root: Path) -> dict[str, dict[str, float]]:
-    data_dir = repo_root / "data"
-    if not data_dir.exists():
-        raise FileNotFoundError(f"Could not locate data directory: {data_dir}")
+    data_dir = ensure_example_data(download=True)
 
     return {
         "experiment1": run_experiment1(data_dir),

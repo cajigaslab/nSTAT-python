@@ -34,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--matlab-image-root",
         type=Path,
-        default=Path("baseline/validation/notebook_images"),
+        default=Path("output/matlab_help_images"),
         help="Root folder with MATLAB reference fig_###.png assets.",
     )
     parser.add_argument(
@@ -49,10 +49,33 @@ def parse_args() -> argparse.Namespace:
         help="Optional comma-separated topic subset to validate.",
     )
     parser.add_argument(
+        "--group",
+        default="",
+        help="Optional topic group to validate (for example: smoke, core, all).",
+    )
+    parser.add_argument(
+        "--notebook-manifest",
+        type=Path,
+        default=Path("tools/notebooks/notebook_manifest.yml"),
+        help="Notebook manifest used to resolve group membership.",
+    )
+    parser.add_argument(
+        "--groups-file",
+        type=Path,
+        default=Path("tools/notebooks/topic_groups.yml"),
+        help="Optional explicit topic-group mapping file.",
+    )
+    parser.add_argument(
         "--out-json",
         type=Path,
         default=Path("output/pdf/image_mode_parity/summary.json"),
         help="JSON summary output path.",
+    )
+    parser.add_argument(
+        "--write-summary",
+        type=Path,
+        default=None,
+        help="Alias for --out-json.",
     )
     parser.add_argument(
         "--diff-root",
@@ -61,6 +84,39 @@ def parse_args() -> argparse.Namespace:
         help="Directory for per-figure diff images on failures.",
     )
     return parser.parse_args()
+
+
+def _load_yaml(path: Path) -> dict:
+    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(payload, dict):
+        raise ValueError(f"Invalid YAML payload in {path}")
+    return payload
+
+
+def _load_group_topics(
+    group: str,
+    *,
+    notebook_manifest: Path,
+    groups_file: Path,
+) -> list[str]:
+    if not group:
+        return []
+
+    if groups_file.exists():
+        payload = _load_yaml(groups_file)
+        groups = payload.get("groups", {})
+        if isinstance(groups, dict) and group in groups and isinstance(groups[group], list):
+            return [str(item).strip() for item in groups[group] if str(item).strip()]
+
+    payload = _load_yaml(notebook_manifest)
+    rows = payload.get("notebooks", [])
+    if group in {"all", "full"}:
+        return [str(row.get("topic", "")).strip() for row in rows if str(row.get("topic", "")).strip()]
+    return [
+        str(row.get("topic", "")).strip()
+        for row in rows
+        if str(row.get("run_group", "")).strip() == group and str(row.get("topic", "")).strip()
+    ]
 
 
 def _load_gray(path: Path) -> np.ndarray:
@@ -72,7 +128,6 @@ def _load_gray(path: Path) -> np.ndarray:
 
 
 def _resize_like(a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    # Keep implementation dependency-light: crop to overlapping extents.
     rows = min(a.shape[0], b.shape[0])
     cols = min(a.shape[1], b.shape[1])
     return a[:rows, :cols], b[:rows, :cols]
@@ -90,7 +145,6 @@ def _score_pair(a: Path, b: Path) -> dict[str, float]:
         if data_range <= 0.0:
             data_range = 1.0
         ssim_score = float(_ssim(img_a, img_b, data_range=data_range))
-    # Gate on a robust visual score to reduce renderer-specific SSIM sensitivity.
     score = float(max(ssim_score, rmse_score))
     return {"score": score, "ssim": float(ssim_score), "rmse_score": rmse_score}
 
@@ -100,7 +154,6 @@ def _save_diff_image(py_path: Path, mat_path: Path, out_path: Path) -> None:
     img_b = _load_gray(mat_path)
     img_a, img_b = _resize_like(img_a, img_b)
     diff = np.abs(img_a - img_b)
-    # Normalize for visibility while staying deterministic.
     maxv = float(np.max(diff))
     if maxv > 0:
         diff = diff / maxv
@@ -110,8 +163,22 @@ def _save_diff_image(py_path: Path, mat_path: Path, out_path: Path) -> None:
 
 def main() -> int:
     args = parse_args()
-    manifest = yaml.safe_load(args.manifest.read_text(encoding="utf-8")) or {}
+    if args.write_summary is not None:
+        args.out_json = args.write_summary
+
+    manifest = _load_yaml(args.manifest)
     rows = manifest.get("topics", [])
+    if args.group.strip():
+        group_topics = set(
+            _load_group_topics(
+                args.group.strip(),
+                notebook_manifest=args.notebook_manifest,
+                groups_file=args.groups_file,
+            )
+        )
+        if not group_topics:
+            raise RuntimeError(f"No topics matched --group={args.group!r}")
+        rows = [row for row in rows if str(row.get("topic", "")).strip() in group_topics]
     if args.topics.strip():
         wanted = {token.strip() for token in args.topics.split(",") if token.strip()}
         rows = [row for row in rows if str(row.get("topic", "")).strip() in wanted]

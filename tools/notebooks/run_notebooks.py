@@ -13,12 +13,11 @@ import yaml
 from nbclient import NotebookClient
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class NotebookTarget:
     topic: str
     path: Path
     run_group: str
-
 
 
 def parse_args() -> argparse.Namespace:
@@ -37,9 +36,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--group",
-        choices=["smoke", "full", "all"],
         default="smoke",
-        help="Execution group: smoke subset, full (all), or all (alias).",
+        help="Execution group: smoke, core, full, all, or a custom group from the groups file.",
     )
     parser.add_argument(
         "--timeout",
@@ -52,8 +50,13 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Optional comma-separated topic subset to execute.",
     )
+    parser.add_argument(
+        "--groups-file",
+        type=Path,
+        default=Path(__file__).resolve().parent / "topic_groups.yml",
+        help="Optional topic-group mapping file.",
+    )
     return parser.parse_args()
-
 
 
 def load_targets(manifest_path: Path, repo_root: Path) -> list[NotebookTarget]:
@@ -70,12 +73,25 @@ def load_targets(manifest_path: Path, repo_root: Path) -> list[NotebookTarget]:
     return targets
 
 
+def load_topic_groups(groups_file: Path) -> dict[str, list[str]]:
+    if not groups_file.exists():
+        return {}
+    payload = yaml.safe_load(groups_file.read_text(encoding="utf-8")) or {}
+    groups = payload.get("groups", {})
+    out: dict[str, list[str]] = {}
+    if not isinstance(groups, dict):
+        return out
+    for key, value in groups.items():
+        if not isinstance(value, list):
+            continue
+        out[str(key)] = [str(item).strip() for item in value if str(item).strip()]
+    return out
+
 
 def select_targets(targets: list[NotebookTarget], group: str) -> list[NotebookTarget]:
     if group in {"full", "all"}:
         return targets
     return [target for target in targets if target.run_group == "smoke"]
-
 
 
 def execute_notebook(path: Path, timeout: int) -> None:
@@ -89,14 +105,21 @@ def execute_notebook(path: Path, timeout: int) -> None:
     client.execute()
 
 
-
 def main() -> int:
     args = parse_args()
     os.environ.setdefault("OMP_NUM_THREADS", "1")
     os.environ.setdefault("MKL_NUM_THREADS", "1")
     os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
     os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
-    targets = select_targets(load_targets(args.manifest, args.repo_root), args.group)
+
+    all_targets = load_targets(args.manifest, args.repo_root)
+    groups = load_topic_groups(args.groups_file)
+    if args.group in groups:
+        wanted = set(groups[args.group])
+        targets = [target for target in all_targets if target.topic in wanted]
+    else:
+        targets = select_targets(all_targets, args.group)
+
     if args.topics.strip():
         wanted = {token.strip() for token in args.topics.split(",") if token.strip()}
         targets = [target for target in targets if target.topic in wanted]
