@@ -6,5 +6,6 @@ reference:
   previous_ref_source: historical parity pin from nSTAT-python commit ce3e19d
   local_path: /tmp/upstream-nstat-matlab
   env_repo_var: NSTAT_MATLAB_REPO
+  env_helpfiles_source_var: NSTAT_MATLAB_HELPFILES_SOURCE
   helpfiles_subdir: helpfiles
   data_subdir: data

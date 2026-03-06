@@ -18,6 +18,15 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--matlab-repo", type=Path, required=True)
+    parser.add_argument(
+        "--hydrate-helpfiles-from",
+        type=Path,
+        default=None,
+        help=(
+            "Optional materialized MATLAB helpfiles root or repo root. "
+            "Defaults to $NSTAT_MATLAB_HELPFILES_SOURCE when set."
+        ),
+    )
     parser.add_argument("--source-manifest", type=Path, default=Path("parity/help_source_manifest.yml"))
     parser.add_argument("--notebook-manifest", type=Path, default=Path("tools/notebooks/notebook_manifest.yml"))
     parser.add_argument("--groups-file", type=Path, default=Path("tools/notebooks/topic_groups.yml"))
@@ -121,6 +130,37 @@ def _kill_stale_export_matlab() -> None:
             continue
 
 
+def _hydrate_helpfile_assets(
+    *,
+    repo_root: Path,
+    matlab_repo: Path,
+    output_root: Path,
+    source_help_root: Path | None,
+) -> Path:
+    report_path = output_root / "hydrate_helpfiles_report.json"
+    cmd = [
+        "python3",
+        "tools/reports/hydrate_matlab_helpfile_assets.py",
+        "--matlab-repo",
+        str(matlab_repo),
+        "--report-json",
+        str(report_path),
+    ]
+    if source_help_root is not None:
+        cmd.extend(["--source-help-root", str(source_help_root)])
+    proc = subprocess.run(
+        cmd,
+        cwd=repo_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "helpfile hydration failed").strip()
+        raise RuntimeError(detail)
+    return report_path
+
+
 def _verify_topic_output(row: dict[str, object], output_root: Path) -> dict[str, object]:
     topic = str(row.get("topic", "")).strip()
     expected = int(row.get("expected_figure_count", 0))
@@ -142,12 +182,19 @@ def _verify_topic_output(row: dict[str, object], output_root: Path) -> dict[str,
     }
 
 
+def _reset_topic_output(output_root: Path, topic: str) -> None:
+    topic_dir = output_root / topic
+    if topic_dir.exists():
+        shutil.rmtree(topic_dir)
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
     matlab_repo = args.matlab_repo.resolve()
     output_root = (repo_root / args.output_root).resolve()
     report_json = (repo_root / args.report_json).resolve()
+    hydrate_source = args.hydrate_helpfiles_from.expanduser().resolve() if args.hydrate_helpfiles_from else None
 
     data_proc = subprocess.run(
         [
@@ -167,7 +214,11 @@ def main() -> int:
     if args.dry_run:
         print(
             json.dumps(
-                {"topics": [str(row.get("topic", "")) for row in rows], "data_dir": str(data_dir)},
+                {
+                    "topics": [str(row.get("topic", "")) for row in rows],
+                    "data_dir": str(data_dir),
+                    "hydrate_helpfiles_from": str(hydrate_source) if hydrate_source else os.environ.get("NSTAT_MATLAB_HELPFILES_SOURCE", ""),
+                },
                 indent=2,
             )
         )
@@ -175,6 +226,12 @@ def main() -> int:
 
     output_root.mkdir(parents=True, exist_ok=True)
     report_json.parent.mkdir(parents=True, exist_ok=True)
+    hydrate_report = _hydrate_helpfile_assets(
+        repo_root=repo_root,
+        matlab_repo=matlab_repo,
+        output_root=output_root,
+        source_help_root=hydrate_source,
+    )
     env = {**os.environ, "NSTAT_DATA_DIR": str(data_dir)}
 
     results: list[dict[str, object]] = []
@@ -182,6 +239,8 @@ def main() -> int:
     for idx, row in enumerate(rows, start=1):
         topic = str(row.get("topic", "")).strip()
         topic_report = output_root / f"report_{topic}.json"
+        topic_log_dir = output_root / "logs" / topic
+        _reset_topic_output(output_root, topic)
         cmd = [
             "python3",
             "tools/reports/export_matlab_helpfile_figures.py",
@@ -191,6 +250,8 @@ def main() -> int:
             str(output_root),
             "--report-json",
             str(topic_report),
+            "--log-dir",
+            str(topic_log_dir),
             "--topics",
             topic,
             "--topics-batch-size",
@@ -230,6 +291,7 @@ def main() -> int:
     payload = {
         "matlab_repo": str(matlab_repo),
         "data_dir": str(data_dir),
+        "hydrate_helpfiles_report": str(hydrate_report),
         "topic_count": len(results),
         "results": results,
         "failures": failures,
