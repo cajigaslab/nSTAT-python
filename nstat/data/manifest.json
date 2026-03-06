@@ -23,11 +23,7 @@
     "place_cell_animal1": {
       "path": "data/Place Cells/PlaceCellDataAnimal1.mat",
       "sha256": "8806ab38c62a04ee1bec9cabab907a8f9fa3d66e0799fa09de8acd01789fc77b"
-    },
-    "hybrid_filter_example": {
-      "path": "helpfiles/paperHybridFilterExample.mat",
-      "sha256": "0a9941cc9cf564f1aaffdcd6dac766ada1f514926b610949bf0545c1b1bf401d"
     }
   },
-  "notes": "Core offline datasets required by canonical paper/help workflows."
+  "notes": "Core offline datasets required by canonical paper workflows."
 }

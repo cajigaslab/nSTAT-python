@@ -2,91 +2,85 @@ version: 1
 examples:
 - name: AnalysisExamples
   relative_path: notebooks/AnalysisExamples.ipynb
-  description: Notebook generated from MATLAB help source for AnalysisExamples.
+  description: Notebook example for AnalysisExamples.
 - name: ConfigCollExamples
   relative_path: notebooks/ConfigCollExamples.ipynb
-  description: Notebook generated from MATLAB help source for ConfigCollExamples.
+  description: Notebook example for ConfigCollExamples.
 - name: CovCollExamples
   relative_path: notebooks/CovCollExamples.ipynb
-  description: Notebook generated from MATLAB help source for CovCollExamples.
+  description: Notebook example for CovCollExamples.
 - name: CovariateExamples
   relative_path: notebooks/CovariateExamples.ipynb
-  description: Notebook generated from MATLAB help source for CovariateExamples.
+  description: Notebook example for CovariateExamples.
 - name: DecodingExample
   relative_path: notebooks/DecodingExample.ipynb
-  description: Notebook generated from MATLAB help source for DecodingExample.
+  description: Notebook example for DecodingExample.
 - name: DecodingExampleWithHist
   relative_path: notebooks/DecodingExampleWithHist.ipynb
-  description: Notebook generated from MATLAB help source for DecodingExampleWithHist.
+  description: Notebook example for DecodingExampleWithHist.
 - name: EventsExamples
   relative_path: notebooks/EventsExamples.ipynb
-  description: Notebook generated from MATLAB help source for EventsExamples.
+  description: Notebook example for EventsExamples.
 - name: ExplicitStimulusWhiskerData
   relative_path: notebooks/ExplicitStimulusWhiskerData.ipynb
-  description: Notebook generated from MATLAB help source for ExplicitStimulusWhiskerData.
+  description: Notebook example for ExplicitStimulusWhiskerData.
 - name: FitResSummaryExamples
   relative_path: notebooks/FitResSummaryExamples.ipynb
-  description: Notebook generated from MATLAB help source for FitResSummaryExamples.
+  description: Notebook example for FitResSummaryExamples.
 - name: FitResultExamples
   relative_path: notebooks/FitResultExamples.ipynb
-  description: Notebook generated from MATLAB help source for FitResultExamples.
+  description: Notebook example for FitResultExamples.
 - name: HippocampalPlaceCellExample
   relative_path: notebooks/HippocampalPlaceCellExample.ipynb
-  description: Notebook generated from MATLAB help source for HippocampalPlaceCellExample.
+  description: Notebook example for HippocampalPlaceCellExample.
 - name: HistoryExamples
   relative_path: notebooks/HistoryExamples.ipynb
-  description: Notebook generated from MATLAB help source for HistoryExamples.
+  description: Notebook example for HistoryExamples.
 - name: NetworkTutorial
   relative_path: notebooks/NetworkTutorial.ipynb
-  description: Notebook generated from MATLAB help source for NetworkTutorial.
+  description: Notebook example for NetworkTutorial.
 - name: PPSimExample
   relative_path: notebooks/PPSimExample.ipynb
-  description: Notebook generated from MATLAB help source for PPSimExample.
+  description: Notebook example for PPSimExample.
 - name: PPThinning
   relative_path: notebooks/PPThinning.ipynb
-  description: Notebook generated from MATLAB help source for PPThinning.
+  description: Notebook example for PPThinning.
 - name: PSTHEstimation
   relative_path: notebooks/PSTHEstimation.ipynb
-  description: Notebook generated from MATLAB help source for PSTHEstimation.
+  description: Notebook example for PSTHEstimation.
 - name: SignalObjExamples
   relative_path: notebooks/SignalObjExamples.ipynb
-  description: Notebook generated from MATLAB help source for SignalObjExamples.
+  description: Notebook example for SignalObjExamples.
 - name: StimulusDecode2D
   relative_path: notebooks/StimulusDecode2D.ipynb
-  description: Notebook generated from MATLAB help source for StimulusDecode2D.
+  description: Notebook example for StimulusDecode2D.
 - name: TrialConfigExamples
   relative_path: notebooks/TrialConfigExamples.ipynb
-  description: Notebook generated from MATLAB help source for TrialConfigExamples.
+  description: Notebook example for TrialConfigExamples.
 - name: TrialExamples
   relative_path: notebooks/TrialExamples.ipynb
-  description: Notebook generated from MATLAB help source for TrialExamples.
+  description: Notebook example for TrialExamples.
 - name: ValidationDataSet
   relative_path: notebooks/ValidationDataSet.ipynb
-  description: Notebook generated from MATLAB help source for ValidationDataSet.
+  description: Notebook example for ValidationDataSet.
 - name: mEPSCAnalysis
   relative_path: notebooks/mEPSCAnalysis.ipynb
-  description: Notebook generated from MATLAB help source for mEPSCAnalysis.
+  description: Notebook example for mEPSCAnalysis.
 - name: nSTATPaperExamples
   relative_path: notebooks/nSTATPaperExamples.ipynb
-  description: Notebook generated from MATLAB help source for nSTATPaperExamples.
+  description: Notebook example for nSTATPaperExamples.
 - name: nSpikeTrainExamples
   relative_path: notebooks/nSpikeTrainExamples.ipynb
-  description: Notebook generated from MATLAB help source for nSpikeTrainExamples.
+  description: Notebook example for nSpikeTrainExamples.
 - name: nstCollExamples
   relative_path: notebooks/nstCollExamples.ipynb
-  description: Notebook generated from MATLAB help source for nstCollExamples.
+  description: Notebook example for nstCollExamples.
 - name: AnalysisExamples2
   relative_path: notebooks/AnalysisExamples2.ipynb
-  description: Notebook generated from MATLAB help source for AnalysisExamples2.
-- name: DocumentationSetup2025b
-  relative_path: notebooks/DocumentationSetup2025b.ipynb
-  description: Notebook generated from MATLAB help source for DocumentationSetup2025b.
+  description: Notebook example for AnalysisExamples2.
 - name: FitResultReference
   relative_path: notebooks/FitResultReference.ipynb
-  description: Notebook generated from MATLAB help source for FitResultReference.
+  description: Notebook example for FitResultReference.
 - name: HybridFilterExample
   relative_path: notebooks/HybridFilterExample.ipynb
-  description: Notebook generated from MATLAB help source for HybridFilterExample.
-- name: publish_all_helpfiles
-  relative_path: notebooks/publish_all_helpfiles.ipynb
-  description: Notebook generated from MATLAB help source for publish_all_helpfiles.
+  description: Notebook example for HybridFilterExample.

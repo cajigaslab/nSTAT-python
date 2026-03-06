@@ -7,4 +7,3 @@ Minimal documentation for the standalone Python nSTAT core package.
    :maxdepth: 2
 
    api
-   local_matlab_parity
