@@ -60,7 +60,7 @@ jobs:
             --timeout 900 \
             --skip-command-tests \
             --skip-parity-check \
-            --parity-mode gate
+            --parity-mode image
 
       - name: Export MATLAB strict-ordinal help figures (if MATLAB is available)
         run: |
