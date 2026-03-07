@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import time
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +38,6 @@ def build_gallery_manifest(repo_root: Path | None = None) -> dict[str, Any]:
             }
         )
     return {
-        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "figure_root": "docs/figures",
         "examples": examples,
     }

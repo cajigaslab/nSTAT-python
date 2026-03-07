@@ -26,6 +26,31 @@ jobs:
       - name: Run unit tests
         run: pytest -q
 
+  paper-gallery-artifacts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+      - name: Regenerate paper gallery artifacts
+        run: python tools/paper_examples/build_gallery.py
+      - name: Fail on paper gallery drift
+        run: |
+          git diff --exit-code -- \
+            docs/paper_examples.md \
+            docs/figures/manifest.json \
+            docs/figures/example01/README.md \
+            docs/figures/example02/README.md \
+            docs/figures/example03/README.md \
+            docs/figures/example04/README.md \
+            docs/figures/example05/README.md
+
   data-integrity:
     runs-on: ubuntu-latest
 

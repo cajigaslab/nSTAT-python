@@ -12,8 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def test_paper_gallery_manifest_is_generated_from_source_manifest() -> None:
     committed = json.loads((REPO_ROOT / "docs" / "figures" / "manifest.json").read_text(encoding="utf-8"))
     built = build_gallery_manifest(REPO_ROOT)
-    assert committed["figure_root"] == built["figure_root"]
-    assert committed["examples"] == built["examples"]
+    assert committed == built
 
 
 def test_paper_examples_markdown_matches_generator() -> None:
