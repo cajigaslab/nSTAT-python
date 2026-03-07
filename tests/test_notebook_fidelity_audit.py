@@ -31,6 +31,11 @@ def test_notebook_fidelity_audit_has_structural_counts() -> None:
         assert isinstance(row["python_has_finalize_call"], bool)
 
 
+def test_notebook_fidelity_audit_has_no_partial_items() -> None:
+    audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
+    assert all(row["fidelity_status"] != "partial" for row in audit.get("items", []))
+
+
 def test_notebook_fidelity_audit_matches_generator_when_matlab_repo_is_available() -> None:
     matlab_repo = default_matlab_repo_root(REPO_ROOT)
     if not matlab_repo.exists():

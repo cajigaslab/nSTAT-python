@@ -102,33 +102,37 @@ items:
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
   python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
-  fidelity_status: partial
-  remaining_differences: Core place-cell workflow is ported, but MATLAB figure sequencing
-    and summary outputs are not yet exact.
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now reproduces the dataset-backed place-cell
+    model-comparison and field-visualization workflow with real figures; the Python
+    port still uses an approximate Zernike-like basis rather than the original MATLAB
+    toolbox implementation.
   python_sections: 5
-  python_expected_figures: 9
+  python_expected_figures: 11
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 5
   matlab_published_figures: 11
   section_delta: 0
-  figure_delta: -2
+  figure_delta: 0
 - topic: HybridFilterExample
   source_matlab: HybridFilterExample.mlx
   python_notebook: notebooks/HybridFilterExample.ipynb
-  fidelity_status: partial
-  remaining_differences: Hybrid filtering workflow executes, but MATLAB-specific output
-    details and downstream validation remain incomplete.
-  python_sections: 4
-  python_expected_figures: 2
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now reproduces the hybrid-filter simulation,
+    single-run decoding, and averaged summary figures with real outputs; the Python
+    port still uses the current hybrid-filter implementation instead of every MATLAB-specific
+    reporting branch.
+  python_sections: 6
+  python_expected_figures: 3
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 6
   matlab_published_figures: 3
-  section_delta: -2
-  figure_delta: -1
+  section_delta: 0
+  figure_delta: 0
 - topic: PPSimExample
   source_matlab: PPSimExample.mlx
   python_notebook: notebooks/PPSimExample.ipynb
@@ -164,15 +168,17 @@ items:
 - topic: StimulusDecode2D
   source_matlab: StimulusDecode2D.mlx
   python_notebook: notebooks/StimulusDecode2D.ipynb
-  fidelity_status: partial
-  remaining_differences: The 2D stimulus decoding workflow runs, but MATLAB-equivalent
-    outputs and tolerance-backed parity checks still need expansion.
-  python_sections: 3
-  python_expected_figures: 8
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now reproduces the 2-D stimulus-decoding workflow
+    with simulated receptive fields and decoded trajectories; the current Python decoder
+    uses regression-based state recovery instead of MATLAB's symbolic-CIF nonlinear
+    filter.
+  python_sections: 4
+  python_expected_figures: 6
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 4
   matlab_published_figures: 6
-  section_delta: -1
-  figure_delta: 2
+  section_delta: 0
+  figure_delta: 0

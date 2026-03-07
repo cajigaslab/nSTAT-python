@@ -34,15 +34,14 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 | Status | Count |
 |---|---:|
 | `exact` | 0 |
-| `high_fidelity` | 8 |
-| `partial` | 3 |
+| `high_fidelity` | 11 |
+| `partial` | 0 |
 
 ## Coverage Notes
 
 - Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable.
 - Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.
-- Notebook fidelity: workflow coverage is complete, but 3 MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`.
-- Notebook fidelity audit: structural section/figure comparisons are recorded in `parity/notebook_fidelity.yml`.
+- Notebook fidelity: all tracked MATLAB-helpfile notebook ports are marked high fidelity or exact.
 - Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
 - Class fidelity: the class audit reports no partial, shim-only, or missing items.
 
@@ -52,9 +51,7 @@ No partial or missing items remain in the mapping inventory.
 
 ## Remaining Notebook-Fidelity Deltas
 
-- `HippocampalPlaceCellExample` -> `notebooks/HippocampalPlaceCellExample.ipynb` [partial]: Core place-cell workflow is ported, but MATLAB figure sequencing and summary outputs are not yet exact.
-- `HybridFilterExample` -> `notebooks/HybridFilterExample.ipynb` [partial]: Hybrid filtering workflow executes, but MATLAB-specific output details and downstream validation remain incomplete.
-- `StimulusDecode2D` -> `notebooks/StimulusDecode2D.ipynb` [partial]: The 2D stimulus decoding workflow runs, but MATLAB-equivalent outputs and tolerance-backed parity checks still need expansion.
+No partial notebook-fidelity items remain in `tools/notebooks/parity_notes.yml`.
 
 ## Remaining Class-Fidelity Deltas
 

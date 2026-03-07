@@ -36,3 +36,7 @@ def test_target_notebooks_start_with_machine_readable_parity_note() -> None:
         assert row["source_matlab"] in source
         assert row["fidelity_status"] in source
         assert row["remaining_differences"] in source
+
+
+def test_notebook_parity_notes_have_no_partial_statuses() -> None:
+    assert all(row["fidelity_status"] != "partial" for row in _load_notes())
