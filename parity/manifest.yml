@@ -35,8 +35,8 @@ summary:
     missing: 0
     not_applicable: 2
   repo_structure:
-    mapped: 0
-    partial: 1
+    mapped: 1
+    partial: 0
     missing: 0
     not_applicable: 0
 public_api:
@@ -428,5 +428,5 @@ installer_setup:
 repo_structure:
   - item: canonical_package_layout
     python_target: nstat/
-    status: partial
-    notes: The root nstat/ package is canonical, but vestigial src/nstat files and src path injection in tests still exist.
+    status: mapped
+    notes: The repo now uses a single root-level nstat/ package with no src/nstat mirror or repo-root package stub.

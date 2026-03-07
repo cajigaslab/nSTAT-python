@@ -8,7 +8,7 @@
 ## Installation
 
 ```bash
-python -m pip install nstat
+python -m pip install nstat-toolbox
 ```
 
 From source:
