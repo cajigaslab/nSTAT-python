@@ -13,8 +13,8 @@ Generated from `parity/manifest.yml`.
 |---|---:|---:|---:|---:|
 | `public api` | 18 | 0 | 0 | 1 |
 | `help workflows` | 29 | 0 | 0 | 0 |
-| `paper examples` | 1 | 7 | 0 | 0 |
-| `docs gallery` | 4 | 4 | 0 | 0 |
+| `paper examples` | 2 | 6 | 0 | 0 |
+| `docs gallery` | 5 | 3 | 0 | 0 |
 | `installer setup` | 3 | 2 | 0 | 2 |
 | `repo structure` | 1 | 0 | 0 | 0 |
 
@@ -28,7 +28,6 @@ Generated from `parity/manifest.yml`.
 
 ### `paper_examples`
 
-- `example02_whisker_stimulus_thalamus` -> `nstat.paper_examples_full.run_experiment2`: Canonical Python script now exists, but the MATLAB-matched figure set is not yet exported.
 - `example03_psth_and_ssglm` -> `nstat.paper_examples_full.run_experiment3`: Canonical Python script now exists and bundles experiment3/3b, but the MATLAB-matched figure gallery is not yet exported.
 - `example04_place_cells_continuous_stimulus` -> `nstat.paper_examples_full.run_experiment4`: Canonical Python script now exists, but the MATLAB-matched figure set is not yet exported.
 - `example05_decoding_ppaf_pphf` -> `nstat.paper_examples_full.run_experiment5`: Canonical Python script now exists and bundles experiment5/5b/6, but the MATLAB-matched figure gallery is not yet exported.
@@ -38,7 +37,6 @@ Generated from `parity/manifest.yml`.
 
 ### `docs_gallery`
 
-- `docs/figures/example02/` -> `docs/figures/example02/`: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
 - `docs/figures/example03/` -> `docs/figures/example03/`: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
 - `docs/figures/example04/` -> `docs/figures/example04/`: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
 - `docs/figures/example05/` -> `docs/figures/example05/`: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.

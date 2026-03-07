@@ -269,8 +269,8 @@ def run_experiment2(data_dir: Path, *, return_payload: bool = False) -> dict[str
     selection_n = int(min(6000, y.shape[0]))
     candidate_q = np.arange(1, 29, dtype=int)
     ks_stats = np.zeros(candidate_q.shape[0], dtype=float)
-    delta_aic = np.zeros(candidate_q.shape[0], dtype=float)
-    delta_bic = np.zeros(candidate_q.shape[0], dtype=float)
+    aic_series = np.zeros(candidate_q.shape[0], dtype=float)
+    bic_series = np.zeros(candidate_q.shape[0], dtype=float)
     y_sel = y[:selection_n]
     stim_sel = stim[:selection_n]
     stim_vel_sel = stim_vel[:selection_n]
@@ -284,8 +284,11 @@ def run_experiment2(data_dir: Path, *, return_payload: bool = False) -> dict[str
         ideal_q, emp_q, _ = _ks_curve(uq)
         ks_stats[idx] = float(np.max(np.abs(emp_q - ideal_q))) if ideal_q.size else 0.0
         aic_q, bic_q = _aic_bic(model_q.log_likelihood, y_sel.shape[0], x_sel.shape[1] + 1)
-        delta_aic[idx] = aic_q - aic3
-        delta_bic[idx] = bic_q - bic3
+        aic_series[idx] = aic_q
+        bic_series[idx] = bic_q
+
+    delta_aic = aic_series - aic_series[0]
+    delta_bic = bic_series - bic_series[0]
 
     xcorr_window = int(min(20000, y.shape[0]))
     xcorr = correlate(y[:xcorr_window] - np.mean(y[:xcorr_window]), stim[:xcorr_window] - np.mean(stim[:xcorr_window]), mode="full", method="fft")
