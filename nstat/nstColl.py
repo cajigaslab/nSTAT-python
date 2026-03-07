@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from ._compat import warn_deprecated_adapter
-from .spikes import SpikeTrainCollection
+from .trial import SpikeTrainCollection as _SpikeTrainCollection
 
 
-class nstColl(SpikeTrainCollection):
-    def __init__(self, *args, **kwargs) -> None:
-        warn_deprecated_adapter("nstat.nstColl.nstColl", "nstat.spikes.SpikeTrainCollection")
-        super().__init__(*args, **kwargs)
+class nstColl(_SpikeTrainCollection):
+    """MATLAB-facing spike-train collection class."""
 
 
 __all__ = ["nstColl"]

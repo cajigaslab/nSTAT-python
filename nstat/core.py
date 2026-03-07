@@ -1,58 +1,105 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Iterable, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
 
 def _as_1d_float(values: Sequence[float] | np.ndarray, name: str) -> np.ndarray:
+    array = np.asarray(values, dtype=float)
+    if array.ndim == 0:
+        raise ValueError(f"{name} must be array-like.")
+    if array.ndim > 2 or (array.ndim == 2 and min(array.shape) != 1):
+        raise ValueError(f"{name} can only have one dimension.")
+    return array.reshape(-1)
+
+
+def _normalize_signal_matrix(data: Sequence[float] | Sequence[Sequence[float]] | np.ndarray, n_time: int) -> np.ndarray:
+    matrix = np.asarray(data, dtype=float)
+    if matrix.ndim == 0:
+        raise ValueError("Data must be array-like.")
+    if matrix.ndim == 1:
+        matrix = matrix.reshape(-1, 1)
+    elif matrix.ndim != 2:
+        raise ValueError("Data must be one- or two-dimensional.")
+
+    if matrix.shape[0] == n_time:
+        return matrix.astype(float, copy=True)
+    if matrix.shape[1] == n_time:
+        return matrix.T.astype(float, copy=True)
+    raise ValueError("Data dimensions do not match the time vector specified.")
+
+
+def _coerce_1based_indices(values: Sequence[int] | np.ndarray, upper: int) -> list[int]:
+    out: list[int] = []
+    for raw in np.asarray(values).reshape(-1):
+        index = int(raw)
+        if index < 1 or index > upper:
+            raise IndexError("Signal index out of range. Indexing is 1-based.")
+        out.append(index)
+    return out
+
+
+def _roundn(values: Sequence[float] | np.ndarray, decimals: int) -> np.ndarray:
+    return np.round(np.asarray(values, dtype=float), decimals=max(int(decimals), 0))
+
+
+def _matlab_mode_1d(values: Sequence[float] | np.ndarray) -> float:
     array = np.asarray(values, dtype=float).reshape(-1)
     if array.size == 0:
-        raise ValueError(f"{name} must be non-empty.")
-    return array
+        return np.nan
+    unique, counts = np.unique(array, return_counts=True)
+    best = np.flatnonzero(counts == np.max(counts))
+    return float(unique[int(best[0])])
 
 
 class SignalObj:
-    """Python approximation of nSTAT SignalObj.
-
-    The class stores a time vector and one or more aligned signal channels.
-    """
+    """Closer MATLAB-style signal abstraction used throughout the Python port."""
 
     def __init__(
         self,
         time: Sequence[float],
         data: Sequence[float] | Sequence[Sequence[float]] | np.ndarray,
-        name: str = "signal",
-        xlabel: str = "time",
+        name: str = "",
+        xlabelval: str = "time",
         xunits: str = "s",
         yunits: str = "",
-        data_labels: Sequence[str] | None = None,
+        dataLabels: Sequence[str] | str | None = None,
+        plotProps: Sequence[Any] | str | None = None,
+        **kwargs,
     ) -> None:
-        t = _as_1d_float(time, "time")
-        if np.any(np.diff(t) <= 0):
-            raise ValueError("time must be strictly increasing.")
+        if "xlabel" in kwargs and "xlabelval" not in kwargs:
+            xlabelval = kwargs.pop("xlabel")
+        if "data_labels" in kwargs and dataLabels is None:
+            dataLabels = kwargs.pop("data_labels")
+        if kwargs:
+            unexpected = ", ".join(sorted(kwargs))
+            raise TypeError(f"Unexpected keyword arguments: {unexpected}")
 
-        x = np.asarray(data, dtype=float)
-        if x.ndim == 1:
-            x = x[:, None]
-        if x.shape[0] != t.shape[0]:
-            raise ValueError("data must have same first dimension as time.")
+        self.time = _as_1d_float(time, "Time vector")
+        self.data = _normalize_signal_matrix(data, self.time.size)
+        self.name = str(name)
+        self.xlabelval = str(xlabelval)
+        self.xunits = str(xunits)
+        self.yunits = str(yunits)
+        self.minTime = float(np.min(self.time)) if self.time.size else 0.0
+        self.maxTime = float(np.max(self.time)) if self.time.size else 0.0
 
-        self.time = t
-        self.data = x
-        self.name = name
-        self.xlabelval = xlabel
-        self.xunits = xunits
-        self.yunits = yunits
-
-        if data_labels is None:
-            labels = [f"{name}_{k+1}" for k in range(self.data.shape[1])]
+        if self.time.size > 1:
+            delta_t = float(np.mean(np.diff(self.time)))
         else:
-            labels = list(data_labels)
-            if len(labels) != self.data.shape[1]:
-                raise ValueError("data_labels length must match signal dimension.")
-        self.dataLabels = labels
+            delta_t = np.nan
+        if not np.isfinite(delta_t) or delta_t <= 0:
+            delta_t = 0.001
+        self.sampleRate = float(1.0 / delta_t)
+        self.origSampleRate = float(self.sampleRate)
+        self.originalTime = self.time.copy()
+        self.originalData = self.data.copy()
+        self.dataMask = np.ones(self.dimension, dtype=int)
+        self.plotProps: list[Any] = []
+        self.setPlotProps(plotProps)
+        self.setDataLabels(dataLabels if dataLabels is not None else "")
         self.conf_interval: tuple[np.ndarray, np.ndarray] | None = None
 
     @property
@@ -71,132 +118,493 @@ class SignalObj:
 
     @property
     def sample_rate(self) -> float:
-        if self.time.shape[0] < 2:
-            return 0.0
-        dt = np.median(np.diff(self.time))
-        if dt <= 0:
-            return 0.0
-        return float(1.0 / dt)
+        return float(self.sampleRate)
+
+    def _spawn(
+        self,
+        time: np.ndarray,
+        data: np.ndarray,
+        *,
+        data_labels: Sequence[str] | None = None,
+        plot_props: Sequence[Any] | None = None,
+    ) -> "SignalObj":
+        labels = list(self.dataLabels) if data_labels is None else list(data_labels)
+        props = list(self.plotProps) if plot_props is None else list(plot_props)
+        return self.__class__(
+            np.asarray(time, dtype=float).copy(),
+            np.asarray(data, dtype=float).copy(),
+            self.name,
+            self.xlabelval,
+            self.xunits,
+            self.yunits,
+            labels,
+            props,
+        )
 
     def copySignal(self) -> "SignalObj":
-        out = SignalObj(
-            self.time.copy(),
-            self.data.copy(),
-            self.name,
-            self.xlabelval,
-            self.xunits,
-            self.yunits,
-            self.dataLabels,
-        )
-        out.conf_interval = None if self.conf_interval is None else (
-            self.conf_interval[0].copy(),
-            self.conf_interval[1].copy(),
-        )
-        return out
+        copied = self._spawn(self.time, self.data)
+        if self.conf_interval is not None:
+            copied.conf_interval = (
+                np.asarray(self.conf_interval[0], dtype=float).copy(),
+                np.asarray(self.conf_interval[1], dtype=float).copy(),
+            )
+        copied.dataMask = np.asarray(self.dataMask, dtype=int).copy()
+        copied.originalTime = self.originalTime.copy()
+        copied.originalData = self.originalData.copy()
+        copied.sampleRate = float(self.sampleRate)
+        copied.origSampleRate = float(self.origSampleRate)
+        copied.minTime = float(self.minTime)
+        copied.maxTime = float(self.maxTime)
+        return copied
 
     def setName(self, name: str) -> None:
-        self.name = str(name)
+        if not isinstance(name, str):
+            raise TypeError("Name must be a string!")
+        self.name = name
 
-    def setDataLabels(self, labels: Sequence[str]) -> None:
-        labels = list(labels)
+    def setXlabel(self, name: str) -> None:
+        self.xlabelval = str(name)
+
+    def setYLabel(self, name: str) -> None:
+        self.setName(name)
+
+    def setUnits(self, xUnits: str, yUnits: str | None = None) -> None:
+        if yUnits is not None:
+            self.setYUnits(yUnits)
+        self.setXUnits(xUnits)
+
+    def setXUnits(self, units: str) -> None:
+        if isinstance(units, str):
+            self.xunits = units
+
+    def setYUnits(self, units: str) -> None:
+        if isinstance(units, str):
+            self.yunits = units
+
+    def setSampleRate(self, sampleRate: float) -> None:
+        requested = float(sampleRate)
+        current = float(self.sampleRate)
+        if abs(round(requested, 3) - round(current, 3)) > 0:
+            self.resampleMe(requested)
+
+    def setDataLabels(self, dataLabels: Sequence[str] | str | None) -> None:
+        if dataLabels is None or (isinstance(dataLabels, str) and dataLabels == ""):
+            self.dataLabels = ["" for _ in range(self.dimension)]
+            return
+
+        if isinstance(dataLabels, str):
+            self.dataLabels = [dataLabels for _ in range(self.dimension)]
+            return
+
+        labels = [str(label) for label in dataLabels]
         if len(labels) != self.dimension:
-            raise ValueError("labels length must equal number of signal channels.")
+            raise ValueError("Need the number of labels to match the number of dimensions of the SignalObj")
         self.dataLabels = labels
 
-    def setConfInterval(self, bounds: tuple[np.ndarray, np.ndarray]) -> None:
-        low, high = bounds
-        low = np.asarray(low, dtype=float)
-        high = np.asarray(high, dtype=float)
-        if low.shape[0] != self.time.shape[0] or high.shape[0] != self.time.shape[0]:
-            raise ValueError("confidence interval bounds must align with time.")
-        self.conf_interval = (low, high)
+    def setPlotProps(self, plotProps: Sequence[Any] | str | None, index: int | None = None) -> None:
+        if index is None:
+            if plotProps is None:
+                self.plotProps = [None for _ in range(self.dimension)]
+            elif isinstance(plotProps, str):
+                self.plotProps = [plotProps for _ in range(self.dimension)]
+            else:
+                props = list(plotProps)
+                if len(props) == 1 and self.dimension > 1:
+                    props = props * self.dimension
+                if len(props) != self.dimension:
+                    raise ValueError("plotProps length must match signal dimension.")
+                self.plotProps = props
+            return
 
-    def getSubSignal(self, idx: int) -> "SignalObj":
-        if idx < 1 or idx > self.dimension:
+        indices = _coerce_1based_indices([index], self.dimension)
+        target = indices[0] - 1
+        if not self.plotProps:
+            self.plotProps = [None for _ in range(self.dimension)]
+        if isinstance(plotProps, Sequence) and not isinstance(plotProps, str):
+            props = list(plotProps)
+            self.plotProps[target] = props[0] if props else None
+        else:
+            self.plotProps[target] = plotProps
+
+    def setDataMask(self, dataMask: Sequence[int] | np.ndarray) -> None:
+        mask = np.asarray(dataMask, dtype=int).reshape(-1)
+        if mask.size != self.dimension:
+            raise ValueError("dataMask must match the number of signal dimensions.")
+        if np.any((mask != 0) & (mask != 1)):
+            raise ValueError("dataMask must be binary.")
+        self.dataMask = mask
+
+    def setMaskByInd(self, index: Sequence[int] | np.ndarray) -> None:
+        selected = _coerce_1based_indices(index, self.dimension)
+        mask = np.zeros(self.dimension, dtype=int)
+        mask[np.asarray(selected, dtype=int) - 1] = 1
+        self.setDataMask(mask)
+
+    def setMaskByLabels(self, labels: Sequence[str] | str) -> None:
+        indices = self.getIndicesFromLabels(labels)
+        if isinstance(indices, list) and indices and isinstance(indices[0], list):
+            flat = [item for sub in indices for item in sub]
+        elif isinstance(indices, list):
+            flat = indices
+        else:
+            flat = [indices]
+        self.setMaskByInd(flat)
+
+    def setMask(self, mask: Sequence[int] | Sequence[str] | np.ndarray | None = None) -> None:
+        if mask is None:
+            self.setDataMask(np.zeros(self.dimension, dtype=int))
+            return
+
+        if isinstance(mask, str):
+            self.setMaskByLabels(mask)
+            return
+
+        values = list(mask)
+        if not values:
+            self.setDataMask(np.zeros(self.dimension, dtype=int))
+            return
+
+        first = values[0]
+        if isinstance(first, str):
+            self.setMaskByLabels(values)
+            return
+
+        arr = np.asarray(values)
+        if arr.size == self.dimension and np.all(np.isin(arr, [0, 1])):
+            self.setDataMask(arr.astype(int))
+            return
+        self.setMaskByInd(arr.astype(int))
+
+    def getTime(self) -> np.ndarray:
+        return self.time.copy()
+
+    def getData(self) -> np.ndarray:
+        return self.dataToMatrix()
+
+    def getOriginalData(self) -> tuple[np.ndarray, np.ndarray]:
+        return self.originalTime.copy(), self.originalData.copy()
+
+    def getOrigDataSig(self) -> "SignalObj":
+        return self._spawn(self.originalTime, self.originalData)
+
+    def getPlotProps(self, index: int) -> Any:
+        idx = _coerce_1based_indices([index], self.dimension)[0] - 1
+        return self.plotProps[idx]
+
+    def getIndexFromLabel(self, label: str) -> list[int]:
+        matches = [i + 1 for i, value in enumerate(self.dataLabels) if value == label]
+        if not matches:
+            raise ValueError("Label does not exist!")
+        return matches
+
+    def getIndicesFromLabels(self, label: Sequence[str] | str):
+        if isinstance(label, str):
+            matches = self.getIndexFromLabel(label)
+            return matches[0] if len(matches) == 1 else matches
+
+        out = [self.getIndexFromLabel(str(item)) for item in label]
+        counts = [len(item) for item in out]
+        if counts and max(counts) == 1:
+            return [item[0] for item in out]
+        return out
+
+    def getValueAt(self, x: Sequence[float] | float) -> np.ndarray:
+        query = np.asarray(x, dtype=float).reshape(-1)
+        out = np.zeros((query.size, self.dimension), dtype=float)
+        valid = (query >= self.minTime) & (query <= self.maxTime)
+        if np.any(valid):
+            q_valid = query[valid]
+            right = np.searchsorted(self.time, q_valid, side="left")
+            right = np.clip(right, 0, self.time.size - 1)
+            left = np.clip(right - 1, 0, self.time.size - 1)
+            choose_right = np.abs(self.time[right] - q_valid) <= np.abs(self.time[left] - q_valid)
+            indices = np.where(choose_right, right, left)
+            out[valid] = self.data[indices]
+        return out[0] if np.isscalar(x) else out
+
+    def _selector_to_zero_based(self, selectorArray: Sequence[int] | np.ndarray | None) -> np.ndarray:
+        if selectorArray is None:
+            if self.isMaskSet():
+                selected = self.findIndFromDataMask()
+            else:
+                selected = list(range(1, self.dimension + 1))
+        else:
+            if isinstance(selectorArray, str):
+                selected = self.getIndicesFromLabels(selectorArray)
+            else:
+                selected = selectorArray
+        indices = np.asarray(selected, dtype=int).reshape(-1)
+        if indices.size == 0:
+            return np.array([], dtype=int)
+        if np.min(indices) < 1 or np.max(indices) > self.dimension:
             raise IndexError("Signal index out of range. Indexing is 1-based.")
-        j = idx - 1
-        return SignalObj(
+        return indices - 1
+
+    def dataToMatrix(self, selectorArray: Sequence[int] | np.ndarray | None = None) -> np.ndarray:
+        indices = self._selector_to_zero_based(selectorArray)
+        if indices.size == 0:
+            return np.zeros((self.time.size, 0), dtype=float)
+        return self.data[:, indices]
+
+    def _labels_for_indices(self, zero_based: np.ndarray) -> list[str]:
+        return [self.dataLabels[int(i)] for i in zero_based]
+
+    def _plot_props_for_indices(self, zero_based: np.ndarray) -> list[Any]:
+        if not self.plotProps:
+            return [None for _ in zero_based]
+        return [self.plotProps[int(i)] for i in zero_based]
+
+    def getSubSignalFromInd(self, selectorArray: Sequence[int] | np.ndarray) -> "SignalObj":
+        indices = self._selector_to_zero_based(selectorArray)
+        return self._spawn(
             self.time,
-            self.data[:, j],
-            self.name,
-            self.xlabelval,
-            self.xunits,
-            self.yunits,
-            [self.dataLabels[j]],
+            self.data[:, indices],
+            data_labels=self._labels_for_indices(indices),
+            plot_props=self._plot_props_for_indices(indices),
         )
 
-    def getSigInTimeWindow(self, t0: float, t1: float) -> "SignalObj":
-        mask = (self.time >= t0) & (self.time <= t1)
-        if not np.any(mask):
-            raise ValueError("Requested time window has no samples.")
-        return SignalObj(
-            self.time[mask],
-            self.data[mask, :],
-            self.name,
-            self.xlabelval,
-            self.xunits,
-            self.yunits,
-            self.dataLabels,
-        )
+    def getSubSignalFromNames(self, labels: Sequence[str] | str) -> "SignalObj":
+        indices = self.getIndicesFromLabels(labels)
+        return self.getSubSignalFromInd(indices if isinstance(indices, list) else [indices])
+
+    def getSubSignal(self, identifier) -> "SignalObj":
+        if isinstance(identifier, str):
+            return self.getSubSignalFromNames(identifier)
+        if isinstance(identifier, np.ndarray):
+            values = identifier.reshape(-1).tolist()
+        elif isinstance(identifier, Sequence):
+            values = list(identifier)
+        else:
+            values = [identifier]
+        if values and isinstance(values[0], str):
+            return self.getSubSignalFromNames(values)
+        return self.getSubSignalFromInd(values)
+
+    def findNearestTimeIndex(self, time: float) -> int:
+        value = float(time)
+        if value < self.minTime:
+            return 1
+        if value > self.maxTime:
+            return self.time.size
+        right = int(np.searchsorted(self.time, value, side="left"))
+        if right <= 0:
+            return 1
+        if right >= self.time.size:
+            return self.time.size
+        left = right - 1
+        if abs(self.time[right] - value) <= abs(self.time[left] - value):
+            return right + 1
+        return left + 1
+
+    def findNearestTimeIndices(self, times: Sequence[float] | np.ndarray) -> np.ndarray:
+        return np.asarray([self.findNearestTimeIndex(value) for value in np.asarray(times, dtype=float).reshape(-1)], dtype=int)
+
+    def setMinTime(self, minTime: float | None = None, holdVals: int = 0) -> None:
+        target = self.time[0] if minTime is None else float(minTime)
+        timeVec = self.getTime()
+        if target < float(np.min(timeVec)):
+            maxTime = float(np.max(timeVec))
+            dt = 1.0 / self.sampleRate
+            newTime = np.arange(target, maxTime + 0.5 * dt, dt, dtype=float)
+            numSamples = int(newTime.size - timeVec.size)
+            if holdVals == 1:
+                pad = np.tile(self.data[0:1, :], (numSamples, 1))
+            else:
+                pad = np.zeros((numSamples, self.dimension), dtype=float)
+            self.data = np.vstack([pad, self.data])
+            self.time = newTime
+        elif target > float(np.min(timeVec)):
+            startIndex = self.findNearestTimeIndex(target) - 1
+            self.time = self.time[startIndex:]
+            self.data = self.data[startIndex:, :]
+        self.minTime = float(np.min(self.time))
+
+    def setMaxTime(self, maxTime: float | None = None, holdVals: int = 0) -> None:
+        target = self.time[-1] if maxTime is None else float(maxTime)
+        timeVec = self.getTime()
+        if float(np.max(timeVec)) < target:
+            minTime = float(np.min(timeVec))
+            n_samples = int(round(self.sampleRate * (target - minTime))) + 1
+            n_samples = max(n_samples, timeVec.size)
+            newTime = np.linspace(minTime, target, n_samples, dtype=float)
+            numSamples = int(newTime.size - timeVec.size)
+            if holdVals == 1:
+                pad = np.tile(self.data[-1:, :], (numSamples, 1))
+            else:
+                pad = np.zeros((numSamples, self.dimension), dtype=float)
+            self.data = np.vstack([self.data, pad])
+            self.time = newTime
+        elif float(np.max(timeVec)) > target:
+            endIndex = self.findNearestTimeIndex(target)
+            self.time = self.time[:endIndex]
+            self.data = self.data[:endIndex, :]
+        self.maxTime = float(np.max(self.time))
 
     def merge(self, other: "SignalObj") -> "SignalObj":
         if self.time.shape != other.time.shape or np.max(np.abs(self.time - other.time)) > 1e-9:
             raise ValueError("Signals must share an identical time grid to merge.")
-        return SignalObj(
+        merged = self._spawn(
             self.time,
             np.column_stack([self.data, other.data]),
-            self.name,
-            self.xlabelval,
-            self.xunits,
-            self.yunits,
-            [*self.dataLabels, *other.dataLabels],
+            data_labels=[*self.dataLabels, *list(other.dataLabels)],
+            plot_props=[*self.plotProps, *getattr(other, "plotProps", [None for _ in range(other.dimension)])],
         )
+        return merged
+
+    def getSigInTimeWindow(
+        self,
+        wMin: Sequence[float] | float | None = None,
+        wMax: Sequence[float] | float | None = None,
+        holdVals: int = 0,
+    ) -> "SignalObj":
+        if wMax is None:
+            wMax = self.maxTime
+        if wMin is None:
+            wMin = self.minTime
+
+        min_values = np.asarray([wMin] if np.isscalar(wMin) else wMin, dtype=float).reshape(-1)
+        max_values = np.asarray([wMax] if np.isscalar(wMax) else wMax, dtype=float).reshape(-1)
+        if min_values.size != max_values.size:
+            raise ValueError("Window minTimes must contain the same number of elements as window maxTimes")
+
+        if min_values.size == 1 and self.minTime == float(min_values[0]) and self.maxTime == float(max_values[0]):
+            return self.copySignal()
+
+        windowed: SignalObj | None = None
+        for idx, (left, right) in enumerate(zip(min_values, max_values), start=1):
+            current = self.copySignal()
+            if left < current.minTime:
+                current.setMinTime(left, holdVals)
+            if right > current.maxTime:
+                current.setMaxTime(right, holdVals)
+
+            start = current.findNearestTimeIndex(left) - 1
+            stop = current.findNearestTimeIndex(right)
+            current.time = current.time[start:stop]
+            current.data = current.data[start:stop, :]
+            labels = list(current.dataLabels)
+            if min_values.size > 1:
+                labels = [f"{label}_{{{idx}}}" for label in labels]
+            current.setDataLabels(labels)
+            current.setMinTime()
+            current.setMaxTime()
+            windowed = current if windowed is None else windowed.merge(current)
+        return windowed if windowed is not None else self.copySignal()
+
+    def restoreToOriginal(self, rMask: int = 0) -> None:
+        self.time = self.originalTime.copy()
+        self.data = self.originalData.copy()
+        self.minTime = float(np.min(self.time))
+        self.maxTime = float(np.max(self.time))
+        self.sampleRate = float(self.origSampleRate)
+        if rMask == 1:
+            self.resetMask()
+
+    def resetMask(self) -> None:
+        self.dataMask = np.ones(self.dimension, dtype=int)
+
+    def findIndFromDataMask(self) -> list[int]:
+        return [int(index) + 1 for index in np.flatnonzero(self.dataMask == 1)]
+
+    def isMaskSet(self) -> bool:
+        return bool(np.any(self.dataMask == 0))
+
+    def mean(self, axis: int | None = None) -> "SignalObj":
+        axis_arg = 0 if axis is None else axis
+        mean_data = np.mean(self.data, axis=axis_arg)
+        array = np.asarray(mean_data, dtype=float)
+        if array.ndim == 1 and array.size == self.dimension:
+            labels = [f"\\mu({label})" if label else "" for label in self.dataLabels]
+            return self._spawn(
+                np.asarray([self.time[0], self.time[-1]], dtype=float),
+                np.vstack([array, array]),
+                data_labels=labels,
+            )
+        reshaped = array.reshape(-1, 1)
+        return self._spawn(self.time, reshaped, data_labels=[f"\\mu({self.name})"])
+
+    def std(self, axis: int | None = None) -> "SignalObj":
+        axis_arg = 0 if axis is None else axis
+        std_data = np.std(self.data, axis=axis_arg)
+        array = np.asarray(std_data, dtype=float)
+        if array.ndim == 1 and array.size == self.dimension:
+            labels = [f"\\sigma({label})" if label else "" for label in self.dataLabels]
+            return self._spawn(
+                np.asarray([self.time[0], self.time[-1]], dtype=float),
+                np.vstack([array, array]),
+                data_labels=labels,
+            )
+        reshaped = array.reshape(-1, 1)
+        return self._spawn(self.time, reshaped, data_labels=[f"\\sigma({self.name})"])
 
     def resample(self, sample_rate: float) -> "SignalObj":
-        if sample_rate <= 0:
-            raise ValueError("sample_rate must be > 0.")
-        dt = 1.0 / float(sample_rate)
-        t_new = np.arange(self.time[0], self.time[-1] + 0.5 * dt, dt)
-        x_new = np.column_stack(
-            [np.interp(t_new, self.time, self.data[:, i]) for i in range(self.dimension)]
-        )
-        return SignalObj(
-            t_new,
-            x_new,
-            self.name,
-            self.xlabelval,
-            self.xunits,
-            self.yunits,
-            self.dataLabels,
-        )
+        copied = self.copySignal()
+        copied.resampleMe(sample_rate)
+        return copied
+
+    def resampleMe(self, newSampleRate: float) -> None:
+        rate = float(newSampleRate)
+        if rate <= 0:
+            raise ValueError("sampleRate must be > 0.")
+        dt = 1.0 / rate
+        newTime = np.arange(self.time[0], self.time[-1] + 0.5 * dt, dt, dtype=float)
+        newData = np.column_stack([np.interp(newTime, self.time, self.data[:, i]) for i in range(self.dimension)])
+        self.time = newTime
+        self.data = newData
+        self.sampleRate = rate
+        self.minTime = float(np.min(newTime))
+        self.maxTime = float(np.max(newTime))
 
     @property
     def derivative(self) -> "SignalObj":
-        dt = np.gradient(self.time)
         deriv = np.column_stack([np.gradient(self.data[:, i], self.time) for i in range(self.dimension)])
-        # Avoid numerical noise spikes where dt is near 0.
         deriv[~np.isfinite(deriv)] = 0.0
+        labels = [f"d_{label}" if label else "" for label in self.dataLabels]
+        return self._spawn(self.time, deriv, data_labels=labels)
+
+    def setConfInterval(self, bounds: tuple[np.ndarray, np.ndarray]) -> None:
+        low, high = bounds
+        low_arr = np.asarray(low, dtype=float)
+        high_arr = np.asarray(high, dtype=float)
+        if low_arr.shape[0] != self.time.shape[0] or high_arr.shape[0] != self.time.shape[0]:
+            raise ValueError("confidence interval bounds must align with time.")
+        self.conf_interval = (low_arr, high_arr)
+
+    def dataToStructure(self, selectorArray: Sequence[int] | np.ndarray | None = None) -> dict[str, Any]:
+        data = self.dataToMatrix(selectorArray)
+        return {
+            "time": self.time.tolist(),
+            "data": data.tolist(),
+            "name": self.name,
+            "xlabelval": self.xlabelval,
+            "xunits": self.xunits,
+            "yunits": self.yunits,
+            "dataLabels": list(self.dataLabels),
+            "plotProps": list(self.plotProps),
+        }
+
+    def toStructure(self) -> dict[str, Any]:
+        return self.dataToStructure()
+
+    @staticmethod
+    def signalFromStruct(structure: dict[str, Any]) -> "SignalObj":
         return SignalObj(
-            self.time,
-            deriv,
-            f"d/dt({self.name})",
-            self.xlabelval,
-            self.xunits,
-            self.yunits,
-            [f"d_{lbl}" for lbl in self.dataLabels],
+            structure["time"],
+            structure["data"],
+            structure.get("name", ""),
+            structure.get("xlabelval", "time"),
+            structure.get("xunits", "s"),
+            structure.get("yunits", ""),
+            structure.get("dataLabels"),
+            structure.get("plotProps"),
         )
 
     def plot(self, *_, **__) -> None:
-        # Intentionally lightweight: plotting is handled in examples where needed.
         return None
 
 
 class Covariate(SignalObj):
-    """MATLAB-compatible alias for SignalObj.
-
-    Accepts both MATLAB-style positional arguments and Pythonic keywords:
-    `Covariate(time=t, values=x, name='stim', units='a.u.')`.
-    """
+    """MATLAB-style covariate signal with CI and zero-mean views."""
 
     def __init__(self, *args, **kwargs) -> None:
         if "values" in kwargs and "data" not in kwargs:
@@ -204,31 +612,197 @@ class Covariate(SignalObj):
         if "units" in kwargs and "yunits" not in kwargs:
             kwargs["yunits"] = kwargs.pop("units")
         super().__init__(*args, **kwargs)
+        self.ci: list[Any] | None = None
+
+    @property
+    def mu(self) -> SignalObj:
+        return self.mean()
+
+    @property
+    def sigma(self) -> SignalObj:
+        return self.std()
+
+    def computeMeanPlusCI(self, alphaVal: float = 0.05) -> "Covariate":
+        from .confidence_interval import ConfidenceInterval
+
+        sorted_data = np.sort(self.data, axis=1)
+        n_rep = sorted_data.shape[1]
+        if n_rep == 0:
+            raise ValueError("Covariate must contain at least one column to compute confidence intervals.")
+        ecdf = np.arange(1, n_rep + 1, dtype=float) / float(n_rep)
+        lower = np.empty(sorted_data.shape[0], dtype=float)
+        upper = np.empty(sorted_data.shape[0], dtype=float)
+        for row_idx in range(sorted_data.shape[0]):
+            row = sorted_data[row_idx]
+            lower_idx = np.flatnonzero(ecdf < (alphaVal / 2.0))
+            upper_idx = np.flatnonzero(ecdf > (1.0 - alphaVal / 2.0))
+            lower[row_idx] = row[int(lower_idx[-1])] if lower_idx.size else row[0]
+            upper[row_idx] = row[int(upper_idx[0])] if upper_idx.size else row[-1]
+        confInt = ConfidenceInterval(self.time, np.column_stack([lower, upper]))
+        mean_signal = np.mean(self.data, axis=1)
+        newCov = Covariate(
+            self.time.copy(),
+            mean_signal,
+            self.name,
+            self.xlabelval,
+            self.xunits,
+            self.yunits,
+            [f"\\mu({self.name})" if self.name else "\\mu"],
+        )
+        newCov.setConfInterval(confInt)
+        return newCov
+
+    def getSigRep(self, repType: str = "standard") -> SignalObj:
+        rep = str(repType).strip().lower()
+        if rep == "standard":
+            return self
+        if rep == "zero-mean":
+            centered = self.data - np.mean(self.data, axis=0, keepdims=True)
+            return Covariate(
+                self.time,
+                centered,
+                self.name,
+                self.xlabelval,
+                self.xunits,
+                self.yunits,
+                list(self.dataLabels),
+                list(self.plotProps),
+            )
+        raise ValueError("repType must be either 'zero-mean' or 'standard'")
+
+    def isConfIntervalSet(self) -> bool:
+        return bool(self.ci)
+
+    def setConfInterval(self, ciObj) -> None:
+        if isinstance(ciObj, list):
+            self.ci = list(ciObj)
+        else:
+            self.ci = [ciObj]
+
+    def copySignal(self) -> "Covariate":
+        copied = Covariate(
+            self.time.copy(),
+            self.data.copy(),
+            self.name,
+            self.xlabelval,
+            self.xunits,
+            self.yunits,
+            list(self.dataLabels),
+            list(self.plotProps),
+        )
+        copied.dataMask = np.asarray(self.dataMask, dtype=int).copy()
+        copied.originalTime = self.originalTime.copy()
+        copied.originalData = self.originalData.copy()
+        copied.sampleRate = float(self.sampleRate)
+        copied.origSampleRate = float(self.origSampleRate)
+        copied.minTime = float(self.minTime)
+        copied.maxTime = float(self.maxTime)
+        copied.ci = None if not self.ci else list(self.ci)
+        if self.conf_interval is not None:
+            copied.conf_interval = (
+                np.asarray(self.conf_interval[0], dtype=float).copy(),
+                np.asarray(self.conf_interval[1], dtype=float).copy(),
+            )
+        return copied
+
+    def getSubSignal(self, identifier) -> "Covariate":
+        sub = super().getSubSignal(identifier)
+        cov = Covariate(
+            sub.time,
+            sub.data,
+            sub.name,
+            sub.xlabelval,
+            sub.xunits,
+            sub.yunits,
+            list(sub.dataLabels),
+            list(sub.plotProps),
+        )
+        if self.isConfIntervalSet():
+            selected: list[int] = []
+            for label in cov.dataLabels:
+                if label:
+                    match = next((i for i, original in enumerate(self.dataLabels) if original == label), None)
+                    if match is None:
+                        raise ValueError("Unable to align Covariate confidence interval with sub-signal labels.")
+                    selected.append(match)
+                else:
+                    selected.append(len(selected))
+            cov.setConfInterval([self.ci[index] for index in selected])
+        return cov
+
+    def toStructure(self) -> dict[str, Any]:
+        structure = super().toStructure()
+        if self.isConfIntervalSet():
+            ci_payload: list[dict[str, Any]] = []
+            for item in self.ci or []:
+                if hasattr(item, "time") and hasattr(item, "bounds"):
+                    ci_payload.append(
+                        {
+                            "time": np.asarray(item.time, dtype=float).tolist(),
+                            "bounds": np.asarray(item.bounds, dtype=float).tolist(),
+                            "color": getattr(item, "color", "b"),
+                        }
+                    )
+            structure["ci"] = ci_payload
+        return structure
 
 
-@dataclass
 class nspikeTrain:
-    """Python approximation of MATLAB nspikeTrain."""
+    """Closer MATLAB-style spike-train object with cached signal representation."""
 
-    spikeTimes: np.ndarray
-    name: str = ""
-    binwidth: float = 0.001
-    minTime: float | None = None
-    maxTime: float | None = None
-
-    def __post_init__(self) -> None:
-        spikes = np.asarray(self.spikeTimes, dtype=float).reshape(-1)
-        spikes = np.sort(spikes)
-        self.spikeTimes = spikes
-
-        if self.minTime is None:
-            self.minTime = float(spikes[0]) if spikes.size else 0.0
-        if self.maxTime is None:
-            self.maxTime = float(spikes[-1]) if spikes.size else self.minTime
-
-        self.minTime = float(self.minTime)
-        self.maxTime = float(self.maxTime)
-        self.sampleRate = float(1.0 / self.binwidth)
+    def __init__(
+        self,
+        spikeTimes,
+        name: str = "",
+        binwidth: float = 0.001,
+        minTime: float | None = None,
+        maxTime: float | None = None,
+        xlabelval: str = "time",
+        xunits: str = "s",
+        yunits: str = "",
+        dataLabels: str | Sequence[str] | None = "",
+        makePlots: int = 0,
+    ) -> None:
+        if spikeTimes is None:
+            raise ValueError("nspikeTrain requires a spikeTimes array as input to create an object")
+        spikes = np.asarray(spikeTimes, dtype=float).reshape(-1)
+        self.spikeTimes = np.sort(spikes)
+        self.originalSpikeTimes = self.spikeTimes.copy()
+        self.name = str(name)
+        self.sampleRate = float(1.0 / float(binwidth))
+        self.originalSampleRate = float(self.sampleRate)
+        if minTime is None:
+            minTime = float(np.min(self.spikeTimes)) if self.spikeTimes.size else 0.0
+        if maxTime is None:
+            maxTime = float(np.max(self.spikeTimes)) if self.spikeTimes.size else 0.0
+        self.minTime = float(minTime)
+        self.maxTime = float(maxTime)
+        self.originalMinTime = float(self.minTime)
+        self.originalMaxTime = float(self.maxTime)
+        self.xlabelval = str(xlabelval)
+        self.xunits = str(xunits)
+        self.yunits = str(yunits)
+        self.dataLabels = dataLabels if dataLabels is not None else ""
+        self.sigRep: SignalObj | None = None
+        self.isSigRepBin: bool | None = None
+        self._sigrep_cache_key: tuple[float, float, float] | None = None
+        self.MER = None
+        if makePlots >= 0:
+            self.computeStatistics(makePlots)
+        else:
+            self.avgFiringRate = None
+            self.B = None
+            self.An = None
+            self.burstTimes = None
+            self.burstRate = None
+            self.burstDuration = None
+            self.burstSig = None
+            self.burstIndex = None
+            self.numBursts = None
+            self.numSpikesPerBurst = None
+            self.avgSpikesPerBurst = None
+            self.stdSpikesPerBurst = None
+            self.Lstatistic = None
 
     @property
     def times(self) -> np.ndarray:
@@ -236,7 +810,7 @@ class nspikeTrain:
 
     @property
     def n_spikes(self) -> int:
-        return int(self.spikeTimes.shape[0])
+        return int(self.spikeTimes.size)
 
     @property
     def duration(self) -> float:
@@ -244,24 +818,134 @@ class nspikeTrain:
 
     @property
     def firing_rate_hz(self) -> float:
-        d = self.duration
-        if d <= 0:
+        if self.duration <= 0:
             return 0.0
-        return float(self.n_spikes / d)
+        return float(self.n_spikes / self.duration)
+
+    def setMER(self, MERSig: SignalObj) -> None:
+        if isinstance(MERSig, SignalObj):
+            self.MER = MERSig
 
     def setName(self, name: str) -> None:
         self.name = str(name)
 
-    def setMinTime(self, value: float) -> None:
-        self.minTime = float(value)
+    def computeStatistics(self, makePlots: int = 0) -> None:
+        self.avgFiringRate = self.firing_rate_hz
+        isi = self.getISIs()
+        mode_isi = _matlab_mode_1d(isi)
+        self.burstIndex = float(1.0 / mode_isi / self.avgFiringRate) if np.isfinite(mode_isi) and self.avgFiringRate > 0 else np.nan
+        self.B = np.nan
+        self.An = np.nan
+        self.burstTimes = np.array([], dtype=float)
+        self.burstRate = np.array([], dtype=float)
+        self.burstDuration = np.array([], dtype=float)
+        self.burstSig = None
+        self.numBursts = 0
+        self.numSpikesPerBurst = np.array([], dtype=float)
+        self.avgSpikesPerBurst = np.nan
+        self.stdSpikesPerBurst = np.nan
+        self.Lstatistic = self.getLStatistic()
 
-    def setMaxTime(self, value: float) -> None:
-        self.maxTime = float(value)
+    def getLStatistic(self) -> float:
+        isi = self.getISIs()
+        if isi.size == 0:
+            return np.nan
+        mean_isi = float(np.mean(isi))
+        if not np.isfinite(mean_isi) or mean_isi <= 0:
+            return np.nan
+        duration = self.maxTime - self.minTime
+        if not np.isfinite(duration) or duration <= 0:
+            return np.nan
+        approx = self.getSigRep(mean_isi)
+        return float(np.unique(approx.data[:, 0]).size)
 
-    def getISIs(self) -> np.ndarray:
-        if self.n_spikes < 2:
+    def _cache_key(self, binwidth: float, minTime: float, maxTime: float) -> tuple[float, float, float]:
+        return (round(float(binwidth), 12), round(float(minTime), 12), round(float(maxTime), 12))
+
+    def _build_sigrep(self, binwidth: float, minTime: float, maxTime: float) -> SignalObj:
+        if binwidth <= 0:
+            raise ValueError("binwidth must be > 0")
+        if maxTime < minTime:
+            raise ValueError("maxTime must be >= minTime")
+
+        max_bins = int(1e6)
+        precision = max(0, int(2 * np.ceil(np.log10(1.0 / binwidth))))
+        bw = float(_roundn([binwidth], precision)[0])
+        duration = float(maxTime - minTime)
+        if np.isfinite(duration) and duration > 0 and np.isfinite(bw) and bw > 0:
+            est_bins = duration / bw + 1.0
+            if not np.isfinite(est_bins) or est_bins > max_bins:
+                bw = duration / float(max_bins - 1)
+                precision = max(0, int(2 * np.ceil(np.log10(1.0 / bw))))
+                bw = float(_roundn([bw], precision)[0])
+        if not np.isfinite(bw) or bw <= 0:
+            bw = duration / float(max_bins - 1) if np.isfinite(duration) and duration > 0 else 1.0 / max(self.sampleRate, 1.0)
+
+        numBins = int(np.floor(duration / bw + 1.0)) if np.isfinite(duration) else 2
+        if numBins < 2:
+            numBins = 2
+        if numBins > max_bins:
+            numBins = max_bins
+        timeVec = np.linspace(minTime, maxTime, numBins, dtype=float)
+        if timeVec.size > 1:
+            bw = float(np.mean(np.diff(timeVec)))
+        windowTimes = np.concatenate([[minTime - bw / 2.0], timeVec + bw / 2.0])
+
+        spikeTimes = _roundn(self.spikeTimes, precision)
+        rounded_windows = _roundn(windowTimes, precision + 1)
+        counts = np.zeros(timeVec.size, dtype=float)
+        split_index = int(np.floor(rounded_windows.size / 2.0))
+        for idx in range(timeVec.size):
+            left = rounded_windows[idx]
+            right = rounded_windows[idx + 1]
+            if idx == rounded_windows.size - 2:
+                temp = spikeTimes[spikeTimes >= left]
+                counts[idx] = float(np.sum(temp <= right))
+            elif idx + 1 > split_index:
+                temp = spikeTimes[spikeTimes >= left]
+                counts[idx] = float(np.sum(temp < right))
+            else:
+                temp = spikeTimes[spikeTimes < right]
+                counts[idx] = float(np.sum(temp >= left))
+
+        label = self.dataLabels if isinstance(self.dataLabels, str) else ""
+        sig = SignalObj(timeVec, counts.astype(float), self.name, self.xlabelval, self.xunits, self.yunits, label)
+        self.isSigRepBin = bool(np.all(counts <= 1))
+        return sig
+
+    def setSigRep(self, binwidth: float | None = None, minTime: float | None = None, maxTime: float | None = None) -> SignalObj:
+        self.sigRep = self.getSigRep(binwidth, minTime, maxTime)
+        return self.sigRep
+
+    def clearSigRep(self) -> None:
+        self.sigRep = None
+        self._sigrep_cache_key = None
+        self.isSigRepBin = None
+
+    def setMinTime(self, minTime: float) -> None:
+        self.minTime = float(minTime)
+        self.clearSigRep()
+
+    def setMaxTime(self, maxTime: float) -> None:
+        self.maxTime = float(maxTime)
+        self.clearSigRep()
+
+    def resample(self, sampleRate: float) -> "nspikeTrain":
+        self.sampleRate = float(sampleRate)
+        self.clearSigRep()
+        return self
+
+    def getSpikeTimes(self, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
+        start = self.minTime if minTime is None else float(minTime)
+        stop = self.maxTime if maxTime is None else float(maxTime)
+        spikes = self.spikeTimes[(self.spikeTimes >= start) & (self.spikeTimes <= stop)]
+        return spikes.copy()
+
+    def getISIs(self, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
+        spikes = self.getSpikeTimes(minTime, maxTime)
+        if spikes.size < 2:
             return np.array([], dtype=float)
-        return np.diff(self.spikeTimes)
+        return np.diff(spikes)
 
     def getSigRep(
         self,
@@ -269,25 +953,90 @@ class nspikeTrain:
         minTime: float | None = None,
         maxTime: float | None = None,
     ) -> SignalObj:
-        bw = self.binwidth if binwidth is None else float(binwidth)
-        t0 = self.minTime if minTime is None else float(minTime)
-        t1 = self.maxTime if maxTime is None else float(maxTime)
-        if bw <= 0:
-            raise ValueError("binwidth must be > 0")
-        if t1 < t0:
-            raise ValueError("maxTime must be >= minTime")
+        bw = (1.0 / self.sampleRate) if binwidth is None else float(binwidth)
+        start = self.minTime if minTime is None else float(minTime)
+        stop = self.maxTime if maxTime is None else float(maxTime)
+        key = self._cache_key(bw, start, stop)
+        if self.sigRep is not None and self._sigrep_cache_key == key:
+            return self.sigRep.copySignal()
+        sig = self._build_sigrep(bw, start, stop)
+        self.sigRep = sig.copySignal()
+        self._sigrep_cache_key = key
+        return sig
 
-        edges = np.arange(t0, t1 + 1.5 * bw, bw)
-        if edges.shape[0] < 2:
-            edges = np.array([t0, t0 + bw], dtype=float)
-        counts, _ = np.histogram(self.spikeTimes, bins=edges)
-        centers = edges[:-1] + 0.5 * bw
-        return SignalObj(centers, counts.astype(float), self.name or "spikes", "time", "s", "count", ["counts"])
+    def getMaxBinSizeBinary(self) -> float:
+        isi = self.getISIs()
+        if isi.size == 0:
+            return np.inf
+        return float(np.min(isi))
+
+    def isSigRepBinary(self) -> bool:
+        if self.isSigRepBin is None:
+            self.getSigRep()
+        return bool(self.isSigRepBin)
+
+    def computeRate(self) -> SignalObj:
+        sig = self.getSigRep()
+        if self.sampleRate <= 0:
+            return sig
+        rate = np.asarray(sig.data[:, 0], dtype=float) * float(self.sampleRate)
+        return SignalObj(sig.time, rate, self.name, sig.xlabelval, sig.xunits, "spikes/sec", sig.dataLabels)
+
+    def restoreToOriginal(self) -> None:
+        self.spikeTimes = self.originalSpikeTimes.copy()
+        self.minTime = float(self.originalMinTime)
+        self.maxTime = float(self.originalMaxTime)
+        self.sampleRate = float(self.originalSampleRate)
+        self.clearSigRep()
+
+    def nstCopy(self) -> "nspikeTrain":
+        return nspikeTrain(
+            self.spikeTimes.copy(),
+            self.name,
+            1.0 / self.sampleRate if self.sampleRate > 0 else 0.001,
+            self.minTime,
+            self.maxTime,
+            self.xlabelval,
+            self.xunits,
+            self.yunits,
+            self.dataLabels,
+            -1,
+        )
 
     def to_binned_counts(self, bin_edges: Sequence[float]) -> np.ndarray:
         edges = np.asarray(bin_edges, dtype=float).reshape(-1)
         counts, _ = np.histogram(self.spikeTimes, bins=edges)
         return counts.astype(float)
+
+    def toStructure(self) -> dict[str, Any]:
+        return {
+            "spikeTimes": self.spikeTimes.tolist(),
+            "name": self.name,
+            "sampleRate": self.sampleRate,
+            "minTime": self.minTime,
+            "maxTime": self.maxTime,
+            "xlabelval": self.xlabelval,
+            "xunits": self.xunits,
+            "yunits": self.yunits,
+            "dataLabels": self.dataLabels,
+        }
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any]) -> "nspikeTrain":
+        sampleRate = float(structure.get("sampleRate", 1000.0))
+        binwidth = 1.0 / sampleRate if sampleRate > 0 else 0.001
+        return nspikeTrain(
+            structure.get("spikeTimes", []),
+            structure.get("name", ""),
+            binwidth,
+            structure.get("minTime"),
+            structure.get("maxTime"),
+            structure.get("xlabelval", "time"),
+            structure.get("xunits", "s"),
+            structure.get("yunits", ""),
+            structure.get("dataLabels", ""),
+            -1,
+        )
 
 
 # Backward-compatible alias used by earlier Python scaffolding.

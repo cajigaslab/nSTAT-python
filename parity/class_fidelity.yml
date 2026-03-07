@@ -1,0 +1,342 @@
+version: 1
+generated_on: 2026-03-07
+source_repositories:
+  matlab: https://github.com/cajigaslab/nSTAT
+  python: https://github.com/cajigaslab/nSTAT-python
+status_legend:
+  - exact
+  - high_fidelity
+  - partial
+  - shim_only
+  - missing
+  - not_applicable
+items:
+  - matlab_name: SignalObj
+    kind: class
+    matlab_path: SignalObj.m
+    python_symbol: nstat.SignalObj
+    python_path: nstat/core.py
+    status: partial
+    constructor_parity: Closer than the previous shim-first design; constructor defaults, orientation handling, labels, masks, resampling, and time-window APIs now mirror MATLAB more closely.
+    property_parity: Core observable fields exist (time, data, name, xlabelval, xunits, yunits, sampleRate, originalTime, originalData, dataMask, plotProps), but not every MATLAB property or dependent behavior is implemented.
+    method_parity: Foundational methods are implemented for labels, masking, sub-signals, nearest-time lookup, time-window extraction, restore/reset, mean/std, and resampling. Arithmetic, filtering, plotting, correlation, and many utility methods are still missing.
+    default_value_parity: Defaults for labels and units now match MATLAB more closely, including the 1 kHz fallback when sample spacing is ill-conditioned.
+    shape_and_indexing_parity: Signals use time-by-dimension storage and one-based selector behavior for MATLAB-facing methods.
+    error_warning_parity: Some MATLAB-style validation is present, but warning text and all edge-case errors are not yet matched.
+    output_type_parity: MATLAB-facing methods return SignalObj/Covariate instances where expected.
+    known_semantic_differences:
+      - Plotting and many arithmetic/operator overloads are still absent.
+      - Structure serialization is only partial compared with MATLAB.
+    recommended_remediation:
+      - Port arithmetic, filtering, plotting, and structure round-trip methods from MATLAB.
+      - Add fixture-backed tests for label masking, merge, derivative, and window semantics.
+  - matlab_name: Covariate
+    kind: class
+    matlab_path: Covariate.m
+    python_symbol: nstat.Covariate
+    python_path: nstat/core.py
+    status: partial
+    constructor_parity: Uses the SignalObj constructor shape and supports Python aliases for values and units.
+    property_parity: mu and sigma views exist; ci storage is supported.
+    method_parity: copySignal, getSubSignal, computeMeanPlusCI, getSigRep, and setConfInterval exist, but arithmetic with CI propagation and full structure round-tripping are incomplete.
+    default_value_parity: Mostly inherited from SignalObj.
+    shape_and_indexing_parity: Time-by-dimension behavior matches SignalObj and MATLAB-facing one-based selectors are preserved.
+    error_warning_parity: Basic validation is present, but not all MATLAB message paths are matched.
+    output_type_parity: Covariate methods return Covariate or SignalObj as MATLAB expects for the implemented subset.
+    known_semantic_differences:
+      - CI-aware plus/minus operator behavior is not yet ported.
+      - Plotting with confidence intervals is not yet implemented.
+    recommended_remediation:
+      - Port arithmetic overloads and CI plotting semantics from MATLAB.
+      - Add fixture-backed tests for zero-mean and CI propagation workflows.
+  - matlab_name: nspikeTrain
+    kind: class
+    matlab_path: nspikeTrain.m
+    python_symbol: nstat.nspikeTrain
+    python_path: nstat/core.py
+    status: partial
+    constructor_parity: Constructor argument order and defaults now follow MATLAB closely, including min/max/sample-rate initialization and cached signal-representation fields.
+    property_parity: Core public fields exist (spikeTimes, minTime, maxTime, sampleRate, sigRep, isSigRepBin, MER, avgFiringRate, burst/stat placeholders), but the full MATLAB state surface is larger.
+    method_parity: getSigRep, getSpikeTimes, getISIs, getMaxBinSizeBinary, computeRate, restoreToOriginal, nstCopy, and structure export exist. Plotting, burst-detection detail, partitioning, and several statistics/utilities are still incomplete.
+    default_value_parity: Defaults and cache behavior now track MATLAB much more closely than the previous wrapper-based implementation.
+    shape_and_indexing_parity: Spike vectors remain one-dimensional and time-window filtering is inclusive on both ends, matching MATLAB.
+    error_warning_parity: Core argument validation exists, but warnings and all numerical corner cases are not yet matched exactly.
+    output_type_parity: Signal representation returns SignalObj and rate conversion returns SignalObj as expected.
+    known_semantic_differences:
+      - Many plotting/statistical helper methods remain unported.
+      - Burst metrics are placeholders rather than MATLAB-equivalent calculations.
+    recommended_remediation:
+      - Port burst/statistics helpers and plotting routines.
+      - Add MATLAB-derived fixtures for binary binning, windowing, and rate outputs.
+  - matlab_name: nstColl
+    kind: class
+    matlab_path: nstColl.m
+    python_symbol: nstat.nstColl
+    python_path: nstat/trial.py
+    status: partial
+    constructor_parity: Basic collection construction exists, but MATLAB supports richer empty-init and object-state patterns.
+    property_parity: numSpikeTrains, minTime, maxTime, and sampleRate are present.
+    method_parity: getNST, dataToMatrix, psth, and psthGLM exist; masking, config utilities, neighborhood operations, and richer analysis helpers are still missing.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: MATLAB-facing one-based getNST is preserved.
+    error_warning_parity: Simplified.
+    output_type_parity: PSTH returns Covariate.
+    known_semantic_differences:
+      - No MATLAB-equivalent mask state or richer analysis utilities yet.
+    recommended_remediation:
+      - Port the remaining collection methods from MATLAB and move the class into a canonical MATLAB-facing implementation file.
+  - matlab_name: Trial
+    kind: class
+    matlab_path: Trial.m
+    python_symbol: nstat.Trial
+    python_path: nstat/trial.py
+    status: partial
+    constructor_parity: Supports core spike/covariate/event wiring, but not the full MATLAB constructor and object-state surface.
+    property_parity: spikeColl and covarColl are exposed; broader trial metadata/state is still missing.
+    method_parity: Limited to core matrix/vector access.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: Core one-based neuron selection is preserved via getSpikeVector.
+    error_warning_parity: Simplified.
+    output_type_parity: Returns NumPy arrays rather than richer MATLAB-style objects in several workflows.
+    known_semantic_differences:
+      - Trial workflow semantics remain much thinner than MATLAB.
+    recommended_remediation:
+      - Port richer trial state, consistency checks, and MATLAB workflow helpers.
+  - matlab_name: TrialConfig
+    kind: class
+    matlab_path: TrialConfig.m
+    python_symbol: nstat.TrialConfig
+    python_path: nstat/trial.py
+    status: partial
+    constructor_parity: Current dataclass captures only a subset of MATLAB configuration fields.
+    property_parity: covMask, sampleRate, history, ensCovHist, covLag, and name exist, but MATLAB exposes richer behavior.
+    method_parity: Only naming and covariate-name extraction are currently implemented.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: N/A for this class.
+    error_warning_parity: Simplified.
+    output_type_parity: Python dataclass rather than a richer MATLAB handle-style object.
+    known_semantic_differences:
+      - Configuration validation and selection behavior are incomplete.
+    recommended_remediation:
+      - Port MATLAB configuration validation, normalization, and selection workflows.
+  - matlab_name: ConfigColl
+    kind: class
+    matlab_path: ConfigColl.m
+    python_symbol: nstat.ConfigColl
+    python_path: nstat/trial.py
+    status: partial
+    constructor_parity: Basic collection support exists.
+    property_parity: numConfigs and configArray exist.
+    method_parity: addConfig, getConfig, and getConfigNames exist; MATLAB collection utilities are broader.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: One-based getConfig behavior is preserved.
+    error_warning_parity: Simplified.
+    output_type_parity: Returns TrialConfig instances.
+    known_semantic_differences:
+      - Richer MATLAB config-management behavior is still missing.
+    recommended_remediation:
+      - Port the remaining ConfigColl helpers and name/selection semantics from MATLAB.
+  - matlab_name: Analysis
+    kind: class
+    matlab_path: Analysis.m
+    python_symbol: nstat.Analysis
+    python_path: nstat/analysis.py
+    status: partial
+    constructor_parity: Python analysis setup exists, but MATLAB option surface and workflow selection semantics are richer.
+    property_parity: Partial only.
+    method_parity: Core fitting helpers exist; RunAnalysisForNeuron and RunAnalysisForAllNeurons are still simplified relative to MATLAB.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: Partial only.
+    error_warning_parity: Simplified.
+    output_type_parity: Returns FitSummary/FitResult equivalents, but not with full MATLAB metadata fidelity.
+    known_semantic_differences:
+      - Algorithm selection and analysis-option semantics are still thinner than MATLAB.
+    recommended_remediation:
+      - Port MATLAB analysis options and representative workflow outputs into dataset-backed tests.
+  - matlab_name: FitResult
+    kind: class
+    matlab_path: FitResult.m
+    python_symbol: nstat.FitResult
+    python_path: nstat/fit.py
+    status: partial
+    constructor_parity: Partial.
+    property_parity: Core lambda/spike-train references exist, but MATLAB surface is richer.
+    method_parity: Summary/reporting methods are only partially ported.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: N/A for this class.
+    error_warning_parity: Simplified.
+    output_type_parity: Partial.
+    known_semantic_differences:
+      - Fit metadata and reporting behavior remain thinner than MATLAB.
+    recommended_remediation:
+      - Port MATLAB result-summary and reporting APIs with golden fixtures.
+  - matlab_name: FitResSummary
+    kind: class
+    matlab_path: FitResSummary.m
+    python_symbol: nstat.FitResSummary
+    python_path: nstat/fit.py
+    status: partial
+    constructor_parity: Partial.
+    property_parity: Partial.
+    method_parity: Partial.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: N/A for this class.
+    error_warning_parity: Simplified.
+    output_type_parity: Partial.
+    known_semantic_differences:
+      - Summary-table and figure/report behavior is not yet MATLAB-equivalent.
+    recommended_remediation:
+      - Port summary aggregation and reporting semantics from MATLAB.
+  - matlab_name: CIF
+    kind: class
+    matlab_path: CIF.m
+    python_symbol: nstat.CIF
+    python_path: nstat/cif.py
+    status: partial
+    constructor_parity: Partial.
+    property_parity: Partial.
+    method_parity: Simulation and conversion helpers exist, but the full MATLAB object model is broader.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: Partial.
+    error_warning_parity: Simplified.
+    output_type_parity: Partial.
+    known_semantic_differences:
+      - History-aware and decoding-relevant CIF workflows remain thinner than MATLAB.
+    recommended_remediation:
+      - Port MATLAB CIF behaviors used by simulation, fitting, and decoding workflows.
+  - matlab_name: DecodingAlgorithms
+    kind: class
+    matlab_path: DecodingAlgorithms.m
+    python_symbol: nstat.DecodingAlgorithms
+    python_path: nstat/decoding_algorithms.py
+    status: partial
+    constructor_parity: Partial.
+    property_parity: Partial.
+    method_parity: Python decoding helpers exist, but not with full MATLAB workflow fidelity.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: Partial.
+    error_warning_parity: Simplified.
+    output_type_parity: Partial.
+    known_semantic_differences:
+      - Point-process decoding workflows are not yet fully MATLAB-equivalent.
+    recommended_remediation:
+      - Port canonical decoding workflows and validate them against MATLAB-derived outputs.
+  - matlab_name: History
+    kind: class
+    matlab_path: History.m
+    python_symbol: nstat.History
+    python_path: nstat/history.py
+    status: partial
+    constructor_parity: Partial.
+    property_parity: Partial.
+    method_parity: Basic history basis construction exists; richer MATLAB history workflows and outputs are missing.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: Partial.
+    error_warning_parity: Simplified.
+    output_type_parity: Partial.
+    known_semantic_differences:
+      - MATLAB returns richer covariate collections and configuration behavior.
+    recommended_remediation:
+      - Port full History object workflows and fixture-backed outputs.
+  - matlab_name: Events
+    kind: class
+    matlab_path: Events.m
+    python_symbol: nstat.Events
+    python_path: nstat/events.py
+    status: partial
+    constructor_parity: Partial.
+    property_parity: Event times/labels support exists, but color and full validation parity are incomplete.
+    method_parity: Partial.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: Partial.
+    error_warning_parity: Simplified.
+    output_type_parity: Partial.
+    known_semantic_differences:
+      - MATLAB validation and plotting semantics are not fully ported.
+    recommended_remediation:
+      - Port event validation, color handling, and notebook-backed workflows.
+  - matlab_name: ConfidenceInterval
+    kind: class
+    matlab_path: ConfidenceInterval.m
+    python_symbol: nstat.ConfidenceInterval
+    python_path: nstat/confidence_interval.py
+    status: partial
+    constructor_parity: Basic time-and-bounds construction exists.
+    property_parity: lower and upper accessors exist; broader MATLAB behavior is missing.
+    method_parity: Minimal.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: Partial.
+    error_warning_parity: Simplified.
+    output_type_parity: Partial.
+    known_semantic_differences:
+      - Plotting and structure round-tripping are incomplete.
+    recommended_remediation:
+      - Port MATLAB plotting and serialization semantics.
+  - matlab_name: CovColl
+    kind: class
+    matlab_path: CovColl.m
+    python_symbol: nstat.CovColl
+    python_path: nstat/trial.py
+    status: partial
+    constructor_parity: Basic collection support exists.
+    property_parity: Partial.
+    method_parity: add/get/dataToMatrix exist; MATLAB collection behavior is broader.
+    default_value_parity: Partial only.
+    shape_and_indexing_parity: Shared-time enforcement is implemented.
+    error_warning_parity: Simplified.
+    output_type_parity: Partial.
+    known_semantic_differences:
+      - Richer selection and covariate management helpers are missing.
+    recommended_remediation:
+      - Port remaining CovColl behaviors and helpfile workflows.
+  - matlab_name: getPaperDataDirs
+    kind: function
+    matlab_path: getPaperDataDirs.m
+    python_symbol: nstat.getPaperDataDirs
+    python_path: nstat/data_manager.py
+    status: high_fidelity
+    constructor_parity: N/A
+    property_parity: N/A
+    method_parity: Python helper exposes MATLAB-style name and standalone repo semantics.
+    default_value_parity: Defaults to the Python repo's independent example-data cache instead of a MATLAB checkout path.
+    shape_and_indexing_parity: N/A
+    error_warning_parity: Close for the Python use case.
+    output_type_parity: Returns directory paths as a Python tuple/list structure rather than MATLAB cell arrays.
+    known_semantic_differences:
+      - Python returns native path types/strings rather than MATLAB cells.
+    recommended_remediation:
+      - Add a MATLAB-reference fixture for the directory tuple shape if stricter parity is needed.
+  - matlab_name: nSTAT_Install
+    kind: function
+    matlab_path: nSTAT_Install.m
+    python_symbol: nstat.nSTAT_Install
+    python_path: nstat/install.py
+    status: partial
+    constructor_parity: N/A
+    property_parity: N/A
+    method_parity: Python installer covers data download and docs rebuild paths, but MATLAB path-cleanup semantics remain a no-op compatibility path.
+    default_value_parity: Close for Python packaging, not exact for MATLAB path management.
+    shape_and_indexing_parity: N/A
+    error_warning_parity: Partial.
+    output_type_parity: Returns Python dictionaries/status text rather than MATLAB console-only behavior.
+    known_semantic_differences:
+      - MATLAB path management is intentionally non-applicable in Python.
+    recommended_remediation:
+      - Keep documenting the no-op compatibility behavior and test installer status outputs.
+  - matlab_name: nstatOpenHelpPage
+    kind: function
+    matlab_path: nstatOpenHelpPage.m
+    python_symbol: null
+    python_path: null
+    status: not_applicable
+    constructor_parity: N/A
+    property_parity: N/A
+    method_parity: MATLAB help-browser integration has no direct standalone Python equivalent.
+    default_value_parity: N/A
+    shape_and_indexing_parity: N/A
+    error_warning_parity: N/A
+    output_type_parity: N/A
+    known_semantic_differences:
+      - Python uses Sphinx docs pages instead of the MATLAB help browser.
+    recommended_remediation:
+      - None.
