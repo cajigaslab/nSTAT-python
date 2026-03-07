@@ -22,6 +22,17 @@ Python API
    data_dir = ensure_example_data(download=True)
    print(data_dir)
 
+MATLAB-compatible paper-data helper
+-----------------------------------
+
+.. code-block:: python
+
+   from nstat import getPaperDataDirs, get_paper_data_dirs
+
+   data_dir, mepsc_dir, explicit_stimulus_dir, psth_dir, place_cell_data_dir = getPaperDataDirs()
+   dirs = get_paper_data_dirs()
+   assert dirs.data_dir == data_dir
+
 Notes
 -----
 

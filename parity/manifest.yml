@@ -10,9 +10,9 @@ status_legend:
   - not_applicable
 summary:
   public_api:
-    mapped: 15
-    partial: 2
-    missing: 1
+    mapped: 18
+    partial: 0
+    missing: 0
     not_applicable: 1
   help_workflows:
     mapped: 28
@@ -84,10 +84,10 @@ public_api:
     notes: Exported from the package root.
   - matlab: Events
     matlab_path: Events.m
-    python_target: nstat.events.Events
+    python_target: nstat.Events
     python_path: nstat/events.py
-    status: partial
-    notes: Implemented, but not re-exported from nstat.__init__.
+    status: mapped
+    notes: Exported from the package root.
   - matlab: FitResSummary
     matlab_path: FitResSummary.m
     python_target: nstat.FitResSummary
@@ -138,16 +138,16 @@ public_api:
     notes: MATLAB-style adapter is exported from the package root.
   - matlab: getPaperDataDirs
     matlab_path: getPaperDataDirs.m
-    python_target: null
-    python_path: null
-    status: missing
-    notes: Similar internal data-root helpers exist, but there is no public Python equivalent yet.
+    python_target: nstat.getPaperDataDirs
+    python_path: nstat/data_manager.py
+    status: mapped
+    notes: Package root exports both MATLAB-style and snake-case helpers.
   - matlab: nSTAT_Install
     matlab_path: nSTAT_Install.m
-    python_target: nstat.nstat_install.nSTAT_Install
+    python_target: nstat.nSTAT_Install
     python_path: nstat/nstat_install.py
-    status: partial
-    notes: MATLAB-style alias exists in a submodule, but is not exported from nstat.__init__.
+    status: mapped
+    notes: MATLAB-style alias is exported from the package root.
   - matlab: nstatOpenHelpPage
     matlab_path: nstatOpenHelpPage.m
     python_target: null
