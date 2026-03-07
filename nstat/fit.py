@@ -3,7 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable, Sequence
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import kstest
 
 from .core import Covariate, nspikeTrain
 
@@ -34,6 +39,46 @@ def _pad_rows(rows: Sequence[np.ndarray], fill_value: float = np.nan) -> np.ndar
     for idx, row in enumerate(rows):
         out[idx, : row.size] = row
     return out
+
+
+def _autocorrelation(values: np.ndarray, max_lag: int = 25) -> tuple[np.ndarray, np.ndarray]:
+    centered = np.asarray(values, dtype=float).reshape(-1) - float(np.mean(values))
+    if centered.size < 2 or float(np.var(centered)) <= 0.0:
+        return np.asarray([], dtype=float), np.asarray([], dtype=float)
+    corr = np.correlate(centered, centered, mode="full")
+    corr = corr[corr.size // 2 :]
+    corr = corr / corr[0]
+    lags = np.arange(corr.shape[0], dtype=float)
+    max_lag = int(min(max_lag, corr.shape[0] - 1))
+    return lags[1 : max_lag + 1], corr[1 : max_lag + 1]
+
+
+def _time_rescaled_uniforms(y: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarray:
+    y_arr = np.asarray(y, dtype=float).reshape(-1)
+    lam = np.asarray(lam_per_bin, dtype=float).reshape(-1)
+    if y_arr.shape != lam.shape:
+        raise ValueError("y and lam_per_bin must have the same shape")
+    if np.sum(y_arr) <= 1:
+        return np.asarray([], dtype=float)
+
+    uniforms: list[float] = []
+    accum = 0.0
+    for count, lam_i in zip(y_arr, lam, strict=False):
+        accum += float(max(lam_i, 1e-12))
+        if count >= 1.0:
+            for _ in range(int(round(count))):
+                uniforms.append(1.0 - np.exp(-accum))
+                accum = 0.0
+    return np.asarray(uniforms, dtype=float)
+
+
+def _ks_curve(uniforms: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    u = np.sort(np.asarray(uniforms, dtype=float).reshape(-1))
+    if u.size == 0:
+        return np.asarray([], dtype=float), np.asarray([], dtype=float), np.asarray([], dtype=float)
+    ideal = np.linspace(1.0 / u.size, 1.0, u.size, dtype=float)
+    ci = np.full(u.size, 1.36 / np.sqrt(float(u.size)), dtype=float)
+    return ideal, u, ci
 
 
 @dataclass
@@ -96,6 +141,7 @@ class FitResult:
         self.U = np.array([], dtype=float)
         self.X = np.array([], dtype=float)
         self.Residual = None
+        self._diagnostic_cache: dict[int, dict[str, np.ndarray | float]] = {}
         self.KSStats = np.zeros((self.numResults, 1), dtype=float)
         self.KSPvalues = np.full(self.numResults, np.nan, dtype=float)
         self.withinConfInt = np.zeros(self.numResults, dtype=float)
@@ -296,23 +342,183 @@ class FitResult:
             fits=[*self.fits, *other.fits],
         )
 
-    def plotResults(self, *_, **__) -> None:
-        return None
+    def _lambda_series(self, fit_num: int = 1) -> tuple[np.ndarray, np.ndarray]:
+        time = np.asarray(self.lambda_signal.time, dtype=float).reshape(-1)
+        data = np.asarray(self.lambda_signal.data, dtype=float)
+        if data.ndim == 1:
+            rate = data.reshape(-1)
+        else:
+            idx = min(max(fit_num - 1, 0), data.shape[1] - 1)
+            rate = data[:, idx].reshape(-1)
+        if time.shape[0] != rate.shape[0]:
+            raise ValueError("lambda signal time and data lengths do not match")
+        return time, rate
 
-    def KSPlot(self, *_, **__) -> None:
-        return None
+    def _primary_spike_train(self) -> nspikeTrain:
+        if isinstance(self.neuralSpikeTrain, nspikeTrain):
+            return self.neuralSpikeTrain
+        if isinstance(self.neuralSpikeTrain, Sequence) and self.neuralSpikeTrain:
+            return self.neuralSpikeTrain[0]
+        raise TypeError("FitResult does not contain a MATLAB-style neural spike train")
 
-    def plotResidual(self, *_, **__) -> None:
-        return None
+    def _compute_diagnostics(self, fit_num: int = 1) -> dict[str, np.ndarray | float]:
+        if fit_num in self._diagnostic_cache:
+            return self._diagnostic_cache[fit_num]
 
-    def plotInvGausTrans(self, *_, **__) -> None:
-        return None
+        time, rate_hz = self._lambda_series(fit_num)
+        dt = float(np.median(np.diff(time))) if time.size > 1 else 1.0
+        edges = np.concatenate([time, [time[-1] + dt]])
+        counts = self._primary_spike_train().to_binned_counts(edges)
+        lam_per_bin = rate_hz * dt
+        residual = counts - lam_per_bin
+        residual_std = residual / np.sqrt(np.maximum(lam_per_bin, 1e-12))
+        uniforms = _time_rescaled_uniforms(counts, lam_per_bin)
+        ideal, empirical, ci = _ks_curve(uniforms)
+        ks_stat = float(np.max(np.abs(empirical - ideal))) if ideal.size else 0.0
+        ks_pvalue = float(kstest(uniforms, "uniform").pvalue) if uniforms.size else np.nan
+        within = float(np.mean(np.abs(empirical - ideal) <= ci)) if ideal.size else np.nan
+        lags, acf = _autocorrelation(uniforms, max_lag=25)
+        acf_ci = 1.96 / np.sqrt(float(uniforms.size)) if uniforms.size else np.nan
+        gauss = np.clip(uniforms, 1e-6, 1.0 - 1e-6)
+        coeffs = self.getCoeffs(fit_num)
+        coeff_labels = ["Intercept", *self.covLabels[fit_num - 1]] if fit_num - 1 < len(self.covLabels) else ["Intercept"]
+        diagnostics: dict[str, np.ndarray | float] = {
+            "time": time,
+            "rate_hz": rate_hz,
+            "counts": counts,
+            "lambda_per_bin": lam_per_bin,
+            "residual": residual,
+            "residual_std": residual_std,
+            "uniforms": uniforms,
+            "ks_ideal": ideal,
+            "ks_empirical": empirical,
+            "ks_ci": ci,
+            "ks_stat": ks_stat,
+            "ks_pvalue": ks_pvalue,
+            "within_conf_int": within,
+            "acf_lags": lags,
+            "acf_values": acf,
+            "acf_ci": acf_ci,
+            "gaussianized": gauss,
+            "coefficients": coeffs,
+            "coeff_labels": np.asarray(coeff_labels, dtype=object),
+        }
+        self._diagnostic_cache[fit_num] = diagnostics
+        self.KSStats[fit_num - 1, 0] = ks_stat
+        self.KSPvalues[fit_num - 1] = ks_pvalue
+        self.withinConfInt[fit_num - 1] = within
+        self.U = uniforms
+        self.Z = gauss
+        self.X = time
+        self.Residual = {
+            "time": time,
+            "residual": residual,
+            "standardized": residual_std,
+        }
+        self.invGausStats = {"rhoSig": acf.tolist(), "confBoundSig": [acf_ci]}
+        return diagnostics
 
-    def plotSeqCorr(self, *_, **__) -> None:
-        return None
+    def computeKSStats(self, fit_num: int = 1) -> dict[str, float]:
+        diag = self._compute_diagnostics(fit_num)
+        return {
+            "ks_stat": float(diag["ks_stat"]),
+            "ks_pvalue": float(diag["ks_pvalue"]),
+            "within_conf_int": float(diag["within_conf_int"]),
+        }
 
-    def plotCoeffs(self, *_, **__) -> None:
-        return None
+    def computeInvGausTrans(self, fit_num: int = 1) -> np.ndarray:
+        return np.asarray(self._compute_diagnostics(fit_num)["uniforms"], dtype=float)
+
+    def computeFitResidual(self, fit_num: int = 1) -> Covariate:
+        diag = self._compute_diagnostics(fit_num)
+        return Covariate(
+            np.asarray(diag["time"], dtype=float),
+            np.asarray(diag["residual"], dtype=float),
+            "fit residual",
+            "time",
+            "s",
+            "counts/bin",
+            ["residual"],
+        )
+
+    def plotResults(self, fit_num: int = 1, handle=None):
+        fig = handle if handle is not None else plt.figure(figsize=(11.5, 8.0))
+        fig.clear()
+        axes = fig.subplots(2, 2)
+        self.KSPlot(fit_num=fit_num, handle=axes[0, 0])
+        self.plotInvGausTrans(fit_num=fit_num, handle=axes[0, 1])
+        self.plotSeqCorr(fit_num=fit_num, handle=axes[1, 0])
+        self.plotCoeffs(fit_num=fit_num, handle=axes[1, 1])
+        fig.tight_layout()
+        return fig
+
+    def KSPlot(self, fit_num: int = 1, handle=None):
+        diag = self._compute_diagnostics(fit_num)
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 4.0))[1]
+        ideal = np.asarray(diag["ks_ideal"], dtype=float)
+        empirical = np.asarray(diag["ks_empirical"], dtype=float)
+        ci = np.asarray(diag["ks_ci"], dtype=float)
+        if ideal.size:
+            ax.plot(ideal, empirical, color="tab:blue", linewidth=1.5)
+            ax.plot([0.0, 1.0], [0.0, 1.0], color="0.3", linewidth=1.0, linestyle="--")
+            ax.plot(ideal, np.clip(ideal + ci, 0.0, 1.0), color="tab:red", linewidth=1.0)
+            ax.plot(ideal, np.clip(ideal - ci, 0.0, 1.0), color="tab:red", linewidth=1.0)
+        ax.set_xlim(0.0, 1.0)
+        ax.set_ylim(0.0, 1.0)
+        ax.set_xlabel("Ideal Uniform CDF")
+        ax.set_ylabel("Empirical CDF")
+        ax.set_title("KS Plot")
+        return ax
+
+    def plotResidual(self, fit_num: int = 1, handle=None):
+        diag = self._compute_diagnostics(fit_num)
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        ax.plot(np.asarray(diag["time"], dtype=float), np.asarray(diag["residual"], dtype=float), color="tab:purple", linewidth=1.0)
+        ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
+        ax.set_xlabel("time [s]")
+        ax.set_ylabel("count residual")
+        ax.set_title("Fit Residual")
+        return ax
+
+    def plotInvGausTrans(self, fit_num: int = 1, handle=None):
+        diag = self._compute_diagnostics(fit_num)
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        u = np.asarray(diag["uniforms"], dtype=float)
+        if u.size:
+            ax.plot(np.arange(1, u.size + 1), u, color="tab:green", linewidth=1.0)
+            ax.axhline(0.5, color="0.4", linewidth=1.0, linestyle="--")
+        ax.set_xlabel("event index")
+        ax.set_ylabel("time-rescaled transform")
+        ax.set_title("Inverse-Gaussian/Uniform Transform")
+        return ax
+
+    def plotSeqCorr(self, fit_num: int = 1, handle=None):
+        diag = self._compute_diagnostics(fit_num)
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        lags = np.asarray(diag["acf_lags"], dtype=float)
+        acf = np.asarray(diag["acf_values"], dtype=float)
+        if lags.size:
+            ax.vlines(lags, 0.0, acf, color="tab:orange", linewidth=1.4)
+            ax.axhline(float(diag["acf_ci"]), color="tab:red", linewidth=1.0)
+            ax.axhline(-float(diag["acf_ci"]), color="tab:red", linewidth=1.0)
+        ax.axhline(0.0, color="0.4", linewidth=1.0)
+        ax.set_xlabel("lag")
+        ax.set_ylabel("autocorrelation")
+        ax.set_title("Sequential Correlation of Rescaled ISIs")
+        return ax
+
+    def plotCoeffs(self, fit_num: int = 1, handle=None):
+        diag = self._compute_diagnostics(fit_num)
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        coeffs = np.asarray(diag["coefficients"], dtype=float)
+        labels = list(np.asarray(diag["coeff_labels"], dtype=object))
+        xpos = np.arange(coeffs.size, dtype=float)
+        ax.axhline(0.0, color="0.6", linewidth=1.0)
+        ax.plot(xpos, coeffs, "o-", color="tab:blue", linewidth=1.0)
+        ax.set_xticks(xpos, labels, rotation=45, ha="right")
+        ax.set_ylabel("coefficient value")
+        ax.set_title("GLM Coefficients")
+        return ax
 
     @property
     def lambda_obj(self) -> Covariate:
@@ -443,8 +649,24 @@ class FitSummary:
         base = self.logLL[idx - 1]
         return self.logLL - base
 
-    def plotSummary(self, *_, **__) -> None:
-        return None
+    def plotSummary(self, handle=None):
+        fig = handle if handle is not None else plt.figure(figsize=(10.0, 4.5))
+        fig.clear()
+        axes = fig.subplots(1, 3)
+        x = np.arange(self.numResults, dtype=float)
+        labels = list(self.fitNames)
+        for ax, values, title in zip(
+            axes,
+            (self.AIC, self.BIC, self.logLL),
+            ("AIC", "BIC", "log likelihood"),
+            strict=False,
+        ):
+            ax.bar(x, np.asarray(values, dtype=float), color="tab:blue", alpha=0.8)
+            ax.set_xticks(x, labels, rotation=30, ha="right")
+            ax.set_title(title)
+            ax.grid(axis="y", alpha=0.25)
+        fig.tight_layout()
+        return fig
 
 
 class FitResSummary(FitSummary):

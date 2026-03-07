@@ -223,8 +223,9 @@ items:
     semantics.
   property_parity: N/A for the static workflow surface.
   method_parity: Canonical analysis now restores trial state, applies ConfigColl entries,
-    builds MATLAB-style design matrices and labels, and returns richer FitResult metadata
-    for per-neuron and all-neuron workflows.
+    builds MATLAB-style design matrices and labels, returns richer FitResult metadata
+    for per-neuron and all-neuron workflows, and feeds the MATLAB-facing diagnostic
+    plotting surface exposed through FitResult.
   defaults_parity: Default fitting behavior and Poisson-GLM selection are much closer
     to the MATLAB workflow defaults.
   indexing_parity: MATLAB-facing one-based neuron numbering remains available through
@@ -239,8 +240,9 @@ items:
   required_remediation:
   - Add dataset-backed numerical parity fixtures for canonical analysis workflows.
   - Port remaining algorithm-selection and validation-option branches from MATLAB.
-  plotting_report_parity: KS, inverse-Gaussian, coefficient, and residual report plotting
-    is only partially implemented versus MATLAB.
+  plotting_report_parity: KS, inverse-Gaussian, coefficient, residual, and summary
+    plots now execute on canonical Analysis output, but advanced algorithm-selection,
+    report layout, and validation branches are still thinner than MATLAB.
 - matlab_name: FitResult
   kind: class
   matlab_path: FitResult.m
@@ -252,8 +254,9 @@ items:
   property_parity: Core MATLAB-facing result fields are now present, including lambda
     aliases, config metadata, coefficient arrays, history metadata, AIC/BIC/logLL,
     validation placeholders, and plotParams scaffolding.
-  method_parity: getCoeffs, getHistCoeffs, mergeResults, and structure round-trip
-    now operate on the richer MATLAB-style result surface.
+  method_parity: getCoeffs, getHistCoeffs, mergeResults, structure round-trip, KS/inverse-Gaussian
+    diagnostics, residual computation, coefficient plotting, and report plotting now
+    operate on the richer MATLAB-style result surface.
   defaults_parity: Default result metadata and placeholder fields are much closer
     to MATLAB than the earlier lightweight container.
   indexing_parity: N/A for this class.
@@ -262,14 +265,15 @@ items:
   output_type_parity: Returns canonical FitResult objects with MATLAB-style aliases
     and list/array fields.
   known_remaining_differences:
-  - Plotting, KS/inverse-Gaussian reporting detail, and some summary utilities remain
-    stubbed.
+  - Plotting/report methods now execute, but their numerical detail and layout are
+    still lighter than MATLAB.
   required_remediation:
   - Add MATLAB-derived golden fixtures for coefficient metadata and validation/report
     payloads.
   - Port the remaining plotting/report helpers used by the MATLAB toolbox.
-  plotting_report_parity: Result plotting/report methods are not yet MATLAB-equivalent
-    and still need fuller diagnostic coverage.
+  plotting_report_parity: Result plotting/report methods now exist on the canonical
+    object, but they still need fuller MATLAB-style diagnostic detail and fixture-backed
+    validation.
 - matlab_name: FitResSummary
   kind: class
   matlab_path: FitResSummary.m
@@ -281,13 +285,14 @@ items:
   property_parity: Core summary fields exist, including fitResCell, numNeurons, numResults,
     fitNames, neuronNumbers, AIC, BIC, logLL, and KSStats.
   method_parity: MATLAB-style difference helpers are implemented through getDiffAIC,
-    getDiffBIC, and getDifflogLL.
+    getDiffBIC, getDifflogLL, and a basic plotSummary report surface.
   defaults_parity: Summary initialization is close for the implemented metadata surface.
   indexing_parity: N/A for this class.
   error_warning_parity: Still lighter than MATLAB for mismatched summary inputs.
   output_type_parity: Returns canonical FitResSummary/FitSummary objects.
   known_remaining_differences:
-  - Summary plotting and richer report/table exports are still not MATLAB-equivalent.
+  - Summary plotting now exists, but richer MATLAB report/table exports are still
+    not MATLAB-equivalent.
   required_remediation:
   - Add golden fixtures for multi-neuron summary aggregation and remaining report
     outputs.
