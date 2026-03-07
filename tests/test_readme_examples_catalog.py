@@ -25,6 +25,14 @@ SUPPLEMENTARY_EXAMPLES = [
     ),
 ]
 
+EXPECTED_CANONICAL_QUESTIONS = {
+    "example01_mepsc_poisson": "Do mEPSCs follow constant vs piecewise Poisson firing under Mg2+ washout?",
+    "example02_whisker_stimulus_thalamus": "How do explicit whisker stimulus and spike history improve thalamic GLM fits?",
+    "example03_psth_and_ssglm": "How do PSTH and SSGLM capture within-trial and across-trial dynamics?",
+    "example04_place_cells_continuous_stimulus": "Which receptive-field basis (Gaussian vs Zernike) better fits place cells?",
+    "example05_decoding_ppaf_pphf": "How well do adaptive/hybrid point-process filters decode stimulus and reach state?",
+}
+
 
 def _extract_examples_block(text: str) -> str:
     match = re.search(r"## Examples\n(.*?)\n## Documentation\n", text, flags=re.S)
@@ -60,6 +68,13 @@ def test_readme_paper_example_rows_track_manifest() -> None:
         assert f"`python {script}`" in block
         assert f"[Script]({script})" in block
         assert f"[Figures](docs/figures/{row['example_id']}/)" in block
+
+
+def test_paper_example_manifest_questions_match_matlab_gallery_wording() -> None:
+    manifest = yaml.safe_load(PAPER_MANIFEST_PATH.read_text(encoding="utf-8")) or {}
+    entries = manifest.get("examples", [])
+    questions = {str(row["name"]): str(row["question"]) for row in entries}
+    assert questions == EXPECTED_CANONICAL_QUESTIONS
 
 
 def test_readme_supplementary_examples_are_preserved() -> None:

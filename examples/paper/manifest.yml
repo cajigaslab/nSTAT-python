@@ -5,7 +5,7 @@ examples:
     script: examples/paper/example01_mepsc_poisson.py
     matlab_source: examples/paper/example01_mepsc_poisson.m
     title: mEPSC Poisson Models Under Constant and Washout Magnesium
-    question: Does Mg2+ washout produce firing-rate dynamics beyond a constant Poisson baseline?
+    question: Do mEPSCs follow constant vs piecewise Poisson firing under Mg2+ washout?
     description: Fits constant and piecewise Poisson GLM baselines to mEPSC spike trains.
     sections:
       - experiment1
@@ -18,7 +18,7 @@ examples:
     script: examples/paper/example02_whisker_stimulus_thalamus.py
     matlab_source: examples/paper/example02_whisker_stimulus_thalamus.m
     title: Whisker Stimulus GLM With Lag and History Selection
-    question: What stimulus lag and history order best explain whisker-evoked spike trains?
+    question: How do explicit whisker stimulus and spike history improve thalamic GLM fits?
     description: Fits explicit-stimulus point-process GLMs and compares baseline, stimulus, and history models.
     sections:
       - experiment2
@@ -30,7 +30,7 @@ examples:
     script: examples/paper/example03_psth_and_ssglm.py
     matlab_source: examples/paper/example03_psth_and_ssglm.m
     title: PSTH and SSGLM Dynamics Example
-    question: How do PSTH and SSGLM differ in capturing trial learning dynamics?
+    question: How do PSTH and SSGLM capture within-trial and across-trial dynamics?
     description: Bundles simulated PSTH and SSGLM examples from the canonical paper workflow.
     sections:
       - experiment3
@@ -47,7 +47,7 @@ examples:
     script: examples/paper/example04_place_cells_continuous_stimulus.py
     matlab_source: examples/paper/example04_place_cells_continuous_stimulus.m
     title: Place-Cell Receptive Fields (Gaussian vs Zernike)
-    question: How do Gaussian and Zernike basis models compare for place-field mapping?
+    question: Which receptive-field basis (Gaussian vs Zernike) better fits place cells?
     description: Loads place-cell datasets and compares receptive-field model families.
     sections:
       - experiment4
@@ -64,7 +64,7 @@ examples:
     script: examples/paper/example05_decoding_ppaf_pphf.py
     matlab_source: examples/paper/example05_decoding_ppaf_pphf.m
     title: Stimulus Decoding With PPAF and PPHF
-    question: How accurately can neural populations decode latent stimulus and reach state?
+    question: How well do adaptive/hybrid point-process filters decode stimulus and reach state?
     description: Bundles univariate, reaching, and hybrid decoding examples from the paper workflow.
     sections:
       - experiment5

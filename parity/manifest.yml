@@ -1,5 +1,5 @@
 version: 1
-generated_on: 2026-03-06
+generated_on: 2026-03-07
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
@@ -15,7 +15,7 @@ summary:
     missing: 0
     not_applicable: 1
   help_workflows:
-    mapped: 29
+    mapped: 34
     partial: 0
     missing: 0
     not_applicable: 0
@@ -155,6 +155,31 @@ public_api:
     status: not_applicable
     notes: MATLAB help-browser integration does not have a direct Python equivalent.
 help_workflows:
+  - matlab: NeuralSpikeAnalysis_top
+    matlab_path: helpfiles/NeuralSpikeAnalysis_top.m
+    python_target: docs/NeuralSpikeAnalysis_top.md
+    status: mapped
+    notes: Python docs expose a top-level navigation page that mirrors the MATLAB help home.
+  - matlab: PaperOverview
+    matlab_path: helpfiles/PaperOverview.m
+    python_target: docs/PaperOverview.md
+    status: mapped
+    notes: Python docs expose a paper-aligned toolbox map page with the same workflow categories.
+  - matlab: ClassDefinitions
+    matlab_path: helpfiles/ClassDefinitions.m
+    python_target: docs/ClassDefinitions.md
+    status: mapped
+    notes: Python docs expose a class-definition index for the MATLAB-facing public API names.
+  - matlab: Examples
+    matlab_path: helpfiles/Examples.m
+    python_target: docs/Examples.md
+    status: mapped
+    notes: Python docs expose an example index mirroring the MATLAB helpfile categories and names.
+  - matlab: DocumentationSetup2025b
+    matlab_path: helpfiles/DocumentationSetup2025b.m
+    python_target: docs/DocumentationSetup.md
+    status: mapped
+    notes: Python replaces MATLAB help-browser integration with a Sphinx documentation setup and rebuild guide.
   - matlab: AnalysisExamples
     matlab_path: helpfiles/AnalysisExamples.mlx
     python_target: notebooks/AnalysisExamples.ipynb

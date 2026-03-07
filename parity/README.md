@@ -14,6 +14,6 @@ python tools/parity/build_report.py
 
 Current headline status:
 - Public API coverage matches the MATLAB inventory except for the explicitly non-applicable `nstatOpenHelpPage`.
-- Help/notebook parity covers the inventoried MATLAB help workflow surface.
-- Canonical paper examples, gallery structure, and README/docs presentation now exist in Python, but the example outputs remain partial until the canonical figures are generated.
+- Help/notebook parity covers the inventoried MATLAB help workflow surface, including the top-level `NeuralSpikeAnalysis_top`, `PaperOverview`, `Examples`, and `ClassDefinitions` navigation pages.
+- Canonical paper examples, gallery structure, and README/docs presentation are committed and mapped in Python.
 - CI now validates API surface, dataset integrity, notebook smoke execution, paper gallery drift, and docs builds.

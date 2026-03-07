@@ -7,7 +7,7 @@
       "source_script": "examples/paper/example01_mepsc_poisson.py",
       "matlab_source": "examples/paper/example01_mepsc_poisson.m",
       "description": "Fits constant and piecewise Poisson GLM baselines to mEPSC spike trains.",
-      "question": "Does Mg2+ washout produce firing-rate dynamics beyond a constant Poisson baseline?",
+      "question": "Do mEPSCs follow constant vs piecewise Poisson firing under Mg2+ washout?",
       "run_command": "python examples/paper/example01_mepsc_poisson.py",
       "figure_dir": "docs/figures/example01",
       "figure_files": [
@@ -26,7 +26,7 @@
       "source_script": "examples/paper/example02_whisker_stimulus_thalamus.py",
       "matlab_source": "examples/paper/example02_whisker_stimulus_thalamus.m",
       "description": "Fits explicit-stimulus point-process GLMs and compares baseline, stimulus, and history models.",
-      "question": "What stimulus lag and history order best explain whisker-evoked spike trains?",
+      "question": "How do explicit whisker stimulus and spike history improve thalamic GLM fits?",
       "run_command": "python examples/paper/example02_whisker_stimulus_thalamus.py",
       "figure_dir": "docs/figures/example02",
       "figure_files": [
@@ -44,7 +44,7 @@
       "source_script": "examples/paper/example03_psth_and_ssglm.py",
       "matlab_source": "examples/paper/example03_psth_and_ssglm.m",
       "description": "Bundles simulated PSTH and SSGLM examples from the canonical paper workflow.",
-      "question": "How do PSTH and SSGLM differ in capturing trial learning dynamics?",
+      "question": "How do PSTH and SSGLM capture within-trial and across-trial dynamics?",
       "run_command": "python examples/paper/example03_psth_and_ssglm.py",
       "figure_dir": "docs/figures/example03",
       "figure_files": [
@@ -67,7 +67,7 @@
       "source_script": "examples/paper/example04_place_cells_continuous_stimulus.py",
       "matlab_source": "examples/paper/example04_place_cells_continuous_stimulus.m",
       "description": "Loads place-cell datasets and compares receptive-field model families.",
-      "question": "How do Gaussian and Zernike basis models compare for place-field mapping?",
+      "question": "Which receptive-field basis (Gaussian vs Zernike) better fits place cells?",
       "run_command": "python examples/paper/example04_place_cells_continuous_stimulus.py",
       "figure_dir": "docs/figures/example04",
       "figure_files": [
@@ -90,7 +90,7 @@
       "source_script": "examples/paper/example05_decoding_ppaf_pphf.py",
       "matlab_source": "examples/paper/example05_decoding_ppaf_pphf.m",
       "description": "Bundles univariate, reaching, and hybrid decoding examples from the paper workflow.",
-      "question": "How accurately can neural populations decode latent stimulus and reach state?",
+      "question": "How well do adaptive/hybrid point-process filters decode stimulus and reach state?",
       "run_command": "python examples/paper/example05_decoding_ppaf_pphf.py",
       "figure_dir": "docs/figures/example05",
       "figure_files": [

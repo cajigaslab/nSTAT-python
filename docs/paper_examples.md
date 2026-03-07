@@ -21,11 +21,11 @@ Outputs:
 
 | ID | Thumbnail | Standalone source | Question | Run command | Figure gallery |
 |---|---|---|---|---|---|
-| `example01` | ![Example 01](figures/example01/fig01_constant_mg_summary.png) | [example01_mepsc_poisson.py](../examples/paper/example01_mepsc_poisson.py) | Does Mg2+ washout produce firing-rate dynamics beyond a constant Poisson baseline? | `python examples/paper/example01_mepsc_poisson.py` | [gallery page](./figures/example01/README.md) |
-| `example02` | ![Example 02](figures/example02/fig01_data_overview.png) | [example02_whisker_stimulus_thalamus.py](../examples/paper/example02_whisker_stimulus_thalamus.py) | What stimulus lag and history order best explain whisker-evoked spike trains? | `python examples/paper/example02_whisker_stimulus_thalamus.py` | [gallery page](./figures/example02/README.md) |
-| `example03` | ![Example 03](figures/example03/fig01_simulated_and_real_rasters.png) | [example03_psth_and_ssglm.py](../examples/paper/example03_psth_and_ssglm.py) | How do PSTH and SSGLM differ in capturing trial learning dynamics? | `python examples/paper/example03_psth_and_ssglm.py` | [gallery page](./figures/example03/README.md) |
-| `example04` | ![Example 04](figures/example04/fig01_example_cells_path_overlay.png) | [example04_place_cells_continuous_stimulus.py](../examples/paper/example04_place_cells_continuous_stimulus.py) | How do Gaussian and Zernike basis models compare for place-field mapping? | `python examples/paper/example04_place_cells_continuous_stimulus.py` | [gallery page](./figures/example04/README.md) |
-| `example05` | ![Example 05](figures/example05/fig01_univariate_setup.png) | [example05_decoding_ppaf_pphf.py](../examples/paper/example05_decoding_ppaf_pphf.py) | How accurately can neural populations decode latent stimulus and reach state? | `python examples/paper/example05_decoding_ppaf_pphf.py` | [gallery page](./figures/example05/README.md) |
+| `example01` | ![Example 01](figures/example01/fig01_constant_mg_summary.png) | [example01_mepsc_poisson.py](../examples/paper/example01_mepsc_poisson.py) | Do mEPSCs follow constant vs piecewise Poisson firing under Mg2+ washout? | `python examples/paper/example01_mepsc_poisson.py` | [gallery page](./figures/example01/README.md) |
+| `example02` | ![Example 02](figures/example02/fig01_data_overview.png) | [example02_whisker_stimulus_thalamus.py](../examples/paper/example02_whisker_stimulus_thalamus.py) | How do explicit whisker stimulus and spike history improve thalamic GLM fits? | `python examples/paper/example02_whisker_stimulus_thalamus.py` | [gallery page](./figures/example02/README.md) |
+| `example03` | ![Example 03](figures/example03/fig01_simulated_and_real_rasters.png) | [example03_psth_and_ssglm.py](../examples/paper/example03_psth_and_ssglm.py) | How do PSTH and SSGLM capture within-trial and across-trial dynamics? | `python examples/paper/example03_psth_and_ssglm.py` | [gallery page](./figures/example03/README.md) |
+| `example04` | ![Example 04](figures/example04/fig01_example_cells_path_overlay.png) | [example04_place_cells_continuous_stimulus.py](../examples/paper/example04_place_cells_continuous_stimulus.py) | Which receptive-field basis (Gaussian vs Zernike) better fits place cells? | `python examples/paper/example04_place_cells_continuous_stimulus.py` | [gallery page](./figures/example04/README.md) |
+| `example05` | ![Example 05](figures/example05/fig01_univariate_setup.png) | [example05_decoding_ppaf_pphf.py](../examples/paper/example05_decoding_ppaf_pphf.py) | How well do adaptive/hybrid point-process filters decode stimulus and reach state? | `python examples/paper/example05_decoding_ppaf_pphf.py` | [gallery page](./figures/example05/README.md) |
 
 ```{toctree}
 :hidden:
@@ -41,7 +41,7 @@ figures/example05/README
 
 ### Example 01: mEPSC Poisson Models Under Constant and Washout Magnesium
 
-Question: Does Mg2+ washout produce firing-rate dynamics beyond a constant Poisson baseline?
+Question: Do mEPSCs follow constant vs piecewise Poisson firing under Mg2+ washout?
 
 Run command: `python examples/paper/example01_mepsc_poisson.py`
 
@@ -54,7 +54,7 @@ Expected figure files:
 
 ### Example 02: Whisker Stimulus GLM With Lag and History Selection
 
-Question: What stimulus lag and history order best explain whisker-evoked spike trains?
+Question: How do explicit whisker stimulus and spike history improve thalamic GLM fits?
 
 Run command: `python examples/paper/example02_whisker_stimulus_thalamus.py`
 
@@ -66,7 +66,7 @@ Expected figure files:
 
 ### Example 03: PSTH and SSGLM Dynamics Example
 
-Question: How do PSTH and SSGLM differ in capturing trial learning dynamics?
+Question: How do PSTH and SSGLM capture within-trial and across-trial dynamics?
 
 Run command: `python examples/paper/example03_psth_and_ssglm.py`
 
@@ -82,7 +82,7 @@ Expected figure files:
 
 ### Example 04: Place-Cell Receptive Fields (Gaussian vs Zernike)
 
-Question: How do Gaussian and Zernike basis models compare for place-field mapping?
+Question: Which receptive-field basis (Gaussian vs Zernike) better fits place cells?
 
 Run command: `python examples/paper/example04_place_cells_continuous_stimulus.py`
 
@@ -99,7 +99,7 @@ Expected figure files:
 
 ### Example 05: Stimulus Decoding With PPAF and PPHF
 
-Question: How accurately can neural populations decode latent stimulus and reach state?
+Question: How well do adaptive/hybrid point-process filters decode stimulus and reach state?
 
 Run command: `python examples/paper/example05_decoding_ppaf_pphf.py`
 

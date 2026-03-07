@@ -5,14 +5,14 @@ Generated from `parity/manifest.yml`.
 - MATLAB reference: https://github.com/cajigaslab/nSTAT
 - Python target: https://github.com/cajigaslab/nSTAT-python
 - Inventory version: 1
-- Generated on: 2026-03-06
+- Generated on: 2026-03-07
 
 ## Summary
 
 | Section | Mapped | Partial | Missing | Not Applicable |
 |---|---:|---:|---:|---:|
 | `public api` | 18 | 0 | 0 | 1 |
-| `help workflows` | 29 | 0 | 0 | 0 |
+| `help workflows` | 34 | 0 | 0 | 0 |
 | `paper examples` | 8 | 0 | 0 | 0 |
 | `docs gallery` | 8 | 0 | 0 | 0 |
 | `installer setup` | 4 | 0 | 0 | 3 |
