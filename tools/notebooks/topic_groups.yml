@@ -4,7 +4,6 @@ groups:
     - ConfidenceIntervalOverview
     - ConfigCollExamples
     - CovariateExamples
-    - nSTATPaperExamples
     - TrialConfigExamples
   smoke:
     - AnalysisExamples

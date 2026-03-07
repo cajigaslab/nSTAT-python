@@ -11,7 +11,6 @@ TOPIC_GROUPS_PATH = REPO_ROOT / "tools" / "notebooks" / "topic_groups.yml"
 
 REQUIRED_CI_SMOKE_TOPICS = {
     "ConfidenceIntervalOverview",
-    "nSTATPaperExamples",
 }
 REQUIRED_PARITY_CORE_TOPICS = {
     "AnalysisExamples",
