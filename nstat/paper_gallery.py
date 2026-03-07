@@ -73,10 +73,20 @@ def render_paper_examples_markdown(repo_root: Path | None = None) -> str:
     for row in manifest["examples"]:
         lines.append(
             f"| `{row['example_id']}` | [{Path(row['source_script']).name}](../{row['source_script']}) | "
-            f"{row['question']} | [{row['figure_dir']}](./figures/{row['example_id']}/) |"
+            f"{row['question']} | [gallery page](./figures/{row['example_id']}/README.md) |"
         )
 
-    lines.extend(["", "## Gallery", ""])
+    lines.extend(
+        [
+            "",
+            "```{toctree}",
+            ":hidden:",
+            "",
+        ]
+    )
+    for row in manifest["examples"]:
+        lines.append(f"figures/{row['example_id']}/README")
+    lines.extend(["```", "", "## Gallery", ""])
     for row in manifest["examples"]:
         lines.extend(
             [
@@ -90,8 +100,7 @@ def render_paper_examples_markdown(repo_root: Path | None = None) -> str:
             ]
         )
         for fig in row["figure_files"]:
-            rel = fig.replace("docs/", "", 1)
-            lines.append(f"- [{fig}](./{rel})")
+            lines.append(f"- `{fig}`")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 

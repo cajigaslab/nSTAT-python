@@ -8,3 +8,4 @@ Minimal documentation for the standalone Python nSTAT core package.
 
    api
    data_installation
+   paper_examples

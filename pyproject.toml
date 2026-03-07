@@ -24,6 +24,8 @@ dependencies = [
 dev = [
   "pytest>=8.0",
   "scikit-image>=0.22",
+  "sphinx>=8.0",
+  "myst-parser>=4.0",
 ]
 
 [tool.setuptools.packages.find]
