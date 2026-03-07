@@ -51,6 +51,23 @@ jobs:
             docs/figures/example04/README.md \
             docs/figures/example05/README.md
 
+  parity-report-artifacts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+      - name: Regenerate parity report
+        run: python tools/parity/build_report.py
+      - name: Fail on parity report drift
+        run: git diff --exit-code -- parity/report.md
+
   docs-build:
     runs-on: ubuntu-latest
 

@@ -25,8 +25,8 @@ summary:
     missing: 0
     not_applicable: 0
   docs_gallery:
-    mapped: 2
-    partial: 6
+    mapped: 3
+    partial: 5
     missing: 0
     not_applicable: 0
   installer_setup:
@@ -380,8 +380,8 @@ docs_gallery:
     notes: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
   - matlab: README five-example gallery
     python_target: README.md
-    status: partial
-    notes: README has examples, but it does not mirror the MATLAB five-example gallery pattern.
+    status: mapped
+    notes: README mirrors the MATLAB five-example gallery pattern and links the Python paper-example docs page.
 installer_setup:
   - matlab: nSTAT_Install console entrypoint
     matlab_path: nSTAT_Install.m
