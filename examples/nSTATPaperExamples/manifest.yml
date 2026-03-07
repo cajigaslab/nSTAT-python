@@ -78,6 +78,9 @@ examples:
 - name: AnalysisExamples2
   relative_path: notebooks/AnalysisExamples2.ipynb
   description: Notebook example for AnalysisExamples2.
+- name: ConfidenceIntervalOverview
+  relative_path: notebooks/ConfidenceIntervalOverview.ipynb
+  description: Notebook example for ConfidenceIntervalOverview.
 - name: FitResultReference
   relative_path: notebooks/FitResultReference.ipynb
   description: Notebook example for FitResultReference.

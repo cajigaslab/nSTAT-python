@@ -78,6 +78,9 @@ notebooks:
 - topic: AnalysisExamples2
   file: notebooks/AnalysisExamples2.ipynb
   run_group: full
+- topic: ConfidenceIntervalOverview
+  file: notebooks/ConfidenceIntervalOverview.ipynb
+  run_group: smoke
 - topic: FitResultReference
   file: notebooks/FitResultReference.ipynb
   run_group: full

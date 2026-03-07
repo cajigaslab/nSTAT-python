@@ -15,9 +15,9 @@ summary:
     missing: 0
     not_applicable: 1
   help_workflows:
-    mapped: 28
+    mapped: 29
     partial: 0
-    missing: 1
+    missing: 0
     not_applicable: 0
   paper_examples:
     mapped: 0
@@ -167,9 +167,9 @@ help_workflows:
     notes: Notebook exists with matching name.
   - matlab: ConfidenceIntervalOverview
     matlab_path: helpfiles/ConfidenceIntervalOverview.m
-    python_target: null
-    status: missing
-    notes: No matching Python notebook or script exists.
+    python_target: notebooks/ConfidenceIntervalOverview.ipynb
+    status: mapped
+    notes: Tutorial notebook exists with matching name.
   - matlab: ConfigCollExamples
     matlab_path: helpfiles/ConfigCollExamples.mlx
     python_target: notebooks/ConfigCollExamples.ipynb
