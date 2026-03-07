@@ -41,3 +41,23 @@ def test_paper_example_scripts_exist_and_support_help() -> None:
         )
         assert proc.returncode == 0, proc.stderr
         assert "--repo-root" in proc.stdout
+        assert "--export-figures" in proc.stdout
+
+
+def test_example01_and_example02_support_figure_export(tmp_path: Path) -> None:
+    payload = yaml.safe_load(MANIFEST_PATH.read_text(encoding="utf-8"))
+    for row in payload["examples"][:2]:
+        example_id = row["example_id"]
+        script_path = REPO_ROOT / row["script"]
+        export_dir = tmp_path / example_id
+        proc = subprocess.run(
+            [sys.executable, str(script_path), "--export-figures", "--export-dir", str(export_dir)],
+            cwd=REPO_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        assert proc.returncode == 0, proc.stderr
+        for rel_path in row["figure_files"]:
+            filename = Path(rel_path).name
+            assert (export_dir / filename).exists(), f"Missing exported figure {filename} for {example_id}"

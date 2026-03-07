@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 from scipy.io import loadmat
+from scipy.signal import correlate, correlation_lags
 
 from .analysis import psth
 from .data_manager import ensure_example_data
@@ -63,6 +64,79 @@ def _history_matrix(y: np.ndarray, lags: list[int]) -> np.ndarray:
     return out
 
 
+def _autocorrelation(values: np.ndarray, max_lag: int) -> tuple[np.ndarray, np.ndarray]:
+    centered = np.asarray(values, dtype=float).reshape(-1) - float(np.mean(values))
+    if centered.size < 2 or float(np.var(centered)) <= 0.0:
+        return np.asarray([], dtype=float), np.asarray([], dtype=float)
+    corr = np.correlate(centered, centered, mode="full")
+    corr = corr[corr.size // 2 :]
+    corr = corr / corr[0]
+    lags = np.arange(corr.shape[0], dtype=float)
+    max_lag = int(min(max_lag, corr.shape[0] - 1))
+    return lags[1 : max_lag + 1], corr[1 : max_lag + 1]
+
+
+def _time_rescaled_uniforms(y: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarray:
+    y_arr = np.asarray(y, dtype=float).reshape(-1)
+    lam = np.asarray(lam_per_bin, dtype=float).reshape(-1)
+    if y_arr.shape != lam.shape:
+        raise ValueError("y and lam_per_bin must have the same shape")
+    if np.sum(y_arr) <= 1:
+        return np.asarray([], dtype=float)
+
+    uniforms: list[float] = []
+    accum = 0.0
+    for count, lam_i in zip(y_arr, lam, strict=False):
+        accum += float(max(lam_i, 1e-12))
+        if count >= 1.0:
+            for _ in range(int(round(count))):
+                uniforms.append(1.0 - np.exp(-accum))
+                accum = 0.0
+    return np.asarray(uniforms, dtype=float)
+
+
+def _ks_curve(uniforms: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    u = np.sort(np.asarray(uniforms, dtype=float).reshape(-1))
+    if u.size == 0:
+        return np.asarray([], dtype=float), np.asarray([], dtype=float), np.asarray([], dtype=float)
+    ideal = np.linspace(1.0 / u.size, 1.0, u.size, dtype=float)
+    ci = np.full(u.size, 1.36 / np.sqrt(float(u.size)), dtype=float)
+    return ideal, u, ci
+
+
+def _binned_series(time_s: np.ndarray, values: np.ndarray, bin_width_s: float) -> tuple[np.ndarray, np.ndarray]:
+    time_arr = np.asarray(time_s, dtype=float).reshape(-1)
+    values_arr = np.asarray(values, dtype=float).reshape(-1)
+    if time_arr.shape != values_arr.shape:
+        raise ValueError("time_s and values must have the same shape")
+    if time_arr.size < 2:
+        return time_arr.copy(), values_arr.copy()
+    dt = float(np.median(np.diff(time_arr)))
+    samples_per_bin = max(int(round(bin_width_s / max(dt, 1e-12))), 1)
+    n_bins = values_arr.shape[0] // samples_per_bin
+    trimmed_values = values_arr[: n_bins * samples_per_bin]
+    trimmed_time = time_arr[: n_bins * samples_per_bin]
+    if n_bins == 0:
+        return time_arr.copy(), values_arr.copy()
+    binned_values = trimmed_values.reshape(n_bins, samples_per_bin).mean(axis=1)
+    binned_time = trimmed_time.reshape(n_bins, samples_per_bin)[:, 0]
+    return binned_time, binned_values
+
+
+def _coefficient_intervals(x: np.ndarray, result, offset: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    x_arr = np.asarray(x, dtype=float)
+    offset_arr = np.asarray(offset, dtype=float).reshape(-1)
+    x_aug = np.column_stack([np.ones(x_arr.shape[0], dtype=float), x_arr])
+    beta = np.concatenate([[result.intercept], np.asarray(result.coefficients, dtype=float)])
+    lam = np.exp(np.clip(x_aug @ beta + offset_arr, -20.0, 20.0))
+    hess = x_aug.T @ (lam[:, None] * x_aug)
+    cov = np.linalg.pinv(hess)
+    se = np.sqrt(np.clip(np.diag(cov), 0.0, None))
+    lower = beta - 1.96 * se
+    upper = beta + 1.96 * se
+    return beta, lower, upper
+
+
 def _load_mepsc_times_seconds(path: Path) -> np.ndarray:
     arr = np.loadtxt(path, skiprows=1)
     return np.asarray(arr[:, 1], dtype=float).reshape(-1) / 1000.0
@@ -75,17 +149,23 @@ def _bin_spike_times(spikes: np.ndarray, t0: float, t1: float, dt: float) -> tup
     return edges[:-1], counts.astype(float)
 
 
-def run_experiment1(data_dir: Path) -> dict[str, float]:
+def run_experiment1(data_dir: Path, *, return_payload: bool = False) -> dict[str, float] | tuple[dict[str, float], dict[str, object]]:
     mepsc_dir = data_dir / "mEPSCs"
     epsc2 = _load_mepsc_times_seconds(mepsc_dir / "epsc2.txt")
     washout1 = _load_mepsc_times_seconds(mepsc_dir / "washout1.txt")
     washout2 = _load_mepsc_times_seconds(mepsc_dir / "washout2.txt")
 
     dt_const = 0.01
-    _, y_const = _bin_spike_times(epsc2, 0.0, float(np.max(epsc2)), dt_const)
+    t_const, y_const = _bin_spike_times(epsc2, 0.0, float(np.max(epsc2)), dt_const)
     off_const = np.full(y_const.shape[0], np.log(dt_const), dtype=float)
     m_const = fit_poisson_glm(np.zeros((y_const.shape[0], 0), dtype=float), y_const, offset=off_const, max_iter=80)
     aic_const, bic_const = _aic_bic(m_const.log_likelihood, y_const.shape[0], 1)
+    lam_const = m_const.predict_rate(np.zeros((y_const.shape[0], 0), dtype=float), offset=off_const)
+    rate_const_hz = lam_const / dt_const
+    const_uniforms = _time_rescaled_uniforms(y_const, lam_const)
+    const_ideal, const_ks, const_ks_ci = _ks_curve(const_uniforms)
+    const_acf_lags, const_acf = _autocorrelation(const_uniforms, max_lag=580)
+    const_acf_ci = 1.96 / np.sqrt(max(const_uniforms.shape[0], 1))
 
     spikes = np.concatenate([260.0 + washout1, np.sort(washout2) + 745.0])
     dt = 0.01
@@ -102,11 +182,17 @@ def run_experiment1(data_dir: Path) -> dict[str, float]:
     m_piece_hist = fit_poisson_glm(x_piece_hist, y, offset=off, max_iter=120)
     aic_piece, bic_piece = _aic_bic(m_piece.log_likelihood, y.shape[0], x_piece.shape[1] + 1)
     aic_piece_hist, bic_piece_hist = _aic_bic(m_piece_hist.log_likelihood, y.shape[0], x_piece_hist.shape[1] + 1)
+    lam_piece = m_piece.predict_rate(x_piece, offset=off)
+    lam_piece_hist = m_piece_hist.predict_rate(x_piece_hist, offset=off)
+    time_binned, obs_rate_hz = _binned_series(t, y / dt, 2.0)
+    _, piece_rate_hz = _binned_series(t, lam_piece / dt, 2.0)
+    _, piece_hist_rate_hz = _binned_series(t, lam_piece_hist / dt, 2.0)
 
-    return {
+    summary = {
         "const_condition_spikes": float(np.sum(y_const)),
         "const_model_aic": aic_const,
         "const_model_bic": bic_const,
+        "constant_acf_ci": float(const_acf_ci),
         "decreasing_condition_spikes": float(np.sum(y)),
         "piecewise_model_aic": aic_piece,
         "piecewise_model_bic": bic_piece,
@@ -114,9 +200,31 @@ def run_experiment1(data_dir: Path) -> dict[str, float]:
         "piecewise_history_model_bic": bic_piece_hist,
         "dt_seconds": dt,
     }
+    if not return_payload:
+        return summary
+
+    payload: dict[str, object] = {
+        "constant_spike_times_s": epsc2,
+        "constant_time_s": t_const,
+        "constant_rate_hz": rate_const_hz,
+        "constant_acf_lags_s": const_acf_lags,
+        "constant_acf_values": const_acf,
+        "constant_ks_ideal": const_ideal,
+        "constant_ks_empirical": const_ks,
+        "constant_ks_ci": const_ks_ci,
+        "constant_window_s": np.asarray([0.0, float(np.max(epsc2))], dtype=float),
+        "washout_spike_times_s": spikes,
+        "washout_window_s": np.asarray([260.0, float(np.max(spikes))], dtype=float),
+        "washout_time_s": time_binned,
+        "washout_observed_rate_hz": obs_rate_hz,
+        "washout_piecewise_rate_hz": piece_rate_hz,
+        "washout_piecewise_history_rate_hz": piece_hist_rate_hz,
+        "washout_segment_edges_s": np.asarray([260.0, 495.0, 765.0, float(np.max(spikes))], dtype=float),
+    }
+    return summary, payload
 
 
-def run_experiment2(data_dir: Path) -> dict[str, float]:
+def run_experiment2(data_dir: Path, *, return_payload: bool = False) -> dict[str, float] | tuple[dict[str, float], dict[str, object]]:
     path = data_dir / "Explicit Stimulus" / "Dir3" / "Neuron1" / "Stim2" / "trngdataBis.mat"
     d = _loadmat_checked(path)
     if d is None:
@@ -147,8 +255,58 @@ def run_experiment2(data_dir: Path) -> dict[str, float]:
     aic1, bic1 = _aic_bic(m1.log_likelihood, y.shape[0], 1)
     aic2, bic2 = _aic_bic(m2.log_likelihood, y.shape[0], 3)
     aic3, bic3 = _aic_bic(m3.log_likelihood, y.shape[0], 8)
+    lam1 = m1.predict_rate(x1, offset=offset)
+    lam2 = m2.predict_rate(x2, offset=offset)
+    lam3 = m3.predict_rate(x3, offset=offset)
 
-    return {
+    u1 = _time_rescaled_uniforms(y, lam1)
+    u2 = _time_rescaled_uniforms(y, lam2)
+    u3 = _time_rescaled_uniforms(y, lam3)
+    ks_ideal, ks1_emp, ks_ci = _ks_curve(u1)
+    _, ks2_emp, _ = _ks_curve(u2)
+    _, ks3_emp, _ = _ks_curve(u3)
+
+    selection_n = int(min(6000, y.shape[0]))
+    candidate_q = np.arange(1, 29, dtype=int)
+    ks_stats = np.zeros(candidate_q.shape[0], dtype=float)
+    delta_aic = np.zeros(candidate_q.shape[0], dtype=float)
+    delta_bic = np.zeros(candidate_q.shape[0], dtype=float)
+    y_sel = y[:selection_n]
+    stim_sel = stim[:selection_n]
+    stim_vel_sel = stim_vel[:selection_n]
+    offset_sel = offset[:selection_n]
+    full_hist = _history_matrix(y_sel, list(range(1, int(candidate_q[-1]) + 1)))
+    for idx, q in enumerate(candidate_q.tolist()):
+        x_sel = np.column_stack([stim_sel, stim_vel_sel, full_hist[:, :q]])
+        model_q = fit_poisson_glm(x_sel, y_sel, offset=offset_sel, max_iter=45)
+        lam_q = model_q.predict_rate(x_sel, offset=offset_sel)
+        uq = _time_rescaled_uniforms(y_sel, lam_q)
+        ideal_q, emp_q, _ = _ks_curve(uq)
+        ks_stats[idx] = float(np.max(np.abs(emp_q - ideal_q))) if ideal_q.size else 0.0
+        aic_q, bic_q = _aic_bic(model_q.log_likelihood, y_sel.shape[0], x_sel.shape[1] + 1)
+        delta_aic[idx] = aic_q - aic3
+        delta_bic[idx] = bic_q - bic3
+
+    xcorr_window = int(min(20000, y.shape[0]))
+    xcorr = correlate(y[:xcorr_window] - np.mean(y[:xcorr_window]), stim[:xcorr_window] - np.mean(stim[:xcorr_window]), mode="full", method="fft")
+    lags = correlation_lags(xcorr_window, xcorr_window, mode="full")
+    keep = np.abs(lags) <= 1000
+    xcorr = xcorr[keep]
+    lags_s = lags[keep] * dt
+    positive = lags_s >= 0.0
+    lags_s = lags_s[positive]
+    xcorr = xcorr[positive]
+    peak_idx = int(np.argmax(xcorr))
+    peak_lag_s = float(lags_s[peak_idx])
+
+    coef_beta, coef_lower, coef_upper = _coefficient_intervals(x3, m3, offset)
+    coef_names = [f"[{i*dt:.3f},{(i+1)*dt:.3f}]" for i in range(hist.shape[1])]
+    coef_names.extend(["μ", "stim"])
+    coef_values = np.concatenate([coef_beta[3:], [coef_beta[0], coef_beta[1]]])
+    coef_lower_plot = np.concatenate([coef_lower[3:], [coef_lower[0], coef_lower[1]]])
+    coef_upper_plot = np.concatenate([coef_upper[3:], [coef_upper[0], coef_upper[1]]])
+
+    summary = {
         "n_samples": float(y.shape[0]),
         "model1_aic": aic1,
         "model2_aic": aic2,
@@ -156,7 +314,34 @@ def run_experiment2(data_dir: Path) -> dict[str, float]:
         "model1_bic": bic1,
         "model2_bic": bic2,
         "model3_bic": bic3,
+        "peak_lag_seconds": peak_lag_s,
     }
+    if not return_payload:
+        return summary
+
+    view_n = int(min(int(round(21.0 / dt)), y.shape[0]))
+    payload = {
+        "time_s": np.arange(view_n, dtype=float) * dt,
+        "spike_indicator": y[:view_n],
+        "stimulus": stim[:view_n],
+        "velocity": stim_vel[:view_n],
+        "xcorr_lags_s": lags_s,
+        "xcorr_values": xcorr,
+        "history_windows": candidate_q.astype(float),
+        "ks_stats": ks_stats,
+        "delta_aic": delta_aic,
+        "delta_bic": delta_bic,
+        "ks_ideal": ks_ideal,
+        "ks_const_empirical": ks1_emp,
+        "ks_stim_empirical": ks2_emp,
+        "ks_hist_empirical": ks3_emp,
+        "ks_ci": ks_ci,
+        "coef_names": coef_names,
+        "coef_values": coef_values,
+        "coef_lower": coef_lower_plot,
+        "coef_upper": coef_upper_plot,
+    }
+    return summary, payload
 
 
 def run_experiment3(seed: int = 7) -> dict[str, float]:

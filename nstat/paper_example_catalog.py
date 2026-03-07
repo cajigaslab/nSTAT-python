@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .data_manager import ensure_example_data
+from .paper_figures import default_export_dir, export_named_paper_figures
 from .paper_examples_full import (
     _default_repo_root,
     run_experiment1,
@@ -19,14 +20,22 @@ from .paper_examples_full import (
 )
 
 
-def run_named_paper_example(example_id: str, repo_root: Path) -> dict[str, dict[str, float]]:
+def run_named_paper_example(
+    example_id: str, repo_root: Path, *, return_payload: bool = False
+) -> dict[str, dict[str, float]] | tuple[dict[str, dict[str, float]], dict[str, dict[str, object]]]:
     repo_root = repo_root.resolve()
     data_dir = ensure_example_data(download=True)
 
     if example_id == "example01":
-        return {"experiment1": run_experiment1(data_dir)}
+        if not return_payload:
+            return {"experiment1": run_experiment1(data_dir)}
+        summary, payload = run_experiment1(data_dir, return_payload=True)
+        return {"experiment1": summary}, {"experiment1": payload}
     if example_id == "example02":
-        return {"experiment2": run_experiment2(data_dir)}
+        if not return_payload:
+            return {"experiment2": run_experiment2(data_dir)}
+        summary, payload = run_experiment2(data_dir, return_payload=True)
+        return {"experiment2": summary}, {"experiment2": payload}
     if example_id == "example03":
         return {
             "experiment3": run_experiment3(),
@@ -47,12 +56,31 @@ def main_for(example_id: str) -> int:
     parser = argparse.ArgumentParser(description=f"Run canonical nSTAT Python paper example {example_id}")
     parser.add_argument("--repo-root", type=Path, default=_default_repo_root())
     parser.add_argument("--output-json", type=Path, default=None)
+    parser.add_argument("--export-figures", action="store_true", help="Export canonical figure files for this example.")
+    parser.add_argument("--export-dir", type=Path, default=None, help="Destination directory for exported figure files.")
     args = parser.parse_args()
 
-    results = run_named_paper_example(example_id, args.repo_root)
+    if args.export_figures:
+        results, payloads = run_named_paper_example(example_id, args.repo_root, return_payload=True)
+        export_dir = (args.export_dir or default_export_dir(args.repo_root, example_id)).resolve()
+        section_name = next(iter(results))
+        saved_paths = export_named_paper_figures(
+            example_id,
+            summary=results[section_name],
+            payload=payloads[section_name],
+            export_dir=export_dir,
+        )
+    else:
+        results = run_named_paper_example(example_id, args.repo_root)
+        saved_paths = []
+
     if args.output_json is not None:
         args.output_json.write_text(json.dumps(results, indent=2), encoding="utf-8")
     print(json.dumps(results, indent=2))
+    if saved_paths:
+        print("\nGenerated figures:")
+        for path in saved_paths:
+            print(str(path))
     return 0
 
 
