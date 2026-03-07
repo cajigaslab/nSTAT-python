@@ -21,10 +21,14 @@ def test_canonical_api_imports() -> None:
     assert nstat.nSTAT_Install is not None
 
 
-def test_compatibility_adapters_emit_deprecation() -> None:
+def test_matlab_facing_class_imports_are_canonical() -> None:
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         from nstat.SignalObj import SignalObj
+        from nstat.Covariate import Covariate
+        from nstat.nspikeTrain import nspikeTrain
 
         _ = SignalObj([0.0, 1.0], [1.0, 2.0])
-        assert any("deprecated" in str(item.message).lower() for item in w)
+        _ = Covariate([0.0, 1.0], [1.0, 2.0])
+        _ = nspikeTrain([0.25, 0.5], makePlots=-1)
+        assert not any("deprecated" in str(item.message).lower() for item in w)
