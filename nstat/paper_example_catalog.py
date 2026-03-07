@@ -37,9 +37,19 @@ def run_named_paper_example(
         summary, payload = run_experiment2(data_dir, return_payload=True)
         return {"experiment2": summary}, {"experiment2": payload}
     if example_id == "example03":
+        if not return_payload:
+            return {
+                "experiment3": run_experiment3(),
+                "experiment3b": run_experiment3b(data_dir),
+            }
+        summary3, payload3 = run_experiment3(return_payload=True)
+        summary3b, payload3b = run_experiment3b(data_dir, return_payload=True)
         return {
-            "experiment3": run_experiment3(),
-            "experiment3b": run_experiment3b(data_dir),
+            "experiment3": summary3,
+            "experiment3b": summary3b,
+        }, {
+            "experiment3": payload3,
+            "experiment3b": payload3b,
         }
     if example_id == "example04":
         return {"experiment4": run_experiment4(data_dir)}
@@ -63,11 +73,17 @@ def main_for(example_id: str) -> int:
     if args.export_figures:
         results, payloads = run_named_paper_example(example_id, args.repo_root, return_payload=True)
         export_dir = (args.export_dir or default_export_dir(args.repo_root, example_id)).resolve()
-        section_name = next(iter(results))
+        if len(results) == 1:
+            section_name = next(iter(results))
+            figure_summary = results[section_name]
+            figure_payload = payloads[section_name]
+        else:
+            figure_summary = results
+            figure_payload = payloads
         saved_paths = export_named_paper_figures(
             example_id,
-            summary=results[section_name],
-            payload=payloads[section_name],
+            summary=figure_summary,
+            payload=figure_payload,
             export_dir=export_dir,
         )
     else:

@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-FigureBuilder = Callable[[dict[str, float], dict[str, object]], plt.Figure]
+FigureBuilder = Callable[[dict[str, object], dict[str, object]], plt.Figure]
 
 
 def default_export_dir(repo_root: Path, example_id: str) -> Path:
@@ -240,6 +240,214 @@ def build_example02_model_comparison(summary: dict[str, float], payload: dict[st
     return fig
 
 
+def build_example03_simulated_and_real_rasters(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e3 = payload["experiment3"]
+    e3b = payload["experiment3b"]
+    time_s = np.asarray(e3["time_s"], dtype=float)
+    true_rate_hz = np.asarray(e3["true_rate_hz"], dtype=float)
+    raster_spike_times = e3["raster_spike_times"]
+    stimulus = np.asarray(e3b["stimulus"], dtype=float)
+    xk = np.asarray(e3b["xk"], dtype=float)
+
+    fig, axes = plt.subplots(2, 2, figsize=(11.6, 8.0))
+    ax_rate, ax_real, ax_sim, ax_est = axes.ravel()
+
+    ax_rate.plot(time_s, true_rate_hz, color="tab:blue", linewidth=1.6)
+    ax_rate.set_title("Simulated Conditional Intensity Function (CIF)")
+    ax_rate.set_xlabel("time [s]")
+    ax_rate.set_ylabel(r"$\lambda(t)$ [spikes/sec]")
+
+    for row, spikes in enumerate(raster_spike_times[:20], start=1):
+        spikes_arr = np.asarray(spikes, dtype=float)
+        if spikes_arr.size:
+            ax_sim.vlines(spikes_arr, row - 0.4, row + 0.4, color="0.45", linewidth=0.7)
+    ax_sim.set_title("20 Simulated Point Process Sample Paths")
+    ax_sim.set_xlabel("time [s]")
+    ax_sim.set_ylabel("Trial [k]")
+
+    im1 = ax_real.imshow(stimulus, aspect="auto", origin="lower", cmap="gray_r")
+    ax_real.set_title("Stimulus Across Trials")
+    ax_real.set_xlabel("time bin")
+    ax_real.set_ylabel("Trial [k]")
+    fig.colorbar(im1, ax=ax_real, fraction=0.046, pad=0.04)
+
+    im2 = ax_est.imshow(xk, aspect="auto", origin="lower", cmap="magma")
+    ax_est.set_title("Estimated Trial Dynamics")
+    ax_est.set_xlabel("time bin")
+    ax_est.set_ylabel("Trial [k]")
+    fig.colorbar(im2, ax=ax_est, fraction=0.046, pad=0.04)
+
+    fig.tight_layout()
+    return fig
+
+
+def build_example03_psth_comparison(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e3 = payload["experiment3"]
+    time_s = np.asarray(e3["time_s"], dtype=float)
+    true_rate_hz = np.asarray(e3["true_rate_hz"], dtype=float)
+    psth_bin_centers_s = np.asarray(e3["psth_bin_centers_s"], dtype=float)
+    psth_rate_hz = np.asarray(e3["psth_rate_hz"], dtype=float)
+    raster_spike_times = e3["raster_spike_times"]
+
+    fig, (ax_rate, ax_raster) = plt.subplots(2, 1, figsize=(10.8, 7.0), sharex=False)
+    ax_rate.plot(time_s, true_rate_hz, color="black", linewidth=1.3, label="True CIF")
+    ax_rate.step(psth_bin_centers_s, psth_rate_hz, where="mid", color="tab:blue", linewidth=2.0, label="PSTH")
+    ax_rate.set_title("PSTH Comparison")
+    ax_rate.set_xlabel("time [s]")
+    ax_rate.set_ylabel("rate [Hz]")
+    ax_rate.grid(alpha=0.25)
+    ax_rate.legend(loc="upper right")
+
+    for row, spikes in enumerate(raster_spike_times[:10], start=1):
+        spikes_arr = np.asarray(spikes, dtype=float)
+        if spikes_arr.size:
+            ax_raster.vlines(spikes_arr, row - 0.4, row + 0.4, color="black", linewidth=0.65)
+    ax_raster.set_title("Simulated Raster (first 10 trials)")
+    ax_raster.set_xlabel("time [s]")
+    ax_raster.set_ylabel("Trial [k]")
+    ax_raster.set_ylim(0.5, 10.5)
+    ax_raster.grid(alpha=0.15)
+
+    fig.tight_layout()
+    return fig
+
+
+def build_example03_ssglm_simulation_summary(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e3b = payload["experiment3b"]
+    stimulus = np.asarray(e3b["stimulus"], dtype=float)
+    xk = np.asarray(e3b["xk"], dtype=float)
+    ci_width = np.asarray(e3b["ci_width"], dtype=float)
+    qhat = np.asarray(e3b["qhat"], dtype=float)
+
+    fig, axes = plt.subplots(2, 2, figsize=(11.4, 8.2))
+    im0 = axes[0, 0].imshow(stimulus, aspect="auto", origin="lower", cmap="gray_r")
+    axes[0, 0].set_title("Observed Stimulus")
+    fig.colorbar(im0, ax=axes[0, 0], fraction=0.046, pad=0.04)
+
+    im1 = axes[0, 1].imshow(xk, aspect="auto", origin="lower", cmap="viridis")
+    axes[0, 1].set_title("Estimated State")
+    fig.colorbar(im1, ax=axes[0, 1], fraction=0.046, pad=0.04)
+
+    im2 = axes[1, 0].imshow(ci_width, aspect="auto", origin="lower", cmap="magma")
+    axes[1, 0].set_title("95% CI Width")
+    fig.colorbar(im2, ax=axes[1, 0], fraction=0.046, pad=0.04)
+
+    axes[1, 1].plot(np.arange(1, qhat.size + 1), qhat, color="tab:blue", linewidth=1.5, marker="o")
+    axes[1, 1].set_title("Qhat by Trial")
+    axes[1, 1].set_xlabel("Trial [k]")
+    axes[1, 1].set_ylabel("Qhat")
+    axes[1, 1].grid(alpha=0.25)
+
+    fig.tight_layout()
+    return fig
+
+
+def build_example03_ssglm_fit_diagnostics(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e3b = payload["experiment3b"]
+    stimulus = np.asarray(e3b["stimulus"], dtype=float)
+    xk = np.asarray(e3b["xk"], dtype=float)
+    qhat_all = np.asarray(e3b["qhat_all"], dtype=float)
+    gammahat_all = np.asarray(e3b["gammahat_all"], dtype=float)
+
+    fig, axes = plt.subplots(2, 2, figsize=(11.2, 7.6))
+    axes[0, 0].plot(stimulus.mean(axis=0), color="black", linewidth=1.5, label="Observed mean")
+    axes[0, 0].plot(xk.mean(axis=0), color="tab:blue", linewidth=1.5, label="Estimated mean")
+    axes[0, 0].set_title("Mean Trial Dynamics")
+    axes[0, 0].set_xlabel("time bin")
+    axes[0, 0].set_ylabel("state")
+    axes[0, 0].legend(loc="upper right")
+
+    axes[0, 1].plot(np.arange(1, qhat_all.shape[0] + 1), qhat_all.mean(axis=1), color="tab:orange", linewidth=1.5)
+    axes[0, 1].set_title("Mean Qhat Across Fits")
+    axes[0, 1].set_xlabel("Trial [k]")
+    axes[0, 1].set_ylabel("mean Qhat")
+    axes[0, 1].grid(alpha=0.25)
+
+    axes[1, 0].bar(np.arange(1, gammahat_all.size + 1), gammahat_all, color="tab:green", alpha=0.8)
+    axes[1, 0].set_title("Gammahat Across Fits")
+    axes[1, 0].set_xlabel("fit index")
+    axes[1, 0].set_ylabel("gammahat")
+
+    residual = xk - stimulus
+    axes[1, 1].hist(residual.ravel(), bins=40, color="tab:purple", alpha=0.8)
+    axes[1, 1].set_title("State Residual Histogram")
+    axes[1, 1].set_xlabel("estimate - stimulus")
+    axes[1, 1].set_ylabel("count")
+
+    fig.tight_layout()
+    return fig
+
+
+def build_example03_stimulus_effect_surfaces(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e3b = payload["experiment3b"]
+    stimulus = np.asarray(e3b["stimulus"], dtype=float)
+    xk = np.asarray(e3b["xk"], dtype=float)
+    ci_width = np.asarray(e3b["ci_width"], dtype=float)
+
+    fig, axes = plt.subplots(1, 3, figsize=(14.0, 4.4))
+    for ax, arr, title, cmap in (
+        (axes[0], stimulus, "Stimulus Surface", "gray_r"),
+        (axes[1], xk, "Estimated State Surface", "viridis"),
+        (axes[2], ci_width, "CI Width Surface", "magma"),
+    ):
+        im = ax.imshow(arr, aspect="auto", origin="lower", cmap=cmap)
+        ax.set_title(title)
+        ax.set_xlabel("time bin")
+        ax.set_ylabel("Trial [k]")
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+    fig.tight_layout()
+    return fig
+
+
+def build_example03_learning_trial_comparison(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e3b = payload["experiment3b"]
+    stimulus = np.asarray(e3b["stimulus"], dtype=float)
+    xk = np.asarray(e3b["xk"], dtype=float)
+    ci_width = np.asarray(e3b["ci_width"], dtype=float)
+
+    trial_means = xk.mean(axis=1)
+    baseline_idx = 0
+    learning_idx = int(min(6, xk.shape[0] - 1))
+    late_idx = int(xk.shape[0] - 1)
+
+    fig = plt.figure(figsize=(12.4, 7.2), constrained_layout=True)
+    gs = fig.add_gridspec(2, 2, width_ratios=[1.0, 1.25], hspace=0.4, wspace=0.28)
+    ax_trial = fig.add_subplot(gs[0, 0])
+    ax_compare = fig.add_subplot(gs[1, 0])
+    ax_heat = fig.add_subplot(gs[:, 1])
+
+    ax_trial.plot(np.arange(1, trial_means.size + 1), trial_means, color="black", linewidth=2.0)
+    ax_trial.axvline(learning_idx + 1, color="red", linewidth=1.2)
+    ax_trial.set_title(f"Learning Trial:{learning_idx + 1}")
+    ax_trial.set_xlabel("Trial [k]")
+    ax_trial.set_ylabel("Average Firing Rate [spikes/sec]")
+
+    x_axis = np.linspace(0.0, 1.0, xk.shape[1], dtype=float)
+    ax_compare.plot(x_axis, xk[baseline_idx], color="black", linewidth=2.0, label=r"$\lambda_1(t)$")
+    ax_compare.plot(x_axis, xk[learning_idx], color="red", linewidth=2.0, label=r"$\lambda_7(t)$")
+    ax_compare.plot(x_axis, xk[late_idx], color="0.4", linewidth=1.3, label=r"$\lambda_K(t)$")
+    ax_compare.fill_between(
+        x_axis,
+        xk[learning_idx] - 0.5 * ci_width[learning_idx],
+        xk[learning_idx] + 0.5 * ci_width[learning_idx],
+        color="red",
+        alpha=0.15,
+    )
+    ax_compare.set_title("Learning Trial Vs. Baseline Trial\nwith 95% CIs")
+    ax_compare.set_xlabel("time [s]")
+    ax_compare.set_ylabel("Firing Rate [spikes/sec]")
+    ax_compare.legend(loc="upper right", fontsize=8)
+
+    im = ax_heat.imshow(np.abs(xk - stimulus), aspect="auto", origin="lower", cmap="gray_r")
+    ax_heat.set_title("Trial Comparison Error Map")
+    ax_heat.set_xlabel("time bin")
+    ax_heat.set_ylabel("Trial Number")
+    fig.colorbar(im, ax=ax_heat, fraction=0.046, pad=0.04)
+
+    return fig
+
+
 EXAMPLE_FIGURE_BUILDERS: dict[str, list[tuple[str, FigureBuilder]]] = {
     "example01": [
         ("fig01_constant_mg_summary.png", build_example01_constant_mg_summary),
@@ -249,6 +457,14 @@ EXAMPLE_FIGURE_BUILDERS: dict[str, list[tuple[str, FigureBuilder]]] = {
     "example02": [
         ("fig01_data_overview.png", build_example02_data_overview),
         ("fig02_lag_and_model_comparison.png", build_example02_model_comparison),
+    ],
+    "example03": [
+        ("fig01_simulated_and_real_rasters.png", build_example03_simulated_and_real_rasters),
+        ("fig02_psth_comparison.png", build_example03_psth_comparison),
+        ("fig03_ssglm_simulation_summary.png", build_example03_ssglm_simulation_summary),
+        ("fig04_ssglm_fit_diagnostics.png", build_example03_ssglm_fit_diagnostics),
+        ("fig05_stimulus_effect_surfaces.png", build_example03_stimulus_effect_surfaces),
+        ("fig06_learning_trial_comparison.png", build_example03_learning_trial_comparison),
     ],
 }
 

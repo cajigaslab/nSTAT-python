@@ -347,7 +347,7 @@ def run_experiment2(data_dir: Path, *, return_payload: bool = False) -> dict[str
     return summary, payload
 
 
-def run_experiment3(seed: int = 7) -> dict[str, float]:
+def run_experiment3(seed: int = 7, *, return_payload: bool = False) -> dict[str, float] | tuple[dict[str, float], dict[str, object]]:
     rng = np.random.default_rng(seed)
     dt = 0.001
     tmax = 1.0
@@ -361,16 +361,26 @@ def run_experiment3(seed: int = 7) -> dict[str, float]:
     trains = [simulate_poisson_from_rate(time, rate_hz, rng=rng) for _ in range(20)]
     edges = np.arange(0.0, tmax + 0.05, 0.05)
     psth_rate_hz, counts = psth(trains, edges)
-
-    return {
+    summary = {
         "num_trials": float(len(trains)),
         "psth_peak_hz": float(np.max(psth_rate_hz)),
         "psth_mean_hz": float(np.mean(psth_rate_hz)),
         "total_spikes": float(np.sum(counts)),
     }
+    if not return_payload:
+        return summary
+
+    payload = {
+        "time_s": time,
+        "true_rate_hz": rate_hz,
+        "psth_bin_centers_s": 0.5 * (edges[:-1] + edges[1:]),
+        "psth_rate_hz": psth_rate_hz,
+        "raster_spike_times": [np.asarray(train.spikeTimes, dtype=float) for train in trains],
+    }
+    return summary, payload
 
 
-def run_experiment3b(data_dir: Path) -> dict[str, float]:
+def run_experiment3b(data_dir: Path, *, return_payload: bool = False) -> dict[str, float] | tuple[dict[str, float], dict[str, object]]:
     path = data_dir / "SSGLMExampleData.mat"
     d = _loadmat_checked(path)
     if d is None:
@@ -380,20 +390,23 @@ def run_experiment3b(data_dir: Path) -> dict[str, float]:
         ci_half = np.abs(rng.normal(0.35, 0.08, size=stimulus.shape))
         stim_cis = np.stack([xk - ci_half, xk + ci_half], axis=-1)
         qhat = np.abs(rng.normal(0.12, 0.03, size=stimulus.shape[0]))
-        gammahat = np.abs(rng.normal(0.08, 0.02, size=stimulus.shape[0]))
+        qhat_all = np.tile(qhat[:, None], (1, 8))
+        gammahat = np.abs(rng.normal(0.08, 0.02, size=3))
+        gammahat_all = np.linspace(0.05, 0.11, 8, dtype=float)
         logll = float(-np.mean((xk - stimulus) ** 2) * stimulus.size)
     else:
         stimulus = np.asarray(d["stimulus"], dtype=float)
         xk = np.asarray(d["xK"], dtype=float)
         stim_cis = np.asarray(d["stimCIs"], dtype=float)
         qhat = np.asarray(d["Qhat"], dtype=float).reshape(-1)
+        qhat_all = np.asarray(d.get("QhatAll", np.tile(qhat[:, None], (1, 8))), dtype=float)
         gammahat = np.asarray(d["gammahat"], dtype=float).reshape(-1)
+        gammahat_all = np.asarray(d.get("gammahatAll", gammahat), dtype=float).reshape(-1)
         logll = float(np.asarray(d["logll"], dtype=float).reshape(-1)[0])
 
     coverage = np.mean((stimulus >= stim_cis[:, :, 0]) & (stimulus <= stim_cis[:, :, 1]))
     rmse = np.sqrt(np.mean((xk - stimulus) ** 2))
-
-    return {
+    summary = {
         "num_trials": float(stimulus.shape[0]),
         "num_time_bins": float(stimulus.shape[1]),
         "state_rmse": float(rmse),
@@ -402,6 +415,20 @@ def run_experiment3b(data_dir: Path) -> dict[str, float]:
         "mean_gammahat": float(np.mean(gammahat)),
         "log_likelihood": logll,
     }
+    if not return_payload:
+        return summary
+
+    payload = {
+        "stimulus": stimulus,
+        "xk": xk,
+        "stim_cis": stim_cis,
+        "qhat": qhat,
+        "qhat_all": qhat_all,
+        "gammahat": gammahat,
+        "gammahat_all": gammahat_all,
+        "ci_width": stim_cis[:, :, 1] - stim_cis[:, :, 0],
+    }
+    return summary, payload
 
 
 def _spike_indicator(time: np.ndarray, spike_times: np.ndarray) -> np.ndarray:
