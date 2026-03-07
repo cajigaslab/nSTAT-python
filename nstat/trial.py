@@ -21,6 +21,18 @@ def _is_string_sequence(values: object) -> bool:
     return all(isinstance(item, str) for item in values)
 
 
+def _is_empty_config_value(value) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, np.ndarray):
+        return value.size == 0
+    if isinstance(value, (str, bytes)):
+        return False
+    if isinstance(value, Sequence):
+        return len(value) == 0
+    return False
+
+
 def _copy_covariate(cov: Covariate) -> Covariate:
     copied = cov.copySignal()
     if not isinstance(copied, Covariate):
@@ -811,22 +823,22 @@ class TrialConfig:
         self.name = str(name)
 
     def setConfig(self, trial: "Trial") -> None:
-        if self.history not in ([], None):
+        if not _is_empty_config_value(self.history):
             trial.setHistory(self.history)
         else:
             trial.resetHistory()
 
-        if self.sampleRate not in ([], None):
+        if not _is_empty_config_value(self.sampleRate):
             sampleRate = float(self.sampleRate)
             if round(trial.sampleRate, 3) != round(sampleRate, 3):
                 trial.resample(sampleRate)
 
         trial.setCovMask(self.covMask)
 
-        if self.covLag not in ([], None):
+        if not _is_empty_config_value(self.covLag):
             trial.shiftCovariates(self.covLag)
 
-        if self.ensCovHist not in ([], None):
+        if not _is_empty_config_value(self.ensCovHist):
             trial.setEnsCovHist(self.ensCovHist)
             trial.setEnsCovMask(self.ensCovMask)
         else:
@@ -879,7 +891,7 @@ class ConfigCollection:
             for item in cfg:
                 self.addConfig(item)
             return
-        if cfg is None or cfg == []:
+        if _is_empty_config_value(cfg):
             self.numConfigs += 1
             self.configNames.append("Empty Config")
             self.configArray.append(["Empty Config"])
@@ -1158,7 +1170,7 @@ class Trial:
         self.setSampleRate(sampleRate)
 
     def setEnsCovMask(self, mask=None) -> None:
-        if mask is None or mask == []:
+        if _is_empty_config_value(mask):
             nSpikes = self.nspikeColl.numSpikeTrains
             mask = np.ones((nSpikes, nSpikes), dtype=int) - np.eye(nSpikes, dtype=int)
         self.ensCovMask = np.asarray(mask, dtype=int)
@@ -1186,13 +1198,21 @@ class Trial:
         self.nspikeColl.setNeighbors(*args)
 
     def setHistory(self, hist) -> None:
-        if hist is None or hist == []:
+        if _is_empty_config_value(hist):
             self.history = []
             return
         from .history import History
 
         if isinstance(hist, History):
             self.history = hist
+            return
+        if isinstance(hist, np.ndarray):
+            if hist.ndim > 2 or (hist.ndim == 2 and min(hist.shape) > 1):
+                raise ValueError("Only one of the dimension of the windowTimes can be greater than 1.")
+            arr = np.asarray(hist, dtype=float).reshape(-1)
+            if arr.size <= 1:
+                raise ValueError("At least two times points must be specified to determine a window")
+            self.history = History(arr)
             return
         if isinstance(hist, Sequence) and not isinstance(hist, (str, bytes)):
             if hist and all(isinstance(item, History) for item in hist):
@@ -1209,7 +1229,7 @@ class Trial:
         self.history = []
 
     def setEnsCovHist(self, hist=None) -> None:
-        if hist is None or hist == []:
+        if _is_empty_config_value(hist):
             self.ensCovHist = []
             self.ensCovColl = None
             return
@@ -1217,6 +1237,13 @@ class Trial:
 
         if isinstance(hist, History):
             self.ensCovHist = hist
+        elif isinstance(hist, np.ndarray):
+            if hist.ndim > 2 or (hist.ndim == 2 and min(hist.shape) > 1):
+                raise ValueError("Only one of the dimension of the windowTimes can be greater than 1.")
+            arr = np.asarray(hist, dtype=float).reshape(-1)
+            if arr.size <= 1:
+                raise ValueError("At least two times points must be specified to determine a window")
+            self.ensCovHist = History(arr)
         elif isinstance(hist, Sequence) and not isinstance(hist, (str, bytes)):
             arr = np.asarray(hist, dtype=float).reshape(-1)
             if arr.size <= 1:
@@ -1289,14 +1316,15 @@ class Trial:
         if not self.isHistSet():
             raise ValueError("Set Trial history and retry")
         nst = self.nspikeColl.getNST(neuronIndex)
+        target_time = np.asarray(self.covarColl.getCov(1).time, dtype=float).reshape(-1) if self.covarColl.numCov else None
         if isinstance(self.history, list):
             histCovColl: CovariateCollection | None = None
             for i, hist in enumerate(self.history, start=1):
-                temp = hist.computeHistory(nst, i)
+                temp = hist.computeHistory(nst, i, time_grid=target_time)
                 histCovColl = temp if histCovColl is None else CovariateCollection([*histCovColl.covArray, *temp.covArray])
             assert histCovColl is not None
             return histCovColl
-        return self.history.computeHistory(nst)
+        return self.history.computeHistory(nst, time_grid=target_time)
 
     def getHistMatrices(self, neuronIndex: int) -> np.ndarray:
         if not self.isHistSet():

@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import numpy as np
+from scipy.stats import norm
 
 from .cif import CIF
 from .errors import UnsupportedWorkflowError
@@ -356,6 +357,155 @@ class DecodingAlgorithms:
         return {"state": xs, "cov": ps}
 
     @staticmethod
+    def kalman_predict(x_u, Pe_u, A, Pv, GnConv=None):
+        x_vec = np.asarray(x_u, dtype=float).reshape(-1)
+        dim = x_vec.size
+        A_mat = _as_state_matrix(A, dim)
+        Pe_mat = _as_state_matrix(Pe_u, dim)
+        if _is_empty_value(GnConv):
+            Pv_mat = _as_state_matrix(Pv, dim)
+            Pe_p = _symmetrize(A_mat @ Pe_mat @ A_mat.T + Pv_mat)
+        else:
+            Pe_p = _symmetrize(_as_state_matrix(GnConv, dim))
+        x_p = A_mat @ x_vec
+        return x_p, Pe_p
+
+    @staticmethod
+    def kalman_update(x_p, Pe_p, C, Pw, y, GnConv=None):
+        x_vec = np.asarray(x_p, dtype=float).reshape(-1)
+        dim = x_vec.size
+        C_mat = np.asarray(C, dtype=float)
+        if C_mat.ndim == 1:
+            C_mat = C_mat.reshape(1, -1)
+        if C_mat.shape[1] != dim:
+            raise ValueError("C must have one column per state dimension")
+        Pe_mat = _as_state_matrix(Pe_p, dim)
+        y_vec = np.asarray(y, dtype=float).reshape(-1)
+        if _is_empty_value(GnConv):
+            Pw_mat = _as_state_matrix(Pw, y_vec.size)
+            innovation = y_vec - C_mat @ x_vec
+            S_cov = _symmetrize(C_mat @ Pe_mat @ C_mat.T + Pw_mat)
+            G = Pe_mat @ C_mat.T @ np.linalg.pinv(S_cov)
+            x_u = x_vec + G @ innovation
+            Pe_u = _symmetrize((np.eye(dim, dtype=float) - G @ C_mat) @ Pe_mat)
+        else:
+            G = np.asarray(GnConv, dtype=float)
+            innovation = y_vec - C_mat @ x_vec
+            x_u = x_vec + G @ innovation
+            Pe_u = _symmetrize((np.eye(dim, dtype=float) - G @ C_mat) @ Pe_mat)
+        return x_u, Pe_u, G
+
+    @staticmethod
+    def _state_history_time_major(x, P):
+        x_arr = np.asarray(x, dtype=float)
+        P_arr = np.asarray(P, dtype=float)
+        if P_arr.ndim != 3:
+            raise ValueError("Covariance history must be 3D")
+        transposed = False
+        if x_arr.ndim == 1:
+            x_arr = x_arr[:, None]
+        if x_arr.shape[0] == P_arr.shape[0]:
+            return x_arr, P_arr, transposed
+        if x_arr.shape[1] == P_arr.shape[0]:
+            return x_arr.T, P_arr, True
+        raise ValueError("State history shape does not align with covariance history")
+
+    @staticmethod
+    def kalman_smootherFromFiltered(A, x_p, Pe_p, x_u, Pe_u):
+        x_p_tm, Pe_p_tm, predicted_transposed = DecodingAlgorithms._state_history_time_major(x_p, Pe_p)
+        x_u_tm, Pe_u_tm, updated_transposed = DecodingAlgorithms._state_history_time_major(x_u, Pe_u)
+        if predicted_transposed != updated_transposed:
+            raise ValueError("Predicted and updated state histories must share an orientation")
+
+        n_t, n_x = x_u_tm.shape
+        x_N = x_u_tm.copy()
+        P_N = Pe_u_tm.copy()
+        Ln = np.zeros((max(n_t - 1, 0), n_x, n_x), dtype=float)
+
+        for t in range(n_t - 2, -1, -1):
+            A_t = _select_time_matrix(A, t, n_x)
+            gain = Pe_u_tm[t] @ A_t.T @ np.linalg.pinv(Pe_p_tm[t + 1])
+            Ln[t] = gain
+            x_N[t] = x_u_tm[t] + gain @ (x_N[t + 1] - x_p_tm[t + 1])
+            P_N[t] = _symmetrize(Pe_u_tm[t] + gain @ (P_N[t + 1] - Pe_p_tm[t + 1]) @ gain.T)
+
+        if updated_transposed:
+            return x_N.T, P_N, Ln
+        return x_N, P_N, Ln
+
+    @staticmethod
+    def kalman_smoother(A, C, Pv, Pw, Px0, x0, y):
+        observations = np.asarray(y, dtype=float)
+        if observations.ndim == 1:
+            observations = observations[:, None]
+
+        x_prev = np.asarray(x0, dtype=float).reshape(-1)
+        Pe_prev = _as_state_matrix(Px0, x_prev.size)
+        n_t = observations.shape[0]
+        n_x = x_prev.size
+        x_p = np.zeros((n_t, n_x), dtype=float)
+        Pe_p = np.zeros((n_t, n_x, n_x), dtype=float)
+        x_u = np.zeros((n_t, n_x), dtype=float)
+        Pe_u = np.zeros((n_t, n_x, n_x), dtype=float)
+
+        for t in range(n_t):
+            x_p[t], Pe_p[t] = DecodingAlgorithms.kalman_predict(x_prev, Pe_prev, A, Pv)
+            x_u[t], Pe_u[t], _ = DecodingAlgorithms.kalman_update(x_p[t], Pe_p[t], C, Pw, observations[t])
+            x_prev = x_u[t]
+            Pe_prev = Pe_u[t]
+
+        x_N, P_N, Ln = DecodingAlgorithms.kalman_smootherFromFiltered(A, x_p, Pe_p, x_u, Pe_u)
+        return x_N, P_N, Ln, x_p, Pe_p, x_u, Pe_u
+
+    @staticmethod
+    def kalman_fixedIntervalSmoother(A, C, Pv, Pw, Px0, x0, y, lags):
+        x_N, P_N, _, x_p, Pe_p, x_u, Pe_u = DecodingAlgorithms.kalman_smoother(A, C, Pv, Pw, Px0, x0, y)
+        x_p_tm, Pe_p_tm, _ = DecodingAlgorithms._state_history_time_major(x_p, Pe_p)
+        x_u_tm, Pe_u_tm, _ = DecodingAlgorithms._state_history_time_major(x_u, Pe_u)
+        x_N_tm, P_N_tm, _ = DecodingAlgorithms._state_history_time_major(x_N, P_N)
+        lag = max(int(lags), 1)
+        x_pLag = np.zeros_like(x_p_tm)
+        Pe_pLag = np.zeros_like(Pe_p_tm)
+        x_uLag = np.zeros_like(x_u_tm)
+        Pe_uLag = np.zeros_like(Pe_u_tm)
+
+        for t in range(x_u_tm.shape[0]):
+            idx = max(t - lag + 1, 0)
+            x_uLag[t] = x_N_tm[idx]
+            Pe_uLag[t] = P_N_tm[idx]
+            x_pLag[t] = x_p_tm[idx]
+            Pe_pLag[t] = Pe_p_tm[idx]
+
+        return x_pLag, Pe_pLag, x_uLag, Pe_uLag
+
+    @staticmethod
+    def ComputeStimulusCIs(fitType, xK, Wku, delta, Mc=None, alphaVal=0.05):
+        del Mc, delta
+        x_tm, W_tm, transposed = DecodingAlgorithms._state_history_time_major(xK, Wku)
+        variances = np.clip(np.diagonal(W_tm, axis1=1, axis2=2), 0.0, None)
+        z = float(norm.ppf(1.0 - float(alphaVal) / 2.0))
+        lower = x_tm - z * np.sqrt(variances)
+        upper = x_tm + z * np.sqrt(variances)
+        fit_type = str(fitType).lower()
+        if fit_type == "poisson":
+            stimulus = np.exp(np.clip(x_tm, -20.0, 20.0))
+            ci_lower = np.exp(np.clip(lower, -20.0, 20.0))
+            ci_upper = np.exp(np.clip(upper, -20.0, 20.0))
+        elif fit_type == "binomial":
+            stimulus = 1.0 / (1.0 + np.exp(-np.clip(x_tm, -20.0, 20.0)))
+            ci_lower = 1.0 / (1.0 + np.exp(-np.clip(lower, -20.0, 20.0)))
+            ci_upper = 1.0 / (1.0 + np.exp(-np.clip(upper, -20.0, 20.0)))
+        else:
+            stimulus = x_tm
+            ci_lower = lower
+            ci_upper = upper
+
+        ci = np.stack([ci_lower, ci_upper], axis=-1)
+        if transposed:
+            return np.transpose(ci, (1, 0, 2)), stimulus.T
+        return ci, stimulus
+
+    @staticmethod
     def PPDecode_predict(x_u, W_u, A, Q, Wconv=None):
         x_vec = np.asarray(x_u, dtype=float).reshape(-1)
         dim = x_vec.size
@@ -512,6 +662,57 @@ class DecodingAlgorithms:
         )
 
     @staticmethod
+    def PP_fixedIntervalSmoother(A, Q, dN, lags, mu, beta, fitType="poisson", delta=0.001, gamma=None, windowTimes=None, x0=None, Pi0=None):
+        x_p, W_p, x_u, W_u, *_ = DecodingAlgorithms._ppdecode_filter_linear(
+            A,
+            Q,
+            dN,
+            mu,
+            beta,
+            fitType,
+            delta,
+            gamma,
+            windowTimes,
+            x0,
+            Pi0,
+        )
+        lag_count = max(int(lags), 1)
+        num_states, num_steps = x_u.shape
+        x_uLag = np.zeros_like(x_u)
+        W_uLag = np.zeros_like(W_u)
+        x_pLag = np.zeros_like(x_p)
+        W_pLag = np.zeros_like(W_p)
+
+        for n in range(num_steps):
+            if n < lag_count:
+                continue
+
+            x_bank: list[np.ndarray] = []
+            w_bank: list[np.ndarray] = []
+            for k in range(1, lag_count + 1):
+                idx = n - k
+                A_k = _select_time_matrix(A, idx, num_states)
+                gain = W_u[:, :, idx] @ A_k.T @ np.linalg.pinv(W_p[:, :, idx + 1])
+                target_x = x_u[:, idx + 1] if k == 1 else x_bank[k - 2]
+                target_W = W_u[:, :, idx + 1] if k == 1 else w_bank[k - 2]
+                x_k = x_u[:, idx] + gain @ (target_x - x_p[:, idx + 1])
+                W_k = W_u[:, :, idx] + gain @ (target_W - W_p[:, :, idx + 1]) @ gain.T
+                W_k = _symmetrize(W_k)
+                x_bank.append(x_k)
+                w_bank.append(W_k)
+
+            x_uLag[:, n] = x_bank[-1]
+            W_uLag[:, :, n] = w_bank[-1]
+            if lag_count > 1:
+                x_pLag[:, n + 1] = x_bank[-2]
+                W_pLag[:, :, n + 1] = w_bank[-1]
+            else:
+                x_pLag[:, n + 1] = x_u[:, n]
+                W_pLag[:, :, n + 1] = W_u[:, :, n]
+
+        return x_pLag, W_pLag, x_uLag, W_uLag
+
+    @staticmethod
     def PPHybridFilterLinear(
         A,
         Q,
@@ -651,4 +852,36 @@ class DecodingAlgorithms:
         )
 
 
-__all__ = ["DecodingAlgorithms"]
+PP_fixedIntervalSmoother = DecodingAlgorithms.PP_fixedIntervalSmoother
+PPDecodeFilter = DecodingAlgorithms.PPDecodeFilter
+PPDecodeFilterLinear = DecodingAlgorithms.PPDecodeFilterLinear
+PPDecode_predict = DecodingAlgorithms.PPDecode_predict
+PPDecode_updateLinear = DecodingAlgorithms.PPDecode_updateLinear
+PPHybridFilter = DecodingAlgorithms.PPHybridFilter
+PPHybridFilterLinear = DecodingAlgorithms.PPHybridFilterLinear
+kalman_filter = DecodingAlgorithms.kalman_filter
+kalman_predict = DecodingAlgorithms.kalman_predict
+kalman_update = DecodingAlgorithms.kalman_update
+kalman_fixedIntervalSmoother = DecodingAlgorithms.kalman_fixedIntervalSmoother
+kalman_smootherFromFiltered = DecodingAlgorithms.kalman_smootherFromFiltered
+kalman_smoother = DecodingAlgorithms.kalman_smoother
+ComputeStimulusCIs = DecodingAlgorithms.ComputeStimulusCIs
+
+
+__all__ = [
+    "ComputeStimulusCIs",
+    "DecodingAlgorithms",
+    "PPDecodeFilter",
+    "PPDecodeFilterLinear",
+    "PPDecode_predict",
+    "PPDecode_updateLinear",
+    "PPHybridFilter",
+    "PPHybridFilterLinear",
+    "PP_fixedIntervalSmoother",
+    "kalman_filter",
+    "kalman_fixedIntervalSmoother",
+    "kalman_predict",
+    "kalman_smoother",
+    "kalman_smootherFromFiltered",
+    "kalman_update",
+]

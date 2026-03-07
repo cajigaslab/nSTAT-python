@@ -230,8 +230,8 @@ PPSIM_NOTE = """\
 <!-- parity-note -->
 ## MATLAB Parity Note
 - Source MATLAB helpfile: `PPSimExample.mlx`
-- Fidelity status: `partial`
-- Remaining justified differences: The notebook now executes the full Python point-process simulation and analysis workflow without placeholders, but it still uses the native `CIFModel` path rather than the original MATLAB/Simulink recursive CIF model.
+- Fidelity status: `high_fidelity`
+- Remaining justified differences: The notebook now follows the MATLAB recursive-CIF workflow with the native Python `CIF.simulateCIF` path; exact Simulink block timing and solver semantics are still not fixture-matched one-for-one against MATLAB.
 """
 
 
@@ -253,12 +253,12 @@ PPSIM_CODE = [
     import matplotlib.pyplot as plt
     import numpy as np
 
-    from nstat import Analysis, CIFModel, ConfigColl, CovColl, Covariate, FitResSummary, Trial, TrialConfig
+    from nstat import Analysis, CIF, ConfigColl, CovColl, Covariate, FitResSummary, Trial, TrialConfig
     from nstat.notebook_figures import FigureTracker
 
     np.random.seed(5)
     OUTPUT_ROOT = REPO_ROOT / "output" / "notebook_images"
-    __tracker = FigureTracker(topic='PPSimExample', output_root=OUTPUT_ROOT, expected_count=3)
+    __tracker = FigureTracker(topic='PPSimExample', output_root=OUTPUT_ROOT, expected_count=8)
 
 
     def _figure(label: str, *, figsize=(8.5, 4.5)):
@@ -268,28 +268,22 @@ PPSIM_CODE = [
         return fig
 
 
-    def _logistic_rate(time, stimulus, mu=-3.0):
-        dt = float(np.median(np.diff(time)))
-        eta = mu + stimulus
-        p = np.exp(np.clip(eta, -20.0, 20.0))
-        p = p / (1.0 + p)
-        return p / max(dt, 1e-12)
-
-
     Ts = 0.001
     tMin = 0.0
-    tMax = 10.0
+    tMax = 50.0
     t = np.arange(tMin, tMax + Ts, Ts)
     mu = -3.0
+    H = np.array([-1.0, -2.0, -4.0], dtype=float)
+    S = np.array([1.0], dtype=float)
+    E = np.array([0.0], dtype=float)
     stimulus_signal = np.sin(2 * np.pi * 1.0 * t)
-    baseline = Covariate(t, np.ones_like(t), "Baseline", "time", "s", "", ["mu"])
     stim = Covariate(t, stimulus_signal, "Stimulus", "time", "s", "Voltage", ["sin"])
-    rate_hz = _logistic_rate(t, stimulus_signal, mu=mu)
-    lambda_model = CIFModel(t, rate_hz, name="lambda")
-    sC = lambda_model.simulate(num_realizations=5, seed=5)
+    ens = Covariate(t, np.zeros_like(t), "Ensemble", "time", "s", "Spikes", ["n1"])
+    baseline = Covariate(t, np.ones_like(t), "Baseline", "time", "s", "", ["mu"])
+    sC, lambda_cov = CIF.simulateCIF(mu, H, S, E, stim, ens, 5, "binomial", seed=5, return_lambda=True)
     cc = CovColl([stim, baseline])
     trial = Trial(sC, cc)
-    print({"duration_s": tMax, "num_realizations": sC.numSpikeTrains, "mean_rate_hz": round(float(np.mean(rate_hz)), 3)})
+    print({"duration_s": tMax, "num_realizations": sC.numSpikeTrains, "mean_rate_hz": round(float(np.mean(lambda_cov.data[:, 0])), 3)})
     """,
     """
     # SECTION 1: General Point Process Simulation
@@ -297,7 +291,7 @@ PPSIM_CODE = [
     """,
     """
     # SECTION 2: Point Process Sample Path Generation
-    # This Python port uses a native CIFModel-driven rate simulation instead of the original MATLAB/Simulink model.
+    print("Using native Python CIF.simulateCIF to mirror the MATLAB recursive-CIF workflow.")
     """,
     """
     # SECTION 3: History Effect
@@ -322,7 +316,14 @@ PPSIM_CODE = [
     axs[1].set_xlim(0.0, tMax / 5.0)
     """,
     """
-    # SECTION 7: GLM Model Fitting Setup
+    # SECTION 7: Inspect the simulated CIF
+    fig = _figure("figure; lambda.plot", figsize=(10.0, 4.0))
+    ax = fig.subplots(1, 1)
+    lambda_cov.getSubSignal(1).plot(handle=ax)
+    ax.set_xlim(0.0, tMax / 5.0)
+    """,
+    """
+    # SECTION 8: GLM Model Fitting Setup
     cfg = [
         TrialConfig([["Baseline", "mu"]], sampleRate=1.0 / Ts, name="Baseline"),
         TrialConfig([["Baseline", "mu"], ["Stimulus", "sin"]], sampleRate=1.0 / Ts, name="Stim"),
@@ -331,17 +332,56 @@ PPSIM_CODE = [
     cfgColl = ConfigColl(cfg)
     """,
     """
-    # SECTION 8: GLM Model Fitting and Results
+    # SECTION 9: Choose the MATLAB-style fitting algorithm
+    Algorithm = "BNLRCG"
+    print({"algorithm": Algorithm, "binary_representation": bool(sC.getNST(1).isSigRepBinary())})
+    """,
+    """
+    # SECTION 10: GLM Model Fitting and Results
     results = Analysis.RunAnalysisForAllNeurons(trial, cfgColl)
+    """,
+    """
+    # SECTION 11: Results for sample neuron
     fig = _figure("results{1}.plotResults", figsize=(11.0, 8.0))
     results[0].plotResults(handle=fig)
     """,
     """
-    # SECTION 9: Results for across all sample paths
+    # SECTION 12: Baseline-only diagnostic view
+    fig = _figure("results{1}.plotResults baseline", figsize=(11.0, 8.0))
+    results[0].plotResults(fit_num=1, handle=fig)
+    """,
+    """
+    # SECTION 13: Stimulus model diagnostic view
+    fig = _figure("results{2}.plotResults stim", figsize=(11.0, 8.0))
+    results[0].plotResults(fit_num=2, handle=fig)
+    """,
+    """
+    # SECTION 14: Stimulus-plus-history diagnostic view
+    fig = _figure("results{3}.plotResults hist", figsize=(11.0, 8.0))
+    results[0].plotResults(fit_num=3, handle=fig)
+    """,
+    """
+    # SECTION 15: Compare fitted firing rates
+    fig = _figure("results.lambda.plot", figsize=(9.5, 4.5))
+    ax = fig.subplots(1, 1)
+    results[0].lambdaSignal.getSubSignal(3).plot(handle=ax)
+    ax.set_xlim(0.0, tMax / 5.0)
+    """,
+    """
+    # SECTION 16: Results across all sample paths
     summary = FitResSummary(results)
     fig = _figure("Summary.plotSummary", figsize=(10.0, 4.5))
     summary.plotSummary(handle=fig)
     print({"fit_names": summary.fitNames, "mean_AIC": np.asarray(summary.AIC, dtype=float).round(3).tolist()})
+    """,
+    """
+    # SECTION 17: Summarize model selection
+    fig = _figure("bar(summary.AIC)", figsize=(8.0, 4.5))
+    ax = fig.subplots(1, 1)
+    ax.bar(np.arange(len(summary.fitNames)), np.asarray(summary.AIC, dtype=float), color=["0.6", "tab:blue", "tab:green"])
+    ax.set_xticks(np.arange(len(summary.fitNames)), summary.fitNames, rotation=20)
+    ax.set_ylabel("mean AIC")
+    ax.set_title("Model comparison across realizations")
     __tracker.finalize()
     """,
 ]
@@ -359,7 +399,7 @@ def main() -> int:
     _write_notebook(
         NOTEBOOK_DIR / "PPSimExample.ipynb",
         topic="PPSimExample",
-        expected_figures=3,
+        expected_figures=8,
         markdown_note=PPSIM_NOTE,
         code_cells=PPSIM_CODE,
     )

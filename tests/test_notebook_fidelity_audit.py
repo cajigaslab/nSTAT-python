@@ -33,10 +33,21 @@ def test_notebook_fidelity_audit_has_structural_counts() -> None:
         assert "python_tracker_only_cells" in row
 
 
-def test_notebook_fidelity_audit_marks_placeholder_heavy_ports_as_partial() -> None:
+def test_notebook_fidelity_audit_marks_upgraded_ports_as_high_fidelity() -> None:
     audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
-    partial_topics = {row["topic"] for row in audit.get("items", []) if row["fidelity_status"] == "partial"}
-    assert {"AnalysisExamples", "PPSimExample", "nSTATPaperExamples"} <= partial_topics
+    high_fidelity_topics = {row["topic"] for row in audit.get("items", []) if row["fidelity_status"] == "high_fidelity"}
+    assert {
+        "AnalysisExamples",
+        "AnalysisExamples2",
+        "PPSimExample",
+        "nSTATPaperExamples",
+    } <= high_fidelity_topics
+
+
+def test_notebook_fidelity_audit_has_no_partial_or_placeholder_notebooks() -> None:
+    audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
+    partial_topics = {row["topic"] for row in audit.get("items", []) if row["fidelity_status"] in {"partial", "placeholder", "missing"}}
+    assert not partial_topics
 
 
 def test_high_fidelity_notebooks_have_no_placeholder_or_tracker_only_cells() -> None:

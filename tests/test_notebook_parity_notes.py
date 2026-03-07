@@ -40,4 +40,15 @@ def test_target_notebooks_start_with_machine_readable_parity_note() -> None:
 
 def test_notebook_parity_notes_have_no_partial_statuses() -> None:
     partial = [row["topic"] for row in _load_notes() if row["fidelity_status"] == "partial"]
-    assert partial, "The current audit should include at least one partial notebook until placeholder-heavy ports are replaced"
+    assert not partial
+
+
+def test_high_fidelity_parity_notes_do_not_admit_placeholder_or_tracker_only_status() -> None:
+    forbidden = ("placeholder", "tracker-only", "partial fidelity", "stubbed")
+    for row in _load_notes():
+        if row["fidelity_status"] not in {"high_fidelity", "exact"}:
+            continue
+        notebook_path = REPO_ROOT / row["file"]
+        notebook = nbformat.read(notebook_path, as_version=4)
+        source = "".join(notebook.cells[0].get("source", "")).lower()
+        assert not any(term in source for term in forbidden), f"{notebook_path} still self-reports reduced fidelity"

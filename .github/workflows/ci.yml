@@ -151,6 +151,38 @@ jobs:
       - name: Execute Python notebook parity-core group
         run: python tools/notebooks/run_notebooks.py --group parity_core --timeout 900
 
+  notebook-changed-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+          python -m pip install ipykernel
+          python -m ipykernel install --user --name python3 --display-name "Python 3"
+      - name: Resolve changed notebook topics
+        id: changed_topics
+        run: |
+          TOPICS=$(python tools/notebooks/changed_topics.py \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --head-sha "${{ github.sha }}")
+          echo "topics=${TOPICS}" >> "$GITHUB_OUTPUT"
+          echo "Resolved notebook topics: ${TOPICS:-<none>}"
+      - name: Execute changed notebook topics
+        if: steps.changed_topics.outputs.topics != ''
+        run: python tools/notebooks/run_notebooks.py --group full --topics "${{ steps.changed_topics.outputs.topics }}" --timeout 1200
+      - name: No notebook changes detected
+        if: steps.changed_topics.outputs.topics == ''
+        run: echo "No changed notebook topics to execute."
+
   cleanroom-compliance:
     runs-on: ubuntu-latest
 

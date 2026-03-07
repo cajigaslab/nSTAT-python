@@ -7,6 +7,7 @@ groups:
     - TrialConfigExamples
   smoke:
     - AnalysisExamples
+    - AnalysisExamples2
     - CovariateExamples
     - DecodingExample
     - DecodingExampleWithHist
@@ -17,6 +18,7 @@ groups:
     - nSpikeTrainExamples
   core:
     - AnalysisExamples
+    - AnalysisExamples2
     - DecodingExample
     - DecodingExampleWithHist
     - ExplicitStimulusWhiskerData
@@ -31,6 +33,7 @@ groups:
     - nSpikeTrainExamples
   parity_core:
     - AnalysisExamples
+    - AnalysisExamples2
     - ConfidenceIntervalOverview
     - ConfigCollExamples
     - CovariateExamples
@@ -49,6 +52,7 @@ groups:
     - nSpikeTrainExamples
   helpfile_full:
     - AnalysisExamples
+    - AnalysisExamples2
     - DecodingExample
     - DecodingExampleWithHist
     - ExplicitStimulusWhiskerData

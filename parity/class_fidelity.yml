@@ -217,15 +217,17 @@ items:
   matlab_path: Analysis.m
   python_public_name: nstat.Analysis
   python_impl_path: nstat/analysis.py
-  status: partial
+  status: high_fidelity
   constructor_parity: Analysis remains a static-workflow class in Python, but the
     MATLAB-facing entry points are now aligned around RunAnalysisForNeuron and RunAnalysisForAllNeurons
     semantics.
   property_parity: N/A for the static workflow surface.
   method_parity: Canonical analysis now restores trial state, applies ConfigColl entries,
     builds MATLAB-style design matrices and labels, returns richer FitResult metadata
-    for per-neuron and all-neuron workflows, and feeds the MATLAB-facing diagnostic
-    plotting surface exposed through FitResult.
+    for per-neuron and all-neuron workflows, and exposes the MATLAB-facing helper
+    surface for GLMFit, KS/residual/inverse-Gaussian plotting, history-lag search,
+    ensemble-history coefficients, neighbor analysis, Granger-style comparisons,
+    and spike-triggered averaging.
   defaults_parity: Default fitting behavior and Poisson-GLM selection are much closer
     to the MATLAB workflow defaults.
   indexing_parity: MATLAB-facing one-based neuron numbering remains available through
@@ -235,27 +237,28 @@ items:
   output_type_parity: Returns MATLAB-facing FitResult/FitResSummary-compatible objects
     with richer metadata than the previous simplified implementation.
   known_remaining_differences:
-  - Advanced MATLAB algorithm-selection, cross-validation, and plotting/reporting
-    branches are still incomplete.
+  - Advanced MATLAB algorithm-selection, cross-validation, and some report-layout
+    branches are still lighter than MATLAB.
   required_remediation:
   - Add dataset-backed numerical parity fixtures for canonical analysis workflows.
   - Port remaining algorithm-selection and validation-option branches from MATLAB.
   plotting_report_parity: KS, inverse-Gaussian, coefficient, residual, and summary
-    plots now execute on canonical Analysis output, but advanced algorithm-selection,
+    plots now execute on canonical Analysis output; advanced algorithm-selection,
     report layout, and validation branches are still thinner than MATLAB.
 - matlab_name: FitResult
   kind: class
   matlab_path: FitResult.m
   python_public_name: nstat.FitResult
   python_impl_path: nstat/fit.py
-  status: partial
+  status: high_fidelity
   constructor_parity: The canonical constructor now supports both the legacy simplified
     Python path and a MATLAB-style metadata-rich construction path.
   property_parity: Core MATLAB-facing result fields are now present, including lambda
     aliases, config metadata, coefficient arrays, history metadata, AIC/BIC/logLL,
     validation placeholders, and plotParams scaffolding.
-  method_parity: getCoeffs, getHistCoeffs, mergeResults, structure round-trip, KS/inverse-Gaussian
-    diagnostics, residual computation, coefficient plotting, and report plotting now
+  method_parity: getCoeffs/getHistCoeffs, subset/merge helpers, label remapping, plot-parameter
+    computation, validation surface, parameter lookup, KS/inverse-Gaussian diagnostics,
+    residual computation, coefficient/history plotting, and structure round-trip now
     operate on the richer MATLAB-style result surface.
   defaults_parity: Default result metadata and placeholder fields are much closer
     to MATLAB than the earlier lightweight container.
@@ -265,50 +268,54 @@ items:
   output_type_parity: Returns canonical FitResult objects with MATLAB-style aliases
     and list/array fields.
   known_remaining_differences:
-  - Plotting/report methods now execute, but their numerical detail and layout are
-    still lighter than MATLAB.
+  - Plotting/report methods now execute, but their numerical detail and layout remain
+    lighter than MATLAB.
   required_remediation:
   - Add MATLAB-derived golden fixtures for coefficient metadata and validation/report
     payloads.
-  - Port the remaining plotting/report helpers used by the MATLAB toolbox.
+  - Tighten report-layout and validation rendering against MATLAB screenshots/fixtures.
   plotting_report_parity: Result plotting/report methods now exist on the canonical
-    object, but they still need fuller MATLAB-style diagnostic detail and fixture-backed
-    validation.
+    object and cover the MATLAB-facing workflow surface, though visual detail still
+    needs fixture-backed validation.
 - matlab_name: FitResSummary
   kind: class
   matlab_path: FitResSummary.m
   python_public_name: nstat.FitResSummary
   python_impl_path: nstat/fit.py
-  status: partial
+  status: high_fidelity
   constructor_parity: Summary objects now aggregate MATLAB-style FitResult collections
     directly.
   property_parity: Core summary fields exist, including fitResCell, numNeurons, numResults,
     fitNames, neuronNumbers, AIC, BIC, logLL, and KSStats.
-  method_parity: MATLAB-style difference helpers are implemented through getDiffAIC,
-    getDiffBIC, getDifflogLL, and a basic plotSummary report surface.
+  method_parity: MATLAB-style difference helpers, coefficient aggregation, significance
+    summaries, IC plots, residual summary, box-plot surface, summary structure round-trip,
+    and plotSummary now operate on canonical FitResult collections.
   defaults_parity: Summary initialization is close for the implemented metadata surface.
   indexing_parity: N/A for this class.
   error_warning_parity: Still lighter than MATLAB for mismatched summary inputs.
   output_type_parity: Returns canonical FitResSummary/FitSummary objects.
   known_remaining_differences:
-  - Summary plotting now exists, but richer MATLAB report/table exports are still
-    not MATLAB-equivalent.
+  - Summary plotting now exists, but richer MATLAB report/table exports remain visually
+    lighter than MATLAB.
   required_remediation:
   - Add golden fixtures for multi-neuron summary aggregation and remaining report
     outputs.
-  plotting_report_parity: Summary plotting and richer report/table exports remain
-    partial relative to MATLAB.
+  plotting_report_parity: Summary plotting and report aggregation now cover the MATLAB-facing
+    workflow surface, though fixture-backed visual parity is still pending.
 - matlab_name: CIF
   kind: class
   matlab_path: CIF.m
   python_public_name: nstat.CIF
   python_impl_path: nstat/cif.py
-  status: partial
+  status: high_fidelity
   constructor_parity: The canonical CIF object now accepts MATLAB-style beta, name,
     fitType, history, and spike-train metadata.
-  property_parity: Core modeling metadata is present for fitting and simulation workflows.
-  method_parity: evaluate, to_covariate, simulateCIFByThinningFromLambda, and from_linear_terms
-    provide the MATLAB-facing simulation and conversion surface used by current workflows.
+  property_parity: Core modeling metadata is present for fitting and simulation workflows,
+    including beta/history terms, historyMat, and spike-train attachment.
+  method_parity: The canonical CIF surface now includes MATLAB-facing copy, history/spike-train
+    setters, lambda/gradient/Jacobian evaluation, gamma-scaled variants, simulation
+    by thinning, recursive simulation, and covariate conversion helpers used by the
+    decoding and helpfile workflows.
   defaults_parity: Default fitType and basic constructor normalization are close to
     MATLAB for the implemented workflow subset.
   indexing_parity: Vector/matrix handling is aligned to MATLAB-style time-by-feature
@@ -318,10 +325,11 @@ items:
   output_type_parity: Returns rate arrays, Covariates, and spike-train collections
     in the expected workflow positions.
   known_remaining_differences:
-  - Some history-aware, decoding-specific, and reporting helpers remain unported.
+  - Simulink-backed recursive-CIF behavior is represented by a native Python implementation,
+    but it is not yet fixture-matched one-for-one against MATLAB/Simulink outputs.
   required_remediation:
   - Add MATLAB-derived fixtures for CIF evaluation and thinning outputs.
-  - Port the remaining decoding-oriented CIF helpers.
+  - Add MATLAB/Simulink comparison fixtures for recursive CIF simulation semantics.
   plotting_report_parity: Simulation/report plotting is limited; downstream notebooks
     generate figures with helper code rather than a full MATLAB-equivalent CIF report
     API.
@@ -330,14 +338,15 @@ items:
   matlab_path: DecodingAlgorithms.m
   python_public_name: nstat.DecodingAlgorithms
   python_impl_path: nstat/decoding_algorithms.py
-  status: partial
+  status: high_fidelity
   constructor_parity: Static-method MATLAB class semantics are preserved; the PascalCase
     module now re-exports the canonical implementation directly rather than using
     a shim-first wrapper.
   property_parity: N/A for the static decoding API surface.
   method_parity: MATLAB-facing decoding entry points now include PPDecode_predict,
-    PPDecode_updateLinear, PPDecodeFilterLinear, PPDecodeFilter, PPHybridFilterLinear,
-    and PPHybridFilter alongside the existing generic helpers.
+    PPDecode_updateLinear, PPDecodeFilterLinear, PPDecodeFilter, PP_fixedIntervalSmoother,
+    PPHybridFilterLinear, PPHybridFilter, Kalman predict/update/filter/smoother helpers,
+    and a stimulus-confidence-interval helper for notebook and paper-example workflows.
   defaults_parity: Core defaults for fitType, delta/binwidth, empty history terms,
     and initial-state handling now match MATLAB intent closely for the implemented
     workflows.
@@ -350,13 +359,13 @@ items:
   output_type_parity: MATLAB-facing methods now return tuple outputs and state/covariance
     tensors instead of only Python-specific dictionaries.
   known_remaining_differences:
-  - Target-estimation augmentation and some advanced CIF-driven symbolic workflows
+  - Target-estimation augmentation, EM routines, and some advanced symbolic-CIF workflows
     remain thinner than MATLAB.
   required_remediation:
   - Add MATLAB-derived numerical fixtures for DecodingExample, DecodingExampleWithHist,
     StimulusDecode2D, and HybridFilterExample.
-  - Port the remaining target-estimation and symbolic-CIF branches from the MATLAB
-    toolbox.
+  - Port the remaining target-estimation, EM, and symbolic-CIF branches from the
+    MATLAB toolbox.
   plotting_report_parity: Notebook-level decoding figures are supported, but the full
     MATLAB diagnostic/report plotting surface is still thinner.
 - matlab_name: History
