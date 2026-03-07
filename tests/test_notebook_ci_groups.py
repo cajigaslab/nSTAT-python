@@ -28,6 +28,19 @@ REQUIRED_PARITY_CORE_TOPICS = {
     "nSTATPaperExamples",
     "nSpikeTrainExamples",
 }
+REQUIRED_HELPFILE_FULL_TOPICS = {
+    "AnalysisExamples",
+    "DecodingExample",
+    "DecodingExampleWithHist",
+    "ExplicitStimulusWhiskerData",
+    "HippocampalPlaceCellExample",
+    "HybridFilterExample",
+    "PPSimExample",
+    "StimulusDecode2D",
+    "TrialExamples",
+    "ValidationDataSet",
+    "nSTATPaperExamples",
+}
 
 
 def test_ci_smoke_group_covers_required_parity_notebooks() -> None:
@@ -81,3 +94,14 @@ def test_parity_core_group_topics_exist_in_notebook_manifest() -> None:
 
     missing = [topic for topic in parity_core if topic not in notebook_topics]
     assert not missing, f"parity_core group references unknown notebook topics: {missing}"
+
+
+def test_helpfile_full_group_covers_all_tracked_helpfile_ports() -> None:
+    notebook_manifest = yaml.safe_load(NOTEBOOK_MANIFEST_PATH.read_text(encoding="utf-8")) or {}
+    notebook_topics = {row["topic"] for row in notebook_manifest.get("notebooks", [])}
+
+    groups_payload = yaml.safe_load(TOPIC_GROUPS_PATH.read_text(encoding="utf-8")) or {}
+    helpfile_full = set(groups_payload.get("groups", {}).get("helpfile_full", []))
+
+    assert REQUIRED_HELPFILE_FULL_TOPICS <= notebook_topics
+    assert REQUIRED_HELPFILE_FULL_TOPICS == helpfile_full

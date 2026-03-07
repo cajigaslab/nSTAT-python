@@ -48,3 +48,15 @@ groups:
     - ValidationDataSet
     - nSTATPaperExamples
     - nSpikeTrainExamples
+  helpfile_full:
+    - AnalysisExamples
+    - DecodingExample
+    - DecodingExampleWithHist
+    - ExplicitStimulusWhiskerData
+    - HippocampalPlaceCellExample
+    - HybridFilterExample
+    - PPSimExample
+    - StimulusDecode2D
+    - TrialExamples
+    - ValidationDataSet
+    - nSTATPaperExamples

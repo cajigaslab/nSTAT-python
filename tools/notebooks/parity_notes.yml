@@ -3,18 +3,18 @@ notes:
   - topic: nSTATPaperExamples
     file: notebooks/nSTATPaperExamples.ipynb
     source_matlab: nSTATPaperExamples.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: Python uses standalone figshare-backed data access and generated gallery assets rather than MATLAB path-based setup.
+    fidelity_status: partial
+    remaining_differences: Python uses standalone figshare-backed data access and generated gallery assets rather than MATLAB path-based setup, and several sections still rely on placeholder or tracker-only cells instead of full MATLAB-equivalent computations.
   - topic: TrialExamples
     file: notebooks/TrialExamples.ipynb
     source_matlab: TrialExamples.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: Some MATLAB plotting/display details remain simplified, but the core Trial object workflow now follows the MATLAB semantics closely.
+    fidelity_status: partial
+    remaining_differences: The notebook still contains placeholder and tracker-only cells, so the current port demonstrates the Trial workflow structure but not yet the full MATLAB helpfile computation and figure path.
   - topic: AnalysisExamples
     file: notebooks/AnalysisExamples.ipynb
     source_matlab: AnalysisExamples.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: Advanced MATLAB algorithm-selection branches and some report plots are still lighter in Python.
+    fidelity_status: partial
+    remaining_differences: Advanced MATLAB algorithm-selection branches and report plots remain lighter in Python, and the notebook still contains tracker-only visualization sections rather than a fully executable MATLAB-equivalent workflow.
   - topic: DecodingExample
     file: notebooks/DecodingExample.ipynb
     source_matlab: DecodingExample.mlx
@@ -38,18 +38,18 @@ notes:
   - topic: HybridFilterExample
     file: notebooks/HybridFilterExample.ipynb
     source_matlab: HybridFilterExample.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: The notebook now reproduces the hybrid-filter simulation, single-run decoding, and averaged summary figures with real outputs; the Python port still uses the current hybrid-filter implementation instead of every MATLAB-specific reporting branch.
+    fidelity_status: partial
+    remaining_differences: The notebook reproduces the hybrid-filter workflow structure and figure contract, but it still contains placeholder cells and does not yet provide a fully executable MATLAB-equivalent report path.
   - topic: PPSimExample
     file: notebooks/PPSimExample.ipynb
     source_matlab: PPSimExample.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: MATLAB plotting/report formatting remains lighter, but the core point-process simulation workflow is closely aligned.
+    fidelity_status: partial
+    remaining_differences: The core point-process simulation path exists in Python, but this notebook still contains placeholder and tracker-only sections instead of a full MATLAB-equivalent simulation and report workflow.
   - topic: ValidationDataSet
     file: notebooks/ValidationDataSet.ipynb
     source_matlab: ValidationDataSet.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: The notebook now reproduces the constant-rate and piecewise-rate validation workflows with real `Trial`/`Analysis` objects and figure outputs; the Python port uses shorter deterministic simulations than MATLAB so the notebook remains stable in CI.
+    fidelity_status: partial
+    remaining_differences: The notebook follows the MATLAB validation workflow structure, but it still contains placeholder sections and uses shorter deterministic simulations rather than a full MATLAB-equivalent execution path.
   - topic: StimulusDecode2D
     file: notebooks/StimulusDecode2D.ipynb
     source_matlab: StimulusDecode2D.mlx

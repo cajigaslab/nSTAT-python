@@ -1,0 +1,83 @@
+version: 1
+generated_on: 2026-03-07
+source_repositories:
+  matlab: https://github.com/cajigaslab/nSTAT
+  python: https://github.com/cajigaslab/nSTAT-python
+strategy_legend:
+  - native_python
+  - generated_code_wrapped
+  - packaged_runtime
+  - matlab_engine_fallback
+  - unsupported
+  - reference_only
+items:
+  - model_name: PointProcessSimulation
+    model_path: PointProcessSimulation.slx
+    purpose: Discrete point-process simulation used by `CIF.simulateCIF`, `PPSimExample`, and related help workflows.
+    matlab_usage: required_for_behavioral_parity
+    python_strategy: native_python
+    current_python_status: partial
+    chosen_interoperability_strategy: Native Python simulation through `nstat.cif` and `nstat.simulation`, with MATLAB/Simulink fixture comparison still pending.
+    fidelity_risks:
+      - Simulink block timing and solver semantics are not yet fixture-checked against the Python path.
+      - MATLAB supports explicit binomial-versus-poisson model branching inside the model; Python approximates the executed path analytically.
+    validation_plan:
+      - Compare fixed-seed spike-count statistics and lambda traces against MATLAB/Simulink reference runs.
+      - Add a PPSimExample regression fixture that exercises the same stimulus and history filters.
+  - model_name: PointProcessSimulationCont
+    model_path: PointProcessSimulationCont.slx
+    purpose: Continuous-time companion model kept with the MATLAB toolbox for simulation/reference work.
+    matlab_usage: used_for_reference
+    python_strategy: reference_only
+    current_python_status: reference_only
+    chosen_interoperability_strategy: Keep as reference while the Python port uses the native discrete simulation path.
+    fidelity_risks:
+      - No Python-executable equivalent currently mirrors the continuous Simulink model directly.
+    validation_plan:
+      - Audit whether any MATLAB helpfile or paper workflow depends on the continuous model before promoting it beyond reference-only.
+  - model_name: PointProcessSimulationCache
+    model_path: PointProcessSimulation.slxc
+    purpose: Simulink compiled cache artifact for `PointProcessSimulation`.
+    matlab_usage: used_for_reference
+    python_strategy: reference_only
+    current_python_status: reference_only
+    chosen_interoperability_strategy: Treat as a MATLAB build artifact, not as a Python execution target.
+    fidelity_risks:
+      - Cache files are version-specific and not portable across environments.
+    validation_plan:
+      - None beyond confirming the source `.slx` model remains inventoried.
+  - model_name: HelpPointProcessSimulationCache
+    model_path: helpfiles/PointProcessSimulation.slxc
+    purpose: Published-help compiled cache artifact for the point-process simulation model.
+    matlab_usage: used_for_reference
+    python_strategy: reference_only
+    current_python_status: reference_only
+    chosen_interoperability_strategy: Treat as a published-help artifact only.
+    fidelity_risks:
+      - Not executable from Python and tied to MATLAB's published help pipeline.
+    validation_plan:
+      - None beyond inventory coverage.
+  - model_name: SimulatedNetwork2
+    model_path: helpfiles/SimulatedNetwork2.mdl
+    purpose: Two-neuron network simulation used by `NetworkTutorial` and related connectivity examples.
+    matlab_usage: required_for_example_execution
+    python_strategy: matlab_engine_fallback
+    current_python_status: partial
+    chosen_interoperability_strategy: Prefer a future native Python reimplementation, but document MATLAB Engine fallback first because no faithful Python executable path exists yet.
+    fidelity_risks:
+      - One-sample delays and block-level binomial firing semantics may not match a naive Python rewrite.
+      - The current Python notebook does not yet execute the original Simulink model.
+    validation_plan:
+      - Add a MATLAB Engine smoke path for environments that provide MATLAB.
+      - Capture reference outputs from the model before attempting a native Python port.
+  - model_name: SimulatedNetwork2Cache
+    model_path: helpfiles/SimulatedNetwork2.slxc
+    purpose: Simulink compiled cache artifact for `SimulatedNetwork2`.
+    matlab_usage: used_for_reference
+    python_strategy: reference_only
+    current_python_status: reference_only
+    chosen_interoperability_strategy: Treat as a MATLAB build artifact, not a Python target.
+    fidelity_risks:
+      - Cache files are version-specific and cannot serve as a stable Python execution path.
+    validation_plan:
+      - None beyond inventory coverage.

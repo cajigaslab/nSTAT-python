@@ -10,6 +10,11 @@ from nstat.notebook_parity import (
     load_notebook_parity_notes,
     summarize_notebook_fidelity,
 )
+from nstat.simulink_fidelity import (
+    iter_outstanding_simulink_items,
+    load_simulink_fidelity_audit,
+    summarize_simulink_strategies,
+)
 
 
 SUMMARY_SECTIONS = (
@@ -79,9 +84,12 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     payload = load_parity_manifest(repo_root)
     class_fidelity = load_class_fidelity_audit(repo_root)
     notebook_fidelity = load_notebook_parity_notes(repo_root)
+    simulink_fidelity = load_simulink_fidelity_audit(repo_root)
     class_counts = _summarize_class_fidelity(class_fidelity)
     notebook_counts = summarize_notebook_fidelity(notebook_fidelity)
     notebook_partial = iter_outstanding_notebook_fidelity(notebook_fidelity)
+    simulink_counts = summarize_simulink_strategies(simulink_fidelity)
+    simulink_outstanding = iter_outstanding_simulink_items(simulink_fidelity)
     lines = [
         "# nSTAT Python Parity Report",
         "",
@@ -128,6 +136,18 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     for status in ("exact", "high_fidelity", "partial"):
         lines.append(f"| `{status}` | {notebook_counts.get(status, 0)} |")
 
+    lines.extend(
+        [
+            "",
+            "## Simulink Fidelity Summary",
+            "",
+            "| Strategy | Count |",
+            "|---|---:|",
+        ]
+    )
+    for status in simulink_fidelity.get("strategy_legend", []):
+        lines.append(f"| `{status}` | {simulink_counts.get(status, 0)} |")
+
     lines.extend(["", "## Coverage Notes", ""])
     lines.append(
         "- Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable."
@@ -138,7 +158,7 @@ def render_parity_report(repo_root: Path | None = None) -> str:
             f"- Notebook fidelity: workflow coverage is complete, but {len(notebook_partial)} MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`."
         )
         lines.append(
-            "- Notebook fidelity audit: structural section/figure comparisons are recorded in `parity/notebook_fidelity.yml`."
+            "- Notebook fidelity audit: structural section/figure comparisons plus placeholder/tracker-only cell detection are recorded in `parity/notebook_fidelity.yml`."
         )
     else:
         lines.append("- Notebook fidelity: all tracked MATLAB-helpfile notebook ports are marked high fidelity or exact.")
@@ -150,13 +170,19 @@ def render_parity_report(repo_root: Path | None = None) -> str:
         lines.append(
             "- Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped."
         )
-    priority_remaining = _iter_class_fidelity_rows(class_fidelity, {"partial", "shim_only", "missing"})
+    priority_remaining = _iter_class_fidelity_rows(class_fidelity, {"partial", "wrapper_only", "missing"})
     if not priority_remaining:
-        lines.append("- Class fidelity: the class audit reports no partial, shim-only, or missing items.")
+        lines.append("- Class fidelity: the class audit reports no partial, wrapper-only, or missing items.")
     else:
         lines.append(
             "- Class fidelity: mapping parity is ahead of semantic parity; the audit still reports partial fidelity for several MATLAB-facing classes and workflows."
         )
+    if simulink_outstanding:
+        lines.append(
+            f"- Simulink fidelity: {len(simulink_outstanding)} Simulink-backed assets still rely on partial, fallback, or unsupported Python execution paths."
+        )
+    else:
+        lines.append("- Simulink fidelity: all inventoried Simulink-backed workflows have an explicit Python execution strategy.")
     lines.extend(["", "## Remaining Mapping Deltas", ""])
 
     outstanding = _iter_outstanding_rows(payload)
@@ -187,12 +213,12 @@ def render_parity_report(repo_root: Path | None = None) -> str:
 
     lines.extend(["", "## Remaining Class-Fidelity Deltas", ""])
     if not priority_remaining:
-        lines.append("No partial, shim-only, or missing class-fidelity items remain.")
+        lines.append("No partial, wrapper-only, or missing class-fidelity items remain.")
     else:
         for row in priority_remaining:
-            label = row.get("matlab_name") or row.get("python_symbol") or row.get("matlab_path")
-            python_target = row.get("python_symbol") or row.get("python_path")
-            recommendation = row.get("recommended_remediation", [])
+            label = row.get("matlab_name") or row.get("python_public_name") or row.get("matlab_path")
+            python_target = row.get("python_public_name") or row.get("python_impl_path")
+            recommendation = row.get("required_remediation", [])
             if isinstance(recommendation, list):
                 recommendation_text = recommendation[0] if recommendation else ""
             else:
@@ -200,6 +226,15 @@ def render_parity_report(repo_root: Path | None = None) -> str:
             note = row.get("method_parity", "")
             detail = recommendation_text or note
             lines.append(f"- `{label}` -> `{python_target}` [{row['status']}]: {detail}")
+
+    lines.extend(["", "## Simulink Fidelity Deltas", ""])
+    if not simulink_outstanding:
+        lines.append("No partial, fallback, or unsupported Simulink execution paths remain in the audit.")
+    else:
+        for row in simulink_outstanding:
+            lines.append(
+                f"- `{row['model_name']}` -> `{row['model_path']}` [{row['python_strategy']}/{row['current_python_status']}]: {row['chosen_interoperability_strategy']}"
+            )
 
     lines.extend(["", "## Justified Non-Applicable Items", ""])
     non_applicable = _iter_non_applicable_rows(payload)
@@ -214,7 +249,7 @@ def render_parity_report(repo_root: Path | None = None) -> str:
             lines.append(f"- `{section_name}`: `{label}`. {notes}")
     for row in class_non_applicable:
         label = row.get("matlab_name") or row.get("matlab_path")
-        notes = row.get("known_semantic_differences", [])
+        notes = row.get("known_remaining_differences", [])
         if isinstance(notes, list):
             note_text = notes[0] if notes else ""
         else:

@@ -8,13 +8,18 @@ items:
 - topic: nSTATPaperExamples
   source_matlab: nSTATPaperExamples.mlx
   python_notebook: notebooks/nSTATPaperExamples.ipynb
-  fidelity_status: high_fidelity
+  fidelity_status: partial
   remaining_differences: Python uses standalone figshare-backed data access and generated
-    gallery assets rather than MATLAB path-based setup.
+    gallery assets rather than MATLAB path-based setup, and several sections still
+    rely on placeholder or tracker-only cells instead of full MATLAB-equivalent computations.
   python_sections: 31
   python_expected_figures: 25
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 14
+  python_tracker_only_cells: 12
+  python_contains_placeholders: true
+  python_contains_tracker_only_cells: true
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 37
   matlab_published_figures: 26
@@ -23,13 +28,18 @@ items:
 - topic: TrialExamples
   source_matlab: TrialExamples.mlx
   python_notebook: notebooks/TrialExamples.ipynb
-  fidelity_status: high_fidelity
-  remaining_differences: Some MATLAB plotting/display details remain simplified, but
-    the core Trial object workflow now follows the MATLAB semantics closely.
+  fidelity_status: partial
+  remaining_differences: The notebook still contains placeholder and tracker-only
+    cells, so the current port demonstrates the Trial workflow structure but not yet
+    the full MATLAB helpfile computation and figure path.
   python_sections: 3
   python_expected_figures: 6
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 1
+  python_tracker_only_cells: 1
+  python_contains_placeholders: true
+  python_contains_tracker_only_cells: true
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 9
   matlab_published_figures: 6
@@ -38,13 +48,18 @@ items:
 - topic: AnalysisExamples
   source_matlab: AnalysisExamples.mlx
   python_notebook: notebooks/AnalysisExamples.ipynb
-  fidelity_status: high_fidelity
-  remaining_differences: Advanced MATLAB algorithm-selection branches and some report
-    plots are still lighter in Python.
+  fidelity_status: partial
+  remaining_differences: Advanced MATLAB algorithm-selection branches and report plots
+    remain lighter in Python, and the notebook still contains tracker-only visualization
+    sections rather than a fully executable MATLAB-equivalent workflow.
   python_sections: 2
   python_expected_figures: 4
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 7
   matlab_published_figures: 4
@@ -61,6 +76,10 @@ items:
   python_expected_figures: 5
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 4
   matlab_published_figures: 5
@@ -77,6 +96,10 @@ items:
   python_expected_figures: 2
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 2
   matlab_published_figures: 2
@@ -94,6 +117,10 @@ items:
   python_expected_figures: 9
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 7
   matlab_published_figures: 9
@@ -111,6 +138,10 @@ items:
   python_expected_figures: 11
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 5
   matlab_published_figures: 11
@@ -119,15 +150,18 @@ items:
 - topic: HybridFilterExample
   source_matlab: HybridFilterExample.mlx
   python_notebook: notebooks/HybridFilterExample.ipynb
-  fidelity_status: high_fidelity
-  remaining_differences: The notebook now reproduces the hybrid-filter simulation,
-    single-run decoding, and averaged summary figures with real outputs; the Python
-    port still uses the current hybrid-filter implementation instead of every MATLAB-specific
-    reporting branch.
+  fidelity_status: partial
+  remaining_differences: The notebook reproduces the hybrid-filter workflow structure
+    and figure contract, but it still contains placeholder cells and does not yet
+    provide a fully executable MATLAB-equivalent report path.
   python_sections: 6
   python_expected_figures: 3
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 3
+  python_tracker_only_cells: 0
+  python_contains_placeholders: true
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 6
   matlab_published_figures: 3
@@ -136,13 +170,18 @@ items:
 - topic: PPSimExample
   source_matlab: PPSimExample.mlx
   python_notebook: notebooks/PPSimExample.ipynb
-  fidelity_status: high_fidelity
-  remaining_differences: MATLAB plotting/report formatting remains lighter, but the
-    core point-process simulation workflow is closely aligned.
+  fidelity_status: partial
+  remaining_differences: The core point-process simulation path exists in Python,
+    but this notebook still contains placeholder and tracker-only sections instead
+    of a full MATLAB-equivalent simulation and report workflow.
   python_sections: 9
   python_expected_figures: 3
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 1
+  python_tracker_only_cells: 5
+  python_contains_placeholders: true
+  python_contains_tracker_only_cells: true
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 17
   matlab_published_figures: 8
@@ -151,15 +190,18 @@ items:
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb
-  fidelity_status: high_fidelity
-  remaining_differences: The notebook now reproduces the constant-rate and piecewise-rate
-    validation workflows with real `Trial`/`Analysis` objects and figure outputs;
-    the Python port uses shorter deterministic simulations than MATLAB so the notebook
-    remains stable in CI.
+  fidelity_status: partial
+  remaining_differences: The notebook follows the MATLAB validation workflow structure,
+    but it still contains placeholder sections and uses shorter deterministic simulations
+    rather than a full MATLAB-equivalent execution path.
   python_sections: 11
   python_expected_figures: 10
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 4
+  python_tracker_only_cells: 0
+  python_contains_placeholders: true
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 11
   matlab_published_figures: 10
@@ -177,6 +219,10 @@ items:
   python_expected_figures: 6
   python_uses_figure_tracker: true
   python_has_finalize_call: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 4
   matlab_published_figures: 6

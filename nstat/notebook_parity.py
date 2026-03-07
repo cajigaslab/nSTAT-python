@@ -17,6 +17,10 @@ FIGURE_TRACKER_RE = re.compile(
     r"FigureTracker\(\s*topic=['\"](?P<topic>[^'\"]+)['\"]\s*,\s*output_root=OUTPUT_ROOT\s*,\s*expected_count=(?P<count>\d+)\s*\)",
     re.DOTALL,
 )
+PLACEHOLDER_RE = re.compile(r"(^|\n)\s*pass\b|TODO|FIXME", re.IGNORECASE)
+TRACKER_ONLY_LINE_RE = re.compile(
+    r"^\s*(?:__tracker\.(?:annotate|new_figure|finalize)\(.*\)|plt\.close\(.*\)|#.*)?\s*$"
+)
 
 
 @dataclass(frozen=True)
@@ -30,6 +34,14 @@ class NotebookFigureContract:
 
     def manifest_path(self, repo_root: Path) -> Path:
         return self.topic_dir(repo_root) / FIGURE_MANIFEST_NAME
+
+
+@dataclass(frozen=True)
+class NotebookPlaceholderAudit:
+    placeholder_cells: int
+    tracker_only_cells: int
+    contains_placeholders: bool
+    contains_tracker_only_cells: bool
 
 
 def _repo_root() -> Path:
@@ -66,6 +78,27 @@ def extract_figure_contract(notebook_path: Path) -> NotebookFigureContract | Non
         topic=match.group("topic"),
         expected_count=int(match.group("count")),
         has_finalize_call="__tracker.finalize()" in text,
+    )
+
+
+def audit_notebook_placeholders(notebook_path: Path) -> NotebookPlaceholderAudit:
+    notebook = nbformat.read(notebook_path, as_version=4)
+    placeholder_cells = 0
+    tracker_only_cells = 0
+    for cell in notebook.cells:
+        if cell.cell_type != "code":
+            continue
+        source = str(cell.get("source", ""))
+        if PLACEHOLDER_RE.search(source):
+            placeholder_cells += 1
+        non_empty = [line for line in source.splitlines() if line.strip()]
+        if non_empty and all(TRACKER_ONLY_LINE_RE.match(line) for line in non_empty):
+            tracker_only_cells += 1
+    return NotebookPlaceholderAudit(
+        placeholder_cells=placeholder_cells,
+        tracker_only_cells=tracker_only_cells,
+        contains_placeholders=placeholder_cells > 0,
+        contains_tracker_only_cells=tracker_only_cells > 0,
     )
 
 
@@ -134,6 +167,8 @@ __all__ = [
     "FIGURE_MANIFEST_NAME",
     "NOTEBOOK_IMAGE_ROOT",
     "NotebookFigureContract",
+    "NotebookPlaceholderAudit",
+    "audit_notebook_placeholders",
     "extract_figure_contract",
     "iter_outstanding_notebook_fidelity",
     "load_notebook_parity_notes",
