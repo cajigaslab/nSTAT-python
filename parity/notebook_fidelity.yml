@@ -1,0 +1,174 @@
+version: 1
+generated_on: '2026-03-07'
+source_repositories:
+  matlab: https://github.com/cajigaslab/nSTAT
+  python: https://github.com/cajigaslab/nSTAT-python
+matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+items:
+- topic: nSTATPaperExamples
+  source_matlab: nSTATPaperExamples.mlx
+  python_notebook: notebooks/nSTATPaperExamples.ipynb
+  fidelity_status: high_fidelity
+  remaining_differences: Python uses standalone figshare-backed data access and generated
+    gallery assets rather than MATLAB path-based setup.
+  python_sections: 31
+  python_expected_figures: 25
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 37
+  matlab_published_figures: 26
+  section_delta: -6
+  figure_delta: -1
+- topic: TrialExamples
+  source_matlab: TrialExamples.mlx
+  python_notebook: notebooks/TrialExamples.ipynb
+  fidelity_status: high_fidelity
+  remaining_differences: Some MATLAB plotting/display details remain simplified, but
+    the core Trial object workflow now follows the MATLAB semantics closely.
+  python_sections: 3
+  python_expected_figures: 6
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 9
+  matlab_published_figures: 6
+  section_delta: -6
+  figure_delta: 0
+- topic: AnalysisExamples
+  source_matlab: AnalysisExamples.mlx
+  python_notebook: notebooks/AnalysisExamples.ipynb
+  fidelity_status: high_fidelity
+  remaining_differences: Advanced MATLAB algorithm-selection branches and some report
+    plots are still lighter in Python.
+  python_sections: 2
+  python_expected_figures: 4
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 7
+  matlab_published_figures: 4
+  section_delta: -5
+  figure_delta: 0
+- topic: DecodingExample
+  source_matlab: DecodingExample.mlx
+  python_notebook: notebooks/DecodingExample.ipynb
+  fidelity_status: high_fidelity
+  remaining_differences: Workflow, model fitting, and decoded-stimulus figures now
+    follow the MATLAB helpfile closely; exact traces still depend on stochastic simulation
+    draws and Python plotting defaults.
+  python_sections: 4
+  python_expected_figures: 5
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 4
+  matlab_published_figures: 5
+  section_delta: 0
+  figure_delta: 0
+- topic: DecodingExampleWithHist
+  source_matlab: DecodingExampleWithHist.mlx
+  python_notebook: notebooks/DecodingExampleWithHist.ipynb
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now mirrors the MATLAB history-aware decoding
+    workflow closely; exact stochastic trajectories and figure styling still vary
+    slightly under Python execution.
+  python_sections: 2
+  python_expected_figures: 2
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 2
+  matlab_published_figures: 2
+  section_delta: 0
+  figure_delta: 0
+- topic: ExplicitStimulusWhiskerData
+  source_matlab: ExplicitStimulusWhiskerData.mlx
+  python_notebook: notebooks/ExplicitStimulusWhiskerData.ipynb
+  fidelity_status: partial
+  remaining_differences: Dataset-backed workflow is present, but figure-level and
+    narrative parity with MATLAB are still incomplete.
+  python_sections: 6
+  python_expected_figures: 9
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 7
+  matlab_published_figures: 9
+  section_delta: -1
+  figure_delta: 0
+- topic: HippocampalPlaceCellExample
+  source_matlab: HippocampalPlaceCellExample.mlx
+  python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
+  fidelity_status: partial
+  remaining_differences: Core place-cell workflow is ported, but MATLAB figure sequencing
+    and summary outputs are not yet exact.
+  python_sections: 5
+  python_expected_figures: 9
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 5
+  matlab_published_figures: 11
+  section_delta: 0
+  figure_delta: -2
+- topic: HybridFilterExample
+  source_matlab: HybridFilterExample.mlx
+  python_notebook: notebooks/HybridFilterExample.ipynb
+  fidelity_status: partial
+  remaining_differences: Hybrid filtering workflow executes, but MATLAB-specific output
+    details and downstream validation remain incomplete.
+  python_sections: 4
+  python_expected_figures: 2
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 6
+  matlab_published_figures: 3
+  section_delta: -2
+  figure_delta: -1
+- topic: PPSimExample
+  source_matlab: PPSimExample.mlx
+  python_notebook: notebooks/PPSimExample.ipynb
+  fidelity_status: high_fidelity
+  remaining_differences: MATLAB plotting/report formatting remains lighter, but the
+    core point-process simulation workflow is closely aligned.
+  python_sections: 9
+  python_expected_figures: 3
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 17
+  matlab_published_figures: 8
+  section_delta: -8
+  figure_delta: -5
+- topic: ValidationDataSet
+  source_matlab: ValidationDataSet.mlx
+  python_notebook: notebooks/ValidationDataSet.ipynb
+  fidelity_status: partial
+  remaining_differences: Validation dataset coverage exists, but MATLAB reference
+    summaries and figure parity are not yet complete.
+  python_sections: 3
+  python_expected_figures: 9
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 11
+  matlab_published_figures: 10
+  section_delta: -8
+  figure_delta: -1
+- topic: StimulusDecode2D
+  source_matlab: StimulusDecode2D.mlx
+  python_notebook: notebooks/StimulusDecode2D.ipynb
+  fidelity_status: partial
+  remaining_differences: The 2D stimulus decoding workflow runs, but MATLAB-equivalent
+    outputs and tolerance-backed parity checks still need expansion.
+  python_sections: 3
+  python_expected_figures: 8
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 4
+  matlab_published_figures: 6
+  section_delta: -1
+  figure_delta: 2

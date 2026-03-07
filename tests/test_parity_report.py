@@ -20,6 +20,10 @@ def test_parity_report_highlights_current_constraints() -> None:
     assert "paper examples and docs gallery" in text.lower()
     assert "all canonical paper examples and committed gallery directories are mapped" in text
     assert "class fidelity" in text.lower()
+    assert "Notebook Fidelity Summary" in text
+    assert "Remaining Notebook-Fidelity Deltas" in text
+    assert "parity/notebook_fidelity.yml" in text
+    assert "HybridFilterExample" in text
     assert "No partial or missing items remain in the mapping inventory." in text
     assert "Remaining Class-Fidelity Deltas" in text
     assert "No partial, shim-only, or missing class-fidelity items remain." in text

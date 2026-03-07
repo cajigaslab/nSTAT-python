@@ -1,0 +1,39 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+import yaml
+
+from nstat.notebook_fidelity_audit import default_matlab_repo_root, render_notebook_fidelity_audit
+from nstat.notebook_parity import load_notebook_parity_notes
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+AUDIT_PATH = REPO_ROOT / "parity" / "notebook_fidelity.yml"
+
+
+def test_notebook_fidelity_audit_covers_all_parity_notes() -> None:
+    audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
+    notes = load_notebook_parity_notes(REPO_ROOT)
+
+    audit_topics = {row["topic"] for row in audit.get("items", [])}
+    note_topics = {row["topic"] for row in notes}
+    assert audit_topics == note_topics
+
+
+def test_notebook_fidelity_audit_has_structural_counts() -> None:
+    audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
+    for row in audit.get("items", []):
+        assert "python_sections" in row
+        assert "python_expected_figures" in row
+        assert row["python_expected_figures"] >= 0
+        assert isinstance(row["python_has_finalize_call"], bool)
+
+
+def test_notebook_fidelity_audit_matches_generator_when_matlab_repo_is_available() -> None:
+    matlab_repo = default_matlab_repo_root(REPO_ROOT)
+    if not matlab_repo.exists():
+        pytest.skip(f"MATLAB reference repo not available at {matlab_repo}")
+    committed = AUDIT_PATH.read_text(encoding="utf-8")
+    assert committed == render_notebook_fidelity_audit(REPO_ROOT, matlab_repo_root=matlab_repo)

@@ -1,6 +1,6 @@
 # nSTAT Python Parity Report
 
-Generated from `parity/manifest.yml` and `parity/class_fidelity.yml`.
+Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/notebooks/parity_notes.yml`.
 
 - MATLAB reference: https://github.com/cajigaslab/nSTAT
 - Python target: https://github.com/cajigaslab/nSTAT-python
@@ -29,16 +29,34 @@ Generated from `parity/manifest.yml` and `parity/class_fidelity.yml`.
 | `missing` | 0 |
 | `not_applicable` | 1 |
 
+## Notebook Fidelity Summary
+
+| Status | Count |
+|---|---:|
+| `exact` | 0 |
+| `high_fidelity` | 6 |
+| `partial` | 5 |
+
 ## Coverage Notes
 
 - Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable.
 - Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.
+- Notebook fidelity: workflow coverage is complete, but 5 MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`.
+- Notebook fidelity audit: structural section/figure comparisons are recorded in `parity/notebook_fidelity.yml`.
 - Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
 - Class fidelity: the class audit reports no partial, shim-only, or missing items.
 
 ## Remaining Mapping Deltas
 
 No partial or missing items remain in the mapping inventory.
+
+## Remaining Notebook-Fidelity Deltas
+
+- `ExplicitStimulusWhiskerData` -> `notebooks/ExplicitStimulusWhiskerData.ipynb` [partial]: Dataset-backed workflow is present, but figure-level and narrative parity with MATLAB are still incomplete.
+- `HippocampalPlaceCellExample` -> `notebooks/HippocampalPlaceCellExample.ipynb` [partial]: Core place-cell workflow is ported, but MATLAB figure sequencing and summary outputs are not yet exact.
+- `HybridFilterExample` -> `notebooks/HybridFilterExample.ipynb` [partial]: Hybrid filtering workflow executes, but MATLAB-specific output details and downstream validation remain incomplete.
+- `ValidationDataSet` -> `notebooks/ValidationDataSet.ipynb` [partial]: Validation dataset coverage exists, but MATLAB reference summaries and figure parity are not yet complete.
+- `StimulusDecode2D` -> `notebooks/StimulusDecode2D.ipynb` [partial]: The 2D stimulus decoding workflow runs, but MATLAB-equivalent outputs and tolerance-backed parity checks still need expansion.
 
 ## Remaining Class-Fidelity Deltas
 
