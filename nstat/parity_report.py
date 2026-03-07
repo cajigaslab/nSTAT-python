@@ -20,6 +20,11 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def _has_outstanding(payload: dict[str, Any], section_name: str) -> bool:
+    counts = payload["summary"][section_name]
+    return counts["partial"] > 0 or counts["missing"] > 0
+
+
 def load_parity_manifest(repo_root: Path | None = None) -> dict[str, Any]:
     base = _repo_root() if repo_root is None else repo_root.resolve()
     path = base / "parity" / "manifest.yml"
@@ -68,19 +73,20 @@ def render_parity_report(repo_root: Path | None = None) -> str:
             f"| `{label}` | {counts['mapped']} | {counts['partial']} | {counts['missing']} | {counts['not_applicable']} |"
         )
 
-    lines.extend(
-        [
-            "",
-            "## Coverage Notes",
-            "",
-            "- Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable.",
-            "- Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.",
-            "- Paper examples and docs gallery: canonical structure is present, but dataset-backed outputs and figure files are still partial.",
-            "",
-            "## Remaining Deltas",
-            "",
-        ]
+    lines.extend(["", "## Coverage Notes", ""])
+    lines.append(
+        "- Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable."
     )
+    lines.append("- Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.")
+    if _has_outstanding(payload, "paper_examples") or _has_outstanding(payload, "docs_gallery"):
+        lines.append(
+            "- Paper examples and docs gallery: canonical structure is present, but dataset-backed outputs and figure files are still partial."
+        )
+    else:
+        lines.append(
+            "- Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped."
+        )
+    lines.extend(["", "## Remaining Deltas", ""])
 
     outstanding = _iter_outstanding_rows(payload)
     if not outstanding:

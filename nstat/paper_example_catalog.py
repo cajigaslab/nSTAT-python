@@ -57,10 +57,23 @@ def run_named_paper_example(
         summary4, payload4 = run_experiment4(data_dir, return_payload=True)
         return {"experiment4": summary4}, {"experiment4": payload4}
     if example_id == "example05":
+        if not return_payload:
+            return {
+                "experiment5": run_experiment5(),
+                "experiment5b": run_experiment5b(),
+                "experiment6": run_experiment6(repo_root),
+            }
+        summary5, payload5 = run_experiment5(return_payload=True)
+        summary5b, payload5b = run_experiment5b(return_payload=True)
+        summary6, payload6 = run_experiment6(repo_root, return_payload=True)
         return {
-            "experiment5": run_experiment5(),
-            "experiment5b": run_experiment5b(),
-            "experiment6": run_experiment6(repo_root),
+            "experiment5": summary5,
+            "experiment5b": summary5b,
+            "experiment6": summary6,
+        }, {
+            "experiment5": payload5,
+            "experiment5b": payload5b,
+            "experiment6": payload6,
         }
     raise ValueError(f"Unknown paper example id: {example_id}")
 

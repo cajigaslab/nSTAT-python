@@ -566,6 +566,190 @@ def build_example04_mesh_comparison(summary: dict[str, object], payload: dict[st
     return fig
 
 
+def build_example05_univariate_setup(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e5 = payload["experiment5"]
+    time_s = np.asarray(e5["time_s"], dtype=float)
+    stimulus = np.asarray(e5["stimulus"], dtype=float)
+    spikes = np.asarray(e5["spikes"], dtype=float)
+
+    fig, (ax_stim, ax_raster) = plt.subplots(2, 1, figsize=(11.0, 6.6), sharex=True)
+    ax_stim.plot(time_s, stimulus, color="tab:blue", linewidth=1.7)
+    ax_stim.set_title("Univariate Decoding Setup")
+    ax_stim.set_ylabel("stimulus")
+    ax_stim.grid(alpha=0.25)
+
+    for row in range(min(8, spikes.shape[1])):
+        spike_times = time_s[spikes[:, row] > 0.5]
+        if spike_times.size:
+            ax_raster.vlines(spike_times, row + 0.6, row + 1.4, color="black", linewidth=0.55)
+    ax_raster.set_title("Population Spike Raster (first 8 cells)")
+    ax_raster.set_xlabel("time [s]")
+    ax_raster.set_ylabel("cell")
+    ax_raster.set_ylim(0.5, min(8, spikes.shape[1]) + 0.8)
+
+    fig.tight_layout()
+    return fig
+
+
+def build_example05_univariate_decoding(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e5 = payload["experiment5"]
+    time_s = np.asarray(e5["time_s"], dtype=float)
+    stimulus = np.asarray(e5["stimulus"], dtype=float)
+    decoded = np.asarray(e5["decoded"], dtype=float)
+    ci_low = np.asarray(e5["ci_low"], dtype=float)
+    ci_high = np.asarray(e5["ci_high"], dtype=float)
+
+    fig, ax = plt.subplots(1, 1, figsize=(11.0, 4.6))
+    ax.plot(time_s, stimulus, color="black", linewidth=1.7, label="Actual")
+    ax.plot(time_s, decoded, color="tab:blue", linewidth=1.5, label="Decoded")
+    ax.fill_between(time_s, ci_low, ci_high, color="tab:blue", alpha=0.18, label="95% CI")
+    ax.set_title("Univariate Stimulus Decoding")
+    ax.set_xlabel("time [s]")
+    ax.set_ylabel("stimulus")
+    ax.grid(alpha=0.25)
+    ax.legend(loc="upper right")
+    fig.tight_layout()
+    return fig
+
+
+def build_example05_reach_setup(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e5b = payload["experiment5b"]
+    spikes = np.asarray(e5b["spikes"], dtype=float)
+    x_true = np.asarray(e5b["x_true"], dtype=float)
+    y_true = np.asarray(e5b["y_true"], dtype=float)
+
+    fig, (ax_path, ax_pop) = plt.subplots(1, 2, figsize=(11.6, 4.8))
+    ax_path.plot(x_true, y_true, color="black", linewidth=1.6)
+    ax_path.scatter([x_true[0], x_true[-1]], [y_true[0], y_true[-1]], color=["red", "blue"], s=35)
+    ax_path.set_title("Actual Reach Path")
+    ax_path.set_xlabel("x [cm]")
+    ax_path.set_ylabel("y [cm]")
+    ax_path.grid(alpha=0.25)
+
+    im = ax_pop.imshow(spikes.T, aspect="auto", origin="lower", cmap="gray_r")
+    ax_pop.set_title("Population Activity")
+    ax_pop.set_xlabel("time bin")
+    ax_pop.set_ylabel("cell")
+    fig.colorbar(im, ax=ax_pop, fraction=0.046, pad=0.04)
+    fig.tight_layout()
+    return fig
+
+
+def build_example05_goal_vs_free(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e5b = payload["experiment5b"]
+    x_true = np.asarray(e5b["x_true"], dtype=float)
+    y_true = np.asarray(e5b["y_true"], dtype=float)
+    dx_goal = np.asarray(e5b["dx_goal"], dtype=float)
+    dy_goal = np.asarray(e5b["dy_goal"], dtype=float)
+    dx_free = np.asarray(e5b["dx_free"], dtype=float)
+    dy_free = np.asarray(e5b["dy_free"], dtype=float)
+
+    fig, axes = plt.subplots(2, 2, figsize=(11.6, 7.4))
+    axes[0, 0].plot(x_true, y_true, color="black", linewidth=1.5, label="Actual")
+    axes[0, 0].plot(dx_goal, dy_goal, color="blue", linewidth=1.5, label="PPAF+Goal")
+    axes[0, 0].plot(dx_free, dy_free, color="limegreen", linewidth=1.5, label="PPAF")
+    axes[0, 0].set_title("Estimated vs. Actual Reach Path")
+    axes[0, 0].set_xlabel("x [cm]")
+    axes[0, 0].set_ylabel("y [cm]")
+    axes[0, 0].legend(loc="lower left", fontsize=8)
+
+    t_idx = np.arange(x_true.size, dtype=float)
+    axes[0, 1].plot(t_idx, x_true, color="black", linewidth=1.4, label="Actual")
+    axes[0, 1].plot(t_idx, dx_goal, color="blue", linewidth=1.4, label="PPAF+Goal")
+    axes[0, 1].plot(t_idx, dx_free, color="limegreen", linewidth=1.4, label="PPAF")
+    axes[0, 1].set_title("X Position")
+
+    axes[1, 0].plot(t_idx, y_true, color="black", linewidth=1.4, label="Actual")
+    axes[1, 0].plot(t_idx, dy_goal, color="blue", linewidth=1.4, label="PPAF+Goal")
+    axes[1, 0].plot(t_idx, dy_free, color="limegreen", linewidth=1.4, label="PPAF")
+    axes[1, 0].set_title("Y Position")
+    axes[1, 0].set_xlabel("time index")
+
+    axes[1, 1].plot(t_idx, np.gradient(y_true), color="black", linewidth=1.4, label="Actual")
+    axes[1, 1].plot(t_idx, np.gradient(dy_goal), color="blue", linewidth=1.4, label="PPAF+Goal")
+    axes[1, 1].plot(t_idx, np.gradient(dy_free), color="limegreen", linewidth=1.4, label="PPAF")
+    axes[1, 1].set_title("Y Velocity")
+    axes[1, 1].set_xlabel("time index")
+
+    for ax in axes.ravel():
+        ax.grid(alpha=0.22)
+    fig.tight_layout()
+    return fig
+
+
+def build_example05_hybrid_setup(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e6 = payload["experiment6"]
+    time_s = np.asarray(e6["time_s"], dtype=float)
+    state_true = np.asarray(e6["state_true"], dtype=float)
+    x_pos = np.asarray(e6["x_pos"], dtype=float)
+    y_pos = np.asarray(e6["y_pos"], dtype=float)
+    spikes = np.asarray(e6["spikes"], dtype=float)
+
+    fig, axes = plt.subplots(3, 1, figsize=(11.2, 7.8), sharex=True)
+    axes[0].plot(time_s, state_true, color="black", linewidth=1.5)
+    axes[0].set_title("Hybrid Setup: Hidden State")
+    axes[0].set_ylabel("state")
+
+    axes[1].plot(time_s, x_pos, color="tab:blue", linewidth=1.4, label="x")
+    axes[1].plot(time_s, y_pos, color="tab:green", linewidth=1.4, label="y")
+    axes[1].set_title("Reach Position")
+    axes[1].set_ylabel("position")
+    axes[1].legend(loc="upper right", fontsize=8)
+
+    for row in range(min(10, spikes.shape[1])):
+        spike_times = time_s[spikes[:, row] > 0.5]
+        if spike_times.size:
+            axes[2].vlines(spike_times, row + 0.6, row + 1.4, color="black", linewidth=0.55)
+    axes[2].set_title("Spike Raster (first 10 cells)")
+    axes[2].set_xlabel("time [s]")
+    axes[2].set_ylabel("cell")
+
+    fig.tight_layout()
+    return fig
+
+
+def build_example05_hybrid_summary(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    e6 = payload["experiment6"]
+    time_s = np.asarray(e6["time_s"], dtype=float)
+    state_true = np.asarray(e6["state_true"], dtype=float)
+    state_hat = np.asarray(e6["state_hat"], dtype=float)
+    state_prob_1 = np.asarray(e6["state_prob_1"], dtype=float)
+    x_pos = np.asarray(e6["x_pos"], dtype=float)
+    y_pos = np.asarray(e6["y_pos"], dtype=float)
+    decoded_x = np.asarray(e6["decoded_x"], dtype=float)
+    decoded_y = np.asarray(e6["decoded_y"], dtype=float)
+
+    fig, axes = plt.subplots(2, 2, figsize=(12.0, 7.2))
+    axes[0, 0].plot(time_s, state_true, color="black", linewidth=1.4, label="Actual")
+    axes[0, 0].plot(time_s, state_hat, color="limegreen", linewidth=1.4, label="Estimated")
+    axes[0, 0].set_title("Estimated vs. Actual State")
+    axes[0, 0].legend(loc="upper right", fontsize=8)
+
+    axes[1, 0].plot(time_s, state_prob_1, color="tab:blue", linewidth=1.4)
+    axes[1, 0].set_title("Probability of State 1")
+    axes[1, 0].set_xlabel("time [s]")
+
+    axes[0, 1].plot(x_pos, y_pos, color="black", linewidth=1.5, label="Actual")
+    axes[0, 1].plot(decoded_x, decoded_y, color="limegreen", linewidth=1.5, label="Decoded")
+    axes[0, 1].set_title("Estimated vs. Actual Reach Path")
+    axes[0, 1].set_xlabel("x [cm]")
+    axes[0, 1].set_ylabel("y [cm]")
+    axes[0, 1].legend(loc="lower left", fontsize=8)
+
+    axes[1, 1].plot(time_s, x_pos, color="black", linewidth=1.4, label="Actual x")
+    axes[1, 1].plot(time_s, decoded_x, color="tab:blue", linewidth=1.4, label="Decoded x")
+    axes[1, 1].plot(time_s, y_pos, color="0.45", linewidth=1.2, label="Actual y")
+    axes[1, 1].plot(time_s, decoded_y, color="limegreen", linewidth=1.2, label="Decoded y")
+    axes[1, 1].set_title("Decoded State Components")
+    axes[1, 1].set_xlabel("time [s]")
+    axes[1, 1].legend(loc="lower left", fontsize=8)
+
+    for ax in axes.ravel():
+        ax.grid(alpha=0.22)
+    fig.tight_layout()
+    return fig
+
+
 EXAMPLE_FIGURE_BUILDERS: dict[str, list[tuple[str, FigureBuilder]]] = {
     "example01": [
         ("fig01_constant_mg_summary.png", build_example01_constant_mg_summary),
@@ -592,6 +776,14 @@ EXAMPLE_FIGURE_BUILDERS: dict[str, list[tuple[str, FigureBuilder]]] = {
         ("fig05_gaussian_place_fields_animal2.png", build_example04_gaussian_animal2),
         ("fig06_zernike_place_fields_animal2.png", build_example04_zernike_animal2),
         ("fig07_example_cell_mesh_comparison.png", build_example04_mesh_comparison),
+    ],
+    "example05": [
+        ("fig01_univariate_setup.png", build_example05_univariate_setup),
+        ("fig02_univariate_decoding.png", build_example05_univariate_decoding),
+        ("fig03_reach_and_population_setup.png", build_example05_reach_setup),
+        ("fig04_ppaf_goal_vs_free.png", build_example05_goal_vs_free),
+        ("fig05_hybrid_setup.png", build_example05_hybrid_setup),
+        ("fig06_hybrid_decoding_summary.png", build_example05_hybrid_summary),
     ],
 }
 

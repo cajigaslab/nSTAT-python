@@ -566,7 +566,9 @@ def run_experiment4(data_dir: Path, *, return_payload: bool = False) -> dict[str
     return summary, payload
 
 
-def run_experiment5(seed: int = 11, n_cells: int = 20) -> dict[str, float]:
+def run_experiment5(
+    seed: int = 11, n_cells: int = 20, *, return_payload: bool = False
+) -> dict[str, float] | tuple[dict[str, float], dict[str, object]]:
     rng = np.random.default_rng(seed)
     dt = 0.001
     time = np.arange(0.0, 1.0 + dt, dt)
@@ -586,10 +588,23 @@ def run_experiment5(seed: int = 11, n_cells: int = 20) -> dict[str, float]:
 
     decoded = DecodingAlgorithms.linear_decode(spikes, stim)
     rmse = float(np.sqrt(np.mean((decoded["decoded"] - stim) ** 2)))
-    return {"num_cells": float(n_cells), "decode_rmse": rmse}
+    summary = {"num_cells": float(n_cells), "decode_rmse": rmse}
+    if not return_payload:
+        return summary
+    payload = {
+        "time_s": time,
+        "stimulus": stim,
+        "spikes": spikes,
+        "decoded": np.asarray(decoded["decoded"], dtype=float),
+        "ci_low": np.asarray(decoded["ci"][:, 0], dtype=float),
+        "ci_high": np.asarray(decoded["ci"][:, 1], dtype=float),
+    }
+    return summary, payload
 
 
-def run_experiment5b(seed: int = 19, n_cells: int = 30) -> dict[str, float]:
+def run_experiment5b(
+    seed: int = 19, n_cells: int = 30, *, return_payload: bool = False
+) -> dict[str, float] | tuple[dict[str, float], dict[str, object]]:
     rng = np.random.default_rng(seed)
 
     dt = 0.01
@@ -611,14 +626,32 @@ def run_experiment5b(seed: int = 19, n_cells: int = 30) -> dict[str, float]:
         p = 1.0 / (1.0 + np.exp(-np.clip(eta, -20.0, 20.0)))
         spikes[:, i] = (rng.random(time.shape[0]) < p).astype(float)
 
-    dx = DecodingAlgorithms.linear_decode(spikes, x_true)["decoded"]
-    dy = DecodingAlgorithms.linear_decode(spikes, y_true)["decoded"]
-    return {
+    goal_cells = max(n_cells // 2, 1)
+    dx_goal = DecodingAlgorithms.linear_decode(spikes[:, :goal_cells], x_true)["decoded"]
+    dy_goal = DecodingAlgorithms.linear_decode(spikes[:, :goal_cells], y_true)["decoded"]
+    dx_free = DecodingAlgorithms.linear_decode(spikes, x_true)["decoded"]
+    dy_free = DecodingAlgorithms.linear_decode(spikes, y_true)["decoded"]
+    summary = {
         "num_cells": float(n_cells),
         "num_samples": float(time.shape[0]),
-        "decode_rmse_x": float(np.sqrt(np.mean((dx - x_true) ** 2))),
-        "decode_rmse_y": float(np.sqrt(np.mean((dy - y_true) ** 2))),
+        "decode_rmse_x": float(np.sqrt(np.mean((dx_free - x_true) ** 2))),
+        "decode_rmse_y": float(np.sqrt(np.mean((dy_free - y_true) ** 2))),
     }
+    if not return_payload:
+        return summary
+    payload = {
+        "time_s": time,
+        "x_true": x_true,
+        "y_true": y_true,
+        "vx_true": vx,
+        "vy_true": vy,
+        "spikes": spikes,
+        "dx_goal": np.asarray(dx_goal, dtype=float),
+        "dy_goal": np.asarray(dy_goal, dtype=float),
+        "dx_free": np.asarray(dx_free, dtype=float),
+        "dy_free": np.asarray(dy_free, dtype=float),
+    }
+    return summary, payload
 
 
 def _simulate_hybrid_spikes(x: np.ndarray, mstate: np.ndarray, dt: float, n_cells: int, seed: int):
@@ -664,7 +697,9 @@ def _hybrid_state_filter(spikes: np.ndarray, x: np.ndarray, dt: float, p_ij: np.
     return post
 
 
-def run_experiment6(repo_root: Path, seed: int = 37) -> dict[str, float]:
+def run_experiment6(
+    repo_root: Path, seed: int = 37, *, return_payload: bool = False
+) -> dict[str, float] | tuple[dict[str, float], dict[str, object]]:
     del repo_root
     rng = np.random.default_rng(seed)
     dt = 0.01
@@ -688,13 +723,30 @@ def run_experiment6(repo_root: Path, seed: int = 37) -> dict[str, float]:
 
     dx = DecodingAlgorithms.linear_decode(spikes, x[0, :])["decoded"]
     dy = DecodingAlgorithms.linear_decode(spikes, x[1, :])["decoded"]
-    return {
+    summary = {
         "num_samples": float(x.shape[1]),
         "num_cells": float(n_cells),
         "state_accuracy": float(state_acc),
         "decode_rmse_x": float(np.sqrt(np.mean((dx - x[0, :]) ** 2))),
         "decode_rmse_y": float(np.sqrt(np.mean((dy - x[1, :]) ** 2))),
     }
+    if not return_payload:
+        return summary
+    payload = {
+        "time_s": t,
+        "x_pos": x[0, :],
+        "y_pos": x[1, :],
+        "x_vel": x[2, :],
+        "y_vel": x[3, :],
+        "state_true": mstate.astype(float),
+        "state_hat": state_hat.astype(float),
+        "state_prob_1": post[:, 0],
+        "state_prob_2": post[:, 1],
+        "decoded_x": np.asarray(dx, dtype=float),
+        "decoded_y": np.asarray(dy, dtype=float),
+        "spikes": spikes,
+    }
+    return summary, payload
 
 
 def run_full_paper_examples(repo_root: Path) -> dict[str, dict[str, float]]:

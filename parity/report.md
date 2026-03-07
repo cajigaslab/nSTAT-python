@@ -13,8 +13,8 @@ Generated from `parity/manifest.yml`.
 |---|---:|---:|---:|---:|
 | `public api` | 18 | 0 | 0 | 1 |
 | `help workflows` | 29 | 0 | 0 | 0 |
-| `paper examples` | 5 | 3 | 0 | 0 |
-| `docs gallery` | 7 | 1 | 0 | 0 |
+| `paper examples` | 8 | 0 | 0 | 0 |
+| `docs gallery` | 8 | 0 | 0 | 0 |
 | `installer setup` | 3 | 2 | 0 | 2 |
 | `repo structure` | 1 | 0 | 0 | 0 |
 
@@ -22,19 +22,9 @@ Generated from `parity/manifest.yml`.
 
 - Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable.
 - Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.
-- Paper examples and docs gallery: canonical structure is present, but dataset-backed outputs and figure files are still partial.
+- Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
 
 ## Remaining Deltas
-
-### `paper_examples`
-
-- `example05_decoding_ppaf_pphf` -> `nstat.paper_examples_full.run_experiment5`: Canonical Python script now exists and bundles experiment5/5b/6, but the MATLAB-matched figure gallery is not yet exported.
-- `nSTATPaperExamples section 5b` -> `nstat.paper_examples_full.run_experiment5b`: Implemented as a helper function only.
-- `nSTATPaperExamples section 6` -> `nstat.paper_examples_full.run_experiment6`: Implemented as a helper function only.
-
-### `docs_gallery`
-
-- `docs/figures/example05/` -> `docs/figures/example05/`: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
 
 ### `installer_setup`
 
