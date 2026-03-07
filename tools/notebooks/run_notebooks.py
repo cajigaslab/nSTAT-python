@@ -5,12 +5,23 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import nbformat
 import yaml
 from nbclient import NotebookClient
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from nstat.notebook_parity import (
+    extract_figure_contract,
+    reset_notebook_figure_artifacts,
+    validate_notebook_figure_artifacts,
+)
 
 
 @dataclass(frozen=True)
@@ -135,8 +146,17 @@ def main() -> int:
             failures.append(f"missing notebook: {target.path}")
             continue
         print(f"Executing [{target.run_group}] {target.topic}: {target.path}")
+        figure_contract = extract_figure_contract(target.path)
         try:
+            if figure_contract is not None:
+                reset_notebook_figure_artifacts(args.repo_root, figure_contract)
             execute_notebook(target.path, timeout=args.timeout)
+            if figure_contract is not None:
+                validate_notebook_figure_artifacts(
+                    args.repo_root,
+                    figure_contract,
+                    expected_topic=target.topic,
+                )
         except Exception as exc:  # noqa: BLE001
             failures.append(f"{target.path}: {exc}")
 

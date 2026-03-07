@@ -5,6 +5,12 @@ from typing import Any
 
 import yaml
 
+from nstat.notebook_parity import (
+    iter_outstanding_notebook_fidelity,
+    load_notebook_parity_notes,
+    summarize_notebook_fidelity,
+)
+
 
 SUMMARY_SECTIONS = (
     "public_api",
@@ -72,11 +78,14 @@ def _iter_non_applicable_rows(payload: dict[str, Any]) -> list[tuple[str, dict[s
 def render_parity_report(repo_root: Path | None = None) -> str:
     payload = load_parity_manifest(repo_root)
     class_fidelity = load_class_fidelity_audit(repo_root)
+    notebook_fidelity = load_notebook_parity_notes(repo_root)
     class_counts = _summarize_class_fidelity(class_fidelity)
+    notebook_counts = summarize_notebook_fidelity(notebook_fidelity)
+    notebook_partial = iter_outstanding_notebook_fidelity(notebook_fidelity)
     lines = [
         "# nSTAT Python Parity Report",
         "",
-        "Generated from `parity/manifest.yml` and `parity/class_fidelity.yml`.",
+        "Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/notebooks/parity_notes.yml`.",
         "",
         f"- MATLAB reference: {payload['source_repositories']['matlab']}",
         f"- Python target: {payload['source_repositories']['python']}",
@@ -107,11 +116,32 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     for status in class_fidelity.get("status_legend", []):
         lines.append(f"| `{status}` | {class_counts.get(status, 0)} |")
 
+    lines.extend(
+        [
+            "",
+            "## Notebook Fidelity Summary",
+            "",
+            "| Status | Count |",
+            "|---|---:|",
+        ]
+    )
+    for status in ("exact", "high_fidelity", "partial"):
+        lines.append(f"| `{status}` | {notebook_counts.get(status, 0)} |")
+
     lines.extend(["", "## Coverage Notes", ""])
     lines.append(
         "- Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable."
     )
     lines.append("- Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.")
+    if notebook_partial:
+        lines.append(
+            f"- Notebook fidelity: workflow coverage is complete, but {len(notebook_partial)} MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`."
+        )
+        lines.append(
+            "- Notebook fidelity audit: structural section/figure comparisons are recorded in `parity/notebook_fidelity.yml`."
+        )
+    else:
+        lines.append("- Notebook fidelity: all tracked MATLAB-helpfile notebook ports are marked high fidelity or exact.")
     if _has_outstanding(payload, "paper_examples") or _has_outstanding(payload, "docs_gallery"):
         lines.append(
             "- Paper examples and docs gallery: canonical structure is present, but dataset-backed outputs and figure files are still partial."
@@ -145,6 +175,15 @@ def render_parity_report(repo_root: Path | None = None) -> str:
             python_target = row.get("python_target") or row.get("python_script") or row.get("python_path") or row.get("path")
             notes = row.get("notes", "")
             lines.append(f"- `{label}` -> `{python_target}`: {notes}")
+
+    lines.extend(["", "## Remaining Notebook-Fidelity Deltas", ""])
+    if not notebook_partial:
+        lines.append("No partial notebook-fidelity items remain in `tools/notebooks/parity_notes.yml`.")
+    else:
+        for row in notebook_partial:
+            lines.append(
+                f"- `{row['topic']}` -> `{row['file']}` [{row['fidelity_status']}]: {row['remaining_differences']}"
+            )
 
     lines.extend(["", "## Remaining Class-Fidelity Deltas", ""])
     if not priority_remaining:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -25,6 +26,9 @@ class FigureTracker:
         topic_dir = self._topic_dir()
         for img_path in topic_dir.glob("fig_*.png"):
             img_path.unlink()
+        manifest_path = topic_dir / "manifest.json"
+        if manifest_path.exists():
+            manifest_path.unlink()
 
     def _topic_dir(self) -> Path:
         out = self.output_root / self.topic
@@ -100,3 +104,17 @@ class FigureTracker:
             raise AssertionError(
                 f"{self.topic}: produced {self.count} figure(s), expected {self.expected_count}"
             )
+        topic_dir = self._topic_dir()
+        images = [path.name for path in sorted(topic_dir.glob("fig_*.png"))]
+        (topic_dir / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "topic": self.topic,
+                    "expected_count": int(self.expected_count),
+                    "produced_count": self.count,
+                    "images": images,
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
