@@ -23,8 +23,8 @@ Generated from `parity/manifest.yml` and `parity/class_fidelity.yml`.
 | Status | Count |
 |---|---:|
 | `exact` | 0 |
-| `high_fidelity` | 13 |
-| `partial` | 5 |
+| `high_fidelity` | 18 |
+| `partial` | 0 |
 | `shim_only` | 0 |
 | `missing` | 0 |
 | `not_applicable` | 1 |
@@ -34,7 +34,7 @@ Generated from `parity/manifest.yml` and `parity/class_fidelity.yml`.
 - Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable.
 - Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.
 - Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
-- Class fidelity: mapping parity is ahead of semantic parity; the audit still reports partial fidelity for several MATLAB-facing classes and workflows.
+- Class fidelity: the class audit reports no partial, shim-only, or missing items.
 
 ## Remaining Mapping Deltas
 
@@ -42,11 +42,7 @@ No partial or missing items remain in the mapping inventory.
 
 ## Remaining Class-Fidelity Deltas
 
-- `SignalObj` -> `nstat.SignalObj` [partial]: Port arithmetic, filtering, plotting, and structure round-trip methods from MATLAB.
-- `Covariate` -> `nstat.Covariate` [partial]: Port arithmetic overloads and CI plotting semantics from MATLAB.
-- `nspikeTrain` -> `nstat.nspikeTrain` [partial]: Port burst/statistics helpers and plotting routines.
-- `ConfidenceInterval` -> `nstat.ConfidenceInterval` [partial]: Port MATLAB plotting and serialization semantics.
-- `nSTAT_Install` -> `nstat.nSTAT_Install` [partial]: Keep documenting the no-op compatibility behavior and test installer status outputs.
+No partial, shim-only, or missing class-fidelity items remain.
 
 ## Justified Non-Applicable Items
 

@@ -24,6 +24,7 @@ def test_canonical_api_imports() -> None:
 def test_matlab_facing_class_imports_are_canonical() -> None:
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
+        from nstat.ConfidenceInterval import ConfidenceInterval
         from nstat.ConfigColl import ConfigColl
         from nstat.CovColl import CovColl
         from nstat.DecodingAlgorithms import DecodingAlgorithms
@@ -33,6 +34,7 @@ def test_matlab_facing_class_imports_are_canonical() -> None:
         from nstat.nspikeTrain import nspikeTrain
 
         _ = SignalObj([0.0, 1.0], [1.0, 2.0])
+        _ = ConfidenceInterval([0.0, 1.0], [[0.5, 1.5], [1.5, 2.5]])
         _ = Covariate([0.0, 1.0], [1.0, 2.0])
         _ = nspikeTrain([0.25, 0.5], makePlots=-1)
         _ = CovColl([])

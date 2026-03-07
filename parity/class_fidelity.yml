@@ -16,58 +16,56 @@ items:
     matlab_path: SignalObj.m
     python_symbol: nstat.SignalObj
     python_path: nstat/core.py
-    status: partial
-    constructor_parity: Closer than the previous shim-first design; constructor defaults, orientation handling, labels, masks, resampling, and time-window APIs now mirror MATLAB more closely.
-    property_parity: Core observable fields exist (time, data, name, xlabelval, xunits, yunits, sampleRate, originalTime, originalData, dataMask, plotProps), but not every MATLAB property or dependent behavior is implemented.
-    method_parity: Foundational methods are implemented for labels, masking, sub-signals, nearest-time lookup, time-window extraction, restore/reset, mean/std, and resampling. Arithmetic, filtering, plotting, correlation, and many utility methods are still missing.
-    default_value_parity: Defaults for labels and units now match MATLAB more closely, including the 1 kHz fallback when sample spacing is ill-conditioned.
+    status: high_fidelity
+    constructor_parity: Constructor defaults, orientation handling, labels, masks, sample-rate inference, and time-window APIs now mirror MATLAB closely.
+    property_parity: Core observable fields exist, including time, data, name, xlabelval, xunits, yunits, sampleRate, originalTime, originalData, dataMask, plotProps, and confidence-interval storage.
+    method_parity: MATLAB-facing methods now cover labels, masking, sub-signals, nearest-time lookup, time-window extraction, merge, arithmetic operators, derivative/derivativeAt, filtering, plotting, restore/reset, mean/std, resampling, and structure export.
+    default_value_parity: Defaults for labels, units, and sample-rate fallback now match MATLAB closely, including the 1 kHz fallback when sample spacing is ill-conditioned.
     shape_and_indexing_parity: Signals use time-by-dimension storage and one-based selector behavior for MATLAB-facing methods.
-    error_warning_parity: Some MATLAB-style validation is present, but warning text and all edge-case errors are not yet matched.
+    error_warning_parity: MATLAB-style validation is present for the implemented surface, though warning text and some edge-case errors are still not exact.
     output_type_parity: MATLAB-facing methods return SignalObj/Covariate instances where expected.
     known_semantic_differences:
-      - Plotting and many arithmetic/operator overloads are still absent.
-      - Structure serialization is only partial compared with MATLAB.
+      - Some specialized MATLAB utilities, plotting options, and correlation helpers remain unported.
+      - Structure serialization is close but not exhaustive for every MATLAB-only field.
     recommended_remediation:
-      - Port arithmetic, filtering, plotting, and structure round-trip methods from MATLAB.
-      - Add fixture-backed tests for label masking, merge, derivative, and window semantics.
+      - Add MATLAB-derived fixtures for filter outputs, plotting selectors, and any remaining specialized utility methods.
   - matlab_name: Covariate
     kind: class
     matlab_path: Covariate.m
     python_symbol: nstat.Covariate
     python_path: nstat/core.py
-    status: partial
-    constructor_parity: Uses the SignalObj constructor shape and supports Python aliases for values and units.
-    property_parity: mu and sigma views exist; ci storage is supported.
-    method_parity: copySignal, getSubSignal, computeMeanPlusCI, getSigRep, and setConfInterval exist, but arithmetic with CI propagation and full structure round-tripping are incomplete.
+    status: high_fidelity
+    constructor_parity: Uses the MATLAB-aligned SignalObj constructor shape and supports the Python compatibility aliases for values and units.
+    property_parity: mu and sigma views exist and confidence-interval storage matches MATLAB intent closely.
+    method_parity: copySignal, getSubSignal, computeMeanPlusCI, getSigRep, setConfInterval, plot, and CI-aware plus/minus behavior are now implemented on the canonical class.
     default_value_parity: Mostly inherited from SignalObj.
     shape_and_indexing_parity: Time-by-dimension behavior matches SignalObj and MATLAB-facing one-based selectors are preserved.
-    error_warning_parity: Basic validation is present, but not all MATLAB message paths are matched.
+    error_warning_parity: Basic validation is present, though not every MATLAB message path is matched exactly.
     output_type_parity: Covariate methods return Covariate or SignalObj as MATLAB expects for the implemented subset.
     known_semantic_differences:
-      - CI-aware plus/minus operator behavior is not yet ported.
-      - Plotting with confidence intervals is not yet implemented.
+      - Some CI plotting options and full structure round-tripping remain lighter than MATLAB.
+      - More specialized arithmetic/reporting behaviors still need MATLAB-derived fixtures.
     recommended_remediation:
-      - Port arithmetic overloads and CI plotting semantics from MATLAB.
-      - Add fixture-backed tests for zero-mean and CI propagation workflows.
+      - Add MATLAB-derived fixtures for CI plotting and serialized confidence-interval payloads.
   - matlab_name: nspikeTrain
     kind: class
     matlab_path: nspikeTrain.m
     python_symbol: nstat.nspikeTrain
     python_path: nstat/core.py
-    status: partial
-    constructor_parity: Constructor argument order and defaults now follow MATLAB closely, including min/max/sample-rate initialization and cached signal-representation fields.
-    property_parity: Core public fields exist (spikeTimes, minTime, maxTime, sampleRate, sigRep, isSigRepBin, MER, avgFiringRate, burst/stat placeholders), but the full MATLAB state surface is larger.
-    method_parity: getSigRep, getSpikeTimes, getISIs, getMaxBinSizeBinary, computeRate, restoreToOriginal, nstCopy, and structure export exist. Plotting, burst-detection detail, partitioning, and several statistics/utilities are still incomplete.
-    default_value_parity: Defaults and cache behavior now track MATLAB much more closely than the previous wrapper-based implementation.
+    status: high_fidelity
+    constructor_parity: Constructor argument order, defaults, and cached signal-representation setup follow MATLAB closely, including min/max/sample-rate initialization and the makePlots behavior split.
+    property_parity: Core MATLAB-visible fields exist, including spikeTimes, minTime, maxTime, sampleRate, sigRep, isSigRepBin, MER, avgFiringRate, burst/stat placeholders, and label metadata.
+    method_parity: MATLAB-facing methods now cover setSigRep, setMinTime, setMaxTime, resample, getSigRep, getSpikeTimes, getISIs, getMinISI, getMaxBinSizeBinary, partitionNST, getFieldVal, computeRate, restoreToOriginal, nstCopy, plot, and structure round-trip.
+    default_value_parity: Defaults, cache behavior, and restore/resample semantics now track MATLAB much more closely than the earlier simplified implementation.
     shape_and_indexing_parity: Spike vectors remain one-dimensional and time-window filtering is inclusive on both ends, matching MATLAB.
-    error_warning_parity: Core argument validation exists, but warnings and all numerical corner cases are not yet matched exactly.
+    error_warning_parity: Core argument validation exists, though warning text and some plotting/statistics edge cases are still not exact.
     output_type_parity: Signal representation returns SignalObj and rate conversion returns SignalObj as expected.
     known_semantic_differences:
-      - Many plotting/statistical helper methods remain unported.
-      - Burst metrics are placeholders rather than MATLAB-equivalent calculations.
+      - Several ISI-plot helper methods remain unported or lighter than MATLAB.
+      - Burst metrics remain approximated rather than fully MATLAB-equivalent.
     recommended_remediation:
-      - Port burst/statistics helpers and plotting routines.
-      - Add MATLAB-derived fixtures for binary binning, windowing, and rate outputs.
+      - Port the remaining ISI plotting helpers and burst-detection detail from MATLAB.
+      - Add MATLAB-derived fixtures for partitionNST and burst/statistics outputs.
   - matlab_name: nstColl
     kind: class
     matlab_path: nstColl.m
@@ -266,18 +264,18 @@ items:
     matlab_path: ConfidenceInterval.m
     python_symbol: nstat.ConfidenceInterval
     python_path: nstat/confidence_interval.py
-    status: partial
-    constructor_parity: Basic time-and-bounds construction exists.
-    property_parity: lower and upper accessors exist; broader MATLAB behavior is missing.
-    method_parity: Minimal.
-    default_value_parity: Partial only.
-    shape_and_indexing_parity: Partial.
-    error_warning_parity: Simplified.
-    output_type_parity: Partial.
+    status: high_fidelity
+    constructor_parity: Basic time-and-bounds construction aligns with MATLAB intent.
+    property_parity: lower and upper accessors plus color metadata are exposed.
+    method_parity: Color assignment, plotting, and arithmetic composition with scalar signals and other confidence intervals are implemented for the MATLAB-facing workflows used by Covariate.
+    default_value_parity: Default color and time/bounds normalization are close to MATLAB.
+    shape_and_indexing_parity: Bounds are stored in MATLAB-style n x 2 lower/upper form.
+    error_warning_parity: Core validation is present, though some MATLAB display/plotting edge cases remain lighter.
+    output_type_parity: Returns ConfidenceInterval objects and matplotlib artists in the expected workflow positions.
     known_semantic_differences:
-      - Plotting and structure round-tripping are incomplete.
+      - Full MATLAB serialization/display semantics remain lighter than the original toolbox.
     recommended_remediation:
-      - Port MATLAB plotting and serialization semantics.
+      - Add MATLAB-derived fixtures for serialized confidence-interval payloads and plot styling.
   - matlab_name: CovColl
     kind: class
     matlab_path: CovColl.m
@@ -317,13 +315,13 @@ items:
     matlab_path: nSTAT_Install.m
     python_symbol: nstat.nSTAT_Install
     python_path: nstat/install.py
-    status: partial
+    status: high_fidelity
     constructor_parity: N/A
     property_parity: N/A
-    method_parity: Python installer covers data download and docs rebuild paths, but MATLAB path-cleanup semantics remain a no-op compatibility path.
-    default_value_parity: Close for Python packaging, not exact for MATLAB path management.
+    method_parity: Python installer covers data download, docs rebuild, and MATLAB-compatible flags while explicitly documenting the Python-only no-op path-preference behavior.
+    default_value_parity: Defaults are aligned to standalone Python packaging while preserving MATLAB-facing flag names where reasonable.
     shape_and_indexing_parity: N/A
-    error_warning_parity: Partial.
+    error_warning_parity: Installer status output and failure reporting are validated in Python, with MATLAB path warnings intentionally replaced by structured Python notes.
     output_type_parity: Returns Python dictionaries/status text rather than MATLAB console-only behavior.
     known_semantic_differences:
       - MATLAB path management is intentionally non-applicable in Python.
