@@ -22,5 +22,5 @@ def test_parity_report_highlights_current_constraints() -> None:
     assert "class fidelity" in text.lower()
     assert "No partial or missing items remain in the mapping inventory." in text
     assert "Remaining Class-Fidelity Deltas" in text
-    assert "SignalObj" in text
+    assert "No partial, shim-only, or missing class-fidelity items remain." in text
     assert "nstatOpenHelpPage" in text

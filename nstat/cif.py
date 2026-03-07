@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 
 import numpy as np
 
@@ -55,7 +56,53 @@ class CIFModel:
 
 
 class CIF:
-    """MATLAB-compatible CIF static API wrapper."""
+    """MATLAB-facing CIF object plus static convenience APIs."""
+
+    def __init__(
+        self,
+        beta: Sequence[float] | np.ndarray | None = None,
+        Xnames: Sequence[str] | None = None,
+        stimNames: Sequence[str] | None = None,
+        fitType: str = "poisson",
+        histCoeffs: Sequence[float] | np.ndarray | None = None,
+        historyObj=None,
+        nst=None,
+    ) -> None:
+        self.b = np.asarray(beta if beta is not None else [], dtype=float).reshape(-1)
+        self.varIn = list(Xnames or [])
+        self.stimVars = list(stimNames or [])
+        self.fitType = str(fitType)
+        self.histCoeffs = np.asarray(histCoeffs if histCoeffs is not None else [], dtype=float).reshape(-1)
+        self.history = historyObj
+        self.spikeTrain = None if nst is None else getattr(nst, "nstCopy", lambda: nst)()
+
+    def evaluate(self, design_matrix: np.ndarray, *, delta: float = 1.0, history_matrix: np.ndarray | None = None) -> np.ndarray:
+        x = np.asarray(design_matrix, dtype=float)
+        if x.ndim == 1:
+            x = x[:, None]
+        beta = self.b
+        if x.shape[1] != beta.size:
+            raise ValueError("design_matrix column count must match number of CIF coefficients")
+        eta = x @ beta
+        if history_matrix is not None and self.histCoeffs.size:
+            hist = np.asarray(history_matrix, dtype=float)
+            if hist.ndim == 1:
+                hist = hist[:, None]
+            if hist.shape[1] != self.histCoeffs.size:
+                raise ValueError("history_matrix column count must match histCoeffs length")
+            eta = eta + hist @ self.histCoeffs
+        if self.fitType == "poisson":
+            lambda_delta = np.exp(np.clip(eta, -20.0, 20.0))
+        elif self.fitType == "binomial":
+            exp_eta = np.exp(np.clip(eta, -20.0, 20.0))
+            lambda_delta = exp_eta / (1.0 + exp_eta)
+        else:
+            raise ValueError("fitType must be either 'poisson' or 'binomial'")
+        return lambda_delta / max(float(delta), 1e-12)
+
+    def to_covariate(self, time: Sequence[float], design_matrix: np.ndarray, *, delta: float = 1.0, name: str = "lambda") -> Covariate:
+        rate = self.evaluate(design_matrix, delta=delta)
+        return Covariate(time, rate, name, "time", "s", "spikes/sec", [name])
 
     @staticmethod
     def simulateCIFByThinningFromLambda(lambda_covariate: Covariate, numRealizations: int = 1) -> SpikeTrainCollection:

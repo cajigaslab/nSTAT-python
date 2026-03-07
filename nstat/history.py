@@ -1,49 +1,108 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
-from .signal import Covariate
+from .core import Covariate, nspikeTrain
 
 
-@dataclass
-class HistoryBasis:
-    """Spike-history basis using lagged spike-count regressors."""
+class History:
+    """MATLAB-style spike-history basis described by window boundaries."""
 
-    lags: np.ndarray
-    name: str = "History"
+    def __init__(self, windowTimes, minTime: float | None = None, maxTime: float | None = None, name: str = "History") -> None:
+        times = np.asarray(windowTimes, dtype=float).reshape(-1)
+        if times.size <= 1:
+            raise ValueError("At least two times points must be specified to determine a window")
+        if np.any(np.diff(times) <= 0):
+            raise ValueError("windowTimes must be strictly increasing")
 
-    def __init__(self, lags, name: str = "History") -> None:
-        arr = np.asarray(lags, dtype=int).reshape(-1)
-        if arr.size == 0:
-            raise ValueError("lags must be non-empty")
-        if np.any(arr <= 0):
-            raise ValueError("lags must be strictly positive")
-        self.lags = np.unique(arr)
-        self.name = name
+        self.windowTimes = times
+        self.minTime = float(times[0] if minTime is None else minTime)
+        self.maxTime = float(times[-1] if maxTime is None else maxTime)
+        self.name = str(name)
 
-    def design_matrix(self, spike_indicator: np.ndarray) -> np.ndarray:
-        y = np.asarray(spike_indicator, dtype=float).reshape(-1)
-        x = np.zeros((y.shape[0], self.lags.shape[0]), dtype=float)
-        for j, lag in enumerate(self.lags):
-            x[lag:, j] = y[:-lag]
-        return x
+    @property
+    def lags(self) -> np.ndarray:
+        return np.asarray(self.windowTimes[1:], dtype=float).copy()
 
-    def compute_history(self, spike_indicator: np.ndarray, time: np.ndarray) -> Covariate:
-        x = self.design_matrix(spike_indicator)
-        labels = [f"hist_lag_{int(l)}" for l in self.lags]
-        return Covariate(time, x, self.name, "time", "s", "count", labels)
+    @property
+    def numWindows(self) -> int:
+        return int(self.windowTimes.size - 1)
 
-    # MATLAB-compatible method names.
-    def computeHistory(self, nst) -> Covariate:
-        y = np.asarray(getattr(nst, "getSigRep")().data[:, 0], dtype=float)
-        t = np.asarray(getattr(nst, "getSigRep")().time, dtype=float)
-        return self.compute_history(y, t)
+    def setWindow(self, windowTimes) -> None:
+        replacement = History(windowTimes, self.minTime, self.maxTime, self.name)
+        self.windowTimes = replacement.windowTimes
+        self.minTime = replacement.minTime
+        self.maxTime = replacement.maxTime
+
+    def _compute_single_history(self, train: nspikeTrain, historyIndex: int | None = None) -> Covariate:
+        sigrep = train.getSigRep()
+        time = np.asarray(sigrep.time, dtype=float).reshape(-1)
+        spikes = np.asarray(train.getSpikeTimes(), dtype=float).reshape(-1)
+        history = np.zeros((time.size, self.numWindows), dtype=float)
+
+        for col, (window_start, window_stop) in enumerate(zip(self.windowTimes[:-1], self.windowTimes[1:])):
+            for row, tval in enumerate(time):
+                left = float(tval - window_stop)
+                right = float(tval - window_start)
+                history[row, col] = float(np.sum((spikes >= left) & (spikes < right)))
+
+        label_prefix = train.name or f"neuron_{historyIndex or 1}"
+        labels = [
+            f"{label_prefix}_hist_{col + 1}"
+            for col in range(self.numWindows)
+        ]
+        return Covariate(time, history, self.name, "time", "s", "count", labels)
+
+    def compute_history(self, trains, historyIndex: int | None = None):
+        from .trial import CovariateCollection
+
+        if isinstance(trains, nspikeTrain):
+            return CovariateCollection([self._compute_single_history(trains, historyIndex)])
+        if hasattr(trains, "getNST") and hasattr(trains, "numSpikeTrains"):
+            covariates = [self._compute_single_history(trains.getNST(index), index) for index in range(1, int(trains.numSpikeTrains) + 1)]
+            return CovariateCollection(covariates)
+        if isinstance(trains, Sequence) and not isinstance(trains, (str, bytes, np.ndarray)):
+            covariates = [self._compute_single_history(train, index) for index, train in enumerate(trains, start=1)]
+            return CovariateCollection(covariates)
+        raise TypeError("History can only be computed from nspikeTrain, nstColl, or sequences of nspikeTrain")
+
+    def computeHistory(self, trains, historyIndex: int | None = None):
+        return self.compute_history(trains, historyIndex)
+
+    def toStructure(self) -> dict[str, Any]:
+        return {
+            "windowTimes": self.windowTimes.tolist(),
+            "minTime": self.minTime,
+            "maxTime": self.maxTime,
+            "name": self.name,
+        }
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any] | None) -> "History" | None:
+        if structure is None:
+            return None
+        if "windowTimes" in structure:
+            windowTimes = structure["windowTimes"]
+        elif "lags" in structure:
+            lags = np.asarray(structure["lags"], dtype=float).reshape(-1)
+            windowTimes = np.concatenate([[0.0], lags])
+        else:
+            windowTimes = [0.0, 1.0]
+        return History(
+            windowTimes,
+            minTime=structure.get("minTime"),
+            maxTime=structure.get("maxTime"),
+            name=structure.get("name", "History"),
+        )
+
+    def plot(self, *_, **__) -> None:
+        return None
 
 
-# Backward-compatible alias.
-History = HistoryBasis
+HistoryBasis = History
 
 
-__all__ = ["HistoryBasis", "History"]
+__all__ = ["History", "HistoryBasis"]
