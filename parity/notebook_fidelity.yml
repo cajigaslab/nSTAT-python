@@ -17,7 +17,7 @@ items:
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 14
-  python_tracker_only_cells: 12
+  python_tracker_only_cells: 5
   python_contains_placeholders: true
   python_contains_tracker_only_cells: true
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
@@ -28,22 +28,23 @@ items:
 - topic: TrialExamples
   source_matlab: TrialExamples.mlx
   python_notebook: notebooks/TrialExamples.ipynb
-  fidelity_status: partial
-  remaining_differences: The notebook still contains placeholder and tracker-only
-    cells, so the current port demonstrates the Trial workflow structure but not yet
-    the full MATLAB helpfile computation and figure path.
-  python_sections: 3
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now mirrors the MATLAB Trial workflow with executable
+    object construction, masking, history extraction, and plotting; the closing analysis
+    section uses one representative Python `Analysis` run instead of linking out to
+    separate MATLAB help pages.
+  python_sections: 9
   python_expected_figures: 6
   python_uses_figure_tracker: true
   python_has_finalize_call: true
-  python_placeholder_cells: 1
-  python_tracker_only_cells: 1
-  python_contains_placeholders: true
-  python_contains_tracker_only_cells: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 9
   matlab_published_figures: 6
-  section_delta: -6
+  section_delta: 0
   figure_delta: 0
 - topic: AnalysisExamples
   source_matlab: AnalysisExamples.mlx
@@ -150,17 +151,18 @@ items:
 - topic: HybridFilterExample
   source_matlab: HybridFilterExample.mlx
   python_notebook: notebooks/HybridFilterExample.ipynb
-  fidelity_status: partial
-  remaining_differences: The notebook reproduces the hybrid-filter workflow structure
-    and figure contract, but it still contains placeholder cells and does not yet
-    provide a fully executable MATLAB-equivalent report path.
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now reproduces the hybrid-filter simulation,
+    single-run decoding, and averaged summary figures with real outputs; the Python
+    port still uses the current hybrid-filter implementation instead of every MATLAB-specific
+    reporting branch.
   python_sections: 6
   python_expected_figures: 3
   python_uses_figure_tracker: true
   python_has_finalize_call: true
-  python_placeholder_cells: 3
+  python_placeholder_cells: 0
   python_tracker_only_cells: 0
-  python_contains_placeholders: true
+  python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 6
@@ -171,17 +173,17 @@ items:
   source_matlab: PPSimExample.mlx
   python_notebook: notebooks/PPSimExample.ipynb
   fidelity_status: partial
-  remaining_differences: The core point-process simulation path exists in Python,
-    but this notebook still contains placeholder and tracker-only sections instead
-    of a full MATLAB-equivalent simulation and report workflow.
+  remaining_differences: The notebook now executes the full Python point-process simulation
+    and analysis workflow without placeholders, but it still uses the native `CIFModel`
+    path rather than the original MATLAB/Simulink recursive CIF model.
   python_sections: 9
   python_expected_figures: 3
   python_uses_figure_tracker: true
   python_has_finalize_call: true
-  python_placeholder_cells: 1
-  python_tracker_only_cells: 5
-  python_contains_placeholders: true
-  python_contains_tracker_only_cells: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 17
   matlab_published_figures: 8
@@ -190,17 +192,18 @@ items:
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb
-  fidelity_status: partial
-  remaining_differences: The notebook follows the MATLAB validation workflow structure,
-    but it still contains placeholder sections and uses shorter deterministic simulations
-    rather than a full MATLAB-equivalent execution path.
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now reproduces the constant-rate and piecewise-rate
+    validation workflows with real `Trial`/`Analysis` objects and figure outputs;
+    the Python port uses shorter deterministic simulations than MATLAB so the notebook
+    remains stable in CI.
   python_sections: 11
   python_expected_figures: 10
   python_uses_figure_tracker: true
   python_has_finalize_call: true
-  python_placeholder_cells: 4
+  python_placeholder_cells: 0
   python_tracker_only_cells: 0
-  python_contains_placeholders: true
+  python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 11

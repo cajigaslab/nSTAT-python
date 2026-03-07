@@ -34,8 +34,8 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 | Status | Count |
 |---|---:|
 | `exact` | 0 |
-| `high_fidelity` | 5 |
-| `partial` | 6 |
+| `high_fidelity` | 8 |
+| `partial` | 3 |
 
 ## Simulink Fidelity Summary
 
@@ -52,7 +52,7 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 
 - Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable.
 - Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.
-- Notebook fidelity: workflow coverage is complete, but 6 MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`.
+- Notebook fidelity: workflow coverage is complete, but 3 MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`.
 - Notebook fidelity audit: structural section/figure comparisons plus placeholder/tracker-only cell detection are recorded in `parity/notebook_fidelity.yml`.
 - Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
 - Class fidelity: mapping parity is ahead of semantic parity; the audit still reports partial fidelity for several MATLAB-facing classes and workflows.
@@ -65,11 +65,8 @@ No partial or missing items remain in the mapping inventory.
 ## Remaining Notebook-Fidelity Deltas
 
 - `nSTATPaperExamples` -> `notebooks/nSTATPaperExamples.ipynb` [partial]: Python uses standalone figshare-backed data access and generated gallery assets rather than MATLAB path-based setup, and several sections still rely on placeholder or tracker-only cells instead of full MATLAB-equivalent computations.
-- `TrialExamples` -> `notebooks/TrialExamples.ipynb` [partial]: The notebook still contains placeholder and tracker-only cells, so the current port demonstrates the Trial workflow structure but not yet the full MATLAB helpfile computation and figure path.
 - `AnalysisExamples` -> `notebooks/AnalysisExamples.ipynb` [partial]: Advanced MATLAB algorithm-selection branches and report plots remain lighter in Python, and the notebook still contains tracker-only visualization sections rather than a fully executable MATLAB-equivalent workflow.
-- `HybridFilterExample` -> `notebooks/HybridFilterExample.ipynb` [partial]: The notebook reproduces the hybrid-filter workflow structure and figure contract, but it still contains placeholder cells and does not yet provide a fully executable MATLAB-equivalent report path.
-- `PPSimExample` -> `notebooks/PPSimExample.ipynb` [partial]: The core point-process simulation path exists in Python, but this notebook still contains placeholder and tracker-only sections instead of a full MATLAB-equivalent simulation and report workflow.
-- `ValidationDataSet` -> `notebooks/ValidationDataSet.ipynb` [partial]: The notebook follows the MATLAB validation workflow structure, but it still contains placeholder sections and uses shorter deterministic simulations rather than a full MATLAB-equivalent execution path.
+- `PPSimExample` -> `notebooks/PPSimExample.ipynb` [partial]: The notebook now executes the full Python point-process simulation and analysis workflow without placeholders, but it still uses the native `CIFModel` path rather than the original MATLAB/Simulink recursive CIF model.
 
 ## Remaining Class-Fidelity Deltas
 

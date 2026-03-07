@@ -36,7 +36,7 @@ def test_notebook_fidelity_audit_has_structural_counts() -> None:
 def test_notebook_fidelity_audit_marks_placeholder_heavy_ports_as_partial() -> None:
     audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
     partial_topics = {row["topic"] for row in audit.get("items", []) if row["fidelity_status"] == "partial"}
-    assert {"AnalysisExamples", "PPSimExample", "TrialExamples", "nSTATPaperExamples"} <= partial_topics
+    assert {"AnalysisExamples", "PPSimExample", "nSTATPaperExamples"} <= partial_topics
 
 
 def test_high_fidelity_notebooks_have_no_placeholder_or_tracker_only_cells() -> None:

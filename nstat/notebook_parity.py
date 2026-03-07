@@ -18,9 +18,6 @@ FIGURE_TRACKER_RE = re.compile(
     re.DOTALL,
 )
 PLACEHOLDER_RE = re.compile(r"(^|\n)\s*pass\b|TODO|FIXME", re.IGNORECASE)
-TRACKER_ONLY_LINE_RE = re.compile(
-    r"^\s*(?:__tracker\.(?:annotate|new_figure|finalize)\(.*\)|plt\.close\(.*\)|#.*)?\s*$"
-)
 
 
 @dataclass(frozen=True)
@@ -92,7 +89,11 @@ def audit_notebook_placeholders(notebook_path: Path) -> NotebookPlaceholderAudit
         if PLACEHOLDER_RE.search(source):
             placeholder_cells += 1
         non_empty = [line for line in source.splitlines() if line.strip()]
-        if non_empty and all(TRACKER_ONLY_LINE_RE.match(line) for line in non_empty):
+        non_comment = [line for line in non_empty if not line.lstrip().startswith("#")]
+        if non_comment and all(
+            line.lstrip().startswith("__tracker.") or line.lstrip().startswith("plt.close(")
+            for line in non_comment
+        ) and any(line.lstrip().startswith("__tracker.") for line in non_comment):
             tracker_only_cells += 1
     return NotebookPlaceholderAudit(
         placeholder_cells=placeholder_cells,

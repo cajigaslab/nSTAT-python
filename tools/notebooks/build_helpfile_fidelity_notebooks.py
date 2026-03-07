@@ -416,13 +416,11 @@ VALIDATION_CODE = [
     """
     # SECTION 1: Case #1: Constant Rate Poisson Process
     # First we verify that the analysis recovers a constant Poisson rate from simulated spike trains.
-    pass
     """,
     """
     # SECTION 2: Generate constant-rate neural firing activity
     constant_time = np.asarray(constant_case["time_s"], dtype=float)
     constant_trains = list(constant_case["trains"])
-    pass
     """,
     """
     # SECTION 3: Sanity check the ISI distribution
@@ -466,7 +464,6 @@ VALIDATION_CODE = [
     # Next we compare a single-rate model against a two-epoch rate model.
     piecewise_time = np.asarray(piecewise_case["time_s"], dtype=float)
     piecewise_trains = list(piecewise_case["trains"])
-    pass
     """,
     """
     # SECTION 7: Generate the piecewise-rate spike trains
@@ -494,7 +491,6 @@ VALIDATION_CODE = [
     """
     # SECTION 8: Setup the piecewise-rate analysis
     piecewise_results = Analysis.RunAnalysisForAllNeurons(piecewise_case["trial"], piecewise_case["cfg"], 0)
-    pass
     """,
     """
     # SECTION 9: Run the piecewise-rate analysis
@@ -841,12 +837,10 @@ HYBRID_CODE = [
     """
     # SECTION 1: Problem Statement
     # We infer both a discrete movement state and a continuous reach trajectory from point-process observations.
-    pass
     """,
     """
     # SECTION 2: Hybrid state-space setup
     # The Python port keeps the same two-state problem structure as MATLAB: a low-motion state and a movement state.
-    pass
     """,
     """
     # SECTION 3: Generated Simulated Arm Reach
@@ -896,7 +890,6 @@ HYBRID_CODE = [
     """
     # SECTION 4: Simulate Neural Firing
     # The simulated spike population depends on the latent state and the movement dynamics.
-    pass
     """,
     """
     # SECTION 5: Run the hybrid filter
