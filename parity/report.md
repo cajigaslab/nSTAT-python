@@ -23,8 +23,8 @@ Generated from `parity/manifest.yml` and `parity/class_fidelity.yml`.
 | Status | Count |
 |---|---:|
 | `exact` | 0 |
-| `high_fidelity` | 1 |
-| `partial` | 17 |
+| `high_fidelity` | 12 |
+| `partial` | 6 |
 | `shim_only` | 0 |
 | `missing` | 0 |
 | `not_applicable` | 1 |
@@ -45,19 +45,8 @@ No partial or missing items remain in the mapping inventory.
 - `SignalObj` -> `nstat.SignalObj` [partial]: Port arithmetic, filtering, plotting, and structure round-trip methods from MATLAB.
 - `Covariate` -> `nstat.Covariate` [partial]: Port arithmetic overloads and CI plotting semantics from MATLAB.
 - `nspikeTrain` -> `nstat.nspikeTrain` [partial]: Port burst/statistics helpers and plotting routines.
-- `nstColl` -> `nstat.nstColl` [partial]: Port the remaining collection methods from MATLAB and move the class into a canonical MATLAB-facing implementation file.
-- `Trial` -> `nstat.Trial` [partial]: Port richer trial state, consistency checks, and MATLAB workflow helpers.
-- `TrialConfig` -> `nstat.TrialConfig` [partial]: Port MATLAB configuration validation, normalization, and selection workflows.
-- `ConfigColl` -> `nstat.ConfigColl` [partial]: Port the remaining ConfigColl helpers and name/selection semantics from MATLAB.
-- `Analysis` -> `nstat.Analysis` [partial]: Port MATLAB analysis options and representative workflow outputs into dataset-backed tests.
-- `FitResult` -> `nstat.FitResult` [partial]: Port MATLAB result-summary and reporting APIs with golden fixtures.
-- `FitResSummary` -> `nstat.FitResSummary` [partial]: Port summary aggregation and reporting semantics from MATLAB.
-- `CIF` -> `nstat.CIF` [partial]: Port MATLAB CIF behaviors used by simulation, fitting, and decoding workflows.
 - `DecodingAlgorithms` -> `nstat.DecodingAlgorithms` [partial]: Port canonical decoding workflows and validate them against MATLAB-derived outputs.
-- `History` -> `nstat.History` [partial]: Port full History object workflows and fixture-backed outputs.
-- `Events` -> `nstat.Events` [partial]: Port event validation, color handling, and notebook-backed workflows.
 - `ConfidenceInterval` -> `nstat.ConfidenceInterval` [partial]: Port MATLAB plotting and serialization semantics.
-- `CovColl` -> `nstat.CovColl` [partial]: Port remaining CovColl behaviors and helpfile workflows.
 - `nSTAT_Install` -> `nstat.nSTAT_Install` [partial]: Keep documenting the no-op compatibility behavior and test installer status outputs.
 
 ## Justified Non-Applicable Items

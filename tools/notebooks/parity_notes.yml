@@ -1,0 +1,57 @@
+version: 1
+notes:
+  - topic: nSTATPaperExamples
+    file: notebooks/nSTATPaperExamples.ipynb
+    source_matlab: nSTATPaperExamples.mlx
+    fidelity_status: high_fidelity
+    remaining_differences: Python uses standalone figshare-backed data access and generated gallery assets rather than MATLAB path-based setup.
+  - topic: TrialExamples
+    file: notebooks/TrialExamples.ipynb
+    source_matlab: TrialExamples.mlx
+    fidelity_status: high_fidelity
+    remaining_differences: Some MATLAB plotting/display details remain simplified, but the core Trial object workflow now follows the MATLAB semantics closely.
+  - topic: AnalysisExamples
+    file: notebooks/AnalysisExamples.ipynb
+    source_matlab: AnalysisExamples.mlx
+    fidelity_status: high_fidelity
+    remaining_differences: Advanced MATLAB algorithm-selection branches and some report plots are still lighter in Python.
+  - topic: DecodingExample
+    file: notebooks/DecodingExample.ipynb
+    source_matlab: DecodingExample.mlx
+    fidelity_status: partial
+    remaining_differences: Core decoding workflow is present, but MATLAB decoding options and reference outputs are not yet fully matched.
+  - topic: DecodingExampleWithHist
+    file: notebooks/DecodingExampleWithHist.ipynb
+    source_matlab: DecodingExampleWithHist.mlx
+    fidelity_status: partial
+    remaining_differences: History-aware decoding is available, but the MATLAB workflow still has richer option handling and reference outputs.
+  - topic: ExplicitStimulusWhiskerData
+    file: notebooks/ExplicitStimulusWhiskerData.ipynb
+    source_matlab: ExplicitStimulusWhiskerData.mlx
+    fidelity_status: partial
+    remaining_differences: Dataset-backed workflow is present, but figure-level and narrative parity with MATLAB are still incomplete.
+  - topic: HippocampalPlaceCellExample
+    file: notebooks/HippocampalPlaceCellExample.ipynb
+    source_matlab: HippocampalPlaceCellExample.mlx
+    fidelity_status: partial
+    remaining_differences: Core place-cell workflow is ported, but MATLAB figure sequencing and summary outputs are not yet exact.
+  - topic: HybridFilterExample
+    file: notebooks/HybridFilterExample.ipynb
+    source_matlab: HybridFilterExample.mlx
+    fidelity_status: partial
+    remaining_differences: Hybrid filtering workflow executes, but MATLAB-specific output details and downstream validation remain incomplete.
+  - topic: PPSimExample
+    file: notebooks/PPSimExample.ipynb
+    source_matlab: PPSimExample.mlx
+    fidelity_status: high_fidelity
+    remaining_differences: MATLAB plotting/report formatting remains lighter, but the core point-process simulation workflow is closely aligned.
+  - topic: ValidationDataSet
+    file: notebooks/ValidationDataSet.ipynb
+    source_matlab: ValidationDataSet.mlx
+    fidelity_status: partial
+    remaining_differences: Validation dataset coverage exists, but MATLAB reference summaries and figure parity are not yet complete.
+  - topic: StimulusDecode2D
+    file: notebooks/StimulusDecode2D.ipynb
+    source_matlab: StimulusDecode2D.mlx
+    fidelity_status: partial
+    remaining_differences: The 2D stimulus decoding workflow runs, but MATLAB-equivalent outputs and tolerance-backed parity checks still need expansion.
