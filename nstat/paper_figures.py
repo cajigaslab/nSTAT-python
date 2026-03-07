@@ -788,6 +788,13 @@ EXAMPLE_FIGURE_BUILDERS: dict[str, list[tuple[str, FigureBuilder]]] = {
 }
 
 
+def list_named_paper_figures(example_id: str) -> list[str]:
+    builders = EXAMPLE_FIGURE_BUILDERS.get(example_id)
+    if builders is None:
+        raise ValueError(f"No figure builders registered for {example_id}")
+    return [filename for filename, _builder in builders]
+
+
 def export_named_paper_figures(
     example_id: str,
     *,
@@ -804,4 +811,5 @@ def export_named_paper_figures(
 __all__ = [
     "default_export_dir",
     "export_named_paper_figures",
+    "list_named_paper_figures",
 ]
