@@ -4,7 +4,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
+
+import nstat.data_manager as data_manager
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -44,20 +47,39 @@ def test_paper_example_scripts_exist_and_support_help() -> None:
         assert "--export-figures" in proc.stdout
 
 
-def test_all_canonical_examples_support_figure_export(tmp_path: Path) -> None:
+def _manifest_rows() -> list[dict[str, object]]:
     payload = yaml.safe_load(MANIFEST_PATH.read_text(encoding="utf-8"))
-    for row in payload["examples"][:5]:
-        example_id = row["example_id"]
-        script_path = REPO_ROOT / row["script"]
-        export_dir = tmp_path / example_id
-        proc = subprocess.run(
-            [sys.executable, str(script_path), "--export-figures", "--export-dir", str(export_dir)],
-            cwd=REPO_ROOT,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        assert proc.returncode == 0, proc.stderr
-        for rel_path in row["figure_files"]:
-            filename = Path(rel_path).name
-            assert (export_dir / filename).exists(), f"Missing exported figure {filename} for {example_id}"
+    return list(payload["examples"])
+
+
+def _run_export_smoke(row: dict[str, object], tmp_path: Path) -> None:
+    example_id = str(row["example_id"])
+    script_path = REPO_ROOT / str(row["script"])
+    export_dir = tmp_path / example_id
+    proc = subprocess.run(
+        [sys.executable, str(script_path), "--export-figures", "--export-dir", str(export_dir)],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    for rel_path in row["figure_files"]:
+        filename = Path(rel_path).name
+        assert (export_dir / filename).exists(), f"Missing exported figure {filename} for {example_id}"
+
+
+def test_data_free_canonical_example_supports_figure_export(tmp_path: Path) -> None:
+    rows = _manifest_rows()
+    example05 = next(row for row in rows if row["example_id"] == "example05")
+    _run_export_smoke(example05, tmp_path)
+
+
+def test_dataset_backed_canonical_examples_support_figure_export_when_data_available(tmp_path: Path) -> None:
+    if not data_manager.data_is_present(data_manager.get_data_dir()):
+        pytest.skip("Dataset-backed paper example export smoke requires preinstalled example data.")
+
+    rows = _manifest_rows()
+    dataset_backed = [row for row in rows if row["example_id"] != "example05"]
+    for row in dataset_backed:
+        _run_export_smoke(row, tmp_path)
