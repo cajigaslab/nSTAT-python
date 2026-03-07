@@ -42,6 +42,12 @@ def _should_prompt_for_example_data(info: dict[str, Any]) -> bool:
     return answer.strip().lower() in {"y", "yes"}
 
 
+def _apply_example_data_info(report: dict[str, Any], info: Any) -> None:
+    report["example_data"]["data_dir"] = str(info.data_dir)
+    report["example_data"]["is_installed"] = bool(info.is_installed)
+    report["example_data"]["required_files"] = [str(path) for path in info.required_files]
+
+
 def nstat_install(
     *,
     rebuild_doc_search: bool = True,
@@ -52,8 +58,9 @@ def nstat_install(
 
     mode = _normalize_download_mode(download_example_data)
     repo_root = Path(__file__).resolve().parents[1]
-    info = get_example_data_info(repo_root)
+    repo_info = get_example_data_info(repo_root)
     data_dir = get_data_dir()
+    data_info = get_example_data_info(data_dir, treat_as_data_dir=True)
 
     report: dict[str, Any] = {
         "repo_root": str(repo_root),
@@ -63,34 +70,38 @@ def nstat_install(
         "download_example_data": mode,
         "example_data": {
             "data_dir": str(data_dir),
-            "is_installed": bool(info.is_installed or get_example_data_info(data_dir).is_installed),
+            "is_installed": bool(repo_info.is_installed or data_info.is_installed),
             "figshare_doi": FIGSHARE_DOI_URL,
             "paper_doi": PAPER_DOI_URL,
-            "required_files": [str(path) for path in info.required_files],
+            "required_files": [str(path) for path in data_info.required_files],
         },
         "notes": [],
     }
 
     try:
-        if info.is_installed:
-            report["example_data"]["is_installed"] = True
-            report["example_data"]["data_dir"] = str(info.data_dir)
+        if repo_info.is_installed:
+            _apply_example_data_info(report, repo_info)
+            report["notes"].append("Example data already present.")
+        elif data_info.is_installed:
+            _apply_example_data_info(report, data_info)
             report["notes"].append("Example data already present.")
         elif mode == "always":
             path = ensure_example_data(download=True)
-            report["example_data"]["is_installed"] = True
-            report["example_data"]["data_dir"] = str(path)
+            _apply_example_data_info(report, get_example_data_info(path, treat_as_data_dir=True))
             report["notes"].append("Downloaded example data.")
         elif mode == "prompt":
             if _should_prompt_for_example_data(report["example_data"]):
                 path = ensure_example_data(download=True)
-                report["example_data"]["is_installed"] = True
-                report["example_data"]["data_dir"] = str(path)
+                _apply_example_data_info(report, get_example_data_info(path, treat_as_data_dir=True))
                 report["notes"].append("Downloaded example data after prompt.")
             else:
-                report["notes"].append("Example data not installed; run with download_example_data=True to install.")
+                report["notes"].append(
+                    "Example data was not preinstalled; paper-example and dataset APIs will download it on first use."
+                )
         else:
-            report["notes"].append("Example data not installed; run with download_example_data=True to install.")
+            report["notes"].append(
+                "Example data was not preinstalled; paper-example and dataset APIs will download it on first use."
+            )
     except Exception as exc:  # noqa: BLE001
         report["example_data"]["error"] = str(exc)
         report["notes"].append("Example data installation failed.")

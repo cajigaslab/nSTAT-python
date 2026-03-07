@@ -41,14 +41,14 @@ def list_datasets() -> list[str]:
     return sorted(_load_manifest().keys())
 
 
-def _resolve_dataset_target(rel_path: str) -> Path:
+def _resolve_dataset_target(rel_path: str, *, download: bool) -> Path:
     repo_root = _repo_root()
     rel = Path(rel_path)
     if not rel.parts:
         return repo_root / rel
     if rel.parts[0] == "data":
         try:
-            data_dir = ensure_example_data(download=False)
+            data_dir = ensure_example_data(download=download)
         except FileNotFoundError as exc:
             raise DataNotFoundError(str(exc)) from exc
         return data_dir.joinpath(*rel.parts[1:])
@@ -60,7 +60,7 @@ def get_dataset_path(name: str) -> Path:
     if name not in entries:
         raise DataNotFoundError(f"Unknown dataset '{name}'. Available: {', '.join(sorted(entries))}")
 
-    path = _resolve_dataset_target(entries[name]["path"])
+    path = _resolve_dataset_target(entries[name]["path"], download=True)
     if not path.exists():
         raise DataNotFoundError(f"Dataset '{name}' not found at expected path: {path}")
     return path
@@ -71,7 +71,7 @@ def verify_checksums() -> dict[str, bool]:
     result: dict[str, bool] = {}
     for name, item in entries.items():
         try:
-            path = _resolve_dataset_target(item["path"])
+            path = _resolve_dataset_target(item["path"], download=True)
         except DataNotFoundError:
             result[name] = False
             continue

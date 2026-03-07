@@ -1,9 +1,4 @@
-"""Resolve and materialize the external nSTAT example-data package.
-
-This mirrors the MATLAB-side `nSTAT_ExampleDataInfo` / `nSTAT_Install`
-workflow added in the upstream toolbox while keeping raw example data out of
-the Python Git tree.
-"""
+"""Resolve and materialize the standalone nSTAT-python example dataset."""
 
 from __future__ import annotations
 
@@ -11,6 +6,7 @@ import json
 import os
 import re
 import shutil
+import ssl
 import tempfile
 import time
 import urllib.request
@@ -19,11 +15,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+import certifi
+
 
 FIGSHARE_API_URL: Final[str] = "https://api.figshare.com/v2/articles/4834640"
 FIGSHARE_DOI_URL: Final[str] = "https://doi.org/10.6084/m9.figshare.4834640.v3"
 PAPER_DOI_URL: Final[str] = "https://doi.org/10.1016/j.jneumeth.2012.08.009"
 SENTINEL_NAME: Final[str] = ".nstat_data_ok.json"
+USER_AGENT: Final[str] = "nSTAT-python-data-manager/1.0 (+https://github.com/cajigaslab/nSTAT-python)"
+SSL_CONTEXT: Final[ssl.SSLContext] = ssl.create_default_context(cafile=certifi.where())
 DOWNLOAD_URL_RE: Final[re.Pattern[str]] = re.compile(
     r"https?://(?:www\.)?(?:ndownloader|figshare\.com/ndownloader)/files/\d+"
 )
@@ -31,7 +31,7 @@ DOWNLOAD_URL_RE: Final[re.Pattern[str]] = re.compile(
 
 @dataclass(frozen=True)
 class ExampleDataInfo:
-    """Python analogue of MATLAB `nSTAT_ExampleDataInfo`."""
+    """Resolved on-disk metadata for the canonical example dataset."""
 
     root_dir: Path
     data_dir: Path
@@ -56,11 +56,15 @@ def _default_cache_dir() -> Path:
     return (_repo_root() / "data_cache" / "nstat_data").resolve()
 
 
-def get_example_data_info(root_dir: str | Path | None = None) -> ExampleDataInfo:
-    """Return dataset metadata using MATLAB-compatible file requirements."""
+def get_example_data_info(
+    root_dir: str | Path | None = None,
+    *,
+    treat_as_data_dir: bool = False,
+) -> ExampleDataInfo:
+    """Return dataset metadata for a repo root or explicit dataset cache path."""
 
     raw_root = _repo_root() if root_dir is None else Path(root_dir).expanduser().resolve()
-    if (raw_root / "mEPSCs").exists() or raw_root.name == "data":
+    if treat_as_data_dir or (raw_root / "mEPSCs").exists() or raw_root.name == "data":
         data_dir = raw_root
         root = raw_root.parent if raw_root.name == "data" else raw_root
     else:
@@ -97,11 +101,9 @@ def _write_sentinel(data_dir: Path, *, source_url: str) -> None:
 def _http_get(url: str, *, timeout: float = 60.0) -> tuple[str, bytes]:
     req = urllib.request.Request(
         url,
-        headers={
-            "User-Agent": "nSTAT-python-data-manager/1.0 (+https://github.com/cajigaslab/nSTAT-python)"
-        },
+        headers={"User-Agent": USER_AGENT},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as resp:
         final_url = str(resp.geturl())
         body = resp.read()
     return final_url, body
@@ -145,11 +147,11 @@ def _stream_download(url: str, destination: Path, *, retries: int = 3) -> None:
         try:
             req = urllib.request.Request(
                 url,
-                headers={
-                    "User-Agent": "nSTAT-python-data-manager/1.0 (+https://github.com/cajigaslab/nSTAT-python)"
-                },
+                headers={"User-Agent": USER_AGENT},
             )
-            with urllib.request.urlopen(req, timeout=180.0) as resp, destination.open("wb") as out:
+            with urllib.request.urlopen(req, timeout=180.0, context=SSL_CONTEXT) as resp, destination.open(
+                "wb"
+            ) as out:
                 shutil.copyfileobj(resp, out, length=1024 * 1024)
             return
         except Exception as exc:  # pragma: no cover - network timing dependent
@@ -216,7 +218,7 @@ def get_data_dir() -> Path:
 def data_is_present(data_dir: Path) -> bool:
     """Return True when the required MATLAB-mirrored example files exist."""
 
-    return get_example_data_info(data_dir).is_installed
+    return get_example_data_info(data_dir, treat_as_data_dir=True).is_installed
 
 
 def ensure_example_data(download: bool = True) -> Path:

@@ -1,29 +1,45 @@
-# nSTAT-python
+nSTAT-python
+============
 
-`nSTAT-python` is a Python toolbox for neural spike-train analysis, modeling, and decoding.
+Neural Spike Train Analysis Toolbox for Python
 
 [![test-and-build](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml)
 [![pages](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml)
 
-## Installation
+nSTAT-python is an open-source, object-oriented Python toolbox that implements a range of models and algorithms for neural spike-train analysis, modeling, and decoding. The toolbox is designed for quick, consistent neural data analysis in native Python while keeping the paper-example dataset outside the Git repository.
+
+Like the MATLAB toolbox paper, the Python port centers point-process generalized linear models for spike trains, while also supporting Gaussian-signal workflows, simulation, fitting diagnostics, and decoding. Although created with neural signal processing in mind, nSTAT-python can be used more generally for discrete and continuous time-series analysis.
+
+Like all open-source projects, nSTAT-python benefits from issues, suggestions, and code contributions. The current source repository is:
+
+- https://github.com/cajigaslab/nSTAT-python
+
+Lab websites:
+
+- Neuroscience Statistics Research Laboratory: https://www.neurostat.mit.edu
+- RESToRe Lab: https://www.med.upenn.edu/cajigaslab/
+
+How to install nSTAT-python
+---------------------------
+
+1. Clone this repository and create or activate a Python 3.10+ environment.
+2. Install the package from source:
 
 ```bash
-python -m pip install nstat
-```
-
-From source:
-
-```bash
-git clone git@github.com:cajigaslab/nSTAT-python.git
+git clone https://github.com/cajigaslab/nSTAT-python.git
 cd nSTAT-python
 python -m pip install -e .[dev]
 ```
 
-## Example data
+3. Optional post-install helper:
 
-`nSTAT-python` does not commit raw example data to the repository.
+```bash
+nstat-install
+```
 
-Install the example dataset with:
+When a paper example or dataset helper needs the canonical example dataset, nSTAT-python downloads the figshare dataset automatically into a local cache. The raw dataset is not stored in this Git repository.
+
+To prefetch the dataset ahead of time:
 
 ```bash
 nstat-install --download-example-data always
@@ -38,270 +54,100 @@ data_dir = ensure_example_data(download=True)
 print(data_dir)
 ```
 
-## How to install nSTAT (post-install setup)
-
-Run the setup helper:
+Quickstart (Python 3.10+)
+-------------------------
 
 ```bash
-nstat-install
+git clone https://github.com/cajigaslab/nSTAT-python.git
+cd nSTAT-python
+python -m pip install -e .[dev]
+python examples/nSTATPaperExamples.py --repo-root .
 ```
 
-Equivalent Python API:
+The first paper-example or dataset call downloads the figshare dataset automatically. Repository checkouts cache it under `data_cache/nstat_data/` by default. Set `NSTAT_DATA_DIR` to use another cache location.
+
+Paper Examples (Self-Contained)
+-------------------------------
+
+Canonical source files:
+
+- `examples/nSTATPaperExamples.py` (full command-line runner)
+- `nstat/paper_examples_full.py` (paper-aligned experiment implementations)
+- `examples/nstat_paper_examples.py` and `nstat/paper_examples.py` (lighter-weight summary runner)
+- `notebooks/nSTATPaperExamples.ipynb` (notebook narrative)
+
+Single command to run the full paper-aligned example suite:
+
+```bash
+python examples/nSTATPaperExamples.py --repo-root .
+```
+
+This command downloads the figshare dataset automatically when needed and prints JSON summaries for the experiment blocks. The Python package does not require a MATLAB checkout.
+
+| Example | What question it answers | Python entrypoint |
+|---|---|---|
+| Example 01 | Do mEPSCs follow constant vs piecewise Poisson firing under Mg2+ washout? | `nstat.paper_examples_full.run_experiment1` |
+| Example 02 | How do explicit whisker stimulus and spike history improve thalamic GLM fits? | `nstat.paper_examples_full.run_experiment2` |
+| Example 03 | How do PSTH and SSGLM capture within-trial and across-trial dynamics? | `nstat.paper_examples_full.run_experiment3` and `run_experiment3b` |
+| Example 04 | Which receptive-field basis (Gaussian vs Zernike-like) better fits place cells? | `nstat.paper_examples_full.run_experiment4` |
+| Example 05 | How well do point-process-inspired decoders recover latent stimulus and state? | `nstat.paper_examples_full.run_experiment5`, `run_experiment5b`, and `run_experiment6` |
+
+For a lighter-weight paper overview with plot payloads:
 
 ```python
-from nstat.install import nstat_install
-
-report = nstat_install()
-```
-
-## Examples
-
-> These examples generate figures with `matplotlib` and save PNGs under `examples/readme_examples/images/`.
-> The images below show the expected output.
-
-Examples below require `matplotlib`:
-
-```bash
-python -m pip install matplotlib
-```
-
-### Example 1 — Single sinusoid: signal + multitaper spectrum + spectrogram
-Run:
-
-```bash
-python examples/readme_examples/example1_multitaper_and_spectrogram.py
-```
-
-```python
-import matplotlib
-matplotlib.use("Agg")
-
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.signal import spectrogram
-
-from nstat.compat.matlab import SignalObj
-
-fs_hz = 1000.0
-dt = 1.0 / fs_hz
-duration_s = 2.0
-f0_hz = 10.0
-time = np.arange(0.0, duration_s, dt, dtype=float)
-
-signal = np.sin(2.0 * np.pi * f0_hz * time)
-sig_obj = SignalObj(time=time, data=signal, name="sine_signal", units="a.u.")
-freq_hz, psd = sig_obj.MTMspectrum()
-f_spec, t_spec, sxx = spectrogram(signal, fs=fs_hz, nperseg=256, noverlap=224, scaling="density", mode="psd")
-
-fig, axes = plt.subplots(3, 1, figsize=(7.5, 7.5))
-preview_mask = time <= 1.0
-axes[0].plot(time[preview_mask], signal[preview_mask], color="tab:blue", linewidth=1.4)
-axes[0].set_title("Signal (10 Hz sinusoid)")
-axes[0].set_xlabel("time (s)")
-axes[0].set_ylabel("amplitude")
-axes[1].plot(freq_hz, psd, color="tab:orange", linewidth=1.2)
-axes[1].set_xlim(0.0, 100.0)
-axes[1].set_title("Multi-taper spectrum")
-axes[1].set_xlabel("frequency (Hz)")
-axes[1].set_ylabel("PSD")
-im = axes[2].pcolormesh(t_spec, f_spec, sxx, shading="auto", cmap="magma")
-axes[2].set_ylim(0.0, 100.0)
-axes[2].set_title("Spectrogram")
-axes[2].set_xlabel("time (s)")
-axes[2].set_ylabel("frequency (Hz)")
-fig.colorbar(im, ax=axes[2], pad=0.01, label="PSD")
-fig.tight_layout()
-
-out_dir = Path("examples/readme_examples/images")
-out_dir.mkdir(parents=True, exist_ok=True)
-fig.savefig(out_dir / "readme_example1_multitaper_and_spectrogram.png", dpi=180)
-```
-
-**Expected output**
-![Multitaper and spectrogram](examples/readme_examples/images/readme_example1_multitaper_and_spectrogram.png)
-
-### Example 2 — Time-varying CIF over 10 seconds (single-frequency sinusoid)
-Run:
-
-```bash
-python examples/readme_examples/example2_simulate_cif_spiketrain_10s.py
-```
-
-```python
-import matplotlib
-matplotlib.use("Agg")
-
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-from nstat.compat.matlab import CIF, Covariate
-
-np.random.seed(0)
-dt = 0.001
-duration_s = 10.0
-t = np.arange(0.0, duration_s + dt, dt, dtype=float)
-
-f_hz = 0.5
-baseline_hz = 15.0
-amp_hz = 10.0
-lam = np.clip(baseline_hz + amp_hz * np.sin(2.0 * np.pi * f_hz * t), 0.2, None)
-
-lambda_cov = Covariate(time=t, data=lam, name="Lambda", units="spikes/s", labels=["lambda"])
-spikes = CIF.simulateCIFByThinningFromLambda(lambda_cov, 1, dt)
-spike_times = spikes.getNST(0).spike_times
-
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8.0, 4.8), sharex=True, gridspec_kw={"height_ratios": [2.0, 1.0]})
-ax1.plot(t, lam, color="tab:blue", linewidth=1.3)
-ax1.set_ylabel("rate (spikes/s)")
-ax1.set_title("Time-varying CIF over 10 s")
-ax2.vlines(spike_times, 0.0, 1.0, color="black", linewidth=0.8)
-ax2.set_ylim(0.0, 1.0)
-ax2.set_yticks([])
-ax2.set_xlabel("time (s)")
-ax2.set_title("Simulated spike train")
-fig.tight_layout()
-
-out_dir = Path("examples/readme_examples/images")
-out_dir.mkdir(parents=True, exist_ok=True)
-fig.savefig(out_dir / "readme_example2_simulate_cif_spiketrain_10s.png", dpi=180)
-```
-
-**Expected output**
-![CIF spike train simulation](examples/readme_examples/images/readme_example2_simulate_cif_spiketrain_10s.png)
-
-### Example 3 — Spike train collection raster from Example 2
-Run:
-
-```bash
-python examples/readme_examples/example3_nstcoll_raster_from_example2.py
-```
-
-```python
-import matplotlib
-matplotlib.use("Agg")
-
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-from nstat.compat.matlab import CIF, Covariate
-
-np.random.seed(0)
-dt = 0.001
-duration_s = 10.0
-n_units = 20
-t = np.arange(0.0, duration_s + dt, dt, dtype=float)
-
-f_hz = 0.5
-baseline_hz = 15.0
-amp_hz = 10.0
-lam = np.clip(baseline_hz + amp_hz * np.sin(2.0 * np.pi * f_hz * t), 0.2, None)
-
-lambda_cov = Covariate(time=t, data=lam, name="Lambda", units="spikes/s", labels=["lambda"])
-coll = CIF.simulateCIFByThinningFromLambda(lambda_cov, n_units, dt)
-
-fig, ax = plt.subplots(figsize=(8.0, 4.8))
-plt.sca(ax)
-coll.plot()
-ax.set_xlabel("time (s)")
-ax.set_ylabel("unit index")
-ax.set_title("Spike-train collection raster (nstColl.plot)")
-ax.set_ylim(0.5, n_units + 0.5)
-fig.tight_layout()
-
-out_dir = Path("examples/readme_examples/images")
-out_dir.mkdir(parents=True, exist_ok=True)
-fig.savefig(out_dir / "readme_example3_nstcoll_raster.png", dpi=180)
-```
-
-**Expected output**
-![Spike train raster](examples/readme_examples/images/readme_example3_nstcoll_raster.png)
-
-### nSTATPaperExamples
-
-Run:
-
-```bash
-python examples/readme_examples/example4_nstatpaperexamples_overview.py
-```
-
-```python
-import matplotlib
-matplotlib.use("Agg")
-
 from pathlib import Path
 
 from nstat.paper_examples import run_paper_examples
 
-repo_root = Path(".").resolve()
-results, payloads = run_paper_examples(repo_root, return_plot_data=True)
+results = run_paper_examples(Path.cwd())
 print(results["experiment2"])
 print(results["experiment3"])
 print(results["experiment4"])
 print(results["experiment5"])
 ```
 
-**Expected output**
-![nSTATPaperExamples overview](examples/readme_examples/images/readme_example4_nstatpaperexamples_overview.png)
+Documentation
+-------------
 
-Complete catalog of nSTATPaperExamples notebooks:
+Minimal package docs live under [`docs/`](docs/).
 
-- [AnalysisExamples](notebooks/AnalysisExamples.ipynb) — Notebook example for AnalysisExamples.
-- [ConfigCollExamples](notebooks/ConfigCollExamples.ipynb) — Notebook example for ConfigCollExamples.
-- [CovCollExamples](notebooks/CovCollExamples.ipynb) — Notebook example for CovCollExamples.
-- [CovariateExamples](notebooks/CovariateExamples.ipynb) — Notebook example for CovariateExamples.
-- [DecodingExample](notebooks/DecodingExample.ipynb) — Notebook example for DecodingExample.
-- [DecodingExampleWithHist](notebooks/DecodingExampleWithHist.ipynb) — Notebook example for DecodingExampleWithHist.
-- [EventsExamples](notebooks/EventsExamples.ipynb) — Notebook example for EventsExamples.
-- [ExplicitStimulusWhiskerData](notebooks/ExplicitStimulusWhiskerData.ipynb) — Notebook example for ExplicitStimulusWhiskerData.
-- [FitResSummaryExamples](notebooks/FitResSummaryExamples.ipynb) — Notebook example for FitResSummaryExamples.
-- [FitResultExamples](notebooks/FitResultExamples.ipynb) — Notebook example for FitResultExamples.
-- [HippocampalPlaceCellExample](notebooks/HippocampalPlaceCellExample.ipynb) — Notebook example for HippocampalPlaceCellExample.
-- [HistoryExamples](notebooks/HistoryExamples.ipynb) — Notebook example for HistoryExamples.
-- [NetworkTutorial](notebooks/NetworkTutorial.ipynb) — Notebook example for NetworkTutorial.
-- [PPSimExample](notebooks/PPSimExample.ipynb) — Notebook example for PPSimExample.
-- [PPThinning](notebooks/PPThinning.ipynb) — Notebook example for PPThinning.
-- [PSTHEstimation](notebooks/PSTHEstimation.ipynb) — Notebook example for PSTHEstimation.
-- [SignalObjExamples](notebooks/SignalObjExamples.ipynb) — Notebook example for SignalObjExamples.
-- [StimulusDecode2D](notebooks/StimulusDecode2D.ipynb) — Notebook example for StimulusDecode2D.
-- [TrialConfigExamples](notebooks/TrialConfigExamples.ipynb) — Notebook example for TrialConfigExamples.
-- [TrialExamples](notebooks/TrialExamples.ipynb) — Notebook example for TrialExamples.
-- [ValidationDataSet](notebooks/ValidationDataSet.ipynb) — Notebook example for ValidationDataSet.
-- [mEPSCAnalysis](notebooks/mEPSCAnalysis.ipynb) — Notebook example for mEPSCAnalysis.
-- [nSTATPaperExamples](notebooks/nSTATPaperExamples.ipynb) — Notebook example for nSTATPaperExamples.
-- [nSpikeTrainExamples](notebooks/nSpikeTrainExamples.ipynb) — Notebook example for nSpikeTrainExamples.
-- [nstCollExamples](notebooks/nstCollExamples.ipynb) — Notebook example for nstCollExamples.
-- [AnalysisExamples2](notebooks/AnalysisExamples2.ipynb) — Notebook example for AnalysisExamples2.
-- [FitResultReference](notebooks/FitResultReference.ipynb) — Notebook example for FitResultReference.
-- [HybridFilterExample](notebooks/HybridFilterExample.ipynb) — Notebook example for HybridFilterExample.
+- API reference: [`docs/api.rst`](docs/api.rst)
+- Data installation: [`docs/data_installation.rst`](docs/data_installation.rst)
 
-## Documentation
+For mathematical and programmatic details of the toolbox, see:
 
-- Docs home: [cajigaslab.github.io/nSTAT-python](https://cajigaslab.github.io/nSTAT-python/)
-- Help index: [cajigaslab.github.io/nSTAT-python/help](https://cajigaslab.github.io/nSTAT-python/help/)
+Cajigas I, Malik WQ, Brown EN. nSTAT: Open-source neural spike train analysis toolbox for Matlab. Journal of Neuroscience Methods 211: 245-264, Nov. 2012
+http://doi.org/10.1016/j.jneumeth.2012.08.009
+PMID: 22981419
 
-## Developer notes
+Paper-aligned toolbox map
+-------------------------
 
-- Run tests:
+To keep terminology and workflows aligned with the 2012 toolbox paper, the Python package groups core functionality along the same analysis paths:
 
-```bash
-pytest -q
-```
+- Class hierarchy and object model (`SignalObj`, `Covariate`, `Trial`, `Analysis`, `FitResult`, `DecodingAlgorithms`)
+- Fitting and assessment workflow (GLM fitting, diagnostics, summaries)
+- Simulation workflow (conditional intensity and thinning examples)
+- Decoding workflow (stimulus and state reconstruction)
+- Example-to-paper section mapping via `nstat.paper_examples_full`
 
-- Build docs:
+If you use nSTAT-python in your work, please cite the paper above.
+nSTAT is protected by the GPL v2 Open Source License.
 
-```bash
-sphinx-build -b html docs docs/_build
-```
+The code repository for nSTAT-python is hosted on GitHub at https://github.com/cajigaslab/nSTAT-python .
+The paper-example dataset is distributed separately from the Git repository:
 
-## Cite
+- Figshare dataset DOI: https://doi.org/10.6084/m9.figshare.4834640.v3
+- Paper DOI: https://doi.org/10.1016/j.jneumeth.2012.08.009
 
-Cajigas, I., Malika, W. Q., & Brown, E. N. (2012).  
-nSTAT: Open-source neural spike train analysis toolbox for Matlab.  
-Journal of Neuroscience Methods, 211, 245–264.  
-https://doi.org/10.1016/j.jneumeth.2012.08.009
+Standalone Python repository
+----------------------------
+
+`nSTAT-python` is maintained as a separate repository from the MATLAB toolbox and does not require files from `cajigaslab/nSTAT`.
+
+This repository provides:
+
+- Native Python implementations of core spike-train analysis and decoding workflows
+- On-demand dataset download directly from figshare
+- Notebook and script examples that run without a MATLAB install
+- A `nstat.compat.matlab` namespace for familiar class names where API continuity is useful
