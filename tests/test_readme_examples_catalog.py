@@ -8,19 +8,21 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 README_PATH = REPO_ROOT / "README.md"
-CATALOG_PATH = REPO_ROOT / "examples" / "nSTATPaperExamples" / "manifest.yml"
+PAPER_MANIFEST_PATH = REPO_ROOT / "examples" / "paper" / "manifest.yml"
 
-
-FEATURED_HEADINGS = [
-    "### Example 1 — Single sinusoid: signal + multitaper spectrum + spectrogram",
-    "### Example 2 — Time-varying CIF over 10 seconds (single-frequency sinusoid)",
-    "### Example 3 — Spike train collection raster from Example 2",
-]
-
-FEATURED_RUN_COMMANDS = [
-    "python examples/readme_examples/example1_multitaper_and_spectrogram.py",
-    "python examples/readme_examples/example2_simulate_cif_spiketrain_10s.py",
-    "python examples/readme_examples/example3_nstcoll_raster_from_example2.py",
+SUPPLEMENTARY_EXAMPLES = [
+    (
+        "python examples/readme_examples/example1_multitaper_and_spectrogram.py",
+        "[PNG](examples/readme_examples/images/readme_example1_multitaper_and_spectrogram.png)",
+    ),
+    (
+        "python examples/readme_examples/example2_simulate_cif_spiketrain_10s.py",
+        "[PNG](examples/readme_examples/images/readme_example2_simulate_cif_spiketrain_10s.png)",
+    ),
+    (
+        "python examples/readme_examples/example3_nstcoll_raster_from_example2.py",
+        "[PNG](examples/readme_examples/images/readme_example3_nstcoll_raster.png)",
+    ),
 ]
 
 
@@ -31,45 +33,42 @@ def _extract_examples_block(text: str) -> str:
     return match.group(1)
 
 
-def test_readme_featured_examples_are_preserved_in_order() -> None:
-    readme = README_PATH.read_text(encoding="utf-8")
-    block = _extract_examples_block(readme)
-
-    heading_positions = []
-    for heading in FEATURED_HEADINGS:
-        pos = block.find(heading)
-        assert pos >= 0, f"Missing featured heading: {heading}"
-        heading_positions.append(pos)
-    assert heading_positions == sorted(heading_positions), "Featured examples must remain in the original order."
-
-    for cmd in FEATURED_RUN_COMMANDS:
-        assert cmd in block, f"Missing featured run command: {cmd}"
-
-
-def test_readme_includes_complete_nstatpaperexamples_catalog_once() -> None:
-    readme = README_PATH.read_text(encoding="utf-8")
-    block = _extract_examples_block(readme)
-    assert "### nSTATPaperExamples" in block, "README Examples section is missing the nSTATPaperExamples catalog header."
-
-    manifest = yaml.safe_load(CATALOG_PATH.read_text(encoding="utf-8")) or {}
-    entries = manifest.get("examples", [])
-    assert entries, "nSTATPaperExamples manifest has no entries."
-
-    for row in entries:
-        name = str(row["name"])
-        rel_path = str(row["relative_path"])
-        link = f"[{name}]({rel_path})"
-        count = block.count(link)
-        assert count == 1, f"Catalog entry must appear exactly once in README: {link} (found {count})."
-
-
-def test_readme_examples_section_has_no_other_example_groups() -> None:
-    readme = README_PATH.read_text(encoding="utf-8")
-    block = _extract_examples_block(readme)
-
+def test_readme_examples_headings_match_gallery_layout() -> None:
+    block = _extract_examples_block(README_PATH.read_text(encoding="utf-8"))
     headings = re.findall(r"^###\s+.+$", block, flags=re.M)
-    expected = FEATURED_HEADINGS + ["### nSTATPaperExamples"]
-    assert headings == expected, (
-        "README Examples section must contain only the three featured examples "
-        "followed by the nSTATPaperExamples catalog header."
-    )
+    assert headings == [
+        "### Paper Examples (Self-Contained)",
+        "### Supplementary Examples",
+    ]
+    assert "python tools/paper_examples/build_gallery.py" in block
+
+
+def test_readme_paper_example_rows_track_manifest() -> None:
+    block = _extract_examples_block(README_PATH.read_text(encoding="utf-8"))
+    manifest = yaml.safe_load(PAPER_MANIFEST_PATH.read_text(encoding="utf-8")) or {}
+    entries = manifest.get("examples", [])
+    assert entries, "Paper example manifest has no entries."
+
+    for index, row in enumerate(entries, start=1):
+        script = str(row["script"])
+        question = str(row["question"])
+        example_label = f"Example {index:02d}"
+        thumbnail = str(row["figure_files"][0])
+        assert example_label in block
+        assert question in block
+        assert f"![{example_label}]({thumbnail})" in block
+        assert f"`python {script}`" in block
+        assert f"[Script]({script})" in block
+        assert f"[Figures](docs/figures/{row['example_id']}/)" in block
+
+
+def test_readme_supplementary_examples_are_preserved() -> None:
+    block = _extract_examples_block(README_PATH.read_text(encoding="utf-8"))
+
+    positions: list[int] = []
+    for command, png_link in SUPPLEMENTARY_EXAMPLES:
+        pos = block.find(command)
+        assert pos >= 0, f"Missing supplementary example command: {command}"
+        positions.append(pos)
+        assert png_link in block
+    assert positions == sorted(positions), "Supplementary examples must remain in README order."

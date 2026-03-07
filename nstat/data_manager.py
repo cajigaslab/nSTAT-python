@@ -45,6 +45,17 @@ class ExampleDataInfo:
         return all(path.exists() for path in self.required_files)
 
 
+@dataclass(frozen=True)
+class PaperDataDirs:
+    """Resolved dataset directories used by the canonical paper examples."""
+
+    data_dir: Path
+    mepsc_dir: Path
+    explicit_stimulus_dir: Path
+    psth_dir: Path
+    place_cell_data_dir: Path
+
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
@@ -217,6 +228,35 @@ def data_is_present(data_dir: Path) -> bool:
     """Return True when the required MATLAB-mirrored example files exist."""
 
     return get_example_data_info(data_dir).is_installed
+
+
+def get_paper_data_dirs(*, download: bool = True) -> PaperDataDirs:
+    """Return the canonical paper-example data directories.
+
+    This is the Python-native equivalent of MATLAB ``getPaperDataDirs``.
+    """
+
+    data_dir = ensure_example_data(download=download)
+    return PaperDataDirs(
+        data_dir=data_dir,
+        mepsc_dir=data_dir / "mEPSCs",
+        explicit_stimulus_dir=data_dir / "Explicit Stimulus",
+        psth_dir=data_dir / "PSTH",
+        place_cell_data_dir=data_dir / "Place Cells",
+    )
+
+
+def getPaperDataDirs(*, download: bool = True) -> tuple[Path, Path, Path, Path, Path]:
+    """MATLAB-style tuple-returning alias for :func:`get_paper_data_dirs`."""
+
+    dirs = get_paper_data_dirs(download=download)
+    return (
+        dirs.data_dir,
+        dirs.mepsc_dir,
+        dirs.explicit_stimulus_dir,
+        dirs.psth_dir,
+        dirs.place_cell_data_dir,
+    )
 
 
 def ensure_example_data(download: bool = True) -> Path:

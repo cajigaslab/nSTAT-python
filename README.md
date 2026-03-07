@@ -8,7 +8,7 @@
 ## Installation
 
 ```bash
-python -m pip install nstat
+python -m pip install nstat-toolbox
 ```
 
 From source:
@@ -46,6 +46,12 @@ Run the setup helper:
 nstat-install
 ```
 
+Module form:
+
+```bash
+python -m nstat.install --download-example-data never --no-rebuild-doc-search
+```
+
 Equivalent Python API:
 
 ```python
@@ -54,231 +60,48 @@ from nstat.install import nstat_install
 report = nstat_install()
 ```
 
+`clean_user_path_prefs` is accepted for MATLAB-API compatibility, but it is a
+Python no-op because import paths are managed by the environment rather than a
+MATLAB-style saved user path.
+
 ## Examples
 
-> These examples generate figures with `matplotlib` and save PNGs under `examples/readme_examples/images/`.
-> The images below show the expected output.
+### Paper Examples (Self-Contained)
 
-Examples below require `matplotlib`:
+Canonical source files:
+- `examples/paper/*.py`
+- `nstat/paper_examples_full.py`
 
-```bash
-python -m pip install matplotlib
-```
-
-### Example 1 — Single sinusoid: signal + multitaper spectrum + spectrogram
-Run:
+Single command to regenerate the paper-example gallery metadata:
 
 ```bash
-python examples/readme_examples/example1_multitaper_and_spectrogram.py
+python tools/paper_examples/build_gallery.py
 ```
 
-```python
-import matplotlib
-matplotlib.use("Agg")
+This writes `docs/paper_examples.md` and `docs/figures/manifest.json`, and
+ensures canonical figure-gallery directories exist under
+`docs/figures/example01/` through `docs/figures/example05/`.
 
-from pathlib import Path
+| Example | Thumbnail | What question it answers | Run command | Links |
+|---|---|---|---|---|
+| Example 01 | ![Example 01](docs/figures/example01/fig01_constant_mg_summary.png) | Does Mg2+ washout produce firing-rate dynamics beyond a constant Poisson baseline? | `python examples/paper/example01_mepsc_poisson.py` | [Script](examples/paper/example01_mepsc_poisson.py) · [Figures](docs/figures/example01/) |
+| Example 02 | ![Example 02](docs/figures/example02/fig01_data_overview.png) | What stimulus lag and history order best explain whisker-evoked spike trains? | `python examples/paper/example02_whisker_stimulus_thalamus.py` | [Script](examples/paper/example02_whisker_stimulus_thalamus.py) · [Figures](docs/figures/example02/) |
+| Example 03 | ![Example 03](docs/figures/example03/fig01_simulated_and_real_rasters.png) | How do PSTH and SSGLM differ in capturing trial learning dynamics? | `python examples/paper/example03_psth_and_ssglm.py` | [Script](examples/paper/example03_psth_and_ssglm.py) · [Figures](docs/figures/example03/) |
+| Example 04 | ![Example 04](docs/figures/example04/fig01_example_cells_path_overlay.png) | How do Gaussian and Zernike basis models compare for place-field mapping? | `python examples/paper/example04_place_cells_continuous_stimulus.py` | [Script](examples/paper/example04_place_cells_continuous_stimulus.py) · [Figures](docs/figures/example04/) |
+| Example 05 | ![Example 05](docs/figures/example05/fig01_univariate_setup.png) | How accurately can neural populations decode latent stimulus and reach state? | `python examples/paper/example05_decoding_ppaf_pphf.py` | [Script](examples/paper/example05_decoding_ppaf_pphf.py) · [Figures](docs/figures/example05/) |
 
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.signal import spectrogram
+Expanded paper-example index and figure gallery:
+- [docs/paper_examples.md](docs/paper_examples.md)
 
-from nstat.compat.matlab import SignalObj
+### Supplementary Examples
 
-fs_hz = 1000.0
-dt = 1.0 / fs_hz
-duration_s = 2.0
-f0_hz = 10.0
-time = np.arange(0.0, duration_s, dt, dtype=float)
+These smaller demos remain useful as quick install and plotting checks.
 
-signal = np.sin(2.0 * np.pi * f0_hz * time)
-sig_obj = SignalObj(time=time, data=signal, name="sine_signal", units="a.u.")
-freq_hz, psd = sig_obj.MTMspectrum()
-f_spec, t_spec, sxx = spectrogram(signal, fs=fs_hz, nperseg=256, noverlap=224, scaling="density", mode="psd")
-
-fig, axes = plt.subplots(3, 1, figsize=(7.5, 7.5))
-preview_mask = time <= 1.0
-axes[0].plot(time[preview_mask], signal[preview_mask], color="tab:blue", linewidth=1.4)
-axes[0].set_title("Signal (10 Hz sinusoid)")
-axes[0].set_xlabel("time (s)")
-axes[0].set_ylabel("amplitude")
-axes[1].plot(freq_hz, psd, color="tab:orange", linewidth=1.2)
-axes[1].set_xlim(0.0, 100.0)
-axes[1].set_title("Multi-taper spectrum")
-axes[1].set_xlabel("frequency (Hz)")
-axes[1].set_ylabel("PSD")
-im = axes[2].pcolormesh(t_spec, f_spec, sxx, shading="auto", cmap="magma")
-axes[2].set_ylim(0.0, 100.0)
-axes[2].set_title("Spectrogram")
-axes[2].set_xlabel("time (s)")
-axes[2].set_ylabel("frequency (Hz)")
-fig.colorbar(im, ax=axes[2], pad=0.01, label="PSD")
-fig.tight_layout()
-
-out_dir = Path("examples/readme_examples/images")
-out_dir.mkdir(parents=True, exist_ok=True)
-fig.savefig(out_dir / "readme_example1_multitaper_and_spectrogram.png", dpi=180)
-```
-
-**Expected output**
-![Multitaper and spectrogram](examples/readme_examples/images/readme_example1_multitaper_and_spectrogram.png)
-
-### Example 2 — Time-varying CIF over 10 seconds (single-frequency sinusoid)
-Run:
-
-```bash
-python examples/readme_examples/example2_simulate_cif_spiketrain_10s.py
-```
-
-```python
-import matplotlib
-matplotlib.use("Agg")
-
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-from nstat.compat.matlab import CIF, Covariate
-
-np.random.seed(0)
-dt = 0.001
-duration_s = 10.0
-t = np.arange(0.0, duration_s + dt, dt, dtype=float)
-
-f_hz = 0.5
-baseline_hz = 15.0
-amp_hz = 10.0
-lam = np.clip(baseline_hz + amp_hz * np.sin(2.0 * np.pi * f_hz * t), 0.2, None)
-
-lambda_cov = Covariate(time=t, data=lam, name="Lambda", units="spikes/s", labels=["lambda"])
-spikes = CIF.simulateCIFByThinningFromLambda(lambda_cov, 1, dt)
-spike_times = spikes.getNST(0).spike_times
-
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8.0, 4.8), sharex=True, gridspec_kw={"height_ratios": [2.0, 1.0]})
-ax1.plot(t, lam, color="tab:blue", linewidth=1.3)
-ax1.set_ylabel("rate (spikes/s)")
-ax1.set_title("Time-varying CIF over 10 s")
-ax2.vlines(spike_times, 0.0, 1.0, color="black", linewidth=0.8)
-ax2.set_ylim(0.0, 1.0)
-ax2.set_yticks([])
-ax2.set_xlabel("time (s)")
-ax2.set_title("Simulated spike train")
-fig.tight_layout()
-
-out_dir = Path("examples/readme_examples/images")
-out_dir.mkdir(parents=True, exist_ok=True)
-fig.savefig(out_dir / "readme_example2_simulate_cif_spiketrain_10s.png", dpi=180)
-```
-
-**Expected output**
-![CIF spike train simulation](examples/readme_examples/images/readme_example2_simulate_cif_spiketrain_10s.png)
-
-### Example 3 — Spike train collection raster from Example 2
-Run:
-
-```bash
-python examples/readme_examples/example3_nstcoll_raster_from_example2.py
-```
-
-```python
-import matplotlib
-matplotlib.use("Agg")
-
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-from nstat.compat.matlab import CIF, Covariate
-
-np.random.seed(0)
-dt = 0.001
-duration_s = 10.0
-n_units = 20
-t = np.arange(0.0, duration_s + dt, dt, dtype=float)
-
-f_hz = 0.5
-baseline_hz = 15.0
-amp_hz = 10.0
-lam = np.clip(baseline_hz + amp_hz * np.sin(2.0 * np.pi * f_hz * t), 0.2, None)
-
-lambda_cov = Covariate(time=t, data=lam, name="Lambda", units="spikes/s", labels=["lambda"])
-coll = CIF.simulateCIFByThinningFromLambda(lambda_cov, n_units, dt)
-
-fig, ax = plt.subplots(figsize=(8.0, 4.8))
-plt.sca(ax)
-coll.plot()
-ax.set_xlabel("time (s)")
-ax.set_ylabel("unit index")
-ax.set_title("Spike-train collection raster (nstColl.plot)")
-ax.set_ylim(0.5, n_units + 0.5)
-fig.tight_layout()
-
-out_dir = Path("examples/readme_examples/images")
-out_dir.mkdir(parents=True, exist_ok=True)
-fig.savefig(out_dir / "readme_example3_nstcoll_raster.png", dpi=180)
-```
-
-**Expected output**
-![Spike train raster](examples/readme_examples/images/readme_example3_nstcoll_raster.png)
-
-### nSTATPaperExamples
-
-Run:
-
-```bash
-python examples/readme_examples/example4_nstatpaperexamples_overview.py
-```
-
-```python
-import matplotlib
-matplotlib.use("Agg")
-
-from pathlib import Path
-
-from nstat.paper_examples import run_paper_examples
-
-repo_root = Path(".").resolve()
-results, payloads = run_paper_examples(repo_root, return_plot_data=True)
-print(results["experiment2"])
-print(results["experiment3"])
-print(results["experiment4"])
-print(results["experiment5"])
-```
-
-**Expected output**
-![nSTATPaperExamples overview](examples/readme_examples/images/readme_example4_nstatpaperexamples_overview.png)
-
-Complete catalog of nSTATPaperExamples notebooks:
-
-- [AnalysisExamples](notebooks/AnalysisExamples.ipynb) — Notebook example for AnalysisExamples.
-- [ConfigCollExamples](notebooks/ConfigCollExamples.ipynb) — Notebook example for ConfigCollExamples.
-- [CovCollExamples](notebooks/CovCollExamples.ipynb) — Notebook example for CovCollExamples.
-- [CovariateExamples](notebooks/CovariateExamples.ipynb) — Notebook example for CovariateExamples.
-- [DecodingExample](notebooks/DecodingExample.ipynb) — Notebook example for DecodingExample.
-- [DecodingExampleWithHist](notebooks/DecodingExampleWithHist.ipynb) — Notebook example for DecodingExampleWithHist.
-- [EventsExamples](notebooks/EventsExamples.ipynb) — Notebook example for EventsExamples.
-- [ExplicitStimulusWhiskerData](notebooks/ExplicitStimulusWhiskerData.ipynb) — Notebook example for ExplicitStimulusWhiskerData.
-- [FitResSummaryExamples](notebooks/FitResSummaryExamples.ipynb) — Notebook example for FitResSummaryExamples.
-- [FitResultExamples](notebooks/FitResultExamples.ipynb) — Notebook example for FitResultExamples.
-- [HippocampalPlaceCellExample](notebooks/HippocampalPlaceCellExample.ipynb) — Notebook example for HippocampalPlaceCellExample.
-- [HistoryExamples](notebooks/HistoryExamples.ipynb) — Notebook example for HistoryExamples.
-- [NetworkTutorial](notebooks/NetworkTutorial.ipynb) — Notebook example for NetworkTutorial.
-- [PPSimExample](notebooks/PPSimExample.ipynb) — Notebook example for PPSimExample.
-- [PPThinning](notebooks/PPThinning.ipynb) — Notebook example for PPThinning.
-- [PSTHEstimation](notebooks/PSTHEstimation.ipynb) — Notebook example for PSTHEstimation.
-- [SignalObjExamples](notebooks/SignalObjExamples.ipynb) — Notebook example for SignalObjExamples.
-- [StimulusDecode2D](notebooks/StimulusDecode2D.ipynb) — Notebook example for StimulusDecode2D.
-- [TrialConfigExamples](notebooks/TrialConfigExamples.ipynb) — Notebook example for TrialConfigExamples.
-- [TrialExamples](notebooks/TrialExamples.ipynb) — Notebook example for TrialExamples.
-- [ValidationDataSet](notebooks/ValidationDataSet.ipynb) — Notebook example for ValidationDataSet.
-- [mEPSCAnalysis](notebooks/mEPSCAnalysis.ipynb) — Notebook example for mEPSCAnalysis.
-- [nSTATPaperExamples](notebooks/nSTATPaperExamples.ipynb) — Notebook example for nSTATPaperExamples.
-- [nSpikeTrainExamples](notebooks/nSpikeTrainExamples.ipynb) — Notebook example for nSpikeTrainExamples.
-- [nstCollExamples](notebooks/nstCollExamples.ipynb) — Notebook example for nstCollExamples.
-- [AnalysisExamples2](notebooks/AnalysisExamples2.ipynb) — Notebook example for AnalysisExamples2.
-- [FitResultReference](notebooks/FitResultReference.ipynb) — Notebook example for FitResultReference.
-- [HybridFilterExample](notebooks/HybridFilterExample.ipynb) — Notebook example for HybridFilterExample.
+| Example | Run command | Output |
+|---|---|---|
+| Multitaper spectrum + spectrogram | `python examples/readme_examples/example1_multitaper_and_spectrogram.py` | [PNG](examples/readme_examples/images/readme_example1_multitaper_and_spectrogram.png) |
+| Simulated CIF spike train | `python examples/readme_examples/example2_simulate_cif_spiketrain_10s.py` | [PNG](examples/readme_examples/images/readme_example2_simulate_cif_spiketrain_10s.png) |
+| Spike-train raster | `python examples/readme_examples/example3_nstcoll_raster_from_example2.py` | [PNG](examples/readme_examples/images/readme_example3_nstcoll_raster.png) |
 
 ## Documentation
 

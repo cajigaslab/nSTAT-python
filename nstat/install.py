@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -42,6 +44,47 @@ def _should_prompt_for_example_data(info: dict[str, Any]) -> bool:
     return answer.strip().lower() in {"y", "yes"}
 
 
+def _rebuild_doc_search(repo_root: Path) -> dict[str, Any]:
+    docs_dir = repo_root / "docs"
+    output_dir = docs_dir / "_build" / "html"
+    search_index = output_dir / "searchindex.js"
+    report: dict[str, Any] = {
+        "requested": True,
+        "source_dir": str(docs_dir),
+        "output_dir": str(output_dir),
+        "search_index": str(search_index),
+    }
+
+    if not (docs_dir / "conf.py").exists():
+        report["status"] = "skipped"
+        report["reason"] = "Docs configuration was not found."
+        return report
+
+    if importlib.util.find_spec("sphinx") is None:
+        report["status"] = "skipped"
+        report["reason"] = "Sphinx is not installed; install nstat-toolbox[dev] to rebuild docs search."
+        return report
+
+    proc = subprocess.run(
+        [sys.executable, "-m", "sphinx", "-q", "-b", "html", "docs", str(output_dir)],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        report["status"] = "failed"
+        report["error"] = proc.stderr.strip() or proc.stdout.strip() or "Unknown sphinx build failure."
+        return report
+
+    report["status"] = "rebuilt"
+    report["is_available"] = search_index.exists()
+    if not search_index.exists():
+        report["status"] = "failed"
+        report["error"] = f"Expected search index was not created: {search_index}"
+    return report
+
+
 def nstat_install(
     *,
     rebuild_doc_search: bool = True,
@@ -60,6 +103,11 @@ def nstat_install(
         "package_root": str(Path(__file__).resolve().parent),
         "rebuild_doc_search": bool(rebuild_doc_search),
         "clean_user_path_prefs": bool(clean_user_path_prefs),
+        "path_preferences": {
+            "requested": bool(clean_user_path_prefs),
+            "status": "not_applicable",
+            "reason": "Python packaging/import resolution replaces MATLAB user path preference cleanup.",
+        },
         "download_example_data": mode,
         "example_data": {
             "data_dir": str(data_dir),
@@ -70,6 +118,25 @@ def nstat_install(
         },
         "notes": [],
     }
+
+    if rebuild_doc_search:
+        doc_search = _rebuild_doc_search(repo_root)
+        report["doc_search"] = doc_search
+        if doc_search["status"] == "rebuilt":
+            report["notes"].append("Rebuilt docs HTML search index.")
+        elif doc_search["status"] == "skipped":
+            report["notes"].append(f"Docs search rebuild skipped: {doc_search['reason']}")
+        else:
+            report["notes"].append("Docs search rebuild failed.")
+    else:
+        report["doc_search"] = {
+            "requested": False,
+            "status": "skipped",
+            "reason": "Disabled by caller.",
+        }
+
+    if clean_user_path_prefs:
+        report["notes"].append("Clean user path preferences is a MATLAB-only option and is ignored in Python.")
 
     try:
         if info.is_installed:
@@ -106,7 +173,11 @@ def main() -> int:
         help="true/false or always/prompt/never",
     )
     parser.add_argument("--no-rebuild-doc-search", action="store_true")
-    parser.add_argument("--clean-user-path-prefs", action="store_true")
+    parser.add_argument(
+        "--clean-user-path-prefs",
+        action="store_true",
+        help="MATLAB-compatibility no-op; Python does not maintain MATLAB-style user path preferences.",
+    )
     args = parser.parse_args()
 
     raw_mode: str | bool
@@ -124,4 +195,10 @@ def main() -> int:
         download_example_data=raw_mode,
     )
     print(json.dumps(report, indent=2))
-    return 0 if "error" not in report.get("example_data", {}) else 1
+    example_data_failed = "error" in report.get("example_data", {})
+    doc_search_failed = report.get("doc_search", {}).get("status") == "failed"
+    return 0 if not (example_data_failed or doc_search_failed) else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

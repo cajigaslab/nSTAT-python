@@ -1,8 +1,10 @@
 version: 1
 groups:
   ci_smoke:
+    - ConfidenceIntervalOverview
     - ConfigCollExamples
     - CovariateExamples
+    - nSTATPaperExamples
     - TrialConfigExamples
   smoke:
     - AnalysisExamples

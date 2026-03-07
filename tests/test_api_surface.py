@@ -11,10 +11,14 @@ def test_canonical_api_imports() -> None:
     assert nstat.SpikeTrainCollection is not None
     assert nstat.Trial is not None
     assert nstat.Analysis is not None
+    assert nstat.Events is not None
     assert nstat.FitResult is not None
     assert nstat.FitSummary is not None
     assert nstat.CIFModel is not None
     assert nstat.DecoderSuite is not None
+    assert nstat.getPaperDataDirs is not None
+    assert nstat.get_paper_data_dirs is not None
+    assert nstat.nSTAT_Install is not None
 
 
 def test_compatibility_adapters_emit_deprecation() -> None:
