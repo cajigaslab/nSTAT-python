@@ -1,11 +1,16 @@
 nSTAT Python Documentation
 ==========================
 
-Minimal documentation for the standalone Python nSTAT core package.
+Standalone Python documentation for the release-ready nSTAT port.
 
 .. toctree::
    :maxdepth: 2
 
+   NeuralSpikeAnalysis_top
+   PaperOverview
+   ClassDefinitions
+   Examples
+   DocumentationSetup
    api
    data_installation
    paper_examples

@@ -9,11 +9,38 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_CONF_PATH = REPO_ROOT / "docs" / "conf.py"
 DOCS_INDEX_PATH = REPO_ROOT / "docs" / "index.rst"
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+README_PATH = REPO_ROOT / "README.md"
+
+MATLAB_NAV_PAGES = (
+    "NeuralSpikeAnalysis_top",
+    "PaperOverview",
+    "ClassDefinitions",
+    "Examples",
+    "DocumentationSetup",
+)
 
 
 def test_docs_index_includes_paper_examples_page() -> None:
     text = DOCS_INDEX_PATH.read_text(encoding="utf-8")
     assert "paper_examples" in text
+
+
+def test_docs_index_includes_matlab_style_navigation_pages() -> None:
+    text = DOCS_INDEX_PATH.read_text(encoding="utf-8")
+    for page in MATLAB_NAV_PAGES:
+        assert page in text
+
+
+def test_matlab_style_navigation_pages_exist() -> None:
+    for page in MATLAB_NAV_PAGES:
+        path = REPO_ROOT / "docs" / f"{page}.md"
+        assert path.exists(), f"Missing docs page: {path}"
+
+
+def test_readme_links_to_help_navigation_pages() -> None:
+    text = README_PATH.read_text(encoding="utf-8")
+    for page in MATLAB_NAV_PAGES:
+        assert f"[docs/{page}.md](docs/{page}.md)" in text
 
 
 def test_docs_conf_enables_markdown_support() -> None:
