@@ -30,10 +30,10 @@ summary:
     missing: 0
     not_applicable: 0
   installer_setup:
-    mapped: 3
-    partial: 2
+    mapped: 4
+    partial: 0
     missing: 0
-    not_applicable: 2
+    not_applicable: 3
   repo_structure:
     mapped: 1
     partial: 0
@@ -405,14 +405,14 @@ installer_setup:
     matlab_path: nSTAT_Install.m
     python_target: nstat.install.nstat_install(rebuild_doc_search=...)
     python_path: nstat/install.py
-    status: partial
-    notes: The option exists, but no Python docs-search rebuild is implemented.
+    status: mapped
+    notes: The installer can rebuild the local Sphinx HTML search index and reports whether searchindex.js was created.
   - matlab: CleanUserPathPrefs option
     matlab_path: nSTAT_Install.m
     python_target: nstat.install.nstat_install(clean_user_path_prefs=...)
     python_path: nstat/install.py
-    status: partial
-    notes: The option exists, but no Python-side cleanup routine is implemented.
+    status: not_applicable
+    notes: Accepted as a compatibility no-op because Python does not use MATLAB-style saved user path preferences.
   - matlab: MATLAB runtime path pruning
     matlab_path: nSTAT_Install.m
     python_target: null

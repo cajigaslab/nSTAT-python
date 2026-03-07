@@ -22,9 +22,19 @@ def test_nstat_install_report_without_download() -> None:
     assert "repo_root" in report
     assert "example_data" in report
     assert "doc_search" in report
+    assert "path_preferences" in report
     assert report["download_example_data"] == "never"
     assert "required_files" in report["example_data"]
     assert report["doc_search"]["status"] == "skipped"
+    assert report["path_preferences"]["status"] == "not_applicable"
+
+
+def test_nstat_install_clean_user_path_prefs_is_documented_noop() -> None:
+    report = nstat_install(download_example_data=False, rebuild_doc_search=False, clean_user_path_prefs=True)
+    assert report["clean_user_path_prefs"] is True
+    assert report["path_preferences"]["requested"] is True
+    assert report["path_preferences"]["status"] == "not_applicable"
+    assert "ignored in Python" in " ".join(report["notes"])
 
 
 def test_rebuild_doc_search_reports_success(monkeypatch, tmp_path: Path) -> None:

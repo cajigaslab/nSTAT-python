@@ -103,6 +103,11 @@ def nstat_install(
         "package_root": str(Path(__file__).resolve().parent),
         "rebuild_doc_search": bool(rebuild_doc_search),
         "clean_user_path_prefs": bool(clean_user_path_prefs),
+        "path_preferences": {
+            "requested": bool(clean_user_path_prefs),
+            "status": "not_applicable",
+            "reason": "Python packaging/import resolution replaces MATLAB user path preference cleanup.",
+        },
         "download_example_data": mode,
         "example_data": {
             "data_dir": str(data_dir),
@@ -129,6 +134,9 @@ def nstat_install(
             "status": "skipped",
             "reason": "Disabled by caller.",
         }
+
+    if clean_user_path_prefs:
+        report["notes"].append("Clean user path preferences is a MATLAB-only option and is ignored in Python.")
 
     try:
         if info.is_installed:
@@ -165,7 +173,11 @@ def main() -> int:
         help="true/false or always/prompt/never",
     )
     parser.add_argument("--no-rebuild-doc-search", action="store_true")
-    parser.add_argument("--clean-user-path-prefs", action="store_true")
+    parser.add_argument(
+        "--clean-user-path-prefs",
+        action="store_true",
+        help="MATLAB-compatibility no-op; Python does not maintain MATLAB-style user path preferences.",
+    )
     args = parser.parse_args()
 
     raw_mode: str | bool

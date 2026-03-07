@@ -19,4 +19,5 @@ def test_parity_report_highlights_current_constraints() -> None:
     assert "no missing MATLAB public APIs remain" in text
     assert "paper examples and docs gallery" in text.lower()
     assert "all canonical paper examples and committed gallery directories are mapped" in text
+    assert "No partial or missing items remain." in text
     assert "nstatOpenHelpPage" in text

@@ -39,3 +39,4 @@ Notes
 - Example data is cached under ``data_cache/`` by default.
 - Set ``NSTAT_DATA_DIR`` to point at an existing dataset cache if needed.
 - The repository intentionally ignores ``data/`` so local example-data installs are not committed.
+- ``clean_user_path_prefs`` is accepted only as a MATLAB-compatibility no-op.

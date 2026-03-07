@@ -15,7 +15,7 @@ Generated from `parity/manifest.yml`.
 | `help workflows` | 29 | 0 | 0 | 0 |
 | `paper examples` | 8 | 0 | 0 | 0 |
 | `docs gallery` | 8 | 0 | 0 | 0 |
-| `installer setup` | 3 | 2 | 0 | 2 |
+| `installer setup` | 4 | 0 | 0 | 3 |
 | `repo structure` | 1 | 0 | 0 | 0 |
 
 ## Coverage Notes
@@ -26,13 +26,11 @@ Generated from `parity/manifest.yml`.
 
 ## Remaining Deltas
 
-### `installer_setup`
-
-- `RebuildDocSearch option` -> `nstat.install.nstat_install(rebuild_doc_search=...)`: The option exists, but no Python docs-search rebuild is implemented.
-- `CleanUserPathPrefs option` -> `nstat.install.nstat_install(clean_user_path_prefs=...)`: The option exists, but no Python-side cleanup routine is implemented.
+No partial or missing items remain.
 
 ## Justified Non-Applicable Items
 
 - `public_api`: `nstatOpenHelpPage`. MATLAB help-browser integration does not have a direct Python equivalent.
+- `installer_setup`: `CleanUserPathPrefs option`. Accepted as a compatibility no-op because Python does not use MATLAB-style saved user path preferences.
 - `installer_setup`: `MATLAB runtime path pruning`. Python packaging/import resolution replaces MATLAB path management.
 - `installer_setup`: `MATLAB toolbox cache refresh and savepath`. There is no Python equivalent to MATLAB toolbox cache refresh or savepath persistence.

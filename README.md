@@ -54,6 +54,10 @@ from nstat.install import nstat_install
 report = nstat_install()
 ```
 
+`clean_user_path_prefs` is accepted for MATLAB-API compatibility, but it is a
+Python no-op because import paths are managed by the environment rather than a
+MATLAB-style saved user path.
+
 ## Examples
 
 ### Paper Examples (Self-Contained)
