@@ -30,7 +30,7 @@ def psth(spike_trains: Sequence[object], bin_edges: np.ndarray) -> tuple[np.ndar
 
 
 class Analysis:
-    """Canonical analysis entry points preserving the paper's workflow semantics."""
+    """Canonical analysis entry points preserving MATLAB-facing workflow semantics."""
 
     @staticmethod
     def psth(spike_trains: Sequence[object], bin_edges: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -45,46 +45,137 @@ class Analysis:
         l2: float = 1e-6,
         max_iter: int = 120,
     ) -> FitResult:
-        time, x_all, labels = trial.get_covariate_matrix()
-        spike_train = trial.spike_collection.get_nst(neuron_index)
+        if neuron_index < 0:
+            raise IndexError("neuron_index must be >= 0")
 
-        dt = float(np.median(np.diff(time))) if time.shape[0] > 1 else 1.0
-        edges = np.concatenate([time, [time[-1] + dt]])
-        y = spike_train.to_binned_counts(edges)
-        offset = np.full(y.shape[0], np.log(max(dt, 1e-12)), dtype=float)
+        original_partition = trial.getTrialPartition().copy()
+        trial.restoreToOriginal()
+        if original_partition.size:
+            trial.setTrialPartition(original_partition)
+            trial.setTrialTimesFor("training")
 
+        neuron_number = int(neuron_index) + 1
+        labels: list[list[str]] = []
+        lambda_parts: list[Covariate] = []
+        b: list[np.ndarray] = []
+        dev: list[float] = []
+        stats: list[dict[str, float | int | bool]] = []
+        AIC: list[float] = []
+        BIC: list[float] = []
+        logLL: list[float] = []
+        numHist: list[int] = []
+        histObjects: list[object] = []
+        ensHistObjects: list[object] = []
         fits: list[_SingleFit] = []
-        for idx, cfg in enumerate(config_collection.configs, start=1):
-            names = cfg.covariate_names
-            if names:
-                cols = [i for i, lab in enumerate(labels) if lab in set(names)]
-                x = x_all[:, cols] if cols else np.zeros((x_all.shape[0], 0), dtype=float)
-            else:
-                x = x_all
+        xvalData: list[np.ndarray] = []
+        xvalTime: list[np.ndarray] = []
+        distributions: list[str] = []
 
-            glm_res = fit_poisson_glm(x, y, offset=offset, l2=l2, max_iter=max_iter)
-            n_params = x.shape[1] + 1
-            aic = 2.0 * n_params - 2.0 * glm_res.log_likelihood
-            bic = np.log(max(y.shape[0], 1)) * n_params - 2.0 * glm_res.log_likelihood
-            fit_name = cfg.name if cfg.name else f"Fit {idx}"
+        spike_train = trial.nspikeColl.getNST(neuron_number).nstCopy()
+        if not spike_train.name:
+            spike_train.setName(str(neuron_number))
+
+        for cfg_index in range(1, config_collection.numConfigs + 1):
+            trial.restoreToOriginal()
+            if original_partition.size:
+                trial.setTrialPartition(original_partition)
+                trial.setTrialTimesFor("training")
+
+            config_collection.setConfig(trial, cfg_index)
+            current_labels = trial.getLabelsFromMask(neuron_number)
+            X = trial.getDesignMatrix(neuron_number)
+            time = trial.covarColl.getCov(1).time
+            dt = float(np.median(np.diff(time))) if time.shape[0] > 1 else max(1.0 / trial.sampleRate, 1e-12)
+            edges = np.concatenate([time, [time[-1] + dt]])
+            y = trial.nspikeColl.getNST(neuron_number).to_binned_counts(edges)
+            offset = np.full(y.shape[0], np.log(max(dt, 1e-12)), dtype=float)
+
+            glm_res = fit_poisson_glm(X, y, offset=offset, l2=l2, max_iter=max_iter)
+            n_params = X.shape[1] + 1
+            aic = float(2.0 * n_params - 2.0 * glm_res.log_likelihood)
+            bic = float(np.log(max(y.shape[0], 1)) * n_params - 2.0 * glm_res.log_likelihood)
+            fit_name = config_collection.getConfigNames([cfg_index])[0]
+            coeff = np.concatenate([[glm_res.intercept], np.asarray(glm_res.coefficients, dtype=float).reshape(-1)])
+
+            rate = glm_res.predict_rate(X, offset=offset)
+            lambda_signal = Covariate(
+                time,
+                rate,
+                fit_name if fit_name else f"lambda_{cfg_index}",
+                "time",
+                "s",
+                "spikes/sec",
+                [fit_name if fit_name else f"lambda_{cfg_index}"],
+            )
+
+            labels.append(list(current_labels))
+            lambda_parts.append(lambda_signal)
+            b.append(coeff)
+            dev.append(float(-2.0 * glm_res.log_likelihood))
+            stats.append(
+                {
+                    "intercept": float(glm_res.intercept),
+                    "n_iter": int(glm_res.n_iter),
+                    "converged": bool(glm_res.converged),
+                }
+            )
+            AIC.append(aic)
+            BIC.append(bic)
+            logLL.append(float(glm_res.log_likelihood))
+            numHist.append(len(trial.getHistLabels()))
+            histObjects.append(trial.history)
+            ensHistObjects.append(trial.ensCovHist)
             fits.append(
                 _SingleFit(
                     name=fit_name,
                     coefficients=np.asarray(glm_res.coefficients, dtype=float),
                     intercept=float(glm_res.intercept),
                     log_likelihood=float(glm_res.log_likelihood),
-                    aic=float(aic),
-                    bic=float(bic),
+                    aic=aic,
+                    bic=bic,
+                    stats=stats[-1],
                 )
             )
+            distributions.append("poisson")
 
-        if x_all.shape[1] == 0:
-            x_for_rate = np.zeros((y.shape[0], 0), dtype=float)
-        else:
-            x_for_rate = x_all
-        rate = fit_poisson_glm(x_for_rate, y, offset=offset, l2=l2, max_iter=max_iter).predict_rate(x_for_rate, offset=offset)
-        lambda_signal = Covariate(time, rate, "lambda", "time", "s", "spikes/sec", ["lambda"])
-        return FitResult(spike_train, lambda_signal, fits)
+            partition = trial.getTrialPartition()
+            if partition.size >= 4 and partition[2] < partition[3]:
+                trial.setTrialTimesFor("validation")
+                xvalData.append(trial.getDesignMatrix(neuron_number))
+                xvalTime.append(trial.covarColl.getCov(1).time.copy())
+                trial.setTrialTimesFor("training")
+            else:
+                xvalData.append(np.zeros((0, X.shape[1]), dtype=float))
+                xvalTime.append(np.array([], dtype=float))
+
+        merged_lambda = lambda_parts[0]
+        for part in lambda_parts[1:]:
+            merged_lambda = merged_lambda.merge(part)
+
+        trial.restoreToOriginal()
+        if original_partition.size:
+            trial.setTrialPartition(original_partition)
+            trial.setTrialTimesFor("training")
+
+        return FitResult(
+            spike_train,
+            labels,
+            numHist,
+            histObjects,
+            ensHistObjects,
+            merged_lambda,
+            b,
+            dev,
+            stats,
+            AIC,
+            BIC,
+            logLL,
+            config_collection,
+            xvalData,
+            xvalTime,
+            distributions,
+            fits=fits,
+        )
 
     @staticmethod
     def run_analysis_for_all_neurons(
@@ -107,9 +198,8 @@ class Analysis:
             )
         return out
 
-    # MATLAB-compatible method names.
     @staticmethod
-    def RunAnalysisForNeuron(tObj: Trial, neuronNumber: int, configColl: ConfigCollection):
+    def RunAnalysisForNeuron(tObj: Trial, neuronNumber: int, configColl: ConfigCollection, *_):
         return Analysis.run_analysis_for_neuron(tObj, neuronNumber - 1, configColl)
 
     @staticmethod

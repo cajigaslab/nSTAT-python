@@ -1,3 +1,6 @@
+import sys as _sys
+from types import ModuleType as _ModuleType
+
 from .ConfidenceInterval import ConfidenceInterval
 from .ConfigColl import ConfigColl
 from .CovColl import CovColl
@@ -26,6 +29,29 @@ from .spikes import SpikeTrain, SpikeTrainCollection
 from .trial import ConfigCollection, CovariateCollection, Trial, TrialConfig
 from .nspikeTrain import nspikeTrain
 from .nstColl import nstColl
+
+from . import analysis as _analysis_module
+from . import cif as _cif_module
+from . import events as _events_module
+from . import history as _history_module
+from . import trial as _trial_module
+
+_sys.modules.setdefault(f"{__name__}.Analysis", _analysis_module)
+_sys.modules.setdefault(f"{__name__}.CIF", _cif_module)
+_sys.modules.setdefault(f"{__name__}.Events", _events_module)
+_sys.modules.setdefault(f"{__name__}.History", _history_module)
+_sys.modules.setdefault(f"{__name__}.Trial", _trial_module)
+
+
+class _NstatModule(_ModuleType):
+    def __getattribute__(self, name: str):
+        value = super().__getattribute__(name)
+        if isinstance(value, _ModuleType) and hasattr(value, name):
+            return getattr(value, name)
+        return value
+
+
+_sys.modules[__name__].__class__ = _NstatModule
 
 
 def __getattr__(name: str):
