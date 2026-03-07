@@ -23,8 +23,8 @@ Generated from `parity/manifest.yml` and `parity/class_fidelity.yml`.
 | Status | Count |
 |---|---:|
 | `exact` | 0 |
-| `high_fidelity` | 12 |
-| `partial` | 6 |
+| `high_fidelity` | 13 |
+| `partial` | 5 |
 | `shim_only` | 0 |
 | `missing` | 0 |
 | `not_applicable` | 1 |
@@ -45,7 +45,6 @@ No partial or missing items remain in the mapping inventory.
 - `SignalObj` -> `nstat.SignalObj` [partial]: Port arithmetic, filtering, plotting, and structure round-trip methods from MATLAB.
 - `Covariate` -> `nstat.Covariate` [partial]: Port arithmetic overloads and CI plotting semantics from MATLAB.
 - `nspikeTrain` -> `nstat.nspikeTrain` [partial]: Port burst/statistics helpers and plotting routines.
-- `DecodingAlgorithms` -> `nstat.DecodingAlgorithms` [partial]: Port canonical decoding workflows and validate them against MATLAB-derived outputs.
 - `ConfidenceInterval` -> `nstat.ConfidenceInterval` [partial]: Port MATLAB plotting and serialization semantics.
 - `nSTAT_Install` -> `nstat.nSTAT_Install` [partial]: Keep documenting the no-op compatibility behavior and test installer status outputs.
 

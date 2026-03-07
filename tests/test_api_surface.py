@@ -26,6 +26,7 @@ def test_matlab_facing_class_imports_are_canonical() -> None:
         warnings.simplefilter("always")
         from nstat.ConfigColl import ConfigColl
         from nstat.CovColl import CovColl
+        from nstat.DecodingAlgorithms import DecodingAlgorithms
         from nstat.SignalObj import SignalObj
         from nstat.TrialConfig import TrialConfig
         from nstat.Covariate import Covariate
@@ -36,5 +37,6 @@ def test_matlab_facing_class_imports_are_canonical() -> None:
         _ = nspikeTrain([0.25, 0.5], makePlots=-1)
         _ = CovColl([])
         _ = ConfigColl([])
+        assert DecodingAlgorithms is not None
         _ = TrialConfig()
         assert not any("deprecated" in str(item.message).lower() for item in w)

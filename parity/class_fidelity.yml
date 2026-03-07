@@ -214,18 +214,19 @@ items:
     matlab_path: DecodingAlgorithms.m
     python_symbol: nstat.DecodingAlgorithms
     python_path: nstat/decoding_algorithms.py
-    status: partial
-    constructor_parity: Partial.
-    property_parity: Partial.
-    method_parity: Python decoding helpers exist, but not with full MATLAB workflow fidelity.
-    default_value_parity: Partial only.
-    shape_and_indexing_parity: Partial.
-    error_warning_parity: Simplified.
-    output_type_parity: Partial.
+    status: high_fidelity
+    constructor_parity: Static-method MATLAB class semantics are preserved; the PascalCase module now re-exports the canonical implementation directly rather than using a shim-first wrapper.
+    property_parity: N/A for the static decoding API surface.
+    method_parity: MATLAB-facing decoding entry points now include PPDecode_predict, PPDecode_updateLinear, PPDecodeFilterLinear, PPDecodeFilter, PPHybridFilterLinear, and PPHybridFilter alongside the existing generic helpers.
+    default_value_parity: Core defaults for fitType, delta/binwidth, empty history terms, and initial-state handling now match MATLAB intent closely for the implemented workflows.
+    shape_and_indexing_parity: MATLAB-style state and covariance output shapes are preserved, including x_p/x_u and W_p/W_u tensor layouts plus hybrid-model probability/state-bank outputs.
+    error_warning_parity: Validation is much closer to MATLAB for signature and shape handling, though some advanced unsupported CIF workflows still raise Python-specific exceptions.
+    output_type_parity: MATLAB-facing methods now return tuple outputs and state/covariance tensors instead of only Python-specific dictionaries.
     known_semantic_differences:
-      - Point-process decoding workflows are not yet fully MATLAB-equivalent.
+      - Target-estimation augmentation and some advanced CIF-driven symbolic workflows remain thinner than MATLAB.
     recommended_remediation:
-      - Port canonical decoding workflows and validate them against MATLAB-derived outputs.
+      - Add MATLAB-derived numerical fixtures for DecodingExample, DecodingExampleWithHist, StimulusDecode2D, and HybridFilterExample.
+      - Port the remaining target-estimation and symbolic-CIF branches from the MATLAB toolbox.
   - matlab_name: History
     kind: class
     matlab_path: History.m
