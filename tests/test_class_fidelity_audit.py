@@ -7,7 +7,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 AUDIT_PATH = REPO_ROOT / "parity" / "class_fidelity.yml"
-VALID_STATUSES = {"exact", "high_fidelity", "partial", "shim_only", "missing", "not_applicable"}
+VALID_STATUSES = {"exact", "high_fidelity", "partial", "wrapper_only", "missing", "not_applicable"}
 PRIORITY_CLASSES = {
     "SignalObj",
     "Covariate",
@@ -44,17 +44,38 @@ def test_class_fidelity_audit_uses_known_status_values() -> None:
         assert item["status"] in VALID_STATUSES
 
 
-def test_core_matlab_facing_classes_are_not_shim_only() -> None:
+def test_core_matlab_facing_classes_are_not_wrapper_only() -> None:
     payload = _load_audit()
     audit_by_name = {str(item["matlab_name"]): item for item in payload["items"]}
 
     for name in ("SignalObj", "Covariate", "nspikeTrain"):
         row = audit_by_name[name]
-        assert row["status"] not in {"shim_only", "missing"}
-        assert row["python_path"] == "nstat/core.py"
+        assert row["status"] not in {"wrapper_only", "missing"}
+        assert row["python_impl_path"] == "nstat/core.py"
 
 
 def test_class_fidelity_audit_has_unique_matlab_names() -> None:
     payload = _load_audit()
     names = [str(item.get("matlab_name", "")).strip() for item in payload["items"]]
     assert len(names) == len(set(names))
+
+
+def test_class_fidelity_audit_uses_requested_field_names() -> None:
+    payload = _load_audit()
+    required = {
+        "matlab_name",
+        "matlab_path",
+        "python_public_name",
+        "python_impl_path",
+        "status",
+        "constructor_parity",
+        "property_parity",
+        "method_parity",
+        "defaults_parity",
+        "indexing_parity",
+        "plotting_report_parity",
+        "known_remaining_differences",
+        "required_remediation",
+    }
+    for item in payload["items"]:
+        assert required <= set(item), f"Missing required class-fidelity fields for {item.get('matlab_name')}"

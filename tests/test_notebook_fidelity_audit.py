@@ -29,11 +29,23 @@ def test_notebook_fidelity_audit_has_structural_counts() -> None:
         assert "python_expected_figures" in row
         assert row["python_expected_figures"] >= 0
         assert isinstance(row["python_has_finalize_call"], bool)
+        assert "python_placeholder_cells" in row
+        assert "python_tracker_only_cells" in row
 
 
-def test_notebook_fidelity_audit_has_no_partial_items() -> None:
+def test_notebook_fidelity_audit_marks_placeholder_heavy_ports_as_partial() -> None:
     audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
-    assert all(row["fidelity_status"] != "partial" for row in audit.get("items", []))
+    partial_topics = {row["topic"] for row in audit.get("items", []) if row["fidelity_status"] == "partial"}
+    assert {"AnalysisExamples", "PPSimExample", "nSTATPaperExamples"} <= partial_topics
+
+
+def test_high_fidelity_notebooks_have_no_placeholder_or_tracker_only_cells() -> None:
+    audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
+    for row in audit.get("items", []):
+        if row["fidelity_status"] not in {"high_fidelity", "exact"}:
+            continue
+        assert not row["python_contains_placeholders"], f"{row['topic']} still contains placeholder code"
+        assert not row["python_contains_tracker_only_cells"], f"{row['topic']} still contains tracker-only cells"
 
 
 def test_notebook_fidelity_audit_matches_generator_when_matlab_repo_is_available() -> None:

@@ -3,18 +3,18 @@ notes:
   - topic: nSTATPaperExamples
     file: notebooks/nSTATPaperExamples.ipynb
     source_matlab: nSTATPaperExamples.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: Python uses standalone figshare-backed data access and generated gallery assets rather than MATLAB path-based setup.
+    fidelity_status: partial
+    remaining_differences: Python uses standalone figshare-backed data access and generated gallery assets rather than MATLAB path-based setup, and several sections still rely on placeholder or tracker-only cells instead of full MATLAB-equivalent computations.
   - topic: TrialExamples
     file: notebooks/TrialExamples.ipynb
     source_matlab: TrialExamples.mlx
     fidelity_status: high_fidelity
-    remaining_differences: Some MATLAB plotting/display details remain simplified, but the core Trial object workflow now follows the MATLAB semantics closely.
+    remaining_differences: The notebook now mirrors the MATLAB Trial workflow with executable object construction, masking, history extraction, and plotting; the closing analysis section uses one representative Python `Analysis` run instead of linking out to separate MATLAB help pages.
   - topic: AnalysisExamples
     file: notebooks/AnalysisExamples.ipynb
     source_matlab: AnalysisExamples.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: Advanced MATLAB algorithm-selection branches and some report plots are still lighter in Python.
+    fidelity_status: partial
+    remaining_differences: Advanced MATLAB algorithm-selection branches and report plots remain lighter in Python, and the notebook still contains tracker-only visualization sections rather than a fully executable MATLAB-equivalent workflow.
   - topic: DecodingExample
     file: notebooks/DecodingExample.ipynb
     source_matlab: DecodingExample.mlx
@@ -43,8 +43,8 @@ notes:
   - topic: PPSimExample
     file: notebooks/PPSimExample.ipynb
     source_matlab: PPSimExample.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: MATLAB plotting/report formatting remains lighter, but the core point-process simulation workflow is closely aligned.
+    fidelity_status: partial
+    remaining_differences: The notebook now executes the full Python point-process simulation and analysis workflow without placeholders, but it still uses the native `CIFModel` path rather than the original MATLAB/Simulink recursive CIF model.
   - topic: ValidationDataSet
     file: notebooks/ValidationDataSet.ipynb
     source_matlab: ValidationDataSet.mlx

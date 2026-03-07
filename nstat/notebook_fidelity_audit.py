@@ -8,7 +8,11 @@ from typing import Any
 import nbformat
 import yaml
 
-from nstat.notebook_parity import extract_figure_contract, load_notebook_parity_notes
+from nstat.notebook_parity import (
+    audit_notebook_placeholders,
+    extract_figure_contract,
+    load_notebook_parity_notes,
+)
 
 
 IMG_SRC_RE = re.compile(r'<img[^>]+src="([^"]+)"', re.IGNORECASE)
@@ -56,6 +60,7 @@ def build_notebook_fidelity_audit(
         topic = str(row["topic"])
         notebook_path = base / str(row["file"])
         figure_contract = extract_figure_contract(notebook_path)
+        placeholder_audit = audit_notebook_placeholders(notebook_path)
         python_sections = _count_python_sections(notebook_path)
         matlab_stem = Path(str(row["source_matlab"])).stem
         matlab_m_path = help_root / f"{matlab_stem}.m"
@@ -72,6 +77,10 @@ def build_notebook_fidelity_audit(
             "python_expected_figures": int(figure_contract.expected_count) if figure_contract else 0,
             "python_uses_figure_tracker": figure_contract is not None,
             "python_has_finalize_call": bool(figure_contract.has_finalize_call) if figure_contract else False,
+            "python_placeholder_cells": placeholder_audit.placeholder_cells,
+            "python_tracker_only_cells": placeholder_audit.tracker_only_cells,
+            "python_contains_placeholders": placeholder_audit.contains_placeholders,
+            "python_contains_tracker_only_cells": placeholder_audit.contains_tracker_only_cells,
         }
         if matlab_available:
             matlab_sections = _count_matlab_sections(matlab_m_path)

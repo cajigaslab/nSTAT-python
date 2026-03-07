@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -38,8 +42,19 @@ class Events:
         event_color = structure.get("eventColor", "r")
         return Events(event_times, event_labels, event_color)
 
-    def plot(self, *_, **__) -> None:
-        return None
+    def plot(self, *_, handle=None, **__):
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 2.2))[1]
+        ax.clear()
+        if self.eventTimes.size:
+            ax.vlines(self.eventTimes, 0.0, 1.0, color=self.eventColor, linewidth=1.5)
+            for x, label in zip(self.eventTimes, self.eventLabels, strict=False):
+                if label:
+                    ax.text(float(x), 1.02, label, rotation=45, ha="left", va="bottom", fontsize=8)
+        ax.set_ylim(0.0, 1.1)
+        ax.set_xlabel("time [s]")
+        ax.set_yticks([])
+        ax.set_title("Events")
+        return ax
 
 
 __all__ = ["Events"]

@@ -3,6 +3,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 
 from .core import Covariate, nspikeTrain
@@ -98,8 +102,17 @@ class History:
             name=structure.get("name", "History"),
         )
 
-    def plot(self, *_, **__) -> None:
-        return None
+    def plot(self, *_, handle=None, **__):
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 2.2))[1]
+        ax.clear()
+        for idx, (start, stop) in enumerate(zip(self.windowTimes[:-1], self.windowTimes[1:]), start=1):
+            ax.broken_barh([(float(start), float(stop - start))], (idx - 0.4, 0.8), facecolors="tab:blue", alpha=0.6)
+        ax.set_xlabel("time [s]")
+        ax.set_ylabel("history bin")
+        ax.set_yticks(range(1, self.numWindows + 1))
+        ax.set_title(self.name)
+        ax.set_xlim(float(self.windowTimes[0]), float(self.windowTimes[-1]))
+        return ax
 
 
 HistoryBasis = History

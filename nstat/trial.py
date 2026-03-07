@@ -3,6 +3,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 
 from .core import Covariate, nspikeTrain
@@ -377,6 +381,20 @@ class CovariateCollection:
         self.setMaxTime(self.findMaxTime())
         self.resetMask()
 
+    def plot(self, *_, handle=None, **__):
+        selected = [idx for idx in range(1, self.numCov + 1)]
+        fig = handle if handle is not None else plt.figure(figsize=(8.5, max(2.5, 2.2 * max(len(selected), 1))))
+        fig.clear()
+        axes = fig.subplots(len(selected), 1, sharex=True)
+        if not isinstance(axes, np.ndarray):
+            axes = np.asarray([axes], dtype=object)
+        for ax, cov_index in zip(axes.reshape(-1), selected, strict=False):
+            cov = self.getCov(cov_index)
+            cov.plot(handle=ax)
+            ax.set_title(cov.name)
+        fig.tight_layout()
+        return fig
+
     def getAllCovLabels(self) -> list[str]:
         labels: list[str] = []
         for index in range(1, self.numCov + 1):
@@ -690,8 +708,19 @@ class SpikeTrainCollection:
         if rMask == 1:
             self.resetMask()
 
-    def plot(self, *_, **__) -> None:
-        return None
+    def plot(self, *_, handle=None, **__):
+        selected = self.getIndFromMask()
+        if not selected:
+            selected = list(range(1, self.numSpikeTrains + 1))
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(8.0, max(2.5, 0.55 * max(len(selected), 1) + 1.0)))[1]
+        ax.clear()
+        for row, neuron_index in enumerate(selected, start=1):
+            train = self.getNST(neuron_index)
+            train.plot(dHeight=0.8, yOffset=float(row), currentHandle=ax)
+        ax.set_ylim(0.25, len(selected) + 0.75)
+        ax.set_yticks(range(1, len(selected) + 1), [str(item) for item in selected])
+        ax.set_title("Spike Train Raster")
+        return ax
 
     def psth(
         self,
@@ -1090,6 +1119,34 @@ class Trial:
         newValMin = max(self.minTime, validation[0])
         newValMax = min(self.maxTime, validation[1])
         self.setTrialPartition([newTrainMin, newTrainMax, newValMin, newValMax])
+
+    def plot(self, *_, handle=None, **__):
+        cov_count = max(self.covarColl.numCov, 1)
+        event_count = 1 if self.ev is not None and self.ev.eventTimes.size else 0
+        panel_count = 1 + cov_count + event_count
+        fig = handle if handle is not None else plt.figure(figsize=(9.0, max(4.0, 2.2 * panel_count)))
+        fig.clear()
+        axes = fig.subplots(panel_count, 1, sharex=True)
+        if not isinstance(axes, np.ndarray):
+            axes = np.asarray([axes], dtype=object)
+
+        cursor = 0
+        self.nspikeColl.plot(handle=axes[cursor])
+        axes[cursor].set_title("Trial Spike Raster")
+        cursor += 1
+
+        for cov_index in range(1, self.covarColl.numCov + 1):
+            cov = self.covarColl.getCov(cov_index)
+            cov.plot(handle=axes[cursor])
+            axes[cursor].set_title(cov.name)
+            cursor += 1
+
+        if event_count:
+            self.ev.plot(handle=axes[cursor])
+            cursor += 1
+
+        fig.tight_layout()
+        return fig
 
     def setSampleRate(self, sampleRate: float) -> None:
         self.sampleRate = float(sampleRate)

@@ -1,0 +1,31 @@
+name: notebook-full-fidelity
+
+on:
+  pull_request:
+    paths:
+      - "notebooks/**"
+      - "tools/notebooks/**"
+      - "nstat/notebook_*.py"
+      - "parity/notebook_fidelity.yml"
+      - "parity/report.md"
+  schedule:
+    - cron: "15 7 * * 6"
+  workflow_dispatch:
+
+jobs:
+  helpfile-full:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+          python -m pip install ipykernel
+          python -m ipykernel install --user --name python3 --display-name "Python 3"
+      - name: Execute mapped MATLAB helpfile notebooks
+        run: python tools/notebooks/run_notebooks.py --group helpfile_full --timeout 1200
