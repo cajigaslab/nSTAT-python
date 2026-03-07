@@ -15,6 +15,7 @@
         "docs/figures/example01/fig02_washout_raster_overview.png",
         "docs/figures/example01/fig03_piecewise_baseline_comparison.png"
       ],
+      "thumbnail_file": "docs/figures/example01/fig01_constant_mg_summary.png",
       "sections": [
         "experiment1"
       ]
@@ -32,6 +33,7 @@
         "docs/figures/example02/fig01_data_overview.png",
         "docs/figures/example02/fig02_lag_and_model_comparison.png"
       ],
+      "thumbnail_file": "docs/figures/example02/fig01_data_overview.png",
       "sections": [
         "experiment2"
       ]
@@ -53,6 +55,7 @@
         "docs/figures/example03/fig05_stimulus_effect_surfaces.png",
         "docs/figures/example03/fig06_learning_trial_comparison.png"
       ],
+      "thumbnail_file": "docs/figures/example03/fig01_simulated_and_real_rasters.png",
       "sections": [
         "experiment3",
         "experiment3b"
@@ -76,6 +79,7 @@
         "docs/figures/example04/fig06_zernike_place_fields_animal2.png",
         "docs/figures/example04/fig07_example_cell_mesh_comparison.png"
       ],
+      "thumbnail_file": "docs/figures/example04/fig01_example_cells_path_overlay.png",
       "sections": [
         "experiment4"
       ]
@@ -97,6 +101,7 @@
         "docs/figures/example05/fig05_hybrid_setup.png",
         "docs/figures/example05/fig06_hybrid_decoding_summary.png"
       ],
+      "thumbnail_file": "docs/figures/example05/fig01_univariate_setup.png",
       "sections": [
         "experiment5",
         "experiment5b",

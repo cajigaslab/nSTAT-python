@@ -15,17 +15,17 @@ python tools/paper_examples/build_gallery.py
 Outputs:
 - Figure metadata: `docs/figures/manifest.json`
 - Gallery page: `docs/paper_examples.md`
-- Placeholder/example directories: `docs/figures/example01/` ... `docs/figures/example05/`
+- Figures: `docs/figures/example01/` ... `docs/figures/example05/`
 
 ## Example Index
 
-| ID | Standalone source | Question | Figure gallery |
-|---|---|---|---|
-| `example01` | [example01_mepsc_poisson.py](../examples/paper/example01_mepsc_poisson.py) | Does Mg2+ washout produce firing-rate dynamics beyond a constant Poisson baseline? | [gallery page](./figures/example01/README.md) |
-| `example02` | [example02_whisker_stimulus_thalamus.py](../examples/paper/example02_whisker_stimulus_thalamus.py) | What stimulus lag and history order best explain whisker-evoked spike trains? | [gallery page](./figures/example02/README.md) |
-| `example03` | [example03_psth_and_ssglm.py](../examples/paper/example03_psth_and_ssglm.py) | How do PSTH and SSGLM differ in capturing trial learning dynamics? | [gallery page](./figures/example03/README.md) |
-| `example04` | [example04_place_cells_continuous_stimulus.py](../examples/paper/example04_place_cells_continuous_stimulus.py) | How do Gaussian and Zernike basis models compare for place-field mapping? | [gallery page](./figures/example04/README.md) |
-| `example05` | [example05_decoding_ppaf_pphf.py](../examples/paper/example05_decoding_ppaf_pphf.py) | How accurately can neural populations decode latent stimulus and reach state? | [gallery page](./figures/example05/README.md) |
+| ID | Thumbnail | Standalone source | Question | Run command | Figure gallery |
+|---|---|---|---|---|---|
+| `example01` | ![Example 01](figures/example01/fig01_constant_mg_summary.png) | [example01_mepsc_poisson.py](../examples/paper/example01_mepsc_poisson.py) | Does Mg2+ washout produce firing-rate dynamics beyond a constant Poisson baseline? | `python examples/paper/example01_mepsc_poisson.py` | [gallery page](./figures/example01/README.md) |
+| `example02` | ![Example 02](figures/example02/fig01_data_overview.png) | [example02_whisker_stimulus_thalamus.py](../examples/paper/example02_whisker_stimulus_thalamus.py) | What stimulus lag and history order best explain whisker-evoked spike trains? | `python examples/paper/example02_whisker_stimulus_thalamus.py` | [gallery page](./figures/example02/README.md) |
+| `example03` | ![Example 03](figures/example03/fig01_simulated_and_real_rasters.png) | [example03_psth_and_ssglm.py](../examples/paper/example03_psth_and_ssglm.py) | How do PSTH and SSGLM differ in capturing trial learning dynamics? | `python examples/paper/example03_psth_and_ssglm.py` | [gallery page](./figures/example03/README.md) |
+| `example04` | ![Example 04](figures/example04/fig01_example_cells_path_overlay.png) | [example04_place_cells_continuous_stimulus.py](../examples/paper/example04_place_cells_continuous_stimulus.py) | How do Gaussian and Zernike basis models compare for place-field mapping? | `python examples/paper/example04_place_cells_continuous_stimulus.py` | [gallery page](./figures/example04/README.md) |
+| `example05` | ![Example 05](figures/example05/fig01_univariate_setup.png) | [example05_decoding_ppaf_pphf.py](../examples/paper/example05_decoding_ppaf_pphf.py) | How accurately can neural populations decode latent stimulus and reach state? | `python examples/paper/example05_decoding_ppaf_pphf.py` | [gallery page](./figures/example05/README.md) |
 
 ```{toctree}
 :hidden:
@@ -45,6 +45,8 @@ Question: Does Mg2+ washout produce firing-rate dynamics beyond a constant Poiss
 
 Run command: `python examples/paper/example01_mepsc_poisson.py`
 
+![Example 01](figures/example01/fig01_constant_mg_summary.png)
+
 Expected figure files:
 - `docs/figures/example01/fig01_constant_mg_summary.png`
 - `docs/figures/example01/fig02_washout_raster_overview.png`
@@ -56,6 +58,8 @@ Question: What stimulus lag and history order best explain whisker-evoked spike 
 
 Run command: `python examples/paper/example02_whisker_stimulus_thalamus.py`
 
+![Example 02](figures/example02/fig01_data_overview.png)
+
 Expected figure files:
 - `docs/figures/example02/fig01_data_overview.png`
 - `docs/figures/example02/fig02_lag_and_model_comparison.png`
@@ -65,6 +69,8 @@ Expected figure files:
 Question: How do PSTH and SSGLM differ in capturing trial learning dynamics?
 
 Run command: `python examples/paper/example03_psth_and_ssglm.py`
+
+![Example 03](figures/example03/fig01_simulated_and_real_rasters.png)
 
 Expected figure files:
 - `docs/figures/example03/fig01_simulated_and_real_rasters.png`
@@ -80,6 +86,8 @@ Question: How do Gaussian and Zernike basis models compare for place-field mappi
 
 Run command: `python examples/paper/example04_place_cells_continuous_stimulus.py`
 
+![Example 04](figures/example04/fig01_example_cells_path_overlay.png)
+
 Expected figure files:
 - `docs/figures/example04/fig01_example_cells_path_overlay.png`
 - `docs/figures/example04/fig02_model_summary_statistics.png`
@@ -94,6 +102,8 @@ Expected figure files:
 Question: How accurately can neural populations decode latent stimulus and reach state?
 
 Run command: `python examples/paper/example05_decoding_ppaf_pphf.py`
+
+![Example 05](figures/example05/fig01_univariate_setup.png)
 
 Expected figure files:
 - `docs/figures/example05/fig01_univariate_setup.png`

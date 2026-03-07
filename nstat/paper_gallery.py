@@ -34,6 +34,7 @@ def build_gallery_manifest(repo_root: Path | None = None) -> dict[str, Any]:
                 "run_command": f"python {row['script']}",
                 "figure_dir": figure_dir,
                 "figure_files": list(row["figure_files"]),
+                "thumbnail_file": row["figure_files"][0],
                 "sections": list(row["sections"]),
             }
         )
@@ -63,17 +64,18 @@ def render_paper_examples_markdown(repo_root: Path | None = None) -> str:
         "Outputs:",
         "- Figure metadata: `docs/figures/manifest.json`",
         "- Gallery page: `docs/paper_examples.md`",
-        "- Placeholder/example directories: `docs/figures/example01/` ... `docs/figures/example05/`",
+        "- Figures: `docs/figures/example01/` ... `docs/figures/example05/`",
         "",
         "## Example Index",
         "",
-        "| ID | Standalone source | Question | Figure gallery |",
-        "|---|---|---|---|",
+        "| ID | Thumbnail | Standalone source | Question | Run command | Figure gallery |",
+        "|---|---|---|---|---|---|",
     ]
     for row in manifest["examples"]:
         lines.append(
-            f"| `{row['example_id']}` | [{Path(row['source_script']).name}](../{row['source_script']}) | "
-            f"{row['question']} | [gallery page](./figures/{row['example_id']}/README.md) |"
+            f"| `{row['example_id']}` | ![{row['example_id'].replace('example', 'Example ')}]({row['thumbnail_file'].replace('docs/', '')}) | "
+            f"[{Path(row['source_script']).name}](../{row['source_script']}) | {row['question']} | "
+            f"`{row['run_command']}` | [gallery page](./figures/{row['example_id']}/README.md) |"
         )
 
     lines.extend(
@@ -95,6 +97,8 @@ def render_paper_examples_markdown(repo_root: Path | None = None) -> str:
                 f"Question: {row['question']}",
                 "",
                 f"Run command: `{row['run_command']}`",
+                "",
+                f"![{row['example_id'].replace('example', 'Example ')}]({row['thumbnail_file'].replace('docs/', '')})",
                 "",
                 "Expected figure files:",
             ]

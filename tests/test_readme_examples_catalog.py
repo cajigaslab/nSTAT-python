@@ -53,8 +53,10 @@ def test_readme_paper_example_rows_track_manifest() -> None:
         script = str(row["script"])
         question = str(row["question"])
         example_label = f"Example {index:02d}"
+        thumbnail = str(row["figure_files"][0])
         assert example_label in block
         assert question in block
+        assert f"![{example_label}]({thumbnail})" in block
         assert f"`python {script}`" in block
         assert f"[Script]({script})" in block
         assert f"[Figures](docs/figures/{row['example_id']}/)" in block

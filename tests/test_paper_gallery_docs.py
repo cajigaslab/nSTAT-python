@@ -22,6 +22,25 @@ def test_paper_examples_markdown_matches_generator() -> None:
     assert committed == render_paper_examples_markdown(REPO_ROOT)
 
 
+def test_gallery_manifest_tracks_thumbnail_and_run_command_fields() -> None:
+    built = build_gallery_manifest(REPO_ROOT)
+    for row in built["examples"]:
+        assert row["thumbnail_file"] == row["figure_files"][0]
+        assert row["thumbnail_file"].startswith("docs/figures/example")
+        assert row["run_command"].startswith("python examples/paper/")
+
+
+def test_generated_gallery_markdown_includes_thumbnail_rows_and_run_commands() -> None:
+    text = render_paper_examples_markdown(REPO_ROOT)
+    payload = yaml.safe_load((REPO_ROOT / "examples" / "paper" / "manifest.yml").read_text(encoding="utf-8")) or {}
+    for index, row in enumerate(payload.get("examples", []), start=1):
+        example_label = f"Example {index:02d}"
+        thumbnail = str(row["figure_files"][0]).replace("docs/", "")
+        script = str(row["script"])
+        assert f"![{example_label}]({thumbnail})" in text
+        assert f"`python {script}`" in text
+
+
 def test_paper_gallery_directories_exist() -> None:
     for example_id in ("example01", "example02", "example03", "example04", "example05"):
         path = REPO_ROOT / "docs" / "figures" / example_id
