@@ -52,7 +52,10 @@ def run_named_paper_example(
             "experiment3b": payload3b,
         }
     if example_id == "example04":
-        return {"experiment4": run_experiment4(data_dir)}
+        if not return_payload:
+            return {"experiment4": run_experiment4(data_dir)}
+        summary4, payload4 = run_experiment4(data_dir, return_payload=True)
+        return {"experiment4": summary4}, {"experiment4": payload4}
     if example_id == "example05":
         return {
             "experiment5": run_experiment5(),

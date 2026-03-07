@@ -457,8 +457,7 @@ def _zernike_like_basis(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     ])
 
 
-def run_experiment4(data_dir: Path) -> dict[str, float]:
-    path = data_dir / "Place Cells" / "PlaceCellDataAnimal1.mat"
+def _load_placecell_dataset(path: Path):
     d = _loadmat_checked(path)
     if d is None:
         rng = np.random.default_rng(4004)
@@ -478,30 +477,93 @@ def run_experiment4(data_dir: Path) -> dict[str, float]:
         y = np.asarray(d["y"], dtype=float).reshape(-1)
         time = np.asarray(d["time"], dtype=float).reshape(-1)
         neurons = np.asarray(d["neuron"], dtype=object).reshape(-1)
+    return x, y, time, neurons
 
+
+def _evaluate_place_models(x: np.ndarray, y: np.ndarray, time: np.ndarray, neurons: np.ndarray, selected_indices: list[int]):
     dt = float(np.median(np.diff(time)))
     offset = np.full(time.shape[0], np.log(max(dt, 1e-12)), dtype=float)
     x_gauss = np.column_stack([x, y, x * x, y * y, x * y])
     x_zern = _zernike_like_basis(x, y)
 
-    d_aic = []
-    d_bic = []
-    n_eval = int(min(8, neurons.shape[0]))
-    for i in range(n_eval):
-        spike_times = np.asarray(neurons[i].spikeTimes, dtype=float).reshape(-1)
+    x_grid = np.linspace(float(np.min(x)), float(np.max(x)), 40, dtype=float)
+    y_grid = np.linspace(float(np.min(y)), float(np.max(y)), 40, dtype=float)
+    xx, yy = np.meshgrid(x_grid, y_grid)
+    grid_gauss = np.column_stack([xx.ravel(), yy.ravel(), xx.ravel() ** 2, yy.ravel() ** 2, xx.ravel() * yy.ravel()])
+    grid_zern = _zernike_like_basis(xx.ravel(), yy.ravel())
+
+    d_aic: list[float] = []
+    d_bic: list[float] = []
+    gaussian_fields: list[np.ndarray] = []
+    zernike_fields: list[np.ndarray] = []
+    spike_times_all: list[np.ndarray] = []
+
+    for idx in selected_indices:
+        spike_times = np.asarray(neurons[idx].spikeTimes, dtype=float).reshape(-1)
         y_spike = _spike_indicator(time, spike_times)
-        mg = fit_poisson_glm(x_gauss, y_spike, offset=offset)
-        mz = fit_poisson_glm(x_zern, y_spike, offset=offset)
+        mg = fit_poisson_glm(x_gauss, y_spike, offset=offset, max_iter=70)
+        mz = fit_poisson_glm(x_zern, y_spike, offset=offset, max_iter=70)
         aicg, bicg = _aic_bic(mg.log_likelihood, y_spike.shape[0], x_gauss.shape[1] + 1)
         aicz, bicz = _aic_bic(mz.log_likelihood, y_spike.shape[0], x_zern.shape[1] + 1)
         d_aic.append(aicg - aicz)
         d_bic.append(bicg - bicz)
+        gaussian_fields.append(mg.predict_rate(grid_gauss).reshape(xx.shape))
+        zernike_fields.append(mz.predict_rate(grid_zern).reshape(xx.shape))
+        spike_times_all.append(spike_times)
 
     return {
-        "num_cells_fit": float(n_eval),
-        "mean_delta_aic_gaussian_minus_zernike": float(np.mean(d_aic)),
-        "mean_delta_bic_gaussian_minus_zernike": float(np.mean(d_bic)),
+        "time_s": time,
+        "x_pos": x,
+        "y_pos": y,
+        "selected_indices": np.asarray(selected_indices, dtype=int),
+        "delta_aic": np.asarray(d_aic, dtype=float),
+        "delta_bic": np.asarray(d_bic, dtype=float),
+        "gaussian_fields": np.asarray(gaussian_fields, dtype=float),
+        "zernike_fields": np.asarray(zernike_fields, dtype=float),
+        "spike_times": spike_times_all,
+        "grid_x": xx,
+        "grid_y": yy,
     }
+
+
+def run_experiment4(data_dir: Path, *, return_payload: bool = False) -> dict[str, float] | tuple[dict[str, float], dict[str, object]]:
+    path1 = data_dir / "Place Cells" / "PlaceCellDataAnimal1.mat"
+    x1, y1, time1, neurons1 = _load_placecell_dataset(path1)
+
+    path2 = data_dir / "Place Cells" / "PlaceCellDataAnimal2.mat"
+    x2, y2, time2, neurons2 = _load_placecell_dataset(path2)
+
+    selected1 = [0, 1, min(2, len(neurons1) - 1), min(24, len(neurons1) - 1)]
+    selected2 = [0, 1, min(2, len(neurons2) - 1), min(24, len(neurons2) - 1)]
+    animal1 = _evaluate_place_models(x1, y1, time1, neurons1, selected1)
+    animal2 = _evaluate_place_models(x2, y2, time2, neurons2, selected2)
+
+    summary = {
+        "num_cells_fit": float(len(selected1) + len(selected2)),
+        "mean_delta_aic_gaussian_minus_zernike": float(np.mean(np.concatenate([animal1["delta_aic"], animal2["delta_aic"]]))),
+        "mean_delta_bic_gaussian_minus_zernike": float(np.mean(np.concatenate([animal1["delta_bic"], animal2["delta_bic"]]))),
+    }
+    if not return_payload:
+        return summary
+
+    mesh_idx = int(selected1[-1])
+    mesh_spike_times = np.asarray(neurons1[mesh_idx].spikeTimes, dtype=float).reshape(-1)
+    payload = {
+        "animal1": animal1,
+        "animal2": animal2,
+        "mesh": {
+            "cell_index": mesh_idx,
+            "gaussian_field": animal1["gaussian_fields"][-1],
+            "zernike_field": animal1["zernike_fields"][-1],
+            "grid_x": animal1["grid_x"],
+            "grid_y": animal1["grid_y"],
+            "x_pos": x1,
+            "y_pos": y1,
+            "spike_times": mesh_spike_times,
+            "time_s": time1,
+        },
+    }
+    return summary, payload
 
 
 def run_experiment5(seed: int = 11, n_cells: int = 20) -> dict[str, float]:

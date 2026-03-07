@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
 
 FigureBuilder = Callable[[dict[str, object], dict[str, object]], plt.Figure]
@@ -448,6 +449,123 @@ def build_example03_learning_trial_comparison(summary: dict[str, object], payloa
     return fig
 
 
+def _placecell_overlay(ax: plt.Axes, animal: dict[str, object], title: str) -> None:
+    x_pos = np.asarray(animal["x_pos"], dtype=float)
+    y_pos = np.asarray(animal["y_pos"], dtype=float)
+    time_s = np.asarray(animal["time_s"], dtype=float)
+    spike_times = np.asarray(animal["spike_times"][0], dtype=float)
+    spike_x = np.interp(spike_times, time_s, x_pos)
+    spike_y = np.interp(spike_times, time_s, y_pos)
+    ax.plot(x_pos, y_pos, color="0.25", linewidth=0.5, alpha=0.55, label="Animal Path")
+    ax.scatter(spike_x, spike_y, s=7, color="red", alpha=0.7, label="Spike Locations")
+    ax.set_title(title)
+    ax.set_xlabel("x position")
+    ax.set_ylabel("y position")
+    ax.set_aspect("equal", adjustable="box")
+
+
+def _placecell_field_grid(fig_title: str, animal: dict[str, object], field_key: str, cmap: str) -> plt.Figure:
+    fields = np.asarray(animal[field_key], dtype=float)
+    grid_x = np.asarray(animal["grid_x"], dtype=float)
+    grid_y = np.asarray(animal["grid_y"], dtype=float)
+    indices = np.asarray(animal["selected_indices"], dtype=int)
+
+    fig, axes = plt.subplots(2, 2, figsize=(10.4, 8.2))
+    for ax, field, cell_idx in zip(axes.ravel(), fields, indices, strict=False):
+        im = ax.imshow(
+            field,
+            origin="lower",
+            extent=[float(grid_x.min()), float(grid_x.max()), float(grid_y.min()), float(grid_y.max())],
+            cmap=cmap,
+            aspect="auto",
+        )
+        ax.set_title(f"Cell {int(cell_idx) + 1}")
+        ax.set_xlabel("x position")
+        ax.set_ylabel("y position")
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    fig.suptitle(fig_title)
+    return fig
+
+
+def build_example04_path_overlay(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    fig, axes = plt.subplots(1, 2, figsize=(11.8, 5.2))
+    _placecell_overlay(axes[0], payload["animal1"], "Animal 1, Example Cell Overlay")
+    _placecell_overlay(axes[1], payload["animal2"], "Animal 2, Example Cell Overlay")
+    axes[1].legend(loc="upper right", fontsize=8)
+    fig.tight_layout()
+    return fig
+
+
+def build_example04_model_summary(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    animal1 = payload["animal1"]
+    animal2 = payload["animal2"]
+    indices1 = np.asarray(animal1["selected_indices"], dtype=int) + 1
+    indices2 = np.asarray(animal2["selected_indices"], dtype=int) + 1
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.8))
+    axes[0].plot(indices1, np.asarray(animal1["delta_aic"], dtype=float), marker="o", linewidth=1.4, label=r"$\Delta$ AIC")
+    axes[0].plot(indices1, np.asarray(animal1["delta_bic"], dtype=float), marker="s", linewidth=1.4, label=r"$\Delta$ BIC")
+    axes[0].axhline(0.0, color="black", linewidth=1.0, alpha=0.5)
+    axes[0].set_title("Animal 1 Model Delta")
+    axes[0].set_xlabel("Cell index")
+    axes[0].set_ylabel("Gaussian - Zernike")
+    axes[0].legend(loc="upper right")
+    axes[0].grid(alpha=0.25)
+
+    axes[1].plot(indices2, np.asarray(animal2["delta_aic"], dtype=float), marker="o", linewidth=1.4, label=r"$\Delta$ AIC")
+    axes[1].plot(indices2, np.asarray(animal2["delta_bic"], dtype=float), marker="s", linewidth=1.4, label=r"$\Delta$ BIC")
+    axes[1].axhline(0.0, color="black", linewidth=1.0, alpha=0.5)
+    axes[1].set_title("Animal 2 Model Delta")
+    axes[1].set_xlabel("Cell index")
+    axes[1].set_ylabel("Gaussian - Zernike")
+    axes[1].legend(loc="upper right")
+    axes[1].grid(alpha=0.25)
+    fig.tight_layout()
+    return fig
+
+
+def build_example04_gaussian_animal1(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    return _placecell_field_grid("Gaussian Place Fields - Animal 1", payload["animal1"], "gaussian_fields", "viridis")
+
+
+def build_example04_zernike_animal1(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    return _placecell_field_grid("Zernike Place Fields - Animal 1", payload["animal1"], "zernike_fields", "magma")
+
+
+def build_example04_gaussian_animal2(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    return _placecell_field_grid("Gaussian Place Fields - Animal 2", payload["animal2"], "gaussian_fields", "viridis")
+
+
+def build_example04_zernike_animal2(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    return _placecell_field_grid("Zernike Place Fields - Animal 2", payload["animal2"], "zernike_fields", "magma")
+
+
+def build_example04_mesh_comparison(summary: dict[str, object], payload: dict[str, object]) -> plt.Figure:
+    mesh = payload["mesh"]
+    grid_x = np.asarray(mesh["grid_x"], dtype=float)
+    grid_y = np.asarray(mesh["grid_y"], dtype=float)
+    gaussian_field = np.asarray(mesh["gaussian_field"], dtype=float)
+    zernike_field = np.asarray(mesh["zernike_field"], dtype=float)
+    x_pos = np.asarray(mesh["x_pos"], dtype=float)
+    y_pos = np.asarray(mesh["y_pos"], dtype=float)
+    time_s = np.asarray(mesh["time_s"], dtype=float)
+    spike_times = np.asarray(mesh["spike_times"], dtype=float)
+    spike_x = np.interp(spike_times, time_s, x_pos)
+    spike_y = np.interp(spike_times, time_s, y_pos)
+
+    fig = plt.figure(figsize=(11.0, 8.0))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.plot_wireframe(grid_x, grid_y, gaussian_field, rstride=1, cstride=1, color="blue", alpha=0.18, linewidth=0.4)
+    ax.plot_wireframe(grid_x, grid_y, zernike_field, rstride=1, cstride=1, color="limegreen", alpha=0.18, linewidth=0.4)
+    ax.plot(x_pos, y_pos, zs=0.0, zdir="z", color="black", linewidth=0.4, alpha=0.55)
+    ax.scatter(spike_x, spike_y, zs=0.0, zdir="z", color="red", s=4, alpha=0.7)
+    ax.set_title(f"Animal#1, Cell#{int(mesh['cell_index']) + 1}")
+    ax.set_xlabel("x position")
+    ax.set_ylabel("y position")
+    ax.set_zlabel("rate")
+    return fig
+
+
 EXAMPLE_FIGURE_BUILDERS: dict[str, list[tuple[str, FigureBuilder]]] = {
     "example01": [
         ("fig01_constant_mg_summary.png", build_example01_constant_mg_summary),
@@ -465,6 +583,15 @@ EXAMPLE_FIGURE_BUILDERS: dict[str, list[tuple[str, FigureBuilder]]] = {
         ("fig04_ssglm_fit_diagnostics.png", build_example03_ssglm_fit_diagnostics),
         ("fig05_stimulus_effect_surfaces.png", build_example03_stimulus_effect_surfaces),
         ("fig06_learning_trial_comparison.png", build_example03_learning_trial_comparison),
+    ],
+    "example04": [
+        ("fig01_example_cells_path_overlay.png", build_example04_path_overlay),
+        ("fig02_model_summary_statistics.png", build_example04_model_summary),
+        ("fig03_gaussian_place_fields_animal1.png", build_example04_gaussian_animal1),
+        ("fig04_zernike_place_fields_animal1.png", build_example04_zernike_animal1),
+        ("fig05_gaussian_place_fields_animal2.png", build_example04_gaussian_animal2),
+        ("fig06_zernike_place_fields_animal2.png", build_example04_zernike_animal2),
+        ("fig07_example_cell_mesh_comparison.png", build_example04_mesh_comparison),
     ],
 }
 

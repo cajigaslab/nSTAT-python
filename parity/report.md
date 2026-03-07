@@ -13,8 +13,8 @@ Generated from `parity/manifest.yml`.
 |---|---:|---:|---:|---:|
 | `public api` | 18 | 0 | 0 | 1 |
 | `help workflows` | 29 | 0 | 0 | 0 |
-| `paper examples` | 4 | 4 | 0 | 0 |
-| `docs gallery` | 6 | 2 | 0 | 0 |
+| `paper examples` | 5 | 3 | 0 | 0 |
+| `docs gallery` | 7 | 1 | 0 | 0 |
 | `installer setup` | 3 | 2 | 0 | 2 |
 | `repo structure` | 1 | 0 | 0 | 0 |
 
@@ -28,14 +28,12 @@ Generated from `parity/manifest.yml`.
 
 ### `paper_examples`
 
-- `example04_place_cells_continuous_stimulus` -> `nstat.paper_examples_full.run_experiment4`: Canonical Python script now exists, but the MATLAB-matched figure set is not yet exported.
 - `example05_decoding_ppaf_pphf` -> `nstat.paper_examples_full.run_experiment5`: Canonical Python script now exists and bundles experiment5/5b/6, but the MATLAB-matched figure gallery is not yet exported.
 - `nSTATPaperExamples section 5b` -> `nstat.paper_examples_full.run_experiment5b`: Implemented as a helper function only.
 - `nSTATPaperExamples section 6` -> `nstat.paper_examples_full.run_experiment6`: Implemented as a helper function only.
 
 ### `docs_gallery`
 
-- `docs/figures/example04/` -> `docs/figures/example04/`: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
 - `docs/figures/example05/` -> `docs/figures/example05/`: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
 
 ### `installer_setup`

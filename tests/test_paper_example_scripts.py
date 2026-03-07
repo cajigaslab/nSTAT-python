@@ -46,7 +46,7 @@ def test_paper_example_scripts_exist_and_support_help() -> None:
 
 def test_example01_and_example02_support_figure_export(tmp_path: Path) -> None:
     payload = yaml.safe_load(MANIFEST_PATH.read_text(encoding="utf-8"))
-    for row in payload["examples"][:3]:
+    for row in payload["examples"][:4]:
         example_id = row["example_id"]
         script_path = REPO_ROOT / row["script"]
         export_dir = tmp_path / example_id
