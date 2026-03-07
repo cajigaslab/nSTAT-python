@@ -47,3 +47,14 @@ def test_simulink_fidelity_audit_paths_exist_when_matlab_repo_is_available() -> 
     payload = _load_audit()
     missing = [row["model_path"] for row in payload["items"] if not (MATLAB_REPO_ROOT / row["model_path"]).exists()]
     assert not missing, f"Missing Simulink audit paths in MATLAB repo: {missing}"
+
+
+def test_simulink_fidelity_audit_has_no_partial_or_missing_behavioral_paths() -> None:
+    payload = _load_audit()
+    outstanding = {
+        row["model_name"]
+        for row in payload["items"]
+        if row["model_name"] in {"PointProcessSimulation", "SimulatedNetwork2"}
+        and row["current_python_status"] in {"partial", "missing", "unsupported"}
+    }
+    assert not outstanding

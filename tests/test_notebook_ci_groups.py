@@ -29,6 +29,7 @@ REQUIRED_PARITY_CORE_TOPICS = {
 }
 REQUIRED_HELPFILE_FULL_TOPICS = {
     "AnalysisExamples",
+    "AnalysisExamples2",
     "DecodingExample",
     "DecodingExampleWithHist",
     "ExplicitStimulusWhiskerData",

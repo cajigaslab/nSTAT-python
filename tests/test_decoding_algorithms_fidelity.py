@@ -82,3 +82,38 @@ def test_pphybridfilterlinear_returns_model_probabilities_and_state_banks() -> N
     assert len(X_s) == 2
     assert len(W_s) == 2
     np.testing.assert_allclose(np.sum(MU_u, axis=0), np.ones(5), atol=1e-6)
+
+
+def test_kalman_helper_methods_and_confidence_intervals_are_available() -> None:
+    A = np.array([[1.0]], dtype=float)
+    C = np.array([[1.0]], dtype=float)
+    Q = np.array([[0.05]], dtype=float)
+    R = np.array([[0.02]], dtype=float)
+    x0 = np.array([0.0], dtype=float)
+    P0 = np.array([[1.0]], dtype=float)
+    y = np.array([[0.0], [0.1], [0.2], [0.1]], dtype=float)
+
+    x_p, P_p = DecodingAlgorithms.kalman_predict(x0, P0, A, Q)
+    x_u, P_u, G = DecodingAlgorithms.kalman_update(x_p, P_p, C, R, y[0])
+    assert x_p.shape == (1,)
+    assert P_p.shape == (1, 1)
+    assert x_u.shape == (1,)
+    assert P_u.shape == (1, 1)
+    assert G.shape == (1, 1)
+
+    x_N, P_N, Ln, x_pred_hist, P_pred_hist, x_upd_hist, P_upd_hist = DecodingAlgorithms.kalman_smoother(A, C, Q, R, P0, x0, y)
+    assert x_N.shape == (4, 1)
+    assert P_N.shape == (4, 1, 1)
+    assert Ln.shape == (3, 1, 1)
+    assert x_pred_hist.shape == (4, 1)
+    assert x_upd_hist.shape == (4, 1)
+
+    x_pLag, P_pLag, x_uLag, P_uLag = DecodingAlgorithms.kalman_fixedIntervalSmoother(A, C, Q, R, P0, x0, y, 2)
+    assert x_pLag.shape == (4, 1)
+    assert P_pLag.shape == (4, 1, 1)
+    assert x_uLag.shape == (4, 1)
+    assert P_uLag.shape == (4, 1, 1)
+
+    cis, stimulus = DecodingAlgorithms.ComputeStimulusCIs("poisson", x_N, P_N, 0.1, alphaVal=0.05)
+    assert cis.shape == (4, 1, 2)
+    assert stimulus.shape == (4, 1)

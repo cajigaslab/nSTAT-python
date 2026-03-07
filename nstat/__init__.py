@@ -16,6 +16,7 @@ from .events import Events
 from .fit import FitResSummary, FitResult, FitSummary
 from .glm import PoissonGLMResult, fit_poisson_glm
 from .history import History, HistoryBasis
+from .matlab_reference import matlab_engine_available, run_point_process_reference, run_simulated_network_reference
 from .paper_examples_full import run_full_paper_examples
 from .signal import Covariate, Signal
 from .simulation import simulate_poisson_from_rate
@@ -84,6 +85,7 @@ __all__ = [
     "FitSummary",
     "History",
     "HistoryBasis",
+    "matlab_engine_available",
     "NetworkSimulationResult",
     "ParityValidationError",
     "PointProcessSimulation",
@@ -104,6 +106,8 @@ __all__ = [
     "nstat_install",
     "psth",
     "run_full_paper_examples",
+    "run_point_process_reference",
+    "run_simulated_network_reference",
     "simulate_point_process",
     "simulate_poisson_from_rate",
     "simulate_two_neuron_network",

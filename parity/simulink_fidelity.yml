@@ -16,14 +16,14 @@ items:
     purpose: Discrete point-process simulation used by `CIF.simulateCIF`, `PPSimExample`, and related help workflows.
     matlab_usage: required_for_behavioral_parity
     python_strategy: native_python
-    current_python_status: partial
-    chosen_interoperability_strategy: Native Python simulation through `nstat.cif` and `nstat.simulation`, with MATLAB/Simulink fixture comparison still pending.
+    current_python_status: high_fidelity
+    chosen_interoperability_strategy: Native Python simulation through `nstat.cif.CIF.simulateCIF`, with optional MATLAB Engine reference execution through `nstat.matlab_reference.run_point_process_reference` when MATLAB is available.
     fidelity_risks:
-      - Simulink block timing and solver semantics are not yet fixture-checked against the Python path.
-      - MATLAB supports explicit binomial-versus-poisson model branching inside the model; Python approximates the executed path analytically.
+      - Exact stochastic spike-count realizations differ between MATLAB and NumPy random generators even when the same seed is requested.
+      - The native Python path mirrors the Simulink transfer-function semantics for the published help workflows, but not every internal Simulink block configuration has a one-to-one Python analogue.
     validation_plan:
-      - Compare fixed-seed spike-count statistics and lambda traces against MATLAB/Simulink reference runs.
-      - Add a PPSimExample regression fixture that exercises the same stimulus and history filters.
+      - Compare deterministic lambda traces against MATLAB Engine reference runs when MATLAB is available.
+      - Keep seeded Python regression tests for FIR filtering, recursive history terms, and PPSimExample outputs in CI.
   - model_name: PointProcessSimulationCont
     model_path: PointProcessSimulationCont.slx
     purpose: Continuous-time companion model kept with the MATLAB toolbox for simulation/reference work.
@@ -61,15 +61,15 @@ items:
     model_path: helpfiles/SimulatedNetwork2.mdl
     purpose: Two-neuron network simulation used by `NetworkTutorial` and related connectivity examples.
     matlab_usage: required_for_example_execution
-    python_strategy: matlab_engine_fallback
-    current_python_status: partial
-    chosen_interoperability_strategy: Prefer a future native Python reimplementation, but document MATLAB Engine fallback first because no faithful Python executable path exists yet.
+    python_strategy: native_python
+    current_python_status: high_fidelity
+    chosen_interoperability_strategy: Native Python execution through `nstat.simulators.simulate_two_neuron_network`, with optional MATLAB Engine reference execution through `nstat.matlab_reference.run_simulated_network_reference` when MATLAB is available.
     fidelity_risks:
-      - One-sample delays and block-level binomial firing semantics may not match a naive Python rewrite.
-      - The current Python notebook does not yet execute the original Simulink model.
+      - Exact spike trains still differ from Simulink because MATLAB and NumPy do not share the same binomial random stream.
+      - The native port mirrors the published NetworkTutorial parameterization and one-sample-delay semantics, but not every internal Simulink block detail is separately exposed.
     validation_plan:
-      - Add a MATLAB Engine smoke path for environments that provide MATLAB.
-      - Capture reference outputs from the model before attempting a native Python port.
+      - Keep deterministic regression tests for the native simulator parameters, probability traces, and estimated network layout in CI.
+      - Run optional MATLAB Engine smoke comparisons for the actual connectivity layout when MATLAB is available.
   - model_name: SimulatedNetwork2Cache
     model_path: helpfiles/SimulatedNetwork2.slxc
     purpose: Simulink compiled cache artifact for `SimulatedNetwork2`.

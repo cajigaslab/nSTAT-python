@@ -23,8 +23,8 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 | Status | Count |
 |---|---:|
 | `exact` | 0 |
-| `high_fidelity` | 13 |
-| `partial` | 5 |
+| `high_fidelity` | 18 |
+| `partial` | 0 |
 | `wrapper_only` | 0 |
 | `missing` | 0 |
 | `not_applicable` | 1 |
@@ -34,17 +34,17 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 | Status | Count |
 |---|---:|
 | `exact` | 0 |
-| `high_fidelity` | 8 |
-| `partial` | 3 |
+| `high_fidelity` | 12 |
+| `partial` | 0 |
 
 ## Simulink Fidelity Summary
 
 | Strategy | Count |
 |---|---:|
-| `native_python` | 1 |
+| `native_python` | 2 |
 | `generated_code_wrapped` | 0 |
 | `packaged_runtime` | 0 |
-| `matlab_engine_fallback` | 1 |
+| `matlab_engine_fallback` | 0 |
 | `unsupported` | 0 |
 | `reference_only` | 4 |
 
@@ -52,11 +52,10 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 
 - Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable.
 - Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.
-- Notebook fidelity: workflow coverage is complete, but 3 MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`.
-- Notebook fidelity audit: structural section/figure comparisons plus placeholder/tracker-only cell detection are recorded in `parity/notebook_fidelity.yml`.
+- Notebook fidelity: all tracked MATLAB-helpfile notebook ports are marked high fidelity or exact.
 - Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
-- Class fidelity: mapping parity is ahead of semantic parity; the audit still reports partial fidelity for several MATLAB-facing classes and workflows.
-- Simulink fidelity: 2 Simulink-backed assets still rely on partial, fallback, or unsupported Python execution paths.
+- Class fidelity: the class audit reports no partial, wrapper-only, or missing items.
+- Simulink fidelity: all inventoried Simulink-backed workflows have an explicit Python execution strategy.
 
 ## Remaining Mapping Deltas
 
@@ -64,22 +63,15 @@ No partial or missing items remain in the mapping inventory.
 
 ## Remaining Notebook-Fidelity Deltas
 
-- `nSTATPaperExamples` -> `notebooks/nSTATPaperExamples.ipynb` [partial]: Python uses standalone figshare-backed data access and generated gallery assets rather than MATLAB path-based setup, and several sections still rely on placeholder or tracker-only cells instead of full MATLAB-equivalent computations.
-- `AnalysisExamples` -> `notebooks/AnalysisExamples.ipynb` [partial]: Advanced MATLAB algorithm-selection branches and report plots remain lighter in Python, and the notebook still contains tracker-only visualization sections rather than a fully executable MATLAB-equivalent workflow.
-- `PPSimExample` -> `notebooks/PPSimExample.ipynb` [partial]: The notebook now executes the full Python point-process simulation and analysis workflow without placeholders, but it still uses the native `CIFModel` path rather than the original MATLAB/Simulink recursive CIF model.
+No partial notebook-fidelity items remain in `tools/notebooks/parity_notes.yml`.
 
 ## Remaining Class-Fidelity Deltas
 
-- `Analysis` -> `nstat.Analysis` [partial]: Add dataset-backed numerical parity fixtures for canonical analysis workflows.
-- `FitResult` -> `nstat.FitResult` [partial]: Add MATLAB-derived golden fixtures for coefficient metadata and validation/report payloads.
-- `FitResSummary` -> `nstat.FitResSummary` [partial]: Add golden fixtures for multi-neuron summary aggregation and remaining report outputs.
-- `CIF` -> `nstat.CIF` [partial]: Add MATLAB-derived fixtures for CIF evaluation and thinning outputs.
-- `DecodingAlgorithms` -> `nstat.DecodingAlgorithms` [partial]: Add MATLAB-derived numerical fixtures for DecodingExample, DecodingExampleWithHist, StimulusDecode2D, and HybridFilterExample.
+No partial, wrapper-only, or missing class-fidelity items remain.
 
 ## Simulink Fidelity Deltas
 
-- `PointProcessSimulation` -> `PointProcessSimulation.slx` [native_python/partial]: Native Python simulation through `nstat.cif` and `nstat.simulation`, with MATLAB/Simulink fixture comparison still pending.
-- `SimulatedNetwork2` -> `helpfiles/SimulatedNetwork2.mdl` [matlab_engine_fallback/partial]: Prefer a future native Python reimplementation, but document MATLAB Engine fallback first because no faithful Python executable path exists yet.
+No partial, fallback, or unsupported Simulink execution paths remain in the audit.
 
 ## Justified Non-Applicable Items
 

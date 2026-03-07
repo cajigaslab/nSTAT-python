@@ -18,7 +18,13 @@ class PointProcessSimulation:
 class NetworkSimulationResult:
     time: np.ndarray
     latent_drive: np.ndarray
+    lambda_delta: np.ndarray
     spikes: SpikeTrainCollection
+    actual_network: np.ndarray
+    history_kernel: np.ndarray
+    stimulus_kernel: np.ndarray
+    ensemble_kernel: np.ndarray
+    baseline_mu: np.ndarray
 
 
 def simulate_point_process(time: np.ndarray, rate_hz: np.ndarray, *, seed: int | None = None) -> PointProcessSimulation:
@@ -40,34 +46,65 @@ def simulate_point_process(time: np.ndarray, rate_hz: np.ndarray, *, seed: int |
 
 
 def simulate_two_neuron_network(
-    duration_s: float = 2.0,
+    duration_s: float = 50.0,
     dt: float = 0.001,
-    base_rate_hz: float = 8.0,
-    coupling: float = 1.2,
+    baseline_mu: tuple[float, float] = (-3.0, -3.0),
+    history_kernel: tuple[float, ...] = (-4.0, -2.0, -1.0),
+    stimulus_kernel: tuple[float, float] = (1.0, -1.0),
+    ensemble_kernel: tuple[float, float] = (1.0, -4.0),
+    stimulus_frequency_hz: float = 1.0,
     seed: int | None = 13,
 ) -> NetworkSimulationResult:
-    """Standalone Python replacement for Simulink-style 2-neuron network examples."""
+    """Standalone Python replacement for the MATLAB/Simulink 2-neuron NetworkTutorial."""
     if duration_s <= 0 or dt <= 0:
         raise ValueError("duration_s and dt must be > 0")
 
     time = np.arange(0.0, duration_s + dt, dt)
-    drive = np.sin(2.0 * np.pi * 2.0 * time)
+    drive = np.sin(2.0 * np.pi * float(stimulus_frequency_hz) * time)
+    baseline_mu_arr = np.asarray(baseline_mu, dtype=float).reshape(2)
+    history_kernel_arr = np.asarray(history_kernel, dtype=float).reshape(-1)
+    stimulus_kernel_arr = np.asarray(stimulus_kernel, dtype=float).reshape(2)
+    ensemble_kernel_arr = np.asarray(ensemble_kernel, dtype=float).reshape(2)
+    actual_network = np.array(
+        [
+            [0.0, ensemble_kernel_arr[0]],
+            [ensemble_kernel_arr[1], 0.0],
+        ],
+        dtype=float,
+    )
 
     rng = np.random.default_rng(seed)
     spikes = np.zeros((time.shape[0], 2), dtype=float)
-    for i in range(1, time.shape[0]):
-        prev = spikes[i - 1]
-        eta1 = np.log(base_rate_hz * dt) + 1.5 * drive[i] + coupling * (prev[1] - 0.1)
-        eta2 = np.log(base_rate_hz * dt) - 1.5 * drive[i] + coupling * (prev[0] - 0.1)
-        p1 = 1.0 / (1.0 + np.exp(-np.clip(eta1, -20.0, 20.0)))
-        p2 = 1.0 / (1.0 + np.exp(-np.clip(eta2, -20.0, 20.0)))
-        spikes[i, 0] = 1.0 if rng.random() < p1 else 0.0
-        spikes[i, 1] = 1.0 if rng.random() < p2 else 0.0
+    lambda_delta = np.zeros_like(spikes)
+    for i in range(time.shape[0]):
+        hist_self = np.zeros(2, dtype=float)
+        for lag, coeff in enumerate(history_kernel_arr, start=1):
+            if i - lag >= 0:
+                hist_self[0] += float(coeff) * float(spikes[i - lag, 0])
+                hist_self[1] += float(coeff) * float(spikes[i - lag, 1])
+        ens_effect = np.zeros(2, dtype=float)
+        if i - 1 >= 0:
+            ens_effect[0] = ensemble_kernel_arr[0] * float(spikes[i - 1, 1])
+            ens_effect[1] = ensemble_kernel_arr[1] * float(spikes[i - 1, 0])
+        eta = baseline_mu_arr + hist_self + (stimulus_kernel_arr * float(drive[i])) + ens_effect
+        lambda_delta[i] = 1.0 / (1.0 + np.exp(-np.clip(eta, -20.0, 20.0)))
+        spikes[i, 0] = 1.0 if rng.random() < lambda_delta[i, 0] else 0.0
+        spikes[i, 1] = 1.0 if rng.random() < lambda_delta[i, 1] else 0.0
 
     t1 = time[spikes[:, 0] > 0.5]
     t2 = time[spikes[:, 1] > 0.5]
     coll = SpikeTrainCollection([SpikeTrain(t1, name="neuron_1"), SpikeTrain(t2, name="neuron_2")])
-    return NetworkSimulationResult(time=time, latent_drive=drive, spikes=coll)
+    return NetworkSimulationResult(
+        time=time,
+        latent_drive=drive,
+        lambda_delta=lambda_delta,
+        spikes=coll,
+        actual_network=actual_network,
+        history_kernel=history_kernel_arr,
+        stimulus_kernel=stimulus_kernel_arr,
+        ensemble_kernel=ensemble_kernel_arr,
+        baseline_mu=baseline_mu_arr,
+    )
 
 
 __all__ = ["PointProcessSimulation", "NetworkSimulationResult", "simulate_point_process", "simulate_two_neuron_network"]

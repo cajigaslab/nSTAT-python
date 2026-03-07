@@ -8,23 +8,24 @@ items:
 - topic: nSTATPaperExamples
   source_matlab: nSTATPaperExamples.mlx
   python_notebook: notebooks/nSTATPaperExamples.ipynb
-  fidelity_status: partial
-  remaining_differences: Python uses standalone figshare-backed data access and generated
-    gallery assets rather than MATLAB path-based setup, and several sections still
-    rely on placeholder or tracker-only cells instead of full MATLAB-equivalent computations.
-  python_sections: 31
-  python_expected_figures: 25
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now executes the canonical paper-example workflows
+    through the standalone Python implementations and real figshare-backed datasets;
+    exact numerical traces and figure styling still vary modestly because the Python
+    GLM/decoder stack and plotting defaults are not byte-identical to MATLAB.
+  python_sections: 37
+  python_expected_figures: 26
   python_uses_figure_tracker: true
   python_has_finalize_call: true
-  python_placeholder_cells: 14
-  python_tracker_only_cells: 5
-  python_contains_placeholders: true
-  python_contains_tracker_only_cells: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 37
   matlab_published_figures: 26
-  section_delta: -6
-  figure_delta: -1
+  section_delta: 0
+  figure_delta: 0
 - topic: TrialExamples
   source_matlab: TrialExamples.mlx
   python_notebook: notebooks/TrialExamples.ipynb
@@ -49,11 +50,12 @@ items:
 - topic: AnalysisExamples
   source_matlab: AnalysisExamples.mlx
   python_notebook: notebooks/AnalysisExamples.ipynb
-  fidelity_status: partial
-  remaining_differences: Advanced MATLAB algorithm-selection branches and report plots
-    remain lighter in Python, and the notebook still contains tracker-only visualization
-    sections rather than a fully executable MATLAB-equivalent workflow.
-  python_sections: 2
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now follows the MATLAB standard-GLM workflow
+    with the canonical `glm_data.mat` dataset and real KS/model-visualization figures;
+    coefficient values and styling still vary modestly because the Python GLM backend
+    and plotting defaults differ from MATLAB.
+  python_sections: 7
   python_expected_figures: 4
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -64,7 +66,28 @@ items:
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 7
   matlab_published_figures: 4
-  section_delta: -5
+  section_delta: 0
+  figure_delta: 0
+- topic: AnalysisExamples2
+  source_matlab: AnalysisExamples2.mlx
+  python_notebook: notebooks/AnalysisExamples2.ipynb
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now follows the MATLAB toolbox workflow on the
+    canonical `glm_data.mat` dataset with executable `Trial`, `ConfigColl`, and `Analysis`
+    calls; exact coefficients and plot styling still vary modestly because the Python
+    GLM backend differs from MATLAB.
+  python_sections: 9
+  python_expected_figures: 5
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 9
+  matlab_published_figures: 5
+  section_delta: 0
   figure_delta: 0
 - topic: DecodingExample
   source_matlab: DecodingExample.mlx
@@ -172,12 +195,12 @@ items:
 - topic: PPSimExample
   source_matlab: PPSimExample.mlx
   python_notebook: notebooks/PPSimExample.ipynb
-  fidelity_status: partial
-  remaining_differences: The notebook now executes the full Python point-process simulation
-    and analysis workflow without placeholders, but it still uses the native `CIFModel`
-    path rather than the original MATLAB/Simulink recursive CIF model.
-  python_sections: 9
-  python_expected_figures: 3
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now follows the MATLAB recursive-CIF workflow
+    with the native Python `CIF.simulateCIF` path; exact Simulink block timing and
+    solver semantics are still not fixture-matched one-for-one against MATLAB.
+  python_sections: 17
+  python_expected_figures: 8
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -187,8 +210,8 @@ items:
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 17
   matlab_published_figures: 8
-  section_delta: -8
-  figure_delta: -5
+  section_delta: 0
+  figure_delta: 0
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb

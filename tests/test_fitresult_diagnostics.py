@@ -49,9 +49,74 @@ def test_fitresult_plotting_methods_return_matplotlib_objects() -> None:
     plt.close("all")
 
 
+def test_fitresult_matlab_style_helpers_expose_plot_params_and_subsets() -> None:
+    fit = _build_fit_result()
+
+    fit.setNeuronName("unitA")
+    plot_params = fit.getPlotParams()
+    coeffs, labels, se = fit.getCoeffsWithLabels(1)
+    param_vals, param_se, param_sig = fit.getParam(labels[0], 1)
+    subset = fit.getSubsetFitResult([1])
+    fit.setKSStats(np.array([0.1]), np.array([0.2]), np.array([0.3]), np.array([0.4]), np.array([0.5]))
+    fit.setInvGausStats(np.array([0.1]), np.array([0.2]), np.array([0.3]))
+    fit.setFitResidual({"value": 1})
+
+    assert fit.neuronNumber == "unitA"
+    assert plot_params["bAct"].shape[1] == fit.numResults
+    assert len(labels) == coeffs.size == se.size
+    assert param_vals.size == param_se.size == param_sig.size == 1
+    assert subset.numResults == 1
+    assert fit.KSStats[0, 0] == 0.5
+    assert fit.invGausStats["X"].shape == (1,)
+    assert fit.Residual == {"value": 1}
+
+    ax1 = fit.plotCoeffsWithoutHistory()
+    ax2 = fit.plotHistCoeffs()
+    assert hasattr(ax1, "plot")
+    assert hasattr(ax2, "plot")
+    plt.close("all")
+
+
 def test_fitsummary_plotsummary_returns_figure() -> None:
     fit = _build_fit_result()
     summary = FitSummary([fit])
     fig = summary.plotSummary()
     assert len(fig.axes) == 3
+    plt.close("all")
+
+
+def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
+    fit = _build_fit_result()
+    summary = FitSummary([fit])
+
+    coeff_mat, labels, se_mat = summary.getCoeffs(1)
+    sig = summary.getSigCoeffs(1)
+    bins, edges, percent_sig = summary.binCoeffs(-5.0, 5.0, 1.0)
+    summary.setCoeffRange(-2.0, 2.0)
+
+    assert coeff_mat.shape == se_mat.shape
+    assert coeff_mat.shape[0] == summary.numNeurons
+    assert sig.shape == coeff_mat.shape
+    assert len(labels) == coeff_mat.shape[1]
+    assert bins.ndim == 1
+    assert edges.ndim == 1
+    assert 0.0 <= percent_sig <= 1.0
+    assert summary.coeffMin == -2.0
+    assert summary.coeffMax == 2.0
+
+    fig1 = summary.plotIC()
+    ax1 = summary.plotAIC()
+    ax2 = summary.plotBIC()
+    ax3 = summary.plotlogLL()
+    fig2 = summary.plotResidualSummary()
+    ax4 = summary.boxPlot(coeff_mat, dataLabels=labels)
+    restored = FitSummary.fromStructure(summary.toStructure())
+
+    assert len(fig1.axes) == 3
+    assert hasattr(ax1, "boxplot")
+    assert hasattr(ax2, "boxplot")
+    assert hasattr(ax3, "boxplot")
+    assert len(fig2.axes) == 1
+    assert hasattr(ax4, "boxplot")
+    assert restored.numNeurons == summary.numNeurons
     plt.close("all")

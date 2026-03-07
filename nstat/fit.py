@@ -81,6 +81,46 @@ def _ks_curve(uniforms: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]
     return ideal, u, ci
 
 
+def _extract_stat_component(stat: Any, candidates: Sequence[str]) -> Any:
+    if stat is None:
+        return None
+    if isinstance(stat, dict):
+        for key in candidates:
+            if key in stat:
+                return stat[key]
+        return None
+    for key in candidates:
+        if hasattr(stat, key):
+            return getattr(stat, key)
+    return None
+
+
+def _extract_standard_errors(stat: Any, size: int) -> np.ndarray:
+    values = _extract_stat_component(stat, ("se", "std_err", "stderr", "standard_error", "standard_errors"))
+    if values is None:
+        return np.full(size, np.nan, dtype=float)
+    arr = np.asarray(values, dtype=float).reshape(-1)
+    if arr.size == size:
+        return arr
+    out = np.full(size, np.nan, dtype=float)
+    out[: min(size, arr.size)] = arr[: min(size, arr.size)]
+    return out
+
+
+def _extract_significance_mask(stat: Any, coeffs: np.ndarray, standard_errors: np.ndarray) -> np.ndarray:
+    pvalues = _extract_stat_component(stat, ("p", "p_values", "pvalues", "pValues"))
+    if pvalues is not None:
+        p_arr = np.asarray(pvalues, dtype=float).reshape(-1)
+        out = np.zeros(coeffs.size, dtype=float)
+        out[: min(coeffs.size, p_arr.size)] = (p_arr[: min(coeffs.size, p_arr.size)] < 0.05).astype(float)
+        return out
+    valid = np.isfinite(standard_errors) & (np.abs(standard_errors) > 0.0)
+    out = np.zeros(coeffs.size, dtype=float)
+    if np.any(valid):
+        out[valid] = (np.abs(coeffs[valid] / standard_errors[valid]) >= 1.96).astype(float)
+    return out
+
+
 @dataclass
 class _SingleFit:
     name: str
@@ -255,8 +295,13 @@ class FitResult:
             self.fits = []
             for idx in range(self.numResults):
                 coeff = self.b[idx]
-                intercept = float(coeff[0]) if coeff.size else 0.0
-                beta = coeff[1:] if coeff.size > 1 else np.array([], dtype=float)
+                labels = self.covLabels[idx] if idx < len(self.covLabels) else []
+                if coeff.size == len(labels):
+                    intercept = 0.0
+                    beta = coeff.copy()
+                else:
+                    intercept = float(coeff[0]) if coeff.size else 0.0
+                    beta = coeff[1:] if coeff.size > 1 else np.array([], dtype=float)
                 self.fits.append(
                     _SingleFit(
                         name=self.configNames[idx],
@@ -275,7 +320,19 @@ class FitResult:
         return self.lambda_signal
 
     @property
-    def lambda_sig(self) -> Covariate:
+    def lambda_obj(self) -> Covariate:
+        return self.lambda_signal
+
+    @property
+    def lambda_model(self) -> Covariate:
+        return self.lambda_signal
+
+    @property
+    def lambda_result(self) -> Covariate:
+        return self.lambda_signal
+
+    @property
+    def lambdaObj(self) -> Covariate:
         return self.lambda_signal
 
     @property
@@ -283,7 +340,7 @@ class FitResult:
         return self.lambda_signal
 
     @property
-    def lambdaObj(self) -> Covariate:
+    def lambda_sig(self) -> Covariate:
         return self.lambda_signal
 
     @property
@@ -302,6 +359,88 @@ class FitResult:
     def lambda_rate(self) -> np.ndarray:
         return np.asarray(self.lambda_signal.data, dtype=float)
 
+    def __getattr__(self, name: str):
+        if name == "lambda":
+            return self.lambda_signal
+        raise AttributeError(f"{type(self).__name__!r} object has no attribute {name!r}")
+
+    def setNeuronName(self, name: str):
+        if isinstance(self.neuralSpikeTrain, nspikeTrain):
+            self.neuralSpikeTrain.setName(str(name))
+        elif isinstance(self.neuralSpikeTrain, Sequence):
+            for train in self.neuralSpikeTrain:
+                if hasattr(train, "setName"):
+                    train.setName(str(name))
+        self.neuronNumber = str(name)
+        return self
+
+    def mapCovLabelsToUniqueLabels(self):
+        self.uniqueCovLabels = _ordered_unique([label for labels in self.covLabels for label in labels])
+        self.indicesToUniqueLabels = []
+        self.flatMask = np.zeros((len(self.uniqueCovLabels), max(len(self.covLabels), 1)), dtype=int)
+        for fit_idx, labels in enumerate(self.covLabels):
+            indices = [self.uniqueCovLabels.index(label) + 1 for label in labels]
+            self.indicesToUniqueLabels.append(indices)
+            if indices:
+                self.flatMask[np.asarray(indices, dtype=int) - 1, fit_idx] = 1
+        self.computePlotParams()
+        return self
+
+    def getSubsetFitResult(self, subfits) -> "FitResult":
+        indices = np.asarray(subfits if isinstance(subfits, Sequence) and not isinstance(subfits, (str, bytes)) else [subfits], dtype=int).reshape(-1)
+        zero_based = [int(idx) - 1 for idx in indices]
+        from .trial import ConfigCollection
+
+        config_items = []
+        if self.configs is not None and hasattr(self.configs, "configArray"):
+            config_items = [self.configs.configArray[idx] for idx in zero_based]
+        subset = FitResult(
+            self.neuralSpikeTrain,
+            [self.covLabels[idx] for idx in zero_based],
+            [self.numHist[idx] for idx in zero_based],
+            [self.histObjects[idx] for idx in zero_based],
+            [self.ensHistObjects[idx] for idx in zero_based],
+            self.lambda_signal,
+            [self.b[idx] for idx in zero_based],
+            self.dev[zero_based],
+            [self.stats[idx] for idx in zero_based],
+            self.AIC[zero_based],
+            self.BIC[zero_based],
+            self.logLL[zero_based],
+            ConfigCollection(config_items),
+            [self.XvalData[idx] for idx in zero_based] if self.XvalData else [],
+            [self.XvalTime[idx] for idx in zero_based] if self.XvalTime else [],
+            [self.fitType[idx] for idx in zero_based],
+            fits=[self.fits[idx] for idx in zero_based],
+        )
+        subset.validation = self.validation
+        return subset
+
+    def addParamsToFit(self, neuronNum, lambda_signal, b, dev, stats, AIC, BIC, logLL, configColl):
+        del neuronNum
+        merged = self.mergeResults(
+            FitResult(
+                self.neuralSpikeTrain,
+                [list(labels) for labels in getattr(configColl, "configNames", [])] if False else self.covLabels[:0],
+                [],
+                [],
+                [],
+                lambda_signal,
+                b,
+                dev,
+                stats,
+                AIC,
+                BIC,
+                logLL,
+                configColl,
+                [],
+                [],
+                self.fitType[0] if self.fitType else "poisson",
+            )
+        )
+        self.__dict__.update(merged.__dict__)
+        return self
+
     def getCoeffs(self, fit_num: int = 1) -> np.ndarray:
         return self.b[fit_num - 1].copy()
 
@@ -311,6 +450,88 @@ class FitResult:
         if num_hist <= 0:
             return np.array([], dtype=float)
         return coeff[-num_hist:]
+
+    def getCoeffIndex(self, fit_num: int = 1, sortByEpoch: int = 0):
+        del sortByEpoch
+        labels = list(self.covLabels[fit_num - 1]) if fit_num - 1 < len(self.covLabels) else []
+        num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
+        non_hist_count = max(len(labels) - num_hist, 0)
+        coeff_index = np.arange(1, non_hist_count + 1, dtype=int)
+        epoch_id = np.zeros(coeff_index.size, dtype=int)
+        return coeff_index, epoch_id, 0
+
+    def getHistIndex(self, fit_num: int = 1, sortByEpoch: int = 0):
+        del sortByEpoch
+        labels = list(self.covLabels[fit_num - 1]) if fit_num - 1 < len(self.covLabels) else []
+        num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
+        if num_hist <= 0:
+            return np.array([], dtype=int), np.array([], dtype=int), 0
+        start = max(len(labels) - num_hist, 0)
+        hist_index = np.arange(start + 1, len(labels) + 1, dtype=int)
+        epoch_id = np.zeros(hist_index.size, dtype=int)
+        return hist_index, epoch_id, 0
+
+    def getParam(self, paramNames, fit_num: int = 1):
+        names = [paramNames] if isinstance(paramNames, str) else list(paramNames)
+        coeffs, labels, se = self.getCoeffsWithLabels(fit_num)
+        sig = _extract_significance_mask(self.stats[fit_num - 1] if fit_num - 1 < len(self.stats) else None, coeffs, se)
+        indices = [labels.index(name) for name in names if name in labels]
+        return coeffs[indices], se[indices], sig[indices]
+
+    def getCoeffsWithLabels(self, fit_num: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
+        coeffs = self.getCoeffs(fit_num)
+        labels = list(self.covLabels[fit_num - 1]) if fit_num - 1 < len(self.covLabels) else [f"b_{idx + 1}" for idx in range(coeffs.size)]
+        if coeffs.size == len(labels) + 1:
+            labels = ["Intercept", *labels]
+        elif coeffs.size != len(labels):
+            labels = [f"b_{idx + 1}" for idx in range(coeffs.size)]
+        se = _extract_standard_errors(self.stats[fit_num - 1] if fit_num - 1 < len(self.stats) else None, coeffs.size)
+        return coeffs, labels, se
+
+    def computePlotParams(self, fit_num: int | None = None):
+        del fit_num
+        if not self.uniqueCovLabels:
+            self.mapCovLabelsToUniqueLabels()
+            return self.plotParams
+
+        b_act = np.full((len(self.uniqueCovLabels), self.numResults), np.nan, dtype=float)
+        se_act = np.full((len(self.uniqueCovLabels), self.numResults), np.nan, dtype=float)
+        sig_index = np.zeros((len(self.uniqueCovLabels), self.numResults), dtype=float)
+        for result_index in range(1, self.numResults + 1):
+            coeffs, labels, se = self.getCoeffsWithLabels(result_index)
+            sig = _extract_significance_mask(self.stats[result_index - 1] if result_index - 1 < len(self.stats) else None, coeffs, se)
+            for coeff_value, coeff_se, coeff_sig, label in zip(coeffs, se, sig, labels, strict=False):
+                if label not in self.uniqueCovLabels:
+                    continue
+                row = self.uniqueCovLabels.index(label)
+                b_act[row, result_index - 1] = coeff_value
+                se_act[row, result_index - 1] = coeff_se
+                sig_index[row, result_index - 1] = coeff_sig
+        self.plotParams = {
+            "bAct": b_act,
+            "seAct": se_act,
+            "sigIndex": sig_index,
+            "xLabels": list(self.uniqueCovLabels),
+            "numResultsCoeffPresent": np.sum(np.isfinite(b_act), axis=1).astype(int),
+        }
+        return self.plotParams
+
+    def getPlotParams(self):
+        return self.computePlotParams()
+
+    def isValDataPresent(self) -> bool:
+        if not self.XvalTime or not self.XvalData:
+            return False
+        for time in self.XvalTime:
+            arr = np.asarray(time, dtype=float).reshape(-1)
+            if arr.size >= 2 and arr[-1] > arr[0]:
+                return True
+        return False
+
+    def plotValidation(self):
+        if self.validation is not None:
+            return self.validation.plotResults()
+        return None
 
     def mergeResults(self, other: "FitResult") -> "FitResult":
         from .trial import ConfigCollection
@@ -381,7 +602,13 @@ class FitResult:
         acf_ci = 1.96 / np.sqrt(float(uniforms.size)) if uniforms.size else np.nan
         gauss = np.clip(uniforms, 1e-6, 1.0 - 1e-6)
         coeffs = self.getCoeffs(fit_num)
-        coeff_labels = ["Intercept", *self.covLabels[fit_num - 1]] if fit_num - 1 < len(self.covLabels) else ["Intercept"]
+        labels = self.covLabels[fit_num - 1] if fit_num - 1 < len(self.covLabels) else []
+        if coeffs.size == len(labels):
+            coeff_labels = list(labels)
+        elif coeffs.size == len(labels) + 1:
+            coeff_labels = ["Intercept", *labels]
+        else:
+            coeff_labels = [f"b_{idx + 1}" for idx in range(coeffs.size)]
         diagnostics: dict[str, np.ndarray | float] = {
             "time": time,
             "rate_hz": rate_hz,
@@ -440,6 +667,31 @@ class FitResult:
             "counts/bin",
             ["residual"],
         )
+
+    def evalLambda(self, fit_num: int = 1, newData=None) -> np.ndarray:
+        coeffs = self.getCoeffs(fit_num)
+        x = np.asarray(newData if newData is not None else [], dtype=float)
+        if x.ndim == 0:
+            x = x.reshape(1, 1)
+        elif x.ndim == 1:
+            x = x[:, None]
+        if isinstance(newData, list):
+            arrays = [np.asarray(item, dtype=float).reshape(-1) for item in newData]
+            x = np.column_stack(arrays)
+        n_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
+        if x.shape[1] >= coeffs.size:
+            eta = x[:, : coeffs.size] @ coeffs
+        elif x.shape[1] >= max(coeffs.size - 1, 0):
+            eta = coeffs[0] + x[:, : coeffs.size - 1] @ coeffs[1:]
+        elif n_hist and x.shape[1] >= coeffs.size - n_hist:
+            eta = x[:, : coeffs.size - n_hist] @ coeffs[: coeffs.size - n_hist]
+        elif n_hist and x.shape[1] >= coeffs.size - n_hist - 1:
+            use = coeffs.size - n_hist - 1
+            eta = coeffs[0] + x[:, :use] @ coeffs[1 : use + 1]
+        else:
+            raise ValueError("newData does not align with the fitted coefficient count")
+        rate = np.exp(np.clip(eta, -20.0, 20.0)) * float(self.lambda_signal.sampleRate)
+        return rate.reshape(np.asarray(newData[0] if isinstance(newData, list) else x[:, 0]).shape) if x.size else rate
 
     def plotResults(self, fit_num: int = 1, handle=None):
         fig = handle if handle is not None else plt.figure(figsize=(11.5, 8.0))
@@ -520,17 +772,52 @@ class FitResult:
         ax.set_title("GLM Coefficients")
         return ax
 
-    @property
-    def lambda_obj(self) -> Covariate:
-        return self.lambda_signal
+    def plotCoeffsWithoutHistory(self, fit_num: int = 1, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
+        del sortByEpoch, plotSignificance
+        coeffs, labels, _ = self.getCoeffsWithLabels(fit_num)
+        num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
+        if num_hist > 0:
+            coeffs = coeffs[:-num_hist]
+            labels = labels[:-num_hist]
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        xpos = np.arange(coeffs.size, dtype=float)
+        ax.axhline(0.0, color="0.6", linewidth=1.0)
+        ax.plot(xpos, coeffs, "o-", color="tab:blue", linewidth=1.0)
+        ax.set_xticks(xpos, labels, rotation=45, ha="right")
+        ax.set_ylabel("coefficient value")
+        ax.set_title("GLM Coefficients Without History")
+        return ax
 
-    @property
-    def lambda_model(self) -> Covariate:
-        return self.lambda_signal
+    def plotHistCoeffs(self, fit_num: int = 1, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
+        del sortByEpoch, plotSignificance
+        coeffs = self.getHistCoeffs(fit_num)
+        labels = list(self.covLabels[fit_num - 1])[-coeffs.size :] if coeffs.size and fit_num - 1 < len(self.covLabels) else [f"hist_{idx + 1}" for idx in range(coeffs.size)]
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        xpos = np.arange(coeffs.size, dtype=float)
+        ax.axhline(0.0, color="0.6", linewidth=1.0)
+        if coeffs.size:
+            ax.plot(xpos, coeffs, "o-", color="tab:orange", linewidth=1.0)
+            ax.set_xticks(xpos, labels, rotation=45, ha="right")
+        ax.set_ylabel("history coefficient")
+        ax.set_title("History Coefficients")
+        return ax
 
-    @property
-    def lambda_result(self) -> Covariate:
-        return self.lambda_signal
+    def setKSStats(self, Z, U, xAxis, KSSorted, ks_stat):
+        self.Z = np.asarray(Z, dtype=float)
+        self.U = np.asarray(U, dtype=float)
+        self.X = np.asarray(xAxis, dtype=float)
+        self.KSSorted = np.asarray(KSSorted, dtype=float)
+        value = np.asarray(ks_stat, dtype=float).reshape(-1)
+        self.KSStats[: value.size, 0] = value
+        return self
+
+    def setInvGausStats(self, X, rhoSig, confBoundSig):
+        self.invGausStats = {"X": np.asarray(X, dtype=float), "rhoSig": rhoSig, "confBoundSig": confBoundSig}
+        return self
+
+    def setFitResidual(self, M):
+        self.Residual = M
+        return self
 
     def toStructure(self) -> dict[str, Any]:
         return {
@@ -566,6 +853,11 @@ class FitResult:
                 if isinstance(self.neuralSpikeTrain, nspikeTrain)
                 else [train.maxTime for train in self.neuralSpikeTrain]
             ),
+            "XvalData": [
+                np.asarray(item, dtype=float).tolist() if not isinstance(item, list) else item
+                for item in self.XvalData
+            ],
+            "XvalTime": [np.asarray(item, dtype=float).tolist() for item in self.XvalTime],
         }
 
     @staticmethod
@@ -605,10 +897,14 @@ class FitResult:
             structure.get("BIC", []),
             structure.get("logLL", []),
             configColl,
-            [],
-            [],
+            structure.get("XvalData", []),
+            structure.get("XvalTime", []),
             structure.get("fitType", "poisson"),
         )
+
+    @staticmethod
+    def CellArrayToStructure(fitResObjCell):
+        return [fit.toStructure() for fit in fitResObjCell]
 
 
 class FitSummary:
@@ -636,6 +932,11 @@ class FitSummary:
         self.BIC = np.nanmean(bic, axis=0)
         self.logLL = np.nanmean(logll, axis=0)
         self.KSStats = np.column_stack([np.nanmean(ks, axis=0), np.nanstd(ks, axis=0)])
+        self.uniqueCovLabels: list[str] = []
+        self.coeffMin = np.nan
+        self.coeffMax = np.nan
+        self.plotParams: dict[str, Any] = {}
+        self.mapCovLabelsToUniqueLabels()
 
     def getDiffAIC(self, idx: int = 1) -> np.ndarray:
         base = self.AIC[idx - 1]
@@ -648,6 +949,123 @@ class FitSummary:
     def getDifflogLL(self, idx: int = 1) -> np.ndarray:
         base = self.logLL[idx - 1]
         return self.logLL - base
+
+    def mapCovLabelsToUniqueLabels(self):
+        self.uniqueCovLabels = _ordered_unique(
+            [label for fit in self.fitResCell for labels in fit.covLabels for label in labels]
+        )
+        return self.uniqueCovLabels
+
+    def setCoeffRange(self, minVal, maxVal):
+        self.coeffMin = float(minVal)
+        self.coeffMax = float(maxVal)
+        return self
+
+    def getCoeffs(self, fitNum: int = 1):
+        labels = self.uniqueCovLabels
+        coeff_rows = []
+        se_rows = []
+        for fit in self.fitResCell:
+            coeffs, fit_labels, se = fit.getCoeffsWithLabels(fitNum)
+            row = np.full(len(labels), np.nan, dtype=float)
+            se_row = np.full(len(labels), np.nan, dtype=float)
+            for coeff, coeff_se, label in zip(coeffs, se, fit_labels, strict=False):
+                if label in labels:
+                    idx = labels.index(label)
+                    row[idx] = coeff
+                    se_row[idx] = coeff_se
+            coeff_rows.append(row)
+            se_rows.append(se_row)
+        return np.asarray(coeff_rows, dtype=float), labels, np.asarray(se_rows, dtype=float)
+
+    def getHistCoeffs(self, fitNum: int = 1):
+        labels = _ordered_unique(
+            [label for fit in self.fitResCell for label in fit.covLabels[fitNum - 1][-int(fit.numHist[fitNum - 1]) :] if fitNum - 1 < len(fit.covLabels) and int(fit.numHist[fitNum - 1]) > 0]
+        )
+        if not labels:
+            return np.zeros((self.numNeurons, 0), dtype=float), [], np.zeros((self.numNeurons, 0), dtype=float)
+        coeff_rows = []
+        se_rows = []
+        for fit in self.fitResCell:
+            coeffs = fit.getHistCoeffs(fitNum)
+            fit_labels = list(fit.covLabels[fitNum - 1])[-coeffs.size :] if coeffs.size and fitNum - 1 < len(fit.covLabels) else []
+            se = _extract_standard_errors(fit.stats[fitNum - 1] if fitNum - 1 < len(fit.stats) else None, fit.getCoeffs(fitNum).size)
+            se_hist = se[-coeffs.size :] if coeffs.size else np.array([], dtype=float)
+            row = np.full(len(labels), np.nan, dtype=float)
+            se_row = np.full(len(labels), np.nan, dtype=float)
+            for coeff, coeff_se, label in zip(coeffs, se_hist, fit_labels, strict=False):
+                if label in labels:
+                    idx = labels.index(label)
+                    row[idx] = coeff
+                    se_row[idx] = coeff_se
+            coeff_rows.append(row)
+            se_rows.append(se_row)
+        return np.asarray(coeff_rows, dtype=float), labels, np.asarray(se_rows, dtype=float)
+
+    def getSigCoeffs(self, fitNum: int = 1):
+        coeff_mat, labels, se_mat = self.getCoeffs(fitNum)
+        sig = np.zeros_like(coeff_mat, dtype=float)
+        for row_idx, fit in enumerate(self.fitResCell):
+            coeffs, fit_labels, se = fit.getCoeffsWithLabels(fitNum)
+            mask = _extract_significance_mask(fit.stats[fitNum - 1] if fitNum - 1 < len(fit.stats) else None, coeffs, se)
+            for label, value in zip(fit_labels, mask, strict=False):
+                if label in labels:
+                    sig[row_idx, labels.index(label)] = value
+        return sig
+
+    def binCoeffs(self, minVal, maxVal, binSize):
+        coeff_mat, _, _ = self.getCoeffs(1)
+        values = coeff_mat[np.isfinite(coeff_mat)]
+        edges = np.arange(float(minVal), float(maxVal) + float(binSize), float(binSize), dtype=float)
+        if edges.size < 2:
+            edges = np.array([float(minVal), float(maxVal)], dtype=float)
+        N, edges = np.histogram(values, bins=edges)
+        percentSig = float(np.mean(self.getSigCoeffs(1))) if coeff_mat.size else 0.0
+        return N, edges, percentSig
+
+    def plotIC(self, handle=None):
+        fig = handle if handle is not None else plt.figure(figsize=(9.0, 3.5))
+        fig.clear()
+        axes = fig.subplots(1, 3)
+        self.plotAIC(handle=axes[0])
+        self.plotBIC(handle=axes[1])
+        self.plotlogLL(handle=axes[2])
+        fig.tight_layout()
+        return fig
+
+    def plotAIC(self, handle=None):
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
+        ax.boxplot(_pad_rows([np.asarray(fit.AIC, dtype=float) for fit in self.fitResCell]).T, labels=self.fitNames)
+        ax.set_ylabel("AIC")
+        ax.set_title("AIC Across Neurons")
+        return ax
+
+    def plotBIC(self, handle=None):
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
+        ax.boxplot(_pad_rows([np.asarray(fit.BIC, dtype=float) for fit in self.fitResCell]).T, labels=self.fitNames)
+        ax.set_ylabel("BIC")
+        ax.set_title("BIC Across Neurons")
+        return ax
+
+    def plotlogLL(self, handle=None):
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
+        ax.boxplot(_pad_rows([np.asarray(fit.logLL, dtype=float) for fit in self.fitResCell]).T, labels=self.fitNames)
+        ax.set_ylabel("log likelihood")
+        ax.set_title("log likelihood Across Neurons")
+        return ax
+
+    def plotResidualSummary(self, handle=None):
+        fig = handle if handle is not None else plt.figure(figsize=(8.0, 3.5))
+        fig.clear()
+        ax = fig.subplots(1, 1)
+        for fit in self.fitResCell:
+            residual = fit.computeFitResidual().dataToMatrix().reshape(-1)
+            ax.plot(residual, alpha=0.6)
+        ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
+        ax.set_title("Residual Summary")
+        ax.set_ylabel("count residual")
+        fig.tight_layout()
+        return fig
 
     def plotSummary(self, handle=None):
         fig = handle if handle is not None else plt.figure(figsize=(10.0, 4.5))
@@ -667,6 +1085,29 @@ class FitSummary:
             ax.grid(axis="y", alpha=0.25)
         fig.tight_layout()
         return fig
+
+    def boxPlot(self, X, diffIndex: int = 1, h=None, dataLabels=None, **kwargs):
+        del diffIndex, kwargs
+        ax = h if h is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        values = np.asarray(X, dtype=float)
+        labels = list(dataLabels) if dataLabels is not None else list(self.fitNames[: values.shape[1] if values.ndim == 2 else 1])
+        if values.ndim == 1:
+            values = values[:, None]
+        ax.boxplot(values, labels=labels)
+        return ax
+
+    def toStructure(self) -> dict[str, Any]:
+        return {
+            "fitResCell": FitResult.CellArrayToStructure(self.fitResCell),
+            "numNeurons": self.numNeurons,
+            "numResults": self.numResults,
+            "fitNames": list(self.fitNames),
+        }
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any]) -> "FitSummary":
+        fits = [FitResult.fromStructure(item) for item in structure.get("fitResCell", [])]
+        return FitSummary(fits)
 
 
 class FitResSummary(FitSummary):

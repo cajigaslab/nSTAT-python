@@ -23,11 +23,13 @@ def test_parity_report_highlights_current_constraints() -> None:
     assert "Notebook Fidelity Summary" in text
     assert "Simulink Fidelity Summary" in text
     assert "Remaining Notebook-Fidelity Deltas" in text
-    assert "MATLAB-helpfile notebook ports are still marked partial" in text
-    assert "AnalysisExamples" in text
+    assert "all tracked MATLAB-helpfile notebook ports are marked high fidelity or exact" in text
+    assert "No partial notebook-fidelity items remain in `tools/notebooks/parity_notes.yml`." in text
     assert "No partial or missing items remain in the mapping inventory." in text
     assert "Remaining Class-Fidelity Deltas" in text
-    assert "partial fidelity for several MATLAB-facing classes and workflows" in text
+    assert "the class audit reports no partial, wrapper-only, or missing items" in text
+    assert "No partial, wrapper-only, or missing class-fidelity items remain." in text
     assert "Simulink Fidelity Deltas" in text
-    assert "PointProcessSimulation" in text
+    assert "all inventoried Simulink-backed workflows have an explicit Python execution strategy" in text
+    assert "No partial, fallback, or unsupported Simulink execution paths remain in the audit." in text
     assert "nstatOpenHelpPage" in text

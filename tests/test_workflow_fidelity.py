@@ -9,6 +9,7 @@ from nstat.Covariate import Covariate
 from nstat.Events import Events
 from nstat.History import History
 from nstat.FitResult import FitResult
+from nstat.analysis import compHistEnsCoeff, compHistEnsCoeffForAll, computeGrangerCausalityMatrix, computeNeighbors, spikeTrigAvg
 from nstat.nstColl import nstColl
 from nstat.nspikeTrain import nspikeTrain
 
@@ -24,6 +25,21 @@ def _build_trial() -> Trial:
         ]
     )
     return Trial(spikes, CovColl([stim, vel]), Events([0.2], ["cue"]), History([0.0, 0.1, 0.2]))
+
+
+def _build_dense_trial() -> Trial:
+    time = np.arange(0.0, 2.0, 0.05)
+    stim = Covariate(time, np.sin(2 * np.pi * time), "Stimulus", "time", "s", "", ["stim"])
+    vel = Covariate(time, np.cos(2 * np.pi * time), "Velocity", "time", "s", "", ["vel"])
+    spikes = nstColl(
+        [
+            nspikeTrain([0.10, 0.25, 0.55, 0.90, 1.10, 1.55, 1.75], "1", 20.0, 0.0, 1.95, makePlots=-1),
+            nspikeTrain([0.15, 0.35, 0.60, 0.95, 1.25, 1.45, 1.80], "2", 20.0, 0.0, 1.95, makePlots=-1),
+        ]
+    )
+    trial = Trial(spikes, CovColl([stim, vel]), Events([0.2], ["cue"]), History([0.0, 0.05, 0.10]))
+    trial.setEnsCovHist([0.0, 0.05, 0.10])
+    return trial
 
 
 def test_analysis_returns_matlab_style_fitresult_surface() -> None:
@@ -82,6 +98,101 @@ def test_cif_instantiation_evaluation_and_simulate_from_lambda() -> None:
     assert sim2.numSpikeTrains == 1
 
 
+def test_cif_gamma_methods_and_copy_follow_matlab_surface() -> None:
+    history = History([0.0, 0.1, 0.2])
+    train = nspikeTrain([0.05, 0.15], "1", 10.0, 0.0, 0.3, makePlots=-1)
+    cif = CIF([0.2, -0.1], ["stim"], ["stim"], fitType="poisson", histCoeffs=[0.3, -0.2], historyObj=history, nst=train)
+
+    copied = cif.CIFCopy()
+    assert copied is not cif
+    assert copied.history is not cif.history
+    assert copied.spikeTrain is not cif.spikeTrain
+    assert copied.isSymBeta() is False
+
+    stim_val = np.array([0.4], dtype=float)
+    gamma = np.array([0.8, 1.2], dtype=float)
+    ld = cif.evalLDGamma(stim_val, time_index=2, gamma=gamma)
+    log_ld = cif.evalLogLDGamma(stim_val, time_index=2, gamma=gamma)
+    grad = cif.evalGradientLDGamma(stim_val, time_index=2, gamma=gamma)
+    grad_log = cif.evalGradientLogLDGamma(stim_val, time_index=2, gamma=gamma)
+    jac = cif.evalJacobianLDGamma(stim_val, time_index=2, gamma=gamma)
+    jac_log = cif.evalJacobianLogLDGamma(stim_val, time_index=2, gamma=gamma)
+
+    assert ld > 0.0
+    np.testing.assert_allclose(log_ld, np.log(ld))
+    assert grad.shape == (1, 1)
+    assert grad_log.shape == (1, 1)
+    assert jac.shape == (1, 1)
+    assert jac_log.shape == (1, 1)
+
+
+def test_simulatecif_uses_temporal_fir_filtering_for_stimulus_drive() -> None:
+    time = np.arange(0.0, 0.5, 0.1, dtype=float)
+    stim_values = np.array([0.0, 1.0, 0.0, -1.0, 0.5], dtype=float)
+    stim = Covariate(time, stim_values, "Stimulus", "time", "s", "", ["stim"])
+    ens = Covariate(time, np.zeros_like(time), "Ensemble", "time", "s", "", ["ens"])
+
+    _, lambda_cov = CIF.simulateCIF(
+        -1.5,
+        np.zeros(0, dtype=float),
+        np.array([1.0, -0.5], dtype=float),
+        np.array([0.0], dtype=float),
+        stim,
+        ens,
+        numRealizations=1,
+        simType="binomial",
+        seed=1,
+        return_lambda=True,
+    )
+
+    expected_drive = np.convolve(stim_values, np.array([1.0, -0.5], dtype=float), mode="full")[: time.size]
+    expected_eta = -1.5 + expected_drive
+    expected_lambda = (1.0 / (1.0 + np.exp(-np.clip(expected_eta, -20.0, 20.0)))) / 0.1
+    np.testing.assert_allclose(lambda_cov.data[:, 0], expected_lambda)
+
+
+def test_simulatecif_accepts_multi_input_kernel_bank() -> None:
+    time = np.arange(0.0, 0.4, 0.1, dtype=float)
+    stim_values = np.column_stack(
+        [
+            np.array([1.0, 0.0, 0.5, 0.0], dtype=float),
+            np.array([0.0, 0.25, 0.0, 0.25], dtype=float),
+        ]
+    )
+    ens_values = np.column_stack(
+        [
+            np.array([0.0, 1.0, 0.0, 0.0], dtype=float),
+            np.array([0.0, 0.0, 1.0, 0.0], dtype=float),
+        ]
+    )
+    stim = Covariate(time, stim_values, "Stimulus", "time", "s", "", ["x1", "x2"])
+    ens = Covariate(time, ens_values, "Ensemble", "time", "s", "", ["n1", "n2"])
+
+    _, lambda_cov = CIF.simulateCIF(
+        -2.0,
+        np.zeros(0, dtype=float),
+        [np.array([1.0, 0.5], dtype=float), np.array([-0.25], dtype=float)],
+        [np.array([0.75], dtype=float), np.array([-0.5], dtype=float)],
+        stim,
+        ens,
+        numRealizations=1,
+        simType="poisson",
+        seed=2,
+        return_lambda=True,
+    )
+
+    expected_stim = (
+        np.convolve(stim_values[:, 0], np.array([1.0, 0.5], dtype=float), mode="full")[: time.size]
+        + np.convolve(stim_values[:, 1], np.array([-0.25], dtype=float), mode="full")[: time.size]
+    )
+    expected_ens = (
+        np.convolve(ens_values[:, 0], np.array([0.75], dtype=float), mode="full")[: time.size]
+        + np.convolve(ens_values[:, 1], np.array([-0.5], dtype=float), mode="full")[: time.size]
+    )
+    expected_lambda = np.exp(np.clip(-2.0 + expected_stim + expected_ens, -20.0, 20.0))
+    np.testing.assert_allclose(lambda_cov.data[:, 0], expected_lambda)
+
+
 def test_decoding_aliases_produce_state_and_covariance_outputs() -> None:
     obs = np.array([[1.0], [0.5], [0.2]], dtype=float)
     a = np.array([[1.0]], dtype=float)
@@ -94,6 +205,33 @@ def test_decoding_aliases_produce_state_and_covariance_outputs() -> None:
     out = DecodingAlgorithms.PPDecodeFilterLinear(obs, a, h, q, r, x0, p0)
     assert out["state"].shape == (3, 1)
     assert out["cov"].shape == (3, 1, 1)
+
+
+def test_analysis_helper_surfaces_match_matlab_workflow_names() -> None:
+    trial = _build_dense_trial()
+    fit, ensemble_cov, tcc = compHistEnsCoeff(trial, [0.0, 0.05, 0.10], 1, [2], None, 0)
+    assert isinstance(fit, FitResult)
+    assert ensemble_cov.numCov >= 1
+    assert tcc.numConfigs == 1
+
+    all_fits, all_ensemble_cov, all_tcc = compHistEnsCoeffForAll(trial, [0.0, 0.05, 0.10], 0)
+    assert len(all_fits) == 2
+    assert all_ensemble_cov is not None
+    assert len(all_tcc) == 2
+
+    neighbor_fit, neighbor_tcc = computeNeighbors(trial, 1, trial.sampleRate, [0.0, 0.05, 0.10], 0)
+    assert isinstance(neighbor_fit, FitResult)
+    assert neighbor_tcc.numConfigs == 3
+
+    sta = spikeTrigAvg(trial, 1, 0.2)
+    assert sta.numCov == trial.covarColl.numCov
+
+    granger_results, gamma_mat, phi_mat, deviance_mat, sig_mat = computeGrangerCausalityMatrix(trial, "GLM", 0.95, 0)
+    assert len(granger_results) == 2
+    assert gamma_mat.shape == (2, 2)
+    assert phi_mat.shape == (2, 2)
+    assert deviance_mat.shape == (2, 2)
+    assert sig_mat.shape == (2, 2)
 
 
 def test_history_and_events_roundtrip_in_workflow_context() -> None:
