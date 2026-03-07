@@ -25,9 +25,9 @@ summary:
     missing: 0
     not_applicable: 0
   docs_gallery:
-    mapped: 0
-    partial: 1
-    missing: 7
+    mapped: 2
+    partial: 6
+    missing: 0
     not_applicable: 0
   installer_setup:
     mapped: 3
@@ -304,33 +304,33 @@ paper_examples:
   - matlab: example01_mepsc_poisson
     matlab_path: examples/paper/example01_mepsc_poisson.m
     python_target: nstat.paper_examples_full.run_experiment1
-    python_script: null
+    python_script: examples/paper/example01_mepsc_poisson.py
     status: partial
-    notes: Underlying experiment logic exists, but there is no canonical standalone Python script or exported figure set with the MATLAB naming.
+    notes: Canonical Python script now exists, but the MATLAB-matched figure set is not yet exported.
   - matlab: example02_whisker_stimulus_thalamus
     matlab_path: examples/paper/example02_whisker_stimulus_thalamus.m
     python_target: nstat.paper_examples_full.run_experiment2
-    python_script: null
+    python_script: examples/paper/example02_whisker_stimulus_thalamus.py
     status: partial
-    notes: Core GLM workflow exists, but no canonical standalone script or MATLAB-matched figures are published.
+    notes: Canonical Python script now exists, but the MATLAB-matched figure set is not yet exported.
   - matlab: example03_psth_and_ssglm
     matlab_path: examples/paper/example03_psth_and_ssglm.m
     python_target: nstat.paper_examples_full.run_experiment3
-    python_script: null
+    python_script: examples/paper/example03_psth_and_ssglm.py
     status: partial
-    notes: PSTH and SSGLM logic is split across run_experiment3 and run_experiment3b without the canonical script layout or gallery outputs.
+    notes: Canonical Python script now exists and bundles experiment3/3b, but the MATLAB-matched figure gallery is not yet exported.
   - matlab: example04_place_cells_continuous_stimulus
     matlab_path: examples/paper/example04_place_cells_continuous_stimulus.m
     python_target: nstat.paper_examples_full.run_experiment4
-    python_script: null
+    python_script: examples/paper/example04_place_cells_continuous_stimulus.py
     status: partial
-    notes: Place-cell workflow exists, but not as a named standalone script with the MATLAB figure set.
+    notes: Canonical Python script now exists, but the MATLAB-matched figure set is not yet exported.
   - matlab: example05_decoding_ppaf_pphf
     matlab_path: examples/paper/example05_decoding_ppaf_pphf.m
     python_target: nstat.paper_examples_full.run_experiment5
-    python_script: null
+    python_script: examples/paper/example05_decoding_ppaf_pphf.py
     status: partial
-    notes: Decoding logic exists across run_experiment5, run_experiment5b, and run_experiment6 without the canonical script or published gallery.
+    notes: Canonical Python script now exists and bundles experiment5/5b/6, but the MATLAB-matched figure gallery is not yet exported.
   - matlab: nSTATPaperExamples section 3b
     matlab_path: helpfiles/nSTATPaperExamples.m#example-3b
     python_target: nstat.paper_examples_full.run_experiment3b
@@ -352,32 +352,32 @@ paper_examples:
 docs_gallery:
   - matlab: docs/paper_examples.md
     python_target: docs/paper_examples.md
-    status: missing
-    notes: No Python-side paper example index page exists yet.
+    status: mapped
+    notes: Generated from the canonical Python paper-example manifest.
   - matlab: docs/figures/manifest.json
     python_target: docs/figures/manifest.json
-    status: missing
-    notes: No generated paper-example figure manifest exists yet.
+    status: mapped
+    notes: Generated from the canonical Python paper-example manifest.
   - matlab: docs/figures/example01/
     python_target: docs/figures/example01/
-    status: missing
-    notes: Example 01 gallery directory is not present.
+    status: partial
+    notes: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
   - matlab: docs/figures/example02/
     python_target: docs/figures/example02/
-    status: missing
-    notes: Example 02 gallery directory is not present.
+    status: partial
+    notes: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
   - matlab: docs/figures/example03/
     python_target: docs/figures/example03/
-    status: missing
-    notes: Example 03 gallery directory is not present.
+    status: partial
+    notes: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
   - matlab: docs/figures/example04/
     python_target: docs/figures/example04/
-    status: missing
-    notes: Example 04 gallery directory is not present.
+    status: partial
+    notes: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
   - matlab: docs/figures/example05/
     python_target: docs/figures/example05/
-    status: missing
-    notes: Example 05 gallery directory is not present.
+    status: partial
+    notes: Gallery directory exists, but the MATLAB-matched PNG set is not yet generated.
   - matlab: README five-example gallery
     python_target: README.md
     status: partial
