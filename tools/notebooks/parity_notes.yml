@@ -28,8 +28,8 @@ notes:
   - topic: ExplicitStimulusWhiskerData
     file: notebooks/ExplicitStimulusWhiskerData.ipynb
     source_matlab: ExplicitStimulusWhiskerData.mlx
-    fidelity_status: partial
-    remaining_differences: Dataset-backed workflow is present, but figure-level and narrative parity with MATLAB are still incomplete.
+    fidelity_status: high_fidelity
+    remaining_differences: The notebook now reproduces the dataset-backed lag search, stimulus-effect, and history-effect workflow with real figures; exact KS traces and coefficient values still vary modestly from MATLAB because the Python GLM backend and plotting defaults are different.
   - topic: HippocampalPlaceCellExample
     file: notebooks/HippocampalPlaceCellExample.ipynb
     source_matlab: HippocampalPlaceCellExample.mlx
@@ -48,8 +48,8 @@ notes:
   - topic: ValidationDataSet
     file: notebooks/ValidationDataSet.ipynb
     source_matlab: ValidationDataSet.mlx
-    fidelity_status: partial
-    remaining_differences: Validation dataset coverage exists, but MATLAB reference summaries and figure parity are not yet complete.
+    fidelity_status: high_fidelity
+    remaining_differences: The notebook now reproduces the constant-rate and piecewise-rate validation workflows with real `Trial`/`Analysis` objects and figure outputs; the Python port uses shorter deterministic simulations than MATLAB so the notebook remains stable in CI.
   - topic: StimulusDecode2D
     file: notebooks/StimulusDecode2D.ipynb
     source_matlab: StimulusDecode2D.mlx

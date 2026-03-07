@@ -85,17 +85,19 @@ items:
 - topic: ExplicitStimulusWhiskerData
   source_matlab: ExplicitStimulusWhiskerData.mlx
   python_notebook: notebooks/ExplicitStimulusWhiskerData.ipynb
-  fidelity_status: partial
-  remaining_differences: Dataset-backed workflow is present, but figure-level and
-    narrative parity with MATLAB are still incomplete.
-  python_sections: 6
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now reproduces the dataset-backed lag search,
+    stimulus-effect, and history-effect workflow with real figures; exact KS traces
+    and coefficient values still vary modestly from MATLAB because the Python GLM
+    backend and plotting defaults are different.
+  python_sections: 7
   python_expected_figures: 9
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 7
   matlab_published_figures: 9
-  section_delta: -1
+  section_delta: 0
   figure_delta: 0
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
@@ -145,18 +147,20 @@ items:
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb
-  fidelity_status: partial
-  remaining_differences: Validation dataset coverage exists, but MATLAB reference
-    summaries and figure parity are not yet complete.
-  python_sections: 3
-  python_expected_figures: 9
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now reproduces the constant-rate and piecewise-rate
+    validation workflows with real `Trial`/`Analysis` objects and figure outputs;
+    the Python port uses shorter deterministic simulations than MATLAB so the notebook
+    remains stable in CI.
+  python_sections: 11
+  python_expected_figures: 10
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
   matlab_sections: 11
   matlab_published_figures: 10
-  section_delta: -8
-  figure_delta: -1
+  section_delta: 0
+  figure_delta: 0
 - topic: StimulusDecode2D
   source_matlab: StimulusDecode2D.mlx
   python_notebook: notebooks/StimulusDecode2D.ipynb
