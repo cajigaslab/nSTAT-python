@@ -46,6 +46,12 @@ Run the setup helper:
 nstat-install
 ```
 
+Module form:
+
+```bash
+python -m nstat.install --download-example-data never --no-rebuild-doc-search
+```
+
 Equivalent Python API:
 
 ```python

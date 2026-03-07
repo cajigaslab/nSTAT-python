@@ -13,8 +13,6 @@ from .events import Events
 from .fit import FitResSummary, FitResult, FitSummary
 from .glm import PoissonGLMResult, fit_poisson_glm
 from .history import History, HistoryBasis
-from .install import nstat_install
-from .nstat_install import nSTAT_Install
 from .paper_examples_full import run_full_paper_examples
 from .signal import Covariate, Signal
 from .simulation import simulate_poisson_from_rate
@@ -28,6 +26,18 @@ from .spikes import SpikeTrain, SpikeTrainCollection
 from .trial import ConfigCollection, CovariateCollection, Trial, TrialConfig
 from .nspikeTrain import nspikeTrain
 from .nstColl import nstColl
+
+
+def __getattr__(name: str):
+    if name == "nstat_install":
+        from .install import nstat_install as _nstat_install
+
+        return _nstat_install
+    if name == "nSTAT_Install":
+        from .nstat_install import nSTAT_Install as _nSTAT_Install
+
+        return _nSTAT_Install
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "Analysis",

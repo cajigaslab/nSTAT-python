@@ -198,3 +198,7 @@ def main() -> int:
     example_data_failed = "error" in report.get("example_data", {})
     doc_search_failed = report.get("doc_search", {}).get("status") == "failed"
     return 0 if not (example_data_failed or doc_search_failed) else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

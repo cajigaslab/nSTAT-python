@@ -12,6 +12,12 @@ Command line
 
    nstat-install --download-example-data always
 
+Module invocation also works:
+
+.. code-block:: bash
+
+   python -m nstat.install --download-example-data never --no-rebuild-doc-search
+
 Python API
 ----------
 
