@@ -134,6 +134,23 @@ jobs:
       - name: Execute Python notebook smoke group
         run: python tools/notebooks/run_notebooks.py --group ci_smoke --timeout 600
 
+  notebook-parity-core:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+          python -m pip install ipykernel
+          python -m ipykernel install --user --name python3 --display-name "Python 3"
+      - name: Execute Python notebook parity-core group
+        run: python tools/notebooks/run_notebooks.py --group parity_core --timeout 900
+
   cleanroom-compliance:
     runs-on: ubuntu-latest
 

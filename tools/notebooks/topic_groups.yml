@@ -30,3 +30,20 @@ groups:
     - mEPSCAnalysis
     - nSTATPaperExamples
     - nSpikeTrainExamples
+  parity_core:
+    - AnalysisExamples
+    - ConfidenceIntervalOverview
+    - ConfigCollExamples
+    - CovariateExamples
+    - DecodingExample
+    - DecodingExampleWithHist
+    - ExplicitStimulusWhiskerData
+    - HippocampalPlaceCellExample
+    - HybridFilterExample
+    - SignalObjExamples
+    - StimulusDecode2D
+    - TrialConfigExamples
+    - TrialExamples
+    - ValidationDataSet
+    - nSTATPaperExamples
+    - nSpikeTrainExamples
