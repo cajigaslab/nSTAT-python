@@ -38,3 +38,4 @@ include = ["nstat*"]
 [project.scripts]
 nstat-paper-examples = "nstat.paper_examples:main"
 nstat-install = "nstat.install:main"
+nstat-release-check = "nstat.release_check:main"

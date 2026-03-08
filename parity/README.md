@@ -14,6 +14,18 @@ Generated report:
 python tools/parity/build_report.py
 ```
 
+Refresh MATLAB-derived fixtures:
+
+```bash
+python tools/parity/export_matlab_gold_fixtures.py
+```
+
+Run the combined Python plus MATLAB release gate:
+
+```bash
+nstat-release-check --matlab-repo ../nSTAT
+```
+
 Current headline status:
 - Public API coverage matches the MATLAB inventory except for the explicitly non-applicable `nstatOpenHelpPage`.
 - Class-fidelity auditing is tracked separately from name-mapping parity in `class_fidelity.yml`, and it remains intentionally stricter and more conservative than the mapping manifest.

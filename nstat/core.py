@@ -723,12 +723,33 @@ class SignalObj:
         return copied
 
     def resampleMe(self, newSampleRate: float) -> None:
+        try:
+            from scipy.interpolate import interp1d
+        except Exception as exc:  # pragma: no cover
+            raise ImportError("scipy is required for SignalObj.resampleMe") from exc
+
         rate = float(newSampleRate)
         if rate <= 0:
             raise ValueError("sampleRate must be > 0.")
+        if self.sampleRate == rate:
+            return
+        self.restoreToOriginal()
         dt = 1.0 / rate
         newTime = np.arange(self.time[0], self.time[-1] + 0.5 * dt, dt, dtype=float)
-        newData = np.column_stack([np.interp(newTime, self.time, self.data[:, i]) for i in range(self.dimension)])
+        if self.data.shape[0] > 1:
+            columns = []
+            for index in range(self.dimension):
+                interpolator = interp1d(
+                    self.time,
+                    self.data[:, index],
+                    kind="cubic",
+                    bounds_error=False,
+                    fill_value=0.0,
+                )
+                columns.append(np.asarray(interpolator(newTime), dtype=float))
+            newData = np.column_stack(columns)
+        else:
+            newData = np.asarray(self.data, dtype=float).copy()
         self.time = newTime
         self.data = newData
         self.sampleRate = rate
@@ -737,7 +758,9 @@ class SignalObj:
 
     @property
     def derivative(self) -> "SignalObj":
-        deriv = np.column_stack([np.gradient(self.data[:, i], self.time) for i in range(self.dimension)])
+        deriv = np.zeros_like(self.data, dtype=float)
+        if self.data.shape[0] > 1:
+            deriv[1:, :] = np.diff(self.data, axis=0) * float(self.sampleRate)
         deriv[~np.isfinite(deriv)] = 0.0
         labels = [f"d_{label}" if label else "" for label in self.dataLabels]
         return self._spawn(self.time, deriv, data_labels=labels)
@@ -1260,7 +1283,7 @@ class nspikeTrain:
         self.Lstatistic = np.nan
 
         if isi.size:
-            sigma = float(np.std(isi))
+            sigma = float(np.std(isi, ddof=1)) if isi.size > 1 else 0.0
             mu = float(np.mean(isi))
             if np.isfinite(mu) and mu > 0:
                 r = sigma / mu
