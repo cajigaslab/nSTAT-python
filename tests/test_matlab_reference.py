@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from nstat import Analysis, CIF, ConfigColl, CovColl, Covariate, Trial, TrialConfig, nspikeTrain, nstColl, simulate_two_neuron_network
+from nstat import Analysis, CIF, ConfigColl, CovColl, Covariate, FitResSummary, Trial, TrialConfig, nspikeTrain, nstColl, simulate_two_neuron_network
 from nstat.matlab_reference import (
     matlab_engine_available,
     run_analysis_reference,
@@ -73,7 +73,14 @@ def test_native_network_simulation_preserves_matlab_connectivity_layout_when_eng
 
     np.testing.assert_allclose(native.actual_network, matlab_ref["actual_network"])
     np.testing.assert_allclose(native.lambda_delta[:5], matlab_ref["prob_head"], rtol=1e-6, atol=1e-8)
-    assert np.all((matlab_ref["state_head"] == 0.0) | (matlab_ref["state_head"] == 1.0))
+    dt = float(native.time[1] - native.time[0])
+    native_state_head = np.column_stack([
+        native.spikes.getNST(1).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
+        native.spikes.getNST(2).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
+    ])
+    np.testing.assert_allclose(native_state_head, matlab_ref["state_head"], rtol=1e-6, atol=1e-8)
+    native_counts = np.array([len(native.spikes.getNST(1).spikeTimes), len(native.spikes.getNST(2).spikeTimes)], dtype=float)
+    assert np.all(np.abs(native_counts - matlab_ref["spike_counts"]) <= 64.0)
 
 
 @pytest.mark.skipif(not MATLAB_REPO_ROOT.exists(), reason="MATLAB reference repo not available")
@@ -87,10 +94,13 @@ def test_native_analysis_fit_matches_matlab_reference_when_engine_is_available()
     trial = Trial(nstColl([spike_train]), CovColl([stim]))
     cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [], [], name="stim")
     fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
+    summary = FitResSummary([fit])
     matlab_ref = run_analysis_reference(matlab_repo=MATLAB_REPO_ROOT)
 
     np.testing.assert_allclose(fit.getCoeffs(1), matlab_ref["coeffs"], rtol=1e-6, atol=1e-8)
     np.testing.assert_allclose(fit.lambdaSignal.data[:5, 0], matlab_ref["lambda_head"], rtol=1e-6, atol=1e-8)
     np.testing.assert_allclose(np.asarray(fit.AIC, dtype=float)[:1], matlab_ref["aic"], rtol=1e-6, atol=1e-8)
     np.testing.assert_allclose(np.asarray(fit.BIC, dtype=float)[:1], matlab_ref["bic"], rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(np.asarray(summary.AIC, dtype=float)[:1], matlab_ref["summary_aic"], rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(np.asarray(summary.BIC, dtype=float)[:1], matlab_ref["summary_bic"], rtol=1e-6, atol=1e-8)
     assert np.isfinite(np.asarray(fit.logLL, dtype=float)[0])

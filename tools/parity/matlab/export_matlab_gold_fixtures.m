@@ -19,10 +19,14 @@ if ~exist(fixtureRoot, 'dir')
 end
 
 export_signalobj_fixture(fixtureRoot);
+export_covariate_fixture(fixtureRoot);
 export_nspiketrain_fixture(fixtureRoot);
+export_nstcoll_fixture(fixtureRoot);
 export_cif_fixture(fixtureRoot);
 export_analysis_fixture(fixtureRoot);
 export_point_process_fixture(fixtureRoot);
+export_decoding_predict_fixture(fixtureRoot);
+export_simulated_network_fixture(fixtureRoot);
 end
 
 function export_signalobj_fixture(fixtureRoot)
@@ -99,6 +103,41 @@ payload.burst_numSpikesPerBurst = burstTrain.numSpikesPerBurst;
 save(fullfile(fixtureRoot, 'nspiketrain_exactness.mat'), '-struct', 'payload');
 end
 
+function export_covariate_fixture(fixtureRoot)
+t = (0:0.1:0.4)';
+replicates = [0.0 0.1 0.2 0.3; 0.2 0.3 0.4 0.5; 0.4 0.5 0.6 0.7; 0.6 0.7 0.8 0.9; 0.8 0.9 1.0 1.1];
+cov = Covariate(t, replicates, 'Stimulus', 'time', 's', 'a.u.', {'r1','r2','r3','r4'});
+meanCov = cov.computeMeanPlusCI(0.05);
+ci = ConfidenceInterval(t, [mean(replicates,2)-0.1, mean(replicates,2)+0.1], 'CI', 'time', 's', 'a.u.');
+covSingle = Covariate(t, mean(replicates,2), 'StimulusSingle', 'time', 's', 'a.u.', {'stim'});
+covSingle.setConfInterval(ci);
+
+payload = struct();
+payload.time = t;
+payload.replicates = replicates;
+payload.mean_data = meanCov.data;
+payload.mean_ci = meanCov.ci{1}.data;
+payload.explicit_ci = covSingle.ci{1}.data;
+
+save(fullfile(fixtureRoot, 'covariate_exactness.mat'), '-struct', 'payload');
+end
+
+function export_nstcoll_fixture(fixtureRoot)
+n1 = nspikeTrain([0.1 0.3], '1', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1);
+n2 = nspikeTrain([0.2], '2', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1);
+coll = nstColl({n1, n2});
+dataMat = coll.dataToMatrix([1 2], 0.1, 0.0, 0.5);
+
+payload = struct();
+payload.numSpikeTrains = coll.numSpikeTrains;
+payload.firstName = coll.getNST(1).name;
+payload.dataMatrix = dataMat;
+payload.firstSpikeTimes = coll.getNST(1).spikeTimes;
+payload.secondSpikeTimes = coll.getNST(2).spikeTimes;
+
+save(fullfile(fixtureRoot, 'nstcoll_exactness.mat'), '-struct', 'payload');
+end
+
 function export_cif_fixture(fixtureRoot)
 cif = CIF([0.1 0.5], {'stim1', 'stim2'}, {'stim1', 'stim2'}, 'binomial');
 stimVal = [0.6; -0.2];
@@ -124,6 +163,7 @@ trial = Trial(nstColl({spikeTrain}), CovColl({stim}));
 cfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
 cfg.setName('stim');
 fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl({cfg}));
+summary = FitResSummary({fit});
 
 payload = struct();
 payload.time = t;
@@ -137,6 +177,9 @@ payload.AIC = fit.AIC(1);
 payload.BIC = fit.BIC(1);
 payload.logLL = fit.logLL(1);
 payload.distribution = fit.fitType{1};
+payload.summaryAIC = summary.AIC(1);
+payload.summaryBIC = summary.BIC(1);
+payload.summarylogLL = summary.logLL(1);
 
 save(fullfile(fixtureRoot, 'analysis_exactness.mat'), '-struct', 'payload');
 end
@@ -164,4 +207,74 @@ payload.lambda_head = lambda.data(1:8, 1);
 payload.spike_counts = spikeCounts;
 
 save(fullfile(fixtureRoot, 'point_process_exactness.mat'), '-struct', 'payload');
+end
+
+function export_decoding_predict_fixture(fixtureRoot)
+x_u = [0.1; -0.2];
+W_u = [1.0 0.1; 0.1 2.0];
+A = [1.0 0.2; 0.0 0.9];
+Q = 0.05 * eye(2);
+[x_p, W_p] = DecodingAlgorithms.PPDecode_predict(x_u, W_u, A, Q);
+
+payload = struct();
+payload.x_u = x_u;
+payload.W_u = W_u;
+payload.A = A;
+payload.Q = Q;
+payload.x_p = x_p;
+payload.W_p = W_p;
+
+save(fullfile(fixtureRoot, 'decoding_predict_exactness.mat'), '-struct', 'payload');
+end
+
+function export_simulated_network_fixture(fixtureRoot)
+rng(4);
+Ts = .001;
+t = (0:Ts:50)';
+mu{1} = -3; mu{2} = -3; %#ok<AGROW>
+H{1} = tf([-4 -2 -1], [1], Ts, 'Variable', 'z^-1'); %#ok<AGROW>
+H{2} = tf([-4 -2 -1], [1], Ts, 'Variable', 'z^-1'); %#ok<AGROW>
+S{1} = tf([1], 1, Ts, 'Variable', 'z^-1'); %#ok<AGROW>
+S{2} = tf([-1], 1, Ts, 'Variable', 'z^-1'); %#ok<AGROW>
+E{1} = tf([1], 1, Ts, 'Variable', 'z^-1'); %#ok<AGROW>
+E{2} = tf([-4], 1, Ts, 'Variable', 'z^-1'); %#ok<AGROW>
+stim = Covariate(t, sin(2*pi*1*t), 'Stimulus', 'time', 's', 'Voltage', {'sin'});
+assignin('base', 'S1', S{1}); assignin('base', 'H1', H{1}); assignin('base', 'E1', E{1}); assignin('base', 'mu1', mu{1});
+assignin('base', 'S2', S{2}); assignin('base', 'H2', H{2}); assignin('base', 'E2', E{2}); assignin('base', 'mu2', mu{2});
+options = simget;
+[~,~,yout] = sim('SimulatedNetwork2', [stim.minTime stim.maxTime], options, stim.dataToStructure);
+[h1Num, ~] = tfdata(H{1}, 'v');
+[h2Num, ~] = tfdata(H{2}, 'v');
+[s1Num, ~] = tfdata(S{1}, 'v');
+[s2Num, ~] = tfdata(S{2}, 'v');
+[e1Num, ~] = tfdata(E{1}, 'v');
+[e2Num, ~] = tfdata(E{2}, 'v');
+stateMat = yout(:,1:2);
+probMat = zeros(size(stateMat));
+for n = 1:size(stateMat, 1)
+    hist1 = 0; hist2 = 0;
+    for lag = 1:length(h1Num)
+        if n-lag >= 1
+            hist1 = hist1 + h1Num(lag) * stateMat(n-lag,1);
+            hist2 = hist2 + h2Num(lag) * stateMat(n-lag,2);
+        end
+    end
+    ens1 = 0; ens2 = 0;
+    if n > 1
+        ens1 = e1Num(1) * stateMat(n-1,2);
+        ens2 = e2Num(1) * stateMat(n-1,1);
+    end
+    eta1 = mu{1} + hist1 + s1Num(1) * stim.data(n) + ens1;
+    eta2 = mu{2} + hist2 + s2Num(1) * stim.data(n) + ens2;
+    probMat(n,1) = exp(eta1) / (1 + exp(eta1));
+    probMat(n,2) = exp(eta2) / (1 + exp(eta2));
+end
+
+payload = struct();
+payload.actual_network = [0 1; -4 0];
+payload.prob_head = probMat(1:5,:);
+payload.state_head = yout(1:5,1:2);
+payload.spike_counts = [sum(yout(:,1) > .5), sum(yout(:,2) > .5)];
+
+save(fullfile(fixtureRoot, 'simulated_network_exactness.mat'), '-struct', 'payload');
 end

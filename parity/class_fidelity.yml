@@ -35,6 +35,7 @@ items:
     though warning text and some edge-case errors are still not exact.
   output_type_parity: MATLAB-facing methods return SignalObj/Covariate instances where
     expected.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Some specialized MATLAB spectral utilities and report-style plotting options remain
     unported.
@@ -69,13 +70,15 @@ items:
     path is matched exactly.
   output_type_parity: Covariate methods return Covariate or SignalObj as MATLAB expects
     for the implemented subset.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Some CI plotting options and full structure round-tripping remain lighter than
     MATLAB.
   - More specialized arithmetic/reporting behaviors still need MATLAB-derived fixtures.
   required_remediation:
-  - Add MATLAB-derived fixtures for CI plotting and serialized confidence-interval
-    payloads.
+  - Extend the committed MATLAB-derived fixtures beyond `computeMeanPlusCI` and
+    explicit confidence-interval payloads to cover CI plotting and serialized
+    round-trips.
   plotting_report_parity: Core signal and confidence-interval plotting works; some
     MATLAB CI styling/report variations remain lighter.
 - matlab_name: nspikeTrain
@@ -103,6 +106,7 @@ items:
     plotting/statistics edge cases are still not exact.
   output_type_parity: Signal representation returns SignalObj and rate conversion
     returns SignalObj as expected.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Some MATLAB visual styling and distribution-fit detail in the ISI plotting helpers
     remains lighter than MATLAB.
@@ -132,11 +136,13 @@ items:
   error_warning_parity: Core validation is present, though MATLAB warning text and
     some edge-case messages still differ.
   output_type_parity: PSTH returns Covariate.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Some plotting/statistics helpers and lower-level utility methods from MATLAB are
     still absent.
   required_remediation:
-  - Add MATLAB-derived fixtures for neighbor masks, ensemble covariates, and PSTH
+  - Extend the committed MATLAB-derived fixtures beyond collection naming and
+    `dataToMatrix` outputs to cover neighbor masks, ensemble covariates, and PSTH
     outputs.
   - Port any remaining collection utilities that surface in MATLAB helpfiles.
   plotting_report_parity: Raster and PSTH plotting works for core workflows; some
@@ -165,6 +171,7 @@ items:
   output_type_parity: Matrix-producing methods intentionally return NumPy arrays,
     while MATLAB-facing object-producing workflows return Trial/CovColl/nstColl-compatible
     objects where expected.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Some MATLAB plotting, partition-serialization, and specialized workflow helpers
     remain unported.
@@ -193,6 +200,7 @@ items:
   error_warning_parity: Validation is still lighter than MATLAB in some malformed-configuration
     paths.
   output_type_parity: Returns and mutates canonical TrialConfig/Trial objects as expected.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Some MATLAB normalization and validation branches remain looser in Python.
   required_remediation:
@@ -218,6 +226,7 @@ items:
   error_warning_parity: Basic validation exists, though some MATLAB collection-coercion
     edge cases are still looser.
   output_type_parity: Returns TrialConfig instances.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Some MATLAB-specific collection manipulation helpers remain unported.
   required_remediation:
@@ -247,6 +256,7 @@ items:
     advanced option warnings remain thinner than MATLAB.
   output_type_parity: Returns MATLAB-facing FitResult/FitResSummary-compatible objects
     with richer metadata than the previous simplified implementation.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Advanced MATLAB algorithm-selection, cross-validation, and some report-layout
     branches are still lighter than MATLAB.
@@ -282,6 +292,7 @@ items:
     and reporting edge cases.
   output_type_parity: Returns canonical FitResult objects with MATLAB-style aliases
     and list/array fields.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Plotting/report methods now execute, but their numerical detail and layout remain
     lighter than MATLAB.
@@ -309,12 +320,13 @@ items:
   indexing_parity: N/A for this class.
   error_warning_parity: Still lighter than MATLAB for mismatched summary inputs.
   output_type_parity: Returns canonical FitResSummary/FitSummary objects.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Summary plotting now exists, but richer MATLAB report/table exports remain visually
     lighter than MATLAB.
   required_remediation:
-  - Add golden fixtures for multi-neuron summary aggregation and remaining report
-    outputs.
+  - Extend the committed golden fixtures beyond single-fit AIC/BIC aggregation to
+    multi-neuron summary aggregation and remaining report outputs.
   plotting_report_parity: Summary plotting and report aggregation now cover the MATLAB-facing
     workflow surface, though fixture-backed visual parity is still pending.
 - matlab_name: CIF
@@ -339,6 +351,7 @@ items:
     remain thinner.
   output_type_parity: Returns rate arrays, Covariates, and spike-train collections
     in the expected workflow positions.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Simulink-backed recursive-CIF behavior is represented by a native Python implementation,
     but it is not yet fixture-matched one-for-one against MATLAB/Simulink stochastic
@@ -377,12 +390,13 @@ items:
     exceptions.
   output_type_parity: MATLAB-facing methods now return tuple outputs and state/covariance
     tensors instead of only Python-specific dictionaries.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Target-estimation augmentation, EM routines, and some advanced symbolic-CIF workflows
     remain thinner than MATLAB.
   required_remediation:
-  - Add MATLAB-derived numerical fixtures for DecodingExample, DecodingExampleWithHist,
-    StimulusDecode2D, and HybridFilterExample.
+  - Extend the committed MATLAB-derived numerical fixtures beyond `PPDecode_predict`
+    to DecodingExample, DecodingExampleWithHist, StimulusDecode2D, and HybridFilterExample.
   - Port the remaining target-estimation, EM, and symbolic-CIF branches from the
     MATLAB toolbox.
   plotting_report_parity: Notebook-level decoding figures are supported, but the full
@@ -406,6 +420,7 @@ items:
     some malformed-input branches remain thinner.
   output_type_parity: Returns CovariateCollection outputs in the MATLAB-facing workflows
     that consume History objects.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Plotting and some specialized history-basis utilities remain unported.
   required_remediation:
@@ -431,6 +446,7 @@ items:
   error_warning_parity: Core validation now matches MATLAB intent, though plotting-related
     behaviors remain absent.
   output_type_parity: Returns canonical Events objects.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Plotting and some MATLAB-specific display behaviors are still unported.
   required_remediation:
@@ -454,6 +470,7 @@ items:
     edge cases remain lighter.
   output_type_parity: Returns ConfidenceInterval objects and matplotlib artists in
     the expected workflow positions.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Full MATLAB serialization/display semantics remain lighter than the original toolbox.
   required_remediation:
@@ -481,6 +498,7 @@ items:
     and malformed-selector branches are still thinner.
   output_type_parity: Returns Covariate and CovariateCollection-compatible outputs
     across MATLAB-facing workflows.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Some structure serialization and rarely used helper methods remain unported.
   required_remediation:
@@ -503,6 +521,7 @@ items:
   error_warning_parity: Close for the Python use case.
   output_type_parity: Returns directory paths as a Python tuple/list structure rather
     than MATLAB cell arrays.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - Python returns native path types/strings rather than MATLAB cells.
   required_remediation:
@@ -527,6 +546,7 @@ items:
     notes.
   output_type_parity: Returns Python dictionaries/status text rather than MATLAB console-only
     behavior.
+  symbol_presence_verified: yes
   known_remaining_differences:
   - MATLAB path management is intentionally non-applicable in Python.
   required_remediation:
@@ -545,6 +565,7 @@ items:
   indexing_parity: N/A
   error_warning_parity: N/A
   output_type_parity: N/A
+  symbol_presence_verified: no
   known_remaining_differences:
   - Python uses Sphinx docs pages instead of the MATLAB help browser.
   required_remediation:

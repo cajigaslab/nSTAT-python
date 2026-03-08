@@ -20,6 +20,7 @@ def test_parity_report_highlights_current_constraints() -> None:
     assert "paper examples and docs gallery" in text.lower()
     assert "all canonical paper examples and committed gallery directories are mapped" in text
     assert "class fidelity" in text.lower()
+    assert "Runtime Symbol Verification" in text
     assert "Notebook Fidelity Summary" in text
     assert "Simulink Fidelity Summary" in text
     assert "Remaining Notebook-Fidelity Deltas" in text
@@ -29,6 +30,9 @@ def test_parity_report_highlights_current_constraints() -> None:
     assert "Remaining Class-Fidelity Deltas" in text
     assert "the class audit reports no partial, wrapper-only, or missing items" in text
     assert "No partial, wrapper-only, or missing class-fidelity items remain." in text
+    assert "Runtime symbol verification: every audited MATLAB-facing Python symbol marked present" in text
+    assert "Runtime Symbol Drift" in text
+    assert "No audit/runtime symbol mismatches were detected." in text
     assert "Simulink Fidelity Deltas" in text
     assert "native Python coverage exists for the required published workflows" in text
     assert "reference-only" in text

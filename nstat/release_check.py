@@ -41,6 +41,8 @@ def build_release_gate_commands(
             "tests/test_signalobj_fidelity.py",
             "tests/test_nspiketrain_fidelity.py",
             "tests/test_workflow_fidelity.py",
+            "tests/test_class_fidelity_audit.py",
+            "tests/test_matlab_symbol_surface.py",
             "tests/test_matlab_reference.py",
             "tests/test_simulink_fidelity_audit.py",
             "tests/test_parity_report.py",
