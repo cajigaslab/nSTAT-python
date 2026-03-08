@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 from scipy.io import loadmat
 
-from nstat import CIF, Covariate, SignalObj, nspikeTrain
+from nstat import Analysis, CIF, ConfigColl, CovColl, Covariate, SignalObj, Trial, TrialConfig, nspikeTrain, nstColl
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +22,18 @@ def _scalar(payload: dict[str, np.ndarray], key: str) -> float:
 
 def _vector(payload: dict[str, np.ndarray], key: str) -> np.ndarray:
     return np.asarray(payload[key], dtype=float).reshape(-1)
+
+
+def _string(payload: dict[str, np.ndarray], key: str) -> str:
+    value = payload[key]
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    if isinstance(value, str):
+        return value
+    arr = np.asarray(value)
+    if arr.shape == ():
+        return str(arr.item())
+    return str(arr.reshape(-1)[0])
 
 
 def test_signalobj_matches_matlab_gold_fixture() -> None:
@@ -109,6 +121,28 @@ def test_cif_eval_surface_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(cif.evalGradientLog(stim_val).reshape(-1), _vector(payload, "gradient_log"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(cif.evalJacobian(stim_val), np.asarray(payload["jacobian"], dtype=float), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(cif.evalJacobianLog(stim_val), np.asarray(payload["jacobian_log"], dtype=float), rtol=1e-8, atol=1e-10)
+
+
+def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("analysis_exactness.mat")
+    time = _vector(payload, "time")
+    stim_data = _vector(payload, "stim_data")
+    spike_times = _vector(payload, "spike_times")
+    sample_rate = _scalar(payload, "sample_rate")
+
+    stim = Covariate(time, stim_data, "Stimulus", "time", "s", "", ["stim"])
+    spike_train = nspikeTrain(spike_times, "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    trial = Trial(nstColl([spike_train]), CovColl([stim]))
+    cfg = TrialConfig([["Stimulus", "stim"]], sample_rate, [], [], name="stim")
+    fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
+
+    np.testing.assert_allclose(fit.getCoeffs(1), _vector(payload, "coeffs"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(fit.lambdaSignal.time, _vector(payload, "lambda_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(fit.lambdaSignal.data[:, 0], _vector(payload, "lambda_data"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fit.AIC[0]), _scalar(payload, "AIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fit.BIC[0]), _scalar(payload, "BIC"), rtol=1e-8, atol=1e-10)
+    assert np.isfinite(float(fit.logLL[0]))
+    assert fit.fitType[0] == _string(payload, "distribution")
 
 
 def test_point_process_lambda_trace_matches_matlab_gold_fixture() -> None:

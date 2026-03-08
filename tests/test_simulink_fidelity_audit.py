@@ -17,6 +17,17 @@ VALID_STRATEGIES = {
     "unsupported",
     "reference_only",
 }
+REQUIRED_MODEL_PATHS = {
+    "PointProcessSimulation.slx",
+    "PointProcessSimulationCont.slx",
+    "PointProcessSimulation.mdl.r2010b",
+    "PointProcessSimulation.mdl.r2011a",
+    "PointProcessSimulation.mdl.r2011b",
+    "PointProcessSimulation.mdl.r2013a",
+    "PointProcessSimulation.slx.r2013a",
+    "PointProcessSimulationThinning.mdl.r2011a",
+    "helpfiles/SimulatedNetwork2.mdl",
+}
 
 
 def _load_audit() -> dict:
@@ -38,6 +49,12 @@ def test_simulink_fidelity_audit_records_required_execution_fields() -> None:
         assert row["purpose"]
         assert row["chosen_interoperability_strategy"]
         assert row["validation_plan"]
+
+
+def test_simulink_fidelity_audit_covers_required_model_inventory() -> None:
+    payload = _load_audit()
+    model_paths = {row["model_path"] for row in payload["items"]}
+    assert REQUIRED_MODEL_PATHS <= model_paths
 
 
 def test_simulink_fidelity_audit_paths_exist_when_matlab_repo_is_available() -> None:

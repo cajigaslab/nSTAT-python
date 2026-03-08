@@ -119,8 +119,41 @@ def run_simulated_network_reference(*, matlab_repo: str | Path | None = None, se
     }
 
 
+def run_analysis_reference(*, matlab_repo: str | Path | None = None) -> dict[str, np.ndarray]:
+    repo = Path(matlab_repo) if matlab_repo is not None else _default_matlab_repo()
+    if not repo.exists():
+        raise FileNotFoundError(f"MATLAB reference repo not found at {repo}")
+    engine = start_matlab_engine()
+    _add_repo_to_path(engine, repo)
+    engine.eval(
+        """
+        t = (0:0.1:1.0)';
+        stim = Covariate(t, sin(2*pi*t), 'Stimulus', 'time', 's', '', {'stim'});
+        spikeTrain = nspikeTrain([0.1 0.4 0.7], '1', 0.1, 0.0, 1.0, 'time', 's', '', '', -1);
+        trial = Trial(nstColl({spikeTrain}), CovColl({stim}));
+        cfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
+        cfg.setName('stim');
+        fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl({cfg}));
+        analysisAIC = fit.AIC(1);
+        analysisBIC = fit.BIC(1);
+        analysisLogLL = fit.logLL(1);
+        analysisCoeffs = fit.getCoeffs(1)';
+        analysisLambdaHead = fit.lambda.data(1:5, 1)';
+        """,
+        nargout=0,
+    )
+    return {
+        "aic": _to_numpy(engine.workspace["analysisAIC"]).reshape(-1),
+        "bic": _to_numpy(engine.workspace["analysisBIC"]).reshape(-1),
+        "logll": _to_numpy(engine.workspace["analysisLogLL"]).reshape(-1),
+        "coeffs": _to_numpy(engine.workspace["analysisCoeffs"]).reshape(-1),
+        "lambda_head": _to_numpy(engine.workspace["analysisLambdaHead"]).reshape(-1),
+    }
+
+
 __all__ = [
     "matlab_engine_available",
+    "run_analysis_reference",
     "run_point_process_reference",
     "run_simulated_network_reference",
     "start_matlab_engine",

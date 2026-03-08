@@ -1,5 +1,5 @@
 version: 1
-generated_on: 2026-03-07
+generated_on: 2026-03-08
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
@@ -250,8 +250,12 @@ items:
   known_remaining_differences:
   - Advanced MATLAB algorithm-selection, cross-validation, and some report-layout
     branches are still lighter than MATLAB.
+  - The canonical Poisson GLM path is now fixture-matched for coefficients, lambda
+    traces, AIC, and BIC on the baseline workflow, but the stored `logLL` convention
+    is still not numerically exact to MATLAB.
   required_remediation:
-  - Add dataset-backed numerical parity fixtures for canonical analysis workflows.
+  - Extend the committed MATLAB-derived fixture coverage beyond the canonical single-neuron
+    GLM workflow to multi-neuron, validation-window, and alternative algorithm branches.
   - Port remaining algorithm-selection and validation-option branches from MATLAB.
   plotting_report_parity: KS, inverse-Gaussian, coefficient, residual, and summary
     plots now execute on canonical Analysis output; advanced algorithm-selection,
