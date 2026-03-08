@@ -40,8 +40,9 @@ items:
     unported.
   - Structure serialization is close but not exhaustive for every MATLAB-only field.
   required_remediation:
-  - Add MATLAB-derived fixtures for filter outputs, xcorr/autocorrelation traces, plotting
-    selectors, and the remaining spectral utility methods.
+  - Extend the committed MATLAB-derived fixtures beyond derivative, integral, spline
+    resampling, filtering, and xcorr to cover autocorrelation selectors and the remaining
+    spectral utility methods.
   plotting_report_parity: Core plotting and correlation helpers are implemented; some
     MATLAB-only plot selectors, spectral utilities, and report-style helpers remain
     lighter.
@@ -102,8 +103,9 @@ items:
   - Some MATLAB visual styling and distribution-fit detail in the ISI plotting helpers
     remains lighter than MATLAB.
   required_remediation:
-  - Add MATLAB-derived fixtures for partitionNST, burst/statistics outputs, and ISI
-    plotting traces.
+  - Extend the committed MATLAB-derived fixtures beyond getSigRep, partitionNST, and
+    burst-stat summaries to cover ISI plotting traces and the remaining visualization
+    details.
   plotting_report_parity: Raster, ISI, and burst-oriented plotting helpers now execute
     on the canonical class, though visual detail remains lighter than MATLAB.
 - matlab_name: nstColl
@@ -331,10 +333,14 @@ items:
     in the expected workflow positions.
   known_remaining_differences:
   - Simulink-backed recursive-CIF behavior is represented by a native Python implementation,
-    but it is not yet fixture-matched one-for-one against MATLAB/Simulink outputs.
+    but it is not yet fixture-matched one-for-one against MATLAB/Simulink stochastic
+    trajectories.
   required_remediation:
-  - Add MATLAB-derived fixtures for CIF evaluation and thinning outputs.
-  - Add MATLAB/Simulink comparison fixtures for recursive CIF simulation semantics.
+  - Extend the committed MATLAB-derived fixtures beyond analytic lambda/gradient/Jacobian
+    outputs and the deterministic recursive lambda prefix to cover additional thinning
+    and seeded simulation summaries.
+  - Add MATLAB/Simulink comparison fixtures for recursive CIF simulation trajectories
+    when the random-stream alignment question is resolved.
   plotting_report_parity: Simulation/report plotting is limited; downstream notebooks
     generate figures with helper code rather than a full MATLAB-equivalent CIF report
     API.

@@ -554,7 +554,7 @@ HIPPOCAMPAL_NOTE = """\
 ## MATLAB Parity Note
 - Source MATLAB helpfile: `HippocampalPlaceCellExample.mlx`
 - Fidelity status: `high_fidelity`
-- Remaining justified differences: The notebook now reproduces the dataset-backed place-cell model-comparison and field-visualization workflow with real figures; the Python port still uses an approximate Zernike-like basis rather than the original MATLAB toolbox implementation.
+- Remaining justified differences: The notebook now reproduces the dataset-backed place-cell model-comparison and field-visualization workflow with the same normalized 10-term Zernike basis used by MATLAB; exact AIC/BIC values and surface styling still vary modestly because the Python GLM solver and plotting backend are not byte-identical to MATLAB.
 """
 
 
@@ -753,7 +753,7 @@ HIPPOCAMPAL_CODE = [
                 f"Cells analyzed: {int(summary['num_cells_fit'])}",
                 f"Mean Gaussian-Zernike ΔAIC: {summary['mean_delta_aic_gaussian_minus_zernike']:.2f}",
                 f"Mean Gaussian-Zernike ΔBIC: {summary['mean_delta_bic_gaussian_minus_zernike']:.2f}",
-                "Negative values favor the Zernike-like model.",
+                "Negative values favor the Zernike model.",
             ]
         ),
         va="top",

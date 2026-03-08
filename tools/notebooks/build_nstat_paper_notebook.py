@@ -335,11 +335,11 @@ CODE = [
     ax.set_title("Gaussian place-field estimate")
     """,
     """
-    # SECTION 26: Zernike-like place-field mesh
+    # SECTION 26: Zernike place-field mesh
     fig = _fig("experiment4 zernike mesh", figsize=(9.0, 6.5))
     ax = fig.add_subplot(111, projection="3d")
     ax.plot_surface(exp4["mesh"]["grid_x"], exp4["mesh"]["grid_y"], exp4["mesh"]["zernike_field"], cmap="Greens", linewidth=0.0, antialiased=True)
-    ax.set_title("Zernike-like place-field estimate")
+    ax.set_title("Zernike place-field estimate")
     """,
     """
     # SECTION 27: Experiment 5
