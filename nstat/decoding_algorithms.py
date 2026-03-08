@@ -98,7 +98,11 @@ def _normalize_mu(mu, num_cells: int) -> np.ndarray:
 
 def _normalize_beta(beta, num_states: int, num_cells: int) -> np.ndarray:
     arr = np.asarray(beta, dtype=float)
-    if arr.ndim == 1:
+    if arr.ndim == 0:
+        if num_states != 1 or num_cells != 1:
+            raise ValueError("scalar beta is only valid for the 1-state, 1-cell MATLAB surface")
+        arr = arr.reshape(1, 1)
+    elif arr.ndim == 1:
         if num_cells == 1 and arr.size == num_states:
             arr = arr.reshape(num_states, 1)
         elif arr.size == num_cells and num_states == 1:
@@ -774,19 +778,31 @@ class DecodingAlgorithms:
 
     @staticmethod
     def PP_fixedIntervalSmoother(A, Q, dN, lags, mu, beta, fitType="poisson", delta=0.001, gamma=None, windowTimes=None, x0=None, Pi0=None):
-        x_p, W_p, x_u, W_u, *_ = DecodingAlgorithms._ppdecode_filter_linear(
-            A,
-            Q,
-            dN,
-            mu,
-            beta,
-            fitType,
-            delta,
-            gamma,
-            windowTimes,
-            x0,
-            Pi0,
-        )
+        obs = _as_observation_matrix(dN)
+        num_cells, num_steps = obs.shape
+        num_states = _infer_state_dim(A, beta, num_cells)
+        mu_vec = _normalize_mu(mu, num_cells)
+        beta_mat = _normalize_beta(beta, num_states, num_cells)
+
+        x0_vec = np.zeros(num_states, dtype=float) if _is_empty_value(x0) else np.asarray(x0, dtype=float).reshape(-1)
+        if x0_vec.size != num_states:
+            raise ValueError("x0 must match the decoding state dimension")
+        Pi0_mat = np.zeros((num_states, num_states), dtype=float) if _is_empty_value(Pi0) else _as_state_matrix(Pi0, num_states)
+
+        if _is_empty_value(windowTimes):
+            H_tensor = np.zeros((num_steps, 0, num_cells), dtype=float)
+            gamma_mat = np.zeros((0, num_cells), dtype=float)
+        else:
+            H_tensor = _compute_history_terms(obs, float(delta), windowTimes)
+            gamma_mat = _normalize_gamma(gamma, H_tensor.shape[1], num_cells)
+
+        x_p = np.zeros((num_states, num_steps + 1), dtype=float)
+        x_u = np.zeros((num_states, num_steps), dtype=float)
+        W_p = np.zeros((num_states, num_states, num_steps + 1), dtype=float)
+        W_u = np.zeros((num_states, num_states, num_steps), dtype=float)
+        x_p[:, 0] = x0_vec
+        W_p[:, :, 0] = Pi0_mat
+
         lag_count = max(int(lags), 1)
         num_states, num_steps = x_u.shape
         x_uLag = np.zeros_like(x_u)
@@ -795,6 +811,26 @@ class DecodingAlgorithms:
         W_pLag = np.zeros_like(W_p)
 
         for n in range(num_steps):
+            x_u[:, n], W_u[:, :, n], _ = DecodingAlgorithms.PPDecode_updateLinear(
+                x_p[:, n],
+                W_p[:, :, n],
+                obs,
+                mu_vec,
+                beta_mat,
+                fitType,
+                gamma_mat,
+                H_tensor,
+                n + 1,
+                None,
+            )
+            A_t = _select_time_matrix(A, n, num_states)
+            Q_t = _select_time_matrix(Q, n, num_states)
+            x_p[:, n + 1], W_p[:, :, n + 1] = DecodingAlgorithms.PPDecode_predict(
+                x_u[:, n],
+                W_u[:, :, n],
+                A_t,
+                Q_t,
+            )
             if n < lag_count:
                 continue
 
@@ -851,88 +887,159 @@ class DecodingAlgorithms:
         if len(Q_models) != n_models:
             raise ValueError("A and Q must define the same number of hybrid models")
 
-        num_cells = obs.shape[0]
+        num_cells, num_steps = obs.shape
         state_dims = [_infer_state_dim(A_models[index], beta, num_cells) for index in range(n_models)]
+        max_dim = max(state_dims)
         mu_models = _normalize_mu_models(mu, n_models, num_cells)
         beta_models = _normalize_beta_models(beta, n_models, num_cells, state_dims)
-        x0_models = _normalize_model_sequence(x0, n_models, lambda index: np.zeros(state_dims[index], dtype=float))
-        Pi0_models = _normalize_model_sequence(Pi0, n_models, lambda index: np.zeros((state_dims[index], state_dims[index]), dtype=float))
+        x0_models_raw = _normalize_model_sequence(x0, n_models, lambda index: np.zeros(state_dims[index], dtype=float))
+        Pi0_models_raw = _normalize_model_sequence(Pi0, n_models, lambda index: np.zeros((state_dims[index], state_dims[index]), dtype=float))
+        x0_models = [np.asarray(x0_models_raw[index], dtype=float).reshape(-1) for index in range(n_models)]
+        Pi0_models = [_as_state_matrix(Pi0_models_raw[index], state_dims[index]) for index in range(n_models)]
 
         transition = np.asarray(p_ij, dtype=float)
         if transition.shape != (n_models, n_models):
             raise ValueError("p_ij must be an nModels x nModels transition matrix")
-        model_probs = _normalize_probabilities(Mu0)
-        if model_probs.size != n_models:
-            raise ValueError("Mu0 must contain one probability per hybrid model")
+        row_sums = np.sum(transition, axis=1)
+        if not np.allclose(row_sums, np.ones(n_models), atol=1e-8):
+            raise ValueError("State Transition probability matrix must sum to 1 along each row")
+
+        if _is_empty_value(Mu0):
+            model_probs0 = np.full(n_models, 1.0 / float(n_models), dtype=float)
+        else:
+            model_probs0 = _normalize_probabilities(Mu0)
+            if model_probs0.size != n_models:
+                raise ValueError("Mu0 must contain one probability per hybrid model")
 
         if _is_empty_value(windowTimes):
-            H_tensor = np.zeros((obs.shape[1], 0, num_cells), dtype=float)
+            H_tensor = np.zeros((num_steps, 0, num_cells), dtype=float)
             gamma_mat = np.zeros((0, num_cells), dtype=float)
         else:
             H_tensor = _compute_history_terms(obs, float(binwidth), windowTimes)
             gamma_mat = _normalize_gamma(gamma, H_tensor.shape[1], num_cells)
 
-        model_results = [
-            DecodingAlgorithms._ppdecode_filter_linear(
-                A_models[index],
-                Q_models[index],
-                obs,
-                mu_models[index],
-                beta_models[index],
-                fitType,
-                binwidth,
-                gamma_mat,
-                windowTimes,
-                x0_models[index],
-                Pi0_models[index],
-            )
-            for index in range(n_models)
-        ]
-
-        max_dim = max(state_dims)
-        num_steps = obs.shape[1]
         X = np.zeros((max_dim, num_steps), dtype=float)
         W = np.zeros((max_dim, max_dim, num_steps), dtype=float)
+        X_s = [np.zeros((max_dim, num_steps), dtype=float) for _ in range(n_models)]
+        W_s = [np.zeros((max_dim, max_dim, num_steps), dtype=float) for _ in range(n_models)]
+        X_u = [np.zeros((state_dims[index], num_steps), dtype=float) for index in range(n_models)]
+        W_u = [np.zeros((state_dims[index], state_dims[index], num_steps), dtype=float) for index in range(n_models)]
+        X_p = [np.zeros((state_dims[index], num_steps), dtype=float) for index in range(n_models)]
+        W_p = [np.zeros((state_dims[index], state_dims[index], num_steps), dtype=float) for index in range(n_models)]
         MU_u = np.zeros((n_models, num_steps), dtype=float)
         pNGivenS = np.zeros((n_models, num_steps), dtype=float)
-        X_s = [result[2] for result in model_results]
-        W_s = [result[3] for result in model_results]
         S_est = np.zeros(num_steps, dtype=int)
 
+        fit_type = str(fitType)
+
         for time_index in range(num_steps):
-            predicted_probs = transition.T @ model_probs
+            if time_index == 0:
+                MU_p = transition.T @ model_probs0
+                prev_probs = model_probs0
+            else:
+                MU_p = transition.T @ MU_u[:, time_index - 1]
+                prev_probs = MU_u[:, time_index - 1]
+
+            p_ij_s = transition * prev_probs[:, None]
+            column_norm = np.sum(p_ij_s, axis=0, keepdims=True)
+            column_norm[column_norm == 0.0] = 1.0
+            p_ij_s = p_ij_s / column_norm
+
+            for target_model in range(n_models):
+                mixed_state = np.zeros(max_dim, dtype=float)
+                for source_model in range(n_models):
+                    dim_i = state_dims[source_model]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
+                    mixed_state[:dim_i] += source_state * p_ij_s[source_model, target_model]
+                X_s[target_model][:, time_index] = mixed_state
+
+                mixed_cov = np.zeros((max_dim, max_dim), dtype=float)
+                for source_model in range(n_models):
+                    dim_i = state_dims[source_model]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
+                    source_cov = Pi0_models[source_model] if time_index == 0 else W_u[source_model][:, :, time_index - 1]
+                    diff = source_state - mixed_state[:dim_i]
+                    mixed_cov[:dim_i, :dim_i] += (
+                        source_cov + np.outer(diff, diff)
+                    ) * p_ij_s[source_model, target_model]
+                W_s[target_model][:, :, time_index] = _symmetrize(mixed_cov)
+
             likelihoods = np.zeros(n_models, dtype=float)
             for model_index in range(n_models):
-                x_state = model_results[model_index][2][:, time_index]
-                lambda_delta = _lambda_delta_from_state(
-                    x_state,
+                dim = state_dims[model_index]
+                A_t = _select_time_matrix(A_models[model_index], time_index, dim)
+                Q_t = _select_time_matrix(Q_models[model_index], time_index, dim)
+                pred_x, pred_W = DecodingAlgorithms.PPDecode_predict(
+                    X_s[model_index][:dim, time_index],
+                    W_s[model_index][:dim, :dim, time_index],
+                    A_t,
+                    Q_t,
+                )
+                upd_x, upd_W, lambda_delta = DecodingAlgorithms.PPDecode_updateLinear(
+                    pred_x,
+                    pred_W,
+                    obs,
                     mu_models[model_index],
                     beta_models[model_index],
-                    str(fitType),
+                    fit_type,
                     gamma_mat,
                     H_tensor,
                     time_index + 1,
+                    None,
                 )
-                likelihoods[model_index] = _likelihood_from_lambda(obs[:, time_index], lambda_delta, str(fitType))
+                X_p[model_index][:, time_index] = pred_x
+                W_p[model_index][:, :, time_index] = pred_W
+                X_u[model_index][:, time_index] = upd_x
+                W_u[model_index][:, :, time_index] = upd_W
 
-            weighted = likelihoods * predicted_probs
-            model_probs = _normalize_probabilities(weighted)
-            MU_u[:, time_index] = model_probs
-            pNGivenS[:, time_index] = _normalize_probabilities(likelihoods)
+                det_ratio = np.sqrt(max(np.linalg.det(upd_W), 0.0)) / max(np.sqrt(max(np.linalg.det(pred_W), 0.0)), 1e-15)
+                log_term = np.sum(obs[:, time_index] * np.log(np.clip(lambda_delta.reshape(-1), 1e-12, np.inf)) - lambda_delta.reshape(-1))
+                likelihoods[model_index] = float(det_ratio * np.exp(np.clip(log_term, -200.0, 50.0)))
 
-            best_model = int(np.argmax(model_probs))
+            finite_likelihoods = likelihoods.copy()
+            finite_likelihoods[~np.isfinite(finite_likelihoods)] = 0.0
+            pNGivenS[:, time_index] = finite_likelihoods
+            norm = np.sum(pNGivenS[:, time_index])
+            if norm != 0.0 and np.isfinite(norm):
+                pNGivenS[:, time_index] /= norm
+            elif time_index > 0:
+                pNGivenS[:, time_index] = pNGivenS[:, time_index - 1]
+            else:
+                pNGivenS[:, time_index] = np.full(n_models, 0.5 if n_models == 2 else 1.0 / float(n_models), dtype=float)
+
+            posterior = MU_p * pNGivenS[:, time_index]
+            posterior_norm = np.sum(posterior)
+            if posterior_norm != 0.0 and np.isfinite(posterior_norm):
+                MU_u[:, time_index] = posterior / posterior_norm
+            elif time_index > 0:
+                MU_u[:, time_index] = MU_u[:, time_index - 1]
+            else:
+                MU_u[:, time_index] = model_probs0
+
+            best_model = int(np.argmax(MU_u[:, time_index]))
             S_est[time_index] = best_model + 1
 
             if MinClassificationError:
                 chosen = best_model
-                X[: state_dims[chosen], time_index] = model_results[chosen][2][:, time_index]
-                W[: state_dims[chosen], : state_dims[chosen], time_index] = model_results[chosen][3][:, :, time_index]
+                dim = state_dims[chosen]
+                X[:dim, time_index] = X_u[chosen][:, time_index]
+                W[:dim, :dim, time_index] = W_u[chosen][:, :, time_index]
                 continue
 
+            mixed_global_state = np.zeros(max_dim, dtype=float)
             for model_index in range(n_models):
                 dim = state_dims[model_index]
-                X[:dim, time_index] += model_probs[model_index] * model_results[model_index][2][:, time_index]
-                W[:dim, :dim, time_index] += model_probs[model_index] * model_results[model_index][3][:, :, time_index]
+                mixed_global_state[:dim] += MU_u[model_index, time_index] * X_u[model_index][:, time_index]
+            X[:, time_index] = mixed_global_state
+
+            mixed_global_cov = np.zeros((max_dim, max_dim), dtype=float)
+            for model_index in range(n_models):
+                dim = state_dims[model_index]
+                diff = X_u[model_index][:, time_index] - mixed_global_state[:dim]
+                mixed_global_cov[:dim, :dim] += MU_u[model_index, time_index] * (
+                    W_u[model_index][:, :, time_index] + np.outer(diff, diff)
+                )
+            W[:, :, time_index] = _symmetrize(mixed_global_cov)
 
         return S_est, X, W, MU_u, X_s, W_s, pNGivenS
 

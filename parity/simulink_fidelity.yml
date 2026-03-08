@@ -17,13 +17,15 @@ items:
     matlab_usage: required_for_behavioral_parity
     python_strategy: native_python
     current_python_status: high_fidelity
-    chosen_interoperability_strategy: Native Python simulation through `nstat.cif.CIF.simulateCIF`, with optional MATLAB Engine reference execution through `nstat.matlab_reference.run_point_process_reference` when MATLAB is available.
+    deterministic_fixture_backed: yes
+    stochastic_tolerance_backed: yes
+    chosen_interoperability_strategy: Native Python simulation through `nstat.cif.CIF.simulateCIF`, with MATLAB-side `tests/python_port_fidelity/TestPythonSimulinkParity.m` serving as the cross-language reference checker.
     fidelity_risks:
       - Exact stochastic spike-count realizations differ between MATLAB and NumPy random generators even when the same seed is requested.
       - The native Python path mirrors the Simulink transfer-function semantics for the published help workflows, but not every internal Simulink block configuration has a one-to-one Python analogue.
     validation_plan:
-      - Compare deterministic lambda traces against MATLAB Engine reference runs when MATLAB is available.
-      - Keep committed MATLAB gold fixtures for the leading lambda trace, plus seeded Python regression tests for FIR filtering, recursive history terms, and PPSimExample outputs in CI.
+      - Compare deterministic lambda traces against MATLAB-generated fixtures and the MATLAB-side Simulink parity harness.
+      - Keep committed MATLAB gold fixtures for deterministic injected-uniform traces covering recursive history, eta, lambda-delta, and spike indicators, plus seeded Python regression tests for PPSimExample outputs in CI.
   - model_name: PointProcessSimulationCont
     model_path: PointProcessSimulationCont.slx
     purpose: Continuous-time companion model kept with the MATLAB toolbox for simulation/reference work.
@@ -96,7 +98,7 @@ items:
     matlab_usage: used_for_reference
     python_strategy: reference_only
     current_python_status: reference_only
-    chosen_interoperability_strategy: Keep as a MATLAB reference asset while the Python port validates thinning behavior through `CIF.simulateCIFByThinning` and MATLAB Engine comparisons.
+    chosen_interoperability_strategy: Keep as a MATLAB reference asset while the Python port validates thinning behavior through `CIF.simulateCIFByThinning` and MATLAB-side fixture export.
     fidelity_risks:
       - The legacy thinning model may encode branch behavior that is not separately exercised by current Python CI.
     validation_plan:
@@ -129,14 +131,16 @@ items:
     matlab_usage: required_for_example_execution
     python_strategy: native_python
     current_python_status: high_fidelity
-    chosen_interoperability_strategy: Native Python execution through `nstat.simulators.simulate_two_neuron_network`, with optional MATLAB Engine reference execution through `nstat.matlab_reference.run_simulated_network_reference` when MATLAB is available.
+    deterministic_fixture_backed: yes
+    stochastic_tolerance_backed: yes
+    chosen_interoperability_strategy: Native Python execution through `nstat.simulators.simulate_two_neuron_network`, with MATLAB-side `tests/python_port_fidelity/TestPythonSimulinkParity.m` serving as the reference checker.
     fidelity_risks:
       - Exact spike trains still differ from Simulink because MATLAB and NumPy do not share the same binomial random stream.
       - The native port mirrors the published NetworkTutorial parameterization and one-sample-delay semantics, but not every internal Simulink block detail is separately exposed.
     validation_plan:
-      - Keep deterministic regression tests for the native simulator parameters, probability traces, binary state traces, and estimated network layout in CI.
+      - Keep deterministic injected-uniform fixtures for probability traces, binary state traces, history/ensemble terms, and eta traces in CI.
       - Keep committed MATLAB gold fixtures for `prob_head` and `state_head`, and treat seeded spike-count summaries as tolerance-based because MATLAB and NumPy random streams are not identical.
-      - Run optional MATLAB Engine smoke comparisons for the actual connectivity layout when MATLAB is available.
+      - Keep MATLAB-side parity checks for the actual connectivity layout and deterministic probability/state traces.
   - model_name: SimulatedNetwork2Cache
     model_path: helpfiles/SimulatedNetwork2.slxc
     purpose: Simulink compiled cache artifact for `SimulatedNetwork2`.

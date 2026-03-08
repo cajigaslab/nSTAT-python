@@ -14,16 +14,16 @@ Generated report:
 python tools/parity/build_report.py
 ```
 
-Refresh MATLAB-derived fixtures:
+Refresh MATLAB-derived fixtures from the sibling MATLAB repo:
 
 ```bash
-python tools/parity/export_matlab_gold_fixtures.py
+matlab -batch "cd('../nSTAT'); addpath(fullfile(pwd,'tools','python')); export_python_port_fixtures; exit"
 ```
 
-Run the combined Python plus MATLAB release gate:
+Run the pure-Python release gate:
 
 ```bash
-nstat-release-check --matlab-repo ../nSTAT
+python tools/release/run_fidelity_gate.py
 ```
 
 Run the MATLAB-side `pyenv` fidelity suite from the sibling MATLAB repo:

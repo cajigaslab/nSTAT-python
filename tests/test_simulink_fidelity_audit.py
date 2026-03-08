@@ -51,6 +51,19 @@ def test_simulink_fidelity_audit_records_required_execution_fields() -> None:
         assert row["validation_plan"]
 
 
+def test_required_native_simulink_paths_record_deterministic_and_stochastic_backing() -> None:
+    payload = _load_audit()
+    required = {
+        row["model_name"]: row
+        for row in payload["items"]
+        if row["model_name"] in {"PointProcessSimulation", "SimulatedNetwork2"}
+    }
+    assert bool(required["PointProcessSimulation"]["deterministic_fixture_backed"]) is True
+    assert bool(required["PointProcessSimulation"]["stochastic_tolerance_backed"]) is True
+    assert bool(required["SimulatedNetwork2"]["deterministic_fixture_backed"]) is True
+    assert bool(required["SimulatedNetwork2"]["stochastic_tolerance_backed"]) is True
+
+
 def test_simulink_fidelity_audit_covers_required_model_inventory() -> None:
     payload = _load_audit()
     model_paths = {row["model_path"] for row in payload["items"]}

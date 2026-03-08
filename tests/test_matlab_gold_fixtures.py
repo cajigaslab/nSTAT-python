@@ -13,6 +13,7 @@ from nstat import (
     CovColl,
     Covariate,
     DecodingAlgorithms,
+    FitResult,
     FitResSummary,
     SignalObj,
     Trial,
@@ -46,9 +47,23 @@ def _string(payload: dict[str, np.ndarray], key: str) -> str:
     if isinstance(value, str):
         return value
     arr = np.asarray(value)
+    if arr.size == 0:
+        return ""
     if arr.shape == ():
         return str(arr.item())
     return str(arr.reshape(-1)[0])
+
+
+def _string_list(payload: dict[str, np.ndarray], key: str) -> list[str]:
+    value = payload[key]
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if isinstance(value, tuple):
+        return [str(item) for item in value]
+    arr = np.asarray(value, dtype=object)
+    if arr.shape == ():
+        return [str(arr.item())]
+    return [str(item) for item in arr.reshape(-1)]
 
 
 def test_signalobj_matches_matlab_gold_fixture() -> None:
@@ -135,15 +150,76 @@ def test_covariate_and_confidence_interval_match_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(cov_single.ci[0].bounds, np.asarray(payload["explicit_ci"], dtype=float), rtol=1e-8, atol=1e-10)
 
 
+def test_confidence_interval_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("confidence_interval_exactness.mat")
+    ci = ConfidenceInterval(
+        _vector(payload, "time"),
+        np.asarray(payload["bounds"], dtype=float),
+        "CI",
+        "time",
+        "s",
+        "a.u.",
+        ["lo", "hi"],
+        ["-.k"],
+    )
+    ci.setColor(_string(payload, "color"))
+    ci.setValue(_scalar(payload, "value"))
+    structure = ci.toStructure()
+    roundtrip = ConfidenceInterval.fromStructure(structure)
+
+    np.testing.assert_allclose(ci.dataToMatrix(), np.asarray(payload["bounds"], dtype=float), rtol=1e-12, atol=1e-12)
+    assert ci.name == _string(payload, "name")
+    assert ci.color == _string(payload, "color")
+    assert ci.plotProps == _string_list(payload, "plotProps")
+    np.testing.assert_allclose(ci.value, _scalar(payload, "value"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(structure["time"], dtype=float), _vector(payload, "structure_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(structure["signals"]["values"], dtype=float), np.asarray(payload["structure_values"], dtype=float), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(roundtrip.dataToMatrix(), np.asarray(payload["roundtrip_bounds"], dtype=float), rtol=1e-12, atol=1e-12)
+    assert roundtrip.color == _string(payload, "roundtrip_color")
+    np.testing.assert_allclose(roundtrip.value, _scalar(payload, "roundtrip_value"), rtol=1e-12, atol=1e-12)
+    assert roundtrip.name == _string(payload, "roundtrip_name")
+    assert roundtrip.plotProps == _string_list(payload, "roundtrip_plotProps")
+
+
 def test_nstcoll_matches_matlab_gold_fixture() -> None:
     payload = _load_fixture("nstcoll_exactness.mat")
     n1 = nspikeTrain(_vector(payload, "firstSpikeTimes"), "1", 10.0, 0.0, 0.5, "time", "s", "spikes", "spk", -1)
     n2 = nspikeTrain(_vector(payload, "secondSpikeTimes"), "2", 10.0, 0.0, 0.5, "time", "s", "spikes", "spk", -1)
     coll = nstColl([n1, n2])
+    collapsed = coll.toSpikeTrain()
 
     np.testing.assert_equal(coll.numSpikeTrains, int(_scalar(payload, "numSpikeTrains")))
     assert coll.getNST(1).name == _string(payload, "firstName")
     np.testing.assert_allclose(coll.dataToMatrix([1, 2], 0.1, 0.0, 0.5), np.asarray(payload["dataMatrix"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(collapsed.spikeTimes, _vector(payload, "collapsedSpikeTimes"), rtol=1e-8, atol=1e-10)
+    assert collapsed.name == _string(payload, "collapsedName")
+    np.testing.assert_allclose(float(collapsed.minTime), _scalar(payload, "collapsedMinTime"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(float(collapsed.maxTime), _scalar(payload, "collapsedMaxTime"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(float(collapsed.sampleRate), _scalar(payload, "collapsedSampleRate"), rtol=1e-12, atol=1e-12)
+
+
+def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
+    payload = _load_fixture("config_exactness.mat")
+    cfg = TrialConfig([["Position", "x"], ["Stimulus"]], 2.0, [0.0, 0.5, 1.0], [], [], 0.5, "stim_pos")
+    cfg2 = TrialConfig([["Stimulus"]], 2.0, [], [], [], [], "manual")
+    structure = cfg.toStructure()
+    roundtrip = TrialConfig.fromStructure(structure)
+    coll = ConfigColl([cfg, cfg2])
+    subset = coll.getSubsetConfigs([1, 2])
+    rebuilt = ConfigColl.fromStructure(coll.toStructure())
+
+    assert cfg.name == _string(payload, "cfg_name")
+    np.testing.assert_allclose(float(cfg.sampleRate), _scalar(payload, "cfg_sampleRate"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(float(cfg.covLag), _scalar(payload, "cfg_covLag"), rtol=1e-12, atol=1e-12)
+    assert roundtrip.name == _string(payload, "roundtrip_name")
+    assert roundtrip.covLag == _string(payload, "roundtrip_covLag")
+    np.testing.assert_allclose(float(roundtrip.ensCovMask), _scalar(payload, "roundtrip_ensCovMask"), rtol=1e-12, atol=1e-12)
+    assert coll.getConfigNames() == _string_list(payload, "config_names")
+    assert subset.getConfigNames() == _string_list(payload, "subset_names")
+    assert rebuilt.getConfigNames() == _string_list(payload, "rebuilt_names")
+    assert rebuilt.getConfig(1).name == _string(payload, "rebuilt_first_name")
+    assert rebuilt.getConfig(1).covLag == _string(payload, "rebuilt_first_covLag")
+    np.testing.assert_allclose(float(rebuilt.getConfig(1).ensCovMask), _scalar(payload, "rebuilt_first_ensCovMask"), rtol=1e-12, atol=1e-12)
 
 
 def test_cif_eval_surface_matches_matlab_gold_fixture() -> None:
@@ -196,11 +272,151 @@ def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(fit.lambdaSignal.data[:, 0], _vector(payload, "lambda_data"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fit.AIC[0]), _scalar(payload, "AIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fit.BIC[0]), _scalar(payload, "BIC"), rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(float(summary.AIC[0]), _scalar(payload, "summaryAIC"), rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(float(summary.BIC[0]), _scalar(payload, "summaryBIC"), rtol=1e-8, atol=1e-10)
-    assert np.isfinite(float(fit.logLL[0]))
-    assert np.isfinite(float(summary.logLL[0]))
+    np.testing.assert_allclose(float(fit.logLL[0]), _scalar(payload, "logLL"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(float(summary.AIC[0, 0]), _scalar(payload, "summaryAIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(summary.BIC[0, 0]), _scalar(payload, "summaryBIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(summary.logLL[0, 0]), _scalar(payload, "summarylogLL"), rtol=1e-6, atol=1e-8)
+    ks_stats = fit.computeKSStats(1)
+    np.testing.assert_allclose(float(ks_stats["ks_stat"]), _scalar(payload, "ks_stat"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(ks_stats["ks_pvalue"]), _scalar(payload, "ks_pvalue"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(ks_stats["within_conf_int"]), _scalar(payload, "ks_within_conf_int"), rtol=1e-8, atol=1e-10)
+    residual = fit.computeFitResidual(1)
+    np.testing.assert_allclose(residual.time, _vector(payload, "residual_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(residual.data[:, 0], _vector(payload, "residual_data"), rtol=1e-6, atol=1e-8)
     assert fit.fitType[0] == _string(payload, "distribution")
+
+
+def test_analysis_discrete_ks_arrays_match_matlab_gold_fixture() -> None:
+    payload = _load_fixture("ksdiscrete_exactness.mat")
+
+    spike_train = nspikeTrain(
+        _vector(payload, "spike_times"),
+        "1",
+        0.1,
+        0.0,
+        1.0,
+        "time",
+        "s",
+        "",
+        "",
+        -1,
+    )
+    lambda_signal = Covariate(
+        _vector(payload, "lambda_time"),
+        _vector(payload, "lambda_data"),
+        "\\lambda(t)",
+        "time",
+        "s",
+        "Hz",
+        ["\\lambda_{1}"],
+    )
+
+    Z, U, xAxis, KSSorted, ks_stat = Analysis.computeKSStats(
+        spike_train,
+        lambda_signal,
+        1,
+        random_values=_vector(payload, "uniform_draws"),
+    )
+
+    np.testing.assert_allclose(np.asarray(Z, dtype=float).reshape(-1), _vector(payload, "Z"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(U, dtype=float).reshape(-1), _vector(payload, "U"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(xAxis, dtype=float).reshape(-1), _vector(payload, "xAxis"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(KSSorted, dtype=float).reshape(-1), _vector(payload, "KSSorted"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(ks_stat), _scalar(payload, "compute_ks_stat"), rtol=1e-8, atol=1e-10)
+
+    stim = Covariate(_vector(payload, "time"), _vector(payload, "stim_data"), "Stimulus", "time", "s", "", ["stim"])
+    trial = Trial(nstColl([spike_train]), CovColl([stim]))
+    cfg = TrialConfig([["Stimulus", "stim"]], _scalar(payload, "sample_rate"), [], [], name="stim")
+    fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]), makePlot=0)
+    fit.setKSStats(Z, U, xAxis, KSSorted, np.asarray([ks_stat], dtype=float))
+    np.testing.assert_allclose(float(fit.KSStats[0, 0]), _scalar(payload, "ks_stat"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fit.KSPvalues[0]), _scalar(payload, "ks_pvalue"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fit.withinConfInt[0]), _scalar(payload, "ks_within_conf_int"), rtol=1e-8, atol=1e-10)
+
+
+def test_fit_summary_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("fit_summary_exactness.mat")
+    time = np.arange(0.0, 1.0 + 0.1, 0.1)
+    lambda_signal = Covariate(
+        time,
+        np.column_stack(
+            [
+                np.linspace(2.0, 7.0, time.size, dtype=float),
+                np.linspace(3.0, 8.0, time.size, dtype=float),
+            ]
+        ),
+        "\\lambda(t)",
+        "time",
+        "s",
+        "Hz",
+        ["stim", "stim_hist"],
+    )
+    st1 = nspikeTrain([0.1, 0.4, 0.7], "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    st2 = nspikeTrain([0.2, 0.5, 0.8], "2", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    stim_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [], [], name="stim")
+    stim_hist_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [0.0, 0.1, 0.2], [], name="stim_hist")
+    config_coll = ConfigColl([stim_cfg, stim_hist_cfg])
+    fit1 = FitResult(
+        st1,
+        [["stim"], ["stim", "hist1", "hist2"]],
+        [0, 2],
+        [None, None],
+        [None, None],
+        lambda_signal,
+        [np.array([0.5]), np.array([0.3, -0.1, -0.05])],
+        np.array([1.0, 2.0]),
+        [
+            {"se": np.array([0.05]), "p": np.array([0.01])},
+            {"se": np.array([0.04, 0.03, 0.02]), "p": np.array([0.02, 0.04, 0.06])},
+        ],
+        np.array([11.0, 7.0]),
+        np.array([12.0, 8.0]),
+        np.array([3.0, 5.0]),
+        config_coll,
+        [],
+        [],
+        "poisson",
+    )
+    fit2 = FitResult(
+        st2,
+        [["stim"], ["stim", "hist1", "hist2"]],
+        [0, 2],
+        [None, None],
+        [None, None],
+        lambda_signal,
+        [np.array([0.4]), np.array([0.25, -0.08, -0.02])],
+        np.array([1.5, 2.5]),
+        [
+            {"se": np.array([0.06]), "p": np.array([0.03])},
+            {"se": np.array([0.05, 0.04, 0.03]), "p": np.array([0.01, 0.03, 0.07])},
+        ],
+        np.array([13.0, 9.0]),
+        np.array([14.0, 10.0]),
+        np.array([2.0, 4.0]),
+        config_coll,
+        [],
+        [],
+        "poisson",
+    )
+    fit1.KSStats[:, 0] = np.array([0.25, 0.50], dtype=float)
+    fit1.KSPvalues[:] = np.array([0.90, 0.40], dtype=float)
+    fit1.withinConfInt[:] = np.array([1.0, 1.0], dtype=float)
+    fit2.KSStats[:, 0] = np.array([0.35, 0.55], dtype=float)
+    fit2.KSPvalues[:] = np.array([0.80, 0.30], dtype=float)
+    fit2.withinConfInt[:] = np.array([1.0, 0.0], dtype=float)
+    summary = FitResSummary([fit1, fit2])
+
+    assert summary.fitNames == _string_list(payload, "fitNames")
+    np.testing.assert_allclose(np.asarray(summary.neuronNumbers, dtype=float), _vector(payload, "neuronNumbers"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(summary.AIC, np.asarray(payload["AIC"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(summary.BIC, np.asarray(payload["BIC"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(summary.logLL, np.asarray(payload["logLL"], dtype=float), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(summary.KSStats, np.asarray(payload["KSStats"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(summary.KSPvalues, np.asarray(payload["KSPvalues"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(summary.withinConfInt, np.asarray(payload["withinConfInt"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(summary.getDiffAIC(1), np.asarray(payload["diffAIC"], dtype=float).reshape(summary.getDiffAIC(1).shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(summary.getDiffBIC(1), np.asarray(payload["diffBIC"], dtype=float).reshape(summary.getDiffBIC(1).shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(summary.getDifflogLL(1), np.asarray(payload["difflogLL"], dtype=float).reshape(summary.getDifflogLL(1).shape), rtol=1e-6, atol=1e-8)
 
 
 def test_point_process_lambda_trace_matches_matlab_gold_fixture() -> None:
@@ -225,6 +441,65 @@ def test_point_process_lambda_trace_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(lambda_cov.data[: _vector(payload, 'lambda_head').shape[0], 0], _vector(payload, "lambda_head"), rtol=1e-8, atol=1e-10)
 
 
+def test_point_process_deterministic_trace_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("point_process_exactness.mat")
+    time = _vector(payload, "det_time")
+    stim_values = _vector(payload, "det_stimulus")
+    uniforms = _vector(payload, "det_uniforms").reshape(-1, 1)
+    stim = Covariate(time, stim_values, "Stimulus", "time", "s", "Voltage", ["sin"])
+    ens = Covariate(time, np.zeros_like(time), "Ensemble", "time", "s", "Spikes", ["n1"])
+    _, lambda_cov, details = CIF.simulateCIF(
+        -3.0,
+        np.array([-1.0, -2.0, -4.0], dtype=float),
+        np.array([1.0], dtype=float),
+        np.array([0.0], dtype=float),
+        stim,
+        ens,
+        numRealizations=1,
+        simType="binomial",
+        random_values=uniforms,
+        return_lambda=True,
+        return_details=True,
+    )
+
+    np.testing.assert_allclose(lambda_cov.data[:, 0], _vector(payload, "det_rate_hz"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(details["lambda_delta"][:, 0], _vector(payload, "det_lambda_delta"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(details["history_effect"][:, 0], _vector(payload, "det_history_effect"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(details["eta"][:, 0], _vector(payload, "det_eta"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(details["spike_indicator"][:, 0], _vector(payload, "det_spike_indicator"), rtol=1e-8, atol=1e-10)
+
+
+def test_cif_thinning_from_lambda_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("thinning_exactness.mat")
+    lambda_cov = Covariate(
+        _vector(payload, "time"),
+        _vector(payload, "lambda_data"),
+        "\\lambda(t)",
+        "time",
+        "s",
+        "Hz",
+        ["\\lambda"],
+    )
+    spike_coll, details = CIF.simulateCIFByThinningFromLambda(
+        lambda_cov,
+        numRealizations=1,
+        maxTimeRes=_scalar(payload, "maxTimeRes"),
+        random_values=_vector(payload, "arrival_uniforms"),
+        thinning_values=_vector(payload, "thinning_uniforms"),
+        return_details=True,
+    )
+
+    np.testing.assert_allclose(float(details["lambda_bound"]), _scalar(payload, "lambda_bound"), rtol=1e-12, atol=1e-12)
+    assert int(details["proposal_count"]) == int(_scalar(payload, "proposal_count"))
+    np.testing.assert_allclose(details["arrival_uniforms"], _vector(payload, "arrival_uniforms"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(details["interarrival_times"], _vector(payload, "interarrival_times"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(details["candidate_spike_times"], _vector(payload, "candidate_spike_times"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(details["lambda_ratio"], _vector(payload, "lambda_ratio"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(details["thinning_uniforms"], _vector(payload, "thinning_uniforms"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(details["accepted_spike_times"], _vector(payload, "rounded_spike_times"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(spike_coll.getNST(1).spikeTimes, _vector(payload, "rounded_spike_times"), rtol=1e-8, atol=1e-10)
+
+
 def test_decoding_predict_matches_matlab_gold_fixture() -> None:
     payload = _load_fixture("decoding_predict_exactness.mat")
     x_p, W_p = DecodingAlgorithms.PPDecode_predict(
@@ -236,6 +511,50 @@ def test_decoding_predict_matches_matlab_gold_fixture() -> None:
 
     np.testing.assert_allclose(x_p, _vector(payload, "x_p"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(W_p, np.asarray(payload["W_p"], dtype=float), rtol=1e-8, atol=1e-10)
+
+
+def test_pp_fixed_interval_smoother_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("decoding_smoother_exactness.mat")
+    x_pLag, W_pLag, x_uLag, W_uLag = DecodingAlgorithms.PP_fixedIntervalSmoother(
+        _scalar(payload, "A"),
+        _scalar(payload, "Q"),
+        np.asarray(payload["dN"], dtype=float),
+        int(_scalar(payload, "lags")),
+        _scalar(payload, "mu"),
+        _scalar(payload, "beta"),
+        _string(payload, "fitType"),
+        _scalar(payload, "delta"),
+    )
+
+    np.testing.assert_allclose(x_pLag, np.asarray(payload["x_pLag"], dtype=float).reshape(x_pLag.shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(W_pLag, np.asarray(payload["W_pLag"], dtype=float).reshape(W_pLag.shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(x_uLag, np.asarray(payload["x_uLag"], dtype=float).reshape(x_uLag.shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(W_uLag, np.asarray(payload["W_uLag"], dtype=float).reshape(W_uLag.shape), rtol=1e-8, atol=1e-10)
+
+
+def test_pp_hybrid_filter_linear_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("hybrid_filter_exactness.mat")
+    S_est, X, W, MU_u, X_s, W_s, pNGivenS = DecodingAlgorithms.PPHybridFilterLinear(
+        [np.array([[float(_scalar(payload, "A1"))]], dtype=float), np.array([[float(_scalar(payload, "A2"))]], dtype=float)],
+        [np.array([[float(_scalar(payload, "Q1"))]], dtype=float), np.array([[float(_scalar(payload, "Q2"))]], dtype=float)],
+        np.asarray(payload["p_ij"], dtype=float),
+        _vector(payload, "Mu0"),
+        np.asarray(payload["dN"], dtype=float),
+        float(_scalar(payload, "mu")),
+        float(_scalar(payload, "beta")),
+        _string(payload, "fitType"),
+        _scalar(payload, "binwidth"),
+    )
+
+    np.testing.assert_allclose(S_est, _vector(payload, "S_est"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(X, np.asarray(payload["X"], dtype=float).reshape(X.shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(W, np.asarray(payload["W"], dtype=float).reshape(W.shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(MU_u, np.asarray(payload["MU_u"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(X_s[0], np.asarray(payload["X_s_1"], dtype=float).reshape(X_s[0].shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(X_s[1], np.asarray(payload["X_s_2"], dtype=float).reshape(X_s[1].shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(W_s[0], np.asarray(payload["W_s_1"], dtype=float).reshape(W_s[0].shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(W_s[1], np.asarray(payload["W_s_2"], dtype=float).reshape(W_s[1].shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(pNGivenS, np.asarray(payload["pNGivenS"], dtype=float), rtol=1e-8, atol=1e-10)
 
 
 def test_nonlinear_ppdecodefilter_matches_matlab_gold_fixture() -> None:
@@ -279,3 +598,21 @@ def test_simulated_network_matches_matlab_gold_fixture() -> None:
     matlab_counts = _vector(payload, "spike_counts")
     assert native_counts.shape == matlab_counts.shape
     assert np.all(np.abs(native_counts - matlab_counts) <= 64.0)
+
+
+def test_simulated_network_deterministic_trace_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("simulated_network_exactness.mat")
+    sim = simulate_two_neuron_network(
+        duration_s=float(_vector(payload, "det_time")[-1]),
+        dt=float(_vector(payload, "det_time")[1] - _vector(payload, "det_time")[0]),
+        seed=None,
+        uniform_values=np.asarray(payload["det_uniforms"], dtype=float),
+    )
+
+    np.testing.assert_allclose(sim.time, _vector(payload, "det_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(sim.latent_drive, _vector(payload, "det_stimulus"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(sim.lambda_delta, np.asarray(payload["det_probability"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(sim.spike_indicator, np.asarray(payload["det_state"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(sim.eta, np.asarray(payload["det_eta"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(sim.history_effect, np.asarray(payload["det_history_effect"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(sim.ensemble_effect, np.asarray(payload["det_ensemble_effect"], dtype=float), rtol=1e-8, atol=1e-10)

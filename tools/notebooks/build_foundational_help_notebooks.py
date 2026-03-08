@@ -361,13 +361,13 @@ PPSIM_CODE = [
     summary = FitResSummary(results)
     fig = _figure("Summary.plotSummary", figsize=(10.0, 4.5))
     summary.plotSummary(handle=fig)
-    print({"fit_names": summary.fitNames, "mean_AIC": np.asarray(summary.AIC, dtype=float).round(3).tolist()})
+    print({"fit_names": summary.fitNames, "mean_AIC": np.asarray(summary.meanAIC, dtype=float).round(3).tolist()})
     """,
     """
     # SECTION 17: Summarize model selection
     fig = _figure("bar(summary.AIC)", figsize=(8.0, 4.5))
     ax = fig.subplots(1, 1)
-    ax.bar(np.arange(len(summary.fitNames)), np.asarray(summary.AIC, dtype=float), color=["0.6", "tab:blue", "tab:green"])
+    ax.bar(np.arange(len(summary.fitNames)), np.asarray(summary.meanAIC, dtype=float), color=["0.6", "tab:blue", "tab:green"])
     ax.set_xticks(np.arange(len(summary.fitNames)), summary.fitNames, rotation=20)
     ax.set_ylabel("mean AIC")
     ax.set_title("Model comparison across realizations")

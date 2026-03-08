@@ -80,7 +80,7 @@ def test_fitresult_roundtrip_and_summary_preserve_core_metadata() -> None:
     assert summary.numNeurons == 2
     assert summary.numResults == 1
     assert summary.fitNames == ["stim_only"]
-    assert summary.AIC.shape == (1,)
+    assert summary.AIC.shape == (2, 1)
 
 
 def test_cif_instantiation_evaluation_and_simulate_from_lambda() -> None:
@@ -94,6 +94,17 @@ def test_cif_instantiation_evaluation_and_simulate_from_lambda() -> None:
     cov = CIF.from_linear_terms(time, 0.1, np.array([0.2, -0.1]), design, 0.1, "lambda")
     sim = CIF.simulateCIFByThinningFromLambda(cov, numRealizations=2)
     assert sim.numSpikeTrains == 2
+
+    sim_single, details = CIF.simulateCIFByThinningFromLambda(
+        cov.getSubSignal(1),
+        numRealizations=1,
+        random_values=np.array([0.8, 0.6, 0.4, 0.2], dtype=float),
+        thinning_values=np.array([0.1, 0.9, 0.3, 0.7], dtype=float),
+        return_details=True,
+    )
+    assert sim_single.numSpikeTrains == 1
+    assert int(details["proposal_count"]) >= 0
+    assert details["candidate_spike_times"].ndim == 1
 
     model = CIFModel(time, np.array([5.0, 6.0, 7.0]), name="lambda")
     sim2 = model.simulate(num_realizations=1, seed=1)

@@ -8,7 +8,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import kstest
+from scipy.stats import norm
 
 from .core import Covariate, nspikeTrain
 
@@ -72,13 +72,252 @@ def _time_rescaled_uniforms(y: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarra
     return np.asarray(uniforms, dtype=float)
 
 
+def _ksdiscrete(
+    pk: np.ndarray,
+    st: np.ndarray,
+    spikeflag: str,
+    *,
+    random_values: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float, np.ndarray]:
+    """Port of MATLAB Analysis.m local ksdiscrete helper."""
+
+    pk_arr = np.asarray(pk, dtype=float).reshape(-1)
+    if np.any(pk_arr < 0.0) or np.any(pk_arr > 1.0):
+        raise ValueError("all values for pk must be within [0,1]")
+
+    if spikeflag == "spiketrain":
+        st_arr = np.asarray(st, dtype=float).reshape(-1)
+        if pk_arr.shape[0] != st_arr.shape[0]:
+            raise ValueError("pk and spike train must be same length")
+        spike_indices = np.flatnonzero(st_arr == 1.0) + 1
+    elif spikeflag == "spikeind":
+        st_arr = np.asarray(st, dtype=float).reshape(-1)
+        spike_indices = np.unique(np.asarray(st_arr, dtype=int))
+    else:
+        raise ValueError("spikeflag must be 'spiketrain' or 'spikeind'")
+
+    if spike_indices.size == 0:
+        rst = pk_arr.copy()
+        return rst, np.sort(rst), np.asarray([], dtype=float), np.nan, np.sort(rst)
+
+    if spike_indices[0] < 1:
+        raise ValueError("There is at least one spike with index less than 0")
+    if spike_indices[-1] > pk_arr.shape[0]:
+        raise ValueError("There is at least one spike with an index greater than the length of pk")
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        qk = -np.log(1.0 - pk_arr)
+    n_spikes = int(spike_indices.size)
+    rst = np.zeros(max(n_spikes - 1, 0), dtype=float)
+    rstold = np.zeros_like(rst)
+
+    if random_values is None:
+        draws = np.random.random_sample(rst.shape[0])
+    else:
+        draws = np.asarray(random_values, dtype=float).reshape(-1)
+        if draws.shape[0] != rst.shape[0]:
+            raise ValueError("random_values must match the number of inter-spike intervals")
+
+    for r in range(rst.shape[0]):
+        ind1 = int(spike_indices[r])
+        ind2 = int(spike_indices[r + 1])
+        total = float(np.sum(qk[ind1: ind2 - 1]))
+        qk_ind2 = float(qk[ind2 - 1])
+        delta = -(1.0 / qk_ind2) * np.log(1.0 - float(draws[r]) * (1.0 - np.exp(-qk_ind2)))
+        if delta != 0.0:
+            total += qk_ind2 * delta
+        rst[r] = total
+        rstold[r] = float(np.sum(qk[ind1:ind2]))
+
+    rstsort = np.sort(rst)
+    inrst = 1.0 / float(max(n_spikes - 1, 1))
+    xrst = np.arange(0.5 * inrst, 1.0 - 0.5 * inrst + 0.5 * inrst, inrst, dtype=float)
+    cb = 1.36 * np.sqrt(inrst)
+    rstoldsort = np.sort(rstold)
+    return rst, rstsort, xrst, cb, rstoldsort
+
+
+def _matlab_compute_ks_arrays(
+    spike_obj: nspikeTrain,
+    lambda_input: Covariate,
+    *,
+    dt_correction: int = 1,
+    random_values: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float | np.ndarray]:
+    """Port of MATLAB Analysis.computeKSStats for a single spike train."""
+
+    n_copy = spike_obj.nstCopy()
+    lambda_signal = Covariate(
+        np.asarray(lambda_input.time, dtype=float).reshape(-1),
+        np.asarray(lambda_input.data, dtype=float),
+        lambda_input.name,
+        lambda_input.xlabelval,
+        lambda_input.xunits,
+        lambda_input.yunits,
+        list(lambda_input.dataLabels) if getattr(lambda_input, "dataLabels", None) else [],
+    )
+
+    n_copy.resample(lambda_signal.sampleRate)
+    n_copy.setMinTime(lambda_signal.minTime)
+    n_copy.setMaxTime(lambda_signal.maxTime)
+
+    rep_bin = n_copy.isSigRepBinary()
+    if not rep_bin:
+        lambda_signal = lambda_signal.resample(2.0 * lambda_signal.sampleRate)
+        n_copy.resample(lambda_signal.sampleRate)
+
+    lambda_data = np.asarray(lambda_signal.data, dtype=float)
+    if lambda_data.ndim == 1:
+        lambda_data = lambda_data[:, None]
+
+    n_dims = int(lambda_data.shape[1])
+    if random_values is None:
+        random_cols = [None] * n_dims
+    else:
+        rv = np.asarray(random_values, dtype=float)
+        if rv.ndim == 1:
+            random_cols = [rv.reshape(-1)] * n_dims
+        elif rv.ndim == 2 and rv.shape[1] == n_dims:
+            random_cols = [rv[:, idx].reshape(-1) for idx in range(n_dims)]
+        else:
+            raise ValueError("random_values must be 1D or have one column per lambda dimension")
+
+    z_cols: list[np.ndarray] = []
+    u_cols: list[np.ndarray] = []
+    x_cols: list[np.ndarray] = []
+    ks_cols: list[np.ndarray] = []
+    stats: list[float] = []
+
+    if int(dt_correction) == 1 and rep_bin:
+        pk = np.maximum(lambda_data * (1.0 / max(float(lambda_signal.sampleRate), 1e-12)), 1e-10)
+        spike_signal = np.asarray(n_copy.getSigRep().data, dtype=float).reshape(-1)
+        min_dim = min(pk.shape[0], spike_signal.shape[0])
+        pk = pk[:min_dim, :]
+        spike_signal = spike_signal[:min_dim]
+
+        int_cols: list[np.ndarray] = []
+        for idx in range(n_dims):
+            pk_col = np.clip(pk[:, idx], 0.0, 1.0)
+            z_col, _, _, _, _ = _ksdiscrete(
+                pk_col,
+                spike_signal,
+                "spiketrain",
+                random_values=random_cols[idx],
+            )
+            int_cols.append(np.asarray(z_col, dtype=float).reshape(-1))
+
+        if int_cols:
+            Z = _pad_rows(int_cols, fill_value=np.nan).T
+        else:
+            Z = np.zeros((0, n_dims), dtype=float)
+    else:
+        lambda_pos = np.maximum(lambda_data, 0.0)
+        lambda_cov = Covariate(
+            lambda_signal.time,
+            lambda_pos,
+            lambda_signal.name,
+            lambda_signal.xlabelval,
+            lambda_signal.xunits,
+            lambda_signal.yunits,
+            list(lambda_signal.dataLabels),
+        )
+        lambda_int = lambda_cov.integral()
+        if n_copy.isSigRepBinary():
+            spike_times = np.concatenate([[0.0], np.asarray(n_copy.getSpikeTimes(), dtype=float).reshape(-1)])
+        else:
+            nst_signal = n_copy.getSigRep()
+            spike_times = np.concatenate([[0.0], np.asarray(nst_signal.time[np.asarray(nst_signal.data).reshape(-1) != 0], dtype=float).reshape(-1)])
+
+        if spike_times.size:
+            temp_vals = np.asarray(lambda_int.getValueAt(spike_times), dtype=float)
+            Z = temp_vals[1:, :] - temp_vals[:-1, :]
+        else:
+            Z = np.zeros((1, n_dims), dtype=float)
+
+    U = 1.0 - np.exp(-Z)
+    if U.ndim == 1:
+        U = U[:, None]
+
+    for idx in range(U.shape[1]):
+        ks_sorted = np.sort(np.asarray(U[:, idx], dtype=float).reshape(-1))
+        n_events = int(ks_sorted.shape[0])
+        if n_events:
+            x_axis = ((np.arange(1, n_events + 1, dtype=float) - 0.5) / float(n_events))
+            ks_stat = float(np.max(np.abs(ks_sorted - x_axis)))
+        else:
+            x_axis = np.asarray([], dtype=float)
+            ks_stat = 1.0
+        z_cols.append(np.asarray(Z[:, idx], dtype=float).reshape(-1))
+        u_cols.append(np.asarray(U[:, idx], dtype=float).reshape(-1))
+        x_cols.append(x_axis)
+        ks_cols.append(ks_sorted)
+        stats.append(ks_stat)
+
+    Z_out = _pad_rows(z_cols, fill_value=np.nan).T if z_cols else np.zeros((0, n_dims), dtype=float)
+    U_out = _pad_rows(u_cols, fill_value=np.nan).T if u_cols else np.zeros((0, n_dims), dtype=float)
+    x_out = _pad_rows(x_cols, fill_value=np.nan).T if x_cols else np.zeros((0, n_dims), dtype=float)
+    ks_out = _pad_rows(ks_cols, fill_value=np.nan).T if ks_cols else np.zeros((0, n_dims), dtype=float)
+    ks_stat = np.asarray(stats, dtype=float)
+    if ks_stat.size == 1:
+        return Z_out, U_out, x_out, ks_out, float(ks_stat[0])
+    return Z_out, U_out, x_out, ks_out, ks_stat
+
+
 def _ks_curve(uniforms: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     u = np.sort(np.asarray(uniforms, dtype=float).reshape(-1))
     if u.size == 0:
         return np.asarray([], dtype=float), np.asarray([], dtype=float), np.asarray([], dtype=float)
-    ideal = np.linspace(1.0 / u.size, 1.0, u.size, dtype=float)
+    ideal = (np.arange(1, u.size + 1, dtype=float) - 0.5) / float(u.size)
     ci = np.full(u.size, 1.36 / np.sqrt(float(u.size)), dtype=float)
     return ideal, u, ci
+
+
+def _matlab_kstest2(
+    x1: np.ndarray,
+    x2: np.ndarray,
+    *,
+    alpha: float = 0.05,
+    tail: str = "unequal",
+) -> tuple[bool, float, float]:
+    """Port of MATLAB's asymptotic kstest2 implementation."""
+
+    sample1 = np.asarray(x1, dtype=float).reshape(-1)
+    sample2 = np.asarray(x2, dtype=float).reshape(-1)
+    sample1 = sample1[~np.isnan(sample1)]
+    sample2 = sample2[~np.isnan(sample2)]
+    if sample1.size == 0 or sample2.size == 0:
+        raise ValueError("kstest2 requires non-empty samples")
+
+    tail_key = str(tail).lower()
+    if tail_key not in {"unequal", "smaller", "larger"}:
+        raise ValueError("tail must be 'unequal', 'smaller', or 'larger'")
+
+    bin_edges = np.concatenate(([-np.inf], np.sort(np.concatenate((sample1, sample2))), [np.inf]))
+    cdf1 = np.histogram(sample1, bins=bin_edges)[0].cumsum(dtype=float) / float(sample1.size)
+    cdf2 = np.histogram(sample2, bins=bin_edges)[0].cumsum(dtype=float) / float(sample2.size)
+
+    if tail_key == "unequal":
+        delta_cdf = np.abs(cdf1 - cdf2)
+    elif tail_key == "smaller":
+        delta_cdf = cdf2 - cdf1
+    else:
+        delta_cdf = cdf1 - cdf2
+
+    ks_statistic = float(np.max(delta_cdf))
+    n1 = float(sample1.size)
+    n2 = float(sample2.size)
+    n = (n1 * n2) / (n1 + n2)
+    lam = max((np.sqrt(n) + 0.12 + 0.11 / np.sqrt(n)) * ks_statistic, 0.0)
+
+    if tail_key != "unequal":
+        p_value = float(np.exp(-2.0 * lam * lam))
+    else:
+        j = np.arange(1.0, 102.0, dtype=float)
+        p_value = float(2.0 * np.sum(((-1.0) ** (j - 1.0)) * np.exp(-2.0 * lam * lam * j * j)))
+        p_value = min(max(p_value, 0.0), 1.0)
+
+    h = bool(alpha >= p_value)
+    return h, p_value, ks_statistic
 
 
 def _extract_stat_component(stat: Any, candidates: Sequence[str]) -> Any:
@@ -593,14 +832,40 @@ class FitResult:
         lam_per_bin = rate_hz * dt
         residual = counts - lam_per_bin
         residual_std = residual / np.sqrt(np.maximum(lam_per_bin, 1e-12))
-        uniforms = _time_rescaled_uniforms(counts, lam_per_bin)
-        ideal, empirical, ci = _ks_curve(uniforms)
-        ks_stat = float(np.max(np.abs(empirical - ideal))) if ideal.size else 0.0
-        ks_pvalue = float(kstest(uniforms, "uniform").pvalue) if uniforms.size else np.nan
-        within = float(np.mean(np.abs(empirical - ideal) <= ci)) if ideal.size else np.nan
-        lags, acf = _autocorrelation(uniforms, max_lag=25)
-        acf_ci = 1.96 / np.sqrt(float(uniforms.size)) if uniforms.size else np.nan
-        gauss = np.clip(uniforms, 1e-6, 1.0 - 1e-6)
+
+        lambda_labels = list(self.lambda_signal.dataLabels) if getattr(self.lambda_signal, "dataLabels", None) else []
+        if lambda_labels:
+            idx = min(max(fit_num - 1, 0), len(lambda_labels) - 1)
+            selected_labels = [str(lambda_labels[idx])]
+        else:
+            selected_labels = [f"\\lambda_{{{fit_num}}}"]
+
+        lambda_signal = Covariate(
+            time,
+            rate_hz,
+            "\\lambda(t)",
+            self.lambda_signal.xlabelval,
+            self.lambda_signal.xunits,
+            self.lambda_signal.yunits,
+            selected_labels,
+        )
+        Z, U, xAxis, KSSorted, _ = _matlab_compute_ks_arrays(self._primary_spike_train(), lambda_signal, dt_correction=1)
+        z = np.asarray(Z[:, 0], dtype=float).reshape(-1) if np.asarray(Z).size else np.asarray([], dtype=float)
+        uniforms = np.asarray(U[:, 0], dtype=float).reshape(-1) if np.asarray(U).size else np.asarray([], dtype=float)
+        ideal = np.asarray(xAxis[:, 0], dtype=float).reshape(-1) if np.asarray(xAxis).size else np.asarray([], dtype=float)
+        empirical = np.asarray(KSSorted[:, 0], dtype=float).reshape(-1) if np.asarray(KSSorted).size else np.asarray([], dtype=float)
+        ci = np.full(ideal.size, 1.36 / np.sqrt(float(ideal.size)), dtype=float) if ideal.size else np.asarray([], dtype=float)
+        ks_curve_stat = float(np.max(np.abs(empirical - ideal))) if ideal.size else 1.0
+        if ideal.size:
+            different, ks_pvalue, ks_stat = _matlab_kstest2(ideal, empirical)
+            within = float(not different)
+        else:
+            ks_stat = 1.0
+            ks_pvalue = np.nan
+            within = np.nan
+        gaussianized = norm.ppf(np.clip(uniforms, 1e-6, 1.0 - 1e-6))
+        lags, acf = _autocorrelation(gaussianized, max_lag=25)
+        acf_ci = 1.96 / np.sqrt(float(gaussianized.size)) if gaussianized.size else np.nan
         coeffs = self.getCoeffs(fit_num)
         labels = self.covLabels[fit_num - 1] if fit_num - 1 < len(self.covLabels) else []
         if coeffs.size == len(labels):
@@ -616,33 +881,33 @@ class FitResult:
             "lambda_per_bin": lam_per_bin,
             "residual": residual,
             "residual_std": residual_std,
+            "z": z,
             "uniforms": uniforms,
             "ks_ideal": ideal,
             "ks_empirical": empirical,
             "ks_ci": ci,
             "ks_stat": ks_stat,
+            "ks_curve_stat": ks_curve_stat,
             "ks_pvalue": ks_pvalue,
             "within_conf_int": within,
             "acf_lags": lags,
             "acf_values": acf,
             "acf_ci": acf_ci,
-            "gaussianized": gauss,
+            "gaussianized": gaussianized,
             "coefficients": coeffs,
             "coeff_labels": np.asarray(coeff_labels, dtype=object),
         }
         self._diagnostic_cache[fit_num] = diagnostics
-        self.KSStats[fit_num - 1, 0] = ks_stat
+        self.setKSStats(z, uniforms, ideal, empirical, np.asarray([ks_stat], dtype=float))
         self.KSPvalues[fit_num - 1] = ks_pvalue
         self.withinConfInt[fit_num - 1] = within
-        self.U = uniforms
-        self.Z = gauss
-        self.X = time
+        self.X = gaussianized
         self.Residual = {
             "time": time,
             "residual": residual,
             "standardized": residual_std,
         }
-        self.invGausStats = {"rhoSig": acf.tolist(), "confBoundSig": [acf_ci]}
+        self.invGausStats = {"X": gaussianized, "rhoSig": acf.tolist(), "confBoundSig": [acf_ci]}
         return diagnostics
 
     def computeKSStats(self, fit_num: int = 1) -> dict[str, float]:
@@ -654,19 +919,57 @@ class FitResult:
         }
 
     def computeInvGausTrans(self, fit_num: int = 1) -> np.ndarray:
-        return np.asarray(self._compute_diagnostics(fit_num)["uniforms"], dtype=float)
+        return np.asarray(self._compute_diagnostics(fit_num)["gaussianized"], dtype=float)
 
     def computeFitResidual(self, fit_num: int = 1) -> Covariate:
-        diag = self._compute_diagnostics(fit_num)
-        return Covariate(
-            np.asarray(diag["time"], dtype=float),
-            np.asarray(diag["residual"], dtype=float),
-            "fit residual",
-            "time",
-            "s",
-            "counts/bin",
-            ["residual"],
+        time, rate_hz = self._lambda_series(fit_num)
+        if time.size == 0:
+            residual = Covariate([], [], "M(t_k)", "time", "s", "counts/bin", ["residual"])
+            self.setFitResidual(residual)
+            return residual
+
+        window_size = float(np.median(np.diff(time))) if time.size > 1 else 1.0
+        spike_train = self._primary_spike_train().nstCopy()
+        spike_train.resample(1.0 / max(window_size, 1e-12))
+        spike_train.setMinTime(float(time[0]))
+        spike_train.setMaxTime(float(time[-1]))
+        sum_spikes = spike_train.getSigRep(window_size, float(time[0]), float(time[-1]))
+        window_times = np.linspace(float(time[0]), float(time[-1]), sum_spikes.time.size, dtype=float)
+
+        lambda_signal = Covariate(
+            time,
+            rate_hz,
+            "\\lambda(t)",
+            self.lambda_signal.xlabelval,
+            self.lambda_signal.xunits,
+            self.lambda_signal.yunits,
+            self.lambda_signal.dataLabels if getattr(self.lambda_signal, "dataLabels", None) else ["\\lambda"],
         )
+        lambda_int = lambda_signal.integral()
+        lambda_int_vals = (
+            lambda_int.getValueAt(window_times[1:]).reshape(-1, lambda_int.dimension)
+            - lambda_int.getValueAt(window_times[:-1]).reshape(-1, lambda_int.dimension)
+        )
+
+        spike_window_data = np.asarray(sum_spikes.data, dtype=float)
+        if lambda_int_vals.shape[0] == spike_window_data.shape[0]:
+            sum_spikes_over_window = spike_window_data
+        else:
+            sum_spikes_over_window = spike_window_data[1:, :]
+
+        mdata = np.asarray(sum_spikes_over_window, dtype=float) - np.asarray(lambda_int_vals, dtype=float)
+        residual_data = np.vstack([np.zeros((1, mdata.shape[1]), dtype=float), mdata])
+        residual = Covariate(
+            window_times,
+            residual_data,
+            "M(t_k)",
+            lambda_int.xlabelval,
+            lambda_int.xunits,
+            lambda_int.yunits,
+            list(lambda_signal.dataLabels),
+        )
+        self.setFitResidual(residual)
+        return residual
 
     def evalLambda(self, fit_num: int = 1, newData=None) -> np.ndarray:
         coeffs = self.getCoeffs(fit_num)
@@ -723,9 +1026,9 @@ class FitResult:
         return ax
 
     def plotResidual(self, fit_num: int = 1, handle=None):
-        diag = self._compute_diagnostics(fit_num)
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        ax.plot(np.asarray(diag["time"], dtype=float), np.asarray(diag["residual"], dtype=float), color="tab:purple", linewidth=1.0)
+        residual = self.computeFitResidual(fit_num)
+        ax.plot(np.asarray(residual.time, dtype=float), np.asarray(residual.data[:, 0], dtype=float), color="tab:purple", linewidth=1.0)
         ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
         ax.set_xlabel("time [s]")
         ax.set_ylabel("count residual")
@@ -735,12 +1038,12 @@ class FitResult:
     def plotInvGausTrans(self, fit_num: int = 1, handle=None):
         diag = self._compute_diagnostics(fit_num)
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        u = np.asarray(diag["uniforms"], dtype=float)
-        if u.size:
-            ax.plot(np.arange(1, u.size + 1), u, color="tab:green", linewidth=1.0)
-            ax.axhline(0.5, color="0.4", linewidth=1.0, linestyle="--")
+        x = np.asarray(diag["gaussianized"], dtype=float)
+        if x.size:
+            ax.plot(np.arange(1, x.size + 1), x, color="tab:green", linewidth=1.0)
+            ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
         ax.set_xlabel("event index")
-        ax.set_ylabel("time-rescaled transform")
+        ax.set_ylabel("\\Phi^{-1}(u_i)")
         ax.set_title("Inverse-Gaussian/Uniform Transform")
         return ax
 
@@ -805,10 +1108,25 @@ class FitResult:
     def setKSStats(self, Z, U, xAxis, KSSorted, ks_stat):
         self.Z = np.asarray(Z, dtype=float)
         self.U = np.asarray(U, dtype=float)
-        self.X = np.asarray(xAxis, dtype=float)
+        self.KSXAxis = np.asarray(xAxis, dtype=float)
         self.KSSorted = np.asarray(KSSorted, dtype=float)
-        value = np.asarray(ks_stat, dtype=float).reshape(-1)
-        self.KSStats[: value.size, 0] = value
+        x_axis = np.asarray(xAxis, dtype=float)
+        ks_sorted = np.asarray(KSSorted, dtype=float)
+        if x_axis.ndim == 1:
+            x_axis = x_axis[:, None]
+        if ks_sorted.ndim == 1:
+            ks_sorted = ks_sorted[:, None]
+
+        if x_axis.size and ks_sorted.size:
+            n_cols = min(x_axis.shape[1], ks_sorted.shape[1], self.numResults)
+            for idx in range(n_cols):
+                different, p_value, stat = _matlab_kstest2(x_axis[:, idx], ks_sorted[:, idx])
+                self.KSStats[idx, 0] = stat
+                self.KSPvalues[idx] = p_value
+                self.withinConfInt[idx] = float(not different)
+        else:
+            value = np.asarray(ks_stat, dtype=float).reshape(-1)
+            self.KSStats[: value.size, 0] = value
         return self
 
     def setInvGausStats(self, X, rhoSig, confBoundSig):
@@ -923,15 +1241,18 @@ class FitSummary:
         self.fitNames = self.fitResCell[max(range(self.numNeurons), key=lambda idx: self.fitResCell[idx].numResults)].configNames
         self.neuronNumbers = [fr.neuronNumber for fr in self.fitResCell]
 
-        aic = _pad_rows([np.asarray(fr.AIC, dtype=float).reshape(-1) for fr in self.fitResCell])
-        bic = _pad_rows([np.asarray(fr.BIC, dtype=float).reshape(-1) for fr in self.fitResCell])
-        logll = _pad_rows([np.asarray(fr.logLL, dtype=float).reshape(-1) for fr in self.fitResCell])
-        ks = _pad_rows([np.asarray(fr.KSStats, dtype=float).reshape(-1) for fr in self.fitResCell], fill_value=np.nan)
-
-        self.AIC = np.nanmean(aic, axis=0)
-        self.BIC = np.nanmean(bic, axis=0)
-        self.logLL = np.nanmean(logll, axis=0)
-        self.KSStats = np.column_stack([np.nanmean(ks, axis=0), np.nanstd(ks, axis=0)])
+        self.dev = _pad_rows([np.asarray(fr.dev, dtype=float).reshape(-1) for fr in self.fitResCell])
+        self.AIC = _pad_rows([np.asarray(fr.AIC, dtype=float).reshape(-1) for fr in self.fitResCell])
+        self.BIC = _pad_rows([np.asarray(fr.BIC, dtype=float).reshape(-1) for fr in self.fitResCell])
+        self.logLL = _pad_rows([np.asarray(fr.logLL, dtype=float).reshape(-1) for fr in self.fitResCell])
+        self.KSStats = _pad_rows([np.asarray(fr.KSStats, dtype=float).reshape(-1) for fr in self.fitResCell], fill_value=np.nan)
+        self.KSPvalues = _pad_rows([np.asarray(fr.KSPvalues, dtype=float).reshape(-1) for fr in self.fitResCell], fill_value=np.nan)
+        self.withinConfInt = _pad_rows([np.asarray(fr.withinConfInt, dtype=float).reshape(-1) for fr in self.fitResCell], fill_value=np.nan)
+        self.meanAIC = np.nanmean(self.AIC, axis=0)
+        self.meanBIC = np.nanmean(self.BIC, axis=0)
+        self.meanlogLL = np.nanmean(self.logLL, axis=0)
+        self.meanKSStats = np.nanmean(self.KSStats, axis=0)
+        self.stdKSStats = np.nanstd(self.KSStats, axis=0)
         self.uniqueCovLabels: list[str] = []
         self.coeffMin = np.nan
         self.coeffMax = np.nan
@@ -939,16 +1260,22 @@ class FitSummary:
         self.mapCovLabelsToUniqueLabels()
 
     def getDiffAIC(self, idx: int = 1) -> np.ndarray:
-        base = self.AIC[idx - 1]
-        return self.AIC - base
+        if self.numResults > 1:
+            keep = [col for col in range(self.AIC.shape[1]) if col != (idx - 1)]
+            return self.AIC[:, keep] - self.AIC[:, [idx - 1]]
+        return self.AIC.copy()
 
     def getDiffBIC(self, idx: int = 1) -> np.ndarray:
-        base = self.BIC[idx - 1]
-        return self.BIC - base
+        if self.numResults > 1:
+            keep = [col for col in range(self.BIC.shape[1]) if col != (idx - 1)]
+            return self.BIC[:, keep] - self.BIC[:, [idx - 1]]
+        return self.BIC.copy()
 
     def getDifflogLL(self, idx: int = 1) -> np.ndarray:
-        base = self.logLL[idx - 1]
-        return self.logLL - base
+        if self.numResults > 1:
+            keep = [col for col in range(self.logLL.shape[1]) if col != (idx - 1)]
+            return self.logLL[:, keep] - self.logLL[:, [idx - 1]]
+        return self.logLL.copy()
 
     def mapCovLabelsToUniqueLabels(self):
         self.uniqueCovLabels = _ordered_unique(
@@ -1035,21 +1362,21 @@ class FitSummary:
 
     def plotAIC(self, handle=None):
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(_pad_rows([np.asarray(fit.AIC, dtype=float) for fit in self.fitResCell]).T, labels=self.fitNames)
+        ax.boxplot(self.AIC, labels=self.fitNames)
         ax.set_ylabel("AIC")
         ax.set_title("AIC Across Neurons")
         return ax
 
     def plotBIC(self, handle=None):
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(_pad_rows([np.asarray(fit.BIC, dtype=float) for fit in self.fitResCell]).T, labels=self.fitNames)
+        ax.boxplot(self.BIC, labels=self.fitNames)
         ax.set_ylabel("BIC")
         ax.set_title("BIC Across Neurons")
         return ax
 
     def plotlogLL(self, handle=None):
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(_pad_rows([np.asarray(fit.logLL, dtype=float) for fit in self.fitResCell]).T, labels=self.fitNames)
+        ax.boxplot(self.logLL, labels=self.fitNames)
         ax.set_ylabel("log likelihood")
         ax.set_title("log likelihood Across Neurons")
         return ax
@@ -1075,7 +1402,7 @@ class FitSummary:
         labels = list(self.fitNames)
         for ax, values, title in zip(
             axes,
-            (self.AIC, self.BIC, self.logLL),
+            (self.meanAIC, self.meanBIC, self.meanlogLL),
             ("AIC", "BIC", "log likelihood"),
             strict=False,
         ):
@@ -1087,12 +1414,19 @@ class FitSummary:
         return fig
 
     def boxPlot(self, X, diffIndex: int = 1, h=None, dataLabels=None, **kwargs):
-        del diffIndex, kwargs
+        del kwargs
         ax = h if h is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
         values = np.asarray(X, dtype=float)
-        labels = list(dataLabels) if dataLabels is not None else list(self.fitNames[: values.shape[1] if values.ndim == 2 else 1])
         if values.ndim == 1:
             values = values[:, None]
+        if dataLabels is not None:
+            labels = list(dataLabels)
+        elif values.shape[1] == len(self.fitNames):
+            labels = list(self.fitNames)
+        elif values.shape[1] == max(len(self.fitNames) - 1, 1):
+            labels = [name for idx, name in enumerate(self.fitNames, start=1) if idx != diffIndex]
+        else:
+            labels = list(self.fitNames[: values.shape[1]])
         ax.boxplot(values, labels=labels)
         return ax
 
@@ -1102,6 +1436,13 @@ class FitSummary:
             "numNeurons": self.numNeurons,
             "numResults": self.numResults,
             "fitNames": list(self.fitNames),
+            "dev": self.dev.tolist(),
+            "AIC": self.AIC.tolist(),
+            "BIC": self.BIC.tolist(),
+            "logLL": self.logLL.tolist(),
+            "KSStats": self.KSStats.tolist(),
+            "KSPvalues": self.KSPvalues.tolist(),
+            "withinConfInt": self.withinConfInt.tolist(),
         }
 
     @staticmethod

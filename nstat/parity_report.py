@@ -173,6 +173,9 @@ def render_parity_report(repo_root: Path | None = None) -> str:
         "- Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable."
     )
     lines.append("- Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.")
+    lines.append(
+        "- Clean-room boundary: the installed Python package, pure-Python tests, notebooks, examples, and default CI no longer invoke MATLAB; cross-language execution is confined to the MATLAB-side `tests/python_port_fidelity` harness."
+    )
     if notebook_partial:
         lines.append(
             f"- Notebook fidelity: workflow coverage is complete, but {len(notebook_partial)} MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`."
@@ -209,7 +212,7 @@ def render_parity_report(repo_root: Path | None = None) -> str:
         )
     elif simulink_reference_only:
         lines.append(
-            f"- Simulink fidelity: native Python coverage exists for the required published workflows, and {len(simulink_reference_only)} inventoried MATLAB assets remain reference-only."
+            f"- Simulink fidelity: native Python coverage exists for the required published workflows, deterministic injected-input fixtures now back the required native paths, and {len(simulink_reference_only)} inventoried MATLAB assets remain reference-only."
         )
     else:
         lines.append("- Simulink fidelity: all inventoried Simulink-backed workflows have an explicit Python execution strategy.")

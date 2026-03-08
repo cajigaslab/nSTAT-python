@@ -60,11 +60,12 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 
 - Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable.
 - Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.
+- Clean-room boundary: the installed Python package, pure-Python tests, notebooks, examples, and default CI no longer invoke MATLAB; cross-language execution is confined to the MATLAB-side `tests/python_port_fidelity` harness.
 - Notebook fidelity: all tracked MATLAB-helpfile notebook ports are marked high fidelity or exact.
 - Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
 - Class fidelity: the class audit reports no partial, wrapper-only, or missing items.
 - Runtime symbol verification: every audited MATLAB-facing Python symbol marked present in `parity/class_fidelity.yml` resolves on the live public surface.
-- Simulink fidelity: native Python coverage exists for the required published workflows, and 10 inventoried MATLAB assets remain reference-only.
+- Simulink fidelity: native Python coverage exists for the required published workflows, deterministic injected-input fixtures now back the required native paths, and 10 inventoried MATLAB assets remain reference-only.
 
 ## Remaining Mapping Deltas
 
@@ -90,7 +91,7 @@ No audit/runtime symbol mismatches were detected.
 - `PointProcessSimulationLegacy2011b` -> `PointProcessSimulation.mdl.r2011b` [reference_only/reference_only]: Treat as a compatibility/reference asset alongside the current `.slx` model.
 - `PointProcessSimulationLegacy2013a` -> `PointProcessSimulation.mdl.r2013a` [reference_only/reference_only]: Treat as a compatibility/reference asset alongside the current `.slx` model.
 - `PointProcessSimulationLegacySLX2013a` -> `PointProcessSimulation.slx.r2013a` [reference_only/reference_only]: Treat as a versioned MATLAB reference asset rather than a distinct Python execution target.
-- `PointProcessSimulationThinningLegacy2011a` -> `PointProcessSimulationThinning.mdl.r2011a` [reference_only/reference_only]: Keep as a MATLAB reference asset while the Python port validates thinning behavior through `CIF.simulateCIFByThinning` and MATLAB Engine comparisons.
+- `PointProcessSimulationThinningLegacy2011a` -> `PointProcessSimulationThinning.mdl.r2011a` [reference_only/reference_only]: Keep as a MATLAB reference asset while the Python port validates thinning behavior through `CIF.simulateCIFByThinning` and MATLAB-side fixture export.
 - `PointProcessSimulationCache` -> `PointProcessSimulation.slxc` [reference_only/reference_only]: Treat as a MATLAB build artifact, not as a Python execution target.
 - `HelpPointProcessSimulationCache` -> `helpfiles/PointProcessSimulation.slxc` [reference_only/reference_only]: Treat as a published-help artifact only.
 - `SimulatedNetwork2Cache` -> `helpfiles/SimulatedNetwork2.slxc` [reference_only/reference_only]: Treat as a MATLAB build artifact, not a Python target.

@@ -88,6 +88,56 @@ def _sigmoid(values: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-np.clip(values, -20.0, 20.0)))
 
 
+def _prepare_uniform_matrix(
+    values,
+    num_realizations: int,
+    num_draws: int,
+    *,
+    name: str,
+) -> np.ndarray | None:
+    if values is None:
+        return None
+    arr = np.asarray(values, dtype=float)
+    if arr.ndim == 1:
+        if arr.size < num_draws:
+            raise ValueError(f"{name} must contain at least {num_draws} draws")
+        return np.tile(arr.reshape(1, -1), (int(num_realizations), 1))
+    if arr.ndim != 2:
+        raise ValueError(f"{name} must be one- or two-dimensional")
+    if arr.shape[0] == int(num_realizations) and arr.shape[1] >= int(num_draws):
+        return arr
+    if arr.shape[1] == int(num_realizations) and arr.shape[0] >= int(num_draws):
+        return arr.T
+    raise ValueError(
+        f"{name} must have shape ({num_realizations}, >= {num_draws}) or "
+        f"(>= {num_draws}, {num_realizations})"
+    )
+
+
+def _prepare_optional_uniform_rows(values, num_realizations: int, *, name: str) -> np.ndarray | None:
+    if values is None:
+        return None
+    arr = np.asarray(values, dtype=float)
+    if arr.ndim == 1:
+        return np.tile(arr.reshape(1, -1), (int(num_realizations), 1))
+    if arr.ndim != 2:
+        raise ValueError(f"{name} must be one- or two-dimensional")
+    if arr.shape[0] == int(num_realizations):
+        return arr
+    if arr.shape[1] == int(num_realizations):
+        return arr.T
+    raise ValueError(f"{name} must align with numRealizations={num_realizations}")
+
+
+def _as_single_lambda_trace(lambda_covariate: Covariate) -> np.ndarray:
+    lambda_data = np.asarray(lambda_covariate.data, dtype=float)
+    if lambda_data.ndim == 1:
+        return lambda_data.reshape(-1)
+    if lambda_data.ndim == 2 and lambda_data.shape[1] == 1:
+        return lambda_data[:, 0].reshape(-1)
+    raise ValueError("simulateCIFByThinningFromLambda requires a single lambda trace")
+
+
 def _ordered_independent_names(
     xnames: Sequence[str] | None,
     stim_names: Sequence[str] | None,
@@ -610,19 +660,120 @@ class CIF:
         maxTimeRes: float | None = None,
         *,
         seed: int | None = None,
+        random_values: np.ndarray | None = None,
+        thinning_values: np.ndarray | None = None,
+        return_details: bool = False,
     ) -> SpikeTrainCollection:
-        model = CIFModel(lambda_covariate.time, np.asarray(lambda_covariate.data, dtype=float).reshape(-1), getattr(lambda_covariate, "name", "lambda"))
-        coll = model.simulate(num_realizations=numRealizations, seed=seed)
-        if maxTimeRes is not None:
-            rounded = []
-            for idx in range(1, coll.numSpikeTrains + 1):
-                train = coll.getNST(idx).nstCopy()
-                spikes = np.unique(np.ceil(train.spikeTimes / float(maxTimeRes)) * float(maxTimeRes))
-                rounded.append(nspikeTrain(spikes, name=train.name, minTime=lambda_covariate.minTime, maxTime=lambda_covariate.maxTime, makePlots=-1))
-            coll = SpikeTrainCollection(rounded)
+        if int(numRealizations) < 1:
+            raise ValueError("numRealizations must be >= 1")
+
+        lambda_trace = _as_single_lambda_trace(lambda_covariate)
+        Tmax = float(lambda_covariate.maxTime)
+        lambda_bound = float(np.max(lambda_trace)) if lambda_trace.size else 0.0
+        proposal_count = int(np.ceil(lambda_bound * (1.5 * Tmax))) if lambda_bound > 0.0 and Tmax > 0.0 else 0
+
+        arrival_uniforms = _prepare_uniform_matrix(
+            random_values,
+            int(numRealizations),
+            proposal_count,
+            name="random_values",
+        )
+        thinning_uniforms = _prepare_optional_uniform_rows(
+            thinning_values,
+            int(numRealizations),
+            name="thinning_values",
+        )
+        rng = np.random.default_rng(seed)
+
+        trains: list[nspikeTrain] = []
+        details = {
+            "lambda": lambda_trace.copy(),
+            "time": np.asarray(lambda_covariate.time, dtype=float).reshape(-1).copy(),
+            "lambda_bound": float(lambda_bound),
+            "proposal_count": int(proposal_count),
+            "arrival_uniforms": [],
+            "interarrival_times": [],
+            "candidate_spike_times": [],
+            "lambda_ratio": [],
+            "thinning_uniforms": [],
+            "accepted_spike_times": [],
+        }
+
+        for realization in range(int(numRealizations)):
+            if proposal_count <= 0:
+                arrival = np.zeros(0, dtype=float)
+                interarrival = np.zeros(0, dtype=float)
+                candidate_spike_times = np.zeros(0, dtype=float)
+                lambda_ratio = np.zeros(0, dtype=float)
+                thinning = np.zeros(0, dtype=float)
+                accepted_spike_times = np.zeros(0, dtype=float)
+            else:
+                arrival = (
+                    np.asarray(arrival_uniforms[realization, :proposal_count], dtype=float).reshape(-1)
+                    if arrival_uniforms is not None
+                    else rng.random(proposal_count, dtype=float)
+                )
+                arrival = np.clip(arrival, np.finfo(float).tiny, 1.0)
+                interarrival = -np.log(arrival) / lambda_bound
+                candidate_spike_times = np.cumsum(interarrival)
+                candidate_spike_times = candidate_spike_times[candidate_spike_times <= Tmax]
+
+                if candidate_spike_times.size:
+                    lambda_ratio = np.asarray(lambda_covariate.getValueAt(candidate_spike_times), dtype=float).reshape(-1)
+                    lambda_ratio = np.clip(lambda_ratio / lambda_bound, 0.0, 1.0)
+                    if thinning_uniforms is not None:
+                        if thinning_uniforms.shape[1] < lambda_ratio.size:
+                            raise ValueError(
+                                "thinning_values must contain at least as many draws as surviving proposal times"
+                            )
+                        thinning = np.asarray(
+                            thinning_uniforms[realization, : lambda_ratio.size],
+                            dtype=float,
+                        ).reshape(-1)
+                    else:
+                        thinning = rng.random(lambda_ratio.size, dtype=float)
+                    thinning = np.clip(thinning, 0.0, 1.0)
+                    accepted_spike_times = candidate_spike_times[lambda_ratio >= thinning]
+                else:
+                    lambda_ratio = np.zeros(0, dtype=float)
+                    thinning = np.zeros(0, dtype=float)
+                    accepted_spike_times = np.zeros(0, dtype=float)
+
+            if maxTimeRes is not None and accepted_spike_times.size:
+                accepted_spike_times = np.unique(
+                    np.ceil(accepted_spike_times / float(maxTimeRes)) * float(maxTimeRes)
+                )
+
+            train = nspikeTrain(
+                accepted_spike_times,
+                name="1",
+                minTime=lambda_covariate.minTime,
+                maxTime=lambda_covariate.maxTime,
+                makePlots=-1,
+            )
+            train.setName("1")
+            trains.append(train)
+
+            details["arrival_uniforms"].append(arrival.copy())
+            details["interarrival_times"].append(interarrival.copy())
+            details["candidate_spike_times"].append(candidate_spike_times.copy())
+            details["lambda_ratio"].append(lambda_ratio.copy())
+            details["thinning_uniforms"].append(thinning.copy())
+            details["accepted_spike_times"].append(accepted_spike_times.copy())
+
+        coll = SpikeTrainCollection(trains)
         coll.setMinTime(lambda_covariate.minTime)
         coll.setMaxTime(lambda_covariate.maxTime)
-        return coll
+        if not return_details:
+            return coll
+
+        if int(numRealizations) == 1:
+            detail_payload = {
+                key: (value[0] if isinstance(value, list) else value)
+                for key, value in details.items()
+            }
+            return coll, detail_payload
+        return coll, details
 
     @staticmethod
     def simulateCIFByThinning(
@@ -664,6 +815,8 @@ class CIF:
         *,
         seed: int | None = None,
         return_lambda: bool = False,
+        random_values: np.ndarray | None = None,
+        return_details: bool = False,
     ):
         if int(numRealizations) < 1:
             raise ValueError("numRealizations must be >= 1")
@@ -698,8 +851,18 @@ class CIF:
             raise ValueError("simType must be either poisson or binomial")
 
         lambda_data = np.zeros((time.size, int(numRealizations)), dtype=float)
+        lambda_delta_data = np.zeros((time.size, int(numRealizations)), dtype=float)
+        hist_effect_data = np.zeros((time.size, int(numRealizations)), dtype=float)
+        eta_data = np.zeros((time.size, int(numRealizations)), dtype=float)
+        if random_values is None:
+            rng = np.random.default_rng(seed)
+            draws = rng.random((time.size, int(numRealizations)))
+        else:
+            draws = np.asarray(random_values, dtype=float)
+            if draws.shape != (time.size, int(numRealizations)):
+                raise ValueError("random_values must have shape (len(time), numRealizations)")
         trains: list[nspikeTrain] = []
-        rng = np.random.default_rng(seed)
+        spike_matrix = np.zeros((time.size, int(numRealizations)), dtype=float)
         mu_val = float(np.asarray(mu, dtype=float).reshape(-1)[0])
 
         for realization in range(int(numRealizations)):
@@ -710,15 +873,19 @@ class CIF:
                     if idx - lag >= 0:
                         hist_effect += float(coeff) * float(spikes[idx - lag])
                 eta = mu_val + float(stim_drive[idx]) + float(ens_drive[idx]) + hist_effect
+                hist_effect_data[idx, realization] = hist_effect
+                eta_data[idx, realization] = eta
                 if fit_type == "binomial":
                     lambda_delta = float(_sigmoid(np.asarray([eta], dtype=float))[0])
                     rate_hz = lambda_delta / max(dt, 1e-12)
-                    spikes[idx] = float(rng.random() < lambda_delta)
+                    spikes[idx] = float(draws[idx, realization] < lambda_delta)
                 else:
                     rate_hz = float(np.exp(np.clip(eta, -20.0, 20.0)))
                     lambda_delta = 1.0 - np.exp(-rate_hz * dt)
-                    spikes[idx] = float(rng.random() < np.clip(lambda_delta, 0.0, 1.0))
+                    spikes[idx] = float(draws[idx, realization] < np.clip(lambda_delta, 0.0, 1.0))
                 lambda_data[idx, realization] = rate_hz
+                lambda_delta_data[idx, realization] = lambda_delta
+                spike_matrix[idx, realization] = spikes[idx]
             spike_times = time[spikes > 0.5]
             train = nspikeTrain(spike_times, name=str(realization + 1), minTime=float(time[0]), maxTime=float(time[-1]), makePlots=-1)
             trains.append(train)
@@ -727,6 +894,20 @@ class CIF:
         spikeTrainColl.setMinTime(float(time[0]))
         spikeTrainColl.setMaxTime(float(time[-1]))
         lambda_cov = Covariate(time, lambda_data, "\\lambda(t|H_t)", "time", "s", "Hz")
+        if return_details:
+            details = {
+                "time": time,
+                "stimulus_drive": stim_drive.copy(),
+                "ensemble_drive": ens_drive.copy(),
+                "history_effect": hist_effect_data,
+                "eta": eta_data,
+                "lambda_delta": lambda_delta_data,
+                "uniform_values": draws,
+                "spike_indicator": spike_matrix,
+            }
+            if return_lambda:
+                return spikeTrainColl, lambda_cov, details
+            return spikeTrainColl, details
         return (spikeTrainColl, lambda_cov) if return_lambda else spikeTrainColl
 
     @staticmethod
