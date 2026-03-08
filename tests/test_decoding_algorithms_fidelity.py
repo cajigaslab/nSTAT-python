@@ -53,6 +53,23 @@ def test_ppdecodefilter_accepts_cif_collections_with_history() -> None:
     assert np.all(np.isfinite(x_u))
 
 
+def test_ppdecodefilter_handles_symbolic_style_polynomial_cifs() -> None:
+    dN = np.array([[0.0, 1.0, 0.0, 1.0], [1.0, 0.0, 1.0, 0.0]], dtype=float)
+    lambda_cifs = [
+        CIF([-2.0, -0.5, 0.3, -0.2, -0.1, 0.05], ["1", "x", "y", "x^2", "y^2", "x*y"], ["x", "y"], fitType="binomial"),
+        CIF([-1.5, 0.4, -0.2, 0.15, -0.05, 0.02], ["1", "x", "y", "x^2", "y^2", "x*y"], ["x", "y"], fitType="binomial"),
+    ]
+
+    x_p, W_p, x_u, W_u, *_ = DecodingAlgorithms.PPDecodeFilter(np.eye(2), 0.01 * np.eye(2), 0.05 * np.eye(2), dN, lambda_cifs, 0.1)
+
+    assert x_p.shape == (2, 5)
+    assert W_p.shape == (2, 2, 5)
+    assert x_u.shape == (2, 4)
+    assert W_u.shape == (2, 2, 4)
+    assert np.all(np.isfinite(x_u))
+    assert np.all(np.isfinite(W_u))
+
+
 def test_ppdecode_update_matches_matlab_facing_public_surface() -> None:
     dN = np.array([[0.0, 1.0, 0.0, 1.0]], dtype=float)
     lambda_cif = CIF([0.1, 0.4], ["1", "x"], ["x"], fitType="binomial")

@@ -42,8 +42,8 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 | Status | Count |
 |---|---:|
 | `exact` | 0 |
-| `high_fidelity` | 12 |
-| `partial` | 1 |
+| `high_fidelity` | 13 |
+| `partial` | 0 |
 
 ## Simulink Fidelity Summary
 
@@ -60,8 +60,7 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 
 - Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable.
 - Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.
-- Notebook fidelity: workflow coverage is complete, but 1 MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`.
-- Notebook fidelity audit: structural section/figure comparisons plus placeholder/tracker-only cell detection are recorded in `parity/notebook_fidelity.yml`.
+- Notebook fidelity: all tracked MATLAB-helpfile notebook ports are marked high fidelity or exact.
 - Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
 - Class fidelity: the class audit reports no partial, wrapper-only, or missing items.
 - Runtime symbol verification: every audited MATLAB-facing Python symbol marked present in `parity/class_fidelity.yml` resolves on the live public surface.
@@ -73,7 +72,7 @@ No partial or missing items remain in the mapping inventory.
 
 ## Remaining Notebook-Fidelity Deltas
 
-- `StimulusDecode2D` -> `notebooks/StimulusDecode2D.ipynb` [partial]: The notebook reproduces the MATLAB section order, figure inventory, simulated receptive fields, and decoded-trajectory presentation, but the current Python decoder still uses regression-based state recovery instead of MATLAB's symbolic-CIF nonlinear filter.
+No partial notebook-fidelity items remain in `tools/notebooks/parity_notes.yml`.
 
 ## Remaining Class-Fidelity Deltas
 

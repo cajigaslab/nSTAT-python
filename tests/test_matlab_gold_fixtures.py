@@ -163,6 +163,19 @@ def test_cif_eval_surface_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(cif.evalJacobian(stim_val), np.asarray(payload["jacobian"], dtype=float), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(cif.evalJacobianLog(stim_val), np.asarray(payload["jacobian_log"], dtype=float), rtol=1e-8, atol=1e-10)
 
+    poly_cif = CIF(
+        beta=_vector(payload, "poly_beta"),
+        Xnames=["1", "x", "y", "x^2", "y^2", "x*y"],
+        stimNames=["x", "y"],
+        fitType="binomial",
+    )
+    poly_stim = _vector(payload, "poly_stimVal")
+    np.testing.assert_allclose(poly_cif.evalLambdaDelta(poly_stim), _scalar(payload, "poly_lambda_delta"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(poly_cif.evalGradient(poly_stim).reshape(-1), _vector(payload, "poly_gradient"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(poly_cif.evalGradientLog(poly_stim).reshape(-1), _vector(payload, "poly_gradient_log"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(poly_cif.evalJacobian(poly_stim), np.asarray(payload["poly_jacobian"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(poly_cif.evalJacobianLog(poly_stim), np.asarray(payload["poly_jacobian_log"], dtype=float), rtol=1e-8, atol=1e-10)
+
 
 def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
     payload = _load_fixture("analysis_exactness.mat")
@@ -223,6 +236,28 @@ def test_decoding_predict_matches_matlab_gold_fixture() -> None:
 
     np.testing.assert_allclose(x_p, _vector(payload, "x_p"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(W_p, np.asarray(payload["W_p"], dtype=float), rtol=1e-8, atol=1e-10)
+
+
+def test_nonlinear_ppdecodefilter_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("nonlinear_decode_exactness.mat")
+    lambda_cifs = [
+        CIF(_vector(payload, "beta1"), ["1", "x", "y", "x^2", "y^2", "x*y"], ["x", "y"], fitType="binomial"),
+        CIF(_vector(payload, "beta2"), ["1", "x", "y", "x^2", "y^2", "x*y"], ["x", "y"], fitType="binomial"),
+    ]
+
+    x_p, W_p, x_u, W_u, *_ = DecodingAlgorithms.PPDecodeFilter(
+        np.asarray(payload["A"], dtype=float),
+        np.asarray(payload["Q"], dtype=float),
+        np.asarray(payload["Px0"], dtype=float),
+        np.asarray(payload["dN"], dtype=float),
+        lambda_cifs,
+        _scalar(payload, "delta"),
+    )
+
+    np.testing.assert_allclose(x_p, np.asarray(payload["x_p"], dtype=float), rtol=1e-3, atol=5e-4)
+    np.testing.assert_allclose(W_p, np.asarray(payload["W_p"], dtype=float), rtol=1e-3, atol=5e-4)
+    np.testing.assert_allclose(x_u, np.asarray(payload["x_u"], dtype=float), rtol=1e-3, atol=5e-4)
+    np.testing.assert_allclose(W_u, np.asarray(payload["W_u"], dtype=float), rtol=1e-3, atol=5e-4)
 
 
 def test_simulated_network_matches_matlab_gold_fixture() -> None:

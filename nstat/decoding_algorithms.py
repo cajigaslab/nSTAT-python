@@ -236,13 +236,23 @@ def _normalize_mu_models(mu, n_models: int, num_cells: int) -> list[np.ndarray]:
     return [_normalize_mu(mu, num_cells) for _ in range(n_models)]
 
 
-def _extract_linear_terms_from_cifs(lambdaCIFColl, num_states: int, num_cells: int):
+def _normalize_cif_collection(lambdaCIFColl) -> list[CIF]:
     if isinstance(lambdaCIFColl, CIF):
         cifs = [lambdaCIFColl]
     elif isinstance(lambdaCIFColl, Sequence) and not isinstance(lambdaCIFColl, (str, bytes)):
         cifs = list(lambdaCIFColl)
     else:
         raise UnsupportedWorkflowError("PPDecodeFilter requires a CIF or sequence of CIF objects for the Python port")
+    if not cifs:
+        raise ValueError("lambdaCIFColl must contain at least one CIF object")
+    for cif in cifs:
+        if not isinstance(cif, CIF):
+            raise UnsupportedWorkflowError("PPDecodeFilter only supports CIF objects in the Python port")
+    return cifs
+
+
+def _extract_linear_terms_from_cifs(lambdaCIFColl, num_states: int, num_cells: int):
+    cifs = _normalize_cif_collection(lambdaCIFColl)
 
     if len(cifs) != num_cells:
         raise ValueError("Number of CIF objects must match the number of observed cells")
@@ -542,13 +552,12 @@ class DecodingAlgorithms:
         observed = obs[:, idx - 1]
 
         for cell_index, cif in enumerate(lambda_items):
-            if not isinstance(cif, CIF):
-                raise ValueError("Lambda must be a cell of CIFs or a CIF")
             if cif.historyMat.size == 0:
-                spike_times = (np.where(obs[cell_index] == 1.0)[0]) * float(binwidth)
+                observed_prefix = obs[cell_index, :idx]
+                spike_times = np.where(observed_prefix > 0.5)[0] * float(binwidth)
                 nst = nspikeTrain(spike_times, makePlots=-1)
                 nst.setMinTime(0.0)
-                nst.setMaxTime((obs.shape[1] - 1) * float(binwidth))
+                nst.setMaxTime((idx - 1) * float(binwidth))
                 nst = nst.resample(1.0 / float(binwidth))
                 lambda_delta[cell_index, 0] = float(cif.evalLambdaDelta(x_vec, idx, nst))
                 sum_val_vec += observed[cell_index] * np.asarray(cif.evalGradientLog(x_vec, idx, nst), dtype=float).reshape(-1)
@@ -695,26 +704,73 @@ class DecodingAlgorithms:
     @staticmethod
     def PPDecodeFilter(A, Q, Px0, dN, lambdaCIFColl, binwidth=0.001, x0=None, Pi0=None, yT=None, PiT=None, estimateTarget=0, Wconv=None):
         obs = _as_observation_matrix(dN)
-        num_states = _infer_state_dim(A, np.array([0.0]), obs.shape[0])
-        mu, beta, fitType, gamma, windowTimes = _extract_linear_terms_from_cifs(lambdaCIFColl, num_states, obs.shape[0])
-        initial_cov = Px0 if _is_empty_value(Pi0) else Pi0
-        return DecodingAlgorithms._ppdecode_filter_linear(
-            A,
-            Q,
-            obs,
-            mu,
-            beta,
-            fitType,
-            binwidth,
-            gamma,
-            windowTimes,
-            x0,
-            initial_cov,
-            yT,
-            PiT,
-            estimateTarget,
-            Wconv,
-        )
+        lambda_items = _normalize_cif_collection(lambdaCIFColl)
+        num_cells, num_steps = obs.shape
+        if len(lambda_items) != num_cells:
+            raise ValueError("Number of CIF objects must match the number of observed cells")
+
+        num_states = _infer_state_dim(A, np.array([0.0]), num_cells)
+        uses_target_branch = not _is_empty_value(yT) or not _is_empty_value(PiT) or int(estimateTarget) != 0
+        if uses_target_branch:
+            mu, beta, fitType, gamma, windowTimes = _extract_linear_terms_from_cifs(lambda_items, num_states, num_cells)
+            initial_cov = Px0 if _is_empty_value(Pi0) else Pi0
+            return DecodingAlgorithms._ppdecode_filter_linear(
+                A,
+                Q,
+                obs,
+                mu,
+                beta,
+                fitType,
+                binwidth,
+                gamma,
+                windowTimes,
+                x0,
+                initial_cov,
+                yT,
+                PiT,
+                estimateTarget,
+                Wconv,
+            )
+
+        x0_vec = np.zeros(num_states, dtype=float) if _is_empty_value(x0) else np.asarray(x0, dtype=float).reshape(-1)
+        if x0_vec.size != num_states:
+            raise ValueError("x0 must match the decoding state dimension")
+        # MATLAB PPDecodeFilter's standard branch initializes from Pi0, and
+        # when Pi0 is omitted it falls back to zeros rather than using Px0.
+        Pi0_mat = np.zeros((num_states, num_states), dtype=float) if _is_empty_value(Pi0) else _as_state_matrix(Pi0, num_states)
+
+        x_p = np.zeros((num_states, num_steps + 1), dtype=float)
+        x_u = np.zeros((num_states, num_steps), dtype=float)
+        W_p = np.zeros((num_states, num_states, num_steps + 1), dtype=float)
+        W_u = np.zeros((num_states, num_states, num_steps), dtype=float)
+
+        A0 = _select_time_matrix(A, 0, num_states)
+        Q0 = _select_time_matrix(Q, 0, num_states)
+        x_p[:, 0], W_p[:, :, 0] = DecodingAlgorithms.PPDecode_predict(x0_vec, Pi0_mat, A0, Q0, Wconv)
+
+        for time_index in range(1, num_steps + 1):
+            x_u[:, time_index - 1], W_u[:, :, time_index - 1], _ = DecodingAlgorithms.PPDecode_update(
+                x_p[:, time_index - 1],
+                W_p[:, :, time_index - 1],
+                obs,
+                lambda_items,
+                binwidth,
+                time_index,
+                None,
+            )
+            A_t = _select_time_matrix(A, time_index - 1, num_states)
+            Q_t = _select_time_matrix(Q, time_index - 1, num_states)
+            x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
+                x_u[:, time_index - 1],
+                W_u[:, :, time_index - 1],
+                A_t,
+                Q_t,
+                Wconv,
+            )
+
+        empty_vec = np.array([], dtype=float)
+        empty_cov = np.zeros((0, 0, 0), dtype=float)
+        return x_p, W_p, x_u, W_u, empty_vec, empty_cov, empty_vec, empty_cov
 
     @staticmethod
     def PP_fixedIntervalSmoother(A, Q, dN, lags, mu, beta, fitType="poisson", delta=0.001, gamma=None, windowTimes=None, x0=None, Pi0=None):
