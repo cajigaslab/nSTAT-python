@@ -71,7 +71,7 @@ def run_point_process_reference(*, matlab_repo: str | Path | None = None, seed: 
         for i=1:sC.numSpikeTrains
             ppSpikeCounts(i) = length(sC.getNST(i).spikeTimes);
         end
-        ppLambdaHead = lambda.data(1:5,1)';
+        ppLambdaHead = lambda.data(1:10,1)';
         """,
         nargout=0,
     )
@@ -106,6 +106,7 @@ def run_simulated_network_reference(*, matlab_repo: str | Path | None = None, se
         [tout,~,yout] = sim('SimulatedNetwork2',[stim.minTime stim.maxTime],options,stim.dataToStructure);
         netSpikeCounts = [sum(yout(:,1)>.5), sum(yout(:,2)>.5)];
         netProbHead = yout(1:5,3:4);
+        netStateHead = yout(1:5,1:2);
         netActual = [0 1; -4 0];
         """,
         nargout=0,
@@ -113,6 +114,7 @@ def run_simulated_network_reference(*, matlab_repo: str | Path | None = None, se
     return {
         "spike_counts": _to_numpy(engine.workspace["netSpikeCounts"]).reshape(-1),
         "prob_head": _to_numpy(engine.workspace["netProbHead"]),
+        "state_head": _to_numpy(engine.workspace["netStateHead"]),
         "actual_network": _to_numpy(engine.workspace["netActual"]),
     }
 
