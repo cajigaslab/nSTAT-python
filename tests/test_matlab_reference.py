@@ -30,8 +30,10 @@ def test_matlab_reference_executes_only_when_engine_is_available() -> None:
     network = run_simulated_network_reference(matlab_repo=MATLAB_REPO_ROOT)
 
     assert point_process["spike_counts"].shape == (5,)
+    assert point_process["lambda_head"].shape == (10,)
     assert network["spike_counts"].shape == (2,)
     assert network["prob_head"].shape == (5, 2)
+    assert network["state_head"].shape == (5, 2)
     np.testing.assert_allclose(network["actual_network"], np.array([[0.0, 1.0], [-4.0, 0.0]], dtype=float))
 
 
@@ -57,7 +59,7 @@ def test_native_point_process_simulation_matches_matlab_lambda_head_when_engine_
     )
     matlab_ref = run_point_process_reference(matlab_repo=MATLAB_REPO_ROOT, seed=5)
 
-    np.testing.assert_allclose(lambda_cov.data[:5, 0], matlab_ref["lambda_head"], rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(lambda_cov.data[:10, 0], matlab_ref["lambda_head"], rtol=1e-6, atol=1e-8)
 
 
 @pytest.mark.skipif(not MATLAB_REPO_ROOT.exists(), reason="MATLAB reference repo not available")
@@ -69,4 +71,5 @@ def test_native_network_simulation_preserves_matlab_connectivity_layout_when_eng
     matlab_ref = run_simulated_network_reference(matlab_repo=MATLAB_REPO_ROOT, seed=4)
 
     np.testing.assert_allclose(native.actual_network, matlab_ref["actual_network"])
-    assert matlab_ref["prob_head"].shape == (5, 2)
+    np.testing.assert_allclose(native.lambda_delta[:5], matlab_ref["prob_head"], rtol=1e-6, atol=1e-8)
+    assert np.all((matlab_ref["state_head"] == 0.0) | (matlab_ref["state_head"] == 1.0))
