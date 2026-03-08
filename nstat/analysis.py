@@ -82,6 +82,32 @@ def _fit_lambda_matrix_to_covariate(lambda_time: np.ndarray, lambda_columns: lis
     )
 
 
+def _glm_deviance(y: np.ndarray, mean_counts: np.ndarray, distribution: str) -> float:
+    observed = np.asarray(y, dtype=float).reshape(-1)
+    expected = np.clip(np.asarray(mean_counts, dtype=float).reshape(-1), 1e-12, None)
+    if observed.shape != expected.shape:
+        raise ValueError("observed and expected counts must have matching shapes")
+
+    dist = str(distribution).lower()
+    if dist == "poisson":
+        ratio = np.ones_like(observed)
+        positive = observed > 0.0
+        ratio[positive] = observed[positive] / expected[positive]
+        return float(2.0 * np.sum(observed * np.log(ratio) - (observed - expected)))
+
+    if dist == "binomial":
+        prob = np.clip(expected, 1e-12, 1.0 - 1e-12)
+        return float(
+            2.0
+            * np.sum(
+                observed * np.log(np.clip(observed / prob, 1e-12, None))
+                + (1.0 - observed) * np.log(np.clip((1.0 - observed) / (1.0 - prob), 1e-12, None))
+            )
+        )
+
+    raise ValueError(f"Unsupported GLM distribution for deviance: {distribution}")
+
+
 def _benjamini_hochberg(p_values: np.ndarray, alpha: float) -> np.ndarray:
     p = np.asarray(p_values, dtype=float).reshape(-1)
     if p.size == 0:
@@ -157,25 +183,25 @@ class Analysis:
         y = np.concatenate(stacked_y) if stacked_y else np.array([], dtype=float)
         lambda_time_full = np.concatenate(lambda_time_segments) if lambda_time_segments else np.array([], dtype=float)
         sample_rate = float(tObj.sampleRate)
-        dt = 1.0 / max(sample_rate, 1e-12)
 
         if algorithm == "BNLRCG":
             glm_res = fit_binomial_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
-            probability = glm_res.predict_probability(X)
-            rate_hz = probability * sample_rate
+            lambda_delta = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
+            rate_hz = lambda_delta * sample_rate
             distribution = "binomial"
             b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            logLL = float(np.sum(y * np.log(lambda_delta) + (1.0 - y) * np.log(1.0 - lambda_delta)))
+            dev = _glm_deviance(y, lambda_delta, distribution)
         else:
             glm_res = fit_poisson_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
             lambda_delta = glm_res.predict_rate(X)
             rate_hz = lambda_delta * sample_rate
             distribution = "poisson"
             b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            logLL = float(glm_res.log_likelihood)
+            dev = _glm_deviance(y, lambda_delta, distribution)
 
         n_params = int(b.size)
-        prob = np.clip(rate_hz * dt, 1e-12, 1.0 - 1e-9)
-        logLL = float(np.sum(y * np.log(prob) + (1.0 - y) * np.log(1.0 - prob)))
-        dev = float(-2.0 * logLL)
         AIC = float(2.0 * n_params + dev)
         BIC = float(np.log(max(y.shape[0], 1)) * n_params + dev)
 

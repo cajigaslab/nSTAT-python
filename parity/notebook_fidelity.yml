@@ -1,5 +1,5 @@
 version: 1
-generated_on: '2026-03-07'
+generated_on: '2026-03-08'
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
@@ -31,9 +31,8 @@ items:
   python_notebook: notebooks/TrialExamples.ipynb
   fidelity_status: high_fidelity
   remaining_differences: The notebook now mirrors the MATLAB Trial workflow with executable
-    object construction, masking, history extraction, and plotting; the closing analysis
-    section uses one representative Python `Analysis` run instead of linking out to
-    separate MATLAB help pages.
+    object construction, masking, history extraction, and plotting; only minor Python
+    plotting defaults differ from the published MATLAB help output.
   python_sections: 9
   python_expected_figures: 6
   python_uses_figure_tracker: true
@@ -240,8 +239,8 @@ items:
   fidelity_status: high_fidelity
   remaining_differences: The notebook now reproduces the constant-rate and piecewise-rate
     validation workflows with real `Trial`/`Analysis` objects and figure outputs;
-    the Python port uses shorter deterministic simulations than MATLAB so the notebook
-    remains stable in CI.
+    local execution uses the MATLAB-scale simulation sizes, while CI switches to a
+    documented shorter deterministic fast path for stability.
   python_sections: 11
   python_expected_figures: 10
   python_uses_figure_tracker: true
@@ -258,11 +257,11 @@ items:
 - topic: StimulusDecode2D
   source_matlab: StimulusDecode2D.mlx
   python_notebook: notebooks/StimulusDecode2D.ipynb
-  fidelity_status: high_fidelity
-  remaining_differences: The notebook now reproduces the 2-D stimulus-decoding workflow
-    with simulated receptive fields and decoded trajectories; the current Python decoder
-    uses regression-based state recovery instead of MATLAB's symbolic-CIF nonlinear
-    filter.
+  fidelity_status: partial
+  remaining_differences: The notebook reproduces the MATLAB section order, figure
+    inventory, simulated receptive fields, and decoded-trajectory presentation, but
+    the current Python decoder still uses regression-based state recovery instead
+    of MATLAB's symbolic-CIF nonlinear filter.
   python_sections: 4
   python_expected_figures: 6
   python_uses_figure_tracker: true

@@ -90,6 +90,12 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     notebook_partial = iter_outstanding_notebook_fidelity(notebook_fidelity)
     simulink_counts = summarize_simulink_strategies(simulink_fidelity)
     simulink_outstanding = iter_outstanding_simulink_items(simulink_fidelity)
+    simulink_reference_only = [
+        row
+        for row in simulink_fidelity.get("items", [])
+        if str(row.get("current_python_status", "")).strip() == "reference_only"
+        or str(row.get("python_strategy", "")).strip() == "reference_only"
+    ]
     lines = [
         "# nSTAT Python Parity Report",
         "",
@@ -181,6 +187,10 @@ def render_parity_report(repo_root: Path | None = None) -> str:
         lines.append(
             f"- Simulink fidelity: {len(simulink_outstanding)} Simulink-backed assets still rely on partial, fallback, or unsupported Python execution paths."
         )
+    elif simulink_reference_only:
+        lines.append(
+            f"- Simulink fidelity: native Python coverage exists for the required published workflows, and {len(simulink_reference_only)} inventoried MATLAB assets remain reference-only."
+        )
     else:
         lines.append("- Simulink fidelity: all inventoried Simulink-backed workflows have an explicit Python execution strategy.")
     lines.extend(["", "## Remaining Mapping Deltas", ""])
@@ -228,10 +238,14 @@ def render_parity_report(repo_root: Path | None = None) -> str:
             lines.append(f"- `{label}` -> `{python_target}` [{row['status']}]: {detail}")
 
     lines.extend(["", "## Simulink Fidelity Deltas", ""])
-    if not simulink_outstanding:
-        lines.append("No partial, fallback, or unsupported Simulink execution paths remain in the audit.")
+    if not simulink_outstanding and not simulink_reference_only:
+        lines.append("No partial, reference-only, fallback, or unsupported Simulink execution paths remain in the audit.")
     else:
         for row in simulink_outstanding:
+            lines.append(
+                f"- `{row['model_name']}` -> `{row['model_path']}` [{row['python_strategy']}/{row['current_python_status']}]: {row['chosen_interoperability_strategy']}"
+            )
+        for row in simulink_reference_only:
             lines.append(
                 f"- `{row['model_name']}` -> `{row['model_path']}` [{row['python_strategy']}/{row['current_python_status']}]: {row['chosen_interoperability_strategy']}"
             )

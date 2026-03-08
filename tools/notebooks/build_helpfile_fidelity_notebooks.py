@@ -272,7 +272,7 @@ VALIDATION_NOTE = """\
 ## MATLAB Parity Note
 - Source MATLAB helpfile: `ValidationDataSet.mlx`
 - Fidelity status: `high_fidelity`
-- Remaining justified differences: The notebook now reproduces the constant-rate and piecewise-rate validation workflows with real `Trial`/`Analysis` objects and figure outputs; the Python port uses shorter deterministic simulations than MATLAB so the notebook remains stable in CI.
+- Remaining justified differences: The notebook now reproduces the constant-rate and piecewise-rate validation workflows with real `Trial`/`Analysis` objects and figure outputs; local execution uses the MATLAB-scale simulation sizes, while CI switches to a documented shorter deterministic fast path for stability.
 """
 
 
@@ -288,6 +288,8 @@ VALIDATION_CODE = [
     SRC_PATH = (REPO_ROOT / "src").resolve()
     if str(SRC_PATH) not in sys.path:
         sys.path.insert(0, str(SRC_PATH))
+
+    import os
 
     import matplotlib
     matplotlib.use("Agg")
@@ -317,7 +319,12 @@ VALIDATION_CODE = [
         return time, data
 
 
-    def _simulate_constant_case(seed=0, *, p=0.01, n_samples=20001, delta=0.001):
+    CI_FAST_PATH = os.environ.get("CI", "").strip().lower() in {"1", "true", "yes"}
+
+
+    def _simulate_constant_case(seed=0, *, p=0.01, n_samples=None, delta=0.001):
+        if n_samples is None:
+            n_samples = 20001 if CI_FAST_PATH else 100001
         rng = np.random.default_rng(seed)
         total_time = n_samples * delta
         time = np.linspace(0.0, total_time, n_samples)
@@ -344,7 +351,11 @@ VALIDATION_CODE = [
         }
 
 
-    def _simulate_piecewise_case(seed=1, *, p1=0.001, p2=0.01, n1=20000, n2=20000, delta=0.001):
+    def _simulate_piecewise_case(seed=1, *, p1=0.001, p2=0.01, n1=None, n2=None, delta=0.001):
+        if n1 is None:
+            n1 = 20000 if CI_FAST_PATH else 100000
+        if n2 is None:
+            n2 = 20000 if CI_FAST_PATH else 100000
         rng = np.random.default_rng(seed)
         t1 = np.linspace(0.0, n1 * delta, n1 + 1)
         t2 = np.linspace(n1 * delta, (n1 + n2) * delta, n2 + 1)[1:]
@@ -401,12 +412,13 @@ VALIDATION_CODE = [
     """,
     """
     # SECTION 0: Software Validation Data Set
-    # This notebook follows the MATLAB validation helpfile with deterministic simulations for CI-stable execution.
+    # This notebook follows the MATLAB validation helpfile; CI uses a documented short fast path while local runs use MATLAB-scale sample counts.
     plt.close("all")
     constant_case = _simulate_constant_case()
     piecewise_case = _simulate_piecewise_case()
     print(
         {
+            "ci_fast_path": CI_FAST_PATH,
             "constant_lambda_hz": round(float(constant_case["lambda_hz"]), 4),
             "piecewise_lambda1_hz": round(float(piecewise_case["lambda1_hz"]), 4),
             "piecewise_lambda2_hz": round(float(piecewise_case["lambda2_hz"]), 4),
@@ -956,8 +968,8 @@ STIMULUS_2D_NOTE = """\
 <!-- parity-note -->
 ## MATLAB Parity Note
 - Source MATLAB helpfile: `StimulusDecode2D.mlx`
-- Fidelity status: `high_fidelity`
-- Remaining justified differences: The notebook now reproduces the 2-D stimulus-decoding workflow with simulated receptive fields and decoded trajectories; the current Python decoder uses regression-based state recovery instead of MATLAB's symbolic-CIF nonlinear filter.
+- Fidelity status: `partial`
+- Remaining justified differences: The notebook reproduces the MATLAB section order, figure inventory, simulated receptive fields, and decoded-trajectory presentation, but the current Python decoder still uses regression-based state recovery instead of MATLAB's symbolic-CIF nonlinear filter.
 """
 
 

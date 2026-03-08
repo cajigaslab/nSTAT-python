@@ -38,9 +38,9 @@ def test_target_notebooks_start_with_machine_readable_parity_note() -> None:
         assert row["remaining_differences"] in source
 
 
-def test_notebook_parity_notes_have_no_partial_statuses() -> None:
+def test_notebook_parity_notes_track_only_known_partial_statuses() -> None:
     partial = [row["topic"] for row in _load_notes() if row["fidelity_status"] == "partial"]
-    assert not partial
+    assert partial == ["StimulusDecode2D"]
 
 
 def test_high_fidelity_parity_notes_do_not_admit_placeholder_or_tracker_only_status() -> None:

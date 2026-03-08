@@ -34,8 +34,8 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 | Status | Count |
 |---|---:|
 | `exact` | 0 |
-| `high_fidelity` | 13 |
-| `partial` | 0 |
+| `high_fidelity` | 12 |
+| `partial` | 1 |
 
 ## Simulink Fidelity Summary
 
@@ -46,16 +46,17 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 | `packaged_runtime` | 0 |
 | `matlab_engine_fallback` | 0 |
 | `unsupported` | 0 |
-| `reference_only` | 4 |
+| `reference_only` | 10 |
 
 ## Coverage Notes
 
 - Public API: no missing MATLAB public APIs remain; only the MATLAB help-browser utility is explicitly non-applicable.
 - Help/notebook parity: all inventoried MATLAB help workflows are mapped to Python notebooks or equivalents.
-- Notebook fidelity: all tracked MATLAB-helpfile notebook ports are marked high fidelity or exact.
+- Notebook fidelity: workflow coverage is complete, but 1 MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`.
+- Notebook fidelity audit: structural section/figure comparisons plus placeholder/tracker-only cell detection are recorded in `parity/notebook_fidelity.yml`.
 - Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
 - Class fidelity: the class audit reports no partial, wrapper-only, or missing items.
-- Simulink fidelity: all inventoried Simulink-backed workflows have an explicit Python execution strategy.
+- Simulink fidelity: native Python coverage exists for the required published workflows, and 10 inventoried MATLAB assets remain reference-only.
 
 ## Remaining Mapping Deltas
 
@@ -63,7 +64,7 @@ No partial or missing items remain in the mapping inventory.
 
 ## Remaining Notebook-Fidelity Deltas
 
-No partial notebook-fidelity items remain in `tools/notebooks/parity_notes.yml`.
+- `StimulusDecode2D` -> `notebooks/StimulusDecode2D.ipynb` [partial]: The notebook reproduces the MATLAB section order, figure inventory, simulated receptive fields, and decoded-trajectory presentation, but the current Python decoder still uses regression-based state recovery instead of MATLAB's symbolic-CIF nonlinear filter.
 
 ## Remaining Class-Fidelity Deltas
 
@@ -71,7 +72,16 @@ No partial, wrapper-only, or missing class-fidelity items remain.
 
 ## Simulink Fidelity Deltas
 
-No partial, fallback, or unsupported Simulink execution paths remain in the audit.
+- `PointProcessSimulationCont` -> `PointProcessSimulationCont.slx` [reference_only/reference_only]: Keep as reference while the Python port uses the native discrete simulation path.
+- `PointProcessSimulationLegacy2010b` -> `PointProcessSimulation.mdl.r2010b` [reference_only/reference_only]: Treat as a compatibility/reference asset because the native Python port targets the current `PointProcessSimulation.slx` behavior rather than every historic MATLAB model format.
+- `PointProcessSimulationLegacy2011a` -> `PointProcessSimulation.mdl.r2011a` [reference_only/reference_only]: Treat as a compatibility/reference asset alongside the current `.slx` model.
+- `PointProcessSimulationLegacy2011b` -> `PointProcessSimulation.mdl.r2011b` [reference_only/reference_only]: Treat as a compatibility/reference asset alongside the current `.slx` model.
+- `PointProcessSimulationLegacy2013a` -> `PointProcessSimulation.mdl.r2013a` [reference_only/reference_only]: Treat as a compatibility/reference asset alongside the current `.slx` model.
+- `PointProcessSimulationLegacySLX2013a` -> `PointProcessSimulation.slx.r2013a` [reference_only/reference_only]: Treat as a versioned MATLAB reference asset rather than a distinct Python execution target.
+- `PointProcessSimulationThinningLegacy2011a` -> `PointProcessSimulationThinning.mdl.r2011a` [reference_only/reference_only]: Keep as a MATLAB reference asset while the Python port validates thinning behavior through `CIF.simulateCIFByThinning` and MATLAB Engine comparisons.
+- `PointProcessSimulationCache` -> `PointProcessSimulation.slxc` [reference_only/reference_only]: Treat as a MATLAB build artifact, not as a Python execution target.
+- `HelpPointProcessSimulationCache` -> `helpfiles/PointProcessSimulation.slxc` [reference_only/reference_only]: Treat as a published-help artifact only.
+- `SimulatedNetwork2Cache` -> `helpfiles/SimulatedNetwork2.slxc` [reference_only/reference_only]: Treat as a MATLAB build artifact, not a Python target.
 
 ## Justified Non-Applicable Items
 

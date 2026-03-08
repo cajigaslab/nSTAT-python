@@ -5,9 +5,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from nstat import CIF, Covariate, simulate_two_neuron_network
+from nstat import Analysis, CIF, ConfigColl, CovColl, Covariate, Trial, TrialConfig, nspikeTrain, nstColl, simulate_two_neuron_network
 from nstat.matlab_reference import (
     matlab_engine_available,
+    run_analysis_reference,
     run_point_process_reference,
     run_simulated_network_reference,
 )
@@ -73,3 +74,23 @@ def test_native_network_simulation_preserves_matlab_connectivity_layout_when_eng
     np.testing.assert_allclose(native.actual_network, matlab_ref["actual_network"])
     np.testing.assert_allclose(native.lambda_delta[:5], matlab_ref["prob_head"], rtol=1e-6, atol=1e-8)
     assert np.all((matlab_ref["state_head"] == 0.0) | (matlab_ref["state_head"] == 1.0))
+
+
+@pytest.mark.skipif(not MATLAB_REPO_ROOT.exists(), reason="MATLAB reference repo not available")
+def test_native_analysis_fit_matches_matlab_reference_when_engine_is_available() -> None:
+    if not matlab_engine_available():
+        pytest.skip("MATLAB Engine for Python is not installed")
+
+    time = np.arange(0.0, 1.0 + 0.1, 0.1)
+    stim = Covariate(time, np.sin(2 * np.pi * time), "Stimulus", "time", "s", "", ["stim"])
+    spike_train = nspikeTrain([0.1, 0.4, 0.7], "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    trial = Trial(nstColl([spike_train]), CovColl([stim]))
+    cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [], [], name="stim")
+    fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
+    matlab_ref = run_analysis_reference(matlab_repo=MATLAB_REPO_ROOT)
+
+    np.testing.assert_allclose(fit.getCoeffs(1), matlab_ref["coeffs"], rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(fit.lambdaSignal.data[:5, 0], matlab_ref["lambda_head"], rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(np.asarray(fit.AIC, dtype=float)[:1], matlab_ref["aic"], rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(np.asarray(fit.BIC, dtype=float)[:1], matlab_ref["bic"], rtol=1e-6, atol=1e-8)
+    assert np.isfinite(np.asarray(fit.logLL, dtype=float)[0])

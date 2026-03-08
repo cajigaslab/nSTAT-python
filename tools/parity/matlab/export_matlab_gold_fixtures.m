@@ -21,6 +21,7 @@ end
 export_signalobj_fixture(fixtureRoot);
 export_nspiketrain_fixture(fixtureRoot);
 export_cif_fixture(fixtureRoot);
+export_analysis_fixture(fixtureRoot);
 export_point_process_fixture(fixtureRoot);
 end
 
@@ -112,6 +113,32 @@ payload.jacobian = cif.evalJacobian(stimVal);
 payload.jacobian_log = cif.evalJacobianLog(stimVal);
 
 save(fullfile(fixtureRoot, 'cif_exactness.mat'), '-struct', 'payload');
+end
+
+function export_analysis_fixture(fixtureRoot)
+t = (0:0.1:1.0)';
+stimData = sin(2*pi*t);
+stim = Covariate(t, stimData, 'Stimulus', 'time', 's', '', {'stim'});
+spikeTrain = nspikeTrain([0.1 0.4 0.7], '1', 0.1, 0.0, 1.0, 'time', 's', '', '', -1);
+trial = Trial(nstColl({spikeTrain}), CovColl({stim}));
+cfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
+cfg.setName('stim');
+fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl({cfg}));
+
+payload = struct();
+payload.time = t;
+payload.stim_data = stimData;
+payload.spike_times = spikeTrain.spikeTimes;
+payload.sample_rate = trial.sampleRate;
+payload.coeffs = fit.getCoeffs(1);
+payload.lambda_time = fit.lambda.time;
+payload.lambda_data = fit.lambda.data(:,1);
+payload.AIC = fit.AIC(1);
+payload.BIC = fit.BIC(1);
+payload.logLL = fit.logLL(1);
+payload.distribution = fit.fitType{1};
+
+save(fullfile(fixtureRoot, 'analysis_exactness.mat'), '-struct', 'payload');
 end
 
 function export_point_process_fixture(fixtureRoot)

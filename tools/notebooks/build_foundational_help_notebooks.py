@@ -50,7 +50,7 @@ TRIAL_NOTE = """\
 ## MATLAB Parity Note
 - Source MATLAB helpfile: `TrialExamples.mlx`
 - Fidelity status: `high_fidelity`
-- Remaining justified differences: The notebook now mirrors the MATLAB Trial workflow with executable object construction, masking, history extraction, and plotting; the closing analysis section uses one representative Python `Analysis` run instead of linking out to separate MATLAB help pages.
+- Remaining justified differences: The notebook now mirrors the MATLAB Trial workflow with executable object construction, masking, history extraction, and plotting; only minor Python plotting defaults differ from the published MATLAB help output.
 """
 
 
@@ -72,7 +72,7 @@ TRIAL_CODE = [
     import matplotlib.pyplot as plt
     import numpy as np
 
-    from nstat import Analysis, ConfigColl, CovColl, Covariate, Events, History, Trial, TrialConfig, nspikeTrain, nstColl
+    from nstat import CovColl, Covariate, Events, History, Trial, nspikeTrain, nstColl
     from nstat.notebook_figures import FigureTracker
 
     np.random.seed(7)
@@ -205,22 +205,11 @@ TRIAL_CODE = [
     """,
     """
     # SECTION 8: Example 2: Analyzing Trial Data
-    cfg = TrialConfig([["Position", "x"], ["Force", "f_x"]], sampleRate=ctx["sample_rate"], history=[0.0, 0.05, 0.1], name="Position+Force+History")
-    cfgColl = ConfigColl([cfg])
-    fit = Analysis.RunAnalysisForNeuron(trial1, 1, cfgColl)
-    fit_stats = fit.computeKSStats()
-    print(
-        {
-            "config_name": fit.configNames[0],
-            "aic": round(float(fit.AIC[0]), 3),
-            "bic": round(float(fit.BIC[0]), 3),
-            "ks_stat": round(float(fit_stats["ks_stat"]), 4),
-        }
-    )
+    print("Examples of neural spike analysis using AnalysisExamples2 (Neural Spike Analysis Toolbox) or AnalysisExamples (standard methods).")
     """,
     """
     # SECTION 9: Related analysis workflows
-    print("For larger model-comparison walkthroughs, continue with AnalysisExamples and AnalysisExamples2.")
+    print({"recommended_next_notebooks": ["AnalysisExamples2", "AnalysisExamples"]})
     __tracker.finalize()
     """,
 ]

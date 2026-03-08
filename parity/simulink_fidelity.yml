@@ -1,5 +1,5 @@
 version: 1
-generated_on: 2026-03-07
+generated_on: 2026-03-08
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
@@ -35,6 +35,72 @@ items:
       - No Python-executable equivalent currently mirrors the continuous Simulink model directly.
     validation_plan:
       - Audit whether any MATLAB helpfile or paper workflow depends on the continuous model before promoting it beyond reference-only.
+  - model_name: PointProcessSimulationLegacy2010b
+    model_path: PointProcessSimulation.mdl.r2010b
+    purpose: Legacy pre-SLX discrete point-process model retained for MATLAB compatibility and regression reference.
+    matlab_usage: used_for_reference
+    python_strategy: reference_only
+    current_python_status: reference_only
+    chosen_interoperability_strategy: Treat as a compatibility/reference asset because the native Python port targets the current `PointProcessSimulation.slx` behavior rather than every historic MATLAB model format.
+    fidelity_risks:
+      - Legacy `.mdl` files may embed solver or block-version behavior that differs from the current `.slx` model.
+    validation_plan:
+      - Keep inventoried and compare only if a MATLAB helpfile or published baseline is shown to depend on the legacy model specifically.
+  - model_name: PointProcessSimulationLegacy2011a
+    model_path: PointProcessSimulation.mdl.r2011a
+    purpose: Legacy pre-SLX discrete point-process model retained for MATLAB compatibility and regression reference.
+    matlab_usage: used_for_reference
+    python_strategy: reference_only
+    current_python_status: reference_only
+    chosen_interoperability_strategy: Treat as a compatibility/reference asset alongside the current `.slx` model.
+    fidelity_risks:
+      - Block behavior may differ subtly from the current `.slx` model even when the published workflow is unchanged.
+    validation_plan:
+      - Keep inventoried and promote only if a workflow is shown to require this exact legacy model.
+  - model_name: PointProcessSimulationLegacy2011b
+    model_path: PointProcessSimulation.mdl.r2011b
+    purpose: Legacy pre-SLX discrete point-process model retained for MATLAB compatibility and regression reference.
+    matlab_usage: used_for_reference
+    python_strategy: reference_only
+    current_python_status: reference_only
+    chosen_interoperability_strategy: Treat as a compatibility/reference asset alongside the current `.slx` model.
+    fidelity_risks:
+      - Block behavior may differ subtly from the current `.slx` model even when the published workflow is unchanged.
+    validation_plan:
+      - Keep inventoried and promote only if a workflow is shown to require this exact legacy model.
+  - model_name: PointProcessSimulationLegacy2013a
+    model_path: PointProcessSimulation.mdl.r2013a
+    purpose: Legacy pre-SLX discrete point-process model retained for MATLAB compatibility and regression reference.
+    matlab_usage: used_for_reference
+    python_strategy: reference_only
+    current_python_status: reference_only
+    chosen_interoperability_strategy: Treat as a compatibility/reference asset alongside the current `.slx` model.
+    fidelity_risks:
+      - Block behavior may differ subtly from the current `.slx` model even when the published workflow is unchanged.
+    validation_plan:
+      - Keep inventoried and promote only if a workflow is shown to require this exact legacy model.
+  - model_name: PointProcessSimulationLegacySLX2013a
+    model_path: PointProcessSimulation.slx.r2013a
+    purpose: Version-specific discrete point-process SLX asset retained for MATLAB compatibility and regression reference.
+    matlab_usage: used_for_reference
+    python_strategy: reference_only
+    current_python_status: reference_only
+    chosen_interoperability_strategy: Treat as a versioned MATLAB reference asset rather than a distinct Python execution target.
+    fidelity_risks:
+      - Version-specific SLX files are not stable Python execution targets and may diverge from the current published model.
+    validation_plan:
+      - Keep inventoried and compare only if a published workflow is tied to this asset specifically.
+  - model_name: PointProcessSimulationThinningLegacy2011a
+    model_path: PointProcessSimulationThinning.mdl.r2011a
+    purpose: Legacy thinning-based point-process simulation model retained for MATLAB compatibility/reference.
+    matlab_usage: used_for_reference
+    python_strategy: reference_only
+    current_python_status: reference_only
+    chosen_interoperability_strategy: Keep as a MATLAB reference asset while the Python port validates thinning behavior through `CIF.simulateCIFByThinning` and MATLAB Engine comparisons.
+    fidelity_risks:
+      - The legacy thinning model may encode branch behavior that is not separately exercised by current Python CI.
+    validation_plan:
+      - Keep inventoried and add direct MATLAB-reference comparisons if a helpfile or paper workflow depends on thinning-specific semantics.
   - model_name: PointProcessSimulationCache
     model_path: PointProcessSimulation.slxc
     purpose: Simulink compiled cache artifact for `PointProcessSimulation`.
