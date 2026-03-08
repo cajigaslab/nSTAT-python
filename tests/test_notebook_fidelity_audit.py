@@ -39,6 +39,7 @@ def test_notebook_fidelity_audit_marks_upgraded_ports_as_high_fidelity() -> None
     assert {
         "AnalysisExamples",
         "AnalysisExamples2",
+        "NetworkTutorial",
         "PPSimExample",
         "nSTATPaperExamples",
     } <= high_fidelity_topics
@@ -57,6 +58,17 @@ def test_high_fidelity_notebooks_have_no_placeholder_or_tracker_only_cells() -> 
             continue
         assert not row["python_contains_placeholders"], f"{row['topic']} still contains placeholder code"
         assert not row["python_contains_tracker_only_cells"], f"{row['topic']} still contains tracker-only cells"
+
+
+def test_high_fidelity_notebooks_have_near_matlab_structural_counts() -> None:
+    audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
+    for row in audit.get("items", []):
+        if row["fidelity_status"] not in {"high_fidelity", "exact"}:
+            continue
+        if row.get("section_delta") is None or row.get("figure_delta") is None:
+            continue
+        assert abs(int(row["section_delta"])) <= 1, f"{row['topic']} has a large MATLAB section delta"
+        assert abs(int(row["figure_delta"])) <= 1, f"{row['topic']} has a large MATLAB figure delta"
 
 
 def test_notebook_fidelity_audit_matches_generator_when_matlab_repo_is_available() -> None:

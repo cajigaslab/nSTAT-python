@@ -42,6 +42,7 @@ groups:
     - ExplicitStimulusWhiskerData
     - HippocampalPlaceCellExample
     - HybridFilterExample
+    - NetworkTutorial
     - PPSimExample
     - SignalObjExamples
     - StimulusDecode2D
@@ -58,6 +59,7 @@ groups:
     - ExplicitStimulusWhiskerData
     - HippocampalPlaceCellExample
     - HybridFilterExample
+    - NetworkTutorial
     - PPSimExample
     - StimulusDecode2D
     - TrialExamples

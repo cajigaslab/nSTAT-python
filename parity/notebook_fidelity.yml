@@ -212,6 +212,27 @@ items:
   matlab_published_figures: 8
   section_delta: 0
   figure_delta: 0
+- topic: NetworkTutorial
+  source_matlab: NetworkTutorial.mlx
+  python_notebook: notebooks/NetworkTutorial.ipynb
+  fidelity_status: high_fidelity
+  remaining_differences: The notebook now mirrors the MATLAB helpfile section order
+    and published figure inventory with a native Python network simulator and MATLAB-style
+    `Analysis` workflow; exact spike realizations still vary modestly because NumPy
+    and Simulink do not share identical random streams.
+  python_sections: 21
+  python_expected_figures: 14
+  python_uses_figure_tracker: true
+  python_has_finalize_call: true
+  python_placeholder_cells: 0
+  python_tracker_only_cells: 0
+  python_contains_placeholders: false
+  python_contains_tracker_only_cells: false
+  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Codex/nSTAT
+  matlab_sections: 21
+  matlab_published_figures: 14
+  section_delta: 0
+  figure_delta: 0
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb

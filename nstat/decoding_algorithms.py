@@ -7,6 +7,7 @@ from scipy.stats import norm
 
 from .cif import CIF
 from .errors import UnsupportedWorkflowError
+from .nspikeTrain import nspikeTrain
 
 
 def _as_observation_matrix(dN) -> np.ndarray:
@@ -520,6 +521,60 @@ class DecodingAlgorithms:
         return x_p, W_p
 
     @staticmethod
+    def PPDecode_update(x_p, W_p, dN, lambdaIn, binwidth=0.001, time_index=1, WuConv=None):
+        x_vec = np.asarray(x_p, dtype=float).reshape(-1)
+        W_mat = _as_state_matrix(W_p, x_vec.size)
+        obs = _as_observation_matrix(dN)
+        idx = max(1, min(int(time_index), obs.shape[1]))
+
+        if isinstance(lambdaIn, CIF):
+            lambda_items = [lambdaIn]
+        elif isinstance(lambdaIn, Sequence) and not isinstance(lambdaIn, (str, bytes)):
+            lambda_items = list(lambdaIn)
+        else:
+            raise ValueError("Lambda must be a cell of CIFs or a CIF")
+        if not lambda_items:
+            raise ValueError("Lambda must be a non-empty cell of CIFs or a CIF")
+
+        lambda_delta = np.zeros((len(lambda_items), 1), dtype=float)
+        sum_val_vec = np.zeros(x_vec.size, dtype=float)
+        sum_val_mat = np.zeros((x_vec.size, x_vec.size), dtype=float)
+        observed = obs[:, idx - 1]
+
+        for cell_index, cif in enumerate(lambda_items):
+            if not isinstance(cif, CIF):
+                raise ValueError("Lambda must be a cell of CIFs or a CIF")
+            if cif.historyMat.size == 0:
+                spike_times = (np.where(obs[cell_index] == 1.0)[0]) * float(binwidth)
+                nst = nspikeTrain(spike_times, makePlots=-1)
+                nst.setMinTime(0.0)
+                nst.setMaxTime((obs.shape[1] - 1) * float(binwidth))
+                nst = nst.resample(1.0 / float(binwidth))
+                lambda_delta[cell_index, 0] = float(cif.evalLambdaDelta(x_vec, idx, nst))
+                sum_val_vec += observed[cell_index] * np.asarray(cif.evalGradientLog(x_vec, idx, nst), dtype=float).reshape(-1)
+                sum_val_vec -= np.asarray(cif.evalGradient(x_vec, idx, nst), dtype=float).reshape(-1)
+                sum_val_mat -= np.asarray(cif.evalJacobianLog(x_vec, idx, nst), dtype=float)
+                sum_val_mat += np.asarray(cif.evalJacobian(x_vec, idx, nst), dtype=float)
+            else:
+                lambda_delta[cell_index, 0] = float(cif.evalLambdaDelta(x_vec, idx))
+                sum_val_vec += observed[cell_index] * np.asarray(cif.evalGradientLog(x_vec, idx), dtype=float).reshape(-1)
+                sum_val_vec -= np.asarray(cif.evalGradient(x_vec, idx), dtype=float).reshape(-1)
+                sum_val_mat -= np.asarray(cif.evalJacobianLog(x_vec, idx), dtype=float)
+                sum_val_mat += np.asarray(cif.evalJacobian(x_vec, idx), dtype=float)
+
+        if _is_empty_value(WuConv):
+            identity = np.eye(W_mat.shape[0], dtype=float)
+            try:
+                W_u = W_mat @ (identity - np.linalg.solve(identity + sum_val_mat @ W_mat, sum_val_mat @ W_mat))
+            except np.linalg.LinAlgError:
+                W_u = W_mat.copy()
+            W_u = _symmetrize(W_u)
+        else:
+            W_u = _symmetrize(_as_state_matrix(WuConv, x_vec.size))
+        x_u = x_vec + W_u @ sum_val_vec
+        return x_u, W_u, lambda_delta
+
+    @staticmethod
     def PPDecode_updateLinear(x_p, W_p, dN, mu, beta, fitType="poisson", gamma=None, HkAll=None, time_index=1, WuConv=None):
         x_vec = np.asarray(x_p, dtype=float).reshape(-1)
         W_mat = _as_state_matrix(W_p, x_vec.size)
@@ -856,6 +911,7 @@ PP_fixedIntervalSmoother = DecodingAlgorithms.PP_fixedIntervalSmoother
 PPDecodeFilter = DecodingAlgorithms.PPDecodeFilter
 PPDecodeFilterLinear = DecodingAlgorithms.PPDecodeFilterLinear
 PPDecode_predict = DecodingAlgorithms.PPDecode_predict
+PPDecode_update = DecodingAlgorithms.PPDecode_update
 PPDecode_updateLinear = DecodingAlgorithms.PPDecode_updateLinear
 PPHybridFilter = DecodingAlgorithms.PPHybridFilter
 PPHybridFilterLinear = DecodingAlgorithms.PPHybridFilterLinear
@@ -874,6 +930,7 @@ __all__ = [
     "PPDecodeFilter",
     "PPDecodeFilterLinear",
     "PPDecode_predict",
+    "PPDecode_update",
     "PPDecode_updateLinear",
     "PPHybridFilter",
     "PPHybridFilterLinear",

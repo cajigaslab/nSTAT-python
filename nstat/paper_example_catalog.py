@@ -24,19 +24,21 @@ def run_named_paper_example(
     example_id: str, repo_root: Path, *, return_payload: bool = False
 ) -> dict[str, dict[str, float]] | tuple[dict[str, dict[str, float]], dict[str, dict[str, object]]]:
     repo_root = repo_root.resolve()
-    data_dir = ensure_example_data(download=True)
 
     if example_id == "example01":
+        data_dir = ensure_example_data(download=True)
         if not return_payload:
             return {"experiment1": run_experiment1(data_dir)}
         summary, payload = run_experiment1(data_dir, return_payload=True)
         return {"experiment1": summary}, {"experiment1": payload}
     if example_id == "example02":
+        data_dir = ensure_example_data(download=True)
         if not return_payload:
             return {"experiment2": run_experiment2(data_dir)}
         summary, payload = run_experiment2(data_dir, return_payload=True)
         return {"experiment2": summary}, {"experiment2": payload}
     if example_id == "example03":
+        data_dir = ensure_example_data(download=True)
         if not return_payload:
             return {
                 "experiment3": run_experiment3(),
@@ -52,6 +54,7 @@ def run_named_paper_example(
             "experiment3b": payload3b,
         }
     if example_id == "example04":
+        data_dir = ensure_example_data(download=True)
         if not return_payload:
             return {"experiment4": run_experiment4(data_dir)}
         summary4, payload4 = run_experiment4(data_dir, return_payload=True)
