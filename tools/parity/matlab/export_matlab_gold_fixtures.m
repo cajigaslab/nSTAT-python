@@ -19,15 +19,53 @@ if ~exist(fixtureRoot, 'dir')
 end
 
 export_signalobj_fixture(fixtureRoot);
+export_confidence_interval_fixture(fixtureRoot);
 export_covariate_fixture(fixtureRoot);
 export_nspiketrain_fixture(fixtureRoot);
 export_nstcoll_fixture(fixtureRoot);
+export_config_fixture(fixtureRoot);
 export_cif_fixture(fixtureRoot);
 export_analysis_fixture(fixtureRoot);
+export_ksdiscrete_fixture(fixtureRoot);
+export_fit_summary_fixture(fixtureRoot);
 export_point_process_fixture(fixtureRoot);
+export_thinning_fixture(fixtureRoot);
 export_decoding_predict_fixture(fixtureRoot);
+export_decoding_smoother_fixture(fixtureRoot);
+export_hybrid_filter_fixture(fixtureRoot);
 export_nonlinear_decode_fixture(fixtureRoot);
 export_simulated_network_fixture(fixtureRoot);
+end
+
+function export_confidence_interval_fixture(fixtureRoot)
+t = (0:0.1:0.4)';
+bounds = [0.9 1.1; 1.9 2.1; 2.9 3.1; 3.9 4.1; 4.9 5.1];
+ci = ConfidenceInterval(t, bounds, 'CI', 'time', 's', 'a.u.', {'lo','hi'}, {'-.k'});
+ci.setColor('r');
+ci.setValue(0.9);
+structure = ci.dataToStructure;
+roundtrip = ConfidenceInterval.fromStructure(structure);
+
+payload = struct();
+payload.time = ci.time;
+payload.bounds = ci.data;
+payload.color = ci.color;
+payload.value = ci.value;
+payload.name = ci.name;
+payload.xlabelval = ci.xlabelval;
+payload.xunits = ci.xunits;
+payload.yunits = ci.yunits;
+payload.dataLabels = ci.dataLabels;
+payload.plotProps = ci.plotProps;
+payload.structure_time = structure.time;
+payload.structure_values = structure.signals.values;
+payload.roundtrip_bounds = roundtrip.data;
+payload.roundtrip_color = roundtrip.color;
+payload.roundtrip_value = roundtrip.value;
+payload.roundtrip_name = roundtrip.name;
+payload.roundtrip_plotProps = roundtrip.plotProps;
+
+save(fullfile(fixtureRoot, 'confidence_interval_exactness.mat'), '-struct', 'payload');
 end
 
 function export_signalobj_fixture(fixtureRoot)
@@ -128,6 +166,7 @@ n1 = nspikeTrain([0.1 0.3], '1', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1)
 n2 = nspikeTrain([0.2], '2', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1);
 coll = nstColl({n1, n2});
 dataMat = coll.dataToMatrix([1 2], 0.1, 0.0, 0.5);
+collapsed = coll.toSpikeTrain;
 
 payload = struct();
 payload.numSpikeTrains = coll.numSpikeTrains;
@@ -135,8 +174,41 @@ payload.firstName = coll.getNST(1).name;
 payload.dataMatrix = dataMat;
 payload.firstSpikeTimes = coll.getNST(1).spikeTimes;
 payload.secondSpikeTimes = coll.getNST(2).spikeTimes;
+payload.collapsedSpikeTimes = collapsed.spikeTimes;
+payload.collapsedName = collapsed.name;
+payload.collapsedMinTime = collapsed.minTime;
+payload.collapsedMaxTime = collapsed.maxTime;
+payload.collapsedSampleRate = collapsed.sampleRate;
 
 save(fullfile(fixtureRoot, 'nstcoll_exactness.mat'), '-struct', 'payload');
+end
+
+function export_config_fixture(fixtureRoot)
+cfg = TrialConfig({{'Position','x'},{'Stimulus'}}, 2.0, [0 0.5 1.0], [], [], 0.5, 'stim_pos');
+cfg2 = TrialConfig({{'Stimulus'}}, 2.0, [], [], [], [], 'manual');
+structure = cfg.toStructure;
+roundtrip = TrialConfig.fromStructure(structure);
+coll = ConfigColl({cfg, cfg2});
+subset = coll.getSubsetConfigs([1 2]);
+rebuilt = ConfigColl.fromStructure(coll.toStructure);
+
+payload = struct();
+payload.cfg_name = cfg.name;
+payload.cfg_sampleRate = cfg.sampleRate;
+payload.cfg_covLag = cfg.covLag;
+payload.cfg_covMask = cfg.covMask;
+payload.roundtrip_name = roundtrip.name;
+payload.roundtrip_covLag = roundtrip.covLag;
+payload.roundtrip_ensCovMask = roundtrip.ensCovMask;
+payload.roundtrip_covMask = roundtrip.covMask;
+payload.config_names = coll.getConfigNames();
+payload.subset_names = subset.getConfigNames();
+payload.rebuilt_names = rebuilt.getConfigNames();
+payload.rebuilt_first_name = rebuilt.getConfig(1).name;
+payload.rebuilt_first_covLag = rebuilt.getConfig(1).covLag;
+payload.rebuilt_first_ensCovMask = rebuilt.getConfig(1).ensCovMask;
+
+save(fullfile(fixtureRoot, 'config_exactness.mat'), '-struct', 'payload');
 end
 
 function export_cif_fixture(fixtureRoot)
@@ -174,6 +246,8 @@ cfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
 cfg.setName('stim');
 fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl({cfg}));
 summary = FitResSummary({fit});
+Analysis.KSPlot(fit, 1, 0);
+Analysis.plotFitResidual(fit, 0.01, 0);
 
 payload = struct();
 payload.time = t;
@@ -190,8 +264,106 @@ payload.distribution = fit.fitType{1};
 payload.summaryAIC = summary.AIC(1);
 payload.summaryBIC = summary.BIC(1);
 payload.summarylogLL = summary.logLL(1);
+payload.Z = fit.Z(:,1);
+payload.U = fit.U(:,1);
+payload.ks_xAxis = fit.KSStats.xAxis(:,1);
+payload.ks_sorted = fit.KSStats.KSSorted(:,1);
+payload.ks_stat = fit.KSStats.ks_stat(1);
+payload.ks_pvalue = fit.KSStats.pValue(1);
+payload.ks_within_conf_int = fit.KSStats.withinConfInt(1);
+payload.residual_time = fit.Residual.time;
+payload.residual_data = fit.Residual.data(:,1);
 
 save(fullfile(fixtureRoot, 'analysis_exactness.mat'), '-struct', 'payload');
+end
+
+function export_ksdiscrete_fixture(fixtureRoot)
+t = (0:0.1:1.0)';
+stimData = sin(2*pi*t);
+stim = Covariate(t, stimData, 'Stimulus', 'time', 's', '', {'stim'});
+spikeTrain = nspikeTrain([0.1 0.4 0.7], '1', 0.1, 0.0, 1.0, 'time', 's', '', '', -1);
+trial = Trial(nstColl({spikeTrain}), CovColl({stim}));
+cfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
+cfg.setName('stim');
+fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl({cfg}));
+
+pk = fit.lambda.data(:,1) .* (1 / fit.lambda.sampleRate);
+pk = min(max(pk, 1e-10), 1);
+spikeSignal = spikeTrain.getSigRep.data(:,1);
+uniformDraws = [0.25; 0.75];
+[Z, ~, xAxis, ~, ~] = ksdiscrete_with_draws(pk, spikeSignal, 'spiketrain', uniformDraws);
+U = 1 - exp(-Z);
+KSSorted = sort(U, 'ascend');
+[differentDists, pValue, ksStat] = kstest2(xAxis, KSSorted);
+
+payload = struct();
+payload.time = t;
+payload.stim_data = stimData;
+payload.spike_times = spikeTrain.spikeTimes;
+payload.lambda_time = fit.lambda.time;
+payload.lambda_data = fit.lambda.data(:,1);
+payload.sample_rate = fit.lambda.sampleRate;
+payload.pk = pk;
+payload.spike_signal = spikeSignal;
+payload.uniform_draws = uniformDraws;
+payload.Z = Z;
+payload.U = U;
+payload.xAxis = xAxis;
+payload.KSSorted = KSSorted;
+payload.compute_ks_stat = max(abs(KSSorted - xAxis));
+payload.ks_stat = ksStat;
+payload.ks_pvalue = pValue;
+payload.ks_within_conf_int = ~differentDists;
+
+save(fullfile(fixtureRoot, 'ksdiscrete_exactness.mat'), '-struct', 'payload');
+end
+
+function export_fit_summary_fixture(fixtureRoot)
+t = (0:0.1:1.0)';
+lambdaData = [2.0 3.0; 2.5 3.5; 3.0 4.0; 3.5 4.5; 4.0 5.0; 4.5 5.5; 5.0 6.0; 5.5 6.5; 6.0 7.0; 6.5 7.5; 7.0 8.0];
+lambda = Covariate(t, lambdaData, '\lambda(t)', 'time', 's', 'Hz', {'stim','stim_hist'});
+st1 = nspikeTrain([0.1 0.4 0.7], '1', 0.1, 0.0, 1.0, 'time', 's', '', '', -1);
+st2 = nspikeTrain([0.2 0.5 0.8], '2', 0.1, 0.0, 1.0, 'time', 's', '', '', -1);
+stimCfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
+stimCfg.setName('stim');
+stimHistCfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [0 0.1 0.2], []);
+stimHistCfg.setName('stim_hist');
+configColl = ConfigColl({stimCfg, stimHistCfg});
+covLabels = {{'stim'}, {'stim','hist1','hist2'}};
+numHist = [0 2];
+histObjects = {[], []};
+ensHistObj = {[], []};
+b1 = {[0.5], [0.3 -0.1 -0.05]};
+b2 = {[0.4], [0.25 -0.08 -0.02]};
+stats1 = {struct('se', [0.05], 'p', [0.01]), struct('se', [0.04 0.03 0.02], 'p', [0.02 0.04 0.06])};
+stats2 = {struct('se', [0.06], 'p', [0.03]), struct('se', [0.05 0.04 0.03], 'p', [0.01 0.03 0.07])};
+fit1 = FitResult(st1, covLabels, numHist, histObjects, ensHistObj, lambda, b1, [1.0 2.0], stats1, [11.0 7.0], [12.0 8.0], [3.0 5.0], configColl, {}, {}, 'poisson');
+fit2 = FitResult(st2, covLabels, numHist, histObjects, ensHistObj, lambda, b2, [1.5 2.5], stats2, [13.0 9.0], [14.0 10.0], [2.0 4.0], configColl, {}, {}, 'poisson');
+fit1.KSStats.ks_stat = [0.25 0.50];
+fit1.KSStats.pValue = [0.90 0.40];
+fit1.KSStats.withinConfInt = [1 1];
+fit2.KSStats.ks_stat = [0.35 0.55];
+fit2.KSStats.pValue = [0.80 0.30];
+fit2.KSStats.withinConfInt = [1 0];
+summary = FitResSummary({fit1, fit2});
+dAIC = summary.getDiffAIC(1, 0);
+dBIC = summary.getDiffBIC(1, 0);
+dlogLL = summary.getDifflogLL(1, 0);
+
+payload = struct();
+payload.fitNames = summary.fitNames;
+payload.neuronNumbers = summary.neuronNumbers;
+payload.AIC = summary.AIC;
+payload.BIC = summary.BIC;
+payload.logLL = summary.logLL;
+payload.KSStats = summary.KSStats;
+payload.KSPvalues = summary.KSPvalues;
+payload.withinConfInt = summary.withinConfInt;
+payload.diffAIC = dAIC;
+payload.diffBIC = dBIC;
+payload.difflogLL = dlogLL;
+
+save(fullfile(fixtureRoot, 'fit_summary_exactness.mat'), '-struct', 'payload');
 end
 
 function export_point_process_fixture(fixtureRoot)
@@ -216,7 +388,50 @@ payload.seed = 5;
 payload.lambda_head = lambda.data(1:8, 1);
 payload.spike_counts = spikeCounts;
 
+detTime = (0:Ts:0.01)';
+detStim = sin(2*pi*1*detTime);
+detUniforms = [0.99; 0.01; 0.99; 0.2; 0.8; 0.05; 0.95; 0.15; 0.6; 0.4; 0.3];
+[hNum, ~] = tfdata(H, 'v');
+[sNum, ~] = tfdata(S, 'v');
+[eNum, ~] = tfdata(E, 'v');
+[detRate, detDelta, detHist, detEta, detSpikes] = local_discrete_point_process(mu, hNum, sNum, eNum, detStim, zeros(size(detStim)), detUniforms, Ts, 0);
+payload.det_time = detTime;
+payload.det_uniforms = detUniforms;
+payload.det_stimulus = detStim;
+payload.det_rate_hz = detRate;
+payload.det_lambda_delta = detDelta;
+payload.det_history_effect = detHist;
+payload.det_eta = detEta;
+payload.det_spike_indicator = detSpikes;
+
 save(fullfile(fixtureRoot, 'point_process_exactness.mat'), '-struct', 'payload');
+end
+
+function export_thinning_fixture(fixtureRoot)
+t = (0:0.1:1.0)';
+lambdaData = [2.0; 4.0; 3.5; 5.0; 1.5; 2.5; 4.5; 3.0; 2.0; 1.0; 0.5];
+lambdaCov = Covariate(t, lambdaData, '\lambda(t)', 'time', 's', 'Hz', {'\lambda'});
+arrivalUniforms = [0.95; 0.5; 0.2; 0.8; 0.3; 0.7; 0.4; 0.6];
+thinningUniforms = [0.1; 0.9; 0.2; 0.7; 0.3; 0.6; 0.4; 0.5];
+maxTimeRes = 0.05;
+[proposalCount, lambdaBound, interarrival, candidateTimes, lambdaRatio, thinningUsed, acceptedTimes, roundedTimes] = ...
+    local_thin_from_lambda(lambdaCov, arrivalUniforms, thinningUniforms, maxTimeRes);
+
+payload = struct();
+payload.time = t;
+payload.lambda_data = lambdaData;
+payload.lambda_bound = lambdaBound;
+payload.proposal_count = proposalCount;
+payload.arrival_uniforms = arrivalUniforms(1:proposalCount);
+payload.interarrival_times = interarrival;
+payload.candidate_spike_times = candidateTimes;
+payload.lambda_ratio = lambdaRatio;
+payload.thinning_uniforms = thinningUsed;
+payload.accepted_spike_times = acceptedTimes;
+payload.rounded_spike_times = roundedTimes;
+payload.maxTimeRes = maxTimeRes;
+
+save(fullfile(fixtureRoot, 'thinning_exactness.mat'), '-struct', 'payload');
 end
 
 function export_decoding_predict_fixture(fixtureRoot)
@@ -235,6 +450,72 @@ payload.x_p = x_p;
 payload.W_p = W_p;
 
 save(fullfile(fixtureRoot, 'decoding_predict_exactness.mat'), '-struct', 'payload');
+end
+
+function export_decoding_smoother_fixture(fixtureRoot)
+A = 1.0;
+Q = 0.05;
+dN = [0 1 0 1];
+lags = 2;
+mu = -1.0;
+beta = 0.75;
+fitType = 'binomial';
+delta = 0.1;
+[x_pLag, W_pLag, x_uLag, W_uLag] = DecodingAlgorithms.PP_fixedIntervalSmoother(A, Q, dN, lags, mu, beta, fitType, delta);
+
+payload = struct();
+payload.A = A;
+payload.Q = Q;
+payload.dN = dN;
+payload.lags = lags;
+payload.mu = mu;
+payload.beta = beta;
+payload.fitType = fitType;
+payload.delta = delta;
+payload.x_pLag = x_pLag;
+payload.W_pLag = W_pLag;
+payload.x_uLag = x_uLag;
+payload.W_uLag = W_uLag;
+
+save(fullfile(fixtureRoot, 'decoding_smoother_exactness.mat'), '-struct', 'payload');
+end
+
+function export_hybrid_filter_fixture(fixtureRoot)
+A = {1.0, 0.9};
+Q = {0.02, 0.05};
+p_ij = [0.95 0.05; 0.10 0.90];
+Mu0 = [0.6; 0.4];
+dN = [0 1 1 0 1];
+mu = -1.0;
+beta = 0.75;
+fitType = 'binomial';
+binwidth = 0.1;
+[S_est, X, W, MU_u, X_s, W_s, pNGivenS] = DecodingAlgorithms.PPHybridFilterLinear( ...
+    A, Q, p_ij, Mu0, dN, mu, beta, fitType, binwidth);
+
+payload = struct();
+payload.A1 = A{1};
+payload.A2 = A{2};
+payload.Q1 = Q{1};
+payload.Q2 = Q{2};
+payload.p_ij = p_ij;
+payload.Mu0 = Mu0;
+payload.dN = dN;
+payload.mu = mu;
+payload.beta = beta;
+payload.fitType = fitType;
+payload.binwidth = binwidth;
+payload.S_est = S_est;
+payload.X = X;
+payload.W = W;
+payload.MU_u = MU_u;
+payload.X_s_1 = X_s{1};
+payload.X_s_2 = X_s{2};
+payload.W_s_1 = W_s{1};
+payload.W_s_2 = W_s{2};
+payload.pNGivenS = pNGivenS;
+
+save(fullfile(fixtureRoot, 'hybrid_filter_exactness.mat'), '-struct', 'payload');
 end
 
 function export_nonlinear_decode_fixture(fixtureRoot)
@@ -315,7 +596,195 @@ payload.prob_head = probMat(1:5,:);
 payload.state_head = yout(1:5,1:2);
 payload.spike_counts = [sum(yout(:,1) > .5), sum(yout(:,2) > .5)];
 
+detTime = (0:Ts:0.009)';
+detStim = sin(2*pi*1*detTime);
+detUniforms = [
+    0.99 0.99;
+    0.01 0.99;
+    0.99 0.02;
+    0.20 0.80;
+    0.60 0.10;
+    0.05 0.95;
+    0.90 0.40;
+    0.15 0.30;
+    0.70 0.20;
+    0.25 0.85
+];
+[stateDet, probDet, etaDet, histDet, ensDet] = local_two_neuron_network(mu{1}, mu{2}, h1Num, h2Num, s1Num, s2Num, e1Num, e2Num, detStim, detUniforms);
+payload.det_time = detTime;
+payload.det_uniforms = detUniforms;
+payload.det_stimulus = detStim;
+payload.det_probability = probDet;
+payload.det_state = stateDet;
+payload.det_eta = etaDet;
+payload.det_history_effect = histDet;
+payload.det_ensemble_effect = ensDet;
+
 save(fullfile(fixtureRoot, 'simulated_network_exactness.mat'), '-struct', 'payload');
+end
+
+function [rateHz, lambdaDelta, histEffect, eta, spikes] = local_discrete_point_process(mu, hNum, sNum, eNum, stimInput, ensInput, uniforms, Ts, simTypeSelect)
+stimInput = stimInput(:);
+ensInput = ensInput(:);
+uniforms = uniforms(:);
+n = length(stimInput);
+rateHz = zeros(n,1);
+lambdaDelta = zeros(n,1);
+histEffect = zeros(n,1);
+eta = zeros(n,1);
+spikes = zeros(n,1);
+for idx = 1:n
+    stimEffect = 0;
+    for lag = 1:length(sNum)
+        if idx-lag+1 >= 1
+            stimEffect = stimEffect + sNum(lag) * stimInput(idx-lag+1);
+        end
+    end
+    ensEffect = 0;
+    for lag = 1:length(eNum)
+        if idx-lag+1 >= 1
+            ensEffect = ensEffect + eNum(lag) * ensInput(idx-lag+1);
+        end
+    end
+    histVal = 0;
+    for lag = 1:length(hNum)
+        if idx-lag >= 1
+            histVal = histVal + hNum(lag) * spikes(idx-lag);
+        end
+    end
+    histEffect(idx) = histVal;
+    eta(idx) = mu + stimEffect + ensEffect + histVal;
+    if simTypeSelect == 0
+        lambdaDelta(idx) = exp(eta(idx)) / (1 + exp(eta(idx)));
+        rateHz(idx) = lambdaDelta(idx) / Ts;
+        spikes(idx) = uniforms(idx) < lambdaDelta(idx);
+    else
+        rateHz(idx) = exp(eta(idx));
+        lambdaDelta(idx) = 1 - exp(-rateHz(idx) * Ts);
+        spikes(idx) = uniforms(idx) < lambdaDelta(idx);
+    end
+end
+end
+
+function [proposalCount, lambdaBound, interarrival, candidateTimes, lambdaRatio, thinningUsed, acceptedTimes, roundedTimes] = local_thin_from_lambda(lambdaCov, arrivalUniforms, thinningUniforms, maxTimeRes)
+lambdaBound = max(lambdaCov);
+Tmax = lambdaCov.maxTime;
+proposalCount = ceil(lambdaBound * (1.5 * Tmax));
+arrivalUniforms = arrivalUniforms(:);
+thinningUniforms = thinningUniforms(:);
+u = arrivalUniforms(1:proposalCount);
+interarrival = -log(u) ./ lambdaBound;
+candidateTimes = cumsum(interarrival);
+candidateTimes = candidateTimes(candidateTimes <= Tmax);
+if isempty(candidateTimes)
+    lambdaRatio = [];
+    thinningUsed = [];
+    acceptedTimes = [];
+else
+    lambdaRatio = lambdaCov.getValueAt(candidateTimes) ./ lambdaBound;
+    thinningUsed = thinningUniforms(1:length(lambdaRatio));
+    acceptedTimes = candidateTimes(lambdaRatio >= thinningUsed);
+end
+if isempty(maxTimeRes)
+    roundedTimes = acceptedTimes;
+else
+    roundedTimes = unique(ceil(acceptedTimes ./ maxTimeRes) * maxTimeRes);
+end
+end
+
+function [stateMat, probMat, etaMat, histMat, ensMat] = local_two_neuron_network(mu1, mu2, h1Num, h2Num, s1Num, s2Num, e1Num, e2Num, stimInput, uniforms)
+stimInput = stimInput(:);
+uniforms = double(uniforms);
+n = length(stimInput);
+stateMat = zeros(n,2);
+probMat = zeros(n,2);
+etaMat = zeros(n,2);
+histMat = zeros(n,2);
+ensMat = zeros(n,2);
+for idx = 1:n
+    hist1 = 0;
+    hist2 = 0;
+    for lag = 1:length(h1Num)
+        if idx-lag >= 1
+            hist1 = hist1 + h1Num(lag) * stateMat(idx-lag,1);
+        end
+    end
+    for lag = 1:length(h2Num)
+        if idx-lag >= 1
+            hist2 = hist2 + h2Num(lag) * stateMat(idx-lag,2);
+        end
+    end
+    stim1 = s1Num(1) * stimInput(idx);
+    stim2 = s2Num(1) * stimInput(idx);
+    ens1 = 0;
+    ens2 = 0;
+    if idx > 1
+        ens1 = e1Num(1) * stateMat(idx-1,2);
+        ens2 = e2Num(1) * stateMat(idx-1,1);
+    end
+    histMat(idx,:) = [hist1 hist2];
+    ensMat(idx,:) = [ens1 ens2];
+    etaMat(idx,:) = [mu1 + hist1 + stim1 + ens1, mu2 + hist2 + stim2 + ens2];
+    probMat(idx,:) = exp(etaMat(idx,:)) ./ (1 + exp(etaMat(idx,:)));
+    stateMat(idx,1) = uniforms(idx,1) < probMat(idx,1);
+    stateMat(idx,2) = uniforms(idx,2) < probMat(idx,2);
+end
+end
+
+function [rst,varargout] = ksdiscrete_with_draws(pk,st,spikeflag,draws)
+[m1,m2]=size(pk);
+if (m1 ~=1 && m2 ~=1); error('pk must be a vector'); end
+if (m2>m1); pk=pk'; end
+[m1,~]=size(pk);
+if any(pk<0) || any(pk>1); error('all values for pk must be within [0,1]'); end
+
+if strcmp(spikeflag,'spiketrain')
+    [n1,n2]=size(st);
+    if (n1 ~=1 && n2 ~=1); error('spike train must be a vector'); end
+    if (n2>n1); st=st'; end
+    if m1 ~= n1; error('pk and spike train must be same length'); end
+    spikeindicies=find(st==1);
+    Nspikes=length(spikeindicies);
+elseif strcmp(spikeflag,'spikeind')
+    [n1,n2]=size(st);
+    if (n1 ~=1 && n2 ~=1); error('spike indicies must be a vector'); end
+    if (n2>n1); st=st'; end
+    spikeindicies=unique(st);
+    Nspikes=length(spikeindicies);
+else
+    error('invalid spikeflag');
+end
+
+if isempty(spikeindicies)
+    rst = pk;
+    return;
+end
+if spikeindicies(1)<1; error('There is at least one spike with index less than 0'); end
+if spikeindicies(Nspikes)>length(pk); error('There is at least one spike with a index greater than the length of pk'); end
+
+qk=-log(1-pk);
+rst=zeros(Nspikes-1,1);
+rstold=zeros(Nspikes-1,1);
+for r=1:Nspikes-1
+    ind1=spikeindicies(r);
+    ind2=spikeindicies(r+1);
+    total=sum(qk(ind1+1:ind2-1));
+    delta=-(1/qk(ind2))*log(1-draws(r)*(1-exp(-qk(ind2))));
+    if(delta~=0)
+        total=total+qk(ind2)*delta;
+    end
+    rst(r)=total;
+    rstold(r)=sum(qk(ind1+1:ind2));
+end
+
+rstsort=sort(rst);
+varargout{1}=rstsort;
+inrst=1/(Nspikes-1);
+xrst=(0.5*inrst:inrst:1-0.5*inrst)';
+varargout{2}=xrst;
+cb=1.36*sqrt(inrst);
+varargout{3}=cb;
+varargout{4}=sort(rstold);
 end
 
 function cifObj = build_polynomial_binomial_cif(beta)

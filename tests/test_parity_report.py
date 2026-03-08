@@ -25,6 +25,8 @@ def test_parity_report_highlights_current_constraints() -> None:
     assert "Simulink Fidelity Summary" in text
     assert "Remaining Notebook-Fidelity Deltas" in text
     assert "all tracked MATLAB-helpfile notebook ports are marked high fidelity or exact" in text
+    assert "Clean-room boundary" in text
+    assert "cross-language execution is confined to the MATLAB-side `tests/python_port_fidelity` harness" in text
     assert "No partial notebook-fidelity items remain in `tools/notebooks/parity_notes.yml`." in text
     assert "No partial or missing items remain in the mapping inventory." in text
     assert "Remaining Class-Fidelity Deltas" in text

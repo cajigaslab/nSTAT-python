@@ -196,7 +196,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .[dev]
       - name: Run API surface checks
-        run: pytest -q tests/test_api_surface.py
+        run: pytest -q tests/test_api_surface.py tests/test_cleanroom_boundary.py
 
   symbol-surface-audit:
     runs-on: ubuntu-latest

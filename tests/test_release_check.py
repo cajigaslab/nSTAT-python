@@ -1,24 +1,21 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
-
-from nstat.release_check import build_release_gate_commands
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+RELEASE_TOOLS = REPO_ROOT / "tools" / "release"
+if str(RELEASE_TOOLS) not in sys.path:
+    sys.path.insert(0, str(RELEASE_TOOLS))
+
+from release_gate_lib import build_release_gate_commands
 
 
-def test_release_gate_includes_fixture_generation_and_matlab_suite() -> None:
-    commands = build_release_gate_commands(REPO_ROOT, matlab_repo_root=REPO_ROOT.parent / "nSTAT")
+def test_release_gate_is_pure_python() -> None:
+    commands = build_release_gate_commands(REPO_ROOT)
     flattened = [" ".join(command) for command in commands]
 
-    assert any("export_matlab_gold_fixtures.py" in item for item in flattened)
-    assert any("tests/python_port_fidelity" in item for item in flattened)
-    assert any("addpath(fullfile(pwd,'helpfiles'))" in item for item in flattened)
-
-
-def test_release_gate_can_skip_matlab() -> None:
-    commands = build_release_gate_commands(REPO_ROOT, skip_matlab=True)
-    flattened = [" ".join(command) for command in commands]
-
-    assert not any(item.startswith("matlab ") for item in flattened)
+    assert any("tests/test_cleanroom_boundary.py" in item for item in flattened)
+    assert not any("matlab " in item.lower() for item in flattened)
+    assert not any("export_matlab_gold_fixtures.py" in item for item in flattened)

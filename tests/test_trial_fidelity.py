@@ -83,16 +83,27 @@ def test_trialconfig_and_configcoll_apply_and_roundtrip() -> None:
     assert trial.getCovLabelsFromMask() == ["x", "stim"]
 
     roundtrip = TrialConfig.fromStructure(cfg.toStructure())
-    assert roundtrip.name == "stim_pos"
+    assert roundtrip.name == ""
+    assert roundtrip.covLag == "stim_pos"
+    assert roundtrip.ensCovMask == 0.5
     assert roundtrip.covariate_names == ["Position", "Stimulus"]
 
-    configs = ConfigColl([cfg, "manual", None])
-    assert configs.numConfigs == 3
-    assert configs.getConfigNames() == ["stim_pos", "manual", "Empty Config"]
+    cfg2 = TrialConfig(
+        covMask=[["Stimulus"]],
+        sampleRate=2.0,
+        history=[],
+        covLag=[],
+        name="manual",
+    )
+    configs = ConfigColl([cfg, cfg2])
+    assert configs.numConfigs == 2
+    assert configs.getConfigNames() == ["stim_pos", "manual"]
     subset = configs.getSubsetConfigs([1, 2])
     assert subset.numConfigs == 2
     rebuilt = ConfigColl.fromStructure(configs.toStructure())
-    assert rebuilt.getConfigNames() == ["stim_pos", "manual", "Empty Config"]
+    assert rebuilt.getConfigNames() == ["Fit 1", "Fit 2"]
+    assert rebuilt.getConfig(1).name == ""
+    assert rebuilt.getConfig(1).covLag == "stim_pos"
 
 
 def test_trial_partition_history_design_matrix_and_spike_vector() -> None:
@@ -115,6 +126,7 @@ def test_trial_partition_history_design_matrix_and_spike_vector() -> None:
     assert design.shape[1] == 5
     spikes = trial.getSpikeVector()
     assert spikes.shape[1] == 2
+    np.testing.assert_allclose(trial.getSpikeVector(1).reshape(-1), spikes[:, 0])
 
 
 def test_events_validation_and_history_collection_output() -> None:

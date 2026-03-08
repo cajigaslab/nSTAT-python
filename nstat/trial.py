@@ -551,6 +551,67 @@ class SpikeTrainCollection:
             return matches if len(matches) > 1 else matches[0]
         return [self.getNSTIndicesFromName(item) for item in name]
 
+    def toSpikeTrain(
+        self,
+        selectorArray: Sequence[int] | Sequence[str] | str | None = None,
+        minTime: float | None = None,
+        maxTime: float | None = None,
+        windowTimes: Sequence[float] | None = None,
+    ) -> nspikeTrain:
+        if self.numSpikeTrains == 0:
+            raise ValueError("nstColl.toSpikeTrain requires at least one spike train")
+
+        if maxTime is None:
+            maxTime = self.maxTime
+        if minTime is None:
+            minTime = self.minTime
+
+        if selectorArray is None:
+            selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+        elif isinstance(selectorArray, str) or _is_string_sequence(selectorArray):
+            resolved = self.getNSTIndicesFromName(selectorArray)
+            if isinstance(resolved, list):
+                selector = [int(item) if not isinstance(item, list) else int(item[0]) for item in resolved]
+            else:
+                selector = [int(resolved)]
+        else:
+            selector = [int(item) for item in selectorArray]
+
+        if not selector:
+            raise ValueError("selectorArray resolved to no spike trains")
+
+        delta = 1.0 / max(float(self.sampleRate), 1e-12)
+        spike_times: list[float] = []
+        offset = 0.0
+        selected_trains = [self.getNST(index) for index in selector]
+        name = selected_trains[0].name
+
+        if windowTimes is None or len(windowTimes) == 0:
+            for idx, train in enumerate(selected_trains):
+                if idx == 0:
+                    spike_times.extend(np.asarray(train.spikeTimes, dtype=float).reshape(-1).tolist())
+                else:
+                    prev_train = selected_trains[idx - 1]
+                    offset += float(prev_train.maxTime) + float(delta)
+                    if np.asarray(train.spikeTimes).size:
+                        spike_times.extend((np.asarray(train.spikeTimes, dtype=float).reshape(-1) + offset).tolist())
+        else:
+            window_arr = np.asarray(windowTimes, dtype=float).reshape(-1)
+            if len(selector) != window_arr.size - 1:
+                raise ValueError("Window Times must be 1 row longer than selectorArray")
+            for idx, train in enumerate(selected_trains):
+                local_min = float(window_arr[idx])
+                delta_tw = float(window_arr[idx + 1] - local_min)
+                if np.asarray(train.spikeTimes).size:
+                    spike_times.extend((np.asarray(train.spikeTimes, dtype=float).reshape(-1) * delta_tw + local_min).tolist())
+
+        collapsed = nspikeTrain(spike_times, name, delta, minTime, float(maxTime) * len(selector), "time", "s", "", "", -1)
+        collapsed.setName(name)
+        collapsed.setMinTime(float(minTime))
+        collapsed.setMaxTime(float(maxTime) * len(selector))
+        collapsed.resample(1.0 / max(delta, 1e-12))
+        return collapsed
+
     def setMinTime(self, value: float | None = None) -> None:
         if value is None:
             value = self.minTime
@@ -858,12 +919,13 @@ class TrialConfig:
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "TrialConfig":
+        # MATLAB's `TrialConfig.fromStructure` omits `ensCovMask` and shifts
+        # the remaining trailing arguments left by one position.
         return TrialConfig(
             structure.get("covMask"),
             structure.get("sampleRate"),
             structure.get("history"),
             structure.get("ensCovHist"),
-            structure.get("ensCovMask"),
             structure.get("covLag"),
             structure.get("name", ""),
         )
@@ -946,8 +1008,6 @@ class ConfigCollection:
             while len(self.configNames) < self.numConfigs:
                 self.configNames.append("")
             self.configNames[target] = names if names else f"Fit {target + 1}"
-            if isinstance(self.configArray[target], TrialConfig):
-                self.configArray[target].setName(self.configNames[target])
             return
         if isinstance(names, Sequence) and not isinstance(names, (str, bytes)):
             if len(index) != len(names):
@@ -982,10 +1042,7 @@ class ConfigCollection:
                 configs.append(TrialConfig.fromStructure(row))
             else:
                 configs.append(row)
-        coll = ConfigCollection(configs)
-        if "configNames" in structure:
-            coll.configNames = list(structure["configNames"])
-        return coll
+        return ConfigCollection(configs)
 
 
 class Trial:
@@ -1294,6 +1351,11 @@ class Trial:
         if not args:
             return self.nspikeColl.dataToMatrix()
         first = args[0]
+        if isinstance(first, (int, np.integer)):
+            selector = [int(first)]
+            if len(args) == 1:
+                return self.nspikeColl.dataToMatrix(selector)
+            return self.nspikeColl.dataToMatrix(selector, *args[1:])
         if isinstance(first, Sequence) and not isinstance(first, (str, bytes, np.ndarray)):
             bin_edges = np.asarray(first, dtype=float).reshape(-1)
             return self.nspikeColl.getNST(neuron_index).to_binned_counts(bin_edges)

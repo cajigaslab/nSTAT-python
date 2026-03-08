@@ -12,6 +12,9 @@ class PointProcessSimulation:
     time: np.ndarray
     rate_hz: np.ndarray
     spikes: SpikeTrain
+    lambda_delta: np.ndarray | None = None
+    spike_indicator: np.ndarray | None = None
+    uniform_values: np.ndarray | None = None
 
 
 @dataclass
@@ -25,9 +28,20 @@ class NetworkSimulationResult:
     stimulus_kernel: np.ndarray
     ensemble_kernel: np.ndarray
     baseline_mu: np.ndarray
+    eta: np.ndarray | None = None
+    history_effect: np.ndarray | None = None
+    ensemble_effect: np.ndarray | None = None
+    spike_indicator: np.ndarray | None = None
+    uniform_values: np.ndarray | None = None
 
 
-def simulate_point_process(time: np.ndarray, rate_hz: np.ndarray, *, seed: int | None = None) -> PointProcessSimulation:
+def simulate_point_process(
+    time: np.ndarray,
+    rate_hz: np.ndarray,
+    *,
+    seed: int | None = None,
+    uniform_values: np.ndarray | None = None,
+) -> PointProcessSimulation:
     t = np.asarray(time, dtype=float).reshape(-1)
     r = np.asarray(rate_hz, dtype=float).reshape(-1)
     if t.shape[0] != r.shape[0]:
@@ -40,9 +54,22 @@ def simulate_point_process(time: np.ndarray, rate_hz: np.ndarray, *, seed: int |
     p = 1.0 - np.exp(-np.clip(r, 0.0, np.inf) * dt)
     p = np.clip(p, 0.0, 1.0)
 
-    rng = np.random.default_rng(seed)
-    keep = rng.random(t.shape[0]) < p
-    return PointProcessSimulation(t, r, SpikeTrain(t[keep]))
+    if uniform_values is None:
+        rng = np.random.default_rng(seed)
+        draws = rng.random(t.shape[0])
+    else:
+        draws = np.asarray(uniform_values, dtype=float).reshape(-1)
+        if draws.shape[0] != t.shape[0]:
+            raise ValueError("uniform_values must match the length of time")
+    keep = draws < p
+    return PointProcessSimulation(
+        t,
+        r,
+        SpikeTrain(t[keep]),
+        lambda_delta=p,
+        spike_indicator=keep.astype(float),
+        uniform_values=draws,
+    )
 
 
 def simulate_two_neuron_network(
@@ -54,6 +81,7 @@ def simulate_two_neuron_network(
     ensemble_kernel: tuple[float, float] = (1.0, -4.0),
     stimulus_frequency_hz: float = 1.0,
     seed: int | None = 13,
+    uniform_values: np.ndarray | None = None,
 ) -> NetworkSimulationResult:
     """Standalone Python replacement for the MATLAB/Simulink 2-neuron NetworkTutorial."""
     if duration_s <= 0 or dt <= 0:
@@ -73,9 +101,18 @@ def simulate_two_neuron_network(
         dtype=float,
     )
 
-    rng = np.random.default_rng(seed)
     spikes = np.zeros((time.shape[0], 2), dtype=float)
     lambda_delta = np.zeros_like(spikes)
+    eta_trace = np.zeros_like(spikes)
+    history_effect = np.zeros_like(spikes)
+    ensemble_effect = np.zeros_like(spikes)
+    if uniform_values is None:
+        rng = np.random.default_rng(seed)
+        draws = rng.random(spikes.shape)
+    else:
+        draws = np.asarray(uniform_values, dtype=float)
+        if draws.shape != spikes.shape:
+            raise ValueError("uniform_values must have shape (len(time), 2)")
     for i in range(time.shape[0]):
         hist_self = np.zeros(2, dtype=float)
         for lag, coeff in enumerate(history_kernel_arr, start=1):
@@ -87,9 +124,12 @@ def simulate_two_neuron_network(
             ens_effect[0] = ensemble_kernel_arr[0] * float(spikes[i - 1, 1])
             ens_effect[1] = ensemble_kernel_arr[1] * float(spikes[i - 1, 0])
         eta = baseline_mu_arr + hist_self + (stimulus_kernel_arr * float(drive[i])) + ens_effect
+        history_effect[i] = hist_self
+        ensemble_effect[i] = ens_effect
+        eta_trace[i] = eta
         lambda_delta[i] = 1.0 / (1.0 + np.exp(-np.clip(eta, -20.0, 20.0)))
-        spikes[i, 0] = 1.0 if rng.random() < lambda_delta[i, 0] else 0.0
-        spikes[i, 1] = 1.0 if rng.random() < lambda_delta[i, 1] else 0.0
+        spikes[i, 0] = 1.0 if draws[i, 0] < lambda_delta[i, 0] else 0.0
+        spikes[i, 1] = 1.0 if draws[i, 1] < lambda_delta[i, 1] else 0.0
 
     t1 = time[spikes[:, 0] > 0.5]
     t2 = time[spikes[:, 1] > 0.5]
@@ -104,6 +144,11 @@ def simulate_two_neuron_network(
         stimulus_kernel=stimulus_kernel_arr,
         ensemble_kernel=ensemble_kernel_arr,
         baseline_mu=baseline_mu_arr,
+        eta=eta_trace,
+        history_effect=history_effect,
+        ensemble_effect=ensemble_effect,
+        spike_indicator=spikes,
+        uniform_values=draws,
     )
 
 

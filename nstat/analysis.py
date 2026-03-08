@@ -6,10 +6,10 @@ import numpy as np
 from scipy.stats import chi2, norm
 
 from .SignalObj import SignalObj
-from .fit import FitResult, _SingleFit
+from .fit import FitResult, _SingleFit, _matlab_compute_ks_arrays
 from .glm import fit_binomial_glm, fit_poisson_glm
 from .signal import Covariate
-from .trial import ConfigCollection, Trial
+from .trial import ConfigCollection, SpikeTrainCollection, Trial
 
 
 def psth(spike_trains: Sequence[object], bin_edges: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -130,6 +130,20 @@ class Analysis:
     colors = ["b", "g", "r", "c", "m", "y", "k"]
 
     @staticmethod
+    def _collapse_spike_input(nspikeObj):
+        if isinstance(nspikeObj, SpikeTrainCollection):
+            return nspikeObj.toSpikeTrain()
+        if isinstance(nspikeObj, Sequence) and not hasattr(nspikeObj, "spikeTimes"):
+            if len(nspikeObj) == 0:
+                raise ValueError("Spike input sequence must not be empty")
+            if any(not hasattr(item, "spikeTimes") for item in nspikeObj):
+                raise ValueError("Python Analysis expects sequences of MATLAB-style nspikeTrain objects")
+            if len(nspikeObj) == 1:
+                return nspikeObj[0]
+            return SpikeTrainCollection(list(nspikeObj)).toSpikeTrain()
+        return nspikeObj
+
+    @staticmethod
     def psth(spike_trains: Sequence[object], bin_edges: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         return psth(spike_trains, bin_edges)
 
@@ -190,7 +204,6 @@ class Analysis:
             rate_hz = lambda_delta * sample_rate
             distribution = "binomial"
             b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
-            logLL = float(np.sum(y * np.log(lambda_delta) + (1.0 - y) * np.log(1.0 - lambda_delta)))
             dev = _glm_deviance(y, lambda_delta, distribution)
         else:
             glm_res = fit_poisson_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
@@ -198,8 +211,12 @@ class Analysis:
             rate_hz = lambda_delta * sample_rate
             distribution = "poisson"
             b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
-            logLL = float(glm_res.log_likelihood)
             dev = _glm_deviance(y, lambda_delta, distribution)
+
+        # MATLAB stores logLL using the legacy per-bin convention
+        # `sum(y.*log(data*delta) + (1-y).*(1-data*delta))` for both GLM branches.
+        matlab_bin_mass = np.maximum(rate_hz / max(sample_rate, 1e-12), 1e-12)
+        logLL = float(np.sum(y * np.log(matlab_bin_mass) + (1.0 - y) * (1.0 - matlab_bin_mass)))
 
         n_params = int(b.size)
         AIC = float(2.0 * n_params + dev)
@@ -371,50 +388,9 @@ class Analysis:
         return fits[0] if len(fits) == 1 else fits
 
     @staticmethod
-    def computeKSStats(nspikeObj, lambdaInput: Covariate, DTCorrection: int = 1):
-        del DTCorrection
-        if isinstance(nspikeObj, Sequence) and not hasattr(nspikeObj, "spikeTimes"):
-            if len(nspikeObj) != 1:
-                raise ValueError("Python computeKSStats currently expects a single spike train")
-            nspikeObj = nspikeObj[0]
-
-        time = np.asarray(lambdaInput.time, dtype=float).reshape(-1)
-        data = np.asarray(lambdaInput.data, dtype=float)
-        if data.ndim == 1:
-            data = data[:, None]
-        dt = float(np.median(np.diff(time))) if time.size > 1 else 1.0 / max(lambdaInput.sampleRate, 1.0)
-        edges = np.concatenate([time, [time[-1] + dt]])
-        counts = np.asarray(nspikeObj.to_binned_counts(edges), dtype=float).reshape(-1)
-
-        z_cols: list[np.ndarray] = []
-        u_cols: list[np.ndarray] = []
-        x_cols: list[np.ndarray] = []
-        ks_cols: list[np.ndarray] = []
-        stats: list[float] = []
-        for col in range(data.shape[1]):
-            lam_per_bin = np.clip(data[:, col].reshape(-1) * dt, 1e-12, None)
-            z = _time_rescaled_z(counts, lam_per_bin)
-            u = 1.0 - np.exp(-z)
-            ks_sorted = np.sort(u)
-            n_events = ks_sorted.shape[0]
-            if n_events:
-                x_axis = ((np.arange(1, n_events + 1, dtype=float) - 0.5) / n_events)
-                ks_stat = float(np.max(np.abs(ks_sorted - x_axis)))
-            else:
-                x_axis = np.asarray([], dtype=float)
-                ks_stat = 1.0
-            z_cols.append(z)
-            u_cols.append(u)
-            x_cols.append(x_axis)
-            ks_cols.append(ks_sorted)
-            stats.append(ks_stat)
-
-        Z = np.column_stack(z_cols) if z_cols and z_cols[0].size else np.zeros((0, data.shape[1]), dtype=float)
-        U = np.column_stack(u_cols) if u_cols and u_cols[0].size else np.zeros((0, data.shape[1]), dtype=float)
-        xAxis = np.column_stack(x_cols) if x_cols and x_cols[0].size else np.zeros((0, data.shape[1]), dtype=float)
-        KSSorted = np.column_stack(ks_cols) if ks_cols and ks_cols[0].size else np.zeros((0, data.shape[1]), dtype=float)
-        ks_stat = np.asarray(stats, dtype=float)
-        return Z, U, xAxis, KSSorted, ks_stat if ks_stat.size > 1 else float(ks_stat[0])
+    def computeKSStats(nspikeObj, lambdaInput: Covariate, DTCorrection: int = 1, *, random_values=None):
+        nspikeObj = Analysis._collapse_spike_input(nspikeObj)
+        return _matlab_compute_ks_arrays(nspikeObj, lambdaInput, dt_correction=DTCorrection, random_values=random_values)
 
     @staticmethod
     def computeInvGausTrans(Z):
@@ -446,21 +422,36 @@ class Analysis:
 
     @staticmethod
     def computeFitResidual(nspikeObj, lambdaInput: Covariate, windowSize: float = 0.01):
-        time = np.asarray(lambdaInput.time, dtype=float).reshape(-1)
-        data = np.asarray(lambdaInput.data, dtype=float)
-        if data.ndim == 1:
-            data = data[:, None]
-        dt = float(np.median(np.diff(time))) if time.size > 1 else 1.0 / max(lambdaInput.sampleRate, 1.0)
-        window = max(float(windowSize), dt)
-        edges = np.arange(float(time[0]), float(time[-1]) + window, window, dtype=float)
-        if edges[-1] < time[-1]:
-            edges = np.append(edges, time[-1] + window)
-        counts = np.asarray(nspikeObj.to_binned_counts(edges), dtype=float).reshape(-1)
-        out = np.zeros((counts.shape[0], data.shape[1]), dtype=float)
-        for col in range(data.shape[1]):
-            rate = np.interp(edges[:-1], time, data[:, col].reshape(-1))
-            out[:, col] = counts - rate * window
-        return Covariate(edges[:-1], out, "M(t_k)", lambdaInput.xlabelval, lambdaInput.xunits, lambdaInput.yunits, list(lambdaInput.dataLabels))
+        nspikeObj = Analysis._collapse_spike_input(nspikeObj)
+
+        nCopy = nspikeObj.nstCopy()
+        nCopy.resample(lambdaInput.sampleRate)
+        nCopy.setMinTime(lambdaInput.minTime)
+        nCopy.setMaxTime(lambdaInput.maxTime)
+
+        sumSpikes = nCopy.getSigRep(windowSize)
+        windowTimes = np.linspace(float(nCopy.minTime), float(nCopy.maxTime), sumSpikes.time.size, dtype=float)
+        lambdaInt = lambdaInput.integral()
+        lambdaIntVals = (
+            lambdaInt.getValueAt(windowTimes[1:]).reshape(-1, lambdaInt.dimension)
+            - lambdaInt.getValueAt(windowTimes[:-1]).reshape(-1, lambdaInt.dimension)
+        )
+        spike_window_data = np.asarray(sumSpikes.data, dtype=float)
+        if lambdaIntVals.shape[0] == spike_window_data.shape[0]:
+            sumSpikesOverWindow = spike_window_data
+        else:
+            sumSpikesOverWindow = spike_window_data[1:, :]
+        mdata = np.asarray(sumSpikesOverWindow, dtype=float) - np.asarray(lambdaIntVals, dtype=float)
+        out = np.vstack([np.zeros((1, mdata.shape[1]), dtype=float), mdata])
+        return Covariate(
+            windowTimes,
+            out,
+            "M(t_k)",
+            lambdaInt.xlabelval,
+            lambdaInt.xunits,
+            lambdaInt.yunits,
+            list(lambdaInput.dataLabels),
+        )
 
     @staticmethod
     def KSPlot(fitResults: FitResult, DTCorrection: int = 1, makePlot: int = 1):

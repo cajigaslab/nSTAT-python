@@ -28,8 +28,10 @@ def test_fitresult_diagnostics_populate_ks_and_residual_fields() -> None:
 
     assert "ks_stat" in ks
     assert fit.KSStats.shape == (1, 1)
-    assert residual.name == "fit residual"
+    assert residual.name == "M(t_k)"
     assert np.asarray(inv, dtype=float).ndim == 1
+    assert np.all(np.isfinite(np.asarray(inv, dtype=float)))
+    np.testing.assert_allclose(np.asarray(inv, dtype=float), np.asarray(fit.X, dtype=float))
     assert fit.Residual is not None
 
 
@@ -66,7 +68,8 @@ def test_fitresult_matlab_style_helpers_expose_plot_params_and_subsets() -> None
     assert len(labels) == coeffs.size == se.size
     assert param_vals.size == param_se.size == param_sig.size == 1
     assert subset.numResults == 1
-    assert fit.KSStats[0, 0] == 0.5
+    assert np.isfinite(fit.KSStats[0, 0])
+    assert np.isfinite(fit.KSPvalues[0])
     assert fit.invGausStats["X"].shape == (1,)
     assert fit.Residual == {"value": 1}
 
@@ -113,6 +116,8 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
     restored = FitSummary.fromStructure(summary.toStructure())
 
     assert len(fig1.axes) == 3
+    assert summary.AIC.shape == (1, 1)
+    assert summary.meanAIC.shape == (1,)
     assert hasattr(ax1, "boxplot")
     assert hasattr(ax2, "boxplot")
     assert hasattr(ax3, "boxplot")

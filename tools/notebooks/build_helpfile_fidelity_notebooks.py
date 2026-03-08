@@ -538,10 +538,10 @@ VALIDATION_CODE = [
     fig = _prepare_figure("Summary.plotSummary", figsize=(8.5, 4.5))
     axs = fig.subplots(1, 2)
     xloc = np.arange(len(summary.fitNames))
-    axs[0].bar(xloc, summary.AIC, color=["tab:blue", "tab:green"])
+    axs[0].bar(xloc, summary.meanAIC, color=["tab:blue", "tab:green"])
     axs[0].set_xticks(xloc, summary.fitNames)
     axs[0].set_title("Mean AIC across neurons")
-    axs[1].bar(xloc, summary.BIC, color=["tab:blue", "tab:green"])
+    axs[1].bar(xloc, summary.meanBIC, color=["tab:blue", "tab:green"])
     axs[1].set_xticks(xloc, summary.fitNames)
     axs[1].set_title("Mean BIC across neurons")
 

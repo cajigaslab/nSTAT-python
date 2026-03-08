@@ -152,3 +152,21 @@ def test_signalobj_math_and_summary_methods_match_matlab_surface() -> None:
     np.testing.assert_allclose(min_vals, [1.0, 1.0])
     np.testing.assert_array_equal(min_idx, [0, 1])
     np.testing.assert_allclose(min_time, [0.0, 1.0])
+
+
+def test_confidence_interval_line_plot_ignores_string_color_like_matlab() -> None:
+    ci = ConfidenceInterval([0.0, 1.0], [[0.8, 1.2], [1.8, 2.2]], "CI", "time", "s", "a.u.", ["lo", "hi"], ["-.k"])
+
+    fig1, ax1 = plt.subplots()
+    lines_default = ci.plot(color="r", drawPatches=0, ax=ax1)
+    default_colors = [line.get_color() for line in lines_default]
+
+    fig2, ax2 = plt.subplots()
+    lines_numeric = ci.plot(color=(0.2, 0.4, 0.6), drawPatches=0, ax=ax2)
+    numeric_colors = [line.get_color() for line in lines_numeric]
+
+    assert default_colors != ["r", "r"]
+    assert numeric_colors == [(0.2, 0.4, 0.6), (0.2, 0.4, 0.6)]
+
+    plt.close(fig1)
+    plt.close(fig2)
