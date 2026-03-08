@@ -71,15 +71,13 @@ ANALYSIS_CODE = [
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
-    from scipy.io import loadmat
 
     from nstat import Analysis, Covariate, nspikeTrain
-    from nstat.data_manager import ensure_example_data
     from nstat.glm import fit_poisson_glm
+    from nstat.notebook_data import load_glm_data_for_notebook
     from nstat.notebook_figures import FigureTracker
 
-    DATA_DIR = ensure_example_data(download=True)
-    GLM_DATA = loadmat(DATA_DIR / "glm_data.mat", squeeze_me=True, struct_as_record=False)
+    GLM_DATA = load_glm_data_for_notebook()
     OUTPUT_ROOT = REPO_ROOT / "output" / "notebook_images"
     __tracker = FigureTracker(topic="AnalysisExamples", output_root=OUTPUT_ROOT, expected_count=4)
 
@@ -241,15 +239,13 @@ ANALYSIS2_CODE = [
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
-    from scipy.io import loadmat
 
     from nstat import Analysis, ConfigColl, CovColl, Covariate, FitResSummary, Trial, TrialConfig, nspikeTrain, nstColl
-    from nstat.data_manager import ensure_example_data
     from nstat.glm import fit_poisson_glm
+    from nstat.notebook_data import load_glm_data_for_notebook
     from nstat.notebook_figures import FigureTracker
 
-    DATA_DIR = ensure_example_data(download=True)
-    GLM_DATA = loadmat(DATA_DIR / "glm_data.mat", squeeze_me=True, struct_as_record=False)
+    GLM_DATA = load_glm_data_for_notebook()
     OUTPUT_ROOT = REPO_ROOT / "output" / "notebook_images"
     __tracker = FigureTracker(topic="AnalysisExamples2", output_root=OUTPUT_ROOT, expected_count=5)
 

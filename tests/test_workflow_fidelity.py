@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from pathlib import Path
 
 from nstat import Analysis, CIF, CIFModel, DecodingAlgorithms, FitResSummary, Trial, TrialConfig
 from nstat.ConfigColl import ConfigColl
@@ -12,6 +13,7 @@ from nstat.FitResult import FitResult
 from nstat.analysis import compHistEnsCoeff, compHistEnsCoeffForAll, computeGrangerCausalityMatrix, computeNeighbors, spikeTrigAvg
 from nstat.nstColl import nstColl
 from nstat.nspikeTrain import nspikeTrain
+from nstat.paper_examples_full import run_experiment1
 
 
 def _build_trial() -> Trial:
@@ -245,3 +247,14 @@ def test_history_and_events_roundtrip_in_workflow_context() -> None:
     assert rebuilt_events is not None
     assert rebuilt_events.eventColor == "m"
     assert rebuilt_events.eventLabels == ["start", "stop"]
+
+
+def test_paper_example_one_supports_synthetic_fallback(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("NSTAT_ALLOW_SYNTHETIC_DATA", "1")
+
+    summary, payload = run_experiment1(Path(tmp_path), return_payload=True)
+
+    assert summary["const_condition_spikes"] > 0.0
+    assert summary["decreasing_condition_spikes"] > 0.0
+    assert payload["constant_spike_times_s"].size > 0
+    assert payload["washout_spike_times_s"].size > 0

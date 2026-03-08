@@ -24,7 +24,9 @@ items:
     confidence-interval storage.
   method_parity: MATLAB-facing methods now cover labels, masking, sub-signals, nearest-time
     lookup, time-window extraction, merge, arithmetic operators, derivative/derivativeAt,
-    filtering, plotting, restore/reset, mean/std, resampling, and structure export.
+    integral, filtering, compatibility alignment, autocorrelation/crosscorrelation/xcorr,
+    abs/log, mean/median/mode/std, min/max summaries, plotting, restore/reset, resampling,
+    and structure export.
   defaults_parity: Defaults for labels, units, and sample-rate fallback now match
     MATLAB closely, including the 1 kHz fallback when sample spacing is ill-conditioned.
   indexing_parity: Signals use time-by-dimension storage and one-based selector behavior
@@ -34,14 +36,15 @@ items:
   output_type_parity: MATLAB-facing methods return SignalObj/Covariate instances where
     expected.
   known_remaining_differences:
-  - Some specialized MATLAB utilities, plotting options, and correlation helpers remain
+  - Some specialized MATLAB spectral utilities and report-style plotting options remain
     unported.
   - Structure serialization is close but not exhaustive for every MATLAB-only field.
   required_remediation:
-  - Add MATLAB-derived fixtures for filter outputs, plotting selectors, and any remaining
-    specialized utility methods.
-  plotting_report_parity: Core plotting is implemented; some MATLAB-only plot selectors,
-    spectral utilities, and report-style helpers remain lighter.
+  - Add MATLAB-derived fixtures for filter outputs, xcorr/autocorrelation traces, plotting
+    selectors, and the remaining spectral utility methods.
+  plotting_report_parity: Core plotting and correlation helpers are implemented; some
+    MATLAB-only plot selectors, spectral utilities, and report-style helpers remain
+    lighter.
 - matlab_name: Covariate
   kind: class
   matlab_path: Covariate.m
@@ -84,7 +87,9 @@ items:
     and label metadata.
   method_parity: MATLAB-facing methods now cover setSigRep, setMinTime, setMaxTime,
     resample, getSigRep, getSpikeTimes, getISIs, getMinISI, getMaxBinSizeBinary, partitionNST,
-    getFieldVal, computeRate, restoreToOriginal, nstCopy, plot, and structure round-trip.
+    getFieldVal, computeRate, restoreToOriginal, nstCopy, burst/statistics computation,
+    ISI histogram/probability plotting, joint ISI plotting, raster plotting, and structure
+    round-trip.
   defaults_parity: Defaults, cache behavior, and restore/resample semantics now track
     MATLAB much more closely than the earlier simplified implementation.
   indexing_parity: Spike vectors remain one-dimensional and time-window filtering
@@ -94,13 +99,13 @@ items:
   output_type_parity: Signal representation returns SignalObj and rate conversion
     returns SignalObj as expected.
   known_remaining_differences:
-  - Several ISI-plot helper methods remain unported or lighter than MATLAB.
-  - Burst metrics remain approximated rather than fully MATLAB-equivalent.
+  - Some MATLAB visual styling and distribution-fit detail in the ISI plotting helpers
+    remains lighter than MATLAB.
   required_remediation:
-  - Port the remaining ISI plotting helpers and burst-detection detail from MATLAB.
-  - Add MATLAB-derived fixtures for partitionNST and burst/statistics outputs.
-  plotting_report_parity: Raster/basic plotting works; ISI, burst, and reporting helpers
-    remain thinner than MATLAB.
+  - Add MATLAB-derived fixtures for partitionNST, burst/statistics outputs, and ISI
+    plotting traces.
+  plotting_report_parity: Raster, ISI, and burst-oriented plotting helpers now execute
+    on the canonical class, though visual detail remains lighter than MATLAB.
 - matlab_name: nstColl
   kind: class
   matlab_path: nstColl.m

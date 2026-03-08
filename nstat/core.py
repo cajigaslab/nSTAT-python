@@ -54,6 +54,22 @@ def _matlab_mode_1d(values: Sequence[float] | np.ndarray) -> float:
     return float(unique[int(best[0])])
 
 
+def _nearest_sample_matrix(target_time: np.ndarray, source_time: np.ndarray, source_data: np.ndarray) -> np.ndarray:
+    target = np.asarray(target_time, dtype=float).reshape(-1)
+    source_t = np.asarray(source_time, dtype=float).reshape(-1)
+    source = np.asarray(source_data, dtype=float)
+    if source.ndim == 1:
+        source = source[:, None]
+    if source_t.size == 0:
+        return np.zeros((target.size, source.shape[1]), dtype=float)
+    right = np.searchsorted(source_t, target, side="left")
+    right = np.clip(right, 0, source_t.size - 1)
+    left = np.clip(right - 1, 0, source_t.size - 1)
+    choose_right = np.abs(source_t[right] - target) <= np.abs(source_t[left] - target)
+    indices = np.where(choose_right, right, left)
+    return source[indices]
+
+
 class SignalObj:
     """Closer MATLAB-style signal abstraction used throughout the Python port."""
 
@@ -596,6 +612,69 @@ class SignalObj:
     def isMaskSet(self) -> bool:
         return bool(np.any(self.dataMask == 0))
 
+    def abs(self) -> "SignalObj":
+        labels = [f"|{label}|" if label else "" for label in self.dataLabels]
+        return self._spawn(self.time, np.abs(self.data), data_labels=labels).with_metadata(
+            name=f"|{self.name}|",
+            yunits=self.yunits,
+        )
+
+    def __abs__(self) -> "SignalObj":
+        return self.abs()
+
+    def log(self) -> "SignalObj":
+        labels = [f"ln({label})" if label else "" for label in self.dataLabels]
+        yunits = f"ln({self.yunits})" if self.yunits else ""
+        return self._spawn(self.time, np.log(self.data), data_labels=labels).with_metadata(
+            name=f"ln({self.name})",
+            yunits=yunits,
+        )
+
+    def with_metadata(self, *, name: str | None = None, xlabelval: str | None = None, xunits: str | None = None, yunits: str | None = None) -> "SignalObj":
+        out = self.copySignal()
+        if name is not None:
+            out.name = str(name)
+        if xlabelval is not None:
+            out.xlabelval = str(xlabelval)
+        if xunits is not None:
+            out.xunits = str(xunits)
+        if yunits is not None:
+            out.yunits = str(yunits)
+        return out
+
+    def median(self, axis: int | None = None) -> "SignalObj":
+        axis_arg = 0 if axis is None else axis
+        median_data = np.median(self.data, axis=axis_arg)
+        array = np.asarray(median_data, dtype=float)
+        if array.ndim == 1 and array.size == self.dimension:
+            labels = [f"median({label})" if label else "" for label in self.dataLabels]
+            return self._spawn(
+                np.asarray([self.time[0], self.time[-1]], dtype=float),
+                np.vstack([array, array]),
+                data_labels=labels,
+            ).with_metadata(name=f"median({self.name})")
+        reshaped = array.reshape(-1, 1)
+        return self._spawn(self.time, reshaped, data_labels=[f"median({self.name})"]).with_metadata(name=f"median({self.name})")
+
+    def mode(self, axis: int | None = None) -> "SignalObj":
+        axis_arg = 0 if axis is None else axis
+        if axis_arg == 0:
+            mode_data = np.asarray([_matlab_mode_1d(self.data[:, i]) for i in range(self.dimension)], dtype=float)
+        elif axis_arg == 1:
+            mode_data = np.asarray([_matlab_mode_1d(row) for row in self.data], dtype=float)
+        else:
+            raise ValueError("axis must be 0, 1, or None")
+        array = np.asarray(mode_data, dtype=float)
+        if array.ndim == 1 and array.size == self.dimension:
+            labels = [f"mode({label})" if label else "" for label in self.dataLabels]
+            return self._spawn(
+                np.asarray([self.time[0], self.time[-1]], dtype=float),
+                np.vstack([array, array]),
+                data_labels=labels,
+            ).with_metadata(name=f"mode({self.name})")
+        reshaped = array.reshape(-1, 1)
+        return self._spawn(self.time, reshaped, data_labels=[f"mode({self.name})"]).with_metadata(name=f"mode({self.name})")
+
     def mean(self, axis: int | None = None) -> "SignalObj":
         axis_arg = 0 if axis is None else axis
         mean_data = np.mean(self.data, axis=axis_arg)
@@ -623,6 +702,20 @@ class SignalObj:
             )
         reshaped = array.reshape(-1, 1)
         return self._spawn(self.time, reshaped, data_labels=[f"\\sigma({self.name})"])
+
+    def max(self, axis: int | None = None):
+        axis_arg = 0 if axis is None else axis
+        values = np.max(self.data, axis=axis_arg)
+        indices = np.argmax(self.data, axis=axis_arg)
+        time = self.time[np.asarray(indices, dtype=int)]
+        return values, indices, time
+
+    def min(self, axis: int | None = None):
+        axis_arg = 0 if axis is None else axis
+        values = np.min(self.data, axis=axis_arg)
+        indices = np.argmin(self.data, axis=axis_arg)
+        time = self.time[np.asarray(indices, dtype=int)]
+        return values, indices, time
 
     def resample(self, sample_rate: float) -> "SignalObj":
         copied = self.copySignal()
@@ -654,6 +747,29 @@ class SignalObj:
         values = deriv.getValueAt(x0)
         return values
 
+    def integral(self, t0: float | None = None, tf: float | None = None) -> "SignalObj":
+        start = self.minTime if t0 is None else float(t0)
+        stop = self.maxTime if tf is None else float(tf)
+        integrated = self.getSigInTimeWindow(start, stop)
+        dt = 1.0 / max(float(integrated.sampleRate), 1e-12)
+        integrated = integrated.filter([dt], [1.0, -1.0])
+        if integrated.yunits and integrated.xunits:
+            integrated.setYUnits(f"{integrated.yunits}*{integrated.xunits}")
+        elif integrated.xunits:
+            integrated.setYUnits(integrated.xunits)
+        dtstr = " d\\tau"
+        integrated.setName(f"\\int_{integrated.minTime:g}^{integrated.xlabelval[:1]}\\!\\!{{{integrated.name}{dtstr}}}")
+        labels_empty = all(not str(label) for label in integrated.dataLabels)
+        if not labels_empty:
+            updated_labels: list[str] = []
+            for label in self.dataLabels:
+                if label:
+                    updated_labels.append(f"\\int_{integrated.minTime:g}^{integrated.xlabelval[:1]}\\!\\!{{{label}{dtstr}}}")
+                else:
+                    updated_labels.append("")
+            integrated.setDataLabels(updated_labels)
+        return integrated
+
     def filter(self, B, A=1) -> "SignalObj":
         try:
             from scipy.signal import lfilter
@@ -675,6 +791,120 @@ class SignalObj:
         a = np.asarray(A, dtype=float).reshape(-1)
         filtered = np.column_stack([filtfilt(b, a, self.data[:, index]) for index in range(self.dimension)])
         return self._spawn(self.time, filtered, data_labels=list(self.dataLabels))
+
+    def makeCompatible(self, other: "SignalObj", holdVals: int = 0) -> tuple["SignalObj", "SignalObj"]:
+        if (
+            self.minTime == other.minTime
+            and self.maxTime == other.maxTime
+            and round(float(self.sampleRate), 9) == round(float(other.sampleRate), 9)
+            and self.time.shape == other.time.shape
+            and np.max(np.abs(self.time - other.time)) <= 1e-9
+        ):
+            return self, other
+
+        s1c = self.copySignal()
+        s2c = other.copySignal()
+        min_time = min(s1c.minTime, s2c.minTime)
+        max_time = max(s1c.maxTime, s2c.maxTime)
+        sample_rate = max(float(s1c.sampleRate), float(s2c.sampleRate))
+        s1c.setSampleRate(sample_rate)
+        s2c.setSampleRate(sample_rate)
+        s1c.setMinTime(min_time, holdVals)
+        s2c.setMinTime(min_time, holdVals)
+        s1c.setMaxTime(max_time, holdVals)
+        s2c.setMaxTime(max_time, holdVals)
+        s2c.data = _nearest_sample_matrix(s1c.time, s2c.time, s2c.data)
+        s2c.time = s1c.time.copy()
+        s2c.minTime = float(np.min(s2c.time))
+        s2c.maxTime = float(np.max(s2c.time))
+        return s1c, s2c
+
+    def autocorrelation(self) -> "SignalObj":
+        centered = self.data - np.mean(self.data, axis=0, keepdims=True)
+        columns: list[np.ndarray] = []
+        lags: np.ndarray | None = None
+        for index in range(self.dimension):
+            series = centered[:, index]
+            denom = float(np.dot(series, series))
+            corr = np.correlate(series, series, mode="full")
+            if denom > 0:
+                corr = corr / denom
+            else:
+                corr = np.zeros_like(corr, dtype=float)
+            if lags is None:
+                lags = np.arange(-series.size + 1, series.size, dtype=float) / max(float(self.sampleRate), 1e-12)
+            columns.append(np.asarray(corr, dtype=float))
+        data = np.column_stack(columns) if columns else np.zeros((0, 0), dtype=float)
+        return self.__class__(
+            lags if lags is not None else np.array([], dtype=float),
+            data,
+            f"ACF({self.name})",
+            "Lag",
+            self.xunits,
+            f"{self.yunits}^2" if self.yunits else "",
+            list(self.dataLabels),
+            list(self.plotProps),
+        )
+
+    def crosscorrelation(self, other: "SignalObj") -> "SignalObj":
+        if self.dimension != 1 or other.dimension != 1:
+            raise ValueError("crosscorrelation only supports one-dimensional signals")
+        s1c, s2c = self.makeCompatible(other)
+        x = s1c.data[:, 0] - float(np.mean(s1c.data[:, 0]))
+        y = s2c.data[:, 0] - float(np.mean(s2c.data[:, 0]))
+        denom = float(np.sqrt(np.dot(x, x) * np.dot(y, y)))
+        corr = np.correlate(x, y, mode="full")
+        if denom > 0:
+            corr = corr / denom
+        else:
+            corr = np.zeros_like(corr, dtype=float)
+        lags = np.arange(-x.size + 1, x.size, dtype=float) / max(float(s1c.sampleRate), 1e-12)
+        return self.__class__(
+            lags,
+            corr,
+            f"XCORF({self.name})",
+            "Lag",
+            self.xunits,
+            f"{self.yunits}^2" if self.yunits else "",
+            list(self.dataLabels[:1]),
+            list(self.plotProps[:1]),
+        )
+
+    def xcorr(self, other: "SignalObj" | None = None, maxlag: int | None = None) -> "SignalObj":
+        s2 = self if other is None else other
+        s1c, s2c = self.makeCompatible(s2)
+        data_columns: list[np.ndarray] = []
+        data_labels: list[str] = []
+        lag_index: np.ndarray | None = None
+        for left_index in range(s1c.dimension):
+            for right_index in range(s2c.dimension):
+                corr = np.correlate(s1c.data[:, left_index], s2c.data[:, right_index], mode="full")
+                lags = np.arange(-s1c.data.shape[0] + 1, s1c.data.shape[0], dtype=int)
+                if maxlag is not None:
+                    keep = np.abs(lags) <= int(maxlag)
+                    corr = corr[keep]
+                    lags = lags[keep]
+                if other is None:
+                    keep = lags >= 0
+                    corr = corr[keep]
+                    lags = lags[keep]
+                if lag_index is None:
+                    lag_index = lags.astype(float) / max(float(s1c.sampleRate), 1e-12)
+                data_columns.append(np.asarray(corr, dtype=float))
+                left_label = s1c.dataLabels[left_index] if left_index < len(s1c.dataLabels) else str(left_index + 1)
+                right_label = s2c.dataLabels[right_index] if right_index < len(s2c.dataLabels) else str(right_index + 1)
+                data_labels.append(f"corr({left_label},{right_label})")
+        data = np.column_stack(data_columns) if data_columns else np.zeros((0, 0), dtype=float)
+        name = f"corr({self.name},{s2.name})"
+        return self.__class__(
+            lag_index if lag_index is not None else np.array([], dtype=float),
+            data,
+            name,
+            "\\Delta \\tau",
+            self.xunits,
+            f"{self.yunits}^2" if self.yunits else "",
+            data_labels,
+        )
 
     def setConfInterval(self, bounds: tuple[np.ndarray, np.ndarray]) -> None:
         low, high = bounds
@@ -1014,6 +1244,7 @@ class nspikeTrain:
     def computeStatistics(self, makePlots: int = 0) -> None:
         self.avgFiringRate = self.firing_rate_hz
         isi = self.getISIs()
+        spike_times = self.spikeTimes
         mode_isi = _matlab_mode_1d(isi)
         self.burstIndex = float(1.0 / mode_isi / self.avgFiringRate) if np.isfinite(mode_isi) and self.avgFiringRate > 0 else np.nan
         self.B = np.nan
@@ -1026,7 +1257,53 @@ class nspikeTrain:
         self.numSpikesPerBurst = np.array([], dtype=float)
         self.avgSpikesPerBurst = np.nan
         self.stdSpikesPerBurst = np.nan
+        self.Lstatistic = np.nan
+
+        if isi.size:
+            sigma = float(np.std(isi))
+            mu = float(np.mean(isi))
+            if np.isfinite(mu) and mu > 0:
+                r = sigma / mu
+                self.B = float((r - 1.0) / (r + 1.0))
+                n = float(spike_times.size)
+                self.An = float((np.sqrt(n + 2.0) * r - np.sqrt(n)) / (((np.sqrt(n + 2.0) - 2.0) * r) + np.sqrt(n)))
+
+                ln = isi[isi < mu]
+                ml = float(np.mean(ln)) if ln.size else np.nan
+                if np.isfinite(ml):
+                    burst_isi = (isi < ml).astype(float)
+                    shifted = np.concatenate([burst_isi[1:], [0.0]]) if burst_isi.size else np.array([], dtype=float)
+                    y = (burst_isi + shifted) > 1.0
+                    diff_sig = np.concatenate([[0.0], np.diff(y.astype(float))]) if y.size else np.array([], dtype=float)
+                    burst_start = np.flatnonzero(diff_sig == 1.0)
+                    burst_end = np.flatnonzero(diff_sig == -1.0) + 1
+                    if burst_start.size == 0:
+                        burst_end = np.array([], dtype=int)
+                    if burst_end.size > burst_start.size and burst_end.size:
+                        first = np.flatnonzero(y[: burst_end[0]] == 1)
+                        if first.size:
+                            burst_start = np.concatenate([[int(first[0])], burst_start])
+                    if burst_start.size > burst_end.size and burst_start.size:
+                        last = np.flatnonzero(y[burst_start[-1] :] == 1)
+                        if last.size:
+                            burst_end = np.concatenate([burst_end, [int(last[-1])]])
+                    if burst_start.size and burst_end.size:
+                        burst_data = np.zeros(spike_times.size, dtype=float)
+                        for start, end in zip(burst_start, burst_end, strict=False):
+                            burst_data[int(start) : int(end) + 1] = 1.0
+                        self.burstDuration = spike_times[burst_end] - spike_times[burst_start]
+                        self.burstSig = SignalObj(spike_times, burst_data, "Burst Signal")
+                        self.burstTimes = spike_times[burst_start]
+                        self.numBursts = int(burst_start.size)
+                        duration = self.maxTime - self.minTime
+                        self.burstRate = float(self.numBursts / duration) if duration > 0 else np.nan
+                        self.numSpikesPerBurst = (burst_end - burst_start + 1).astype(float)
+                        self.avgSpikesPerBurst = float(np.mean(self.numSpikesPerBurst + 1.0))
+                        self.stdSpikesPerBurst = float(np.std(self.numSpikesPerBurst + 1.0))
+
         self.Lstatistic = self.getLStatistic()
+        if makePlots == 1:
+            self.plot()
 
     def getLStatistic(self) -> float:
         isi = self.getISIs()
@@ -1181,8 +1458,8 @@ class nspikeTrain:
     def restoreToOriginal(self) -> None:
         self.spikeTimes = self.originalSpikeTimes.copy()
         self.sampleRate = float(self.originalSampleRate)
-        self.minTime = float(np.min(self.spikeTimes)) if self.spikeTimes.size else 0.0
-        self.maxTime = float(np.max(self.spikeTimes)) if self.spikeTimes.size else 0.0
+        self.minTime = float(self.originalMinTime)
+        self.maxTime = float(self.originalMaxTime)
         self.clearSigRep()
 
     def partitionNST(
@@ -1203,6 +1480,8 @@ class nspikeTrain:
         normalize = bool(normalizeTime) if normalizeTime is not None else False
         partitions: list[nspikeTrain] = []
         for index, (window_start, window_stop) in enumerate(zip(windows[:-1], windows[1:]), start=1):
+            window_start = round(float(window_start) * self.sampleRate) / self.sampleRate
+            window_stop = round(float(window_stop) * self.sampleRate) / self.sampleRate
             duration = float(window_stop - window_start)
             if lbound is not None and ubound is not None and not (float(lbound) <= abs(duration) <= float(ubound)):
                 continue
@@ -1213,7 +1492,7 @@ class nspikeTrain:
             subset = subset - float(window_start)
             if normalize and duration != 0:
                 subset = subset / duration
-            partitions.append(nspikeTrain(subset, self.name, 1.0 / self.sampleRate if self.sampleRate > 0 else 0.001, makePlots=-1))
+            partitions.append(nspikeTrain(subset, self.name, makePlots=-1))
 
         coll = nstColl(partitions)
         if normalize:
@@ -1223,6 +1502,97 @@ class nspikeTrain:
 
     def getFieldVal(self, fieldName: str):
         return getattr(self, fieldName, [])
+
+    def plotISISpectrumFunction(self):
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(1, 1, figsize=(6.0, 3.5))
+        isi = self.getISIs()
+        if isi.size:
+            (line,) = ax.plot(self.spikeTimes[1:], isi, ".")
+        else:
+            (line,) = ax.plot([], [], ".")
+        ax.set_xlabel("time [s]")
+        ax.set_ylabel("ISI [s]")
+        return line
+
+    def plotJointISIHistogram(self):
+        import matplotlib.pyplot as plt
+
+        ax = plt.subplots(1, 1, figsize=(4.5, 4.0))[1]
+        isi = self.getISIs()
+        if isi.size >= 2:
+            ax.loglog(isi[:-1], isi[1:], ".")
+            mean_isi = float(np.mean(isi))
+            ln = isi[isi < mean_isi]
+            ml = float(np.mean(ln)) if ln.size else np.nan
+            if np.isfinite(ml) and ml > 0:
+                v = ax.axis()
+                ax.loglog([ml, ml], [v[2], v[3]], "k--")
+                ax.loglog([v[0], v[1]], [ml, ml], "k--")
+        ax.set_xlabel("ISI(t) [s]")
+        ax.set_ylabel("ISI(t+1) [s]")
+        return ax
+
+    def plotISIHistogram(self, minTime: float | None = None, maxTime: float | None = None, numBins: int | None = None, handle=None):
+        import matplotlib.pyplot as plt
+
+        del numBins
+        ax = plt.gca() if handle is None else handle
+        if maxTime is None:
+            maxTime = self.maxTime
+        if minTime is None:
+            minTime = self.minTime
+        isi = self.getISIs(minTime, maxTime)
+        counts = np.array([], dtype=float)
+        bins = np.array([], dtype=float)
+        if isi.size:
+            bin_width = 0.001
+            bins = np.arange(0.0, float(np.max(isi)) + bin_width, bin_width, dtype=float)
+            if bins.size < 2:
+                bins = np.array([0.0, bin_width], dtype=float)
+            counts, edges = np.histogram(isi, bins=bins)
+            centers = edges[:-1]
+            ax.bar(
+                centers,
+                counts,
+                width=bin_width,
+                align="edge",
+                edgecolor=(0.0, 0.0, 0.0),
+                linewidth=2.0,
+                color=(0.831372559070587, 0.815686285495758, 0.7843137383461),
+            )
+        ax.set_xlabel("ISI [sec]")
+        ax.set_ylabel("Spike Counts")
+        ax.autoscale(enable=True, axis="x", tight=True)
+        return counts
+
+    def plotProbPlot(self, minTime: float | None = None, maxTime: float | None = None, handle=None):
+        import matplotlib.pyplot as plt
+        from scipy import stats
+
+        ax = plt.gca() if handle is None else handle
+        if maxTime is None:
+            maxTime = self.maxTime
+        if minTime is None:
+            minTime = self.minTime
+        isi = self.getISIs(minTime, maxTime)
+        ax.clear()
+        if isi.size:
+            stats.probplot(isi, dist=stats.expon, plot=ax)
+        ax.set_title(ax.get_title() or "Probability Plot")
+        return ax
+
+    def plotExponentialFit(self, minTime: float | None = None, maxTime: float | None = None, numBins: int | None = None, handle=None):
+        import matplotlib.pyplot as plt
+
+        fig = handle if handle is not None else plt.figure(figsize=(10.0, 4.0))
+        fig.clear()
+        axes = fig.subplots(1, 2)
+        self.plotISIHistogram(minTime, maxTime, numBins, axes[0])
+        self.plotProbPlot(minTime, maxTime, axes[1])
+        fig.tight_layout()
+        return fig
 
     def plot(self, dHeight: float = 1.0, yOffset: float = 0.5, currentHandle=None):
         import matplotlib.pyplot as plt

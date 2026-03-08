@@ -7,6 +7,7 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+TOPIC_GROUPS = yaml.safe_load((REPO_ROOT / "tools" / "notebooks" / "topic_groups.yml").read_text(encoding="utf-8")) or {}
 
 
 def test_notebooks_are_python_facing() -> None:
@@ -45,3 +46,17 @@ def test_hybrid_filter_notebook_does_not_require_example_data_download() -> None
 
     assert "ensure_example_data(download=True)" not in text
     assert "from nstat.data_manager import ensure_example_data" not in text
+
+
+def test_parity_core_notebooks_do_not_require_live_example_data_download() -> None:
+    topics = TOPIC_GROUPS.get("groups", {}).get("parity_core", [])
+    for topic in topics:
+        notebook = nbformat.read(REPO_ROOT / "notebooks" / f"{topic}.ipynb", as_version=4)
+        text = "\n".join(cell.source for cell in notebook.cells)
+        assert "ensure_example_data(download=True)" not in text, f"{topic} still hard-requires remote example-data download"
+
+
+def test_notebook_builder_sources_do_not_hard_require_live_example_data_download() -> None:
+    for path in sorted((REPO_ROOT / "tools" / "notebooks").glob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        assert "ensure_example_data(download=True)" not in text, f"{path.name} still hardcodes live example-data download"

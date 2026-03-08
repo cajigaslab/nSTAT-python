@@ -65,7 +65,7 @@ CODE = [
     import matplotlib.pyplot as plt
     import numpy as np
 
-    from nstat.data_manager import ensure_example_data
+    from nstat.notebook_data import notebook_example_data_dir
     from nstat.notebook_figures import FigureTracker
     from nstat.paper_examples_full import (
         run_experiment1,
@@ -78,7 +78,7 @@ CODE = [
         run_experiment6,
     )
 
-    DATA_DIR = ensure_example_data(download=True)
+    DATA_DIR = notebook_example_data_dir(allow_synthetic=True)
     OUTPUT_ROOT = REPO_ROOT / "output" / "notebook_images"
     __tracker = FigureTracker(topic="nSTATPaperExamples", output_root=OUTPUT_ROOT, expected_count=26)
 
