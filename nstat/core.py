@@ -481,7 +481,7 @@ class SignalObj:
         timeVec = self.getTime()
         if float(np.max(timeVec)) < target:
             minTime = float(np.min(timeVec))
-            n_samples = int(round(self.sampleRate * (target - minTime))) + 1
+            n_samples = int(float(self.sampleRate) * (target - minTime) + 1.0)
             n_samples = max(n_samples, timeVec.size)
             newTime = np.linspace(minTime, target, n_samples, dtype=float)
             numSamples = int(newTime.size - timeVec.size)
@@ -1322,7 +1322,10 @@ class nspikeTrain:
                         self.burstRate = float(self.numBursts / duration) if duration > 0 else np.nan
                         self.numSpikesPerBurst = (burst_end - burst_start + 1).astype(float)
                         self.avgSpikesPerBurst = float(np.mean(self.numSpikesPerBurst + 1.0))
-                        self.stdSpikesPerBurst = float(np.std(self.numSpikesPerBurst + 1.0))
+                        if self.numSpikesPerBurst.size > 1:
+                            self.stdSpikesPerBurst = float(np.std(self.numSpikesPerBurst + 1.0, ddof=1))
+                        elif self.numSpikesPerBurst.size == 1:
+                            self.stdSpikesPerBurst = 0.0
 
         self.Lstatistic = self.getLStatistic()
         if makePlots == 1:
@@ -1480,9 +1483,8 @@ class nspikeTrain:
 
     def restoreToOriginal(self) -> None:
         self.spikeTimes = self.originalSpikeTimes.copy()
-        self.sampleRate = float(self.originalSampleRate)
-        self.minTime = float(self.originalMinTime)
-        self.maxTime = float(self.originalMaxTime)
+        self.minTime = float(np.min(self.spikeTimes)) if self.spikeTimes.size else 0.0
+        self.maxTime = float(np.max(self.spikeTimes)) if self.spikeTimes.size else 0.0
         self.clearSigRep()
 
     def partitionNST(
