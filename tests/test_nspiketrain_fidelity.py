@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from nstat.nspikeTrain import nspikeTrain
@@ -61,4 +62,44 @@ def test_nspiketrain_setsigrep_restore_and_field_access_match_matlab_surface() -
 
     train.restoreToOriginal()
     assert train.sampleRate == 5.0
-    np.testing.assert_allclose([train.minTime, train.maxTime], [0.2, 0.6])
+    np.testing.assert_allclose([train.minTime, train.maxTime], [0.0, 1.0])
+
+
+def test_nspiketrain_compute_statistics_matches_matlab_style_burst_metrics() -> None:
+    train = nspikeTrain([0.0, 0.001, 0.002, 0.007, 0.507, 0.508, 0.509, 0.514], "bursting", 0.001, 0.0, 0.6, makePlots=0)
+
+    assert np.isfinite(train.B)
+    assert np.isfinite(train.An)
+    assert np.isfinite(train.burstIndex)
+    assert train.numBursts >= 1
+    assert train.burstSig is not None
+    assert train.burstTimes.size == train.numBursts
+    assert train.numSpikesPerBurst.size == train.numBursts
+
+
+def test_nspiketrain_partition_rounds_windows_and_uses_matlab_constructor_defaults() -> None:
+    train = nspikeTrain([0.0004, 0.0014, 0.0096], "neuron", 0.001, 0.0, 0.01, makePlots=-1)
+
+    parts = train.partitionNST([0.00049, 0.00151, 0.0101], normalizeTime=0)
+
+    assert parts.numSpikeTrains == 2
+    np.testing.assert_allclose(parts.getNST(1).spikeTimes, [0.0004, 0.0014])
+    np.testing.assert_allclose(parts.getNST(2).spikeTimes, [0.0076])
+    assert parts.getNST(1).sampleRate == 1000.0
+
+
+def test_nspiketrain_isi_plot_helpers_execute_and_return_matplotlib_objects() -> None:
+    train = nspikeTrain([0.1, 0.12, 0.15, 0.5, 0.8], "neuron", 0.001, 0.0, 1.0, makePlots=0)
+
+    line = train.plotISISpectrumFunction()
+    joint_ax = train.plotJointISIHistogram()
+    counts = train.plotISIHistogram()
+    prob_ax = train.plotProbPlot()
+    fig = train.plotExponentialFit()
+
+    assert hasattr(line, "get_xdata")
+    assert hasattr(joint_ax, "loglog")
+    assert counts.sum() == train.getISIs().size
+    assert hasattr(prob_ax, "plot")
+    assert len(fig.axes) == 2
+    plt.close("all")
