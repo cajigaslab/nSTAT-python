@@ -5,6 +5,11 @@ from typing import Any
 
 import yaml
 
+from nstat.class_fidelity import (
+    iter_symbol_presence_mismatches,
+    load_class_fidelity_audit,
+    summarize_symbol_presence,
+)
 from nstat.notebook_parity import (
     iter_outstanding_notebook_fidelity,
     load_notebook_parity_notes,
@@ -39,12 +44,6 @@ def _has_outstanding(payload: dict[str, Any], section_name: str) -> bool:
 def load_parity_manifest(repo_root: Path | None = None) -> dict[str, Any]:
     base = _repo_root() if repo_root is None else repo_root.resolve()
     path = base / "parity" / "manifest.yml"
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
-
-
-def load_class_fidelity_audit(repo_root: Path | None = None) -> dict[str, Any]:
-    base = _repo_root() if repo_root is None else repo_root.resolve()
-    path = base / "parity" / "class_fidelity.yml"
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
@@ -86,6 +85,8 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     notebook_fidelity = load_notebook_parity_notes(repo_root)
     simulink_fidelity = load_simulink_fidelity_audit(repo_root)
     class_counts = _summarize_class_fidelity(class_fidelity)
+    symbol_counts = summarize_symbol_presence(class_fidelity)
+    symbol_mismatches = iter_symbol_presence_mismatches(class_fidelity)
     notebook_counts = summarize_notebook_fidelity(notebook_fidelity)
     notebook_partial = iter_outstanding_notebook_fidelity(notebook_fidelity)
     simulink_counts = summarize_simulink_strategies(simulink_fidelity)
@@ -99,7 +100,7 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     lines = [
         "# nSTAT Python Parity Report",
         "",
-        "Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/notebooks/parity_notes.yml`.",
+        "Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebooks/parity_notes.yml`, and live runtime inspection of the audited Python public surface.",
         "",
         f"- MATLAB reference: {payload['source_repositories']['matlab']}",
         f"- Python target: {payload['source_repositories']['python']}",
@@ -129,6 +130,19 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     )
     for status in class_fidelity.get("status_legend", []):
         lines.append(f"| `{status}` | {class_counts.get(status, 0)} |")
+
+    lines.extend(
+        [
+            "",
+            "## Runtime Symbol Verification",
+            "",
+            "| Status | Count |",
+            "|---|---:|",
+            f"| `verified` | {symbol_counts['verified']} |",
+            f"| `unverified` | {symbol_counts['unverified']} |",
+            f"| `not_applicable` | {symbol_counts['not_applicable']} |",
+        ]
+    )
 
     lines.extend(
         [
@@ -183,6 +197,12 @@ def render_parity_report(repo_root: Path | None = None) -> str:
         lines.append(
             "- Class fidelity: mapping parity is ahead of semantic parity; the audit still reports partial fidelity for several MATLAB-facing classes and workflows."
         )
+    if not symbol_mismatches:
+        lines.append("- Runtime symbol verification: every audited MATLAB-facing Python symbol marked present in `parity/class_fidelity.yml` resolves on the live public surface.")
+    else:
+        lines.append(
+            f"- Runtime symbol verification: {len(symbol_mismatches)} audited MATLAB-facing entries do not currently resolve on the live public surface."
+        )
     if simulink_outstanding:
         lines.append(
             f"- Simulink fidelity: {len(simulink_outstanding)} Simulink-backed assets still rely on partial, fallback, or unsupported Python execution paths."
@@ -236,6 +256,17 @@ def render_parity_report(repo_root: Path | None = None) -> str:
             note = row.get("method_parity", "")
             detail = recommendation_text or note
             lines.append(f"- `{label}` -> `{python_target}` [{row['status']}]: {detail}")
+
+    lines.extend(["", "## Runtime Symbol Drift", ""])
+    if not symbol_mismatches:
+        lines.append("No audit/runtime symbol mismatches were detected.")
+    else:
+        for row in symbol_mismatches:
+            label = row.get("matlab_name") or row.get("python_public_name") or row.get("matlab_path")
+            public_name = row.get("python_public_name") or "None"
+            lines.append(
+                f"- `{label}` -> `{public_name}`: `symbol_presence_verified` does not match live runtime resolution."
+            )
 
     lines.extend(["", "## Simulink Fidelity Deltas", ""])
     if not simulink_outstanding and not simulink_reference_only:

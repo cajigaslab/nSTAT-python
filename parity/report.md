@@ -1,6 +1,6 @@
 # nSTAT Python Parity Report
 
-Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/notebooks/parity_notes.yml`.
+Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebooks/parity_notes.yml`, and live runtime inspection of the audited Python public surface.
 
 - MATLAB reference: https://github.com/cajigaslab/nSTAT
 - Python target: https://github.com/cajigaslab/nSTAT-python
@@ -27,6 +27,14 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 | `partial` | 0 |
 | `wrapper_only` | 0 |
 | `missing` | 0 |
+| `not_applicable` | 1 |
+
+## Runtime Symbol Verification
+
+| Status | Count |
+|---|---:|
+| `verified` | 18 |
+| `unverified` | 0 |
 | `not_applicable` | 1 |
 
 ## Notebook Fidelity Summary
@@ -56,6 +64,7 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 - Notebook fidelity audit: structural section/figure comparisons plus placeholder/tracker-only cell detection are recorded in `parity/notebook_fidelity.yml`.
 - Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
 - Class fidelity: the class audit reports no partial, wrapper-only, or missing items.
+- Runtime symbol verification: every audited MATLAB-facing Python symbol marked present in `parity/class_fidelity.yml` resolves on the live public surface.
 - Simulink fidelity: native Python coverage exists for the required published workflows, and 10 inventoried MATLAB assets remain reference-only.
 
 ## Remaining Mapping Deltas
@@ -69,6 +78,10 @@ No partial or missing items remain in the mapping inventory.
 ## Remaining Class-Fidelity Deltas
 
 No partial, wrapper-only, or missing class-fidelity items remain.
+
+## Runtime Symbol Drift
+
+No audit/runtime symbol mismatches were detected.
 
 ## Simulink Fidelity Deltas
 

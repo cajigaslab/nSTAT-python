@@ -4,6 +4,8 @@ from pathlib import Path
 
 import yaml
 
+from nstat.class_fidelity import iter_symbol_presence_mismatches
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 AUDIT_PATH = REPO_ROOT / "parity" / "class_fidelity.yml"
@@ -73,9 +75,21 @@ def test_class_fidelity_audit_uses_requested_field_names() -> None:
         "method_parity",
         "defaults_parity",
         "indexing_parity",
+        "symbol_presence_verified",
         "plotting_report_parity",
         "known_remaining_differences",
         "required_remediation",
     }
     for item in payload["items"]:
         assert required <= set(item), f"Missing required class-fidelity fields for {item.get('matlab_name')}"
+
+
+def test_class_fidelity_audit_uses_yes_no_symbol_presence_flags() -> None:
+    payload = _load_audit()
+    for item in payload["items"]:
+        assert str(item["symbol_presence_verified"]).strip().lower() in {"true", "false", "yes", "no"}
+
+
+def test_class_fidelity_symbol_presence_matches_runtime_resolution() -> None:
+    payload = _load_audit()
+    assert not iter_symbol_presence_mismatches(payload)

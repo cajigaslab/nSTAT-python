@@ -104,8 +104,34 @@ def run_simulated_network_reference(*, matlab_repo: str | Path | None = None, se
         assignin('base','S2',S{2}); assignin('base','H2',H{2}); assignin('base','E2',E{2}); assignin('base','mu2',mu{2});
         options = simget;
         [tout,~,yout] = sim('SimulatedNetwork2',[stim.minTime stim.maxTime],options,stim.dataToStructure);
+        [h1Num, ~] = tfdata(H{1}, 'v');
+        [h2Num, ~] = tfdata(H{2}, 'v');
+        [s1Num, ~] = tfdata(S{1}, 'v');
+        [s2Num, ~] = tfdata(S{2}, 'v');
+        [e1Num, ~] = tfdata(E{1}, 'v');
+        [e2Num, ~] = tfdata(E{2}, 'v');
+        stateMat = yout(:,1:2);
+        probMat = zeros(size(stateMat));
+        for n = 1:size(stateMat, 1)
+            hist1 = 0; hist2 = 0;
+            for lag = 1:length(h1Num)
+                if n-lag >= 1
+                    hist1 = hist1 + h1Num(lag) * stateMat(n-lag,1);
+                    hist2 = hist2 + h2Num(lag) * stateMat(n-lag,2);
+                end
+            end
+            ens1 = 0; ens2 = 0;
+            if n > 1
+                ens1 = e1Num(1) * stateMat(n-1,2);
+                ens2 = e2Num(1) * stateMat(n-1,1);
+            end
+            eta1 = mu{1} + hist1 + s1Num(1) * u(n) + ens1;
+            eta2 = mu{2} + hist2 + s2Num(1) * u(n) + ens2;
+            probMat(n,1) = exp(eta1) / (1 + exp(eta1));
+            probMat(n,2) = exp(eta2) / (1 + exp(eta2));
+        end
         netSpikeCounts = [sum(yout(:,1)>.5), sum(yout(:,2)>.5)];
-        netProbHead = yout(1:5,3:4);
+        netProbHead = probMat(1:5,:);
         netStateHead = yout(1:5,1:2);
         netActual = [0 1; -4 0];
         """,
@@ -134,11 +160,14 @@ def run_analysis_reference(*, matlab_repo: str | Path | None = None) -> dict[str
         cfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
         cfg.setName('stim');
         fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl({cfg}));
+        summary = FitResSummary({fit});
         analysisAIC = fit.AIC(1);
         analysisBIC = fit.BIC(1);
         analysisLogLL = fit.logLL(1);
         analysisCoeffs = fit.getCoeffs(1)';
         analysisLambdaHead = fit.lambda.data(1:5, 1)';
+        analysisSummaryAIC = summary.AIC(1);
+        analysisSummaryBIC = summary.BIC(1);
         """,
         nargout=0,
     )
@@ -148,6 +177,8 @@ def run_analysis_reference(*, matlab_repo: str | Path | None = None) -> dict[str
         "logll": _to_numpy(engine.workspace["analysisLogLL"]).reshape(-1),
         "coeffs": _to_numpy(engine.workspace["analysisCoeffs"]).reshape(-1),
         "lambda_head": _to_numpy(engine.workspace["analysisLambdaHead"]).reshape(-1),
+        "summary_aic": _to_numpy(engine.workspace["analysisSummaryAIC"]).reshape(-1),
+        "summary_bic": _to_numpy(engine.workspace["analysisSummaryBIC"]).reshape(-1),
     }
 
 

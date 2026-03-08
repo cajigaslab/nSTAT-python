@@ -23,7 +23,7 @@ items:
       - The native Python path mirrors the Simulink transfer-function semantics for the published help workflows, but not every internal Simulink block configuration has a one-to-one Python analogue.
     validation_plan:
       - Compare deterministic lambda traces against MATLAB Engine reference runs when MATLAB is available.
-      - Keep seeded Python regression tests for FIR filtering, recursive history terms, and PPSimExample outputs in CI.
+      - Keep committed MATLAB gold fixtures for the leading lambda trace, plus seeded Python regression tests for FIR filtering, recursive history terms, and PPSimExample outputs in CI.
   - model_name: PointProcessSimulationCont
     model_path: PointProcessSimulationCont.slx
     purpose: Continuous-time companion model kept with the MATLAB toolbox for simulation/reference work.
@@ -134,7 +134,8 @@ items:
       - Exact spike trains still differ from Simulink because MATLAB and NumPy do not share the same binomial random stream.
       - The native port mirrors the published NetworkTutorial parameterization and one-sample-delay semantics, but not every internal Simulink block detail is separately exposed.
     validation_plan:
-      - Keep deterministic regression tests for the native simulator parameters, probability traces, and estimated network layout in CI.
+      - Keep deterministic regression tests for the native simulator parameters, probability traces, binary state traces, and estimated network layout in CI.
+      - Keep committed MATLAB gold fixtures for `prob_head` and `state_head`, and treat seeded spike-count summaries as tolerance-based because MATLAB and NumPy random streams are not identical.
       - Run optional MATLAB Engine smoke comparisons for the actual connectivity layout when MATLAB is available.
   - model_name: SimulatedNetwork2Cache
     model_path: helpfiles/SimulatedNetwork2.slxc
