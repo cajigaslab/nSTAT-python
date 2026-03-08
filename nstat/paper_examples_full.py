@@ -138,6 +138,26 @@ def _coefficient_intervals(x: np.ndarray, result, offset: np.ndarray) -> tuple[n
 
 
 def _load_mepsc_times_seconds(path: Path) -> np.ndarray:
+    if not path.exists():
+        if _allow_synthetic_data():
+            name = path.name
+            if name == "epsc2.txt":
+                rng = np.random.default_rng(1001)
+                time = np.arange(0.0, 220.0, 0.05, dtype=float)
+                rate_hz = np.full(time.shape, 0.55, dtype=float)
+            elif name == "washout1.txt":
+                rng = np.random.default_rng(1002)
+                time = np.arange(0.0, 500.0, 0.05, dtype=float)
+                rate_hz = np.where(time < 235.0, 0.70, 1.25)
+            elif name == "washout2.txt":
+                rng = np.random.default_rng(1003)
+                time = np.arange(0.0, 320.0, 0.05, dtype=float)
+                rate_hz = 1.75 + 0.20 * np.sin(0.01 * time)
+            else:
+                raise FileNotFoundError(f"Missing mEPSC file: {path}")
+            keep = rng.random(time.shape[0]) < np.clip(rate_hz * 0.05, 1e-6, 0.25)
+            return time[keep]
+        raise FileNotFoundError(f"Missing mEPSC file: {path}")
     arr = np.loadtxt(path, skiprows=1)
     return np.asarray(arr[:, 1], dtype=float).reshape(-1) / 1000.0
 
