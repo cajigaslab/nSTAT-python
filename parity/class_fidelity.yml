@@ -353,13 +353,13 @@ items:
     in the expected workflow positions.
   symbol_presence_verified: yes
   known_remaining_differences:
-  - Simulink-backed recursive-CIF behavior is represented by a native Python implementation,
-    but it is not yet fixture-matched one-for-one against MATLAB/Simulink stochastic
-    trajectories.
+  - Analytic and nonlinear polynomial CIF surfaces are now fixture-backed against
+    MATLAB, but recursive Simulink-backed stochastic trajectories are still validated
+    as high-fidelity summaries rather than exact sample-by-sample reproductions.
   required_remediation:
   - Extend the committed MATLAB-derived fixtures beyond analytic lambda/gradient/Jacobian
-    outputs and the deterministic recursive lambda prefix to cover additional thinning
-    and seeded simulation summaries.
+    outputs, nonlinear polynomial surfaces, and the deterministic recursive lambda
+    prefix to cover additional thinning and seeded simulation summaries.
   - Add MATLAB/Simulink comparison fixtures for recursive CIF simulation trajectories
     when the random-stream alignment question is resolved.
   plotting_report_parity: Simulation/report plotting is limited; downstream notebooks
@@ -392,11 +392,15 @@ items:
     tensors instead of only Python-specific dictionaries.
   symbol_presence_verified: yes
   known_remaining_differences:
+  - The nonlinear `PPDecodeFilter` path is now fixture-backed against MATLAB on
+    a deterministic polynomial-CIF example, but it still shows small symbolic/numeric
+    drift at the `1e-4` level and remains high-fidelity rather than exact.
   - Target-estimation augmentation, EM routines, and some advanced symbolic-CIF workflows
     remain thinner than MATLAB.
   required_remediation:
-  - Extend the committed MATLAB-derived numerical fixtures beyond `PPDecode_predict`
-    to DecodingExample, DecodingExampleWithHist, StimulusDecode2D, and HybridFilterExample.
+  - Extend the committed MATLAB-derived numerical fixtures from `PPDecode_predict`
+    and the deterministic nonlinear `PPDecodeFilter` case to DecodingExample,
+    DecodingExampleWithHist, and HybridFilterExample summaries.
   - Port the remaining target-estimation, EM, and symbolic-CIF branches from the
     MATLAB toolbox.
   plotting_report_parity: Notebook-level decoding figures are supported, but the full

@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Any, Sequence
 
 import numpy as np
+import sympy as sp
+from sympy.parsing.sympy_parser import convert_xor, parse_expr, standard_transformations
 
 from .history import History
 from .signal import Covariate
 from .simulation import simulate_poisson_from_rate
 from .trial import SpikeTrainCollection
 from .nspikeTrain import nspikeTrain
+
+
+_SYMPY_TRANSFORMS = standard_transformations + (convert_xor,)
 
 
 def _as_1d_float(values) -> np.ndarray:
@@ -83,6 +88,148 @@ def _sigmoid(values: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-np.clip(values, -20.0, 20.0)))
 
 
+def _ordered_independent_names(
+    xnames: Sequence[str] | None,
+    stim_names: Sequence[str] | None,
+) -> tuple[str, ...]:
+    ordered: list[str] = []
+    for values in (stim_names or [], xnames or []):
+        for raw in values:
+            expr = str(raw).strip()
+            if not expr:
+                continue
+            parsed = parse_expr(expr, transformations=_SYMPY_TRANSFORMS, evaluate=True)
+            for symbol in sorted(parsed.free_symbols, key=lambda item: str(item)):
+                name = str(symbol)
+                if name not in ordered:
+                    ordered.append(name)
+    return tuple(ordered)
+
+
+def _zero_row(width: int) -> np.ndarray:
+    return np.zeros((1, int(width)), dtype=float)
+
+
+def _zero_square(size: int) -> np.ndarray:
+    return np.zeros((int(size), int(size)), dtype=float)
+
+
+def _reshape_row(result, width: int) -> np.ndarray:
+    if width == 0:
+        return _zero_row(0)
+    arr = np.asarray(result, dtype=float).reshape(-1)
+    if arr.size != width:
+        raise ValueError("Compiled CIF gradient width mismatch")
+    return arr.reshape(1, width)
+
+
+def _reshape_square(result, size: int) -> np.ndarray:
+    if size == 0:
+        return _zero_square(0)
+    arr = np.asarray(result, dtype=float)
+    if arr.ndim == 0:
+        if size != 1:
+            raise ValueError("Compiled CIF Hessian size mismatch")
+        return np.asarray([[float(arr)]], dtype=float)
+    arr = arr.reshape(size, size)
+    return arr
+
+
+def _compile_cif_surface(
+    beta: np.ndarray,
+    xnames: Sequence[str] | None,
+    stim_names: Sequence[str] | None,
+    fit_type: str,
+    hist_coeffs: np.ndarray,
+) -> dict[str, Any] | None:
+    beta_vec = np.asarray(beta)
+    if beta_vec.dtype == object or beta_vec.size == 0:
+        return None
+    beta_vec = np.asarray(beta_vec, dtype=float).reshape(-1)
+    xnames_list = [str(name) for name in (xnames or [])]
+    if len(xnames_list) != beta_vec.size:
+        return None
+
+    independent_names = _ordered_independent_names(xnames_list, stim_names)
+    symbol_map = {name: sp.Symbol(name, real=True) for name in independent_names}
+    stim_var_names = [str(name) for name in (stim_names or [])]
+    for name in stim_var_names:
+        symbol_map.setdefault(name, sp.Symbol(name, real=True))
+
+    term_exprs = [
+        parse_expr(str(name).strip(), local_dict=symbol_map, transformations=_SYMPY_TRANSFORMS, evaluate=True)
+        for name in xnames_list
+    ]
+    independent_symbols = tuple(symbol_map[name] for name in independent_names)
+    stim_symbols = tuple(symbol_map[name] for name in stim_var_names)
+
+    eta = sum(sp.Float(float(coeff)) * expr for coeff, expr in zip(beta_vec, term_exprs, strict=True))
+
+    hist_coeff_vec = np.asarray(hist_coeffs, dtype=float).reshape(-1)
+    hist_symbols = tuple(sp.Symbol(f"h{idx}", real=True) for idx in range(hist_coeff_vec.size))
+    gamma_symbols = tuple(sp.Symbol(f"g{idx}", real=True) for idx in range(hist_coeff_vec.size))
+    hist_term = sum(sp.Float(float(coeff)) * symbol for coeff, symbol in zip(hist_coeff_vec, hist_symbols, strict=True))
+    gamma_term = sum(symbol * hist_symbol for symbol, hist_symbol in zip(gamma_symbols, hist_symbols, strict=True))
+
+    eta_hist = eta + hist_term
+    eta_gamma = eta + gamma_term
+
+    if str(fit_type).lower() == "binomial":
+        lambda_expr = sp.exp(eta_hist) / (1 + sp.exp(eta_hist))
+        lambda_gamma_expr = sp.exp(eta_gamma) / (1 + sp.exp(eta_gamma))
+    elif str(fit_type).lower() == "poisson":
+        lambda_expr = sp.exp(eta_hist)
+        lambda_gamma_expr = sp.exp(eta_gamma)
+    else:
+        return None
+
+    gradient_expr = sp.Matrix([sp.diff(lambda_expr, symbol) for symbol in stim_symbols]) if stim_symbols else sp.Matrix([])
+    gradient_log_expr = sp.Matrix([sp.diff(sp.log(lambda_expr), symbol) for symbol in stim_symbols]) if stim_symbols else sp.Matrix([])
+    jacobian_expr = sp.hessian(lambda_expr, stim_symbols) if stim_symbols else sp.Matrix([])
+    jacobian_log_expr = sp.hessian(sp.log(lambda_expr), stim_symbols) if stim_symbols else sp.Matrix([])
+
+    if gamma_symbols:
+        gradient_gamma_expr = sp.Matrix([sp.diff(lambda_gamma_expr, symbol) for symbol in gamma_symbols])
+        gradient_log_gamma_expr = sp.Matrix([sp.diff(sp.log(lambda_gamma_expr), symbol) for symbol in gamma_symbols])
+        jacobian_gamma_expr = sp.hessian(lambda_gamma_expr, gamma_symbols)
+        jacobian_log_gamma_expr = sp.hessian(sp.log(lambda_gamma_expr), gamma_symbols)
+    else:
+        gradient_gamma_expr = sp.Matrix([])
+        gradient_log_gamma_expr = sp.Matrix([])
+        jacobian_gamma_expr = sp.Matrix([])
+        jacobian_log_gamma_expr = sp.Matrix([])
+
+    args = independent_symbols + hist_symbols
+    gamma_args = independent_symbols + hist_symbols + gamma_symbols
+
+    return {
+        "independent_names": independent_names,
+        "stim_names": tuple(stim_var_names),
+        "lambda_expr": lambda_expr,
+        "lambda_gamma_expr": lambda_gamma_expr if gamma_symbols else None,
+        "log_lambda_gamma_expr": sp.log(lambda_gamma_expr) if gamma_symbols else None,
+        "gradient_expr": gradient_expr,
+        "gradient_log_expr": gradient_log_expr,
+        "jacobian_expr": jacobian_expr,
+        "jacobian_log_expr": jacobian_log_expr,
+        "gradient_gamma_expr": gradient_gamma_expr if gamma_symbols else None,
+        "gradient_log_gamma_expr": gradient_log_gamma_expr if gamma_symbols else None,
+        "jacobian_gamma_expr": jacobian_gamma_expr if gamma_symbols else None,
+        "jacobian_log_gamma_expr": jacobian_log_gamma_expr if gamma_symbols else None,
+        "lambda_fn": sp.lambdify(args, lambda_expr, modules="numpy"),
+        "gradient_fn": sp.lambdify(args, gradient_expr, modules="numpy") if stim_symbols else None,
+        "gradient_log_fn": sp.lambdify(args, gradient_log_expr, modules="numpy") if stim_symbols else None,
+        "jacobian_fn": sp.lambdify(args, jacobian_expr, modules="numpy") if stim_symbols else None,
+        "jacobian_log_fn": sp.lambdify(args, jacobian_log_expr, modules="numpy") if stim_symbols else None,
+        "lambda_gamma_fn": sp.lambdify(gamma_args, lambda_gamma_expr, modules="numpy") if gamma_symbols else None,
+        "log_lambda_gamma_fn": sp.lambdify(gamma_args, sp.log(lambda_gamma_expr), modules="numpy") if gamma_symbols else None,
+        "gradient_gamma_fn": sp.lambdify(gamma_args, gradient_gamma_expr, modules="numpy") if gamma_symbols else None,
+        "gradient_log_gamma_fn": sp.lambdify(gamma_args, gradient_log_gamma_expr, modules="numpy") if gamma_symbols else None,
+        "jacobian_gamma_fn": sp.lambdify(gamma_args, jacobian_gamma_expr, modules="numpy") if gamma_symbols else None,
+        "jacobian_log_gamma_fn": sp.lambdify(gamma_args, jacobian_log_gamma_expr, modules="numpy") if gamma_symbols else None,
+    }
+
+
 @dataclass
 class CIFModel:
     """Conditional intensity function abstraction used by standalone workflows."""
@@ -146,9 +293,35 @@ class CIF:
         self.stimVars = list(stimNames or [])
         self.fitType = str(fitType).lower()
         self.histCoeffs = _as_1d_float(histCoeffs)
+        self.indepVars = list(_ordered_independent_names(self.varIn, self.stimVars))
         self.history = None
         self.historyMat = np.zeros((0, 0), dtype=float)
         self.spikeTrain = None
+        self.lambdaDelta = None
+        self.lambdaDeltaGamma = None
+        self.LogLambdaDeltaGamma = None
+        self.gradientLambdaDelta = None
+        self.gradientLogLambdaDelta = None
+        self.gradientLambdaDeltaGamma = None
+        self.gradientLogLambdaDeltaGamma = None
+        self.jacobianLambdaDelta = None
+        self.jacobianLogLambdaDelta = None
+        self.jacobianLambdaDeltaGamma = None
+        self.jacobianLogLambdaDeltaGamma = None
+        self._expression_surface = _compile_cif_surface(self.b, self.varIn, self.stimVars, self.fitType, self.histCoeffs)
+        if self._expression_surface is not None:
+            self.indepVars = list(self._expression_surface["independent_names"])
+            self.lambdaDelta = self._expression_surface["lambda_expr"]
+            self.lambdaDeltaGamma = self._expression_surface["lambda_gamma_expr"]
+            self.LogLambdaDeltaGamma = self._expression_surface["log_lambda_gamma_expr"]
+            self.gradientLambdaDelta = self._expression_surface["gradient_expr"]
+            self.gradientLogLambdaDelta = self._expression_surface["gradient_log_expr"]
+            self.gradientLambdaDeltaGamma = self._expression_surface["gradient_gamma_expr"]
+            self.gradientLogLambdaDeltaGamma = self._expression_surface["gradient_log_gamma_expr"]
+            self.jacobianLambdaDelta = self._expression_surface["jacobian_expr"]
+            self.jacobianLogLambdaDelta = self._expression_surface["jacobian_log_expr"]
+            self.jacobianLambdaDeltaGamma = self._expression_surface["jacobian_gamma_expr"]
+            self.jacobianLogLambdaDeltaGamma = self._expression_surface["jacobian_log_gamma_expr"]
         if historyObj is not None:
             self.setHistory(historyObj)
         if nst is not None:
@@ -189,6 +362,17 @@ class CIF:
         if self.spikeTrain is not None:
             self.historyMat = np.asarray(self.history.computeHistory(self.spikeTrain).dataToMatrix(), dtype=float)
 
+    def _stimulus_values(self, stimVal) -> np.ndarray:
+        stim = _as_1d_float(stimVal)
+        if self._expression_surface is None:
+            return stim
+        expected = len(self._expression_surface["independent_names"])
+        if stim.size != expected:
+            raise ValueError(
+                f"Expected {expected} independent variable values for CIF evaluation, received {stim.size}"
+            )
+        return stim
+
     def _split_coefficients(self, stim_dim: int) -> tuple[float, np.ndarray]:
         coeffs = np.asarray(self.b, dtype=float).reshape(-1)
         if coeffs.size == stim_dim:
@@ -213,6 +397,30 @@ class CIF:
         idx = min(idx, self.historyMat.shape[0] - 1)
         return self.historyMat[idx, :].reshape(-1)
 
+    def _surface_args(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None) -> tuple[float, ...]:
+        stim = self._stimulus_values(stimVal)
+        hist = self._history_values(time_index=time_index, nst=nst)
+        return tuple(stim.tolist() + hist.tolist())
+
+    def _surface_gamma_args(
+        self,
+        stimVal,
+        time_index: int | None = None,
+        nst: nspikeTrain | None = None,
+        gamma=None,
+    ) -> tuple[float, ...]:
+        args = list(self._surface_args(stimVal, time_index=time_index, nst=nst))
+        gamma_arr = _as_1d_float(gamma)
+        if self.histCoeffs.size == 0:
+            if gamma_arr.size:
+                raise ValueError("gamma is only valid for history-dependent CIFs")
+            return tuple(args)
+        if gamma_arr.size == 1:
+            gamma_arr = np.repeat(gamma_arr, self.histCoeffs.size)
+        if gamma_arr.size != self.histCoeffs.size:
+            raise ValueError("gamma must be scalar or align with histCoeffs")
+        return tuple(args + gamma_arr.tolist())
+
     def _eta(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None) -> tuple[float, np.ndarray, np.ndarray, float]:
         stim = _as_1d_float(stimVal)
         intercept, stim_coeffs = self._split_coefficients(stim.size)
@@ -234,6 +442,17 @@ class CIF:
         return eta, stim_coeffs, hist_coeffs, intercept
 
     def _lambda_delta(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None) -> float:
+        if self._expression_surface is not None and gamma is None:
+            return float(np.asarray(self._expression_surface["lambda_fn"](*self._surface_args(stimVal, time_index=time_index, nst=nst)), dtype=float).reshape(-1)[0])
+        if self._expression_surface is not None and gamma is not None and self._expression_surface["lambda_gamma_fn"] is not None:
+            return float(
+                np.asarray(
+                    self._expression_surface["lambda_gamma_fn"](
+                        *self._surface_gamma_args(stimVal, time_index=time_index, nst=nst, gamma=gamma)
+                    ),
+                    dtype=float,
+                ).reshape(-1)[0]
+            )
         eta, _, _, _ = self._eta(stimVal, time_index=time_index, nst=nst, gamma=gamma)
         if self.fitType == "binomial":
             return float(_sigmoid(np.asarray([eta], dtype=float))[0])
@@ -242,6 +461,12 @@ class CIF:
         raise ValueError("fitType must be either 'poisson' or 'binomial'")
 
     def _gradient(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None, log: bool = False) -> np.ndarray:
+        if self._expression_surface is not None and gamma is None:
+            fn = self._expression_surface["gradient_log_fn" if log else "gradient_fn"]
+            if fn is None:
+                return _zero_row(0)
+            width = len(self._expression_surface["stim_names"])
+            return _reshape_row(fn(*self._surface_args(stimVal, time_index=time_index, nst=nst)), width)
         lambda_delta = self._lambda_delta(stimVal, time_index=time_index, nst=nst, gamma=gamma)
         _, stim_coeffs, _, _ = self._eta(stimVal, time_index=time_index, nst=nst, gamma=gamma)
         if self.fitType == "binomial":
@@ -250,6 +475,12 @@ class CIF:
         return stim_coeffs.reshape(1, -1) if log else (lambda_delta * stim_coeffs).reshape(1, -1)
 
     def _jacobian(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None, log: bool = False) -> np.ndarray:
+        if self._expression_surface is not None and gamma is None:
+            fn = self._expression_surface["jacobian_log_fn" if log else "jacobian_fn"]
+            if fn is None:
+                return _zero_square(0)
+            size = len(self._expression_surface["stim_names"])
+            return _reshape_square(fn(*self._surface_args(stimVal, time_index=time_index, nst=nst)), size)
         lambda_delta = self._lambda_delta(stimVal, time_index=time_index, nst=nst, gamma=gamma)
         _, stim_coeffs, _, _ = self._eta(stimVal, time_index=time_index, nst=nst, gamma=gamma)
         outer = np.outer(stim_coeffs, stim_coeffs)
@@ -278,18 +509,55 @@ class CIF:
         return self._lambda_delta(stimVal, time_index=time_index, nst=nst, gamma=gamma)
 
     def evalLogLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        if self._expression_surface is not None and self._expression_surface["log_lambda_gamma_fn"] is not None:
+            return float(
+                np.asarray(
+                    self._expression_surface["log_lambda_gamma_fn"](
+                        *self._surface_gamma_args(stimVal, time_index=time_index, nst=nst, gamma=gamma)
+                    ),
+                    dtype=float,
+                ).reshape(-1)[0]
+            )
         return float(np.log(np.clip(self.evalLDGamma(stimVal, time_index=time_index, nst=nst, gamma=gamma), 1e-12, None)))
 
     def evalGradientLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        if self._expression_surface is not None and self._expression_surface["gradient_gamma_fn"] is not None:
+            return _reshape_row(
+                self._expression_surface["gradient_gamma_fn"](
+                    *self._surface_gamma_args(stimVal, time_index=time_index, nst=nst, gamma=gamma)
+                ),
+                self.histCoeffs.size,
+            )
         return self._gradient(stimVal, time_index=time_index, nst=nst, gamma=gamma)
 
     def evalGradientLogLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        if self._expression_surface is not None and self._expression_surface["gradient_log_gamma_fn"] is not None:
+            return _reshape_row(
+                self._expression_surface["gradient_log_gamma_fn"](
+                    *self._surface_gamma_args(stimVal, time_index=time_index, nst=nst, gamma=gamma)
+                ),
+                self.histCoeffs.size,
+            )
         return self._gradient(stimVal, time_index=time_index, nst=nst, gamma=gamma, log=True)
 
     def evalJacobianLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        if self._expression_surface is not None and self._expression_surface["jacobian_gamma_fn"] is not None:
+            return _reshape_square(
+                self._expression_surface["jacobian_gamma_fn"](
+                    *self._surface_gamma_args(stimVal, time_index=time_index, nst=nst, gamma=gamma)
+                ),
+                self.histCoeffs.size,
+            )
         return self._jacobian(stimVal, time_index=time_index, nst=nst, gamma=gamma)
 
     def evalJacobianLogLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        if self._expression_surface is not None and self._expression_surface["jacobian_log_gamma_fn"] is not None:
+            return _reshape_square(
+                self._expression_surface["jacobian_log_gamma_fn"](
+                    *self._surface_gamma_args(stimVal, time_index=time_index, nst=nst, gamma=gamma)
+                ),
+                self.histCoeffs.size,
+            )
         return self._jacobian(stimVal, time_index=time_index, nst=nst, gamma=gamma, log=True)
 
     def isSymBeta(self) -> bool:
@@ -302,6 +570,18 @@ class CIF:
         x = np.asarray(design_matrix, dtype=float)
         if x.ndim == 1:
             x = x[:, None]
+        if self._expression_surface is not None and x.shape[1] == len(self._expression_surface["independent_names"]):
+            if history_matrix is None:
+                hist = np.zeros((x.shape[0], self.histCoeffs.size), dtype=float)
+            else:
+                hist = np.asarray(history_matrix, dtype=float)
+                if hist.ndim == 1:
+                    hist = hist[:, None]
+                if hist.shape[1] != self.histCoeffs.size:
+                    raise ValueError("history_matrix column count must match histCoeffs length")
+            args = [x[:, idx] for idx in range(x.shape[1])] + [hist[:, idx] for idx in range(hist.shape[1])]
+            lambda_delta = np.asarray(self._expression_surface["lambda_fn"](*args), dtype=float).reshape(-1)
+            return lambda_delta / max(float(delta), 1e-12)
         intercept, stim_coeffs = self._split_coefficients(x.shape[1])
         eta = intercept + x @ stim_coeffs
         if history_matrix is not None and self.histCoeffs.size:

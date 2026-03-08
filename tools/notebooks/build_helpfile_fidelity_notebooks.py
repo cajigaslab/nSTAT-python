@@ -968,8 +968,8 @@ STIMULUS_2D_NOTE = """\
 <!-- parity-note -->
 ## MATLAB Parity Note
 - Source MATLAB helpfile: `StimulusDecode2D.mlx`
-- Fidelity status: `partial`
-- Remaining justified differences: The notebook reproduces the MATLAB section order, figure inventory, simulated receptive fields, and decoded-trajectory presentation, but the current Python decoder still uses regression-based state recovery instead of MATLAB's symbolic-CIF nonlinear filter.
+- Fidelity status: `high_fidelity`
+- Remaining justified differences: The notebook now follows the MATLAB nonlinear-CIF decoding workflow and uses `DecodingAlgorithms.PPDecodeFilter` before the same documented linear fallback branch as MATLAB. Exact decoded traces and figure styling can still vary modestly because Python's symbolic/numeric stack and random streams are not byte-identical to MATLAB.
 """
 
 
@@ -991,7 +991,7 @@ STIMULUS_2D_CODE = [
     import matplotlib.pyplot as plt
     import numpy as np
 
-    from nstat import DecodingAlgorithms
+    from nstat import CIF, Covariate, DecodingAlgorithms, SignalObj, nstColl
     from nstat.notebook_figures import FigureTracker
 
     np.random.seed(0)
@@ -1006,62 +1006,103 @@ STIMULUS_2D_CODE = [
         return fig
 
 
-    def _simulate_decode(seed=19, *, n_cells=24, dt=0.01, tmax=20.0):
+    def _subplot_grid(count):
+        rows = max(int(np.floor(np.sqrt(count))), 1)
+        cols = int(np.ceil(count / rows))
+        return rows, cols
+
+
+    def _simulate_decode(seed=0, *, num_realizations=80, delta=0.001, tmax=1.0):
         rng = np.random.default_rng(seed)
-        time = np.arange(0.0, tmax + dt, dt)
-        vel = np.cumsum(rng.normal(0.0, 0.05, size=(time.size, 2)), axis=0)
-        vel = 0.18 * vel / np.maximum(np.std(vel, axis=0, ddof=1), 1e-6)
-        pos = np.cumsum(vel, axis=0) * dt
-        pos = pos - np.mean(pos, axis=0, keepdims=True)
-        px = pos[:, 0]
-        py = pos[:, 1]
-        coeffs = np.column_stack(
-            [
-                -2.2 - np.abs(rng.normal(0.0, 0.35, size=n_cells)),
-                rng.normal(0.0, 1.1, size=n_cells),
-                rng.normal(0.0, 1.1, size=n_cells),
-                -np.abs(rng.normal(1.6, 0.35, size=n_cells)),
-                -np.abs(rng.normal(1.6, 0.35, size=n_cells)),
-                rng.normal(0.0, 0.45, size=n_cells),
-            ]
-        )
+        time = np.arange(0.0, tmax + delta, delta)
+        q_drive = 0.01
+        innovations = q_drive * rng.standard_normal((2, time.size))
+        vx = np.cumsum(innovations[0])
+        vy = np.cumsum(innovations[1])
+        vel_sig = SignalObj(time, np.column_stack([vx, vy]), "vel", "time", "s", "", ["vx", "vy"])
+        pos_sig = vel_sig.integral()
+        pos_data = np.asarray(pos_sig.data, dtype=float)
+        px = pos_data[:, 0]
+        py = pos_data[:, 1]
+
+        coeffs = -np.abs(rng.standard_normal((num_realizations, 5)))
+        coeffs = np.column_stack([-2.0 * np.abs(rng.standard_normal(num_realizations)), coeffs])
         design = np.column_stack([np.ones(time.size), px, py, px * px, py * py, px * py])
-        spikes = np.zeros((time.size, n_cells), dtype=float)
-        firing_prob = np.zeros_like(spikes)
-        for idx in range(n_cells):
+
+        lambda_rates_hz = np.zeros((time.size, num_realizations), dtype=float)
+        lambda_cifs = []
+        spike_trains = []
+        for idx in range(num_realizations):
             eta = design @ coeffs[idx]
-            p = 1.0 / (1.0 + np.exp(-np.clip(eta, -20.0, 20.0)))
-            firing_prob[:, idx] = p
-            spikes[:, idx] = (rng.random(time.size) < p).astype(float)
+            exp_eta = np.exp(np.clip(eta, -20.0, 20.0))
+            lambda_delta = exp_eta / (1.0 + exp_eta)
+            lambda_rates_hz[:, idx] = lambda_delta / delta
+            lambda_cov = Covariate(time, lambda_rates_hz[:, idx], "\\\\Lambda(t)", "time", "s", "Hz", [f"lambda_{idx + 1}"])
+            spike_coll = CIF.simulateCIFByThinningFromLambda(lambda_cov, 1, seed=seed + idx + 1)
+            train = spike_coll.getNST(1)
+            train.setName(str(idx + 1))
+            spike_trains.append(train)
+            lambda_cifs.append(CIF(coeffs[idx], ["1", "x", "y", "x^2", "y^2", "x*y"], ["x", "y"], fitType="binomial"))
+
+        spike_coll = nstColl(spike_trains)
+        spike_coll.resample(1.0 / delta)
+        labels = list(range(1, num_realizations + 1))
+        dN = spike_coll.dataToMatrix(labels, delta, float(time[0]), float(time[-1])).T
+
+        vx_var = float(np.var(px[1:] - px[:-1]))
+        vy_var = float(np.var(py[1:] - py[:-1]))
+        q_cov = np.array([[vx_var, 0.0], [0.0, vy_var]], dtype=float)
+        p0 = 0.1 * np.eye(2, dtype=float)
+        a_mat = np.eye(2, dtype=float)
+        decode_method = "PPDecodeFilter"
+        decode_error = ""
+        try:
+            x_p, pe_p, x_u, pe_u, *_ = DecodingAlgorithms.PPDecodeFilter(a_mat, q_cov, p0, dN, lambda_cifs, delta)
+        except Exception as exc:
+            decode_method = "PPDecodeFilterLinear"
+            decode_error = f"{type(exc).__name__}: {exc}"
+            mu_linear = coeffs[:, 0]
+            beta_linear = coeffs[:, 1:3].T
+            x_p, pe_p, x_u, pe_u, *_ = DecodingAlgorithms.PPDecodeFilterLinear(a_mat, q_cov, dN, mu_linear, beta_linear, "binomial", delta)
+
         grid = np.linspace(-1.4, 1.4, 60)
         gx, gy = np.meshgrid(grid, grid)
         grid_design = np.column_stack([np.ones(gx.size), gx.ravel(), gy.ravel(), gx.ravel() ** 2, gy.ravel() ** 2, gx.ravel() * gy.ravel()])
         fields = []
-        for idx in range(n_cells):
+        for idx in range(num_realizations):
             eta = grid_design @ coeffs[idx]
             field = (1.0 / (1.0 + np.exp(-np.clip(eta, -20.0, 20.0)))).reshape(gx.shape)
             fields.append(field)
-        subset = max(n_cells // 2, 1)
-        dec_x_subset = DecodingAlgorithms.linear_decode(spikes[:, :subset], px)
-        dec_y_subset = DecodingAlgorithms.linear_decode(spikes[:, :subset], py)
-        dec_x_full = DecodingAlgorithms.linear_decode(spikes, px)
-        dec_y_full = DecodingAlgorithms.linear_decode(spikes, py)
+        n_common = min(px.size, x_u.shape[1])
+        decode_rmse = float(
+            np.sqrt(
+                np.mean(
+                    (x_u[0, :n_common] - px[:n_common]) ** 2
+                    + (x_u[1, :n_common] - py[:n_common]) ** 2
+                )
+            )
+        )
         return {
             "time_s": time,
             "px": px,
             "py": py,
-            "vx": vel[:, 0],
-            "vy": vel[:, 1],
-            "spikes": spikes,
-            "firing_prob": firing_prob,
+            "vx": vx,
+            "vy": vy,
+            "spikes": dN.T,
+            "lambda_rates_hz": lambda_rates_hz,
             "fields": np.asarray(fields, dtype=float),
             "grid_x": gx,
             "grid_y": gy,
-            "decoded_subset_x": dec_x_subset["decoded"],
-            "decoded_subset_y": dec_y_subset["decoded"],
-            "decoded_full_x": dec_x_full["decoded"],
-            "decoded_full_y": dec_y_full["decoded"],
-            "rmse_full": float(np.sqrt(np.mean((dec_x_full["decoded"] - px) ** 2 + (dec_y_full["decoded"] - py) ** 2))),
+            "decoded_x": x_u[0, :n_common],
+            "decoded_y": x_u[1, :n_common],
+            "predicted_x": x_p[0, 1 : n_common + 1],
+            "predicted_y": x_p[1, 1 : n_common + 1],
+            "decode_rmse": decode_rmse,
+            "decode_method": decode_method,
+            "decode_error": decode_error,
+            "coeffs": coeffs,
+            "state_cov": pe_u[:, :, :n_common],
+            "num_cells": num_realizations,
         }
 
 
@@ -1080,7 +1121,14 @@ STIMULUS_2D_CODE = [
     # This notebook follows the MATLAB 2-D decoding workflow with simulated spatial receptive fields.
     plt.close("all")
     payload = _simulate_decode()
-    print({"num_cells": int(payload["spikes"].shape[1]), "rmse_full": round(float(payload["rmse_full"]), 4)})
+    print(
+        {
+            "num_cells": int(payload["num_cells"]),
+            "decode_method": payload["decode_method"],
+            "decode_rmse": round(float(payload["decode_rmse"]), 4),
+            "fallback_error": payload["decode_error"] or "",
+        }
+    )
     """,
     """
     # SECTION 1: Generate the random receptive fields to simulate different neurons
@@ -1094,17 +1142,20 @@ STIMULUS_2D_CODE = [
 
     fig = _prepare_figure("lambda{i}.plot", figsize=(9.0, 5.0))
     ax = fig.subplots(1, 1)
-    show = [0, 1, 2, 3]
-    for idx in show:
-        ax.plot(payload["time_s"], payload["firing_prob"][:, idx], linewidth=1.2, label=f"Cell {idx + 1}")
-    ax.set_title("Example firing probabilities")
+    for idx in range(min(payload["num_cells"], 24)):
+        ax.plot(payload["time_s"], payload["lambda_rates_hz"][:, idx], linewidth=0.7, alpha=0.5)
+    ax.set_title("Conditional intensity functions")
     ax.set_xlabel("time (s)")
-    ax.set_ylabel("spike probability")
-    ax.legend(loc="upper right", frameon=False, fontsize=8)
+    ax.set_ylabel("Hz")
 
     fig = _prepare_figure("pcolor(X,Y,placeField{i}), shading interp", figsize=(8.0, 8.0))
-    axs = fig.subplots(2, 2, squeeze=False)
-    for ax, idx in zip(axs.ravel(), show, strict=False):
+    n_rows, n_cols = _subplot_grid(payload["num_cells"])
+    axs = fig.subplots(n_rows, n_cols, squeeze=False)
+    image = None
+    for idx, ax in enumerate(axs.ravel()):
+        if idx >= payload["num_cells"]:
+            ax.axis("off")
+            continue
         image = ax.imshow(
             payload["fields"][idx],
             origin="lower",
@@ -1115,7 +1166,8 @@ STIMULUS_2D_CODE = [
         ax.set_title(f"Cell {idx + 1}")
         ax.set_xticks([])
         ax.set_yticks([])
-    fig.colorbar(image, ax=axs.ravel().tolist(), shrink=0.78)
+    if image is not None:
+        fig.colorbar(image, ax=axs.ravel().tolist(), shrink=0.78)
     """,
     """
     # SECTION 2: Visualize the simulated neural activity
@@ -1133,8 +1185,7 @@ STIMULUS_2D_CODE = [
     fig = _prepare_figure("plot(x_u(1,:),x_u(2,:),'b',px,py,'k')", figsize=(6.0, 6.0))
     ax = fig.subplots(1, 1)
     ax.plot(payload["px"], payload["py"], color="k", linewidth=1.8, label="True path")
-    ax.plot(payload["decoded_subset_x"], payload["decoded_subset_y"], color="tab:orange", linewidth=1.0, label="Subset decode")
-    ax.plot(payload["decoded_full_x"], payload["decoded_full_y"], color="tab:blue", linewidth=1.2, label="Full decode")
+    ax.plot(payload["decoded_x"], payload["decoded_y"], color="tab:blue", linewidth=1.2, label=payload["decode_method"])
     ax.set_title("Decoded X-Y trajectory")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
@@ -1144,23 +1195,23 @@ STIMULUS_2D_CODE = [
     fig = _prepare_figure("plot(decoded trajectories)", figsize=(10.0, 5.5))
     axs = fig.subplots(2, 1, sharex=True)
     axs[0].plot(payload["time_s"], payload["px"], color="k", linewidth=1.6, label="True x")
-    axs[0].plot(payload["time_s"], payload["decoded_full_x"], color="tab:blue", linewidth=1.2, label="Decoded x")
-    axs[0].plot(payload["time_s"], payload["decoded_subset_x"], color="tab:orange", linewidth=1.0, label="Subset x")
+    axs[0].plot(payload["time_s"][: payload["decoded_x"].size], payload["decoded_x"], color="tab:blue", linewidth=1.2, label="Decoded x")
+    axs[0].plot(payload["time_s"][: payload["predicted_x"].size], payload["predicted_x"], color="tab:orange", linewidth=1.0, label="Predicted x")
     axs[0].legend(loc="best", frameon=False, fontsize=8)
     axs[0].set_ylabel("x")
     axs[1].plot(payload["time_s"], payload["py"], color="k", linewidth=1.6, label="True y")
-    axs[1].plot(payload["time_s"], payload["decoded_full_y"], color="tab:blue", linewidth=1.2, label="Decoded y")
-    axs[1].plot(payload["time_s"], payload["decoded_subset_y"], color="tab:orange", linewidth=1.0, label="Subset y")
+    axs[1].plot(payload["time_s"][: payload["decoded_y"].size], payload["decoded_y"], color="tab:blue", linewidth=1.2, label="Decoded y")
+    axs[1].plot(payload["time_s"][: payload["predicted_y"].size], payload["predicted_y"], color="tab:orange", linewidth=1.0, label="Predicted y")
     axs[1].set_ylabel("y")
     axs[1].set_xlabel("time (s)")
 
     fig = _prepare_figure("decode_rmse", figsize=(7.0, 4.5))
     ax = fig.subplots(1, 1)
-    error_full = np.sqrt((payload["decoded_full_x"] - payload["px"]) ** 2 + (payload["decoded_full_y"] - payload["py"]) ** 2)
-    error_subset = np.sqrt((payload["decoded_subset_x"] - payload["px"]) ** 2 + (payload["decoded_subset_y"] - payload["py"]) ** 2)
-    ax.plot(payload["time_s"], error_full, color="tab:blue", linewidth=1.2, label="Full decode")
-    ax.plot(payload["time_s"], error_subset, color="tab:orange", linewidth=1.0, label="Subset decode")
-    ax.set_title(f"Pointwise decoding error (RMSE={payload['rmse_full']:.3f})")
+    error_decode = np.sqrt((payload["decoded_x"] - payload["px"][: payload["decoded_x"].size]) ** 2 + (payload["decoded_y"] - payload["py"][: payload["decoded_y"].size]) ** 2)
+    error_predict = np.sqrt((payload["predicted_x"] - payload["px"][: payload["predicted_x"].size]) ** 2 + (payload["predicted_y"] - payload["py"][: payload["predicted_y"].size]) ** 2)
+    ax.plot(payload["time_s"][: error_decode.size], error_decode, color="tab:blue", linewidth=1.2, label="Filtered decode")
+    ax.plot(payload["time_s"][: error_predict.size], error_predict, color="tab:orange", linewidth=1.0, label="Predicted decode")
+    ax.set_title(f"Pointwise decoding error (RMSE={payload['decode_rmse']:.3f})")
     ax.set_xlabel("time (s)")
     ax.set_ylabel("Euclidean error")
     ax.legend(loc="best", frameon=False, fontsize=8)

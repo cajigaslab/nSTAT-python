@@ -26,6 +26,7 @@ export_cif_fixture(fixtureRoot);
 export_analysis_fixture(fixtureRoot);
 export_point_process_fixture(fixtureRoot);
 export_decoding_predict_fixture(fixtureRoot);
+export_nonlinear_decode_fixture(fixtureRoot);
 export_simulated_network_fixture(fixtureRoot);
 end
 
@@ -141,6 +142,8 @@ end
 function export_cif_fixture(fixtureRoot)
 cif = CIF([0.1 0.5], {'stim1', 'stim2'}, {'stim1', 'stim2'}, 'binomial');
 stimVal = [0.6; -0.2];
+polyCif = build_polynomial_binomial_cif([-2.0 -0.5 0.3 -0.2 -0.1 0.05]);
+polyStim = [0.2; -0.4];
 
 payload = struct();
 payload.beta = [0.1 0.5];
@@ -150,6 +153,13 @@ payload.gradient = cif.evalGradient(stimVal);
 payload.gradient_log = cif.evalGradientLog(stimVal);
 payload.jacobian = cif.evalJacobian(stimVal);
 payload.jacobian_log = cif.evalJacobianLog(stimVal);
+payload.poly_beta = [-2.0 -0.5 0.3 -0.2 -0.1 0.05];
+payload.poly_stimVal = polyStim;
+payload.poly_lambda_delta = polyCif.evalLambdaDelta(polyStim);
+payload.poly_gradient = polyCif.evalGradient(polyStim);
+payload.poly_gradient_log = polyCif.evalGradientLog(polyStim);
+payload.poly_jacobian = polyCif.evalJacobian(polyStim);
+payload.poly_jacobian_log = polyCif.evalJacobianLog(polyStim);
 
 save(fullfile(fixtureRoot, 'cif_exactness.mat'), '-struct', 'payload');
 end
@@ -227,6 +237,35 @@ payload.W_p = W_p;
 save(fullfile(fixtureRoot, 'decoding_predict_exactness.mat'), '-struct', 'payload');
 end
 
+function export_nonlinear_decode_fixture(fixtureRoot)
+A = eye(2);
+Q = 0.01 * eye(2);
+Px0 = 0.05 * eye(2);
+delta = 0.1;
+dN = [0 1 0 1;
+      1 0 1 0];
+lambdaCIF = {
+    build_polynomial_binomial_cif([-2.0 -0.5 0.3 -0.2 -0.1 0.05]), ...
+    build_polynomial_binomial_cif([-1.5 0.4 -0.2 0.15 -0.05 0.02])
+};
+[x_p, W_p, x_u, W_u] = DecodingAlgorithms.PPDecodeFilter(A, Q, Px0, dN, lambdaCIF, delta);
+
+payload = struct();
+payload.A = A;
+payload.Q = Q;
+payload.Px0 = Px0;
+payload.delta = delta;
+payload.dN = dN;
+payload.beta1 = [-2.0 -0.5 0.3 -0.2 -0.1 0.05];
+payload.beta2 = [-1.5 0.4 -0.2 0.15 -0.05 0.02];
+payload.x_p = x_p;
+payload.W_p = W_p;
+payload.x_u = x_u;
+payload.W_u = W_u;
+
+save(fullfile(fixtureRoot, 'nonlinear_decode_exactness.mat'), '-struct', 'payload');
+end
+
 function export_simulated_network_fixture(fixtureRoot)
 rng(4);
 Ts = .001;
@@ -277,4 +316,55 @@ payload.state_head = yout(1:5,1:2);
 payload.spike_counts = [sum(yout(:,1) > .5), sum(yout(:,2) > .5)];
 
 save(fullfile(fixtureRoot, 'simulated_network_exactness.mat'), '-struct', 'payload');
+end
+
+function cifObj = build_polynomial_binomial_cif(beta)
+beta = beta(:)';
+syms x y real
+cifObj = CIF(beta(1:3), {'1', 'x', 'y'}, {'x', 'y'}, 'binomial');
+cifObj.b = beta;
+cifObj.varIn = [sym(1); x; y; x^2; y^2; x * y];
+cifObj.stimVars = [x; y];
+cifObj.fitType = 'binomial';
+cifObj.history = [];
+cifObj.histCoeffs = [];
+cifObj.histVars = {};
+cifObj.histCoeffVars = {};
+cifObj.spikeTrain = [];
+cifObj.historyMat = [];
+cifObj.lambdaDelta = simplify(exp(beta * cifObj.varIn) ./ (1 + exp(beta * cifObj.varIn)));
+cifObj.lambdaDeltaFunction = matlabFunction(cifObj.lambdaDelta, 'vars', symvar(cifObj.varIn));
+cifObj.gradientLambdaDelta = simplify(jacobian(cifObj.lambdaDelta, cifObj.stimVars));
+cifObj.gradientLogLambdaDelta = simplify(jacobian(log(cifObj.lambdaDelta), cifObj.stimVars));
+cifObj.gradientFunction = matlabFunction(cifObj.gradientLambdaDelta, 'vars', symvar(cifObj.varIn));
+cifObj.gradientLogFunction = matlabFunction(cifObj.gradientLogLambdaDelta, 'vars', symvar(cifObj.varIn));
+cifObj.jacobianLambdaDelta = simplify(jacobian(cifObj.gradientLambdaDelta, cifObj.stimVars));
+cifObj.jacobianFunction = matlabFunction(cifObj.jacobianLambdaDelta, 'vars', symvar(cifObj.varIn));
+cifObj.jacobianLogLambdaDelta = simplify(jacobian(cifObj.gradientLogLambdaDelta, cifObj.stimVars));
+cifObj.jacobianLogFunction = matlabFunction(cifObj.jacobianLogLambdaDelta, 'vars', symvar(cifObj.varIn));
+cifObj.lambdaDeltaGamma = [];
+cifObj.LogLambdaDeltaGamma = [];
+cifObj.gradientLambdaDeltaGamma = [];
+cifObj.gradientLogLambdaDeltaGamma = [];
+cifObj.jacobianLambdaDeltaGamma = [];
+cifObj.jacobianLogLambdaDeltaGamma = [];
+cifObj.lambdaDeltaGammaFunction = [];
+cifObj.LogLambdaDeltaGammaFunction = [];
+cifObj.gradientFunctionGamma = [];
+cifObj.gradientLogFunctionGamma = [];
+cifObj.jacobianFunctionGamma = [];
+cifObj.jacobianLogFunctionGamma = [];
+cifObj.indepVars = symvar(cifObj.lambdaDelta);
+
+vars = symvar(cifObj.varIn);
+if length(vars) == 1
+    cifObj.argstr = 'val';
+else
+    argstr = 'val(1)';
+    for i = 2:length(vars)
+        argstr = strcat(argstr, [',val(' num2str(i) ')']);
+    end
+    cifObj.argstr = argstr;
+end
+cifObj.argstrLDGamma = '';
 end

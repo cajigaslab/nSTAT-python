@@ -63,5 +63,5 @@ notes:
   - topic: StimulusDecode2D
     file: notebooks/StimulusDecode2D.ipynb
     source_matlab: StimulusDecode2D.mlx
-    fidelity_status: partial
-    remaining_differences: The notebook reproduces the MATLAB section order, figure inventory, simulated receptive fields, and decoded-trajectory presentation, but the current Python decoder still uses regression-based state recovery instead of MATLAB's symbolic-CIF nonlinear filter.
+    fidelity_status: high_fidelity
+    remaining_differences: The notebook now follows the MATLAB nonlinear-CIF decoding workflow and uses `DecodingAlgorithms.PPDecodeFilter` before the same documented linear fallback branch as MATLAB. Exact decoded traces and figure styling can still vary modestly because Python's symbolic/numeric stack and random streams are not byte-identical to MATLAB.

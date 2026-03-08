@@ -24,8 +24,8 @@ def test_parity_report_highlights_current_constraints() -> None:
     assert "Notebook Fidelity Summary" in text
     assert "Simulink Fidelity Summary" in text
     assert "Remaining Notebook-Fidelity Deltas" in text
-    assert "workflow coverage is complete, but 1 MATLAB-helpfile notebook ports are still marked partial" in text
-    assert "`StimulusDecode2D` -> `notebooks/StimulusDecode2D.ipynb` [partial]" in text
+    assert "all tracked MATLAB-helpfile notebook ports are marked high fidelity or exact" in text
+    assert "No partial notebook-fidelity items remain in `tools/notebooks/parity_notes.yml`." in text
     assert "No partial or missing items remain in the mapping inventory." in text
     assert "Remaining Class-Fidelity Deltas" in text
     assert "the class audit reports no partial, wrapper-only, or missing items" in text

@@ -7,6 +7,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "parity" / "manifest.yml"
+NOTEBOOK_AUDIT_PATH = REPO_ROOT / "parity" / "notebook_fidelity.yml"
 
 EXPECTED_MATLAB_PUBLIC_API = {
     "Analysis",
@@ -99,3 +100,22 @@ def test_parity_manifest_statuses_and_mapped_targets_are_valid() -> None:
             target = row.get("python_target")
             if status == "mapped":
                 assert target, f"Mapped item in {section_name} is missing a python_target: {row}"
+
+
+def test_manifest_help_workflows_align_with_notebook_fidelity_audit() -> None:
+    manifest = _load_manifest()
+    notebook_audit = yaml.safe_load(NOTEBOOK_AUDIT_PATH.read_text(encoding="utf-8")) or {}
+    audit_rows = {row["topic"]: row for row in notebook_audit.get("items", [])}
+
+    manifest_help_rows = {
+        row["matlab"]: row
+        for row in manifest["help_workflows"]
+        if str(row.get("python_target", "")).startswith("notebooks/")
+    }
+
+    assert set(audit_rows) <= set(manifest_help_rows)
+    for topic, audit_row in audit_rows.items():
+        manifest_row = manifest_help_rows[topic]
+        audit_row = audit_rows[topic]
+        if manifest_row["status"] == "mapped":
+            assert audit_row["fidelity_status"] in {"high_fidelity", "exact"}
