@@ -14,6 +14,7 @@ from .data_manager import ensure_example_data
 from .decoding_algorithms import DecodingAlgorithms
 from .glm import fit_poisson_glm
 from .simulation import simulate_poisson_from_rate
+from .zernike import zernike_basis_from_cartesian
 
 
 def _default_repo_root() -> Path:
@@ -460,23 +461,6 @@ def _spike_indicator(time: np.ndarray, spike_times: np.ndarray) -> np.ndarray:
     return y
 
 
-def _zernike_like_basis(x: np.ndarray, y: np.ndarray) -> np.ndarray:
-    theta = np.arctan2(y, x)
-    r = np.sqrt(x * x + y * y)
-    return np.column_stack([
-        np.ones_like(r),
-        r,
-        r**2,
-        np.cos(theta),
-        np.sin(theta),
-        r * np.cos(theta),
-        r * np.sin(theta),
-        r**2 * np.cos(2.0 * theta),
-        r**2 * np.sin(2.0 * theta),
-        r**3,
-    ])
-
-
 def _load_placecell_dataset(path: Path):
     d = _loadmat_checked(path)
     if d is None:
@@ -504,13 +488,13 @@ def _evaluate_place_models(x: np.ndarray, y: np.ndarray, time: np.ndarray, neuro
     dt = float(np.median(np.diff(time)))
     offset = np.full(time.shape[0], np.log(max(dt, 1e-12)), dtype=float)
     x_gauss = np.column_stack([x, y, x * x, y * y, x * y])
-    x_zern = _zernike_like_basis(x, y)
+    x_zern = zernike_basis_from_cartesian(x, y)
 
     x_grid = np.linspace(float(np.min(x)), float(np.max(x)), 40, dtype=float)
     y_grid = np.linspace(float(np.min(y)), float(np.max(y)), 40, dtype=float)
     xx, yy = np.meshgrid(x_grid, y_grid)
     grid_gauss = np.column_stack([xx.ravel(), yy.ravel(), xx.ravel() ** 2, yy.ravel() ** 2, xx.ravel() * yy.ravel()])
-    grid_zern = _zernike_like_basis(xx.ravel(), yy.ravel())
+    grid_zern = zernike_basis_from_cartesian(xx.ravel(), yy.ravel(), fill_value=np.nan)
 
     d_aic: list[float] = []
     d_bic: list[float] = []

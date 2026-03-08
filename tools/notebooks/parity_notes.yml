@@ -39,7 +39,7 @@ notes:
     file: notebooks/HippocampalPlaceCellExample.ipynb
     source_matlab: HippocampalPlaceCellExample.mlx
     fidelity_status: high_fidelity
-    remaining_differences: The notebook now reproduces the dataset-backed place-cell model-comparison and field-visualization workflow with real figures; the Python port still uses an approximate Zernike-like basis rather than the original MATLAB toolbox implementation.
+    remaining_differences: The notebook now reproduces the dataset-backed place-cell model-comparison and field-visualization workflow with the same normalized 10-term Zernike basis used by MATLAB; exact AIC/BIC values and surface styling still vary modestly because the Python GLM solver and plotting backend are not byte-identical to MATLAB.
   - topic: HybridFilterExample
     file: notebooks/HybridFilterExample.ipynb
     source_matlab: HybridFilterExample.mlx

@@ -13,6 +13,7 @@ from .data_manager import ensure_example_data
 from .decoding_algorithms import DecodingAlgorithms
 from .glm import fit_poisson_glm
 from .simulation import simulate_poisson_from_rate
+from .zernike import zernike_basis_from_cartesian
 
 
 Summary = dict[str, float]
@@ -165,25 +166,6 @@ def _spike_indicator_from_times(time: np.ndarray, spike_times: np.ndarray) -> np
     return y
 
 
-def _zernike_like_basis(x: np.ndarray, y: np.ndarray) -> np.ndarray:
-    theta = np.arctan2(y, x)
-    r = np.sqrt(x * x + y * y)
-    return np.column_stack(
-        [
-            np.ones_like(r),
-            r,
-            r**2,
-            np.cos(theta),
-            np.sin(theta),
-            r * np.cos(theta),
-            r * np.sin(theta),
-            r**2 * np.cos(2.0 * theta),
-            r**2 * np.sin(2.0 * theta),
-            r**3,
-        ]
-    )
-
-
 def run_experiment4(data_dir: Path, *, return_payload: bool = False) -> Summary | tuple[Summary, Payload]:
     mat_path = data_dir / "Place Cells" / "PlaceCellDataAnimal1.mat"
     d = loadmat(mat_path, squeeze_me=True, struct_as_record=False)
@@ -197,7 +179,7 @@ def run_experiment4(data_dir: Path, *, return_payload: bool = False) -> Summary 
     offset = np.full(time.shape[0], np.log(max(dt, 1e-12)), dtype=float)
 
     x_gauss = np.column_stack([x, y, x * x, y * y, x * y])
-    x_zern = _zernike_like_basis(x, y)
+    x_zern = zernike_basis_from_cartesian(x, y)
 
     n_eval = int(min(8, neurons.shape[0]))
     delta_aic = []

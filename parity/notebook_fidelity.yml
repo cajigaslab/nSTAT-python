@@ -155,9 +155,10 @@ items:
   python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
   fidelity_status: high_fidelity
   remaining_differences: The notebook now reproduces the dataset-backed place-cell
-    model-comparison and field-visualization workflow with real figures; the Python
-    port still uses an approximate Zernike-like basis rather than the original MATLAB
-    toolbox implementation.
+    model-comparison and field-visualization workflow with the same normalized 10-term
+    Zernike basis used by MATLAB; exact AIC/BIC values and surface styling still vary
+    modestly because the Python GLM solver and plotting backend are not byte-identical
+    to MATLAB.
   python_sections: 5
   python_expected_figures: 11
   python_uses_figure_tracker: true
