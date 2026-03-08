@@ -468,6 +468,12 @@ def _load_placecell_dataset(path: Path):
         time = np.linspace(0.0, 20.0, 2400, dtype=float)
         x = 0.8 * np.sin(0.6 * time) + 0.2 * np.sin(1.7 * time + 0.5)
         y = 0.7 * np.cos(0.5 * time + 0.3)
+        radius = np.sqrt(x * x + y * y)
+        max_radius = float(np.max(radius)) if radius.size else 0.0
+        if max_radius > 0.98:
+            scale = 0.98 / max_radius
+            x = x * scale
+            y = y * scale
         n_cells = 8
         neurons = []
         for _ in range(n_cells):
