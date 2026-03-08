@@ -61,8 +61,8 @@ def test_nspiketrain_setsigrep_restore_and_field_access_match_matlab_surface() -
     assert train.getFieldVal("missing") == []
 
     train.restoreToOriginal()
-    assert train.sampleRate == 5.0
-    np.testing.assert_allclose([train.minTime, train.maxTime], [0.0, 1.0])
+    assert train.sampleRate == 10.0
+    np.testing.assert_allclose([train.minTime, train.maxTime], [0.2, 0.6])
 
 
 def test_nspiketrain_compute_statistics_matches_matlab_style_burst_metrics() -> None:

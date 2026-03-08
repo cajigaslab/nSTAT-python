@@ -41,8 +41,12 @@ items:
   - Structure serialization is close but not exhaustive for every MATLAB-only field.
   required_remediation:
   - Extend the committed MATLAB-derived fixtures beyond derivative, integral, spline
-    resampling, filtering, and xcorr to cover autocorrelation selectors and the remaining
+    resampling, filtering, `makeCompatible`, and `xcorr` to cover the remaining
     spectral utility methods.
+  - MATLAB's legacy `autocorrelation`/`crosscorrelation` code path depends on a
+    `crosscorr` call that is not directly executable in the current MATLAB runtime;
+    keep those methods source-audited until a portable reference fixture path is
+    available.
   plotting_report_parity: Core plotting and correlation helpers are implemented; some
     MATLAB-only plot selectors, spectral utilities, and report-style helpers remain
     lighter.
@@ -103,9 +107,9 @@ items:
   - Some MATLAB visual styling and distribution-fit detail in the ISI plotting helpers
     remains lighter than MATLAB.
   required_remediation:
-  - Extend the committed MATLAB-derived fixtures beyond getSigRep, partitionNST, and
-    burst-stat summaries to cover ISI plotting traces and the remaining visualization
-    details.
+  - Extend the committed MATLAB-derived fixtures beyond getSigRep, partitionNST, restore-bound
+    semantics, and burst-stat summaries to cover ISI plotting traces and the remaining
+    visualization details.
   plotting_report_parity: Raster, ISI, and burst-oriented plotting helpers now execute
     on the canonical class, though visual detail remains lighter than MATLAB.
 - matlab_name: nstColl

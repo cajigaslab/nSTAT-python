@@ -28,12 +28,15 @@ function export_signalobj_fixture(fixtureRoot)
 t = (0:0.1:0.4)';
 data = [1 0; 2 1; 4 0; 8 -1; 16 0];
 s = SignalObj(t, data, 'sig', 'time', 's', 'u', {'x1', 'x2'});
+s1 = s.getSubSignal(1);
+s2 = SignalObj((0.05:0.1:0.45)', [0; 1; 0; -1; 0], 'sig2', 'time', 's', 'u', {'x3'});
 
 filtered = s.filter([0.25 0.5 0.25], 1);
 resampled = s.resample(20);
 derivative = s.derivative;
 integral_sig = s.integral();
 xc = xcorr(s.getSubSignal(1), s.getSubSignal(2), 2);
+[s1c, s2c] = s1.makeCompatible(s2, 1);
 
 payload = struct();
 payload.time = s.time;
@@ -49,6 +52,9 @@ payload.resampled_data = resampled.data;
 payload.xcorr_maxlag = 2;
 payload.xcorr_time = xc.time;
 payload.xcorr_data = xc.data;
+payload.compat_time = s1c.time;
+payload.compat_left_data = s1c.data;
+payload.compat_right_data = s2c.data;
 
 save(fullfile(fixtureRoot, 'signalobj_exactness.mat'), '-struct', 'payload');
 end
@@ -59,6 +65,12 @@ binwidth = 0.05;
 nst = nspikeTrain(spikeTimes, 'nst', binwidth, 0.0, 0.5, 'time', 's', 'spikes', 'spk', 0);
 sig = nst.getSigRep(binwidth, 0.0, 0.5);
 parts = nst.partitionNST([0.0 0.2 0.5]);
+restoreTrain = nspikeTrain(spikeTimes, 'restore', 0.2, -0.1, 0.8, 'time', 's', 'spikes', 'spk', -1);
+restoreTrain.setSigRep(0.1, -0.1, 0.8);
+restoreTrain.setMinTime(-0.3);
+restoreTrain.setMaxTime(1.1);
+restoreTrain.restoreToOriginal();
+burstTrain = nspikeTrain([0.0; 0.001; 0.002; 0.007; 0.507; 0.508; 0.509; 0.514], 'bursting', 0.001, 0.0, 0.6, 'time', 's', 'spikes', 'spk', 0);
 
 payload = struct();
 payload.spikeTimes = spikeTimes;
@@ -76,6 +88,12 @@ payload.numBursts = nst.numBursts;
 payload.numSpikesPerBurst = nst.numSpikesPerBurst;
 payload.part1_spikes = parts.getNST(1).spikeTimes;
 payload.part2_spikes = parts.getNST(2).spikeTimes;
+payload.restore_min_time = restoreTrain.minTime;
+payload.restore_max_time = restoreTrain.maxTime;
+payload.burst_avgSpikesPerBurst = burstTrain.avgSpikesPerBurst;
+payload.burst_stdSpikesPerBurst = burstTrain.stdSpikesPerBurst;
+payload.burst_numBursts = burstTrain.numBursts;
+payload.burst_numSpikesPerBurst = burstTrain.numSpikesPerBurst;
 
 save(fullfile(fixtureRoot, 'nspiketrain_exactness.mat'), '-struct', 'payload');
 end
