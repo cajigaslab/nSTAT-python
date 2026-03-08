@@ -34,7 +34,7 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, and `tools/no
 | Status | Count |
 |---|---:|
 | `exact` | 0 |
-| `high_fidelity` | 12 |
+| `high_fidelity` | 13 |
 | `partial` | 0 |
 
 ## Simulink Fidelity Summary

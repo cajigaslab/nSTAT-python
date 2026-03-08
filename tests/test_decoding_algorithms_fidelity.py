@@ -53,6 +53,27 @@ def test_ppdecodefilter_accepts_cif_collections_with_history() -> None:
     assert np.all(np.isfinite(x_u))
 
 
+def test_ppdecode_update_matches_matlab_facing_public_surface() -> None:
+    dN = np.array([[0.0, 1.0, 0.0, 1.0]], dtype=float)
+    lambda_cif = CIF([0.1, 0.4], ["1", "x"], ["x"], fitType="binomial")
+
+    x_u, W_u, lambda_delta = DecodingAlgorithms.PPDecode_update(
+        np.array([0.0], dtype=float),
+        np.array([[1.0]], dtype=float),
+        dN,
+        lambda_cif,
+        0.1,
+        2,
+    )
+
+    assert x_u.shape == (1,)
+    assert W_u.shape == (1, 1)
+    assert lambda_delta.shape == (1, 1)
+    assert np.all(np.isfinite(x_u))
+    assert np.all(np.isfinite(W_u))
+    assert np.all(lambda_delta > 0.0)
+
+
 def test_pphybridfilterlinear_returns_model_probabilities_and_state_banks() -> None:
     a = [np.array([[1.0]], dtype=float), np.array([[0.9]], dtype=float)]
     q = [np.array([[0.02]], dtype=float), np.array([[0.05]], dtype=float)]
