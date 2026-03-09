@@ -622,7 +622,6 @@ class FitResult:
             self.indicesToUniqueLabels.append(indices)
             if indices:
                 self.flatMask[np.asarray(indices, dtype=int) - 1, fit_idx] = 1
-        self.computePlotParams()
         return self
 
     def getSubsetFitResult(self, subfits) -> "FitResult":

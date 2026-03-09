@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import numpy as np
 
 from nstat.ConfidenceInterval import ConfidenceInterval
@@ -159,14 +160,14 @@ def test_confidence_interval_line_plot_ignores_string_color_like_matlab() -> Non
 
     fig1, ax1 = plt.subplots()
     lines_default = ci.plot(color="r", drawPatches=0, ax=ax1)
-    default_colors = [line.get_color() for line in lines_default]
+    default_colors = [tuple(mcolors.to_rgba(line.get_color())) for line in lines_default]
 
     fig2, ax2 = plt.subplots()
     lines_numeric = ci.plot(color=(0.2, 0.4, 0.6), drawPatches=0, ax=ax2)
-    numeric_colors = [line.get_color() for line in lines_numeric]
+    numeric_colors = [tuple(mcolors.to_rgba(line.get_color())) for line in lines_numeric]
 
-    assert default_colors != ["r", "r"]
-    assert numeric_colors == [(0.2, 0.4, 0.6), (0.2, 0.4, 0.6)]
+    assert default_colors != [mcolors.to_rgba("r"), mcolors.to_rgba("r")]
+    assert numeric_colors == [mcolors.to_rgba((0.2, 0.4, 0.6)), mcolors.to_rgba((0.2, 0.4, 0.6))]
 
     plt.close(fig1)
     plt.close(fig2)

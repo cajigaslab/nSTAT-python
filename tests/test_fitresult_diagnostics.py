@@ -15,7 +15,7 @@ def _build_fit_result():
     spikes = model.simulate(num_realizations=2, seed=7)
 
     trial = Trial(spike_collection=spikes, covariate_collection=CovariateCollection([cov]))
-    cfgs = ConfigCollection([TrialConfig(covMask=["stim"], sampleRate=1000.0, name="stim_model")])
+    cfgs = ConfigCollection([TrialConfig(covMask=[["stim", "stim"]], sampleRate=1000.0, name="stim_model")])
     return Analysis.run_analysis_for_all_neurons(trial, cfgs)[0]
 
 

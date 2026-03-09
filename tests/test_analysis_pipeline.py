@@ -16,7 +16,7 @@ def test_trial_analysis_pipeline() -> None:
     spikes = model.simulate(num_realizations=3, seed=2)
 
     trial = Trial(spike_collection=spikes, covariate_collection=CovariateCollection([cov]))
-    cfgs = ConfigCollection([TrialConfig(covMask=["stim"], sampleRate=1000.0, name="stim_model")])
+    cfgs = ConfigCollection([TrialConfig(covMask=[["stim", "stim"]], sampleRate=1000.0, name="stim_model")])
 
     fits = Analysis.run_analysis_for_all_neurons(trial, cfgs)
     assert len(fits) == 3
