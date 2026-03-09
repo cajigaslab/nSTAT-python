@@ -1301,6 +1301,181 @@ class SpikeTrainCollection:
                 varEst = np.nanvar(diffs, axis=1, ddof=1)
         return np.diag(varEst)
 
+    def ssglm(
+        self,
+        windowTimes=None,
+        numBasis: int | None = None,
+        numVarEstIter: int | None = None,
+        fitType: str | None = None,
+    ):
+        """MATLAB-facing state-space GLM entry point.
+
+        The original MATLAB method delegates the latent-state recursion to
+        `DecodingAlgortihms.PPSS_EM`, which is not ported as a named Python
+        surface today. The Python port still exposes the same public method
+        and return signature by fitting the per-trial GLM basis/history
+        models, estimating across-trial state variance from those fits, and
+        returning deterministic summary arrays with MATLAB-compatible shapes.
+        """
+
+        if fitType is None or fitType == "":
+            fitType = "poisson"
+        if numVarEstIter is None:
+            numVarEstIter = 10
+        if numBasis is None:
+            basisWidth = 0.02
+            duration = float(self.maxTime) - float(self.minTime)
+            numBasis = max(int(round(duration / basisWidth)), 1)
+        if windowTimes is None:
+            windowTimes = []
+
+        numBasis = int(numBasis)
+        fitType = str(fitType)
+        history_times = np.asarray(windowTimes, dtype=float).reshape(-1)
+        numHist = max(history_times.size - 1, 0)
+        delta = 1.0 / float(self.sampleRate)
+        basisWidth = (float(self.maxTime) - float(self.minTime)) / float(max(numBasis, 1))
+
+        from .analysis import Analysis, _fit_lambda_matrix_to_covariate, _glm_deviance
+        from .fit import FitResSummary, FitResult, _SingleFit
+        from .glm import fit_binomial_glm
+
+        basis = self.generateUnitImpulseBasis(basisWidth, float(self.minTime), float(self.maxTime), float(self.sampleRate))
+        label_select = [[basis.name, *list(basis.dataLabels)]]
+
+        xK = np.zeros((numBasis, self.numSpikeTrains), dtype=float)
+        WK = np.zeros((numBasis, numBasis, self.numSpikeTrains), dtype=float)
+        gamma_bank = np.full((numHist, self.numSpikeTrains), np.nan, dtype=float) if numHist else np.zeros((0, self.numSpikeTrains), dtype=float)
+        logll_bank = np.zeros(self.numSpikeTrains, dtype=float)
+        fit_results = []
+
+        algorithm = "GLM" if fitType.lower() == "poisson" else "BNLRCG"
+        for idx, train in enumerate(self.nstrain, start=1):
+            train_copy = train.nstCopy()
+            if not str(getattr(train_copy, "name", "")):
+                train_copy.setName(str(idx))
+            trial = Trial(SpikeTrainCollection([train_copy]), CovariateCollection([basis]))
+            cfg = TrialConfig(
+                covMask=label_select,
+                sampleRate=float(self.sampleRate),
+                history=history_times.tolist() if history_times.size else [],
+                ensCovHist=[],
+                name="SSGLM",
+            )
+            if fitType.lower() == "binomial":
+                cfg.setConfig(trial)
+                x = np.asarray(trial.getDesignMatrix(1), dtype=float)
+                lambda_time = np.asarray(trial.getCov(1).time, dtype=float).reshape(-1)
+                sample_rate = float(trial.sampleRate)
+                dt = 1.0 / max(sample_rate, 1e-12)
+                bin_edges = np.concatenate([lambda_time, [lambda_time[-1] + dt]]) if lambda_time.size else np.array([0.0, dt], dtype=float)
+                y = np.asarray(trial.nspikeColl.getNST(1).to_binned_counts(bin_edges), dtype=float).reshape(-1)
+                n_obs = min(x.shape[0], y.shape[0], lambda_time.shape[0])
+                x = x[:n_obs, :]
+                y = np.clip(y[:n_obs], 0.0, 1.0)
+                lambda_time = lambda_time[:n_obs]
+
+                glm_res = fit_binomial_glm(x, y, include_intercept=False, l2=0.0, max_iter=120)
+                lambda_delta = np.clip(glm_res.predict_probability(x), 1e-12, 1.0 - 1e-9)
+                rate_hz = lambda_delta * sample_rate
+                deviance = _glm_deviance(y, lambda_delta, "binomial")
+                coeffs_full = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+                n_params = int(coeffs_full.size)
+                matlab_bin_mass = np.maximum(rate_hz / max(sample_rate, 1e-12), 1e-12)
+                log_likelihood = float(np.sum(y * np.log(matlab_bin_mass) + (1.0 - y) * np.log(1.0 - matlab_bin_mass)))
+                aic = float(2.0 * n_params + deviance)
+                bic = float(np.log(max(y.shape[0], 1)) * n_params + deviance)
+                lambda_signal = _fit_lambda_matrix_to_covariate(lambda_time, [rate_hz], 1)
+                lambda_signal.setDataLabels([cfg.name or "SSGLM"])
+                single_fit = _SingleFit(
+                    name=cfg.name or "SSGLM",
+                    coefficients=coeffs_full,
+                    intercept=float(glm_res.intercept),
+                    log_likelihood=log_likelihood,
+                    aic=aic,
+                    bic=bic,
+                    stats={
+                        "intercept": float(glm_res.intercept),
+                        "n_iter": int(glm_res.n_iter),
+                        "converged": bool(glm_res.converged),
+                    },
+                )
+                fit = FitResult(train_copy, lambda_signal, [single_fit])
+                fit.dev[0] = deviance
+                fit.AIC[0] = aic
+                fit.BIC[0] = bic
+                fit.logLL[0] = log_likelihood
+                fit.fitType = ["binomial"]
+                coeffs = coeffs_full
+                hist_coeffs = coeffs_full[-numHist:] if numHist else np.asarray([], dtype=float)
+            else:
+                fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigCollection([cfg]), makePlot=0, Algorithm=algorithm)
+                coeffs = np.asarray(fit.getCoeffs(1), dtype=float).reshape(-1)
+                hist_coeffs = np.asarray(fit.getHistCoeffs(1), dtype=float).reshape(-1) if numHist else np.asarray([], dtype=float)
+            fit_results.append(fit)
+
+            stim_coeffs = coeffs[:-numHist] if numHist and coeffs.size >= numHist else coeffs
+            if stim_coeffs.size < numBasis:
+                padded = np.zeros(numBasis, dtype=float)
+                padded[: stim_coeffs.size] = stim_coeffs
+                stim_coeffs = padded
+            else:
+                stim_coeffs = stim_coeffs[:numBasis]
+            xK[:, idx - 1] = stim_coeffs
+            logll_bank[idx - 1] = float(np.asarray(fit.logLL, dtype=float).reshape(-1)[0])
+            if numHist:
+                gamma_row = np.full(numHist, np.nan, dtype=float)
+                take = min(hist_coeffs.size, numHist)
+                if take:
+                    gamma_row[:take] = hist_coeffs[:take]
+                gamma_bank[:, idx - 1] = gamma_row
+
+        Qhat = np.asarray(self.estimateVarianceAcrossTrials(numBasis, history_times, numVarEstIter, fitType), dtype=float)
+        if Qhat.shape != (numBasis, numBasis):
+            Qhat = np.zeros((numBasis, numBasis), dtype=float)
+        if np.any(np.diag(Qhat) == 0.0):
+            Qhat = Qhat + 0.001 * np.eye(numBasis, dtype=float)
+
+        for idx in range(self.numSpikeTrains):
+            WK[:, :, idx] = Qhat
+
+        if numHist:
+            gammahat = np.nanmean(gamma_bank, axis=1)
+            gammahat[np.isnan(gammahat)] = -5.0
+        else:
+            gammahat = np.zeros(0, dtype=float)
+
+        fit_summary = FitResSummary(fit_results)
+        logll = np.asarray([float(np.mean(logll_bank))], dtype=float)
+        return xK, WK, Qhat, gammahat, logll, fit_summary
+
+    def toStructure(self) -> dict[str, Any]:
+        original_mask = np.asarray(self.neuronMask, dtype=int).copy()
+        self.resetMask()
+        structure = {
+            "nstrain": [train.toStructure() for train in self.nstrain],
+            "numSpikeTrains": int(self.numSpikeTrains),
+            "minTime": float(self.minTime),
+            "maxTime": float(self.maxTime),
+            "sampleRate": float(self.sampleRate),
+            "neuronMask": np.asarray(self.neuronMask, dtype=int).copy(),
+            "neuronNames": self.getNSTnames(),
+            "neighbors": [] if not self.areNeighborsSet() else np.asarray(self.neighbors, dtype=int).copy(),
+        }
+        self.neuronMask = original_mask
+        return structure
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any]) -> "SpikeTrainCollection":
+        trains = [nspikeTrain.fromStructure(item) for item in structure["nstrain"]]
+        coll = SpikeTrainCollection(trains)
+        coll.setMinTime(float(structure["minTime"]))
+        coll.setMaxTime(float(structure["maxTime"]))
+        neighbors = structure.get("neighbors", [])
+        if not _is_empty_config_value(neighbors):
+            coll.setNeighbors(np.asarray(neighbors, dtype=int))
+        return coll
+
     @staticmethod
     def generateUnitImpulseBasis(basisWidth: float, minTime: float, maxTime: float, sampleRate: float = 1000.0) -> Covariate:
         windowTimes = np.arange(float(minTime), float(maxTime), float(basisWidth))
@@ -1701,6 +1876,94 @@ class Trial:
         fig.tight_layout()
         return fig
 
+    def plotRaster(self, handle=None):
+        fig = handle if hasattr(handle, "subplots") else plt.figure(handle) if handle is not None else plt.figure()
+        fig.clear()
+        ax = fig.subplots(1, 1)
+        self.nspikeColl.plot(handle=ax)
+        return fig
+
+    def plotCovariates(self, handle=None):
+        fig = handle if hasattr(handle, "subplots") else plt.figure(handle) if handle is not None else plt.figure()
+        fig.clear()
+        active_cov = [idx for idx, selector in enumerate(self.covarColl.getSelectorFromMasks(), start=1) if selector]
+        if not active_cov:
+            active_cov = list(range(1, self.covarColl.numCov + 1))
+        numCovars = len(active_cov)
+
+        if numCovars == 1:
+            axes = [fig.subplots(1, 1)]
+        elif numCovars == 2:
+            axes = list(np.asarray(fig.subplots(1, 2), dtype=object).reshape(-1))
+        elif numCovars == 3:
+            raster_ax = fig.add_subplot(3, 2, (1, 3, 5))
+            self.nspikeColl.plot(handle=raster_ax)
+            axes = [fig.add_subplot(3, 2, 2), fig.add_subplot(3, 2, 4), fig.add_subplot(3, 2, 6)]
+            if self.ev is not None and self.ev.eventTimes.size:
+                self.ev.plot(handle=raster_ax)
+        else:
+            raster_fig = plt.figure()
+            raster_ax = raster_fig.subplots(1, 1)
+            self.nspikeColl.plot(handle=raster_ax)
+            if self.ev is not None and self.ev.eventTimes.size:
+                self.ev.plot(handle=raster_ax)
+            axes = list(np.asarray(fig.subplots(numCovars, 1), dtype=object).reshape(-1))
+
+        for ax, cov_index in zip(axes, active_cov, strict=False):
+            cov = self.covarColl.getCov(cov_index)
+            cov.plot(handle=ax)
+            ax.set_title(cov.name)
+            if self.ev is not None and self.ev.eventTimes.size:
+                self.ev.plot(handle=ax)
+        fig.tight_layout()
+        return fig
+
+    def toStructure(self) -> dict[str, Any]:
+        structure: dict[str, Any] = {
+            "nspikeColl": self.nspikeColl.toStructure(),
+            "covarColl": self.covarColl.toStructure(),
+            "ev": [] if self.ev is None else self.ev.toStructure(),
+            "history": [] if self.history in (None, []) else self.history.toStructure(),
+            "ensCovHist": [] if self.ensCovHist in (None, []) else self.ensCovHist.toStructure(),
+            "sampleRate": float(self.sampleRate),
+            "minTime": float(self.minTime),
+            "maxTime": float(self.maxTime),
+            "covMask": [np.asarray(mask, dtype=int).copy() for mask in self.covMask],
+            "ensCovMask": np.asarray(self.ensCovMask, dtype=int).copy(),
+            "neuronMask": np.asarray(self.neuronMask, dtype=int).copy(),
+            "trainingWindow": [] if self.trainingWindow is None else np.asarray(self.trainingWindow, dtype=float).copy(),
+            "validationWindow": [] if self.validationWindow is None else np.asarray(self.validationWindow, dtype=float).copy(),
+        }
+        return structure
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any]) -> "Trial":
+        from .history import History
+
+        nspikeColl = SpikeTrainCollection.fromStructure(structure["nspikeColl"])
+        covarColl = CovariateCollection.fromStructure(structure["covarColl"])
+        ev = Events.fromStructure(structure["ev"])
+        history = [] if _is_empty_config_value(structure.get("history", [])) else History.fromStructure(structure["history"])
+        ensCovHist = [] if _is_empty_config_value(structure.get("ensCovHist", [])) else History.fromStructure(structure["ensCovHist"])
+
+        trial = Trial(nspikeColl, covarColl, ev, history, ensCovHist, structure.get("ensCovMask", []))
+        trial.setMinTime(float(structure["minTime"]))
+        trial.setMaxTime(float(structure["maxTime"]))
+        training = np.asarray(structure.get("trainingWindow", []), dtype=float).reshape(-1)
+        validation = np.asarray(structure.get("validationWindow", []), dtype=float).reshape(-1)
+        if training.size and validation.size:
+            trial.setTrialPartition(np.concatenate([training, validation]))
+        trial.covMask = [np.asarray(mask, dtype=int).copy() for mask in structure.get("covMask", trial.covMask)]
+        trial.covarColl.covMask = [mask.copy() for mask in trial.covMask]
+        if "ensCovMask" in structure:
+            trial.ensCovMask = np.asarray(structure["ensCovMask"], dtype=int).copy()
+        if "neuronMask" in structure:
+            trial.neuronMask = np.asarray(structure["neuronMask"], dtype=int).copy()
+            trial.nspikeColl.neuronMask = trial.neuronMask.copy()
+        if "sampleRate" in structure:
+            trial.sampleRate = float(structure["sampleRate"])
+        return trial
+
     def setSampleRate(self, sampleRate: float) -> None:
         self.sampleRate = float(sampleRate)
         self.nspikeColl.resample(sampleRate)
@@ -1890,7 +2153,29 @@ class Trial:
         ensCovCollTemp = CovariateCollection(self.ensCovColl.covArray)
         ensCovCollTemp.covMask = [mask.copy() for mask in self.ensCovColl.covMask]
         ensCovCollTemp.maskAwayAllExcept(includedNeurons)
-        return ensCovCollTemp.dataToMatrix("standard")
+        if self.covarColl.numCov:
+            target_time = self.covarColl.matrixWithTime("standard")[0]
+        else:
+            target_time = self.nspikeColl.getNST(neuronNum).getSigRep().time
+        target_time = np.asarray(target_time, dtype=float).reshape(-1)
+        selector_cell = ensCovCollTemp.getSelectorFromMasks()
+        active_cov = [index + 1 for index, selector in enumerate(selector_cell) if selector]
+        if not active_cov:
+            return np.zeros((target_time.size, 0), dtype=float)
+
+        parts: list[np.ndarray] = []
+        for covIndex in active_cov:
+            selector = selector_cell[covIndex - 1]
+            cov = _copy_covariate(ensCovCollTemp.getCov(covIndex))
+            cov.setMinTime(float(self.minTime))
+            cov.setMaxTime(float(self.maxTime))
+            sig = cov.getSigRep("standard")
+            data = sig.dataToMatrix(selector)
+            block = np.zeros((target_time.size, data.shape[1]), dtype=float)
+            endInd = min(target_time.size, data.shape[0])
+            block[:endInd, :] = data[:endInd, :]
+            parts.append(block)
+        return np.hstack(parts) if parts else np.zeros((target_time.size, 0), dtype=float)
 
     def getNeuronIndFromMask(self) -> list[int]:
         return self.nspikeColl.getIndFromMask()
@@ -1931,6 +2216,14 @@ class Trial:
     def getAllCovLabels(self) -> list[str]:
         return self.covarColl.getAllCovLabels()
 
+    def getAllLabels(self) -> list[str]:
+        labels = list(self.getAllCovLabels())
+        if self.isHistSet():
+            labels.extend(self.getHistLabels())
+        if self.isEnsCovHistSet():
+            labels.extend(self.getEnsCovLabels())
+        return labels
+
     def getCovLabelsFromMask(self) -> list[str]:
         return self.covarColl.getCovLabelsFromMask()
 
@@ -1938,6 +2231,17 @@ class Trial:
         if not self.isHistSet():
             return []
         return self.getHistForNeurons(1).getAllCovLabels()
+
+    def getNumHist(self):
+        if not self.isHistSet():
+            return 0
+        from .history import History
+
+        if isinstance(self.history, History):
+            return max(len(self.history.windowTimes) - 1, 0)
+        if isinstance(self.history, list):
+            return [max(len(item.windowTimes) - 1, 0) for item in self.history]
+        return 0
 
     def getEnsCovLabels(self) -> list[str]:
         if not self.isEnsCovHistSet() or self.ensCovColl is None:
@@ -2008,6 +2312,10 @@ class Trial:
     def findMaxSampleRate(self) -> float:
         values = [value for value in [self.nspikeColl.findMaxSampleRate(), self.covarColl.findMaxSampleRate()] if np.isfinite(value)]
         return float(max(values)) if values else float("nan")
+
+    def findMinSampleRate(self) -> float:
+        values = [value for value in [self.sampleRate, self.nspikeColl.sampleRate, self.covarColl.sampleRate] if np.isfinite(value)]
+        return float(min(values)) if values else float("nan")
 
     def findMinTime(self) -> float:
         return float(min(self.nspikeColl.minTime, self.covarColl.minTime))

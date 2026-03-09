@@ -5,7 +5,7 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 - MATLAB reference: https://github.com/cajigaslab/nSTAT
 - Python target: https://github.com/cajigaslab/nSTAT-python
 - Inventory version: 1
-- Generated on: 2026-03-08
+- Generated on: 2026-03-09
 
 ## Summary
 
@@ -22,8 +22,8 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 
 | Status | Count |
 |---|---:|
-| `exact` | 8 |
-| `high_fidelity` | 10 |
+| `exact` | 7 |
+| `high_fidelity` | 11 |
 | `partial` | 0 |
 | `wrapper_only` | 0 |
 | `missing` | 0 |

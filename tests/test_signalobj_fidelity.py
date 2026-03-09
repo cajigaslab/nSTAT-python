@@ -155,6 +155,86 @@ def test_signalobj_math_and_summary_methods_match_matlab_surface() -> None:
     np.testing.assert_allclose(min_time, [0.0, 1.0])
 
 
+def test_signalobj_shift_label_and_plotprop_helpers_match_matlab_surface() -> None:
+    sig = SignalObj([0.0, 1.0, 2.0], [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], "stim", dataLabels=["x", "y"])
+    sig.setPlotProps(["r-", None])
+
+    shifted = sig.shift(0.5, updateLabels=1)
+    np.testing.assert_allclose(shifted.time, [0.5, 1.5, 2.5])
+    assert shifted.name == "stim(t-0.5)"
+    assert shifted.dataLabels == ["x(t-0.5)", "y(t-0.5)"]
+
+    sig.alignTime(1.0, 2.0)
+    np.testing.assert_allclose(sig.time, [1.0, 2.0, 3.0])
+
+    assert sig.plotPropsSet()
+    assert not sig.areDataLabelsEmpty()
+    assert sig.isLabelPresent("x")
+    assert sig.convertNamesToIndices("all") == [1, 2]
+    assert sig.convertNamesToIndices(["y", "x"]) == [2, 1]
+    sig.clearPlotProps()
+    assert not sig.plotPropsSet()
+
+
+def test_signalobj_power_and_sqrt_follow_matlab_surface() -> None:
+    sig = SignalObj([0.0, 1.0, 2.0], [1.0, 4.0, 9.0], "pow", dataLabels=["x"])
+
+    squared = sig.power(2)
+    rooted = sig.sqrt()
+
+    np.testing.assert_allclose(squared.data[:, 0], [1.0, 16.0, 81.0])
+    np.testing.assert_allclose(rooted.data[:, 0], [1.0, 2.0, 3.0])
+
+
+def test_signalobj_xcov_and_variability_helpers_follow_matlab_surface() -> None:
+    sig = SignalObj([0.0, 1.0, 2.0], [[1.0, 1.0], [3.0, 2.0], [2.0, 4.0]], "stim", dataLabels=["x", "x"])
+    cov = sig.xcov()
+
+    assert cov.name == "cov(stim,stim)"
+    assert cov.xlabelval == "\\Delta \\tau"
+    assert cov.dimension == 4
+    assert np.all(cov.time >= 0.0)
+
+    fig1, ax1 = plt.subplots()
+    handles = sig.plotVariability()
+    assert len(handles) == 1
+    assert len(ax1.lines) == 1
+    assert len(ax1.collections) == 1
+    plt.close(fig1)
+
+    fig2, ax2 = plt.subplots()
+    line = sig.plotAllVariability(faceColor="g", linewidth=2.0)
+    assert len(line) == 1
+    assert len(ax2.lines) == 1
+    assert len(ax2.collections) == 1
+    plt.close(fig2)
+
+
+def test_signalobj_spectral_helpers_return_matlab_style_payloads() -> None:
+    time = np.arange(0.0, 1.0, 0.01)
+    sig = SignalObj(time, np.sin(2 * np.pi * 5.0 * time), "osc", dataLabels=["x"])
+
+    periodogram_payload = sig.periodogram()
+    mtm_freq, mtm_psd = sig.MTMspectrum()
+    spectrogram_payload, fig = sig.spectrogram()
+
+    assert set(periodogram_payload.keys()) == {"frequency", "power", "label"}
+    assert periodogram_payload["label"] == "x"
+    assert periodogram_payload["frequency"].ndim == 1
+    assert periodogram_payload["power"].ndim == 1
+    assert periodogram_payload["frequency"].shape == periodogram_payload["power"].shape
+
+    assert mtm_freq.ndim == 1
+    assert mtm_psd.ndim == 1
+    assert mtm_freq.shape == mtm_psd.shape
+
+    assert set(spectrogram_payload.keys()) == {"t", "f", "p", "y"}
+    assert spectrogram_payload["p"].shape == spectrogram_payload["y"].shape
+    assert spectrogram_payload["p"].ndim == 2
+    assert fig is not None
+    plt.close(fig)
+
+
 def test_confidence_interval_line_plot_ignores_string_color_like_matlab() -> None:
     ci = ConfidenceInterval([0.0, 1.0], [[0.8, 1.2], [1.8, 2.2]], "CI", "time", "s", "a.u.", ["lo", "hi"], ["-.k"])
 

@@ -920,20 +920,27 @@ class FitResult:
     def computeInvGausTrans(self, fit_num: int = 1) -> np.ndarray:
         return np.asarray(self._compute_diagnostics(fit_num)["gaussianized"], dtype=float)
 
-    def computeFitResidual(self, fit_num: int = 1) -> Covariate:
+    def computeFitResidual(self, fit_num: int = 1, window_size: float | None = None) -> Covariate:
         time, rate_hz = self._lambda_series(fit_num)
         if time.size == 0:
             residual = Covariate([], [], "M(t_k)", "time", "s", "counts/bin", ["residual"])
             self.setFitResidual(residual)
             return residual
 
-        window_size = float(np.median(np.diff(time))) if time.size > 1 else 1.0
+        if window_size is None:
+            window_size = float(np.median(np.diff(time))) if time.size > 1 else 1.0
+        else:
+            window_size = float(window_size)
         spike_train = self._primary_spike_train().nstCopy()
         spike_train.resample(1.0 / max(window_size, 1e-12))
         spike_train.setMinTime(float(time[0]))
         spike_train.setMaxTime(float(time[-1]))
         sum_spikes = spike_train.getSigRep(window_size, float(time[0]), float(time[-1]))
         window_times = np.linspace(float(time[0]), float(time[-1]), sum_spikes.time.size, dtype=float)
+        if np.isfinite(window_size) and window_size > 0:
+            origin = float(time[0])
+            window_times = origin + np.round((window_times - origin) / float(window_size)) * float(window_size)
+            window_times = np.round(window_times, decimals=12)
 
         lambda_signal = Covariate(
             time,
@@ -1237,6 +1244,7 @@ class FitSummary:
 
         self.numNeurons = len(self.fitResCell)
         self.numResults = max(fr.numResults for fr in self.fitResCell)
+        self.maxNumIndex = int(max(range(self.numNeurons), key=lambda idx: self.fitResCell[idx].numResults) + 1)
         self.fitNames = self.fitResCell[max(range(self.numNeurons), key=lambda idx: self.fitResCell[idx].numResults)].configNames
         self.neuronNumbers = [fr.neuronNumber for fr in self.fitResCell]
 
@@ -1393,22 +1401,99 @@ class FitSummary:
         fig.tight_layout()
         return fig
 
+    def plotAllCoeffs(
+        self,
+        h=None,
+        fitNum: int | Sequence[int] | None = None,
+        plotProps=None,
+        plotSignificance: int = 1,
+        subIndex: Sequence[int] | None = None,
+    ):
+        del plotProps, plotSignificance
+        ax = h if h is not None else plt.subplots(1, 1, figsize=(9.0, 4.0))[1]
+        if fitNum is None:
+            fit_indices = list(range(1, self.numResults + 1))
+        elif np.isscalar(fitNum):
+            fit_indices = [int(fitNum)]
+        else:
+            fit_indices = [int(item) for item in fitNum]
+
+        coeff_labels = list(self.uniqueCovLabels)
+        if subIndex is None:
+            sub_labels = coeff_labels
+        else:
+            sub_zero = [int(idx) - 1 if int(idx) >= 1 else int(idx) for idx in subIndex]
+            sub_labels = [coeff_labels[idx] for idx in sub_zero if 0 <= idx < len(coeff_labels)]
+        x = np.arange(1, len(sub_labels) + 1, dtype=float)
+
+        legend_handles: list[Any] = []
+        legend_labels: list[str] = []
+        for fit_idx in fit_indices:
+            coeffs, labels, se = self.getCoeffs(fit_idx)
+            label_map = {label: idx for idx, label in enumerate(labels)}
+            coeff_view = np.full((self.numNeurons, len(sub_labels)), np.nan, dtype=float)
+            se_view = np.full_like(coeff_view, np.nan)
+            for col, label in enumerate(sub_labels):
+                src = label_map.get(label)
+                if src is not None:
+                    coeff_view[:, col] = coeffs[:, src]
+                    se_view[:, col] = se[:, src]
+            handle = None
+            for neuron_idx in range(self.numNeurons):
+                eb = ax.errorbar(
+                    x,
+                    coeff_view[neuron_idx, :],
+                    yerr=se_view[neuron_idx, :],
+                    fmt=".",
+                    linewidth=1.0,
+                    markersize=6.0,
+                    alpha=0.9,
+                )
+                if handle is None:
+                    handle = eb.lines[0]
+            if handle is not None:
+                legend_handles.append(handle)
+                if fit_idx - 1 < len(self.fitNames):
+                    legend_labels.append(str(self.fitNames[fit_idx - 1]))
+                else:
+                    legend_labels.append(f"Fit {fit_idx}")
+
+        ax.set_ylabel("Fit Coefficients")
+        ax.set_xticks(x, sub_labels, rotation=90 if len(sub_labels) > 1 else 0)
+        ax.grid(True, alpha=0.25)
+        ax.margins(x=0.02)
+        if legend_handles:
+            ax.legend(legend_handles, legend_labels, loc="lower right", fontsize=10)
+        ymin, ymax = ax.get_ylim()
+        self.setCoeffRange(ymin, ymax)
+        return ax
+
     def plotSummary(self, handle=None):
-        fig = handle if handle is not None else plt.figure(figsize=(10.0, 4.5))
+        fig = handle if handle is not None else plt.figure(figsize=(12.0, 7.0))
         fig.clear()
-        axes = fig.subplots(1, 3)
-        x = np.arange(self.numResults, dtype=float)
-        labels = list(self.fitNames)
-        for ax, values, title in zip(
-            axes,
-            (self.meanAIC, self.meanBIC, self.meanlogLL),
-            ("AIC", "BIC", "log likelihood"),
-            strict=False,
-        ):
-            ax.bar(x, np.asarray(values, dtype=float), color="tab:blue", alpha=0.8)
-            ax.set_xticks(x, labels, rotation=30, ha="right")
-            ax.set_title(title)
-            ax.grid(axis="y", alpha=0.25)
+        gs = fig.add_gridspec(2, 4)
+        coeff_ax = fig.add_subplot(gs[:, :2])
+        self.plotAllCoeffs(h=coeff_ax)
+        coeff_ax.grid(False)
+        coeff_ax.set_title("GLM Coefficients Across Neurons\nwith 95% CIs (* p<0.05)")
+
+        ks_ax = fig.add_subplot(gs[0, 2:])
+        ks_ax.boxplot(self.KSStats, labels=self.fitNames)
+        ks_ax.set_ylabel("KS Statistics")
+        ks_ax.set_title("KS Statistics Across Neurons")
+
+        aic_ax = fig.add_subplot(gs[1, 2])
+        self.boxPlot(self.getDiffAIC(1), diffIndex=1, h=aic_ax)
+        aic_ax.set_ylabel("\\Delta AIC")
+        aic_ax.set_title("Change in AIC Across Neurons")
+        aic_ax.tick_params(axis="x", rotation=90)
+
+        bic_ax = fig.add_subplot(gs[1, 3])
+        self.boxPlot(self.getDiffBIC(1), diffIndex=1, h=bic_ax)
+        bic_ax.set_ylabel("\\Delta BIC")
+        bic_ax.set_title("Change in BIC Across Neurons")
+        bic_ax.tick_params(axis="x", rotation=90)
+
         fig.tight_layout()
         return fig
 
@@ -1423,7 +1508,11 @@ class FitSummary:
         elif values.shape[1] == len(self.fitNames):
             labels = list(self.fitNames)
         elif values.shape[1] == max(len(self.fitNames) - 1, 1):
-            labels = [name for idx, name in enumerate(self.fitNames, start=1) if idx != diffIndex]
+            labels = [
+                f"{name} - {self.fitNames[diffIndex - 1]}"
+                for idx, name in enumerate(self.fitNames, start=1)
+                if idx != diffIndex
+            ]
         else:
             labels = list(self.fitNames[: values.shape[1]])
         ax.boxplot(values, labels=labels)
@@ -1434,6 +1523,8 @@ class FitSummary:
             "fitResCell": FitResult.CellArrayToStructure(self.fitResCell),
             "numNeurons": self.numNeurons,
             "numResults": self.numResults,
+            "maxNumIndex": self.maxNumIndex,
+            "neuronNumbers": list(self.neuronNumbers),
             "fitNames": list(self.fitNames),
             "dev": self.dev.tolist(),
             "AIC": self.AIC.tolist(),
@@ -1442,6 +1533,24 @@ class FitSummary:
             "KSStats": self.KSStats.tolist(),
             "KSPvalues": self.KSPvalues.tolist(),
             "withinConfInt": self.withinConfInt.tolist(),
+            "covLabels": [list(labels) for labels in getattr(self, "covLabels", [])],
+            "uniqueCovLabels": list(getattr(self, "uniqueCovLabels", [])),
+            "indicesToUniqueLabels": [
+                [np.asarray(item, dtype=float).reshape(-1).tolist() for item in row]
+                for row in getattr(self, "indicesToUniqueLabels", [])
+            ]
+            if getattr(self, "indicesToUniqueLabels", None)
+            else [],
+            "flatMask": np.asarray(getattr(self, "flatMask", np.zeros((0, 0, 0), dtype=float)), dtype=float).tolist(),
+            "bAct": np.asarray(getattr(self, "bAct", np.zeros((0, 0, 0), dtype=float)), dtype=float).tolist(),
+            "seAct": np.asarray(getattr(self, "seAct", np.zeros((0, 0, 0), dtype=float)), dtype=float).tolist(),
+            "sigIndex": np.asarray(getattr(self, "sigIndex", np.zeros((0, 0, 0), dtype=float)), dtype=float).tolist(),
+            "numCoeffs": int(getattr(self, "numCoeffs", 0)),
+            "numResultsCoeffPresent": np.asarray(
+                getattr(self, "numResultsCoeffPresent", np.zeros(0, dtype=float)),
+                dtype=float,
+            ).reshape(-1).tolist(),
+            "coeffRange": [] if getattr(self, "coeffRange", None) in (None, []) else np.asarray(self.coeffRange, dtype=float).reshape(-1).tolist(),
         }
 
     @staticmethod

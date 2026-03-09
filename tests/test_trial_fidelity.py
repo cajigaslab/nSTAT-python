@@ -6,6 +6,7 @@ import pytest
 from nstat import Covariate, Events, History, Trial, TrialConfig, nspikeTrain
 from nstat.ConfigColl import ConfigColl
 from nstat.CovColl import CovColl
+from nstat.FitResSummary import FitResSummary
 from nstat.nstColl import nstColl
 from nstat.SignalObj import SignalObj
 
@@ -81,6 +82,24 @@ def test_nstcoll_psthbars_public_contract() -> None:
     assert np.all(bars.data[:, 1] <= bars.data[:, 3])
 
 
+def test_nstcoll_ssglm_public_contract() -> None:
+    train1, train2 = _make_spikes()
+    coll = nstColl([train1, train2])
+
+    xK, WK, Qhat, gammahat, logll, fit_summary = coll.ssglm([0.0, 0.5, 1.0], numBasis=2, numVarEstIter=2, fitType="binomial")
+
+    assert xK.shape == (2, 2)
+    assert WK.shape == (2, 2, 2)
+    assert Qhat.shape == (2, 2)
+    assert gammahat.shape == (2,)
+    assert logll.shape == (1,)
+    assert isinstance(fit_summary, FitResSummary)
+    assert fit_summary.numNeurons == 2
+    assert fit_summary.numResults == 1
+    np.testing.assert_allclose(np.diag(WK[:, :, 0]), np.diag(Qhat))
+    np.testing.assert_allclose(np.diag(WK[:, :, 1]), np.diag(Qhat))
+
+
 def test_trialconfig_and_configcoll_apply_and_roundtrip() -> None:
     position, stimulus = _make_covariates()
     train1, train2 = _make_spikes()
@@ -144,6 +163,27 @@ def test_trial_partition_history_design_matrix_and_spike_vector() -> None:
     spikes = trial.getSpikeVector()
     assert spikes.shape[1] == 2
     np.testing.assert_allclose(trial.getSpikeVector(1).reshape(-1), spikes[:, 0])
+
+
+def test_trial_auxiliary_public_methods() -> None:
+    position, stimulus = _make_covariates()
+    train1, train2 = _make_spikes()
+    events = Events([0.25, 0.75], ["cue", "reward"], "g")
+    hist = History([0.0, 0.5, 1.0])
+    trial = Trial(nstColl([train1, train2]), CovColl([position, stimulus]), events, hist)
+    trial.setEnsCovHist([0.0, 0.5, 1.0])
+
+    labels = trial.getAllLabels()
+    assert labels[:3] == ["x", "y", "stim"]
+    assert "n2:[0,0.5]" in labels
+    assert trial.getNumHist() == 2
+    np.testing.assert_allclose(trial.findMinSampleRate(), 2.0)
+
+    raster_fig = trial.plotRaster()
+    assert len(raster_fig.axes) == 1
+
+    cov_fig = trial.plotCovariates()
+    assert len(cov_fig.axes) == 2
 
 
 def test_events_validation_and_history_collection_output() -> None:

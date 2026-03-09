@@ -1,5 +1,5 @@
 version: 1
-generated_on: 2026-03-08
+generated_on: 2026-03-09
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
@@ -16,17 +16,18 @@ items:
   matlab_path: SignalObj.m
   python_public_name: nstat.SignalObj
   python_impl_path: nstat/core.py
-  status: exact
+  status: high_fidelity
   constructor_parity: Constructor defaults, orientation handling, labels, masks, sample-rate
     inference, and time-window APIs now mirror MATLAB closely.
   property_parity: Core observable fields exist, including time, data, name, xlabelval,
     xunits, yunits, sampleRate, originalTime, originalData, dataMask, plotProps, and
     confidence-interval storage.
-  method_parity: MATLAB-facing methods now cover labels, masking, sub-signals, nearest-time
-    lookup, time-window extraction, merge, arithmetic operators, derivative/derivativeAt,
-    integral, filtering, compatibility alignment, autocorrelation/crosscorrelation/xcorr,
-    abs/log, mean/median/mode/std, min/max summaries, plotting, restore/reset, resampling,
-    and structure export.
+  method_parity: MATLAB-facing methods now cover labels, masking, plot-property helpers,
+    sub-signals, nearest-time lookup, time-window extraction, merge, arithmetic operators,
+    derivative/derivativeAt, integral, filtering, compatibility alignment, shifting/alignment,
+    autocorrelation/crosscorrelation/xcorr/xcov, abs/log/power/sqrt, mean/median/mode/std,
+    variability plotting, min/max summaries, plotting, restore/reset, resampling, and
+    structure export.
   defaults_parity: Defaults for labels, units, and sample-rate fallback now match
     MATLAB closely, including the 1 kHz fallback when sample spacing is ill-conditioned.
   indexing_parity: Signals use time-by-dimension storage and one-based selector behavior
@@ -37,13 +38,10 @@ items:
     expected.
   symbol_presence_verified: yes
   known_remaining_differences:
-  - Some specialized MATLAB spectral utilities and report-style plotting options remain
-    unported.
+  - "`xcov`, the canonical single-channel `periodogram`, the canonical single-channel `spectrogram` path, and the canonical single-channel `MTMspectrum` frequency/power payload are now compared against MATLAB fixtures, but `MTMspectrum` still shows small numerical drift versus MATLAB's `pmtm` output and the remaining MATLAB-specific spectral/report helpers are still carried by scipy/numpy-native implementations rather than exact MATLAB toolbox objects."
   - Structure serialization is close but not exhaustive for every MATLAB-only field.
   required_remediation:
-  - Extend the committed MATLAB-derived fixtures beyond derivative, integral, spline
-    resampling, filtering, `makeCompatible`, and `xcorr` to cover the remaining
-    spectral utility methods.
+  - "Tighten the `MTMspectrum` implementation from MATLAB-compared high-fidelity to exact parity, and extend the committed MATLAB-derived fixtures beyond derivative, integral, spline resampling, filtering, `makeCompatible`, `xcorr`, `xcov`, `periodogram`, `spectrogram`, and `MTMspectrum` to cover the remaining spectral utility methods."
   - MATLAB's legacy `autocorrelation`/`crosscorrelation` code path depends on a
     `crosscorr` call that is not directly executable in the current MATLAB runtime;
     keep those methods source-audited until a portable reference fixture path is
@@ -120,7 +118,8 @@ items:
     management, getFieldVal, getSpikeTimes/getISIs wrappers, BinarySigRep/isSigRepBinary,
     fixture-backed dataToMatrix, fixture-backed toSpikeTrain collapsing, fixture-backed
     ensemble-covariate helpers, restoreToOriginal, fixture-backed psth, psthGLM,
-    deterministic-fallback psthBars, and Python-side estimateVarianceAcrossTrials.
+    deterministic-fallback psthBars, Python-side estimateVarianceAcrossTrials, and
+    a MATLAB-facing ssglm entry point.
   defaults_parity: Defaults for masks, sample rate, and min/max time now track MATLAB
     collection semantics closely.
   indexing_parity: MATLAB-facing one-based getNST is preserved.
@@ -132,14 +131,19 @@ items:
   - psthBars now exists, but MATLAB delegates to an external BARS fitter that is
     not bundled with the source tree; the Python port currently uses a deterministic
     smoothed PSTH fallback instead of exact BARS output.
-  - MATLAB-only public branch `ssglm` remains unported.
+  - MATLAB-side `ssglm` is now fixture-backed and Python `ssglm` now runs the canonical
+    binomial fixture case, but the Python path still reconstructs the workflow from
+    the existing GLM/smoother stack rather than a PPSS_EM-equivalent recursion. The
+    latent-state outputs and summary metrics remain materially different from the
+    MATLAB fixture, so the method is not exact.
   - "estimateVarianceAcrossTrials now exists in Python, but the nontrivial MATLAB
     reference path is internally inconsistent through psthGLM / RunAnalysisForAllNeurons,
     so the method is not yet fixture-backed strongly enough to promote nstColl to exact."
   - Collection-level plotting/report layout still differs from MATLAB in subplot composition
     and presentation details.
   required_remediation:
-  - Port `ssglm`.
+  - Add MATLAB-backed fixtures for the new ssglm public surface, or port a PPSS_EM-equivalent
+    recursion closely enough to promote the method from high_fidelity to exact.
   - Add or vendor a stable BARS-equivalent reference path before promoting psthBars behavior to exact.
   - "Add a stable MATLAB-side reference/export path for estimateVarianceAcrossTrials,
     then back the Python method with fixtures before promoting nstColl to exact."
@@ -161,8 +165,8 @@ items:
     covMask, ensCovMask, neuronMask, trainingWindow, and validationWindow.
   method_parity: The MATLAB trial workflow is much richer now, covering event/history
     setup, partitioning, sample-rate and time consistency, neuron/covariate masking,
-    design-matrix generation, history/ensemble covariates, label extraction, and restore/reset
-    helpers.
+    design-matrix generation, history/ensemble covariates, label extraction, structure
+    round-tripping, and restore/reset helpers.
   defaults_parity: Default object state and partition behavior are much closer to
     MATLAB than the earlier thin implementation.
   indexing_parity: Core one-based neuron selection is preserved via getSpikeVector.
@@ -173,14 +177,16 @@ items:
     objects where expected.
   symbol_presence_verified: yes
   known_remaining_differences:
-  - Some MATLAB plotting, partition-serialization, and specialized workflow helpers
-    remain unported.
+  - Core partitioning, ensemble-history construction, and validation-window design-matrix
+    behavior are now fixture-backed, and Trial.toStructure/fromStructure now round-trip
+    against MATLAB fixtures, but several MATLAB plotting views and specialized
+    helpfile-only Trial helpers still remain lighter in Python.
   required_remediation:
-  - Add dataset-backed fixtures for trial partitioning, ensemble-history construction,
-    and design-matrix parity.
   - Port the remaining specialized Trial helpers used only in MATLAB helpfiles.
+  - Add fixture-backed coverage for the remaining Trial plotting/report branches
+    before promoting the class to exact.
   plotting_report_parity: Notebook-facing trial plots work, but several MATLAB display,
-    partition-summary, and serialization views remain lighter.
+    and partition-summary views remain lighter.
 - matlab_name: TrialConfig
   kind: class
   matlab_path: TrialConfig.m
@@ -261,15 +267,17 @@ items:
   - Advanced MATLAB algorithm-selection, cross-validation, and some report-layout
     branches are still lighter than MATLAB.
   - The canonical single-neuron GLM path is now fixture-backed for coefficients,
-    lambda traces, AIC, BIC, stored logLL, KS statistic, residuals, and the discrete-time
-    KS arrays under injected within-bin draws. Remaining gaps are now concentrated
-    in broader algorithm-selection, validation-window, and multi-neuron branches
-    rather than the canonical baseline diagnostics, and the helper surface now also
-    accepts MATLAB-style multi-trial spike inputs by collapsing them through fixture-backed
-    `nstColl.toSpikeTrain` semantics.
+    lambda traces, AIC, BIC, stored logLL, KS statistic, residuals, the validation-window
+    GLM branch, and the discrete-time KS arrays under injected within-bin draws.
+    Remaining gaps are now concentrated in broader algorithm-selection, cross-validation,
+    multi-neuron, and richer report-layout branches rather than the canonical baseline
+    or validation diagnostics, and the helper surface now also accepts MATLAB-style
+    multi-trial spike inputs by collapsing them through fixture-backed `nstColl.toSpikeTrain`
+    semantics.
   required_remediation:
-  - Extend the committed MATLAB-derived fixture coverage beyond the canonical single-neuron
-    GLM workflow to multi-neuron, validation-window, and alternative algorithm branches.
+  - Extend the committed MATLAB-derived fixture coverage beyond the canonical and
+    validation-window single-neuron GLM workflows to multi-neuron and alternative
+    algorithm branches.
   - Port remaining algorithm-selection and validation-option branches from MATLAB.
   plotting_report_parity: KS, inverse-Gaussian, coefficient, residual, and summary
     plots now execute on canonical Analysis output; advanced algorithm-selection,
@@ -331,14 +339,21 @@ items:
   output_type_parity: Returns canonical FitResSummary/FitSummary objects.
   symbol_presence_verified: yes
   known_remaining_differences:
-  - Summary plotting now exists and the neuron-by-fit AIC/BIC/logLL and diff
-    aggregation are fixture-backed, but richer MATLAB report/table exports
-    remain visually lighter than MATLAB.
+  - The neuron-by-fit AIC/BIC/logLL and diff aggregation, MATLAB-style summary
+    structure payload, and the canonical `plotSummary` dashboard layout are now
+    fixture-backed. Remaining differences are concentrated in richer coefficient-view
+    detail, table-export coverage, and other report branches beyond the canonical
+    summary dashboard.
+  - MATLAB's own `FitResSummary.fromStructure(summary.toStructure())` path currently
+    fails on the canonical fixture because `FitResult.fromStructure` expects structured
+    inverse-Gaussian payloads; Python mirrors the exported structure fields but does
+    not inherit that MATLAB round-trip bug as a fidelity target.
   required_remediation:
-  - Extend the committed golden fixtures beyond matrix/diff aggregation to
-    the remaining MATLAB report/table exports and coefficient-view layouts.
-  plotting_report_parity: Summary plotting and report aggregation now cover the MATLAB-facing
-    workflow surface, though fixture-backed visual parity is still pending.
+  - Extend the committed golden fixtures beyond the canonical summary dashboard
+    to the remaining MATLAB report/table exports and coefficient-view layouts.
+  plotting_report_parity: The canonical MATLAB `plotSummary` dashboard is now fixture-backed
+    for titles, axis count, labels, legend entries, and diff-label semantics; richer
+    report/table branches remain lighter than MATLAB.
 - matlab_name: CIF
   kind: class
   matlab_path: CIF.m

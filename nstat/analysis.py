@@ -44,11 +44,22 @@ def _as_neuron_indices(trial: Trial, neuron_selector) -> list[int]:
     raise TypeError("neuron selector must be a MATLAB-style one-based index, name, or sequence of either")
 
 
-def _restore_trial_partition(trial: Trial, original_partition: np.ndarray) -> None:
+def _restore_trial_partition(trial: Trial, original_partition: np.ndarray, original_window: np.ndarray | None = None) -> None:
     trial.restoreToOriginal()
     if original_partition.size:
         trial.setTrialPartition(original_partition)
-        trial.setTrialTimesFor("training")
+        if original_window is None or original_window.size != 2:
+            trial.setTrialTimesFor("training")
+            return
+        training = original_partition[:2] if original_partition.size >= 2 else None
+        validation = original_partition[2:4] if original_partition.size >= 4 else None
+        if training is not None and training.size == 2 and np.allclose(original_window, training, rtol=0.0, atol=1e-12):
+            trial.setTrialTimesFor("training")
+        elif validation is not None and validation.size == 2 and np.allclose(original_window, validation, rtol=0.0, atol=1e-12):
+            trial.setTrialTimesFor("validation")
+        else:
+            trial.setMinTime(float(original_window[0]))
+            trial.setMaxTime(float(original_window[1]))
 
 
 def _time_rescaled_z(counts: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarray:
@@ -154,7 +165,7 @@ class Analysis:
         lambdaIndex: int,
         Algorithm: str = "GLM",
         *,
-        l2: float = 1e-6,
+        l2: float = 0.0,
         max_iter: int = 120,
     ):
         algorithm = str(Algorithm or "GLM").upper()
@@ -243,13 +254,14 @@ class Analysis:
         config_collection: ConfigCollection,
         *,
         algorithm: str = "GLM",
-        l2: float = 1e-6,
+        l2: float = 0.0,
         max_iter: int = 120,
     ) -> FitResult:
         if neuron_index < 0:
             raise IndexError("neuron_index must be >= 0")
 
         original_partition = np.asarray(trial.getTrialPartition(), dtype=float).reshape(-1)
+        original_window = np.asarray([trial.minTime, trial.maxTime], dtype=float).reshape(-1)
         neuron_number = int(neuron_index) + 1
         labels: list[list[str]] = []
         lambda_parts: list[Covariate] = []
@@ -272,7 +284,10 @@ class Analysis:
             spike_train.setName(str(neuron_number))
 
         for cfg_index in range(1, config_collection.numConfigs + 1):
-            _restore_trial_partition(trial, original_partition)
+            trial.restoreToOriginal()
+            if original_partition.size:
+                trial.setTrialPartition(original_partition)
+                trial.setTrialTimesFor("training")
             config_collection.setConfig(trial, cfg_index)
 
             current_labels = trial.getLabelsFromMask(neuron_number)
@@ -326,7 +341,7 @@ class Analysis:
         for part in lambda_parts[1:]:
             merged_lambda = merged_lambda.merge(part)
 
-        _restore_trial_partition(trial, original_partition)
+        _restore_trial_partition(trial, original_partition, original_window)
         fit_result = FitResult(
             spike_train,
             labels,
@@ -357,7 +372,7 @@ class Analysis:
         config_collection: ConfigCollection,
         *,
         algorithm: str = "GLM",
-        l2: float = 1e-6,
+        l2: float = 0.0,
         max_iter: int = 120,
     ) -> list[FitResult]:
         out: list[FitResult] = []
@@ -435,6 +450,10 @@ class Analysis:
 
         sumSpikes = nCopy.getSigRep(windowSize)
         windowTimes = np.linspace(float(nCopy.minTime), float(nCopy.maxTime), sumSpikes.time.size, dtype=float)
+        if np.isfinite(windowSize) and windowSize > 0:
+            origin = float(nCopy.minTime)
+            windowTimes = origin + np.round((windowTimes - origin) / float(windowSize)) * float(windowSize)
+            windowTimes = np.round(windowTimes, decimals=12)
         lambdaInt = lambdaInput.integral()
         lambdaIntVals = (
             lambdaInt.getValueAt(windowTimes[1:]).reshape(-1, lambdaInt.dimension)
@@ -465,8 +484,7 @@ class Analysis:
 
     @staticmethod
     def plotFitResidual(fitResults: FitResult, windowSize: float = 0.01, makePlot: int = 1):
-        del windowSize
-        fitResults.computeFitResidual()
+        fitResults.computeFitResidual(window_size=windowSize)
         return fitResults.plotResidual() if makePlot else []
 
     @staticmethod

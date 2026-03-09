@@ -1,13 +1,17 @@
-function export_matlab_gold_fixtures(repoRoot, matlabRepoRoot)
+function export_matlab_gold_fixtures(repoRoot, matlabRepoRoot, fixtureNames)
 if nargin < 1 || isempty(repoRoot)
     error('repoRoot is required');
 end
 if nargin < 2 || isempty(matlabRepoRoot)
     matlabRepoRoot = fullfile(fileparts(repoRoot), 'nSTAT');
 end
+if nargin < 3 || isempty(fixtureNames)
+    fixtureNames = {};
+end
 
 repoRoot = char(repoRoot);
 matlabRepoRoot = char(matlabRepoRoot);
+fixtureNames = cellstr(string(fixtureNames));
 
 addpath(matlabRepoRoot);
 addpath(fullfile(matlabRepoRoot, 'helpfiles'));
@@ -18,27 +22,37 @@ if ~exist(fixtureRoot, 'dir')
     mkdir(fixtureRoot);
 end
 
-export_signalobj_fixture(fixtureRoot);
-export_confidence_interval_fixture(fixtureRoot);
-export_covariate_fixture(fixtureRoot);
-export_nspiketrain_fixture(fixtureRoot);
-export_nstcoll_fixture(fixtureRoot);
-export_config_fixture(fixtureRoot);
-export_covcoll_fixture(fixtureRoot);
-export_events_fixture(fixtureRoot);
-export_history_fixture(fixtureRoot);
-export_cif_fixture(fixtureRoot);
-export_analysis_fixture(fixtureRoot);
-export_analysis_multineuron_fixture(fixtureRoot);
-export_ksdiscrete_fixture(fixtureRoot);
-export_fit_summary_fixture(fixtureRoot);
-export_point_process_fixture(fixtureRoot);
-export_thinning_fixture(fixtureRoot);
-export_decoding_predict_fixture(fixtureRoot);
-export_decoding_smoother_fixture(fixtureRoot);
-export_hybrid_filter_fixture(fixtureRoot);
-export_nonlinear_decode_fixture(fixtureRoot);
-export_simulated_network_fixture(fixtureRoot);
+if should_export(fixtureNames, 'signalobj'); export_signalobj_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'confidence_interval'); export_confidence_interval_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'covariate'); export_covariate_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'nspiketrain'); export_nspiketrain_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'nstcoll'); export_nstcoll_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'config'); export_config_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'covcoll'); export_covcoll_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'trial'); export_trial_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'events'); export_events_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'history'); export_history_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'cif'); export_cif_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'analysis'); export_analysis_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'analysis_validation'); export_analysis_validation_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'analysis_multineuron'); export_analysis_multineuron_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'ksdiscrete'); export_ksdiscrete_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'fit_summary'); export_fit_summary_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'point_process'); export_point_process_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'thinning'); export_thinning_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'decoding_predict'); export_decoding_predict_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'decoding_smoother'); export_decoding_smoother_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'hybrid_filter'); export_hybrid_filter_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'nonlinear_decode'); export_nonlinear_decode_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'simulated_network'); export_simulated_network_fixture(fixtureRoot); end
+end
+
+function tf = should_export(fixtureNames, name)
+if isempty(fixtureNames)
+    tf = true;
+    return;
+end
+tf = any(strcmp(string(fixtureNames), string(name)));
 end
 
 function export_history_fixture(fixtureRoot)
@@ -184,17 +198,39 @@ data = [1 0; 2 1; 4 0; 8 -1; 16 0];
 s = SignalObj(t, data, 'sig', 'time', 's', 'u', {'x1', 'x2'});
 s1 = s.getSubSignal(1);
 s2 = SignalObj((0.05:0.1:0.45)', [0; 1; 0; -1; 0], 'sig2', 'time', 's', 'u', {'x3'});
+specTime = (0:0.01:0.99)';
+specData = sin(2*pi*5*specTime);
+specSig = SignalObj(specTime, specData, 'spec', 'time', 's', 'u', {'spec'});
 
 filtered = s.filter([0.25 0.5 0.25], 1);
 resampled = s.resample(20);
 derivative = s.derivative;
 integral_sig = s.integral();
 xc = xcorr(s.getSubSignal(1), s.getSubSignal(2), 2);
+xcv = xcov(s.getSubSignal(1), s.getSubSignal(2), 2);
 [s1c, s2c] = s1.makeCompatible(s2, 1);
+periodogramCell = specSig.periodogram();
+if iscell(periodogramCell)
+    periodogramObj = periodogramCell{1};
+else
+    periodogramObj = periodogramCell;
+end
+mtmCell = specSig.MTMspectrum();
+if iscell(mtmCell)
+    mtmObj = mtmCell{1};
+else
+    mtmObj = mtmCell;
+end
+[spectrogramObj, ~] = specSig.spectrogram();
+if iscell(spectrogramObj)
+    spectrogramObj = spectrogramObj{1};
+end
 
 payload = struct();
 payload.time = s.time;
 payload.data = s.data;
+payload.spec_time = specSig.time;
+payload.spec_data = specSig.data;
 payload.filter_b = [0.25 0.5 0.25];
 payload.filter_a = 1;
 payload.filtered_data = filtered.data;
@@ -206,6 +242,15 @@ payload.resampled_data = resampled.data;
 payload.xcorr_maxlag = 2;
 payload.xcorr_time = xc.time;
 payload.xcorr_data = xc.data;
+payload.xcov_time = xcv.time;
+payload.xcov_data = xcv.data;
+payload.periodogram_frequency = periodogramObj.Frequencies;
+payload.periodogram_power = periodogramObj.Data;
+payload.mtm_frequency = mtmObj.Frequencies;
+payload.mtm_power = mtmObj.Data(:,1);
+payload.spectrogram_time = spectrogramObj.t;
+payload.spectrogram_frequency = spectrogramObj.f;
+payload.spectrogram_power = spectrogramObj.p;
 payload.compat_time = s1c.time;
 payload.compat_left_data = s1c.data;
 payload.compat_right_data = s2c.data;
@@ -380,6 +425,23 @@ payload.ensemble_labels = ensembleCov.getAllCovLabels;
 payload.ensemble_matrix = ensembleCov.dataToMatrix();
 payload.psth_time = psthCov.time;
 payload.psth_data = psthCov.data;
+ss1 = nspikeTrain([0.1 0.3], '1', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1);
+ss2 = nspikeTrain([0.2], '1', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1);
+ssColl = nstColl({ss1, ss2});
+[xK,WK,Qhat,gammahat,logll,fitSummary] = ssColl.ssglm([0.0 0.1 0.2], 2, 2, 'binomial');
+payload.ssglm_xK = xK;
+payload.ssglm_WK = WK;
+payload.ssglm_Qhat = Qhat;
+payload.ssglm_gammahat = gammahat;
+payload.ssglm_logll = logll;
+payload.ssglm_firstSpikeTimes = ss1.spikeTimes;
+payload.ssglm_secondSpikeTimes = ss2.spikeTimes;
+payload.ssglm_summary_AIC = fitSummary.AIC;
+payload.ssglm_summary_BIC = fitSummary.BIC;
+payload.ssglm_summary_logLL = fitSummary.logLL;
+payload.ssglm_summary_KSStats = fitSummary.KSStats.ks_stat;
+payload.ssglm_summary_KSPvalues = fitSummary.KSStats.pValue;
+payload.ssglm_summary_withinConfInt = fitSummary.KSStats.withinConfInt;
 
 save(fullfile(fixtureRoot, 'nstcoll_exactness.mat'), '-struct', 'payload');
 end
@@ -500,6 +562,57 @@ payload.copy_numCov = copyColl.numCov;
 save(fullfile(fixtureRoot, 'covcoll_exactness.mat'), '-struct', 'payload');
 end
 
+function export_trial_fixture(fixtureRoot)
+t = (0:0.5:1.0)';
+position = Covariate(t, [0 10; 1 11; 2 12], 'Position', 'time', 's', '', {'x','y'});
+stimulus = Covariate(t, [5; 6; 7], 'Stimulus', 'time', 's', 'a.u.', {'stim'});
+n1 = nspikeTrain([0.0 0.5 1.0], 'n1', 0.5, 0.0, 1.0, 'time', 's', 'spikes', 'spk', -1);
+n2 = nspikeTrain([0.25 0.75], 'n2', 0.5, 0.0, 1.0, 'time', 's', 'spikes', 'spk', -1);
+events = Events([0.25 0.75], {'cue','reward'}, 'g');
+histObj = History([0.0 0.5 1.0]);
+
+trial = Trial(nstColl({n1, n2}), CovColl({position, stimulus}), events, histObj);
+trial.setEnsCovHist([0.0 0.5 1.0]);
+trial.setTrialPartition([0.0 0.5 1.0]);
+partition = trial.getTrialPartition;
+trial.setTrialTimesFor('validation');
+structure = trial.toStructure;
+roundtrip = Trial.fromStructure(structure);
+designMatrix = trial.getDesignMatrix(1);
+spikeVector = trial.getSpikeVector;
+spikeVector1 = trial.getSpikeVector(1);
+ensCovMatrix = trial.getEnsCovMatrix(1);
+
+payload = struct();
+payload.partition = partition;
+payload.validation_minTime = trial.minTime;
+payload.validation_maxTime = trial.maxTime;
+payload.hist_labels = trial.getHistLabels;
+payload.ens_cov_labels = trial.getEnsCovLabelsFromMask(1);
+payload.design_matrix = designMatrix;
+payload.ens_cov_matrix = ensCovMatrix;
+payload.spike_vector = spikeVector;
+payload.spike_vector_1 = spikeVector1;
+payload.event_labels = events.eventLabels;
+payload.event_times = events.eventTimes;
+payload.structure_trainingWindow = structure.trainingWindow;
+payload.structure_validationWindow = structure.validationWindow;
+payload.structure_minTime = structure.minTime;
+payload.structure_maxTime = structure.maxTime;
+payload.structure_covMask = structure.covMask;
+payload.structure_ensCovMask = structure.ensCovMask;
+payload.structure_neuronMask = structure.neuronMask;
+payload.roundtrip_partition = roundtrip.getTrialPartition;
+payload.roundtrip_minTime = roundtrip.minTime;
+payload.roundtrip_maxTime = roundtrip.maxTime;
+payload.roundtrip_design_matrix = roundtrip.getDesignMatrix(1);
+payload.roundtrip_ens_cov_matrix = roundtrip.getEnsCovMatrix(1);
+payload.roundtrip_hist_labels = roundtrip.getHistLabels;
+payload.roundtrip_ens_cov_labels = roundtrip.getEnsCovLabelsFromMask(1);
+
+save(fullfile(fixtureRoot, 'trial_exactness.mat'), '-struct', 'payload');
+end
+
 function export_cif_fixture(fixtureRoot)
 cif = CIF([0.1 0.5], {'stim1', 'stim2'}, {'stim1', 'stim2'}, 'binomial');
 stimVal = [0.6; -0.2];
@@ -564,6 +677,41 @@ payload.residual_time = fit.Residual.time;
 payload.residual_data = fit.Residual.data(:,1);
 
 save(fullfile(fixtureRoot, 'analysis_exactness.mat'), '-struct', 'payload');
+end
+
+function export_analysis_validation_fixture(fixtureRoot)
+t = (0:0.1:1.0)';
+stimData = sin(2*pi*t);
+stim = Covariate(t, stimData, 'Stimulus', 'time', 's', '', {'stim'});
+spikeTrain = nspikeTrain([0.1 0.4 0.7], '1', 0.1, 0.0, 1.0, 'time', 's', '', '', -1);
+trial = Trial(nstColl({spikeTrain}), CovColl({stim}));
+trial.setTrialPartition([0.0 0.5 1.0]);
+trial.setTrialTimesFor('validation');
+cfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
+cfg.setName('stim');
+fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl({cfg}));
+
+payload = struct();
+payload.time = t;
+payload.stim_data = stimData;
+payload.spike_times = spikeTrain.spikeTimes;
+payload.partition = trial.getTrialPartition;
+payload.validation_minTime = trial.minTime;
+payload.validation_maxTime = trial.maxTime;
+payload.design_matrix = trial.getDesignMatrix(1);
+payload.lambda_time = fit.lambda.time;
+payload.lambda_data = fit.lambda.data(:,1);
+payload.coeffs = fit.getCoeffs(1);
+payload.AIC = fit.AIC(1);
+payload.BIC = fit.BIC(1);
+payload.logLL = fit.logLL(1);
+payload.ks_stat = fit.KSStats.ks_stat(1);
+payload.ks_pvalue = fit.KSStats.pValue(1);
+payload.ks_within_conf_int = fit.KSStats.withinConfInt(1);
+payload.residual_time = fit.Residual.time;
+payload.residual_data = fit.Residual.data(:,1);
+
+save(fullfile(fixtureRoot, 'analysis_validation_exactness.mat'), '-struct', 'payload');
 end
 
 function export_analysis_multineuron_fixture(fixtureRoot)
@@ -687,6 +835,54 @@ payload.withinConfInt = summary.withinConfInt;
 payload.diffAIC = dAIC;
 payload.diffBIC = dBIC;
 payload.difflogLL = dlogLL;
+payload.structure = summary.toStructure;
+plotHandle = summary.plotSummary;
+allAxes = findall(plotHandle, 'Type', 'axes');
+for idx = 1:length(allAxes)
+    ax = allAxes(idx);
+    titleStr = stringify_text(get(get(ax, 'Title'), 'String'));
+    ylabelStr = stringify_text(get(get(ax, 'YLabel'), 'String'));
+    xtickLabels = cellstr(get(ax, 'XTickLabel'));
+    legendHandle = legend(ax);
+    legendLabels = {};
+    if ~isempty(legendHandle) && isgraphics(legendHandle)
+        legendLabels = cellstr(legendHandle.String);
+    end
+    switch titleStr
+        case "GLM Coefficients Across Neurons\nwith 95% CIs (* p<0.05)"
+            payload.plotSummary_coeff_title = titleStr;
+            payload.plotSummary_coeff_ylabel = ylabelStr;
+            payload.plotSummary_coeff_xticklabels = xtickLabels;
+            payload.plotSummary_coeff_legend = legendLabels;
+        case "KS Statistics Across Neurons"
+            payload.plotSummary_ks_title = titleStr;
+            payload.plotSummary_ks_ylabel = ylabelStr;
+            payload.plotSummary_ks_xticklabels = xtickLabels;
+        case "Change in AIC Across Neurons"
+            payload.plotSummary_aic_title = titleStr;
+            payload.plotSummary_aic_ylabel = ylabelStr;
+            payload.plotSummary_aic_xticklabels = xtickLabels;
+        case "Change in BIC Across Neurons"
+            payload.plotSummary_bic_title = titleStr;
+            payload.plotSummary_bic_ylabel = ylabelStr;
+            payload.plotSummary_bic_xticklabels = xtickLabels;
+    end
+end
+payload.plotSummary_num_axes = numel(allAxes);
+close(plotHandle);
+payload.roundtrip_supported = false;
+payload.roundtrip_error = '';
+try
+    roundtrip = FitResSummary.fromStructure(payload.structure);
+    payload.roundtrip_supported = true;
+    payload.roundtrip_AIC = roundtrip.AIC;
+    payload.roundtrip_BIC = roundtrip.BIC;
+    payload.roundtrip_logLL = roundtrip.logLL;
+    payload.roundtrip_neuronNumbers = roundtrip.neuronNumbers;
+    payload.roundtrip_fitNames = roundtrip.fitNames;
+catch err
+    payload.roundtrip_error = err.message;
+end
 
 save(fullfile(fixtureRoot, 'fit_summary_exactness.mat'), '-struct', 'payload');
 end
@@ -1114,7 +1310,8 @@ end
 
 function cifObj = build_polynomial_binomial_cif(beta)
 beta = beta(:)';
-syms x y real
+x = sym('x', 'real');
+y = sym('y', 'real');
 cifObj = CIF(beta(1:3), {'1', 'x', 'y'}, {'x', 'y'}, 'binomial');
 cifObj.b = beta;
 cifObj.varIn = [sym(1); x; y; x^2; y^2; x * y];
@@ -1161,4 +1358,17 @@ else
     cifObj.argstr = argstr;
 end
 cifObj.argstrLDGamma = '';
+end
+
+function out = stringify_text(value)
+if isstring(value)
+    out = char(strjoin(cellstr(value), newline));
+elseif ischar(value)
+    out = value;
+elseif iscell(value)
+    parts = cellfun(@stringify_text, value, 'UniformOutput', false);
+    out = strjoin(parts, newline);
+else
+    out = '';
+end
 end

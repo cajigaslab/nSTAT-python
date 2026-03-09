@@ -537,6 +537,12 @@ class SignalObj:
     def __neg__(self) -> "SignalObj":
         return self._spawn(self.time, -self.data, data_labels=list(self.dataLabels))
 
+    def power(self, exponent) -> "SignalObj":
+        return self._spawn(self.time, np.power(self.data, exponent), data_labels=list(self.dataLabels))
+
+    def sqrt(self) -> "SignalObj":
+        return self.power(0.5)
+
     def __mul__(self, other) -> "SignalObj":
         return self._binary_op(other, np.multiply)
 
@@ -615,6 +621,47 @@ class SignalObj:
     def isMaskSet(self) -> bool:
         return bool(np.any(self.dataMask == 0))
 
+    def plotPropsSet(self) -> bool:
+        return any(prop not in (None, "") for prop in self.plotProps)
+
+    def areDataLabelsEmpty(self) -> bool:
+        return all(not str(label) for label in self.dataLabels)
+
+    def isLabelPresent(self, label: str) -> bool:
+        if not isinstance(label, str):
+            raise TypeError("Labels must be a char")
+        return label == "all" or bool(self.getIndexFromLabel(label))
+
+    def convertNamesToIndices(self, selectorArray):
+        if self.areDataLabelsEmpty():
+            return list(range(1, self.dimension + 1))
+        if isinstance(selectorArray, str):
+            if selectorArray == "all":
+                return list(range(1, self.dimension + 1))
+            if self.isLabelPresent(selectorArray):
+                return self.getIndexFromLabel(selectorArray)
+            raise ValueError("Specified label does not match data label")
+        if isinstance(selectorArray, (list, tuple, np.ndarray)):
+            if len(selectorArray) == 0:
+                return []
+            if all(isinstance(item, str) for item in selectorArray):
+                indices: list[int] = []
+                for item in selectorArray:
+                    if self.isLabelPresent(item):
+                        indices.extend(self.getIndexFromLabel(item))
+                return indices
+            return _coerce_1based_indices(np.asarray(selectorArray, dtype=int), self.dimension)
+        raise TypeError("selectorArray cells must contain text")
+
+    def clearPlotProps(self, index: Sequence[int] | np.ndarray | int | None = None) -> None:
+        if index is None:
+            zero_based = np.arange(self.dimension, dtype=int)
+        else:
+            selector = [index] if isinstance(index, int) else index
+            zero_based = self._selector_to_zero_based(selector)
+        for idx in zero_based:
+            self.plotProps[idx] = None
+
     def abs(self) -> "SignalObj":
         labels = [f"|{label}|" if label else "" for label in self.dataLabels]
         return self._spawn(self.time, np.abs(self.data), data_labels=labels).with_metadata(
@@ -657,7 +704,12 @@ class SignalObj:
                 data_labels=labels,
             ).with_metadata(name=f"median({self.name})")
         reshaped = array.reshape(-1, 1)
-        return self._spawn(self.time, reshaped, data_labels=[f"median({self.name})"]).with_metadata(name=f"median({self.name})")
+        return self._spawn(
+            self.time,
+            reshaped,
+            data_labels=[f"median({self.name})"],
+            plot_props=[None],
+        ).with_metadata(name=f"median({self.name})")
 
     def mode(self, axis: int | None = None) -> "SignalObj":
         axis_arg = 0 if axis is None else axis
@@ -676,7 +728,12 @@ class SignalObj:
                 data_labels=labels,
             ).with_metadata(name=f"mode({self.name})")
         reshaped = array.reshape(-1, 1)
-        return self._spawn(self.time, reshaped, data_labels=[f"mode({self.name})"]).with_metadata(name=f"mode({self.name})")
+        return self._spawn(
+            self.time,
+            reshaped,
+            data_labels=[f"mode({self.name})"],
+            plot_props=[None],
+        ).with_metadata(name=f"mode({self.name})")
 
     def mean(self, axis: int | None = None) -> "SignalObj":
         axis_arg = 0 if axis is None else axis
@@ -690,7 +747,7 @@ class SignalObj:
                 data_labels=labels,
             )
         reshaped = array.reshape(-1, 1)
-        return self._spawn(self.time, reshaped, data_labels=[f"\\mu({self.name})"])
+        return self._spawn(self.time, reshaped, data_labels=[f"\\mu({self.name})"], plot_props=[None])
 
     def std(self, axis: int | None = None) -> "SignalObj":
         axis_arg = 0 if axis is None else axis
@@ -704,7 +761,7 @@ class SignalObj:
                 data_labels=labels,
             )
         reshaped = array.reshape(-1, 1)
-        return self._spawn(self.time, reshaped, data_labels=[f"\\sigma({self.name})"])
+        return self._spawn(self.time, reshaped, data_labels=[f"\\sigma({self.name})"], plot_props=[None])
 
     def max(self, axis: int | None = None):
         axis_arg = 0 if axis is None else axis
@@ -938,6 +995,193 @@ class SignalObj:
             data_labels,
         )
 
+    def xcov(self, other: "SignalObj" | None = None, maxlag: int | None = None) -> "SignalObj":
+        s2 = self if other is None else other
+        s1c, s2c = self.makeCompatible(s2)
+        data_columns: list[np.ndarray] = []
+        data_labels: list[str] = []
+        lag_index: np.ndarray | None = None
+        for left_index in range(s1c.dimension):
+            for right_index in range(s2c.dimension):
+                left = s1c.data[:, left_index] - float(np.mean(s1c.data[:, left_index]))
+                right = s2c.data[:, right_index] - float(np.mean(s2c.data[:, right_index]))
+                corr = np.correlate(left, right, mode="full")
+                lags = np.arange(-s1c.data.shape[0] + 1, s1c.data.shape[0], dtype=int)
+                if maxlag is not None:
+                    keep = np.abs(lags) <= int(maxlag)
+                    corr = corr[keep]
+                    lags = lags[keep]
+                if other is None:
+                    keep = lags >= 0
+                    corr = corr[keep]
+                    lags = lags[keep]
+                if lag_index is None:
+                    lag_index = lags.astype(float) / max(float(s1c.sampleRate), 1e-12)
+                data_columns.append(np.asarray(corr, dtype=float))
+                left_label = s1c.dataLabels[left_index] if left_index < len(s1c.dataLabels) else str(left_index + 1)
+                right_label = s2c.dataLabels[right_index] if right_index < len(s2c.dataLabels) else str(right_index + 1)
+                data_labels.append(f"cov({left_label},{right_label})")
+        data = np.column_stack(data_columns) if data_columns else np.zeros((0, 0), dtype=float)
+        return self.__class__(
+            lag_index if lag_index is not None else np.array([], dtype=float),
+            data,
+            f"cov({self.name},{s2.name})",
+            "\\Delta \\tau",
+            self.xunits,
+            f"{self.yunits}^2" if self.yunits else "",
+            data_labels,
+        )
+
+    def _subplot_shape(self) -> tuple[int, int]:
+        if self.dimension == 2:
+            return (1, 2)
+        if self.dimension == 3:
+            return (1, 3)
+        if self.dimension in {4, 5, 6}:
+            return (3 if self.dimension in {5, 6} else 2, 2 if self.dimension in {4, 5, 6} else self.dimension)
+        return (1, 1)
+
+    def periodogram(self):
+        import matplotlib.pyplot as plt
+        from scipy.signal import periodogram as scipy_periodogram
+
+        spectra = []
+        rows, cols = self._subplot_shape()
+        fig = plt.gcf()
+        for index in range(self.dimension):
+            freq, power = scipy_periodogram(
+                np.asarray(self.data[:, index], dtype=float),
+                fs=float(self.sampleRate),
+                window="boxcar",
+                nfft=1024,
+                detrend=False,
+                scaling="density",
+            )
+            spectra.append({"frequency": freq, "power": power, "label": self.dataLabels[index] if index < len(self.dataLabels) else ""})
+            ax = fig.add_subplot(rows, cols, index + 1) if self.dimension > 1 else plt.gca()
+            ax.plot(freq, power)
+            if index < len(self.dataLabels) and self.dataLabels[index]:
+                ax.legend([self.dataLabels[index]])
+        return spectra[0] if self.dimension == 1 else spectra
+
+    def MTMspectrum(self, NW: float = 4.0, NFFT=None, Pval: float = 0.95):
+        from scipy.signal.windows import dpss
+
+        del Pval  # confidence-band plotting is not carried in the Python return payload
+        outputs = []
+        for index in range(self.dimension):
+            xn = np.asarray(self.data[:, index], dtype=float).reshape(-1)
+            tapers = dpss(xn.size, NW=NW, Kmax=max(int(2 * NW - 1), 1), sym=True)
+            tapered = tapers * xn[np.newaxis, :]
+            nfft = int(NFFT) if NFFT else max(256, int(2 ** np.ceil(np.log2(max(xn.size, 1)))))
+            fft_vals = np.fft.rfft(tapered, n=nfft, axis=1)
+            psd = np.mean(np.abs(fft_vals) ** 2, axis=0) / max(float(self.sampleRate), 1e-12)
+            if psd.size > 2:
+                psd[1:-1] *= 2.0
+            freq = np.fft.rfftfreq(nfft, d=1.0 / max(float(self.sampleRate), 1e-12))
+            outputs.append((freq, psd))
+        return outputs[0] if self.dimension == 1 else outputs
+
+    def spectrogram(self, freqVec=None, h=None):
+        import matplotlib.pyplot as plt
+        from scipy.signal import spectrogram as scipy_spectrogram
+        from scipy.signal.windows import kaiser
+
+        def matlab_round(value: float) -> int:
+            return int(np.floor(float(value) + 0.5))
+
+        fig = plt.gcf() if h is None else h
+        if freqVec is None:
+            freqVec = np.arange(0.0, 50.0 + 0.1, 0.1, dtype=float)
+        freqVec = np.asarray(freqVec, dtype=float)
+        # MATLAB's kaiser(n) default in SignalObj.spectrogram corresponds to beta=0.5.
+        window = kaiser(max(matlab_round(self.time.size / 20.0), 1), beta=0.5)
+        noverlap = matlab_round(self.time.size / 40.0)
+        nfft = None
+        if freqVec.size > 1:
+            delta_f = float(np.min(np.diff(freqVec)))
+            if delta_f > 0:
+                nfft = max(int(round(float(self.sampleRate) / delta_f)), window.size)
+        results = []
+        for index in range(self.dimension):
+            f, t, y = scipy_spectrogram(
+                np.asarray(self.data[:, index], dtype=float),
+                fs=float(self.sampleRate),
+                window=window,
+                noverlap=min(noverlap, window.size - 1),
+                nperseg=window.size,
+                nfft=nfft,
+                detrend=False,
+                scaling="density",
+                mode="complex",
+            )
+            p = np.abs(y) ** 2
+            if freqVec.size:
+                keep = (f >= float(np.min(freqVec))) & (f <= float(np.max(freqVec)))
+                y = y[keep, :]
+                f = f[keep]
+                p = p[keep, :]
+            t = t + float(np.min(self.time))
+            results.append({"t": t, "f": f, "p": p, "y": y})
+            ax = fig.add_subplot(*self._subplot_shape(), index + 1) if self.dimension > 1 else plt.gca()
+            ax.pcolormesh(t, f, 10.0 * np.log10(np.maximum(np.abs(p), 1e-24)), shading="auto")
+            ax.set_xlabel("time [s]")
+            ax.set_ylabel("frequency [Hz]")
+        return (results[0] if self.dimension == 1 else results), fig
+
+    def plotVariability(self, selectorArray=None):
+        import matplotlib.pyplot as plt
+
+        if selectorArray is None:
+            if not self.areDataLabelsEmpty():
+                selectors = []
+                for label in list(dict.fromkeys(self.dataLabels)):
+                    selectors.append(self.getIndicesFromLabels(label))
+            else:
+                selectors = [list(range(1, self.dimension + 1))]
+        elif isinstance(selectorArray, (list, tuple)) and selectorArray and isinstance(selectorArray[0], (list, tuple, np.ndarray)):
+            selectors = selectorArray
+        else:
+            selectors = [selectorArray]
+
+        handles = []
+        for idx, selector in enumerate(selectors):
+            color = plt.rcParams["axes.prop_cycle"].by_key().get("color", ["r"])[idx % len(plt.rcParams["axes.prop_cycle"].by_key().get("color", ["r"]))]
+            handles.append(self.getSubSignal(selector).plotAllVariability(faceColor=color))
+        return handles
+
+    def plotAllVariability(self, faceColor=None, linewidth: float = 3.0, ciUpper=1.96, ciLower=None):
+        import matplotlib.pyplot as plt
+
+        if ciLower is None:
+            ciLower = ciUpper
+        if faceColor is None:
+            faceColor = plt.rcParams["axes.prop_cycle"].by_key().get("color", ["r"])[0]
+
+        meanSig = self.mean(axis=1)
+        stdSig = self.std(axis=1)
+        mean_data = meanSig.data[:, 0]
+        std_data = stdSig.data[:, 0]
+
+        def _ci_array(value, sign: float):
+            if isinstance(value, SignalObj):
+                arr = value.dataToMatrix().reshape(-1)
+                return mean_data + sign * arr
+            arr = np.asarray(value, dtype=float)
+            if arr.size == 1:
+                return mean_data + sign * float(arr.reshape(-1)[0]) * std_data
+            if arr.size == self.time.size:
+                return mean_data + sign * arr.reshape(-1)
+            raise ValueError("confidence interval must be scalar or same length as time vector")
+
+        upper = _ci_array(ciUpper, 1.0)
+        lower = _ci_array(ciLower, -1.0)
+
+        ax = plt.gca()
+        ax.fill_between(self.time, lower, upper, facecolor=faceColor, edgecolor="none", alpha=0.5)
+        line = ax.plot(self.time, mean_data, "k-", linewidth=linewidth)
+        return line
+
     def setConfInterval(self, bounds: tuple[np.ndarray, np.ndarray]) -> None:
         low, high = bounds
         low_arr = np.asarray(low, dtype=float)
@@ -977,6 +1221,32 @@ class SignalObj:
             structure.get("dataLabels"),
             structure.get("plotProps"),
         )
+
+    def shift(self, deltaT: float, updateLabels: int = 0) -> "SignalObj":
+        shifted = self.copySignal()
+        delta = float(deltaT)
+        if delta != 0.0:
+            shifted.time = shifted.time + delta
+            shifted.minTime = float(shifted.minTime + delta)
+            shifted.maxTime = float(shifted.maxTime + delta)
+            if updateLabels:
+                shifted.setName(f"{self.name}(t-{delta:g})")
+                shifted.setDataLabels([f"{label}(t-{delta:g})" if str(label) else "" for label in self.dataLabels])
+        return shifted
+
+    def shiftMe(self, deltaT: float, updateLabels: int = 0) -> None:
+        shifted = self.shift(deltaT, updateLabels)
+        self.time = shifted.time
+        self.data = shifted.data
+        self.minTime = shifted.minTime
+        self.maxTime = shifted.maxTime
+        self.name = shifted.name
+        self.dataLabels = shifted.dataLabels
+
+    def alignTime(self, timeMarker: float, newTime: float) -> None:
+        marker = float(timeMarker)
+        if self.minTime <= marker <= self.maxTime:
+            self.shiftMe(float(newTime) - marker)
 
     def plot(self, selectorArray=None, plotPropsIn=None, handle=None):
         import matplotlib.pyplot as plt

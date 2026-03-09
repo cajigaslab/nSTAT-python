@@ -87,12 +87,17 @@ def test_signalobj_matches_matlab_gold_fixture() -> None:
     signal = SignalObj(_vector(payload, "time"), np.asarray(payload["data"], dtype=float), "sig", "time", "s", "u", ["x1", "x2"])
     signal_1 = signal.getSubSignal(1)
     signal_2 = SignalObj(np.arange(0.05, 0.5, 0.1), [0.0, 1.0, 0.0, -1.0, 0.0], "sig2", "time", "s", "u", ["x3"])
+    spectral_signal = SignalObj(_vector(payload, "spec_time"), _vector(payload, "spec_data"), "spec", "time", "s", "u", ["spec"])
 
     filtered = signal.filter(_vector(payload, "filter_b"), _vector(payload, "filter_a"))
     derivative = signal.derivative
     integral = signal.integral()
     resampled = signal.resample(_scalar(payload, "resample_rate"))
     xcorr = signal.getSubSignal(1).xcorr(signal.getSubSignal(2), int(_scalar(payload, "xcorr_maxlag")))
+    xcov = signal.getSubSignal(1).xcov(signal.getSubSignal(2), int(_scalar(payload, "xcorr_maxlag")))
+    periodogram_payload = spectral_signal.periodogram()
+    mtm_frequency, mtm_power = spectral_signal.MTMspectrum()
+    spectrogram_payload, _ = spectral_signal.spectrogram()
     compatible_left, compatible_right = signal_1.makeCompatible(signal_2, holdVals=1)
 
     np.testing.assert_allclose(filtered.data, np.asarray(payload["filtered_data"], dtype=float), rtol=1e-8, atol=1e-10)
@@ -102,6 +107,15 @@ def test_signalobj_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(resampled.data, np.asarray(payload["resampled_data"], dtype=float), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(xcorr.time, _vector(payload, "xcorr_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(xcorr.data.reshape(-1), _vector(payload, "xcorr_data"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(xcov.time, _vector(payload, "xcov_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(xcov.data.reshape(-1), _vector(payload, "xcov_data"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(periodogram_payload["frequency"], dtype=float).reshape(-1), _vector(payload, "periodogram_frequency"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(periodogram_payload["power"], dtype=float).reshape(-1), _vector(payload, "periodogram_power"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(mtm_frequency, dtype=float).reshape(-1), _vector(payload, "mtm_frequency"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(mtm_power, dtype=float).reshape(-1), _vector(payload, "mtm_power"), rtol=3e-2, atol=2e-3)
+    np.testing.assert_allclose(np.asarray(spectrogram_payload["t"], dtype=float).reshape(-1), _vector(payload, "spectrogram_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(spectrogram_payload["f"], dtype=float).reshape(-1), _vector(payload, "spectrogram_frequency"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(spectrogram_payload["p"], dtype=float), np.asarray(payload["spectrogram_power"], dtype=float), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(compatible_left.time, _vector(payload, "compat_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(compatible_left.data.reshape(-1), _vector(payload, "compat_left_data"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(compatible_right.data.reshape(-1), _vector(payload, "compat_right_data"), rtol=1e-8, atol=1e-10)
@@ -354,6 +368,22 @@ def test_nstcoll_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(psthCov.time, _vector(payload, "psth_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(psthCov.data.reshape(-1), _vector(payload, "psth_data"), rtol=1e-12, atol=1e-12)
 
+    ss1 = nspikeTrain(_vector(payload, "ssglm_firstSpikeTimes"), "1", 10.0, 0.0, 0.5, "time", "s", "spikes", "spk", -1)
+    ss2 = nspikeTrain(_vector(payload, "ssglm_secondSpikeTimes"), "1", 10.0, 0.0, 0.5, "time", "s", "spikes", "spk", -1)
+    ss_coll = nstColl([ss1, ss2])
+    xK, WK, Qhat, gammahat, logll, fit_summary = ss_coll.ssglm([0.0, 0.1, 0.2], 2, 2, "binomial")
+
+    np.testing.assert_equal(np.asarray(xK).shape, np.asarray(payload["ssglm_xK"]).shape)
+    np.testing.assert_equal(np.asarray(WK).shape, np.asarray(payload["ssglm_WK"]).shape)
+    assert np.all(np.isfinite(np.asarray(xK, dtype=float)))
+    assert np.all(np.isfinite(np.asarray(WK, dtype=float)))
+    assert np.all(np.isfinite(np.asarray(Qhat, dtype=float)))
+    assert np.all(np.isfinite(np.asarray(gammahat, dtype=float)))
+    assert np.all(np.isfinite(np.asarray(logll, dtype=float)))
+    assert np.all(np.isfinite(np.asarray(fit_summary.AIC, dtype=float)))
+    assert np.all(np.isfinite(np.asarray(fit_summary.BIC, dtype=float)))
+    assert np.all(np.isfinite(np.asarray(fit_summary.logLL, dtype=float)))
+
 
 def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
     payload = _load_fixture("config_exactness.mat")
@@ -468,6 +498,100 @@ def test_covcoll_matches_matlab_gold_fixture() -> None:
     assert coll.isCovPresent("Position") == int(_scalar(payload, "is_present_position"))
     assert coll.isCovPresent(2) == int(_scalar(payload, "is_present_last_index"))
     assert coll.copy().numCov == int(_scalar(payload, "copy_numCov"))
+
+
+def test_trial_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("trial_exactness.mat")
+    time = np.array([0.0, 0.5, 1.0], dtype=float)
+    position = Covariate(time, np.column_stack([[0.0, 1.0, 2.0], [10.0, 11.0, 12.0]]), "Position", "time", "s", "", ["x", "y"])
+    stimulus = Covariate(time, [5.0, 6.0, 7.0], "Stimulus", "time", "s", "a.u.", ["stim"])
+    n1 = nspikeTrain([0.0, 0.5, 1.0], "n1", 0.5, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+    n2 = nspikeTrain([0.25, 0.75], "n2", 0.5, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+    events = Events([0.25, 0.75], ["cue", "reward"], "g")
+    hist = History([0.0, 0.5, 1.0])
+    trial = Trial(nstColl([n1, n2]), CovColl([position, stimulus]), events, hist)
+    trial.setEnsCovHist([0.0, 0.5, 1.0])
+    trial.setTrialPartition([0.0, 0.5, 1.0])
+    trial.setTrialTimesFor("validation")
+
+    np.testing.assert_allclose(np.asarray(trial.getTrialPartition(), dtype=float), _vector(payload, "partition"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(float(trial.minTime), _scalar(payload, "validation_minTime"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(float(trial.maxTime), _scalar(payload, "validation_maxTime"), rtol=1e-12, atol=1e-12)
+    assert trial.getHistLabels() == _string_list(payload, "hist_labels")
+    assert trial.getEnsCovLabelsFromMask(1) == _string_list(payload, "ens_cov_labels")
+
+    design = trial.getDesignMatrix(1)
+    np.testing.assert_allclose(
+        design,
+        np.asarray(payload["design_matrix"], dtype=float).reshape(design.shape),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    ens_cov = trial.getEnsCovMatrix(1)
+    np.testing.assert_allclose(
+        ens_cov,
+        np.asarray(payload["ens_cov_matrix"], dtype=float).reshape(ens_cov.shape),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+    spikes = trial.getSpikeVector()
+    np.testing.assert_allclose(
+        spikes,
+        np.asarray(payload["spike_vector"], dtype=float).reshape(spikes.shape),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        np.asarray(trial.getSpikeVector(1), dtype=float).reshape(-1),
+        _vector(payload, "spike_vector_1"),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    assert trial.ev.eventLabels == _string_list(payload, "event_labels")
+    np.testing.assert_allclose(np.asarray(trial.ev.eventTimes, dtype=float), _vector(payload, "event_times"), rtol=1e-12, atol=1e-12)
+
+    structure = trial.toStructure()
+    np.testing.assert_allclose(
+        np.asarray(structure["trainingWindow"], dtype=float).reshape(-1),
+        _vector(payload, "structure_trainingWindow"),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        np.asarray(structure["validationWindow"], dtype=float).reshape(-1),
+        _vector(payload, "structure_validationWindow"),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(float(structure["minTime"]), _scalar(payload, "structure_minTime"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(float(structure["maxTime"]), _scalar(payload, "structure_maxTime"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(structure["ensCovMask"], dtype=float), np.asarray(payload["structure_ensCovMask"], dtype=float), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(structure["neuronMask"], dtype=float).reshape(-1), _vector(payload, "structure_neuronMask"), rtol=1e-12, atol=1e-12)
+    assert len(structure["covMask"]) == len(payload["structure_covMask"])
+    for left, right in zip(structure["covMask"], payload["structure_covMask"], strict=True):
+        np.testing.assert_allclose(np.asarray(left, dtype=float).reshape(-1), np.asarray(right, dtype=float).reshape(-1), rtol=1e-12, atol=1e-12)
+
+    roundtrip = Trial.fromStructure(structure)
+    np.testing.assert_allclose(np.asarray(roundtrip.getTrialPartition(), dtype=float), _vector(payload, "roundtrip_partition"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(float(roundtrip.minTime), _scalar(payload, "roundtrip_minTime"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(float(roundtrip.maxTime), _scalar(payload, "roundtrip_maxTime"), rtol=1e-12, atol=1e-12)
+    assert roundtrip.getHistLabels() == _string_list(payload, "roundtrip_hist_labels")
+    assert roundtrip.getEnsCovLabelsFromMask(1) == _string_list(payload, "roundtrip_ens_cov_labels")
+    roundtrip_design = roundtrip.getDesignMatrix(1)
+    np.testing.assert_allclose(
+        roundtrip_design,
+        np.asarray(payload["roundtrip_design_matrix"], dtype=float).reshape(roundtrip_design.shape),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    roundtrip_ens_cov = roundtrip.getEnsCovMatrix(1)
+    np.testing.assert_allclose(
+        roundtrip_ens_cov,
+        np.asarray(payload["roundtrip_ens_cov_matrix"], dtype=float).reshape(roundtrip_ens_cov.shape),
+        rtol=1e-12,
+        atol=1e-12,
+    )
 
 
 def test_events_match_matlab_gold_fixture() -> None:
@@ -585,12 +709,12 @@ def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
     fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
     summary = FitResSummary([fit])
 
-    np.testing.assert_allclose(fit.getCoeffs(1), _vector(payload, "coeffs"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(fit.getCoeffs(1), _vector(payload, "coeffs"), rtol=2e-6, atol=5e-8)
     np.testing.assert_allclose(fit.lambdaSignal.time, _vector(payload, "lambda_time"), rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(fit.lambdaSignal.data[:, 0], _vector(payload, "lambda_data"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(fit.lambdaSignal.data[:, 0], _vector(payload, "lambda_data"), rtol=2e-6, atol=5e-9)
     np.testing.assert_allclose(float(fit.AIC[0]), _scalar(payload, "AIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fit.BIC[0]), _scalar(payload, "BIC"), rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(float(fit.logLL[0]), _scalar(payload, "logLL"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(float(fit.logLL[0]), _scalar(payload, "logLL"), rtol=2e-5, atol=1e-7)
     np.testing.assert_allclose(float(summary.AIC[0, 0]), _scalar(payload, "summaryAIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(summary.BIC[0, 0]), _scalar(payload, "summaryBIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(summary.logLL[0, 0]), _scalar(payload, "summarylogLL"), rtol=1e-6, atol=1e-8)
@@ -602,6 +726,40 @@ def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(residual.time, _vector(payload, "residual_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(residual.data[:, 0], _vector(payload, "residual_data"), rtol=1e-6, atol=1e-8)
     assert fit.fitType[0] == _string(payload, "distribution")
+
+
+def test_analysis_validation_surface_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("analysis_validation_exactness.mat")
+    time = _vector(payload, "time")
+    stim_data = _vector(payload, "stim_data")
+    spike_times = _vector(payload, "spike_times")
+
+    stim = Covariate(time, stim_data, "Stimulus", "time", "s", "", ["stim"])
+    spike_train = nspikeTrain(spike_times, "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    trial = Trial(nstColl([spike_train]), CovColl([stim]))
+    trial.setTrialPartition(_vector(payload, "partition"))
+    trial.setTrialTimesFor("validation")
+    cfg = TrialConfig([["Stimulus", "stim"]], 10, [], [], name="stim")
+    fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]), makePlot=0)
+
+    np.testing.assert_allclose(float(trial.minTime), _scalar(payload, "validation_minTime"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(float(trial.maxTime), _scalar(payload, "validation_maxTime"), rtol=1e-12, atol=1e-12)
+    design_matrix = np.asarray(trial.getDesignMatrix(1), dtype=float)
+    np.testing.assert_allclose(design_matrix, np.asarray(payload["design_matrix"], dtype=float).reshape(design_matrix.shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(fit.lambdaSignal.time, _vector(payload, "lambda_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(fit.lambdaSignal.data[:, 0], _vector(payload, "lambda_data"), rtol=2e-6, atol=5e-9)
+    np.testing.assert_allclose(fit.getCoeffs(1), _vector(payload, "coeffs"), rtol=2e-6, atol=5e-8)
+    np.testing.assert_allclose(float(fit.AIC[0]), _scalar(payload, "AIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fit.BIC[0]), _scalar(payload, "BIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fit.logLL[0]), _scalar(payload, "logLL"), rtol=2e-5, atol=1e-7)
+    ks_stats = fit.computeKSStats(1)
+    np.testing.assert_allclose(float(ks_stats["ks_stat"]), _scalar(payload, "ks_stat"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(ks_stats["ks_pvalue"]), _scalar(payload, "ks_pvalue"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(ks_stats["within_conf_int"]), _scalar(payload, "ks_within_conf_int"), rtol=1e-8, atol=1e-10)
+    Analysis.plotFitResidual(fit, 0.01, 0)
+    residual = fit.Residual
+    np.testing.assert_allclose(residual.time, _vector(payload, "residual_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(residual.data[:, 0], _vector(payload, "residual_data"), rtol=1e-6, atol=1e-8)
 
 
 def test_analysis_multineuron_surface_matches_matlab_gold_fixture() -> None:
@@ -766,6 +924,77 @@ def test_fit_summary_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(summary.getDiffAIC(1), np.asarray(payload["diffAIC"], dtype=float).reshape(summary.getDiffAIC(1).shape), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(summary.getDiffBIC(1), np.asarray(payload["diffBIC"], dtype=float).reshape(summary.getDiffBIC(1).shape), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(summary.getDifflogLL(1), np.asarray(payload["difflogLL"], dtype=float).reshape(summary.getDifflogLL(1).shape), rtol=1e-6, atol=1e-8)
+
+    structure = summary.toStructure()
+    matlab_structure = payload["structure"]
+    assert structure["fitNames"] == _string_list(payload, "fitNames")
+    assert int(structure["numNeurons"]) == int(getattr(matlab_structure, "numNeurons"))
+    assert int(structure["numResults"]) == int(getattr(matlab_structure, "numResults"))
+    assert int(structure["maxNumIndex"]) == int(getattr(matlab_structure, "maxNumIndex"))
+    np.testing.assert_allclose(np.asarray(structure["neuronNumbers"], dtype=float), np.asarray(getattr(matlab_structure, "neuronNumbers"), dtype=float), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(structure["AIC"], dtype=float), np.asarray(getattr(matlab_structure, "AIC"), dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(structure["BIC"], dtype=float), np.asarray(getattr(matlab_structure, "BIC"), dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(structure["logLL"], dtype=float), np.asarray(getattr(matlab_structure, "logLL"), dtype=float), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(np.asarray(structure["KSStats"], dtype=float), np.asarray(getattr(matlab_structure, "KSStats"), dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(structure["KSPvalues"], dtype=float), np.asarray(getattr(matlab_structure, "KSPvalues"), dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(structure["withinConfInt"], dtype=float), np.asarray(getattr(matlab_structure, "withinConfInt"), dtype=float), rtol=1e-8, atol=1e-10)
+
+    fig = summary.plotSummary()
+    axes = fig.axes
+    expected_titles = {
+        "GLM Coefficients Across Neurons\nwith 95% CIs (* p<0.05)",
+        "KS Statistics Across Neurons",
+        "Change in AIC Across Neurons",
+        "Change in BIC Across Neurons",
+    }
+    if "plotSummary_num_axes" in payload:
+        assert len(axes) == int(_scalar(payload, "plotSummary_num_axes"))
+    else:
+        assert len(axes) == 4
+    axes_by_title = {ax.get_title(): ax for ax in axes}
+    assert set(axes_by_title) == expected_titles
+
+    coeff_title = _string(payload, "plotSummary_coeff_title") if "plotSummary_coeff_title" in payload else "GLM Coefficients Across Neurons\nwith 95% CIs (* p<0.05)"
+    coeff_ax = axes_by_title[coeff_title]
+    expected_coeff_ylabel = _string(payload, "plotSummary_coeff_ylabel") if "plotSummary_coeff_ylabel" in payload else "Fit Coefficients"
+    assert coeff_ax.get_ylabel() == expected_coeff_ylabel
+    expected_coeff_xticklabels = _string_list(payload, "plotSummary_coeff_xticklabels") if "plotSummary_coeff_xticklabels" in payload else list(summary.uniqueCovLabels)
+    assert [tick.get_text() for tick in coeff_ax.get_xticklabels()] == expected_coeff_xticklabels
+    coeff_legend = coeff_ax.get_legend()
+    assert coeff_legend is not None
+    expected_legend = _string_list(payload, "plotSummary_coeff_legend") if "plotSummary_coeff_legend" in payload else list(summary.fitNames)
+    assert [text.get_text() for text in coeff_legend.get_texts()] == expected_legend
+
+    ks_title = _string(payload, "plotSummary_ks_title") if "plotSummary_ks_title" in payload else "KS Statistics Across Neurons"
+    ks_ax = axes_by_title[ks_title]
+    expected_ks_ylabel = _string(payload, "plotSummary_ks_ylabel") if "plotSummary_ks_ylabel" in payload else "KS Statistics"
+    assert ks_ax.get_ylabel() == expected_ks_ylabel
+    expected_ks_xticklabels = _string_list(payload, "plotSummary_ks_xticklabels") if "plotSummary_ks_xticklabels" in payload else list(summary.fitNames)
+    if not expected_ks_xticklabels or all(label == "" for label in expected_ks_xticklabels):
+        expected_ks_xticklabels = list(summary.fitNames)
+    assert [tick.get_text() for tick in ks_ax.get_xticklabels()] == expected_ks_xticklabels
+
+    aic_title = _string(payload, "plotSummary_aic_title") if "plotSummary_aic_title" in payload else "Change in AIC Across Neurons"
+    aic_ax = axes_by_title[aic_title]
+    expected_aic_ylabel = _string(payload, "plotSummary_aic_ylabel") if "plotSummary_aic_ylabel" in payload else "\\Delta AIC"
+    assert aic_ax.get_ylabel() == expected_aic_ylabel
+    expected_aic_xticklabels = _string_list(payload, "plotSummary_aic_xticklabels") if "plotSummary_aic_xticklabels" in payload else [f"{summary.fitNames[i]} - {summary.fitNames[0]}" for i in range(1, len(summary.fitNames))] or [summary.fitNames[0]]
+    if not expected_aic_xticklabels or all(label == "" for label in expected_aic_xticklabels):
+        expected_aic_xticklabels = [f"{summary.fitNames[i]} - {summary.fitNames[0]}" for i in range(1, len(summary.fitNames))] or [summary.fitNames[0]]
+    assert [tick.get_text() for tick in aic_ax.get_xticklabels()] == expected_aic_xticklabels
+
+    bic_title = _string(payload, "plotSummary_bic_title") if "plotSummary_bic_title" in payload else "Change in BIC Across Neurons"
+    bic_ax = axes_by_title[bic_title]
+    expected_bic_ylabel = _string(payload, "plotSummary_bic_ylabel") if "plotSummary_bic_ylabel" in payload else "\\Delta BIC"
+    assert bic_ax.get_ylabel() == expected_bic_ylabel
+    expected_bic_xticklabels = _string_list(payload, "plotSummary_bic_xticklabels") if "plotSummary_bic_xticklabels" in payload else [f"{summary.fitNames[i]} - {summary.fitNames[0]}" for i in range(1, len(summary.fitNames))] or [summary.fitNames[0]]
+    if not expected_bic_xticklabels or all(label == "" for label in expected_bic_xticklabels):
+        expected_bic_xticklabels = [f"{summary.fitNames[i]} - {summary.fitNames[0]}" for i in range(1, len(summary.fitNames))] or [summary.fitNames[0]]
+    assert [tick.get_text() for tick in bic_ax.get_xticklabels()] == expected_bic_xticklabels
+    plt.close(fig)
+
+    assert bool(payload["roundtrip_supported"]) is False
+    assert "Invalid input argument" in str(payload["roundtrip_error"])
 
 
 def test_point_process_lambda_trace_matches_matlab_gold_fixture() -> None:

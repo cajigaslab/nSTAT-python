@@ -58,7 +58,7 @@ def fit_poisson_glm(
     *,
     offset: Sequence[float] | np.ndarray | None = None,
     include_intercept: bool = True,
-    l2: float = 1e-6,
+    l2: float = 0.0,
     max_iter: int = 120,
     tol: float = 1e-8,
 ) -> PoissonGLMResult:
@@ -125,7 +125,7 @@ def fit_binomial_glm(
     y: Sequence[float] | np.ndarray,
     *,
     include_intercept: bool = True,
-    l2: float = 1e-6,
+    l2: float = 0.0,
     max_iter: int = 120,
     tol: float = 1e-8,
 ) -> BinomialGLMResult:

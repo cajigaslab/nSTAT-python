@@ -84,7 +84,7 @@ def test_fitsummary_plotsummary_returns_figure() -> None:
     fit = _build_fit_result()
     summary = FitSummary([fit])
     fig = summary.plotSummary()
-    assert len(fig.axes) == 3
+    assert len(fig.axes) == 4
     plt.close("all")
 
 

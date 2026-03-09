@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import spectrogram
 
-from nstat.compat.matlab import SignalObj
+from nstat.SignalObj import SignalObj
 
 
 def _fallback_multitaper_psd(signal: np.ndarray, fs_hz: float) -> tuple[np.ndarray, np.ndarray]:
@@ -31,7 +31,7 @@ def main() -> None:
     time = np.arange(0.0, duration_s, dt, dtype=float)
 
     signal = np.sin(2.0 * np.pi * f0_hz * time)
-    sig_obj = SignalObj(time=time, data=signal, name="sine_signal", units="a.u.")
+    sig_obj = SignalObj(time=time, data=signal, name="sine_signal", yunits="a.u.")
 
     try:
         freq_hz, psd = sig_obj.MTMspectrum()

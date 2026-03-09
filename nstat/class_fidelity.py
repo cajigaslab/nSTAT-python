@@ -8,6 +8,41 @@ import yaml
 
 
 EXPECTED_RUNTIME_MEMBERS: dict[str, tuple[str, ...]] = {
+    "nstat.SignalObj": (
+        "shift",
+        "shiftMe",
+        "alignTime",
+        "power",
+        "sqrt",
+        "xcov",
+        "periodogram",
+        "MTMspectrum",
+        "spectrogram",
+        "plotVariability",
+        "plotAllVariability",
+        "plotPropsSet",
+        "areDataLabelsEmpty",
+        "isLabelPresent",
+        "convertNamesToIndices",
+        "clearPlotProps",
+    ),
+    "nstat.Trial": (
+        "findMinSampleRate",
+        "getAllLabels",
+        "getDesignMatrix",
+        "getNumHist",
+        "getEnsCovMatrix",
+        "getTrialPartition",
+        "plotCovariates",
+        "plotRaster",
+        "toStructure",
+        "fromStructure",
+    ),
+    "nstat.nstColl": (
+        "psthBars",
+        "estimateVarianceAcrossTrials",
+        "ssglm",
+    ),
     "nstat.Analysis": (
         "GLMFit",
         "RunAnalysisForNeuron",
