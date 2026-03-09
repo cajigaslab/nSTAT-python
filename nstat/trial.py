@@ -265,7 +265,7 @@ class CovariateCollection:
             covIndex = self.getCovIndFromName(covName)
             currCov = self.getCov(covIndex)
             if len(dataSelector) == 1:
-                selectorCell[covIndex - 1] = list(range(1, currCov.dimension + 1))
+                selectorCell[covIndex - 1] = currCov.getIndicesFromLabels([])
             else:
                 selectorCell[covIndex - 1] = currCov.getIndicesFromLabels([str(v) for v in dataSelector[1:]])
             return selectorCell
@@ -280,7 +280,7 @@ class CovariateCollection:
             covIndex = self.getCovIndFromName(covName)
             currCov = self.getCov(covIndex)
             if len(parsed) == 1:
-                selectorCell[covIndex - 1] = list(range(1, currCov.dimension + 1))
+                selectorCell[covIndex - 1] = currCov.getIndicesFromLabels([])
             else:
                 selectorCell[covIndex - 1] = currCov.getIndicesFromLabels([str(v) for v in parsed[1:]])
         return selectorCell
@@ -938,8 +938,9 @@ class ConfigCollection:
         self.numConfigs = 0
         self.configNames: list[str] = []
         self.configArray: list[TrialConfig | str | list[str]] = []
-        if configs is not None:
-            self.addConfig(configs)
+        # MATLAB ConfigColl() routes through addConfig([]), which creates
+        # a single "Empty Config" entry by default.
+        self.addConfig([] if configs is None else configs)
 
     @property
     def configs(self) -> list[TrialConfig]:
@@ -950,6 +951,11 @@ class ConfigCollection:
 
     def addConfig(self, cfg: Sequence[TrialConfig] | TrialConfig | str | None) -> None:
         if isinstance(cfg, Sequence) and not isinstance(cfg, (str, bytes, TrialConfig, np.ndarray)):
+            if len(cfg) == 0:
+                self.numConfigs += 1
+                self.configNames.append("Empty Config")
+                self.configArray.append(["Empty Config"])
+                return
             for item in cfg:
                 self.addConfig(item)
             return
@@ -964,10 +970,8 @@ class ConfigCollection:
             self.setConfigNames(cfg.name, [self.numConfigs])
             return
         if isinstance(cfg, str):
-            self.numConfigs += 1
-            self.configArray.append(cfg)
-            self.setConfigNames(cfg, [self.numConfigs])
-            return
+            # MATLAB's string branch dereferences tcObj.name and errors.
+            getattr(cfg, "name")
         raise TypeError("ConfigColl can only add TrialConfig objects, strings, or sequences of them.")
 
     def get_config(self, idx: int) -> TrialConfig | str | list[str]:
@@ -1007,7 +1011,7 @@ class ConfigCollection:
             target = int(index[0]) - 1
             while len(self.configNames) < self.numConfigs:
                 self.configNames.append("")
-            self.configNames[target] = names if names else f"Fit {target + 1}"
+            self.configNames[target] = names if names else f"Fit {self.numConfigs}"
             return
         if isinstance(names, Sequence) and not isinstance(names, (str, bytes)):
             if len(index) != len(names):

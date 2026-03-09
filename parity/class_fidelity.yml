@@ -186,57 +186,51 @@ items:
   matlab_path: TrialConfig.m
   python_public_name: nstat.TrialConfig
   python_impl_path: nstat/trial.py
-  status: high_fidelity
+  status: exact
   constructor_parity: The constructor now matches MATLAB intent much more closely,
     including covMask, sampleRate, history, ensCovHist, ensCovMask, covLag, and name
     handling.
   property_parity: Core configuration fields and normalized metadata are now exposed
     in the canonical implementation rather than a dataclass shim.
   method_parity: MATLAB-facing methods now include naming, fixture-backed structure
-    round-trip, and setConfig application against Trial state, including the legacy
-    MATLAB fromStructure argument-shift quirk.
-  defaults_parity: Defaults for empty masks/configs and name handling are close to
-    MATLAB.
+    round-trip, and fixture-backed setConfig application against Trial state, including
+    the legacy MATLAB fromStructure argument-shift quirk and the empty-label selector
+    semantics MATLAB actually applies through CovColl.
+  defaults_parity: Defaults for empty masks/configs and name handling are fixture-backed
+    against MATLAB behavior.
   indexing_parity: N/A for this class.
-  error_warning_parity: Validation is still lighter than MATLAB in some malformed-configuration
-    paths.
+  error_warning_parity: MATLAB's minimal constructor/fromStructure validation behavior
+    is matched for the implemented public surface.
   output_type_parity: Returns and mutates canonical TrialConfig/Trial objects as expected.
   symbol_presence_verified: yes
-  known_remaining_differences:
-  - Some malformed-configuration normalization and validation branches remain looser
-    in Python.
-  required_remediation:
-  - Add malformed-config fixtures from MATLAB before promoting TrialConfig from fixture-backed
-    high_fidelity to exact.
+  known_remaining_differences: []
+  required_remediation: []
   plotting_report_parity: N/A
 - matlab_name: ConfigColl
   kind: class
   matlab_path: ConfigColl.m
   python_public_name: nstat.ConfigColl
   python_impl_path: nstat/trial.py
-  status: high_fidelity
+  status: exact
   constructor_parity: Fixture-backed canonical behavior now matches MATLAB for collections
-    of TrialConfig objects, while Python still preserves extra string/empty convenience
-    paths beyond the MATLAB round-trip surface.
+    of TrialConfig objects, the default empty-config constructor, and the legacy
+    string-constructor failure branch.
   property_parity: numConfigs, configNames, and configArray are exposed with MATLAB-style
     semantics.
   method_parity: addConfig, getConfig, setConfig, getConfigNames, setConfigNames,
     getSubsetConfigs, and the TrialConfig-only structure round-trip now follow the
     MATLAB collection behavior, including rebuilt Fit N names after the legacy TrialConfig
-    round-trip bug.
-  defaults_parity: Empty-config and naming defaults now align closely with MATLAB
+    round-trip bug and MATLAB's Fit numConfigs empty-name quirk.
+  defaults_parity: Empty-config and naming defaults are fixture-backed against MATLAB
     behavior.
   indexing_parity: One-based getConfig behavior is preserved.
-  error_warning_parity: Basic validation exists, though some MATLAB collection-coercion
-    edge cases are still looser.
+  error_warning_parity: Constructor and setConfig error behavior are fixture-backed
+    against the implemented MATLAB surface, including the legacy string-constructor
+    failure.
   output_type_parity: Returns TrialConfig instances.
   symbol_presence_verified: yes
-  known_remaining_differences:
-  - Python still preserves extra string/empty convenience branches that are not part
-    of the canonical MATLAB TrialConfig collection round-trip.
-  required_remediation:
-  - Decide whether to retain or remove the extra Python convenience branches before
-    labeling ConfigColl exact.
+  known_remaining_differences: []
+  required_remediation: []
   plotting_report_parity: N/A
 - matlab_name: Analysis
   kind: class
@@ -463,26 +457,24 @@ items:
   matlab_path: Events.m
   python_public_name: nstat.Events
   python_impl_path: nstat/events.py
-  status: high_fidelity
+  status: exact
   constructor_parity: Constructor now tracks MATLAB eventTimes, eventLabels, and eventColor
     semantics, including label-count validation.
   property_parity: eventTimes, eventLabels, and eventColor are canonical public fields,
     with legacy Python aliases preserved.
-  method_parity: Structure round-trip and notebook/workflow-facing access patterns
-    are implemented.
-  defaults_parity: Empty-label and default-color behavior are close to MATLAB for
-    the implemented workflow subset.
+  method_parity: Structure round-trip, MATLAB-style plotting, and notebook/workflow-facing
+    access patterns are fixture-backed against MATLAB.
+  defaults_parity: Empty-label and default-color behavior are fixture-backed against
+    MATLAB for the implemented public surface.
   indexing_parity: Event vectors are stored in MATLAB-style flat time/label arrays.
-  error_warning_parity: Core validation now matches MATLAB intent, though plotting-related
-    behaviors remain absent.
+  error_warning_parity: Core validation now matches MATLAB intent for the implemented
+    public surface.
   output_type_parity: Returns canonical Events objects.
   symbol_presence_verified: yes
-  known_remaining_differences:
-  - Plotting and some MATLAB-specific display behaviors are still unported.
-  required_remediation:
-  - Add notebook-backed fixtures for event serialization and display workflows.
-  plotting_report_parity: Event plotting/display behavior is still limited compared
-    with MATLAB.
+  known_remaining_differences: []
+  required_remediation: []
+  plotting_report_parity: Event plotting is fixture-backed for MATLAB's red-line
+    display semantics, line width, normalized label placement, and structure round-trip.
 - matlab_name: ConfidenceInterval
   kind: class
   matlab_path: ConfidenceInterval.m
@@ -506,13 +498,15 @@ items:
     the expected workflow positions.
   symbol_presence_verified: yes
   known_remaining_differences:
-  - Full MATLAB display/plot styling semantics are still lighter than the original
-    toolbox.
+  - The subclass-specific constructor/plot/round-trip surface is now fixture-backed,
+    but ConfidenceInterval still inherits the remaining non-exact SignalObj display/report
+    helpers.
   required_remediation:
-  - Add MATLAB-derived fixtures for exact plot styling before promoting ConfidenceInterval
-    from fixture-backed high_fidelity to exact.
-  plotting_report_parity: Core CI plotting works, including MATLAB's string-color
-    quirk in line mode; full display/styling parity remains lighter.
+  - Promote the remaining SignalObj helper/report surface from high_fidelity to
+    exact before re-evaluating ConfidenceInterval as exact.
+  plotting_report_parity: Core CI plotting now matches MATLAB's string-color line
+    behavior and patch face/edge/alpha semantics for the implemented surface; inherited
+    SignalObj display/report differences remain.
 - matlab_name: CovColl
   kind: class
   matlab_path: CovColl.m

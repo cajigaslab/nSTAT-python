@@ -43,18 +43,38 @@ class Events:
         return Events(event_times, event_labels, event_color)
 
     def plot(self, *_, handle=None, **__):
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 2.2))[1]
-        ax.clear()
-        if self.eventTimes.size:
-            ax.vlines(self.eventTimes, 0.0, 1.0, color=self.eventColor, linewidth=1.5)
-            for x, label in zip(self.eventTimes, self.eventLabels, strict=False):
-                if label:
-                    ax.text(float(x), 1.02, label, rotation=45, ha="left", va="bottom", fontsize=8)
-        ax.set_ylim(0.0, 1.1)
-        ax.set_xlabel("time [s]")
-        ax.set_yticks([])
-        ax.set_title("Events")
-        return ax
+        if handle is None:
+            handles = [plt.gca()]
+        elif isinstance(handle, Sequence) and not hasattr(handle, "plot"):
+            handles = list(handle)
+        else:
+            handles = [handle]
+
+        last_ax = None
+        for ax in handles:
+            last_ax = ax
+            v = ax.axis()
+            if self.eventTimes.size:
+                times = np.vstack([self.eventTimes, self.eventTimes])
+                y = np.vstack(
+                    [
+                        np.full(self.eventTimes.shape, float(v[2]), dtype=float),
+                        np.full(self.eventTimes.shape, float(v[3]), dtype=float),
+                    ]
+                )
+                ax.plot(times, y, "r", linewidth=4)
+                for event_time, label in zip(self.eventTimes, self.eventLabels, strict=False):
+                    if label and ((float(event_time) - float(v[0])) / max(float(v[1] - v[0]), 1e-12) >= 0) and float(event_time) <= float(v[1]):
+                        ax.text(
+                            (float(event_time) - float(v[0])) / max(float(v[1] - v[0]), 1e-12) - 0.02,
+                            1.03,
+                            label,
+                            rotation=0,
+                            fontsize=10,
+                            color=[0, 0, 0],
+                            transform=ax.transAxes,
+                        )
+        return last_ax
 
 
 __all__ = ["Events"]

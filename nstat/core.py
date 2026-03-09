@@ -738,11 +738,17 @@ class SignalObj:
         newTime = np.arange(self.time[0], self.time[-1] + 0.5 * dt, dt, dtype=float)
         if self.data.shape[0] > 1:
             columns = []
+            if self.time.size >= 4:
+                interp_kind = "cubic"
+            elif self.time.size == 3:
+                interp_kind = "quadratic"
+            else:
+                interp_kind = "linear"
             for index in range(self.dimension):
                 interpolator = interp1d(
                     self.time,
                     self.data[:, index],
-                    kind="cubic",
+                    kind=interp_kind,
                     bounds_error=False,
                     fill_value=0.0,
                 )

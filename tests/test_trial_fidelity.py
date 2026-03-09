@@ -34,9 +34,9 @@ def test_covcoll_masking_selector_and_time_matrix() -> None:
     time, matrix, labels = coll.matrixWithTime()
 
     np.testing.assert_allclose(time, [0.0, 0.5, 1.0])
-    np.testing.assert_allclose(matrix, [[0.0, 5.0], [1.0, 6.0], [2.0, 7.0]])
-    assert labels == ["x", "stim"]
-    assert coll.getCovLabelsFromMask() == ["x", "stim"]
+    np.testing.assert_allclose(matrix, [[0.0], [1.0], [2.0]])
+    assert labels == ["x"]
+    assert coll.getCovLabelsFromMask() == ["x"]
 
     coll.setCovShift(0.5)
     shifted = coll.getCov("Stimulus")
@@ -80,7 +80,7 @@ def test_trialconfig_and_configcoll_apply_and_roundtrip() -> None:
 
     assert round(trial.sampleRate, 3) == 2.0
     assert trial.isHistSet()
-    assert trial.getCovLabelsFromMask() == ["x", "stim"]
+    assert trial.getCovLabelsFromMask() == ["x"]
 
     roundtrip = TrialConfig.fromStructure(cfg.toStructure())
     assert roundtrip.name == ""
