@@ -223,8 +223,10 @@ class History:
             dataLabels.append(f"[{start:.3g},{stop:.3g}]")
         time = np.linspace(float(np.min(tmin)), float(np.max(tmax)), num_samples)
         signal = SignalObj(time, data, "History", "time", "s", "", dataLabels)
+        created_ax = handle is None
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 2.2))[1]
-        return signal.plot(handle=ax)
+        plot_handles = signal.plot(handle=ax)
+        return ax if created_ax else plot_handles
 
 
 HistoryBasis = History
