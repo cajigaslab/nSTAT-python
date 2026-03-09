@@ -22,8 +22,8 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 
 | Status | Count |
 |---|---:|
-| `exact` | 3 |
-| `high_fidelity` | 15 |
+| `exact` | 8 |
+| `high_fidelity` | 10 |
 | `partial` | 0 |
 | `wrapper_only` | 0 |
 | `missing` | 0 |

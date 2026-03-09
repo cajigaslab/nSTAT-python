@@ -327,7 +327,7 @@ class Analysis:
             merged_lambda = merged_lambda.merge(part)
 
         _restore_trial_partition(trial, original_partition)
-        return FitResult(
+        fit_result = FitResult(
             spike_train,
             labels,
             numHist,
@@ -346,6 +346,10 @@ class Analysis:
             distributions,
             fits=fits,
         )
+        # MATLAB returns fits with KS diagnostics already populated, and
+        # downstream summary classes read those cached fields directly.
+        fit_result.computeKSStats()
+        return fit_result
 
     @staticmethod
     def run_analysis_for_all_neurons(

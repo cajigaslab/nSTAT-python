@@ -266,6 +266,9 @@ class SignalObj:
                 self.plotProps = [plotProps for _ in range(self.dimension)]
             else:
                 props = list(plotProps)
+                if len(props) == 0:
+                    self.plotProps = [None for _ in range(self.dimension)]
+                    return
                 if len(props) == 1 and self.dimension > 1:
                     props = props * self.dimension
                 if len(props) != self.dimension:
@@ -945,6 +948,9 @@ class SignalObj:
 
     def dataToStructure(self, selectorArray: Sequence[int] | np.ndarray | None = None) -> dict[str, Any]:
         data = self.dataToMatrix(selectorArray)
+        plot_props = list(self.plotProps)
+        if all(prop is None for prop in plot_props):
+            plot_props = []
         return {
             "time": self.time.tolist(),
             "data": data.tolist(),
@@ -953,7 +959,7 @@ class SignalObj:
             "xunits": self.xunits,
             "yunits": self.yunits,
             "dataLabels": list(self.dataLabels),
-            "plotProps": list(self.plotProps),
+            "plotProps": plot_props,
         }
 
     def toStructure(self) -> dict[str, Any]:
@@ -974,6 +980,7 @@ class SignalObj:
 
     def plot(self, selectorArray=None, plotPropsIn=None, handle=None):
         import matplotlib.pyplot as plt
+        from .confidence_interval import MATLAB_COLOR_ORDER
 
         ax = plt.gca() if handle is None else handle
         signal = self.getSubSignal(selectorArray) if selectorArray is not None else self.getSubSignal(self.findIndFromDataMask() or list(range(1, self.dimension + 1)))
@@ -989,6 +996,8 @@ class SignalObj:
             prop = props[index]
             if isinstance(prop, str) and prop:
                 kwargs["fmt"] = prop
+            elif prop is None:
+                kwargs["color"] = MATLAB_COLOR_ORDER[index % MATLAB_COLOR_ORDER.shape[0]]
             if "fmt" in kwargs:
                 fmt = kwargs.pop("fmt")
                 line = ax.plot(signal.time, signal.data[:, index], fmt, **kwargs)
@@ -1075,6 +1084,7 @@ class Covariate(SignalObj):
         lines = super().plot(selectorArray, plotPropsIn, handle)
         if self.isConfIntervalSet():
             import matplotlib.pyplot as plt
+            import matplotlib.colors as mcolors
 
             ax = plt.gca() if handle is None else handle
             selectors = self.findIndFromDataMask() if selectorArray is None else (
@@ -1086,6 +1096,8 @@ class Covariate(SignalObj):
                 selectors = [item[0] for item in selectors]
             for line_index, selector in enumerate(selectors):
                 color = getattr(lines[line_index], "get_color", lambda: "b")()
+                if isinstance(color, (str, bytes)):
+                    color = mcolors.to_rgb(color)
                 self.ci[selector - 1].plot(color, ax=ax)
         return lines
 
@@ -1176,16 +1188,36 @@ class Covariate(SignalObj):
         if self.isConfIntervalSet():
             ci_payload: list[dict[str, Any]] = []
             for item in self.ci or []:
-                if hasattr(item, "time") and hasattr(item, "bounds"):
-                    ci_payload.append(
-                        {
-                            "time": np.asarray(item.time, dtype=float).tolist(),
-                            "bounds": np.asarray(item.bounds, dtype=float).tolist(),
-                            "color": getattr(item, "color", "b"),
-                        }
-                    )
-            structure["ci"] = ci_payload
+                if hasattr(item, "dataToStructure"):
+                    ci_payload.append(item.dataToStructure())
+            if ci_payload:
+                structure["ci"] = ci_payload[0] if len(ci_payload) == 1 else ci_payload
         return structure
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any]) -> "Covariate":
+        from .confidence_interval import ConfidenceInterval
+
+        cov = Covariate(
+            structure["time"],
+            structure["data"],
+            structure.get("name", ""),
+            structure.get("xlabelval", "time"),
+            structure.get("xunits", "s"),
+            structure.get("yunits", ""),
+            structure.get("dataLabels"),
+            structure.get("plotProps"),
+        )
+        ci_payload = structure.get("ci")
+        if ci_payload is None:
+            return cov
+        if isinstance(ci_payload, list):
+            cov.setConfInterval([ConfidenceInterval.fromStructure(item) for item in ci_payload])
+        elif isinstance(ci_payload, tuple):
+            cov.setConfInterval([ConfidenceInterval.fromStructure(item) for item in ci_payload])
+        else:
+            cov.setConfInterval(ConfidenceInterval.fromStructure(ci_payload))
+        return cov
 
 
 class nspikeTrain:
@@ -1405,11 +1437,15 @@ class nspikeTrain:
         return sig
 
     def setSigRep(self, binwidth: float | None = None, minTime: float | None = None, maxTime: float | None = None) -> SignalObj:
-        self.sigRep = self.getSigRep(binwidth, minTime, maxTime)
-        self.isSigRepBin = self.isSigRepBinary()
-        self.sampleRate = float(self.sigRep.sampleRate)
-        self.minTime = float(self.sigRep.minTime)
-        self.maxTime = float(self.sigRep.maxTime)
+        sig = self.getSigRep(binwidth, minTime, maxTime)
+        self.sigRep = sig.copySignal()
+        self.sampleRate = float(sig.sampleRate)
+        self.isSigRepBin = bool(np.max(np.asarray(sig.data, dtype=float)) <= 1.0)
+        # Keep the freshly-built cached representation alive instead of
+        # clearing it through the public min/max setters.
+        self.minTime = float(sig.minTime)
+        self.maxTime = float(sig.maxTime)
+        self.computeStatistics(-1)
         return self.sigRep
 
     def clearSigRep(self) -> None:
@@ -1420,14 +1456,12 @@ class nspikeTrain:
     def setMinTime(self, minTime: float) -> None:
         self.minTime = float(minTime)
         self.clearSigRep()
-        if self.avgFiringRate is not None:
-            self.computeStatistics(-1)
+        self.computeStatistics(-1)
 
     def setMaxTime(self, maxTime: float) -> None:
         self.maxTime = float(maxTime)
         self.clearSigRep()
-        if self.avgFiringRate is not None:
-            self.computeStatistics(-1)
+        self.computeStatistics(-1)
 
     def resample(self, sampleRate: float) -> "nspikeTrain":
         self.setSigRep(1.0 / float(sampleRate), self.minTime, self.maxTime)
@@ -1476,8 +1510,9 @@ class nspikeTrain:
         return float(np.min(isi))
 
     def isSigRepBinary(self) -> bool:
-        if self.isSigRepBin is None:
-            self.getSigRep()
+        default_key = self._cache_key(1.0 / float(self.sampleRate), float(self.minTime), float(self.maxTime))
+        if self._sigrep_cache_key != default_key or self.isSigRepBin is None:
+            self.getSigRep(1.0 / float(self.sampleRate), float(self.minTime), float(self.maxTime))
         return bool(self.isSigRepBin)
 
     def computeRate(self) -> SignalObj:
@@ -1553,14 +1588,19 @@ class nspikeTrain:
         ax = plt.subplots(1, 1, figsize=(4.5, 4.0))[1]
         isi = self.getISIs()
         if isi.size >= 2:
-            ax.loglog(isi[:-1], isi[1:], ".")
+            xvals = np.asarray(isi[:-1], dtype=float).reshape(-1)
+            yvals = np.asarray(isi[1:], dtype=float).reshape(-1)
+            ax.loglog(xvals, yvals, ".")
             mean_isi = float(np.mean(isi))
             ln = isi[isi < mean_isi]
             ml = float(np.mean(ln)) if ln.size else np.nan
             if np.isfinite(ml) and ml > 0:
-                v = ax.axis()
-                ax.loglog([ml, ml], [v[2], v[3]], "k--")
-                ax.loglog([v[0], v[1]], [ml, ml], "k--")
+                ymin = float(np.min(yvals))
+                ymax = float(np.max(yvals))
+                xmin = float(np.min(xvals))
+                xmax = float(np.max(xvals))
+                ax.loglog([ml, ml], [ymin, ymax], "k--")
+                ax.loglog([xmin, xmax], [ml, ml], "k--")
         ax.set_xlabel("ISI(t) [s]")
         ax.set_ylabel("ISI(t+1) [s]")
         return ax
@@ -1582,14 +1622,21 @@ class nspikeTrain:
             bins = np.arange(0.0, float(np.max(isi)) + bin_width, bin_width, dtype=float)
             if bins.size < 2:
                 bins = np.array([0.0, bin_width], dtype=float)
-            counts, edges = np.histogram(isi, bins=bins)
-            centers = edges[:-1]
+            idx = np.searchsorted(bins, isi, side="right") - 1
+            idx = np.where(
+                np.isclose(isi, bins[-1], rtol=0.0, atol=max(1e-12, bin_width * 1e-9)),
+                bins.size - 1,
+                idx,
+            )
+            idx = np.clip(idx, 0, bins.size - 1)
+            counts = np.bincount(idx, minlength=bins.size).astype(float)
+            centers = bins
             ax.bar(
                 centers,
                 counts,
                 width=bin_width,
                 align="edge",
-                edgecolor=(0.0, 0.0, 0.0),
+                edgecolor="none",
                 linewidth=2.0,
                 color=(0.831372559070587, 0.815686285495758, 0.7843137383461),
             )
@@ -1600,7 +1647,6 @@ class nspikeTrain:
 
     def plotProbPlot(self, minTime: float | None = None, maxTime: float | None = None, handle=None):
         import matplotlib.pyplot as plt
-        from scipy import stats
 
         ax = plt.gca() if handle is None else handle
         if maxTime is None:
@@ -1610,8 +1656,11 @@ class nspikeTrain:
         isi = self.getISIs(minTime, maxTime)
         ax.clear()
         if isi.size:
-            stats.probplot(isi, dist=stats.expon, plot=ax)
-        ax.set_title(ax.get_title() or "Probability Plot")
+            sorted_isi = np.sort(np.asarray(isi, dtype=float).reshape(-1))
+            n = sorted_isi.size
+            p = (np.arange(1, n + 1, dtype=float) - 0.5) / float(n)
+            exp_quantiles = -np.log(1.0 - p)
+            ax.plot(sorted_isi, exp_quantiles, linestyle="none", marker=".")
         return ax
 
     def plotExponentialFit(self, minTime: float | None = None, maxTime: float | None = None, numBins: int | None = None, handle=None):

@@ -24,9 +24,12 @@ export_covariate_fixture(fixtureRoot);
 export_nspiketrain_fixture(fixtureRoot);
 export_nstcoll_fixture(fixtureRoot);
 export_config_fixture(fixtureRoot);
+export_covcoll_fixture(fixtureRoot);
 export_events_fixture(fixtureRoot);
+export_history_fixture(fixtureRoot);
 export_cif_fixture(fixtureRoot);
 export_analysis_fixture(fixtureRoot);
+export_analysis_multineuron_fixture(fixtureRoot);
 export_ksdiscrete_fixture(fixtureRoot);
 export_fit_summary_fixture(fixtureRoot);
 export_point_process_fixture(fixtureRoot);
@@ -36,6 +39,63 @@ export_decoding_smoother_fixture(fixtureRoot);
 export_hybrid_filter_fixture(fixtureRoot);
 export_nonlinear_decode_fixture(fixtureRoot);
 export_simulated_network_fixture(fixtureRoot);
+end
+
+function export_history_fixture(fixtureRoot)
+histObj = History([0 0.5 1.0], 0.0, 1.0);
+n1 = nspikeTrain([0.0 0.5 1.0], 'n1', 2.0, 0.0, 1.0, 'time', 's', 'spikes', 'spk', -1);
+n2 = nspikeTrain([0.25 0.75], 'n2', 2.0, 0.0, 1.0, 'time', 's', 'spikes', 'spk', -1);
+coll = nstColl({n1, n2});
+
+singleCov = histObj.computeHistory(n1, 1);
+collCov = histObj.computeHistory(coll, 2);
+structure = histObj.toStructure;
+roundtrip = History.fromStructure(structure);
+filterMat = histObj.toFilter(0.5);
+
+fig = figure('Visible', 'off');
+histObj.plot();
+ax = gca;
+lineHandles = flipud(findobj(ax, 'Type', 'line'));
+lineLabels = cell(1, numel(lineHandles));
+lineX = cell(1, numel(lineHandles));
+lineY = cell(1, numel(lineHandles));
+for iLine = 1:numel(lineHandles)
+    lineLabels{iLine} = get(lineHandles(iLine), 'DisplayName');
+    lineX{iLine} = get(lineHandles(iLine), 'XData');
+    lineY{iLine} = get(lineHandles(iLine), 'YData');
+end
+close(fig);
+
+payload = struct();
+payload.windowTimes = histObj.windowTimes;
+payload.minTime = histObj.minTime;
+payload.maxTime = histObj.maxTime;
+payload.structure_windowTimes = structure.windowTimes;
+payload.roundtrip_windowTimes = roundtrip.windowTimes;
+payload.roundtrip_minTime = roundtrip.minTime;
+payload.roundtrip_maxTime = roundtrip.maxTime;
+payload.single_history_matrix = singleCov.dataToMatrix();
+payload.single_history_labels = singleCov.getAllCovLabels;
+payload.single_history_name = singleCov.getCov(1).name;
+payload.coll_history_matrix = collCov.dataToMatrix();
+payload.coll_history_labels = collCov.getAllCovLabels;
+payload.coll_cov_names = cell(1, collCov.numCov);
+for iCov = 1:collCov.numCov
+    payload.coll_cov_names{iCov} = collCov.getCov(iCov).name;
+end
+payload.filter_num = cell(size(filterMat));
+payload.filter_den = cell(size(filterMat));
+for idx = 1:numel(filterMat)
+    payload.filter_num{idx} = filterMat(idx).Numerator{1};
+    payload.filter_den{idx} = filterMat(idx).Denominator{1};
+end
+payload.filter_delta = filterMat.Ts;
+payload.plot_labels = lineLabels;
+payload.plot_x = lineX;
+payload.plot_y = lineY;
+
+save(fullfile(fixtureRoot, 'history_exactness.mat'), '-struct', 'payload');
 end
 
 function export_events_fixture(fixtureRoot)
@@ -167,6 +227,50 @@ restoreTrain.restoreToOriginal();
 burstTrain = nspikeTrain([0.0; 0.001; 0.002; 0.007; 0.507; 0.508; 0.509; 0.514], 'bursting', 0.001, 0.0, 0.6, 'time', 's', 'spikes', 'spk', 0);
 
 payload = struct();
+
+fig = figure('Visible','off');
+ax = axes('Parent', fig);
+h = nst.plotISISpectrumFunction();
+payload.isi_spectrum_x = get(h,'XData');
+payload.isi_spectrum_y = get(h,'YData');
+close(fig);
+
+fig = figure('Visible','off');
+ax = axes('Parent', fig);
+nst.plotJointISIHistogram();
+jointLines = flipud(findobj(ax, 'Type', 'line'));
+for iLine = 1:numel(jointLines)
+    payload.joint_isi_x{iLine} = get(jointLines(iLine), 'XData');
+    payload.joint_isi_y{iLine} = get(jointLines(iLine), 'YData');
+    payload.joint_isi_style{iLine} = get(jointLines(iLine), 'LineStyle');
+end
+close(fig);
+
+fig = figure('Visible','off');
+ax = axes('Parent', fig);
+counts = nst.plotISIHistogram();
+histBars = findobj(ax, 'Type', 'patch');
+payload.isi_hist_counts = counts;
+if(~isempty(histBars))
+    payload.isi_hist_face_color = get(histBars(1), 'FaceColor');
+    payload.isi_hist_edge_color = get(histBars(1), 'EdgeColor');
+end
+close(fig);
+
+fig = figure('Visible','off');
+ax = axes('Parent', fig);
+nst.plotProbPlot();
+probLines = flipud(findobj(ax, 'Type', 'line'));
+for iLine = 1:numel(probLines)
+    payload.probplot_x{iLine} = get(probLines(iLine), 'XData');
+    payload.probplot_y{iLine} = get(probLines(iLine), 'YData');
+    payload.probplot_style{iLine} = get(probLines(iLine), 'LineStyle');
+end
+close(fig);
+
+fig = nst.plotExponentialFit();
+payload.expfit_num_axes = numel(findobj(fig, 'Type', 'axes'));
+close(fig);
 payload.spikeTimes = spikeTimes;
 payload.binwidth = binwidth;
 payload.minTime = 0.0;
@@ -200,6 +304,23 @@ meanCov = cov.computeMeanPlusCI(0.05);
 ci = ConfidenceInterval(t, [mean(replicates,2)-0.1, mean(replicates,2)+0.1], 'CI', 'time', 's', 'a.u.');
 covSingle = Covariate(t, mean(replicates,2), 'StimulusSingle', 'time', 's', 'a.u.', {'stim'});
 covSingle.setConfInterval(ci);
+structure = covSingle.toStructure;
+roundtrip = Covariate.fromStructure(structure);
+if(iscell(structure.ci))
+    ciStructure = structure.ci{1};
+else
+    ciStructure = structure.ci;
+end
+
+fig = figure('Visible','off');
+plot(covSingle);
+drawnow;
+lineHandles = findobj(gca,'Type','line');
+plotColors = zeros(length(lineHandles),3);
+for i = 1:length(lineHandles)
+    plotColors(i,:) = get(lineHandles(i),'Color');
+end
+close(fig);
 
 payload = struct();
 payload.time = t;
@@ -207,6 +328,17 @@ payload.replicates = replicates;
 payload.mean_data = meanCov.data;
 payload.mean_ci = meanCov.ci{1}.data;
 payload.explicit_ci = covSingle.ci{1}.data;
+payload.structure_time = structure.time;
+payload.structure_data = structure.data;
+payload.structure_name = structure.name;
+payload.structure_dataLabels = structure.dataLabels;
+payload.structure_plotProps = structure.plotProps;
+payload.structure_ci_values = ciStructure.signals.values;
+payload.structure_ci_name = ciStructure.name;
+payload.roundtrip_data = roundtrip.data;
+payload.roundtrip_ci = roundtrip.ci{1}.data;
+payload.roundtrip_dataLabels = roundtrip.dataLabels;
+payload.plot_line_colors = plotColors;
 
 save(fullfile(fixtureRoot, 'covariate_exactness.mat'), '-struct', 'payload');
 end
@@ -217,6 +349,11 @@ n2 = nspikeTrain([0.2], '2', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1);
 coll = nstColl({n1, n2});
 dataMat = coll.dataToMatrix([1 2], 0.1, 0.0, 0.5);
 collapsed = coll.toSpikeTrain;
+coll.setNeighbors;
+neighbors1 = coll.getNeighbors(1);
+neighbors2 = coll.getNeighbors(2);
+ensembleCov = coll.getEnsembleNeuronCovariates(1, [], [0.0 0.1]);
+psthCov = coll.psth(0.1, [1 2], 0.0, 0.5);
 
 payload = struct();
 payload.numSpikeTrains = coll.numSpikeTrains;
@@ -229,6 +366,20 @@ payload.collapsedName = collapsed.name;
 payload.collapsedMinTime = collapsed.minTime;
 payload.collapsedMaxTime = collapsed.maxTime;
 payload.collapsedSampleRate = collapsed.sampleRate;
+payload.firstSpikeTime = coll.getFirstSpikeTime;
+payload.lastSpikeTime = coll.getLastSpikeTime;
+payload.binarySigRep = coll.isSigRepBinary;
+payload.nstNameFromInd1 = coll.getNSTnameFromInd(1);
+payload.nstFromName1_spikeTimes = coll.getNSTFromName('1').spikeTimes;
+[fieldVal, neuronNumbers] = coll.getFieldVal('avgFiringRate');
+payload.fieldVal_avgFiringRate = fieldVal;
+payload.fieldVal_neuronNumbers = neuronNumbers;
+payload.neighbors1 = neighbors1;
+payload.neighbors2 = neighbors2;
+payload.ensemble_labels = ensembleCov.getAllCovLabels;
+payload.ensemble_matrix = ensembleCov.dataToMatrix();
+payload.psth_time = psthCov.time;
+payload.psth_data = psthCov.data;
 
 save(fullfile(fixtureRoot, 'nstcoll_exactness.mat'), '-struct', 'payload');
 end
@@ -302,6 +453,53 @@ payload.applied_coll_shifted_position_time = trial2.covarColl.getCov(1).time;
 save(fullfile(fixtureRoot, 'config_exactness.mat'), '-struct', 'payload');
 end
 
+function export_covcoll_fixture(fixtureRoot)
+t = (0:0.5:1.0)';
+position = Covariate(t, [0 10; 1 11; 2 12], 'Position', 'time', 's', '', {'x','y'});
+stimulus = Covariate(t, [5; 6; 7], 'Stimulus', 'time', 's', 'a.u.', {'stim'});
+coll = CovColl({position, stimulus});
+coll.setMask({{'Position','x'},{'Stimulus'}});
+maskedLabels = coll.getCovLabelsFromMask;
+maskedMatrix = coll.dataToMatrix();
+maskedTime = coll.getCov(1).time;
+dataStructure = coll.dataToStructure;
+structure = coll.toStructure;
+postMask1 = coll.covMask{1};
+postMask2 = coll.covMask{2};
+roundtrip = CovColl.fromStructure(structure);
+copyColl = coll.copy;
+
+shifted = CovColl({position, stimulus});
+shifted.setCovShift(0.25);
+shifted.restrictToTimeWindow(0.25, 1.25);
+shiftedStim = shifted.getCov(2);
+
+payload = struct();
+payload.masked_labels = maskedLabels;
+payload.masked_matrix = maskedMatrix;
+payload.masked_time = maskedTime;
+payload.data_structure_time = dataStructure.time;
+payload.data_structure_values = dataStructure.signals.values;
+payload.post_structure_mask_1 = postMask1;
+payload.post_structure_mask_2 = postMask2;
+payload.structure_numCov = structure.numCov;
+payload.structure_minTime = structure.minTime;
+payload.structure_maxTime = structure.maxTime;
+payload.roundtrip_minTime = roundtrip.minTime;
+payload.roundtrip_maxTime = roundtrip.maxTime;
+payload.roundtrip_sampleRate = roundtrip.sampleRate;
+payload.roundtrip_labels = roundtrip.getCovLabelsFromMask;
+payload.roundtrip_matrix = roundtrip.dataToMatrix();
+payload.shifted_minTime = shifted.minTime;
+payload.shifted_maxTime = shifted.maxTime;
+payload.shifted_stim_time = shiftedStim.time;
+payload.is_present_position = coll.isCovPresent('Position');
+payload.is_present_last_index = coll.isCovPresent(2);
+payload.copy_numCov = copyColl.numCov;
+
+save(fullfile(fixtureRoot, 'covcoll_exactness.mat'), '-struct', 'payload');
+end
+
 function export_cif_fixture(fixtureRoot)
 cif = CIF([0.1 0.5], {'stim1', 'stim2'}, {'stim1', 'stim2'}, 'binomial');
 stimVal = [0.6; -0.2];
@@ -366,6 +564,42 @@ payload.residual_time = fit.Residual.time;
 payload.residual_data = fit.Residual.data(:,1);
 
 save(fullfile(fixtureRoot, 'analysis_exactness.mat'), '-struct', 'payload');
+end
+
+function export_analysis_multineuron_fixture(fixtureRoot)
+t = (0:0.1:1.0)';
+stimData = sin(2*pi*t);
+stim = Covariate(t, stimData, 'Stimulus', 'time', 's', '', {'stim'});
+spikeTrain1 = nspikeTrain([0.1 0.4 0.7], '1', 0.1, 0.0, 1.0, 'time', 's', '', '', -1);
+spikeTrain2 = nspikeTrain([0.2 0.6 0.9], '2', 0.1, 0.0, 1.0, 'time', 's', '', '', -1);
+trial = Trial(nstColl({spikeTrain1, spikeTrain2}), CovColl({stim}));
+cfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
+cfg.setName('stim');
+fits = Analysis.RunAnalysisForAllNeurons(trial, ConfigColl({cfg}), 0);
+summary = FitResSummary(fits);
+
+payload = struct();
+payload.time = t;
+payload.stim_data = stimData;
+payload.spike_times_1 = spikeTrain1.spikeTimes;
+payload.spike_times_2 = spikeTrain2.spikeTimes;
+payload.num_fits = numel(fits);
+payload.fit1_coeffs = fits{1}.getCoeffs(1);
+payload.fit2_coeffs = fits{2}.getCoeffs(1);
+payload.fit1_AIC = fits{1}.AIC(1);
+payload.fit2_AIC = fits{2}.AIC(1);
+payload.fit1_BIC = fits{1}.BIC(1);
+payload.fit2_BIC = fits{2}.BIC(1);
+payload.fit1_logLL = fits{1}.logLL(1);
+payload.fit2_logLL = fits{2}.logLL(1);
+payload.summary_AIC = summary.AIC;
+payload.summary_BIC = summary.BIC;
+payload.summary_logLL = summary.logLL;
+payload.summary_KSStats = summary.KSStats;
+payload.summary_KSPvalues = summary.KSPvalues;
+payload.summary_withinConfInt = summary.withinConfInt;
+
+save(fullfile(fixtureRoot, 'analysis_multineuron_exactness.mat'), '-struct', 'payload');
 end
 
 function export_ksdiscrete_fixture(fixtureRoot)
