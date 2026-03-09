@@ -16,7 +16,7 @@ items:
   matlab_path: SignalObj.m
   python_public_name: nstat.SignalObj
   python_impl_path: nstat/core.py
-  status: high_fidelity
+  status: exact
   constructor_parity: Constructor defaults, orientation handling, labels, masks, sample-rate
     inference, and time-window APIs now mirror MATLAB closely.
   property_parity: Core observable fields exist, including time, data, name, xlabelval,
@@ -56,7 +56,7 @@ items:
   matlab_path: Covariate.m
   python_public_name: nstat.Covariate
   python_impl_path: nstat/core.py
-  status: high_fidelity
+  status: exact
   constructor_parity: Uses the MATLAB-aligned SignalObj constructor shape and supports
     the Python compatibility aliases for values and units.
   property_parity: mu and sigma views exist and confidence-interval storage matches
@@ -71,22 +71,16 @@ items:
   output_type_parity: Covariate methods return Covariate or SignalObj as MATLAB expects
     for the implemented subset.
   symbol_presence_verified: yes
-  known_remaining_differences:
-  - Some CI plotting options and full structure round-tripping remain lighter than
-    MATLAB.
-  - More specialized arithmetic/reporting behaviors still need MATLAB-derived fixtures.
-  required_remediation:
-  - Extend the committed MATLAB-derived fixtures beyond `computeMeanPlusCI` and
-    explicit confidence-interval payloads to cover CI plotting and serialized
-    round-trips.
-  plotting_report_parity: Core signal and confidence-interval plotting works; some
-    MATLAB CI styling/report variations remain lighter.
+  known_remaining_differences: []
+  required_remediation: []
+  plotting_report_parity: CI-aware plotting and serialized round-tripping are
+    fixture-backed against MATLAB for the exported Covariate surface.
 - matlab_name: nspikeTrain
   kind: class
   matlab_path: nspikeTrain.m
   python_public_name: nstat.nspikeTrain
   python_impl_path: nstat/core.py
-  status: high_fidelity
+  status: exact
   constructor_parity: Constructor argument order, defaults, and cached signal-representation
     setup follow MATLAB closely, including min/max/sample-rate initialization and
     the makePlots behavior split.
@@ -107,15 +101,10 @@ items:
   output_type_parity: Signal representation returns SignalObj and rate conversion
     returns SignalObj as expected.
   symbol_presence_verified: yes
-  known_remaining_differences:
-  - Some MATLAB visual styling and distribution-fit detail in the ISI plotting helpers
-    remains lighter than MATLAB.
-  required_remediation:
-  - Extend the committed MATLAB-derived fixtures beyond getSigRep, partitionNST, restore-bound
-    semantics, and burst-stat summaries to cover ISI plotting traces and the remaining
-    visualization details.
-  plotting_report_parity: Raster, ISI, and burst-oriented plotting helpers now execute
-    on the canonical class, though visual detail remains lighter than MATLAB.
+  known_remaining_differences: []
+  required_remediation: []
+  plotting_report_parity: ISI spectrum, joint-ISI, histogram, probability-plot,
+    and exponential-fit surfaces are fixture-backed against MATLAB.
 - matlab_name: nstColl
   kind: class
   matlab_path: nstColl.m
@@ -128,8 +117,10 @@ items:
     minTime, maxTime, sampleRate, neuronMask, and neighbors.
   method_parity: MATLAB-facing collection methods are now first-class, including addToColl,
     addSingleSpikeToColl, merge, getNST, name/index lookup, masking, neighborhood
-    management, dataToMatrix, fixture-backed toSpikeTrain collapsing, ensemble-covariate
-    helpers, restoreToOriginal, psth, and psthGLM.
+    management, getFieldVal, getSpikeTimes/getISIs wrappers, BinarySigRep/isSigRepBinary,
+    fixture-backed dataToMatrix, fixture-backed toSpikeTrain collapsing, fixture-backed
+    ensemble-covariate helpers, restoreToOriginal, fixture-backed psth, psthGLM,
+    deterministic-fallback psthBars, and Python-side estimateVarianceAcrossTrials.
   defaults_parity: Defaults for masks, sample rate, and min/max time now track MATLAB
     collection semantics closely.
   indexing_parity: MATLAB-facing one-based getNST is preserved.
@@ -138,13 +129,22 @@ items:
   output_type_parity: PSTH returns Covariate.
   symbol_presence_verified: yes
   known_remaining_differences:
-  - Some plotting/statistics helpers and lower-level utility methods from MATLAB are
-    still absent.
+  - psthBars now exists, but MATLAB delegates to an external BARS fitter that is
+    not bundled with the source tree; the Python port currently uses a deterministic
+    smoothed PSTH fallback instead of exact BARS output.
+  - MATLAB-only public branch `ssglm` remains unported.
+  - "estimateVarianceAcrossTrials now exists in Python, but the nontrivial MATLAB
+    reference path is internally inconsistent through psthGLM / RunAnalysisForAllNeurons,
+    so the method is not yet fixture-backed strongly enough to promote nstColl to exact."
+  - Collection-level plotting/report layout still differs from MATLAB in subplot composition
+    and presentation details.
   required_remediation:
-  - Extend the committed MATLAB-derived fixtures beyond collection naming,
-    `dataToMatrix`, and `toSpikeTrain` outputs to cover neighbor masks, ensemble
-    covariates, and PSTH outputs.
-  - Port any remaining collection utilities that surface in MATLAB helpfiles.
+  - Port `ssglm`.
+  - Add or vendor a stable BARS-equivalent reference path before promoting psthBars behavior to exact.
+  - "Add a stable MATLAB-side reference/export path for estimateVarianceAcrossTrials,
+    then back the Python method with fixtures before promoting nstColl to exact."
+  - Add fixture-backed checks for the remaining collection plotting/report helpers before
+    promoting `nstColl` to exact.
   plotting_report_parity: Raster and PSTH plotting works for core workflows; some
     collection summary visuals remain unported.
 - matlab_name: Trial
@@ -430,28 +430,23 @@ items:
   matlab_path: History.m
   python_public_name: nstat.History
   python_impl_path: nstat/history.py
-  status: high_fidelity
-  constructor_parity: History now uses MATLAB-style windowTimes construction with
+  status: exact
+  constructor_parity: History uses MATLAB-style windowTimes construction with
     optional min/max metadata.
   property_parity: windowTimes, minTime, maxTime, and lags-compatible access are exposed.
-  method_parity: setWindow, computeHistory/compute_history, structure round-trip,
-    and CovColl-producing history workflows are now implemented for single trains,
-    train collections, and trial history use.
-  defaults_parity: Window-boundary defaults are close to MATLAB for the implemented
-    history workflows.
+  method_parity: setWindow, computeHistory/compute_history, toFilter, plot, and
+    structure round-trip now match the MATLAB public surface.
+  defaults_parity: Window-boundary defaults and CovColl return semantics are fixture-backed
+    against MATLAB.
   indexing_parity: WindowTimes are interpreted as MATLAB-style consecutive lag boundaries.
-  error_warning_parity: Core validation is present, though MATLAB warning text and
-    some malformed-input branches remain thinner.
+  error_warning_parity: Constructor validation and runtime error branches match the
+    implemented MATLAB public surface.
   output_type_parity: Returns CovariateCollection outputs in the MATLAB-facing workflows
-    that consume History objects.
+    that consume History objects, including the MATLAB one-sample internal covariate quirk.
   symbol_presence_verified: yes
-  known_remaining_differences:
-  - Plotting and some specialized history-basis utilities remain unported.
-  required_remediation:
-  - Add MATLAB-derived fixtures for history-window outputs and multi-neuron history
-    collections.
-  plotting_report_parity: No dedicated history plotting parity beyond workflow-generated
-    covariates and notebook figures.
+  known_remaining_differences: []
+  required_remediation: []
+  plotting_report_parity: MATLAB-style history-window plotting is fixture-backed.
 - matlab_name: Events
   kind: class
   matlab_path: Events.m
@@ -512,29 +507,29 @@ items:
   matlab_path: CovColl.m
   python_public_name: nstat.CovColl
   python_impl_path: nstat/trial.py
-  status: high_fidelity
-  constructor_parity: CovColl now supports MATLAB-style direct construction, empty
-    initialization, and nested collection ingestion.
-  property_parity: Core collection state exists, including covArray, covDimensions,
-    numCov, minTime, maxTime, covMask, covShift, sampleRate, and original timing metadata.
-  method_parity: MATLAB-facing collection methods are now first-class, covering add/remove,
-    name/index lookup, mask selectors, time-window restriction, resampling, matrixWithTime,
-    dataToMatrix, shift/reset, label extraction, and restoreToOriginal.
-  defaults_parity: Default mask, shift, sample-rate, and timing behavior now track
-    MATLAB collection semantics closely.
-  indexing_parity: Shared-time enforcement is implemented.
-  error_warning_parity: Core validation is present, though some MATLAB warning text
-    and malformed-selector branches are still thinner.
-  output_type_parity: Returns Covariate and CovariateCollection-compatible outputs
-    across MATLAB-facing workflows.
+  status: exact
+  constructor_parity: Direct construction, empty construction, and nested collection
+    ingestion are now fixture-backed against MATLAB behavior.
+  property_parity: covArray, covDimensions, numCov, minTime, maxTime, covMask,
+    covShift, sampleRate, and the original timing/sample-rate metadata are now
+    fixture-backed on the canonical implementation.
+  method_parity: MATLAB-facing collection methods now include add/remove, copy,
+    isCovPresent, name/index lookup, mask selectors, time-window restriction, resampling,
+    matrix/data export, shift/reset, label extraction, dataToStructure, and structure
+    round-trip with MATLAB-compatible mask-reset behavior.
+  defaults_parity: Default mask, shift, and timing behavior are fixture-backed
+    against MATLAB.
+  indexing_parity: Shared-time enforcement and one-based selector semantics are
+    fixture-backed against MATLAB.
+  error_warning_parity: The implemented constructor/selector/state branches now
+    match MATLAB behavior for the fixture-backed public surface.
+  output_type_parity: Returns Covariate and CovColl-compatible outputs across the
+    MATLAB-facing workflow surface.
   symbol_presence_verified: yes
-  known_remaining_differences:
-  - Some structure serialization and rarely used helper methods remain unported.
-  required_remediation:
-  - Add MATLAB-derived fixtures for selector masks, time-window coercion, and serialized
-    collection state.
-  plotting_report_parity: Collection plotting is available for core workflows; some
-    MATLAB summary visuals remain absent.
+  known_remaining_differences: []
+  required_remediation: []
+  plotting_report_parity: Core MATLAB-facing collection plotting and exported structure
+    views are fixture-backed on the canonical surface.
 - matlab_name: getPaperDataDirs
   kind: function
   matlab_path: getPaperDataDirs.m

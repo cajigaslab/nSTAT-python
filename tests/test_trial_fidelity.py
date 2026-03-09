@@ -7,6 +7,7 @@ from nstat import Covariate, Events, History, Trial, TrialConfig, nspikeTrain
 from nstat.ConfigColl import ConfigColl
 from nstat.CovColl import CovColl
 from nstat.nstColl import nstColl
+from nstat.SignalObj import SignalObj
 
 
 def _make_covariates() -> tuple[Covariate, Covariate]:
@@ -62,6 +63,22 @@ def test_nstcoll_neighbors_mask_and_data_matrix() -> None:
 
     matrix = coll.dataToMatrix([1, 2], 0.5, 0.0, 1.0)
     np.testing.assert_allclose(matrix, [[1.0, 0.0], [1.0, 1.0], [1.0, 1.0]])
+
+
+def test_nstcoll_psthbars_public_contract() -> None:
+    train1, train2 = _make_spikes()
+    coll = nstColl([train1, train2])
+
+    bars = coll.psthBars(0.5, [1, 2], 0.0, 1.0)
+
+    assert isinstance(bars, SignalObj)
+    assert bars.name == "PSTH_{bars}"
+    assert bars.dataLabels == ["mode", "mean", "ciLower", "ciUpper"]
+    np.testing.assert_allclose(bars.time, [0.0, 0.5, 1.0])
+    assert bars.data.shape == (3, 4)
+    np.testing.assert_allclose(bars.data[:, 0], bars.data[:, 1])
+    assert np.all(bars.data[:, 2] <= bars.data[:, 1])
+    assert np.all(bars.data[:, 1] <= bars.data[:, 3])
 
 
 def test_trialconfig_and_configcoll_apply_and_roundtrip() -> None:

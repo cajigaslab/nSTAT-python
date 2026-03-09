@@ -8,8 +8,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.signal import filtfilt
 
-from .core import Covariate, nspikeTrain
+from .core import Covariate, SignalObj, nspikeTrain
 from .events import Events
 
 
@@ -45,6 +46,36 @@ def _copy_covariate(cov: Covariate) -> Covariate:
             copied.yunits,
             copied.dataLabels,
             copied.plotProps,
+        )
+    return copied
+
+
+def _copy_covariate_for_collection_view(cov: Covariate) -> Covariate:
+    """Mirror MATLAB CovColl.getCov copy semantics.
+
+    MATLAB reconstructs a fresh Covariate from the visible time/data payload
+    rather than preserving internal sample-rate/original-data bookkeeping.
+    That matters for degenerate one-sample covariates, where the constructor
+    falls back to the 1 kHz default used throughout the toolbox.
+    """
+
+    copied = Covariate(
+        np.asarray(cov.time, dtype=float).copy(),
+        np.asarray(cov.data, dtype=float).copy(),
+        cov.name,
+        cov.xlabelval,
+        cov.xunits,
+        cov.yunits,
+        list(cov.dataLabels),
+        list(cov.plotProps),
+    )
+    copied.dataMask = np.asarray(cov.dataMask, dtype=int).copy()
+    if cov.ci:
+        copied.ci = list(cov.ci)
+    if cov.conf_interval is not None:
+        copied.conf_interval = (
+            np.asarray(cov.conf_interval[0], dtype=float).copy(),
+            np.asarray(cov.conf_interval[1], dtype=float).copy(),
         )
     return copied
 
@@ -123,12 +154,12 @@ class CovariateCollection:
         return index
 
     def _apply_collection_state(self, cov: Covariate, index: int) -> Covariate:
-        out = _copy_covariate(cov)
+        out = _copy_covariate_for_collection_view(cov)
         if self.covShift != 0:
             out.time = out.time + float(self.covShift)
             out.minTime = float(np.min(out.time))
             out.maxTime = float(np.max(out.time))
-        if np.isfinite(self.sampleRate) and self.sampleRate > 0 and round(out.sampleRate, 3) != round(self.sampleRate, 3):
+        if out.time.size > 1 and np.isfinite(self.sampleRate) and self.sampleRate > 0 and round(out.sampleRate, 3) != round(self.sampleRate, 3):
             out = out.resample(self.sampleRate)
         if np.isfinite(self.minTime) and np.isfinite(self.maxTime) and out.time.size > 0:
             out = out.getSigInTimeWindow(self.minTime, self.maxTime, holdVals=1)
@@ -140,6 +171,9 @@ class CovariateCollection:
 
     def addCovariate(self, covariate: Covariate) -> None:
         self.addToColl(covariate)
+
+    def addCovCollection(self, covariates: "CovariateCollection") -> None:
+        self.addToColl(covariates)
 
     def addToColl(self, covariates: Sequence[Covariate] | Covariate | "CovariateCollection" | None) -> None:
         if covariates is None:
@@ -164,6 +198,10 @@ class CovariateCollection:
         del self.covArray[index - 1]
         del self.covMask[index - 1]
         self._refresh_summary()
+
+    def copy(self) -> "CovariateCollection":
+        cov = [self.getCov(i).copySignal() for i in range(1, self.numCov + 1)]
+        return CovariateCollection(cov)
 
     def get(self, name: str) -> Covariate:
         return self.getCov(name)
@@ -190,6 +228,26 @@ class CovariateCollection:
         if isinstance(name, str):
             return self.getCovIndFromName(name)
         return [self.getCovIndFromName(item) for item in name]
+
+    def isCovPresent(self, cov) -> int:
+        if isinstance(cov, Covariate):
+            if not cov.name:
+                return 0
+            try:
+                self.getCovIndFromName(cov.name)
+            except KeyError:
+                return 0
+            return 1
+        if isinstance(cov, str):
+            try:
+                self.getCovIndFromName(cov)
+            except KeyError:
+                return 0
+            return 1
+        if isinstance(cov, (int, np.integer, float, np.floating)):
+            index = int(cov)
+            return int(index > 0 and index < self.numCov)
+        raise TypeError("Need either covariate class or name of covariate or index of covariate")
 
     def findMinTime(self) -> float:
         if self.numCov == 0:
@@ -457,6 +515,68 @@ class CovariateCollection:
         _, matrix, _ = self.matrixWithTime(str(repType), dataSelector)
         return matrix
 
+    def dataToStructure(
+        self,
+        selectorCell=None,
+        binwidth: float | None = None,
+        minTime: float | None = None,
+        maxTime: float | None = None,
+    ) -> dict[str, Any]:
+        del binwidth, minTime, maxTime
+        if selectorCell is None:
+            if self.isCovMaskSet():
+                selectorCell = self.getSelectorFromMasks()
+            else:
+                selectorCell = [list(range(1, self.getCov(i).dimension + 1)) for i in range(1, self.numCov + 1)]
+        dataMatrix = self.dataToMatrix("standard", selectorCell)
+        return {
+            "time": self.getCov(1).time.copy() if self.numCov else np.array([], dtype=float),
+            "signals": {"values": dataMatrix},
+        }
+
+    def toStructure(self) -> dict[str, Any]:
+        self.resetMask()
+        structure: dict[str, Any] = {
+            "numCov": int(self.numCov),
+            "minTime": float(self.minTime),
+            "maxTime": float(self.maxTime),
+            "covDimensions": [int(value) for value in self.covDimensions],
+            "covMask": [np.asarray(mask, dtype=int).reshape(-1).tolist() for mask in self.covMask],
+            "covShift": float(self.covShift),
+            "sampleRate": float(self.sampleRate) if np.isfinite(self.sampleRate) else self.sampleRate,
+            "originalSampleRate": self.originalSampleRate,
+            "originalMinTime": self.originalMinTime,
+            "originalMaxTime": self.originalMaxTime,
+            "covArray": [cov.toStructure() for cov in self.covArray],
+        }
+        return structure
+
+    @staticmethod
+    def fromStructure(structure) -> "CovariateCollection" | list["CovariateCollection"]:
+        if isinstance(structure, list):
+            return [CovariateCollection.fromStructure(item) for item in structure]
+        if not isinstance(structure, dict):
+            raise TypeError("CovColl.fromStructure expects a dictionary or list of dictionaries.")
+        cov = [
+            Covariate(
+                row["time"],
+                row["data"],
+                row.get("name", ""),
+                row.get("xlabelval", "time"),
+                row.get("xunits", "s"),
+                row.get("yunits", ""),
+                row.get("dataLabels"),
+                row.get("plotProps"),
+            )
+            for row in structure.get("covArray", [])
+        ]
+        ccObj = CovariateCollection(cov)
+        if "minTime" in structure:
+            ccObj.setMinTime(float(structure["minTime"]))
+        if "maxTime" in structure:
+            ccObj.setMaxTime(float(structure["maxTime"]))
+        return ccObj
+
 
 class SpikeTrainCollection:
     """MATLAB-style nstColl implementation."""
@@ -484,6 +604,9 @@ class SpikeTrainCollection:
         for tr in self.nstrain:
             yield tr
 
+    def __len__(self) -> int:
+        return int(self.numSpikeTrains)
+
     def _refresh_summary(self) -> None:
         self.numSpikeTrains = len(self.nstrain)
         if self.numSpikeTrains == 0:
@@ -500,8 +623,22 @@ class SpikeTrainCollection:
             self.neuronMask = np.ones(self.numSpikeTrains, dtype=int)
 
     def addSingleSpikeToColl(self, nst: nspikeTrain) -> None:
-        self.nstrain.append(nst.nstCopy())
-        self._refresh_summary()
+        train = nst.nstCopy()
+        if not getattr(train, "name", ""):
+            train.setName(str(self.numSpikeTrains + 1))
+        if self.numSpikeTrains == 0:
+            self.minTime = float(train.minTime)
+            self.maxTime = float(train.maxTime)
+            self.sampleRate = float(train.sampleRate)
+        else:
+            self.updateTimes(train)
+            self.sampleRate = float(max(float(self.sampleRate), float(train.sampleRate)))
+            self.enforceSampleRate()
+        self.nstrain.append(train)
+        self.numSpikeTrains = len(self.nstrain)
+        self.neuronMask = np.append(self.neuronMask, 1).astype(int)
+        if self.numSpikeTrains == 1:
+            self.neighbors = []
 
     def addToColl(self, nst: Sequence[nspikeTrain] | nspikeTrain | "SpikeTrainCollection") -> None:
         if isinstance(nst, SpikeTrainCollection):
@@ -522,6 +659,15 @@ class SpikeTrainCollection:
     def merge(self, nstColl2: "SpikeTrainCollection") -> "SpikeTrainCollection":
         self.addToColl(nstColl2)
         return self
+
+    def length(self) -> int:
+        return int(self.numSpikeTrains)
+
+    def getFirstSpikeTime(self) -> float:
+        return float(self.minTime)
+
+    def getLastSpikeTime(self) -> float:
+        return float(self.maxTime)
 
     def get_nst(self, idx: int) -> nspikeTrain:
         if idx < 0 or idx >= self.numSpikeTrains:
@@ -550,6 +696,43 @@ class SpikeTrainCollection:
                 raise KeyError(f"Neuron '{name}' not found")
             return matches if len(matches) > 1 else matches[0]
         return [self.getNSTIndicesFromName(item) for item in name]
+
+    def getNSTnameFromInd(self, ind: int) -> str:
+        index = int(ind)
+        if index < 1 or index > self.numSpikeTrains:
+            raise IndexError("Index is out of bounds!")
+        return str(self.nstrain[index - 1].name)
+
+    def getNSTFromName(self, neuronName=None):
+        if neuronName is None:
+            neuronName = self.getUniqueNSTnames()
+        indices = self.getNSTIndicesFromName(neuronName)
+        return self.getNST(indices)
+
+    def getFieldVal(self, fieldName: str):
+        fieldVal: list[float] = []
+        neuronNumbers: list[int] = []
+        cnt = 1
+        for index in range(1, self.numSpikeTrains + 1):
+            currVal = self.getNST(index).getFieldVal(fieldName)
+            if currVal is None:
+                continue
+            if isinstance(currVal, np.ndarray) and currVal.size == 0:
+                continue
+            if len(fieldVal) < cnt:
+                fieldVal.extend([0.0] * (cnt - len(fieldVal)))
+            fieldVal[cnt - 1] = float(currVal)
+            cnt += 1
+            if len(neuronNumbers) < cnt:
+                neuronNumbers.extend([0] * (cnt - len(neuronNumbers)))
+            neuronNumbers[cnt - 1] = index
+        return np.asarray(fieldVal, dtype=float), np.asarray(neuronNumbers, dtype=int)
+
+    def shiftTime(self, timeShift: float | None = None) -> "SpikeTrainCollection":
+        if timeShift is None:
+            timeShift = -float(self.minTime)
+        shifted = [nspikeTrain(np.asarray(train.spikeTimes, dtype=float) + float(timeShift)) for train in self.nstrain]
+        return SpikeTrainCollection(shifted)
 
     def toSpikeTrain(
         self,
@@ -630,6 +813,12 @@ class SpikeTrainCollection:
         self.sampleRate = float(sampleRate)
         for train in self.nstrain:
             train.resample(sampleRate)
+
+    def enforceSampleRate(self) -> None:
+        for index in range(1, self.numSpikeTrains + 1):
+            currSpike = self.getNST(index)
+            if round(float(currSpike.sampleRate), 9) != round(float(self.sampleRate), 9):
+                currSpike.resample(float(self.sampleRate))
 
     def findMaxSampleRate(self) -> float:
         if self.numSpikeTrains == 0:
@@ -713,6 +902,12 @@ class SpikeTrainCollection:
         values = [self.getNST(index).getMaxBinSizeBinary() for index in selectorArray]
         return float(np.min(values))
 
+    def BinarySigRep(self) -> bool:
+        return bool(all(self.getNST(index).isSigRepBinary() for index in range(1, self.numSpikeTrains + 1)))
+
+    def isSigRepBinary(self) -> bool:
+        return self.BinarySigRep()
+
     def dataToMatrix(
         self,
         selectorArray: Sequence[int] | Sequence[str] | str | None = None,
@@ -749,7 +944,9 @@ class SpikeTrainCollection:
         return dataMat
 
     def getEnsembleNeuronCovariates(self, neuronNum: int = 1, neighborIndex=None, windowTimes=None):
-        if neighborIndex is None:
+        if neighborIndex is None or (
+            isinstance(neighborIndex, (list, tuple, np.ndarray)) and np.asarray(neighborIndex).size == 0
+        ):
             allNeighbors = self.getNeighbors(neuronNum)
         else:
             allNeighbors = [int(item) for item in np.asarray(neighborIndex, dtype=int).reshape(-1)]
@@ -781,6 +978,21 @@ class SpikeTrainCollection:
         if rMask == 1:
             self.resetMask()
 
+    def ensureConsistancy(self) -> None:
+        self.enforceSampleRate()
+        self.setMinTime()
+        self.setMaxTime()
+
+    def updateTimes(self, nst: nspikeTrain) -> None:
+        if float(nst.minTime) <= float(self.minTime):
+            self.setMinTime(float(nst.minTime))
+        else:
+            nst.setMinTime(float(self.minTime))
+        if float(nst.maxTime) >= float(self.maxTime):
+            self.setMaxTime(float(nst.maxTime))
+        else:
+            nst.setMaxTime(float(self.maxTime))
+
     def plot(self, *_, handle=None, **__):
         selected = self.getIndFromMask()
         if not selected:
@@ -794,6 +1006,65 @@ class SpikeTrainCollection:
         ax.set_yticks(range(1, len(selected) + 1), [str(item) for item in selected])
         ax.set_title("Spike Train Raster")
         return ax
+
+    def getMinISIs(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
+        isis = self.getISIs(selectorArray, minTime, maxTime)
+        return np.asarray([float(np.min(values)) if values.size else 0.0 for values in isis], dtype=float)
+
+    def getISIs(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None) -> list[np.ndarray]:
+        if maxTime is None:
+            maxTime = self.maxTime
+        if minTime is None:
+            minTime = self.minTime
+        if selectorArray is None or len(selectorArray) == 0:
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+        return [self.getNST(int(neuron)).getISIs(minTime, maxTime) for neuron in selectorArray]
+
+    def plotISIHistogram(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None, handle=None):
+        if maxTime is None:
+            maxTime = self.maxTime
+        if minTime is None:
+            minTime = self.minTime
+        if selectorArray is None or len(selectorArray) == 0:
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+        fig = handle if handle is not None else plt.figure(figsize=(7.0, max(2.5, 2.2 * len(selectorArray))))
+        fig.clear()
+        axes = fig.subplots(len(selectorArray), 1)
+        if not isinstance(axes, np.ndarray):
+            axes = np.asarray([axes], dtype=object)
+        for ax, neuron in zip(axes.reshape(-1), selectorArray, strict=False):
+            self.getNST(int(neuron)).plotISIHistogram(minTime, maxTime, handle=ax)
+        fig.tight_layout()
+        return fig
+
+    def plotExponentialFit(
+        self,
+        selectorArray: Sequence[int] | None = None,
+        minTime: float | None = None,
+        maxTime: float | None = None,
+        numBins: int | None = None,
+        handle=None,
+    ):
+        if maxTime is None:
+            maxTime = self.maxTime
+        if minTime is None:
+            minTime = self.minTime
+        if selectorArray is None or len(selectorArray) == 0:
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+        fig = handle if handle is not None else plt.figure(figsize=(7.0, max(2.5, 2.2 * len(selectorArray))))
+        fig.clear()
+        axes = fig.subplots(len(selectorArray), 1)
+        if not isinstance(axes, np.ndarray):
+            axes = np.asarray([axes], dtype=object)
+        for ax, neuron in zip(axes.reshape(-1), selectorArray, strict=False):
+            self.getNST(int(neuron)).plotExponentialFit(minTime, maxTime, numBins, handle=ax)
+        fig.tight_layout()
+        return fig
+
+    def getSpikeTimes(self, minTime: float | None = None, maxTime: float | None = None) -> list[np.ndarray]:
+        del minTime, maxTime
+        selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+        return [self.getNST(int(index)).getSpikeTimes() for index in selector]
 
     def psth(
         self,
@@ -831,7 +1102,21 @@ class SpikeTrainCollection:
             valid = np.isfinite(spikes) & (spikes >= window_times[0]) & (spikes <= window_times[-1])
             if not np.any(valid):
                 continue
-            idx = np.searchsorted(window_times, spikes[valid], side="right") - 1
+            spike_times = spikes[valid]
+            # Mirror MATLAB histc edge semantics on a numerically noisy uniform grid:
+            # interior samples land in [edge_k, edge_{k+1}), but samples that match
+            # an edge belong to that edge's bin, with the final edge kept in the
+            # extra histc bin that is discarded below.
+            left = np.searchsorted(window_times, spike_times, side="left")
+            right = np.searchsorted(window_times, spike_times, side="right") - 1
+            edge_tol = max(1e-12, abs(float(binwidth)) * 1e-9)
+            exact_edge = (left < window_times.size) & np.isclose(
+                spike_times,
+                window_times[np.clip(left, 0, window_times.size - 1)],
+                rtol=0.0,
+                atol=edge_tol,
+            )
+            idx = np.where(exact_edge, left, right)
             idx = np.clip(idx, 0, window_times.size - 1)
             psth_hist += np.bincount(idx, minlength=window_times.size).astype(float)
 
@@ -842,6 +1127,201 @@ class SpikeTrainCollection:
     def psthGLM(self, binwidth: float):
         psth_signal = self.psth(binwidth)
         return psth_signal, None, None
+
+    def psthBars(
+        self,
+        binwidth: float = 0.100,
+        selectorArray: Sequence[int] | None = None,
+        minTime: float | None = None,
+        maxTime: float | None = None,
+    ) -> SignalObj:
+        """Deterministic pure-Python fallback for MATLAB nstColl.psthBars.
+
+        MATLAB delegates this method to an external BARS package that is not
+        bundled with the source tree. The Python port preserves the public
+        surface and return structure with a smoothed PSTH approximation.
+        """
+        if binwidth <= 0:
+            raise ValueError("binwidth must be > 0")
+        min_time = self.minTime if minTime is None else float(minTime)
+        max_time = self.maxTime if maxTime is None else float(maxTime)
+        if selectorArray is None or len(selectorArray) == 0:
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+        selector = [int(item) for item in selectorArray]
+        if not selector:
+            raise ValueError("selectorArray must contain at least one neuron")
+
+        time = np.arange(min_time, max_time + float(binwidth), float(binwidth), dtype=float)
+        if time.size == 0:
+            time = np.array([min_time, max_time], dtype=float)
+        if not np.isclose(time[-1], max_time):
+            if time[-1] < max_time:
+                time = np.append(time, max_time)
+            else:
+                time[-1] = max_time
+
+        psthData = np.zeros(time.size, dtype=float)
+        for neuron in selector:
+            spikeTimes = np.asarray(self.getNST(neuron).getSpikeTimes(), dtype=float).reshape(-1)
+            if spikeTimes.size == 0:
+                continue
+            valid = np.isfinite(spikeTimes) & (spikeTimes >= time[0]) & (spikeTimes <= time[-1])
+            if not np.any(valid):
+                continue
+            spikeTimes = spikeTimes[valid]
+            left = np.searchsorted(time, spikeTimes, side="left")
+            right = np.searchsorted(time, spikeTimes, side="right") - 1
+            edge_tol = max(1e-12, abs(float(binwidth)) * 1e-9)
+            exact_edge = (left < time.size) & np.isclose(
+                spikeTimes,
+                time[np.clip(left, 0, time.size - 1)],
+                rtol=0.0,
+                atol=edge_tol,
+            )
+            idx = np.where(exact_edge, left, right)
+            idx = np.clip(idx, 0, time.size - 1)
+            psthData += np.bincount(idx, minlength=time.size).astype(float)
+
+        psthData = psthData / float(binwidth) / float(len(selector))
+
+        # MATLAB uses an external BARS fitter here; preserve the public output
+        # structure with a deterministic smoothed-rate fallback.
+        if psthData.size >= 3:
+            kernel = np.array([0.25, 0.5, 0.25], dtype=float)
+            mean_curve = np.convolve(psthData, kernel, mode="same")
+        else:
+            mean_curve = psthData.copy()
+        mode_curve = mean_curve.copy()
+        counts_per_bin = np.maximum(mean_curve * float(binwidth) * float(len(selector)), 0.0)
+        stderr = np.sqrt(counts_per_bin) / max(float(binwidth) * float(len(selector)), 1e-12)
+        ciLower = np.maximum(mean_curve - 1.96 * stderr, 0.0)
+        ciUpper = mean_curve + 1.96 * stderr
+        data = np.column_stack([mode_curve, mean_curve, ciLower, ciUpper])
+        return SignalObj(
+            time,
+            data,
+            "PSTH_{bars}",
+            "time",
+            "s",
+            "Hz",
+            ["mode", "mean", "ciLower", "ciUpper"],
+        )
+
+    def _psth_glm_coeffs(
+        self,
+        basisWidth: float,
+        windowTimes=None,
+        fitType: str = "poisson",
+    ) -> np.ndarray:
+        from .analysis import Analysis
+
+        basis = self.generateUnitImpulseBasis(float(basisWidth), float(self.minTime), float(self.maxTime), float(self.sampleRate))
+        trial = Trial(SpikeTrainCollection([train.nstCopy() for train in self.nstrain]), CovariateCollection([basis]))
+        hist = [] if windowTimes is None else np.asarray(windowTimes, dtype=float).reshape(-1)
+        label_select = [[basis.name, *list(basis.dataLabels)]]
+        cfg = TrialConfig(label_select, float(self.sampleRate), hist, [])
+        cfg.setName("GLM-PSTH+Hist" if np.asarray(hist).size else "GLM-PSTH")
+        cfgColl = ConfigCollection([cfg])
+        algorithm = "GLM" if str(fitType or "poisson").lower() == "poisson" else "BNLRCG"
+        psth_result = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, algorithm, [], 1)
+        fit = psth_result[0] if isinstance(psth_result, list) else psth_result
+        coeffs = np.asarray(fit.getCoeffs(1), dtype=float).reshape(-1)
+        numBasis = basis.dimension
+        if coeffs.size < numBasis:
+            padded = np.zeros(numBasis, dtype=float)
+            padded[: coeffs.size] = coeffs
+            return padded
+        return coeffs[:numBasis]
+
+    def estimateVarianceAcrossTrials(
+        self,
+        numBasis: int | None = None,
+        windowTimes=None,
+        numIter: int | None = None,
+        fitType: str | None = None,
+    ) -> np.ndarray:
+        if fitType is None or fitType == "":
+            fitType = "poisson"
+        if numIter is None:
+            numIter = 20
+        if windowTimes is None:
+            windowTimes = []
+        if numBasis is None:
+            numBasis = 20
+
+        numBasis = int(numBasis)
+        numIter = int(numIter)
+        coeffs = np.zeros((numBasis, numIter), dtype=float)
+        numRealizations = int(self.numSpikeTrains)
+        if numRealizations == 0 or numBasis <= 0 or numIter <= 0:
+            return np.zeros((max(numBasis, 0), max(numBasis, 0)), dtype=float)
+
+        basisWidth = (float(self.maxTime) - float(self.minTime)) / float(numBasis)
+        sumNumber = max(int(np.floor(numRealizations / 2.0 - 1.0)), 0)
+        delta = 1.0 / float(self.sampleRate)
+        minTime = float(self.minTime)
+        maxTime = float(self.maxTime)
+        halfIters = min(int(np.floor(numIter / 2.0)), sumNumber)
+
+        for i in range(1, halfIters + 1):
+            subset = SpikeTrainCollection(self.getNST(list(range(i, i + sumNumber + 1))))
+            subset.resample(1.0 / delta)
+            subset.setMaxTime(maxTime)
+            subset.setMinTime(minTime)
+            coeffs[:, i - 1] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+
+        for i in range(numRealizations, numRealizations - halfIters, -1):
+            subset = SpikeTrainCollection(self.getNST(list(range(i, i - sumNumber - 1, -1))))
+            subset.resample(1.0 / delta)
+            subset.setMaxTime(maxTime)
+            subset.setMinTime(minTime)
+            coeffs[:, i - 1] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+
+        coeff_rows = [row[row != 0] for row in coeffs]
+        max_width = max((row.size for row in coeff_rows), default=0)
+        if max_width == 0:
+            return np.zeros((numBasis, numBasis), dtype=float)
+        coeffsTemp = np.full((numBasis, max_width), np.nan, dtype=float)
+        for idx, row in enumerate(coeff_rows):
+            coeffsTemp[idx, : row.size] = row
+
+        nTerms = 4
+        filt_num = np.ones(nTerms, dtype=float) / float(nTerms)
+        coeffsTemp[np.isnan(coeffsTemp)] = 0.0
+        if coeffsTemp.T.shape[0] > 3 * nTerms:
+            fcoeffs = filtfilt(filt_num, [1.0], coeffsTemp.T, axis=0).T
+        else:
+            fcoeffs = coeffsTemp
+
+        diffs = np.diff(fcoeffs, axis=1)
+        if diffs.shape[1] <= 1:
+            varEst = np.full(numBasis, np.nan, dtype=float)
+        else:
+            with np.errstate(invalid="ignore", divide="ignore"):
+                varEst = np.nanvar(diffs, axis=1, ddof=1)
+        return np.diag(varEst)
+
+    @staticmethod
+    def generateUnitImpulseBasis(basisWidth: float, minTime: float, maxTime: float, sampleRate: float = 1000.0) -> Covariate:
+        windowTimes = np.arange(float(minTime), float(maxTime), float(basisWidth))
+        if windowTimes.size == 0 or not np.isclose(windowTimes[-1], maxTime):
+            windowTimes = np.append(windowTimes, float(maxTime))
+        else:
+            windowTimes[-1] = float(maxTime)
+        if windowTimes.size < 2:
+            windowTimes = np.array([float(minTime), float(maxTime)], dtype=float)
+        timeVec = np.arange(float(minTime), float(maxTime) + (1.0 / float(sampleRate)), 1.0 / float(sampleRate))
+        dataMat = np.zeros((timeVec.size, windowTimes.size - 1), dtype=float)
+        dataLabels: list[str] = []
+        for i in range(windowTimes.size - 1):
+            start = float(windowTimes[i])
+            stop = float(windowTimes[i + 1])
+            if i == windowTimes.size - 2:
+                dataMat[:, i] = ((timeVec >= start) & (timeVec <= stop)).astype(float)
+            else:
+                dataMat[:, i] = ((timeVec >= start) & (timeVec < stop)).astype(float)
+            dataLabels.append(f"b{i + 1:02d}" if i + 1 < 10 else f"b{i + 1}")
+        return Covariate(timeVec, dataMat, "UnitPulseBasis", "time", "s", "", dataLabels)
 
 
 class TrialConfig:

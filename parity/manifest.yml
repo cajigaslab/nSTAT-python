@@ -476,8 +476,8 @@ repo_structure:
     or repo-root package stub.
 fidelity_summary:
   class_fidelity:
-    exact: 3
-    high_fidelity: 15
+    exact: 8
+    high_fidelity: 10
     not_applicable: 1
   notebook_fidelity:
     high_fidelity: 13
