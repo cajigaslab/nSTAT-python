@@ -18,6 +18,7 @@ from nstat.notebook_parity import (
 IMG_SRC_RE = re.compile(r'<img[^>]+src="([^"]+)"', re.IGNORECASE)
 SECTION_RE = re.compile(r"^%%", re.MULTILINE)
 PYTHON_SECTION_RE = re.compile(r"^# SECTION\b", re.MULTILINE)
+CI_GROUP_ORDER = ("helpfile_full", "parity_core", "ci_smoke", "core", "smoke")
 
 
 def _repo_root() -> Path:
@@ -45,6 +46,12 @@ def _count_python_sections(notebook_path: Path) -> int:
     return len(PYTHON_SECTION_RE.findall(text))
 
 
+def _load_notebook_groups(base: Path) -> dict[str, set[str]]:
+    payload = yaml.safe_load((base / "tools" / "notebooks" / "topic_groups.yml").read_text(encoding="utf-8")) or {}
+    groups = payload.get("groups", {})
+    return {str(name): {str(topic) for topic in values or []} for name, values in groups.items()}
+
+
 def build_notebook_fidelity_audit(
     repo_root: Path | None = None,
     *,
@@ -54,6 +61,7 @@ def build_notebook_fidelity_audit(
     matlab_root = default_matlab_repo_root(base) if matlab_repo_root is None else matlab_repo_root.resolve()
     help_root = matlab_root / "helpfiles"
     notes = load_notebook_parity_notes(base)
+    topic_groups = _load_notebook_groups(base)
 
     items: list[dict[str, Any]] = []
     for row in notes:
@@ -66,12 +74,17 @@ def build_notebook_fidelity_audit(
         matlab_m_path = help_root / f"{matlab_stem}.m"
         matlab_html_path = help_root / f"{matlab_stem}.html"
         matlab_available = matlab_m_path.exists() and matlab_html_path.exists()
+        current_run_group = next((group for group in CI_GROUP_ORDER if topic in topic_groups.get(group, set())), None)
 
         item: dict[str, Any] = {
             "topic": topic,
             "source_matlab": str(row["source_matlab"]),
             "python_notebook": str(row["file"]),
+            "status": str(row["fidelity_status"]),
             "fidelity_status": str(row["fidelity_status"]),
+            "executable_in_ci": current_run_group is not None,
+            "current_run_group": current_run_group,
+            "fixture_backed": False,
             "remaining_differences": str(row["remaining_differences"]),
             "python_sections": python_sections,
             "python_expected_figures": int(figure_contract.expected_count) if figure_contract else 0,
@@ -113,6 +126,7 @@ def build_notebook_fidelity_audit(
             "matlab": "https://github.com/cajigaslab/nSTAT",
             "python": "https://github.com/cajigaslab/nSTAT-python",
         },
+        "status_legend": ["exact", "high_fidelity", "partial", "missing"],
         "matlab_repo_root": str(matlab_root),
         "items": items,
     }
