@@ -18,6 +18,8 @@ from nstat.notebook_parity import (
 from nstat.simulink_fidelity import (
     iter_outstanding_simulink_items,
     load_simulink_fidelity_audit,
+    normalize_simulink_status,
+    summarize_simulink_statuses,
     summarize_simulink_strategies,
 )
 
@@ -90,12 +92,12 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     notebook_counts = summarize_notebook_fidelity(notebook_fidelity)
     notebook_partial = iter_outstanding_notebook_fidelity(notebook_fidelity)
     simulink_counts = summarize_simulink_strategies(simulink_fidelity)
+    simulink_status_counts = summarize_simulink_statuses(simulink_fidelity)
     simulink_outstanding = iter_outstanding_simulink_items(simulink_fidelity)
     simulink_reference_only = [
         row
         for row in simulink_fidelity.get("items", [])
-        if str(row.get("current_python_status", "")).strip() == "reference_only"
-        or str(row.get("python_strategy", "")).strip() == "reference_only"
+        if normalize_simulink_status(row) == "reference_only"
     ]
     lines = [
         "# nSTAT Python Parity Report",
@@ -160,6 +162,18 @@ def render_parity_report(repo_root: Path | None = None) -> str:
         [
             "",
             "## Simulink Fidelity Summary",
+            "",
+            "| Status | Count |",
+            "|---|---:|",
+        ]
+    )
+    for status in simulink_fidelity.get("status_legend", ()):
+        lines.append(f"| `{status}` | {simulink_status_counts.get(status, 0)} |")
+
+    lines.extend(
+        [
+            "",
+            "## Simulink Strategy Summary",
             "",
             "| Strategy | Count |",
             "|---|---:|",
@@ -277,11 +291,11 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     else:
         for row in simulink_outstanding:
             lines.append(
-                f"- `{row['model_name']}` -> `{row['model_path']}` [{row['python_strategy']}/{row['current_python_status']}]: {row['chosen_interoperability_strategy']}"
+                f"- `{row['model_name']}` -> `{row['model_path']}` [{normalize_simulink_status(row)}]: {row['chosen_interoperability_strategy']}"
             )
         for row in simulink_reference_only:
             lines.append(
-                f"- `{row['model_name']}` -> `{row['model_path']}` [{row['python_strategy']}/{row['current_python_status']}]: {row['chosen_interoperability_strategy']}"
+                f"- `{row['model_name']}` -> `{row['model_path']}` [{normalize_simulink_status(row)}]: {row['chosen_interoperability_strategy']}"
             )
 
     lines.extend(["", "## Justified Non-Applicable Items", ""])

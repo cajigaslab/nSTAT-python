@@ -1,13 +1,13 @@
 version: 1
-generated_on: 2026-03-07
+generated_on: '2026-03-08'
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
 status_legend:
-  - mapped
-  - partial
-  - missing
-  - not_applicable
+- mapped
+- partial
+- missing
+- not_applicable
 summary:
   public_api:
     mapped: 18
@@ -40,418 +40,446 @@ summary:
     missing: 0
     not_applicable: 0
 public_api:
-  - matlab: Analysis
-    matlab_path: Analysis.m
-    python_target: nstat.Analysis
-    python_path: nstat/analysis.py
-    status: mapped
-    notes: Exported from the package root.
-  - matlab: CIF
-    matlab_path: CIF.m
-    python_target: nstat.CIF
-    python_path: nstat/cif.py
-    status: mapped
-    notes: Canonical CIF class is exported from the package root.
-  - matlab: ConfidenceInterval
-    matlab_path: ConfidenceInterval.m
-    python_target: nstat.ConfidenceInterval
-    python_path: nstat/ConfidenceInterval.py
-    status: mapped
-    notes: Compatibility adapter is exported from the package root.
-  - matlab: ConfigColl
-    matlab_path: ConfigColl.m
-    python_target: nstat.ConfigColl
-    python_path: nstat/ConfigColl.py
-    status: mapped
-    notes: MATLAB-style adapter is exported from the package root.
-  - matlab: CovColl
-    matlab_path: CovColl.m
-    python_target: nstat.CovColl
-    python_path: nstat/CovColl.py
-    status: mapped
-    notes: MATLAB-style adapter is exported from the package root.
-  - matlab: Covariate
-    matlab_path: Covariate.m
-    python_target: nstat.Covariate
-    python_path: nstat/signal.py
-    status: mapped
-    notes: Canonical signal object is exported from the package root.
-  - matlab: DecodingAlgorithms
-    matlab_path: DecodingAlgorithms.m
-    python_target: nstat.DecodingAlgorithms
-    python_path: nstat/decoding_algorithms.py
-    status: mapped
-    notes: Exported from the package root.
-  - matlab: Events
-    matlab_path: Events.m
-    python_target: nstat.Events
-    python_path: nstat/events.py
-    status: mapped
-    notes: Exported from the package root.
-  - matlab: FitResSummary
-    matlab_path: FitResSummary.m
-    python_target: nstat.FitResSummary
-    python_path: nstat/FitResSummary.py
-    status: mapped
-    notes: MATLAB-style adapter is exported from the package root.
-  - matlab: FitResult
-    matlab_path: FitResult.m
-    python_target: nstat.FitResult
-    python_path: nstat/FitResult.py
-    status: mapped
-    notes: MATLAB-style adapter is exported from the package root.
-  - matlab: History
-    matlab_path: History.m
-    python_target: nstat.History
-    python_path: nstat/history.py
-    status: mapped
-    notes: Exported from the package root.
-  - matlab: SignalObj
-    matlab_path: SignalObj.m
-    python_target: nstat.SignalObj
-    python_path: nstat/SignalObj.py
-    status: mapped
-    notes: MATLAB-style adapter is exported from the package root.
-  - matlab: Trial
-    matlab_path: Trial.m
-    python_target: nstat.Trial
-    python_path: nstat/trial.py
-    status: mapped
-    notes: Exported from the package root.
-  - matlab: TrialConfig
-    matlab_path: TrialConfig.m
-    python_target: nstat.TrialConfig
-    python_path: nstat/trial.py
-    status: mapped
-    notes: Exported from the package root.
-  - matlab: nspikeTrain
-    matlab_path: nspikeTrain.m
-    python_target: nstat.nspikeTrain
-    python_path: nstat/nspikeTrain.py
-    status: mapped
-    notes: MATLAB-style adapter is exported from the package root.
-  - matlab: nstColl
-    matlab_path: nstColl.m
-    python_target: nstat.nstColl
-    python_path: nstat/nstColl.py
-    status: mapped
-    notes: MATLAB-style adapter is exported from the package root.
-  - matlab: getPaperDataDirs
-    matlab_path: getPaperDataDirs.m
-    python_target: nstat.getPaperDataDirs
-    python_path: nstat/data_manager.py
-    status: mapped
-    notes: Package root exports both MATLAB-style and snake-case helpers.
-  - matlab: nSTAT_Install
-    matlab_path: nSTAT_Install.m
-    python_target: nstat.nSTAT_Install
-    python_path: nstat/nstat_install.py
-    status: mapped
-    notes: MATLAB-style alias is exported from the package root.
-  - matlab: nstatOpenHelpPage
-    matlab_path: nstatOpenHelpPage.m
-    python_target: null
-    python_path: null
-    status: not_applicable
-    notes: MATLAB help-browser integration does not have a direct Python equivalent.
+- matlab: Analysis
+  matlab_path: Analysis.m
+  python_target: nstat.Analysis
+  python_path: nstat/analysis.py
+  status: mapped
+  notes: Exported from the package root.
+- matlab: CIF
+  matlab_path: CIF.m
+  python_target: nstat.CIF
+  python_path: nstat/cif.py
+  status: mapped
+  notes: Canonical CIF class is exported from the package root.
+- matlab: ConfidenceInterval
+  matlab_path: ConfidenceInterval.m
+  python_target: nstat.ConfidenceInterval
+  python_path: nstat/ConfidenceInterval.py
+  status: mapped
+  notes: Compatibility adapter is exported from the package root.
+- matlab: ConfigColl
+  matlab_path: ConfigColl.m
+  python_target: nstat.ConfigColl
+  python_path: nstat/ConfigColl.py
+  status: mapped
+  notes: MATLAB-style adapter is exported from the package root.
+- matlab: CovColl
+  matlab_path: CovColl.m
+  python_target: nstat.CovColl
+  python_path: nstat/CovColl.py
+  status: mapped
+  notes: MATLAB-style adapter is exported from the package root.
+- matlab: Covariate
+  matlab_path: Covariate.m
+  python_target: nstat.Covariate
+  python_path: nstat/signal.py
+  status: mapped
+  notes: Canonical signal object is exported from the package root.
+- matlab: DecodingAlgorithms
+  matlab_path: DecodingAlgorithms.m
+  python_target: nstat.DecodingAlgorithms
+  python_path: nstat/decoding_algorithms.py
+  status: mapped
+  notes: Exported from the package root.
+- matlab: Events
+  matlab_path: Events.m
+  python_target: nstat.Events
+  python_path: nstat/events.py
+  status: mapped
+  notes: Exported from the package root.
+- matlab: FitResSummary
+  matlab_path: FitResSummary.m
+  python_target: nstat.FitResSummary
+  python_path: nstat/FitResSummary.py
+  status: mapped
+  notes: MATLAB-style adapter is exported from the package root.
+- matlab: FitResult
+  matlab_path: FitResult.m
+  python_target: nstat.FitResult
+  python_path: nstat/FitResult.py
+  status: mapped
+  notes: MATLAB-style adapter is exported from the package root.
+- matlab: History
+  matlab_path: History.m
+  python_target: nstat.History
+  python_path: nstat/history.py
+  status: mapped
+  notes: Exported from the package root.
+- matlab: SignalObj
+  matlab_path: SignalObj.m
+  python_target: nstat.SignalObj
+  python_path: nstat/SignalObj.py
+  status: mapped
+  notes: MATLAB-style adapter is exported from the package root.
+- matlab: Trial
+  matlab_path: Trial.m
+  python_target: nstat.Trial
+  python_path: nstat/trial.py
+  status: mapped
+  notes: Exported from the package root.
+- matlab: TrialConfig
+  matlab_path: TrialConfig.m
+  python_target: nstat.TrialConfig
+  python_path: nstat/trial.py
+  status: mapped
+  notes: Exported from the package root.
+- matlab: nspikeTrain
+  matlab_path: nspikeTrain.m
+  python_target: nstat.nspikeTrain
+  python_path: nstat/nspikeTrain.py
+  status: mapped
+  notes: MATLAB-style adapter is exported from the package root.
+- matlab: nstColl
+  matlab_path: nstColl.m
+  python_target: nstat.nstColl
+  python_path: nstat/nstColl.py
+  status: mapped
+  notes: MATLAB-style adapter is exported from the package root.
+- matlab: getPaperDataDirs
+  matlab_path: getPaperDataDirs.m
+  python_target: nstat.getPaperDataDirs
+  python_path: nstat/data_manager.py
+  status: mapped
+  notes: Package root exports both MATLAB-style and snake-case helpers.
+- matlab: nSTAT_Install
+  matlab_path: nSTAT_Install.m
+  python_target: nstat.nSTAT_Install
+  python_path: nstat/nstat_install.py
+  status: mapped
+  notes: MATLAB-style alias is exported from the package root.
+- matlab: nstatOpenHelpPage
+  matlab_path: nstatOpenHelpPage.m
+  python_target: null
+  python_path: null
+  status: not_applicable
+  notes: MATLAB help-browser integration does not have a direct Python equivalent.
 help_workflows:
-  - matlab: NeuralSpikeAnalysis_top
-    matlab_path: helpfiles/NeuralSpikeAnalysis_top.m
-    python_target: docs/NeuralSpikeAnalysis_top.md
-    status: mapped
-    notes: Python docs expose a top-level navigation page that mirrors the MATLAB help home.
-  - matlab: PaperOverview
-    matlab_path: helpfiles/PaperOverview.m
-    python_target: docs/PaperOverview.md
-    status: mapped
-    notes: Python docs expose a paper-aligned toolbox map page with the same workflow categories.
-  - matlab: ClassDefinitions
-    matlab_path: helpfiles/ClassDefinitions.m
-    python_target: docs/ClassDefinitions.md
-    status: mapped
-    notes: Python docs expose a class-definition index for the MATLAB-facing public API names.
-  - matlab: Examples
-    matlab_path: helpfiles/Examples.m
-    python_target: docs/Examples.md
-    status: mapped
-    notes: Python docs expose an example index mirroring the MATLAB helpfile categories and names.
-  - matlab: DocumentationSetup2025b
-    matlab_path: helpfiles/DocumentationSetup2025b.m
-    python_target: docs/DocumentationSetup.md
-    status: mapped
-    notes: Python replaces MATLAB help-browser integration with a Sphinx documentation setup and rebuild guide.
-  - matlab: AnalysisExamples
-    matlab_path: helpfiles/AnalysisExamples.mlx
-    python_target: notebooks/AnalysisExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: AnalysisExamples2
-    matlab_path: helpfiles/AnalysisExamples2.mlx
-    python_target: notebooks/AnalysisExamples2.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: ConfidenceIntervalOverview
-    matlab_path: helpfiles/ConfidenceIntervalOverview.m
-    python_target: notebooks/ConfidenceIntervalOverview.ipynb
-    status: mapped
-    notes: Tutorial notebook exists with matching name.
-  - matlab: ConfigCollExamples
-    matlab_path: helpfiles/ConfigCollExamples.mlx
-    python_target: notebooks/ConfigCollExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: CovCollExamples
-    matlab_path: helpfiles/CovCollExamples.mlx
-    python_target: notebooks/CovCollExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: CovariateExamples
-    matlab_path: helpfiles/CovariateExamples.mlx
-    python_target: notebooks/CovariateExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: DecodingExample
-    matlab_path: helpfiles/DecodingExample.mlx
-    python_target: notebooks/DecodingExample.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: DecodingExampleWithHist
-    matlab_path: helpfiles/DecodingExampleWithHist.mlx
-    python_target: notebooks/DecodingExampleWithHist.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: EventsExamples
-    matlab_path: helpfiles/EventsExamples.mlx
-    python_target: notebooks/EventsExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: ExplicitStimulusWhiskerData
-    matlab_path: helpfiles/ExplicitStimulusWhiskerData.mlx
-    python_target: notebooks/ExplicitStimulusWhiskerData.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: FitResSummaryExamples
-    matlab_path: helpfiles/FitResSummaryExamples.mlx
-    python_target: notebooks/FitResSummaryExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: FitResultExamples
-    matlab_path: helpfiles/FitResultExamples.mlx
-    python_target: notebooks/FitResultExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: FitResultReference
-    matlab_path: helpfiles/FitResultReference.m
-    python_target: notebooks/FitResultReference.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: HippocampalPlaceCellExample
-    matlab_path: helpfiles/HippocampalPlaceCellExample.mlx
-    python_target: notebooks/HippocampalPlaceCellExample.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: HistoryExamples
-    matlab_path: helpfiles/HistoryExamples.mlx
-    python_target: notebooks/HistoryExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: HybridFilterExample
-    matlab_path: helpfiles/HybridFilterExample.mlx
-    python_target: notebooks/HybridFilterExample.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: NetworkTutorial
-    matlab_path: helpfiles/NetworkTutorial.mlx
-    python_target: notebooks/NetworkTutorial.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: PPSimExample
-    matlab_path: helpfiles/PPSimExample.mlx
-    python_target: notebooks/PPSimExample.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: PPThinning
-    matlab_path: helpfiles/PPThinning.mlx
-    python_target: notebooks/PPThinning.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: PSTHEstimation
-    matlab_path: helpfiles/PSTHEstimation.mlx
-    python_target: notebooks/PSTHEstimation.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: SignalObjExamples
-    matlab_path: helpfiles/SignalObjExamples.mlx
-    python_target: notebooks/SignalObjExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: StimulusDecode2D
-    matlab_path: helpfiles/StimulusDecode2D.mlx
-    python_target: notebooks/StimulusDecode2D.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: TrialConfigExamples
-    matlab_path: helpfiles/TrialConfigExamples.mlx
-    python_target: notebooks/TrialConfigExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: TrialExamples
-    matlab_path: helpfiles/TrialExamples.mlx
-    python_target: notebooks/TrialExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: ValidationDataSet
-    matlab_path: helpfiles/ValidationDataSet.mlx
-    python_target: notebooks/ValidationDataSet.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: mEPSCAnalysis
-    matlab_path: helpfiles/mEPSCAnalysis.mlx
-    python_target: notebooks/mEPSCAnalysis.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: nSTATPaperExamples
-    matlab_path: helpfiles/nSTATPaperExamples.mlx
-    python_target: notebooks/nSTATPaperExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: nSpikeTrainExamples
-    matlab_path: helpfiles/nSpikeTrainExamples.mlx
-    python_target: notebooks/nSpikeTrainExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
-  - matlab: nstCollExamples
-    matlab_path: helpfiles/nstCollExamples.mlx
-    python_target: notebooks/nstCollExamples.ipynb
-    status: mapped
-    notes: Notebook exists with matching name.
+- matlab: NeuralSpikeAnalysis_top
+  matlab_path: helpfiles/NeuralSpikeAnalysis_top.m
+  python_target: docs/NeuralSpikeAnalysis_top.md
+  status: mapped
+  notes: Python docs expose a top-level navigation page that mirrors the MATLAB help
+    home.
+- matlab: PaperOverview
+  matlab_path: helpfiles/PaperOverview.m
+  python_target: docs/PaperOverview.md
+  status: mapped
+  notes: Python docs expose a paper-aligned toolbox map page with the same workflow
+    categories.
+- matlab: ClassDefinitions
+  matlab_path: helpfiles/ClassDefinitions.m
+  python_target: docs/ClassDefinitions.md
+  status: mapped
+  notes: Python docs expose a class-definition index for the MATLAB-facing public
+    API names.
+- matlab: Examples
+  matlab_path: helpfiles/Examples.m
+  python_target: docs/Examples.md
+  status: mapped
+  notes: Python docs expose an example index mirroring the MATLAB helpfile categories
+    and names.
+- matlab: DocumentationSetup2025b
+  matlab_path: helpfiles/DocumentationSetup2025b.m
+  python_target: docs/DocumentationSetup.md
+  status: mapped
+  notes: Python replaces MATLAB help-browser integration with a Sphinx documentation
+    setup and rebuild guide.
+- matlab: AnalysisExamples
+  matlab_path: helpfiles/AnalysisExamples.mlx
+  python_target: notebooks/AnalysisExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: AnalysisExamples2
+  matlab_path: helpfiles/AnalysisExamples2.mlx
+  python_target: notebooks/AnalysisExamples2.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: ConfidenceIntervalOverview
+  matlab_path: helpfiles/ConfidenceIntervalOverview.m
+  python_target: notebooks/ConfidenceIntervalOverview.ipynb
+  status: mapped
+  notes: Tutorial notebook exists with matching name.
+- matlab: ConfigCollExamples
+  matlab_path: helpfiles/ConfigCollExamples.mlx
+  python_target: notebooks/ConfigCollExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: CovCollExamples
+  matlab_path: helpfiles/CovCollExamples.mlx
+  python_target: notebooks/CovCollExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: CovariateExamples
+  matlab_path: helpfiles/CovariateExamples.mlx
+  python_target: notebooks/CovariateExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: DecodingExample
+  matlab_path: helpfiles/DecodingExample.mlx
+  python_target: notebooks/DecodingExample.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: DecodingExampleWithHist
+  matlab_path: helpfiles/DecodingExampleWithHist.mlx
+  python_target: notebooks/DecodingExampleWithHist.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: EventsExamples
+  matlab_path: helpfiles/EventsExamples.mlx
+  python_target: notebooks/EventsExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: ExplicitStimulusWhiskerData
+  matlab_path: helpfiles/ExplicitStimulusWhiskerData.mlx
+  python_target: notebooks/ExplicitStimulusWhiskerData.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: FitResSummaryExamples
+  matlab_path: helpfiles/FitResSummaryExamples.mlx
+  python_target: notebooks/FitResSummaryExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: FitResultExamples
+  matlab_path: helpfiles/FitResultExamples.mlx
+  python_target: notebooks/FitResultExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: FitResultReference
+  matlab_path: helpfiles/FitResultReference.m
+  python_target: notebooks/FitResultReference.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: HippocampalPlaceCellExample
+  matlab_path: helpfiles/HippocampalPlaceCellExample.mlx
+  python_target: notebooks/HippocampalPlaceCellExample.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: HistoryExamples
+  matlab_path: helpfiles/HistoryExamples.mlx
+  python_target: notebooks/HistoryExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: HybridFilterExample
+  matlab_path: helpfiles/HybridFilterExample.mlx
+  python_target: notebooks/HybridFilterExample.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: NetworkTutorial
+  matlab_path: helpfiles/NetworkTutorial.mlx
+  python_target: notebooks/NetworkTutorial.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: PPSimExample
+  matlab_path: helpfiles/PPSimExample.mlx
+  python_target: notebooks/PPSimExample.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: PPThinning
+  matlab_path: helpfiles/PPThinning.mlx
+  python_target: notebooks/PPThinning.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: PSTHEstimation
+  matlab_path: helpfiles/PSTHEstimation.mlx
+  python_target: notebooks/PSTHEstimation.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: SignalObjExamples
+  matlab_path: helpfiles/SignalObjExamples.mlx
+  python_target: notebooks/SignalObjExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: StimulusDecode2D
+  matlab_path: helpfiles/StimulusDecode2D.mlx
+  python_target: notebooks/StimulusDecode2D.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: TrialConfigExamples
+  matlab_path: helpfiles/TrialConfigExamples.mlx
+  python_target: notebooks/TrialConfigExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: TrialExamples
+  matlab_path: helpfiles/TrialExamples.mlx
+  python_target: notebooks/TrialExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: ValidationDataSet
+  matlab_path: helpfiles/ValidationDataSet.mlx
+  python_target: notebooks/ValidationDataSet.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: mEPSCAnalysis
+  matlab_path: helpfiles/mEPSCAnalysis.mlx
+  python_target: notebooks/mEPSCAnalysis.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: nSTATPaperExamples
+  matlab_path: helpfiles/nSTATPaperExamples.mlx
+  python_target: notebooks/nSTATPaperExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: nSpikeTrainExamples
+  matlab_path: helpfiles/nSpikeTrainExamples.mlx
+  python_target: notebooks/nSpikeTrainExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
+- matlab: nstCollExamples
+  matlab_path: helpfiles/nstCollExamples.mlx
+  python_target: notebooks/nstCollExamples.ipynb
+  status: mapped
+  notes: Notebook exists with matching name.
 paper_examples:
-  - matlab: example01_mepsc_poisson
-    matlab_path: examples/paper/example01_mepsc_poisson.m
-    python_target: nstat.paper_examples_full.run_experiment1
-    python_script: examples/paper/example01_mepsc_poisson.py
-    status: mapped
-    notes: Canonical Python script exports the MATLAB-named figure set into docs/figures/example01/.
-  - matlab: example02_whisker_stimulus_thalamus
-    matlab_path: examples/paper/example02_whisker_stimulus_thalamus.m
-    python_target: nstat.paper_examples_full.run_experiment2
-    python_script: examples/paper/example02_whisker_stimulus_thalamus.py
-    status: mapped
-    notes: Canonical Python script exports the MATLAB-named figure set into docs/figures/example02/.
-  - matlab: example03_psth_and_ssglm
-    matlab_path: examples/paper/example03_psth_and_ssglm.m
-    python_target: nstat.paper_examples_full.run_experiment3
-    python_script: examples/paper/example03_psth_and_ssglm.py
-    status: mapped
-    notes: Canonical Python script exports the MATLAB-named figure set for experiment3 and experiment3b into docs/figures/example03/.
-  - matlab: example04_place_cells_continuous_stimulus
-    matlab_path: examples/paper/example04_place_cells_continuous_stimulus.m
-    python_target: nstat.paper_examples_full.run_experiment4
-    python_script: examples/paper/example04_place_cells_continuous_stimulus.py
-    status: mapped
-    notes: Canonical Python script exports the MATLAB-named figure set into docs/figures/example04/.
-  - matlab: example05_decoding_ppaf_pphf
-    matlab_path: examples/paper/example05_decoding_ppaf_pphf.m
-    python_target: nstat.paper_examples_full.run_experiment5
-    python_script: examples/paper/example05_decoding_ppaf_pphf.py
-    status: mapped
-    notes: Canonical Python script exports the MATLAB-named figure set for experiment5, experiment5b, and experiment6 into docs/figures/example05/.
-  - matlab: nSTATPaperExamples section 3b
-    matlab_path: helpfiles/nSTATPaperExamples.m#example-3b
-    python_target: nstat.paper_examples_full.run_experiment3b
-    python_script: examples/paper/example03_psth_and_ssglm.py
-    status: mapped
-    notes: Section 3b is exported through the canonical example03 Python script and gallery.
-  - matlab: nSTATPaperExamples section 5b
-    matlab_path: helpfiles/nSTATPaperExamples.m#example-5b
-    python_target: nstat.paper_examples_full.run_experiment5b
-    python_script: examples/paper/example05_decoding_ppaf_pphf.py
-    status: mapped
-    notes: Section 5b is exported through the canonical example05 Python script and gallery.
-  - matlab: nSTATPaperExamples section 6
-    matlab_path: helpfiles/nSTATPaperExamples.m#experiment-6
-    python_target: nstat.paper_examples_full.run_experiment6
-    python_script: examples/paper/example05_decoding_ppaf_pphf.py
-    status: mapped
-    notes: Section 6 is exported through the canonical example05 Python script and gallery.
+- matlab: example01_mepsc_poisson
+  matlab_path: examples/paper/example01_mepsc_poisson.m
+  python_target: nstat.paper_examples_full.run_experiment1
+  python_script: examples/paper/example01_mepsc_poisson.py
+  status: mapped
+  notes: Canonical Python script exports the MATLAB-named figure set into docs/figures/example01/.
+- matlab: example02_whisker_stimulus_thalamus
+  matlab_path: examples/paper/example02_whisker_stimulus_thalamus.m
+  python_target: nstat.paper_examples_full.run_experiment2
+  python_script: examples/paper/example02_whisker_stimulus_thalamus.py
+  status: mapped
+  notes: Canonical Python script exports the MATLAB-named figure set into docs/figures/example02/.
+- matlab: example03_psth_and_ssglm
+  matlab_path: examples/paper/example03_psth_and_ssglm.m
+  python_target: nstat.paper_examples_full.run_experiment3
+  python_script: examples/paper/example03_psth_and_ssglm.py
+  status: mapped
+  notes: Canonical Python script exports the MATLAB-named figure set for experiment3
+    and experiment3b into docs/figures/example03/.
+- matlab: example04_place_cells_continuous_stimulus
+  matlab_path: examples/paper/example04_place_cells_continuous_stimulus.m
+  python_target: nstat.paper_examples_full.run_experiment4
+  python_script: examples/paper/example04_place_cells_continuous_stimulus.py
+  status: mapped
+  notes: Canonical Python script exports the MATLAB-named figure set into docs/figures/example04/.
+- matlab: example05_decoding_ppaf_pphf
+  matlab_path: examples/paper/example05_decoding_ppaf_pphf.m
+  python_target: nstat.paper_examples_full.run_experiment5
+  python_script: examples/paper/example05_decoding_ppaf_pphf.py
+  status: mapped
+  notes: Canonical Python script exports the MATLAB-named figure set for experiment5,
+    experiment5b, and experiment6 into docs/figures/example05/.
+- matlab: nSTATPaperExamples section 3b
+  matlab_path: helpfiles/nSTATPaperExamples.m#example-3b
+  python_target: nstat.paper_examples_full.run_experiment3b
+  python_script: examples/paper/example03_psth_and_ssglm.py
+  status: mapped
+  notes: Section 3b is exported through the canonical example03 Python script and
+    gallery.
+- matlab: nSTATPaperExamples section 5b
+  matlab_path: helpfiles/nSTATPaperExamples.m#example-5b
+  python_target: nstat.paper_examples_full.run_experiment5b
+  python_script: examples/paper/example05_decoding_ppaf_pphf.py
+  status: mapped
+  notes: Section 5b is exported through the canonical example05 Python script and
+    gallery.
+- matlab: nSTATPaperExamples section 6
+  matlab_path: helpfiles/nSTATPaperExamples.m#experiment-6
+  python_target: nstat.paper_examples_full.run_experiment6
+  python_script: examples/paper/example05_decoding_ppaf_pphf.py
+  status: mapped
+  notes: Section 6 is exported through the canonical example05 Python script and gallery.
 docs_gallery:
-  - matlab: docs/paper_examples.md
-    python_target: docs/paper_examples.md
-    status: mapped
-    notes: Generated from the canonical Python paper-example manifest.
-  - matlab: docs/figures/manifest.json
-    python_target: docs/figures/manifest.json
-    status: mapped
-    notes: Generated from the canonical Python paper-example manifest.
-  - matlab: docs/figures/example01/
-    python_target: docs/figures/example01/
-    status: mapped
-    notes: Gallery directory contains the MATLAB-named PNG set generated by the canonical Python script.
-  - matlab: docs/figures/example02/
-    python_target: docs/figures/example02/
-    status: mapped
-    notes: Gallery directory contains the MATLAB-named PNG set generated by the canonical Python script.
-  - matlab: docs/figures/example03/
-    python_target: docs/figures/example03/
-    status: mapped
-    notes: Gallery directory contains the MATLAB-named PNG set generated by the canonical Python script.
-  - matlab: docs/figures/example04/
-    python_target: docs/figures/example04/
-    status: mapped
-    notes: Gallery directory contains the MATLAB-named PNG set generated by the canonical Python script.
-  - matlab: docs/figures/example05/
-    python_target: docs/figures/example05/
-    status: mapped
-    notes: Gallery directory contains the MATLAB-named PNG set generated by the canonical Python script.
-  - matlab: README five-example gallery
-    python_target: README.md
-    status: mapped
-    notes: README mirrors the MATLAB five-example gallery pattern and links the Python paper-example docs page.
+- matlab: docs/paper_examples.md
+  python_target: docs/paper_examples.md
+  status: mapped
+  notes: Generated from the canonical Python paper-example manifest.
+- matlab: docs/figures/manifest.json
+  python_target: docs/figures/manifest.json
+  status: mapped
+  notes: Generated from the canonical Python paper-example manifest.
+- matlab: docs/figures/example01/
+  python_target: docs/figures/example01/
+  status: mapped
+  notes: Gallery directory contains the MATLAB-named PNG set generated by the canonical
+    Python script.
+- matlab: docs/figures/example02/
+  python_target: docs/figures/example02/
+  status: mapped
+  notes: Gallery directory contains the MATLAB-named PNG set generated by the canonical
+    Python script.
+- matlab: docs/figures/example03/
+  python_target: docs/figures/example03/
+  status: mapped
+  notes: Gallery directory contains the MATLAB-named PNG set generated by the canonical
+    Python script.
+- matlab: docs/figures/example04/
+  python_target: docs/figures/example04/
+  status: mapped
+  notes: Gallery directory contains the MATLAB-named PNG set generated by the canonical
+    Python script.
+- matlab: docs/figures/example05/
+  python_target: docs/figures/example05/
+  status: mapped
+  notes: Gallery directory contains the MATLAB-named PNG set generated by the canonical
+    Python script.
+- matlab: README five-example gallery
+  python_target: README.md
+  status: mapped
+  notes: README mirrors the MATLAB five-example gallery pattern and links the Python
+    paper-example docs page.
 installer_setup:
-  - matlab: nSTAT_Install console entrypoint
-    matlab_path: nSTAT_Install.m
-    python_target: nstat-install
-    python_path: pyproject.toml
-    status: mapped
-    notes: Console script is defined in pyproject.toml.
-  - matlab: nSTAT_Install programmatic entrypoint
-    matlab_path: nSTAT_Install.m
-    python_target: nstat.install.nstat_install
-    python_path: nstat/install.py
-    status: mapped
-    notes: Programmatic installer exists and is documented.
-  - matlab: DownloadExampleData option
-    matlab_path: nSTAT_Install.m
-    python_target: nstat.install.nstat_install(download_example_data=...)
-    python_path: nstat/install.py
-    status: mapped
-    notes: Prompt/always/never modes exist in Python.
-  - matlab: RebuildDocSearch option
-    matlab_path: nSTAT_Install.m
-    python_target: nstat.install.nstat_install(rebuild_doc_search=...)
-    python_path: nstat/install.py
-    status: mapped
-    notes: The installer can rebuild the local Sphinx HTML search index and reports whether searchindex.js was created.
-  - matlab: CleanUserPathPrefs option
-    matlab_path: nSTAT_Install.m
-    python_target: nstat.install.nstat_install(clean_user_path_prefs=...)
-    python_path: nstat/install.py
-    status: not_applicable
-    notes: Accepted as a compatibility no-op because Python does not use MATLAB-style saved user path preferences.
-  - matlab: MATLAB runtime path pruning
-    matlab_path: nSTAT_Install.m
-    python_target: null
-    python_path: null
-    status: not_applicable
-    notes: Python packaging/import resolution replaces MATLAB path management.
-  - matlab: MATLAB toolbox cache refresh and savepath
-    matlab_path: nSTAT_Install.m
-    python_target: null
-    python_path: null
-    status: not_applicable
-    notes: There is no Python equivalent to MATLAB toolbox cache refresh or savepath persistence.
+- matlab: nSTAT_Install console entrypoint
+  matlab_path: nSTAT_Install.m
+  python_target: nstat-install
+  python_path: pyproject.toml
+  status: mapped
+  notes: Console script is defined in pyproject.toml.
+- matlab: nSTAT_Install programmatic entrypoint
+  matlab_path: nSTAT_Install.m
+  python_target: nstat.install.nstat_install
+  python_path: nstat/install.py
+  status: mapped
+  notes: Programmatic installer exists and is documented.
+- matlab: DownloadExampleData option
+  matlab_path: nSTAT_Install.m
+  python_target: nstat.install.nstat_install(download_example_data=...)
+  python_path: nstat/install.py
+  status: mapped
+  notes: Prompt/always/never modes exist in Python.
+- matlab: RebuildDocSearch option
+  matlab_path: nSTAT_Install.m
+  python_target: nstat.install.nstat_install(rebuild_doc_search=...)
+  python_path: nstat/install.py
+  status: mapped
+  notes: The installer can rebuild the local Sphinx HTML search index and reports
+    whether searchindex.js was created.
+- matlab: CleanUserPathPrefs option
+  matlab_path: nSTAT_Install.m
+  python_target: nstat.install.nstat_install(clean_user_path_prefs=...)
+  python_path: nstat/install.py
+  status: not_applicable
+  notes: Accepted as a compatibility no-op because Python does not use MATLAB-style
+    saved user path preferences.
+- matlab: MATLAB runtime path pruning
+  matlab_path: nSTAT_Install.m
+  python_target: null
+  python_path: null
+  status: not_applicable
+  notes: Python packaging/import resolution replaces MATLAB path management.
+- matlab: MATLAB toolbox cache refresh and savepath
+  matlab_path: nSTAT_Install.m
+  python_target: null
+  python_path: null
+  status: not_applicable
+  notes: There is no Python equivalent to MATLAB toolbox cache refresh or savepath
+    persistence.
 repo_structure:
-  - item: canonical_package_layout
-    python_target: nstat/
-    status: mapped
-    notes: The repo now uses a single root-level nstat/ package with no src/nstat mirror or repo-root package stub.
+- item: canonical_package_layout
+  python_target: nstat/
+  status: mapped
+  notes: The repo now uses a single root-level nstat/ package with no src/nstat mirror
+    or repo-root package stub.
+fidelity_summary:
+  class_fidelity:
+    high_fidelity: 18
+    not_applicable: 1
+  notebook_fidelity:
+    high_fidelity: 13
+  simulink_fidelity:
+    high_fidelity_native_python: 2
+    reference_only: 10

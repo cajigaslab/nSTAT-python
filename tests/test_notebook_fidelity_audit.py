@@ -25,6 +25,10 @@ def test_notebook_fidelity_audit_covers_all_parity_notes() -> None:
 def test_notebook_fidelity_audit_has_structural_counts() -> None:
     audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
     for row in audit.get("items", []):
+        assert row["status"] in {"high_fidelity", "exact", "partial", "missing"}
+        assert isinstance(row["executable_in_ci"], bool)
+        assert "current_run_group" in row
+        assert isinstance(row["fixture_backed"], bool)
         assert "python_sections" in row
         assert "python_expected_figures" in row
         assert row["python_expected_figures"] >= 0
@@ -35,7 +39,7 @@ def test_notebook_fidelity_audit_has_structural_counts() -> None:
 
 def test_notebook_fidelity_audit_marks_upgraded_ports_as_high_fidelity() -> None:
     audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
-    high_fidelity_topics = {row["topic"] for row in audit.get("items", []) if row["fidelity_status"] == "high_fidelity"}
+    high_fidelity_topics = {row["topic"] for row in audit.get("items", []) if row["status"] == "high_fidelity"}
     assert {
         "AnalysisExamples",
         "AnalysisExamples2",
@@ -47,14 +51,14 @@ def test_notebook_fidelity_audit_marks_upgraded_ports_as_high_fidelity() -> None
 
 def test_notebook_fidelity_audit_tracks_only_known_partial_notebooks() -> None:
     audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
-    partial_topics = {row["topic"] for row in audit.get("items", []) if row["fidelity_status"] in {"partial", "placeholder", "missing"}}
+    partial_topics = {row["topic"] for row in audit.get("items", []) if row["status"] in {"partial", "missing"}}
     assert partial_topics == set()
 
 
 def test_high_fidelity_notebooks_have_no_placeholder_or_tracker_only_cells() -> None:
     audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
     for row in audit.get("items", []):
-        if row["fidelity_status"] not in {"high_fidelity", "exact"}:
+        if row["status"] not in {"high_fidelity", "exact"}:
             continue
         assert not row["python_contains_placeholders"], f"{row['topic']} still contains placeholder code"
         assert not row["python_contains_tracker_only_cells"], f"{row['topic']} still contains tracker-only cells"
@@ -63,12 +67,19 @@ def test_high_fidelity_notebooks_have_no_placeholder_or_tracker_only_cells() -> 
 def test_high_fidelity_notebooks_have_near_matlab_structural_counts() -> None:
     audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
     for row in audit.get("items", []):
-        if row["fidelity_status"] not in {"high_fidelity", "exact"}:
+        if row["status"] not in {"high_fidelity", "exact"}:
             continue
         if row.get("section_delta") is None or row.get("figure_delta") is None:
             continue
         assert abs(int(row["section_delta"])) <= 1, f"{row['topic']} has a large MATLAB section delta"
         assert abs(int(row["figure_delta"])) <= 1, f"{row['topic']} has a large MATLAB figure delta"
+
+
+def test_required_notebook_ports_are_executable_in_ci() -> None:
+    audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
+    for row in audit.get("items", []):
+        assert row["executable_in_ci"] is True
+        assert row["current_run_group"] in {"helpfile_full", "parity_core", "ci_smoke", "core", "smoke"}
 
 
 def test_notebook_fidelity_audit_matches_generator_when_matlab_repo_is_available() -> None:

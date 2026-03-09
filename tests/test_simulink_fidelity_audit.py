@@ -17,6 +17,15 @@ VALID_STRATEGIES = {
     "unsupported",
     "reference_only",
 }
+VALID_STATUSES = {
+    "exact_native_python",
+    "high_fidelity_native_python",
+    "generated_code_wrapped",
+    "packaged_runtime",
+    "matlab_engine_reference",
+    "reference_only",
+    "unsupported",
+}
 REQUIRED_MODEL_PATHS = {
     "PointProcessSimulation.slx",
     "PointProcessSimulationCont.slx",
@@ -40,6 +49,7 @@ def test_simulink_fidelity_audit_uses_known_strategy_values() -> None:
     payload = _load_audit()
     for row in payload["items"]:
         assert row["python_strategy"] in VALID_STRATEGIES
+        assert row["status"] in VALID_STATUSES
 
 
 def test_simulink_fidelity_audit_records_required_execution_fields() -> None:
@@ -47,6 +57,9 @@ def test_simulink_fidelity_audit_records_required_execution_fields() -> None:
     for row in payload["items"]:
         assert row["model_path"]
         assert row["purpose"]
+        assert row["python_equivalent"] is not None
+        assert row["validation_strategy"]
+        assert row["required_remediation"] is not None
         assert row["chosen_interoperability_strategy"]
         assert row["validation_plan"]
 
@@ -85,6 +98,6 @@ def test_simulink_fidelity_audit_has_no_partial_or_missing_behavioral_paths() ->
         row["model_name"]
         for row in payload["items"]
         if row["model_name"] in {"PointProcessSimulation", "SimulatedNetwork2"}
-        and row["current_python_status"] in {"partial", "missing", "unsupported"}
+        and row["status"] in {"unsupported", "reference_only"}
     }
     assert not outstanding

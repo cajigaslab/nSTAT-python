@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from collections import Counter
+
 import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "parity" / "manifest.yml"
 NOTEBOOK_AUDIT_PATH = REPO_ROOT / "parity" / "notebook_fidelity.yml"
+CLASS_AUDIT_PATH = REPO_ROOT / "parity" / "class_fidelity.yml"
+SIMULINK_AUDIT_PATH = REPO_ROOT / "parity" / "simulink_fidelity.yml"
 
 EXPECTED_MATLAB_PUBLIC_API = {
     "Analysis",
@@ -118,4 +122,18 @@ def test_manifest_help_workflows_align_with_notebook_fidelity_audit() -> None:
         manifest_row = manifest_help_rows[topic]
         audit_row = audit_rows[topic]
         if manifest_row["status"] == "mapped":
-            assert audit_row["fidelity_status"] in {"high_fidelity", "exact"}
+            assert audit_row["status"] in {"high_fidelity", "exact"}
+
+
+def test_manifest_fidelity_summary_matches_detailed_audits() -> None:
+    manifest = _load_manifest()
+    class_audit = yaml.safe_load(CLASS_AUDIT_PATH.read_text(encoding="utf-8")) or {}
+    notebook_audit = yaml.safe_load(NOTEBOOK_AUDIT_PATH.read_text(encoding="utf-8")) or {}
+    simulink_audit = yaml.safe_load(SIMULINK_AUDIT_PATH.read_text(encoding="utf-8")) or {}
+
+    expected = {
+        "class_fidelity": dict(Counter(str(row.get("status", "")).strip() for row in class_audit.get("items", []))),
+        "notebook_fidelity": dict(Counter(str(row.get("status", "")).strip() for row in notebook_audit.get("items", []))),
+        "simulink_fidelity": dict(Counter(str(row.get("status", "")).strip() for row in simulink_audit.get("items", []))),
+    }
+    assert manifest["fidelity_summary"] == expected
