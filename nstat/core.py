@@ -1354,7 +1354,7 @@ class Covariate(SignalObj):
         lines = super().plot(selectorArray, plotPropsIn, handle)
         if self.isConfIntervalSet():
             import matplotlib.pyplot as plt
-            import matplotlib.colors as mcolors
+            from .confidence_interval import MATLAB_COLOR_ORDER
 
             ax = plt.gca() if handle is None else handle
             selectors = self.findIndFromDataMask() if selectorArray is None else (
@@ -1364,11 +1364,25 @@ class Covariate(SignalObj):
                 selectors = [selectors]
             if selectors and isinstance(selectors[0], list):
                 selectors = [item[0] for item in selectors]
+            ci_lines = []
             for line_index, selector in enumerate(selectors):
-                color = getattr(lines[line_index], "get_color", lambda: "b")()
-                if isinstance(color, (str, bytes)):
-                    color = mcolors.to_rgb(color)
-                self.ci[selector - 1].plot(color, ax=ax)
+                current_ci_lines = self.ci[selector - 1].plot(None, ax=ax)
+                if len(current_ci_lines) >= 2:
+                    current_ci_lines[0].set_color(
+                        MATLAB_COLOR_ORDER[(line_index + 1) % MATLAB_COLOR_ORDER.shape[0]]
+                    )
+                    current_ci_lines[1].set_color(
+                        MATLAB_COLOR_ORDER[(line_index + 2) % MATLAB_COLOR_ORDER.shape[0]]
+                    )
+                ci_lines.extend(current_ci_lines)
+            # MATLAB exposes axes children in reverse plotting order. Reorder the
+            # Matplotlib artists so fixture checks observe the same visible line order.
+            if len(ci_lines) >= 2:
+                ci_lines[0].remove()
+                ax.add_line(ci_lines[0])
+            if lines:
+                lines[0].remove()
+                ax.add_line(lines[0])
         return lines
 
     def isConfIntervalSet(self) -> bool:
