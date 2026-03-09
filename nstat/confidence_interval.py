@@ -3,6 +3,20 @@ from __future__ import annotations
 import numpy as np
 
 
+MATLAB_COLOR_ORDER = np.asarray(
+    [
+        [0.0660, 0.4430, 0.7450],
+        [0.8660, 0.3290, 0.0000],
+        [0.9290, 0.6940, 0.1250],
+        [0.4940, 0.1840, 0.5560],
+        [0.4660, 0.6740, 0.1880],
+        [0.3010, 0.7450, 0.9330],
+        [0.6350, 0.0780, 0.1840],
+    ],
+    dtype=float,
+)
+
+
 class ConfidenceInterval:
     def __init__(self, time, bounds, *args, color: str | None = None, value: float = 0.95) -> None:
         t = np.asarray(time, dtype=float).reshape(-1)
@@ -176,12 +190,14 @@ class ConfidenceInterval:
         import matplotlib.pyplot as plt
 
         axis = plt.gca() if ax is None else ax
-        plot_color = color or self.color
+        plot_color = self.color if color is None else color
         if drawPatches:
-            return axis.fill_between(self.time, self.lower, self.upper, color=plot_color, alpha=alphaVal)
+            return axis.fill_between(self.time, self.lower, self.upper, color=plot_color, edgecolor="none", alpha=alphaVal)
         lines = axis.plot(self.time, self.bounds)
         for line in lines:
-            line.set_alpha(alphaVal)
             if plot_color is not None and not isinstance(plot_color, (str, bytes)):
                 line.set_color(plot_color)
+        if plot_color is None or isinstance(plot_color, (str, bytes)):
+            for index, line in enumerate(lines):
+                line.set_color(MATLAB_COLOR_ORDER[index % MATLAB_COLOR_ORDER.shape[0]])
         return lines

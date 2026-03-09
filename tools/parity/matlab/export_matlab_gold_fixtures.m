@@ -24,6 +24,7 @@ export_covariate_fixture(fixtureRoot);
 export_nspiketrain_fixture(fixtureRoot);
 export_nstcoll_fixture(fixtureRoot);
 export_config_fixture(fixtureRoot);
+export_events_fixture(fixtureRoot);
 export_cif_fixture(fixtureRoot);
 export_analysis_fixture(fixtureRoot);
 export_ksdiscrete_fixture(fixtureRoot);
@@ -37,6 +38,32 @@ export_nonlinear_decode_fixture(fixtureRoot);
 export_simulated_network_fixture(fixtureRoot);
 end
 
+function export_events_fixture(fixtureRoot)
+events = Events([0.2 0.7], {'E1','E2'}, 'g');
+fig = figure('Visible', 'off');
+ax = axes('Parent', fig);
+axis(ax, [0 1 -1 2]);
+events.plot(ax);
+
+lineHandles = flipud(findobj(ax, 'Type', 'line'));
+textHandles = flipud(findobj(ax, 'Type', 'text'));
+
+payload = struct();
+payload.eventTimes = events.eventTimes;
+payload.eventLabels = events.eventLabels;
+payload.eventColor = events.eventColor;
+payload.axis_limits = axis(ax);
+payload.plot_line_xdata = get(lineHandles(1), 'XData');
+payload.plot_line_ydata = get(lineHandles(1), 'YData');
+payload.plot_line_color = get(lineHandles(1), 'Color');
+payload.plot_line_width = get(lineHandles(1), 'LineWidth');
+payload.plot_label_strings = get(textHandles, 'String');
+payload.plot_label_positions = cell2mat(get(textHandles, 'Position')');
+
+close(fig);
+save(fullfile(fixtureRoot, 'events_exactness.mat'), '-struct', 'payload');
+end
+
 function export_confidence_interval_fixture(fixtureRoot)
 t = (0:0.1:0.4)';
 bounds = [0.9 1.1; 1.9 2.1; 2.9 3.1; 3.9 4.1; 4.9 5.1];
@@ -45,6 +72,25 @@ ci.setColor('r');
 ci.setValue(0.9);
 structure = ci.dataToStructure;
 roundtrip = ConfidenceInterval.fromStructure(structure);
+
+fig = figure('Visible','off');
+ax = axes('Parent', fig);
+ci.plot('r', 0.2, 0);
+lineHandles = flipud(findobj(ax, 'Type', 'line'));
+lineColors = zeros(numel(lineHandles), 3);
+for iLine = 1:numel(lineHandles)
+    lineColors(iLine, :) = get(lineHandles(iLine), 'Color');
+end
+close(fig);
+
+fig = figure('Visible','off');
+ax = axes('Parent', fig);
+ci.plot([0.1 0.2 0.3], 0.4, 1);
+patchHandle = findobj(ax, 'Type', 'patch');
+patchFaceColor = get(patchHandle, 'FaceColor');
+patchEdgeColor = get(patchHandle, 'EdgeColor');
+patchFaceAlpha = get(patchHandle, 'FaceAlpha');
+close(fig);
 
 payload = struct();
 payload.time = ci.time;
@@ -64,6 +110,10 @@ payload.roundtrip_color = roundtrip.color;
 payload.roundtrip_value = roundtrip.value;
 payload.roundtrip_name = roundtrip.name;
 payload.roundtrip_plotProps = roundtrip.plotProps;
+payload.line_plot_colors = lineColors;
+payload.patch_face_color = patchFaceColor;
+payload.patch_edge_color = patchEdgeColor;
+payload.patch_face_alpha = patchFaceAlpha;
 
 save(fullfile(fixtureRoot, 'confidence_interval_exactness.mat'), '-struct', 'payload');
 end
@@ -191,6 +241,28 @@ roundtrip = TrialConfig.fromStructure(structure);
 coll = ConfigColl({cfg, cfg2});
 subset = coll.getSubsetConfigs([1 2]);
 rebuilt = ConfigColl.fromStructure(coll.toStructure);
+defaultColl = ConfigColl();
+emptyColl = ConfigColl([]);
+renamed = ConfigColl({cfg, cfg2});
+renamed.setConfigNames('', 1);
+stringError = struct('identifier', '', 'message', '');
+try
+    ConfigColl('abc');
+catch ME
+    stringError.identifier = ME.identifier;
+    stringError.message = ME.message;
+end
+
+t = (0:0.5:1.0)';
+position = Covariate(t, [0 10; 1 11; 2 12], 'Position', 'time', 's', '', {'x','y'});
+stimulus = Covariate(t, [5; 6; 7], 'Stimulus', 'time', 's', 'a.u.', {'stim'});
+n1 = nspikeTrain([0.0 0.5 1.0], 'n1', 2.0, 0.0, 1.0, 'time', 's', 'spikes', 'spk', -1);
+n2 = nspikeTrain([0.25 0.75], 'n2', 2.0, 0.0, 1.0, 'time', 's', 'spikes', 'spk', -1);
+cfgApplied = TrialConfig({{'Position','x'},{'Stimulus'}}, 4.0, [0 0.5 1.0], [0 0.5 1.0], [0 1; 1 0], 0.25, 'stim_pos');
+trial1 = Trial(nstColl({n1, n2}), CovColl({position, stimulus}));
+cfgApplied.setConfig(trial1);
+trial2 = Trial(nstColl({n1, n2}), CovColl({position, stimulus}));
+ConfigColl({cfgApplied}).setConfig(trial2, 1);
 
 payload = struct();
 payload.cfg_name = cfg.name;
@@ -207,6 +279,25 @@ payload.rebuilt_names = rebuilt.getConfigNames();
 payload.rebuilt_first_name = rebuilt.getConfig(1).name;
 payload.rebuilt_first_covLag = rebuilt.getConfig(1).covLag;
 payload.rebuilt_first_ensCovMask = rebuilt.getConfig(1).ensCovMask;
+payload.default_numConfigs = defaultColl.numConfigs;
+payload.default_names = defaultColl.getConfigNames();
+payload.empty_numConfigs = emptyColl.numConfigs;
+payload.empty_names = emptyColl.getConfigNames();
+payload.renamed_names = renamed.getConfigNames();
+payload.string_error_identifier = stringError.identifier;
+payload.string_error_message = stringError.message;
+payload.applied_sampleRate = trial1.sampleRate;
+payload.applied_flat_cov_mask = trial1.flattenCovMask();
+payload.applied_history_windowTimes = trial1.history.windowTimes;
+payload.applied_ens_history_windowTimes = trial1.ensCovHist.windowTimes;
+payload.applied_ens_mask = trial1.ensCovMask;
+payload.applied_shifted_position_time = trial1.covarColl.getCov(1).time;
+payload.applied_coll_sampleRate = trial2.sampleRate;
+payload.applied_coll_flat_cov_mask = trial2.flattenCovMask();
+payload.applied_coll_history_windowTimes = trial2.history.windowTimes;
+payload.applied_coll_ens_history_windowTimes = trial2.ensCovHist.windowTimes;
+payload.applied_coll_ens_mask = trial2.ensCovMask;
+payload.applied_coll_shifted_position_time = trial2.covarColl.getCov(1).time;
 
 save(fullfile(fixtureRoot, 'config_exactness.mat'), '-struct', 'payload');
 end

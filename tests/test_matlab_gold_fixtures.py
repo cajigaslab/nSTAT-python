@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 from scipy.io import loadmat
 
 from nstat import (
@@ -13,6 +16,7 @@ from nstat import (
     CovColl,
     Covariate,
     DecodingAlgorithms,
+    Events,
     FitResult,
     FitResSummary,
     SignalObj,
@@ -180,6 +184,27 @@ def test_confidence_interval_matches_matlab_gold_fixture() -> None:
     assert roundtrip.name == _string(payload, "roundtrip_name")
     assert roundtrip.plotProps == _string_list(payload, "roundtrip_plotProps")
 
+    fig, ax = plt.subplots()
+    try:
+        lines = ci.plot(_string(payload, "color"), 0.2, 0, ax=ax)
+        actual_colors = np.asarray([mcolors.to_rgb(line.get_color()) for line in lines], dtype=float)
+        np.testing.assert_allclose(actual_colors, np.asarray(payload["line_plot_colors"], dtype=float), rtol=1e-12, atol=1e-12)
+    finally:
+        plt.close(fig)
+
+    fig, ax = plt.subplots()
+    try:
+        patch = ci.plot(np.asarray(payload["patch_face_color"], dtype=float), _scalar(payload, "patch_face_alpha"), 1, ax=ax)
+        np.testing.assert_allclose(patch.get_facecolor()[0, :3], np.asarray(payload["patch_face_color"], dtype=float), rtol=1e-12, atol=1e-12)
+        assert patch.get_edgecolor() is not None
+        np.testing.assert_allclose(patch.get_alpha(), _scalar(payload, "patch_face_alpha"), rtol=1e-12, atol=1e-12)
+        edge = _string(payload, "patch_edge_color")
+        if edge == "none":
+            edge_color = np.asarray(patch.get_edgecolor())
+            assert edge_color.size == 0 or edge_color.reshape(-1, 4)[0, 3] == 0.0
+    finally:
+        plt.close(fig)
+
 
 def test_nstcoll_matches_matlab_gold_fixture() -> None:
     payload = _load_fixture("nstcoll_exactness.mat")
@@ -202,11 +227,15 @@ def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
     payload = _load_fixture("config_exactness.mat")
     cfg = TrialConfig([["Position", "x"], ["Stimulus"]], 2.0, [0.0, 0.5, 1.0], [], [], 0.5, "stim_pos")
     cfg2 = TrialConfig([["Stimulus"]], 2.0, [], [], [], [], "manual")
+    default_coll = ConfigColl()
+    empty_coll = ConfigColl([])
     structure = cfg.toStructure()
     roundtrip = TrialConfig.fromStructure(structure)
     coll = ConfigColl([cfg, cfg2])
     subset = coll.getSubsetConfigs([1, 2])
     rebuilt = ConfigColl.fromStructure(coll.toStructure())
+    renamed = ConfigColl([cfg, cfg2])
+    renamed.setConfigNames("", [1])
 
     assert cfg.name == _string(payload, "cfg_name")
     np.testing.assert_allclose(float(cfg.sampleRate), _scalar(payload, "cfg_sampleRate"), rtol=1e-12, atol=1e-12)
@@ -220,6 +249,69 @@ def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
     assert rebuilt.getConfig(1).name == _string(payload, "rebuilt_first_name")
     assert rebuilt.getConfig(1).covLag == _string(payload, "rebuilt_first_covLag")
     np.testing.assert_allclose(float(rebuilt.getConfig(1).ensCovMask), _scalar(payload, "rebuilt_first_ensCovMask"), rtol=1e-12, atol=1e-12)
+    assert default_coll.numConfigs == int(_scalar(payload, "default_numConfigs"))
+    assert default_coll.getConfigNames() == _string_list(payload, "default_names")
+    assert empty_coll.numConfigs == int(_scalar(payload, "empty_numConfigs"))
+    assert empty_coll.getConfigNames() == _string_list(payload, "empty_names")
+    assert renamed.getConfigNames() == _string_list(payload, "renamed_names")
+    with pytest.raises(AttributeError) as excinfo:
+        ConfigColl("abc")
+    assert _string(payload, "string_error_identifier") in {"", "MATLAB:structRefFromNonStruct"}
+    assert "name" in str(excinfo.value)
+
+    time = np.array([0.0, 0.5, 1.0], dtype=float)
+    position = Covariate(time, np.column_stack([[0.0, 1.0, 2.0], [10.0, 11.0, 12.0]]), "Position", "time", "s", "", ["x", "y"])
+    stimulus = Covariate(time, [5.0, 6.0, 7.0], "Stimulus", "time", "s", "a.u.", ["stim"])
+    n1 = nspikeTrain([0.0, 0.5, 1.0], "n1", 2.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+    n2 = nspikeTrain([0.25, 0.75], "n2", 2.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+
+    cfg_applied = TrialConfig([["Position", "x"], ["Stimulus"]], 4.0, [0.0, 0.5, 1.0], [0.0, 0.5, 1.0], [[0, 1], [1, 0]], 0.25, "stim_pos")
+    trial = Trial(nstColl([n1, n2]), CovColl([position, stimulus]))
+    cfg_applied.setConfig(trial)
+
+    np.testing.assert_allclose(float(trial.sampleRate), _scalar(payload, "applied_sampleRate"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial.flattenCovMask(), dtype=float), _vector(payload, "applied_flat_cov_mask"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial.history.windowTimes, dtype=float), _vector(payload, "applied_history_windowTimes"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial.ensCovHist.windowTimes, dtype=float), _vector(payload, "applied_ens_history_windowTimes"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial.ensCovMask, dtype=float), np.asarray(payload["applied_ens_mask"], dtype=float), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial.covarColl.getCov(1).time, dtype=float), _vector(payload, "applied_shifted_position_time"), rtol=1e-12, atol=1e-12)
+
+    trial_from_coll = Trial(nstColl([n1, n2]), CovColl([position, stimulus]))
+    ConfigColl([cfg_applied]).setConfig(trial_from_coll, 1)
+    np.testing.assert_allclose(float(trial_from_coll.sampleRate), _scalar(payload, "applied_coll_sampleRate"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial_from_coll.flattenCovMask(), dtype=float), _vector(payload, "applied_coll_flat_cov_mask"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial_from_coll.history.windowTimes, dtype=float), _vector(payload, "applied_coll_history_windowTimes"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial_from_coll.ensCovHist.windowTimes, dtype=float), _vector(payload, "applied_coll_ens_history_windowTimes"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial_from_coll.ensCovMask, dtype=float), np.asarray(payload["applied_coll_ens_mask"], dtype=float), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial_from_coll.covarColl.getCov(1).time, dtype=float), _vector(payload, "applied_coll_shifted_position_time"), rtol=1e-12, atol=1e-12)
+
+
+def test_events_match_matlab_gold_fixture() -> None:
+    payload = _load_fixture("events_exactness.mat")
+    events = Events(_vector(payload, "eventTimes"), _string_list(payload, "eventLabels"), _string(payload, "eventColor"))
+    rebuilt = Events.fromStructure(events.toStructure())
+    assert rebuilt is not None
+    np.testing.assert_allclose(np.asarray(rebuilt.eventTimes, dtype=float), _vector(payload, "eventTimes"), rtol=1e-12, atol=1e-12)
+    assert rebuilt.eventLabels == _string_list(payload, "eventLabels")
+    assert rebuilt.eventColor == _string(payload, "eventColor")
+
+    fig, ax = plt.subplots()
+    try:
+        ax.axis(np.asarray(payload["axis_limits"], dtype=float))
+        returned_ax = events.plot(handle=ax)
+        assert returned_ax is ax
+        assert len(ax.lines) == _vector(payload, "eventTimes").size
+        first_line = ax.lines[0]
+        np.testing.assert_allclose(np.asarray(first_line.get_xdata(), dtype=float), _vector(payload, "plot_line_xdata"), rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(np.asarray(first_line.get_ydata(), dtype=float), _vector(payload, "plot_line_ydata"), rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(np.asarray(mcolors.to_rgb(first_line.get_color()), dtype=float), np.asarray(payload["plot_line_color"], dtype=float), rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(float(first_line.get_linewidth()), _scalar(payload, "plot_line_width"), rtol=1e-12, atol=1e-12)
+        text_strings = [text.get_text() for text in ax.texts]
+        assert text_strings == _string_list(payload, "plot_label_strings")
+        label_positions = np.asarray([(*text.get_position(), 0.0) for text in ax.texts], dtype=float).reshape(-1)
+        np.testing.assert_allclose(label_positions, _vector(payload, "plot_label_positions"), rtol=1e-12, atol=1e-12)
+    finally:
+        plt.close(fig)
 
 
 def test_cif_eval_surface_matches_matlab_gold_fixture() -> None:

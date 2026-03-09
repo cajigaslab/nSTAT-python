@@ -48,8 +48,8 @@ def test_analysis_returns_matlab_style_fitresult_surface() -> None:
     trial = _build_trial()
     configs = ConfigColl(
         [
-            TrialConfig(covMask=[["Stimulus"]], sampleRate=10.0, history=[0.0, 0.1, 0.2], name="stim_hist"),
-            TrialConfig(covMask=[["Velocity"]], sampleRate=10.0, name="vel_only"),
+            TrialConfig(covMask=[["Stimulus", "stim"]], sampleRate=10.0, history=[0.0, 0.1, 0.2], name="stim_hist"),
+            TrialConfig(covMask=[["Velocity", "vel"]], sampleRate=10.0, name="vel_only"),
         ]
     )
 
@@ -68,7 +68,7 @@ def test_analysis_returns_matlab_style_fitresult_surface() -> None:
 
 def test_fitresult_roundtrip_and_summary_preserve_core_metadata() -> None:
     trial = _build_trial()
-    configs = ConfigColl([TrialConfig(covMask=[["Stimulus"]], sampleRate=10.0, name="stim_only")])
+    configs = ConfigColl([TrialConfig(covMask=[["Stimulus", "stim"]], sampleRate=10.0, name="stim_only")])
     fits = Analysis.RunAnalysisForAllNeurons(trial, configs)
 
     rebuilt = FitResult.fromStructure(fits[0].toStructure())
