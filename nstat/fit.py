@@ -1405,21 +1405,21 @@ class FitSummary:
 
     def plotAIC(self, handle=None):
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.AIC, labels=self.fitNames)
+        ax.boxplot(self.AIC, tick_labels=self.fitNames)
         ax.set_ylabel("AIC")
         ax.set_title("AIC Across Neurons")
         return ax
 
     def plotBIC(self, handle=None):
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.BIC, labels=self.fitNames)
+        ax.boxplot(self.BIC, tick_labels=self.fitNames)
         ax.set_ylabel("BIC")
         ax.set_title("BIC Across Neurons")
         return ax
 
     def plotlogLL(self, handle=None):
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.logLL, labels=self.fitNames)
+        ax.boxplot(self.logLL, tick_labels=self.fitNames)
         ax.set_ylabel("log likelihood")
         ax.set_title("log likelihood Across Neurons")
         return ax
@@ -1470,7 +1470,7 @@ class FitSummary:
             labels = [name for idx, name in enumerate(self.fitNames, start=1) if idx != diffIndex]
         else:
             labels = list(self.fitNames[: values.shape[1]])
-        ax.boxplot(values, labels=labels)
+        ax.boxplot(values, tick_labels=labels)
         return ax
 
     # ------------------------------------------------------------------

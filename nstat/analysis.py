@@ -355,6 +355,15 @@ class Analysis:
         # MATLAB returns fits with KS diagnostics already populated, and
         # downstream summary classes read those cached fields directly.
         fit_result.computeKSStats()
+
+        # Compute the conditional intensity on validation data when a
+        # validation partition is present (mirrors Matlab behaviour).
+        if has_validation:
+            try:
+                fit_result.computeValLambda()
+            except Exception:
+                pass  # validation lambda is optional; don't fail the fit
+
         return fit_result
 
     @staticmethod

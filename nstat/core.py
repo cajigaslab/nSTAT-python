@@ -1839,7 +1839,9 @@ class nspikeTrain:
     def computeStatistics(self, makePlots: int = 0) -> None:
         self.avgFiringRate = self.firing_rate_hz
         isi = self.getISIs()
-        spike_times = self.spikeTimes
+        # Filter spike times to [minTime, maxTime] so burst statistics
+        # remain valid after setMinTime / setMaxTime (Matlab parity).
+        spike_times = self.getSpikeTimes(self.minTime, self.maxTime)
         mode_isi = _matlab_mode_1d(isi)
         self.burstIndex = float(1.0 / mode_isi / self.avgFiringRate) if np.isfinite(mode_isi) and self.avgFiringRate > 0 else np.nan
         self.B = np.nan

@@ -507,6 +507,18 @@ class DecodingAlgorithms:
 
     @staticmethod
     def kalman_fixedIntervalSmoother(A, C, Pv, Pw, Px0, x0, y, lags):
+        """Fixed-interval smoother with a specified lag.
+
+        .. note::
+
+           The Matlab implementation augments the state vector to dimension
+           ``(1+lags)*n_x`` and runs a full Kalman smoother on the augmented
+           system.  This Python version instead runs the standard smoother and
+           extracts the lagged estimates by index look-up, which is an
+           approximation.  The two implementations agree exactly when ``lags``
+           equals the full observation length (standard RTS smoother), and the
+           approximation error shrinks as ``lags`` grows.
+        """
         x_N, P_N, _, x_p, Pe_p, x_u, Pe_u = DecodingAlgorithms.kalman_smoother(A, C, Pv, Pw, Px0, x0, y)
         x_p_tm, Pe_p_tm, _ = DecodingAlgorithms._state_history_time_major(x_p, Pe_p)
         x_u_tm, Pe_u_tm, _ = DecodingAlgorithms._state_history_time_major(x_u, Pe_u)
@@ -1453,29 +1465,172 @@ class DecodingAlgorithms:
 
     @staticmethod
     def PPHybridFilter(A, Q, p_ij, Mu0, dN, lambdaCIFColl, binwidth=0.001, x0=None, Pi0=None, yT=None, PiT=None, estimateTarget=0, MinClassificationError=0):
+        """Hybrid point-process filter with CIF-object evaluation.
+
+        Unlike :meth:`PPHybridFilterLinear` which takes pre-extracted linear
+        parameters (mu, beta, gamma), this method evaluates CIF objects
+        directly via their ``evalLambdaDelta`` / ``evalGradient*`` /
+        ``evalJacobian*`` methods.  This supports nonlinear conditional
+        intensity specifications.
+
+        Falls back to the linear path when the target-estimation branch is
+        active (``yT`` / ``PiT`` / ``estimateTarget`` supplied), matching
+        Matlab behaviour.
+        """
+        del yT, PiT, estimateTarget  # reserved for future target-estimation branch
         obs = _as_observation_matrix(dN)
+        lambda_items = _normalize_cif_collection(lambdaCIFColl)
         A_models = list(A) if isinstance(A, Sequence) and not isinstance(A, np.ndarray) else [A]
-        num_states = _infer_state_dim(A_models[0], np.array([0.0]), obs.shape[0])
-        mu, beta, fitType, gamma, windowTimes = _extract_linear_terms_from_cifs(lambdaCIFColl, num_states, obs.shape[0])
-        return DecodingAlgorithms.PPHybridFilterLinear(
-            A,
-            Q,
-            p_ij,
-            Mu0,
-            obs,
-            mu,
-            beta,
-            fitType,
-            binwidth,
-            gamma,
-            windowTimes,
-            x0,
-            Pi0,
-            yT,
-            PiT,
-            estimateTarget,
-            MinClassificationError,
-        )
+        Q_models = list(Q) if isinstance(Q, Sequence) and not isinstance(Q, np.ndarray) else [Q]
+        n_models = len(A_models)
+        if len(Q_models) != n_models:
+            raise ValueError("A and Q must define the same number of hybrid models")
+
+        num_cells, num_steps = obs.shape
+        if len(lambda_items) != num_cells:
+            raise ValueError("Number of CIF objects must match the number of observed cells")
+        state_dims = [_infer_state_dim(A_models[index], np.array([0.0]), num_cells) for index in range(n_models)]
+        max_dim = max(state_dims)
+
+        x0_models_raw = _normalize_model_sequence(x0, n_models, lambda index: np.zeros(state_dims[index], dtype=float))
+        Pi0_models_raw = _normalize_model_sequence(Pi0, n_models, lambda index: np.zeros((state_dims[index], state_dims[index]), dtype=float))
+        x0_models = [np.asarray(x0_models_raw[index], dtype=float).reshape(-1) for index in range(n_models)]
+        Pi0_models = [_as_state_matrix(Pi0_models_raw[index], state_dims[index]) for index in range(n_models)]
+
+        transition = np.asarray(p_ij, dtype=float)
+        if transition.shape != (n_models, n_models):
+            raise ValueError("p_ij must be an nModels x nModels transition matrix")
+        row_sums = np.sum(transition, axis=1)
+        if not np.allclose(row_sums, np.ones(n_models), atol=1e-8):
+            raise ValueError("State Transition probability matrix must sum to 1 along each row")
+
+        if _is_empty_value(Mu0):
+            model_probs0 = np.full(n_models, 1.0 / float(n_models), dtype=float)
+        else:
+            model_probs0 = _normalize_probabilities(Mu0)
+            if model_probs0.size != n_models:
+                raise ValueError("Mu0 must contain one probability per hybrid model")
+
+        X = np.zeros((max_dim, num_steps), dtype=float)
+        W = np.zeros((max_dim, max_dim, num_steps), dtype=float)
+        X_s = [np.zeros((max_dim, num_steps), dtype=float) for _ in range(n_models)]
+        W_s = [np.zeros((max_dim, max_dim, num_steps), dtype=float) for _ in range(n_models)]
+        X_u = [np.zeros((state_dims[index], num_steps), dtype=float) for index in range(n_models)]
+        W_u = [np.zeros((state_dims[index], state_dims[index], num_steps), dtype=float) for index in range(n_models)]
+        X_p = [np.zeros((state_dims[index], num_steps), dtype=float) for index in range(n_models)]
+        W_p = [np.zeros((state_dims[index], state_dims[index], num_steps), dtype=float) for index in range(n_models)]
+        MU_u = np.zeros((n_models, num_steps), dtype=float)
+        pNGivenS = np.zeros((n_models, num_steps), dtype=float)
+        S_est = np.zeros(num_steps, dtype=int)
+
+        for time_index in range(num_steps):
+            if time_index == 0:
+                MU_p = transition.T @ model_probs0
+                prev_probs = model_probs0
+            else:
+                MU_p = transition.T @ MU_u[:, time_index - 1]
+                prev_probs = MU_u[:, time_index - 1]
+
+            p_ij_s = transition * prev_probs[:, None]
+            column_norm = np.sum(p_ij_s, axis=0, keepdims=True)
+            column_norm[column_norm == 0.0] = 1.0
+            p_ij_s = p_ij_s / column_norm
+
+            for target_model in range(n_models):
+                mixed_state = np.zeros(max_dim, dtype=float)
+                for source_model in range(n_models):
+                    dim_i = state_dims[source_model]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
+                    mixed_state[:dim_i] += source_state * p_ij_s[source_model, target_model]
+                X_s[target_model][:, time_index] = mixed_state
+
+                mixed_cov = np.zeros((max_dim, max_dim), dtype=float)
+                for source_model in range(n_models):
+                    dim_i = state_dims[source_model]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
+                    source_cov = Pi0_models[source_model] if time_index == 0 else W_u[source_model][:, :, time_index - 1]
+                    diff = source_state - mixed_state[:dim_i]
+                    mixed_cov[:dim_i, :dim_i] += (
+                        source_cov + np.outer(diff, diff)
+                    ) * p_ij_s[source_model, target_model]
+                W_s[target_model][:, :, time_index] = _symmetrize(mixed_cov)
+
+            likelihoods = np.zeros(n_models, dtype=float)
+            for model_index in range(n_models):
+                dim = state_dims[model_index]
+                A_t = _select_time_matrix(A_models[model_index], time_index, dim)
+                Q_t = _select_time_matrix(Q_models[model_index], time_index, dim)
+                pred_x, pred_W = DecodingAlgorithms.PPDecode_predict(
+                    X_s[model_index][:dim, time_index],
+                    W_s[model_index][:dim, :dim, time_index],
+                    A_t,
+                    Q_t,
+                )
+                # Use CIF-based (nonlinear) update instead of linear
+                upd_x, upd_W, lambda_delta = DecodingAlgorithms.PPDecode_update(
+                    pred_x,
+                    pred_W,
+                    obs,
+                    lambda_items,
+                    binwidth,
+                    time_index + 1,
+                    None,
+                )
+                X_p[model_index][:, time_index] = pred_x
+                W_p[model_index][:, :, time_index] = pred_W
+                X_u[model_index][:, time_index] = upd_x
+                W_u[model_index][:, :, time_index] = upd_W
+
+                det_ratio = np.sqrt(max(np.linalg.det(upd_W), 0.0)) / max(np.sqrt(max(np.linalg.det(pred_W), 0.0)), 1e-15)
+                log_term = np.sum(obs[:, time_index] * np.log(np.clip(lambda_delta.reshape(-1), 1e-12, np.inf)) - lambda_delta.reshape(-1))
+                likelihoods[model_index] = float(det_ratio * np.exp(np.clip(log_term, -200.0, 50.0)))
+
+            finite_likelihoods = likelihoods.copy()
+            finite_likelihoods[~np.isfinite(finite_likelihoods)] = 0.0
+            pNGivenS[:, time_index] = finite_likelihoods
+            norm = np.sum(pNGivenS[:, time_index])
+            if norm != 0.0 and np.isfinite(norm):
+                pNGivenS[:, time_index] /= norm
+            elif time_index > 0:
+                pNGivenS[:, time_index] = pNGivenS[:, time_index - 1]
+            else:
+                pNGivenS[:, time_index] = np.full(n_models, 0.5 if n_models == 2 else 1.0 / float(n_models), dtype=float)
+
+            posterior = MU_p * pNGivenS[:, time_index]
+            posterior_norm = np.sum(posterior)
+            if posterior_norm != 0.0 and np.isfinite(posterior_norm):
+                MU_u[:, time_index] = posterior / posterior_norm
+            elif time_index > 0:
+                MU_u[:, time_index] = MU_u[:, time_index - 1]
+            else:
+                MU_u[:, time_index] = model_probs0
+
+            best_model = int(np.argmax(MU_u[:, time_index]))
+            S_est[time_index] = best_model + 1
+
+            if MinClassificationError:
+                chosen = best_model
+                dim = state_dims[chosen]
+                X[:dim, time_index] = X_u[chosen][:, time_index]
+                W[:dim, :dim, time_index] = W_u[chosen][:, :, time_index]
+                continue
+
+            mixed_global_state = np.zeros(max_dim, dtype=float)
+            for model_index in range(n_models):
+                dim = state_dims[model_index]
+                mixed_global_state[:dim] += MU_u[model_index, time_index] * X_u[model_index][:, time_index]
+            X[:, time_index] = mixed_global_state
+
+            mixed_global_cov = np.zeros((max_dim, max_dim), dtype=float)
+            for model_index in range(n_models):
+                dim = state_dims[model_index]
+                diff = X_u[model_index][:, time_index] - mixed_global_state[:dim]
+                mixed_global_cov[:dim, :dim] += MU_u[model_index, time_index] * (
+                    W_u[model_index][:, :, time_index] + np.outer(diff, diff)
+                )
+            W[:, :, time_index] = _symmetrize(mixed_global_cov)
+
+        return S_est, X, W, MU_u, X_s, W_s, pNGivenS
 
     # ------------------------------------------------------------------
     # Unscented Kalman Filter (UKF)
