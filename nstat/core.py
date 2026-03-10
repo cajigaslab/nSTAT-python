@@ -546,14 +546,28 @@ class SignalObj:
             self.data = self.data[:endIndex, :]
         self.maxTime = float(np.max(self.time))
 
-    def merge(self, other: "SignalObj") -> "SignalObj":
-        if self.time.shape != other.time.shape or np.max(np.abs(self.time - other.time)) > 1e-9:
-            raise ValueError("Signals must share an identical time grid to merge.")
-        merged = self._spawn(
-            self.time,
-            np.column_stack([self.data, other.data]),
-            data_labels=[*self.dataLabels, *list(other.dataLabels)],
-            plot_props=[*self.plotProps, *getattr(other, "plotProps", [None for _ in range(other.dimension)])],
+    def merge(self, other: "SignalObj", holdVals: int = 0) -> "SignalObj":
+        """Merge *other* signal columns into *self*.
+
+        Matlab calls ``makeCompatible`` first so that signals with
+        different time grids are reconciled automatically.  The Python
+        version now does the same.
+
+        Parameters
+        ----------
+        other : SignalObj
+            Signal whose data columns will be appended.
+        holdVals : int, optional
+            Passed to ``makeCompatible`` – ``1`` holds endpoint values
+            when the time range is extended; ``0`` (default) pads with
+            zeros.
+        """
+        s1c, s2c = self.makeCompatible(other, holdVals)
+        merged = s1c._spawn(
+            s1c.time,
+            np.column_stack([s1c.data, s2c.data]),
+            data_labels=[*s1c.dataLabels, *list(s2c.dataLabels)],
+            plot_props=[*s1c.plotProps, *getattr(s2c, "plotProps", [None for _ in range(s2c.dimension)])],
         )
         return merged
 
@@ -1334,9 +1348,15 @@ class SignalObj:
     # ------------------------------------------------------------------
     def xcov(self, other: "SignalObj | None" = None, maxlag: int | None = None,
              scaleOpt: str = "biased") -> "SignalObj":
-        """Cross-covariance (mean-removed xcorr).  Matches Matlab ``xcov``."""
+        """Cross-covariance (mean-removed xcorr).  Matches Matlab ``xcov``.
+
+        When called with no *other* argument (auto-covariance), only
+        non-negative lags are returned — matching Matlab behaviour where
+        ``data=tempC(M-1:end,index)`` and ``lags=tempLags(M-1:end)``.
+        """
+        auto = other is None
         s1 = self
-        s2 = self if other is None else other
+        s2 = self if auto else other
         s1c, s2c = s1.makeCompatible(s2)
 
         data_columns: list[np.ndarray] = []
@@ -1366,6 +1386,12 @@ class SignalObj:
                     corr = corr[keep]
                     lags = lags[keep]
 
+                # Matlab returns only non-negative lags for auto-covariance
+                if auto:
+                    nonneg = lags >= 0
+                    corr = corr[nonneg]
+                    lags = lags[nonneg]
+
                 if lag_index is None:
                     lag_index = lags.astype(float) / max(float(s1c.sampleRate), 1e-12)
                 data_columns.append(np.asarray(corr, dtype=float))
@@ -1390,40 +1416,63 @@ class SignalObj:
     def periodogram(self, NFFT: int | None = None) -> tuple[np.ndarray, np.ndarray]:
         """Power spectral density via periodogram (Matlab ``periodogram``).
 
-        Returns ``(frequencies, psd)`` arrays.
+        Loops over all signal dimensions like the Matlab implementation.
+
+        Returns ``(frequencies, psd)`` where *psd* has shape
+        ``(nfreqs,)`` for 1-D signals or ``(nfreqs, dimension)`` for
+        multi-dimensional signals.
         """
         from scipy.signal import periodogram as _periodogram
 
         fs = float(self.sampleRate)
-        x = self.data[:, 0] if self.data.ndim == 2 else self.data
-        f, Pxx = _periodogram(x, fs=fs, nfft=NFFT, window="boxcar",
-                              scaling="density")
-        return f, Pxx
+        psd_cols: list[np.ndarray] = []
+        f_out: np.ndarray | None = None
+        ndim = self.dimension
+        for i in range(ndim):
+            x = self.data[:, i] if self.data.ndim == 2 else self.data
+            f, Pxx = _periodogram(x, fs=fs, nfft=NFFT, window="boxcar",
+                                  scaling="density")
+            if f_out is None:
+                f_out = f
+            psd_cols.append(Pxx)
+        if ndim == 1:
+            return f_out, psd_cols[0]
+        return f_out, np.column_stack(psd_cols)
 
-    def MTMspectrum(self, NW: float = 4.0, Kmax: int | None = None,
-                    NFFT: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+    def MTMspectrum(self, NW: float = 4.0, NFFT: int | None = None,
+                    Pval: float = 0.95,
+                    Kmax: int | None = None,
+                    ) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
         """Multi-taper spectral estimate (Matlab ``MTMspectrum``).
 
         Uses discrete prolate spheroidal sequences (DPSS / Slepian tapers).
+        Loops over all signal dimensions like the Matlab implementation.
 
         Parameters
         ----------
         NW : float
             Time-bandwidth product (default 4).
-        Kmax : int, optional
-            Number of tapers (default ``2*NW - 1``).
         NFFT : int, optional
             FFT length (default next power of 2 >= N).
+        Pval : float, optional
+            Confidence level for the chi-squared confidence interval
+            (default 0.95).  Set to ``None`` to skip CI computation.
+        Kmax : int, optional
+            Number of tapers (default ``2*NW - 1``).
 
         Returns
         -------
         frequencies : ndarray
         psd : ndarray
+            Shape ``(nfreqs,)`` for 1-D or ``(nfreqs, dimension)``.
+        psd_ci : ndarray or None
+            Shape ``(nfreqs, 2)`` for 1-D or ``(nfreqs, 2*dimension)``
+            containing ``[lower, upper]`` columns per dimension.
+            ``None`` when *Pval* is ``None``.
         """
         from scipy.signal.windows import dpss
 
-        x = self.data[:, 0] if self.data.ndim == 2 else self.data
-        N = len(x)
+        N = self.data.shape[0]
         fs = float(self.sampleRate)
         if Kmax is None:
             Kmax = int(2 * NW - 1)
@@ -1431,24 +1480,49 @@ class SignalObj:
             NFFT = int(2 ** np.ceil(np.log2(N)))
 
         tapers, eigenvalues = dpss(N, NW, Kmax, return_ratios=True)
-        # tapers shape: (Kmax, N)
-        # Compute tapered FFTs
-        Sk = np.zeros((Kmax, NFFT // 2 + 1))
-        for k in range(Kmax):
-            xw = x * tapers[k]
-            Xf = np.fft.rfft(xw, n=NFFT)
-            Sk[k] = np.abs(Xf) ** 2
-
-        # Weighted average by eigenvalues
-        weights = eigenvalues / eigenvalues.sum()
-        psd = np.dot(weights, Sk) * (2.0 / fs)
-        # DC and Nyquist don't get doubled
-        psd[0] /= 2.0
-        if NFFT % 2 == 0:
-            psd[-1] /= 2.0
-
         frequencies = np.fft.rfftfreq(NFFT, d=1.0 / fs)
-        return frequencies, psd
+        nfreqs = len(frequencies)
+
+        # chi-squared CI bounds (degrees of freedom = 2*Kmax)
+        ci_lo_factor = ci_hi_factor = None
+        if Pval is not None:
+            from scipy.stats import chi2
+            dof = 2 * Kmax
+            alpha = 1.0 - Pval
+            ci_lo_factor = dof / chi2.ppf(1.0 - alpha / 2.0, dof)
+            ci_hi_factor = dof / chi2.ppf(alpha / 2.0, dof)
+
+        ndim = self.dimension
+        psd_cols: list[np.ndarray] = []
+        ci_cols: list[np.ndarray] = []
+
+        for di in range(ndim):
+            x = self.data[:, di] if self.data.ndim == 2 else self.data
+            Sk = np.zeros((Kmax, nfreqs))
+            for k in range(Kmax):
+                xw = x * tapers[k]
+                Xf = np.fft.rfft(xw, n=NFFT)
+                Sk[k] = np.abs(Xf) ** 2
+
+            weights = eigenvalues / eigenvalues.sum()
+            psd = np.dot(weights, Sk) * (2.0 / fs)
+            psd[0] /= 2.0
+            if NFFT % 2 == 0:
+                psd[-1] /= 2.0
+            psd_cols.append(psd)
+
+            if Pval is not None:
+                ci_cols.append(psd * ci_lo_factor)
+                ci_cols.append(psd * ci_hi_factor)
+
+        if ndim == 1:
+            psd_out = psd_cols[0]
+            ci_out = np.column_stack(ci_cols) if ci_cols else None
+        else:
+            psd_out = np.column_stack(psd_cols)
+            ci_out = np.column_stack(ci_cols) if ci_cols else None
+
+        return frequencies, psd_out, ci_out
 
     def spectrogram(self, nperseg: int = 256, noverlap: int | None = None,
                     NFFT: int | None = None,

@@ -34,7 +34,7 @@ def main() -> None:
     sig_obj = SignalObj(time=time, data=signal, name="sine_signal", yunits="a.u.")
 
     try:
-        freq_hz, psd = sig_obj.MTMspectrum()
+        freq_hz, psd, _ci = sig_obj.MTMspectrum()
     except Exception:
         freq_hz, psd = _fallback_multitaper_psd(signal, fs_hz)
 
