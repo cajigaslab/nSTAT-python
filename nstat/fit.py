@@ -847,7 +847,7 @@ class FitResult:
             return self.neuralSpikeTrain[0]
         raise TypeError("FitResult does not contain a MATLAB-style neural spike train")
 
-    def _compute_diagnostics(self, fit_num: int = 1) -> dict[str, np.ndarray | float]:
+    def _compute_diagnostics(self, fit_num: int = 1, *, dt_correction: int = 1) -> dict[str, np.ndarray | float]:
         if fit_num in self._diagnostic_cache:
             return self._diagnostic_cache[fit_num]
 
@@ -875,7 +875,7 @@ class FitResult:
             self.lambda_signal.yunits,
             selected_labels,
         )
-        Z, U, xAxis, KSSorted, _ = _matlab_compute_ks_arrays(self._primary_spike_train(), lambda_signal, dt_correction=1)
+        Z, U, xAxis, KSSorted, _ = _matlab_compute_ks_arrays(self._primary_spike_train(), lambda_signal, dt_correction=dt_correction)
         z = np.asarray(Z[:, 0], dtype=float).reshape(-1) if np.asarray(Z).size else np.asarray([], dtype=float)
         uniforms = np.asarray(U[:, 0], dtype=float).reshape(-1) if np.asarray(U).size else np.asarray([], dtype=float)
         ideal = np.asarray(xAxis[:, 0], dtype=float).reshape(-1) if np.asarray(xAxis).size else np.asarray([], dtype=float)
@@ -936,8 +936,8 @@ class FitResult:
         self.invGausStats = {"X": gaussianized, "rhoSig": acf.tolist(), "confBoundSig": [acf_ci]}
         return diagnostics
 
-    def computeKSStats(self, fit_num: int = 1) -> dict[str, float]:
-        diag = self._compute_diagnostics(fit_num)
+    def computeKSStats(self, fit_num: int = 1, *, dt_correction: int = 1) -> dict[str, float]:
+        diag = self._compute_diagnostics(fit_num, dt_correction=dt_correction)
         return {
             "ks_stat": float(diag["ks_stat"]),
             "ks_pvalue": float(diag["ks_pvalue"]),
@@ -947,14 +947,14 @@ class FitResult:
     def computeInvGausTrans(self, fit_num: int = 1) -> np.ndarray:
         return np.asarray(self._compute_diagnostics(fit_num)["gaussianized"], dtype=float)
 
-    def computeFitResidual(self, fit_num: int = 1) -> Covariate:
+    def computeFitResidual(self, fit_num: int = 1, *, windowSize: float | None = None) -> Covariate:
         time, rate_hz = self._lambda_series(fit_num)
         if time.size == 0:
             residual = Covariate([], [], "M(t_k)", "time", "s", "counts/bin", ["residual"])
             self.setFitResidual(residual)
             return residual
 
-        window_size = float(np.median(np.diff(time))) if time.size > 1 else 1.0
+        window_size = float(windowSize) if windowSize is not None else (float(np.median(np.diff(time))) if time.size > 1 else 1.0)
         spike_train = self._primary_spike_train().nstCopy()
         spike_train.resample(1.0 / max(window_size, 1e-12))
         spike_train.setMinTime(float(time[0]))

@@ -492,14 +492,12 @@ class Analysis:
 
     @staticmethod
     def KSPlot(fitResults: FitResult, DTCorrection: int = 1, makePlot: int = 1):
-        del DTCorrection
-        fitResults.computeKSStats()
+        fitResults.computeKSStats(dt_correction=DTCorrection)
         return fitResults.KSPlot() if makePlot else []
 
     @staticmethod
     def plotFitResidual(fitResults: FitResult, windowSize: float = 0.01, makePlot: int = 1):
-        del windowSize
-        fitResults.computeFitResidual()
+        fitResults.computeFitResidual(windowSize=windowSize)
         return fitResults.plotResidual() if makePlot else []
 
     @staticmethod
@@ -518,7 +516,7 @@ class Analysis:
 
     @staticmethod
     def computeHistLag(tObj: Trial, neuronNum=None, windowTimes=None, CovLabels=None, Algorithm="GLM", batchMode=0, sampleRate=None, makePlot=1, histMinTimes=None, histMaxTimes=None):
-        del batchMode, histMinTimes, histMaxTimes
+        del batchMode
         if windowTimes is None:
             raise ValueError("Must specify a vector of windowTimes")
         if neuronNum is None:
@@ -530,12 +528,19 @@ class Analysis:
         if windows.size < 2:
             raise ValueError("windowTimes must contain at least two entries")
 
+        use_history_obj = (histMinTimes is not None or histMaxTimes is not None)
+
         configs = []
         from .trial import TrialConfig
 
         configs.append(TrialConfig(cov_labels, sampleRate, [], [], name="Baseline"))
         for i in range(2, windows.size + 1):
-            cfg = TrialConfig(cov_labels, sampleRate, windows[:i], [], name=f"Window{i - 1}")
+            if use_history_obj:
+                from .history import History as _Hist
+                h_temp = _Hist(windows[:i], minTime=histMinTimes, maxTime=histMaxTimes)
+                cfg = TrialConfig(cov_labels, sampleRate, h_temp, [], name=f"Window{i - 1}")
+            else:
+                cfg = TrialConfig(cov_labels, sampleRate, windows[:i], [], name=f"Window{i - 1}")
             configs.append(cfg)
         tcc = ConfigCollection(configs)
         fitResults = Analysis.RunAnalysisForNeuron(tObj, neuronNum, tcc, makePlot, Algorithm)
@@ -652,9 +657,17 @@ class Analysis:
                 p_val = float(chi2.sf(deviance, dim_diff))
                 p_vals.append(p_val)
                 p_coords.append((neighbor - 1, neuron_index - 1))
-                coeffs = fit.getHistCoeffs(2) if np.any(np.asarray(fit.numHist, dtype=int) > 0) else np.array([], dtype=float)
-                if coeffs.size:
-                    phiMat[neighbor - 1, neuron_index - 1] = -float(np.sign(np.sum(coeffs))) * gamma
+                # Matlab: extract only the specific neighbor's ensemble
+                # coefficients from the BASELINE model (fit 1) for the sign.
+                if np.any(np.asarray(fit.numHist, dtype=int) > 0):
+                    coeffs_all, labels_all, _ = fit.getCoeffsWithLabels(1)
+                    neighbor_prefix = f"{neighbor}:["
+                    neighbor_mask = np.array([str(lbl).startswith(neighbor_prefix) for lbl in labels_all], dtype=bool)
+                    neighbor_coeffs = coeffs_all[neighbor_mask] if np.any(neighbor_mask) else np.array([], dtype=float)
+                else:
+                    neighbor_coeffs = np.array([], dtype=float)
+                if neighbor_coeffs.size:
+                    phiMat[neighbor - 1, neuron_index - 1] = -float(np.sign(np.sum(neighbor_coeffs))) * gamma
 
         if p_vals:
             keep = _benjamini_hochberg(np.asarray(p_vals, dtype=float), alpha=max(alpha, 1e-6))
