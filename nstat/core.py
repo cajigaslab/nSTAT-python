@@ -938,6 +938,201 @@ class SignalObj:
             data_labels,
         )
 
+    # ------------------------------------------------------------------
+    # Time-shift / alignment helpers (match Matlab SignalObj)
+    # ------------------------------------------------------------------
+    def shift(self, deltaT: float, updateLabels: bool = False) -> "SignalObj":
+        """Return a copy with time shifted by *deltaT* seconds."""
+        new_time = self.time + float(deltaT)
+        out = self.__class__(
+            new_time,
+            self.data.copy(),
+            self.name,
+            self.xlabelval,
+            self.xunits,
+            self.yunits,
+            list(self.dataLabels),
+            list(self.plotProps),
+        )
+        if updateLabels:
+            out.name = f"{self.name} shifted by {deltaT}"
+        return out
+
+    def shiftMe(self, deltaT: float, updateLabels: bool = False) -> None:
+        """In-place time shift by *deltaT* seconds (Matlab ``shiftMe``)."""
+        self.time = self.time + float(deltaT)
+        self.minTime = float(np.min(self.time)) if self.time.size else 0.0
+        self.maxTime = float(np.max(self.time)) if self.time.size else 0.0
+        if updateLabels:
+            self.name = f"{self.name} shifted by {deltaT}"
+
+    def alignTime(self, timeMarker: float, newTime: float = 0.0) -> None:
+        """Shift so that *timeMarker* becomes *newTime* (Matlab ``alignTime``)."""
+        self.shiftMe(float(newTime) - float(timeMarker))
+
+    # ------------------------------------------------------------------
+    # Element-wise arithmetic helpers (match Matlab SignalObj)
+    # ------------------------------------------------------------------
+    def power(self, exponent: float) -> "SignalObj":
+        """Element-wise power ``data ** exponent`` (Matlab ``power``)."""
+        return self.__class__(
+            self.time.copy(),
+            np.power(self.data, float(exponent)),
+            f"{self.name}^{exponent}",
+            self.xlabelval,
+            self.xunits,
+            self.yunits,
+            list(self.dataLabels),
+            list(self.plotProps),
+        )
+
+    def sqrt(self) -> "SignalObj":
+        """Element-wise square root (Matlab ``sqrt``)."""
+        return self.power(0.5)
+
+    # ------------------------------------------------------------------
+    # Cross-covariance (match Matlab SignalObj.xcov)
+    # ------------------------------------------------------------------
+    def xcov(self, other: "SignalObj | None" = None, maxlag: int | None = None,
+             scaleOpt: str = "biased") -> "SignalObj":
+        """Cross-covariance (mean-removed xcorr).  Matches Matlab ``xcov``."""
+        s1 = self
+        s2 = self if other is None else other
+        s1c, s2c = s1.makeCompatible(s2)
+
+        data_columns: list[np.ndarray] = []
+        data_labels: list[str] = []
+        lag_index: np.ndarray | None = None
+
+        for li in range(s1c.dimension):
+            for ri in range(s2c.dimension):
+                x = s1c.data[:, li] - np.mean(s1c.data[:, li])
+                y = s2c.data[:, ri] - np.mean(s2c.data[:, ri])
+                corr = np.correlate(x, y, mode="full")
+                N = len(x)
+                lags = np.arange(-N + 1, N, dtype=int)
+
+                # scale
+                if scaleOpt == "biased":
+                    corr = corr / N
+                elif scaleOpt == "unbiased":
+                    denom = N - np.abs(lags)
+                    denom[denom <= 0] = 1
+                    corr = corr / denom
+                elif scaleOpt == "coeff":
+                    corr = corr / corr[N - 1] if corr[N - 1] != 0 else corr
+
+                if maxlag is not None:
+                    keep = np.abs(lags) <= int(maxlag)
+                    corr = corr[keep]
+                    lags = lags[keep]
+
+                if lag_index is None:
+                    lag_index = lags.astype(float) / max(float(s1c.sampleRate), 1e-12)
+                data_columns.append(np.asarray(corr, dtype=float))
+                ll = s1c.dataLabels[li] if li < len(s1c.dataLabels) else str(li + 1)
+                rl = s2c.dataLabels[ri] if ri < len(s2c.dataLabels) else str(ri + 1)
+                data_labels.append(f"xcov({ll},{rl})")
+
+        data = np.column_stack(data_columns) if data_columns else np.zeros((0, 0), dtype=float)
+        return self.__class__(
+            lag_index if lag_index is not None else np.array([], dtype=float),
+            data,
+            f"xcov({self.name},{s2.name})",
+            "\\Delta \\tau",
+            self.xunits,
+            f"{self.yunits}^2" if self.yunits else "",
+            data_labels,
+        )
+
+    # ------------------------------------------------------------------
+    # Spectral methods (match Matlab SignalObj)
+    # ------------------------------------------------------------------
+    def periodogram(self, NFFT: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+        """Power spectral density via periodogram (Matlab ``periodogram``).
+
+        Returns ``(frequencies, psd)`` arrays.
+        """
+        from scipy.signal import periodogram as _periodogram
+
+        fs = float(self.sampleRate)
+        x = self.data[:, 0] if self.data.ndim == 2 else self.data
+        f, Pxx = _periodogram(x, fs=fs, nfft=NFFT, window="boxcar",
+                              scaling="density")
+        return f, Pxx
+
+    def MTMspectrum(self, NW: float = 4.0, Kmax: int | None = None,
+                    NFFT: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+        """Multi-taper spectral estimate (Matlab ``MTMspectrum``).
+
+        Uses discrete prolate spheroidal sequences (DPSS / Slepian tapers).
+
+        Parameters
+        ----------
+        NW : float
+            Time-bandwidth product (default 4).
+        Kmax : int, optional
+            Number of tapers (default ``2*NW - 1``).
+        NFFT : int, optional
+            FFT length (default next power of 2 >= N).
+
+        Returns
+        -------
+        frequencies : ndarray
+        psd : ndarray
+        """
+        from scipy.signal.windows import dpss
+
+        x = self.data[:, 0] if self.data.ndim == 2 else self.data
+        N = len(x)
+        fs = float(self.sampleRate)
+        if Kmax is None:
+            Kmax = int(2 * NW - 1)
+        if NFFT is None:
+            NFFT = int(2 ** np.ceil(np.log2(N)))
+
+        tapers, eigenvalues = dpss(N, NW, Kmax, return_ratios=True)
+        # tapers shape: (Kmax, N)
+        # Compute tapered FFTs
+        Sk = np.zeros((Kmax, NFFT // 2 + 1))
+        for k in range(Kmax):
+            xw = x * tapers[k]
+            Xf = np.fft.rfft(xw, n=NFFT)
+            Sk[k] = np.abs(Xf) ** 2
+
+        # Weighted average by eigenvalues
+        weights = eigenvalues / eigenvalues.sum()
+        psd = np.dot(weights, Sk) * (2.0 / fs)
+        # DC and Nyquist don't get doubled
+        psd[0] /= 2.0
+        if NFFT % 2 == 0:
+            psd[-1] /= 2.0
+
+        frequencies = np.fft.rfftfreq(NFFT, d=1.0 / fs)
+        return frequencies, psd
+
+    def spectrogram(self, nperseg: int = 256, noverlap: int | None = None,
+                    NFFT: int | None = None,
+                    window: str = "hann") -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Short-time Fourier transform spectrogram (Matlab ``spectrogram``).
+
+        Returns ``(frequencies, times, Sxx)``.
+        """
+        from scipy.signal import spectrogram as _spectrogram
+
+        x = self.data[:, 0] if self.data.ndim == 2 else self.data
+        fs = float(self.sampleRate)
+        if noverlap is None:
+            noverlap = nperseg // 2
+        if NFFT is None:
+            NFFT = nperseg
+        f, t, Sxx = _spectrogram(x, fs=fs, window=window,
+                                  nperseg=nperseg, noverlap=noverlap,
+                                  nfft=NFFT)
+        # offset times to match signal start
+        t = t + self.minTime
+        return f, t, Sxx
+
     def setConfInterval(self, bounds: tuple[np.ndarray, np.ndarray]) -> None:
         low, high = bounds
         low_arr = np.asarray(low, dtype=float)
