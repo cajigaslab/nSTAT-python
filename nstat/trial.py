@@ -1577,6 +1577,33 @@ class SpikeTrainCollection:
             A, Q0_diag, x0, dN, fitType, delta, gamma0, windowTimes, numBasis, neuronName
         )
 
+    def toStructure(self) -> dict[str, Any]:
+        """Serialize to a plain dict (Matlab ``nstColl.toStructure``)."""
+        self.resetMask()
+        return {
+            "nstrain": [train.toStructure() for train in self.nstrain],
+            "numSpikeTrains": int(self.numSpikeTrains),
+            "minTime": float(self.minTime),
+            "maxTime": float(self.maxTime),
+            "sampleRate": float(self.sampleRate),
+            "neuronMask": self.neuronMask.tolist(),
+            "neighbors": np.asarray(self.neighbors, dtype=int).tolist() if np.size(self.neighbors) else [],
+        }
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any]) -> "SpikeTrainCollection":
+        """Reconstruct from a dict produced by :meth:`toStructure` (Matlab ``nstColl.fromStructure``)."""
+        nst_list = [nspikeTrain.fromStructure(item) for item in structure.get("nstrain", [])]
+        coll = SpikeTrainCollection(nst_list)
+        if "minTime" in structure:
+            coll.setMinTime(float(structure["minTime"]))
+        if "maxTime" in structure:
+            coll.setMaxTime(float(structure["maxTime"]))
+        neighbors = structure.get("neighbors", [])
+        if neighbors and np.size(neighbors):
+            coll.setNeighbors(np.asarray(neighbors, dtype=int))
+        return coll
+
 
 class TrialConfig:
     """MATLAB-style TrialConfig with configuration-application semantics."""
@@ -2244,6 +2271,54 @@ class Trial:
             self.makeConsistentSampleRate()
         self.resampleEnsColl()
         self.makeConsistentTime()
+
+    # ------------------------------------------------------------------
+    # Serialization (Matlab Trial.toStructure / Trial.fromStructure)
+    # ------------------------------------------------------------------
+    def toStructure(self) -> dict[str, Any]:
+        """Serialize a Trial to a plain dict (Matlab ``Trial.toStructure``)."""
+        from .history import History
+
+        structure: dict[str, Any] = {}
+        structure["nspikeColl"] = self.nspikeColl.toStructure()
+        structure["covarColl"] = self.covarColl.toStructure()
+        structure["ev"] = self.ev.toStructure() if self.ev is not None else None
+        structure["history"] = self.history.toStructure() if isinstance(self.history, History) else None
+        structure["ensCovHist"] = self.ensCovHist.toStructure() if isinstance(self.ensCovHist, History) else None
+        structure["sampleRate"] = float(self.sampleRate) if np.isfinite(self.sampleRate) else self.sampleRate
+        structure["minTime"] = float(self.minTime)
+        structure["maxTime"] = float(self.maxTime)
+        structure["covMask"] = [np.asarray(m, dtype=int).tolist() for m in self.covMask] if self.covMask is not None else []
+        structure["neuronMask"] = np.asarray(self.neuronMask, dtype=int).tolist()
+        structure["trainingWindow"] = np.asarray(self.trainingWindow, dtype=float).tolist() if self.trainingWindow is not None else []
+        structure["validationWindow"] = np.asarray(self.validationWindow, dtype=float).tolist() if self.validationWindow is not None else []
+        return structure
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any]) -> "Trial":
+        """Reconstruct a Trial from a dict produced by :meth:`toStructure` (Matlab ``Trial.fromStructure``)."""
+        from .events import Events
+        from .history import History
+
+        nspikeColl = SpikeTrainCollection.fromStructure(structure["nspikeColl"])
+        covarColl = CovariateCollection.fromStructure(structure["covarColl"])
+        ev = Events.fromStructure(structure.get("ev"))
+        h = History.fromStructure(structure.get("history"))
+        ensHist = History.fromStructure(structure.get("ensCovHist"))
+        trial = Trial(nspikeColl, covarColl, ev, h, ensHist)
+
+        if "minTime" in structure:
+            trial.setMinTime(float(structure["minTime"]))
+        if "maxTime" in structure:
+            trial.setMaxTime(float(structure["maxTime"]))
+
+        trainingW = structure.get("trainingWindow", [])
+        validationW = structure.get("validationWindow", [])
+        if trainingW and validationW:
+            partition = list(trainingW) + list(validationW)
+            trial.setTrialPartition(partition)
+
+        return trial
 
     def makeConsistentSampleRate(self) -> None:
         self.resample(self.findMaxSampleRate())

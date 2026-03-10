@@ -271,6 +271,9 @@ class Analysis:
         if not spike_train.name:
             spike_train.setName(str(neuron_number))
 
+        spike_validation = None
+        has_validation = False
+
         for cfg_index in range(1, config_collection.numConfigs + 1):
             _restore_trial_partition(trial, original_partition)
             config_collection.setConfig(trial, cfg_index)
@@ -314,9 +317,12 @@ class Analysis:
 
             partition = np.asarray(trial.getTrialPartition(), dtype=float).reshape(-1)
             if partition.size >= 4 and partition[2] < partition[3]:
+                has_validation = True
                 trial.setTrialTimesFor("validation")
                 xvalData.append(np.asarray(trial.getDesignMatrix(neuron_number), dtype=float))
                 xvalTime.append(np.asarray(trial.covarColl.getCov(1).time, dtype=float).copy())
+                spike_validation = trial.nspikeColl.getNST(neuron_number).nstCopy()
+                spike_validation.setName(str(neuron_number))
                 trial.setTrialTimesFor("training")
             else:
                 xvalData.append(np.zeros((0, len(current_labels)), dtype=float))

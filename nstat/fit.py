@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Iterable, Sequence
 
@@ -995,6 +996,49 @@ class FitResult:
         rate = np.exp(np.clip(eta, -20.0, 20.0)) * float(self.lambda_signal.sampleRate)
         return rate.reshape(np.asarray(newData[0] if isinstance(newData, list) else x[:, 0]).shape) if x.size else rate
 
+    def computeValLambda(self) -> tuple[Covariate, np.ndarray]:
+        """Compute the conditional intensity on validation data (Matlab ``computeValLambda``).
+
+        Returns
+        -------
+        lambda_val : Covariate
+            The validation-set conditional intensity function.
+        logLL : np.ndarray
+            Log-likelihood for each fit configuration on the validation data.
+        """
+        if not self.XvalTime or not self.XvalData:
+            raise ValueError("No validation data available (XvalData / XvalTime are empty)")
+
+        time_vec = np.asarray(self.XvalTime[0], dtype=float).reshape(-1)
+        lambda_data = np.zeros((time_vec.size, self.numResults), dtype=float)
+        for i in range(self.numResults):
+            xval = self.XvalData[i] if i < len(self.XvalData) else self.XvalData[0]
+            lambda_data[:, i] = self.evalLambda(i + 1, xval)
+
+        lambda_val = Covariate(
+            time_vec,
+            lambda_data,
+            "\\lambda(t)",
+            self.lambda_signal.xlabelval,
+            self.lambda_signal.xunits,
+            "Hz",
+            list(self.lambda_signal.dataLabels),
+        )
+
+        delta = 1.0 / max(float(lambda_val.sampleRate), 1e-12)
+        y = self.neuralSpikeTrain.getSigRep().dataToMatrix().reshape(-1)
+        # Truncate or pad y to match validation lambda length
+        n = min(y.size, lambda_data.shape[0])
+        logLL_arr = np.zeros(self.numResults, dtype=float)
+        for col in range(self.numResults):
+            lam = np.maximum(lambda_data[:n, col] * delta, 1e-30)
+            y_trunc = y[:n]
+            logLL_arr[col] = float(np.sum(
+                y_trunc * np.log(lam) + (1.0 - y_trunc) * np.log(np.maximum(1.0 - lam, 1e-30))
+            ))
+
+        return lambda_val, logLL_arr
+
     def plotResults(self, fit_num: int = 1, handle=None):
         fig = handle if handle is not None else plt.figure(figsize=(11.5, 8.0))
         fig.clear()
@@ -1460,6 +1504,56 @@ class FitSummary:
         ax.grid(True, alpha=0.3)
         ax.axhline(0, color="0.5", linewidth=0.5, linestyle="--")
         return ax
+
+    def _is_hist_label(self, label: str) -> bool:
+        """Return True if *label* looks like a history window term (e.g. ``[0.001,0.01]``)."""
+        return bool(re.match(r"^\[", label))
+
+    def getHistIndex(self, fitNum: int | list[int] | None = None) -> list[int]:
+        """Return 0-based indices into *uniqueCovLabels* that are history terms."""
+        if fitNum is None:
+            fitNum = list(range(1, self.numResults + 1))
+        if isinstance(fitNum, int):
+            fitNum = [fitNum]
+        coeff_mat, labels, _ = self.getCoeffs(fitNum[0])
+        hist_indices: list[int] = []
+        for idx, label in enumerate(labels):
+            if self._is_hist_label(label):
+                # Only include if at least one neuron has a non-NaN value
+                if np.any(np.isfinite(coeff_mat[:, idx])):
+                    hist_indices.append(idx)
+        return hist_indices
+
+    def getCoeffIndex(self, fitNum: int | list[int] | None = None) -> list[int]:
+        """Return 0-based indices into *uniqueCovLabels* that are NOT history terms."""
+        if fitNum is None:
+            fitNum = list(range(1, self.numResults + 1))
+        if isinstance(fitNum, int):
+            fitNum = [fitNum]
+        coeff_mat, labels, _ = self.getCoeffs(fitNum[0])
+        hist_set = set(self.getHistIndex(fitNum))
+        coeff_indices: list[int] = []
+        for idx, label in enumerate(labels):
+            if idx not in hist_set:
+                if np.any(np.isfinite(coeff_mat[:, idx])):
+                    coeff_indices.append(idx)
+        return coeff_indices
+
+    def plotCoeffsWithoutHistory(self, fitNum: int | list[int] | None = None,
+                                 plotSignificance: bool = True,
+                                 handle=None):
+        """Plot coefficients excluding history terms (Matlab ``plotCoeffsWithoutHistory``)."""
+        coeffIndex = self.getCoeffIndex(fitNum)
+        return self.plotAllCoeffs(fitNum=fitNum, plotSignificance=plotSignificance,
+                                  subIndex=coeffIndex, handle=handle)
+
+    def plotHistCoeffs(self, fitNum: int | list[int] | None = None,
+                       plotSignificance: bool = True,
+                       handle=None):
+        """Plot only the history coefficients (Matlab ``plotHistCoeffs``)."""
+        histIndex = self.getHistIndex(fitNum)
+        return self.plotAllCoeffs(fitNum=fitNum, plotSignificance=plotSignificance,
+                                  subIndex=histIndex, handle=handle)
 
     def plot3dCoeffSummary(self, handle=None):
         """3D ribbon plot of binned coefficient distributions (Matlab ``plot3dCoeffSummary``)."""
