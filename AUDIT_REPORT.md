@@ -192,15 +192,15 @@ These are enhancements in Python with no Matlab equivalent:
 6. Add validation lambda computation to Analysis
 7. Implement PPDecodeFilterLinear target estimation branch
 
-### Matlab Bug Reports to File
+### Matlab Bug Reports Filed
 
-- M4: Analysis Granger causality ensCovMask zeroing
-- M5: Analysis phiMat strfind indexing
-- M6: Analysis sampeRate typo
-- M7: CovColl findMaxTime double shift
-- M8: CovColl isCovPresent off-by-one
-- M9: TrialConfig fromStructure missing ensCovMask
-- M10: SignalObj autocorrelation typo
-- M11: SignalObj times/rdivide aliasing
-- M12: DecodingAlgorithms gamma broadcasting
-- M13: nstColl getSpikeTimes uninitialized count
+- M4: Analysis Granger causality ensCovMask zeroing → [nSTAT#15](https://github.com/cajigaslab/nSTAT/issues/15)
+- M5: Analysis phiMat strfind indexing → included in [nSTAT#15](https://github.com/cajigaslab/nSTAT/issues/15)
+- M6: Analysis sampeRate typo → [nSTAT#16](https://github.com/cajigaslab/nSTAT/issues/16)
+- M7: CovColl findMaxTime double shift → [nSTAT#18](https://github.com/cajigaslab/nSTAT/issues/18)
+- M8: CovColl isCovPresent off-by-one → [nSTAT#17](https://github.com/cajigaslab/nSTAT/issues/17)
+- M9: TrialConfig fromStructure missing ensCovMask → [nSTAT#19](https://github.com/cajigaslab/nSTAT/issues/19)
+- M10: SignalObj autocorrelation typo → low priority, not filed
+- M11: SignalObj times/rdivide aliasing → low priority, not filed
+- M12: DecodingAlgorithms gamma broadcasting → [nSTAT#20](https://github.com/cajigaslab/nSTAT/issues/20)
+- M13: nstColl getSpikeTimes uninitialized count → [nSTAT#21](https://github.com/cajigaslab/nSTAT/issues/21)
