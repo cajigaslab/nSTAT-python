@@ -991,6 +991,83 @@ class SignalObj:
         return self.power(0.5)
 
     # ------------------------------------------------------------------
+    # Peak-finding helpers (match Matlab SignalObj)
+    # ------------------------------------------------------------------
+    def findPeaks(
+        self,
+        peak_type: str = "maxima",
+        minDistance: int | None = None,
+    ) -> tuple[list[np.ndarray], list[np.ndarray]]:
+        """Find local peaks in each signal dimension.
+
+        Parameters
+        ----------
+        peak_type : ``'maxima'`` or ``'minima'``
+        minDistance : minimum sample distance between peaks (default:
+            ``sampleRate * duration / 10``).
+
+        Returns
+        -------
+        indices, values : lists of arrays (one per dimension).
+
+        Note: The Matlab original has a bug where the ``'minima'`` branch
+        does not negate the data before calling ``findpeaks``.  This Python
+        port fixes that.
+        """
+        from scipy.signal import find_peaks as _find_peaks
+
+        data = np.atleast_2d(self.data)
+        if data.shape[0] == 1:
+            data = data.T
+        N = data.shape[0]
+        if minDistance is None:
+            duration = float(self.maxTime - self.minTime)
+            minDistance = max(1, int(round(self.sampleRate * duration / 10)))
+
+        all_indices: list[np.ndarray] = []
+        all_values: list[np.ndarray] = []
+        for col in range(data.shape[1]):
+            sig = data[:, col]
+            if peak_type == "minima":
+                sig = -sig
+            idx, _ = _find_peaks(sig, distance=minDistance)
+            all_indices.append(idx)
+            all_values.append(data[idx, col])  # always return actual values
+        return all_indices, all_values
+
+    def findMaxima(self) -> tuple[list[np.ndarray], list[np.ndarray]]:
+        """Convenience wrapper: ``findPeaks('maxima')``."""
+        return self.findPeaks("maxima")
+
+    def findMinima(self) -> tuple[list[np.ndarray], list[np.ndarray]]:
+        """Convenience wrapper: ``findPeaks('minima')``."""
+        return self.findPeaks("minima")
+
+    def findGlobalPeak(
+        self, peak_type: str = "maxima"
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Find the global max or min across each dimension.
+
+        Returns
+        -------
+        times : 1-D array of times at which the peak occurs (one per dim).
+        values : 1-D array of peak values (one per dim).
+
+        Note: The Matlab original has a typo (``sOBj`` instead of ``sObj``)
+        in the minima branch.  This Python port fixes that.
+        """
+        data = np.atleast_2d(self.data)
+        if data.shape[0] == 1:
+            data = data.T
+        if peak_type == "maxima":
+            idx = np.argmax(data, axis=0)
+        else:
+            idx = np.argmin(data, axis=0)
+        times = self.time[idx]
+        values = data[idx, np.arange(data.shape[1])]
+        return np.atleast_1d(times), np.atleast_1d(values)
+
+    # ------------------------------------------------------------------
     # Cross-covariance (match Matlab SignalObj.xcov)
     # ------------------------------------------------------------------
     def xcov(self, other: "SignalObj | None" = None, maxlag: int | None = None,
