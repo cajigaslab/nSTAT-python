@@ -49,7 +49,26 @@ Paper cross-reference:
 
 ## Consolidated Paper Workflow
 
-- `nSTATPaperExamples`: `notebooks/nSTATPaperExamples.ipynb`
-- Canonical standalone scripts: `examples/paper/example01_mepsc_poisson.py`
-  through `examples/paper/example05_decoding_ppaf_pphf.py`
+All five paper examples are self-contained scripts mirroring their MATLAB
+counterparts:
+
+| Example | Script | What it demonstrates |
+|---|---|---|
+| 01 — mEPSC Poisson | [example01_mepsc_poisson.py](../examples/paper/example01_mepsc_poisson.py) | Constant vs piecewise Poisson under Mg2+ washout |
+| 02 — Whisker Stimulus | [example02_whisker_stimulus_thalamus.py](../examples/paper/example02_whisker_stimulus_thalamus.py) | Explicit-stimulus GLM with lag and history selection |
+| 03 — PSTH and SSGLM | [example03_psth_and_ssglm.py](../examples/paper/example03_psth_and_ssglm.py) | PSTH comparison and state-space GLM dynamics |
+| 04 — Place Cells | [example04_place_cells_continuous_stimulus.py](../examples/paper/example04_place_cells_continuous_stimulus.py) | Gaussian vs Zernike receptive-field models |
+| 05 — PPAF and PPHF | [example05_decoding_ppaf_pphf.py](../examples/paper/example05_decoding_ppaf_pphf.py) | Adaptive and hybrid point-process decoding |
+
 - Generated gallery and figure index: [Paper Examples](paper_examples.md)
+- Master notebook: `notebooks/nSTATPaperExamples.ipynb`
+
+## Supplementary (README) Examples
+
+These smaller demos serve as quick install and plotting checks:
+
+| Example | Run command |
+|---|---|
+| Multitaper spectrum + spectrogram | `python examples/readme_examples/example1_multitaper_and_spectrogram.py` |
+| Simulated CIF spike train | `python examples/readme_examples/example2_simulate_cif_spiketrain_10s.py` |
+| Spike-train raster | `python examples/readme_examples/example3_nstcoll_raster_from_example2.py` |
