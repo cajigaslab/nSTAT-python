@@ -1429,6 +1429,140 @@ class FitSummary:
         ax.boxplot(values, labels=labels)
         return ax
 
+    # ------------------------------------------------------------------
+    # Coefficient plotting (match Matlab FitResSummary)
+    # ------------------------------------------------------------------
+    def plotAllCoeffs(self, fitNum: int | list[int] | None = None,
+                      plotSignificance: bool = True,
+                      subIndex: list[int] | None = None,
+                      handle=None):
+        """Errorbar plot of GLM coefficients across neurons (Matlab ``plotAllCoeffs``)."""
+        if fitNum is None:
+            fitNum = list(range(1, self.numResults + 1))
+        if isinstance(fitNum, int):
+            fitNum = [fitNum]
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(10, 5))[1]
+
+        coeff_mat, labels, se_mat = self.getCoeffs(fitNum[0])
+        if subIndex is not None:
+            labels = [labels[i] for i in subIndex]
+            coeff_mat = coeff_mat[:, subIndex]
+            se_mat = se_mat[:, subIndex]
+
+        x = np.arange(1, len(labels) + 1)
+        for n_idx in range(self.numNeurons):
+            ax.errorbar(x, coeff_mat[n_idx], yerr=se_mat[n_idx], fmt=".",
+                        alpha=0.7, capsize=2)
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, rotation=90, fontsize=8)
+        ax.set_ylabel("Fit Coefficients")
+        ax.grid(True, alpha=0.3)
+        ax.axhline(0, color="0.5", linewidth=0.5, linestyle="--")
+        return ax
+
+    def plot3dCoeffSummary(self, handle=None):
+        """3D ribbon plot of binned coefficient distributions (Matlab ``plot3dCoeffSummary``)."""
+        from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+        N, edges, _percentSig = self.binCoeffs(-12, 12, 0.1)
+        labels = self.uniqueCovLabels
+        fig = plt.figure(figsize=(10, 7)) if handle is None else handle
+        if hasattr(fig, "add_subplot"):
+            ax = fig.add_subplot(111, projection="3d")
+        else:
+            ax = fig
+
+        for i in range(N.shape[1] if N.ndim == 2 else 0):
+            xs = edges[:-1]
+            ys = np.full_like(xs, i)
+            zs = N[:len(xs), i] if N.shape[0] > len(xs) else N[:, i]
+            ax.bar(xs, zs, zs=i, zdir="y", alpha=0.6, width=(edges[1] - edges[0]))
+
+        ax.set_xlabel("Coefficient value")
+        ax.set_ylabel("Covariate index")
+        ax.set_zlabel("Density")
+        ax.set_yticks(range(len(labels)))
+        ax.set_yticklabels(labels, fontsize=6)
+        return ax
+
+    def plot2dCoeffSummary(self, handle=None):
+        """Stacked line plot of binned coefficient distributions (Matlab ``plot2dCoeffSummary``)."""
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(8, 6))[1]
+        N, edges, percentSig = self.binCoeffs(-12, 12, 0.1)
+        labels = self.uniqueCovLabels
+        num_coeffs = N.shape[1] if N.ndim == 2 else 0
+
+        for i in range(num_coeffs):
+            offset = i + 1
+            vals = N[:len(edges), i] if N.shape[0] >= len(edges) else N[:, i]
+            ax.plot(edges[:len(vals)], vals + offset)
+
+        ax.set_yticks(range(1, num_coeffs + 1))
+        ax.set_yticklabels(labels[:num_coeffs], fontsize=6)
+        # Annotate significance percentages
+        for i in range(num_coeffs):
+            if i < len(percentSig):
+                pct = float(percentSig) if np.isscalar(percentSig) else float(percentSig[i]) if hasattr(percentSig, "__getitem__") else 0.0
+                ax.annotate(f"{pct*100:.0f}%sig", xy=(0.98, (i + 1)),
+                            xycoords=("axes fraction", "data"),
+                            fontsize=6, ha="right")
+        return ax
+
+    def plotKSSummary(self, neurons: list[int] | None = None, handle=None):
+        """Subplot grid of KS plots per neuron (Matlab ``plotKSSummary``)."""
+        if neurons is None:
+            neurons = list(range(self.numNeurons))
+        n = len(neurons)
+        if n <= 1:
+            nrows, ncols = 1, 1
+        elif n <= 2:
+            nrows, ncols = 1, 2
+        elif n <= 4:
+            nrows, ncols = 2, 2
+        elif n <= 8:
+            nrows, ncols = 2, 4
+        elif n <= 12:
+            nrows, ncols = 3, 4
+        elif n <= 16:
+            nrows, ncols = 4, 4
+        elif n <= 20:
+            nrows, ncols = 5, 4
+        elif n <= 24:
+            nrows, ncols = 6, 4
+        elif n <= 40:
+            nrows, ncols = 10, 4
+        else:
+            nrows, ncols = 10, 10
+
+        fig = handle if handle is not None else plt.figure(figsize=(3 * ncols, 2.5 * nrows))
+        if hasattr(fig, "subplots"):
+            fig.clear()
+            axes = fig.subplots(nrows, ncols, squeeze=False)
+        else:
+            return fig
+
+        for cnt, neuron_idx in enumerate(neurons):
+            row, col = divmod(cnt, ncols)
+            ax = axes[row][col]
+            fit = self.fitResCell[neuron_idx]
+            fit.KSPlot(handle=ax)
+            ax.set_title(f"N{neuron_idx + 1}", fontsize=8)
+            if cnt < n - 1:
+                ax.get_legend().set_visible(False) if ax.get_legend() else None
+                ax.set_xlabel("")
+                ax.set_ylabel("")
+            ax.set_xticks([0, 1])
+            ax.set_yticks([0, 1])
+
+        # Hide unused subplots
+        for idx in range(n, nrows * ncols):
+            row, col = divmod(idx, ncols)
+            axes[row][col].set_visible(False)
+
+        fig.tight_layout()
+        return fig
+
     def toStructure(self) -> dict[str, Any]:
         return {
             "fitResCell": FitResult.CellArrayToStructure(self.fitResCell),

@@ -1,9 +1,19 @@
 # nSTAT-python
 
-`nSTAT-python` is a Python toolbox for neural spike-train analysis, modeling, and decoding.
+`nSTAT-python` is a Python port of the [nSTAT](https://github.com/cajigaslab/nSTAT)
+open-source neural spike train analysis toolbox. It implements a range of models and
+algorithms for neural spike train data analysis, with a focus on point-process
+generalized linear models (GLMs), model fitting, model-order analysis, and adaptive
+decoding. In addition to point-process algorithms, nSTAT also provides tools for
+Gaussian signals — from correlation analysis to the Kalman filter — applicable to
+continuous neural signals such as LFP, EEG, and ECoG.
 
 [![test-and-build](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml)
 [![pages](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml)
+
+Lab websites:
+- Neuroscience Statistics Research Laboratory: https://www.neurostat.mit.edu
+- RESToRe Lab: https://www.med.upenn.edu/cajigaslab/
 
 ## Installation
 
@@ -162,9 +172,21 @@ pytest -q
 sphinx-build -b html docs docs/_build
 ```
 
+## License
+
+nSTAT is protected by the GPL v2 Open Source License.
+
 ## Cite
 
-Cajigas, I., Malika, W. Q., & Brown, E. N. (2012).  
-nSTAT: Open-source neural spike train analysis toolbox for Matlab.  
-Journal of Neuroscience Methods, 211, 245–264.  
+If you use nSTAT in your work, please cite:
+
+Cajigas I, Malik WQ, Brown EN. nSTAT: Open-source neural spike train analysis
+toolbox for Matlab. Journal of Neuroscience Methods 211: 245–264, Nov. 2012.
 https://doi.org/10.1016/j.jneumeth.2012.08.009
+PMID: 22981419
+
+## Data and Related Repositories
+
+- **Matlab toolbox**: https://github.com/cajigaslab/nSTAT
+- **Paper-example dataset (Figshare)**: https://doi.org/10.6084/m9.figshare.4834640.v3
+- **Paper DOI**: https://doi.org/10.1016/j.jneumeth.2012.08.009

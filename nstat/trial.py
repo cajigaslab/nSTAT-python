@@ -1323,6 +1323,189 @@ class SpikeTrainCollection:
             dataLabels.append(f"b{i + 1:02d}" if i + 1 < 10 else f"b{i + 1}")
         return Covariate(timeVec, dataMat, "UnitPulseBasis", "time", "s", "", dataLabels)
 
+    def ssglm(
+        self,
+        windowTimes=None,
+        numBasis: int | None = None,
+        numVarEstIter: int | None = None,
+        fitType: str | None = None,
+    ):
+        """State-space GLM via EM algorithm (forward only).
+
+        Matches Matlab nstColl.ssglm(). Estimates time-varying firing rate
+        using a state-space model with EM parameter estimation.
+
+        Parameters
+        ----------
+        windowTimes : array-like or None
+            History window boundaries. None for no history.
+        numBasis : int or None
+            Number of basis functions. Defaults to duration/0.02.
+        numVarEstIter : int or None
+            Iterations for variance estimation. Default 10.
+        fitType : 'poisson' or 'binomial'
+
+        Returns
+        -------
+        xK : (R, K) estimated state trajectories
+        WK : (R, R, K) estimated state covariances
+        Qhat : (R,) estimated state noise variance
+        gammahat : (J,) estimated history coefficients
+        logll : float, log-likelihood
+        fitResults : FitResult
+        """
+        from .decoding_algorithms import DecodingAlgorithms
+
+        if fitType is None or fitType == "":
+            fitType = "poisson"
+        if numVarEstIter is None:
+            numVarEstIter = 10
+        if numBasis is None:
+            basisWidth = 0.02
+            numBasis = max(1, int((self.maxTime - self.minTime) / basisWidth))
+
+        # Convert spike trains to binary observation matrix (K x N)
+        dN = self.dataToMatrix().T  # dataToMatrix returns (N, K), transpose to (K, N)
+        dN = np.clip(dN, 0, 1)  # binarize
+        K, N = dN.shape
+
+        delta = 1.0 / float(self.sampleRate)
+        basisWidth = (float(self.maxTime) - float(self.minTime)) / float(numBasis)
+
+        # Get initial coefficients from GLM PSTH
+        x0 = self._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+        if x0.size < numBasis:
+            x0 = np.concatenate([x0, np.zeros(numBasis - x0.size)])
+        elif x0.size > numBasis:
+            x0 = x0[:numBasis]
+
+        # Get initial history coefficients
+        if windowTimes is not None and len(windowTimes) > 1:
+            try:
+                from .analysis import Analysis
+                basis = self.generateUnitImpulseBasis(basisWidth, float(self.minTime), float(self.maxTime), float(self.sampleRate))
+                trial = Trial(SpikeTrainCollection([t.nstCopy() for t in self.nstrain]), CovariateCollection([basis]))
+                hist_arr = np.asarray(windowTimes, dtype=float).reshape(-1)
+                label_sel = [[basis.name, *list(basis.dataLabels)]]
+                cfg = TrialConfig(label_sel, float(self.sampleRate), hist_arr, [])
+                cfg.setName("GLM-PSTH+Hist")
+                cfgColl = ConfigCollection([cfg])
+                psthResult = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, "GLM", [], 1)
+                fit = psthResult[0] if isinstance(psthResult, list) else psthResult
+                gamma0 = np.asarray(fit.getHistCoeffs(1), dtype=float).reshape(-1)
+                gamma0 = np.where(np.isnan(gamma0), -5.0, gamma0)
+            except Exception:
+                numHist = len(windowTimes) - 1
+                gamma0 = np.full(numHist, -5.0, dtype=float)
+        else:
+            gamma0 = np.array([], dtype=float)
+
+        # Estimate initial Q0
+        Q0 = self.estimateVarianceAcrossTrials(numBasis, windowTimes, numVarEstIter, fitType)
+        Q0_diag = np.diag(Q0)
+        if np.any(Q0_diag == 0):
+            Q0_diag += 0.001 * np.random.rand(numBasis)
+
+        A = np.eye(numBasis)
+
+        # Build history matrices
+        HkAll = DecodingAlgorithms._ssglm_build_history(dN, windowTimes, delta)
+
+        # Run EM
+        xK, WK, Wku, Qhat, gammahat, logll, _, _, nIter, _ = DecodingAlgorithms.PPSS_EM(
+            A, Q0_diag, x0, dN, fitType, delta, gamma0, windowTimes, numBasis, HkAll
+        )
+
+        # Package results
+        fitResults = DecodingAlgorithms.prepareEMResults(
+            fitType, self.name if hasattr(self, 'name') else 'N01',
+            dN, HkAll, xK, WK, Qhat, gammahat, windowTimes, delta,
+            np.eye(Qhat.size + gammahat.size), logll
+        )
+
+        return xK, WK, Qhat, gammahat, logll, fitResults
+
+    def ssglmFB(
+        self,
+        windowTimes=None,
+        numBasis: int | None = None,
+        numVarEstIter: int | None = None,
+        fitType: str | None = None,
+    ):
+        """State-space GLM via EM Forward-Backward algorithm.
+
+        Enhanced version of ssglm() that uses forward-backward-forward
+        iterations for improved convergence. Calls PPSS_EMFB.
+
+        Parameters
+        ----------
+        windowTimes : array-like or None
+            History window boundaries.
+        numBasis : int or None
+            Number of basis functions.
+        numVarEstIter : int or None
+            Iterations for variance estimation.
+        fitType : 'poisson' or 'binomial'
+
+        Returns
+        -------
+        xK, WK, Wku, Qhat, gammahat, fitResults, stimulus, stimCIs, logll,
+        QhatAll, gammahatAll, nIter
+        """
+        from .decoding_algorithms import DecodingAlgorithms
+
+        if fitType is None or fitType == "":
+            fitType = "poisson"
+        if numVarEstIter is None:
+            numVarEstIter = 10
+        if numBasis is None:
+            basisWidth = 0.02
+            numBasis = max(1, int((self.maxTime - self.minTime) / basisWidth))
+
+        dN = self.dataToMatrix().T
+        dN = np.clip(dN, 0, 1)
+
+        delta = 1.0 / float(self.sampleRate)
+        basisWidth = (float(self.maxTime) - float(self.minTime)) / float(numBasis)
+
+        x0 = self._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+        if x0.size < numBasis:
+            x0 = np.concatenate([x0, np.zeros(numBasis - x0.size)])
+        elif x0.size > numBasis:
+            x0 = x0[:numBasis]
+
+        if windowTimes is not None and len(windowTimes) > 1:
+            try:
+                from .analysis import Analysis
+                basis = self.generateUnitImpulseBasis(basisWidth, float(self.minTime), float(self.maxTime), float(self.sampleRate))
+                trial = Trial(SpikeTrainCollection([t.nstCopy() for t in self.nstrain]), CovariateCollection([basis]))
+                hist_arr = np.asarray(windowTimes, dtype=float).reshape(-1)
+                label_sel = [[basis.name, *list(basis.dataLabels)]]
+                cfg = TrialConfig(label_sel, float(self.sampleRate), hist_arr, [])
+                cfg.setName("GLM-PSTH+Hist")
+                cfgColl = ConfigCollection([cfg])
+                psthResult = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, "GLM", [], 1)
+                fit = psthResult[0] if isinstance(psthResult, list) else psthResult
+                gamma0 = np.asarray(fit.getHistCoeffs(1), dtype=float).reshape(-1)
+                gamma0 = np.where(np.isnan(gamma0), -5.0, gamma0)
+            except Exception:
+                numHist = len(windowTimes) - 1
+                gamma0 = np.full(numHist, -5.0, dtype=float)
+        else:
+            gamma0 = np.array([], dtype=float)
+
+        Q0 = self.estimateVarianceAcrossTrials(numBasis, windowTimes, numVarEstIter, fitType)
+        Q0_diag = np.diag(Q0)
+        if np.any(Q0_diag == 0):
+            Q0_diag += 0.001 * np.random.rand(numBasis)
+
+        A = np.eye(numBasis)
+        neuronName = self.name if hasattr(self, 'name') else 'N01'
+
+        return DecodingAlgorithms.PPSS_EMFB(
+            A, Q0_diag, x0, dN, fitType, delta, gamma0, windowTimes, numBasis, neuronName
+        )
+
 
 class TrialConfig:
     """MATLAB-style TrialConfig with configuration-application semantics."""
