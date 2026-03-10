@@ -49,7 +49,7 @@ def main() -> None:
     np.random.seed(0)
 
     t, lam, dt = _build_lambda()
-    lambda_cov = Covariate(time=t, data=lam, name="Lambda", units="spikes/s", labels=["lambda"])
+    lambda_cov = Covariate(time=t, data=lam, name="Lambda", yunits="spikes/s", dataLabels=["lambda"])
 
     n_units = 20
     spikes_coll = CIF.simulateCIFByThinningFromLambda(lambda_cov, n_units, dt)
