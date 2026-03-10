@@ -368,6 +368,52 @@ class SignalObj:
             return [item[0] for item in out]
         return out
 
+    def areDataLabelsEmpty(self) -> bool:
+        """Return ``True`` if all data labels are empty strings.
+
+        Matches Matlab ``SignalObj.areDataLabelsEmpty()``.
+        """
+        return all(not str(label) for label in self.dataLabels)
+
+    def isLabelPresent(self, label: str) -> bool:
+        """Return ``True`` if *label* matches any data label or equals ``'all'``.
+
+        Matches Matlab ``SignalObj.isLabelPresent()``.
+        """
+        if str(label).lower() == "all":
+            return True
+        try:
+            self.getIndexFromLabel(label)
+            return True
+        except ValueError:
+            return False
+
+    def convertNamesToIndices(self, selectorArray) -> list[int] | np.ndarray:
+        """Convert label names (or mixed) to 1-based indices.
+
+        Matches Matlab ``SignalObj.convertNamesToIndices()``.
+        """
+        if isinstance(selectorArray, str):
+            if selectorArray == "all":
+                return list(range(1, self.dimension + 1))
+            if self.isLabelPresent(selectorArray):
+                return self.getIndexFromLabel(selectorArray)
+            raise ValueError(f"Specified label '{selectorArray}' does not match data label")
+        if isinstance(selectorArray, (int, float, np.integer)):
+            return [int(selectorArray)]
+        if isinstance(selectorArray, np.ndarray):
+            return selectorArray.astype(int).ravel().tolist()
+        if isinstance(selectorArray, (list, tuple)):
+            result: list[int] = []
+            for item in selectorArray:
+                if isinstance(item, str):
+                    if self.isLabelPresent(item):
+                        result.extend(self.getIndexFromLabel(item))
+                else:
+                    result.append(int(item))
+            return result
+        return list(range(1, self.dimension + 1))
+
     def getValueAt(self, x: Sequence[float] | float) -> np.ndarray:
         query = np.asarray(x, dtype=float).reshape(-1)
         out = np.zeros((query.size, self.dimension), dtype=float)
@@ -556,6 +602,48 @@ class SignalObj:
         if right.shape[1] == 1 and left.shape[1] > 1:
             right = np.repeat(right, left.shape[1], axis=1)
         return self._spawn(self.time, np.divide(left, right), data_labels=labels)
+
+    def __matmul__(self, other) -> "SignalObj":
+        """Matrix multiply (``@`` operator).  Matches Matlab ``mtimes``."""
+        if isinstance(other, SignalObj):
+            return self._spawn(self.time, self.data * other.data, data_labels=list(self.dataLabels))
+        other_arr = np.asarray(other, dtype=float)
+        result = (self.data.T @ other_arr).T if other_arr.ndim <= 1 else self.data @ other_arr
+        return self._spawn(self.time[:result.shape[0]] if result.ndim == 2 else self.time, result)
+
+    def ldivide(self, other) -> "SignalObj":
+        r"""Element-wise left division (Matlab ``.\``): ``other ./ self``.
+
+        Matches Matlab ``SignalObj.ldivide()``.
+        """
+        return self._binary_op(other, lambda a, b: np.divide(b, a))
+
+    @property
+    def T(self) -> "SignalObj":
+        """Transpose the data matrix.  Matches Matlab ``ctranspose`` / ``transpose``."""
+        new_data = self.data.T
+        new_time = self.time[:new_data.shape[0]] if new_data.shape[0] != self.time.size else self.time
+        return self._spawn(new_time, new_data)
+
+    def clearPlotProps(self, index=None) -> None:
+        """Clear plot properties.  Matches Matlab ``clearPlotProps``."""
+        if index is None:
+            index = list(range(self.dimension))
+        else:
+            index = [i - 1 for i in np.atleast_1d(index)]
+        for i in index:
+            if i < len(self.plotProps):
+                self.plotProps[i] = None
+
+    def plotPropsSet(self) -> bool:
+        """Return ``True`` if any plot property is non-empty.
+
+        Matches Matlab ``SignalObj.plotPropsSet()``.
+        """
+        for prop in self.plotProps:
+            if prop is not None and str(prop) != "":
+                return True
+        return False
 
     def getSigInTimeWindow(
         self,
@@ -1071,6 +1159,175 @@ class SignalObj:
         times = self.time[idx]
         values = data[idx, np.arange(data.shape[1])]
         return np.atleast_1d(times), np.atleast_1d(values)
+
+    # ------------------------------------------------------------------
+    # Alignment / windowing (match Matlab SignalObj)
+    # ------------------------------------------------------------------
+    def alignToMax(self) -> tuple["SignalObj", float]:
+        """Align all dimensions so their peaks coincide at the mean peak time.
+
+        Returns ``(aligned_signal, mean_peak_time)``.
+        Matches Matlab ``SignalObj.alignToMax()``.
+        """
+        peak_times, _ = self.findGlobalPeak("maxima")
+        mean_time = float(np.mean(peak_times))
+        delta_t = -(peak_times - mean_time)
+        aligned = self.getSubSignal(1).shift(float(delta_t[0]))
+        for i in range(1, self.dimension):
+            aligned = aligned.merge(self.getSubSignal(i + 1).shift(float(delta_t[i])))
+        return aligned, mean_time
+
+    def windowedSignal(self, windowTimes) -> "SignalObj":
+        """Extract and concatenate windowed segments.
+
+        Matches Matlab ``SignalObj.windowedSignal()``.
+        """
+        windowTimes = np.asarray(windowTimes, dtype=float).ravel()
+        result = None
+        for i in range(len(windowTimes) - 1):
+            seg = self.getSigInTimeWindow(float(windowTimes[i]), float(windowTimes[i + 1]))
+            if i == 0:
+                result = seg
+            else:
+                seg = seg.shift(-float(windowTimes[i]))
+                result = result.merge(seg)
+        return result if result is not None else self.copySignal()
+
+    def normWindowedSignal(
+        self,
+        windowTimes,
+        numPoints: int = 100,
+        lbound: float | None = None,
+        ubound: float | None = None,
+    ) -> "SignalObj":
+        """Normalize windowed signal segments to a common time axis.
+
+        Matches Matlab ``SignalObj.normWindowedSignal()``.
+        """
+        windowTimes = np.asarray(windowTimes, dtype=float).ravel()
+        columns: list[np.ndarray] = []
+        for i in range(len(windowTimes) - 1):
+            minT = float(windowTimes[i])
+            maxT = float(windowTimes[i + 1])
+            dur = abs(maxT - minT)
+            if lbound is not None and ubound is not None:
+                if dur > ubound or dur < lbound:
+                    continue
+            seg = self.getSigInTimeWindow(minT, maxT)
+            norm_time = np.linspace(minT, maxT, numPoints)
+            interp_data = np.interp(norm_time, seg.time, seg.data[:, 0], left=0.0, right=0.0)
+            columns.append(interp_data)
+
+        if not columns:
+            return self.copySignal()
+        data = np.column_stack(columns)
+        act_time = np.arange(numPoints, dtype=float) / float(numPoints)
+        labels = list(self.dataLabels[:1]) * data.shape[1]
+        return self.__class__(act_time, data, self.name, self.xlabelval, "%", self.yunits, labels)
+
+    def getSubSignalsWithinNStd(self, nStd: float = 2.0) -> tuple["SignalObj", np.ndarray]:
+        """Return sub-signals within *nStd* standard deviations of the mean.
+
+        Returns ``(filtered_signal, selected_indices)``.
+        Matches Matlab ``SignalObj.getSubSignalsWithinNStd()``.
+        """
+        mean_sig = np.mean(self.data, axis=1)
+        std_sig = np.std(self.data, axis=1, ddof=1)
+        min_val = mean_sig - nStd * std_sig
+        max_val = mean_sig + nStd * std_sig
+        # A column passes if ALL rows are within [minVal, maxVal]
+        above_min = np.all(self.data >= min_val[:, None], axis=0)
+        below_max = np.all(self.data <= max_val[:, None], axis=0)
+        sig_index = np.flatnonzero(above_min & below_max)
+        if sig_index.size == 0:
+            return self.copySignal(), sig_index
+        # 1-based indices for getSubSignal
+        return self.getSubSignal((sig_index + 1).tolist()), sig_index
+
+    # ------------------------------------------------------------------
+    # Variability plots (match Matlab SignalObj)
+    # ------------------------------------------------------------------
+    def plotAllVariability(
+        self,
+        faceColor=None,
+        linewidth: float = 3.0,
+        ciUpper: float | np.ndarray = 1.96,
+        ciLower: float | np.ndarray | None = None,
+        ax=None,
+    ):
+        """Plot mean ± CI shaded area.  Matches Matlab ``plotAllVariability``.
+
+        Parameters
+        ----------
+        faceColor : color, optional
+            Fill colour (default: tab:blue).
+        linewidth : float
+            Width of mean line.
+        ciUpper, ciLower : float or array
+            Number of std-devs (scalar) or explicit bounds (array).
+        ax : matplotlib Axes, optional
+        """
+        import matplotlib.pyplot as plt
+
+        if faceColor is None:
+            faceColor = "tab:blue"
+        if ciLower is None:
+            ciLower = ciUpper
+        if ax is None:
+            ax = plt.gca()
+
+        mean_sig = np.mean(self.data, axis=1)
+        std_sig = np.std(self.data, axis=1, ddof=1)
+
+        ciUpper_arr = np.atleast_1d(ciUpper).ravel()
+        ciLower_arr = np.atleast_1d(ciLower).ravel()
+        if ciUpper_arr.size == 1:
+            ci_top = mean_sig + float(ciUpper_arr[0]) * std_sig
+        else:
+            ci_top = mean_sig + ciUpper_arr[:len(mean_sig)]
+        if ciLower_arr.size == 1:
+            ci_bottom = mean_sig - float(ciLower_arr[0]) * std_sig
+        else:
+            ci_bottom = mean_sig - ciLower_arr[:len(mean_sig)]
+
+        ax.fill_between(self.time, ci_bottom, ci_top, color=faceColor, alpha=0.5, edgecolor="none")
+        (h,) = ax.plot(self.time, mean_sig, "k-", linewidth=linewidth)
+        return h
+
+    def plotVariability(self, selectorArray=None, ax=None):
+        """Plot mean ± CI for each label group.  Matches Matlab ``plotVariability``.
+
+        Parameters
+        ----------
+        selectorArray : list of list[int] or list[int], optional
+        ax : matplotlib Axes, optional
+        """
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            ax = plt.gca()
+        if selectorArray is None:
+            if not self.areDataLabelsEmpty():
+                unique_labels = list(dict.fromkeys(self.dataLabels))
+                selectorArray = [self.getIndexFromLabel(lbl) for lbl in unique_labels]
+            else:
+                selectorArray = list(range(1, self.dimension + 1))
+
+        _TAB_COLORS = [
+            "tab:blue", "tab:orange", "tab:green", "tab:red",
+            "tab:purple", "tab:brown", "tab:pink", "tab:gray",
+        ]
+        handles = []
+        if isinstance(selectorArray, list) and selectorArray and isinstance(selectorArray[0], (list, tuple, np.ndarray)):
+            for i, sel in enumerate(selectorArray):
+                h = self.getSubSignal(sel).plotAllVariability(
+                    faceColor=_TAB_COLORS[i % len(_TAB_COLORS)], ax=ax
+                )
+                handles.append(h)
+        else:
+            h = self.getSubSignal(selectorArray).plotAllVariability(ax=ax)
+            handles.append(h)
+        return handles
 
     # ------------------------------------------------------------------
     # Cross-covariance (match Matlab SignalObj.xcov)

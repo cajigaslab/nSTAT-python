@@ -554,6 +554,381 @@ class DecodingAlgorithms:
         return ci, stimulus
 
     @staticmethod
+    def computeSpikeRateCIs(
+        xK,
+        Wku,
+        dN,
+        t0: float,
+        tf: float,
+        fitType: str = "poisson",
+        delta: float = 0.001,
+        gamma=None,
+        windowTimes=None,
+        Mc: int = 500,
+        alphaVal: float = 0.05,
+    ):
+        """Monte Carlo spike-rate confidence intervals.
+
+        Computes the average firing rate over ``[t0, tf]`` for each trial
+        by drawing ``Mc`` samples from the smoothing distribution and
+        evaluating the conditional intensity.
+
+        Parameters
+        ----------
+        xK : array, shape (numBasis, K)
+            Smoothed state estimates (basis coefficients × trials).
+        Wku : array, shape (numBasis, numBasis, K, K) or compatible
+            Smoothed state covariance.
+        dN : array, shape (C, N)
+            Observation (spike indicator) matrix.
+        t0, tf : float
+            Time window over which to compute the average rate.
+        fitType : str
+            ``'poisson'`` or ``'binomial'``.
+        delta : float
+            Time-step size in seconds.
+        gamma : array or None
+            History-effect coefficients.
+        windowTimes : array or None
+            History window boundaries.
+        Mc : int
+            Number of Monte Carlo draws.
+        alphaVal : float
+            Significance level for CIs (one-sided).
+
+        Returns
+        -------
+        spikeRateSig : Covariate
+            Mean spike rate per trial with attached ConfidenceInterval.
+        ProbMat : ndarray, shape (K, K)
+            ``ProbMat[k, m]`` = P(rate_m > rate_k) estimated from MC draws.
+        sigMat : ndarray, shape (K, K)
+            Binary significance matrix at level ``1 - alphaVal``.
+        """
+        from .confidence_interval import ConfidenceInterval
+        from .core import Covariate
+        from .history import History
+        from .nspikeTrain import nspikeTrain
+        from .trial import SpikeTrainCollection
+
+        xK = np.asarray(xK, dtype=float)
+        dN = np.asarray(dN, dtype=float)
+        if dN.ndim == 1:
+            dN = dN.reshape(1, -1)
+        numBasis, K = xK.shape
+        minTime = 0.0
+        maxTime = (dN.shape[1] - 1) * delta
+
+        # Build unit-impulse basis matrix
+        basisWidth = (maxTime - minTime) / numBasis
+        sampleRate = 1.0 / delta
+        unitPulseBasis = SpikeTrainCollection.generateUnitImpulseBasis(
+            basisWidth, minTime, maxTime, sampleRate
+        )
+        basisMat = unitPulseBasis.data  # shape (T, numBasis)
+
+        # Build history matrices if windowTimes provided
+        Hk = {}
+        if windowTimes is not None and len(windowTimes) > 0:
+            histObj = History(windowTimes, minTime, maxTime)
+            for k in range(K):
+                spike_idx = np.flatnonzero(dN[k, :] == 1)
+                spike_times = (spike_idx) * delta
+                nst_k = nspikeTrain(spike_times)
+                nst_k.setMinTime(minTime)
+                nst_k.setMaxTime(maxTime)
+                hist_cov = histObj.computeHistory(nst_k)
+                Hk[k] = hist_cov.dataToMatrix()
+        else:
+            for k in range(K):
+                Hk[k] = 0.0
+            gamma = 0.0
+
+        if gamma is None:
+            gamma = 0.0
+        gamma = np.asarray(gamma, dtype=float)
+
+        # Monte Carlo draws from smoothing distribution
+        Wku = np.asarray(Wku, dtype=float)
+        xKDraw = np.zeros((numBasis, K, Mc), dtype=float)
+        for r in range(numBasis):
+            WkuTemp = Wku[r, r, :, :].squeeze() if Wku.ndim == 4 else Wku[r, r]
+            WkuTemp = np.atleast_2d(WkuTemp)
+            if WkuTemp.shape[0] != K:
+                WkuTemp = np.diag(np.full(K, float(WkuTemp.flat[0])))
+            try:
+                chol_m = np.linalg.cholesky(WkuTemp)
+            except np.linalg.LinAlgError:
+                eigvals = np.linalg.eigvalsh(WkuTemp)
+                WkuTemp += np.eye(K) * (abs(min(eigvals.min(), 0.0)) + 1e-10)
+                chol_m = np.linalg.cholesky(WkuTemp)
+            for c in range(Mc):
+                z = np.random.randn(K)
+                xKDraw[r, :, c] = xK[r, :] + chol_m.T @ z
+
+        # Compute lambda for each MC draw and each trial
+        time_vec = np.arange(minTime, maxTime + delta, delta)
+        T = basisMat.shape[0]
+        fit_type = str(fitType).lower()
+        spikeRate = np.zeros((Mc, K), dtype=float)
+
+        for c in range(Mc):
+            for k in range(K):
+                stimK = basisMat @ xKDraw[:, k, c]
+                if fit_type == "poisson":
+                    histEffect = np.exp(gamma @ Hk[k].T).ravel() if not np.isscalar(Hk[k]) else np.ones(T)
+                    stimEffect = np.exp(np.clip(stimK, -20.0, 20.0))
+                    lambdaDelta_kc = stimEffect * histEffect[:T]
+                elif fit_type == "binomial":
+                    if np.isscalar(Hk[k]):
+                        eta = stimK
+                    else:
+                        eta = stimK + (gamma @ Hk[k].T).ravel()[:T]
+                    eta = np.clip(eta, -20.0, 20.0)
+                    lambdaDelta_kc = np.exp(eta) / (1.0 + np.exp(eta))
+                else:
+                    lambdaDelta_kc = np.exp(np.clip(stimK, -20.0, 20.0))
+
+                # Integrate via cumulative trapezoid
+                rate_per_sec = lambdaDelta_kc / delta
+                time_k = time_vec[:len(rate_per_sec)]
+                cum_integral = np.zeros(len(rate_per_sec))
+                cum_integral[1:] = np.cumsum(rate_per_sec[:-1] * delta + 0.5 * np.diff(rate_per_sec) * delta)
+
+                # Interpolate integral at t0 and tf
+                val_t0 = np.interp(t0, time_k, cum_integral)
+                val_tf = np.interp(tf, time_k, cum_integral)
+                spikeRate[c, k] = (1.0 / (tf - t0)) * (val_tf - val_t0)
+
+        # Compute CIs from ECDF (one-sided)
+        CIs = np.zeros((K, 2), dtype=float)
+        for k in range(K):
+            sorted_rates = np.sort(spikeRate[:, k])
+            ecdf = np.arange(1, Mc + 1, dtype=float) / float(Mc)
+            lower_idx = np.flatnonzero(ecdf < alphaVal)
+            upper_idx = np.flatnonzero(ecdf > (1.0 - alphaVal))
+            CIs[k, 0] = sorted_rates[lower_idx[-1]] if lower_idx.size else sorted_rates[0]
+            CIs[k, 1] = sorted_rates[upper_idx[0]] if upper_idx.size else sorted_rates[-1]
+
+        trial_axis = np.arange(1, K + 1, dtype=float)
+        mean_rate = np.mean(spikeRate, axis=0)
+        spikeRateSig = Covariate(
+            trial_axis,
+            mean_rate,
+            f"({tf:g}-{t0:g})^{{-1}} * \\Lambda({tf:g}-{t0:g})",
+            "Trial",
+            "k",
+            "Hz",
+        )
+        ciSpikeRate = ConfidenceInterval(
+            trial_axis, CIs, "CI_{spikeRate}", "Trial", "k", "Hz"
+        )
+        spikeRateSig.setConfInterval(ciSpikeRate)
+
+        # Pairwise probability matrix
+        ProbMat = np.zeros((K, K), dtype=float)
+        for k in range(K):
+            for m in range(k + 1, K):
+                ProbMat[k, m] = np.sum(spikeRate[:, m] > spikeRate[:, k]) / float(Mc)
+
+        sigMat = (ProbMat > (1.0 - alphaVal)).astype(float)
+
+        return spikeRateSig, ProbMat, sigMat
+
+    @staticmethod
+    def computeSpikeRateDiffCIs(
+        xK,
+        Wku,
+        dN,
+        time1,
+        time2,
+        fitType: str = "poisson",
+        delta: float = 0.001,
+        gamma=None,
+        windowTimes=None,
+        Mc: int = 500,
+        alphaVal: float = 0.05,
+    ):
+        """Monte Carlo CIs for the difference in spike rates between two time windows.
+
+        Computes the difference of average firing rates
+        ``rate(time1) - rate(time2)`` for each trial by drawing ``Mc``
+        samples from the smoothing distribution.
+
+        Parameters
+        ----------
+        xK : array, shape (numBasis, K)
+            Smoothed state estimates (basis coefficients × trials).
+        Wku : array, shape (numBasis, numBasis, K, K) or compatible
+            Smoothed state covariance.
+        dN : array, shape (C, N)
+            Observation (spike indicator) matrix.
+        time1 : array-like, length 2
+            ``[t0_1, tf_1]`` — first time window.
+        time2 : array-like, length 2
+            ``[t0_2, tf_2]`` — second time window.
+        fitType : str
+            ``'poisson'`` or ``'binomial'``.
+        delta : float
+            Time-step size in seconds.
+        gamma : array or None
+            History-effect coefficients.
+        windowTimes : array or None
+            History window boundaries.
+        Mc : int
+            Number of Monte Carlo draws.
+        alphaVal : float
+            Significance level for CIs (one-sided).
+
+        Returns
+        -------
+        spikeRateSig : Covariate
+            Mean spike-rate difference per trial with attached CI.
+        ProbMat : ndarray, shape (K, K)
+            ``ProbMat[k, m]`` = P(diff_m > diff_k) from MC draws.
+        sigMat : ndarray, shape (K, K)
+            Binary significance matrix at level ``1 - alphaVal``.
+        """
+        from .confidence_interval import ConfidenceInterval
+        from .core import Covariate
+        from .history import History
+        from .nspikeTrain import nspikeTrain
+        from .trial import SpikeTrainCollection
+
+        xK = np.asarray(xK, dtype=float)
+        dN = np.asarray(dN, dtype=float)
+        if dN.ndim == 1:
+            dN = dN.reshape(1, -1)
+        numBasis, K = xK.shape
+        minTime = 0.0
+        maxTime = (dN.shape[1] - 1) * delta
+
+        time1 = np.asarray(time1, dtype=float).ravel()
+        time2 = np.asarray(time2, dtype=float).ravel()
+
+        # Build unit-impulse basis matrix
+        basisWidth = (maxTime - minTime) / numBasis
+        sampleRate = 1.0 / delta
+        unitPulseBasis = SpikeTrainCollection.generateUnitImpulseBasis(
+            basisWidth, minTime, maxTime, sampleRate
+        )
+        basisMat = unitPulseBasis.data
+
+        # Build history matrices if windowTimes provided
+        Hk = {}
+        if windowTimes is not None and len(windowTimes) > 0:
+            histObj = History(windowTimes, minTime, maxTime)
+            for k in range(K):
+                spike_idx = np.flatnonzero(dN[k, :] == 1)
+                spike_times = (spike_idx) * delta
+                nst_k = nspikeTrain(spike_times)
+                nst_k.setMinTime(minTime)
+                nst_k.setMaxTime(maxTime)
+                hist_cov = histObj.computeHistory(nst_k)
+                Hk[k] = hist_cov.dataToMatrix()
+        else:
+            for k in range(K):
+                Hk[k] = 0.0
+            gamma = 0.0
+
+        if gamma is None:
+            gamma = 0.0
+        gamma = np.asarray(gamma, dtype=float)
+
+        # Monte Carlo draws from smoothing distribution
+        Wku = np.asarray(Wku, dtype=float)
+        xKDraw = np.zeros((numBasis, K, Mc), dtype=float)
+        for r in range(numBasis):
+            WkuTemp = Wku[r, r, :, :].squeeze() if Wku.ndim == 4 else Wku[r, r]
+            WkuTemp = np.atleast_2d(WkuTemp)
+            if WkuTemp.shape[0] != K:
+                WkuTemp = np.diag(np.full(K, float(WkuTemp.flat[0])))
+            try:
+                chol_m = np.linalg.cholesky(WkuTemp)
+            except np.linalg.LinAlgError:
+                eigvals = np.linalg.eigvalsh(WkuTemp)
+                WkuTemp += np.eye(K) * (abs(min(eigvals.min(), 0.0)) + 1e-10)
+                chol_m = np.linalg.cholesky(WkuTemp)
+            for c in range(Mc):
+                z = np.random.randn(K)
+                xKDraw[r, :, c] = xK[r, :] + chol_m.T @ z
+
+        # Compute lambda and spike-rate difference for each MC draw
+        time_vec = np.arange(minTime, maxTime + delta, delta)
+        T = basisMat.shape[0]
+        fit_type = str(fitType).lower()
+        spikeRate = np.zeros((Mc, K), dtype=float)
+
+        for c in range(Mc):
+            for k in range(K):
+                stimK = basisMat @ xKDraw[:, k, c]
+                if fit_type == "poisson":
+                    histEffect = np.exp(gamma @ Hk[k].T).ravel() if not np.isscalar(Hk[k]) else np.ones(T)
+                    stimEffect = np.exp(np.clip(stimK, -20.0, 20.0))
+                    lambdaDelta_kc = stimEffect * histEffect[:T]
+                elif fit_type == "binomial":
+                    if np.isscalar(Hk[k]):
+                        eta = stimK
+                    else:
+                        eta = stimK + (gamma @ Hk[k].T).ravel()[:T]
+                    eta = np.clip(eta, -20.0, 20.0)
+                    lambdaDelta_kc = np.exp(eta) / (1.0 + np.exp(eta))
+                else:
+                    lambdaDelta_kc = np.exp(np.clip(stimK, -20.0, 20.0))
+
+                # Integrate via cumulative sum
+                rate_per_sec = lambdaDelta_kc / delta
+                time_k = time_vec[:len(rate_per_sec)]
+                cum_integral = np.zeros(len(rate_per_sec))
+                cum_integral[1:] = np.cumsum(rate_per_sec[:-1] * delta + 0.5 * np.diff(rate_per_sec) * delta)
+
+                # Rate for time window 1
+                t0_1, tf_1 = float(min(time1)), float(max(time1))
+                val_t0_1 = np.interp(t0_1, time_k, cum_integral)
+                val_tf_1 = np.interp(tf_1, time_k, cum_integral)
+                rate1 = (1.0 / (tf_1 - t0_1)) * (val_tf_1 - val_t0_1)
+
+                # Rate for time window 2
+                t0_2, tf_2 = float(min(time2)), float(max(time2))
+                val_t0_2 = np.interp(t0_2, time_k, cum_integral)
+                val_tf_2 = np.interp(tf_2, time_k, cum_integral)
+                rate2 = (1.0 / (tf_2 - t0_2)) * (val_tf_2 - val_t0_2)
+
+                spikeRate[c, k] = rate1 - rate2
+
+        # Compute CIs from ECDF (one-sided)
+        CIs = np.zeros((K, 2), dtype=float)
+        for k in range(K):
+            sorted_rates = np.sort(spikeRate[:, k])
+            ecdf = np.arange(1, Mc + 1, dtype=float) / float(Mc)
+            lower_idx = np.flatnonzero(ecdf < alphaVal)
+            upper_idx = np.flatnonzero(ecdf > (1.0 - alphaVal))
+            CIs[k, 0] = sorted_rates[lower_idx[-1]] if lower_idx.size else sorted_rates[0]
+            CIs[k, 1] = sorted_rates[upper_idx[0]] if upper_idx.size else sorted_rates[-1]
+
+        trial_axis = np.arange(1, K + 1, dtype=float)
+        mean_rate = np.mean(spikeRate, axis=0)
+        label = (
+            r"(t_{1f}-t_{1o})^{-1} \Lambda(t_{1f}-t_{1o})"
+            r" - (t_{2f}-t_{2o})^{-1} \Lambda(t_{2f}-t_{2o})"
+        )
+        spikeRateSig = Covariate(trial_axis, mean_rate, label, "Trial", "k", "Hz")
+        ciSpikeRate = ConfidenceInterval(
+            trial_axis, CIs, "CI_{spikeRate}", "Trial", "k", "Hz"
+        )
+        spikeRateSig.setConfInterval(ciSpikeRate)
+
+        # Pairwise probability matrix
+        ProbMat = np.zeros((K, K), dtype=float)
+        for k in range(K):
+            for m in range(k + 1, K):
+                ProbMat[k, m] = np.sum(spikeRate[:, m] > spikeRate[:, k]) / float(Mc)
+
+        sigMat = (ProbMat > (1.0 - alphaVal)).astype(float)
+
+        return spikeRateSig, ProbMat, sigMat
+
+    @staticmethod
     def PPDecode_predict(x_u, W_u, A, Q, Wconv=None):
         x_vec = np.asarray(x_u, dtype=float).reshape(-1)
         dim = x_vec.size
@@ -3488,1027 +3863,7 @@ class DecodingAlgorithms:
             x0hat_final, Px0hat_final, IC, SE, Pvals, nIter,
         )
 
-    # ------------------------------------------------------------------
-    # State-Space GLM (SSGLM) via EM Forward-Backward
-    # Ported from Matlab DecodingAlgorithms.m (PPSS_EMFB and helpers)
-    # ------------------------------------------------------------------
-
     @staticmethod
-    def _ssglm_build_basis(numBasis, minTime, maxTime, delta):
-        """Build unit-impulse basis matrix for SSGLM."""
-        from .trial import SpikeTrainCollection
-
-        sampleRate = 1.0 / delta
-        basisWidth = (maxTime - minTime) / numBasis
-        basis_cov = SpikeTrainCollection.generateUnitImpulseBasis(
-            basisWidth, minTime, maxTime, sampleRate
-        )
-        return np.asarray(basis_cov.data, dtype=float)
-
-    @staticmethod
-    def _ssglm_build_history(dN, windowTimes, delta):
-        """Build history design matrices for each trial from spike observations."""
-        from .history import History
-
-        K, N = dN.shape
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-
-        if windowTimes is not None and len(windowTimes) > 0:
-            histObj = History(windowTimes, minTime, maxTime)
-            HkAll = []
-            for k in range(K):
-                spike_indices = np.where(dN[k, :] > 0.5)[0]
-                spike_times = spike_indices.astype(float) * delta
-                nst = nspikeTrain(spike_times, makePlots=-1)
-                nst.setMinTime(minTime)
-                nst.setMaxTime(maxTime)
-                hist_cov = histObj._compute_single_history(nst)
-                HkAll.append(np.asarray(hist_cov.data, dtype=float))
-            return HkAll
-        else:
-            return [np.zeros((N, 0), dtype=float) for _ in range(K)]
-
-    @staticmethod
-    def PPSS_EStep(A, Q, x0, dN, HkAll, fitType, delta, gamma, numBasis):
-        """E-step: Forward Kalman filter + backward RTS smoother + cross-covariance.
-
-        Parameters
-        ----------
-        A : (R, R) state transition matrix
-        Q : (R,) or (R, R) state noise covariance (diagonal vector or matrix)
-        x0 : (R,) initial state
-        dN : (K, N) binary spike observations (K trials, N time bins)
-        HkAll : list of K arrays, each (N, J) history design matrices
-        fitType : 'poisson' or 'binomial'
-        delta : time bin width
-        gamma : (J,) history coefficients
-        numBasis : number of basis functions R
-
-        Returns
-        -------
-        x_K, W_K, Wku, logll, sumXkTerms, sumPPll
-        """
-        K, N = dN.shape
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-
-        basisMat = DecodingAlgorithms._ssglm_build_basis(numBasis, minTime, maxTime, delta)
-        # Ensure basisMat has N rows matching dN columns
-        if basisMat.shape[0] != N:
-            basisMat = basisMat[:N, :] if basisMat.shape[0] > N else np.vstack(
-                [basisMat, np.zeros((N - basisMat.shape[0], basisMat.shape[1]))]
-            )
-
-        Q_diag = np.asarray(Q, dtype=float).reshape(-1)
-        if Q_diag.size == numBasis * numBasis:
-            Q_mat = Q_diag.reshape(numBasis, numBasis)
-            Q_diag = np.diag(Q_mat)
-        Q_mat = np.diag(Q_diag)
-
-        A_mat = np.asarray(A, dtype=float)
-        if A_mat.ndim < 2:
-            A_mat = np.eye(numBasis, dtype=float) * A_mat
-        x0_vec = np.asarray(x0, dtype=float).reshape(-1)
-        gamma_vec = np.asarray(gamma, dtype=float).reshape(-1)
-        R = numBasis
-        fitType = str(fitType).lower()
-
-        # Forward Kalman filter
-        x_p = np.zeros((R, K), dtype=float)
-        x_u = np.zeros((R, K), dtype=float)
-        W_p = np.zeros((R, R, K), dtype=float)
-        W_u = np.zeros((R, R, K), dtype=float)
-
-        for k in range(K):
-            if k == 0:
-                x_p[:, k] = A_mat @ x0_vec
-                W_p[:, :, k] = Q_mat.copy()
-            else:
-                x_p[:, k] = A_mat @ x_u[:, k - 1]
-                W_p[:, :, k] = A_mat @ W_u[:, :, k - 1] @ A_mat.T + Q_mat
-
-            Hk = HkAll[k]
-            stimK = basisMat @ x_p[:, k]
-
-            if fitType == "poisson":
-                histEffect = np.exp(np.clip(Hk @ gamma_vec, -30, 30)) if gamma_vec.size > 0 and Hk.shape[1] > 0 else np.ones(N)
-                stimEffect = np.exp(np.clip(stimK, -30, 30))
-                lambdaDelta = stimEffect * histEffect
-
-                GradLogLD = basisMat  # (N, R)
-                GradLD = basisMat * lambdaDelta[:, None]  # (N, R)
-
-                sumValVec = GradLogLD.T @ dN[k, :] - np.diag(GradLD.T @ basisMat)
-                sumValMat = GradLD.T @ basisMat
-
-            elif fitType == "binomial":
-                Hk = HkAll[k]
-                stimK = basisMat @ x_p[:, k]
-                linpred = stimK + (Hk @ gamma_vec if gamma_vec.size > 0 and Hk.shape[1] > 0 else 0.0)
-                linpred = np.clip(linpred, -30, 30)
-                lambdaDelta = 1.0 / (1.0 + np.exp(-linpred))
-
-                GradLogLD = basisMat * (1.0 - lambdaDelta)[:, None]
-                JacobianLogLD = basisMat * (lambdaDelta * (-1.0 + lambdaDelta))[:, None]
-                GradLD = basisMat * (lambdaDelta * (1.0 - lambdaDelta))[:, None]
-                JacobianLD = basisMat * (lambdaDelta * (1.0 - lambdaDelta) * (1.0 - 2.0 * lambdaDelta ** 2))[:, None]
-
-                sumValVec = GradLogLD.T @ dN[k, :] - np.diag(GradLD.T @ basisMat)
-                sumValMat = -np.diag(JacobianLogLD.T @ dN[k, :]) + JacobianLD.T @ basisMat
-            else:
-                raise ValueError(f"Unsupported fitType: {fitType}")
-
-            # Kalman update
-            W_p_inv = np.linalg.inv(W_p[:, :, k] + 1e-12 * np.eye(R))
-            invW_u = W_p_inv + sumValMat
-            W_u[:, :, k] = np.linalg.inv(invW_u + 1e-12 * np.eye(R))
-
-            # Ensure positive definiteness
-            eigvals, eigvecs = np.linalg.eigh(W_u[:, :, k])
-            eigvals = np.maximum(eigvals, np.finfo(float).eps)
-            W_u[:, :, k] = eigvecs @ np.diag(eigvals) @ eigvecs.T
-
-            x_u[:, k] = x_p[:, k] + W_u[:, :, k] @ sumValVec
-
-        # Backward RTS smoother
-        x_K = np.zeros((R, K), dtype=float)
-        W_K = np.zeros((R, R, K), dtype=float)
-        Lk = np.zeros((R, R, K), dtype=float)
-
-        x_K[:, K - 1] = x_u[:, K - 1]
-        W_K[:, :, K - 1] = W_u[:, :, K - 1]
-
-        for k in range(K - 2, -1, -1):
-            Lk[:, :, k] = W_u[:, :, k] @ A_mat.T @ np.linalg.inv(W_p[:, :, k + 1] + 1e-12 * np.eye(R))
-            x_K[:, k] = x_u[:, k] + Lk[:, :, k] @ (x_K[:, k + 1] - x_p[:, k + 1])
-            W_K[:, :, k] = W_u[:, :, k] + Lk[:, :, k] @ (W_K[:, :, k + 1] - W_p[:, :, k + 1]) @ Lk[:, :, k].T
-            W_K[:, :, k] = 0.5 * (W_K[:, :, k] + W_K[:, :, k].T)
-
-        # Cross-trial covariance Wku (R, R, K, K)
-        Wku = np.zeros((R, R, K, K), dtype=float)
-        for k in range(K):
-            Wku[:, :, k, k] = W_K[:, :, k]
-
-        Dk = np.zeros((R, R, K), dtype=float)
-        for u in range(K - 1, 0, -1):
-            for k in range(u - 1, -1, -1):
-                Dk[:, :, k] = W_u[:, :, k] @ A_mat.T @ np.linalg.inv(W_p[:, :, k + 1] + 1e-12 * np.eye(R))
-                Wku[:, :, k, u] = Dk[:, :, k] @ Wku[:, :, k + 1, u]
-                Wku[:, :, u, k] = Wku[:, :, k, u]
-
-        # Sufficient statistics for M-step
-        Sxkxkp1 = np.zeros((R, R), dtype=float)
-        Sxkp1xkp1 = np.zeros((R, R), dtype=float)
-        Sxkxk = np.zeros((R, R), dtype=float)
-        for k in range(K - 1):
-            Sxkxkp1 += Wku[:, :, k, k + 1] + np.outer(x_K[:, k], x_K[:, k + 1])
-            Sxkp1xkp1 += W_K[:, :, k + 1] + np.outer(x_K[:, k + 1], x_K[:, k + 1])
-            Sxkxk += W_K[:, :, k] + np.outer(x_K[:, k], x_K[:, k])
-
-        sumXkTerms = (
-            Sxkp1xkp1 - A_mat @ Sxkxkp1 - Sxkxkp1.T @ A_mat.T + A_mat @ Sxkxk @ A_mat.T
-            + W_K[:, :, 0] + np.outer(x_K[:, 0], x_K[:, 0])
-            - A_mat @ np.outer(x0_vec, x_K[:, 0]) - np.outer(x_K[:, 0], x0_vec) @ A_mat.T
-            + A_mat @ np.outer(x0_vec, x0_vec) @ A_mat.T
-        )
-
-        # Point process log-likelihood
-        sumPPll = 0.0
-        for k in range(K):
-            Hk = HkAll[k]
-            Wk = basisMat @ np.diag(W_K[:, :, k])
-            stimK = basisMat @ x_K[:, k]
-
-            if fitType == "poisson":
-                hist_term = Hk @ gamma_vec if gamma_vec.size > 0 and Hk.shape[1] > 0 else np.zeros(N)
-                histEffect = np.exp(np.clip(hist_term, -30, 30))
-                stimK_clipped = np.clip(stimK, -30, 30)
-                stimEffect = np.exp(stimK_clipped) + np.exp(stimK_clipped) / 2.0 * Wk
-                ExplambdaDelta = stimEffect * histEffect
-                ExplogLD = stimK + hist_term
-                sumPPll += float(np.sum(dN[k, :] * ExplogLD - ExplambdaDelta))
-
-            elif fitType == "binomial":
-                hist_term = Hk @ gamma_vec if gamma_vec.size > 0 and Hk.shape[1] > 0 else np.zeros(N)
-                linpred = np.clip(stimK + hist_term, -30, 30)
-                lambdaDelta = 1.0 / (1.0 + np.exp(-linpred))
-                ExplambdaDelta = lambdaDelta + Wk * (lambdaDelta * (1.0 - lambdaDelta) * (1.0 - 2.0 * lambdaDelta)) / 2.0
-                ExplogLD = linpred - np.log(1.0 + np.exp(linpred)) - Wk * lambdaDelta * (1.0 - lambdaDelta) * 0.5
-                sumPPll += float(np.sum(dN[k, :] * ExplogLD - ExplambdaDelta))
-
-        det_Q = float(np.prod(np.maximum(Q_diag, np.finfo(float).eps)))
-        logll = (
-            -R * K * np.log(2.0 * np.pi)
-            - K / 2.0 * np.log(det_Q)
-            + sumPPll
-            - 0.5 * float(np.trace(np.linalg.pinv(Q_mat) @ sumXkTerms))
-        )
-
-        return x_K, W_K, Wku, logll, sumXkTerms, sumPPll
-
-    @staticmethod
-    def PPSS_MStep(dN, HkAll, fitType, x_K, W_K, gamma, delta, sumXkTerms, windowTimes):
-        """M-step: Update Q via closed form, gamma via Newton-Raphson.
-
-        Parameters
-        ----------
-        dN : (K, N)
-        HkAll : list of K arrays (N, J)
-        fitType : 'poisson' or 'binomial'
-        x_K : (R, K) smoothed states
-        W_K : (R, R, K) smoothed covariances
-        gamma : (J,) current history coefficients
-        delta : time bin width
-        sumXkTerms : (R, R) sufficient statistics from E-step
-        windowTimes : array of history window boundaries
-
-        Returns
-        -------
-        Qhat : (R,) updated state noise variance (diagonal)
-        gamma_new : (J,) updated history coefficients
-        """
-        K, N = dN.shape
-        R = x_K.shape[0]
-        fitType = str(fitType).lower()
-
-        # Q update (closed form)
-        sumQ = np.diag(np.diag(sumXkTerms))
-        Qhat = sumQ / K
-        eigvals, eigvecs = np.linalg.eigh(Qhat)
-        eigvals = np.maximum(eigvals, 1e-8)
-        Qhat = eigvecs @ np.diag(eigvals) @ eigvecs.T
-        Qhat = np.diag(Qhat)  # Return as vector
-
-        # Build basis matrix for gamma update
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-        basisMat = DecodingAlgorithms._ssglm_build_basis(R, minTime, maxTime, delta)
-        if basisMat.shape[0] != N:
-            basisMat = basisMat[:N, :] if basisMat.shape[0] > N else np.vstack(
-                [basisMat, np.zeros((N - basisMat.shape[0], basisMat.shape[1]))]
-            )
-
-        gamma_vec = np.asarray(gamma, dtype=float).reshape(-1)
-        gamma_new = gamma_vec.copy()
-        J = gamma_new.size
-
-        # Newton-Raphson for gamma (history coefficients)
-        if windowTimes is not None and len(windowTimes) > 0 and J > 0 and np.any(gamma_new != 0):
-            converged = False
-            max_iter = 300
-            for iteration in range(max_iter):
-                gradQ = np.zeros(J, dtype=float)
-                jacQ = np.zeros((J, J), dtype=float)
-
-                for k in range(K):
-                    Hk = HkAll[k]
-                    if Hk.shape[1] == 0:
-                        continue
-                    Wk = basisMat @ np.diag(W_K[:, :, k])
-                    stimK = basisMat @ x_K[:, k]
-
-                    if fitType == "poisson":
-                        hist_term = np.clip(gamma_new @ Hk.T, -30, 30)
-                        histEffect = np.exp(hist_term)
-                        stimK_clipped = np.clip(stimK, -30, 30)
-                        stimEffect = np.exp(stimK_clipped) + np.exp(stimK_clipped) / 2.0 * Wk
-                        lambdaDelta = stimEffect * histEffect
-
-                        gradQ += Hk.T @ dN[k, :] - Hk.T @ lambdaDelta
-                        jacQ -= (Hk * lambdaDelta[:, None]).T @ Hk
-
-                    elif fitType == "binomial":
-                        linpred = np.clip(stimK + Hk @ gamma_new, -30, 30)
-                        lambdaDelta = 1.0 / (1.0 + np.exp(-linpred))
-                        histEffect = np.exp(np.clip(gamma_new @ Hk.T, -30, 30))
-                        stimEffect = np.exp(np.clip(stimK, -30, 30))
-                        C = stimEffect * histEffect
-                        M = np.where(C > 1e-30, 1.0 / C, 1e30)
-                        ExpLambdaDelta = lambdaDelta + Wk * (lambdaDelta * (1.0 - lambdaDelta) * (1.0 - 2.0 * lambdaDelta)) / 2.0
-                        ExpLDSquaredTimesInvExp = lambdaDelta ** 2 * M
-                        ExpLDCubedTimesInvExpSquared = (
-                            lambdaDelta ** 3 * M ** 2
-                            + Wk / 2.0 * (3.0 * M ** 4 * lambdaDelta ** 3
-                                           + 12.0 * lambdaDelta ** 3 * M ** 3
-                                           - 12.0 * M ** 4 * lambdaDelta ** 4)
-                        )
-
-                        gradQ += (Hk * (1.0 - ExpLambdaDelta)[:, None]).T @ dN[k, :] \
-                                 - (Hk * (ExpLDSquaredTimesInvExp / np.maximum(lambdaDelta, 1e-30))[:, None]).T @ lambdaDelta
-                        jacQ -= (Hk * (ExpLDSquaredTimesInvExp * dN[k, :])[:, None]).T @ Hk \
-                                + (Hk * ExpLDSquaredTimesInvExp[:, None]).T @ Hk \
-                                + (Hk * (2.0 * ExpLDCubedTimesInvExpSquared)[:, None]).T @ Hk
-
-                # Newton-Raphson update
-                try:
-                    gamma_temp = gamma_new - np.linalg.pinv(jacQ) @ gradQ
-                except np.linalg.LinAlgError:
-                    gamma_temp = gamma_new
-
-                if np.any(np.isnan(gamma_temp)):
-                    gamma_temp = gamma_new
-
-                mabsDiff = float(np.max(np.abs(gamma_temp - gamma_new)))
-                gamma_new = gamma_temp
-                if mabsDiff < 1e-2:
-                    converged = True
-                    break
-
-            # Clamp gamma
-            gamma_new = np.clip(gamma_new, -1e2, 1e2)
-
-        return Qhat, gamma_new
-
-    @staticmethod
-    def PPSS_EM(A, Q0, x0, dN, fitType, delta, gamma0, windowTimes, numBasis, HkAll):
-        """Inner EM loop for state-space GLM.
-
-        Parameters
-        ----------
-        A : (R, R) state transition
-        Q0 : (R,) initial state noise variance
-        x0 : (R,) initial state
-        dN : (K, N) observations
-        fitType : 'poisson' or 'binomial'
-        delta : time bin width
-        gamma0 : (J,) initial history coefficients
-        windowTimes : history window boundaries
-        numBasis : number of basis functions
-        HkAll : precomputed history matrices
-
-        Returns
-        -------
-        xKFinal, WKFinal, WkuFinal, Qhat, gammahat, logll, QhatAll, gammahatAll, nIter, negLL
-        """
-        if numBasis is None:
-            numBasis = 20
-        if delta is None or delta == 0:
-            delta = 0.001
-        fitType = str(fitType or "poisson").lower()
-
-        Q0_vec = np.asarray(Q0, dtype=float).reshape(-1)
-        if Q0_vec.size == numBasis * numBasis:
-            Q0_vec = np.diag(Q0_vec.reshape(numBasis, numBasis))
-
-        gamma0_vec = np.asarray(gamma0, dtype=float).reshape(-1) if gamma0 is not None else np.array([], dtype=float)
-
-        tolAbs = 1e-3
-        tolRel = 1e-3
-        llTol = 1e-3
-        maxIter = 100
-        numToKeep = 10
-
-        # Circular buffer storage
-        Qhat = np.zeros((Q0_vec.size, numToKeep), dtype=float)
-        Qhat[:, 0] = Q0_vec
-        gammahat = np.zeros((numToKeep, gamma0_vec.size), dtype=float)
-        gammahat[0, :] = gamma0_vec
-
-        xK_buf = [None] * numToKeep
-        WK_buf = [None] * numToKeep
-        Wku_buf = [None] * numToKeep
-
-        x0hat = np.asarray(x0, dtype=float).reshape(-1)
-        logll_list = []
-        dLikelihood = [np.inf]
-        negLL = False
-        stoppingCriteria = False
-        cnt = 0
-
-        while not stoppingCriteria and cnt < maxIter:
-            si = cnt % numToKeep
-            si_p1 = (cnt + 1) % numToKeep
-            si_m1 = (cnt - 1) % numToKeep
-
-            xK_cur, WK_cur, Wku_cur, ll, SumXkTerms, _ = DecodingAlgorithms.PPSS_EStep(
-                A, Qhat[:, si], x0hat, dN, HkAll, fitType, delta, gammahat[si, :], numBasis
-            )
-            xK_buf[si] = xK_cur
-            WK_buf[si] = WK_cur
-            Wku_buf[si] = Wku_cur
-            logll_list.append(ll)
-
-            Qnew, gnew = DecodingAlgorithms.PPSS_MStep(
-                dN, HkAll, fitType, xK_cur, WK_cur, gammahat[si, :], delta, SumXkTerms, windowTimes
-            )
-            Qhat[:, si_p1] = Qnew
-            gammahat[si_p1, :] = gnew
-
-            if cnt == 0:
-                dLikelihood.append(np.inf)
-            else:
-                dLikelihood.append(logll_list[cnt] - logll_list[cnt - 1])
-
-            # Check convergence
-            if cnt > 0:
-                dQvals = np.abs(np.sqrt(np.maximum(Qhat[:, si], 0)) - np.sqrt(np.maximum(Qhat[:, si_m1], 0)))
-                dGamma = np.abs(gammahat[si, :] - gammahat[si_m1, :])
-                dMax = max(np.max(dQvals), np.max(dGamma)) if dGamma.size > 0 else float(np.max(dQvals))
-
-                Q_prev = np.sqrt(np.maximum(Qhat[:, si_m1], 1e-30))
-                dQRel = float(np.max(np.abs(dQvals / Q_prev)))
-                if dGamma.size > 0:
-                    g_prev = np.maximum(np.abs(gammahat[si_m1, :]), 1e-30)
-                    dGammaRel = float(np.max(np.abs(dGamma / g_prev)))
-                    dMaxRel = max(dQRel, dGammaRel)
-                else:
-                    dMaxRel = dQRel
-
-                if dMax < tolAbs and dMaxRel < tolRel:
-                    stoppingCriteria = True
-                    negLL = False
-
-                if abs(dLikelihood[-1]) < llTol or dLikelihood[-1] < 0:
-                    stoppingCriteria = True
-                    negLL = True
-
-            cnt += 1
-
-        # Select best iteration by log-likelihood
-        logll_arr = np.array(logll_list)
-        if logll_arr.size > 0:
-            maxLLIndex = int(np.argmax(logll_arr))
-        else:
-            maxLLIndex = 0
-
-        maxLLIndMod = maxLLIndex % numToKeep
-        nIter = cnt
-
-        xKFinal = xK_buf[maxLLIndMod] if xK_buf[maxLLIndMod] is not None else np.zeros((numBasis, dN.shape[0]))
-        WKFinal = WK_buf[maxLLIndMod] if WK_buf[maxLLIndMod] is not None else np.zeros((numBasis, numBasis, dN.shape[0]))
-        WkuFinal = Wku_buf[maxLLIndMod] if Wku_buf[maxLLIndMod] is not None else np.zeros((numBasis, numBasis, dN.shape[0], dN.shape[0]))
-
-        QhatFinal = Qhat[:, maxLLIndMod]
-        gammahatFinal = gammahat[maxLLIndMod, :]
-        logllFinal = float(logll_arr[maxLLIndex]) if logll_arr.size > 0 else -np.inf
-
-        QhatAll = Qhat[:, : min(cnt + 1, numToKeep)]
-        gammahatAll = gammahat[: min(cnt + 1, numToKeep), :]
-
-        return xKFinal, WKFinal, WkuFinal, QhatFinal, gammahatFinal, logllFinal, QhatAll, gammahatAll, nIter, negLL
-
-    @staticmethod
-    def PPSS_EMFB(A, Q0, x0, dN, fitType, delta, gamma0, windowTimes, numBasis, neuronName=None):
-        """EM Forward-Backward algorithm for state-space GLM.
-
-        Wraps PPSS_EM in a forward-backward-forward cycle for improved convergence.
-
-        Parameters
-        ----------
-        A : (R, R) state transition matrix (typically identity for random walk)
-        Q0 : (R,) initial state noise variance
-        x0 : (R,) initial state coefficients
-        dN : (K, N) binary spike observations (K trials, N time bins)
-        fitType : 'poisson' or 'binomial'
-        delta : time bin width in seconds
-        gamma0 : (J,) initial history coefficients
-        windowTimes : array of history window boundaries
-        numBasis : number of basis functions R
-        neuronName : identifier for the neuron (for labeling)
-
-        Returns
-        -------
-        xKFinal : (R, K) estimated state trajectories
-        WKFinal : (R, R, K) estimated state covariances
-        WkuFinal : (R, R, K, K) cross-trial covariances
-        Qhat : (R,) estimated state noise variance
-        gammahat : (J,) estimated history coefficients
-        fitResults : FitResult object with goodness-of-fit diagnostics
-        stimulus : (R, K) estimated stimulus effect
-        stimCIs : (R, K, 2) stimulus confidence intervals
-        logll : float, log-likelihood at convergence
-        QhatAll : parameter history
-        gammahatAll : parameter history
-        nIter : total EM iterations
-        """
-        K, N = dN.shape
-        fitType = str(fitType or "poisson").lower()
-
-        Q0_vec = np.asarray(Q0, dtype=float).reshape(-1)
-        if Q0_vec.size == numBasis * numBasis:
-            Q0_vec = np.diag(Q0_vec.reshape(numBasis, numBasis))
-
-        gamma0_vec = np.asarray(gamma0, dtype=float).reshape(-1) if gamma0 is not None else np.array([], dtype=float)
-
-        Qhat_cur = Q0_vec.copy()
-        gammahat_cur = gamma0_vec.copy()
-        xK0 = np.asarray(x0, dtype=float).reshape(-1)
-
-        # Build history matrices
-        HkAll = DecodingAlgorithms._ssglm_build_history(dN, windowTimes, delta)
-        HkAllR = list(reversed(HkAll))
-
-        tolAbs = 1e-3
-        tolRel = 1e-3
-        llTol = 1e-3
-        maxIter = 2000
-
-        Qhat_history = [Qhat_cur.copy()]
-        gammahat_history = [gammahat_cur.copy()]
-        logll_list = []
-        stoppingCriteria = False
-        cnt = 0
-
-        xK = None
-        WK = None
-        Wku = None
-
-        while not stoppingCriteria and cnt < maxIter:
-            # Forward EM
-            xK, WK, Wku, Qnew, gnew, ll, _, _, _, negLL = DecodingAlgorithms.PPSS_EM(
-                A, Qhat_cur, xK0, dN, fitType, delta, gammahat_cur, windowTimes, numBasis, HkAll
-            )
-
-            if not negLL:
-                # Backward EM
-                _, _, _, QnewR, gnewR, _, _, _, _, negLLR = DecodingAlgorithms.PPSS_EM(
-                    A, Qnew, xK[:, -1], np.flipud(dN), fitType, delta, gnew, windowTimes, numBasis, HkAllR
-                )
-
-                if not negLLR:
-                    # Forward EM again with backward-updated parameters
-                    # Matlab: PPSS_EM(A, QhatR(:,cnt+1), xKR(:,end), dN, ...)
-                    xK2, WK2, Wku2, Qnew2, gnew2, ll2, _, _, _, negLL2 = DecodingAlgorithms.PPSS_EM(
-                        A, QnewR, xK[:, -1], dN, fitType, delta, gnewR,
-                        windowTimes, numBasis, HkAll
-                    )
-
-                    if not negLL2:
-                        xK = xK2
-                        WK = WK2
-                        Wku = Wku2
-                        Qnew = Qnew2
-                        gnew = gnew2
-                        ll = ll2
-
-            Qhat_cur = Qnew
-            gammahat_cur = gnew
-            Qhat_history.append(Qnew.copy())
-            gammahat_history.append(gnew.copy())
-            logll_list.append(ll)
-
-            xK0 = xK[:, 0]
-
-            # Check convergence
-            if cnt > 0:
-                dLikelihood = logll_list[cnt] - logll_list[cnt - 1]
-            else:
-                dLikelihood = np.inf
-
-            if len(Qhat_history) >= 2:
-                Q_prev = Qhat_history[-2]
-                Q_cur = Qhat_history[-1]
-                dQvals = np.abs(np.sqrt(np.maximum(Q_cur, 0)) - np.sqrt(np.maximum(Q_prev, 0)))
-                g_prev = gammahat_history[-2]
-                g_cur = gammahat_history[-1]
-                dGamma = np.abs(g_cur - g_prev) if g_cur.size > 0 else np.array([0.0])
-
-                dMax = max(float(np.max(dQvals)), float(np.max(dGamma)))
-
-                Q_denom = np.sqrt(np.maximum(Q_prev, 1e-30))
-                dQRel = float(np.max(np.abs(dQvals / Q_denom)))
-                if g_prev.size > 0 and np.any(g_prev != 0):
-                    g_denom = np.maximum(np.abs(g_prev), 1e-30)
-                    dGammaRel = float(np.max(np.abs(dGamma / g_denom)))
-                    dMaxRel = max(dQRel, dGammaRel)
-                else:
-                    dMaxRel = dQRel
-
-                if dMax < tolAbs and dMaxRel < tolRel:
-                    stoppingCriteria = True
-
-                if abs(dLikelihood) < llTol or dLikelihood < 0:
-                    stoppingCriteria = True
-
-            cnt += 1
-
-        # Select best iteration
-        logll_arr = np.array(logll_list)
-        if logll_arr.size > 0:
-            maxLLIndex = int(np.argmax(logll_arr))
-        else:
-            maxLLIndex = 0
-
-        xKFinal = xK
-        WKFinal = WK
-        WkuFinal = Wku
-        Qhat = Qhat_history[min(maxLLIndex + 1, len(Qhat_history) - 1)]
-        gammahat = gammahat_history[min(maxLLIndex + 1, len(gammahat_history) - 1)]
-        logll = float(logll_arr[maxLLIndex]) if logll_arr.size > 0 else -np.inf
-
-        QhatAll = np.column_stack(Qhat_history) if Qhat_history else Q0_vec.reshape(-1, 1)
-        gammahatAll = np.row_stack(gammahat_history) if gammahat_history and gammahat_history[0].size > 0 else np.array([[]])
-
-        R = numBasis
-        x0Final = xK[:, 0] if xK is not None else np.zeros(R)
-        SumXkTermsFinal = np.diag(Qhat) * K
-        McInfo = 100
-        McCI = 3000
-
-        # Observed log-likelihood
-        logllobs = logll + R * K * np.log(2 * np.pi) + K / 2.0 * np.log(
-            max(float(np.prod(np.maximum(Qhat, np.finfo(float).eps))), np.finfo(float).eps)
-        ) + 0.5 * float(np.trace(np.linalg.pinv(np.diag(Qhat)) @ SumXkTermsFinal))
-
-        nIter = cnt
-
-        # Information matrix and result packaging
-        InfoMat = DecodingAlgorithms.estimateInfoMat(
-            fitType, dN, HkAll, A, x0Final, xKFinal, WKFinal, WkuFinal,
-            Qhat, gammahat, windowTimes, SumXkTermsFinal, delta, McInfo
-        )
-        fitResults = DecodingAlgorithms.prepareEMResults(
-            fitType, neuronName, dN, HkAll, xKFinal, WKFinal,
-            Qhat, gammahat, windowTimes, delta, InfoMat, logllobs
-        )
-
-        stimCIs, stimulus = DecodingAlgorithms._ComputeStimulusCIs_MC(
-            fitType, xKFinal, WkuFinal, delta, McCI
-        )
-
-        return (xKFinal, WKFinal, WkuFinal, Qhat, gammahat, fitResults,
-                stimulus, stimCIs, logll, QhatAll, gammahatAll, nIter)
-
-    @staticmethod
-    def _ComputeStimulusCIs_MC(fitType, xK, Wku, delta, Mc=3000, alphaVal=0.05):
-        """Monte Carlo confidence intervals for SSGLM stimulus estimate.
-
-        Uses Cholesky decomposition of the cross-trial covariance to generate
-        draws of the state trajectory, then computes empirical CIs.
-        """
-        fitType = str(fitType).lower()
-        numBasis, K = xK.shape
-
-        CIs = np.zeros((numBasis, K, 2), dtype=float)
-
-        for r in range(numBasis):
-            WkuTemp = Wku[r, r, :, :]  # (K, K) cross-trial covariance for basis r
-            try:
-                chol_m = np.linalg.cholesky(WkuTemp + 1e-10 * np.eye(K))
-            except np.linalg.LinAlgError:
-                eigvals, eigvecs = np.linalg.eigh(WkuTemp)
-                eigvals = np.maximum(eigvals, 1e-10)
-                chol_m = eigvecs @ np.diag(np.sqrt(eigvals))
-
-            stimulusDraw = np.zeros((Mc, K), dtype=float)
-            for c in range(Mc):
-                z = np.random.randn(K)
-                xKDraw = xK[r, :] + chol_m.T @ z
-                if fitType == "poisson":
-                    stimulusDraw[c, :] = np.exp(np.clip(xKDraw, -30, 30)) / delta
-                elif fitType == "binomial":
-                    xKDraw_clip = np.clip(xKDraw, -30, 30)
-                    stimulusDraw[c, :] = (np.exp(xKDraw_clip) / (1.0 + np.exp(xKDraw_clip))) / delta
-                else:
-                    stimulusDraw[c, :] = xKDraw / delta
-
-            for k in range(K):
-                CIs[r, k, 0] = float(np.percentile(stimulusDraw[:, k], 100.0 * alphaVal / 2.0))
-                CIs[r, k, 1] = float(np.percentile(stimulusDraw[:, k], 100.0 * (1.0 - alphaVal / 2.0)))
-
-        if fitType == "poisson":
-            stimulus = np.exp(np.clip(xK, -30, 30)) / delta
-        elif fitType == "binomial":
-            xK_clip = np.clip(xK, -30, 30)
-            stimulus = (np.exp(xK_clip) / (1.0 + np.exp(xK_clip))) / delta
-        else:
-            stimulus = xK / delta
-
-        return CIs, stimulus
-
-    @staticmethod
-    def estimateInfoMat(fitType, dN, HkAll, A, x0, xK, WK, Wku, Q, gamma,
-                        windowTimes, SumXkTerms, delta, Mc=500):
-        """Observed information matrix via Louis' identity with Monte Carlo.
-
-        Computes I_obs = I_complete - I_missing where I_missing is estimated
-        by MC sampling from the smoothing distribution.
-        """
-        fitType = str(fitType).lower()
-        K, N = dN.shape
-        gamma_vec = np.asarray(gamma, dtype=float).reshape(-1)
-        J = gamma_vec.size if (windowTimes is not None and len(windowTimes) > 0) else 0
-
-        Q_vec = np.asarray(Q, dtype=float).reshape(-1)
-        R = Q_vec.size
-        Q_mat = np.diag(Q_vec)
-        numBasis = R
-
-        # Build basis matrix
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-        basisMat = DecodingAlgorithms._ssglm_build_basis(numBasis, minTime, maxTime, delta)
-        if basisMat.shape[0] != N:
-            basisMat = basisMat[:N, :] if basisMat.shape[0] > N else np.vstack(
-                [basisMat, np.zeros((N - basisMat.shape[0], basisMat.shape[1]))]
-            )
-
-        # Complete data information matrix
-        Ic = np.zeros((R + J, R + J), dtype=float)
-        Q_mat_safe = np.diag(np.maximum(Q_vec, np.finfo(float).eps))
-        Q2 = Q_mat_safe @ Q_mat_safe
-        Q3 = Q2 @ Q_mat_safe
-
-        Ic[:R, :R] = K / 2.0 * np.linalg.inv(Q2) + np.linalg.inv(Q3) @ SumXkTerms
-
-        # History portion of information matrix
-        jacQ = np.zeros((J, J), dtype=float) if J > 0 else np.zeros((0, 0))
-        if fitType == "poisson" and J > 0:
-            for k in range(K):
-                Hk = HkAll[k]
-                if Hk.shape[1] == 0:
-                    continue
-                Wk = basisMat @ np.diag(WK[:, :, k])
-                stimK = basisMat @ xK[:, k]
-                stimK_clip = np.clip(stimK, -30, 30)
-                hist_term = np.clip(gamma_vec @ Hk.T, -30, 30)
-                histEffect = np.exp(hist_term)
-                stimEffect = np.exp(stimK_clip) + np.exp(stimK_clip) / 2.0 * Wk
-                lambdaDelta = stimEffect * histEffect
-                jacQ -= (Hk * lambdaDelta[:, None]).T @ Hk
-        elif fitType == "binomial" and J > 0:
-            for k in range(K):
-                Hk = HkAll[k]
-                if Hk.shape[1] == 0:
-                    continue
-                Wk = basisMat @ np.diag(WK[:, :, k])
-                stimK = basisMat @ xK[:, k]
-                linpred = np.clip(stimK + Hk @ gamma_vec, -30, 30)
-                histEffect = np.exp(np.clip(gamma_vec @ Hk.T, -30, 30))
-                stimEffect = np.exp(np.clip(stimK, -30, 30))
-                C = stimEffect * histEffect
-                M = np.where(C > 1e-30, 1.0 / C, 1e30)
-                lambdaDelta = 1.0 / (1.0 + np.exp(-linpred))
-                ExpLDSquaredTimesInvExp = lambdaDelta ** 2 * M
-                ExpLDCubedTimesInvExpSquared = (
-                    lambdaDelta ** 3 * M ** 2
-                    + Wk / 2.0 * (3.0 * M ** 4 * lambdaDelta ** 3
-                                   + 12.0 * lambdaDelta ** 3 * M ** 3
-                                   - 12.0 * M ** 4 * lambdaDelta ** 4)
-                )
-                jacQ -= (Hk * (ExpLDSquaredTimesInvExp * dN[k, :])[:, None]).T @ Hk \
-                        + (Hk * ExpLDSquaredTimesInvExp[:, None]).T @ Hk \
-                        + (Hk * (2.0 * ExpLDCubedTimesInvExpSquared)[:, None]).T @ Hk
-
-        Ic[:R, :R] = K * np.linalg.inv(2.0 * Q2) + np.linalg.inv(Q3) @ SumXkTerms
-        if J > 0:
-            Ic[R:R + J, R:R + J] = -jacQ
-
-        # MC estimation of missing information
-        xKDraw = np.zeros((numBasis, K, Mc), dtype=float)
-        for r in range(numBasis):
-            WkuTemp = Wku[r, r, :, :]
-            try:
-                chol_m = np.linalg.cholesky(WkuTemp + 1e-10 * np.eye(K))
-            except np.linalg.LinAlgError:
-                eigvals, eigvecs = np.linalg.eigh(WkuTemp)
-                eigvals = np.maximum(eigvals, 1e-10)
-                chol_m = eigvecs @ np.diag(np.sqrt(eigvals))
-
-            for c in range(Mc):
-                z = np.random.randn(K)
-                xKDraw[r, :, c] = xK[r, :] + chol_m.T @ z
-
-        ImMC = np.zeros((R + J, R + J), dtype=float)
-        A_mat = np.asarray(A, dtype=float)
-        if A_mat.ndim < 2:
-            A_mat = np.eye(R) * A_mat
-        x0_vec = np.asarray(x0, dtype=float).reshape(-1)
-        Q_inv = np.linalg.inv(Q_mat_safe)
-
-        for c in range(Mc):
-            gradQGammahat = np.zeros(J, dtype=float) if J > 0 else np.array([], dtype=float)
-            gradQQhat = np.zeros(R, dtype=float)
-
-            for k in range(K):
-                Hk = HkAll[k]
-                stimK = basisMat @ xKDraw[:, k, c]
-
-                if fitType == "poisson":
-                    hist_term = np.clip(gamma_vec @ Hk.T, -30, 30) if J > 0 and Hk.shape[1] > 0 else np.zeros(N)
-                    histEffect = np.exp(hist_term)
-                    stimK_clip = np.clip(stimK, -30, 30)
-                    stimEffect = np.exp(stimK_clip)
-                    lambdaDelta = stimEffect * histEffect
-                    if J > 0 and Hk.shape[1] > 0:
-                        gradQGammahat += Hk.T @ dN[k, :] - Hk.T @ lambdaDelta
-                elif fitType == "binomial":
-                    Wk = basisMat @ np.diag(WK[:, :, k])
-                    linpred = np.clip(stimK + (Hk @ gamma_vec if J > 0 and Hk.shape[1] > 0 else 0.0), -30, 30)
-                    histEffect = np.exp(np.clip(gamma_vec @ Hk.T, -30, 30)) if J > 0 and Hk.shape[1] > 0 else np.ones(N)
-                    stimEffect = np.exp(np.clip(stimK, -30, 30))
-                    C = stimEffect * histEffect
-                    M = np.where(C > 1e-30, 1.0 / C, 1e30)
-                    lambdaDelta = 1.0 / (1.0 + np.exp(-linpred))
-                    ExpLambdaDelta = lambdaDelta + Wk * (lambdaDelta * (1.0 - lambdaDelta) * (1.0 - 2.0 * lambdaDelta)) / 2.0
-                    ExpLDSquaredTimesInvExp = lambdaDelta ** 2 * M
-                    if J > 0 and Hk.shape[1] > 0:
-                        gradQGammahat += (Hk * (1.0 - ExpLambdaDelta)[:, None]).T @ dN[k, :] \
-                                         - (Hk * (ExpLDSquaredTimesInvExp / np.maximum(lambdaDelta, 1e-30))[:, None]).T @ lambdaDelta
-
-                if k == 0:
-                    diff = xKDraw[:, k, c] - A_mat @ x0_vec
-                else:
-                    diff = xKDraw[:, k, c] - A_mat @ xKDraw[:, k - 1, c]
-                gradQQhat += diff * diff
-
-            gradQQhat_scaled = 0.5 * Q_inv @ gradQQhat - np.diag(K / 2.0 * np.linalg.inv(Q2))
-            ImMC[:R, :R] += np.outer(gradQQhat_scaled, gradQQhat_scaled)
-            if J > 0:
-                ImMC[R:R + J, R:R + J] += np.diag(gradQGammahat ** 2)
-
-        Im = ImMC / Mc
-        InfoMatrix = Ic - Im
-
-        return InfoMatrix
-
-    @staticmethod
-    def prepareEMResults(fitType, neuronNumber, dN, HkAll, xK, WK, Q, gamma,
-                         windowTimes, delta, informationMatrix, logll):
-        """Package SSGLM EM results into a FitResult object."""
-        from .core import Covariate
-        from .fit import FitResult
-        from .history import History
-        from .trial import (
-            ConfigCollection,
-            SpikeTrainCollection,
-            TrialConfig,
-        )
-        from .analysis import Analysis
-
-        fitType = str(fitType).lower()
-        numBasis, K = xK.shape
-        R = numBasis
-        N = dN.shape[1]
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-        sampleRate = 1.0 / delta
-        gamma_vec = np.asarray(gamma, dtype=float).reshape(-1)
-
-        # Build basis matrix
-        basisMat = DecodingAlgorithms._ssglm_build_basis(numBasis, minTime, maxTime, delta)
-        if basisMat.shape[0] != N:
-            basisMat = basisMat[:N, :] if basisMat.shape[0] > N else np.vstack(
-                [basisMat, np.zeros((N - basisMat.shape[0], basisMat.shape[1]))]
-            )
-
-        # Standard errors from information matrix
-        try:
-            SE = np.sqrt(np.abs(np.diag(np.linalg.inv(informationMatrix))))
-        except np.linalg.LinAlgError:
-            SE = np.zeros(informationMatrix.shape[0], dtype=float)
-
-        # Build per-trial standard errors
-        xKbeta = xK.T.reshape(-1)  # (K*R,)
-        seXK = np.zeros(K * R, dtype=float)
-        for k in range(K):
-            seXK[k * R:(k + 1) * R] = np.sqrt(np.maximum(np.diag(WK[:, :, k]), 0.0))
-
-        # Neuron name
-        if neuronNumber is None:
-            name = "N01"
-        elif isinstance(neuronNumber, (int, float)):
-            n = int(neuronNumber)
-            name = f"N{n:02d}" if 0 < n < 10 else f"N{n}"
-        else:
-            name = str(neuronNumber)
-
-        # Create spike trains from dN
-        nst_list = []
-        for k in range(K):
-            spike_indices = np.where(dN[k, :] > 0.5)[0]
-            spike_times = spike_indices.astype(float) * delta
-            nst_k = nspikeTrain(spike_times, name=name, makePlots=-1)
-            nst_k.setMinTime(minTime)
-            nst_k.setMaxTime(maxTime)
-            nst_list.append(nst_k)
-
-        nCopy = SpikeTrainCollection(nst_list)
-        nCopy = nCopy.toSpikeTrain()
-
-        # Compute lambda (conditional intensity)
-        lambdaData = []
-        otherLabels = []
-        cnt = 0
-        for k in range(K):
-            Hk = HkAll[k]
-            stimK = basisMat @ xK[:, k]
-
-            if fitType == "poisson":
-                hist_term = gamma_vec @ Hk.T if gamma_vec.size > 0 and Hk.shape[1] > 0 else np.zeros(N)
-                histEffect = np.exp(np.clip(hist_term, -30, 30))
-                stimEffect = np.exp(np.clip(stimK, -30, 30))
-                lambdaDelta = histEffect * stimEffect / delta
-            elif fitType == "binomial":
-                linpred = np.clip(stimK + (Hk @ gamma_vec if gamma_vec.size > 0 and Hk.shape[1] > 0 else 0.0), -30, 30)
-                hist_term = np.clip(gamma_vec @ Hk.T, -30, 30) if gamma_vec.size > 0 and Hk.shape[1] > 0 else np.zeros(N)
-                histEffect = np.exp(hist_term)
-                stimEffect = np.exp(np.clip(stimK, -30, 30))
-                C = histEffect * stimEffect
-                lambdaDelta = C / (1.0 + C) / delta
-            else:
-                lambdaDelta = np.zeros(N)
-
-            lambdaData.append(lambdaDelta)
-
-            for r in range(R):
-                label = f"b{r + 1:02d}_{{{k + 1}}}" if r + 1 < 10 else f"b{r + 1}_{{{k + 1}}}"
-                otherLabels.append(label)
-                cnt += 1
-
-        lambdaData = np.concatenate(lambdaData)
-        lambdaTime = np.arange(len(lambdaData)) * delta + minTime
-
-        nCopy.setMaxTime(float(np.max(lambdaTime)))
-        nCopy.setMinTime(float(np.min(lambdaTime)))
-
-        # Covariance labels
-        covarianceLabels = [f"Q{r + 1:02d}" if r + 1 < 10 else f"Q{r + 1}" for r in range(R)]
-
-        # History labels
-        histLabels = []
-        if windowTimes is not None and len(windowTimes) > 0:
-            wt = np.asarray(windowTimes, dtype=float)
-            for i in range(len(wt) - 1):
-                histLabels.append(f"[{wt[i]:.3g},{wt[i + 1]:.3g}]")
-
-        allLabels = otherLabels + covarianceLabels + histLabels
-
-        # History objects
-        if windowTimes is not None and len(windowTimes) > 0:
-            histObj = [History(windowTimes, minTime, maxTime)]
-        else:
-            histObj = [None]
-
-        # Trial configuration
-        numBasisStr = str(numBasis)
-        numHistStr = str(len(windowTimes) - 1) if windowTimes is not None and len(windowTimes) > 1 else "0"
-        if histObj[0] is not None:
-            cfg_name = f"SSGLM(N_{{b}}={numBasisStr})+Hist(N_{{h}}={numHistStr})"
-        else:
-            cfg_name = f"SSGLM(N_{{b}}={numBasisStr})"
-
-        tc = TrialConfig([allLabels], sampleRate, histObj, [])
-        tc.setName(cfg_name)
-        configColl = ConfigCollection([tc])
-
-        # Lambda covariate
-        lambda_cov = Covariate(
-            lambdaTime, lambdaData,
-            r"\Lambda(t)", "time", "s", "Hz",
-            [r"\lambda_{1}"]
-        )
-
-        # Model selection criteria
-        AIC = 2.0 * len(allLabels) - 2.0 * logll
-        BIC = -2.0 * logll + len(allLabels) * np.log(max(len(lambdaData), 1))
-        dev = -2.0 * logll
-
-        # Stats structure
-        statsStruct = {
-            "beta": np.concatenate([xKbeta, np.asarray(Q, dtype=float).reshape(-1), gamma_vec]),
-            "se": np.concatenate([seXK, SE]),
-        }
-
-        # Coefficients
-        b = [statsStruct["beta"]]
-        stats = [statsStruct]
-        distrib = [fitType]
-
-        # Spike trains for FitResult
-        spikeTraining = [nst.nstCopy() for nst in nst_list]
-        for st in spikeTraining:
-            st.setName(name)
-
-        XvalData = [None]
-        XvalTime = [None]
-        numHist = [len(windowTimes) - 1] if windowTimes is not None and len(windowTimes) > 1 else [0]
-        ensHistObj = [None]
-
-        fitResults = FitResult(
-            nCopy, [allLabels], numHist, histObj, ensHistObj,
-            lambda_cov, b, dev, stats, AIC, BIC, logll,
-            configColl, XvalData, XvalTime, distrib
-        )
-
-        # Goodness-of-fit (silent)
-        try:
-            Analysis.KSPlot(fitResults, DTCorrection=1, makePlot=0)
-        except Exception:
-            pass
-        try:
-            Analysis.plotInvGausTrans(fitResults, makePlot=0)
-        except Exception:
-            pass
-        try:
-            Analysis.plotFitResidual(fitResults, makePlot=0)
-        except Exception:
-            pass
-
-        return fitResults
-
-
     # PP_EM family: Point-Process state-space EM (without basis functions)
     # ------------------------------------------------------------------
 
@@ -7594,6 +6949,8 @@ kalman_fixedIntervalSmoother = DecodingAlgorithms.kalman_fixedIntervalSmoother
 kalman_smootherFromFiltered = DecodingAlgorithms.kalman_smootherFromFiltered
 kalman_smoother = DecodingAlgorithms.kalman_smoother
 ComputeStimulusCIs = DecodingAlgorithms.ComputeStimulusCIs
+computeSpikeRateCIs = DecodingAlgorithms.computeSpikeRateCIs
+computeSpikeRateDiffCIs = DecodingAlgorithms.computeSpikeRateDiffCIs
 ukf = DecodingAlgorithms.ukf
 ukf_ut = DecodingAlgorithms.ukf_ut
 ukf_sigmas = DecodingAlgorithms.ukf_sigmas
@@ -7621,6 +6978,8 @@ mPPCO_MStep = DecodingAlgorithms.mPPCO_MStep
 __all__ = [
     "ComputeStimulusCIs",
     "DecodingAlgorithms",
+    "computeSpikeRateCIs",
+    "computeSpikeRateDiffCIs",
     "KF_ComputeParamStandardErrors",
     "KF_EM",
     "KF_EMCreateConstraints",

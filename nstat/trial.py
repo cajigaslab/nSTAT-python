@@ -1004,10 +1004,22 @@ class SpikeTrainCollection:
         else:
             nst.setMaxTime(float(self.maxTime))
 
-    def plot(self, *_, handle=None, **__):
+    def plot(self, *_, handle=None, reverseOrder: bool = False, **__):
+        """Plot a spike-train raster.
+
+        Parameters
+        ----------
+        handle : matplotlib Axes, optional
+            Axes to plot into.
+        reverseOrder : bool
+            If ``True``, reverse the display order so the last neuron is at
+            the top.  Matches Matlab ``reverseOrderPlot`` parameter.
+        """
         selected = self.getIndFromMask()
         if not selected:
             selected = list(range(1, self.numSpikeTrains + 1))
+        if reverseOrder:
+            selected = list(reversed(selected))
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(8.0, max(2.5, 0.55 * max(len(selected), 1) + 1.0)))[1]
         ax.clear()
         for row, neuron_index in enumerate(selected, start=1):
@@ -2098,6 +2110,34 @@ class Trial:
 
         return isinstance(self.ensCovHist, History)
 
+    def getNumHist(self) -> int | list[int]:
+        """Return the number of history coefficients.
+
+        If a single ``History`` object is set, returns the number of
+        history window coefficients (``len(windowTimes) - 1``).
+        If a list of ``History`` objects is set, returns a list with
+        the count for each.  Returns ``0`` when no history is set.
+
+        Matches Matlab ``Trial.getNumHist()``.
+        """
+        from .history import History
+
+        if not self.isHistSet():
+            return 0
+        if isinstance(self.history, History):
+            wt = np.asarray(self.history.windowTimes, dtype=float).ravel()
+            return max(int(wt.size - 1), 0)
+        if isinstance(self.history, list):
+            counts: list[int] = []
+            for h in self.history:
+                if isinstance(h, History):
+                    wt = np.asarray(h.windowTimes, dtype=float).ravel()
+                    counts.append(max(int(wt.size - 1), 0))
+                else:
+                    counts.append(0)
+            return counts
+        return 0
+
     def addCov(self, cov: Covariate) -> None:
         self.covarColl.addToColl(cov)
         self.covMask = self.covarColl.covMask
@@ -2133,10 +2173,20 @@ class Trial:
         X = self.covarColl.dataToMatrix("standard", dataSelector)
         if self.isHistSet():
             H = self.getHistMatrices(neuronNum)
-            X = H if X.size == 0 else np.column_stack([X, H])
+            if X.size == 0:
+                X = H
+            else:
+                # Align row counts — covariates and history may differ by
+                # one sample due to boundary effects in time-grid construction.
+                n = min(X.shape[0], H.shape[0])
+                X = np.column_stack([X[:n, :], H[:n, :]])
         if self.isEnsCovHistSet():
             E = self.getEnsCovMatrix(neuronNum)
-            X = E if X.size == 0 else np.column_stack([X, E])
+            if X.size == 0:
+                X = E
+            else:
+                n = min(X.shape[0], E.shape[0])
+                X = np.column_stack([X[:n, :], E[:n, :]])
         return X
 
     def getHistForNeurons(self, neuronIndex) -> CovariateCollection:
@@ -2337,6 +2387,28 @@ class Trial:
     def findMaxSampleRate(self) -> float:
         values = [value for value in [self.nspikeColl.findMaxSampleRate(), self.covarColl.findMaxSampleRate()] if np.isfinite(value)]
         return float(max(values)) if values else float("nan")
+
+    def findMinSampleRate(self) -> float:
+        """Return the minimum sample rate across spike collection, covariate collection, and trial.
+
+        Matches Matlab ``Trial.findMinSampleRate()``.
+        """
+        candidates: list[float] = []
+        if hasattr(self, "sampleRate") and np.isfinite(self.sampleRate):
+            candidates.append(float(self.sampleRate))
+        try:
+            sr = self.nspikeColl.sampleRate
+            if np.isfinite(sr):
+                candidates.append(float(sr))
+        except Exception:
+            pass
+        try:
+            sr = self.covarColl.sampleRate
+            if np.isfinite(sr):
+                candidates.append(float(sr))
+        except Exception:
+            pass
+        return float(min(candidates)) if candidates else float("nan")
 
     def findMinTime(self) -> float:
         return float(min(self.nspikeColl.minTime, self.covarColl.minTime))
