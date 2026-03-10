@@ -8,6 +8,22 @@ decoding. In addition to point-process algorithms, nSTAT also provides tools for
 Gaussian signals — from correlation analysis to the Kalman filter — applicable to
 continuous neural signals such as LFP, EEG, and ECoG.
 
+One of nSTAT's key strengths is point-process generalized linear models for spike
+train signals that provide a formal statistical framework for processing signals
+recorded from ensembles of single neurons. It also has extensive support for model
+fitting, model-order analysis, and adaptive decoding — including state-space GLM
+(SSGLM) estimation via EM, unscented Kalman filtering (UKF), and hybrid
+discrete/continuous point-process filters.
+
+Although created with neural signal processing in mind, nSTAT can be used as a
+generic tool for analyzing any types of discrete and continuous signals, and thus
+has wide applicability.
+
+Like all open-source projects, nSTAT will benefit from your involvement,
+suggestions and contributions. This platform is intended as a repository for
+extensions to the toolbox based on your code contributions as well as for flagging
+and tracking open issues.
+
 [![test-and-build](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml)
 [![pages](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml)
 
@@ -147,16 +163,28 @@ Source pages:
 
 ## Paper-Aligned Toolbox Map
 
-The Python port now mirrors the MATLAB repo's paper-aligned toolbox map through
-[docs/PaperOverview.md](docs/PaperOverview.md). That page ties the Python
-toolbox to the 2012 paper's workflow categories:
+To keep terminology and workflows consistent with the 2012 toolbox paper,
+the documentation includes a dedicated mapping page:
+[docs/PaperOverview.md](docs/PaperOverview.md).
 
-- class hierarchy and object model (`SignalObj`, `Covariate`, `Trial`,
+This page ties the Python toolbox to the paper's workflow categories:
+
+- Class hierarchy and object model (`SignalObj`, `Covariate`, `Trial`,
   `Analysis`, `FitResult`, `DecodingAlgorithms`)
-- fitting and assessment workflow (GLM fitting, diagnostics, summaries)
-- simulation workflow (conditional intensity and thinning examples)
-- decoding workflow (univariate, bivariate, and history-aware decoding)
-- example-to-paper section mapping via `nSTATPaperExamples`
+- Fitting and assessment workflow (GLM fitting, diagnostics, summaries)
+- Simulation workflow (conditional intensity and thinning examples)
+- State-space GLM (SSGLM) workflow — full EM algorithm (`PPSS_EMFB`)
+  for across-trial coefficient dynamics with forward-backward Kalman
+  smoothing (Section 2.4)
+- Decoding workflow — point-process adaptive filter (`PPDecodeFilterLinear`),
+  hybrid filter (`PPHybridFilterLinear`), unscented Kalman filter (`ukf`),
+  and stimulus confidence intervals (Sections 2.5–2.6)
+- Signal processing — multi-taper spectral estimation (`MTMspectrum`),
+  spectrogram, cross-covariance, and peak-finding methods
+- Example-to-paper section mapping via `nSTATPaperExamples`
+
+If you use nSTAT in your work, please remember to cite the above paper in any
+publications.
 
 ## Developer notes
 
@@ -187,6 +215,20 @@ PMID: 22981419
 
 ## Data and Related Repositories
 
-- **Matlab toolbox**: https://github.com/cajigaslab/nSTAT
 - **Paper-example dataset (Figshare)**: https://doi.org/10.6084/m9.figshare.4834640.v3
 - **Paper DOI**: https://doi.org/10.1016/j.jneumeth.2012.08.009
+
+The code repository for the Python port of nSTAT is hosted on GitHub at
+https://github.com/cajigaslab/nSTAT-python.
+
+## MATLAB Toolbox
+
+The original MATLAB nSTAT toolbox lives in a separate repository:
+
+- https://github.com/cajigaslab/nSTAT
+
+That repository is MATLAB-focused and retains:
+
+- Original MATLAB class/source files
+- MATLAB helpfiles and help index (`helpfiles/helptoc.xml`)
+- MATLAB example workflows, including `.mlx` examples
