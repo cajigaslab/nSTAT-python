@@ -101,7 +101,7 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
 
     assert coeff_mat.shape == se_mat.shape
     assert coeff_mat.shape[0] == summary.numNeurons
-    assert sig.shape == coeff_mat.shape
+    assert sig.shape == (coeff_mat.shape[1], coeff_mat.shape[0])
     assert len(labels) == coeff_mat.shape[1]
     assert bins.ndim == 2
     assert bins.shape[0] == edges.shape[0]
@@ -114,7 +114,7 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
     assert summary.coeffMax == 2.0
     assert coeff_index.ndim == coeff_epoch.ndim == 1
     assert hist_index.ndim == hist_epoch.ndim == 1
-    assert coeff_epochs == 0
+    assert coeff_epochs == 1
     assert hist_epochs == 0
 
     fig1 = summary.plotIC()

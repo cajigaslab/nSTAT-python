@@ -324,12 +324,15 @@ items:
     KS p-value, the canonical `plotResults` dashboard surface, and the underlying
     single-fit `KSPlot`, `plotInvGausTrans`, `plotSeqCorr`, `plotResidual`,
     `plotCoeffs`, `plotCoeffsWithoutHistory`, and `plotHistCoeffs` branches.
-    The validation-window `plotResults` dashboard is now fixture-backed as well.
+    The direct `getCoeffIndex`, `getHistIndex`, and `getParam('stim', ...)` helper
+    surface, the validation-window `plotResults` dashboard, the canonical `toStructure`
+    payload plus `fromStructure` round-trip, and the history-only subset structure
+    payload plus round-trip are now fixture-backed as well.
     Remaining differences are concentrated in richer validation payloads and multi-fit
     branches.
   required_remediation:
-  - Add MATLAB-derived golden fixtures for richer validation payloads and the remaining
-    multi-fit branches.
+  - Add MATLAB-derived golden fixtures for the remaining richer validation payloads
+    and multi-fit branches.
   - Tighten non-canonical report-layout and validation rendering against MATLAB
     screenshots/fixtures.
   plotting_report_parity: Result plotting/report methods now exist on the canonical
@@ -363,13 +366,12 @@ items:
     `plotAllCoeffs`, coefficient/history-only summary plots, and coefficient-summary
     histogram math (`binCoeffs`, `plot2dCoeffSummary`, `plot3dCoeffSummary`), plus
     the single-metric summary plots (`plotAIC`, `plotBIC`, `plotlogLL`) are now
-    fixture-backed. Remaining differences are concentrated in richer coefficient-view
-    detail, epoch-sorting semantics, table-export coverage, and graphics-handle-specific
-    annotation ordering beyond the stable summary histogram surface.
-  - MATLAB's own `FitResSummary.fromStructure(summary.toStructure())` path currently
-    fails on the canonical fixture because `FitResult.fromStructure` expects structured
-    inverse-Gaussian payloads; Python mirrors the exported structure fields but does
-    not inherit that MATLAB round-trip bug as a fidelity target.
+    fixture-backed. The canonical summary `plotParams` payload, `getSigCoeffs(1)`,
+    `getHistCoeffs(2)`, and `fromStructure(summary.toStructure())` round-trip are
+    now fixture-backed as well. Remaining differences are concentrated in richer
+    coefficient-view detail, epoch-sorting semantics, table-export coverage, and
+    graphics-handle-specific annotation ordering beyond the stable summary histogram
+    surface.
   required_remediation:
   - Extend the committed golden fixtures beyond the canonical summary dashboard
     and histogram math to the remaining MATLAB report/table exports and coefficient-view

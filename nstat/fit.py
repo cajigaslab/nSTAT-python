@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Iterable, Sequence
 
 import matplotlib
@@ -695,24 +696,72 @@ class FitResult:
         return coeff[-num_hist:]
 
     def getCoeffIndex(self, fit_num: int = 1, sortByEpoch: int = 0):
-        del sortByEpoch
-        labels = list(self.covLabels[fit_num - 1]) if fit_num - 1 < len(self.covLabels) else []
-        num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
-        non_hist_count = max(len(labels) - num_hist, 0)
-        coeff_index = np.arange(1, non_hist_count + 1, dtype=int)
-        epoch_id = np.zeros(coeff_index.size, dtype=int)
-        return coeff_index, epoch_id, 0
+        if not self.uniqueCovLabels:
+            self.mapCovLabelsToUniqueLabels()
+        hist_index, _hist_epoch_id, _ = self.getHistIndex(fit_num, sortByEpoch)
+        all_index = np.arange(1, len(self.uniqueCovLabels) + 1, dtype=int)
+        hist_set = set(np.asarray(hist_index, dtype=int).reshape(-1).tolist())
+        act_coeff_index = np.asarray([idx for idx in all_index if idx not in hist_set], dtype=int)
+        all_coeff_terms = [str(self.uniqueCovLabels[idx - 1]) for idx in act_coeff_index]
+        epoch_ids_all = np.zeros(act_coeff_index.size, dtype=int)
+        epochs_exist = False
+        for idx, label in enumerate(all_coeff_terms):
+            match = re.search(r"_\{(\d+)\}", label)
+            if match:
+                epochs_exist = True
+                epoch_ids_all[idx] = int(match.group(1))
+        all_coeff_positions = list(range(act_coeff_index.size))
+        non_epoch_positions = [idx for idx, epoch_id in enumerate(epoch_ids_all) if epoch_id == 0]
+        if epochs_exist and not sortByEpoch:
+            coeff_positions = list(non_epoch_positions)
+            epoch_id = np.zeros(len(non_epoch_positions), dtype=int)
+            for epoch in sorted({int(value) for value in epoch_ids_all.tolist() if int(value) != 0}):
+                matches = [idx for idx, value in enumerate(epoch_ids_all) if int(value) == epoch]
+                coeff_positions.extend(matches)
+                epoch_id = np.concatenate((epoch_id, epoch * np.ones(len(matches), dtype=int)))
+            coeff_index = act_coeff_index[np.asarray(coeff_positions, dtype=int)] if coeff_positions else np.array([], dtype=int)
+        elif epochs_exist and sortByEpoch:
+            coeff_index = act_coeff_index[np.asarray(all_coeff_positions, dtype=int)]
+            epoch_id = np.asarray(epoch_ids_all, dtype=int)
+        else:
+            coeff_index = act_coeff_index[np.asarray(all_coeff_positions, dtype=int)]
+            epoch_id = np.zeros(len(all_coeff_positions), dtype=int)
+        num_epochs = int(np.unique(epoch_id).size) if epoch_id.size else 0
+        return np.asarray(coeff_index, dtype=int), np.asarray(epoch_id, dtype=int), num_epochs
 
     def getHistIndex(self, fit_num: int = 1, sortByEpoch: int = 0):
-        del sortByEpoch
-        labels = list(self.covLabels[fit_num - 1]) if fit_num - 1 < len(self.covLabels) else []
-        num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
-        if num_hist <= 0:
+        del fit_num
+        if not self.uniqueCovLabels:
+            self.mapCovLabelsToUniqueLabels()
+        all_hist_index: list[int] = []
+        epoch_ids_all: dict[int, int] = {}
+        epochs_exist = False
+        for idx, label in enumerate(self.uniqueCovLabels, start=1):
+            label_str = str(label)
+            if not label_str.startswith("["):
+                continue
+            all_hist_index.append(idx)
+            epoch_match = re.search(r"\]_\{(\d+)\}", label_str)
+            if epoch_match:
+                epochs_exist = True
+                epoch_ids_all[idx] = int(epoch_match.group(1))
+        if not all_hist_index:
             return np.array([], dtype=int), np.array([], dtype=int), 0
-        start = max(len(labels) - num_hist, 0)
-        hist_index = np.arange(start + 1, len(labels) + 1, dtype=int)
-        epoch_id = np.zeros(hist_index.size, dtype=int)
-        return hist_index, epoch_id, 0
+        if epochs_exist and not sortByEpoch:
+            hist_index: list[int] = []
+            epoch_id: list[int] = []
+            for epoch in sorted(set(epoch_ids_all.values())):
+                matches = [idx for idx in all_hist_index if epoch_ids_all.get(idx) == epoch]
+                hist_index.extend(matches)
+                epoch_id.extend([epoch] * len(matches))
+        elif epochs_exist and sortByEpoch:
+            hist_index = list(all_hist_index)
+            epoch_id = [epoch_ids_all.get(idx, 0) for idx in all_hist_index]
+        else:
+            hist_index = list(all_hist_index)
+            epoch_id = [0] * len(all_hist_index)
+        num_epochs = len(set(epoch_id)) if epoch_id else 0
+        return np.asarray(hist_index, dtype=int), np.asarray(epoch_id, dtype=int), int(num_epochs)
 
     def getParam(self, paramNames, fit_num: int = 1):
         names = [paramNames] if isinstance(paramNames, str) else list(paramNames)
@@ -1194,9 +1243,30 @@ class FitResult:
         return self
 
     def toStructure(self) -> dict[str, Any]:
+        lambda_structure = (
+            self.lambda_signal.toStructure()
+            if hasattr(self.lambda_signal, "toStructure")
+            else {
+                "time": self.lambda_signal.time.tolist(),
+                "data": self.lambda_signal.data.tolist(),
+                "name": self.lambda_signal.name,
+                "xlabelval": self.lambda_signal.xlabelval,
+                "xunits": self.lambda_signal.xunits,
+                "yunits": self.lambda_signal.yunits,
+                "dataLabels": list(getattr(self.lambda_signal, "dataLabels", [])),
+                "plotProps": list(getattr(self.lambda_signal, "plotProps", [])),
+            }
+        )
+        neural_structure = (
+            self.neuralSpikeTrain.toStructure()
+            if isinstance(self.neuralSpikeTrain, nspikeTrain)
+            else [train.toStructure() if hasattr(train, "toStructure") else train for train in self.neuralSpikeTrain]
+        )
+        configs_structure = self.configs.toStructure() if self.configs is not None else None
         return {
             "covLabels": [list(labels) for labels in self.covLabels],
             "numHist": list(self.numHist),
+            "lambda": lambda_structure,
             "lambda_time": self.lambda_signal.time.tolist(),
             "lambda_data": self.lambda_signal.data.tolist(),
             "lambda_name": self.lambda_signal.name,
@@ -1205,8 +1275,10 @@ class FitResult:
             "AIC": self.AIC.tolist(),
             "BIC": self.BIC.tolist(),
             "logLL": self.logLL.tolist(),
+            "configs": configs_structure,
             "configNames": list(self.configNames),
             "fitType": list(self.fitType),
+            "neuralSpikeTrain": neural_structure,
             "neural_spike_times": (
                 self.neuralSpikeTrain.spikeTimes.tolist()
                 if isinstance(self.neuralSpikeTrain, nspikeTrain)
@@ -1238,25 +1310,44 @@ class FitResult:
     def fromStructure(structure: dict[str, Any]) -> "FitResult":
         from .trial import ConfigCollection, TrialConfig
 
-        spike_times = structure["neural_spike_times"]
-        neural_name = structure.get("neural_name", "")
-        neural_min_time = structure.get("neural_min_time", None)
-        neural_max_time = structure.get("neural_max_time", None)
-        if spike_times and isinstance(spike_times[0], list):
-            train: nspikeTrain | list[nspikeTrain] = []
-            for st, name, min_t, max_t in zip(spike_times, neural_name, neural_min_time, neural_max_time):
-                train.append(nspikeTrain(st, name=name, minTime=min_t, maxTime=max_t, makePlots=-1))
+        neural_structure = structure.get("neuralSpikeTrain")
+        if isinstance(neural_structure, dict):
+            train: nspikeTrain | list[nspikeTrain] = nspikeTrain.fromStructure(neural_structure)
+        elif isinstance(neural_structure, list) and neural_structure and isinstance(neural_structure[0], dict):
+            train = [nspikeTrain.fromStructure(item) for item in neural_structure]
         else:
-            train = nspikeTrain(spike_times, name=neural_name, minTime=neural_min_time, maxTime=neural_max_time, makePlots=-1)
-        lam = Covariate(
-            structure["lambda_time"],
-            np.asarray(structure["lambda_data"], dtype=float),
-            structure.get("lambda_name", "lambda"),
-            "time",
-            "s",
-            "spikes/sec",
-        )
-        configColl = ConfigCollection([TrialConfig(name=name) for name in structure.get("configNames", [])])
+            spike_times = structure["neural_spike_times"]
+            neural_name = structure.get("neural_name", "")
+            neural_min_time = structure.get("neural_min_time", None)
+            neural_max_time = structure.get("neural_max_time", None)
+            if spike_times and isinstance(spike_times[0], list):
+                train = []
+                for st, name, min_t, max_t in zip(spike_times, neural_name, neural_min_time, neural_max_time):
+                    train.append(nspikeTrain(st, name=name, minTime=min_t, maxTime=max_t, makePlots=-1))
+            else:
+                train = nspikeTrain(spike_times, name=neural_name, minTime=neural_min_time, maxTime=neural_max_time, makePlots=-1)
+
+        lambda_structure = structure.get("lambda")
+        if isinstance(lambda_structure, dict):
+            lam = Covariate.fromStructure(lambda_structure)
+        else:
+            lam = Covariate(
+                structure["lambda_time"],
+                np.asarray(structure["lambda_data"], dtype=float),
+                structure.get("lambda_name", "lambda"),
+                "time",
+                "s",
+                "spikes/sec",
+            )
+
+        configs_structure = structure.get("configs")
+        if isinstance(configs_structure, dict):
+            configColl = ConfigCollection.fromStructure(configs_structure)
+        else:
+            configColl = ConfigCollection([TrialConfig(name=name) for name in structure.get("configNames", [])])
+        config_names = list(structure.get("configNames", []))
+        if config_names:
+            configColl.setConfigNames(config_names, list(range(1, len(config_names) + 1)))
         return FitResult(
             train,
             structure.get("covLabels", []),
@@ -1383,55 +1474,115 @@ class FitSummary:
         return self
 
     def getCoeffs(self, fitNum: int = 1):
-        labels = self.uniqueCovLabels
-        coeff_rows = []
-        se_rows = []
-        for fit in self.fitResCell:
-            coeffs, fit_labels, se = fit.getCoeffsWithLabels(fitNum)
-            row = np.full(len(labels), np.nan, dtype=float)
-            se_row = np.full(len(labels), np.nan, dtype=float)
-            for coeff, coeff_se, label in zip(coeffs, se, fit_labels, strict=False):
-                if label in labels:
-                    idx = labels.index(label)
-                    row[idx] = coeff
-                    se_row[idx] = coeff_se
-            coeff_rows.append(row)
-            se_rows.append(se_row)
-        return np.asarray(coeff_rows, dtype=float), labels, np.asarray(se_rows, dtype=float)
+        fit_idx = int(fitNum)
+        coeff_index, epoch_id, num_epochs = self.getCoeffIndex(fit_idx)
+        coeff_index = np.asarray(coeff_index, dtype=int).reshape(-1)
+        epoch_id = np.asarray(epoch_id, dtype=int).reshape(-1)
+        if coeff_index.size == 0:
+            return np.array([], dtype=float), [], np.array([], dtype=float)
+
+        coeff_strings = [str(self.uniqueCovLabels[idx - 1]) for idx in coeff_index]
+        base_strings = [re.sub(r"_\{\d+\}$", "", label) for label in coeff_strings]
+        unique_coeffs = _matlab_unique(base_strings)
+        min_epoch = int(np.min(epoch_id)) if epoch_id.size else 0
+        num_epochs = int(num_epochs) if int(num_epochs) > 0 else 1
+        plot_params = self.computePlotParams()
+        coeff_mat = np.full((len(unique_coeffs), num_epochs, self.numNeurons), np.nan, dtype=float)
+        se_mat = np.full_like(coeff_mat, np.nan)
+        labels: list[list[str]] = [["" for _ in range(num_epochs)] for _ in unique_coeffs]
+
+        for row_idx, base_label in enumerate(unique_coeffs):
+            matches = [idx for idx, curr in enumerate(base_strings) if curr == base_label]
+            coeff_str_index = coeff_index[matches]
+            curr_epoch_id = epoch_id[matches]
+            epoch_positions = curr_epoch_id + 1 if min_epoch == 0 else curr_epoch_id
+            for coeff_label_index, epoch_position in zip(coeff_str_index, epoch_positions, strict=False):
+                label = str(self.uniqueCovLabels[int(coeff_label_index) - 1])
+                labels[row_idx][int(epoch_position) - 1] = label
+                coeff_mat[row_idx, int(epoch_position) - 1, :] = np.asarray(
+                    plot_params["bAct"][int(coeff_label_index) - 1, fit_idx - 1, :],
+                    dtype=float,
+                )
+                se_mat[row_idx, int(epoch_position) - 1, :] = np.asarray(
+                    plot_params["seAct"][int(coeff_label_index) - 1, fit_idx - 1, :],
+                    dtype=float,
+                )
+
+        if self.numNeurons == 1:
+            coeff_out = coeff_mat[:, :, 0].T
+            se_out = se_mat[:, :, 0].T
+        elif num_epochs == 1:
+            coeff_out = coeff_mat[:, 0, :]
+            se_out = se_mat[:, 0, :]
+        else:
+            coeff_out = coeff_mat
+            se_out = se_mat
+
+        if num_epochs == 1:
+            label_out: list[str] | list[list[str]] = [row[0] for row in labels]
+        else:
+            label_out = labels
+        return np.asarray(coeff_out, dtype=float), label_out, np.asarray(se_out, dtype=float)
 
     def getHistCoeffs(self, fitNum: int = 1):
-        labels = _ordered_unique(
-            [label for fit in self.fitResCell for label in fit.covLabels[fitNum - 1][-int(fit.numHist[fitNum - 1]) :] if fitNum - 1 < len(fit.covLabels) and int(fit.numHist[fitNum - 1]) > 0]
-        )
-        if not labels:
-            return np.zeros((self.numNeurons, 0), dtype=float), [], np.zeros((self.numNeurons, 0), dtype=float)
-        coeff_rows = []
-        se_rows = []
-        for fit in self.fitResCell:
-            coeffs = fit.getHistCoeffs(fitNum)
-            fit_labels = list(fit.covLabels[fitNum - 1])[-coeffs.size :] if coeffs.size and fitNum - 1 < len(fit.covLabels) else []
-            se = _extract_standard_errors(fit.stats[fitNum - 1] if fitNum - 1 < len(fit.stats) else None, fit.getCoeffs(fitNum).size)
-            se_hist = se[-coeffs.size :] if coeffs.size else np.array([], dtype=float)
-            row = np.full(len(labels), np.nan, dtype=float)
-            se_row = np.full(len(labels), np.nan, dtype=float)
-            for coeff, coeff_se, label in zip(coeffs, se_hist, fit_labels, strict=False):
-                if label in labels:
-                    idx = labels.index(label)
-                    row[idx] = coeff
-                    se_row[idx] = coeff_se
-            coeff_rows.append(row)
-            se_rows.append(se_row)
-        return np.asarray(coeff_rows, dtype=float), labels, np.asarray(se_rows, dtype=float)
+        fit_idx = int(fitNum)
+        hist_index, epoch_id, num_epochs = self.getHistIndex(fit_idx)
+        hist_index = np.asarray(hist_index, dtype=int).reshape(-1)
+        epoch_id = np.asarray(epoch_id, dtype=int).reshape(-1)
+        if hist_index.size == 0:
+            return np.array([], dtype=float), [], np.array([], dtype=float)
+
+        hist_strings = [str(self.uniqueCovLabels[idx - 1]) for idx in hist_index]
+        base_strings = [re.sub(r"_\{\d+\}$", "", label) for label in hist_strings]
+        unique_coeffs = _matlab_unique(base_strings)
+        min_epoch = int(np.min(epoch_id)) if epoch_id.size else 0
+        num_epochs = int(num_epochs) if int(num_epochs) > 0 else 1
+        plot_params = self.computePlotParams()
+        hist_mat = np.full((len(unique_coeffs), num_epochs, self.numNeurons), np.nan, dtype=float)
+        labels: list[list[str]] = [["" for _ in range(num_epochs)] for _ in unique_coeffs]
+
+        for row_idx, base_label in enumerate(unique_coeffs):
+            matches = [idx for idx, curr in enumerate(base_strings) if curr == base_label]
+            hist_str_index = hist_index[matches]
+            curr_epoch_id = epoch_id[matches]
+            epoch_positions = curr_epoch_id + 1 if min_epoch == 0 else curr_epoch_id
+            for coeff_label_index, epoch_position in zip(hist_str_index, epoch_positions, strict=False):
+                label = str(self.uniqueCovLabels[int(coeff_label_index) - 1])
+                labels[row_idx][int(epoch_position) - 1] = label
+                hist_mat[row_idx, int(epoch_position) - 1, :] = np.asarray(
+                    plot_params["bAct"][int(coeff_label_index) - 1, fit_idx - 1, :],
+                    dtype=float,
+                )
+
+        if self.numNeurons == 1:
+            hist_out = hist_mat[:, :, 0].T
+            se_out = np.full_like(hist_out, np.nan, dtype=float)
+        elif num_epochs == 1:
+            hist_out = hist_mat[:, 0, :]
+            se_out = np.full_like(hist_out, np.nan, dtype=float)
+        else:
+            hist_out = hist_mat
+            se_out = np.full_like(hist_out, np.nan, dtype=float)
+
+        if num_epochs == 1:
+            label_out: list[str] | list[list[str]] = [row[0] for row in labels]
+        else:
+            label_out = labels
+        return np.asarray(hist_out, dtype=float), label_out, np.asarray(se_out, dtype=float)
 
     def getSigCoeffs(self, fitNum: int = 1):
-        coeff_mat, labels, se_mat = self.getCoeffs(fitNum)
-        sig = np.zeros_like(coeff_mat, dtype=float)
+        labels = list(self.computePlotParams().get("xLabels", []))
+        sig = np.full((len(labels), self.numNeurons), np.nan, dtype=float)
         for row_idx, fit in enumerate(self.fitResCell):
             coeffs, fit_labels, se = fit.getCoeffsWithLabels(fitNum)
-            mask = _extract_significance_mask(fit.stats[fitNum - 1] if fitNum - 1 < len(fit.stats) else None, coeffs, se)
-            for label, value in zip(fit_labels, mask, strict=False):
+            mask = _extract_significance_mask(
+                fit.stats[fitNum - 1] if fitNum - 1 < len(fit.stats) else None,
+                coeffs,
+                se,
+            )
+            for coeff, label, value in zip(coeffs, fit_labels, mask, strict=False):
                 if label in labels:
-                    sig[row_idx, labels.index(label)] = value
+                    sig[labels.index(label), row_idx] = float(coeff) * float(value)
         return sig
 
     def binCoeffs(self, minVal, maxVal, binSize):
@@ -1523,7 +1674,6 @@ class FitSummary:
             label_lower = label.lower()
             if (
                 label.startswith("[")
-                or label_lower.startswith("hist")
                 or "*hist" in label_lower
                 or "history" in label_lower
             ):
@@ -1543,15 +1693,68 @@ class FitSummary:
                 if present:
                     hist_index.append(idx)
                     epoch_id.append(0)
-        return np.asarray(hist_index, dtype=int), np.asarray(epoch_id, dtype=int), 0
+        hist_array = np.asarray(hist_index, dtype=int)
+        epoch_array = np.asarray(epoch_id, dtype=int)
+        if hist_array.size:
+            plot_params = self.computePlotParams()
+            fit_zero = [fit_idx - 1 for fit_idx in fit_indices if 0 < fit_idx <= self.numResults]
+            if fit_zero:
+                b_act = np.asarray(plot_params["bAct"][:, fit_zero, :], dtype=float).reshape(len(self.uniqueCovLabels), -1)
+                non_nan_index = np.where(np.sum(~np.isnan(b_act), axis=1) >= 1)[0] + 1
+                if non_nan_index.size == 0:
+                    fallback = []
+                    for idx, label in enumerate(self.uniqueCovLabels, start=1):
+                        present = False
+                        for fit_idx in fit_indices:
+                            for fit in self.fitResCell:
+                                if fit_idx - 1 < len(fit.covLabels) and label in fit.covLabels[fit_idx - 1]:
+                                    present = True
+                                    break
+                            if present:
+                                break
+                        if present:
+                            fallback.append(idx)
+                    non_nan_index = np.asarray(fallback, dtype=int)
+                valid = np.isin(hist_array, non_nan_index)
+                hist_array = hist_array[valid]
+                epoch_array = epoch_array[valid]
+        num_epochs = int(np.unique(epoch_array).size) if epoch_array.size else 0
+        return hist_array, epoch_array, num_epochs
 
     def getCoeffIndex(self, fitNum: int | Sequence[int] | None = None, sortByEpoch: int = 0):
-        del sortByEpoch
         hist_index, _, _ = self.getHistIndex(fitNum)
         hist_set = set(hist_index.tolist())
-        coeff_index = [idx for idx in range(1, len(self.uniqueCovLabels) + 1) if idx not in hist_set]
+        if fitNum is None:
+            fit_indices = list(range(1, self.numResults + 1))
+        elif np.isscalar(fitNum):
+            fit_indices = [int(fitNum)]
+        else:
+            fit_indices = [int(item) for item in fitNum]
+        plot_params = self.computePlotParams()
+        fit_zero = [fit_idx - 1 for fit_idx in fit_indices if 0 < fit_idx <= self.numResults]
+        if fit_zero:
+            b_act = np.asarray(plot_params["bAct"][:, fit_zero, :], dtype=float).reshape(len(self.uniqueCovLabels), -1)
+            non_nan_index = np.where(np.sum(~np.isnan(b_act), axis=1) >= 1)[0] + 1
+        else:
+            non_nan_index = np.array([], dtype=int)
+        if non_nan_index.size == 0:
+            fallback = []
+            for idx, label in enumerate(self.uniqueCovLabels, start=1):
+                present = False
+                for fit_idx in fit_indices:
+                    for fit in self.fitResCell:
+                        if fit_idx - 1 < len(fit.covLabels) and label in fit.covLabels[fit_idx - 1]:
+                            present = True
+                            break
+                    if present:
+                        break
+                if present:
+                    fallback.append(idx)
+            non_nan_index = np.asarray(fallback, dtype=int)
+        coeff_index = [idx for idx in range(1, len(self.uniqueCovLabels) + 1) if idx not in hist_set and idx in set(non_nan_index.tolist())]
         epoch_id = np.zeros(len(coeff_index), dtype=int)
-        return np.asarray(coeff_index, dtype=int), epoch_id, 0
+        num_epochs = int(np.unique(epoch_id).size) if epoch_id.size else 0
+        return np.asarray(coeff_index, dtype=int), epoch_id, num_epochs
 
     def plotIC(self, handle=None):
         fig = handle if handle is not None else plt.figure(figsize=(9.0, 3.5))
@@ -1653,6 +1856,18 @@ class FitSummary:
         for fit_idx in fit_indices:
             coeffs, labels, se = self.getCoeffs(fit_idx)
             label_map = {label: idx for idx, label in enumerate(labels)}
+            coeffs = np.asarray(coeffs, dtype=float)
+            se = np.asarray(se, dtype=float)
+            if coeffs.ndim == 1:
+                if coeffs.size == self.numNeurons and len(labels) == 1:
+                    coeffs = coeffs.reshape(self.numNeurons, 1)
+                    se = se.reshape(self.numNeurons, 1)
+                else:
+                    coeffs = coeffs.reshape(1, -1)
+                    se = se.reshape(1, -1)
+            elif coeffs.ndim == 2 and coeffs.shape == (len(labels), self.numNeurons):
+                coeffs = coeffs.T
+                se = se.T
             coeff_view = np.full((self.numNeurons, len(sub_labels)), np.nan, dtype=float)
             se_view = np.full_like(coeff_view, np.nan)
             for col, label in enumerate(sub_labels):

@@ -1531,7 +1531,205 @@ def test_fit_summary_matches_matlab_gold_fixture() -> None:
         assert actual_fit_axes[title] == labels
     plt.close(fit_results_fig)
 
+    matlab_fit_structure = payload["fit_structure"]
+    fit_structure = fit1.toStructure()
+    assert fit_structure["covLabels"] == [
+        [str(item) for item in np.asarray(row, dtype=object).reshape(-1)]
+        for row in np.asarray(getattr(matlab_fit_structure, "covLabels"), dtype=object).reshape(-1)
+    ]
+    assert fit_structure["numHist"] == np.asarray(getattr(matlab_fit_structure, "numHist"), dtype=float).astype(int).reshape(-1).tolist()
+    matlab_lambda = getattr(matlab_fit_structure, "lambda")
+    assert isinstance(fit_structure["lambda"], dict)
+    np.testing.assert_allclose(
+        np.asarray(fit_structure["lambda_time"], dtype=float),
+        np.asarray(getattr(matlab_lambda, "time"), dtype=float).reshape(-1),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        np.asarray(fit_structure["lambda_data"], dtype=float),
+        np.asarray(getattr(matlab_lambda, "data"), dtype=float).reshape(np.asarray(fit_structure["lambda_data"], dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    assert str(fit_structure["lambda_name"]) == str(getattr(matlab_lambda, "name"))
+    np.testing.assert_allclose(
+        np.asarray(fit_structure["lambda"]["time"], dtype=float),
+        np.asarray(getattr(matlab_lambda, "time"), dtype=float).reshape(-1),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        np.asarray(fit_structure["lambda"]["data"], dtype=float),
+        np.asarray(getattr(matlab_lambda, "data"), dtype=float).reshape(np.asarray(fit_structure["lambda"]["data"], dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    assert str(fit_structure["lambda"]["name"]) == str(getattr(matlab_lambda, "name"))
+    matlab_b = np.asarray(getattr(matlab_fit_structure, "b"), dtype=object).reshape(-1)
+    assert len(fit_structure["b"]) == matlab_b.size
+    for coeffs, matlab_coeffs in zip(fit_structure["b"], matlab_b, strict=True):
+        np.testing.assert_allclose(
+            np.asarray(coeffs, dtype=float),
+            np.asarray(matlab_coeffs, dtype=float).reshape(-1),
+            rtol=1e-8,
+            atol=1e-10,
+        )
+    np.testing.assert_allclose(np.asarray(fit_structure["dev"], dtype=float), np.asarray(getattr(matlab_fit_structure, "dev"), dtype=float).reshape(-1), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(fit_structure["AIC"], dtype=float), np.asarray(getattr(matlab_fit_structure, "AIC"), dtype=float).reshape(-1), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(fit_structure["BIC"], dtype=float), np.asarray(getattr(matlab_fit_structure, "BIC"), dtype=float).reshape(-1), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(fit_structure["logLL"], dtype=float), np.asarray(getattr(matlab_fit_structure, "logLL"), dtype=float).reshape(-1), rtol=1e-6, atol=1e-8)
+    matlab_configs = getattr(matlab_fit_structure, "configs")
+    assert isinstance(fit_structure["configs"], dict)
+    assert fit_structure["configNames"] == [str(item) for item in np.asarray(getattr(matlab_configs, "configNames"), dtype=object).reshape(-1)]
+    assert fit_structure["configs"]["configNames"] == [str(item) for item in np.asarray(getattr(matlab_configs, "configNames"), dtype=object).reshape(-1)]
+    matlab_neural = getattr(matlab_fit_structure, "neuralSpikeTrain")
+    assert isinstance(fit_structure["neuralSpikeTrain"], dict)
+    np.testing.assert_allclose(np.asarray(fit_structure["neural_spike_times"], dtype=float), np.asarray(getattr(matlab_neural, "spikeTimes"), dtype=float).reshape(-1), rtol=1e-12, atol=1e-12)
+    assert str(fit_structure["neural_name"]) == str(getattr(matlab_neural, "name"))
+    np.testing.assert_allclose(float(fit_structure["neural_min_time"]), float(getattr(matlab_neural, "minTime")), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(float(fit_structure["neural_max_time"]), float(getattr(matlab_neural, "maxTime")), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(fit_structure["neuralSpikeTrain"]["spikeTimes"], dtype=float), np.asarray(getattr(matlab_neural, "spikeTimes"), dtype=float).reshape(-1), rtol=1e-12, atol=1e-12)
+    assert str(fit_structure["neuralSpikeTrain"]["name"]) == str(getattr(matlab_neural, "name"))
+
+    rebuilt_fit = FitResult.fromStructure(fit_structure)
+    np.testing.assert_allclose(rebuilt_fit.getCoeffs(1), fit1.getCoeffs(1), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(rebuilt_fit.getCoeffs(2), fit1.getCoeffs(2), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(rebuilt_fit.dev, fit1.dev, rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(rebuilt_fit.AIC, fit1.AIC, rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(rebuilt_fit.BIC, fit1.BIC, rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(rebuilt_fit.logLL, fit1.logLL, rtol=1e-6, atol=1e-8)
+    assert rebuilt_fit.covLabels == fit1.covLabels
+    assert rebuilt_fit.numHist == fit1.numHist
+    assert rebuilt_fit.configNames == fit1.configNames
+
     single_fit = fit1.getSubsetFitResult(1)
+    matlab_hist_structure = payload["fit_history_structure"]
+    hist_structure = fit1.getSubsetFitResult(2).toStructure()
+    assert list(hist_structure["covLabels"][0]) == [str(item) for item in np.asarray(getattr(matlab_hist_structure, "covLabels"), dtype=object).reshape(-1)]
+    np.testing.assert_allclose(np.asarray(hist_structure["b"], dtype=float), np.asarray(getattr(matlab_hist_structure, "b"), dtype=float).reshape(np.asarray(hist_structure["b"], dtype=float).shape), rtol=1e-8, atol=1e-10)
+    rebuilt_hist_fit = FitResult.fromStructure(hist_structure)
+    original_hist_fit = fit1.getSubsetFitResult(2)
+    np.testing.assert_allclose(rebuilt_hist_fit.getCoeffs(1), original_hist_fit.getCoeffs(1), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(rebuilt_hist_fit.dev, original_hist_fit.dev, rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(rebuilt_hist_fit.AIC, original_hist_fit.AIC, rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(rebuilt_hist_fit.BIC, original_hist_fit.BIC, rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(rebuilt_hist_fit.logLL, original_hist_fit.logLL, rtol=1e-6, atol=1e-8)
+    assert rebuilt_hist_fit.covLabels == original_hist_fit.covLabels
+    assert rebuilt_hist_fit.numHist == original_hist_fit.numHist
+    assert rebuilt_hist_fit.configNames == original_hist_fit.configNames
+
+    fit_coeff_index_1, fit_coeff_epoch_id_1, fit_coeff_num_epochs_1 = fit1.getCoeffIndex(1)
+    np.testing.assert_allclose(fit_coeff_index_1, _vector(payload, "fitCoeffIndex_1"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(fit_coeff_epoch_id_1, _vector(payload, "fitCoeffEpochId_1"), rtol=1e-12, atol=1e-12)
+    assert int(fit_coeff_num_epochs_1) == int(_scalar(payload, "fitCoeffNumEpochs_1"))
+
+    fit_hist_index_1, fit_hist_epoch_id_1, fit_hist_num_epochs_1 = fit1.getHistIndex(1)
+    np.testing.assert_allclose(fit_hist_index_1, _vector(payload, "fitHistIndex_1"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(fit_hist_epoch_id_1, _vector(payload, "fitHistEpochId_1"), rtol=1e-12, atol=1e-12)
+    assert int(fit_hist_num_epochs_1) == int(_scalar(payload, "fitHistNumEpochs_1"))
+
+    fit_coeff_index_2, fit_coeff_epoch_id_2, fit_coeff_num_epochs_2 = fit1.getCoeffIndex(2)
+    np.testing.assert_allclose(fit_coeff_index_2, _vector(payload, "fitCoeffIndex_2"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(fit_coeff_epoch_id_2, _vector(payload, "fitCoeffEpochId_2"), rtol=1e-12, atol=1e-12)
+    assert int(fit_coeff_num_epochs_2) == int(_scalar(payload, "fitCoeffNumEpochs_2"))
+
+    fit_hist_index_2, fit_hist_epoch_id_2, fit_hist_num_epochs_2 = fit1.getHistIndex(2)
+    np.testing.assert_allclose(fit_hist_index_2, _vector(payload, "fitHistIndex_2"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(fit_hist_epoch_id_2, _vector(payload, "fitHistEpochId_2"), rtol=1e-12, atol=1e-12)
+    assert int(fit_hist_num_epochs_2) == int(_scalar(payload, "fitHistNumEpochs_2"))
+
+    fit_param_coeff_1, fit_param_se_1, fit_param_sig_1 = fit1.getParam(["stim"], 1)
+    np.testing.assert_allclose(np.asarray(fit_param_coeff_1, dtype=float), _vector(payload, "fitParamCoeff_1"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(fit_param_se_1, dtype=float), _vector(payload, "fitParamSe_1"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(fit_param_sig_1, dtype=float), _vector(payload, "fitParamSig_1"), rtol=1e-8, atol=1e-10)
+
+    fit_param_coeff_2, fit_param_se_2, fit_param_sig_2 = fit1.getParam(["stim"], 2)
+    np.testing.assert_allclose(np.asarray(fit_param_coeff_2, dtype=float), _vector(payload, "fitParamCoeff_2"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(fit_param_se_2, dtype=float), _vector(payload, "fitParamSe_2"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(fit_param_sig_2, dtype=float), _vector(payload, "fitParamSig_2"), rtol=1e-8, atol=1e-10)
+
+    plot_params = summary.computePlotParams()
+    assert list(plot_params["xLabels"]) == _string_list(payload, "plotParams_xLabels")
+    np.testing.assert_allclose(
+        np.asarray(plot_params["bAct"], dtype=float),
+        np.asarray(payload["plotParams_bAct"], dtype=float).reshape(np.asarray(plot_params["bAct"], dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(plot_params["seAct"], dtype=float),
+        np.asarray(payload["plotParams_seAct"], dtype=float).reshape(np.asarray(plot_params["seAct"], dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(plot_params["sigIndex"], dtype=float),
+        np.asarray(payload["plotParams_sigIndex"], dtype=float).reshape(np.asarray(plot_params["sigIndex"], dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(plot_params["numResultsCoeffPresent"], dtype=float),
+        np.asarray(payload["plotParams_numResultsCoeffPresent"], dtype=float).reshape(np.asarray(plot_params["numResultsCoeffPresent"], dtype=float).shape),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        np.asarray(summary.getSigCoeffs(1), dtype=float),
+        np.asarray(payload["sigCoeffs_fit1"], dtype=float).reshape(np.asarray(summary.getSigCoeffs(1), dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+
+    coeff_mat_fit1, coeff_labels_fit1, coeff_se_fit1 = summary.getCoeffs(1)
+    assert list(coeff_labels_fit1) == _string_list(payload, "coeffLabels_fit1")
+    np.testing.assert_allclose(
+        np.asarray(coeff_mat_fit1, dtype=float),
+        np.asarray(payload["coeffMat_fit1"], dtype=float).reshape(np.asarray(coeff_mat_fit1, dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(coeff_se_fit1, dtype=float),
+        np.asarray(payload["coeffSe_fit1"], dtype=float).reshape(np.asarray(coeff_se_fit1, dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+
+    coeff_mat_fit2, coeff_labels_fit2, coeff_se_fit2 = summary.getCoeffs(2)
+    assert list(coeff_labels_fit2) == _string_list(payload, "coeffLabels_fit2")
+    np.testing.assert_allclose(
+        np.asarray(coeff_mat_fit2, dtype=float),
+        np.asarray(payload["coeffMat_fit2"], dtype=float).reshape(np.asarray(coeff_mat_fit2, dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(coeff_se_fit2, dtype=float),
+        np.asarray(payload["coeffSe_fit2"], dtype=float).reshape(np.asarray(coeff_se_fit2, dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+
+    hist_coeff_mat_fit2, hist_coeff_labels_fit2, hist_coeff_se_fit2 = summary.getHistCoeffs(2)
+    assert list(hist_coeff_labels_fit2) == _string_list(payload, "histCoeffLabels_fit2")
+    np.testing.assert_allclose(
+        np.asarray(hist_coeff_mat_fit2, dtype=float),
+        np.asarray(payload["histCoeffMat_fit2"], dtype=float).reshape(np.asarray(hist_coeff_mat_fit2, dtype=float).shape),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+
+    coeff_index, coeff_epoch_id, coeff_num_epochs = summary.getCoeffIndex()
+    np.testing.assert_allclose(coeff_index, _vector(payload, "coeffIndex"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(coeff_epoch_id, _vector(payload, "coeffEpochId"), rtol=1e-12, atol=1e-12)
+    assert int(coeff_num_epochs) == int(_scalar(payload, "coeffNumEpochs"))
+
+    hist_index, hist_epoch_id, hist_num_epochs = summary.getHistIndex()
+    np.testing.assert_allclose(hist_index, _vector(payload, "histIndex"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(hist_epoch_id, _vector(payload, "histEpochId"), rtol=1e-12, atol=1e-12)
+    assert int(hist_num_epochs) == int(_scalar(payload, "histNumEpochs"))
 
     ks_ax = single_fit.KSPlot()
     expected_ks_title = _fixture_or_current_string(payload, "fit_KSPlot_title", ks_ax.get_title())
