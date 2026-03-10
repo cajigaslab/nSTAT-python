@@ -479,6 +479,23 @@ class CovariateCollection:
             labels.extend([label for keep, label in zip(mask, cov.dataLabels) if keep == 1])
         return labels
 
+    def getCovDimension(self, identifier=None) -> np.ndarray:
+        """Return the dimension of each covariate selected by *identifier*.
+
+        Matlab signature: ``dim = getCovDimension(ccObj, identifier)``
+
+        Returns a 1-D int array whose *i*-th element is ``covs{i}.dimension``.
+        """
+        if identifier is None:
+            covs = [self.getCov(i) for i in range(1, self.numCov + 1)]
+        elif isinstance(identifier, (int, np.integer)):
+            covs = [self.getCov(int(identifier))]
+        elif isinstance(identifier, (list, np.ndarray)):
+            covs = [self.getCov(int(idx)) for idx in identifier]
+        else:
+            covs = [self.getCov(identifier)]
+        return np.array([int(c.dimension) for c in covs], dtype=int)
+
     def matrixWithTime(self, repType: str = "standard", dataSelector=None) -> tuple[np.ndarray, np.ndarray, list[str]]:
         if self.numCov == 0:
             raise ValueError("CovariateCollection is empty")
@@ -1173,14 +1190,14 @@ class SpikeTrainCollection:
         fit = psth_result[0] if isinstance(psth_result, list) else psth_result
 
         # Reconstruct the GLM PSTH as a Covariate (same as Matlab)
-        coeffs = np.asarray(fit.getCoeffs(1), dtype=float).reshape(-1)
+        raw_coeffs = np.asarray(fit._rawCoeffs(1), dtype=float).reshape(-1)
         numBasis = basis.dimension
-        if coeffs.size < numBasis:
+        if raw_coeffs.size < numBasis:
             padded = np.zeros(numBasis, dtype=float)
-            padded[: coeffs.size] = coeffs
+            padded[: raw_coeffs.size] = raw_coeffs
             coeffs = padded
         else:
-            coeffs = coeffs[:numBasis]
+            coeffs = raw_coeffs[:numBasis]
 
         # basis.data is (nTimeBins x numBasis): multiply to get GLM rate
         bdata = np.asarray(basis.data, dtype=float)
@@ -1197,8 +1214,8 @@ class SpikeTrainCollection:
 
         # History signal (only present when windowTimes is specified)
         histSignal = None
-        if np.asarray(hist).size and coeffs.size > numBasis:
-            histCoeffs = np.asarray(fit.getCoeffs(1), dtype=float).reshape(-1)[numBasis:]
+        if np.asarray(hist).size and raw_coeffs.size > numBasis:
+            histCoeffs = raw_coeffs[numBasis:]
             histSignal = Covariate(
                 np.arange(len(histCoeffs), dtype=float),
                 histCoeffs.reshape(-1, 1),
@@ -1308,7 +1325,7 @@ class SpikeTrainCollection:
         algorithm = "GLM" if str(fitType or "poisson").lower() == "poisson" else "BNLRCG"
         psth_result = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, algorithm, [], 1)
         fit = psth_result[0] if isinstance(psth_result, list) else psth_result
-        coeffs = np.asarray(fit.getCoeffs(1), dtype=float).reshape(-1)
+        coeffs = fit._rawCoeffs(1)
         numBasis = basis.dimension
         if coeffs.size < numBasis:
             padded = np.zeros(numBasis, dtype=float)

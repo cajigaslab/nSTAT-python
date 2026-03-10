@@ -2142,9 +2142,20 @@ class nspikeTrain:
         return ax
 
     def plotISIHistogram(self, minTime: float | None = None, maxTime: float | None = None, numBins: int | None = None, handle=None):
+        """Plot ISI histogram (Matlab ``plotISIHistogram``).
+
+        Parameters
+        ----------
+        minTime, maxTime : float, optional
+            Time window for ISIs.  Defaults to the spike train bounds.
+        numBins : int, optional
+            Number of histogram bins.  When *None* the bin width defaults to
+            1 ms (Matlab default behaviour).
+        handle : matplotlib Axes, optional
+            Axes to plot into.
+        """
         import matplotlib.pyplot as plt
 
-        del numBins
         ax = plt.gca() if handle is None else handle
         if maxTime is None:
             maxTime = self.maxTime
@@ -2154,8 +2165,16 @@ class nspikeTrain:
         counts = np.array([], dtype=float)
         bins = np.array([], dtype=float)
         if isi.size:
-            bin_width = 0.001
-            bins = np.arange(0.0, float(np.max(isi)) + bin_width, bin_width, dtype=float)
+            isi_max = float(np.max(isi))
+            if numBins is not None and int(numBins) > 0:
+                # Linearly-spaced bins when numBins is specified (Matlab parity).
+                n = int(numBins)
+                bin_width = max(isi_max / n, 1e-12)
+                bins = np.linspace(0.0, isi_max, n + 1, dtype=float)
+            else:
+                # Default: 1 ms bin width.
+                bin_width = 0.001
+                bins = np.arange(0.0, isi_max + bin_width, bin_width, dtype=float)
             if bins.size < 2:
                 bins = np.array([0.0, bin_width], dtype=float)
             idx = np.searchsorted(bins, isi, side="right") - 1
@@ -2166,10 +2185,10 @@ class nspikeTrain:
             )
             idx = np.clip(idx, 0, bins.size - 1)
             counts = np.bincount(idx, minlength=bins.size).astype(float)
-            centers = bins
+            centers = bins[:counts.size] if bins.size > counts.size else bins
             ax.bar(
                 centers,
-                counts,
+                counts[:centers.size],
                 width=bin_width,
                 align="edge",
                 edgecolor="none",

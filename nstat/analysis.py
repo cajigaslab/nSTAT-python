@@ -643,6 +643,9 @@ class Analysis:
             for include, (row, col) in zip(keep, p_coords, strict=False):
                 sigMat[row, col] = int(include)
 
+        # Restore the ensemble covariate mask to its default state (Matlab parity).
+        tObj.resetEnsCovMask()
+
         return fitResults, gammaMat, phiMat, devianceMat, sigMat
 
     @staticmethod

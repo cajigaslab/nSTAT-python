@@ -680,15 +680,41 @@ class FitResult:
         self.__dict__.update(merged.__dict__)
         return self
 
-    def getCoeffs(self, fit_num: int = 1) -> np.ndarray:
+    def _rawCoeffs(self, fit_num: int = 1) -> np.ndarray:
+        """Return the raw coefficient vector for *fit_num* (1-based)."""
         return self.b[fit_num - 1].copy()
 
+    def getCoeffs(self, fit_num: int = 1) -> np.ndarray:
+        """Return the coefficient vector for *fit_num* (1-based).
+
+        In Matlab ``[coeffMat, labels, SEMat] = getCoeffs(fitObj, fitNum)``
+        returns multiple outputs.  Use :meth:`getCoeffsWithLabels` to obtain
+        the full ``(coeffMat, labels, SEMat)`` tuple.
+        """
+        return self._rawCoeffs(fit_num)
+
     def getHistCoeffs(self, fit_num: int = 1) -> np.ndarray:
+        """Return the history-coefficient vector for *fit_num* (1-based).
+
+        In Matlab ``[histMat, labels, SEMat] = getHistCoeffs(fitObj, fitNum)``
+        returns multiple outputs.  Use :meth:`getHistCoeffsWithLabels` to
+        obtain the full ``(histMat, labels, SEMat)`` tuple.
+        """
         num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
-        coeff = self.getCoeffs(fit_num)
         if num_hist <= 0:
             return np.array([], dtype=float)
-        return coeff[-num_hist:]
+        return self._rawCoeffs(fit_num)[-num_hist:]
+
+    def getHistCoeffsWithLabels(self, fit_num: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
+        """Return ``(histMat, labels, SEMat)`` — Matlab multi-output form.
+
+        Matlab: ``[histMat, labels, SEMat] = getHistCoeffs(fitObj, fitNum)``
+        """
+        num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
+        coeffs, labels, se = self.getCoeffsWithLabels(fit_num)
+        if num_hist <= 0:
+            return np.array([], dtype=float), [], np.array([], dtype=float)
+        return coeffs[-num_hist:], labels[-num_hist:], se[-num_hist:]
 
     def getCoeffIndex(self, fit_num: int = 1, sortByEpoch: int = 0):
         del sortByEpoch
@@ -718,7 +744,7 @@ class FitResult:
         return coeffs[indices], se[indices], sig[indices]
 
     def getCoeffsWithLabels(self, fit_num: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
-        coeffs = self.getCoeffs(fit_num)
+        coeffs = self._rawCoeffs(fit_num)
         labels = list(self.covLabels[fit_num - 1]) if fit_num - 1 < len(self.covLabels) else [f"b_{idx + 1}" for idx in range(coeffs.size)]
         if coeffs.size == len(labels) + 1:
             labels = ["Intercept", *labels]
@@ -866,7 +892,7 @@ class FitResult:
         gaussianized = norm.ppf(np.clip(uniforms, 1e-6, 1.0 - 1e-6))
         lags, acf = _autocorrelation(gaussianized, max_lag=25)
         acf_ci = 1.96 / np.sqrt(float(gaussianized.size)) if gaussianized.size else np.nan
-        coeffs = self.getCoeffs(fit_num)
+        coeffs = self._rawCoeffs(fit_num)
         labels = self.covLabels[fit_num - 1] if fit_num - 1 < len(self.covLabels) else []
         if coeffs.size == len(labels):
             coeff_labels = list(labels)
@@ -972,7 +998,7 @@ class FitResult:
         return residual
 
     def evalLambda(self, fit_num: int = 1, newData=None) -> np.ndarray:
-        coeffs = self.getCoeffs(fit_num)
+        coeffs = self._rawCoeffs(fit_num)
         x = np.asarray(newData if newData is not None else [], dtype=float)
         if x.ndim == 0:
             x = x.reshape(1, 1)
@@ -1136,8 +1162,9 @@ class FitResult:
 
     def plotHistCoeffs(self, fit_num: int = 1, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
         del sortByEpoch, plotSignificance
-        coeffs = self.getHistCoeffs(fit_num)
-        labels = list(self.covLabels[fit_num - 1])[-coeffs.size :] if coeffs.size and fit_num - 1 < len(self.covLabels) else [f"hist_{idx + 1}" for idx in range(coeffs.size)]
+        coeffs, labels, _se = self.getHistCoeffsWithLabels(fit_num)
+        if not labels:
+            labels = [f"hist_{idx + 1}" for idx in range(coeffs.size)]
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
         xpos = np.arange(coeffs.size, dtype=float)
         ax.axhline(0.0, color="0.6", linewidth=1.0)
@@ -1357,10 +1384,11 @@ class FitSummary:
         coeff_rows = []
         se_rows = []
         for fit in self.fitResCell:
-            coeffs = fit.getHistCoeffs(fitNum)
-            fit_labels = list(fit.covLabels[fitNum - 1])[-coeffs.size :] if coeffs.size and fitNum - 1 < len(fit.covLabels) else []
-            se = _extract_standard_errors(fit.stats[fitNum - 1] if fitNum - 1 < len(fit.stats) else None, fit.getCoeffs(fitNum).size)
-            se_hist = se[-coeffs.size :] if coeffs.size else np.array([], dtype=float)
+            coeffs, fit_labels, se_hist = fit.getHistCoeffsWithLabels(fitNum)
+            if not fit_labels:
+                fit_labels = list(fit.covLabels[fitNum - 1])[-coeffs.size :] if coeffs.size and fitNum - 1 < len(fit.covLabels) else []
+                se_all = _extract_standard_errors(fit.stats[fitNum - 1] if fitNum - 1 < len(fit.stats) else None, fit._rawCoeffs(fitNum).size)
+                se_hist = se_all[-coeffs.size :] if coeffs.size else np.array([], dtype=float)
             row = np.full(len(labels), np.nan, dtype=float)
             se_row = np.full(len(labels), np.nan, dtype=float)
             for coeff, coeff_se, label in zip(coeffs, se_hist, fit_labels, strict=False):

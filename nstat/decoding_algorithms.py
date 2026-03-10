@@ -1062,35 +1062,204 @@ class DecodingAlgorithms:
         estimateTarget=0,
         Wconv=None,
     ):
-        del yT, PiT, estimateTarget
         obs = _as_observation_matrix(dN)
         num_cells, num_steps = obs.shape
-        num_states = _infer_state_dim(A, beta, num_cells)
+        N = num_steps
+        ns = _infer_state_dim(A, beta, num_cells)
         mu_vec = _normalize_mu(mu, num_cells)
-        beta_mat = _normalize_beta(beta, num_states, num_cells)
+        beta_mat = _normalize_beta(beta, ns, num_cells)
 
-        x0_vec = np.zeros(num_states, dtype=float) if _is_empty_value(x0) else np.asarray(x0, dtype=float).reshape(-1)
-        if x0_vec.size != num_states:
+        x0_vec = np.zeros(ns, dtype=float) if _is_empty_value(x0) else np.asarray(x0, dtype=float).reshape(-1)
+        if x0_vec.size != ns:
             raise ValueError("x0 must match the decoding state dimension")
-        Pi0_mat = np.zeros((num_states, num_states), dtype=float) if _is_empty_value(Pi0) else _as_state_matrix(Pi0, num_states)
+        Pi0_mat = np.zeros((ns, ns), dtype=float) if _is_empty_value(Pi0) else _as_state_matrix(Pi0, ns)
 
         if _is_empty_value(windowTimes):
-            H_tensor = np.zeros((num_steps, 0, num_cells), dtype=float)
+            H_tensor = np.zeros((N, 0, num_cells), dtype=float)
             gamma_mat = np.zeros((0, num_cells), dtype=float)
         else:
             H_tensor = _compute_history_terms(obs, float(delta), windowTimes)
             gamma_mat = _normalize_gamma(gamma, H_tensor.shape[1], num_cells)
 
-        x_p = np.zeros((num_states, num_steps + 1), dtype=float)
-        x_u = np.zeros((num_states, num_steps), dtype=float)
-        W_p = np.zeros((num_states, num_states, num_steps + 1), dtype=float)
-        W_u = np.zeros((num_states, num_states, num_steps), dtype=float)
+        # ------------------------------------------------------------------
+        # Target estimation branch (Srinivasan et al. 2006)
+        # ------------------------------------------------------------------
+        has_target = not _is_empty_value(yT)
+        yT_vec = np.asarray(yT, dtype=float).reshape(-1) if has_target else np.array([], dtype=float)
+        estimateTarget = int(estimateTarget)
 
-        A0 = _select_time_matrix(A, 0, num_states)
-        Q0 = _select_time_matrix(Q, 0, num_states)
+        if has_target:
+            PiT_mat = _as_state_matrix(PiT, ns) if not _is_empty_value(PiT) else np.zeros((ns, ns), dtype=float)
+
+            # Backward information matrices (Srinivasan Eq. 2.16)
+            PitT = np.zeros((ns, ns, N), dtype=float)
+            QT = np.zeros((ns, ns, N), dtype=float)
+            QN = _select_time_matrix(Q, N - 1, ns)
+            if estimateTarget == 1:
+                PitT[:, :, N - 1] = QN  # Pi(T,T) = Q_T when PiT = 0
+            else:
+                PitT[:, :, N - 1] = PiT_mat + QN
+
+            # Backward transition matrices
+            PhitT = np.zeros((ns, ns, N), dtype=float)
+            PhitT[:, :, N - 1] = np.eye(ns, dtype=float)  # phi(T,T) = I
+            B = np.zeros((ns, ns, N), dtype=float)
+
+            for n in range(N - 1, 0, -1):
+                An = _select_time_matrix(A, n, ns)
+                Qn = _select_time_matrix(Q, n, ns)
+                invA = np.linalg.pinv(An)
+                PhitT[:, :, n - 1] = invA @ PhitT[:, :, n]
+                PitT[:, :, n - 1] = invA @ PitT[:, :, n] @ invA.T + Qn  # Eq. 2.16
+                invPitT_n = np.linalg.pinv(PitT[:, :, n])
+                B[:, :, n] = An - (Qn @ invPitT_n) @ An  # Eq. 2.21
+                QT[:, :, n] = Qn - (Qn @ invPitT_n) @ Qn.T
+
+            A1 = _select_time_matrix(A, 0, ns)
+            Q1 = _select_time_matrix(Q, 0, ns)
+            invPitT_0 = np.linalg.pinv(PitT[:, :, 0])
+            B[:, :, 0] = A1 - (Q1 @ invPitT_0) @ A1
+            QT[:, :, 0] = Q1 - (Q1 @ invPitT_0) @ Q1.T
+
+            if estimateTarget == 1:
+                # Augmented state space [x_t; y_T]
+                beta_aug = np.vstack([beta_mat, np.zeros((ns, num_cells), dtype=float)])
+                na = 2 * ns
+                Amat = np.zeros((na, na, N), dtype=float)
+                Qmat = np.zeros((na, na, N), dtype=float)
+
+                for n in range(N):
+                    An = _select_time_matrix(A, n, ns)
+                    Qn = _select_time_matrix(Q, n, ns)
+                    psi = B[:, :, n]
+                    if n == N - 1:
+                        gammaMat = np.eye(ns, dtype=float)
+                    else:
+                        invPitT_n = np.linalg.pinv(PitT[:, :, n])
+                        gammaMat = (Qn @ invPitT_n) @ PhitT[:, :, n]
+                    Amat[:ns, :ns, n] = psi
+                    Amat[:ns, ns:, n] = gammaMat
+                    Amat[ns:, ns:, n] = np.eye(ns, dtype=float)
+                    Qmat[:ns, :ns, n] = QT[:, :, n]
+
+                # Augmented initial state
+                x0_aug = np.concatenate([x0_vec, yT_vec])
+                x_p = np.zeros((na, N + 1), dtype=float)
+                x_u = np.zeros((na, N), dtype=float)
+                W_p = np.zeros((na, na, N + 1), dtype=float)
+                W_u = np.zeros((na, na, N), dtype=float)
+
+                x_p[:, 0] = Amat[:, :, 0] @ x0_aug
+                W_p[:, :, 0] = Amat[:, :, 0] @ np.zeros((na, na), dtype=float) @ Amat[:, :, 0].T + Qmat[:, :, 0]
+
+                for time_index in range(1, N + 1):
+                    x_u[:, time_index - 1], W_u[:, :, time_index - 1], _ = DecodingAlgorithms.PPDecode_updateLinear(
+                        x_p[:, time_index - 1],
+                        W_p[:, :, time_index - 1],
+                        obs,
+                        mu_vec,
+                        beta_aug,
+                        fitType,
+                        gamma_mat,
+                        H_tensor,
+                        time_index,
+                        None,
+                    )
+                    A_t = Amat[:, :, min(time_index - 1, N - 1)]
+                    Q_t = Qmat[:, :, min(time_index - 1, N - 1)]
+                    x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
+                        x_u[:, time_index - 1],
+                        W_u[:, :, time_index - 1],
+                        A_t,
+                        Q_t,
+                        Wconv,
+                    )
+
+                # Decompose augmented state into state + target
+                x_uT = x_u[ns:, :]
+                W_uT = W_u[ns:, ns:, :]
+                x_pT = x_p[ns:, :]
+                W_pT = W_p[ns:, ns:, :]
+                x_u = x_u[:ns, :]
+                W_u = W_u[:ns, :ns, :]
+                x_p = x_p[:ns, :]
+                W_p = W_p[:ns, :ns, :]
+                return x_p, W_p, x_u, W_u, x_pT, W_pT, x_uT, W_uT
+
+            else:
+                # Non-augmented target branch: use B and ft feedforward term
+                Amat = B
+                Qmat_arr = QT
+                ft = np.zeros((ns, N), dtype=float)
+                ut = np.zeros((ns, N), dtype=float)
+                for n in range(N):
+                    An = _select_time_matrix(A, n, ns)
+                    Qn = _select_time_matrix(Q, n, ns)
+                    invPitT_n = np.linalg.pinv(PitT[:, :, n])
+                    ft[:, n] = (Qn @ invPitT_n) @ PhitT[:, :, n] @ yT_vec
+
+                x_p = np.zeros((ns, N + 1), dtype=float)
+                x_u = np.zeros((ns, N), dtype=float)
+                W_p = np.zeros((ns, ns, N + 1), dtype=float)
+                W_u = np.zeros((ns, ns, N), dtype=float)
+
+                # Initial predict with target correction
+                invPitT_0 = np.linalg.pinv(PitT[:, :, 0])
+                invA1 = np.linalg.pinv(A1)
+                invPhi0T = np.linalg.pinv(invA1 @ PhitT[:, :, 0])
+                ut[:, 0] = (Q1 @ invPitT_0) @ PhitT[:, :, 0] @ (yT_vec - invPhi0T @ x0_vec)
+                x_p[:, 0] = Amat[:, :, 0] @ x0_vec + ut[:, 0]
+                W_p[:, :, 0] = Amat[:, :, 0] @ Pi0_mat @ Amat[:, :, 0].T + Qmat_arr[:, :, 0]
+
+                for time_index in range(1, N + 1):
+                    x_u[:, time_index - 1], W_u[:, :, time_index - 1], _ = DecodingAlgorithms.PPDecode_updateLinear(
+                        x_p[:, time_index - 1],
+                        W_p[:, :, time_index - 1],
+                        obs,
+                        mu_vec,
+                        beta_mat,
+                        fitType,
+                        gamma_mat,
+                        H_tensor,
+                        time_index,
+                        None,
+                    )
+                    if time_index < N:
+                        An = _select_time_matrix(A, time_index - 1, ns)
+                        Qn = _select_time_matrix(Q, time_index - 1, ns)
+                        invPitT_n1 = np.linalg.pinv(PitT[:, :, time_index])
+                        invPhitm1T = np.linalg.pinv(PhitT[:, :, time_index - 1])
+                        ut[:, time_index] = (Qn @ invPitT_n1) @ PhitT[:, :, time_index] @ (
+                            yT_vec - invPhitm1T @ x_u[:, time_index - 1]
+                        )
+                        A_t = Amat[:, :, min(time_index - 1, N - 1)]
+                        Q_t = Qmat_arr[:, :, min(time_index - 1, N - 1)]
+                        x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
+                            x_u[:, time_index - 1],
+                            W_u[:, :, time_index - 1],
+                            A_t,
+                            Q_t,
+                        )
+                        x_p[:, time_index] += ut[:, time_index]
+                        W_p[:, :, time_index] += (Qn @ invPitT_n1) @ An @ W_u[:, :, time_index - 1] @ An.T @ (Qn @ invPitT_n1).T
+
+                empty_vec = np.array([], dtype=float)
+                empty_cov = np.zeros((0, 0, 0), dtype=float)
+                return x_p, W_p, x_u, W_u, empty_vec, empty_cov, empty_vec, empty_cov
+
+        # ------------------------------------------------------------------
+        # Standard filter (no target)
+        # ------------------------------------------------------------------
+        x_p = np.zeros((ns, N + 1), dtype=float)
+        x_u = np.zeros((ns, N), dtype=float)
+        W_p = np.zeros((ns, ns, N + 1), dtype=float)
+        W_u = np.zeros((ns, ns, N), dtype=float)
+
+        A0 = _select_time_matrix(A, 0, ns)
+        Q0 = _select_time_matrix(Q, 0, ns)
         x_p[:, 0], W_p[:, :, 0] = DecodingAlgorithms.PPDecode_predict(x0_vec, Pi0_mat, A0, Q0, Wconv)
 
-        for time_index in range(1, num_steps + 1):
+        for time_index in range(1, N + 1):
             x_u[:, time_index - 1], W_u[:, :, time_index - 1], _ = DecodingAlgorithms.PPDecode_updateLinear(
                 x_p[:, time_index - 1],
                 W_p[:, :, time_index - 1],
@@ -1103,8 +1272,8 @@ class DecodingAlgorithms:
                 time_index,
                 None,
             )
-            A_t = _select_time_matrix(A, time_index - 1, num_states)
-            Q_t = _select_time_matrix(Q, time_index - 1, num_states)
+            A_t = _select_time_matrix(A, time_index - 1, ns)
+            Q_t = _select_time_matrix(Q, time_index - 1, ns)
             x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
                 x_u[:, time_index - 1],
                 W_u[:, :, time_index - 1],
