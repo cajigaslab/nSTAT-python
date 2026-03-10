@@ -694,7 +694,7 @@ class SignalObj:
 
     def std(self, axis: int | None = None) -> "SignalObj":
         axis_arg = 0 if axis is None else axis
-        std_data = np.std(self.data, axis=axis_arg)
+        std_data = np.std(self.data, axis=axis_arg, ddof=1)
         array = np.asarray(std_data, dtype=float)
         if array.ndim == 1 and array.size == self.dimension:
             labels = [f"\\sigma({label})" if label else "" for label in self.dataLabels]
@@ -967,8 +967,13 @@ class SignalObj:
             self.name = f"{self.name} shifted by {deltaT}"
 
     def alignTime(self, timeMarker: float, newTime: float = 0.0) -> None:
-        """Shift so that *timeMarker* becomes *newTime* (Matlab ``alignTime``)."""
-        self.shiftMe(float(newTime) - float(timeMarker))
+        """Shift so that *timeMarker* becomes *newTime* (Matlab ``alignTime``).
+
+        Only shifts if *timeMarker* falls within ``[minTime, maxTime]``,
+        matching the Matlab implementation's bounds check.
+        """
+        if self.minTime <= float(timeMarker) <= self.maxTime:
+            self.shiftMe(float(newTime) - float(timeMarker))
 
     # ------------------------------------------------------------------
     # Element-wise arithmetic helpers (match Matlab SignalObj)
