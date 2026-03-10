@@ -2301,6 +2301,16 @@ class Trial:
         ensCovCollTemp.maskAwayAllExcept(included)
         return ensCovCollTemp.getCovLabelsFromMask()
 
+    def getAllLabels(self) -> list[str]:
+        """Return all covariate + history + ensemble labels (no mask filtering).
+
+        Matlab equivalent: ``Trial.getAllLabels``.
+        """
+        labels = list(self.getAllCovLabels())
+        labels.extend(self.getHistLabels())
+        labels.extend(self.getEnsCovLabels())
+        return labels
+
     def getLabelsFromMask(self, neuronNum: int) -> list[str]:
         labels = list(self.getCovLabelsFromMask())
         labels.extend(self.getHistLabels())
