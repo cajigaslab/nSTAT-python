@@ -246,7 +246,7 @@ class CovariateCollection:
             return 1
         if isinstance(cov, (int, np.integer, float, np.floating)):
             index = int(cov)
-            return int(index > 0 and index < self.numCov)
+            return int(index > 0 and index <= self.numCov)
         raise TypeError("Need either covariate class or name of covariate or index of covariate")
 
     def findMinTime(self) -> float:
@@ -680,13 +680,24 @@ class SpikeTrainCollection:
         index = int(idx)
         if index < 1 or index > self.numSpikeTrains:
             raise IndexError("nstColl index out of bounds (1-based indexing).")
-        return self.nstrain[index - 1]
+        nst = self.nstrain[index - 1]
+        # Matlab resamples to collection sampleRate on retrieval
+        if nst.sampleRate != self.sampleRate:
+            nst = nst.resample(self.sampleRate)
+        return nst
 
-    def getNSTnames(self) -> list[str]:
-        return [train.name for train in self.nstrain]
+    def getNSTnames(self, selectorArray=None) -> list[str]:
+        """Return neuron names, optionally filtered by *selectorArray* (1-based indices)."""
+        all_names = [train.name for train in self.nstrain]
+        if selectorArray is None:
+            # Default: return names for all neurons in the mask
+            indices = [i for i, m in enumerate(self.neuronMask) if m]
+        else:
+            indices = [int(idx) - 1 for idx in np.asarray(selectorArray, dtype=int).reshape(-1)]
+        return [all_names[i] for i in indices if 0 <= i < len(all_names)]
 
-    def getUniqueNSTnames(self) -> list[str]:
-        names = [name for name in self.getNSTnames() if name]
+    def getUniqueNSTnames(self, selectorArray=None) -> list[str]:
+        names = [name for name in self.getNSTnames(selectorArray) if name]
         return list(dict.fromkeys(names))
 
     def getNSTIndicesFromName(self, name: Sequence[str] | str):
@@ -1124,9 +1135,69 @@ class SpikeTrainCollection:
         time = (window_times[1:] + window_times[:-1]) * 0.5
         return Covariate(time, psth_data, "PSTH", "time", "s", "Hz", ["psth"])
 
-    def psthGLM(self, binwidth: float):
-        psth_signal = self.psth(binwidth)
-        return psth_signal, None, None
+    def psthGLM(self, binwidth: float, windowTimes=None, fitType: str = "poisson"):
+        """GLM-based PSTH estimation (Matlab ``nstColl.psthGLM``).
+
+        Returns ``(psth_covariate, histSignal, psthFitResult)`` matching the
+        Matlab signature.  Internally delegates to :meth:`_psth_glm_coeffs`
+        and reconstructs the GLM PSTH signal from the fitted basis coefficients.
+        """
+        from .analysis import Analysis
+
+        basis = self.generateUnitImpulseBasis(
+            float(binwidth), float(self.minTime), float(self.maxTime), float(self.sampleRate)
+        )
+        trial = Trial(
+            SpikeTrainCollection([train.nstCopy() for train in self.nstrain]),
+            CovariateCollection([basis]),
+        )
+        hist = [] if windowTimes is None else np.asarray(windowTimes, dtype=float).reshape(-1)
+        label_select = [[basis.name, *list(basis.dataLabels)]]
+        cfg = TrialConfig(label_select, float(self.sampleRate), hist, [])
+        cfg.setName("GLM-PSTH+Hist" if np.asarray(hist).size else "GLM-PSTH")
+        cfgColl = ConfigCollection([cfg])
+        algorithm = "GLM" if str(fitType or "poisson").lower() == "poisson" else "BNLRCG"
+        psth_result = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, algorithm, [], 1)
+        fit = psth_result[0] if isinstance(psth_result, list) else psth_result
+
+        # Reconstruct the GLM PSTH as a Covariate (same as Matlab)
+        coeffs = np.asarray(fit.getCoeffs(1), dtype=float).reshape(-1)
+        numBasis = basis.dimension
+        if coeffs.size < numBasis:
+            padded = np.zeros(numBasis, dtype=float)
+            padded[: coeffs.size] = coeffs
+            coeffs = padded
+        else:
+            coeffs = coeffs[:numBasis]
+
+        # basis.data is (nTimeBins x numBasis): multiply to get GLM rate
+        bdata = np.asarray(basis.data, dtype=float)
+        lambda_glm = np.exp(bdata @ coeffs)
+        psth_cov = Covariate(
+            basis.time.copy(),
+            lambda_glm.reshape(-1, 1),
+            "GLM-PSTH",
+            basis.xlabelval,
+            basis.xunits,
+            "Hz",
+            ["\\lambda_{GLM}"],
+        )
+
+        # History signal (only present when windowTimes is specified)
+        histSignal = None
+        if np.asarray(hist).size and coeffs.size > numBasis:
+            histCoeffs = np.asarray(fit.getCoeffs(1), dtype=float).reshape(-1)[numBasis:]
+            histSignal = Covariate(
+                np.arange(len(histCoeffs), dtype=float),
+                histCoeffs.reshape(-1, 1),
+                "History",
+                "lag",
+                "bins",
+                "",
+                ["h"],
+            )
+
+        return psth_cov, histSignal, fit
 
     def psthBars(
         self,

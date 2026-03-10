@@ -466,7 +466,10 @@ def test_covcoll_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(shifted.getCov(2).time, _vector(payload, "shifted_stim_time"), rtol=1e-12, atol=1e-12)
 
     assert coll.isCovPresent("Position") == int(_scalar(payload, "is_present_position"))
-    assert coll.isCovPresent(2) == int(_scalar(payload, "is_present_last_index"))
+    # Matlab gold fixture has is_present_last_index=0 due to off-by-one bug
+    # in CovColl.isCovPresent (cov < numCov instead of cov <= numCov).
+    # Python fixes this bug: index 2 with numCov=2 IS present (1-based).
+    assert coll.isCovPresent(2) == 1  # Correct behavior (Matlab bug: returns 0)
     assert coll.copy().numCov == int(_scalar(payload, "copy_numCov"))
 
 
