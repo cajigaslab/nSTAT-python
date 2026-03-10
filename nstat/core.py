@@ -1229,7 +1229,11 @@ class SignalObj:
                     continue
             seg = self.getSigInTimeWindow(minT, maxT)
             norm_time = np.linspace(minT, maxT, numPoints)
-            interp_data = np.interp(norm_time, seg.time, seg.data[:, 0], left=0.0, right=0.0)
+            # Matlab uses interp1(..., 'nearest', 0) — nearest-neighbor with 0-fill
+            from scipy.interpolate import interp1d as _interp1d
+            _ifn = _interp1d(seg.time, seg.data[:, 0], kind="nearest",
+                             bounds_error=False, fill_value=0.0)
+            interp_data = _ifn(norm_time)
             columns.append(interp_data)
 
         if not columns:
@@ -1670,15 +1674,28 @@ class Covariate(SignalObj):
         newCov.setConfInterval(confInt)
         return newCov
 
-    def getSigRep(self, repType: str = "standard") -> SignalObj:
+    def getSigRep(self, repType: str = "standard") -> "Covariate":
+        """Return a signal representation of this covariate.
+
+        Parameters
+        ----------
+        repType : str
+            ``'standard'`` returns ``self`` unchanged.
+            ``'zero-mean'`` returns ``self - mean(self)`` with confidence
+            intervals propagated (Matlab parity: uses operator overload so
+            CIs shift by the same constant).
+        """
         rep = str(repType).strip().lower()
         if rep == "standard":
             return self
         if rep == "zero-mean":
-            centered = self.data - np.mean(self.data, axis=0, keepdims=True)
-            return Covariate(
-                self.time,
-                centered,
+            # Build a constant Covariate holding the per-column mean so that
+            # the CI-propagating __sub__ is invoked (Matlab: ``self - self.mu``).
+            mu_vals = np.mean(self.data, axis=0, keepdims=True)
+            mu_broadcast = np.repeat(mu_vals, len(self.time), axis=0)
+            mu_cov = Covariate(
+                self.time.copy(),
+                mu_broadcast,
                 self.name,
                 self.xlabelval,
                 self.xunits,
@@ -1686,6 +1703,7 @@ class Covariate(SignalObj):
                 list(self.dataLabels),
                 list(self.plotProps),
             )
+            return self - mu_cov
         raise ValueError("repType must be either 'zero-mean' or 'standard'")
 
     def plot(self, selectorArray=None, plotPropsIn=None, handle=None):
