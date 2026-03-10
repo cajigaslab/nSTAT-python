@@ -841,6 +841,8 @@ class SpikeTrainCollection:
         self.sampleRate = float(sampleRate)
         for train in self.nstrain:
             train.resample(sampleRate)
+            train.setMinTime(float(self.minTime))
+            train.setMaxTime(float(self.maxTime))
 
     def enforceSampleRate(self) -> None:
         for index in range(1, self.numSpikeTrains + 1):
@@ -1021,20 +1023,30 @@ class SpikeTrainCollection:
         else:
             nst.setMaxTime(float(self.maxTime))
 
-    def plot(self, *_, handle=None, reverseOrder: bool = False, **__):
+    def plot(self, selectorArray: Sequence[int] | None = None,
+             minTime: float | None = None, maxTime: float | None = None,
+             handle=None, reverseOrder: bool = False, **__):
         """Plot a spike-train raster.
 
         Parameters
         ----------
+        selectorArray : sequence of int, optional
+            1-based indices of neurons to plot.  Defaults to the neuron mask
+            (or all neurons if no mask is set).  Matches Matlab positional arg.
+        minTime, maxTime : float, optional
+            Time window to display.  Defaults to the collection's time span.
         handle : matplotlib Axes, optional
             Axes to plot into.
         reverseOrder : bool
             If ``True``, reverse the display order so the last neuron is at
             the top.  Matches Matlab ``reverseOrderPlot`` parameter.
         """
-        selected = self.getIndFromMask()
-        if not selected:
-            selected = list(range(1, self.numSpikeTrains + 1))
+        if selectorArray is not None and len(selectorArray) > 0:
+            selected = [int(x) for x in selectorArray]
+        else:
+            selected = self.getIndFromMask()
+            if not selected:
+                selected = list(range(1, self.numSpikeTrains + 1))
         if reverseOrder:
             selected = list(reversed(selected))
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(8.0, max(2.5, 0.55 * max(len(selected), 1) + 1.0)))[1]
@@ -1044,6 +1056,10 @@ class SpikeTrainCollection:
             train.plot(dHeight=0.8, yOffset=float(row), currentHandle=ax)
         ax.set_ylim(0.25, len(selected) + 0.75)
         ax.set_yticks(range(1, len(selected) + 1), [str(item) for item in selected])
+        if minTime is not None or maxTime is not None:
+            lo = float(minTime) if minTime is not None else float(self.minTime)
+            hi = float(maxTime) if maxTime is not None else float(self.maxTime)
+            ax.set_xlim(lo, hi)
         ax.set_title("Spike Train Raster")
         return ax
 
@@ -1164,14 +1180,18 @@ class SpikeTrainCollection:
         time = (window_times[1:] + window_times[:-1]) * 0.5
         return Covariate(time, psth_data, "PSTH", "time", "s", "Hz", ["psth"])
 
-    def psthGLM(self, binwidth: float, windowTimes=None, fitType: str = "poisson"):
+    def psthGLM(self, binwidth: float, windowTimes=None, fitType: str = "poisson",
+                *, alphaVal: float = 0.05, Mc: int = 1000):
         """GLM-based PSTH estimation (Matlab ``nstColl.psthGLM``).
 
         Returns ``(psth_covariate, histSignal, psthFitResult)`` matching the
-        Matlab signature.  Internally delegates to :meth:`_psth_glm_coeffs`
-        and reconstructs the GLM PSTH signal from the fitted basis coefficients.
+        Matlab signature.  The PSTH and history covariates carry Monte Carlo
+        confidence intervals matching the Matlab implementation (1000 draws
+        from the normal approximation to the coefficient posterior, transformed
+        through the link function, with empirical quantile CIs).
         """
         from .analysis import Analysis
+        from .confidence_interval import ConfidenceInterval
 
         basis = self.generateUnitImpulseBasis(
             float(binwidth), float(self.minTime), float(self.maxTime), float(self.sampleRate)
@@ -1189,19 +1209,29 @@ class SpikeTrainCollection:
         psth_result = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, algorithm, [], 1)
         fit = psth_result[0] if isinstance(psth_result, list) else psth_result
 
-        # Reconstruct the GLM PSTH as a Covariate (same as Matlab)
-        raw_coeffs = np.asarray(fit._rawCoeffs(1), dtype=float).reshape(-1)
+        # Extract coefficients and standard errors
+        coeffs_all, _labels, se_all = fit.getCoeffsWithLabels(1)
+        raw_coeffs = np.asarray(coeffs_all, dtype=float).reshape(-1)
+        se_vec = np.asarray(se_all, dtype=float).reshape(-1)
         numBasis = basis.dimension
+
         if raw_coeffs.size < numBasis:
             padded = np.zeros(numBasis, dtype=float)
             padded[: raw_coeffs.size] = raw_coeffs
-            coeffs = padded
+            bVals = padded
+            se_padded = np.full(numBasis, np.nan, dtype=float)
+            se_padded[: se_vec.size] = se_vec[:numBasis] if se_vec.size >= numBasis else se_vec
+            se_basis = se_padded
         else:
-            coeffs = raw_coeffs[:numBasis]
+            bVals = raw_coeffs[:numBasis]
+            se_basis = se_vec[:numBasis]
+
+        is_poisson = str(fitType or "poisson").lower() == "poisson"
+        sr = float(self.sampleRate)
 
         # basis.data is (nTimeBins x numBasis): multiply to get GLM rate
         bdata = np.asarray(basis.data, dtype=float)
-        lambda_glm = np.exp(bdata @ coeffs)
+        lambda_glm = np.exp(bdata @ bVals)
         psth_cov = Covariate(
             basis.time.copy(),
             lambda_glm.reshape(-1, 1),
@@ -1212,19 +1242,87 @@ class SpikeTrainCollection:
             ["\\lambda_{GLM}"],
         )
 
-        # History signal (only present when windowTimes is specified)
+        # ---- Monte Carlo confidence intervals for PSTH (Matlab parity) ----
+        se_clean = np.where(np.isnan(se_basis), 0.0, se_basis)
+        if np.any(se_clean > 0):
+            rng = np.random.default_rng()
+            z = rng.standard_normal((se_clean.size, Mc))
+            xKDraw = bVals[:, None] + se_clean[:, None] * z  # (numBasis, Mc)
+            if is_poisson:
+                lambdaDraw = np.exp(np.clip(xKDraw, -30, 30)) * sr
+            else:
+                xc = np.clip(xKDraw, -30, 30)
+                lambdaDraw = (np.exp(xc) / (1.0 + np.exp(xc))) * sr
+            lambdaDraw = np.where(np.isinf(lambdaDraw), 0.0, lambdaDraw)
+
+            # Per-coefficient empirical quantiles
+            CIs = np.column_stack([
+                np.quantile(lambdaDraw, alphaVal / 2.0, axis=1),
+                np.quantile(lambdaDraw, 1.0 - alphaVal / 2.0, axis=1),
+            ])  # (numBasis, 2)
+            lower = bdata @ CIs[:, 0]
+            upper = bdata @ CIs[:, 1]
+
+            ciPSTHGLM = ConfidenceInterval(
+                basis.time, np.column_stack([lower, upper]),
+                "CI_{psth_GLM}", psth_cov.xlabelval, psth_cov.xunits, "Hz",
+            )
+            psth_cov.setConfInterval(ciPSTHGLM)
+
+        # ---- History signal (only present when windowTimes is specified) ----
         histSignal = None
         if np.asarray(hist).size and raw_coeffs.size > numBasis:
-            histCoeffs = raw_coeffs[numBasis:]
-            histSignal = Covariate(
-                np.arange(len(histCoeffs), dtype=float),
-                histCoeffs.reshape(-1, 1),
-                "History",
-                "lag",
-                "bins",
-                "",
-                ["h"],
-            )
+            histVals = raw_coeffs[numBasis:]
+            se_hist = se_vec[numBasis:] if se_vec.size > numBasis else np.zeros_like(histVals)
+
+            # Build piecewise-constant basis for history time axis (Matlab style)
+            selfHist = np.asarray(hist, dtype=float).reshape(-1)
+            histTime = np.arange(0.0, float(np.max(selfHist)) + 0.001, 0.001)
+            nHistBins = len(selfHist) - 1
+            if len(histTime) > 0 and nHistBins > 0:
+                basisMat = np.zeros((len(histTime), nHistBins), dtype=float)
+                for i in range(nHistBins):
+                    if i == nHistBins - 1:
+                        col = (histTime >= selfHist[i]) & (histTime <= selfHist[i + 1])
+                    else:
+                        col = (histTime >= selfHist[i]) & (histTime < selfHist[i + 1])
+                    basisMat[:, i] = col.astype(float)
+
+                expHistVals = np.exp(histVals[:nHistBins])
+                histSignal = Covariate(
+                    histTime, (basisMat @ expHistVals).reshape(-1, 1),
+                    "PSTH_{glm}", "time", "s", "Hz",
+                )
+
+                # Monte Carlo CIs for history signal
+                se_h_clean = np.where(np.isnan(se_hist[:nHistBins]), 0.0, se_hist[:nHistBins])
+                if np.any(se_h_clean > 0):
+                    rng2 = np.random.default_rng()
+                    z2 = rng2.standard_normal((se_h_clean.size, Mc))
+                    # Matlab centers on zero for history CIs (variability around null)
+                    xKDrawH = se_h_clean[:, None] * z2
+                    if is_poisson:
+                        histDraw = np.exp(np.clip(xKDrawH, -30, 30)) * sr
+                    else:
+                        xc2 = np.clip(xKDrawH, -30, 30)
+                        histDraw = (np.exp(xc2) / (1.0 + np.exp(xc2))) * sr
+                    CIsH = np.column_stack([
+                        np.quantile(histDraw, alphaVal / 2.0, axis=1),
+                        np.quantile(histDraw, 1.0 - alphaVal / 2.0, axis=1),
+                    ])
+                    lowerH = basisMat @ CIsH[:, 0]
+                    upperH = basisMat @ CIsH[:, 1]
+                    ciHist = ConfidenceInterval(
+                        histTime, np.column_stack([lowerH, upperH]),
+                        "CI_{psth_GLMHIST}", psth_cov.xlabelval, psth_cov.xunits, "Hz",
+                    )
+                    histSignal.setConfInterval(ciHist)
+            else:
+                histSignal = Covariate(
+                    np.arange(len(histVals), dtype=float),
+                    histVals.reshape(-1, 1),
+                    "History", "lag", "bins", "", ["h"],
+                )
 
         return psth_cov, histSignal, fit
 

@@ -229,10 +229,28 @@ class Analysis:
             start = stop
 
         lambda_sig = _fit_lambda_matrix_to_covariate(lambda_time_full, lambda_segments, int(lambdaIndex))
+
+        # Compute standard errors from Fisher information (Hessian inverse)
+        # Poisson: W = diag(mu);  Binomial: W = diag(mu*(1-mu))
+        try:
+            if distribution == "binomial":
+                W = lambda_delta * (1.0 - lambda_delta)
+            else:
+                W = lambda_delta.copy()
+            W = np.maximum(W, 1e-12)
+            XtWX = X.T @ (X * W[:, None]) + l2 * np.eye(X.shape[1])
+            covb = np.linalg.inv(XtWX)
+            se = np.sqrt(np.maximum(np.diag(covb), 0.0))
+        except np.linalg.LinAlgError:
+            se = np.full(b.size, np.nan, dtype=float)
+            covb = None
+
         stats = {
             "intercept": float(glm_res.intercept),
             "n_iter": int(glm_res.n_iter),
             "converged": bool(glm_res.converged),
+            "se": se,
+            "covb": covb,
         }
         return lambda_sig, b, dev, stats, AIC, BIC, logLL, distribution
 
