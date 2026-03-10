@@ -1946,10 +1946,10 @@ class nspikeTrain:
         fig.tight_layout()
         return fig
 
-    def plot(self, dHeight: float = 1.0, yOffset: float = 0.5, currentHandle=None):
+    def plot(self, dHeight: float = 1.0, yOffset: float = 0.5, currentHandle=None, handle=None):
         import matplotlib.pyplot as plt
 
-        ax = plt.gca() if currentHandle is None else currentHandle
+        ax = plt.gca() if (currentHandle is None and handle is None) else (currentHandle or handle)
         lines = []
         for spike_time in self.spikeTimes:
             (line,) = ax.plot(
@@ -1958,7 +1958,7 @@ class nspikeTrain:
                 "k",
             )
             lines.append(line)
-        if currentHandle is None:
+        if currentHandle is None and handle is None:
             xunits = f" [{self.xunits}]" if self.xunits else ""
             yunits = f" [{self.yunits}]" if self.yunits else ""
             ax.set_xlabel(f"{self.xlabelval}{xunits}")
