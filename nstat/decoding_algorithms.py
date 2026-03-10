@@ -373,6 +373,27 @@ class DecodingAlgorithms:
         x0: np.ndarray,
         p0: np.ndarray,
     ) -> dict[str, np.ndarray]:
+        """Discrete-time Kalman filter — public Python API.
+
+        Runs a Kalman filter on time-major observations and returns a
+        dict with updated state estimates and covariances.
+
+        Parameters
+        ----------
+        observations : (N, Dy) — observation time-series, one row per step.
+        transition : (Dx, Dx) — state-transition matrix A.
+        observation_matrix : (Dy, Dx) — observation matrix C (H).
+        q_cov : (Dx, Dx) — process-noise covariance.
+        r_cov : (Dy, Dy) — observation-noise covariance.
+        x0 : (Dx,) — initial state estimate.
+        p0 : (Dx, Dx) — initial error covariance.
+
+        Returns
+        -------
+        dict with keys:
+            ``state`` : (N, Dx) — updated (posterior) state estimates.
+            ``cov``   : (N, Dx, Dx) — updated covariances.
+        """
         y = np.asarray(observations, dtype=float)
         a = np.asarray(transition, dtype=float)
         h = np.asarray(observation_matrix, dtype=float)
@@ -395,7 +416,7 @@ class DecodingAlgorithms:
             k_gain = p_pred @ h.T @ np.linalg.pinv(s_cov)
 
             x_post = x_pred + k_gain @ innovation
-            p_post = (np.eye(n_x) - k_gain @ h) @ p_pred
+            p_post = _symmetrize((np.eye(n_x) - k_gain @ h) @ p_pred)
 
             xs[t] = x_post
             ps[t] = p_post
@@ -403,6 +424,116 @@ class DecodingAlgorithms:
             p_prev = p_post
 
         return {"state": xs, "cov": ps}
+
+    @staticmethod
+    def _kalman_filter_matlab(A, C, Pv, Pw, Px0, x0, y, GnConv=None):
+        """Discrete-time Kalman filter matching the Matlab API (internal).
+
+        Implements the DT Kalman filter for the system::
+
+            x(:, n+1) = A(:,:,n) x(:, n) + v(:, n)
+            y(:, n)   = C(:,:,n) x(:, n) + w(:, n)
+
+        where ``Pv(:,:,n)``, ``Pw(:,:,n)`` are the covariances of v(n) and
+        w(n), and ``Px0`` is the initial state covariance.
+
+        Supports **time-varying** system matrices when supplied as 3-D arrays
+        (e.g. ``A.shape == (Dx, Dx, N)``).  Time-invariant (2-D) matrices
+        are broadcast automatically.
+
+        Parameters
+        ----------
+        A : (Dx, Dx) or (Dx, Dx, N) — state transition.
+        C : (Dy, Dx) or (Dy, Dx, N) — observation matrix.
+        Pv : (Dx, Dx) or (Dx, Dx, N) — process noise covariance.
+        Pw : (Dy, Dy) or (Dy, Dy, N) — observation noise covariance.
+        Px0 : (Dx, Dx) — initial error covariance.
+        x0 : (Dx,) — initial state estimate.
+        y : (Dy, N) or (N, Dy) — observations (auto-detected layout).
+        GnConv : array or None, optional
+            Pre-converged Kalman gain.  When ``None``, gain convergence
+            is auto-detected during filtering.
+
+        Returns
+        -------
+        x_p : (Dx, N+1) — predicted states (``x_p[:, 0] == x0``).
+        Pe_p : (Dx, Dx, N+1) — predicted covariances.
+        x_u : (Dx, N) — updated states.
+        Pe_u : (Dx, Dx, N) — updated covariances.
+        Gn : (Dx, Dy, N) — Kalman gain history.
+        GnConvIter : int or None — iteration at which gain converged.
+        """
+        A = np.asarray(A, dtype=float)
+        C = np.asarray(C, dtype=float)
+        Pv = np.asarray(Pv, dtype=float)
+        Pw = np.asarray(Pw, dtype=float)
+        Px0 = np.asarray(Px0, dtype=float)
+        x0_vec = np.asarray(x0, dtype=float).reshape(-1)
+        y = np.asarray(y, dtype=float)
+        if y.ndim == 1:
+            y = y[None, :]
+
+        Dx = A.shape[0]
+        Dy = C.shape[0]
+
+        # Auto-detect layout: Matlab expects (Dy, N) state-major.
+        # If y is (N, Dy) time-major, transpose.
+        if y.shape[0] != Dy and y.shape[1] == Dy:
+            y = y.T
+        N = y.shape[1]
+
+        def _sel(M, n):
+            """Select time-varying slice M[:,:,n] or broadcast M[:,:] if 2-D."""
+            if M.ndim == 3:
+                return M[:, :, min(n, M.shape[2] - 1)]
+            return M
+
+        x_p = np.zeros((Dx, N + 1), dtype=float)
+        Pe_p = np.zeros((Dx, Dx, N + 1), dtype=float)
+        x_u = np.zeros((Dx, N), dtype=float)
+        Pe_u = np.zeros((Dx, Dx, N), dtype=float)
+        Gn = np.zeros((Dx, Dy, N), dtype=float)
+
+        x_p[:, 0] = x0_vec
+        Pe_p[:, :, 0] = Px0
+
+        GnConvIter = None
+        _GnConv = None
+        if GnConv is not None and not _is_empty_value(GnConv):
+            _GnConv = np.asarray(GnConv, dtype=float)
+
+        for n in range(N):
+            An = _sel(A, n)
+            Cn = _sel(C, n)
+            Pvn = _sel(Pv, n)
+            Pwn = _sel(Pw, n)
+
+            # --- Update ---
+            if _GnConv is not None:
+                G = _GnConv
+            else:
+                S = Cn @ Pe_p[:, :, n] @ Cn.T + Pwn
+                G = Pe_p[:, :, n] @ Cn.T @ np.linalg.solve(S, np.eye(Dy))
+            x_u[:, n] = x_p[:, n] + G @ (y[:, n] - Cn @ x_p[:, n])
+            Pe_u[:, :, n] = Pe_p[:, :, n] - G @ Cn @ Pe_p[:, :, n]
+            Pe_u[:, :, n] = _symmetrize(Pe_u[:, :, n])
+            Gn[:, :, n] = G
+
+            # --- Predict ---
+            if _GnConv is not None:
+                Pe_p[:, :, n + 1] = _symmetrize(Pe_u[:, :, n])
+            else:
+                Pe_p[:, :, n + 1] = _symmetrize(An @ Pe_u[:, :, n] @ An.T + Pvn)
+            x_p[:, n + 1] = An @ x_u[:, n]
+
+            # --- Gain convergence detection ---
+            if n > 0 and _GnConv is None:
+                diffGn = np.abs(Gn[:, :, n] - Gn[:, :, n - 1])
+                if np.max(diffGn) < 1e-6:
+                    _GnConv = Gn[:, :, n]
+                    GnConvIter = n
+
+        return x_p, Pe_p, x_u, Pe_u, Gn, GnConvIter
 
     @staticmethod
     def kalman_predict(x_u, Pe_u, A, Pv, GnConv=None):
@@ -507,40 +638,158 @@ class DecodingAlgorithms:
 
     @staticmethod
     def kalman_fixedIntervalSmoother(A, C, Pv, Pw, Px0, x0, y, lags):
-        """Fixed-interval smoother with a specified lag.
+        """Kalman fixed-interval (fixed-lag) smoother via augmented state.
 
-        .. note::
+        Matches the Matlab implementation: builds an augmented state
+        of dimension ``(1 + lags) * n_x`` and runs ``kalman_filter``
+        on the augmented system.  The lagged portion of the augmented
+        state gives the exact smoothed estimate at lag *lags*.
 
-           The Matlab implementation augments the state vector to dimension
-           ``(1+lags)*n_x`` and runs a full Kalman smoother on the augmented
-           system.  This Python version instead runs the standard smoother and
-           extracts the lagged estimates by index look-up, which is an
-           approximation.  The two implementations agree exactly when ``lags``
-           equals the full observation length (standard RTS smoother), and the
-           approximation error shrinks as ``lags`` grows.
+        Parameters
+        ----------
+        A, C, Pv, Pw : arrays
+            System matrices (may be time-varying 3-D arrays).
+        Px0 : (Dx, Dx) — initial covariance.
+        x0 : (Dx,) — initial state.
+        y : (N, Dy) or (Dy, N) — observations (auto-detected layout).
+        lags : int — number of smoothing lags.
+
+        Returns
+        -------
+        x_pLag : (N+1, Dx) — predicted states at the lagged component (time-major).
+        Pe_pLag : (N+1, Dx, Dx) — predicted covariances at the lagged component.
+        x_uLag : (N, Dx) — updated states at the lagged component.
+        Pe_uLag : (N, Dx, Dx) — updated covariances at the lagged component.
         """
-        x_N, P_N, _, x_p, Pe_p, x_u, Pe_u = DecodingAlgorithms.kalman_smoother(A, C, Pv, Pw, Px0, x0, y)
-        x_p_tm, Pe_p_tm, _ = DecodingAlgorithms._state_history_time_major(x_p, Pe_p)
-        x_u_tm, Pe_u_tm, _ = DecodingAlgorithms._state_history_time_major(x_u, Pe_u)
-        x_N_tm, P_N_tm, _ = DecodingAlgorithms._state_history_time_major(x_N, P_N)
-        lag = max(int(lags), 1)
-        x_pLag = np.zeros_like(x_p_tm)
-        Pe_pLag = np.zeros_like(Pe_p_tm)
-        x_uLag = np.zeros_like(x_u_tm)
-        Pe_uLag = np.zeros_like(Pe_u_tm)
+        A = np.asarray(A, dtype=float)
+        C = np.asarray(C, dtype=float)
+        Pv = np.asarray(Pv, dtype=float)
+        Pw = np.asarray(Pw, dtype=float)
+        Px0 = np.asarray(Px0, dtype=float)
+        x0_vec = np.asarray(x0, dtype=float).reshape(-1)
+        y = np.asarray(y, dtype=float)
+        if y.ndim == 1:
+            y = y[None, :]
 
-        for t in range(x_u_tm.shape[0]):
-            idx = max(t - lag + 1, 0)
-            x_uLag[t] = x_N_tm[idx]
-            Pe_uLag[t] = P_N_tm[idx]
-            x_pLag[t] = x_p_tm[idx]
-            Pe_pLag[t] = Pe_p_tm[idx]
+        nStates = A.shape[0]
+        nObs = C.shape[0]
+
+        # Auto-detect layout: convert to state-major (Dy, N) for kalman_filter
+        if y.shape[0] != nObs and y.shape[1] == nObs:
+            y = y.T
+        N = y.shape[1]
+        lags = max(int(lags), 1)
+        aug_dim = (lags + 1) * nStates
+
+        def _sel(M, n):
+            if M.ndim == 3:
+                return M[:, :, min(n, M.shape[2] - 1)]
+            return M
+
+        # Build augmented time-varying matrices
+        Alag = np.zeros((aug_dim, aug_dim, N), dtype=float)
+        Pvlag = np.zeros((aug_dim, aug_dim, N), dtype=float)
+        Clag = np.zeros((nObs, aug_dim, N), dtype=float)
+        Pwlag = np.zeros((nObs, nObs, N), dtype=float)
+
+        for n in range(N):
+            offset = 0
+            for i in range(lags + 1):
+                sl = slice(offset, offset + nStates)
+                if i == 0:
+                    Alag[sl, sl, n] = _sel(A, n)
+                    Pvlag[sl, sl, n] = _sel(Pv, n)
+                    Clag[:, sl, n] = _sel(C, n)
+                    Pwlag[:, :, n] = _sel(Pw, n)
+                else:
+                    prev_sl = slice(offset - nStates, offset)
+                    Alag[sl, prev_sl, n] = np.eye(nStates)
+                offset += nStates
+
+        # Augmented initial state and covariance
+        x0lag = np.zeros(aug_dim, dtype=float)
+        x0lag[:nStates] = x0_vec
+        Px0lag = np.zeros((aug_dim, aug_dim), dtype=float)
+        Px0lag[:nStates, :nStates] = Px0
+
+        # Run Kalman filter on augmented system (internal Matlab API)
+        x_p, Pe_p, x_u, Pe_u, _, _ = DecodingAlgorithms._kalman_filter_matlab(
+            Alag, Clag, Pvlag, Pwlag, Px0lag, x0lag, y
+        )
+
+        # Extract the lagged portion — state-major
+        lag_sl = slice(lags * nStates, (lags + 1) * nStates)
+
+        # x_p is (aug_dim, N+1), x_u is (aug_dim, N)
+        # Return N time steps (drop initial prediction at column 0) for
+        # backward compatibility with the Python API where both predicted
+        # and updated arrays have the same N rows.
+        x_pLag_sm = x_p[lag_sl, 1:]            # (Dx, N)
+        Pe_pLag_sm = Pe_p[lag_sl, lag_sl, 1:]   # (Dx, Dx, N)  -- uses numpy advanced slicing on dim 3 so extract via loop
+        x_uLag_sm = x_u[lag_sl, :]              # (Dx, N)
+        Pe_uLag_sm = Pe_u[lag_sl, lag_sl, :]     # (Dx, Dx, N)
+
+        # Correct the Pe slicing (nested slice on 3-D doesn't work as expected)
+        Pe_pLag_sm = Pe_p[lags * nStates:(lags + 1) * nStates,
+                          lags * nStates:(lags + 1) * nStates, 1:]
+        Pe_uLag_sm = Pe_u[lags * nStates:(lags + 1) * nStates,
+                          lags * nStates:(lags + 1) * nStates, :]
+
+        # Return time-major to match kalman_smoother convention: (N, Dx)
+        x_pLag = x_pLag_sm.T
+        Pe_pLag = np.transpose(Pe_pLag_sm, (2, 0, 1))
+        x_uLag = x_uLag_sm.T
+        Pe_uLag = np.transpose(Pe_uLag_sm, (2, 0, 1))
 
         return x_pLag, Pe_pLag, x_uLag, Pe_uLag
 
     @staticmethod
     def ComputeStimulusCIs(fitType, xK, Wku, delta, Mc=None, alphaVal=0.05):
-        del Mc, delta
+        """Confidence intervals for stimulus estimate.
+
+        When ``Wku`` is a 4-D array ``(numBasis, numBasis, K, K)`` (SSGLM
+        cross-trial covariance), uses Monte Carlo sampling matching Matlab's
+        ``DecodingAlgorithms.ComputeStimulusCIs``.
+
+        When ``Wku`` is a 3-D array ``(N, Dx, Dx)`` (e.g. smoother output),
+        falls back to z-score Gaussian CIs with inverse-link transform.
+
+        Parameters
+        ----------
+        fitType : str
+            ``'poisson'`` or ``'binomial'``.
+        xK : array
+            Smoothed state estimates.  Shape ``(numBasis, K)`` for SSGLM
+            or ``(N, Dx)`` for smoother output.
+        Wku : array
+            Covariance.  Shape ``(numBasis, numBasis, K, K)`` for SSGLM
+            or ``(N, Dx, Dx)`` for smoother output.
+        delta : float
+            Time-step size in seconds.
+        Mc : int, optional
+            Number of Monte Carlo draws (default 3000).  Ignored when
+            using z-score fallback.
+        alphaVal : float, optional
+            Significance level for two-sided CIs (default 0.05).
+
+        Returns
+        -------
+        CIs : array, shape ``(..., 2)``
+            Lower and upper confidence bounds.
+        stimulus : array
+            Point estimate (inverse-link of xK, divided by delta for MC mode).
+        """
+        Wku_arr = np.asarray(Wku, dtype=float)
+
+        # SSGLM cross-trial path: 4-D covariance (numBasis, numBasis, K, K)
+        if Wku_arr.ndim == 4:
+            if Mc is None:
+                Mc = 3000
+            return DecodingAlgorithms._ComputeStimulusCIs_MC(
+                fitType, xK, Wku, delta, Mc=Mc, alphaVal=alphaVal
+            )
+
+        # Fallback: 3-D covariance (N, Dx, Dx) from smoother — z-score CIs
         x_tm, W_tm, transposed = DecodingAlgorithms._state_history_time_major(xK, Wku)
         variances = np.clip(np.diagonal(W_tm, axis1=1, axis2=2), 0.0, None)
         z = float(norm.ppf(1.0 - float(alphaVal) / 2.0))
@@ -948,7 +1197,12 @@ class DecodingAlgorithms:
         A_mat = _as_state_matrix(A, dim)
         if Wconv is None or Wconv == []:
             Q_mat = _as_state_matrix(Q, dim)
-            W_p = _symmetrize(A_mat @ W_mat @ A_mat.T + Q_mat)
+            W_p = A_mat @ W_mat @ A_mat.T + Q_mat
+            # Matlab: if rcond(W_p) < eps or NaN, fall back to W_u
+            cond_num = np.linalg.cond(W_p)
+            if not np.isfinite(cond_num) or (1.0 / cond_num) < np.finfo(float).eps:
+                W_p = W_mat.copy()
+            W_p = _symmetrize(W_p)
         else:
             W_p = _symmetrize(_as_state_matrix(Wconv, dim))
         x_p = A_mat @ x_vec
