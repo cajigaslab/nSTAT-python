@@ -1981,7 +1981,7 @@ class nspikeTrain:
         # clearing it through the public min/max setters.
         self.minTime = float(sig.minTime)
         self.maxTime = float(sig.maxTime)
-        self.computeStatistics(-1)
+        self.computeStatistics(0)
         return self.sigRep
 
     def clearSigRep(self) -> None:
@@ -1992,12 +1992,12 @@ class nspikeTrain:
     def setMinTime(self, minTime: float) -> None:
         self.minTime = float(minTime)
         self.clearSigRep()
-        self.computeStatistics(-1)
+        self.computeStatistics(0)
 
     def setMaxTime(self, maxTime: float) -> None:
         self.maxTime = float(maxTime)
         self.clearSigRep()
-        self.computeStatistics(-1)
+        self.computeStatistics(0)
 
     def resample(self, sampleRate: float) -> "nspikeTrain":
         self.setSigRep(1.0 / float(sampleRate), self.minTime, self.maxTime)
@@ -2251,6 +2251,11 @@ class nspikeTrain:
         return lines
 
     def nstCopy(self) -> "nspikeTrain":
+        """Return a deep copy (Matlab ``nstCopy``).
+
+        Matlab's ``nstCopy`` builds the copy's sigRep and calls
+        ``computeStatistics(0)`` so the copy has valid burst parameters.
+        """
         return nspikeTrain(
             self.spikeTimes.copy(),
             self.name,
@@ -2261,7 +2266,7 @@ class nspikeTrain:
             self.xunits,
             self.yunits,
             self.dataLabels,
-            -1,
+            0,
         )
 
     def to_binned_counts(self, bin_edges: Sequence[float]) -> np.ndarray:
