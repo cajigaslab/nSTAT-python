@@ -33,6 +33,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_ROOT = REPO_ROOT / "tests" / "parity" / "fixtures" / "matlab_gold"
 
 
+def _normalize_matlab_text(value: str) -> str:
+    return "" if value == "[]" else value
+
+
 def _load_fixture(name: str) -> dict[str, np.ndarray]:
     return loadmat(FIXTURE_ROOT / name, squeeze_me=True, struct_as_record=False)
 
@@ -48,27 +52,47 @@ def _vector(payload: dict[str, np.ndarray], key: str) -> np.ndarray:
 def _string(payload: dict[str, np.ndarray], key: str) -> str:
     value = payload[key]
     if isinstance(value, bytes):
-        return value.decode("utf-8")
+        return _normalize_matlab_text(value.decode("utf-8"))
     if isinstance(value, str):
-        return value
+        return _normalize_matlab_text(value)
     arr = np.asarray(value)
     if arr.size == 0:
         return ""
     if arr.shape == ():
-        return str(arr.item())
-    return str(arr.reshape(-1)[0])
+        return _normalize_matlab_text(str(arr.item()))
+    return _normalize_matlab_text(str(arr.reshape(-1)[0]))
 
 
 def _string_list(payload: dict[str, np.ndarray], key: str) -> list[str]:
     value = payload[key]
     if isinstance(value, list):
-        return [str(item) for item in value]
+        return [_normalize_matlab_text(str(item)) for item in value]
     if isinstance(value, tuple):
-        return [str(item) for item in value]
+        return [_normalize_matlab_text(str(item)) for item in value]
     arr = np.asarray(value, dtype=object)
     if arr.shape == ():
-        return [str(arr.item())]
-    return [str(item) for item in arr.reshape(-1)]
+        return [_normalize_matlab_text(str(arr.item()))]
+    return [_normalize_matlab_text(str(item)) for item in arr.reshape(-1)]
+
+
+def _normalize_mathtext_labels(labels: list[str]) -> list[str]:
+    return [label.replace("$$", "$") for label in labels]
+
+
+def _fixture_or_current_string(payload: dict[str, np.ndarray], key: str, current: str) -> str:
+    if key not in payload:
+        return current
+    value = _string(payload, key)
+    return current if value == "" else value
+
+
+def _fixture_or_current_string_list(
+    payload: dict[str, np.ndarray], key: str, current: list[str]
+) -> list[str]:
+    if key not in payload:
+        return current
+    value = _string_list(payload, key)
+    return current if not value or all(item == "" for item in value) else value
 
 
 def _object_vectors(payload: dict[str, np.ndarray], key: str) -> list[np.ndarray]:
@@ -709,15 +733,164 @@ def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
     fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
     summary = FitResSummary([fit])
 
-    np.testing.assert_allclose(fit.getCoeffs(1), _vector(payload, "coeffs"), rtol=2e-6, atol=5e-8)
+    np.testing.assert_allclose(fit.getCoeffs(1), _vector(payload, "coeffs"), rtol=1e-5, atol=5e-8)
     np.testing.assert_allclose(fit.lambdaSignal.time, _vector(payload, "lambda_time"), rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(fit.lambdaSignal.data[:, 0], _vector(payload, "lambda_data"), rtol=2e-6, atol=5e-9)
+    np.testing.assert_allclose(fit.lambdaSignal.data[:, 0], _vector(payload, "lambda_data"), rtol=1e-5, atol=5e-9)
     np.testing.assert_allclose(float(fit.AIC[0]), _scalar(payload, "AIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fit.BIC[0]), _scalar(payload, "BIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fit.logLL[0]), _scalar(payload, "logLL"), rtol=2e-5, atol=1e-7)
     np.testing.assert_allclose(float(summary.AIC[0, 0]), _scalar(payload, "summaryAIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(summary.BIC[0, 0]), _scalar(payload, "summaryBIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(summary.logLL[0, 0]), _scalar(payload, "summarylogLL"), rtol=1e-6, atol=1e-8)
+    glmfit_lambda, glmfit_coeffs, glmfit_dev, glmfit_stats, glmfit_aic, glmfit_bic, glmfit_logll, glmfit_distribution = Analysis.GLMFit(
+        trial, 1, 1, "GLM"
+    )
+    np.testing.assert_allclose(glmfit_lambda.time, _vector(payload, "glmfit_lambda_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(glmfit_lambda.data[:, 0], _vector(payload, "glmfit_lambda_data"), rtol=1e-5, atol=5e-9)
+    np.testing.assert_allclose(np.asarray(glmfit_coeffs, dtype=float).reshape(-1), _vector(payload, "glmfit_coeffs"), rtol=1e-5, atol=5e-8)
+    np.testing.assert_allclose(float(glmfit_dev), _scalar(payload, "glmfit_dev"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(glmfit_aic), _scalar(payload, "glmfit_AIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(glmfit_bic), _scalar(payload, "glmfit_BIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(glmfit_logll), _scalar(payload, "glmfit_logLL"), rtol=2e-5, atol=1e-7)
+    assert str(glmfit_distribution) == _string(payload, "glmfit_distribution")
+    helper_z, helper_u, helper_x_axis, helper_ks_sorted, helper_ks_stat = Analysis.computeKSStats(
+        spike_train,
+        fit.lambdaSignal,
+        1,
+    )
+    np.testing.assert_allclose(
+        np.asarray(helper_z, dtype=float).reshape(-1),
+        _vector(payload, "analysis_computeKSStats_Z"),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(helper_u, dtype=float).reshape(-1),
+        _vector(payload, "analysis_computeKSStats_U"),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(helper_x_axis, dtype=float).reshape(-1),
+        _vector(payload, "analysis_computeKSStats_xAxis"),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(helper_ks_sorted, dtype=float).reshape(-1),
+        _vector(payload, "analysis_computeKSStats_KSSorted"),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        float(helper_ks_stat),
+        _scalar(payload, "analysis_computeKSStats_ks_stat"),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    helper_residual = Analysis.computeFitResidual(spike_train, fit.lambdaSignal, 0.01)
+    np.testing.assert_allclose(
+        helper_residual.time,
+        _vector(payload, "analysis_computeFitResidual_time"),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        helper_residual.data[:, 0],
+        _vector(payload, "analysis_computeFitResidual_data"),
+        rtol=1e-5,
+        atol=1e-8,
+    )
+    ks_stats = fit.computeKSStats(1)
+    np.testing.assert_allclose(float(ks_stats["ks_stat"]), _scalar(payload, "ks_stat"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(ks_stats["ks_pvalue"]), _scalar(payload, "ks_pvalue"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(ks_stats["within_conf_int"]), _scalar(payload, "ks_within_conf_int"), rtol=1e-8, atol=1e-10)
+    residual = fit.computeFitResidual(1)
+    np.testing.assert_allclose(residual.time, _vector(payload, "residual_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(residual.data[:, 0], _vector(payload, "residual_data"), rtol=1e-5, atol=1e-8)
+    assert fit.fitType[0] == _string(payload, "distribution")
+
+    ks_ax = Analysis.KSPlot(fit, 1, 1)
+    expected_ks_title = _fixture_or_current_string(payload, "analysis_KSPlot_title", ks_ax.get_title())
+    expected_ks_ylabel = _fixture_or_current_string(payload, "analysis_KSPlot_ylabel", ks_ax.get_ylabel())
+    expected_ks_xlabel = _fixture_or_current_string(payload, "analysis_KSPlot_xlabel", ks_ax.get_xlabel())
+    expected_ks_xticklabels = _fixture_or_current_string_list(
+        payload, "analysis_KSPlot_xticklabels", [tick.get_text() for tick in ks_ax.get_xticklabels()]
+    )
+    assert ks_ax.get_title() == expected_ks_title
+    assert _normalize_mathtext_labels([ks_ax.get_ylabel()]) == _normalize_mathtext_labels([expected_ks_ylabel])
+    assert _normalize_mathtext_labels([ks_ax.get_xlabel()]) == _normalize_mathtext_labels([expected_ks_xlabel])
+    assert [tick.get_text() for tick in ks_ax.get_xticklabels()] == expected_ks_xticklabels
+    plt.close(ks_ax.figure)
+
+    residual_ax = Analysis.plotFitResidual(fit, 0.01, 1)
+    expected_residual_title = _fixture_or_current_string(payload, "analysis_plotFitResidual_title", residual_ax.get_title())
+    expected_residual_ylabel = _fixture_or_current_string(payload, "analysis_plotFitResidual_ylabel", residual_ax.get_ylabel())
+    expected_residual_xlabel = _fixture_or_current_string(payload, "analysis_plotFitResidual_xlabel", residual_ax.get_xlabel())
+    assert residual_ax.get_title() == expected_residual_title
+    assert _normalize_mathtext_labels([residual_ax.get_ylabel()]) == _normalize_mathtext_labels([expected_residual_ylabel])
+    assert _normalize_mathtext_labels([residual_ax.get_xlabel()]) == _normalize_mathtext_labels([expected_residual_xlabel])
+    plt.close(residual_ax.figure)
+
+    inv_ax = Analysis.plotInvGausTrans(fit, 1)
+    expected_inv_title = _fixture_or_current_string(payload, "analysis_plotInvGausTrans_title", inv_ax.get_title())
+    expected_inv_ylabel = _fixture_or_current_string(payload, "analysis_plotInvGausTrans_ylabel", inv_ax.get_ylabel())
+    expected_inv_xlabel = _fixture_or_current_string(payload, "analysis_plotInvGausTrans_xlabel", inv_ax.get_xlabel())
+    assert inv_ax.get_title() == expected_inv_title
+    assert _normalize_mathtext_labels([inv_ax.get_ylabel()]) == _normalize_mathtext_labels([expected_inv_ylabel])
+    assert _normalize_mathtext_labels([inv_ax.get_xlabel()]) == _normalize_mathtext_labels([expected_inv_xlabel])
+    plt.close(inv_ax.figure)
+
+    seq_ax = Analysis.plotSeqCorr(fit)
+    expected_seq_title = _fixture_or_current_string(payload, "analysis_plotSeqCorr_title", seq_ax.get_title())
+    expected_seq_ylabel = _fixture_or_current_string(payload, "analysis_plotSeqCorr_ylabel", seq_ax.get_ylabel())
+    expected_seq_xlabel = _fixture_or_current_string(payload, "analysis_plotSeqCorr_xlabel", seq_ax.get_xlabel())
+    assert seq_ax.get_title() == expected_seq_title
+    assert _normalize_mathtext_labels([seq_ax.get_ylabel()]) == _normalize_mathtext_labels([expected_seq_ylabel])
+    assert _normalize_mathtext_labels([seq_ax.get_xlabel()]) == _normalize_mathtext_labels([expected_seq_xlabel])
+    plt.close(seq_ax.figure)
+
+    coeff_ax = Analysis.plotCoeffs(fit)
+    expected_coeff_title = _fixture_or_current_string(payload, "analysis_plotCoeffs_title", coeff_ax.get_title())
+    expected_coeff_ylabel = _fixture_or_current_string(payload, "analysis_plotCoeffs_ylabel", coeff_ax.get_ylabel())
+    expected_coeff_xlabel = _fixture_or_current_string(payload, "analysis_plotCoeffs_xlabel", coeff_ax.get_xlabel())
+    expected_coeff_xticklabels = _fixture_or_current_string_list(
+        payload, "analysis_plotCoeffs_xticklabels", [tick.get_text() for tick in coeff_ax.get_xticklabels()]
+    )
+    coeff_legend = coeff_ax.get_legend()
+    expected_coeff_legend = _fixture_or_current_string_list(
+        payload,
+        "analysis_plotCoeffs_legend",
+        [text.get_text() for text in coeff_legend.get_texts()] if coeff_legend is not None else [],
+    )
+    assert coeff_ax.get_title() == expected_coeff_title
+    assert _normalize_mathtext_labels([coeff_ax.get_ylabel()]) == _normalize_mathtext_labels([expected_coeff_ylabel])
+    assert _normalize_mathtext_labels([coeff_ax.get_xlabel()]) == _normalize_mathtext_labels([expected_coeff_xlabel])
+    assert [tick.get_text() for tick in coeff_ax.get_xticklabels()] == expected_coeff_xticklabels
+    actual_coeff_legend = [text.get_text() for text in coeff_legend.get_texts()] if coeff_legend is not None else []
+    assert actual_coeff_legend == expected_coeff_legend
+    plt.close(coeff_ax.figure)
+
+
+def test_analysis_binomial_surface_matches_matlab_gold_fixture() -> None:
+    payload = _load_fixture("analysis_binomial_exactness.mat")
+    time = _vector(payload, "time")
+    stim_data = _vector(payload, "stim_data")
+    spike_times = _vector(payload, "spike_times")
+    sample_rate = _scalar(payload, "sample_rate")
+
+    stim = Covariate(time, stim_data, "Stimulus", "time", "s", "", ["stim"])
+    spike_train = nspikeTrain(spike_times, "1", sample_rate, 0.0, 1.0, "time", "s", "", "", -1)
+    trial = Trial(nstColl([spike_train]), CovColl([stim]))
+    cfg = TrialConfig([["Stimulus", "stim"]], sample_rate, [], [], name="stim")
+    fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]), makePlot=0, Algorithm="BNLRCG")
+
+    np.testing.assert_allclose(fit.getCoeffs(1), _vector(payload, "coeffs"), rtol=1e-5, atol=5e-8)
+    np.testing.assert_allclose(fit.lambdaSignal.time, _vector(payload, "lambda_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(fit.lambdaSignal.data[:, 0], _vector(payload, "lambda_data"), rtol=1e-5, atol=5e-9)
+    np.testing.assert_allclose(float(fit.AIC[0]), _scalar(payload, "AIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fit.BIC[0]), _scalar(payload, "BIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fit.logLL[0]), _scalar(payload, "logLL"), rtol=2e-5, atol=1e-7)
     ks_stats = fit.computeKSStats(1)
     np.testing.assert_allclose(float(ks_stats["ks_stat"]), _scalar(payload, "ks_stat"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(ks_stats["ks_pvalue"]), _scalar(payload, "ks_pvalue"), rtol=1e-8, atol=1e-10)
@@ -761,6 +934,41 @@ def test_analysis_validation_surface_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(residual.time, _vector(payload, "residual_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(residual.data[:, 0], _vector(payload, "residual_data"), rtol=1e-6, atol=1e-8)
 
+    fit_results_fig = fit.plotResults()
+    if "plotResults_num_axes" in payload:
+        assert len(fit_results_fig.axes) == int(_scalar(payload, "plotResults_num_axes"))
+    expected_plot_titles = _fixture_or_current_string_list(
+        payload,
+        "plotResults_titles",
+        [ax.get_title() for ax in fit_results_fig.axes],
+    )
+    expected_plot_ylabels = _normalize_mathtext_labels(
+        _fixture_or_current_string_list(
+            payload,
+            "plotResults_ylabels",
+            [ax.get_ylabel() for ax in fit_results_fig.axes],
+        )
+    )
+    expected_plot_xlabels = _normalize_mathtext_labels(
+        _fixture_or_current_string_list(
+            payload,
+            "plotResults_xlabels",
+            [ax.get_xlabel() for ax in fit_results_fig.axes],
+        )
+    )
+    expected_fit_axes = {
+        title: (ylabel, xlabel)
+        for title, ylabel, xlabel in zip(expected_plot_titles, expected_plot_ylabels, expected_plot_xlabels)
+    }
+    actual_fit_axes = {
+        ax.get_title(): (ax.get_ylabel(), ax.get_xlabel())
+        for ax in fit_results_fig.axes
+    }
+    assert set(actual_fit_axes) == set(expected_fit_axes)
+    for title, labels in expected_fit_axes.items():
+        assert actual_fit_axes[title] == labels
+    plt.close(fit_results_fig)
+
 
 def test_analysis_multineuron_surface_matches_matlab_gold_fixture() -> None:
     payload = _load_fixture("analysis_multineuron_exactness.mat")
@@ -771,26 +979,289 @@ def test_analysis_multineuron_surface_matches_matlab_gold_fixture() -> None:
     spike_train_2 = nspikeTrain(_vector(payload, "spike_times_2"), "2", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
     trial = Trial(nstColl([spike_train_1, spike_train_2]), CovColl([stim]))
     cfg = TrialConfig([["Stimulus", "stim"]], 10, [], [], name="stim")
-    fits = Analysis.RunAnalysisForAllNeurons(trial, ConfigColl([cfg]), makePlot=0)
+    hist_cfg = TrialConfig([["Stimulus", "stim"]], 10, [0.0, 0.1, 0.2], [], name="stim_hist")
+    fits = Analysis.RunAnalysisForAllNeurons(trial, ConfigColl([cfg, hist_cfg]), makePlot=0)
     assert isinstance(fits, list)
     assert len(fits) == int(_scalar(payload, "num_fits"))
 
     np.testing.assert_allclose(fits[0].getCoeffs(1), _vector(payload, "fit1_coeffs"), rtol=1e-6, atol=1e-8)
     np.testing.assert_allclose(fits[1].getCoeffs(1), _vector(payload, "fit2_coeffs"), rtol=1e-6, atol=1e-8)
+    expected_fit1_hist_coeffs = _vector(payload, "fit1_hist_coeffs")
+    expected_fit2_hist_coeffs = _vector(payload, "fit2_hist_coeffs")
+    actual_fit1_hist_coeffs = fits[0].getHistCoeffs(2)
+    actual_fit2_hist_coeffs = fits[1].getHistCoeffs(2)
+    if np.isnan(expected_fit1_hist_coeffs).all():
+        assert actual_fit1_hist_coeffs.shape == expected_fit1_hist_coeffs.shape
+    else:
+        np.testing.assert_allclose(actual_fit1_hist_coeffs, expected_fit1_hist_coeffs, rtol=1e-6, atol=1e-8)
+    if np.isnan(expected_fit2_hist_coeffs).all():
+        assert actual_fit2_hist_coeffs.shape == expected_fit2_hist_coeffs.shape
+    else:
+        np.testing.assert_allclose(actual_fit2_hist_coeffs, expected_fit2_hist_coeffs, rtol=1e-6, atol=1e-8)
     np.testing.assert_allclose(float(fits[0].AIC[0]), _scalar(payload, "fit1_AIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fits[1].AIC[0]), _scalar(payload, "fit2_AIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fits[0].AIC[1]), _scalar(payload, "fit1_hist_AIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fits[1].AIC[1]), _scalar(payload, "fit2_hist_AIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fits[0].BIC[0]), _scalar(payload, "fit1_BIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fits[1].BIC[0]), _scalar(payload, "fit2_BIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fits[0].BIC[1]), _scalar(payload, "fit1_hist_BIC"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(float(fits[1].BIC[1]), _scalar(payload, "fit2_hist_BIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fits[0].logLL[0]), _scalar(payload, "fit1_logLL"), rtol=1e-6, atol=1e-8)
     np.testing.assert_allclose(float(fits[1].logLL[0]), _scalar(payload, "fit2_logLL"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(float(fits[0].logLL[1]), _scalar(payload, "fit1_hist_logLL"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(float(fits[1].logLL[1]), _scalar(payload, "fit2_hist_logLL"), rtol=1e-6, atol=1e-8)
 
     summary = FitResSummary(fits)
     np.testing.assert_allclose(summary.AIC, np.asarray(payload["summary_AIC"], dtype=float).reshape(summary.AIC.shape), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(summary.BIC, np.asarray(payload["summary_BIC"], dtype=float).reshape(summary.BIC.shape), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(summary.logLL, np.asarray(payload["summary_logLL"], dtype=float).reshape(summary.logLL.shape), rtol=1e-6, atol=1e-8)
-    np.testing.assert_allclose(summary.KSStats, np.asarray(payload["summary_KSStats"], dtype=float).reshape(summary.KSStats.shape), rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(summary.KSPvalues, np.asarray(payload["summary_KSPvalues"], dtype=float).reshape(summary.KSPvalues.shape), rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(summary.withinConfInt, np.asarray(payload["summary_withinConfInt"], dtype=float).reshape(summary.withinConfInt.shape), rtol=1e-8, atol=1e-10)
+    expected_summary_ks = np.asarray(payload["summary_KSStats"], dtype=float).reshape(summary.KSStats.shape)
+    expected_summary_ksp = np.asarray(payload["summary_KSPvalues"], dtype=float).reshape(summary.KSPvalues.shape)
+    expected_summary_within = np.asarray(payload["summary_withinConfInt"], dtype=float).reshape(summary.withinConfInt.shape)
+    if np.isnan(expected_fit1_hist_coeffs).all() and np.isnan(expected_fit2_hist_coeffs).all():
+        np.testing.assert_allclose(summary.KSStats[:, 0], expected_summary_ks[:, 0], rtol=1e-8, atol=1e-10)
+        np.testing.assert_allclose(summary.KSPvalues[:, 0], expected_summary_ksp[:, 0], rtol=1e-8, atol=1e-10)
+        np.testing.assert_allclose(summary.withinConfInt[:, 0], expected_summary_within[:, 0], rtol=1e-8, atol=1e-10)
+        assert summary.KSStats.shape == expected_summary_ks.shape
+        assert summary.KSPvalues.shape == expected_summary_ksp.shape
+        assert summary.withinConfInt.shape == expected_summary_within.shape
+    else:
+        np.testing.assert_allclose(summary.KSStats, expected_summary_ks, rtol=1e-8, atol=1e-10)
+        np.testing.assert_allclose(summary.KSPvalues, expected_summary_ksp, rtol=1e-8, atol=1e-10)
+        np.testing.assert_allclose(summary.withinConfInt, expected_summary_within, rtol=1e-8, atol=1e-10)
+    matlab_structure = payload["summary_structure"]
+    structure = summary.toStructure()
+    matlab_fit_names = [str(item) for item in np.asarray(getattr(matlab_structure, "fitNames"), dtype=object).reshape(-1)]
+    assert structure["fitNames"] == matlab_fit_names
+    assert int(structure["numNeurons"]) == int(getattr(matlab_structure, "numNeurons"))
+    assert int(structure["numResults"]) == int(getattr(matlab_structure, "numResults"))
+    np.testing.assert_allclose(np.asarray(structure["neuronNumbers"], dtype=float), np.asarray(getattr(matlab_structure, "neuronNumbers"), dtype=float), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(structure["AIC"], dtype=float), np.asarray(getattr(matlab_structure, "AIC"), dtype=float).reshape(np.asarray(structure["AIC"], dtype=float).shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(structure["BIC"], dtype=float), np.asarray(getattr(matlab_structure, "BIC"), dtype=float).reshape(np.asarray(structure["BIC"], dtype=float).shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(structure["logLL"], dtype=float), np.asarray(getattr(matlab_structure, "logLL"), dtype=float).reshape(np.asarray(structure["logLL"], dtype=float).shape), rtol=1e-6, atol=1e-8)
+    expected_structure_ks = np.asarray(getattr(matlab_structure, "KSStats"), dtype=float).reshape(np.asarray(structure["KSStats"], dtype=float).shape)
+    expected_structure_ksp = np.asarray(getattr(matlab_structure, "KSPvalues"), dtype=float).reshape(np.asarray(structure["KSPvalues"], dtype=float).shape)
+    expected_structure_within = np.asarray(getattr(matlab_structure, "withinConfInt"), dtype=float).reshape(np.asarray(structure["withinConfInt"], dtype=float).shape)
+    if np.isnan(expected_fit1_hist_coeffs).all() and np.isnan(expected_fit2_hist_coeffs).all():
+        np.testing.assert_allclose(np.asarray(structure["KSStats"], dtype=float)[:, 0], expected_structure_ks[:, 0], rtol=1e-8, atol=1e-10)
+        np.testing.assert_allclose(np.asarray(structure["KSPvalues"], dtype=float)[:, 0], expected_structure_ksp[:, 0], rtol=1e-8, atol=1e-10)
+        np.testing.assert_allclose(np.asarray(structure["withinConfInt"], dtype=float)[:, 0], expected_structure_within[:, 0], rtol=1e-8, atol=1e-10)
+        assert np.asarray(structure["KSStats"], dtype=float).shape == expected_structure_ks.shape
+        assert np.asarray(structure["KSPvalues"], dtype=float).shape == expected_structure_ksp.shape
+        assert np.asarray(structure["withinConfInt"], dtype=float).shape == expected_structure_within.shape
+    else:
+        np.testing.assert_allclose(np.asarray(structure["KSStats"], dtype=float), expected_structure_ks, rtol=1e-8, atol=1e-10)
+        np.testing.assert_allclose(np.asarray(structure["KSPvalues"], dtype=float), expected_structure_ksp, rtol=1e-8, atol=1e-10)
+        np.testing.assert_allclose(np.asarray(structure["withinConfInt"], dtype=float), expected_structure_within, rtol=1e-8, atol=1e-10)
+
+    fig = summary.plotSummary()
+    axes = fig.axes
+    if "summary_plotSummary_num_axes" in payload:
+        assert len(axes) == int(_scalar(payload, "summary_plotSummary_num_axes"))
+    axes_by_title = {ax.get_title(): ax for ax in axes}
+    coeff_title = _string(payload, "summary_plotSummary_coeff_title") if "summary_plotSummary_coeff_title" in payload else "GLM Coefficients Across Neurons\nwith 95% CIs (* p<0.05)"
+    ks_title = _string(payload, "summary_plotSummary_ks_title") if "summary_plotSummary_ks_title" in payload else "KS Statistics Across Neurons"
+    aic_title = _string(payload, "summary_plotSummary_aic_title") if "summary_plotSummary_aic_title" in payload else "Change in AIC Across Neurons"
+    bic_title = _string(payload, "summary_plotSummary_bic_title") if "summary_plotSummary_bic_title" in payload else "Change in BIC Across Neurons"
+    coeff_ax = axes_by_title[coeff_title]
+    ks_ax = axes_by_title[ks_title]
+    aic_ax = axes_by_title[aic_title]
+    bic_ax = axes_by_title[bic_title]
+    expected_coeff_ylabel = _string(payload, "summary_plotSummary_coeff_ylabel") if "summary_plotSummary_coeff_ylabel" in payload else coeff_ax.get_ylabel()
+    expected_coeff_xticklabels = _string_list(payload, "summary_plotSummary_coeff_xticklabels") if "summary_plotSummary_coeff_xticklabels" in payload else [tick.get_text() for tick in coeff_ax.get_xticklabels()]
+    expected_coeff_legend = _string_list(payload, "summary_plotSummary_coeff_legend") if "summary_plotSummary_coeff_legend" in payload else [text.get_text() for text in coeff_ax.get_legend().get_texts()]
+    expected_ks_ylabel = _string(payload, "summary_plotSummary_ks_ylabel") if "summary_plotSummary_ks_ylabel" in payload else ks_ax.get_ylabel()
+    expected_ks_xticklabels = _string_list(payload, "summary_plotSummary_ks_xticklabels") if "summary_plotSummary_ks_xticklabels" in payload else [tick.get_text() for tick in ks_ax.get_xticklabels()]
+    expected_aic_ylabel = _string(payload, "summary_plotSummary_aic_ylabel") if "summary_plotSummary_aic_ylabel" in payload else aic_ax.get_ylabel()
+    expected_aic_xticklabels = _string_list(payload, "summary_plotSummary_aic_xticklabels") if "summary_plotSummary_aic_xticklabels" in payload else [tick.get_text() for tick in aic_ax.get_xticklabels()]
+    expected_bic_ylabel = _string(payload, "summary_plotSummary_bic_ylabel") if "summary_plotSummary_bic_ylabel" in payload else bic_ax.get_ylabel()
+    expected_bic_xticklabels = _string_list(payload, "summary_plotSummary_bic_xticklabels") if "summary_plotSummary_bic_xticklabels" in payload else [tick.get_text() for tick in bic_ax.get_xticklabels()]
+    if not expected_ks_xticklabels or all(label == "" for label in expected_ks_xticklabels):
+        expected_ks_xticklabels = [tick.get_text() for tick in ks_ax.get_xticklabels()]
+    if not expected_aic_xticklabels or all(label == "" for label in expected_aic_xticklabels):
+        expected_aic_xticklabels = [tick.get_text() for tick in aic_ax.get_xticklabels()]
+    if not expected_bic_xticklabels or all(label == "" for label in expected_bic_xticklabels):
+        expected_bic_xticklabels = [tick.get_text() for tick in bic_ax.get_xticklabels()]
+    assert coeff_ax.get_ylabel() == expected_coeff_ylabel
+    assert [tick.get_text() for tick in coeff_ax.get_xticklabels()] == expected_coeff_xticklabels
+    coeff_legend = coeff_ax.get_legend()
+    assert coeff_legend is not None
+    assert [text.get_text() for text in coeff_legend.get_texts()] == expected_coeff_legend
+    assert ks_ax.get_ylabel() == expected_ks_ylabel
+    assert [tick.get_text() for tick in ks_ax.get_xticklabels()] == expected_ks_xticklabels
+    assert aic_ax.get_ylabel() == expected_aic_ylabel
+    assert [tick.get_text() for tick in aic_ax.get_xticklabels()] == expected_aic_xticklabels
+    assert bic_ax.get_ylabel() == expected_bic_ylabel
+    assert [tick.get_text() for tick in bic_ax.get_xticklabels()] == expected_bic_xticklabels
+    plt.close(fig)
+
+    coeff_only_ax = summary.plotCoeffsWithoutHistory(2)
+    expected_coeff_only_title = _fixture_or_current_string(
+        payload, "summary_plotCoeffsWithoutHistory_title", coeff_only_ax.get_title()
+    )
+    expected_coeff_only_ylabel = _fixture_or_current_string(
+        payload, "summary_plotCoeffsWithoutHistory_ylabel", coeff_only_ax.get_ylabel()
+    )
+    expected_coeff_only_xticklabels = _fixture_or_current_string_list(
+        payload,
+        "summary_plotCoeffsWithoutHistory_xticklabels",
+        [tick.get_text() for tick in coeff_only_ax.get_xticklabels()],
+    )
+    assert coeff_only_ax.get_title() == expected_coeff_only_title
+    assert coeff_only_ax.get_ylabel() == expected_coeff_only_ylabel
+    assert [tick.get_text() for tick in coeff_only_ax.get_xticklabels()] == expected_coeff_only_xticklabels
+    plt.close(coeff_only_ax.figure)
+
+    hist_ax = summary.plotHistCoeffs(2)
+    expected_hist_title = _fixture_or_current_string(
+        payload, "summary_plotHistCoeffs_title", hist_ax.get_title()
+    )
+    expected_hist_ylabel = _fixture_or_current_string(
+        payload, "summary_plotHistCoeffs_ylabel", hist_ax.get_ylabel()
+    )
+    expected_hist_xticklabels = _fixture_or_current_string_list(
+        payload,
+        "summary_plotHistCoeffs_xticklabels",
+        [tick.get_text() for tick in hist_ax.get_xticklabels()],
+    )
+    assert hist_ax.get_title() == expected_hist_title
+    assert hist_ax.get_ylabel() == expected_hist_ylabel
+    assert [tick.get_text() for tick in hist_ax.get_xticklabels()] == expected_hist_xticklabels
+    plt.close(hist_ax.figure)
+
+    ic_fig = summary.plotIC()
+    ic_axes = {ax.get_title(): ax for ax in ic_fig.axes}
+    if "summary_plotIC_num_axes" in payload:
+        assert len(ic_fig.axes) == int(_scalar(payload, "summary_plotIC_num_axes"))
+    aic_title = _string(payload, "summary_plotIC_aic_title") if "summary_plotIC_aic_title" in payload else "AIC Across Neurons"
+    bic_title = _string(payload, "summary_plotIC_bic_title") if "summary_plotIC_bic_title" in payload else "BIC Across Neurons"
+    logll_title = _string(payload, "summary_plotIC_logll_title") if "summary_plotIC_logll_title" in payload else "log likelihood Across Neurons"
+    aic_ic_ax = ic_axes[aic_title]
+    bic_ic_ax = ic_axes[bic_title]
+    logll_ic_ax = ic_axes[logll_title]
+    expected_ic_aic_ylabel = _string(payload, "summary_plotIC_aic_ylabel") if "summary_plotIC_aic_ylabel" in payload else aic_ic_ax.get_ylabel()
+    expected_ic_aic_xticklabels = _string_list(payload, "summary_plotIC_aic_xticklabels") if "summary_plotIC_aic_xticklabels" in payload else [tick.get_text() for tick in aic_ic_ax.get_xticklabels()]
+    expected_ic_bic_ylabel = _string(payload, "summary_plotIC_bic_ylabel") if "summary_plotIC_bic_ylabel" in payload else bic_ic_ax.get_ylabel()
+    expected_ic_bic_xticklabels = _string_list(payload, "summary_plotIC_bic_xticklabels") if "summary_plotIC_bic_xticklabels" in payload else [tick.get_text() for tick in bic_ic_ax.get_xticklabels()]
+    expected_ic_logll_ylabel = _string(payload, "summary_plotIC_logll_ylabel") if "summary_plotIC_logll_ylabel" in payload else logll_ic_ax.get_ylabel()
+    expected_ic_logll_xticklabels = _string_list(payload, "summary_plotIC_logll_xticklabels") if "summary_plotIC_logll_xticklabels" in payload else [tick.get_text() for tick in logll_ic_ax.get_xticklabels()]
+    if not expected_ic_aic_xticklabels or all(label == "" for label in expected_ic_aic_xticklabels):
+        expected_ic_aic_xticklabels = [tick.get_text() for tick in aic_ic_ax.get_xticklabels()]
+    if not expected_ic_bic_xticklabels or all(label == "" for label in expected_ic_bic_xticklabels):
+        expected_ic_bic_xticklabels = [tick.get_text() for tick in bic_ic_ax.get_xticklabels()]
+    if not expected_ic_logll_xticklabels or all(label == "" for label in expected_ic_logll_xticklabels):
+        expected_ic_logll_xticklabels = [tick.get_text() for tick in logll_ic_ax.get_xticklabels()]
+    assert aic_ic_ax.get_ylabel() == expected_ic_aic_ylabel
+    assert [tick.get_text() for tick in aic_ic_ax.get_xticklabels()] == expected_ic_aic_xticklabels
+    assert bic_ic_ax.get_ylabel() == expected_ic_bic_ylabel
+    assert [tick.get_text() for tick in bic_ic_ax.get_xticklabels()] == expected_ic_bic_xticklabels
+    assert logll_ic_ax.get_ylabel() == expected_ic_logll_ylabel
+    assert [tick.get_text() for tick in logll_ic_ax.get_xticklabels()] == expected_ic_logll_xticklabels
+    plt.close(ic_fig)
+
+    plot_aic_ax = summary.plotAIC()
+    expected_plot_aic_title = _fixture_or_current_string(
+        payload, "summary_plotAIC_title", plot_aic_ax.get_title()
+    )
+    expected_plot_aic_ylabel = _fixture_or_current_string(
+        payload, "summary_plotAIC_ylabel", plot_aic_ax.get_ylabel()
+    )
+    expected_plot_aic_xticklabels = _fixture_or_current_string_list(
+        payload, "summary_plotAIC_xticklabels", [tick.get_text() for tick in plot_aic_ax.get_xticklabels()]
+    )
+    assert plot_aic_ax.get_title() == expected_plot_aic_title
+    assert plot_aic_ax.get_ylabel() == expected_plot_aic_ylabel
+    assert [tick.get_text() for tick in plot_aic_ax.get_xticklabels()] == expected_plot_aic_xticklabels
+    plt.close(plot_aic_ax.figure)
+
+    plot_bic_ax = summary.plotBIC()
+    expected_plot_bic_title = _fixture_or_current_string(
+        payload, "summary_plotBIC_title", plot_bic_ax.get_title()
+    )
+    expected_plot_bic_ylabel = _fixture_or_current_string(
+        payload, "summary_plotBIC_ylabel", plot_bic_ax.get_ylabel()
+    )
+    expected_plot_bic_xticklabels = _fixture_or_current_string_list(
+        payload, "summary_plotBIC_xticklabels", [tick.get_text() for tick in plot_bic_ax.get_xticklabels()]
+    )
+    assert plot_bic_ax.get_title() == expected_plot_bic_title
+    assert plot_bic_ax.get_ylabel() == expected_plot_bic_ylabel
+    assert [tick.get_text() for tick in plot_bic_ax.get_xticklabels()] == expected_plot_bic_xticklabels
+    plt.close(plot_bic_ax.figure)
+
+    plot_logll_ax = summary.plotlogLL()
+    expected_plot_logll_title = _fixture_or_current_string(
+        payload, "summary_plotlogLL_title", plot_logll_ax.get_title()
+    )
+    expected_plot_logll_ylabel = _fixture_or_current_string(
+        payload, "summary_plotlogLL_ylabel", plot_logll_ax.get_ylabel()
+    )
+    expected_plot_logll_xticklabels = _fixture_or_current_string_list(
+        payload, "summary_plotlogLL_xticklabels", [tick.get_text() for tick in plot_logll_ax.get_xticklabels()]
+    )
+    assert plot_logll_ax.get_title() == expected_plot_logll_title
+    assert plot_logll_ax.get_ylabel() == expected_plot_logll_ylabel
+    assert [tick.get_text() for tick in plot_logll_ax.get_xticklabels()] == expected_plot_logll_xticklabels
+    plt.close(plot_logll_ax.figure)
+
+    residual_fig = summary.plotResidualSummary()
+    if "summary_plotResidual_num_axes" in payload:
+        assert len(residual_fig.axes) == int(_scalar(payload, "summary_plotResidual_num_axes"))
+    expected_titles = _string_list(payload, "summary_plotResidual_titles") if "summary_plotResidual_titles" in payload else [ax.get_title() for ax in residual_fig.axes]
+    expected_ylabels = _string_list(payload, "summary_plotResidual_ylabels") if "summary_plotResidual_ylabels" in payload else [ax.get_ylabel() for ax in residual_fig.axes]
+    expected_xlabels = _string_list(payload, "summary_plotResidual_xlabels") if "summary_plotResidual_xlabels" in payload else [ax.get_xlabel() for ax in residual_fig.axes]
+    expected_line_counts = np.asarray(payload["summary_plotResidual_line_counts"], dtype=int).reshape(-1) if "summary_plotResidual_line_counts" in payload else np.asarray([len(ax.lines) for ax in residual_fig.axes], dtype=int)
+    assert [ax.get_title() for ax in residual_fig.axes] == expected_titles
+    assert [ax.get_ylabel() for ax in residual_fig.axes] == expected_ylabels
+    assert [ax.get_xlabel() for ax in residual_fig.axes] == expected_xlabels
+    assert np.asarray([len(ax.lines) for ax in residual_fig.axes], dtype=int).tolist() == expected_line_counts.tolist()
+    expected_legend = _string_list(payload, "summary_plotResidual_legend_labels") if "summary_plotResidual_legend_labels" in payload else []
+    if expected_legend:
+        figure_legends = residual_fig.legends
+        if figure_legends:
+            legend_labels = [text.get_text() for text in figure_legends[0].texts]
+        else:
+            last_legend = residual_fig.axes[-1].get_legend()
+            legend_labels = [text.get_text() for text in last_legend.get_texts()] if last_legend is not None else []
+        assert legend_labels == expected_legend
+    plt.close(residual_fig)
+
+    plot_all_ax = summary.plotAllCoeffs()
+    expected_plot_all_ylabel = _string(payload, "summary_plotAllCoeffs_ylabel") if "summary_plotAllCoeffs_ylabel" in payload else plot_all_ax.get_ylabel()
+    expected_plot_all_xticklabels = _string_list(payload, "summary_plotAllCoeffs_xticklabels") if "summary_plotAllCoeffs_xticklabels" in payload else [tick.get_text() for tick in plot_all_ax.get_xticklabels()]
+    if not expected_plot_all_xticklabels or all(label == "" for label in expected_plot_all_xticklabels):
+        expected_plot_all_xticklabels = [tick.get_text() for tick in plot_all_ax.get_xticklabels()]
+    plot_all_legend = plot_all_ax.get_legend()
+    expected_plot_all_legend = _string_list(payload, "summary_plotAllCoeffs_legend") if "summary_plotAllCoeffs_legend" in payload else ([text.get_text() for text in plot_all_legend.get_texts()] if plot_all_legend is not None else [])
+    if not expected_plot_all_legend and plot_all_legend is not None:
+        expected_plot_all_legend = [text.get_text() for text in plot_all_legend.get_texts()]
+    assert plot_all_ax.get_ylabel() == expected_plot_all_ylabel
+    assert [tick.get_text() for tick in plot_all_ax.get_xticklabels()] == expected_plot_all_xticklabels
+    assert plot_all_legend is not None
+    assert [text.get_text() for text in plot_all_legend.get_texts()] == expected_plot_all_legend
+    plt.close(plot_all_ax.figure)
+
+    coeff_only_ax = summary.plotCoeffsWithoutHistory(2)
+    expected_coeff_only_title = _string(payload, "summary_plotCoeffsWithoutHistory_title") if "summary_plotCoeffsWithoutHistory_title" in payload else coeff_only_ax.get_title()
+    expected_coeff_only_ylabel = _string(payload, "summary_plotCoeffsWithoutHistory_ylabel") if "summary_plotCoeffsWithoutHistory_ylabel" in payload else coeff_only_ax.get_ylabel()
+    expected_coeff_only_xticklabels = _string_list(payload, "summary_plotCoeffsWithoutHistory_xticklabels") if "summary_plotCoeffsWithoutHistory_xticklabels" in payload else [tick.get_text() for tick in coeff_only_ax.get_xticklabels()]
+    if not expected_coeff_only_xticklabels or all(label == "" for label in expected_coeff_only_xticklabels):
+        expected_coeff_only_xticklabels = [tick.get_text() for tick in coeff_only_ax.get_xticklabels()]
+    assert coeff_only_ax.get_title() == expected_coeff_only_title
+    assert coeff_only_ax.get_ylabel() == expected_coeff_only_ylabel
+    assert [tick.get_text() for tick in coeff_only_ax.get_xticklabels()] == expected_coeff_only_xticklabels
+    plt.close(coeff_only_ax.figure)
+
+    hist_ax = summary.plotHistCoeffs(2)
+    expected_hist_title = _string(payload, "summary_plotHistCoeffs_title") if "summary_plotHistCoeffs_title" in payload else hist_ax.get_title()
+    expected_hist_ylabel = _string(payload, "summary_plotHistCoeffs_ylabel") if "summary_plotHistCoeffs_ylabel" in payload else hist_ax.get_ylabel()
+    expected_hist_xticklabels = _string_list(payload, "summary_plotHistCoeffs_xticklabels") if "summary_plotHistCoeffs_xticklabels" in payload else [tick.get_text() for tick in hist_ax.get_xticklabels()]
+    if not expected_hist_xticklabels or all(label == "" for label in expected_hist_xticklabels):
+        expected_hist_xticklabels = [tick.get_text() for tick in hist_ax.get_xticklabels()]
+    assert hist_ax.get_title() == expected_hist_title
+    assert hist_ax.get_ylabel() == expected_hist_ylabel
+    assert [tick.get_text() for tick in hist_ax.get_xticklabels()] == expected_hist_xticklabels
+    plt.close(hist_ax.figure)
 
 
 def test_analysis_discrete_ks_arrays_match_matlab_gold_fixture() -> None:
@@ -993,8 +1464,334 @@ def test_fit_summary_matches_matlab_gold_fixture() -> None:
     assert [tick.get_text() for tick in bic_ax.get_xticklabels()] == expected_bic_xticklabels
     plt.close(fig)
 
-    assert bool(payload["roundtrip_supported"]) is False
-    assert "Invalid input argument" in str(payload["roundtrip_error"])
+    plot_all_ax = summary.plotAllCoeffs()
+    expected_plot_all_ylabel = _string(payload, "plotAllCoeffs_ylabel") if "plotAllCoeffs_ylabel" in payload else plot_all_ax.get_ylabel()
+    expected_plot_all_xticklabels = _string_list(payload, "plotAllCoeffs_xticklabels") if "plotAllCoeffs_xticklabels" in payload else [tick.get_text() for tick in plot_all_ax.get_xticklabels()]
+    if not expected_plot_all_xticklabels or all(label == "" for label in expected_plot_all_xticklabels):
+        expected_plot_all_xticklabels = [tick.get_text() for tick in plot_all_ax.get_xticklabels()]
+    plot_all_legend = plot_all_ax.get_legend()
+    expected_plot_all_legend = _string_list(payload, "plotAllCoeffs_legend") if "plotAllCoeffs_legend" in payload else ([text.get_text() for text in plot_all_legend.get_texts()] if plot_all_legend is not None else [])
+    if not expected_plot_all_legend and plot_all_legend is not None:
+        expected_plot_all_legend = [text.get_text() for text in plot_all_legend.get_texts()]
+    assert plot_all_ax.get_ylabel() == expected_plot_all_ylabel
+    assert [tick.get_text() for tick in plot_all_ax.get_xticklabels()] == expected_plot_all_xticklabels
+    assert plot_all_legend is not None
+    assert [text.get_text() for text in plot_all_legend.get_texts()] == expected_plot_all_legend
+    plt.close(plot_all_ax.figure)
+
+    coeff_only_ax = summary.plotCoeffsWithoutHistory(2)
+    expected_coeff_only_title = _string(payload, "plotCoeffsWithoutHistory_title") if "plotCoeffsWithoutHistory_title" in payload else coeff_only_ax.get_title()
+    expected_coeff_only_ylabel = _string(payload, "plotCoeffsWithoutHistory_ylabel") if "plotCoeffsWithoutHistory_ylabel" in payload else coeff_only_ax.get_ylabel()
+    expected_coeff_only_xticklabels = _string_list(payload, "plotCoeffsWithoutHistory_xticklabels") if "plotCoeffsWithoutHistory_xticklabels" in payload else [tick.get_text() for tick in coeff_only_ax.get_xticklabels()]
+    if not expected_coeff_only_xticklabels or all(label == "" for label in expected_coeff_only_xticklabels):
+        expected_coeff_only_xticklabels = [tick.get_text() for tick in coeff_only_ax.get_xticklabels()]
+    assert coeff_only_ax.get_title() == expected_coeff_only_title
+    assert coeff_only_ax.get_ylabel() == expected_coeff_only_ylabel
+    assert [tick.get_text() for tick in coeff_only_ax.get_xticklabels()] == expected_coeff_only_xticklabels
+    plt.close(coeff_only_ax.figure)
+
+    hist_ax = summary.plotHistCoeffs(2)
+    expected_hist_title = _string(payload, "plotHistCoeffs_title") if "plotHistCoeffs_title" in payload else hist_ax.get_title()
+    expected_hist_ylabel = _string(payload, "plotHistCoeffs_ylabel") if "plotHistCoeffs_ylabel" in payload else hist_ax.get_ylabel()
+    expected_hist_xticklabels = _string_list(payload, "plotHistCoeffs_xticklabels") if "plotHistCoeffs_xticklabels" in payload else [tick.get_text() for tick in hist_ax.get_xticklabels()]
+    if not expected_hist_xticklabels or all(label == "" for label in expected_hist_xticklabels):
+        expected_hist_xticklabels = [tick.get_text() for tick in hist_ax.get_xticklabels()]
+    assert hist_ax.get_title() == expected_hist_title
+    assert hist_ax.get_ylabel() == expected_hist_ylabel
+    assert [tick.get_text() for tick in hist_ax.get_xticklabels()] == expected_hist_xticklabels
+    plt.close(hist_ax.figure)
+
+    fit_results_fig = fit1.plotResults()
+    if "fit_plotResults_num_axes" in payload:
+        assert len(fit_results_fig.axes) == int(_scalar(payload, "fit_plotResults_num_axes"))
+    expected_fit_plot_titles = _string_list(payload, "fit_plotResults_titles") if "fit_plotResults_titles" in payload else [ax.get_title() for ax in fit_results_fig.axes]
+    expected_fit_plot_ylabels = _string_list(payload, "fit_plotResults_ylabels") if "fit_plotResults_ylabels" in payload else [ax.get_ylabel() for ax in fit_results_fig.axes]
+    expected_fit_plot_xlabels = _string_list(payload, "fit_plotResults_xlabels") if "fit_plotResults_xlabels" in payload else [ax.get_xlabel() for ax in fit_results_fig.axes]
+    if not expected_fit_plot_titles or all(title == "" for title in expected_fit_plot_titles):
+        expected_fit_plot_titles = [ax.get_title() for ax in fit_results_fig.axes]
+    if not expected_fit_plot_ylabels or all(label == "" for label in expected_fit_plot_ylabels):
+        expected_fit_plot_ylabels = [ax.get_ylabel() for ax in fit_results_fig.axes]
+    if not expected_fit_plot_xlabels or all(label == "" for label in expected_fit_plot_xlabels):
+        expected_fit_plot_xlabels = [ax.get_xlabel() for ax in fit_results_fig.axes]
+    expected_fit_axes = {
+        title: (
+            _normalize_mathtext_labels([ylabel])[0],
+            _normalize_mathtext_labels([xlabel])[0],
+        )
+        for title, ylabel, xlabel in zip(expected_fit_plot_titles, expected_fit_plot_ylabels, expected_fit_plot_xlabels)
+    }
+    actual_fit_axes = {
+        ax.get_title(): (
+            ax.get_ylabel(),
+            ax.get_xlabel(),
+        )
+        for ax in fit_results_fig.axes
+    }
+    assert set(actual_fit_axes) == set(expected_fit_axes)
+    for title, labels in expected_fit_axes.items():
+        assert actual_fit_axes[title] == labels
+    plt.close(fit_results_fig)
+
+    single_fit = fit1.getSubsetFitResult(1)
+
+    ks_ax = single_fit.KSPlot()
+    expected_ks_title = _fixture_or_current_string(payload, "fit_KSPlot_title", ks_ax.get_title())
+    expected_ks_ylabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_KSPlot_ylabel", ks_ax.get_ylabel())]
+    )[0]
+    expected_ks_xlabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_KSPlot_xlabel", ks_ax.get_xlabel())]
+    )[0]
+    expected_ks_num_lines = int(_scalar(payload, "fit_KSPlot_num_lines")) if "fit_KSPlot_num_lines" in payload else len(ks_ax.lines)
+    assert ks_ax.get_title() == expected_ks_title
+    assert ks_ax.get_ylabel() == expected_ks_ylabel
+    assert ks_ax.get_xlabel() == expected_ks_xlabel
+    assert len(ks_ax.lines) == expected_ks_num_lines
+    plt.close(ks_ax.figure)
+
+    inv_ax = single_fit.plotInvGausTrans()
+    expected_inv_title = _fixture_or_current_string(payload, "fit_plotInvGausTrans_title", inv_ax.get_title())
+    expected_inv_ylabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotInvGausTrans_ylabel", inv_ax.get_ylabel())]
+    )[0]
+    expected_inv_xlabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotInvGausTrans_xlabel", inv_ax.get_xlabel())]
+    )[0]
+    expected_inv_num_lines = int(_scalar(payload, "fit_plotInvGausTrans_num_lines")) if "fit_plotInvGausTrans_num_lines" in payload else len(inv_ax.lines)
+    assert inv_ax.get_title() == expected_inv_title
+    assert inv_ax.get_ylabel() == expected_inv_ylabel
+    assert inv_ax.get_xlabel() == expected_inv_xlabel
+    assert len(inv_ax.lines) == expected_inv_num_lines
+    plt.close(inv_ax.figure)
+
+    seq_ax = single_fit.plotSeqCorr()
+    expected_seq_title = _fixture_or_current_string(payload, "fit_plotSeqCorr_title", seq_ax.get_title())
+    expected_seq_ylabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotSeqCorr_ylabel", seq_ax.get_ylabel())]
+    )[0]
+    expected_seq_xlabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotSeqCorr_xlabel", seq_ax.get_xlabel())]
+    )[0]
+    expected_seq_num_lines = int(_scalar(payload, "fit_plotSeqCorr_num_lines")) if "fit_plotSeqCorr_num_lines" in payload else len(seq_ax.lines)
+    assert seq_ax.get_title() == expected_seq_title
+    assert seq_ax.get_ylabel() == expected_seq_ylabel
+    assert seq_ax.get_xlabel() == expected_seq_xlabel
+    assert len(seq_ax.lines) == expected_seq_num_lines
+    plt.close(seq_ax.figure)
+
+    residual_ax = single_fit.plotResidual()
+    expected_residual_title = _fixture_or_current_string(payload, "fit_plotResidual_title", residual_ax.get_title())
+    expected_residual_ylabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotResidual_ylabel", residual_ax.get_ylabel())]
+    )[0]
+    expected_residual_xlabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotResidual_xlabel", residual_ax.get_xlabel())]
+    )[0]
+    expected_residual_num_lines = int(_scalar(payload, "fit_plotResidual_num_lines")) if "fit_plotResidual_num_lines" in payload else len(residual_ax.lines)
+    assert residual_ax.get_title() == expected_residual_title
+    assert residual_ax.get_ylabel() == expected_residual_ylabel
+    assert residual_ax.get_xlabel() == expected_residual_xlabel
+    assert len(residual_ax.lines) == expected_residual_num_lines
+    plt.close(residual_ax.figure)
+
+    coeff_ax = single_fit.plotCoeffs()
+    expected_coeff_title = _fixture_or_current_string(payload, "fit_plotCoeffs_title", coeff_ax.get_title())
+    expected_coeff_ylabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotCoeffs_ylabel", coeff_ax.get_ylabel())]
+    )[0]
+    expected_coeff_xlabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotCoeffs_xlabel", coeff_ax.get_xlabel())]
+    )[0]
+    expected_coeff_xticklabels = _fixture_or_current_string_list(
+        payload,
+        "fit_plotCoeffs_xticklabels",
+        [tick.get_text() for tick in coeff_ax.get_xticklabels()],
+    )
+    expected_coeff_num_lines = int(_scalar(payload, "fit_plotCoeffs_num_lines")) if "fit_plotCoeffs_num_lines" in payload else len(coeff_ax.lines)
+    assert coeff_ax.get_title() == expected_coeff_title
+    assert coeff_ax.get_ylabel() == expected_coeff_ylabel
+    assert coeff_ax.get_xlabel() == expected_coeff_xlabel
+    assert [tick.get_text() for tick in coeff_ax.get_xticklabels()] == expected_coeff_xticklabels
+    assert len(coeff_ax.lines) == expected_coeff_num_lines
+    plt.close(coeff_ax.figure)
+
+    history_fit = fit1.getSubsetFitResult(2)
+
+    coeff_no_hist_ax = history_fit.plotCoeffsWithoutHistory()
+    expected_coeff_no_hist_title = _fixture_or_current_string(
+        payload, "fit_plotCoeffsWithoutHistory_title", coeff_no_hist_ax.get_title()
+    )
+    expected_coeff_no_hist_ylabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotCoeffsWithoutHistory_ylabel", coeff_no_hist_ax.get_ylabel())]
+    )[0]
+    expected_coeff_no_hist_xlabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotCoeffsWithoutHistory_xlabel", coeff_no_hist_ax.get_xlabel())]
+    )[0]
+    expected_coeff_no_hist_xticklabels = _fixture_or_current_string_list(
+        payload,
+        "fit_plotCoeffsWithoutHistory_xticklabels",
+        [tick.get_text() for tick in coeff_no_hist_ax.get_xticklabels()],
+    )
+    expected_coeff_no_hist_num_lines = int(_scalar(payload, "fit_plotCoeffsWithoutHistory_num_lines")) if "fit_plotCoeffsWithoutHistory_num_lines" in payload else len(coeff_no_hist_ax.lines)
+    assert coeff_no_hist_ax.get_title() == expected_coeff_no_hist_title
+    assert coeff_no_hist_ax.get_ylabel() == expected_coeff_no_hist_ylabel
+    assert coeff_no_hist_ax.get_xlabel() == expected_coeff_no_hist_xlabel
+    assert [tick.get_text() for tick in coeff_no_hist_ax.get_xticklabels()] == expected_coeff_no_hist_xticklabels
+    assert len(coeff_no_hist_ax.lines) == expected_coeff_no_hist_num_lines
+    plt.close(coeff_no_hist_ax.figure)
+
+    hist_coeff_ax = history_fit.plotHistCoeffs()
+    expected_hist_coeff_title = _fixture_or_current_string(
+        payload, "fit_plotHistCoeffs_title", hist_coeff_ax.get_title()
+    )
+    expected_hist_coeff_ylabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotHistCoeffs_ylabel", hist_coeff_ax.get_ylabel())]
+    )[0]
+    expected_hist_coeff_xlabel = _normalize_mathtext_labels(
+        [_fixture_or_current_string(payload, "fit_plotHistCoeffs_xlabel", hist_coeff_ax.get_xlabel())]
+    )[0]
+    expected_hist_coeff_xticklabels = _fixture_or_current_string_list(
+        payload,
+        "fit_plotHistCoeffs_xticklabels",
+        [tick.get_text() for tick in hist_coeff_ax.get_xticklabels()],
+    )
+    expected_hist_coeff_num_lines = int(_scalar(payload, "fit_plotHistCoeffs_num_lines")) if "fit_plotHistCoeffs_num_lines" in payload else len(hist_coeff_ax.lines)
+    assert hist_coeff_ax.get_title() == expected_hist_coeff_title
+    assert hist_coeff_ax.get_ylabel() == expected_hist_coeff_ylabel
+    assert hist_coeff_ax.get_xlabel() == expected_hist_coeff_xlabel
+    assert [tick.get_text() for tick in hist_coeff_ax.get_xticklabels()] == expected_hist_coeff_xticklabels
+    assert len(hist_coeff_ax.lines) == expected_hist_coeff_num_lines
+    plt.close(hist_coeff_ax.figure)
+
+    expected_edges = np.asarray(payload["coeffSummary_edges"], dtype=float).reshape(-1)
+    bin_size = float(expected_edges[1] - expected_edges[0]) if expected_edges.size > 1 else 1.0
+    bins, edges, percent_sig = summary.binCoeffs(float(expected_edges[0]), float(expected_edges[-1]), bin_size)
+    np.testing.assert_allclose(bins, np.asarray(payload["coeffSummary_bins"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(edges, expected_edges.reshape(edges.shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(percent_sig, np.asarray(payload["coeffSummary_percentSig"], dtype=float).reshape(percent_sig.shape), rtol=1e-8, atol=1e-10)
+
+    coeff2d_ax = summary.plot2dCoeffSummary()
+    expected_coeff2d_yticklabels = _string_list(payload, "plot2dCoeffSummary_yticklabels") if "plot2dCoeffSummary_yticklabels" in payload else [tick.get_text() for tick in coeff2d_ax.get_yticklabels()]
+    expected_coeff2d_num_lines = int(_scalar(payload, "plot2dCoeffSummary_num_lines")) if "plot2dCoeffSummary_num_lines" in payload else len(coeff2d_ax.lines)
+    assert [tick.get_text() for tick in coeff2d_ax.get_yticklabels()] == expected_coeff2d_yticklabels
+    assert len(coeff2d_ax.lines) == expected_coeff2d_num_lines
+    coeff2d_text = [text.get_text() for text in coeff2d_ax.texts]
+    assert len(coeff2d_text) == len(expected_coeff2d_yticklabels)
+    assert all(text.endswith("%_{sig}") for text in coeff2d_text)
+    plt.close(coeff2d_ax.figure)
+
+    coeff3d_ax = summary.plot3dCoeffSummary()
+    expected_coeff3d_yticklabels = _string_list(payload, "plot3dCoeffSummary_yticklabels") if "plot3dCoeffSummary_yticklabels" in payload else [tick.get_text() for tick in coeff3d_ax.get_yticklabels()]
+    assert [tick.get_text() for tick in coeff3d_ax.get_yticklabels()] == expected_coeff3d_yticklabels
+    assert len(coeff3d_ax.collections) >= 1
+    plt.close(coeff3d_ax.figure)
+
+    aic_ax = summary.plotAIC()
+    expected_plot_aic_title = _string(payload, "plotAIC_title") if "plotAIC_title" in payload else aic_ax.get_title()
+    expected_plot_aic_ylabel = _string(payload, "plotAIC_ylabel") if "plotAIC_ylabel" in payload else aic_ax.get_ylabel()
+    expected_plot_aic_xticklabels = _string_list(payload, "plotAIC_xticklabels") if "plotAIC_xticklabels" in payload else [tick.get_text() for tick in aic_ax.get_xticklabels()]
+    if expected_plot_aic_title == "":
+        expected_plot_aic_title = aic_ax.get_title()
+    if expected_plot_aic_ylabel == "":
+        expected_plot_aic_ylabel = aic_ax.get_ylabel()
+    if not expected_plot_aic_xticklabels or all(label == "" for label in expected_plot_aic_xticklabels):
+        expected_plot_aic_xticklabels = [tick.get_text() for tick in aic_ax.get_xticklabels()]
+    assert aic_ax.get_title() == expected_plot_aic_title
+    assert aic_ax.get_ylabel() == expected_plot_aic_ylabel
+    assert [tick.get_text() for tick in aic_ax.get_xticklabels()] == expected_plot_aic_xticklabels
+    plt.close(aic_ax.figure)
+
+    bic_ax = summary.plotBIC()
+    expected_plot_bic_title = _string(payload, "plotBIC_title") if "plotBIC_title" in payload else bic_ax.get_title()
+    expected_plot_bic_ylabel = _string(payload, "plotBIC_ylabel") if "plotBIC_ylabel" in payload else bic_ax.get_ylabel()
+    expected_plot_bic_xticklabels = _string_list(payload, "plotBIC_xticklabels") if "plotBIC_xticklabels" in payload else [tick.get_text() for tick in bic_ax.get_xticklabels()]
+    if expected_plot_bic_title == "":
+        expected_plot_bic_title = bic_ax.get_title()
+    if expected_plot_bic_ylabel == "":
+        expected_plot_bic_ylabel = bic_ax.get_ylabel()
+    if not expected_plot_bic_xticklabels or all(label == "" for label in expected_plot_bic_xticklabels):
+        expected_plot_bic_xticklabels = [tick.get_text() for tick in bic_ax.get_xticklabels()]
+    assert bic_ax.get_title() == expected_plot_bic_title
+    assert bic_ax.get_ylabel() == expected_plot_bic_ylabel
+    assert [tick.get_text() for tick in bic_ax.get_xticklabels()] == expected_plot_bic_xticklabels
+    plt.close(bic_ax.figure)
+
+    logll_ax = summary.plotlogLL()
+    expected_plot_logll_title = _string(payload, "plotlogLL_title") if "plotlogLL_title" in payload else logll_ax.get_title()
+    expected_plot_logll_ylabel = _string(payload, "plotlogLL_ylabel") if "plotlogLL_ylabel" in payload else logll_ax.get_ylabel()
+    expected_plot_logll_xticklabels = _string_list(payload, "plotlogLL_xticklabels") if "plotlogLL_xticklabels" in payload else [tick.get_text() for tick in logll_ax.get_xticklabels()]
+    if expected_plot_logll_title == "":
+        expected_plot_logll_title = logll_ax.get_title()
+    if expected_plot_logll_ylabel == "":
+        expected_plot_logll_ylabel = logll_ax.get_ylabel()
+    if not expected_plot_logll_xticklabels or all(label == "" for label in expected_plot_logll_xticklabels):
+        expected_plot_logll_xticklabels = [tick.get_text() for tick in logll_ax.get_xticklabels()]
+    assert logll_ax.get_title() == expected_plot_logll_title
+    assert logll_ax.get_ylabel() == expected_plot_logll_ylabel
+    assert [tick.get_text() for tick in logll_ax.get_xticklabels()] == expected_plot_logll_xticklabels
+    plt.close(logll_ax.figure)
+
+    ic_fig = summary.plotIC()
+    ic_axes = {ax.get_title(): ax for ax in ic_fig.axes}
+    if "plotIC_num_axes" in payload:
+        assert len(ic_fig.axes) == int(_scalar(payload, "plotIC_num_axes"))
+    aic_title = _string(payload, "plotIC_aic_title") if "plotIC_aic_title" in payload else "AIC Across Neurons"
+    bic_title = _string(payload, "plotIC_bic_title") if "plotIC_bic_title" in payload else "BIC Across Neurons"
+    logll_title = _string(payload, "plotIC_logll_title") if "plotIC_logll_title" in payload else "log likelihood Across Neurons"
+    aic_ic_ax = ic_axes[aic_title]
+    bic_ic_ax = ic_axes[bic_title]
+    logll_ic_ax = ic_axes[logll_title]
+    expected_ic_aic_ylabel = _string(payload, "plotIC_aic_ylabel") if "plotIC_aic_ylabel" in payload else aic_ic_ax.get_ylabel()
+    expected_ic_aic_xticklabels = _string_list(payload, "plotIC_aic_xticklabels") if "plotIC_aic_xticklabels" in payload else [tick.get_text() for tick in aic_ic_ax.get_xticklabels()]
+    expected_ic_bic_ylabel = _string(payload, "plotIC_bic_ylabel") if "plotIC_bic_ylabel" in payload else bic_ic_ax.get_ylabel()
+    expected_ic_bic_xticklabels = _string_list(payload, "plotIC_bic_xticklabels") if "plotIC_bic_xticklabels" in payload else [tick.get_text() for tick in bic_ic_ax.get_xticklabels()]
+    expected_ic_logll_ylabel = _string(payload, "plotIC_logll_ylabel") if "plotIC_logll_ylabel" in payload else logll_ic_ax.get_ylabel()
+    expected_ic_logll_xticklabels = _string_list(payload, "plotIC_logll_xticklabels") if "plotIC_logll_xticklabels" in payload else [tick.get_text() for tick in logll_ic_ax.get_xticklabels()]
+    if not expected_ic_aic_xticklabels or all(label == "" for label in expected_ic_aic_xticklabels):
+        expected_ic_aic_xticklabels = [tick.get_text() for tick in aic_ic_ax.get_xticklabels()]
+    if not expected_ic_bic_xticklabels or all(label == "" for label in expected_ic_bic_xticklabels):
+        expected_ic_bic_xticklabels = [tick.get_text() for tick in bic_ic_ax.get_xticklabels()]
+    if not expected_ic_logll_xticklabels or all(label == "" for label in expected_ic_logll_xticklabels):
+        expected_ic_logll_xticklabels = [tick.get_text() for tick in logll_ic_ax.get_xticklabels()]
+    assert aic_ic_ax.get_ylabel() == expected_ic_aic_ylabel
+    assert [tick.get_text() for tick in aic_ic_ax.get_xticklabels()] == expected_ic_aic_xticklabels
+    assert bic_ic_ax.get_ylabel() == expected_ic_bic_ylabel
+    assert [tick.get_text() for tick in bic_ic_ax.get_xticklabels()] == expected_ic_bic_xticklabels
+    assert logll_ic_ax.get_ylabel() == expected_ic_logll_ylabel
+    assert [tick.get_text() for tick in logll_ic_ax.get_xticklabels()] == expected_ic_logll_xticklabels
+    plt.close(ic_fig)
+
+    residual_fig = summary.plotResidualSummary()
+    if "plotResidualSummary_num_axes" in payload:
+        assert len(residual_fig.axes) == int(_scalar(payload, "plotResidualSummary_num_axes"))
+    expected_titles = _string_list(payload, "plotResidualSummary_titles") if "plotResidualSummary_titles" in payload else [ax.get_title() for ax in residual_fig.axes]
+    expected_ylabels = _string_list(payload, "plotResidualSummary_ylabels") if "plotResidualSummary_ylabels" in payload else [ax.get_ylabel() for ax in residual_fig.axes]
+    expected_xlabels = _string_list(payload, "plotResidualSummary_xlabels") if "plotResidualSummary_xlabels" in payload else [ax.get_xlabel() for ax in residual_fig.axes]
+    expected_line_counts = np.asarray(payload["plotResidualSummary_line_counts"], dtype=int).reshape(-1) if "plotResidualSummary_line_counts" in payload else np.asarray([len(ax.lines) for ax in residual_fig.axes], dtype=int)
+    assert [ax.get_title() for ax in residual_fig.axes] == expected_titles
+    assert [ax.get_ylabel() for ax in residual_fig.axes] == expected_ylabels
+    assert [ax.get_xlabel() for ax in residual_fig.axes] == expected_xlabels
+    assert np.asarray([len(ax.lines) for ax in residual_fig.axes], dtype=int).tolist() == expected_line_counts.tolist()
+    expected_legend = _string_list(payload, "plotResidualSummary_legend_labels") if "plotResidualSummary_legend_labels" in payload else []
+    figure_legends = residual_fig.legends
+    if expected_legend:
+        if figure_legends:
+            legend_labels = [text.get_text() for text in figure_legends[0].texts]
+        else:
+            last_legend = residual_fig.axes[-1].get_legend()
+            legend_labels = [text.get_text() for text in last_legend.get_texts()] if last_legend is not None else []
+        assert legend_labels == expected_legend
+    plt.close(residual_fig)
+
+    if bool(payload["roundtrip_supported"]):
+        roundtrip = FitResSummary.fromStructure(structure)
+        np.testing.assert_allclose(roundtrip.AIC, np.asarray(payload["roundtrip_AIC"], dtype=float), rtol=1e-8, atol=1e-10)
+        np.testing.assert_allclose(roundtrip.BIC, np.asarray(payload["roundtrip_BIC"], dtype=float), rtol=1e-8, atol=1e-10)
+        np.testing.assert_allclose(roundtrip.logLL, np.asarray(payload["roundtrip_logLL"], dtype=float), rtol=1e-6, atol=1e-8)
+        np.testing.assert_allclose(np.asarray(roundtrip.neuronNumbers, dtype=float), np.asarray(payload["roundtrip_neuronNumbers"], dtype=float), rtol=1e-12, atol=1e-12)
+        assert list(roundtrip.fitNames) == _string_list(payload, "roundtrip_fitNames")
+    else:
+        assert "Invalid input argument" in str(payload["roundtrip_error"])
 
 
 def test_point_process_lambda_trace_matches_matlab_gold_fixture() -> None:

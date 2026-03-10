@@ -448,7 +448,10 @@ class Analysis:
         nCopy.setMinTime(lambdaInput.minTime)
         nCopy.setMaxTime(lambdaInput.maxTime)
 
-        sumSpikes = nCopy.getSigRep(windowSize)
+        # MATLAB's static Analysis.computeFitResidual ultimately operates on
+        # the resampled spike-count grid, even when a finer windowSize is
+        # requested. Preserve that canonical helper behavior here.
+        sumSpikes = nCopy.getSigRep(1.0 / float(nCopy.sampleRate), float(nCopy.minTime), float(nCopy.maxTime))
         windowTimes = np.linspace(float(nCopy.minTime), float(nCopy.maxTime), sumSpikes.time.size, dtype=float)
         if np.isfinite(windowSize) and windowSize > 0:
             origin = float(nCopy.minTime)

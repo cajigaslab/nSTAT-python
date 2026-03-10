@@ -1739,12 +1739,10 @@ class nspikeTrain:
 
     def setMinTime(self, minTime: float) -> None:
         self.minTime = float(minTime)
-        self.clearSigRep()
         self.computeStatistics(-1)
 
     def setMaxTime(self, maxTime: float) -> None:
         self.maxTime = float(maxTime)
-        self.clearSigRep()
         self.computeStatistics(-1)
 
     def resample(self, sampleRate: float) -> "nspikeTrain":

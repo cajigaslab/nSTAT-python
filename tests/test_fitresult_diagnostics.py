@@ -45,7 +45,7 @@ def test_fitresult_plotting_methods_return_matplotlib_objects() -> None:
     ax4 = fit.plotSeqCorr()
     ax5 = fit.plotCoeffs()
 
-    assert len(fig.axes) == 4
+    assert len(fig.axes) == 5
     for ax in (ax1, ax2, ax3, ax4, ax5):
         assert hasattr(ax, "plot")
     plt.close("all")
@@ -93,6 +93,8 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
     summary = FitSummary([fit])
 
     coeff_mat, labels, se_mat = summary.getCoeffs(1)
+    coeff_index, coeff_epoch, coeff_epochs = summary.getCoeffIndex(1)
+    hist_index, hist_epoch, hist_epochs = summary.getHistIndex(1)
     sig = summary.getSigCoeffs(1)
     bins, edges, percent_sig = summary.binCoeffs(-5.0, 5.0, 1.0)
     summary.setCoeffRange(-2.0, 2.0)
@@ -101,11 +103,19 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
     assert coeff_mat.shape[0] == summary.numNeurons
     assert sig.shape == coeff_mat.shape
     assert len(labels) == coeff_mat.shape[1]
-    assert bins.ndim == 1
+    assert bins.ndim == 2
+    assert bins.shape[0] == edges.shape[0]
+    assert bins.shape[1] == len(summary.computePlotParams()["xLabels"])
     assert edges.ndim == 1
-    assert 0.0 <= percent_sig <= 1.0
+    assert percent_sig.ndim == 1
+    assert percent_sig.shape[0] == bins.shape[1]
+    assert np.all((0.0 <= percent_sig) & (percent_sig <= 1.0))
     assert summary.coeffMin == -2.0
     assert summary.coeffMax == 2.0
+    assert coeff_index.ndim == coeff_epoch.ndim == 1
+    assert hist_index.ndim == hist_epoch.ndim == 1
+    assert coeff_epochs == 0
+    assert hist_epochs == 0
 
     fig1 = summary.plotIC()
     ax1 = summary.plotAIC()
@@ -113,6 +123,8 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
     ax3 = summary.plotlogLL()
     fig2 = summary.plotResidualSummary()
     ax4 = summary.boxPlot(coeff_mat, dataLabels=labels)
+    ax5 = summary.plotCoeffsWithoutHistory(1)
+    ax6 = summary.plotHistCoeffs(1)
     restored = FitSummary.fromStructure(summary.toStructure())
 
     assert len(fig1.axes) == 3
@@ -123,5 +135,7 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
     assert hasattr(ax3, "boxplot")
     assert len(fig2.axes) == 1
     assert hasattr(ax4, "boxplot")
+    assert hasattr(ax5, "errorbar")
+    assert hasattr(ax6, "errorbar")
     assert restored.numNeurons == summary.numNeurons
     plt.close("all")

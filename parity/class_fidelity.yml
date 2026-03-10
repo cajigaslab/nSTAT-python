@@ -267,16 +267,28 @@ items:
   - Advanced MATLAB algorithm-selection, cross-validation, and some report-layout
     branches are still lighter than MATLAB.
   - The canonical single-neuron GLM path is now fixture-backed for coefficients,
-    lambda traces, AIC, BIC, stored logLL, KS statistic, residuals, the validation-window
-    GLM branch, and the discrete-time KS arrays under injected within-bin draws.
-    Remaining gaps are now concentrated in broader algorithm-selection, cross-validation,
-    multi-neuron, and richer report-layout branches rather than the canonical baseline
-    or validation diagnostics, and the helper surface now also accepts MATLAB-style
-    multi-trial spike inputs by collapsing them through fixture-backed `nstColl.toSpikeTrain`
-    semantics.
+    lambda traces, AIC, BIC, stored logLL, direct `GLMFit`, direct
+    `computeKSStats`, direct `computeFitResidual`, KS statistic, residuals, the canonical
+    single-neuron binomial `BNLRCG` branch (at tight numerical tolerance on the
+    coefficient/lambda solver outputs), the validation-window
+    GLM branch, the validation-window `plotResults` dashboard, the discrete-time KS arrays under injected within-bin draws, and
+    the canonical two-neuron `RunAnalysisForAllNeurons` summary payload/structure,
+    direct `plotAllCoeffs`, `plotSummary`, `plotIC`, direct `plotAIC`/`plotBIC`/`plotlogLL`,
+    `plotResidualSummary`, `plotCoeffsWithoutHistory`, and `plotHistCoeffs`. Remaining gaps are now concentrated in
+    broader algorithm-selection,
+    cross-validation, richer multi-neuron report branches beyond the canonical
+    two-neuron fixture, and richer alternative report-layout branches rather than
+    the canonical baseline, validation diagnostics, or the basic multi-neuron summary/report
+    surface, and the helper surface now also accepts MATLAB-style multi-trial spike
+    inputs by collapsing them through fixture-backed `nstColl.toSpikeTrain` semantics.
+    On the tiny canonical two-neuron history-fit branch, MATLAB exports `NaN`
+    history coefficients while Python currently returns finite fallback estimates,
+    and the associated KS summary diagnostics also diverge, so that sub-branch
+    remains non-exact even though the associated AIC/BIC/logLL summary payload
+    is fixture-backed.
   required_remediation:
-  - Extend the committed MATLAB-derived fixture coverage beyond the canonical and
-    validation-window single-neuron GLM workflows to multi-neuron and alternative
+  - Extend the committed MATLAB-derived fixture coverage beyond the canonical, validation-window,
+    and basic two-neuron summary workflows to richer multi-neuron and alternative
     algorithm branches.
   - Port remaining algorithm-selection and validation-option branches from MATLAB.
   plotting_report_parity: KS, inverse-Gaussian, coefficient, residual, and summary
@@ -308,16 +320,22 @@ items:
   known_remaining_differences:
   - Plotting/report methods now execute, Z/U/X semantics now follow MATLAB more closely,
     and the canonical baseline fit is fixture-backed for AIC/BIC/logLL, KS statistic,
-    residual traces, deterministic discrete-time KS arrays, and the stored MATLAB-style
-    KS p-value. Remaining differences are concentrated in richer report layouts,
-    validation payloads, and multi-fit branches.
+    residual traces, deterministic discrete-time KS arrays, the stored MATLAB-style
+    KS p-value, the canonical `plotResults` dashboard surface, and the underlying
+    single-fit `KSPlot`, `plotInvGausTrans`, `plotSeqCorr`, `plotResidual`,
+    `plotCoeffs`, `plotCoeffsWithoutHistory`, and `plotHistCoeffs` branches.
+    The validation-window `plotResults` dashboard is now fixture-backed as well.
+    Remaining differences are concentrated in richer validation payloads and multi-fit
+    branches.
   required_remediation:
-  - Add MATLAB-derived golden fixtures for validation/report payloads and the remaining
+  - Add MATLAB-derived golden fixtures for richer validation payloads and the remaining
     multi-fit branches.
-  - Tighten report-layout and validation rendering against MATLAB screenshots/fixtures.
+  - Tighten non-canonical report-layout and validation rendering against MATLAB
+    screenshots/fixtures.
   plotting_report_parity: Result plotting/report methods now exist on the canonical
-    object and cover the MATLAB-facing workflow surface, though visual detail still
-    needs fixture-backed validation.
+    object and cover the MATLAB-facing workflow surface; the canonical `plotResults`
+    dashboard is now fixture-backed, though richer validation/report branches still
+    need broader fixture coverage.
 - matlab_name: FitResSummary
   kind: class
   matlab_path: FitResSummary.m
@@ -331,8 +349,9 @@ items:
     and withinConfInt as MATLAB-style neuron-by-fit matrices.
   method_parity: MATLAB-style difference helpers, coefficient aggregation, significance
     summaries, IC plots, residual summary, box-plot surface, summary
-    structure round-trip, and plotSummary now operate on canonical FitResult
-    collections, and the multi-neuron matrix/diff semantics are fixture-backed.
+    structure round-trip, coefficient/history index helpers, coefficient-only/history-only
+    summary plots, direct `plotAllCoeffs`, and `plotSummary` now operate on canonical
+    FitResult collections, and the multi-neuron matrix/diff semantics are fixture-backed.
   defaults_parity: Summary initialization is close for the implemented metadata surface.
   indexing_parity: N/A for this class.
   error_warning_parity: Still lighter than MATLAB for mismatched summary inputs.
@@ -340,20 +359,25 @@ items:
   symbol_presence_verified: yes
   known_remaining_differences:
   - The neuron-by-fit AIC/BIC/logLL and diff aggregation, MATLAB-style summary
-    structure payload, and the canonical `plotSummary` dashboard layout are now
+    structure payload, canonical `plotSummary` dashboard layout, direct
+    `plotAllCoeffs`, coefficient/history-only summary plots, and coefficient-summary
+    histogram math (`binCoeffs`, `plot2dCoeffSummary`, `plot3dCoeffSummary`), plus
+    the single-metric summary plots (`plotAIC`, `plotBIC`, `plotlogLL`) are now
     fixture-backed. Remaining differences are concentrated in richer coefficient-view
-    detail, table-export coverage, and other report branches beyond the canonical
-    summary dashboard.
+    detail, epoch-sorting semantics, table-export coverage, and graphics-handle-specific
+    annotation ordering beyond the stable summary histogram surface.
   - MATLAB's own `FitResSummary.fromStructure(summary.toStructure())` path currently
     fails on the canonical fixture because `FitResult.fromStructure` expects structured
     inverse-Gaussian payloads; Python mirrors the exported structure fields but does
     not inherit that MATLAB round-trip bug as a fidelity target.
   required_remediation:
   - Extend the committed golden fixtures beyond the canonical summary dashboard
-    to the remaining MATLAB report/table exports and coefficient-view layouts.
-  plotting_report_parity: The canonical MATLAB `plotSummary` dashboard is now fixture-backed
-    for titles, axis count, labels, legend entries, and diff-label semantics; richer
-    report/table branches remain lighter than MATLAB.
+    and histogram math to the remaining MATLAB report/table exports and coefficient-view
+    layouts.
+  plotting_report_parity: The canonical MATLAB `plotSummary` dashboard, direct
+    `plotAllCoeffs`, coefficient/history-only summary plots, and single-metric summary
+    plots are now fixture-backed for titles, axis count, labels, legend entries, and
+    diff-label semantics; richer report/table branches remain lighter than MATLAB.
 - matlab_name: CIF
   kind: class
   matlab_path: CIF.m

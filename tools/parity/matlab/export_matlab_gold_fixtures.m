@@ -34,6 +34,7 @@ if should_export(fixtureNames, 'events'); export_events_fixture(fixtureRoot); en
 if should_export(fixtureNames, 'history'); export_history_fixture(fixtureRoot); end
 if should_export(fixtureNames, 'cif'); export_cif_fixture(fixtureRoot); end
 if should_export(fixtureNames, 'analysis'); export_analysis_fixture(fixtureRoot); end
+if should_export(fixtureNames, 'analysis_binomial'); export_analysis_binomial_fixture(fixtureRoot); end
 if should_export(fixtureNames, 'analysis_validation'); export_analysis_validation_fixture(fixtureRoot); end
 if should_export(fixtureNames, 'analysis_multineuron'); export_analysis_multineuron_fixture(fixtureRoot); end
 if should_export(fixtureNames, 'ksdiscrete'); export_ksdiscrete_fixture(fixtureRoot); end
@@ -650,6 +651,9 @@ fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl({cfg}));
 summary = FitResSummary({fit});
 Analysis.KSPlot(fit, 1, 0);
 Analysis.plotFitResidual(fit, 0.01, 0);
+[glmLambda, glmB, glmDev, glmStats, glmAIC, glmBIC, glmLogLL, glmDistribution] = Analysis.GLMFit(trial, 1, 1, 'GLM');
+[helperZ, helperU, helperXAxis, helperKSSorted, helperKSStat] = Analysis.computeKSStats(spikeTrain, fit.lambda, 1);
+helperResidual = Analysis.computeFitResidual(spikeTrain, fit.lambda, 0.01);
 
 payload = struct();
 payload.time = t;
@@ -675,8 +679,99 @@ payload.ks_pvalue = fit.KSStats.pValue(1);
 payload.ks_within_conf_int = fit.KSStats.withinConfInt(1);
 payload.residual_time = fit.Residual.time;
 payload.residual_data = fit.Residual.data(:,1);
+payload.glmfit_lambda_time = glmLambda.time;
+payload.glmfit_lambda_data = glmLambda.data(:,1);
+payload.glmfit_coeffs = glmB;
+payload.glmfit_dev = glmDev;
+payload.glmfit_AIC = glmAIC;
+payload.glmfit_BIC = glmBIC;
+payload.glmfit_logLL = glmLogLL;
+payload.glmfit_distribution = glmDistribution;
+payload.analysis_computeKSStats_Z = helperZ;
+payload.analysis_computeKSStats_U = helperU;
+payload.analysis_computeKSStats_xAxis = helperXAxis;
+payload.analysis_computeKSStats_KSSorted = helperKSSorted;
+payload.analysis_computeKSStats_ks_stat = helperKSStat;
+payload.analysis_computeFitResidual_time = helperResidual.time;
+payload.analysis_computeFitResidual_data = helperResidual.data(:,1);
+
+Analysis.KSPlot(fit, 1, 1);
+ksAx = gca;
+payload.analysis_KSPlot_title = stringify_text(get(get(ksAx, 'Title'), 'String'));
+payload.analysis_KSPlot_ylabel = stringify_text(get(get(ksAx, 'YLabel'), 'String'));
+payload.analysis_KSPlot_xlabel = stringify_text(get(get(ksAx, 'XLabel'), 'String'));
+payload.analysis_KSPlot_xticklabels = cellstr(get(ksAx, 'XTickLabel'));
+close(ancestor(ksAx, 'figure'));
+
+Analysis.plotFitResidual(fit, 0.01, 1);
+residualAx = gca;
+payload.analysis_plotFitResidual_title = stringify_text(get(get(residualAx, 'Title'), 'String'));
+payload.analysis_plotFitResidual_ylabel = stringify_text(get(get(residualAx, 'YLabel'), 'String'));
+payload.analysis_plotFitResidual_xlabel = stringify_text(get(get(residualAx, 'XLabel'), 'String'));
+payload.analysis_plotFitResidual_xticklabels = cellstr(get(residualAx, 'XTickLabel'));
+close(ancestor(residualAx, 'figure'));
+
+Analysis.plotInvGausTrans(fit, 1);
+invAx = gca;
+payload.analysis_plotInvGausTrans_title = stringify_text(get(get(invAx, 'Title'), 'String'));
+payload.analysis_plotInvGausTrans_ylabel = stringify_text(get(get(invAx, 'YLabel'), 'String'));
+payload.analysis_plotInvGausTrans_xlabel = stringify_text(get(get(invAx, 'XLabel'), 'String'));
+payload.analysis_plotInvGausTrans_xticklabels = cellstr(get(invAx, 'XTickLabel'));
+close(ancestor(invAx, 'figure'));
+
+Analysis.plotSeqCorr(fit);
+seqAx = gca;
+payload.analysis_plotSeqCorr_title = stringify_text(get(get(seqAx, 'Title'), 'String'));
+payload.analysis_plotSeqCorr_ylabel = stringify_text(get(get(seqAx, 'YLabel'), 'String'));
+payload.analysis_plotSeqCorr_xlabel = stringify_text(get(get(seqAx, 'XLabel'), 'String'));
+payload.analysis_plotSeqCorr_xticklabels = cellstr(get(seqAx, 'XTickLabel'));
+close(ancestor(seqAx, 'figure'));
+
+Analysis.plotCoeffs(fit);
+coeffAx = gca;
+payload.analysis_plotCoeffs_title = stringify_text(get(get(coeffAx, 'Title'), 'String'));
+payload.analysis_plotCoeffs_ylabel = stringify_text(get(get(coeffAx, 'YLabel'), 'String'));
+payload.analysis_plotCoeffs_xlabel = stringify_text(get(get(coeffAx, 'XLabel'), 'String'));
+payload.analysis_plotCoeffs_xticklabels = cellstr(get(coeffAx, 'XTickLabel'));
+coeffLegend = legend(coeffAx);
+payload.analysis_plotCoeffs_legend = {};
+if ~isempty(coeffLegend) && isgraphics(coeffLegend)
+    payload.analysis_plotCoeffs_legend = cellstr(coeffLegend.String);
+end
+close(ancestor(coeffAx, 'figure'));
 
 save(fullfile(fixtureRoot, 'analysis_exactness.mat'), '-struct', 'payload');
+end
+
+function export_analysis_binomial_fixture(fixtureRoot)
+t = (0:0.1:1.0)';
+stimData = sin(2*pi*t);
+stim = Covariate(t, stimData, 'Stimulus', 'time', 's', '', {'stim'});
+spikeTrain = nspikeTrain([0.1 0.3 0.7], '1', 10.0, 0.0, 1.0, 'time', 's', '', '', -1);
+trial = Trial(nstColl({spikeTrain}), CovColl({stim}));
+cfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
+cfg.setName('stim');
+fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl({cfg}), 0, 'BNLRCG');
+
+payload = struct();
+payload.time = t;
+payload.stim_data = stimData;
+payload.spike_times = spikeTrain.spikeTimes;
+payload.sample_rate = trial.sampleRate;
+payload.coeffs = fit.getCoeffs(1);
+payload.lambda_time = fit.lambda.time;
+payload.lambda_data = fit.lambda.data(:,1);
+payload.AIC = fit.AIC(1);
+payload.BIC = fit.BIC(1);
+payload.logLL = fit.logLL(1);
+payload.distribution = fit.fitType{1};
+payload.ks_stat = fit.KSStats.ks_stat(1);
+payload.ks_pvalue = fit.KSStats.pValue(1);
+payload.ks_within_conf_int = fit.KSStats.withinConfInt(1);
+payload.residual_time = fit.Residual.time;
+payload.residual_data = fit.Residual.data(:,1);
+
+save(fullfile(fixtureRoot, 'analysis_binomial_exactness.mat'), '-struct', 'payload');
 end
 
 function export_analysis_validation_fixture(fixtureRoot)
@@ -711,6 +806,20 @@ payload.ks_within_conf_int = fit.KSStats.withinConfInt(1);
 payload.residual_time = fit.Residual.time;
 payload.residual_data = fit.Residual.data(:,1);
 
+plotHandle = fit.plotResults;
+plotAxes = findall(plotHandle, 'Type', 'axes');
+payload.plotResults_num_axes = numel(plotAxes);
+payload.plotResults_titles = cell(1, numel(plotAxes));
+payload.plotResults_ylabels = cell(1, numel(plotAxes));
+payload.plotResults_xlabels = cell(1, numel(plotAxes));
+for idx = 1:numel(plotAxes)
+    ax = plotAxes(idx);
+    payload.plotResults_titles{idx} = stringify_text(get(get(ax, 'Title'), 'String'));
+    payload.plotResults_ylabels{idx} = stringify_text(get(get(ax, 'YLabel'), 'String'));
+    payload.plotResults_xlabels{idx} = stringify_text(get(get(ax, 'XLabel'), 'String'));
+end
+close(plotHandle);
+
 save(fullfile(fixtureRoot, 'analysis_validation_exactness.mat'), '-struct', 'payload');
 end
 
@@ -723,7 +832,9 @@ spikeTrain2 = nspikeTrain([0.2 0.6 0.9], '2', 0.1, 0.0, 1.0, 'time', 's', '', ''
 trial = Trial(nstColl({spikeTrain1, spikeTrain2}), CovColl({stim}));
 cfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [], []);
 cfg.setName('stim');
-fits = Analysis.RunAnalysisForAllNeurons(trial, ConfigColl({cfg}), 0);
+histCfg = TrialConfig({{'Stimulus', 'stim'}}, 10, [0 0.1 0.2], []);
+histCfg.setName('stim_hist');
+fits = Analysis.RunAnalysisForAllNeurons(trial, ConfigColl({cfg, histCfg}), 0);
 summary = FitResSummary(fits);
 
 payload = struct();
@@ -734,18 +845,202 @@ payload.spike_times_2 = spikeTrain2.spikeTimes;
 payload.num_fits = numel(fits);
 payload.fit1_coeffs = fits{1}.getCoeffs(1);
 payload.fit2_coeffs = fits{2}.getCoeffs(1);
+payload.fit1_hist_coeffs = fits{1}.getHistCoeffs(2);
+payload.fit2_hist_coeffs = fits{2}.getHistCoeffs(2);
 payload.fit1_AIC = fits{1}.AIC(1);
 payload.fit2_AIC = fits{2}.AIC(1);
+payload.fit1_hist_AIC = fits{1}.AIC(2);
+payload.fit2_hist_AIC = fits{2}.AIC(2);
 payload.fit1_BIC = fits{1}.BIC(1);
 payload.fit2_BIC = fits{2}.BIC(1);
+payload.fit1_hist_BIC = fits{1}.BIC(2);
+payload.fit2_hist_BIC = fits{2}.BIC(2);
 payload.fit1_logLL = fits{1}.logLL(1);
 payload.fit2_logLL = fits{2}.logLL(1);
+payload.fit1_hist_logLL = fits{1}.logLL(2);
+payload.fit2_hist_logLL = fits{2}.logLL(2);
 payload.summary_AIC = summary.AIC;
 payload.summary_BIC = summary.BIC;
 payload.summary_logLL = summary.logLL;
 payload.summary_KSStats = summary.KSStats;
 payload.summary_KSPvalues = summary.KSPvalues;
 payload.summary_withinConfInt = summary.withinConfInt;
+payload.summary_structure = summary.toStructure;
+
+plotHandle = [];
+try
+    plotHandle = figure('Visible', 'off', 'Position', [100 100 1600 900]);
+    h1 = subplot(2,4,[1 2 5 6]); summary.plotAllCoeffs(h1); grid off;
+    title({'GLM Coefficients Across Neurons';'with 95% CIs (* p<0.05)'},'FontWeight','bold','FontSize',11,'FontName','Arial');
+    subplot(2,4,[3 4]); boxplot(summary.KSStats, summary.fitNames, 'labelorientation', 'inline');
+    ylabel('KS Statistics');
+    hx = get(gca, 'XLabel'); hy = get(gca, 'YLabel');
+    set([hx hy], 'FontName', 'Arial', 'FontSize', 11, 'FontWeight', 'bold');
+    title('KS Statistics Across Neurons', 'FontWeight', 'bold', 'FontSize', 11, 'FontName', 'Arial');
+    subplot(2,4,7); summary.getDiffAIC(1);
+    ylabel('\Delta AIC');
+    hx = get(gca, 'XLabel'); hy = get(gca, 'YLabel');
+    set([hx hy], 'FontName', 'Arial', 'FontSize', 11, 'FontWeight', 'bold');
+    title('Change in AIC Across Neurons', 'FontWeight', 'bold', 'FontSize', 11, 'FontName', 'Arial');
+    set(gca, 'XTickLabelRotation', 90);
+    subplot(2,4,8); summary.getDiffBIC(1);
+    ylabel('\Delta BIC');
+    hx = get(gca, 'XLabel'); hy = get(gca, 'YLabel');
+    set([hx hy], 'FontName', 'Arial', 'FontSize', 11, 'FontWeight', 'bold');
+    title('Change in BIC Across Neurons', 'FontWeight', 'bold', 'FontSize', 11, 'FontName', 'Arial');
+    set(gca, 'XTickLabelRotation', 90);
+    allAxes = findall(plotHandle, 'Type', 'axes');
+    for idx = 1:length(allAxes)
+        ax = allAxes(idx);
+        titleStr = stringify_text(get(get(ax, 'Title'), 'String'));
+        ylabelStr = stringify_text(get(get(ax, 'YLabel'), 'String'));
+        xtickLabels = cellstr(get(ax, 'XTickLabel'));
+        legendHandle = legend(ax);
+        legendLabels = {};
+        if ~isempty(legendHandle) && isgraphics(legendHandle)
+            legendLabels = cellstr(legendHandle.String);
+        end
+        switch titleStr
+            case "GLM Coefficients Across Neurons\nwith 95% CIs (* p<0.05)"
+                payload.summary_plotSummary_coeff_title = titleStr;
+                payload.summary_plotSummary_coeff_ylabel = ylabelStr;
+                payload.summary_plotSummary_coeff_xticklabels = xtickLabels;
+                payload.summary_plotSummary_coeff_legend = legendLabels;
+            case "KS Statistics Across Neurons"
+                payload.summary_plotSummary_ks_title = titleStr;
+                payload.summary_plotSummary_ks_ylabel = ylabelStr;
+                payload.summary_plotSummary_ks_xticklabels = xtickLabels;
+            case "Change in AIC Across Neurons"
+                payload.summary_plotSummary_aic_title = titleStr;
+                payload.summary_plotSummary_aic_ylabel = ylabelStr;
+                payload.summary_plotSummary_aic_xticklabels = xtickLabels;
+            case "Change in BIC Across Neurons"
+                payload.summary_plotSummary_bic_title = titleStr;
+                payload.summary_plotSummary_bic_ylabel = ylabelStr;
+                payload.summary_plotSummary_bic_xticklabels = xtickLabels;
+        end
+    end
+    payload.summary_plotSummary_num_axes = numel(allAxes);
+catch
+end
+if ~isempty(plotHandle) && isgraphics(plotHandle)
+    close(plotHandle);
+end
+
+plotAllCoeffsHandle = [];
+try
+    plotAllCoeffsHandle = figure('Visible','off');
+    summary.plotAllCoeffs();
+    plotAllCoeffsAx = gca;
+    payload.summary_plotAllCoeffs_ylabel = stringify_text(get(get(plotAllCoeffsAx, 'YLabel'), 'String'));
+    payload.summary_plotAllCoeffs_xticklabels = cellstr(get(plotAllCoeffsAx, 'XTickLabel'));
+    plotAllCoeffsLegend = legend(plotAllCoeffsAx);
+    payload.summary_plotAllCoeffs_legend = {};
+    if ~isempty(plotAllCoeffsLegend) && isgraphics(plotAllCoeffsLegend)
+        payload.summary_plotAllCoeffs_legend = cellstr(plotAllCoeffsLegend.String);
+    end
+catch
+end
+if ~isempty(plotAllCoeffsHandle) && isgraphics(plotAllCoeffsHandle)
+    close(plotAllCoeffsHandle);
+end
+
+coeffOnlyHandle = [];
+try
+    coeffOnlyHandle = figure('Visible','off');
+    coeffOnlyAx = local_axes_handle(summary.plotCoeffsWithoutHistory(2, 0, 1));
+    payload.summary_plotCoeffsWithoutHistory_title = stringify_text(get(get(coeffOnlyAx, 'Title'), 'String'));
+    payload.summary_plotCoeffsWithoutHistory_ylabel = stringify_text(get(get(coeffOnlyAx, 'YLabel'), 'String'));
+    payload.summary_plotCoeffsWithoutHistory_xticklabels = cellstr(get(coeffOnlyAx, 'XTickLabel'));
+catch
+end
+if ~isempty(coeffOnlyHandle) && isgraphics(coeffOnlyHandle)
+    close(coeffOnlyHandle);
+end
+
+histHandle = [];
+try
+    histHandle = figure('Visible','off');
+    histAx = local_axes_handle(summary.plotHistCoeffs(2, 0, 1));
+    payload.summary_plotHistCoeffs_title = stringify_text(get(get(histAx, 'Title'), 'String'));
+    payload.summary_plotHistCoeffs_ylabel = stringify_text(get(get(histAx, 'YLabel'), 'String'));
+    payload.summary_plotHistCoeffs_xticklabels = cellstr(get(histAx, 'XTickLabel'));
+catch
+end
+if ~isempty(histHandle) && isgraphics(histHandle)
+    close(histHandle);
+end
+
+summary.plotIC;
+icHandle = gcf;
+icAxes = findall(icHandle, 'Type', 'axes');
+payload.summary_plotIC_num_axes = numel(icAxes);
+for idx = 1:length(icAxes)
+    ax = icAxes(idx);
+    titleStr = stringify_text(get(get(ax, 'Title'), 'String'));
+    ylabelStr = stringify_text(get(get(ax, 'YLabel'), 'String'));
+    xtickLabels = cellstr(get(ax, 'XTickLabel'));
+    switch titleStr
+        case "AIC Across Neurons"
+            payload.summary_plotIC_aic_title = titleStr;
+            payload.summary_plotIC_aic_ylabel = ylabelStr;
+            payload.summary_plotIC_aic_xticklabels = xtickLabels;
+        case "BIC Across Neurons"
+            payload.summary_plotIC_bic_title = titleStr;
+            payload.summary_plotIC_bic_ylabel = ylabelStr;
+            payload.summary_plotIC_bic_xticklabels = xtickLabels;
+        case "log likelihood Across Neurons"
+            payload.summary_plotIC_logll_title = titleStr;
+            payload.summary_plotIC_logll_ylabel = ylabelStr;
+            payload.summary_plotIC_logll_xticklabels = xtickLabels;
+    end
+end
+close(icHandle);
+
+plotAICHandle = figure('Visible','off');
+summary.plotAIC();
+plotAICAx = gca;
+payload.summary_plotAIC_title = stringify_text(get(get(plotAICAx, 'Title'), 'String'));
+payload.summary_plotAIC_ylabel = stringify_text(get(get(plotAICAx, 'YLabel'), 'String'));
+payload.summary_plotAIC_xticklabels = cellstr(get(plotAICAx, 'XTickLabel'));
+close(plotAICHandle);
+
+plotBICHandle = figure('Visible','off');
+summary.plotBIC();
+plotBICAx = gca;
+payload.summary_plotBIC_title = stringify_text(get(get(plotBICAx, 'Title'), 'String'));
+payload.summary_plotBIC_ylabel = stringify_text(get(get(plotBICAx, 'YLabel'), 'String'));
+payload.summary_plotBIC_xticklabels = cellstr(get(plotBICAx, 'XTickLabel'));
+close(plotBICHandle);
+
+plotlogLLHandle = figure('Visible','off');
+summary.plotlogLL();
+plotlogLLAx = gca;
+payload.summary_plotlogLL_title = stringify_text(get(get(plotlogLLAx, 'Title'), 'String'));
+payload.summary_plotlogLL_ylabel = stringify_text(get(get(plotlogLLAx, 'YLabel'), 'String'));
+payload.summary_plotlogLL_xticklabels = cellstr(get(plotlogLLAx, 'XTickLabel'));
+close(plotlogLLHandle);
+
+residualHandle = summary.plotResidualSummary;
+residualAxes = findall(residualHandle, 'Type', 'axes');
+payload.summary_plotResidual_num_axes = numel(residualAxes);
+payload.summary_plotResidual_titles = cell(1, numel(residualAxes));
+payload.summary_plotResidual_ylabels = cell(1, numel(residualAxes));
+payload.summary_plotResidual_xlabels = cell(1, numel(residualAxes));
+payload.summary_plotResidual_line_counts = zeros(1, numel(residualAxes));
+payload.summary_plotResidual_legend_labels = {};
+for idx = 1:length(residualAxes)
+    ax = residualAxes(idx);
+    payload.summary_plotResidual_titles{idx} = stringify_text(get(get(ax, 'Title'), 'String'));
+    payload.summary_plotResidual_ylabels{idx} = stringify_text(get(get(ax, 'YLabel'), 'String'));
+    payload.summary_plotResidual_xlabels{idx} = stringify_text(get(get(ax, 'XLabel'), 'String'));
+    payload.summary_plotResidual_line_counts(idx) = numel(findall(ax, 'Type', 'line'));
+end
+legendHandle = findobj(residualHandle, 'Type', 'legend');
+if ~isempty(legendHandle)
+    payload.summary_plotResidual_legend_labels = cellstr(legendHandle(1).String);
+end
+close(residualHandle);
 
 save(fullfile(fixtureRoot, 'analysis_multineuron_exactness.mat'), '-struct', 'payload');
 end
@@ -812,12 +1107,25 @@ stats1 = {struct('se', [0.05], 'p', [0.01]), struct('se', [0.04 0.03 0.02], 'p',
 stats2 = {struct('se', [0.06], 'p', [0.03]), struct('se', [0.05 0.04 0.03], 'p', [0.01 0.03 0.07])};
 fit1 = FitResult(st1, covLabels, numHist, histObjects, ensHistObj, lambda, b1, [1.0 2.0], stats1, [11.0 7.0], [12.0 8.0], [3.0 5.0], configColl, {}, {}, 'poisson');
 fit2 = FitResult(st2, covLabels, numHist, histObjects, ensHistObj, lambda, b2, [1.5 2.5], stats2, [13.0 9.0], [14.0 10.0], [2.0 4.0], configColl, {}, {}, 'poisson');
+fixtureZ = [0.2 0.25; 0.4 0.35; 0.6 0.45];
+fixtureU = [0.15 0.20; 0.45 0.50; 0.75 0.80];
+fixtureXAxis = [0.25 0.25; 0.50 0.50; 0.75 0.75];
+fixtureKSSorted = [0.20 0.20; 0.50 0.50; 0.80 0.80];
+fixtureX = [-1.04 -0.84; -0.13 0.00; 0.67 0.84];
+rhoSig = SignalObj((1:3)', [0.1 0.2; 0.05 0.1; 0.0 0.05], 'rhoSig', 'lag', '', '', {'stim','stim_hist'});
+confBoundSig = SignalObj((1:3)', [0.2; 0.1; 0.05], 'confBoundSig', 'lag', '', '', {''});
+fit1.setKSStats(fixtureZ, fixtureU, fixtureXAxis, fixtureKSSorted, [0.25 0.50]);
+fit2.setKSStats(fixtureZ, fixtureU, fixtureXAxis, fixtureKSSorted, [0.35 0.55]);
+fit1.setInvGausStats(fixtureX, rhoSig, confBoundSig);
+fit2.setInvGausStats(fixtureX, rhoSig, confBoundSig);
 fit1.KSStats.ks_stat = [0.25 0.50];
 fit1.KSStats.pValue = [0.90 0.40];
 fit1.KSStats.withinConfInt = [1 1];
 fit2.KSStats.ks_stat = [0.35 0.55];
 fit2.KSStats.pValue = [0.80 0.30];
 fit2.KSStats.withinConfInt = [1 0];
+Analysis.plotFitResidual(fit1, 0.01, 0);
+Analysis.plotFitResidual(fit2, 0.01, 0);
 summary = FitResSummary({fit1, fit2});
 dAIC = summary.getDiffAIC(1, 0);
 dBIC = summary.getDiffBIC(1, 0);
@@ -870,6 +1178,218 @@ for idx = 1:length(allAxes)
 end
 payload.plotSummary_num_axes = numel(allAxes);
 close(plotHandle);
+
+plotAllCoeffsHandle = figure('Visible','off');
+summary.plotAllCoeffs();
+plotAllCoeffsAx = gca;
+payload.plotAllCoeffs_ylabel = stringify_text(get(get(plotAllCoeffsAx, 'YLabel'), 'String'));
+payload.plotAllCoeffs_xticklabels = cellstr(get(plotAllCoeffsAx, 'XTickLabel'));
+plotAllCoeffsLegend = legend(plotAllCoeffsAx);
+payload.plotAllCoeffs_legend = {};
+if ~isempty(plotAllCoeffsLegend) && isgraphics(plotAllCoeffsLegend)
+    payload.plotAllCoeffs_legend = cellstr(plotAllCoeffsLegend.String);
+end
+close(plotAllCoeffsHandle);
+
+coeffOnlyHandle = figure('Visible','off');
+coeffOnlyAx = local_axes_handle(summary.plotCoeffsWithoutHistory(2, 0, 1));
+payload.plotCoeffsWithoutHistory_title = stringify_text(get(get(coeffOnlyAx, 'Title'), 'String'));
+payload.plotCoeffsWithoutHistory_ylabel = stringify_text(get(get(coeffOnlyAx, 'YLabel'), 'String'));
+payload.plotCoeffsWithoutHistory_xticklabels = cellstr(get(coeffOnlyAx, 'XTickLabel'));
+close(coeffOnlyHandle);
+
+histHandle = figure('Visible','off');
+histAx = local_axes_handle(summary.plotHistCoeffs(2, 0, 1));
+payload.plotHistCoeffs_title = stringify_text(get(get(histAx, 'Title'), 'String'));
+payload.plotHistCoeffs_ylabel = stringify_text(get(get(histAx, 'YLabel'), 'String'));
+payload.plotHistCoeffs_xticklabels = cellstr(get(histAx, 'XTickLabel'));
+close(histHandle);
+
+fitPlotHandle = fit1.getSubsetFitResult(1).plotResults;
+fitPlotAxes = findall(fitPlotHandle, 'Type', 'axes');
+payload.fit_plotResults_num_axes = numel(fitPlotAxes);
+payload.fit_plotResults_titles = cell(1, numel(fitPlotAxes));
+payload.fit_plotResults_ylabels = cell(1, numel(fitPlotAxes));
+payload.fit_plotResults_xlabels = cell(1, numel(fitPlotAxes));
+for idx = 1:numel(fitPlotAxes)
+    ax = fitPlotAxes(idx);
+    payload.fit_plotResults_titles{idx} = stringify_text(get(get(ax, 'Title'), 'String'));
+    payload.fit_plotResults_ylabels{idx} = stringify_text(get(get(ax, 'YLabel'), 'String'));
+    payload.fit_plotResults_xlabels{idx} = stringify_text(get(get(ax, 'XLabel'), 'String'));
+end
+close(fitPlotHandle);
+
+singleFit = fit1.getSubsetFitResult(1);
+
+ksHandle = figure('Visible','off');
+singleFit.KSPlot;
+ksAx = gca;
+payload.fit_KSPlot_title = stringify_text(get(get(ksAx, 'Title'), 'String'));
+payload.fit_KSPlot_ylabel = stringify_text(get(get(ksAx, 'YLabel'), 'String'));
+payload.fit_KSPlot_xlabel = stringify_text(get(get(ksAx, 'XLabel'), 'String'));
+payload.fit_KSPlot_num_lines = numel(findall(ksAx, 'Type', 'line'));
+close(ksHandle);
+
+invHandle = figure('Visible','off');
+singleFit.plotInvGausTrans;
+invAx = gca;
+payload.fit_plotInvGausTrans_title = stringify_text(get(get(invAx, 'Title'), 'String'));
+payload.fit_plotInvGausTrans_ylabel = stringify_text(get(get(invAx, 'YLabel'), 'String'));
+payload.fit_plotInvGausTrans_xlabel = stringify_text(get(get(invAx, 'XLabel'), 'String'));
+payload.fit_plotInvGausTrans_num_lines = numel(findall(invAx, 'Type', 'line'));
+close(invHandle);
+
+seqHandle = figure('Visible','off');
+singleFit.plotSeqCorr;
+seqAx = gca;
+payload.fit_plotSeqCorr_title = stringify_text(get(get(seqAx, 'Title'), 'String'));
+payload.fit_plotSeqCorr_ylabel = stringify_text(get(get(seqAx, 'YLabel'), 'String'));
+payload.fit_plotSeqCorr_xlabel = stringify_text(get(get(seqAx, 'XLabel'), 'String'));
+payload.fit_plotSeqCorr_num_lines = numel(findall(seqAx, 'Type', 'line'));
+close(seqHandle);
+
+resHandle = figure('Visible','off');
+singleFit.plotResidual;
+resAx = gca;
+payload.fit_plotResidual_title = stringify_text(get(get(resAx, 'Title'), 'String'));
+payload.fit_plotResidual_ylabel = stringify_text(get(get(resAx, 'YLabel'), 'String'));
+payload.fit_plotResidual_xlabel = stringify_text(get(get(resAx, 'XLabel'), 'String'));
+payload.fit_plotResidual_num_lines = numel(findall(resAx, 'Type', 'line'));
+close(resHandle);
+
+coeffHandle = figure('Visible','off');
+singleFit.plotCoeffs;
+coeffAx = gca;
+payload.fit_plotCoeffs_title = stringify_text(get(get(coeffAx, 'Title'), 'String'));
+payload.fit_plotCoeffs_ylabel = stringify_text(get(get(coeffAx, 'YLabel'), 'String'));
+payload.fit_plotCoeffs_xlabel = stringify_text(get(get(coeffAx, 'XLabel'), 'String'));
+payload.fit_plotCoeffs_xticklabels = cellstr(get(coeffAx, 'XTickLabel'));
+payload.fit_plotCoeffs_num_lines = numel(findall(coeffAx, 'Type', 'line'));
+close(coeffHandle);
+
+historyFit = fit1.getSubsetFitResult(2);
+
+coeffNoHistHandle = figure('Visible','off');
+historyFit.plotCoeffsWithoutHistory;
+coeffNoHistAx = gca;
+payload.fit_plotCoeffsWithoutHistory_title = stringify_text(get(get(coeffNoHistAx, 'Title'), 'String'));
+payload.fit_plotCoeffsWithoutHistory_ylabel = stringify_text(get(get(coeffNoHistAx, 'YLabel'), 'String'));
+payload.fit_plotCoeffsWithoutHistory_xlabel = stringify_text(get(get(coeffNoHistAx, 'XLabel'), 'String'));
+payload.fit_plotCoeffsWithoutHistory_xticklabels = cellstr(get(coeffNoHistAx, 'XTickLabel'));
+payload.fit_plotCoeffsWithoutHistory_num_lines = numel(findall(coeffNoHistAx, 'Type', 'line'));
+close(coeffNoHistHandle);
+
+histCoeffHandle = figure('Visible','off');
+historyFit.plotHistCoeffs;
+histCoeffAx = gca;
+payload.fit_plotHistCoeffs_title = stringify_text(get(get(histCoeffAx, 'Title'), 'String'));
+payload.fit_plotHistCoeffs_ylabel = stringify_text(get(get(histCoeffAx, 'YLabel'), 'String'));
+payload.fit_plotHistCoeffs_xlabel = stringify_text(get(get(histCoeffAx, 'XLabel'), 'String'));
+payload.fit_plotHistCoeffs_xticklabels = cellstr(get(histCoeffAx, 'XTickLabel'));
+payload.fit_plotHistCoeffs_num_lines = numel(findall(histCoeffAx, 'Type', 'line'));
+close(histCoeffHandle);
+
+[coeffSummaryN, coeffSummaryEdges, coeffSummaryPercentSig] = summary.binCoeffs;
+payload.coeffSummary_bins = coeffSummaryN;
+payload.coeffSummary_edges = coeffSummaryEdges;
+payload.coeffSummary_percentSig = coeffSummaryPercentSig;
+
+coeff2dHandle = figure('Visible','off');
+coeff2dPlotHandles = summary.plot2dCoeffSummary(gca);
+coeff2dAx = gca;
+if isempty(summary.plotParams)
+    summary.computePlotParams;
+end
+payload.plot2dCoeffSummary_yticklabels = cellstr(summary.plotParams.xLabels);
+payload.plot2dCoeffSummary_num_lines = numel(coeff2dPlotHandles);
+textHandles = findall(coeff2dAx, 'Type', 'text');
+payload.plot2dCoeffSummary_text = cell(1, numel(textHandles));
+for idx = 1:numel(textHandles)
+    payload.plot2dCoeffSummary_text{idx} = stringify_text(get(textHandles(idx), 'String'));
+end
+close(coeff2dHandle);
+
+coeff3dHandle = figure('Visible','off');
+coeff3dAx = axes('Parent', coeff3dHandle);
+coeff3dPlotHandles = summary.plot3dCoeffSummary(coeff3dAx);
+if isempty(summary.plotParams)
+    summary.computePlotParams;
+end
+payload.plot3dCoeffSummary_yticklabels = cellstr(summary.plotParams.xLabels);
+payload.plot3dCoeffSummary_num_surfaces = numel(coeff3dPlotHandles);
+close(coeff3dHandle);
+
+summary.plotIC;
+icHandle = gcf;
+icAxes = findall(icHandle, 'Type', 'axes');
+payload.plotIC_num_axes = numel(icAxes);
+for idx = 1:length(icAxes)
+    ax = icAxes(idx);
+    titleStr = stringify_text(get(get(ax, 'Title'), 'String'));
+    ylabelStr = stringify_text(get(get(ax, 'YLabel'), 'String'));
+    xtickLabels = cellstr(get(ax, 'XTickLabel'));
+    switch titleStr
+        case "AIC Across Neurons"
+            payload.plotIC_aic_title = titleStr;
+            payload.plotIC_aic_ylabel = ylabelStr;
+            payload.plotIC_aic_xticklabels = xtickLabels;
+        case "BIC Across Neurons"
+            payload.plotIC_bic_title = titleStr;
+            payload.plotIC_bic_ylabel = ylabelStr;
+            payload.plotIC_bic_xticklabels = xtickLabels;
+        case "log likelihood Across Neurons"
+            payload.plotIC_logll_title = titleStr;
+            payload.plotIC_logll_ylabel = ylabelStr;
+            payload.plotIC_logll_xticklabels = xtickLabels;
+    end
+end
+close(icHandle);
+
+plotAICHandle = figure('Visible','off');
+summary.plotAIC;
+plotAICAx = gca;
+payload.plotAIC_title = stringify_text(get(get(plotAICAx, 'Title'), 'String'));
+payload.plotAIC_ylabel = stringify_text(get(get(plotAICAx, 'YLabel'), 'String'));
+payload.plotAIC_xticklabels = cellstr(get(plotAICAx, 'XTickLabel'));
+close(plotAICHandle);
+
+plotBICHandle = figure('Visible','off');
+summary.plotBIC;
+plotBICAx = gca;
+payload.plotBIC_title = stringify_text(get(get(plotBICAx, 'Title'), 'String'));
+payload.plotBIC_ylabel = stringify_text(get(get(plotBICAx, 'YLabel'), 'String'));
+payload.plotBIC_xticklabels = cellstr(get(plotBICAx, 'XTickLabel'));
+close(plotBICHandle);
+
+plotlogLLHandle = figure('Visible','off');
+summary.plotlogLL;
+plotlogLLAx = gca;
+payload.plotlogLL_title = stringify_text(get(get(plotlogLLAx, 'Title'), 'String'));
+payload.plotlogLL_ylabel = stringify_text(get(get(plotlogLLAx, 'YLabel'), 'String'));
+payload.plotlogLL_xticklabels = cellstr(get(plotlogLLAx, 'XTickLabel'));
+close(plotlogLLHandle);
+
+residualHandle = summary.plotResidualSummary;
+residualAxes = findall(residualHandle, 'Type', 'axes');
+payload.plotResidualSummary_num_axes = numel(residualAxes);
+payload.plotResidualSummary_titles = cell(1, numel(residualAxes));
+payload.plotResidualSummary_ylabels = cell(1, numel(residualAxes));
+payload.plotResidualSummary_xlabels = cell(1, numel(residualAxes));
+payload.plotResidualSummary_line_counts = zeros(1, numel(residualAxes));
+payload.plotResidualSummary_legend_labels = {};
+for idx = 1:length(residualAxes)
+    ax = residualAxes(idx);
+    payload.plotResidualSummary_titles{idx} = stringify_text(get(get(ax, 'Title'), 'String'));
+    payload.plotResidualSummary_ylabels{idx} = stringify_text(get(get(ax, 'YLabel'), 'String'));
+    payload.plotResidualSummary_xlabels{idx} = stringify_text(get(get(ax, 'XLabel'), 'String'));
+    payload.plotResidualSummary_line_counts(idx) = numel(findall(ax, 'Type', 'line'));
+end
+legendHandle = findobj(residualHandle, 'Type', 'legend');
+if ~isempty(legendHandle)
+    payload.plotResidualSummary_legend_labels = cellstr(legendHandle(1).String);
+end
+close(residualHandle);
+
 payload.roundtrip_supported = false;
 payload.roundtrip_error = '';
 try
@@ -1370,5 +1890,24 @@ elseif iscell(value)
     out = strjoin(parts, newline);
 else
     out = '';
+end
+end
+
+function ax = local_axes_handle(handleObj)
+if iscell(handleObj)
+    handleObj = [handleObj{:}];
+end
+if isa(handleObj, 'matlab.graphics.axis.Axes')
+    ax = handleObj;
+    if numel(ax) > 1
+        ax = ax(1);
+    end
+    return;
+end
+ax = ancestor(handleObj, 'axes');
+if isempty(ax)
+    ax = gca;
+elseif numel(ax) > 1
+    ax = ax(1);
 end
 end
