@@ -10,7 +10,22 @@ import numpy as np
 
 
 class Events:
-    """MATLAB-style event container."""
+    """Experimental event markers for highlighting epochs in figures.
+
+    Events represent times of importance during an experiment (e.g.
+    stimulus onset, trial boundaries) that are overlaid on raster or
+    signal plots.
+
+    Parameters
+    ----------
+    eventTimes : array_like
+        Vector of event times (seconds).
+    eventLabels : sequence of str or None
+        Labels for each event.  Must match the length of *eventTimes*
+        when provided.
+    eventColor : str, default ``'r'``
+        Colour string for the event lines (Matlab-style colour codes).
+    """
 
     def __init__(self, eventTimes, eventLabels: Sequence[str] | None = None, eventColor: str = "r") -> None:
         times = np.asarray(eventTimes, dtype=float).reshape(-1)
@@ -27,6 +42,7 @@ class Events:
         self.labels = self.eventLabels
 
     def toStructure(self) -> dict[str, Any]:
+        """Serialise the Events to a plain dictionary."""
         return {
             "eventTimes": self.eventTimes.tolist(),
             "eventLabels": list(self.eventLabels),
@@ -35,6 +51,7 @@ class Events:
 
     @staticmethod
     def fromStructure(structure: dict[str, Any] | None) -> "Events" | None:
+        """Reconstruct Events from a dictionary (inverse of :meth:`toStructure`)."""
         if structure is None:
             return None
         event_times = structure.get("eventTimes", structure.get("event_times", []))

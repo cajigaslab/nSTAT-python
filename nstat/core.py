@@ -71,7 +71,39 @@ def _nearest_sample_matrix(target_time: np.ndarray, source_time: np.ndarray, sou
 
 
 class SignalObj:
-    """Closer MATLAB-style signal abstraction used throughout the Python port."""
+    """Multi-dimensional time-series signal object (Matlab ``SignalObj``).
+
+    ``SignalObj`` is the foundational data container in nSTAT.  It stores
+    one or more signal channels sampled on a common time axis, along with
+    metadata (name, units, labels) and supports element-wise arithmetic,
+    resampling, filtering, correlation analysis, and spectral estimation.
+
+    Parameters
+    ----------
+    time : array_like
+        Monotonically increasing time vector of length *n*.
+    data : array_like
+        Signal values.  Shape ``(n,)`` for a scalar signal or ``(n, d)``
+        for a *d*-dimensional signal.
+    name : str, optional
+        Human-readable signal name (used as y-axis label in plots).
+    xlabelval : str, optional
+        X-axis label string (default ``'time'``).
+    xunits : str, optional
+        X-axis unit string (default ``'s'``).
+    yunits : str, optional
+        Y-axis unit string.
+    dataLabels : sequence of str or str, optional
+        Per-dimension labels.  A single string is broadcast to all
+        dimensions.
+    plotProps : sequence or str, optional
+        Per-dimension Matplotlib format strings.
+
+    See Also
+    --------
+    Covariate : SignalObj subclass with confidence-interval support.
+    nspikeTrain : Point-process (spike train) companion class.
+    """
 
     def __init__(
         self,
@@ -120,20 +152,24 @@ class SignalObj:
 
     @property
     def dimension(self) -> int:
+        """Number of signal channels (columns in the data matrix)."""
         return int(self.data.shape[1])
 
     @property
     def values(self) -> np.ndarray:
+        """Signal data as a 1-D array (scalar) or 2-D matrix."""
         if self.dimension == 1:
             return self.data[:, 0]
         return self.data
 
     @property
     def units(self) -> str:
+        """Y-axis unit string (alias for ``yunits``)."""
         return self.yunits
 
     @property
     def sample_rate(self) -> float:
+        """Sampling rate in Hz (alias for ``sampleRate``)."""
         return float(self.sampleRate)
 
     def _spawn(
@@ -158,6 +194,7 @@ class SignalObj:
         )
 
     def copySignal(self) -> "SignalObj":
+        """Return a deep copy of this signal (Matlab ``copySignal``)."""
         copied = self._spawn(self.time, self.data)
         if self.conf_interval is not None:
             copied.conf_interval = (
@@ -215,36 +252,48 @@ class SignalObj:
         return self._spawn(self.time, result, data_labels=labels)
 
     def setName(self, name: str) -> None:
+        """Set the signal name (y-axis label)."""
         if not isinstance(name, str):
             raise TypeError("Name must be a string!")
         self.name = name
 
     def setXlabel(self, name: str) -> None:
+        """Set the x-axis label string."""
         self.xlabelval = str(name)
 
     def setYLabel(self, name: str) -> None:
+        """Set the y-axis label (alias for ``setName``)."""
         self.setName(name)
 
     def setUnits(self, xUnits: str, yUnits: str | None = None) -> None:
+        """Set x-axis and optionally y-axis units."""
         if yUnits is not None:
             self.setYUnits(yUnits)
         self.setXUnits(xUnits)
 
     def setXUnits(self, units: str) -> None:
+        """Set the x-axis unit string."""
         if isinstance(units, str):
             self.xunits = units
 
     def setYUnits(self, units: str) -> None:
+        """Set the y-axis unit string."""
         if isinstance(units, str):
             self.yunits = units
 
     def setSampleRate(self, sampleRate: float) -> None:
+        """Set the sample rate, resampling the data if it differs from current."""
         requested = float(sampleRate)
         current = float(self.sampleRate)
         if abs(round(requested, 3) - round(current, 3)) > 0:
             self.resampleMe(requested)
 
     def setDataLabels(self, dataLabels: Sequence[str] | str | None) -> None:
+        """Set per-dimension data labels.
+
+        A single string is broadcast to all dimensions.  A sequence must
+        have length equal to ``dimension``.
+        """
         if dataLabels is None or (isinstance(dataLabels, str) and dataLabels == ""):
             self.dataLabels = ["" for _ in range(self.dimension)]
             return
@@ -259,6 +308,10 @@ class SignalObj:
         self.dataLabels = labels
 
     def setPlotProps(self, plotProps: Sequence[Any] | str | None, index: int | None = None) -> None:
+        """Set per-dimension Matplotlib format strings.
+
+        When *index* (1-based) is given, only that dimension is updated.
+        """
         if index is None:
             if plotProps is None:
                 self.plotProps = [None for _ in range(self.dimension)]
@@ -287,6 +340,7 @@ class SignalObj:
             self.plotProps[target] = plotProps
 
     def setDataMask(self, dataMask: Sequence[int] | np.ndarray) -> None:
+        """Set binary data mask (1 = visible, 0 = hidden) for each dimension."""
         mask = np.asarray(dataMask, dtype=int).reshape(-1)
         if mask.size != self.dimension:
             raise ValueError("dataMask must match the number of signal dimensions.")
@@ -295,12 +349,14 @@ class SignalObj:
         self.dataMask = mask
 
     def setMaskByInd(self, index: Sequence[int] | np.ndarray) -> None:
+        """Enable only the dimensions at the given 1-based indices."""
         selected = _coerce_1based_indices(index, self.dimension)
         mask = np.zeros(self.dimension, dtype=int)
         mask[np.asarray(selected, dtype=int) - 1] = 1
         self.setDataMask(mask)
 
     def setMaskByLabels(self, labels: Sequence[str] | str) -> None:
+        """Enable only the dimensions whose data labels match *labels*."""
         indices = self.getIndicesFromLabels(labels)
         if isinstance(indices, list) and indices and isinstance(indices[0], list):
             flat = [item for sub in indices for item in sub]
@@ -311,6 +367,12 @@ class SignalObj:
         self.setMaskByInd(flat)
 
     def setMask(self, mask: Sequence[int] | Sequence[str] | np.ndarray | None = None) -> None:
+        """Flexible mask setter accepting indices, labels, or a binary vector.
+
+        ``None`` clears the mask (all hidden).  A binary vector of length
+        ``dimension`` is used directly.  A list of labels or 1-based indices
+        enables only those dimensions.
+        """
         if mask is None:
             self.setDataMask(np.zeros(self.dimension, dtype=int))
             return
@@ -336,28 +398,35 @@ class SignalObj:
         self.setMaskByInd(arr.astype(int))
 
     def getTime(self) -> np.ndarray:
+        """Return a copy of the time vector."""
         return self.time.copy()
 
     def getData(self) -> np.ndarray:
+        """Return signal data as a matrix (alias for ``dataToMatrix()``)."""
         return self.dataToMatrix()
 
     def getOriginalData(self) -> tuple[np.ndarray, np.ndarray]:
+        """Return ``(originalTime, originalData)`` copies."""
         return self.originalTime.copy(), self.originalData.copy()
 
     def getOrigDataSig(self) -> "SignalObj":
+        """Return the original (pre-resample) data as a new ``SignalObj``."""
         return self._spawn(self.originalTime, self.originalData)
 
     def getPlotProps(self, index: int) -> Any:
+        """Return the plot property for dimension *index* (1-based)."""
         idx = _coerce_1based_indices([index], self.dimension)[0] - 1
         return self.plotProps[idx]
 
     def getIndexFromLabel(self, label: str) -> list[int]:
+        """Return 1-based indices of dimensions whose label equals *label*."""
         matches = [i + 1 for i, value in enumerate(self.dataLabels) if value == label]
         if not matches:
             raise ValueError("Label does not exist!")
         return matches
 
     def getIndicesFromLabels(self, label: Sequence[str] | str):
+        """Return 1-based index(es) for one or more data-label strings."""
         if isinstance(label, str):
             matches = self.getIndexFromLabel(label)
             return matches[0] if len(matches) == 1 else matches
@@ -415,6 +484,7 @@ class SignalObj:
         return list(range(1, self.dimension + 1))
 
     def getValueAt(self, x: Sequence[float] | float) -> np.ndarray:
+        """Return signal value(s) at time(s) *x* via nearest-neighbour lookup."""
         query = np.asarray(x, dtype=float).reshape(-1)
         out = np.zeros((query.size, self.dimension), dtype=float)
         valid = (query >= self.minTime) & (query <= self.maxTime)
@@ -447,6 +517,11 @@ class SignalObj:
         return indices - 1
 
     def dataToMatrix(self, selectorArray: Sequence[int] | np.ndarray | None = None) -> np.ndarray:
+        """Return signal data as an ``(n, d)`` matrix.
+
+        *selectorArray* is an optional sequence of 1-based dimension
+        indices.  When ``None``, the data mask selects visible dimensions.
+        """
         indices = self._selector_to_zero_based(selectorArray)
         if indices.size == 0:
             return np.zeros((self.time.size, 0), dtype=float)
@@ -461,6 +536,7 @@ class SignalObj:
         return [self.plotProps[int(i)] for i in zero_based]
 
     def getSubSignalFromInd(self, selectorArray: Sequence[int] | np.ndarray) -> "SignalObj":
+        """Return a new ``SignalObj`` with only the selected dimensions (1-based)."""
         indices = self._selector_to_zero_based(selectorArray)
         return self._spawn(
             self.time,
@@ -470,10 +546,12 @@ class SignalObj:
         )
 
     def getSubSignalFromNames(self, labels: Sequence[str] | str) -> "SignalObj":
+        """Return a sub-signal selected by data-label name(s)."""
         indices = self.getIndicesFromLabels(labels)
         return self.getSubSignalFromInd(indices if isinstance(indices, list) else [indices])
 
     def getSubSignal(self, identifier) -> "SignalObj":
+        """Return a sub-signal selected by labels, indices, or mixed."""
         if isinstance(identifier, str):
             return self.getSubSignalFromNames(identifier)
         if isinstance(identifier, np.ndarray):
@@ -487,6 +565,7 @@ class SignalObj:
         return self.getSubSignalFromInd(values)
 
     def findNearestTimeIndex(self, time: float) -> int:
+        """Return the 1-based index of the sample nearest to *time*."""
         value = float(time)
         if value < self.minTime:
             return 1
@@ -503,9 +582,15 @@ class SignalObj:
         return left + 1
 
     def findNearestTimeIndices(self, times: Sequence[float] | np.ndarray) -> np.ndarray:
+        """Return 1-based indices of the samples nearest to each time in *times*."""
         return np.asarray([self.findNearestTimeIndex(value) for value in np.asarray(times, dtype=float).reshape(-1)], dtype=int)
 
     def setMinTime(self, minTime: float | None = None, holdVals: int = 0) -> None:
+        """Extend or trim the signal to start at *minTime*.
+
+        If *holdVals* is 1, endpoint values are held when extending;
+        otherwise the signal is zero-padded.
+        """
         target = self.time[0] if minTime is None else float(minTime)
         timeVec = self.getTime()
         if target < float(np.min(timeVec)):
@@ -526,6 +611,11 @@ class SignalObj:
         self.minTime = float(np.min(self.time))
 
     def setMaxTime(self, maxTime: float | None = None, holdVals: int = 0) -> None:
+        """Extend or trim the signal to end at *maxTime*.
+
+        If *holdVals* is 1, endpoint values are held when extending;
+        otherwise the signal is zero-padded.
+        """
         target = self.time[-1] if maxTime is None else float(maxTime)
         timeVec = self.getTime()
         if float(np.max(timeVec)) < target:
@@ -665,6 +755,12 @@ class SignalObj:
         wMax: Sequence[float] | float | None = None,
         holdVals: int = 0,
     ) -> "SignalObj":
+        """Extract signal within ``[wMin, wMax]``.
+
+        Multiple windows can be specified by passing equal-length sequences
+        for *wMin* and *wMax*; the extracted segments are concatenated as
+        additional dimensions (Matlab ``getSigInTimeWindow``).
+        """
         if wMax is None:
             wMax = self.maxTime
         if wMin is None:
@@ -700,6 +796,10 @@ class SignalObj:
         return windowed if windowed is not None else self.copySignal()
 
     def restoreToOriginal(self, rMask: int = 0) -> None:
+        """Restore time, data, and sample rate to their original values.
+
+        If *rMask* is 1, the data mask is also reset (all visible).
+        """
         self.time = self.originalTime.copy()
         self.data = self.originalData.copy()
         self.minTime = float(np.min(self.time))
@@ -709,15 +809,19 @@ class SignalObj:
             self.resetMask()
 
     def resetMask(self) -> None:
+        """Reset the data mask so all dimensions are visible."""
         self.dataMask = np.ones(self.dimension, dtype=int)
 
     def findIndFromDataMask(self) -> list[int]:
+        """Return 1-based indices of dimensions currently visible (mask == 1)."""
         return [int(index) + 1 for index in np.flatnonzero(self.dataMask == 1)]
 
     def isMaskSet(self) -> bool:
+        """Return ``True`` if any dimension is currently masked out."""
         return bool(np.any(self.dataMask == 0))
 
     def abs(self) -> "SignalObj":
+        """Element-wise absolute value (Matlab ``abs``)."""
         labels = [f"|{label}|" if label else "" for label in self.dataLabels]
         return self._spawn(self.time, np.abs(self.data), data_labels=labels).with_metadata(
             name=f"|{self.name}|",
@@ -728,6 +832,7 @@ class SignalObj:
         return self.abs()
 
     def log(self) -> "SignalObj":
+        """Element-wise natural logarithm (Matlab ``log``)."""
         labels = [f"ln({label})" if label else "" for label in self.dataLabels]
         yunits = f"ln({self.yunits})" if self.yunits else ""
         return self._spawn(self.time, np.log(self.data), data_labels=labels).with_metadata(
@@ -736,6 +841,7 @@ class SignalObj:
         )
 
     def with_metadata(self, *, name: str | None = None, xlabelval: str | None = None, xunits: str | None = None, yunits: str | None = None) -> "SignalObj":
+        """Return a copy with selectively overridden metadata fields."""
         out = self.copySignal()
         if name is not None:
             out.name = str(name)
@@ -748,6 +854,12 @@ class SignalObj:
         return out
 
     def median(self, axis: int | None = None) -> "SignalObj":
+        """Column-wise median (default) or row-wise median of signal data.
+
+        ``median()`` or ``median(0)`` computes the median of each
+        component across time.  ``median(1)`` computes the median value at
+        each time point across dimensions.
+        """
         axis_arg = 0 if axis is None else axis
         median_data = np.median(self.data, axis=axis_arg)
         array = np.asarray(median_data, dtype=float)
@@ -762,6 +874,7 @@ class SignalObj:
         return self._spawn(self.time, reshaped, data_labels=[f"median({self.name})"]).with_metadata(name=f"median({self.name})")
 
     def mode(self, axis: int | None = None) -> "SignalObj":
+        """Column-wise mode of signal data (Matlab ``mode``)."""
         axis_arg = 0 if axis is None else axis
         if axis_arg == 0:
             mode_data = np.asarray([_matlab_mode_1d(self.data[:, i]) for i in range(self.dimension)], dtype=float)
@@ -781,6 +894,12 @@ class SignalObj:
         return self._spawn(self.time, reshaped, data_labels=[f"mode({self.name})"]).with_metadata(name=f"mode({self.name})")
 
     def mean(self, axis: int | None = None) -> "SignalObj":
+        """Column-wise mean (default) or row-wise mean of signal data.
+
+        ``mean()`` or ``mean(0)`` computes the mean of each component
+        across time.  ``mean(1)`` computes the mean value at each time
+        point across dimensions.
+        """
         axis_arg = 0 if axis is None else axis
         mean_data = np.mean(self.data, axis=axis_arg)
         array = np.asarray(mean_data, dtype=float)
@@ -795,6 +914,11 @@ class SignalObj:
         return self._spawn(self.time, reshaped, data_labels=[f"\\mu({self.name})"])
 
     def std(self, axis: int | None = None) -> "SignalObj":
+        """Column-wise standard deviation (sample, ddof=1) of signal data.
+
+        ``std()`` or ``std(0)`` computes std of each component across
+        time.  ``std(1)`` computes std at each time point across dimensions.
+        """
         axis_arg = 0 if axis is None else axis
         std_data = np.std(self.data, axis=axis_arg, ddof=1)
         array = np.asarray(std_data, dtype=float)
@@ -809,6 +933,7 @@ class SignalObj:
         return self._spawn(self.time, reshaped, data_labels=[f"\\sigma({self.name})"])
 
     def max(self, axis: int | None = None):
+        """Return ``(values, indices, times)`` of column-wise maxima."""
         axis_arg = 0 if axis is None else axis
         values = np.max(self.data, axis=axis_arg)
         indices = np.argmax(self.data, axis=axis_arg)
@@ -816,6 +941,7 @@ class SignalObj:
         return values, indices, time
 
     def min(self, axis: int | None = None):
+        """Return ``(values, indices, times)`` of column-wise minima."""
         axis_arg = 0 if axis is None else axis
         values = np.min(self.data, axis=axis_arg)
         indices = np.argmin(self.data, axis=axis_arg)
@@ -823,11 +949,13 @@ class SignalObj:
         return values, indices, time
 
     def resample(self, sample_rate: float) -> "SignalObj":
+        """Return a resampled copy at *sample_rate* Hz."""
         copied = self.copySignal()
         copied.resampleMe(sample_rate)
         return copied
 
     def resampleMe(self, newSampleRate: float) -> None:
+        """Resample data in-place to *newSampleRate* Hz via cubic interpolation."""
         try:
             from scipy.interpolate import interp1d
         except Exception as exc:  # pragma: no cover
@@ -877,11 +1005,18 @@ class SignalObj:
         return self._spawn(self.time, deriv, data_labels=labels)
 
     def derivativeAt(self, x0: Sequence[float] | float):
+        """Return the derivative value(s) at time(s) *x0*."""
         deriv = self.derivative
         values = deriv.getValueAt(x0)
         return values
 
     def integral(self, t0: float | None = None, tf: float | None = None) -> "SignalObj":
+        """Cumulative integral of the signal from *t0* to *tf*.
+
+        Computed via a causal IIR accumulator:
+        ``y[n] = y[n-1] + x[n] * deltaT``.  If *t0* / *tf* are not
+        specified, ``minTime`` / ``maxTime`` are used.
+        """
         start = self.minTime if t0 is None else float(t0)
         stop = self.maxTime if tf is None else float(tf)
         integrated = self.getSigInTimeWindow(start, stop)
@@ -905,6 +1040,10 @@ class SignalObj:
         return integrated
 
     def filter(self, B, A=1) -> "SignalObj":
+        """Apply a causal IIR/FIR filter ``(B, A)`` to each dimension.
+
+        Equivalent to ``scipy.signal.lfilter(B, A, data)``.
+        """
         try:
             from scipy.signal import lfilter
         except Exception as exc:  # pragma: no cover
@@ -916,6 +1055,10 @@ class SignalObj:
         return self._spawn(self.time, filtered, data_labels=list(self.dataLabels))
 
     def filtfilt(self, B, A=1) -> "SignalObj":
+        """Apply a zero-phase IIR/FIR filter ``(B, A)`` to each dimension.
+
+        Equivalent to ``scipy.signal.filtfilt(B, A, data)``.
+        """
         try:
             from scipy.signal import filtfilt
         except Exception as exc:  # pragma: no cover
@@ -954,6 +1097,12 @@ class SignalObj:
         return s1c, s2c
 
     def autocorrelation(self) -> "SignalObj":
+        """Normalized auto-correlation for each signal dimension.
+
+        Returns a new ``SignalObj`` whose time axis is lag (in the original
+        x-units) and whose data are the correlation coefficients normalised
+        to unity at lag zero (Matlab ``autocorrelation``).
+        """
         centered = self.data - np.mean(self.data, axis=0, keepdims=True)
         columns: list[np.ndarray] = []
         lags: np.ndarray | None = None
@@ -981,6 +1130,12 @@ class SignalObj:
         )
 
     def crosscorrelation(self, other: "SignalObj") -> "SignalObj":
+        """Normalized cross-correlation between two scalar signals.
+
+        Both signals must be one-dimensional.  The result is normalised
+        so that the peak equals the Pearson correlation coefficient
+        (Matlab ``crosscorrelation``).
+        """
         if self.dimension != 1 or other.dimension != 1:
             raise ValueError("crosscorrelation only supports one-dimensional signals")
         s1c, s2c = self.makeCompatible(other)
@@ -1005,6 +1160,13 @@ class SignalObj:
         )
 
     def xcorr(self, other: "SignalObj" | None = None, maxlag: int | None = None) -> "SignalObj":
+        """Raw (un-normalised) cross-correlation (Matlab ``xcorr``).
+
+        Computes pairwise cross-correlation for all dimension pairs.
+        When *other* is ``None`` (auto-correlation), only non-negative
+        lags are returned.  *maxlag* truncates to ``|lag| ≤ maxlag``
+        samples.
+        """
         s2 = self if other is None else other
         s1c, s2c = self.makeCompatible(s2)
         data_columns: list[np.ndarray] = []
@@ -1551,6 +1713,7 @@ class SignalObj:
         return f, t, Sxx
 
     def setConfInterval(self, bounds: tuple[np.ndarray, np.ndarray]) -> None:
+        """Attach ``(lower, upper)`` confidence bounds aligned with time."""
         low, high = bounds
         low_arr = np.asarray(low, dtype=float)
         high_arr = np.asarray(high, dtype=float)
@@ -1559,6 +1722,7 @@ class SignalObj:
         self.conf_interval = (low_arr, high_arr)
 
     def dataToStructure(self, selectorArray: Sequence[int] | np.ndarray | None = None) -> dict[str, Any]:
+        """Serialize signal data to a plain dict (Matlab ``dataToStructure``)."""
         data = self.dataToMatrix(selectorArray)
         plot_props = list(self.plotProps)
         if all(prop is None for prop in plot_props):
@@ -1575,10 +1739,12 @@ class SignalObj:
         }
 
     def toStructure(self) -> dict[str, Any]:
+        """Serialize the full signal to a plain dict (Matlab ``toStructure``)."""
         return self.dataToStructure()
 
     @staticmethod
     def signalFromStruct(structure: dict[str, Any]) -> "SignalObj":
+        """Reconstruct a ``SignalObj`` from a dict (Matlab ``signalFromStruct``)."""
         return SignalObj(
             structure["time"],
             structure["data"],
@@ -1591,6 +1757,22 @@ class SignalObj:
         )
 
     def plot(self, selectorArray=None, plotPropsIn=None, handle=None):
+        """Plot selected signal dimensions (Matlab ``plot``).
+
+        Parameters
+        ----------
+        selectorArray : optional
+            Dimension selector (labels, 1-based indices, or ``None`` for all
+            visible dimensions).
+        plotPropsIn : optional
+            Override Matplotlib format strings for each dimension.
+        handle : matplotlib Axes, optional
+            Axes to draw into; defaults to ``plt.gca()``.
+
+        Returns
+        -------
+        list of Line2D
+        """
         import matplotlib.pyplot as plt
         from .confidence_interval import MATLAB_COLOR_ORDER
 
@@ -1626,7 +1808,26 @@ class SignalObj:
 
 
 class Covariate(SignalObj):
-    """MATLAB-style covariate signal with CI and zero-mean views."""
+    """Signal with per-dimension confidence intervals (Matlab ``Covariate``).
+
+    ``Covariate`` extends :class:`SignalObj` with a list of
+    :class:`~nstat.confidence_interval.ConfidenceInterval` objects (one per
+    dimension) and propagates those intervals through ``+`` and ``-``
+    arithmetic.  It also provides ``'zero-mean'`` and ``'standard'``
+    signal representations used by the GLM design-matrix builder.
+
+    Parameters
+    ----------
+    *args, **kwargs
+        Forwarded to :class:`SignalObj`.  The keyword aliases ``values``
+        (→ ``data``) and ``units`` (→ ``yunits``) are accepted for
+        convenience.
+
+    See Also
+    --------
+    SignalObj : Base time-series container.
+    ConfidenceInterval : CI storage class used by ``ci``.
+    """
 
     def __init__(self, *args, **kwargs) -> None:
         if "values" in kwargs and "data" not in kwargs:
@@ -1638,13 +1839,21 @@ class Covariate(SignalObj):
 
     @property
     def mu(self) -> SignalObj:
+        """Column-wise mean as a ``SignalObj`` (Matlab ``mu`` property)."""
         return self.mean()
 
     @property
     def sigma(self) -> SignalObj:
+        """Column-wise standard deviation as a ``SignalObj`` (Matlab ``sigma``)."""
         return self.std()
 
     def computeMeanPlusCI(self, alphaVal: float = 0.05) -> "Covariate":
+        """Compute row-wise mean with empirical confidence intervals.
+
+        Treats each column as a replicate.  Returns a scalar ``Covariate``
+        whose CI bounds are the *alphaVal*/2 and 1−*alphaVal*/2 quantiles
+        of the empirical CDF across replicates (Matlab ``computeMeanPlusCI``).
+        """
         from .confidence_interval import ConfidenceInterval
 
         sorted_data = np.sort(self.data, axis=1)
@@ -1707,6 +1916,7 @@ class Covariate(SignalObj):
         raise ValueError("repType must be either 'zero-mean' or 'standard'")
 
     def plot(self, selectorArray=None, plotPropsIn=None, handle=None):
+        """Plot signal dimensions with shaded confidence intervals."""
         lines = super().plot(selectorArray, plotPropsIn, handle)
         if self.isConfIntervalSet():
             import matplotlib.pyplot as plt
@@ -1728,15 +1938,18 @@ class Covariate(SignalObj):
         return lines
 
     def isConfIntervalSet(self) -> bool:
+        """Return ``True`` if at least one dimension has a CI attached."""
         return bool(self.ci)
 
     def setConfInterval(self, ciObj) -> None:
+        """Attach one or more ``ConfidenceInterval`` objects to this covariate."""
         if isinstance(ciObj, list):
             self.ci = list(ciObj)
         else:
             self.ci = [ciObj]
 
     def copySignal(self) -> "Covariate":
+        """Deep-copy including confidence intervals (Matlab ``copySignal``)."""
         copied = Covariate(
             self.time.copy(),
             self.data.copy(),
@@ -1763,6 +1976,7 @@ class Covariate(SignalObj):
         return copied
 
     def getSubSignal(self, identifier) -> "Covariate":
+        """Return a sub-covariate preserving matching CIs."""
         sub = super().getSubSignal(identifier)
         cov = Covariate(
             sub.time,
@@ -1788,6 +2002,7 @@ class Covariate(SignalObj):
         return cov
 
     def __add__(self, other):
+        """Add two covariates, propagating confidence intervals."""
         covOut = super().__add__(other)
         if isinstance(other, Covariate):
             if self.isConfIntervalSet() and not other.isConfIntervalSet():
@@ -1799,6 +2014,7 @@ class Covariate(SignalObj):
         return covOut
 
     def __sub__(self, other):
+        """Subtract two covariates, propagating confidence intervals."""
         covOut = super().__sub__(other)
         if isinstance(other, Covariate):
             if self.isConfIntervalSet() and not other.isConfIntervalSet():
@@ -1810,6 +2026,7 @@ class Covariate(SignalObj):
         return covOut
 
     def toStructure(self) -> dict[str, Any]:
+        """Serialize to a dict, including CI payload if present."""
         structure = super().toStructure()
         if self.isConfIntervalSet():
             ci_payload: list[dict[str, Any]] = []
@@ -1822,6 +2039,7 @@ class Covariate(SignalObj):
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "Covariate":
+        """Reconstruct a ``Covariate`` (with optional CIs) from a dict."""
         from .confidence_interval import ConfidenceInterval
 
         cov = Covariate(
@@ -1847,7 +2065,36 @@ class Covariate(SignalObj):
 
 
 class nspikeTrain:
-    """Closer MATLAB-style spike-train object with cached signal representation."""
+    """Point-process (spike train) object (Matlab ``nspikeTrain``).
+
+    Stores an array of event times (spikes) and converts them on demand
+    into a binned ``SignalObj`` signal representation (``sigRep``).  Burst
+    statistics, ISI analysis, and raster plotting are built in.
+
+    Parameters
+    ----------
+    spikeTimes : array_like
+        Spike times in seconds.
+    name : str, optional
+        Neuron / channel label.
+    binwidth : float, optional
+        Bin width in seconds for the signal representation (default 1 ms).
+    minTime, maxTime : float, optional
+        Observation window.  Defaults to ``min/max(spikeTimes)``.
+    xlabelval, xunits, yunits : str, optional
+        Axis label and unit strings.
+    dataLabels : str or sequence of str, optional
+        Label(s) for the spike-train dimension.
+    makePlots : int, optional
+        ``0`` — compute statistics silently (default);
+        ``1`` — compute and plot;
+        ``< 0`` — skip statistics entirely (fast construction).
+
+    See Also
+    --------
+    SignalObj : Continuous time-series container returned by ``getSigRep``.
+    SpikeTrainCollection : Multi-neuron collection.
+    """
 
     def __init__(
         self,
@@ -1905,30 +2152,37 @@ class nspikeTrain:
 
     @property
     def times(self) -> np.ndarray:
+        """Alias for ``spikeTimes``."""
         return self.spikeTimes
 
     @property
     def n_spikes(self) -> int:
+        """Number of spikes in the train."""
         return int(self.spikeTimes.size)
 
     @property
     def duration(self) -> float:
+        """Observation window duration ``maxTime − minTime`` in seconds."""
         return float(self.maxTime - self.minTime)
 
     @property
     def firing_rate_hz(self) -> float:
+        """Average firing rate (spikes / duration) in Hz."""
         if self.duration <= 0:
             return 0.0
         return float(self.n_spikes / self.duration)
 
     def setMER(self, MERSig: SignalObj) -> None:
+        """Attach a micro-electrode recording signal to this spike train."""
         if isinstance(MERSig, SignalObj):
             self.MER = MERSig
 
     def setName(self, name: str) -> None:
+        """Set the neuron / channel name."""
         self.name = str(name)
 
     def computeStatistics(self, makePlots: int = 0) -> None:
+        """Compute ISI, burst, and regularity statistics (Matlab ``computeStatistics``)."""
         self.avgFiringRate = self.firing_rate_hz
         isi = self.getISIs()
         # Filter spike times to [minTime, maxTime] so burst statistics
@@ -1998,6 +2252,7 @@ class nspikeTrain:
             self.plot()
 
     def getLStatistic(self) -> float:
+        """Return the L-statistic (number of unique bin counts in ``sigRep``)."""
         isi = self.getISIs()
         if isi.size == 0:
             return np.nan
@@ -2065,6 +2320,7 @@ class nspikeTrain:
         return sig
 
     def setSigRep(self, binwidth: float | None = None, minTime: float | None = None, maxTime: float | None = None) -> SignalObj:
+        """Build the binned signal representation and store it in-place."""
         sig = self.getSigRep(binwidth, minTime, maxTime)
         self.sigRep = sig.copySignal()
         self.sampleRate = float(sig.sampleRate)
@@ -2077,38 +2333,45 @@ class nspikeTrain:
         return self.sigRep
 
     def clearSigRep(self) -> None:
+        """Invalidate the cached signal representation."""
         self.sigRep = None
         self._sigrep_cache_key = None
         self.isSigRepBin = None
 
     def setMinTime(self, minTime: float) -> None:
+        """Set the observation-window start and recompute statistics."""
         self.minTime = float(minTime)
         self.clearSigRep()
         self.computeStatistics(0)
 
     def setMaxTime(self, maxTime: float) -> None:
+        """Set the observation-window end and recompute statistics."""
         self.maxTime = float(maxTime)
         self.clearSigRep()
         self.computeStatistics(0)
 
     def resample(self, sampleRate: float) -> "nspikeTrain":
+        """Rebuild the signal representation at *sampleRate* Hz."""
         self.setSigRep(1.0 / float(sampleRate), self.minTime, self.maxTime)
         self.sampleRate = float(sampleRate)
         return self
 
     def getSpikeTimes(self, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
+        """Return spike times within ``[minTime, maxTime]``."""
         start = self.minTime if minTime is None else float(minTime)
         stop = self.maxTime if maxTime is None else float(maxTime)
         spikes = self.spikeTimes[(self.spikeTimes >= start) & (self.spikeTimes <= stop)]
         return spikes.copy()
 
     def getISIs(self, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
+        """Return inter-spike intervals within the given time window."""
         spikes = self.getSpikeTimes(minTime, maxTime)
         if spikes.size < 2:
             return np.array([], dtype=float)
         return np.diff(spikes)
 
     def getMinISI(self, minTime: float | None = None, maxTime: float | None = None) -> float:
+        """Return the minimum ISI (refractory period estimate)."""
         isi = self.getISIs(minTime, maxTime)
         if isi.size == 0:
             return float("nan")
@@ -2120,6 +2383,11 @@ class nspikeTrain:
         minTime: float | None = None,
         maxTime: float | None = None,
     ) -> SignalObj:
+        """Return the binned signal representation, using cache when possible.
+
+        The result is a ``SignalObj`` of spike counts on a regular grid
+        with bin width *binwidth* (default ``1/sampleRate``).
+        """
         bw = (1.0 / self.sampleRate) if binwidth is None else float(binwidth)
         start = self.minTime if minTime is None else float(minTime)
         stop = self.maxTime if maxTime is None else float(maxTime)
@@ -2132,18 +2400,21 @@ class nspikeTrain:
         return sig
 
     def getMaxBinSizeBinary(self) -> float:
+        """Return the largest bin width that keeps the ``sigRep`` binary."""
         isi = self.getISIs()
         if isi.size == 0:
             return np.inf
         return float(np.min(isi))
 
     def isSigRepBinary(self) -> bool:
+        """Return ``True`` if every bin in the default ``sigRep`` has ≤ 1 spike."""
         default_key = self._cache_key(1.0 / float(self.sampleRate), float(self.minTime), float(self.maxTime))
         if self._sigrep_cache_key != default_key or self.isSigRepBin is None:
             self.getSigRep(1.0 / float(self.sampleRate), float(self.minTime), float(self.maxTime))
         return bool(self.isSigRepBin)
 
     def computeRate(self) -> SignalObj:
+        """Return firing rate ``sigRep × sampleRate`` in spikes/sec."""
         sig = self.getSigRep()
         if self.sampleRate <= 0:
             return sig
@@ -2151,6 +2422,7 @@ class nspikeTrain:
         return SignalObj(sig.time, rate, self.name, sig.xlabelval, sig.xunits, "spikes/sec", sig.dataLabels)
 
     def restoreToOriginal(self) -> None:
+        """Reset spike times and time bounds to original values."""
         self.spikeTimes = self.originalSpikeTimes.copy()
         self.minTime = float(np.min(self.spikeTimes)) if self.spikeTimes.size else 0.0
         self.maxTime = float(np.max(self.spikeTimes)) if self.spikeTimes.size else 0.0
@@ -2163,6 +2435,21 @@ class nspikeTrain:
         lbound: float | None = None,
         ubound: float | None = None,
     ):
+        """Partition into per-trial spike trains (Matlab ``partitionNST``).
+
+        Parameters
+        ----------
+        windowTimes : sequence of float
+            Edge times defining trial boundaries (N edges → N−1 trials).
+        normalizeTime : bool, optional
+            If ``True``, rescale each trial's spikes to [0, 1].
+        lbound, ubound : float, optional
+            Accept only windows whose duration falls in ``[lbound, ubound]``.
+
+        Returns
+        -------
+        nstColl
+        """
         from .nstColl import nstColl
 
         windows = np.asarray(windowTimes, dtype=float).reshape(-1)
@@ -2195,9 +2482,11 @@ class nspikeTrain:
         return coll
 
     def getFieldVal(self, fieldName: str):
+        """Return the value of attribute *fieldName* (Matlab ``getFieldVal``)."""
         return getattr(self, fieldName, [])
 
     def plotISISpectrumFunction(self):
+        """Plot ISI vs. time (Matlab ``plotISISpectrumFunction``)."""
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(1, 1, figsize=(6.0, 3.5))
@@ -2211,6 +2500,7 @@ class nspikeTrain:
         return line
 
     def plotJointISIHistogram(self):
+        """Joint ISI scatter plot: ISI(t) vs ISI(t+1) on log-log axes."""
         import matplotlib.pyplot as plt
 
         ax = plt.subplots(1, 1, figsize=(4.5, 4.0))[1]
@@ -2293,6 +2583,7 @@ class nspikeTrain:
         return counts
 
     def plotProbPlot(self, minTime: float | None = None, maxTime: float | None = None, handle=None):
+        """Exponential probability plot of ISIs (Matlab ``plotProbPlot``)."""
         import matplotlib.pyplot as plt
 
         ax = plt.gca() if handle is None else handle
@@ -2311,6 +2602,7 @@ class nspikeTrain:
         return ax
 
     def plotExponentialFit(self, minTime: float | None = None, maxTime: float | None = None, numBins: int | None = None, handle=None):
+        """ISI histogram + exponential prob-plot side by side."""
         import matplotlib.pyplot as plt
 
         fig = handle if handle is not None else plt.figure(figsize=(10.0, 4.0))
@@ -2322,6 +2614,17 @@ class nspikeTrain:
         return fig
 
     def plot(self, dHeight: float = 1.0, yOffset: float = 0.5, currentHandle=None, handle=None):
+        """Raster plot: vertical tick per spike (Matlab ``plot``).
+
+        Parameters
+        ----------
+        dHeight : float
+            Tick height (default 1.0).
+        yOffset : float
+            Vertical centre of ticks (default 0.5).
+        currentHandle, handle : matplotlib Axes, optional
+            Axes to draw into.
+        """
         import matplotlib.pyplot as plt
 
         ax = plt.gca() if (currentHandle is None and handle is None) else (currentHandle or handle)
@@ -2362,11 +2665,13 @@ class nspikeTrain:
         )
 
     def to_binned_counts(self, bin_edges: Sequence[float]) -> np.ndarray:
+        """Histogram spike times into *bin_edges* and return count vector."""
         edges = np.asarray(bin_edges, dtype=float).reshape(-1)
         counts, _ = np.histogram(self.spikeTimes, bins=edges)
         return counts.astype(float)
 
     def toStructure(self) -> dict[str, Any]:
+        """Serialize to a plain dict (Matlab ``toStructure``)."""
         return {
             "spikeTimes": self.spikeTimes.tolist(),
             "name": self.name,
@@ -2381,6 +2686,7 @@ class nspikeTrain:
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "nspikeTrain":
+        """Reconstruct an ``nspikeTrain`` from a dict."""
         sampleRate = float(structure.get("sampleRate", 1000.0))
         binwidth = 1.0 / sampleRate if sampleRate > 0 else 0.001
         return nspikeTrain(
