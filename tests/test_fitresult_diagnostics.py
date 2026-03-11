@@ -101,9 +101,10 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
     assert coeff_mat.shape[0] == summary.numNeurons
     assert sig.shape == coeff_mat.shape
     assert len(labels) == coeff_mat.shape[1]
-    assert bins.ndim == 1
+    assert bins.ndim == 2  # (nBins, nCovariates) — per-covariate histograms
     assert edges.ndim == 1
-    assert 0.0 <= percent_sig <= 1.0
+    assert percent_sig.ndim == 1  # one value per covariate
+    assert np.all((0.0 <= percent_sig) & (percent_sig <= 1.0))
     assert summary.coeffMin == -2.0
     assert summary.coeffMax == 2.0
 

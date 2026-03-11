@@ -893,6 +893,8 @@ class FitResult:
         lags, acf = _autocorrelation(gaussianized, max_lag=25)
         acf_ci = 1.96 / np.sqrt(float(gaussianized.size)) if gaussianized.size else np.nan
         coeffs = self._rawCoeffs(fit_num)
+        se = _extract_standard_errors(self.stats[fit_num - 1] if fit_num - 1 < len(self.stats) else None, coeffs.size)
+        sig_mask = _extract_significance_mask(self.stats[fit_num - 1] if fit_num - 1 < len(self.stats) else None, coeffs, se)
         labels = self.covLabels[fit_num - 1] if fit_num - 1 < len(self.covLabels) else []
         if coeffs.size == len(labels):
             coeff_labels = list(labels)
@@ -921,6 +923,8 @@ class FitResult:
             "acf_ci": acf_ci,
             "gaussianized": gaussianized,
             "coefficients": coeffs,
+            "coeff_se": se,
+            "coeff_sig": sig_mask,
             "coeff_labels": np.asarray(coeff_labels, dtype=object),
         }
         self._diagnostic_cache[fit_num] = diagnostics
@@ -1105,18 +1109,11 @@ class FitResult:
         return ax
 
     def plotInvGausTrans(self, fit_num: int = 1, handle=None):
-        diag = self._compute_diagnostics(fit_num)
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        x = np.asarray(diag["gaussianized"], dtype=float)
-        if x.size:
-            ax.plot(np.arange(1, x.size + 1), x, color="tab:green", linewidth=1.0)
-            ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
-        ax.set_xlabel("event index")
-        ax.set_ylabel("\\Phi^{-1}(u_i)")
-        ax.set_title("Inverse-Gaussian/Uniform Transform")
-        return ax
+        """Plot ACF of gaussianized rescaled ISIs with 95% CIs.
 
-    def plotSeqCorr(self, fit_num: int = 1, handle=None):
+        Matlab: plotInvGausTrans computes X_j = Φ⁻¹(U_j) and plots the
+        autocorrelation function of X_j with 95% confidence bounds.
+        """
         diag = self._compute_diagnostics(fit_num)
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
         lags = np.asarray(diag["acf_lags"], dtype=float)
@@ -1128,19 +1125,64 @@ class FitResult:
         ax.axhline(0.0, color="0.4", linewidth=1.0)
         ax.set_xlabel("lag")
         ax.set_ylabel("autocorrelation")
-        ax.set_title("Sequential Correlation of Rescaled ISIs")
+        ax.set_title("Autocorrelation Function\nof Rescaled ISIs\nwith 95% CIs")
         return ax
 
-    def plotCoeffs(self, fit_num: int = 1, handle=None):
+    def plotSeqCorr(self, fit_num: int = 1, handle=None):
+        """Plot U_j vs U_{j+1} scatter with correlation coefficient.
+
+        Matlab: plotSeqCorr plots the sequential correlation scatter of
+        U_j (uniform-transformed rescaled ISIs) to detect serial dependence.
+        """
+        diag = self._compute_diagnostics(fit_num)
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        u = np.asarray(diag.get("uniforms", []), dtype=float)
+        if u.size > 1:
+            uj = u[:-1]
+            uj1 = u[1:]
+            ax.plot(uj, uj1, ".", color="tab:blue", markersize=4.0)
+            # Compute correlation coefficient (guard against constant series)
+            if uj.size > 2 and np.std(uj) > 0 and np.std(uj1) > 0:
+                with np.errstate(invalid="ignore"):
+                    rho_mat = np.corrcoef(uj, uj1)
+                rho = rho_mat[0, 1] if rho_mat.shape[0] > 1 else float("nan")
+                ax.set_title(f"Sequential Correlation ($\\rho$ = {rho:.2g})")
+            else:
+                ax.set_title("Sequential Correlation")
+        else:
+            ax.set_title("Sequential Correlation")
+        ax.set_xlabel("$U_j$")
+        ax.set_ylabel("$U_{j+1}$")
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        return ax
+
+    def plotCoeffs(self, fit_num: int = 1, handle=None, plotSignificance: int = 1):
+        """Plot GLM coefficients with error bars and significance markers.
+
+        Matches Matlab FitResult.plotCoeffs: errorbar plot with ±1 SE,
+        and asterisks (*) above significant coefficients (p < 0.05).
+        """
         diag = self._compute_diagnostics(fit_num)
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
         coeffs = np.asarray(diag["coefficients"], dtype=float)
+        se = np.asarray(diag["coeff_se"], dtype=float)
+        sig = np.asarray(diag["coeff_sig"], dtype=float)
         labels = list(np.asarray(diag["coeff_labels"], dtype=object))
-        xpos = np.arange(coeffs.size, dtype=float)
+        xpos = np.arange(1, coeffs.size + 1, dtype=float)
         ax.axhline(0.0, color="0.6", linewidth=1.0)
-        ax.plot(xpos, coeffs, "o-", color="tab:blue", linewidth=1.0)
-        ax.set_xticks(xpos, labels, rotation=45, ha="right")
-        ax.set_ylabel("coefficient value")
+        # Errorbar plot like Matlab (dot markers with SE whiskers)
+        valid_se = np.where(np.isfinite(se), se, 0.0)
+        ax.errorbar(xpos, coeffs, yerr=valid_se, fmt=".", color="tab:blue",
+                     linewidth=1.0, markersize=8.0, capsize=3.0)
+        if plotSignificance and np.any(sig > 0):
+            ylims = ax.get_ylim()
+            y_star = 0.8 * ylims[1]
+            sig_idx = xpos[sig.astype(bool)]
+            ax.plot(sig_idx, np.full(sig_idx.size, y_star), "*", color="tab:blue", markersize=10.0)
+        ax.set_xticks(xpos)
+        ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=6)
+        ax.set_ylabel("GLM Fit Coefficients")
         ax.set_title("GLM Coefficients")
         return ax
 
@@ -1411,14 +1453,46 @@ class FitSummary:
                     sig[row_idx, labels.index(label)] = value
         return sig
 
-    def binCoeffs(self, minVal, maxVal, binSize):
-        coeff_mat, _, _ = self.getCoeffs(1)
-        values = coeff_mat[np.isfinite(coeff_mat)]
+    def binCoeffs(self, minVal=-12.0, maxVal=12.0, binSize=0.1):
+        """Histogram of regression coefficients per covariate.
+
+        Matches Matlab FitResSummary.binCoeffs: for each unique covariate,
+        bins the significant coefficient values across all neurons/fits,
+        normalizes to a PDF, and computes the fraction of times each
+        covariate was significant.
+
+        Returns
+        -------
+        N : (nBins, nCovariates) per-covariate normalized histograms (PDFs)
+        edges : (nBins + 1,) bin edges
+        percentSig : (nCovariates,) fraction of times each covariate was significant
+        """
         edges = np.arange(float(minVal), float(maxVal) + float(binSize), float(binSize), dtype=float)
         if edges.size < 2:
             edges = np.array([float(minVal), float(maxVal)], dtype=float)
-        N, edges = np.histogram(values, bins=edges)
-        percentSig = float(np.mean(self.getSigCoeffs(1))) if coeff_mat.size else 0.0
+
+        # Build per-covariate data across all fits
+        # bAct: (nNeurons, nCov), sigIdx: (nNeurons, nCov)
+        coeff_mat, labels, se_mat = self.getCoeffs(1)  # (nNeurons, nCov)
+        sig_mat = self.getSigCoeffs(1)  # (nNeurons, nCov) boolean
+
+        nCov = len(labels)
+        N = np.zeros((edges.size - 1, nCov), dtype=float)
+        percentSig = np.zeros(nCov, dtype=float)
+
+        for i in range(nCov):
+            vals = coeff_mat[:, i]
+            sig = sig_mat[:, i].astype(bool)
+            valid = np.isfinite(vals)
+            numPresent = float(np.sum(valid))
+            # Take only significant values
+            sig_vals = vals[sig & valid]
+            Ntemp, _ = np.histogram(sig_vals, bins=edges)
+            numSig = float(Ntemp.sum())
+            percentSig[i] = numSig / max(numPresent, 1.0)
+            if numSig > 0:
+                N[:, i] = Ntemp.astype(float) / numSig  # normalize to PDF
+
         return N, edges, percentSig
 
     def plotIC(self, handle=None):

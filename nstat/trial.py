@@ -1231,7 +1231,7 @@ class SpikeTrainCollection:
 
         # basis.data is (nTimeBins x numBasis): multiply to get GLM rate
         bdata = np.asarray(basis.data, dtype=float)
-        lambda_glm = np.exp(bdata @ bVals)
+        lambda_glm = np.exp(bdata @ bVals) * sr
         psth_cov = Covariate(
             basis.time.copy(),
             lambda_glm.reshape(-1, 1),

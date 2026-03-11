@@ -2498,8 +2498,9 @@ class DecodingAlgorithms:
                     converged = True
                     break
 
-            # Clamp gamma
-            gamma_new = np.clip(gamma_new, -1e2, 1e2)
+            # Clamp gamma — Matlab: gamma_new(gamma_new>1e2)=1e1
+            # Only reduce excessively large positive values to 10
+            gamma_new[gamma_new > 1e2] = 1e1
 
         return Qhat, gamma_new
 
@@ -2704,16 +2705,17 @@ class DecodingAlgorithms:
             )
 
             if not negLL:
-                # Backward EM
-                _, _, _, QnewR, gnewR, _, _, _, _, negLLR = DecodingAlgorithms.PPSS_EM(
+                # Backward EM (reversed trial order)
+                xKR, _, _, QnewR, gnewR, _, _, _, _, negLLR = DecodingAlgorithms.PPSS_EM(
                     A, Qnew, xK[:, -1], np.flipud(dN), fitType, delta, gnew, windowTimes, numBasis, HkAllR
                 )
 
                 if not negLLR:
                     # Forward EM again with backward-updated parameters
                     # Matlab: PPSS_EM(A, QhatR(:,cnt+1), xKR(:,end), dN, ...)
+                    # Use backward EM's final state as initial state for forward pass
                     xK2, WK2, Wku2, Qnew2, gnew2, ll2, _, _, _, negLL2 = DecodingAlgorithms.PPSS_EM(
-                        A, QnewR, xK[:, -1], dN, fitType, delta, gnewR,
+                        A, QnewR, xKR[:, -1], dN, fitType, delta, gnewR,
                         windowTimes, numBasis, HkAll
                     )
 
