@@ -15,12 +15,19 @@ on:
 jobs:
   helpfile-full:
     runs-on: ubuntu-latest
+    env:
+      NSTAT_DATA_DIR: ${{ github.workspace }}/.nstat_data_cache
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Cache example data
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NSTAT_DATA_DIR }}
+          key: nstat-example-data-v1
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
