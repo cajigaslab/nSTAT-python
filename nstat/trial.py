@@ -2081,7 +2081,84 @@ class Trial:
         newValMax = min(self.maxTime, validation[1])
         self.setTrialPartition([newTrainMin, newTrainMax, newValMin, newValMax])
 
+    def plotRaster(self, handle=None):
+        """Plot only the spike raster for this trial.
+
+        Parameters
+        ----------
+        handle : matplotlib Figure or Axes, optional
+            If an ``Axes`` is provided the raster is drawn there.
+            If a ``Figure`` is provided a new axes is added.
+            If *None* a new figure is created.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+        """
+        if handle is None:
+            fig, ax = plt.subplots(figsize=(9.0, 3.0))
+        elif isinstance(handle, plt.Axes):
+            ax = handle
+            fig = ax.figure
+        else:
+            fig = handle
+            fig.clear()
+            ax = fig.add_subplot(111)
+        self.nspikeColl.plot(handle=ax)
+        ax.set_title("Trial Spike Raster")
+        fig.tight_layout()
+        return fig
+
+    def plotCovariates(self, handle=None):
+        """Plot covariates (and events, if set) for this trial.
+
+        Layout adapts to the number of active covariates, following the
+        Matlab ``Trial.plotCovariates`` behaviour.
+
+        Parameters
+        ----------
+        handle : matplotlib Figure, optional
+            Figure to draw on.  If *None* a new figure is created.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+        """
+        numCovars = self.covarColl.nActCovar()
+        if handle is None:
+            fig = plt.figure(figsize=(9.0, max(4.0, 2.2 * max(numCovars, 1))))
+        else:
+            fig = handle
+            fig.clear()
+
+        if numCovars <= 1:
+            ax = fig.add_subplot(111)
+            self.covarColl.plot(handle=ax)
+            if self.ev is not None and self.ev.eventTimes.size:
+                self.ev.plot(handle=ax)
+        elif numCovars == 2:
+            ax1 = fig.add_subplot(1, 2, 1)
+            ax2 = fig.add_subplot(1, 2, 2)
+            self.covarColl.plot(handle=[ax1, ax2])
+            if self.ev is not None and self.ev.eventTimes.size:
+                self.ev.plot(handle=[ax1, ax2])
+        else:
+            axes = [fig.add_subplot(numCovars, 1, i + 1)
+                    for i in range(numCovars)]
+            self.covarColl.plot(handle=axes)
+            if self.ev is not None and self.ev.eventTimes.size:
+                self.ev.plot(handle=axes)
+
+        fig.tight_layout()
+        return fig
+
     def plot(self, *_, handle=None, **__):
+        """Plot spike raster, covariates, and events in a multi-panel figure.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+        """
         cov_count = max(self.covarColl.numCov, 1)
         event_count = 1 if self.ev is not None and self.ev.eventTimes.size else 0
         panel_count = 1 + cov_count + event_count
