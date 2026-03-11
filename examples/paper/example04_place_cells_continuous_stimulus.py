@@ -282,10 +282,12 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     # ==================================================================
     # 4. Build spatial grids and design matrices for heatmaps
     # ==================================================================
-    grid_res = 100
+    grid_res = 201  # Matlab: meshgrid(-1:0.01:1) → 201 points
     xGrid = np.linspace(-1, 1, grid_res)
     yGrid = np.linspace(-1, 1, grid_res)
     xx, yy = np.meshgrid(xGrid, yGrid)
+    yy = np.flipud(yy)   # Matlab: y increases bottom-to-top
+    xx = np.fliplr(xx)    # Matlab: x increases right-to-left
     xf, yf = xx.ravel(), yy.ravel()
 
     # Gaussian design: [1, x, y, x^2, y^2, xy] (intercept prepended)
@@ -321,7 +323,7 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
             ax = axesG[row, col]
             try:
                 field_g = _compute_place_field(coeffs_g, design_gauss[:, :coeffs_g.size], grid_shape)
-                ax.pcolormesh(xx, yy, field_g, shading="auto", cmap="jet")
+                ax.pcolormesh(xx, yy, field_g, shading="gouraud", cmap="jet")
             except Exception:
                 pass
             ax.set_aspect("equal")
@@ -333,7 +335,7 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
             ax = axesZ[row, col]
             try:
                 field_z = _compute_place_field(coeffs_z, design_zern[:, :coeffs_z.size], grid_shape)
-                ax.pcolormesh(xx, yy, field_z, shading="auto", cmap="jet")
+                ax.pcolormesh(xx, yy, field_z, shading="gouraud", cmap="jet")
             except Exception:
                 pass
             ax.set_aspect("equal")
