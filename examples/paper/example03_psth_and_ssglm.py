@@ -336,13 +336,7 @@ def run_part_b(data_dir, export_dir=None):
         ens = Covariate(time, np.zeros_like(time), "Ensemble", "time", "s",
                         "Spikes", ["n1"])
 
-        # Transfer function coefficients (z-domain)
         histCoeffs = [-4, -1, -0.5]
-        from scipy.signal import TransferFunction, dlti
-        htf = dlti([1], np.concatenate([[1], -np.array(histCoeffs)]), dt=delta)
-        stf_num = [b1[iTrial]]
-        stf = dlti(stf_num, [1], dt=delta)
-        etf = dlti([0], [1], dt=delta)
 
         sC, lambdaTemp = CIF.simulateCIF(
             b0, histCoeffs, [b1[iTrial]], [0],
@@ -419,7 +413,28 @@ def run_part_b(data_dir, export_dir=None):
     fig3.tight_layout()
 
     # ------------------------------------------------------------------
-    # 2. Load precomputed SSGLM data
+    # 2. Compute PSTH-GLM and prepare data matrices
+    #    (Matlab: psthGLM + dN before loading precomputed SSGLM)
+    # ------------------------------------------------------------------
+    numBasis = 25
+    basisWidth = (tmax - 0.0) / numBasis
+    windowTimes = np.arange(0.0, 0.004, delta)
+    fitType = "poisson"
+
+    spikeColl.resample(1 / delta)
+    spikeColl.setMaxTime(tmax)
+
+    dN = spikeColl.dataToMatrix()
+    if dN.ndim == 1:
+        dN = dN.reshape(1, -1)
+    dN = np.asarray(dN, dtype=float)
+    dN[dN > 1] = 1
+
+    psthSig, _, _ = spikeColl.psthGLM(basisWidth, windowTimes, fitType)
+    print("  Computed psthGLM on 50-trial collection")
+
+    # ------------------------------------------------------------------
+    # 3. Load precomputed SSGLM data
     # ------------------------------------------------------------------
     ssglm_path = data_dir / "SSGLMExampleData.mat"
     ssglm = loadmat(str(ssglm_path), squeeze_me=True)
@@ -429,19 +444,15 @@ def run_part_b(data_dir, export_dir=None):
     stimulus_true = np.asarray(ssglm["stimulus"], dtype=float)  # (25, 50)
     stimCIs = np.asarray(ssglm["stimCIs"], dtype=float)         # (25, 50, 2)
     gammahat = np.asarray(ssglm["gammahat"], dtype=float)       # (3,)
-    numBasis = xK.shape[0]
     K = xK.shape[1]
     print(f"  Loaded precomputed SSGLM: {numBasis} basis x {K} trials")
 
     # ------------------------------------------------------------------
-    # 3. Reconstruct FitResult objects from loaded data
+    # 4. Reconstruct FitResult objects from loaded data
     # ------------------------------------------------------------------
-    # Construct FitResult objects from Matlab structs, using our simulated
-    # spike trains as proxies (since Matlab MCOS objects can't be deserialized).
     ssglm_fit = _load_matlab_fitresult(ssglm["fR"], trains)
     psth_fit = _load_matlab_fitresult(ssglm["psthR"], trains)
 
-    # Merge PSTH and SSGLM results for comparison diagnostics
     tCompare = psth_fit.mergeResults(ssglm_fit)
     tCompare.lambda_signal.setDataLabels(
         ["\\lambda_{PSTH}", "\\lambda_{SSGLM}"]
@@ -459,81 +470,73 @@ def run_part_b(data_dir, export_dir=None):
     print("  Figure 4: SSGLM vs PSTH diagnostics")
 
     # ------------------------------------------------------------------
-    # 4. Compute stimulus effect surfaces from basis coefficients
+    # 5. Compute stimulus effect surfaces
     # ------------------------------------------------------------------
-    minTime = 0.0
-    maxTime = tmax
     sampleRate = 1 / delta
-    basisWidth = (maxTime - minTime) / numBasis
 
     unitPulseBasis = SpikeTrainCollection.generateUnitImpulseBasis(
-        basisWidth, minTime, maxTime, sampleRate,
+        basisWidth, 0.0, tmax, sampleRate,
     )
     basisMat = np.asarray(unitPulseBasis.data, dtype=float)  # (T, numBasis)
-
-    # Estimated CIF from SSGLM: exp(basisMat @ xK) / delta
-    estStimEffect = np.exp(basisMat @ xK) / delta  # (T, K)
-
-    # PSTH coefficients from psth_fit
-    psth_b = np.asarray(psth_fit.b[0], dtype=float).reshape(-1)
-    # The PSTH model has numBasis + history coefficients; extract first numBasis
-    psth_basis_coeffs = psth_b[:numBasis] if psth_b.size >= numBasis else np.pad(
-        psth_b, (0, numBasis - psth_b.size))
-    psthSurface = np.exp(basisMat @ psth_basis_coeffs) / delta  # (T,) constant across trials
-    psthSurface2D = np.tile(psthSurface[:, None], (1, K))  # (T, K)
-
-    # True surface from our simulation params
-    actStimEffect = stimData[:basisMat.shape[0], :K]
-
     basis_time = np.asarray(unitPulseBasis.time, dtype=float).ravel()
 
-    # ------------------------------------------------------------------
-    # Figure 5: True/PSTH/SSGLM stimulus effect surfaces (3x1)
-    # ------------------------------------------------------------------
-    fig5, axes5 = plt.subplots(3, 1, figsize=(10, 12))
-    trial_axis = np.arange(1, K + 1)
+    # True stimulus effect (Poisson link, matching fitType for analysis)
+    u_basis = np.sin(2 * np.pi * f * basis_time)
+    actStimEffect = np.exp(np.outer(u_basis, b1) + b0) / delta  # (T, K)
 
-    ax = axes5[0]
-    T_mesh, K_mesh = np.meshgrid(basis_time[:actStimEffect.shape[0]],
-                                  trial_axis, indexing="ij")
-    ax.pcolormesh(T_mesh, K_mesh, actStimEffect, shading="auto")
+    # PSTH surface (constant across trials — replicate fresh psthGLM output)
+    psthSig_data = np.asarray(psthSig.data, dtype=float).ravel()
+    psthSurface2D = np.tile(psthSig_data[:, None], (1, numRealizations))
+
+    # SSGLM estimated CIF from basis coefficients
+    estStimEffect = np.exp(basisMat @ xK) / delta  # (T, K)
+
+    # ------------------------------------------------------------------
+    # Figure 5: True/PSTH/SSGLM stimulus effect surfaces (3D mesh)
+    # ------------------------------------------------------------------
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    fig5 = plt.figure(figsize=(10, 12))
+    trial_axis = np.arange(1, numRealizations + 1)
+    T_act = min(actStimEffect.shape[0], len(basis_time))
+    T_mesh, K_mesh = np.meshgrid(
+        basis_time[:T_act], trial_axis, indexing="ij"
+    )
+
+    ax = fig5.add_subplot(3, 1, 1, projection="3d")
+    ax.plot_surface(K_mesh, T_mesh, actStimEffect[:T_act, :],
+                    cmap="viridis", edgecolor="none")
+    ax.view_init(elev=-90, azim=90)
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.set_title("True Stimulus Effect", fontweight="bold", fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("Trial [k]")
 
-    ax = axes5[1]
-    ax.pcolormesh(T_mesh, K_mesh, psthSurface2D[:actStimEffect.shape[0], :],
-                  shading="auto")
+    ax = fig5.add_subplot(3, 1, 2, projection="3d")
+    ax.plot_surface(K_mesh, T_mesh, psthSurface2D[:T_act, :],
+                    cmap="viridis", edgecolor="none")
+    ax.view_init(elev=-90, azim=90)
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.set_title("PSTH Estimated Stimulus Effect", fontweight="bold",
                  fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("Trial [k]")
 
-    ax = axes5[2]
-    ax.pcolormesh(T_mesh, K_mesh, estStimEffect[:actStimEffect.shape[0], :],
-                  shading="auto")
+    ax = fig5.add_subplot(3, 1, 3, projection="3d")
+    ax.plot_surface(K_mesh, T_mesh, estStimEffect[:T_act, :],
+                    cmap="viridis", edgecolor="none")
+    ax.view_init(elev=-90, azim=90)
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.set_title("SSGLM Estimated Stimulus Effect", fontweight="bold",
                  fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("Trial [k]")
 
     fig5.tight_layout()
-    print("  Figure 5: Stimulus effect surfaces")
+    print("  Figure 5: Stimulus effect surfaces (3D mesh)")
 
     # ------------------------------------------------------------------
-    # 5. Learning-trial analysis: spike rate CIs
+    # 6. Learning-trial analysis: spike rate CIs
     # ------------------------------------------------------------------
-    # Get spike matrix from our simulated data
-    dN = spikeColl.dataToMatrix()  # shape (numRealizations, T)
-    if dN.ndim == 1:
-        dN = dN.reshape(1, -1)
-    dN = np.asarray(dN, dtype=float)
-    dN[dN > 1] = 1
-
-    windowTimes = np.arange(0.0, 0.004, delta)
-
     tRate, probMat, sigMat = DecodingAlgorithms.computeSpikeRateCIs(
-        xK, WkuFinal, dN, 0, tmax, "poisson", delta, gammahat, windowTimes,
+        xK, WkuFinal, dN, 0, tmax, fitType, delta, gammahat, windowTimes,
     )
 
     # Find first learning trial (first column where significance appears)
@@ -575,7 +578,6 @@ def run_part_b(data_dir, export_dir=None):
     ax3 = fig6.add_subplot(2, 3, 4)
     stim1_data = basisMat @ stimulus_true[:, 0]
     stimlt_data = basisMat @ stimulus_true[:, lt - 1]
-    # CIs
     ci1_lo = basisMat @ stimCIs[:, 0, 0]
     ci1_hi = basisMat @ stimCIs[:, 0, 1]
     cilt_lo = basisMat @ stimCIs[:, lt - 1, 0]
@@ -596,7 +598,12 @@ def run_part_b(data_dir, export_dir=None):
     fig6.tight_layout()
     print(f"  Figure 6: Learning trial = {lt}")
 
-    figures = {"fig03_ssglm_simulation_summary": fig3, "fig04_ssglm_fit_diagnostics": fig4, "fig05_stimulus_effect_surfaces": fig5, "fig06_learning_trial_comparison": fig6}
+    figures = {
+        "fig03_ssglm_simulation_summary": fig3,
+        "fig04_ssglm_fit_diagnostics": fig4,
+        "fig05_stimulus_effect_surfaces": fig5,
+        "fig06_learning_trial_comparison": fig6,
+    }
     return figures
 
 
