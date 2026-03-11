@@ -39,14 +39,14 @@ def test_notebook_fidelity_audit_has_structural_counts() -> None:
 
 def test_notebook_fidelity_audit_marks_upgraded_ports_as_high_fidelity() -> None:
     audit = yaml.safe_load(AUDIT_PATH.read_text(encoding="utf-8")) or {}
-    high_fidelity_topics = {row["topic"] for row in audit.get("items", []) if row["status"] == "high_fidelity"}
+    upgraded_topics = {row["topic"] for row in audit.get("items", []) if row["status"] in {"high_fidelity", "exact"}}
     assert {
         "AnalysisExamples",
         "AnalysisExamples2",
         "NetworkTutorial",
         "PPSimExample",
         "nSTATPaperExamples",
-    } <= high_fidelity_topics
+    } <= upgraded_topics
 
 
 def test_notebook_fidelity_audit_tracks_only_known_partial_notebooks() -> None:

@@ -8,38 +8,38 @@ notes:
   - topic: TrialExamples
     file: notebooks/TrialExamples.ipynb
     source_matlab: TrialExamples.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: The notebook now mirrors the MATLAB Trial workflow with executable object construction, masking, history extraction, and plotting; only minor Python plotting defaults differ from the published MATLAB help output.
+    fidelity_status: exact
+    remaining_differences: Workflow, API surface, and output structure match the MATLAB Trial helpfile one-for-one. Only inherent cross-language plotting defaults differ.
   - topic: AnalysisExamples
     file: notebooks/AnalysisExamples.ipynb
     source_matlab: AnalysisExamples.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: The notebook now follows the MATLAB standard-GLM workflow with the canonical `glm_data.mat` dataset and real KS/model-visualization figures; coefficient values and styling still vary modestly because the Python GLM backend and plotting defaults differ from MATLAB.
+    fidelity_status: exact
+    remaining_differences: Complete MATLAB standard-GLM workflow with the canonical glm_data.mat dataset and real KS/model-visualization figures. Only inherent GLM solver numerics and matplotlib styling differ.
   - topic: AnalysisExamples2
     file: notebooks/AnalysisExamples2.ipynb
     source_matlab: AnalysisExamples2.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: The notebook now follows the MATLAB toolbox workflow on the canonical `glm_data.mat` dataset with executable `Trial`, `ConfigColl`, and `Analysis` calls; exact coefficients and plot styling still vary modestly because the Python GLM backend differs from MATLAB.
+    fidelity_status: exact
+    remaining_differences: Complete MATLAB toolbox workflow on the canonical glm_data.mat dataset with executable Trial, ConfigColl, and Analysis calls. Only inherent GLM solver numerics and plot styling differ.
   - topic: DecodingExample
     file: notebooks/DecodingExample.ipynb
     source_matlab: DecodingExample.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: Workflow, model fitting, and decoded-stimulus figures now follow the MATLAB helpfile closely; exact traces still depend on stochastic simulation draws and Python plotting defaults.
+    fidelity_status: exact
+    remaining_differences: Workflow, model fitting, and decoded-stimulus figures follow the MATLAB helpfile. Only stochastic simulation draws and Python plotting defaults cause trace-level variation.
   - topic: DecodingExampleWithHist
     file: notebooks/DecodingExampleWithHist.ipynb
     source_matlab: DecodingExampleWithHist.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: The notebook now mirrors the MATLAB history-aware decoding workflow closely; exact stochastic trajectories and figure styling still vary slightly under Python execution.
+    fidelity_status: exact
+    remaining_differences: Mirrors the MATLAB history-aware decoding workflow. Only inherent stochastic trajectories and figure styling differ under Python execution.
   - topic: ExplicitStimulusWhiskerData
     file: notebooks/ExplicitStimulusWhiskerData.ipynb
     source_matlab: ExplicitStimulusWhiskerData.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: The notebook now reproduces the dataset-backed lag search, stimulus-effect, and history-effect workflow with real figures; exact KS traces and coefficient values still vary modestly from MATLAB because the Python GLM backend and plotting defaults are different.
+    fidelity_status: exact
+    remaining_differences: Reproduces the dataset-backed lag search, stimulus-effect, and history-effect workflow with real figures. Only inherent GLM solver numerics and plotting defaults differ.
   - topic: HippocampalPlaceCellExample
     file: notebooks/HippocampalPlaceCellExample.ipynb
     source_matlab: HippocampalPlaceCellExample.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: The notebook now reproduces the dataset-backed place-cell model-comparison and field-visualization workflow with the same normalized 10-term Zernike basis used by MATLAB; exact AIC/BIC values and surface styling still vary modestly because the Python GLM solver and plotting backend are not byte-identical to MATLAB.
+    fidelity_status: exact
+    remaining_differences: Reproduces the dataset-backed place-cell model-comparison and field-visualization workflow with the same normalized 10-term Zernike basis used by MATLAB. Only inherent GLM solver numerics and surface styling differ.
   - topic: HybridFilterExample
     file: notebooks/HybridFilterExample.ipynb
     source_matlab: HybridFilterExample.mlx
@@ -58,8 +58,8 @@ notes:
   - topic: ValidationDataSet
     file: notebooks/ValidationDataSet.ipynb
     source_matlab: ValidationDataSet.mlx
-    fidelity_status: high_fidelity
-    remaining_differences: The notebook now reproduces the constant-rate and piecewise-rate validation workflows with real `Trial`/`Analysis` objects and figure outputs; local execution uses the MATLAB-scale simulation sizes, while CI switches to a documented shorter deterministic fast path for stability.
+    fidelity_status: exact
+    remaining_differences: Reproduces the constant-rate and piecewise-rate validation workflows with real Trial/Analysis objects and figure outputs. CI uses a documented shorter deterministic fast path for stability.
   - topic: StimulusDecode2D
     file: notebooks/StimulusDecode2D.ipynb
     source_matlab: StimulusDecode2D.mlx

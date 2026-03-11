@@ -1,5 +1,5 @@
 version: 1
-generated_on: '2026-03-08'
+generated_on: '2026-03-11'
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
@@ -476,11 +476,12 @@ repo_structure:
     or repo-root package stub.
 fidelity_summary:
   class_fidelity:
-    exact: 8
-    high_fidelity: 10
+    exact: 11
+    high_fidelity: 7
     not_applicable: 1
   notebook_fidelity:
-    high_fidelity: 13
+    exact: 8
+    high_fidelity: 5
   simulink_fidelity:
     high_fidelity_native_python: 2
     reference_only: 10

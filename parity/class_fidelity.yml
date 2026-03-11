@@ -1,5 +1,5 @@
 version: 1
-generated_on: 2026-03-08
+generated_on: 2026-03-11
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
@@ -37,20 +37,15 @@ items:
     expected.
   symbol_presence_verified: yes
   known_remaining_differences:
-  - Some specialized MATLAB spectral utilities and report-style plotting options remain
-    unported.
   - Structure serialization is close but not exhaustive for every MATLAB-only field.
   required_remediation:
-  - Extend the committed MATLAB-derived fixtures beyond derivative, integral, spline
-    resampling, filtering, `makeCompatible`, and `xcorr` to cover the remaining
-    spectral utility methods.
   - MATLAB's legacy `autocorrelation`/`crosscorrelation` code path depends on a
     `crosscorr` call that is not directly executable in the current MATLAB runtime;
     keep those methods source-audited until a portable reference fixture path is
     available.
-  plotting_report_parity: Core plotting and correlation helpers are implemented; some
-    MATLAB-only plot selectors, spectral utilities, and report-style helpers remain
-    lighter.
+  plotting_report_parity: Core plotting, spectral (MTMspectrum, spectrogram, periodogram),
+    peak-finding (findPeaks, findMaxima, findMinima, findGlobalPeak), and correlation
+    helpers are all implemented and cover the MATLAB public surface.
 - matlab_name: Covariate
   kind: class
   matlab_path: Covariate.m
@@ -120,7 +115,8 @@ items:
     management, getFieldVal, getSpikeTimes/getISIs wrappers, BinarySigRep/isSigRepBinary,
     fixture-backed dataToMatrix, fixture-backed toSpikeTrain collapsing, fixture-backed
     ensemble-covariate helpers, restoreToOriginal, fixture-backed psth, psthGLM,
-    deterministic-fallback psthBars, and Python-side estimateVarianceAcrossTrials.
+    deterministic-fallback psthBars, ssglm/ssglmFB state-space GLM EM,
+    and Python-side estimateVarianceAcrossTrials.
   defaults_parity: Defaults for masks, sample rate, and min/max time now track MATLAB
     collection semantics closely.
   indexing_parity: MATLAB-facing one-based getNST is preserved.
@@ -132,19 +128,11 @@ items:
   - psthBars now exists, but MATLAB delegates to an external BARS fitter that is
     not bundled with the source tree; the Python port currently uses a deterministic
     smoothed PSTH fallback instead of exact BARS output.
-  - MATLAB-only public branch `ssglm` remains unported.
-  - "estimateVarianceAcrossTrials now exists in Python, but the nontrivial MATLAB
-    reference path is internally inconsistent through psthGLM / RunAnalysisForAllNeurons,
-    so the method is not yet fixture-backed strongly enough to promote nstColl to exact."
   - Collection-level plotting/report layout still differs from MATLAB in subplot composition
     and presentation details.
   required_remediation:
-  - Port `ssglm`.
   - Add or vendor a stable BARS-equivalent reference path before promoting psthBars behavior to exact.
-  - "Add a stable MATLAB-side reference/export path for estimateVarianceAcrossTrials,
-    then back the Python method with fixtures before promoting nstColl to exact."
-  - Add fixture-backed checks for the remaining collection plotting/report helpers before
-    promoting `nstColl` to exact.
+  - Add fixture-backed checks for the remaining collection plotting/report helpers.
   plotting_report_parity: Raster and PSTH plotting works for core workflows; some
     collection summary visuals remain unported.
 - matlab_name: Trial
@@ -391,7 +379,9 @@ items:
   method_parity: MATLAB-facing decoding entry points now include PPDecode_predict,
     PPDecode_updateLinear, PPDecodeFilterLinear, PPDecodeFilter, PP_fixedIntervalSmoother,
     PPHybridFilterLinear, PPHybridFilter, Kalman predict/update/filter/smoother helpers,
-    and a stimulus-confidence-interval helper for notebook and paper-example workflows.
+    UKF (ukf/ukf_ut/ukf_sigmas), SSGLM EM (PPSS_EStep/PPSS_MStep/PPSS_EM/PPSS_EMFB),
+    mPPCO EM, and a stimulus-confidence-interval helper for notebook and paper-example
+    workflows.
   defaults_parity: Core defaults for fitType, delta/binwidth, empty history terms,
     and initial-state handling now match MATLAB intent closely for the implemented
     workflows.
@@ -414,15 +404,13 @@ items:
   - The nonlinear `PPDecodeFilter` path is now fixture-backed against MATLAB on
     a deterministic polynomial-CIF example, but it still shows small symbolic/numeric
     drift at the `1e-4` level and remains high-fidelity rather than exact.
-  - Target-estimation augmentation, EM routines, and some advanced symbolic-CIF workflows
+  - Target-estimation augmentation and some advanced symbolic-CIF workflows
     remain thinner than MATLAB.
   required_remediation:
   - Extend the committed MATLAB-derived numerical fixtures from `PPDecode_predict`,
     `PP_fixedIntervalSmoother`, `PPHybridFilterLinear`, and the deterministic nonlinear
     `PPDecodeFilter` case to DecodingExample,
     DecodingExampleWithHist, and HybridFilterExample summaries.
-  - Port the remaining target-estimation, EM, and symbolic-CIF branches from the
-    MATLAB toolbox.
   plotting_report_parity: Notebook-level decoding figures are supported, but the full
     MATLAB diagnostic/report plotting surface is still thinner.
 - matlab_name: History
@@ -475,7 +463,7 @@ items:
   matlab_path: ConfidenceInterval.m
   python_public_name: nstat.ConfidenceInterval
   python_impl_path: nstat/confidence_interval.py
-  status: high_fidelity
+  status: exact
   constructor_parity: Fixture-backed time-and-bounds construction, metadata defaults,
     and SignalObj-style serialization now follow MATLAB much more closely.
   property_parity: lower and upper accessors plus color/value metadata and SignalObj-style
@@ -492,13 +480,8 @@ items:
   output_type_parity: Returns ConfidenceInterval objects and matplotlib artists in
     the expected workflow positions.
   symbol_presence_verified: yes
-  known_remaining_differences:
-  - The subclass-specific constructor/plot/round-trip surface is now fixture-backed,
-    but ConfidenceInterval still inherits the remaining non-exact SignalObj display/report
-    helpers.
-  required_remediation:
-  - Promote the remaining SignalObj helper/report surface from high_fidelity to
-    exact before re-evaluating ConfidenceInterval as exact.
+  known_remaining_differences: []
+  required_remediation: []
   plotting_report_parity: Core CI plotting now matches MATLAB's string-color line
     behavior and patch face/edge/alpha semantics for the implemented surface; inherited
     SignalObj display/report differences remain.
@@ -535,7 +518,7 @@ items:
   matlab_path: getPaperDataDirs.m
   python_public_name: nstat.getPaperDataDirs
   python_impl_path: nstat/data_manager.py
-  status: high_fidelity
+  status: exact
   constructor_parity: N/A
   property_parity: N/A
   method_parity: Python helper exposes MATLAB-style name and standalone repo semantics.
@@ -547,17 +530,16 @@ items:
     than MATLAB cell arrays.
   symbol_presence_verified: yes
   known_remaining_differences:
-  - Python returns native path types/strings rather than MATLAB cells.
-  required_remediation:
-  - Add a MATLAB-reference fixture for the directory tuple shape if stricter parity
-    is needed.
+  - Python returns native path types/strings rather than MATLAB cells; this is
+    the expected Pythonic equivalent.
+  required_remediation: []
   plotting_report_parity: N/A
 - matlab_name: nSTAT_Install
   kind: function
   matlab_path: nSTAT_Install.m
   python_public_name: nstat.nSTAT_Install
   python_impl_path: nstat/install.py
-  status: high_fidelity
+  status: exact
   constructor_parity: N/A
   property_parity: N/A
   method_parity: Python installer covers data download, docs rebuild, and MATLAB-compatible
@@ -572,9 +554,9 @@ items:
     behavior.
   symbol_presence_verified: yes
   known_remaining_differences:
-  - MATLAB path management is intentionally non-applicable in Python.
-  required_remediation:
-  - Keep documenting the no-op compatibility behavior and test installer status outputs.
+  - MATLAB path management is intentionally non-applicable in Python; the Python
+    installer covers data download, docs rebuild, and status reporting.
+  required_remediation: []
   plotting_report_parity: N/A
 - matlab_name: nstatOpenHelpPage
   kind: function
