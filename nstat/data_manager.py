@@ -13,6 +13,7 @@ import re
 import shutil
 import tempfile
 import time
+import urllib.error
 import urllib.request
 import zipfile
 from dataclasses import dataclass
@@ -105,17 +106,42 @@ def _write_sentinel(data_dir: Path, *, source_url: str) -> None:
     (data_dir / SENTINEL_NAME).write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def _http_get(url: str, *, timeout: float = 60.0) -> tuple[str, bytes]:
-    req = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": "nSTAT-python-data-manager/1.0 (+https://github.com/cajigaslab/nSTAT-python)"
-        },
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        final_url = str(resp.geturl())
-        body = resp.read()
-    return final_url, body
+def _http_get(
+    url: str, *, timeout: float = 60.0, retries: int = 4, backoff: float = 2.0
+) -> tuple[str, bytes]:
+    """HTTP GET with exponential-backoff retry for transient errors (429/5xx/403)."""
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "nSTAT-python-data-manager/1.0 "
+                    "(+https://github.com/cajigaslab/nSTAT-python)"
+                },
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                final_url = str(resp.geturl())
+                body = resp.read()
+            return final_url, body
+        except urllib.error.HTTPError as exc:
+            last_error = exc
+            # Retry on rate-limit (429), server errors (5xx), and
+            # transient Figshare 403s from GitHub Actions IPs.
+            if exc.code in (403, 429) or exc.code >= 500:
+                if attempt < retries:
+                    delay = backoff**attempt
+                    time.sleep(delay)
+                    continue
+            raise
+        except (urllib.error.URLError, OSError) as exc:
+            last_error = exc
+            if attempt < retries:
+                delay = backoff**attempt
+                time.sleep(delay)
+                continue
+            raise
+    raise RuntimeError(f"HTTP GET failed after {retries} attempts: {url}") from last_error
 
 
 def _resolve_figshare_download_url() -> str:
