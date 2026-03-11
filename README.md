@@ -12,8 +12,9 @@ One of nSTAT's key strengths is point-process generalized linear models for spik
 train signals that provide a formal statistical framework for processing signals
 recorded from ensembles of single neurons. It also has extensive support for model
 fitting, model-order analysis, and adaptive decoding — including state-space GLM
-(SSGLM) estimation via EM, unscented Kalman filtering (UKF), and hybrid
-discrete/continuous point-process filters.
+(SSGLM) estimation via EM, unscented Kalman filtering (UKF), goal-directed
+point-process adaptive filters (PPAF), and hybrid discrete/continuous
+point-process filters (PPHF).
 
 Although created with neural signal processing in mind, nSTAT can be used as a
 generic tool for analyzing any types of discrete and continuous signals, and thus
