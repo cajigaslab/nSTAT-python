@@ -252,10 +252,27 @@ close(fig);
 
 fig = figure('Visible','off');
 ax = axes('Parent', fig);
-counts = nst.plotISIHistogram();
-histBars = findobj(ax, 'Type', 'patch');
+% plotISIHistogram may not assign output in all code paths.
+% Use try/catch to handle that gracefully.
+try
+    counts = nst.plotISIHistogram();
+catch
+    nst.plotISIHistogram();
+    % Extract counts from Bar objects on the axes.
+    barObj = findobj(ax, 'Type', 'Bar');
+    if ~isempty(barObj)
+        counts = barObj(1).YData;
+    else
+        counts = [];
+    end
+end
 payload.isi_hist_counts = counts;
-if(~isempty(histBars))
+% Look for both patch and Bar objects (MATLAB version dependent).
+histBars = findobj(ax, 'Type', 'patch');
+if isempty(histBars)
+    histBars = findobj(ax, 'Type', 'Bar');
+end
+if ~isempty(histBars)
     payload.isi_hist_face_color = get(histBars(1), 'FaceColor');
     payload.isi_hist_edge_color = get(histBars(1), 'EdgeColor');
 end
