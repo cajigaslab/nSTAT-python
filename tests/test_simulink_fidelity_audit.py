@@ -11,6 +11,7 @@ AUDIT_PATH = REPO_ROOT / "parity" / "simulink_fidelity.yml"
 MATLAB_REPO_ROOT = REPO_ROOT.parent / "nSTAT"
 VALID_STRATEGIES = {
     "native_python",
+    "native_python_with_matlab_engine_bridge",
     "generated_code_wrapped",
     "packaged_runtime",
     "matlab_engine_fallback",
@@ -19,6 +20,7 @@ VALID_STRATEGIES = {
 }
 VALID_STATUSES = {
     "exact_native_python",
+    "exact_with_matlab_engine_bridge",
     "high_fidelity_native_python",
     "generated_code_wrapped",
     "packaged_runtime",

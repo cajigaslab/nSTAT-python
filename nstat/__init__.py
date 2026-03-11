@@ -11,7 +11,13 @@ from .data_manager import getPaperDataDirs, get_paper_data_dirs
 from .datasets import get_dataset_path, list_datasets, verify_checksums
 from .decoding import DecoderSuite
 from .decoding_algorithms import DecodingAlgorithms
-from .errors import DataNotFoundError, ParityValidationError, UnsupportedWorkflowError
+from .errors import DataNotFoundError, MatlabEngineError, ParityValidationError, UnsupportedWorkflowError
+from .matlab_engine import (
+    MatlabFallbackWarning,
+    get_matlab_nstat_path,
+    is_matlab_available,
+    set_matlab_nstat_path,
+)
 from .events import Events
 from .fit import FitResSummary, FitResult, FitSummary
 from .glm import PoissonGLMResult, fit_poisson_glm
@@ -76,6 +82,8 @@ __all__ = [
     "CovColl",
     "CovariateCollection",
     "DataNotFoundError",
+    "MatlabEngineError",
+    "MatlabFallbackWarning",
     "DecoderSuite",
     "DecodingAlgorithms",
     "Events",
@@ -95,6 +103,9 @@ __all__ = [
     "Trial",
     "TrialConfig",
     "UnsupportedWorkflowError",
+    "get_matlab_nstat_path",
+    "is_matlab_available",
+    "set_matlab_nstat_path",
     "fit_poisson_glm",
     "getPaperDataDirs",
     "get_paper_data_dirs",

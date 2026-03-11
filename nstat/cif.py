@@ -947,6 +947,7 @@ class CIF:
         *,
         seed: int | None = None,
         return_lambda: bool = False,
+        backend: str = "auto",
     ):
         """Simulate a point process via the thinning algorithm.
 
@@ -964,6 +965,7 @@ class CIF:
             simType,
             seed=seed,
             return_lambda=return_lambda,
+            backend=backend,
         )
 
     @staticmethod
@@ -981,6 +983,7 @@ class CIF:
         return_lambda: bool = False,
         random_values: np.ndarray | None = None,
         return_details: bool = False,
+        backend: str = "auto",
     ):
         """Simulate a point process from component kernels and inputs.
 
@@ -1007,13 +1010,21 @@ class CIF:
         simType : {'binomial', 'poisson'}, default ``'binomial'``
             Link function for computing λΔ.
         seed : int or None
-            Random seed.
+            Random seed (Python backend only).
         return_lambda : bool, default False
             If ``True``, return ``(collection, lambda_array)``.
         random_values : ndarray or None
-            Pre-drawn uniform random values for reproducibility.
+            Pre-drawn uniform random values for reproducibility
+            (Python backend only).
         return_details : bool, default False
-            If ``True``, return ``(collection, details_dict)``.
+            If ``True``, return ``(collection, details_dict)``
+            (Python backend only).
+        backend : {'auto', 'matlab', 'python'}, default ``'auto'``
+            Simulation backend.  ``'auto'`` uses MATLAB/Simulink when
+            available and falls back to the native Python implementation
+            with a :class:`~nstat.matlab_engine.MatlabFallbackWarning`.
+            ``'matlab'`` forces Simulink (raises if unavailable).
+            ``'python'`` forces the native implementation with no warning.
 
         Returns
         -------
@@ -1021,6 +1032,146 @@ class CIF:
             Simulated spike trains (or tuple if *return_lambda* /
             *return_details* is ``True``).
         """
+        # ---- Backend selection ----
+        from . import matlab_engine as _meng
+
+        if backend == "auto":
+            use_matlab = (
+                _meng.is_matlab_available()
+                and _meng.get_matlab_nstat_path() is not None
+            )
+        elif backend == "matlab":
+            if not _meng.is_matlab_available():
+                raise RuntimeError(
+                    "backend='matlab' requested but MATLAB Engine is not "
+                    "available.  Install MATLAB and the MATLAB Engine API "
+                    "for Python, or use backend='auto' / backend='python'."
+                )
+            if _meng.get_matlab_nstat_path() is None:
+                raise RuntimeError(
+                    "backend='matlab' requested but the MATLAB nSTAT repo "
+                    "could not be found.  Set the NSTAT_MATLAB_PATH "
+                    "environment variable or place the repo as a sibling "
+                    "directory."
+                )
+            use_matlab = True
+        elif backend == "python":
+            use_matlab = False
+        else:
+            raise ValueError("backend must be 'auto', 'matlab', or 'python'")
+
+        if use_matlab:
+            try:
+                return CIF._simulateCIF_matlab(
+                    mu, hist, stim, ens,
+                    inputStimSignal, inputEnsSignal,
+                    numRealizations, simType,
+                    return_lambda=return_lambda,
+                )
+            except Exception:
+                # auto mode — fall back to Python
+                _meng.warn_fallback()
+
+        elif backend == "auto":
+            # MATLAB not available — warn the user
+            _meng.warn_fallback()
+
+        # ---- Native Python path ----
+        return CIF._simulateCIF_python(
+            mu, hist, stim, ens,
+            inputStimSignal, inputEnsSignal,
+            numRealizations, simType,
+            seed=seed,
+            return_lambda=return_lambda,
+            random_values=random_values,
+            return_details=return_details,
+        )
+
+    # ------------------------------------------------------------------ #
+    # MATLAB/Simulink backend
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _simulateCIF_matlab(
+        mu, hist, stim, ens,
+        inputStimSignal: Covariate,
+        inputEnsSignal: Covariate,
+        numRealizations: int = 1,
+        simType: str = "binomial",
+        *,
+        return_lambda: bool = False,
+    ):
+        """Run the simulation through ``PointProcessSimulation.slx``."""
+        from . import matlab_engine as _meng
+
+        time = np.asarray(inputStimSignal.time, dtype=float).reshape(-1)
+        dt = float(np.median(np.diff(time)))
+
+        hist_kernel = _extract_kernel_coeffs(hist).reshape(-1)
+        stim_input = np.asarray(inputStimSignal.data, dtype=float)
+        if stim_input.ndim == 1:
+            stim_input = stim_input[:, None]
+        ens_input = np.asarray(inputEnsSignal.data, dtype=float)
+        if ens_input.ndim == 1:
+            ens_input = ens_input[:, None]
+
+        stim_kernels = _extract_kernel_bank(stim, stim_input.shape[1])
+        ens_kernels = _extract_kernel_bank(ens, ens_input.shape[1])
+
+        spike_times_list, lambda_data = _meng.simulateCIF_via_simulink(
+            mu=float(np.asarray(mu, dtype=float).reshape(-1)[0]),
+            hist_kernel=hist_kernel,
+            stim_kernel_bank=stim_kernels,
+            ens_kernel_bank=ens_kernels,
+            stim_time=time,
+            stim_data=stim_input[:, 0],
+            ens_time=np.asarray(inputEnsSignal.time, dtype=float).reshape(-1),
+            ens_data=ens_input[:, 0],
+            num_realizations=int(numRealizations),
+            sim_type=str(simType).lower(),
+            dt=dt,
+        )
+
+        trains = []
+        for i, st in enumerate(spike_times_list):
+            train = nspikeTrain(
+                st, name=str(i + 1),
+                minTime=float(time[0]), maxTime=float(time[-1]),
+                makePlots=-1,
+            )
+            trains.append(train)
+
+        from .trial import SpikeTrainCollection
+        coll = SpikeTrainCollection(trains)
+        coll.setMinTime(float(time[0]))
+        coll.setMaxTime(float(time[-1]))
+
+        if return_lambda:
+            lambda_cov = Covariate(
+                time, lambda_data,
+                "\\lambda(t|H_t)", "time", "s", "Hz",
+            )
+            return coll, lambda_cov
+        return coll
+
+    # ------------------------------------------------------------------ #
+    # Native Python backend
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _simulateCIF_python(
+        mu, hist, stim, ens,
+        inputStimSignal: Covariate,
+        inputEnsSignal: Covariate,
+        numRealizations: int = 1,
+        simType: str = "binomial",
+        *,
+        seed: int | None = None,
+        return_lambda: bool = False,
+        random_values: np.ndarray | None = None,
+        return_details: bool = False,
+    ):
+        """Pure-NumPy discrete-time Bernoulli simulation."""
         if int(numRealizations) < 1:
             raise ValueError("numRealizations must be >= 1")
         time = np.asarray(inputStimSignal.time, dtype=float).reshape(-1)

@@ -82,10 +82,89 @@ def simulate_two_neuron_network(
     stimulus_frequency_hz: float = 1.0,
     seed: int | None = 13,
     uniform_values: np.ndarray | None = None,
+    backend: str = "auto",
 ) -> NetworkSimulationResult:
-    """Standalone Python replacement for the MATLAB/Simulink 2-neuron NetworkTutorial."""
+    """Standalone Python replacement for the MATLAB/Simulink 2-neuron NetworkTutorial.
+
+    Parameters
+    ----------
+    backend : {'auto', 'matlab', 'python'}, default ``'auto'``
+        Simulation backend.  ``'auto'`` uses MATLAB/Simulink when
+        available and falls back to native Python with a warning.
+        ``'matlab'`` forces Simulink (raises if unavailable).
+        ``'python'`` forces the native implementation.
+    """
     if duration_s <= 0 or dt <= 0:
         raise ValueError("duration_s and dt must be > 0")
+
+    # ---- Backend selection ----
+    from .matlab_engine import (
+        MatlabFallbackWarning as _MFW,  # noqa: F401
+        is_matlab_available as _is_avail,
+        get_matlab_nstat_path as _get_path,
+        simulate_network_via_simulink as _sim_net_sl,
+        warn_fallback as _warn_fb,
+    )
+
+    if backend == "auto":
+        _use_matlab = _is_avail() and _get_path() is not None
+    elif backend == "matlab":
+        if not _is_avail():
+            raise RuntimeError(
+                "backend='matlab' requested but MATLAB Engine is not "
+                "available.  Install MATLAB and the MATLAB Engine API "
+                "for Python, or use backend='auto' / backend='python'."
+            )
+        if _get_path() is None:
+            raise RuntimeError(
+                "backend='matlab' requested but the MATLAB nSTAT repo "
+                "could not be found.  Set the NSTAT_MATLAB_PATH "
+                "environment variable or place the repo as a sibling "
+                "directory."
+            )
+        _use_matlab = True
+    elif backend == "python":
+        _use_matlab = False
+    else:
+        raise ValueError("backend must be 'auto', 'matlab', or 'python'")
+
+    if _use_matlab:
+        try:
+            time = np.arange(0.0, duration_s + dt, dt)
+            drive = np.sin(2.0 * np.pi * float(stimulus_frequency_hz) * time)
+            hist_arr = np.asarray(history_kernel, dtype=float).reshape(-1)
+            spike_times_list, lambda_data = _sim_net_sl(
+                stim_time=time,
+                stim_data=drive,
+                baseline_mu=baseline_mu,
+                history_kernel=hist_arr,
+                stimulus_kernel=stimulus_kernel,
+                ensemble_kernel=ensemble_kernel,
+                dt=dt,
+            )
+            coll = SpikeTrainCollection([
+                SpikeTrain(spike_times_list[0], name="neuron_1"),
+                SpikeTrain(spike_times_list[1], name="neuron_2"),
+            ])
+            return NetworkSimulationResult(
+                time=time,
+                latent_drive=drive,
+                lambda_delta=lambda_data,
+                spikes=coll,
+                actual_network=np.array([
+                    [0.0, float(ensemble_kernel[0])],
+                    [float(ensemble_kernel[1]), 0.0],
+                ], dtype=float),
+                history_kernel=hist_arr,
+                stimulus_kernel=np.asarray(stimulus_kernel, dtype=float),
+                ensemble_kernel=np.asarray(ensemble_kernel, dtype=float),
+                baseline_mu=np.asarray(baseline_mu, dtype=float),
+            )
+        except Exception:
+            # auto mode — fall back to Python with warning
+            _warn_fb()
+    elif backend == "auto":
+        _warn_fb()
 
     time = np.arange(0.0, duration_s + dt, dt)
     drive = np.sin(2.0 * np.pi * float(stimulus_frequency_hz) * time)

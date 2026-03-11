@@ -481,5 +481,5 @@ fidelity_summary:
   notebook_fidelity:
     exact: 13
   simulink_fidelity:
-    high_fidelity_native_python: 2
+    exact_with_matlab_engine_bridge: 2
     reference_only: 10

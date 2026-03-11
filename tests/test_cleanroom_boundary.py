@@ -17,10 +17,18 @@ FORBIDDEN_RUNTIME_PATTERNS = [
     re.compile(r"\bshutil\.which\(['\"]matlab['\"]\)"),
 ]
 
+# matlab_engine.py is the *official* MATLAB Engine bridge module — it is
+# *allowed* to import matlab.engine.  All other package files must remain
+# cleanroom (no MATLAB runtime dependency).
+BRIDGE_MODULE_ALLOWLIST = {"matlab_engine.py"}
 
-def _assert_clean(paths: list[Path]) -> None:
+
+def _assert_clean(paths: list[Path], *, allowlist: set[str] | None = None) -> None:
+    allowlist = allowlist or set()
     violations: list[str] = []
     for path in paths:
+        if path.name in allowlist:
+            continue
         text = path.read_text(encoding="utf-8", errors="ignore")
         for pattern in FORBIDDEN_RUNTIME_PATTERNS:
             if pattern.search(text):
@@ -30,7 +38,7 @@ def _assert_clean(paths: list[Path]) -> None:
 
 def test_installable_package_has_no_matlab_runtime_dependency() -> None:
     package_paths = sorted((REPO_ROOT / "nstat").glob("**/*.py"))
-    _assert_clean(package_paths)
+    _assert_clean(package_paths, allowlist=BRIDGE_MODULE_ALLOWLIST)
 
 
 def test_notebooks_examples_and_ci_do_not_shell_out_to_matlab() -> None:

@@ -15,3 +15,7 @@ class ParityValidationError(NSTATError):
 
 class UnsupportedWorkflowError(NSTATError, NotImplementedError):
     """Raised when a legacy workflow has not yet been ported."""
+
+
+class MatlabEngineError(NSTATError, RuntimeError):
+    """Raised when MATLAB Engine interaction fails."""

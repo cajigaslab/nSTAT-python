@@ -5,6 +5,7 @@ source_repositories:
   python: https://github.com/cajigaslab/nSTAT-python
 strategy_legend:
 - native_python
+- native_python_with_matlab_engine_bridge
 - generated_code_wrapped
 - packaged_runtime
 - matlab_engine_fallback
@@ -16,31 +17,36 @@ items:
   purpose: Discrete point-process simulation used by `CIF.simulateCIF`, `PPSimExample`,
     and related help workflows.
   matlab_usage: required_for_behavioral_parity
-  python_strategy: native_python
-  current_python_status: high_fidelity
+  python_strategy: native_python_with_matlab_engine_bridge
+  current_python_status: exact_when_matlab_available
   deterministic_fixture_backed: true
   stochastic_tolerance_backed: true
-  chosen_interoperability_strategy: Native Python simulation through `nstat.cif.CIF.simulateCIF`,
-    with MATLAB-side `tests/python_port_fidelity/TestPythonSimulinkParity.m` serving
-    as the cross-language reference checker.
+  chosen_interoperability_strategy: |
+    Dual backend via `CIF.simulateCIF(backend=...)`:
+    - backend='auto' (default): calls PointProcessSimulation.slx via
+      matlab.engine when MATLAB is installed, producing exact Simulink
+      output.  Falls back to native Python with a MatlabFallbackWarning
+      when MATLAB is absent.
+    - backend='matlab': forces Simulink (raises if MATLAB unavailable).
+    - backend='python': forces native Python (no warning).
+    The .slx model stays in the MATLAB repo; the path is resolved via
+    NSTAT_MATLAB_PATH env var or sibling directory detection.
   fidelity_risks:
-  - Exact stochastic spike-count realizations differ between MATLAB and NumPy random
-    generators even when the same seed is requested.
-  - The native Python path mirrors the Simulink transfer-function semantics for the
-    published help workflows, but not every internal Simulink block configuration
-    has a one-to-one Python analogue.
+  - Native Python fallback produces high-fidelity but not bit-exact
+    output compared to Simulink.
+  - Exact stochastic spike-count realizations differ between MATLAB and
+    NumPy random generators when using the Python fallback.
   validation_plan:
-  - Compare deterministic lambda traces against MATLAB-generated fixtures and the
-    MATLAB-side Simulink parity harness.
-  - Keep committed MATLAB gold fixtures for deterministic injected-uniform traces
-    covering recursive history, eta, lambda-delta, and spike indicators, plus seeded
-    Python regression tests for PPSimExample outputs in CI.
-  status: high_fidelity_native_python
+  - MATLAB integration tests compare Simulink and Python lambda traces.
+  - Deterministic injected-uniform fixtures cover recursive history,
+    eta, lambda-delta, and spike indicators.
+  - CI tests run with backend='python' and warn-based tests validate
+    the fallback path.
+  status: exact_with_matlab_engine_bridge
   python_equivalent: nstat.cif.CIF.simulateCIF
-  validation_strategy: deterministic injected-uniform trace fixtures plus seeded tolerance
-    checks
-  required_remediation: Broaden deterministic fixture coverage to additional branch
-    variants before promoting exact_native_python.
+  validation_strategy: dual-backend dispatch with MATLAB integration tests
+    (skipped in CI without MATLAB) plus native Python fixture validation
+  required_remediation: none
 - model_name: PointProcessSimulationCont
   model_path: PointProcessSimulationCont.slx
   purpose: Continuous-time companion model kept with the MATLAB toolbox for simulation/reference
@@ -222,32 +228,37 @@ items:
   purpose: Two-neuron network simulation used by `NetworkTutorial` and related connectivity
     examples.
   matlab_usage: required_for_example_execution
-  python_strategy: native_python
-  current_python_status: high_fidelity
+  python_strategy: native_python_with_matlab_engine_bridge
+  current_python_status: exact_when_matlab_available
   deterministic_fixture_backed: true
   stochastic_tolerance_backed: true
-  chosen_interoperability_strategy: Native Python execution through `nstat.simulators.simulate_two_neuron_network`,
-    with MATLAB-side `tests/python_port_fidelity/TestPythonSimulinkParity.m` serving
-    as the reference checker.
+  chosen_interoperability_strategy: |
+    Dual backend via `simulate_two_neuron_network(backend=...)`:
+    - backend='auto' (default): calls SimulatedNetwork2.mdl via
+      matlab.engine when MATLAB is installed, producing exact Simulink
+      output.  Falls back to native Python with a MatlabFallbackWarning
+      when MATLAB is absent.
+    - backend='matlab': forces Simulink (raises if MATLAB unavailable).
+    - backend='python': forces native Python (no warning).
+    The .mdl model stays in the MATLAB repo; the path is resolved via
+    NSTAT_MATLAB_PATH env var or sibling directory detection.
   fidelity_risks:
-  - Exact spike trains still differ from Simulink because MATLAB and NumPy do not
-    share the same binomial random stream.
-  - The native port mirrors the published NetworkTutorial parameterization and one-sample-delay
-    semantics, but not every internal Simulink block detail is separately exposed.
+  - Native Python fallback produces high-fidelity but not bit-exact
+    output compared to Simulink.
+  - Exact spike trains still differ from Simulink when using the Python
+    fallback because MATLAB and NumPy do not share the same binomial
+    random stream.
   validation_plan:
-  - Keep deterministic injected-uniform fixtures for probability traces, binary state
+  - MATLAB integration tests compare Simulink and Python probability traces.
+  - Deterministic injected-uniform fixtures cover probability traces, binary state
     traces, history/ensemble terms, and eta traces in CI.
-  - Keep committed MATLAB gold fixtures for `prob_head` and `state_head`, and treat
-    seeded spike-count summaries as tolerance-based because MATLAB and NumPy random
-    streams are not identical.
-  - Keep MATLAB-side parity checks for the actual connectivity layout and deterministic
-    probability/state traces.
-  status: high_fidelity_native_python
+  - CI tests run with backend='python' and warn-based tests validate
+    the fallback path.
+  status: exact_with_matlab_engine_bridge
   python_equivalent: nstat.simulators.simulate_two_neuron_network
-  validation_strategy: deterministic injected-uniform state/probability fixtures plus
-    seeded summary checks
-  required_remediation: Broaden deterministic state-trace fixtures and document any
-    remaining solver-level deviations before promoting exact_native_python.
+  validation_strategy: dual-backend dispatch with MATLAB integration tests
+    (skipped in CI without MATLAB) plus native Python fixture validation
+  required_remediation: none
 - model_name: SimulatedNetwork2Cache
   model_path: helpfiles/SimulatedNetwork2.slxc
   purpose: Simulink compiled cache artifact for `SimulatedNetwork2`.
@@ -268,6 +279,7 @@ items:
     is shown to depend on this asset.
 status_legend:
 - exact_native_python
+- exact_with_matlab_engine_bridge
 - high_fidelity_native_python
 - generated_code_wrapped
 - packaged_runtime

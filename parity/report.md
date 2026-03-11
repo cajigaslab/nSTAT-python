@@ -50,7 +50,8 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 | Status | Count |
 |---|---:|
 | `exact_native_python` | 0 |
-| `high_fidelity_native_python` | 2 |
+| `exact_with_matlab_engine_bridge` | 2 |
+| `high_fidelity_native_python` | 0 |
 | `generated_code_wrapped` | 0 |
 | `packaged_runtime` | 0 |
 | `matlab_engine_reference` | 0 |
@@ -61,7 +62,8 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 
 | Strategy | Count |
 |---|---:|
-| `native_python` | 2 |
+| `native_python` | 0 |
+| `native_python_with_matlab_engine_bridge` | 2 |
 | `generated_code_wrapped` | 0 |
 | `packaged_runtime` | 0 |
 | `matlab_engine_fallback` | 0 |
