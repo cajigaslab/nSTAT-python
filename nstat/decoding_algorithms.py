@@ -2963,7 +2963,7 @@ class DecodingAlgorithms:
         logll = float(logll_arr[maxLLIndex]) if logll_arr.size > 0 else -np.inf
 
         QhatAll = np.column_stack(Qhat_history) if Qhat_history else Q0_vec.reshape(-1, 1)
-        gammahatAll = np.row_stack(gammahat_history) if gammahat_history and gammahat_history[0].size > 0 else np.array([[]])
+        gammahatAll = np.vstack(gammahat_history) if gammahat_history and gammahat_history[0].size > 0 else np.array([[]])
 
         R = numBasis
         x0Final = xK[:, 0] if xK is not None else np.zeros(R)

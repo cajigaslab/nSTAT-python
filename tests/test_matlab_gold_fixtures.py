@@ -968,3 +968,150 @@ def test_simulated_network_deterministic_trace_matches_matlab_gold_fixture() -> 
     np.testing.assert_allclose(sim.eta, np.asarray(payload["det_eta"], dtype=float), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(sim.history_effect, np.asarray(payload["det_history_effect"], dtype=float), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(sim.ensemble_effect, np.asarray(payload["det_ensemble_effect"], dtype=float), rtol=1e-8, atol=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# New expanded fixtures — skip gracefully when .mat files are not yet generated
+# ---------------------------------------------------------------------------
+
+_DECODE_LINEAR_FIXTURE = FIXTURE_ROOT / "decode_linear_exactness.mat"
+_KALMAN_FILTER_FIXTURE = FIXTURE_ROOT / "kalman_filter_exactness.mat"
+_CIF_GAMMA_FIXTURE = FIXTURE_ROOT / "cif_gamma_exactness.mat"
+_DECODE_UPDATE_FIXTURE = FIXTURE_ROOT / "decode_update_exactness.mat"
+
+
+@pytest.mark.skipif(not _DECODE_LINEAR_FIXTURE.exists(), reason="decode_linear_exactness.mat not generated yet")
+def test_ppdecodefilterlinear_matches_matlab_gold_fixture() -> None:
+    """Full PPDecodeFilterLinear predict+update loop against MATLAB gold."""
+    payload = _load_fixture("decode_linear_exactness.mat")
+
+    x_p, W_p, x_u, W_u, *_ = DecodingAlgorithms.PPDecodeFilterLinear(
+        np.asarray(payload["A"], dtype=float),
+        np.asarray(payload["Q"], dtype=float),
+        np.asarray(payload["dN"], dtype=float),
+        _vector(payload, "mu"),
+        np.asarray(payload["beta"], dtype=float),
+        _string(payload, "fitType"),
+        _scalar(payload, "delta"),
+    )
+
+    np.testing.assert_allclose(x_p, np.asarray(payload["x_p"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(W_p, np.asarray(payload["W_p"], dtype=float).reshape(W_p.shape), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(x_u, np.asarray(payload["x_u"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(W_u, np.asarray(payload["W_u"], dtype=float).reshape(W_u.shape), rtol=1e-8, atol=1e-10)
+
+
+@pytest.mark.skipif(not _KALMAN_FILTER_FIXTURE.exists(), reason="kalman_filter_exactness.mat not generated yet")
+def test_kalman_filter_matches_matlab_gold_fixture() -> None:
+    """Standard Kalman filter against MATLAB gold."""
+    payload = _load_fixture("kalman_filter_exactness.mat")
+
+    result = DecodingAlgorithms.kalman_filter(
+        observations=np.asarray(payload["observations"], dtype=float),
+        transition=np.asarray(payload["A"], dtype=float),
+        observation_matrix=np.asarray(payload["C"], dtype=float),
+        q_cov=np.asarray(payload["Q"], dtype=float),
+        r_cov=np.asarray(payload["R"], dtype=float),
+        x0=_vector(payload, "x0"),
+        p0=np.asarray(payload["P0"], dtype=float),
+    )
+
+    np.testing.assert_allclose(
+        result["x_filt"], np.asarray(payload["x_filt"], dtype=float),
+        rtol=1e-8, atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        result["P_filt"], np.asarray(payload["P_filt"], dtype=float).reshape(result["P_filt"].shape),
+        rtol=1e-8, atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        result["x_pred"], np.asarray(payload["x_pred"], dtype=float),
+        rtol=1e-8, atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        result["P_pred"], np.asarray(payload["P_pred"], dtype=float).reshape(result["P_pred"].shape),
+        rtol=1e-8, atol=1e-10,
+    )
+
+
+@pytest.mark.skipif(not _CIF_GAMMA_FIXTURE.exists(), reason="cif_gamma_exactness.mat not generated yet")
+def test_cif_gamma_scaled_evals_match_matlab_gold_fixture() -> None:
+    """CIF gamma-scaled evaluation methods against MATLAB gold."""
+    from nstat import History, nspikeTrain as nspikeTrain_cls
+
+    payload = _load_fixture("cif_gamma_exactness.mat")
+
+    beta_vec = _vector(payload, "beta")
+    hist_coeffs = _vector(payload, "histCoeffs")
+    full_beta = np.concatenate([beta_vec, hist_coeffs])
+
+    cif = CIF(
+        beta=full_beta,
+        Xnames=["stim1", "stim2"],
+        stimNames=["stim1", "stim2"],
+        fitType="binomial",
+    )
+
+    # Set up history
+    window_times = _vector(payload, "window_times")
+    spike_times = _vector(payload, "spike_times")
+    sr = _scalar(payload, "sample_rate")
+    hist = History(window_times, 0.0, 1.0)
+    nst = nspikeTrain_cls(spike_times, "n1", sr, 0.0, 1.0)
+    cif = cif.setHistory(hist)
+    cif = cif.setSpikeTrain(nst)
+
+    stim_val = _vector(payload, "stimVal")
+    gamma = _vector(payload, "gamma")
+    time_idx = int(_scalar(payload, "time_index"))
+
+    np.testing.assert_allclose(
+        cif.evalLDGamma(stim_val, time_idx, gamma=gamma),
+        _scalar(payload, "lambda_delta_gamma"),
+        rtol=1e-8, atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        cif.evalLogLDGamma(stim_val, time_idx, gamma=gamma),
+        _scalar(payload, "lambda_log_gamma"),
+        rtol=1e-8, atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(cif.evalGradientLDGamma(stim_val, time_idx, gamma=gamma), dtype=float).reshape(-1),
+        _vector(payload, "gradient_gamma"),
+        rtol=1e-8, atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(cif.evalGradientLogLDGamma(stim_val, time_idx, gamma=gamma), dtype=float).reshape(-1),
+        _vector(payload, "gradient_log_gamma"),
+        rtol=1e-8, atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(cif.evalJacobianLDGamma(stim_val, time_idx, gamma=gamma), dtype=float),
+        np.asarray(payload["jacobian_gamma"], dtype=float),
+        rtol=1e-8, atol=1e-10,
+    )
+    np.testing.assert_allclose(
+        np.asarray(cif.evalJacobianLogLDGamma(stim_val, time_idx, gamma=gamma), dtype=float),
+        np.asarray(payload["jacobian_log_gamma"], dtype=float),
+        rtol=1e-8, atol=1e-10,
+    )
+
+
+@pytest.mark.skipif(not _DECODE_UPDATE_FIXTURE.exists(), reason="decode_update_exactness.mat not generated yet")
+def test_ppdecode_updatelinear_matches_matlab_gold_fixture() -> None:
+    """Single PPDecode_updateLinear step against MATLAB gold."""
+    payload = _load_fixture("decode_update_exactness.mat")
+
+    x_u, W_u, lambda_delta = DecodingAlgorithms.PPDecode_updateLinear(
+        _vector(payload, "x_p"),
+        np.asarray(payload["W_p"], dtype=float),
+        np.asarray(payload["dN"], dtype=float).reshape(-1),
+        _vector(payload, "mu"),
+        np.asarray(payload["beta"], dtype=float),
+        _string(payload, "fitType"),
+        _scalar(payload, "binwidth"),
+    )
+
+    np.testing.assert_allclose(x_u, _vector(payload, "x_u"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(W_u, np.asarray(payload["W_u"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(lambda_delta, _vector(payload, "lambda_delta"), rtol=1e-8, atol=1e-10)

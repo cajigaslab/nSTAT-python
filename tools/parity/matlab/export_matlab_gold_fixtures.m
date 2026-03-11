@@ -39,6 +39,10 @@ export_decoding_smoother_fixture(fixtureRoot);
 export_hybrid_filter_fixture(fixtureRoot);
 export_nonlinear_decode_fixture(fixtureRoot);
 export_simulated_network_fixture(fixtureRoot);
+export_decode_linear_fixture(fixtureRoot);
+export_kalman_filter_fixture(fixtureRoot);
+export_cif_gamma_fixture(fixtureRoot);
+export_decode_update_fixture(fixtureRoot);
 end
 
 function export_history_fixture(fixtureRoot)
@@ -877,6 +881,160 @@ payload.x_u = x_u;
 payload.W_u = W_u;
 
 save(fullfile(fixtureRoot, 'nonlinear_decode_exactness.mat'), '-struct', 'payload');
+end
+
+function export_decode_linear_fixture(fixtureRoot)
+% PPDecodeFilterLinear: full linear decode filter (predict+update loop)
+A = [1.0 0.1; 0.0 0.95];
+Q = 0.01 * eye(2);
+dN = [0 1 0 0 1 0 1 0;
+      1 0 0 1 0 1 0 0];
+mu = [-2.0; -1.5];
+beta = [0.5 0.3; -0.2 0.6];
+fitType = 'binomial';
+delta = 0.1;
+[x_p, W_p, x_u, W_u] = DecodingAlgorithms.PPDecodeFilterLinear( ...
+    A, Q, dN, mu, beta, fitType, delta);
+
+payload = struct();
+payload.A = A;
+payload.Q = Q;
+payload.dN = dN;
+payload.mu = mu;
+payload.beta = beta;
+payload.fitType = fitType;
+payload.delta = delta;
+payload.x_p = x_p;
+payload.W_p = W_p;
+payload.x_u = x_u;
+payload.W_u = W_u;
+
+save(fullfile(fixtureRoot, 'decode_linear_exactness.mat'), '-struct', 'payload');
+end
+
+function export_kalman_filter_fixture(fixtureRoot)
+% Standard Kalman filter: linear Gaussian state-space
+A = [1.0 0.1; 0.0 0.95];
+C = [1.0 0.0; 0.0 1.0];
+Q = 0.01 * eye(2);
+R = 0.05 * eye(2);
+x0 = [0.0; 0.0];
+P0 = 0.1 * eye(2);
+rng(42);
+true_state = zeros(2, 10);
+observations = zeros(2, 10);
+true_state(:,1) = [1.0; -0.5];
+observations(:,1) = C * true_state(:,1) + sqrtm(R) * randn(2,1);
+for k = 2:10
+    true_state(:,k) = A * true_state(:,k-1) + sqrtm(Q) * randn(2,1);
+    observations(:,k) = C * true_state(:,k) + sqrtm(R) * randn(2,1);
+end
+
+% Run kalman_filter
+x_filt = zeros(2, 10);
+P_filt = zeros(2, 2, 10);
+x_pred = zeros(2, 10);
+P_pred = zeros(2, 2, 10);
+x_curr = x0;
+P_curr = P0;
+for k = 1:10
+    % Predict
+    x_pred(:,k) = A * x_curr;
+    P_pred(:,:,k) = A * P_curr * A' + Q;
+    % Update
+    y_innov = observations(:,k) - C * x_pred(:,k);
+    S = C * P_pred(:,:,k) * C' + R;
+    K = P_pred(:,:,k) * C' / S;
+    x_filt(:,k) = x_pred(:,k) + K * y_innov;
+    P_filt(:,:,k) = (eye(2) - K * C) * P_pred(:,:,k);
+    x_curr = x_filt(:,k);
+    P_curr = P_filt(:,:,k);
+end
+
+payload = struct();
+payload.A = A;
+payload.C = C;
+payload.Q = Q;
+payload.R = R;
+payload.x0 = x0;
+payload.P0 = P0;
+payload.observations = observations;
+payload.x_filt = x_filt;
+payload.P_filt = P_filt;
+payload.x_pred = x_pred;
+payload.P_pred = P_pred;
+
+save(fullfile(fixtureRoot, 'kalman_filter_exactness.mat'), '-struct', 'payload');
+end
+
+function export_cif_gamma_fixture(fixtureRoot)
+% CIF gamma-scaled evaluation methods
+beta = [0.1 0.5];
+histCoeffs = [-0.3 -0.2 -0.1];
+cif = CIF(beta, {'stim1', 'stim2'}, {'stim1', 'stim2'}, 'binomial');
+cif.b = [beta histCoeffs];
+cif.histCoeffs = histCoeffs;
+cif.history = History([0 0.01 0.02 0.03], 0.0, 1.0);
+n1 = nspikeTrain([0.05 0.1 0.2 0.3 0.5], 'n1', 100, 0.0, 1.0, 'time', 's', 'spikes', 'spk', -1);
+cif = cif.setSpikeTrain(n1);
+histMat = cif.history.computeHistory(n1, 100);
+cif.historyMat = histMat.dataToMatrix();
+
+stimVal = [0.6; -0.2];
+gamma = [0.8; 1.2; 0.5];
+
+% Evaluate gamma-scaled methods at time index 5
+lambda_delta_gamma = cif.evalLDGamma(stimVal, 5, [], gamma);
+gradient_gamma = cif.evalGradientLDGamma(stimVal, 5, [], gamma);
+gradient_log_gamma = cif.evalGradientLogLDGamma(stimVal, 5, [], gamma);
+jacobian_gamma = cif.evalJacobianLDGamma(stimVal, 5, [], gamma);
+jacobian_log_gamma = cif.evalJacobianLogLDGamma(stimVal, 5, [], gamma);
+lambda_log_gamma = cif.evalLogLDGamma(stimVal, 5, [], gamma);
+
+payload = struct();
+payload.beta = beta;
+payload.histCoeffs = histCoeffs;
+payload.stimVal = stimVal;
+payload.gamma = gamma;
+payload.time_index = 5;
+payload.spike_times = n1.spikeTimes;
+payload.sample_rate = 100;
+payload.window_times = [0 0.01 0.02 0.03];
+payload.lambda_delta_gamma = lambda_delta_gamma;
+payload.gradient_gamma = gradient_gamma;
+payload.gradient_log_gamma = gradient_log_gamma;
+payload.jacobian_gamma = jacobian_gamma;
+payload.jacobian_log_gamma = jacobian_log_gamma;
+payload.lambda_log_gamma = lambda_log_gamma;
+
+save(fullfile(fixtureRoot, 'cif_gamma_exactness.mat'), '-struct', 'payload');
+end
+
+function export_decode_update_fixture(fixtureRoot)
+% PPDecode_updateLinear: single update step for linear decode
+x_p = [0.1; -0.2];
+W_p = [1.0 0.1; 0.1 2.0];
+dN = [1; 0];
+mu = [-2.0; -1.5];
+beta = [0.5 0.3; -0.2 0.6];
+fitType = 'binomial';
+binwidth = 0.1;
+[x_u, W_u, lambda_delta] = DecodingAlgorithms.PPDecode_updateLinear( ...
+    x_p, W_p, dN, mu, beta, fitType, binwidth);
+
+payload = struct();
+payload.x_p = x_p;
+payload.W_p = W_p;
+payload.dN = dN;
+payload.mu = mu;
+payload.beta = beta;
+payload.fitType = fitType;
+payload.binwidth = binwidth;
+payload.x_u = x_u;
+payload.W_u = W_u;
+payload.lambda_delta = lambda_delta;
+
+save(fullfile(fixtureRoot, 'decode_update_exactness.mat'), '-struct', 'payload');
 end
 
 function export_simulated_network_fixture(fixtureRoot)
