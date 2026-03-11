@@ -373,7 +373,28 @@ class _SingleFit:
 
 
 class FitResult:
-    """MATLAB-facing fit result container with Python compatibility aliases."""
+    """GLM fit results for one neuron across one or more model configs (Matlab ``FitResult``).
+
+    Stores coefficients, deviance, AIC/BIC, log-likelihood, fitted λ signal,
+    and KS-test diagnostics for each configuration in a
+    :class:`~nstat.trial.ConfigCollection`.  Provides coefficient accessors,
+    residual analysis, and Matlab-compatible plot methods.
+
+    Parameters
+    ----------
+    neuralSpikeTrain : nspikeTrain or sequence of nspikeTrain
+        The observed spike train(s) that were fitted.
+    *args, **kwargs
+        Positional / keyword construction matching the Matlab
+        ``FitResult(nst, covLabels, numHist, …)`` signature, or
+        the simplified ``FitResult(nst, lambdaCov, fits)`` form.
+
+    See Also
+    --------
+    FitSummary : Aggregate summary across multiple neurons.
+    Analysis.RunAnalysisForAllNeurons : Main entry point that produces
+        ``FitResult`` objects.
+    """
 
     def __init__(self, neuralSpikeTrain: nspikeTrain | Sequence[nspikeTrain], *args, **kwargs) -> None:
         if args and isinstance(args[0], Covariate):
@@ -605,6 +626,7 @@ class FitResult:
         raise AttributeError(f"{type(self).__name__!r} object has no attribute {name!r}")
 
     def setNeuronName(self, name: str):
+        """Rename the neuron on the underlying spike train(s)."""
         if isinstance(self.neuralSpikeTrain, nspikeTrain):
             self.neuralSpikeTrain.setName(str(name))
         elif isinstance(self.neuralSpikeTrain, Sequence):
@@ -615,6 +637,7 @@ class FitResult:
         return self
 
     def mapCovLabelsToUniqueLabels(self):
+        """Rebuild the unique-label map and ``flatMask`` from ``covLabels``."""
         self.uniqueCovLabels = _ordered_unique([label for labels in self.covLabels for label in labels])
         self.indicesToUniqueLabels = []
         self.flatMask = np.zeros((len(self.uniqueCovLabels), max(len(self.covLabels), 1)), dtype=int)
@@ -626,6 +649,7 @@ class FitResult:
         return self
 
     def getSubsetFitResult(self, subfits) -> "FitResult":
+        """Return a new ``FitResult`` with only the selected fit indices (1-based)."""
         indices = np.asarray(subfits if isinstance(subfits, Sequence) and not isinstance(subfits, (str, bytes)) else [subfits], dtype=int).reshape(-1)
         zero_based = [int(idx) - 1 for idx in indices]
         from .trial import ConfigCollection
@@ -656,6 +680,7 @@ class FitResult:
         return subset
 
     def addParamsToFit(self, neuronNum, lambda_signal, b, dev, stats, AIC, BIC, logLL, configColl):
+        """Append a new fit configuration's results (Matlab ``addParamsToFit``)."""
         del neuronNum
         merged = self.mergeResults(
             FitResult(
@@ -717,6 +742,7 @@ class FitResult:
         return coeffs[-num_hist:], labels[-num_hist:], se[-num_hist:]
 
     def getCoeffIndex(self, fit_num: int = 1, sortByEpoch: int = 0):
+        """Return ``(indices, epochIds, numEpochs)`` for non-history coefficients."""
         del sortByEpoch
         labels = list(self.covLabels[fit_num - 1]) if fit_num - 1 < len(self.covLabels) else []
         num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
@@ -726,6 +752,7 @@ class FitResult:
         return coeff_index, epoch_id, 0
 
     def getHistIndex(self, fit_num: int = 1, sortByEpoch: int = 0):
+        """Return ``(indices, epochIds, numEpochs)`` for history coefficients."""
         del sortByEpoch
         labels = list(self.covLabels[fit_num - 1]) if fit_num - 1 < len(self.covLabels) else []
         num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
@@ -737,6 +764,7 @@ class FitResult:
         return hist_index, epoch_id, 0
 
     def getParam(self, paramNames, fit_num: int = 1):
+        """Return ``(coeffs, SE, significance)`` for named parameters."""
         names = [paramNames] if isinstance(paramNames, str) else list(paramNames)
         coeffs, labels, se = self.getCoeffsWithLabels(fit_num)
         sig = _extract_significance_mask(self.stats[fit_num - 1] if fit_num - 1 < len(self.stats) else None, coeffs, se)
@@ -744,6 +772,7 @@ class FitResult:
         return coeffs[indices], se[indices], sig[indices]
 
     def getCoeffsWithLabels(self, fit_num: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
+        """Return ``(coefficients, labels, standardErrors)`` for *fit_num*."""
         coeffs = self._rawCoeffs(fit_num)
         labels = list(self.covLabels[fit_num - 1]) if fit_num - 1 < len(self.covLabels) else [f"b_{idx + 1}" for idx in range(coeffs.size)]
         if coeffs.size == len(labels) + 1:
@@ -754,6 +783,7 @@ class FitResult:
         return coeffs, labels, se
 
     def computePlotParams(self, fit_num: int | None = None):
+        """Compute the aligned coefficient / SE / significance arrays for plotting."""
         del fit_num
         if not self.uniqueCovLabels:
             self.mapCovLabelsToUniqueLabels()
@@ -782,9 +812,11 @@ class FitResult:
         return self.plotParams
 
     def getPlotParams(self):
+        """Alias for :meth:`computePlotParams`."""
         return self.computePlotParams()
 
     def isValDataPresent(self) -> bool:
+        """Return ``True`` if cross-validation data was stored."""
         if not self.XvalTime or not self.XvalData:
             return False
         for time in self.XvalTime:
@@ -794,11 +826,13 @@ class FitResult:
         return False
 
     def plotValidation(self):
+        """Plot validation fit results (if present)."""
         if self.validation is not None:
             return self.validation.plotResults()
         return None
 
     def mergeResults(self, other: "FitResult") -> "FitResult":
+        """Concatenate another ``FitResult``'s configs into this one."""
         from .trial import ConfigCollection
 
         if isinstance(self.lambda_signal, Covariate) and isinstance(other.lambda_signal, Covariate):
@@ -941,6 +975,7 @@ class FitResult:
         return diagnostics
 
     def computeKSStats(self, fit_num: int = 1, *, dt_correction: int = 1) -> dict[str, float]:
+        """Return KS statistic, p-value, and within-CI flag for *fit_num*."""
         diag = self._compute_diagnostics(fit_num, dt_correction=dt_correction)
         return {
             "ks_stat": float(diag["ks_stat"]),
@@ -949,9 +984,11 @@ class FitResult:
         }
 
     def computeInvGausTrans(self, fit_num: int = 1) -> np.ndarray:
+        """Return Gaussianized (inverse-normal-transformed) rescaled ISIs."""
         return np.asarray(self._compute_diagnostics(fit_num)["gaussianized"], dtype=float)
 
     def computeFitResidual(self, fit_num: int = 1, *, windowSize: float | None = None) -> Covariate:
+        """Compute the martingale residual M(t) = N(t) − Λ(t) (Matlab ``computeFitResidual``)."""
         time, rate_hz = self._lambda_series(fit_num)
         if time.size == 0:
             residual = Covariate([], [], "M(t_k)", "time", "s", "counts/bin", ["residual"])
@@ -1006,6 +1043,7 @@ class FitResult:
         return residual
 
     def evalLambda(self, fit_num: int = 1, newData=None) -> np.ndarray:
+        """Evaluate λ(t) = exp(X·β) · sampleRate on *newData* (Matlab ``evalLambda``)."""
         coeffs = self._rawCoeffs(fit_num)
         x = np.asarray(newData if newData is not None else [], dtype=float)
         if x.ndim == 0:
@@ -1107,6 +1145,7 @@ class FitResult:
         return fig
 
     def KSPlot(self, fit_num: int = 1, handle=None):
+        """KS goodness-of-fit plot with 95 % confidence bands (Matlab ``KSPlot``)."""
         diag = self._compute_diagnostics(fit_num)
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 4.0))[1]
         ideal = np.asarray(diag["ks_ideal"], dtype=float)
@@ -1125,6 +1164,7 @@ class FitResult:
         return ax
 
     def plotResidual(self, fit_num: int = 1, handle=None):
+        """Plot the martingale residual M(t) (Matlab ``plotResidual``)."""
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
         residual = self.computeFitResidual(fit_num)
         ax.plot(np.asarray(residual.time, dtype=float), np.asarray(residual.data[:, 0], dtype=float), color="tab:purple", linewidth=1.0)
@@ -1213,6 +1253,7 @@ class FitResult:
         return ax
 
     def plotCoeffsWithoutHistory(self, fit_num: int = 1, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
+        """Plot non-history (stimulus/baseline) coefficients only."""
         del sortByEpoch, plotSignificance
         coeffs, labels, _ = self.getCoeffsWithLabels(fit_num)
         num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
@@ -1229,6 +1270,7 @@ class FitResult:
         return ax
 
     def plotHistCoeffs(self, fit_num: int = 1, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
+        """Plot history-filter coefficients (Matlab ``plotHistCoeffs``)."""
         del sortByEpoch, plotSignificance
         coeffs, labels, _se = self.getHistCoeffsWithLabels(fit_num)
         if not labels:
@@ -1244,6 +1286,7 @@ class FitResult:
         return ax
 
     def setKSStats(self, Z, U, xAxis, KSSorted, ks_stat):
+        """Store pre-computed KS-test arrays (Matlab ``setKSStats``)."""
         self.Z = np.asarray(Z, dtype=float)
         self.U = np.asarray(U, dtype=float)
         self.KSXAxis = np.asarray(xAxis, dtype=float)
@@ -1268,14 +1311,17 @@ class FitResult:
         return self
 
     def setInvGausStats(self, X, rhoSig, confBoundSig):
+        """Store pre-computed inverse-Gaussian transform statistics."""
         self.invGausStats = {"X": np.asarray(X, dtype=float), "rhoSig": rhoSig, "confBoundSig": confBoundSig}
         return self
 
     def setFitResidual(self, M):
+        """Store the pre-computed fit residual ``Covariate``."""
         self.Residual = M
         return self
 
     def toStructure(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dict (Matlab ``toStructure``)."""
         return {
             "covLabels": [list(labels) for labels in self.covLabels],
             "numHist": list(self.numHist),
@@ -1318,6 +1364,7 @@ class FitResult:
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "FitResult":
+        """Reconstruct a ``FitResult`` from a dict."""
         from .trial import ConfigCollection, TrialConfig
 
         spike_times = structure["neural_spike_times"]
@@ -1360,11 +1407,26 @@ class FitResult:
 
     @staticmethod
     def CellArrayToStructure(fitResObjCell):
+        """Serialize a list of ``FitResult`` objects to a list of dicts."""
         return [fit.toStructure() for fit in fitResObjCell]
 
 
 class FitSummary:
-    """Cross-fit summary statistics for one or more FitResult objects."""
+    """Population-level summary across multiple neurons (Matlab ``FitResSummary``).
+
+    Aggregates AIC, BIC, log-likelihood, KS statistics, and coefficients
+    from a collection of :class:`FitResult` objects, providing box-plots,
+    coefficient histograms, and 2-D/3-D coefficient surfaces.
+
+    Parameters
+    ----------
+    fit_results : FitResult or iterable of FitResult
+        One or more per-neuron fit results to summarise.
+
+    See Also
+    --------
+    FitResult : Per-neuron fit container.
+    """
 
     def __init__(self, fit_results: FitResult | Iterable[FitResult]) -> None:
         if isinstance(fit_results, FitResult):
@@ -1398,35 +1460,41 @@ class FitSummary:
         self.mapCovLabelsToUniqueLabels()
 
     def getDiffAIC(self, idx: int = 1) -> np.ndarray:
+        """Return ΔAIC relative to config *idx* (1-based)."""
         if self.numResults > 1:
             keep = [col for col in range(self.AIC.shape[1]) if col != (idx - 1)]
             return self.AIC[:, keep] - self.AIC[:, [idx - 1]]
         return self.AIC.copy()
 
     def getDiffBIC(self, idx: int = 1) -> np.ndarray:
+        """Return ΔBIC relative to config *idx* (1-based)."""
         if self.numResults > 1:
             keep = [col for col in range(self.BIC.shape[1]) if col != (idx - 1)]
             return self.BIC[:, keep] - self.BIC[:, [idx - 1]]
         return self.BIC.copy()
 
     def getDifflogLL(self, idx: int = 1) -> np.ndarray:
+        """Return Δlog-likelihood relative to config *idx* (1-based)."""
         if self.numResults > 1:
             keep = [col for col in range(self.logLL.shape[1]) if col != (idx - 1)]
             return self.logLL[:, keep] - self.logLL[:, [idx - 1]]
         return self.logLL.copy()
 
     def mapCovLabelsToUniqueLabels(self):
+        """Rebuild the union of covariate labels across all neurons."""
         self.uniqueCovLabels = _ordered_unique(
             [label for fit in self.fitResCell for labels in fit.covLabels for label in labels]
         )
         return self.uniqueCovLabels
 
     def setCoeffRange(self, minVal, maxVal):
+        """Set the coefficient range used by ``binCoeffs``."""
         self.coeffMin = float(minVal)
         self.coeffMax = float(maxVal)
         return self
 
     def getCoeffs(self, fitNum: int = 1):
+        """Return ``(coeffMat, labels, seMat)`` aligned to unique labels."""
         labels = self.uniqueCovLabels
         coeff_rows = []
         se_rows = []
@@ -1444,6 +1512,7 @@ class FitSummary:
         return np.asarray(coeff_rows, dtype=float), labels, np.asarray(se_rows, dtype=float)
 
     def getHistCoeffs(self, fitNum: int = 1):
+        """Return ``(histMat, labels, seMat)`` for history coefficients."""
         labels = _ordered_unique(
             [label for fit in self.fitResCell for label in fit.covLabels[fitNum - 1][-int(fit.numHist[fitNum - 1]) :] if fitNum - 1 < len(fit.covLabels) and int(fit.numHist[fitNum - 1]) > 0]
         )
@@ -1469,6 +1538,7 @@ class FitSummary:
         return np.asarray(coeff_rows, dtype=float), labels, np.asarray(se_rows, dtype=float)
 
     def getSigCoeffs(self, fitNum: int = 1):
+        """Return (nNeurons × nCov) binary significance matrix."""
         coeff_mat, labels, se_mat = self.getCoeffs(fitNum)
         sig = np.zeros_like(coeff_mat, dtype=float)
         for row_idx, fit in enumerate(self.fitResCell):
@@ -1522,6 +1592,7 @@ class FitSummary:
         return N, edges, percentSig
 
     def plotIC(self, handle=None):
+        """Plot AIC, BIC, and log-likelihood box-plots side by side."""
         fig = handle if handle is not None else plt.figure(figsize=(9.0, 3.5))
         fig.clear()
         axes = fig.subplots(1, 3)
@@ -1532,6 +1603,7 @@ class FitSummary:
         return fig
 
     def plotAIC(self, handle=None):
+        """Box-plot of AIC across neurons (Matlab ``plotAIC``)."""
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
         ax.boxplot(self.AIC, tick_labels=self.fitNames)
         ax.set_ylabel("AIC")
@@ -1539,6 +1611,7 @@ class FitSummary:
         return ax
 
     def plotBIC(self, handle=None):
+        """Box-plot of BIC across neurons (Matlab ``plotBIC``)."""
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
         ax.boxplot(self.BIC, tick_labels=self.fitNames)
         ax.set_ylabel("BIC")
@@ -1546,6 +1619,7 @@ class FitSummary:
         return ax
 
     def plotlogLL(self, handle=None):
+        """Box-plot of log-likelihood across neurons (Matlab ``plotlogLL``)."""
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
         ax.boxplot(self.logLL, tick_labels=self.fitNames)
         ax.set_ylabel("log likelihood")
@@ -1553,6 +1627,7 @@ class FitSummary:
         return ax
 
     def plotResidualSummary(self, handle=None):
+        """Overlay all neurons' martingale residuals (Matlab ``plotResidualSummary``)."""
         fig = handle if handle is not None else plt.figure(figsize=(8.0, 3.5))
         fig.clear()
         ax = fig.subplots(1, 1)
@@ -1566,6 +1641,7 @@ class FitSummary:
         return fig
 
     def plotSummary(self, handle=None):
+        """Bar chart of mean AIC, BIC, and log-likelihood across configs."""
         fig = handle if handle is not None else plt.figure(figsize=(10.0, 4.5))
         fig.clear()
         axes = fig.subplots(1, 3)
@@ -1585,6 +1661,7 @@ class FitSummary:
         return fig
 
     def boxPlot(self, X, diffIndex: int = 1, h=None, dataLabels=None, **kwargs):
+        """General-purpose box-plot of *X* columns with fit-name labels."""
         del kwargs
         ax = h if h is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
         values = np.asarray(X, dtype=float)
@@ -1786,6 +1863,7 @@ class FitSummary:
         return fig
 
     def toStructure(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dict."""
         return {
             "fitResCell": FitResult.CellArrayToStructure(self.fitResCell),
             "numNeurons": self.numNeurons,
@@ -1802,6 +1880,7 @@ class FitSummary:
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "FitSummary":
+        """Reconstruct a ``FitSummary`` from a dict."""
         fits = [FitResult.fromStructure(item) for item in structure.get("fitResCell", [])]
         return FitSummary(fits)
 

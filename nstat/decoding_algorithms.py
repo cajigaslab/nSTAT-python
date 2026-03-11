@@ -346,8 +346,30 @@ def _ztest_pvalue(param: float, se: float) -> float:
     return float(2.0 * norm.sf(np.abs(z)))
 
 class DecodingAlgorithms:
+    """Static-method library for neural decoding and state-space estimation.
+
+    Provides Kalman filtering/smoothing, point-process adaptive filtering
+    (PPAF), hybrid discrete–continuous decoding, unscented Kalman filtering
+    (UKF), state-space GLM EM algorithms (SSGLM), and mixed point-process /
+    continuous-observation (mPPCO) EM algorithms.
+
+    All methods are ``@staticmethod``; no instance is required.  Method
+    signatures follow the Matlab ``DecodingAlgorithms`` class as closely
+    as possible.
+
+    See Also
+    --------
+    CIF : Conditional intensity function objects used by ``PPDecodeFilter``.
+    Analysis : High-level fitting routines that call these decoders.
+    """
+
     @staticmethod
     def linear_decode(spike_counts: np.ndarray, stimulus: np.ndarray) -> dict[str, np.ndarray]:
+        """Ordinary-least-squares linear decoder (spike counts → stimulus).
+
+        Returns a dict with keys ``'coefficients'``, ``'decoded'``,
+        ``'residual'``, and ``'ci'`` (95 % confidence band).
+        """
         x = np.asarray(spike_counts, dtype=float)
         y = np.asarray(stimulus, dtype=float).reshape(-1)
         if x.ndim == 1:
@@ -537,6 +559,7 @@ class DecodingAlgorithms:
 
     @staticmethod
     def kalman_predict(x_u, Pe_u, A, Pv, GnConv=None):
+        """Kalman filter predict step: ``x_p = A x_u``, ``Pe_p = A Pe A' + Pv``."""
         x_vec = np.asarray(x_u, dtype=float).reshape(-1)
         dim = x_vec.size
         A_mat = _as_state_matrix(A, dim)
@@ -551,6 +574,7 @@ class DecodingAlgorithms:
 
     @staticmethod
     def kalman_update(x_p, Pe_p, C, Pw, y, GnConv=None):
+        """Kalman filter update step: incorporate observation *y* and return ``(x_u, Pe_u, G)``."""
         x_vec = np.asarray(x_p, dtype=float).reshape(-1)
         dim = x_vec.size
         C_mat = np.asarray(C, dtype=float)
@@ -591,6 +615,11 @@ class DecodingAlgorithms:
 
     @staticmethod
     def kalman_smootherFromFiltered(A, x_p, Pe_p, x_u, Pe_u):
+        """RTS backward smoother from precomputed filter estimates.
+
+        Returns ``(x_N, P_N, Ln)`` — smoothed states, covariances, and
+        backward Kalman gains.
+        """
         x_p_tm, Pe_p_tm, predicted_transposed = DecodingAlgorithms._state_history_time_major(x_p, Pe_p)
         x_u_tm, Pe_u_tm, updated_transposed = DecodingAlgorithms._state_history_time_major(x_u, Pe_u)
         if predicted_transposed != updated_transposed:
@@ -614,6 +643,10 @@ class DecodingAlgorithms:
 
     @staticmethod
     def kalman_smoother(A, C, Pv, Pw, Px0, x0, y):
+        """Run a Kalman filter followed by an RTS smoother.
+
+        Returns ``(x_N, P_N, Ln, x_p, Pe_p, x_u, Pe_u)``.
+        """
         observations = np.asarray(y, dtype=float)
         if observations.ndim == 1:
             observations = observations[:, None]
@@ -1191,6 +1224,10 @@ class DecodingAlgorithms:
 
     @staticmethod
     def PPDecode_predict(x_u, W_u, A, Q, Wconv=None):
+        """Point-process adaptive filter predict step.
+
+        Returns ``(x_p, W_p)`` — predicted state and covariance.
+        """
         x_vec = np.asarray(x_u, dtype=float).reshape(-1)
         dim = x_vec.size
         W_mat = _as_state_matrix(W_u, dim)
@@ -1210,6 +1247,11 @@ class DecodingAlgorithms:
 
     @staticmethod
     def PPDecode_update(x_p, W_p, dN, lambdaIn, binwidth=0.001, time_index=1, WuConv=None):
+        """Point-process adaptive filter update step using CIF objects.
+
+        Evaluates symbolic CIF gradients and Jacobians for the
+        Newton-step posterior update.  Returns ``(x_u, W_u, lambda_delta)``.
+        """
         x_vec = np.asarray(x_p, dtype=float).reshape(-1)
         W_mat = _as_state_matrix(W_p, x_vec.size)
         obs = _as_observation_matrix(dN)
@@ -1263,6 +1305,11 @@ class DecodingAlgorithms:
 
     @staticmethod
     def PPDecode_updateLinear(x_p, W_p, dN, mu, beta, fitType="poisson", gamma=None, HkAll=None, time_index=1, WuConv=None):
+        """Point-process adaptive filter update step using linear parameters.
+
+        Uses ``mu``, ``beta``, and optional ``gamma`` history coefficients
+        instead of CIF objects.  Returns ``(x_u, W_u, lambda_delta)``.
+        """
         x_vec = np.asarray(x_p, dtype=float).reshape(-1)
         W_mat = _as_state_matrix(W_p, x_vec.size)
         obs = _as_observation_matrix(dN)
@@ -1542,6 +1589,12 @@ class DecodingAlgorithms:
 
     @staticmethod
     def PPDecodeFilterLinear(*args, **kwargs):
+        """Point-process adaptive filter using linear GLM parameters.
+
+        Dispatches to ``_ppdecode_filter_linear`` when a ``fitType`` string
+        is present, otherwise falls back to ``kalman_filter``.  Matches the
+        Matlab ``DecodingAlgorithms.PPDecodeFilterLinear`` signature.
+        """
         if len(args) >= 6 and isinstance(args[5], str):
             return DecodingAlgorithms._ppdecode_filter_linear(*args, **kwargs)
         if "fitType" in kwargs or "delta" in kwargs:
@@ -1550,6 +1603,14 @@ class DecodingAlgorithms:
 
     @staticmethod
     def PPDecodeFilter(A, Q, Px0, dN, lambdaCIFColl, binwidth=0.001, x0=None, Pi0=None, yT=None, PiT=None, estimateTarget=0, Wconv=None):
+        """Point-process adaptive filter using CIF object collection.
+
+        Runs the full forward filter loop, evaluating CIF objects at each
+        time step.  When *yT* / *PiT* are supplied, delegates to the
+        linear-parameter variant with goal-state estimation.
+
+        Returns ``(x_p, W_p, x_u, W_u, xT, WT, MT, MT_cov)``.
+        """
         obs = _as_observation_matrix(dN)
         lambda_items = _normalize_cif_collection(lambdaCIFColl)
         num_cells, num_steps = obs.shape
@@ -1621,6 +1682,12 @@ class DecodingAlgorithms:
 
     @staticmethod
     def PP_fixedIntervalSmoother(A, Q, dN, lags, mu, beta, fitType="poisson", delta=0.001, gamma=None, windowTimes=None, x0=None, Pi0=None):
+        """Point-process fixed-interval (fixed-lag) smoother.
+
+        Runs ``PPDecode_updateLinear`` forward, then applies backward
+        RTS-style smoothing at each step with the specified number of
+        *lags*.  Returns ``(x_pLag, W_pLag, x_uLag, W_uLag)``.
+        """
         obs = _as_observation_matrix(dN)
         num_cells, num_steps = obs.shape
         num_states = _infer_state_dim(A, beta, num_cells)
@@ -1722,6 +1789,14 @@ class DecodingAlgorithms:
         estimateTarget=0,
         MinClassificationError=0,
     ):
+        """Hybrid point-process filter with discrete-mode switching (linear parameters).
+
+        Combines multiple linear state-space models (one per discrete mode)
+        with a Markov transition matrix *p_ij*.  At each time step, per-mode
+        PPAF updates are merged using posterior mode probabilities.
+
+        Returns ``(x_p, W_p, x_u, W_u, xT, WT, S_est, X_est, W_est)``.
+        """
         obs = _as_observation_matrix(dN)
         A_models = list(A) if isinstance(A, Sequence) and not isinstance(A, np.ndarray) else [A]
         Q_models = list(Q) if isinstance(Q, Sequence) and not isinstance(Q, np.ndarray) else [Q]

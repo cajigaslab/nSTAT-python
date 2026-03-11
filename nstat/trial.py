@@ -81,7 +81,22 @@ def _copy_covariate_for_collection_view(cov: Covariate) -> Covariate:
 
 
 class CovariateCollection:
-    """MATLAB-style CovColl implementation with collection-level masks and timing."""
+    """Ordered collection of :class:`~nstat.core.Covariate` objects (Matlab ``CovColl``).
+
+    Provides collection-level masking, time alignment, sample-rate
+    enforcement, and covariate shifting.  Individual covariates are
+    accessed via 1-based indexing (``getCov(1)``) to match Matlab.
+
+    Parameters
+    ----------
+    covariates : Covariate, sequence of Covariate, or None
+        Initial covariate(s) to add.
+
+    See Also
+    --------
+    Covariate : Scalar or multi-dimensional signal with CIs.
+    Trial : Combines a ``CovariateCollection`` with spike data.
+    """
 
     def __init__(self, covariates: Sequence[Covariate] | Covariate | None = None, *more_covariates: Covariate) -> None:
         self.covArray: list[Covariate] = []
@@ -102,10 +117,12 @@ class CovariateCollection:
 
     @property
     def covariates(self) -> list[Covariate]:
+        """List of all covariates (copies with collection state applied)."""
         return [self.getCov(i) for i in range(1, self.numCov + 1)]
 
     @property
     def names(self) -> list[str]:
+        """List of covariate names in insertion order."""
         return [cov.name for cov in self.covArray]
 
     def _capture_originals_if_needed(self) -> None:
@@ -167,12 +184,15 @@ class CovariateCollection:
         return out
 
     def add(self, covariate: Covariate) -> None:
+        """Alias for :meth:`addToColl`."""
         self.addToColl(covariate)
 
     def addCovariate(self, covariate: Covariate) -> None:
+        """Alias for :meth:`addToColl`."""
         self.addToColl(covariate)
 
     def addCovCollection(self, covariates: "CovariateCollection") -> None:
+        """Merge all covariates from another collection into this one."""
         self.addToColl(covariates)
 
     def addToColl(self, covariates: Sequence[Covariate] | Covariate | "CovariateCollection" | None) -> None:
@@ -194,19 +214,29 @@ class CovariateCollection:
         raise TypeError("CovColl can only add Covariate instances or sequences of Covariates.")
 
     def removeCovariate(self, identifier: int | str) -> None:
+        """Remove a covariate by 1-based index or name."""
         index = self._covariate_from_identifier(identifier)
         del self.covArray[index - 1]
         del self.covMask[index - 1]
         self._refresh_summary()
 
     def copy(self) -> "CovariateCollection":
+        """Return a deep copy of this collection."""
         cov = [self.getCov(i).copySignal() for i in range(1, self.numCov + 1)]
         return CovariateCollection(cov)
 
     def get(self, name: str) -> Covariate:
+        """Retrieve a covariate by name (convenience alias for :meth:`getCov`)."""
         return self.getCov(name)
 
     def getCov(self, identifier: int | str | Sequence[int] | Sequence[str]):
+        """Return a covariate copy with collection state (shift, mask, rate) applied.
+
+        Parameters
+        ----------
+        identifier : int, str, or sequence
+            1-based index, covariate name, or sequence of either.
+        """
         if isinstance(identifier, str):
             return self._apply_collection_state(self.covArray[self.getCovIndFromName(identifier) - 1], self.getCovIndFromName(identifier))
         if isinstance(identifier, Sequence) and not isinstance(identifier, (str, bytes, np.ndarray)):
@@ -219,17 +249,20 @@ class CovariateCollection:
         return self._apply_collection_state(self.covArray[index - 1], index)
 
     def getCovIndFromName(self, name: str) -> int:
+        """Return the 1-based index of a covariate by *name*."""
         for idx, cov in enumerate(self.covArray, start=1):
             if cov.name == name:
                 return idx
         raise KeyError(f"Covariate '{name}' not found")
 
     def getCovIndicesFromNames(self, name: Sequence[str] | str):
+        """Return 1-based index(es) for one or more covariate names."""
         if isinstance(name, str):
             return self.getCovIndFromName(name)
         return [self.getCovIndFromName(item) for item in name]
 
     def isCovPresent(self, cov) -> int:
+        """Return ``1`` if a covariate is in this collection, ``0`` otherwise."""
         if isinstance(cov, Covariate):
             if not cov.name:
                 return 0
@@ -250,63 +283,77 @@ class CovariateCollection:
         raise TypeError("Need either covariate class or name of covariate or index of covariate")
 
     def findMinTime(self) -> float:
+        """Return the earliest ``minTime`` across all stored covariates."""
         if self.numCov == 0:
             return float("inf")
         return float(min(cov.minTime for cov in self.covArray))
 
     def findMaxTime(self) -> float:
+        """Return the latest ``maxTime`` across all stored covariates."""
         if self.numCov == 0:
             return float("-inf")
         return float(max(cov.maxTime for cov in self.covArray))
 
     def findMaxSampleRate(self) -> float:
+        """Return the highest sample rate across all stored covariates."""
         if self.numCov == 0:
             return float("nan")
         return float(max(cov.sampleRate for cov in self.covArray if np.isfinite(cov.sampleRate)))
 
     def setMinTime(self, minTime: float | None = None) -> None:
+        """Set the collection-level minimum time (applies shift if set)."""
         if minTime is None:
             minTime = self.findMinTime() + float(self.covShift)
         self.minTime = float(minTime)
 
     def setMaxTime(self, maxTime: float | None = None) -> None:
+        """Set the collection-level maximum time (applies shift if set)."""
         if maxTime is None:
             maxTime = self.findMaxTime() + float(self.covShift)
         self.maxTime = float(maxTime)
 
     def restrictToTimeWindow(self, wMin: float, wMax: float) -> None:
+        """Set both min and max time to restrict the visible window."""
         self.setMinTime(wMin)
         self.setMaxTime(wMax)
 
     def setSampleRate(self, sampleRate: float) -> None:
+        """Set the collection sample rate and enforce it on all covariates."""
         if self.originalSampleRate is None and np.isfinite(self.sampleRate):
             self.originalSampleRate = float(self.sampleRate)
         self.sampleRate = float(sampleRate)
         self.enforceSampleRate()
 
     def resample(self, sampleRate: float) -> None:
+        """Alias for :meth:`setSampleRate`."""
         self.setSampleRate(sampleRate)
 
     def enforceSampleRate(self) -> None:
+        """Ensure the collection's sample rate is finite and positive."""
         if not np.isfinite(self.sampleRate) or self.sampleRate <= 0:
             self.sampleRate = self.findMaxSampleRate()
 
     def resetMask(self) -> None:
+        """Enable all covariate dimensions (clear any masking)."""
         self.covMask = [np.ones(cov.dimension, dtype=int) for cov in self.covArray]
 
     def getCovDataMask(self, identifier: int | str) -> np.ndarray:
+        """Return the binary dimension mask for a single covariate."""
         index = self._covariate_from_identifier(identifier)
         return np.asarray(self.covMask[index - 1], dtype=int).copy()
 
     def isCovMaskSet(self) -> bool:
+        """Return ``True`` if any covariate dimension is currently masked out."""
         return any(np.any(mask == 0) for mask in self.covMask)
 
     def flattenCovMask(self) -> np.ndarray:
+        """Concatenate all per-covariate masks into a single 1-D binary array."""
         if not self.covMask:
             return np.array([], dtype=int)
         return np.concatenate([np.asarray(mask, dtype=int).reshape(-1) for mask in self.covMask])
 
     def getSelectorFromMasks(self, covMask: list[np.ndarray] | None = None) -> list[list[int]]:
+        """Convert per-covariate binary masks to lists of active 1-based indices."""
         current = self.covMask if covMask is None else covMask
         selector: list[list[int]] = []
         for mask in current:
@@ -344,6 +391,11 @@ class CovariateCollection:
         return selectorCell
 
     def generateSelectorCell(self, dataSelector) -> list[list[int]]:
+        """Parse a heterogeneous *dataSelector* into per-covariate index lists.
+
+        Accepts name-based (``[['covName', 'label1', ...], ...]``) or
+        numeric (``[[1,2], [3], ...]``) selectors.
+        """
         if dataSelector is None:
             return [[] for _ in range(self.numCov)]
         if isinstance(dataSelector, str):
@@ -395,9 +447,14 @@ class CovariateCollection:
         return masks
 
     def setMasksFromSelector(self, selectorCell: list[list[int]]) -> None:
+        """Set covariate masks from a list of 1-based index lists."""
         self.covMask = self._selector_to_cov_mask(selectorCell)
 
     def setMask(self, cellInput) -> None:
+        """Set the covariate mask from a selector or ``'all'`` to reset.
+
+        Accepts the same formats as :meth:`generateSelectorCell`.
+        """
         if isinstance(cellInput, str) and cellInput == "all":
             self.resetMask()
             return
@@ -405,9 +462,11 @@ class CovariateCollection:
         self.setMasksFromSelector(selectorCell)
 
     def nActCovar(self) -> int:
+        """Return the number of covariates with at least one active dimension."""
         return int(sum(1 for selector in self.getSelectorFromMasks() if selector))
 
     def maskAwayCov(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
+        """Zero-out the mask for the specified covariate(s)."""
         identifiers = identifier
         if isinstance(identifier, (int, str)):
             identifiers = [identifier]
@@ -416,10 +475,12 @@ class CovariateCollection:
             self.covMask[index - 1] = np.zeros(self.covArray[index - 1].dimension, dtype=int)
 
     def maskAwayOnlyCov(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
+        """Reset all masks then mask away only the specified covariate(s)."""
         self.resetMask()
         self.maskAwayCov(identifier)
 
     def maskAwayAllExcept(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
+        """Mask away every covariate *except* the ones specified."""
         if isinstance(identifier, (int, str)):
             keep = {self._covariate_from_identifier(identifier)}
         else:
@@ -429,6 +490,7 @@ class CovariateCollection:
                 self.covMask[idx - 1] = np.zeros(cov.dimension, dtype=int)
 
     def setCovShift(self, deltaT: float, identifier=None) -> "CovariateCollection":
+        """Apply a temporal shift *deltaT* to the collection's time axis."""
         self.covShift = float(deltaT)
         if np.isfinite(self.minTime):
             self.minTime = float(self.minTime + self.covShift)
@@ -437,11 +499,13 @@ class CovariateCollection:
         return self
 
     def resetCovShift(self) -> None:
+        """Remove the temporal shift and recompute time bounds."""
         self.covShift = 0.0
         self.setMinTime()
         self.setMaxTime()
 
     def restoreToOriginal(self) -> None:
+        """Restore original sample rate, time bounds, shift, and masks."""
         self.covShift = 0.0
         if self.originalSampleRate is not None:
             self.sampleRate = float(self.originalSampleRate)
@@ -452,6 +516,7 @@ class CovariateCollection:
         self.resetMask()
 
     def plot(self, *_, handle=None, **__):
+        """Plot each covariate in a vertically stacked panel layout."""
         selected = [idx for idx in range(1, self.numCov + 1)]
         fig = handle if handle is not None else plt.figure(figsize=(8.5, max(2.5, 2.2 * max(len(selected), 1))))
         fig.clear()
@@ -466,12 +531,14 @@ class CovariateCollection:
         return fig
 
     def getAllCovLabels(self) -> list[str]:
+        """Return the data-labels of every covariate dimension (no mask filtering)."""
         labels: list[str] = []
         for index in range(1, self.numCov + 1):
             labels.extend(self.getCov(index).dataLabels)
         return labels
 
     def getCovLabelsFromMask(self) -> list[str]:
+        """Return data-labels only for dimensions that are currently unmasked."""
         labels: list[str] = []
         for index in range(1, self.numCov + 1):
             cov = self.getCov(index)
@@ -497,6 +564,15 @@ class CovariateCollection:
         return np.array([int(c.dimension) for c in covs], dtype=int)
 
     def matrixWithTime(self, repType: str = "standard", dataSelector=None) -> tuple[np.ndarray, np.ndarray, list[str]]:
+        """Return ``(time, data_matrix, labels)`` for active covariate dimensions.
+
+        Parameters
+        ----------
+        repType : {'standard', 'zero-mean'}
+            Signal representation type.
+        dataSelector : optional
+            Name-based or numeric selector; ``None`` uses the current mask.
+        """
         if self.numCov == 0:
             raise ValueError("CovariateCollection is empty")
         if dataSelector is None:
@@ -526,6 +602,7 @@ class CovariateCollection:
         return time.copy(), np.hstack(parts) if parts else np.zeros((time.size, 0), dtype=float), labels
 
     def dataToMatrix(self, repType: str | Sequence[str] | None = "standard", dataSelector=None, *_) -> np.ndarray:
+        """Return the covariate data matrix (no time column) for active dimensions."""
         if repType not in {"standard", "zero-mean"}:
             dataSelector = repType
             repType = "standard"
@@ -539,6 +616,7 @@ class CovariateCollection:
         minTime: float | None = None,
         maxTime: float | None = None,
     ) -> dict[str, Any]:
+        """Serialize active covariate data to a ``{'time': ..., 'signals': ...}`` dict."""
         del binwidth, minTime, maxTime
         if selectorCell is None:
             if self.isCovMaskSet():
@@ -552,6 +630,7 @@ class CovariateCollection:
         }
 
     def toStructure(self) -> dict[str, Any]:
+        """Serialize to a plain dict (Matlab ``CovColl.toStructure``)."""
         self.resetMask()
         structure: dict[str, Any] = {
             "numCov": int(self.numCov),
@@ -570,6 +649,7 @@ class CovariateCollection:
 
     @staticmethod
     def fromStructure(structure) -> "CovariateCollection" | list["CovariateCollection"]:
+        """Reconstruct from a dict produced by :meth:`toStructure`."""
         if isinstance(structure, list):
             return [CovariateCollection.fromStructure(item) for item in structure]
         if not isinstance(structure, dict):
@@ -596,7 +676,23 @@ class CovariateCollection:
 
 
 class SpikeTrainCollection:
-    """MATLAB-style nstColl implementation."""
+    """Ordered collection of :class:`~nstat.core.nspikeTrain` objects (Matlab ``nstColl``).
+
+    Provides a neuron mask, neighbour graph, and methods for PSTH,
+    GLM-PSTH, state-space GLM, raster plots, and data-matrix export.
+    Spike trains are accessed via 1-based indexing (``getNST(1)``) to
+    match Matlab conventions.
+
+    Parameters
+    ----------
+    trains : nspikeTrain, sequence of nspikeTrain, or None
+        Initial spike train(s) to add.
+
+    See Also
+    --------
+    nspikeTrain : Single-neuron point-process representation.
+    Trial : Combines a ``SpikeTrainCollection`` with covariates.
+    """
 
     def __init__(self, trains: Sequence[nspikeTrain] | nspikeTrain | None = None) -> None:
         self.nstrain: list[nspikeTrain] = []
@@ -611,10 +707,12 @@ class SpikeTrainCollection:
 
     @property
     def num_spike_trains(self) -> int:
+        """Number of spike trains in this collection."""
         return self.numSpikeTrains
 
     @property
     def uniqueNeuronNames(self) -> list[str]:
+        """Unique, insertion-ordered neuron names in the collection."""
         return self.getUniqueNSTnames()
 
     def __iter__(self):
@@ -640,6 +738,7 @@ class SpikeTrainCollection:
             self.neuronMask = np.ones(self.numSpikeTrains, dtype=int)
 
     def addSingleSpikeToColl(self, nst: nspikeTrain) -> None:
+        """Append a single spike train (deep-copied) to the collection."""
         train = nst.nstCopy()
         if not getattr(train, "name", ""):
             train.setName(str(self.numSpikeTrains + 1))
@@ -658,6 +757,7 @@ class SpikeTrainCollection:
             self.neighbors = []
 
     def addToColl(self, nst: Sequence[nspikeTrain] | nspikeTrain | "SpikeTrainCollection") -> None:
+        """Add one or more spike trains (or another collection) to this collection."""
         if isinstance(nst, SpikeTrainCollection):
             for train in nst.nstrain:
                 self.addSingleSpikeToColl(train)
@@ -674,24 +774,30 @@ class SpikeTrainCollection:
         raise TypeError("nstColl can only add nspikeTrain instances or sequences of nspikeTrain.")
 
     def merge(self, nstColl2: "SpikeTrainCollection") -> "SpikeTrainCollection":
+        """Merge another collection into this one (in-place)."""
         self.addToColl(nstColl2)
         return self
 
     def length(self) -> int:
+        """Return the number of spike trains (Matlab ``nstColl.length``)."""
         return int(self.numSpikeTrains)
 
     def getFirstSpikeTime(self) -> float:
+        """Return the earliest time boundary across all trains."""
         return float(self.minTime)
 
     def getLastSpikeTime(self) -> float:
+        """Return the latest time boundary across all trains."""
         return float(self.maxTime)
 
     def get_nst(self, idx: int) -> nspikeTrain:
+        """Return a spike train by 0-based index (Pythonic API)."""
         if idx < 0 or idx >= self.numSpikeTrains:
             raise IndexError("SpikeTrainCollection index out of bounds (0-based indexing).")
         return self.nstrain[idx]
 
     def getNST(self, idx) -> nspikeTrain | list[nspikeTrain]:
+        """Return spike train(s) by 1-based index (Matlab ``nstColl.getNST``)."""
         if isinstance(idx, Sequence) and not isinstance(idx, (str, bytes, np.ndarray)):
             return [self.getNST(int(item)) for item in idx]
         index = int(idx)
@@ -714,10 +820,12 @@ class SpikeTrainCollection:
         return [all_names[i] for i in indices if 0 <= i < len(all_names)]
 
     def getUniqueNSTnames(self, selectorArray=None) -> list[str]:
+        """Return unique, insertion-ordered neuron names."""
         names = [name for name in self.getNSTnames(selectorArray) if name]
         return list(dict.fromkeys(names))
 
     def getNSTIndicesFromName(self, name: Sequence[str] | str):
+        """Return 1-based index(es) for a neuron name (or list of names)."""
         if isinstance(name, str):
             matches = [i + 1 for i, value in enumerate(self.getNSTnames()) if value == name]
             if not matches:
@@ -726,18 +834,21 @@ class SpikeTrainCollection:
         return [self.getNSTIndicesFromName(item) for item in name]
 
     def getNSTnameFromInd(self, ind: int) -> str:
+        """Return the neuron name for 1-based index *ind*."""
         index = int(ind)
         if index < 1 or index > self.numSpikeTrains:
             raise IndexError("Index is out of bounds!")
         return str(self.nstrain[index - 1].name)
 
     def getNSTFromName(self, neuronName=None):
+        """Return spike train(s) matching the given neuron name(s)."""
         if neuronName is None:
             neuronName = self.getUniqueNSTnames()
         indices = self.getNSTIndicesFromName(neuronName)
         return self.getNST(indices)
 
     def getFieldVal(self, fieldName: str):
+        """Collect a named field from every spike train (Matlab ``nstColl.getFieldVal``)."""
         fieldVal: list[float] = []
         neuronNumbers: list[int] = []
         cnt = 1
@@ -757,6 +868,7 @@ class SpikeTrainCollection:
         return np.asarray(fieldVal, dtype=float), np.asarray(neuronNumbers, dtype=int)
 
     def shiftTime(self, timeShift: float | None = None) -> "SpikeTrainCollection":
+        """Return a new collection with spike times shifted by *timeShift*."""
         if timeShift is None:
             timeShift = -float(self.minTime)
         shifted = [nspikeTrain(np.asarray(train.spikeTimes, dtype=float) + float(timeShift)) for train in self.nstrain]
@@ -769,6 +881,11 @@ class SpikeTrainCollection:
         maxTime: float | None = None,
         windowTimes: Sequence[float] | None = None,
     ) -> nspikeTrain:
+        """Collapse selected spike trains into a single :class:`nspikeTrain`.
+
+        Concatenates spike times end-to-end, optionally rescaling
+        each trial into windows defined by *windowTimes*.
+        """
         if self.numSpikeTrains == 0:
             raise ValueError("nstColl.toSpikeTrain requires at least one spike train")
 
@@ -824,6 +941,7 @@ class SpikeTrainCollection:
         return collapsed
 
     def setMinTime(self, value: float | None = None) -> None:
+        """Set the minimum time for every train in the collection."""
         if value is None:
             value = self.minTime
         for train in self.nstrain:
@@ -831,6 +949,7 @@ class SpikeTrainCollection:
         self.minTime = float(value)
 
     def setMaxTime(self, value: float | None = None) -> None:
+        """Set the maximum time for every train in the collection."""
         if value is None:
             value = self.maxTime
         for train in self.nstrain:
@@ -838,6 +957,7 @@ class SpikeTrainCollection:
         self.maxTime = float(value)
 
     def resample(self, sampleRate: float) -> None:
+        """Resample all trains to *sampleRate* and align time bounds."""
         self.sampleRate = float(sampleRate)
         for train in self.nstrain:
             train.resample(sampleRate)
@@ -845,17 +965,20 @@ class SpikeTrainCollection:
             train.setMaxTime(float(self.maxTime))
 
     def enforceSampleRate(self) -> None:
+        """Resample any train whose rate differs from the collection rate."""
         for index in range(1, self.numSpikeTrains + 1):
             currSpike = self.getNST(index)
             if round(float(currSpike.sampleRate), 9) != round(float(self.sampleRate), 9):
                 currSpike.resample(float(self.sampleRate))
 
     def findMaxSampleRate(self) -> float:
+        """Return the highest sample rate among all trains."""
         if self.numSpikeTrains == 0:
             return float("-inf")
         return float(max(train.sampleRate for train in self.nstrain))
 
     def setMask(self, mask: Sequence[int] | np.ndarray) -> None:
+        """Set the neuron mask from a binary array or 1-based indices."""
         arr = np.asarray(mask, dtype=int).reshape(-1)
         if arr.size == self.numSpikeTrains and np.all(np.isin(arr, [0, 1])):
             self.setNeuronMask(arr)
@@ -863,6 +986,7 @@ class SpikeTrainCollection:
         self.setNeuronMaskFromInd(arr)
 
     def setNeuronMaskFromInd(self, mask: Sequence[int] | np.ndarray) -> None:
+        """Set the neuron mask from 1-based neuron indices."""
         arr = np.asarray(mask, dtype=int).reshape(-1)
         newMask = np.zeros(self.numSpikeTrains, dtype=int)
         if arr.size:
@@ -872,24 +996,34 @@ class SpikeTrainCollection:
         self.setNeuronMask(newMask)
 
     def setNeuronMask(self, mask: Sequence[int] | np.ndarray) -> None:
+        """Set the binary neuron mask directly (length must match ``numSpikeTrains``)."""
         arr = np.asarray(mask, dtype=int).reshape(-1)
         if arr.size != self.numSpikeTrains:
             raise ValueError("neuronMask length must match number of spike trains.")
         self.neuronMask = arr.astype(int)
 
     def resetMask(self) -> None:
+        """Enable all neurons (ones-mask)."""
         self.neuronMask = np.ones(self.numSpikeTrains, dtype=int)
 
     def getIndFromMask(self) -> list[int]:
+        """Return 1-based indices of neurons currently enabled by the mask."""
         return (np.flatnonzero(self.neuronMask == 1) + 1).astype(int).tolist()
 
     def getIndFromMaskMinusOne(self, neuron: int) -> list[int]:
+        """Return active indices excluding *neuron* (1-based)."""
         return [idx for idx in self.getIndFromMask() if idx != int(neuron)]
 
     def isNeuronMaskSet(self) -> bool:
+        """Return ``True`` if any neuron is currently masked out."""
         return bool(np.any(self.neuronMask == 0))
 
     def setNeighbors(self, neighborArray: Sequence[Sequence[int]] | np.ndarray | None = None) -> None:
+        """Set or auto-generate the neuron neighbour matrix.
+
+        If *neighborArray* is ``None``, every neuron is a neighbour of
+        every other neuron (all-to-all minus self).
+        """
         if neighborArray is None:
             if self.numSpikeTrains == 0:
                 self.neighbors = []
@@ -907,9 +1041,11 @@ class SpikeTrainCollection:
         self.neighbors = arr
 
     def areNeighborsSet(self) -> bool:
+        """Return ``True`` if the neighbour matrix has been initialized."""
         return np.size(self.neighbors) > 0
 
     def getNeighbors(self, neuronNum: int | Sequence[int]):
+        """Return the 1-based neighbour indices for one or more neurons."""
         if isinstance(neuronNum, Sequence) and not isinstance(neuronNum, (str, bytes, np.ndarray)):
             rows = [self.getNeighbors(int(item)) for item in neuronNum]
             if rows and all(len(row) == len(rows[0]) for row in rows):
@@ -926,6 +1062,7 @@ class SpikeTrainCollection:
         return [value for value in row if value in available and value > 0]
 
     def getMaxBinSizeBinary(self) -> float:
+        """Return the largest bin-width that keeps all active trains binary."""
         selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
         if not selectorArray:
             return np.inf
@@ -933,9 +1070,11 @@ class SpikeTrainCollection:
         return float(np.min(values))
 
     def BinarySigRep(self) -> bool:
+        """Return ``True`` if every train's signal representation is binary."""
         return bool(all(self.getNST(index).isSigRepBinary() for index in range(1, self.numSpikeTrains + 1)))
 
     def isSigRepBinary(self) -> bool:
+        """Alias for :meth:`BinarySigRep`."""
         return self.BinarySigRep()
 
     def dataToMatrix(
@@ -945,6 +1084,7 @@ class SpikeTrainCollection:
         minTime: float | None = None,
         maxTime: float | None = None,
     ) -> np.ndarray:
+        """Return an ``(nTimeBins, nNeurons)`` binary spike-count matrix."""
         if self.numSpikeTrains == 0:
             return np.zeros((0, 0), dtype=float)
         if maxTime is None:
@@ -974,6 +1114,7 @@ class SpikeTrainCollection:
         return dataMat
 
     def getEnsembleNeuronCovariates(self, neuronNum: int = 1, neighborIndex=None, windowTimes=None):
+        """Build ensemble-history covariates for *neuronNum* from its neighbours."""
         if neighborIndex is None or (
             isinstance(neighborIndex, (list, tuple, np.ndarray)) and np.asarray(neighborIndex).size == 0
         ):
@@ -991,6 +1132,7 @@ class SpikeTrainCollection:
         return ensembleCovariates
 
     def addNeuronNamesToEnsCovColl(self, ensembleCovariates: CovariateCollection) -> None:
+        """Prefix ensemble-covariate labels with their neuron name."""
         for i in range(1, ensembleCovariates.numCov + 1):
             tempCov = ensembleCovariates.covArray[i - 1]
             name = self.getNST(i).name
@@ -1000,6 +1142,7 @@ class SpikeTrainCollection:
             tempCov.setDataLabels(dataLabels)
 
     def restoreToOriginal(self, rMask: int = 0) -> None:
+        """Restore all trains to their original state; optionally reset the mask."""
         for train in self.nstrain:
             train.restoreToOriginal()
         self._refresh_summary()
@@ -1009,11 +1152,13 @@ class SpikeTrainCollection:
             self.resetMask()
 
     def ensureConsistancy(self) -> None:
+        """Enforce consistent sample rate and time bounds across all trains."""
         self.enforceSampleRate()
         self.setMinTime()
         self.setMaxTime()
 
     def updateTimes(self, nst: nspikeTrain) -> None:
+        """Expand collection time bounds to include *nst*, or clamp *nst*."""
         if float(nst.minTime) <= float(self.minTime):
             self.setMinTime(float(nst.minTime))
         else:
@@ -1064,10 +1209,12 @@ class SpikeTrainCollection:
         return ax
 
     def getMinISIs(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
+        """Return the minimum ISI for each selected neuron."""
         isis = self.getISIs(selectorArray, minTime, maxTime)
         return np.asarray([float(np.min(values)) if values.size else 0.0 for values in isis], dtype=float)
 
     def getISIs(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None) -> list[np.ndarray]:
+        """Return a list of ISI arrays, one per selected neuron."""
         if maxTime is None:
             maxTime = self.maxTime
         if minTime is None:
@@ -1077,6 +1224,7 @@ class SpikeTrainCollection:
         return [self.getNST(int(neuron)).getISIs(minTime, maxTime) for neuron in selectorArray]
 
     def plotISIHistogram(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None, handle=None):
+        """Plot ISI histograms for each selected neuron in stacked subplots."""
         if maxTime is None:
             maxTime = self.maxTime
         if minTime is None:
@@ -1101,6 +1249,7 @@ class SpikeTrainCollection:
         numBins: int | None = None,
         handle=None,
     ):
+        """Plot exponential-distribution fits of ISIs for selected neurons."""
         if maxTime is None:
             maxTime = self.maxTime
         if minTime is None:
@@ -1118,6 +1267,7 @@ class SpikeTrainCollection:
         return fig
 
     def getSpikeTimes(self, minTime: float | None = None, maxTime: float | None = None) -> list[np.ndarray]:
+        """Return a list of spike-time arrays, one per active neuron."""
         del minTime, maxTime
         selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
         return [self.getNST(int(index)).getSpikeTimes() for index in selector]
@@ -1129,6 +1279,10 @@ class SpikeTrainCollection:
         minTime: float | None = None,
         maxTime: float | None = None,
     ) -> Covariate:
+        """Compute the peri-stimulus time histogram (standard binned PSTH).
+
+        Returns a :class:`Covariate` with firing rate in Hz.
+        """
         if binwidth <= 0:
             raise ValueError("binwidth must be > 0")
         min_time = self.minTime if minTime is None else float(minTime)
@@ -1438,6 +1592,11 @@ class SpikeTrainCollection:
         numIter: int | None = None,
         fitType: str | None = None,
     ) -> np.ndarray:
+        """Estimate the state-noise covariance ``Q`` from bootstrap GLM fits.
+
+        Used internally by :meth:`ssglm` / :meth:`ssglmFB` to initialise
+        the EM algorithm's state-noise prior.
+        """
         if fitType is None or fitType == "":
             fitType = "poisson"
         if numIter is None:
@@ -1501,6 +1660,11 @@ class SpikeTrainCollection:
 
     @staticmethod
     def generateUnitImpulseBasis(basisWidth: float, minTime: float, maxTime: float, sampleRate: float = 1000.0) -> Covariate:
+        """Create a piecewise-constant (unit impulse) basis :class:`Covariate`.
+
+        Each column is a rectangular pulse spanning one *basisWidth*
+        interval, used as the design matrix for GLM-PSTH estimation.
+        """
         windowTimes = np.arange(float(minTime), float(maxTime), float(basisWidth))
         if windowTimes.size == 0 or not np.isclose(windowTimes[-1], maxTime):
             windowTimes = np.append(windowTimes, float(maxTime))
@@ -1779,6 +1943,7 @@ class TrialConfig:
 
     @property
     def covariate_names(self) -> list[str]:
+        """Return the name of each covariate group in the mask."""
         if not self.covMask:
             return []
         names: list[str] = []
@@ -1790,9 +1955,11 @@ class TrialConfig:
         return names
 
     def getName(self) -> str:
+        """Return this configuration's human-readable name."""
         return self.name
 
     def setName(self, name: str) -> None:
+        """Set this configuration's human-readable name."""
         self.name = str(name)
 
     def setConfig(self, trial: "Trial") -> None:
@@ -1824,6 +1991,7 @@ class TrialConfig:
             trial.setEnsCovMask()
 
     def toStructure(self) -> dict[str, Any]:
+        """Serialize to a plain dict (Matlab ``TrialConfig.toStructure``)."""
         return {
             "covMask": self.covMask,
             "sampleRate": self.sampleRate,
@@ -1836,6 +2004,9 @@ class TrialConfig:
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "TrialConfig":
+        """Reconstruct from a dict produced by :meth:`toStructure`.
+
+        .. note:: Follows Matlab's omission of ``ensCovMask``."""
         # MATLAB's `TrialConfig.fromStructure` omits `ensCovMask` and shifts
         # the remaining trailing arguments left by one position.
         return TrialConfig(
@@ -1872,9 +2043,11 @@ class ConfigCollection:
 
     @property
     def configs(self) -> list[TrialConfig]:
+        """List of actual ``TrialConfig`` entries (excludes empty placeholders)."""
         return [cfg for cfg in self.configArray if isinstance(cfg, TrialConfig)]
 
     def add_config(self, cfg: TrialConfig) -> None:
+        """Pythonic alias for :meth:`addConfig`."""
         self.addConfig(cfg)
 
     def addConfig(self, cfg: Sequence[TrialConfig] | TrialConfig | str | None) -> None:
@@ -1904,11 +2077,13 @@ class ConfigCollection:
         raise TypeError("ConfigColl can only add TrialConfig objects, strings, or sequences of them.")
 
     def get_config(self, idx: int) -> TrialConfig | str | list[str]:
+        """Return a config by 0-based index (Pythonic API)."""
         if idx < 0 or idx >= self.numConfigs:
             raise IndexError("ConfigCollection index out of bounds (0-based indexing).")
         return self.configArray[idx]
 
     def getConfig(self, idx: int):
+        """Return a config by 1-based index (Matlab ``ConfigColl.getConfig``)."""
         if idx < 1 or idx > self.numConfigs:
             raise IndexError("Index Out of Bounds")
         return self.configArray[idx - 1]
@@ -1922,6 +2097,7 @@ class ConfigCollection:
         raise ValueError("Cannot Set Empty Configs")
 
     def getConfigNames(self, index: Sequence[int] | None = None) -> list[str]:
+        """Return the names for selected configs (1-based), or all if *index* is ``None``."""
         if index is None:
             index = list(range(1, self.numConfigs + 1))
         out: list[str] = []
@@ -1933,6 +2109,7 @@ class ConfigCollection:
         return out
 
     def setConfigNames(self, names, index: Sequence[int] | None = None) -> None:
+        """Set the human-readable names for configs at 1-based *index* positions."""
         if index is None:
             index = list(range(1, self.numConfigs + 1))
         if isinstance(names, str):
@@ -1952,10 +2129,12 @@ class ConfigCollection:
         raise TypeError("names must be a string or sequence of strings.")
 
     def getSubsetConfigs(self, subset: Sequence[int]) -> "ConfigCollection":
+        """Return a new collection containing only configs at 1-based *subset* indices."""
         tempconfigs = [self.getConfig(int(i)) for i in subset]
         return ConfigCollection(tempconfigs)
 
     def toStructure(self) -> dict[str, Any]:
+        """Serialize to a plain dict (Matlab ``ConfigColl.toStructure``)."""
         structure = {
             "numConfigs": self.numConfigs,
             "configNames": list(self.configNames),
@@ -1970,6 +2149,7 @@ class ConfigCollection:
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "ConfigCollection":
+        """Reconstruct from a dict produced by :meth:`toStructure`."""
         configs = []
         for row in structure.get("configArray", []):
             if isinstance(row, dict):
@@ -1980,7 +2160,32 @@ class ConfigCollection:
 
 
 class Trial:
-    """MATLAB-style Trial object preserving collection-level workflow semantics."""
+    """Single-trial data container binding spikes, covariates, and events (Matlab ``Trial``).
+
+    A ``Trial`` enforces consistent time bounds and sample rate across
+    its spike collection, covariate collection, and optional event stream.
+    It provides the design-matrix construction used by :class:`Analysis`
+    to fit point-process GLMs.
+
+    Parameters
+    ----------
+    spike_collection : SpikeTrainCollection
+        Neural spike data.
+    covariate_collection : CovariateCollection
+        Stimulus or task covariates.
+    events : Events, optional
+        Discrete event markers.
+    hist : History or array_like, optional
+        Self-history specification.
+    ensCovHist : History or array_like, optional
+        Ensemble-history specification.
+    ensCovMask : array_like, optional
+        Binary mask for ensemble neighbours.
+
+    See Also
+    --------
+    SpikeTrainCollection, CovariateCollection, Analysis
+    """
 
     def __init__(
         self,
@@ -2033,20 +2238,25 @@ class Trial:
 
     @property
     def spike_collection(self) -> SpikeTrainCollection:
+        """The trial's spike-train collection."""
         return self.nspikeColl
 
     @property
     def covariate_collection(self) -> CovariateCollection:
+        """The trial's covariate collection."""
         return self.covarColl
 
     @property
     def spikeColl(self) -> SpikeTrainCollection:
+        """Alias for :attr:`spike_collection` (Matlab compat)."""
         return self.nspikeColl
 
     def setTrialEvents(self, event: Events | None) -> None:
+        """Attach an :class:`Events` object (or ``None`` to clear)."""
         self.ev = event if isinstance(event, Events) else None
 
     def getEvents(self) -> Events | None:
+        """Return the attached Events, or ``None``."""
         return self.ev
 
     @property
@@ -2058,6 +2268,7 @@ class Trial:
         self._covarColl = value
 
     def getTrialPartition(self) -> np.ndarray:
+        """Return ``[trainMin, trainMax, valMin, valMax]`` partition times."""
         training = [] if self.trainingWindow is None else list(self.trainingWindow)
         validation = [] if self.validationWindow is None else list(self.validationWindow)
         p = training + validation
@@ -2066,6 +2277,7 @@ class Trial:
         return np.asarray(p, dtype=float)
 
     def setTrialPartition(self, partitionTimes) -> None:
+        """Set training and validation time windows from a 3- or 4-element array."""
         if partitionTimes is None or len(partitionTimes) == 0:
             partitionTimes = self.getTrialPartition()
         values = np.asarray(partitionTimes, dtype=float).reshape(-1)
@@ -2083,6 +2295,7 @@ class Trial:
         self.setMaxTime(trainingWindow[1])
 
     def setTrialTimesFor(self, partitionName: str = "training") -> None:
+        """Set trial time bounds to either the ``'training'`` or ``'validation'`` window."""
         p = self.getTrialPartition()
         if partitionName == "training":
             timeWindow = p[:2]
@@ -2094,6 +2307,7 @@ class Trial:
         self.setMaxTime(float(timeWindow[1]))
 
     def setMinTime(self, minTime: float | None = None) -> None:
+        """Set minimum time across spikes, covariates, and ensemble covariates."""
         if minTime is None:
             minTime = self.findMinTime()
         self.nspikeColl.setMinTime(float(minTime))
@@ -2103,6 +2317,7 @@ class Trial:
         self.minTime = float(minTime)
 
     def setMaxTime(self, maxTime: float | None = None) -> None:
+        """Set maximum time across spikes, covariates, and ensemble covariates."""
         if maxTime is None:
             maxTime = self.findMaxTime()
         self.nspikeColl.setMaxTime(float(maxTime))
@@ -2112,6 +2327,7 @@ class Trial:
         self.maxTime = float(maxTime)
 
     def updateTimePartitions(self) -> None:
+        """Clamp training/validation windows to current min/max time."""
         if not (np.isfinite(self.minTime) and np.isfinite(self.maxTime)):
             return
         p = self.getTrialPartition()
@@ -2229,21 +2445,25 @@ class Trial:
         return fig
 
     def setSampleRate(self, sampleRate: float) -> None:
+        """Resample spikes, covariates, and ensemble covariates to *sampleRate*."""
         self.sampleRate = float(sampleRate)
         self.nspikeColl.resample(sampleRate)
         self.covarColl.resample(sampleRate)
         self.resampleEnsColl()
 
     def resample(self, sampleRate: float) -> None:
+        """Alias for :meth:`setSampleRate`."""
         self.setSampleRate(sampleRate)
 
     def setEnsCovMask(self, mask=None) -> None:
+        """Set the ensemble-covariate neighbour mask (default: all-to-all minus self)."""
         if _is_empty_config_value(mask):
             nSpikes = self.nspikeColl.numSpikeTrains
             mask = np.ones((nSpikes, nSpikes), dtype=int) - np.eye(nSpikes, dtype=int)
         self.ensCovMask = np.asarray(mask, dtype=int)
 
     def setCovMask(self, mask) -> None:
+        """Set the covariate mask; ``'all'`` resets to full visibility."""
         if isinstance(mask, str) and mask == "all":
             self.covarColl.resetMask()
         else:
@@ -2251,21 +2471,33 @@ class Trial:
         self.covMask = self.covarColl.covMask
 
     def resetCovMask(self) -> None:
+        """Reset the covariate mask to all-visible."""
         self.covarColl.resetMask()
         self.covMask = self.covarColl.covMask
 
     def setNeuronMask(self, mask) -> None:
+        """Set the neuron (spike-train) mask and sync to ``self.neuronMask``."""
         self.nspikeColl.setMask(mask)
         self.neuronMask = np.asarray(self.nspikeColl.neuronMask, dtype=int).copy()
 
     def resetNeuronMask(self) -> None:
+        """Reset the neuron mask to all-visible."""
         self.nspikeColl.resetMask()
         self.neuronMask = np.asarray(self.nspikeColl.neuronMask, dtype=int).copy()
 
     def setNeighbors(self, *args) -> None:
+        """Set the neighbour structure for ensemble-history covariates."""
         self.nspikeColl.setNeighbors(*args)
 
     def setHistory(self, hist) -> None:
+        """Set the spike-history configuration.
+
+        Parameters
+        ----------
+        hist : History, array-like, or list[History]
+            A ``History`` object, an array of window-edge times (seconds), or
+            a list of ``History`` objects for per-neuron history orders.
+        """
         if _is_empty_config_value(hist):
             self.history = []
             return
@@ -2294,9 +2526,18 @@ class Trial:
         raise TypeError("Can only set trial history by using History objects or windowTimes")
 
     def resetHistory(self) -> None:
+        """Clear the spike-history configuration."""
         self.history = []
 
     def setEnsCovHist(self, hist=None) -> None:
+        """Set the ensemble-covariate history and rebuild the ensemble collection.
+
+        Parameters
+        ----------
+        hist : History or array-like, optional
+            A ``History`` object or window-edge array.  Passing ``None``
+            clears the ensemble history and removes the ``ensCovColl``.
+        """
         if _is_empty_config_value(hist):
             self.ensCovHist = []
             self.ensCovColl = None
@@ -2322,15 +2563,19 @@ class Trial:
         self.ensCovColl = self.getEnsembleNeuronCovariates(1, [], self.ensCovHist)
 
     def isNeuronMaskSet(self) -> bool:
+        """Return ``True`` if any neuron is currently masked out."""
         return self.nspikeColl.isNeuronMaskSet()
 
     def isCovMaskSet(self) -> bool:
+        """Return ``True`` if any covariate dimension is currently masked out."""
         return self.covarColl.isCovMaskSet()
 
     def isMaskSet(self) -> bool:
+        """Return ``True`` if either the neuron or covariate mask is active."""
         return self.isNeuronMaskSet() or self.isCovMaskSet()
 
     def isHistSet(self) -> bool:
+        """Return ``True`` if a spike-history configuration has been set."""
         if self.history in (None, []):
             return False
         from .history import History
@@ -2340,6 +2585,7 @@ class Trial:
         return isinstance(self.history, list) and bool(self.history) and all(isinstance(item, History) for item in self.history)
 
     def isEnsCovHistSet(self) -> bool:
+        """Return ``True`` if an ensemble-covariate history has been set."""
         from .history import History
 
         return isinstance(self.ensCovHist, History)
@@ -2373,6 +2619,7 @@ class Trial:
         return 0
 
     def addCov(self, cov: Covariate) -> None:
+        """Add a covariate and enforce consistent sample rate / time bounds."""
         self.covarColl.addToColl(cov)
         self.covMask = self.covarColl.covMask
         if not self.isSampleRateConsistent():
@@ -2380,6 +2627,7 @@ class Trial:
         self.makeConsistentTime()
 
     def removeCov(self, identifier: int | str) -> None:
+        """Remove a covariate by 1-based index or name."""
         self.covarColl.removeCovariate(identifier)
         self.covMask = self.covarColl.covMask
         if not self.isSampleRateConsistent():
@@ -2387,6 +2635,17 @@ class Trial:
         self.makeConsistentTime()
 
     def getSpikeVector(self, *args, neuron_index: int = 1) -> np.ndarray:
+        """Return the spike data as a column matrix.
+
+        Parameters
+        ----------
+        *args
+            When empty, returns all neurons via ``dataToMatrix()``.  An int
+            selects a single neuron (1-based).  A sequence of bin edges
+            returns binned counts for the neuron given by *neuron_index*.
+        neuron_index : int, default 1
+            Neuron to bin when *args* provides bin edges (1-based).
+        """
         if not args:
             return self.nspikeColl.dataToMatrix()
         first = args[0]
@@ -2401,9 +2660,16 @@ class Trial:
         return self.nspikeColl.dataToMatrix(*args)
 
     def get_covariate_matrix(self, selected_covariates: Sequence[str] | None = None) -> tuple[np.ndarray, np.ndarray, list[str]]:
+        """Return ``(time, data, names)`` for the covariate collection."""
         return self.covarColl.matrixWithTime("standard", selected_covariates)
 
     def getDesignMatrix(self, neuronNum: int, dataSelector=None) -> np.ndarray:
+        """Build the full design matrix for neuron *neuronNum* (1-based).
+
+        Horizontally concatenates covariates, spike-history columns, and
+        ensemble-history columns — the complete regressor matrix used by
+        the GLM fitter.
+        """
         X = self.covarColl.dataToMatrix("standard", dataSelector)
         if self.isHistSet():
             H = self.getHistMatrices(neuronNum)
@@ -2424,6 +2690,19 @@ class Trial:
         return X
 
     def getHistForNeurons(self, neuronIndex) -> CovariateCollection:
+        """Compute the spike-history covariates for one neuron.
+
+        Parameters
+        ----------
+        neuronIndex : int
+            1-based neuron index whose spike train supplies the history.
+
+        Returns
+        -------
+        CovariateCollection
+            Collection of history-basis covariates aligned to the trial
+            time grid.
+        """
         if not self.isHistSet():
             raise ValueError("Set Trial history and retry")
         nst = self.nspikeColl.getNST(neuronIndex)
@@ -2438,6 +2717,7 @@ class Trial:
         return self.history.computeHistory(nst, time_grid=target_time)
 
     def getHistMatrices(self, neuronIndex: int) -> np.ndarray:
+        """Return the spike-history columns as a 2-D array for *neuronIndex* (1-based)."""
         if not self.isHistSet():
             time = self.nspikeColl.getNST(neuronIndex).getSigRep().time
             return np.zeros((time.size, 0), dtype=float)
@@ -2445,9 +2725,15 @@ class Trial:
         return histCovColl.dataToMatrix("standard")
 
     def getEnsembleNeuronCovariates(self, *args):
+        """Delegate to ``SpikeTrainCollection.getEnsembleNeuronCovariates``."""
         return self.nspikeColl.getEnsembleNeuronCovariates(*args)
 
     def getEnsCovMatrix(self, neuronNum: int, includedNeurons=None) -> np.ndarray:
+        """Return the ensemble-covariate design-matrix columns for *neuronNum*.
+
+        Uses ``ensCovMask`` to exclude self-history and applies neighbour
+        filtering when *includedNeurons* is not specified.
+        """
         if not self.isEnsCovHistSet() or self.ensCovColl is None:
             return np.zeros((self.nspikeColl.getNST(neuronNum).getSigRep().time.size, 0), dtype=float)
         if includedNeurons is None:
@@ -2458,18 +2744,23 @@ class Trial:
         return ensCovCollTemp.dataToMatrix("standard")
 
     def getNeuronIndFromMask(self) -> list[int]:
+        """Return 1-based indices of currently unmasked neurons."""
         return self.nspikeColl.getIndFromMask()
 
     def getNumUniqueNeurons(self) -> int:
+        """Return the number of distinct neuron names in the collection."""
         return len(self.nspikeColl.uniqueNeuronNames)
 
     def getNeuronNames(self) -> list[str]:
+        """Return all neuron names (may contain duplicates for repeated trials)."""
         return self.nspikeColl.getNSTnames()
 
     def getUniqueNeuronNames(self) -> list[str]:
+        """Return deduplicated neuron names."""
         return self.nspikeColl.getUniqueNSTnames()
 
     def getNeuronIndFromName(self, neuronName: str):
+        """Return 1-based indices matching *neuronName*, filtered by the neuron mask."""
         tempInd = self.nspikeColl.getNSTIndicesFromName(neuronName)
         currMask = set(self.neuronMask_indices())
         if isinstance(tempInd, list):
@@ -2477,39 +2768,49 @@ class Trial:
         return [tempInd] if tempInd in currMask else []
 
     def neuronMask_indices(self) -> list[int]:
+        """Return 1-based indices of unmasked neurons (alias for ``getNeuronIndFromMask``)."""
         return self.nspikeColl.getIndFromMask()
 
     def getNeuronNeighbors(self, neuronNum=None):
+        """Return the neighbour list for *neuronNum* (defaults to all unmasked neurons)."""
         if neuronNum is None:
             neuronNum = self.getNeuronIndFromMask()
         return self.nspikeColl.getNeighbors(neuronNum)
 
     def getCovSelectorFromMask(self):
+        """Return the per-covariate selector list derived from the current mask."""
         return self.covarColl.getSelectorFromMasks()
 
     def getCov(self, identifier):
+        """Return a ``Covariate`` by 1-based index or name."""
         return self.covarColl.getCov(identifier)
 
     def getNeuron(self, identifier):
+        """Return an ``nspikeTrain`` by 1-based index or name."""
         return self.nspikeColl.getNST(identifier)
 
     def getAllCovLabels(self) -> list[str]:
+        """Return labels for all covariate dimensions (ignoring mask)."""
         return self.covarColl.getAllCovLabels()
 
     def getCovLabelsFromMask(self) -> list[str]:
+        """Return labels for only the currently unmasked covariate dimensions."""
         return self.covarColl.getCovLabelsFromMask()
 
     def getHistLabels(self) -> list[str]:
+        """Return string labels for all spike-history basis columns."""
         if not self.isHistSet():
             return []
         return self.getHistForNeurons(1).getAllCovLabels()
 
     def getEnsCovLabels(self) -> list[str]:
+        """Return string labels for all ensemble-covariate columns."""
         if not self.isEnsCovHistSet() or self.ensCovColl is None:
             return []
         return self.ensCovColl.getAllCovLabels()
 
     def getEnsCovLabelsFromMask(self, neuronNum: int) -> list[str]:
+        """Return ensemble-covariate labels for *neuronNum*, filtered by ``ensCovMask``."""
         if not self.isEnsCovHistSet() or self.ensCovColl is None:
             return []
         included = np.flatnonzero(self.ensCovMask[:, neuronNum - 1] == 1) + 1
@@ -2529,15 +2830,18 @@ class Trial:
         return labels
 
     def getLabelsFromMask(self, neuronNum: int) -> list[str]:
+        """Return all design-matrix labels for *neuronNum*, respecting masks."""
         labels = list(self.getCovLabelsFromMask())
         labels.extend(self.getHistLabels())
         labels.extend(self.getEnsCovLabelsFromMask(neuronNum))
         return labels
 
     def flattenCovMask(self) -> np.ndarray:
+        """Flatten the per-covariate mask list into a single 1-D int array."""
         return self.covarColl.flattenCovMask()
 
     def flattenMask(self) -> np.ndarray:
+        """Flatten the full mask (covariates + history + ensemble) into 1-D."""
         flat = self.flattenCovMask()
         if self.isHistSet():
             flat = np.concatenate([flat, np.ones(len(self.getHistLabels()), dtype=int)])
@@ -2546,19 +2850,23 @@ class Trial:
         return flat
 
     def shiftCovariates(self, *args) -> None:
+        """Apply a time shift to covariates and re-synchronize time bounds."""
         self.covarColl.setCovShift(*args)
         self.makeConsistentTime()
 
     def resetEnsCovMask(self) -> None:
+        """Reset the ensemble-covariate mask to the default (all-to-all minus self)."""
         self.setEnsCovMask()
 
     def resampleEnsColl(self) -> None:
+        """Rebuild the ensemble-covariate collection at the current sample rate."""
         if self.ensCovColl is not None and self.ensCovHist not in (None, []):
             self.ensCovColl = self.getEnsembleNeuronCovariates(1, [], self.ensCovHist)
         else:
             self.setEnsCovHist()
 
     def restoreToOriginal(self) -> None:
+        """Reset all collections to their original state and re-synchronize."""
         self.nspikeColl.restoreToOriginal()
         self.covarColl.restoreToOriginal()
         if not self.isSampleRateConsistent():
@@ -2615,13 +2923,16 @@ class Trial:
         return trial
 
     def makeConsistentSampleRate(self) -> None:
+        """Resample all collections to the maximum sample rate found."""
         self.resample(self.findMaxSampleRate())
 
     def makeConsistentTime(self) -> None:
+        """Set all collections to the union of min/max time across sub-collections."""
         self.setMinTime(self.findMinTime())
         self.setMaxTime(self.findMaxTime())
 
     def isSampleRateConsistent(self) -> bool:
+        """Return ``True`` if spike and covariate collections share the same sample rate."""
         if self.nspikeColl.numSpikeTrains == 0 or self.covarColl.numCov == 0:
             return True
         target = round(float(self.findMaxSampleRate()), 3)
@@ -2629,6 +2940,7 @@ class Trial:
         return all(value == target for value in values)
 
     def findMaxSampleRate(self) -> float:
+        """Return the maximum sample rate across spike and covariate collections."""
         values = [value for value in [self.nspikeColl.findMaxSampleRate(), self.covarColl.findMaxSampleRate()] if np.isfinite(value)]
         return float(max(values)) if values else float("nan")
 
@@ -2655,9 +2967,11 @@ class Trial:
         return float(min(candidates)) if candidates else float("nan")
 
     def findMinTime(self) -> float:
+        """Return the earliest start time across sub-collections."""
         return float(min(self.nspikeColl.minTime, self.covarColl.minTime))
 
     def findMaxTime(self) -> float:
+        """Return the latest end time across sub-collections."""
         return float(max(self.nspikeColl.maxTime, self.covarColl.maxTime))
 
 
