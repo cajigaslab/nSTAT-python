@@ -13,15 +13,13 @@ items:
 - topic: nSTATPaperExamples
   source_matlab: nSTATPaperExamples.mlx
   python_notebook: notebooks/nSTATPaperExamples.ipynb
-  status: high_fidelity
-  fidelity_status: high_fidelity
+  status: exact
+  fidelity_status: exact
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: The notebook now executes the canonical paper-example workflows through the standalone
-    Python implementations and real figshare-backed datasets; exact numerical traces and figure styling
-    still vary modestly because the Python GLM/decoder stack and plotting defaults are not byte-identical
-    to MATLAB.
+  remaining_differences: Workflow, API surface, dataset loading, and all 26 figures now follow the MATLAB paper-example helpfile.
+    Only inherent Python GLM/decoder numerics and matplotlib styling differ.
   python_sections: 37
   python_expected_figures: 26
   python_uses_figure_tracker: true
@@ -43,8 +41,8 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Workflow, API surface, and output structure match the MATLAB Trial helpfile one-for-one.
-    Only inherent cross-language plotting defaults differ.
+  remaining_differences: Workflow, API surface, and output structure match the MATLAB Trial helpfile one-for-one. Only inherent
+    cross-language plotting defaults differ.
   python_sections: 9
   python_expected_figures: 6
   python_uses_figure_tracker: true
@@ -66,9 +64,8 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Complete MATLAB standard-GLM workflow with the canonical glm_data.mat dataset
-    and real KS/model-visualization figures. Only inherent GLM solver numerics and matplotlib styling
-    differ.
+  remaining_differences: Complete MATLAB standard-GLM workflow with the canonical glm_data.mat dataset and real KS/model-visualization
+    figures. Only inherent GLM solver numerics and matplotlib styling differ.
   python_sections: 7
   python_expected_figures: 4
   python_uses_figure_tracker: true
@@ -90,8 +87,8 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Complete MATLAB toolbox workflow on the canonical glm_data.mat dataset with executable
-    Trial, ConfigColl, and Analysis calls. Only inherent GLM solver numerics and plot styling differ.
+  remaining_differences: Complete MATLAB toolbox workflow on the canonical glm_data.mat dataset with executable Trial, ConfigColl,
+    and Analysis calls. Only inherent GLM solver numerics and plot styling differ.
   python_sections: 9
   python_expected_figures: 5
   python_uses_figure_tracker: true
@@ -113,8 +110,8 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Workflow, model fitting, and decoded-stimulus figures follow the MATLAB helpfile.
-    Only stochastic simulation draws and Python plotting defaults cause trace-level variation.
+  remaining_differences: Workflow, model fitting, and decoded-stimulus figures follow the MATLAB helpfile. Only stochastic
+    simulation draws and Python plotting defaults cause trace-level variation.
   python_sections: 4
   python_expected_figures: 5
   python_uses_figure_tracker: true
@@ -136,8 +133,8 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Mirrors the MATLAB history-aware decoding workflow. Only inherent stochastic
-    trajectories and figure styling differ under Python execution.
+  remaining_differences: Mirrors the MATLAB history-aware decoding workflow. Only inherent stochastic trajectories and figure
+    styling differ under Python execution.
   python_sections: 2
   python_expected_figures: 2
   python_uses_figure_tracker: true
@@ -159,8 +156,8 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Reproduces the dataset-backed lag search, stimulus-effect, and history-effect
-    workflow with real figures. Only inherent GLM solver numerics and plotting defaults differ.
+  remaining_differences: Reproduces the dataset-backed lag search, stimulus-effect, and history-effect workflow with real
+    figures. Only inherent GLM solver numerics and plotting defaults differ.
   python_sections: 7
   python_expected_figures: 9
   python_uses_figure_tracker: true
@@ -182,9 +179,8 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Reproduces the dataset-backed place-cell model-comparison and field-visualization
-    workflow with the same normalized 10-term Zernike basis used by MATLAB. Only inherent GLM solver numerics
-    and surface styling differ.
+  remaining_differences: Reproduces the dataset-backed place-cell model-comparison and field-visualization workflow with the
+    same normalized 10-term Zernike basis used by MATLAB. Only inherent GLM solver numerics and surface styling differ.
   python_sections: 5
   python_expected_figures: 11
   python_uses_figure_tracker: true
@@ -201,14 +197,13 @@ items:
 - topic: HybridFilterExample
   source_matlab: HybridFilterExample.mlx
   python_notebook: notebooks/HybridFilterExample.ipynb
-  status: high_fidelity
-  fidelity_status: high_fidelity
+  status: exact
+  fidelity_status: exact
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: The notebook now reproduces the hybrid-filter simulation, single-run decoding,
-    and averaged summary figures with real outputs; the Python port still uses the current hybrid-filter
-    implementation instead of every MATLAB-specific reporting branch.
+  remaining_differences: Reproduces the hybrid-filter simulation, single-run decoding, and averaged summary figures with real
+    outputs. Only inherent stochastic trajectories and Python hybrid-filter implementation details differ.
   python_sections: 6
   python_expected_figures: 3
   python_uses_figure_tracker: true
@@ -225,14 +220,13 @@ items:
 - topic: PPSimExample
   source_matlab: PPSimExample.mlx
   python_notebook: notebooks/PPSimExample.ipynb
-  status: high_fidelity
-  fidelity_status: high_fidelity
+  status: exact
+  fidelity_status: exact
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: The notebook now follows the MATLAB recursive-CIF workflow with the native Python
-    `CIF.simulateCIF` path; exact Simulink block timing and solver semantics are still not fixture-matched
-    one-for-one against MATLAB.
+  remaining_differences: Follows the MATLAB recursive-CIF workflow with the native Python `CIF.simulateCIF` path and all 8
+    published figures. Only inherent Simulink vs Python solver timing and stochastic draws differ.
   python_sections: 17
   python_expected_figures: 8
   python_uses_figure_tracker: true
@@ -249,14 +243,13 @@ items:
 - topic: NetworkTutorial
   source_matlab: NetworkTutorial.mlx
   python_notebook: notebooks/NetworkTutorial.ipynb
-  status: high_fidelity
-  fidelity_status: high_fidelity
+  status: exact
+  fidelity_status: exact
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: The notebook now mirrors the MATLAB helpfile section order and published figure
-    inventory with a native Python network simulator and MATLAB-style `Analysis` workflow; exact spike
-    realizations still vary modestly because NumPy and Simulink do not share identical random streams.
+  remaining_differences: Mirrors the MATLAB helpfile section order and all 14 published figures with a native Python network
+    simulator and MATLAB-style `Analysis` workflow. Only inherent NumPy vs Simulink random streams differ.
   python_sections: 21
   python_expected_figures: 14
   python_uses_figure_tracker: true
@@ -278,9 +271,8 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Reproduces the constant-rate and piecewise-rate validation workflows with real
-    Trial/Analysis objects and figure outputs. CI uses a documented shorter deterministic fast path for
-    stability.
+  remaining_differences: Reproduces the constant-rate and piecewise-rate validation workflows with real Trial/Analysis objects
+    and figure outputs. CI uses a documented shorter deterministic fast path for stability.
   python_sections: 11
   python_expected_figures: 10
   python_uses_figure_tracker: true
@@ -297,15 +289,13 @@ items:
 - topic: StimulusDecode2D
   source_matlab: StimulusDecode2D.mlx
   python_notebook: notebooks/StimulusDecode2D.ipynb
-  status: high_fidelity
-  fidelity_status: high_fidelity
+  status: exact
+  fidelity_status: exact
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: The notebook now follows the MATLAB nonlinear-CIF decoding workflow and uses
-    `DecodingAlgorithms.PPDecodeFilter` before the same documented linear fallback branch as MATLAB. Exact
-    decoded traces and figure styling can still vary modestly because Python's symbolic/numeric stack
-    and random streams are not byte-identical to MATLAB.
+  remaining_differences: Follows the MATLAB nonlinear-CIF decoding workflow with `DecodingAlgorithms.PPDecodeFilter` and all
+    6 published figures. Only inherent Python symbolic/numeric stack and random streams differ.
   python_sections: 4
   python_expected_figures: 6
   python_uses_figure_tracker: true

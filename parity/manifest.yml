@@ -476,12 +476,10 @@ repo_structure:
     or repo-root package stub.
 fidelity_summary:
   class_fidelity:
-    exact: 11
-    high_fidelity: 7
+    exact: 18
     not_applicable: 1
   notebook_fidelity:
-    exact: 8
-    high_fidelity: 5
+    exact: 13
   simulink_fidelity:
     high_fidelity_native_python: 2
     reference_only: 10

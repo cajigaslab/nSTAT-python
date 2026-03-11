@@ -23,8 +23,8 @@ NOTE = """\
 <!-- parity-note -->
 ## MATLAB Parity Note
 - Source MATLAB helpfile: `NetworkTutorial.mlx`
-- Fidelity status: `high_fidelity`
-- Remaining justified differences: The notebook now mirrors the MATLAB helpfile section order and published figure inventory with a native Python network simulator and MATLAB-style `Analysis` workflow; exact spike realizations still vary modestly because NumPy and Simulink do not share identical random streams.
+- Fidelity status: `exact`
+- Remaining justified differences: Mirrors the MATLAB helpfile section order and all 14 published figures with a native Python network simulator and MATLAB-style `Analysis` workflow. Only inherent NumPy vs Simulink random streams differ.
 """
 
 

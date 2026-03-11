@@ -516,13 +516,36 @@ class CovariateCollection:
         self.resetMask()
 
     def plot(self, *_, handle=None, **__):
-        """Plot each covariate in a vertically stacked panel layout."""
+        """Plot each covariate in a vertically stacked panel layout.
+
+        Parameters
+        ----------
+        handle : matplotlib Figure, Axes, list of Axes, or None
+            If a Figure, new subplots are created.
+            If a single Axes or a list of Axes, plot into those directly.
+            If None, a new figure is created.
+        """
         selected = [idx for idx in range(1, self.numCov + 1)]
-        fig = handle if handle is not None else plt.figure(figsize=(8.5, max(2.5, 2.2 * max(len(selected), 1))))
-        fig.clear()
-        axes = fig.subplots(len(selected), 1, sharex=True)
+
+        # Accept Figure, Axes, list-of-Axes, or None
+        if handle is None:
+            fig = plt.figure(figsize=(8.5, max(2.5, 2.2 * max(len(selected), 1))))
+            fig.clear()
+            axes = fig.subplots(len(selected), 1, sharex=True)
+        elif isinstance(handle, plt.Figure):
+            fig = handle
+            fig.clear()
+            axes = fig.subplots(len(selected), 1, sharex=True)
+        elif isinstance(handle, (list, np.ndarray)):
+            axes = handle
+            fig = handle[0].get_figure() if len(handle) else plt.gcf()
+        else:
+            # Single Axes
+            axes = [handle]
+            fig = handle.get_figure()
+
         if not isinstance(axes, np.ndarray):
-            axes = np.asarray([axes], dtype=object)
+            axes = np.asarray([axes] if not isinstance(axes, list) else axes, dtype=object)
         for ax, cov_index in zip(axes.reshape(-1), selected, strict=False):
             cov = self.getCov(cov_index)
             cov.plot(handle=ax)
