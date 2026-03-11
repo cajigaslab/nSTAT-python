@@ -128,33 +128,14 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     print(f"  AIC: {resultConst.AIC}")
     print(f"  BIC: {resultConst.BIC}")
 
-    # --- Figure 1: Constant Mg2+ raster + diagnostics + lambda ---
-    fig1, axes1 = plt.subplots(2, 2, figsize=(14, 9))
-
-    # Subplot 1: Neural raster
-    ax = axes1[0, 0]
-    spikeCollConst.plot(handle=ax)
-    ax.set_title("Neural Raster with constant Mg$^{2+}$ Concentration",
-                 fontweight="bold", fontsize=12)
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
-    ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold")
-    ax.set_yticks([0, 1])
-
-    # Subplot 2: Inverse Gaussian Transform (autocorrelation of rescaled residuals)
-    ax = axes1[0, 1]
-    resultConst.plotInvGausTrans(handle=ax)
-
-    # Subplot 3: KS plot
-    ax = axes1[1, 0]
-    resultConst.KSPlot(handle=ax)
-
-    # Subplot 4: Lambda estimate
-    ax = axes1[1, 1]
-    resultConst.lambda_signal.plot(handle=ax)
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
-    ax.legend(["$\\lambda_{const}$"], loc="upper right")
-
-    fig1.suptitle("Example 01 — Figure 1: Constant Mg$^{2+}$ Summary", fontsize=14, fontweight="bold")
+    # --- Figure 1: Constant Mg2+ diagnostics (Matlab-matching plotResults) ---
+    # Matlab calls resultConst.plotResults which creates a 2x4 grid:
+    #   [KSPlot (2-wide)]  [InvGausTrans]  [SeqCorr]
+    #   [plotCoeffs (2-wide)]               [plotResidual (2-wide)]
+    fig1 = plt.figure(figsize=(14, 9))
+    resultConst.plotResults(handle=fig1)
+    fig1.suptitle("Example 01 — Figure 1: Constant Mg$^{2+}$ Summary",
+                  fontsize=14, fontweight="bold")
     fig1.tight_layout()
     figure_files.extend(_maybe_export(fig1, export_dir, "fig01_constant_mg_summary"))
 
@@ -198,8 +179,12 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     print("\n=== Part 3: Piecewise Baseline Model Comparison ===")
 
     # Build piecewise indicator covariates
-    timeInd1 = np.searchsorted(timeWashout, 495.0)
-    timeInd2 = np.searchsorted(timeWashout, 765.0)
+    # Matlab: find(time<495,1,'last') — last index strictly before 495
+    # np.searchsorted gives first index >= 495, so subtract 1 isn't needed
+    # because Python slice [:idx] is exclusive. But Matlab's 1:timeInd1 is
+    # inclusive, so we need searchsorted(..., side='right') to include 495.
+    timeInd1 = np.searchsorted(timeWashout, 495.0, side="right")
+    timeInd2 = np.searchsorted(timeWashout, 765.0, side="right")
     N = len(timeWashout)
 
     constantRate = np.ones((N, 1))
@@ -233,34 +218,12 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     print(f"  AIC: {resultWashout.AIC}")
     print(f"  BIC: {resultWashout.BIC}")
 
-    # --- Figure 3: Piecewise model diagnostics + lambda comparison ---
-    fig3, axes3 = plt.subplots(2, 2, figsize=(14, 9))
-
-    # Subplot 1: Raster with epoch boundaries
-    ax = axes3[0, 0]
-    spikeCollWashout.plot(handle=ax)
-    ax.set_title("Neural Raster with decreasing Mg$^{2+}$ Concentration",
-                 fontweight="bold", fontsize=12)
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
-    ax.axvline(495.0, color="r", linewidth=4)
-    ax.axvline(765.0, color="r", linewidth=4)
-
-    # Subplot 2: Inverse Gaussian Transform
-    ax = axes3[0, 1]
-    resultWashout.plotInvGausTrans(handle=ax)
-
-    # Subplot 3: KS plot
-    ax = axes3[1, 0]
-    resultWashout.KSPlot(handle=ax)
-
-    # Subplot 4: Lambda comparison
-    ax = axes3[1, 1]
-    resultWashout.lambda_signal.plot(handle=ax)
-    ax.set_ylim(0, 5)
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
-    ax.legend(["$\\lambda_{const}$", "$\\lambda_{const-epoch}$"], loc="upper right")
-
-    fig3.suptitle("Example 01 — Figure 3: Piecewise Baseline Comparison", fontsize=14, fontweight="bold")
+    # --- Figure 3: Piecewise model diagnostics (Matlab-matching plotResults) ---
+    # Matlab calls resultWashout.plotResults which creates the same 2x4 grid.
+    fig3 = plt.figure(figsize=(14, 9))
+    resultWashout.plotResults(handle=fig3)
+    fig3.suptitle("Example 01 — Figure 3: Piecewise Baseline Comparison",
+                  fontsize=14, fontweight="bold")
     fig3.tight_layout()
     figure_files.extend(_maybe_export(fig3, export_dir, "fig03_piecewise_baseline_comparison"))
 
