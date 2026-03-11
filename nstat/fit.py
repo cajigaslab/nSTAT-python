@@ -966,6 +966,10 @@ class FitResult:
         sum_spikes = spike_train.getSigRep(window_size, float(time[0]), float(time[-1]))
         window_times = np.linspace(float(time[0]), float(time[-1]), sum_spikes.time.size, dtype=float)
 
+        # Use the label for the specific fit_num, not all labels
+        all_labels = self.lambda_signal.dataLabels if getattr(self.lambda_signal, "dataLabels", None) else ["\\lambda"]
+        idx = min(max(fit_num - 1, 0), len(all_labels) - 1)
+        fit_label = [all_labels[idx]]
         lambda_signal = Covariate(
             time,
             rate_hz,
@@ -973,7 +977,7 @@ class FitResult:
             self.lambda_signal.xlabelval,
             self.lambda_signal.xunits,
             self.lambda_signal.yunits,
-            self.lambda_signal.dataLabels if getattr(self.lambda_signal, "dataLabels", None) else ["\\lambda"],
+            fit_label,
         )
         lambda_int = lambda_signal.integral()
         lambda_int_vals = (
@@ -1070,13 +1074,35 @@ class FitResult:
         return lambda_val, logLL_arr
 
     def plotResults(self, fit_num: int = 1, handle=None):
-        fig = handle if handle is not None else plt.figure(figsize=(11.5, 8.0))
+        """Matlab-matching 2x4 subplot layout with 5 diagnostic panels.
+
+        Layout (matching Matlab ``subplot(2,4,...)``):
+            [1,2]  KSPlot (double-wide)    [3] InvGausTrans  [4] SeqCorr
+            [5,6]  plotCoeffs (double-wide) [7,8] plotResidual (double-wide)
+        """
+        import matplotlib.gridspec as gridspec
+
+        fig = handle if handle is not None else plt.figure(figsize=(14.0, 8.0))
         fig.clear()
-        axes = fig.subplots(2, 2)
-        self.KSPlot(fit_num=fit_num, handle=axes[0, 0])
-        self.plotInvGausTrans(fit_num=fit_num, handle=axes[0, 1])
-        self.plotSeqCorr(fit_num=fit_num, handle=axes[1, 0])
-        self.plotCoeffs(fit_num=fit_num, handle=axes[1, 1])
+        gs = gridspec.GridSpec(2, 4, figure=fig)
+
+        ax_ks = fig.add_subplot(gs[0, 0:2])
+        ax_ig = fig.add_subplot(gs[0, 2])
+        ax_sc = fig.add_subplot(gs[0, 3])
+        ax_co = fig.add_subplot(gs[1, 0:2])
+        ax_re = fig.add_subplot(gs[1, 2:4])
+
+        self.KSPlot(fit_num=fit_num, handle=ax_ks)
+        # Add neuron number label (matching Matlab)
+        ax_ks.text(
+            0.45, 0.95, f"Neuron: {self.neuronNumber}",
+            transform=ax_ks.transAxes, fontweight="bold", fontsize=10,
+            verticalalignment="top",
+        )
+        self.plotInvGausTrans(fit_num=fit_num, handle=ax_ig)
+        self.plotSeqCorr(fit_num=fit_num, handle=ax_sc)
+        self.plotCoeffs(fit_num=fit_num, handle=ax_co)
+        self.plotResidual(fit_num=fit_num, handle=ax_re)
         fig.tight_layout()
         return fig
 

@@ -1722,7 +1722,6 @@ class DecodingAlgorithms:
         estimateTarget=0,
         MinClassificationError=0,
     ):
-        del yT, PiT, estimateTarget
         obs = _as_observation_matrix(dN)
         A_models = list(A) if isinstance(A, Sequence) and not isinstance(A, np.ndarray) else [A]
         Q_models = list(Q) if isinstance(Q, Sequence) and not isinstance(Q, np.ndarray) else [Q]
@@ -1760,6 +1759,85 @@ class DecodingAlgorithms:
         else:
             H_tensor = _compute_history_terms(obs, float(binwidth), windowTimes)
             gamma_mat = _normalize_gamma(gamma, H_tensor.shape[1], num_cells)
+
+        # ------------------------------------------------------------------
+        # Goal-directed target branch (Srinivasan et al. 2006)
+        # ------------------------------------------------------------------
+        estimateTarget = int(estimateTarget)
+
+        # Normalize yT, PiT as per-model lists
+        if _is_empty_value(yT):
+            yT_models = [None] * n_models
+        elif isinstance(yT, (list, tuple)) and not isinstance(yT, np.ndarray):
+            yT_models = [
+                np.asarray(y, dtype=float).reshape(-1) if not _is_empty_value(y) else None
+                for y in yT
+            ]
+        else:
+            yT_vec = np.asarray(yT, dtype=float).reshape(-1)
+            yT_models = [yT_vec] * n_models
+
+        if _is_empty_value(PiT):
+            PiT_models = [None] * n_models
+        elif isinstance(PiT, (list, tuple)) and not isinstance(PiT, np.ndarray):
+            PiT_models = [
+                _as_state_matrix(p, state_dims[i]) if not _is_empty_value(p) else None
+                for i, p in enumerate(PiT)
+            ]
+        else:
+            PiT_models = [_as_state_matrix(PiT, state_dims[i]) for i in range(n_models)]
+
+        _has_target = [yT_models[s] is not None for s in range(n_models)]
+        _any_target = any(_has_target)
+
+        if estimateTarget == 1 and _any_target:
+            raise NotImplementedError(
+                "Augmented state-space target estimation (estimateTarget=1) is not yet "
+                "supported for PPHybridFilterLinear. Use estimateTarget=0 with fixed target, "
+                "or use PPDecodeFilterLinear which supports both modes."
+            )
+
+        # Backward information filter for each target model
+        PhitT_m = [None] * n_models
+        PitT_m = [None] * n_models
+        B_m = [None] * n_models
+        QT_m = [None] * n_models
+
+        for s in range(n_models):
+            if not _has_target[s]:
+                continue
+            dim = state_dims[s]
+            PiT_s = PiT_models[s] if PiT_models[s] is not None else np.zeros((dim, dim), dtype=float)
+
+            PitT = np.zeros((dim, dim, num_steps), dtype=float)
+            PhitT = np.zeros((dim, dim, num_steps), dtype=float)
+            B_arr = np.zeros((dim, dim, num_steps), dtype=float)
+            QT_arr = np.zeros((dim, dim, num_steps), dtype=float)
+
+            QN = _select_time_matrix(Q_models[s], num_steps - 1, dim)
+            PitT[:, :, num_steps - 1] = PiT_s + QN
+            PhitT[:, :, num_steps - 1] = np.eye(dim, dtype=float)
+
+            for n in range(num_steps - 1, 0, -1):
+                An = _select_time_matrix(A_models[s], n, dim)
+                Qn = _select_time_matrix(Q_models[s], n, dim)
+                invA = np.linalg.pinv(An)
+                PhitT[:, :, n - 1] = invA @ PhitT[:, :, n]
+                PitT[:, :, n - 1] = invA @ PitT[:, :, n] @ invA.T + Qn
+                invPitT_n = np.linalg.pinv(PitT[:, :, n])
+                B_arr[:, :, n] = An - (Qn @ invPitT_n) @ An
+                QT_arr[:, :, n] = Qn - (Qn @ invPitT_n) @ Qn.T
+
+            A1 = _select_time_matrix(A_models[s], 0, dim)
+            Q1 = _select_time_matrix(Q_models[s], 0, dim)
+            invPitT_0 = np.linalg.pinv(PitT[:, :, 0])
+            B_arr[:, :, 0] = A1 - (Q1 @ invPitT_0) @ A1
+            QT_arr[:, :, 0] = Q1 - (Q1 @ invPitT_0) @ Q1.T
+
+            PhitT_m[s] = PhitT
+            PitT_m[s] = PitT
+            B_m[s] = B_arr
+            QT_m[s] = QT_arr
 
         X = np.zeros((max_dim, num_steps), dtype=float)
         W = np.zeros((max_dim, max_dim, num_steps), dtype=float)
@@ -1810,14 +1888,41 @@ class DecodingAlgorithms:
             likelihoods = np.zeros(n_models, dtype=float)
             for model_index in range(n_models):
                 dim = state_dims[model_index]
-                A_t = _select_time_matrix(A_models[model_index], time_index, dim)
-                Q_t = _select_time_matrix(Q_models[model_index], time_index, dim)
+                if _has_target[model_index]:
+                    A_t = B_m[model_index][:, :, time_index]
+                    Q_t = QT_m[model_index][:, :, time_index]
+                else:
+                    A_t = _select_time_matrix(A_models[model_index], time_index, dim)
+                    Q_t = _select_time_matrix(Q_models[model_index], time_index, dim)
                 pred_x, pred_W = DecodingAlgorithms.PPDecode_predict(
                     X_s[model_index][:dim, time_index],
                     W_s[model_index][:dim, :dim, time_index],
                     A_t,
                     Q_t,
                 )
+                # Goal-directed offset for fixed target (Srinivasan Eq. 2.21)
+                if _has_target[model_index] and estimateTarget == 0:
+                    Qn_orig = _select_time_matrix(Q_models[model_index], time_index, dim)
+                    invPitT_n = np.linalg.pinv(PitT_m[model_index][:, :, time_index])
+                    if time_index > 0:
+                        invPhitm1 = np.linalg.pinv(PhitT_m[model_index][:, :, time_index - 1])
+                        ut = (Qn_orig @ invPitT_n) @ PhitT_m[model_index][:, :, time_index] @ (
+                            yT_models[model_index] - invPhitm1 @ X_s[model_index][:dim, time_index]
+                        )
+                    else:
+                        A1_orig = _select_time_matrix(A_models[model_index], 0, dim)
+                        invA1 = np.linalg.pinv(A1_orig)
+                        invPhi0 = np.linalg.pinv(invA1 @ PhitT_m[model_index][:, :, 0])
+                        ut = (Qn_orig @ invPitT_n) @ PhitT_m[model_index][:, :, time_index] @ (
+                            yT_models[model_index] - invPhi0 @ X_s[model_index][:dim, time_index]
+                        )
+                    pred_x = pred_x + ut
+                    An_orig = _select_time_matrix(A_models[model_index], time_index, dim)
+                    pred_W = pred_W + (
+                        (Qn_orig @ invPitT_n) @ An_orig
+                        @ W_s[model_index][:dim, :dim, time_index]
+                        @ An_orig.T @ (Qn_orig @ invPitT_n).T
+                    )
                 upd_x, upd_W, lambda_delta = DecodingAlgorithms.PPDecode_updateLinear(
                     pred_x,
                     pred_W,

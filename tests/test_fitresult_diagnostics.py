@@ -45,7 +45,7 @@ def test_fitresult_plotting_methods_return_matplotlib_objects() -> None:
     ax4 = fit.plotSeqCorr()
     ax5 = fit.plotCoeffs()
 
-    assert len(fig.axes) == 4
+    assert len(fig.axes) == 5  # 2x4 layout: KS, InvGaus, SeqCorr, Coeffs, Residual
     for ax in (ax1, ax2, ax3, ax4, ax5):
         assert hasattr(ax, "plot")
     plt.close("all")
