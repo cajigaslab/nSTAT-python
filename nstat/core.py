@@ -368,6 +368,52 @@ class SignalObj:
             return [item[0] for item in out]
         return out
 
+    def areDataLabelsEmpty(self) -> bool:
+        """Return ``True`` if all data labels are empty strings.
+
+        Matches Matlab ``SignalObj.areDataLabelsEmpty()``.
+        """
+        return all(not str(label) for label in self.dataLabels)
+
+    def isLabelPresent(self, label: str) -> bool:
+        """Return ``True`` if *label* matches any data label or equals ``'all'``.
+
+        Matches Matlab ``SignalObj.isLabelPresent()``.
+        """
+        if str(label).lower() == "all":
+            return True
+        try:
+            self.getIndexFromLabel(label)
+            return True
+        except ValueError:
+            return False
+
+    def convertNamesToIndices(self, selectorArray) -> list[int] | np.ndarray:
+        """Convert label names (or mixed) to 1-based indices.
+
+        Matches Matlab ``SignalObj.convertNamesToIndices()``.
+        """
+        if isinstance(selectorArray, str):
+            if selectorArray == "all":
+                return list(range(1, self.dimension + 1))
+            if self.isLabelPresent(selectorArray):
+                return self.getIndexFromLabel(selectorArray)
+            raise ValueError(f"Specified label '{selectorArray}' does not match data label")
+        if isinstance(selectorArray, (int, float, np.integer)):
+            return [int(selectorArray)]
+        if isinstance(selectorArray, np.ndarray):
+            return selectorArray.astype(int).ravel().tolist()
+        if isinstance(selectorArray, (list, tuple)):
+            result: list[int] = []
+            for item in selectorArray:
+                if isinstance(item, str):
+                    if self.isLabelPresent(item):
+                        result.extend(self.getIndexFromLabel(item))
+                else:
+                    result.append(int(item))
+            return result
+        return list(range(1, self.dimension + 1))
+
     def getValueAt(self, x: Sequence[float] | float) -> np.ndarray:
         query = np.asarray(x, dtype=float).reshape(-1)
         out = np.zeros((query.size, self.dimension), dtype=float)
@@ -500,14 +546,28 @@ class SignalObj:
             self.data = self.data[:endIndex, :]
         self.maxTime = float(np.max(self.time))
 
-    def merge(self, other: "SignalObj") -> "SignalObj":
-        if self.time.shape != other.time.shape or np.max(np.abs(self.time - other.time)) > 1e-9:
-            raise ValueError("Signals must share an identical time grid to merge.")
-        merged = self._spawn(
-            self.time,
-            np.column_stack([self.data, other.data]),
-            data_labels=[*self.dataLabels, *list(other.dataLabels)],
-            plot_props=[*self.plotProps, *getattr(other, "plotProps", [None for _ in range(other.dimension)])],
+    def merge(self, other: "SignalObj", holdVals: int = 0) -> "SignalObj":
+        """Merge *other* signal columns into *self*.
+
+        Matlab calls ``makeCompatible`` first so that signals with
+        different time grids are reconciled automatically.  The Python
+        version now does the same.
+
+        Parameters
+        ----------
+        other : SignalObj
+            Signal whose data columns will be appended.
+        holdVals : int, optional
+            Passed to ``makeCompatible`` – ``1`` holds endpoint values
+            when the time range is extended; ``0`` (default) pads with
+            zeros.
+        """
+        s1c, s2c = self.makeCompatible(other, holdVals)
+        merged = s1c._spawn(
+            s1c.time,
+            np.column_stack([s1c.data, s2c.data]),
+            data_labels=[*s1c.dataLabels, *list(s2c.dataLabels)],
+            plot_props=[*s1c.plotProps, *getattr(s2c, "plotProps", [None for _ in range(s2c.dimension)])],
         )
         return merged
 
@@ -556,6 +616,48 @@ class SignalObj:
         if right.shape[1] == 1 and left.shape[1] > 1:
             right = np.repeat(right, left.shape[1], axis=1)
         return self._spawn(self.time, np.divide(left, right), data_labels=labels)
+
+    def __matmul__(self, other) -> "SignalObj":
+        """Matrix multiply (``@`` operator).  Matches Matlab ``mtimes``."""
+        if isinstance(other, SignalObj):
+            return self._spawn(self.time, self.data * other.data, data_labels=list(self.dataLabels))
+        other_arr = np.asarray(other, dtype=float)
+        result = (self.data.T @ other_arr).T if other_arr.ndim <= 1 else self.data @ other_arr
+        return self._spawn(self.time[:result.shape[0]] if result.ndim == 2 else self.time, result)
+
+    def ldivide(self, other) -> "SignalObj":
+        r"""Element-wise left division (Matlab ``.\``): ``other ./ self``.
+
+        Matches Matlab ``SignalObj.ldivide()``.
+        """
+        return self._binary_op(other, lambda a, b: np.divide(b, a))
+
+    @property
+    def T(self) -> "SignalObj":
+        """Transpose the data matrix.  Matches Matlab ``ctranspose`` / ``transpose``."""
+        new_data = self.data.T
+        new_time = self.time[:new_data.shape[0]] if new_data.shape[0] != self.time.size else self.time
+        return self._spawn(new_time, new_data)
+
+    def clearPlotProps(self, index=None) -> None:
+        """Clear plot properties.  Matches Matlab ``clearPlotProps``."""
+        if index is None:
+            index = list(range(self.dimension))
+        else:
+            index = [i - 1 for i in np.atleast_1d(index)]
+        for i in index:
+            if i < len(self.plotProps):
+                self.plotProps[i] = None
+
+    def plotPropsSet(self) -> bool:
+        """Return ``True`` if any plot property is non-empty.
+
+        Matches Matlab ``SignalObj.plotPropsSet()``.
+        """
+        for prop in self.plotProps:
+            if prop is not None and str(prop) != "":
+                return True
+        return False
 
     def getSigInTimeWindow(
         self,
@@ -1073,13 +1175,192 @@ class SignalObj:
         return np.atleast_1d(times), np.atleast_1d(values)
 
     # ------------------------------------------------------------------
+    # Alignment / windowing (match Matlab SignalObj)
+    # ------------------------------------------------------------------
+    def alignToMax(self) -> tuple["SignalObj", float]:
+        """Align all dimensions so their peaks coincide at the mean peak time.
+
+        Returns ``(aligned_signal, mean_peak_time)``.
+        Matches Matlab ``SignalObj.alignToMax()``.
+        """
+        peak_times, _ = self.findGlobalPeak("maxima")
+        mean_time = float(np.mean(peak_times))
+        delta_t = -(peak_times - mean_time)
+        aligned = self.getSubSignal(1).shift(float(delta_t[0]))
+        for i in range(1, self.dimension):
+            aligned = aligned.merge(self.getSubSignal(i + 1).shift(float(delta_t[i])))
+        return aligned, mean_time
+
+    def windowedSignal(self, windowTimes) -> "SignalObj":
+        """Extract and concatenate windowed segments.
+
+        Matches Matlab ``SignalObj.windowedSignal()``.
+        """
+        windowTimes = np.asarray(windowTimes, dtype=float).ravel()
+        result = None
+        for i in range(len(windowTimes) - 1):
+            seg = self.getSigInTimeWindow(float(windowTimes[i]), float(windowTimes[i + 1]))
+            if i == 0:
+                result = seg
+            else:
+                seg = seg.shift(-float(windowTimes[i]))
+                result = result.merge(seg)
+        return result if result is not None else self.copySignal()
+
+    def normWindowedSignal(
+        self,
+        windowTimes,
+        numPoints: int = 100,
+        lbound: float | None = None,
+        ubound: float | None = None,
+    ) -> "SignalObj":
+        """Normalize windowed signal segments to a common time axis.
+
+        Matches Matlab ``SignalObj.normWindowedSignal()``.
+        """
+        windowTimes = np.asarray(windowTimes, dtype=float).ravel()
+        columns: list[np.ndarray] = []
+        for i in range(len(windowTimes) - 1):
+            minT = float(windowTimes[i])
+            maxT = float(windowTimes[i + 1])
+            dur = abs(maxT - minT)
+            if lbound is not None and ubound is not None:
+                if dur > ubound or dur < lbound:
+                    continue
+            seg = self.getSigInTimeWindow(minT, maxT)
+            norm_time = np.linspace(minT, maxT, numPoints)
+            # Matlab uses interp1(..., 'nearest', 0) — nearest-neighbor with 0-fill
+            from scipy.interpolate import interp1d as _interp1d
+            _ifn = _interp1d(seg.time, seg.data[:, 0], kind="nearest",
+                             bounds_error=False, fill_value=0.0)
+            interp_data = _ifn(norm_time)
+            columns.append(interp_data)
+
+        if not columns:
+            return self.copySignal()
+        data = np.column_stack(columns)
+        act_time = np.arange(numPoints, dtype=float) / float(numPoints)
+        labels = list(self.dataLabels[:1]) * data.shape[1]
+        return self.__class__(act_time, data, self.name, self.xlabelval, "%", self.yunits, labels)
+
+    def getSubSignalsWithinNStd(self, nStd: float = 2.0) -> tuple["SignalObj", np.ndarray]:
+        """Return sub-signals within *nStd* standard deviations of the mean.
+
+        Returns ``(filtered_signal, selected_indices)``.
+        Matches Matlab ``SignalObj.getSubSignalsWithinNStd()``.
+        """
+        mean_sig = np.mean(self.data, axis=1)
+        std_sig = np.std(self.data, axis=1, ddof=1)
+        min_val = mean_sig - nStd * std_sig
+        max_val = mean_sig + nStd * std_sig
+        # A column passes if ALL rows are within [minVal, maxVal]
+        above_min = np.all(self.data >= min_val[:, None], axis=0)
+        below_max = np.all(self.data <= max_val[:, None], axis=0)
+        sig_index = np.flatnonzero(above_min & below_max)
+        if sig_index.size == 0:
+            return self.copySignal(), sig_index
+        # 1-based indices for getSubSignal
+        return self.getSubSignal((sig_index + 1).tolist()), sig_index
+
+    # ------------------------------------------------------------------
+    # Variability plots (match Matlab SignalObj)
+    # ------------------------------------------------------------------
+    def plotAllVariability(
+        self,
+        faceColor=None,
+        linewidth: float = 3.0,
+        ciUpper: float | np.ndarray = 1.96,
+        ciLower: float | np.ndarray | None = None,
+        ax=None,
+    ):
+        """Plot mean ± CI shaded area.  Matches Matlab ``plotAllVariability``.
+
+        Parameters
+        ----------
+        faceColor : color, optional
+            Fill colour (default: tab:blue).
+        linewidth : float
+            Width of mean line.
+        ciUpper, ciLower : float or array
+            Number of std-devs (scalar) or explicit bounds (array).
+        ax : matplotlib Axes, optional
+        """
+        import matplotlib.pyplot as plt
+
+        if faceColor is None:
+            faceColor = "tab:blue"
+        if ciLower is None:
+            ciLower = ciUpper
+        if ax is None:
+            ax = plt.gca()
+
+        mean_sig = np.mean(self.data, axis=1)
+        std_sig = np.std(self.data, axis=1, ddof=1)
+
+        ciUpper_arr = np.atleast_1d(ciUpper).ravel()
+        ciLower_arr = np.atleast_1d(ciLower).ravel()
+        if ciUpper_arr.size == 1:
+            ci_top = mean_sig + float(ciUpper_arr[0]) * std_sig
+        else:
+            ci_top = mean_sig + ciUpper_arr[:len(mean_sig)]
+        if ciLower_arr.size == 1:
+            ci_bottom = mean_sig - float(ciLower_arr[0]) * std_sig
+        else:
+            ci_bottom = mean_sig - ciLower_arr[:len(mean_sig)]
+
+        ax.fill_between(self.time, ci_bottom, ci_top, color=faceColor, alpha=0.5, edgecolor="none")
+        (h,) = ax.plot(self.time, mean_sig, "k-", linewidth=linewidth)
+        return h
+
+    def plotVariability(self, selectorArray=None, ax=None):
+        """Plot mean ± CI for each label group.  Matches Matlab ``plotVariability``.
+
+        Parameters
+        ----------
+        selectorArray : list of list[int] or list[int], optional
+        ax : matplotlib Axes, optional
+        """
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            ax = plt.gca()
+        if selectorArray is None:
+            if not self.areDataLabelsEmpty():
+                unique_labels = list(dict.fromkeys(self.dataLabels))
+                selectorArray = [self.getIndexFromLabel(lbl) for lbl in unique_labels]
+            else:
+                selectorArray = list(range(1, self.dimension + 1))
+
+        _TAB_COLORS = [
+            "tab:blue", "tab:orange", "tab:green", "tab:red",
+            "tab:purple", "tab:brown", "tab:pink", "tab:gray",
+        ]
+        handles = []
+        if isinstance(selectorArray, list) and selectorArray and isinstance(selectorArray[0], (list, tuple, np.ndarray)):
+            for i, sel in enumerate(selectorArray):
+                h = self.getSubSignal(sel).plotAllVariability(
+                    faceColor=_TAB_COLORS[i % len(_TAB_COLORS)], ax=ax
+                )
+                handles.append(h)
+        else:
+            h = self.getSubSignal(selectorArray).plotAllVariability(ax=ax)
+            handles.append(h)
+        return handles
+
+    # ------------------------------------------------------------------
     # Cross-covariance (match Matlab SignalObj.xcov)
     # ------------------------------------------------------------------
     def xcov(self, other: "SignalObj | None" = None, maxlag: int | None = None,
              scaleOpt: str = "biased") -> "SignalObj":
-        """Cross-covariance (mean-removed xcorr).  Matches Matlab ``xcov``."""
+        """Cross-covariance (mean-removed xcorr).  Matches Matlab ``xcov``.
+
+        When called with no *other* argument (auto-covariance), only
+        non-negative lags are returned — matching Matlab behaviour where
+        ``data=tempC(M-1:end,index)`` and ``lags=tempLags(M-1:end)``.
+        """
+        auto = other is None
         s1 = self
-        s2 = self if other is None else other
+        s2 = self if auto else other
         s1c, s2c = s1.makeCompatible(s2)
 
         data_columns: list[np.ndarray] = []
@@ -1109,6 +1390,12 @@ class SignalObj:
                     corr = corr[keep]
                     lags = lags[keep]
 
+                # Matlab returns only non-negative lags for auto-covariance
+                if auto:
+                    nonneg = lags >= 0
+                    corr = corr[nonneg]
+                    lags = lags[nonneg]
+
                 if lag_index is None:
                     lag_index = lags.astype(float) / max(float(s1c.sampleRate), 1e-12)
                 data_columns.append(np.asarray(corr, dtype=float))
@@ -1133,40 +1420,63 @@ class SignalObj:
     def periodogram(self, NFFT: int | None = None) -> tuple[np.ndarray, np.ndarray]:
         """Power spectral density via periodogram (Matlab ``periodogram``).
 
-        Returns ``(frequencies, psd)`` arrays.
+        Loops over all signal dimensions like the Matlab implementation.
+
+        Returns ``(frequencies, psd)`` where *psd* has shape
+        ``(nfreqs,)`` for 1-D signals or ``(nfreqs, dimension)`` for
+        multi-dimensional signals.
         """
         from scipy.signal import periodogram as _periodogram
 
         fs = float(self.sampleRate)
-        x = self.data[:, 0] if self.data.ndim == 2 else self.data
-        f, Pxx = _periodogram(x, fs=fs, nfft=NFFT, window="boxcar",
-                              scaling="density")
-        return f, Pxx
+        psd_cols: list[np.ndarray] = []
+        f_out: np.ndarray | None = None
+        ndim = self.dimension
+        for i in range(ndim):
+            x = self.data[:, i] if self.data.ndim == 2 else self.data
+            f, Pxx = _periodogram(x, fs=fs, nfft=NFFT, window="boxcar",
+                                  scaling="density")
+            if f_out is None:
+                f_out = f
+            psd_cols.append(Pxx)
+        if ndim == 1:
+            return f_out, psd_cols[0]
+        return f_out, np.column_stack(psd_cols)
 
-    def MTMspectrum(self, NW: float = 4.0, Kmax: int | None = None,
-                    NFFT: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+    def MTMspectrum(self, NW: float = 4.0, NFFT: int | None = None,
+                    Pval: float = 0.95,
+                    Kmax: int | None = None,
+                    ) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
         """Multi-taper spectral estimate (Matlab ``MTMspectrum``).
 
         Uses discrete prolate spheroidal sequences (DPSS / Slepian tapers).
+        Loops over all signal dimensions like the Matlab implementation.
 
         Parameters
         ----------
         NW : float
             Time-bandwidth product (default 4).
-        Kmax : int, optional
-            Number of tapers (default ``2*NW - 1``).
         NFFT : int, optional
             FFT length (default next power of 2 >= N).
+        Pval : float, optional
+            Confidence level for the chi-squared confidence interval
+            (default 0.95).  Set to ``None`` to skip CI computation.
+        Kmax : int, optional
+            Number of tapers (default ``2*NW - 1``).
 
         Returns
         -------
         frequencies : ndarray
         psd : ndarray
+            Shape ``(nfreqs,)`` for 1-D or ``(nfreqs, dimension)``.
+        psd_ci : ndarray or None
+            Shape ``(nfreqs, 2)`` for 1-D or ``(nfreqs, 2*dimension)``
+            containing ``[lower, upper]`` columns per dimension.
+            ``None`` when *Pval* is ``None``.
         """
         from scipy.signal.windows import dpss
 
-        x = self.data[:, 0] if self.data.ndim == 2 else self.data
-        N = len(x)
+        N = self.data.shape[0]
         fs = float(self.sampleRate)
         if Kmax is None:
             Kmax = int(2 * NW - 1)
@@ -1174,24 +1484,49 @@ class SignalObj:
             NFFT = int(2 ** np.ceil(np.log2(N)))
 
         tapers, eigenvalues = dpss(N, NW, Kmax, return_ratios=True)
-        # tapers shape: (Kmax, N)
-        # Compute tapered FFTs
-        Sk = np.zeros((Kmax, NFFT // 2 + 1))
-        for k in range(Kmax):
-            xw = x * tapers[k]
-            Xf = np.fft.rfft(xw, n=NFFT)
-            Sk[k] = np.abs(Xf) ** 2
-
-        # Weighted average by eigenvalues
-        weights = eigenvalues / eigenvalues.sum()
-        psd = np.dot(weights, Sk) * (2.0 / fs)
-        # DC and Nyquist don't get doubled
-        psd[0] /= 2.0
-        if NFFT % 2 == 0:
-            psd[-1] /= 2.0
-
         frequencies = np.fft.rfftfreq(NFFT, d=1.0 / fs)
-        return frequencies, psd
+        nfreqs = len(frequencies)
+
+        # chi-squared CI bounds (degrees of freedom = 2*Kmax)
+        ci_lo_factor = ci_hi_factor = None
+        if Pval is not None:
+            from scipy.stats import chi2
+            dof = 2 * Kmax
+            alpha = 1.0 - Pval
+            ci_lo_factor = dof / chi2.ppf(1.0 - alpha / 2.0, dof)
+            ci_hi_factor = dof / chi2.ppf(alpha / 2.0, dof)
+
+        ndim = self.dimension
+        psd_cols: list[np.ndarray] = []
+        ci_cols: list[np.ndarray] = []
+
+        for di in range(ndim):
+            x = self.data[:, di] if self.data.ndim == 2 else self.data
+            Sk = np.zeros((Kmax, nfreqs))
+            for k in range(Kmax):
+                xw = x * tapers[k]
+                Xf = np.fft.rfft(xw, n=NFFT)
+                Sk[k] = np.abs(Xf) ** 2
+
+            weights = eigenvalues / eigenvalues.sum()
+            psd = np.dot(weights, Sk) * (2.0 / fs)
+            psd[0] /= 2.0
+            if NFFT % 2 == 0:
+                psd[-1] /= 2.0
+            psd_cols.append(psd)
+
+            if Pval is not None:
+                ci_cols.append(psd * ci_lo_factor)
+                ci_cols.append(psd * ci_hi_factor)
+
+        if ndim == 1:
+            psd_out = psd_cols[0]
+            ci_out = np.column_stack(ci_cols) if ci_cols else None
+        else:
+            psd_out = np.column_stack(psd_cols)
+            ci_out = np.column_stack(ci_cols) if ci_cols else None
+
+        return frequencies, psd_out, ci_out
 
     def spectrogram(self, nperseg: int = 256, noverlap: int | None = None,
                     NFFT: int | None = None,
@@ -1339,15 +1674,28 @@ class Covariate(SignalObj):
         newCov.setConfInterval(confInt)
         return newCov
 
-    def getSigRep(self, repType: str = "standard") -> SignalObj:
+    def getSigRep(self, repType: str = "standard") -> "Covariate":
+        """Return a signal representation of this covariate.
+
+        Parameters
+        ----------
+        repType : str
+            ``'standard'`` returns ``self`` unchanged.
+            ``'zero-mean'`` returns ``self - mean(self)`` with confidence
+            intervals propagated (Matlab parity: uses operator overload so
+            CIs shift by the same constant).
+        """
         rep = str(repType).strip().lower()
         if rep == "standard":
             return self
         if rep == "zero-mean":
-            centered = self.data - np.mean(self.data, axis=0, keepdims=True)
-            return Covariate(
-                self.time,
-                centered,
+            # Build a constant Covariate holding the per-column mean so that
+            # the CI-propagating __sub__ is invoked (Matlab: ``self - self.mu``).
+            mu_vals = np.mean(self.data, axis=0, keepdims=True)
+            mu_broadcast = np.repeat(mu_vals, len(self.time), axis=0)
+            mu_cov = Covariate(
+                self.time.copy(),
+                mu_broadcast,
                 self.name,
                 self.xlabelval,
                 self.xunits,
@@ -1355,6 +1703,7 @@ class Covariate(SignalObj):
                 list(self.dataLabels),
                 list(self.plotProps),
             )
+            return self - mu_cov
         raise ValueError("repType must be either 'zero-mean' or 'standard'")
 
     def plot(self, selectorArray=None, plotPropsIn=None, handle=None):
@@ -1582,7 +1931,9 @@ class nspikeTrain:
     def computeStatistics(self, makePlots: int = 0) -> None:
         self.avgFiringRate = self.firing_rate_hz
         isi = self.getISIs()
-        spike_times = self.spikeTimes
+        # Filter spike times to [minTime, maxTime] so burst statistics
+        # remain valid after setMinTime / setMaxTime (Matlab parity).
+        spike_times = self.getSpikeTimes(self.minTime, self.maxTime)
         mode_isi = _matlab_mode_1d(isi)
         self.burstIndex = float(1.0 / mode_isi / self.avgFiringRate) if np.isfinite(mode_isi) and self.avgFiringRate > 0 else np.nan
         self.B = np.nan
@@ -1722,7 +2073,7 @@ class nspikeTrain:
         # clearing it through the public min/max setters.
         self.minTime = float(sig.minTime)
         self.maxTime = float(sig.maxTime)
-        self.computeStatistics(-1)
+        self.computeStatistics(0)
         return self.sigRep
 
     def clearSigRep(self) -> None:
@@ -1733,12 +2084,12 @@ class nspikeTrain:
     def setMinTime(self, minTime: float) -> None:
         self.minTime = float(minTime)
         self.clearSigRep()
-        self.computeStatistics(-1)
+        self.computeStatistics(0)
 
     def setMaxTime(self, maxTime: float) -> None:
         self.maxTime = float(maxTime)
         self.clearSigRep()
-        self.computeStatistics(-1)
+        self.computeStatistics(0)
 
     def resample(self, sampleRate: float) -> "nspikeTrain":
         self.setSigRep(1.0 / float(sampleRate), self.minTime, self.maxTime)
@@ -1883,9 +2234,20 @@ class nspikeTrain:
         return ax
 
     def plotISIHistogram(self, minTime: float | None = None, maxTime: float | None = None, numBins: int | None = None, handle=None):
+        """Plot ISI histogram (Matlab ``plotISIHistogram``).
+
+        Parameters
+        ----------
+        minTime, maxTime : float, optional
+            Time window for ISIs.  Defaults to the spike train bounds.
+        numBins : int, optional
+            Number of histogram bins.  When *None* the bin width defaults to
+            1 ms (Matlab default behaviour).
+        handle : matplotlib Axes, optional
+            Axes to plot into.
+        """
         import matplotlib.pyplot as plt
 
-        del numBins
         ax = plt.gca() if handle is None else handle
         if maxTime is None:
             maxTime = self.maxTime
@@ -1895,8 +2257,16 @@ class nspikeTrain:
         counts = np.array([], dtype=float)
         bins = np.array([], dtype=float)
         if isi.size:
-            bin_width = 0.001
-            bins = np.arange(0.0, float(np.max(isi)) + bin_width, bin_width, dtype=float)
+            isi_max = float(np.max(isi))
+            if numBins is not None and int(numBins) > 0:
+                # Linearly-spaced bins when numBins is specified (Matlab parity).
+                n = int(numBins)
+                bin_width = max(isi_max / n, 1e-12)
+                bins = np.linspace(0.0, isi_max, n + 1, dtype=float)
+            else:
+                # Default: 1 ms bin width.
+                bin_width = 0.001
+                bins = np.arange(0.0, isi_max + bin_width, bin_width, dtype=float)
             if bins.size < 2:
                 bins = np.array([0.0, bin_width], dtype=float)
             idx = np.searchsorted(bins, isi, side="right") - 1
@@ -1907,10 +2277,10 @@ class nspikeTrain:
             )
             idx = np.clip(idx, 0, bins.size - 1)
             counts = np.bincount(idx, minlength=bins.size).astype(float)
-            centers = bins
+            centers = bins[:counts.size] if bins.size > counts.size else bins
             ax.bar(
                 centers,
-                counts,
+                counts[:centers.size],
                 width=bin_width,
                 align="edge",
                 edgecolor="none",
@@ -1973,6 +2343,11 @@ class nspikeTrain:
         return lines
 
     def nstCopy(self) -> "nspikeTrain":
+        """Return a deep copy (Matlab ``nstCopy``).
+
+        Matlab's ``nstCopy`` builds the copy's sigRep and calls
+        ``computeStatistics(0)`` so the copy has valid burst parameters.
+        """
         return nspikeTrain(
             self.spikeTimes.copy(),
             self.name,
@@ -1983,7 +2358,7 @@ class nspikeTrain:
             self.xunits,
             self.yunits,
             self.dataLabels,
-            -1,
+            0,
         )
 
     def to_binned_counts(self, bin_edges: Sequence[float]) -> np.ndarray:

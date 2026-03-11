@@ -44,7 +44,7 @@ def main() -> None:
     amp_hz = 10.0
     lam = np.clip(baseline_hz + amp_hz * np.sin(2.0 * np.pi * f_hz * t), 0.2, None)
 
-    lambda_cov = Covariate(time=t, data=lam, name="Lambda", units="spikes/s", labels=["lambda"])
+    lambda_cov = Covariate(time=t, data=lam, name="Lambda", yunits="spikes/s", dataLabels=["lambda"])
     spikes = CIF.simulateCIFByThinningFromLambda(lambda_cov, 1, dt)
     spike_times = _extract_first_spike_times(spikes)
 

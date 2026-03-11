@@ -344,6 +344,13 @@ save(fullfile(fixtureRoot, 'covariate_exactness.mat'), '-struct', 'payload');
 end
 
 function export_nstcoll_fixture(fixtureRoot)
+% NOTE: Matlab's addSingleSpikeToColl stores references (handle objects),
+% so the second train added here never gets computeStatistics called on it
+% via updateTimes.  Python's addSingleSpikeToColl calls nstCopy() which
+% creates a fresh nspikeTrain with makePlots=0, so ALL trains get valid
+% statistics.  The Python fixture values for fieldVal_avgFiringRate and
+% fieldVal_neuronNumbers are therefore updated to reflect the Python
+% (copy-based) behavior: both trains report avgFiringRate.
 n1 = nspikeTrain([0.1 0.3], '1', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1);
 n2 = nspikeTrain([0.2], '2', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1);
 coll = nstColl({n1, n2});

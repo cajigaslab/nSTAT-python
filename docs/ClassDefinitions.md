@@ -102,11 +102,20 @@ Primary notebook: `notebooks/nstCollExamples.ipynb`
 **Time operations**:
 `shiftTime`, `setMinTime`, `setMaxTime`
 
+**Data export**:
+`dataToMatrix`, `resample`
+
+**PSTH**:
+`psth`, `psthGLM`, `estimateVarianceAcrossTrials`, `psthBars`
+
 **SSGLM (state-space GLM)**:
 `ssglm`, `ssglmFB`
 
 **Basis generation**:
 `generateUnitImpulseBasis`
+
+**Plotting**:
+`plot`
 
 ### `History` (`nstat.History`)
 
@@ -149,7 +158,8 @@ Primary notebook: `notebooks/TrialExamples.ipynb`
 `flattenMask`
 
 **Utilities**:
-`shiftCovariates`, `resampleEnsColl`, `restoreToOriginal`, `plot`
+`shiftCovariates`, `resampleEnsColl`, `restoreToOriginal`, `getAllLabels`,
+`plot`
 
 ### `TrialConfig` (`nstat.TrialConfig`)
 
@@ -230,7 +240,8 @@ Alias of `FitSummary`. Aggregates multiple `FitResult` objects.
 
 **Plotting**:
 `plotIC`, `plotAIC`, `plotBIC`, `plotlogLL`, `plotResidualSummary`,
-`plotSummary`, `boxPlot`
+`plotSummary`, `boxPlot`, `plotAllCoeffs`, `plot3dCoeffSummary`,
+`plot2dCoeffSummary`, `plotKSSummary`
 
 ### `DecodingAlgorithms` (`nstat.DecodingAlgorithms`)
 
@@ -238,10 +249,13 @@ Primary notebook: `notebooks/DecodingExample.ipynb`
 
 **Point-process decode filters**:
 `PPDecodeFilterLinear`, `PPDecodeFilter`, `PPHybridFilterLinear`,
-`ComputeStimulusCIs`
+`ComputeStimulusCIs`, `computeSpikeRateCIs`
 
 **Kalman and unscented Kalman filters**:
 `kalman_filter`, `PP_fixedIntervalSmoother`, `ukf`
+
+**Helper methods**:
+`PPDecode_predict`, `PPDecode_updateLinear`
 
 **State-space GLM (SSGLM) — EM algorithm**:
 `PPSS_EStep`, `PPSS_MStep`, `PPSS_EM`, `PPSS_EMFB`

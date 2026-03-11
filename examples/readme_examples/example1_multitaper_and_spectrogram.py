@@ -31,10 +31,10 @@ def main() -> None:
     time = np.arange(0.0, duration_s, dt, dtype=float)
 
     signal = np.sin(2.0 * np.pi * f0_hz * time)
-    sig_obj = SignalObj(time=time, data=signal, name="sine_signal", units="a.u.")
+    sig_obj = SignalObj(time=time, data=signal, name="sine_signal", yunits="a.u.")
 
     try:
-        freq_hz, psd = sig_obj.MTMspectrum()
+        freq_hz, psd, _ci = sig_obj.MTMspectrum()
     except Exception:
         freq_hz, psd = _fallback_multitaper_psd(signal, fs_hz)
 

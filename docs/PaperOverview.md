@@ -88,10 +88,16 @@ map to:
 **Point-process adaptive filters (Section 2.5)**:
 
 - `DecodingAlgorithms.PPDecodeFilterLinear` — linear-CIF point-process
-  adaptive filter for continuous stimulus decoding.
+  adaptive filter for continuous stimulus decoding. Supports goal-directed
+  decoding via backward information filter (Srinivasan et al. 2006) when
+  `yT` and `PiT` target parameters are provided.
 - `DecodingAlgorithms.PPDecodeFilter` — general CIF version using symbolic
   gradients/Jacobians.
-- `DecodingAlgorithms.ComputeStimulusCIs` — stimulus confidence intervals.
+- `DecodingAlgorithms.ComputeStimulusCIs` — stimulus confidence intervals
+  via Monte Carlo sampling (dual-path: 4-D SSGLM cross-trial + 3-D smoother
+  z-score).
+- `DecodingAlgorithms.computeSpikeRateCIs` — spike rate confidence intervals
+  and pairwise significance testing across trials.
 - `DecodingAlgorithms.PP_fixedIntervalSmoother` — fixed-interval smoother
   for off-line smoothing of decode estimates.
 
@@ -100,6 +106,8 @@ map to:
 - `DecodingAlgorithms.PPHybridFilterLinear` — joint discrete/continuous state
   estimation combining point-process observations with a hidden Markov model
   over discrete states and Kalman filtering over continuous kinematics.
+  Supports goal-directed decoding via per-model backward information filters
+  when `yT` and `PiT` are provided.
 
 **Kalman and UKF filters**:
 

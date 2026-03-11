@@ -42,7 +42,18 @@ class Events:
         event_color = structure.get("eventColor", "r")
         return Events(event_times, event_labels, event_color)
 
-    def plot(self, *_, handle=None, **__):
+    def plot(self, *_, handle=None, colorString: str | None = None, **__):
+        """Plot event markers on one or more axes.
+
+        Parameters
+        ----------
+        handle : Axes or list[Axes], optional
+            Axes to plot into (default: current axes).
+        colorString : str, optional
+            Override line colour for event lines (default: ``'r'``).
+            Matches Matlab ``Events.plot`` ``colorString`` parameter.
+        """
+        color = colorString if colorString is not None else "r"
         if handle is None:
             handles = [plt.gca()]
         elif isinstance(handle, Sequence) and not hasattr(handle, "plot"):
@@ -62,7 +73,7 @@ class Events:
                         np.full(self.eventTimes.shape, float(v[3]), dtype=float),
                     ]
                 )
-                ax.plot(times, y, "r", linewidth=4)
+                ax.plot(times, y, color, linewidth=4)
                 for event_time, label in zip(self.eventTimes, self.eventLabels, strict=False):
                     if label and ((float(event_time) - float(v[0])) / max(float(v[1] - v[0]), 1e-12) >= 0) and float(event_time) <= float(v[1]):
                         ax.text(
