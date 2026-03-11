@@ -18,6 +18,27 @@ MATLAB_COLOR_ORDER = np.asarray(
 
 
 class ConfidenceInterval:
+    """Confidence interval for a time series or Covariate.
+
+    Stores a pair of (lower, upper) bound traces over a shared time
+    axis, with plotting support for both line and shaded-patch styles.
+
+    Parameters
+    ----------
+    time : array_like
+        Time vector.
+    bounds : array_like, shape (n, 2)
+        Lower and upper bounds at each time point.
+    *args
+        Positional metadata: ``(name, xlabelval, xunits, yunits,
+        dataLabels, plotProps)``.  If a single short string is passed
+        it is interpreted as the colour (Matlab compatibility).
+    color : str or None
+        Line / patch colour.  Default ``'b'``.
+    value : float, default 0.95
+        Confidence level (e.g. 0.95 for 95 %).
+    """
+
     def __init__(self, time, bounds, *args, color: str | None = None, value: float = 0.95) -> None:
         t = np.asarray(time, dtype=float).reshape(-1)
         b = np.asarray(bounds, dtype=float)
@@ -89,15 +110,19 @@ class ConfidenceInterval:
         return self.bounds[:, 1]
 
     def setColor(self, color: str) -> None:
+        """Set the plot colour."""
         self.color = str(color)
 
     def setValue(self, value: float) -> None:
+        """Set the confidence level (e.g. 0.95 for 95 %)."""
         self.value = float(value)
 
     def dataToMatrix(self) -> np.ndarray:
+        """Return the bounds as an (n, 2) numpy array."""
         return np.asarray(self.bounds, dtype=float)
 
     def dataToStructure(self) -> dict:
+        """Serialise to a plain dictionary (matches Matlab ``dataToStructure``)."""
         return {
             "time": self.time.tolist(),
             "signals": {"values": self.bounds.tolist(), "dimensions": self.dimension},
@@ -160,10 +185,12 @@ class ConfidenceInterval:
         return ConfidenceInterval(self.time, np.column_stack([-self.upper, -self.lower]), self.color)
 
     def toStructure(self) -> dict:
+        """Alias for :meth:`dataToStructure`."""
         return self.dataToStructure()
 
     @staticmethod
     def fromStructure(structure: dict) -> "ConfidenceInterval":
+        """Reconstruct a ConfidenceInterval from a dictionary."""
         signals = structure.get("signals", {})
         values = signals.get("values", structure.get("data"))
         ci = ConfidenceInterval(
@@ -187,6 +214,25 @@ class ConfidenceInterval:
         return ci
 
     def plot(self, color: str | None = None, alphaVal: float = 0.2, drawPatches: int = 0, ax=None):
+        """Plot the confidence interval.
+
+        Parameters
+        ----------
+        color : str or None
+            Override colour (default: ``self.color``).
+        alphaVal : float, default 0.2
+            Transparency for shaded patches.
+        drawPatches : int, default 0
+            If ``1``, draw a shaded ``fill_between`` region instead of
+            lines.
+        ax : Axes or None
+            Matplotlib axes.  If ``None``, uses ``plt.gca()``.
+
+        Returns
+        -------
+        PolyCollection or list of Line2D
+            Plot handles.
+        """
         import matplotlib.pyplot as plt
 
         axis = plt.gca() if ax is None else ax

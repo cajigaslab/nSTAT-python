@@ -326,7 +326,36 @@ class CIFModel:
 
 
 class CIF:
-    """MATLAB-facing CIF object plus native Python simulation helpers."""
+    """Conditional Intensity Function for point-process modelling.
+
+    Encapsulates the regression coefficients, variable names, link function,
+    and optional spike-history terms that define a conditional intensity
+    function (CIF).  Supports symbolic differentiation (gradient / Jacobian)
+    for use in point-process adaptive filters and decoders.
+
+    Parameters
+    ----------
+    beta : array_like or None
+        Regression coefficients.
+    Xnames : sequence of str or None
+        Names of the variables in the order they appear in *beta*.
+    stimNames : sequence of str or None
+        Names of the subset of variables that define the stimulus.
+    fitType : {'poisson', 'binomial'}, default ``'poisson'``
+        Link function.  For Poisson: ``λΔ = exp(Xβ)``.
+        For binomial: ``λΔ = exp(Xβ) / (1 + exp(Xβ))``.
+    histCoeffs : array_like or None
+        Coefficients for each history window defined in *historyObj*.
+    historyObj : History or array_like or None
+        History object (or window-times vector) defining the spiking-
+        history basis.
+    nst : nspikeTrain or None
+        Spike train used to pre-compute history values.
+
+    See Also
+    --------
+    History, DecodingAlgorithms
+    """
 
     def __init__(
         self,
@@ -378,6 +407,7 @@ class CIF:
             self.setSpikeTrain(nst)
 
     def CIFCopy(self):
+        """Return a deep copy of this CIF object."""
         copied = CIF(
             beta=np.asarray(self.b, dtype=float).copy(),
             Xnames=list(self.varIn),
@@ -394,6 +424,7 @@ class CIF:
         return copied
 
     def setSpikeTrain(self, spikeTrain) -> None:
+        """Attach a spike train and pre-compute the history matrix."""
         if not isinstance(spikeTrain, nspikeTrain):
             spikeTrain = getattr(spikeTrain, "nstCopy", lambda: spikeTrain)()
         self.spikeTrain = spikeTrain.nstCopy()
@@ -403,6 +434,14 @@ class CIF:
             self.historyMat = np.zeros((0, 0), dtype=float)
 
     def setHistory(self, histObj) -> None:
+        """Set the History object for this CIF.
+
+        Parameters
+        ----------
+        histObj : History or array_like
+            A ``History`` object, or a vector of window-times from which
+            one will be created.
+        """
         if isinstance(histObj, History):
             self.history = History(histObj.windowTimes, histObj.minTime, histObj.maxTime, histObj.name)
         elif isinstance(histObj, (np.ndarray, Sequence)) and not isinstance(histObj, (str, bytes)):
@@ -541,24 +580,93 @@ class CIF:
         return np.zeros_like(outer) if log else lambda_delta * outer
 
     def evalLambdaDelta(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None):
+        """Evaluate λΔ at the given stimulus values.
+
+        Parameters
+        ----------
+        stimVal : array_like
+            Stimulus variable values.
+        time_index : int or None
+            1-based time index into the pre-computed history matrix.
+        nst : nspikeTrain or None
+            Spike train for on-the-fly history computation.
+
+        Returns
+        -------
+        float
+            Scalar value of λΔ.
+        """
         return self._lambda_delta(stimVal, time_index=time_index, nst=nst)
 
     def evalGradient(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None):
+        """Gradient of λΔ with respect to the stimulus variables.
+
+        Returns
+        -------
+        ndarray, shape (1, n_stim)
+            Row vector of partial derivatives.
+        """
         return self._gradient(stimVal, time_index=time_index, nst=nst)
 
     def evalGradientLog(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None):
+        """Gradient of log(λΔ) with respect to the stimulus variables.
+
+        Returns
+        -------
+        ndarray, shape (1, n_stim)
+            Row vector of partial derivatives.
+        """
         return self._gradient(stimVal, time_index=time_index, nst=nst, log=True)
 
     def evalJacobian(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None):
+        """Hessian of λΔ with respect to the stimulus variables.
+
+        Returns
+        -------
+        ndarray, shape (n_stim, n_stim)
+            Second-derivative matrix.
+        """
         return self._jacobian(stimVal, time_index=time_index, nst=nst)
 
     def evalJacobianLog(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None):
+        """Hessian of log(λΔ) with respect to the stimulus variables.
+
+        Returns
+        -------
+        ndarray, shape (n_stim, n_stim)
+            Second-derivative matrix.
+        """
         return self._jacobian(stimVal, time_index=time_index, nst=nst, log=True)
 
     def evalLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        """Evaluate λΔ with gamma-scaled history coefficients.
+
+        Parameters
+        ----------
+        stimVal : array_like
+            Stimulus variable values.
+        time_index : int or None
+            1-based time index into the history matrix.
+        nst : nspikeTrain or None
+            Spike train for on-the-fly history computation.
+        gamma : array_like or None
+            Scaling factors applied to the history coefficients.
+
+        Returns
+        -------
+        float
+            Scalar value of λΔ.
+        """
         return self._lambda_delta(stimVal, time_index=time_index, nst=nst, gamma=gamma)
 
     def evalLogLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        """Evaluate log(λΔ) with gamma-scaled history coefficients.
+
+        Returns
+        -------
+        float
+            Scalar value of log(λΔ).
+        """
         if self._expression_surface is not None and self._expression_surface["log_lambda_gamma_fn"] is not None:
             return float(
                 np.asarray(
@@ -571,6 +679,7 @@ class CIF:
         return float(np.log(np.clip(self.evalLDGamma(stimVal, time_index=time_index, nst=nst, gamma=gamma), 1e-12, None)))
 
     def evalGradientLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        """Gradient of λΔ w.r.t. gamma (history-coefficient scaling)."""
         if self._expression_surface is not None and self._expression_surface["gradient_gamma_fn"] is not None:
             return _reshape_row(
                 self._expression_surface["gradient_gamma_fn"](
@@ -581,6 +690,7 @@ class CIF:
         return self._gradient(stimVal, time_index=time_index, nst=nst, gamma=gamma)
 
     def evalGradientLogLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        """Gradient of log(λΔ) w.r.t. gamma (history-coefficient scaling)."""
         if self._expression_surface is not None and self._expression_surface["gradient_log_gamma_fn"] is not None:
             return _reshape_row(
                 self._expression_surface["gradient_log_gamma_fn"](
@@ -591,6 +701,7 @@ class CIF:
         return self._gradient(stimVal, time_index=time_index, nst=nst, gamma=gamma, log=True)
 
     def evalJacobianLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        """Hessian of λΔ w.r.t. gamma (history-coefficient scaling)."""
         if self._expression_surface is not None and self._expression_surface["jacobian_gamma_fn"] is not None:
             return _reshape_square(
                 self._expression_surface["jacobian_gamma_fn"](
@@ -601,6 +712,7 @@ class CIF:
         return self._jacobian(stimVal, time_index=time_index, nst=nst, gamma=gamma)
 
     def evalJacobianLogLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        """Hessian of log(λΔ) w.r.t. gamma (history-coefficient scaling)."""
         if self._expression_surface is not None and self._expression_surface["jacobian_log_gamma_fn"] is not None:
             return _reshape_square(
                 self._expression_surface["jacobian_log_gamma_fn"](
@@ -611,12 +723,29 @@ class CIF:
         return self._jacobian(stimVal, time_index=time_index, nst=nst, gamma=gamma, log=True)
 
     def isSymBeta(self) -> bool:
+        """Return ``True`` if the coefficients contain symbolic expressions."""
         beta = np.asarray(self.b)
         if beta.dtype == object:
             return True
         return any(type(item).__module__.startswith("sympy") for item in beta.reshape(-1))
 
     def evaluate(self, design_matrix: np.ndarray, *, delta: float = 1.0, history_matrix: np.ndarray | None = None) -> np.ndarray:
+        """Evaluate the CIF on a full design matrix (vectorised).
+
+        Parameters
+        ----------
+        design_matrix : ndarray, shape (T, n_vars)
+            Design matrix with one row per time step.
+        delta : float, default 1.0
+            Bin width (seconds).  The returned rate is λΔ / Δ.
+        history_matrix : ndarray or None
+            Pre-computed history matrix, shape (T, n_hist).
+
+        Returns
+        -------
+        ndarray, shape (T,)
+            Firing rate in Hz.
+        """
         x = np.asarray(design_matrix, dtype=float)
         if x.ndim == 1:
             x = x[:, None]
@@ -650,6 +779,7 @@ class CIF:
         return lambda_delta / max(float(delta), 1e-12)
 
     def to_covariate(self, time: Sequence[float], design_matrix: np.ndarray, *, delta: float = 1.0, name: str = "lambda") -> Covariate:
+        """Evaluate the CIF and return the result as a :class:`Covariate`."""
         rate = self.evaluate(design_matrix, delta=delta)
         return Covariate(time, rate, name, "time", "s", "spikes/sec", [name])
 
@@ -664,6 +794,35 @@ class CIF:
         thinning_values: np.ndarray | None = None,
         return_details: bool = False,
     ) -> SpikeTrainCollection:
+        """Simulate spike trains from a given λ(t) via thinning.
+
+        Uses the thinning (rejection) algorithm: propose spikes from a
+        homogeneous Poisson process at the bound rate, then accept each
+        candidate with probability λ(t) / λ_max.
+
+        Parameters
+        ----------
+        lambda_covariate : Covariate
+            Conditional intensity function time series (Hz).
+        numRealizations : int, default 1
+            Number of independent spike-train realisations.
+        maxTimeRes : float or None
+            Minimum inter-spike interval (seconds).  Spikes closer than
+            this are merged.
+        seed : int or None
+            Random seed for reproducibility.
+        random_values : ndarray or None
+            Pre-drawn uniform random values for the proposal process.
+        thinning_values : ndarray or None
+            Pre-drawn uniform random values for thinning acceptance.
+        return_details : bool, default False
+            If ``True``, return ``(collection, details_dict)`` instead.
+
+        Returns
+        -------
+        SpikeTrainCollection
+            Collection of simulated spike trains.
+        """
         if int(numRealizations) < 1:
             raise ValueError("numRealizations must be >= 1")
 
@@ -789,6 +948,11 @@ class CIF:
         seed: int | None = None,
         return_lambda: bool = False,
     ):
+        """Simulate a point process via the thinning algorithm.
+
+        Alias for :meth:`simulateCIF`.  See that method for full
+        parameter documentation.
+        """
         return CIF.simulateCIF(
             mu,
             hist,
@@ -818,6 +982,45 @@ class CIF:
         random_values: np.ndarray | None = None,
         return_details: bool = False,
     ):
+        """Simulate a point process from component kernels and inputs.
+
+        Constructs λΔ from the input terms
+        ``μ + stim ∗ inputStimSignal + hist ∗ spikeHistory + ens ∗ inputEnsSignal``
+        and generates spike trains via Bernoulli draws at each time step.
+
+        Parameters
+        ----------
+        mu : float
+            Baseline (mean) log-rate of the process.
+        hist : transfer-function-like or array_like
+            History kernel convolved with the process's own spiking.
+        stim : transfer-function-like or array_like
+            Stimulus kernel convolved with *inputStimSignal*.
+        ens : transfer-function-like or array_like
+            Ensemble kernel convolved with *inputEnsSignal*.
+        inputStimSignal : Covariate
+            Stimulus time series.
+        inputEnsSignal : Covariate
+            Ensemble activity time series.
+        numRealizations : int, default 1
+            Number of independent realisations.
+        simType : {'binomial', 'poisson'}, default ``'binomial'``
+            Link function for computing λΔ.
+        seed : int or None
+            Random seed.
+        return_lambda : bool, default False
+            If ``True``, return ``(collection, lambda_array)``.
+        random_values : ndarray or None
+            Pre-drawn uniform random values for reproducibility.
+        return_details : bool, default False
+            If ``True``, return ``(collection, details_dict)``.
+
+        Returns
+        -------
+        SpikeTrainCollection
+            Simulated spike trains (or tuple if *return_lambda* /
+            *return_details* is ``True``).
+        """
         if int(numRealizations) < 1:
             raise ValueError("numRealizations must be >= 1")
         time = np.asarray(inputStimSignal.time, dtype=float).reshape(-1)

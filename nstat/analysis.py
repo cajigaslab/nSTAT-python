@@ -13,6 +13,22 @@ from .trial import ConfigCollection, SpikeTrainCollection, Trial
 
 
 def psth(spike_trains: Sequence[object], bin_edges: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Compute peri-stimulus time histogram (PSTH) from multiple spike trains.
+
+    Parameters
+    ----------
+    spike_trains : sequence of nspikeTrain
+        Collection of spike train objects, each with a ``spikeTimes`` attribute.
+    bin_edges : array_like, shape (n_bins + 1,)
+        Edges of the time bins (seconds).
+
+    Returns
+    -------
+    mean_rate_hz : ndarray, shape (n_bins,)
+        Trial-averaged firing rate in Hz for each bin.
+    counts : ndarray, shape (n_bins,)
+        Raw spike counts summed across all trials per bin.
+    """
     edges = np.asarray(bin_edges, dtype=float)
     if edges.ndim != 1 or edges.size < 2:
         raise ValueError("bin_edges must be 1D and length >= 2")
@@ -125,7 +141,19 @@ def _benjamini_hochberg(p_values: np.ndarray, alpha: float) -> np.ndarray:
 
 
 class Analysis:
-    """Canonical analysis entry points preserving MATLAB-facing workflow semantics."""
+    """Collection of static methods for GLM analysis of point-process data.
+
+    Every public method is a ``@staticmethod``; the class acts as a pure
+    namespace that mirrors the Matlab ``@Analysis`` class.  Two naming
+    conventions coexist:
+
+    * **PEP 8** (snake_case): ``run_analysis_for_neuron``, ``run_analysis_for_all_neurons``
+    * **Matlab-facing** (camelCase): ``RunAnalysisForNeuron``, ``RunAnalysisForAllNeurons``
+
+    See Also
+    --------
+    Trial, ConfigCollection, SpikeTrainCollection, History
+    """
 
     colors = ["b", "g", "r", "c", "m", "y", "k"]
 
@@ -145,6 +173,7 @@ class Analysis:
 
     @staticmethod
     def psth(spike_trains: Sequence[object], bin_edges: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Compute peri-stimulus time histogram.  Delegates to module-level :func:`psth`."""
         return psth(spike_trains, bin_edges)
 
     @staticmethod
@@ -157,6 +186,50 @@ class Analysis:
         l2: float = 1e-6,
         max_iter: int = 120,
     ):
+        """Fit a point-process GLM for a single neuron from a Trial.
+
+        Extracts the design matrix *X* from the current covariate masks,
+        history, and ensemble history in the Trial, and the observation
+        vector *Y*, then performs the GLM regression.
+
+        Parameters
+        ----------
+        tObj : Trial
+            Trial containing spike trains and covariates.
+        neuronNumber : int or str or sequence
+            Matlab-style 1-based neuron index, name, or sequence thereof.
+        lambdaIndex : int
+            Configuration index used for labelling the returned λ.
+        Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
+            ``'GLM'`` — standard Poisson GLM regression.
+            ``'BNLRCG'`` — truncated, L-2 regularised binomial logistic
+            regression (requires binary spike representation).
+        l2 : float, default 1e-6
+            L-2 regularisation strength.
+        max_iter : int, default 120
+            Maximum IRLS / CG iterations.
+
+        Returns
+        -------
+        lambda_sig : Covariate
+            Conditional intensity function evaluated on the design-matrix
+            time grid.
+        b : ndarray
+            GLM regression coefficients.
+        dev : float
+            Deviance of the fit.
+        stats : dict
+            Fit statistics (standard errors, convergence info, covariance
+            matrix).
+        AIC : float
+            Akaike information criterion.
+        BIC : float
+            Bayesian information criterion.
+        logLL : float
+            Log-likelihood evaluated with the fit parameters.
+        distribution : str
+            ``'poisson'`` or ``'binomial'``.
+        """
         algorithm = str(Algorithm or "GLM").upper()
         if algorithm not in {"GLM", "BNLRCG"}:
             raise ValueError("Algorithm not supported!")
@@ -264,6 +337,33 @@ class Analysis:
         l2: float = 1e-6,
         max_iter: int = 120,
     ) -> FitResult:
+        """Run GLM analysis for one neuron across all configurations.
+
+        Iterates over the configurations in *config_collection*, fits a GLM
+        for each, computes KS diagnostics, and returns a single
+        :class:`FitResult` that aggregates all fits.
+
+        Parameters
+        ----------
+        trial : Trial
+            Trial object containing spike trains and covariates.
+        neuron_index : int
+            Zero-based neuron index.
+        config_collection : ConfigCollection
+            Configurations describing the fits to perform (covariates,
+            history, ensemble history).
+        algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
+            Regression algorithm.
+        l2 : float, default 1e-6
+            L-2 regularisation strength.
+        max_iter : int, default 120
+            Maximum iterations for the GLM solver.
+
+        Returns
+        -------
+        FitResult
+            Fit result with KS statistics already populated.
+        """
         if neuron_index < 0:
             raise IndexError("neuron_index must be >= 0")
 
@@ -393,6 +493,29 @@ class Analysis:
         l2: float = 1e-6,
         max_iter: int = 120,
     ) -> list[FitResult]:
+        """Run GLM analysis for every unmasked neuron in the trial.
+
+        Calls :meth:`run_analysis_for_neuron` for each neuron in the
+        trial's spike-train collection.
+
+        Parameters
+        ----------
+        trial : Trial
+            Trial to analyse.
+        config_collection : ConfigCollection
+            Configurations describing the fits to perform.
+        algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
+            Regression algorithm.
+        l2 : float, default 1e-6
+            L-2 regularisation strength.
+        max_iter : int, default 120
+            Maximum iterations for the GLM solver.
+
+        Returns
+        -------
+        list of FitResult
+            One :class:`FitResult` per neuron.
+        """
         out: list[FitResult] = []
         for i in range(trial.spike_collection.num_spike_trains):
             out.append(
@@ -409,6 +532,31 @@ class Analysis:
 
     @staticmethod
     def RunAnalysisForNeuron(tObj: Trial, neuronNumber, configColl: ConfigCollection, makePlot=1, Algorithm="GLM", DTCorrection=1, batchMode=0):
+        """Matlab-facing wrapper for :meth:`run_analysis_for_neuron`.
+
+        Parameters
+        ----------
+        tObj : Trial
+            Trial to analyse.
+        neuronNumber : int or str or sequence
+            Matlab-style 1-based neuron index, name, or vector of indices.
+            If more than one neuron is specified the return value is a list.
+        configColl : ConfigCollection
+            Configurations describing the fits.
+        makePlot : int, default 1
+            If ``1``, plot a summary for the neuron.
+        Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
+            Regression algorithm.
+        DTCorrection : int, default 1
+            Discrete-time KS correction flag (kept for API parity; unused).
+        batchMode : int, default 0
+            Batch-mode flag (kept for API parity; unused).
+
+        Returns
+        -------
+        FitResult or list of FitResult
+            Single result when one neuron is specified, list otherwise.
+        """
         del DTCorrection, batchMode
         indices = _as_neuron_indices(tObj, neuronNumber)
         fits = [Analysis.run_analysis_for_neuron(tObj, idx - 1, configColl, algorithm=Algorithm) for idx in indices]
@@ -418,6 +566,31 @@ class Analysis:
 
     @staticmethod
     def RunAnalysisForAllNeurons(tObj: Trial, configs: ConfigCollection, makePlot=1, Algorithm="GLM", DTCorrection=1, batchMode=0):
+        """Matlab-facing wrapper for :meth:`run_analysis_for_all_neurons`.
+
+        Runs the fits specified by *configs* on every unmasked neuron in
+        the trial.
+
+        Parameters
+        ----------
+        tObj : Trial
+            Trial to analyse.
+        configs : ConfigCollection
+            Configurations describing the fits.
+        makePlot : int, default 1
+            If ``1``, generate a summary plot for each neuron.
+        Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
+            Regression algorithm.
+        DTCorrection : int, default 1
+            Discrete-time KS correction flag (unused).
+        batchMode : int, default 0
+            Batch-mode flag (unused).
+
+        Returns
+        -------
+        FitResult or list of FitResult
+            Single result when the trial has one neuron, list otherwise.
+        """
         del DTCorrection, batchMode
         fits = Analysis.run_analysis_for_all_neurons(tObj, configs, algorithm=Algorithm)
         if makePlot and len(fits) == 1:
@@ -426,11 +599,63 @@ class Analysis:
 
     @staticmethod
     def computeKSStats(nspikeObj, lambdaInput: Covariate, DTCorrection: int = 1, *, random_values=None):
+        """Compute KS goodness-of-fit statistics via the time-rescaling theorem.
+
+        Given a neural spike train and a candidate conditional intensity
+        function, computes the rescaled ISIs and the KS plot data.
+
+        Parameters
+        ----------
+        nspikeObj : nspikeTrain or SpikeTrainCollection or sequence
+            Neural spike train(s).
+        lambdaInput : Covariate
+            Candidate conditional intensity function.
+        DTCorrection : int, default 1
+            If ``1``, apply discrete-time correction to KS plot.
+        random_values : array_like, optional
+            Pre-drawn uniform random values for reproducibility.
+
+        Returns
+        -------
+        Z : ndarray
+            Rescaled spike times.
+        U : ndarray
+            Z transformed to uniform(0, 1).
+        xAxis : ndarray
+            x-axis of the KS plot.
+        KSSorted : ndarray
+            Sorted rescaled times (y-axis of KS plot).
+        ks_stat : ndarray
+            KS statistic — maximum deviation from the 45° line for each
+            conditional intensity function.
+        """
         nspikeObj = Analysis._collapse_spike_input(nspikeObj)
         return _matlab_compute_ks_arrays(nspikeObj, lambdaInput, dt_correction=DTCorrection, random_values=random_values)
 
     @staticmethod
     def computeInvGausTrans(Z):
+        """Compute the inverse-Gaussian transform of rescaled spike times.
+
+        Transforms rescaled spike times *Z* to uniform(0, 1) via
+        ``U = 1 − exp(−Z)``, then applies the inverse-Gaussian (probit)
+        transform ``X = Φ⁻¹(U)``.  The autocorrelation of *X* is used
+        to test for independence of the rescaled ISIs (a condition for
+        the time-rescaling theorem).
+
+        Parameters
+        ----------
+        Z : array_like
+            Rescaled spike times (exponential rate-1 under H₀).
+
+        Returns
+        -------
+        X : ndarray
+            Inverse-Gaussian transformed values.
+        rhoSig : SignalObj
+            Autocorrelation function of *X*.
+        confBoundSig : SignalObj
+            ±1.96 / √N confidence bounds for zero autocorrelation.
+        """
         z = np.asarray(Z, dtype=float)
         if z.ndim == 1:
             z = z[:, None]
@@ -459,6 +684,31 @@ class Analysis:
 
     @staticmethod
     def computeFitResidual(nspikeObj, lambdaInput: Covariate, windowSize: float = 0.01):
+        """Compute the point-process residual.
+
+        Defined as the difference between the observed spike count and
+        the integral of the candidate conditional intensity function
+        in each time window, following Truccolo *et al.* (2005).
+
+        Parameters
+        ----------
+        nspikeObj : nspikeTrain or SpikeTrainCollection or sequence
+            Neural spike train(s).
+        lambdaInput : Covariate
+            Candidate conditional intensity function.
+        windowSize : float, default 0.01
+            Size of the integration window (seconds).
+
+        Returns
+        -------
+        Covariate
+            Point-process residual M(t_k).
+
+        References
+        ----------
+        Truccolo, W., Eden, U. T., Fellows, M. R., Donoghue, J. P., &
+        Brown, E. N. (2005). *J Neurophysiol*, 93(2), 1074–1089.
+        """
         nspikeObj = Analysis._collapse_spike_input(nspikeObj)
 
         nCopy = nspikeObj.nstCopy()
@@ -492,30 +742,136 @@ class Analysis:
 
     @staticmethod
     def KSPlot(fitResults: FitResult, DTCorrection: int = 1, makePlot: int = 1):
+        """Compute KS statistics and optionally generate the KS plot.
+
+        Parameters
+        ----------
+        fitResults : FitResult
+            Fit result to compute KS statistics for.
+        DTCorrection : int, default 1
+            Discrete-time correction flag.
+        makePlot : int, default 1
+            If ``1``, generate the KS plot.
+
+        Returns
+        -------
+        list
+            Plot handles (empty list when *makePlot* is ``0``).
+        """
         fitResults.computeKSStats(dt_correction=DTCorrection)
         return fitResults.KSPlot() if makePlot else []
 
     @staticmethod
     def plotFitResidual(fitResults: FitResult, windowSize: float = 0.01, makePlot: int = 1):
+        """Compute and plot the point-process residual.
+
+        Parameters
+        ----------
+        fitResults : FitResult
+            Fit result to compute the residual for.
+        windowSize : float, default 0.01
+            Integration window size (seconds).
+        makePlot : int, default 1
+            If ``1``, generate the residual plot.
+
+        Returns
+        -------
+        list
+            Plot handles (empty list when *makePlot* is ``0``).
+        """
         fitResults.computeFitResidual(windowSize=windowSize)
         return fitResults.plotResidual() if makePlot else []
 
     @staticmethod
     def plotInvGausTrans(fitResults: FitResult, makePlot: int = 0):
+        """Compute and optionally plot the inverse-Gaussian transform ACF.
+
+        Parameters
+        ----------
+        fitResults : FitResult
+            Fit result to compute the transform for.
+        makePlot : int, default 0
+            If ``1``, generate the ACF plot.
+
+        Returns
+        -------
+        list
+            Plot handles (empty list when *makePlot* is ``0``).
+        """
         fitResults.computeInvGausTrans()
         return fitResults.plotInvGausTrans() if makePlot else []
 
     @staticmethod
     def plotSeqCorr(fitResults: FitResult):
+        """Plot the sequential correlation of rescaled ISIs (z_j vs z_{j-1}).
+
+        Parameters
+        ----------
+        fitResults : FitResult
+            Fit result (inverse-Gaussian transform is computed if needed).
+
+        Returns
+        -------
+        list
+            Plot handles.
+        """
         fitResults.computeInvGausTrans()
         return fitResults.plotSeqCorr()
 
     @staticmethod
     def plotCoeffs(fitResults: FitResult):
+        """Plot regression coefficients for all fits in *fitResults*.
+
+        Parameters
+        ----------
+        fitResults : FitResult
+            Fit result whose coefficients to plot.
+
+        Returns
+        -------
+        list
+            Plot handles.
+        """
         return fitResults.plotCoeffs()
 
     @staticmethod
     def computeHistLag(tObj: Trial, neuronNum=None, windowTimes=None, CovLabels=None, Algorithm="GLM", batchMode=0, sampleRate=None, makePlot=1, histMinTimes=None, histMaxTimes=None):
+        """Sweep self-history window orders for a single neuron.
+
+        Fits a sequence of GLMs with increasing numbers of history
+        windows (no extrinsic covariates, no ensemble history) and
+        returns the fit results for model selection via AIC / BIC / KS.
+
+        Parameters
+        ----------
+        tObj : Trial
+            Trial to analyse.
+        neuronNum : int or None
+            Matlab-style 1-based neuron index.  If ``None``, uses the
+            first unmasked neuron.
+        windowTimes : array_like
+            Vector of window boundary times.  ``len(windowTimes) - 1``
+            configurations are created with increasing history order.
+        CovLabels : list of str or None
+            Covariate labels to include in each configuration.
+        Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
+            Regression algorithm.
+        batchMode : int
+            Unused (Matlab API parity).
+        sampleRate : float or None
+            Sample rate override; defaults to ``tObj.sampleRate``.
+        makePlot : int, default 1
+            If ``1``, generate a summary plot.
+        histMinTimes, histMaxTimes : float or None
+            Optional time bounds passed to the ``History`` object.
+
+        Returns
+        -------
+        fitResults : FitResult
+            Fit result containing all history-order configurations.
+        tcc : ConfigCollection
+            The generated configuration collection.
+        """
         del batchMode
         if windowTimes is None:
             raise ValueError("Must specify a vector of windowTimes")
@@ -548,6 +904,35 @@ class Analysis:
 
     @staticmethod
     def computeHistLagForAll(tObj: Trial, windowTimes, CovLabels=None, Algorithm="GLM", batchMode=0, sampleRate=None, makePlot=1, histMinTimes=None, histMaxTimes=None):
+        """Sweep self-history window orders for all unmasked neurons.
+
+        Calls :meth:`computeHistLag` for each unmasked neuron in the
+        trial.
+
+        Parameters
+        ----------
+        tObj : Trial
+            Trial to analyse.
+        windowTimes : array_like
+            Vector of window boundary times.
+        CovLabels : list of str or None
+            Covariate labels for each configuration.
+        Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
+            Regression algorithm.
+        batchMode : int
+            Unused (Matlab API parity).
+        sampleRate : float or None
+            Sample rate override.
+        makePlot : int, default 1
+            Summary plot flag.
+        histMinTimes, histMaxTimes : float or None
+            Optional time bounds for the ``History`` object.
+
+        Returns
+        -------
+        list of FitResult
+            One fit result per unmasked neuron.
+        """
         results = []
         for neuron_idx in tObj.getNeuronIndFromMask():
             fit, _ = Analysis.computeHistLag(
@@ -567,6 +952,39 @@ class Analysis:
 
     @staticmethod
     def compHistEnsCoeff(tObj: Trial, history, neuronNum=None, neighbors=None, ensembleCov=None, makePlot=1):
+        """Compute ensemble-history coefficients for one neuron.
+
+        Builds a covariate collection from the spiking history of
+        neighbouring neurons and fits a GLM with ensemble history as the
+        design matrix.
+
+        Parameters
+        ----------
+        tObj : Trial
+            Trial containing spike trains and covariates.
+        history : History
+            History object defining the window structure.
+        neuronNum : int or None
+            Matlab-style 1-based neuron index.  Defaults to the first
+            unmasked neuron.
+        neighbors : array_like or None
+            Indices of neighbouring neurons.  Defaults to
+            ``tObj.getNeuronNeighbors(neuronNum)``.
+        ensembleCov : CovariateCollection or None
+            Pre-computed ensemble covariates.  If ``None``, computed
+            automatically.
+        makePlot : int, default 1
+            Summary plot flag.
+
+        Returns
+        -------
+        fitResults : FitResult
+            Fit result for the ensemble-history model.
+        ensembleCov : CovariateCollection
+            Ensemble covariates used in the fit.
+        tcc : ConfigCollection
+            Configuration collection used.
+        """
         from .trial import TrialConfig
 
         neuron_index = _as_neuron_indices(tObj, neuronNum if neuronNum is not None else tObj.getNeuronIndFromMask()[0])[0]
@@ -583,6 +1001,29 @@ class Analysis:
 
     @staticmethod
     def compHistEnsCoeffForAll(tObj: Trial, history, makePlot=1):
+        """Compute ensemble-history coefficients for all unmasked neurons.
+
+        Calls :meth:`compHistEnsCoeff` for each neuron that is not
+        masked.
+
+        Parameters
+        ----------
+        tObj : Trial
+            Trial to analyse.
+        history : History
+            History object defining the window structure.
+        makePlot : int, default 1
+            Summary plot flag.
+
+        Returns
+        -------
+        fit_results : list of FitResult
+            One fit result per neuron.
+        ensemble_cov : CovariateCollection or None
+            Ensemble covariates from the last neuron.
+        config_collections : list of ConfigCollection
+            Configuration collections used per neuron.
+        """
         neuron_indices = tObj.getNeuronIndFromMask()
         if not neuron_indices:
             return [], None, []
@@ -606,6 +1047,38 @@ class Analysis:
 
     @staticmethod
     def computeGrangerCausalityMatrix(tObj: Trial, Algorithm="GLM", confidenceInterval=0.95, batchMode=0):
+        """Compute the Granger-causality matrix for the neural ensemble.
+
+        For every pair of neurons, fits a baseline model (full ensemble
+        history) and a reduced model (one neighbour excluded), then
+        computes the log-likelihood ratio.  Statistical significance is
+        corrected for multiple comparisons with Benjamini–Hochberg FDR.
+
+        Parameters
+        ----------
+        tObj : Trial
+            Trial with ensemble history configured.
+        Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
+            Regression algorithm.
+        confidenceInterval : float, default 0.95
+            Confidence level for the significance test.
+        batchMode : int
+            Unused (Matlab API parity).
+
+        Returns
+        -------
+        fitResults : list of list of FitResult
+            ``fitResults[i][j]`` is the fit result for the test of
+            neighbour *j* → neuron *i*.
+        gammaMat : ndarray, shape (N, N)
+            Log-likelihood ratio Γ matrix.
+        phiMat : ndarray, shape (N, N)
+            Signed Γ matrix (sign from sum of excluded coefficients).
+        devianceMat : ndarray, shape (N, N)
+            Deviance (−2Γ) matrix.
+        sigMat : ndarray, shape (N, N)
+            Binary significance matrix after FDR correction.
+        """
         del batchMode
         neuron_indices = tObj.getNeuronIndFromMask()
         n_neurons = tObj.nspikeColl.numSpikeTrains
@@ -681,6 +1154,32 @@ class Analysis:
 
     @staticmethod
     def computeNeighbors(tObj: Trial, neuronNum=None, sampleRate=None, windowTimes=None, makePlot=1):
+        """Sweep ensemble-history orders for one neuron (no self-history).
+
+        Fits a sequence of GLMs with increasing ensemble-history window
+        orders but no self-history and no extrinsic covariates, for model
+        selection of the ensemble effect.
+
+        Parameters
+        ----------
+        tObj : Trial
+            Trial to analyse.
+        neuronNum : int or None
+            Matlab-style 1-based neuron index.
+        sampleRate : float or None
+            Sample rate override.
+        windowTimes : array_like
+            Vector of window boundary times.
+        makePlot : int, default 1
+            Summary plot flag.
+
+        Returns
+        -------
+        fitResults : FitResult
+            Fit result with all configurations.
+        tcc : ConfigCollection
+            Generated configuration collection.
+        """
         if windowTimes is None:
             raise ValueError("Must specify a vector of windowTimes")
         neuron_index = _as_neuron_indices(tObj, neuronNum if neuronNum is not None else tObj.getNeuronIndFromMask()[0])[0]
@@ -707,6 +1206,28 @@ class Analysis:
 
     @staticmethod
     def spikeTrigAvg(tObj: Trial, neuronNum, windowSize):
+        """Compute the spike-triggered average of all covariates.
+
+        Each covariate dimension is sampled at every spike time of the
+        specified neuron ± ``windowSize / 2``.  The returned collection
+        contains one covariate per original dimension, where each column
+        corresponds to a single spike.  Use ``plotVariability`` on the
+        returned signals to visualise the average and spread.
+
+        Parameters
+        ----------
+        tObj : Trial
+            Trial containing spike trains and covariates.
+        neuronNum : int
+            Matlab-style 1-based neuron index.
+        windowSize : float
+            Total window length (seconds) centred on each spike.
+
+        Returns
+        -------
+        CovariateCollection
+            Collection of spike-triggered covariate samples.
+        """
         from .trial import CovariateCollection
 
         train = tObj.getNeuron(neuronNum).nstCopy()

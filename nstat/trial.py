@@ -1733,7 +1733,31 @@ class SpikeTrainCollection:
 
 
 class TrialConfig:
-    """MATLAB-style TrialConfig with configuration-application semantics."""
+    """Description of a single GLM fit configuration.
+
+    A ``TrialConfig`` specifies which covariates, history, ensemble
+    history, and sample rate to apply to a :class:`Trial` before fitting.
+    Multiple ``TrialConfig`` objects are collected in a
+    :class:`ConfigCollection` to run a batch of nested-model comparisons.
+
+    Parameters
+    ----------
+    covMask : sequence of str or nested sequences, or None
+        Covariate labels to include in the design matrix.
+        ``'all'`` includes every covariate.
+    sampleRate : float or None
+        If provided, the trial is resampled to this rate before fitting.
+    history : History or array_like or None
+        Self-history specification (History object or window-times).
+    ensCovHist : History or array_like or None
+        Ensemble-history specification.
+    ensCovMask : array_like or None
+        Binary mask selecting which neighbours contribute ensemble history.
+    covLag : array_like or None
+        Covariate shift / lag specification.
+    name : str
+        Human-readable name for this configuration.
+    """
 
     def __init__(
         self,
@@ -1772,6 +1796,11 @@ class TrialConfig:
         self.name = str(name)
 
     def setConfig(self, trial: "Trial") -> None:
+        """Apply this configuration to a Trial (in place).
+
+        Sets the covariate mask, history, ensemble history, sample rate,
+        and covariate lag on the trial.
+        """
         if not _is_empty_config_value(self.history):
             trial.setHistory(self.history)
         else:
@@ -1820,7 +1849,18 @@ class TrialConfig:
 
 
 class ConfigCollection:
-    """MATLAB-style ConfigColl implementation."""
+    """Ordered collection of :class:`TrialConfig` objects.
+
+    Used by :class:`Analysis` to iterate over multiple model
+    specifications (e.g. baseline, baseline + stimulus,
+    baseline + stimulus + history) and compare their fits.
+
+    Parameters
+    ----------
+    configs : TrialConfig, sequence of TrialConfig, or None
+        Initial configuration(s).  ``None`` creates a single
+        ``"Empty Config"`` entry (Matlab parity).
+    """
 
     def __init__(self, configs: Sequence[TrialConfig] | TrialConfig | str | None = None) -> None:
         self.numConfigs = 0
@@ -1838,6 +1878,7 @@ class ConfigCollection:
         self.addConfig(cfg)
 
     def addConfig(self, cfg: Sequence[TrialConfig] | TrialConfig | str | None) -> None:
+        """Append one or more configurations to this collection."""
         if isinstance(cfg, Sequence) and not isinstance(cfg, (str, bytes, TrialConfig, np.ndarray)):
             if len(cfg) == 0:
                 self.numConfigs += 1
@@ -1873,6 +1914,7 @@ class ConfigCollection:
         return self.configArray[idx - 1]
 
     def setConfig(self, trial: "Trial", index: int) -> None:
+        """Apply configuration *index* (1-based) to the given Trial."""
         config = self.getConfig(index)
         if isinstance(config, TrialConfig):
             config.setConfig(trial)

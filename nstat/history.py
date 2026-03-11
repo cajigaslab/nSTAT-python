@@ -70,7 +70,34 @@ class HistoryFilterBank:
 
 
 class History:
-    """MATLAB-style spike-history basis described by window boundaries."""
+    """Spike-history basis defined by a set of window boundaries.
+
+    Given a vector of *N* window-times, *N − 1* piecewise-constant basis
+    functions are created.  Window *i* spans from ``windowTimes[i]`` to
+    ``windowTimes[i+1]``.
+
+    Parameters
+    ----------
+    windowTimes : array_like
+        Strictly increasing vector of window boundary times (seconds).
+        Must contain at least two entries.
+    minTime : float or None
+        Optional lower time bound for the computed history covariate.
+    maxTime : float or None
+        Optional upper time bound for the computed history covariate.
+    name : str, default ``'History'``
+        Display name.
+
+    Examples
+    --------
+    >>> h = History([0, 0.001, 0.01, 0.05, 0.1])
+    >>> h.numWindows
+    4
+
+    See Also
+    --------
+    TrialConfig, Analysis.computeHistLag
+    """
 
     def __init__(self, windowTimes, minTime: float | None = None, maxTime: float | None = None, name: str = "History") -> None:
         times = np.asarray(windowTimes, dtype=float).reshape(-1)
@@ -93,12 +120,32 @@ class History:
         return int(self.windowTimes.size - 1)
 
     def setWindow(self, windowTimes) -> None:
+        """Replace the window-times vector.
+
+        Parameters
+        ----------
+        windowTimes : array_like
+            New window boundary times (must be strictly increasing,
+            length ≥ 2).
+        """
         replacement = History(windowTimes, self.minTime, self.maxTime, self.name)
         self.windowTimes = replacement.windowTimes
         self.minTime = replacement.minTime
         self.maxTime = replacement.maxTime
 
     def toFilter(self, delta: float) -> HistoryFilterBank:
+        """Convert the history windows to a discrete-time filter bank.
+
+        Parameters
+        ----------
+        delta : float
+            Sample period (seconds).  Must be positive.
+
+        Returns
+        -------
+        HistoryFilterBank
+            Bank of FIR filters (one per window) in the ``z⁻¹`` domain.
+        """
         delta = float(delta)
         if delta <= 0:
             raise ValueError("delta must be positive")
@@ -161,6 +208,24 @@ class History:
         return windowed
 
     def compute_history(self, trains, historyIndex: int | None = None, time_grid=None):
+        """Compute the history covariate(s) for one or more spike trains.
+
+        Parameters
+        ----------
+        trains : nspikeTrain or nstColl or sequence of nspikeTrain
+            Spike train(s) whose history to compute.
+        historyIndex : int or None
+            Optional label index appended to the data labels.
+        time_grid : array_like or None
+            Optional external time grid.  If ``None``, the spike train's
+            own time grid is used.
+
+        Returns
+        -------
+        CovariateCollection
+            One :class:`Covariate` per spike train, each with
+            ``numWindows`` columns corresponding to the history windows.
+        """
         from .trial import CovariateCollection
 
         if isinstance(trains, nspikeTrain):
@@ -180,9 +245,11 @@ class History:
         raise TypeError("History can only be computed from nspikeTrain, nstColl, or sequences of nspikeTrain")
 
     def computeHistory(self, trains, historyIndex: int | None = None, time_grid=None):
+        """Matlab-facing alias for :meth:`compute_history`."""
         return self.compute_history(trains, historyIndex, time_grid=time_grid)
 
     def toStructure(self) -> dict[str, Any]:
+        """Serialise the History to a plain dictionary."""
         return {
             "windowTimes": self.windowTimes.tolist(),
             "minTime": self.minTime,
@@ -192,6 +259,7 @@ class History:
 
     @staticmethod
     def fromStructure(structure: dict[str, Any] | None) -> "History" | None:
+        """Reconstruct a History from a dictionary (inverse of :meth:`toStructure`)."""
         if structure is None:
             return None
         if "windowTimes" in structure:
@@ -209,6 +277,19 @@ class History:
         )
 
     def plot(self, *_, handle=None, **__):
+        """Plot each of the history windows as step functions.
+
+        Parameters
+        ----------
+        handle : Axes or None
+            Matplotlib axes to draw into.  If ``None``, a new figure is
+            created.
+
+        Returns
+        -------
+        Axes or list
+            The axes or plot handles.
+        """
         tmin = np.asarray(self.windowTimes[:-1], dtype=float)
         tmax = np.asarray(self.windowTimes[1:], dtype=float)
         sampleRate = 1000.0
