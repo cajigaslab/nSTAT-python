@@ -252,25 +252,12 @@ close(fig);
 
 fig = figure('Visible','off');
 ax = axes('Parent', fig);
-% plotISIHistogram may not assign output in all code paths.
-% Use try/catch to handle that gracefully.
-try
-    counts = nst.plotISIHistogram();
-catch
-    nst.plotISIHistogram();
-    % Extract counts from Bar objects on the axes.
-    barObj = findobj(ax, 'Type', 'Bar');
-    if ~isempty(barObj)
-        counts = barObj(1).YData;
-    else
-        counts = [];
-    end
-end
+counts = nst.plotISIHistogram([],[],[],ax);
 payload.isi_hist_counts = counts;
-% Look for both patch and Bar objects (MATLAB version dependent).
-histBars = findobj(ax, 'Type', 'patch');
+% histogram() creates Histogram objects; look for both types.
+histBars = findobj(ax, 'Type', 'histogram');
 if isempty(histBars)
-    histBars = findobj(ax, 'Type', 'Bar');
+    histBars = findobj(ax, 'Type', 'patch');
 end
 if ~isempty(histBars)
     payload.isi_hist_face_color = get(histBars(1), 'FaceColor');
@@ -1297,7 +1284,10 @@ end
 function cifObj = build_polynomial_binomial_cif(beta)
 beta = beta(:)';
 syms x y real
-cifObj = CIF(beta(1:3), {'1', 'x', 'y'}, {'x', 'y'}, 'binomial');
+% Avoid '1' as a covariate label — sym('1') is the number 1, not a
+% variable, and matlabFunction rejects it.  All properties are overridden
+% below, so the constructor just needs to succeed.
+cifObj = CIF(beta(2:3), {'x', 'y'}, {'x', 'y'}, 'binomial');
 cifObj.b = beta;
 cifObj.varIn = [sym(1); x; y; x^2; y^2; x * y];
 cifObj.stimVars = [x; y];
