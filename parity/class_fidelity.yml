@@ -100,7 +100,7 @@ items:
   constructor_parity: Empty construction, direct sequence construction, and MATLAB-style collection state
     initialization now match MATLAB much more closely.
   property_parity: Core MATLAB-visible fields exist, including nstrain, numSpikeTrains, minTime, maxTime,
-    sampleRate, neuronMask, and neighbors.
+    sampleRate, neuronMask, neuronNames, and neighbors.
   method_parity: All 53 MATLAB public methods are implemented including addToColl, merge, getNST, name/index
     lookup, masking, neighborhood management, getFieldVal, getSpikeTimes/getISIs, BinarySigRep, dataToMatrix,
     toSpikeTrain, ensemble-covariate helpers, psth, psthGLM, psthBars, ssglm/ssglmFB, generateUnitImpulseBasis,

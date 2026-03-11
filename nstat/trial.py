@@ -734,6 +734,16 @@ class SpikeTrainCollection:
         return self.numSpikeTrains
 
     @property
+    def neuronNames(self) -> list[str]:
+        """Neuron name for each spike train in the collection.
+
+        Mirrors the MATLAB ``neuronNames`` stored property.  In Python
+        this is derived dynamically from each train's ``.name`` attribute
+        so it is always consistent with the underlying data.
+        """
+        return self.getNSTnames()
+
+    @property
     def uniqueNeuronNames(self) -> list[str]:
         """Unique, insertion-ordered neuron names in the collection."""
         return self.getUniqueNSTnames()
@@ -1901,6 +1911,7 @@ class SpikeTrainCollection:
             "maxTime": float(self.maxTime),
             "sampleRate": float(self.sampleRate),
             "neuronMask": self.neuronMask.tolist(),
+            "neuronNames": self.neuronNames,
             "neighbors": np.asarray(self.neighbors, dtype=int).tolist() if np.size(self.neighbors) else [],
         }
 
