@@ -480,7 +480,8 @@ fidelity_summary:
     high_fidelity: 7
     not_applicable: 1
   notebook_fidelity:
-    high_fidelity: 13
+    exact: 8
+    high_fidelity: 5
   simulink_fidelity:
     high_fidelity_native_python: 2
     reference_only: 10

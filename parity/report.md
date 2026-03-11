@@ -41,8 +41,8 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 
 | Status | Count |
 |---|---:|
-| `exact` | 0 |
-| `high_fidelity` | 13 |
+| `exact` | 8 |
+| `high_fidelity` | 5 |
 | `partial` | 0 |
 
 ## Simulink Fidelity Summary
