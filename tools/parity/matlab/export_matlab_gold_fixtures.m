@@ -352,15 +352,11 @@ save(fullfile(fixtureRoot, 'covariate_exactness.mat'), '-struct', 'payload');
 end
 
 function export_nstcoll_fixture(fixtureRoot)
-% NOTE: Matlab's addSingleSpikeToColl stores references (handle objects),
-% so the second train added here never gets computeStatistics called on it
-% via updateTimes.  Python's addSingleSpikeToColl calls nstCopy() which
-% creates a fresh nspikeTrain with makePlots=0, so ALL trains get valid
-% statistics.  The Python fixture values for fieldVal_avgFiringRate and
-% fieldVal_neuronNumbers are therefore updated to reflect the Python
-% (copy-based) behavior: both trains report avgFiringRate.
-n1 = nspikeTrain([0.1 0.3], '1', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1);
-n2 = nspikeTrain([0.2], '2', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', -1);
+% Construct both spike trains with makePlots=0 so computeStatistics runs,
+% ensuring both trains have valid avgFiringRate.  This matches Python's
+% copy-based behavior where ALL trains get statistics.
+n1 = nspikeTrain([0.1 0.3], '1', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', 0);
+n2 = nspikeTrain([0.2], '2', 10, 0.0, 0.5, 'time', 's', 'spikes', 'spk', 0);
 coll = nstColl({n1, n2});
 dataMat = coll.dataToMatrix([1 2], 0.1, 0.0, 0.5);
 collapsed = coll.toSpikeTrain;
@@ -889,12 +885,15 @@ end
 
 function export_decode_linear_fixture(fixtureRoot)
 % PPDecodeFilterLinear: full linear decode filter (predict+update loop)
+% Use C=3 cells with ns=2 state dims to avoid MATLAB auto-transpose bug
+% (when ns==C, PPDecodeFilterLinear transposes beta unconditionally).
 A = [1.0 0.1; 0.0 0.95];
 Q = 0.01 * eye(2);
 dN = [0 1 0 0 1 0 1 0;
-      1 0 0 1 0 1 0 0];
-mu = [-2.0; -1.5];
-beta = [0.5 0.3; -0.2 0.6];
+      1 0 0 1 0 1 0 0;
+      0 0 1 0 0 1 0 1];
+mu = [-2.0; -1.5; -1.8];
+beta = [0.5 0.3 -0.1; -0.2 0.6 0.4];  % ns=2 x C=3
 fitType = 'binomial';
 delta = 0.1;
 [x_p, W_p, x_u, W_u] = DecodingAlgorithms.PPDecodeFilterLinear( ...
@@ -973,16 +972,17 @@ end
 
 function export_cif_gamma_fixture(fixtureRoot)
 % CIF gamma-scaled evaluation methods
+% Use binwidth=0.01 (Δt at 100 Hz) so computeHistory produces proper
+% 101-point signal rep directly — no manual resample hack needed.
 beta = [0.1 0.5];
 histCoeffs = [-0.3 -0.2 -0.1];
-cif = CIF(beta, {'stim1', 'stim2'}, {'stim1', 'stim2'}, 'binomial');
-cif.b = [beta histCoeffs];
-cif.histCoeffs = histCoeffs;
-cif.history = History([0 0.01 0.02 0.03], 0.0, 1.0);
-n1 = nspikeTrain([0.05 0.1 0.2 0.3 0.5], 'n1', 100, 0.0, 1.0, 'time', 's', 'spikes', 'spk', -1);
-cif = cif.setSpikeTrain(n1);
-histMat = cif.history.computeHistory(n1, 100);
-cif.historyMat = histMat.dataToMatrix();
+histObj = History([0 0.01 0.02 0.03], 0.0, 1.0);
+binwidth = 0.01;  % seconds (100 Hz)
+n1 = nspikeTrain([0.05 0.1 0.2 0.3 0.5], 'n1', binwidth, 0.0, 1.0, 'time', 's', 'spikes', 'spk', -1);
+% Use full 7-arg constructor so symbolic gamma function handles are created.
+% The constructor only builds lambdaDeltaGammaFunction etc. when both
+% histCoeffs and history are present at construction time.
+cif = CIF(beta, {'stim1', 'stim2'}, {'stim1', 'stim2'}, 'binomial', histCoeffs, histObj, n1);
 
 stimVal = [0.6; -0.2];
 gamma = [0.8; 1.2; 0.5];
@@ -1002,7 +1002,7 @@ payload.stimVal = stimVal;
 payload.gamma = gamma;
 payload.time_index = 5;
 payload.spike_times = n1.spikeTimes;
-payload.sample_rate = 100;
+payload.binwidth = binwidth;
 payload.window_times = [0 0.01 0.02 0.03];
 payload.lambda_delta_gamma = lambda_delta_gamma;
 payload.gradient_gamma = gradient_gamma;
@@ -1016,15 +1016,18 @@ end
 
 function export_decode_update_fixture(fixtureRoot)
 % PPDecode_updateLinear: single update step for linear decode
+% Use C=3 cells with ns=2 state dims to avoid ambiguous square-matrix
+% beta orientation (when ns==C, Python's _normalize_beta transposes
+% unconditionally because it can't distinguish ns×C from C×ns).
 x_p = [0.1; -0.2];
 W_p = [1.0 0.1; 0.1 2.0];
-dN = [1; 0];
-mu = [-2.0; -1.5];
-beta = [0.5 0.3; -0.2 0.6];
+dN = [1; 0; 1];                    % C=3 cells, N=1 time point
+mu = [-2.0; -1.5; -1.8];
+beta = [0.5 0.3 -0.1; -0.2 0.6 0.4];  % ns=2 state dims × C=3 cells
 fitType = 'binomial';
-binwidth = 0.1;
+% Call without history args so MATLAB defaults to zero history (nargin<7).
 [x_u, W_u, lambda_delta] = DecodingAlgorithms.PPDecode_updateLinear( ...
-    x_p, W_p, dN, mu, beta, fitType, binwidth);
+    x_p, W_p, dN, mu, beta, fitType);
 
 payload = struct();
 payload.x_p = x_p;
@@ -1033,7 +1036,6 @@ payload.dN = dN;
 payload.mu = mu;
 payload.beta = beta;
 payload.fitType = fitType;
-payload.binwidth = binwidth;
 payload.x_u = x_u;
 payload.W_u = W_u;
 payload.lambda_delta = lambda_delta;

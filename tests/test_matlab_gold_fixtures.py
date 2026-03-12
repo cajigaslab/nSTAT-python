@@ -1003,11 +1003,18 @@ def test_ppdecodefilterlinear_matches_matlab_gold_fixture() -> None:
 
 @pytest.mark.skipif(not _KALMAN_FILTER_FIXTURE.exists(), reason="kalman_filter_exactness.mat not generated yet")
 def test_kalman_filter_matches_matlab_gold_fixture() -> None:
-    """Standard Kalman filter against MATLAB gold."""
+    """Standard Kalman filter against MATLAB gold.
+
+    The MATLAB fixture uses predict-then-update with (Dy, N) layout.
+    Python's kalman_filter expects (N, Dy) time-major and returns a dict.
+    Both use the same predict-first convention internally, so posteriors match.
+    """
     payload = _load_fixture("kalman_filter_exactness.mat")
 
+    # Transpose observations from MATLAB's (Dy, N) to Python's (N, Dy).
+    obs = np.asarray(payload["observations"], dtype=float).T  # (10, 2)
     result = DecodingAlgorithms.kalman_filter(
-        observations=np.asarray(payload["observations"], dtype=float),
+        observations=obs,
         transition=np.asarray(payload["A"], dtype=float),
         observation_matrix=np.asarray(payload["C"], dtype=float),
         q_cov=np.asarray(payload["Q"], dtype=float),
@@ -1016,20 +1023,15 @@ def test_kalman_filter_matches_matlab_gold_fixture() -> None:
         p0=np.asarray(payload["P0"], dtype=float),
     )
 
+    # result["state"] is (N, Dx), fixture x_filt is (Dx, N) — transpose to compare.
     np.testing.assert_allclose(
-        result["x_filt"], np.asarray(payload["x_filt"], dtype=float),
+        result["state"].T, np.asarray(payload["x_filt"], dtype=float),
         rtol=1e-8, atol=1e-10,
     )
+    # result["cov"] is (N, Dx, Dx), fixture P_filt is (Dx, Dx, N) — transpose axes.
     np.testing.assert_allclose(
-        result["P_filt"], np.asarray(payload["P_filt"], dtype=float).reshape(result["P_filt"].shape),
-        rtol=1e-8, atol=1e-10,
-    )
-    np.testing.assert_allclose(
-        result["x_pred"], np.asarray(payload["x_pred"], dtype=float),
-        rtol=1e-8, atol=1e-10,
-    )
-    np.testing.assert_allclose(
-        result["P_pred"], np.asarray(payload["P_pred"], dtype=float).reshape(result["P_pred"].shape),
+        np.transpose(result["cov"], (1, 2, 0)),
+        np.asarray(payload["P_filt"], dtype=float),
         rtol=1e-8, atol=1e-10,
     )
 
@@ -1043,23 +1045,25 @@ def test_cif_gamma_scaled_evals_match_matlab_gold_fixture() -> None:
 
     beta_vec = _vector(payload, "beta")
     hist_coeffs = _vector(payload, "histCoeffs")
-    full_beta = np.concatenate([beta_vec, hist_coeffs])
+    window_times = _vector(payload, "window_times")
+    spike_times = _vector(payload, "spike_times")
+    # Fixture stores binwidth (Δt in seconds).  Python nspikeTrain takes
+    # binwidth as its 3rd arg and stores sampleRate = 1/binwidth.
+    binwidth = _scalar(payload, "binwidth")
 
+    # Construct CIF with history — must provide histCoeffs + historyObj
+    # at construction time so gamma function handles are compiled.
+    hist = History(window_times, 0.0, 1.0)
+    nst = nspikeTrain_cls(spike_times, "n1", binwidth, 0.0, 1.0)
     cif = CIF(
-        beta=full_beta,
+        beta=beta_vec,
         Xnames=["stim1", "stim2"],
         stimNames=["stim1", "stim2"],
         fitType="binomial",
+        histCoeffs=hist_coeffs,
+        historyObj=hist,
     )
-
-    # Set up history
-    window_times = _vector(payload, "window_times")
-    spike_times = _vector(payload, "spike_times")
-    sr = _scalar(payload, "sample_rate")
-    hist = History(window_times, 0.0, 1.0)
-    nst = nspikeTrain_cls(spike_times, "n1", sr, 0.0, 1.0)
-    cif = cif.setHistory(hist)
-    cif = cif.setSpikeTrain(nst)
+    cif.setSpikeTrain(nst)  # mutates in place, returns None
 
     stim_val = _vector(payload, "stimVal")
     gamma = _vector(payload, "gamma")
@@ -1102,16 +1106,21 @@ def test_ppdecode_updatelinear_matches_matlab_gold_fixture() -> None:
     """Single PPDecode_updateLinear step against MATLAB gold."""
     payload = _load_fixture("decode_update_exactness.mat")
 
+    # No history args — fixture generated with nargin=6 (zero history default).
+    # dN is (C, 1) in MATLAB but squeeze_me=True collapses it to 1D.
+    # Reshape to column so _as_observation_matrix reads C cells × 1 time point.
+    dN = np.asarray(payload["dN"], dtype=float)
+    if dN.ndim == 1:
+        dN = dN.reshape(-1, 1)  # (C,) → (C, 1)
     x_u, W_u, lambda_delta = DecodingAlgorithms.PPDecode_updateLinear(
         _vector(payload, "x_p"),
         np.asarray(payload["W_p"], dtype=float),
-        np.asarray(payload["dN"], dtype=float).reshape(-1),
+        dN,
         _vector(payload, "mu"),
         np.asarray(payload["beta"], dtype=float),
         _string(payload, "fitType"),
-        _scalar(payload, "binwidth"),
     )
 
     np.testing.assert_allclose(x_u, _vector(payload, "x_u"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(W_u, np.asarray(payload["W_u"], dtype=float), rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(lambda_delta, _vector(payload, "lambda_delta"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(np.asarray(lambda_delta).reshape(-1), _vector(payload, "lambda_delta"), rtol=1e-8, atol=1e-10)
