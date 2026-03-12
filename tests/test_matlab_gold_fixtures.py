@@ -788,6 +788,7 @@ def test_point_process_lambda_trace_matches_matlab_gold_fixture() -> None:
         simType="binomial",
         seed=int(_scalar(payload, "seed")),
         return_lambda=True,
+        backend="python",
     )
 
     np.testing.assert_allclose(lambda_cov.data[: _vector(payload, 'lambda_head').shape[0], 0], _vector(payload, "lambda_head"), rtol=1e-8, atol=1e-10)
@@ -812,6 +813,7 @@ def test_point_process_deterministic_trace_matches_matlab_gold_fixture() -> None
         random_values=uniforms,
         return_lambda=True,
         return_details=True,
+        backend="python",
     )
 
     np.testing.assert_allclose(lambda_cov.data[:, 0], _vector(payload, "det_rate_hz"), rtol=1e-8, atol=1e-10)
@@ -933,7 +935,7 @@ def test_nonlinear_ppdecodefilter_matches_matlab_gold_fixture() -> None:
 
 def test_simulated_network_matches_matlab_gold_fixture() -> None:
     payload = _load_fixture("simulated_network_exactness.mat")
-    native = simulate_two_neuron_network(seed=4)
+    native = simulate_two_neuron_network(seed=4, backend="python")
 
     np.testing.assert_allclose(native.actual_network, np.asarray(payload["actual_network"], dtype=float), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(native.lambda_delta[:5], np.asarray(payload["prob_head"], dtype=float), rtol=1e-8, atol=1e-10)
@@ -959,6 +961,7 @@ def test_simulated_network_deterministic_trace_matches_matlab_gold_fixture() -> 
         dt=float(_vector(payload, "det_time")[1] - _vector(payload, "det_time")[0]),
         seed=None,
         uniform_values=np.asarray(payload["det_uniforms"], dtype=float),
+        backend="python",
     )
 
     np.testing.assert_allclose(sim.time, _vector(payload, "det_time"), rtol=1e-12, atol=1e-12)

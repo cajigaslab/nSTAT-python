@@ -1069,6 +1069,8 @@ class CIF:
                     return_lambda=return_lambda,
                 )
             except Exception:
+                if backend == "matlab":
+                    raise  # User explicitly asked for MATLAB — propagate
                 # auto mode — fall back to Python
                 _meng.warn_fallback()
 

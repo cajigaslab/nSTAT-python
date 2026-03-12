@@ -31,12 +31,13 @@ def test_point_process_fixture_remains_consumable_without_matlab_runtime() -> No
         simType="binomial",
         seed=5,
         return_lambda=True,
+        backend="python",
     )
     np.testing.assert_allclose(lambda_cov.data[: lambda_head.shape[0], 0], lambda_head, rtol=1e-8, atol=1e-10)
 
 def test_network_fixture_remains_consumable_without_matlab_runtime() -> None:
     payload = _load_fixture("simulated_network_exactness.mat")
-    native = simulate_two_neuron_network(seed=4)
+    native = simulate_two_neuron_network(seed=4, backend="python")
 
     np.testing.assert_allclose(native.actual_network, np.asarray(payload["actual_network"], dtype=float))
     np.testing.assert_allclose(native.lambda_delta[:5], np.asarray(payload["prob_head"], dtype=float), rtol=1e-8, atol=1e-10)

@@ -156,6 +156,7 @@ def test_simulatecif_uses_temporal_fir_filtering_for_stimulus_drive() -> None:
         simType="binomial",
         seed=1,
         return_lambda=True,
+        backend="python",
     )
 
     expected_drive = np.convolve(stim_values, np.array([1.0, -0.5], dtype=float), mode="full")[: time.size]
@@ -192,6 +193,7 @@ def test_simulatecif_accepts_multi_input_kernel_bank() -> None:
         simType="poisson",
         seed=2,
         return_lambda=True,
+        backend="python",
     )
 
     expected_stim = (

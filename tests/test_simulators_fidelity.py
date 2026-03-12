@@ -6,7 +6,7 @@ from nstat.simulators import simulate_point_process, simulate_two_neuron_network
 
 
 def test_simulate_two_neuron_network_matches_matlab_tutorial_defaults() -> None:
-    sim = simulate_two_neuron_network(seed=4)
+    sim = simulate_two_neuron_network(seed=4, backend="python")
 
     assert sim.time.shape == (50001,)
     np.testing.assert_allclose(sim.baseline_mu, np.array([-3.0, -3.0], dtype=float))

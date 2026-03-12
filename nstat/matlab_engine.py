@@ -308,16 +308,17 @@ def simulateCIF_via_simulink(
     ens_signals["dimensions"] = matlab.double([1.0])
     ens_struct["signals"] = ens_signals
 
-    # Resolve model name
-    model_name = eng.eval(
-        "CIF.resolveSimulinkModelName('PointProcessSimulation')",
-        nargout=1,
-    )
+    # Load the Simulink model (on the MATLAB path after addpath above)
+    model_handle = eng.load_system("PointProcessSimulation", nargout=1)
+    model_name = eng.get_param(model_handle, "Name", nargout=1)
 
     # Run simulation for each realization
+    # Mirrors CIF.m line 1015:
+    #   [tout,~,yout] = sim(simModelName, [tmin tmax], [],
+    #                       stimStruct, ensStruct);
     t_min = float(stim_time[0])
     t_max = float(stim_time[-1])
-    options = eng.simget(nargout=1)
+    empty_opts = matlab.double([])
     time_grid = stim_time.reshape(-1)
 
     spike_times_list: list[np.ndarray] = []
@@ -327,7 +328,7 @@ def simulateCIF_via_simulink(
         tout, _, yout = eng.sim(
             model_name,
             matlab.double([t_min, t_max]),
-            options,
+            empty_opts,
             stim_struct,
             ens_struct,
             nargout=3,
@@ -339,7 +340,7 @@ def simulateCIF_via_simulink(
         spike_mask = yout_np[:, 0] > 0.5
         spike_times_list.append(tout_np[spike_mask])
 
-        # Interpolate λ onto the original time grid (matches CIF.m line 1016)
+        # Interpolate λ onto the original time grid (matches CIF.m line 1024)
         lambda_data[:, i] = np.interp(time_grid, tout_np, yout_np[:, 1])
 
     return spike_times_list, lambda_data
@@ -384,15 +385,21 @@ def simulate_network_via_simulink(
     if helpfiles.is_dir():
         eng.addpath(str(helpfiles), nargout=0)
 
-    # Set workspace variables matching MATLAB NetworkTutorial
+    # Set workspace variables matching MATLAB NetworkTutorial.m lines 94-102
     eng.workspace["mu1"] = float(baseline_mu[0])
     eng.workspace["mu2"] = float(baseline_mu[1])
     eng.workspace["Ts"] = float(dt)
-    eng.workspace["H"] = _kernel_to_tf(eng, history_kernel, dt)
-    eng.workspace["S1"] = float(stimulus_kernel[0])
-    eng.workspace["S2"] = float(stimulus_kernel[1])
-    eng.workspace["E12"] = float(ensemble_kernel[0])
-    eng.workspace["E21"] = float(ensemble_kernel[1])
+    # Both neurons share the same history kernel (tf object)
+    eng.workspace["H1"] = _kernel_to_tf(eng, history_kernel, dt)
+    eng.workspace["H2"] = _kernel_to_tf(eng, history_kernel, dt)
+    # Stimulus kernels as tf objects — single-coefficient gains
+    stim_k = np.asarray(stimulus_kernel, dtype=float).reshape(-1)
+    eng.workspace["S1"] = _kernel_to_tf(eng, stim_k[0:1], dt)
+    eng.workspace["S2"] = _kernel_to_tf(eng, stim_k[1:2], dt)
+    # Ensemble kernels as tf objects
+    ens_k = np.asarray(ensemble_kernel, dtype=float).reshape(-1)
+    eng.workspace["E1"] = _kernel_to_tf(eng, ens_k[0:1], dt)
+    eng.workspace["E2"] = _kernel_to_tf(eng, ens_k[1:2], dt)
 
     # Build stimulus input struct
     stim_struct = eng.struct()
@@ -402,14 +409,20 @@ def simulate_network_via_simulink(
     stim_signals["dimensions"] = matlab.double([1.0])
     stim_struct["signals"] = stim_signals
 
+    # Load Simulink model — the .mdl lives in helpfiles/ which is on the path
+    model_handle = eng.load_system("SimulatedNetwork2", nargout=1)
+    model_name = eng.get_param(model_handle, "Name", nargout=1)
+
     t_min = float(stim_time[0])
     t_max = float(stim_time[-1])
-    options = eng.simget(nargout=1)
 
+    # Mirrors NetworkTutorial.m line 115-116:
+    #   [tout,~,yout] = sim('SimulatedNetwork2', [tmin tmax], [],
+    #                       stim.dataToStructure);
     tout, _, yout = eng.sim(
-        "SimulatedNetwork2",
+        model_name,
         matlab.double([t_min, t_max]),
-        options,
+        matlab.double([]),
         stim_struct,
         nargout=3,
     )
@@ -418,14 +431,14 @@ def simulate_network_via_simulink(
     yout_np = np.asarray(yout)
     time_grid = stim_time.reshape(-1)
 
+    # SimulatedNetwork2 outputs 2 columns: spike indicator per neuron
+    # (no lambda output — unlike PointProcessSimulation.slx)
     spike_times_list = []
-    lambda_data = np.zeros((time_grid.size, 2), dtype=float)
+    # λΔ not available from this model; return NaN so caller knows
+    lambda_data = np.full((time_grid.size, 2), np.nan, dtype=float)
 
     for neuron_idx in range(2):
-        spike_col = yout_np[:, neuron_idx * 2]  # spike indicator columns
-        lambda_col = yout_np[:, neuron_idx * 2 + 1]  # lambda columns
-        spike_mask = spike_col > 0.5
+        spike_mask = yout_np[:, neuron_idx] > 0.5
         spike_times_list.append(tout_np[spike_mask])
-        lambda_data[:, neuron_idx] = np.interp(time_grid, tout_np, lambda_col)
 
     return spike_times_list, lambda_data

@@ -112,7 +112,10 @@ def _normalize_beta(beta, num_states: int, num_cells: int) -> np.ndarray:
     elif arr.ndim != 2:
         raise ValueError("beta must be a vector or 2D array")
 
-    if arr.shape == (num_cells, num_states):
+    # When num_states != num_cells we can unambiguously detect the wrong
+    # orientation and transpose.  When num_states == num_cells the shapes
+    # are indistinguishable; trust the caller's orientation (ns × C).
+    if num_states != num_cells and arr.shape == (num_cells, num_states):
         arr = arr.T
     if arr.shape != (num_states, num_cells):
         raise ValueError("beta must be ns x C after MATLAB-style normalization")
