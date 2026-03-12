@@ -4,7 +4,7 @@ notes:
   file: notebooks/nSTATPaperExamples.ipynb
   source_matlab: nSTATPaperExamples.mlx
   fidelity_status: exact
-  remaining_differences: Workflow, API surface, dataset loading, and all 26 figures now follow the MATLAB paper-example helpfile.
+  remaining_differences: Workflow, API surface, dataset loading, and all 30 figures now follow the MATLAB paper-example helpfile.
     Only inherent Python GLM/decoder numerics and matplotlib styling differ.
 - topic: TrialExamples
   file: notebooks/TrialExamples.ipynb
@@ -58,13 +58,13 @@ notes:
   file: notebooks/PPSimExample.ipynb
   source_matlab: PPSimExample.mlx
   fidelity_status: exact
-  remaining_differences: Follows the MATLAB recursive-CIF workflow with the native Python `CIF.simulateCIF` path and all 8
+  remaining_differences: Follows the MATLAB recursive-CIF workflow with the native Python `CIF.simulateCIF` path and all 9
     published figures. Only inherent Simulink vs Python solver timing and stochastic draws differ.
 - topic: NetworkTutorial
   file: notebooks/NetworkTutorial.ipynb
   source_matlab: NetworkTutorial.mlx
   fidelity_status: exact
-  remaining_differences: Mirrors the MATLAB helpfile section order and all 14 published figures with a native Python network
+  remaining_differences: Mirrors the MATLAB helpfile section order and all 13 published figures with a native Python network
     simulator and MATLAB-style `Analysis` workflow. Only inherent NumPy vs Simulink random streams differ.
 - topic: ValidationDataSet
   file: notebooks/ValidationDataSet.ipynb
@@ -77,4 +77,4 @@ notes:
   source_matlab: StimulusDecode2D.mlx
   fidelity_status: exact
   remaining_differences: Follows the MATLAB nonlinear-CIF decoding workflow with `DecodingAlgorithms.PPDecodeFilter` and all
-    6 published figures. Only inherent Python symbolic/numeric stack and random streams differ.
+    4 published figures. Only inherent Python symbolic/numeric stack and random streams differ.

@@ -162,6 +162,18 @@ Source pages:
 - [docs/ClassDefinitions.md](docs/ClassDefinitions.md)
 - [docs/DocumentationSetup.md](docs/DocumentationSetup.md)
 
+## Plot Style
+
+```python
+from nstat.plot_style import set_plot_style
+
+# Modern readability-focused plots (default)
+set_plot_style('modern')
+
+# Legacy visual style for strict reproduction
+set_plot_style('legacy')
+```
+
 ## Paper-Aligned Toolbox Map
 
 To keep terminology and workflows consistent with the 2012 toolbox paper,
@@ -200,6 +212,36 @@ pytest -q
 ```bash
 sphinx-build -b html docs docs/_build
 ```
+
+## Code audit (2026-03-11)
+
+The Python port was verified against the MATLAB reference through a comprehensive
+5-phase audit covering all 16 classes and 484 methods. **466 methods found in
+Python, 6 nominal (MATLAB-infrastructure) gaps.** Full class-level and behavioral
+parity verified.
+
+**Python bugs fixed during the port:**
+
+- `SignalObj.std()` used `ddof=0`; MATLAB uses `ddof=1` (N-1 normalization)
+- `CovariateCollection.isCovPresent()` off-by-one in boundary check
+- `SpikeTrainCollection.psthGLM()` was a stub; now wired to the full GLM path
+- `SpikeTrainCollection.getNSTnames()` / `getUniqueNSTnames()` ignored the
+  `selectorArray` filter parameter
+- `nspikeTrain.getNST()` missing resample check on retrieval
+
+**MATLAB bugs discovered (13 total, filed as GitHub issues):**
+
+- `FitResult.m` — KS test used `sampleRate` as bin width instead of
+  `1/sampleRate`, invalidating goodness-of-fit for any sampleRate != 1
+- `CIF.m` — `symvar()` reordered variables alphabetically, causing silent
+  argument mismatch for non-alphabetical variable names
+- `SignalObj.m` — `findPeaks('minima')` returned maxima; `findGlobalPeak('minima')`
+  crashed; handle aliasing mutated input signals in arithmetic
+- `DecodingAlgorithms.m` — `isa(condNum,'nan')` always false; `ExplambdaDeltaCubed`
+  used `.^2` instead of `.^3`
+- `Analysis.m` — Granger causality mask zeroed all columns instead of column `i`
+
+See [parity/parity_report.md](parity/parity_report.md) for the full audit.
 
 ## License
 

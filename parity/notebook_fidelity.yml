@@ -18,11 +18,11 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Workflow, API surface, dataset loading, and all 26 figures
+  remaining_differences: Workflow, API surface, dataset loading, and all 30 figures
     now follow the MATLAB paper-example helpfile. Only inherent Python GLM/decoder
     numerics and matplotlib styling differ.
-  python_sections: 37
-  python_expected_figures: 26
+  python_sections: 40
+  python_expected_figures: 30
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -32,8 +32,8 @@ items:
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
   matlab_sections: 37
   matlab_published_figures: 30
-  section_delta: 0
-  figure_delta: -4
+  section_delta: 3
+  figure_delta: 0
 - topic: TrialExamples
   source_matlab: TrialExamples.mlx
   python_notebook: notebooks/TrialExamples.ipynb
@@ -93,7 +93,7 @@ items:
     dataset with executable Trial, ConfigColl, and Analysis calls. Only inherent GLM
     solver numerics and plot styling differ.
   python_sections: 9
-  python_expected_figures: 5
+  python_expected_figures: 4
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -104,7 +104,7 @@ items:
   matlab_sections: 9
   matlab_published_figures: 4
   section_delta: 0
-  figure_delta: 1
+  figure_delta: 0
 - topic: DecodingExample
   source_matlab: DecodingExample.mlx
   python_notebook: notebooks/DecodingExample.ipynb
@@ -164,7 +164,7 @@ items:
     and history-effect workflow with real figures. Only inherent GLM solver numerics
     and plotting defaults differ.
   python_sections: 7
-  python_expected_figures: 9
+  python_expected_figures: 10
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -175,7 +175,7 @@ items:
   matlab_sections: 7
   matlab_published_figures: 10
   section_delta: 0
-  figure_delta: -1
+  figure_delta: 0
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
   python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
@@ -188,7 +188,7 @@ items:
     and field-visualization workflow with the same normalized 10-term Zernike basis
     used by MATLAB. Only inherent GLM solver numerics and surface styling differ.
   python_sections: 5
-  python_expected_figures: 11
+  python_expected_figures: 10
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -199,7 +199,7 @@ items:
   matlab_sections: 5
   matlab_published_figures: 10
   section_delta: 0
-  figure_delta: 1
+  figure_delta: 0
 - topic: HybridFilterExample
   source_matlab: HybridFilterExample.mlx
   python_notebook: notebooks/HybridFilterExample.ipynb
@@ -233,10 +233,10 @@ items:
   current_run_group: helpfile_full
   fixture_backed: false
   remaining_differences: Follows the MATLAB recursive-CIF workflow with the native
-    Python `CIF.simulateCIF` path and all 8 published figures. Only inherent Simulink
+    Python `CIF.simulateCIF` path and all 9 published figures. Only inherent Simulink
     vs Python solver timing and stochastic draws differ.
   python_sections: 17
-  python_expected_figures: 8
+  python_expected_figures: 9
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -247,7 +247,7 @@ items:
   matlab_sections: 17
   matlab_published_figures: 9
   section_delta: 0
-  figure_delta: -1
+  figure_delta: 0
 - topic: NetworkTutorial
   source_matlab: NetworkTutorial.mlx
   python_notebook: notebooks/NetworkTutorial.ipynb
@@ -256,11 +256,11 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Mirrors the MATLAB helpfile section order and all 14 published
+  remaining_differences: Mirrors the MATLAB helpfile section order and all 13 published
     figures with a native Python network simulator and MATLAB-style `Analysis` workflow.
     Only inherent NumPy vs Simulink random streams differ.
   python_sections: 21
-  python_expected_figures: 14
+  python_expected_figures: 13
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -271,7 +271,7 @@ items:
   matlab_sections: 21
   matlab_published_figures: 13
   section_delta: 0
-  figure_delta: 1
+  figure_delta: 0
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb
@@ -305,10 +305,10 @@ items:
   current_run_group: helpfile_full
   fixture_backed: false
   remaining_differences: Follows the MATLAB nonlinear-CIF decoding workflow with `DecodingAlgorithms.PPDecodeFilter`
-    and all 6 published figures. Only inherent Python symbolic/numeric stack and random
+    and all 4 published figures. Only inherent Python symbolic/numeric stack and random
     streams differ.
-  python_sections: 4
-  python_expected_figures: 6
+  python_sections: 3
+  python_expected_figures: 4
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -318,5 +318,5 @@ items:
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
   matlab_sections: 4
   matlab_published_figures: 4
-  section_delta: 0
-  figure_delta: 2
+  section_delta: -1
+  figure_delta: 0

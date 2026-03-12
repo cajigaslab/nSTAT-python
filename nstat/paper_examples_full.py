@@ -588,12 +588,14 @@ def run_experiment5(
     if n_cells < 1:
         raise ValueError("n_cells must be >= 1")
     spikes = np.zeros((time.shape[0], n_cells), dtype=float)
+    cif_rates = np.zeros((time.shape[0], n_cells), dtype=float)
     for i in range(n_cells):
         b1 = rng.normal(1.0, 0.5)
         b0 = np.log(10.0 * dt) + rng.normal(0.0, 0.3)
         eta = b1 * stim + b0
         p = np.exp(eta)
         p = p / (1.0 + p)
+        cif_rates[:, i] = p / dt
         spikes[:, i] = (rng.random(time.shape[0]) < p).astype(float)
 
     decoded = DecodingAlgorithms.linear_decode(spikes, stim)
@@ -605,6 +607,7 @@ def run_experiment5(
         "time_s": time,
         "stimulus": stim,
         "spikes": spikes,
+        "cif_rates": cif_rates,
         "decoded": np.asarray(decoded["decoded"], dtype=float),
         "ci_low": np.asarray(decoded["ci"][:, 0], dtype=float),
         "ci_high": np.asarray(decoded["ci"][:, 1], dtype=float),

@@ -24,7 +24,7 @@ NOTE = """\
 ## MATLAB Parity Note
 - Source MATLAB helpfile: `NetworkTutorial.mlx`
 - Fidelity status: `exact`
-- Remaining justified differences: Mirrors the MATLAB helpfile section order and all 14 published figures with a native Python network simulator and MATLAB-style `Analysis` workflow. Only inherent NumPy vs Simulink random streams differ.
+- Remaining justified differences: Mirrors the MATLAB helpfile section order and all 13 published figures with a native Python network simulator and MATLAB-style `Analysis` workflow. Only inherent NumPy vs Simulink random streams differ.
 """
 
 
@@ -55,7 +55,7 @@ CODE = [
 
     np.random.seed(0)
     OUTPUT_ROOT = REPO_ROOT / "output" / "notebook_images"
-    __tracker = FigureTracker(topic='NetworkTutorial', output_root=OUTPUT_ROOT, expected_count=14)
+    __tracker = FigureTracker(topic='NetworkTutorial', output_root=OUTPUT_ROOT, expected_count=13)
 
 
     def _figure(label: str, *, figsize=(8.5, 4.5)):
@@ -273,14 +273,6 @@ CODE = [
     f = 1.0
     stimCov = Covariate(time, network.latent_drive, "Stimulus", "time", "s", "Voltage", ["sin"])
     baselineCov = Covariate(time, np.ones_like(time), "Baseline", "time", "s", "", ["mu"])
-
-    fig = _figure("Stimulus sine-wave drive", figsize=(9.0, 4.5))
-    ax = fig.subplots(1, 1)
-    ax.plot(time, network.latent_drive, color="tab:blue", linewidth=1.2)
-    ax.set_xlim(0.0, 5.0)
-    ax.set_xlabel("time (s)")
-    ax.set_ylabel("stimulus")
-    ax.set_title("Sine-wave stimulus used by the network tutorial")
     """,
     """
     # SECTION 18: Simulate the Network
