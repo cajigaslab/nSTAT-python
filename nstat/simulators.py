@@ -161,6 +161,8 @@ def simulate_two_neuron_network(
                 baseline_mu=np.asarray(baseline_mu, dtype=float),
             )
         except Exception:
+            if backend == "matlab":
+                raise  # User explicitly asked for MATLAB — propagate
             # auto mode — fall back to Python with warning
             _warn_fb()
     elif backend == "auto":

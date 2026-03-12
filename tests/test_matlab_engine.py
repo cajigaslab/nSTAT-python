@@ -199,8 +199,8 @@ class TestPythonBackendSmoke:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.skipif(
-    not is_matlab_available(),
-    reason="MATLAB Engine not installed",
+    not is_matlab_available() or get_matlab_nstat_path() is None,
+    reason="MATLAB Engine not installed or MATLAB nSTAT repo not found",
 )
 class TestMatlabEngineIntegration:
     def test_simulateCIF_matlab_returns_spike_collection(self) -> None:
