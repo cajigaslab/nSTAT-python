@@ -1130,7 +1130,7 @@ class FitResult:
         ax_co = fig.add_subplot(gs[1, 0:2])
         ax_re = fig.add_subplot(gs[1, 2:4])
 
-        self.KSPlot(fit_num=fit_num, handle=ax_ks)
+        self.KSPlot(fit_num=None, handle=ax_ks)
         # Add neuron number label (matching Matlab)
         ax_ks.text(
             0.45, 0.95, f"Neuron: {self.neuronNumber}",
@@ -1144,23 +1144,62 @@ class FitResult:
         fig.tight_layout()
         return fig
 
-    def KSPlot(self, fit_num: int = 1, handle=None):
-        """KS goodness-of-fit plot with 95 % confidence bands (Matlab ``KSPlot``)."""
-        diag = self._compute_diagnostics(fit_num)
+    # MATLAB color cycle used by Analysis.colors: b, g, r, c, m, y, k
+    _MATLAB_KS_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
+
+    def KSPlot(self, fit_num: int | list[int] | None = None, handle=None):
+        """KS goodness-of-fit plot with 95 % confidence bands (Matlab ``KSPlot``).
+
+        Parameters
+        ----------
+        fit_num : int, list of int, or None
+            Which model(s) to plot.  ``None`` (default) plots all models
+            (``1:numResults``), matching the MATLAB default behaviour.
+            A single int plots one model; a list plots the specified subset.
+        handle : matplotlib Axes, optional
+            Axes to draw on.  A new figure is created when *None*.
+        """
+        if fit_num is None:
+            fit_nums = list(range(1, self.numResults + 1))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 4.0))[1]
-        ideal = np.asarray(diag["ks_ideal"], dtype=float)
-        empirical = np.asarray(diag["ks_empirical"], dtype=float)
-        ci = np.asarray(diag["ks_ci"], dtype=float)
-        if ideal.size:
-            ax.plot(ideal, empirical, color="tab:blue", linewidth=1.5)
-            ax.plot([0.0, 1.0], [0.0, 1.0], color="0.3", linewidth=1.0, linestyle="--")
-            ax.plot(ideal, np.clip(ideal + ci, 0.0, 1.0), color="tab:red", linewidth=1.0)
-            ax.plot(ideal, np.clip(ideal - ci, 0.0, 1.0), color="tab:red", linewidth=1.0)
+
+        # Draw reference diagonal and confidence bands from the first model
+        first_diag = self._compute_diagnostics(fit_nums[0])
+        ideal_ref = np.asarray(first_diag["ks_ideal"], dtype=float)
+        ci_ref = np.asarray(first_diag["ks_ci"], dtype=float)
+        if ideal_ref.size:
+            ax.plot([0.0, 1.0], [0.0, 1.0], color="0.3", linewidth=1.0, linestyle="-.")
+            ax.plot(ideal_ref, np.clip(ideal_ref + ci_ref, 0.0, 1.0), color="tab:red", linewidth=1.0)
+            ax.plot(ideal_ref, np.clip(ideal_ref - ci_ref, 0.0, 1.0), color="tab:red", linewidth=1.0)
+
+        # Plot each model's empirical CDF (matching MATLAB colour cycle)
+        labels_for_legend: list[str] = []
+        handles_for_legend: list[object] = []
+        data_labels = list(self.lambda_signal.dataLabels) if getattr(self.lambda_signal, "dataLabels", None) else []
+        for i, fn in enumerate(fit_nums):
+            diag = self._compute_diagnostics(fn)
+            ideal = np.asarray(diag["ks_ideal"], dtype=float)
+            empirical = np.asarray(diag["ks_empirical"], dtype=float)
+            color = self._MATLAB_KS_COLORS[i % len(self._MATLAB_KS_COLORS)]
+            label = data_labels[fn - 1] if fn - 1 < len(data_labels) else f"Model {fn}"
+            if ideal.size:
+                h, = ax.plot(ideal, empirical, color=color, linewidth=2.0)
+                handles_for_legend.append(h)
+                labels_for_legend.append(label)
+
+        if handles_for_legend:
+            ax.legend(handles_for_legend, labels_for_legend, loc="lower right", fontsize=10)
+
         ax.set_xlim(0.0, 1.0)
         ax.set_ylim(0.0, 1.0)
         ax.set_xlabel("Ideal Uniform CDF")
         ax.set_ylabel("Empirical CDF")
-        ax.set_title("KS Plot")
+        ax.set_title("KS Plot of Rescaled ISIs\nwith 95% Confidence Intervals", fontweight="bold", fontsize=11)
         return ax
 
     def plotResidual(self, fit_num: int = 1, handle=None):
