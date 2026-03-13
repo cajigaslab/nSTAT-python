@@ -253,8 +253,12 @@ class Analysis:
             lambda_time = np.asarray(tObj.getCov(1).time, dtype=float).reshape(-1)
             sample_rate = float(tObj.sampleRate)
             dt = 1.0 / max(sample_rate, 1e-12)
-            bin_edges = np.concatenate([lambda_time, [lambda_time[-1] + dt]])
-            y = np.asarray(tObj.nspikeColl.getNST(index).to_binned_counts(bin_edges), dtype=float).reshape(-1)
+            # Use getSpikeVector (via getSigRep) to match MATLAB's GLMFit,
+            # which calls tObj.getSpikeVector(neuronIndex).  The alternative
+            # to_binned_counts uses np.histogram bin edges that can assign
+            # spikes to adjacent bins when spike times fall on floating-point
+            # boundary values, causing small but systematic deviance offsets.
+            y = np.asarray(tObj.getSpikeVector(index), dtype=float).reshape(-1)
 
             n_obs = min(x.shape[0], y.shape[0], lambda_time.shape[0])
             x = x[:n_obs, :]
@@ -472,7 +476,13 @@ class Analysis:
         )
         # MATLAB returns fits with KS diagnostics already populated, and
         # downstream summary classes read those cached fields directly.
-        fit_result.computeKSStats()
+        # Compute KS stats for ALL fits (not just fit 1) so that history
+        # sweeps and multi-model comparisons have correct KS statistics.
+        for _fit_i in range(1, fit_result.numResults + 1):
+            try:
+                fit_result.computeKSStats(fit_num=_fit_i)
+            except Exception:
+                pass  # some configs may fail KS (e.g. degenerate lambda)
 
         # Compute the conditional intensity on validation data when a
         # validation partition is present (mirrors Matlab behaviour).

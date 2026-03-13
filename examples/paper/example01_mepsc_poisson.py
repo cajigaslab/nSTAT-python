@@ -62,6 +62,18 @@ def _load_mepsc_times_seconds(path: Path) -> np.ndarray:
     return times_ms / 1000.0
 
 
+def _matlab_colon(start: float, step: float, stop: float) -> np.ndarray:
+    """Replicate MATLAB ``start:step:stop`` exactly.
+
+    ``np.arange`` accumulates floating-point error over many steps and can
+    produce off-by-one length mismatches.  This function computes the element
+    count first (like MATLAB's colon operator), then multiplies by integer
+    indices — giving bit-exact parity.
+    """
+    n = int(np.floor((stop - start) / step)) + 1
+    return start + np.arange(n) * step
+
+
 # =========================================================================
 # Helper: export figure
 # =========================================================================
@@ -102,7 +114,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
 
     # Create spike train and time vector
     nstConst = nspikeTrain(epsc2)
-    timeConst = np.arange(0, nstConst.maxTime + 1.0 / sampleRate, 1.0 / sampleRate)
+    timeConst = _matlab_colon(0, 1.0 / sampleRate, nstConst.maxTime)
 
     # Create baseline covariate
     baseline = Covariate(
@@ -150,7 +162,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     spikeTimes1 = 260.0 + washout1
     spikeTimes2 = np.sort(washout2) + 745.0
     nstWashout = nspikeTrain(np.concatenate([spikeTimes1, spikeTimes2]))
-    timeWashout = np.arange(260.0, nstWashout.maxTime + 1.0 / sampleRate, 1.0 / sampleRate)
+    timeWashout = _matlab_colon(260.0, 1.0 / sampleRate, nstWashout.maxTime)
 
     # --- Figure 2: Constant vs Decreasing Mg2+ rasters ---
     fig2, axes2 = plt.subplots(2, 1, figsize=(14, 9))
@@ -179,12 +191,11 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     print("\n=== Part 3: Piecewise Baseline Model Comparison ===")
 
     # Build piecewise indicator covariates
-    # Matlab: find(time<495,1,'last') — last index strictly before 495
-    # np.searchsorted gives first index >= 495, so subtract 1 isn't needed
-    # because Python slice [:idx] is exclusive. But Matlab's 1:timeInd1 is
-    # inclusive, so we need searchsorted(..., side='right') to include 495.
-    timeInd1 = np.searchsorted(timeWashout, 495.0, side="right")
-    timeInd2 = np.searchsorted(timeWashout, 765.0, side="right")
+    # Matlab: timeInd1 = find(time < 495, 1, 'last')  → last 1-based index < 495
+    # Equivalent Python: first 0-based index >= 495 (searchsorted side='left'),
+    # so rate1[:idx] covers [260, 494.999] and rate2[idx:] starts at 495.
+    timeInd1 = np.searchsorted(timeWashout, 495.0, side="left")
+    timeInd2 = np.searchsorted(timeWashout, 765.0, side="left")
     N = len(timeWashout)
 
     constantRate = np.ones((N, 1))

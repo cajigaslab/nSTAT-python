@@ -915,6 +915,9 @@ class FitResult:
         ideal = np.asarray(xAxis[:, 0], dtype=float).reshape(-1) if np.asarray(xAxis).size else np.asarray([], dtype=float)
         empirical = np.asarray(KSSorted[:, 0], dtype=float).reshape(-1) if np.asarray(KSSorted).size else np.asarray([], dtype=float)
         ci = np.full(ideal.size, 1.36 / np.sqrt(float(ideal.size)), dtype=float) if ideal.size else np.asarray([], dtype=float)
+        # MATLAB's setKSStats (FitResult.m:1434) recomputes the KS stat
+        # via kstest2(xAxis, KSSorted) — a two-sample KS test.  The
+        # curve-level max deviation is kept separately for plotting.
         ks_curve_stat = float(np.max(np.abs(empirical - ideal))) if ideal.size else 1.0
         if ideal.size:
             different, ks_pvalue, ks_stat = _matlab_kstest2(ideal, empirical)
@@ -962,7 +965,20 @@ class FitResult:
             "coeff_labels": np.asarray(coeff_labels, dtype=object),
         }
         self._diagnostic_cache[fit_num] = diagnostics
-        self.setKSStats(z, uniforms, ideal, empirical, np.asarray([ks_stat], dtype=float))
+        # Write KS stat to the correct index (fit_num is 1-based).
+        # We avoid calling setKSStats here because it overwrites the
+        # multi-column Z/U/KSXAxis/KSSorted arrays and always writes
+        # the ks_stat scalar to index 0.  Instead, write directly to
+        # the correct row so that multi-fit sweeps accumulate properly.
+        idx = fit_num - 1
+        if idx < self.KSStats.shape[0]:
+            self.KSStats[idx, 0] = ks_stat
+        # For the last fit, store Z/U/etc. so legacy callers that
+        # expect those arrays still see something useful.
+        self.Z = np.asarray(z, dtype=float)[:, None] if z.size else np.array([], dtype=float)
+        self.U = np.asarray(uniforms, dtype=float)[:, None] if uniforms.size else np.array([], dtype=float)
+        self.KSXAxis = np.asarray(ideal, dtype=float)[:, None] if ideal.size else np.array([], dtype=float)
+        self.KSSorted = np.asarray(empirical, dtype=float)[:, None] if empirical.size else np.array([], dtype=float)
         self.KSPvalues[fit_num - 1] = ks_pvalue
         self.withinConfInt[fit_num - 1] = within
         self.X = gaussianized

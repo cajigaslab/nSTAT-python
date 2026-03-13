@@ -280,8 +280,10 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
         windowIndex = ksIdx
 
     # Extract selected history windows
+    # windowIndex is 0-based; MATLAB uses windowTimes(1:windowIndex) with 1-based
+    # indexing, which includes windowIndex elements.  Python equivalent is [:windowIndex+1].
     if windowIndex > 1:
-        selectedHistory = list(windowTimes[:windowIndex])
+        selectedHistory = list(windowTimes[:windowIndex + 1])
     else:
         selectedHistory = []
 

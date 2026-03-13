@@ -1513,7 +1513,7 @@ class SignalObj:
     # Cross-covariance (match Matlab SignalObj.xcov)
     # ------------------------------------------------------------------
     def xcov(self, other: "SignalObj | None" = None, maxlag: int | None = None,
-             scaleOpt: str = "biased") -> "SignalObj":
+             scaleOpt: str = "none") -> "SignalObj":
         """Cross-covariance (mean-removed xcorr).  Matches Matlab ``xcov``.
 
         When called with no *other* argument (auto-covariance), only
