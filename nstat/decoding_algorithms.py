@@ -1507,13 +1507,32 @@ class DecodingAlgorithms:
                 W_p = np.zeros((ns, ns, N + 1), dtype=float)
                 W_u = np.zeros((ns, ns, N), dtype=float)
 
+                # Fuse initial state with backward target information
+                # (Srinivasan et al. 2006 — prior update step)
+                if np.linalg.det(Pi0_mat) != 0:
+                    invPi0 = np.linalg.pinv(Pi0_mat)
+                    invPitT_0_fuse = np.linalg.pinv(PitT[:, :, 0])
+                    Pi0New = np.linalg.pinv(invPi0 + invPitT_0_fuse)
+                    Pi0New = np.where(np.isnan(Pi0New), 0.0, Pi0New)
+                    x0New = Pi0New @ (invPi0 @ x0_vec + invPitT_0_fuse @ PhitT[:, :, 0] @ yT_vec)
+                    x0_vec = x0New
+                    Pi0_mat = Pi0New
+
                 # Initial predict with target correction
+                # NOTE: MATLAB uses n=N (leftover from ft loop) for the initial
+                # PPDecode_predict call, so Amat(:,:,min(N,N)) = B(:,:,N) and
+                # Qmat(:,:,min(N)) = QT(:,:,N).  We replicate this for parity.
                 invPitT_0 = np.linalg.pinv(PitT[:, :, 0])
                 invA1 = np.linalg.pinv(A1)
                 invPhi0T = np.linalg.pinv(invA1 @ PhitT[:, :, 0])
                 ut[:, 0] = (Q1 @ invPitT_0) @ PhitT[:, :, 0] @ (yT_vec - invPhi0T @ x0_vec)
-                x_p[:, 0] = Amat[:, :, 0] @ x0_vec + ut[:, 0]
-                W_p[:, :, 0] = Amat[:, :, 0] @ Pi0_mat @ Amat[:, :, 0].T + Qmat_arr[:, :, 0]
+                x_p[:, 0], W_p[:, :, 0] = DecodingAlgorithms.PPDecode_predict(
+                    x0_vec, Pi0_mat,
+                    Amat[:, :, N - 1],
+                    Qmat_arr[:, :, N - 1],
+                )
+                x_p[:, 0] += ut[:, 0]
+                W_p[:, :, 0] += (Q1 @ invPitT_0) @ A1 @ Pi0_mat @ A1.T @ (Q1 @ invPitT_0).T
 
                 for time_index in range(1, N + 1):
                     x_u[:, time_index - 1], W_u[:, :, time_index - 1], _ = DecodingAlgorithms.PPDecode_updateLinear(
@@ -1536,8 +1555,14 @@ class DecodingAlgorithms:
                         ut[:, time_index] = (Qn @ invPitT_n1) @ PhitT[:, :, time_index] @ (
                             yT_vec - invPhitm1T @ x_u[:, time_index - 1]
                         )
-                        A_t = Amat[:, :, min(time_index - 1, N - 1)]
-                        Q_t = Qmat_arr[:, :, min(time_index - 1, N - 1)]
+                        # MATLAB PPDecode_predict in non-augmented target branch
+                        # uses Amat(:,:,min(size(A,3),n)) and Qmat(:,:,min(size(Qmat,3))).
+                        # size(A,3) = number of A pages (1 if time-invariant), so
+                        # min(1,n) = 1 → always B[:,:,0].
+                        # min(size(Qmat,3)) = min(N) = N → always QT[:,:,N-1].
+                        A_dim3 = A.shape[2] if A.ndim == 3 else 1
+                        A_t = Amat[:, :, min(A_dim3 - 1, time_index - 1)]
+                        Q_t = Qmat_arr[:, :, N - 1]
                         x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
                             x_u[:, time_index - 1],
                             W_u[:, :, time_index - 1],

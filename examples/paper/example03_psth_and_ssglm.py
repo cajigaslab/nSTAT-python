@@ -424,7 +424,9 @@ def run_part_b(data_dir, export_dir=None):
     spikeColl.resample(1 / delta)
     spikeColl.setMaxTime(tmax)
 
-    dN = spikeColl.dataToMatrix()
+    # MATLAB: dN = spikeColl.dataToMatrix'  →  (K, T)
+    # Python dataToMatrix() returns (T, K), so transpose to match.
+    dN = spikeColl.dataToMatrix().T  # (K, T)
     if dN.ndim == 1:
         dN = dN.reshape(1, -1)
     dN = np.asarray(dN, dtype=float)
