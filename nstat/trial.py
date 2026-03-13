@@ -1379,6 +1379,7 @@ class SpikeTrainCollection:
         """
         from .analysis import Analysis
         from .confidence_interval import ConfidenceInterval
+        from .glm import fit_poisson_glm
 
         basis = self.generateUnitImpulseBasis(
             float(binwidth), float(self.minTime), float(self.maxTime), float(self.sampleRate)
@@ -1393,13 +1394,58 @@ class SpikeTrainCollection:
         cfg.setName("GLM-PSTH+Hist" if np.asarray(hist).size else "GLM-PSTH")
         cfgColl = ConfigCollection([cfg])
         algorithm = "GLM" if str(fitType or "poisson").lower() == "poisson" else "BNLRCG"
-        psth_result = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, algorithm, [], 1)
-        fit = psth_result[0] if isinstance(psth_result, list) else psth_result
 
-        # Extract coefficients and standard errors
-        coeffs_all, _labels, se_all = fit.getCoeffsWithLabels(1)
-        raw_coeffs = np.asarray(coeffs_all, dtype=float).reshape(-1)
-        se_vec = np.asarray(se_all, dtype=float).reshape(-1)
+        # ---- Matlab batchMode=1: concatenate Y and X across ALL trials ----
+        # Matlab nstColl.psthGLM (line 1003-1004) calls
+        #   RunAnalysisForAllNeurons(trial, cfgColl, 0, Algorithm, [], 1)
+        # with batchMode=1, which pools all trials of the same neuron into
+        # a single GLM fit.  Python's RunAnalysisForAllNeurons previously
+        # ignored batchMode, fitting each trial separately — producing
+        # single-trial coefficients instead of across-trial pooled ones.
+        cfgColl.setConfig(trial, 1)
+        stacked_x: list[np.ndarray] = []
+        stacked_y: list[np.ndarray] = []
+        for idx in range(1, trial.nspikeColl.num_spike_trains + 1):
+            x_i = np.asarray(trial.getDesignMatrix(idx), dtype=float)
+            y_i = np.asarray(trial.getSpikeVector(idx), dtype=float).reshape(-1)
+            n_obs = min(x_i.shape[0], y_i.shape[0])
+            stacked_x.append(x_i[:n_obs])
+            stacked_y.append(y_i[:n_obs])
+        X = np.vstack(stacked_x)
+        y = np.concatenate(stacked_y)
+
+        if algorithm == "GLM":
+            glm_res = fit_poisson_glm(X, y, include_intercept=False)
+            raw_coeffs = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            lambda_hat = glm_res.predict_rate(X)
+            W = np.maximum(lambda_hat, 1e-12)
+        else:
+            from .glm import fit_binomial_glm
+            glm_res = fit_binomial_glm(X, y, include_intercept=False)
+            raw_coeffs = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            lambda_hat = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
+            W = lambda_hat * (1.0 - lambda_hat)
+            W = np.maximum(W, 1e-12)
+
+        # Standard errors from Fisher information (Hessian inverse)
+        try:
+            XtWX = X.T @ (X * W[:, None]) + 1e-6 * np.eye(X.shape[1])
+            covb = np.linalg.inv(XtWX)
+            se_vec = np.sqrt(np.maximum(np.diag(covb), 0.0))
+        except np.linalg.LinAlgError:
+            se_vec = np.full(raw_coeffs.size, np.nan, dtype=float)
+
+        # Build a proper FitResult for the third return value by fitting just
+        # the first spike train (fast), then override its coefficients with
+        # the batch-fit values.
+        fit = Analysis.RunAnalysisForNeuron(trial, 1, cfgColl, 0, algorithm)
+        if isinstance(fit, list):
+            fit = fit[0]
+        # Override with batch-fit coefficients and standard errors
+        fit.b[0] = raw_coeffs.copy()
+        if fit.stats and isinstance(fit.stats[0], dict):
+            fit.stats[0]["se"] = se_vec.copy()
+
         numBasis = basis.dimension
 
         if raw_coeffs.size < numBasis:
