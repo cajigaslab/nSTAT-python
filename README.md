@@ -26,7 +26,6 @@ extensions to the toolbox based on your code contributions as well as for flaggi
 and tracking open issues.
 
 [![test-and-build](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml)
-[![pages](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/pages.yml)
 
 Lab websites:
 - Neuroscience Statistics Research Laboratory: https://www.neurostat.mit.edu
@@ -149,11 +148,11 @@ These smaller demos remain useful as quick install and plotting checks.
 ## Documentation
 
 - Docs home: [cajigaslab.github.io/nSTAT-python](https://cajigaslab.github.io/nSTAT-python/)
-- Help home: [cajigaslab.github.io/nSTAT-python/NeuralSpikeAnalysis_top.html](https://cajigaslab.github.io/nSTAT-python/NeuralSpikeAnalysis_top.html)
-- Paper overview: [cajigaslab.github.io/nSTAT-python/PaperOverview.html](https://cajigaslab.github.io/nSTAT-python/PaperOverview.html)
-- Example index: [cajigaslab.github.io/nSTAT-python/Examples.html](https://cajigaslab.github.io/nSTAT-python/Examples.html)
-- Class definitions: [cajigaslab.github.io/nSTAT-python/ClassDefinitions.html](https://cajigaslab.github.io/nSTAT-python/ClassDefinitions.html)
-- Documentation setup: [cajigaslab.github.io/nSTAT-python/DocumentationSetup.html](https://cajigaslab.github.io/nSTAT-python/DocumentationSetup.html)
+- Help home: [cajigaslab.github.io/nSTAT-python/help](https://cajigaslab.github.io/nSTAT-python/help/index.html)
+- Paper overview: [cajigaslab.github.io/nSTAT-python/help/paper_overview.html](https://cajigaslab.github.io/nSTAT-python/help/paper_overview.html)
+- Example index: [cajigaslab.github.io/nSTAT-python/help/examples_index.html](https://cajigaslab.github.io/nSTAT-python/help/examples_index.html)
+- Class definitions: [cajigaslab.github.io/nSTAT-python/help/class_definitions.html](https://cajigaslab.github.io/nSTAT-python/help/class_definitions.html)
+- Documentation setup: [cajigaslab.github.io/nSTAT-python/help/examples/DocumentationSetup2025b.html](https://cajigaslab.github.io/nSTAT-python/help/examples/DocumentationSetup2025b.html)
 
 Source pages:
 - [docs/NeuralSpikeAnalysis_top.md](docs/NeuralSpikeAnalysis_top.md)
@@ -241,7 +240,7 @@ parity verified.
   used `.^2` instead of `.^3`
 - `Analysis.m` — Granger causality mask zeroed all columns instead of column `i`
 
-See [parity/parity_report.md](parity/parity_report.md) for the full audit.
+See [parity/report.md](parity/report.md) for the full audit.
 
 ## License
 
