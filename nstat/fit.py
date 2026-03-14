@@ -9,13 +9,27 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import norm, pearsonr
 
 from .core import Covariate, nspikeTrain
 
 
 def _ordered_unique(labels: Sequence[str]) -> list[str]:
     return list(dict.fromkeys(str(label) for label in labels))
+
+
+def _ensure_mathtext(label: str) -> str:
+    """Wrap a label in ``$...$`` if it contains LaTeX commands but isn't already wrapped."""
+    s = str(label)
+    if not s:
+        return s
+    # Already wrapped in math delimiters — leave as-is
+    if s.startswith("$") and s.endswith("$"):
+        return s
+    # Contains LaTeX commands (e.g. \lambda, \rho) — wrap in $...$
+    if re.search(r"\\[a-zA-Z]", s):
+        return f"${s}$"
+    return s
 
 
 def _parse_neuron_number(spike_obj: nspikeTrain | Sequence[nspikeTrain]) -> str | float:
@@ -1154,7 +1168,7 @@ class FitResult:
             verticalalignment="top",
         )
         self.plotInvGausTrans(fit_num=fit_num, handle=ax_ig)
-        self.plotSeqCorr(fit_num=fit_num, handle=ax_sc)
+        self.plotSeqCorr(fit_num=None, handle=ax_sc)
         self.plotCoeffs(fit_num=fit_num, handle=ax_co)
         self.plotResidual(fit_num=fit_num, handle=ax_re)
         fig.tight_layout()
@@ -1202,7 +1216,8 @@ class FitResult:
             ideal = np.asarray(diag["ks_ideal"], dtype=float)
             empirical = np.asarray(diag["ks_empirical"], dtype=float)
             color = self._MATLAB_KS_COLORS[i % len(self._MATLAB_KS_COLORS)]
-            label = data_labels[fn - 1] if fn - 1 < len(data_labels) else f"Model {fn}"
+            raw_label = data_labels[fn - 1] if fn - 1 < len(data_labels) else f"Model {fn}"
+            label = _ensure_mathtext(raw_label)
             if ideal.size:
                 h, = ax.plot(ideal, empirical, color=color, linewidth=2.0)
                 handles_for_legend.append(h)
@@ -1249,29 +1264,63 @@ class FitResult:
         ax.set_title("Autocorrelation Function\nof Rescaled ISIs\nwith 95% CIs")
         return ax
 
-    def plotSeqCorr(self, fit_num: int = 1, handle=None):
-        """Plot U_j vs U_{j+1} scatter with correlation coefficient.
+    def plotSeqCorr(self, fit_num: int | list[int] | None = None, handle=None):
+        """Plot U_j vs U_{j+1} scatter with correlation coefficient and p-value.
 
         Matlab: plotSeqCorr plots the sequential correlation scatter of
         U_j (uniform-transformed rescaled ISIs) to detect serial dependence.
+        When multiple models are present, each is plotted with a different
+        colour and a legend entry showing ``label, ρ=X.XX (p=Y.YY)``.
+
+        Parameters
+        ----------
+        fit_num : int, list of int, or None
+            Which model(s) to plot.  ``None`` (default) plots all models,
+            matching the MATLAB default behaviour.
+        handle : matplotlib Axes, optional
+            Axes to draw on.  A new figure is created when *None*.
         """
-        diag = self._compute_diagnostics(fit_num)
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        u = np.asarray(diag.get("uniforms", []), dtype=float)
-        if u.size > 1:
-            uj = u[:-1]
-            uj1 = u[1:]
-            ax.plot(uj, uj1, ".", color="tab:blue", markersize=4.0)
-            # Compute correlation coefficient (guard against constant series)
-            if uj.size > 2 and np.std(uj) > 0 and np.std(uj1) > 0:
-                with np.errstate(invalid="ignore"):
-                    rho_mat = np.corrcoef(uj, uj1)
-                rho = rho_mat[0, 1] if rho_mat.shape[0] > 1 else float("nan")
-                ax.set_title(f"Sequential Correlation ($\\rho$ = {rho:.2g})")
-            else:
-                ax.set_title("Sequential Correlation")
+        if fit_num is None:
+            fit_nums = list(range(1, self.numResults + 1))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
         else:
-            ax.set_title("Sequential Correlation")
+            fit_nums = list(fit_num)
+
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        data_labels = (
+            list(self.lambda_signal.dataLabels)
+            if getattr(self.lambda_signal, "dataLabels", None)
+            else []
+        )
+        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
+        legend_labels: list[str] = []
+        legend_handles: list[object] = []
+
+        for i, fn in enumerate(fit_nums):
+            diag = self._compute_diagnostics(fn)
+            u = np.asarray(diag.get("uniforms", []), dtype=float)
+            base_label = _ensure_mathtext(
+                data_labels[fn - 1] if fn - 1 < len(data_labels) else f"Model {fn}"
+            )
+            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
+            if u.size > 1:
+                uj = u[:-1]
+                uj1 = u[1:]
+                h, = ax.plot(uj, uj1, ".", color=color, markersize=4.0)
+                # Compute correlation coefficient and p-value
+                if uj.size > 2 and np.std(uj) > 0 and np.std(uj1) > 0:
+                    rho, pval = pearsonr(uj, uj1)
+                    label = f"{base_label}, $\\rho$={rho:.2g} (p={pval:.2g})"
+                else:
+                    label = base_label
+                legend_handles.append(h)
+                legend_labels.append(label)
+
+        if legend_handles:
+            ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=10)
+
+        ax.set_title("Sequential Correlation")
         ax.set_xlabel("$U_j$")
         ax.set_ylabel("$U_{j+1}$")
         ax.set_xlim(0, 1)

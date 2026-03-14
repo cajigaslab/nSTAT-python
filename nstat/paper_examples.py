@@ -226,8 +226,8 @@ def run_experiment5(seed: int = 11, *, return_payload: bool = False) -> Summary 
     n_cells = 20
     spikes = np.zeros((time.shape[0], n_cells), dtype=float)
     for i in range(n_cells):
-        b1 = rng.normal(1.0, 0.5)
-        b0 = np.log(10.0 * dt) + rng.normal(0.0, 0.3)
+        b1 = rng.standard_normal()
+        b0 = np.log(10.0 * dt) + rng.standard_normal()
         eta = b1 * stim + b0
         p = np.exp(eta)
         p = p / (1.0 + p)
