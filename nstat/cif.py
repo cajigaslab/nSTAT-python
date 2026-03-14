@@ -319,9 +319,7 @@ class CIFModel:
         name: str = "lambda",
     ) -> "CIFModel":
         eta = intercept + np.asarray(design_matrix, dtype=float) @ np.asarray(coefficients, dtype=float)
-        p = np.exp(np.clip(eta, -20.0, 20.0))
-        p = p / (1.0 + p)
-        rate = p / max(float(dt), 1e-12)
+        rate = np.exp(np.clip(eta, -20.0, 20.0))  # Poisson log link: lambda = exp(eta)
         return cls(np.asarray(time, dtype=float).reshape(-1), rate, name)
 
 
