@@ -13,14 +13,17 @@ Part A — Univariate Sinusoidal Stimulus (Figures 1–2):
   3. Decode the stimulus using ``PPDecodeFilterLinear`` (PPAF).
 
 Part B — 4-State Arm Reach with PPAF (Figures 3–4):
-  4. Simulate reaching trajectories (position + velocity, 4-D state).
-  5. Encode with 20-cell cosine-tuning population (binomial CIF).
+  4. Simulate reaching trajectories (position + velocity, 4-D state) using
+     minimum-jerk dynamics (cosine acceleration toward target).
+  5. Encode with 20-cell velocity-tuned population (binomial CIF).
   6. Decode with PPAF (free) and PPAF + Goal; compare across 20 simulations.
 
 Part C — Hybrid Filter (Figures 5–6):
-  7. Simulate 40-cell population with 2 discrete reach-states (rest / reach)
-     that modulate baseline firing rate, plus velocity-tuned continuous state.
-  8. Decode joint discrete + continuous state via ``PPHybridFilterLinear``.
+  7. Load fixture trajectory with 6-D state (pos + vel + accel) and 2 discrete
+     movement modes (not-moving / moving) from ``paperHybridFilterExample.mat``.
+  8. Simulate 40-cell population with velocity-tuned binomial CIF.
+  9. Decode joint discrete + continuous state via ``PPHybridFilterLinear``
+     (both goal-directed and free), averaged over 20 simulations.
 
 Paper mapping:
   Section 2.5 (point-process adaptive filter) and Section 2.6 (hybrid filter).
@@ -28,10 +31,10 @@ Paper mapping:
 Expected outputs:
   - Figure 1: CIF tuning curves and simulated spike raster.
   - Figure 2: Decoded stimulus vs true (with 95% confidence band).
-  - Figure 3: Reach trajectory and population spike raster.
-  - Figure 4: PPAF comparison (free vs goal-informed, 20 runs box plot).
-  - Figure 5: Hybrid filter setup (state sequence, spike raster).
-  - Figure 6: Hybrid decoding results (state probabilities, decoded kinematics).
+  - Figure 3: Reach trajectory, position/velocity traces, neural raster, CIF.
+  - Figure 4: PPAF decoding overlaid trajectories (free=green, goal=blue).
+  - Figure 5: Hybrid fixture setup (reach path, traces, raster, discrete state).
+  - Figure 6: Hybrid decoding summary (state est, probabilities, decoded path).
 """
 from __future__ import annotations
 
@@ -147,108 +150,119 @@ def _run_part_a(seed=11, n_cells=20):
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _simulate_reach(delta, T_total, rng):
-    """Simulate a 2-D reaching trajectory with 4-D state [x, y, vx, vy].
+def _simulate_reach_minjerk(delta, T_total):
+    """Simulate a 2-D minimum-jerk reach from x0 to xT.
 
-    Uses a simple sinusoidal trajectory to mimic a reaching task.
+    Uses MATLAB's cosine-acceleration dynamics:
+        xState(:,k) = A * xState(:,k-1) + (delta/2)*(pi/T)^2 * cos(pi*t/T)
+                       * [0; 0; xT(1)-x0(1); xT(2)-x0(2)]
+
+    Returns time, xState (4×T), A (4×4).
     """
+    x0 = np.array([0.0, 0.0, 0.0, 0.0])
+    xT_target = np.array([-0.35, 0.2, 0.0, 0.0])
     time = np.arange(0.0, T_total + delta, delta)
     T = len(time)
 
-    # Smooth trajectory
-    x_pos = 0.25 * np.sin(2.0 * np.pi * 0.15 * time)
-    y_pos = 0.20 * np.cos(2.0 * np.pi * 0.10 * time)
-    vx = np.gradient(x_pos, delta)
-    vy = np.gradient(y_pos, delta)
-
-    state = np.vstack([x_pos, y_pos, vx, vy])  # (4, T)
-    return time, state
-
-
-def _run_part_b(seed=19, n_cells=20, n_sims=20):
-    """Compare PPAF free vs goal-directed decoding for arm reach."""
-    rng = np.random.default_rng(seed)
-    delta = 0.01  # 10 ms bins
-    ns = 4  # state dimension
-
-    # State-space model (constant-velocity kinematic model)
     A = np.array([
         [1, 0, delta, 0],
         [0, 1, 0, delta],
         [0, 0, 1, 0],
         [0, 0, 0, 1],
     ], dtype=float)
-    Q = 0.001 * np.eye(ns, dtype=float)
 
-    # Encoding model: cosine tuning to velocity
-    # mu_c ~ N(-3.0, 0.2)
-    # beta_c = [0, 0, w_vx, w_vy] — velocity tuned
-    b0 = rng.normal(-3.0, 0.2, n_cells)
-    beta = np.zeros((ns, n_cells), dtype=float)
-    for c in range(n_cells):
-        beta[2, c] = 3.0 * rng.normal(0.0, 1.0)  # vx weight
-        beta[3, c] = 3.0 * rng.normal(0.0, 1.0)  # vy weight
+    xState = np.zeros((4, T), dtype=float)
+    xState[:, 0] = x0
+    accel_dir = np.array([0.0, 0.0, xT_target[0] - x0[0], xT_target[1] - x0[1]])
+    for k in range(1, T):
+        accel = (delta / 2.0) * (np.pi / T_total) ** 2 * np.cos(np.pi * time[k] / T_total)
+        xState[:, k] = A @ xState[:, k - 1] + accel * accel_dir
 
-    # Run multiple simulations to compare free vs goal-directed
-    rmse_free = np.zeros((n_sims, ns), dtype=float)
-    rmse_goal = np.zeros((n_sims, ns), dtype=float)
+    return time, xState, A
 
-    # Store one example run for plotting
+
+def _run_part_b(seed=0, n_cells=20, n_sims=20):
+    """Compare PPAF free vs goal-directed decoding for arm reach.
+
+    Matches MATLAB: single trajectory, 20 re-randomized encoding simulations.
+    """
+    rng = np.random.default_rng(seed)
+    delta = 0.001  # 1 ms bins (matches MATLAB)
+    T_total = 2.0  # 2-second reach
+
+    # ── Generate minimum-jerk reach trajectory ──
+    time, xState, A = _simulate_reach_minjerk(delta, T_total)
+    T = xState.shape[1]
+    ns = 4
+
+    # Target = final state
+    yT = xState[:, -1].copy()
+
+    # Q from trajectory variance (MATLAB: diag(var(diff(xState,[],2),[],2))*100)
+    Q = np.diag(np.var(np.diff(xState, axis=1), axis=1)) * 100.0
+
+    # Initial/target covariances (MATLAB: very tight)
+    r, p = 1e-6, 1e-6
+    pi0 = np.diag([r, r, p, p])
+    piT = np.diag([r, r, p, p])
+
+    # ── Run 20 repeated simulations ──
+    # Same trajectory, re-randomized encoding + spikes each time
+    all_runs_goal = []
+    all_runs_free = []
     example_run = None
 
     for sim_idx in range(n_sims):
-        sim_rng = np.random.default_rng(seed + sim_idx + 100)
-        time, state = _simulate_reach(delta, 10.0, sim_rng)
-        T = state.shape[1]
+        # MATLAB: bCoeffs = 10*(rand(numCells,2)-0.5);  Uniform[-5,5]
+        bCoeffs = 10.0 * (rng.random((n_cells, 2)) - 0.5)
+        # MATLAB: muCoeffs = log(10*delta) + randn(numCells,1)
+        muCoeffs = np.log(10.0 * delta) + rng.standard_normal(n_cells)
+
+        # beta: 4×C with zeros for position, bCoeffs for velocity
+        beta = np.zeros((ns, n_cells), dtype=float)
+        beta[2, :] = bCoeffs[:, 0]  # vx tuning
+        beta[3, :] = bCoeffs[:, 1]  # vy tuning
 
         # Simulate spikes
-        dN = _simulate_binomial_spikes(state, b0, beta, sim_rng)
+        dN = _simulate_binomial_spikes(xState, muCoeffs, beta, rng)
 
-        # Initial conditions
-        x0 = state[:, 0]
-        Pi0 = 0.1 * np.eye(ns)
-
-        # --- Free decode (no goal) ---
-        x_p_free, _, x_u_free, W_u_free, _, _, _, _ = (
-            DecodingAlgorithms.PPDecodeFilterLinear(
-                A, Q, dN, b0, beta, "binomial", delta,
-                None, None, x0, Pi0
-            )
-        )
+        # Initial state
+        x0 = np.array([0.0, 0.0, 0.0, 0.0])
 
         # --- Goal-directed decode ---
-        yT = state[:, -1]  # target = final state
-        PiT = 0.01 * np.eye(ns)  # tight target uncertainty
-        x_p_goal, _, x_u_goal, W_u_goal, _, _, _, _ = (
-            DecodingAlgorithms.PPDecodeFilterLinear(
-                A, Q, dN, b0, beta, "binomial", delta,
-                None, None, x0, Pi0, yT, PiT, 0
-            )
+        _, _, x_u_goal, _, _, _, _, _ = DecodingAlgorithms.PPDecodeFilterLinear(
+            A, Q, dN, muCoeffs, beta, "binomial", delta,
+            None, None, x0, pi0, yT, piT, 0
         )
 
-        # Compute RMSE per state dimension
-        for d in range(ns):
-            rmse_free[sim_idx, d] = np.sqrt(np.mean((x_u_free[d, :] - state[d, :]) ** 2))
-            rmse_goal[sim_idx, d] = np.sqrt(np.mean((x_u_goal[d, :] - state[d, :]) ** 2))
+        # --- Free decode (no goal) ---
+        _, _, x_u_free, _, _, _, _, _ = DecodingAlgorithms.PPDecodeFilterLinear(
+            A, Q, dN, muCoeffs, beta, "binomial", delta,
+            None, None, x0,
+        )
+
+        all_runs_goal.append(x_u_goal)
+        all_runs_free.append(x_u_free)
 
         if sim_idx == 0:
             example_run = {
                 "time": time,
-                "state": state,
+                "xState": xState,
                 "dN": dN,
-                "x_u_free": x_u_free,
-                "x_u_goal": x_u_goal,
-                "W_u_free": W_u_free,
-                "W_u_goal": W_u_goal,
+                "muCoeffs": muCoeffs,
+                "bCoeffs": bCoeffs,
+                "beta": beta,
             }
 
     return {
-        "rmse_free": rmse_free,
-        "rmse_goal": rmse_goal,
+        "all_runs_goal": all_runs_goal,
+        "all_runs_free": all_runs_free,
         "example": example_run,
         "n_cells": n_cells,
         "n_sims": n_sims,
-        "state_labels": ["x", "y", "vx", "vy"],
+        "xState": xState,
+        "time": time,
+        "delta": delta,
     }
 
 
@@ -257,109 +271,182 @@ def _run_part_b(seed=19, n_cells=20, n_sims=20):
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _run_part_c(seed=37, n_cells=40):
-    """PPHybridFilterLinear: joint discrete/continuous state decoding."""
-    rng = np.random.default_rng(seed)
-    delta = 0.01  # 10 ms bins
-    ns = 4  # continuous state dimension (x, y, vx, vy)
+def _load_hybrid_fixture():
+    """Load the MATLAB hybrid filter fixture (paperHybridFilterExample.mat).
 
-    # ── Simulate trajectory ──
-    time = np.arange(0.0, 10.0, delta, dtype=float)
-    T = len(time)
-    x_pos = 0.3 * np.sin(2.0 * np.pi * 0.15 * time)
-    y_pos = 0.25 * np.cos(2.0 * np.pi * 0.10 * time)
-    vx = np.gradient(x_pos, delta)
-    vy = np.gradient(y_pos, delta)
-    state = np.vstack([x_pos, y_pos, vx, vy])  # (4, T)
+    Returns a dict with: time, delta, X (6×T), mstate (T,),
+    A (list of 2), Q (list of 2), p_ij (2×2), Px0 (list of 2), ind.
+    """
+    import scipy.io as sio
 
-    # Discrete state: alternating reach / hold (period ~6s)
-    true_mode = np.where(np.sin(2.0 * np.pi * time / 6.0) > 0.0, 1, 2).astype(int)
-    # Add stochastic flips
-    flip = rng.random(T) < 0.01
-    true_mode[flip] = 3 - true_mode[flip]
+    # Search for fixture in multiple locations
+    candidates = [
+        REPO_ROOT / "nstat" / "data" / "paperHybridFilterExample.mat",
+        REPO_ROOT / "helpfiles" / "paperHybridFilterExample.mat",
+    ]
+    mat_path = None
+    for p in candidates:
+        if p.exists() and p.stat().st_size > 200:  # skip LFS pointers
+            mat_path = p
+            break
 
-    # ── State-space models (one per mode) ──
-    A_reach = np.array([
-        [1, 0, delta, 0],
-        [0, 1, 0, delta],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1],
-    ], dtype=float)
-    Q_reach = 0.001 * np.eye(ns)
+    if mat_path is None:
+        raise FileNotFoundError(
+            "Cannot find paperHybridFilterExample.mat fixture. "
+            "Ensure it is in nstat/data/ or helpfiles/."
+        )
 
-    # Hold state: damped velocity
-    A_hold = np.array([
-        [1, 0, delta, 0],
-        [0, 1, 0, delta],
-        [0, 0, 0.95, 0],
-        [0, 0, 0, 0.95],
-    ], dtype=float)
-    Q_hold = 0.0005 * np.eye(ns)
+    f = sio.loadmat(str(mat_path))
+    time = f["time"].ravel().astype(float)
+    delta = float(f["delta"].ravel()[0])
+    X = f["X"].astype(float)  # (6, T)
+    mstate = f["mstate"].ravel().astype(int)  # (T,), values 1 or 2
+    p_ij = f["p_ij"].astype(float)  # (2, 2)
 
-    # ── Encoding model ──
-    # Neurons tuned to ALL state dimensions (position + velocity).
-    # Mode-dependent baseline: mode 1 (reach) has different rate than mode 2 (hold).
-    b0_mode1 = rng.normal(-3.5, 0.2, n_cells)  # reach baseline
-    b0_mode2 = rng.normal(-2.5, 0.2, n_cells)  # hold baseline
+    # Cell arrays → Python lists
+    A_cell = f["A"]
+    Q_cell = f["Q"]
+    Px0_cell = f["Px0"]
+    ind_cell = f["ind"]
 
-    # Full state tuning: position + velocity
-    beta_mat = np.zeros((ns, n_cells), dtype=float)
-    beta_mat[0, :] = rng.normal(0.0, 2.0, n_cells)  # x position
-    beta_mat[1, :] = rng.normal(0.0, 2.0, n_cells)  # y position
-    beta_mat[2, :] = rng.normal(0.0, 3.0, n_cells)  # vx
-    beta_mat[3, :] = rng.normal(0.0, 3.0, n_cells)  # vy
-
-    # Simulate spikes with mode-dependent baseline (binomial)
-    dN = np.zeros((n_cells, T), dtype=float)
-    for t in range(T):
-        b0 = b0_mode1 if true_mode[t] == 1 else b0_mode2
-        eta = b0 + beta_mat.T @ state[:, t]
-        p = 1.0 / (1.0 + np.exp(-np.clip(eta, -20.0, 20.0)))
-        dN[:, t] = (rng.random(n_cells) < p).astype(float)
-
-    # ── Transition matrix ──
-    p_ij = np.array([[0.985, 0.015], [0.02, 0.98]], dtype=float)
-
-    # ── Decode with PPHybridFilterLinear ──
-    Mu0 = np.array([0.5, 0.5])
-    x0 = [state[:, 0], state[:, 0]]
-    Pi0 = [0.5 * np.eye(ns), 0.5 * np.eye(ns)]
-
-    S_est, X_est, W_est, MU_u, _, _, _ = DecodingAlgorithms.PPHybridFilterLinear(
-        [A_reach, A_hold],
-        [Q_reach, Q_hold],
-        p_ij,
-        Mu0,
-        dN,
-        [b0_mode1, b0_mode2],
-        [beta_mat, beta_mat],
-        "binomial",
-        delta,
-        None,  # gamma
-        None,  # windowTimes
-        x0,
-        Pi0,
-    )
-
-    # Classification accuracy
-    state_acc = float(np.mean(S_est == true_mode))
-
-    # Position RMSE
-    rmse_x = float(np.sqrt(np.mean((X_est[0, :] - x_pos) ** 2)))
-    rmse_y = float(np.sqrt(np.mean((X_est[1, :] - y_pos) ** 2)))
+    A = [A_cell[0, i].astype(float) for i in range(A_cell.shape[1])]
+    Q = [Q_cell[0, i].astype(float) for i in range(Q_cell.shape[1])]
+    Px0 = [Px0_cell[0, i].astype(float) for i in range(Px0_cell.shape[1])]
+    # ind: convert from MATLAB 1-indexed to Python 0-indexed
+    ind = [ind_cell[0, i].ravel().astype(int) - 1 for i in range(ind_cell.shape[1])]
 
     return {
         "time": time,
-        "state": state,
-        "true_mode": true_mode,
-        "S_est": S_est,
-        "X_est": X_est,
-        "MU_u": MU_u,
-        "dN": dN,
-        "state_acc": state_acc,
-        "rmse_x": rmse_x,
-        "rmse_y": rmse_y,
+        "delta": delta,
+        "X": X,
+        "mstate": mstate,
+        "A": A,
+        "Q": Q,
+        "p_ij": p_ij,
+        "Px0": Px0,
+        "ind": ind,
+    }
+
+
+def _run_part_c(seed=0, n_cells=40, n_sims=20):
+    """PPHybridFilterLinear: joint discrete/continuous state decoding.
+
+    Loads fixture trajectory, runs 20 simulations with re-randomized encoding,
+    comparing goal-directed vs free hybrid decoding.
+    """
+    rng = np.random.default_rng(seed)
+
+    # ── Load fixture ──
+    fix = _load_hybrid_fixture()
+    time = fix["time"]
+    delta = fix["delta"]
+    X = fix["X"]  # (6, T)
+    mstate = fix["mstate"]  # (T,)
+    p_ij = fix["p_ij"]
+    A_models = fix["A"]  # [A_hold (2×2), A_reach (6×6)]
+    Q_models_orig = fix["Q"]  # [Q_hold (2×2), Q_reach (6×6)]
+    Px0 = fix["Px0"]  # [Px0_hold (2×2), Px0_reach (6×6)]
+    ind = fix["ind"]  # [[0,1], [0,1,2,3,4,5]]
+    T = X.shape[1]
+
+    # ── Recompute Q from trajectory variance (matching MATLAB) ──
+    nonMovingInd = np.where((X[4, :] == 0) & (X[5, :] == 0))[0]
+    movingInd = np.setdiff1d(np.arange(T), nonMovingInd)
+
+    Q_reach = np.diag(np.var(np.diff(X[:, movingInd], axis=1), axis=1))
+    Q_reach[:4, :4] = 0.0  # Zero out pos/vel noise; only accel has noise
+    varNV = np.diag(np.var(np.diff(X[:, nonMovingInd], axis=1), axis=1))
+    Q_hold = varNV[:2, :2]
+
+    Q_models = [Q_hold, Q_reach]
+
+    # State dimensions
+    dim_hold = A_models[0].shape[0]  # 2
+    dim_reach = A_models[1].shape[0]  # 6
+
+    # ── Run 20 repeated simulations ──
+    X_estAll = np.zeros((dim_reach, T, n_sims), dtype=float)
+    X_estNTAll = np.zeros((dim_reach, T, n_sims), dtype=float)
+    S_estAll = np.zeros((n_sims, T), dtype=int)
+    S_estNTAll = np.zeros((n_sims, T), dtype=int)
+    MU_estAll = np.zeros((2, T, n_sims), dtype=float)
+    MU_estNTAll = np.zeros((2, T, n_sims), dtype=float)
+    example_dN = None
+
+    for n in range(n_sims):
+        # MATLAB: muCoeffs = log(10*delta) + randn(numCells,1)
+        muCoeffs = np.log(10.0 * delta) + rng.standard_normal(n_cells)
+        # MATLAB: coeffs = [muCoeffs, zeros(C,2), 10*(rand(C,2)-0.5), zeros(C,2)]
+        # = [mu, 0, 0, b_vx, b_vy, 0, 0] — tuned to velocities (states 3-4)
+        bCoeffs_vx = 10.0 * (rng.random(n_cells) - 0.5)
+        bCoeffs_vy = 10.0 * (rng.random(n_cells) - 0.5)
+
+        # Full beta: 6×C matrix
+        beta_full = np.zeros((6, n_cells), dtype=float)
+        beta_full[2, :] = bCoeffs_vx  # vx tuning
+        beta_full[3, :] = bCoeffs_vy  # vy tuning
+
+        # Simulate spikes from full state trajectory
+        dN = _simulate_binomial_spikes(X, muCoeffs, beta_full, rng)
+
+        if n == 0:
+            example_dN = dN.copy()
+
+        # ── Initial conditions per mode ──
+        x0_list = [X[ind[0], 0], X[ind[1], 0]]
+        Pi0_list = Px0
+
+        # ── Target conditions per mode ──
+        yT_list = [X[ind[0], -1], X[ind[1], -1]]
+        piT_list = [1e-9 * np.eye(dim_hold), 1e-9 * np.eye(dim_reach)]
+
+        # beta per mode: hold uses 2-dim subset, reach uses full 6-dim
+        beta_hold = beta_full[ind[0], :]  # (2, C) — will be zeros
+        beta_reach = beta_full[ind[1], :]  # (6, C) — has vx/vy tuning
+
+        mu0 = np.array([0.5, 0.5])
+
+        # --- Goal-directed hybrid decode ---
+        S_est, X_est, _, MU_est, _, _, _ = DecodingAlgorithms.PPHybridFilterLinear(
+            A_models, Q_models, p_ij, mu0, dN,
+            [muCoeffs, muCoeffs],
+            [beta_hold, beta_reach],
+            "binomial", delta, None, None,
+            x0_list, Pi0_list,
+            yT_list, piT_list,
+        )
+
+        # --- Free hybrid decode (no target) ---
+        S_estNT, X_estNT, _, MU_estNT, _, _, _ = DecodingAlgorithms.PPHybridFilterLinear(
+            A_models, Q_models, p_ij, mu0, dN,
+            [muCoeffs, muCoeffs],
+            [beta_hold, beta_reach],
+            "binomial", delta, None, None,
+            x0_list, Pi0_list,
+        )
+
+        X_estAll[:, :, n] = X_est
+        X_estNTAll[:, :, n] = X_estNT
+        S_estAll[n, :] = S_est
+        S_estNTAll[n, :] = S_estNT
+        MU_estAll[:, :, n] = MU_est
+        MU_estNTAll[:, :, n] = MU_estNT
+
+        print(f"  Hybrid sim {n + 1}/{n_sims} done")
+
+    return {
+        "time": time,
+        "X": X,
+        "mstate": mstate,
+        "dN": example_dN,
+        "X_estAll": X_estAll,
+        "X_estNTAll": X_estNTAll,
+        "S_estAll": S_estAll,
+        "S_estNTAll": S_estNTAll,
+        "MU_estAll": MU_estAll,
+        "MU_estNTAll": MU_estNTAll,
         "n_cells": n_cells,
+        "n_sims": n_sims,
     }
 
 
@@ -427,104 +514,259 @@ def _plot_part_a(result):
 
 
 def _plot_part_b(result):
-    """Figure 3: Reach trajectory & encoding. Figure 4: RMSE comparison."""
+    """Figure 3: Reach setup (4×2 layout). Figure 4: Overlaid decoded trajectories."""
     ex = result["example"]
     time = ex["time"]
-    state = ex["state"]
+    xState = ex["xState"]
+    dN = ex["dN"]
+    delta = result["delta"]
+    n_cells = result["n_cells"]
 
-    # ── Figure 3: Example reach with decoded trajectories ──
-    fig3, axes3 = plt.subplots(2, 2, figsize=(12, 8))
-    labels = result["state_labels"]
-    ylabels = ["x (m)", "y (m)", "vx (m/s)", "vy (m/s)"]
+    # ── Figure 3: Reach trajectory and population setup (4×2 layout) ──
+    fig3 = plt.figure(figsize=(14, 9))
 
-    for d, (ax, lab, ylab) in enumerate(zip(axes3.ravel(), labels, ylabels)):
-        ax.plot(time, state[d, :], "k-", linewidth=1.0, label="True")
-        ax.plot(time, ex["x_u_free"][d, :], "b-", linewidth=0.7, alpha=0.8, label="PPAF free")
-        ax.plot(time, ex["x_u_goal"][d, :], "r-", linewidth=0.7, alpha=0.8, label="PPAF+Goal")
-        ax.set_ylabel(ylab)
-        ax.set_title(f"State: {lab}")
-        if d >= 2:
-            ax.set_xlabel("Time (s)")
-        if d == 0:
-            ax.legend(loc="upper right", fontsize=8)
+    # Top-left [1,3]: 2D reach path (in cm)
+    ax_path = fig3.add_subplot(4, 2, (1, 3))
+    ax_path.plot(100 * xState[0, :], 100 * xState[1, :], "k", linewidth=2)
+    ax_path.plot(100 * xState[0, 0], 100 * xState[1, 0], "bo", markersize=14)
+    ax_path.plot(100 * xState[0, -1], 100 * xState[1, -1], "ro", markersize=14)
+    ax_path.legend(["Path", "Start", "Finish"], loc="upper right")
+    ax_path.set_xlabel("X Position [cm]")
+    ax_path.set_ylabel("Y Position [cm]")
+    ax_path.set_title("Reach Path", fontweight="bold", fontsize=14)
 
-    fig3.suptitle("Part B: Arm Reach — PPAF Decoding (Example Run)", fontsize=12)
+    # Middle-left [5]: position vs time (in cm)
+    ax_pos = fig3.add_subplot(4, 2, 5)
+    h1, = ax_pos.plot(time, 100 * xState[0, :], "k", linewidth=2)
+    h2, = ax_pos.plot(time, 100 * xState[1, :], "k-.", linewidth=2)
+    ax_pos.legend([h1, h2], ["x", "y"], loc="upper right")
+    ax_pos.set_xlabel("time [s]")
+    ax_pos.set_ylabel("Position [cm]")
+
+    # Lower-left [7]: velocity vs time (in cm/s)
+    ax_vel = fig3.add_subplot(4, 2, 7)
+    h1, = ax_vel.plot(time, 100 * xState[2, :], "k", linewidth=2)
+    h2, = ax_vel.plot(time, 100 * xState[3, :], "k-.", linewidth=2)
+    ax_vel.legend([h1, h2], ["$v_x$", "$v_y$"], loc="upper right")
+    ax_vel.set_xlabel("time [s]")
+    ax_vel.set_ylabel("Velocity [cm/s]")
+
+    # Top-right [2,4]: neural raster
+    ax_raster = fig3.add_subplot(4, 2, (2, 4))
+    for c in range(n_cells):
+        spike_t = time[dN[c, :] > 0]
+        ax_raster.plot(spike_t, np.full_like(spike_t, c + 1), "|", color="k", markersize=2)
+    ax_raster.set_ylabel("Cell Number")
+    ax_raster.set_xlabel("time [s]")
+    ax_raster.set_title("Neural Raster", fontweight="bold", fontsize=14)
+
+    # Bottom-right [6,8]: CIF curves
+    ax_cif = fig3.add_subplot(4, 2, (6, 8))
+    muCoeffs = ex["muCoeffs"]
+    beta = ex["beta"]
+    for c in range(n_cells):
+        eta = muCoeffs[c] + beta[:, c] @ xState
+        exp_eta = np.exp(np.clip(eta, -20, 20))
+        lam = (exp_eta / (1.0 + exp_eta)) / delta
+        ax_cif.plot(time, lam, "k", linewidth=0.5)
+    ax_cif.set_title("Neural Conditional Intensity Functions",
+                     fontweight="bold", fontsize=14)
+    ax_cif.set_xlabel("time [s]")
+    ax_cif.set_ylabel("Firing Rate [spikes/sec]")
+
     fig3.tight_layout()
 
-    # ── Figure 4: RMSE box plot (free vs goal) ──
-    fig4, axes4 = plt.subplots(1, 4, figsize=(14, 4))
-    for d, (ax, lab) in enumerate(zip(axes4, labels)):
-        data = [result["rmse_free"][:, d], result["rmse_goal"][:, d]]
-        bp = ax.boxplot(data, tick_labels=["Free", "Goal"])
-        ax.set_title(f"RMSE: {lab}")
-        ax.set_ylabel("RMSE")
+    # ── Figure 4: Overlaid decoded trajectories (4×2 layout, 20 runs) ──
+    fig4 = plt.figure(figsize=(14, 9))
 
-    fig4.suptitle(
-        f"Part B: PPAF Free vs Goal ({result['n_sims']} simulations, {result['n_cells']} cells)",
-        fontsize=12,
-    )
+    # Top [1:4]: 2D estimated vs actual reach paths
+    ax_2d = fig4.add_subplot(4, 2, (1, 4))
+    ax_2d.plot(100 * xState[0, :], 100 * xState[1, :], "k", linewidth=3)
+    ax_2d.set_title("Estimated vs. Actual Reach Paths",
+                    fontweight="bold", fontsize=12)
+
+    for sim_idx in range(result["n_sims"]):
+        x_u_goal = result["all_runs_goal"][sim_idx]
+        x_u_free = result["all_runs_free"][sim_idx]
+        ax_2d.plot(100 * x_u_goal[0, :], 100 * x_u_goal[1, :], "b", linewidth=0.5)
+        ax_2d.plot(100 * x_u_free[0, :], 100 * x_u_free[1, :], "g", linewidth=0.5)
+    ax_2d.set_xlabel("x [cm]")
+    ax_2d.set_ylabel("y [cm]")
+
+    # Bottom panels: per-state traces
+    state_labels = ["x(t) [cm]", "y(t) [cm]", "$v_x$(t) [cm/s]", "$v_y$(t) [cm/s]"]
+    subplot_indices = [5, 6, 7, 8]
+    scale = 100.0  # meters → cm
+
+    for d, (sp_idx, ylabel) in enumerate(zip(subplot_indices, state_labels)):
+        ax = fig4.add_subplot(4, 2, sp_idx)
+        ax.plot(time, scale * xState[d, :], "k", linewidth=3)
+
+        for sim_idx in range(result["n_sims"]):
+            x_u_goal = result["all_runs_goal"][sim_idx]
+            x_u_free = result["all_runs_free"][sim_idx]
+            hB, = ax.plot(time, scale * x_u_goal[d, :], "b", linewidth=0.5)
+            hC, = ax.plot(time, scale * x_u_free[d, :], "g", linewidth=0.5)
+
+        ax.set_ylabel(ylabel)
+        if d >= 2:
+            ax.set_xlabel("time [s]")
+        else:
+            ax.set_xticklabels([])
+
+        # Add legend on y(t) panel (subplot 6), matching MATLAB
+        if d == 1:
+            hA, = ax.plot([], [], "k", linewidth=3)
+            ax.legend([hA, hB, hC], ["Actual", "PPAF+Goal", "PPAF"],
+                      loc="lower right", fontsize=8)
+
     fig4.tight_layout()
 
     return fig3, fig4
 
 
 def _plot_part_c(result):
-    """Figure 5: Hybrid setup. Figure 6: Hybrid decoding results."""
+    """Figure 5: Hybrid setup (4×2 layout). Figure 6: Hybrid decoding summary (4×3)."""
     time = result["time"]
-
-    # ── Figure 5: Setup — state sequence + raster ──
-    fig5, axes5 = plt.subplots(2, 1, figsize=(12, 5), sharex=True)
-
-    # Top: discrete state
-    axes5[0].plot(time, result["true_mode"], "k-", linewidth=1.0, label="True mode")
-    axes5[0].set_ylabel("Discrete State")
-    axes5[0].set_yticks([1, 2])
-    axes5[0].set_yticklabels(["Reach", "Hold"])
-    axes5[0].set_title("Part C: Hybrid Filter Setup")
-    axes5[0].legend()
-
-    # Bottom: spike raster (first 20 cells)
+    X = result["X"]  # (6, T)
+    mstate = result["mstate"]
     dN = result["dN"]
+    n_cells = result["n_cells"]
+
+    # ── Figure 5: Setup — reach path, traces, raster, discrete state (4×2) ──
+    fig5 = plt.figure(figsize=(14, 9))
+
+    # Top-left [1,3]: 2D reach path
+    ax_path = fig5.add_subplot(4, 2, (1, 3))
+    ax_path.plot(100 * X[0, :], 100 * X[1, :], "k", linewidth=2)
+    ax_path.plot(100 * X[0, 0], 100 * X[1, 0], "bo", markersize=16)
+    ax_path.plot(100 * X[0, -1], 100 * X[1, -1], "ro", markersize=16)
+    ax_path.set_xlabel("X [cm]")
+    ax_path.set_ylabel("Y [cm]")
+    ax_path.set_title("Reach Path", fontweight="bold", fontsize=14)
+
+    # Middle-left [5]: position vs time
+    ax_pos = fig5.add_subplot(4, 2, 5)
+    h1, = ax_pos.plot(time, 100 * X[0, :], "k", linewidth=2)
+    h2, = ax_pos.plot(time, 100 * X[1, :], "k-.", linewidth=2)
+    ax_pos.legend([h1, h2], ["x", "y"], loc="upper right")
+    ax_pos.set_xlabel("time [s]")
+    ax_pos.set_ylabel("Position [cm]")
+
+    # Lower-left [7]: velocity vs time
+    ax_vel = fig5.add_subplot(4, 2, 7)
+    h1, = ax_vel.plot(time, 100 * X[2, :], "k", linewidth=2)
+    h2, = ax_vel.plot(time, 100 * X[3, :], "k-.", linewidth=2)
+    ax_vel.legend([h1, h2], ["$v_x$", "$v_y$"], loc="upper right")
+    ax_vel.set_xlabel("time [s]")
+    ax_vel.set_ylabel("Velocity [cm/s]")
+
+    # Top-right [2,4]: neural raster
+    ax_raster = fig5.add_subplot(4, 2, (2, 4))
     n_show = min(20, dN.shape[0])
     for c in range(n_show):
-        idx = np.where(dN[c, :] > 0)[0]
-        spike_t = time[idx]
-        axes5[1].plot(spike_t, np.full_like(spike_t, c + 1), "|", color="k", markersize=2)
-    axes5[1].set_ylabel("Neuron")
-    axes5[1].set_xlabel("Time (s)")
-    axes5[1].set_ylim(0.5, n_show + 0.5)
+        spike_t = time[dN[c, :] > 0]
+        ax_raster.plot(spike_t, np.full_like(spike_t, c + 1), "|", color="k", markersize=2)
+    ax_raster.set_ylabel("Cell Number")
+    ax_raster.set_xlabel("time [s]")
+    ax_raster.set_title("Neural Raster", fontweight="bold", fontsize=14)
+
+    # Bottom-right [6,8]: discrete movement state
+    ax_state = fig5.add_subplot(4, 2, (6, 8))
+    ax_state.plot(time, mstate, "k", linewidth=2)
+    ax_state.set_ylim(0, 3)
+    ax_state.set_yticks([1, 2])
+    ax_state.set_yticklabels(["N", "M"])
+    ax_state.set_xlabel("time [s]")
+    ax_state.set_ylabel("state")
+    ax_state.set_title("Discrete Movement State", fontweight="bold", fontsize=14)
+
     fig5.tight_layout()
 
-    # ── Figure 6: Decoding results ──
-    fig6, axes6 = plt.subplots(3, 1, figsize=(12, 8), sharex=True)
+    # ── Figure 6: Hybrid decoding results (4×3 layout, averaged over 20 sims) ──
+    fig6 = plt.figure(figsize=(14, 9))
 
-    # Top: model probabilities
-    axes6[0].plot(time, result["MU_u"][0, :], "b-", linewidth=0.5, label="P(Reach)")
-    axes6[0].plot(time, result["MU_u"][1, :], "r-", linewidth=0.5, label="P(Hold)")
-    axes6[0].axhline(0.5, color="gray", linestyle="--", linewidth=0.5)
-    axes6[0].set_ylabel("Model Prob")
-    axes6[0].set_title(
-        f"PPHybridFilterLinear — State Accuracy: {result['state_acc']:.1%}"
-    )
-    axes6[0].legend(loc="upper right", fontsize=8)
+    # Mean across simulations
+    mS_est = np.mean(result["S_estAll"], axis=0)
+    mS_estNT = np.mean(result["S_estNTAll"], axis=0)
+    mMU_est = np.mean(result["MU_estAll"][1, :, :], axis=1)   # P(M|data) for goal
+    mMU_estNT = np.mean(result["MU_estNTAll"][1, :, :], axis=1)  # P(M|data) for free
+    mX_est = np.mean(100 * result["X_estAll"], axis=2)
+    mX_estNT = np.mean(100 * result["X_estNTAll"], axis=2)
 
-    # Middle: decoded x-position
-    axes6[1].plot(time, result["state"][0, :], "k-", linewidth=1.0, label="True")
-    axes6[1].plot(time, result["X_est"][0, :], "b-", linewidth=0.7, alpha=0.8, label="Decoded")
-    axes6[1].set_ylabel("x (m)")
-    axes6[1].legend(loc="upper right", fontsize=8)
+    # Left column: state estimation + probability
+    # [1,4]: Estimated vs actual state
+    ax_s = fig6.add_subplot(4, 3, (1, 4))
+    ax_s.plot(time, mstate, "k", linewidth=3)
+    ax_s.plot(time, mS_est, "b", linewidth=3)
+    ax_s.plot(time, mS_estNT, "g", linewidth=3)
+    ax_s.set_yticks([1, 2.1])
+    ax_s.set_yticklabels(["N", "M"])
+    ax_s.set_xticklabels([])
+    ax_s.set_ylabel("state")
+    ax_s.set_title("Estimated vs. Actual State", fontweight="bold", fontsize=12)
 
-    # Bottom: decoded y-position
-    axes6[2].plot(time, result["state"][1, :], "k-", linewidth=1.0, label="True")
-    axes6[2].plot(time, result["X_est"][1, :], "r-", linewidth=0.7, alpha=0.8, label="Decoded")
-    axes6[2].set_ylabel("y (m)")
-    axes6[2].set_xlabel("Time (s)")
-    axes6[2].legend(loc="upper right", fontsize=8)
+    # [7,10]: P(s(t)=M | data)
+    ax_prob = fig6.add_subplot(4, 3, (7, 10))
+    ax_prob.plot(time, mMU_est, "b", linewidth=3)
+    ax_prob.plot(time, mMU_estNT, "g", linewidth=3)
+    ax_prob.set_xlim(time[0], time[-1])
+    ax_prob.set_ylim(0, 1.1)
+    ax_prob.set_xlabel("time [s]")
+    ax_prob.set_ylabel("P(s(t)=M | data)")
+    ax_prob.set_title("Probability of State", fontweight="bold", fontsize=12)
 
-    fig6.suptitle(
-        f"Hybrid Decoding (RMSE: x={result['rmse_x']:.4f}, y={result['rmse_y']:.4f})",
-        fontsize=12,
-    )
+    # Right top [2,3,5,6]: 2D estimated vs actual reach path
+    ax_2d = fig6.add_subplot(4, 3, (2, 6))
+    ax_2d.plot(100 * X[0, :], 100 * X[1, :], "k", linewidth=1)
+    ax_2d.plot(mX_est[0, :], mX_est[1, :], "b", linewidth=3)
+    ax_2d.plot(mX_estNT[0, :], mX_estNT[1, :], "g", linewidth=3)
+    ax_2d.plot(100 * X[0, 0], 100 * X[1, 0], "bo", markersize=14)
+    ax_2d.plot(100 * X[0, -1], 100 * X[1, -1], "ro", markersize=14)
+    ax_2d.set_xlabel("x [cm]")
+    ax_2d.set_ylabel("y [cm]")
+    ax_2d.set_title("Estimated vs. Actual Reach Path",
+                    fontweight="bold", fontsize=12)
+
+    # Bottom panels: per-state traces
+    # [8]: x(t)
+    ax_x = fig6.add_subplot(4, 3, 8)
+    ax_x.plot(time, 100 * X[0, :], "k", linewidth=3)
+    ax_x.plot(time, mX_est[0, :], "b", linewidth=3)
+    ax_x.plot(time, mX_estNT[0, :], "g", linewidth=3)
+    ax_x.set_ylabel("x(t) [cm]")
+    ax_x.set_xticklabels([])
+    ax_x.set_title("X Position", fontweight="bold", fontsize=12)
+
+    # [9]: y(t) with legend
+    ax_y = fig6.add_subplot(4, 3, 9)
+    h1, = ax_y.plot(time, 100 * X[1, :], "k", linewidth=3)
+    h2, = ax_y.plot(time, mX_est[1, :], "b", linewidth=3)
+    h3, = ax_y.plot(time, mX_estNT[1, :], "g", linewidth=3)
+    ax_y.legend([h1, h2, h3], ["Actual", "PPAF+Goal", "PPAF"],
+                loc="lower right", fontsize=8)
+    ax_y.set_ylabel("y(t) [cm]")
+    ax_y.set_xticklabels([])
+    ax_y.set_title("Y Position", fontweight="bold", fontsize=12)
+
+    # [11]: vx(t)
+    ax_vx = fig6.add_subplot(4, 3, 11)
+    ax_vx.plot(time, 100 * X[2, :], "k", linewidth=3)
+    ax_vx.plot(time, mX_est[2, :], "b", linewidth=3)
+    ax_vx.plot(time, mX_estNT[2, :], "g", linewidth=3)
+    ax_vx.set_ylabel("$v_x$(t) [cm/s]")
+    ax_vx.set_xlabel("time [s]")
+    ax_vx.set_title("X Velocity", fontweight="bold", fontsize=12)
+
+    # [12]: vy(t)
+    ax_vy = fig6.add_subplot(4, 3, 12)
+    ax_vy.plot(time, 100 * X[3, :], "k", linewidth=3)
+    ax_vy.plot(time, mX_est[3, :], "b", linewidth=3)
+    ax_vy.plot(time, mX_estNT[3, :], "g", linewidth=3)
+    ax_vy.set_ylabel("$v_y$(t) [cm/s]")
+    ax_vy.set_xlabel("time [s]")
+    ax_vy.set_title("Y Velocity", fontweight="bold", fontsize=12)
+
     fig6.tight_layout()
 
     return fig5, fig6
@@ -546,13 +788,15 @@ def run_example05(*, export_figures=False, export_dir=None, show=False):
       3. Decode stimulus via PPDecodeFilterLinear.
 
     Part B — Arm-reach PPAF:
-      4. Simulate 4-state reaching movements (position + velocity).
-      5. Encode with 20-cell cosine-tuning population.
-      6. Decode with PPAF (free) and PPAF+Goal; compare across 20 runs.
+      4. Simulate 4-state minimum-jerk reaching movement.
+      5. Encode with 20-cell velocity-tuned population.
+      6. Decode with PPAF (free) and PPAF+Goal; 20 overlaid simulations.
 
     Part C — Hybrid filter:
-      7. Simulate 40-cell population with discrete state modulation.
-      8. Decode joint discrete/continuous state via PPHybridFilterLinear.
+      7. Load 6-state fixture trajectory with 2 discrete modes.
+      8. Simulate 40-cell population with velocity tuning.
+      9. Decode joint discrete/continuous state via PPHybridFilterLinear
+         (both goal-directed and free), averaged over 20 simulations.
     """
     print("=" * 70)
     print("Example 05: Stimulus Decoding with PPAF and PPHF")
@@ -566,18 +810,12 @@ def run_example05(*, export_figures=False, export_dir=None, show=False):
     # --- Part B: Arm-reach PPAF ---
     print("\n--- Part B: Arm Reach PPAF (20 simulations) ---")
     result_b = _run_part_b()
-    mean_free = result_b["rmse_free"].mean(axis=0)
-    mean_goal = result_b["rmse_goal"].mean(axis=0)
-    print(f"  Mean RMSE (free):  x={mean_free[0]:.4f}, y={mean_free[1]:.4f}, "
-          f"vx={mean_free[2]:.4f}, vy={mean_free[3]:.4f}")
-    print(f"  Mean RMSE (goal):  x={mean_goal[0]:.4f}, y={mean_goal[1]:.4f}, "
-          f"vx={mean_goal[2]:.4f}, vy={mean_goal[3]:.4f}")
+    print(f"  {result_b['n_sims']} simulations, {result_b['n_cells']} cells")
 
     # --- Part C: Hybrid filter ---
-    print("\n--- Part C: Hybrid Filter ---")
+    print("\n--- Part C: Hybrid Filter (20 simulations) ---")
     result_c = _run_part_c()
-    print(f"  {result_c['n_cells']} cells, state accuracy = {result_c['state_acc']:.1%}")
-    print(f"  Position RMSE: x={result_c['rmse_x']:.4f}, y={result_c['rmse_y']:.4f}")
+    print(f"  {result_c['n_cells']} cells, {result_c['n_sims']} simulations")
 
     # Summary
     summary = {
@@ -588,14 +826,10 @@ def run_example05(*, export_figures=False, export_dir=None, show=False):
         "experiment5b": {
             "num_cells": float(result_b["n_cells"]),
             "n_sims": float(result_b["n_sims"]),
-            "mean_rmse_free_x": float(mean_free[0]),
-            "mean_rmse_goal_x": float(mean_goal[0]),
         },
         "experiment6": {
             "num_cells": float(result_c["n_cells"]),
-            "state_accuracy": result_c["state_acc"],
-            "decode_rmse_x": result_c["rmse_x"],
-            "decode_rmse_y": result_c["rmse_y"],
+            "n_sims": float(result_c["n_sims"]),
         },
     }
     print("\n" + json.dumps(summary, indent=2))
