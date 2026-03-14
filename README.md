@@ -149,18 +149,18 @@ These smaller demos remain useful as quick install and plotting checks.
 ## Documentation
 
 - Docs home: [cajigaslab.github.io/nSTAT-python](https://cajigaslab.github.io/nSTAT-python/)
-- Help home: [cajigaslab.github.io/nSTAT-python/NeuralSpikeAnalysis_top.html](https://cajigaslab.github.io/nSTAT-python/NeuralSpikeAnalysis_top.html)
-- Paper overview: [cajigaslab.github.io/nSTAT-python/PaperOverview.html](https://cajigaslab.github.io/nSTAT-python/PaperOverview.html)
-- Example index: [cajigaslab.github.io/nSTAT-python/Examples.html](https://cajigaslab.github.io/nSTAT-python/Examples.html)
-- Class definitions: [cajigaslab.github.io/nSTAT-python/ClassDefinitions.html](https://cajigaslab.github.io/nSTAT-python/ClassDefinitions.html)
-- Documentation setup: [cajigaslab.github.io/nSTAT-python/DocumentationSetup.html](https://cajigaslab.github.io/nSTAT-python/DocumentationSetup.html)
+- Help home: [cajigaslab.github.io/nSTAT-python/help/](https://cajigaslab.github.io/nSTAT-python/help/index.html)
+- Paper overview: [cajigaslab.github.io/nSTAT-python/help/paper_overview.html](https://cajigaslab.github.io/nSTAT-python/help/paper_overview.html)
+- Example index: [cajigaslab.github.io/nSTAT-python/help/examples_index.html](https://cajigaslab.github.io/nSTAT-python/help/examples_index.html)
+- Class definitions: [cajigaslab.github.io/nSTAT-python/help/class_definitions.html](https://cajigaslab.github.io/nSTAT-python/help/class_definitions.html)
+- Parity dashboard: [cajigaslab.github.io/nSTAT-python/help/parity_dashboard.html](https://cajigaslab.github.io/nSTAT-python/help/parity_dashboard.html)
+- API reference: [cajigaslab.github.io/nSTAT-python/api.html](https://cajigaslab.github.io/nSTAT-python/api.html)
 
 Source pages:
 - [docs/NeuralSpikeAnalysis_top.md](docs/NeuralSpikeAnalysis_top.md)
 - [docs/PaperOverview.md](docs/PaperOverview.md)
 - [docs/Examples.md](docs/Examples.md)
 - [docs/ClassDefinitions.md](docs/ClassDefinitions.md)
-- [docs/DocumentationSetup.md](docs/DocumentationSetup.md)
 
 ## Plot Style
 
@@ -241,7 +241,7 @@ parity verified.
   used `.^2` instead of `.^3`
 - `Analysis.m` — Granger causality mask zeroed all columns instead of column `i`
 
-See [parity/parity_report.md](parity/parity_report.md) for the full audit.
+See [parity/report.md](parity/report.md) for the full audit.
 
 ## License
 
