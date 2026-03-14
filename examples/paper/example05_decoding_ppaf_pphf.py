@@ -27,7 +27,7 @@ Paper mapping:
 
 Expected outputs:
   - Figure 1: CIF tuning curves and simulated spike raster.
-  - Figure 2: Decoded stimulus vs true (with ±2σ confidence band).
+  - Figure 2: Decoded stimulus vs true (with 95% confidence band).
   - Figure 3: Reach trajectory and population spike raster.
   - Figure 4: PPAF comparison (free vs goal-informed, 20 runs box plot).
   - Figure 5: Hybrid filter setup (state sequence, spike raster).
@@ -96,10 +96,9 @@ def _run_part_a(seed=11, n_cells=20):
     x_true = np.sin(2.0 * np.pi * 2.0 * time)  # (T,)
 
     # ── Encoding model: logistic CIF ──
-    # mu_c ~ log(10*delta) + N(0, 0.3)  — baseline firing probability
-    # beta_c ~ N(1.0, 0.5)              — stimulus gain
-    b0 = np.log(10.0 * delta) * np.ones(n_cells) + rng.normal(0.0, 0.3, n_cells)
-    b1 = rng.normal(1.0, 0.5, n_cells)
+    # MATLAB: b0 = log(10*delta) + randn(C,1);  b1 = randn(C,1);
+    b0 = np.log(10.0 * delta) + rng.standard_normal(n_cells)
+    b1 = rng.standard_normal(n_cells)
 
     # Simulate spikes
     x_2d = x_true.reshape(1, -1)  # (1, T) — scalar state
@@ -108,8 +107,10 @@ def _run_part_a(seed=11, n_cells=20):
 
     # ── State-space model ──
     # x(t+1) = A * x(t) + w,  w ~ N(0, Q)
+    # MATLAB: Q = std(stim.data(2:end) - stim.data(1:end-1));  A = 1;
     A = np.array([[1.0]])
-    Q = np.array([[0.001]])
+    Q_val = float(np.std(np.diff(x_true)))
+    Q = np.array([[Q_val]])
     x0 = np.array([0.0])
     Pi0 = 0.5 * np.eye(1)
 
@@ -119,11 +120,12 @@ def _run_part_a(seed=11, n_cells=20):
         A, Q, dN, b0, beta, "binomial", delta, None, None, x0, Pi0
     )
 
-    # Extract decoded signal and ±2σ confidence band
+    # Extract decoded signal and 95% CI (±1.96σ, matching MATLAB zVal=1.96)
     x_decoded = x_u[0, :]  # (T,)
     sigma = np.sqrt(np.maximum(W_u[0, 0, :], 0.0))
-    ci_low = x_decoded - 2.0 * sigma
-    ci_high = x_decoded + 2.0 * sigma
+    z_val = 1.96
+    ci_low = np.minimum(x_decoded - z_val * sigma, x_decoded + z_val * sigma)
+    ci_high = np.maximum(x_decoded - z_val * sigma, x_decoded + z_val * sigma)
     rmse = float(np.sqrt(np.mean((x_decoded - x_true) ** 2)))
 
     return {
@@ -371,36 +373,53 @@ def _plot_part_a(result):
     time = result["time"]
     x_true = result["x_true"]
     dN = result["dN"]
+    delta = time[1] - time[0]
 
-    # ── Figure 1: CIF tuning and spike raster ──
-    fig1, axes1 = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+    # ── Figure 1: stimulus, CIF, spike raster (3 panels, matching MATLAB) ──
+    fig1, axes1 = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
 
-    # Top: true stimulus
+    # Top: driving stimulus
     axes1[0].plot(time, x_true, "k-", linewidth=1.5)
-    axes1[0].set_ylabel("Stimulus x(t)")
-    axes1[0].set_title("Part A: Sinusoidal Stimulus Encoding")
+    axes1[0].set_ylabel("Stimulus")
+    axes1[0].set_title("Driving Stimulus", fontweight="bold", fontsize=14)
+    axes1[0].tick_params(labelbottom=False)
 
-    # Bottom: spike raster
+    # Middle: conditional intensity functions (firing rates in spikes/sec)
+    b0 = result["b0"]
+    b1 = result["b1"]
     n_cells = dN.shape[0]
     for c in range(n_cells):
+        eta = b1[c] * x_true + b0[c]
+        exp_eta = np.exp(eta)
+        lam = (exp_eta / (1.0 + exp_eta)) / delta  # probability → rate (Hz)
+        axes1[1].plot(time, lam, "k-", linewidth=1.0)
+    axes1[1].set_ylabel("Firing Rate [spikes/sec]")
+    axes1[1].set_title("Conditional Intensity Functions", fontweight="bold", fontsize=14)
+    axes1[1].tick_params(labelbottom=False)
+
+    # Bottom: spike raster
+    for c in range(n_cells):
         spike_times = time[dN[c, :] > 0]
-        axes1[1].plot(spike_times, np.full_like(spike_times, c + 1), "|", color="k", markersize=2)
-    axes1[1].set_ylabel("Neuron")
-    axes1[1].set_xlabel("Time (s)")
-    axes1[1].set_ylim(0.5, n_cells + 0.5)
+        axes1[2].plot(spike_times, np.full_like(spike_times, c + 1), "|", color="k", markersize=2)
+    axes1[2].set_ylabel("Cell Number")
+    axes1[2].set_xlabel("time [s]")
+    axes1[2].set_ylim(0.5, n_cells + 0.5)
+    axes1[2].set_yticks(np.arange(0, n_cells + 1, 10))
+    axes1[2].set_title("Point Process Sample Paths", fontweight="bold", fontsize=14)
     fig1.tight_layout()
 
-    # ── Figure 2: Decoding results ──
+    # ── Figure 2: Decoding results (MATLAB: black=decoded, blue=actual) ──
     fig2, ax2 = plt.subplots(1, 1, figsize=(10, 4))
-    ax2.plot(time, x_true, "k-", linewidth=1.5, label="True stimulus")
-    ax2.plot(time, result["x_decoded"], "r-", linewidth=1.0, label="PPAF decoded")
     ax2.fill_between(
         time, result["ci_low"], result["ci_high"],
-        color="red", alpha=0.15, label="±2σ CI"
+        color="0.75", alpha=0.4, label="95% CI"
     )
-    ax2.set_xlabel("Time (s)")
-    ax2.set_ylabel("x(t)")
-    ax2.set_title(f"PPDecodeFilterLinear — Decoded Stimulus (RMSE = {result['rmse']:.4f})")
+    ax2.plot(time, result["x_decoded"], "k-", linewidth=2.0, label="Decoded")
+    ax2.plot(time, x_true, "b-", linewidth=2.0, label="Actual")
+    ax2.set_xlabel("time [s]")
+    ax2.set_ylabel("")
+    ax2.set_title(f"Decoded Stimulus $\\pm$ 95% CIs with {result['n_cells']} cells",
+                  fontweight="bold", fontsize=14)
     ax2.legend(loc="upper right")
     fig2.tight_layout()
 
