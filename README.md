@@ -264,6 +264,82 @@ PMID: 22981419
 The code repository for the Python port of nSTAT is hosted on GitHub at
 https://github.com/cajigaslab/nSTAT-python.
 
+## MATLAB / Simulink Dependency for CIF Simulation
+
+The `CIF` class can simulate spike trains from a fitted conditional intensity
+function.  The original MATLAB implementation drives this simulation through
+**Simulink models** (`PointProcessSimulation.slx`,
+`PointProcessSimulationThinning.mdl`, and `SimulatedNetwork2.mdl`).  These
+models solve the point-process thinning algorithm as a continuous-time
+block diagram and produce exact spike-train realisations.
+
+The Python port includes a **native discrete-time Bernoulli fallback** that
+runs without MATLAB, but the results are approximate.  For exact parity with
+the MATLAB toolbox you need a working MATLAB + Simulink installation and the
+MATLAB Engine API for Python.
+
+### The `backend` flag
+
+`CIF.simulateCIF()` accepts a `backend` parameter that controls which
+simulation engine is used:
+
+| Flag | Behaviour |
+|---|---|
+| `backend='auto'` (default) | Uses MATLAB/Simulink when available; silently falls back to the native Python implementation with a `MatlabFallbackWarning` when it is not. |
+| `backend='matlab'` | Forces the Simulink backend.  Raises `RuntimeError` if MATLAB Engine or the MATLAB nSTAT repo cannot be found. |
+| `backend='python'` | Forces the native Python implementation.  No MATLAB is required and no warning is issued. |
+
+### Setting up the MATLAB backend
+
+1. **Install MATLAB** (R2020a or later recommended) with the **Simulink**
+   add-on.
+2. **Install the MATLAB Engine API for Python**
+   ([MathWorks instructions](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html)):
+   ```bash
+   cd "$(matlab -batch "disp(matlabroot)" | tail -1)/extern/engines/python"
+   python -m pip install .
+   ```
+3. **Point to the MATLAB nSTAT repo** so the engine can find the `.slx` / `.mdl`
+   models.  Use either:
+   - The `NSTAT_MATLAB_PATH` environment variable:
+     ```bash
+     export NSTAT_MATLAB_PATH=/path/to/nSTAT
+     ```
+   - Place the MATLAB repo as a sibling directory named `nSTAT/` next to this
+     Python repo (auto-detected).
+   - Or call `set_matlab_nstat_path()` at runtime:
+     ```python
+     from nstat.matlab_engine import set_matlab_nstat_path
+     set_matlab_nstat_path("/path/to/nSTAT")
+     ```
+
+### Why this matters
+
+The native Python simulation uses a discrete-time Bernoulli draw at each time
+step: at every bin the probability of a spike is `p = lambda * delta`, and a
+uniform random draw decides whether a spike is emitted.  The Simulink model,
+by contrast, solves the point-process thinning integral in continuous time,
+producing more accurate inter-spike-interval statistics — particularly at high
+firing rates or with fast-varying stimuli.
+
+If your analysis depends on precise spike-timing statistics (e.g. KS
+goodness-of-fit tests on simulated data, or decoding benchmarks), use the
+MATLAB backend.
+
+### Call for contributions
+
+Replacing the Simulink dependency with a pure-Python continuous-time thinning
+solver is an open goal for the project.  A faithful implementation would need
+to:
+
+- Implement Ogata's modified thinning algorithm (Lewis & Shedler 1979) for
+  the conditional intensity with history dependence.
+- Match the Simulink model's interpolation and adaptive step-size behaviour.
+- Pass parity tests against the MATLAB output for the existing paper examples.
+
+If you are interested in contributing this, please open an issue or pull
+request — contributions are very welcome.
+
 ## MATLAB Toolbox
 
 The original MATLAB nSTAT toolbox lives in a separate repository:
