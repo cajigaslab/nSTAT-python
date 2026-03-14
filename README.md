@@ -148,18 +148,18 @@ These smaller demos remain useful as quick install and plotting checks.
 ## Documentation
 
 - Docs home: [cajigaslab.github.io/nSTAT-python](https://cajigaslab.github.io/nSTAT-python/)
-- Help home: [cajigaslab.github.io/nSTAT-python/help](https://cajigaslab.github.io/nSTAT-python/help/index.html)
+- Help home: [cajigaslab.github.io/nSTAT-python/help/](https://cajigaslab.github.io/nSTAT-python/help/index.html)
 - Paper overview: [cajigaslab.github.io/nSTAT-python/help/paper_overview.html](https://cajigaslab.github.io/nSTAT-python/help/paper_overview.html)
 - Example index: [cajigaslab.github.io/nSTAT-python/help/examples_index.html](https://cajigaslab.github.io/nSTAT-python/help/examples_index.html)
 - Class definitions: [cajigaslab.github.io/nSTAT-python/help/class_definitions.html](https://cajigaslab.github.io/nSTAT-python/help/class_definitions.html)
-- Documentation setup: [cajigaslab.github.io/nSTAT-python/help/examples/DocumentationSetup2025b.html](https://cajigaslab.github.io/nSTAT-python/help/examples/DocumentationSetup2025b.html)
+- Parity dashboard: [cajigaslab.github.io/nSTAT-python/help/parity_dashboard.html](https://cajigaslab.github.io/nSTAT-python/help/parity_dashboard.html)
+- API reference: [cajigaslab.github.io/nSTAT-python/api.html](https://cajigaslab.github.io/nSTAT-python/api.html)
 
 Source pages:
 - [docs/NeuralSpikeAnalysis_top.md](docs/NeuralSpikeAnalysis_top.md)
 - [docs/PaperOverview.md](docs/PaperOverview.md)
 - [docs/Examples.md](docs/Examples.md)
 - [docs/ClassDefinitions.md](docs/ClassDefinitions.md)
-- [docs/DocumentationSetup.md](docs/DocumentationSetup.md)
 
 ## Plot Style
 
