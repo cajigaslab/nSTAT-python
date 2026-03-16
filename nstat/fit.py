@@ -249,7 +249,7 @@ def _matlab_compute_ks_arrays(
         else:
             Z = np.zeros((1, n_dims), dtype=float)
 
-    U = 1.0 - np.exp(-Z)
+    U = 1.0 - np.exp(-np.clip(Z, -700, 700))  # FIX: clip to avoid overflow → -inf in uniforms
     if U.ndim == 1:
         U = U[:, None]
 
@@ -1308,9 +1308,11 @@ class FitResult:
                 uj = u[:-1]
                 uj1 = u[1:]
                 h, = ax.plot(uj, uj1, ".", color=color, markersize=4.0)
-                # Compute correlation coefficient and p-value
-                if uj.size > 2 and np.std(uj) > 0 and np.std(uj1) > 0:
-                    rho, pval = pearsonr(uj, uj1)
+                # FIX: filter non-finite values before correlation
+                finite = np.isfinite(uj) & np.isfinite(uj1)
+                uj_f, uj1_f = uj[finite], uj1[finite]
+                if uj_f.size > 2 and np.std(uj_f) > 0 and np.std(uj1_f) > 0:
+                    rho, pval = pearsonr(uj_f, uj1_f)
                     label = f"{base_label}, $\\rho$={rho:.2g} (p={pval:.2g})"
                 else:
                     label = base_label

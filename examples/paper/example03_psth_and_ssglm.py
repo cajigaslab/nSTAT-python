@@ -494,45 +494,30 @@ def run_part_b(data_dir, export_dir=None):
     estStimEffect = np.exp(basisMat @ xK) / delta  # (T, K)
 
     # ------------------------------------------------------------------
-    # Figure 5: True/PSTH/SSGLM stimulus effect surfaces (3D mesh)
+    # Figure 5: True/PSTH/SSGLM stimulus effect surfaces
+    # Match MATLAB: mesh(trial, time, data) with view([90 -90]) → top-down
+    # Using pcolormesh for clean 2D rendering matching MATLAB's top-down mesh
     # ------------------------------------------------------------------
-    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
-
-    fig5 = plt.figure(figsize=(10, 12))
+    fig5, axes5 = plt.subplots(3, 1, figsize=(14, 9))
     trial_axis = np.arange(1, numRealizations + 1)
     T_act = min(actStimEffect.shape[0], len(basis_time))
-    T_mesh, K_mesh = np.meshgrid(
-        basis_time[:T_act], trial_axis, indexing="ij"
-    )
 
-    ax = fig5.add_subplot(3, 1, 1, projection="3d")
-    ax.plot_surface(K_mesh, T_mesh, actStimEffect[:T_act, :],
-                    cmap="viridis", edgecolor="none")
-    ax.view_init(elev=-90, azim=90)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_title("True Stimulus Effect", fontweight="bold", fontsize=14)
-
-    ax = fig5.add_subplot(3, 1, 2, projection="3d")
-    ax.plot_surface(K_mesh, T_mesh, psthSurface2D[:T_act, :],
-                    cmap="viridis", edgecolor="none")
-    ax.view_init(elev=-90, azim=90)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_title("PSTH Estimated Stimulus Effect", fontweight="bold",
-                 fontsize=14)
-
-    ax = fig5.add_subplot(3, 1, 3, projection="3d")
-    ax.plot_surface(K_mesh, T_mesh, estStimEffect[:T_act, :],
-                    cmap="viridis", edgecolor="none")
-    ax.view_init(elev=-90, azim=90)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_title("SSGLM Estimated Stimulus Effect", fontweight="bold",
-                 fontsize=14)
+    surfaces = [
+        (actStimEffect[:T_act, :], "True Stimulus Effect"),
+        (psthSurface2D[:T_act, :], "PSTH Estimated Stimulus Effect"),
+        (estStimEffect[:T_act, :], "SSGLM Estimated Stimulus Effect"),
+    ]
+    for ax, (data, title_str) in zip(axes5, surfaces):
+        # data is (T, K) — time on rows, trials on columns
+        # MATLAB: imagesc shows trial on x, time on y
+        ax.pcolormesh(trial_axis, basis_time[:T_act], data, cmap="viridis",
+                      shading="auto")
+        ax.set_ylabel("time [s]")
+        ax.set_title(title_str, fontweight="bold", fontsize=14)
+    axes5[-1].set_xlabel("Trial [k]")
 
     fig5.tight_layout()
-    print("  Figure 5: Stimulus effect surfaces (3D mesh)")
+    print("  Figure 5: Stimulus effect surfaces (top-down mesh)")
 
     # ------------------------------------------------------------------
     # 6. Learning-trial analysis: spike rate CIs

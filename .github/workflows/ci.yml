@@ -233,3 +233,31 @@ jobs:
           python -m pip install -e .[dev]
       - name: Verify audited MATLAB-facing runtime surface
         run: pytest -q tests/test_matlab_symbol_surface.py tests/test_class_fidelity_audit.py tests/test_parity_report.py
+
+  regenerate-figures:
+    runs-on: ubuntu-latest
+    env:
+      NSTAT_DATA_DIR: ${{ github.workspace }}/.nstat_data_cache
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Cache example data
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NSTAT_DATA_DIR }}
+          key: nstat-example-data-v1
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+      - name: Regenerate all paper figures
+        run: python examples/paper/regenerate_all_figures.py
+      - name: Upload regenerated figures
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-figures
+          path: docs/figures/
+          retention-days: 30
