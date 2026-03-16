@@ -56,7 +56,12 @@ def _pad_rows(rows: Sequence[np.ndarray], fill_value: float = np.nan) -> np.ndar
     return out
 
 
-def _autocorrelation(values: np.ndarray, max_lag: int = 25) -> tuple[np.ndarray, np.ndarray]:
+def _autocorrelation(values: np.ndarray, max_lag: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Compute normalized autocorrelation (xcov/xcov[0]) for lags 1..max_lag.
+
+    Matches MATLAB ``xcov`` normalization: ``rho(k) = xcov(k) / xcov(0)``.
+    When *max_lag* is None (default) the full range is returned, matching MATLAB.
+    """
     centered = np.asarray(values, dtype=float).reshape(-1) - float(np.mean(values))
     if centered.size < 2 or float(np.var(centered)) <= 0.0:
         return np.asarray([], dtype=float), np.asarray([], dtype=float)
@@ -64,8 +69,8 @@ def _autocorrelation(values: np.ndarray, max_lag: int = 25) -> tuple[np.ndarray,
     corr = corr[corr.size // 2 :]
     corr = corr / corr[0]
     lags = np.arange(corr.shape[0], dtype=float)
-    max_lag = int(min(max_lag, corr.shape[0] - 1))
-    return lags[1 : max_lag + 1], corr[1 : max_lag + 1]
+    end = corr.shape[0] - 1 if max_lag is None else int(min(max_lag, corr.shape[0] - 1))
+    return lags[1 : end + 1], corr[1 : end + 1]
 
 
 def _time_rescaled_uniforms(y: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarray:
@@ -941,7 +946,7 @@ class FitResult:
             ks_pvalue = np.nan
             within = np.nan
         gaussianized = norm.ppf(np.clip(uniforms, 1e-6, 1.0 - 1e-6))
-        lags, acf = _autocorrelation(gaussianized, max_lag=25)
+        lags, acf = _autocorrelation(gaussianized)
         acf_ci = 1.96 / np.sqrt(float(gaussianized.size)) if gaussianized.size else np.nan
         coeffs = self._rawCoeffs(fit_num)
         se = _extract_standard_errors(self.stats[fit_num - 1] if fit_num - 1 < len(self.stats) else None, coeffs.size)
@@ -1167,7 +1172,7 @@ class FitResult:
             transform=ax_ks.transAxes, fontweight="bold", fontsize=10,
             verticalalignment="top",
         )
-        self.plotInvGausTrans(fit_num=fit_num, handle=ax_ig)
+        self.plotInvGausTrans(fit_num=None, handle=ax_ig)
         self.plotSeqCorr(fit_num=None, handle=ax_sc)
         self.plotCoeffs(fit_num=fit_num, handle=ax_co)
         self.plotResidual(fit_num=fit_num, handle=ax_re)
@@ -1244,21 +1249,54 @@ class FitResult:
         ax.set_title("Fit Residual")
         return ax
 
-    def plotInvGausTrans(self, fit_num: int = 1, handle=None):
+    def plotInvGausTrans(self, fit_num: int | list[int] | None = None, handle=None):
         """Plot ACF of gaussianized rescaled ISIs with 95% CIs.
 
         Matlab: plotInvGausTrans computes X_j = Φ⁻¹(U_j) and plots the
         autocorrelation function of X_j with 95% confidence bounds.
+        Supports multi-fit overlay with per-fit colours matching KS/SeqCorr.
         """
-        diag = self._compute_diagnostics(fit_num)
+        if fit_num is None:
+            fit_nums = list(range(1, self.numResults + 1))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        lags = np.asarray(diag["acf_lags"], dtype=float)
-        acf = np.asarray(diag["acf_values"], dtype=float)
-        if lags.size:
-            ax.vlines(lags, 0.0, acf, color="tab:orange", linewidth=1.4)
-            ax.axhline(float(diag["acf_ci"]), color="tab:red", linewidth=1.0)
-            ax.axhline(-float(diag["acf_ci"]), color="tab:red", linewidth=1.0)
-        ax.axhline(0.0, color="0.4", linewidth=1.0)
+        data_labels = (
+            list(self.lambda_signal.dataLabels)
+            if getattr(self.lambda_signal, "dataLabels", None)
+            else []
+        )
+        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
+        legend_handles: list[object] = []
+        legend_labels: list[str] = []
+        ci_val = None
+
+        for i, fn in enumerate(fit_nums):
+            diag = self._compute_diagnostics(fn)
+            lags = np.asarray(diag["acf_lags"], dtype=float)
+            acf = np.asarray(diag["acf_values"], dtype=float)
+            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
+            base_label = _ensure_mathtext(
+                data_labels[fn - 1] if fn - 1 < len(data_labels) else f"Model {fn}"
+            )
+            if lags.size:
+                h, = ax.plot(lags, acf, ".", color=color, markersize=4.0)
+                legend_handles.append(h)
+                legend_labels.append(base_label)
+                if ci_val is None:
+                    ci_val = float(diag["acf_ci"])
+
+        # Plot 95% CI lines without legend entries
+        if ci_val is not None:
+            ax.axhline(ci_val, color="0.4", linewidth=0.8, linestyle="--")
+            ax.axhline(-ci_val, color="0.4", linewidth=0.8, linestyle="--")
+        ax.axhline(0.0, color="0.4", linewidth=0.8)
+
+        if legend_handles:
+            ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=8)
         ax.set_xlabel("lag")
         ax.set_ylabel("autocorrelation")
         ax.set_title("Autocorrelation Function\nof Rescaled ISIs\nwith 95% CIs")
