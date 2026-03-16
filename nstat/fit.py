@@ -1418,17 +1418,23 @@ class FitResult:
         _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
         ax.axhline(0.0, color="0.6", linewidth=1.0)
 
-        # Use labels from first fit for x-axis
-        first_diag = self._compute_diagnostics(fit_nums[0])
-        labels = list(np.asarray(first_diag["coeff_labels"], dtype=object))
-        n_coeffs = len(labels)
-        xpos = np.arange(1, n_coeffs + 1, dtype=float)
+        # Collect all labels across fits to build a unified x-axis
+        all_labels: list[str] = []
+        for fn in fit_nums:
+            diag = self._compute_diagnostics(fn)
+            for lbl in np.asarray(diag["coeff_labels"], dtype=object):
+                if lbl not in all_labels:
+                    all_labels.append(lbl)
+        label_to_x = {lbl: float(j + 1) for j, lbl in enumerate(all_labels)}
+        xpos_all = np.arange(1, len(all_labels) + 1, dtype=float)
 
         for i, fn in enumerate(fit_nums):
             diag = self._compute_diagnostics(fn)
             coeffs = np.asarray(diag["coefficients"], dtype=float)
             se = np.asarray(diag["coeff_se"], dtype=float)
             sig = np.asarray(diag["coeff_sig"], dtype=float)
+            fit_labels = list(np.asarray(diag["coeff_labels"], dtype=object))
+            xpos = np.array([label_to_x[lbl] for lbl in fit_labels])
             color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
             valid_se = np.where(np.isfinite(se), se, 0.0)
             ax.errorbar(xpos, coeffs, yerr=valid_se, fmt=".", color=color,
@@ -1439,8 +1445,8 @@ class FitResult:
                 sig_idx = xpos[sig.astype(bool)]
                 ax.plot(sig_idx, np.full(sig_idx.size, y_star), "*", color=color, markersize=10.0)
 
-        ax.set_xticks(xpos)
-        ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=6)
+        ax.set_xticks(xpos_all)
+        ax.set_xticklabels(all_labels, rotation=45, ha="right", fontsize=6)
         ax.set_ylabel("GLM Fit Coefficients")
         ax.set_title("GLM Coefficients", fontweight="bold", fontsize=11)
         return ax
