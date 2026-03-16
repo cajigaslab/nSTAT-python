@@ -294,10 +294,13 @@ def _run_part_b(seed=0, n_cells=20, n_sims=20):
 
 def _load_hybrid_fixture():
     """Load the hybrid filter trajectory fixture (HDF5 preferred, .mat fallback)."""
-    # Prefer HDF5 (Python-native, no scipy dependency for loading)
+    # Prefer HDF5 (needs h5py; fall back to .mat via scipy if unavailable)
     h5_path = REPO_ROOT / "data_cache" / "nstat_data" / "paperHybridFilterExample.h5"
-    if h5_path.exists():
-        import h5py
+    try:
+        import h5py  # noqa: F811
+    except ImportError:
+        h5py = None  # type: ignore[assignment]
+    if h5py is not None and h5_path.exists():
         with h5py.File(str(h5_path), "r") as f:
             d = {
                 "time": f["time"][:],
