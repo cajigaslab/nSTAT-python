@@ -269,19 +269,19 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     fig2, axes2 = plt.subplots(1, 3, figsize=(14, 5))
 
     axes2[0].boxplot([dKS1[np.isfinite(dKS1)], dKS2[np.isfinite(dKS2)]],
-                     tick_labels=["Animal 1", "Animal 2"])
+                     labels=["Animal 1", "Animal 2"])
     axes2[0].set_ylabel(r"$\Delta$KS (Gaussian - Zernike)")
     axes2[0].set_title("KS Statistic Difference")
     axes2[0].axhline(0, color="gray", linestyle="--", linewidth=0.5)
 
     axes2[1].boxplot([dAIC1[np.isfinite(dAIC1)], dAIC2[np.isfinite(dAIC2)]],
-                     tick_labels=["Animal 1", "Animal 2"])
+                     labels=["Animal 1", "Animal 2"])
     axes2[1].set_ylabel(r"$\Delta$AIC (Zernike - Gaussian)")
     axes2[1].set_title("AIC Difference")
     axes2[1].axhline(0, color="gray", linestyle="--", linewidth=0.5)
 
     axes2[2].boxplot([dBIC1[np.isfinite(dBIC1)], dBIC2[np.isfinite(dBIC2)]],
-                     tick_labels=["Animal 1", "Animal 2"])
+                     labels=["Animal 1", "Animal 2"])
     axes2[2].set_ylabel(r"$\Delta$BIC (Zernike - Gaussian)")
     axes2[2].set_title("BIC Difference")
     axes2[2].axhline(0, color="gray", linestyle="--", linewidth=0.5)

@@ -56,7 +56,12 @@ def _pad_rows(rows: Sequence[np.ndarray], fill_value: float = np.nan) -> np.ndar
     return out
 
 
-def _autocorrelation(values: np.ndarray, max_lag: int = 25) -> tuple[np.ndarray, np.ndarray]:
+def _autocorrelation(values: np.ndarray, max_lag: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Compute normalized autocorrelation (xcov/xcov[0]) for lags 1..max_lag.
+
+    Matches MATLAB ``xcov`` normalization: ``rho(k) = xcov(k) / xcov(0)``.
+    When *max_lag* is None (default) the full range is returned, matching MATLAB.
+    """
     centered = np.asarray(values, dtype=float).reshape(-1) - float(np.mean(values))
     if centered.size < 2 or float(np.var(centered)) <= 0.0:
         return np.asarray([], dtype=float), np.asarray([], dtype=float)
@@ -64,8 +69,8 @@ def _autocorrelation(values: np.ndarray, max_lag: int = 25) -> tuple[np.ndarray,
     corr = corr[corr.size // 2 :]
     corr = corr / corr[0]
     lags = np.arange(corr.shape[0], dtype=float)
-    max_lag = int(min(max_lag, corr.shape[0] - 1))
-    return lags[1 : max_lag + 1], corr[1 : max_lag + 1]
+    end = corr.shape[0] - 1 if max_lag is None else int(min(max_lag, corr.shape[0] - 1))
+    return lags[1 : end + 1], corr[1 : end + 1]
 
 
 def _time_rescaled_uniforms(y: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarray:
@@ -249,7 +254,7 @@ def _matlab_compute_ks_arrays(
         else:
             Z = np.zeros((1, n_dims), dtype=float)
 
-    U = 1.0 - np.exp(-Z)
+    U = 1.0 - np.exp(-np.clip(Z, -700, 700))  # FIX: clip to avoid overflow → -inf in uniforms
     if U.ndim == 1:
         U = U[:, None]
 
@@ -941,7 +946,7 @@ class FitResult:
             ks_pvalue = np.nan
             within = np.nan
         gaussianized = norm.ppf(np.clip(uniforms, 1e-6, 1.0 - 1e-6))
-        lags, acf = _autocorrelation(gaussianized, max_lag=25)
+        lags, acf = _autocorrelation(gaussianized)
         acf_ci = 1.96 / np.sqrt(float(gaussianized.size)) if gaussianized.size else np.nan
         coeffs = self._rawCoeffs(fit_num)
         se = _extract_standard_errors(self.stats[fit_num - 1] if fit_num - 1 < len(self.stats) else None, coeffs.size)
@@ -1167,10 +1172,10 @@ class FitResult:
             transform=ax_ks.transAxes, fontweight="bold", fontsize=10,
             verticalalignment="top",
         )
-        self.plotInvGausTrans(fit_num=fit_num, handle=ax_ig)
+        self.plotInvGausTrans(fit_num=None, handle=ax_ig)
         self.plotSeqCorr(fit_num=None, handle=ax_sc)
-        self.plotCoeffs(fit_num=fit_num, handle=ax_co)
-        self.plotResidual(fit_num=fit_num, handle=ax_re)
+        self.plotCoeffs(fit_num=None, handle=ax_co)
+        self.plotResidual(fit_num=None, handle=ax_re)
         fig.tight_layout()
         return fig
 
@@ -1233,32 +1238,97 @@ class FitResult:
         ax.set_title("KS Plot of Rescaled ISIs\nwith 95% Confidence Intervals", fontweight="bold", fontsize=11)
         return ax
 
-    def plotResidual(self, fit_num: int = 1, handle=None):
-        """Plot the martingale residual M(t) (Matlab ``plotResidual``)."""
+    def plotResidual(self, fit_num: int | list[int] | None = None, handle=None):
+        """Plot the martingale residual M(t) for one or more fits.
+
+        Matches Matlab ``plotResidual``: plots all residuals with per-fit
+        colours and a legend using ``lambda.dataLabels``.
+        """
+        if fit_num is None:
+            fit_nums = list(range(1, self.numResults + 1))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        residual = self.computeFitResidual(fit_num)
-        ax.plot(np.asarray(residual.time, dtype=float), np.asarray(residual.data[:, 0], dtype=float), color="tab:purple", linewidth=1.0)
+        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
+        data_labels = (
+            list(self.lambda_signal.dataLabels)
+            if getattr(self.lambda_signal, "dataLabels", None)
+            else []
+        )
+        for i, fn in enumerate(fit_nums):
+            residual = self.computeFitResidual(fn)
+            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
+            label = _ensure_mathtext(
+                data_labels[fn - 1] if fn - 1 < len(data_labels) else f"Model {fn}"
+            )
+            ax.plot(
+                np.asarray(residual.time, dtype=float),
+                np.asarray(residual.data[:, 0], dtype=float),
+                color=color, linewidth=1.0, label=label,
+            )
         ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
+        if len(fit_nums) > 1:
+            ax.legend(loc="upper right", fontsize=8)
         ax.set_xlabel("time [s]")
         ax.set_ylabel("count residual")
-        ax.set_title("Fit Residual")
+        ax.set_title("Point Process Residual", fontweight="bold", fontsize=11)
+        # Match MATLAB: symmetric y-axis with 10% margin
+        ylims = ax.get_ylim()
+        max_y = max(abs(ylims[0]), abs(ylims[1])) * 1.1
+        ax.set_ylim(-max_y, max_y)
         return ax
 
-    def plotInvGausTrans(self, fit_num: int = 1, handle=None):
+    def plotInvGausTrans(self, fit_num: int | list[int] | None = None, handle=None):
         """Plot ACF of gaussianized rescaled ISIs with 95% CIs.
 
         Matlab: plotInvGausTrans computes X_j = Φ⁻¹(U_j) and plots the
         autocorrelation function of X_j with 95% confidence bounds.
+        Supports multi-fit overlay with per-fit colours matching KS/SeqCorr.
         """
-        diag = self._compute_diagnostics(fit_num)
+        if fit_num is None:
+            fit_nums = list(range(1, self.numResults + 1))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        lags = np.asarray(diag["acf_lags"], dtype=float)
-        acf = np.asarray(diag["acf_values"], dtype=float)
-        if lags.size:
-            ax.vlines(lags, 0.0, acf, color="tab:orange", linewidth=1.4)
-            ax.axhline(float(diag["acf_ci"]), color="tab:red", linewidth=1.0)
-            ax.axhline(-float(diag["acf_ci"]), color="tab:red", linewidth=1.0)
-        ax.axhline(0.0, color="0.4", linewidth=1.0)
+        data_labels = (
+            list(self.lambda_signal.dataLabels)
+            if getattr(self.lambda_signal, "dataLabels", None)
+            else []
+        )
+        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
+        legend_handles: list[object] = []
+        legend_labels: list[str] = []
+        ci_val = None
+
+        for i, fn in enumerate(fit_nums):
+            diag = self._compute_diagnostics(fn)
+            lags = np.asarray(diag["acf_lags"], dtype=float)
+            acf = np.asarray(diag["acf_values"], dtype=float)
+            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
+            base_label = _ensure_mathtext(
+                data_labels[fn - 1] if fn - 1 < len(data_labels) else f"Model {fn}"
+            )
+            if lags.size:
+                h, = ax.plot(lags, acf, ".", color=color, markersize=4.0)
+                legend_handles.append(h)
+                legend_labels.append(base_label)
+                if ci_val is None:
+                    ci_val = float(diag["acf_ci"])
+
+        # Plot 95% CI lines without legend entries
+        if ci_val is not None:
+            ax.axhline(ci_val, color="0.4", linewidth=0.8, linestyle="--")
+            ax.axhline(-ci_val, color="0.4", linewidth=0.8, linestyle="--")
+        ax.axhline(0.0, color="0.4", linewidth=0.8)
+
+        if legend_handles:
+            ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=8)
         ax.set_xlabel("lag")
         ax.set_ylabel("autocorrelation")
         ax.set_title("Autocorrelation Function\nof Rescaled ISIs\nwith 95% CIs")
@@ -1308,9 +1378,11 @@ class FitResult:
                 uj = u[:-1]
                 uj1 = u[1:]
                 h, = ax.plot(uj, uj1, ".", color=color, markersize=4.0)
-                # Compute correlation coefficient and p-value
-                if uj.size > 2 and np.std(uj) > 0 and np.std(uj1) > 0:
-                    rho, pval = pearsonr(uj, uj1)
+                # FIX: filter non-finite values before correlation
+                finite = np.isfinite(uj) & np.isfinite(uj1)
+                uj_f, uj1_f = uj[finite], uj1[finite]
+                if uj_f.size > 2 and np.std(uj_f) > 0 and np.std(uj1_f) > 0:
+                    rho, pval = pearsonr(uj_f, uj1_f)
                     label = f"{base_label}, $\\rho$={rho:.2g} (p={pval:.2g})"
                 else:
                     label = base_label
@@ -1320,40 +1392,63 @@ class FitResult:
         if legend_handles:
             ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=10)
 
-        ax.set_title("Sequential Correlation")
+        ax.set_title("Sequential Correlation of\nRescaled ISIs", fontweight="bold", fontsize=11)
         ax.set_xlabel("$U_j$")
         ax.set_ylabel("$U_{j+1}$")
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return ax
 
-    def plotCoeffs(self, fit_num: int = 1, handle=None, plotSignificance: int = 1):
+    def plotCoeffs(self, fit_num: int | list[int] | None = None, handle=None, plotSignificance: int = 1):
         """Plot GLM coefficients with error bars and significance markers.
 
-        Matches Matlab FitResult.plotCoeffs: errorbar plot with ±1 SE,
-        and asterisks (*) above significant coefficients (p < 0.05).
+        Matches Matlab FitResult.plotCoeffs: when *fit_num* is ``None``
+        (default) all fits are overlaid with per-fit colours, errorbar
+        plots with ±1 SE, and asterisks (*) above significant coefficients
+        (p < 0.05).
         """
-        diag = self._compute_diagnostics(fit_num)
+        if fit_num is None:
+            fit_nums = list(range(1, self.numResults + 1))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        coeffs = np.asarray(diag["coefficients"], dtype=float)
-        se = np.asarray(diag["coeff_se"], dtype=float)
-        sig = np.asarray(diag["coeff_sig"], dtype=float)
-        labels = list(np.asarray(diag["coeff_labels"], dtype=object))
-        xpos = np.arange(1, coeffs.size + 1, dtype=float)
+        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
         ax.axhline(0.0, color="0.6", linewidth=1.0)
-        # Errorbar plot like Matlab (dot markers with SE whiskers)
-        valid_se = np.where(np.isfinite(se), se, 0.0)
-        ax.errorbar(xpos, coeffs, yerr=valid_se, fmt=".", color="tab:blue",
-                     linewidth=1.0, markersize=8.0, capsize=3.0)
-        if plotSignificance and np.any(sig > 0):
-            ylims = ax.get_ylim()
-            y_star = 0.8 * ylims[1]
-            sig_idx = xpos[sig.astype(bool)]
-            ax.plot(sig_idx, np.full(sig_idx.size, y_star), "*", color="tab:blue", markersize=10.0)
-        ax.set_xticks(xpos)
-        ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=6)
+
+        # Collect all labels across fits to build a unified x-axis
+        all_labels: list[str] = []
+        for fn in fit_nums:
+            diag = self._compute_diagnostics(fn)
+            for lbl in np.asarray(diag["coeff_labels"], dtype=object):
+                if lbl not in all_labels:
+                    all_labels.append(lbl)
+        label_to_x = {lbl: float(j + 1) for j, lbl in enumerate(all_labels)}
+        xpos_all = np.arange(1, len(all_labels) + 1, dtype=float)
+
+        for i, fn in enumerate(fit_nums):
+            diag = self._compute_diagnostics(fn)
+            coeffs = np.asarray(diag["coefficients"], dtype=float)
+            se = np.asarray(diag["coeff_se"], dtype=float)
+            sig = np.asarray(diag["coeff_sig"], dtype=float)
+            fit_labels = list(np.asarray(diag["coeff_labels"], dtype=object))
+            xpos = np.array([label_to_x[lbl] for lbl in fit_labels])
+            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
+            valid_se = np.where(np.isfinite(se), se, 0.0)
+            ax.errorbar(xpos, coeffs, yerr=valid_se, fmt=".", color=color,
+                         linewidth=1.0, markersize=8.0, capsize=3.0)
+            if plotSignificance and np.any(sig > 0):
+                ylims = ax.get_ylim()
+                y_star = 0.8 * ylims[1] - i * 0.1
+                sig_idx = xpos[sig.astype(bool)]
+                ax.plot(sig_idx, np.full(sig_idx.size, y_star), "*", color=color, markersize=10.0)
+
+        ax.set_xticks(xpos_all)
+        ax.set_xticklabels(all_labels, rotation=45, ha="right", fontsize=6)
         ax.set_ylabel("GLM Fit Coefficients")
-        ax.set_title("GLM Coefficients")
+        ax.set_title("GLM Coefficients", fontweight="bold", fontsize=11)
         return ax
 
     def plotCoeffsWithoutHistory(self, fit_num: int = 1, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):

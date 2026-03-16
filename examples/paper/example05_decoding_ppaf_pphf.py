@@ -455,7 +455,7 @@ def _plot_part_b(result):
     fig4, axes4 = plt.subplots(1, 4, figsize=(14, 4))
     for d, (ax, lab) in enumerate(zip(axes4, labels)):
         data = [result["rmse_free"][:, d], result["rmse_goal"][:, d]]
-        bp = ax.boxplot(data, tick_labels=["Free", "Goal"])
+        bp = ax.boxplot(data, labels=["Free", "Goal"])
         ax.set_title(f"RMSE: {lab}")
         ax.set_ylabel("RMSE")
 

@@ -140,12 +140,36 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     print(f"  AIC: {resultConst.AIC}")
     print(f"  BIC: {resultConst.BIC}")
 
-    # --- Figure 1: Constant Mg2+ diagnostics (Matlab-matching plotResults) ---
-    # Matlab calls resultConst.plotResults which creates a 2x4 grid:
-    #   [KSPlot (2-wide)]  [InvGausTrans]  [SeqCorr]
-    #   [plotCoeffs (2-wide)]               [plotResidual (2-wide)]
-    fig1 = plt.figure(figsize=(14, 9))
-    resultConst.plotResults(handle=fig1)
+    # --- Figure 1: Constant Mg2+ diagnostics (Matlab-matching 2x2 layout) ---
+    # Matlab uses subplot(2,2,...) with: raster, InvGausTrans, KSPlot, lambda
+    fig1, axes1 = plt.subplots(2, 2, figsize=(14, 9))
+
+    # (2,2,1): Neural raster
+    ax = axes1[0, 0]
+    spikeCollConst.plot(handle=ax)
+    ax.set_title("Neural Raster with constant Mg$^{2+}$ Concentration",
+                 fontweight="bold", fontsize=12)
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
+    ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold")
+    ax.set_yticks([0, 1])
+
+    # (2,2,2): Inverse Gaussian transform (ACF)
+    resultConst.plotInvGausTrans(fit_num=None, handle=axes1[0, 1])
+
+    # (2,2,3): KS plot
+    resultConst.KSPlot(fit_num=None, handle=axes1[1, 0])
+
+    # (2,2,4): Lambda estimate
+    ax = axes1[1, 1]
+    lam = resultConst.lambda_signal
+    ax.plot(np.asarray(lam.time, dtype=float),
+            np.asarray(lam.data[:, 0], dtype=float),
+            "b", linewidth=2)
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
+    ax.set_ylabel(lam.ylabel if hasattr(lam, "ylabel") else "spikes/sec",
+                  fontsize=12, fontweight="bold")
+    ax.legend(["$\\lambda_{const}$"], loc="upper right")
+
     fig1.suptitle("Example 01 — Figure 1: Constant Mg$^{2+}$ Summary",
                   fontsize=14, fontweight="bold")
     fig1.tight_layout()
@@ -229,10 +253,39 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     print(f"  AIC: {resultWashout.AIC}")
     print(f"  BIC: {resultWashout.BIC}")
 
-    # --- Figure 3: Piecewise model diagnostics (Matlab-matching plotResults) ---
-    # Matlab calls resultWashout.plotResults which creates the same 2x4 grid.
-    fig3 = plt.figure(figsize=(14, 9))
-    resultWashout.plotResults(handle=fig3)
+    # --- Figure 3: Piecewise model diagnostics (Matlab-matching 2x2 layout) ---
+    # Matlab uses subplot(2,2,...) with: raster+epoch lines, InvGausTrans, KSPlot, lambda comparison
+    fig3, axes3 = plt.subplots(2, 2, figsize=(14, 9))
+
+    # (2,2,1): Neural raster with epoch boundary lines
+    ax = axes3[0, 0]
+    spikeCollWashout.plot(handle=ax)
+    ax.set_title("Neural Raster with decreasing Mg$^{2+}$ Concentration",
+                 fontweight="bold", fontsize=12)
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
+    ax.set_yticklabels([])
+    ax.axvline(495, color="r", linewidth=4)
+    ax.axvline(765, color="r", linewidth=4)
+
+    # (2,2,2): Inverse Gaussian transform (ACF) — all fits
+    resultWashout.plotInvGausTrans(fit_num=None, handle=axes3[0, 1])
+
+    # (2,2,3): KS plot — all fits
+    resultWashout.KSPlot(fit_num=None, handle=axes3[1, 0])
+
+    # (2,2,4): Lambda comparison (two models overlaid)
+    ax = axes3[1, 1]
+    lam = resultWashout.lambda_signal
+    t = np.asarray(lam.time, dtype=float)
+    ax.plot(t, np.asarray(lam.data[:, 0], dtype=float), "b", linewidth=2)
+    if lam.data.shape[1] > 1:
+        ax.plot(t, np.asarray(lam.data[:, 1], dtype=float), "g", linewidth=2)
+    ax.set_ylim(0, 5)
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
+    ax.set_ylabel(lam.ylabel if hasattr(lam, "ylabel") else "spikes/sec",
+                  fontsize=12, fontweight="bold")
+    ax.legend(["$\\lambda_{const}$", "$\\lambda_{const-epoch}$"], loc="upper right")
+
     fig3.suptitle("Example 01 — Figure 3: Piecewise Baseline Comparison",
                   fontsize=14, fontweight="bold")
     fig3.tight_layout()
