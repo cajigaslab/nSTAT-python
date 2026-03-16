@@ -1174,8 +1174,8 @@ class FitResult:
         )
         self.plotInvGausTrans(fit_num=None, handle=ax_ig)
         self.plotSeqCorr(fit_num=None, handle=ax_sc)
-        self.plotCoeffs(fit_num=fit_num, handle=ax_co)
-        self.plotResidual(fit_num=fit_num, handle=ax_re)
+        self.plotCoeffs(fit_num=None, handle=ax_co)
+        self.plotResidual(fit_num=None, handle=ax_re)
         fig.tight_layout()
         return fig
 
@@ -1238,15 +1238,47 @@ class FitResult:
         ax.set_title("KS Plot of Rescaled ISIs\nwith 95% Confidence Intervals", fontweight="bold", fontsize=11)
         return ax
 
-    def plotResidual(self, fit_num: int = 1, handle=None):
-        """Plot the martingale residual M(t) (Matlab ``plotResidual``)."""
+    def plotResidual(self, fit_num: int | list[int] | None = None, handle=None):
+        """Plot the martingale residual M(t) for one or more fits.
+
+        Matches Matlab ``plotResidual``: plots all residuals with per-fit
+        colours and a legend using ``lambda.dataLabels``.
+        """
+        if fit_num is None:
+            fit_nums = list(range(1, self.numResults + 1))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        residual = self.computeFitResidual(fit_num)
-        ax.plot(np.asarray(residual.time, dtype=float), np.asarray(residual.data[:, 0], dtype=float), color="tab:purple", linewidth=1.0)
+        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
+        data_labels = (
+            list(self.lambda_signal.dataLabels)
+            if getattr(self.lambda_signal, "dataLabels", None)
+            else []
+        )
+        for i, fn in enumerate(fit_nums):
+            residual = self.computeFitResidual(fn)
+            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
+            label = _ensure_mathtext(
+                data_labels[fn - 1] if fn - 1 < len(data_labels) else f"Model {fn}"
+            )
+            ax.plot(
+                np.asarray(residual.time, dtype=float),
+                np.asarray(residual.data[:, 0], dtype=float),
+                color=color, linewidth=1.0, label=label,
+            )
         ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
+        if len(fit_nums) > 1:
+            ax.legend(loc="upper right", fontsize=8)
         ax.set_xlabel("time [s]")
         ax.set_ylabel("count residual")
-        ax.set_title("Fit Residual")
+        ax.set_title("Point Process Residual", fontweight="bold", fontsize=11)
+        # Match MATLAB: symmetric y-axis with 10% margin
+        ylims = ax.get_ylim()
+        max_y = max(abs(ylims[0]), abs(ylims[1])) * 1.1
+        ax.set_ylim(-max_y, max_y)
         return ax
 
     def plotInvGausTrans(self, fit_num: int | list[int] | None = None, handle=None):
@@ -1360,40 +1392,57 @@ class FitResult:
         if legend_handles:
             ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=10)
 
-        ax.set_title("Sequential Correlation")
+        ax.set_title("Sequential Correlation of\nRescaled ISIs", fontweight="bold", fontsize=11)
         ax.set_xlabel("$U_j$")
         ax.set_ylabel("$U_{j+1}$")
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return ax
 
-    def plotCoeffs(self, fit_num: int = 1, handle=None, plotSignificance: int = 1):
+    def plotCoeffs(self, fit_num: int | list[int] | None = None, handle=None, plotSignificance: int = 1):
         """Plot GLM coefficients with error bars and significance markers.
 
-        Matches Matlab FitResult.plotCoeffs: errorbar plot with ±1 SE,
-        and asterisks (*) above significant coefficients (p < 0.05).
+        Matches Matlab FitResult.plotCoeffs: when *fit_num* is ``None``
+        (default) all fits are overlaid with per-fit colours, errorbar
+        plots with ±1 SE, and asterisks (*) above significant coefficients
+        (p < 0.05).
         """
-        diag = self._compute_diagnostics(fit_num)
+        if fit_num is None:
+            fit_nums = list(range(1, self.numResults + 1))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        coeffs = np.asarray(diag["coefficients"], dtype=float)
-        se = np.asarray(diag["coeff_se"], dtype=float)
-        sig = np.asarray(diag["coeff_sig"], dtype=float)
-        labels = list(np.asarray(diag["coeff_labels"], dtype=object))
-        xpos = np.arange(1, coeffs.size + 1, dtype=float)
+        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
         ax.axhline(0.0, color="0.6", linewidth=1.0)
-        # Errorbar plot like Matlab (dot markers with SE whiskers)
-        valid_se = np.where(np.isfinite(se), se, 0.0)
-        ax.errorbar(xpos, coeffs, yerr=valid_se, fmt=".", color="tab:blue",
-                     linewidth=1.0, markersize=8.0, capsize=3.0)
-        if plotSignificance and np.any(sig > 0):
-            ylims = ax.get_ylim()
-            y_star = 0.8 * ylims[1]
-            sig_idx = xpos[sig.astype(bool)]
-            ax.plot(sig_idx, np.full(sig_idx.size, y_star), "*", color="tab:blue", markersize=10.0)
+
+        # Use labels from first fit for x-axis
+        first_diag = self._compute_diagnostics(fit_nums[0])
+        labels = list(np.asarray(first_diag["coeff_labels"], dtype=object))
+        n_coeffs = len(labels)
+        xpos = np.arange(1, n_coeffs + 1, dtype=float)
+
+        for i, fn in enumerate(fit_nums):
+            diag = self._compute_diagnostics(fn)
+            coeffs = np.asarray(diag["coefficients"], dtype=float)
+            se = np.asarray(diag["coeff_se"], dtype=float)
+            sig = np.asarray(diag["coeff_sig"], dtype=float)
+            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
+            valid_se = np.where(np.isfinite(se), se, 0.0)
+            ax.errorbar(xpos, coeffs, yerr=valid_se, fmt=".", color=color,
+                         linewidth=1.0, markersize=8.0, capsize=3.0)
+            if plotSignificance and np.any(sig > 0):
+                ylims = ax.get_ylim()
+                y_star = 0.8 * ylims[1] - i * 0.1
+                sig_idx = xpos[sig.astype(bool)]
+                ax.plot(sig_idx, np.full(sig_idx.size, y_star), "*", color=color, markersize=10.0)
+
         ax.set_xticks(xpos)
         ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=6)
         ax.set_ylabel("GLM Fit Coefficients")
-        ax.set_title("GLM Coefficients")
+        ax.set_title("GLM Coefficients", fontweight="bold", fontsize=11)
         return ax
 
     def plotCoeffsWithoutHistory(self, fit_num: int = 1, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
