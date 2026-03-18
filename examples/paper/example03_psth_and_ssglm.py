@@ -199,36 +199,38 @@ def run_part_a(data_dir, export_dir=None):
     # Top-left: CIF
     ax = axes1[0, 0]
     ax.plot(time, lambdaData, "b", linewidth=2)
-    ax.set_title("Simulated CIF", fontweight="bold", fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("spikes/sec")
+    ax.set_title("Simulated Conditional Intensity Function (CIF)",
+                 fontweight="bold", fontsize=14, fontname="Arial")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel(r"$\lambda(t)$ [spikes/sec]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.legend([r"$\lambda_1$"], loc="upper right", fontsize=14)
 
     # Bottom-left: simulated raster
     ax = axes1[1, 0]
     spikeCollSim.plot(handle=ax)
     ax.set_yticks(range(0, numRealizations + 1, 5))
-    ax.set_title(f"{numRealizations} Simulated Sample Paths",
-                 fontweight="bold", fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("Trial [k]")
+    ax.set_title(f"{numRealizations} Simulated Point Process Sample Paths",
+                 fontweight="bold", fontsize=14, fontname="Arial")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Trial [k]", fontname="Arial", fontsize=12, fontweight="bold")
 
     # Top-right: real cell 6 raster
     ax = axes1[0, 1]
     spikeCollReal1.plot(handle=ax)
     ax.set_yticks(range(0, numTrials + 1, 2))
     ax.set_title("Response to Moving Visual Stimulus (Neuron 6)",
-                 fontweight="bold", fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("Trial [k]")
+                 fontweight="bold", fontsize=14, fontname="Arial")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Trial [k]", fontname="Arial", fontsize=12, fontweight="bold")
 
     # Bottom-right: real cell 1 raster
     ax = axes1[1, 1]
     spikeCollReal2.plot(handle=ax)
     ax.set_yticks(range(0, numTrials + 1, 2))
     ax.set_title("Response to Moving Visual Stimulus (Neuron 1)",
-                 fontweight="bold", fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("Trial [k]")
+                 fontweight="bold", fontsize=14, fontname="Arial")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Trial [k]", fontname="Arial", fontsize=12, fontweight="bold")
 
     fig1.tight_layout()
 
@@ -613,7 +615,7 @@ def run_example03(*, export_figures: bool = False, export_dir: Path | None = Non
         export_dir.mkdir(parents=True, exist_ok=True)
         for name, fig in all_figs.items():
             path = export_dir / f"{name}.png"
-            fig.savefig(str(path), dpi=150, bbox_inches="tight")
+            fig.savefig(str(path), dpi=250, facecolor="w", edgecolor="none")
             print(f"  Saved {path}")
 
     plt.show()

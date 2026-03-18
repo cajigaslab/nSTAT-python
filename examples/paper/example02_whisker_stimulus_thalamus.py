@@ -60,7 +60,7 @@ def _maybe_export(fig, export_dir: Path | None, name: str, dpi: int = 250):
     if export_dir is not None:
         export_dir.mkdir(parents=True, exist_ok=True)
         png_path = export_dir / f"{name}.png"
-        fig.savefig(png_path, dpi=dpi, bbox_inches="tight")
+        fig.savefig(png_path, dpi=dpi, facecolor="w", edgecolor="none")
         saved.append(png_path)
         print(f"  Saved {png_path}")
     return saved
@@ -150,28 +150,32 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     nstView.setMaxTime(viewWindow)
     nstView.plot(handle=ax)
     ax.set_yticks([0, 1])
-    ax.set_title("Neural Raster", fontweight="bold", fontsize=12)
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Spikes", fontsize=12, fontweight="bold")
+    ax.set_title("Neural Raster", fontweight="bold", fontsize=16, fontname="Arial")
+    ax.set_xlabel("")
+    ax.set_xticklabels([])
+    ax.set_ylabel("spikes", fontname="Arial", fontsize=12, fontweight="bold")
 
-    # Subplot 2: Stimulus displacement (first 21 s)
+    # Subplot 2: Stimulus displacement (first 21 s, black line matching MATLAB)
     ax = axes1[1]
     stimView = stim.getSigInTimeWindow(0, viewWindow)
-    stimView.plot(handle=ax)
-    ax.set_ylabel("Displacement [mm]", fontsize=12, fontweight="bold")
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
+    stimView.plot(handle=ax, plotPropsIn=[["k"]])
+    ax.get_legend().remove() if ax.get_legend() else None
+    ax.set_ylabel("Displacement [mm]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_xlabel("")
+    ax.set_xticklabels([])
+    ax.set_title("Stimulus - Whisker Displacement", fontweight="bold", fontsize=16, fontname="Arial")
 
-    # Subplot 3: Stimulus velocity (derivative, first 21 s)
+    # Subplot 3: Stimulus velocity (derivative, first 21 s, black line matching MATLAB)
     ax = axes1[2]
     stimDeriv = stim.derivative
     stimDerivView = stimDeriv.getSigInTimeWindow(0, viewWindow)
-    stimDerivView.plot(handle=ax)
+    stimDerivView.plot(handle=ax, plotPropsIn=[["k"]])
+    ax.get_legend().remove() if ax.get_legend() else None
     ax.set_ylim(-80, 80)
-    ax.set_ylabel("Velocity", fontsize=12, fontweight="bold")
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Displacement Velocity [mm/s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_title("Displacement Velocity", fontweight="bold", fontsize=16, fontname="Arial")
 
-    fig1.suptitle("Example 02 — Figure 1: Data Overview",
-                  fontsize=14, fontweight="bold")
     fig1.tight_layout()
     figure_files.extend(_maybe_export(
         fig1, export_dir, "fig01_data_overview"))
@@ -380,8 +384,6 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     ax_coeff = fig2.add_subplot(gs[4:7, 1])
     modelCompare.plotCoeffs(handle=ax_coeff)
 
-    fig2.suptitle("Example 02 — Figure 2: Lag & History Selection",
-                  fontsize=14, fontweight="bold")
     figure_files.extend(_maybe_export(
         fig2, export_dir, "fig02_lag_and_model_comparison"))
 

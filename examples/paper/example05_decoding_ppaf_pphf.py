@@ -896,7 +896,7 @@ def run_example05(*, export_figures=False, export_dir=None, show=False):
         ]
         for i, fig in enumerate(figures):
             path = export_dir / f"{fig_names[i]}.png"
-            fig.savefig(path, dpi=150, bbox_inches="tight")
+            fig.savefig(path, dpi=250, facecolor="w", edgecolor="none")
             print(f"  Saved: {path}")
 
     if show:

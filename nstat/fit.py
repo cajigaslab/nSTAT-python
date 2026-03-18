@@ -1208,9 +1208,9 @@ class FitResult:
         ideal_ref = np.asarray(first_diag["ks_ideal"], dtype=float)
         ci_ref = np.asarray(first_diag["ks_ci"], dtype=float)
         if ideal_ref.size:
-            ax.plot([0.0, 1.0], [0.0, 1.0], color="0.3", linewidth=1.0, linestyle="-.")
-            ax.plot(ideal_ref, np.clip(ideal_ref + ci_ref, 0.0, 1.0), color="tab:red", linewidth=1.0)
-            ax.plot(ideal_ref, np.clip(ideal_ref - ci_ref, 0.0, 1.0), color="tab:red", linewidth=1.0)
+            ax.plot([0.0, 1.0], [0.0, 1.0], "k-.", linewidth=1.0)
+            ax.plot(ideal_ref, np.clip(ideal_ref + ci_ref, 0.0, 1.0), "r", linewidth=1.0)
+            ax.plot(ideal_ref, np.clip(ideal_ref - ci_ref, 0.0, 1.0), "r", linewidth=1.0)
 
         # Plot each model's empirical CDF (matching MATLAB colour cycle)
         labels_for_legend: list[str] = []
@@ -1229,13 +1229,19 @@ class FitResult:
                 labels_for_legend.append(label)
 
         if handles_for_legend:
-            ax.legend(handles_for_legend, labels_for_legend, loc="lower right", fontsize=10)
+            ax.legend(handles_for_legend, labels_for_legend, loc="lower right", fontsize=14)
 
         ax.set_xlim(0.0, 1.0)
         ax.set_ylim(0.0, 1.0)
-        ax.set_xlabel("Ideal Uniform CDF")
-        ax.set_ylabel("Empirical CDF")
-        ax.set_title("KS Plot of Rescaled ISIs\nwith 95% Confidence Intervals", fontweight="bold", fontsize=11)
+        ax.set_xticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+        ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+        ax.set_xlabel("Ideal Uniform CDF", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_ylabel("Empirical CDF", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_title("KS Plot of Rescaled ISIs\nwith 95% Confidence Intervals",
+                      fontweight="bold", fontsize=11, fontname="Arial")
+        ax.tick_params(length=6, width=1)
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.0)
         return ax
 
     def plotResidual(self, fit_num: int | list[int] | None = None, handle=None):
@@ -1271,14 +1277,18 @@ class FitResult:
             )
         ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
         if len(fit_nums) > 1:
-            ax.legend(loc="upper right", fontsize=8)
-        ax.set_xlabel("time [s]")
-        ax.set_ylabel("count residual")
-        ax.set_title("Point Process Residual", fontweight="bold", fontsize=11)
+            ax.legend(loc="upper right", fontsize=14)
+        ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_ylabel("count residual", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_title("Point Process Residual",
+                      fontweight="bold", fontsize=11, fontname="Arial")
         # Match MATLAB: symmetric y-axis with 10% margin
         ylims = ax.get_ylim()
         max_y = max(abs(ylims[0]), abs(ylims[1])) * 1.1
         ax.set_ylim(-max_y, max_y)
+        ax.tick_params(length=6, width=1)
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.0)
         return ax
 
     def plotInvGausTrans(self, fit_num: int | list[int] | None = None, handle=None):
@@ -1321,17 +1331,20 @@ class FitResult:
                 if ci_val is None:
                     ci_val = float(diag["acf_ci"])
 
-        # Plot 95% CI lines without legend entries
+        # Plot 95% CI lines (solid red, matching MATLAB)
         if ci_val is not None:
-            ax.axhline(ci_val, color="0.4", linewidth=0.8, linestyle="--")
-            ax.axhline(-ci_val, color="0.4", linewidth=0.8, linestyle="--")
-        ax.axhline(0.0, color="0.4", linewidth=0.8)
+            ax.axhline(ci_val, color="r", linewidth=1.0)
+            ax.axhline(-ci_val, color="r", linewidth=1.0)
 
         if legend_handles:
-            ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=8)
-        ax.set_xlabel("lag")
-        ax.set_ylabel("autocorrelation")
-        ax.set_title("Autocorrelation Function\nof Rescaled ISIs\nwith 95% CIs")
+            ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=14)
+        ax.set_xlabel(r"$\Delta\tau$ [sec]", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_ylabel(r"$ACF(\Phi^{-1}(u_n))$", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_title("Autocorrelation Function\nof Rescaled ISIs\nwith 95% CIs",
+                      fontweight="bold", fontsize=11, fontname="Arial")
+        ax.tick_params(length=6, width=1)
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.0)
         return ax
 
     def plotSeqCorr(self, fit_num: int | list[int] | None = None, handle=None):
@@ -1390,13 +1403,19 @@ class FitResult:
                 legend_labels.append(label)
 
         if legend_handles:
-            ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=10)
+            ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=14)
 
-        ax.set_title("Sequential Correlation of\nRescaled ISIs", fontweight="bold", fontsize=11)
-        ax.set_xlabel("$U_j$")
-        ax.set_ylabel("$U_{j+1}$")
+        ax.set_title("Sequential Correlation of\nRescaled ISIs",
+                      fontweight="bold", fontsize=11, fontname="Arial")
+        ax.set_xlabel("$u_j$", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_ylabel("$u_{j+1}$", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
+        ax.set_xticks([0.0, 0.25, 0.5, 0.75, 1.0])
+        ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+        ax.tick_params(length=6, width=1)
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.0)
         return ax
 
     def plotCoeffs(self, fit_num: int | list[int] | None = None, handle=None, plotSignificance: int = 1):
@@ -1446,9 +1465,14 @@ class FitResult:
                 ax.plot(sig_idx, np.full(sig_idx.size, y_star), "*", color=color, markersize=10.0)
 
         ax.set_xticks(xpos_all)
-        ax.set_xticklabels(all_labels, rotation=45, ha="right", fontsize=6)
-        ax.set_ylabel("GLM Fit Coefficients")
-        ax.set_title("GLM Coefficients", fontweight="bold", fontsize=11)
+        ax.set_xticklabels(all_labels, rotation=90, ha="center", fontsize=6)
+        ax.set_ylabel("GLM Fit Coefficients", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_title("GLM Coefficients with 95% CIs (* p<0.05)",
+                      fontweight="bold", fontsize=11, fontname="Arial")
+        ax.grid(axis="y", alpha=0.3)
+        ax.tick_params(length=6, width=1)
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.0)
         return ax
 
     def plotCoeffsWithoutHistory(self, fit_num: int = 1, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
