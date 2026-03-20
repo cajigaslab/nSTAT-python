@@ -498,7 +498,8 @@ def run_part_b(data_dir, export_dir=None):
     # ------------------------------------------------------------------
     # Figure 5: True/PSTH/SSGLM stimulus effect surfaces
     # Match MATLAB: mesh(trial, time, data) with view([90 -90]) → top-down
-    # Using pcolormesh for clean 2D rendering matching MATLAB's top-down mesh
+    # MATLAB orientation: time [s] on x-axis, Trial [k] on y-axis
+    # (matches fig03 bottom-panel "True Conditional Intensity Function")
     # ------------------------------------------------------------------
     fig5, axes5 = plt.subplots(3, 1, figsize=(14, 9))
     trial_axis = np.arange(1, numRealizations + 1)
@@ -511,12 +512,17 @@ def run_part_b(data_dir, export_dir=None):
     ]
     for ax, (data, title_str) in zip(axes5, surfaces):
         # data is (T, K) — time on rows, trials on columns
-        # MATLAB: imagesc shows trial on x, time on y
-        ax.pcolormesh(trial_axis, basis_time[:T_act], data, cmap="viridis",
+        # Transpose so trials are on y-axis and time on x-axis,
+        # matching MATLAB nSTATPaperExamples_15.png orientation.
+        ax.pcolormesh(basis_time[:T_act], trial_axis, data.T, cmap="viridis",
                       shading="auto")
-        ax.set_ylabel("time [s]")
+        ax.set_xlabel("time [s]")
+        ax.set_ylabel("Trial [k]")
         ax.set_title(title_str, fontweight="bold", fontsize=14)
-    axes5[-1].set_xlabel("Trial [k]")
+    # Remove redundant per-subplot x-labels except the bottom one
+    for ax in axes5[:-1]:
+        ax.set_xlabel("")
+        ax.set_xticklabels([])
 
     fig5.tight_layout()
     print("  Figure 5: Stimulus effect surfaces (top-down mesh)")

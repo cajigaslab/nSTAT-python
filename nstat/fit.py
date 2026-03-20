@@ -1424,7 +1424,7 @@ class FitResult:
         Matches Matlab FitResult.plotCoeffs: when *fit_num* is ``None``
         (default) all fits are overlaid with per-fit colours, errorbar
         plots with ±1 SE, and asterisks (*) above significant coefficients
-        (p < 0.05).
+        (p < 0.05).  Includes a legend matching Matlab's lambda dataLabels.
         """
         if fit_num is None:
             fit_nums = list(range(1, self.numResults + 1))
@@ -1447,6 +1447,10 @@ class FitResult:
         label_to_x = {lbl: float(j + 1) for j, lbl in enumerate(all_labels)}
         xpos_all = np.arange(1, len(all_labels) + 1, dtype=float)
 
+        # Build legend labels from lambda dataLabels (matching MATLAB)
+        lambda_labels = list(self.lambda_signal.dataLabels) if getattr(self.lambda_signal, "dataLabels", None) else []
+        errorbar_handles = []
+
         for i, fn in enumerate(fit_nums):
             diag = self._compute_diagnostics(fn)
             coeffs = np.asarray(diag["coefficients"], dtype=float)
@@ -1456,13 +1460,17 @@ class FitResult:
             xpos = np.array([label_to_x[lbl] for lbl in fit_labels])
             color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
             valid_se = np.where(np.isfinite(se), se, 0.0)
-            ax.errorbar(xpos, coeffs, yerr=valid_se, fmt=".", color=color,
-                         linewidth=1.0, markersize=8.0, capsize=3.0)
+            # Larger markers and thicker error bars to match MATLAB visibility
+            h = ax.errorbar(xpos, coeffs, yerr=valid_se, fmt=".", color=color,
+                            linewidth=1.5, markersize=12.0, capsize=5.0,
+                            markeredgecolor=color, markerfacecolor=color)
+            errorbar_handles.append(h)
             if plotSignificance and np.any(sig > 0):
                 ylims = ax.get_ylim()
                 y_star = 0.8 * ylims[1] - i * 0.1
                 sig_idx = xpos[sig.astype(bool)]
-                ax.plot(sig_idx, np.full(sig_idx.size, y_star), "*", color=color, markersize=10.0)
+                ax.plot(sig_idx, np.full(sig_idx.size, y_star), "*",
+                        color=color, markersize=14.0)
 
         ax.set_xticks(xpos_all)
         ax.set_xticklabels(all_labels, rotation=90, ha="center", fontsize=6)
@@ -1473,6 +1481,10 @@ class FitResult:
         ax.tick_params(length=6, width=1)
         for spine in ax.spines.values():
             spine.set_linewidth(1.0)
+        # Add legend matching MATLAB: uses lambda dataLabels with NorthEast placement
+        if errorbar_handles and lambda_labels:
+            legend_labels = [lambda_labels[min(fn - 1, len(lambda_labels) - 1)] for fn in fit_nums]
+            ax.legend(errorbar_handles, legend_labels, loc="upper right", fontsize=10)
         return ax
 
     def plotCoeffsWithoutHistory(self, fit_num: int = 1, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
