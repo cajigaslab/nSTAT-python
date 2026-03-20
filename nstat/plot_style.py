@@ -66,9 +66,18 @@ def apply_plot_style(target=None, *, style: str = ""):
         figure.set_facecolor("white")
 
     for ax in axes_list:
-        ax.tick_params(direction="out", top=True, right=True)
+        # Match MATLAB nstat.applyPlotStyle: Helvetica 10pt, ticks out, layer top
+        ax.tick_params(direction="out", top=True, right=True, length=6, width=1)
+        ax.set_axisbelow(False)  # layer = 'top' equivalent
         for spine in ax.spines.values():
             spine.set_linewidth(1.0)
+        # Set font on existing labels and title
+        for label in [ax.title, ax.xaxis.label, ax.yaxis.label]:
+            if label.get_fontfamily() == ["sans-serif"] or not label.get_text():
+                label.set_fontfamily("Helvetica")
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontsize(10)
+            label.set_fontfamily("Helvetica")
         for line in ax.get_lines():
             if isinstance(line, matplotlib.lines.Line2D) and float(line.get_linewidth()) < 1.25:
                 line.set_linewidth(1.25)
@@ -79,6 +88,13 @@ def apply_plot_style(target=None, *, style: str = ""):
                 sizes = coll.get_sizes()
                 if sizes.size:
                     coll.set_sizes(sizes.clip(min=30.0))
+        # Fix per-axes legends
+        leg = ax.get_legend()
+        if leg is not None:
+            leg.set_frame_on(False)
+            for text in leg.get_texts():
+                text.set_fontsize(10)
+    # Fix figure-level legends
     legend = None if figure is None else figure.legends
     for item in legend or []:
         item.set_frame_on(False)

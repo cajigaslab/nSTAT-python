@@ -252,15 +252,19 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     fig1, axes1 = plt.subplots(2, 2, figsize=(12, 10))
     for i, cidx in enumerate(exampleCells):
         ax = axes1.flat[i]
-        ax.plot(x1, y1, "b-", linewidth=0.5, alpha=0.5)
+        h1, = ax.plot(x1, y1, "b", linewidth=0.5)
         n = neurons1[min(cidx, nCells1 - 1)]
         xn = np.asarray(n["xN"].item(), dtype=float).ravel()
         yn = np.asarray(n["yN"].item(), dtype=float).ravel()
-        ax.plot(xn, yn, "r.", markersize=7)
-        ax.set_title(f"Cell {cidx + 1}", fontweight="bold", fontsize=12)
+        h2, = ax.plot(xn, yn, "r.", markersize=7)
+        ax.set_title(f"Cell#{cidx + 1}", fontweight="bold", fontsize=12, fontname="Arial")
+        ax.set_xlabel("X Position")
+        ax.set_ylabel("Y Position")
+        ax.set_xticks([-1, -0.5, 0, 0.5, 1])
+        ax.set_yticks([-1, -0.5, 0, 0.5, 1])
         ax.set_aspect("equal")
-    fig1.suptitle("Animal 1 — Example Place Cells", fontweight="bold",
-                  fontsize=14)
+        if i == 3:
+            ax.legend([h1, h2], ["Animal Path", "Location at time of spike"])
     fig1.tight_layout()
 
     # ==================================================================
@@ -359,10 +363,12 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
             axesG[row, col].set_visible(False)
             axesZ[row, col].set_visible(False)
 
-        figG.suptitle(f"{title_prefix} — Gaussian Place Fields",
-                      fontweight="bold", fontsize=14)
-        figZ.suptitle(f"{title_prefix} — Zernike Place Fields",
-                      fontweight="bold", fontsize=14)
+        # Match MATLAB sgtitle format: "Gaussian Place Fields - Animal#N"
+        animal_num = title_prefix.replace("Animal ", "")
+        figG.suptitle(f"Gaussian Place Fields - Animal#{animal_num}",
+                      fontweight="bold", fontsize=12)
+        figZ.suptitle(f"Zernike Place Fields - Animal#{animal_num}",
+                      fontweight="bold", fontsize=12)
         figG.tight_layout()
         figZ.tight_layout()
         return figG, figZ
@@ -430,7 +436,7 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
         export_dir.mkdir(parents=True, exist_ok=True)
         for name, fig in all_figs.items():
             path = export_dir / f"{name}.png"
-            fig.savefig(str(path), dpi=150, bbox_inches="tight")
+            fig.savefig(str(path), dpi=250, facecolor="w", edgecolor="none")
             print(f"  Saved {path}")
 
     plt.show()

@@ -83,7 +83,7 @@ def _maybe_export(fig, export_dir: Path | None, name: str, dpi: int = 250):
     if export_dir is not None:
         export_dir.mkdir(parents=True, exist_ok=True)
         png_path = export_dir / f"{name}.png"
-        fig.savefig(png_path, dpi=dpi, bbox_inches="tight")
+        fig.savefig(png_path, dpi=dpi, facecolor="w", edgecolor="none")
         saved.append(png_path)
         print(f"  Saved {png_path}")
     return saved
@@ -149,8 +149,8 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     spikeCollConst.plot(handle=ax)
     ax.set_title("Neural Raster with constant Mg$^{2+}$ Concentration",
                  fontweight="bold", fontsize=12)
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
-    ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel("mEPSCs", fontname="Arial", fontsize=12, fontweight="bold")
     ax.set_yticks([0, 1])
 
     # (2,2,2): Inverse Gaussian transform (ACF)
@@ -165,13 +165,10 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.plot(np.asarray(lam.time, dtype=float),
             np.asarray(lam.data[:, 0], dtype=float),
             "b", linewidth=2)
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
-    ax.set_ylabel(lam.ylabel if hasattr(lam, "ylabel") else "spikes/sec",
-                  fontsize=12, fontweight="bold")
-    ax.legend(["$\\lambda_{const}$"], loc="upper right")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel(r"$\lambda(t)$ [Hz]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.legend(["$\\lambda_{const}$"], loc="upper right", fontsize=14)
 
-    fig1.suptitle("Example 01 — Figure 1: Constant Mg$^{2+}$ Summary",
-                  fontsize=14, fontweight="bold")
     fig1.tight_layout()
     figure_files.extend(_maybe_export(fig1, export_dir, "fig01_constant_mg_summary"))
 
@@ -194,18 +191,17 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax = axes2[0]
     nstConst.plot(handle=ax)
     ax.set_yticks([0, 1])
-    ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold")
+    ax.set_ylabel("mEPSCs", fontname="Arial", fontsize=12, fontweight="bold")
     ax.set_title("Neural Raster with constant Mg$^{2+}$ Concentration",
                  fontweight="bold", fontsize=12)
 
     ax = axes2[1]
     nstWashout.plot(handle=ax)
     ax.set_yticks([0, 1])
-    ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold")
+    ax.set_ylabel("mEPSCs", fontname="Arial", fontsize=12, fontweight="bold")
     ax.set_title("Neural Raster with decreasing Mg$^{2+}$ Concentration",
                  fontweight="bold", fontsize=12)
 
-    fig2.suptitle("Example 01 — Figure 2: Constant vs Decreasing Mg$^{2+}$", fontsize=14, fontweight="bold")
     fig2.tight_layout()
     figure_files.extend(_maybe_export(fig2, export_dir, "fig02_washout_raster_overview"))
 
@@ -281,13 +277,11 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     if lam.data.shape[1] > 1:
         ax.plot(t, np.asarray(lam.data[:, 1], dtype=float), "g", linewidth=2)
     ax.set_ylim(0, 5)
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
-    ax.set_ylabel(lam.ylabel if hasattr(lam, "ylabel") else "spikes/sec",
-                  fontsize=12, fontweight="bold")
-    ax.legend(["$\\lambda_{const}$", "$\\lambda_{const-epoch}$"], loc="upper right")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel(r"$\lambda(t)$ [Hz]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.legend(["$\\lambda_{const}$", "$\\lambda_{const-epoch}$"],
+              loc="upper right", fontsize=14)
 
-    fig3.suptitle("Example 01 — Figure 3: Piecewise Baseline Comparison",
-                  fontsize=14, fontweight="bold")
     fig3.tight_layout()
     figure_files.extend(_maybe_export(fig3, export_dir, "fig03_piecewise_baseline_comparison"))
 

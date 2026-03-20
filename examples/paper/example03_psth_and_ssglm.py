@@ -199,36 +199,38 @@ def run_part_a(data_dir, export_dir=None):
     # Top-left: CIF
     ax = axes1[0, 0]
     ax.plot(time, lambdaData, "b", linewidth=2)
-    ax.set_title("Simulated CIF", fontweight="bold", fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("spikes/sec")
+    ax.set_title("Simulated Conditional Intensity Function (CIF)",
+                 fontweight="bold", fontsize=14, fontname="Arial")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel(r"$\lambda(t)$ [spikes/sec]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.legend([r"$\lambda_1$"], loc="upper right", fontsize=14)
 
     # Bottom-left: simulated raster
     ax = axes1[1, 0]
     spikeCollSim.plot(handle=ax)
     ax.set_yticks(range(0, numRealizations + 1, 5))
-    ax.set_title(f"{numRealizations} Simulated Sample Paths",
-                 fontweight="bold", fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("Trial [k]")
+    ax.set_title(f"{numRealizations} Simulated Point Process Sample Paths",
+                 fontweight="bold", fontsize=14, fontname="Arial")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Trial [k]", fontname="Arial", fontsize=12, fontweight="bold")
 
     # Top-right: real cell 6 raster
     ax = axes1[0, 1]
     spikeCollReal1.plot(handle=ax)
     ax.set_yticks(range(0, numTrials + 1, 2))
     ax.set_title("Response to Moving Visual Stimulus (Neuron 6)",
-                 fontweight="bold", fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("Trial [k]")
+                 fontweight="bold", fontsize=14, fontname="Arial")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Trial [k]", fontname="Arial", fontsize=12, fontweight="bold")
 
     # Bottom-right: real cell 1 raster
     ax = axes1[1, 1]
     spikeCollReal2.plot(handle=ax)
     ax.set_yticks(range(0, numTrials + 1, 2))
     ax.set_title("Response to Moving Visual Stimulus (Neuron 1)",
-                 fontweight="bold", fontsize=14)
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("Trial [k]")
+                 fontweight="bold", fontsize=14, fontname="Arial")
+    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Trial [k]", fontname="Arial", fontsize=12, fontweight="bold")
 
     fig1.tight_layout()
 
@@ -496,7 +498,8 @@ def run_part_b(data_dir, export_dir=None):
     # ------------------------------------------------------------------
     # Figure 5: True/PSTH/SSGLM stimulus effect surfaces
     # Match MATLAB: mesh(trial, time, data) with view([90 -90]) → top-down
-    # Using pcolormesh for clean 2D rendering matching MATLAB's top-down mesh
+    # MATLAB orientation: time [s] on x-axis, Trial [k] on y-axis
+    # (matches fig03 bottom-panel "True Conditional Intensity Function")
     # ------------------------------------------------------------------
     fig5, axes5 = plt.subplots(3, 1, figsize=(14, 9))
     trial_axis = np.arange(1, numRealizations + 1)
@@ -509,12 +512,17 @@ def run_part_b(data_dir, export_dir=None):
     ]
     for ax, (data, title_str) in zip(axes5, surfaces):
         # data is (T, K) — time on rows, trials on columns
-        # MATLAB: imagesc shows trial on x, time on y
-        ax.pcolormesh(trial_axis, basis_time[:T_act], data, cmap="viridis",
+        # Transpose so trials are on y-axis and time on x-axis,
+        # matching MATLAB nSTATPaperExamples_15.png orientation.
+        ax.pcolormesh(basis_time[:T_act], trial_axis, data.T, cmap="viridis",
                       shading="auto")
-        ax.set_ylabel("time [s]")
+        ax.set_xlabel("time [s]")
+        ax.set_ylabel("Trial [k]")
         ax.set_title(title_str, fontweight="bold", fontsize=14)
-    axes5[-1].set_xlabel("Trial [k]")
+    # Remove redundant per-subplot x-labels except the bottom one
+    for ax in axes5[:-1]:
+        ax.set_xlabel("")
+        ax.set_xticklabels([])
 
     fig5.tight_layout()
     print("  Figure 5: Stimulus effect surfaces (top-down mesh)")
@@ -613,7 +621,7 @@ def run_example03(*, export_figures: bool = False, export_dir: Path | None = Non
         export_dir.mkdir(parents=True, exist_ok=True)
         for name, fig in all_figs.items():
             path = export_dir / f"{name}.png"
-            fig.savefig(str(path), dpi=150, bbox_inches="tight")
+            fig.savefig(str(path), dpi=250, facecolor="w", edgecolor="none")
             print(f"  Saved {path}")
 
     plt.show()
