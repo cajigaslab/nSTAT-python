@@ -159,7 +159,7 @@ DECODING_EXAMPLE_CODE = [
     )
     results = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0)
 
-    paramEst = np.column_stack([fit.getCoeffs(2)[:2] for fit in results])
+    paramEst = np.column_stack([fit.getCoeffs(2)[0][:2] for fit in results])
     meanParams = np.mean(paramEst, axis=1)
     aic_matrix = np.vstack([fit.AIC for fit in results])
     logll_matrix = np.vstack([fit.logLL for fit in results])

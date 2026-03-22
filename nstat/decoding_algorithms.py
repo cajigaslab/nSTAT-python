@@ -390,28 +390,26 @@ class DecodingAlgorithms:
 
     @staticmethod
     def kalman_filter(
-        observations: np.ndarray,
-        transition: np.ndarray,
-        observation_matrix: np.ndarray,
-        q_cov: np.ndarray,
-        r_cov: np.ndarray,
-        x0: np.ndarray,
-        p0: np.ndarray,
-    ) -> dict[str, np.ndarray]:
-        """Discrete-time Kalman filter — public Python API.
+        A=None, C=None, Pv=None, Pw=None, Px0=None, x0=None, y=None, GnConv=None,
+        *,
+        observations=None, transition=None, observation_matrix=None,
+        q_cov=None, r_cov=None, p0=None,
+    ):
+        """Discrete-time Kalman filter.
 
-        Runs a Kalman filter on time-major observations and returns a
-        dict with updated state estimates and covariances.
+        Accepts **both** the MATLAB-compatible signature::
 
-        Parameters
-        ----------
-        observations : (N, Dy) — observation time-series, one row per step.
-        transition : (Dx, Dx) — state-transition matrix A.
-        observation_matrix : (Dy, Dx) — observation matrix C (H).
-        q_cov : (Dx, Dx) — process-noise covariance.
-        r_cov : (Dy, Dy) — observation-noise covariance.
-        x0 : (Dx,) — initial state estimate.
-        p0 : (Dx, Dx) — initial error covariance.
+            kalman_filter(A, C, Pv, Pw, Px0, x0, y, GnConv)
+
+        and the Pythonic keyword signature::
+
+            kalman_filter(observations=y, transition=A,
+                          observation_matrix=C, q_cov=Pv,
+                          r_cov=Pw, x0=x0, p0=Px0)
+
+        When MATLAB-style positional args are provided, delegates to
+        ``_kalman_filter_matlab``.  Otherwise runs a simple Pythonic
+        Kalman filter returning ``dict(state=..., cov=...)``.
 
         Returns
         -------
@@ -419,15 +417,56 @@ class DecodingAlgorithms:
             ``state`` : (N, Dx) — updated (posterior) state estimates.
             ``cov``   : (N, Dx, Dx) — updated covariances.
         """
-        y = np.asarray(observations, dtype=float)
-        a = np.asarray(transition, dtype=float)
-        h = np.asarray(observation_matrix, dtype=float)
-        q = np.asarray(q_cov, dtype=float)
-        r = np.asarray(r_cov, dtype=float)
-        x_prev = np.asarray(x0, dtype=float).reshape(-1)
-        p_prev = np.asarray(p0, dtype=float)
+        # Detect MATLAB-style positional call: kalman_filter(A, C, Pv, Pw, Px0, x0, y, GnConv)
+        # MATLAB call has 7-8 positional args where y (arg 7) is the observation matrix.
+        # Pythonic call has 7 args where the first is observations (2D time-series).
+        # Distinguish by checking: in MATLAB style, A is square (Dx,Dx) and y is (Dy,N);
+        # in Pythonic style, the first arg ('A' slot) is observations (N,Dy).
+        _all_positional = A is not None and C is not None and Pv is not None and Pw is not None
+        if _all_positional and y is not None and GnConv is None:
+            # 7 positional args: could be MATLAB (A,C,Pv,Pw,Px0,x0,y) or Pythonic (obs,A,C,Q,R,x0,p0)
+            # MATLAB: A is square state matrix, y is observation time-series
+            # Pythonic: first arg (A slot) IS the observation time-series
+            a_arr = np.asarray(A, dtype=float)
+            y_arr = np.asarray(y, dtype=float)
+            # If A is 2D square and y has more rows than A, it's MATLAB style
+            if a_arr.ndim == 2 and a_arr.shape[0] == a_arr.shape[1] and y_arr.ndim >= 2 and y_arr.shape[1] > a_arr.shape[0]:
+                return DecodingAlgorithms._kalman_filter_matlab(A, C, Pv, Pw, Px0, x0, y, GnConv)
+        elif _all_positional and y is not None and GnConv is not None:
+            # 8 positional args: must be MATLAB (A,C,Pv,Pw,Px0,x0,y,GnConv)
+            return DecodingAlgorithms._kalman_filter_matlab(A, C, Pv, Pw, Px0, x0, y, GnConv)
 
-        n_t = y.shape[0]
+        # Pythonic positional call: kalman_filter(observations, transition, obs_matrix, q, r, x0, p0)
+        # When 7 positional args are given and it's NOT MATLAB-style, treat as:
+        # A=observations, C=transition, Pv=obs_matrix, Pw=q_cov, Px0=r_cov, x0=x0, y=p0
+        if observations is not None:
+            # Keyword call: use keyword values
+            obs = observations
+            a = transition if transition is not None else A
+            h = observation_matrix if observation_matrix is not None else C
+            q = q_cov if q_cov is not None else Pv
+            r = r_cov if r_cov is not None else Pw
+            x0_vec = x0
+            p0_mat = p0 if p0 is not None else Px0
+        else:
+            # Positional Pythonic call: A=obs, C=A, Pv=C, Pw=Q, Px0=R, x0=x0, y=p0
+            obs = A
+            a = C
+            h = Pv
+            q = Pw
+            r = Px0
+            x0_vec = x0
+            p0_mat = y
+
+        obs = np.asarray(obs, dtype=float)
+        a = np.asarray(a, dtype=float)
+        h = np.asarray(h, dtype=float)
+        q = np.asarray(q, dtype=float)
+        r = np.asarray(r, dtype=float)
+        x_prev = np.asarray(x0_vec, dtype=float).reshape(-1)
+        p_prev = np.asarray(p0_mat, dtype=float)
+
+        n_t = obs.shape[0]
         n_x = x_prev.shape[0]
         xs = np.zeros((n_t, n_x), dtype=float)
         ps = np.zeros((n_t, n_x, n_x), dtype=float)
@@ -436,7 +475,7 @@ class DecodingAlgorithms:
             x_pred = a @ x_prev
             p_pred = a @ p_prev @ a.T + q
 
-            innovation = y[t] - h @ x_pred
+            innovation = obs[t] - h @ x_pred
             s_cov = h @ p_pred @ h.T + r
             k_gain = p_pred @ h.T @ np.linalg.pinv(s_cov)
 

@@ -184,6 +184,77 @@ class ConfidenceInterval:
     def __neg__(self):
         return ConfidenceInterval(self.time, np.column_stack([-self.upper, -self.lower]), self.color)
 
+    # ------------------------------------------------------------------
+    # SignalObj-compatible interface methods
+    # In MATLAB, ConfidenceInterval < SignalObj, inheriting ~70 methods.
+    # We provide the most commonly used ones here for API parity.
+    # ------------------------------------------------------------------
+
+    def getSigInTimeWindow(self, wMin: float, wMax: float, holdVals: int = 0):
+        """Return a new ConfidenceInterval restricted to [wMin, wMax]."""
+        mask = (self.time >= wMin) & (self.time <= wMax)
+        return ConfidenceInterval(self.time[mask], self.bounds[mask], self.color, value=self.value)
+
+    def windowedSignal(self, windowTimes):
+        """Return a ConfidenceInterval restricted to the given time window."""
+        wt = np.asarray(windowTimes, dtype=float).reshape(-1)
+        return self.getSigInTimeWindow(float(wt[0]), float(wt[-1]))
+
+    def shift(self, deltaT: float, updateLabels: bool = False):
+        """Return a time-shifted copy."""
+        return ConfidenceInterval(self.time + deltaT, self.bounds.copy(), self.color, value=self.value)
+
+    def resample(self, sample_rate: float):
+        """Resample the CI bounds to a new sample rate via linear interpolation."""
+        new_time = np.arange(self.minTime, self.maxTime, 1.0 / sample_rate)
+        new_lower = np.interp(new_time, self.time, self.lower)
+        new_upper = np.interp(new_time, self.time, self.upper)
+        return ConfidenceInterval(new_time, np.column_stack([new_lower, new_upper]), self.color, value=self.value)
+
+    @property
+    def derivative(self):
+        """Numerical derivative of both bounds."""
+        dt = np.diff(self.time)
+        dt[dt == 0] = 1.0
+        d_lower = np.concatenate([np.diff(self.lower) / dt, [0.0]])
+        d_upper = np.concatenate([np.diff(self.upper) / dt, [0.0]])
+        return ConfidenceInterval(self.time, np.column_stack([d_lower, d_upper]), self.color, value=self.value)
+
+    def merge(self, other, holdVals: int = 0):
+        """Merge with another ConfidenceInterval along the time axis."""
+        new_time = np.concatenate([self.time, other.time])
+        new_bounds = np.vstack([self.bounds, other.bounds])
+        order = np.argsort(new_time)
+        return ConfidenceInterval(new_time[order], new_bounds[order], self.color, value=self.value)
+
+    def copySignal(self):
+        """Return a deep copy."""
+        return ConfidenceInterval(self.time.copy(), self.bounds.copy(), self.color, value=self.value)
+
+    def getSubSignal(self, identifier):
+        """Return a single column (lower=0 or upper=1) as a 1-column CI."""
+        idx = int(identifier)
+        col = self.bounds[:, idx : idx + 1]
+        return ConfidenceInterval(self.time, np.column_stack([col, col]), self.color, value=self.value)
+
+    def setMinTime(self, minTime=None, holdVals: int = 0):
+        """Restrict to times >= minTime."""
+        if minTime is None:
+            return
+        mask = self.time >= minTime
+        self.time = self.time[mask]
+        self.bounds = self.bounds[mask]
+        self.minTime = float(self.time[0]) if self.time.size else float("nan")
+
+    def setMaxTime(self, maxTime=None, holdVals: int = 0):
+        """Restrict to times <= maxTime."""
+        if maxTime is None:
+            return
+        mask = self.time <= maxTime
+        self.time = self.time[mask]
+        self.bounds = self.bounds[mask]
+        self.maxTime = float(self.time[-1]) if self.time.size else float("nan")
+
     def toStructure(self) -> dict:
         """Alias for :meth:`dataToStructure`."""
         return self.dataToStructure()

@@ -444,7 +444,7 @@ VALIDATION_CODE = [
     """
     # SECTION 4: Setup the constant-rate analysis
     constant_results = Analysis.RunAnalysisForAllNeurons(constant_case["trial"], constant_case["cfg"], 0)
-    constant_intercepts = np.asarray([fit.getCoeffs(1)[0] for fit in constant_results], dtype=float)
+    constant_intercepts = np.asarray([fit.getCoeffs(1)[0][0] for fit in constant_results], dtype=float)
 
     fig = _prepare_figure("plot(mu,'ro', 'MarkerSize',10)", figsize=(7.5, 4.5))
     ax = fig.subplots(1, 1)

@@ -1367,22 +1367,39 @@ class SpikeTrainCollection:
         time = (window_times[1:] + window_times[:-1]) * 0.5
         return Covariate(time, psth_data, "PSTH", "time", "s", "Hz", ["psth"])
 
-    def psthGLM(self, binwidth: float, windowTimes=None, fitType: str = "poisson",
-                *, alphaVal: float = 0.05, Mc: int = 1000):
+    def psthGLM(self, basisWidth: float = None, history=None, fitType: str = "poisson",
+                selectorArray=None, minTime=None, maxTime=None, sampleRate=None,
+                *, binwidth: float = None, windowTimes=None,
+                alphaVal: float = 0.05, Mc: int = 1000):
         """GLM-based PSTH estimation (Matlab ``nstColl.psthGLM``).
 
+        Parameters match MATLAB:
+        ``psthGLM(basisWidth, history, fitType, selectorArray, minTime, maxTime, sampleRate)``
+
+        The Python keyword-only ``binwidth`` and ``windowTimes`` are accepted
+        as aliases for ``basisWidth`` and ``history`` respectively.
+
         Returns ``(psth_covariate, histSignal, psthFitResult)`` matching the
-        Matlab signature.  The PSTH and history covariates carry Monte Carlo
-        confidence intervals matching the Matlab implementation (1000 draws
-        from the normal approximation to the coefficient posterior, transformed
-        through the link function, with empirical quantile CIs).
+        Matlab signature.
         """
+        # Resolve aliases: binwidth ↔ basisWidth, windowTimes ↔ history
+        if basisWidth is None and binwidth is not None:
+            basisWidth = binwidth
+        elif basisWidth is None and binwidth is None:
+            basisWidth = 0.100  # MATLAB default
+        if windowTimes is not None and history is None:
+            history = windowTimes
+        windowTimes = history  # use unified name internally
         from .analysis import Analysis
         from .confidence_interval import ConfidenceInterval
         from .glm import fit_poisson_glm
 
+        # Use MATLAB-compatible param names (selectorArray/minTime/maxTime/sampleRate unused in current impl)
+        _sr = float(sampleRate) if sampleRate is not None else float(self.sampleRate)
+        _minT = float(minTime) if minTime is not None else float(self.minTime)
+        _maxT = float(maxTime) if maxTime is not None else float(self.maxTime)
         basis = self.generateUnitImpulseBasis(
-            float(binwidth), float(self.minTime), float(self.maxTime), float(self.sampleRate)
+            float(basisWidth), _minT, _maxT, _sr
         )
         trial = Trial(
             SpikeTrainCollection([train.nstCopy() for train in self.nstrain]),
@@ -1833,7 +1850,7 @@ class SpikeTrainCollection:
                 cfgColl = ConfigCollection([cfg])
                 psthResult = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, "GLM", [], 1)
                 fit = psthResult[0] if isinstance(psthResult, list) else psthResult
-                gamma0 = np.asarray(fit.getHistCoeffs(1), dtype=float).reshape(-1)
+                gamma0 = np.asarray(fit.getHistCoeffs(1)[0], dtype=float).reshape(-1)
                 gamma0 = np.where(np.isnan(gamma0), -5.0, gamma0)
             except Exception:
                 numHist = len(windowTimes) - 1
@@ -1927,7 +1944,7 @@ class SpikeTrainCollection:
                 cfgColl = ConfigCollection([cfg])
                 psthResult = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, "GLM", [], 1)
                 fit = psthResult[0] if isinstance(psthResult, list) else psthResult
-                gamma0 = np.asarray(fit.getHistCoeffs(1), dtype=float).reshape(-1)
+                gamma0 = np.asarray(fit.getHistCoeffs(1)[0], dtype=float).reshape(-1)
                 gamma0 = np.where(np.isnan(gamma0), -5.0, gamma0)
             except Exception:
                 numHist = len(windowTimes) - 1
