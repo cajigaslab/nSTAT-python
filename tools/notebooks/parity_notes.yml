@@ -16,14 +16,16 @@ notes:
   file: notebooks/AnalysisExamples.ipynb
   source_matlab: AnalysisExamples.mlx
   fidelity_status: exact
-  remaining_differences: Complete MATLAB standard-GLM workflow with the canonical glm_data.mat dataset and real KS/model-visualization
-    figures. Only inherent GLM solver numerics and matplotlib styling differ.
+  remaining_differences: The notebook now follows the MATLAB standard-GLM workflow with the canonical `glm_data.mat` dataset
+    and real KS/model-visualization figures; coefficient values and styling still vary modestly because the Python GLM backend
+    and plotting defaults differ from MATLAB.
 - topic: AnalysisExamples2
   file: notebooks/AnalysisExamples2.ipynb
   source_matlab: AnalysisExamples2.mlx
   fidelity_status: exact
-  remaining_differences: Complete MATLAB toolbox workflow on the canonical glm_data.mat dataset with executable Trial, ConfigColl,
-    and Analysis calls. Only inherent GLM solver numerics and plot styling differ.
+  remaining_differences: The notebook now follows the MATLAB toolbox workflow on the canonical `glm_data.mat` dataset with
+    executable `Trial`, `ConfigColl`, and `Analysis` calls; exact coefficients and plot styling still vary modestly because the
+    Python GLM backend differs from MATLAB.
 - topic: DecodingExample
   file: notebooks/DecodingExample.ipynb
   source_matlab: DecodingExample.mlx
