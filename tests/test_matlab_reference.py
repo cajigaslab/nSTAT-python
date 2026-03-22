@@ -54,7 +54,7 @@ def test_analysis_fixture_remains_consumable_without_matlab_runtime() -> None:
     payload = _load_fixture("analysis_exactness.mat")
     time = np.arange(0.0, 1.0 + 0.1, 0.1)
     stim = Covariate(time, np.sin(2 * np.pi * time), "Stimulus", "time", "s", "", ["stim"])
-    spike_train = nspikeTrain([0.1, 0.4, 0.7], "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    spike_train = nspikeTrain([0.1, 0.4, 0.7], "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
     trial = Trial(nstColl([spike_train]), CovColl([stim]))
     cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [], [], name="stim")
     fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))

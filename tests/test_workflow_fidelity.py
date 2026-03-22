@@ -22,8 +22,8 @@ def _build_trial() -> Trial:
     vel = Covariate(time, np.cos(2 * np.pi * time), "Velocity", "time", "s", "", ["vel"])
     spikes = nstColl(
         [
-            nspikeTrain([0.1, 0.3, 0.7], "1", 0.1, 0.0, 0.9, makePlots=-1),
-            nspikeTrain([0.2, 0.5, 0.8], "2", 0.1, 0.0, 0.9, makePlots=-1),
+            nspikeTrain([0.1, 0.3, 0.7], "1", 10.0, 0.0, 0.9, makePlots=-1),
+            nspikeTrain([0.2, 0.5, 0.8], "2", 10.0, 0.0, 0.9, makePlots=-1),
         ]
     )
     return Trial(spikes, CovColl([stim, vel]), Events([0.2], ["cue"]), History([0.0, 0.1, 0.2]))

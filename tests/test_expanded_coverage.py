@@ -51,8 +51,8 @@ def simple_trial():
     np.random.seed(42)
     spikes1 = np.sort(np.random.uniform(0, 1, 30))
     spikes2 = np.sort(np.random.uniform(0, 1, 25))
-    n1 = nspikeTrain(spikes1, "n1", 0.001, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
-    n2 = nspikeTrain(spikes2, "n2", 0.001, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+    n1 = nspikeTrain(spikes1, "n1", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+    n2 = nspikeTrain(spikes2, "n2", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
 
     trial = Trial(nstColl([n1, n2]), CovColl([cov]))
     return trial
@@ -79,14 +79,14 @@ def fit_summary(fit_result):
 class TestEdgeCases:
     def test_empty_spike_train_statistics(self) -> None:
         """Empty spike train should not error on basic statistics."""
-        nst = nspikeTrain([], "empty", 0.001, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+        nst = nspikeTrain([], "empty", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
         assert nst.n_spikes == 0
         isis = nst.getISIs()
         assert len(isis) == 0
 
     def test_single_spike_train_collection(self) -> None:
         """nstColl with one spike train should work without error."""
-        nst = nspikeTrain([0.1, 0.5, 0.9], "only", 0.001, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+        nst = nspikeTrain([0.1, 0.5, 0.9], "only", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
         coll = nstColl([nst])
         assert coll.numSpikeTrains == 1
         assert coll.getNST(1).name == "only"
@@ -95,7 +95,7 @@ class TestEdgeCases:
 
     def test_single_spike_train_psth(self) -> None:
         """PSTH on single-neuron collection should still work."""
-        nst = nspikeTrain([0.1, 0.5, 0.9], "n1", 0.001, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+        nst = nspikeTrain([0.1, 0.5, 0.9], "n1", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
         coll = nstColl([nst])
         psth = coll.psth(0.1, [1], 0.0, 1.0)
         # nstColl.psth returns nstat.core.Covariate; check by class name to avoid module alias issues
@@ -104,7 +104,7 @@ class TestEdgeCases:
 
     def test_spike_train_with_one_spike(self) -> None:
         """Spike train with exactly one spike should compute statistics safely."""
-        nst = nspikeTrain([0.5], "one", 0.001, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+        nst = nspikeTrain([0.5], "one", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
         assert nst.n_spikes == 1
         assert len(nst.getISIs()) == 0
 
@@ -115,7 +115,7 @@ class TestEdgeCases:
 
     def test_trial_with_no_covariates(self) -> None:
         """Trial requires CovColl — verify clear error when omitted."""
-        nst = nspikeTrain([0.1], "n1", 0.001, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+        nst = nspikeTrain([0.1], "n1", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
         with pytest.raises(ValueError, match="CovColl is a required argument"):
             Trial(nstColl([nst]))
 
@@ -175,8 +175,8 @@ class TestSerializationRoundTrips:
 
     def test_nstcoll_tostructure_fromstructure(self) -> None:
         """nstColl should survive toStructure/fromStructure round-trip."""
-        n1 = nspikeTrain([0.1, 0.5], "n1", 0.001, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
-        n2 = nspikeTrain([0.2, 0.8], "n2", 0.001, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+        n1 = nspikeTrain([0.1, 0.5], "n1", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+        n2 = nspikeTrain([0.2, 0.8], "n2", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
         coll = nstColl([n1, n2])
         structure = coll.toStructure()
         restored = nstColl.fromStructure(structure)
@@ -336,7 +336,7 @@ class TestAnalysisHelpers:
 
     def test_psth_function(self) -> None:
         """Analysis.psth should return counts and centers."""
-        spikes = [nspikeTrain([0.1, 0.3, 0.5, 0.7, 0.9], "n1", 0.001, 0.0, 1.0)]
+        spikes = [nspikeTrain([0.1, 0.3, 0.5, 0.7, 0.9], "n1", 1000.0, 0.0, 1.0)]
         bins = np.arange(0.0, 1.1, 0.2)
         counts, centers = Analysis.psth(spikes, bins)
         assert counts.shape[0] == len(bins) - 1

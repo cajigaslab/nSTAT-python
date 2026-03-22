@@ -112,7 +112,7 @@ def test_nspiketrain_matches_matlab_gold_fixture() -> None:
     nst = nspikeTrain(
         _vector(payload, "spikeTimes"),
         "nst",
-        _scalar(payload, "binwidth"),
+        1.0 / _scalar(payload, "binwidth"),
         _scalar(payload, "minTime"),
         _scalar(payload, "maxTime"),
         "time",
@@ -135,7 +135,7 @@ def test_nspiketrain_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(parts.getNST(1).spikeTimes, _vector(payload, "part1_spikes"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(parts.getNST(2).spikeTimes, _vector(payload, "part2_spikes"), rtol=1e-8, atol=1e-10)
 
-    restore_train = nspikeTrain(_vector(payload, "spikeTimes"), "restore", 0.2, -0.1, 0.8, "time", "s", "spikes", "spk", -1)
+    restore_train = nspikeTrain(_vector(payload, "spikeTimes"), "restore", 5.0, -0.1, 0.8, "time", "s", "spikes", "spk", -1)
     restore_train.setSigRep(0.1, -0.1, 0.8)
     restore_train.setMinTime(-0.3)
     restore_train.setMaxTime(1.1)
@@ -144,7 +144,7 @@ def test_nspiketrain_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(float(restore_train.minTime), _scalar(payload, "restore_min_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(float(restore_train.maxTime), _scalar(payload, "restore_max_time"), rtol=1e-12, atol=1e-12)
 
-    burst_train = nspikeTrain([0.0, 0.001, 0.002, 0.007, 0.507, 0.508, 0.509, 0.514], "bursting", 0.001, 0.0, 0.6, "time", "s", "spikes", "spk", 0)
+    burst_train = nspikeTrain([0.0, 0.001, 0.002, 0.007, 0.507, 0.508, 0.509, 0.514], "bursting", 1000.0, 0.0, 0.6, "time", "s", "spikes", "spk", 0)
     np.testing.assert_allclose(float(burst_train.avgSpikesPerBurst), _scalar(payload, "burst_avgSpikesPerBurst"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(burst_train.stdSpikesPerBurst), _scalar(payload, "burst_stdSpikesPerBurst"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(burst_train.numBursts), _scalar(payload, "burst_numBursts"), rtol=1e-8, atol=1e-10)
@@ -320,8 +320,8 @@ def test_confidence_interval_matches_matlab_gold_fixture() -> None:
 
 def test_nstcoll_matches_matlab_gold_fixture() -> None:
     payload = _load_fixture("nstcoll_exactness.mat")
-    n1 = nspikeTrain(_vector(payload, "firstSpikeTimes"), "1", 10.0, 0.0, 0.5, "time", "s", "spikes", "spk", -1)
-    n2 = nspikeTrain(_vector(payload, "secondSpikeTimes"), "2", 10.0, 0.0, 0.5, "time", "s", "spikes", "spk", -1)
+    n1 = nspikeTrain(_vector(payload, "firstSpikeTimes"), "1", 0.1, 0.0, 0.5, "time", "s", "spikes", "spk", -1)
+    n2 = nspikeTrain(_vector(payload, "secondSpikeTimes"), "2", 0.1, 0.0, 0.5, "time", "s", "spikes", "spk", -1)
     coll = nstColl([n1, n2])
     collapsed = coll.toSpikeTrain()
     coll.setNeighbors()
@@ -394,8 +394,8 @@ def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
     time = np.array([0.0, 0.5, 1.0], dtype=float)
     position = Covariate(time, np.column_stack([[0.0, 1.0, 2.0], [10.0, 11.0, 12.0]]), "Position", "time", "s", "", ["x", "y"])
     stimulus = Covariate(time, [5.0, 6.0, 7.0], "Stimulus", "time", "s", "a.u.", ["stim"])
-    n1 = nspikeTrain([0.0, 0.5, 1.0], "n1", 2.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
-    n2 = nspikeTrain([0.25, 0.75], "n2", 2.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+    n1 = nspikeTrain([0.0, 0.5, 1.0], "n1", 0.5, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+    n2 = nspikeTrain([0.25, 0.75], "n2", 0.5, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
 
     cfg_applied = TrialConfig([["Position", "x"], ["Stimulus"]], 4.0, [0.0, 0.5, 1.0], [0.0, 0.5, 1.0], [[0, 1], [1, 0]], 0.25, "stim_pos")
     trial = Trial(nstColl([n1, n2]), CovColl([position, stimulus]))
@@ -510,8 +510,8 @@ def test_history_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(float(rebuilt.minTime), _scalar(payload, "roundtrip_minTime"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(float(rebuilt.maxTime), _scalar(payload, "roundtrip_maxTime"), rtol=1e-12, atol=1e-12)
 
-    n1 = nspikeTrain([0.0, 0.5, 1.0], "n1", 2.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
-    n2 = nspikeTrain([0.25, 0.75], "n2", 2.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+    n1 = nspikeTrain([0.0, 0.5, 1.0], "n1", 0.5, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
+    n2 = nspikeTrain([0.25, 0.75], "n2", 0.5, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
     coll = nstColl([n1, n2])
 
     single_cov = history.computeHistory(n1, 1)
@@ -582,7 +582,7 @@ def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
     sample_rate = _scalar(payload, "sample_rate")
 
     stim = Covariate(time, stim_data, "Stimulus", "time", "s", "", ["stim"])
-    spike_train = nspikeTrain(spike_times, "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    spike_train = nspikeTrain(spike_times, "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
     trial = Trial(nstColl([spike_train]), CovColl([stim]))
     cfg = TrialConfig([["Stimulus", "stim"]], sample_rate, [], [], name="stim")
     fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
@@ -612,8 +612,8 @@ def test_analysis_multineuron_surface_matches_matlab_gold_fixture() -> None:
     time = _vector(payload, "time")
     stim_data = _vector(payload, "stim_data")
     stim = Covariate(time, stim_data, "Stimulus", "time", "s", "", ["stim"])
-    spike_train_1 = nspikeTrain(_vector(payload, "spike_times_1"), "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
-    spike_train_2 = nspikeTrain(_vector(payload, "spike_times_2"), "2", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    spike_train_1 = nspikeTrain(_vector(payload, "spike_times_1"), "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
+    spike_train_2 = nspikeTrain(_vector(payload, "spike_times_2"), "2", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
     trial = Trial(nstColl([spike_train_1, spike_train_2]), CovColl([stim]))
     cfg = TrialConfig([["Stimulus", "stim"]], 10, [], [], name="stim")
     fits = Analysis.RunAnalysisForAllNeurons(trial, ConfigColl([cfg]), makePlot=0)
@@ -703,8 +703,8 @@ def test_fit_summary_matches_matlab_gold_fixture() -> None:
         "Hz",
         ["stim", "stim_hist"],
     )
-    st1 = nspikeTrain([0.1, 0.4, 0.7], "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
-    st2 = nspikeTrain([0.2, 0.5, 0.8], "2", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    st1 = nspikeTrain([0.1, 0.4, 0.7], "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
+    st2 = nspikeTrain([0.2, 0.5, 0.8], "2", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
     stim_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [], [], name="stim")
     stim_hist_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [0.0, 0.1, 0.2], [], name="stim_hist")
     config_coll = ConfigColl([stim_cfg, stim_hist_cfg])
@@ -1051,13 +1051,13 @@ def test_cif_gamma_scaled_evals_match_matlab_gold_fixture() -> None:
     window_times = _vector(payload, "window_times")
     spike_times = _vector(payload, "spike_times")
     # Fixture stores binwidth (Δt in seconds).  Python nspikeTrain takes
-    # binwidth as its 3rd arg and stores sampleRate = 1/binwidth.
+    # sampleRate (Hz) as its 3rd arg.
     binwidth = _scalar(payload, "binwidth")
 
     # Construct CIF with history — must provide histCoeffs + historyObj
     # at construction time so gamma function handles are compiled.
     hist = History(window_times, 0.0, 1.0)
-    nst = nspikeTrain_cls(spike_times, "n1", binwidth, 0.0, 1.0)
+    nst = nspikeTrain_cls(spike_times, "n1", 1.0 / binwidth, 0.0, 1.0)
     cif = CIF(
         beta=beta_vec,
         Xnames=["stim1", "stim2"],
