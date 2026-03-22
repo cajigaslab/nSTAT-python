@@ -2100,7 +2100,7 @@ class nspikeTrain:
         self,
         spikeTimes,
         name: str = "",
-        binwidth: float = 0.001,
+        sampleRate: float = 1000.0,
         minTime: float | None = None,
         maxTime: float | None = None,
         xlabelval: str = "time",
@@ -2115,7 +2115,7 @@ class nspikeTrain:
         self.spikeTimes = np.sort(spikes)
         self.originalSpikeTimes = self.spikeTimes.copy()
         self.name = str(name)
-        self.sampleRate = float(1.0 / float(binwidth))
+        self.sampleRate = float(sampleRate)
         self.originalSampleRate = float(self.sampleRate)
         if minTime is None:
             minTime = float(np.min(self.spikeTimes)) if self.spikeTimes.size else 0.0
@@ -2654,7 +2654,7 @@ class nspikeTrain:
         return nspikeTrain(
             self.spikeTimes.copy(),
             self.name,
-            1.0 / self.sampleRate if self.sampleRate > 0 else 0.001,
+            self.sampleRate if self.sampleRate > 0 else 1000.0,
             self.minTime,
             self.maxTime,
             self.xlabelval,
@@ -2688,11 +2688,10 @@ class nspikeTrain:
     def fromStructure(structure: dict[str, Any]) -> "nspikeTrain":
         """Reconstruct an ``nspikeTrain`` from a dict."""
         sampleRate = float(structure.get("sampleRate", 1000.0))
-        binwidth = 1.0 / sampleRate if sampleRate > 0 else 0.001
         return nspikeTrain(
             structure.get("spikeTimes", []),
             structure.get("name", ""),
-            binwidth,
+            sampleRate if sampleRate > 0 else 1000.0,
             structure.get("minTime"),
             structure.get("maxTime"),
             structure.get("xlabelval", "time"),

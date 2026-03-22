@@ -15,7 +15,7 @@ def test_nspiketrain_constructor_runs_statistics_without_numpy_mode_error() -> N
 
 
 def test_nspiketrain_sigrep_uses_matlab_style_centers_and_inclusive_last_bin() -> None:
-    train = nspikeTrain([0.0, 0.5, 1.0], "neuron", 0.5, 0.0, 1.0, makePlots=-1)
+    train = nspikeTrain([0.0, 0.5, 1.0], "neuron", 2.0, 0.0, 1.0, makePlots=-1)
 
     sig = train.getSigRep()
 
@@ -33,7 +33,7 @@ def test_nspiketrain_windowing_and_binary_limit_follow_matlab_semantics() -> Non
 
 
 def test_nspiketrain_partition_and_min_isi_follow_matlab_semantics() -> None:
-    train = nspikeTrain([0.1, 0.4, 0.6, 1.1], "neuron", 0.1, 0.0, 1.2, makePlots=-1)
+    train = nspikeTrain([0.1, 0.4, 0.6, 1.1], "neuron", 10.0, 0.0, 1.2, makePlots=-1)
 
     np.testing.assert_allclose(train.getMinISI(), 0.2)
     parts = train.partitionNST([0.0, 0.5, 1.2], normalizeTime=0)
@@ -49,7 +49,7 @@ def test_nspiketrain_partition_and_min_isi_follow_matlab_semantics() -> None:
 
 
 def test_nspiketrain_setsigrep_restore_and_field_access_match_matlab_surface() -> None:
-    train = nspikeTrain([0.2, 0.6], "neuron", 0.2, 0.0, 1.0, makePlots=-1)
+    train = nspikeTrain([0.2, 0.6], "neuron", 5.0, 0.0, 1.0, makePlots=-1)
 
     train.setSigRep(0.1, 0.0, 1.0)
     assert train.sampleRate == 10.0
@@ -66,7 +66,7 @@ def test_nspiketrain_setsigrep_restore_and_field_access_match_matlab_surface() -
 
 
 def test_nspiketrain_compute_statistics_matches_matlab_style_burst_metrics() -> None:
-    train = nspikeTrain([0.0, 0.001, 0.002, 0.007, 0.507, 0.508, 0.509, 0.514], "bursting", 0.001, 0.0, 0.6, makePlots=0)
+    train = nspikeTrain([0.0, 0.001, 0.002, 0.007, 0.507, 0.508, 0.509, 0.514], "bursting", 1000.0, 0.0, 0.6, makePlots=0)
 
     assert np.isfinite(train.B)
     assert np.isfinite(train.An)
@@ -78,7 +78,7 @@ def test_nspiketrain_compute_statistics_matches_matlab_style_burst_metrics() -> 
 
 
 def test_nspiketrain_partition_rounds_windows_and_uses_matlab_constructor_defaults() -> None:
-    train = nspikeTrain([0.0004, 0.0014, 0.0096], "neuron", 0.001, 0.0, 0.01, makePlots=-1)
+    train = nspikeTrain([0.0004, 0.0014, 0.0096], "neuron", 1000.0, 0.0, 0.01, makePlots=-1)
 
     parts = train.partitionNST([0.00049, 0.00151, 0.0101], normalizeTime=0)
 
@@ -89,7 +89,7 @@ def test_nspiketrain_partition_rounds_windows_and_uses_matlab_constructor_defaul
 
 
 def test_nspiketrain_isi_plot_helpers_execute_and_return_matplotlib_objects() -> None:
-    train = nspikeTrain([0.1, 0.12, 0.15, 0.5, 0.8], "neuron", 0.001, 0.0, 1.0, makePlots=0)
+    train = nspikeTrain([0.1, 0.12, 0.15, 0.5, 0.8], "neuron", 1000.0, 0.0, 1.0, makePlots=0)
 
     line = train.plotISISpectrumFunction()
     joint_ax = train.plotJointISIHistogram()

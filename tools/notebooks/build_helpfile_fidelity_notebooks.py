@@ -334,7 +334,7 @@ VALIDATION_CODE = [
         for idx in range(2):
             spike_mask = rng.random(n_samples) < p
             spike_times = time[spike_mask]
-            train = nspikeTrain(spike_times, str(idx + 1), delta, 0.0, total_time, makePlots=-1)
+            train = nspikeTrain(spike_times, str(idx + 1), 1.0 / delta, 0.0, total_time, makePlots=-1)
             trains.append(train)
         spike_coll = nstColl(trains)
         cov = Covariate(time, np.ones((time.shape[0], 1), dtype=float), "Baseline", "time", "s", "", ["mu"])
@@ -368,7 +368,7 @@ VALIDATION_CODE = [
             spikes1 = t1[:-1][rng.random(n1) < p1]
             spikes2 = t2[rng.random(n2) < p2]
             spike_times = np.concatenate([spikes1, spikes2])
-            train = nspikeTrain(spike_times, str(idx + 1), delta, 0.0, total_time, makePlots=-1)
+            train = nspikeTrain(spike_times, str(idx + 1), 1.0 / delta, 0.0, total_time, makePlots=-1)
             trains.append(train)
         time = np.concatenate([t1[:-1], t2])
         cov_data = np.column_stack(

@@ -966,7 +966,7 @@ class SpikeTrainCollection:
                 if np.asarray(train.spikeTimes).size:
                     spike_times.extend((np.asarray(train.spikeTimes, dtype=float).reshape(-1) * delta_tw + local_min).tolist())
 
-        collapsed = nspikeTrain(spike_times, name, delta, minTime, float(maxTime) * len(selector), "time", "s", "", "", -1)
+        collapsed = nspikeTrain(spike_times, name, 1.0 / delta, minTime, float(maxTime) * len(selector), "time", "s", "", "", -1)
         collapsed.setName(name)
         collapsed.setMinTime(float(minTime))
         collapsed.setMaxTime(float(maxTime) * len(selector))

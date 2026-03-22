@@ -135,7 +135,7 @@ def test_nspiketrain_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(parts.getNST(1).spikeTimes, _vector(payload, "part1_spikes"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(parts.getNST(2).spikeTimes, _vector(payload, "part2_spikes"), rtol=1e-8, atol=1e-10)
 
-    restore_train = nspikeTrain(_vector(payload, "spikeTimes"), "restore", 0.2, -0.1, 0.8, "time", "s", "spikes", "spk", -1)
+    restore_train = nspikeTrain(_vector(payload, "spikeTimes"), "restore", 5.0, -0.1, 0.8, "time", "s", "spikes", "spk", -1)
     restore_train.setSigRep(0.1, -0.1, 0.8)
     restore_train.setMinTime(-0.3)
     restore_train.setMaxTime(1.1)
@@ -144,7 +144,7 @@ def test_nspiketrain_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(float(restore_train.minTime), _scalar(payload, "restore_min_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(float(restore_train.maxTime), _scalar(payload, "restore_max_time"), rtol=1e-12, atol=1e-12)
 
-    burst_train = nspikeTrain([0.0, 0.001, 0.002, 0.007, 0.507, 0.508, 0.509, 0.514], "bursting", 0.001, 0.0, 0.6, "time", "s", "spikes", "spk", 0)
+    burst_train = nspikeTrain([0.0, 0.001, 0.002, 0.007, 0.507, 0.508, 0.509, 0.514], "bursting", 1000.0, 0.0, 0.6, "time", "s", "spikes", "spk", 0)
     np.testing.assert_allclose(float(burst_train.avgSpikesPerBurst), _scalar(payload, "burst_avgSpikesPerBurst"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(burst_train.stdSpikesPerBurst), _scalar(payload, "burst_stdSpikesPerBurst"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(burst_train.numBursts), _scalar(payload, "burst_numBursts"), rtol=1e-8, atol=1e-10)
@@ -582,7 +582,7 @@ def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
     sample_rate = _scalar(payload, "sample_rate")
 
     stim = Covariate(time, stim_data, "Stimulus", "time", "s", "", ["stim"])
-    spike_train = nspikeTrain(spike_times, "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    spike_train = nspikeTrain(spike_times, "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
     trial = Trial(nstColl([spike_train]), CovColl([stim]))
     cfg = TrialConfig([["Stimulus", "stim"]], sample_rate, [], [], name="stim")
     fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
@@ -612,8 +612,8 @@ def test_analysis_multineuron_surface_matches_matlab_gold_fixture() -> None:
     time = _vector(payload, "time")
     stim_data = _vector(payload, "stim_data")
     stim = Covariate(time, stim_data, "Stimulus", "time", "s", "", ["stim"])
-    spike_train_1 = nspikeTrain(_vector(payload, "spike_times_1"), "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
-    spike_train_2 = nspikeTrain(_vector(payload, "spike_times_2"), "2", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    spike_train_1 = nspikeTrain(_vector(payload, "spike_times_1"), "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
+    spike_train_2 = nspikeTrain(_vector(payload, "spike_times_2"), "2", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
     trial = Trial(nstColl([spike_train_1, spike_train_2]), CovColl([stim]))
     cfg = TrialConfig([["Stimulus", "stim"]], 10, [], [], name="stim")
     fits = Analysis.RunAnalysisForAllNeurons(trial, ConfigColl([cfg]), makePlot=0)
@@ -703,8 +703,8 @@ def test_fit_summary_matches_matlab_gold_fixture() -> None:
         "Hz",
         ["stim", "stim_hist"],
     )
-    st1 = nspikeTrain([0.1, 0.4, 0.7], "1", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
-    st2 = nspikeTrain([0.2, 0.5, 0.8], "2", 0.1, 0.0, 1.0, "time", "s", "", "", -1)
+    st1 = nspikeTrain([0.1, 0.4, 0.7], "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
+    st2 = nspikeTrain([0.2, 0.5, 0.8], "2", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
     stim_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [], [], name="stim")
     stim_hist_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [0.0, 0.1, 0.2], [], name="stim_hist")
     config_coll = ConfigColl([stim_cfg, stim_hist_cfg])

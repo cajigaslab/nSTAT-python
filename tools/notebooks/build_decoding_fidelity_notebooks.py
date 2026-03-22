@@ -317,7 +317,7 @@ DECODING_HISTORY_CODE = [
     trains = []
     for idx in range(numRealizations):
         spikes = _simulate_history_spike_train(time, stimData, b0, histCoeffs, windowTimes)
-        trains.append(nspikeTrain(spikes, str(idx + 1), delta, 0.0, Tmax, makePlots=-1))
+        trains.append(nspikeTrain(spikes, str(idx + 1), 1.0 / delta, 0.0, Tmax, makePlots=-1))
     sC = nstColl(trains)
 
     fig = _prepare_figure("figure", figsize=(8.0, 5.5))
