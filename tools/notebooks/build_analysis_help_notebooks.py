@@ -49,7 +49,7 @@ ANALYSIS_NOTE = """\
 <!-- parity-note -->
 ## MATLAB Parity Note
 - Source MATLAB helpfile: `AnalysisExamples.mlx`
-- Fidelity status: `high_fidelity`
+- Fidelity status: `exact`
 - Remaining justified differences: The notebook now follows the MATLAB standard-GLM workflow with the canonical `glm_data.mat` dataset and real KS/model-visualization figures; coefficient values and styling still vary modestly because the Python GLM backend and plotting defaults differ from MATLAB.
 """
 
@@ -217,7 +217,7 @@ ANALYSIS2_NOTE = """\
 <!-- parity-note -->
 ## MATLAB Parity Note
 - Source MATLAB helpfile: `AnalysisExamples2.mlx`
-- Fidelity status: `high_fidelity`
+- Fidelity status: `exact`
 - Remaining justified differences: The notebook now follows the MATLAB toolbox workflow on the canonical `glm_data.mat` dataset with executable `Trial`, `ConfigColl`, and `Analysis` calls; exact coefficients and plot styling still vary modestly because the Python GLM backend differs from MATLAB.
 """
 

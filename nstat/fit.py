@@ -9,6 +9,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+
+# matplotlib >= 3.9 renamed boxplot 'labels' to 'tick_labels'
+_MPL_TICK_LABELS_KEY = "tick_labels" if tuple(int(x) for x in matplotlib.__version__.split(".")[:2]) >= (3, 9) else "labels"
 from scipy.stats import norm, pearsonr
 
 from .core import Covariate, nspikeTrain
@@ -1833,7 +1836,7 @@ class FitSummary:
     def plotAIC(self, handle=None):
         """Box-plot of AIC across neurons (Matlab ``plotAIC``)."""
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.AIC, labels=self.fitNames)
+        ax.boxplot(self.AIC, **{_MPL_TICK_LABELS_KEY: self.fitNames})
         ax.set_ylabel("AIC")
         ax.set_title("AIC Across Neurons")
         return ax
@@ -1841,7 +1844,7 @@ class FitSummary:
     def plotBIC(self, handle=None):
         """Box-plot of BIC across neurons (Matlab ``plotBIC``)."""
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.BIC, labels=self.fitNames)
+        ax.boxplot(self.BIC, **{_MPL_TICK_LABELS_KEY: self.fitNames})
         ax.set_ylabel("BIC")
         ax.set_title("BIC Across Neurons")
         return ax
@@ -1849,7 +1852,7 @@ class FitSummary:
     def plotlogLL(self, handle=None):
         """Box-plot of log-likelihood across neurons (Matlab ``plotlogLL``)."""
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.logLL, labels=self.fitNames)
+        ax.boxplot(self.logLL, **{_MPL_TICK_LABELS_KEY: self.fitNames})
         ax.set_ylabel("log likelihood")
         ax.set_title("log likelihood Across Neurons")
         return ax
@@ -1903,7 +1906,7 @@ class FitSummary:
             labels = [name for idx, name in enumerate(self.fitNames, start=1) if idx != diffIndex]
         else:
             labels = list(self.fitNames[: values.shape[1]])
-        ax.boxplot(values, labels=labels)
+        ax.boxplot(values, **{_MPL_TICK_LABELS_KEY: labels})
         return ax
 
     # ------------------------------------------------------------------
