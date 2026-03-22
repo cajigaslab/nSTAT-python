@@ -62,8 +62,10 @@ def test_analysis_returns_matlab_style_fitresult_surface() -> None:
     assert fit.neuronNumber == 1.0
     assert len(fit.covLabels) == 2
     assert "stim" in fit.uniqueCovLabels
-    assert fit.getCoeffs(1).shape[0] >= 2
-    assert fit.getHistCoeffs(1).shape[0] == 2
+    coeffs, labels, se = fit.getCoeffs(1)
+    assert coeffs.shape[0] >= 2
+    hist_coeffs, hist_labels, hist_se = fit.getHistCoeffs(1)
+    assert hist_coeffs.shape[0] == 2
 
 
 def test_fitresult_roundtrip_and_summary_preserve_core_metadata() -> None:

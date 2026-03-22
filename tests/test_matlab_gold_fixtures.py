@@ -588,7 +588,7 @@ def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
     fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
     summary = FitResSummary([fit])
 
-    np.testing.assert_allclose(fit.getCoeffs(1), _vector(payload, "coeffs"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(fit.getCoeffs(1)[0], _vector(payload, "coeffs"), rtol=1e-6, atol=1e-8)
     np.testing.assert_allclose(fit.lambdaSignal.time, _vector(payload, "lambda_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(fit.lambdaSignal.data[:, 0], _vector(payload, "lambda_data"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fit.AIC[0]), _scalar(payload, "AIC"), rtol=1e-8, atol=1e-10)
@@ -620,8 +620,8 @@ def test_analysis_multineuron_surface_matches_matlab_gold_fixture() -> None:
     assert isinstance(fits, list)
     assert len(fits) == int(_scalar(payload, "num_fits"))
 
-    np.testing.assert_allclose(fits[0].getCoeffs(1), _vector(payload, "fit1_coeffs"), rtol=1e-6, atol=1e-8)
-    np.testing.assert_allclose(fits[1].getCoeffs(1), _vector(payload, "fit2_coeffs"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(fits[0].getCoeffs(1)[0], _vector(payload, "fit1_coeffs"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(fits[1].getCoeffs(1)[0], _vector(payload, "fit2_coeffs"), rtol=1e-6, atol=1e-8)
     np.testing.assert_allclose(float(fits[0].AIC[0]), _scalar(payload, "fit1_AIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fits[1].AIC[0]), _scalar(payload, "fit2_AIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fits[0].BIC[0]), _scalar(payload, "fit1_BIC"), rtol=1e-8, atol=1e-10)

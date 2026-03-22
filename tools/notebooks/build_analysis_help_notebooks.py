@@ -341,7 +341,7 @@ ANALYSIS2_CODE = [
     """
     # SECTION 8: Toolbox vs. Standard GLM comparison
     standard_fit = fit_poisson_glm(np.column_stack([np.ones_like(xN), xN, yN, xN**2, yN**2, xN * yN]), spikes_binned, include_intercept=False)
-    coeff_diff = np.asarray(standard_fit.coefficients - fitResults.getCoeffs(2), dtype=float)
+    coeff_diff = np.asarray(standard_fit.coefficients - fitResults.getCoeffs(2)[0], dtype=float)
     fig = _prepare_figure("b-fitResults.b{2}", figsize=(7.0, 4.5))
     ax = fig.subplots(1, 1)
     labels = ["mu", "x", "y", "x^2", "y^2", "x*y"]

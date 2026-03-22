@@ -728,26 +728,19 @@ class FitResult:
         """Return the raw coefficient vector for *fit_num* (1-based)."""
         return self.b[fit_num - 1].copy()
 
-    def getCoeffs(self, fit_num: int = 1) -> np.ndarray:
-        """Return the coefficient vector for *fit_num* (1-based).
+    def getCoeffs(self, fit_num: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
+        """Return ``(coeffMat, labels, SEMat)`` for *fit_num* (1-based).
 
-        In Matlab ``[coeffMat, labels, SEMat] = getCoeffs(fitObj, fitNum)``
-        returns multiple outputs.  Use :meth:`getCoeffsWithLabels` to obtain
-        the full ``(coeffMat, labels, SEMat)`` tuple.
+        Matches MATLAB: ``[coeffMat, labels, SEMat] = getCoeffs(fitObj, fitNum)``.
         """
-        return self._rawCoeffs(fit_num)
+        return self.getCoeffsWithLabels(fit_num)
 
-    def getHistCoeffs(self, fit_num: int = 1) -> np.ndarray:
-        """Return the history-coefficient vector for *fit_num* (1-based).
+    def getHistCoeffs(self, fit_num: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
+        """Return ``(histMat, labels, SEMat)`` for *fit_num* (1-based).
 
-        In Matlab ``[histMat, labels, SEMat] = getHistCoeffs(fitObj, fitNum)``
-        returns multiple outputs.  Use :meth:`getHistCoeffsWithLabels` to
-        obtain the full ``(histMat, labels, SEMat)`` tuple.
+        Matches MATLAB: ``[histMat, labels, SEMat] = getHistCoeffs(fitObj, fitNum)``.
         """
-        num_hist = int(self.numHist[fit_num - 1]) if fit_num - 1 < len(self.numHist) else 0
-        if num_hist <= 0:
-            return np.array([], dtype=float)
-        return self._rawCoeffs(fit_num)[-num_hist:]
+        return self.getHistCoeffsWithLabels(fit_num)
 
     def getHistCoeffsWithLabels(self, fit_num: int = 1) -> tuple[np.ndarray, list[str], np.ndarray]:
         """Return ``(histMat, labels, SEMat)`` — Matlab multi-output form.
@@ -1840,7 +1833,7 @@ class FitSummary:
     def plotAIC(self, handle=None):
         """Box-plot of AIC across neurons (Matlab ``plotAIC``)."""
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.AIC, tick_labels=self.fitNames)
+        ax.boxplot(self.AIC, labels=self.fitNames)
         ax.set_ylabel("AIC")
         ax.set_title("AIC Across Neurons")
         return ax
@@ -1848,7 +1841,7 @@ class FitSummary:
     def plotBIC(self, handle=None):
         """Box-plot of BIC across neurons (Matlab ``plotBIC``)."""
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.BIC, tick_labels=self.fitNames)
+        ax.boxplot(self.BIC, labels=self.fitNames)
         ax.set_ylabel("BIC")
         ax.set_title("BIC Across Neurons")
         return ax
@@ -1856,7 +1849,7 @@ class FitSummary:
     def plotlogLL(self, handle=None):
         """Box-plot of log-likelihood across neurons (Matlab ``plotlogLL``)."""
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.logLL, tick_labels=self.fitNames)
+        ax.boxplot(self.logLL, labels=self.fitNames)
         ax.set_ylabel("log likelihood")
         ax.set_title("log likelihood Across Neurons")
         return ax
@@ -1910,7 +1903,7 @@ class FitSummary:
             labels = [name for idx, name in enumerate(self.fitNames, start=1) if idx != diffIndex]
         else:
             labels = list(self.fitNames[: values.shape[1]])
-        ax.boxplot(values, tick_labels=labels)
+        ax.boxplot(values, labels=labels)
         return ax
 
     # ------------------------------------------------------------------

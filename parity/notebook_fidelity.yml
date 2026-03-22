@@ -1,5 +1,5 @@
 version: 1
-generated_on: '2026-03-12'
+generated_on: '2026-03-22'
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
@@ -8,7 +8,7 @@ status_legend:
 - high_fidelity
 - partial
 - missing
-matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+matlab_repo_root: /private/tmp/nSTAT
 items:
 - topic: nSTATPaperExamples
   source_matlab: nSTATPaperExamples.mlx
@@ -29,10 +29,10 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
-  matlab_sections: 40
+  matlab_repo_root: /private/tmp/nSTAT
+  matlab_sections: 37
   matlab_published_figures: 30
-  section_delta: 0
+  section_delta: 3
   figure_delta: 0
 - topic: TrialExamples
   source_matlab: TrialExamples.mlx
@@ -52,7 +52,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 9
   matlab_published_figures: 6
   section_delta: 0
@@ -76,7 +76,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 7
   matlab_published_figures: 4
   section_delta: 0
@@ -100,7 +100,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 9
   matlab_published_figures: 4
   section_delta: 0
@@ -124,7 +124,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 4
   matlab_published_figures: 7
   section_delta: 0
@@ -147,7 +147,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 2
   matlab_published_figures: 2
   section_delta: 0
@@ -171,7 +171,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 7
   matlab_published_figures: 10
   section_delta: 0
@@ -195,7 +195,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 5
   matlab_published_figures: 10
   section_delta: 0
@@ -219,7 +219,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 6
   matlab_published_figures: 3
   section_delta: 0
@@ -243,7 +243,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 17
   matlab_published_figures: 9
   section_delta: 0
@@ -267,7 +267,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 21
   matlab_published_figures: 13
   section_delta: 0
@@ -291,7 +291,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
+  matlab_repo_root: /private/tmp/nSTAT
   matlab_sections: 11
   matlab_published_figures: 10
   section_delta: 0
@@ -315,8 +315,8 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
-  matlab_sections: 3
+  matlab_repo_root: /private/tmp/nSTAT
+  matlab_sections: 4
   matlab_published_figures: 4
-  section_delta: 0
+  section_delta: -1
   figure_delta: 0
