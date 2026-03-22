@@ -30,9 +30,9 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
-  matlab_sections: 37
+  matlab_sections: 40
   matlab_published_figures: 30
-  section_delta: 3
+  section_delta: 0
   figure_delta: 0
 - topic: TrialExamples
   source_matlab: TrialExamples.mlx
@@ -316,7 +316,7 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
-  matlab_sections: 4
+  matlab_sections: 3
   matlab_published_figures: 4
-  section_delta: -1
+  section_delta: 0
   figure_delta: 0
