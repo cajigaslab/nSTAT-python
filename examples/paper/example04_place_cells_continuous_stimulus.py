@@ -248,21 +248,20 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     # ==================================================================
     # Figure 1: Example cells — spike locations over path (2x2)
     # ==================================================================
-    exampleCells = [1, 20, 24, 48]  # 0-indexed
+    exampleCells = [1, 20, 24, 48]  # 0-indexed (MATLAB: [2 21 25 49])
     fig1, axes1 = plt.subplots(2, 2, figsize=(12, 10))
     for i, cidx in enumerate(exampleCells):
         ax = axes1.flat[i]
-        h1, = ax.plot(x1, y1, "b", linewidth=0.5)
+        h1, = ax.plot(x1, y1, "b-", linewidth=0.5)
         n = neurons1[min(cidx, nCells1 - 1)]
         xn = np.asarray(n["xN"].item(), dtype=float).ravel()
         yn = np.asarray(n["yN"].item(), dtype=float).ravel()
         h2, = ax.plot(xn, yn, "r.", markersize=7)
-        ax.set_title(f"Cell#{cidx + 1}", fontweight="bold", fontsize=12, fontname="Arial")
-        ax.set_xlabel("X Position")
-        ax.set_ylabel("Y Position")
-        ax.set_xticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_yticks([-1, -0.5, 0, 0.5, 1])
+        ax.set_title(f"Cell#{cidx + 1}", fontweight="bold", fontsize=12)
+        ax.set_xticks(np.arange(-1, 1.5, 0.5))
+        ax.set_yticks(np.arange(-1, 1.5, 0.5))
         ax.set_aspect("equal")
+        ax.axis("square")
         if i == 3:
             ax.legend([h1, h2], ["Animal Path", "Location at time of spike"])
     fig1.tight_layout()
@@ -273,22 +272,22 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     fig2, axes2 = plt.subplots(1, 3, figsize=(14, 5))
 
     axes2[0].boxplot([dKS1[np.isfinite(dKS1)], dKS2[np.isfinite(dKS2)]],
-                     labels=["Animal 1", "Animal 2"])
-    axes2[0].set_ylabel(r"$\Delta$KS (Gaussian - Zernike)")
-    axes2[0].set_title("KS Statistic Difference")
-    axes2[0].axhline(0, color="gray", linestyle="--", linewidth=0.5)
+                     tick_labels=["Animal 1", "Animal 2"],
+                     vert=True)
+    axes2[0].set_title(r"$\Delta$ KS Statistic", fontsize=14, fontweight="bold",
+                       fontfamily="Arial")
 
     axes2[1].boxplot([dAIC1[np.isfinite(dAIC1)], dAIC2[np.isfinite(dAIC2)]],
-                     labels=["Animal 1", "Animal 2"])
-    axes2[1].set_ylabel(r"$\Delta$AIC (Zernike - Gaussian)")
-    axes2[1].set_title("AIC Difference")
-    axes2[1].axhline(0, color="gray", linestyle="--", linewidth=0.5)
+                     tick_labels=["Animal 1", "Animal 2"],
+                     vert=True)
+    axes2[1].set_title(r"$\Delta$ AIC", fontsize=14, fontweight="bold",
+                       fontfamily="Arial")
 
     axes2[2].boxplot([dBIC1[np.isfinite(dBIC1)], dBIC2[np.isfinite(dBIC2)]],
-                     labels=["Animal 1", "Animal 2"])
-    axes2[2].set_ylabel(r"$\Delta$BIC (Zernike - Gaussian)")
-    axes2[2].set_title("BIC Difference")
-    axes2[2].axhline(0, color="gray", linestyle="--", linewidth=0.5)
+                     tick_labels=["Animal 1", "Animal 2"],
+                     vert=True)
+    axes2[2].set_title(r"$\Delta$ BIC", fontsize=14, fontweight="bold",
+                       fontfamily="Arial")
 
     fig2.tight_layout()
 
@@ -343,7 +342,10 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
             ax.set_aspect("equal")
             ax.set_xticks([])
             ax.set_yticks([])
-            ax.set_title(f"{i + 1}", fontsize=8)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.spines["left"].set_visible(False)
+            ax.spines["bottom"].set_visible(False)
 
             # Zernike field
             ax = axesZ[row, col]
@@ -355,7 +357,10 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
             ax.set_aspect("equal")
             ax.set_xticks([])
             ax.set_yticks([])
-            ax.set_title(f"{i + 1}", fontsize=8)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.spines["left"].set_visible(False)
+            ax.spines["bottom"].set_visible(False)
 
         # Hide unused subplots
         for i in range(nCells, nRows * nCols):
@@ -363,7 +368,7 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
             axesG[row, col].set_visible(False)
             axesZ[row, col].set_visible(False)
 
-        # Match MATLAB sgtitle format: "Gaussian Place Fields - Animal#N"
+        # MATLAB: sgtitle('Gaussian Place Fields - Animal#N')
         animal_num = title_prefix.replace("Animal ", "")
         figG.suptitle(f"Gaussian Place Fields - Animal#{animal_num}",
                       fontweight="bold", fontsize=12)
@@ -397,25 +402,39 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     field_z = _compute_place_field(
         coeffs_z, gridDesignZern[:, :coeffs_z.size], xx.shape, sr_ex)
 
-    fig7 = plt.figure(figsize=(12, 8))
+    fig7 = plt.figure(figsize=(14, 9))
     ax3d = fig7.add_subplot(111, projection="3d")
-    ax3d.plot_surface(xx, yy, field_g, alpha=0.3, color="blue",
-                      label="Gaussian")
-    ax3d.plot_surface(xx, yy, field_z, alpha=0.3, color="green",
-                      label="Zernike")
-    # Overlay animal path at z=0
-    ax3d.plot(x1, y1, np.zeros_like(x1), "b-", linewidth=0.3, alpha=0.3)
-    # Overlay spike locations
+    # MATLAB: mesh(xGrid, yGrid, lambda, 'FaceAlpha',0.2, 'EdgeAlpha',0.2, 'EdgeColor','b'/'g')
+    ax3d.plot_surface(xx, yy, field_g, alpha=0.2, edgecolor="b",
+                      facecolor="blue", linewidth=0.2, rstride=5, cstride=5,
+                      shade=False)
+    ax3d.plot_surface(xx, yy, field_z, alpha=0.2, edgecolor="g",
+                      facecolor="green", linewidth=0.2, rstride=5, cstride=5,
+                      shade=False)
+    # Overlay animal path at z=0 (MATLAB: 'k')
+    ax3d.plot(x1, y1, np.zeros_like(x1), "k-", linewidth=0.3)
+    # Overlay spike locations (MATLAB: 'r.')
     n_ex = neurons1[exampleCell]
     xn_ex = np.asarray(n_ex["xN"].item(), dtype=float).ravel()
     yn_ex = np.asarray(n_ex["yN"].item(), dtype=float).ravel()
-    ax3d.scatter(xn_ex, yn_ex, np.zeros_like(xn_ex), c="r", s=5,
-                 alpha=0.5)
-    ax3d.set_xlabel("x")
-    ax3d.set_ylabel("y")
-    ax3d.set_zlabel("Firing Rate")
-    ax3d.set_title(f"Cell {exampleCell + 1}: Gaussian (blue) vs Zernike (green)",
-                   fontweight="bold", fontsize=14)
+    ax3d.scatter(xn_ex, yn_ex, np.zeros_like(xn_ex), c="r", s=5)
+    ax3d.set_xlabel("x position")
+    ax3d.set_ylabel("y position")
+    ax3d.set_title(f"Animal#1, Cell#{exampleCell + 1}",
+                   fontweight="bold", fontsize=12)
+    # MATLAB legend
+    from matplotlib.patches import Patch
+    from matplotlib.lines import Line2D
+    legend_elements = [
+        Patch(facecolor="blue", edgecolor="b", alpha=0.3,
+              label=r"$\lambda_{Gaussian}$"),
+        Patch(facecolor="green", edgecolor="g", alpha=0.3,
+              label=r"$\lambda_{Zernike}$"),
+        Line2D([0], [0], color="k", linewidth=0.5, label="Animal Path"),
+        Line2D([0], [0], marker=".", color="r", linestyle="",
+               label="Spike Locations"),
+    ]
+    ax3d.legend(handles=legend_elements, loc="best")
 
     print(f"  Figure 7: 3D mesh for cell {exampleCell + 1}")
 

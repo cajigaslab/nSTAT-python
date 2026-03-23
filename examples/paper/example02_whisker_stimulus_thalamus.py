@@ -150,31 +150,39 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     nstView.setMaxTime(viewWindow)
     nstView.plot(handle=ax)
     ax.set_yticks([0, 1])
-    ax.set_title("Neural Raster", fontweight="bold", fontsize=16, fontname="Arial")
+    xticks = np.arange(0, int(max(time)) + 1, 1)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels([])  # No x-labels on top/middle subplots
     ax.set_xlabel("")
-    ax.set_xticklabels([])
-    ax.set_ylabel("spikes", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_ylabel("spikes", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_title("Neural Raster", fontweight="bold", fontsize=16, fontfamily="Arial")
+    ax.spines["top"].set_linewidth(1)
+    ax.spines["right"].set_linewidth(1)
 
     # Subplot 2: Stimulus displacement (first 21 s, black line matching MATLAB)
     ax = axes1[1]
     stimView = stim.getSigInTimeWindow(0, viewWindow)
-    stimView.plot(handle=ax, plotPropsIn=[["k"]])
-    ax.get_legend().remove() if ax.get_legend() else None
-    ax.set_ylabel("Displacement [mm]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_xlabel("")
+    ax.plot(stimView.time, stimView.data[:, 0], "k")
+    ax.legend().set_visible(False) if ax.get_legend() else None
+    ax.set_yticks(np.arange(0, 1.25, 0.25))
+    ax.set_xticks(xticks)
     ax.set_xticklabels([])
-    ax.set_title("Stimulus - Whisker Displacement", fontweight="bold", fontsize=16, fontname="Arial")
+    ax.set_xlabel("")
+    ax.set_ylabel("Displacement [mm]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_title("Stimulus - Whisker Displacement", fontweight="bold", fontsize=16, fontfamily="Arial")
 
     # Subplot 3: Stimulus velocity (derivative, first 21 s, black line matching MATLAB)
     ax = axes1[2]
     stimDeriv = stim.derivative
     stimDerivView = stimDeriv.getSigInTimeWindow(0, viewWindow)
-    stimDerivView.plot(handle=ax, plotPropsIn=[["k"]])
-    ax.get_legend().remove() if ax.get_legend() else None
+    ax.plot(stimDerivView.time, stimDerivView.data[:, 0], "k")
+    ax.set_yticks(np.arange(-80, 81, 40))
+    ax.set_xticks(xticks)
+    ax.set_xlim(0, viewWindow)
     ax.set_ylim(-80, 80)
-    ax.set_ylabel("Displacement Velocity [mm/s]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_title("Displacement Velocity", fontweight="bold", fontsize=16, fontname="Arial")
+    ax.set_ylabel("Displacement Velocity [mm/s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_title("Displacement Velocity", fontweight="bold", fontsize=16, fontfamily="Arial")
 
     fig1.tight_layout()
     figure_files.extend(_maybe_export(
@@ -332,49 +340,65 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     # Figure 2: Lag selection, history diagnostics, KS, coefficients
     # (Matlab uses subplot(7,2,...) layout)
     # ==================================================================
-    fig2 = plt.figure(figsize=(14, 12))
+    fig2 = plt.figure(figsize=(14, 9))
     import matplotlib.gridspec as gridspec
     gs = gridspec.GridSpec(7, 2, figure=fig2, hspace=0.5, wspace=0.3)
+
+    numResults = len(ksArr)
 
     # --- Left column, rows 1-3: Cross-correlation function ---
     ax_xcov = fig2.add_subplot(gs[0:3, 0])
     xcovWindowed.plot(handle=ax_xcov)
-    ax_xcov.plot(shiftTime, peakVal, "ro", markersize=8,
-                 markerfacecolor="r", markeredgecolor="r", linewidth=3)
-    ax_xcov.set_title("Residual Cross-Covariance", fontweight="bold")
-    ax_xcov.set_xlabel("Lag [s]")
-    ax_xcov.set_ylabel("Cross-covariance")
+    ax_xcov.plot(shiftTime, peakVal, "ro", linewidth=3,
+                 markerfacecolor="r", markeredgecolor="r")
+    ax_xcov.set_title(
+        f"Cross Correlation Function - Peak at t={shiftTime:g} sec",
+        fontweight="bold", fontsize=12, fontfamily="Arial")
+    ax_xcov.set_xlabel("Lag [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax_xcov.set_ylabel("")
 
     # --- Right column, row 1: KS statistic vs Q ---
     ax_ks_sweep = fig2.add_subplot(gs[0, 1])
-    xvals = np.arange(len(ksArr))
+    xvals = np.arange(numResults)
     ax_ks_sweep.plot(xvals, ksArr, ".-")
-    if windowIndex < len(ksArr):
-        ax_ks_sweep.plot(xvals[windowIndex], ksArr[windowIndex], "r*",
-                         markersize=10)
-    ax_ks_sweep.set_title("KS Statistic vs Q", fontweight="bold")
-    ax_ks_sweep.set_xlabel("Number of History Windows")
-    ax_ks_sweep.set_ylabel("KS Stat")
+    if windowIndex < numResults:
+        ax_ks_sweep.plot(xvals[windowIndex], ksArr[windowIndex], "r*")
+    ax_ks_sweep.set_xlim(xvals[0], xvals[-1])
+    ax_ks_sweep.set_xticks(np.arange(0, numResults, 5))
+    ax_ks_sweep.set_xticklabels([])
+    ax_ks_sweep.tick_params(length=4, which="major")
+    ax_ks_sweep.minorticks_on()
+    ax_ks_sweep.set_ylabel("KS Statistic")
+    ax_ks_sweep.set_title("Model Selection via change\nin KS Statistic, AIC, and BIC",
+                          fontweight="bold", fontsize=12, fontfamily="Arial")
 
     # --- Right column, row 2: Delta AIC vs Q ---
     ax_daic = fig2.add_subplot(gs[1, 1])
     dAIC_full = aicArr - aicArr[0]
     ax_daic.plot(np.arange(len(dAIC_full)), dAIC_full, ".-")
     if windowIndex < len(dAIC_full):
-        ax_daic.plot(windowIndex, dAIC_full[windowIndex], "r*", markersize=10)
-    ax_daic.set_title("$\\Delta$AIC vs Q", fontweight="bold")
-    ax_daic.set_xlabel("Number of History Windows")
-    ax_daic.set_ylabel("$\\Delta$AIC")
+        ax_daic.plot(windowIndex, dAIC_full[windowIndex], "r*")
+    ax_daic.set_xlim(0, numResults - 1)
+    ax_daic.set_xticks(np.arange(0, numResults, 5))
+    ax_daic.set_xticklabels([])
+    ax_daic.tick_params(length=4, which="major")
+    ax_daic.minorticks_on()
+    ax_daic.set_ylabel(r"$\Delta$ AIC")
 
     # --- Right column, row 3: Delta BIC vs Q ---
     ax_dbic = fig2.add_subplot(gs[2, 1])
     dBIC_full = bicArr - bicArr[0]
     ax_dbic.plot(np.arange(len(dBIC_full)), dBIC_full, ".-")
     if windowIndex < len(dBIC_full):
-        ax_dbic.plot(windowIndex, dBIC_full[windowIndex], "r*", markersize=10)
-    ax_dbic.set_title("$\\Delta$BIC vs Q", fontweight="bold")
-    ax_dbic.set_xlabel("Number of History Windows")
-    ax_dbic.set_ylabel("$\\Delta$BIC")
+        ax_dbic.plot(windowIndex, dBIC_full[windowIndex], "r*")
+    ax_dbic.set_xlim(0, numResults - 1)
+    ax_dbic.set_xticks(np.arange(0, numResults, 5))
+    ax_dbic.tick_params(length=4, which="major")
+    ax_dbic.minorticks_on()
+    ax_dbic.set_xlabel("# History Windows, Q",
+                       fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax_dbic.set_ylabel(r"$\Delta$ BIC",
+                       fontsize=12, fontweight="bold", fontfamily="Arial")
 
     # --- Left column, rows 5-7: KS plot (3 models) ---
     ax_ks = fig2.add_subplot(gs[4:7, 0])
@@ -383,7 +407,8 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     # --- Right column, rows 5-7: Coefficient comparison ---
     ax_coeff = fig2.add_subplot(gs[4:7, 1])
     modelCompare.plotCoeffs(handle=ax_coeff)
-
+    if ax_coeff.get_legend():
+        ax_coeff.get_legend().set_visible(False)
     figure_files.extend(_maybe_export(
         fig2, export_dir, "fig02_lag_and_model_comparison"))
 

@@ -200,19 +200,19 @@ def run_part_a(data_dir, export_dir=None):
     ax = axes1[0, 0]
     ax.plot(time, lambdaData, "b", linewidth=2)
     ax.set_title("Simulated Conditional Intensity Function (CIF)",
-                 fontweight="bold", fontsize=14, fontname="Arial")
-    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_ylabel(r"$\lambda(t)$ [spikes/sec]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.legend([r"$\lambda_1$"], loc="upper right", fontsize=14)
+                 fontweight="bold", fontsize=14, fontfamily="Arial")
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_ylabel(r"$\lambda(t)$ [spikes/sec]", fontsize=14, fontweight="bold",
+                  fontfamily="Arial")
 
     # Bottom-left: simulated raster
     ax = axes1[1, 0]
     spikeCollSim.plot(handle=ax)
     ax.set_yticks(range(0, numRealizations + 1, 5))
     ax.set_title(f"{numRealizations} Simulated Point Process Sample Paths",
-                 fontweight="bold", fontsize=14, fontname="Arial")
-    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Trial [k]", fontname="Arial", fontsize=12, fontweight="bold")
+                 fontweight="bold", fontsize=14, fontfamily="Arial")
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_ylabel("Trial [k]", fontsize=12, fontweight="bold", fontfamily="Arial")
 
     # Top-right: real cell 6 raster
     ax = axes1[0, 1]
@@ -501,28 +501,34 @@ def run_part_b(data_dir, export_dir=None):
     # MATLAB orientation: time [s] on x-axis, Trial [k] on y-axis
     # (matches fig03 bottom-panel "True Conditional Intensity Function")
     # ------------------------------------------------------------------
-    fig5, axes5 = plt.subplots(3, 1, figsize=(14, 9))
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    fig5 = plt.figure(figsize=(14, 9))
     trial_axis = np.arange(1, numRealizations + 1)
     T_act = min(actStimEffect.shape[0], len(basis_time))
 
+    # MATLAB uses mesh() which renders wireframe with face colors from
+    # the default colormap.  plot_surface with facecolors and low alpha
+    # gives the closest visual match.
     surfaces = [
-        (actStimEffect[:T_act, :], "True Stimulus Effect"),
-        (psthSurface2D[:T_act, :], "PSTH Estimated Stimulus Effect"),
-        (estStimEffect[:T_act, :], "SSGLM Estimated Stimulus Effect"),
+        ("True Stimulus Effect", actStimEffect[:T_act, :]),
+        ("PSTH Estimated Stimulus Effect", psthSurface2D[:T_act, :]),
+        ("SSGLM Estimated Stimulus Effect", estStimEffect[:T_act, :]),
     ]
-    for ax, (data, title_str) in zip(axes5, surfaces):
-        # data is (T, K) — time on rows, trials on columns
-        # Transpose so trials are on y-axis and time on x-axis,
-        # matching MATLAB nSTATPaperExamples_15.png orientation.
-        ax.pcolormesh(basis_time[:T_act], trial_axis, data.T, cmap="viridis",
-                      shading="auto")
-        ax.set_xlabel("time [s]")
-        ax.set_ylabel("Trial [k]")
-        ax.set_title(title_str, fontweight="bold", fontsize=14)
-    # Remove redundant per-subplot x-labels except the bottom one
-    for ax in axes5[:-1]:
-        ax.set_xlabel("")
-        ax.set_xticklabels([])
+    from matplotlib import cm
+    for idx, (title, data) in enumerate(surfaces, 1):
+        ax = fig5.add_subplot(3, 1, idx, projection="3d")
+        # Normalise for colormap (match MATLAB mesh appearance)
+        norm = plt.Normalize(data.min(), data.max())
+        colors = cm.parula(norm(data)) if hasattr(cm, "parula") else cm.viridis(norm(data))
+        ax.plot_surface(K_mesh, T_mesh, data,
+                        facecolors=colors, shade=False,
+                        edgecolor="k", linewidth=0.1, alpha=0.7,
+                        rstride=5, cstride=1)
+        ax.view_init(elev=-90, azim=90)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_title(title, fontweight="bold", fontsize=14, fontfamily="Arial")
 
     fig5.tight_layout()
     print("  Figure 5: Stimulus effect surfaces (top-down mesh)")

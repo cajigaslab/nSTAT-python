@@ -140,34 +140,32 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     print(f"  AIC: {resultConst.AIC}")
     print(f"  BIC: {resultConst.BIC}")
 
-    # --- Figure 1: Constant Mg2+ diagnostics (Matlab-matching 2x2 layout) ---
-    # Matlab uses subplot(2,2,...) with: raster, InvGausTrans, KSPlot, lambda
+    # --- Figure 1: Constant Mg2+ diagnostics ---
+    # MATLAB layout: 2x2 with (1,1) raster, (1,2) InvGausTrans,
+    #   (2,1) KSPlot, (2,2) lambda plot.
     fig1, axes1 = plt.subplots(2, 2, figsize=(14, 9))
 
-    # (2,2,1): Neural raster
     ax = axes1[0, 0]
     spikeCollConst.plot(handle=ax)
-    ax.set_title("Neural Raster with constant Mg$^{2+}$ Concentration",
-                 fontweight="bold", fontsize=12)
-    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_ylabel("mEPSCs", fontname="Arial", fontsize=12, fontweight="bold")
+    ax.set_title(r"Neural Raster with constant Mg$^{2+}$ Concentration",
+                 fontweight="bold", fontsize=12, fontfamily="Arial")
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_yticks([0, 1])
 
-    # (2,2,2): Inverse Gaussian transform (ACF)
-    resultConst.plotInvGausTrans(fit_num=None, handle=axes1[0, 1])
+    ax = axes1[0, 1]
+    resultConst.plotInvGausTrans(handle=ax)
 
-    # (2,2,3): KS plot
-    resultConst.KSPlot(fit_num=None, handle=axes1[1, 0])
+    ax = axes1[1, 0]
+    resultConst.KSPlot(handle=ax)
 
-    # (2,2,4): Lambda estimate
     ax = axes1[1, 1]
     lam = resultConst.lambda_signal
-    ax.plot(np.asarray(lam.time, dtype=float),
-            np.asarray(lam.data[:, 0], dtype=float),
-            "b", linewidth=2)
-    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_ylabel(r"$\lambda(t)$ [Hz]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.legend(["$\\lambda_{const}$"], loc="upper right", fontsize=14)
+    ax.plot(lam.time, lam.data[:, 0], "b", linewidth=2)
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_ylabel(f"{lam.name} [{lam.yunits}]" if lam.yunits else lam.name,
+                  fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.legend([r"$\lambda_{const}$"], loc="upper right")
 
     fig1.tight_layout()
     figure_files.extend(_maybe_export(fig1, export_dir, "fig01_constant_mg_summary"))
@@ -191,16 +189,18 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax = axes2[0]
     nstConst.plot(handle=ax)
     ax.set_yticks([0, 1])
-    ax.set_ylabel("mEPSCs", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_title("Neural Raster with constant Mg$^{2+}$ Concentration",
-                 fontweight="bold", fontsize=12)
+    ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_title(r"Neural Raster with constant Mg$^{2+}$ Concentration",
+                 fontweight="bold", fontsize=12, fontfamily="Arial")
+    ax.xaxis.label.set(fontsize=12, fontweight="bold", fontfamily="Arial")
 
     ax = axes2[1]
     nstWashout.plot(handle=ax)
     ax.set_yticks([0, 1])
-    ax.set_ylabel("mEPSCs", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_title("Neural Raster with decreasing Mg$^{2+}$ Concentration",
-                 fontweight="bold", fontsize=12)
+    ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_title(r"Neural Raster with decreasing Mg$^{2+}$ Concentration",
+                 fontweight="bold", fontsize=12, fontfamily="Arial")
+    ax.xaxis.label.set(fontsize=12, fontweight="bold", fontfamily="Arial")
 
     fig2.tight_layout()
     figure_files.extend(_maybe_export(fig2, export_dir, "fig02_washout_raster_overview"))
@@ -249,38 +249,36 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     print(f"  AIC: {resultWashout.AIC}")
     print(f"  BIC: {resultWashout.BIC}")
 
-    # --- Figure 3: Piecewise model diagnostics (Matlab-matching 2x2 layout) ---
-    # Matlab uses subplot(2,2,...) with: raster+epoch lines, InvGausTrans, KSPlot, lambda comparison
+    # --- Figure 3: Piecewise model diagnostics ---
+    # MATLAB layout: 2x2 with (1,1) raster + red epoch lines,
+    #   (1,2) InvGausTrans, (2,1) KSPlot, (2,2) dual-lambda plot.
     fig3, axes3 = plt.subplots(2, 2, figsize=(14, 9))
 
-    # (2,2,1): Neural raster with epoch boundary lines
     ax = axes3[0, 0]
     spikeCollWashout.plot(handle=ax)
-    ax.set_title("Neural Raster with decreasing Mg$^{2+}$ Concentration",
-                 fontweight="bold", fontsize=12)
-    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold")
+    ax.set_title(r"Neural Raster with decreasing Mg$^{2+}$ Concentration",
+                 fontweight="bold", fontsize=12, fontfamily="Arial")
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_yticklabels([])
+    # Red epoch-transition markers (MATLAB: 'r', LineWidth 4)
     ax.axvline(495, color="r", linewidth=4)
     ax.axvline(765, color="r", linewidth=4)
 
-    # (2,2,2): Inverse Gaussian transform (ACF) — all fits
-    resultWashout.plotInvGausTrans(fit_num=None, handle=axes3[0, 1])
+    ax = axes3[0, 1]
+    resultWashout.plotInvGausTrans(handle=ax)
 
-    # (2,2,3): KS plot — all fits
-    resultWashout.KSPlot(fit_num=None, handle=axes3[1, 0])
+    ax = axes3[1, 0]
+    resultWashout.KSPlot(handle=ax)
 
-    # (2,2,4): Lambda comparison (two models overlaid)
     ax = axes3[1, 1]
     lam = resultWashout.lambda_signal
-    t = np.asarray(lam.time, dtype=float)
-    ax.plot(t, np.asarray(lam.data[:, 0], dtype=float), "b", linewidth=2)
-    if lam.data.shape[1] > 1:
-        ax.plot(t, np.asarray(lam.data[:, 1], dtype=float), "g", linewidth=2)
+    ax.plot(lam.time, lam.getSubSignal(1).data[:, 0], "b", linewidth=2)
+    ax.plot(lam.time, lam.getSubSignal(2).data[:, 0], "g", linewidth=2)
     ax.set_ylim(0, 5)
-    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_ylabel(r"$\lambda(t)$ [Hz]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.legend(["$\\lambda_{const}$", "$\\lambda_{const-epoch}$"],
-              loc="upper right", fontsize=14)
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_ylabel(f"{lam.name} [{lam.yunits}]" if lam.yunits else lam.name,
+                  fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.legend([r"$\lambda_{const}$", r"$\lambda_{const-epoch}$"], loc="upper right")
 
     fig3.tight_layout()
     figure_files.extend(_maybe_export(fig3, export_dir, "fig03_piecewise_baseline_comparison"))

@@ -488,8 +488,8 @@ def _plot_part_a(result):
     dN = result["dN"]
     n_cells = result["n_cells"]
 
-    # ── Figure 1: 3×1 matching MATLAB subplot(3,1,...) ──
-    fig1, axes1 = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    # ── Figure 1: stimulus, CIF, spike raster (3 panels, matching MATLAB) ──
+    fig1, axes1 = plt.subplots(3, 1, figsize=(14, 9), sharex=True)
 
     # (3,1,1): Driving stimulus
     axes1[0].plot(time, stimSignal, "k", linewidth=1.5)
@@ -520,20 +520,19 @@ def _plot_part_a(result):
                         fontsize=14, fontfamily="Arial")
     fig1.tight_layout()
 
-    # ── Figure 2: Decoded vs true (single axes, MATLAB style) ──
-    # MATLAB uses thin CI *lines* (not shaded fill), thick decoded/actual
-    fig2, ax2 = plt.subplots(1, 1, figsize=(10, 4))
-    ax2.plot(time, result["ci_low"], "k-", linewidth=0.5)
-    ax2.plot(time, result["ci_high"], "k-", linewidth=0.5)
-    hEst, = ax2.plot(time, result["x_decoded"], "k-", linewidth=4.0)
-    hAct, = ax2.plot(time, stimSignal, "b-", linewidth=4.0)
-    ax2.legend([hEst, hAct], ["Decoded", "Actual"], loc="upper right")
-    ax2.set_xlabel("time [s]")
-    ax2.set_ylabel("Stimulus")
-    ax2.set_title(
-        f"Decoded Stimulus +/- 95% CIs with {n_cells} cells",
-        fontweight="bold", fontsize=18, fontfamily="Arial",
+    # ── Figure 2: Decoding results (MATLAB: black=decoded, blue=actual) ──
+    fig2, ax2 = plt.subplots(1, 1, figsize=(14, 9))
+    ax2.fill_between(
+        time, result["ci_low"], result["ci_high"],
+        color="0.75", alpha=0.4, label="95% CI"
     )
+    ax2.plot(time, result["x_decoded"], "k-", linewidth=4, label="Decoded")
+    ax2.plot(time, x_true, "b-", linewidth=4, label="Actual")
+    ax2.set_xlabel("time [s]")
+    ax2.set_ylabel("")
+    ax2.set_title(f"Decoded Stimulus $\\pm$ 95% CIs with {result['n_cells']} cells",
+                  fontweight="bold", fontsize=18, fontfamily="Arial")
+    ax2.legend(["Decoded", "Actual"], loc="upper right")
     fig2.tight_layout()
 
     return fig1, fig2
@@ -583,7 +582,8 @@ def _plot_part_b(result):
         spike_t = time[dN[c, :] > 0]
         ax_raster.plot(spike_t, np.full_like(spike_t, c + 1), "|", color="k", markersize=2)
     ax_raster.set_ylabel("Cell Number")
-    ax_raster.set_xlabel("time [s]")
+    ax_raster.set_xticks([])
+    ax_raster.set_xticklabels([])
     ax_raster.set_title("Neural Raster", fontweight="bold", fontsize=14)
 
     # Bottom-right [6,8]: CIF curves
@@ -687,14 +687,15 @@ def _plot_part_c(result):
     ax_vel.set_xlabel("time [s]")
     ax_vel.set_ylabel("Velocity [cm/s]")
 
-    # Top-right [2,4]: neural raster
+    # Top-right [2,4]: neural raster (show ALL cells, matching MATLAB)
     ax_raster = fig5.add_subplot(4, 2, (2, 4))
-    n_show = min(20, dN.shape[0])
-    for c in range(n_show):
+    for c in range(dN.shape[0]):
         spike_t = time[dN[c, :] > 0]
         ax_raster.plot(spike_t, np.full_like(spike_t, c + 1), "|", color="k", markersize=2)
     ax_raster.set_ylabel("Cell Number")
-    ax_raster.set_xlabel("time [s]")
+    ax_raster.set_yticklabels([])
+    ax_raster.set_xticks([])
+    ax_raster.set_xticklabels([])
     ax_raster.set_title("Neural Raster", fontweight="bold", fontsize=14)
 
     # Bottom-right [6,8]: discrete movement state
