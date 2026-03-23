@@ -272,12 +272,13 @@ def run_part_a(data_dir, export_dir=None):
     # Bottom row: PSTH comparisons
     ax = axes2[1, 0]
     h_true, = ax.plot(time, lambdaData, "b", linewidth=4, label="true")
-    psth_time = np.asarray(psthSim.time, dtype=float).ravel()
-    psth_data = np.asarray(psthSim.data, dtype=float).ravel()
-    h_psth, = ax.plot(psth_time, psth_data, "rx", linewidth=4, label="PSTH")
+    # MATLAB z-order: true, then GLM, then PSTH (markers on top)
     glm_time = np.asarray(psthGLMSim.time, dtype=float).ravel()
     glm_data = np.asarray(psthGLMSim.data, dtype=float).ravel()
     h_glm, = ax.plot(glm_time, glm_data, "k", linewidth=4, label="PSTH_{glm}")
+    psth_time = np.asarray(psthSim.time, dtype=float).ravel()
+    psth_data = np.asarray(psthSim.data, dtype=float).ravel()
+    h_psth, = ax.plot(psth_time, psth_data, "rx", linewidth=4, label="PSTH")
     ax.legend(handles=[h_true, h_psth, h_glm])
     ax.set_xlabel("time [s]")
     ax.set_ylabel("[spikes/sec]")
@@ -405,7 +406,8 @@ def run_part_b(data_dir, export_dir=None):
          axes3[2, 0].get_position().height]
     )
     ax.imshow(stimData.T, aspect="auto", origin="lower",
-              extent=[time[0], time[-1], 1, numRealizations])
+              extent=[time[0], time[-1], 1, numRealizations],
+              cmap="jet")  # MATLAB default colormap for imagesc
     ax.set_xlabel("time [s]")
     ax.set_ylabel("Trial [k]")
     ax.set_title("True Conditional Intensity Function", fontweight="bold",
@@ -507,24 +509,18 @@ def run_part_b(data_dir, export_dir=None):
     trial_axis = np.arange(1, numRealizations + 1)
     T_act = min(actStimEffect.shape[0], len(basis_time))
 
-    # MATLAB uses mesh() which renders wireframe with face colors from
-    # the default colormap.  plot_surface with facecolors and low alpha
-    # gives the closest visual match.
+    # MATLAB uses mesh() which renders wireframe only (no filled faces).
+    # plot_wireframe is the closest matplotlib equivalent.
     surfaces = [
         ("True Stimulus Effect", actStimEffect[:T_act, :]),
         ("PSTH Estimated Stimulus Effect", psthSurface2D[:T_act, :]),
         ("SSGLM Estimated Stimulus Effect", estStimEffect[:T_act, :]),
     ]
-    from matplotlib import cm
     for idx, (title, data) in enumerate(surfaces, 1):
         ax = fig5.add_subplot(3, 1, idx, projection="3d")
-        # Normalise for colormap (match MATLAB mesh appearance)
-        norm = plt.Normalize(data.min(), data.max())
-        colors = cm.parula(norm(data)) if hasattr(cm, "parula") else cm.viridis(norm(data))
-        ax.plot_surface(K_mesh, T_mesh, data,
-                        facecolors=colors, shade=False,
-                        edgecolor="k", linewidth=0.1, alpha=0.7,
-                        rstride=5, cstride=1)
+        ax.plot_wireframe(K_mesh, T_mesh, data,
+                          rstride=5, cstride=1,
+                          linewidth=0.3, color="k")
         ax.view_init(elev=-90, azim=90)
         ax.set_xticks([])
         ax.set_yticks([])
@@ -569,9 +565,11 @@ def run_part_b(data_dir, export_dir=None):
     for k in range(kTrials):
         for m in range(k + 1, kTrials):
             if sigMat[k, m] == 1:
-                ax2.plot(m, k, "r*", markersize=3)
+                ax2.plot(m, k, "r*", markersize=6)
     ax2.xaxis.set_ticks_position("top")
+    ax2.xaxis.set_label_position("top")
     ax2.yaxis.set_ticks_position("right")
+    ax2.yaxis.set_label_position("right")
     ax2.set_xlabel("Trial Number")
     ax2.set_ylabel("Trial Number")
 

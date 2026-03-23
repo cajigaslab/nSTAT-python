@@ -170,6 +170,8 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.set_xlabel("")
     ax.set_ylabel("Displacement [mm]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_title("Stimulus - Whisker Displacement", fontweight="bold", fontsize=16, fontfamily="Arial")
+    for spine in ax.spines.values():
+        spine.set_linewidth(1)
 
     # Subplot 3: Stimulus velocity (derivative, first 21 s, black line matching MATLAB)
     ax = axes1[2]
@@ -183,6 +185,8 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.set_ylabel("Displacement Velocity [mm/s]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_title("Displacement Velocity", fontweight="bold", fontsize=16, fontfamily="Arial")
+    for spine in ax.spines.values():
+        spine.set_linewidth(1)
 
     fig1.tight_layout()
     figure_files.extend(_maybe_export(

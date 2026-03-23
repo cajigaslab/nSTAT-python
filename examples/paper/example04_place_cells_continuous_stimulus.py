@@ -249,7 +249,7 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     # Figure 1: Example cells — spike locations over path (2x2)
     # ==================================================================
     exampleCells = [1, 20, 24, 48]  # 0-indexed (MATLAB: [2 21 25 49])
-    fig1, axes1 = plt.subplots(2, 2, figsize=(12, 10))
+    fig1, axes1 = plt.subplots(2, 2, figsize=(14, 9))  # MATLAB: 1400x900
     for i, cidx in enumerate(exampleCells):
         ax = axes1.flat[i]
         h1, = ax.plot(x1, y1, "b-", linewidth=0.5)
@@ -269,7 +269,7 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     # ==================================================================
     # Figure 2: Population statistics (1x3 box plots)
     # ==================================================================
-    fig2, axes2 = plt.subplots(1, 3, figsize=(14, 5))
+    fig2, axes2 = plt.subplots(1, 3, figsize=(14, 9))  # MATLAB: 1400x900
 
     axes2[0].boxplot([dKS1[np.isfinite(dKS1)], dKS2[np.isfinite(dKS2)]],
                      tick_labels=["Animal 1", "Animal 2"],
@@ -319,8 +319,8 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
         nRows = math.ceil(nCells / 7)
         nCols = 7
 
-        figG, axesG = plt.subplots(nRows, nCols, figsize=(14, 2 * nRows))
-        figZ, axesZ = plt.subplots(nRows, nCols, figsize=(14, 2 * nRows))
+        figG, axesG = plt.subplots(nRows, nCols, figsize=(14, 9))
+        figZ, axesZ = plt.subplots(nRows, nCols, figsize=(14, 9))
         if nRows == 1:
             axesG = axesG[np.newaxis, :]
             axesZ = axesZ[np.newaxis, :]
@@ -405,12 +405,11 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     fig7 = plt.figure(figsize=(14, 9))
     ax3d = fig7.add_subplot(111, projection="3d")
     # MATLAB: mesh(xGrid, yGrid, lambda, 'FaceAlpha',0.2, 'EdgeAlpha',0.2, 'EdgeColor','b'/'g')
-    ax3d.plot_surface(xx, yy, field_g, alpha=0.2, edgecolor="b",
-                      facecolor="blue", linewidth=0.2, rstride=5, cstride=5,
-                      shade=False)
-    ax3d.plot_surface(xx, yy, field_z, alpha=0.2, edgecolor="g",
-                      facecolor="green", linewidth=0.2, rstride=5, cstride=5,
-                      shade=False)
+    # plot_wireframe matches MATLAB's mesh() (wireframe only, no filled faces)
+    ax3d.plot_wireframe(xx, yy, field_g, color="b", alpha=0.2,
+                        rstride=5, cstride=5, linewidth=0.3)
+    ax3d.plot_wireframe(xx, yy, field_z, color="g", alpha=0.2,
+                        rstride=5, cstride=5, linewidth=0.3)
     # Overlay animal path at z=0 (MATLAB: 'k')
     ax3d.plot(x1, y1, np.zeros_like(x1), "k-", linewidth=0.3)
     # Overlay spike locations (MATLAB: 'r.')
@@ -422,14 +421,13 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     ax3d.set_ylabel("y position")
     ax3d.set_title(f"Animal#1, Cell#{exampleCell + 1}",
                    fontweight="bold", fontsize=12)
-    # MATLAB legend
-    from matplotlib.patches import Patch
+    # MATLAB legend (wireframe lines, not filled patches)
     from matplotlib.lines import Line2D
     legend_elements = [
-        Patch(facecolor="blue", edgecolor="b", alpha=0.3,
-              label=r"$\lambda_{Gaussian}$"),
-        Patch(facecolor="green", edgecolor="g", alpha=0.3,
-              label=r"$\lambda_{Zernike}$"),
+        Line2D([0], [0], color="b", alpha=0.5, linewidth=1.5,
+               label=r"$\lambda_{Gaussian}$"),
+        Line2D([0], [0], color="g", alpha=0.5, linewidth=1.5,
+               label=r"$\lambda_{Zernike}$"),
         Line2D([0], [0], color="k", linewidth=0.5, label="Animal Path"),
         Line2D([0], [0], marker=".", color="r", linestyle="",
                label="Spike Locations"),

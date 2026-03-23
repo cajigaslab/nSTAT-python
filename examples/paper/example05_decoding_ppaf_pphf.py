@@ -509,9 +509,8 @@ def _plot_part_a(result):
 
     # (3,1,3): Spike raster
     for c in range(n_cells):
-        spike_t = time[dN[c, :] > 0]
-        axes1[2].plot(spike_t, np.full_like(spike_t, c + 1), "|", color="k",
-                      markersize=2)
+        spike_times = time[dN[c, :] > 0]
+        axes1[2].plot(spike_times, np.full_like(spike_times, c + 1), "|", color="k", markersize=4)
     axes1[2].set_ylabel("Cell Number")
     axes1[2].set_xlabel("time [s]")
     axes1[2].set_ylim(0.5, n_cells + 0.5)
@@ -529,7 +528,7 @@ def _plot_part_a(result):
     ax2.plot(time, result["x_decoded"], "k-", linewidth=4, label="Decoded")
     ax2.plot(time, x_true, "b-", linewidth=4, label="Actual")
     ax2.set_xlabel("time [s]")
-    ax2.set_ylabel("")
+    ax2.set_ylabel("Stimulus")  # MATLAB: ylabel('Stimulus','Interpreter','none')
     ax2.set_title(f"Decoded Stimulus $\\pm$ 95% CIs with {result['n_cells']} cells",
                   fontweight="bold", fontsize=18, fontfamily="Arial")
     ax2.legend(["Decoded", "Actual"], loc="upper right")
@@ -580,7 +579,7 @@ def _plot_part_b(result):
     ax_raster = fig3.add_subplot(4, 2, (2, 4))
     for c in range(n_cells):
         spike_t = time[dN[c, :] > 0]
-        ax_raster.plot(spike_t, np.full_like(spike_t, c + 1), "|", color="k", markersize=2)
+        ax_raster.plot(spike_t, np.full_like(spike_t, c + 1), "|", color="k", markersize=4)
     ax_raster.set_ylabel("Cell Number")
     ax_raster.set_xticks([])
     ax_raster.set_xticklabels([])
@@ -691,7 +690,7 @@ def _plot_part_c(result):
     ax_raster = fig5.add_subplot(4, 2, (2, 4))
     for c in range(dN.shape[0]):
         spike_t = time[dN[c, :] > 0]
-        ax_raster.plot(spike_t, np.full_like(spike_t, c + 1), "|", color="k", markersize=2)
+        ax_raster.plot(spike_t, np.full_like(spike_t, c + 1), "|", color="k", markersize=4)
     ax_raster.set_ylabel("Cell Number")
     ax_raster.set_yticklabels([])
     ax_raster.set_xticks([])

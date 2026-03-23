@@ -260,9 +260,9 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
                  fontweight="bold", fontsize=12, fontfamily="Arial")
     ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_yticklabels([])
-    # Red epoch-transition markers (MATLAB: 'r', LineWidth 4)
-    ax.axvline(495, color="r", linewidth=4)
-    ax.axvline(765, color="r", linewidth=4)
+    # Red epoch-transition markers (MATLAB: plot([495;495],[0,1],'r','LineWidth',4))
+    ax.plot([495, 495], [0, 1], "r", linewidth=4)
+    ax.plot([765, 765], [0, 1], "r", linewidth=4)
 
     ax = axes3[0, 1]
     resultWashout.plotInvGausTrans(handle=ax)
