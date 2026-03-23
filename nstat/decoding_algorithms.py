@@ -2051,8 +2051,13 @@ class DecodingAlgorithms:
             for model_index in range(n_models):
                 dim = state_dims[model_index]
                 if _has_target[model_index]:
-                    A_t = B_m[model_index][:, :, time_index]
-                    Q_t = QT_m[model_index][:, :, time_index]
+                    # Use B(:,:,0) and QT(:,:,-1) — matches the original
+                    # Srinivasan et al. implementation where the prediction
+                    # uses the initial modified dynamics B_1 with the terminal
+                    # modified noise covariance QT_N for consistent goal
+                    # correction across all time steps.
+                    A_t = B_m[model_index][:, :, 0]
+                    Q_t = QT_m[model_index][:, :, -1]
                 else:
                     A_t = _select_time_matrix(A_models[model_index], time_index, dim)
                     Q_t = _select_time_matrix(Q_models[model_index], time_index, dim)
