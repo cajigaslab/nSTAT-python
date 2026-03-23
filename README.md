@@ -160,6 +160,7 @@ Source pages:
 - [docs/PaperOverview.md](docs/PaperOverview.md)
 - [docs/Examples.md](docs/Examples.md)
 - [docs/ClassDefinitions.md](docs/ClassDefinitions.md)
+- [docs/DocumentationSetup.md](docs/DocumentationSetup.md)
 
 ## Plot Style
 
