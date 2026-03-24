@@ -509,6 +509,9 @@ def run_part_b(data_dir, export_dir=None):
     trial_axis = np.arange(1, numRealizations + 1)
     T_act = min(actStimEffect.shape[0], len(basis_time))
 
+    # Build meshgrid: MATLAB mesh(trial, time, data) — trial on X, time on Y
+    K_mesh, T_mesh = np.meshgrid(trial_axis, basis_time[:T_act])
+
     # MATLAB uses mesh() which renders wireframe only (no filled faces).
     # plot_wireframe is the closest matplotlib equivalent.
     surfaces = [

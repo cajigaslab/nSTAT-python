@@ -77,6 +77,33 @@ def _simulate_binomial_spikes_from_lambda(lambdaRate, delta, rng):
     return (rng.random(prob.shape) < prob).astype(float)
 
 
+def _simulate_binomial_spikes(xState, muCoeffs, beta, rng, delta=0.001):
+    """Simulate binomial spikes from state, encoding coefficients, and tuning.
+
+    Computes CIF via logistic link from state and beta, then draws spikes.
+
+    Parameters
+    ----------
+    xState : (ns, T) array — kinematic state (position + velocity)
+    muCoeffs : (C,) array — baseline log-rate per cell
+    beta : (ns, C) array — tuning coefficients per state dimension per cell
+    rng : numpy Generator
+    delta : float — bin width in seconds (default 0.001)
+
+    Returns
+    -------
+    dN : (C, T) array — binary spike indicators
+    """
+    T = xState.shape[1]
+    C = len(muCoeffs)
+    # Build design matrix: (T, 1+ns) = [1, x1, x2, ..., xns]
+    dataMat = np.column_stack([np.ones(T), xState.T])
+    # Build coefficient matrix: (C, 1+ns) = [mu, beta_1, ..., beta_ns]
+    coeffs = np.column_stack([muCoeffs, beta.T])
+    lambdaRate = _logistic_cif(dataMat, coeffs, delta)
+    return _simulate_binomial_spikes_from_lambda(lambdaRate, delta, rng)
+
+
 def _logistic_cif(dataMat, coeffs, delta):
     """Compute binomial CIF rates matching MATLAB's logistic link.
 
@@ -341,7 +368,6 @@ def _load_hybrid_fixture():
     ind = [ind_cell[0, i].ravel().astype(int) - 1 for i in range(ind_cell.shape[1])]
 
     return {
-        "setup": setup_data,
         "time": time,
         "delta": delta,
         "X": X,
@@ -526,7 +552,7 @@ def _plot_part_a(result):
         color="0.75", alpha=0.4, label="95% CI"
     )
     ax2.plot(time, result["x_decoded"], "k-", linewidth=4, label="Decoded")
-    ax2.plot(time, x_true, "b-", linewidth=4, label="Actual")
+    ax2.plot(time, stimSignal, "b-", linewidth=4, label="Actual")
     ax2.set_xlabel("time [s]")
     ax2.set_ylabel("Stimulus")  # MATLAB: ylabel('Stimulus','Interpreter','none')
     ax2.set_title(f"Decoded Stimulus $\\pm$ 95% CIs with {result['n_cells']} cells",
