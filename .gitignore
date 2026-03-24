@@ -8,3 +8,19 @@ data_cache/
 data/
 output/
 verification_output/
+
+# Build artifacts
+dist/
+*.egg-info/
+
+# MATLAB / Simulink cache
+*.slxc
+slprj/
+
+# IDE
+.idea/
+
+# Temporary debug / verification scripts
+debug_*.py
+verify_all_examples.py
+tests/test_matlab_python_parity.py
