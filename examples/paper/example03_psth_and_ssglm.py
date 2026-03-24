@@ -198,12 +198,13 @@ def run_part_a(data_dir, export_dir=None):
 
     # Top-left: CIF
     ax = axes1[0, 0]
-    ax.plot(time, lambdaData, "b", linewidth=2)
+    ax.plot(time, lambdaData, "b", linewidth=2, label=r"$\lambda_i$")
     ax.set_title("Simulated Conditional Intensity Function (CIF)",
                  fontweight="bold", fontsize=14, fontfamily="Arial")
     ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_ylabel(r"$\lambda(t)$ [spikes/sec]", fontsize=14, fontweight="bold",
                   fontfamily="Arial")
+    ax.legend(loc="upper right")
 
     # Bottom-left: simulated raster
     ax = axes1[1, 0]
@@ -499,38 +500,30 @@ def run_part_b(data_dir, export_dir=None):
 
     # ------------------------------------------------------------------
     # Figure 5: True/PSTH/SSGLM stimulus effect surfaces
-    # Match MATLAB: mesh(trial, time, data) with view([90 -90]) → top-down
-    # MATLAB orientation: time [s] on x-axis, Trial [k] on y-axis
-    # (matches fig03 bottom-panel "True Conditional Intensity Function")
+    # MATLAB: mesh(trial, time, data) with view([90 -90]) renders as a
+    # top-down colored heatmap (MATLAB applies its colormap to Z-values).
+    # Python equivalent: pcolormesh with viridis (≈MATLAB parula default).
+    # MATLAB orientation: trial on x-axis, time on y-axis (view [90 -90]).
     # ------------------------------------------------------------------
-    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
-
-    fig5 = plt.figure(figsize=(14, 9))
+    fig5, axes5 = plt.subplots(3, 1, figsize=(14, 9))
     trial_axis = np.arange(1, numRealizations + 1)
     T_act = min(actStimEffect.shape[0], len(basis_time))
 
-    # Build meshgrid: MATLAB mesh(trial, time, data) — trial on X, time on Y
-    K_mesh, T_mesh = np.meshgrid(trial_axis, basis_time[:T_act])
-
-    # MATLAB uses mesh() which renders wireframe only (no filled faces).
-    # plot_wireframe is the closest matplotlib equivalent.
     surfaces = [
         ("True Stimulus Effect", actStimEffect[:T_act, :]),
         ("PSTH Estimated Stimulus Effect", psthSurface2D[:T_act, :]),
         ("SSGLM Estimated Stimulus Effect", estStimEffect[:T_act, :]),
     ]
-    for idx, (title, data) in enumerate(surfaces, 1):
-        ax = fig5.add_subplot(3, 1, idx, projection="3d")
-        ax.plot_wireframe(K_mesh, T_mesh, data,
-                          rstride=5, cstride=1,
-                          linewidth=0.3, color="k")
-        ax.view_init(elev=-90, azim=90)
+    for ax, (title, data) in zip(axes5, surfaces):
+        # MATLAB mesh(trial, time, data) viewed from above: x=trial, y=time
+        ax.pcolormesh(trial_axis, basis_time[:T_act], data,
+                       shading="gouraud", cmap="viridis")
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_title(title, fontweight="bold", fontsize=14, fontfamily="Arial")
 
     fig5.tight_layout()
-    print("  Figure 5: Stimulus effect surfaces (top-down mesh)")
+    print("  Figure 5: Stimulus effect surfaces (top-down heatmap)")
 
     # ------------------------------------------------------------------
     # 6. Learning-trial analysis: spike rate CIs
@@ -588,9 +581,9 @@ def run_part_b(data_dir, export_dir=None):
     ax3.fill_between(basis_time, ci1_lo, ci1_hi, alpha=0.3, color="gray")
     ax3.fill_between(basis_time, cilt_lo, cilt_hi, alpha=0.3, color="red")
     h1, = ax3.plot(basis_time, stim1_data, "k", linewidth=4,
-                   label="\\lambda_1(t)")
+                   label=r"$\lambda_1(t)$")
     h2, = ax3.plot(basis_time, stimlt_data, "r", linewidth=4,
-                   label=f"\\lambda_{{{lt}}}(t)")
+                   label=rf"$\lambda_{{{lt}}}(t)$")
     ax3.legend(handles=[h1, h2])
     ax3.set_xlabel("time [s]")
     ax3.set_ylabel("Firing Rate [spikes/sec]")

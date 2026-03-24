@@ -1321,7 +1321,9 @@ class FitResult:
                 data_labels[fn - 1] if fn - 1 < len(data_labels) else f"Model {fn}"
             )
             if lags.size:
-                h, = ax.plot(lags, acf, ".", color=color, markersize=4.0)
+                # MATLAB: scatter dots (plot with '.') — use small markers
+                # so individual lags are visible, not bar-like blobs.
+                h, = ax.plot(lags, acf, ".", color=color, markersize=3.0)
                 legend_handles.append(h)
                 legend_labels.append(base_label)
                 if ci_val is None:
@@ -1456,9 +1458,10 @@ class FitResult:
             xpos = np.array([label_to_x[lbl] for lbl in fit_labels])
             color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
             valid_se = np.where(np.isfinite(se), se, 0.0)
-            # Larger markers and thicker error bars to match MATLAB visibility
-            h = ax.errorbar(xpos, coeffs, yerr=valid_se, fmt=".", color=color,
-                            linewidth=1.5, markersize=12.0, capsize=5.0,
+            # MATLAB plots 95% CI = 1.96 * SE as error bars
+            ci95 = 1.96 * valid_se
+            h = ax.errorbar(xpos, coeffs, yerr=ci95, fmt="o", color=color,
+                            linewidth=1.5, markersize=8.0, capsize=5.0,
                             markeredgecolor=color, markerfacecolor=color)
             errorbar_handles.append(h)
             if plotSignificance and np.any(sig > 0):
