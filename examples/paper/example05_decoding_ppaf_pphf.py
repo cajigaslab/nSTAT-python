@@ -578,8 +578,10 @@ def _plot_part_b(result):
     # Top-left [1,3]: 2D reach path (in cm)
     ax_path = fig3.add_subplot(4, 2, (1, 3))
     ax_path.plot(100 * xState[0, :], 100 * xState[1, :], "k", linewidth=2)
-    ax_path.plot(100 * xState[0, 0], 100 * xState[1, 0], "bo", markersize=14)
-    ax_path.plot(100 * xState[0, -1], 100 * xState[1, -1], "ro", markersize=14)
+    ax_path.plot(100 * xState[0, 0], 100 * xState[1, 0], "bo", markersize=14,
+                 markerfacecolor="none", markeredgewidth=2)
+    ax_path.plot(100 * xState[0, -1], 100 * xState[1, -1], "ro", markersize=14,
+                 markerfacecolor="none", markeredgewidth=2)
     ax_path.legend(["Path", "Start", "Finish"], loc="upper right")
     ax_path.set_xlabel("X Position [cm]")
     ax_path.set_ylabel("Y Position [cm]")
@@ -690,8 +692,10 @@ def _plot_part_c(result):
     # Top-left [1,3]: 2D reach path
     ax_path = fig5.add_subplot(4, 2, (1, 3))
     ax_path.plot(100 * X[0, :], 100 * X[1, :], "k", linewidth=2)
-    ax_path.plot(100 * X[0, 0], 100 * X[1, 0], "bo", markersize=16)
-    ax_path.plot(100 * X[0, -1], 100 * X[1, -1], "ro", markersize=16)
+    ax_path.plot(100 * X[0, 0], 100 * X[1, 0], "bo", markersize=16,
+                 markerfacecolor="none", markeredgewidth=2)
+    ax_path.plot(100 * X[0, -1], 100 * X[1, -1], "ro", markersize=16,
+                 markerfacecolor="none", markeredgewidth=2)
     ax_path.set_xlabel("X [cm]")
     ax_path.set_ylabel("Y [cm]")
     ax_path.set_title("Reach Path", fontweight="bold", fontsize=14)
@@ -773,8 +777,10 @@ def _plot_part_c(result):
     ax_2d.plot(100 * X[0, :], 100 * X[1, :], "k", linewidth=1)
     ax_2d.plot(mX_est[0, :], mX_est[1, :], "b", linewidth=3)
     ax_2d.plot(mX_estNT[0, :], mX_estNT[1, :], "g", linewidth=3)
-    ax_2d.plot(100 * X[0, 0], 100 * X[1, 0], "bo", markersize=14)
-    ax_2d.plot(100 * X[0, -1], 100 * X[1, -1], "ro", markersize=14)
+    ax_2d.plot(100 * X[0, 0], 100 * X[1, 0], "bo", markersize=14,
+               markerfacecolor="none", markeredgewidth=2)
+    ax_2d.plot(100 * X[0, -1], 100 * X[1, -1], "ro", markersize=14,
+               markerfacecolor="none", markeredgewidth=2)
     ax_2d.set_xlabel("x [cm]")
     ax_2d.set_ylabel("y [cm]")
     ax_2d.set_title("Estimated vs. Actual Reach Path",
