@@ -200,19 +200,19 @@ def run_part_a(data_dir, export_dir=None):
     ax = axes1[0, 0]
     ax.plot(time, lambdaData, "b", linewidth=2)
     ax.set_title("Simulated Conditional Intensity Function (CIF)",
-                 fontweight="bold", fontsize=14, fontname="Arial")
-    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_ylabel(r"$\lambda(t)$ [spikes/sec]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.legend([r"$\lambda_1$"], loc="upper right", fontsize=14)
+                 fontweight="bold", fontsize=14, fontfamily="Arial")
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_ylabel(r"$\lambda(t)$ [spikes/sec]", fontsize=14, fontweight="bold",
+                  fontfamily="Arial")
 
     # Bottom-left: simulated raster
     ax = axes1[1, 0]
     spikeCollSim.plot(handle=ax)
     ax.set_yticks(range(0, numRealizations + 1, 5))
     ax.set_title(f"{numRealizations} Simulated Point Process Sample Paths",
-                 fontweight="bold", fontsize=14, fontname="Arial")
-    ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Trial [k]", fontname="Arial", fontsize=12, fontweight="bold")
+                 fontweight="bold", fontsize=14, fontfamily="Arial")
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+    ax.set_ylabel("Trial [k]", fontsize=12, fontweight="bold", fontfamily="Arial")
 
     # Top-right: real cell 6 raster
     ax = axes1[0, 1]
@@ -272,12 +272,13 @@ def run_part_a(data_dir, export_dir=None):
     # Bottom row: PSTH comparisons
     ax = axes2[1, 0]
     h_true, = ax.plot(time, lambdaData, "b", linewidth=4, label="true")
-    psth_time = np.asarray(psthSim.time, dtype=float).ravel()
-    psth_data = np.asarray(psthSim.data, dtype=float).ravel()
-    h_psth, = ax.plot(psth_time, psth_data, "rx", linewidth=4, label="PSTH")
+    # MATLAB z-order: true, then GLM, then PSTH (markers on top)
     glm_time = np.asarray(psthGLMSim.time, dtype=float).ravel()
     glm_data = np.asarray(psthGLMSim.data, dtype=float).ravel()
     h_glm, = ax.plot(glm_time, glm_data, "k", linewidth=4, label="PSTH_{glm}")
+    psth_time = np.asarray(psthSim.time, dtype=float).ravel()
+    psth_data = np.asarray(psthSim.data, dtype=float).ravel()
+    h_psth, = ax.plot(psth_time, psth_data, "rx", linewidth=4, label="PSTH")
     ax.legend(handles=[h_true, h_psth, h_glm])
     ax.set_xlabel("time [s]")
     ax.set_ylabel("[spikes/sec]")
@@ -405,7 +406,8 @@ def run_part_b(data_dir, export_dir=None):
          axes3[2, 0].get_position().height]
     )
     ax.imshow(stimData.T, aspect="auto", origin="lower",
-              extent=[time[0], time[-1], 1, numRealizations])
+              extent=[time[0], time[-1], 1, numRealizations],
+              cmap="jet")  # MATLAB default colormap for imagesc
     ax.set_xlabel("time [s]")
     ax.set_ylabel("Trial [k]")
     ax.set_title("True Conditional Intensity Function", fontweight="bold",
@@ -501,28 +503,31 @@ def run_part_b(data_dir, export_dir=None):
     # MATLAB orientation: time [s] on x-axis, Trial [k] on y-axis
     # (matches fig03 bottom-panel "True Conditional Intensity Function")
     # ------------------------------------------------------------------
-    fig5, axes5 = plt.subplots(3, 1, figsize=(14, 9))
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    fig5 = plt.figure(figsize=(14, 9))
     trial_axis = np.arange(1, numRealizations + 1)
     T_act = min(actStimEffect.shape[0], len(basis_time))
 
+    # Build meshgrid: MATLAB mesh(trial, time, data) — trial on X, time on Y
+    K_mesh, T_mesh = np.meshgrid(trial_axis, basis_time[:T_act])
+
+    # MATLAB uses mesh() which renders wireframe only (no filled faces).
+    # plot_wireframe is the closest matplotlib equivalent.
     surfaces = [
-        (actStimEffect[:T_act, :], "True Stimulus Effect"),
-        (psthSurface2D[:T_act, :], "PSTH Estimated Stimulus Effect"),
-        (estStimEffect[:T_act, :], "SSGLM Estimated Stimulus Effect"),
+        ("True Stimulus Effect", actStimEffect[:T_act, :]),
+        ("PSTH Estimated Stimulus Effect", psthSurface2D[:T_act, :]),
+        ("SSGLM Estimated Stimulus Effect", estStimEffect[:T_act, :]),
     ]
-    for ax, (data, title_str) in zip(axes5, surfaces):
-        # data is (T, K) — time on rows, trials on columns
-        # Transpose so trials are on y-axis and time on x-axis,
-        # matching MATLAB nSTATPaperExamples_15.png orientation.
-        ax.pcolormesh(basis_time[:T_act], trial_axis, data.T, cmap="viridis",
-                      shading="auto")
-        ax.set_xlabel("time [s]")
-        ax.set_ylabel("Trial [k]")
-        ax.set_title(title_str, fontweight="bold", fontsize=14)
-    # Remove redundant per-subplot x-labels except the bottom one
-    for ax in axes5[:-1]:
-        ax.set_xlabel("")
-        ax.set_xticklabels([])
+    for idx, (title, data) in enumerate(surfaces, 1):
+        ax = fig5.add_subplot(3, 1, idx, projection="3d")
+        ax.plot_wireframe(K_mesh, T_mesh, data,
+                          rstride=5, cstride=1,
+                          linewidth=0.3, color="k")
+        ax.view_init(elev=-90, azim=90)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_title(title, fontweight="bold", fontsize=14, fontfamily="Arial")
 
     fig5.tight_layout()
     print("  Figure 5: Stimulus effect surfaces (top-down mesh)")
@@ -563,9 +568,11 @@ def run_part_b(data_dir, export_dir=None):
     for k in range(kTrials):
         for m in range(k + 1, kTrials):
             if sigMat[k, m] == 1:
-                ax2.plot(m, k, "r*", markersize=3)
+                ax2.plot(m, k, "r*", markersize=6)
     ax2.xaxis.set_ticks_position("top")
+    ax2.xaxis.set_label_position("top")
     ax2.yaxis.set_ticks_position("right")
+    ax2.yaxis.set_label_position("right")
     ax2.set_xlabel("Trial Number")
     ax2.set_ylabel("Trial Number")
 

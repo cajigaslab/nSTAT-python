@@ -24,9 +24,9 @@ def test_paper_examples_markdown_matches_generator() -> None:
 
 def test_readme_examples_block_matches_generator() -> None:
     committed = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    start = committed.index("## Examples")
-    end = committed.index("## Documentation")
-    assert committed[start:end] == render_readme_examples_markdown(REPO_ROOT)
+    start = committed.index("## Paper Examples (Self-Contained)")
+    end = committed.index("\nPlot style policy:")
+    assert committed[start:end].rstrip() == render_readme_examples_markdown(REPO_ROOT).rstrip()
 
 
 def test_gallery_manifest_tracks_thumbnail_and_run_command_fields() -> None:

@@ -10,7 +10,11 @@ README_PATH = REPO_ROOT / "README.md"
 
 def test_readme_links_to_generated_paper_gallery_and_figure_dirs() -> None:
     text = README_PATH.read_text(encoding="utf-8")
-    match = re.search(r"## Examples\n(.*?)\n## Documentation\n", text, flags=re.S)
+    match = re.search(
+        r"## Paper Examples \(Self-Contained\)\n(.*?)\nPlot style policy:",
+        text,
+        flags=re.S,
+    )
     assert match, "README is missing the paper examples block."
     block = match.group(1)
 

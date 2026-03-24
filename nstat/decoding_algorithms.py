@@ -2107,20 +2107,24 @@ class DecodingAlgorithms:
                 X_u[model_index][:, time_index] = upd_x
                 W_u[model_index][:, :, time_index] = upd_W
 
-                # Likelihood via Laplace approximation (Srinivasan et al. 2007).
-                # Compute sqrt(det(W_u)) / sqrt(det(W_p)) as sqrt(det(W_u)/det(W_p))
-                # to avoid a fixed floor that destroys the ratio for
-                # high-dimensional models with tiny absolute determinants.
-                det_upd = np.linalg.det(upd_W)
-                det_pred = np.linalg.det(pred_W)
-                if det_pred > 0.0 and det_upd >= 0.0:
-                    det_ratio = np.sqrt(det_upd / det_pred)
-                elif det_upd == 0.0 and det_pred == 0.0:
-                    det_ratio = 1.0
+                # Likelihood (Step 5): Laplace approximation
+                # p(n|s) = sqrt(det(W_u)/det(W_p)) * prod(exp(dN*log(lambda) - lambda))
+                # Use log-determinants for numerical stability with high-dimensional
+                # covariance matrices whose determinants can be extremely small (e.g.
+                # 1e-46 for 6-D states with tiny eigenvalues).  MATLAB computes
+                # sqrt(det(W_u))/sqrt(det(W_p)) directly without any clamping.
+                sign_u, logdet_u = np.linalg.slogdet(upd_W)
+                sign_p, logdet_p = np.linalg.slogdet(pred_W)
+                lambda_flat = lambda_delta.reshape(-1)
+                log_spike = np.sum(
+                    obs[:, time_index] * np.log(np.where(lambda_flat > 0, lambda_flat, 1e-300))
+                    - lambda_flat
+                )
+                if sign_u > 0 and sign_p > 0:
+                    log_likelihood = 0.5 * (logdet_u - logdet_p) + log_spike
+                    likelihoods[model_index] = float(np.exp(log_likelihood))
                 else:
-                    det_ratio = 0.0
-                log_term = np.sum(obs[:, time_index] * np.log(np.clip(lambda_delta.reshape(-1), 1e-12, np.inf)) - lambda_delta.reshape(-1))
-                likelihoods[model_index] = float(det_ratio * np.exp(np.clip(log_term, -200.0, 50.0)))
+                    likelihoods[model_index] = 0.0
 
             finite_likelihoods = likelihoods.copy()
             finite_likelihoods[~np.isfinite(finite_likelihoods)] = 0.0
@@ -2287,20 +2291,24 @@ class DecodingAlgorithms:
                 X_u[model_index][:, time_index] = upd_x
                 W_u[model_index][:, :, time_index] = upd_W
 
-                # Likelihood via Laplace approximation (Srinivasan et al. 2007).
-                # Compute sqrt(det(W_u)) / sqrt(det(W_p)) as sqrt(det(W_u)/det(W_p))
-                # to avoid a fixed floor that destroys the ratio for
-                # high-dimensional models with tiny absolute determinants.
-                det_upd = np.linalg.det(upd_W)
-                det_pred = np.linalg.det(pred_W)
-                if det_pred > 0.0 and det_upd >= 0.0:
-                    det_ratio = np.sqrt(det_upd / det_pred)
-                elif det_upd == 0.0 and det_pred == 0.0:
-                    det_ratio = 1.0
+                # Likelihood (Step 5): Laplace approximation
+                # p(n|s) = sqrt(det(W_u)/det(W_p)) * prod(exp(dN*log(lambda) - lambda))
+                # Use log-determinants for numerical stability with high-dimensional
+                # covariance matrices whose determinants can be extremely small (e.g.
+                # 1e-46 for 6-D states with tiny eigenvalues).  MATLAB computes
+                # sqrt(det(W_u))/sqrt(det(W_p)) directly without any clamping.
+                sign_u, logdet_u = np.linalg.slogdet(upd_W)
+                sign_p, logdet_p = np.linalg.slogdet(pred_W)
+                lambda_flat = lambda_delta.reshape(-1)
+                log_spike = np.sum(
+                    obs[:, time_index] * np.log(np.where(lambda_flat > 0, lambda_flat, 1e-300))
+                    - lambda_flat
+                )
+                if sign_u > 0 and sign_p > 0:
+                    log_likelihood = 0.5 * (logdet_u - logdet_p) + log_spike
+                    likelihoods[model_index] = float(np.exp(log_likelihood))
                 else:
-                    det_ratio = 0.0
-                log_term = np.sum(obs[:, time_index] * np.log(np.clip(lambda_delta.reshape(-1), 1e-12, np.inf)) - lambda_delta.reshape(-1))
-                likelihoods[model_index] = float(det_ratio * np.exp(np.clip(log_term, -200.0, 50.0)))
+                    likelihoods[model_index] = 0.0
 
             finite_likelihoods = likelihoods.copy()
             finite_likelihoods[~np.isfinite(finite_likelihoods)] = 0.0

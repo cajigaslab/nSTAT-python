@@ -16,6 +16,10 @@ def _normalize_notebook(notebook) -> None:
         cell["id"] = "normalized"
         cell["execution_count"] = None
         cell["outputs"] = []
+        # Strip execution-related cell metadata added by nbconvert
+        cell.get("metadata", {}).pop("execution", None)
+    # Strip kernel-specific metadata that changes after execution
+    notebook.metadata.pop("language_info", None)
 
 
 def _cell_payload(cell) -> tuple[str, str, dict]:

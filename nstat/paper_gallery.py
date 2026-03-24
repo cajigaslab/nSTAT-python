@@ -112,9 +112,7 @@ def render_paper_examples_markdown(repo_root: Path | None = None) -> str:
 def render_readme_examples_markdown(repo_root: Path | None = None) -> str:
     manifest = build_gallery_manifest(repo_root)
     lines = [
-        "## Examples",
-        "",
-        "### Paper Examples (Self-Contained)",
+        "## Paper Examples (Self-Contained)",
         "",
         "Canonical source files:",
         "- `examples/paper/*.py`",
@@ -145,16 +143,6 @@ def render_readme_examples_markdown(repo_root: Path | None = None) -> str:
             "",
             "Expanded paper-example index and figure gallery:",
             "- [docs/paper_examples.md](docs/paper_examples.md)",
-            "",
-            "### Supplementary Examples",
-            "",
-            "These smaller demos remain useful as quick install and plotting checks.",
-            "",
-            "| Example | Run command | Output |",
-            "|---|---|---|",
-            "| Multitaper spectrum + spectrogram | `python examples/readme_examples/example1_multitaper_and_spectrogram.py` | [PNG](examples/readme_examples/images/readme_example1_multitaper_and_spectrogram.png) |",
-            "| Simulated CIF spike train | `python examples/readme_examples/example2_simulate_cif_spiketrain_10s.py` | [PNG](examples/readme_examples/images/readme_example2_simulate_cif_spiketrain_10s.png) |",
-            "| Spike-train raster | `python examples/readme_examples/example3_nstcoll_raster_from_example2.py` | [PNG](examples/readme_examples/images/readme_example3_nstcoll_raster.png) |",
             "",
         ]
     )
@@ -194,10 +182,11 @@ def write_gallery_outputs(repo_root: Path | None = None) -> tuple[Path, Path, Pa
 
     readme_path = base / "README.md"
     readme_text = readme_path.read_text(encoding="utf-8")
-    start = readme_text.index("## Examples")
-    end = readme_text.index("## Documentation")
+    start = readme_text.index("## Paper Examples (Self-Contained)")
+    end = readme_text.index("Plot style policy:")
+    gallery_text = render_readme_examples_markdown(base)
     readme_path.write_text(
-        readme_text[:start] + render_readme_examples_markdown(base) + readme_text[end:],
+        readme_text[:start] + gallery_text + "\n" + readme_text[end:],
         encoding="utf-8",
     )
     return manifest_path, markdown_path, readme_path

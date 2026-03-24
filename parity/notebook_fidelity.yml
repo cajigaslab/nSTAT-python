@@ -1,5 +1,5 @@
 version: 1
-generated_on: '2026-03-22'
+generated_on: '2026-03-14'
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
