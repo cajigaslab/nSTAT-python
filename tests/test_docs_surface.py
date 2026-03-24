@@ -37,10 +37,16 @@ def test_matlab_style_navigation_pages_exist() -> None:
         assert path.exists(), f"Missing docs page: {path}"
 
 
-def test_readme_links_to_help_navigation_pages() -> None:
+def test_readme_links_to_github_pages_site() -> None:
+    """README links to the GitHub Pages site (mirrors MATLAB README structure)."""
     text = README_PATH.read_text(encoding="utf-8")
-    for page in MATLAB_NAV_PAGES:
-        assert f"[docs/{page}.md](docs/{page}.md)" in text
+    assert "cajigaslab.github.io/nSTAT-python" in text
+
+
+def test_readme_links_to_paper_overview() -> None:
+    """README links to PaperOverview from the toolbox map section."""
+    text = README_PATH.read_text(encoding="utf-8")
+    assert "[docs/PaperOverview.md](docs/PaperOverview.md)" in text
 
 
 def test_docs_conf_enables_markdown_support() -> None:

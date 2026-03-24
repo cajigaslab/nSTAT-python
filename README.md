@@ -15,10 +15,7 @@ continuous neural signals such as LFP, EEG, and ECoG.
 One of nSTAT's key strengths is point-process generalized linear models for spike
 train signals that provide a formal statistical framework for processing signals
 recorded from ensembles of single neurons. It also has extensive support for model
-fitting, model-order analysis, and adaptive decoding — including state-space GLM
-(SSGLM) estimation via EM, unscented Kalman filtering (UKF), goal-directed
-point-process adaptive filters (PPAF), and hybrid discrete/continuous
-point-process filters (PPHF).
+fitting, model-order analysis, and adaptive decoding.
 
 Although created with neural signal processing in mind, nSTAT can be used as a
 generic tool for analyzing any types of discrete and continuous signals, and thus
@@ -62,22 +59,16 @@ from nstat.data_manager import ensure_example_data
 data_dir = ensure_example_data(download=True)
 ```
 
-Run the post-install setup helper:
+Quickstart:
 
 ```bash
-nstat-install
+cd /path/to/nSTAT-python
+pip install -e .[dev]
+nstat-install --download-example-data always
+pytest -q && python tools/paper_examples/build_gallery.py
 ```
 
-Quick verification:
-
-```bash
-pytest -q
-python tools/paper_examples/build_gallery.py
-```
-
-## Examples
-
-### Paper Examples (Self-Contained)
+## Paper Examples (Self-Contained)
 
 Canonical source files:
 - `examples/paper/*.py`
@@ -104,28 +95,7 @@ refreshes the canonical README paper-example table from
 Expanded paper-example index and figure gallery:
 - [docs/paper_examples.md](docs/paper_examples.md)
 
-### Supplementary Examples
-
-These smaller demos remain useful as quick install and plotting checks.
-
-| Example | Run command | Output |
-|---|---|---|
-| Multitaper spectrum + spectrogram | `python examples/readme_examples/example1_multitaper_and_spectrogram.py` | [PNG](examples/readme_examples/images/readme_example1_multitaper_and_spectrogram.png) |
-| Simulated CIF spike train | `python examples/readme_examples/example2_simulate_cif_spiketrain_10s.py` | [PNG](examples/readme_examples/images/readme_example2_simulate_cif_spiketrain_10s.png) |
-| Spike-train raster | `python examples/readme_examples/example3_nstcoll_raster_from_example2.py` | [PNG](examples/readme_examples/images/readme_example3_nstcoll_raster.png) |
-## Documentation
-
-Rendered help documentation (GitHub Pages):
-[cajigaslab.github.io/nSTAT-python](https://cajigaslab.github.io/nSTAT-python/)
-
-Source pages:
-- [docs/NeuralSpikeAnalysis_top.md](docs/NeuralSpikeAnalysis_top.md)
-- [docs/PaperOverview.md](docs/PaperOverview.md)
-- [docs/Examples.md](docs/Examples.md)
-- [docs/ClassDefinitions.md](docs/ClassDefinitions.md)
-- [docs/DocumentationSetup.md](docs/DocumentationSetup.md)
-
-## Plot Style
+Plot style policy:
 
 ```python
 from nstat.plot_style import set_plot_style
@@ -136,6 +106,16 @@ set_plot_style('modern')
 # Legacy visual style for strict reproduction
 set_plot_style('legacy')
 ```
+
+Rendered help documentation (GitHub Pages):
+- https://cajigaslab.github.io/nSTAT-python/
+
+For mathematical and programmatic details of the toolbox, see:
+
+Cajigas I, Malik WQ, Brown EN. nSTAT: Open-source neural spike train analysis
+toolbox for Matlab. Journal of Neuroscience Methods 211: 245–264, Nov. 2012.
+https://doi.org/10.1016/j.jneumeth.2012.08.009
+PMID: 22981419
 
 ## Paper-Aligned Toolbox Map
 
@@ -149,15 +129,17 @@ This page ties the Python toolbox to the paper's workflow categories:
   `Analysis`, `FitResult`, `DecodingAlgorithms`)
 - Fitting and assessment workflow (GLM fitting, diagnostics, summaries)
 - Simulation workflow (conditional intensity and thinning examples)
-- State-space GLM (SSGLM) workflow — full EM algorithm (`PPSS_EMFB`)
-  for across-trial coefficient dynamics with forward-backward Kalman
-  smoothing (Section 2.4)
-- Decoding workflow — point-process adaptive filter (`PPDecodeFilterLinear`),
-  hybrid filter (`PPHybridFilterLinear`), unscented Kalman filter (`ukf`),
-  and stimulus confidence intervals (Sections 2.5–2.6)
-- Signal processing — multi-taper spectral estimation (`MTMspectrum`),
-  spectrogram, cross-covariance, and peak-finding methods
+- Decoding workflow (univariate/bivariate and history-aware decoding)
 - Example-to-paper section mapping via `nSTATPaperExamples`
+
+If you use nSTAT in your work, please remember to cite the above paper in any publications.
+nSTAT is protected by the GPL v2 Open Source License.
+
+The code repository for the Python port of nSTAT is hosted on GitHub at
+https://github.com/cajigaslab/nSTAT-python.
+The paper-example dataset is distributed separately from the Git repository:
+- Figshare dataset DOI: https://doi.org/10.6084/m9.figshare.4834640.v3
+- Paper DOI: https://doi.org/10.1016/j.jneumeth.2012.08.009
 
 ## Code audit (2026-03-11)
 
@@ -188,28 +170,6 @@ parity verified.
 - `Analysis.m` — Granger causality mask zeroed all columns instead of column `i`
 
 See [parity/report.md](parity/report.md) for the full audit.
-
-## License, Citation, and Data
-
-nSTAT is protected by the GPL v2 Open Source License.
-
-If you use nSTAT in your work, please cite:
-
-Cajigas I, Malik WQ, Brown EN. nSTAT: Open-source neural spike train analysis
-toolbox for Matlab. Journal of Neuroscience Methods 211: 245–264, Nov. 2012.
-https://doi.org/10.1016/j.jneumeth.2012.08.009
-PMID: 22981419
-
-- **Paper-example dataset (Figshare)**: https://doi.org/10.6084/m9.figshare.4834640.v3
-- **Paper DOI**: https://doi.org/10.1016/j.jneumeth.2012.08.009
-
-The code repository for the Python port of nSTAT is hosted on GitHub at
-https://github.com/cajigaslab/nSTAT-python.
-
-## Developer notes
-
-- Run tests: `pytest -q`
-- Build docs: `sphinx-build -b html docs docs/_build`
 
 ## MATLAB Toolbox
 
