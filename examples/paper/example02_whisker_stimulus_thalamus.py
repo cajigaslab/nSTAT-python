@@ -154,6 +154,7 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.set_xticks(xticks)
     ax.set_xticklabels([])  # No x-labels on top/middle subplots
     ax.set_xlabel("")
+    ax.set_xlim(0, viewWindow)
     ax.set_ylabel("spikes", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_title("Neural Raster", fontweight="bold", fontsize=16, fontfamily="Arial")
     ax.spines["top"].set_linewidth(1)
@@ -168,6 +169,7 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.set_xticks(xticks)
     ax.set_xticklabels([])
     ax.set_xlabel("")
+    ax.set_xlim(0, viewWindow)
     ax.set_ylabel("Displacement [mm]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_title("Stimulus - Whisker Displacement", fontweight="bold", fontsize=16, fontfamily="Arial")
     for spine in ax.spines.values():
