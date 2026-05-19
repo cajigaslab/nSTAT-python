@@ -1,0 +1,518 @@
+# AGENT_GUIDE — nSTAT-python for AI assistants
+
+> **Audience:** AI coding assistants (Claude, GPT, Cursor, Copilot, etc.) and
+> autonomous agents that need to use the `nstat-python` toolbox correctly.
+> Updated: 2026-05-19. Package version: 0.3.0.
+>
+> The MATLAB reference toolbox lives in a *separate* repository
+> (https://github.com/cajigaslab/nSTAT) and is deliberately kept independent
+> from this Python port — there is no runtime coupling.  Only the Simulink
+> point-process thinning simulator pre-dates this Python port; everything
+> else stands alone.
+
+This is a condensed, machine-readable orientation. For human-facing docs,
+see [README.md](README.md), [docs/PaperOverview.md](docs/PaperOverview.md),
+and [docs/ClassDefinitions.md](docs/ClassDefinitions.md).
+
+---
+
+## 1. What this package is (one paragraph)
+
+`nstat-python` is a Python port of the MATLAB **nSTAT** (neural spike train
+analysis toolbox), tied to Cajigas, Malik & Brown, *J Neurosci Methods*,
+211:245-264 (2012). It implements point-process generalized linear models
+(GLMs), conditional intensity functions (CIFs), adaptive decoding
+(PPAF/PPHF/Kalman/EM), Gaussian-signal analysis (LFP/ECoG/EEG), and the
+five canonical paper examples. The Python port preserves MATLAB class
+names and method signatures wherever feasible — a deliberate design choice
+to keep MATLAB users oriented.
+
+**Install:**
+
+```bash
+pip install nstat-toolbox          # PyPI
+nstat-install --download-example-data always   # example dataset (figshare, ~150 MB)
+```
+
+**Source layout:**
+
+```
+nstat/                  ~50 modules, 24.7 kLOC — the package itself
+examples/paper/         5 canonical paper-example scripts (Cajigas 2012)
+examples/readme_examples/   4 short snippets
+notebooks/              30+ Jupyter notebooks (many MATLAB-help-derived)
+docs/                   Sphinx + MyST documentation
+parity/                 MATLAB↔Python parity manifests + audit report
+tests/                  48 test files, 268 tests
+tools/{notebooks,paper_examples,parity,release}/  build/maintenance scripts
+```
+
+---
+
+## 2. Public API — canonical entry points
+
+`nstat/__init__.py` exposes everything via `__all__`. The following is the
+authoritative, current surface (run `python -c "import nstat; print(sorted(nstat.__all__))"`
+to re-verify).
+
+### Core data primitives
+- `SignalObj` — continuous signal with time axis (LFP/ECoG/EEG); arithmetic, FFT, filtering.
+- `Signal` — Python-flavored alias / subclass of `SignalObj` (use either; same class hierarchy).
+- `Covariate` — design-matrix column with named labels (subclass of `SignalObj`).
+- `nspikeTrain` — a single neuron's spike train. **Note the lowercase 'n'** — preserved from MATLAB.
+- `SpikeTrain` — alias for `nspikeTrain`.
+- `Events` — discrete event markers.
+- `ConfidenceInterval` — CI value/interval with arithmetic.
+
+### Collections
+- `nstColl` — collection of `nspikeTrain` objects (ensemble of neurons).
+- `SpikeTrainCollection` — alias for `nstColl`.
+- `CovColl` — collection of `Covariate` objects.
+- `CovariateCollection` — alias for `CovColl`.
+- `ConfigColl` — collection of `TrialConfig` objects.
+- `ConfigCollection` — alias for `ConfigColl`.
+
+### Experiment / configuration
+- `Trial` — bundle of spike trains, covariates, neighbors for one experiment.
+- `TrialConfig` — covariate-by-covariate spec (constant / b-spline / unit-impulse).
+- `History`, `HistoryBasis` — spike-history kernel design.
+
+### Modeling and inference
+- `Analysis` — top-level fit/analysis orchestrator (`GLMFit`, `computeHistLagForAll`, `computeGrangerCausalityMatrix`, etc.).
+- `CIF`, `CIFModel` — conditional intensity functions, symbolic ↔ numeric evaluation.
+- `FitResult` — fit output (coefficients, lambda signal, KS, AIC/BIC).
+- `FitResSummary` / `FitSummary` — aggregator across fits/cells.
+- `psth` — peri-stimulus time histogram convenience function.
+
+### Decoding
+- `DecodingAlgorithms` — class namespace for PPAF / PPHF / Kalman / EM / smoothers (most are static).
+- `DecoderSuite` — thin Pythonic wrapper.
+- `PoissonGLMResult`, `fit_poisson_glm` — standalone Poisson GLM utility (separate from `Analysis.GLMFit`).
+
+### Simulation
+- `simulate_poisson_from_rate(rate_signal, ...)` — homogeneous/inhomogeneous Poisson simulator.
+- `simulate_point_process(...)`, `PointProcessSimulation`.
+- `simulate_two_neuron_network(...)`, `NetworkSimulationResult`.
+- `run_full_paper_examples(...)` — runs all five paper examples programmatically.
+
+### Plot style
+- `set_plot_style("modern" | "legacy")` — persists choice in a sidecar file.
+- `get_plot_style()` — reads current style.
+- `apply_plot_style(fig_or_axes, *, style="")` — applies the (persisted or
+  explicitly passed) style to a figure. The paper examples accept
+  `--plot-style {modern,legacy}` (default `legacy` for strict paper reproduction).
+
+### Installation / data
+- `nstat_install`, `nSTAT_Install` — CLI/programmatic installer.
+- `get_dataset_path`, `list_datasets`, `verify_checksums` — dataset registry.
+- `ensure_example_data(download=True)` — **importable but not in `__all__`**: `from nstat.data_manager import ensure_example_data`.
+- `getPaperDataDirs`, `get_paper_data_dirs` — paths into the example dataset.
+
+### MATLAB bridge (optional)
+- `is_matlab_available()`, `get_matlab_nstat_path()`, `set_matlab_nstat_path(path)`.
+- `MatlabFallbackWarning` — warning class when a method delegates to MATLAB.
+
+### Exceptions
+- `DataNotFoundError`, `MatlabEngineError`, `ParityValidationError`,
+  `UnsupportedWorkflowError`.
+
+---
+
+## 3. How to use the toolbox — recipes
+
+### Recipe A: build a Trial from spike times + a covariate
+
+```python
+import numpy as np
+from nstat import Trial, TrialConfig, Covariate, nspikeTrain, nstColl
+
+sample_rate = 1000  # Hz
+
+# Spike train for one neuron (spike times in seconds)
+spike_times = np.array([0.012, 0.087, 0.123, 0.301])
+st = nspikeTrain(spike_times, name="n1", sampleRate=sample_rate,
+                 minTime=0.0, maxTime=1.0)
+
+# A continuous covariate (e.g., whisker velocity)
+t = np.arange(0, 1.0, 1.0 / sample_rate)
+stim = np.sin(2 * np.pi * 5 * t).reshape(-1, 1)
+cov = Covariate(t, stim, name="stim", xlabelval="time", xunitval="s",
+                ylabelval="vel", yunitval="mm/s",
+                dataLabels=["stim"])
+
+# A collection of spike trains (single neuron here)
+nstc = nstColl([st])
+nstc.setMinTime(0.0)
+nstc.setMaxTime(1.0)
+
+# Assemble Trial
+trial = Trial(nstc, ev=None, covarColl=None, neighbors=None)
+```
+
+### Recipe B: fit a Poisson GLM with stimulus + history
+
+```python
+from nstat import TrialConfig, ConfigColl, Analysis, CovColl
+
+cfg = TrialConfig(
+    covariate_specs=[("Baseline", "constant"), ("stim", "spline")],
+    sampleRate=sample_rate,
+    history_window_times=[0.001, 0.002, 0.005, 0.01],  # history kernel knots
+    ensCovHist=[],
+)
+configs = ConfigColl([cfg])
+
+# Run the analysis (model selection across configs)
+results = Analysis.runAnalysisForAllNeurons(trial, configs)
+fit = results[0][0]   # FitResult for neuron 0 under config 0
+print("AIC:", fit.AIC, "BIC:", fit.BIC)
+print("KS stat:", fit.computeKSStats())
+```
+
+For a single GLM fit (no model-selection sweep), use ``Analysis.GLMFit``
+directly.  It returns a ``GLMFitResult`` dataclass with both named-field
+and tuple-unpack access:
+
+```python
+from nstat.analysis import Analysis  # GLMFitResult is also exported
+
+result = Analysis.GLMFit(trial, neuron_number=1, lambdaIndex=1, Algorithm="GLM")
+print("AIC:", result.AIC, "BIC:", result.BIC)
+print("true log-lik:", result.loglik)         # AIC = -2*loglik + 2*k holds
+print("matlab logLL:", result.logLL)          # hybrid MATLAB-parity quantity
+
+# Legacy unpacking still works:
+lambda_sig, b, dev, stats, AIC, BIC, logLL, distribution = result
+```
+
+### Recipe C: simulate spikes from a rate signal
+
+```python
+from nstat import simulate_poisson_from_rate, Signal
+
+t = np.arange(0, 5.0, 0.001)
+rate_hz = 20 + 10 * np.cos(2 * np.pi * 1.5 * t)
+rate_signal = Signal(t, rate_hz.reshape(-1, 1), sampleRate=1000.0,
+                     dataLabels=["rate"])
+spikes = simulate_poisson_from_rate(rate_signal, n_trials=5)
+```
+
+### Recipe D: load the figshare paper dataset
+
+```python
+from nstat.data_manager import ensure_example_data, get_paper_data_dirs
+
+data_root = ensure_example_data(download=True)  # ~150 MB on first call
+# OR: data_root = ensure_example_data(download=False)  # raises if missing
+mepsc = data_root / "mEPSCs"
+place_cells = data_root / "Place Cells"
+```
+
+### Recipe E: run a paper example programmatically
+
+```python
+from examples.paper.example01_mepsc_poisson import run_example01
+
+run_example01(export_figures=True,
+              export_dir=None,        # defaults to docs/figures/example01/
+              visible=False,          # headless
+              plot_style="modern")    # or "legacy"
+```
+
+### Recipe F: regenerate the full figure gallery
+
+```bash
+python examples/paper/regenerate_all_figures.py             # legacy style
+python examples/paper/regenerate_all_figures.py --plot-style modern
+```
+
+### Recipe G: PPAF/PPHF adaptive decoding
+
+```python
+from nstat import DecodingAlgorithms
+# Most methods are @staticmethod
+x_decoded, W, _ = DecodingAlgorithms.PPDecodeFilterLinear(
+    A, Q, C, lambda_cif, dN, x0, W0, delta)
+```
+
+---
+
+## 4. Toolbox capabilities — what nSTAT does well
+
+- **Point-process GLM fitting** for spike trains with stimulus + history,
+  including model-order selection via AIC/BIC and KS-based goodness-of-fit
+  (time-rescaling theorem).
+- **Conditional intensity functions** as symbolic objects (`sympy`-backed)
+  with batch evaluation and exact-form CIF arithmetic.
+- **State-space decoding**: linear/nonlinear point-process adaptive filters
+  (PPAF), hybrid filters (PPHF mixing discrete + continuous state), Kalman
+  filter/smoother for Gaussian observations.
+- **Basis families**: b-spline / unit-impulse / Gaussian / Zernike
+  polynomial bases for receptive-field modeling.
+- **Ensemble analyses**: Granger causality matrix on neuron pairs,
+  history-coefficient summaries across populations.
+- **Simulation**: thinning-based Poisson, two-neuron network with
+  reciprocal coupling, parametric CIF simulation.
+- **MATLAB interop**: optional bridge via `matlab.engine` for direct
+  numerical comparison (`is_matlab_available()`); the package gracefully
+  degrades to pure-Python when MATLAB is absent.
+- **Parity tracking**: every public class is audited against the MATLAB
+  reference (see [parity/report.md](parity/report.md)).
+
+---
+
+## 5. Limitations — what NOT to assume
+
+### 5.1 API gaps vs the MATLAB reference
+
+These MATLAB methods exist but are **not yet ported** to Python (tracked in
+[AUDIT_REPORT.md](AUDIT_REPORT.md) §3):
+
+- `DecodingAlgorithms.KF_EM` family (Gaussian state-space EM)
+  — `KF_EM`, `KF_EStep`, `KF_MStep`, `KF_ComputeParamStandardErrors`,
+  `KF_EMCreateConstraints`.
+- `DecodingAlgorithms.PP_EM` family (point-process state-space EM, no basis)
+  — `PP_EM`, `PP_EStep`, `PP_MStep`, `PP_ComputeParamStandardErrors`,
+  `PP_EMCreateConstraints`.
+- `DecodingAlgorithms.mPPCO` family (mixed PP + Gaussian)
+  — `mPPCODecodeLinear`, `mPPCODecode_predict`, `mPPCODecode_update`,
+  `mPPCO_fixedIntervalSmoother`, `mPPCO_EM`, `mPPCO_EStep`, `mPPCO_MStep`,
+  `mPPCO_ComputeParamStandardErrors`, `mPPCO_EMCreateConstraints`.
+- `DecodingAlgorithms.computeSpikeRateCIs`, `computeSpikeRateDiffCIs` (Monte Carlo CIs).
+- `FitResSummary.plotCoeffsWithoutHistory`, `plotHistCoeffs`.
+- `Trial.toStructure` / `fromStructure` (serialization round-trip),
+  `Trial.getNumHist`, `Trial.findMinSampleRate`.
+- Various `SignalObj` plotting/variability methods (`plotVariability`,
+  `plotAllVariability`, `alignToMax`, `windowedSignal`, etc.).
+
+**If an agent needs one of these, raise the gap explicitly — do not silently
+substitute a related Python method.**
+
+### 5.2 Behavioral differences vs MATLAB
+
+Documented in [AUDIT_REPORT.md](AUDIT_REPORT.md) §4. The substantive ones:
+
+| Class | Difference |
+|---|---|
+| `Analysis` | GLM solver is Newton-Raphson with L2=1e-6 regularization; MATLAB uses CG. Coefficients agree to ~1e-6 but are not bit-identical. |
+| `DecodingAlgorithms.kalman_fixedIntervalSmoother` | Python uses smoother-index extraction (approximation); MATLAB uses exact state augmentation. Differs at intermediate lags. |
+| `DecodingAlgorithms.ComputeStimulusCIs` | Python public path uses Gaussian approximation; MATLAB uses Monte Carlo. For Monte Carlo, call `_ComputeStimulusCIs_MC` explicitly. |
+| `DecodingAlgorithms.PPHybridFilter` | Python delegates to the linear version; **does not support nonlinear CIF models** in hybrid decoding. |
+| `SignalObj` arithmetic | Python does NOT auto-align time grids via `makeCompatible`; raises `ValueError` if grids differ. Users must `resample()` manually. |
+| `nspikeTrain` burst stats | Burst statistics go stale after `setMinTime`/`setMaxTime` in Python (cache invalidation gap). |
+| `SpikeTrainCollection.psthBars` | Uses a deterministic smoothing fallback, not the MATLAB BARS package. |
+
+### 5.3 Known Python-side bugs / footguns (status as of v0.3.0+post)
+
+Most of the audit-reported bugs have been **fixed** in this branch; the
+list below records the current state.
+
+**Fixed:**
+
+- ✅ `SpikeTrainCollection.toSpikeTrain` maxTime now sums per-train
+  durations (was: `maxTime * len(selector)`).  Homogeneous-collection
+  behavior unchanged.
+- ✅ `SpikeTrainCollection.getNST` now copies-then-resamples (non-destructive).
+- ✅ `SpikeTrainCollection.addSingleSpikeToColl` now amortized O(1) per add
+  (was: O(n²) — resampled all existing trains on every append).
+- ✅ `Analysis.run_analysis_for_neuron` exception handling tightened:
+  KS / validation-lambda failures now emit a `RuntimeWarning` instead of
+  silently swallowing all `Exception` subclasses.
+- ✅ `Analysis.GLMFit` now returns a **`GLMFitResult` dataclass** with
+  named fields *and* tuple-unpacking back-compat
+  (`lambda_signal, b, dev, stats, AIC, BIC, logLL, distribution = GLMFit(...)`
+  still works).  A true Bernoulli/Poisson log-likelihood is exposed at
+  `result.loglik` (and `stats["loglik"]`).  The legacy MATLAB-style
+  hybrid is retained at `result.logLL` and `stats["matlab_logLL"]`.
+- ✅ `FitResult` lambda aliases: the 9 historical aliases
+  (`lambda_obj`, `lambda_model`, `lambda_result`, `lambdaObj`,
+  `lambdaCov`, `lambda_sig`, `lambda_data`, `lambda_values`, `lambda_time`,
+  `lambda_rate`) now emit `DeprecationWarning`.  Use `lambda_signal`
+  (canonical) or `lambdaSignal` (MATLAB-style alias, no warning).
+- ✅ `matplotlib.use("Agg")` is **no longer** called at import time;
+  user-chosen backends survive `import nstat`.
+- ✅ The three previously broken examples (`basic_data_workflow.py`,
+  `fit_poisson_glm.py`, `simulate_population_psth.py`) now work —
+  `simulate_cif_from_stimulus` is implemented in `nstat.simulation`.
+- ✅ `ensure_example_data` now respects `NSTAT_OFFLINE=1` and emits a
+  helpful error pointing at `nstat-install --download-example-data always`.
+
+**Verified false alarms (no bug):**
+
+- `SignalObj.setMaxTime` off-by-one: verified inclusive of the boundary
+  sample, symmetric with `setMinTime`.
+- `History.toFilter` `start_sample + 1`: verified as the intentional
+  leading-zero filter-coefficient offset.
+- `nspikeTrain.computeStatistics` "double +1" on `avgSpikesPerBurst`:
+  this is the MATLAB convention (gold fixture confirms `avg = mean(counts) + 1`).
+  Documented inline.
+
+**Still present:**
+
+- **`np.random.rand` (legacy API)** is used in `nstat.trial:1865`;
+  reproducibility via `np.random.default_rng(seed)` is not yet plumbed.
+
+### 5.4 Module layout (post-refactor)
+
+- `nstat/core.py` (~2,070 lines) hosts `SignalObj` + `Covariate`.  The
+  `nspikeTrain` class was extracted to `nstat/_spike_train_impl.py`
+  (private module).  `from nstat.core import nspikeTrain` and
+  `from nstat.nspikeTrain import nspikeTrain` continue to work.
+- `nstat/trial.py` (~2,845 lines) hosts `CovariateCollection`,
+  `SpikeTrainCollection`, and `Trial`.  `TrialConfig`/`ConfigCollection`
+  were extracted to `nstat/_trial_config_impl.py`.  All legacy import
+  paths continue to work.
+- `Analysis.GLMFit` now returns `GLMFitResult` (a dataclass with `__iter__`)
+  — see Recipe B.
+
+### 5.5 Architectural / structural notes
+
+- **MATLAB-style import shims** exist (e.g., `from nstat.SignalObj import
+  SignalObj`); both shim paths and canonical paths work. Prefer canonical
+  paths from `nstat/__init__.py` for new code.
+- **`core.py` is ~2,700 lines and `trial.py` is ~3,100 lines** — they
+  contain multiple classes each. Splitting is on the v0.4 roadmap; do not
+  rely on internal file layout.
+- **Two parallel install entry points** exist: `nstat.install.main` and
+  `nstat.nstat_install.nSTAT_Install`. Prefer the `nstat-install` CLI.
+- **Data sourcing**: paper-example data is on figshare (DOI
+  10.6084/m9.figshare.4834640.v3, ~150 MB). It is **not** in the git repo.
+  `ensure_example_data(download=True)` fetches it; `download=False` raises
+  if absent. There is no `--offline` flag yet — agents in offline contexts
+  should set `ensure_example_data(download=False)` and handle the
+  `DataNotFoundError`.
+
+### 5.6 What the package is NOT
+
+- **Not** a real-time decoding pipeline. Decoding methods are
+  offline/batch.
+- **Not** a deep-learning toolkit. There are no neural-network models;
+  fits are GLM/state-space classical statistics.
+- **Not** a spike-sorting toolkit. Spike times are assumed to be
+  pre-sorted.
+- **Not** an LFP/EEG signal-processing library on its own. `SignalObj`
+  has periodogram / multitaper spectrum / spectrogram methods, but for
+  serious spectral analysis prefer dedicated libraries (MNE, Elephant,
+  Spectral Connectivity).
+- **Not** distributed. All routines are single-process NumPy / SciPy.
+
+---
+
+## 6. Data flow patterns
+
+### Typical workflow
+
+```
+spike times (np.ndarray, seconds)
+        │
+        ▼
+   nspikeTrain ────► nstColl  ─┐
+                                ├─► Trial ──► Analysis.GLMFit ──► FitResult
+   covariate arrays             │                                       │
+        │                       │                                       ▼
+        ▼                       │                              FitResSummary
+   Signal/Covariate ──► CovColl ┘                                  (aggregate)
+        │
+        ▼
+   TrialConfig ──► ConfigColl
+```
+
+### Decoding workflow
+
+```
+FitResult (per cell)  ─────► DecodingAlgorithms.PPDecodeFilterLinear
+spike trains (ensemble) ───►        │
+state model (A, Q)        ───►      ▼
+                              decoded state x(t), CI W(t)
+```
+
+---
+
+## 7. Conventions and gotchas
+
+- **Class names use MATLAB-style camelCase** (`nspikeTrain`, `nstColl`,
+  `CovColl`) — the lowercase initials of `nspikeTrain` / `nstColl` are
+  intentional and preserved.
+- **Method names** also follow MATLAB style (`GLMFit`, `computeKSStats`,
+  `setMinTime`). Python-style aliases exist in some cases but not all.
+- **Time axis**: all time vectors are in **seconds**. `sampleRate` is in Hz.
+- **Spike times** are stored in seconds and **sorted on construction**.
+- **`MATLAB-colon equivalence`**: when reproducing MATLAB `start:step:stop`,
+  use the `_matlab_colon` pattern (compute element count from
+  `floor((stop-start)/step)+1`, then `start + np.arange(n)*step`).
+  `np.arange` accumulates float error and can produce off-by-one length.
+- **Figures**: `apply_plot_style(fig, style="modern")` mutates the figure
+  in place; `apply_plot_style(fig, style="legacy")` is a no-op. The
+  paper-example scripts default to `legacy` to preserve strict figure
+  parity; pass `--plot-style modern` to opt into readability formatting.
+- **The figure tree is consolidated under `docs/figures/`**. The legacy
+  `examples/paper/figures/` directory still exists (byte-identical
+  duplicates) but is deprecated; see the README in that folder.
+- **`__init__.py` does some `__class__` patching** to allow
+  `nstat.SignalObj.SignalObj` to coexist with `nstat.SignalObj`. This is
+  invisible at runtime but may confuse static analyzers (mypy/pyright).
+- **CI is at `.github/workflows/ci.yml`**; the `paper-gallery-artifacts`
+  job enforces that the committed PNG set matches `examples/paper/manifest.yml`.
+
+---
+
+## 8. Where to look when stuck
+
+| Question | First place to check |
+|---|---|
+| Does method X exist? | `python -c "import nstat; help(nstat.ClassName)"` |
+| Is method X ported from MATLAB? | [PORTING_MAP.md](PORTING_MAP.md) |
+| Is there a known bug? | [AUDIT_REPORT.md](AUDIT_REPORT.md) §1–2 |
+| Does my output match MATLAB? | [AUDIT_REPORT.md](AUDIT_REPORT.md) §4 + [parity/report.md](parity/report.md) |
+| How is class X used? | `examples/paper/example0X_*.py`, [docs/PaperOverview.md](docs/PaperOverview.md), [docs/ClassDefinitions.md](docs/ClassDefinitions.md) |
+| Where is the data? | `nstat-install --download-example-data always`, then `ensure_example_data()` |
+| What changed lately? | `git log --oneline -20`, or [parity/report.md](parity/report.md) generation date |
+| Where do figures go? | `docs/figures/exampleNN/*.png` (canonical) |
+| How do I run tests? | `pytest -q`, or `pytest -q -k "test_repo_layout or test_api_surface"` for smoke |
+
+---
+
+## 9. Sanity checks before reporting results
+
+When an agent uses nSTAT to produce a scientific result, verify:
+
+1. **Sample rate consistency** — every `nspikeTrain`, `Covariate`, and
+   `Trial` should agree on `sampleRate`. Mixing rates triggers automatic
+   resampling that may not be what you want (see §5.3 footgun on `getNST`).
+2. **Time bounds** — call `getTime()` / `nspikeTrain.spikeTimes.min()` to
+   confirm `minTime`/`maxTime` cover your analysis window. The
+   `setMaxTime` off-by-one (§5.3) means you may be dropping the boundary
+   sample.
+3. **KS goodness-of-fit** — for GLMs, always call
+   `fit_result.computeKSStats()` and verify the KS statistic is below the
+   95% CI band. A passing AIC/BIC alone is not sufficient.
+4. **Lambda signal sanity** — `fit_result.lambda_signal.getData()` should
+   be strictly positive. If it isn't, the Newton iteration likely failed;
+   check `fit_result.b` for `NaN`.
+5. **For decoding**: confirm the state covariance `W` is positive
+   semi-definite at each timestep. Negative diagonals indicate numerical
+   blow-up in the PPAF updates.
+6. **Reproducibility** — runs are NOT seeded by default. For reproducible
+   simulations, set `np.random.seed()` BEFORE calling any nSTAT simulator
+   (the package uses legacy NumPy RNG, not `default_rng`).
+
+---
+
+## 10. When in doubt
+
+- The README at the repo root is the canonical user-facing introduction.
+- The paper at [DOI:10.1016/j.jneumeth.2012.08.009](https://doi.org/10.1016/j.jneumeth.2012.08.009)
+  describes the underlying methods.
+- The MATLAB reference toolbox is at https://github.com/cajigaslab/nSTAT —
+  if behaviour disagrees with this Python port, MATLAB is the gold
+  standard except for the cases listed in [AUDIT_REPORT.md](AUDIT_REPORT.md)
+  §1 (MATLAB bugs fixed in Python).
+- The lab websites:
+  - https://www.neurostat.mit.edu (Neuroscience Statistics Research Lab)
+  - https://www.med.upenn.edu/cajigaslab/ (RESToRe Lab)
+
+---
+
+*This file is intended to be loaded into the context of an AI agent
+before it begins work with `nstat-python`. Keep it under 600 lines so it
+fits in a typical context window alongside actual code.*
