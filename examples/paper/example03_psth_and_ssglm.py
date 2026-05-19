@@ -50,6 +50,7 @@ from nstat import (  # noqa: E402
     Trial,
     TrialConfig,
     ConfigCollection,
+    apply_plot_style,
 )
 from nstat.cif import CIF  # noqa: E402
 from nstat.confidence_interval import ConfidenceInterval  # noqa: E402
@@ -605,17 +606,28 @@ def run_part_b(data_dir, export_dir=None):
 # =====================================================================
 # Main
 # =====================================================================
-def run_example03(*, export_figures: bool = False, export_dir: Path | None = None):
-    """Run Example 03: PSTH and SSGLM dynamics."""
+def run_example03(*, export_figures: bool = False, export_dir: Path | None = None,
+                  visible: bool = True, plot_style: str = "legacy"):
+    """Run Example 03: PSTH and SSGLM dynamics.
+
+    plot_style:
+        "legacy" (default) preserves the paper-figure styling for strict
+        reproduction.  "modern" routes each figure through
+        :func:`nstat.apply_plot_style` for readability-focused tick/legend
+        treatment.
+    """
     data_dir = ensure_example_data(download=True)
 
     if export_dir is None:
-        export_dir = THIS_DIR / "figures" / "example03"
+        export_dir = REPO_ROOT / "docs" / "figures" / "example03"
 
     figs_a, _, _ = run_part_a(data_dir, export_dir)
     figs_b = run_part_b(data_dir, export_dir)
 
     all_figs = {**figs_a, **figs_b}
+
+    for fig in all_figs.values():
+        apply_plot_style(fig, style=plot_style)
 
     if export_figures:
         export_dir.mkdir(parents=True, exist_ok=True)
@@ -624,7 +636,10 @@ def run_example03(*, export_figures: bool = False, export_dir: Path | None = Non
             fig.savefig(str(path), dpi=250, facecolor="w", edgecolor="none")
             print(f"  Saved {path}")
 
-    plt.show()
+    if visible:
+        plt.show()
+    else:
+        plt.close("all")
     print(f"\nExample 03 complete. Generated {len(all_figs)} figure(s).")
     return all_figs
 
@@ -636,9 +651,17 @@ if __name__ == "__main__":
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     parser.add_argument("--export-figures", action="store_true")
     parser.add_argument("--export-dir", type=Path, default=None)
+    parser.add_argument("--no-display", action="store_true",
+                        help="Run without displaying figures (headless).")
+    parser.add_argument("--plot-style", choices=("modern", "legacy"),
+                        default="legacy",
+                        help="Figure styling: 'legacy' (paper reproduction) "
+                             "or 'modern' (readability-focused).")
     args = parser.parse_args()
 
     run_example03(
         export_figures=args.export_figures,
         export_dir=args.export_dir,
+        visible=not args.no_display,
+        plot_style=args.plot_style,
     )

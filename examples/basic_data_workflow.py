@@ -29,7 +29,7 @@ def main() -> None:
     print(f"Duration (s): {spike_train.duration:.3f}")
     print(f"Spikes: {spike_train.n_spikes}")
     print(f"Mean simulated rate (Hz): {rate_hz.mean():.3f}")
-    print(f"PSTH bins: {counts.shape[1]}")
+    print(f"PSTH bins: {counts.shape[0]}")
     print(f"PSTH first 5 rates (Hz): {np.round(mean_rate_hz[:5], 3)}")
 
 

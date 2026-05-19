@@ -36,6 +36,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import loadmat
 
+
+def _boxplot_labels(names):
+    """Return matplotlib version-appropriate kwargs for boxplot tick labels.
+
+    Matplotlib renamed ``labels`` to ``tick_labels`` in 3.9 (the old name
+    still works with a DeprecationWarning).  Pre-3.9 only knows ``labels``.
+    """
+    import matplotlib
+    major, minor = (int(x) for x in matplotlib.__version__.split(".")[:2])
+    if (major, minor) >= (3, 9):
+        return {"tick_labels": names}
+    return {"labels": names}
+
 THIS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = THIS_DIR.parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -47,6 +60,7 @@ from nstat import (  # noqa: E402
     FitSummary,
     TrialConfig,
     ConfigCollection,
+    apply_plot_style,
 )
 from nstat.core import nspikeTrain  # noqa: E402
 from nstat.data_manager import ensure_example_data  # noqa: E402
@@ -189,13 +203,21 @@ def _compute_place_field(coeffs, grid_design, grid_shape, sample_rate=1.0):
 # =====================================================================
 # Main example
 # =====================================================================
-def run_example04(*, export_figures: bool = False, export_dir: Path | None = None):
-    """Run Example 04: Place-cell receptive fields."""
+def run_example04(*, export_figures: bool = False, export_dir: Path | None = None,
+                  visible: bool = True, plot_style: str = "legacy"):
+    """Run Example 04: Place-cell receptive fields.
+
+    plot_style:
+        "legacy" (default) preserves the paper-figure styling for strict
+        reproduction.  "modern" routes each figure through
+        :func:`nstat.apply_plot_style` for readability-focused tick/legend
+        treatment.
+    """
     print("=== Example 04: Place-Cell Receptive Fields ===")
 
     data_dir = ensure_example_data(download=True)
     if export_dir is None:
-        export_dir = THIS_DIR / "figures" / "example04"
+        export_dir = REPO_ROOT / "docs" / "figures" / "example04"
 
     # ==================================================================
     # 1. Load data for both animals
@@ -272,19 +294,19 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     fig2, axes2 = plt.subplots(1, 3, figsize=(14, 9))  # MATLAB: 1400x900
 
     axes2[0].boxplot([dKS1[np.isfinite(dKS1)], dKS2[np.isfinite(dKS2)]],
-                     tick_labels=["Animal 1", "Animal 2"],
+                     **_boxplot_labels(["Animal 1", "Animal 2"]),
                      vert=True)
     axes2[0].set_title(r"$\Delta$ KS Statistic", fontsize=14, fontweight="bold",
                        fontfamily="Arial")
 
     axes2[1].boxplot([dAIC1[np.isfinite(dAIC1)], dAIC2[np.isfinite(dAIC2)]],
-                     tick_labels=["Animal 1", "Animal 2"],
+                     **_boxplot_labels(["Animal 1", "Animal 2"]),
                      vert=True)
     axes2[1].set_title(r"$\Delta$ AIC", fontsize=14, fontweight="bold",
                        fontfamily="Arial")
 
     axes2[2].boxplot([dBIC1[np.isfinite(dBIC1)], dBIC2[np.isfinite(dBIC2)]],
-                     tick_labels=["Animal 1", "Animal 2"],
+                     **_boxplot_labels(["Animal 1", "Animal 2"]),
                      vert=True)
     axes2[2].set_title(r"$\Delta$ BIC", fontsize=14, fontweight="bold",
                        fontfamily="Arial")
@@ -449,6 +471,9 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
         "fig07_example_cell_mesh_comparison": fig7,
     }
 
+    for fig in all_figs.values():
+        apply_plot_style(fig, style=plot_style)
+
     if export_figures:
         export_dir.mkdir(parents=True, exist_ok=True)
         for name, fig in all_figs.items():
@@ -456,7 +481,10 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
             fig.savefig(str(path), dpi=250, facecolor="w", edgecolor="none")
             print(f"  Saved {path}")
 
-    plt.show()
+    if visible:
+        plt.show()
+    else:
+        plt.close("all")
     print(f"\nExample 04 complete. Generated {len(all_figs)} figure(s).")
     return all_figs
 
@@ -468,9 +496,17 @@ if __name__ == "__main__":
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     parser.add_argument("--export-figures", action="store_true")
     parser.add_argument("--export-dir", type=Path, default=None)
+    parser.add_argument("--no-display", action="store_true",
+                        help="Run without displaying figures (headless).")
+    parser.add_argument("--plot-style", choices=("modern", "legacy"),
+                        default="legacy",
+                        help="Figure styling: 'legacy' (paper reproduction) "
+                             "or 'modern' (readability-focused).")
     args = parser.parse_args()
 
     run_example04(
         export_figures=args.export_figures,
         export_dir=args.export_dir,
+        visible=not args.no_display,
+        plot_style=args.plot_style,
     )

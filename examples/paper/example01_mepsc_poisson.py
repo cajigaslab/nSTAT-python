@@ -42,6 +42,7 @@ from nstat import (  # noqa: E402
     Analysis,
     ConfigColl,
     CovColl,
+    apply_plot_style,
     nspikeTrain,
     nstColl,
     Trial,
@@ -77,8 +78,10 @@ def _matlab_colon(start: float, step: float, stop: float) -> np.ndarray:
 # =========================================================================
 # Helper: export figure
 # =========================================================================
-def _maybe_export(fig, export_dir: Path | None, name: str, dpi: int = 250):
-    """Save figure to disk if export_dir is set."""
+def _maybe_export(fig, export_dir: Path | None, name: str,
+                  *, dpi: int = 250, plot_style: str = "legacy"):
+    """Apply plot style and save figure to disk if export_dir is set."""
+    apply_plot_style(fig, style=plot_style)
     saved = []
     if export_dir is not None:
         export_dir.mkdir(parents=True, exist_ok=True)
@@ -93,8 +96,15 @@ def _maybe_export(fig, export_dir: Path | None, name: str, dpi: int = 250):
 # Main example function
 # =========================================================================
 def run_example01(*, export_figures: bool = False, export_dir: Path | None = None,
-                  visible: bool = True):
-    """Run Example 01: mEPSC Poisson models."""
+                  visible: bool = True, plot_style: str = "legacy"):
+    """Run Example 01: mEPSC Poisson models.
+
+    plot_style:
+        "legacy" (default) preserves the paper-figure styling for strict
+        reproduction.  "modern" routes each figure through
+        :func:`nstat.apply_plot_style` for readability-focused tick/legend
+        treatment.
+    """
 
     if not visible:
         matplotlib.use("Agg")
@@ -168,7 +178,8 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.legend([r"$\lambda_{const}$"], loc="upper right")
 
     fig1.tight_layout()
-    figure_files.extend(_maybe_export(fig1, export_dir, "fig01_constant_mg_summary"))
+    figure_files.extend(_maybe_export(fig1, export_dir, "fig01_constant_mg_summary",
+                                      plot_style=plot_style))
 
     # ==================================================================
     # Part 2: Varying magnesium concentration — Piecewise baseline model
@@ -203,7 +214,8 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.xaxis.label.set(fontsize=12, fontweight="bold", fontfamily="Arial")
 
     fig2.tight_layout()
-    figure_files.extend(_maybe_export(fig2, export_dir, "fig02_washout_raster_overview"))
+    figure_files.extend(_maybe_export(fig2, export_dir, "fig02_washout_raster_overview",
+                                      plot_style=plot_style))
 
     # ==================================================================
     # Part 3: Piecewise baseline model and model comparison
@@ -281,7 +293,8 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.legend([r"$\lambda_{const}$", r"$\lambda_{const-epoch}$"], loc="upper right")
 
     fig3.tight_layout()
-    figure_files.extend(_maybe_export(fig3, export_dir, "fig03_piecewise_baseline_comparison"))
+    figure_files.extend(_maybe_export(fig3, export_dir, "fig03_piecewise_baseline_comparison",
+                                      plot_style=plot_style))
 
     if visible:
         plt.show()
@@ -303,14 +316,19 @@ if __name__ == "__main__":
                         help="Directory for exported figures.")
     parser.add_argument("--no-display", action="store_true",
                         help="Run without displaying figures (headless).")
+    parser.add_argument("--plot-style", choices=("modern", "legacy"),
+                        default="legacy",
+                        help="Figure styling: 'legacy' (paper reproduction) "
+                             "or 'modern' (readability-focused).")
     args = parser.parse_args()
 
     export_dir = args.export_dir
     if args.export_figures and export_dir is None:
-        export_dir = THIS_DIR / "figures" / "example01"
+        export_dir = REPO_ROOT / "docs" / "figures" / "example01"
 
     run_example01(
         export_figures=args.export_figures,
         export_dir=export_dir if args.export_figures else None,
         visible=not args.no_display,
+        plot_style=args.plot_style,
     )

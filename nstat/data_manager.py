@@ -286,7 +286,12 @@ def getPaperDataDirs(*, download: bool = True) -> tuple[Path, Path, Path, Path, 
 
 
 def ensure_example_data(download: bool = True) -> Path:
-    """Ensure the canonical example data exists locally and return its path."""
+    """Ensure the canonical example data exists locally and return its path.
+
+    Set ``NSTAT_OFFLINE=1`` to force offline behaviour: data must already be
+    present locally; this function will not attempt a network download even
+    if ``download=True``.  Useful for CI / air-gapped environments.
+    """
 
     data_dir = get_data_dir()
     if data_is_present(data_dir):
@@ -294,10 +299,23 @@ def ensure_example_data(download: bool = True) -> Path:
             _write_sentinel(data_dir, source_url="local-existing")
         return data_dir
 
-    if not download:
+    offline = os.environ.get("NSTAT_OFFLINE", "").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+    if not download or offline:
+        hint_offline = (
+            "  NSTAT_OFFLINE is set; download was skipped.\n"
+            if offline else ""
+        )
         raise FileNotFoundError(
-            f"Example data not found at {data_dir}. "
-            "Set NSTAT_DATA_DIR or call ensure_example_data(download=True)."
+            f"nSTAT example data not found at {data_dir}.\n"
+            f"{hint_offline}"
+            "To install the paper-example dataset, run:\n"
+            "    nstat-install --download-example-data always\n"
+            "or programmatically:\n"
+            "    from nstat.data_manager import ensure_example_data\n"
+            "    ensure_example_data(download=True)\n"
+            "You can also point NSTAT_DATA_DIR at an existing local copy."
         )
 
     download_tmp_root = (_repo_root() / "output" / "data_download").resolve()

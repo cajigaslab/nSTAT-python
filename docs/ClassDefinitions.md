@@ -8,7 +8,7 @@ category.
 
 ### `SignalObj` (`nstat.SignalObj`)
 
-Primary notebook: `notebooks/SignalObjExamples.ipynb`
+Primary notebook: `../notebooks/SignalObjExamples.ipynb`
 
 **Construction and metadata**:
 `copySignal`, `setName`, `setXlabel`, `setYLabel`, `setUnits`, `setXUnits`,
@@ -49,18 +49,18 @@ Primary notebook: `notebooks/SignalObjExamples.ipynb`
 
 ### `Covariate` (`nstat.Covariate`)
 
-Primary notebook: `notebooks/CovariateExamples.ipynb`
+Primary notebook: `../notebooks/CovariateExamples.ipynb`
 
 Inherits from `SignalObj`. Adds confidence interval support:
 `setConfInterval`, `mu`, `sigma`
 
 ### `ConfidenceInterval` (`nstat.ConfidenceInterval`)
 
-Primary notebook: `notebooks/ConfidenceIntervalOverview.ipynb`
+Primary notebook: `../notebooks/ConfidenceIntervalOverview.ipynb`
 
 ### `CovColl` (`nstat.CovColl`)
 
-Primary notebook: `notebooks/CovCollExamples.ipynb`
+Primary notebook: `../notebooks/CovCollExamples.ipynb`
 
 **Collection management**:
 `add`, `addCovariate`, `addCovCollection`, `addToColl`, `removeCovariate`,
@@ -89,11 +89,11 @@ Primary notebook: `notebooks/CovCollExamples.ipynb`
 
 ### `nspikeTrain` (`nstat.nspikeTrain`)
 
-Primary notebook: `notebooks/nSpikeTrainExamples.ipynb`
+Primary notebook: `../notebooks/nSpikeTrainExamples.ipynb`
 
 ### `nstColl` (`nstat.nstColl`)
 
-Primary notebook: `notebooks/nstCollExamples.ipynb`
+Primary notebook: `../notebooks/nstCollExamples.ipynb`
 
 **Collection management**:
 `addSingleSpikeToColl`, `addToColl`, `merge`, `length`, `get_nst`, `getNST`,
@@ -119,11 +119,11 @@ Primary notebook: `notebooks/nstCollExamples.ipynb`
 
 ### `History` (`nstat.History`)
 
-Primary notebook: `notebooks/HistoryExamples.ipynb`
+Primary notebook: `../notebooks/HistoryExamples.ipynb`
 
 ### `Events` (`nstat.Events`)
 
-Primary notebook: `notebooks/EventsExamples.ipynb`
+Primary notebook: `../notebooks/EventsExamples.ipynb`
 
 ---
 
@@ -131,7 +131,7 @@ Primary notebook: `notebooks/EventsExamples.ipynb`
 
 ### `Trial` (`nstat.Trial`)
 
-Primary notebook: `notebooks/TrialExamples.ipynb`
+Primary notebook: `../notebooks/TrialExamples.ipynb`
 
 **Partitioning**:
 `getTrialPartition`, `setTrialPartition`, `setTrialTimesFor`,
@@ -163,11 +163,11 @@ Primary notebook: `notebooks/TrialExamples.ipynb`
 
 ### `TrialConfig` (`nstat.TrialConfig`)
 
-Primary notebook: `notebooks/TrialConfigExamples.ipynb`
+Primary notebook: `../notebooks/TrialConfigExamples.ipynb`
 
 ### `ConfigColl` (`nstat.ConfigColl`)
 
-Primary notebook: `notebooks/ConfigCollExamples.ipynb`
+Primary notebook: `../notebooks/ConfigCollExamples.ipynb`
 
 ---
 
@@ -175,14 +175,14 @@ Primary notebook: `notebooks/ConfigCollExamples.ipynb`
 
 ### `CIF` (`nstat.CIF`)
 
-Primary notebook: `notebooks/PPSimExample.ipynb`
+Primary notebook: `../notebooks/PPSimExample.ipynb`
 
 Conditional intensity function (CIF) primitives and point-process simulation
 via thinning.
 
 ### `Analysis` (`nstat.Analysis`)
 
-Primary notebook: `notebooks/AnalysisExamples.ipynb`
+Primary notebook: `../notebooks/AnalysisExamples.ipynb`
 
 **Core fitting**:
 `GLMFit`, `run_analysis_for_neuron`, `run_analysis_for_all_neurons`,
@@ -204,7 +204,7 @@ Primary notebook: `notebooks/AnalysisExamples.ipynb`
 
 ### `FitResult` (`nstat.FitResult`)
 
-Primary notebook: `notebooks/FitResultExamples.ipynb`
+Primary notebook: `../notebooks/FitResultExamples.ipynb`
 
 **Coefficient access**:
 `getCoeffs`, `getHistCoeffs`, `getCoeffIndex`, `getHistIndex`, `getParam`,
@@ -227,7 +227,7 @@ Primary notebook: `notebooks/FitResultExamples.ipynb`
 
 ### `FitResSummary` (`nstat.FitResSummary`)
 
-Primary notebook: `notebooks/FitResSummaryExamples.ipynb`
+Primary notebook: `../notebooks/FitResSummaryExamples.ipynb`
 
 Alias of `FitSummary`. Aggregates multiple `FitResult` objects.
 
@@ -245,7 +245,7 @@ Alias of `FitSummary`. Aggregates multiple `FitResult` objects.
 
 ### `DecodingAlgorithms` (`nstat.DecodingAlgorithms`)
 
-Primary notebook: `notebooks/DecodingExample.ipynb`
+Primary notebook: `../notebooks/DecodingExample.ipynb`
 
 **Point-process decode filters**:
 `PPDecodeFilterLinear`, `PPDecodeFilter`, `PPHybridFilterLinear`,
