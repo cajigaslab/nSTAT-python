@@ -479,7 +479,8 @@ fidelity_summary:
     exact: 18
     not_applicable: 1
   notebook_fidelity:
-    exact: 13
+    exact: 6
+    high_fidelity: 7
   simulink_fidelity:
     exact_with_matlab_engine_bridge: 2
     reference_only: 10

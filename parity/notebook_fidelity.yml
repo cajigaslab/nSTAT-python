@@ -1,5 +1,5 @@
 version: 1
-generated_on: '2026-03-14'
+generated_on: '2026-05-19'
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
@@ -8,7 +8,7 @@ status_legend:
 - high_fidelity
 - partial
 - missing
-matlab_repo_root: /private/tmp/nSTAT
+matlab_repo_root: /Users/iahncajigas/projects/nSTAT
 items:
 - topic: nSTATPaperExamples
   source_matlab: nSTATPaperExamples.mlx
@@ -29,11 +29,11 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 37
-  matlab_published_figures: 30
-  section_delta: 3
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: TrialExamples
   source_matlab: TrialExamples.mlx
   python_notebook: notebooks/TrialExamples.ipynb
@@ -52,11 +52,11 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 9
-  matlab_published_figures: 6
-  section_delta: 0
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: AnalysisExamples
   source_matlab: AnalysisExamples.mlx
   python_notebook: notebooks/AnalysisExamples.ipynb
@@ -65,9 +65,10 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Complete MATLAB standard-GLM workflow with the canonical
-    glm_data.mat dataset and real KS/model-visualization figures. Only inherent GLM
-    solver numerics and matplotlib styling differ.
+  remaining_differences: The notebook now follows the MATLAB standard-GLM workflow
+    with the canonical `glm_data.mat` dataset and real KS/model-visualization figures;
+    coefficient values and styling still vary modestly because the Python GLM backend
+    and plotting defaults differ from MATLAB.
   python_sections: 7
   python_expected_figures: 4
   python_uses_figure_tracker: true
@@ -76,11 +77,11 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 7
-  matlab_published_figures: 4
-  section_delta: 0
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: AnalysisExamples2
   source_matlab: AnalysisExamples2.mlx
   python_notebook: notebooks/AnalysisExamples2.ipynb
@@ -89,33 +90,34 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Complete MATLAB toolbox workflow on the canonical glm_data.mat
-    dataset with executable Trial, ConfigColl, and Analysis calls. Only inherent GLM
-    solver numerics and plot styling differ.
+  remaining_differences: The notebook now follows the MATLAB toolbox workflow on the
+    canonical `glm_data.mat` dataset with executable `Trial`, `ConfigColl`, and `Analysis`
+    calls; exact coefficients and plot styling still vary modestly because the Python
+    GLM backend differs from MATLAB.
   python_sections: 9
-  python_expected_figures: 4
+  python_expected_figures: 5
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 9
-  matlab_published_figures: 4
-  section_delta: 0
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: DecodingExample
   source_matlab: DecodingExample.mlx
   python_notebook: notebooks/DecodingExample.ipynb
-  status: exact
-  fidelity_status: exact
+  status: high_fidelity
+  fidelity_status: high_fidelity
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Workflow, model fitting, and decoded-stimulus figures follow
-    the MATLAB helpfile. Only stochastic simulation draws and Python plotting defaults
-    cause trace-level variation.
+  remaining_differences: Workflow, model fitting, and decoded-stimulus figures now
+    follow the MATLAB helpfile closely; exact traces still depend on stochastic simulation
+    draws and Python plotting defaults.
   python_sections: 4
   python_expected_figures: 5
   python_uses_figure_tracker: true
@@ -124,21 +126,22 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 4
-  matlab_published_figures: 7
-  section_delta: 0
-  figure_delta: -2
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: DecodingExampleWithHist
   source_matlab: DecodingExampleWithHist.mlx
   python_notebook: notebooks/DecodingExampleWithHist.ipynb
-  status: exact
-  fidelity_status: exact
+  status: high_fidelity
+  fidelity_status: high_fidelity
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Mirrors the MATLAB history-aware decoding workflow. Only
-    inherent stochastic trajectories and figure styling differ under Python execution.
+  remaining_differences: The notebook now mirrors the MATLAB history-aware decoding
+    workflow closely; exact stochastic trajectories and figure styling still vary
+    slightly under Python execution.
   python_sections: 2
   python_expected_figures: 2
   python_uses_figure_tracker: true
@@ -147,70 +150,74 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 2
-  matlab_published_figures: 2
-  section_delta: 0
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: ExplicitStimulusWhiskerData
   source_matlab: ExplicitStimulusWhiskerData.mlx
   python_notebook: notebooks/ExplicitStimulusWhiskerData.ipynb
-  status: exact
-  fidelity_status: exact
+  status: high_fidelity
+  fidelity_status: high_fidelity
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Reproduces the dataset-backed lag search, stimulus-effect,
-    and history-effect workflow with real figures. Only inherent GLM solver numerics
-    and plotting defaults differ.
+  remaining_differences: The notebook now reproduces the dataset-backed lag search,
+    stimulus-effect, and history-effect workflow with real figures; exact KS traces
+    and coefficient values still vary modestly from MATLAB because the Python GLM
+    backend and plotting defaults are different.
   python_sections: 7
-  python_expected_figures: 10
+  python_expected_figures: 9
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 7
-  matlab_published_figures: 10
-  section_delta: 0
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
   python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
-  status: exact
-  fidelity_status: exact
+  status: high_fidelity
+  fidelity_status: high_fidelity
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Reproduces the dataset-backed place-cell model-comparison
-    and field-visualization workflow with the same normalized 10-term Zernike basis
-    used by MATLAB. Only inherent GLM solver numerics and surface styling differ.
+  remaining_differences: The notebook now reproduces the dataset-backed place-cell
+    model-comparison and field-visualization workflow with the same normalized 10-term
+    Zernike basis used by MATLAB; exact AIC/BIC values and surface styling still vary
+    modestly because the Python GLM solver and plotting backend are not byte-identical
+    to MATLAB.
   python_sections: 5
-  python_expected_figures: 10
+  python_expected_figures: 11
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 5
-  matlab_published_figures: 10
-  section_delta: 0
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: HybridFilterExample
   source_matlab: HybridFilterExample.mlx
   python_notebook: notebooks/HybridFilterExample.ipynb
-  status: exact
-  fidelity_status: exact
+  status: high_fidelity
+  fidelity_status: high_fidelity
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Reproduces the hybrid-filter simulation, single-run decoding,
-    and averaged summary figures with real outputs. Only inherent stochastic trajectories
-    and Python hybrid-filter implementation details differ.
+  remaining_differences: The notebook now reproduces the hybrid-filter simulation,
+    single-run decoding, and averaged summary figures with real outputs; the Python
+    port still uses the current hybrid-filter implementation instead of every MATLAB-specific
+    reporting branch.
   python_sections: 6
   python_expected_figures: 3
   python_uses_figure_tracker: true
@@ -219,11 +226,11 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 6
-  matlab_published_figures: 3
-  section_delta: 0
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: PPSimExample
   source_matlab: PPSimExample.mlx
   python_notebook: notebooks/PPSimExample.ipynb
@@ -243,11 +250,11 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 17
-  matlab_published_figures: 9
-  section_delta: 0
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: NetworkTutorial
   source_matlab: NetworkTutorial.mlx
   python_notebook: notebooks/NetworkTutorial.ipynb
@@ -267,22 +274,23 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 21
-  matlab_published_figures: 13
-  section_delta: 0
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb
-  status: exact
-  fidelity_status: exact
+  status: high_fidelity
+  fidelity_status: high_fidelity
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Reproduces the constant-rate and piecewise-rate validation
-    workflows with real Trial/Analysis objects and figure outputs. CI uses a documented
-    shorter deterministic fast path for stability.
+  remaining_differences: The notebook now reproduces the constant-rate and piecewise-rate
+    validation workflows with real `Trial`/`Analysis` objects and figure outputs;
+    local execution uses the MATLAB-scale simulation sizes, while CI switches to a
+    documented shorter deterministic fast path for stability.
   python_sections: 11
   python_expected_figures: 10
   python_uses_figure_tracker: true
@@ -291,32 +299,34 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 11
-  matlab_published_figures: 10
-  section_delta: 0
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
 - topic: StimulusDecode2D
   source_matlab: StimulusDecode2D.mlx
   python_notebook: notebooks/StimulusDecode2D.ipynb
-  status: exact
-  fidelity_status: exact
+  status: high_fidelity
+  fidelity_status: high_fidelity
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: Follows the MATLAB nonlinear-CIF decoding workflow with `DecodingAlgorithms.PPDecodeFilter`
-    and all 4 published figures. Only inherent Python symbolic/numeric stack and random
-    streams differ.
+  remaining_differences: The notebook now follows the MATLAB nonlinear-CIF decoding
+    workflow and uses `DecodingAlgorithms.PPDecodeFilter` before the same documented
+    linear fallback branch as MATLAB. Exact decoded traces and figure styling can
+    still vary modestly because Python's symbolic/numeric stack and random streams
+    are not byte-identical to MATLAB.
   python_sections: 3
-  python_expected_figures: 4
+  python_expected_figures: 6
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /private/tmp/nSTAT
-  matlab_sections: 4
-  matlab_published_figures: 4
-  section_delta: -1
-  figure_delta: 0
+  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_sections: null
+  matlab_published_figures: null
+  section_delta: null
+  figure_delta: null
