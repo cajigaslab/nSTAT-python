@@ -6,9 +6,11 @@ docs/figures/exampleNN/.  Called by CI on every push and can also be
 run locally:
 
     python examples/paper/regenerate_all_figures.py
+    python examples/paper/regenerate_all_figures.py --plot-style modern
 """
 from __future__ import annotations
 
+import argparse
 import importlib
 import sys
 import traceback
@@ -33,7 +35,14 @@ EXAMPLES = [
 ]
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--plot-style", choices=("modern", "legacy"),
+                        default="legacy",
+                        help="Figure styling passed to each example "
+                             "(default: legacy / strict paper reproduction).")
+    args = parser.parse_args(argv)
+
     # Ensure example data is available
     from nstat.data_manager import ensure_example_data
     ensure_example_data(download=True)
@@ -49,7 +58,8 @@ def main() -> int:
                 f"examples.paper.{mod_name}"
             )
             run_fn = getattr(mod, run_fn_name)
-            run_fn(export_figures=True, export_dir=export_dir)
+            run_fn(export_figures=True, export_dir=export_dir,
+                   visible=False, plot_style=args.plot_style)
             print(f"  OK: figures saved to {export_dir}")
         except Exception:
             traceback.print_exc()

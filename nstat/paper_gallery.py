@@ -28,7 +28,6 @@ def build_gallery_manifest(repo_root: Path | None = None) -> dict[str, Any]:
                 "example_id": row["example_id"],
                 "title": row["title"],
                 "source_script": row["script"],
-                "matlab_source": row["matlab_source"],
                 "description": row["description"],
                 "question": row["question"],
                 "run_command": f"python {row['script']}",

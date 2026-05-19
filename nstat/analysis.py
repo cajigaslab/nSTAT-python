@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 from scipy.stats import chi2, norm
@@ -10,6 +12,53 @@ from .fit import FitResult, _SingleFit, _matlab_compute_ks_arrays
 from .glm import fit_binomial_glm, fit_poisson_glm
 from .signal import Covariate
 from .trial import ConfigCollection, SpikeTrainCollection, Trial
+
+
+@dataclass
+class GLMFitResult:
+    """Structured return value of :meth:`Analysis.GLMFit`.
+
+    Supports tuple unpacking and indexing for back-compat with the legacy
+    ``lambda_sig, b, dev, stats, AIC, BIC, logLL, distribution = GLMFit(...)``
+    pattern while providing named-field access on the dataclass instance.
+
+    >>> result = GLMFitResult(lambda_sig, b, dev, stats, AIC, BIC, logLL, "poisson")
+    >>> result.AIC                            # named access
+    >>> ls, b, dev, s, aic, bic, ll, d = result   # tuple unpack still works
+    >>> result[4] == result.AIC               # index access (== AIC)
+    """
+
+    lambda_signal: Any
+    b: np.ndarray
+    dev: float
+    stats: dict[str, Any] = field(default_factory=dict)
+    AIC: float = 0.0
+    BIC: float = 0.0
+    logLL: float = 0.0
+    distribution: str = "poisson"
+
+    # --- back-compat: behaves like the legacy 8-tuple ----------------------
+
+    def __iter__(self):
+        yield self.lambda_signal
+        yield self.b
+        yield self.dev
+        yield self.stats
+        yield self.AIC
+        yield self.BIC
+        yield self.logLL
+        yield self.distribution
+
+    def __len__(self) -> int:
+        return 8
+
+    def __getitem__(self, idx: int):
+        return tuple(self)[idx]
+
+    @property
+    def loglik(self) -> float | None:
+        """True Bernoulli/Poisson log-likelihood (from ``stats['loglik']``)."""
+        return self.stats.get("loglik")
 
 
 def psth(spike_trains: Sequence[object], bin_edges: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -292,8 +341,17 @@ class Analysis:
 
         # MATLAB stores logLL using the legacy per-bin convention
         # `sum(y.*log(data*delta) + (1-y).*(1-data*delta))` for both GLM branches.
+        # NOTE: this is *not* a true log-likelihood (the negative-class term is
+        # missing the outer ``log``).  We retain it under the ``logLL`` name for
+        # MATLAB parity, and expose the true Bernoulli/Poisson log-likelihood
+        # in ``stats["loglik"]`` below so callers can use the standard
+        # AIC = -2*loglik + 2*k relation.
         matlab_bin_mass = np.maximum(rate_hz / max(sample_rate, 1e-12), 1e-12)
         logLL = float(np.sum(y * np.log(matlab_bin_mass) + (1.0 - y) * (1.0 - matlab_bin_mass)))
+
+        # True Bernoulli/Poisson per-bin log-likelihood (for AIC/BIC reasoning).
+        p = np.clip(matlab_bin_mass, 1e-12, 1.0 - 1e-12)
+        loglik = float(np.sum(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)))
 
         n_params = int(b.size)
         AIC = float(2.0 * n_params + dev)
@@ -328,8 +386,19 @@ class Analysis:
             "converged": bool(glm_res.converged),
             "se": se,
             "covb": covb,
+            "loglik": loglik,
+            "matlab_logLL": logLL,
         }
-        return lambda_sig, b, dev, stats, AIC, BIC, logLL, distribution
+        return GLMFitResult(
+            lambda_signal=lambda_sig,
+            b=b,
+            dev=dev,
+            stats=stats,
+            AIC=AIC,
+            BIC=BIC,
+            logLL=logLL,
+            distribution=distribution,
+        )
 
     @staticmethod
     def run_analysis_for_neuron(
@@ -478,19 +547,32 @@ class Analysis:
         # downstream summary classes read those cached fields directly.
         # Compute KS stats for ALL fits (not just fit 1) so that history
         # sweeps and multi-model comparisons have correct KS statistics.
+        import warnings as _warnings
         for _fit_i in range(1, fit_result.numResults + 1):
             try:
                 fit_result.computeKSStats(fit_num=_fit_i)
-            except Exception:
-                pass  # some configs may fail KS (e.g. degenerate lambda)
+            except (np.linalg.LinAlgError, ValueError, ZeroDivisionError,
+                    FloatingPointError, RuntimeWarning) as _ks_err:
+                _warnings.warn(
+                    f"KS statistic failed for fit {_fit_i}: "
+                    f"{type(_ks_err).__name__}: {_ks_err}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
         # Compute the conditional intensity on validation data when a
         # validation partition is present (mirrors Matlab behaviour).
         if has_validation:
             try:
                 fit_result.computeValLambda()
-            except Exception:
-                pass  # validation lambda is optional; don't fail the fit
+            except (np.linalg.LinAlgError, ValueError, ZeroDivisionError,
+                    FloatingPointError) as _val_err:
+                _warnings.warn(
+                    f"Validation lambda computation failed: "
+                    f"{type(_val_err).__name__}: {_val_err}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
         return fit_result
 
@@ -1289,6 +1371,7 @@ spikeTrigAvg = Analysis.spikeTrigAvg
 __all__ = [
     "Analysis",
     "GLMFit",
+    "GLMFitResult",
     "KSPlot",
     "RunAnalysisForAllNeurons",
     "RunAnalysisForNeuron",

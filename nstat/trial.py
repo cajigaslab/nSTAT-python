@@ -3,12 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import filtfilt
 
 from .core import Covariate, SignalObj, nspikeTrain
 from .events import Events
@@ -22,16 +18,8 @@ def _is_string_sequence(values: object) -> bool:
     return all(isinstance(item, str) for item in values)
 
 
-def _is_empty_config_value(value) -> bool:
-    if value is None:
-        return True
-    if isinstance(value, np.ndarray):
-        return value.size == 0
-    if isinstance(value, (str, bytes)):
-        return False
-    if isinstance(value, Sequence):
-        return len(value) == 0
-    return False
+from ._trial_config_impl import _is_empty_config_value, TrialConfig, ConfigCollection  # noqa: E402, F401
+
 
 
 def _copy_covariate(cov: Covariate) -> Covariate:
@@ -781,8 +769,20 @@ class SpikeTrainCollection:
             self.sampleRate = float(train.sampleRate)
         else:
             self.updateTimes(train)
-            self.sampleRate = float(max(float(self.sampleRate), float(train.sampleRate)))
-            self.enforceSampleRate()
+            old_rate = float(self.sampleRate)
+            new_rate = float(max(old_rate, float(train.sampleRate)))
+            self.sampleRate = new_rate
+            # Only resample existing trains when the collection rate just
+            # increased — otherwise existing trains are already aligned.
+            # This makes append amortized O(1) instead of O(n) per add.
+            if round(new_rate, 9) != round(old_rate, 9):
+                for stored in self.nstrain:
+                    if round(float(stored.sampleRate), 9) != round(new_rate, 9):
+                        stored.resample(new_rate)
+            # The new train itself may need to resample up to the collection
+            # rate (it is being mutated as part of the join contract).
+            if round(float(train.sampleRate), 9) != round(new_rate, 9):
+                train.resample(new_rate)
         self.nstrain.append(train)
         self.numSpikeTrains = len(self.nstrain)
         self.neuronMask = np.append(self.neuronMask, 1).astype(int)
@@ -837,9 +837,13 @@ class SpikeTrainCollection:
         if index < 1 or index > self.numSpikeTrains:
             raise IndexError("nstColl index out of bounds (1-based indexing).")
         nst = self.nstrain[index - 1]
-        # Matlab resamples to collection sampleRate on retrieval
+        # Matlab resamples to collection sampleRate on retrieval.  We copy
+        # first so the stored train is not destructively mutated when callers
+        # interleave ``getNST`` calls with collections at different rates.
         if nst.sampleRate != self.sampleRate:
-            nst = nst.resample(self.sampleRate)
+            import copy as _copy
+            nst = _copy.deepcopy(nst)
+            nst.resample(self.sampleRate)
         return nst
 
     def getNSTnames(self, selectorArray=None) -> list[str]:
@@ -956,6 +960,13 @@ class SpikeTrainCollection:
                     offset += float(prev_train.maxTime) + float(delta)
                     if np.asarray(train.spikeTimes).size:
                         spike_times.extend((np.asarray(train.spikeTimes, dtype=float).reshape(-1) + offset).tolist())
+            # The end of the collapsed window equals the sum of each train's
+            # duration.  When the collection is homogeneous (the common case
+            # after ``nstColl`` construction normalizes ``maxTime``) this
+            # collapses to ``N * maxTime``, matching legacy behavior.
+            # When trains have heterogeneous ``maxTime`` (bypassing
+            # normalization) this still bounds every offset spike correctly.
+            collapsed_max = sum(float(t.maxTime) for t in selected_trains)
         else:
             window_arr = np.asarray(windowTimes, dtype=float).reshape(-1)
             if len(selector) != window_arr.size - 1:
@@ -965,11 +976,12 @@ class SpikeTrainCollection:
                 delta_tw = float(window_arr[idx + 1] - local_min)
                 if np.asarray(train.spikeTimes).size:
                     spike_times.extend((np.asarray(train.spikeTimes, dtype=float).reshape(-1) * delta_tw + local_min).tolist())
+            collapsed_max = float(window_arr[-1])
 
-        collapsed = nspikeTrain(spike_times, name, 1.0 / delta, minTime, float(maxTime) * len(selector), "time", "s", "", "", -1)
+        collapsed = nspikeTrain(spike_times, name, 1.0 / delta, minTime, collapsed_max, "time", "s", "", "", -1)
         collapsed.setName(name)
         collapsed.setMinTime(float(minTime))
-        collapsed.setMaxTime(float(maxTime) * len(selector))
+        collapsed.setMaxTime(collapsed_max)
         collapsed.resample(1.0 / max(delta, 1e-12))
         return collapsed
 
@@ -998,11 +1010,15 @@ class SpikeTrainCollection:
             train.setMaxTime(float(self.maxTime))
 
     def enforceSampleRate(self) -> None:
-        """Resample any train whose rate differs from the collection rate."""
-        for index in range(1, self.numSpikeTrains + 1):
-            currSpike = self.getNST(index)
-            if round(float(currSpike.sampleRate), 9) != round(float(self.sampleRate), 9):
-                currSpike.resample(float(self.sampleRate))
+        """Resample any train whose rate differs from the collection rate.
+
+        Accesses ``self.nstrain`` directly (not via ``getNST``) because the
+        intent is in-place mutation of the stored trains.
+        """
+        target = float(self.sampleRate)
+        for train in self.nstrain:
+            if round(float(train.sampleRate), 9) != round(target, 9):
+                train.resample(target)
 
     def findMaxSampleRate(self) -> float:
         """Return the highest sample rate among all trains."""
@@ -1367,9 +1383,9 @@ class SpikeTrainCollection:
         time = (window_times[1:] + window_times[:-1]) * 0.5
         return Covariate(time, psth_data, "PSTH", "time", "s", "Hz", ["psth"])
 
-    def psthGLM(self, basisWidth: float = None, history=None, fitType: str = "poisson",
+    def psthGLM(self, basisWidth: float | None = None, history=None, fitType: str = "poisson",
                 selectorArray=None, minTime=None, maxTime=None, sampleRate=None,
-                *, binwidth: float = None, windowTimes=None,
+                *, binwidth: float | None = None, windowTimes=None,
                 alphaVal: float = 0.05, Mc: int = 1000):
         """GLM-based PSTH estimation (Matlab ``nstColl.psthGLM``).
 
@@ -1742,6 +1758,7 @@ class SpikeTrainCollection:
         filt_num = np.ones(nTerms, dtype=float) / float(nTerms)
         coeffsTemp[np.isnan(coeffsTemp)] = 0.0
         if coeffsTemp.T.shape[0] > 3 * nTerms:
+            from scipy.signal import filtfilt  # lazy: avoid scipy on import
             fcoeffs = filtfilt(filt_num, [1.0], coeffsTemp.T, axis=0).T
         else:
             fcoeffs = coeffsTemp
@@ -1993,268 +2010,6 @@ class SpikeTrainCollection:
         return coll
 
 
-class TrialConfig:
-    """Description of a single GLM fit configuration.
-
-    A ``TrialConfig`` specifies which covariates, history, ensemble
-    history, and sample rate to apply to a :class:`Trial` before fitting.
-    Multiple ``TrialConfig`` objects are collected in a
-    :class:`ConfigCollection` to run a batch of nested-model comparisons.
-
-    Parameters
-    ----------
-    covMask : sequence of str or nested sequences, or None
-        Covariate labels to include in the design matrix.
-        ``'all'`` includes every covariate.
-    sampleRate : float or None
-        If provided, the trial is resampled to this rate before fitting.
-    history : History or array_like or None
-        Self-history specification (History object or window-times).
-    ensCovHist : History or array_like or None
-        Ensemble-history specification.
-    ensCovMask : array_like or None
-        Binary mask selecting which neighbours contribute ensemble history.
-    covLag : array_like or None
-        Covariate shift / lag specification.
-    name : str
-        Human-readable name for this configuration.
-    """
-
-    def __init__(
-        self,
-        covMask: Sequence[Sequence[str]] | Sequence[str] | None = None,
-        sampleRate: float | None = None,
-        history: object | None = None,
-        ensCovHist: object | None = None,
-        ensCovMask: object | None = None,
-        covLag: object | None = None,
-        name: str = "",
-    ) -> None:
-        self.covMask = [] if covMask is None else covMask
-        self.sampleRate = [] if sampleRate is None else sampleRate
-        self.history = [] if history is None else history
-        self.ensCovHist = [] if ensCovHist is None else ensCovHist
-        self.ensCovMask = [] if ensCovMask is None else ensCovMask
-        self.covLag = [] if covLag is None else covLag
-        self.name = str(name)
-
-    @property
-    def covariate_names(self) -> list[str]:
-        """Return the name of each covariate group in the mask."""
-        if not self.covMask:
-            return []
-        names: list[str] = []
-        for item in self.covMask:
-            if isinstance(item, str):
-                names.append(item)
-            elif isinstance(item, Sequence) and item:
-                names.append(str(item[0]))
-        return names
-
-    def getName(self) -> str:
-        """Return this configuration's human-readable name."""
-        return self.name
-
-    def setName(self, name: str) -> None:
-        """Set this configuration's human-readable name."""
-        self.name = str(name)
-
-    def setConfig(self, trial: "Trial") -> None:
-        """Apply this configuration to a Trial (in place).
-
-        Sets the covariate mask, history, ensemble history, sample rate,
-        and covariate lag on the trial.
-        """
-        if not _is_empty_config_value(self.history):
-            trial.setHistory(self.history)
-        else:
-            trial.resetHistory()
-
-        if not _is_empty_config_value(self.sampleRate):
-            sampleRate = float(self.sampleRate)
-            if round(trial.sampleRate, 3) != round(sampleRate, 3):
-                trial.resample(sampleRate)
-
-        trial.setCovMask(self.covMask)
-
-        if not _is_empty_config_value(self.covLag):
-            trial.shiftCovariates(self.covLag)
-
-        if not _is_empty_config_value(self.ensCovHist):
-            trial.setEnsCovHist(self.ensCovHist)
-            trial.setEnsCovMask(self.ensCovMask)
-        else:
-            trial.setEnsCovHist()
-            trial.setEnsCovMask()
-
-    def toStructure(self) -> dict[str, Any]:
-        """Serialize to a plain dict (Matlab ``TrialConfig.toStructure``)."""
-        return {
-            "covMask": self.covMask,
-            "sampleRate": self.sampleRate,
-            "history": self.history,
-            "ensCovHist": self.ensCovHist,
-            "ensCovMask": self.ensCovMask,
-            "covLag": self.covLag,
-            "name": self.name,
-        }
-
-    @staticmethod
-    def fromStructure(structure: dict[str, Any]) -> "TrialConfig":
-        """Reconstruct from a dict produced by :meth:`toStructure`.
-
-        .. note:: Follows Matlab's omission of ``ensCovMask``."""
-        # MATLAB's `TrialConfig.fromStructure` omits `ensCovMask` and shifts
-        # the remaining trailing arguments left by one position.
-        return TrialConfig(
-            structure.get("covMask"),
-            structure.get("sampleRate"),
-            structure.get("history"),
-            structure.get("ensCovHist"),
-            structure.get("covLag"),
-            structure.get("name", ""),
-        )
-
-
-class ConfigCollection:
-    """Ordered collection of :class:`TrialConfig` objects.
-
-    Used by :class:`Analysis` to iterate over multiple model
-    specifications (e.g. baseline, baseline + stimulus,
-    baseline + stimulus + history) and compare their fits.
-
-    Parameters
-    ----------
-    configs : TrialConfig, sequence of TrialConfig, or None
-        Initial configuration(s).  ``None`` creates a single
-        ``"Empty Config"`` entry (Matlab parity).
-    """
-
-    def __init__(self, configs: Sequence[TrialConfig] | TrialConfig | str | None = None) -> None:
-        self.numConfigs = 0
-        self.configNames: list[str] = []
-        self.configArray: list[TrialConfig | str | list[str]] = []
-        # MATLAB ConfigColl() routes through addConfig([]), which creates
-        # a single "Empty Config" entry by default.
-        self.addConfig([] if configs is None else configs)
-
-    @property
-    def configs(self) -> list[TrialConfig]:
-        """List of actual ``TrialConfig`` entries (excludes empty placeholders)."""
-        return [cfg for cfg in self.configArray if isinstance(cfg, TrialConfig)]
-
-    def add_config(self, cfg: TrialConfig) -> None:
-        """Pythonic alias for :meth:`addConfig`."""
-        self.addConfig(cfg)
-
-    def addConfig(self, cfg: Sequence[TrialConfig] | TrialConfig | str | None) -> None:
-        """Append one or more configurations to this collection."""
-        if isinstance(cfg, Sequence) and not isinstance(cfg, (str, bytes, TrialConfig, np.ndarray)):
-            if len(cfg) == 0:
-                self.numConfigs += 1
-                self.configNames.append("Empty Config")
-                self.configArray.append(["Empty Config"])
-                return
-            for item in cfg:
-                self.addConfig(item)
-            return
-        if _is_empty_config_value(cfg):
-            self.numConfigs += 1
-            self.configNames.append("Empty Config")
-            self.configArray.append(["Empty Config"])
-            return
-        if isinstance(cfg, TrialConfig):
-            self.numConfigs += 1
-            self.configArray.append(cfg)
-            self.setConfigNames(cfg.name, [self.numConfigs])
-            return
-        if isinstance(cfg, str):
-            # MATLAB's string branch dereferences tcObj.name and errors.
-            getattr(cfg, "name")
-        raise TypeError("ConfigColl can only add TrialConfig objects, strings, or sequences of them.")
-
-    def get_config(self, idx: int) -> TrialConfig | str | list[str]:
-        """Return a config by 0-based index (Pythonic API)."""
-        if idx < 0 or idx >= self.numConfigs:
-            raise IndexError("ConfigCollection index out of bounds (0-based indexing).")
-        return self.configArray[idx]
-
-    def getConfig(self, idx: int):
-        """Return a config by 1-based index (Matlab ``ConfigColl.getConfig``)."""
-        if idx < 1 or idx > self.numConfigs:
-            raise IndexError("Index Out of Bounds")
-        return self.configArray[idx - 1]
-
-    def setConfig(self, trial: "Trial", index: int) -> None:
-        """Apply configuration *index* (1-based) to the given Trial."""
-        config = self.getConfig(index)
-        if isinstance(config, TrialConfig):
-            config.setConfig(trial)
-            return
-        raise ValueError("Cannot Set Empty Configs")
-
-    def getConfigNames(self, index: Sequence[int] | None = None) -> list[str]:
-        """Return the names for selected configs (1-based), or all if *index* is ``None``."""
-        if index is None:
-            index = list(range(1, self.numConfigs + 1))
-        out: list[str] = []
-        for i in index:
-            if i < 1 or i > self.numConfigs:
-                raise IndexError("Index Out of Bounds")
-            tempName = self.configNames[i - 1]
-            out.append(tempName if tempName else f"Fit {i}")
-        return out
-
-    def setConfigNames(self, names, index: Sequence[int] | None = None) -> None:
-        """Set the human-readable names for configs at 1-based *index* positions."""
-        if index is None:
-            index = list(range(1, self.numConfigs + 1))
-        if isinstance(names, str):
-            if len(index) != 1:
-                raise ValueError("If specifying a single name, index must be length 1.")
-            target = int(index[0]) - 1
-            while len(self.configNames) < self.numConfigs:
-                self.configNames.append("")
-            self.configNames[target] = names if names else f"Fit {self.numConfigs}"
-            return
-        if isinstance(names, Sequence) and not isinstance(names, (str, bytes)):
-            if len(index) != len(names):
-                raise ValueError("If specifying multiple names, names and index must match in length.")
-            for idx, name in zip(index, names):
-                self.setConfigNames(str(name), [int(idx)])
-            return
-        raise TypeError("names must be a string or sequence of strings.")
-
-    def getSubsetConfigs(self, subset: Sequence[int]) -> "ConfigCollection":
-        """Return a new collection containing only configs at 1-based *subset* indices."""
-        tempconfigs = [self.getConfig(int(i)) for i in subset]
-        return ConfigCollection(tempconfigs)
-
-    def toStructure(self) -> dict[str, Any]:
-        """Serialize to a plain dict (Matlab ``ConfigColl.toStructure``)."""
-        structure = {
-            "numConfigs": self.numConfigs,
-            "configNames": list(self.configNames),
-            "configArray": [],
-        }
-        for cfg in self.configArray:
-            if isinstance(cfg, TrialConfig):
-                structure["configArray"].append(cfg.toStructure())
-            else:
-                structure["configArray"].append(cfg)
-        return structure
-
-    @staticmethod
-    def fromStructure(structure: dict[str, Any]) -> "ConfigCollection":
-        """Reconstruct from a dict produced by :meth:`toStructure`."""
-        configs = []
-        for row in structure.get("configArray", []):
-            if isinstance(row, dict):
-                configs.append(TrialConfig.fromStructure(row))
-            else:
-                configs.append(row)
-        return ConfigCollection(configs)
-
 
 class Trial:
     """Single-trial data container binding spikes, covariates, and events (Matlab ``Trial``).
@@ -2305,8 +2060,12 @@ class Trial:
             raise ValueError("CovColl is a required argument")
 
         self.ev: Events | None = None
-        self.history: object | None = []
-        self.ensCovHist: object | None = []
+        # Both ``history`` and ``ensCovHist`` accept either a History object
+        # or a sequence of window-time floats; empty list is the "unset"
+        # sentinel for MATLAB parity.  ``_is_empty_config_value`` handles
+        # both None and [] downstream.
+        self.history: Any = []
+        self.ensCovHist: Any = []
         self.ensCovColl: CovariateCollection | None = None
         self.sampleRate = float("nan")
         self.minTime = float("nan")

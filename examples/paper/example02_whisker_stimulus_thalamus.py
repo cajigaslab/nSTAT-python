@@ -42,6 +42,7 @@ from nstat import (  # noqa: E402
     Analysis,
     ConfigColl,
     CovColl,
+    apply_plot_style,
     nspikeTrain,
     nstColl,
     Trial,
@@ -54,8 +55,10 @@ from nstat.data_manager import ensure_example_data  # noqa: E402
 # =========================================================================
 # Helper: export figure
 # =========================================================================
-def _maybe_export(fig, export_dir: Path | None, name: str, dpi: int = 250):
-    """Save figure to disk if export_dir is set."""
+def _maybe_export(fig, export_dir: Path | None, name: str,
+                  *, dpi: int = 250, plot_style: str = "legacy"):
+    """Apply plot style and save figure to disk if export_dir is set."""
+    apply_plot_style(fig, style=plot_style)
     saved = []
     if export_dir is not None:
         export_dir.mkdir(parents=True, exist_ok=True)
@@ -70,7 +73,7 @@ def _maybe_export(fig, export_dir: Path | None, name: str, dpi: int = 250):
 # Main example function
 # =========================================================================
 def run_example02(*, export_figures: bool = False, export_dir: Path | None = None,
-                  visible: bool = True):
+                  visible: bool = True, plot_style: str = "legacy"):
     """Run Example 02: Whisker stimulus GLM with lag and history selection.
 
     Mirrors Matlab example02_whisker_stimulus_thalamus.m exactly:
@@ -192,7 +195,7 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
 
     fig1.tight_layout()
     figure_files.extend(_maybe_export(
-        fig1, export_dir, "fig01_data_overview"))
+        fig1, export_dir, "fig01_data_overview", plot_style=plot_style))
 
     # ==================================================================
     # Fit baseline-only model
@@ -416,7 +419,7 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     if ax_coeff.get_legend():
         ax_coeff.get_legend().set_visible(False)
     figure_files.extend(_maybe_export(
-        fig2, export_dir, "fig02_lag_and_model_comparison"))
+        fig2, export_dir, "fig02_lag_and_model_comparison", plot_style=plot_style))
 
     if visible:
         plt.show()
@@ -439,14 +442,19 @@ if __name__ == "__main__":
                         help="Directory for exported figures.")
     parser.add_argument("--no-display", action="store_true",
                         help="Run without displaying figures (headless).")
+    parser.add_argument("--plot-style", choices=("modern", "legacy"),
+                        default="legacy",
+                        help="Figure styling: 'legacy' (paper reproduction) "
+                             "or 'modern' (readability-focused).")
     args = parser.parse_args()
 
     export_dir = args.export_dir
     if args.export_figures and export_dir is None:
-        export_dir = THIS_DIR / "figures" / "example02"
+        export_dir = REPO_ROOT / "docs" / "figures" / "example02"
 
     run_example02(
         export_figures=args.export_figures,
         export_dir=export_dir if args.export_figures else None,
         visible=not args.no_display,
+        plot_style=args.plot_style,
     )

@@ -51,7 +51,7 @@ REPO_ROOT = THIS_DIR.parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from nstat import DecodingAlgorithms  # noqa: E402
+from nstat import DecodingAlgorithms, apply_plot_style  # noqa: E402
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -835,7 +835,8 @@ def _plot_part_c(result):
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def run_example05(*, export_figures=False, export_dir=None, show=False):
+def run_example05(*, export_figures=False, export_dir=None, show=False,
+                  visible=None, plot_style: str = "legacy"):
     """Run Example 05: PPAF and PPHF decoding.
 
     Mirrors MATLAB ``example05_decoding_ppaf_pphf.m``:
@@ -897,9 +898,12 @@ def run_example05(*, export_figures=False, export_dir=None, show=False):
     fig5, fig6 = _plot_part_c(result_c)
     figures = [fig1, fig2, fig3, fig4, fig5, fig6]
 
+    for fig in figures:
+        apply_plot_style(fig, style=plot_style)
+
     if export_figures:
         if export_dir is None:
-            export_dir = THIS_DIR / "figures" / "example05"
+            export_dir = REPO_ROOT / "docs" / "figures" / "example05"
         export_dir = Path(export_dir)
         export_dir.mkdir(parents=True, exist_ok=True)
         fig_names = [
@@ -912,7 +916,10 @@ def run_example05(*, export_figures=False, export_dir=None, show=False):
             fig.savefig(path, dpi=250, facecolor="w", edgecolor="none")
             print(f"  Saved: {path}")
 
-    if show:
+    # `visible` is the preferred kwarg (matches ex01/02/04); `show` retained
+    # for backward compatibility.
+    display = bool(visible) if visible is not None else bool(show)
+    if display:
         plt.show()
     else:
         plt.close("all")
@@ -929,13 +936,25 @@ if __name__ == "__main__":
     parser.add_argument("--export-dir", type=Path, default=None)
     parser.add_argument("--output-json", type=Path, default=None)
     parser.add_argument("--show", action="store_true",
-                        help="Display figures interactively")
+                        help="Display figures interactively (legacy flag).")
+    parser.add_argument("--no-display", action="store_true",
+                        help="Run without displaying figures (headless).")
+    parser.add_argument("--plot-style", choices=("modern", "legacy"),
+                        default="legacy",
+                        help="Figure styling: 'legacy' (paper reproduction) "
+                             "or 'modern' (readability-focused).")
     args = parser.parse_args()
 
+    # --no-display overrides --show; otherwise --show controls display.
+    if args.no_display:
+        visible = False
+    else:
+        visible = bool(args.show)
     result = run_example05(
         export_figures=args.export_figures,
         export_dir=args.export_dir,
-        show=args.show,
+        visible=visible,
+        plot_style=args.plot_style,
     )
     if args.output_json:
         args.output_json.write_text(json.dumps(result, indent=2),

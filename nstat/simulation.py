@@ -32,4 +32,53 @@ def simulate_poisson_from_rate(
     return nspikeTrain(spikeTimes=t[keep])
 
 
-__all__ = ["SpikeTrain", "simulate_poisson_from_rate"]
+def simulate_cif_from_stimulus(
+    time: np.ndarray,
+    stimulus: np.ndarray,
+    beta0: float,
+    beta1: float,
+    rng: np.random.Generator | None = None,
+) -> tuple[nspikeTrain, np.ndarray, np.ndarray]:
+    """Simulate a spike train from a log-linear CIF driven by a stimulus.
+
+    Computes the conditional intensity ``lambda(t) = exp(beta0 + beta1 * x(t))``
+    in spikes/second, then draws spikes via Bernoulli thinning at the time-grid
+    resolution implied by ``time``.
+
+    Parameters
+    ----------
+    time : ndarray, shape (T,)
+        Time vector in seconds.
+    stimulus : ndarray, shape (T,)
+        Stimulus values at each time sample.
+    beta0 : float
+        Log-baseline rate (intercept of the log-linear CIF).
+    beta1 : float
+        Stimulus coefficient.
+    rng : np.random.Generator, optional
+        Random generator.  Defaults to ``np.random.default_rng()``.
+
+    Returns
+    -------
+    spike_train : nspikeTrain
+        Simulated spike train.
+    rate_hz : ndarray, shape (T,)
+        The instantaneous CIF in spikes per second.
+    log_rate : ndarray, shape (T,)
+        The log-rate ``beta0 + beta1 * x(t)`` (useful for diagnostics).
+    """
+    t = np.asarray(time, dtype=float).reshape(-1)
+    x = np.asarray(stimulus, dtype=float).reshape(-1)
+    if t.shape[0] != x.shape[0]:
+        raise ValueError("time and stimulus length mismatch")
+    log_rate = beta0 + beta1 * x
+    rate_hz = np.exp(log_rate)
+    spike_train = simulate_poisson_from_rate(t, rate_hz, rng=rng)
+    return spike_train, rate_hz, log_rate
+
+
+__all__ = [
+    "SpikeTrain",
+    "simulate_cif_from_stimulus",
+    "simulate_poisson_from_rate",
+]

@@ -23,8 +23,9 @@ from .fit import FitResSummary, FitResult, FitSummary
 from .glm import PoissonGLMResult, fit_poisson_glm
 from .history import History, HistoryBasis
 from .paper_examples_full import run_full_paper_examples
+from .plot_style import apply_plot_style, get_plot_style, set_plot_style
 from .signal import Covariate, Signal
-from .simulation import simulate_poisson_from_rate
+from .simulation import simulate_cif_from_stimulus, simulate_poisson_from_rate
 from .simulators import (
     NetworkSimulationResult,
     PointProcessSimulation,
@@ -99,6 +100,9 @@ __all__ = [
     "SignalObj",
     "Signal",
     "SpikeTrain",
+    "apply_plot_style",
+    "get_plot_style",
+    "set_plot_style",
     "SpikeTrainCollection",
     "Trial",
     "TrialConfig",
@@ -115,6 +119,7 @@ __all__ = [
     "nstat_install",
     "psth",
     "run_full_paper_examples",
+    "simulate_cif_from_stimulus",
     "simulate_point_process",
     "simulate_poisson_from_rate",
     "simulate_two_neuron_network",
