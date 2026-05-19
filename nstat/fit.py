@@ -598,49 +598,66 @@ class FitResult:
                 )
         self._init_common()
 
+    # Canonical accessor: ``lambda_signal`` (the underlying attribute).
+    # ``lambdaSignal`` is preserved without warning because callers rely on it
+    # heavily for MATLAB-style code.  The remaining historical aliases below
+    # delegate to ``lambda_signal`` with a ``DeprecationWarning`` so callers
+    # know to migrate.
+
     @property
     def lambdaSignal(self) -> Covariate:
+        """MATLAB-style alias for :attr:`lambda_signal`."""
+        return self.lambda_signal
+
+    def _deprecated_lambda_alias(self, alias_name: str) -> Covariate:
+        import warnings
+        warnings.warn(
+            f"FitResult.{alias_name} is deprecated; use 'lambda_signal' "
+            "(or the MATLAB-style alias 'lambdaSignal').",
+            DeprecationWarning,
+            stacklevel=3,
+        )
         return self.lambda_signal
 
     @property
     def lambda_obj(self) -> Covariate:
-        return self.lambda_signal
+        return self._deprecated_lambda_alias("lambda_obj")
 
     @property
     def lambda_model(self) -> Covariate:
-        return self.lambda_signal
+        return self._deprecated_lambda_alias("lambda_model")
 
     @property
     def lambda_result(self) -> Covariate:
-        return self.lambda_signal
+        return self._deprecated_lambda_alias("lambda_result")
 
     @property
     def lambdaObj(self) -> Covariate:
-        return self.lambda_signal
+        return self._deprecated_lambda_alias("lambdaObj")
 
     @property
     def lambdaCov(self) -> Covariate:
-        return self.lambda_signal
+        return self._deprecated_lambda_alias("lambdaCov")
 
     @property
     def lambda_sig(self) -> Covariate:
-        return self.lambda_signal
+        return self._deprecated_lambda_alias("lambda_sig")
 
     @property
     def lambda_data(self) -> np.ndarray:
-        return np.asarray(self.lambda_signal.data, dtype=float)
+        return np.asarray(self._deprecated_lambda_alias("lambda_data").data, dtype=float)
 
     @property
     def lambda_values(self) -> np.ndarray:
-        return np.asarray(self.lambda_signal.data, dtype=float)
+        return np.asarray(self._deprecated_lambda_alias("lambda_values").data, dtype=float)
 
     @property
     def lambda_time(self) -> np.ndarray:
-        return np.asarray(self.lambda_signal.time, dtype=float)
+        return np.asarray(self._deprecated_lambda_alias("lambda_time").time, dtype=float)
 
     @property
     def lambda_rate(self) -> np.ndarray:
-        return np.asarray(self.lambda_signal.data, dtype=float)
+        return np.asarray(self._deprecated_lambda_alias("lambda_rate").data, dtype=float)
 
     def __getattr__(self, name: str):
         if name == "lambda":
