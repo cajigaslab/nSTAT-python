@@ -71,6 +71,46 @@ class TrialConfig:
         covLag: object | None = None,
         name: str = "",
     ) -> None:
+        """Construct a single GLM-fit configuration (Matlab ``TrialConfig``).
+
+        Parameters
+        ----------
+        covMask : sequence of str, nested sequences, or None, optional
+            Names of the covariates (and channels) to include in the
+            design matrix.  ``None`` or ``[]`` (the empty list) is the
+            "unset" sentinel and leaves the mask empty.  Use the literal
+            string ``'all'`` to include every covariate in a
+            :class:`~nstat.trial.CovariateCollection`.
+        sampleRate : float or None, optional
+            Target sample rate in **Hz** to resample the trial to
+            before fitting.  ``None`` leaves the trial's existing rate
+            unchanged.
+        history : History, array_like, or None, optional
+            Self-history specification.  May be a
+            :class:`~nstat.history.History` object or a vector of window
+            boundary times in **seconds**.
+        ensCovHist : History, array_like, or None, optional
+            Ensemble-history specification.
+        ensCovMask : array_like or None, optional
+            Binary mask selecting which neighbour neurons contribute
+            ensemble-history terms.
+        covLag : array_like or None, optional
+            Per-covariate time shifts (covariate lags) in **seconds**.
+        name : str, optional
+            Human-readable name for this configuration (appears in
+            :class:`~nstat.fit.FitResult` plots).  Default ``""``.
+
+        Notes
+        -----
+        ``None`` arguments are normalised to the empty list ``[]`` to
+        match the MATLAB sentinel convention recognised by
+        :func:`_is_empty_config_value`.
+
+        See Also
+        --------
+        ConfigCollection : Ordered collection used to compare configurations.
+        Trial.setConfig : Apply a single ``TrialConfig`` to a trial.
+        """
         self.covMask = [] if covMask is None else covMask
         self.sampleRate = [] if sampleRate is None else sampleRate
         self.history = [] if history is None else history
@@ -172,6 +212,35 @@ class ConfigCollection:
     """
 
     def __init__(self, configs: Sequence[TrialConfig] | TrialConfig | str | None = None) -> None:
+        """Construct an ordered collection of GLM-fit configurations (Matlab ``ConfigColl``).
+
+        Parameters
+        ----------
+        configs : TrialConfig, sequence of TrialConfig, str, or None, optional
+            Initial configuration(s).
+
+            - A single :class:`TrialConfig` becomes the first entry.
+            - A sequence (list/tuple) is iterated and each entry added.
+            - ``None`` (default) or an empty sequence creates a single
+              ``"Empty Config"`` placeholder entry — matches MATLAB
+              ``ConfigColl()`` which routes through ``addConfig([])``.
+
+        Raises
+        ------
+        TypeError
+            If *configs* contains an unsupported entry type.
+
+        Notes
+        -----
+        Empty-config placeholders (strings/sequences) are tracked
+        separately from real :class:`TrialConfig` instances — see
+        :attr:`configs` for the filtered list.
+
+        See Also
+        --------
+        TrialConfig : Single GLM-fit configuration.
+        Analysis.RunAnalysisForAllNeurons : Iterates over a ``ConfigCollection``.
+        """
         self.numConfigs = 0
         self.configNames: list[str] = []
         self.configArray: list[TrialConfig | str | list[str]] = []

@@ -1,3 +1,23 @@
+"""Exception hierarchy for the Python nSTAT package.
+
+All errors raised by user-facing nSTAT APIs derive from
+:class:`NSTATError`, so callers can catch every package-specific failure
+with a single ``except NSTATError`` clause.  Specialised subclasses also
+inherit from the most appropriate Python builtin (``FileNotFoundError``,
+``NotImplementedError``, ``RuntimeError``) so generic ``except`` handlers
+continue to work.
+
+Exported classes
+----------------
+- :class:`NSTATError` — root exception type for the package.
+- :class:`DataNotFoundError` — required dataset missing on disk.
+- :class:`ParityValidationError` — MATLAB/Python parity check failed.
+- :class:`UnsupportedWorkflowError` — legacy MATLAB workflow not yet ported.
+- :class:`MatlabEngineError` — MATLAB Engine interop failure.
+
+This module has no MATLAB counterpart; the MATLAB toolbox uses ``error``
+identifiers strings instead of an exception hierarchy.
+"""
 from __future__ import annotations
 
 

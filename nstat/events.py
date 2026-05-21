@@ -1,3 +1,17 @@
+"""Discrete event-marker container for raster and signal overlays.
+
+This module mirrors MATLAB ``Events.m``.  An :class:`Events` instance
+holds a vector of event times (in **seconds**) together with optional
+per-event text labels and a colour code, and knows how to overlay itself
+onto Matplotlib axes.  It is the third optional component (alongside a
+:class:`~nstat.trial.SpikeTrainCollection` and a
+:class:`~nstat.trial.CovariateCollection`) of a
+:class:`~nstat.trial.Trial`.
+
+Exported symbol
+---------------
+- :class:`Events` — event-marker container (Matlab ``Events``).
+"""
 from __future__ import annotations
 
 from typing import Any, Sequence

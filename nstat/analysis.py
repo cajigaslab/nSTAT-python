@@ -1,3 +1,22 @@
+"""Top-level GLM-fitting and analysis entry points.
+
+This module mirrors MATLAB ``Analysis.m`` and bundles the high-level
+routines that turn a :class:`~nstat.trial.Trial` plus a
+:class:`~nstat.trial.ConfigCollection` into one or more
+:class:`~nstat.fit.FitResult` objects.
+
+Exported symbols
+----------------
+- :class:`Analysis` — namespace of static methods (``RunAnalysisForAllNeurons``,
+  ``KSPlot``, ``GLMFit``, etc.) that drive end-to-end model fitting and
+  diagnostics.
+- :class:`GLMFitResult` — dataclass return value for :meth:`Analysis.GLMFit`
+  that also unpacks like the legacy ``(lambda_sig, b, dev, stats, AIC,
+  BIC, logLL, distribution)`` 8-tuple for back-compat.
+- :func:`psth` — peri-stimulus time histogram helper.
+
+All time vectors are in **seconds**; firing rates in **Hz**.
+"""
 from __future__ import annotations
 
 from collections.abc import Sequence
