@@ -1,3 +1,23 @@
+"""Symbolic conditional intensity functions for point-process modelling.
+
+This module mirrors MATLAB ``CIF.m`` and provides the symbolic
+conditional-intensity-function infrastructure used by the
+:mod:`~nstat.decoding_algorithms` decoders.
+
+Exported symbols
+----------------
+- :class:`CIF` — sympy-backed conditional intensity function with
+  closed-form gradient and Jacobian for Poisson or binomial link
+  functions and optional spike-history terms (Matlab ``CIF``).
+- :class:`CIFModel` — lightweight dataclass holding a precomputed
+  ``time``/``rate_hz`` pair plus a ``simulate(...)`` convenience used by
+  standalone Python workflows.  No MATLAB counterpart.
+
+Lightweight, closed-form linear/Poisson CIFs are accessible via
+:meth:`CIFModel.from_linear_terms` for performance-critical hot paths
+where the sympy machinery on :class:`CIF` is unnecessary.  Time is in
+**seconds** and rates in **Hz** (spikes/s) throughout.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass

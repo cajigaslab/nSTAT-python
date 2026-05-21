@@ -1,3 +1,20 @@
+"""Core time-series and covariate containers for the nSTAT toolbox.
+
+This module hosts the two foundational classes used everywhere in nSTAT:
+
+- :class:`SignalObj` — multi-dimensional regularly-sampled signal container
+  (mirrors MATLAB ``SignalObj.m``).  All continuous covariates,
+  stimuli, model rates, etc. inherit from or wrap ``SignalObj``.
+- :class:`Covariate` — :class:`SignalObj` subclass that also carries
+  per-dimension confidence intervals and accepts the convenience aliases
+  ``values`` / ``units`` (mirrors MATLAB ``Covariate.m``).
+
+The ``nspikeTrain`` point-process class (Matlab ``nspikeTrain.m``) was
+extracted to :mod:`nstat._spike_train_impl` in v0.3.1 for readability,
+but is re-exported here so that ``from nstat.core import nspikeTrain``
+continues to work.  All time vectors are in **seconds** and sample rates
+in **Hz**, matching the MATLAB toolbox.
+"""
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -117,6 +134,56 @@ class SignalObj:
         plotProps: Sequence[Any] | str | None = None,
         **kwargs,
     ) -> None:
+        """Construct a multi-dimensional signal object (Matlab ``SignalObj``).
+
+        Parameters
+        ----------
+        time : array_like, shape (n,)
+            Monotonically increasing time vector in **seconds**.
+        data : array_like, shape (n,) or (n, d) or (d, n)
+            Signal values.  Either a 1-D vector of length *n* for a scalar
+            signal, or a 2-D matrix.  Both ``(n, d)`` and ``(d, n)``
+            orientations are accepted — the layout is inferred from the
+            time-vector length.
+        name : str, optional
+            Human-readable signal name.  Used as the y-axis label in
+            plots.  Default ``""``.
+        xlabelval : str, optional
+            X-axis label string.  Default ``"time"``.  Also accepts the
+            keyword alias ``xlabel=`` for backwards compatibility.
+        xunits : str, optional
+            X-axis unit string.  Default ``"s"`` (seconds).
+        yunits : str, optional
+            Y-axis unit string.  Default ``""``.
+        dataLabels : sequence of str or str or None, optional
+            Per-dimension labels.  A single string is broadcast to all
+            *d* dimensions.  Also accepts the keyword alias
+            ``data_labels=`` for backwards compatibility.
+        plotProps : sequence or str or None, optional
+            Per-dimension Matplotlib format strings (one per channel).
+        **kwargs
+            Reserved for the ``xlabel`` / ``data_labels`` legacy aliases
+            above.  Any other keyword raises :class:`TypeError`.
+
+        Notes
+        -----
+        The sample rate is inferred from ``mean(diff(time))``.  For
+        single-sample signals (or non-finite/zero deltas) it falls back
+        to ``1000.0`` Hz, matching the MATLAB toolbox.
+
+        Raises
+        ------
+        ValueError
+            If *time* is not a 1-D array-like, or if *data* dimensions do
+            not match *time* length.
+        TypeError
+            If unexpected keyword arguments are passed.
+
+        See Also
+        --------
+        Covariate : SignalObj subclass with confidence-interval support.
+        nspikeTrain : Point-process companion class for spike data.
+        """
         if "xlabel" in kwargs and "xlabelval" not in kwargs:
             xlabelval = kwargs.pop("xlabel")
         if "data_labels" in kwargs and dataLabels is None:
@@ -1830,6 +1897,35 @@ class Covariate(SignalObj):
     """
 
     def __init__(self, *args, **kwargs) -> None:
+        """Construct a covariate signal (Matlab ``Covariate``).
+
+        Accepts the same positional / keyword arguments as
+        :class:`SignalObj`, with two convenience aliases for users coming
+        from earlier Python releases:
+
+        - ``values=`` is forwarded to the :class:`SignalObj` ``data=``
+          parameter.
+        - ``units=`` is forwarded to the :class:`SignalObj` ``yunits=``
+          parameter.
+
+        Parameters
+        ----------
+        *args, **kwargs
+            Forwarded to :class:`SignalObj.__init__`.  Time is in
+            **seconds** and the inferred sample rate is in **Hz**.
+
+        Notes
+        -----
+        After construction the ``ci`` attribute is ``None``.  Attach
+        confidence intervals via :meth:`setConfInterval` or
+        :meth:`computeMeanPlusCI`.
+
+        See Also
+        --------
+        SignalObj : Base time-series container.
+        nstat.confidence_interval.ConfidenceInterval :
+            CI storage class used by ``ci``.
+        """
         if "values" in kwargs and "data" not in kwargs:
             kwargs["data"] = kwargs.pop("values")
         if "units" in kwargs and "yunits" not in kwargs:

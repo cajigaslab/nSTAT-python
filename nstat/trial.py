@@ -1,3 +1,22 @@
+"""Trial-level containers binding spikes, covariates, and events.
+
+This module hosts the per-trial data structures used by every GLM and
+decoding workflow in nSTAT:
+
+- :class:`CovariateCollection` — ordered collection of
+  :class:`~nstat.core.Covariate` objects (mirrors MATLAB ``CovColl.m``).
+- :class:`SpikeTrainCollection` — ordered collection of
+  :class:`~nstat.core.nspikeTrain` objects (mirrors MATLAB ``nstColl.m``).
+- :class:`Trial` — joins a spike collection, covariate collection, and
+  optional :class:`~nstat.events.Events` stream into a single, time- and
+  rate-aligned analysis unit (mirrors MATLAB ``Trial.m``).
+
+The model-specification helpers :class:`TrialConfig` (Matlab
+``TrialConfig.m``) and :class:`ConfigCollection` (Matlab ``ConfigColl.m``)
+were extracted to :mod:`nstat._trial_config_impl` for readability, but are
+re-exported here so that ``from nstat.trial import TrialConfig`` continues
+to work.  All time vectors are in **seconds** and sample rates in **Hz**.
+"""
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -87,6 +106,35 @@ class CovariateCollection:
     """
 
     def __init__(self, covariates: Sequence[Covariate] | Covariate | None = None, *more_covariates: Covariate) -> None:
+        """Construct an ordered covariate collection (Matlab ``CovColl``).
+
+        Parameters
+        ----------
+        covariates : Covariate, sequence of Covariate, CovariateCollection, or None
+            Initial covariate(s) to add.  May be a single
+            :class:`~nstat.core.Covariate`, an iterable of them, another
+            :class:`CovariateCollection` (whose contents are merged in),
+            or ``None`` (empty collection).
+        *more_covariates : Covariate
+            Additional covariates appended after *covariates* — supports
+            the MATLAB-style ``CovColl(c1, c2, c3, ...)`` call signature.
+
+        Notes
+        -----
+        On construction the collection captures the maximal sample rate
+        across all input covariates (in **Hz**), the union of their time
+        windows (in **seconds**), and a per-dimension mask of ones for
+        each covariate (no dimensions masked out).  Time bounds and
+        sample rate are recomputed lazily via ``_refresh_summary``.
+
+        Indexing is **1-based** to match MATLAB (``coll.getCov(1)`` is
+        the first covariate).
+
+        See Also
+        --------
+        Covariate : Scalar or multi-dimensional signal with CIs.
+        Trial : Combines a ``CovariateCollection`` with spike data.
+        """
         self.covArray: list[Covariate] = []
         self.covDimensions: list[int] = []
         self.numCov = 0
@@ -706,6 +754,31 @@ class SpikeTrainCollection:
     """
 
     def __init__(self, trains: Sequence[nspikeTrain] | nspikeTrain | None = None) -> None:
+        """Construct an ordered spike-train collection (Matlab ``nstColl``).
+
+        Parameters
+        ----------
+        trains : nspikeTrain, sequence of nspikeTrain, or None
+            Initial spike train(s) to add.  ``None`` creates an empty
+            collection.
+
+        Notes
+        -----
+        On construction the collection captures the maximal sample rate
+        across all input trains (in **Hz**) and the union of their
+        observation windows (in **seconds**), and initialises the neuron
+        mask to all ones (no neurons masked out).
+
+        Indexing is **1-based** to match MATLAB (``coll.getNST(1)`` is
+        the first spike train).  Trains added after construction are
+        deep-copied (via :meth:`nspikeTrain.nstCopy`) to prevent shared
+        mutable state.
+
+        See Also
+        --------
+        nspikeTrain : Single-neuron point-process representation.
+        Trial : Combines a ``SpikeTrainCollection`` with covariates.
+        """
         self.nstrain: list[nspikeTrain] = []
         self.numSpikeTrains = 0
         self.minTime = float("inf")
@@ -2085,6 +2158,48 @@ class Trial:
         covarColl: CovariateCollection | None = None,
         event: Events | None = None,
     ) -> None:
+        """Construct a Trial bundling spikes, covariates, and events (Matlab ``Trial``).
+
+        Parameters
+        ----------
+        spike_collection : SpikeTrainCollection
+            Neural spike data.  **Required.**  Also accepted as the
+            MATLAB-style keyword ``spikeColl=``.
+        covariate_collection : CovariateCollection
+            Stimulus or task covariates.  **Required.**  Also accepted
+            as the MATLAB-style keyword ``covarColl=``.
+        events : Events, optional
+            Discrete event markers (e.g. trial onsets).  Also accepted
+            as the MATLAB-style keyword ``event=``.
+        hist : History or array_like, optional
+            Self-history specification.  May be a
+            :class:`~nstat.history.History` object or a vector of window
+            boundary times (seconds).  An empty list / ``None`` is the
+            "unset" sentinel for MATLAB parity.
+        ensCovHist : History or array_like, optional
+            Ensemble-history specification (history terms aggregated
+            across neighbour neurons).
+        ensCovMask : array_like, optional
+            Binary mask selecting which neighbours contribute ensemble
+            history.
+
+        Notes
+        -----
+        The constructor enforces consistent time bounds (in **seconds**)
+        and sample rate (in **Hz**) across the spike collection and
+        covariate collection.  Resampling is performed automatically when
+        the two disagree.
+
+        Raises
+        ------
+        ValueError
+            If *spike_collection* or *covariate_collection* is missing
+            or of the wrong type.
+
+        See Also
+        --------
+        SpikeTrainCollection, CovariateCollection, Analysis
+        """
         self.nspikeColl = spike_collection if spike_collection is not None else spikeColl
         self.covarColl = covariate_collection if covariate_collection is not None else covarColl
         if not isinstance(self.nspikeColl, SpikeTrainCollection):

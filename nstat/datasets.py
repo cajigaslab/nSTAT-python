@@ -1,3 +1,22 @@
+"""Lightweight manifest-driven dataset locator.
+
+This module exposes a small public API for discovering and verifying the
+example datasets distributed with nSTAT (and downloaded on demand via
+:mod:`nstat.data_manager`).  It reads ``nstat/data/manifest.json`` to
+resolve dataset names to filesystem paths.
+
+Exported symbols
+----------------
+- :func:`list_datasets` — list every dataset name in the manifest.
+- :func:`get_dataset_path` — resolve a dataset name to a
+  :class:`pathlib.Path` (raises :class:`~nstat.errors.DataNotFoundError`).
+- :func:`verify_checksums` — recompute SHA-256 digests for every dataset
+  and compare against the manifest.
+
+No MATLAB counterpart — the MATLAB toolbox ships datasets as ``.mat``
+files in the repository.  See :mod:`nstat.data_manager` for the
+download / cache layer.
+"""
 from __future__ import annotations
 
 import hashlib

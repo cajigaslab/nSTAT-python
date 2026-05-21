@@ -1,3 +1,21 @@
+"""Goodness-of-fit containers and population-level summaries.
+
+This module mirrors MATLAB ``FitResult.m`` and ``FitResSummary.m``.  It
+holds the per-neuron and per-population result objects produced by
+:meth:`nstat.analysis.Analysis.RunAnalysisForAllNeurons`, along with the
+KS / time-rescaling diagnostics, residual analysis, and plotting helpers.
+
+Exported symbols
+----------------
+- :class:`FitResult` — GLM fit results for one neuron across one or more
+  configurations (Matlab ``FitResult``).
+- :class:`FitSummary` — population-level aggregate across many neurons
+  (Matlab ``FitResSummary``).
+- :class:`FitResSummary` — MATLAB-named alias of :class:`FitSummary`,
+  defined at the bottom of the file for back-compat.
+
+All time vectors are in **seconds**; conditional intensities in spikes/s.
+"""
 from __future__ import annotations
 
 import re
@@ -431,6 +449,51 @@ class FitResult:
     """
 
     def __init__(self, neuralSpikeTrain: nspikeTrain | Sequence[nspikeTrain], *args, **kwargs) -> None:
+        """Construct a per-neuron GLM fit result (Matlab ``FitResult``).
+
+        Supports two construction patterns:
+
+        1. **Simplified Python form** ``FitResult(nst, lambda_signal, fits)``
+           where ``lambda_signal`` is a :class:`~nstat.core.Covariate`
+           and ``fits`` is a sequence of internal ``_SingleFit`` records.
+        2. **MATLAB-faithful form** matching the
+           ``FitResult(nst, covLabels, numHist, histObjects, ensHistObj,
+           lambda_signal, b, dev, stats, AIC, BIC, logLL, configColl,
+           XvalData, XvalTime, distribution)`` signature.
+
+        Parameters
+        ----------
+        neuralSpikeTrain : nspikeTrain or sequence of nspikeTrain
+            The observed spike train(s) that were fitted.  When a
+            sequence is provided, the result represents a pooled /
+            multi-trial fit (Matlab parity).
+        *args, **kwargs
+            Positional / keyword arguments dispatched to either
+            :meth:`_init_simplified` or :meth:`_init_matlab_style`
+            based on whether ``args[0]`` is a
+            :class:`~nstat.core.Covariate`.
+
+            Notable keyword fields:
+
+            - ``covLabels`` (list of list of str) — per-config covariate
+              labels in the design matrix.
+            - ``b`` (list of array_like) — per-config coefficient vectors.
+            - ``dev``, ``AIC``, ``BIC``, ``logLL`` (array_like) —
+              goodness-of-fit scalars (one entry per config).
+            - ``stats`` (list of dict) — per-config diagnostic dicts.
+            - ``lambda_signal`` (Covariate) — fitted intensity in
+              spikes/s.
+            - ``configColl`` (ConfigCollection) — the configuration
+              collection used to drive the fits.
+            - ``distribution`` (str) — ``"poisson"`` (default) or
+              ``"binomial"``.
+
+        See Also
+        --------
+        FitSummary : Aggregate summary across multiple neurons.
+        Analysis.RunAnalysisForAllNeurons : Main entry point that
+            produces ``FitResult`` objects.
+        """
         if args and isinstance(args[0], Covariate):
             self._init_simplified(neuralSpikeTrain, args[0], args[1] if len(args) > 1 else [])
             return
@@ -1704,6 +1767,32 @@ class FitSummary:
     """
 
     def __init__(self, fit_results: FitResult | Iterable[FitResult]) -> None:
+        """Construct a population-level summary (Matlab ``FitResSummary``).
+
+        Parameters
+        ----------
+        fit_results : FitResult or iterable of FitResult
+            One or more per-neuron :class:`FitResult` objects to
+            summarise.  A single :class:`FitResult` is wrapped in a
+            list automatically.
+
+        Raises
+        ------
+        ValueError
+            If an empty iterable is passed.
+
+        Notes
+        -----
+        On construction the summary precomputes per-config means and
+        standard deviations of AIC, BIC, log-likelihood, KS statistics,
+        and the union of covariate labels across all neurons.  Rows
+        (neurons) with fewer configs than the maximum are NaN-padded so
+        every metric matrix has shape ``(numNeurons, numResults)``.
+
+        See Also
+        --------
+        FitResult : Per-neuron fit container.
+        """
         if isinstance(fit_results, FitResult):
             self.fitResCell = [fit_results]
         else:

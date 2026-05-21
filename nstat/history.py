@@ -1,3 +1,22 @@
+"""Spike-history basis objects and discrete-time filter banks.
+
+This module mirrors MATLAB ``History.m``.  History bases turn a vector
+of window boundary times into a set of piecewise-constant basis
+functions that GLMs use to capture refractoriness and bursting.
+
+Exported symbols
+----------------
+- :class:`History` — primary spike-history basis (Matlab ``History``).
+- :class:`HistoryFilter` — immutable discrete-time MATLAB-style
+  transfer-function pair ``(numerator, denominator)``.
+- :class:`HistoryFilterBank` — collection of :class:`HistoryFilter`
+  objects, returned by :meth:`History.computeHistory`.
+
+Time vectors and window boundaries are in **seconds**; sample rates in
+**Hz**.  A history window with bounds ``[w_i, w_{i+1}]`` (in seconds)
+contributes a basis column equal to ``1`` for time lags in that interval
+and ``0`` elsewhere — exactly the MATLAB convention.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass

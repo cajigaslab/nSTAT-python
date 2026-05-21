@@ -61,6 +61,54 @@ class nspikeTrain:
         dataLabels: str | Sequence[str] | None = "",
         makePlots: int = 0,
     ) -> None:
+        """Construct a point-process spike train (Matlab ``nspikeTrain``).
+
+        Parameters
+        ----------
+        spikeTimes : array_like
+            Vector of spike times in **seconds**.  Stored sorted ascending
+            after construction.  Required — passing ``None`` raises
+            :class:`ValueError`.
+        name : str, optional
+            Neuron / channel label.  Used as the y-axis label in plots
+            and the default ``dataLabels`` entry.  Default ``""``.
+        sampleRate : float, optional
+            Sampling rate of the bin grid in **Hz** used when the spike
+            train is converted to a binned :class:`~nstat.core.SignalObj`
+            representation (``sigRep``).  Default ``1000.0`` Hz (1 ms
+            bins), matching the MATLAB toolbox.
+        minTime, maxTime : float or None, optional
+            Observation window in **seconds**.  ``None`` (default) selects
+            ``min(spikeTimes)`` and ``max(spikeTimes)`` respectively, or
+            ``0.0`` when ``spikeTimes`` is empty.
+        xlabelval : str, optional
+            X-axis label string (default ``"time"``).
+        xunits : str, optional
+            X-axis unit string (default ``"s"`` for seconds).
+        yunits : str, optional
+            Y-axis unit string (default ``""``).
+        dataLabels : str or sequence of str or None, optional
+            Per-dimension label(s).  A single string is broadcast.
+            Default ``""``.
+        makePlots : int, optional
+            Behaviour of the implicit :meth:`computeStatistics` call:
+
+            - ``0`` (default) — compute statistics silently.
+            - ``1`` — compute statistics *and* plot diagnostics.
+            - ``< 0`` — skip statistics entirely (fast construction; all
+              burst-statistics attributes are left as ``None``).
+
+        Raises
+        ------
+        ValueError
+            If *spikeTimes* is ``None``.
+
+        See Also
+        --------
+        SignalObj : Binned signal representation returned by
+            :meth:`getSigRep`.
+        SpikeTrainCollection : Multi-neuron collection container.
+        """
         if spikeTimes is None:
             raise ValueError("nspikeTrain requires a spikeTimes array as input to create an object")
         spikes = np.asarray(spikeTimes, dtype=float).reshape(-1)

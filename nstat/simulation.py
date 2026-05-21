@@ -1,3 +1,21 @@
+"""Standalone Poisson and log-linear CIF spike-train simulators.
+
+This module provides the lightweight Python simulators used by tutorials,
+notebooks, and unit tests:
+
+- :func:`simulate_poisson_from_rate` — Bernoulli-thinned Poisson draws
+  from an arbitrary time-varying rate ``r(t)`` (Hz) on the grid ``t``.
+- :func:`simulate_cif_from_stimulus` — convenience wrapper that builds a
+  log-linear CIF ``λ(t) = exp(β₀ + β₁ · x(t))`` (Hz) from a stimulus
+  ``x(t)`` and a pair of GLM coefficients, then simulates spikes.
+
+These are pure-Python counterparts to the Simulink-driven simulation
+pipeline used in :mod:`nstat.cif` and :mod:`nstat.simulators`.  No
+MATLAB counterpart at the module level — the underlying algorithm is the
+standard Bernoulli-thinning approximation for an inhomogeneous Poisson
+process (see *Decoding the Brain*, ch. 2 §2.B for the derivation).  Time
+is in **seconds**, rates in **Hz**.
+"""
 from __future__ import annotations
 
 import numpy as np

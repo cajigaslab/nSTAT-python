@@ -1,3 +1,27 @@
+"""Pythonic Poisson and binomial GLM fits via IRLS.
+
+This module provides the dependency-free IRLS (iteratively re-weighted
+least squares) Newton solvers used by :class:`nstat.analysis.Analysis`
+to fit GLMs.  They are exposed as standalone helpers so callers can fit
+GLMs against arbitrary design matrices without instantiating a full
+:class:`~nstat.trial.Trial`.
+
+Exported symbols
+----------------
+- :class:`PoissonGLMResult` — frozen dataclass with ``intercept``,
+  ``coefficients``, ``n_iter``, ``converged``, ``log_likelihood``, plus
+  a :meth:`PoissonGLMResult.predict_rate` helper (canonical
+  log-link inverse).
+- :func:`fit_poisson_glm` — Newton-IRLS Poisson GLM solver.
+- :class:`BinomialGLMResult` — analogous container for binomial fits
+  with ``predict_probability`` and ``predict_rate`` helpers (logistic
+  link).
+- :func:`fit_binomial_glm` — Newton-IRLS binomial GLM solver.
+
+No MATLAB counterpart — the MATLAB toolbox uses Stats Toolbox
+``glmfit``.  All rates are in **Hz**; the binomial response must lie in
+``[0, 1]``.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass

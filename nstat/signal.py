@@ -1,3 +1,20 @@
+"""Pythonic aliases for the MATLAB-style :class:`~nstat.core.SignalObj`.
+
+The canonical signal abstractions live in :mod:`nstat.core` and follow
+the MATLAB ``SignalObj``/``Covariate`` API (1-based indexing,
+``getSigInTimeWindow``, ``copySignal``, etc.).  This module exposes
+thin subclasses with Pythonic shortcuts:
+
+- :class:`Signal` — :class:`~nstat.core.SignalObj` plus ``copy()``,
+  ``sub_signal(i)`` (0-based), ``window(start, stop)``, and
+  ``as_array()``.
+- :class:`Covariate` — :class:`~nstat.core.Covariate` with the same
+  conveniences inherited from :class:`Signal`.
+
+No MATLAB counterpart — this is a Python-only convenience layer for code
+that prefers idiomatic Python over MATLAB conventions.  All time values
+are in **seconds**.
+"""
 from __future__ import annotations
 
 from typing import Sequence

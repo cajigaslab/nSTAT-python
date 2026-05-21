@@ -1,3 +1,24 @@
+"""Higher-level point-process and network simulation result containers.
+
+This module provides richer simulation outputs than the bare-bones
+generators in :mod:`nstat.simulation`.  Each result dataclass carries
+the time grid, the rate, the realised spikes, and the intermediate
+quantities (latent drive, ``λΔ`` per bin, history / ensemble effects,
+uniform variates) that callers may want to inspect or reuse for
+unit-test reproducibility.
+
+Exported symbols
+----------------
+- :class:`PointProcessSimulation` — single-neuron Poisson-thinning
+  output bundle.
+- :class:`NetworkSimulationResult` — multi-neuron network simulation
+  output bundle (carries adjacency, history/ensemble kernels, etc.).
+- :func:`simulate_point_process` and friends — generators that return
+  the dataclasses above.
+
+No direct MATLAB counterpart; the MATLAB toolbox returns plain ``struct``
+arrays instead.  Time is in **seconds**, rates in **Hz**.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -1,3 +1,28 @@
+"""Neural decoding and state-space estimation algorithms.
+
+This module mirrors MATLAB ``DecodingAlgorithms.m`` and bundles every
+estimator the toolbox ships with into the :class:`DecodingAlgorithms`
+static-method namespace.
+
+Covered families (all entry points are ``@staticmethod``):
+
+- **Point-process adaptive filters (PPAF)** — ``PPDecodeFilter``,
+  ``PPDecodeFilterLinear``, ``PP_RTSSmoother``.
+- **Point-process hybrid filters (PPHF)** — discrete + continuous
+  hybrid recursions for mixed-mode decoding.
+- **Kalman filtering / smoothing** — ``kalman_filter``,
+  ``kalman_smoother``, ``RTSSmoother``, plus their static-coefficient
+  variants.
+- **Expectation-maximisation** — ``PPSS_EMFB`` (state-space GLM EM) and
+  ``PPCO_EMFB`` (mixed point-process / continuous-observation EM).
+
+Most algorithms reference the derivations in *Decoding the Brain*
+(ch. 3–4) and the original 2012 paper (see
+:doc:`/PaperOverview`).  Spike trains are :class:`~nstat.nspikeTrain.nspikeTrain`
+objects; observations are ``CxN`` binary matrices; time is in **seconds**.
+This is the largest single module in the package (~7.9k lines) and is
+deliberately kept flat to match the MATLAB layout.
+"""
 from __future__ import annotations
 
 from collections.abc import Sequence
