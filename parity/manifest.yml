@@ -483,4 +483,4 @@ fidelity_summary:
     high_fidelity: 7
   simulink_fidelity:
     exact_with_matlab_engine_bridge: 2
-    reference_only: 10
+    reference_only: 11

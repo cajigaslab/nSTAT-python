@@ -189,6 +189,35 @@ items:
   validation_strategy: inventory-only reference classification
   required_remediation: Keep as inventory/reference only unless a public workflow
     is shown to depend on this asset.
+- model_name: PointProcessSimulationThinning
+  model_path: PointProcessSimulationThinning.mdl
+  purpose: Canonical thinning-based point-process simulation model present in MATLAB
+    nSTAT v1.4.0 root.  Inputs (Stimulus, Ensemble) and outputs (pointProcess,
+    lambdaDelta, SpikeTimes) match the legacy `.mdl.r2011a` variant; this is the
+    successor file referenced by published v1.4.0 workflows.
+  matlab_usage: used_for_reference
+  python_strategy: reference_only
+  current_python_status: reference_only
+  chosen_interoperability_strategy: Keep as a MATLAB reference asset while the Python
+    port validates thinning behavior through `nstat.cif.CIF.simulateCIFByThinning`
+    and the MATLAB-side gold-fixture export at
+    `tests/parity/fixtures/matlab_gold/cif_thinning_*.mat`.
+  fidelity_risks:
+  - The Python `simulateCIFByThinning` uses NumPy's default_rng — thinning spike-time
+    realizations will not match the Simulink stochastic output bit-exactly even with
+    matched seeds.  Behavioral statistics (mean firing rate, ISI distribution) agree
+    within fixture tolerance.
+  validation_plan:
+  - Keep inventoried.  Treat as the canonical thinning reference for any v1.4.0+
+    parity refresh.  No Python-side wrapper needed — the algorithm is implemented
+    natively in `nstat.cif.CIF.simulateCIFByThinning`.
+  status: reference_only
+  python_equivalent: nstat.cif.CIF.simulateCIFByThinning
+  validation_strategy: native Python implementation with statistical-tolerance fixtures
+  required_remediation: none — Python provides a native equivalent; the Simulink
+    model is kept as a MATLAB-only reference and is not a Python execution target.
+  required_remediation: Keep as inventory/reference only unless a public workflow
+    is shown to depend on this asset.
 - model_name: PointProcessSimulationCache
   model_path: PointProcessSimulation.slxc
   purpose: Simulink compiled cache artifact for `PointProcessSimulation`.
