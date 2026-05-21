@@ -830,19 +830,26 @@ class SpikeTrainCollection:
         return self.nstrain[idx]
 
     def getNST(self, idx) -> nspikeTrain | list[nspikeTrain]:
-        """Return spike train(s) by 1-based index (Matlab ``nstColl.getNST``)."""
+        """Return spike train(s) by 1-based index (Matlab ``nstColl.getNST``).
+
+        Always returns a deep copy of the stored train (never the stored
+        reference itself).  This is intentional — the PR #80 ``non-destructive``
+        contract for ``getNST`` was previously implemented as
+        ``copy-only-when-rates-differ``, which meant callers in the common
+        path got a reference and could silently mutate the stored train via
+        attribute assignment.  All in-place collection-wide operations
+        (e.g. ``enforceSampleRate``) access ``self.nstrain`` directly and
+        bypass this method.
+        """
+        import copy as _copy
         if isinstance(idx, Sequence) and not isinstance(idx, (str, bytes, np.ndarray)):
             return [self.getNST(int(item)) for item in idx]
         index = int(idx)
         if index < 1 or index > self.numSpikeTrains:
             raise IndexError("nstColl index out of bounds (1-based indexing).")
-        nst = self.nstrain[index - 1]
-        # Matlab resamples to collection sampleRate on retrieval.  We copy
-        # first so the stored train is not destructively mutated when callers
-        # interleave ``getNST`` calls with collections at different rates.
+        nst = _copy.deepcopy(self.nstrain[index - 1])
+        # Matlab resamples to collection sampleRate on retrieval.
         if nst.sampleRate != self.sampleRate:
-            import copy as _copy
-            nst = _copy.deepcopy(nst)
             nst.resample(self.sampleRate)
         return nst
 

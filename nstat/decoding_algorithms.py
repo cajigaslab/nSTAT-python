@@ -2597,7 +2597,12 @@ class DecodingAlgorithms:
                 GradLogLD = basisMat * (1.0 - lambdaDelta)[:, None]
                 JacobianLogLD = basisMat * (lambdaDelta * (-1.0 + lambdaDelta))[:, None]
                 GradLD = basisMat * (lambdaDelta * (1.0 - lambdaDelta))[:, None]
-                JacobianLD = basisMat * (lambdaDelta * (1.0 - lambdaDelta) * (1.0 - 2.0 * lambdaDelta ** 2))[:, None]
+                # Sigmoid third-derivative factor: lambdaDelta'' / lambdaDelta'
+                # equals (1 - 2*lambdaDelta), NOT (1 - 2*lambdaDelta**2).
+                # The squared form was a port typo — every other binomial
+                # site in this file (lines 533, 603 of MATLAB DecodingAlgorithms.m;
+                # Python lines 2681, 2773, 3291) uses the linear form.
+                JacobianLD = basisMat * (lambdaDelta * (1.0 - lambdaDelta) * (1.0 - 2.0 * lambdaDelta))[:, None]
 
                 sumValVec = GradLogLD.T @ dN[k, :] - np.diag(GradLD.T @ basisMat)
                 sumValMat = -np.diag(JacobianLogLD.T @ dN[k, :]) + JacobianLD.T @ basisMat
