@@ -1,0 +1,46 @@
+# Pre-commit hooks for nstat-python.
+#
+# Install once:  pre-commit install
+# Run manually:  pre-commit run --all-files
+#
+# These hooks are intentionally conservative — they catch trivially-
+# preventable issues (trailing whitespace, broken YAML, huge file
+# commits) without enforcing opinions on style.  Ruff / black / mypy are
+# explicitly NOT enforced; see CLAUDE.md "Code style" section.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.(svg|png|mat|h5|slxc?|mdl|ipynb)$'
+      - id: end-of-file-fixer
+        exclude: '\.(svg|png|mat|h5|slxc?|mdl|ipynb)$'
+      - id: check-yaml
+        # Allow ``!!python/...`` tags in parity yml files (none currently use them,
+        # but keep the door open).
+        args: [--unsafe]
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        # Reject files > 1 MB.  Forces large fixtures into LFS or
+        # external data (figshare).  The current data_cache/ tracked
+        # fixtures are ~70 KB and ~5 KB, well under the limit.
+        args: ['--maxkb=1024']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+        # On case-insensitive macOS filesystems, both ``Foo.py`` and
+        # ``foo.py`` can coexist locally but break on Linux CI.  This
+        # hook catches the issue before push.
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: '\.(mdl)$'  # MATLAB .mdl files are CRLF by convention.
+      - id: detect-private-key
+        # Reject accidentally-committed SSH / PGP private keys.
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        args: ['--ignore-words-list=nstat,nSTAT,inputfor,nd,fo,wo,iif']
+        exclude: '(.*\.ipynb|tests/parity/fixtures/.*|notebooks/.*|.*\.mdl)$'

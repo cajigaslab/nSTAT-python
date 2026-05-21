@@ -1,0 +1,42 @@
+# EditorConfig — see https://editorconfig.org/
+#
+# Establishes consistent whitespace / line-ending conventions so a
+# contributor's editor does the right thing without having to memorize
+# the project's style.  Most modern editors honor this file natively
+# (VS Code, PyCharm, vim, emacs, sublime, Atom, etc.).
+
+root = true
+
+# Defaults: UTF-8, LF line endings, final newline, no trailing whitespace.
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Python: 4-space indent (PEP 8).
+[*.py]
+indent_size = 4
+
+# YAML: 2-space indent (industry convention).
+[*.{yml,yaml}]
+indent_size = 2
+
+# JSON: 2-space indent.
+[*.json]
+indent_size = 2
+
+# Markdown: preserve trailing whitespace (double-space = line break in MD).
+[*.md]
+trim_trailing_whitespace = false
+
+# Makefile: tabs are required by GNU make.
+[Makefile]
+indent_style = tab
+
+# MATLAB .mdl files: CRLF line endings (legacy MATLAB convention).
+[*.mdl]
+end_of_line = crlf
+trim_trailing_whitespace = false
