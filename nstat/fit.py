@@ -5,13 +5,25 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Sequence
 
 import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-# matplotlib >= 3.9 renamed boxplot 'labels' to 'tick_labels'
-_MPL_TICK_LABELS_KEY = "tick_labels" if tuple(int(x) for x in matplotlib.__version__.split(".")[:2]) >= (3, 9) else "labels"
+# matplotlib >= 3.9 renamed boxplot 'labels' to 'tick_labels'.  Parse the
+# leading two version components defensively — release-candidate / dev
+# version strings (e.g. ``3.9.0rc1``, ``3.9.dev0+abc``) carry non-digit
+# tails that ``int()`` cannot coerce.
+def _matplotlib_version_tuple() -> tuple[int, int]:
+    parts = matplotlib.__version__.split(".")[:2]
+    out: list[int] = []
+    for p in parts:
+        digits = "".join(c for c in p if c.isdigit())
+        out.append(int(digits) if digits else 0)
+    while len(out) < 2:
+        out.append(0)
+    return (out[0], out[1])
+
+
+_MPL_TICK_LABELS_KEY = "tick_labels" if _matplotlib_version_tuple() >= (3, 9) else "labels"
 from scipy.stats import norm, pearsonr
 
 from .core import Covariate, nspikeTrain

@@ -6,6 +6,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Force matplotlib's non-interactive backend at the workflow level so all
+# jobs run headless without per-test boilerplate.
+env:
+  MPLBACKEND: Agg
+
 jobs:
   unit-lint:
     runs-on: ubuntu-latest
@@ -43,6 +48,7 @@ jobs:
       - name: Fail on paper gallery drift
         run: |
           git diff --exit-code -- \
+            README.md \
             docs/paper_examples.md \
             docs/figures/manifest.json \
             docs/figures/example01/README.md \
@@ -65,8 +71,14 @@ jobs:
           python -m pip install -e .[dev]
       - name: Regenerate parity report
         run: python tools/parity/build_report.py
-      - name: Fail on parity report drift
-        run: git diff --exit-code -- parity/report.md
+      - name: Regenerate notebook-fidelity audit
+        # Auto-detects a sibling MATLAB checkout if NSTAT_MATLAB_PATH is set;
+        # otherwise emits the no-matlab branch and still drifts-checks.
+        run: python tools/parity/build_notebook_fidelity_audit.py
+      - name: Fail on parity drift
+        run: git diff --exit-code -- \
+            parity/report.md \
+            parity/notebook_fidelity.yml
 
   docs-build:
     runs-on: ubuntu-latest
@@ -75,7 +87,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          # Match deploy-docs.yml so the CI build and the published site
+          # are produced by the same Python interpreter.
+          python-version: "3.12"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip

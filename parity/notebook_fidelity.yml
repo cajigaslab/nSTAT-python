@@ -1,5 +1,5 @@
 version: 1
-generated_on: '2026-05-19'
+generated_on: '2026-05-21'
 source_repositories:
   matlab: https://github.com/cajigaslab/nSTAT
   python: https://github.com/cajigaslab/nSTAT-python
@@ -30,10 +30,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 37
+  matlab_published_figures: 26
+  section_delta: 3
+  figure_delta: 4
 - topic: TrialExamples
   source_matlab: TrialExamples.mlx
   python_notebook: notebooks/TrialExamples.ipynb
@@ -53,10 +53,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 9
+  matlab_published_figures: 6
+  section_delta: 0
+  figure_delta: 0
 - topic: AnalysisExamples
   source_matlab: AnalysisExamples.mlx
   python_notebook: notebooks/AnalysisExamples.ipynb
@@ -78,10 +78,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 7
+  matlab_published_figures: 4
+  section_delta: 0
+  figure_delta: 0
 - topic: AnalysisExamples2
   source_matlab: AnalysisExamples2.mlx
   python_notebook: notebooks/AnalysisExamples2.ipynb
@@ -103,10 +103,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 9
+  matlab_published_figures: 5
+  section_delta: 0
+  figure_delta: 0
 - topic: DecodingExample
   source_matlab: DecodingExample.mlx
   python_notebook: notebooks/DecodingExample.ipynb
@@ -127,10 +127,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 4
+  matlab_published_figures: 5
+  section_delta: 0
+  figure_delta: 0
 - topic: DecodingExampleWithHist
   source_matlab: DecodingExampleWithHist.mlx
   python_notebook: notebooks/DecodingExampleWithHist.ipynb
@@ -151,10 +151,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 2
+  matlab_published_figures: 2
+  section_delta: 0
+  figure_delta: 0
 - topic: ExplicitStimulusWhiskerData
   source_matlab: ExplicitStimulusWhiskerData.mlx
   python_notebook: notebooks/ExplicitStimulusWhiskerData.ipynb
@@ -176,10 +176,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 7
+  matlab_published_figures: 9
+  section_delta: 0
+  figure_delta: 0
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
   python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
@@ -202,10 +202,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 5
+  matlab_published_figures: 9
+  section_delta: 0
+  figure_delta: 2
 - topic: HybridFilterExample
   source_matlab: HybridFilterExample.mlx
   python_notebook: notebooks/HybridFilterExample.ipynb
@@ -227,10 +227,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 6
+  matlab_published_figures: 3
+  section_delta: 0
+  figure_delta: 0
 - topic: PPSimExample
   source_matlab: PPSimExample.mlx
   python_notebook: notebooks/PPSimExample.ipynb
@@ -251,10 +251,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 17
+  matlab_published_figures: 8
+  section_delta: 0
+  figure_delta: 1
 - topic: NetworkTutorial
   source_matlab: NetworkTutorial.mlx
   python_notebook: notebooks/NetworkTutorial.ipynb
@@ -275,10 +275,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 21
+  matlab_published_figures: 13
+  section_delta: 0
+  figure_delta: 0
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb
@@ -300,10 +300,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 11
+  matlab_published_figures: 8
+  section_delta: 0
+  figure_delta: 2
 - topic: StimulusDecode2D
   source_matlab: StimulusDecode2D.mlx
   python_notebook: notebooks/StimulusDecode2D.ipynb
@@ -326,7 +326,7 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: null
-  matlab_published_figures: null
-  section_delta: null
-  figure_delta: null
+  matlab_sections: 4
+  matlab_published_figures: 4
+  section_delta: -1
+  figure_delta: 2

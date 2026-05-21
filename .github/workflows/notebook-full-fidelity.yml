@@ -27,7 +27,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.NSTAT_DATA_DIR }}
-          key: nstat-example-data-v1
+          # Cache key bumps when the figshare manifest changes upstream,
+          # forcing a fresh download if the dataset version moves.
+          key: nstat-example-data-${{ hashFiles('nstat/data/manifest.json') }}
+          restore-keys: |
+            nstat-example-data-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
