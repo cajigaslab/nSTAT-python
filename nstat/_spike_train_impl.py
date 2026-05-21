@@ -609,8 +609,17 @@ class nspikeTrain:
 
         Matlab's ``nstCopy`` builds the copy's sigRep and calls
         ``computeStatistics(0)`` so the copy has valid burst parameters.
+
+        Notes
+        -----
+        The constructor would otherwise overwrite the copy's
+        ``originalSpikeTimes`` / ``originalMinTime`` / ``originalMaxTime``
+        with the *current* (possibly windowed) state of ``self``.  We
+        explicitly carry the source's "original" fields over after
+        construction so that ``copy.restoreToOriginal()`` actually
+        restores to the true original state.
         """
-        return nspikeTrain(
+        copy = nspikeTrain(
             self.spikeTimes.copy(),
             self.name,
             self.sampleRate if self.sampleRate > 0 else 1000.0,
@@ -622,6 +631,12 @@ class nspikeTrain:
             self.dataLabels,
             0,
         )
+        # Preserve the source's original state — see Notes above.
+        copy.originalSpikeTimes = self.originalSpikeTimes.copy()
+        copy.originalSampleRate = self.originalSampleRate
+        copy.originalMinTime = self.originalMinTime
+        copy.originalMaxTime = self.originalMaxTime
+        return copy
 
     def to_binned_counts(self, bin_edges: Sequence[float]) -> np.ndarray:
         """Histogram spike times into *bin_edges* and return count vector."""

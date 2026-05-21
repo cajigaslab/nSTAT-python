@@ -1158,7 +1158,19 @@ class FitResult:
         )
 
         delta = 1.0 / max(float(lambda_val.sampleRate), 1e-12)
-        y = self.neuralSpikeTrain.getSigRep().dataToMatrix().reshape(-1)
+        # ``neuralSpikeTrain`` may be either a single train or a sequence
+        # (multi-trial fits).  Pick the canonical train consistently with
+        # other methods in this class (see lines 681–684).
+        if isinstance(self.neuralSpikeTrain, nspikeTrain):
+            _train = self.neuralSpikeTrain
+        elif isinstance(self.neuralSpikeTrain, Sequence) and len(self.neuralSpikeTrain) > 0:
+            _train = self.neuralSpikeTrain[0]
+        else:
+            raise ValueError(
+                "FitResult.computeValLambda: neuralSpikeTrain is empty "
+                "or has an unexpected type"
+            )
+        y = _train.getSigRep().dataToMatrix().reshape(-1)
         # Truncate or pad y to match validation lambda length
         n = min(y.size, lambda_data.shape[0])
         logLL_arr = np.zeros(self.numResults, dtype=float)

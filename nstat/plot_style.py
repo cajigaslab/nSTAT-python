@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import matplotlib.axes
@@ -10,7 +11,33 @@ import matplotlib.lines
 from matplotlib.collections import PathCollection
 
 
-_STYLE_FILE = Path(__file__).resolve().with_name(".plot_style")
+def _resolve_style_file() -> Path:
+    """Return the user-writable location for the persisted style.
+
+    Order of preference:
+      1. ``$NSTAT_STYLE_FILE`` if set (escape hatch for test isolation).
+      2. ``$XDG_CONFIG_HOME/nstat/plot_style`` (Linux convention).
+      3. ``~/.config/nstat/plot_style`` (default cross-platform).
+      4. Package-install directory fallback (legacy) — kept for back-compat
+         when the user explicitly chooses to write into the install path.
+
+    The previous default (``Path(__file__).with_name(".plot_style")``)
+    raises ``PermissionError`` on pip-installed packages in a system
+    site-packages directory.  Routing through the user config dir
+    eliminates that failure mode without an extra dependency.
+    """
+    explicit = os.environ.get("NSTAT_STYLE_FILE")
+    if explicit:
+        return Path(explicit)
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    base = Path(xdg) if xdg else Path.home() / ".config"
+    return base / "nstat" / "plot_style"
+
+
+_STYLE_FILE = _resolve_style_file()
+# Legacy location (pre-v0.3.1): the sidecar file alongside this module.
+# Reads honor it for migration; writes target the user-config path.
+_LEGACY_STYLE_FILE = Path(__file__).resolve().with_name(".plot_style")
 
 
 def _validate_style(style: str) -> str:
@@ -21,21 +48,33 @@ def _validate_style(style: str) -> str:
 
 
 def get_plot_style(default: str = "modern") -> str:
-    """Return the persisted global plotting style."""
+    """Return the persisted global plotting style.
 
+    Falls back to *default* when no persisted file exists or when the file
+    contains a value outside the known {``legacy``, ``modern``} set.
+    Reads the user-config location first, then the legacy in-package
+    location (for back-compat with pre-v0.3.1 installs).
+    """
     fallback = _validate_style(default)
-    if not _STYLE_FILE.exists():
-        return fallback
-    try:
-        return _validate_style(_STYLE_FILE.read_text(encoding="utf-8").strip())
-    except Exception:
-        return fallback
+    for candidate in (_STYLE_FILE, _LEGACY_STYLE_FILE):
+        if not candidate.exists():
+            continue
+        try:
+            return _validate_style(candidate.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            continue
+    return fallback
 
 
 def set_plot_style(style: str = "modern") -> str:
-    """Persist the plotting style for future sessions."""
+    """Persist the plotting style for future sessions.
 
+    Writes to ``~/.config/nstat/plot_style`` (or ``$XDG_CONFIG_HOME``
+    / ``$NSTAT_STYLE_FILE``) so a pip-installed package can be configured
+    without write access to its install directory.
+    """
     norm = _validate_style(style)
+    _STYLE_FILE.parent.mkdir(parents=True, exist_ok=True)
     _STYLE_FILE.write_text(norm + "\n", encoding="utf-8")
     return norm
 
