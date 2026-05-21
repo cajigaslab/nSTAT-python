@@ -5119,7 +5119,13 @@ class DecodingAlgorithms:
                         ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
                         ExplambdaDelta = 1.0 / McExp * np.sum(ld)
                         ExplambdaDeltaSq = 1.0 / McExp * np.sum(ld ** 2)
-                        ExplambdaDeltaCubed = 1.0 / McExp * np.sum(ld ** 2)  # Matlab uses ld.^2 here
+                        # Third moment of the binomial Monte Carlo estimate.  The
+                        # original Python port mirrored MATLAB's ``ld.^2`` here
+                        # because that was MATLAB's behavior at the time, but
+                        # MATLAB nSTAT v1.4.0 audit point 1.3 fixed the variable
+                        # to ``ld.^3`` (it was always the cube — the "Cubed"
+                        # in the variable name).  Cross-referenced 2026-05-21.
+                        ExplambdaDeltaCubed = 1.0 / McExp * np.sum(ld ** 3)
                         HessianTerm += (-ExplambdaDelta * (dN[c, k] + 1)
                                         + ExplambdaDeltaSq * (dN[c, k] + 3)
                                         - 2 * ExplambdaDeltaCubed) * np.outer(Hk_vec, Hk_vec)
