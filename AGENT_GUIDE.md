@@ -2,7 +2,7 @@
 
 > **Audience:** AI coding assistants (Claude, GPT, Cursor, Copilot, etc.) and
 > autonomous agents that need to use the `nstat-python` toolbox correctly.
-> Updated: 2026-05-19. Package version: 0.3.0.
+> Updated: 2026-05-21. Package version: 0.3.1.
 >
 > The MATLAB reference toolbox lives in a *separate* repository
 > (https://github.com/cajigaslab/nSTAT) and is deliberately kept independent
@@ -370,8 +370,10 @@ list below records the current state.
 - **MATLAB-style import shims** exist (e.g., `from nstat.SignalObj import
   SignalObj`); both shim paths and canonical paths work. Prefer canonical
   paths from `nstat/__init__.py` for new code.
-- **`core.py` is ~2,700 lines and `trial.py` is ~3,100 lines** — they
-  contain multiple classes each. Splitting is on the v0.4 roadmap; do not
+- **`core.py` (~2,074 lines) and `trial.py` (~2,849 lines)** still
+  host several classes each, but the largest single classes (`nspikeTrain`,
+  `TrialConfig`/`ConfigCollection`) were extracted to private impl modules
+  in v0.3.1 — see §5.4 above.  Further splits may land in v0.4; do not
   rely on internal file layout.
 - **Two parallel install entry points** exist: `nstat.install.main` and
   `nstat.nstat_install.nSTAT_Install`. Prefer the `nstat-install` CLI.

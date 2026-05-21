@@ -3,9 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-import matplotlib
-
-matplotlib.use("Agg")
+import matplotlib  # noqa: F401  (kept for downstream type-checking)
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401

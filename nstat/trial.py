@@ -1804,11 +1804,20 @@ class SpikeTrainCollection:
         numBasis: int | None = None,
         numVarEstIter: int | None = None,
         fitType: str | None = None,
+        rng: np.random.Generator | None = None,
     ):
         """State-space GLM via EM algorithm (forward only).
 
         Matches Matlab nstColl.ssglm(). Estimates time-varying firing rate
         using a state-space model with EM parameter estimation.
+
+        Parameters
+        ----------
+        rng : np.random.Generator, optional
+            Random number generator used to jitter zero entries in the
+            initial variance estimate.  Defaults to
+            ``np.random.default_rng()`` (non-reproducible across runs).
+            Pass an explicit seeded generator for reproducible fits.
 
         Parameters
         ----------
@@ -1878,8 +1887,15 @@ class SpikeTrainCollection:
         # Estimate initial Q0
         Q0 = self.estimateVarianceAcrossTrials(numBasis, windowTimes, numVarEstIter, fitType)
         Q0_diag = np.diag(Q0)
-        if np.any(Q0_diag == 0):
-            Q0_diag += 0.001 * np.random.rand(numBasis)
+        zero_mask = Q0_diag == 0
+        if np.any(zero_mask):
+            # Jitter only the zero entries, leaving well-estimated variances
+            # untouched.  Uses default_rng (modern NumPy RNG, reproducible
+            # when caller passes a seeded generator).
+            _rng = rng if rng is not None else np.random.default_rng()
+            jitter = 0.001 * _rng.random(int(zero_mask.sum()))
+            Q0_diag = Q0_diag.astype(float, copy=True)
+            Q0_diag[zero_mask] = jitter
 
         A = np.eye(numBasis)
 
@@ -1906,11 +1922,17 @@ class SpikeTrainCollection:
         numBasis: int | None = None,
         numVarEstIter: int | None = None,
         fitType: str | None = None,
+        rng: np.random.Generator | None = None,
     ):
         """State-space GLM via EM Forward-Backward algorithm.
 
         Enhanced version of ssglm() that uses forward-backward-forward
         iterations for improved convergence. Calls PPSS_EMFB.
+
+        Parameters
+        ----------
+        rng : np.random.Generator, optional
+            Random number generator for Q0 jitter; see :meth:`ssglm`.
 
         Parameters
         ----------
@@ -1971,8 +1993,12 @@ class SpikeTrainCollection:
 
         Q0 = self.estimateVarianceAcrossTrials(numBasis, windowTimes, numVarEstIter, fitType)
         Q0_diag = np.diag(Q0)
-        if np.any(Q0_diag == 0):
-            Q0_diag += 0.001 * np.random.rand(numBasis)
+        zero_mask = Q0_diag == 0
+        if np.any(zero_mask):
+            _rng = rng if rng is not None else np.random.default_rng()
+            jitter = 0.001 * _rng.random(int(zero_mask.sum()))
+            Q0_diag = Q0_diag.astype(float, copy=True)
+            Q0_diag[zero_mask] = jitter
 
         A = np.eye(numBasis)
         neuronName = self.name if hasattr(self, 'name') else 'N01'
