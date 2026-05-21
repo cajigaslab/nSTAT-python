@@ -7,6 +7,7 @@ from .CovColl import CovColl
 from .SignalObj import SignalObj
 from .analysis import Analysis, psth
 from .cif import CIF, CIFModel
+from .linear_cif import LinearCIF
 from .data_manager import getPaperDataDirs, get_paper_data_dirs
 from .datasets import get_dataset_path, list_datasets, verify_checksums
 from .decoding import DecoderSuite
@@ -76,6 +77,7 @@ __all__ = [
     "Analysis",
     "CIF",
     "CIFModel",
+    "LinearCIF",
     "ConfidenceInterval",
     "ConfigColl",
     "ConfigCollection",
