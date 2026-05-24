@@ -79,6 +79,10 @@ docs:  ## Build the Sphinx site (writes to docs/_build/html).
 	$(SPHINX) -b html docs docs/_build/html
 
 docs-strict:  ## Build docs with -W (warnings as errors, matches CI).
+	# Two-pass build: the first run populates docs/_autosummary so the
+	# strict run doesn't trip on cold-start "stub file not found"
+	# warnings.  Mirrors the CI docs-build job.
+	$(SPHINX) -b html docs docs/_build/html
 	$(SPHINX) -W -b html docs docs/_build/html
 
 docs-open: docs  ## Build docs and open in default browser (macOS / linux).

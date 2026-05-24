@@ -19,7 +19,6 @@ Core data primitives
 
 .. autosummary::
    :toctree: _autosummary
-   :template: autosummary/class.rst
 
    SignalObj
    Signal
@@ -35,7 +34,6 @@ Collections
 
 .. autosummary::
    :toctree: _autosummary
-   :template: autosummary/class.rst
 
    nstColl
    SpikeTrainCollection
@@ -50,7 +48,6 @@ Experiment and configuration
 
 .. autosummary::
    :toctree: _autosummary
-   :template: autosummary/class.rst
 
    Trial
    TrialConfig
@@ -63,7 +60,6 @@ Modeling and inference
 
 .. autosummary::
    :toctree: _autosummary
-   :template: autosummary/class.rst
 
    Analysis
    CIF
@@ -84,7 +80,6 @@ Decoding
 
 .. autosummary::
    :toctree: _autosummary
-   :template: autosummary/class.rst
 
    DecodingAlgorithms
    DecoderSuite
@@ -101,7 +96,6 @@ Simulation
 
 .. autosummary::
    :toctree: _autosummary
-   :template: autosummary/class.rst
 
    PointProcessSimulation
    NetworkSimulationResult
@@ -158,7 +152,6 @@ Exceptions and warnings
 
 .. autosummary::
    :toctree: _autosummary
-   :template: autosummary/class.rst
 
    DataNotFoundError
    MatlabEngineError
