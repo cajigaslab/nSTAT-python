@@ -458,6 +458,53 @@ state model (A, Q)        ───►      ▼
 
 ---
 
+## 7.5 Keeping `README.md` current
+
+The README is the user-facing landing page on GitHub and PyPI.  When
+you commit anything that touches the surface README references, verify
+the README is still accurate **before** you commit.
+
+**Triggers** — if you change any of these, re-read `README.md`:
+
+- ANY file path under `docs/`, `examples/`, `notebooks/`
+- Anything in `nstat/__all__` (rename / add / remove)
+- `pyproject.toml` (version, dependencies, entry points)
+- `CITATION.cff`
+- ANY image under `docs/figures/`
+- A workflow name in `.github/workflows/` (the CI badge URL embeds it)
+
+**Local check** (one command, ~1 second):
+
+```bash
+make readme-check    # or: python tools/check_readme_links.py
+```
+
+The checker validates three things:
+
+1. Every Markdown intra-repo link (`[text](path)`) resolves to an
+   existing file.
+2. Every Markdown image (`![alt](path)`) resolves.
+3. Every `from nstat import X` / `import nstat.X` inside a fenced
+   ```` ```python ```` block imports cleanly.
+
+**CI enforcement.** Two workflows gate this:
+
+- `.github/workflows/readme-check.yml::readme-intra` — **hard gate**.
+  Runs the same script.  Blocks PRs that introduce broken intra-repo
+  links, missing images, or stale imports.
+- `.github/workflows/readme-check.yml::readme-external` — **advisory**.
+  Uses `lychee` to check external URLs (PyPI, GitHub, DOI, lab
+  websites).  Failures show as yellow check-runs but do NOT block —
+  external links fail for transient reasons (rate limits, CDN hiccups).
+
+**What the checker does NOT catch.** Section anchors (`[foo](file.md#section)`)
+— GitHub's heading-slug algorithm is implementation-specific, and the
+benefit-to-flakiness ratio of validating them is poor.  If you rename
+a section, grep for the old anchor manually:
+`grep -rn "#old-anchor-name" *.md docs/`.
+
+---
+
 ## 8. Where to look when stuck
 
 | Question | First place to check |

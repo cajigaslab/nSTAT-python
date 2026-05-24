@@ -1,0 +1,112 @@
+name: readme-check
+
+# Enforce README.md freshness on every PR that touches the surface it
+# references.  Two independent gates:
+#
+#   1. **readme-intra** (HARD gate, must pass):
+#      - Intra-repo links resolve to existing files.
+#      - Images resolve to existing files.
+#      - ``from nstat import X`` snippets in fenced ```python blocks
+#        resolve at import time.
+#      Implemented by ``tools/check_readme_links.py``.  Pure Python,
+#      no network access, ~1 second.
+#
+#   2. **readme-external** (ADVISORY gate, continue-on-error):
+#      - External http(s) URLs return 2xx/3xx via ``lychee``.
+#      External link checking is flaky-by-nature (PyPI temporary 503,
+#      GitHub rate limits, etc.), so a failure here is reported but
+#      does NOT block the PR.  Real breakage shows up as a check-run
+#      annotation that the reviewer notices; transient failures vanish
+#      on re-run.
+#
+# Triggers:
+#   - Pull-requests touching README.md or any file the README references
+#     (docs/, examples/, notebooks/, nstat/__init__.py, etc.).
+#   - Push to main (so a direct-to-main change still re-validates).
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'AGENT_GUIDE.md'
+      - 'docs/**'
+      - 'examples/**'
+      - 'notebooks/**'
+      - 'nstat/__init__.py'
+      - 'nstat/*.py'
+      - 'pyproject.toml'
+      - 'CITATION.cff'
+      - 'tools/check_readme_links.py'
+      - '.github/workflows/readme-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'AGENT_GUIDE.md'
+      - 'docs/**'
+      - 'examples/**'
+      - 'notebooks/**'
+      - 'nstat/__init__.py'
+      - 'nstat/*.py'
+      - 'pyproject.toml'
+      - 'CITATION.cff'
+      - 'tools/check_readme_links.py'
+      - '.github/workflows/readme-check.yml'
+  workflow_dispatch:
+
+# Force headless matplotlib for any import that pulls in plot machinery.
+env:
+  MPLBACKEND: Agg
+
+jobs:
+  readme-intra:
+    name: README intra-repo + image + import check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package (needed for nstat imports in code-snippet check)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run README freshness check
+        run: python tools/check_readme_links.py
+
+  readme-external:
+    name: README external URL check (advisory)
+    runs-on: ubuntu-latest
+    # ADVISORY gate: external-URL failures shouldn't block merges.
+    # When lychee finds something, the PR check turns yellow/red but
+    # does not actually block — see continue-on-error below.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run lychee link checker
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Only check the README — keeps the runtime + rate-limit cost low.
+          # Add more files (e.g., AGENT_GUIDE.md, docs/) later if appetite grows.
+          args: >-
+            --no-progress
+            --max-concurrency 4
+            --max-retries 2
+            --timeout 30
+            --accept '200..=299,301,302,308,403,429'
+            README.md
+          # 403 is accepted because some CDNs / hosts reject the lychee
+          # user-agent.  429 is accepted because rate-limit shouldn't
+          # gate this advisory check.
+          fail: false  # belt-and-suspenders with continue-on-error above
+
+      - name: Summarize lychee result
+        if: always()
+        run: |
+          echo "External URL check completed."
+          echo "If failures appear above, verify whether they are real broken links"
+          echo "or transient host/CDN issues.  This gate is advisory — it never blocks."

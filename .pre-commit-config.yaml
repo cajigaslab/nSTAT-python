@@ -44,3 +44,17 @@ repos:
       - id: codespell
         args: ['--ignore-words-list=nstat,nSTAT,inputfor,nd,fo,wo,iif']
         exclude: '(.*\.ipynb|tests/parity/fixtures/.*|notebooks/.*|.*\.mdl)$'
+
+  # README freshness check (local hook, no external repo dependency).
+  # Only runs when README.md or files the README references change —
+  # so it doesn't slow down unrelated commits.  Mirrors the
+  # ``readme-check.yml`` CI gate so you get the same answer locally.
+  - repo: local
+    hooks:
+      - id: readme-link-check
+        name: Check README intra-repo links + imports
+        entry: python tools/check_readme_links.py
+        language: system
+        files: '^(README\.md|AGENT_GUIDE\.md|docs/.*|examples/.*|notebooks/.*|nstat/__init__\.py|nstat/.*\.py|pyproject\.toml|CITATION\.cff|tools/check_readme_links\.py)$'
+        pass_filenames: false  # script always checks README.md
+        require_serial: true
