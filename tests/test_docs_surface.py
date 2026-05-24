@@ -51,7 +51,7 @@ def test_readme_links_to_paper_overview() -> None:
 
 def test_docs_conf_enables_markdown_support() -> None:
     text = DOCS_CONF_PATH.read_text(encoding="utf-8")
-    assert 'extensions = ["myst_parser"]' in text
+    assert '"myst_parser"' in text
 
 
 def test_ci_runs_docs_build_job() -> None:

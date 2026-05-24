@@ -54,6 +54,8 @@ Primary notebook: `../notebooks/CovariateExamples.ipynb`
 Inherits from `SignalObj`. Adds confidence interval support:
 `setConfInterval`, `mu`, `sigma`
 
+`nstat.CovariateCollection` is the Pythonic alias for `CovColl` (below).
+
 ### `ConfidenceInterval` (`nstat.ConfidenceInterval`)
 
 Primary notebook: `../notebooks/ConfidenceIntervalOverview.ipynb`
@@ -91,9 +93,13 @@ Primary notebook: `../notebooks/CovCollExamples.ipynb`
 
 Primary notebook: `../notebooks/nSpikeTrainExamples.ipynb`
 
+`nstat.SpikeTrain` is the Pythonic alias for `nspikeTrain`.
+
 ### `nstColl` (`nstat.nstColl`)
 
 Primary notebook: `../notebooks/nstCollExamples.ipynb`
+
+`nstat.SpikeTrainCollection` is the Pythonic alias for `nstColl`.
 
 **Collection management**:
 `addSingleSpikeToColl`, `addToColl`, `merge`, `length`, `get_nst`, `getNST`,
@@ -118,6 +124,12 @@ Primary notebook: `../notebooks/nstCollExamples.ipynb`
 `plot`
 
 ### `History` (`nstat.History`)
+
+`nstat.HistoryBasis` is a companion dataclass exposing the basis-function
+parameters used to build self-history kernels (window times, basis
+family, raised-cosine vs unit-impulse choices).
+
+
 
 Primary notebook: `../notebooks/HistoryExamples.ipynb`
 
@@ -169,6 +181,8 @@ Primary notebook: `../notebooks/TrialConfigExamples.ipynb`
 
 Primary notebook: `../notebooks/ConfigCollExamples.ipynb`
 
+`nstat.ConfigCollection` is the Pythonic alias for `ConfigColl`.
+
 ---
 
 ## Modeling and Inference
@@ -179,6 +193,20 @@ Primary notebook: `../notebooks/PPSimExample.ipynb`
 
 Conditional intensity function (CIF) primitives and point-process simulation
 via thinning.
+
+`nstat.CIFModel` is a lightweight dataclass capturing the parameters of
+a fitted CIF — coefficients, link function, history kernel.  Used as a
+return type by some Analysis paths.
+
+### `LinearCIF` (`nstat.LinearCIF`)
+
+Closed-form, sympy-free CIF for the two canonical link cases (Poisson
+log-link, binomial logit-link).  Ported from MATLAB `LinearCIF.m` (added
+upstream in v1.4.0).  Drop-in compatible with `CIF` for the 5 eval
+methods used by `DecodingAlgorithms.PPDecode_update`:
+`evalLambdaDelta`, `evalGradient`, `evalGradientLog`, `evalJacobian`,
+`evalJacobianLog`.  See `Decoding the Brain` §4.B.7.4 for the
+derivation.
 
 ### `Analysis` (`nstat.Analysis`)
 
@@ -262,6 +290,37 @@ Primary notebook: `../notebooks/DecodingExample.ipynb`
 
 **SSGLM utilities**:
 `estimateInfoMat`, `prepareEMResults`
+
+### `DecoderSuite` (`nstat.DecoderSuite`)
+
+Pythonic wrapper that exposes the most common `DecodingAlgorithms`
+static methods through a friendlier object-oriented API.  No MATLAB
+counterpart — this is a Python convenience layer over the parity-ported
+algorithm namespace.
+
+### `PoissonGLMResult` (`nstat.PoissonGLMResult`)
+
+Dataclass returned by :func:`nstat.fit_poisson_glm`.  Captures the
+fitted coefficients, intercept, deviance, iteration count, convergence
+status, log-likelihood, and standard errors of a standalone Poisson
+GLM fit (separate from `Analysis.GLMFit`, which is wired through the
+`Trial` machinery).
+
+---
+
+## Simulation Objects
+
+### `PointProcessSimulation` (`nstat.PointProcessSimulation`)
+
+Result dataclass for :func:`nstat.simulate_point_process`.  Holds the
+simulated spike train, the underlying conditional intensity trace, and
+the seed / RNG state for reproducibility.
+
+### `NetworkSimulationResult` (`nstat.NetworkSimulationResult`)
+
+Result dataclass for :func:`nstat.simulate_two_neuron_network`.  Captures
+both neurons' spike trains and the cross-coupling history that drove
+the simulation.
 
 ---
 

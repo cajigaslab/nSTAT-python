@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 docs/_build/
+docs/_autosummary/
 plots/
 data_cache/
 data/
