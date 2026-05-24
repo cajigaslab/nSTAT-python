@@ -182,3 +182,30 @@ That repository is MATLAB-focused and retains:
 - Original MATLAB class/source files
 - MATLAB helpfiles and help index (`helpfiles/helptoc.xml`)
 - MATLAB example workflows, including `.mlx` examples
+
+## Related Python projects
+
+nstat ships **opt-in bridges** (`nstat.extras.*`) to libraries in the
+modern Python systems-neuroscience stack.  Install each via its
+optional-dep group:
+
+| Library | Use case | Bridge module | Install |
+|---|---|---|---|
+| [Neo](https://github.com/NeuralEnsemble/python-neo) | I/O for Spike2 / NEX / Blackrock / Plexon / TDT / NWB | `nstat.extras.interop.neo` | `pip install nstat-toolbox[neo]` |
+| [pynapple](https://github.com/pynapple-org/pynapple) | Time-series + epoch math, NWB-native | `nstat.extras.interop.pynapple` | `pip install nstat-toolbox[pynapple]` |
+| [pynwb](https://github.com/NeurodataWithoutBorders/pynwb) | BRAIN-Initiative NWB:N standard reader | `nstat.extras.interop.nwb` | `pip install nstat-toolbox[nwb]` |
+| [NeMoS](https://github.com/flatironinstitute/nemos) | JAX Poisson-GLM (cross-validation reference) | `nstat.extras.validation.nemos_bridge` | `pip install nstat-toolbox[nemos]` |
+| [pykalman](https://github.com/pykalman/pykalman) | Pure-NumPy Kalman (cross-validation reference) | `nstat.extras.validation.pykalman_bridge` | `pip install nstat-toolbox[test-parity]` |
+| [PySpike](https://github.com/mariomulansky/PySpike) | ISI / SPIKE-distance spike-train metrics | `nstat.extras.metrics.spike_distances` | `pip install nstat-toolbox[metrics]` |
+
+For ecosystem peers nstat does **not** wrap (spike sorting, calcium
+imaging, deep-learning decoders), see
+[`parity/integration_opportunities.md`](parity/integration_opportunities.md)
+for the rationale and recommended alternatives:
+
+- **[SpikeInterface](https://github.com/SpikeInterface/spikeinterface)** — spike sorting (nstat assumes pre-sorted data).
+- **[Elephant](https://github.com/NeuralEnsemble/elephant)** — overlapping spike-train statistics; Neo-typed.
+- **[Dynamax](https://github.com/probml/dynamax)** — state-space EM (KF_EM / PP_EM); planned for v0.4.
+- **[ssqueezepy](https://github.com/OverLordGoldDragon/ssqueezepy)** — wavelet synchrosqueezing; planned `nstat.extras.spectral`.
+
+Install every bridge at once: `pip install nstat-toolbox[all-extras]`.

@@ -2,16 +2,19 @@
 
 This namespace is the home for features that have no counterpart in
 upstream MATLAB nSTAT and would dilute the MATLAB-parity contract of
-the core :mod:`nstat` package if added there.  Examples (planned, not
-yet implemented):
+the core :mod:`nstat` package if added there.
 
-- Bridges to third-party Python neural-data libraries (SpikeInterface,
-  Neo, pynapple, NWB).
-- Modern decoders that don't exist in MATLAB (deep-learning, wavelet
-  synchrosqueeze, adaptive multitaper).
-- Pythonic alternatives to MATLAB-style APIs (snake_case wrappers,
-  dataclass return types) where the prevailing style would clash with
-  the parity-preserved core.
+Three subpackages ship today:
+
+- :mod:`nstat.extras.interop` — converters between :class:`nstat.nspikeTrain`
+  / :class:`nstat.SpikeTrainCollection` / :class:`nstat.Trial` and the
+  data models used by **Neo**, **pynapple**, and **pynwb**.
+- :mod:`nstat.extras.validation` — Python-side cross-validation bridges
+  (start: **NeMoS** Poisson GLM) that triangulate nstat's MATLAB-faithful
+  estimates against independent reference implementations.
+- :mod:`nstat.extras.metrics` — modern spike-train distance / synchrony
+  metrics (ISI-distance, SPIKE-distance, SPIKE-synchronization via
+  **PySpike**) that have no MATLAB counterpart.
 
 Stability contract
 ------------------
@@ -44,10 +47,11 @@ Most extras modules pull in libraries beyond the core ``nstat-toolbox``
 dependency set.  Install them via the extras keys declared in
 ``pyproject.toml``::
 
-    pip install nstat-toolbox[spikeinterface]   # adds SpikeInterface bridge
-    pip install nstat-toolbox[neo]              # adds Neo I/O
-    pip install nstat-toolbox[nwb]              # adds NWB I/O
-    pip install nstat-toolbox[deep-learning]    # adds PyTorch decoders
+    pip install nstat-toolbox[neo]              # neo
+    pip install nstat-toolbox[pynapple]         # pynapple
+    pip install nstat-toolbox[nwb]              # pynwb
+    pip install nstat-toolbox[metrics]          # pyspike
+    pip install nstat-toolbox[test-parity]      # nemos, pykalman, statsmodels, nitime
     pip install nstat-toolbox[all-extras]       # install everything
 
 Each extras module raises a clear, actionable ``ImportError`` at import
@@ -63,10 +67,22 @@ remains the only MATLAB-runtime entry point in the package; see
 """
 from __future__ import annotations
 
-# When concrete extras modules land, append their public symbols to
-# this list.  The helpfile-freshness checker
-# (``tools/check_helpfile_freshness.py``) treats any name in
-# ``nstat.extras.__all__`` the same way it treats ``nstat.__all__``:
-# it must appear in ``AGENT_GUIDE.md`` and, if a class, in
-# ``docs/ClassDefinitions.md``.
+# Submodules are not eagerly imported here — each depends on an optional
+# library that the user may not have installed.  Users access them via
+# explicit imports::
+#
+#     from nstat.extras.interop.neo import to_neo_spiketrain
+#     from nstat.extras.interop.pynapple import to_pynapple_ts
+#     from nstat.extras.interop.nwb import read_nwb_path
+#     from nstat.extras.validation.nemos_bridge import cross_validate_poisson_glm
+#     from nstat.extras.metrics.spike_distances import spike_distance
+#
+# Importing this top-level package is safe even when no optional deps
+# are installed (no eager submodule imports).
+#
+# The helpfile-freshness checker (``tools/check_helpfile_freshness.py``)
+# treats every name in ``__all__`` the same way it treats
+# ``nstat.__all__``: it must appear in ``AGENT_GUIDE.md`` and, if a
+# class, in ``docs/ClassDefinitions.md``.
+
 __all__: list[str] = []
