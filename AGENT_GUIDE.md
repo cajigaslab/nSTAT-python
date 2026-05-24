@@ -80,6 +80,7 @@ to re-verify).
 ### Modeling and inference
 - `Analysis` — top-level fit/analysis orchestrator (`GLMFit`, `computeHistLagForAll`, `computeGrangerCausalityMatrix`, etc.).
 - `CIF`, `CIFModel` — conditional intensity functions, symbolic ↔ numeric evaluation.
+- `LinearCIF` — closed-form (sympy-free) CIF for the two canonical link cases (Poisson log-link, binomial logit-link).  Drop-in compatible with `CIF` for the 5 eval methods used by `DecodingAlgorithms.PPDecode_update`.  See the curriculum cross-reference (`Decoding the Brain` §4.B.7.4).
 - `FitResult` — fit output (coefficients, lambda signal, KS, AIC/BIC).
 - `FitResSummary` / `FitSummary` — aggregator across fits/cells.
 - `psth` — peri-stimulus time histogram convenience function.
@@ -502,6 +503,102 @@ The checker validates three things:
 benefit-to-flakiness ratio of validating them is poor.  If you rename
 a section, grep for the old anchor manually:
 `grep -rn "#old-anchor-name" *.md docs/`.
+
+---
+
+## 7.6 Keeping helpfiles current
+
+The "helpfiles" of `nstat-python` (the Python analogue of MATLAB's
+`helpfiles/*.m`) are the hand-maintained documentation surfaces that
+explain how to *use* the package — not just docstrings, which are tied
+to symbols.  These can silently lag the public API when contributors
+add new symbols.
+
+**Two enforcement layers:**
+
+1. **Sphinx autosummary** (zero-maintenance).  `docs/api.rst` is now
+   auto-generated from `nstat.__all__` (and `nstat.extras.__all__` when
+   present) by the `sphinx.ext.autosummary` extension.  Adding a name
+   to `__all__` automatically makes it appear in the API reference on
+   the next docs build.  No manual update needed.
+
+2. **`tools/check_helpfile_freshness.py`** (catches the rest).  For
+   every symbol in `nstat.__all__` (and `nstat.extras.__all__`):
+   - Asserts the symbol name appears in `AGENT_GUIDE.md` (any prose
+     context).
+   - If the symbol is a class (per `inspect.isclass`), asserts it also
+     appears in `docs/ClassDefinitions.md`.
+
+**Out of scope for the checker:**
+
+- `PORTING_MAP.md` — frozen snapshot; only updated on genuine
+  MATLAB↔Python parity refreshes, not on Python-only additions.
+- `notebooks/` — tracked separately by `parity/notebook_fidelity.yml`.
+
+**Local check** (~1 second):
+
+```bash
+make helpfile-check
+# or:
+python tools/check_helpfile_freshness.py
+```
+
+**CI enforcement.**  `.github/workflows/helpfile-check.yml` runs the
+same checker on every PR that touches `nstat/__init__.py`, `nstat/**/*.py`,
+`docs/`, or `AGENT_GUIDE.md`.  Hard gate — blocks PRs that introduce
+undocumented `__all__` additions.
+
+---
+
+## 7.7 Core vs `nstat.extras` — where new code goes
+
+The package has two namespaces with different stability contracts:
+
+- **`nstat.*`** (core) — MATLAB-parity contract.  Stable.  Every symbol
+  here mirrors something in upstream MATLAB nSTAT.  Removals / renames
+  require a major-version bump.
+- **`nstat.extras.*`** — Python-only extensions.  Opt-in.  Free to evolve.
+  Minor-version releases may add / rename / remove extras symbols.
+
+**Decision rule for new code:**
+
+| If the feature... | It goes in... |
+|---|---|
+| Exists in MATLAB nSTAT (`.m` source file) | `nstat/` (core) |
+| Has a `parity/manifest.yml` entry | `nstat/` (core) |
+| Is Python-only with no MATLAB counterpart | `nstat/extras/` |
+| Depends on libraries outside core deps (PyTorch, SpikeInterface, MNE, Neo, …) | `nstat/extras/` |
+| Uses Pythonic snake_case where the MATLAB-style would clash | `nstat/extras/` |
+| Is experimental — API may break across minor releases | `nstat/extras/` |
+| Wraps an external library to make it work with `nstat.*` | `nstat/extras/` |
+
+**Examples:**
+
+- `LinearCIF` → **core**.  Mirrors MATLAB v1.4.0's `LinearCIF.m`.
+- A hypothetical `nstat.extras.spikeinterface_bridge` → **extras**.  No
+  MATLAB counterpart; depends on the SpikeInterface package.
+- A new Pillow raised-cosine basis (per `parity/integration_opportunities.md`)
+  → **extras** initially; could later migrate to core if MATLAB adopts
+  the same basis family.
+- A deep-learning decoder (NDT / POYO bridge) → **extras**.  No MATLAB
+  counterpart; heavy PyTorch dependency.
+
+**Optional dependencies for extras.**  Each `nstat.extras.X` module
+declares its optional dep in `pyproject.toml` under
+`[project.optional-dependencies]`.  Install via:
+
+```bash
+pip install nstat-toolbox[spikeinterface]
+pip install nstat-toolbox[all-extras]   # everything at once
+```
+
+Each extras module should raise a clear, actionable `ImportError` at
+import time when its optional dependency is missing.
+
+**Independence.**  The "no MATLAB-repo coupling" rule applies equally to
+`nstat.extras.*`.  Extras may depend on any *Python* package but must
+not introduce runtime dependencies on the MATLAB nSTAT repository
+beyond the sanctioned `matlab.engine` bridge in `nstat.matlab_engine`.
 
 ---
 

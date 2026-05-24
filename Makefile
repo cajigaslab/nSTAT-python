@@ -22,7 +22,7 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 .PHONY: help install test test-smoke test-fast test-datasets test-no-paper \
         regen regen-gallery regen-parity regen-figures regen-notebook-fidelity \
         docs docs-strict docs-open \
-        diff-matlab readme-check \
+        diff-matlab readme-check helpfile-check freshness-check \
         format lint typecheck \
         version-check sanity clean release-check
 
@@ -79,6 +79,10 @@ docs:  ## Build the Sphinx site (writes to docs/_build/html).
 	$(SPHINX) -b html docs docs/_build/html
 
 docs-strict:  ## Build docs with -W (warnings as errors, matches CI).
+	# Two-pass build: the first run populates docs/_autosummary so the
+	# strict run doesn't trip on cold-start "stub file not found"
+	# warnings.  Mirrors the CI docs-build job.
+	$(SPHINX) -b html docs docs/_build/html
 	$(SPHINX) -W -b html docs docs/_build/html
 
 docs-open: docs  ## Build docs and open in default browser (macOS / linux).
@@ -95,6 +99,11 @@ diff-matlab:  ## Diff MATLAB nSTAT checkout against parity/manifest.yml.
 
 readme-check:  ## Verify README intra-repo links, images, and code-snippet imports.
 	$(PY) tools/check_readme_links.py
+
+helpfile-check:  ## Verify every nstat.__all__ symbol is documented in AGENT_GUIDE + ClassDefinitions.
+	$(PY) tools/check_helpfile_freshness.py
+
+freshness-check: readme-check helpfile-check  ## Run both README and helpfile freshness checks.
 
 # --- formatting / linting (no enforcement; recommendations only) ----
 
@@ -117,7 +126,7 @@ sanity:  ## Quick "is the package importable + entry points wired?" check.
 	@$(PY) -c "from nstat.install import main; print('nstat-install entry point OK')"
 	@$(PY) -c "from nstat.paper_examples import main; print('nstat-paper-examples entry point OK')"
 
-release-check: version-check readme-check test docs-strict regen  ## Pre-release verification gauntlet.
+release-check: version-check freshness-check test docs-strict regen  ## Pre-release verification gauntlet.
 	@echo "Release check passed — ready to tag."
 
 clean:  ## Remove built artifacts (__pycache__, .pytest_cache, docs/_build, dist).

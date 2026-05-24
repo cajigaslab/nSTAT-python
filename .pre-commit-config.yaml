@@ -58,3 +58,15 @@ repos:
         files: '^(README\.md|AGENT_GUIDE\.md|docs/.*|examples/.*|notebooks/.*|nstat/__init__\.py|nstat/.*\.py|pyproject\.toml|CITATION\.cff|tools/check_readme_links\.py)$'
         pass_filenames: false  # script always checks README.md
         require_serial: true
+
+      # Helpfile freshness check — asserts every public symbol in
+      # nstat.__all__ (and nstat.extras.__all__) appears in
+      # AGENT_GUIDE.md, and every class also appears in
+      # docs/ClassDefinitions.md.  Mirrors the helpfile-check.yml CI gate.
+      - id: helpfile-freshness
+        name: Check helpfile coverage of nstat.__all__
+        entry: python tools/check_helpfile_freshness.py
+        language: system
+        files: '^(nstat/__init__\.py|nstat/extras/__init__\.py|nstat/.*\.py|docs/ClassDefinitions\.md|AGENT_GUIDE\.md|tools/check_helpfile_freshness\.py)$'
+        pass_filenames: false
+        require_serial: true

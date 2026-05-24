@@ -28,7 +28,45 @@ dev = [
   "sphinx>=8.0",
   "sphinx-rtd-theme>=3.0",
   "myst-parser>=4.0",
+  "packaging>=23.0",  # version-string parsing in tests/test_version_sync.py
 ]
+
+# --- nstat.extras opt-in dependency groups ----------------------------
+# Each group corresponds to a module under ``nstat/extras/``.  When the
+# concrete extras module lands, callers can opt in via
+# ``pip install nstat-toolbox[<group>]``.
+#
+# Empty lists below are intentional placeholders — the architecture
+# (core + extras + opt-in deps) is declared here even before each
+# extras module ships, so contributors have a documented home for new
+# integrations from day one.  Fill in version pins as modules land.
+
+# Bridge to SpikeInterface for spike-sorting outputs.
+spikeinterface = []
+
+# Bridge to Neo (de-facto neurophysiology data standard).
+neo = []
+
+# Bridge to Neurodata Without Borders.
+nwb = []
+
+# Bridge to pynapple (Flatiron Institute neural-data analysis).
+pynapple = []
+
+# Bridge to NeMoS (Flatiron Institute Poisson-GLM / basis families).
+# Per parity/integration_opportunities.md, NeMoS is the strongest
+# cross-validation target for the GLM fitting path.
+nemos = []
+
+# Bridge to Dynamax / probml state-space models (for the unported
+# KF_EM / PP_EM / mPPCO_EM families).
+dynamax = []
+
+# PyTorch-based decoders (NDT / POYO bridge; deferred to v0.4+).
+deep-learning = []
+
+# Convenience: install every extras group at once.
+all-extras = []
 
 [tool.setuptools.packages.find]
 where = ["."]

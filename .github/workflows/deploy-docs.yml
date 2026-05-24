@@ -34,7 +34,12 @@ jobs:
       - name: Regenerate paper gallery artifacts
         run: python tools/paper_examples/build_gallery.py
 
-      - name: Build Sphinx docs
+      - name: Pre-generate autosummary stubs
+        # Warm-up pass populates docs/_autosummary so the strict build
+        # below doesn't trip on "stub file not found" warnings.
+        run: python -m sphinx -b html docs docs/_build/html
+
+      - name: Build Sphinx docs (strict)
         run: python -m sphinx -W -b html docs docs/_build/html
 
       - name: Add .nojekyll marker
