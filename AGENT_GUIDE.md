@@ -385,19 +385,39 @@ list below records the current state.
   should set `ensure_example_data(download=False)` and handle the
   `DataNotFoundError`.
 
-### 5.6 What the package is NOT
+### 5.6 What the package is NOT (and where to look instead)
 
-- **Not** a real-time decoding pipeline. Decoding methods are
+For each scope gap, the recommended ecosystem peer is named.  Many are
+wired up via opt-in bridges under `nstat.extras` — see the "Related
+Python projects" table in `README.md` for install commands.
+
+- **Not** a real-time decoding pipeline.  Decoding methods are
   offline/batch.
 - **Not** a deep-learning toolkit. There are no neural-network models;
-  fits are GLM/state-space classical statistics.
-- **Not** a spike-sorting toolkit. Spike times are assumed to be
-  pre-sorted.
-- **Not** an LFP/EEG signal-processing library on its own. `SignalObj`
-  has periodogram / multitaper spectrum / spectrogram methods, but for
-  serious spectral analysis prefer dedicated libraries (MNE, Elephant,
-  Spectral Connectivity).
-- **Not** distributed. All routines are single-process NumPy / SciPy.
+  fits are GLM/state-space classical statistics.  Bridge to PyTorch
+  decoders is planned (`nstat.extras.deep_learning`, v0.4+).
+- **Not** a spike-sorting toolkit.  Spike times are assumed to be
+  pre-sorted.  Use [SpikeInterface](https://github.com/SpikeInterface/spikeinterface)
+  upstream; pipe its output through `nstat.extras.interop.neo`.
+- **Not** an LFP/EEG signal-processing library on its own.  `SignalObj`
+  has periodogram / spectrogram methods, but for serious spectral
+  analysis use [nitime](https://github.com/nipy/nitime) (multitaper),
+  [MNE](https://mne.tools) (time-frequency), or
+  [ssqueezepy](https://github.com/OverLordGoldDragon/ssqueezepy)
+  (synchrosqueeze).  A [mne-connectivity](https://github.com/mne-tools/mne-connectivity)
+  bridge is preferable over `spectral_connectivity` due to GPL-3
+  incompatibility (`parity/integration_opportunities.md` documents
+  the license analysis).
+- **Not** an NWB / Neo / pynapple reader.  Use the opt-in bridges:
+  `nstat.extras.interop.nwb`, `.neo`, `.pynapple`.
+- **Not** a spike-train distance-metric library.  Use the opt-in
+  `nstat.extras.metrics.spike_distances` wrapper around PySpike
+  (ISI / SPIKE / SPIKE-synchronization).
+- **Not** a state-space EM toolbox.  The MATLAB nSTAT `KF_EM` /
+  `PP_EM` / `mPPCO_EM` families are unported; use
+  [Dynamax](https://github.com/probml/dynamax) instead (planned
+  bridge `nstat.extras.em.dynamax`).
+- **Not** distributed.  All routines are single-process NumPy / SciPy.
 
 ---
 

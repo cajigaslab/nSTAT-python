@@ -1,5 +1,66 @@
 # Release Notes
 
+## v0.3.2 — unreleased
+
+Inaugural release of the **`nstat.extras` namespace** — a monorepo addon
+space (modeled after `scikit-learn-contrib`) for Python-only features
+that have no MATLAB nSTAT counterpart.  The core `nstat.*` namespace
+remains under the strict MATLAB-parity contract; `nstat.extras.*` is
+free to evolve at minor-release speed and depends on opt-in third-party
+libraries declared in `pyproject.toml`'s `[project.optional-dependencies]`.
+
+### New: `nstat.extras` subpackages
+
+- **`nstat.extras.interop`** — `Trial` / `SpikeTrainCollection` / `nspikeTrain`
+  converters for the wider Python neuro-data stack.
+  - `interop.neo` — `to_neo_spiketrain`, `from_neo_spiketrain`, `to_neo_segment`
+    (install `[neo]`).
+  - `interop.pynapple` — `to_pynapple_ts`, `to_pynapple_with_support`,
+    `from_pynapple_ts`, `to_pynapple_tsgroup` (install `[pynapple]`).
+  - `interop.nwb` — `nwb_units_to_collection`, `read_nwb_path` with
+    `obs_intervals` / `time_window=` support and explicit fallback
+    warning when neither is available (install `[nwb]`).
+- **`nstat.extras.validation`** — Python-side cross-validation bridges
+  that triangulate nstat's MATLAB-faithful estimates against
+  independent reference implementations.
+  - `validation.nemos_bridge.cross_validate_poisson_glm` against
+    Flatiron's NeMoS Poisson GLM (install `[nemos]` or `[test-parity]`).
+  - `validation.pykalman_bridge.cross_validate_kalman` against
+    pykalman.  Includes the documented AUDIT D3 smoother-gap baseline
+    (install `[test-parity]`).
+- **`nstat.extras.metrics`** — modern spike-train distance metrics.
+  - `metrics.spike_distances.{isi,spike,spike_synchronization,pairwise_spike_distance_matrix}`
+    via PySpike (install `[metrics]`).
+
+### New: optional-dependency groups in `pyproject.toml`
+
+- `[neo]` (neo + quantities)
+- `[pynapple]` (pynapple ≥ 0.7)
+- `[nwb]` (pynwb ≥ 2.8)
+- `[metrics]` (pyspike ≥ 0.8)
+- `[nemos]` (nemos ≥ 0.2)
+- `[test-parity]` (nemos + pykalman + statsmodels + nitime)
+- `[all-extras]` — install every functional extras module at once
+
+### Docs
+
+- `README.md` adds a "Related Python projects" section with the install-
+  command matrix and pointers to ecosystem peers (SpikeInterface,
+  Elephant, Dynamax, ssqueezepy).
+- `AGENT_GUIDE.md §5.6` updated to name a concrete library / extras
+  module for every "what nstat is NOT" scope gap.
+- `parity/integration_opportunities.md` (added prior PR) provides the
+  upstream-metadata audit driving these decisions.
+
+### Independence
+
+Every bridge is **Python-side only**.  No new coupling to the MATLAB
+`cajigaslab/nSTAT` repository is introduced — confirmed by
+`tests/test_cleanroom_boundary.py` and a regression test in
+`tests/extras/test_extras_namespace.py::test_extras_independence_no_matlab_runtime_imports`.
+
+---
+
 ## v0.3.1 — 2026-05-21
 
 Post-audit cleanup release.  No public API breakage; deprecation warnings

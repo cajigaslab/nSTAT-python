@@ -32,41 +32,76 @@ dev = [
 ]
 
 # --- nstat.extras opt-in dependency groups ----------------------------
-# Each group corresponds to a module under ``nstat/extras/``.  When the
-# concrete extras module lands, callers can opt in via
+# Each group backs a module under ``nstat/extras/`` and is documented in
+# parity/integration_opportunities.md.  Install via
 # ``pip install nstat-toolbox[<group>]``.
-#
-# Empty lists below are intentional placeholders — the architecture
-# (core + extras + opt-in deps) is declared here even before each
-# extras module ships, so contributors have a documented home for new
-# integrations from day one.  Fill in version pins as modules land.
 
-# Bridge to SpikeInterface for spike-sorting outputs.
+# Bridge to SpikeInterface for spike-sorting outputs (placeholder; module
+# not yet shipped).
 spikeinterface = []
 
-# Bridge to Neo (de-facto neurophysiology data standard).
-neo = []
+# Bridge to Neo — backs nstat.extras.interop.neo.  BSD-3.
+neo = [
+  "neo>=0.13",
+  "quantities>=0.15",
+]
 
-# Bridge to Neurodata Without Borders.
-nwb = []
+# Bridge to Neurodata Without Borders — backs nstat.extras.interop.nwb.
+# pynwb pulls in hdmf transitively.  BSD-3.
+nwb = [
+  "pynwb>=2.8",
+]
 
-# Bridge to pynapple (Flatiron Institute neural-data analysis).
-pynapple = []
+# Bridge to pynapple — backs nstat.extras.interop.pynapple.  MIT.
+pynapple = [
+  "pynapple>=0.7",
+]
 
-# Bridge to NeMoS (Flatiron Institute Poisson-GLM / basis families).
-# Per parity/integration_opportunities.md, NeMoS is the strongest
-# cross-validation target for the GLM fitting path.
-nemos = []
+# Spike-train distance metrics — backs nstat.extras.metrics.spike_distances.
+# BSD-2; C/Cython accelerated.
+metrics = [
+  "pyspike>=0.8",
+]
 
-# Bridge to Dynamax / probml state-space models (for the unported
-# KF_EM / PP_EM / mPPCO_EM families).
-dynamax = []
+# Bridge to NeMoS for Poisson-GLM cross-validation —
+# backs nstat.extras.validation.nemos_bridge.  MIT; pulls JAX (~200 MB).
+nemos = [
+  "nemos>=0.2",
+]
+
+# Bridge to Dynamax / probml state-space models for the unported
+# KF_EM / PP_EM / mPPCO_EM families (module not yet shipped).
+dynamax = [
+  "dynamax>=0.1",
+]
+
+# Cross-validation harness for parity tests — bundles the references
+# called out in parity/integration_opportunities.md Tier-1.
+test-parity = [
+  "nemos>=0.2",
+  "pykalman>=0.11",
+  "statsmodels>=0.14",
+  "nitime>=0.12",
+]
 
 # PyTorch-based decoders (NDT / POYO bridge; deferred to v0.4+).
 deep-learning = []
 
-# Convenience: install every extras group at once.
-all-extras = []
+# Convenience: install every functional extras group at once.
+# This MUST be the union of all individually-installable groups above
+# (otherwise the README claim that ``[all-extras]`` is the one-shot
+# install would be a lie).
+all-extras = [
+  "neo>=0.13",
+  "quantities>=0.15",
+  "pynwb>=2.8",
+  "pynapple>=0.7",
+  "pyspike>=0.8",
+  "nemos>=0.2",
+  "pykalman>=0.11",
+  "statsmodels>=0.14",
+  "nitime>=0.12",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
