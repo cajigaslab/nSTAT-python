@@ -1,0 +1,46 @@
+Extras — opt-in bridges to the Python neuro ecosystem
+=====================================================
+
+The :mod:`nstat.extras` namespace ships Python-only features that have
+no counterpart in upstream MATLAB nSTAT.  Each subpackage depends on
+an optional library declared in ``pyproject.toml`` — install via
+``pip install nstat-toolbox[<group>]`` (e.g. ``[neo]``, ``[pynapple]``,
+``[nwb]``, ``[metrics]``, ``[nemos]``, ``[test-parity]``, or
+``[all-extras]`` for the union).
+
+For the design rationale and stability contract, see
+:mod:`nstat.extras` and the
+`integration_opportunities <https://github.com/cajigaslab/nSTAT-python/blob/main/parity/integration_opportunities.md>`_
+audit.
+
+.. currentmodule:: nstat.extras
+
+
+Interop — data-model bridges
+----------------------------
+
+.. autosummary::
+   :toctree: _autosummary
+
+   interop.neo
+   interop.pynapple
+   interop.nwb
+
+
+Validation — cross-validation oracles
+-------------------------------------
+
+.. autosummary::
+   :toctree: _autosummary
+
+   validation.nemos_bridge
+   validation.pykalman_bridge
+
+
+Metrics — modern spike-train distance metrics
+---------------------------------------------
+
+.. autosummary::
+   :toctree: _autosummary
+
+   metrics.spike_distances

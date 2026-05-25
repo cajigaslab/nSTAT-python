@@ -12,5 +12,6 @@ Standalone Python documentation for the release-ready nSTAT port.
    Examples
    DocumentationSetup
    api
+   extras
    data_installation
    paper_examples
