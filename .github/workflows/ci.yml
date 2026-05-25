@@ -281,3 +281,42 @@ jobs:
           name: paper-figures
           path: docs/figures/
           retention-days: 30
+
+  extras-functional:
+    # Install [all-extras] and exercise every nstat.extras.* bridge with
+    # its real backing library — the per-bridge functional tests in
+    # tests/extras/test_extras_namespace.py use ``pytest.importorskip``
+    # for the dep-installed path, so they're invisible under the default
+    # [dev] install.  This job closes that false-safety gap by ensuring
+    # at least one CI run actually exercises each bridge end-to-end.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package with all optional extras
+        run: |
+          python -m pip install --upgrade pip
+          # pyspike build requires Cython at install time
+          python -m pip install Cython
+          python -m pip install -e ".[dev,all-extras]"
+      - name: Sanity-check every bridge imports
+        # Lazy-imports MUST resolve cleanly once the backing deps are installed.
+        run: |
+          python -c "from nstat.extras.interop.neo import to_neo_spiketrain"
+          python -c "from nstat.extras.interop.pynapple import to_pynapple_ts"
+          python -c "from nstat.extras.interop.nwb import read_nwb_path"
+          python -c "from nstat.extras.validation.nemos_bridge import cross_validate_poisson_glm"
+          python -c "from nstat.extras.validation.pykalman_bridge import cross_validate_kalman"
+          python -c "from nstat.extras.metrics.spike_distances import spike_distance"
+      - name: Run extras functional tests
+        # The functional round-trips (test_neo_roundtrip_*, etc.) skip
+        # silently under [dev]-only — here they MUST run for real.
+        run: pytest -q tests/extras/ -v
+      - name: Run extras example scripts end-to-end
+        # tests/test_extras_examples.py invokes each demo via subprocess.
+        # With [all-extras] installed, every example's run-as-main path
+        # must exit 0.
+        run: pytest -q tests/test_extras_examples.py -v
