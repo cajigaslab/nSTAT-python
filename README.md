@@ -185,6 +185,9 @@ That repository is MATLAB-focused and retains:
 
 ## Related Python projects
 
+> 📚 **Visual summary** with per-bridge cards, install matrix, and code snippets:
+> [`extras_summary.html`](https://cajigaslab.github.io/nSTAT-python/extras_summary.html).
+
 nstat ships **opt-in bridges** (`nstat.extras.*`) to libraries in the
 modern Python systems-neuroscience stack.  Install each via its
 optional-dep group:
