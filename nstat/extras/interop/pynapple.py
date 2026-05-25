@@ -18,22 +18,14 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from nstat import nspikeTrain, SpikeTrainCollection
+from nstat.extras._lazy import require_optional
 
 if TYPE_CHECKING:
     import pynapple as nap
 
 
-_IMPORT_ERROR_MSG = (
-    "nstat.extras.interop.pynapple requires the 'pynapple' package. "
-    "Install with: pip install nstat-toolbox[pynapple]"
-)
-
-
 def _require_pynapple() -> "type[nap.Ts]":
-    try:
-        import pynapple as nap
-    except ImportError as e:
-        raise ImportError(_IMPORT_ERROR_MSG) from e
+    nap = require_optional("pynapple", install_key="pynapple")
     return nap.Ts
 
 

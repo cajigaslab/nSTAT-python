@@ -23,22 +23,14 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from nstat import nspikeTrain, SpikeTrainCollection
+from nstat.extras._lazy import require_optional
 
 if TYPE_CHECKING:
     import pynwb
 
 
-_IMPORT_ERROR_MSG = (
-    "nstat.extras.interop.nwb requires the 'pynwb' package. "
-    "Install with: pip install nstat-toolbox[nwb]"
-)
-
-
 def _require_pynwb() -> None:
-    try:
-        import pynwb  # noqa: F401
-    except ImportError as e:
-        raise ImportError(_IMPORT_ERROR_MSG) from e
+    require_optional("pynwb", install_key="nwb")
 
 
 def nwb_units_to_collection(
