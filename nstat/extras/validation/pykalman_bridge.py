@@ -22,23 +22,15 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from nstat import DecodingAlgorithms
+from nstat.extras._lazy import require_optional
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     pass
 
 
-_IMPORT_ERROR_MSG = (
-    "nstat.extras.validation.pykalman_bridge requires the 'pykalman' package. "
-    "Install with: pip install nstat-toolbox[test-parity]"
-)
-
-
 def _require_pykalman():
-    try:
-        from pykalman import KalmanFilter as PyKalmanFilter
-    except ImportError as e:
-        raise ImportError(_IMPORT_ERROR_MSG) from e
-    return PyKalmanFilter
+    pyk = require_optional("pykalman", install_key="test-parity")
+    return pyk.KalmanFilter
 
 
 @dataclass(frozen=True)
