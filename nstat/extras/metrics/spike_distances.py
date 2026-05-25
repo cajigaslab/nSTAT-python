@@ -23,23 +23,14 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from nstat import nspikeTrain
+from nstat.extras._lazy import require_optional
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     pass
 
 
-_IMPORT_ERROR_MSG = (
-    "nstat.extras.metrics.spike_distances requires the 'pyspike' package. "
-    "Install with: pip install nstat-toolbox[metrics]"
-)
-
-
 def _require_pyspike():
-    try:
-        import pyspike as spk
-    except ImportError as e:
-        raise ImportError(_IMPORT_ERROR_MSG) from e
-    return spk
+    return require_optional("pyspike", install_key="metrics")
 
 
 def _to_pyspike(nst: nspikeTrain):
