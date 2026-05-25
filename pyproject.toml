@@ -70,10 +70,10 @@ nemos = [
 ]
 
 # Bridge to Dynamax / probml state-space models for the unported
-# KF_EM / PP_EM / mPPCO_EM families (module not yet shipped).
-dynamax = [
-  "dynamax>=0.1",
-]
+# KF_EM / PP_EM / mPPCO_EM families.  Placeholder until the module
+# ships — add ``dynamax>=0.1`` here AND to ``[all-extras]`` when the
+# nstat.extras.em.dynamax module lands.
+dynamax = []
 
 # Cross-validation harness for parity tests — bundles the references
 # called out in parity/integration_opportunities.md Tier-1.
