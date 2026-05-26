@@ -117,3 +117,9 @@ html_theme_options = {
     "navigation_depth": 3,
     "collapse_navigation": False,
 }
+
+# Copy standalone HTML pages into the build root.  Used for
+# docs/extras_summary.html — a self-contained landing page (embedded
+# CSS, no Sphinx wrap) that lives at
+# https://cajigaslab.github.io/nSTAT-python/extras_summary.html.
+html_extra_path = ["extras_summary.html"]
