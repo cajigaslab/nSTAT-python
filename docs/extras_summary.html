@@ -220,7 +220,8 @@
     <tr><td><code>[metrics]</code></td><td>pyspike</td><td><code>extras.metrics.spike_distances</code></td></tr>
     <tr><td><code>[nemos]</code></td><td>nemos (incl. JAX, ~200 MB)</td><td><code>extras.validation.nemos_bridge</code></td></tr>
     <tr><td><code>[test-parity]</code></td><td>nemos + pykalman + statsmodels + nitime</td><td>All cross-validation bridges</td></tr>
-    <tr><td><code>[all-extras]</code></td><td>Every functional group above</td><td>One-shot install</td></tr>
+    <tr><td><code>[dynamax]</code></td><td>dynamax (incl. JAX, ~200 MB)</td><td><code>extras.em.dynamax_bridge</code></td></tr>
+    <tr><td><code>[all-extras]</code></td><td>Every functional group above <em>except</em> <code>[dynamax]</code></td><td>One-shot install (heavy <code>[dynamax]</code> opt-out documented in <code>tests/test_pyproject_consistency.py::HEAVY_OPT_OUT_OF_ALL_EXTRAS</code>)</td></tr>
   </tbody>
 </table>
 <p>The <code>[all-extras]</code> union is <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/tests/test_pyproject_consistency.py">CI-enforced</a> — adding a new group without updating <code>[all-extras]</code> fails the test suite.</p>
@@ -311,6 +312,18 @@ D = pairwise_spike_distance_matrix(trains)  # (N, N)</code></pre>
   <p class="badge">Details: <a href="extras/metrics_spike_distances.html">metrics_spike_distances.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/metrics_spike_distances_demo.py"><code>metrics_spike_distances_demo.py</code></a></p>
 </div>
 
+<div class="bridge-card">
+  <h4><span class="tier-tag a">A</span> nstat.extras.em.dynamax_bridge</h4>
+  <p class="install"><code>pip install nstat-toolbox[dynamax]</code> (pulls JAX, ~200 MB)</p>
+  <p>EM-trained linear-Gaussian state-space models via Dynamax. Foundation for closing the unported MATLAB <code>KF_EM</code> / <code>PP_EM</code> / <code>mPPCO_EM</code> families (AUDIT_REPORT.md §3.2 — 19 methods / ~7,500 LOC of MATLAB avoided). Initial release covers KF_EM equivalent; PP_EM and mPPCO_EM are planned.</p>
+  <pre><code>from nstat.extras.em.dynamax_bridge import fit_linear_gaussian_em
+
+result = fit_linear_gaussian_em(y, state_dim=2, n_iter=30)
+print(result.transition_matrix)
+print(result.log_likelihoods[-1])</code></pre>
+  <p class="badge">Details: <a href="extras/em_dynamax.html">em_dynamax.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/em_dynamax_demo.py"><code>em_dynamax_demo.py</code></a></p>
+</div>
+
 </section>
 
 <section id="planned">
@@ -318,8 +331,8 @@ D = pairwise_spike_distance_matrix(trains)  # (N, N)</code></pre>
 <div class="planned">
   <strong>v0.4 milestones</strong> (see <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/integration_opportunities.md"><code>parity/integration_opportunities.md</code></a>):
   <ul>
-    <li><code>nstat.extras.em.dynamax</code> — wraps Dynamax for the unported MATLAB <code>KF_EM</code> / <code>PP_EM</code> / <code>mPPCO_EM</code> families (5,000+ MATLAB LOC avoided via adapter approach).</li>
-    <li><code>nstat.extras.validation.statsmodels_bridge</code> — third independent Poisson-GLM oracle (statsmodels is already in the SciPy stack — zero install cost).</li>
+    <li><code>nstat.extras.em.dynamax_bridge.fit_point_process_em</code> — PP_EM equivalent (needs Dynamax <code>PoissonHMM</code> bridge).</li>
+    <li><code>nstat.extras.em.dynamax_bridge.fit_hybrid_em</code> — mPPCO_EM equivalent (needs Dynamax <code>GeneralizedGaussianSSM</code> bridge).</li>
     <li><code>nstat.extras.spectral.synchrosqueeze</code> — ssqueezepy wrapper, closes the "no synchrosqueeze" admission.</li>
     <li><code>nstat.extras.deep_learning</code> — PyTorch decoders (NDT / POYO bridge).</li>
   </ul>
