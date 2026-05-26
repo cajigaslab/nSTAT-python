@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use nSTAT, please cite the toolbox paper below."
 title: "nSTAT-python: Neural Spike Train Analysis Toolbox for Python"
 type: software
-version: "0.3.1"
-date-released: "2026-05-21"
+version: "0.3.2"
+date-released: "2026-05-26"
 license: GPL-2.0-only
 repository-code: "https://github.com/cajigaslab/nSTAT-python"
 authors:
