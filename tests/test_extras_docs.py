@@ -39,6 +39,7 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "nitime_bridge": "validation_nitime",
     "spike_distances": "metrics_spike_distances",
     "dynamax": "em_dynamax",
+    "dynamax_bridge": "em_dynamax",
 }
 
 
@@ -158,6 +159,7 @@ def test_every_help_file_links_to_its_example_script() -> None:
         "validation_pykalman": "validation_pykalman_demo",
         "validation_statsmodels": "validation_statsmodels_demo",
         "metrics_spike_distances": "metrics_spike_distances_demo",
+        "em_dynamax": "em_dynamax_demo",
     }
     missing_links: list[tuple[str, str]] = []
     for doc_stem, example_stem in DOC_TO_EXAMPLE.items():
