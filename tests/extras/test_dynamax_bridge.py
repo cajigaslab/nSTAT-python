@@ -238,3 +238,169 @@ def test_cmgf_poisson_filter_emits_install_hint_when_dynamax_missing() -> None:
     with pytest.raises(ImportError) as excinfo:
         cmgf_poisson_filter(None, None, None, None, None, None)
     assert "pip install nstat-toolbox[" in str(excinfo.value)
+
+
+# ----------------------------------------------------------------------
+# PP_EM (Poisson-LGSSM expectation-maximization)
+# ----------------------------------------------------------------------
+
+
+def test_fit_point_process_em_smoke_and_shape_contract() -> None:
+    """PP_EM runs end-to-end on synthetic Poisson-LGSSM data; returned
+    parameters have the expected shapes."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+
+    y, *_ = _simulate_poisson_lgssm(T=150, state_dim=2, emission_dim=2, rng_seed=0)
+    result = fit_point_process_em(y, state_dim=2, n_iter=10, seed=0)
+
+    assert result.transition_matrix.shape == (2, 2)
+    assert result.observation_matrix.shape == (2, 2)
+    assert result.transition_covariance.shape == (2, 2)
+    assert result.initial_state_mean.shape == (2,)
+    assert result.initial_state_covariance.shape == (2, 2)
+    assert result.marginal_log_likelihoods.shape == (10,)
+    assert result.n_iter == 10
+    assert np.all(np.isfinite(result.marginal_log_likelihoods))
+
+
+def test_fit_point_process_em_likelihood_mostly_increases() -> None:
+    """Laplace-EM trace not guaranteed monotonic (the approximation
+    changes each iter), but final must exceed initial and majority of
+    steps non-decreasing.  Catches divergence / wild oscillation while
+    tolerating Laplace noise."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+
+    y, *_ = _simulate_poisson_lgssm(T=200, state_dim=2, emission_dim=2, rng_seed=1)
+    result = fit_point_process_em(y, state_dim=2, n_iter=20, seed=0)
+    lls = result.marginal_log_likelihoods
+
+    assert lls[-1] > lls[0], (
+        f"PP_EM made no progress: ll[0]={lls[0]:.3f}, ll[-1]={lls[-1]:.3f}"
+    )
+    n_descent = int(np.sum(np.diff(lls) < 0))
+    assert n_descent < len(lls) // 2, (
+        f"PP_EM descended on {n_descent}/{len(lls)-1} iterations"
+    )
+
+
+def test_fit_point_process_em_rejects_invalid_state_dim() -> None:
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+    with pytest.raises(ValueError, match="state_dim must be >= 1"):
+        fit_point_process_em(np.zeros((10, 2), dtype=int), state_dim=0, n_iter=3)
+
+
+def test_fit_point_process_em_handles_1d_observations() -> None:
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+    rng = np.random.default_rng(42)
+    y = rng.poisson(np.exp(0.3 * np.ones(80)))
+    result = fit_point_process_em(y, state_dim=1, n_iter=5, seed=0)
+    assert result.observation_matrix.shape == (1, 1)
+
+
+def test_fit_point_process_em_emits_install_hint_when_dynamax_missing() -> None:
+    try:
+        import dynamax  # noqa: F401
+        pytest.skip("dynamax is installed; import-error path unreachable")
+    except ImportError:
+        pass
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+    with pytest.raises(ImportError) as excinfo:
+        fit_point_process_em(np.zeros((10, 1), dtype=int), state_dim=1)
+    assert "pip install nstat-toolbox[" in str(excinfo.value)
+
+
+# ----------------------------------------------------------------------
+# mPPCO_EM (hybrid Poisson + Gaussian)
+# ----------------------------------------------------------------------
+
+
+def _simulate_hybrid(
+    T: int = 150, state_dim: int = 2,
+    p_dim: int = 2, g_dim: int = 1, rng_seed: int = 0,
+):
+    """Synthetic Poisson + Gaussian hybrid fixture."""
+    rng = np.random.default_rng(rng_seed)
+    A = np.eye(state_dim) * 0.92
+    Q = np.eye(state_dim) * 0.03
+    C_p = 0.3 * np.eye(p_dim, state_dim)
+    C_g = 0.5 * rng.standard_normal((g_dim, state_dim))
+    R = 0.05 * np.eye(g_dim)
+    x0 = np.zeros(state_dim)
+    P0 = np.eye(state_dim) * 0.1
+
+    x = np.zeros((T, state_dim))
+    yp = np.zeros((T, p_dim), dtype=int)
+    yg = np.zeros((T, g_dim))
+    x[0] = rng.multivariate_normal(x0, P0)
+    yp[0] = rng.poisson(np.exp(C_p @ x[0]))
+    yg[0] = C_g @ x[0] + rng.multivariate_normal(np.zeros(g_dim), R)
+    for t in range(1, T):
+        x[t] = A @ x[t - 1] + rng.multivariate_normal(np.zeros(state_dim), Q)
+        yp[t] = rng.poisson(np.exp(C_p @ x[t]))
+        yg[t] = C_g @ x[t] + rng.multivariate_normal(np.zeros(g_dim), R)
+    return yp, yg
+
+
+def test_fit_hybrid_em_smoke_and_shape_contract() -> None:
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_hybrid_em
+
+    yp, yg = _simulate_hybrid(T=120, state_dim=2, p_dim=2, g_dim=1, rng_seed=0)
+    result = fit_hybrid_em(yp, yg, state_dim=2, n_iter=10, seed=0)
+
+    assert result.transition_matrix.shape == (2, 2)
+    assert result.poisson_observation_matrix.shape == (2, 2)
+    assert result.gaussian_observation_matrix.shape == (1, 2)
+    assert result.transition_covariance.shape == (2, 2)
+    assert result.gaussian_observation_covariance.shape == (1, 1)
+    assert result.initial_state_mean.shape == (2,)
+    assert result.initial_state_covariance.shape == (2, 2)
+    assert result.marginal_log_likelihoods.shape == (10,)
+    assert np.all(np.isfinite(result.marginal_log_likelihoods))
+
+
+def test_fit_hybrid_em_likelihood_progresses() -> None:
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_hybrid_em
+
+    yp, yg = _simulate_hybrid(T=200, state_dim=2, p_dim=2, g_dim=1, rng_seed=2)
+    result = fit_hybrid_em(yp, yg, state_dim=2, n_iter=15, seed=0)
+    lls = result.marginal_log_likelihoods
+    assert lls[-1] > lls[0], (
+        f"hybrid EM made no progress: ll[0]={lls[0]:.3f}, ll[-1]={lls[-1]:.3f}"
+    )
+
+
+def test_fit_hybrid_em_rejects_mismatched_observation_lengths() -> None:
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_hybrid_em
+    with pytest.raises(ValueError, match="same T"):
+        fit_hybrid_em(np.zeros((100, 2), dtype=int), np.zeros((99, 1)), state_dim=2)
+
+
+def test_fit_hybrid_em_rejects_invalid_state_dim() -> None:
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_hybrid_em
+    with pytest.raises(ValueError, match="state_dim must be >= 1"):
+        fit_hybrid_em(
+            np.zeros((10, 2), dtype=int), np.zeros((10, 1)),
+            state_dim=0, n_iter=3,
+        )
+
+
+def test_fit_hybrid_em_emits_install_hint_when_dynamax_missing() -> None:
+    try:
+        import dynamax  # noqa: F401
+        pytest.skip("dynamax is installed; import-error path unreachable")
+    except ImportError:
+        pass
+    from nstat.extras.em.dynamax_bridge import fit_hybrid_em
+    with pytest.raises(ImportError) as excinfo:
+        fit_hybrid_em(
+            np.zeros((10, 1), dtype=int), np.zeros((10, 1)), state_dim=1
+        )
+    assert "pip install nstat-toolbox[" in str(excinfo.value)

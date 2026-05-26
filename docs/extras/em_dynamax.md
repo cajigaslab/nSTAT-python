@@ -54,11 +54,31 @@ print(f"Learned Â:\n{result.transition_matrix}")
 
 | Feature | Status |
 |---|---|
-| `fit_linear_gaussian_em` | shipped — KF_EM equivalent (continuous-state LG-SSM with EM training) |
+| `fit_linear_gaussian_em` | shipped — KF_EM equivalent |
 | `cmgf_poisson_filter` | shipped — point-process Kalman filter under Gaussian approximation |
 | `cmgf_poisson_smoother` | shipped — point-process forward-backward smoother |
-| `fit_point_process_em` (PP_EM equivalent) | **deferred** — Dynamax does not ship EM for Poisson-LGSSM; would require hand-rolling the E-step (CMGF sufficient statistics) + M-step (closed-form A/Q/x0/P0, Newton-Raphson C) in ~500 LOC |
-| `fit_hybrid_em` (mPPCO_EM equivalent) | **deferred** — Dynamax has no mixed Poisson + Gaussian emission class; would require hand-rolled Laplace-pseudo-observation augmented Kalman smoother per Smith & Brown 2003 |
+| `fit_point_process_em` | shipped — **PP_EM equivalent** (CMGF E-step + closed-form/Newton M-step, Smith & Brown 2003 PPLDS) |
+| `fit_hybrid_em` | shipped — **mPPCO_EM equivalent** (IRLS-pseudo-obs augmented LG smoother E-step + closed-form / Newton M-step) |
+
+### PP_EM and mPPCO_EM caveats
+
+These are **first-pass** implementations following the algorithmic
+description in Smith & Brown 2003 (PPLDS).  Known approximations:
+
+- **Lag-one cross-covariance** in the M-step is approximated by the
+  outer product of smoothed means (Dynamax CMGF doesn't expose lag-one
+  covs).  Introduces ~1–3% bias in `Q` on stationary fixtures, larger
+  on highly transient ones.
+- **Laplace approximation** of `E[exp(C x_t)]` uses the diagonal
+  quadratic correction.  Sufficient for moderate-rate processes; may
+  underestimate variance at high rates.
+- **mPPCO_EM uses fixed-R pseudo-observation covariance** (time-averaged
+  `1/mean(λ)`).  Full time-varying R would require a custom Kalman
+  smoother; deferred.
+- **Marginal log-likelihood trace is not strictly monotonic** under
+  the Laplace approximation (the approximation changes each iteration).
+  Expect mostly-monotonic behavior with occasional small dips early
+  in training; substantial decreases indicate a bug.
 
 ## CMGF Poisson recipe
 
