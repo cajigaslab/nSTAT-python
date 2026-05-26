@@ -50,13 +50,45 @@ print(f"Final log-likelihood: {result.log_likelihoods[-1]:.2f}")
 print(f"Learned Â:\n{result.transition_matrix}")
 ```
 
-## Scope (initial release)
+## Scope
 
 | Feature | Status |
 |---|---|
-| `fit_linear_gaussian_em` | shipped — KF_EM equivalent |
-| `fit_point_process_em` (PP_EM equivalent) | deferred — needs Dynamax `PoissonHMM` bridge |
-| `fit_hybrid_em` (mPPCO_EM equivalent) | deferred — needs Dynamax `GeneralizedGaussianSSM` bridge |
+| `fit_linear_gaussian_em` | shipped — KF_EM equivalent (continuous-state LG-SSM with EM training) |
+| `cmgf_poisson_filter` | shipped — point-process Kalman filter under Gaussian approximation |
+| `cmgf_poisson_smoother` | shipped — point-process forward-backward smoother |
+| `fit_point_process_em` (PP_EM equivalent) | **deferred** — Dynamax does not ship EM for Poisson-LGSSM; would require hand-rolling the E-step (CMGF sufficient statistics) + M-step (closed-form A/Q/x0/P0, Newton-Raphson C) in ~500 LOC |
+| `fit_hybrid_em` (mPPCO_EM equivalent) | **deferred** — Dynamax has no mixed Poisson + Gaussian emission class; would require hand-rolled Laplace-pseudo-observation augmented Kalman smoother per Smith & Brown 2003 |
+
+## CMGF Poisson recipe
+
+For *inference* on a known model (filter or smoother), the bridge is a
+thin wrapper around Dynamax's
+:func:`conditional_moments_gaussian_filter` / :func:`smoother` for the
+Poisson-LGSSM:
+
+```python
+import numpy as np
+from nstat.extras.em.dynamax_bridge import (
+    cmgf_poisson_filter, cmgf_poisson_smoother,
+)
+
+# Known model: x_t = A x_{t-1} + w_t,  y_t ~ Poisson(exp(C x_t))
+A = np.eye(2) * 0.95
+C = np.eye(2) * 0.3
+Q = np.eye(2) * 0.05
+x0 = np.zeros(2)
+P0 = np.eye(2) * 0.1
+
+# y is a (T, emission_dim) integer-valued spike-count array.
+filtered = cmgf_poisson_filter(y, A, C, Q, x0, P0)
+smoothed = cmgf_poisson_smoother(y, A, C, Q, x0, P0)
+
+print(filtered.state_means.shape)      # (T, 2)
+print(smoothed.marginal_log_likelihood)
+```
+
+Counterpart to MATLAB nSTAT's `PPDecodeFilter` / `PP_fixedIntervalSmoother`.
 
 ## Gotchas
 
