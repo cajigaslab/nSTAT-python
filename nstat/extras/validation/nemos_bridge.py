@@ -133,7 +133,11 @@ def cross_validate_poisson_glm(
 
     coef = np.asarray(model.coef_, dtype=float).ravel()
     if include_intercept:
-        nemos_coef = np.concatenate(([float(model.intercept_)], coef))
+        # NeMoS returns intercept_ as a 1-D JAX array (shape (1,)) in
+        # current versions, not a Python scalar.  Use ravel() to handle
+        # both layouts uniformly.
+        intercept = np.asarray(model.intercept_, dtype=float).ravel()
+        nemos_coef = np.concatenate((intercept, coef))
     else:
         nemos_coef = coef
 
