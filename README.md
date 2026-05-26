@@ -201,6 +201,7 @@ optional-dep group:
 | [pykalman](https://github.com/pykalman/pykalman) | Pure-NumPy Kalman (cross-validation reference) | `nstat.extras.validation.pykalman_bridge` | `pip install nstat-toolbox[test-parity]` |
 | [statsmodels](https://www.statsmodels.org) | Poisson GLM (IRLS — tightest cross-validation oracle, ~1e-9 agreement) | `nstat.extras.validation.statsmodels_bridge` | `pip install nstat-toolbox[test-parity]` |
 | [PySpike](https://github.com/mariomulansky/PySpike) | ISI / SPIKE-distance spike-train metrics | `nstat.extras.metrics.spike_distances` | `pip install nstat-toolbox[metrics]` |
+| [Dynamax](https://github.com/probml/dynamax) | EM-trained linear-Gaussian state-space models (foundation for unported MATLAB `KF_EM` / `PP_EM` / `mPPCO_EM`) | `nstat.extras.em.dynamax_bridge` | `pip install nstat-toolbox[dynamax]` (pulls JAX ~200 MB) |
 
 For ecosystem peers nstat does **not** wrap (spike sorting, calcium
 imaging, deep-learning decoders), see
@@ -209,7 +210,8 @@ for the rationale and recommended alternatives:
 
 - **[SpikeInterface](https://github.com/SpikeInterface/spikeinterface)** — spike sorting (nstat assumes pre-sorted data).
 - **[Elephant](https://github.com/NeuralEnsemble/elephant)** — overlapping spike-train statistics; Neo-typed.
-- **[Dynamax](https://github.com/probml/dynamax)** — state-space EM (KF_EM / PP_EM); planned for v0.4.
 - **[ssqueezepy](https://github.com/OverLordGoldDragon/ssqueezepy)** — wavelet synchrosqueezing; planned `nstat.extras.spectral`.
 
-Install every bridge at once: `pip install nstat-toolbox[all-extras]`.
+Install every bridge at once: `pip install nstat-toolbox[all-extras]`
+(does **not** include `[dynamax]` due to JAX install size — install
+that group separately if you need EM-trained state-space models).
