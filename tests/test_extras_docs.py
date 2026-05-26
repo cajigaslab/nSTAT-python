@@ -96,6 +96,53 @@ def test_every_help_file_is_in_extras_rst_toctree() -> None:
     )
 
 
+def test_extras_summary_html_exists_and_is_self_contained() -> None:
+    """``docs/extras_summary.html`` ships as a self-contained landing page
+    (embedded CSS, no Sphinx wrap) via ``html_extra_path`` in conf.py.
+
+    Contract:
+    - File exists.
+    - References every shipped bridge subpackage at least once.
+    - Is registered in docs/conf.py's html_extra_path.
+    """
+    summary = REPO_ROOT / "docs" / "extras_summary.html"
+    assert summary.exists(), "docs/extras_summary.html missing"
+
+    text = summary.read_text(encoding="utf-8")
+    # Every shipped bridge must appear somewhere on the page.
+    REQUIRED_BRIDGES = (
+        "nstat.extras.interop.neo",
+        "nstat.extras.interop.pynapple",
+        "nstat.extras.interop.nwb",
+        "nstat.extras.validation.nemos_bridge",
+        "nstat.extras.validation.pykalman_bridge",
+        "nstat.extras.metrics.spike_distances",
+    )
+    missing = [b for b in REQUIRED_BRIDGES if b not in text]
+    assert not missing, (
+        f"extras_summary.html is missing references to: {missing}. "
+        f"Add a bridge-card for each new shipped bridge."
+    )
+
+    # Sphinx must be configured to copy it into the build root.
+    conf = (REPO_ROOT / "docs" / "conf.py").read_text(encoding="utf-8")
+    assert "extras_summary.html" in conf, (
+        "docs/conf.py must list extras_summary.html under html_extra_path "
+        "so Sphinx copies it into the published Pages site."
+    )
+
+
+def test_readme_links_to_extras_summary_html() -> None:
+    """The README's Related Python projects section must surface the
+    visual summary page so users can find it from the GitHub landing.
+    """
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "extras_summary.html" in readme, (
+        "README.md must link to extras_summary.html in the "
+        "'Related Python projects' section."
+    )
+
+
 def test_every_help_file_links_to_its_example_script() -> None:
     """Each help file must link to the corresponding example script.
 
