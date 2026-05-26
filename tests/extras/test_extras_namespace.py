@@ -297,10 +297,11 @@ def test_kalman_filtered_means_agree_with_pykalman() -> None:
 
     cmp = cross_validate_kalman(y, A, C, Q, R, x0, P0)
     cmp.assert_filtered_agree(atol=1e-2)
-    # Smoother gap is intentionally loose (AUDIT D3) — verify the
-    # comparison produced a finite scalar so the harness itself works.
-    assert cmp.smoothed_inf_norm is not None
-    assert np.isfinite(cmp.smoothed_inf_norm)
+    # Smoother now compares against nstat's full RTS smoother (was
+    # mistakenly comparing against fixed-lag).  Empirical baseline
+    # ~1.6e-4 — tighter than the filter because both implementations
+    # use the same RTS backward pass mathematics.
+    cmp.assert_smoothed_agree(atol=1e-3)
 
 
 def test_nemos_glm_agrees_with_nstat_within_tolerance() -> None:
