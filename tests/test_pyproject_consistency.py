@@ -181,6 +181,10 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
     for py_file in extras_root.rglob("*.py"):
         if py_file.name == "__init__.py":
             continue
+        # Internal helpers (leading underscore) are private utilities
+        # with no optional dep — they don't need a [optional-deps] group.
+        if py_file.stem.startswith("_"):
+            continue
         stem = py_file.stem
         expected = EXPECTED_GROUP_FOR_MODULE.get(stem)
         if expected is None:
