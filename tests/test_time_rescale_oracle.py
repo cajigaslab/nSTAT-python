@@ -7,8 +7,10 @@ as a second-opinion reference for :meth:`nstat.FitResult.computeKSStats`.
 
 These tests validate the oracle stands on its own — the well-specified
 case rejects rarely, the mis-specified case rejects always — so it can
-be trusted as a cross-validation reference.  A separate PR will wire
-it into a full nstat.fit_result.computeKSStats comparison harness.
+be trusted as a cross-validation reference.  The companion file
+``tests/test_time_rescale_vs_nstat.py`` then pins the **agreement**
+between this oracle and ``nstat.Analysis.computeKSStats`` on synthetic
+Poisson fixtures.
 """
 from __future__ import annotations
 
