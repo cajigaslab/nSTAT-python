@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nstat.extras — summary | nSTAT-python</title>
+<style>
+  :root {
+    --fg: #1a1a1a;
+    --fg-muted: #555;
+    --bg: #fdfdfd;
+    --bg-card: #f5f5f7;
+    --bg-code: #eee;
+    --accent: #2c5282;
+    --accent-light: #4299e1;
+    --border: #d0d0d8;
+    --tier-a: #38a169;
+    --tier-b: #3182ce;
+    --tier-c: #d69e2e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.55;
+    margin: 0;
+    padding: 2rem 1.5rem;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  header h1 { margin: 0 0 0.4rem 0; font-size: 2.2rem; }
+  header p.lede { color: var(--fg-muted); font-size: 1.1rem; margin: 0; }
+  header .meta { color: var(--fg-muted); font-size: 0.85rem; margin-top: 0.5rem; }
+  header a { color: var(--accent); }
+  nav.toc {
+    background: var(--bg-card);
+    padding: 0.8rem 1.2rem;
+    border-radius: 6px;
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+  }
+  nav.toc strong { display: block; margin-bottom: 0.3rem; }
+  nav.toc a { color: var(--accent); margin-right: 1.2rem; text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  h2 {
+    margin-top: 2.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 1.5rem;
+  }
+  h3 { margin-top: 1.8rem; font-size: 1.2rem; }
+  code, pre {
+    font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+    font-size: 0.9em;
+  }
+  code { background: var(--bg-code); padding: 0.1em 0.35em; border-radius: 3px; }
+  pre {
+    background: #1e1e2e;
+    color: #f8f8f2;
+    padding: 0.85rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    line-height: 1.4;
+  }
+  pre code { background: transparent; padding: 0; color: inherit; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.55rem 0.8rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--bg-card); }
+  .tier-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.2rem;
+    margin: 1.5rem 0;
+  }
+  .tier {
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 6px;
+    padding: 1.1rem 1.3rem;
+    background: var(--bg-card);
+  }
+  .tier h3 { margin-top: 0; }
+  .tier.a { border-left-color: var(--tier-a); }
+  .tier.b { border-left-color: var(--tier-b); }
+  .tier.c { border-left-color: var(--tier-c); }
+  .tier-tag {
+    display: inline-block;
+    color: white;
+    padding: 0.12em 0.55em;
+    border-radius: 3px;
+    font-size: 0.78em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-right: 0.4em;
+    vertical-align: middle;
+  }
+  .tier-tag.a { background: var(--tier-a); }
+  .tier-tag.b { background: var(--tier-b); }
+  .tier-tag.c { background: var(--tier-c); }
+  .bridge-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.1rem 1.3rem;
+    margin: 1.2rem 0;
+    background: white;
+  }
+  .bridge-card h4 {
+    margin: 0 0 0.4rem 0;
+    font-size: 1.05rem;
+    font-family: "SF Mono", Monaco, monospace;
+    color: var(--accent);
+  }
+  .bridge-card .install {
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+    margin: 0.2rem 0 0.8rem 0;
+  }
+  .bridge-card pre { margin: 0.6rem 0; font-size: 0.82em; }
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); }
+  .badge { color: var(--fg-muted); font-size: 0.8rem; }
+  .planned {
+    background: #fff5e6;
+    border-left: 4px solid #f6ad55;
+    padding: 0.8rem 1.1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    font-size: 0.95rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1><code>nstat.extras</code></h1>
+  <p class="lede">Opt-in Python bridges between the MATLAB-faithful nSTAT core and the modern Python systems-neuroscience ecosystem — without coupling the core parity contract.</p>
+  <p class="meta">
+    Part of <a href="https://cajigaslab.github.io/nSTAT-python/">nSTAT-python</a>.
+    See the <a href="extras.html">Sphinx Extras index</a> for per-bridge usage guides and the
+    <a href="api.html">core API reference</a>.
+  </p>
+</header>
+
+<nav class="toc">
+  <strong>On this page:</strong>
+  <a href="#what">What it is</a>
+  <a href="#tiers">Three tiers</a>
+  <a href="#install">Install matrix</a>
+  <a href="#bridges">Per-bridge cards</a>
+  <a href="#planned">What's planned</a>
+  <a href="#independence">Independence rule</a>
+</nav>
+
+<section id="what">
+<h2>What <code>nstat.extras</code> is</h2>
+<p>
+  The core <code>nstat.*</code> namespace mirrors the MATLAB nSTAT toolbox method-for-method and is under a strict parity contract — class names, method names, and numerical conventions match upstream MATLAB exactly so users can port code without surprises. That contract is the reason core <code>nstat</code> has <em>zero</em> dependencies outside NumPy / SciPy / SymPy / matplotlib.
+</p>
+<p>
+  <code>nstat.extras.*</code> is the home for everything that doesn't fit the parity contract: bridges to the wider Python neural-data stack, modern decoders, validation oracles, and metrics with no MATLAB counterpart. Every <code>extras</code> module is <strong>opt-in</strong>: it requires an explicit <code>pip install nstat-toolbox[…]</code> and follows a different stability tier (minor-version evolution, not major-version).
+</p>
+<p>
+  Pattern modeled on <a href="https://github.com/scikit-learn-contrib/scikit-learn-contrib">scikit-learn-contrib</a>, but in-tree rather than as a separate package — preserves discoverability and lets the test suite enforce the install-hint contract.
+</p>
+</section>
+
+<section id="tiers">
+<h2>Three tiers</h2>
+<div class="tier-grid">
+
+  <div class="tier a">
+    <h3><span class="tier-tag a">A</span> Validation</h3>
+    <p><code>nstat.extras.validation.*</code> — Python-side cross-validation oracles. Fits the same statistical model in nstat and an independent reference library, then returns a comparison object with <code>assert_agree(atol, rtol)</code> hooks for parity tests.</p>
+    <p class="badge">Strongest available cross-check on nstat's GLM &amp; Kalman paths short of running MATLAB-engine.</p>
+  </div>
+
+  <div class="tier b">
+    <h3><span class="tier-tag b">B</span> Interop</h3>
+    <p><code>nstat.extras.interop.*</code> — <code>nspikeTrain</code> / <code>SpikeTrainCollection</code> / <code>Trial</code> converters for Neo, pynapple, and NWB. Unlocks Spike2 / NEX / Blackrock / Plexon / TDT readers via Neo; epoch-math via pynapple; BRAIN-Initiative NWB:N format.</p>
+    <p class="badge">Bridges the file-format gap between MATLAB workflows and modern Python pipelines.</p>
+  </div>
+
+  <div class="tier c">
+    <h3><span class="tier-tag c">C</span> Metrics</h3>
+    <p><code>nstat.extras.metrics.*</code> — modern spike-train distance metrics with no MATLAB counterpart. Thin wrappers around PySpike for ISI / SPIKE / SPIKE-synchronization (Kreuz family, parameter-free).</p>
+    <p class="badge">C/Cython-accelerated; suitable for population-level distance matrices.</p>
+  </div>
+
+</div>
+</section>
+
+<section id="install">
+<h2>Install matrix</h2>
+<table>
+  <thead>
+    <tr><th>Group</th><th>Pulls</th><th>Backs</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>[neo]</code></td><td>neo, quantities</td><td><code>extras.interop.neo</code></td></tr>
+    <tr><td><code>[pynapple]</code></td><td>pynapple</td><td><code>extras.interop.pynapple</code></td></tr>
+    <tr><td><code>[nwb]</code></td><td>pynwb (and hdmf)</td><td><code>extras.interop.nwb</code></td></tr>
+    <tr><td><code>[metrics]</code></td><td>pyspike</td><td><code>extras.metrics.spike_distances</code></td></tr>
+    <tr><td><code>[nemos]</code></td><td>nemos (incl. JAX, ~200 MB)</td><td><code>extras.validation.nemos_bridge</code></td></tr>
+    <tr><td><code>[test-parity]</code></td><td>nemos + pykalman + statsmodels + nitime</td><td>All cross-validation bridges</td></tr>
+    <tr><td><code>[all-extras]</code></td><td>Every functional group above</td><td>One-shot install</td></tr>
+  </tbody>
+</table>
+<p>The <code>[all-extras]</code> union is <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/tests/test_pyproject_consistency.py">CI-enforced</a> — adding a new group without updating <code>[all-extras]</code> fails the test suite.</p>
+</section>
+
+<section id="bridges">
+<h2>Per-bridge cards</h2>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag b">B</span> nstat.extras.interop.neo</h4>
+  <p class="install"><code>pip install nstat-toolbox[neo]</code></p>
+  <p>Round-trip between <code>nspikeTrain</code> and <code>neo.SpikeTrain</code>; build <code>neo.Segment</code> from a collection. Unlocks Spike2 / NEX / Blackrock / Plexon / TDT via Neo readers.</p>
+  <pre><code>from nstat.extras.interop.neo import to_neo_spiketrain, from_neo_spiketrain
+
+neo_st = to_neo_spiketrain(nst)          # nstat → Neo
+nst_back = from_neo_spiketrain(neo_st)   # Neo → nstat</code></pre>
+  <p class="badge">Details: <a href="extras/interop_neo.html">interop_neo.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/interop_neo_demo.py"><code>interop_neo_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag b">B</span> nstat.extras.interop.pynapple</h4>
+  <p class="install"><code>pip install nstat-toolbox[pynapple]</code></p>
+  <p>Round-trip between <code>nspikeTrain</code> and <code>pynapple.Ts</code>; preserves recording window via <code>IntervalSet</code>; supports epoch math like <code>ts.restrict(IntervalSet)</code>.</p>
+  <pre><code>import pynapple as nap
+from nstat.extras.interop.pynapple import to_pynapple_with_support, from_pynapple_ts
+
+ts, support = to_pynapple_with_support(nst)
+ts_sub = ts.restrict(nap.IntervalSet(start=2.0, end=5.0))
+nst_sub = from_pynapple_ts(ts_sub, name="sub", sample_rate=30_000, support=...)</code></pre>
+  <p class="badge">Details: <a href="extras/interop_pynapple.html">interop_pynapple.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/interop_pynapple_demo.py"><code>interop_pynapple_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag b">B</span> nstat.extras.interop.nwb</h4>
+  <p class="install"><code>pip install nstat-toolbox[nwb]</code></p>
+  <p>Read NWB:N files into <code>SpikeTrainCollection</code>. Resolves per-unit observation windows via <code>obs_intervals</code> (NWB standard) or an explicit <code>time_window=</code> override; emits <code>UserWarning</code> when neither is available.</p>
+  <pre><code>from nstat.extras.interop.nwb import read_nwb_path
+
+coll = read_nwb_path("/path/to/session.nwb", sample_rate=30_000.0)
+# Or: nwb_units_to_collection(nwbfile, time_window=(0.0, 600.0))</code></pre>
+  <p class="badge">Details: <a href="extras/interop_nwb.html">interop_nwb.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/interop_nwb_demo.py"><code>interop_nwb_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag a">A</span> nstat.extras.validation.nemos_bridge</h4>
+  <p class="install"><code>pip install nstat-toolbox[nemos]</code> (or <code>[test-parity]</code>)</p>
+  <p>Cross-validate <code>nstat.fit_poisson_glm</code> against Flatiron's NeMoS GLM. Returns a <code>GLMComparison</code> with <code>assert_agree</code> hook for parity tests.</p>
+  <pre><code>from nstat.extras.validation.nemos_bridge import cross_validate_poisson_glm
+
+cmp = cross_validate_poisson_glm(X, y)
+cmp.assert_agree(atol=5e-2, rtol=5e-2)</code></pre>
+  <p class="badge">Details: <a href="extras/validation_nemos.html">validation_nemos.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/validation_nemos_demo.py"><code>validation_nemos_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag a">A</span> nstat.extras.validation.pykalman_bridge</h4>
+  <p class="install"><code>pip install nstat-toolbox[test-parity]</code></p>
+  <p>Cross-validate <code>DecodingAlgorithms.kalman_filter</code> + <code>kalman_fixedIntervalSmoother</code> against pykalman. Documents the AUDIT D3 smoother-gap empirically (~0.4 unit baseline on a 100×2 LG fixture).</p>
+  <pre><code>from nstat.extras.validation.pykalman_bridge import cross_validate_kalman
+
+cmp = cross_validate_kalman(y, A, C, Q, R, x0, P0)
+cmp.assert_filtered_agree(atol=1e-2)  # filter agrees
+# Smoother gap is documented &amp; known — see AUDIT D3.</code></pre>
+  <p class="badge">Details: <a href="extras/validation_pykalman.html">validation_pykalman.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/validation_pykalman_demo.py"><code>validation_pykalman_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag c">C</span> nstat.extras.metrics.spike_distances</h4>
+  <p class="install"><code>pip install nstat-toolbox[metrics]</code></p>
+  <p>ISI-distance (Kreuz 2007), SPIKE-distance (Kreuz 2013), SPIKE-synchronization (Kreuz 2015) and pairwise N×N distance matrix. Parameter-free — no kernel bandwidth, no binning.</p>
+  <pre><code>from nstat.extras.metrics.spike_distances import (
+    spike_distance, pairwise_spike_distance_matrix,
+)
+
+d = spike_distance(a, b)                   # scalar in [0, 1]
+D = pairwise_spike_distance_matrix(trains)  # (N, N)</code></pre>
+  <p class="badge">Details: <a href="extras/metrics_spike_distances.html">metrics_spike_distances.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/metrics_spike_distances_demo.py"><code>metrics_spike_distances_demo.py</code></a></p>
+</div>
+
+</section>
+
+<section id="planned">
+<h2>What's planned</h2>
+<div class="planned">
+  <strong>v0.4 milestones</strong> (see <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/integration_opportunities.md"><code>parity/integration_opportunities.md</code></a>):
+  <ul>
+    <li><code>nstat.extras.em.dynamax</code> — wraps Dynamax for the unported MATLAB <code>KF_EM</code> / <code>PP_EM</code> / <code>mPPCO_EM</code> families (5,000+ MATLAB LOC avoided via adapter approach).</li>
+    <li><code>nstat.extras.validation.statsmodels_bridge</code> — third independent Poisson-GLM oracle (statsmodels is already in the SciPy stack — zero install cost).</li>
+    <li><code>nstat.extras.spectral.synchrosqueeze</code> — ssqueezepy wrapper, closes the "no synchrosqueeze" admission.</li>
+    <li><code>nstat.extras.deep_learning</code> — PyTorch decoders (NDT / POYO bridge).</li>
+  </ul>
+</div>
+</section>
+
+<section id="independence">
+<h2>Independence rule</h2>
+<p>
+  Every <code>extras</code> module is <strong>Python-side only</strong>. No bridge introduces runtime coupling to the MATLAB <a href="https://github.com/cajigaslab/nSTAT"><code>cajigaslab/nSTAT</code></a> repository. The cleanroom-boundary CI gate (<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/tests/test_cleanroom_boundary.py"><code>tests/test_cleanroom_boundary.py</code></a>) scans every <code>nstat/extras/**/*.py</code> for the forbidden <code>matlab.engine</code> pattern and fails the build on any match.
+</p>
+<p>
+  License: <strong>GPL-2.0</strong> (matches core nSTAT-python). Every extras dep listed above is MIT / BSD-2 / BSD-3 / Apache-2 / GPL-2 — all GPL-2 compatible. The license audit lives in <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/integration_opportunities.md#independence-considerations"><code>integration_opportunities.md</code></a>.
+</p>
+</section>
+
+<footer>
+  <p>Generated as part of the nSTAT-python v0.3.2 release. See <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md">RELEASE_NOTES.md</a> for the full changelog or the <a href="extras.html">Extras Sphinx index</a> for per-bridge reference pages.</p>
+  <p>Source: <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> · License: GPL-2.0 · Paper: <a href="https://pubmed.ncbi.nlm.nih.gov/22981419/">Cajigas, Malik &amp; Brown 2012, J Neurosci Methods</a></p>
+</footer>
+
+</div>
+</body>
+</html>
