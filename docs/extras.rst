@@ -27,6 +27,7 @@ gotchas, and links to the runnable demos under ``examples/extras/``.
    extras/interop_nwb
    extras/validation_nemos
    extras/validation_pykalman
+   extras/validation_statsmodels
    extras/metrics_spike_distances
 
 
@@ -52,6 +53,7 @@ Validation — cross-validation oracles
 
    validation.nemos_bridge
    validation.pykalman_bridge
+   validation.statsmodels_bridge
 
 
 Metrics — modern spike-train distance metrics

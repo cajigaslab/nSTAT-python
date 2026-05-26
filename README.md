@@ -199,6 +199,7 @@ optional-dep group:
 | [pynwb](https://github.com/NeurodataWithoutBorders/pynwb) | BRAIN-Initiative NWB:N standard reader | `nstat.extras.interop.nwb` | `pip install nstat-toolbox[nwb]` |
 | [NeMoS](https://github.com/flatironinstitute/nemos) | JAX Poisson-GLM (cross-validation reference) | `nstat.extras.validation.nemos_bridge` | `pip install nstat-toolbox[nemos]` |
 | [pykalman](https://github.com/pykalman/pykalman) | Pure-NumPy Kalman (cross-validation reference) | `nstat.extras.validation.pykalman_bridge` | `pip install nstat-toolbox[test-parity]` |
+| [statsmodels](https://www.statsmodels.org) | Poisson GLM (IRLS — tightest cross-validation oracle, ~1e-9 agreement) | `nstat.extras.validation.statsmodels_bridge` | `pip install nstat-toolbox[test-parity]` |
 | [PySpike](https://github.com/mariomulansky/PySpike) | ISI / SPIKE-distance spike-train metrics | `nstat.extras.metrics.spike_distances` | `pip install nstat-toolbox[metrics]` |
 
 For ecosystem peers nstat does **not** wrap (spike sorting, calcium
