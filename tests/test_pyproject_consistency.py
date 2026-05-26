@@ -34,12 +34,18 @@ def _opt_deps() -> dict[str, list[str]]:
 # deliberate (no concrete extras module shipped yet).  Adding to this
 # set is allowed; removing requires the corresponding group to also
 # acquire real dependencies.
-PLACEHOLDER_GROUPS = frozenset({"spikeinterface", "deep-learning", "dynamax"})
+PLACEHOLDER_GROUPS = frozenset({"spikeinterface", "deep-learning"})
 
 # Meta-groups that aggregate other groups; not user-facing single
 # extras.  ``dev`` is the developer toolkit (pytest, sphinx, …) and
 # is intentionally excluded from the all-extras union.
 META_GROUPS = frozenset({"all-extras", "dev"})
+
+# Heavyweight groups deliberately excluded from ``[all-extras]`` to
+# keep the one-shot install footprint reasonable.  Membership here is
+# a documented architectural decision, not a TODO.  Notes:
+# - ``dynamax`` pulls JAX (~200 MB).
+HEAVY_OPT_OUT_OF_ALL_EXTRAS = frozenset({"dynamax"})
 
 
 # ----------------------------------------------------------------------
@@ -94,7 +100,11 @@ def test_all_extras_is_union_of_every_functional_group() -> None:
 
     missing_by_group: dict[str, list[str]] = {}
     for group_name, deps in opt.items():
-        if group_name in PLACEHOLDER_GROUPS or group_name in META_GROUPS:
+        if (
+            group_name in PLACEHOLDER_GROUPS
+            or group_name in META_GROUPS
+            or group_name in HEAVY_OPT_OUT_OF_ALL_EXTRAS
+        ):
             continue
         for spec in deps:
             pkg = _normalize_package(spec)
@@ -169,8 +179,9 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
         "nitime_bridge": "test-parity",
         # metrics/
         "spike_distances": "metrics",
-        # em/ (planned)
+        # em/
         "dynamax": "dynamax",
+        "dynamax_bridge": "dynamax",
     }
 
     extras_root = REPO_ROOT / "nstat" / "extras"

@@ -61,3 +61,12 @@ Metrics — modern spike-train distance metrics
    :toctree: _autosummary
 
    metrics.spike_distances
+
+
+EM — state-space models trained by expectation-maximization
+-----------------------------------------------------------
+
+.. autosummary::
+   :toctree: _autosummary
+
+   em.dynamax_bridge
