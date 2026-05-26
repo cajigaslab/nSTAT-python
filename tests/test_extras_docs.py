@@ -116,6 +116,7 @@ def test_extras_summary_html_exists_and_is_self_contained() -> None:
         "nstat.extras.interop.nwb",
         "nstat.extras.validation.nemos_bridge",
         "nstat.extras.validation.pykalman_bridge",
+        "nstat.extras.validation.statsmodels_bridge",
         "nstat.extras.metrics.spike_distances",
     )
     missing = [b for b in REQUIRED_BRIDGES if b not in text]
@@ -156,6 +157,7 @@ def test_every_help_file_links_to_its_example_script() -> None:
         "interop_nwb": "interop_nwb_demo",
         "validation_nemos": "validation_nemos_demo",
         "validation_pykalman": "validation_pykalman_demo",
+        "validation_statsmodels": "validation_statsmodels_demo",
         "metrics_spike_distances": "metrics_spike_distances_demo",
         "em_dynamax": "em_dynamax_demo",
     }
