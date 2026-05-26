@@ -113,3 +113,128 @@ def test_fit_linear_gaussian_em_rejects_3d_observations() -> None:
 
     with pytest.raises(ValueError, match=r"shape \(T, emission_dim\)"):
         fit_linear_gaussian_em(np.zeros((10, 2, 3)), state_dim=2, n_iter=5)
+
+
+# ----------------------------------------------------------------------
+# CMGF Poisson filter / smoother (PP-state-space inference)
+# ----------------------------------------------------------------------
+
+
+def _simulate_poisson_lgssm(
+    T: int = 100, state_dim: int = 2, emission_dim: int = 2, rng_seed: int = 0
+):
+    """Synthetic Poisson-LGSSM fixture: linear-Gaussian state, Poisson obs."""
+    rng = np.random.default_rng(rng_seed)
+    A = np.eye(state_dim) * 0.95
+    C = np.eye(emission_dim, state_dim) * 0.3  # small loadings → moderate rates
+    Q = np.eye(state_dim) * 0.05
+    x0 = np.zeros(state_dim)
+    P0 = np.eye(state_dim) * 0.1
+
+    x = np.zeros((T, state_dim))
+    y = np.zeros((T, emission_dim), dtype=int)
+    x[0] = rng.multivariate_normal(x0, P0)
+    y[0] = rng.poisson(np.exp(C @ x[0]))
+    for t in range(1, T):
+        x[t] = A @ x[t - 1] + rng.multivariate_normal(np.zeros(state_dim), Q)
+        y[t] = rng.poisson(np.exp(C @ x[t]))
+    return y, A, C, Q, x0, P0, x
+
+
+def test_cmgf_poisson_filter_smoke() -> None:
+    """CMGF Poisson filter runs end-to-end with expected output shapes."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import cmgf_poisson_filter
+
+    y, A, C, Q, x0, P0, _ = _simulate_poisson_lgssm()
+    result = cmgf_poisson_filter(y, A, C, Q, x0, P0)
+    assert result.state_means.shape == (100, 2)
+    assert result.state_covariances.shape == (100, 2, 2)
+    assert np.isfinite(result.marginal_log_likelihood)
+
+
+def test_cmgf_poisson_smoother_reduces_posterior_variance() -> None:
+    """Smoothed posterior variance must be <= filtered posterior variance
+    (universal property of Gaussian smoothers — backward pass only adds
+    information).
+    """
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import (
+        cmgf_poisson_filter, cmgf_poisson_smoother,
+    )
+
+    y, A, C, Q, x0, P0, _ = _simulate_poisson_lgssm()
+    filt = cmgf_poisson_filter(y, A, C, Q, x0, P0)
+    smooth = cmgf_poisson_smoother(y, A, C, Q, x0, P0)
+
+    # Compare diagonal entries (per-component variance) at every t.
+    filt_var = np.diagonal(filt.state_covariances, axis1=1, axis2=2)
+    smooth_var = np.diagonal(smooth.state_covariances, axis1=1, axis2=2)
+
+    # Smoothed variance should be <= filtered variance everywhere
+    # (modulo numerical tolerance from the Gaussian approximation).
+    assert np.all(smooth_var <= filt_var + 1e-8), (
+        "Smoothed posterior variance exceeded filtered — algorithmic bug."
+    )
+
+
+def test_cmgf_poisson_filter_recovers_latent_state_qualitatively() -> None:
+    """On a well-conditioned fixture, the filtered mean should track the
+    true latent state with a much smaller squared error than the naive
+    zero predictor.
+    """
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import cmgf_poisson_filter
+
+    y, A, C, Q, x0, P0, x_true = _simulate_poisson_lgssm(T=200)
+    filt = cmgf_poisson_filter(y, A, C, Q, x0, P0)
+
+    mse_filtered = float(np.mean((filt.state_means - x_true) ** 2))
+    mse_naive = float(np.mean(x_true ** 2))
+
+    # Filter MSE should be substantially below the naive (zero-prediction)
+    # MSE.  Factor of 2 is loose enough to absorb the CMGF Gaussian
+    # approximation error.
+    assert mse_filtered < 0.5 * mse_naive, (
+        f"CMGF Poisson filter not tracking latent state: "
+        f"mse_filt={mse_filtered:.3e}, mse_naive={mse_naive:.3e}"
+    )
+
+
+def test_cmgf_poisson_filter_handles_1d_observations() -> None:
+    """Single-channel observations reshape to (T, 1) automatically."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import cmgf_poisson_filter
+
+    rng = np.random.default_rng(2)
+    T = 80
+    A = np.array([[0.95]])
+    C = np.array([[0.5]])
+    Q = np.array([[0.05]])
+    x0 = np.zeros(1)
+    P0 = np.array([[0.1]])
+
+    x = np.zeros(T)
+    y = np.zeros(T, dtype=int)
+    x[0] = rng.normal()
+    y[0] = rng.poisson(np.exp(C[0, 0] * x[0]))
+    for t in range(1, T):
+        x[t] = A[0, 0] * x[t - 1] + rng.normal(scale=Q[0, 0] ** 0.5)
+        y[t] = rng.poisson(np.exp(C[0, 0] * x[t]))
+
+    result = cmgf_poisson_filter(y, A, C, Q, x0, P0)  # y is 1D
+    assert result.state_means.shape == (T, 1)
+
+
+def test_cmgf_poisson_filter_emits_install_hint_when_dynamax_missing() -> None:
+    """Same actionable-ImportError contract as the rest of the bridge."""
+    try:
+        import dynamax  # noqa: F401
+        pytest.skip("dynamax is installed; import-error path unreachable")
+    except ImportError:
+        pass
+
+    from nstat.extras.em.dynamax_bridge import cmgf_poisson_filter
+    with pytest.raises(ImportError) as excinfo:
+        cmgf_poisson_filter(None, None, None, None, None, None)
+    assert "pip install nstat-toolbox[" in str(excinfo.value)
