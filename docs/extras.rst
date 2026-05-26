@@ -13,6 +13,23 @@ For the design rationale and stability contract, see
 `integration_opportunities <https://github.com/cajigaslab/nSTAT-python/blob/main/parity/integration_opportunities.md>`_
 audit.
 
+Narrative usage guides
+----------------------
+
+Per-bridge documentation with install commands, API tables, recipes,
+gotchas, and links to the runnable demos under ``examples/extras/``.
+
+.. toctree::
+   :maxdepth: 1
+
+   extras/interop_neo
+   extras/interop_pynapple
+   extras/interop_nwb
+   extras/validation_nemos
+   extras/validation_pykalman
+   extras/metrics_spike_distances
+
+
 .. currentmodule:: nstat.extras
 
 
