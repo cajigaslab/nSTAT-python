@@ -35,6 +35,7 @@ EXAMPLE_BACKING_PACKAGE: dict[str, str] = {
     "validation_nemos_demo": "nemos",
     "validation_pykalman_demo": "pykalman",
     "metrics_spike_distances_demo": "pyspike",
+    "em_dynamax_demo": "dynamax",
 }
 
 

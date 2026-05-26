@@ -28,6 +28,7 @@ gotchas, and links to the runnable demos under ``examples/extras/``.
    extras/validation_nemos
    extras/validation_pykalman
    extras/metrics_spike_distances
+   extras/em_dynamax
 
 
 .. currentmodule:: nstat.extras
