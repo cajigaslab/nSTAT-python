@@ -23,23 +23,14 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from nstat import fit_poisson_glm
+from nstat.extras._lazy import require_optional
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     pass
 
 
-_IMPORT_ERROR_MSG = (
-    "nstat.extras.validation.nemos_bridge requires the 'nemos' package. "
-    "Install with: pip install nstat-toolbox[test-parity]"
-)
-
-
 def _require_nemos() -> object:
-    try:
-        import nemos
-    except ImportError as e:
-        raise ImportError(_IMPORT_ERROR_MSG) from e
-    return nemos
+    return require_optional("nemos", install_key="test-parity")
 
 
 @dataclass(frozen=True)

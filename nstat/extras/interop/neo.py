@@ -22,25 +22,16 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from nstat import nspikeTrain, SpikeTrainCollection
+from nstat.extras._lazy import require_optionals
 
 if TYPE_CHECKING:
     import neo
 
 
-_IMPORT_ERROR_MSG = (
-    "nstat.extras.interop.neo requires the 'neo' package. "
-    "Install with: pip install nstat-toolbox[neo]"
-)
-
-
 def _require_neo() -> "type[neo.SpikeTrain]":
     """Lazy-import neo + quantities, raising a clear error if either is absent."""
-    try:
-        from neo.core import SpikeTrain as NeoSpikeTrain
-        import quantities as _pq  # noqa: F401 — neo requires quantities at runtime
-    except ImportError as e:
-        raise ImportError(_IMPORT_ERROR_MSG) from e
-    return NeoSpikeTrain
+    neo_mod, _pq = require_optionals("neo", "quantities", install_key="neo")
+    return neo_mod.core.SpikeTrain
 
 
 def to_neo_spiketrain(nst: nspikeTrain) -> "neo.SpikeTrain":
