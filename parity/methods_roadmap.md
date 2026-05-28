@@ -70,19 +70,27 @@ uniquely identified** (PLDS gauge freedom — only the scale part is pinned).
 
 ## Tier 1 — Core goodness-of-fit extensions (cheap, parity-adjacent)
 
-### 1.1 Multivariate & marked time-rescaling KS test
+### 1.1 Multivariate & marked time-rescaling KS test — SHIPPED (multivariate)
 
 - **What:** Multivariate (Tao, Weber, Arai, Eden 2018) and discrete-time
   (Haslinger, Pipa, Brown 2010) extensions of the time-rescaling theorem.
   Univariate rescaling KS plots can pass while a model misses inter-neuron
   coupling; the multivariate version catches exactly those failures.
-- **Gap:** `FitResult.computeKSStats` and the new
-  `tests/parity/_third_party/time_rescale_oracle.py` are **univariate
-  only**.  This is squarely in nSTAT's existing GOF wheelhouse.
-- **Placement:** **core** (`nstat/fit.py`) — it's a parity-adjacent GOF
-  method operating directly on existing `FitResult`/CIF objects, with no
-  new dependencies.  Add a `parity/manifest.yml` note if a MATLAB
-  counterpart exists.
+- **Done:**
+  - *Discrete-time (Haslinger 2010)* was **already present** — the
+    `_ksdiscrete` random-rescaling helper + `computeKSStats(..., dt_correction=1)`,
+    with the `ksdiscrete_exactness.mat` gold fixture.
+  - *Multivariate / marked (Tao 2018)* is **new**:
+    `nstat.population_time_rescale` → `PopulationTimeRescaleResult`
+    (core, `nstat/fit.py`).  A ground-process KS (pooled
+    `λ_• = Σ λ_k`) plus a marked-region Pearson `χ²`.  Validated: the
+    ground KS rejects a synchronous-pair model whose *per-neuron*
+    univariate KS both pass (the canonical coupling miss); the `χ²`
+    independently catches relative-allocation misfit.  Pure NumPy/SciPy.
+- **Placement:** **core** (`nstat/fit.py`).  No `parity/manifest.yml`
+  entry: the 2018 method postdates the 2012 MATLAB toolbox, so there is
+  no MATLAB counterpart / `matlab_gold` fixture (documented as a
+  Python-only extension in the docstring + ClassDefinitions).
 - **Difficulty:** Thin (~0.5 day); pure NumPy/SciPy.
 - **References:** [Multivariate time-rescaling (PMC3090500)](https://pmc.ncbi.nlm.nih.gov/articles/PMC3090500/),
   [Discrete-time rescaling (PMID 20608868)](https://pubmed.ncbi.nlm.nih.gov/20608868/),

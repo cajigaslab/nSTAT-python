@@ -83,6 +83,12 @@ to re-verify).
 - `LinearCIF` — closed-form (sympy-free) CIF for the two canonical link cases (Poisson log-link, binomial logit-link).  Drop-in compatible with `CIF` for the 5 eval methods used by `DecodingAlgorithms.PPDecode_update`.  See the curriculum cross-reference (`Decoding the Brain` §4.B.7.4).
 - `FitResult` — fit output (coefficients, lambda signal, KS, AIC/BIC).
 - `FitResSummary` / `FitSummary` — aggregator across fits/cells.
+- `population_time_rescale` → `PopulationTimeRescaleResult` — multivariate
+  (marked) point-process time-rescaling GOF (Tao, Weber, Arai & Eden 2018).
+  Tests a *population* jointly: a ground-process KS plus a marked χ². Catches
+  inter-neuron coupling misfit that the per-neuron `FitResult.computeKSStats`
+  misses (e.g. synchronous neurons modeled as independent). Pure NumPy/SciPy,
+  operates on per-neuron binned spike counts + model `lambda` per bin.
 - `psth` — peri-stimulus time histogram convenience function.
 
 ### Decoding

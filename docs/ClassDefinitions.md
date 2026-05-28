@@ -271,6 +271,24 @@ Alias of `FitSummary`. Aggregates multiple `FitResult` objects.
 `plotSummary`, `boxPlot`, `plotAllCoeffs`, `plot3dCoeffSummary`,
 `plot2dCoeffSummary`, `plotKSSummary`
 
+### `PopulationTimeRescaleResult` (`nstat.PopulationTimeRescaleResult`)
+
+Frozen dataclass returned by `population_time_rescale(...)` — the
+multivariate (marked) point-process time-rescaling goodness-of-fit of
+Tao, Weber, Arai & Eden (2018).  Unlike `FitResult.computeKSStats`
+(per-neuron, univariate), it scores a population *jointly* and catches
+inter-neuron coupling misfit (e.g. synchronous neurons modeled as
+independent).  Python-only extension — no MATLAB `matlab_gold` counterpart.
+
+**Fields**:
+- `ground_uniforms` — rescaled ground-process inter-event values on `[0, 1]`.
+- `ground_ks_stat`, `ground_ks_pvalue` — KS of the pooled (ground) process
+  vs. Uniform(0, 1); detects aggregate-temporal / dependency misfit.
+- `mark_chi2_stat`, `mark_chi2_dof`, `mark_chi2_pvalue` — Pearson χ² for
+  uniform fill of the marked region `R = {(τ, m): 0 ≤ τ ≤ b(m)}`; detects
+  relative-allocation (and, with `n_tau_bins > 1`, within-neuron timing) misfit.
+- `expected_counts`, `observed_counts` — per-neuron `∫λ` vs. observed spikes.
+
 ### `DecodingAlgorithms` (`nstat.DecodingAlgorithms`)
 
 Primary notebook: `../notebooks/DecodingExample.ipynb`

@@ -14,6 +14,8 @@ def test_canonical_api_imports() -> None:
     assert nstat.Events is not None
     assert nstat.FitResult is not None
     assert nstat.FitSummary is not None
+    assert nstat.population_time_rescale is not None
+    assert nstat.PopulationTimeRescaleResult is not None
     assert nstat.CIFModel is not None
     assert nstat.DecoderSuite is not None
     assert nstat.getPaperDataDirs is not None
