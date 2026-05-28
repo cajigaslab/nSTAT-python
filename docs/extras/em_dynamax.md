@@ -79,25 +79,66 @@ print(f"Learned Â:\n{result.transition_matrix}")
 | `fit_point_process_em` | shipped — **PP_EM equivalent** (CMGF E-step + closed-form/Newton M-step, Smith & Brown 2003 PPLDS) |
 | `fit_hybrid_em` | shipped — **mPPCO_EM equivalent** (IRLS-pseudo-obs augmented LG smoother E-step + closed-form / Newton M-step) |
 
-### PP_EM and mPPCO_EM caveats
+### PP_EM and mPPCO_EM — experimental status & caveats
 
-These are **first-pass** implementations following the algorithmic
-description in Smith & Brown 2003 (PPLDS).  Known approximations:
+> ⚠️ **`fit_point_process_em` and `fit_hybrid_em` are EXPERIMENTAL.**
+> They fit the observation model (firing rates, and for the hybrid the
+> Gaussian noise `R`) correctly, but the **latent parameters `A`, `C`
+> are NOT uniquely identified** and should not be interpreted at face
+> value.  Both functions emit a `UserWarning` to this effect.
 
-- **Lag-one cross-covariance** in the M-step is approximated by the
-  outer product of smoothed means (Dynamax CMGF doesn't expose lag-one
-  covs).  Introduces ~1–3% bias in `Q` on stationary fixtures, larger
-  on highly transient ones.
-- **Laplace approximation** of `E[exp(C x_t)]` uses the diagonal
-  quadratic correction.  Sufficient for moderate-rate processes; may
-  underestimate variance at high rates.
-- **mPPCO_EM uses fixed-R pseudo-observation covariance** (time-averaged
-  `1/mean(λ)`).  Full time-varying R would require a custom Kalman
-  smoother; deferred.
-- **Marginal log-likelihood trace is not strictly monotonic** under
-  the Laplace approximation (the approximation changes each iteration).
-  Expect mostly-monotonic behavior with occasional small dips early
-  in training; substantial decreases indicate a bug.
+**Why the parameters aren't identified.**  A Poisson LDS has a gauge
+freedom: the transform `(A, C, x) → (T A T⁻¹, C T⁻¹, T x)` leaves the
+observable log-rate `C x` — and hence the likelihood — exactly
+invariant.  EM has no reason to prefer any point on this orbit, so the
+absolute scale and rotation of `A`/`C` drift with seed and data (you
+may see `|C|` of 5–100 on fits whose *rates* are perfectly sensible).
+MATLAB nSTAT pins the gauge with `PP_EMCreateConstraints`; the
+equivalent constraint machinery is tracked as the headline EM item for
+a future release.
+
+**What IS reliable** (use these):
+
+- The fitted **firing rate** `exp(C x)` / smoothed log-rate — the
+  identifiable observable.  Re-smooth at the returned parameters with
+  `cmgf_poisson_smoother` to obtain it.
+- For `fit_hybrid_em`, the **Gaussian observation noise `R`** (recovers
+  the true value within a small factor — it lives in observation space
+  and is gauge-invariant).
+
+**What was fixed in the deep-dive pass** (improvements over the initial
+PR):
+
+- **Lag-one cross-covariance** is now exact: the E-step uses an IRLS
+  pseudo-observation linearization + a purpose-built **time-varying-R
+  RTS smoother** (`_kalman_rts_smoother_tv`) that returns the lag-one
+  smoothed cross-covariances.  This stopped the previous A→0 collapse
+  (the moment-matching approximation that dropped the cross-cov term
+  biased `A` toward zero).
+- **Time-varying pseudo-observation noise** `R_t = 1/λ_t`: substituting
+  a fixed `R` (forced by a batched smoother) breaks the IRLS weight
+  cancellation and was numerically unstable (SVD non-convergence) at
+  low rates.  The new smoother accepts per-timestep `R_t`.
+- **Gaussian `R` M-step trace correction**: now includes the
+  `C_g Σ_t C_g'` latent-uncertainty term, without which `R` collapsed
+  toward zero over iterations.
+- **Gauge + step bounding**: a per-iteration unit-RMS scale
+  normalization plus a Newton trust-region keep `|C|` finite (the
+  diagonal-scale pin handles the scale gauge; the rotational gauge
+  remains unpinned — hence the residual `|C|` variability).
+
+**Still approximate / deferred to a future release:**
+
+- Full **identifiability constraints** (the `PP_EMCreateConstraints`
+  equivalent) — to pin the rotational gauge and make `A`/`C`
+  interpretable and MATLAB-comparable.
+- The **Laplace `E[exp(C x_t)]`** uses the diagonal quadratic
+  correction; sufficient for moderate rates, may underestimate
+  variance at high rates.
+- The reported `marginal_log_likelihoods` are the **surrogate
+  Gaussian smoother log-likelihoods** (the IRLS pseudo-observations
+  are re-linearized each iteration), not the true Poisson marginal
+  likelihood — do **not** use the trace as a convergence diagnostic.
 
 ## CMGF Poisson recipe
 
