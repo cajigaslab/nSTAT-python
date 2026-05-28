@@ -320,3 +320,35 @@ jobs:
         # With [all-extras] installed, every example's run-as-main path
         # must exit 0.
         run: pytest -q tests/test_extras_examples.py -v
+
+  extras-dynamax:
+    # Dedicated job for the [dynamax] extra, which is DELIBERATELY
+    # excluded from [all-extras] (JAX is ~200 MB).  Without this job the
+    # state-space EM tests (tests/extras/test_dynamax_bridge.py) skip in
+    # every CI run via ``pytest.importorskip`` — exactly the gap that
+    # let the PP_EM/mPPCO_EM numerical bugs ship undetected.  Pinned
+    # jax/jaxlib/tfp because dynamax's transitive deps drift and tfp
+    # tracks jax's internal API closely.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package with the dynamax extra (pinned jax/tfp)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,dynamax]"
+          # Pin a jax/tfp/jaxlib combo known compatible with dynamax's
+          # CMGF + lgssm smoothers (tfp 0.25 tracks jax 0.4.x internals).
+          python -m pip install "jax==0.4.38" "jaxlib==0.4.38" "tensorflow-probability==0.25.0"
+      - name: Sanity-check the EM bridge imports
+        run: |
+          python -c "from nstat.extras.em.dynamax_bridge import (
+            fit_linear_gaussian_em, cmgf_poisson_filter, cmgf_poisson_smoother,
+            fit_point_process_em, fit_hybrid_em)"
+      - name: Run dynamax EM tests for real
+        # These exercise the time-varying-R RTS smoother + EM trainers;
+        # they would otherwise skip under importorskip.
+        run: pytest -q tests/extras/test_dynamax_bridge.py -v
