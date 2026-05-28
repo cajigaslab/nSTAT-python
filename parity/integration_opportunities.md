@@ -9,6 +9,11 @@
 > Companion to `tests/test_curriculum_parity.py`, which already
 > cross-validates the Kalman/GLM primitives against the
 > `bci-curriculum` reference implementation.
+>
+> **See also** [`methods_roadmap.md`](methods_roadmap.md) — the
+> prioritized *methods/algorithms* incorporation plan (2026 review):
+> what new capabilities to add next, vs. this document's *library*
+> survey.
 
 ---
 
