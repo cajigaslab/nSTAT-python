@@ -475,38 +475,109 @@ def _ppem_m_step_closed_form(
 
 
 def _canonical_scale(smoothed_means, smoothed_covariances):
-    """Per-dimension latent scale for the identifiability gauge.
+    """Per-dimension latent RMS — a *lightweight* in-loop scale pin.
 
-    PLDS/PPLDS models are invariant under the state reparameterization
-    ``(A, C, x) → (T A T⁻¹, C T⁻¹, T x)`` — the observable ``C x`` (hence
-    the likelihood) is unchanged.  EM therefore has no reason to prefer
-    any scale and the parameters drift (``C`` grows while ``x`` shrinks).
-    We pin the gauge by rescaling each latent dimension to unit
-    root-mean-square magnitude, computed from the smoothed second
-    moments ``E[x_j^2] = Σ_t (Cov_t[j,j] + μ_t[j]^2) / T``.
-
-    Returns a diagonal scale vector ``s`` (shape ``(d,)``); the canonical
-    transform is ``T = diag(1/s)``.
+    Used INSIDE the EM loop only to keep ``|C|`` finite (stop the scale
+    drift of the PLDS gauge ridge).  It is intentionally cheap (diagonal,
+    no rotation): a full gauge transform applied every iteration changes
+    the optimization landscape each step and destabilizes the EM.  The
+    full canonical form is applied once after convergence by
+    :func:`_canonicalize_gauge`.
     """
     T = smoothed_means.shape[0]
     e_x2 = (np.einsum("tjj->j", smoothed_covariances) + (smoothed_means ** 2).sum(axis=0)) / T
-    s = np.sqrt(np.maximum(e_x2, 1e-8))
-    return s
+    return np.sqrt(np.maximum(e_x2, 1e-8))
 
 
 def _apply_canonical_scale(A, C, Q, x0, P0, s):
-    """Apply the gauge transform ``T = diag(1/s)`` to all parameters.
+    """Apply the diagonal scale transform ``T = diag(1/s)`` (loop stabilizer)."""
+    Tinv = np.diag(1.0 / s)
+    Tfwd = np.diag(s)
+    return (Tinv @ A @ Tfwd, C @ Tfwd, Tinv @ Q @ Tinv.T, Tinv @ x0, Tinv @ P0 @ Tinv.T)
 
-    Leaves ``C x`` (the log-rate) invariant: ``C' x' = (C diag(s)) (diag(1/s) x) = C x``.
+
+def _canonicalize_gauge(A, C_list, Q, x0, P0, smoothed_means, smoothed_covariances):
+    """Pin the **full** PLDS identifiability gauge to a canonical form.
+
+    Apply ONCE after EM convergence (not per-iteration — see
+    :func:`_canonical_scale`).
+
+    PLDS/PPLDS models are invariant under the state reparameterization
+    ``(A, C, x) → (T A T⁻¹, C T⁻¹, T x)`` for any invertible ``T`` (the
+    observable log-rate ``C x``, hence the likelihood, is unchanged).
+    The gauge group is the full ``GL(d)`` — ``d²`` degrees of freedom —
+    so a diagonal scale normalization (which pins only ``d`` of them)
+    leaves a residual rotation that lets ``A``/``C`` drift across seeds.
+
+    This pins the entire gauge with the standard LDS canonical form
+    (cf. Macke et al. 2011; Buesing et al. 2012):
+
+    1. **Whiten** the latent: choose ``T`` so the empirical state
+       second moment ``M = (1/T) Σ_t E[x_t x_t']`` becomes the identity
+       (``T = M^{-1/2}``).  Removes the symmetric part of the gauge.
+    2. **SVD-rotate**: of the remaining orthogonal freedom, pick the
+       rotation that makes the *stacked* emission matrix have orthogonal
+       columns ordered by descending singular value (``C_canon = U S``).
+       Removes the residual ``O(d)``.
+    3. **Sign-fix**: flip each latent axis so the largest-magnitude
+       entry of each canonical emission column is positive — a
+       deterministic representative (removes the remaining ``2^d`` sign
+       flips).
+
+    The result is a unique, seed-stable representative of the parameter
+    equivalence class; ``C x`` is exactly preserved for every emission
+    matrix in ``C_list``.
+
+    Parameters
+    ----------
+    A, Q, x0, P0
+        Current dynamics parameters.
+    C_list
+        List of emission matrices sharing the latent (``[C]`` for
+        PP_EM; ``[C_p, C_g]`` for the hybrid).  The canonical rotation
+        is computed from their vertical stack.
+    smoothed_means, smoothed_covariances
+        Current E-step posteriors, used to form ``M``.
+
+    Returns
+    -------
+    ``(A, C_list, Q, x0, P0)`` in canonical coordinates.
     """
-    Tinv = np.diag(1.0 / s)   # x' = Tinv x  (Tinv = diag(1/s))
-    Tfwd = np.diag(s)          # x  = Tfwd x'
-    A_new = Tinv @ A @ Tfwd
-    C_new = C @ Tfwd
-    Q_new = Tinv @ Q @ Tinv.T
-    x0_new = Tinv @ x0
-    P0_new = Tinv @ P0 @ Tinv.T
-    return A_new, C_new, Q_new, x0_new, P0_new
+    T, d = smoothed_means.shape
+    M = (smoothed_covariances.sum(axis=0) + smoothed_means.T @ smoothed_means) / T
+    M = 0.5 * (M + M.T)
+
+    # Symmetric inverse-sqrt (and sqrt) of M via eigendecomposition.
+    evals, evecs = np.linalg.eigh(M)
+    evals = np.maximum(evals, 1e-8)
+    W = evecs @ np.diag(evals ** -0.5) @ evecs.T     # M^{-1/2}; x' = W x  ⇒ E[x'x']=I
+    Winv = evecs @ np.diag(evals ** 0.5) @ evecs.T   # M^{1/2}
+
+    # Whitened stacked emission matrix, then SVD to pin the rotation.
+    C_stack = np.vstack([np.atleast_2d(C) for C in C_list])
+    C_white = C_stack @ Winv
+    _, _, Vt = np.linalg.svd(C_white, full_matrices=False)
+    # Canonical stacked emission after rotation: C_white @ Vt.T = U @ diag(S).
+    C_canon = C_white @ Vt.T
+
+    # Sign convention: make the max-magnitude entry of each column positive.
+    lead = np.argmax(np.abs(C_canon), axis=0)
+    signs = np.sign(C_canon[lead, np.arange(d)])
+    signs[signs == 0] = 1.0
+    sign_d = np.diag(signs)
+
+    # Total forward transform x' = Ttot x, and its inverse.
+    Ttot = sign_d @ Vt @ W
+    Tinv = Winv @ Vt.T @ sign_d   # = Ttot^{-1} (sign_d, Vt orthogonal, W·Winv=I)
+
+    A_new = Ttot @ A @ Tinv
+    Q_new = Ttot @ Q @ Ttot.T
+    Q_new = 0.5 * (Q_new + Q_new.T)
+    x0_new = Ttot @ x0
+    P0_new = Ttot @ P0 @ Ttot.T
+    P0_new = 0.5 * (P0_new + P0_new.T)
+    C_list_new = [np.atleast_2d(C) @ Tinv for C in C_list]
+    return A_new, C_list_new, Q_new, x0_new, P0_new
 
 
 def _ppem_newton_C(
@@ -734,18 +805,20 @@ def fit_point_process_em(
 
     Warnings
     --------
-    **Experimental — the latent parameters are not uniquely
-    identified.**  A Poisson LDS has a gauge freedom
+    **Experimental.**  A Poisson LDS has a gauge freedom
     :math:`(A, C, x) \\to (T A T^{-1}, C T^{-1}, T x)` that leaves the
-    observable log-rate :math:`C x` (hence the likelihood) invariant.
-    This implementation pins only the scale part of the gauge (unit
-    per-dimension state RMS) and caps the C Newton step, so ``A`` and
-    ``C`` stay finite — but their absolute scale/rotation is **not**
-    meaningful and varies with seed and data.  Use the *predictions*
-    (the fitted log-rate / firing rate ``exp(C x)``), not the raw
-    ``A`` / ``C`` values, for analysis.  Bit-exact parameter parity
-    with MATLAB ``PP_EM`` requires the full constraint machinery
-    (``PP_EMCreateConstraints``), tracked for a future release.
+    observable log-rate :math:`C x` (hence the likelihood) invariant
+    for any invertible :math:`T` (the full :math:`GL(d)` group).  This
+    implementation pins that gauge to a canonical form — a cheap
+    diagonal scale pin during the loop, then a single whiten + SVD-rotate
+    + sign-fix after convergence (see :func:`_canonicalize_gauge`) — so
+    the returned ``C`` satisfies :math:`C^\\top C = \\mathrm{diag}(S^2)`
+    and is a unique, seed-stable representative.  What remains is
+    *local-optima* multiplicity: EM may converge to genuinely different
+    likelihoods across seeds, so prefer the *predictions* (the fitted
+    log-rate / firing rate ``exp(C x)``) over a single fit's raw
+    ``A`` / ``C``.  Bit-exact parity with MATLAB ``PP_EM`` would
+    additionally require multi-restart model selection.
 
     Notes
     -----
@@ -759,9 +832,10 @@ def fit_point_process_em(
 
     _require_dynamax()
     warnings.warn(
-        "fit_point_process_em is experimental: the Poisson-LDS latent "
-        "parameters (A, C) are not uniquely identified — use the fitted "
-        "rates exp(C x), not the raw A/C values.  See the function "
+        "fit_point_process_em is experimental: A/C are returned in a "
+        "canonical PLDS gauge (the scale/rotation freedom is pinned), but "
+        "EM may still reach different local optima across seeds — prefer "
+        "the fitted rates exp(C x) for interpretation.  See the function "
         "docstring and docs/extras/em_dynamax.md.",
         UserWarning,
         stacklevel=2,
@@ -794,10 +868,21 @@ def fit_point_process_em(
         A, Q, x0, P0 = _ppem_m_step_closed_form(means, covs, cross_covs)
         C = _ppem_newton_C(observations, means, covs, C, n_newton=n_newton_iter)
 
-        # Pin the scale gauge so C doesn't drift to infinity while the
-        # latent state shrinks (the PLDS identifiability ridge).
+        # In-loop: cheap diagonal scale-pin only.  A full GL(d) gauge
+        # transform every iteration reshapes the optimization landscape
+        # each step and fights the Newton trust-region (empirically: NaN /
+        # |ΔC|~460 across seeds).  Pinning just the d scale DOF keeps |C|
+        # finite without disturbing the rotation the optimizer is settling.
         s = _canonical_scale(means, covs)
         A, C, Q, x0, P0 = _apply_canonical_scale(A, C, Q, x0, P0, s)
+
+    # Post-convergence: pin the FULL PLDS gauge once (whiten + SVD-rotate +
+    # sign-fix) using fresh posteriors under the final parameters, so the
+    # reported A/C are a unique, seed-stable canonical representative.
+    means, covs, _, _ = _ppem_e_step_lgssm(
+        observations, A, C, Q, x0, P0, prev_means
+    )
+    A, (C,), Q, x0, P0 = _canonicalize_gauge(A, [C], Q, x0, P0, means, covs)
 
     return PointProcessEMResult(
         transition_matrix=A,
@@ -982,7 +1067,15 @@ def fit_hybrid_em(
        - **M-step (Poisson loadings)**: per-row Newton-Raphson for
          C_p (shared with PP_EM).
        - **M-step (Gaussian loadings)**: closed-form least squares
-         for C_g; closed-form residual cov for R.
+         for C_g; closed-form residual cov for R (with the
+         latent-uncertainty trace correction).
+       - **Gauge pin (in-loop)**: a cheap diagonal scale normalization
+         keeps ``|C_p|`` / ``|C_g|`` finite without reshaping the
+         optimization landscape each step.
+    3. **After convergence**: pin the full PLDS gauge once (whiten +
+       SVD-rotate + sign-fix on the stacked ``[C_p; C_g]``) so both
+       emission channels share a unique, seed-stable latent frame
+       (see :func:`_canonicalize_gauge`).
 
     Parameters
     ----------
@@ -1003,6 +1096,16 @@ def fit_hybrid_em(
     -------
     HybridEMResult
 
+    Warnings
+    --------
+    **Experimental.**  Like :func:`fit_point_process_em`, the shared
+    latent is gauge-free up to :math:`GL(d)`; this fit pins it to a
+    canonical form (computed from the stacked ``[C_p; C_g]``), so the
+    returned loadings are seed-stable up to *local-optima* multiplicity.
+    The identifiable, observation-space outputs — the Gaussian noise
+    ``R`` and the fitted Poisson rates — are the most reliable; treat a
+    single fit's raw ``C_p`` / ``C_g`` with the same care.
+
     Notes
     -----
     The E-step uses a fixed-R approximation: the IRLS pseudo-obs
@@ -1017,11 +1120,12 @@ def fit_hybrid_em(
 
     _require_dynamax()
     warnings.warn(
-        "fit_hybrid_em is experimental: the shared-latent loading "
-        "matrices (C_p, C_g) are not uniquely identified (PLDS gauge "
-        "freedom).  The Gaussian noise R and the fitted rates are "
-        "reliable; the raw C_p/C_g scale is not.  See the docstring "
-        "and docs/extras/em_dynamax.md.",
+        "fit_hybrid_em is experimental: the shared-latent loadings "
+        "(C_p, C_g) are returned in a canonical PLDS gauge (computed from "
+        "the stacked [C_p; C_g]), but EM may still reach different local "
+        "optima across seeds.  The Gaussian noise R and the fitted rates "
+        "are the most reliable outputs.  See the docstring and "
+        "docs/extras/em_dynamax.md.",
         UserWarning,
         stacklevel=2,
     )
@@ -1091,10 +1195,22 @@ def fit_hybrid_em(
         R = mean_resid_cov + trace_correction
         R = 0.5 * (R + R.T) + 1e-8 * np.eye(R.shape[0])
 
-        # Pin the latent scale gauge (both loading matrices transform).
+        # In-loop: cheap diagonal scale-pin only (see fit_point_process_em
+        # — a full per-iteration GL(d) transform destabilizes the EM).
         s = _canonical_scale(smoothed_means, smoothed_covs)
         A, C_p, Q, x0, P0 = _apply_canonical_scale(A, C_p, Q, x0, P0, s)
         C_g = C_g @ np.diag(s)
+
+    # Post-convergence: pin the FULL PLDS gauge once using fresh posteriors
+    # under the final parameters.  The canonical rotation is computed from
+    # the stacked [C_p; C_g] so both emission channels share a consistent,
+    # seed-stable latent frame.
+    smoothed_means, smoothed_covs, _, _ = _hybrid_e_step(
+        poisson_obs, gaussian_obs, A, C_p, C_g, Q, R, x0, P0, prev_smoothed_means
+    )
+    A, (C_p, C_g), Q, x0, P0 = _canonicalize_gauge(
+        A, [C_p, C_g], Q, x0, P0, smoothed_means, smoothed_covs
+    )
 
     return HybridEMResult(
         transition_matrix=A,

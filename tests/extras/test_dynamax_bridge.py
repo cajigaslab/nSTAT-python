@@ -342,6 +342,58 @@ def test_fit_point_process_em_is_finite_and_bounded() -> None:
     )
 
 
+def test_fit_point_process_em_gauge_is_canonical() -> None:
+    """Tier 0.1 identifiability: after EM, the PLDS gauge is pinned once
+    to a canonical form (whiten + SVD-rotate + sign-fix), removing the
+    full ``GL(d)`` reparameterization freedom.  We assert the *structural*
+    invariants of that canonical form — these hold regardless of which
+    local optimum EM lands in, and are the identifiable counterpart to
+    the (ill-posed) "recover C_true" target:
+
+    1. ``CᵀC`` is diagonal with non-increasing diagonal — the emission
+       columns are orthogonal and ordered by descending norm (the
+       SVD-rotation guarantee; off-diagonals vanish to machine eps).
+    2. The largest-magnitude entry of each ``C`` column is positive (the
+       deterministic sign convention).
+    3. ``|C|`` stays bounded across init seeds.  A prior regression
+       applied the full gauge transform *per iteration* instead of once
+       after convergence; it fought the Newton trust-region and blew up
+       to ``|C|~10²`` with NaNs.  This is the guard against that.
+    """
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+
+    y, *_ = _simulate_poisson_lgssm(T=300, state_dim=2, emission_dim=2, rng_seed=1)
+
+    c_norms = []
+    for seed in range(3):
+        C = fit_point_process_em(
+            y, state_dim=2, n_iter=20, seed=seed
+        ).observation_matrix
+        assert np.all(np.isfinite(C)), "PP_EM produced non-finite C"
+        c_norms.append(float(np.abs(C).max()))
+
+        gram = C.T @ C
+        offdiag = gram - np.diag(np.diag(gram))
+        assert np.allclose(offdiag, 0.0, atol=1e-8), (
+            f"canonical emission columns not orthogonal: off-diag max "
+            f"{np.abs(offdiag).max():.2e}"
+        )
+        diag = np.diag(gram)
+        assert np.all(np.diff(diag) <= 1e-8), (
+            f"canonical singular values not descending: {diag}"
+        )
+        lead = np.argmax(np.abs(C), axis=0)
+        assert np.all(C[lead, np.arange(C.shape[1])] >= 0.0), (
+            "canonical sign convention violated (leading entry not positive)"
+        )
+
+    assert max(c_norms) < 50.0, (
+        f"|C| unbounded across seeds: {c_norms} — the per-iteration "
+        f"canonicalization regression is back."
+    )
+
+
 def test_fit_point_process_em_rejects_invalid_state_dim() -> None:
     pytest.importorskip("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em
@@ -455,6 +507,53 @@ def test_fit_hybrid_em_recovers_gaussian_noise() -> None:
     )
     assert np.all(np.isfinite(result.poisson_observation_matrix))
     assert np.all(np.isfinite(result.gaussian_observation_matrix))
+
+
+def test_fit_hybrid_em_gauge_is_canonical() -> None:
+    """Tier 0.1 identifiability for the hybrid model.  The canonical
+    rotation is computed from the *stacked* ``[C_p; C_g]`` so both
+    emission channels share one consistent, seed-stable latent frame.
+    Assert the canonical invariants on that stack (cf.
+    :func:`test_fit_point_process_em_gauge_is_canonical`):
+
+    1. ``Sᵀ S`` diagonal & descending for ``S = [C_p; C_g]`` (orthogonal,
+       ordered columns).
+    2. Leading entry of each stacked column positive (sign convention).
+    3. Both emission matrices bounded across init seeds (regression guard
+       for the per-iteration-canonicalization blow-up).
+    """
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_hybrid_em
+
+    yp, yg = _simulate_hybrid(T=300, state_dim=2, p_dim=2, g_dim=1, rng_seed=1)
+
+    norms = []
+    for seed in range(3):
+        result = fit_hybrid_em(yp, yg, state_dim=2, n_iter=20, seed=seed)
+        C_p = result.poisson_observation_matrix
+        C_g = result.gaussian_observation_matrix
+        assert np.all(np.isfinite(C_p)) and np.all(np.isfinite(C_g))
+        norms.append(float(max(np.abs(C_p).max(), np.abs(C_g).max())))
+
+        S = np.vstack([C_p, C_g])
+        gram = S.T @ S
+        offdiag = gram - np.diag(np.diag(gram))
+        assert np.allclose(offdiag, 0.0, atol=1e-8), (
+            f"stacked canonical columns not orthogonal: off-diag max "
+            f"{np.abs(offdiag).max():.2e}"
+        )
+        diag = np.diag(gram)
+        assert np.all(np.diff(diag) <= 1e-8), (
+            f"stacked canonical singular values not descending: {diag}"
+        )
+        lead = np.argmax(np.abs(S), axis=0)
+        assert np.all(S[lead, np.arange(S.shape[1])] >= 0.0), (
+            "stacked canonical sign convention violated"
+        )
+
+    assert max(norms) < 50.0, (
+        f"emission matrices unbounded across seeds: {norms}"
+    )
 
 
 def test_fit_hybrid_em_rejects_mismatched_observation_lengths() -> None:

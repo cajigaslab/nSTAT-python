@@ -83,19 +83,40 @@ print(f"Learned Â:\n{result.transition_matrix}")
 
 > ⚠️ **`fit_point_process_em` and `fit_hybrid_em` are EXPERIMENTAL.**
 > They fit the observation model (firing rates, and for the hybrid the
-> Gaussian noise `R`) correctly, but the **latent parameters `A`, `C`
-> are NOT uniquely identified** and should not be interpreted at face
-> value.  Both functions emit a `UserWarning` to this effect.
+> Gaussian noise `R`) correctly.  As of the Tier 0.1 identifiability
+> pass the latent `A`, `C` are now returned in a **canonical gauge**
+> (whiten + SVD-rotate + sign-fix), removing the scale/rotation drift —
+> but EM can still converge to **different local optima** across seeds,
+> so a single fit's `A`/`C` should be interpreted with care.  Both
+> functions emit a `UserWarning` to this effect.
 
-**Why the parameters aren't identified.**  A Poisson LDS has a gauge
-freedom: the transform `(A, C, x) → (T A T⁻¹, C T⁻¹, T x)` leaves the
-observable log-rate `C x` — and hence the likelihood — exactly
-invariant.  EM has no reason to prefer any point on this orbit, so the
-absolute scale and rotation of `A`/`C` drift with seed and data (you
-may see `|C|` of 5–100 on fits whose *rates* are perfectly sensible).
-MATLAB nSTAT pins the gauge with `PP_EMCreateConstraints`; the
-equivalent constraint machinery is tracked as the headline EM item for
-a future release.
+**The gauge freedom, and how it is now pinned.**  A Poisson LDS has a
+gauge freedom: the transform `(A, C, x) → (T A T⁻¹, C T⁻¹, T x)` leaves
+the observable log-rate `C x` — and hence the likelihood — exactly
+invariant for any invertible `T` (the full `GL(d)` group, `d²` degrees
+of freedom).  EM has no reason to prefer any point on this orbit, so an
+unconstrained fit lets the absolute scale and rotation of `A`/`C` drift
+freely (the original PR showed `|C|` of 5–100 on fits whose *rates*
+were perfectly sensible).
+
+This is the MATLAB `PP_EMCreateConstraints` role.  The Python port pins
+the gauge to the standard LDS canonical form (cf. Macke et al. 2011;
+Buesing et al. 2012) **once after EM convergence** — never per
+iteration, which fights the Newton trust-region and destabilizes the
+fit:
+
+1. **Whiten** the latent so the empirical state second moment becomes
+   the identity (`T = M^{-1/2}`) — removes the symmetric gauge DOF.
+2. **SVD-rotate** so the stacked emission matrix has orthogonal columns
+   ordered by descending singular value — removes the residual `O(d)`.
+3. **Sign-fix** each axis so the largest-magnitude entry of each
+   emission column is positive — removes the `2^d` sign flips.
+
+The returned emission matrix therefore satisfies `CᵀC = diag(S²)`
+(a machine-precision-exact, seed-stable invariant the tests assert).
+What remains is *local-optima* multiplicity — distinct fits with
+genuinely different likelihoods — not gauge freedom; pinning that would
+require multi-restart model selection (tracked separately).
 
 **What IS reliable** (use these):
 
@@ -122,16 +143,21 @@ PR):
 - **Gaussian `R` M-step trace correction**: now includes the
   `C_g Σ_t C_g'` latent-uncertainty term, without which `R` collapsed
   toward zero over iterations.
-- **Gauge + step bounding**: a per-iteration unit-RMS scale
-  normalization plus a Newton trust-region keep `|C|` finite (the
-  diagonal-scale pin handles the scale gauge; the rotational gauge
-  remains unpinned — hence the residual `|C|` variability).
+- **Gauge + step bounding**: a cheap per-iteration unit-RMS *diagonal*
+  scale pin plus a Newton trust-region keep `|C|` finite during the
+  fit, and a single **full canonical-gauge transform after convergence**
+  (whiten + SVD-rotate + sign-fix) pins the remaining rotational and
+  sign freedom.  This is the Tier 0.1 identifiability pass — the
+  `PP_EMCreateConstraints` equivalent; `A`/`C` are now returned in a
+  unique canonical frame (`CᵀC` diagonal, descending).
 
 **Still approximate / deferred to a future release:**
 
-- Full **identifiability constraints** (the `PP_EMCreateConstraints`
-  equivalent) — to pin the rotational gauge and make `A`/`C`
-  interpretable and MATLAB-comparable.
+- **Multi-restart model selection** — the canonical gauge makes a single
+  fit's `A`/`C` well-defined, but EM can still reach different local
+  optima across seeds (genuinely different likelihoods, not gauge
+  copies).  Picking the best of several restarts is the remaining step
+  toward fully reproducible `A`/`C`.
 - The **Laplace `E[exp(C x_t)]`** uses the diagonal quadratic
   correction; sufficient for moderate rates, may underestimate
   variance at high rates.
