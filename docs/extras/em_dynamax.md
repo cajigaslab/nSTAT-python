@@ -32,6 +32,21 @@ pip install nstat-toolbox[dynamax]   # pulls Dynamax (~50 MB) + JAX (~200 MB)
 | `cmgf_poisson_filter(y, A, C, Q, x0, P0)` | `PPDecodeFilter` | CMGF (EKF-integration) point-process filter → `CMGFPoissonFilterResult` |
 | `cmgf_poisson_smoother(y, A, C, Q, x0, P0)` | `PP_fixedIntervalSmoother` | CMGF forward-backward smoother → `CMGFPoissonFilterResult` |
 
+### Held-out predictive log-likelihood (quality diagnostic)
+
+| Symbol | Notes |
+|---|---|
+| `point_process_predictive_ll(y, A, C, Q, x0, P0, *, n_quad=15)` | True one-step-ahead predictive log-likelihood of a Poisson-LGSSM → `PredictiveLogLik` |
+| `hybrid_predictive_ll(yp, yg, A, C_p, C_g, Q, R, x0, P0, *, n_quad=15)` | Same for the hybrid model; `total = poisson + gaussian` |
+
+These are **pure NumPy** and do **not** require dynamax — they score the
+*true* Poisson (and Gaussian) likelihood of observations under the
+one-step-ahead predictive state, the right metric for convergence
+checks, model/restart comparison, and held-out scoring (pass a test
+segment + train-fitted parameters).  They replace the surrogate
+Gaussian-smoother `marginal_log_likelihoods` trace, which is **not** a
+valid objective (it re-linearizes each iteration).
+
 ### Result dataclasses
 
 | Dataclass | Fields |
@@ -40,6 +55,7 @@ pip install nstat-toolbox[dynamax]   # pulls Dynamax (~50 MB) + JAX (~200 MB)
 | `PointProcessEMResult` | `transition_matrix`, `observation_matrix`, `transition_covariance`, `initial_state_mean`, `initial_state_covariance`, `marginal_log_likelihoods`, `n_iter` |
 | `HybridEMResult` | `transition_matrix`, `poisson_observation_matrix`, `gaussian_observation_matrix`, `transition_covariance`, `gaussian_observation_covariance`, `initial_state_mean`, `initial_state_covariance`, `marginal_log_likelihoods`, `n_iter` |
 | `CMGFPoissonFilterResult` | `state_means`, `state_covariances`, `marginal_log_likelihood` |
+| `PredictiveLogLik` | `total`, `per_timestep`, `poisson`, `gaussian` |
 
 All result arrays are plain NumPy — callers don't need to know about JAX or pytrees.
 
@@ -78,6 +94,7 @@ print(f"Learned Â:\n{result.transition_matrix}")
 | `cmgf_poisson_smoother` | shipped — point-process forward-backward smoother |
 | `fit_point_process_em` | shipped — **PP_EM equivalent** (CMGF E-step + closed-form/Newton M-step, Smith & Brown 2003 PPLDS) |
 | `fit_hybrid_em` | shipped — **mPPCO_EM equivalent** (IRLS-pseudo-obs augmented LG smoother E-step + closed-form / Newton M-step) |
+| `point_process_predictive_ll` / `hybrid_predictive_ll` | shipped — true one-step-ahead held-out predictive log-likelihood (pure NumPy, no dynamax) |
 
 ### PP_EM and mPPCO_EM — experimental status & caveats
 
@@ -126,6 +143,51 @@ require multi-restart model selection (tracked separately).
 - For `fit_hybrid_em`, the **Gaussian observation noise `R`** (recovers
   the true value within a small factor — it lives in observation space
   and is gauge-invariant).
+- The **held-out predictive log-likelihood** (`point_process_predictive_ll`
+  / `hybrid_predictive_ll`) — a true, gauge-invariant quality score; see
+  below.
+
+**Checking fit quality — use the predictive log-likelihood, not the EM
+trace.**  The `marginal_log_likelihoods` returned by the trainers is a
+*surrogate* (the Gaussian-smoother likelihood of the re-linearized IRLS
+pseudo-observations); it changes basis every iteration and is **not**
+monotonic or comparable across fits.  For a real metric, score the
+observations with the one-step-ahead predictive log-likelihood:
+
+```python
+import numpy as np
+from nstat.extras.em.dynamax_bridge import (
+    fit_point_process_em, point_process_predictive_ll,
+)
+
+y_train, y_test = y[:800], y[800:]                 # held-out split
+fit = fit_point_process_em(y_train, state_dim=3, n_iter=30, seed=0)
+score = point_process_predictive_ll(
+    y_test, fit.transition_matrix, fit.observation_matrix,
+    fit.transition_covariance, fit.initial_state_mean,
+    fit.initial_state_covariance,
+)
+print(score.total)            # higher = better; compare seeds/state_dims
+print(score.per_timestep)     # locate where a fit predicts poorly
+```
+
+Because it is gauge-invariant and pure NumPy, it is the right tool to
+pick `state_dim`, compare EM restarts, or detect a bad fit.
+
+> ⚠️ **Observability caveat (a real limitation the diagnostic exposes).**
+> PP_EM's held-out predictive performance depends strongly on how much
+> the spikes constrain the latent.  With **weak observability** (few
+> neurons and/or small loadings) PP_EM tends to converge to a degenerate
+> solution — dynamics `A → 0`, inflated `C`/`Q` — that tracks the
+> in-sample mean rate but generalizes *worse than a constant-rate model*
+> (the predictive LL can be sharply negative). With **strong
+> observability** (many informative neurons) `A` is recovered and the
+> held-out predictive LL improves over the initialization.  The practical
+> recommendation: always check `*_predictive_ll` on held-out data, prefer
+> more neurons / informative loadings, and use multi-restart selection.
+> Hardening PP_EM convergence under weak observability is tracked in
+> [`parity/methods_roadmap.md`](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md)
+> (Tier 0).
 
 **What was fixed in the deep-dive pass** (improvements over the initial
 PR):

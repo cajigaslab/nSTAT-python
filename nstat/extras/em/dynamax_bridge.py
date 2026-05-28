@@ -4,19 +4,20 @@ This module wraps :mod:`dynamax.linear_gaussian_ssm.LinearGaussianSSM`
 behind a thin nstat-style API so users can fit EM-trained state-space
 models without nstat owning the EM code itself.
 
-Scope (initial release)
------------------------
-- :func:`fit_linear_gaussian_em` — fit a discrete-time linear-Gaussian
-  state-space model from observations via EM.  Returns the learned
-  parameters as plain NumPy arrays (NOT pytrees) so callers stay
-  decoupled from JAX.
+Scope
+-----
+- :func:`fit_linear_gaussian_em` — KF_EM equivalent (linear-Gaussian EM).
+- :func:`cmgf_poisson_filter` / :func:`cmgf_poisson_smoother` —
+  PPDecodeFilter / PP_fixedIntervalSmoother (point-process inference).
+- :func:`fit_point_process_em` — PP_EM equivalent (Poisson-LGSSM EM).
+- :func:`fit_hybrid_em` — mPPCO_EM equivalent (Poisson + Gaussian EM).
+- :func:`point_process_predictive_ll` / :func:`hybrid_predictive_ll` —
+  true one-step-ahead held-out predictive log-likelihood, a valid
+  convergence / model-comparison diagnostic (pure NumPy; does **not**
+  require dynamax).
 
-Out of scope (deferred)
------------------------
-- ``fit_point_process_em`` (PP_EM equivalent) — needs the Dynamax
-  ``PoissonHMM`` bridge.
-- ``fit_hybrid_em`` (mPPCO_EM equivalent) — needs the Dynamax
-  ``GeneralizedGaussianSSM`` bridge.
+All fit/inference routines return plain NumPy arrays (NOT pytrees) so
+callers stay decoupled from JAX.
 
 Install
 -------
@@ -1225,6 +1226,280 @@ def fit_hybrid_em(
     )
 
 
+# ----------------------------------------------------------------------
+# Held-out predictive log-likelihood (a true convergence / quality metric)
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PredictiveLogLik:
+    """True one-step-ahead predictive log-likelihood of a state-space fit.
+
+    Unlike the ``marginal_log_likelihoods`` trace reported by the EM
+    trainers — a Gaussian-smoother *surrogate* that re-linearizes each
+    iteration and is **not** a valid objective — this is the genuine
+    predictive log-likelihood of the *observations* under the fitted
+    parameters.  At each step the latent state is predicted causally
+    from the past only (one-step-ahead), and the true Poisson (and, for
+    the hybrid, Gaussian) likelihood of the actual observation is scored
+    under that predictive distribution.
+
+    Use it to (a) confirm EM actually improved the fit, (b) compare
+    models / EM restarts on equal footing, and (c) score held-out data
+    (pass a test segment together with the train-fitted parameters).
+
+    Attributes
+    ----------
+    total
+        Summed predictive log-likelihood over all time steps and
+        channels (nats).  Higher is better.
+    per_timestep
+        Per-time-step predictive log-likelihood, shape ``(T,)`` (summed
+        across neurons / channels).
+    poisson
+        Poisson-channel contribution to ``total``.
+    gaussian
+        Gaussian-channel contribution (``None`` for the point-process
+        case).
+    """
+
+    total: float
+    per_timestep: np.ndarray
+    poisson: float
+    gaussian: float | None = None
+
+
+def _gauss_hermite(n: int):
+    """Probabilists' Gauss-Hermite rule for ``E_{N(0,1)}[f]``.
+
+    ``np.polynomial.hermite_e.hermegauss`` integrates against the weight
+    :math:`e^{-x^2/2}` with :math:`\\sum_i w_i = \\sqrt{2\\pi}`, so
+    :math:`E_{\\mathcal N(0,1)}[f] = (2\\pi)^{-1/2} \\sum_i w_i f(x_i)`.
+    Returns the nodes and the *log* of the normalized weights.
+    """
+    nodes, weights = np.polynomial.hermite_e.hermegauss(int(n))
+    log_w = np.log(weights) - 0.5 * np.log(2.0 * np.pi)
+    return nodes, log_w
+
+
+def _poisson_marginal_logpmf(y, m, v, nodes, log_w):
+    """Per-neuron marginal Poisson log-likelihood under a Gaussian log-rate.
+
+    For each ``(t, i)`` the log-rate :math:`\\eta = C_i x_t` is Gaussian
+    with mean ``m[t,i]`` and variance ``v[t,i]`` under the predictive
+    state; this returns
+    :math:`\\log E_\\eta[\\mathrm{Poisson}(y \\mid e^\\eta)]` evaluated by
+    Gauss-Hermite quadrature.  Neurons are treated as conditionally
+    independent given their own marginal log-rate (the standard
+    mean-field / per-neuron predictive likelihood; the exact joint would
+    require a ``state_dim``-dimensional integral).
+    """
+    from scipy.special import gammaln, logsumexp
+
+    sd = np.sqrt(np.maximum(v, 0.0))
+    eta = m[..., None] + sd[..., None] * nodes          # (T, P, K)
+    eta = np.clip(eta, -20.0, 20.0)
+    log_terms = log_w + y[..., None] * eta - np.exp(eta)   # (T, P, K)
+    return logsumexp(log_terms, axis=-1) - gammaln(y + 1.0)
+
+
+def _gaussian_predictive_logpdf(yg, pred_means, pred_covs, C_g, R):
+    """Exact multivariate-normal predictive log-density of the Gaussian channel.
+
+    ``y^{(g)}_t | y_{1:t-1} ~ N(C_g μ⁻_t, C_g P⁻_t C_g' + R)`` where
+    ``(μ⁻_t, P⁻_t)`` is the one-step-ahead predictive state.
+    """
+    T = yg.shape[0]
+    out = np.empty(T)
+    mean = pred_means @ C_g.T
+    for t in range(T):
+        S = C_g @ pred_covs[t] @ C_g.T + R
+        diff = yg[t] - mean[t]
+        _sign, logdet = np.linalg.slogdet(2.0 * np.pi * S)
+        out[t] = -0.5 * (diff @ np.linalg.solve(S, diff) + logdet)
+    return out
+
+
+def _predictive_forward_filter(
+    A, Q, x0, P0, C_p, poisson_obs,
+    C_g=None, R=None, gaussian_obs=None, n_inner: int = 5,
+):
+    """Causal forward filter returning one-step-ahead predictive state moments.
+
+    Pure-NumPy iterated-EKF filter (no JAX): each step predicts the state
+    from the past, records the *predictive* ``(μ⁻, P⁻)`` (the moments the
+    predictive likelihood is scored against), then updates with the
+    current observation to propagate forward.  The Gaussian channel uses
+    an exact Kalman update; the Poisson channel an iterated-EKF
+    (Gauss-Newton / IRLS) update.
+    """
+    T, d = poisson_obs.shape[0], A.shape[0]
+    pred_means = np.empty((T, d))
+    pred_covs = np.empty((T, d, d))
+    eye = np.eye(d)
+    mu = P = None  # filtered posterior at t-1
+    for t in range(T):
+        if t == 0:
+            mu_pred = x0.copy()
+            P_pred = P0.copy()
+        else:
+            mu_pred = A @ mu
+            P_pred = A @ P @ A.T + Q
+        P_pred = 0.5 * (P_pred + P_pred.T)
+        pred_means[t] = mu_pred
+        pred_covs[t] = P_pred
+
+        # ---- causal update with y_t (so t+1's prediction sees it) ----
+        mu_u, P_u = mu_pred.copy(), P_pred.copy()
+        if C_g is not None:                       # exact Gaussian Kalman update
+            S = C_g @ P_u @ C_g.T + R
+            K = P_u @ C_g.T @ np.linalg.inv(S)
+            mu_u = mu_u + K @ (gaussian_obs[t] - C_g @ mu_u)
+            P_u = (eye - K @ C_g) @ P_u
+            P_u = 0.5 * (P_u + P_u.T)
+        # iterated-EKF Poisson update from the (post-Gaussian) prior (mu_u, P_u)
+        mu_i = mu_u.copy()
+        P_post = P_u
+        for _ in range(int(n_inner)):
+            lam = np.maximum(np.exp(np.clip(C_p @ mu_i, -20.0, 20.0)), 1e-6)
+            z = C_p @ mu_i + (poisson_obs[t] - lam) / lam
+            S = C_p @ P_u @ C_p.T + np.diag(1.0 / lam)
+            K = P_u @ C_p.T @ np.linalg.inv(S)
+            mu_i = mu_u + K @ (z - C_p @ mu_u)
+            P_post = (eye - K @ C_p) @ P_u
+        mu, P = mu_i, 0.5 * (P_post + P_post.T)
+    return pred_means, pred_covs
+
+
+def point_process_predictive_ll(
+    observations: np.ndarray,
+    transition_matrix: np.ndarray,
+    observation_matrix: np.ndarray,
+    transition_covariance: np.ndarray,
+    initial_state_mean: np.ndarray,
+    initial_state_covariance: np.ndarray,
+    *,
+    n_quad: int = 15,
+) -> PredictiveLogLik:
+    """True one-step-ahead predictive log-likelihood of a Poisson-LGSSM.
+
+    The honest convergence / quality diagnostic for
+    :func:`fit_point_process_em` — replaces the surrogate
+    Gaussian-smoother trace.  Runs a causal forward filter and scores the
+    actual spike counts under the one-step-ahead predictive state via
+    Gauss-Hermite quadrature of the Poisson likelihood (integrating over
+    the latent uncertainty, not just plugging in the mean rate).
+
+    Pure NumPy — does **not** require dynamax.  Pass a held-out segment
+    plus the train-fitted parameters for a proper held-out score.
+
+    Parameters
+    ----------
+    observations
+        Spike counts, shape ``(T, emission_dim)`` (1-D is reshaped).
+    transition_matrix, observation_matrix, transition_covariance
+        Fitted :math:`A`, :math:`C`, :math:`Q`.
+    initial_state_mean, initial_state_covariance
+        Fitted :math:`\\hat x_0`, :math:`P_0`.
+    n_quad
+        Gauss-Hermite nodes for the Poisson marginal (default 15;
+        increase for sharper accuracy at high firing rates).
+
+    Returns
+    -------
+    PredictiveLogLik
+    """
+    obs = np.asarray(observations, dtype=float)
+    if obs.ndim == 1:
+        obs = obs.reshape(-1, 1)
+    A = np.asarray(transition_matrix, dtype=float)
+    C = np.atleast_2d(np.asarray(observation_matrix, dtype=float))
+    Q = np.asarray(transition_covariance, dtype=float)
+    x0 = np.asarray(initial_state_mean, dtype=float).ravel()
+    P0 = np.asarray(initial_state_covariance, dtype=float)
+
+    pred_means, pred_covs = _predictive_forward_filter(A, Q, x0, P0, C, obs)
+    m = pred_means @ C.T
+    v = np.einsum("ij,tjk,ik->ti", C, pred_covs, C)
+    nodes, log_w = _gauss_hermite(n_quad)
+    logp = _poisson_marginal_logpmf(obs, m, v, nodes, log_w)
+    per_t = logp.sum(axis=1)
+    total = float(per_t.sum())
+    return PredictiveLogLik(total=total, per_timestep=per_t, poisson=total, gaussian=None)
+
+
+def hybrid_predictive_ll(
+    poisson_observations: np.ndarray,
+    gaussian_observations: np.ndarray,
+    transition_matrix: np.ndarray,
+    poisson_observation_matrix: np.ndarray,
+    gaussian_observation_matrix: np.ndarray,
+    transition_covariance: np.ndarray,
+    gaussian_observation_covariance: np.ndarray,
+    initial_state_mean: np.ndarray,
+    initial_state_covariance: np.ndarray,
+    *,
+    n_quad: int = 15,
+) -> PredictiveLogLik:
+    """True one-step-ahead predictive log-likelihood of a hybrid SSM.
+
+    The :func:`fit_hybrid_em` counterpart of
+    :func:`point_process_predictive_ll`.  Both channels share the causal
+    forward filter; the Poisson channel is scored by Gauss-Hermite
+    quadrature, the Gaussian channel by its exact multivariate-normal
+    predictive density.  ``total = poisson + gaussian``.
+
+    Pure NumPy — does **not** require dynamax.
+
+    Parameters
+    ----------
+    poisson_observations, gaussian_observations
+        Spike counts ``(T, p_dim)`` and continuous signal ``(T, g_dim)``.
+    transition_matrix, poisson_observation_matrix,
+    gaussian_observation_matrix, transition_covariance,
+    gaussian_observation_covariance, initial_state_mean,
+    initial_state_covariance
+        Fitted :math:`A`, :math:`C_p`, :math:`C_g`, :math:`Q`, :math:`R`,
+        :math:`\\hat x_0`, :math:`P_0`.
+    n_quad
+        Gauss-Hermite nodes for the Poisson marginal (default 15).
+
+    Returns
+    -------
+    PredictiveLogLik
+    """
+    yp = np.asarray(poisson_observations, dtype=float)
+    if yp.ndim == 1:
+        yp = yp.reshape(-1, 1)
+    yg = np.asarray(gaussian_observations, dtype=float)
+    if yg.ndim == 1:
+        yg = yg.reshape(-1, 1)
+    A = np.asarray(transition_matrix, dtype=float)
+    C_p = np.atleast_2d(np.asarray(poisson_observation_matrix, dtype=float))
+    C_g = np.atleast_2d(np.asarray(gaussian_observation_matrix, dtype=float))
+    Q = np.asarray(transition_covariance, dtype=float)
+    R = np.atleast_2d(np.asarray(gaussian_observation_covariance, dtype=float))
+    x0 = np.asarray(initial_state_mean, dtype=float).ravel()
+    P0 = np.asarray(initial_state_covariance, dtype=float)
+
+    pred_means, pred_covs = _predictive_forward_filter(
+        A, Q, x0, P0, C_p, yp, C_g=C_g, R=R, gaussian_obs=yg
+    )
+    m = pred_means @ C_p.T
+    v = np.einsum("ij,tjk,ik->ti", C_p, pred_covs, C_p)
+    nodes, log_w = _gauss_hermite(n_quad)
+    logp_p = _poisson_marginal_logpmf(yp, m, v, nodes, log_w).sum(axis=1)
+    logp_g = _gaussian_predictive_logpdf(yg, pred_means, pred_covs, C_g, R)
+    per_t = logp_p + logp_g
+    total = float(per_t.sum())
+    return PredictiveLogLik(
+        total=total,
+        per_timestep=per_t,
+        poisson=float(logp_p.sum()),
+        gaussian=float(logp_g.sum()),
+    )
+
+
 __all__ = [
     "LinearGaussianEMResult",
     "fit_linear_gaussian_em",
@@ -1235,4 +1510,7 @@ __all__ = [
     "fit_point_process_em",
     "HybridEMResult",
     "fit_hybrid_em",
+    "PredictiveLogLik",
+    "point_process_predictive_ll",
+    "hybrid_predictive_ll",
 ]
