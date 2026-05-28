@@ -87,3 +87,33 @@ def test_extras_functional_smokes_every_bridge_import() -> None:
         f"every bridge.  Missing: {missing}.  Add ``python -c \"from "
         f"<module> import <symbol>\"`` lines for each."
     )
+
+
+# ----------------------------------------------------------------------
+# Drift guard: the dedicated [dynamax] CI job
+#
+# [dynamax] is excluded from [all-extras] (JAX is heavy), so the
+# extras-functional job does NOT cover the state-space EM tests — they
+# would skip via importorskip.  A separate extras-dynamax job runs them
+# for real.  This guards against that job being removed (which is
+# exactly how the PP_EM/mPPCO_EM numerical bugs shipped undetected).
+# ----------------------------------------------------------------------
+
+
+def test_extras_dynamax_job_exists_and_runs_em_tests() -> None:
+    jobs = _load_ci_jobs()
+    assert "extras-dynamax" in jobs, (
+        "ci.yml is missing the 'extras-dynamax' job.  Without it the "
+        "state-space EM tests (tests/extras/test_dynamax_bridge.py) skip "
+        "in every CI run — the gap that let the PP_EM/mPPCO_EM bugs ship."
+    )
+    job = jobs["extras-dynamax"]
+    run_blocks = "\n".join(
+        s.get("run", "") for s in job.get("steps", []) if isinstance(s, dict)
+    )
+    assert "[dev,dynamax]" in run_blocks or "[dynamax]" in run_blocks, (
+        "extras-dynamax job must install the [dynamax] extra."
+    )
+    assert "tests/extras/test_dynamax_bridge.py" in run_blocks, (
+        "extras-dynamax job must run tests/extras/test_dynamax_bridge.py."
+    )
