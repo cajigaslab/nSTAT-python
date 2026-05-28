@@ -286,8 +286,21 @@ These MATLAB methods exist but are **not yet ported** to Python (tracked in
 - Various `SignalObj` plotting/variability methods (`plotVariability`,
   `plotAllVariability`, `alignToMax`, `windowedSignal`, etc.).
 
+> **State-space EM is available via `nstat.extras`.** The KF_EM / PP_EM /
+> mPPCO_EM families above are not in **core** `nstat.*` (which holds the
+> strict MATLAB-parity contract), but functional Python equivalents ship
+> in the opt-in [`nstat.extras.em.dynamax_bridge`](docs/extras/em_dynamax.md)
+> module: `fit_linear_gaussian_em` (KF_EM), `fit_point_process_em` (PP_EM),
+> `fit_hybrid_em` (mPPCO_EM), plus `cmgf_poisson_filter` /
+> `cmgf_poisson_smoother` for point-process inference on a known model.
+> Install with `pip install nstat-toolbox[dynamax]`. These are
+> independent reimplementations (Smith & Brown 2003 PPLDS algorithm +
+> Dynamax primitives), not bit-exact MATLAB ports — see the help file
+> for the parity caveats.
+
 **If an agent needs one of these, raise the gap explicitly — do not silently
-substitute a related Python method.**
+substitute a related Python method.**  For state-space EM specifically,
+point users at the `nstat.extras.em` equivalents above.
 
 ### 5.2 Behavioral differences vs MATLAB
 
