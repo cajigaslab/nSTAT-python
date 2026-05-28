@@ -1,13 +1,16 @@
-"""Demo: fit a linear-Gaussian state-space model via Dynamax EM.
+"""Demo: state-space estimation via the Dynamax bridge.
 
-Generates a synthetic 2-state linear-Gaussian process with known
-parameters, then fits the same model via Dynamax's EM (wrapped by
-``nstat.extras.em.dynamax_bridge``) and prints the fitted parameters
-plus the EM log-likelihood trace.
+Exercises every routine in ``nstat.extras.em.dynamax_bridge`` on
+synthetic fixtures with known parameters:
 
-This is the foundation for closing the ``KF_EM`` / ``PP_EM`` /
-``mPPCO_EM`` gap in AUDIT_REPORT.md §3.2 without re-porting ~7,500 LOC
-of MATLAB EM code.
+1. ``fit_linear_gaussian_em``  — KF_EM equivalent (Gaussian observations)
+2. ``cmgf_poisson_filter`` / ``cmgf_poisson_smoother`` — point-process
+   inference on a known Poisson-LGSSM (PPDecodeFilter / PP_fixedIntervalSmoother)
+3. ``fit_point_process_em``    — PP_EM equivalent (Poisson observations)
+4. ``fit_hybrid_em``           — mPPCO_EM equivalent (Poisson + Gaussian)
+
+Together these close the AUDIT_REPORT.md §3.2 gap (KF_EM / PP_EM /
+mPPCO_EM, 19 unported MATLAB methods).
 
 Run::
 
@@ -19,12 +22,9 @@ from __future__ import annotations
 import numpy as np
 
 
-def main() -> int:
-    try:
-        from nstat.extras.em.dynamax_bridge import fit_linear_gaussian_em
-    except ImportError as exc:
-        print(f"Install required: {exc}")
-        return 1
+def _demo_linear_gaussian_em() -> int:
+    """KF_EM equivalent — linear-Gaussian observations."""
+    from nstat.extras.em.dynamax_bridge import fit_linear_gaussian_em
 
     rng = np.random.default_rng(0)
     T, state_dim, emission_dim = 300, 2, 2
@@ -32,8 +32,6 @@ def main() -> int:
     C_true = np.eye(emission_dim)
     Q_true = np.eye(state_dim) * 0.02
     R_true = np.eye(emission_dim) * 0.1
-    print(f"Fixture       : T={T}, state_dim={state_dim}, "
-          f"emission_dim={emission_dim} linear-Gaussian")
 
     x = np.zeros((T, state_dim))
     y = np.zeros((T, emission_dim))
@@ -43,31 +41,93 @@ def main() -> int:
         x[t] = A_true @ x[t - 1] + rng.multivariate_normal(np.zeros(state_dim), Q_true)
         y[t] = C_true @ x[t] + rng.multivariate_normal(np.zeros(emission_dim), R_true)
 
+    result = fit_linear_gaussian_em(y, state_dim=state_dim, n_iter=30, seed=0)
+    lls = result.log_likelihoods
+    print(f"[KF_EM]   {result.n_iter} iters, "
+          f"ll {lls[0]:.1f} → {lls[-1]:.1f}, Δll_min={np.diff(lls).min():.2e}")
+    return 0 if np.all(np.diff(lls) >= -1e-6) else 1
+
+
+def _simulate_poisson_lgssm(T=300, state_dim=2, emission_dim=2, seed=1):
+    """Synthetic Poisson-LGSSM: linear-Gaussian state, Poisson spike counts."""
+    rng = np.random.default_rng(seed)
+    A = np.eye(state_dim) * 0.95
+    C = np.eye(emission_dim, state_dim) * 0.3
+    Q = np.eye(state_dim) * 0.05
+    x0 = np.zeros(state_dim)
+    P0 = np.eye(state_dim) * 0.1
+    x = np.zeros((T, state_dim))
+    y = np.zeros((T, emission_dim), dtype=int)
+    x[0] = rng.multivariate_normal(x0, P0)
+    y[0] = rng.poisson(np.exp(C @ x[0]))
+    for t in range(1, T):
+        x[t] = A @ x[t - 1] + rng.multivariate_normal(np.zeros(state_dim), Q)
+        y[t] = rng.poisson(np.exp(C @ x[t]))
+    return y, A, C, Q, x0, P0, x
+
+
+def _demo_cmgf_inference() -> int:
+    """PPDecodeFilter / PP_fixedIntervalSmoother — inference on a known model."""
+    from nstat.extras.em.dynamax_bridge import (
+        cmgf_poisson_filter, cmgf_poisson_smoother,
+    )
+    y, A, C, Q, x0, P0, x_true = _simulate_poisson_lgssm()
+    filt = cmgf_poisson_filter(y, A, C, Q, x0, P0)
+    smooth = cmgf_poisson_smoother(y, A, C, Q, x0, P0)
+    mse_f = float(np.mean((filt.state_means - x_true) ** 2))
+    mse_s = float(np.mean((smooth.state_means - x_true) ** 2))
+    print(f"[CMGF]    filter MSE={mse_f:.3f}, smoother MSE={mse_s:.3f} "
+          f"(smoother ≤ filter: {mse_s <= mse_f + 1e-9})")
+    return 0
+
+
+def _demo_point_process_em() -> int:
+    """PP_EM equivalent — learn A, C, Q, x0, P0 from spike counts alone."""
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+    y, *_ = _simulate_poisson_lgssm()
+    result = fit_point_process_em(y, state_dim=2, n_iter=20, seed=0)
+    lls = result.marginal_log_likelihoods
+    print(f"[PP_EM]   {result.n_iter} iters, "
+          f"ll {lls[0]:.1f} → {lls[-1]:.1f}, Ĉ shape={result.observation_matrix.shape}")
+    return 0
+
+
+def _demo_hybrid_em() -> int:
+    """mPPCO_EM equivalent — Poisson + Gaussian channels share one latent."""
+    from nstat.extras.em.dynamax_bridge import fit_hybrid_em
+    y_pp, A, C, Q, x0, P0, x_true = _simulate_poisson_lgssm()
+    rng = np.random.default_rng(2)
+    # Gaussian (LFP-like) channel driven by the same latent state.
+    C_g = np.array([[1.0, 0.0]])
+    y_g = x_true @ C_g.T + rng.normal(scale=0.3, size=(x_true.shape[0], 1))
+    result = fit_hybrid_em(y_pp, y_g, state_dim=2, n_iter=20, seed=0)
+    lls = result.marginal_log_likelihoods
+    print(f"[mPPCO_EM] {result.n_iter} iters, ll {lls[0]:.1f} → {lls[-1]:.1f}, "
+          f"Ĉ_p={result.poisson_observation_matrix.shape} "
+          f"Ĉ_g={result.gaussian_observation_matrix.shape}")
+    return 0
+
+
+def main() -> int:
     try:
-        result = fit_linear_gaussian_em(y, state_dim=state_dim, n_iter=30, seed=0)
+        import nstat.extras.em.dynamax_bridge  # noqa: F401
+    except ImportError as exc:
+        print(f"Install required: {exc}")
+        return 1
+
+    print("nstat.extras.em.dynamax_bridge — full state-space demo\n")
+    try:
+        rc = 0
+        rc |= _demo_linear_gaussian_em()
+        rc |= _demo_cmgf_inference()
+        rc |= _demo_point_process_em()
+        rc |= _demo_hybrid_em()
     except ImportError as exc:
         print(f"dynamax missing: {exc}")
         return 1
-
-    print(f"\nLearned parameters after {result.n_iter} EM iterations:")
-    print(f"  Â =\n{result.transition_matrix}")
-    print(f"  Ĉ =\n{result.observation_matrix}")
-    print(f"  Q̂ =\n{result.transition_covariance}")
-    print(f"  R̂ =\n{result.observation_covariance}")
-
-    print(f"\nEM log-likelihood trace (first → last 3):")
-    lls = result.log_likelihoods
-    print(f"  {lls[0]:.2f}, {lls[1]:.2f}, {lls[2]:.2f}  →  "
-          f"{lls[-3]:.2f}, {lls[-2]:.2f}, {lls[-1]:.2f}")
-
-    diffs = np.diff(lls)
-    if np.all(diffs >= -1e-6):
-        print(f"\nEM monotonicity OK  : Δll_min = {diffs.min():.3e} (theory says >= 0)")
-    else:
-        print(f"\nEM monotonicity FAIL: Δll_min = {diffs.min():.3e}")
-        return 1
-
-    return 0
+    print("\nAll EM / inference routines ran." if rc == 0
+          else "\nA routine reported a problem.")
+    return rc
 
 
 if __name__ == "__main__":

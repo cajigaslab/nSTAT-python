@@ -17,10 +17,29 @@ pip install nstat-toolbox[dynamax]   # pulls Dynamax (~50 MB) + JAX (~200 MB)
 
 ## API
 
-| Symbol | Notes |
+### EM trainers
+
+| Symbol | MATLAB counterpart | Notes |
+|---|---|---|
+| `fit_linear_gaussian_em(observations, state_dim, *, n_iter=50, seed=0)` | `KF_EM` | LG state-space EM via Dynamax `LinearGaussianSSM.fit_em` (thin wrapper) → `LinearGaussianEMResult` |
+| `fit_point_process_em(observations, state_dim, *, n_iter=30, n_newton_iter=5, seed=0)` | `PP_EM` | Poisson-LGSSM EM (CMGF E-step + closed-form/Newton M-step) → `PointProcessEMResult` |
+| `fit_hybrid_em(poisson_observations, gaussian_observations, state_dim, *, n_iter=30, n_newton_iter=3, seed=0)` | `mPPCO_EM` | Mixed Poisson + Gaussian EM (IRLS-pseudo-obs augmented smoother E-step) → `HybridEMResult` |
+
+### Point-process inference (known model)
+
+| Symbol | MATLAB counterpart | Notes |
+|---|---|---|
+| `cmgf_poisson_filter(y, A, C, Q, x0, P0)` | `PPDecodeFilter` | CMGF (EKF-integration) point-process filter → `CMGFPoissonFilterResult` |
+| `cmgf_poisson_smoother(y, A, C, Q, x0, P0)` | `PP_fixedIntervalSmoother` | CMGF forward-backward smoother → `CMGFPoissonFilterResult` |
+
+### Result dataclasses
+
+| Dataclass | Fields |
 |---|---|
-| `fit_linear_gaussian_em(observations, state_dim, *, n_iter=50, seed=0)` | Fit a discrete-time LG state-space model via Dynamax EM |
-| `LinearGaussianEMResult` (dataclass) | `transition_matrix`, `observation_matrix`, `transition_covariance`, `observation_covariance`, `initial_state_mean`, `initial_state_covariance`, `log_likelihoods`, `n_iter` |
+| `LinearGaussianEMResult` | `transition_matrix`, `observation_matrix`, `transition_covariance`, `observation_covariance`, `initial_state_mean`, `initial_state_covariance`, `log_likelihoods`, `n_iter` |
+| `PointProcessEMResult` | `transition_matrix`, `observation_matrix`, `transition_covariance`, `initial_state_mean`, `initial_state_covariance`, `marginal_log_likelihoods`, `n_iter` |
+| `HybridEMResult` | `transition_matrix`, `poisson_observation_matrix`, `gaussian_observation_matrix`, `transition_covariance`, `gaussian_observation_covariance`, `initial_state_mean`, `initial_state_covariance`, `marginal_log_likelihoods`, `n_iter` |
+| `CMGFPoissonFilterResult` | `state_means`, `state_covariances`, `marginal_log_likelihood` |
 
 All result arrays are plain NumPy — callers don't need to know about JAX or pytrees.
 

@@ -315,12 +315,23 @@ D = pairwise_spike_distance_matrix(trains)  # (N, N)</code></pre>
 <div class="bridge-card">
   <h4><span class="tier-tag a">A</span> nstat.extras.em.dynamax_bridge</h4>
   <p class="install"><code>pip install nstat-toolbox[dynamax]</code> (pulls JAX, ~200 MB)</p>
-  <p>EM-trained linear-Gaussian state-space models via Dynamax. Foundation for closing the unported MATLAB <code>KF_EM</code> / <code>PP_EM</code> / <code>mPPCO_EM</code> families (AUDIT_REPORT.md §3.2 — 19 methods / ~7,500 LOC of MATLAB avoided). Initial release covers KF_EM equivalent; PP_EM and mPPCO_EM are planned.</p>
-  <pre><code>from nstat.extras.em.dynamax_bridge import fit_linear_gaussian_em
+  <p>State-space estimation closing the unported MATLAB <code>KF_EM</code> / <code>PP_EM</code> / <code>mPPCO_EM</code> families (AUDIT_REPORT.md §3.2 — 19 methods / ~7,500 LOC of MATLAB). Three EM trainers + two point-process inference routines:</p>
+  <ul>
+    <li><code>fit_linear_gaussian_em</code> — KF_EM equivalent (thin Dynamax <code>LinearGaussianSSM.fit_em</code> wrapper).</li>
+    <li><code>cmgf_poisson_filter</code> / <code>cmgf_poisson_smoother</code> — point-process Kalman filter/smoother under the CMGF Gaussian approximation (<code>PPDecodeFilter</code> / <code>PP_fixedIntervalSmoother</code>).</li>
+    <li><code>fit_point_process_em</code> — <strong>PP_EM equivalent</strong> (CMGF E-step + closed-form/Newton M-step, Smith &amp; Brown 2003 PPLDS).</li>
+    <li><code>fit_hybrid_em</code> — <strong>mPPCO_EM equivalent</strong> (IRLS-pseudo-observation augmented Kalman smoother E-step + closed-form/Newton M-step).</li>
+  </ul>
+  <pre><code>from nstat.extras.em.dynamax_bridge import (
+    fit_linear_gaussian_em, fit_point_process_em, fit_hybrid_em,
+)
 
-result = fit_linear_gaussian_em(y, state_dim=2, n_iter=30)
-print(result.transition_matrix)
-print(result.log_likelihoods[-1])</code></pre>
+# Poisson point-process state-space EM (PP_EM)
+pp = fit_point_process_em(spike_counts, state_dim=2, n_iter=30)
+print(pp.observation_matrix, pp.marginal_log_likelihoods[-1])
+
+# Hybrid Poisson + Gaussian observations sharing one latent (mPPCO_EM)
+hy = fit_hybrid_em(spike_counts, lfp, state_dim=2, n_iter=30)</code></pre>
   <p class="badge">Details: <a href="extras/em_dynamax.html">em_dynamax.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/em_dynamax_demo.py"><code>em_dynamax_demo.py</code></a></p>
 </div>
 
@@ -331,10 +342,10 @@ print(result.log_likelihoods[-1])</code></pre>
 <div class="planned">
   <strong>v0.4 milestones</strong> (see <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/integration_opportunities.md"><code>parity/integration_opportunities.md</code></a>):
   <ul>
-    <li><code>nstat.extras.em.dynamax_bridge.fit_point_process_em</code> — PP_EM equivalent (needs Dynamax <code>PoissonHMM</code> bridge).</li>
-    <li><code>nstat.extras.em.dynamax_bridge.fit_hybrid_em</code> — mPPCO_EM equivalent (needs Dynamax <code>GeneralizedGaussianSSM</code> bridge).</li>
+    <li><strong>EM accuracy hardening</strong> — replace the moment-matching lag-one cross-covariance approximation in <code>fit_point_process_em</code> / <code>fit_hybrid_em</code> with the exact smoother lag-one covariance, and exact Laplace E[exp(Cx)] correction, to tighten MATLAB-parity from ~1-3% to &lt;1e-4.</li>
     <li><code>nstat.extras.spectral.synchrosqueeze</code> — ssqueezepy wrapper, closes the "no synchrosqueeze" admission.</li>
     <li><code>nstat.extras.deep_learning</code> — PyTorch decoders (NDT / POYO bridge).</li>
+    <li><code>nstat.extras.interop.spikeinterface</code> — spike-sorting-output bridge.</li>
   </ul>
 </div>
 </section>
