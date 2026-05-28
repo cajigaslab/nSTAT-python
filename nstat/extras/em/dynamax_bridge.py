@@ -413,16 +413,41 @@ def _ppem_initialize(
 def _ppem_m_step_closed_form(
     smoothed_means: np.ndarray,
     smoothed_covariances: np.ndarray,
+    smoothed_cross_covariances: np.ndarray | None = None,
 ):
     """Closed-form M-step for the linear-Gaussian dynamics parameters.
 
-    Uses the smoothed first and second moments.  The lag-one
-    cross-covariance is approximated by the outer product of smoothed
-    means — Dynamax's CMGF smoother doesn't expose lag-one covs, so
-    we substitute the moment-matching approximation
-    ``E[x_t x_{t-1}'] ≈ μ_t μ_{t-1}'``.  This introduces bias in Q
-    when the posterior has strong cross-time correlations; the C
-    update remains correct (uses single-time second moments).
+    Uses the EM sufficient statistics
+
+    .. math::
+
+        S_{11} &= \\sum_{t} \\mathbb{E}[x_t x_t'] = \\sum_t (\\Sigma_t + \\mu_t \\mu_t') \\\\
+        S_{10} &= \\sum_{t} \\mathbb{E}[x_t x_{t-1}'] = \\sum_t (P_{t,t-1} + \\mu_t \\mu_{t-1}')
+
+    where :math:`P_{t,t-1} = \\mathrm{Cov}[x_t, x_{t-1} \\mid y_{1:T}]` is
+    the **lag-one smoothed cross-covariance**.
+
+    The lag-one term is essential: dropping it (the moment-matching
+    approximation ``E[x_t x_{t-1}'] ≈ μ_t μ_{t-1}'``) systematically
+    biases A toward zero, which in a Poisson observation model triggers
+    a degenerate feedback loop — the smoothed states shrink toward the
+    prior, and the C Newton step then inflates the loadings without
+    bound to compensate.  When ``smoothed_cross_covariances`` is
+    supplied (from ``lgssm_smoother``), the exact lag-one term is used
+    and A/Q recover correctly.  ``None`` falls back to moment-matching
+    (kept only for the CMGF bootstrap, which has no cross-covs).
+
+    Parameters
+    ----------
+    smoothed_means
+        ``(T, state_dim)`` smoothed means μ_t.
+    smoothed_covariances
+        ``(T, state_dim, state_dim)`` smoothed covariances Σ_t.
+    smoothed_cross_covariances
+        ``(T-1, state_dim, state_dim)`` lag-one cross-covariances where
+        entry ``[t]`` is ``Cov[x_{t+1}, x_t | y_{1:T}]`` (Dynamax
+        convention).  If ``None``, the moment-matching approximation is
+        used (biased — see above).
 
     Returns ``(A, Q, x0, P0)``.
     """
@@ -432,8 +457,13 @@ def _ppem_m_step_closed_form(
     )
     sum_t = second_moments[1:].sum(axis=0)
     sum_tm1 = second_moments[:-1].sum(axis=0)
-    cross_moments = smoothed_means[1:, :, None] @ smoothed_means[:-1, None, :]
-    sum_cross = cross_moments.sum(axis=0)
+
+    # E[x_t x_{t-1}'] = Cov[x_t, x_{t-1}] + μ_t μ_{t-1}', summed t=1..T-1.
+    mean_cross = (smoothed_means[1:, :, None] @ smoothed_means[:-1, None, :]).sum(axis=0)
+    if smoothed_cross_covariances is not None:
+        sum_cross = np.asarray(smoothed_cross_covariances, dtype=float).sum(axis=0) + mean_cross
+    else:
+        sum_cross = mean_cross  # biased fallback (moment-matching)
 
     A = sum_cross @ np.linalg.pinv(sum_tm1)
     Q = (sum_t - A @ sum_cross.T) / max(T - 1, 1)
@@ -442,6 +472,41 @@ def _ppem_m_step_closed_form(
     x0 = smoothed_means[0].copy()
     P0 = 0.5 * (smoothed_covariances[0] + smoothed_covariances[0].T) + 1e-8 * np.eye(state_dim)
     return A, Q, x0, P0
+
+
+def _canonical_scale(smoothed_means, smoothed_covariances):
+    """Per-dimension latent scale for the identifiability gauge.
+
+    PLDS/PPLDS models are invariant under the state reparameterization
+    ``(A, C, x) → (T A T⁻¹, C T⁻¹, T x)`` — the observable ``C x`` (hence
+    the likelihood) is unchanged.  EM therefore has no reason to prefer
+    any scale and the parameters drift (``C`` grows while ``x`` shrinks).
+    We pin the gauge by rescaling each latent dimension to unit
+    root-mean-square magnitude, computed from the smoothed second
+    moments ``E[x_j^2] = Σ_t (Cov_t[j,j] + μ_t[j]^2) / T``.
+
+    Returns a diagonal scale vector ``s`` (shape ``(d,)``); the canonical
+    transform is ``T = diag(1/s)``.
+    """
+    T = smoothed_means.shape[0]
+    e_x2 = (np.einsum("tjj->j", smoothed_covariances) + (smoothed_means ** 2).sum(axis=0)) / T
+    s = np.sqrt(np.maximum(e_x2, 1e-8))
+    return s
+
+
+def _apply_canonical_scale(A, C, Q, x0, P0, s):
+    """Apply the gauge transform ``T = diag(1/s)`` to all parameters.
+
+    Leaves ``C x`` (the log-rate) invariant: ``C' x' = (C diag(s)) (diag(1/s) x) = C x``.
+    """
+    Tinv = np.diag(1.0 / s)   # x' = Tinv x  (Tinv = diag(1/s))
+    Tfwd = np.diag(s)          # x  = Tfwd x'
+    A_new = Tinv @ A @ Tfwd
+    C_new = C @ Tfwd
+    Q_new = Tinv @ Q @ Tinv.T
+    x0_new = Tinv @ x0
+    P0_new = Tinv @ P0 @ Tinv.T
+    return A_new, C_new, Q_new, x0_new, P0_new
 
 
 def _ppem_newton_C(
@@ -486,9 +551,135 @@ def _ppem_newton_C(
                 step = np.linalg.solve(hess, grad)
             except np.linalg.LinAlgError:
                 step = np.linalg.pinv(hess) @ grad
+            # Trust-region cap: bound the per-iteration step norm so a
+            # single bad Newton step can't send the loadings to
+            # infinity along the (unconstrained) PLDS gauge ridge.
+            step_norm = float(np.linalg.norm(step))
+            max_step = 2.0
+            if step_norm > max_step:
+                step = step * (max_step / step_norm)
             C[i] = c_i - step
 
     return C
+
+
+def _kalman_rts_smoother_tv(
+    y: np.ndarray,
+    A: np.ndarray, C: np.ndarray, Q: np.ndarray,
+    R_t: np.ndarray,
+    x0: np.ndarray, P0: np.ndarray,
+):
+    """Pure-NumPy Kalman filter + RTS smoother with **time-varying**
+    observation noise.
+
+    Unlike Dynamax's batched ``lgssm_smoother`` (fixed emission cov),
+    this accepts per-timestep ``R_t`` — essential for the Poisson IRLS
+    E-step, where the working-response variance is ``1/λ_t`` and varies
+    across time.  A fixed-R substitution breaks the GLM weight
+    cancellation and is numerically unstable for low rates.
+
+    Returns ``(xs, Ps, cross, ll)`` where
+    ``xs`` is ``(T, d)`` smoothed means,
+    ``Ps`` is ``(T, d, d)`` smoothed covariances,
+    ``cross[t] = Cov[x_{t+1}, x_t | y_{1:T}]`` is ``(T-1, d, d)``
+    (Dynamax orientation), and ``ll`` is the Gaussian marginal
+    log-likelihood of the (pseudo-)observations.
+    """
+    y = np.asarray(y, dtype=float)
+    A = np.asarray(A, dtype=float)
+    C = np.asarray(C, dtype=float)
+    Q = np.asarray(Q, dtype=float)
+    R_t = np.asarray(R_t, dtype=float)
+    x0 = np.asarray(x0, dtype=float).reshape(-1)
+    P0 = np.asarray(P0, dtype=float)
+
+    T, m = y.shape
+    d = A.shape[0]
+
+    xp = np.zeros((T, d))       # one-step predicted means
+    Pp = np.zeros((T, d, d))    # one-step predicted covs
+    xf = np.zeros((T, d))       # filtered means
+    Pf = np.zeros((T, d, d))    # filtered covs
+    ll = 0.0
+    log2pi = float(np.log(2.0 * np.pi))
+
+    x_prev, P_prev = x0, P0
+    for t in range(T):
+        if t == 0:
+            xp[t], Pp[t] = x0, P0
+        else:
+            xp[t] = A @ x_prev
+            Pp[t] = A @ P_prev @ A.T + Q
+        S = C @ Pp[t] @ C.T + R_t[t]
+        S = 0.5 * (S + S.T) + 1e-9 * np.eye(m)
+        S_inv = np.linalg.inv(S)
+        K = Pp[t] @ C.T @ S_inv
+        innov = y[t] - C @ xp[t]
+        xf[t] = xp[t] + K @ innov
+        Pf[t] = Pp[t] - K @ C @ Pp[t]
+        Pf[t] = 0.5 * (Pf[t] + Pf[t].T)
+        sign, logdet = np.linalg.slogdet(S)
+        ll += -0.5 * (m * log2pi + logdet + float(innov @ S_inv @ innov))
+        x_prev, P_prev = xf[t], Pf[t]
+
+    xs = xf.copy()
+    Ps = Pf.copy()
+    cross = np.zeros((max(T - 1, 0), d, d))
+    for t in range(T - 2, -1, -1):
+        Pp_next_inv = np.linalg.inv(
+            0.5 * (Pp[t + 1] + Pp[t + 1].T) + 1e-9 * np.eye(d)
+        )
+        J = Pf[t] @ A.T @ Pp_next_inv          # RTS gain at time t
+        xs[t] = xf[t] + J @ (xs[t + 1] - xp[t + 1])
+        Ps[t] = Pf[t] + J @ (Ps[t + 1] - Pp[t + 1]) @ J.T
+        Ps[t] = 0.5 * (Ps[t] + Ps[t].T)
+        # Lag-one smoothed cross-covariance Cov[x_{t+1}, x_t | y_{1:T}].
+        cross[t] = Ps[t + 1] @ J.T
+
+    return xs, Ps, cross, ll
+
+
+def _ppem_e_step_lgssm(
+    poisson_obs: np.ndarray,
+    A: np.ndarray, C: np.ndarray, Q: np.ndarray,
+    x0: np.ndarray, P0: np.ndarray,
+    prev_smoothed_means: np.ndarray | None,
+):
+    """Poisson E-step: IRLS pseudo-observations + a time-varying-R RTS
+    smoother.
+
+    The Poisson likelihood is linearized around the previous smoothed
+    means (Fisher-scoring working response ``z_t = C μ_t + (y_t-λ_t)/λ_t``
+    with per-timestep variance ``1/λ_t``).  Crucially the smoother uses
+    the **time-varying** noise ``R_t = diag(1/λ_t)`` — substituting a
+    fixed R (as a batched smoother forces) breaks the IRLS
+    weight-cancellation and is numerically unstable at low rates.  The
+    smoother also returns lag-one cross-covariances, required for an
+    unbiased A/Q M-step (without them A collapses to zero and C
+    diverges).
+
+    First iteration bootstraps the linearization point with the CMGF
+    smoother (which needs no prior estimate).
+
+    Returns ``(smoothed_means, smoothed_covariances,
+    smoothed_cross_covariances, marginal_loglik)``.
+    """
+    if prev_smoothed_means is None:
+        prev_smoothed_means = cmgf_poisson_smoother(poisson_obs, A, C, Q, x0, P0).state_means
+
+    y_tilde, lam_safe = _hybrid_pseudo_observations(poisson_obs, C, prev_smoothed_means)
+    # Per-timestep IRLS working-response variance: Var(z_t) = 1/λ_t.
+    T = y_tilde.shape[0]
+    em_dim = C.shape[0]
+    R_t = np.zeros((T, em_dim, em_dim))
+    inv_lam = 1.0 / lam_safe
+    for t in range(T):
+        R_t[t] = np.diag(inv_lam[t])
+
+    means, covs, cross, ll = _kalman_rts_smoother_tv(
+        y_tilde, A, C, Q, R_t, x0, P0
+    )
+    return means, covs, cross, ll
 
 
 def fit_point_process_em(
@@ -541,20 +732,40 @@ def fit_point_process_em(
     -------
     PointProcessEMResult
 
+    Warnings
+    --------
+    **Experimental — the latent parameters are not uniquely
+    identified.**  A Poisson LDS has a gauge freedom
+    :math:`(A, C, x) \\to (T A T^{-1}, C T^{-1}, T x)` that leaves the
+    observable log-rate :math:`C x` (hence the likelihood) invariant.
+    This implementation pins only the scale part of the gauge (unit
+    per-dimension state RMS) and caps the C Newton step, so ``A`` and
+    ``C`` stay finite — but their absolute scale/rotation is **not**
+    meaningful and varies with seed and data.  Use the *predictions*
+    (the fitted log-rate / firing rate ``exp(C x)``), not the raw
+    ``A`` / ``C`` values, for analysis.  Bit-exact parameter parity
+    with MATLAB ``PP_EM`` requires the full constraint machinery
+    (``PP_EMCreateConstraints``), tracked for a future release.
+
     Notes
     -----
-    The marginal-log-likelihood trace is **not** guaranteed monotonic
-    because the Laplace approximation is iteration-dependent.  Under
-    exact EM the trace would be non-decreasing; here a few-percent
-    dips early in training are normal.  Substantial decreases
-    indicate a bug or pathological initialization.
-
-    Lag-one cross-covariances are approximated by the outer product
-    of smoothed means (Dynamax CMGF doesn't expose lag-one covs).
-    Expect ~1–3% Q estimation bias vs MATLAB ``PP_EM`` on stationary
-    fixtures.
+    The marginal-log-likelihood trace is the time-varying-R Gaussian
+    smoother surrogate, **not** the true Poisson marginal likelihood;
+    it is not guaranteed monotonic.  The E-step uses an IRLS
+    pseudo-observation linearization + a time-varying-R RTS smoother
+    that exposes the lag-one cross-covariances the A/Q M-step needs.
     """
+    import warnings
+
     _require_dynamax()
+    warnings.warn(
+        "fit_point_process_em is experimental: the Poisson-LDS latent "
+        "parameters (A, C) are not uniquely identified — use the fitted "
+        "rates exp(C x), not the raw A/C values.  See the function "
+        "docstring and docs/extras/em_dynamax.md.",
+        UserWarning,
+        stacklevel=2,
+    )
 
     observations = np.asarray(observations, dtype=float)
     if observations.ndim == 1:
@@ -568,15 +779,25 @@ def fit_point_process_em(
 
     A, C, Q, x0, P0 = _ppem_initialize(observations, state_dim, seed)
     lls: list[float] = []
+    prev_means: np.ndarray | None = None
 
     for _it in range(int(n_iter)):
-        smooth = cmgf_poisson_smoother(observations, A, C, Q, x0, P0)
-        lls.append(smooth.marginal_log_likelihood)
-        A, Q, x0, P0 = _ppem_m_step_closed_form(smooth.state_means, smooth.state_covariances)
-        C = _ppem_newton_C(
-            observations, smooth.state_means, smooth.state_covariances,
-            C, n_newton=n_newton_iter,
+        # E-step via IRLS pseudo-obs + lgssm_smoother → exposes the
+        # lag-one cross-covariances the A/Q M-step needs (the CMGF
+        # smoother does not).  Without them A collapses toward zero and
+        # the C Newton step diverges (see _ppem_m_step_closed_form).
+        means, covs, cross_covs, ll = _ppem_e_step_lgssm(
+            observations, A, C, Q, x0, P0, prev_means
         )
+        prev_means = means
+        lls.append(ll)
+        A, Q, x0, P0 = _ppem_m_step_closed_form(means, covs, cross_covs)
+        C = _ppem_newton_C(observations, means, covs, C, n_newton=n_newton_iter)
+
+        # Pin the scale gauge so C doesn't drift to infinity while the
+        # latent state shrinks (the PLDS identifiability ridge).
+        s = _canonical_scale(means, covs)
+        A, C, Q, x0, P0 = _apply_canonical_scale(A, C, Q, x0, P0, s)
 
     return PointProcessEMResult(
         transition_matrix=A,
@@ -666,61 +887,43 @@ def _hybrid_e_step(
     prev_smoothed_means: np.ndarray | None,
 ):
     """Hybrid E-step: build IRLS pseudo-obs for the Poisson channel,
-    stack with the real Gaussian channel, run Dynamax's
-    :func:`lgssm_smoother` on the augmented LG model.
+    stack with the real Gaussian channel, and run the time-varying-R
+    RTS smoother on the augmented LG model.
 
-    Returns ``(smoothed_means, smoothed_covariances, marginal_loglik)``.
+    The Poisson channel's pseudo-observation variance is ``1/λ_t``
+    (time-varying); the Gaussian channel's is the fixed ``R``.  Using a
+    per-timestep stacked ``R_t`` preserves the IRLS weight cancellation
+    (a fixed-R substitution is numerically unstable at low rates).
+
+    Returns ``(smoothed_means, smoothed_covariances,
+    smoothed_cross_covariances, marginal_loglik)``.  The lag-one
+    cross-covariances are needed for an unbiased A/Q M-step.
     """
     if prev_smoothed_means is None:
         bootstrap = cmgf_poisson_smoother(poisson_obs, A, C_p, Q, x0, P0)
         prev_smoothed_means = bootstrap.state_means
 
     y_tilde_p, lam_safe = _hybrid_pseudo_observations(poisson_obs, C_p, prev_smoothed_means)
-    # Time-averaged pseudo-obs covariance (fixed-R simplification).
-    # A fully-correct implementation would use time-varying R per step;
-    # the lgssm_smoother in Dynamax requires a fixed emission cov, so
-    # we average over time as an acceptable trade-off for this
-    # initial implementation.
-    R_pseudo = np.diag(1.0 / lam_safe.mean(axis=0))
 
     C_stacked = np.vstack([C_p, C_g])
-    R_stacked = np.block([
-        [R_pseudo, np.zeros((R_pseudo.shape[0], R.shape[1]))],
-        [np.zeros((R.shape[0], R_pseudo.shape[1])), R],
-    ])
     y_stacked = np.hstack([y_tilde_p, gaussian_obs])
 
-    import jax.numpy as jnp
-    from dynamax.linear_gaussian_ssm import (
-        lgssm_smoother, ParamsLGSSM,
-        ParamsLGSSMDynamics, ParamsLGSSMEmissions, ParamsLGSSMInitial,
-    )
+    # Per-timestep stacked observation noise: Poisson channel 1/λ_t
+    # (time-varying), Gaussian channel fixed R.
+    T = y_stacked.shape[0]
+    p_dim = C_p.shape[0]
+    g_dim = C_g.shape[0]
+    m = p_dim + g_dim
+    R_t = np.zeros((T, m, m))
+    inv_lam = 1.0 / lam_safe
+    for t in range(T):
+        R_t[t, :p_dim, :p_dim] = np.diag(inv_lam[t])
+        R_t[t, p_dim:, p_dim:] = R
 
-    state_dim = A.shape[0]
-    params = ParamsLGSSM(
-        initial=ParamsLGSSMInitial(
-            mean=jnp.asarray(x0, dtype=float),
-            cov=jnp.asarray(P0, dtype=float),
-        ),
-        dynamics=ParamsLGSSMDynamics(
-            weights=jnp.asarray(A, dtype=float),
-            bias=jnp.zeros(state_dim),
-            input_weights=jnp.zeros((state_dim, 0)),
-            cov=jnp.asarray(Q, dtype=float),
-        ),
-        emissions=ParamsLGSSMEmissions(
-            weights=jnp.asarray(C_stacked, dtype=float),
-            bias=jnp.zeros(C_stacked.shape[0]),
-            input_weights=jnp.zeros((C_stacked.shape[0], 0)),
-            cov=jnp.asarray(R_stacked, dtype=float),
-        ),
+    means, covs, cross, ll = _kalman_rts_smoother_tv(
+        y_stacked, A, C_stacked, Q, R_t, x0, P0
     )
-    posterior = lgssm_smoother(params, jnp.asarray(y_stacked))
-    return (
-        np.asarray(posterior.smoothed_means, dtype=float),
-        np.asarray(posterior.smoothed_covariances, dtype=float),
-        float(posterior.marginal_loglik),
-    )
+    return means, covs, cross, ll
 
 
 def _hybrid_initialize(
@@ -810,7 +1013,18 @@ def fit_hybrid_em(
     full time-varying R; that requires a custom Kalman smoother
     (deferred to a future release).
     """
+    import warnings
+
     _require_dynamax()
+    warnings.warn(
+        "fit_hybrid_em is experimental: the shared-latent loading "
+        "matrices (C_p, C_g) are not uniquely identified (PLDS gauge "
+        "freedom).  The Gaussian noise R and the fitted rates are "
+        "reliable; the raw C_p/C_g scale is not.  See the docstring "
+        "and docs/extras/em_dynamax.md.",
+        UserWarning,
+        stacklevel=2,
+    )
 
     poisson_obs = np.asarray(poisson_observations, dtype=float)
     gaussian_obs = np.asarray(gaussian_observations, dtype=float)
@@ -833,7 +1047,7 @@ def fit_hybrid_em(
     prev_smoothed_means: np.ndarray | None = None
 
     for _it in range(int(n_iter)):
-        smoothed_means, smoothed_covs, ll = _hybrid_e_step(
+        smoothed_means, smoothed_covs, smoothed_cross_covs, ll = _hybrid_e_step(
             poisson_obs, gaussian_obs,
             A, C_p, C_g, Q, R, x0, P0,
             prev_smoothed_means,
@@ -841,7 +1055,10 @@ def fit_hybrid_em(
         lls.append(ll)
         prev_smoothed_means = smoothed_means
 
-        A, Q, x0, P0 = _ppem_m_step_closed_form(smoothed_means, smoothed_covs)
+        # Pass the lag-one cross-covariances so A/Q don't collapse.
+        A, Q, x0, P0 = _ppem_m_step_closed_form(
+            smoothed_means, smoothed_covs, smoothed_cross_covs
+        )
 
         C_p = _ppem_newton_C(
             poisson_obs, smoothed_means, smoothed_covs,
@@ -856,10 +1073,28 @@ def fit_hybrid_em(
         sum_yx = gaussian_obs.T @ smoothed_means
         C_g = sum_yx @ np.linalg.pinv(sum_xx)
 
-        # Gaussian noise covariance: residual covariance.
+        # Gaussian noise covariance.  The EM M-step for R must include
+        # the latent-uncertainty trace term, NOT just the mean residual:
+        #   R = (1/T) Σ_t E[(y_t - C_g x_t)(y_t - C_g x_t)']
+        #     = (1/T) Σ_t [ (y_t - C_g μ_t)(y_t - C_g μ_t)' + C_g Σ_t C_g' ]
+        # Omitting the C_g Σ_t C_g' term systematically underestimates R
+        # (it would converge toward zero as EM proceeds, making the
+        # smoother over-trust the Gaussian channel and distort the shared
+        # latent trajectory).
         resid = gaussian_obs - smoothed_means @ C_g.T
-        R = (resid.T @ resid) / max(poisson_obs.shape[0], 1)
+        n_samples = max(poisson_obs.shape[0], 1)
+        mean_resid_cov = (resid.T @ resid) / n_samples
+        # Σ_t C_g Σ_t C_g'  (summed latent-uncertainty contribution)
+        trace_correction = np.einsum(
+            "ij,tjk,lk->il", C_g, smoothed_covs, C_g
+        ) / n_samples
+        R = mean_resid_cov + trace_correction
         R = 0.5 * (R + R.T) + 1e-8 * np.eye(R.shape[0])
+
+        # Pin the latent scale gauge (both loading matrices transform).
+        s = _canonical_scale(smoothed_means, smoothed_covs)
+        A, C_p, Q, x0, P0 = _apply_canonical_scale(A, C_p, Q, x0, P0, s)
+        C_g = C_g @ np.diag(s)
 
     return HybridEMResult(
         transition_matrix=A,
