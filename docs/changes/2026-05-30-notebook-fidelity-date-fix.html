@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Notebook-fidelity date-volatility fix · nSTAT-python</title>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --border:#d0d0d8; --ok:#38a169;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --border:#3a3a44; --ok:#68d391; }
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.6; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:820px; margin:0 auto; }
+  a { color:var(--accent); }
+  .back { font-size:.85rem; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.2rem; margin:1rem 0 1.8rem 0; }
+  header h1 { margin:.2rem 0 .3rem 0; font-size:1.9rem; }
+  header .meta { color:var(--fg-muted); font-size:.85rem; }
+  h2 { font-size:1.25rem; margin-top:1.8rem; border-bottom:1px solid var(--border); padding-bottom:.2rem; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  pre { background:#1e1e2e; color:#f8f8f2; padding:1rem; border-radius:8px; overflow-x:auto;
+        font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.85rem; line-height:1.45; }
+  ul { padding-left:1.2rem; }
+  li { margin:.35rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; margin-top:.6rem; }
+  th,td { border:1px solid var(--border); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  th { background:var(--bg-card); }
+  .ok { color:var(--ok); font-weight:600; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="back"><a href="whats_new.html">&larr; What's New</a></p>
+  <header>
+    <h1>Notebook-fidelity date-volatility fix</h1>
+    <div class="meta">2026-05-30 · <code>nstat/notebook_fidelity_audit.py</code>,
+      <code>parity/notebook_fidelity.yml</code> ·
+      branch <code>fix/notebook-fidelity-date-volatility</code></div>
+  </header>
+
+  <h2>The problem</h2>
+  <p>The notebook-fidelity audit generator embedded
+  <code>generated_on: str(date.today())</code> in
+  <code>parity/notebook_fidelity.yml</code>, so the file's text content
+  changed every calendar day — even when the underlying audit data was
+  unchanged. Two consequences:</p>
+  <ul>
+    <li><strong>Spurious <code>git diff</code></strong> any time anyone ran
+    <code>make regen-notebook-fidelity</code>, polluting commits.</li>
+    <li><strong>Recurring CI/test failure</strong> on machines with the MATLAB
+    reference checkout:
+    <code>test_notebook_fidelity_audit_matches_generator_when_matlab_repo_is_available</code>
+    compares the committed YAML against a fresh regenerator output via string
+    equality; the dates inevitably diverged.</li>
+  </ul>
+
+  <h2>The fix</h2>
+  <p><strong>Drop the field entirely</strong> from the generator and from the
+  committed YAML. The field had no consumer (verified by repo-wide grep);
+  <code>git log</code> is the authoritative "when was this last touched."</p>
+  <p>The other parity YAMLs (<code>manifest.yml</code>,
+  <code>class_fidelity.yml</code>, <code>simulink_fidelity.yml</code>) keep
+  their <code>generated_on</code> fields — those are stable hand-set audit
+  dates, semantically different from a wall-clock regen stamp.</p>
+
+  <pre><code>- "generated_on": str(date.today()),
++ # No generated_on — embedding wall-clock dates caused daily drift.</code></pre>
+
+  <h2>Verification</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td><code>test_notebook_fidelity_audit_matches_generator_when_matlab_repo_is_available</code></td><td class="ok">PASS (was failing)</td></tr>
+    <tr><td>All 8 tests in <code>test_notebook_fidelity_audit.py</code></td><td class="ok">PASS</td></tr>
+    <tr><td><code>make regen-notebook-fidelity</code> idempotence</td><td class="ok">stable output (no daily churn)</td></tr>
+    <tr><td><code>make test</code> failure count</td><td class="ok">6 &rarr; 5 (only this one resolved; remaining 5 are pre-existing scipy <code>_lazywhere</code> in statsmodels/nemos)</td></tr>
+  </table>
+
+  <h2>Files changed</h2>
+  <ul>
+    <li><code>nstat/notebook_fidelity_audit.py</code> — drop the
+    <code>generated_on</code> line and the now-unused <code>from datetime
+    import date</code>.</li>
+    <li><code>parity/notebook_fidelity.yml</code> — drop the corresponding
+    <code>generated_on: '2026-05-26'</code> line.</li>
+  </ul>
+
+  <footer>
+    <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a>
+  </footer>
+</div>
+</body>
+</html>

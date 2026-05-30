@@ -38,7 +38,7 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 
 project = "nSTAT Python"
 author = "Cajigas Lab"
-release = "0.3.1"
+release = "0.3.2"
 
 
 # -- General configuration ---------------------------------------------------
@@ -123,7 +123,7 @@ html_theme_options = {
 # name is dropped), so the docs/changes/ files publish at the site root:
 #   docs/extras_summary.html            -> /extras_summary.html
 #   docs/changes/whats_new.html         -> /whats_new.html   (What's New index)
-#   docs/changes/2026-*-tier-*.html     -> /2026-*-tier-*.html
+#   docs/changes/2026-*-*.html          -> /2026-*-*.html
 # These are self-contained pages (embedded CSS, no Sphinx wrap).  The
 # landing file is named whats_new.html — NOT index.html — so it does not
 # clobber Sphinx's generated /index.html.
