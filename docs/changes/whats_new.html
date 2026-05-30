@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>nSTAT-python — What's New</title>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --accent-light:#4299e1; --border:#d0d0d8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --accent-light:#63b3ed; --border:#3a3a44; }
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.55; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:880px; margin:0 auto; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.3rem; margin-bottom:1.8rem; }
+  header h1 { margin:0 0 .3rem 0; font-size:2.1rem; }
+  header p.lede { color:var(--fg-muted); font-size:1.08rem; margin:0; }
+  a { color:var(--accent); }
+  .entry { background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
+           padding:1.1rem 1.3rem; margin-bottom:1.1rem; }
+  .entry h2 { margin:.1rem 0 .3rem 0; font-size:1.25rem; }
+  .entry .date { color:var(--fg-muted); font-size:.85rem; font-variant-numeric:tabular-nums; }
+  .entry p { margin:.5rem 0 0 0; }
+  .tag { display:inline-block; font-size:.72rem; font-weight:600; letter-spacing:.03em;
+         padding:.12em .5em; border-radius:999px; background:var(--accent); color:#fff;
+         vertical-align:middle; margin-left:.5rem; }
+  .tag.hygiene { background:#718096; }
+  .tag.release { background:#805ad5; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>nSTAT-python — What's New</h1>
+    <p class="lede">Per-iteration change summaries on the road to a
+    production-quality release (helpfiles + <code>nstat.extras</code> +
+    core GOF + CI hygiene + v0.4.0 release). Newest first.</p>
+  </header>
+
+  <div class="entry">
+    <div class="date">2026-05-30</div>
+    <h2><a href="2026-05-30-release-readiness-audit.html">Pre-release audit + version-drift guards (v0.4.0 plan)</a>
+      <span class="tag release">release</span></h2>
+    <p>Audit of the path to a production v0.4.0 release. Fixes existing
+    silent drift (<code>docs/conf.py</code> and <code>AGENT_GUIDE.md</code>
+    were on 0.3.1 vs. <code>pyproject.toml</code> 0.3.2); strengthens
+    <code>tests/test_version_sync.py</code> to catch both in future; ships
+    <code>RELEASE_READINESS.md</code> with the v0.4.0 scope + checklist.</p>
+  </div>
+
+  <div class="entry">
+    <div class="date">2026-05-30</div>
+    <h2><a href="2026-05-30-notebook-fidelity-date-fix.html">Notebook-fidelity date-volatility fix</a>
+      <span class="tag hygiene">hygiene / CI</span></h2>
+    <p>The <code>notebook_fidelity_audit</code> generator stamped every
+    regen with <code>generated_on: today</code>, so
+    <code>parity/notebook_fidelity.yml</code> drifted every day and
+    <code>test_notebook_fidelity_audit_matches_generator_when_matlab_repo_is_available</code>
+    spuriously failed on any dev machine with the MATLAB checkout. Drop the
+    field (no consumer reads it; <code>git log</code> is authoritative).</p>
+  </div>
+
+  <div class="entry">
+    <div class="date">2026-05-28</div>
+    <h2><a href="2026-05-28-tier-1.1-multivariate-time-rescaling.html">Tier 1.1 — Multivariate (marked) time-rescaling GOF</a>
+      <span class="tag">core / GOF</span></h2>
+    <p>New core function <code>population_time_rescale</code> (→
+    <code>PopulationTimeRescaleResult</code>): the Tao, Weber, Arai &amp; Eden
+    (2018) marked point-process time-rescaling test. It scores a neural
+    <em>population</em> jointly — a ground-process KS plus a marked
+    <code>&chi;&sup2;</code> — and catches inter-neuron coupling misfit that the
+    per-neuron univariate KS (<code>FitResult.computeKSStats</code>) misses.
+    Pure NumPy/SciPy.</p>
+  </div>
+
+  <div class="entry">
+    <div class="date">2026-05-28</div>
+    <h2><a href="2026-05-28-tier-0.2-predictive-loglik.html">Tier 0.2 — Held-out predictive log-likelihood diagnostic</a>
+      <span class="tag">extras / EM</span></h2>
+    <p>A true, gauge-invariant fit-quality metric for the PP_EM / mPPCO_EM
+    trainers: <code>point_process_predictive_ll</code> and
+    <code>hybrid_predictive_ll</code>. Pure NumPy (no dynamax), it scores the
+    actual Poisson/Gaussian likelihood of observations under the one-step-ahead
+    predictive state — replacing the non-monotonic surrogate EM trace, and
+    exposing a real PP_EM weak-observability limitation.</p>
+  </div>
+
+  <div class="entry">
+    <div class="date">2026-05-28</div>
+    <h2><a href="2026-05-28-tier-0.1-identifiability.html">Tier 0.1 — Full PLDS identifiability (canonical gauge)</a>
+      <span class="tag">extras / EM</span></h2>
+    <p>Pins the full <code>GL(d)</code> gauge of the Poisson-LDS trainers to a
+    canonical form (whiten + SVD-rotate + sign-fix) once after convergence, so
+    the returned <code>A</code>/<code>C</code> are a unique, seed-stable
+    representative (<code>C&#7488;C = diag(S&#178;)</code>). Fixes the prior
+    per-iteration-canonicalization blow-up (NaN, <code>|&#916;C|~460</code>).</p>
+  </div>
+
+  <footer>
+    Project: <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> ·
+    Docs: <a href="https://cajigaslab.github.io/nSTAT-python/">cajigaslab.github.io/nSTAT-python</a> ·
+    Roadmap: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md"><code>parity/methods_roadmap.md</code></a> ·
+    Release plan: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_READINESS.md"><code>RELEASE_READINESS.md</code></a>
+  </footer>
+</div>
+</body>
+</html>
