@@ -38,7 +38,7 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 
 project = "nSTAT Python"
 author = "Cajigas Lab"
-release = "0.3.1"
+release = "0.3.2"
 
 
 # -- General configuration ---------------------------------------------------
@@ -118,8 +118,13 @@ html_theme_options = {
     "collapse_navigation": False,
 }
 
-# Copy standalone HTML pages into the build root.  Used for
-# docs/extras_summary.html — a self-contained landing page (embedded
-# CSS, no Sphinx wrap) that lives at
-# https://cajigaslab.github.io/nSTAT-python/extras_summary.html.
-html_extra_path = ["extras_summary.html"]
+# Copy standalone HTML pages into the build root.  Sphinx flattens a
+# directory entry's *contents* into the output root (the entry's own
+# name is dropped), so the docs/changes/ files publish at the site root:
+#   docs/extras_summary.html            -> /extras_summary.html
+#   docs/changes/whats_new.html         -> /whats_new.html   (What's New index)
+#   docs/changes/2026-*-*.html          -> /2026-*-*.html
+# These are self-contained pages (embedded CSS, no Sphinx wrap).  The
+# landing file is named whats_new.html — NOT index.html — so it does not
+# clobber Sphinx's generated /index.html.
+html_extra_path = ["extras_summary.html", "changes"]
