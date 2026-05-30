@@ -92,7 +92,7 @@ uniquely identified** (PLDS gauge freedom — only the scale part is pinned).
 
 ## Tier 2 — Flagship `extras` bridge (shares nSTAT's point-process-filter math)
 
-### 2.1 Clusterless / marked point-process state-space decoding + trajectory classification
+### 2.1 Clusterless / marked point-process state-space decoding + trajectory classification — SHIPPED
 
 - **What:** Bayesian state-space decoders that (a) use a **marked
   point-process** observation model — spike-waveform features replace
@@ -100,12 +100,23 @@ uniquely identified** (PLDS gauge freedom — only the scale part is pinned).
   (e.g., replay vs. local) via a discrete latent state on top of the
   continuous decode.  This is the modern descendant of the exact PPAF/PPHF
   point-process filters nSTAT already implements.
-- **Gap:** nSTAT has PPAF/PPHF but no clusterless observation model and no
-  discrete-state trajectory classifier.  This is the single highest-fit
-  extension because it shares nSTAT's point-process-filter mathematics.
-- **Placement:** `extras` (new `nstat.extras.decoding` or
-  `interop`-style bridge).
-- **Difficulty:** Thin-to-moderate bridge to
+- **Done:** `nstat.extras.decoding.clusterless_bridge` ships
+  `fit_clusterless_decoder` and `fit_clusterless_classifier` (plus
+  `ClusterlessDecoderResult` / `ClusterlessClassifierResult`),
+  thin-wrapping
+  [`replay_trajectory_classification`](https://github.com/Eden-Kramer-Lab/replay_trajectory_classification)
+  with sensible defaults (single `Environment` + `RandomWalk` for the
+  decoder, 2-state `continuous`/`fragmented` with `DiagonalDiscrete`
+  for the classifier) and converting the upstream `xarray.Dataset`
+  output to plain-NumPy dataclasses.  LICENSE verified: MIT (compatible
+  with our GPL-2.0).  New `[clusterless]` opt-dep group; like
+  `[dynamax]` it pulls JAX (~200 MB) and is deliberately excluded from
+  `[all-extras]`.  Drift guards updated
+  (`HEAVY_OPT_OUT_OF_ALL_EXTRAS`, `EXPECTED_GROUP_FOR_MODULE`,
+  `EXPECTED_DOC_STEM_FOR_BRIDGE`, `DOC_TO_EXAMPLE`,
+  `EXAMPLE_BACKING_PACKAGE`).
+- **Placement:** `extras` (new `nstat.extras.decoding` subpackage).
+- **Original difficulty estimate:** Thin-to-moderate bridge to
   [`replay_trajectory_classification`](https://github.com/Eden-Kramer-Lab/replay_trajectory_classification)
   (Denovellis et al. 2021, eLife). **Verify the LICENSE** (likely MIT)
   before adding the dep, per the independence rule.

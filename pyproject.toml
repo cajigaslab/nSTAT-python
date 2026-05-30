@@ -86,6 +86,15 @@ test-parity = [
   "nitime>=0.12",
 ]
 
+# Bridge to replay_trajectory_classification (Denovellis 2021, eLife;
+# MIT) for clusterless marked point-process decoding + trajectory-type
+# classification — backs nstat.extras.decoding.clusterless_bridge.
+# JAX-heavy (~200 MB).  Like [dynamax], deliberately NOT in [all-extras];
+# install explicitly when you need it.
+clusterless = [
+  "replay_trajectory_classification>=1.4",
+]
+
 # PyTorch-based decoders (NDT / POYO bridge; deferred to v0.4+).
 deep-learning = []
 

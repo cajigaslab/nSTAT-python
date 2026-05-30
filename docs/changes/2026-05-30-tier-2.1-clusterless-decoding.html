@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tier 2.1 — Clusterless decoding bridge · nSTAT-python</title>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --border:#d0d0d8; --ok:#38a169;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --border:#3a3a44; --ok:#68d391; }
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.6; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:820px; margin:0 auto; }
+  a { color:var(--accent); }
+  .back { font-size:.85rem; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.2rem; margin:1rem 0 1.8rem 0; }
+  header h1 { margin:.2rem 0 .3rem 0; font-size:1.9rem; }
+  header .meta { color:var(--fg-muted); font-size:.85rem; }
+  h2 { font-size:1.25rem; margin-top:1.8rem; border-bottom:1px solid var(--border); padding-bottom:.2rem; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  pre { background:#1e1e2e; color:#f8f8f2; padding:1rem; border-radius:8px; overflow-x:auto;
+        font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.85rem; line-height:1.45; }
+  ul { padding-left:1.2rem; }
+  li { margin:.35rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; margin-top:.6rem; }
+  th,td { border:1px solid var(--border); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  th { background:var(--bg-card); }
+  .ok { color:var(--ok); font-weight:600; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="back"><a href="whats_new.html">&larr; What's New</a></p>
+  <header>
+    <h1>Tier 2.1 — Clusterless point-process decoding bridge</h1>
+    <div class="meta">2026-05-30 · <code>nstat/extras/decoding/clusterless_bridge.py</code> ·
+      branch <code>feat/extras-clusterless-decoding</code></div>
+  </header>
+
+  <h2>Why</h2>
+  <p>nSTAT's <code>DecodingAlgorithms</code> implements the exact PPAF / PPHF
+  point-process filters for <em>sorted</em> spikes. Two modern
+  capabilities that the MATLAB toolbox doesn't provide:</p>
+  <ul>
+    <li><strong>Clusterless observations</strong> — feed each spike's waveform
+    features (its "marks") directly into a marked point-process likelihood,
+    avoiding cluster-quality dependence (Kloosterman 2014; Deng 2015).</li>
+    <li><strong>Trajectory classification</strong> — a discrete latent state
+    (e.g. <em>local</em>, <em>forward replay</em>, <em>reverse replay</em>,
+    <em>fragmented</em>) sits on top of the continuous position decode and
+    identifies what kind of trajectory is being represented at each moment
+    (Denovellis 2021).</li>
+  </ul>
+
+  <h2>What shipped</h2>
+  <ul>
+    <li><code>fit_clusterless_decoder(position, multiunits, *, place_bin_size=2.0, ...)</code>
+    &rarr; <code>ClusterlessDecoderResult</code>: thin wrap of
+    <code>ClusterlessDecoder</code> with sensible defaults (single
+    <code>Environment</code>, <code>RandomWalk</code> continuous transition).</li>
+    <li><code>fit_clusterless_classifier(position, multiunits, *, state_names=None, discrete_diagonal=0.98, ...)</code>
+    &rarr; <code>ClusterlessClassifierResult</code>: 2-state default
+    <code>continuous</code> / <code>fragmented</code> with
+    <code>DiagonalDiscrete(0.98)</code>; pass <code>state_names</code> to extend.</li>
+    <li>Result dataclasses (plain NumPy — no xarray exposed): posterior,
+    MAP position, per-state marginals, position bin centres.</li>
+    <li>New <code>[clusterless]</code> opt-dep group in <code>pyproject.toml</code>;
+    like <code>[dynamax]</code> it pulls JAX (~200 MB) and is deliberately
+    excluded from <code>[all-extras]</code>.</li>
+    <li>Drift guards extended:
+    <code>HEAVY_OPT_OUT_OF_ALL_EXTRAS</code> += <code>clusterless</code>;
+    <code>EXPECTED_GROUP_FOR_MODULE</code>, <code>EXPECTED_DOC_STEM_FOR_BRIDGE</code>,
+    <code>DOC_TO_EXAMPLE</code>, <code>EXAMPLE_BACKING_PACKAGE</code> all updated.</li>
+  </ul>
+
+  <h2>LICENSE verification</h2>
+  <p>Per the <code>parity/methods_roadmap.md</code> independence rule, the
+  upstream LICENSE was verified before adding the dependency:
+  <code>replay_trajectory_classification</code> is <strong>MIT</strong> (compatible
+  with our GPL-2.0; permissive deps can ship inside a GPL package). Last
+  release: v1.4.1 (2024-09-06); actively maintained.</p>
+
+  <h2>Recipe</h2>
+  <pre><code>from nstat.extras.decoding.clusterless_bridge import fit_clusterless_decoder
+
+result = fit_clusterless_decoder(position, multiunits, place_bin_size=5.0)
+result.posterior          # (T, *position_bins), each row sums to 1
+result.map_position       # (T, n_position_dims), argmax of posterior</code></pre>
+
+  <h2>Validation</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td>Bridge module imports without the optional dep</td><td class="ok">PASS (lazy)</td></tr>
+    <tr><td>Install-hint <code>ImportError</code> contract</td><td class="ok">PASS (raises with <code>pip install nstat-toolbox[clusterless]</code>)</td></tr>
+    <tr><td>Input shape validation runs <em>before</em> the import gate</td><td class="ok">PASS (better DX without the lib)</td></tr>
+    <tr><td><code>tests/test_pyproject_consistency.py</code> drift guards</td><td class="ok">PASS</td></tr>
+    <tr><td><code>tests/test_extras_docs.py</code> doc/example mapping</td><td class="ok">PASS</td></tr>
+    <tr><td>Functional smoke (decoder + classifier on synthetic 1-D data)</td><td>gated on <code>[clusterless]</code> install (CI extras job to be added separately)</td></tr>
+  </table>
+
+  <h2>Out of scope</h2>
+  <ul>
+    <li>Wrappers for upstream's sorted variants (<code>SortedSpikes{Decoder,Classifier}</code>) — these duplicate <code>nstat.DecodingAlgorithms</code> for sorted spikes; the bridge focuses on the clusterless additions.</li>
+    <li>Track-linearization helpers / movie utilities — not in scope.</li>
+    <li>Dedicated <code>extras-clusterless</code> CI job (parallel to <code>extras-dynamax</code>) — left for a follow-up to keep CI runtime bounded; smoke test currently skips when the dep is absent.</li>
+  </ul>
+
+  <h2>Files changed</h2>
+  <ul>
+    <li>New: <code>nstat/extras/decoding/__init__.py</code>, <code>nstat/extras/decoding/clusterless_bridge.py</code></li>
+    <li>New: <code>tests/extras/test_clusterless_bridge.py</code> (6 tests)</li>
+    <li>New: <code>docs/extras/decoding_clusterless.md</code>, <code>examples/extras/decoding_clusterless_demo.py</code></li>
+    <li><code>pyproject.toml</code> — new <code>[clusterless]</code> group.</li>
+    <li><code>tests/test_pyproject_consistency.py</code>, <code>tests/test_extras_docs.py</code>, <code>tests/test_extras_examples.py</code> — drift-guard updates.</li>
+    <li><code>docs/extras.rst</code> — toctree + autosummary additions.</li>
+    <li><code>parity/methods_roadmap.md</code> — mark Tier 2.1 SHIPPED.</li>
+  </ul>
+
+  <footer>
+    <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> ·
+    <a href="https://cajigaslab.github.io/nSTAT-python/extras/decoding_clusterless.html">Bridge docs</a>
+  </footer>
+</div>
+</body>
+</html>

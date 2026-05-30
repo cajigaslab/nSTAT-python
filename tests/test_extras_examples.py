@@ -37,6 +37,7 @@ EXAMPLE_BACKING_PACKAGE: dict[str, str] = {
     "validation_statsmodels_demo": "statsmodels",
     "metrics_spike_distances_demo": "pyspike",
     "em_dynamax_demo": "dynamax",
+    "decoding_clusterless_demo": "replay_trajectory_classification",
 }
 
 

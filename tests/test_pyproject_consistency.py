@@ -45,7 +45,9 @@ META_GROUPS = frozenset({"all-extras", "dev"})
 # keep the one-shot install footprint reasonable.  Membership here is
 # a documented architectural decision, not a TODO.  Notes:
 # - ``dynamax`` pulls JAX (~200 MB).
-HEAVY_OPT_OUT_OF_ALL_EXTRAS = frozenset({"dynamax"})
+# - ``clusterless`` (``replay_trajectory_classification``) pulls JAX too
+#   (~200 MB) and is the same install-footprint hazard as dynamax.
+HEAVY_OPT_OUT_OF_ALL_EXTRAS = frozenset({"dynamax", "clusterless"})
 
 
 # ----------------------------------------------------------------------
@@ -182,6 +184,8 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
         # em/
         "dynamax": "dynamax",
         "dynamax_bridge": "dynamax",
+        # decoding/
+        "clusterless_bridge": "clusterless",
     }
 
     extras_root = REPO_ROOT / "nstat" / "extras"
