@@ -15,6 +15,11 @@ Scope
   true one-step-ahead held-out predictive log-likelihood, a valid
   convergence / model-comparison diagnostic (pure NumPy; does **not**
   require dynamax).
+- :func:`fit_point_process_em_best_of` / :func:`fit_hybrid_em_best_of` —
+  multi-restart EM with held-out predictive-LL selection.  The
+  **recommended workflow** for PP_EM on real data: mitigates the
+  weak-observability ``A → 0`` collapse and the local-optima
+  multiplicity that single-fit PP_EM exhibits.
 
 All fit/inference routines return plain NumPy arrays (NOT pytrees) so
 callers stay decoupled from JAX.
@@ -1500,6 +1505,274 @@ def hybrid_predictive_ll(
     )
 
 
+# ----------------------------------------------------------------------
+# Multi-restart selection (Tier 0.3 — harden PP_EM weak-observability)
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class MultiRestartResult:
+    """Best-of-N restart EM result + per-restart diagnostics.
+
+    Tier 0.1 (canonical gauge) made each fit a unique seed-stable
+    representative of its equivalence class; Tier 0.2 added a true
+    held-out predictive log-likelihood diagnostic.  This dataclass is
+    the natural composition of the two: run EM with several seeds, score
+    each on held-out data, return the best.  It is also the mitigation
+    for the weak-observability `A → 0` collapse exposed by Tier 0.2:
+    even when some seeds collapse, the predictive-LL selector picks one
+    that didn't.
+
+    Attributes
+    ----------
+    best_result
+        :class:`PointProcessEMResult` or :class:`HybridEMResult` from
+        the seed with the highest held-out predictive log-likelihood.
+    best_seed
+        Seed that produced ``best_result``.
+    best_predictive_ll
+        Held-out predictive log-likelihood total for ``best_result``.
+    all_seeds
+        Seeds used, in order, shape ``(n_restarts,)``.
+    all_predictive_lls
+        Held-out predictive log-likelihood for each restart, same order
+        as ``all_seeds``.  ``NaN`` if a restart raised an exception or
+        produced non-finite parameters.
+    """
+
+    best_result: object
+    best_seed: int
+    best_predictive_ll: float
+    all_seeds: np.ndarray
+    all_predictive_lls: np.ndarray
+
+
+def _train_test_split_by_time(
+    arr: np.ndarray, holdout_fraction: float
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Last ``holdout_fraction`` of the time axis goes to test."""
+    if not (0.0 < float(holdout_fraction) < 1.0):
+        raise ValueError(
+            f"holdout_fraction must be in (0, 1); got {holdout_fraction}"
+        )
+    T = arr.shape[0]
+    n_test = max(int(round(T * float(holdout_fraction))), 1)
+    n_train = T - n_test
+    if n_train < 10:
+        raise ValueError(
+            f"training segment too short: n_train={n_train} (T={T}, "
+            f"holdout_fraction={holdout_fraction})."
+        )
+    return arr[:n_train], arr[n_train:], n_train
+
+
+def fit_point_process_em_best_of(
+    observations: np.ndarray,
+    state_dim: int,
+    *,
+    n_restarts: int = 8,
+    holdout_fraction: float = 0.2,
+    n_iter: int = 30,
+    n_newton_iter: int = 5,
+    base_seed: int = 0,
+    n_quad: int = 15,
+) -> MultiRestartResult:
+    """Run :func:`fit_point_process_em` with several seeds and pick the best.
+
+    Splits ``observations`` into a training segment (first
+    ``1 - holdout_fraction`` of time) and a test segment (the remainder);
+    fits PP_EM on the train segment for each of ``n_restarts`` random
+    seeds (``base_seed`` … ``base_seed + n_restarts - 1``); scores each
+    fit on the test segment with :func:`point_process_predictive_ll`;
+    returns the best.
+
+    **This is the recommended workflow for PP_EM on real data.**
+    Single-fit PP_EM under weak observability (few neurons, small
+    loadings) can converge to a degenerate solution (``A → 0``,
+    inflated ``C``/``Q``) whose held-out predictive log-likelihood is
+    worse than a constant-rate baseline — see the observability caveat
+    in :func:`fit_point_process_em` and ``docs/extras/em_dynamax.md``.
+    Multi-restart selection on held-out predictive LL is the
+    production-quality mitigation.
+
+    Parameters
+    ----------
+    observations, state_dim, n_iter, n_newton_iter
+        Forwarded to :func:`fit_point_process_em`.
+    n_restarts
+        Number of distinct seeds to try (default 8).
+    holdout_fraction
+        Fraction of the *trailing* time axis reserved for scoring
+        (default 0.2 = last 20%).
+    base_seed
+        Seeds used are ``base_seed``, ``base_seed + 1``, …,
+        ``base_seed + n_restarts - 1``.
+    n_quad
+        Gauss-Hermite nodes passed to :func:`point_process_predictive_ll`.
+
+    Returns
+    -------
+    MultiRestartResult
+    """
+    import warnings
+
+    obs = np.asarray(observations, dtype=float)
+    if obs.ndim == 1:
+        obs = obs.reshape(-1, 1)
+    if int(n_restarts) < 1:
+        raise ValueError(f"n_restarts must be >= 1; got {n_restarts}")
+    train, test, _ = _train_test_split_by_time(obs, holdout_fraction)
+
+    seeds = np.asarray(
+        [int(base_seed) + i for i in range(int(n_restarts))], dtype=int
+    )
+    predictive_lls = np.full(seeds.shape, np.nan, dtype=float)
+    fits: list = [None] * seeds.size
+    for i, seed in enumerate(seeds):
+        try:
+            with warnings.catch_warnings():
+                # The per-restart trainer emits a UserWarning every call;
+                # suppress N-1 of them and let the user see only the
+                # consolidated multi-restart context (the trainer's
+                # warnings carry the same caveat each time).
+                warnings.simplefilter("ignore", category=UserWarning)
+                fit = fit_point_process_em(
+                    train,
+                    state_dim=int(state_dim),
+                    n_iter=int(n_iter),
+                    n_newton_iter=int(n_newton_iter),
+                    seed=int(seed),
+                )
+            score = point_process_predictive_ll(
+                test,
+                fit.transition_matrix,
+                fit.observation_matrix,
+                fit.transition_covariance,
+                fit.initial_state_mean,
+                fit.initial_state_covariance,
+                n_quad=int(n_quad),
+            )
+            ll = float(score.total)
+        except Exception:  # pragma: no cover — defensive
+            ll, fit = float("nan"), None
+        predictive_lls[i] = ll
+        fits[i] = fit
+
+    if not np.any(np.isfinite(predictive_lls)):
+        raise RuntimeError(
+            "all restarts failed to produce a finite held-out predictive "
+            "log-likelihood — check that observations are non-degenerate "
+            "and state_dim is sensible."
+        )
+
+    best_idx = int(np.nanargmax(predictive_lls))
+    return MultiRestartResult(
+        best_result=fits[best_idx],
+        best_seed=int(seeds[best_idx]),
+        best_predictive_ll=float(predictive_lls[best_idx]),
+        all_seeds=seeds,
+        all_predictive_lls=predictive_lls,
+    )
+
+
+def fit_hybrid_em_best_of(
+    poisson_observations: np.ndarray,
+    gaussian_observations: np.ndarray,
+    state_dim: int,
+    *,
+    n_restarts: int = 8,
+    holdout_fraction: float = 0.2,
+    n_iter: int = 30,
+    n_newton_iter: int = 3,
+    base_seed: int = 0,
+    n_quad: int = 15,
+) -> MultiRestartResult:
+    """Hybrid (Poisson + Gaussian) multi-restart EM with predictive-LL selection.
+
+    The :func:`fit_hybrid_em` counterpart of
+    :func:`fit_point_process_em_best_of`.  Both observation channels are
+    split by the same trailing-time holdout; scoring uses
+    :func:`hybrid_predictive_ll` (Poisson + Gaussian total).
+
+    Parameters
+    ----------
+    poisson_observations, gaussian_observations, state_dim,
+    n_iter, n_newton_iter
+        Forwarded to :func:`fit_hybrid_em`.
+    n_restarts, holdout_fraction, base_seed, n_quad
+        See :func:`fit_point_process_em_best_of`.
+
+    Returns
+    -------
+    MultiRestartResult
+    """
+    import warnings
+
+    yp = np.asarray(poisson_observations, dtype=float)
+    if yp.ndim == 1:
+        yp = yp.reshape(-1, 1)
+    yg = np.asarray(gaussian_observations, dtype=float)
+    if yg.ndim == 1:
+        yg = yg.reshape(-1, 1)
+    if yp.shape[0] != yg.shape[0]:
+        raise ValueError(
+            f"poisson_observations and gaussian_observations must share "
+            f"the same T; got {yp.shape[0]} vs {yg.shape[0]}"
+        )
+    if int(n_restarts) < 1:
+        raise ValueError(f"n_restarts must be >= 1; got {n_restarts}")
+    yp_train, yp_test, _ = _train_test_split_by_time(yp, holdout_fraction)
+    yg_train, yg_test, _ = _train_test_split_by_time(yg, holdout_fraction)
+
+    seeds = np.asarray(
+        [int(base_seed) + i for i in range(int(n_restarts))], dtype=int
+    )
+    predictive_lls = np.full(seeds.shape, np.nan, dtype=float)
+    fits: list = [None] * seeds.size
+    for i, seed in enumerate(seeds):
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=UserWarning)
+                fit = fit_hybrid_em(
+                    yp_train, yg_train,
+                    state_dim=int(state_dim),
+                    n_iter=int(n_iter),
+                    n_newton_iter=int(n_newton_iter),
+                    seed=int(seed),
+                )
+            score = hybrid_predictive_ll(
+                yp_test, yg_test,
+                fit.transition_matrix,
+                fit.poisson_observation_matrix,
+                fit.gaussian_observation_matrix,
+                fit.transition_covariance,
+                fit.gaussian_observation_covariance,
+                fit.initial_state_mean,
+                fit.initial_state_covariance,
+                n_quad=int(n_quad),
+            )
+            ll = float(score.total)
+        except Exception:  # pragma: no cover — defensive
+            ll, fit = float("nan"), None
+        predictive_lls[i] = ll
+        fits[i] = fit
+
+    if not np.any(np.isfinite(predictive_lls)):
+        raise RuntimeError(
+            "all hybrid restarts failed to produce a finite held-out "
+            "predictive log-likelihood."
+        )
+
+    best_idx = int(np.nanargmax(predictive_lls))
+    return MultiRestartResult(
+        best_result=fits[best_idx],
+        best_seed=int(seeds[best_idx]),
+        best_predictive_ll=float(predictive_lls[best_idx]),
+        all_seeds=seeds,
+        all_predictive_lls=predictive_lls,
+    )
+
+
 __all__ = [
     "LinearGaussianEMResult",
     "fit_linear_gaussian_em",
@@ -1513,4 +1786,7 @@ __all__ = [
     "PredictiveLogLik",
     "point_process_predictive_ll",
     "hybrid_predictive_ll",
+    "MultiRestartResult",
+    "fit_point_process_em_best_of",
+    "fit_hybrid_em_best_of",
 ]
