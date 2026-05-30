@@ -29,6 +29,7 @@
          padding:.12em .5em; border-radius:999px; background:var(--accent); color:#fff;
          vertical-align:middle; margin-left:.5rem; }
   .tag.hygiene { background:#718096; }
+  .tag.release { background:#805ad5; }
   code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
          font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
   footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
@@ -41,8 +42,19 @@
     <h1>nSTAT-python — What's New</h1>
     <p class="lede">Per-iteration change summaries on the road to a
     production-quality release (helpfiles + <code>nstat.extras</code> +
-    core GOF + CI hygiene). Newest first.</p>
+    core GOF + CI hygiene + v0.4.0 release). Newest first.</p>
   </header>
+
+  <div class="entry">
+    <div class="date">2026-05-30</div>
+    <h2><a href="2026-05-30-release-readiness-audit.html">Pre-release audit + version-drift guards (v0.4.0 plan)</a>
+      <span class="tag release">release</span></h2>
+    <p>Audit of the path to a production v0.4.0 release. Fixes existing
+    silent drift (<code>docs/conf.py</code> and <code>AGENT_GUIDE.md</code>
+    were on 0.3.1 vs. <code>pyproject.toml</code> 0.3.2); strengthens
+    <code>tests/test_version_sync.py</code> to catch both in future; ships
+    <code>RELEASE_READINESS.md</code> with the v0.4.0 scope + checklist.</p>
+  </div>
 
   <div class="entry">
     <div class="date">2026-05-30</div>
@@ -95,7 +107,8 @@
   <footer>
     Project: <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> ·
     Docs: <a href="https://cajigaslab.github.io/nSTAT-python/">cajigaslab.github.io/nSTAT-python</a> ·
-    Roadmap: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md"><code>parity/methods_roadmap.md</code></a>
+    Roadmap: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md"><code>parity/methods_roadmap.md</code></a> ·
+    Release plan: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_READINESS.md"><code>RELEASE_READINESS.md</code></a>
   </footer>
 </div>
 </body>
