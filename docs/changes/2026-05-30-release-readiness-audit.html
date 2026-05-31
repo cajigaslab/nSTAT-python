@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pre-release audit (v0.4.0 plan) · nSTAT-python</title>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --border:#d0d0d8; --ok:#38a169; --warn:#d69e2e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --border:#3a3a44; --ok:#68d391; --warn:#f6c453; }
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.6; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:820px; margin:0 auto; }
+  a { color:var(--accent); }
+  .back { font-size:.85rem; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.2rem; margin:1rem 0 1.8rem 0; }
+  header h1 { margin:.2rem 0 .3rem 0; font-size:1.9rem; }
+  header .meta { color:var(--fg-muted); font-size:.85rem; }
+  h2 { font-size:1.25rem; margin-top:1.8rem; border-bottom:1px solid var(--border); padding-bottom:.2rem; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  pre { background:#1e1e2e; color:#f8f8f2; padding:1rem; border-radius:8px; overflow-x:auto;
+        font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.85rem; line-height:1.45; }
+  ul { padding-left:1.2rem; }
+  li { margin:.35rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; margin-top:.6rem; }
+  th,td { border:1px solid var(--border); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  th { background:var(--bg-card); }
+  .ok { color:var(--ok); font-weight:600; }
+  .warn { color:var(--warn); font-weight:600; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="back"><a href="whats_new.html">&larr; What's New</a></p>
+  <header>
+    <h1>Pre-release audit + version-drift guards (v0.4.0 plan)</h1>
+    <div class="meta">2026-05-30 · <code>docs/conf.py</code>,
+      <code>AGENT_GUIDE.md</code>, <code>tests/test_version_sync.py</code>,
+      new <code>RELEASE_READINESS.md</code> ·
+      branch <code>chore/release-readiness-audit</code></div>
+  </header>
+
+  <h2>Why</h2>
+  <p>The goal is a <strong>production-quality v0.4.0 release</strong>. Four
+  feature/hygiene PRs are queued (Tiers 0.1, 0.2, 1.1, + the
+  notebook-fidelity fix). Before tagging we needed to know what's
+  drifted, what's gated, and what the release checklist actually looks
+  like. This audit makes that explicit.</p>
+
+  <h2>Findings</h2>
+  <table>
+    <tr><th>Issue</th><th>Before</th><th>After</th></tr>
+    <tr><td><code>docs/conf.py</code> Sphinx <code>release</code></td><td class="warn">0.3.1 (one version behind <code>pyproject.toml</code>)</td><td class="ok">0.3.2 (matches)</td></tr>
+    <tr><td><code>AGENT_GUIDE.md</code> <code>Package version</code></td><td class="warn">0.3.1</td><td class="ok">0.3.2 (matches)</td></tr>
+    <tr><td><code>test_version_sync.py</code> coverage</td><td class="warn">pyproject + CITATION only</td><td class="ok">+ docs/conf.py + AGENT_GUIDE.md</td></tr>
+    <tr><td>GitHub Releases gap</td><td class="warn">v0.3.0 latest; v0.3.2 tagged but unpublished</td><td>Documented in checklist — publish at v0.4.0 cut</td></tr>
+    <tr><td>5 local <code>make test</code> failures</td><td>scipy <code>_lazywhere</code> ↔ statsmodels/nemos env mismatch</td><td>Documented as <strong>not release-blocking</strong> (CI clean)</td></tr>
+  </table>
+
+  <h2>v0.4.0 scope summary</h2>
+  <p>The version bump is <strong>minor</strong>, not patch: the public API
+  gains the EM trainer family (<code>fit_point_process_em</code>,
+  <code>fit_hybrid_em</code>, <code>fit_linear_gaussian_em</code> + the
+  predictive-LL diagnostic) and the core
+  <code>population_time_rescale</code> /
+  <code>PopulationTimeRescaleResult</code>.</p>
+  <p>Full per-PR breakdown and the step-by-step release checklist live
+  in <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_READINESS.md"><code>RELEASE_READINESS.md</code></a>.</p>
+
+  <h2>What the strengthened test guards</h2>
+  <pre><code>$ pytest tests/test_version_sync.py -v
+test_pyproject_and_citation_versions_agree   PASSED
+test_pyproject_version_is_pep440             PASSED
+test_docs_conf_release_matches_pyproject     PASSED   # new
+test_agent_guide_version_matches_pyproject   PASSED   # new
+test_release_notes_mentions_current_version  PASSED</code></pre>
+  <p>Both new assertions fail loudly on the same kind of drift caught
+  here — a future bump to v0.4.0 (or any future version) cannot silently
+  miss <code>docs/conf.py</code> or <code>AGENT_GUIDE.md</code>.</p>
+
+  <h2>Files changed</h2>
+  <ul>
+    <li><code>docs/conf.py</code> — <code>release = "0.3.1"</code> → <code>"0.3.2"</code>.</li>
+    <li><code>AGENT_GUIDE.md</code> — <code>Package version: 0.3.1</code> → <code>0.3.2</code>.</li>
+    <li><code>tests/test_version_sync.py</code> — two new drift-guard tests + regex helpers.</li>
+    <li><code>RELEASE_READINESS.md</code> — new working doc: audit + v0.4.0 plan + tag checklist.</li>
+    <li><code>docs/changes/whats_new.html</code>, <code>docs/conf.py</code> — wires the per-iteration HTML tree (from #114) on this branch.</li>
+  </ul>
+
+  <footer>
+    <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a>
+  </footer>
+</div>
+</body>
+</html>
