@@ -66,15 +66,39 @@ freedom.
   below).
 - **Placement:** `extras` (`em.dynamax_bridge`).
 
-### 0.2 Held-out predictive-likelihood diagnostic
+### 0.2 Held-out predictive-likelihood diagnostic — SHIPPED
 
 - **What:** A proper convergence/quality metric for the EM trainers: the
   true Poisson (and Gaussian) held-out log-likelihood under the fitted
   parameters, replacing the surrogate Gaussian-smoother log-likelihood
-  that is currently reported (and which is not a valid objective because
-  the IRLS pseudo-observations are re-linearized each iteration).
-- **Gap:** Users currently have no trustworthy convergence diagnostic.
-- **Placement:** `extras`. **Difficulty:** Thin (~2 h).
+  (not a valid objective — the IRLS pseudo-observations are re-linearized
+  each iteration).
+- **Done:** `point_process_predictive_ll` / `hybrid_predictive_ll` +
+  `PredictiveLogLik` in `em.dynamax_bridge`.  A pure-NumPy (no-dynamax)
+  causal forward filter records the one-step-ahead predictive state; the
+  Poisson channel is scored by Gauss-Hermite quadrature of the true
+  Poisson likelihood (integrating over latent uncertainty, not plugging
+  in the mean rate), the Gaussian channel by its exact MVN predictive
+  density.  Validated against an independent exact-Kalman predictive LL
+  (Gaussian channel) and by model-selection ranking (true params beat
+  flat/homogeneous/collapsed). Runs in the base unit suite (no JAX).
+- **Finding (now documented):** the diagnostic exposes a real PP_EM
+  limitation — under **weak observability** (few neurons / small
+  loadings) PP_EM converges to degenerate dynamics (`A → 0`, inflated
+  `C`/`Q`) whose held-out predictive LL is *worse than a constant-rate
+  model*; with strong observability `A` is recovered and held-out LL
+  improves.  See `docs/extras/em_dynamax.md` (observability caveat).
+- **Placement:** `extras`.
+
+### 0.3 Harden PP_EM convergence under weak observability (new, from 0.2)
+
+- **What:** Stop the `A → 0` collapse on weakly-observable data.
+  Candidates: better data-driven initialization, a mild dynamics prior /
+  ridge on the `A`-`Q` M-step, and **multi-restart selection** using the
+  0.2 predictive LL to pick the best fit (this also resolves the
+  local-optima multiplicity left by Tier 0.1).
+- **Gap:** Surfaced by 0.2 — the trainer can return a degenerate fit with
+  no error.  **Placement:** `extras`. **Difficulty:** Moderate.
 
 ---
 
@@ -193,11 +217,12 @@ freedom.
 
 ## Suggested sequencing
 
-1. **Tier 0.1 (done) + 0.2** — finish the EM trainers.  0.1 (canonical-gauge
-   identifiability) is shipped; 0.2 (held-out predictive-likelihood
-   diagnostic, plus optional multi-restart for true parameter recovery)
-   is next.  Makes the shipped PP_EM/mPPCO_EM trustworthy at the
-   parameter level.
+1. **Tier 0.1 + 0.2 (done) → 0.3** — finish the EM trainers.  0.1
+   (canonical-gauge identifiability) and 0.2 (held-out
+   predictive-likelihood diagnostic) are shipped.  0.3 (harden PP_EM
+   convergence under weak observability + multi-restart selection),
+   newly surfaced by 0.2, is the remaining EM item before the trainers
+   are trustworthy end-to-end.
 2. **Tier 1.1** — multivariate time-rescaling GOF.  Cheapest, core,
    parity-aligned; pairs naturally with the time_rescale oracle already
    in the test tree.
