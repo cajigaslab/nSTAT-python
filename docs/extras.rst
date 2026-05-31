@@ -30,6 +30,7 @@ gotchas, and links to the runnable demos under ``examples/extras/``.
    extras/validation_statsmodels
    extras/metrics_spike_distances
    extras/em_dynamax
+   extras/decoding_clusterless
 
 
 .. currentmodule:: nstat.extras
@@ -73,3 +74,12 @@ EM — state-space models trained by expectation-maximization
    :toctree: _autosummary
 
    em.dynamax_bridge
+
+
+Decoding — Bayesian point-process decoders
+------------------------------------------
+
+.. autosummary::
+   :toctree: _autosummary
+
+   decoding.clusterless_bridge
