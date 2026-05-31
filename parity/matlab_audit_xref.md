@@ -105,8 +105,6 @@ The relevant items from those review plans (Bernoulli LL, KS U-clamp,
 DT-correction) are already addressed in this Python repo through:
 - Phase 2 PR #85: `Analysis.GLMFit` adds `stats["loglik"]` as the true
   Bernoulli/Poisson log-likelihood alongside the MATLAB-hybrid `logLL`.
-- The bci-curriculum review (`chapter-04 §4.B.3` "Implementation
-  contract" boxes) catches the same KS U-clamp issue.
 
 ---
 

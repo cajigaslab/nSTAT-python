@@ -16,8 +16,7 @@ Covered families (all entry points are ``@staticmethod``):
 - **Expectation-maximisation** — ``PPSS_EMFB`` (state-space GLM EM) and
   ``PPCO_EMFB`` (mixed point-process / continuous-observation EM).
 
-Most algorithms reference the derivations in *Decoding the Brain*
-(ch. 3–4) and the original 2012 paper (see
+Most algorithms follow the derivations in the original 2012 paper (see
 :doc:`/PaperOverview`).  Spike trains are :class:`~nstat.nspikeTrain.nspikeTrain`
 objects; observations are ``CxN`` binary matrices; time is in **seconds**.
 This is the largest single module in the package (~7.9k lines) and is
