@@ -342,6 +342,58 @@ def test_fit_point_process_em_is_finite_and_bounded() -> None:
     )
 
 
+def test_fit_point_process_em_gauge_is_canonical() -> None:
+    """Tier 0.1 identifiability: after EM, the PLDS gauge is pinned once
+    to a canonical form (whiten + SVD-rotate + sign-fix), removing the
+    full ``GL(d)`` reparameterization freedom.  We assert the *structural*
+    invariants of that canonical form — these hold regardless of which
+    local optimum EM lands in, and are the identifiable counterpart to
+    the (ill-posed) "recover C_true" target:
+
+    1. ``CᵀC`` is diagonal with non-increasing diagonal — the emission
+       columns are orthogonal and ordered by descending norm (the
+       SVD-rotation guarantee; off-diagonals vanish to machine eps).
+    2. The largest-magnitude entry of each ``C`` column is positive (the
+       deterministic sign convention).
+    3. ``|C|`` stays bounded across init seeds.  A prior regression
+       applied the full gauge transform *per iteration* instead of once
+       after convergence; it fought the Newton trust-region and blew up
+       to ``|C|~10²`` with NaNs.  This is the guard against that.
+    """
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+
+    y, *_ = _simulate_poisson_lgssm(T=300, state_dim=2, emission_dim=2, rng_seed=1)
+
+    c_norms = []
+    for seed in range(3):
+        C = fit_point_process_em(
+            y, state_dim=2, n_iter=20, seed=seed
+        ).observation_matrix
+        assert np.all(np.isfinite(C)), "PP_EM produced non-finite C"
+        c_norms.append(float(np.abs(C).max()))
+
+        gram = C.T @ C
+        offdiag = gram - np.diag(np.diag(gram))
+        assert np.allclose(offdiag, 0.0, atol=1e-8), (
+            f"canonical emission columns not orthogonal: off-diag max "
+            f"{np.abs(offdiag).max():.2e}"
+        )
+        diag = np.diag(gram)
+        assert np.all(np.diff(diag) <= 1e-8), (
+            f"canonical singular values not descending: {diag}"
+        )
+        lead = np.argmax(np.abs(C), axis=0)
+        assert np.all(C[lead, np.arange(C.shape[1])] >= 0.0), (
+            "canonical sign convention violated (leading entry not positive)"
+        )
+
+    assert max(c_norms) < 50.0, (
+        f"|C| unbounded across seeds: {c_norms} — the per-iteration "
+        f"canonicalization regression is back."
+    )
+
+
 def test_fit_point_process_em_rejects_invalid_state_dim() -> None:
     pytest.importorskip("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em
@@ -457,6 +509,53 @@ def test_fit_hybrid_em_recovers_gaussian_noise() -> None:
     assert np.all(np.isfinite(result.gaussian_observation_matrix))
 
 
+def test_fit_hybrid_em_gauge_is_canonical() -> None:
+    """Tier 0.1 identifiability for the hybrid model.  The canonical
+    rotation is computed from the *stacked* ``[C_p; C_g]`` so both
+    emission channels share one consistent, seed-stable latent frame.
+    Assert the canonical invariants on that stack (cf.
+    :func:`test_fit_point_process_em_gauge_is_canonical`):
+
+    1. ``Sᵀ S`` diagonal & descending for ``S = [C_p; C_g]`` (orthogonal,
+       ordered columns).
+    2. Leading entry of each stacked column positive (sign convention).
+    3. Both emission matrices bounded across init seeds (regression guard
+       for the per-iteration-canonicalization blow-up).
+    """
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_hybrid_em
+
+    yp, yg = _simulate_hybrid(T=300, state_dim=2, p_dim=2, g_dim=1, rng_seed=1)
+
+    norms = []
+    for seed in range(3):
+        result = fit_hybrid_em(yp, yg, state_dim=2, n_iter=20, seed=seed)
+        C_p = result.poisson_observation_matrix
+        C_g = result.gaussian_observation_matrix
+        assert np.all(np.isfinite(C_p)) and np.all(np.isfinite(C_g))
+        norms.append(float(max(np.abs(C_p).max(), np.abs(C_g).max())))
+
+        S = np.vstack([C_p, C_g])
+        gram = S.T @ S
+        offdiag = gram - np.diag(np.diag(gram))
+        assert np.allclose(offdiag, 0.0, atol=1e-8), (
+            f"stacked canonical columns not orthogonal: off-diag max "
+            f"{np.abs(offdiag).max():.2e}"
+        )
+        diag = np.diag(gram)
+        assert np.all(np.diff(diag) <= 1e-8), (
+            f"stacked canonical singular values not descending: {diag}"
+        )
+        lead = np.argmax(np.abs(S), axis=0)
+        assert np.all(S[lead, np.arange(S.shape[1])] >= 0.0), (
+            "stacked canonical sign convention violated"
+        )
+
+    assert max(norms) < 50.0, (
+        f"emission matrices unbounded across seeds: {norms}"
+    )
+
+
 def test_fit_hybrid_em_rejects_mismatched_observation_lengths() -> None:
     pytest.importorskip("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_hybrid_em
@@ -486,3 +585,270 @@ def test_fit_hybrid_em_emits_install_hint_when_dynamax_missing() -> None:
             np.zeros((10, 1), dtype=int), np.zeros((10, 1)), state_dim=1
         )
     assert "pip install nstat-toolbox[" in str(excinfo.value)
+
+
+# ----------------------------------------------------------------------
+# Held-out predictive log-likelihood (Tier 0.2 — a true quality metric)
+#
+# These exercise the pure-NumPy diagnostic, which does NOT require
+# dynamax — so they run in the base unit suite too, no importorskip.
+# ----------------------------------------------------------------------
+
+
+def _sim_pp_with_state(T=400, sd=2, ed=4, c_scale=0.8, seed=3):
+    """Poisson-LGSSM fixture returning observations AND the true params."""
+    rng = np.random.default_rng(seed)
+    A = np.eye(sd) * 0.92
+    C = np.zeros((ed, sd))
+    for i in range(ed):
+        C[i, i % sd] = c_scale
+    Q = np.eye(sd) * 0.05
+    x0 = np.zeros(sd)
+    P0 = np.eye(sd) * 0.1
+    x = np.zeros((T, sd))
+    y = np.zeros((T, ed), dtype=int)
+    x[0] = rng.multivariate_normal(x0, P0)
+    y[0] = rng.poisson(np.exp(C @ x[0]))
+    for t in range(1, T):
+        x[t] = A @ x[t - 1] + rng.multivariate_normal(np.zeros(sd), Q)
+        y[t] = rng.poisson(np.exp(C @ x[t]))
+    return y, A, C, Q, x0, P0, x
+
+
+def test_predictive_ll_finite_and_additive() -> None:
+    """The point-process predictive LL is finite, and its per-timestep
+    array sums to the reported total (and to the Poisson channel, which
+    is the only channel here)."""
+    from nstat.extras.em.dynamax_bridge import point_process_predictive_ll
+
+    y, A, C, Q, x0, P0, _ = _sim_pp_with_state()
+    r = point_process_predictive_ll(y, A, C, Q, x0, P0)
+    assert np.isfinite(r.total)
+    assert r.per_timestep.shape == (y.shape[0],)
+    assert np.isclose(r.total, r.per_timestep.sum())
+    assert np.isclose(r.total, r.poisson)
+    assert r.gaussian is None
+
+
+def test_predictive_ll_ranks_true_above_misspecified() -> None:
+    """Core validity: the true generating parameters achieve a higher
+    held-out predictive log-likelihood than (a) a near-flat-rate model,
+    (b) a homogeneous Poisson at the empirical mean, and (c) a degenerate
+    collapsed-dynamics fit (A→0, inflated C/Q — the failure mode the
+    diagnostic is built to catch).  This is what makes it a usable
+    model-selection / convergence metric."""
+    from scipy.special import gammaln
+
+    from nstat.extras.em.dynamax_bridge import point_process_predictive_ll
+
+    y, A, C, Q, x0, P0, _ = _sim_pp_with_state()
+    y_tr, y_te = y[:300], y[300:]
+
+    def pll(seg, params):
+        return point_process_predictive_ll(seg, *params).total
+
+    true = pll(y_te, (A, C, Q, x0, P0))
+    flat = pll(y_te, (A, C * 0.0, Q, x0, P0))
+    collapsed = pll(y_te, (A * 0.05, C * 3.0, Q * 20.0, x0, P0))
+
+    lam_bar = np.maximum(y_tr.mean(axis=0), 1e-6)
+    homogeneous = float(
+        (y_te * np.log(lam_bar) - lam_bar - gammaln(y_te + 1.0)).sum()
+    )
+
+    assert true > flat, f"true {true:.1f} !> flat {flat:.1f}"
+    assert true > homogeneous, f"true {true:.1f} !> homogeneous {homogeneous:.1f}"
+    assert true > collapsed, f"true {true:.1f} !> collapsed {collapsed:.1f}"
+
+
+def test_predictive_ll_gauss_hermite_converges() -> None:
+    """The Gauss-Hermite quadrature of the Poisson marginal is stable:
+    a coarse rule (5 nodes) already agrees with a fine one (30 nodes)."""
+    from nstat.extras.em.dynamax_bridge import point_process_predictive_ll
+
+    y, A, C, Q, x0, P0, _ = _sim_pp_with_state()
+    coarse = point_process_predictive_ll(y, A, C, Q, x0, P0, n_quad=5).total
+    fine = point_process_predictive_ll(y, A, C, Q, x0, P0, n_quad=30).total
+    assert abs(coarse - fine) < 1.0, f"GH not converged: {coarse:.4f} vs {fine:.4f}"
+
+
+def test_hybrid_predictive_ll_splits_and_ranks() -> None:
+    """The hybrid predictive LL decomposes additively into Poisson +
+    Gaussian channels, its per-timestep array sums to the total, and the
+    true parameters outscore a misspecified set."""
+    from nstat.extras.em.dynamax_bridge import hybrid_predictive_ll
+
+    y, A, C, Q, x0, P0, x = _sim_pp_with_state(ed=2)
+    rng = np.random.default_rng(7)
+    C_g = np.array([[1.0, 0.0]])
+    R = np.array([[0.09]])
+    yg = x @ C_g.T + rng.normal(scale=0.3, size=(x.shape[0], 1))
+
+    r = hybrid_predictive_ll(y, yg, A, C, C_g, Q, R, x0, P0)
+    assert np.isfinite(r.total)
+    assert np.isclose(r.total, r.poisson + r.gaussian)
+    assert np.isclose(r.total, r.per_timestep.sum())
+
+    wrong = hybrid_predictive_ll(y, yg, A, C * 0.0, C_g * 0.0, Q, R * 10.0, x0, P0)
+    assert r.total > wrong.total
+
+
+def test_hybrid_gaussian_channel_matches_exact_kalman() -> None:
+    """When the Poisson loadings are zero, the Poisson update contributes
+    nothing (Kalman gain is 0) and the filter reduces to an exact linear-
+    Gaussian Kalman filter.  The Gaussian-channel predictive LL must then
+    equal an independent textbook Kalman one-step-ahead predictive
+    log-likelihood — a strong correctness check on the forward filter and
+    the Gaussian predictive density."""
+    from nstat.extras.em.dynamax_bridge import hybrid_predictive_ll
+
+    rng = np.random.default_rng(0)
+    T, sd, gd = 200, 2, 1
+    A = np.array([[0.9, 0.1], [0.0, 0.85]])
+    C_g = np.array([[1.0, 0.5]])
+    Q = np.eye(sd) * 0.05
+    R = np.array([[0.2]])
+    x0 = np.zeros(sd)
+    P0 = np.eye(sd) * 0.1
+    x = np.zeros((T, sd))
+    yg = np.zeros((T, gd))
+    x[0] = rng.multivariate_normal(x0, P0)
+    yg[0] = C_g @ x[0] + rng.multivariate_normal(np.zeros(gd), R)
+    for t in range(1, T):
+        x[t] = A @ x[t - 1] + rng.multivariate_normal(np.zeros(sd), Q)
+        yg[t] = C_g @ x[t] + rng.multivariate_normal(np.zeros(gd), R)
+
+    # Zero Poisson channel: counts are arbitrary (gain is 0 regardless).
+    C_p = np.zeros((1, sd))
+    yp = np.zeros((T, 1), dtype=int)
+    r = hybrid_predictive_ll(yp, yg, A, C_p, C_g, Q, R, x0, P0)
+
+    # Independent exact Kalman predictive log-likelihood.
+    mu, P = x0.copy(), P0.copy()
+    ref = 0.0
+    for t in range(T):
+        if t > 0:
+            mu = A @ mu
+            P = A @ P @ A.T + Q
+        S = C_g @ P @ C_g.T + R
+        diff = yg[t] - C_g @ mu
+        _s, logdet = np.linalg.slogdet(2.0 * np.pi * S)
+        ref += -0.5 * (diff @ np.linalg.solve(S, diff) + logdet)
+        K = P @ C_g.T @ np.linalg.inv(S)
+        mu = mu + K @ diff
+        P = (np.eye(sd) - K @ C_g) @ P
+
+    assert np.isclose(r.gaussian, ref, rtol=1e-6, atol=1e-6), (
+        f"Gaussian predictive LL {r.gaussian:.6f} != exact Kalman {ref:.6f}"
+    )
+
+
+def test_predictive_ll_runs_on_em_output() -> None:
+    """Integration smoke: the diagnostic scores real EM output and returns
+    finite per-timestep values.  (No improvement assertion — held-out
+    gains are observability-dependent; see the docs caveat.)"""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import (
+        fit_point_process_em, point_process_predictive_ll,
+    )
+
+    y, *_ = _sim_pp_with_state(T=300, ed=4, c_scale=0.9)
+    fit = fit_point_process_em(y[:250], state_dim=2, n_iter=15, seed=0)
+    r = point_process_predictive_ll(
+        y[250:], fit.transition_matrix, fit.observation_matrix,
+        fit.transition_covariance, fit.initial_state_mean,
+        fit.initial_state_covariance,
+    )
+    assert np.isfinite(r.total)
+    assert r.per_timestep.shape == (50,)
+    assert np.all(np.isfinite(r.per_timestep))
+
+
+# ----------------------------------------------------------------------
+# Multi-restart selection (Tier 0.3 — harden PP_EM weak-observability)
+# ----------------------------------------------------------------------
+
+
+def test_fit_point_process_em_best_of_smoke_and_shapes() -> None:
+    """Multi-restart end-to-end: runs n_restarts seeds, returns a
+    MultiRestartResult whose ``best_*`` fields correspond to the
+    argmax of ``all_predictive_lls``."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import (
+        MultiRestartResult,
+        PointProcessEMResult,
+        fit_point_process_em_best_of,
+    )
+
+    y, *_ = _sim_pp_with_state(T=300, ed=4, c_scale=0.9)
+    result = fit_point_process_em_best_of(
+        y, state_dim=2, n_restarts=4, holdout_fraction=0.25,
+        n_iter=15, base_seed=0,
+    )
+
+    assert isinstance(result, MultiRestartResult)
+    assert isinstance(result.best_result, PointProcessEMResult)
+    assert result.all_seeds.shape == (4,)
+    assert result.all_predictive_lls.shape == (4,)
+    assert result.best_seed in result.all_seeds.tolist()
+    # best_result + best_predictive_ll correspond to argmax of all LLs
+    best_idx = int(np.nanargmax(result.all_predictive_lls))
+    assert int(result.all_seeds[best_idx]) == result.best_seed
+    assert np.isclose(result.best_predictive_ll, result.all_predictive_lls[best_idx])
+    # best LL is >= median (trivially, by construction; guards refactors)
+    finite = result.all_predictive_lls[np.isfinite(result.all_predictive_lls)]
+    if finite.size >= 2:
+        assert result.best_predictive_ll >= float(np.median(finite)) - 1e-6
+
+
+def test_fit_point_process_em_best_of_input_validation() -> None:
+    """``n_restarts`` and ``holdout_fraction`` are validated upfront."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em_best_of
+
+    y = np.zeros((100, 2), dtype=int)
+    with pytest.raises(ValueError, match="n_restarts must be >= 1"):
+        fit_point_process_em_best_of(y, state_dim=2, n_restarts=0)
+    with pytest.raises(ValueError, match="holdout_fraction must be in"):
+        fit_point_process_em_best_of(y, state_dim=2, holdout_fraction=0.0)
+    with pytest.raises(ValueError, match="holdout_fraction must be in"):
+        fit_point_process_em_best_of(y, state_dim=2, holdout_fraction=1.0)
+    with pytest.raises(ValueError, match="training segment too short"):
+        # 5 train + 5 test bins isn't enough to fit PP_EM.
+        fit_point_process_em_best_of(
+            np.zeros((10, 2), dtype=int), state_dim=2, holdout_fraction=0.5
+        )
+
+
+def test_fit_hybrid_em_best_of_smoke_and_shapes() -> None:
+    """Hybrid multi-restart smoke + shape contract."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import (
+        HybridEMResult,
+        MultiRestartResult,
+        fit_hybrid_em_best_of,
+    )
+
+    yp, yg = _simulate_hybrid(T=240, state_dim=2, p_dim=2, g_dim=1, rng_seed=2)
+    result = fit_hybrid_em_best_of(
+        yp, yg, state_dim=2, n_restarts=3, holdout_fraction=0.25, n_iter=12,
+    )
+
+    assert isinstance(result, MultiRestartResult)
+    assert isinstance(result.best_result, HybridEMResult)
+    assert result.all_seeds.shape == (3,)
+    assert result.all_predictive_lls.shape == (3,)
+    finite = result.all_predictive_lls[np.isfinite(result.all_predictive_lls)]
+    assert finite.size >= 1, "all hybrid restarts failed to score"
+
+
+def test_fit_hybrid_em_best_of_rejects_mismatched_lengths() -> None:
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_hybrid_em_best_of
+
+    with pytest.raises(ValueError, match="same T"):
+        fit_hybrid_em_best_of(
+            np.zeros((100, 2), dtype=int),
+            np.zeros((99, 1)),
+            state_dim=2,
+        )

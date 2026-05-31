@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -121,7 +120,12 @@ def build_notebook_fidelity_audit(
 
     return {
         "version": 1,
-        "generated_on": str(date.today()),
+        # NOTE: no ``generated_on`` field — embedding wall-clock dates in
+        # regenerated artifacts created spurious daily drift (the file
+        # changed every day even when the underlying data didn't), making
+        # ``test_notebook_fidelity_audit_matches_generator_when_matlab_repo_is_available``
+        # fail on every dev machine that had the MATLAB checkout.  ``git log``
+        # is the authoritative "when was this last touched."
         "source_repositories": {
             "matlab": "https://github.com/cajigaslab/nSTAT",
             "python": "https://github.com/cajigaslab/nSTAT-python",

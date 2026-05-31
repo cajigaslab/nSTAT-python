@@ -39,21 +39,23 @@
   <header>
     <h1>nSTAT-python — What's New</h1>
     <p class="lede">Per-iteration change summaries on the road to a
-    production-quality release (helpfiles + <code>nstat.extras</code> +
-    core GOF). Newest first.</p>
+    production-quality release (helpfiles + <code>nstat.extras</code>).
+    Newest first.</p>
   </header>
 
   <div class="entry">
-    <div class="date">2026-05-28</div>
-    <h2><a href="2026-05-28-tier-1.1-multivariate-time-rescaling.html">Tier 1.1 — Multivariate (marked) time-rescaling GOF</a>
-      <span class="tag">core / GOF</span></h2>
-    <p>New core function <code>population_time_rescale</code> (→
-    <code>PopulationTimeRescaleResult</code>): the Tao, Weber, Arai &amp; Eden
-    (2018) marked point-process time-rescaling test. It scores a neural
-    <em>population</em> jointly — a ground-process KS plus a marked
-    <code>&chi;&sup2;</code> — and catches inter-neuron coupling misfit that the
-    per-neuron univariate KS (<code>FitResult.computeKSStats</code>) misses.
-    Pure NumPy/SciPy.</p>
+    <div class="date">2026-05-30</div>
+    <h2><a href="2026-05-30-tier-0.3-harden-pp-em.html">Tier 0.3 — Harden PP_EM (multi-restart + predictive-LL selection)</a>
+      <span class="tag">extras / EM</span></h2>
+    <p>New <code>fit_point_process_em_best_of</code> /
+    <code>fit_hybrid_em_best_of</code> + <code>MultiRestartResult</code>:
+    compose Tier 0.1's canonical gauge with Tier 0.2's true held-out
+    predictive log-likelihood — run EM with several seeds, score each on
+    the held-out tail, return the best. This is now the <strong>recommended
+    workflow for PP_EM on real data</strong>; it automatically discards the
+    weak-observability <code>A→0</code> collapses that Tier 0.2 surfaced.
+    Single-fit <code>fit_point_process_em</code> remains as a low-level
+    primitive.</p>
   </div>
 
   <div class="entry">

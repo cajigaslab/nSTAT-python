@@ -34,37 +34,85 @@ The independence + core/extras rules from CLAUDE.md are binding:
 
 These are not new methods; they close the gap surfaced by the 2026
 deep-dive of `nstat.extras.em.dynamax_bridge` (the PP_EM / mPPCO_EM
-trainers).  The current state after that pass: the trainers fit the
-**observation model** correctly (firing rates; hybrid Gaussian `R`) and
-are numerically stable, but the **latent parameters `A`/`C` are not
-uniquely identified** (PLDS gauge freedom — only the scale part is pinned).
+trainers).  The trainers fit the **observation model** correctly (firing
+rates; hybrid Gaussian `R`) and are numerically stable.  As of Tier 0.1
+(below) the latent `A`/`C` are also pinned to a **canonical PLDS gauge**;
+the residual non-uniqueness is *local-optima* multiplicity, not gauge
+freedom.
 
-### 0.1 Full PLDS identifiability constraints (`PP_EMCreateConstraints` equivalent)
+### 0.1 Full PLDS identifiability constraints (`PP_EMCreateConstraints` equivalent) — SHIPPED
 
-- **What:** Pin the *rotational* part of the PLDS gauge so `A`/`C` are
-  uniquely determined and comparable to MATLAB.  Standard canonical
-  forms: orthonormal-columns `C` (via per-iteration QR/SVD folded into
-  the state transform), or a companion/Schur form for `A`.  MATLAB nSTAT
-  does this in `PP_EMCreateConstraints` / `mPPCO_EMCreateConstraints`.
-- **Gap:** Today only a diagonal unit-RMS scale normalization is applied
-  (`_canonical_scale`), leaving a rotational gauge that lets `|C|` vary
-  with seed.  This is the difference between "fits the rates" and
-  "recovers interpretable, MATLAB-comparable parameters."
+- **What:** Pin the full PLDS gauge so `A`/`C` are a unique, seed-stable
+  canonical representative.  MATLAB nSTAT does this in
+  `PP_EMCreateConstraints` / `mPPCO_EMCreateConstraints`.
+- **Done:** `_canonicalize_gauge` applies the standard LDS canonical form
+  **once after EM convergence** — whiten the latent (`M^{-1/2}`,
+  pins the symmetric DOF) + SVD-rotate the stacked emission matrix
+  (orthogonal columns, descending singular values, pins the residual
+  `O(d)`) + sign-fix (pins the `2^d` flips).  Applied per-iteration it
+  fought the Newton trust-region and blew up (`|C|~10²`, NaN), so the
+  in-loop step is only a cheap diagonal scale pin (`_canonical_scale`).
+  The returned `C` satisfies `CᵀC = diag(S²)` to machine precision —
+  asserted by `test_fit_{point_process,hybrid}_em_gauge_is_canonical`.
+- **Validation outcome:** the original plan was to switch the EM tests
+  to true `A`/`C` recovery once the gauge was pinned.  In practice the
+  gauge is now pinned but EM still reaches **different local optima**
+  across seeds (genuinely different likelihoods), so parameter recovery
+  remains ill-posed for a *single* fit.  The tests therefore assert the
+  canonical *structural* invariant (`CᵀC` diagonal + descending + sign
+  convention + bounded `|C|`) — the identifiable counterpart — plus the
+  observation-space targets (rate tracking; hybrid `R`).  True
+  parameter recovery needs multi-restart model selection (see 0.2 /
+  below).
 - **Placement:** `extras` (`em.dynamax_bridge`).
-- **Difficulty:** Moderate (~1 day): a canonicalization step + tests that
-  assert parameter recovery (now meaningful once the gauge is pinned).
-- **Validation:** with the gauge fixed, switch the EM tests from
-  "rate-tracking" back to true `A`/`C` recovery within tolerance.
 
-### 0.2 Held-out predictive-likelihood diagnostic
+### 0.2 Held-out predictive-likelihood diagnostic — SHIPPED
 
 - **What:** A proper convergence/quality metric for the EM trainers: the
   true Poisson (and Gaussian) held-out log-likelihood under the fitted
   parameters, replacing the surrogate Gaussian-smoother log-likelihood
-  that is currently reported (and which is not a valid objective because
-  the IRLS pseudo-observations are re-linearized each iteration).
-- **Gap:** Users currently have no trustworthy convergence diagnostic.
-- **Placement:** `extras`. **Difficulty:** Thin (~2 h).
+  (not a valid objective — the IRLS pseudo-observations are re-linearized
+  each iteration).
+- **Done:** `point_process_predictive_ll` / `hybrid_predictive_ll` +
+  `PredictiveLogLik` in `em.dynamax_bridge`.  A pure-NumPy (no-dynamax)
+  causal forward filter records the one-step-ahead predictive state; the
+  Poisson channel is scored by Gauss-Hermite quadrature of the true
+  Poisson likelihood (integrating over latent uncertainty, not plugging
+  in the mean rate), the Gaussian channel by its exact MVN predictive
+  density.  Validated against an independent exact-Kalman predictive LL
+  (Gaussian channel) and by model-selection ranking (true params beat
+  flat/homogeneous/collapsed). Runs in the base unit suite (no JAX).
+- **Finding (now documented):** the diagnostic exposes a real PP_EM
+  limitation — under **weak observability** (few neurons / small
+  loadings) PP_EM converges to degenerate dynamics (`A → 0`, inflated
+  `C`/`Q`) whose held-out predictive LL is *worse than a constant-rate
+  model*; with strong observability `A` is recovered and held-out LL
+  improves.  See `docs/extras/em_dynamax.md` (observability caveat).
+- **Placement:** `extras`.
+
+### 0.3 Harden PP_EM convergence under weak observability — SHIPPED (multi-restart)
+
+- **What:** Stop the `A → 0` collapse on weakly-observable data and
+  resolve the local-optima multiplicity left by Tier 0.1.
+- **Done:** `fit_point_process_em_best_of` /
+  `fit_hybrid_em_best_of` (+ `MultiRestartResult`) compose Tier 0.1's
+  canonical gauge with Tier 0.2's true held-out predictive
+  log-likelihood: split the observations into train + held-out tail,
+  fit PP_EM with `n_restarts` random seeds on the train segment, score
+  each fit on the held-out tail, return the best.  This is now the
+  **recommended workflow** for PP_EM on real data — single-fit
+  `fit_point_process_em` is retained as a low-level primitive for
+  bit-exact reproducibility, but degenerate collapses are automatically
+  discarded by the selector.  Docs caveat in
+  `docs/extras/em_dynamax.md` updated accordingly.
+- **Deferred to a future iteration:** the deeper M-step regularization
+  options (data-driven init from log-empirical-rate; ridge on the
+  `A`-`Q` M-step) — multi-restart selection on the diagnostic was the
+  highest-value-per-line change and is what the 0.2 finding most
+  directly called for.  The remaining options can be added incrementally
+  if specific fixtures still need them.
+- **Placement:** `extras`. **Difficulty:** Moderate (delivered as a
+  thin composition of the Tier 0.1 + 0.2 building blocks).
 
 ---
 
@@ -191,9 +239,12 @@ uniquely identified** (PLDS gauge freedom — only the scale part is pinned).
 
 ## Suggested sequencing
 
-1. **Tier 0.1 + 0.2** — finish the EM trainers (identifiability + a real
-   diagnostic).  Closes the open deep-dive item; makes the shipped
-   PP_EM/mPPCO_EM trustworthy at the parameter level.
+1. **Tier 0.1 + 0.2 (done) → 0.3** — finish the EM trainers.  0.1
+   (canonical-gauge identifiability) and 0.2 (held-out
+   predictive-likelihood diagnostic) are shipped.  0.3 (harden PP_EM
+   convergence under weak observability + multi-restart selection),
+   newly surfaced by 0.2, is the remaining EM item before the trainers
+   are trustworthy end-to-end.
 2. **Tier 1.1** — multivariate time-rescaling GOF.  Cheapest, core,
    parity-aligned; pairs naturally with the time_rescale oracle already
    in the test tree.

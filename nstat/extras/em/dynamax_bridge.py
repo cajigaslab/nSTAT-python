@@ -4,19 +4,25 @@ This module wraps :mod:`dynamax.linear_gaussian_ssm.LinearGaussianSSM`
 behind a thin nstat-style API so users can fit EM-trained state-space
 models without nstat owning the EM code itself.
 
-Scope (initial release)
------------------------
-- :func:`fit_linear_gaussian_em` — fit a discrete-time linear-Gaussian
-  state-space model from observations via EM.  Returns the learned
-  parameters as plain NumPy arrays (NOT pytrees) so callers stay
-  decoupled from JAX.
+Scope
+-----
+- :func:`fit_linear_gaussian_em` — KF_EM equivalent (linear-Gaussian EM).
+- :func:`cmgf_poisson_filter` / :func:`cmgf_poisson_smoother` —
+  PPDecodeFilter / PP_fixedIntervalSmoother (point-process inference).
+- :func:`fit_point_process_em` — PP_EM equivalent (Poisson-LGSSM EM).
+- :func:`fit_hybrid_em` — mPPCO_EM equivalent (Poisson + Gaussian EM).
+- :func:`point_process_predictive_ll` / :func:`hybrid_predictive_ll` —
+  true one-step-ahead held-out predictive log-likelihood, a valid
+  convergence / model-comparison diagnostic (pure NumPy; does **not**
+  require dynamax).
+- :func:`fit_point_process_em_best_of` / :func:`fit_hybrid_em_best_of` —
+  multi-restart EM with held-out predictive-LL selection.  The
+  **recommended workflow** for PP_EM on real data: mitigates the
+  weak-observability ``A → 0`` collapse and the local-optima
+  multiplicity that single-fit PP_EM exhibits.
 
-Out of scope (deferred)
------------------------
-- ``fit_point_process_em`` (PP_EM equivalent) — needs the Dynamax
-  ``PoissonHMM`` bridge.
-- ``fit_hybrid_em`` (mPPCO_EM equivalent) — needs the Dynamax
-  ``GeneralizedGaussianSSM`` bridge.
+All fit/inference routines return plain NumPy arrays (NOT pytrees) so
+callers stay decoupled from JAX.
 
 Install
 -------
@@ -475,38 +481,109 @@ def _ppem_m_step_closed_form(
 
 
 def _canonical_scale(smoothed_means, smoothed_covariances):
-    """Per-dimension latent scale for the identifiability gauge.
+    """Per-dimension latent RMS — a *lightweight* in-loop scale pin.
 
-    PLDS/PPLDS models are invariant under the state reparameterization
-    ``(A, C, x) → (T A T⁻¹, C T⁻¹, T x)`` — the observable ``C x`` (hence
-    the likelihood) is unchanged.  EM therefore has no reason to prefer
-    any scale and the parameters drift (``C`` grows while ``x`` shrinks).
-    We pin the gauge by rescaling each latent dimension to unit
-    root-mean-square magnitude, computed from the smoothed second
-    moments ``E[x_j^2] = Σ_t (Cov_t[j,j] + μ_t[j]^2) / T``.
-
-    Returns a diagonal scale vector ``s`` (shape ``(d,)``); the canonical
-    transform is ``T = diag(1/s)``.
+    Used INSIDE the EM loop only to keep ``|C|`` finite (stop the scale
+    drift of the PLDS gauge ridge).  It is intentionally cheap (diagonal,
+    no rotation): a full gauge transform applied every iteration changes
+    the optimization landscape each step and destabilizes the EM.  The
+    full canonical form is applied once after convergence by
+    :func:`_canonicalize_gauge`.
     """
     T = smoothed_means.shape[0]
     e_x2 = (np.einsum("tjj->j", smoothed_covariances) + (smoothed_means ** 2).sum(axis=0)) / T
-    s = np.sqrt(np.maximum(e_x2, 1e-8))
-    return s
+    return np.sqrt(np.maximum(e_x2, 1e-8))
 
 
 def _apply_canonical_scale(A, C, Q, x0, P0, s):
-    """Apply the gauge transform ``T = diag(1/s)`` to all parameters.
+    """Apply the diagonal scale transform ``T = diag(1/s)`` (loop stabilizer)."""
+    Tinv = np.diag(1.0 / s)
+    Tfwd = np.diag(s)
+    return (Tinv @ A @ Tfwd, C @ Tfwd, Tinv @ Q @ Tinv.T, Tinv @ x0, Tinv @ P0 @ Tinv.T)
 
-    Leaves ``C x`` (the log-rate) invariant: ``C' x' = (C diag(s)) (diag(1/s) x) = C x``.
+
+def _canonicalize_gauge(A, C_list, Q, x0, P0, smoothed_means, smoothed_covariances):
+    """Pin the **full** PLDS identifiability gauge to a canonical form.
+
+    Apply ONCE after EM convergence (not per-iteration — see
+    :func:`_canonical_scale`).
+
+    PLDS/PPLDS models are invariant under the state reparameterization
+    ``(A, C, x) → (T A T⁻¹, C T⁻¹, T x)`` for any invertible ``T`` (the
+    observable log-rate ``C x``, hence the likelihood, is unchanged).
+    The gauge group is the full ``GL(d)`` — ``d²`` degrees of freedom —
+    so a diagonal scale normalization (which pins only ``d`` of them)
+    leaves a residual rotation that lets ``A``/``C`` drift across seeds.
+
+    This pins the entire gauge with the standard LDS canonical form
+    (cf. Macke et al. 2011; Buesing et al. 2012):
+
+    1. **Whiten** the latent: choose ``T`` so the empirical state
+       second moment ``M = (1/T) Σ_t E[x_t x_t']`` becomes the identity
+       (``T = M^{-1/2}``).  Removes the symmetric part of the gauge.
+    2. **SVD-rotate**: of the remaining orthogonal freedom, pick the
+       rotation that makes the *stacked* emission matrix have orthogonal
+       columns ordered by descending singular value (``C_canon = U S``).
+       Removes the residual ``O(d)``.
+    3. **Sign-fix**: flip each latent axis so the largest-magnitude
+       entry of each canonical emission column is positive — a
+       deterministic representative (removes the remaining ``2^d`` sign
+       flips).
+
+    The result is a unique, seed-stable representative of the parameter
+    equivalence class; ``C x`` is exactly preserved for every emission
+    matrix in ``C_list``.
+
+    Parameters
+    ----------
+    A, Q, x0, P0
+        Current dynamics parameters.
+    C_list
+        List of emission matrices sharing the latent (``[C]`` for
+        PP_EM; ``[C_p, C_g]`` for the hybrid).  The canonical rotation
+        is computed from their vertical stack.
+    smoothed_means, smoothed_covariances
+        Current E-step posteriors, used to form ``M``.
+
+    Returns
+    -------
+    ``(A, C_list, Q, x0, P0)`` in canonical coordinates.
     """
-    Tinv = np.diag(1.0 / s)   # x' = Tinv x  (Tinv = diag(1/s))
-    Tfwd = np.diag(s)          # x  = Tfwd x'
-    A_new = Tinv @ A @ Tfwd
-    C_new = C @ Tfwd
-    Q_new = Tinv @ Q @ Tinv.T
-    x0_new = Tinv @ x0
-    P0_new = Tinv @ P0 @ Tinv.T
-    return A_new, C_new, Q_new, x0_new, P0_new
+    T, d = smoothed_means.shape
+    M = (smoothed_covariances.sum(axis=0) + smoothed_means.T @ smoothed_means) / T
+    M = 0.5 * (M + M.T)
+
+    # Symmetric inverse-sqrt (and sqrt) of M via eigendecomposition.
+    evals, evecs = np.linalg.eigh(M)
+    evals = np.maximum(evals, 1e-8)
+    W = evecs @ np.diag(evals ** -0.5) @ evecs.T     # M^{-1/2}; x' = W x  ⇒ E[x'x']=I
+    Winv = evecs @ np.diag(evals ** 0.5) @ evecs.T   # M^{1/2}
+
+    # Whitened stacked emission matrix, then SVD to pin the rotation.
+    C_stack = np.vstack([np.atleast_2d(C) for C in C_list])
+    C_white = C_stack @ Winv
+    _, _, Vt = np.linalg.svd(C_white, full_matrices=False)
+    # Canonical stacked emission after rotation: C_white @ Vt.T = U @ diag(S).
+    C_canon = C_white @ Vt.T
+
+    # Sign convention: make the max-magnitude entry of each column positive.
+    lead = np.argmax(np.abs(C_canon), axis=0)
+    signs = np.sign(C_canon[lead, np.arange(d)])
+    signs[signs == 0] = 1.0
+    sign_d = np.diag(signs)
+
+    # Total forward transform x' = Ttot x, and its inverse.
+    Ttot = sign_d @ Vt @ W
+    Tinv = Winv @ Vt.T @ sign_d   # = Ttot^{-1} (sign_d, Vt orthogonal, W·Winv=I)
+
+    A_new = Ttot @ A @ Tinv
+    Q_new = Ttot @ Q @ Ttot.T
+    Q_new = 0.5 * (Q_new + Q_new.T)
+    x0_new = Ttot @ x0
+    P0_new = Ttot @ P0 @ Ttot.T
+    P0_new = 0.5 * (P0_new + P0_new.T)
+    C_list_new = [np.atleast_2d(C) @ Tinv for C in C_list]
+    return A_new, C_list_new, Q_new, x0_new, P0_new
 
 
 def _ppem_newton_C(
@@ -734,18 +811,20 @@ def fit_point_process_em(
 
     Warnings
     --------
-    **Experimental — the latent parameters are not uniquely
-    identified.**  A Poisson LDS has a gauge freedom
+    **Experimental.**  A Poisson LDS has a gauge freedom
     :math:`(A, C, x) \\to (T A T^{-1}, C T^{-1}, T x)` that leaves the
-    observable log-rate :math:`C x` (hence the likelihood) invariant.
-    This implementation pins only the scale part of the gauge (unit
-    per-dimension state RMS) and caps the C Newton step, so ``A`` and
-    ``C`` stay finite — but their absolute scale/rotation is **not**
-    meaningful and varies with seed and data.  Use the *predictions*
-    (the fitted log-rate / firing rate ``exp(C x)``), not the raw
-    ``A`` / ``C`` values, for analysis.  Bit-exact parameter parity
-    with MATLAB ``PP_EM`` requires the full constraint machinery
-    (``PP_EMCreateConstraints``), tracked for a future release.
+    observable log-rate :math:`C x` (hence the likelihood) invariant
+    for any invertible :math:`T` (the full :math:`GL(d)` group).  This
+    implementation pins that gauge to a canonical form — a cheap
+    diagonal scale pin during the loop, then a single whiten + SVD-rotate
+    + sign-fix after convergence (see :func:`_canonicalize_gauge`) — so
+    the returned ``C`` satisfies :math:`C^\\top C = \\mathrm{diag}(S^2)`
+    and is a unique, seed-stable representative.  What remains is
+    *local-optima* multiplicity: EM may converge to genuinely different
+    likelihoods across seeds, so prefer the *predictions* (the fitted
+    log-rate / firing rate ``exp(C x)``) over a single fit's raw
+    ``A`` / ``C``.  Bit-exact parity with MATLAB ``PP_EM`` would
+    additionally require multi-restart model selection.
 
     Notes
     -----
@@ -759,9 +838,10 @@ def fit_point_process_em(
 
     _require_dynamax()
     warnings.warn(
-        "fit_point_process_em is experimental: the Poisson-LDS latent "
-        "parameters (A, C) are not uniquely identified — use the fitted "
-        "rates exp(C x), not the raw A/C values.  See the function "
+        "fit_point_process_em is experimental: A/C are returned in a "
+        "canonical PLDS gauge (the scale/rotation freedom is pinned), but "
+        "EM may still reach different local optima across seeds — prefer "
+        "the fitted rates exp(C x) for interpretation.  See the function "
         "docstring and docs/extras/em_dynamax.md.",
         UserWarning,
         stacklevel=2,
@@ -794,10 +874,21 @@ def fit_point_process_em(
         A, Q, x0, P0 = _ppem_m_step_closed_form(means, covs, cross_covs)
         C = _ppem_newton_C(observations, means, covs, C, n_newton=n_newton_iter)
 
-        # Pin the scale gauge so C doesn't drift to infinity while the
-        # latent state shrinks (the PLDS identifiability ridge).
+        # In-loop: cheap diagonal scale-pin only.  A full GL(d) gauge
+        # transform every iteration reshapes the optimization landscape
+        # each step and fights the Newton trust-region (empirically: NaN /
+        # |ΔC|~460 across seeds).  Pinning just the d scale DOF keeps |C|
+        # finite without disturbing the rotation the optimizer is settling.
         s = _canonical_scale(means, covs)
         A, C, Q, x0, P0 = _apply_canonical_scale(A, C, Q, x0, P0, s)
+
+    # Post-convergence: pin the FULL PLDS gauge once (whiten + SVD-rotate +
+    # sign-fix) using fresh posteriors under the final parameters, so the
+    # reported A/C are a unique, seed-stable canonical representative.
+    means, covs, _, _ = _ppem_e_step_lgssm(
+        observations, A, C, Q, x0, P0, prev_means
+    )
+    A, (C,), Q, x0, P0 = _canonicalize_gauge(A, [C], Q, x0, P0, means, covs)
 
     return PointProcessEMResult(
         transition_matrix=A,
@@ -982,7 +1073,15 @@ def fit_hybrid_em(
        - **M-step (Poisson loadings)**: per-row Newton-Raphson for
          C_p (shared with PP_EM).
        - **M-step (Gaussian loadings)**: closed-form least squares
-         for C_g; closed-form residual cov for R.
+         for C_g; closed-form residual cov for R (with the
+         latent-uncertainty trace correction).
+       - **Gauge pin (in-loop)**: a cheap diagonal scale normalization
+         keeps ``|C_p|`` / ``|C_g|`` finite without reshaping the
+         optimization landscape each step.
+    3. **After convergence**: pin the full PLDS gauge once (whiten +
+       SVD-rotate + sign-fix on the stacked ``[C_p; C_g]``) so both
+       emission channels share a unique, seed-stable latent frame
+       (see :func:`_canonicalize_gauge`).
 
     Parameters
     ----------
@@ -1003,6 +1102,16 @@ def fit_hybrid_em(
     -------
     HybridEMResult
 
+    Warnings
+    --------
+    **Experimental.**  Like :func:`fit_point_process_em`, the shared
+    latent is gauge-free up to :math:`GL(d)`; this fit pins it to a
+    canonical form (computed from the stacked ``[C_p; C_g]``), so the
+    returned loadings are seed-stable up to *local-optima* multiplicity.
+    The identifiable, observation-space outputs — the Gaussian noise
+    ``R`` and the fitted Poisson rates — are the most reliable; treat a
+    single fit's raw ``C_p`` / ``C_g`` with the same care.
+
     Notes
     -----
     The E-step uses a fixed-R approximation: the IRLS pseudo-obs
@@ -1017,11 +1126,12 @@ def fit_hybrid_em(
 
     _require_dynamax()
     warnings.warn(
-        "fit_hybrid_em is experimental: the shared-latent loading "
-        "matrices (C_p, C_g) are not uniquely identified (PLDS gauge "
-        "freedom).  The Gaussian noise R and the fitted rates are "
-        "reliable; the raw C_p/C_g scale is not.  See the docstring "
-        "and docs/extras/em_dynamax.md.",
+        "fit_hybrid_em is experimental: the shared-latent loadings "
+        "(C_p, C_g) are returned in a canonical PLDS gauge (computed from "
+        "the stacked [C_p; C_g]), but EM may still reach different local "
+        "optima across seeds.  The Gaussian noise R and the fitted rates "
+        "are the most reliable outputs.  See the docstring and "
+        "docs/extras/em_dynamax.md.",
         UserWarning,
         stacklevel=2,
     )
@@ -1091,10 +1201,22 @@ def fit_hybrid_em(
         R = mean_resid_cov + trace_correction
         R = 0.5 * (R + R.T) + 1e-8 * np.eye(R.shape[0])
 
-        # Pin the latent scale gauge (both loading matrices transform).
+        # In-loop: cheap diagonal scale-pin only (see fit_point_process_em
+        # — a full per-iteration GL(d) transform destabilizes the EM).
         s = _canonical_scale(smoothed_means, smoothed_covs)
         A, C_p, Q, x0, P0 = _apply_canonical_scale(A, C_p, Q, x0, P0, s)
         C_g = C_g @ np.diag(s)
+
+    # Post-convergence: pin the FULL PLDS gauge once using fresh posteriors
+    # under the final parameters.  The canonical rotation is computed from
+    # the stacked [C_p; C_g] so both emission channels share a consistent,
+    # seed-stable latent frame.
+    smoothed_means, smoothed_covs, _, _ = _hybrid_e_step(
+        poisson_obs, gaussian_obs, A, C_p, C_g, Q, R, x0, P0, prev_smoothed_means
+    )
+    A, (C_p, C_g), Q, x0, P0 = _canonicalize_gauge(
+        A, [C_p, C_g], Q, x0, P0, smoothed_means, smoothed_covs
+    )
 
     return HybridEMResult(
         transition_matrix=A,
@@ -1109,6 +1231,548 @@ def fit_hybrid_em(
     )
 
 
+# ----------------------------------------------------------------------
+# Held-out predictive log-likelihood (a true convergence / quality metric)
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PredictiveLogLik:
+    """True one-step-ahead predictive log-likelihood of a state-space fit.
+
+    Unlike the ``marginal_log_likelihoods`` trace reported by the EM
+    trainers — a Gaussian-smoother *surrogate* that re-linearizes each
+    iteration and is **not** a valid objective — this is the genuine
+    predictive log-likelihood of the *observations* under the fitted
+    parameters.  At each step the latent state is predicted causally
+    from the past only (one-step-ahead), and the true Poisson (and, for
+    the hybrid, Gaussian) likelihood of the actual observation is scored
+    under that predictive distribution.
+
+    Use it to (a) confirm EM actually improved the fit, (b) compare
+    models / EM restarts on equal footing, and (c) score held-out data
+    (pass a test segment together with the train-fitted parameters).
+
+    Attributes
+    ----------
+    total
+        Summed predictive log-likelihood over all time steps and
+        channels (nats).  Higher is better.
+    per_timestep
+        Per-time-step predictive log-likelihood, shape ``(T,)`` (summed
+        across neurons / channels).
+    poisson
+        Poisson-channel contribution to ``total``.
+    gaussian
+        Gaussian-channel contribution (``None`` for the point-process
+        case).
+    """
+
+    total: float
+    per_timestep: np.ndarray
+    poisson: float
+    gaussian: float | None = None
+
+
+def _gauss_hermite(n: int):
+    """Probabilists' Gauss-Hermite rule for ``E_{N(0,1)}[f]``.
+
+    ``np.polynomial.hermite_e.hermegauss`` integrates against the weight
+    :math:`e^{-x^2/2}` with :math:`\\sum_i w_i = \\sqrt{2\\pi}`, so
+    :math:`E_{\\mathcal N(0,1)}[f] = (2\\pi)^{-1/2} \\sum_i w_i f(x_i)`.
+    Returns the nodes and the *log* of the normalized weights.
+    """
+    nodes, weights = np.polynomial.hermite_e.hermegauss(int(n))
+    log_w = np.log(weights) - 0.5 * np.log(2.0 * np.pi)
+    return nodes, log_w
+
+
+def _poisson_marginal_logpmf(y, m, v, nodes, log_w):
+    """Per-neuron marginal Poisson log-likelihood under a Gaussian log-rate.
+
+    For each ``(t, i)`` the log-rate :math:`\\eta = C_i x_t` is Gaussian
+    with mean ``m[t,i]`` and variance ``v[t,i]`` under the predictive
+    state; this returns
+    :math:`\\log E_\\eta[\\mathrm{Poisson}(y \\mid e^\\eta)]` evaluated by
+    Gauss-Hermite quadrature.  Neurons are treated as conditionally
+    independent given their own marginal log-rate (the standard
+    mean-field / per-neuron predictive likelihood; the exact joint would
+    require a ``state_dim``-dimensional integral).
+    """
+    from scipy.special import gammaln, logsumexp
+
+    sd = np.sqrt(np.maximum(v, 0.0))
+    eta = m[..., None] + sd[..., None] * nodes          # (T, P, K)
+    eta = np.clip(eta, -20.0, 20.0)
+    log_terms = log_w + y[..., None] * eta - np.exp(eta)   # (T, P, K)
+    return logsumexp(log_terms, axis=-1) - gammaln(y + 1.0)
+
+
+def _gaussian_predictive_logpdf(yg, pred_means, pred_covs, C_g, R):
+    """Exact multivariate-normal predictive log-density of the Gaussian channel.
+
+    ``y^{(g)}_t | y_{1:t-1} ~ N(C_g μ⁻_t, C_g P⁻_t C_g' + R)`` where
+    ``(μ⁻_t, P⁻_t)`` is the one-step-ahead predictive state.
+    """
+    T = yg.shape[0]
+    out = np.empty(T)
+    mean = pred_means @ C_g.T
+    for t in range(T):
+        S = C_g @ pred_covs[t] @ C_g.T + R
+        diff = yg[t] - mean[t]
+        _sign, logdet = np.linalg.slogdet(2.0 * np.pi * S)
+        out[t] = -0.5 * (diff @ np.linalg.solve(S, diff) + logdet)
+    return out
+
+
+def _predictive_forward_filter(
+    A, Q, x0, P0, C_p, poisson_obs,
+    C_g=None, R=None, gaussian_obs=None, n_inner: int = 5,
+):
+    """Causal forward filter returning one-step-ahead predictive state moments.
+
+    Pure-NumPy iterated-EKF filter (no JAX): each step predicts the state
+    from the past, records the *predictive* ``(μ⁻, P⁻)`` (the moments the
+    predictive likelihood is scored against), then updates with the
+    current observation to propagate forward.  The Gaussian channel uses
+    an exact Kalman update; the Poisson channel an iterated-EKF
+    (Gauss-Newton / IRLS) update.
+    """
+    T, d = poisson_obs.shape[0], A.shape[0]
+    pred_means = np.empty((T, d))
+    pred_covs = np.empty((T, d, d))
+    eye = np.eye(d)
+    mu = P = None  # filtered posterior at t-1
+    for t in range(T):
+        if t == 0:
+            mu_pred = x0.copy()
+            P_pred = P0.copy()
+        else:
+            mu_pred = A @ mu
+            P_pred = A @ P @ A.T + Q
+        P_pred = 0.5 * (P_pred + P_pred.T)
+        pred_means[t] = mu_pred
+        pred_covs[t] = P_pred
+
+        # ---- causal update with y_t (so t+1's prediction sees it) ----
+        mu_u, P_u = mu_pred.copy(), P_pred.copy()
+        if C_g is not None:                       # exact Gaussian Kalman update
+            S = C_g @ P_u @ C_g.T + R
+            K = P_u @ C_g.T @ np.linalg.inv(S)
+            mu_u = mu_u + K @ (gaussian_obs[t] - C_g @ mu_u)
+            P_u = (eye - K @ C_g) @ P_u
+            P_u = 0.5 * (P_u + P_u.T)
+        # iterated-EKF Poisson update from the (post-Gaussian) prior (mu_u, P_u)
+        mu_i = mu_u.copy()
+        P_post = P_u
+        for _ in range(int(n_inner)):
+            lam = np.maximum(np.exp(np.clip(C_p @ mu_i, -20.0, 20.0)), 1e-6)
+            z = C_p @ mu_i + (poisson_obs[t] - lam) / lam
+            S = C_p @ P_u @ C_p.T + np.diag(1.0 / lam)
+            K = P_u @ C_p.T @ np.linalg.inv(S)
+            mu_i = mu_u + K @ (z - C_p @ mu_u)
+            P_post = (eye - K @ C_p) @ P_u
+        mu, P = mu_i, 0.5 * (P_post + P_post.T)
+    return pred_means, pred_covs
+
+
+def point_process_predictive_ll(
+    observations: np.ndarray,
+    transition_matrix: np.ndarray,
+    observation_matrix: np.ndarray,
+    transition_covariance: np.ndarray,
+    initial_state_mean: np.ndarray,
+    initial_state_covariance: np.ndarray,
+    *,
+    n_quad: int = 15,
+) -> PredictiveLogLik:
+    """True one-step-ahead predictive log-likelihood of a Poisson-LGSSM.
+
+    The honest convergence / quality diagnostic for
+    :func:`fit_point_process_em` — replaces the surrogate
+    Gaussian-smoother trace.  Runs a causal forward filter and scores the
+    actual spike counts under the one-step-ahead predictive state via
+    Gauss-Hermite quadrature of the Poisson likelihood (integrating over
+    the latent uncertainty, not just plugging in the mean rate).
+
+    Pure NumPy — does **not** require dynamax.  Pass a held-out segment
+    plus the train-fitted parameters for a proper held-out score.
+
+    Parameters
+    ----------
+    observations
+        Spike counts, shape ``(T, emission_dim)`` (1-D is reshaped).
+    transition_matrix, observation_matrix, transition_covariance
+        Fitted :math:`A`, :math:`C`, :math:`Q`.
+    initial_state_mean, initial_state_covariance
+        Fitted :math:`\\hat x_0`, :math:`P_0`.
+    n_quad
+        Gauss-Hermite nodes for the Poisson marginal (default 15;
+        increase for sharper accuracy at high firing rates).
+
+    Returns
+    -------
+    PredictiveLogLik
+    """
+    obs = np.asarray(observations, dtype=float)
+    if obs.ndim == 1:
+        obs = obs.reshape(-1, 1)
+    A = np.asarray(transition_matrix, dtype=float)
+    C = np.atleast_2d(np.asarray(observation_matrix, dtype=float))
+    Q = np.asarray(transition_covariance, dtype=float)
+    x0 = np.asarray(initial_state_mean, dtype=float).ravel()
+    P0 = np.asarray(initial_state_covariance, dtype=float)
+
+    pred_means, pred_covs = _predictive_forward_filter(A, Q, x0, P0, C, obs)
+    m = pred_means @ C.T
+    v = np.einsum("ij,tjk,ik->ti", C, pred_covs, C)
+    nodes, log_w = _gauss_hermite(n_quad)
+    logp = _poisson_marginal_logpmf(obs, m, v, nodes, log_w)
+    per_t = logp.sum(axis=1)
+    total = float(per_t.sum())
+    return PredictiveLogLik(total=total, per_timestep=per_t, poisson=total, gaussian=None)
+
+
+def hybrid_predictive_ll(
+    poisson_observations: np.ndarray,
+    gaussian_observations: np.ndarray,
+    transition_matrix: np.ndarray,
+    poisson_observation_matrix: np.ndarray,
+    gaussian_observation_matrix: np.ndarray,
+    transition_covariance: np.ndarray,
+    gaussian_observation_covariance: np.ndarray,
+    initial_state_mean: np.ndarray,
+    initial_state_covariance: np.ndarray,
+    *,
+    n_quad: int = 15,
+) -> PredictiveLogLik:
+    """True one-step-ahead predictive log-likelihood of a hybrid SSM.
+
+    The :func:`fit_hybrid_em` counterpart of
+    :func:`point_process_predictive_ll`.  Both channels share the causal
+    forward filter; the Poisson channel is scored by Gauss-Hermite
+    quadrature, the Gaussian channel by its exact multivariate-normal
+    predictive density.  ``total = poisson + gaussian``.
+
+    Pure NumPy — does **not** require dynamax.
+
+    Parameters
+    ----------
+    poisson_observations, gaussian_observations
+        Spike counts ``(T, p_dim)`` and continuous signal ``(T, g_dim)``.
+    transition_matrix, poisson_observation_matrix,
+    gaussian_observation_matrix, transition_covariance,
+    gaussian_observation_covariance, initial_state_mean,
+    initial_state_covariance
+        Fitted :math:`A`, :math:`C_p`, :math:`C_g`, :math:`Q`, :math:`R`,
+        :math:`\\hat x_0`, :math:`P_0`.
+    n_quad
+        Gauss-Hermite nodes for the Poisson marginal (default 15).
+
+    Returns
+    -------
+    PredictiveLogLik
+    """
+    yp = np.asarray(poisson_observations, dtype=float)
+    if yp.ndim == 1:
+        yp = yp.reshape(-1, 1)
+    yg = np.asarray(gaussian_observations, dtype=float)
+    if yg.ndim == 1:
+        yg = yg.reshape(-1, 1)
+    A = np.asarray(transition_matrix, dtype=float)
+    C_p = np.atleast_2d(np.asarray(poisson_observation_matrix, dtype=float))
+    C_g = np.atleast_2d(np.asarray(gaussian_observation_matrix, dtype=float))
+    Q = np.asarray(transition_covariance, dtype=float)
+    R = np.atleast_2d(np.asarray(gaussian_observation_covariance, dtype=float))
+    x0 = np.asarray(initial_state_mean, dtype=float).ravel()
+    P0 = np.asarray(initial_state_covariance, dtype=float)
+
+    pred_means, pred_covs = _predictive_forward_filter(
+        A, Q, x0, P0, C_p, yp, C_g=C_g, R=R, gaussian_obs=yg
+    )
+    m = pred_means @ C_p.T
+    v = np.einsum("ij,tjk,ik->ti", C_p, pred_covs, C_p)
+    nodes, log_w = _gauss_hermite(n_quad)
+    logp_p = _poisson_marginal_logpmf(yp, m, v, nodes, log_w).sum(axis=1)
+    logp_g = _gaussian_predictive_logpdf(yg, pred_means, pred_covs, C_g, R)
+    per_t = logp_p + logp_g
+    total = float(per_t.sum())
+    return PredictiveLogLik(
+        total=total,
+        per_timestep=per_t,
+        poisson=float(logp_p.sum()),
+        gaussian=float(logp_g.sum()),
+    )
+
+
+# ----------------------------------------------------------------------
+# Multi-restart selection (Tier 0.3 — harden PP_EM weak-observability)
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class MultiRestartResult:
+    """Best-of-N restart EM result + per-restart diagnostics.
+
+    Tier 0.1 (canonical gauge) made each fit a unique seed-stable
+    representative of its equivalence class; Tier 0.2 added a true
+    held-out predictive log-likelihood diagnostic.  This dataclass is
+    the natural composition of the two: run EM with several seeds, score
+    each on held-out data, return the best.  It is also the mitigation
+    for the weak-observability `A → 0` collapse exposed by Tier 0.2:
+    even when some seeds collapse, the predictive-LL selector picks one
+    that didn't.
+
+    Attributes
+    ----------
+    best_result
+        :class:`PointProcessEMResult` or :class:`HybridEMResult` from
+        the seed with the highest held-out predictive log-likelihood.
+    best_seed
+        Seed that produced ``best_result``.
+    best_predictive_ll
+        Held-out predictive log-likelihood total for ``best_result``.
+    all_seeds
+        Seeds used, in order, shape ``(n_restarts,)``.
+    all_predictive_lls
+        Held-out predictive log-likelihood for each restart, same order
+        as ``all_seeds``.  ``NaN`` if a restart raised an exception or
+        produced non-finite parameters.
+    """
+
+    best_result: object
+    best_seed: int
+    best_predictive_ll: float
+    all_seeds: np.ndarray
+    all_predictive_lls: np.ndarray
+
+
+def _train_test_split_by_time(
+    arr: np.ndarray, holdout_fraction: float
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Last ``holdout_fraction`` of the time axis goes to test."""
+    if not (0.0 < float(holdout_fraction) < 1.0):
+        raise ValueError(
+            f"holdout_fraction must be in (0, 1); got {holdout_fraction}"
+        )
+    T = arr.shape[0]
+    n_test = max(int(round(T * float(holdout_fraction))), 1)
+    n_train = T - n_test
+    if n_train < 10:
+        raise ValueError(
+            f"training segment too short: n_train={n_train} (T={T}, "
+            f"holdout_fraction={holdout_fraction})."
+        )
+    return arr[:n_train], arr[n_train:], n_train
+
+
+def fit_point_process_em_best_of(
+    observations: np.ndarray,
+    state_dim: int,
+    *,
+    n_restarts: int = 8,
+    holdout_fraction: float = 0.2,
+    n_iter: int = 30,
+    n_newton_iter: int = 5,
+    base_seed: int = 0,
+    n_quad: int = 15,
+) -> MultiRestartResult:
+    """Run :func:`fit_point_process_em` with several seeds and pick the best.
+
+    Splits ``observations`` into a training segment (first
+    ``1 - holdout_fraction`` of time) and a test segment (the remainder);
+    fits PP_EM on the train segment for each of ``n_restarts`` random
+    seeds (``base_seed`` … ``base_seed + n_restarts - 1``); scores each
+    fit on the test segment with :func:`point_process_predictive_ll`;
+    returns the best.
+
+    **This is the recommended workflow for PP_EM on real data.**
+    Single-fit PP_EM under weak observability (few neurons, small
+    loadings) can converge to a degenerate solution (``A → 0``,
+    inflated ``C``/``Q``) whose held-out predictive log-likelihood is
+    worse than a constant-rate baseline — see the observability caveat
+    in :func:`fit_point_process_em` and ``docs/extras/em_dynamax.md``.
+    Multi-restart selection on held-out predictive LL is the
+    production-quality mitigation.
+
+    Parameters
+    ----------
+    observations, state_dim, n_iter, n_newton_iter
+        Forwarded to :func:`fit_point_process_em`.
+    n_restarts
+        Number of distinct seeds to try (default 8).
+    holdout_fraction
+        Fraction of the *trailing* time axis reserved for scoring
+        (default 0.2 = last 20%).
+    base_seed
+        Seeds used are ``base_seed``, ``base_seed + 1``, …,
+        ``base_seed + n_restarts - 1``.
+    n_quad
+        Gauss-Hermite nodes passed to :func:`point_process_predictive_ll`.
+
+    Returns
+    -------
+    MultiRestartResult
+    """
+    import warnings
+
+    obs = np.asarray(observations, dtype=float)
+    if obs.ndim == 1:
+        obs = obs.reshape(-1, 1)
+    if int(n_restarts) < 1:
+        raise ValueError(f"n_restarts must be >= 1; got {n_restarts}")
+    train, test, _ = _train_test_split_by_time(obs, holdout_fraction)
+
+    seeds = np.asarray(
+        [int(base_seed) + i for i in range(int(n_restarts))], dtype=int
+    )
+    predictive_lls = np.full(seeds.shape, np.nan, dtype=float)
+    fits: list = [None] * seeds.size
+    for i, seed in enumerate(seeds):
+        try:
+            with warnings.catch_warnings():
+                # The per-restart trainer emits a UserWarning every call;
+                # suppress N-1 of them and let the user see only the
+                # consolidated multi-restart context (the trainer's
+                # warnings carry the same caveat each time).
+                warnings.simplefilter("ignore", category=UserWarning)
+                fit = fit_point_process_em(
+                    train,
+                    state_dim=int(state_dim),
+                    n_iter=int(n_iter),
+                    n_newton_iter=int(n_newton_iter),
+                    seed=int(seed),
+                )
+            score = point_process_predictive_ll(
+                test,
+                fit.transition_matrix,
+                fit.observation_matrix,
+                fit.transition_covariance,
+                fit.initial_state_mean,
+                fit.initial_state_covariance,
+                n_quad=int(n_quad),
+            )
+            ll = float(score.total)
+        except Exception:  # pragma: no cover — defensive
+            ll, fit = float("nan"), None
+        predictive_lls[i] = ll
+        fits[i] = fit
+
+    if not np.any(np.isfinite(predictive_lls)):
+        raise RuntimeError(
+            "all restarts failed to produce a finite held-out predictive "
+            "log-likelihood — check that observations are non-degenerate "
+            "and state_dim is sensible."
+        )
+
+    best_idx = int(np.nanargmax(predictive_lls))
+    return MultiRestartResult(
+        best_result=fits[best_idx],
+        best_seed=int(seeds[best_idx]),
+        best_predictive_ll=float(predictive_lls[best_idx]),
+        all_seeds=seeds,
+        all_predictive_lls=predictive_lls,
+    )
+
+
+def fit_hybrid_em_best_of(
+    poisson_observations: np.ndarray,
+    gaussian_observations: np.ndarray,
+    state_dim: int,
+    *,
+    n_restarts: int = 8,
+    holdout_fraction: float = 0.2,
+    n_iter: int = 30,
+    n_newton_iter: int = 3,
+    base_seed: int = 0,
+    n_quad: int = 15,
+) -> MultiRestartResult:
+    """Hybrid (Poisson + Gaussian) multi-restart EM with predictive-LL selection.
+
+    The :func:`fit_hybrid_em` counterpart of
+    :func:`fit_point_process_em_best_of`.  Both observation channels are
+    split by the same trailing-time holdout; scoring uses
+    :func:`hybrid_predictive_ll` (Poisson + Gaussian total).
+
+    Parameters
+    ----------
+    poisson_observations, gaussian_observations, state_dim,
+    n_iter, n_newton_iter
+        Forwarded to :func:`fit_hybrid_em`.
+    n_restarts, holdout_fraction, base_seed, n_quad
+        See :func:`fit_point_process_em_best_of`.
+
+    Returns
+    -------
+    MultiRestartResult
+    """
+    import warnings
+
+    yp = np.asarray(poisson_observations, dtype=float)
+    if yp.ndim == 1:
+        yp = yp.reshape(-1, 1)
+    yg = np.asarray(gaussian_observations, dtype=float)
+    if yg.ndim == 1:
+        yg = yg.reshape(-1, 1)
+    if yp.shape[0] != yg.shape[0]:
+        raise ValueError(
+            f"poisson_observations and gaussian_observations must share "
+            f"the same T; got {yp.shape[0]} vs {yg.shape[0]}"
+        )
+    if int(n_restarts) < 1:
+        raise ValueError(f"n_restarts must be >= 1; got {n_restarts}")
+    yp_train, yp_test, _ = _train_test_split_by_time(yp, holdout_fraction)
+    yg_train, yg_test, _ = _train_test_split_by_time(yg, holdout_fraction)
+
+    seeds = np.asarray(
+        [int(base_seed) + i for i in range(int(n_restarts))], dtype=int
+    )
+    predictive_lls = np.full(seeds.shape, np.nan, dtype=float)
+    fits: list = [None] * seeds.size
+    for i, seed in enumerate(seeds):
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=UserWarning)
+                fit = fit_hybrid_em(
+                    yp_train, yg_train,
+                    state_dim=int(state_dim),
+                    n_iter=int(n_iter),
+                    n_newton_iter=int(n_newton_iter),
+                    seed=int(seed),
+                )
+            score = hybrid_predictive_ll(
+                yp_test, yg_test,
+                fit.transition_matrix,
+                fit.poisson_observation_matrix,
+                fit.gaussian_observation_matrix,
+                fit.transition_covariance,
+                fit.gaussian_observation_covariance,
+                fit.initial_state_mean,
+                fit.initial_state_covariance,
+                n_quad=int(n_quad),
+            )
+            ll = float(score.total)
+        except Exception:  # pragma: no cover — defensive
+            ll, fit = float("nan"), None
+        predictive_lls[i] = ll
+        fits[i] = fit
+
+    if not np.any(np.isfinite(predictive_lls)):
+        raise RuntimeError(
+            "all hybrid restarts failed to produce a finite held-out "
+            "predictive log-likelihood."
+        )
+
+    best_idx = int(np.nanargmax(predictive_lls))
+    return MultiRestartResult(
+        best_result=fits[best_idx],
+        best_seed=int(seeds[best_idx]),
+        best_predictive_ll=float(predictive_lls[best_idx]),
+        all_seeds=seeds,
+        all_predictive_lls=predictive_lls,
+    )
+
+
 __all__ = [
     "LinearGaussianEMResult",
     "fit_linear_gaussian_em",
@@ -1119,4 +1783,10 @@ __all__ = [
     "fit_point_process_em",
     "HybridEMResult",
     "fit_hybrid_em",
+    "PredictiveLogLik",
+    "point_process_predictive_ll",
+    "hybrid_predictive_ll",
+    "MultiRestartResult",
+    "fit_point_process_em_best_of",
+    "fit_hybrid_em_best_of",
 ]
