@@ -6,10 +6,6 @@
 > preserved — every recommendation here is a Python-side library; no
 > coupling to the MATLAB `cajigaslab/nSTAT` repo is introduced.
 >
-> Companion to `tests/test_curriculum_parity.py`, which already
-> cross-validates the Kalman/GLM primitives against the
-> `bci-curriculum` reference implementation.
->
 > **See also** [`methods_roadmap.md`](methods_roadmap.md) — the
 > prioritized *methods/algorithms* incorporation plan (2026 review):
 > what new capabilities to add next, vs. this document's *library*
@@ -63,7 +59,7 @@
 - **Maintainer:** Center for Computational Neuroscience, Flatiron Institute (NIH BRAIN funded)
 - **Capabilities:** Poisson `GLM`, Gamma `GLM`, `PopulationGLM`, `ClassifierGLM`.  Basis families that mirror nstat's design choices precisely: `RaisedCosineLinearConv`, `RaisedCosineLogConv` (Pillow basis), `BSplineConv`/`MSplineConv`/`CyclicBSplineConv`, plus `AdditiveBasis` / `MultiplicativeBasis` composition.  JAX-backed; GPU-capable; pynapple-integrated.
 - **Overlap with nstat:** Heavy.  `nstat.Analysis.GLMFit` + `nstat.History.HistoryBasis` + `nstat.cif.LinearCIF` cover essentially the same modeling surface.
-- **Integration suggestion:** Add as a `[test]` extra under `pyproject.toml [project.optional-dependencies]`; write `tests/test_nemos_parity.py` that fits the same Poisson GLM in both libraries on a small synthetic dataset and asserts coefficient agreement to ~1e-4.  Models the bci-curriculum cross-validation pattern.
+- **Integration suggestion:** Add as a `[test]` extra under `pyproject.toml [project.optional-dependencies]`; write `tests/test_nemos_parity.py` that fits the same Poisson GLM in both libraries on a small synthetic dataset and asserts coefficient agreement to ~1e-4.
 - **Risks:** JAX install footprint is large (~200 MB).  Keep it strictly test-only — do not import from `nstat/`.
 
 #### Dynamax — https://github.com/probml/dynamax
@@ -240,7 +236,7 @@ If nstat-python ever relicenses to **GPL-2.0-or-later** or **GPL-3.0**, spectral
 ### Tier 1 — High value, low friction (this quarter)
 
 1. **Add `[test-parity]` extra** to `pyproject.toml` containing `nemos>=0.2.7`, `pykalman>=0.11.2`, `statsmodels>=0.14`, `nitime>=0.12`.
-2. **Write `tests/test_nemos_glmfit_parity.py`** — fit identical Poisson GLM on a synthetic spike train via both `nstat.Analysis.GLMFit` and `nemos.glm.GLM`; assert coefficient L∞ < 1e-3.  This is the strongest single addition to the test suite; complements the existing `tests/test_curriculum_parity.py`.
+2. **Write `tests/test_nemos_glmfit_parity.py`** — fit identical Poisson GLM on a synthetic spike train via both `nstat.Analysis.GLMFit` and `nemos.glm.GLM`; assert coefficient L∞ < 1e-3.  This is the strongest single addition to the test suite.
 3. **Write `tests/test_kalman_parity.py`** — cross-validate `DecodingAlgorithms.kalman_filter` against `pykalman.KalmanFilter` on a 2-state linear-Gaussian process; check filtered means agree to 1e-8, smoothed means to 1e-6.  This directly addresses AUDIT D3 (`kalman_fixedIntervalSmoother` smoother-index approximation gap).
 4. **Vendor `time_rescale` v0.2.1** into `tests/parity/_third_party/` (with MIT license preserved); use as second-opinion oracle for `computeKSStats`.
 5. **Add a "Related Projects" section to `README.md`** listing SpikeInterface, Elephant, NeMoS, pynapple, Neo as ecosystem peers.  Costs nothing; positions nstat correctly.
@@ -278,7 +274,7 @@ If nstat-python ever relicenses to **GPL-2.0-or-later** or **GPL-3.0**, spectral
 | 5 | Open issue: "Evaluate dynamax as supplier for KF_EM / PP_EM / mPPCO_EM" — explicitly include a decision: port vs adapt | 1d to write up, weeks to execute | maintainer + reviewer |
 | 6 | Add "Related Projects" section to `README.md` (SpikeInterface, Elephant, NeMoS, pynapple, Neo) | 30 min | maintainer |
 | 7 | Update `AGENT_GUIDE.md` §5.6 ("What the package is NOT") to point users at the recommended tools for each gap | 30 min | maintainer |
-| 8 | Document in `parity/report.md` that NeMoS + statsmodels + bci-curriculum form the three-way Python-side validation triangle, alongside the MATLAB gold fixtures | 1h | regenerate via `tools/parity/build_report.py` |
+| 8 | Document in `parity/report.md` that NeMoS + statsmodels form the Python-side validation pair, alongside the MATLAB gold fixtures | 1h | regenerate via `tools/parity/build_report.py` |
 
 The natural ordering: Tier-1 items first (they pay back in test coverage immediately), then the `nstat.interop` work in Tier-2 (this is where the user-visible win is), then revisit Tier-2 #9 (dynamax for EM) as a v0.4 milestone after the cross-validation harnesses are in place — because once we trust `DecodingAlgorithms.kalman_*` via the parity tests, the case for *replacing* missing methods with dynamax adapters (versus reimplementing them) becomes empirically decidable rather than philosophical.
 

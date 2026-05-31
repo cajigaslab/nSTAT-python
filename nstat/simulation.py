@@ -13,8 +13,8 @@ These are pure-Python counterparts to the Simulink-driven simulation
 pipeline used in :mod:`nstat.cif` and :mod:`nstat.simulators`.  No
 MATLAB counterpart at the module level — the underlying algorithm is the
 standard Bernoulli-thinning approximation for an inhomogeneous Poisson
-process (see *Decoding the Brain*, ch. 2 §2.B for the derivation).  Time
-is in **seconds**, rates in **Hz**.
+process (Lewis & Shedler 1979; Ogata 1981).  Time is in **seconds**,
+rates in **Hz**.
 """
 from __future__ import annotations
 

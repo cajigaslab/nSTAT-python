@@ -348,7 +348,7 @@ hy = fit_hybrid_em(spike_counts, lfp, state_dim=2, n_iter=30)</code></pre>
   <ul>
     <li><strong>EM accuracy hardening</strong> — replace the moment-matching lag-one cross-covariance approximation in <code>fit_point_process_em</code> / <code>fit_hybrid_em</code> with the exact smoother lag-one covariance, and exact Laplace E[exp(Cx)] correction, to tighten MATLAB-parity from ~1-3% to &lt;1e-4.</li>
     <li><code>nstat.extras.spectral.synchrosqueeze</code> — ssqueezepy wrapper, closes the "no synchrosqueeze" admission.</li>
-    <li><code>nstat.extras.deep_learning</code> — PyTorch decoders (NDT / POYO bridge).</li>
+    <li><code>nstat.extras.deep_learning</code> — PyTorch decoder bridges (planned).</li>
     <li><code>nstat.extras.interop.spikeinterface</code> — spike-sorting-output bridge.</li>
   </ul>
 </div>

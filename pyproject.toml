@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nstat-toolbox"
-version = "0.4.2"
+version = "0.4.3"
 description = "Python port of the nSTAT toolbox"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -95,7 +95,7 @@ clusterless = [
   "replay_trajectory_classification>=1.4",
 ]
 
-# PyTorch-based decoders (NDT / POYO bridge; deferred to v0.4+).
+# PyTorch-based decoder bridges (placeholder; deferred to a future release).
 deep-learning = []
 
 # Convenience: install every functional extras group at once.

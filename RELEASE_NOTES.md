@@ -1,5 +1,36 @@
 # Release Notes
 
+## v0.4.3 — 2026-05-31
+
+Documentation and packaging cleanup.  Removes cross-references to
+internal-only material from public-facing surfaces (README, helpfiles,
+module docstrings published via Sphinx autodoc, parity notes) and
+genericizes a couple of forward-looking placeholders.  **No public API
+changes, no behavior changes** &mdash; every importable symbol behaves
+identically to v0.4.2.
+
+### Removed
+
+- `tests/test_curriculum_parity.py` &mdash; an internal cross-validation
+  oracle that depended on a separate, non-public reference checkout
+  (its parity targets are still exercised by the MATLAB gold fixtures
+  and the existing dynamax / population-time-rescale tests).
+
+### Edited
+
+- `AGENT_GUIDE.md`, `docs/ClassDefinitions.md`,
+  `nstat/decoding_algorithms.py`, `nstat/linear_cif.py`,
+  `nstat/simulation.py`, `parity/integration_opportunities.md`,
+  `parity/matlab_audit_xref.md`, `docs/extras_summary.html`,
+  `pyproject.toml` &mdash; internal cross-references removed; public
+  math citations (Smith &amp; Brown 2003, Truccolo 2005, Lewis &amp;
+  Shedler 1979, Ogata 1981, the 2012 nSTAT paper) and the existing
+  Sphinx cross-refs are preserved.
+
+### Breaking changes
+
+None.
+
 ## v0.4.2 — 2026-05-31
 
 Tier 0.3 follow-ups + a docs fix.  Two new **opt-in** keyword

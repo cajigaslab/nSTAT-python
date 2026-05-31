@@ -2,7 +2,7 @@
 
 > **Audience:** AI coding assistants (Claude, GPT, Cursor, Copilot, etc.) and
 > autonomous agents that need to use the `nstat-python` toolbox correctly.
-> Updated: 2026-05-31. Package version: 0.4.2.
+> Updated: 2026-05-31. Package version: 0.4.3.
 >
 > The MATLAB reference toolbox lives in a *separate* repository
 > (https://github.com/cajigaslab/nSTAT) and is deliberately kept independent
@@ -80,7 +80,7 @@ to re-verify).
 ### Modeling and inference
 - `Analysis` — top-level fit/analysis orchestrator (`GLMFit`, `computeHistLagForAll`, `computeGrangerCausalityMatrix`, etc.).
 - `CIF`, `CIFModel` — conditional intensity functions, symbolic ↔ numeric evaluation.
-- `LinearCIF` — closed-form (sympy-free) CIF for the two canonical link cases (Poisson log-link, binomial logit-link).  Drop-in compatible with `CIF` for the 5 eval methods used by `DecodingAlgorithms.PPDecode_update`.  See the curriculum cross-reference (`Decoding the Brain` §4.B.7.4).
+- `LinearCIF` — closed-form (sympy-free) CIF for the two canonical link cases (Poisson log-link, binomial logit-link).  Drop-in compatible with `CIF` for the 5 eval methods used by `DecodingAlgorithms.PPDecode_update`.
 - `FitResult` — fit output (coefficients, lambda signal, KS, AIC/BIC).
 - `FitResSummary` / `FitSummary` — aggregator across fits/cells.
 - `population_time_rescale` → `PopulationTimeRescaleResult` — multivariate
@@ -623,7 +623,7 @@ The package has two namespaces with different stability contracts:
 - A new Pillow raised-cosine basis (per `parity/integration_opportunities.md`)
   → **extras** initially; could later migrate to core if MATLAB adopts
   the same basis family.
-- A deep-learning decoder (NDT / POYO bridge) → **extras**.  No MATLAB
+- A PyTorch-based deep-learning decoder bridge → **extras**.  No MATLAB
   counterpart; heavy PyTorch dependency.
 
 **Optional dependencies for extras.**  Each `nstat.extras.X` module

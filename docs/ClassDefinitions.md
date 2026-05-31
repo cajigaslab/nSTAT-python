@@ -205,8 +205,7 @@ log-link, binomial logit-link).  Ported from MATLAB `LinearCIF.m` (added
 upstream in v1.4.0).  Drop-in compatible with `CIF` for the 5 eval
 methods used by `DecodingAlgorithms.PPDecode_update`:
 `evalLambdaDelta`, `evalGradient`, `evalGradientLog`, `evalJacobian`,
-`evalJacobianLog`.  See `Decoding the Brain` §4.B.7.4 for the
-derivation.
+`evalJacobianLog`.
 
 ### `Analysis` (`nstat.Analysis`)
 

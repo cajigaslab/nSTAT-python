@@ -9,7 +9,7 @@ binomial (logit link).  For these, derivatives of ``lambda*delta`` and
 ``log(lambda*delta)`` w.r.t. the stimulus variables have a closed form
 and **require no symbolic-math toolkit** (no SymPy dependency).
 
-Closed-form derivatives (bci-curriculum chapter-04 §4.B.7.4):
+Closed-form derivatives:
 
   Poisson:  ld       = exp(X·beta + H·gamma)
             grad     = ld · beta_stim
