@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>v0.4.1 polish — PyPI publishing + CI hygiene · nSTAT-python</title>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --border:#d0d0d8; --ok:#38a169; --warn:#d69e2e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --border:#3a3a44; --ok:#68d391; --warn:#f6c453; }
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.6; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:820px; margin:0 auto; }
+  a { color:var(--accent); }
+  .back { font-size:.85rem; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.2rem; margin:1rem 0 1.8rem 0; }
+  header h1 { margin:.2rem 0 .3rem 0; font-size:1.9rem; }
+  header .meta { color:var(--fg-muted); font-size:.85rem; }
+  h2 { font-size:1.25rem; margin-top:1.8rem; border-bottom:1px solid var(--border); padding-bottom:.2rem; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  pre { background:#1e1e2e; color:#f8f8f2; padding:1rem; border-radius:8px; overflow-x:auto;
+        font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.85rem; line-height:1.45; }
+  ul { padding-left:1.2rem; }
+  li { margin:.35rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; margin-top:.6rem; }
+  th,td { border:1px solid var(--border); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  th { background:var(--bg-card); }
+  .ok { color:var(--ok); font-weight:600; }
+  .warn { color:var(--warn); font-weight:600; }
+  .callout { background:var(--bg-card); border-left:4px solid var(--warn); border-radius:6px;
+             padding:.8rem 1rem; margin:1rem 0; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="back"><a href="whats_new.html">&larr; What's New</a></p>
+  <header>
+    <h1>v0.4.1 polish &mdash; PyPI publishing + CI hygiene</h1>
+    <div class="meta">2026-05-31 · branch <code>chore/v0.4.1-polish</code> ·
+      tag <code>v0.4.1</code></div>
+  </header>
+
+  <h2>The audit that motivated this release</h2>
+  <p>Under the <code>/goal</code> "verify accurate release with minimal
+  drift", a post-v0.4.0 audit ran every check that could surface
+  release inaccuracy.  Three real findings &mdash; one critical:</p>
+  <table>
+    <tr><th>Check</th><th>Finding</th><th>Fix in v0.4.1</th></tr>
+    <tr><td>Version drift across 4 version-bearing files</td><td class="ok">clean (all 0.4.0)</td><td>&mdash;</td></tr>
+    <tr><td><code>nstat-toolbox</code> on PyPI</td><td class="warn">404 &mdash; never published</td><td>new <code>publish.yml</code> workflow + tagging</td></tr>
+    <tr><td>Stale <code>0.3.2</code> footer in <code>extras_summary.html</code></td><td class="warn">"Generated as part of the nSTAT-python v0.3.2 release"</td><td>made version-agnostic</td></tr>
+    <tr><td>GitHub Releases for v0.4.0</td><td class="ok">Latest, present</td><td>&mdash;</td></tr>
+    <tr><td>Live docs reflect v0.4.0</td><td class="ok">clean, extras symbols render</td><td>&mdash;</td></tr>
+  </table>
+
+  <div class="callout">
+    <strong>The PyPI gap was the biggest "drift" the audit could find.</strong>
+    Every prior version of the README promised
+    <code>pip install nstat-toolbox</code> works, but the package has
+    never been on PyPI.  v0.4.1 makes that promise true.
+  </div>
+
+  <h2>What shipped</h2>
+  <ul>
+    <li><strong>PyPI publishing</strong> &mdash; new
+      <code>.github/workflows/publish.yml</code> using PyPI's
+      Trusted Publisher (OIDC, no API tokens).  Triggers on any
+      <code>v*</code> tag whose version matches <code>pyproject.toml</code>
+      (the workflow asserts the match at build time).
+      One-time setup steps for the maintainer are documented in the
+      refreshed <code>RELEASE_READINESS.md</code>.</li>
+    <li><strong><code>extras-clusterless</code> CI job</strong> &mdash;
+      parallel to <code>extras-dynamax</code>.  Installs
+      <code>[clusterless]</code> (pulls JAX + <code>replay_trajectory_classification</code>)
+      and runs <code>tests/extras/test_clusterless_bridge.py</code>
+      end-to-end.  Closes the Tier 2.1 CI story.</li>
+    <li><strong><code>statsmodels&gt;=0.15</code></strong> pinned in
+      <code>[test-parity]</code>.  Older versions imported
+      <code>scipy._lib._util._lazywhere</code> (private API scipy
+      removed); pinning forward kills the recurring local-only test
+      failure.</li>
+    <li><strong>Stale-version cleanup</strong> in
+      <code>extras_summary.html</code>.</li>
+    <li><strong><code>RELEASE_READINESS.md</code></strong> reset to v0.5
+      planning + the PyPI Trusted-Publisher setup instructions.</li>
+  </ul>
+
+  <h2>Tag-time verification</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td><code>test_version_sync</code> (5 tests, all 4 files on 0.4.1)</td><td class="ok">PASS</td></tr>
+    <tr><td><code>test_intro_page</code> (5 drift guards)</td><td class="ok">PASS</td></tr>
+    <tr><td><code>make readme-check</code> + <code>make helpfile-check</code></td><td class="ok">PASS</td></tr>
+    <tr><td><code>make docs-strict</code> (two-pass <code>-W</code>)</td><td class="ok">PASS</td></tr>
+    <tr><td><code>publish.yml</code> tag-vs-pyproject assertion</td><td class="ok">guard in place</td></tr>
+  </table>
+
+  <h2>What the maintainer needs to do once</h2>
+  <ol>
+    <li>Reserve the <code>nstat-toolbox</code> project name on PyPI (account flow).</li>
+    <li>Add GitHub as a Trusted Publisher at
+    <code>https://pypi.org/manage/project/nstat-toolbox/settings/publishing/</code>
+    with owner <code>cajigaslab</code>, repository <code>nSTAT-python</code>,
+    workflow <code>publish.yml</code>, environment <code>pypi</code>.</li>
+    <li>Create the <code>pypi</code> GitHub Environment (Settings &rarr;
+    Environments) &mdash; optionally with a required-reviewer rule for
+    extra safety.</li>
+  </ol>
+  <p>After those three clicks, every tag push (starting with
+  <code>v0.4.1</code> itself) auto-publishes to PyPI.</p>
+
+  <footer>
+    <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> ·
+    <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_READINESS.md">RELEASE_READINESS.md</a>
+  </footer>
+</div>
+</body>
+</html>

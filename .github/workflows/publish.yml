@@ -1,0 +1,96 @@
+# Publish nstat-toolbox to PyPI on a v* tag push.
+#
+# Uses PyPI's Trusted Publisher (OIDC) — no API tokens stored in the
+# repo.  One-time setup on PyPI (see RELEASE_READINESS.md "PyPI
+# publishing"):
+#   - Reserve the "nstat-toolbox" project name (creates an empty project).
+#   - At https://pypi.org/manage/project/nstat-toolbox/settings/publishing/
+#     add a "GitHub" Trusted Publisher with:
+#       owner:               cajigaslab
+#       repository:          nSTAT-python
+#       workflow filename:   publish.yml
+#       environment name:    pypi
+#   - In this repo's Settings -> Environments, create the "pypi"
+#     environment.  Optionally add a required-reviewer rule so each
+#     publish requires an explicit approval click before it fires.
+#
+# Trigger: any pushed tag matching v* (e.g. v0.4.1) AND a manual
+# workflow_dispatch button (useful for re-publishing or testing).
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual publish (e.g. retry after PyPI hiccup)"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build sdist + wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tag history needed for setuptools-scm-style version derivation
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build twine
+      - name: Assert pyproject version matches the git tag
+        # Catches the "forgot to bump pyproject.toml before tagging"
+        # failure mode at build time, before anything ships.  Skipped
+        # for manual workflow_dispatch runs (no tag context).
+        if: github.event_name == 'push'
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pyver=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          test "$tag" = "$pyver" || { echo "tag $tag != pyproject $pyver"; exit 1; }
+          echo "tag matches pyproject: $pyver"
+      - name: Build sdist + wheel
+        run: python -m build --sdist --wheel
+      - name: Inspect built artifacts
+        run: |
+          ls -la dist/
+          python -m twine check dist/*
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  publish:
+    name: Upload to PyPI via Trusted Publisher
+    needs: build
+    runs-on: ubuntu-latest
+    # The "pypi" environment is what PyPI's Trusted Publisher config
+    # binds to; without it, OIDC token issuance fails.  Add required
+    # reviewers in this env in repo Settings if you want manual
+    # approval per publish.
+    environment:
+      name: pypi
+      url: https://pypi.org/project/nstat-toolbox/
+    permissions:
+      id-token: write  # required for OIDC token
+      contents: read
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
+          # No password / api-token: OIDC Trusted Publisher.

@@ -1,5 +1,49 @@
 # Release Notes
 
+## v0.4.1 — 2026-05-31
+
+A post-v0.4.0 polish release.  No public API changes; closes the
+verification gaps surfaced by the post-release audit and ships the
+infrastructure for PyPI publication.
+
+**This is the first release configured to publish to PyPI.**  Once the
+maintainer completes the one-time PyPI Trusted Publisher setup
+documented in `RELEASE_READINESS.md`, the next pushed `v*` tag
+auto-uploads the sdist + wheel via OIDC (no API tokens).
+Pre-v0.4.1 versions were never on PyPI despite the README's
+`pip install nstat-toolbox` claim; v0.4.1 makes that claim true.
+
+### Infrastructure
+
+- **PyPI publishing** — new `.github/workflows/publish.yml` builds and
+  uploads sdist + wheel via PyPI Trusted Publisher (OIDC) on each
+  `v*` tag push.  The workflow asserts the tag matches
+  `pyproject.toml` at build time so a missed version bump cannot ship.
+- **`extras-clusterless` CI job** — parallel to `extras-dynamax`.
+  Installs `nstat-toolbox[clusterless]` (pulls JAX + `replay_trajectory_classification`)
+  and runs `tests/extras/test_clusterless_bridge.py` end-to-end.
+  Closes the Tier 2.1 CI story: the clusterless smoke tests no longer
+  skip silently in every CI run.
+- **`statsmodels>=0.15`** pinned in `[test-parity]` — the older
+  `statsmodels` versions imported the private `scipy._lib._util._lazywhere`
+  symbol that scipy removed, surfacing as a recurring local-only test
+  failure under common conda environments.  Pinning forward resolves
+  it without touching the toolbox.
+
+### Docs / hygiene
+
+- **`docs/extras_summary.html`** — replaced the stale "Generated as
+  part of the nSTAT-python v0.3.2 release" footer line with a
+  version-agnostic note (the extras namespace was introduced in v0.3.2
+  and has been substantially expanded since).
+- **`RELEASE_READINESS.md`** — reset from the v0.4.0 plan to the v0.5
+  planning + PyPI-setup instructions.  The v0.4.0 content lives
+  permanently in `RELEASE_NOTES.md` now.
+
+### Breaking changes
+
+None.
+
 ## v0.4.0 — 2026-05-31
 
 A substantive minor release: the public API gains the **EM

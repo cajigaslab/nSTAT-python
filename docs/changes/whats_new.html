@@ -49,6 +49,21 @@
 
   <div class="entry">
     <div class="date">2026-05-31</div>
+    <h2><a href="2026-05-31-v0.4.1-polish.html">v0.4.1 — PyPI publishing + CI hygiene</a>
+      <span class="tag">release</span></h2>
+    <p>Post-v0.4.0 audit revealed the single biggest "drift" in the
+    project: <code>nstat-toolbox</code> has never been on PyPI despite
+    the README's <code>pip install</code> claim. v0.4.1 ships a
+    Trusted-Publisher PyPI workflow (no API tokens), a dedicated
+    <code>extras-clusterless</code> CI job (closes Tier 2.1's CI
+    story), and pins <code>statsmodels&gt;=0.15</code> to kill the
+    recurring local-only <code>_lazywhere</code> failure. Maintainer
+    completes a 3-click one-time PyPI setup; every subsequent tag
+    auto-publishes.</p>
+  </div>
+
+  <div class="entry">
+    <div class="date">2026-05-31</div>
     <h2><a href="2026-05-31-friendly-intro.html">Friendly 5-minute intro landing page</a>
       <span class="tag">docs</span></h2>
     <p>New <code><a href="https://cajigaslab.github.io/nSTAT-python/intro.html">intro.html</a></code>:
