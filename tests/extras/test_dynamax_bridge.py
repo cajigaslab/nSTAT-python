@@ -852,3 +852,117 @@ def test_fit_hybrid_em_best_of_rejects_mismatched_lengths() -> None:
             np.zeros((99, 1)),
             state_dim=2,
         )
+
+
+# ----------------------------------------------------------------------
+# Tier 0.3 follow-ups (v0.4.2) — data-driven init + A/Q ridge
+# ----------------------------------------------------------------------
+
+
+def test_log_empirical_rate_init_biases_x0_toward_empirical_rate() -> None:
+    """The new ``init="log_empirical_rate"`` solves ``C x0 ≈ log(mean_rate)``
+    in least-squares sense, so the implied log-rate ``C x0`` is closer to
+    ``log(empirical_mean)`` than the legacy ``init="random"`` (which has
+    ``x0 = 0`` and so ``C x0 = 0`` regardless of the data).
+
+    Compared in **log-rate** space (what the init optimizes by
+    construction); the rate-space gap depends on how much of
+    ``log(mean_rate)`` lives in the column space of ``C`` and so can be
+    large when ``ed > sd`` even though the init is doing the right
+    thing.
+    """
+    from nstat.extras.em.dynamax_bridge import (
+        _ppem_initialize, _ppem_initialize_log_empirical_rate,
+    )
+
+    rng = np.random.default_rng(0)
+    T, ed, sd = 400, 5, 3
+    true_mean = np.array([0.01, 0.05, 0.10, 0.30, 0.50])
+    y = rng.poisson(true_mean[None, :].repeat(T, axis=0)).astype(float)
+
+    _, C_rand, _, x0_rand, _ = _ppem_initialize(y, sd, seed=0)
+    _, C_log, _, x0_log, _ = _ppem_initialize_log_empirical_rate(y, sd, seed=0)
+
+    # Same C draw at the same seed — only x0 differs.
+    assert np.allclose(C_rand, C_log)
+
+    target = np.log(np.clip(y.mean(axis=0), 1e-6, None))
+    legacy_residual = float(np.linalg.norm(C_rand @ x0_rand - target))
+    new_residual = float(np.linalg.norm(C_log @ x0_log - target))
+    assert new_residual < legacy_residual, (
+        f"log_empirical_rate init no closer to log-empirical-rate: "
+        f"new_residual={new_residual:.4f} vs legacy_residual={legacy_residual:.4f}"
+    )
+
+    # And with ed == sd (square C, exact LS solution), the implied rate
+    # matches empirical mean per neuron.
+    rng2 = np.random.default_rng(1)
+    true_mean2 = np.array([0.01, 0.05, 0.10])
+    y2 = rng2.poisson(true_mean2[None, :].repeat(T, axis=0)).astype(float)
+    _, C_sq, _, x0_sq, _ = _ppem_initialize_log_empirical_rate(y2, state_dim=3, seed=0)
+    implied = np.exp(C_sq @ x0_sq)
+    assert np.allclose(implied, y2.mean(axis=0), rtol=1e-4)
+
+
+def test_invalid_init_string_is_rejected() -> None:
+    """Unknown init keys raise immediately (not after wasted EM work)."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+
+    with pytest.raises(ValueError, match="init must be"):
+        fit_point_process_em(
+            np.zeros((20, 2), dtype=int), state_dim=2, init="bogus", n_iter=1
+        )
+
+
+def test_ridge_lambda_keeps_A_persistent_under_weak_observability() -> None:
+    """``ridge_lambda > 0`` biases the A M-step toward the identity:
+    ``A = (S10 + λI)(S11 + λI)⁻¹``.  Under weak observability (where
+    plain EM tends to collapse ``A → 0``) the ridged fit produces an
+    ``A`` whose largest eigenvalue magnitude is closer to 1.  We assert
+    the directional property only — the weak-observability regime is
+    intrinsically noisy."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+
+    rng = np.random.default_rng(11)
+    T, sd, ed = 300, 2, 2
+    A_true = np.array([[0.9, 0.1], [0.0, 0.85]])
+    C_true = np.eye(ed, sd) * 0.4  # small loadings => weak observability
+    Q_true = np.eye(sd) * 0.05
+    x = np.zeros((T, sd))
+    x[0] = rng.multivariate_normal(np.zeros(sd), np.eye(sd) * 0.1)
+    for t in range(1, T):
+        x[t] = A_true @ x[t - 1] + rng.multivariate_normal(np.zeros(sd), Q_true)
+    y = rng.poisson(np.exp(C_true @ x.T).T).astype(int)
+
+    fit_plain = fit_point_process_em(y, state_dim=2, n_iter=15, seed=0)
+    fit_ridged = fit_point_process_em(
+        y, state_dim=2, n_iter=15, seed=0, ridge_lambda=0.5
+    )
+
+    rho_plain = float(np.max(np.abs(np.linalg.eigvals(fit_plain.transition_matrix))))
+    rho_ridged = float(np.max(np.abs(np.linalg.eigvals(fit_ridged.transition_matrix))))
+    assert rho_ridged > rho_plain, (
+        f"ridge_lambda did not pull A toward persistence: "
+        f"rho_ridged={rho_ridged:.3f} <= rho_plain={rho_plain:.3f}"
+    )
+
+
+def test_ridge_lambda_zero_is_byte_identical_to_default() -> None:
+    """Backward-compat: ``ridge_lambda=0.0`` (the default) must produce
+    bit-exactly the same fit as the implicit-default codepath."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em
+
+    y, *_ = _sim_pp_with_state(T=200, ed=3, c_scale=0.7)
+    fit_default = fit_point_process_em(y, state_dim=2, n_iter=10, seed=42)
+    fit_explicit_zero = fit_point_process_em(
+        y, state_dim=2, n_iter=10, seed=42, ridge_lambda=0.0
+    )
+    assert np.array_equal(
+        fit_default.transition_matrix, fit_explicit_zero.transition_matrix
+    )
+    assert np.array_equal(
+        fit_default.observation_matrix, fit_explicit_zero.observation_matrix
+    )

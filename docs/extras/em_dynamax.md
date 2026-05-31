@@ -22,8 +22,8 @@ pip install nstat-toolbox[dynamax]   # pulls Dynamax (~50 MB) + JAX (~200 MB)
 | Symbol | MATLAB counterpart | Notes |
 |---|---|---|
 | `fit_linear_gaussian_em(observations, state_dim, *, n_iter=50, seed=0)` | `KF_EM` | LG state-space EM via Dynamax `LinearGaussianSSM.fit_em` (thin wrapper) → `LinearGaussianEMResult` |
-| `fit_point_process_em(observations, state_dim, *, n_iter=30, n_newton_iter=5, seed=0)` | `PP_EM` | Poisson-LGSSM EM (CMGF E-step + closed-form/Newton M-step) → `PointProcessEMResult` |
-| `fit_hybrid_em(poisson_observations, gaussian_observations, state_dim, *, n_iter=30, n_newton_iter=3, seed=0)` | `mPPCO_EM` | Mixed Poisson + Gaussian EM (IRLS-pseudo-obs augmented smoother E-step) → `HybridEMResult` |
+| `fit_point_process_em(observations, state_dim, *, n_iter=30, n_newton_iter=5, seed=0, init="random", ridge_lambda=0.0)` | `PP_EM` | Poisson-LGSSM EM (CMGF E-step + closed-form/Newton M-step) → `PointProcessEMResult` |
+| `fit_hybrid_em(poisson_observations, gaussian_observations, state_dim, *, n_iter=30, n_newton_iter=3, seed=0, ridge_lambda=0.0)` | `mPPCO_EM` | Mixed Poisson + Gaussian EM (IRLS-pseudo-obs augmented smoother E-step) → `HybridEMResult` |
 
 ### Point-process inference (known model)
 
@@ -51,14 +51,40 @@ valid objective (it re-linearizes each iteration).
 
 | Symbol | Notes |
 |---|---|
-| `fit_point_process_em_best_of(y, state_dim, *, n_restarts=8, holdout_fraction=0.2, n_iter=30, n_newton_iter=5, base_seed=0, n_quad=15)` | Runs PP_EM with `n_restarts` seeds on the train segment, scores each on the held-out tail with `point_process_predictive_ll`, returns the best → `MultiRestartResult` |
-| `fit_hybrid_em_best_of(yp, yg, state_dim, *, n_restarts=8, holdout_fraction=0.2, n_iter=30, n_newton_iter=3, base_seed=0, n_quad=15)` | Hybrid counterpart; scored by `hybrid_predictive_ll` |
+| `fit_point_process_em_best_of(y, state_dim, *, n_restarts=8, holdout_fraction=0.2, n_iter=30, n_newton_iter=5, base_seed=0, n_quad=15, init="random", ridge_lambda=0.0)` | Runs PP_EM with `n_restarts` seeds on the train segment, scores each on the held-out tail with `point_process_predictive_ll`, returns the best → `MultiRestartResult` |
+| `fit_hybrid_em_best_of(yp, yg, state_dim, *, n_restarts=8, holdout_fraction=0.2, n_iter=30, n_newton_iter=3, base_seed=0, n_quad=15, ridge_lambda=0.0)` | Hybrid counterpart; scored by `hybrid_predictive_ll` |
 
 Single-fit `fit_point_process_em` can collapse to a degenerate solution
 under weak observability (see caveat below); multi-restart selection on
 the true held-out predictive log-likelihood is the production-quality
 mitigation.  Use these `*_best_of(...)` entry points instead of single-fit
 on real data.
+
+### Optional EM hardening (v0.4.2 — opt-in)
+
+Two new keyword arguments on `fit_point_process_em` /
+`fit_point_process_em_best_of` and a `ridge_lambda` on `fit_hybrid_em` /
+`fit_hybrid_em_best_of`.  Both default to the v0.4.1 behavior, so
+existing code is unchanged.
+
+- **`init="log_empirical_rate"`** (PP_EM only): seeds `x0` from
+  `pinv(C) @ log(empirical_mean_rate)` so the implied initial firing
+  rate matches what the data shows, removing one bad-init mode.  The
+  random `C` draw is unchanged.  Recommended on weakly-observable data.
+- **`ridge_lambda=λ`** (PP_EM and hybrid; default `0.0`): biases the
+  A M-step toward the identity via a Gaussian prior at `A=I`:
+  `A = (S10 + λI)(S11 + λI)⁻¹`.  When `S10, S11 → 0` (the
+  weak-observability collapse mode) the limit becomes `I` rather than
+  `0`.  Try `0.1`–`1.0` if you see the `A → 0` collapse in
+  `*_best_of` traces.
+
+```python
+result = fit_point_process_em_best_of(
+    spike_counts, state_dim=3, n_restarts=8,
+    init="log_empirical_rate",       # data-driven x0
+    ridge_lambda=0.5,                # bias A toward identity
+)
+```
 
 ### Result dataclasses
 

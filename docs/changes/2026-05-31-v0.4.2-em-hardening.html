@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>v0.4.2 — EM hardening (opt-in) · nSTAT-python</title>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --border:#d0d0d8; --ok:#38a169;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --border:#3a3a44; --ok:#68d391; }
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.6; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:820px; margin:0 auto; }
+  a { color:var(--accent); }
+  .back { font-size:.85rem; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.2rem; margin:1rem 0 1.8rem 0; }
+  header h1 { margin:.2rem 0 .3rem 0; font-size:1.9rem; }
+  header .meta { color:var(--fg-muted); font-size:.85rem; }
+  h2 { font-size:1.25rem; margin-top:1.8rem; border-bottom:1px solid var(--border); padding-bottom:.2rem; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  pre { background:#1e1e2e; color:#f8f8f2; padding:1rem; border-radius:8px; overflow-x:auto;
+        font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.85rem; line-height:1.45; }
+  ul { padding-left:1.2rem; }
+  li { margin:.35rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; margin-top:.6rem; }
+  th,td { border:1px solid var(--border); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  th { background:var(--bg-card); }
+  .ok { color:var(--ok); font-weight:600; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="back"><a href="whats_new.html">&larr; What's New</a></p>
+  <header>
+    <h1>v0.4.2 &mdash; EM hardening (opt-in)</h1>
+    <div class="meta">2026-05-31 · <code>nstat/extras/em/dynamax_bridge.py</code> ·
+      branch <code>feat/tier-0.3-ppem-init-ridge</code></div>
+  </header>
+
+  <h2>What shipped</h2>
+  <p>Two opt-in keyword arguments on the PP_EM / mPPCO_EM trainers and
+  their <code>_best_of</code> variants. <strong>Defaults unchanged</strong> &mdash;
+  v0.4.1 fits remain bit-exact reproducible.</p>
+
+  <table>
+    <tr><th>Knob</th><th>Where</th><th>What it does</th></tr>
+    <tr>
+      <td><code>init="log_empirical_rate"</code></td>
+      <td><code>fit_point_process_em</code>,
+          <code>fit_point_process_em_best_of</code></td>
+      <td>Seeds <code>x0</code> from
+        <code>pinv(C) @ log(empirical_mean_rate)</code> so the implied
+        initial rate matches the data, not <code>exp(0) = 1</code>.</td>
+    </tr>
+    <tr>
+      <td><code>ridge_lambda=&lambda;</code></td>
+      <td>All four EM entry points</td>
+      <td>Biases the A M-step toward the identity:
+        <code>A = (S10 + &lambda;I)(S11 + &lambda;I)<sup>&minus;1</sup></code>.
+        When <code>S10, S11 &rarr; 0</code> (the weak-observability collapse
+        mode) the limit becomes <code>I</code> rather than <code>0</code>.</td>
+    </tr>
+  </table>
+
+  <pre><code>result = fit_point_process_em_best_of(
+    spike_counts, state_dim=3, n_restarts=8,
+    init="log_empirical_rate",   # data-driven x0
+    ridge_lambda=0.5,            # bias A toward identity
+)</code></pre>
+
+  <h2>Verification</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td>28 existing dynamax tests pass unchanged (backward compat)</td><td class="ok">PASS</td></tr>
+    <tr><td>4 new Tier 0.3 follow-up tests</td><td class="ok">PASS</td></tr>
+    <tr><td>Ridge directionality on weak-observability fixture (<code>rho_ridged &gt; rho_plain</code>)</td><td class="ok">PASS</td></tr>
+    <tr><td>Log-empirical init residual lower than legacy in log-rate space</td><td class="ok">PASS</td></tr>
+    <tr><td><code>ridge_lambda=0.0</code> bit-exact = implicit default (backward compat)</td><td class="ok">PASS</td></tr>
+  </table>
+
+  <h2>Docs fix</h2>
+  <p><code>RELEASE_READINESS.md</code> PyPI setup instructions now
+  distinguish the <strong>project-level URL</strong> (used when the project
+  already exists on PyPI) from the <strong>account-level Pending Publisher
+  URL</strong> (<code>pypi.org/manage/account/publishing/</code>, required
+  for a project's <em>first</em> publish). The v0.4.1 PyPI publish hit
+  this exact trap: the project-level URL 404s when the project doesn't
+  exist yet, and the first OIDC token gets rejected with
+  <code>invalid-publisher</code>.</p>
+
+  <h2>Files changed</h2>
+  <ul>
+    <li><code>nstat/extras/em/dynamax_bridge.py</code> &mdash; new
+      <code>_ppem_initialize_log_empirical_rate</code> +
+      <code>_select_ppem_initializer</code> helpers; <code>init</code>
+      and <code>ridge_lambda</code> kwargs threaded through
+      <code>fit_point_process_em</code>, <code>fit_hybrid_em</code>, and
+      both <code>_best_of</code> variants; ridge branch in
+      <code>_ppem_m_step_closed_form</code>.</li>
+    <li><code>tests/extras/test_dynamax_bridge.py</code> &mdash; 4 new tests.</li>
+    <li><code>docs/extras/em_dynamax.md</code> &mdash; API table + new
+      "Optional EM hardening (v0.4.2 &mdash; opt-in)" subsection.</li>
+    <li><code>parity/methods_roadmap.md</code> &mdash; Tier 0.3
+      follow-ups marked SHIPPED.</li>
+    <li><code>RELEASE_READINESS.md</code> &mdash; PyPI URL fix.</li>
+    <li><code>RELEASE_NOTES.md</code> &mdash; v0.4.2 entry.</li>
+  </ul>
+
+  <footer>
+    <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a>
+  </footer>
+</div>
+</body>
+</html>

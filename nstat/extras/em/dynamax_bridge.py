@@ -405,7 +405,7 @@ class PointProcessEMResult:
 def _ppem_initialize(
     observations: np.ndarray, state_dim: int, seed: int
 ):
-    """Sensible PP_EM initialization."""
+    """Legacy random PP_EM initialization (the v0.4.0 default)."""
     rng = np.random.default_rng(int(seed))
     emission_dim = int(observations.shape[1])
     A = 0.95 * np.eye(state_dim)
@@ -416,10 +416,59 @@ def _ppem_initialize(
     return A, C, Q, x0, P0
 
 
+def _ppem_initialize_log_empirical_rate(
+    observations: np.ndarray, state_dim: int, seed: int
+):
+    """Data-driven PP_EM initialization (Tier 0.3 follow-up).
+
+    Same A / Q / C / P0 as :func:`_ppem_initialize` so the random seed
+    structure of multi-restart runs is unchanged, but seeds ``x0`` from
+    the **empirical log-rate** per neuron — solving
+    :math:`C x_0 \\approx \\log(\\bar y)` in the least-squares sense.
+    The implied initial firing rate ``exp(C x_0)`` then matches the
+    observed mean spike count per bin, eliminating one bad-init mode
+    where EM starts in a basin where the rates are systematically off.
+
+    Opt in via ``init="log_empirical_rate"`` on
+    :func:`fit_point_process_em` / :func:`fit_hybrid_em` and the
+    ``_best_of`` variants.  The default remains ``"random"`` for
+    bit-exact backward compatibility with v0.4.x fits.
+    """
+    rng = np.random.default_rng(int(seed))
+    emission_dim = int(observations.shape[1])
+    A = 0.95 * np.eye(state_dim)
+    Q = 0.1 * np.eye(state_dim)
+    C = 0.1 * rng.standard_normal((emission_dim, state_dim))
+    obs = np.asarray(observations, dtype=float)
+    if obs.ndim == 1:
+        obs = obs.reshape(-1, 1)
+    # Empirical mean expected count per bin, clipped to avoid log(0).
+    mean_count = np.clip(obs.mean(axis=0), 1e-6, None)
+    log_rate = np.log(mean_count)
+    # Solve C @ x0 ≈ log_rate in least-squares sense (under- or
+    # over-determined depending on emission_dim vs state_dim).
+    x0 = np.linalg.pinv(C) @ log_rate
+    P0 = np.eye(state_dim)
+    return A, C, Q, x0, P0
+
+
+def _select_ppem_initializer(init: str):
+    """Resolve the ``init`` enum to the matching initializer function."""
+    if init == "random":
+        return _ppem_initialize
+    if init == "log_empirical_rate":
+        return _ppem_initialize_log_empirical_rate
+    raise ValueError(
+        f"init must be 'random' or 'log_empirical_rate'; got {init!r}"
+    )
+
+
 def _ppem_m_step_closed_form(
     smoothed_means: np.ndarray,
     smoothed_covariances: np.ndarray,
     smoothed_cross_covariances: np.ndarray | None = None,
+    *,
+    ridge_lambda: float = 0.0,
 ):
     """Closed-form M-step for the linear-Gaussian dynamics parameters.
 
@@ -471,7 +520,17 @@ def _ppem_m_step_closed_form(
     else:
         sum_cross = mean_cross  # biased fallback (moment-matching)
 
-    A = sum_cross @ np.linalg.pinv(sum_tm1)
+    if float(ridge_lambda) > 0.0:
+        # Tikhonov-style MAP A under a Gaussian prior centered at I:
+        #     A = (M21 + λI)(M11 + λI)⁻¹
+        # When M21, M11 → 0 (the weak-observability collapse mode)
+        # the limit is I, not 0 — mitigates the A → 0 collapse
+        # documented in docs/extras/em_dynamax.md (Tier 0.3 follow-up).
+        eye_d = np.eye(state_dim)
+        ridge = float(ridge_lambda)
+        A = (sum_cross + ridge * eye_d) @ np.linalg.inv(sum_tm1 + ridge * eye_d)
+    else:
+        A = sum_cross @ np.linalg.pinv(sum_tm1)
     Q = (sum_t - A @ sum_cross.T) / max(T - 1, 1)
     Q = 0.5 * (Q + Q.T) + 1e-8 * np.eye(state_dim)
 
@@ -766,6 +825,8 @@ def fit_point_process_em(
     n_iter: int = 30,
     n_newton_iter: int = 5,
     seed: int = 0,
+    init: str = "random",
+    ridge_lambda: float = 0.0,
 ) -> PointProcessEMResult:
     """Fit a Poisson-LGSSM via Laplace-approximated EM (PP_EM equivalent).
 
@@ -857,7 +918,7 @@ def fit_point_process_em(
     if state_dim < 1:
         raise ValueError(f"state_dim must be >= 1; got {state_dim}")
 
-    A, C, Q, x0, P0 = _ppem_initialize(observations, state_dim, seed)
+    A, C, Q, x0, P0 = _select_ppem_initializer(init)(observations, state_dim, seed)
     lls: list[float] = []
     prev_means: np.ndarray | None = None
 
@@ -871,7 +932,9 @@ def fit_point_process_em(
         )
         prev_means = means
         lls.append(ll)
-        A, Q, x0, P0 = _ppem_m_step_closed_form(means, covs, cross_covs)
+        A, Q, x0, P0 = _ppem_m_step_closed_form(
+            means, covs, cross_covs, ridge_lambda=ridge_lambda
+        )
         C = _ppem_newton_C(observations, means, covs, C, n_newton=n_newton_iter)
 
         # In-loop: cheap diagonal scale-pin only.  A full GL(d) gauge
@@ -1042,6 +1105,7 @@ def fit_hybrid_em(
     n_iter: int = 30,
     n_newton_iter: int = 3,
     seed: int = 0,
+    ridge_lambda: float = 0.0,
 ) -> HybridEMResult:
     """Fit a hybrid Poisson + Gaussian SSM via EM (mPPCO_EM equivalent).
 
@@ -1167,7 +1231,8 @@ def fit_hybrid_em(
 
         # Pass the lag-one cross-covariances so A/Q don't collapse.
         A, Q, x0, P0 = _ppem_m_step_closed_form(
-            smoothed_means, smoothed_covs, smoothed_cross_covs
+            smoothed_means, smoothed_covs, smoothed_cross_covs,
+            ridge_lambda=ridge_lambda,
         )
 
         C_p = _ppem_newton_C(
@@ -1576,6 +1641,8 @@ def fit_point_process_em_best_of(
     n_newton_iter: int = 5,
     base_seed: int = 0,
     n_quad: int = 15,
+    init: str = "random",
+    ridge_lambda: float = 0.0,
 ) -> MultiRestartResult:
     """Run :func:`fit_point_process_em` with several seeds and pick the best.
 
@@ -1642,6 +1709,8 @@ def fit_point_process_em_best_of(
                     n_iter=int(n_iter),
                     n_newton_iter=int(n_newton_iter),
                     seed=int(seed),
+                    init=init,
+                    ridge_lambda=float(ridge_lambda),
                 )
             score = point_process_predictive_ll(
                 test,
@@ -1686,6 +1755,7 @@ def fit_hybrid_em_best_of(
     n_newton_iter: int = 3,
     base_seed: int = 0,
     n_quad: int = 15,
+    ridge_lambda: float = 0.0,
 ) -> MultiRestartResult:
     """Hybrid (Poisson + Gaussian) multi-restart EM with predictive-LL selection.
 
@@ -1739,6 +1809,7 @@ def fit_hybrid_em_best_of(
                     n_iter=int(n_iter),
                     n_newton_iter=int(n_newton_iter),
                     seed=int(seed),
+                    ridge_lambda=float(ridge_lambda),
                 )
             score = hybrid_predictive_ll(
                 yp_test, yg_test,

@@ -105,12 +105,19 @@ freedom.
   bit-exact reproducibility, but degenerate collapses are automatically
   discarded by the selector.  Docs caveat in
   `docs/extras/em_dynamax.md` updated accordingly.
-- **Deferred to a future iteration:** the deeper M-step regularization
-  options (data-driven init from log-empirical-rate; ridge on the
-  `A`-`Q` M-step) — multi-restart selection on the diagnostic was the
-  highest-value-per-line change and is what the 0.2 finding most
-  directly called for.  The remaining options can be added incrementally
-  if specific fixtures still need them.
+- **Tier 0.3 follow-ups — SHIPPED (v0.4.2):** the deeper M-step
+  regularization options promised in the original Tier 0.3 plan are
+  now available as **opt-in** keyword arguments (defaults unchanged,
+  so v0.4.1 fits are bit-exact reproducible):
+  - `init="log_empirical_rate"` on `fit_point_process_em` and
+    `fit_point_process_em_best_of` — seeds `x0` from
+    `pinv(C) @ log(empirical_mean_rate)` so the implied initial rate
+    matches the data.
+  - `ridge_lambda=λ` on `fit_point_process_em` / `fit_hybrid_em` and
+    their `_best_of` variants — biases the A M-step toward the
+    identity via a Gaussian prior at `A=I` (limit when `S10, S11 → 0`
+    becomes `I`, not `0`).  Test asserts the directional property on a
+    weak-observability fixture.
 - **Placement:** `extras`. **Difficulty:** Moderate (delivered as a
   thin composition of the Tier 0.1 + 0.2 building blocks).
 
