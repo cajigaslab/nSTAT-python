@@ -68,6 +68,8 @@ Modeling and inference
    FitResult
    FitSummary
    FitResSummary
+   PopulationTimeRescaleResult
+   population_time_rescale
 
 .. autosummary::
    :toctree: _autosummary
