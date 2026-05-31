@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Friendly intro landing page · nSTAT-python</title>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --border:#d0d0d8; --ok:#38a169;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --border:#3a3a44; --ok:#68d391; }
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.6; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:820px; margin:0 auto; }
+  a { color:var(--accent); }
+  .back { font-size:.85rem; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.2rem; margin:1rem 0 1.8rem 0; }
+  header h1 { margin:.2rem 0 .3rem 0; font-size:1.9rem; }
+  header .meta { color:var(--fg-muted); font-size:.85rem; }
+  h2 { font-size:1.25rem; margin-top:1.8rem; border-bottom:1px solid var(--border); padding-bottom:.2rem; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  ul { padding-left:1.2rem; }
+  li { margin:.35rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; margin-top:.6rem; }
+  th,td { border:1px solid var(--border); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  th { background:var(--bg-card); }
+  .ok { color:var(--ok); font-weight:600; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="back"><a href="whats_new.html">&larr; What's New</a></p>
+  <header>
+    <h1>Friendly 5-minute intro landing page</h1>
+    <div class="meta">2026-05-31 · <code>docs/intro.html</code> ·
+      branch <code>docs/friendly-intro-page</code></div>
+  </header>
+
+  <h2>Why</h2>
+  <p>A new user landing on the GitHub repo or the docs site needed an
+  obvious "start here" — a guided tour rather than a Sphinx API ref.
+  This adds <strong>one</strong> hand-curated, self-contained HTML page
+  that gives the toolbox a friendly entry point with runnable code, the
+  <code>nstat.extras</code> tour, and the paper-example gallery.</p>
+
+  <h2>What shipped</h2>
+  <ul>
+    <li><code>docs/intro.html</code> — a self-contained page (embedded CSS,
+    light/dark aware) with: hero, install commands, six capability cards
+    each carrying a 5-10 line snippet using real public symbols, a tour
+    of every <code>nstat.extras</code> subpackage, the paper-example
+    thumbnail gallery (Examples 1-5), and a "Where to next" link panel.
+    Published at <code>/intro.html</code> via
+    <code>html_extra_path</code>.</li>
+    <li><code>README.md</code> &mdash; new top-of-readme callout pointing
+    visitors at the intro.</li>
+    <li><code>extras_summary.html</code> &mdash; small &laquo;-back link and
+    refreshed header pointing back to the intro for guided navigation.</li>
+    <li><code>tests/test_intro_page.py</code> &mdash; 5 drift guards: file
+    exists, registered in html_extra_path, README link present, every
+    name-dropped public symbol is in <code>nstat.__all__</code>, and the
+    gallery PNGs actually resolve under <code>docs/figures/example*/</code>.</li>
+  </ul>
+
+  <h2>The six capability cards</h2>
+  <table>
+    <tr><th>#</th><th>Card</th><th>Symbols used</th><th>Pointer for figures</th></tr>
+    <tr><td>1</td><td>Build a spike train</td><td><code>nspikeTrain</code></td><td><code>notebooks/nSpikeTrainExamples.ipynb</code></td></tr>
+    <tr><td>2</td><td>Assemble a Trial</td><td><code>Trial</code> · <code>Covariate</code> · <code>nstColl</code></td><td><code>notebooks/TrialExamples.ipynb</code></td></tr>
+    <tr><td>3</td><td>Poisson GLM + KS</td><td><code>Analysis.GLMFit</code> · <code>FitResult.computeKSStats</code></td><td>Paper Example 2 (thalamic whisker GLM)</td></tr>
+    <tr><td>4</td><td>Population GOF</td><td><code>population_time_rescale</code></td><td>inline (Tier 1.1)</td></tr>
+    <tr><td>5</td><td>State-space EM</td><td><code>fit_point_process_em_best_of</code></td><td><code>examples/extras/em_dynamax_demo.py</code></td></tr>
+    <tr><td>6</td><td>Clusterless decoding</td><td><code>fit_clusterless_decoder</code></td><td><code>examples/extras/decoding_clusterless_demo.py</code></td></tr>
+  </table>
+
+  <h2>Verification</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td><code>tests/test_intro_page.py</code> (5 drift guards)</td><td class="ok">PASS</td></tr>
+    <tr><td><code>make readme-check</code></td><td class="ok">PASS</td></tr>
+    <tr><td><code>make helpfile-check</code></td><td class="ok">PASS</td></tr>
+    <tr><td><code>make docs-strict</code> (two-pass <code>-W</code>)</td><td class="ok">PASS</td></tr>
+    <tr><td>Sphinx <code>/index.html</code> intact; <code>/intro.html</code> publishes</td><td class="ok">verified</td></tr>
+  </table>
+
+  <h2>Files changed</h2>
+  <ul>
+    <li>New: <code>docs/intro.html</code>, <code>tests/test_intro_page.py</code>, <code>docs/changes/2026-05-31-friendly-intro.html</code></li>
+    <li>Modified: <code>docs/conf.py</code> (<code>html_extra_path</code> += <code>intro.html</code>), <code>README.md</code> (top callout), <code>docs/extras_summary.html</code> (back-link + cross-reference), <code>docs/changes/whats_new.html</code> (new entry)</li>
+  </ul>
+
+  <footer>
+    <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a>
+  </footer>
+</div>
+</body>
+</html>

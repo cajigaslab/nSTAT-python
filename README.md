@@ -4,6 +4,11 @@
 
 [![test-and-build](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml)
 
+> 📖 **New here?** Start with the
+> [**5-minute intro**](https://cajigaslab.github.io/nSTAT-python/intro.html) —
+> a friendly tour of the toolbox with runnable snippets, the
+> `nstat.extras` opt-in bridges, and the paper-example gallery.
+
 `nSTAT-python` is a Python port of the [nSTAT](https://github.com/cajigaslab/nSTAT)
 open-source neural spike train analysis toolbox. It implements a range of models and
 algorithms for neural spike train data analysis, with a focus on point-process
