@@ -90,15 +90,29 @@ freedom.
   improves.  See `docs/extras/em_dynamax.md` (observability caveat).
 - **Placement:** `extras`.
 
-### 0.3 Harden PP_EM convergence under weak observability (new, from 0.2)
+### 0.3 Harden PP_EM convergence under weak observability — SHIPPED (multi-restart)
 
-- **What:** Stop the `A → 0` collapse on weakly-observable data.
-  Candidates: better data-driven initialization, a mild dynamics prior /
-  ridge on the `A`-`Q` M-step, and **multi-restart selection** using the
-  0.2 predictive LL to pick the best fit (this also resolves the
-  local-optima multiplicity left by Tier 0.1).
-- **Gap:** Surfaced by 0.2 — the trainer can return a degenerate fit with
-  no error.  **Placement:** `extras`. **Difficulty:** Moderate.
+- **What:** Stop the `A → 0` collapse on weakly-observable data and
+  resolve the local-optima multiplicity left by Tier 0.1.
+- **Done:** `fit_point_process_em_best_of` /
+  `fit_hybrid_em_best_of` (+ `MultiRestartResult`) compose Tier 0.1's
+  canonical gauge with Tier 0.2's true held-out predictive
+  log-likelihood: split the observations into train + held-out tail,
+  fit PP_EM with `n_restarts` random seeds on the train segment, score
+  each fit on the held-out tail, return the best.  This is now the
+  **recommended workflow** for PP_EM on real data — single-fit
+  `fit_point_process_em` is retained as a low-level primitive for
+  bit-exact reproducibility, but degenerate collapses are automatically
+  discarded by the selector.  Docs caveat in
+  `docs/extras/em_dynamax.md` updated accordingly.
+- **Deferred to a future iteration:** the deeper M-step regularization
+  options (data-driven init from log-empirical-rate; ridge on the
+  `A`-`Q` M-step) — multi-restart selection on the diagnostic was the
+  highest-value-per-line change and is what the 0.2 finding most
+  directly called for.  The remaining options can be added incrementally
+  if specific fixtures still need them.
+- **Placement:** `extras`. **Difficulty:** Moderate (delivered as a
+  thin composition of the Tier 0.1 + 0.2 building blocks).
 
 ---
 

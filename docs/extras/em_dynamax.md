@@ -47,6 +47,19 @@ segment + train-fitted parameters).  They replace the surrogate
 Gaussian-smoother `marginal_log_likelihoods` trace, which is **not** a
 valid objective (it re-linearizes each iteration).
 
+### Multi-restart selection (recommended workflow for real data)
+
+| Symbol | Notes |
+|---|---|
+| `fit_point_process_em_best_of(y, state_dim, *, n_restarts=8, holdout_fraction=0.2, n_iter=30, n_newton_iter=5, base_seed=0, n_quad=15)` | Runs PP_EM with `n_restarts` seeds on the train segment, scores each on the held-out tail with `point_process_predictive_ll`, returns the best → `MultiRestartResult` |
+| `fit_hybrid_em_best_of(yp, yg, state_dim, *, n_restarts=8, holdout_fraction=0.2, n_iter=30, n_newton_iter=3, base_seed=0, n_quad=15)` | Hybrid counterpart; scored by `hybrid_predictive_ll` |
+
+Single-fit `fit_point_process_em` can collapse to a degenerate solution
+under weak observability (see caveat below); multi-restart selection on
+the true held-out predictive log-likelihood is the production-quality
+mitigation.  Use these `*_best_of(...)` entry points instead of single-fit
+on real data.
+
 ### Result dataclasses
 
 | Dataclass | Fields |
@@ -56,6 +69,7 @@ valid objective (it re-linearizes each iteration).
 | `HybridEMResult` | `transition_matrix`, `poisson_observation_matrix`, `gaussian_observation_matrix`, `transition_covariance`, `gaussian_observation_covariance`, `initial_state_mean`, `initial_state_covariance`, `marginal_log_likelihoods`, `n_iter` |
 | `CMGFPoissonFilterResult` | `state_means`, `state_covariances`, `marginal_log_likelihood` |
 | `PredictiveLogLik` | `total`, `per_timestep`, `poisson`, `gaussian` |
+| `MultiRestartResult` | `best_result`, `best_seed`, `best_predictive_ll`, `all_seeds`, `all_predictive_lls` |
 
 All result arrays are plain NumPy — callers don't need to know about JAX or pytrees.
 
@@ -95,6 +109,7 @@ print(f"Learned Â:\n{result.transition_matrix}")
 | `fit_point_process_em` | shipped — **PP_EM equivalent** (CMGF E-step + closed-form/Newton M-step, Smith & Brown 2003 PPLDS) |
 | `fit_hybrid_em` | shipped — **mPPCO_EM equivalent** (IRLS-pseudo-obs augmented LG smoother E-step + closed-form / Newton M-step) |
 | `point_process_predictive_ll` / `hybrid_predictive_ll` | shipped — true one-step-ahead held-out predictive log-likelihood (pure NumPy, no dynamax) |
+| `fit_point_process_em_best_of` / `fit_hybrid_em_best_of` | shipped — multi-restart EM + held-out-predictive-LL selection (Tier 0.3 mitigation for the weak-observability `A → 0` collapse) |
 
 ### PP_EM and mPPCO_EM — experimental status & caveats
 
@@ -174,20 +189,24 @@ print(score.per_timestep)     # locate where a fit predicts poorly
 Because it is gauge-invariant and pure NumPy, it is the right tool to
 pick `state_dim`, compare EM restarts, or detect a bad fit.
 
-> ⚠️ **Observability caveat (a real limitation the diagnostic exposes).**
+> ⚠️ **Observability caveat (a real limitation, now mitigated).**
 > PP_EM's held-out predictive performance depends strongly on how much
 > the spikes constrain the latent.  With **weak observability** (few
-> neurons and/or small loadings) PP_EM tends to converge to a degenerate
-> solution — dynamics `A → 0`, inflated `C`/`Q` — that tracks the
-> in-sample mean rate but generalizes *worse than a constant-rate model*
-> (the predictive LL can be sharply negative). With **strong
-> observability** (many informative neurons) `A` is recovered and the
-> held-out predictive LL improves over the initialization.  The practical
-> recommendation: always check `*_predictive_ll` on held-out data, prefer
-> more neurons / informative loadings, and use multi-restart selection.
-> Hardening PP_EM convergence under weak observability is tracked in
-> [`parity/methods_roadmap.md`](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md)
-> (Tier 0).
+> neurons and/or small loadings) a *single* PP_EM fit can converge to a
+> degenerate solution — dynamics `A → 0`, inflated `C`/`Q` — that
+> tracks the in-sample mean rate but generalizes *worse than a
+> constant-rate model* (the predictive LL can be sharply negative).
+> With **strong observability** (many informative neurons) `A` is
+> recovered and the held-out predictive LL improves over the
+> initialization.
+>
+> **The recommended workflow on real data is therefore
+> `fit_point_process_em_best_of(...)` (or `fit_hybrid_em_best_of(...)`),
+> not a single-seed fit** — those run several restarts and pick the
+> seed with the best held-out predictive LL, automatically discarding
+> degenerate runs.  Single-fit `fit_point_process_em` remains available
+> as a low-level primitive for cases where you need a specific seed
+> (e.g. reproducing a paper figure).
 
 **What was fixed in the deep-dive pass** (improvements over the initial
 PR):

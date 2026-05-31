@@ -762,3 +762,93 @@ def test_predictive_ll_runs_on_em_output() -> None:
     assert np.isfinite(r.total)
     assert r.per_timestep.shape == (50,)
     assert np.all(np.isfinite(r.per_timestep))
+
+
+# ----------------------------------------------------------------------
+# Multi-restart selection (Tier 0.3 — harden PP_EM weak-observability)
+# ----------------------------------------------------------------------
+
+
+def test_fit_point_process_em_best_of_smoke_and_shapes() -> None:
+    """Multi-restart end-to-end: runs n_restarts seeds, returns a
+    MultiRestartResult whose ``best_*`` fields correspond to the
+    argmax of ``all_predictive_lls``."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import (
+        MultiRestartResult,
+        PointProcessEMResult,
+        fit_point_process_em_best_of,
+    )
+
+    y, *_ = _sim_pp_with_state(T=300, ed=4, c_scale=0.9)
+    result = fit_point_process_em_best_of(
+        y, state_dim=2, n_restarts=4, holdout_fraction=0.25,
+        n_iter=15, base_seed=0,
+    )
+
+    assert isinstance(result, MultiRestartResult)
+    assert isinstance(result.best_result, PointProcessEMResult)
+    assert result.all_seeds.shape == (4,)
+    assert result.all_predictive_lls.shape == (4,)
+    assert result.best_seed in result.all_seeds.tolist()
+    # best_result + best_predictive_ll correspond to argmax of all LLs
+    best_idx = int(np.nanargmax(result.all_predictive_lls))
+    assert int(result.all_seeds[best_idx]) == result.best_seed
+    assert np.isclose(result.best_predictive_ll, result.all_predictive_lls[best_idx])
+    # best LL is >= median (trivially, by construction; guards refactors)
+    finite = result.all_predictive_lls[np.isfinite(result.all_predictive_lls)]
+    if finite.size >= 2:
+        assert result.best_predictive_ll >= float(np.median(finite)) - 1e-6
+
+
+def test_fit_point_process_em_best_of_input_validation() -> None:
+    """``n_restarts`` and ``holdout_fraction`` are validated upfront."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_point_process_em_best_of
+
+    y = np.zeros((100, 2), dtype=int)
+    with pytest.raises(ValueError, match="n_restarts must be >= 1"):
+        fit_point_process_em_best_of(y, state_dim=2, n_restarts=0)
+    with pytest.raises(ValueError, match="holdout_fraction must be in"):
+        fit_point_process_em_best_of(y, state_dim=2, holdout_fraction=0.0)
+    with pytest.raises(ValueError, match="holdout_fraction must be in"):
+        fit_point_process_em_best_of(y, state_dim=2, holdout_fraction=1.0)
+    with pytest.raises(ValueError, match="training segment too short"):
+        # 5 train + 5 test bins isn't enough to fit PP_EM.
+        fit_point_process_em_best_of(
+            np.zeros((10, 2), dtype=int), state_dim=2, holdout_fraction=0.5
+        )
+
+
+def test_fit_hybrid_em_best_of_smoke_and_shapes() -> None:
+    """Hybrid multi-restart smoke + shape contract."""
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import (
+        HybridEMResult,
+        MultiRestartResult,
+        fit_hybrid_em_best_of,
+    )
+
+    yp, yg = _simulate_hybrid(T=240, state_dim=2, p_dim=2, g_dim=1, rng_seed=2)
+    result = fit_hybrid_em_best_of(
+        yp, yg, state_dim=2, n_restarts=3, holdout_fraction=0.25, n_iter=12,
+    )
+
+    assert isinstance(result, MultiRestartResult)
+    assert isinstance(result.best_result, HybridEMResult)
+    assert result.all_seeds.shape == (3,)
+    assert result.all_predictive_lls.shape == (3,)
+    finite = result.all_predictive_lls[np.isfinite(result.all_predictive_lls)]
+    assert finite.size >= 1, "all hybrid restarts failed to score"
+
+
+def test_fit_hybrid_em_best_of_rejects_mismatched_lengths() -> None:
+    pytest.importorskip("dynamax")
+    from nstat.extras.em.dynamax_bridge import fit_hybrid_em_best_of
+
+    with pytest.raises(ValueError, match="same T"):
+        fit_hybrid_em_best_of(
+            np.zeros((100, 2), dtype=int),
+            np.zeros((99, 1)),
+            state_dim=2,
+        )
