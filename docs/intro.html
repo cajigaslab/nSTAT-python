@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>nSTAT-python — Friendly intro to the toolbox</title>
+<meta name="description" content="A 5-minute introduction to nstat-python: build spike trains and trials, fit point-process GLMs, decode latent states, and use the nstat.extras opt-in bridges." />
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --accent-light:#4299e1; --border:#d0d0d8;
+    --tier-core:#38a169; --tier-extras:#dd6b20; --tier-info:#3182ce;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --accent-light:#63b3ed; --border:#3a3a44;
+            --tier-core:#68d391; --tier-extras:#f6ad55; --tier-info:#63b3ed; }
+  }
+  * { box-sizing: border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.55; margin:0; padding:2rem 1.2rem; }
+  .wrap { max-width:1040px; margin:0 auto; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.8rem; margin-bottom:2.2rem; }
+  header h1 { margin:.2rem 0 .6rem 0; font-size:2.4rem; line-height:1.15; }
+  header p.lede { color:var(--fg-muted); font-size:1.15rem; margin:0 0 .8rem 0; max-width:42em; }
+  header .meta { color:var(--fg-muted); font-size:.85rem; }
+  nav.toc { background:var(--bg-card); padding:.75rem 1rem; border-radius:8px;
+            font-size:.92rem; margin-bottom:2rem; border:1px solid var(--border); }
+  nav.toc a { color:var(--accent); margin-right:1.1rem; }
+  h2 { font-size:1.5rem; margin-top:2.4rem; border-bottom:1px solid var(--border); padding-bottom:.3rem; }
+  h3 { font-size:1.15rem; margin:1.4rem 0 .4rem 0; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  pre { background:#1e1e2e; color:#f8f8f2; padding:1rem; border-radius:8px; overflow-x:auto;
+        font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.85rem; line-height:1.45;
+        margin:.6rem 0; }
+  pre code { background:transparent; padding:0; color:inherit; font-size:inherit; }
+  .install-bar { display:flex; gap:.6rem; flex-wrap:wrap; margin-top:.6rem; }
+  .install-bar pre { flex:1 1 18rem; margin:0; font-size:.82rem; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(310px, 1fr));
+          gap:1rem; margin:1.2rem 0; }
+  .card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
+          padding:1rem 1.1rem; }
+  .card h3 { margin:.1rem 0 .4rem 0; font-size:1.05rem; display:flex; align-items:center; gap:.5rem; }
+  .card .num { background:var(--accent); color:#fff; width:1.4em; height:1.4em;
+               border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+               font-size:.85em; flex:0 0 auto; font-weight:600; }
+  .card pre { margin:.5rem 0; font-size:.78rem; }
+  .card .what { color:var(--fg-muted); font-size:.85rem; margin:.3rem 0 .5rem 0; }
+  .card .seemore { font-size:.82rem; color:var(--fg-muted); margin-top:.5rem; }
+  .tag { display:inline-block; font-size:.7rem; font-weight:600; letter-spacing:.03em;
+         padding:.1em .55em; border-radius:999px; background:var(--tier-core); color:#fff;
+         vertical-align:middle; }
+  .tag.extras { background:var(--tier-extras); }
+  .tag.info { background:var(--tier-info); }
+  .gallery { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+             gap:1rem; margin:1rem 0; }
+  .gallery .thumb { background:var(--bg-card); border:1px solid var(--border); border-radius:8px;
+                    overflow:hidden; display:flex; flex-direction:column; }
+  .gallery .thumb img { width:100%; height:auto; display:block; background:#fff; }
+  .gallery .thumb .caption { padding:.55rem .7rem; font-size:.82rem; }
+  .gallery .thumb .caption strong { display:block; font-weight:600; margin-bottom:.2rem; font-size:.84rem; }
+  .next { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:.8rem; }
+  .next .item { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:.7rem .9rem; }
+  .next .item strong { display:block; margin-bottom:.2rem; }
+  .next .item .desc { color:var(--fg-muted); font-size:.85rem; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2.5rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+  ul.tight { padding-left:1.2rem; margin:.4rem 0; }
+  ul.tight li { margin:.25rem 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>nSTAT-python — Neural Spike Train Analysis for Python</h1>
+  <p class="lede">A friendly Python port of the MATLAB
+  <a href="https://github.com/cajigaslab/nSTAT">nSTAT toolbox</a>.
+  Build trial objects from spike trains and covariates, fit point-process
+  generalized linear models (GLMs), check the fit with the time-rescaling
+  theorem, and decode latent states from neural recordings — with an
+  opt-in <code>nstat.extras</code> namespace for modern Python-only
+  additions (state-space EM, clusterless decoding, validation oracles,
+  data-interop bridges).</p>
+  <p class="meta">
+    Based on
+    <a href="https://doi.org/10.1016/j.jneumeth.2012.08.009">Cajigas, Malik &amp; Brown (2012)</a>,
+    <em>J. Neuroscience Methods</em> 211:245&ndash;264 ·
+    <a href="https://github.com/cajigaslab/nSTAT-python">GitHub repository</a> ·
+    <a href="https://github.com/cajigaslab/nSTAT-python/releases/latest">Latest release</a>
+  </p>
+</header>
+
+<nav class="toc">
+  <strong>On this page:</strong>
+  <a href="#install">Install</a>
+  <a href="#tour">5-minute tour</a>
+  <a href="#extras">nstat.extras</a>
+  <a href="#gallery">Paper-example gallery</a>
+  <a href="#next">Where to next</a>
+</nav>
+
+<h2 id="install">Install</h2>
+<p>nSTAT-python runs on Python 3.10+. Install from PyPI, then pull the
+example dataset (~150&nbsp;MB from figshare, used by the paper examples
+and several notebooks):</p>
+<div class="install-bar">
+<pre><code>pip install nstat-toolbox</code></pre>
+<pre><code>nstat-install --download-example-data always</code></pre>
+</div>
+<p>Opt-in <code>nstat.extras</code> dep groups (install only what you
+need):</p>
+<pre><code>pip install nstat-toolbox[neo,pynapple,nwb]       # data-interop bridges
+pip install nstat-toolbox[test-parity]            # validation oracles (nemos, pykalman, statsmodels)
+pip install nstat-toolbox[metrics]                # spike-distance metrics (pyspike)
+pip install nstat-toolbox[dynamax]                # state-space EM (JAX, ~200 MB)
+pip install nstat-toolbox[clusterless]            # clusterless decoding (JAX, ~200 MB)
+pip install nstat-toolbox[all-extras]             # all of the above EXCEPT dynamax + clusterless</code></pre>
+
+<h2 id="tour">5-minute tour</h2>
+<p>Six runnable snippets covering the most common workflows. Each card
+links to a notebook or paper example for the figure-producing version.</p>
+
+<div class="grid">
+
+  <div class="card">
+    <h3><span class="num">1</span> Build a spike train <span class="tag">core</span></h3>
+    <p class="what">Wrap a vector of spike times in an <code>nspikeTrain</code> — the universal spike-train object used everywhere in the toolbox.</p>
+<pre><code>import numpy as np
+from nstat import nspikeTrain
+
+# 100 spikes over 1 second at 1 kHz
+times = np.sort(np.random.default_rng(0).uniform(0, 1, 100))
+st = nspikeTrain(times, name="neuron1",
+                 sampleRate=1000,
+                 minTime=0.0, maxTime=1.0)
+print(f"{st.numSpikes} spikes; rate ~ {st.numSpikes:.0f} Hz")
+st.plot()</code></pre>
+    <div class="seemore">📓 More: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nSpikeTrainExamples.ipynb">notebooks/nSpikeTrainExamples.ipynb</a></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="num">2</span> Assemble a Trial <span class="tag">core</span></h3>
+    <p class="what">A <code>Trial</code> bundles spike trains, covariates, events, and neighbors for one experiment. The unit that <code>Analysis</code> takes as input.</p>
+<pre><code>from nstat import Trial, TrialConfig, Covariate, nstColl
+
+t = np.arange(0, 1.0, 1e-3)
+stim = np.sin(2*np.pi*5*t).reshape(-1, 1)
+cov = Covariate(t, stim, name="stim",
+                xlabelval="time", xunitval="s",
+                ylabelval="vel", yunitval="mm/s",
+                dataLabels=["stim"])
+nstc = nstColl([st])
+nstc.setMinTime(0.0); nstc.setMaxTime(1.0)
+trial = Trial(nstc, ev=None, covarColl=None, neighbors=None)</code></pre>
+    <div class="seemore">📓 More: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/TrialExamples.ipynb">notebooks/TrialExamples.ipynb</a></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="num">3</span> Fit a Poisson GLM + check fit <span class="tag">core</span></h3>
+    <p class="what"><code>Analysis.GLMFit</code> trains a point-process GLM with a stimulus filter and history kernel; <code>FitResult.computeKSStats</code> runs the time-rescaling KS goodness-of-fit test.</p>
+<pre><code>from nstat import TrialConfig, ConfigColl, Analysis
+
+cfg = TrialConfig(
+    covariate_specs=[("Baseline", "constant"),
+                     ("stim", "spline")],
+    sampleRate=1000,
+    history_window_times=[0.001, 0.002, 0.005, 0.01],
+    ensCovHist=[],
+)
+results = Analysis.runAnalysisForAllNeurons(
+    trial, ConfigColl([cfg]))
+fit = results[0][0]
+print(f"AIC={fit.AIC:.1f}  "
+      f"KS p={fit.computeKSStats()['ks_pvalue']:.3f}")</code></pre>
+    <div class="seemore">📓 More: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/AnalysisExamples.ipynb">notebooks/AnalysisExamples.ipynb</a> · 📊 Figure: <a href="figures/example02/README.html">Paper Example 2 — whisker-stimulus thalamic GLM</a></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="num">4</span> Population goodness-of-fit <span class="tag">core</span></h3>
+    <p class="what">Per-neuron KS plots can <em>pass</em> for every neuron while the model misses inter-neuron <em>coupling</em>. The Tao&nbsp;et&nbsp;al. (2018) marked time-rescaling test catches exactly those failures.</p>
+<pre><code>from nstat import population_time_rescale
+
+# counts_list[k] : binned spike counts for neuron k
+# lams[k] : model-expected counts per bin
+r = population_time_rescale(counts_list, lams,
+                            n_tau_bins=5)
+print(f"ground KS p = {r.ground_ks_pvalue:.3g}  "
+      f"mark chi2 p = {r.mark_chi2_pvalue:.3g}")
+# On synchronous neurons modeled as independent:
+# univariate KS passes; ground KS rejects at ~3e-49.</code></pre>
+    <div class="seemore">📖 New in v0.4.0 — see the <a href="whats_new.html">What's New</a> page</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="num">5</span> State-space EM <span class="tag extras">extras / em</span></h3>
+    <p class="what">Multi-restart EM with held-out predictive-LL selection — the recommended workflow for PP_EM on real data. Built on Dynamax (JAX) but returns plain NumPy.</p>
+<pre><code>from nstat.extras.em.dynamax_bridge import (
+    fit_point_process_em_best_of)
+
+result = fit_point_process_em_best_of(
+    spike_counts, state_dim=3,
+    n_restarts=8, holdout_fraction=0.2)
+result.best_result.transition_matrix
+result.best_predictive_ll      # held-out LL
+result.all_predictive_lls      # per-seed trace</code></pre>
+    <div class="seemore">▶ Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/em_dynamax_demo.py">examples/extras/em_dynamax_demo.py</a> · 📖 <a href="extras/em_dynamax.html">help file</a> · install <code>[dynamax]</code></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="num">6</span> Clusterless decoding <span class="tag extras">extras / decoding</span></h3>
+    <p class="what">Decode position from <em>unsorted</em> multiunit spikes (mark cube of waveform features) plus a discrete trajectory-type classifier on top. Bridges Denovellis 2021's library.</p>
+<pre><code>from nstat.extras.decoding.clusterless_bridge import (
+    fit_clusterless_decoder)
+
+result = fit_clusterless_decoder(
+    position,        # (T, n_position_dims)
+    multiunits,      # (T, n_marks, n_electrodes)
+    place_bin_size=5.0)
+result.posterior         # (T, n_position_bins)
+result.map_position      # (T, n_position_dims)</code></pre>
+    <div class="seemore">▶ Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_clusterless_demo.py">examples/extras/decoding_clusterless_demo.py</a> · 📖 <a href="extras/decoding_clusterless.html">help file</a> · install <code>[clusterless]</code></div>
+  </div>
+
+</div>
+
+<h2 id="extras">nstat.extras — opt-in Python-only additions</h2>
+<p>The core <code>nstat.*</code> namespace preserves the MATLAB nSTAT
+contract (stable, parity-faithful).
+<code>nstat.extras.*</code> is the monorepo addon namespace (modeled
+after <em>scikit-learn-contrib</em>) for Python-only features that have
+no MATLAB counterpart. Each subpackage is opt-in and brings its own
+dep group.</p>
+
+<div class="grid">
+  <div class="card">
+    <h3><code>interop</code> <span class="tag info">data formats</span></h3>
+    <p class="what">Converters between <code>Trial</code> / <code>SpikeTrainCollection</code> / <code>nspikeTrain</code> and the wider Python neuro stack.</p>
+    <ul class="tight">
+      <li><code>interop.neo</code> — Neo objects (<code>[neo]</code>)</li>
+      <li><code>interop.pynapple</code> — pynapple TS / TSGroup (<code>[pynapple]</code>)</li>
+      <li><code>interop.nwb</code> — NWB units + observation intervals (<code>[nwb]</code>)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3><code>validation</code> <span class="tag info">parity oracles</span></h3>
+    <p class="what">Cross-validation bridges that triangulate nstat's MATLAB-faithful estimates against independent reference implementations.</p>
+    <ul class="tight">
+      <li><code>nemos_bridge</code> — GLM oracle (NeMoS)</li>
+      <li><code>pykalman_bridge</code> — Kalman / smoother oracle</li>
+      <li><code>statsmodels_bridge</code> — Poisson GLM oracle</li>
+      <li><code>nitime_bridge</code> — spectral analysis cross-check</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3><code>metrics</code> <span class="tag info">spike-train distance</span></h3>
+    <p class="what">Modern multi-neuron spike-train distance metrics via <code>pyspike</code> (<code>[metrics]</code>).</p>
+    <ul class="tight">
+      <li>ISI distance, SPIKE distance, SPIKE-synchronization profiles</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3><code>em</code> <span class="tag extras">state-space EM</span></h3>
+    <p class="what">KF_EM / PP_EM / mPPCO_EM equivalents (Dynamax-backed) with the full Tier-0.1 canonical gauge, Tier-0.2 predictive-LL diagnostic, and Tier-0.3 multi-restart selector.</p>
+    <ul class="tight">
+      <li><code>fit_linear_gaussian_em</code> · <code>fit_point_process_em</code> · <code>fit_hybrid_em</code></li>
+      <li><code>cmgf_poisson_filter</code> / <code>_smoother</code> (inference on known model)</li>
+      <li><code>fit_*_em_best_of</code> + <code>point_process_predictive_ll</code> (recommended workflow)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3><code>decoding</code> <span class="tag extras">clusterless</span></h3>
+    <p class="what">Marked point-process state-space decoder + trajectory classifier (Denovellis 2021), the modern descendant of nSTAT's PPAF / PPHF. Spike-waveform features replace spike sorting.</p>
+    <ul class="tight">
+      <li><code>fit_clusterless_decoder</code> (continuous position)</li>
+      <li><code>fit_clusterless_classifier</code> (replay vs. local etc.)</li>
+    </ul>
+  </div>
+</div>
+
+<p>📚 <a href="extras_summary.html">Visual summary of every <code>nstat.extras</code> bridge</a> — per-card install matrix and runnable code snippets.</p>
+
+<h2 id="gallery">Paper-example gallery</h2>
+<p>The toolbox ships the five canonical paper examples
+(<a href="https://doi.org/10.1016/j.jneumeth.2012.08.009">Cajigas 2012</a>),
+each runnable in &lt;1 minute on the figshare dataset.</p>
+<div class="gallery">
+  <div class="thumb">
+    <img src="_images/fig01_constant_mg_summary.png" alt="Example 1 — mEPSC Mg2+ washout" loading="lazy" />
+    <div class="caption">
+      <strong>Example 1 — mEPSCs</strong>
+      Do mEPSCs follow constant vs. piecewise Poisson firing under Mg<sup>2+</sup> washout?
+      <br><a href="figures/example01/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example01_mepsc_poisson.py">Script</a>
+    </div>
+  </div>
+  <div class="thumb">
+    <img src="_images/fig01_data_overview.png" alt="Example 2 — thalamus whisker GLM" loading="lazy" />
+    <div class="caption">
+      <strong>Example 2 — Thalamus GLM</strong>
+      How do explicit whisker-stimulus and spike-history terms improve thalamic GLM fits?
+      <br><a href="figures/example02/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example02_whisker_stimulus_thalamus.py">Script</a>
+    </div>
+  </div>
+  <div class="thumb">
+    <img src="_images/fig01_simulated_and_real_rasters.png" alt="Example 3 — PSTH and SSGLM" loading="lazy" />
+    <div class="caption">
+      <strong>Example 3 — PSTH &amp; SSGLM</strong>
+      How do PSTH and the state-space GLM (SSGLM) capture within-trial and across-trial dynamics?
+      <br><a href="figures/example03/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example03_psth_and_ssglm.py">Script</a>
+    </div>
+  </div>
+  <div class="thumb">
+    <img src="_images/fig01_example_cells_path_overlay.png" alt="Example 4 — place cells" loading="lazy" />
+    <div class="caption">
+      <strong>Example 4 — Place cells</strong>
+      Which receptive-field basis (Gaussian vs. Zernike) better fits hippocampal place cells?
+      <br><a href="figures/example04/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example04_place_cells_continuous_stimulus.py">Script</a>
+    </div>
+  </div>
+  <div class="thumb">
+    <img src="_images/fig01_univariate_setup.png" alt="Example 5 — PPAF / PPHF decoding" loading="lazy" />
+    <div class="caption">
+      <strong>Example 5 — Decoding</strong>
+      How well do the adaptive (PPAF) and hybrid (PPHF) point-process filters decode stimulus and reach state?
+      <br><a href="figures/example05/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example05_decoding_ppaf_pphf.py">Script</a>
+    </div>
+  </div>
+</div>
+
+<h2 id="next">Where to next</h2>
+<div class="next">
+  <div class="item">
+    <strong><a href="api.html">API reference</a></strong>
+    <div class="desc">Every public symbol, auto-generated from the package docstrings (NumPy-style).</div>
+  </div>
+  <div class="item">
+    <strong><a href="ClassDefinitions.html">Class definitions</a></strong>
+    <div class="desc">Method catalog for each MATLAB-faithful class (<code>SignalObj</code>, <code>nspikeTrain</code>, <code>Trial</code>, <code>Analysis</code>, <code>FitResult</code>, …).</div>
+  </div>
+  <div class="item">
+    <strong><a href="PaperOverview.html">Paper-aligned toolbox map</a></strong>
+    <div class="desc">Crosswalk between the 2012 paper's workflow categories and the Python API.</div>
+  </div>
+  <div class="item">
+    <strong><a href="extras_summary.html">nstat.extras visual summary</a></strong>
+    <div class="desc">Per-bridge cards with install commands, status, and runnable snippets.</div>
+  </div>
+  <div class="item">
+    <strong><a href="whats_new.html">What's New</a></strong>
+    <div class="desc">Per-iteration change summaries (newest first) including the v0.4.0 release set.</div>
+  </div>
+  <div class="item">
+    <strong><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md">RELEASE_NOTES.md</a></strong>
+    <div class="desc">Per-version scope summaries (start here when upgrading).</div>
+  </div>
+  <div class="item">
+    <strong><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md">Methods roadmap</a></strong>
+    <div class="desc">What we're shipping next: Tier 3 deeper state-space methods, PP_EM init+ridge follow-ups, and more.</div>
+  </div>
+  <div class="item">
+    <strong><a href="https://github.com/cajigaslab/nSTAT-python">GitHub repository</a></strong>
+    <div class="desc">Source, issues, discussions, and the full notebook gallery under <code>notebooks/</code>.</div>
+  </div>
+</div>
+
+<footer>
+  Cajigas Lab ·
+  <a href="https://www.neurostat.mit.edu">Neuroscience Statistics Research Laboratory</a> ·
+  <a href="https://www.med.upenn.edu/cajigaslab/">RESToRe Lab</a> ·
+  GPL-2.0 license
+</footer>
+
+</div>
+</body>
+</html>

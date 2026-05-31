@@ -127,4 +127,4 @@ html_theme_options = {
 # These are self-contained pages (embedded CSS, no Sphinx wrap).  The
 # landing file is named whats_new.html — NOT index.html — so it does not
 # clobber Sphinx's generated /index.html.
-html_extra_path = ["extras_summary.html", "changes"]
+html_extra_path = ["extras_summary.html", "intro.html", "changes"]
