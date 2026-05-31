@@ -1,5 +1,99 @@
 # Release Notes
 
+## v0.4.0 — 2026-05-31
+
+A substantive minor release: the public API gains the **EM
+state-space trainer family** (`fit_linear_gaussian_em`,
+`fit_point_process_em`, `fit_hybrid_em` + diagnostics) in
+`nstat.extras.em.dynamax_bridge`, the **multivariate (Tao 2018)
+population goodness-of-fit** (`population_time_rescale`) in core, and a
+flagship **clusterless decoding** bridge in
+`nstat.extras.decoding.clusterless_bridge`.  No breaking changes; every
+existing public symbol is preserved.  Highlights below.
+
+### `nstat.*` (core) additions
+
+- **`population_time_rescale(counts_list, lam_per_bin_list, *, n_tau_bins=1)`**
+  → **`PopulationTimeRescaleResult`** — the Tao, Weber, Arai & Eden
+  (2018) marked point-process time-rescaling goodness-of-fit.  Scores a
+  *population* jointly: a ground-process KS plus a marked χ².  Catches
+  inter-neuron coupling misfit that the per-neuron univariate KS
+  (`FitResult.computeKSStats`) misses — e.g., a synchronous-pair model
+  whose per-neuron univariate KS both pass is rejected by the population
+  ground-process KS at p≈3e-49.  Pure NumPy/SciPy, additive — the
+  existing univariate `computeKSStats` and its MATLAB-gold fixtures are
+  untouched.  Python-only extension (the 2018 method postdates the 2012
+  MATLAB toolbox).
+
+### `nstat.extras.em.dynamax_bridge` (state-space EM — first user-facing release)
+
+The EM trainer family lands publicly for the first time in this
+release.  The trainers shipped via `[dynamax]` (JAX, ~200 MB) and are
+deliberately excluded from `[all-extras]`:
+
+- **EM trainers** (`KF_EM` / `PP_EM` / `mPPCO_EM` equivalents):
+  `fit_linear_gaussian_em`, `fit_point_process_em`, `fit_hybrid_em` +
+  result dataclasses.
+- **Inference** (PPDecodeFilter / PP_fixedIntervalSmoother equivalents):
+  `cmgf_poisson_filter`, `cmgf_poisson_smoother`.
+- **Tier 0.1 — full PLDS identifiability gauge** (`_canonicalize_gauge`):
+  pins the `GL(d)` gauge freedom to a canonical form (whiten + SVD-rotate
+  + sign-fix) once after EM convergence.  Across-seed `|ΔC|` drops from
+  ~460 (with NaN) → ~0.75 (PP) / ~0.15 (hybrid); the returned `C`
+  satisfies `CᵀC = diag(S²)` to machine precision.
+- **Tier 0.2 — true held-out predictive log-likelihood**:
+  `point_process_predictive_ll` / `hybrid_predictive_ll` + `PredictiveLogLik`.
+  The honest convergence / model-comparison metric (Gauss-Hermite
+  quadrature over the latent Gaussian predictive + exact MVN for the
+  Gaussian channel), replacing the surrogate Gaussian-smoother trace.
+  Pure NumPy (no dynamax/JAX), runs in the base test suite.
+- **Tier 0.3 — multi-restart selection** (the recommended workflow on
+  real data): `fit_point_process_em_best_of` / `fit_hybrid_em_best_of`
+  → `MultiRestartResult`.  Compose Tier 0.1 + 0.2: split by time, fit
+  N seeds on train, score each on the held-out tail, return the best.
+  Automatically discards the weak-observability `A → 0` collapses that
+  Tier 0.2 surfaced.
+
+### `nstat.extras.decoding.clusterless_bridge` (new — flagship)
+
+- **`fit_clusterless_decoder` / `fit_clusterless_classifier`** +
+  `ClusterlessDecoderResult` / `ClusterlessClassifierResult`.  Thin
+  bridge to MIT-licensed `replay_trajectory_classification`
+  (Denovellis et al. 2021, eLife) for marked point-process decoding (no
+  spike sorting required) and trajectory-type classification (replay
+  vs. local).  The modern descendant of nSTAT's PPAF / PPHF filters.
+  New `[clusterless]` opt-dep group (JAX-heavy; not in `[all-extras]`).
+
+### Hygiene / infrastructure
+
+- **Notebook-fidelity date-volatility fixed**: dropped the wall-clock
+  `generated_on` field from `parity/notebook_fidelity.yml`'s generator.
+  Eliminates the recurring local-only `make test` failure on dev
+  machines with the MATLAB checkout.
+- **Version-drift guards strengthened**: `tests/test_version_sync.py`
+  now also fails loudly on drift between `pyproject.toml` and
+  `docs/conf.py` `release` / `AGENT_GUIDE.md` `Package version` — both
+  drifted silently to 0.3.1 before v0.4.0 prep caught them.
+- **`docs/changes/`** — a published `What's New` tree of per-iteration
+  HTML change summaries at `https://cajigaslab.github.io/nSTAT-python/whats_new.html`.
+
+### Documentation
+
+- `docs/extras/em_dynamax.md` — full caveats for PP_EM/mPPCO_EM,
+  observability discussion, and the recommended `*_best_of` workflow.
+- `docs/extras/decoding_clusterless.md` — new help file for the
+  clusterless bridge.
+- `parity/methods_roadmap.md` — Tier 0.1 / 0.2 / 0.3 / 1.1 / 2.1 all
+  marked SHIPPED.  Remaining: Tier 3 (CLDS / NPNR / GP-GLM) +
+  data-driven-init / A-Q-ridge follow-ups for PP_EM.
+- `RELEASE_READINESS.md` — pre-release audit + tag checklist (this
+  file's working companion; can be deleted post-tag or reset to next
+  release's planning).
+
+### Breaking changes
+
+None.  Every pre-v0.4.0 public symbol is preserved.
+
 ## v0.3.2 — 2026-05-26
 
 Inaugural release of the **`nstat.extras` namespace** — a monorepo addon
