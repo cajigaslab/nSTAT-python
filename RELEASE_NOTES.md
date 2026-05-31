@@ -1,5 +1,52 @@
 # Release Notes
 
+## v0.4.2 — 2026-05-31
+
+Tier 0.3 follow-ups + a docs fix.  Two new **opt-in** keyword
+arguments on the PP_EM / mPPCO_EM trainers and their `_best_of`
+variants — defaults unchanged, so v0.4.1 fits remain bit-exactly
+reproducible.
+
+### EM hardening — opt-in (`nstat.extras.em.dynamax_bridge`)
+
+- **`init="log_empirical_rate"`** on `fit_point_process_em` /
+  `fit_point_process_em_best_of` — seeds `x0` from
+  `pinv(C) @ log(empirical_mean_rate)` so the implied initial firing
+  rate matches the data instead of `exp(0) = 1`.  Removes one bad-init
+  basin where EM starts with systematically wrong rates.
+- **`ridge_lambda=λ`** on `fit_point_process_em` and `fit_hybrid_em`
+  (and the `_best_of` variants) — biases the A M-step toward the
+  identity via a Gaussian prior at `A = I`:
+  `A = (S10 + λI)(S11 + λI)⁻¹`.  When `S10`, `S11 → 0` (the
+  weak-observability collapse mode) the limit becomes `I` rather than
+  `0`.  Try `0.1`–`1.0` if you see the `A → 0` collapse in
+  `*_best_of` traces.
+
+```python
+result = fit_point_process_em_best_of(
+    spike_counts, state_dim=3, n_restarts=8,
+    init="log_empirical_rate",   # data-driven x0
+    ridge_lambda=0.5,            # bias A toward identity
+)
+```
+
+Closes the Tier 0.3 follow-up items deferred from v0.4.0 (PR #119) and
+documented in `parity/methods_roadmap.md`.
+
+### Docs fix
+
+- **`RELEASE_READINESS.md`** PyPI setup instructions now distinguish
+  the **project-level URL** (used when the project already exists on
+  PyPI) from the **account-level Pending Publisher URL**
+  (`https://pypi.org/manage/account/publishing/`, required for a
+  project's first publish).  The v0.4.1 PyPI publish ran into this:
+  the project-level URL 404s when the project doesn't exist yet, and
+  the OIDC token gets rejected with `invalid-publisher`.
+
+### Breaking changes
+
+None.  All new parameters default to v0.4.1 behavior.
+
 ## v0.4.1 — 2026-05-31
 
 A post-v0.4.0 polish release.  No public API changes; closes the

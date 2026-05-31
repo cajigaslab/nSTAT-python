@@ -26,9 +26,16 @@ clicks-only chores:
      free; reserve it via the standard PyPI account flow before tagging
      to avoid a race.
 
-2. **Configure GitHub as a Trusted Publisher** at
-   https://pypi.org/manage/project/nstat-toolbox/settings/publishing/ —
-   add a publisher with these exact fields:
+2. **Configure GitHub as a Trusted Publisher.**  Two URLs depending on
+   whether the project already exists on PyPI:
+   - If the project **does not yet exist** (first publish):
+     https://pypi.org/manage/account/publishing/ &mdash; the "Add a new
+     pending publisher" section pre-registers the binding so the first
+     OIDC-authorized upload auto-creates the project.
+   - If the project **already exists**:
+     `https://pypi.org/manage/project/nstat-toolbox/settings/publishing/`
+
+   Either form takes these exact fields:
 
    | Field | Value |
    |---|---|

@@ -49,6 +49,19 @@
 
   <div class="entry">
     <div class="date">2026-05-31</div>
+    <h2><a href="2026-05-31-v0.4.2-em-hardening.html">v0.4.2 — EM hardening (opt-in)</a>
+      <span class="tag">extras / EM</span></h2>
+    <p>Tier 0.3 follow-ups deferred from v0.4.0 now ship as
+    <strong>opt-in</strong> keyword arguments (defaults unchanged):
+    <code>init="log_empirical_rate"</code> seeds <code>x0</code> from
+    <code>pinv(C) @ log(empirical_mean_rate)</code>, and
+    <code>ridge_lambda=&lambda;</code> biases the A M-step toward identity
+    to counter the weak-observability <code>A&rarr;0</code> collapse.
+    Plus a PyPI-URL doc fix in <code>RELEASE_READINESS.md</code>.</p>
+  </div>
+
+  <div class="entry">
+    <div class="date">2026-05-31</div>
     <h2><a href="2026-05-31-v0.4.1-polish.html">v0.4.1 — PyPI publishing + CI hygiene</a>
       <span class="tag">release</span></h2>
     <p>Post-v0.4.0 audit revealed the single biggest "drift" in the
