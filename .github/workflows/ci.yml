@@ -352,3 +352,31 @@ jobs:
         # These exercise the time-varying-R RTS smoother + EM trainers;
         # they would otherwise skip under importorskip.
         run: pytest -q tests/extras/test_dynamax_bridge.py -v
+
+  extras-clusterless:
+    # Dedicated job for the [clusterless] extra (replay_trajectory_classification),
+    # which is DELIBERATELY excluded from [all-extras] (JAX-heavy, ~200 MB).
+    # Without this job the clusterless decoder smoke tests
+    # (tests/extras/test_clusterless_bridge.py) skip in every CI run via
+    # ``pytest.importorskip`` — the same gap that the extras-dynamax job
+    # closes for the EM bridge.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package with the clusterless extra
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,clusterless]"
+      - name: Sanity-check the clusterless bridge imports
+        run: |
+          python -c "from nstat.extras.decoding.clusterless_bridge import (
+            fit_clusterless_decoder, fit_clusterless_classifier,
+            ClusterlessDecoderResult, ClusterlessClassifierResult)"
+      - name: Run clusterless decoding tests for real
+        # Exercises the upstream ClusterlessDecoder / ClusterlessClassifier
+        # via the bridge; would otherwise skip under importorskip.
+        run: pytest -q tests/extras/test_clusterless_bridge.py -v
