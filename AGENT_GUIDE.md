@@ -2,7 +2,7 @@
 
 > **Audience:** AI coding assistants (Claude, GPT, Cursor, Copilot, etc.) and
 > autonomous agents that need to use the `nstat-python` toolbox correctly.
-> Updated: 2026-05-21. Package version: 0.3.1.
+> Updated: 2026-05-30. Package version: 0.3.2.
 >
 > The MATLAB reference toolbox lives in a *separate* repository
 > (https://github.com/cajigaslab/nSTAT) and is deliberately kept independent
@@ -83,6 +83,12 @@ to re-verify).
 - `LinearCIF` — closed-form (sympy-free) CIF for the two canonical link cases (Poisson log-link, binomial logit-link).  Drop-in compatible with `CIF` for the 5 eval methods used by `DecodingAlgorithms.PPDecode_update`.  See the curriculum cross-reference (`Decoding the Brain` §4.B.7.4).
 - `FitResult` — fit output (coefficients, lambda signal, KS, AIC/BIC).
 - `FitResSummary` / `FitSummary` — aggregator across fits/cells.
+- `population_time_rescale` → `PopulationTimeRescaleResult` — multivariate
+  (marked) point-process time-rescaling GOF (Tao, Weber, Arai & Eden 2018).
+  Tests a *population* jointly: a ground-process KS plus a marked χ². Catches
+  inter-neuron coupling misfit that the per-neuron `FitResult.computeKSStats`
+  misses (e.g. synchronous neurons modeled as independent). Pure NumPy/SciPy,
+  operates on per-neuron binned spike counts + model `lambda` per bin.
 - `psth` — peri-stimulus time histogram convenience function.
 
 ### Decoding
@@ -293,10 +299,14 @@ These MATLAB methods exist but are **not yet ported** to Python (tracked in
 > module: `fit_linear_gaussian_em` (KF_EM), `fit_point_process_em` (PP_EM),
 > `fit_hybrid_em` (mPPCO_EM), plus `cmgf_poisson_filter` /
 > `cmgf_poisson_smoother` for point-process inference on a known model.
+> To check fit quality, use `point_process_predictive_ll` /
+> `hybrid_predictive_ll` — a true held-out predictive log-likelihood
+> (pure NumPy, no dynamax needed), **not** the trainers' surrogate
+> `marginal_log_likelihoods` trace.
 > Install with `pip install nstat-toolbox[dynamax]`. These are
 > independent reimplementations (Smith & Brown 2003 PPLDS algorithm +
 > Dynamax primitives), not bit-exact MATLAB ports — see the help file
-> for the parity caveats.
+> for the parity and weak-observability caveats.
 
 **If an agent needs one of these, raise the gap explicitly — do not silently
 substitute a related Python method.**  For state-space EM specifically,

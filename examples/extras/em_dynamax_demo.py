@@ -8,6 +8,8 @@ synthetic fixtures with known parameters:
    inference on a known Poisson-LGSSM (PPDecodeFilter / PP_fixedIntervalSmoother)
 3. ``fit_point_process_em``    — PP_EM equivalent (Poisson observations)
 4. ``fit_hybrid_em``           — mPPCO_EM equivalent (Poisson + Gaussian)
+5. ``point_process_predictive_ll`` — true held-out predictive log-
+   likelihood, the honest fit-quality metric (pure NumPy, no dynamax)
 
 Together these close the AUDIT_REPORT.md §3.2 gap (KF_EM / PP_EM /
 mPPCO_EM, 19 unported MATLAB methods).
@@ -108,6 +110,24 @@ def _demo_hybrid_em() -> int:
     return 0
 
 
+def _demo_predictive_ll() -> int:
+    """Held-out predictive log-likelihood — the honest quality metric.
+
+    Pure NumPy (no dynamax): scores the *true* Poisson likelihood of
+    held-out spikes under the one-step-ahead predictive state, and shows
+    it ranks the true generating parameters above a flat-rate model.
+    """
+    from nstat.extras.em.dynamax_bridge import point_process_predictive_ll
+
+    y, A, C, Q, x0, P0, _ = _simulate_poisson_lgssm()
+    y_train, y_test = y[:240], y[240:]
+    true = point_process_predictive_ll(y_test, A, C, Q, x0, P0).total
+    flat = point_process_predictive_ll(y_test, A, C * 0.0, Q, x0, P0).total
+    print(f"[PredLL]  held-out: true-params={true:.1f} > flat-rate={flat:.1f} "
+          f"({true > flat})")
+    return 0 if true > flat else 1
+
+
 def main() -> int:
     try:
         import nstat.extras.em.dynamax_bridge  # noqa: F401
@@ -116,15 +136,16 @@ def main() -> int:
         return 1
 
     print("nstat.extras.em.dynamax_bridge — full state-space demo\n")
+    # The predictive-LL diagnostic is pure NumPy — runs without dynamax.
+    rc = _demo_predictive_ll()
     try:
-        rc = 0
         rc |= _demo_linear_gaussian_em()
         rc |= _demo_cmgf_inference()
         rc |= _demo_point_process_em()
         rc |= _demo_hybrid_em()
     except ImportError as exc:
-        print(f"dynamax missing: {exc}")
-        return 1
+        print(f"dynamax missing (EM/inference demos skipped): {exc}")
+        return rc
     print("\nAll EM / inference routines ran." if rc == 0
           else "\nA routine reported a problem.")
     return rc

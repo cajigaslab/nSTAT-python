@@ -13,6 +13,10 @@ Exported symbols
   (Matlab ``FitResSummary``).
 - :class:`FitResSummary` — MATLAB-named alias of :class:`FitSummary`,
   defined at the bottom of the file for back-compat.
+- :func:`population_time_rescale` / :class:`PopulationTimeRescaleResult`
+  — multivariate (marked) point-process time-rescaling GOF (Tao et al.
+  2018); a Python-only extension that tests a *population* jointly and
+  catches inter-neuron coupling misfit the univariate KS test misses.
 
 All time vectors are in **seconds**; conditional intensities in spikes/s.
 """
@@ -371,6 +375,193 @@ def _matlab_kstest2(
 
     h = bool(alpha >= p_value)
     return h, p_value, ks_statistic
+
+
+# ----------------------------------------------------------------------
+# Multivariate / marked time-rescaling goodness-of-fit (Tao et al. 2018)
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PopulationTimeRescaleResult:
+    """Population-level (multivariate) time-rescaling GOF result.
+
+    The univariate KS test (:meth:`FitResult.computeKSStats`) checks each
+    neuron's *marginal* conditional intensity in isolation — it can pass
+    even when a model gets the **coupling** between neurons wrong.  The
+    marked point-process time-rescaling framework of Tao, Weber, Arai &
+    Eden (2018) tests the population jointly and exposes exactly those
+    failures.  Two complementary statistics are returned:
+
+    1. **Ground-process KS** — pool every neuron's spikes into one
+       "ground" process with intensity :math:`\\lambda_\\bullet(t) =
+       \\sum_k \\lambda_k(t)`, rescale it by :math:`\\Lambda_\\bullet`,
+       and KS-test the rescaled inter-event intervals against the unit
+       exponential.  Detects misfit in the population's aggregate
+       temporal structure.
+    2. **Marked-region Pearson** :math:`\\chi^2` — each spike of neuron
+       :math:`k` maps to a point :math:`(\\tau, k)` with
+       :math:`\\tau = \\int_0^{s}\\lambda_k`; under a correct model these
+       points are **uniform** over the region
+       :math:`R = \\{(\\tau, m): 0 \\le \\tau \\le b(m)\\}`,
+       :math:`b(m)=\\int_0^T\\lambda_m`.  A Pearson :math:`\\chi^2` over a
+       partition of :math:`R` tests that uniformity.  With
+       ``n_tau_bins > 1`` the partition resolves *within-neuron* timing,
+       making the test sensitive to mis-modeled coupling (because
+       :math:`\\lambda_k(t\\,|\\,H_t)` depends on other neurons' spike
+       history).
+
+    Attributes
+    ----------
+    ground_uniforms
+        Rescaled ground-process inter-event values, mapped to ``[0, 1]``
+        via :math:`1-e^{-\\xi}` (uniform under the null).
+    ground_ks_stat, ground_ks_pvalue
+        KS statistic and asymptotic p-value of ``ground_uniforms`` vs.
+        Uniform(0, 1).  ``nan`` if fewer than 2 pooled events.
+    mark_chi2_stat, mark_chi2_dof, mark_chi2_pvalue
+        Pearson :math:`\\chi^2` for uniform fill of :math:`R`, its
+        degrees of freedom (``n_cells - 1``), and upper-tail p-value.
+    expected_counts
+        :math:`b(m)` per neuron — the model-expected spike count
+        (:math:`\\int\\lambda_m`), shape ``(n_neurons,)``.
+    observed_counts
+        Observed total spike count per neuron, shape ``(n_neurons,)``.
+    """
+
+    ground_uniforms: np.ndarray
+    ground_ks_stat: float
+    ground_ks_pvalue: float
+    mark_chi2_stat: float
+    mark_chi2_dof: int
+    mark_chi2_pvalue: float
+    expected_counts: np.ndarray
+    observed_counts: np.ndarray
+
+
+def population_time_rescale(
+    counts_list: Sequence[np.ndarray],
+    lam_per_bin_list: Sequence[np.ndarray],
+    *,
+    n_tau_bins: int = 1,
+) -> PopulationTimeRescaleResult:
+    """Multivariate (marked) time-rescaling goodness-of-fit for a population.
+
+    Implements the marked point-process time-rescaling framework of Tao,
+    Weber, Arai & Eden (2018) for a population of neurons observed on a
+    shared, uniformly-binned time grid.  See
+    :class:`PopulationTimeRescaleResult` for the two statistics and what
+    they detect; the headline is that the marked :math:`\\chi^2`
+    (``n_tau_bins > 1``) catches inter-neuron **coupling** misfit that the
+    per-neuron univariate KS test (:meth:`FitResult.computeKSStats`)
+    misses.
+
+    This is a Python-only extension (the 2018 method postdates the 2012
+    MATLAB nSTAT toolbox); it has no ``matlab_gold`` counterpart.  It is
+    pure NumPy/SciPy and operates on binned arrays, so it composes with
+    any source of per-neuron intensities — e.g. a fitted GLM's
+    ``lambda`` signal (see :meth:`FitResult.computeKSStats` for how nstat
+    forms ``lambda``) sampled on the same grid as the spike counts.
+
+    Parameters
+    ----------
+    counts_list
+        Per-neuron spike counts per bin; a sequence of ``n_neurons``
+        arrays each shape ``(n_bins,)``.  Usually 0/1 with fine bins.
+    lam_per_bin_list
+        Per-neuron model-expected counts per bin
+        (:math:`\\lambda_k(t)\\,\\Delta`), same shapes as ``counts_list``.
+    n_tau_bins
+        Number of equal-:math:`\\tau` cells per neuron in the marked
+        :math:`\\chi^2` partition (default 1 = pure mark-proportion test;
+        ``> 1`` adds within-neuron temporal resolution → coupling
+        sensitivity).  Keep the expected count per cell ``>= ~5`` for the
+        asymptotic :math:`\\chi^2` to be valid.
+
+    Returns
+    -------
+    PopulationTimeRescaleResult
+
+    References
+    ----------
+    Tao L, Weber KM, Arai K, Eden UT (2018).  "A common goodness-of-fit
+    framework for neural population models using marked point process
+    time-rescaling."  J Comput Neurosci 45:147-162.
+    Brown EN, Barbieri R, Ventura V, Kass RE, Frank LM (2002), Neural
+    Computation 14:325-346 (the univariate special case).
+    """
+    from scipy import stats
+
+    if len(counts_list) != len(lam_per_bin_list):
+        raise ValueError("counts_list and lam_per_bin_list must have equal length")
+    if len(counts_list) == 0:
+        raise ValueError("need at least one neuron")
+    if int(n_tau_bins) < 1:
+        raise ValueError("n_tau_bins must be >= 1")
+
+    counts = [np.asarray(c, dtype=float).reshape(-1) for c in counts_list]
+    lams = [np.maximum(np.asarray(l, dtype=float).reshape(-1), 0.0) for l in lam_per_bin_list]
+    n_bins = counts[0].shape[0]
+    for c, l in zip(counts, lams, strict=True):
+        if c.shape[0] != n_bins or l.shape[0] != n_bins:
+            raise ValueError("all neurons must share the same number of time bins")
+
+    n_neurons = len(counts)
+    n_tau = int(n_tau_bins)
+
+    # --- (1) Ground process: pool counts, sum intensities, rescale -----
+    pooled = np.sum(counts, axis=0)
+    summed_lam = np.sum(lams, axis=0)
+    ground_u = _time_rescaled_uniforms(pooled, summed_lam)
+    if ground_u.size >= 2:
+        ks_stat, ks_p = stats.ks_1samp(ground_u, stats.uniform.cdf)
+        ground_ks_stat, ground_ks_pvalue = float(ks_stat), float(ks_p)
+    else:
+        ground_ks_stat, ground_ks_pvalue = float("nan"), float("nan")
+
+    # --- (2) Marked region R = {(tau, m): 0 <= tau <= b(m)} chi-square --
+    b = np.array([float(l.sum()) for l in lams])             # b(m)
+    observed_counts = np.array([float(c.sum()) for c in counts])
+    total_b = float(b.sum())
+    n_events = float(observed_counts.sum())
+
+    observed_cells = np.zeros((n_neurons, n_tau), dtype=float)
+    for k in range(n_neurons):
+        if b[k] <= 0.0:
+            continue
+        cum = np.cumsum(lams[k])                  # tau at end of each bin
+        spike_bins = np.flatnonzero(counts[k] > 0.0)
+        for bin_idx in spike_bins:
+            frac = min(cum[bin_idx] / b[k], 1.0)  # position in [0, 1]
+            j = min(int(frac * n_tau), n_tau - 1)
+            observed_cells[k, j] += float(round(counts[k][bin_idx]))
+
+    if total_b > 0.0 and n_events > 0.0:
+        # Under uniform fill of R, a cell spanning tau-length b[k]/n_tau
+        # has expected count n_events * (b[k]/n_tau) / total_b.
+        expected_cells = (n_events / total_b) * (b[:, None] / n_tau)
+        expected_cells = np.broadcast_to(expected_cells, (n_neurons, n_tau))
+        mask = expected_cells > 0.0
+        chi2_stat = float(
+            np.sum((observed_cells[mask] - expected_cells[mask]) ** 2 / expected_cells[mask])
+        )
+        mark_chi2_dof = int(mask.sum()) - 1
+        mark_chi2_pvalue = (
+            float(stats.chi2.sf(chi2_stat, mark_chi2_dof)) if mark_chi2_dof >= 1 else float("nan")
+        )
+    else:
+        chi2_stat, mark_chi2_dof, mark_chi2_pvalue = float("nan"), 0, float("nan")
+
+    return PopulationTimeRescaleResult(
+        ground_uniforms=ground_u,
+        ground_ks_stat=ground_ks_stat,
+        ground_ks_pvalue=ground_ks_pvalue,
+        mark_chi2_stat=chi2_stat,
+        mark_chi2_dof=mark_chi2_dof,
+        mark_chi2_pvalue=mark_chi2_pvalue,
+        expected_counts=b,
+        observed_counts=observed_counts,
+    )
 
 
 def _extract_stat_component(stat: Any, candidates: Sequence[str]) -> Any:
@@ -2253,4 +2444,11 @@ class FitResSummary(FitSummary):
     """MATLAB-compatible alias for FitSummary."""
 
 
-__all__ = ["FitResult", "FitSummary", "FitResSummary", "_SingleFit"]
+__all__ = [
+    "FitResult",
+    "FitSummary",
+    "FitResSummary",
+    "PopulationTimeRescaleResult",
+    "population_time_rescale",
+    "_SingleFit",
+]

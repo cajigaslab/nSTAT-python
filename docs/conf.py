@@ -38,7 +38,7 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 
 project = "nSTAT Python"
 author = "Cajigas Lab"
-release = "0.3.1"
+release = "0.3.2"
 
 
 # -- General configuration ---------------------------------------------------

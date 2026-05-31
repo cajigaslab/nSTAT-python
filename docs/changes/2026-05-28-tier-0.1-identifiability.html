@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tier 0.1 — Full PLDS identifiability (canonical gauge) · nSTAT-python</title>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --border:#d0d0d8; --ok:#38a169;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --border:#3a3a44; --ok:#68d391; }
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.6; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:820px; margin:0 auto; }
+  a { color:var(--accent); }
+  .back { font-size:.85rem; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.2rem; margin:1rem 0 1.8rem 0; }
+  header h1 { margin:.2rem 0 .3rem 0; font-size:1.9rem; }
+  header .meta { color:var(--fg-muted); font-size:.85rem; }
+  h2 { font-size:1.25rem; margin-top:1.8rem; border-bottom:1px solid var(--border); padding-bottom:.2rem; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  pre { background:#1e1e2e; color:#f8f8f2; padding:1rem; border-radius:8px; overflow-x:auto;
+        font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.85rem; }
+  ul { padding-left:1.2rem; }
+  li { margin:.35rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; margin-top:.6rem; }
+  th,td { border:1px solid var(--border); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  th { background:var(--bg-card); }
+  .ok { color:var(--ok); font-weight:600; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="back"><a href="whats_new.html">&larr; What's New</a></p>
+  <header>
+    <h1>Tier 0.1 — Full PLDS identifiability (canonical gauge)</h1>
+    <div class="meta">2026-05-28 · <code>nstat.extras.em.dynamax_bridge</code> ·
+      PR <a href="https://github.com/cajigaslab/nSTAT-python/pull/113">#113</a></div>
+  </header>
+
+  <h2>The problem</h2>
+  <p>The PP_EM (<code>fit_point_process_em</code>) and mPPCO_EM
+  (<code>fit_hybrid_em</code>) trainers fit a Poisson linear dynamical system,
+  which is gauge-free up to the full <code>GL(d)</code> group: the
+  reparameterization <code>(A, C, x) &rarr; (TAT&#8315;&#185;, CT&#8315;&#185;, Tx)</code>
+  leaves the observable log-rate <code>Cx</code> — and hence the likelihood —
+  invariant. Only the <code>d</code> scale degrees of freedom were pinned, so
+  <code>A</code>/<code>C</code> drifted across random seeds.</p>
+  <p>A previous attempt to canonicalize <em>every iteration</em> destabilized the
+  EM (it reshapes the optimization landscape each step and fights the Newton
+  trust-region) — producing <code>NaN</code> and across-seed
+  <code>|&#916;C| &asymp; 460</code> on identical data.</p>
+
+  <h2>The fix</h2>
+  <ul>
+    <li><strong>In-loop:</strong> keep only a cheap diagonal scale pin — enough
+    to keep <code>|C|</code> finite without disturbing the rotation the
+    optimizer is settling into.</li>
+    <li><strong>Once after convergence:</strong> apply the standard LDS canonical
+    form using fresh posteriors under the final parameters — whiten the latent
+    (<code>M&#8315;&#189;</code>), SVD-rotate the stacked emission matrix
+    (orthogonal, descending columns), and sign-fix. For the hybrid the rotation
+    is computed from the stacked <code>[C_p; C_g]</code> so both channels share
+    one frame.</li>
+  </ul>
+
+  <h2>Result</h2>
+  <table>
+    <tr><th>Quantity</th><th>Before</th><th>After</th></tr>
+    <tr><td>Across-seed <code>|&#916;C|</code> (PP_EM)</td><td>~460 (+ NaN)</td><td class="ok">~0.75</td></tr>
+    <tr><td>Across-seed <code>|&#916;C|</code> (hybrid)</td><td>large</td><td class="ok">~0.15</td></tr>
+    <tr><td>Returned <code>C&#7488;C</code></td><td>arbitrary</td><td class="ok">diag(S&#178;), machine-precision</td></tr>
+    <tr><td>Hybrid Gaussian <code>R</code></td><td>~0.09</td><td class="ok">~0.09 (unchanged, true 0.09)</td></tr>
+  </table>
+  <p>What remains is <em>local-optima</em> multiplicity (genuinely different
+  likelihoods across seeds), <strong>not</strong> gauge freedom — addressed by
+  multi-restart selection (Tier 0.3).</p>
+
+  <h2>Files changed</h2>
+  <ul>
+    <li><code>nstat/extras/em/dynamax_bridge.py</code> — <code>_canonicalize_gauge</code>;
+    in-loop scale pin + single post-loop canonicalization in both trainers.</li>
+    <li><code>tests/extras/test_dynamax_bridge.py</code> — two canonical-invariant tests
+    (orthogonality, descending singular values, sign convention, bounded <code>|C|</code>).</li>
+    <li><code>docs/extras/em_dynamax.md</code>, <code>parity/methods_roadmap.md</code> — caveats + status.</li>
+  </ul>
+
+  <footer>
+    <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> ·
+    <a href="https://cajigaslab.github.io/nSTAT-python/extras/em_dynamax.html">EM bridge docs</a>
+  </footer>
+</div>
+</body>
+</html>

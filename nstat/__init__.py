@@ -20,7 +20,13 @@ from .matlab_engine import (
     set_matlab_nstat_path,
 )
 from .events import Events
-from .fit import FitResSummary, FitResult, FitSummary
+from .fit import (
+    FitResSummary,
+    FitResult,
+    FitSummary,
+    PopulationTimeRescaleResult,
+    population_time_rescale,
+)
 from .glm import PoissonGLMResult, fit_poisson_glm
 from .history import History, HistoryBasis
 from .paper_examples_full import run_full_paper_examples
@@ -93,6 +99,8 @@ __all__ = [
     "FitResSummary",
     "FitResult",
     "FitSummary",
+    "PopulationTimeRescaleResult",
+    "population_time_rescale",
     "History",
     "HistoryBasis",
     "NetworkSimulationResult",
