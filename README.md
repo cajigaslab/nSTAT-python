@@ -20,7 +20,11 @@ continuous neural signals such as LFP, EEG, and ECoG.
 One of nSTAT's key strengths is point-process generalized linear models for spike
 train signals that provide a formal statistical framework for processing signals
 recorded from ensembles of single neurons. It also has extensive support for model
-fitting, model-order analysis, and adaptive decoding.
+fitting, model-order analysis, and adaptive decoding. Goodness-of-fit can be
+assessed per neuron with the time-rescaling KS test (`FitResult.computeKSStats`)
+or jointly across a population with the multivariate marked point-process
+time-rescaling test (`nstat.population_time_rescale`, Tao et al. 2018), which
+catches inter-neuron coupling misfit that per-neuron tests miss.
 
 Although created with neural signal processing in mind, nSTAT can be used as a
 generic tool for analyzing any types of discrete and continuous signals, and thus
@@ -208,7 +212,8 @@ optional-dep group:
 | [pykalman](https://github.com/pykalman/pykalman) | Pure-NumPy Kalman (cross-validation reference) | `nstat.extras.validation.pykalman_bridge` | `pip install nstat-toolbox[test-parity]` |
 | [statsmodels](https://www.statsmodels.org) | Poisson GLM (IRLS — tightest cross-validation oracle, ~1e-9 agreement) | `nstat.extras.validation.statsmodels_bridge` | `pip install nstat-toolbox[test-parity]` |
 | [PySpike](https://github.com/mariomulansky/PySpike) | ISI / SPIKE-distance spike-train metrics | `nstat.extras.metrics.spike_distances` | `pip install nstat-toolbox[metrics]` |
-| [Dynamax](https://github.com/probml/dynamax) | EM-trained linear-Gaussian state-space models (foundation for unported MATLAB `KF_EM` / `PP_EM` / `mPPCO_EM`) | `nstat.extras.em.dynamax_bridge` | `pip install nstat-toolbox[dynamax]` (pulls JAX ~200 MB) |
+| [Dynamax](https://github.com/probml/dynamax) | EM-trained linear-Gaussian / point-process / hybrid state-space models — the `KF_EM` / `PP_EM` / `mPPCO_EM` family, with held-out predictive log-likelihood and multi-restart selection | `nstat.extras.em.dynamax_bridge` | `pip install nstat-toolbox[dynamax]` (pulls JAX ~200 MB) |
+| [replay_trajectory_classification](https://github.com/Eden-Kramer-Lab/replay_trajectory_classification) | Clusterless marked point-process decoding (no spike sorting) + trajectory-type classification — the modern descendant of nSTAT's PPAF / PPHF filters | `nstat.extras.decoding.clusterless_bridge` | `pip install nstat-toolbox[clusterless]` (pulls JAX ~200 MB) |
 
 For ecosystem peers nstat does **not** wrap (spike sorting, calcium
 imaging, deep-learning decoders), see
@@ -220,5 +225,6 @@ for the rationale and recommended alternatives:
 - **[ssqueezepy](https://github.com/OverLordGoldDragon/ssqueezepy)** — wavelet synchrosqueezing; planned `nstat.extras.spectral`.
 
 Install every bridge at once: `pip install nstat-toolbox[all-extras]`
-(does **not** include `[dynamax]` due to JAX install size — install
-that group separately if you need EM-trained state-space models).
+(does **not** include `[dynamax]` or `[clusterless]` due to JAX install
+size — install those groups separately if you need EM-trained
+state-space models or clusterless decoding).

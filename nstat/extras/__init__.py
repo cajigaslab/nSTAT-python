@@ -4,17 +4,25 @@ This namespace is the home for features that have no counterpart in
 upstream MATLAB nSTAT and would dilute the MATLAB-parity contract of
 the core :mod:`nstat` package if added there.
 
-Three subpackages ship today:
+Five subpackages ship today:
 
 - :mod:`nstat.extras.interop` — converters between :class:`nstat.nspikeTrain`
   / :class:`nstat.SpikeTrainCollection` / :class:`nstat.Trial` and the
   data models used by **Neo**, **pynapple**, and **pynwb**.
 - :mod:`nstat.extras.validation` — Python-side cross-validation bridges
-  (start: **NeMoS** Poisson GLM) that triangulate nstat's MATLAB-faithful
-  estimates against independent reference implementations.
+  (**NeMoS** / **statsmodels** Poisson GLM, **pykalman**) that triangulate
+  nstat's MATLAB-faithful estimates against independent reference
+  implementations.
 - :mod:`nstat.extras.metrics` — modern spike-train distance / synchrony
   metrics (ISI-distance, SPIKE-distance, SPIKE-synchronization via
   **PySpike**) that have no MATLAB counterpart.
+- :mod:`nstat.extras.em` — EM-trained linear-Gaussian, point-process, and
+  hybrid state-space models (the ``KF_EM`` / ``PP_EM`` / ``mPPCO_EM``
+  families) via **Dynamax**, with held-out predictive log-likelihood,
+  identifiability-gauge canonicalization, and multi-restart selection.
+- :mod:`nstat.extras.decoding` — Bayesian point-process decoders that
+  extend nSTAT's PPAF / PPHF mathematics, including **clusterless**
+  marked point-process decoding via **replay_trajectory_classification**.
 
 Stability contract
 ------------------
