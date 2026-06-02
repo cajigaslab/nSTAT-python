@@ -69,10 +69,10 @@ nemos = [
   "nemos>=0.2",
 ]
 
-# Bridge to Dynamax / probml state-space models for the unported
-# KF_EM / PP_EM / mPPCO_EM families.  Pulls JAX (~200 MB).
-# Deliberately NOT in [all-extras] yet — gating on the CI extras-
-# functional run validating Dynamax compatibility first.
+# Bridge to Dynamax / probml state-space models — backs the
+# nstat.extras.em.dynamax_bridge KF_EM / PP_EM / mPPCO_EM family.
+# Pulls JAX (~200 MB).  Deliberately NOT in [all-extras] due to that
+# install size (like [clusterless]); install explicitly when needed.
 dynamax = [
   "dynamax>=0.1",
 ]
