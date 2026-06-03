@@ -21,7 +21,7 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
 .PHONY: help install test test-smoke test-fast test-datasets test-no-paper \
         regen regen-gallery regen-parity regen-figures regen-notebook-fidelity \
-        docs docs-strict docs-open \
+        docs docs-strict docs-open refresh-intersphinx-inv \
         diff-matlab readme-check helpfile-check freshness-check \
         format lint typecheck \
         version-check sanity clean release-check
@@ -89,6 +89,9 @@ docs-open: docs  ## Build docs and open in default browser (macOS / linux).
 	@command -v open >/dev/null && open docs/_build/html/index.html || \
 		(command -v xdg-open >/dev/null && xdg-open docs/_build/html/index.html) || \
 		echo "Built docs/_build/html/index.html — open it manually"
+
+refresh-intersphinx-inv:  ## Refresh vendored intersphinx fallback inventories in docs/_inv/.
+	$(PY) tools/refresh_intersphinx_inv.py
 
 # --- MATLAB parity diff (Phase 4.1) ---------------------------------
 
