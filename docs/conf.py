@@ -118,6 +118,16 @@ html_theme_options = {
     "collapse_navigation": False,
 }
 
+# Custom "oscilloscope / lab-instrument" theme layered on top of the RTD
+# theme — phosphor-green signal accents on deep charcoal, matching the
+# standalone docs/intro.html landing page.  See docs/_static/custom.css.
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+
+# Dark-friendly Pygments tokens so code blocks read well on the dark
+# code surface defined in custom.css.
+pygments_style = "monokai"
+
 # Copy standalone HTML pages into the build root.  Sphinx flattens a
 # directory entry's *contents* into the output root (the entry's own
 # name is dropped), so the docs/changes/ files publish at the site root:

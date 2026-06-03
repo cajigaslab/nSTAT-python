@@ -1,0 +1,277 @@
+/* ===================================================================
+   nSTAT-python — oscilloscope / lab-instrument theme for sphinx_rtd_theme
+   Matches the standalone docs/intro.html landing page: phosphor-green
+   signal accents on deep charcoal, blueprint grid, distinctive type.
+   Injected via conf.py (html_static_path + html_css_files).
+   =================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Spline+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+:root {
+  --bg:        #0a0c10;
+  --bg-2:      #0e1117;
+  --panel:     #12161e;
+  --panel-2:   #161b25;
+  --ink:       #e8ede6;
+  --ink-soft:  #aab4ad;
+  --ink-faint: #6b7780;
+  --line:      #1f2630;
+  --line-soft: #19202a;
+  --signal:    #c5f02d;
+  --signal-dim:#9bc41f;
+  --cyan:      #56d4dd;
+  --amber:     #ffb347;
+  --shadow:    0 18px 50px -20px rgba(0,0,0,.85);
+}
+
+/* ---------- Base / blueprint background ---------- */
+html, body { background: var(--bg); }
+body {
+  font-family: "Spline Sans", system-ui, sans-serif;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wy-nav-content-wrap {
+  background:
+    radial-gradient(900px 520px at 82% -6%, rgba(197,240,45,.07), transparent 60%),
+    radial-gradient(760px 600px at 2% 4%, rgba(86,212,221,.045), transparent 55%),
+    linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0 / 100% 36px,
+    linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0 / 36px 100%,
+    var(--bg);
+}
+.wy-nav-content {
+  background: transparent;
+  max-width: 60rem;
+  color: var(--ink);
+}
+
+/* ---------- Headings ---------- */
+.rst-content h1, .rst-content h2, .rst-content h3,
+.rst-content h4, .rst-content h5, .rst-content h6,
+h1, h2, h3, h4, h5, h6, .rst-content .toctree-wrapper p.caption {
+  font-family: "Bricolage Grotesque", sans-serif;
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: -.015em;
+}
+.rst-content h1 { font-size: 2.3rem; font-weight: 800; letter-spacing: -.02em; }
+.rst-content h2 {
+  font-size: 1.65rem; margin-top: 2.2rem;
+  padding-bottom: .4rem; border-bottom: 1px dashed var(--line);
+}
+.rst-content h3 { font-size: 1.3rem; }
+.rst-content .headerlink { color: var(--signal-dim); opacity: 0; }
+.rst-content h1:hover .headerlink, .rst-content h2:hover .headerlink,
+.rst-content h3:hover .headerlink, .rst-content h4:hover .headerlink { opacity: .9; }
+
+p, .rst-content p { color: var(--ink-soft); }
+.rst-content blockquote { color: var(--ink-soft); border-left: 3px solid var(--line); }
+strong { color: var(--ink); }
+
+/* ---------- Links ---------- */
+a, a:visited { color: var(--signal); text-decoration: none; }
+a:hover { color: #dcff66; text-decoration: underline; text-underline-offset: 3px; }
+.rst-content a code.literal { color: var(--signal); }
+
+/* ---------- Sidebar ---------- */
+.wy-nav-side {
+  background: var(--bg-2);
+  border-right: 1px solid var(--line);
+}
+.wy-side-nav-search {
+  background: linear-gradient(180deg, rgba(197,240,45,.06), transparent), var(--bg-2);
+  border-bottom: 1px solid var(--line);
+}
+.wy-side-nav-search > a,
+.wy-side-nav-search .wy-dropdown > a {
+  color: var(--ink);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+.wy-side-nav-search > a:hover { background: transparent; }
+.wy-side-nav-search > div.version { color: var(--signal); font-family: "JetBrains Mono", monospace; font-size: .72rem; letter-spacing: .12em; }
+.wy-side-nav-search input[type="text"] {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  box-shadow: none;
+}
+.wy-side-nav-search input[type="text"]::placeholder { color: var(--ink-faint); }
+.wy-side-nav-search input[type="text"]:focus { border-color: var(--signal); }
+
+.wy-menu-vertical header, .wy-menu-vertical p.caption {
+  color: var(--signal);
+  font-family: "JetBrains Mono", monospace;
+  font-size: .68rem; letter-spacing: .2em; text-transform: uppercase;
+}
+.wy-menu-vertical a {
+  color: var(--ink-soft);
+  border: 0;
+}
+.wy-menu-vertical a:hover { background: var(--panel); color: var(--ink); }
+.wy-menu-vertical li.current { background: transparent; }
+.wy-menu-vertical li.current > a {
+  background: var(--panel);
+  color: var(--ink);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--signal);
+}
+.wy-menu-vertical li.current a:hover { background: var(--panel-2); }
+.wy-menu-vertical li.toctree-l2.current > a,
+.wy-menu-vertical li.toctree-l2.current li.toctree-l3 > a,
+.wy-menu-vertical li.toctree-l3.current li.toctree-l4 > a {
+  background: var(--panel-2);
+  border-left: 3px solid var(--signal-dim);
+}
+.wy-menu-vertical li.current a { color: var(--ink-soft); border-right: 0; }
+.wy-menu-vertical li.on a, .wy-menu-vertical li.current > a { font-weight: 600; }
+
+/* ---------- Mobile top bar ---------- */
+.wy-nav-top {
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+}
+.wy-nav-top a { color: var(--signal); font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; }
+.wy-nav-top i { color: var(--ink); }
+
+/* ---------- Breadcrumbs ---------- */
+.wy-breadcrumbs li a { color: var(--signal-dim); }
+.wy-breadcrumbs-aside a, .rst-content .viewcode-link { color: var(--ink-faint); }
+.rst-content .wy-breadcrumbs-aside a:hover { color: var(--signal); }
+hr { border-top: 1px solid var(--line); }
+
+/* ---------- Inline + block code ---------- */
+.rst-content code, .rst-content tt, code, .rst-content code.literal {
+  font-family: "JetBrains Mono", monospace;
+  background: var(--panel-2);
+  border: 1px solid var(--line-soft);
+  color: var(--signal);
+  border-radius: 4px;
+  padding: .1em .42em;
+  font-size: .84em;
+}
+.highlight {
+  background: var(--bg-2) !important;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.rst-content div[class^="highlight"] { border: 0; }
+.highlight pre, .rst-content pre.literal-block {
+  font-family: "JetBrains Mono", monospace;
+  font-size: .82rem;
+  line-height: 1.6;
+  background: transparent;
+  color: #d7e0d4;
+}
+.rst-content .highlight > pre, .rst-content pre { color: #d7e0d4; }
+
+/* ---------- API signatures (autodoc) ---------- */
+.rst-content dl:not(.docutils) dt,
+.rst-content dl.py dt, html.writer-html5 .rst-content dl[class] > dt {
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  border-left: 3px solid var(--signal);
+  color: var(--ink);
+  font-family: "JetBrains Mono", monospace;
+}
+.rst-content dl:not(.docutils) dt .sig-name,
+.rst-content dl.py dt .sig-name { color: var(--signal); }
+.rst-content dl:not(.docutils) dl:not(.field-list) > dt {
+  background: var(--panel-2);
+  border-left: 2px solid var(--line);
+  color: var(--ink-soft);
+}
+.rst-content dl:not(.docutils) .property,
+.rst-content dl.py .property { color: var(--amber); }
+.rst-content dl.py .sig-param, .rst-content .sig-paren { color: var(--ink-soft); }
+.sig-prename, .rst-content .sig-prename { color: var(--ink-faint); }
+.rst-content dl dd { color: var(--ink-soft); }
+
+/* ---------- Tables ---------- */
+.wy-table-responsive table td, .wy-table-responsive table th,
+.rst-content table.docutils td, .rst-content table.docutils th,
+.rst-content table.field-list td, .rst-content table.field-list th {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+.rst-content table.docutils, .wy-table-bordered-all {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.rst-content table.docutils thead th, .wy-table thead th {
+  background: var(--panel);
+  color: var(--ink);
+  border-color: var(--line);
+  font-family: "JetBrains Mono", monospace;
+  font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+}
+.rst-content table.docutils tbody tr:nth-child(2n-1) td,
+.wy-table-odd td, .wy-table-striped tr:nth-child(2n-1) td {
+  background: var(--panel-2);
+}
+
+/* ---------- Admonitions ---------- */
+.rst-content .admonition, .rst-content .note, .rst-content .warning,
+.rst-content .tip, .rst-content .important, .rst-content .seealso,
+.rst-content .hint, .rst-content .attention, .rst-content .caution,
+.rst-content .danger, .rst-content .error {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--signal);
+  border-radius: 10px;
+  color: var(--ink-soft);
+}
+.rst-content .admonition-title {
+  background: rgba(197,240,45,.12);
+  color: var(--signal);
+  font-family: "JetBrains Mono", monospace;
+  font-size: .78rem; letter-spacing: .08em; text-transform: uppercase;
+}
+.rst-content .note { border-left-color: var(--cyan); }
+.rst-content .note .admonition-title { background: rgba(86,212,221,.12); color: var(--cyan); }
+.rst-content .warning, .rst-content .caution { border-left-color: var(--amber); }
+.rst-content .warning .admonition-title,
+.rst-content .caution .admonition-title { background: rgba(255,179,71,.12); color: var(--amber); }
+.rst-content .danger, .rst-content .error { border-left-color: #ff6b5e; }
+.rst-content .danger .admonition-title,
+.rst-content .error .admonition-title { background: rgba(255,107,94,.14); color: #ff8a7e; }
+
+/* ---------- Buttons / nav footer ---------- */
+.btn-neutral, .btn {
+  background: var(--panel) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: none !important;
+  font-family: "JetBrains Mono", monospace;
+}
+.btn-neutral:hover, .btn:hover { background: var(--panel-2) !important; border-color: #2c3742 !important; }
+.btn-neutral .fa { color: var(--signal) !important; }
+.rst-footer-buttons { margin-top: 1.4rem; }
+.rst-content .guilabel, .rst-content .kbd {
+  background: var(--panel-2); border-color: var(--line); color: var(--ink);
+}
+
+/* ---------- Footer ---------- */
+footer, .rst-content footer { color: var(--ink-faint); }
+footer p { color: var(--ink-faint); }
+.rst-content .footnote-reference, footer a { color: var(--signal-dim); }
+.wy-nav-content-wrap .rst-footer-buttons + hr + div { color: var(--ink-faint); }
+
+/* ---------- Search results & misc ---------- */
+.wy-side-nav-search img.logo, .wy-side-nav-search .wy-dropdown > a:before { color: var(--signal); }
+#search-results .search li { border-bottom: 1px solid var(--line); }
+.highlighted { background: rgba(197,240,45,.25); color: var(--ink); }
+
+/* ---------- Scrollbar (webkit) ---------- */
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: var(--bg-2); }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; border: 2px solid var(--bg-2); }
+::-webkit-scrollbar-thumb:hover { background: #2c3742; }
