@@ -116,7 +116,22 @@ html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "navigation_depth": 3,
     "collapse_navigation": False,
+    "logo_only": True,                      # show the brand logo, hide the text title
+    "style_nav_header_background": "#2c5282",  # nSTAT brand blue (see _static/custom.css)
 }
+
+# Brand assets (the official nSTAT wordmark, sourced from the MATLAB
+# toolbox helpfiles).  ``nstat-logo-light.png`` is a white variant that
+# reads cleanly on the dark/blue sidebar header; the favicon is the
+# neuron-"n" monogram cropped from the same mark.
+html_logo = "_static/nstat-logo-light.png"
+html_favicon = "_static/favicon.png"
+
+# Custom stylesheet that recolors the RTD theme to match the hand-built
+# landing pages and polishes typography / tables / code blocks.
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+html_title = f"nSTAT Python {release}"
 
 # Copy standalone HTML pages into the build root.  Sphinx flattens a
 # directory entry's *contents* into the output root (the entry's own
