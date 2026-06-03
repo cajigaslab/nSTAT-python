@@ -4,158 +4,165 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>nstat.extras — summary | nSTAT-python</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Spline+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:        #0a0c10;
-    --bg-2:      #0e1117;
-    --panel:     #12161e;
-    --panel-2:   #161b25;
-    --ink:       #e8ede6;
-    --ink-soft:  #aab4ad;
-    --ink-faint: #6b7780;
-    --line:      #1f2630;
-    --line-soft: #19202a;
-    --signal:    #c5f02d;   /* tier A — validation */
-    --signal-dim:#9bc41f;
-    --cyan:      #56d4dd;   /* tier B — interop */
-    --amber:     #ffb347;   /* tier C — metrics */
-    --shadow:    0 18px 50px -20px rgba(0,0,0,.85);
-    /* Legacy aliases mapped onto the new palette */
-    --fg: var(--ink); --fg-muted: var(--ink-soft);
-    --bg-card: var(--panel); --bg-code: var(--panel-2);
-    --accent: var(--signal); --border: var(--line);
-    --tier-a: var(--signal); --tier-b: var(--cyan); --tier-c: var(--amber);
+    --fg: #1a1a1a;
+    --fg-muted: #555;
+    --bg: #fdfdfd;
+    --bg-card: #f5f5f7;
+    --bg-code: #eee;
+    --accent: #2c5282;
+    --accent-light: #4299e1;
+    --border: #d0d0d8;
+    --tier-a: #38a169;
+    --tier-b: #3182ce;
+    --tier-c: #d69e2e;
+    --card-solid: #ffffff;
+    --planned-bg: #fff5e6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e6e6e6;
+      --fg-muted: #aaa;
+      --bg: #16161a;
+      --bg-card: #22222a;
+      --bg-code: #2a2a33;
+      --accent: #90cdf4;
+      --accent-light: #63b3ed;
+      --border: #3a3a44;
+      --tier-a: #68d391;
+      --tier-b: #63b3ed;
+      --tier-c: #f6ad55;
+      --card-solid: #22222a;
+      --planned-bg: #2c2418;
+    }
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
   body {
-    font-family: "Spline Sans", system-ui, sans-serif;
-    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color: var(--fg);
     background: var(--bg);
-    line-height: 1.62;
+    line-height: 1.55;
     margin: 0;
-    padding: 2.4rem 1.5rem 0;
-    font-size: 16.5px;
-    -webkit-font-smoothing: antialiased;
-    position: relative;
-  }
-  body::before {
-    content: ""; position: fixed; inset: 0; z-index: -2;
-    background:
-      radial-gradient(900px 520px at 80% -10%, rgba(197,240,45,.09), transparent 60%),
-      radial-gradient(760px 600px at 0% 6%, rgba(86,212,221,.05), transparent 55%),
-      linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0 / 100% 34px,
-      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0 / 34px 100%,
-      var(--bg);
-  }
-  body::after {
-    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-    opacity: .035;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    padding: 2rem 1.5rem;
   }
   .wrap { max-width: 1040px; margin: 0 auto; }
-  a { color: var(--signal); transition: color .15s; }
-  a:hover { color: #dcff66; }
-  header { border-bottom: 1px solid var(--line); padding-bottom: 1.8rem; margin-bottom: 2.2rem; }
-  header h1 { margin: 0 0 0.6rem 0; font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(2.2rem, 5vw, 3.2rem); letter-spacing: -.02em; }
-  header h1 code { font-family: "JetBrains Mono", monospace; background: none; border: 0; padding: 0; color: var(--signal); }
-  header p.lede { color: var(--ink-soft); font-size: 1.16rem; margin: 0; max-width: 58ch; }
-  header .meta { color: var(--ink-faint); font-size: 0.85rem; margin-top: 0.7rem; font-family: "JetBrains Mono", monospace; }
-  header .meta a { color: var(--ink-soft); }
-  header .meta a:hover { color: var(--signal); }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  header h1 { margin: 0 0 0.4rem 0; font-size: 2.2rem; }
+  header p.lede { color: var(--fg-muted); font-size: 1.1rem; margin: 0; }
+  header .meta { color: var(--fg-muted); font-size: 0.85rem; margin-top: 0.5rem; }
+  header a { color: var(--accent); }
   nav.toc {
-    background: var(--panel); border: 1px solid var(--line);
-    padding: 0.9rem 1.2rem; border-radius: 10px;
-    margin-bottom: 2.4rem; font-size: 0.92rem;
+    background: var(--bg-card);
+    padding: 0.8rem 1.2rem;
+    border-radius: 6px;
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
   }
-  nav.toc strong { display: block; margin-bottom: 0.45rem; font-family: "JetBrains Mono", monospace; font-size: .7rem; letter-spacing: .2em; text-transform: uppercase; color: var(--signal); }
-  nav.toc a { color: var(--ink-soft); margin-right: 1.3rem; text-decoration: none; }
-  nav.toc a:hover { color: var(--signal); }
+  nav.toc strong { display: block; margin-bottom: 0.3rem; }
+  nav.toc a { color: var(--accent); margin-right: 1.2rem; text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
   h2 {
-    margin-top: 3rem; padding-bottom: 0.7rem;
-    border-bottom: 1px dashed var(--line);
-    font-family: "Bricolage Grotesque", sans-serif; font-weight: 700;
-    font-size: clamp(1.45rem, 3vw, 1.9rem); letter-spacing: -.015em;
+    margin-top: 2.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 1.5rem;
   }
-  h3 { margin-top: 1.8rem; font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 1.18rem; }
-  p { color: var(--ink-soft); max-width: 74ch; }
-  p strong, li strong { color: var(--ink); }
-  li { color: var(--ink-soft); }
-  li::marker { color: var(--signal-dim); }
-  code, pre { font-family: "JetBrains Mono", monospace; font-size: 0.88em; }
-  code { background: var(--panel-2); color: var(--signal); padding: 0.1em 0.4em; border-radius: 4px; border: 1px solid var(--line-soft); }
+  h3 { margin-top: 1.8rem; font-size: 1.2rem; }
+  code, pre {
+    font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+    font-size: 0.9em;
+  }
+  code { background: var(--bg-code); padding: 0.1em 0.35em; border-radius: 3px; }
   pre {
-    background: var(--bg-2); border: 1px solid var(--line);
-    color: #d7e0d4; padding: 0.95rem 1.05rem; border-radius: 10px;
-    overflow-x: auto; line-height: 1.55;
+    background: #1e1e2e;
+    color: #f8f8f2;
+    padding: 0.85rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    line-height: 1.4;
   }
-  pre code { background: transparent; padding: 0; border: 0; color: inherit; }
+  pre code { background: transparent; padding: 0; color: inherit; }
   table {
-    border-collapse: separate; border-spacing: 0; width: 100%;
-    margin: 1.2rem 0; font-size: 0.92rem;
-    border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+    font-size: 0.95rem;
   }
-  th, td { border-bottom: 1px solid var(--line); padding: 0.6rem 0.85rem; text-align: left; vertical-align: top; }
-  td { color: var(--ink-soft); }
-  tr:last-child td { border-bottom: 0; }
-  th { background: var(--panel); color: var(--ink); font-family: "JetBrains Mono", monospace; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; }
-  .tier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.2rem; margin: 1.6rem 0; }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.55rem 0.8rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--bg-card); }
+  .tier-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.2rem;
+    margin: 1.5rem 0;
+  }
   .tier {
-    border: 1px solid var(--line); border-left-width: 3px; border-radius: 12px;
-    padding: 1.2rem 1.35rem; background: var(--panel);
-    transition: transform .22s, box-shadow .22s, border-color .22s;
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 6px;
+    padding: 1.1rem 1.3rem;
+    background: var(--bg-card);
   }
-  .tier:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
   .tier h3 { margin-top: 0; }
-  .tier.a { border-left-color: var(--signal); }
-  .tier.b { border-left-color: var(--cyan); }
-  .tier.c { border-left-color: var(--amber); }
-  .tier p { color: var(--ink-soft); }
+  .tier.a { border-left-color: var(--tier-a); }
+  .tier.b { border-left-color: var(--tier-b); }
+  .tier.c { border-left-color: var(--tier-c); }
   .tier-tag {
-    display: inline-flex; align-items: center; gap: .4em;
-    font-family: "JetBrains Mono", monospace; font-weight: 700;
-    padding: 0.18em 0.55em; border-radius: 999px;
-    font-size: 0.66em; letter-spacing: 0.12em; text-transform: uppercase;
-    margin-right: 0.4em; vertical-align: middle;
+    display: inline-block;
+    color: white;
+    padding: 0.12em 0.55em;
+    border-radius: 3px;
+    font-size: 0.78em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-right: 0.4em;
+    vertical-align: middle;
   }
-  .tier-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 7px currentColor; }
-  .tier-tag.a { background: rgba(197,240,45,.1); color: var(--signal); border: 1px solid rgba(197,240,45,.32); }
-  .tier-tag.b { background: rgba(86,212,221,.1); color: var(--cyan); border: 1px solid rgba(86,212,221,.32); }
-  .tier-tag.c { background: rgba(255,179,71,.1); color: var(--amber); border: 1px solid rgba(255,179,71,.32); }
+  .tier-tag.a { background: var(--tier-a); }
+  .tier-tag.b { background: var(--tier-b); }
+  .tier-tag.c { background: var(--tier-c); }
   .bridge-card {
-    border: 1px solid var(--line); border-radius: 12px;
-    padding: 1.2rem 1.35rem; margin: 1.2rem 0; background: var(--panel);
-    transition: transform .22s, box-shadow .22s, border-color .22s;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.1rem 1.3rem;
+    margin: 1.2rem 0;
+    background: var(--card-solid);
   }
-  .bridge-card:hover { transform: translateY(-3px); border-color: #2c3742; box-shadow: var(--shadow); }
   .bridge-card h4 {
-    margin: 0 0 0.5rem 0; font-size: 1.02rem;
-    font-family: "JetBrains Mono", monospace; color: var(--ink);
-    display: flex; align-items: center; gap: .2rem; flex-wrap: wrap;
+    margin: 0 0 0.4rem 0;
+    font-size: 1.05rem;
+    font-family: "SF Mono", Monaco, monospace;
+    color: var(--accent);
   }
-  .bridge-card .install { color: var(--ink-faint); font-size: 0.84rem; margin: 0.2rem 0 0.8rem 0; font-family: "JetBrains Mono", monospace; }
-  .bridge-card p { color: var(--ink-soft); }
-  .bridge-card pre { margin: 0.7rem 0; font-size: 0.8em; }
+  .bridge-card .install {
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+    margin: 0.2rem 0 0.8rem 0;
+  }
+  .bridge-card pre { margin: 0.6rem 0; font-size: 0.82em; }
   footer {
-    margin-top: 3.5rem; padding: 1.8rem 0 3rem;
-    border-top: 1px solid var(--line);
-    color: var(--ink-faint); font-size: 0.82rem;
-    font-family: "JetBrains Mono", monospace;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--fg-muted);
+    font-size: 0.85rem;
   }
-  footer a { color: var(--ink-soft); }
-  footer a:hover { color: var(--signal); }
-  .badge { color: var(--ink-faint); font-size: 0.8rem; }
-  .badge a { color: var(--signal-dim); }
+  footer a { color: var(--accent); }
+  .badge { color: var(--fg-muted); font-size: 0.8rem; }
   .planned {
-    background: rgba(255,179,71,.06);
-    border: 1px solid rgba(255,179,71,.25); border-left: 3px solid var(--amber);
-    padding: 1rem 1.2rem; margin: 1.2rem 0; border-radius: 10px;
-    font-size: 0.95rem; color: var(--ink-soft);
+    background: var(--planned-bg);
+    border-left: 4px solid #f6ad55;
+    padding: 0.8rem 1.1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    font-size: 0.95rem;
   }
-  .planned strong { color: var(--ink); }
 </style>
 </head>
 <body>
