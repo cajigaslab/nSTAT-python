@@ -93,6 +93,8 @@ a:hover { color: #dcff66; text-decoration: underline; text-underline-offset: 3px
   letter-spacing: -.01em;
 }
 .wy-side-nav-search > a:hover { background: transparent; }
+/* Brand logo (html_logo + logo_only) sits in the dark sidebar header */
+.wy-side-nav-search > a img.logo { max-width: 80%; padding: 8px 0 4px; }
 .wy-side-nav-search > div.version { color: var(--signal); font-family: "JetBrains Mono", monospace; font-size: .72rem; letter-spacing: .12em; }
 .wy-side-nav-search input[type="text"] {
   background: var(--panel-2);

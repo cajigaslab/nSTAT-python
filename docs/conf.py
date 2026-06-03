@@ -96,12 +96,23 @@ napoleon_use_rtype = True
 
 # -- intersphinx -------------------------------------------------------------
 
+# Each target carries a vendored fallback inventory under ``docs/_inv/``.
+# Sphinx tries the live ``objects.inv`` first (so cross-refs stay current),
+# then falls back to the committed copy if the host is unreachable.  This
+# keeps the strict ``-W`` docs build / GitHub Pages deploy from failing on
+# a transient network hiccup (e.g. a ``docs.scipy.org`` timeout), since a
+# successful fallback emits no warning.  ``intersphinx_timeout`` bounds the
+# wait per host so an outage can't stall the build for minutes.
+# Refresh the vendored inventories with ``make refresh-intersphinx-inv``
+# (or re-download ``<uri>objects.inv``) when upstream targets move.
+intersphinx_timeout = 10  # seconds per inventory fetch
+
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
-    "matplotlib": ("https://matplotlib.org/stable/", None),
-    "sympy": ("https://docs.sympy.org/latest/", None),
+    "python": ("https://docs.python.org/3", (None, "_inv/python.inv")),
+    "numpy": ("https://numpy.org/doc/stable/", (None, "_inv/numpy.inv")),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", (None, "_inv/scipy.inv")),
+    "matplotlib": ("https://matplotlib.org/stable/", (None, "_inv/matplotlib.inv")),
+    "sympy": ("https://docs.sympy.org/latest/", (None, "_inv/sympy.inv")),
 }
 
 
@@ -116,16 +127,27 @@ html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "navigation_depth": 3,
     "collapse_navigation": False,
+    "logo_only": True,                      # show the brand logo, hide the text title
+    "style_nav_header_background": "#0e1117",  # deep charcoal to match the dark theme (see _static/custom.css)
 }
 
-# Custom "oscilloscope / lab-instrument" theme layered on top of the RTD
-# theme — phosphor-green signal accents on deep charcoal, matching the
-# standalone docs/intro.html landing page.  See docs/_static/custom.css.
+# Brand assets (the official nSTAT wordmark, sourced from the MATLAB
+# toolbox helpfiles).  ``nstat-logo-light.png`` is a white variant that
+# reads cleanly on the dark/blue sidebar header; the favicon is the
+# neuron-"n" monogram cropped from the same mark.
+html_logo = "_static/nstat-logo-light.png"
+html_favicon = "_static/favicon.png"
+
+# Custom stylesheet that restyles the RTD theme into the dark
+# "oscilloscope / lab-instrument" look shared with the hand-built landing
+# pages (intro.html, extras_summary.html) — phosphor-green signal accents
+# on deep charcoal, with matching typography, tables, and code blocks.
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
+html_title = f"nSTAT Python {release}"
 
-# Dark-friendly Pygments tokens so code blocks read well on the dark
-# code surface defined in custom.css.
+# Dark-friendly Pygments tokens so code blocks read well on the dark code
+# surface defined in _static/custom.css.
 pygments_style = "monokai"
 
 # Copy standalone HTML pages into the build root.  Sphinx flattens a

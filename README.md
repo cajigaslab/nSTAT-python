@@ -1,8 +1,20 @@
-# nSTAT-python
+<div align="center">
 
-**Neural Spike Train Analysis Toolbox for Python**
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/_static/nstat-logo-light.png">
+  <img alt="nSTAT — neural Spike Train Analysis Toolbox" src="docs/_static/nstat-logo.png" width="440">
+</picture>
 
+### Neural Spike Train Analysis Toolbox for Python
+
+[![PyPI version](https://img.shields.io/pypi/v/nstat-toolbox.svg?color=2c5282)](https://pypi.org/project/nstat-toolbox/)
+[![Python versions](https://img.shields.io/pypi/pyversions/nstat-toolbox.svg)](https://pypi.org/project/nstat-toolbox/)
 [![test-and-build](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml/badge.svg)](https://github.com/cajigaslab/nSTAT-python/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-2c5282.svg)](https://cajigaslab.github.io/nSTAT-python/)
+[![License: GPL v2](https://img.shields.io/badge/license-GPL--2.0-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+[![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.jneumeth.2012.08.009-blue.svg)](https://doi.org/10.1016/j.jneumeth.2012.08.009)
+
+</div>
 
 > 📖 **New here?** Start with the
 > [**5-minute intro**](https://cajigaslab.github.io/nSTAT-python/intro.html) —
@@ -116,8 +128,19 @@ set_plot_style('modern')
 set_plot_style('legacy')
 ```
 
-Rendered help documentation (GitHub Pages):
-- https://cajigaslab.github.io/nSTAT-python/
+## Documentation
+
+Full rendered documentation is published on
+[**GitHub Pages**](https://cajigaslab.github.io/nSTAT-python/):
+
+| Page | What you'll find |
+|---|---|
+| [5-minute intro](https://cajigaslab.github.io/nSTAT-python/intro.html) | Friendly, illustrated tour with runnable snippets — start here |
+| [API reference](https://cajigaslab.github.io/nSTAT-python/api.html) | Every public symbol, auto-generated from docstrings |
+| [Class definitions](https://cajigaslab.github.io/nSTAT-python/ClassDefinitions.html) | Method catalog for each MATLAB-faithful core class |
+| [Paper-aligned toolbox map](https://cajigaslab.github.io/nSTAT-python/PaperOverview.html) | Crosswalk between the 2012 paper and the Python API |
+| [`nstat.extras` summary](https://cajigaslab.github.io/nSTAT-python/extras_summary.html) | Per-bridge cards with install commands and snippets |
+| [What's New](https://cajigaslab.github.io/nSTAT-python/whats_new.html) | Per-release change summaries |
 
 For mathematical and programmatic details of the toolbox, see:
 
