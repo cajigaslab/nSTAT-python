@@ -17,6 +17,25 @@
     --tier-a: #38a169;
     --tier-b: #3182ce;
     --tier-c: #d69e2e;
+    --card-solid: #ffffff;
+    --planned-bg: #fff5e6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e6e6e6;
+      --fg-muted: #aaa;
+      --bg: #16161a;
+      --bg-card: #22222a;
+      --bg-code: #2a2a33;
+      --accent: #90cdf4;
+      --accent-light: #63b3ed;
+      --border: #3a3a44;
+      --tier-a: #68d391;
+      --tier-b: #63b3ed;
+      --tier-c: #f6ad55;
+      --card-solid: #22222a;
+      --planned-bg: #2c2418;
+    }
   }
   * { box-sizing: border-box; }
   body {
@@ -113,7 +132,7 @@
     border-radius: 6px;
     padding: 1.1rem 1.3rem;
     margin: 1.2rem 0;
-    background: white;
+    background: var(--card-solid);
   }
   .bridge-card h4 {
     margin: 0 0 0.4rem 0;
@@ -137,7 +156,7 @@
   footer a { color: var(--accent); }
   .badge { color: var(--fg-muted); font-size: 0.8rem; }
   .planned {
-    background: #fff5e6;
+    background: var(--planned-bg);
     border-left: 4px solid #f6ad55;
     padding: 0.8rem 1.1rem;
     margin: 1rem 0;
