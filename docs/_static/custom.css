@@ -95,14 +95,17 @@ a:hover { color: #dcff66; text-decoration: underline; text-underline-offset: 3px
 .wy-side-nav-search > a:hover { background: transparent; }
 .wy-side-nav-search > div.version { color: var(--signal); font-family: "JetBrains Mono", monospace; font-size: .72rem; letter-spacing: .12em; }
 .wy-side-nav-search input[type="text"] {
-  background: var(--panel);
-  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border: 1px solid #2c3742;
   border-radius: 8px;
-  color: var(--ink);
+  color: #f2f5ef;
   box-shadow: none;
 }
-.wy-side-nav-search input[type="text"]::placeholder { color: var(--ink-faint); }
-.wy-side-nav-search input[type="text"]:focus { border-color: var(--signal); }
+.wy-side-nav-search input[type="text"]::placeholder { color: var(--ink-soft); }
+.wy-side-nav-search input[type="text"]:focus {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 2px rgba(197,240,45,.18);
+}
 
 .wy-menu-vertical header, .wy-menu-vertical p.caption {
   color: var(--signal);
@@ -110,26 +113,26 @@ a:hover { color: #dcff66; text-decoration: underline; text-underline-offset: 3px
   font-size: .68rem; letter-spacing: .2em; text-transform: uppercase;
 }
 .wy-menu-vertical a {
-  color: var(--ink-soft);
+  color: #cdd6cf;
   border: 0;
 }
-.wy-menu-vertical a:hover { background: var(--panel); color: var(--ink); }
+.wy-menu-vertical a:hover { background: var(--panel); color: #fff; }
 .wy-menu-vertical li.current { background: transparent; }
 .wy-menu-vertical li.current > a {
   background: var(--panel);
-  color: var(--ink);
+  color: #ffffff;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   border-left: 3px solid var(--signal);
 }
-.wy-menu-vertical li.current a:hover { background: var(--panel-2); }
+.wy-menu-vertical li.current a:hover { background: var(--panel-2); color: #fff; }
 .wy-menu-vertical li.toctree-l2.current > a,
 .wy-menu-vertical li.toctree-l2.current li.toctree-l3 > a,
 .wy-menu-vertical li.toctree-l3.current li.toctree-l4 > a {
   background: var(--panel-2);
   border-left: 3px solid var(--signal-dim);
 }
-.wy-menu-vertical li.current a { color: var(--ink-soft); border-right: 0; }
+.wy-menu-vertical li.current a { color: #c3ccc5; border-right: 0; }
 .wy-menu-vertical li.on a, .wy-menu-vertical li.current > a { font-weight: 600; }
 
 /* ---------- Mobile top bar ---------- */
