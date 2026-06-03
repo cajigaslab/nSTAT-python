@@ -96,12 +96,23 @@ napoleon_use_rtype = True
 
 # -- intersphinx -------------------------------------------------------------
 
+# Each target carries a vendored fallback inventory under ``docs/_inv/``.
+# Sphinx tries the live ``objects.inv`` first (so cross-refs stay current),
+# then falls back to the committed copy if the host is unreachable.  This
+# keeps the strict ``-W`` docs build / GitHub Pages deploy from failing on
+# a transient network hiccup (e.g. a ``docs.scipy.org`` timeout), since a
+# successful fallback emits no warning.  ``intersphinx_timeout`` bounds the
+# wait per host so an outage can't stall the build for minutes.
+# Refresh the vendored inventories with ``make refresh-intersphinx-inv``
+# (or re-download ``<uri>objects.inv``) when upstream targets move.
+intersphinx_timeout = 10  # seconds per inventory fetch
+
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
-    "matplotlib": ("https://matplotlib.org/stable/", None),
-    "sympy": ("https://docs.sympy.org/latest/", None),
+    "python": ("https://docs.python.org/3", (None, "_inv/python.inv")),
+    "numpy": ("https://numpy.org/doc/stable/", (None, "_inv/numpy.inv")),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", (None, "_inv/scipy.inv")),
+    "matplotlib": ("https://matplotlib.org/stable/", (None, "_inv/matplotlib.inv")),
+    "sympy": ("https://docs.sympy.org/latest/", (None, "_inv/sympy.inv")),
 }
 
 
