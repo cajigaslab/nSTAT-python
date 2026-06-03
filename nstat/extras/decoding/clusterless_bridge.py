@@ -260,8 +260,8 @@ def fit_clusterless_decoder(
         transition = rtc.RandomWalk(movement_var=float(movement_var))
 
     decoder = rtc.ClusterlessDecoder(
-        environments=env,
-        continuous_transition_types=[[transition]],
+        environment=env,
+        transition_type=transition,
     )
     decoder.fit(position, multiunits, is_training=is_training)
     dataset = decoder.predict(multiunits, is_compute_acausal=bool(is_compute_acausal))
@@ -335,12 +335,23 @@ def fit_clusterless_classifier(
     rtc = _require_clusterless()
 
     env = rtc.Environment(place_bin_size=float(place_bin_size))
-    # Build a continuous-transition cell per state: random walk for the
-    # "continuous"-like states, uniform for the "fragmented"-like states.
-    # If the user passed custom names we default to RandomWalk for all.
+    # ``continuous_transition_types`` must be a square (n_states x n_states)
+    # matrix: entry [i][j] is the continuous-state transition model applied
+    # when moving between discrete states i and j.  The diagonal carries
+    # each state's own movement model — random walk for the "continuous"-like
+    # states, uniform for the "fragmented"-like ones — while the off-diagonal
+    # cells use a uniform spatial transition, mirroring the upstream default
+    # layout (e.g. ``[[RandomWalk, Uniform], [Uniform, Uniform]]``).
     def _transition_for(name: str):
         return rtc.Uniform() if name.lower() == "fragmented" else rtc.RandomWalk()
-    cont_transitions = [[_transition_for(name) for name in state_names]]
+    n_states = len(state_names)
+    cont_transitions = [
+        [
+            _transition_for(state_names[i]) if i == j else rtc.Uniform()
+            for j in range(n_states)
+        ]
+        for i in range(n_states)
+    ]
 
     classifier = rtc.ClusterlessClassifier(
         environments=env,
