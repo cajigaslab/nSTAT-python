@@ -1,5 +1,26 @@
 # Release Notes
 
+## Unreleased (on `main`, not yet tagged)
+
+Two bug-fixes landed on `main` after the v0.4.3 tag.  They will ship
+in the next release.
+
+- **`statsmodels` pin corrected to `>=0.14`** — `[test-parity]` and
+  `[all-extras]` had `statsmodels>=0.15`, but statsmodels has never
+  released 0.15 (the latest is 0.14.6), making those optional-dep
+  groups uninstallable.  The bridge only uses `statsmodels.api.GLM`,
+  which has been stable throughout the 0.14 series, so `>=0.14` is the
+  correct floor.  (Also corrects the erroneous note in the v0.4.1
+  entry below.)
+- **Clusterless bridge updated for `replay_trajectory_classification`
+  ≥ 1.4** — the 1.4 API changed two construction-level details:
+  `ClusterlessDecoder` now takes singular `environment=` /
+  `transition_type=` keyword args (not the plural forms used by the
+  classifier); `ClusterlessClassifier.continuous_transition_types` must
+  be a square `(n_states × n_states)` matrix, not a `1 × n_states` row.
+  Both issues caused `TypeError` / index-out-of-bounds on every import
+  of the bridge with `replay_trajectory_classification>=1.4`.
+
 ## v0.4.3 — 2026-05-31
 
 Documentation and packaging cleanup.  Removes cross-references to
@@ -102,11 +123,11 @@ Pre-v0.4.1 versions were never on PyPI despite the README's
   and runs `tests/extras/test_clusterless_bridge.py` end-to-end.
   Closes the Tier 2.1 CI story: the clusterless smoke tests no longer
   skip silently in every CI run.
-- **`statsmodels>=0.15`** pinned in `[test-parity]` — the older
-  `statsmodels` versions imported the private `scipy._lib._util._lazywhere`
-  symbol that scipy removed, surfacing as a recurring local-only test
-  failure under common conda environments.  Pinning forward resolves
-  it without touching the toolbox.
+- **`statsmodels>=0.14`** pinned in `[test-parity]` — sets an explicit
+  floor on the statsmodels version used in cross-validation parity tests.
+  (This entry originally said `>=0.15`, which was incorrect: statsmodels
+  has never released 0.15.  The pin was corrected to `>=0.14` in a
+  post-v0.4.3 fix; see the Unreleased section above.)
 
 ### Docs / hygiene
 

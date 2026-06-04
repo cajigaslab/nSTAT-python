@@ -129,8 +129,6 @@ Primary notebook: `../notebooks/nstCollExamples.ipynb`
 parameters used to build self-history kernels (window times, basis
 family, raised-cosine vs unit-impulse choices).
 
-
-
 Primary notebook: `../notebooks/HistoryExamples.ipynb`
 
 ### `Events` (`nstat.Events`)
