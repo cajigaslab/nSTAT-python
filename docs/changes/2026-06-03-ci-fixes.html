@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>2026-06-03 — CI / installability fixes · nSTAT-python</title>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --border:#d0d0d8; --ok:#38a169;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --border:#3a3a44; --ok:#68d391; }
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.6; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:820px; margin:0 auto; }
+  a { color:var(--accent); }
+  .back { font-size:.85rem; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.2rem; margin:1rem 0 1.8rem 0; }
+  header h1 { margin:.2rem 0 .3rem 0; font-size:1.9rem; }
+  header .meta { color:var(--fg-muted); font-size:.85rem; }
+  h2 { font-size:1.25rem; margin-top:1.8rem; border-bottom:1px solid var(--border); padding-bottom:.2rem; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  ul { padding-left:1.2rem; }
+  li { margin:.35rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; margin-top:.6rem; }
+  th,td { border:1px solid var(--border); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  th { background:var(--bg-card); }
+  .ok { color:var(--ok); font-weight:600; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="back"><a href="whats_new.html">&larr; What's New</a></p>
+  <header>
+    <h1>2026-06-03 &mdash; CI / installability fixes (post-v0.4.3)</h1>
+    <div class="meta">2026-06-03 · PRs
+      <a href="https://github.com/cajigaslab/nSTAT-python/pull/132">#132</a>
+      &amp;
+      <a href="https://github.com/cajigaslab/nSTAT-python/pull/133">#133</a>
+      · no version bump</div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>Two installability/CI bugs that slipped into main after the v0.4.3
+  tag, fixed on 2026-06-03.  No public API changes.  These fixes will
+  ship in the next tagged release.</p>
+
+  <h2>Fix 1 — Correct <code>statsmodels</code> pin (PR #132)</h2>
+  <p>The <code>[test-parity]</code> and <code>[all-extras]</code> optional-dep
+  groups carried <code>statsmodels&gt;=0.15</code>, but statsmodels never
+  shipped a 0.15 release (latest is 0.14.x). pip's resolver rejected the
+  constraint outright, making <em>both groups completely uninstallable</em>
+  in the v0.4.1&ndash;v0.4.3 window.</p>
+  <ul>
+    <li>Corrected to <code>statsmodels&gt;=0.14</code> in
+      <code>pyproject.toml</code>. The statsmodels bridge only uses
+      <code>statsmodels.api.GLM</code>, available throughout 0.14.</li>
+    <li>The v0.4.1 release note that described adding this pin is
+      updated separately; the original intent (avoid a scipy
+      <code>_lazywhere</code> symbol removal) is satisfied by 0.14.4+,
+      which shipped the fix before 0.15 was ever released.</li>
+  </ul>
+
+  <h2>Fix 2 — Align clusterless bridge with <code>replay_trajectory_classification</code> 1.4 (PR #132)</h2>
+  <p>The clusterless bridge (<code>nstat.extras.decoding.clusterless_bridge</code>)
+  constructed the upstream decoder/classifier with argument names that
+  changed between 1.3 and 1.4:</p>
+  <ul>
+    <li><code>ClusterlessDecoder</code> takes singular
+      <code>environment=</code> / <code>transition_type=</code>, not the
+      plural names used by the classifier. Passing the plural names raised
+      <code>TypeError</code>.</li>
+    <li><code>ClusterlessClassifier.continuous_transition_types</code> must be
+      an <em>n&times;n</em> square matrix; the bridge passed a single 1&times;n
+      row, causing an out-of-bounds index during transition-matrix assembly.
+      Fixed by building the full square matrix (per-state movement model on
+      the diagonal, uniform spatial transition off-diagonal).</li>
+  </ul>
+  <p>Verified against <code>replay_trajectory_classification</code> 1.4.1:
+  the two previously-failing functional tests in
+  <code>tests/extras/test_clusterless_bridge.py</code> now pass.</p>
+
+  <h2>Fix 3 — Revert experimental docs reskin (PR #133)</h2>
+  <p>An oscilloscope-themed Sphinx stylesheet (PR #131, same day) was
+  merged and immediately reverted after it clashed with the existing
+  hand-built landing pages. The blue RTD theme from v0.4.3 is restored.
+  No user-visible content change.</p>
+
+  <h2>Verification</h2>
+  <table>
+    <tr><th>Gate</th><th>Result</th></tr>
+    <tr><td><code>pip install nstat-toolbox[test-parity]</code></td>
+        <td class="ok">resolves (statsmodels 0.14.x satisfies &gt;=0.14)</td></tr>
+    <tr><td><code>pip install nstat-toolbox[all-extras]</code></td>
+        <td class="ok">resolves</td></tr>
+    <tr><td><code>tests/extras/test_clusterless_bridge.py</code> (vs 1.4.1)</td>
+        <td class="ok">2 previously-failing tests now pass</td></tr>
+    <tr><td>CI <code>extras-clusterless</code> job</td>
+        <td class="ok">green</td></tr>
+  </table>
+
+  <h2>Breaking changes</h2>
+  <p>None.</p>
+
+  <footer>
+    <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a>
+  </footer>
+</div>
+</body>
+</html>

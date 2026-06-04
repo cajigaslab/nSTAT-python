@@ -1,5 +1,30 @@
 # Release Notes
 
+## Post-v0.4.3 fixes — 2026-06-03
+
+CI / installability fixes merged to main after the v0.4.3 tag.
+**No public API changes.**  These will ship in the next tagged release.
+
+### Fixed
+
+- **`statsmodels` pin corrected** — `[test-parity]` and `[all-extras]`
+  carried `statsmodels>=0.15`, but statsmodels 0.15 was never released
+  (latest is 0.14.x).  pip's resolver rejected the constraint outright,
+  making both groups uninstallable.  Corrected to `>=0.14` in
+  `pyproject.toml`.  The statsmodels bridge only uses
+  `statsmodels.api.GLM`, which is present throughout 0.14.
+- **Clusterless bridge aligned with `replay_trajectory_classification`
+  1.4** — `ClusterlessDecoder` takes singular `environment=` /
+  `transition_type=` (not plural), and `ClusterlessClassifier` requires
+  an n×n square transition matrix (not a 1×n row).  Fixes two
+  previously-failing functional tests in
+  `tests/extras/test_clusterless_bridge.py`.
+- **Docs reskin reverted** — an experimental oscilloscope-themed Sphinx
+  stylesheet (PR #131) was merged and immediately reverted (PR #133).
+  The blue RTD theme from v0.4.3 is restored.
+
+---
+
 ## v0.4.3 — 2026-05-31
 
 Documentation and packaging cleanup.  Removes cross-references to
@@ -107,6 +132,8 @@ Pre-v0.4.1 versions were never on PyPI despite the README's
   symbol that scipy removed, surfacing as a recurring local-only test
   failure under common conda environments.  Pinning forward resolves
   it without touching the toolbox.
+  *(Note: statsmodels 0.15 was never released; this pin was corrected to
+  `>=0.14` in the 2026-06-03 post-v0.4.3 fixes — see above.)*
 
 ### Docs / hygiene
 
