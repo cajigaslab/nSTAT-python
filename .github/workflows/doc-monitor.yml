@@ -1,0 +1,211 @@
+name: doc-monitor
+
+# Runs ALL doc-freshness checks on a weekly cadence (every Monday) AND
+# on every push to main — regardless of which files changed.  The path
+# filters on helpfile-check.yml / readme-check.yml mean those gates can
+# silently pass when non-doc code changes add new public symbols; this
+# workflow closes that gap.
+#
+# On failure (or if the weekly run surfaces anything) a Slack DM is sent
+# to the repo maintainer via the SLACK_BOT_TOKEN secret.
+#
+# Required repository secret:
+#   SLACK_BOT_TOKEN  — a Slack bot OAuth token (xoxb-…) with
+#                      the chat:write scope added to the workspace.
+#                      Create one at https://api.slack.com/apps and
+#                      install it in the restore-lab-group workspace.
+#
+# The Slack user ID for DM delivery is hard-coded below; update
+# SLACK_USER_ID if the maintainer changes.
+
+on:
+  schedule:
+    # Every Monday at 09:00 UTC
+    - cron: '0 9 * * 1'
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      notify_on_success:
+        description: 'Send Slack message even if all checks pass'
+        type: boolean
+        default: false
+
+env:
+  MPLBACKEND: Agg
+  SLACK_USER_ID: U06QRVDA3AN   # Iahn — update if maintainer changes
+
+jobs:
+  doc-freshness:
+    name: Full doc-freshness audit
+    runs-on: ubuntu-latest
+    # Collect results from all steps even if one fails, so the Slack
+    # summary can report every failure rather than just the first.
+    continue-on-error: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      # ── Step 1: README intra-repo links, images, and import snippets ──
+      - name: README freshness check
+        id: readme
+        # Continue so later steps still run; outcome captured below.
+        continue-on-error: true
+        run: |
+          python tools/check_readme_links.py 2>&1 | tee /tmp/readme_out.txt
+          exit ${PIPESTATUS[0]}
+
+      # ── Step 2: Helpfile symbol coverage ──────────────────────────────
+      - name: Helpfile freshness check
+        id: helpfile
+        continue-on-error: true
+        run: |
+          python tools/check_helpfile_freshness.py 2>&1 | tee /tmp/helpfile_out.txt
+          exit ${PIPESTATUS[0]}
+
+      # ── Step 3: RELEASE_NOTES / version consistency ───────────────────
+      - name: Version sync check
+        id: version
+        continue-on-error: true
+        run: |
+          python -m pytest tests/test_version_sync.py tests/test_pyproject_consistency.py \
+            -v --tb=short 2>&1 | tee /tmp/version_out.txt
+          exit ${PIPESTATUS[0]}
+
+      # ── Step 4: Collect outcomes and build Slack payload ──────────────
+      - name: Build Slack report
+        id: report
+        if: always()
+        shell: bash
+        env:
+          README_OUTCOME: ${{ steps.readme.outcome }}
+          HELPFILE_OUTCOME: ${{ steps.helpfile.outcome }}
+          VERSION_OUTCOME: ${{ steps.version.outcome }}
+          NOTIFY_ON_SUCCESS: ${{ inputs.notify_on_success || 'false' }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TRIGGER: ${{ github.event_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          ANY_FAIL=false
+          STATUS_README=":white_check_mark:"
+          STATUS_HELPFILE=":white_check_mark:"
+          STATUS_VERSION=":white_check_mark:"
+
+          [ "$README_OUTCOME"   = "failure" ] && STATUS_README=":x:"   && ANY_FAIL=true
+          [ "$HELPFILE_OUTCOME" = "failure" ] && STATUS_HELPFILE=":x:" && ANY_FAIL=true
+          [ "$VERSION_OUTCOME"  = "failure" ] && STATUS_VERSION=":x:"  && ANY_FAIL=true
+
+          # Determine trigger label
+          if [ "$TRIGGER" = "schedule" ]; then
+            TRIGGER_LABEL="Weekly scheduled run"
+          elif [ "$TRIGGER" = "push" ]; then
+            SHORT_SHA="${COMMIT_SHA:0:7}"
+            FIRST_LINE=$(echo "$COMMIT_MSG" | head -1 | cut -c1-72)
+            TRIGGER_LABEL="Push to main \`${SHORT_SHA}\`: ${FIRST_LINE}"
+          else
+            TRIGGER_LABEL="Manual dispatch"
+          fi
+
+          # Capture first 10 lines of any failing step's output for the summary
+          DETAILS=""
+          if [ "$README_OUTCOME" = "failure" ]; then
+            DETAILS="${DETAILS}\n*README issues:*\n\`\`\`$(head -20 /tmp/readme_out.txt)\`\`\`"
+          fi
+          if [ "$HELPFILE_OUTCOME" = "failure" ]; then
+            DETAILS="${DETAILS}\n*Helpfile issues:*\n\`\`\`$(head -20 /tmp/helpfile_out.txt)\`\`\`"
+          fi
+          if [ "$VERSION_OUTCOME" = "failure" ]; then
+            DETAILS="${DETAILS}\n*Version-sync issues:*\n\`\`\`$(head -20 /tmp/version_out.txt)\`\`\`"
+          fi
+
+          echo "any_fail=$ANY_FAIL"   >> "$GITHUB_OUTPUT"
+          echo "trigger_label=${TRIGGER_LABEL}" >> "$GITHUB_OUTPUT"
+
+          # Write the Slack message to a file (avoids quoting hell with env vars)
+          python3 - <<PYEOF
+          import os, json
+          any_fail = os.environ["ANY_FAIL"] == "true"
+          notify_on_success = os.environ["NOTIFY_ON_SUCCESS"] == "true"
+          run_url = os.environ["GITHUB_RUN_URL"]
+          trigger = os.environ["TRIGGER_LABEL"]
+          details = os.environ.get("DETAILS", "").replace("\\n", "\n")
+
+          if any_fail:
+              header = ":rotating_light: *nSTAT-python doc-monitor: failures detected*"
+          else:
+              header = ":white_check_mark: *nSTAT-python doc-monitor: all checks passed*"
+
+          lines = [
+              header,
+              f"*Trigger:* {trigger}",
+              f"{os.environ['STATUS_README']} README freshness   "
+              f"{os.environ['STATUS_HELPFILE']} Helpfile coverage   "
+              f"{os.environ['STATUS_VERSION']} Version sync",
+          ]
+          if details:
+              lines.append(details)
+          lines.append(f"<{run_url}|View full run logs>")
+
+          msg = "\n".join(lines)
+
+          # Write for upload; also set should_notify
+          with open("/tmp/slack_msg.txt", "w") as f:
+              f.write(msg)
+
+          should_notify = any_fail or notify_on_success
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"should_notify={'true' if should_notify else 'false'}\n")
+          PYEOF
+        env:
+          ANY_FAIL: ${{ steps.report.outputs.any_fail || 'false' }}
+          STATUS_README: ${{ steps.readme.outcome == 'failure' && ':x:' || ':white_check_mark:' }}
+          STATUS_HELPFILE: ${{ steps.helpfile.outcome == 'failure' && ':x:' || ':white_check_mark:' }}
+          STATUS_VERSION: ${{ steps.version.outcome == 'failure' && ':x:' || ':white_check_mark:' }}
+          TRIGGER_LABEL: ${{ steps.report.outputs.trigger_label }}
+
+      # ── Step 5: Send Slack DM ─────────────────────────────────────────
+      - name: Send Slack notification
+        if: always() && steps.report.outputs.should_notify == 'true'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_USER_ID: ${{ env.SLACK_USER_ID }}
+        run: |
+          MSG=$(cat /tmp/slack_msg.txt)
+          curl -s -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer ${SLACK_BOT_TOKEN}" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            --data "$(python3 -c "
+          import json, sys
+          msg = open('/tmp/slack_msg.txt').read()
+          print(json.dumps({'channel': '${SLACK_USER_ID}', 'text': msg}))
+          ")" | python3 -c "
+          import json, sys
+          r = json.load(sys.stdin)
+          if not r.get('ok'):
+              print(f'Slack error: {r}', file=sys.stderr)
+              sys.exit(1)
+          print(f'Slack DM sent. ts={r[\"ts\"]}')
+          "
+
+      # ── Final gate: fail the workflow if any check failed ─────────────
+      - name: Fail if any check failed
+        if: always()
+        run: |
+          README="${{ steps.readme.outcome }}"
+          HELPFILE="${{ steps.helpfile.outcome }}"
+          VERSION="${{ steps.version.outcome }}"
+          if [ "$README" = "failure" ] || [ "$HELPFILE" = "failure" ] || [ "$VERSION" = "failure" ]; then
+            echo "One or more doc checks failed."
+            exit 1
+          fi
+          echo "All doc checks passed."
