@@ -1,5 +1,57 @@
 # Release Notes
 
+## Unreleased — since v0.4.3 (2026-06-02 – 2026-06-03)
+
+Bug fixes and infrastructure improvements on `main`; no public API
+changes.  A `v0.4.4` tag would ship these to PyPI.
+
+### Bug fixes
+
+- **`statsmodels` pin corrected** (`[test-parity]` / `[all-extras]`):
+  `statsmodels>=0.15` → `>=0.14`.  statsmodels has never released a 0.15
+  version (latest is 0.14.x); the original pin made `[test-parity]` and
+  `[all-extras]` uninstallable — pip's resolver failed before any test
+  ran.  The floor `>=0.14` is sufficient because
+  `nstat.extras.validation.statsmodels_bridge` only calls `statsmodels.api.GLM`,
+  available throughout the 0.14 line.
+
+- **Clusterless bridge aligned with `replay_trajectory_classification>=1.4`**
+  (`nstat.extras.decoding.clusterless_bridge`):
+  The upstream 1.4 API uses singular constructor arguments
+  (`environment=` / `transition_type=`) for `ClusterlessDecoder`, and
+  requires a full square `(n_states × n_states)` transition matrix for
+  `ClusterlessClassifier`.  The prior bridge passed plural names
+  (`environments=` / `continuous_transition_types=`) and a 1×N row,
+  raising `TypeError` / index-out-of-bounds at runtime.  Fixed; the
+  `[clusterless]` dep floor is bumped to `>=1.4`.
+
+### Infrastructure
+
+- **`intersphinx` fallback inventories** vendored under `docs/_inv/`
+  (numpy, scipy, matplotlib, sympy, Python).  Each mapping now tries the
+  live inventory first and falls back to the committed copy if the host is
+  unreachable, with `intersphinx_timeout=10`.  Prevents transient network
+  outages (observed on `docs.scipy.org` during the v0.4.3 GitHub Pages
+  deploy) from failing the strict `-W` build and blocking the publish.
+  A `make refresh-intersphinx-inv` target (`tools/refresh_intersphinx_inv.py`)
+  re-pulls the vendored copies to keep them current.
+
+### Docs
+
+- **README** and **`nstat/extras/__init__.py`** synced with the v0.4.0
+  feature surface: clusterless bridge row added to the "Related Python
+  projects" table; `nstat.extras` module docstring updated from
+  "Three subpackages" to "Five" (the `em` and `decoding` subpackages
+  added in v0.4.0 were not counted).
+- Stale `[dynamax]` exclusion comment in `pyproject.toml` updated
+  (the KF_EM / PP_EM / mPPCO_EM family is shipped, not unported).
+
+### Breaking changes
+
+None.
+
+---
+
 ## v0.4.3 — 2026-05-31
 
 Documentation and packaging cleanup.  Removes cross-references to
@@ -102,11 +154,13 @@ Pre-v0.4.1 versions were never on PyPI despite the README's
   and runs `tests/extras/test_clusterless_bridge.py` end-to-end.
   Closes the Tier 2.1 CI story: the clusterless smoke tests no longer
   skip silently in every CI run.
-- **`statsmodels>=0.15`** pinned in `[test-parity]` — the older
+- **`statsmodels>=0.14`** pinned in `[test-parity]` — the older
   `statsmodels` versions imported the private `scipy._lib._util._lazywhere`
   symbol that scipy removed, surfacing as a recurring local-only test
   failure under common conda environments.  Pinning forward resolves
-  it without touching the toolbox.
+  it without touching the toolbox.  (Note: the original pin in this
+  release was `>=0.15`, which was incorrect — statsmodels never released
+  0.15; this was corrected to `>=0.14` in a post-v0.4.3 patch.)
 
 ### Docs / hygiene
 

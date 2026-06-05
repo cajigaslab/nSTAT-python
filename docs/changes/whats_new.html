@@ -48,6 +48,21 @@
   </header>
 
   <div class="entry">
+    <div class="date">2026-06-03</div>
+    <h2><a href="2026-06-03-post-v0.4.3-fixes.html">Post-v0.4.3 — Bug fixes &amp; CI hardening</a>
+      <span class="tag hygiene">bug fixes / CI</span></h2>
+    <p>Two installability bugs fixed on <code>main</code>:
+    <code>statsmodels</code> pin corrected from <code>&gt;=0.15</code>
+    (nonexistent) to <code>&gt;=0.14</code>; clusterless bridge aligned with
+    <code>replay_trajectory_classification&gt;=1.4</code> (singular constructor
+    args, full square transition matrix). Also: <code>intersphinx</code>
+    fallback inventories vendored to prevent transient network outages
+    from blocking the GitHub Pages deploy; README and
+    <code>nstat.extras</code> docstring synced with v0.4.0 feature surface.
+    No public API changes.</p>
+  </div>
+
+  <div class="entry">
     <div class="date">2026-05-31</div>
     <h2><a href="2026-05-31-v0.4.3-docs-cleanup.html">v0.4.3 — Documentation cleanup</a>
       <span class="tag">docs</span></h2>
@@ -80,8 +95,9 @@
     the README's <code>pip install</code> claim. v0.4.1 ships a
     Trusted-Publisher PyPI workflow (no API tokens), a dedicated
     <code>extras-clusterless</code> CI job (closes Tier 2.1's CI
-    story), and pins <code>statsmodels&gt;=0.15</code> to kill the
-    recurring local-only <code>_lazywhere</code> failure. Maintainer
+    story), and pins <code>statsmodels&gt;=0.14</code> to kill the
+    recurring local-only <code>_lazywhere</code> failure (the original
+    <code>&gt;=0.15</code> pin was incorrect; corrected post-release). Maintainer
     completes a 3-click one-time PyPI setup; every subsequent tag
     auto-publishes.</p>
   </div>
@@ -188,7 +204,6 @@
     Docs: <a href="https://cajigaslab.github.io/nSTAT-python/">cajigaslab.github.io/nSTAT-python</a> ·
     Roadmap: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md"><code>parity/methods_roadmap.md</code></a> ·
     Release plan: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_READINESS.md"><code>RELEASE_READINESS.md</code></a>
-    Roadmap: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md"><code>parity/methods_roadmap.md</code></a>
   </footer>
 </div>
 </body>
