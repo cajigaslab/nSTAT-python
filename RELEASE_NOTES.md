@@ -1,5 +1,35 @@
 # Release Notes
 
+## Post-v0.4.3 fixes — 2026-06-03 (on `main`, not yet tagged)
+
+Two follow-up PRs merged after the v0.4.3 tag.  No public API changes.
+A v0.4.4 patch release is recommended to ship these fixes to PyPI users.
+
+### Critical: `statsmodels` pin corrected (PR #132)
+
+The `statsmodels>=0.15` floor introduced in v0.4.1 referred to a version
+that was never released (statsmodels latest is 0.14.6).  This made
+`pip install nstat-toolbox[test-parity]` and
+`pip install nstat-toolbox[all-extras]` fail with a pip resolver error on
+every v0.4.x PyPI release.  The pin is now `>=0.14`.
+
+### Clusterless bridge aligned with `replay_trajectory_classification` 1.4 (PR #132)
+
+`replay_trajectory_classification>=1.4` (installs as 1.4.1) changed its
+constructor argument names.  The clusterless bridge was passing plural
+keyword arguments (`environments=`, `continuous_transition_types=`) to
+`ClusterlessDecoder` which expects the singular forms, and was passing a
+1&nbsp;×&nbsp;n transition row where a square n&nbsp;×&nbsp;n matrix is required for
+`ClusterlessClassifier`.  Both are now fixed; the two previously-failing
+functional tests in `tests/extras/test_clusterless_bridge.py` pass.
+
+### Docs theme revert (PR #133)
+
+Reverts the oscilloscope-themed Sphinx reskin from PR #131, restoring the
+prior blue Read-the-Docs style (`style_nav_header_background: #2c5282`).
+
+---
+
 ## v0.4.3 — 2026-05-31
 
 Documentation and packaging cleanup.  Removes cross-references to
@@ -102,11 +132,13 @@ Pre-v0.4.1 versions were never on PyPI despite the README's
   and runs `tests/extras/test_clusterless_bridge.py` end-to-end.
   Closes the Tier 2.1 CI story: the clusterless smoke tests no longer
   skip silently in every CI run.
-- **`statsmodels>=0.15`** pinned in `[test-parity]` — the older
+- **`statsmodels>=0.14`** pinned in `[test-parity]` — the older
   `statsmodels` versions imported the private `scipy._lib._util._lazywhere`
   symbol that scipy removed, surfacing as a recurring local-only test
   failure under common conda environments.  Pinning forward resolves
-  it without touching the toolbox.
+  it without touching the toolbox.  (Note: this was originally written as
+  `>=0.15`, a non-existent version; corrected to `>=0.14` in the
+  2026-06-03 post-v0.4.3 CI fix — see above.)
 
 ### Docs / hygiene
 

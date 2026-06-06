@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>nSTAT-python — Post-v0.4.3 CI + Docs Fixes (2026-06-03)</title>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
+    --bg-code:#eee; --accent:#2c5282; --accent-light:#4299e1; --border:#d0d0d8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
+            --bg-code:#2a2a33; --accent:#90cdf4; --accent-light:#63b3ed; --border:#3a3a44; }
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.55; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:880px; margin:0 auto; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.3rem; margin-bottom:1.8rem; }
+  header h1 { margin:0 0 .3rem 0; font-size:2.1rem; }
+  header p.lede { color:var(--fg-muted); font-size:1.08rem; margin:0; }
+  a { color:var(--accent); }
+  h2 { font-size:1.25rem; margin:1.5rem 0 .4rem; }
+  h3 { font-size:1rem; margin:1.1rem 0 .3rem; color:var(--fg-muted); }
+  p, li { margin:.4rem 0; }
+  ul { padding-left:1.4rem; }
+  .callout { background:var(--bg-card); border-left:4px solid #e53e3e; border-radius:0 8px 8px 0;
+             padding:.8rem 1.1rem; margin:1rem 0; }
+  .callout strong { color:#e53e3e; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Post-v0.4.3 CI + Docs Fixes</h1>
+    <p class="lede">2026-06-03 &mdash; Two follow-up PRs merged to <code>main</code> after the
+    v0.4.3 tag: a critical extras dependency fix (PR&nbsp;#132) and a docs theme revert (PR&nbsp;#133).
+    No public API changes.</p>
+  </header>
+
+  <div class="callout">
+    <strong>Action needed for PyPI users on v0.4.3:</strong> The
+    <code>statsmodels&gt;=0.15</code> pin introduced in v0.4.1 refers to a version that was never
+    released (latest is 0.14.6). This makes <code>pip install nstat-toolbox[test-parity]</code> and
+    <code>pip install nstat-toolbox[all-extras]</code> fail with a resolver error on any v0.4.x
+    PyPI release. The fix (<code>&gt;=0.14</code>) is on <code>main</code> as of this PR; a
+    v0.4.4 patch tag will ship it to PyPI.
+  </div>
+
+  <h2>PR #132 &mdash; Extras dependency fixes (merged 2026-06-03)</h2>
+
+  <h3>Fix 1: correct <code>statsmodels</code> pin to <code>&gt;=0.14</code></h3>
+  <p>
+    <code>statsmodels</code> has never released a 0.15 (current latest: 0.14.6). The
+    <code>&gt;=0.15</code> floor introduced in v0.4.1 meant pip's dependency resolver could not
+    find a satisfying candidate, so the <code>[test-parity]</code> and <code>[all-extras]</code>
+    install groups were entirely uninstallable. The floor is now <code>&gt;=0.14</code>, which
+    covers the whole 0.14 line (0.14.0 &ndash; 0.14.6). The bridge only calls
+    <code>statsmodels.api.GLM</code>, available throughout 0.14.
+  </p>
+
+  <h3>Fix 2: align clusterless bridge with <code>replay_trajectory_classification</code> 1.4 API</h3>
+  <p>
+    The <code>nstat.extras.decoding.clusterless_bridge</code> passed constructor arguments that
+    no longer match <code>replay_trajectory_classification&gt;=1.4</code> (which installs as
+    1.4.1):
+  </p>
+  <ul>
+    <li>
+      <code>ClusterlessDecoder</code> takes singular <code>environment=</code> /
+      <code>transition_type=</code>, not the plural forms
+      (<code>environments=</code> / <code>continuous_transition_types=</code>) used by the
+      classifier &mdash; passing the plural names raised <code>TypeError</code>.
+    </li>
+    <li>
+      <code>ClusterlessClassifier.continuous_transition_types</code> must be a square
+      (n&nbsp;&times;&nbsp;n) matrix; the bridge passed a single 1&nbsp;&times;&nbsp;n row, so the
+      upstream transition-matrix assembly indexed out of bounds. The bridge now builds the full
+      square matrix: per-state movement model on the diagonal, uniform spatial transition
+      off-diagonal (matching the upstream default layout).
+    </li>
+  </ul>
+  <p>The two previously-failing functional tests in
+  <code>tests/extras/test_clusterless_bridge.py</code> now pass against
+  <code>replay_trajectory_classification</code> 1.4.1.</p>
+
+  <h2>PR #133 &mdash; Revert docs reskin (merged 2026-06-03)</h2>
+  <p>
+    PR&nbsp;#131 (merged 2026-06-03) restyle the Sphinx docs site with a phosphor-green
+    oscilloscope theme (<code>docs/_static/custom.css</code> + <code>docs/conf.py</code>
+    changes). PR&nbsp;#133 reverts this, restoring the prior blue Read-the-Docs theme. The
+    custom CSS and conf.py additions from PR&nbsp;#131 are removed; the
+    <code>style_nav_header_background</code> RTD theme option returns to
+    <code>#2c5282</code> (nSTAT brand blue).
+  </p>
+  <p>No API or behavior changes.</p>
+
+  <footer>
+    Project: <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> &middot;
+    Docs: <a href="https://cajigaslab.github.io/nSTAT-python/">cajigaslab.github.io/nSTAT-python</a> &middot;
+    <a href="whats_new.html">&larr; What&rsquo;s New index</a>
+  </footer>
+</div>
+</body>
+</html>
