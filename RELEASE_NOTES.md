@@ -1,5 +1,49 @@
 # Release Notes
 
+## Unreleased (post-v0.4.3 hotfixes) — 2026-06-03
+
+Maintenance fixes merged to `main` after the v0.4.3 tag (PRs #132, #133).
+No version bump; included in the next tagged release.  **No public API
+changes, no behavior changes.**
+
+### Fixed
+
+- **`statsmodels` dependency pin** &mdash; corrected from `>=0.15` to `>=0.14`
+  in `[test-parity]` and `[all-extras]`.  `statsmodels 0.15` was never released
+  (latest stable is 0.14.x), so the groups were unresolvable by pip.  The bridge
+  only calls `statsmodels.api.GLM`, available throughout the 0.14 line, making
+  `>=0.14` the correct floor.  This also means the v0.4.1 release note that
+  documented this pin was historically inaccurate &mdash; the pin shipped
+  broken.
+
+- **Clusterless bridge API alignment** (`nstat.extras.decoding.clusterless_bridge`)
+  &mdash; updated to match `replay_trajectory_classification 1.4` (installs as
+  1.4.1):
+  - `ClusterlessDecoder` takes singular `environment=` / `transition_type=`
+    kwargs; the bridge was incorrectly passing the plural forms
+    (`environments=` / `continuous_transition_types=`) used by the classifier,
+    causing `TypeError`.
+  - `ClusterlessClassifier.continuous_transition_types` must be a square
+    `(n_states × n_states)` matrix; the bridge was passing a `1×N` row,
+    causing an out-of-bounds index.  The fix builds the full square matrix
+    (per-state movement model on the diagonal, uniform spatial transition
+    off-diagonal &mdash; matching the upstream default layout).
+
+  Verified against `replay_trajectory_classification 1.4.1`: both
+  previously-failing functional tests in
+  `tests/extras/test_clusterless_bridge.py` now pass.
+
+- **Docs theme revert** (PR #133) &mdash; the experimental oscilloscope / dark
+  lab-instrument Sphinx theme (PR #131) was reverted in full.  The prior blue
+  Read-the-Docs stylesheet is restored in `docs/_static/custom.css`,
+  `docs/conf.py`, and `docs/extras_summary.html`.
+
+### Breaking changes
+
+None.
+
+---
+
 ## v0.4.3 — 2026-05-31
 
 Documentation and packaging cleanup.  Removes cross-references to
@@ -50,7 +94,7 @@ reproducible.
   identity via a Gaussian prior at `A = I`:
   `A = (S10 + λI)(S11 + λI)⁻¹`.  When `S10`, `S11 → 0` (the
   weak-observability collapse mode) the limit becomes `I` rather than
-  `0`.  Try `0.1`–`1.0` if you see the `A → 0` collapse in
+  `0`.  Try `0.1`–1.0` if you see the `A → 0` collapse in
   `*_best_of` traces.
 
 ```python
@@ -102,11 +146,11 @@ Pre-v0.4.1 versions were never on PyPI despite the README's
   and runs `tests/extras/test_clusterless_bridge.py` end-to-end.
   Closes the Tier 2.1 CI story: the clusterless smoke tests no longer
   skip silently in every CI run.
-- **`statsmodels>=0.15`** pinned in `[test-parity]` — the older
-  `statsmodels` versions imported the private `scipy._lib._util._lazywhere`
-  symbol that scipy removed, surfacing as a recurring local-only test
-  failure under common conda environments.  Pinning forward resolves
-  it without touching the toolbox.
+- **`statsmodels>=0.15`** intended as a pin in `[test-parity]` to
+  address the recurring local-only `_lazywhere` failure.  *(Corrected
+  2026-06-03: `statsmodels 0.15` was never released; this pin was
+  uninstallable.  The correct pin `>=0.14` was applied as a
+  post-v0.4.3 hotfix.)*
 
 ### Docs / hygiene
 

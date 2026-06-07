@@ -48,6 +48,22 @@
   </header>
 
   <div class="entry">
+    <div class="date">2026-06-03</div>
+    <h2><a href="2026-06-03-post-v0.4.3-hotfixes.html">Post-v0.4.3 hotfixes &mdash; CI fixes &amp; docs theme revert</a>
+      <span class="tag hygiene">hygiene / CI</span></h2>
+    <p>Three maintenance fixes merged to <code>main</code> after the v0.4.3 tag
+    (PRs #132, #133), included in the next release. (1)&nbsp;The
+    <code>statsmodels&gt;=0.15</code> pin in <code>[test-parity]</code> was
+    corrected to <code>&gt;=0.14</code> &mdash; statsmodels 0.15 was never
+    released, making the group uninstallable. (2)&nbsp;The clusterless bridge
+    was realigned with the <code>replay_trajectory_classification 1.4</code> API
+    (singular vs. plural kwargs; full square transition matrix), fixing the
+    <code>extras-clusterless</code> CI job. (3)&nbsp;The experimental dark
+    oscilloscope Sphinx theme (PR #131) was reverted; the prior blue RTD
+    stylesheet is restored.</p>
+  </div>
+
+  <div class="entry">
     <div class="date">2026-05-31</div>
     <h2><a href="2026-05-31-v0.4.3-docs-cleanup.html">v0.4.3 — Documentation cleanup</a>
       <span class="tag">docs</span></h2>
@@ -74,15 +90,17 @@
   <div class="entry">
     <div class="date">2026-05-31</div>
     <h2><a href="2026-05-31-v0.4.1-polish.html">v0.4.1 — PyPI publishing + CI hygiene</a>
-      <span class="tag">release</span></h2>
-    <p>Post-v0.4.0 audit revealed the single biggest "drift" in the
-    project: <code>nstat-toolbox</code> has never been on PyPI despite
-    the README's <code>pip install</code> claim. v0.4.1 ships a
+      <span class="tag release">release</span></h2>
+    <p>Post-v0.4.0 audit revealed the single biggest &ldquo;drift&rdquo; in the
+    project: <code>nstat-toolbox</code> had never been on PyPI despite
+    the README’s <code>pip install</code> claim. v0.4.1 ships a
     Trusted-Publisher PyPI workflow (no API tokens), a dedicated
-    <code>extras-clusterless</code> CI job (closes Tier 2.1's CI
-    story), and pins <code>statsmodels&gt;=0.15</code> to kill the
-    recurring local-only <code>_lazywhere</code> failure. Maintainer
-    completes a 3-click one-time PyPI setup; every subsequent tag
+    <code>extras-clusterless</code> CI job (closes Tier 2.1’s CI
+    story), and intended to pin <code>statsmodels&gt;=0.15</code> to address
+    the recurring local-only <code>_lazywhere</code> failure &mdash; this pin
+    was subsequently corrected to <code>&gt;=0.14</code> on 2026-06-03 after
+    discovering <code>statsmodels 0.15</code> was never released.
+    Maintainer completes a 3-click one-time PyPI setup; every subsequent tag
     auto-publishes.</p>
   </div>
 
@@ -105,11 +123,11 @@
       <span class="tag flagship">extras / decoding</span></h2>
     <p>New <code>nstat.extras.decoding.clusterless_bridge</code>:
     <code>fit_clusterless_decoder</code> and
-    <code>fit_clusterless_classifier</code> wrap Denovellis 2021's MIT-licensed
+    <code>fit_clusterless_classifier</code> wrap Denovellis 2021’s MIT-licensed
     <a href="https://github.com/Eden-Kramer-Lab/replay_trajectory_classification"><code>replay_trajectory_classification</code></a>
     for marked point-process decoding (no spike sorting required) and
     trajectory-type classification (replay vs. local). The modern
-    descendant of nSTAT's PPAF / PPHF filters. New <code>[clusterless]</code>
+    descendant of nSTAT’s PPAF / PPHF filters. New <code>[clusterless]</code>
     opt-dep group (JAX-heavy; not in <code>[all-extras]</code>).</p>
   </div>
 
@@ -151,7 +169,7 @@
       <span class="tag">extras / EM</span></h2>
     <p>New <code>fit_point_process_em_best_of</code> /
     <code>fit_hybrid_em_best_of</code> + <code>MultiRestartResult</code>:
-    compose Tier 0.1's canonical gauge with Tier 0.2's true held-out
+    compose Tier 0.1’s canonical gauge with Tier 0.2’s true held-out
     predictive log-likelihood — run EM with several seeds, score each on
     the held-out tail, return the best. This is now the <strong>recommended
     workflow for PP_EM on real data</strong>; it automatically discards the
@@ -184,10 +202,9 @@
   </div>
 
   <footer>
-    Project: <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> ·
-    Docs: <a href="https://cajigaslab.github.io/nSTAT-python/">cajigaslab.github.io/nSTAT-python</a> ·
-    Roadmap: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md"><code>parity/methods_roadmap.md</code></a> ·
-    Release plan: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_READINESS.md"><code>RELEASE_READINESS.md</code></a>
+    Project: <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> &middot;
+    Docs: <a href="https://cajigaslab.github.io/nSTAT-python/">cajigaslab.github.io/nSTAT-python</a> &middot;
+    Release plan: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_READINESS.md"><code>RELEASE_READINESS.md</code></a> &middot;
     Roadmap: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md"><code>parity/methods_roadmap.md</code></a>
   </footer>
 </div>
