@@ -1,7 +1,7 @@
 # `nstat.extras.interop.pynapple` — pynapple bridge
 
-Convert between [`nstat.nspikeTrain`](../api.html) /
-[`nstat.SpikeTrainCollection`](../api.html) and the
+Convert between [`nstat.nspikeTrain`](../api.rst) /
+[`nstat.SpikeTrainCollection`](../api.rst) and the
 [pynapple](https://github.com/pynapple-org/pynapple) data model.
 pynapple's `Ts` / `Tsd` / `TsdFrame` containers plus `IntervalSet`
 epoch math are exactly the trial-window operations users repeatedly

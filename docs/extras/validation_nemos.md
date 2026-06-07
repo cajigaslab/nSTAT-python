@@ -1,6 +1,6 @@
 # `nstat.extras.validation.nemos_bridge` — NeMoS GLM cross-validation
 
-Cross-validate [`nstat.fit_poisson_glm`](../api.html) against
+Cross-validate [`nstat.fit_poisson_glm`](../api.rst) against
 [NeMoS](https://github.com/flatironinstitute/nemos), Flatiron's
 JAX-backed Poisson/Gamma GLM toolbox. NeMoS uses the *same*
 raised-cosine / B-spline basis families that nstat does (and that the

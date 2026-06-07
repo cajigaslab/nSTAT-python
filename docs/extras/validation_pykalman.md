@@ -1,7 +1,7 @@
 # `nstat.extras.validation.pykalman_bridge` — pykalman Kalman cross-validation
 
 Cross-validate
-[`nstat.DecodingAlgorithms.kalman_filter`](../api.html) and
+[`nstat.DecodingAlgorithms.kalman_filter`](../api.rst) and
 `kalman_fixedIntervalSmoother` against
 [pykalman](https://github.com/pykalman/pykalman) — a community-
 resurrected BSD-3 pure-NumPy Kalman implementation. Because pykalman

@@ -1,7 +1,7 @@
 # `nstat.extras.interop.nwb` — NWB:N reader
 
 Read [NWB](https://github.com/NeurodataWithoutBorders/pynwb) files into
-[`nstat.SpikeTrainCollection`](../api.html). NWB:N is the
+[`nstat.SpikeTrainCollection`](../api.rst). NWB:N is the
 BRAIN-Initiative-standard format for neurophysiology data; this bridge
 lets analyses written for nstat run directly on NWB-formatted datasets.
 
