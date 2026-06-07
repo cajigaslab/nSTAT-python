@@ -54,6 +54,10 @@ Find your way around
 ---------------------
 
 - `Friendly 5-minute intro <intro.html>`_ — the best starting point.
+- :doc:`Concepts & Background <concepts/index>` — learn the neuroscience and
+  statistics behind the toolbox (microelectrode recordings, spikes & the LFP,
+  point-process GLMs, goodness-of-fit, decoding), with worked snippets and
+  cited literature.
 - :doc:`PaperOverview` — crosswalk between the 2012 paper and the Python API.
 - :doc:`ClassDefinitions` — method catalog for every core class.
 - :doc:`api` — full API reference (auto-generated from docstrings).
@@ -61,6 +65,13 @@ Find your way around
   the `visual summary <extras_summary.html>`_.
 - :doc:`paper_examples` — the figure gallery.
 - `What's New <whats_new.html>`_ — per-release change summaries.
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Concepts & Background
+
+   concepts/index
 
 .. toctree::
    :maxdepth: 2

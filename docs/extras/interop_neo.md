@@ -1,7 +1,7 @@
 # `nstat.extras.interop.neo` — Neo bridge
 
-Convert between [`nstat.nspikeTrain`](../api.html) /
-[`nstat.SpikeTrainCollection`](../api.html) and the
+Convert between [`nstat.nspikeTrain`](../api.rst) /
+[`nstat.SpikeTrainCollection`](../api.rst) and the
 [Neo](https://github.com/NeuralEnsemble/python-neo) data model. Neo is
 the de-facto interchange object for the Elephant / SpikeInterface /
 Brian2 ecosystem, with readers for Spike2, NEX, AlphaOmega, Axon,

@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Example 02 — Whisker Stimulus GLM With Lag and History Selection.
 
+Concepts & background:
+  Point-process GLMs with stimulus + spike-history terms, and AIC/BIC model
+  selection.  Background: docs/concepts/spike_trains_and_glms.md.
+  Key reference: Truccolo et al. 2005, J Neurophysiol 93:1074 (PMID 15356183).
+
 This example demonstrates:
   1) Fitting an explicit-stimulus point-process GLM to thalamic spike data.
   2) Cross-correlation analysis to identify optimal stimulus lag.

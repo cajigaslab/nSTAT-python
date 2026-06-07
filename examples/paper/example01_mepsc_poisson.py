@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Example 01 — mEPSC Poisson Models Under Constant and Washout Magnesium.
 
+Concepts & background:
+  Poisson spike-train models and goodness-of-fit via the time-rescaling KS
+  test.  New to these ideas?  Read docs/concepts/spike_trains_and_glms.md and
+  docs/concepts/goodness_of_fit_and_decoding.md first.
+  Key reference: Brown et al. 2002, Neural Comput 14:325 (PMID 11802915).
+
 This example demonstrates:
   1) Homogeneous Poisson modeling for constant Mg2+ conditions.
   2) Piecewise baseline modeling under Mg2+ washout conditions.

@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Example 05 — Stimulus Decoding With PPAF and PPHF.
 
+Concepts & background:
+  Decoding — inferring the stimulus/state from spikes — with the point-process
+  adaptive filter (PPAF, the spiking analogue of the Kalman filter) and the
+  hybrid filter (PPHF).  Background: docs/concepts/goodness_of_fit_and_decoding.md.
+  Key reference: Eden et al. 2004, Neural Comput 16:971 (PMID 15070506).
+
 This example demonstrates neural decoding using point-process adaptive filters
 (PPAF) and point-process hybrid filters (PPHF) from the nSTAT toolbox.
 

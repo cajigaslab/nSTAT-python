@@ -1,6 +1,6 @@
 # `nstat.extras.validation.statsmodels_bridge` — statsmodels GLM cross-validation
 
-Cross-validate [`nstat.fit_poisson_glm`](../api.html) against
+Cross-validate [`nstat.fit_poisson_glm`](../api.rst) against
 [`statsmodels.genmod.GLM`](https://www.statsmodels.org/) — the third
 independent Poisson-GLM oracle in `nstat.extras.validation` (alongside
 NeMoS and nstat's own IRLS).

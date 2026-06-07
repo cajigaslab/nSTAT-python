@@ -1,5 +1,22 @@
 # nSTAT Python Examples
 
+## Tutorials (Learn-by-reading)
+
+Heavily annotated, self-contained scripts written as lessons — run anywhere
+(simulated data, no download). Pair them with the
+[Concepts &amp; Background](../docs/concepts/index.md) documentation.
+
+```bash
+# Encoding -> GLM fit -> goodness-of-fit, with a correct-vs-wrong-model contrast
+python examples/tutorials/encoding_to_goodness_of_fit.py
+python examples/tutorials/encoding_to_goodness_of_fit.py --save-fig out.png
+```
+
+- **`examples/tutorials/Tutorial_MicroelectrodeToDecoding.ipynb`** — a notebook
+  tour from microelectrode recordings (spikes vs. LFP) through spike trains,
+  multitaper spectra, GLM fitting, goodness-of-fit, and decoding. Runs on
+  simulated data; ships with outputs and figures embedded.
+
 ## Paper Examples (Self-Contained)
 
 Five self-contained scripts mirroring the MATLAB paper examples. Each
