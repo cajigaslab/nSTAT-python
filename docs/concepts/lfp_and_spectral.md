@@ -64,6 +64,13 @@ spec = lfp.MTMspectrum()      # peaks near 8 Hz and 40 Hz
 lfp.periodogram()             # single-taper (noisy) baseline
 ```
 
+![Multitaper power spectrum and spectrogram of a simulated LFP](figures/multitaper_spectrum.png)
+
+*A toy LFP with 8 Hz theta throughout and a 40 Hz gamma burst from 2–4 s.
+Left: the multitaper spectrum cleanly resolves both peaks. Right: the
+spectrogram localizes the gamma burst in time — which the spectrum alone
+cannot.*
+
 **Reading the trade-off:** small `NW` → sharp frequency resolution but noisy;
 large `NW` → smooth, low-variance, but blurs nearby peaks. Choose `NW` for the
 question: separating two close rhythms needs small `NW`; estimating broadband

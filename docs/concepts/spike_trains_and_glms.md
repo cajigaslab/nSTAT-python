@@ -23,6 +23,13 @@ network coupling that a plain rate `λ(t)` cannot. See
 [Truccolo et al. (2005)](https://pubmed.ncbi.nlm.nih.gov/15356183/) for the
 neuroscience framing.
 
+![A stimulus-driven conditional intensity function and the spike raster it generates across repeated trials](figures/cif_raster.png)
+
+*Top: a conditional intensity function `λ(t)` driven by a stimulus. Bottom:
+spikes simulated from it on 25 repeated trials — different every time, but
+denser wherever `λ(t)` is high. The point process is the bridge between the
+two.*
+
 Special cases worth naming:
 
 - **Homogeneous Poisson:** `λ` constant. Spikes are "completely random" at a

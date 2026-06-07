@@ -23,6 +23,12 @@ is that these contributions separate cleanly **by frequency**:
 | ~300 Hz – 5 kHz (high-pass) | **Spikes** / "unit activity" | Fast action-potential currents of nearby neurons | *When* individual neurons fire |
 | ~1 – 300 Hz (low-pass) | **Local field potential (LFP)** | Slower, summed synaptic & subthreshold currents of a local population | Coordinated population activity, rhythms |
 
+![Broadband extracellular signal separated by frequency into high-pass spikes and low-pass LFP](figures/signal_split.png)
+
+*One simulated electrode signal (top) split by frequency: high-pass (>300 Hz)
+isolates the fast spike transients (middle); low-pass (<300 Hz) leaves the
+slower LFP (bottom).*
+
 So a single broadband electrode signal gives you **two complementary views**
 through two filters: high-pass it and you see spikes; low-pass it and you see
 the LFP. nSTAT has tools for both:

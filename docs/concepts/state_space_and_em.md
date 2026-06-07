@@ -44,6 +44,12 @@ result = population.ssglm(...)      # forward filter
 result = population.ssglmFB(...)    # forward-backward smoother (recommended)
 ```
 
+![A stimulus coefficient drifting across trials, with noisy per-trial estimates and a smoothed state-space estimate tracking the true latent state](figures/ssglm_drift.png)
+
+*Why a state space helps: the true tuning (orange) drifts as the animal learns.
+Fitting each trial independently is noisy (grey); the SSGLM smoother (blue)
+borrows strength across trials to recover the trajectory.*
+
 Paper Example 03 walks through SSGLM end to end on PSTH-style data.
 
 **2. Within-recording latent state — adaptive filtering / EM-trained SSMs.**
