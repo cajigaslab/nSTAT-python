@@ -108,6 +108,9 @@ descendant of nSTAT's PPAF/PPHF for unsorted data.
 
 ## See also
 
+- Runnable tutorial (no data needed): the time-rescaling KS test in action,
+  correct vs. misspecified model —
+  [`examples/tutorials/encoding_to_goodness_of_fit.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/encoding_to_goodness_of_fit.py)
 - Runnable example: PPAF / PPHF decoding — Paper Example 05
   [`examples/paper/example05_decoding_ppaf_pphf.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example05_decoding_ppaf_pphf.py)
 - Notebooks:

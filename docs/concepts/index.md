@@ -22,6 +22,12 @@ the primary literature so you can go deeper. No prior neuroscience is assumed.
    the time-rescaling KS test, population goodness-of-fit, and reading the
    stimulus/state back out with point-process and clusterless decoders.
 
+Hands-on companion: the runnable tutorial
+[`examples/tutorials/encoding_to_goodness_of_fit.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/encoding_to_goodness_of_fit.py)
+walks the whole arc — simulate a stimulus-driven neuron, fit a point-process
+GLM, and run the time-rescaling goodness-of-fit test (with a correct-vs-wrong
+model contrast). It needs no data download.
+
 Reference material:
 
 - **[Glossary](glossary.md)** — plain-language definitions, each linked to the
