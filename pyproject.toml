@@ -82,7 +82,7 @@ dynamax = [
 test-parity = [
   "nemos>=0.2",
   "pykalman>=0.11",
-  "statsmodels>=0.15",
+  "statsmodels>=0.14",
   "nitime>=0.12",
 ]
 
@@ -110,7 +110,7 @@ all-extras = [
   "pyspike>=0.8",
   "nemos>=0.2",
   "pykalman>=0.11",
-  "statsmodels>=0.15",
+  "statsmodels>=0.14",
   "nitime>=0.12",
 ]
 
