@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Example 03 — PSTH and State-Space GLM Dynamics.
 
+Concepts & background:
+  The state-space GLM (SSGLM): GLM coefficients that evolve across trials,
+  estimated by EM with a forward-backward smoother — i.e. learning dynamics.
+  Background: docs/concepts/state_space_and_em.md.
+  Key reference: Smith & Brown 2003, Neural Comput 15:965 (PMID 12803953).
+
 This example demonstrates:
   1) Simulating spike trains from a known sinusoidal CIF.
   2) Computing PSTH (histogram) and comparing with GLM-PSTH.

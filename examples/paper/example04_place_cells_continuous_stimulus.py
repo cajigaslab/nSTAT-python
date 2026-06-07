@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Example 04 — Place-Cell Receptive Fields (Gaussian vs Zernike).
 
+Concepts & background:
+  Encoding a continuous (2-D position) covariate through different spatial
+  bases, and comparing the resulting receptive-field fits.  Background:
+  docs/concepts/spike_trains_and_glms.md (covariates and bases).
+  Key reference: Truccolo et al. 2005, J Neurophysiol 93:1074 (PMID 15356183).
+
 This example demonstrates:
   1) Loading hippocampal place-cell data from two animals.
   2) Visualising spike locations overlaid on the animal's path.

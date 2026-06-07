@@ -21,6 +21,10 @@ the primary literature so you can go deeper. No prior neuroscience is assumed.
 4. **[Goodness-of-fit and decoding](goodness_of_fit_and_decoding.md)** —
    the time-rescaling KS test, population goodness-of-fit, and reading the
    stimulus/state back out with point-process and clusterless decoders.
+5. **[State-space models: learning dynamics and EM](state_space_and_em.md)** —
+   models whose parameters change over time: the across-trial state-space GLM
+   (SSGLM) and EM-trained latent state-space models. *Where to go after the
+   static GLM.*
 
 Hands-on companions (both run on simulated data, no download):
 
@@ -46,7 +50,8 @@ Reference material:
 |---|---|---|
 | Spike trains | `nspikeTrain`, `nstColl` | `nSpikeTrainExamples.ipynb` |
 | Encoding GLM | `Analysis`, `TrialConfig`, `FitResult` | Paper Example 02 |
-| Across-trial learning | `nstColl.ssglm()` (SSGLM) | Paper Example 03 |
+| Across-trial learning (SSGLM) | `nstColl.ssglm()` / `ssglmFB()` | Paper Example 03 |
+| EM-trained state-space models | `nstat.extras.em.dynamax_bridge` | `examples/extras/em_dynamax_demo.py` |
 | Goodness-of-fit | `FitResult.computeKSStats`, `population_time_rescale` | Paper Examples 01–03 |
 | LFP / spectra | `SignalObj` (`MTMspectrum`, `spectrogram`) | `SignalObjExamples.ipynb` |
 | Decoding | `DecodingAlgorithms` (PPAF/PPHF), `clusterless_bridge` | Paper Example 05 |
@@ -64,6 +69,7 @@ microelectrode_recordings
 spike_trains_and_glms
 lfp_and_spectral
 goodness_of_fit_and_decoding
+state_space_and_em
 glossary
 bibliography
 ```
