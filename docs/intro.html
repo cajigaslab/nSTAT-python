@@ -137,7 +137,7 @@ times = np.sort(np.random.default_rng(0).uniform(0, 1, 100))
 st = nspikeTrain(times, name="neuron1",
                  sampleRate=1000,
                  minTime=0.0, maxTime=1.0)
-print(f"{st.numSpikes} spikes; rate ~ {st.numSpikes:.0f} Hz")
+print(f"{st.n_spikes} spikes; rate ~ {st.n_spikes:.0f} Hz")
 st.plot()</code></pre>
     <div class="seemore">📓 More: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nSpikeTrainExamples.ipynb">notebooks/nSpikeTrainExamples.ipynb</a></div>
   </div>

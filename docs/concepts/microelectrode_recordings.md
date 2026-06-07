@@ -90,7 +90,7 @@ st = nspikeTrain(
     minTime=0.0,
     maxTime=0.25,
 )
-print(st.numSpikes, "spikes")
+print(st.n_spikes, "spikes")
 st.plot()   # raster tick marks
 ```
 

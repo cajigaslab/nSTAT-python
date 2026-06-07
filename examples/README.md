@@ -12,6 +12,11 @@ python examples/tutorials/encoding_to_goodness_of_fit.py
 python examples/tutorials/encoding_to_goodness_of_fit.py --save-fig out.png
 ```
 
+- **`examples/tutorials/Tutorial_MicroelectrodeToDecoding.ipynb`** — a notebook
+  tour from microelectrode recordings (spikes vs. LFP) through spike trains,
+  multitaper spectra, GLM fitting, goodness-of-fit, and decoding. Runs on
+  simulated data; ships with outputs and figures embedded.
+
 ## Paper Examples (Self-Contained)
 
 Five self-contained scripts mirroring the MATLAB paper examples. Each
