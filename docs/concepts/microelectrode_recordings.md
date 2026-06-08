@@ -126,6 +126,24 @@ neurons, principled statistical models — rather than trial-averaged tuning
 curves — become essential
 ([Stevenson & Kording 2011](https://pubmed.ncbi.nlm.nih.gov/21270781/)).
 
+## Check your understanding
+
+1. You have a broadband electrode trace and want the LFP. What do you do, and
+   roughly which frequency band do you keep?
+2. Your sorter returns a cluster you cannot cleanly separate. Is that a single
+   unit or multi-unit activity — and can nSTAT still analyze it?
+
+<details>
+<summary>Show answers</summary>
+
+1. **Low-pass filter** the signal, keeping roughly **1–300 Hz**; the
+   high-frequency (>300 Hz) part holds the spikes.
+2. It is **multi-unit (or unsorted) activity**. nSTAT can analyze any list of
+   spike times, but interpreting results as a *single neuron* requires a
+   well-isolated unit.
+
+</details>
+
 ## See also
 
 - Runnable example: building and rastering spike trains —

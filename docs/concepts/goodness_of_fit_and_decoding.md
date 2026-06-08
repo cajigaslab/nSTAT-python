@@ -91,6 +91,13 @@ fitted CIF (its tuning). Because spikes are all-or-none point events rather
 than Gaussian measurements, the update uses the point-process likelihood
 instead of the Kalman gain — but the predict/correct rhythm is the same.
 
+![PPAF decode of a hidden sinusoidal stimulus from a 20-cell population, tracking the truth inside a 95% credible band](figures/decoding.png)
+
+*The PPAF reconstructs a hidden stimulus (orange) from the spikes of a 20-cell
+population (blue), with a 95% credible band. More cells with diverse tuning
+shrink the band and the error — see the runnable
+[decoding tutorial](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/decoding_ppaf.py).*
+
 Variants in nSTAT:
 
 - **PPAF** — continuous state (e.g. stimulus value, hand position) from a
@@ -114,11 +121,32 @@ by the opt-in `nstat.extras.decoding.clusterless_bridge`
 (`fit_clusterless_decoder`, `fit_clusterless_classifier`). It is the natural
 descendant of nSTAT's PPAF/PPHF for unsorted data.
 
+## Check your understanding
+
+1. A model has the lowest AIC of all you tried, but its KS curve leaves the
+   confidence band. Should you trust it?
+2. Why is decoding done from a *population* rather than a single neuron?
+
+<details>
+<summary>Show answers</summary>
+
+1. **No.** AIC only ranks models *relative to each other*; leaving the KS band
+   means the model is **misspecified** in absolute terms. Prefer the lowest-AIC
+   model that **also passes** goodness-of-fit.
+2. A single neuron is **ambiguous** about the state. A population with diverse
+   tuning **jointly constrains** it — decode error falls steadily as you add
+   cells (see the decoding tutorial).
+
+</details>
+
 ## See also
 
 - Runnable tutorial (no data needed): the time-rescaling KS test in action,
   correct vs. misspecified model —
   [`examples/tutorials/encoding_to_goodness_of_fit.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/encoding_to_goodness_of_fit.py)
+- Runnable tutorial (no data needed): decode a hidden stimulus from a
+  population with the PPAF —
+  [`examples/tutorials/decoding_ppaf.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/decoding_ppaf.py)
 - Runnable example: PPAF / PPHF decoding — Paper Example 05
   [`examples/paper/example05_decoding_ppaf_pphf.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example05_decoding_ppaf_pphf.py)
 - Notebooks:

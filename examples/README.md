@@ -10,6 +10,10 @@ Heavily annotated, self-contained scripts written as lessons — run anywhere
 # Encoding -> GLM fit -> goodness-of-fit, with a correct-vs-wrong-model contrast
 python examples/tutorials/encoding_to_goodness_of_fit.py
 python examples/tutorials/encoding_to_goodness_of_fit.py --save-fig out.png
+
+# Decoding: reconstruct a hidden stimulus from a population with the PPAF
+python examples/tutorials/decoding_ppaf.py
+python examples/tutorials/decoding_ppaf.py --save-fig out.png
 ```
 
 - **`examples/tutorials/Tutorial_MicroelectrodeToDecoding.ipynb`** — a notebook

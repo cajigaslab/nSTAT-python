@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
 
 from nstat import (  # noqa: E402
     SignalObj, simulate_cif_from_stimulus, fit_poisson_glm, population_time_rescale,
+    DecodingAlgorithms,
 )
 
 OUT = Path(__file__).resolve().parent
@@ -199,12 +200,109 @@ def fig_ssglm_drift() -> None:
     plt.close(fig)
 
 
+def fig_decoding() -> None:
+    """PPAF decode of a hidden stimulus from a 20-cell population vs. truth."""
+    rng = np.random.default_rng(0)
+    delta = 0.001
+    time = np.arange(0.0, 1.0 + delta, delta)
+    stim = np.sin(2 * np.pi * 2.0 * time)
+    n_cells = 20
+    b1 = rng.standard_normal(n_cells)
+    b0 = np.log(10.0 * delta) + rng.standard_normal(n_cells)
+    dN = np.zeros((n_cells, time.size))
+    for c in range(n_cells):
+        eta = np.clip(b0[c] + b1[c] * stim, -20.0, 20.0)
+        p = np.exp(eta) / (1.0 + np.exp(eta))
+        dN[c, :] = (rng.random(time.size) < p).astype(float)
+
+    A = np.array([[1.0]])
+    Q = np.array([[float(np.std(np.diff(stim)))]])
+    _, _, x_u, W_u, *_ = DecodingAlgorithms.PPDecodeFilterLinear(
+        A, Q, dN, b0, b1.reshape(1, -1), "binomial", delta, None, None,
+        np.array([0.0]), 0.5 * np.eye(1),
+    )
+    x_hat = x_u[0, :]
+    sigma = np.sqrt(np.maximum(W_u[0, 0, :], 0.0))
+    rmse = float(np.sqrt(np.mean((x_hat - stim) ** 2)))
+
+    fig, ax = plt.subplots(figsize=(8, 3.2))
+    ax.plot(time, stim, color="#dd6b20", lw=2, label="true stimulus")
+    ax.plot(time, x_hat, color=ACCENT, lw=1.5, label="PPAF decode (20 cells)")
+    ax.fill_between(time, x_hat - 1.96 * sigma, x_hat + 1.96 * sigma,
+                    color=ACCENT, alpha=0.2, label="95% credible band")
+    ax.set(xlabel="time (s)", ylabel="stimulus", xlim=(time[0], time[-1]),
+           title=f"Decoding a hidden stimulus from population spikes (RMSE={rmse:.2f})")
+    ax.legend(loc="upper right", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(OUT / "decoding.png", dpi=120)
+    plt.close(fig)
+
+
+def fig_workflow() -> None:
+    """Schematic of the nSTAT object model / analysis pipeline."""
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
+
+    stages = [
+        ("Raw data", "spike times\ncovariates / stimuli\nLFP / EEG / ECoG", "#718096"),
+        ("nSTAT objects", "nspikeTrain · nstColl\nCovariate · CovColl\nSignalObj", ACCENT),
+        ("Trial\n+ TrialConfig", "bundle data +\nmodel specification", ACCENT),
+        ("Analysis", "fit the\npoint-process GLM", ACCENT),
+        ("FitResult", "coefficients, CIF,\ndiagnostics", ACCENT),
+    ]
+    outputs = [
+        ("Goodness-of-fit", "computeKSStats\npopulation_time_rescale"),
+        ("Model comparison", "AIC / BIC"),
+        ("Decoding", "PPAF / PPHF\nclusterless"),
+    ]
+
+    fig, ax = plt.subplots(figsize=(12.6, 3.6))
+    ax.set_xlim(0, 12.6)
+    ax.set_ylim(0, 3.6)
+    ax.axis("off")
+
+    w, h, y = 1.7, 1.3, 1.5
+    xs = [0.15 + i * 1.95 for i in range(len(stages))]
+    for i, (title, sub, color) in enumerate(stages):
+        x = xs[i]
+        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.04,rounding_size=0.12",
+                                    linewidth=1.5, edgecolor=color, facecolor="white"))
+        ax.text(x + w / 2, y + h - 0.32, title, ha="center", va="center",
+                fontsize=9.5, fontweight="bold", color=color)
+        ax.text(x + w / 2, y + 0.42, sub, ha="center", va="center", fontsize=7.2, color="0.25")
+        if i > 0:
+            ax.add_patch(FancyArrowPatch((xs[i - 1] + w, y + h / 2), (x, y + h / 2),
+                                         arrowstyle="-|>", mutation_scale=14, color="0.4", lw=1.4))
+
+    # Three outputs branching from FitResult, stacked at the right.
+    fr_x = xs[-1] + w
+    oy = [2.55, 1.55, 0.55]
+    ox = fr_x + 0.55
+    ow, oh = 2.0, 0.78
+    for (title, sub), yy in zip(outputs, oy):
+        ax.add_patch(FancyBboxPatch((ox, yy - oh / 2), ow, oh,
+                                    boxstyle="round,pad=0.03,rounding_size=0.1",
+                                    linewidth=1.3, edgecolor="#dd6b20", facecolor="#fff7ee"))
+        ax.text(ox + ow / 2, yy + 0.14, title, ha="center", va="center",
+                fontsize=8.5, fontweight="bold", color="#9c4221")
+        ax.text(ox + ow / 2, yy - 0.16, sub, ha="center", va="center", fontsize=6.8, color="0.3")
+        ax.add_patch(FancyArrowPatch((fr_x, y + h / 2), (ox, yy),
+                                     arrowstyle="-|>", mutation_scale=12, color="#dd6b20",
+                                     lw=1.2, connectionstyle="arc3,rad=0.0"))
+
+    ax.text(6.3, 3.42, "The nSTAT analysis pipeline", ha="center", fontsize=11, fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(OUT / "workflow.png", dpi=120)
+    plt.close(fig)
+
+
 def main() -> int:
+    fig_workflow()
     fig_signal_split()
     fig_cif_raster()
     fig_multitaper()
     fig_ks_plot()
     fig_ssglm_drift()
+    fig_decoding()
     print("Wrote concept figures to", OUT)
     return 0
 
