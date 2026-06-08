@@ -92,6 +92,24 @@ signals (e.g. LFP channels), nSTAT's `Analysis` provides **Granger causality**
 over an ensemble — the continuous-signal analogue of the coupling terms in the
 point-process GLM.
 
+## Check your understanding
+
+1. When would you choose the state-space GLM over a plain (static) GLM?
+2. Why does point-process EM (`PP_EM`) use multiple restarts with held-out
+   scoring instead of a single fit?
+
+<details>
+<summary>Show answers</summary>
+
+1. When the tuning **changes over time** — e.g. across trials as the animal
+   **learns or adapts**. The SSGLM lets the coefficients evolve as a latent
+   state.
+2. EM converges only to a **local** optimum and point-process state-space EM
+   has a **collapse** failure mode. Several restarts scored by **held-out
+   predictive log-likelihood** pick a non-degenerate fit.
+
+</details>
+
 ## See also
 
 - Runnable example: SSGLM across-trial dynamics — Paper Example 03

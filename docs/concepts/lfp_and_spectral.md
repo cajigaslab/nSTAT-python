@@ -118,6 +118,23 @@ state-space models, the opt-in `nstat.extras.em.dynamax_bridge` wraps Dynamax.
 > an independent library so you can confirm agreement — useful when learning
 > the API.
 
+## Check your understanding
+
+1. Why prefer the multitaper estimate over a raw periodogram?
+2. You need to resolve two rhythms only a few Hz apart. Do you choose a large
+   or a small time–bandwidth product `NW`?
+
+<details>
+<summary>Show answers</summary>
+
+1. The periodogram's variance does **not** shrink with more data and it leaks
+   power. Multitaper **averages over orthogonal Slepian tapers**, cutting
+   variance while controlling leakage.
+2. A **small** `NW` — it gives sharper frequency resolution (at the cost of
+   more variance). Large `NW` over-smooths and would merge the two peaks.
+
+</details>
+
 ## See also
 
 - Runnable example: multitaper + spectrogram —

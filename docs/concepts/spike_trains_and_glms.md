@@ -134,6 +134,23 @@ latent state that evolves across trials, estimated by an EM algorithm
 this is `nstColl.ssglm()` / `ssglmFB()` (forward–backward). Paper Example 03
 walks through it.
 
+## Check your understanding
+
+1. In words, what does `λ(t | H_t) · Δ` represent?
+2. Why does the GLM model `log λ` (a log link) rather than `λ` directly?
+
+<details>
+<summary>Show answers</summary>
+
+1. The **probability of a spike** in the small interval `[t, t+Δ)`, **given
+   the history** `H_t` of past spikes and covariates.
+2. The log link keeps the rate **positive**, makes covariates act
+   **multiplicatively**, and yields a **concave** log-likelihood
+   ([Paninski 2004](https://pubmed.ncbi.nlm.nih.gov/15600233/)) so the fit has a
+   unique optimum.
+
+</details>
+
 ## See also
 
 - Runnable examples:

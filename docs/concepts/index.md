@@ -5,6 +5,15 @@ the API. It is written for students and newcomers: each page builds intuition
 first, then shows the matching nSTAT objects and a runnable snippet, and cites
 the primary literature so you can go deeper. No prior neuroscience is assumed.
 
+**Jump in by goal:**
+*I want to…* &nbsp;
+[fit a GLM](spike_trains_and_glms.md) ·
+[check a model's fit](goodness_of_fit_and_decoding.md) ·
+[analyze LFP / spectra](lfp_and_spectral.md) ·
+[decode a stimulus/state](goodness_of_fit_and_decoding.md) ·
+[model learning across trials](state_space_and_em.md) ·
+[avoid common mistakes](pitfalls_and_faq.md).
+
 ## Suggested learning path
 
 1. **[Microelectrode recordings: spikes and the LFP](microelectrode_recordings.md)**
@@ -39,12 +48,21 @@ Hands-on companions (both run on simulated data, no download):
 
 Reference material:
 
+- **[Common pitfalls & FAQ](pitfalls_and_faq.md)** — the mistakes that quietly
+  invalidate an analysis, and how to avoid them. Skim before your first real
+  analysis.
 - **[Glossary](glossary.md)** — plain-language definitions, each linked to the
   relevant nSTAT object.
 - **[Annotated bibliography](bibliography.md)** — the primary sources, with a
   note on why each matters for nSTAT users.
 
 ## How the concepts map to nSTAT
+
+![The nSTAT analysis pipeline: raw data to nSTAT objects to Trial+TrialConfig to Analysis to FitResult, branching into goodness-of-fit, model comparison, and decoding](figures/workflow.png)
+
+*The pipeline at a glance: raw data become nSTAT objects, a `Trial` plus a
+`TrialConfig` specify the model, `Analysis` fits it, and the resulting
+`FitResult` feeds goodness-of-fit, model comparison, and decoding.*
 
 | Concept | nSTAT objects | Example |
 |---|---|---|
@@ -70,6 +88,7 @@ spike_trains_and_glms
 lfp_and_spectral
 goodness_of_fit_and_decoding
 state_space_and_em
+pitfalls_and_faq
 glossary
 bibliography
 ```
