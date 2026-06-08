@@ -12,6 +12,7 @@ the primary literature so you can go deeper. No prior neuroscience is assumed.
 [analyze LFP / spectra](lfp_and_spectral.md) ·
 [decode a stimulus/state](goodness_of_fit_and_decoding.md) ·
 [model learning across trials](state_space_and_em.md) ·
+[measure coupling between neurons](network_connectivity.md) ·
 [avoid common mistakes](pitfalls_and_faq.md).
 
 ## Suggested learning path
@@ -34,6 +35,9 @@ the primary literature so you can go deeper. No prior neuroscience is assumed.
    models whose parameters change over time: the across-trial state-space GLM
    (SSGLM) and EM-trained latent state-space models. *Where to go after the
    static GLM.*
+6. **[Network connectivity and functional coupling](network_connectivity.md)** —
+   how neurons influence each other (ensemble GLM terms, cross-correlograms,
+   Granger), and why correlation is not connection.
 
 Hands-on companions (both run on simulated data, no download):
 
@@ -73,6 +77,7 @@ Reference material:
 | Goodness-of-fit | `FitResult.computeKSStats`, `population_time_rescale` | Paper Examples 01–03 |
 | LFP / spectra | `SignalObj` (`MTMspectrum`, `spectrogram`) | `SignalObjExamples.ipynb` |
 | Decoding | `DecodingAlgorithms` (PPAF/PPHF), `clusterless_bridge` | Paper Example 05 |
+| Functional coupling | `TrialConfig` ensemble terms, `Analysis` (Granger) | `network_coupling.py` |
 
 Once the concepts are clear, see the
 [Paper-aligned toolbox map](../PaperOverview.md) for the full API crosswalk and
@@ -88,6 +93,7 @@ spike_trains_and_glms
 lfp_and_spectral
 goodness_of_fit_and_decoding
 state_space_and_em
+network_connectivity
 pitfalls_and_faq
 glossary
 bibliography
