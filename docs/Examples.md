@@ -63,6 +63,17 @@ counterparts:
 - Generated gallery and figure index: [Paper Examples](paper_examples.md)
 - Master notebook: `../notebooks/nSTATPaperExamples.ipynb`
 
+## Tutorials
+
+Heavily annotated, self-contained teaching materials — run anywhere (simulated
+data, no download required). Pair with the
+[Concepts & Background](concepts/index.md) guide.
+
+| Resource | What it covers |
+|---|---|
+| [`examples/tutorials/encoding_to_goodness_of_fit.py`](../examples/tutorials/encoding_to_goodness_of_fit.py) | Encoding → GLM fit → goodness-of-fit as a four-act lesson; correct-vs-wrong-model contrast |
+| [`examples/tutorials/Tutorial_MicroelectrodeToDecoding.ipynb`](../examples/tutorials/Tutorial_MicroelectrodeToDecoding.ipynb) | Guided notebook from microelectrode recordings through spike trains, multitaper spectra, GLM fitting, goodness-of-fit, and decoding |
+
 ## Supplementary (README) Examples
 
 These smaller demos serve as quick install and plotting checks:
