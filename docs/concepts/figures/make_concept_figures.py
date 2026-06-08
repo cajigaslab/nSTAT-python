@@ -23,9 +23,11 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import warnings  # noqa: E402
+
 from nstat import (  # noqa: E402
     SignalObj, simulate_cif_from_stimulus, fit_poisson_glm, population_time_rescale,
-    DecodingAlgorithms,
+    DecodingAlgorithms, simulate_two_neuron_network, MatlabFallbackWarning,
 )
 
 OUT = Path(__file__).resolve().parent
@@ -295,8 +297,81 @@ def fig_workflow() -> None:
     plt.close(fig)
 
 
+def fig_network() -> None:
+    """Cross-correlogram of two coupled neurons (excitation + inhibition)."""
+    dt = 0.001
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", MatlabFallbackWarning)
+        sim = simulate_two_neuron_network(duration_s=120.0, dt=dt, seed=7,
+                                          ensemble_kernel=(1.5, -1.5))
+    si0, si1 = sim.spike_indicator[:, 0], sim.spike_indicator[:, 1]
+    L = int(round(0.025 / dt))
+    lags = np.arange(-L, L + 1)
+    t0 = np.flatnonzero(si0 > 0)
+    ccg = np.array([si1[np.clip(t0 + lag, 0, si1.size - 1)].sum() for lag in lags])
+    lags_ms = lags * dt * 1e3
+
+    fig, ax = plt.subplots(figsize=(7.6, 3.2))
+    ax.bar(lags_ms, ccg, width=(lags_ms[1] - lags_ms[0]), color=ACCENT, alpha=0.85)
+    ax.axhline(ccg.mean(), color="0.5", ls="--", lw=0.8, label="chance")
+    ax.axvline(0, color="#dd6b20", lw=1)
+    ax.set(xlabel="lag (ms): neuron 1 relative to neuron 0", ylabel="spike count",
+           title="Functional coupling: peak before 0 = 1→0 excitation; "
+                 "trough after = 0→1 inhibition")
+    ax.legend(loc="upper right", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(OUT / "network_ccg.png", dpi=120)
+    plt.close(fig)
+
+
+def fig_model_comparison() -> None:
+    """AIC bars for nested GLMs, colored by whether they pass the KS test."""
+    rng = np.random.default_rng(1)
+    dt = 0.001
+    t = np.arange(0.0, 40.0, dt)
+    stim = np.sin(2 * np.pi * 1.0 * t)
+    # Simulate spikes with stimulus + refractory history (history truly needed).
+    y = np.zeros(t.size)
+    prev = 0.0
+    for i in range(t.size):
+        rate = np.exp(3.2 + 1.0 * stim[i] - 5.0 * prev)
+        y[i] = 1.0 if rng.random() < (1.0 - np.exp(-rate * dt)) else 0.0
+        prev = y[i]
+    hist = np.concatenate([[0.0], y[:-1]])
+    offset = np.full(y.shape, np.log(dt))
+
+    def score(X):
+        if X is None:
+            fit = fit_poisson_glm(np.zeros((y.size, 1)), y, offset=offset, l2=1e-8)
+            lam = np.exp(fit.intercept + offset); k = 1
+        else:
+            fit = fit_poisson_glm(X, y, offset=offset, l2=1e-8, max_iter=200)
+            lam = np.exp(fit.intercept + X @ fit.coefficients + offset); k = 1 + X.shape[1]
+        ll = float(np.sum(y * np.log(lam + 1e-300) - lam))
+        return -2 * ll + 2 * k, population_time_rescale([y], [lam]).ground_ks_pvalue
+
+    specs = [("M0\nconstant", None),
+             ("M1\n+stimulus", stim[:, None]),
+             ("M2\n+stim+history", np.column_stack([stim, hist]))]
+    aic, ksp = zip(*(score(X) for _, X in specs))
+    colors = ["#a0aec0" if p <= 0.05 else "#2f855a" for p in ksp]
+
+    fig, ax = plt.subplots(figsize=(7, 3.6))
+    bars = ax.bar([s for s, _ in specs], aic, color=colors)
+    ax.set(ylabel="AIC (lower is better)", ylim=(min(aic) * 0.992, max(aic) * 1.003),
+           title="Model comparison: AIC bars; green = passes KS goodness-of-fit")
+    for b, p in zip(bars, ksp):
+        ax.text(b.get_x() + b.get_width() / 2, b.get_height(), f"KS p={p:.2g}",
+                ha="center", va="bottom", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(OUT / "model_comparison.png", dpi=120)
+    plt.close(fig)
+
+
 def main() -> int:
     fig_workflow()
+    fig_network()
+    fig_model_comparison()
     fig_signal_split()
     fig_cif_raster()
     fig_multitaper()

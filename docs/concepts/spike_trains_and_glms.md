@@ -125,6 +125,15 @@ The workflow is: specify several `TrialConfig`s (e.g. *stimulus only* vs.
 also passes goodness-of-fit** (next page). A model can win on AIC and still be
 wrong — always check the KS plot.
 
+![AIC bars for three nested models, decreasing from constant to stimulus to stimulus+history, with the stimulus+history model green for passing the KS test](figures/model_comparison.png)
+
+*Three nested models of a neuron with a stimulus drive **and** a refractory
+period. AIC falls as terms are added, but only the full **stimulus + history**
+model passes the KS goodness-of-fit test (green) — the constant and
+stimulus-only models are rejected despite their lower-but-not-lowest AIC. The
+runnable [model-comparison tutorial](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/model_comparison.py)
+also reports each coefficient with a 95% confidence interval.*
+
 ## Across-trial dynamics: the state-space GLM (SSGLM)
 
 The GLM above assumes the tuning is fixed. During *learning*, tuning changes

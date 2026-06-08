@@ -14,6 +14,12 @@ python examples/tutorials/encoding_to_goodness_of_fit.py --save-fig out.png
 # Decoding: reconstruct a hidden stimulus from a population with the PPAF
 python examples/tutorials/decoding_ppaf.py
 python examples/tutorials/decoding_ppaf.py --save-fig out.png
+
+# Functional coupling: recover directed excite/inhibit wiring between two neurons
+python examples/tutorials/network_coupling.py --save-fig out.png
+
+# Model comparison: nested GLMs by AIC/BIC + KS, with coefficient 95% CIs
+python examples/tutorials/model_comparison.py --save-fig out.png
 ```
 
 - **`examples/tutorials/Tutorial_MicroelectrodeToDecoding.ipynb`** — a notebook
