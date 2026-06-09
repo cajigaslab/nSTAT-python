@@ -13,6 +13,7 @@ the primary literature so you can go deeper. No prior neuroscience is assumed.
 [decode a stimulus/state](goodness_of_fit_and_decoding.md) ·
 [model learning across trials](state_space_and_em.md) ·
 [measure coupling between neurons](network_connectivity.md) ·
+[report uncertainty](uncertainty_and_confidence.md) ·
 [avoid common mistakes](pitfalls_and_faq.md).
 
 ## Suggested learning path
@@ -49,6 +50,26 @@ Hands-on companions (both run on simulated data, no download):
   [`examples/tutorials/encoding_to_goodness_of_fit.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/encoding_to_goodness_of_fit.py):
   the encoding → GLM → goodness-of-fit arc as a four-act lesson, with a
   correct-vs-wrong model contrast.
+- Capstone (real data) —
+  [`examples/tutorials/place_cell_walkthrough.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/place_cell_walkthrough.py):
+  the full encode → check → decode arc on a real hippocampal place-cell
+  recording (downloaded on first run), ending in the honest lesson that a model
+  can decode well yet still fail goodness-of-fit.
+
+Going further (once the core pages click):
+
+- **[Uncertainty and confidence intervals](uncertainty_and_confidence.md)** —
+  how nSTAT quantifies the uncertainty in every estimate, and why an estimate
+  without an interval is only half an answer.
+- **[Population geometry](population_geometry.md)** — from single-neuron models
+  to the low-dimensional *neural manifold* a population traces out.
+- **[From filters to deep learning](from_filters_to_deep_learning.md)** — how
+  nSTAT's classical decoders connect to modern deep-learning and foundation
+  models for neural data.
+- **[nSTAT and further study](curriculum_and_further_study.md)** — the whole arc
+  from point processes to foundation models, and exactly where this toolbox fits.
+- **[Self-check](self_check.md)** — quizzes for every topic plus cross-cutting
+  synthesis questions.
 
 Reference material:
 
@@ -94,6 +115,11 @@ lfp_and_spectral
 goodness_of_fit_and_decoding
 state_space_and_em
 network_connectivity
+uncertainty_and_confidence
+population_geometry
+from_filters_to_deep_learning
+curriculum_and_further_study
+self_check
 pitfalls_and_faq
 glossary
 bibliography
