@@ -56,6 +56,11 @@ extensions = [
 exclude_patterns = ["_build", "_autosummary", "Thumbs.db", ".DS_Store", "superpowers"]
 master_doc = "index"
 
+# MyST: generate slug anchors for headings (h1–h3) so cross-page links to a
+# section — e.g. ``self_check.md`` → ``goodness_of_fit_and_decoding.md#check-your-understanding``
+# — resolve under the strict ``-W`` build.
+myst_heading_anchors = 3
+
 
 # -- autosummary / autodoc ---------------------------------------------------
 

@@ -240,6 +240,81 @@ def fig_decoding() -> None:
     plt.close(fig)
 
 
+def fig_confidence() -> None:
+    """A GLM coefficient's 95% CI shrinks as the recording lengthens."""
+    dt = 0.001
+    beta1_true = 1.4
+    rng = np.random.default_rng(11)
+    durations = np.array([2, 5, 15, 45, 120])  # seconds
+    ests, ses = [], []
+    for dur in durations:
+        t = np.arange(0, dur, dt)
+        stim = np.sin(2 * np.pi * 1.0 * t)
+        sp, _, _ = simulate_cif_from_stimulus(time=t, stimulus=stim,
+                                              beta0=2.6, beta1=beta1_true,
+                                              rng=np.random.default_rng(rng.integers(1 << 30)))
+        edges = np.arange(0, dur + dt, dt)
+        y = sp.to_binned_counts(edges)[: t.size]
+        x = stim[:, None]
+        offset = np.full(y.shape, np.log(dt))
+        fit = fit_poisson_glm(x, y, offset=offset, l2=1e-8, max_iter=200, tol=1e-12)
+        lam = np.exp(fit.intercept + x[:, 0] * fit.coefficients[0] + offset)
+        # Fisher information of the Poisson GLM: Xaug^T diag(lam) Xaug.
+        Xaug = np.column_stack([np.ones(y.size), x[:, 0]])
+        fisher = Xaug.T @ (lam[:, None] * Xaug)
+        se_beta1 = float(np.sqrt(np.diag(np.linalg.pinv(fisher))[1]))
+        ests.append(float(fit.coefficients[0]))
+        ses.append(se_beta1)
+
+    ests = np.array(ests)
+    ses = np.array(ses)
+    fig, ax = plt.subplots(figsize=(7.2, 3.6))
+    ax.axhline(beta1_true, color="#dd6b20", lw=1.5, label="true coefficient")
+    ax.errorbar(durations, ests, yerr=1.96 * ses, fmt="o", color=ACCENT,
+                capsize=4, lw=1.5, ms=5, label="estimate ± 95% CI")
+    ax.set(xscale="log", xlabel="recording length (s, log scale)",
+           ylabel="stimulus coefficient β₁",
+           title="More data → tighter confidence interval")
+    ax.set_xticks(durations)
+    ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
+    ax.legend(loc="upper right", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(OUT / "confidence.png", dpi=120)
+    plt.close(fig)
+
+
+def fig_population_geometry() -> None:
+    """A population's activity lives on a low-dimensional manifold (PCA)."""
+    rng = np.random.default_rng(5)
+    n_cells = 80
+    T = 600
+    # A 1-D latent variable travels twice around a ring (e.g. head direction).
+    theta = np.linspace(0, 4 * np.pi, T)
+    # Each cell has a preferred angle; cosine tuning drives its firing rate.
+    pref = rng.uniform(0, 2 * np.pi, n_cells)
+    gain = 0.8 + 0.4 * rng.random(n_cells)
+    rate = np.exp(gain[None, :] * np.cos(theta[:, None] - pref[None, :]))  # T x N
+    counts = rng.poisson(rate)                       # noisy spike counts
+    # PCA on z-scored population activity.
+    Z = (counts - counts.mean(0)) / (counts.std(0) + 1e-9)
+    U, S, Vt = np.linalg.svd(Z - Z.mean(0), full_matrices=False)
+    pcs = U[:, :2] * S[:2]
+    var_explained = (S ** 2 / np.sum(S ** 2))[:6] * 100
+
+    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.6))
+    sc = axes[0].scatter(pcs[:, 0], pcs[:, 1], c=theta % (2 * np.pi),
+                         cmap="twilight", s=10)
+    axes[0].set(xlabel="PC 1", ylabel="PC 2", aspect="equal",
+                title="80 noisy neurons → a ring in 2-D")
+    fig.colorbar(sc, ax=axes[0], label="latent angle (rad)")
+    axes[1].bar(np.arange(1, 7), var_explained, color=ACCENT)
+    axes[1].set(xlabel="principal component", ylabel="variance explained (%)",
+                title="Two components capture most variance")
+    fig.tight_layout()
+    fig.savefig(OUT / "population_geometry.png", dpi=120)
+    plt.close(fig)
+
+
 def fig_workflow() -> None:
     """Schematic of the nSTAT object model / analysis pipeline."""
     from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
@@ -378,6 +453,8 @@ def main() -> int:
     fig_ks_plot()
     fig_ssglm_drift()
     fig_decoding()
+    fig_confidence()
+    fig_population_geometry()
     print("Wrote concept figures to", OUT)
     return 0
 

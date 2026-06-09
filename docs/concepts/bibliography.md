@@ -110,6 +110,22 @@ indexing are listed without a PMID.
   [PMID 15070506](https://pubmed.ncbi.nlm.nih.gov/15070506/) ·
   [doi:10.1162/089976604773135069](https://doi.org/10.1162/089976604773135069).
   *The point-process adaptive filter (PPAF) used for decoding in nSTAT.*
+- **Zhang K, Ginzburg I, McNaughton BL, Sejnowski TJ (1998).** Interpreting
+  neuronal population activity by reconstruction: unified framework with
+  application to hippocampal place cells. *Journal of Neurophysiology*
+  79:1017–1044.
+  [PMID 9463459](https://pubmed.ncbi.nlm.nih.gov/9463459/) ·
+  [doi:10.1152/jn.1998.79.2.1017](https://doi.org/10.1152/jn.1998.79.2.1017).
+  *The Bayesian population-reconstruction decoder used in the place-cell
+  walkthrough (`examples/tutorials/place_cell_walkthrough.py`).*
+- **Brown EN, Frank LM, Tang D, Quirk MC, Wilson MA (1998).** A statistical
+  paradigm for neural spike train decoding applied to position prediction
+  from ensemble firing patterns of rat hippocampal place cells. *Journal of
+  Neuroscience* 18:7411–7425.
+  [PMID 9736661](https://pubmed.ncbi.nlm.nih.gov/9736661/) ·
+  [doi:10.1523/JNEUROSCI.18-18-07411.1998](https://doi.org/10.1523/JNEUROSCI.18-18-07411.1998).
+  *Foundational decoding of position from place-cell ensembles; the dataset
+  family behind the place-cell walkthrough.*
 - **Denovellis EL, Gillespie AK, Coulter ME, et al. (2021).** Hippocampal
   replay of experience at real-world speeds. *eLife* 10:e64505.
   [PMID 34570699](https://pubmed.ncbi.nlm.nih.gov/34570699/) ·

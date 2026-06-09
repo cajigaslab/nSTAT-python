@@ -121,11 +121,37 @@ by the opt-in `nstat.extras.decoding.clusterless_bridge`
 (`fit_clusterless_decoder`, `fit_clusterless_classifier`). It is the natural
 descendant of nSTAT's PPAF/PPHF for unsorted data.
 
+## Putting it together on real data: a place-cell capstone
+
+The pieces above — encode, check, decode — come together in one walkthrough on
+a **real recording**: 49 hippocampal place cells from a rat foraging for ~24
+minutes ([Brown et al. 1998](https://pubmed.ncbi.nlm.nih.gov/9736661/)). We fit
+a place-field GLM to each cell, run the time-rescaling test, and then
+reconstruct the animal's position with a Bayesian population decoder
+([Zhang et al. 1998](https://pubmed.ncbi.nlm.nih.gov/9463459/)) — the
+memoryless cousin of the PPAF, which just adds a smooth-motion prior on top of
+the same place-field likelihood.
+
+![Real place-cell capstone: a fitted place field over the arena, a goodness-of-fit panel where most cells fail the KS band, and the decoded vs. true foraging trajectory](figures/place_cell_walkthrough.png)
+
+The result is a deliberately honest lesson. The place-field model **decodes
+position several times better than chance** (median error ≈ 0.23 vs. ≈ 0.84 for
+shuffled positions, in an arena ≈ 1.9 units wide) — yet it **fails
+goodness-of-fit for almost every cell** (1/48 pass). *Useful is not the same as
+correct.* Real place cells also carry spike history, the theta rhythm, and
+finer spatial structure than one Gaussian bump, and time-rescaling is what
+reveals the gap — pointing to the fixes: history terms
+([spike trains and GLMs](spike_trains_and_glms.md)) and a richer spatial basis
+(Paper Example 04's Zernike fields). Run it with
+[`examples/tutorials/place_cell_walkthrough.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/place_cell_walkthrough.py).
+
 ## Check your understanding
 
 1. A model has the lowest AIC of all you tried, but its KS curve leaves the
    confidence band. Should you trust it?
 2. Why is decoding done from a *population* rather than a single neuron?
+3. In the place-cell capstone the model decodes position well but fails the KS
+   test. How can both be true at once?
 
 <details>
 <summary>Show answers</summary>
@@ -136,6 +162,11 @@ descendant of nSTAT's PPAF/PPHF for unsorted data.
 2. A single neuron is **ambiguous** about the state. A population with diverse
    tuning **jointly constrains** it — decode error falls steadily as you add
    cells (see the decoding tutorial).
+3. Decoding only needs the model to rank positions **correctly enough** to pick
+   the right one; goodness-of-fit asks the stricter question of whether the
+   model captures the spiking **exactly**. A model can be useful for the first
+   while still being misspecified for the second — the place-field model misses
+   spike history and theta, so it decodes well yet is rejected by KS.
 
 </details>
 
@@ -147,6 +178,9 @@ descendant of nSTAT's PPAF/PPHF for unsorted data.
 - Runnable tutorial (no data needed): decode a hidden stimulus from a
   population with the PPAF —
   [`examples/tutorials/decoding_ppaf.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/decoding_ppaf.py)
+- Runnable capstone (real data, downloaded on first run): encode → check →
+  decode on hippocampal place cells —
+  [`examples/tutorials/place_cell_walkthrough.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/place_cell_walkthrough.py)
 - Runnable example: PPAF / PPHF decoding — Paper Example 05
   [`examples/paper/example05_decoding_ppaf_pphf.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example05_decoding_ppaf_pphf.py)
 - Notebooks:
