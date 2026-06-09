@@ -37,6 +37,37 @@ already done; see [Lewicki 1998](https://pubmed.ncbi.nlm.nih.gov/10221571/).
 **Tetrode / multi-electrode array.** A probe with several nearby contacts;
 viewing each spike from multiple sites improves sorting accuracy.
 
+## Clinical microelectrode recordings and rhythms
+
+**Rhythmic / oscillatory cell.** A neuron whose firing probability rises and
+falls periodically, even without a changing stimulus. Modeled in nSTAT with a
+periodic `Covariate` in the point-process GLM. See
+[Rhythmic firing and the clinical microelectrode](rhythmic_firing_and_clinical_microelectrode.md).
+
+**Tremor cell.** A rhythmic cell whose firing is phase-locked to a few-hertz
+(~3–8 Hz) limb tremor; characterized in the human subthalamic nucleus and
+thalamus during DBS surgery. See
+[Levy et al. 2000](https://pubmed.ncbi.nlm.nih.gov/11027240/).
+
+**Deep brain stimulation (DBS).** A therapy that delivers electrical stimulation
+through an electrode implanted in a deep brain nucleus (e.g. the subthalamic
+nucleus, STN) to treat Parkinson's disease and other disorders.
+
+**Microelectrode mapping / localization.** Advancing a recording microelectrode
+millimetre by millimetre to identify a deep target from the firing-rate,
+burstiness, and spectral signatures of each nucleus it passes through. A
+latent-state / change-point problem. See
+[Hutchison et al. 1998](https://pubmed.ncbi.nlm.nih.gov/9778260/).
+
+**Beta band (13–30 Hz).** A field-potential rhythm whose power in the STN tracks
+Parkinsonian motor impairment; the feedback signal for **adaptive DBS**.
+Estimated with `SignalObj.MTMspectrum`. See
+[Little et al. 2013](https://pubmed.ncbi.nlm.nih.gov/23852650/),
+[Tinkhauser et al. 2017](https://pubmed.ncbi.nlm.nih.gov/28334851/).
+
+**Adaptive (closed-loop) DBS.** Stimulation gated by a measured biomarker (e.g.
+beta power) rather than delivered continuously — a decode-then-actuate loop.
+
 ## Point processes and modeling
 
 **Point process.** A probabilistic model for the timing of discrete events

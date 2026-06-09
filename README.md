@@ -142,7 +142,7 @@ Full rendered documentation is published on
 | Page | What you'll find |
 |---|---|
 | [5-minute intro](https://cajigaslab.github.io/nSTAT-python/intro.html) | Friendly, illustrated tour with runnable snippets — start here |
-| [**Concepts & Background**](https://cajigaslab.github.io/nSTAT-python/concepts/index.html) | Learn the neuroscience & statistics — microelectrode recordings, spikes & the LFP, point-process GLMs, goodness-of-fit, decoding, state-space/EM — with figures and cited literature |
+| [**Concepts & Background**](https://cajigaslab.github.io/nSTAT-python/concepts/index.html) | Learn the neuroscience & statistics — microelectrode recordings, spikes & the LFP, point-process GLMs, goodness-of-fit, decoding, state-space/EM, and rhythmic/tremor cells & the clinical microelectrode (with the beta-band biomarker that guides adaptive DBS) — with figures and cited literature |
 | [API reference](https://cajigaslab.github.io/nSTAT-python/api.html) | Every public symbol, auto-generated from docstrings |
 | [Class definitions](https://cajigaslab.github.io/nSTAT-python/ClassDefinitions.html) | Method catalog for each MATLAB-faithful core class |
 | [Paper-aligned toolbox map](https://cajigaslab.github.io/nSTAT-python/PaperOverview.html) | Crosswalk between the 2012 paper and the Python API |

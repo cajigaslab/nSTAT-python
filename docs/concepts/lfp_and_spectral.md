@@ -89,6 +89,17 @@ lfp.spectrogram()             # time-frequency power; see the gamma burst appear
 This is the right tool for event-related spectral changes and for relating
 LFP rhythms to behaviour or to spiking.
 
+> **Applying nSTAT — the beta biomarker for adaptive DBS.** In Parkinson's
+> disease, **beta-band (13–30 Hz)** power in the subthalamic field potential
+> tracks motor impairment and is the feedback signal for *adaptive* (closed-loop)
+> deep brain stimulation ([Little et al.
+> 2013](https://pubmed.ncbi.nlm.nih.gov/23852650/)). Beta arrives in transient
+> **bursts** whose duration matters more than the average
+> ([Tinkhauser et al. 2017](https://pubmed.ncbi.nlm.nih.gov/28334851/)) — exactly
+> what a `SignalObj.spectrogram` reveals that a single spectrum hides. See
+> [Rhythmic firing and the clinical
+> microelectrode](rhythmic_firing_and_clinical_microelectrode.md).
+
 ## Other continuous-signal tools
 
 `SignalObj` also provides time-domain operations useful for LFP/EEG analysis:

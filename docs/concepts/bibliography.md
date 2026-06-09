@@ -147,6 +147,53 @@ indexing are listed without a PMID.
   *Brought multitaper methods to neuroscience; the practical reference for
   spectrograms of LFP/EEG.*
 
+## Clinical microelectrode recordings, rhythmic cells, and adaptive DBS
+
+- **Hutchison WD, Allan RJ, Opitz H, Levy R, Dostrovsky JO, Lang AE, Lozano AM
+  (1998).** Neurophysiological identification of the subthalamic nucleus in
+  surgery for Parkinson's disease. *Annals of Neurology* 44:622–628.
+  [PMID 9778260](https://pubmed.ncbi.nlm.nih.gov/9778260/) ·
+  [doi:10.1002/ana.410440407](https://doi.org/10.1002/ana.410440407).
+  *The intraoperative-mapping signatures — firing rate and burstiness by
+  nucleus, tremor cells — that frame "where is the electrode?" as the
+  state-estimation problem in the clinical-microelectrode page.*
+- **Levy R, Hutchison WD, Lozano AM, Dostrovsky JO (2000).** High-frequency
+  synchronization of neuronal activity in the subthalamic nucleus of
+  parkinsonian patients with limb tremor. *Journal of Neuroscience*
+  20:7766–7775.
+  [PMID 11027240](https://pubmed.ncbi.nlm.nih.gov/11027240/) ·
+  [doi:10.1523/JNEUROSCI.20-20-07766.2000](https://doi.org/10.1523/JNEUROSCI.20-20-07766.2000).
+  *Tremor cells phase-locked to limb tremor — the canonical rhythmic
+  (oscillatory) cell modeled as a point-process GLM with a periodic covariate.*
+- **Levy R, Ashby P, Hutchison WD, Lang AE, Lozano AM, Dostrovsky JO (2002).**
+  Dependence of subthalamic nucleus oscillations on movement and dopamine in
+  Parkinson's disease. *Brain* 125:1196–1209.
+  [PMID 12023310](https://pubmed.ncbi.nlm.nih.gov/12023310/) ·
+  [doi:10.1093/brain/awf128](https://doi.org/10.1093/brain/awf128).
+  *How tremor- and beta-band oscillations in the STN are modulated by movement
+  and medication — context for the field-potential biomarker.*
+- **Zaidel A, Spivak A, Grieb B, Bergman H, Israel Z (2010).** Subthalamic span
+  of beta oscillations predicts deep brain stimulation efficacy for patients
+  with Parkinson's disease. *Brain* 133:2007–2021.
+  [PMID 20534648](https://pubmed.ncbi.nlm.nih.gov/20534648/) ·
+  [doi:10.1093/brain/awq144](https://doi.org/10.1093/brain/awq144).
+  *The spatial extent of the dorsolateral beta-oscillatory region predicts DBS
+  outcome — why the descent's spectral profile (a `SignalObj.MTMspectrum` per
+  depth) is clinically load-bearing.*
+- **Little S, Pogosyan A, Neal S, et al. (2013).** Adaptive deep brain
+  stimulation in advanced Parkinson disease. *Annals of Neurology* 74:449–457.
+  [PMID 23852650](https://pubmed.ncbi.nlm.nih.gov/23852650/) ·
+  [doi:10.1002/ana.23951](https://doi.org/10.1002/ana.23951).
+  *Closed-loop DBS driven by beta-band feedback — a decode-then-actuate loop, the
+  clinical destination of the encoding/decoding tools in nSTAT.*
+- **Tinkhauser G, Pogosyan A, Little S, Beudel M, Herz DM, Tan H, Brown P
+  (2017).** The modulatory effect of adaptive deep brain stimulation on beta
+  bursts in Parkinson's disease. *Brain* 140:1053–1067.
+  [PMID 28334851](https://pubmed.ncbi.nlm.nih.gov/28334851/) ·
+  [doi:10.1093/brain/awx010](https://doi.org/10.1093/brain/awx010).
+  *Beta arrives in bursts whose duration tracks motor state — motivation for the
+  time-resolved `SignalObj.spectrogram` over a single spectrum.*
+
 ## The toolbox
 
 - **Cajigas I, Malik WQ, Brown EN (2012).** nSTAT: Open-source neural spike
