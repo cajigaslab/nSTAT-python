@@ -103,7 +103,8 @@ naturally a **latent-state estimation** problem. nSTAT supplies the estimators:
 a `DecodingAlgorithms.kalman_filter` for a continuous depth/state read out of a
 Gaussian summary signal, and the point-process filters below for reading state
 directly from spikes. The boundaries themselves (entry/exit of a nucleus) are a
-change-point on that latent track. The spatial extent of the oscillatory
+change-point on that latent track — the within-recording, evolving-state setting
+of the [state-space and EM page](state_space_and_em.md). The spatial extent of the oscillatory
 territory a trajectory crosses is not a curiosity, either: the length of the
 dorsolateral **beta-oscillatory** region predicts how well DBS will work
 ([Zaidel et al. 2010](https://pubmed.ncbi.nlm.nih.gov/20534648/)).

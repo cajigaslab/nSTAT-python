@@ -83,6 +83,20 @@ result.best_predictive_ll        # held-out log-likelihood of the winner
 > degenerate fit. See the
 > [EM extras guide](../extras/em_dynamax.md) for the full caveats.
 
+> **Applying nSTAT — the electrode descent as an evolving latent state.** Both
+> flavors above have a clinical reading. The intraoperative microelectrode
+> descent is a *within-recording* latent state: as the tip advances, the
+> structure it sits in changes, and the firing-rate / variability / spectral
+> summary jumps at each **nucleus boundary** — a change-point on a latent
+> depth-region track that the state-space estimators here are built to follow
+> ([Hutchison et al. 1998](https://pubmed.ncbi.nlm.nih.gov/9778260/);
+> [Zaidel et al. 2010](https://pubmed.ncbi.nlm.nih.gov/20534648/)). The
+> *across-trial* SSGLM has the longitudinal analogue: a coefficient that drifts
+> as an animal learns is the same machinery you would use to track a slowly
+> evolving disease or therapy-response state across sessions. See
+> [Rhythmic firing and the clinical
+> microelectrode](rhythmic_firing_and_clinical_microelectrode.md).
+
 ## A note on networks and causality
 
 The same statistical machinery underlies **functional connectivity**. Ensemble
