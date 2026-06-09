@@ -1,5 +1,33 @@
 # Release Notes
 
+## v0.4.4 — 2026-06-09
+
+Documentation and packaging polish.  **No public API changes, no behavior
+changes** &mdash; every importable symbol behaves identically to v0.4.3.
+
+### Added
+
+- **Concepts page** `rhythmic_firing_and_clinical_microelectrode.md` &mdash;
+  an applied teaching arc covering rhythmic/oscillatory (tremor) cells as a
+  point-process GLM with a periodic covariate, and the intraoperative
+  deep-brain-stimulation microelectrode setting: firing-rate localization,
+  the beta-band field-potential biomarker via `SignalObj.MTMspectrum`, and
+  reading the rhythm back out with the point-process adaptive filter.  All
+  synthetic data; six PubMed-verified clinical references.
+- **Tutorial** `examples/tutorials/clinical_microelectrode_walkthrough.py`
+  &mdash; a runnable capstone (encode → time-rescaling KS → beta spectrum →
+  PPAF decode) on a simulated tremor cell.
+- Five cross-page "Applying nSTAT" bridges and the supporting glossary,
+  bibliography, self-check, and index entries.
+
+### Packaging
+
+- `pyproject.toml` now declares trove **classifiers** (Python 3.10 / 3.11 /
+  3.12, plus audience / topic / license / OS / status).  Fixes the
+  `python | missing` badge once this release is published to PyPI &mdash; the
+  shields.io `pypi/pyversions` badge reads classifiers, which were absent
+  from prior releases.
+
 ## v0.4.3 — 2026-05-31
 
 Documentation and packaging cleanup.  Removes cross-references to
