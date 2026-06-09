@@ -58,6 +58,11 @@ Hands-on companions (both run on simulated data, no download):
 
 Going further (once the core pages click):
 
+- **[Rhythmic firing and the clinical microelectrode](rhythmic_firing_and_clinical_microelectrode.md)** —
+  oscillatory (tremor) cells modeled as a point-process GLM with a periodic
+  covariate, and the applied setting of a microelectrode advanced into a deep
+  brain nucleus during DBS surgery — firing-rate localization, the beta-band
+  field-potential biomarker, and reading the rhythm back out with the PPAF.
 - **[Uncertainty and confidence intervals](uncertainty_and_confidence.md)** —
   how nSTAT quantifies the uncertainty in every estimate, and why an estimate
   without an interval is only half an answer.
@@ -99,6 +104,8 @@ Reference material:
 | LFP / spectra | `SignalObj` (`MTMspectrum`, `spectrogram`) | `SignalObjExamples.ipynb` |
 | Decoding | `DecodingAlgorithms` (PPAF/PPHF), `clusterless_bridge` | Paper Example 05 |
 | Functional coupling | `TrialConfig` ensemble terms, `Analysis` (Granger) | `network_coupling.py` |
+| Rhythmic / tremor cells | periodic `Covariate`, `Analysis`, `FitResult` | `clinical_microelectrode_walkthrough.py` |
+| Beta biomarker (adaptive DBS) | `SignalObj` (`MTMspectrum`, `spectrogram`) | `clinical_microelectrode_walkthrough.py` |
 
 Once the concepts are clear, see the
 [Paper-aligned toolbox map](../PaperOverview.md) for the full API crosswalk and
@@ -116,6 +123,7 @@ goodness_of_fit_and_decoding
 state_space_and_em
 network_connectivity
 uncertainty_and_confidence
+rhythmic_firing_and_clinical_microelectrode
 population_geometry
 from_filters_to_deep_learning
 curriculum_and_further_study

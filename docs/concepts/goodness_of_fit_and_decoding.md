@@ -108,6 +108,15 @@ Variants in nSTAT:
 
 These are exercised end-to-end in Paper Example 05.
 
+> **Applying nSTAT — the clinical read-out.** A decoder that returns a
+> **calibrated credible band**, not just a point estimate, is what a safe
+> clinical or BCI read-out needs. Closed-loop (adaptive) deep brain stimulation
+> is, in control terms, exactly a decode-then-actuate loop: estimate a
+> pathological state from the recording, then gate stimulation on it
+> ([Little et al. 2013](https://pubmed.ncbi.nlm.nih.gov/23852650/)). See
+> [Rhythmic firing and the clinical
+> microelectrode](rhythmic_firing_and_clinical_microelectrode.md).
+
 ## Decoding without spike sorting: clusterless
 
 Recall that spike sorting is imperfect

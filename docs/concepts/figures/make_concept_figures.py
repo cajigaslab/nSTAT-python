@@ -315,6 +315,87 @@ def fig_population_geometry() -> None:
     plt.close(fig)
 
 
+def fig_clinical_microelectrode() -> None:
+    """Applied panel: an electrode descending through a deep nucleus.
+
+    Three views that map onto nSTAT objects, all from simulated data:
+    (1) mean firing rate vs. depth — the rate/variability rise inside the
+        nucleus is the classic intraoperative localization cue
+        (Hutchison et al. 1998); framed as a latent-state estimation problem
+        a Kalman/state-space filter tracks;
+    (2) a rhythmic ("tremor") cell whose ~5 Hz drive is exactly a
+        point-process-GLM covariate (Levy et al. 2000);
+    (3) the field-potential multitaper spectrum with a beta (13-30 Hz) bump —
+        the adaptive-DBS biomarker (Zaidel et al. 2010; Tinkhauser et al. 2017)
+        — computed with ``SignalObj.MTMspectrum``.
+    """
+    rng = np.random.default_rng(13)
+
+    # --- Panel 1: firing rate vs. depth along the descent -----------------
+    depth = np.linspace(5.0, -3.0, 33)          # mm, dorsal (+) to ventral (-)
+    # Nucleus occupies roughly +2.5 .. -1.0 mm; rate and variability rise in it.
+    in_nucleus = (depth < 2.5) & (depth > -1.0)
+    base_rate = np.where(in_nucleus, 37.0, 18.0)               # Hutchison 1998
+    rate = base_rate + np.where(in_nucleus, 9.0, 3.0) * rng.standard_normal(depth.size)
+    rate_err = np.where(in_nucleus, 9.0, 3.0)
+
+    # --- Panel 2: a rhythmic (tremor) cell --------------------------------
+    dt = 0.001
+    t2 = np.arange(0.0, 2.0, dt)
+    tremor_hz = 5.0
+    drive = np.sin(2 * np.pi * tremor_hz * t2)
+    n_trials = 10
+
+    # --- Panel 3: field-potential multitaper with a beta bump -------------
+    fs = 1000.0
+    t3 = np.arange(0.0, 8.0, 1 / fs)
+    lfp_x = (0.6 * np.sin(2 * np.pi * 5.0 * t3)        # tremor-band component
+             + 1.0 * np.sin(2 * np.pi * 22.0 * t3)     # beta biomarker
+             + 0.5 * rng.standard_normal(t3.size))
+    lfp = SignalObj(t3, lfp_x, name="field potential")
+    f, power, _ = lfp.MTMspectrum(NW=4.0)
+
+    fig, axes = plt.subplots(1, 3, figsize=(12.4, 3.4))
+
+    ax = axes[0]
+    ax.axhspan(-1.0, 2.5, color=ACCENT, alpha=0.10)
+    ax.errorbar(rate, depth, xerr=rate_err, fmt="o", ms=3, color=ACCENT,
+                lw=1, capsize=2)
+    ax.axhline(2.5, color="#dd6b20", ls="--", lw=1)
+    ax.axhline(-1.0, color="#dd6b20", ls="--", lw=1)
+    ax.text(46, 0.75, "nucleus", color="#9c4221", fontsize=8, rotation=90,
+            va="center")
+    ax.set(xlabel="mean firing rate (Hz)", ylabel="depth (mm, dorsal → ventral)",
+           title="1 · Where is the electrode?\nrate/variability rise = entry")
+
+    ax = axes[1]
+    for k in range(n_trials):
+        sp, _, _ = simulate_cif_from_stimulus(time=t2, stimulus=drive,
+                                              beta0=2.4, beta1=1.3,
+                                              rng=np.random.default_rng(200 + k))
+        st = np.asarray(sp.getSpikeTimes() if hasattr(sp, "getSpikeTimes")
+                        else sp.spikeTimes)
+        axes[1].vlines(st, k + 0.5, k + 1.5, color="0.2", lw=0.6)
+    ax.set(xlim=(0, 1.0), ylim=(0.5, n_trials + 0.5),
+           xlabel="time (s)", ylabel="trial",
+           title=f"2 · A rhythmic cell\n~{tremor_hz:.0f} Hz drive = a GLM covariate")
+    for c in np.arange(0, 1.0, 1.0 / tremor_hz):
+        ax.axvline(c, color="#dd6b20", ls=":", lw=0.7)
+
+    ax = axes[2]
+    ax.axvspan(13, 30, color="#2f855a", alpha=0.12)
+    ax.semilogy(f, power, color=ACCENT, lw=1)
+    ax.axvline(22, color="#dd6b20", ls="--", lw=0.9)
+    ax.text(21.5, power.max() * 0.5, "beta\nbiomarker", color="#276749",
+            fontsize=8, ha="right")
+    ax.set(xlim=(0, 60), xlabel="frequency (Hz)", ylabel="power (log)",
+           title="3 · Field-potential spectrum\nbeta (13–30 Hz) = adaptive-DBS cue")
+
+    fig.tight_layout()
+    fig.savefig(OUT / "clinical_microelectrode.png", dpi=120)
+    plt.close(fig)
+
+
 def fig_workflow() -> None:
     """Schematic of the nSTAT object model / analysis pipeline."""
     from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
@@ -455,6 +536,7 @@ def main() -> int:
     fig_decoding()
     fig_confidence()
     fig_population_geometry()
+    fig_clinical_microelectrode()
     print("Wrote concept figures to", OUT)
     return 0
 

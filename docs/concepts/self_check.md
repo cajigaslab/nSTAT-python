@@ -19,6 +19,7 @@ are collapsible, right there on the page):
 | State-space models and EM | [Check your understanding](state_space_and_em.md#check-your-understanding) |
 | Network connectivity and coupling | [Check your understanding](network_connectivity.md#check-your-understanding) |
 | Uncertainty and confidence intervals | [Check your understanding](uncertainty_and_confidence.md#check-your-understanding) |
+| Rhythmic firing and the clinical microelectrode | [Check your understanding](rhythmic_firing_and_clinical_microelectrode.md#check-your-understanding) |
 
 ## Synthesis questions
 
@@ -47,6 +48,11 @@ These cut across topics. Try to answer in a sentence or two before expanding.
    coefficient seems to drift upward across a session. What model would you use
    to estimate that trajectory properly, and what does it give you that 100
    independent per-trial fits do not?
+7. **A rhythm is just a covariate.** A neuron fires in time with a 5 Hz tremor
+   and you have no external stimulus to regress against. Explain how you would
+   still fit a point-process GLM that captures the rhythm, how you would prove it
+   fit, and — using the *same* electrode — where you would look for the beta
+   biomarker that drives adaptive DBS.
 
 <details>
 <summary>Show answers</summary>
@@ -85,6 +91,15 @@ These cut across topics. Try to answer in a sentence or two before expanding.
    between neighboring trials, giving a smoothed trajectory *with* credible
    intervals — far less noisy than 100 independent fits, and able to say whether
    the drift is real. See [state-space models and EM](state_space_and_em.md).
+7. Build the rhythm itself as a **periodic covariate** — a `sin`/`cos` pair (or
+   band-limited drive) at the tremor frequency — and fit the point-process GLM
+   exactly as for any stimulus, with a **history** term for refractoriness.
+   Prove it fit with the **time-rescaling KS test**: the rhythm-aware model stays
+   in the band while a constant-rate model with the *same mean rate* is rejected
+   for getting the timing wrong. Then **low-pass the same electrode** to a field
+   potential and read **beta-band (13–30 Hz)** power with `SignalObj.MTMspectrum`
+   (use `spectrogram` for burst structure). See
+   [Rhythmic firing and the clinical microelectrode](rhythmic_firing_and_clinical_microelectrode.md).
 
 </details>
 

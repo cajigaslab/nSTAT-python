@@ -160,6 +160,14 @@ walks through it.
 
 </details>
 
+> **Applying nSTAT — rhythmic and tremor cells.** A covariate need not be an
+> external stimulus. A neuron with its own *rhythm* — for example a **tremor
+> cell** locked to a few-hertz limb tremor in the human subthalamic nucleus
+> ([Levy et al. 2000](https://pubmed.ncbi.nlm.nih.gov/11027240/)) — is captured
+> by the *same* GLM with a **periodic covariate** at the rhythm's frequency.
+> See [Rhythmic firing and the clinical
+> microelectrode](rhythmic_firing_and_clinical_microelectrode.md).
+
 ## See also
 
 - Runnable examples:

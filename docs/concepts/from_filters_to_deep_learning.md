@@ -84,6 +84,16 @@ Start where nSTAT is strong — interpretable, well-calibrated, model-based
 decoding — and you will understand exactly what a learned decoder is buying you,
 and what it is quietly giving up.
 
+> **Applying nSTAT — why calibration is not optional.** The clearest place this
+> matters is a closed-loop clinical device. Adaptive deep brain stimulation
+> gates therapy on a decoded brain state ([Little et al.
+> 2013](https://pubmed.ncbi.nlm.nih.gov/23852650/)); a read-out that cannot say
+> *how confident* it is should not drive stimulation. nSTAT's model-based
+> decoders hand you that calibrated uncertainty for free — see
+> [Rhythmic firing and the clinical
+> microelectrode](rhythmic_firing_and_clinical_microelectrode.md) for the
+> applied arc, and [uncertainty](uncertainty_and_confidence.md) for the band.
+
 ## See also
 
 - [Goodness-of-fit and decoding](goodness_of_fit_and_decoding.md) — the
