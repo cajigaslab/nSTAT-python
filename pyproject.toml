@@ -4,12 +4,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nstat-toolbox"
-version = "0.4.3"
+version = "0.4.4"
 description = "Python port of the nSTAT toolbox"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
   { name = "Cajigas Lab" }
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering",
 ]
 dependencies = [
   "numpy>=1.24",
