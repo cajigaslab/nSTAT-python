@@ -1,74 +1,228 @@
 # Example Index
 
-This page mirrors the MATLAB `Examples` help index and points to the canonical
-Python notebook or script equivalent for each workflow.
+A visual gallery of the runnable nSTAT examples, mirroring the MATLAB `Examples` help index. Start with the five **paper examples** (each a self-contained script with a generated figure gallery), then explore the workflow tutorial notebooks. See also the [Paper-Aligned Toolbox Map](PaperOverview.md).
 
-Paper cross-reference:
+## Paper examples
 
-- [Paper-Aligned Toolbox Map](PaperOverview.md)
+The five canonical examples from Cajigas, Malik & Brown (2012), each reproduced as a standalone Python script. Click a card for its full figure gallery; the [Paper Examples](paper_examples.md) page lists every script, run command, and output.
 
-## Class and Object Workflows
+<div class="ex-grid">
+<a class="ex-card" href="figures/example01/README.html">
+  <img class="ex-thumb" src="_static/gallery/example01.png" alt="mEPSC Poisson models" loading="lazy">
+  <span class="ex-body">
+    <span class="ex-eyebrow">Example 01</span>
+    <span class="ex-title">mEPSC Poisson models</span>
+    <span class="ex-desc">Do mEPSCs follow constant vs piecewise Poisson firing under Mg²⁺ washout?</span>
+  </span>
+</a>
+<a class="ex-card" href="figures/example02/README.html">
+  <img class="ex-thumb" src="_static/gallery/example02.png" alt="Whisker-stimulus GLM" loading="lazy">
+  <span class="ex-body">
+    <span class="ex-eyebrow">Example 02</span>
+    <span class="ex-title">Whisker-stimulus GLM</span>
+    <span class="ex-desc">Do explicit stimulus and spike history sharpen thalamic GLM fits?</span>
+  </span>
+</a>
+<a class="ex-card" href="figures/example03/README.html">
+  <img class="ex-thumb" src="_static/gallery/example03.png" alt="PSTH and SSGLM dynamics" loading="lazy">
+  <span class="ex-body">
+    <span class="ex-eyebrow">Example 03</span>
+    <span class="ex-title">PSTH and SSGLM dynamics</span>
+    <span class="ex-desc">How do PSTH and state-space GLM capture within- and across-trial dynamics?</span>
+  </span>
+</a>
+<a class="ex-card" href="figures/example04/README.html">
+  <img class="ex-thumb" src="_static/gallery/example04.png" alt="Place-cell receptive fields" loading="lazy">
+  <span class="ex-body">
+    <span class="ex-eyebrow">Example 04</span>
+    <span class="ex-title">Place-cell receptive fields</span>
+    <span class="ex-desc">Which basis — Gaussian or Zernike — better fits hippocampal place cells?</span>
+  </span>
+</a>
+<a class="ex-card" href="figures/example05/README.html">
+  <img class="ex-thumb" src="_static/gallery/example05.png" alt="PPAF and PPHF decoding" loading="lazy">
+  <span class="ex-body">
+    <span class="ex-eyebrow">Example 05</span>
+    <span class="ex-title">PPAF and PPHF decoding</span>
+    <span class="ex-desc">How well do adaptive/hybrid point-process filters decode stimulus and reach state?</span>
+  </span>
+</a>
+</div>
 
-- `SignalObjExamples`: `../notebooks/SignalObjExamples.ipynb`
-- `CovariateExamples`: `../notebooks/CovariateExamples.ipynb`
-- `CovCollExamples`: `../notebooks/CovCollExamples.ipynb`
-- `nSpikeTrainExamples`: `../notebooks/nSpikeTrainExamples.ipynb`
-- `nstCollExamples`: `../notebooks/nstCollExamples.ipynb`
-- `EventsExamples`: `../notebooks/EventsExamples.ipynb`
-- `HistoryExamples`: `../notebooks/HistoryExamples.ipynb`
-- `TrialExamples`: `../notebooks/TrialExamples.ipynb`
-- `TrialConfigExamples`: `../notebooks/TrialConfigExamples.ipynb`
-- `ConfigCollExamples`: `../notebooks/ConfigCollExamples.ipynb`
-- `ConfidenceIntervalOverview`: `../notebooks/ConfidenceIntervalOverview.ipynb`
+## Workflow tutorials
 
-## Fitting, Assessment, and Analysis
+Executable notebooks that follow their MATLAB help-page counterparts step for step.
 
-- `AnalysisExamples`: `../notebooks/AnalysisExamples.ipynb`
-- `AnalysisExamples2`: `../notebooks/AnalysisExamples2.ipynb`
-- `FitResultExamples`: `../notebooks/FitResultExamples.ipynb`
-- `FitResultReference`: `../notebooks/FitResultReference.ipynb`
-- `FitResSummaryExamples`: `../notebooks/FitResSummaryExamples.ipynb`
+### Simulation & example data
 
-## Simulation and Example-Data Analyses
+<div class="ex-grid">
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/PPSimExample.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">PPSimExample</span>
+    <span class="ex-desc">Simulate spike trains from a conditional intensity function.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/PPThinning.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">PPThinning</span>
+    <span class="ex-desc">Generate point-process spike trains by thinning.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/PSTHEstimation.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">PSTHEstimation</span>
+    <span class="ex-desc">Estimate a peri-stimulus time histogram.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/ValidationDataSet.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">ValidationDataSet</span>
+    <span class="ex-desc">Reproduce the toolbox validation dataset.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/mEPSCAnalysis.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">mEPSCAnalysis</span>
+    <span class="ex-desc">Analyze miniature-EPSC event trains.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/ExplicitStimulusWhiskerData.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">ExplicitStimulusWhiskerData</span>
+    <span class="ex-desc">Explicit-stimulus GLM on thalamic whisker data.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/HippocampalPlaceCellExample.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">HippocampalPlaceCellExample</span>
+    <span class="ex-desc">Place-cell receptive fields from position.</span>
+  </span>
+</a>
+</div>
 
-- `PPThinning`: `../notebooks/PPThinning.ipynb`
-- `PPSimExample`: `../notebooks/PPSimExample.ipynb`
-- `PSTHEstimation`: `../notebooks/PSTHEstimation.ipynb`
-- `ValidationDataSet`: `../notebooks/ValidationDataSet.ipynb`
-- `mEPSCAnalysis`: `../notebooks/mEPSCAnalysis.ipynb`
-- `ExplicitStimulusWhiskerData`: `../notebooks/ExplicitStimulusWhiskerData.ipynb`
-- `HippocampalPlaceCellExample`: `../notebooks/HippocampalPlaceCellExample.ipynb`
+### Fitting & analysis
 
-## Decoding and Network Workflows
+<div class="ex-grid">
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/AnalysisExamples.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">AnalysisExamples</span>
+    <span class="ex-desc">Fit and assess point-process GLMs.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/AnalysisExamples2.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">AnalysisExamples2</span>
+    <span class="ex-desc">Further GLM fitting and model selection.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/ConfidenceIntervalOverview.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">ConfidenceIntervalOverview</span>
+    <span class="ex-desc">Work with time-varying confidence intervals.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/TrialExamples.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">TrialExamples</span>
+    <span class="ex-desc">Assemble Trial objects from spikes and covariates.</span>
+  </span>
+</a>
+</div>
 
-- `DecodingExample`: `../notebooks/DecodingExample.ipynb`
-- `DecodingExampleWithHist`: `../notebooks/DecodingExampleWithHist.ipynb`
-- `StimulusDecode2D`: `../notebooks/StimulusDecode2D.ipynb`
-- `HybridFilterExample`: `../notebooks/HybridFilterExample.ipynb`
-- `NetworkTutorial`: `../notebooks/NetworkTutorial.ipynb`
+### Decoding & networks
 
-## Consolidated Paper Workflow
+<div class="ex-grid">
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/DecodingExample.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">DecodingExample</span>
+    <span class="ex-desc">Point-process adaptive-filter stimulus decoding.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/DecodingExampleWithHist.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">DecodingExampleWithHist</span>
+    <span class="ex-desc">Decoding with spike-history covariates.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/StimulusDecode2D.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">StimulusDecode2D</span>
+    <span class="ex-desc">Decode a 2-D stimulus from population spikes.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/HybridFilterExample.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">HybridFilterExample</span>
+    <span class="ex-desc">Hybrid discrete/continuous point-process filter.</span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/NetworkTutorial.ipynb">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">NetworkTutorial</span>
+    <span class="ex-desc">Functional connectivity via GLM coupling.</span>
+  </span>
+</a>
+</div>
 
-All five paper examples are self-contained scripts mirroring their MATLAB
-counterparts:
+## Object & class references
 
-| Example | Script | What it demonstrates |
-|---|---|---|
-| 01 — mEPSC Poisson | [example01_mepsc_poisson.py](../examples/paper/example01_mepsc_poisson.py) | Constant vs piecewise Poisson under Mg2+ washout |
-| 02 — Whisker Stimulus | [example02_whisker_stimulus_thalamus.py](../examples/paper/example02_whisker_stimulus_thalamus.py) | Explicit-stimulus GLM with lag and history selection |
-| 03 — PSTH and SSGLM | [example03_psth_and_ssglm.py](../examples/paper/example03_psth_and_ssglm.py) | PSTH comparison and state-space GLM dynamics |
-| 04 — Place Cells | [example04_place_cells_continuous_stimulus.py](../examples/paper/example04_place_cells_continuous_stimulus.py) | Gaussian vs Zernike receptive-field models |
-| 05 — PPAF and PPHF | [example05_decoding_ppaf_pphf.py](../examples/paper/example05_decoding_ppaf_pphf.py) | Adaptive and hybrid point-process decoding |
+Per-class scaffolds that mirror the MATLAB help index method-for-method. These are API reference stubs rather than standalone tutorials — see the [Class Definitions](ClassDefinitions.md) and [API Reference](api.rst) for the rendered docstrings.
 
-- Generated gallery and figure index: [Paper Examples](paper_examples.md)
-- Master notebook: `../notebooks/nSTATPaperExamples.ipynb`
+<p class="ex-refs">
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/SignalObjExamples.ipynb">SignalObjExamples</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/CovariateExamples.ipynb">CovariateExamples</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/CovCollExamples.ipynb">CovCollExamples</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nSpikeTrainExamples.ipynb">nSpikeTrainExamples</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nstCollExamples.ipynb">nstCollExamples</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/EventsExamples.ipynb">EventsExamples</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/HistoryExamples.ipynb">HistoryExamples</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/TrialConfigExamples.ipynb">TrialConfigExamples</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/ConfigCollExamples.ipynb">ConfigCollExamples</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/FitResultExamples.ipynb">FitResultExamples</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/FitResultReference.ipynb">FitResultReference</a>
+<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/FitResSummaryExamples.ipynb">FitResSummaryExamples</a>
+</p>
 
-## Supplementary (README) Examples
+## Supplementary checks
 
-These smaller demos serve as quick install and plotting checks:
+Small README demos that double as quick install and plotting checks.
 
-| Example | Run command |
-|---|---|
-| Multitaper spectrum + spectrogram | `python examples/readme_examples/example1_multitaper_and_spectrogram.py` |
-| Simulated CIF spike train | `python examples/readme_examples/example2_simulate_cif_spiketrain_10s.py` |
-| Spike-train raster | `python examples/readme_examples/example3_nstcoll_raster_from_example2.py` |
+<div class="ex-grid">
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/readme_examples/example1_multitaper_and_spectrogram.py">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">Multitaper spectrum & spectrogram</span>
+    <span class="ex-desc"><code>python examples/readme_examples/example1_multitaper_and_spectrogram.py</code></span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/readme_examples/example2_simulate_cif_spiketrain_10s.py">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">Simulated CIF spike train</span>
+    <span class="ex-desc"><code>python examples/readme_examples/example2_simulate_cif_spiketrain_10s.py</code></span>
+  </span>
+</a>
+<a class="ex-card ex-mini" href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/readme_examples/example3_nstcoll_raster_from_example2.py">
+  <svg class="ex-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h3l2-7 3 14 3-10 2 4h4"/></svg>
+  <span class="ex-body">
+    <span class="ex-title">Spike-train raster</span>
+    <span class="ex-desc"><code>python examples/readme_examples/example3_nstcoll_raster_from_example2.py</code></span>
+  </span>
+</a>
+</div>
