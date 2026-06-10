@@ -3,133 +3,359 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>nSTAT-python — Friendly intro to the toolbox</title>
+<title>nSTAT-python — Neural Spike Train Analysis for Python</title>
 <meta name="description" content="A 5-minute introduction to nstat-python: build spike trains and trials, fit point-process GLMs, decode latent states, and use the nstat.extras opt-in bridges." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Spline+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
-    --bg-code:#eee; --accent:#2c5282; --accent-light:#4299e1; --border:#d0d0d8;
-    --tier-core:#38a169; --tier-extras:#dd6b20; --tier-info:#3182ce;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
-            --bg-code:#2a2a33; --accent:#90cdf4; --accent-light:#63b3ed; --border:#3a3a44;
-            --tier-core:#68d391; --tier-extras:#f6ad55; --tier-info:#63b3ed; }
+    /* Oscilloscope / lab-instrument palette */
+    --bg:        #0a0c10;
+    --bg-2:      #0e1117;
+    --panel:     #12161e;
+    --panel-2:   #161b25;
+    --ink:       #e8ede6;
+    --ink-soft:  #aab4ad;
+    --ink-faint: #6b7780;
+    --line:      #1f2630;
+    --line-soft: #19202a;
+    /* Phosphor signal greens + secondary instrument accents */
+    --signal:    #c5f02d;   /* primary phosphor */
+    --signal-dim:#9bc41f;
+    --amber:     #ffb347;   /* extras tier */
+    --cyan:      #56d4dd;   /* info tier */
+    --core:      #c5f02d;
+    --shadow:    0 18px 50px -20px rgba(0,0,0,.85);
   }
   * { box-sizing: border-box; }
-  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-         color:var(--fg); background:var(--bg); line-height:1.55; margin:0; padding:2rem 1.2rem; }
-  .wrap { max-width:1040px; margin:0 auto; }
-  a { color:var(--accent); text-decoration:none; }
-  a:hover { text-decoration:underline; }
-  header { border-bottom:1px solid var(--border); padding-bottom:1.8rem; margin-bottom:2.2rem; }
-  header h1 { margin:.2rem 0 .6rem 0; font-size:2.4rem; line-height:1.15; }
-  header p.lede { color:var(--fg-muted); font-size:1.15rem; margin:0 0 .8rem 0; max-width:42em; }
-  header .meta { color:var(--fg-muted); font-size:.85rem; }
-  nav.toc { background:var(--bg-card); padding:.75rem 1rem; border-radius:8px;
-            font-size:.92rem; margin-bottom:2rem; border:1px solid var(--border); }
-  nav.toc a { color:var(--accent); margin-right:1.1rem; }
-  h2 { font-size:1.5rem; margin-top:2.4rem; border-bottom:1px solid var(--border); padding-bottom:.3rem; }
-  h3 { font-size:1.15rem; margin:1.4rem 0 .4rem 0; }
-  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
-         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
-  pre { background:#1e1e2e; color:#f8f8f2; padding:1rem; border-radius:8px; overflow-x:auto;
-        font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.85rem; line-height:1.45;
-        margin:.6rem 0; }
-  pre code { background:transparent; padding:0; color:inherit; font-size:inherit; }
-  .install-bar { display:flex; gap:.6rem; flex-wrap:wrap; margin-top:.6rem; }
-  .install-bar pre { flex:1 1 18rem; margin:0; font-size:.82rem; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(310px, 1fr));
-          gap:1rem; margin:1.2rem 0; }
-  .card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
-          padding:1rem 1.1rem; }
-  .card h3 { margin:.1rem 0 .4rem 0; font-size:1.05rem; display:flex; align-items:center; gap:.5rem; }
-  .card .num { background:var(--accent); color:#fff; width:1.4em; height:1.4em;
-               border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
-               font-size:.85em; flex:0 0 auto; font-weight:600; }
-  .card pre { margin:.5rem 0; font-size:.78rem; }
-  .card .what { color:var(--fg-muted); font-size:.85rem; margin:.3rem 0 .5rem 0; }
-  .card .seemore { font-size:.82rem; color:var(--fg-muted); margin-top:.5rem; }
-  .tag { display:inline-block; font-size:.7rem; font-weight:600; letter-spacing:.03em;
-         padding:.1em .55em; border-radius:999px; background:var(--tier-core); color:#fff;
-         vertical-align:middle; }
-  .tag.extras { background:var(--tier-extras); }
-  .tag.info { background:var(--tier-info); }
-  .gallery { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
-             gap:1rem; margin:1rem 0; }
-  .gallery .thumb { background:var(--bg-card); border:1px solid var(--border); border-radius:8px;
-                    overflow:hidden; display:flex; flex-direction:column; }
-  .gallery .thumb img { width:100%; height:auto; display:block; background:#fff; }
-  .gallery .thumb .caption { padding:.55rem .7rem; font-size:.82rem; }
-  .gallery .thumb .caption strong { display:block; font-weight:600; margin-bottom:.2rem; font-size:.84rem; }
-  .next { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:.8rem; }
-  .next .item { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:.7rem .9rem; }
-  .next .item strong { display:block; margin-bottom:.2rem; }
-  .next .item .desc { color:var(--fg-muted); font-size:.85rem; }
-  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2.5rem;
-           border-top:1px solid var(--border); padding-top:1rem; }
-  ul.tight { padding-left:1.2rem; margin:.4rem 0; }
-  ul.tight li { margin:.25rem 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Spline Sans", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.62;
+    margin: 0;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    position: relative;
+  }
+  /* Blueprint grid + phosphor glow background */
+  body::before {
+    content: "";
+    position: fixed; inset: 0; z-index: -2;
+    background:
+      radial-gradient(900px 520px at 78% -8%, rgba(197,240,45,.10), transparent 60%),
+      radial-gradient(760px 600px at 5% 8%, rgba(86,212,221,.06), transparent 55%),
+      linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0 / 100% 34px,
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0 / 34px 100%,
+      var(--bg);
+    background-blend-mode: normal;
+  }
+  /* Film grain overlay */
+  body::after {
+    content: "";
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    opacity: .035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 1.4rem; }
+
+  a { color: var(--signal); text-decoration: none; transition: color .15s, opacity .15s; }
+  a:hover { color: #dcff66; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ---------- Hero ---------- */
+  header.hero {
+    position: relative;
+    padding: 4.5rem 0 3rem;
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: .72rem; letter-spacing: .32em; text-transform: uppercase;
+    color: var(--signal); opacity: .85; margin: 0 0 1.1rem;
+    display: flex; align-items: center; gap: .7rem;
+  }
+  .eyebrow::before {
+    content: ""; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--signal); box-shadow: 0 0 0 3px rgba(197,240,45,.18), 0 0 14px var(--signal);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  header.hero h1 {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 800; font-size: clamp(2.5rem, 6vw, 4.4rem);
+    line-height: 1.02; letter-spacing: -.02em; margin: 0 0 1.3rem;
+    max-width: 16ch;
+  }
+  header.hero h1 .accent { color: var(--signal); white-space: nowrap; }
+  header.hero h1 .accent::after {
+    content: ""; display: inline-block; width: .42em; height: .42em;
+    margin-left: .12em; border-radius: 2px; background: var(--signal);
+    box-shadow: 0 0 16px var(--signal);
+    animation: blink 1.15s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  p.lede {
+    color: var(--ink-soft); font-size: 1.18rem; line-height: 1.6;
+    margin: 0 0 1.4rem; max-width: 58ch;
+  }
+  p.lede code { color: var(--signal); }
+  .meta {
+    font-family: "JetBrains Mono", monospace;
+    color: var(--ink-faint); font-size: .82rem; line-height: 1.9;
+    max-width: 70ch;
+  }
+  .meta a { color: var(--ink-soft); }
+  .meta a:hover { color: var(--signal); }
+
+  /* Animated spike-raster signal trace in the hero */
+  .scope {
+    margin: 2.6rem 0 0; border: 1px solid var(--line);
+    border-radius: 12px; background:
+      linear-gradient(180deg, rgba(197,240,45,.04), transparent 40%),
+      var(--panel);
+    box-shadow: var(--shadow); overflow: hidden; position: relative;
+  }
+  .scope .bar {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .6rem .9rem; border-bottom: 1px solid var(--line);
+    font-family: "JetBrains Mono", monospace; font-size: .7rem;
+    color: var(--ink-faint); letter-spacing: .12em; text-transform: uppercase;
+  }
+  .scope .bar .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+  .scope .bar .dot.live { background: var(--signal); box-shadow: 0 0 8px var(--signal); }
+  .scope .bar .ch { margin-left: auto; color: var(--signal); }
+  .scope svg { display: block; width: 100%; height: 132px; }
+  .scope .trace { fill: none; stroke: var(--signal); stroke-width: 1.6; filter: drop-shadow(0 0 5px rgba(197,240,45,.6)); }
+  .scope .trace-2 { fill: none; stroke: var(--cyan); stroke-width: 1.2; opacity: .55; }
+  .raster { position: absolute; inset: auto 0 0 0; height: 34px; display: flex; align-items: stretch; gap: 0; padding: 0 1px; opacity: .9; }
+  .raster i { flex: 1; border-left: 1.5px solid var(--signal); opacity: 0; animation: tick 3.2s linear infinite; }
+  @keyframes tick { 0%,92%{opacity:0} 6%,40%{opacity:.85} 60%{opacity:.2} }
+
+  /* ---------- Section scaffolding ---------- */
+  section { padding: 3.4rem 0 .6rem; }
+  .sec-head { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.4rem; }
+  .sec-num {
+    font-family: "JetBrains Mono", monospace; font-size: .8rem; font-weight: 700;
+    color: var(--signal); letter-spacing: .1em;
+    border: 1px solid var(--line); border-radius: 6px; padding: .15rem .5rem;
+    background: var(--panel);
+  }
+  h2 {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 700;
+    font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.015em; margin: 0;
+  }
+  h2 small { display: block; font-family: "Spline Sans"; font-weight: 400; font-size: .95rem; color: var(--ink-soft); letter-spacing: 0; margin-top: .35rem; }
+  .sec-head { border-bottom: 1px dashed var(--line); padding-bottom: 1rem; }
+  p { max-width: 70ch; }
+  p, ul { color: var(--ink-soft); }
+  p strong, li strong { color: var(--ink); }
+
+  /* ---------- Code / terminal ---------- */
+  code {
+    font-family: "JetBrains Mono", monospace; font-size: .86em;
+    background: var(--panel-2); color: var(--signal);
+    padding: .1em .42em; border-radius: 4px; border: 1px solid var(--line-soft);
+  }
+  .term { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg-2); margin: .7rem 0; }
+  .term .tbar {
+    display: flex; align-items: center; gap: .4rem; padding: .45rem .75rem;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .term .tbar i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .term .tbar i:nth-child(1){ background:#ff5f56; }
+  .term .tbar i:nth-child(2){ background:#ffbd2e; }
+  .term .tbar i:nth-child(3){ background: var(--signal); box-shadow: 0 0 7px rgba(197,240,45,.7); }
+  .term .tbar span { margin-left: .5rem; font-family: "JetBrains Mono", monospace; font-size: .68rem; color: var(--ink-faint); letter-spacing: .1em; text-transform: uppercase; }
+  pre {
+    margin: 0; padding: 1rem 1.1rem; overflow-x: auto;
+    font-family: "JetBrains Mono", monospace; font-size: .82rem; line-height: 1.6;
+    color: #d7e0d4; background: transparent;
+  }
+  pre code { background: transparent; padding: 0; border: 0; color: inherit; font-size: inherit; }
+  .install-bar { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: 1rem; }
+  .install-bar .term { flex: 1 1 20rem; margin: 0; }
+  .install-bar pre { font-size: .8rem; }
+  .install-bar pre code::before { content: "$ "; color: var(--signal); opacity: .7; }
+
+  /* ---------- Cards ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.1rem; margin: 1.4rem 0; }
+  .card {
+    position: relative; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.2rem 1.25rem 1.3rem;
+    transition: transform .22s cubic-bezier(.2,.8,.2,1), border-color .22s, box-shadow .22s;
+    overflow: hidden;
+  }
+  .card::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 2px;
+    background: linear-gradient(90deg, var(--signal), transparent 70%);
+    opacity: 0; transition: opacity .22s;
+  }
+  .card:hover { transform: translateY(-4px); border-color: #2c3742; box-shadow: var(--shadow); }
+  .card:hover::before { opacity: 1; }
+  .card h3 { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; margin: .1rem 0 .55rem; font-size: 1.08rem; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  .card .num {
+    font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: .8rem;
+    width: 1.7em; height: 1.7em; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 7px; color: var(--bg); background: var(--signal);
+    box-shadow: 0 0 14px rgba(197,240,45,.4);
+  }
+  .card .what { color: var(--ink-soft); font-size: .9rem; margin: .3rem 0 .65rem; }
+  .card .what code { font-size: .82em; }
+  .card .seemore { font-size: .8rem; color: var(--ink-faint); margin-top: .7rem; padding-top: .7rem; border-top: 1px dashed var(--line); }
+  .card .seemore a { color: var(--signal-dim); }
+  .card pre { font-size: .76rem; }
+
+  /* LED tier tags */
+  .tag {
+    display: inline-flex; align-items: center; gap: .4em;
+    font-family: "JetBrains Mono", monospace; font-size: .64rem; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase;
+    padding: .25em .6em; border-radius: 999px;
+    background: rgba(197,240,45,.1); color: var(--signal);
+    border: 1px solid rgba(197,240,45,.32);
+  }
+  .tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 7px currentColor; }
+  .tag.extras { background: rgba(255,179,71,.1); color: var(--amber); border-color: rgba(255,179,71,.32); }
+  .tag.info   { background: rgba(86,212,221,.1); color: var(--cyan); border-color: rgba(86,212,221,.32); }
+
+  /* ---------- Gallery ---------- */
+  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 1.1rem; margin: 1.4rem 0; }
+  .thumb {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden; display: flex; flex-direction: column;
+    transition: transform .22s, border-color .22s, box-shadow .22s;
+  }
+  .thumb:hover { transform: translateY(-4px); border-color: #2c3742; box-shadow: var(--shadow); }
+  .thumb .frame { background: #f4f4ef; overflow: hidden; }
+  .thumb img { width: 100%; height: auto; display: block; transition: transform .4s ease; }
+  .thumb:hover img { transform: scale(1.04); }
+  .thumb .caption { padding: .7rem .85rem .85rem; font-size: .82rem; color: var(--ink-soft); }
+  .thumb .caption strong { display: block; font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; color: var(--ink); margin-bottom: .3rem; font-size: .92rem; }
+
+  /* ---------- Next links ---------- */
+  .next { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .9rem; margin: 1.2rem 0; }
+  .next .item {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 11px;
+    padding: .9rem 1rem; transition: transform .2s, border-color .2s, background .2s;
+    position: relative;
+  }
+  .next .item:hover { transform: translateY(-3px); border-color: #2c3742; background: var(--panel-2); }
+  .next .item strong { display: block; margin-bottom: .25rem; font-family: "Bricolage Grotesque", sans-serif; }
+  .next .item strong a { color: var(--ink); }
+  .next .item:hover strong a { color: var(--signal); }
+  .next .item .desc { color: var(--ink-faint); font-size: .84rem; }
+  .next .item::after { content: "→"; position: absolute; top: .85rem; right: 1rem; color: var(--ink-faint); transition: transform .2s, color .2s; }
+  .next .item:hover::after { transform: translateX(3px); color: var(--signal); }
+
+  ul.tight { padding-left: 1.1rem; margin: .5rem 0; }
+  ul.tight li { margin: .3rem 0; }
+  ul.tight li::marker { color: var(--signal-dim); }
+
+  footer {
+    margin-top: 3.5rem; border-top: 1px solid var(--line);
+    padding: 2rem 0 3rem; color: var(--ink-faint);
+    font-family: "JetBrains Mono", monospace; font-size: .8rem; letter-spacing: .03em;
+  }
+  footer a { color: var(--ink-soft); }
+  footer a:hover { color: var(--signal); }
+  footer .sig { display: flex; align-items: center; gap: .6rem; margin-bottom: .7rem; color: var(--ink-soft); }
+  footer .sig svg { flex: 0 0 auto; }
+
+  /* Staggered page-load reveal */
+  .reveal { opacity: 0; transform: translateY(14px); animation: rise .7s cubic-bezier(.2,.8,.2,1) forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { animation: none; opacity: 1; transform: none; }
+    .raster i, .eyebrow::before, header.hero h1 .accent::after, .scope .trace, .scope .trace-2 { animation: none !important; }
+  }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    header.hero { padding: 3rem 0 2.2rem; }
+    .install-bar { flex-direction: column; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-<header>
-  <h1>nSTAT-python — Neural Spike Train Analysis for Python</h1>
-  <p class="lede">A friendly Python port of the MATLAB
-  <a href="https://github.com/cajigaslab/nSTAT">nSTAT toolbox</a>.
-  Build trial objects from spike trains and covariates, fit point-process
-  generalized linear models (GLMs), check the fit with the time-rescaling
-  theorem, and decode latent states from neural recordings — with an
-  opt-in <code>nstat.extras</code> namespace for modern Python-only
-  additions (state-space EM, clusterless decoding, validation oracles,
-  data-interop bridges).</p>
-  <p class="meta">
-    Based on
-    <a href="https://doi.org/10.1016/j.jneumeth.2012.08.009">Cajigas, Malik &amp; Brown (2012)</a>,
-    <em>J. Neuroscience Methods</em> 211:245&ndash;264 ·
-    <a href="https://github.com/cajigaslab/nSTAT-python">GitHub repository</a> ·
-    <a href="https://github.com/cajigaslab/nSTAT-python/releases/latest">Latest release</a>
-  </p>
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow reveal" style="animation-delay:.02s">Cajigas Lab · Neural Signal Toolkit</p>
+    <h1 class="reveal" style="animation-delay:.06s">Neural spike&nbsp;train analysis for <span class="accent">Python</span></h1>
+    <p class="lede reveal" style="animation-delay:.12s">A friendly Python port of the MATLAB
+      <a href="https://github.com/cajigaslab/nSTAT">nSTAT toolbox</a>.
+      Build trial objects from spike trains and covariates, fit point-process
+      generalized linear models, check the fit with the time-rescaling
+      theorem, and decode latent states from neural recordings — with an
+      opt-in <code>nstat.extras</code> namespace for modern Python-only
+      additions (state-space EM, clusterless decoding, validation oracles,
+      data-interop bridges).</p>
+    <p class="meta reveal" style="animation-delay:.18s">
+      Based on
+      <a href="https://doi.org/10.1016/j.jneumeth.2012.08.009">Cajigas, Malik &amp; Brown (2012)</a>,
+      <em>J. Neuroscience Methods</em> 211:245&ndash;264<br>
+      <a href="https://github.com/cajigaslab/nSTAT-python">GitHub repository</a> ·
+      <a href="https://github.com/cajigaslab/nSTAT-python/releases/latest">Latest release</a> ·
+      GPL-2.0
+    </p>
+
+    <div class="scope reveal" style="animation-delay:.24s" aria-hidden="true">
+      <div class="bar">
+        <span class="dot live"></span><span class="dot"></span><span class="dot"></span>
+        time-rescaling scope
+        <span class="ch">CH&nbsp;01 · 1&nbsp;kHz</span>
+      </div>
+      <svg viewBox="0 0 1080 132" preserveAspectRatio="none">
+        <path class="trace-2" d="M0,66 C90,30 180,102 270,66 S450,30 540,66 720,102 810,66 990,30 1080,66"/>
+        <path class="trace" d="M0,66 L60,66 L70,20 L80,66 L210,66 L220,108 L230,66 L360,66 L368,34 L376,66 L470,66 L478,96 L486,66 L600,66 L608,18 L616,66 L740,66 L748,100 L756,66 L880,66 L888,40 L896,66 L1010,66 L1018,90 L1026,66 L1080,66"/>
+      </svg>
+      <div class="raster">
+        <i style="animation-delay:0s"></i><i style="animation-delay:.18s"></i><i style="animation-delay:.05s"></i><i style="animation-delay:.4s"></i><i style="animation-delay:.22s"></i><i style="animation-delay:.7s"></i><i style="animation-delay:.31s"></i><i style="animation-delay:.9s"></i><i style="animation-delay:.5s"></i><i style="animation-delay:1.2s"></i><i style="animation-delay:.62s"></i><i style="animation-delay:1.5s"></i><i style="animation-delay:.8s"></i><i style="animation-delay:.12s"></i><i style="animation-delay:1.1s"></i><i style="animation-delay:.35s"></i><i style="animation-delay:1.4s"></i><i style="animation-delay:.55s"></i><i style="animation-delay:1.7s"></i><i style="animation-delay:.95s"></i><i style="animation-delay:.27s"></i><i style="animation-delay:1.3s"></i><i style="animation-delay:.6s"></i><i style="animation-delay:1.9s"></i><i style="animation-delay:.45s"></i><i style="animation-delay:1.05s"></i><i style="animation-delay:.78s"></i><i style="animation-delay:.2s"></i><i style="animation-delay:1.6s"></i><i style="animation-delay:.88s"></i>
+      </div>
+    </div>
+  </div>
 </header>
 
-<nav class="toc">
-  <strong>On this page:</strong>
-  <a href="#install">Install</a>
-  <a href="#tour">5-minute tour</a>
-  <a href="#extras">nstat.extras</a>
-  <a href="#gallery">Paper-example gallery</a>
-  <a href="#next">Where to next</a>
-</nav>
+<main class="wrap">
 
-<h2 id="install">Install</h2>
-<p>nSTAT-python runs on Python 3.10+. Install from PyPI, then pull the
-example dataset (~150&nbsp;MB from figshare, used by the paper examples
-and several notebooks):</p>
-<div class="install-bar">
-<pre><code>pip install nstat-toolbox</code></pre>
-<pre><code>nstat-install --download-example-data always</code></pre>
-</div>
-<p>Opt-in <code>nstat.extras</code> dep groups (install only what you
-need):</p>
-<pre><code>pip install nstat-toolbox[neo,pynapple,nwb]       # data-interop bridges
+<section id="install">
+  <div class="sec-head reveal">
+    <span class="sec-num">01</span>
+    <h2>Install<small>Python 3.10+ · install from PyPI, then pull the example dataset</small></h2>
+  </div>
+  <p>Pull the example dataset (~150&nbsp;MB from figshare, used by the paper
+    examples and several notebooks):</p>
+  <div class="install-bar">
+    <div class="term"><div class="tbar"><i></i><i></i><i></i><span>pypi</span></div><pre><code>pip install nstat-toolbox</code></pre></div>
+    <div class="term"><div class="tbar"><i></i><i></i><i></i><span>dataset</span></div><pre><code>nstat-install --download-example-data always</code></pre></div>
+  </div>
+  <p>Opt-in <code>nstat.extras</code> dep groups — install only what you need:</p>
+  <div class="term"><div class="tbar"><i></i><i></i><i></i><span>extras</span></div><pre><code>pip install nstat-toolbox[neo,pynapple,nwb]       # data-interop bridges
 pip install nstat-toolbox[test-parity]            # validation oracles (nemos, pykalman, statsmodels)
 pip install nstat-toolbox[metrics]                # spike-distance metrics (pyspike)
 pip install nstat-toolbox[dynamax]                # state-space EM (JAX, ~200 MB)
 pip install nstat-toolbox[clusterless]            # clusterless decoding (JAX, ~200 MB)
-pip install nstat-toolbox[all-extras]             # all of the above EXCEPT dynamax + clusterless</code></pre>
+pip install nstat-toolbox[all-extras]             # all of the above EXCEPT dynamax + clusterless</code></pre></div>
+</section>
 
-<h2 id="tour">5-minute tour</h2>
-<p>Six runnable snippets covering the most common workflows. Each card
-links to a notebook or paper example for the figure-producing version.</p>
+<section id="tour">
+  <div class="sec-head reveal">
+    <span class="sec-num">02</span>
+    <h2>5-minute tour<small>Six runnable snippets covering the most common workflows — each card links to a notebook or paper example</small></h2>
+  </div>
 
-<div class="grid">
+  <div class="grid">
 
-  <div class="card">
-    <h3><span class="num">1</span> Build a spike train <span class="tag">core</span></h3>
-    <p class="what">Wrap a vector of spike times in an <code>nspikeTrain</code> — the universal spike-train object used everywhere in the toolbox.</p>
-<pre><code>import numpy as np
+    <div class="card reveal">
+      <h3><span class="num">1</span> Build a spike train <span class="tag">core</span></h3>
+      <p class="what">Wrap a vector of spike times in an <code>nspikeTrain</code> — the universal spike-train object used everywhere in the toolbox.</p>
+      <div class="term"><div class="tbar"><i></i><i></i><i></i><span>python</span></div><pre><code>import numpy as np
 from nstat import nspikeTrain
 
 # 100 spikes over 1 second at 1 kHz
@@ -138,14 +364,14 @@ st = nspikeTrain(times, name="neuron1",
                  sampleRate=1000,
                  minTime=0.0, maxTime=1.0)
 print(f"{st.n_spikes} spikes; rate ~ {st.n_spikes:.0f} Hz")
-st.plot()</code></pre>
-    <div class="seemore">📓 More: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nSpikeTrainExamples.ipynb">notebooks/nSpikeTrainExamples.ipynb</a></div>
-  </div>
+st.plot()</code></pre></div>
+      <div class="seemore">📓 More: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nSpikeTrainExamples.ipynb">notebooks/nSpikeTrainExamples.ipynb</a></div>
+    </div>
 
-  <div class="card">
-    <h3><span class="num">2</span> Assemble a Trial <span class="tag">core</span></h3>
-    <p class="what">A <code>Trial</code> bundles spike trains, covariates, events, and neighbors for one experiment. The unit that <code>Analysis</code> takes as input.</p>
-<pre><code>from nstat import Trial, TrialConfig, Covariate, nstColl
+    <div class="card reveal">
+      <h3><span class="num">2</span> Assemble a Trial <span class="tag">core</span></h3>
+      <p class="what">A <code>Trial</code> bundles spike trains, covariates, events, and neighbors for one experiment. The unit that <code>Analysis</code> takes as input.</p>
+      <div class="term"><div class="tbar"><i></i><i></i><i></i><span>python</span></div><pre><code>from nstat import Trial, TrialConfig, Covariate, nstColl
 
 t = np.arange(0, 1.0, 1e-3)
 stim = np.sin(2*np.pi*5*t).reshape(-1, 1)
@@ -155,14 +381,14 @@ cov = Covariate(t, stim, name="stim",
                 dataLabels=["stim"])
 nstc = nstColl([st])
 nstc.setMinTime(0.0); nstc.setMaxTime(1.0)
-trial = Trial(nstc, ev=None, covarColl=None, neighbors=None)</code></pre>
-    <div class="seemore">📓 More: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/TrialExamples.ipynb">notebooks/TrialExamples.ipynb</a></div>
-  </div>
+trial = Trial(nstc, ev=None, covarColl=None, neighbors=None)</code></pre></div>
+      <div class="seemore">📓 More: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/TrialExamples.ipynb">notebooks/TrialExamples.ipynb</a></div>
+    </div>
 
-  <div class="card">
-    <h3><span class="num">3</span> Fit a Poisson GLM + check fit <span class="tag">core</span></h3>
-    <p class="what"><code>Analysis.GLMFit</code> trains a point-process GLM with a stimulus filter and history kernel; <code>FitResult.computeKSStats</code> runs the time-rescaling KS goodness-of-fit test.</p>
-<pre><code>from nstat import TrialConfig, ConfigColl, Analysis
+    <div class="card reveal">
+      <h3><span class="num">3</span> Fit a Poisson GLM + check fit <span class="tag">core</span></h3>
+      <p class="what"><code>Analysis.GLMFit</code> trains a point-process GLM with a stimulus filter and history kernel; <code>FitResult.computeKSStats</code> runs the time-rescaling KS goodness-of-fit test.</p>
+      <div class="term"><div class="tbar"><i></i><i></i><i></i><span>python</span></div><pre><code>from nstat import TrialConfig, ConfigColl, Analysis
 
 cfg = TrialConfig(
     covariate_specs=[("Baseline", "constant"),
@@ -175,14 +401,14 @@ results = Analysis.runAnalysisForAllNeurons(
     trial, ConfigColl([cfg]))
 fit = results[0][0]
 print(f"AIC={fit.AIC:.1f}  "
-      f"KS p={fit.computeKSStats()['ks_pvalue']:.3f}")</code></pre>
-    <div class="seemore">📓 More: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/AnalysisExamples.ipynb">notebooks/AnalysisExamples.ipynb</a> · 📊 Figure: <a href="figures/example02/README.html">Paper Example 2 — whisker-stimulus thalamic GLM</a></div>
-  </div>
+      f"KS p={fit.computeKSStats()['ks_pvalue']:.3f}")</code></pre></div>
+      <div class="seemore">📓 More: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/AnalysisExamples.ipynb">notebooks/AnalysisExamples.ipynb</a> · 📊 Figure: <a href="figures/example02/README.html">Paper Example 2 — whisker-stimulus thalamic GLM</a></div>
+    </div>
 
-  <div class="card">
-    <h3><span class="num">4</span> Population goodness-of-fit <span class="tag">core</span></h3>
-    <p class="what">Per-neuron KS plots can <em>pass</em> for every neuron while the model misses inter-neuron <em>coupling</em>. The Tao&nbsp;et&nbsp;al. (2018) marked time-rescaling test catches exactly those failures.</p>
-<pre><code>from nstat import population_time_rescale
+    <div class="card reveal">
+      <h3><span class="num">4</span> Population goodness-of-fit <span class="tag">core</span></h3>
+      <p class="what">Per-neuron KS plots can <em>pass</em> for every neuron while the model misses inter-neuron <em>coupling</em>. The Tao&nbsp;et&nbsp;al. (2018) marked time-rescaling test catches exactly those failures.</p>
+      <div class="term"><div class="tbar"><i></i><i></i><i></i><span>python</span></div><pre><code>from nstat import population_time_rescale
 
 # counts_list[k] : binned spike counts for neuron k
 # lams[k] : model-expected counts per bin
@@ -191,14 +417,14 @@ r = population_time_rescale(counts_list, lams,
 print(f"ground KS p = {r.ground_ks_pvalue:.3g}  "
       f"mark chi2 p = {r.mark_chi2_pvalue:.3g}")
 # On synchronous neurons modeled as independent:
-# univariate KS passes; ground KS rejects at ~3e-49.</code></pre>
-    <div class="seemore">📖 New in v0.4.0 — see the <a href="whats_new.html">What's New</a> page</div>
-  </div>
+# univariate KS passes; ground KS rejects at ~3e-49.</code></pre></div>
+      <div class="seemore">📖 New in v0.4.0 — see the <a href="whats_new.html">What's New</a> page</div>
+    </div>
 
-  <div class="card">
-    <h3><span class="num">5</span> State-space EM <span class="tag extras">extras / em</span></h3>
-    <p class="what">Multi-restart EM with held-out predictive-LL selection — the recommended workflow for PP_EM on real data. Built on Dynamax (JAX) but returns plain NumPy.</p>
-<pre><code>from nstat.extras.em.dynamax_bridge import (
+    <div class="card reveal">
+      <h3><span class="num">5</span> State-space EM <span class="tag extras">extras / em</span></h3>
+      <p class="what">Multi-restart EM with held-out predictive-LL selection — the recommended workflow for PP_EM on real data. Built on Dynamax (JAX) but returns plain NumPy.</p>
+      <div class="term"><div class="tbar"><i></i><i></i><i></i><span>python</span></div><pre><code>from nstat.extras.em.dynamax_bridge import (
     fit_point_process_em_best_of)
 
 result = fit_point_process_em_best_of(
@@ -206,14 +432,14 @@ result = fit_point_process_em_best_of(
     n_restarts=8, holdout_fraction=0.2)
 result.best_result.transition_matrix
 result.best_predictive_ll      # held-out LL
-result.all_predictive_lls      # per-seed trace</code></pre>
-    <div class="seemore">▶ Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/em_dynamax_demo.py">examples/extras/em_dynamax_demo.py</a> · 📖 <a href="extras/em_dynamax.html">help file</a> · install <code>[dynamax]</code></div>
-  </div>
+result.all_predictive_lls      # per-seed trace</code></pre></div>
+      <div class="seemore">▶ Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/em_dynamax_demo.py">examples/extras/em_dynamax_demo.py</a> · 📖 <a href="extras/em_dynamax.html">help file</a> · install <code>[dynamax]</code></div>
+    </div>
 
-  <div class="card">
-    <h3><span class="num">6</span> Clusterless decoding <span class="tag extras">extras / decoding</span></h3>
-    <p class="what">Decode position from <em>unsorted</em> multiunit spikes (mark cube of waveform features) plus a discrete trajectory-type classifier on top. Bridges Denovellis 2021's library.</p>
-<pre><code>from nstat.extras.decoding.clusterless_bridge import (
+    <div class="card reveal">
+      <h3><span class="num">6</span> Clusterless decoding <span class="tag extras">extras / decoding</span></h3>
+      <p class="what">Decode position from <em>unsorted</em> multiunit spikes (mark cube of waveform features) plus a discrete trajectory-type classifier on top. Bridges Denovellis 2021's library.</p>
+      <div class="term"><div class="tbar"><i></i><i></i><i></i><span>python</span></div><pre><code>from nstat.extras.decoding.clusterless_bridge import (
     fit_clusterless_decoder)
 
 result = fit_clusterless_decoder(
@@ -221,158 +447,179 @@ result = fit_clusterless_decoder(
     multiunits,      # (T, n_marks, n_electrodes)
     place_bin_size=5.0)
 result.posterior         # (T, n_position_bins)
-result.map_position      # (T, n_position_dims)</code></pre>
-    <div class="seemore">▶ Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_clusterless_demo.py">examples/extras/decoding_clusterless_demo.py</a> · 📖 <a href="extras/decoding_clusterless.html">help file</a> · install <code>[clusterless]</code></div>
-  </div>
+result.map_position      # (T, n_position_dims)</code></pre></div>
+      <div class="seemore">▶ Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_clusterless_demo.py">examples/extras/decoding_clusterless_demo.py</a> · 📖 <a href="extras/decoding_clusterless.html">help file</a> · install <code>[clusterless]</code></div>
+    </div>
 
-</div>
+  </div>
+</section>
 
-<h2 id="extras">nstat.extras — opt-in Python-only additions</h2>
-<p>The core <code>nstat.*</code> namespace preserves the MATLAB nSTAT
-contract (stable, parity-faithful).
-<code>nstat.extras.*</code> is the monorepo addon namespace (modeled
-after <em>scikit-learn-contrib</em>) for Python-only features that have
-no MATLAB counterpart. Each subpackage is opt-in and brings its own
-dep group.</p>
+<section id="extras">
+  <div class="sec-head reveal">
+    <span class="sec-num">03</span>
+    <h2>nstat.extras<small>Opt-in Python-only additions — modeled after scikit-learn-contrib, each subpackage brings its own dep group</small></h2>
+  </div>
+  <p>The core <code>nstat.*</code> namespace preserves the MATLAB nSTAT
+    contract (stable, parity-faithful).
+    <code>nstat.extras.*</code> is the monorepo addon namespace for
+    Python-only features that have no MATLAB counterpart.</p>
 
-<div class="grid">
-  <div class="card">
-    <h3><code>interop</code> <span class="tag info">data formats</span></h3>
-    <p class="what">Converters between <code>Trial</code> / <code>SpikeTrainCollection</code> / <code>nspikeTrain</code> and the wider Python neuro stack.</p>
-    <ul class="tight">
-      <li><code>interop.neo</code> — Neo objects (<code>[neo]</code>)</li>
-      <li><code>interop.pynapple</code> — pynapple TS / TSGroup (<code>[pynapple]</code>)</li>
-      <li><code>interop.nwb</code> — NWB units + observation intervals (<code>[nwb]</code>)</li>
-    </ul>
-  </div>
-  <div class="card">
-    <h3><code>validation</code> <span class="tag info">parity oracles</span></h3>
-    <p class="what">Cross-validation bridges that triangulate nstat's MATLAB-faithful estimates against independent reference implementations.</p>
-    <ul class="tight">
-      <li><code>nemos_bridge</code> — GLM oracle (NeMoS)</li>
-      <li><code>pykalman_bridge</code> — Kalman / smoother oracle</li>
-      <li><code>statsmodels_bridge</code> — Poisson GLM oracle</li>
-      <li><code>nitime_bridge</code> — spectral analysis cross-check</li>
-    </ul>
-  </div>
-  <div class="card">
-    <h3><code>metrics</code> <span class="tag info">spike-train distance</span></h3>
-    <p class="what">Modern multi-neuron spike-train distance metrics via <code>pyspike</code> (<code>[metrics]</code>).</p>
-    <ul class="tight">
-      <li>ISI distance, SPIKE distance, SPIKE-synchronization profiles</li>
-    </ul>
-  </div>
-  <div class="card">
-    <h3><code>em</code> <span class="tag extras">state-space EM</span></h3>
-    <p class="what">KF_EM / PP_EM / mPPCO_EM equivalents (Dynamax-backed) with the full Tier-0.1 canonical gauge, Tier-0.2 predictive-LL diagnostic, and Tier-0.3 multi-restart selector.</p>
-    <ul class="tight">
-      <li><code>fit_linear_gaussian_em</code> · <code>fit_point_process_em</code> · <code>fit_hybrid_em</code></li>
-      <li><code>cmgf_poisson_filter</code> / <code>_smoother</code> (inference on known model)</li>
-      <li><code>fit_*_em_best_of</code> + <code>point_process_predictive_ll</code> (recommended workflow)</li>
-    </ul>
-  </div>
-  <div class="card">
-    <h3><code>decoding</code> <span class="tag extras">clusterless</span></h3>
-    <p class="what">Marked point-process state-space decoder + trajectory classifier (Denovellis 2021), the modern descendant of nSTAT's PPAF / PPHF. Spike-waveform features replace spike sorting.</p>
-    <ul class="tight">
-      <li><code>fit_clusterless_decoder</code> (continuous position)</li>
-      <li><code>fit_clusterless_classifier</code> (replay vs. local etc.)</li>
-    </ul>
-  </div>
-</div>
-
-<p>📚 <a href="extras_summary.html">Visual summary of every <code>nstat.extras</code> bridge</a> — per-card install matrix and runnable code snippets.</p>
-
-<h2 id="gallery">Paper-example gallery</h2>
-<p>The toolbox ships the five canonical paper examples
-(<a href="https://doi.org/10.1016/j.jneumeth.2012.08.009">Cajigas 2012</a>),
-each runnable in &lt;1 minute on the figshare dataset.</p>
-<div class="gallery">
-  <div class="thumb">
-    <img src="_images/fig01_constant_mg_summary.png" alt="Example 1 — mEPSC Mg2+ washout" loading="lazy" />
-    <div class="caption">
-      <strong>Example 1 — mEPSCs</strong>
-      Do mEPSCs follow constant vs. piecewise Poisson firing under Mg<sup>2+</sup> washout?
-      <br><a href="figures/example01/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example01_mepsc_poisson.py">Script</a>
+  <div class="grid">
+    <div class="card reveal">
+      <h3><code>interop</code> <span class="tag info">data formats</span></h3>
+      <p class="what">Converters between <code>Trial</code> / <code>SpikeTrainCollection</code> / <code>nspikeTrain</code> and the wider Python neuro stack.</p>
+      <ul class="tight">
+        <li><code>interop.neo</code> — Neo objects (<code>[neo]</code>)</li>
+        <li><code>interop.pynapple</code> — pynapple TS / TSGroup (<code>[pynapple]</code>)</li>
+        <li><code>interop.nwb</code> — NWB units + observation intervals (<code>[nwb]</code>)</li>
+      </ul>
+    </div>
+    <div class="card reveal">
+      <h3><code>validation</code> <span class="tag info">parity oracles</span></h3>
+      <p class="what">Cross-validation bridges that triangulate nstat's MATLAB-faithful estimates against independent reference implementations.</p>
+      <ul class="tight">
+        <li><code>nemos_bridge</code> — GLM oracle (NeMoS)</li>
+        <li><code>pykalman_bridge</code> — Kalman / smoother oracle</li>
+        <li><code>statsmodels_bridge</code> — Poisson GLM oracle</li>
+        <li><code>nitime_bridge</code> — spectral analysis cross-check</li>
+      </ul>
+    </div>
+    <div class="card reveal">
+      <h3><code>metrics</code> <span class="tag info">spike-train distance</span></h3>
+      <p class="what">Modern multi-neuron spike-train distance metrics via <code>pyspike</code> (<code>[metrics]</code>).</p>
+      <ul class="tight">
+        <li>ISI distance, SPIKE distance, SPIKE-synchronization profiles</li>
+      </ul>
+    </div>
+    <div class="card reveal">
+      <h3><code>em</code> <span class="tag extras">state-space EM</span></h3>
+      <p class="what">KF_EM / PP_EM / mPPCO_EM equivalents (Dynamax-backed) with the full Tier-0.1 canonical gauge, Tier-0.2 predictive-LL diagnostic, and Tier-0.3 multi-restart selector.</p>
+      <ul class="tight">
+        <li><code>fit_linear_gaussian_em</code> · <code>fit_point_process_em</code> · <code>fit_hybrid_em</code></li>
+        <li><code>cmgf_poisson_filter</code> / <code>_smoother</code> (inference on known model)</li>
+        <li><code>fit_*_em_best_of</code> + <code>point_process_predictive_ll</code> (recommended workflow)</li>
+      </ul>
+    </div>
+    <div class="card reveal">
+      <h3><code>decoding</code> <span class="tag extras">clusterless</span></h3>
+      <p class="what">Marked point-process state-space decoder + trajectory classifier (Denovellis 2021), the modern descendant of nSTAT's PPAF / PPHF. Spike-waveform features replace spike sorting.</p>
+      <ul class="tight">
+        <li><code>fit_clusterless_decoder</code> (continuous position)</li>
+        <li><code>fit_clusterless_classifier</code> (replay vs. local etc.)</li>
+      </ul>
     </div>
   </div>
-  <div class="thumb">
-    <img src="_images/fig01_data_overview.png" alt="Example 2 — thalamus whisker GLM" loading="lazy" />
-    <div class="caption">
-      <strong>Example 2 — Thalamus GLM</strong>
-      How do explicit whisker-stimulus and spike-history terms improve thalamic GLM fits?
-      <br><a href="figures/example02/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example02_whisker_stimulus_thalamus.py">Script</a>
-    </div>
-  </div>
-  <div class="thumb">
-    <img src="_images/fig01_simulated_and_real_rasters.png" alt="Example 3 — PSTH and SSGLM" loading="lazy" />
-    <div class="caption">
-      <strong>Example 3 — PSTH &amp; SSGLM</strong>
-      How do PSTH and the state-space GLM (SSGLM) capture within-trial and across-trial dynamics?
-      <br><a href="figures/example03/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example03_psth_and_ssglm.py">Script</a>
-    </div>
-  </div>
-  <div class="thumb">
-    <img src="_images/fig01_example_cells_path_overlay.png" alt="Example 4 — place cells" loading="lazy" />
-    <div class="caption">
-      <strong>Example 4 — Place cells</strong>
-      Which receptive-field basis (Gaussian vs. Zernike) better fits hippocampal place cells?
-      <br><a href="figures/example04/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example04_place_cells_continuous_stimulus.py">Script</a>
-    </div>
-  </div>
-  <div class="thumb">
-    <img src="_images/fig01_univariate_setup.png" alt="Example 5 — PPAF / PPHF decoding" loading="lazy" />
-    <div class="caption">
-      <strong>Example 5 — Decoding</strong>
-      How well do the adaptive (PPAF) and hybrid (PPHF) point-process filters decode stimulus and reach state?
-      <br><a href="figures/example05/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example05_decoding_ppaf_pphf.py">Script</a>
-    </div>
-  </div>
-</div>
 
-<h2 id="next">Where to next</h2>
-<div class="next">
-  <div class="item">
-    <strong><a href="api.html">API reference</a></strong>
-    <div class="desc">Every public symbol, auto-generated from the package docstrings (NumPy-style).</div>
+  <p>📚 <a href="extras_summary.html">Visual summary of every <code>nstat.extras</code> bridge</a> — per-card install matrix and runnable code snippets.</p>
+</section>
+
+<section id="gallery">
+  <div class="sec-head reveal">
+    <span class="sec-num">04</span>
+    <h2>Paper-example gallery<small>The five canonical paper examples (Cajigas 2012), each runnable in &lt;1 minute on the figshare dataset</small></h2>
   </div>
-  <div class="item">
-    <strong><a href="ClassDefinitions.html">Class definitions</a></strong>
-    <div class="desc">Method catalog for each MATLAB-faithful class (<code>SignalObj</code>, <code>nspikeTrain</code>, <code>Trial</code>, <code>Analysis</code>, <code>FitResult</code>, …).</div>
+  <div class="gallery">
+    <div class="thumb reveal">
+      <div class="frame"><img src="_images/fig01_constant_mg_summary.png" alt="Example 1 — mEPSC Mg2+ washout" loading="lazy" /></div>
+      <div class="caption">
+        <strong>01 · mEPSCs</strong>
+        Do mEPSCs follow constant vs. piecewise Poisson firing under Mg<sup>2+</sup> washout?
+        <br><a href="figures/example01/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example01_mepsc_poisson.py">Script</a>
+      </div>
+    </div>
+    <div class="thumb reveal">
+      <div class="frame"><img src="_images/fig01_data_overview.png" alt="Example 2 — thalamus whisker GLM" loading="lazy" /></div>
+      <div class="caption">
+        <strong>02 · Thalamus GLM</strong>
+        How do explicit whisker-stimulus and spike-history terms improve thalamic GLM fits?
+        <br><a href="figures/example02/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example02_whisker_stimulus_thalamus.py">Script</a>
+      </div>
+    </div>
+    <div class="thumb reveal">
+      <div class="frame"><img src="_images/fig01_simulated_and_real_rasters.png" alt="Example 3 — PSTH and SSGLM" loading="lazy" /></div>
+      <div class="caption">
+        <strong>03 · PSTH &amp; SSGLM</strong>
+        How do PSTH and the state-space GLM (SSGLM) capture within-trial and across-trial dynamics?
+        <br><a href="figures/example03/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example03_psth_and_ssglm.py">Script</a>
+      </div>
+    </div>
+    <div class="thumb reveal">
+      <div class="frame"><img src="_images/fig01_example_cells_path_overlay.png" alt="Example 4 — place cells" loading="lazy" /></div>
+      <div class="caption">
+        <strong>04 · Place cells</strong>
+        Which receptive-field basis (Gaussian vs. Zernike) better fits hippocampal place cells?
+        <br><a href="figures/example04/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example04_place_cells_continuous_stimulus.py">Script</a>
+      </div>
+    </div>
+    <div class="thumb reveal">
+      <div class="frame"><img src="_images/fig01_univariate_setup.png" alt="Example 5 — PPAF / PPHF decoding" loading="lazy" /></div>
+      <div class="caption">
+        <strong>05 · Decoding</strong>
+        How well do the adaptive (PPAF) and hybrid (PPHF) point-process filters decode stimulus and reach state?
+        <br><a href="figures/example05/README.html">Figures</a> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example05_decoding_ppaf_pphf.py">Script</a>
+      </div>
+    </div>
   </div>
-  <div class="item">
-    <strong><a href="PaperOverview.html">Paper-aligned toolbox map</a></strong>
-    <div class="desc">Crosswalk between the 2012 paper's workflow categories and the Python API.</div>
+</section>
+
+<section id="next">
+  <div class="sec-head reveal">
+    <span class="sec-num">05</span>
+    <h2>Where to next<small>Reference, class maps, release notes, and the road ahead</small></h2>
   </div>
-  <div class="item">
-    <strong><a href="extras_summary.html">nstat.extras visual summary</a></strong>
-    <div class="desc">Per-bridge cards with install commands, status, and runnable snippets.</div>
+  <div class="next">
+    <div class="item reveal">
+      <strong><a href="api.html">API reference</a></strong>
+      <div class="desc">Every public symbol, auto-generated from the package docstrings (NumPy-style).</div>
+    </div>
+    <div class="item reveal">
+      <strong><a href="ClassDefinitions.html">Class definitions</a></strong>
+      <div class="desc">Method catalog for each MATLAB-faithful class (<code>SignalObj</code>, <code>nspikeTrain</code>, <code>Trial</code>, <code>Analysis</code>, <code>FitResult</code>, …).</div>
+    </div>
+    <div class="item reveal">
+      <strong><a href="PaperOverview.html">Paper-aligned toolbox map</a></strong>
+      <div class="desc">Crosswalk between the 2012 paper's workflow categories and the Python API.</div>
+    </div>
+    <div class="item reveal">
+      <strong><a href="extras_summary.html">nstat.extras visual summary</a></strong>
+      <div class="desc">Per-bridge cards with install commands, status, and runnable snippets.</div>
+    </div>
+    <div class="item reveal">
+      <strong><a href="whats_new.html">What's New</a></strong>
+      <div class="desc">Per-iteration change summaries (newest first) including the v0.4.0 release set.</div>
+    </div>
+    <div class="item reveal">
+      <strong><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md">RELEASE_NOTES.md</a></strong>
+      <div class="desc">Per-version scope summaries (start here when upgrading).</div>
+    </div>
+    <div class="item reveal">
+      <strong><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md">Methods roadmap</a></strong>
+      <div class="desc">What we're shipping next: Tier 3 deeper state-space methods, PP_EM init+ridge follow-ups, and more.</div>
+    </div>
+    <div class="item reveal">
+      <strong><a href="https://github.com/cajigaslab/nSTAT-python">GitHub repository</a></strong>
+      <div class="desc">Source, issues, discussions, and the full notebook gallery under <code>notebooks/</code>.</div>
+    </div>
   </div>
-  <div class="item">
-    <strong><a href="whats_new.html">What's New</a></strong>
-    <div class="desc">Per-iteration change summaries (newest first) including the v0.4.0 release set.</div>
-  </div>
-  <div class="item">
-    <strong><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md">RELEASE_NOTES.md</a></strong>
-    <div class="desc">Per-version scope summaries (start here when upgrading).</div>
-  </div>
-  <div class="item">
-    <strong><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md">Methods roadmap</a></strong>
-    <div class="desc">What we're shipping next: Tier 3 deeper state-space methods, PP_EM init+ridge follow-ups, and more.</div>
-  </div>
-  <div class="item">
-    <strong><a href="https://github.com/cajigaslab/nSTAT-python">GitHub repository</a></strong>
-    <div class="desc">Source, issues, discussions, and the full notebook gallery under <code>notebooks/</code>.</div>
-  </div>
-</div>
+</section>
+
+</main>
 
 <footer>
-  Cajigas Lab ·
-  <a href="https://www.neurostat.mit.edu">Neuroscience Statistics Research Laboratory</a> ·
-  <a href="https://www.med.upenn.edu/cajigaslab/">RESToRe Lab</a> ·
-  GPL-2.0 license
+  <div class="wrap">
+    <div class="sig">
+      <svg width="74" height="14" viewBox="0 0 74 14" aria-hidden="true">
+        <path d="M0,7 L14,7 L17,1 L20,13 L23,7 L40,7 L43,2 L46,12 L49,7 L62,7 L65,3 L68,11 L71,7 L74,7"
+              fill="none" stroke="#c5f02d" stroke-width="1.4"/>
+      </svg>
+      <span>nSTAT-python</span>
+    </div>
+    Cajigas Lab ·
+    <a href="https://www.neurostat.mit.edu">Neuroscience Statistics Research Laboratory</a> ·
+    <a href="https://www.med.upenn.edu/cajigaslab/">RESToRe Lab</a> ·
+    GPL-2.0 license
+  </div>
 </footer>
 
-</div>
 </body>
 </html>
