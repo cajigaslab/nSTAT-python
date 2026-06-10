@@ -28,8 +28,8 @@ jobs:
         python-version: ["3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -43,8 +43,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -69,8 +69,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -92,8 +92,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           # Match deploy-docs.yml so the CI build and the published site
           # are produced by the same Python interpreter.
@@ -117,8 +117,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -134,8 +134,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -151,12 +151,12 @@ jobs:
       NSTAT_DATA_DIR: ${{ github.workspace }}/.nstat_data_cache
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Cache example data
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.NSTAT_DATA_DIR }}
           key: nstat-example-data-v1
@@ -175,12 +175,12 @@ jobs:
       NSTAT_DATA_DIR: ${{ github.workspace }}/.nstat_data_cache
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Cache example data
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.NSTAT_DATA_DIR }}
           key: nstat-example-data-v1
@@ -200,14 +200,14 @@ jobs:
       NSTAT_DATA_DIR: ${{ github.workspace }}/.nstat_data_cache
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Cache example data
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.NSTAT_DATA_DIR }}
           key: nstat-example-data-v1
@@ -236,8 +236,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -251,8 +251,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -268,12 +268,12 @@ jobs:
       NSTAT_DATA_DIR: ${{ github.workspace }}/.nstat_data_cache
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Cache example data
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.NSTAT_DATA_DIR }}
           key: nstat-example-data-v1
@@ -284,7 +284,7 @@ jobs:
       - name: Regenerate all paper figures
         run: python examples/paper/regenerate_all_figures.py
       - name: Upload regenerated figures
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: paper-figures
           path: docs/figures/
@@ -300,8 +300,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install package with all optional extras
@@ -340,8 +340,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install package with the dynamax extra (pinned jax/tfp)
@@ -371,8 +371,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install package with the clusterless extra
