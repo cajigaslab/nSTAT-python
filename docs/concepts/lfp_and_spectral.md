@@ -3,6 +3,15 @@
 > **Goal of this page.** Explain the local field potential (LFP) and the
 > continuous-signal tools in nSTAT: multitaper spectra, spectrograms, and
 > Kalman filtering. These apply equally to LFP, EEG, and ECoG.
+>
+> **Glossary jumps:** [LFP](glossary.md#local-field-potential) ·
+> [EEG / ECoG](glossary.md#eeg-ecog) ·
+> [power spectral density](glossary.md#power-spectral-density) ·
+> [periodogram](glossary.md#periodogram) ·
+> [multitaper method](glossary.md#multitaper-method) ·
+> [time–bandwidth product `NW`](glossary.md#time-bandwidth-product) ·
+> [spectrogram](glossary.md#spectrogram) ·
+> [Kalman filter / smoother](glossary.md#kalman-filter-smoother)
 
 ## What the LFP is
 

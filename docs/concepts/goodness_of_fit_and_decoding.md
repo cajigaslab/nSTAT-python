@@ -3,6 +3,14 @@
 > **Goal of this page.** Two questions every spike-train model must answer:
 > *Does the model fit?* (goodness-of-fit via time-rescaling) and *Can we read
 > out the stimulus/state from spikes?* (decoding).
+>
+> **Glossary jumps:** [time-rescaling theorem](glossary.md#time-rescaling-theorem) ·
+> [KS test / plot](glossary.md#kolmogorov-smirnov-test-ks-plot) ·
+> [population time-rescaling](glossary.md#population-time-rescaling) ·
+> [encoding vs decoding](glossary.md#encoding-vs-decoding) ·
+> [PPAF](glossary.md#point-process-adaptive-filter) ·
+> [hybrid PP filter (PPHF)](glossary.md#hybrid-point-process-filter) ·
+> [clusterless decoding](glossary.md#clusterless-decoding)
 
 ## Is the model any good? The time-rescaling theorem
 
