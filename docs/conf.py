@@ -133,7 +133,7 @@ html_theme_options = {
     "navigation_depth": 3,
     "collapse_navigation": False,
     "logo_only": True,                      # show the brand logo, hide the text title
-    "style_nav_header_background": "#2c5282",  # nSTAT brand blue (see _static/custom.css)
+    "style_nav_header_background": "#0e1117",  # deep charcoal to match the dark theme (see _static/custom.css)
 }
 
 # Brand assets (the official nSTAT wordmark, sourced from the MATLAB
@@ -143,11 +143,17 @@ html_theme_options = {
 html_logo = "_static/nstat-logo-light.png"
 html_favicon = "_static/favicon.png"
 
-# Custom stylesheet that recolors the RTD theme to match the hand-built
-# landing pages and polishes typography / tables / code blocks.
+# Custom stylesheet that restyles the RTD theme into the dark
+# "oscilloscope / lab-instrument" look shared with the hand-built landing
+# pages (intro.html, extras_summary.html) — phosphor-green signal accents
+# on deep charcoal, with matching typography, tables, and code blocks.
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_title = f"nSTAT Python {release}"
+
+# Dark-friendly Pygments tokens so code blocks read well on the dark code
+# surface defined in _static/custom.css.
+pygments_style = "monokai"
 
 # Copy standalone HTML pages into the build root.  Sphinx flattens a
 # directory entry's *contents* into the output root (the entry's own
