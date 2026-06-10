@@ -4,6 +4,13 @@
 > parameters **change over time** — across trials as an animal learns, or
 > within a trial as a latent brain state evolves. These are *state-space*
 > models, fit by the EM algorithm.
+>
+> **Glossary jumps:** [SSGLM](glossary.md#state-space-glm) ·
+> [GLM](glossary.md#generalized-linear-model) ·
+> [CIF](glossary.md#conditional-intensity-function) ·
+> [Kalman filter / smoother](glossary.md#kalman-filter-smoother) ·
+> [PPAF](glossary.md#point-process-adaptive-filter) ·
+> [hybrid PP filter (PPHF)](glossary.md#hybrid-point-process-filter)
 
 This page assumes the [point-process GLM](spike_trains_and_glms.md) and the
 [decoding](goodness_of_fit_and_decoding.md) pages.

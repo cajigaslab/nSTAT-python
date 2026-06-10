@@ -6,6 +6,12 @@
 > single high-dimensional object and ask about its **geometry**. This page is
 > the on-ramp — it shows the core idea with a few lines of NumPy and points to
 > the standard tooling that takes it further.
+>
+> **Glossary jumps:** [point process](glossary.md#point-process) ·
+> [CIF](glossary.md#conditional-intensity-function) ·
+> [PPAF](glossary.md#point-process-adaptive-filter) ·
+> [SSGLM](glossary.md#state-space-glm) ·
+> [ensemble / functional coupling](glossary.md#ensemble-functional-coupling)
 
 ## Why look at the population as a whole
 

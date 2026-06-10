@@ -3,6 +3,12 @@
 > **Goal of this page.** Move from single neurons to **interactions**: how one
 > neuron's spikes influence another's, how nSTAT estimates that coupling, and
 > the classic trap of mistaking shared input for a connection.
+>
+> **Glossary jumps:** [ensemble / functional coupling](glossary.md#ensemble-functional-coupling) ·
+> [GLM](glossary.md#generalized-linear-model) ·
+> [CIF](glossary.md#conditional-intensity-function) ·
+> [history / refractory](glossary.md#history-term-refractory-period) ·
+> [point process](glossary.md#point-process)
 
 Builds on the [point-process GLM](spike_trains_and_glms.md).
 

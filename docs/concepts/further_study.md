@@ -2,6 +2,9 @@
 
 > **Goal of this page.** A short map of where to go beyond nSTAT — the topics
 > this toolbox does not implement, with primary references.
+>
+> **See also:** the [glossary](glossary.md) defines every term used across
+> the concepts track, with HTML anchors for direct linking.
 
 ## What nSTAT covers
 

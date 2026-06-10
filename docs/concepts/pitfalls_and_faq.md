@@ -4,6 +4,18 @@
 > pages together — the mistakes that quietly invalidate an analysis, and how
 > to avoid them. Skim it before your first real analysis, and return when a
 > result looks wrong.
+>
+> **Glossary jumps:** [KS test / plot](glossary.md#kolmogorov-smirnov-test-ks-plot) ·
+> [time-rescaling theorem](glossary.md#time-rescaling-theorem) ·
+> [population time-rescaling](glossary.md#population-time-rescaling) ·
+> [AIC / BIC](glossary.md#aic-bic) ·
+> [periodogram](glossary.md#periodogram) ·
+> [multitaper](glossary.md#multitaper-method) ·
+> [time–bandwidth product `NW`](glossary.md#time-bandwidth-product) ·
+> [history / refractory](glossary.md#history-term-refractory-period) ·
+> [SSGLM](glossary.md#state-space-glm) ·
+> [clusterless decoding](glossary.md#clusterless-decoding) ·
+> [spike sorting](glossary.md#spike-sorting)
 
 ## Modeling and binning
 

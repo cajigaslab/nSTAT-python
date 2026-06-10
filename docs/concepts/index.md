@@ -14,7 +14,12 @@ the primary literature so you can go deeper. No prior neuroscience is assumed.
 [model learning across trials](state_space_and_em.md) ·
 [measure coupling between neurons](network_connectivity.md) ·
 [report uncertainty](uncertainty_and_confidence.md) ·
-[avoid common mistakes](pitfalls_and_faq.md).
+[avoid common mistakes](pitfalls_and_faq.md) ·
+[look up a term](glossary.md).
+
+> Every page in this track opens with a **Glossary jumps** box linking to the
+> relevant entries in the [glossary](glossary.md) — direct deep-links to plain
+> definitions of every term.
 
 ## Suggested learning path
 

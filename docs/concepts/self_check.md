@@ -4,6 +4,9 @@
 > concepts page ends with a short *Check your understanding* quiz (with
 > answers); this page collects them, then adds **synthesis questions** that
 > span several pages — the kind of reasoning a real analysis demands.
+>
+> **Need a refresher on a term?** Every term used in the quizzes is defined
+> in the [glossary](glossary.md), with HTML anchors you can deep-link to.
 
 ## Per-topic quizzes
 
