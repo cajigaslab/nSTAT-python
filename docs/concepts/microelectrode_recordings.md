@@ -4,6 +4,16 @@
 > microelectrode records, so the rest of nSTAT (spike trains, GLMs, LFP
 > spectra, decoding) has a concrete grounding. No prior neuroscience
 > assumed.
+>
+> **Glossary jumps:** [microelectrode](glossary.md#microelectrode) ·
+> [broadband signal](glossary.md#broadband-signal) ·
+> [LFP](glossary.md#local-field-potential) ·
+> [action potential](glossary.md#action-potential) ·
+> [single unit](glossary.md#single-unit) ·
+> [multi-unit activity](glossary.md#multi-unit-activity) ·
+> [spike sorting](glossary.md#spike-sorting) ·
+> [tetrode / array](glossary.md#tetrode-multi-electrode-array) ·
+> [point process](glossary.md#point-process)
 
 ## What a microelectrode measures
 

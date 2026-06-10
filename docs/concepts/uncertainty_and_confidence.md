@@ -4,6 +4,12 @@
 > coefficient, a firing rate, a decoded position — is an *estimate* from finite,
 > noisy data. This page shows how nSTAT quantifies that uncertainty, and why an
 > estimate without an interval is only half an answer.
+>
+> **Glossary jumps:** [GLM](glossary.md#generalized-linear-model) ·
+> [CIF](glossary.md#conditional-intensity-function) ·
+> [link function](glossary.md#link-function) ·
+> [PPAF](glossary.md#point-process-adaptive-filter) ·
+> [SSGLM](glossary.md#state-space-glm)
 
 ## Why a point estimate is not enough
 

@@ -8,6 +8,16 @@
 > kind of recording made to guide deep brain stimulation (DBS) surgery. The
 > same `nspikeTrain`, `Analysis`, `FitResult`, and `SignalObj` tools carry
 > over unchanged; only the application is new.
+>
+> **Glossary jumps:** [rhythmic / oscillatory cell](glossary.md#rhythmic-oscillatory-cell) ·
+> [tremor cell](glossary.md#tremor-cell) ·
+> [DBS](glossary.md#deep-brain-stimulation) ·
+> [microelectrode mapping](glossary.md#microelectrode-mapping-localization) ·
+> [beta band](glossary.md#beta-band) ·
+> [adaptive DBS](glossary.md#adaptive-dbs) ·
+> [multitaper](glossary.md#multitaper-method) ·
+> [spectrogram](glossary.md#spectrogram) ·
+> [PPAF](glossary.md#point-process-adaptive-filter)
 
 ## Rhythmic firing: when a neuron has its own beat
 

@@ -6,6 +6,12 @@
 > **deep-learning** decoders on top. This page draws the line from one to the
 > other: what carries over, what changes, and where to go to learn the rest. It
 > deliberately does not reimplement those methods — it places nSTAT in the arc.
+>
+> **Glossary jumps:** [PPAF](glossary.md#point-process-adaptive-filter) ·
+> [CIF](glossary.md#conditional-intensity-function) ·
+> [Kalman filter / smoother](glossary.md#kalman-filter-smoother) ·
+> [hybrid PP filter (PPHF)](glossary.md#hybrid-point-process-filter) ·
+> [encoding vs decoding](glossary.md#encoding-vs-decoding)
 
 ## What nSTAT's decoders already give you
 
