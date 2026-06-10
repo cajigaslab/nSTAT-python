@@ -1,10 +1,18 @@
 name: test-and-build
 
+# MANUAL-ONLY policy (GitHub Actions minute conservation).
+# This matrix is expensive (~16 jobs incl. JAX installs, notebook
+# execution and figure regeneration), so it no longer runs automatically
+# on pull_request / push.  Validate locally with `make ci-local` before
+# pushing, and trigger this suite by hand when billing minutes are
+# available — via the Actions tab "Run workflow" button, or:
+#   gh workflow run ci.yml --ref <branch>
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: test-and-build-${{ github.ref }}
+  cancel-in-progress: true
 
 # Force matplotlib's non-interactive backend at the workflow level so all
 # jobs run headless without per-test boilerplate.

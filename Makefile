@@ -24,7 +24,8 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
         docs docs-strict docs-open refresh-intersphinx-inv \
         diff-matlab readme-check helpfile-check freshness-check \
         format lint typecheck \
-        version-check sanity clean release-check
+        version-check sanity clean release-check \
+        ci-local drift-check
 
 # --- help ------------------------------------------------------------
 
@@ -131,6 +132,49 @@ sanity:  ## Quick "is the package importable + entry points wired?" check.
 
 release-check: version-check freshness-check test docs-strict regen  ## Pre-release verification gauntlet.
 	@echo "Release check passed — ready to tag."
+
+# --- local CI mirror -------------------------------------------------
+# Reproduce the *deterministic* PR gates locally — everything that does
+# NOT need the 150 MB figshare dataset or the heavy JAX extras.  Run
+# this before pushing so PRs land green on the first GitHub Actions run
+# instead of burning billing minutes on avoidable failures.
+#
+# Coverage vs. the GitHub workflows:
+#   freshness-check  -> readme-check.yml + helpfile-check.yml
+#   test             -> ci.yml: unit-lint, cleanroom-compliance,
+#                       symbol-surface-audit, data-integrity
+#   docs-strict      -> ci.yml: docs-build  (+ deploy-docs.yml build)
+#   drift-check      -> ci.yml: paper-gallery-artifacts,
+#                       parity-report-artifacts
+#
+# NOT covered locally (need the dataset / JAX / a real runner): the
+# notebook-execution jobs, regenerate-figures, extras-{dynamax,clusterless}.
+# Those still run on GitHub when you actually have minutes.
+
+ci-local: freshness-check test docs-strict drift-check  ## Run the deterministic PR gates locally (no dataset/JAX needed).
+	@echo
+	@echo "ci-local PASSED — the deterministic PR gates are green."
+	@echo "Notebook / figure-regen / extras jobs still run on GitHub Actions."
+
+drift-check:  ## Regenerate deterministic CI-checked artifacts and fail if they drift (no commit).
+	@echo "Regenerating gallery + parity-report artifacts..."
+	@$(PY) tools/paper_examples/build_gallery.py
+	@$(PY) tools/parity/build_report.py
+	@echo "Checking for drift..."
+	@git diff --exit-code -- \
+		README.md \
+		docs/paper_examples.md \
+		docs/figures/manifest.json \
+		docs/figures/example01/README.md \
+		docs/figures/example02/README.md \
+		docs/figures/example03/README.md \
+		docs/figures/example04/README.md \
+		docs/figures/example05/README.md \
+		parity/report.md \
+	&& echo "No artifact drift." \
+	|| { echo "DRIFT: regenerated artifacts differ — commit the regenerated files above."; exit 1; }
+	@echo "Note: parity/notebook_fidelity.yml is environment-coupled (it records the"
+	@echo "      local MATLAB-checkout path) and is validated on GitHub Actions, not here."
 
 clean:  ## Remove built artifacts (__pycache__, .pytest_cache, docs/_build, dist).
 	rm -rf docs/_build dist build *.egg-info

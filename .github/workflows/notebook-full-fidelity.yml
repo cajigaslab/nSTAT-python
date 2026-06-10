@@ -1,16 +1,15 @@
 name: notebook-full-fidelity
 
+# MANUAL-ONLY policy (GitHub Actions minute conservation) — see ci.yml.
+# Heavy: executes mapped MATLAB-helpfile notebooks against the figshare
+# dataset.  Trigger by hand when minutes are available:
+#   gh workflow run notebook-full-fidelity.yml --ref <branch>
 on:
-  pull_request:
-    paths:
-      - "notebooks/**"
-      - "tools/notebooks/**"
-      - "nstat/notebook_*.py"
-      - "parity/notebook_fidelity.yml"
-      - "parity/report.md"
-  schedule:
-    - cron: "15 7 * * 6"
   workflow_dispatch:
+
+concurrency:
+  group: notebook-full-fidelity-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   helpfile-full:

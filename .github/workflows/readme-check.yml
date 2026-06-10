@@ -24,34 +24,11 @@ name: readme-check
 #     (docs/, examples/, notebooks/, nstat/__init__.py, etc.).
 #   - Push to main (so a direct-to-main change still re-validates).
 
+# MANUAL-ONLY policy (GitHub Actions minute conservation) — see ci.yml.
+# Run locally with `make readme-check` (or `make ci-local`); trigger on
+# GitHub by hand when minutes are available:
+#   gh workflow run readme-check.yml --ref <branch>
 on:
-  pull_request:
-    paths:
-      - 'README.md'
-      - 'AGENT_GUIDE.md'
-      - 'docs/**'
-      - 'examples/**'
-      - 'notebooks/**'
-      - 'nstat/__init__.py'
-      - 'nstat/*.py'
-      - 'pyproject.toml'
-      - 'CITATION.cff'
-      - 'tools/check_readme_links.py'
-      - '.github/workflows/readme-check.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'README.md'
-      - 'AGENT_GUIDE.md'
-      - 'docs/**'
-      - 'examples/**'
-      - 'notebooks/**'
-      - 'nstat/__init__.py'
-      - 'nstat/*.py'
-      - 'pyproject.toml'
-      - 'CITATION.cff'
-      - 'tools/check_readme_links.py'
-      - '.github/workflows/readme-check.yml'
   workflow_dispatch:
 
 # Force headless matplotlib for any import that pulls in plot machinery.
