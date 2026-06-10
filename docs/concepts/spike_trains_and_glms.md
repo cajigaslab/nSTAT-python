@@ -3,6 +3,14 @@
 > **Goal of this page.** Explain spike trains as *point processes*, the
 > *conditional intensity function* (CIF) that defines them, and how nSTAT
 > fits CIFs with *point-process generalized linear models* (GLMs).
+>
+> **Glossary jumps:** [point process](glossary.md#point-process) ·
+> [CIF](glossary.md#conditional-intensity-function) ·
+> [GLM](glossary.md#generalized-linear-model) ·
+> [link function](glossary.md#link-function) ·
+> [history / refractory](glossary.md#history-term-refractory-period) ·
+> [AIC / BIC](glossary.md#aic-bic) ·
+> [SSGLM](glossary.md#state-space-glm)
 
 ## Spike trains as point processes
 
