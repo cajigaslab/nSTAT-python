@@ -10,23 +10,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Spline+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    /* Oscilloscope / lab-instrument palette */
-    --bg:        #0a0c10;
-    --bg-2:      #0e1117;
-    --panel:     #12161e;
-    --panel-2:   #161b25;
-    --ink:       #e8ede6;
-    --ink-soft:  #aab4ad;
-    --ink-faint: #6b7780;
-    --line:      #1f2630;
-    --line-soft: #19202a;
-    /* Phosphor signal greens + secondary instrument accents */
-    --signal:    #c5f02d;   /* primary phosphor */
-    --signal-dim:#9bc41f;
-    --amber:     #ffb347;   /* extras tier */
-    --cyan:      #56d4dd;   /* info tier */
-    --core:      #c5f02d;
-    --shadow:    0 18px 50px -20px rgba(0,0,0,.85);
+    /* Clean light palette (readable dark text on white). */
+    --bg:        #ffffff;
+    --bg-2:      #f5f7fa;
+    --panel:     #ffffff;
+    --panel-2:   #f0f3f6;
+    --ink:       #1b2027;
+    --ink-soft:  #45515d;
+    --ink-faint: #6b7682;
+    --line:      #d9dfe5;
+    --line-soft: #e8edf1;
+    /* Dark, readable green brand accent + secondary tiers. */
+    --signal:    #2f7d12;
+    --signal-dim:#356d18;
+    --amber:     #9a5b00;   /* extras tier */
+    --cyan:      #0b6e8c;   /* info tier */
+    --core:      #2f7d12;
+    --shadow:    0 8px 24px -14px rgba(20,30,40,.28);
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -63,7 +63,7 @@
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 1.4rem; }
 
   a { color: var(--signal); text-decoration: none; transition: color .15s, opacity .15s; }
-  a:hover { color: #dcff66; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #245f0d; text-decoration: underline; text-underline-offset: 3px; }
 
   /* ---------- Hero ---------- */
   header.hero {
@@ -173,7 +173,7 @@
   pre {
     margin: 0; padding: 1rem 1.1rem; overflow-x: auto;
     font-family: "JetBrains Mono", monospace; font-size: .82rem; line-height: 1.6;
-    color: #d7e0d4; background: transparent;
+    color: #24292f; background: transparent;
   }
   pre code { background: transparent; padding: 0; border: 0; color: inherit; font-size: inherit; }
   .install-bar { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: 1rem; }
@@ -195,7 +195,7 @@
     background: linear-gradient(90deg, var(--signal), transparent 70%);
     opacity: 0; transition: opacity .22s;
   }
-  .card:hover { transform: translateY(-4px); border-color: #2c3742; box-shadow: var(--shadow); }
+  .card:hover { transform: translateY(-4px); border-color: var(--signal); box-shadow: var(--shadow); }
   .card:hover::before { opacity: 1; }
   .card h3 { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; margin: .1rem 0 .55rem; font-size: 1.08rem; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
   .card .num {
@@ -231,7 +231,7 @@
     overflow: hidden; display: flex; flex-direction: column;
     transition: transform .22s, border-color .22s, box-shadow .22s;
   }
-  .thumb:hover { transform: translateY(-4px); border-color: #2c3742; box-shadow: var(--shadow); }
+  .thumb:hover { transform: translateY(-4px); border-color: var(--signal); box-shadow: var(--shadow); }
   .thumb .frame { background: #f4f4ef; overflow: hidden; }
   .thumb img { width: 100%; height: auto; display: block; transition: transform .4s ease; }
   .thumb:hover img { transform: scale(1.04); }
@@ -245,7 +245,7 @@
     padding: .9rem 1rem; transition: transform .2s, border-color .2s, background .2s;
     position: relative;
   }
-  .next .item:hover { transform: translateY(-3px); border-color: #2c3742; background: var(--panel-2); }
+  .next .item:hover { transform: translateY(-3px); border-color: var(--signal); background: var(--panel-2); }
   .next .item strong { display: block; margin-bottom: .25rem; font-family: "Bricolage Grotesque", sans-serif; }
   .next .item strong a { color: var(--ink); }
   .next .item:hover strong a { color: var(--signal); }
@@ -610,7 +610,7 @@ result.map_position      # (T, n_position_dims)</code></pre></div>
     <div class="sig">
       <svg width="74" height="14" viewBox="0 0 74 14" aria-hidden="true">
         <path d="M0,7 L14,7 L17,1 L20,13 L23,7 L40,7 L43,2 L46,12 L49,7 L62,7 L65,3 L68,11 L71,7 L74,7"
-              fill="none" stroke="#c5f02d" stroke-width="1.4"/>
+              fill="none" stroke="#2f7d12" stroke-width="1.4"/>
       </svg>
       <span>nSTAT-python</span>
     </div>

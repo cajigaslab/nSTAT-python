@@ -9,20 +9,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Spline+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:        #0a0c10;
-    --bg-2:      #0e1117;
-    --panel:     #12161e;
-    --panel-2:   #161b25;
-    --ink:       #e8ede6;
-    --ink-soft:  #aab4ad;
-    --ink-faint: #6b7780;
-    --line:      #1f2630;
-    --line-soft: #19202a;
-    --signal:    #c5f02d;   /* tier A — validation */
-    --signal-dim:#9bc41f;
-    --cyan:      #56d4dd;   /* tier B — interop */
-    --amber:     #ffb347;   /* tier C — metrics */
-    --shadow:    0 18px 50px -20px rgba(0,0,0,.85);
+    --bg:        #ffffff;
+    --bg-2:      #f5f7fa;
+    --panel:     #ffffff;
+    --panel-2:   #f0f3f6;
+    --ink:       #1b2027;
+    --ink-soft:  #45515d;
+    --ink-faint: #6b7682;
+    --line:      #d9dfe5;
+    --line-soft: #e8edf1;
+    --signal:    #2f7d12;   /* tier A — validation */
+    --signal-dim:#356d18;
+    --cyan:      #0b6e8c;   /* tier B — interop */
+    --amber:     #9a5b00;   /* tier C — metrics */
+    --shadow:    0 8px 24px -14px rgba(20,30,40,.28);
     /* Legacy aliases mapped onto the new palette */
     --fg: var(--ink); --fg-muted: var(--ink-soft);
     --bg-card: var(--panel); --bg-code: var(--panel-2);
@@ -58,7 +58,7 @@
   }
   .wrap { max-width: 1040px; margin: 0 auto; }
   a { color: var(--signal); transition: color .15s; }
-  a:hover { color: #dcff66; }
+  a:hover { color: #245f0d; }
   header { border-bottom: 1px solid var(--line); padding-bottom: 1.8rem; margin-bottom: 2.2rem; }
   header h1 { margin: 0 0 0.6rem 0; font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(2.2rem, 5vw, 3.2rem); letter-spacing: -.02em; }
   header h1 code { font-family: "JetBrains Mono", monospace; background: none; border: 0; padding: 0; color: var(--signal); }
@@ -89,7 +89,7 @@
   code { background: var(--panel-2); color: var(--signal); padding: 0.1em 0.4em; border-radius: 4px; border: 1px solid var(--line-soft); }
   pre {
     background: var(--bg-2); border: 1px solid var(--line);
-    color: #d7e0d4; padding: 0.95rem 1.05rem; border-radius: 10px;
+    color: #24292f; padding: 0.95rem 1.05rem; border-radius: 10px;
     overflow-x: auto; line-height: 1.55;
   }
   pre code { background: transparent; padding: 0; border: 0; color: inherit; }

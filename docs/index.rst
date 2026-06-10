@@ -12,6 +12,23 @@ plus an opt-in :mod:`nstat.extras` namespace for modern Python-only additions.
    | State-space EM · clusterless decoding · data-interop & validation bridges
    | ``pip install nstat-toolbox``
 
+.. raw:: html
+
+   <div class="nstat-scope" aria-hidden="true">
+     <div class="bar">
+       <span class="dot live"></span><span class="dot"></span><span class="dot"></span>
+       time-rescaling scope
+       <span class="ch">CH&nbsp;01 · 1&nbsp;kHz</span>
+     </div>
+     <svg viewBox="0 0 1080 132" preserveAspectRatio="none">
+       <path class="trace-2" d="M0,66 C90,30 180,102 270,66 S450,30 540,66 720,102 810,66 990,30 1080,66"/>
+       <path class="trace" d="M0,66 L60,66 L70,20 L80,66 L210,66 L220,108 L230,66 L360,66 L368,34 L376,66 L470,66 L478,96 L486,66 L600,66 L608,18 L616,66 L740,66 L748,100 L756,66 L880,66 L888,40 L896,66 L1010,66 L1018,90 L1026,66 L1080,66"/>
+     </svg>
+     <div class="raster">
+       <i style="animation-delay:0s"></i><i style="animation-delay:.18s"></i><i style="animation-delay:.05s"></i><i style="animation-delay:.4s"></i><i style="animation-delay:.22s"></i><i style="animation-delay:.7s"></i><i style="animation-delay:.31s"></i><i style="animation-delay:.9s"></i><i style="animation-delay:.5s"></i><i style="animation-delay:1.2s"></i><i style="animation-delay:.62s"></i><i style="animation-delay:1.5s"></i><i style="animation-delay:.8s"></i><i style="animation-delay:.12s"></i><i style="animation-delay:1.1s"></i><i style="animation-delay:.35s"></i><i style="animation-delay:1.4s"></i><i style="animation-delay:.55s"></i><i style="animation-delay:1.7s"></i><i style="animation-delay:.95s"></i><i style="animation-delay:.27s"></i><i style="animation-delay:1.3s"></i><i style="animation-delay:.6s"></i><i style="animation-delay:1.9s"></i><i style="animation-delay:.45s"></i><i style="animation-delay:1.05s"></i><i style="animation-delay:.78s"></i><i style="animation-delay:.2s"></i><i style="animation-delay:1.6s"></i><i style="animation-delay:.88s"></i>
+     </div>
+   </div>
+
 New here? Start with the friendly, illustrated
 `5-minute intro <intro.html>`_ — runnable snippets, the ``nstat.extras``
 bridges, and the paper-example gallery.
