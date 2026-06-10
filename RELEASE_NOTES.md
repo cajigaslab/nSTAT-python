@@ -1,5 +1,78 @@
 # Release Notes
 
+## v0.4.6 — 2026-06-10
+
+Onboarding deepening + post-v0.4.5 hygiene. **No public API changes, no
+behavior changes** &mdash; every importable symbol behaves identically to
+v0.4.5.
+
+### Added
+
+- **`notebooks/00_getting_started.ipynb`** &mdash; an executable
+  end-to-end mirror of `intro.html`. Thirteen cells: build a spike
+  train, group into a population, fit a Poisson GLM, check it with the
+  time-rescaling KS test, then decode a hidden stimulus from a
+  population with the PPAF. Self-contained (simulated data, no figshare
+  download, no JAX-heavy extras). Now part of the CI `ci_smoke`
+  notebook group so a regression in the public API surfaces on every
+  PR.
+- **`intro.html`** &mdash; two new entries at the top of the "Where to
+  next" section: a [Concepts &amp; Background](https://cajigaslab.github.io/nSTAT-python/concepts/index.html)
+  card (the 14-page learning track) and a Hands-on tutorials card
+  pointing at `examples/tutorials/`. Both surfaces existed since
+  v0.4.4 but were invisible from the 5-minute tour.
+- **"By concept" crosswalk** in `docs/Examples.md` &mdash; a table
+  mapping every concepts page to its tutorial scripts, MATLAB-help-port
+  notebooks, and paper examples. Bridges "I just read this concept" to
+  "what code should I run next?"
+- **Glossary anchors + page jump boxes.** 40 HTML
+  `<a id="slug"></a>` anchors injected before each `**Term.**`
+  definition in `docs/concepts/glossary.md` (slugs derived
+  deterministically from term text). **Every concepts learning-track
+  page** now opens with a "Glossary jumps" box of 5&ndash;11 inline
+  links into the glossary, or a shorter "See also" pointer on the
+  three navigational pages (`further_study.md`, `self_check.md`,
+  `index.md`).
+- **Reproducibility &amp; random-seeds Q&amp;A** in
+  `docs/concepts/pitfalls_and_faq.md` (carried in from v0.4.5).
+
+### CI / build hygiene
+
+- **GitHub Actions Node 20 &rarr; Node 24.** All eight official actions
+  bumped to their current major float tag: `actions/checkout@v6`,
+  `setup-python@v6`, `cache@v5`, `upload-artifact@v7`,
+  `download-artifact@v8`, `configure-pages@v6`,
+  `upload-pages-artifact@v5`, `deploy-pages@v5`. Removes the
+  Node-20-deprecation warning that surfaced on the v0.4.5
+  `deploy-docs` run.
+- **`AGENT_GUIDE.md` source layout** now lists `examples/tutorials/`,
+  `examples/extras/`, and `docs/concepts/` &mdash; surfaces present
+  since v0.4.4 but missing from the agent-orientation paragraph.
+
+### Documentation hygiene
+
+- **`RELEASE_READINESS.md`** refreshed: PyPI Trusted-Publisher setup
+  marked operational (it's been running every release since v0.4.1);
+  Tier 0.3 PP_EM follow-ups moved from "candidates" to "shipped"
+  (landed in v0.4.2); v0.4.6 candidate list added; standing release
+  checklist expanded with the per-iteration
+  `docs/changes/*.html` pattern and the post-v0.4.5 manual
+  `deploy-docs` trigger step.
+- **`docs/extras_summary.html`** "What's planned" section: removed the
+  "EM accuracy hardening" bullet (shipped in v0.4.x &mdash; exact
+  lag-one cross-covariance + Laplace correction); section header
+  retitled "Beyond v0.4.x"; added a "Already shipped through v0.4.x"
+  recap.
+- **`parity/methods_roadmap.md`** "Suggested sequencing": rewritten
+  to acknowledge that Tiers 0.1/0.2/0.3, 1.1, and 2.1 are now shipped
+  &mdash; the remaining sequence is Tier 3.1 (CLDS) &rarr; 3.2 (NPNR)
+  &rarr; 3.3 (GP-based GLM filters). Top-of-file lede updated
+  accordingly; broken `../CLAUDE.md` link generalised.
+
+### Breaking changes
+
+None.
+
 ## v0.4.5 — 2026-06-10
 
 Documentation hygiene, theme + gallery polish, and CI billing conservation.

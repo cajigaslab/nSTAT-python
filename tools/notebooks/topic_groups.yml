@@ -1,6 +1,7 @@
 version: 1
 groups:
   ci_smoke:
+    - 00_getting_started
     - ConfidenceIntervalOverview
     - ConfigCollExamples
     - CovariateExamples
@@ -32,6 +33,7 @@ groups:
     - nSTATPaperExamples
     - nSpikeTrainExamples
   parity_core:
+    - 00_getting_started
     - AnalysisExamples
     - AnalysisExamples2
     - ConfidenceIntervalOverview
