@@ -2,7 +2,7 @@
 
 > **Audience:** AI coding assistants (Claude, GPT, Cursor, Copilot, etc.) and
 > autonomous agents that need to use the `nstat-python` toolbox correctly.
-> Updated: 2026-06-09. Package version: 0.4.4.
+> Updated: 2026-06-10. Package version: 0.4.5.
 >
 > The MATLAB reference toolbox lives in a *separate* repository
 > (https://github.com/cajigaslab/nSTAT) and is deliberately kept independent
@@ -39,9 +39,12 @@ nstat-install --download-example-data always   # example dataset (figshare, ~150
 ```
 nstat/                  ~50 modules, 24.7 kLOC — the package itself
 examples/paper/         5 canonical paper-example scripts (Cajigas 2012)
+examples/tutorials/     6 runnable end-to-end teaching scripts + 1 notebook
+examples/extras/        per-bridge demos for nstat.extras
 examples/readme_examples/   4 short snippets
 notebooks/              30+ Jupyter notebooks (many MATLAB-help-derived)
 docs/                   Sphinx + MyST documentation
+docs/concepts/          neuroscience + statistics learning track (14 pages)
 parity/                 MATLAB↔Python parity manifests + audit report
 tests/                  48 test files, 268 tests
 tools/{notebooks,paper_examples,parity,release}/  build/maintenance scripts

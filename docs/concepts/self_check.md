@@ -107,6 +107,5 @@ These cut across topics. Try to answer in a sentence or two before expanding.
 
 - Apply it end-to-end on real data:
   [`examples/tutorials/place_cell_walkthrough.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/place_cell_walkthrough.py).
-- See how the toolbox maps to a full curriculum:
-  [nSTAT and further study](curriculum_and_further_study.md).
+- See where to go beyond nSTAT: [Further study](further_study.md).
 - Avoid the classic mistakes: [Common pitfalls & FAQ](pitfalls_and_faq.md).

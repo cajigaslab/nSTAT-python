@@ -26,6 +26,12 @@
 > guide teaches microelectrode recordings, the LFP, point-process GLMs,
 > goodness-of-fit, and decoding — with figures, runnable examples, and cited
 > literature.
+>
+> 🛠 **Other ways in:** six runnable end-to-end lessons in
+> [`examples/tutorials/`](examples/tutorials/) (encoding → GOF, decoding,
+> network coupling, place-cell capstone, clinical microelectrode); the five
+> canonical paper examples in [`examples/paper/`](examples/paper/); and the
+> reference notebooks in [`notebooks/`](notebooks/).
 
 `nSTAT-python` is a Python port of the [nSTAT](https://github.com/cajigaslab/nSTAT)
 open-source neural spike train analysis toolbox. It implements a range of models and

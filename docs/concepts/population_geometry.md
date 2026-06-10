@@ -5,7 +5,7 @@
 > neuroscience adds a complementary view: treat the population's activity as a
 > single high-dimensional object and ask about its **geometry**. This page is
 > the on-ramp — it shows the core idea with a few lines of NumPy and points to
-> where the curriculum takes it next.
+> the standard tooling that takes it further.
 
 ## Why look at the population as a whole
 
@@ -64,10 +64,10 @@ route is *model-based* (you write down a CIF and infer the state with a filter);
 the manifold route is *data-driven* (you let variance find the axes). Each is
 strongest where the other is weak.
 
-## Where the curriculum continues
+## Where to learn more
 
 nSTAT does not ship the dimensionality-reduction methods beyond this PCA
-sketch — that is deliberate, and it is where a fuller curriculum takes over:
+sketch — that is deliberate. The standard references and tooling:
 
 - **Gaussian-Process Factor Analysis (GPFA)** — smooth, single-trial latent
   trajectories, the workhorse beyond raw PCA
@@ -81,8 +81,8 @@ sketch — that is deliberate, and it is where a fuller curriculum takes over:
 
 From there the arc continues into deep-learning models of population activity —
 see [from filters to deep learning](from_filters_to_deep_learning.md) — and the
-[nSTAT and further study](curriculum_and_further_study.md) map shows how the
-whole toolbox slots into that larger picture.
+[further-study page](further_study.md) collects pointers to the topics
+this toolbox does not implement.
 
 ## Check your understanding
 

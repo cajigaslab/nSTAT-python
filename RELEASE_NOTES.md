@@ -1,5 +1,68 @@
 # Release Notes
 
+## v0.4.5 — 2026-06-10
+
+Documentation hygiene, theme + gallery polish, and CI billing conservation.
+**No public API changes, no behavior changes** &mdash; every importable symbol
+behaves identically to v0.4.4.
+
+### Documentation
+
+- **`docs/concepts/further_study.md`** &mdash; a focused page that lists
+  topics nSTAT does not implement (population geometry &amp; dimensionality
+  reduction, deep-learning encoders/decoders, spike sorting, vendor-format
+  I/O) with primary references for each. Replaces a longer prior version;
+  all concepts-page *content* (microelectrode recordings, point-process GLMs,
+  time-rescaling KS, decoding, state-space EM, rhythmic firing, etc.) is
+  unchanged.
+- **`docs/concepts/from_filters_to_deep_learning.md`** now ends at the
+  PPAF &rarr; modern-sequence-decoder bridge that the rest of the toolbox
+  supports; a trailing section that pointed to research-frontier
+  pretrained models is removed.
+- **Visual gallery rebuild.** `docs/Examples.md` is now a card-style visual
+  gallery mirroring the MATLAB Examples help index. Each paper example
+  links to its figure README. (PR #143)
+- **Theme polish.** The Sphinx site and the standalone HTML landing pages
+  (`intro.html`, `extras_summary.html`, `whats_new.html`, every per-release
+  `docs/changes/*.html`) now share a single clean light palette and
+  consistent reference tables. (PRs #141, #142, #145)
+- **Cross-references updated** in `docs/concepts/index.md`,
+  `population_geometry.md`, `self_check.md` to match the new further-study
+  page; related word-level cleanup in those files. The v0.4.3 entries in
+  `RELEASE_NOTES.md` and `docs/changes/2026-05-31-v0.4.3-docs-cleanup.html`
+  generalize a historical reference to an internal-only test filename.
+- **Stray-artifact fix.** A `&lt;/content&gt;&lt;/invoke&gt;` tail artifact at the end of
+  `rhythmic_firing_and_clinical_microelectrode.md` is removed.
+
+### Added
+
+- **README onramp callouts.** A third "Other ways in" callout points
+  readers at the six tutorial scripts (`examples/tutorials/`), the five
+  paper examples (`examples/paper/`), and the reference notebooks
+  (`notebooks/`) — alongside the existing 5-minute intro and Concepts
+  callouts.
+- **Reproducibility &amp; random-seeds Q&amp;A** in
+  `docs/concepts/pitfalls_and_faq.md` &mdash; explains the
+  `np.random.default_rng(seed)` pattern, why simulation results vary
+  without a seed, and why GLM fitting is deterministic but EM trainers
+  benefit from multi-restart selection.
+- **AGENT_GUIDE source layout** now lists `examples/tutorials/`,
+  `examples/extras/`, and `docs/concepts/` &mdash; surfaces that have
+  existed since v0.4.4 but were not in the agent-orientation paragraph.
+
+### CI
+
+- **Manual-only by default.** Five GitHub Actions workflows
+  (`performance-parity`, `notebook-full-fidelity`, `helpfile-check`,
+  `readme-check`, `nstat-pip-install`) are now `workflow_dispatch`-only
+  on this repository, with a new `make ci-local` target for the same
+  checks. The unit test, docs build, data integrity, notebook smoke, and
+  cleanroom compliance gates still run automatically on every PR. (PR #144)
+
+### Breaking changes
+
+None.
+
 ## v0.4.4 — 2026-06-09
 
 Documentation and packaging polish.  **No public API changes, no behavior
@@ -39,10 +102,9 @@ identically to v0.4.2.
 
 ### Removed
 
-- `tests/test_curriculum_parity.py` &mdash; an internal cross-validation
-  oracle that depended on a separate, non-public reference checkout
-  (its parity targets are still exercised by the MATLAB gold fixtures
-  and the existing dynamax / population-time-rescale tests).
+- An internal cross-validation test that depended on tooling outside this
+  distribution. Its parity targets are still exercised by the MATLAB gold
+  fixtures and the existing dynamax / population-time-rescale tests.
 
 ### Edited
 
