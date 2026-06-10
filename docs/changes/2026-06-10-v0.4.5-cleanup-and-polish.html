@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>v0.4.5 — Documentation hygiene + theme polish + CI billing · nSTAT-python</title>
+<style>
+  /* Clean light palette — matches docs/intro.html, extras_summary.html,
+     and the Sphinx site (docs/_static/custom.css). */
+  :root {
+    --fg:#1b2027; --fg-muted:#45515d; --bg:#ffffff; --bg-card:#f5f7fa;
+    --bg-code:#f0f3f6; --accent:#2f7d12; --border:#d9dfe5; --ok:#1a7f37;
+  }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.6; margin:0; padding:2.5rem 1.2rem; }
+  .wrap { max-width:820px; margin:0 auto; }
+  a { color:var(--accent); }
+  .back { font-size:.85rem; }
+  header { border-bottom:1px solid var(--border); padding-bottom:1.2rem; margin:1rem 0 1.8rem 0; }
+  header h1 { margin:.2rem 0 .3rem 0; font-size:1.9rem; }
+  header .meta { color:var(--fg-muted); font-size:.85rem; }
+  h2 { font-size:1.25rem; margin-top:1.8rem; border-bottom:1px solid var(--border); padding-bottom:.2rem; }
+  code { background:var(--bg-code); padding:.1em .35em; border-radius:3px;
+         font-family:"SF Mono",Monaco,"Cascadia Code",monospace; font-size:.9em; }
+  ul { padding-left:1.2rem; }
+  li { margin:.35rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; margin-top:.6rem; }
+  th,td { border:1px solid var(--border); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  th { background:var(--bg-card); }
+  .ok { color:var(--ok); font-weight:600; }
+  footer { color:var(--fg-muted); font-size:.82rem; margin-top:2rem;
+           border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="back"><a href="whats_new.html">&larr; What's New</a></p>
+  <header>
+    <h1>v0.4.5 &mdash; Documentation hygiene, theme polish, CI billing conservation</h1>
+    <div class="meta">2026-06-10 · No public API changes, no behavior changes &mdash; every importable symbol behaves identically to v0.4.4.</div>
+  </header>
+
+  <h2>Documentation hygiene</h2>
+  <p>The post-v0.4.4 concepts work shipped a five-stage learning arc and a
+  page titled <code>curriculum_and_further_study.md</code> whose framing
+  exposed an internal teaching curriculum that is not part of this
+  distribution. The page is renamed to <code>further_study.md</code> and
+  rewritten as a plain "topics nSTAT does not cover, with primary
+  references." All concepts-page <em>content</em> (microelectrode recordings,
+  point-process GLMs, time-rescaling KS, decoding, state-space EM, rhythmic
+  firing, etc.) is unchanged; only the curriculum-derived chassis is
+  removed.</p>
+  <ul>
+    <li><code>docs/concepts/further_study.md</code> &mdash; new page, replaces
+      <code>curriculum_and_further_study.md</code>.</li>
+    <li><code>docs/concepts/from_filters_to_deep_learning.md</code> &mdash;
+      drop the "&hellip;toward foundation models" section; the page now ends
+      at the PPAF &rarr; modern-sequence-decoder bridge.</li>
+    <li><code>docs/concepts/index.md</code>, <code>population_geometry.md</code>,
+      <code>self_check.md</code> &mdash; cross-reference + word scrub.</li>
+    <li><code>RELEASE_NOTES.md</code> +
+      <code>docs/changes/2026-05-31-v0.4.3-docs-cleanup.html</code> &mdash;
+      generalize a v0.4.3 historical reference that exposed the internal
+      test filename.</li>
+    <li><code>docs/concepts/rhythmic_firing_and_clinical_microelectrode.md</code>
+      &mdash; remove a stray <code>&lt;/content&gt;&lt;/invoke&gt;</code> tail
+      artifact.</li>
+  </ul>
+
+  <h2>Theme + gallery polish</h2>
+  <ul>
+    <li><strong>Visual gallery.</strong> <code>docs/Examples.md</code> is now a
+      card-style index mirroring the MATLAB Examples help index; each paper
+      example links to its figure README. (<a
+      href="https://github.com/cajigaslab/nSTAT-python/pull/143">PR&nbsp;#143</a>)</li>
+    <li><strong>Unified light theme.</strong> The Sphinx site and every
+      standalone HTML page (<code>intro.html</code>, <code>extras_summary.html</code>,
+      <code>whats_new.html</code>, and every per-release
+      <code>docs/changes/*.html</code>) now share a single clean light
+      palette and consistent reference tables. (<a
+      href="https://github.com/cajigaslab/nSTAT-python/pull/141">PR&nbsp;#141</a>,
+      <a href="https://github.com/cajigaslab/nSTAT-python/pull/142">PR&nbsp;#142</a>,
+      <a href="https://github.com/cajigaslab/nSTAT-python/pull/145">PR&nbsp;#145</a>)</li>
+  </ul>
+
+  <h2>CI billing conservation</h2>
+  <p>Five workflows that were previously running on every push are now
+  <code>workflow_dispatch</code>-only on this repository: <code>performance-parity</code>,
+  <code>notebook-full-fidelity</code>, <code>helpfile-check</code>,
+  <code>readme-check</code>, and <code>nstat-pip-install</code>. The unit
+  test, docs build, data-integrity, notebook-smoke, and cleanroom-compliance
+  gates still run automatically on every PR. A new <code>make ci-local</code>
+  target runs the same check set against the working tree before a push.
+  (<a href="https://github.com/cajigaslab/nSTAT-python/pull/144">PR&nbsp;#144</a>)</p>
+
+  <h2>Verification</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td><code>make docs-strict</code> (Sphinx -W, clean rebuild)</td><td class="ok">passes</td></tr>
+    <tr><td>Cross-references to renamed concepts page</td><td class="ok">all resolve</td></tr>
+    <tr><td>Four version-bearing files in sync (<code>tests/test_version_sync.py</code>)</td><td class="ok">0.4.5</td></tr>
+    <tr><td>Public-API surface</td><td class="ok">unchanged</td></tr>
+  </table>
+
+  <h2>Breaking changes</h2>
+  <p>None.</p>
+
+  <footer>
+    <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> ·
+    <a href="https://pypi.org/project/nstat-toolbox/">nstat-toolbox</a> ·
+    <a href="https://cajigaslab.github.io/nSTAT-python/concepts/further_study.html">Further study (new page)</a>
+  </footer>
+</div>
+</body>
+</html>

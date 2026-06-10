@@ -1,5 +1,54 @@
 # Release Notes
 
+## v0.4.5 — 2026-06-10
+
+Documentation hygiene, theme + gallery polish, and CI billing conservation.
+**No public API changes, no behavior changes** &mdash; every importable symbol
+behaves identically to v0.4.4.
+
+### Documentation
+
+- **Internal-curriculum scrub.** The post-v0.4.4 concepts work shipped a
+  five-stage learning arc, a "Using this with a course" section, and a
+  page titled `curriculum_and_further_study.md` whose framing exposed an
+  internal teaching curriculum that is not part of this distribution. The
+  page is renamed to `further_study.md` and rewritten as a plain "topics
+  nSTAT does not cover, with primary references." All concepts-page
+  *content* (microelectrode recordings, point-process GLMs, time-rescaling
+  KS, decoding, state-space EM, rhythmic firing, etc.) is unchanged; only
+  the curriculum-derived chassis is removed.
+- **Foundation-models scrub.** The bridge page `from_filters_to_deep_learning.md`
+  no longer carries a "…toward foundation models" section; its content now
+  ends with the PPAF → modern-sequence-decoder bridge that the rest of the
+  toolbox supports.
+- **Visual gallery rebuild.** `docs/Examples.md` is now a card-style visual
+  gallery mirroring the MATLAB Examples help index. Each paper example
+  links to its figure README. (PR #143)
+- **Theme polish.** The Sphinx site and the standalone HTML landing pages
+  (`intro.html`, `extras_summary.html`, `whats_new.html`, every per-release
+  `docs/changes/*.html`) now share a single clean light palette and
+  consistent reference tables. (PRs #141, #142, #145)
+- **Stray-artifact fix.** A `&lt;/content&gt;&lt;/invoke&gt;` tail artifact at the end of
+  `rhythmic_firing_and_clinical_microelectrode.md` is removed.
+
+### CI
+
+- **Manual-only by default.** Five GitHub Actions workflows
+  (`performance-parity`, `notebook-full-fidelity`, `helpfile-check`,
+  `readme-check`, `nstat-pip-install`) are now `workflow_dispatch`-only
+  on this repository, with a new `make ci-local` target for the same
+  checks. The unit test, docs build, data integrity, notebook smoke, and
+  cleanroom compliance gates still run automatically on every PR. (PR #144)
+
+### Removed
+
+- `docs/concepts/curriculum_and_further_study.md` &mdash; replaced by
+  `docs/concepts/further_study.md`.
+
+### Breaking changes
+
+None.
+
 ## v0.4.4 — 2026-06-09
 
 Documentation and packaging polish.  **No public API changes, no behavior
