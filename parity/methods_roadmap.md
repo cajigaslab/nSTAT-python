@@ -4,11 +4,12 @@
 > That document surveyed the **Python library ecosystem** (which libraries
 > to bridge).  This one is a prioritized **methods/algorithms** plan: what
 > capabilities to add next, drawn from a 2026 deep-dive of the toolbox plus
-> a literature scan (2022–2026).  Every item respects the
-> [CLAUDE.md](../CLAUDE.md) independence rule (Python-side only, no MATLAB-repo
-> coupling) and the core-vs-`extras` decision rule.
+> a literature scan (2022–2026).  Every item respects the project's
+> independence rule (Python-side only, no MATLAB-repo coupling) and the
+> core-vs-`extras` decision rule.
 >
-> Generated 2026-05-28.
+> Generated 2026-05-28.  Last refresh 2026-06-10 — Tiers 0.1/0.2/0.3 (plus
+> the v0.4.2 follow-ups), 1.1, and 2.1 are now marked SHIPPED.
 
 ---
 
@@ -257,21 +258,21 @@ freedom.
 
 ## Suggested sequencing
 
-1. **Tier 0.1 + 0.2 (done) → 0.3** — finish the EM trainers.  0.1
-   (canonical-gauge identifiability) and 0.2 (held-out
-   predictive-likelihood diagnostic) are shipped.  0.3 (harden PP_EM
-   convergence under weak observability + multi-restart selection),
-   newly surfaced by 0.2, is the remaining EM item before the trainers
-   are trustworthy end-to-end.
-2. **Tier 1.1** — multivariate time-rescaling GOF.  Cheapest, core,
-   parity-aligned; pairs naturally with the time_rescale oracle already
-   in the test tree.
-3. **Tier 2.1** — clusterless decoding bridge.  Flagship `extras`
-   addition; shares the PPAF/PPHF mathematics nSTAT already owns.
-4. **Tier 3** — CLDS, then NPNR / GP-GLM, as `extras` once upstream code
-   is confirmed available + license-compatible.
+Tiers 0.1, 0.2, 0.3 (plus the v0.4.2 follow-ups), 1.1, and 2.1 have all
+shipped through v0.4.x.  The remaining sequence is:
 
-Re-run this review annually or whenever a Tier-1/2 candidate ships a
+1. **Tier 3.1 — CLDS** (Geadah NeurIPS 2025) — condition-dependent
+   linear dynamics, building on the EM bridge.  Gated on upstream-code
+   availability + LICENSE verification.
+2. **Tier 3.2 — NPNR** (Bayesian nonparametric (non-)renewal point
+   processes via variational GPs).  Strong complement to Tier 1.1's KS
+   tests — directly characterises the rescaled-ISI structure that the
+   KS tests only check.
+3. **Tier 3.3 — GP-based GLM coupling/history filters** (nonparametric
+   filter inference).
+4. **Tier 4** items remain niche; pick up only on user demand.
+
+Re-run this review annually or whenever a Tier-3 candidate ships a
 maintained, license-clear Python implementation.
 
 *All licenses must be verified against the LICENSE file before adding a

@@ -1,5 +1,8 @@
 version: 1
 notebooks:
+- topic: 00_getting_started
+  file: notebooks/00_getting_started.ipynb
+  run_group: smoke
 - topic: AnalysisExamples
   file: notebooks/AnalysisExamples.ipynb
   run_group: smoke
