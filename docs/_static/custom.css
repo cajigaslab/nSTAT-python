@@ -275,6 +275,64 @@ footer p { color: var(--ink-faint); }
 #search-results .search li { border-bottom: 1px solid var(--line); }
 .highlighted { background: rgba(197,240,45,.25); color: var(--ink); }
 
+/* ---------- Example gallery cards ---------- */
+/* Used by docs/Examples.md to turn the example index into a visual gallery:
+   figure-thumbnail cards for the paper examples, compact signal-glyph cards
+   for the workflow notebooks, and a quiet chip list for parity scaffolds. */
+.ex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 1rem;
+  margin: 1.3rem 0 2rem;
+}
+.ex-card {
+  display: flex; flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none !important;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.ex-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--signal);
+  box-shadow: 0 14px 32px -18px rgba(197,240,45,.5);
+}
+.ex-card .ex-thumb {
+  display: block; width: 100%; aspect-ratio: 16 / 10;
+  object-fit: cover; background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+}
+.ex-card .ex-body { display: block; padding: .8rem .92rem 1rem; }
+.ex-card .ex-eyebrow {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  font-size: .64rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--signal);
+}
+.ex-card .ex-title {
+  display: block;
+  font-family: "Bricolage Grotesque", sans-serif;
+  color: var(--ink); font-weight: 700; font-size: 1.0rem;
+  margin: .25rem 0 .35rem; line-height: 1.2;
+}
+.ex-card .ex-desc { display: block; color: var(--ink-soft); font-size: .85rem; line-height: 1.45; }
+.ex-card:hover .ex-title { color: var(--signal); }
+/* Compact (no-thumbnail) cards for the workflow notebooks. */
+.ex-card.ex-mini { flex-direction: row; align-items: flex-start; gap: .65rem; padding: .85rem .9rem; }
+.ex-card.ex-mini .ex-glyph { flex: 0 0 auto; margin-top: .15rem; color: var(--signal); }
+.ex-card.ex-mini .ex-body { padding: 0; }
+.ex-card.ex-mini .ex-title { font-size: .92rem; margin: 0 0 .2rem; }
+/* Quiet chip list for parity-scaffold (non-tutorial) references. */
+.ex-refs { display: flex; flex-wrap: wrap; gap: .4rem; margin: .7rem 0 1.4rem; padding: 0; list-style: none; }
+.ex-refs a {
+  font-family: "JetBrains Mono", monospace; font-size: .8rem;
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 7px; padding: .3em .6em; color: var(--ink-soft) !important;
+}
+.ex-refs a:hover { border-color: var(--signal); color: var(--signal) !important; text-decoration: none; }
+
 /* ---------- Scrollbar (webkit) ---------- */
 ::-webkit-scrollbar { width: 11px; height: 11px; }
 ::-webkit-scrollbar-track { background: var(--bg-2); }
