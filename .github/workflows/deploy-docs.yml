@@ -1,8 +1,11 @@
 name: deploy-docs
 
+# MANUAL-ONLY policy (GitHub Actions minute conservation) — see ci.yml.
+# The public docs site no longer auto-deploys on every push to main;
+# publish a new build by hand after merging docs changes, once minutes
+# are available:
+#   gh workflow run deploy-docs.yml --ref main
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
