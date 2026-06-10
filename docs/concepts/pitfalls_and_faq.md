@@ -86,6 +86,35 @@ predictive log-likelihood (`fit_point_process_em_best_of`), and the
 [state-space page](state_space_and_em.md) and the
 [EM extras guide](../extras/em_dynamax.md).
 
+## Reproducibility and random seeds
+
+**My results change every time I re-run a simulation. Is that a bug?**
+No — every example that calls `simulate_cif_from_stimulus`,
+`simulate_point_process`, or any other simulator draws fresh spikes from a
+stochastic point process. *Without* an explicit seed each run is genuinely
+different. To pin a run, pass a seeded generator:
+
+```python
+import numpy as np
+rng = np.random.default_rng(seed=42)
+spikes, _, _ = simulate_cif_from_stimulus(time=t, stimulus=stim,
+                                          beta0=-2.0, beta1=1.0, rng=rng)
+```
+
+Use `np.random.default_rng(seed)` (not legacy `np.random.rand`,
+`np.random.seed`, or `RandomState`) — it is the supported pattern across
+nSTAT, gives reproducible streams, and is the only style that interacts
+correctly with multi-process workers. Every paper-example script and every
+`examples/tutorials/` script accepts (or hard-codes) a seed so figures
+regenerate bit-exactly.
+
+**Should I seed the fit itself?**
+GLM fitting is deterministic given fixed data (the log-likelihood is concave;
+[Paninski 2004](https://pubmed.ncbi.nlm.nih.gov/15600233/)). EM-trained
+state-space models are not: each restart finds a different local optimum, so
+`fit_point_process_em_best_of` takes the best of `n_restarts` seeds — see the
+[state-space page](state_space_and_em.md).
+
 ## Data and provenance
 
 **Where do spike times come from? Does nSTAT sort spikes?**

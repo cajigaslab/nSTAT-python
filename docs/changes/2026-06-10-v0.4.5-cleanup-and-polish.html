@@ -41,27 +41,28 @@
   </header>
 
   <h2>Documentation hygiene</h2>
-  <p>The post-v0.4.4 concepts work shipped a five-stage learning arc and a
-  page titled <code>curriculum_and_further_study.md</code> whose framing
-  exposed an internal teaching curriculum that is not part of this
-  distribution. The page is renamed to <code>further_study.md</code> and
-  rewritten as a plain "topics nSTAT does not cover, with primary
-  references." All concepts-page <em>content</em> (microelectrode recordings,
-  point-process GLMs, time-rescaling KS, decoding, state-space EM, rhythmic
-  firing, etc.) is unchanged; only the curriculum-derived chassis is
-  removed.</p>
+  <p>The concepts <em>further-study</em> page is a focused list of topics
+  nSTAT does not implement (population geometry &amp; dimensionality
+  reduction, deep-learning encoders/decoders, spike sorting, vendor-format
+  I/O), with primary references for each. A longer prior version is
+  replaced. All concepts-page
+  <em>content</em> (microelectrode recordings, point-process GLMs,
+  time-rescaling KS, decoding, state-space EM, rhythmic firing, etc.) is
+  unchanged.</p>
   <ul>
-    <li><code>docs/concepts/further_study.md</code> &mdash; new page, replaces
-      <code>curriculum_and_further_study.md</code>.</li>
+    <li><code>docs/concepts/further_study.md</code> &mdash; the new
+      focused page.</li>
     <li><code>docs/concepts/from_filters_to_deep_learning.md</code> &mdash;
-      drop the "&hellip;toward foundation models" section; the page now ends
-      at the PPAF &rarr; modern-sequence-decoder bridge.</li>
+      the page now ends at the PPAF &rarr; modern-sequence-decoder bridge;
+      a trailing section pointing to research-frontier pretrained models
+      is removed.</li>
     <li><code>docs/concepts/index.md</code>, <code>population_geometry.md</code>,
-      <code>self_check.md</code> &mdash; cross-reference + word scrub.</li>
+      <code>self_check.md</code> &mdash; cross-references updated, plus
+      light word-level cleanup.</li>
     <li><code>RELEASE_NOTES.md</code> +
       <code>docs/changes/2026-05-31-v0.4.3-docs-cleanup.html</code> &mdash;
-      generalize a v0.4.3 historical reference that exposed the internal
-      test filename.</li>
+      generalize a v0.4.3 historical reference to an internal-only test
+      filename.</li>
     <li><code>docs/concepts/rhythmic_firing_and_clinical_microelectrode.md</code>
       &mdash; remove a stray <code>&lt;/content&gt;&lt;/invoke&gt;</code> tail
       artifact.</li>
@@ -81,6 +82,23 @@
       href="https://github.com/cajigaslab/nSTAT-python/pull/141">PR&nbsp;#141</a>,
       <a href="https://github.com/cajigaslab/nSTAT-python/pull/142">PR&nbsp;#142</a>,
       <a href="https://github.com/cajigaslab/nSTAT-python/pull/145">PR&nbsp;#145</a>)</li>
+  </ul>
+
+  <h2>Onboarding polish</h2>
+  <ul>
+    <li><strong>README onramp callouts.</strong> A third "Other ways in"
+      callout points readers at the six tutorial scripts, the five paper
+      examples, and the reference notebooks &mdash; alongside the existing
+      5-minute intro and Concepts callouts.</li>
+    <li><strong>Reproducibility &amp; random-seeds Q&amp;A</strong> in
+      <code>docs/concepts/pitfalls_and_faq.md</code> &mdash; the
+      <code>np.random.default_rng(seed)</code> pattern, why simulator
+      results vary without a seed, and the deterministic-fit vs.
+      multi-restart-EM split.</li>
+    <li><strong><code>AGENT_GUIDE.md</code> source layout</strong> now lists
+      <code>examples/tutorials/</code>, <code>examples/extras/</code>, and
+      <code>docs/concepts/</code> &mdash; surfaces present since v0.4.4 but
+      missing from the agent-orientation paragraph.</li>
   </ul>
 
   <h2>CI billing conservation</h2>

@@ -8,19 +8,17 @@ behaves identically to v0.4.4.
 
 ### Documentation
 
-- **Internal-curriculum scrub.** The post-v0.4.4 concepts work shipped a
-  five-stage learning arc, a "Using this with a course" section, and a
-  page titled `curriculum_and_further_study.md` whose framing exposed an
-  internal teaching curriculum that is not part of this distribution. The
-  page is renamed to `further_study.md` and rewritten as a plain "topics
-  nSTAT does not cover, with primary references." All concepts-page
-  *content* (microelectrode recordings, point-process GLMs, time-rescaling
-  KS, decoding, state-space EM, rhythmic firing, etc.) is unchanged; only
-  the curriculum-derived chassis is removed.
-- **Foundation-models scrub.** The bridge page `from_filters_to_deep_learning.md`
-  no longer carries a "…toward foundation models" section; its content now
-  ends with the PPAF → modern-sequence-decoder bridge that the rest of the
-  toolbox supports.
+- **`docs/concepts/further_study.md`** &mdash; a focused page that lists
+  topics nSTAT does not implement (population geometry &amp; dimensionality
+  reduction, deep-learning encoders/decoders, spike sorting, vendor-format
+  I/O) with primary references for each. Replaces a longer prior version;
+  all concepts-page *content* (microelectrode recordings, point-process GLMs,
+  time-rescaling KS, decoding, state-space EM, rhythmic firing, etc.) is
+  unchanged.
+- **`docs/concepts/from_filters_to_deep_learning.md`** now ends at the
+  PPAF &rarr; modern-sequence-decoder bridge that the rest of the toolbox
+  supports; a trailing section that pointed to research-frontier
+  pretrained models is removed.
 - **Visual gallery rebuild.** `docs/Examples.md` is now a card-style visual
   gallery mirroring the MATLAB Examples help index. Each paper example
   links to its figure README. (PR #143)
@@ -28,8 +26,29 @@ behaves identically to v0.4.4.
   (`intro.html`, `extras_summary.html`, `whats_new.html`, every per-release
   `docs/changes/*.html`) now share a single clean light palette and
   consistent reference tables. (PRs #141, #142, #145)
+- **Cross-references updated** in `docs/concepts/index.md`,
+  `population_geometry.md`, `self_check.md` to match the new further-study
+  page; related word-level cleanup in those files. The v0.4.3 entries in
+  `RELEASE_NOTES.md` and `docs/changes/2026-05-31-v0.4.3-docs-cleanup.html`
+  generalize a historical reference to an internal-only test filename.
 - **Stray-artifact fix.** A `&lt;/content&gt;&lt;/invoke&gt;` tail artifact at the end of
   `rhythmic_firing_and_clinical_microelectrode.md` is removed.
+
+### Added
+
+- **README onramp callouts.** A third "Other ways in" callout points
+  readers at the six tutorial scripts (`examples/tutorials/`), the five
+  paper examples (`examples/paper/`), and the reference notebooks
+  (`notebooks/`) — alongside the existing 5-minute intro and Concepts
+  callouts.
+- **Reproducibility &amp; random-seeds Q&amp;A** in
+  `docs/concepts/pitfalls_and_faq.md` &mdash; explains the
+  `np.random.default_rng(seed)` pattern, why simulation results vary
+  without a seed, and why GLM fitting is deterministic but EM trainers
+  benefit from multi-restart selection.
+- **AGENT_GUIDE source layout** now lists `examples/tutorials/`,
+  `examples/extras/`, and `docs/concepts/` &mdash; surfaces that have
+  existed since v0.4.4 but were not in the agent-orientation paragraph.
 
 ### CI
 
@@ -39,11 +58,6 @@ behaves identically to v0.4.4.
   on this repository, with a new `make ci-local` target for the same
   checks. The unit test, docs build, data integrity, notebook smoke, and
   cleanroom compliance gates still run automatically on every PR. (PR #144)
-
-### Removed
-
-- `docs/concepts/curriculum_and_further_study.md` &mdash; replaced by
-  `docs/concepts/further_study.md`.
 
 ### Breaking changes
 
