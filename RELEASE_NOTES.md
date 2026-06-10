@@ -39,10 +39,9 @@ identically to v0.4.2.
 
 ### Removed
 
-- `tests/test_curriculum_parity.py` &mdash; an internal cross-validation
-  oracle that depended on a separate, non-public reference checkout
-  (its parity targets are still exercised by the MATLAB gold fixtures
-  and the existing dynamax / population-time-rescale tests).
+- An internal cross-validation test that depended on tooling outside this
+  distribution. Its parity targets are still exercised by the MATLAB gold
+  fixtures and the existing dynamax / population-time-rescale tests.
 
 ### Edited
 

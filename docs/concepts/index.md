@@ -71,8 +71,8 @@ Going further (once the core pages click):
 - **[From filters to deep learning](from_filters_to_deep_learning.md)** — how
   nSTAT's classical decoders connect to modern deep-learning and foundation
   models for neural data.
-- **[nSTAT and further study](curriculum_and_further_study.md)** — the whole arc
-  from point processes to foundation models, and exactly where this toolbox fits.
+- **[Further study](further_study.md)** — a short map of topics nSTAT does
+  not implement, with primary references for each.
 - **[Self-check](self_check.md)** — quizzes for every topic plus cross-cutting
   synthesis questions.
 
@@ -126,7 +126,7 @@ uncertainty_and_confidence
 rhythmic_firing_and_clinical_microelectrode
 population_geometry
 from_filters_to_deep_learning
-curriculum_and_further_study
+further_study
 self_check
 pitfalls_and_faq
 glossary

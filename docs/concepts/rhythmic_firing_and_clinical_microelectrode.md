@@ -198,5 +198,3 @@ units and an LFP.
   `SignalObj` (`MTMspectrum`, `spectrogram`), `DecodingAlgorithms` in the
   [API reference](../api.rst)
 - [Glossary](glossary.md) · [Bibliography](bibliography.md)
-</content>
-</invoke>

@@ -53,22 +53,10 @@ that a linear filter cannot capture
 trade is the one in the table: more flexibility and accuracy, at the cost of
 more data, less interpretability, and uncertainty you must add back deliberately.
 
-## …toward foundation models
-
-The current frontier extends this further: **foundation models** for neural
-data — large sequence models pretrained across many sessions, subjects, and
-tasks, then adapted to a new recording with little data. They treat populations
-of spikes the way language models treat tokens, aiming for decoders that
-**transfer** rather than being retrained from scratch each session. This is an
-active, fast-moving research area (much of it published at machine-learning
-venues rather than indexed in PubMed); the [further-study
-map](curriculum_and_further_study.md) points to where a full curriculum covers
-it.
-
 ## How to think about the jump
 
-Three ideas carry all the way from the PPAF to a foundation model, and keep you
-oriented:
+Three ideas carry all the way from the PPAF to a deep-learning decoder, and
+keep you oriented:
 
 - **Encoding still underlies decoding.** Whether the tuning is a fitted CIF or a
   learned network, decoding inverts an encoding model. The
@@ -100,5 +88,5 @@ and what it is quietly giving up.
   classical decoders this page builds from.
 - [Population geometry](population_geometry.md) — the low-dimensional view that
   modern population models exploit.
-- [nSTAT and further study](curriculum_and_further_study.md) — the full map from
-  this toolbox to a foundation-model curriculum.
+- [Further study](further_study.md) — pointers to topics nSTAT does not
+  implement.
