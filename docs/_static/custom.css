@@ -1,290 +1,28 @@
 /* ===================================================================
-   nSTAT-python — oscilloscope / lab-instrument theme for sphinx_rtd_theme
-   Matches the standalone docs/intro.html landing page: phosphor-green
-   signal accents on deep charcoal, blueprint grid, distinctive type.
-   Injected via conf.py (html_static_path + html_css_files).
+   nSTAT-python — light documentation theme for sphinx_rtd_theme.
+   Intentionally minimal: the stock Read-the-Docs light theme provides
+   the base (white content, dark readable text, standard sidebar). This
+   file only styles the structural additions — the Example Index gallery
+   cards and the homepage "scope" hero — in a clean, high-contrast light
+   palette. Injected via conf.py (html_static_path + html_css_files).
    =================================================================== */
 
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Spline+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap");
-
 :root {
-  --bg:        #0a0c10;
-  --bg-2:      #0e1117;
-  --panel:     #12161e;
-  --panel-2:   #161b25;
-  --ink:       #e8ede6;
-  --ink-soft:  #aab4ad;
-  --ink-faint: #6b7780;
-  --line:      #1f2630;
-  --line-soft: #19202a;
-  --signal:    #c5f02d;
-  --signal-dim:#9bc41f;
-  --cyan:      #56d4dd;
-  --amber:     #ffb347;
-  --shadow:    0 18px 50px -20px rgba(0,0,0,.85);
+  --panel:     #ffffff;
+  --panel-2:   #f0f3f6;
+  --bg-2:      #f5f7fa;
+  --ink:       #1b2027;
+  --ink-soft:  #45515d;
+  --ink-faint: #6b7682;
+  --line:      #d9dfe5;
+  --line-soft: #eaeef2;
+  --accent:    #2f7d12;   /* dark, readable green — brand accent */
+  --accent-dim:#245f0d;
+  --trace:     #4e9e1f;   /* medium green for decorative signal lines */
+  --shadow:    0 8px 24px -14px rgba(20,30,40,.28);
 }
 
-/* ---------- Base / blueprint background ---------- */
-html, body { background: var(--bg); }
-body {
-  font-family: "Spline Sans", system-ui, sans-serif;
-  color: var(--ink);
-  font-size: 16px;
-  line-height: 1.62;
-  -webkit-font-smoothing: antialiased;
-}
-
-.wy-nav-content-wrap {
-  background:
-    radial-gradient(900px 520px at 82% -6%, rgba(197,240,45,.07), transparent 60%),
-    radial-gradient(760px 600px at 2% 4%, rgba(86,212,221,.045), transparent 55%),
-    linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0 / 100% 36px,
-    linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0 / 36px 100%,
-    var(--bg);
-}
-.wy-nav-content {
-  background: transparent;
-  max-width: 60rem;
-  color: var(--ink);
-}
-
-/* ---------- Headings ---------- */
-.rst-content h1, .rst-content h2, .rst-content h3,
-.rst-content h4, .rst-content h5, .rst-content h6,
-h1, h2, h3, h4, h5, h6, .rst-content .toctree-wrapper p.caption {
-  font-family: "Bricolage Grotesque", sans-serif;
-  color: var(--ink);
-  font-weight: 700;
-  letter-spacing: -.015em;
-}
-.rst-content h1 { font-size: 2.3rem; font-weight: 800; letter-spacing: -.02em; }
-.rst-content h2 {
-  font-size: 1.65rem; margin-top: 2.2rem;
-  padding-bottom: .4rem; border-bottom: 1px dashed var(--line);
-}
-.rst-content h3 { font-size: 1.3rem; }
-.rst-content .headerlink { color: var(--signal-dim); opacity: 0; }
-.rst-content h1:hover .headerlink, .rst-content h2:hover .headerlink,
-.rst-content h3:hover .headerlink, .rst-content h4:hover .headerlink { opacity: .9; }
-
-p, .rst-content p { color: var(--ink-soft); }
-.rst-content blockquote { color: var(--ink-soft); border-left: 3px solid var(--line); }
-strong { color: var(--ink); }
-
-/* ---------- Links ---------- */
-a, a:visited { color: var(--signal); text-decoration: none; }
-a:hover { color: #dcff66; text-decoration: underline; text-underline-offset: 3px; }
-.rst-content a code.literal { color: var(--signal); }
-
-/* ---------- Sidebar ---------- */
-.wy-nav-side {
-  background: var(--bg-2);
-  border-right: 1px solid var(--line);
-}
-.wy-side-nav-search {
-  background: linear-gradient(180deg, rgba(197,240,45,.06), transparent), var(--bg-2);
-  border-bottom: 1px solid var(--line);
-}
-.wy-side-nav-search > a,
-.wy-side-nav-search .wy-dropdown > a {
-  color: var(--ink);
-  font-family: "Bricolage Grotesque", sans-serif;
-  font-weight: 800;
-  letter-spacing: -.01em;
-}
-.wy-side-nav-search > a:hover { background: transparent; }
-/* Brand logo (html_logo + logo_only) sits in the dark sidebar header */
-.wy-side-nav-search > a img.logo { max-width: 80%; padding: 8px 0 4px; }
-.wy-side-nav-search > div.version { color: var(--signal); font-family: "JetBrains Mono", monospace; font-size: .72rem; letter-spacing: .12em; }
-.wy-side-nav-search input[type="text"] {
-  background: var(--panel-2);
-  border: 1px solid #2c3742;
-  border-radius: 8px;
-  color: #f2f5ef;
-  box-shadow: none;
-}
-.wy-side-nav-search input[type="text"]::placeholder { color: var(--ink-soft); }
-.wy-side-nav-search input[type="text"]:focus {
-  border-color: var(--signal);
-  box-shadow: 0 0 0 2px rgba(197,240,45,.18);
-}
-
-.wy-menu-vertical header, .wy-menu-vertical p.caption {
-  color: var(--signal);
-  font-family: "JetBrains Mono", monospace;
-  font-size: .68rem; letter-spacing: .2em; text-transform: uppercase;
-}
-.wy-menu-vertical a {
-  color: #cdd6cf;
-  border: 0;
-}
-.wy-menu-vertical a:hover { background: var(--panel); color: #fff; }
-.wy-menu-vertical li.current { background: transparent; }
-.wy-menu-vertical li.current > a {
-  background: var(--panel);
-  color: #ffffff;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  border-left: 3px solid var(--signal);
-}
-.wy-menu-vertical li.current a:hover { background: var(--panel-2); color: #fff; }
-.wy-menu-vertical li.toctree-l2.current > a,
-.wy-menu-vertical li.toctree-l2.current li.toctree-l3 > a,
-.wy-menu-vertical li.toctree-l3.current li.toctree-l4 > a {
-  background: var(--panel-2);
-  border-left: 3px solid var(--signal-dim);
-}
-.wy-menu-vertical li.current a { color: #c3ccc5; border-right: 0; }
-.wy-menu-vertical li.on a, .wy-menu-vertical li.current > a { font-weight: 600; }
-
-/* ---------- Mobile top bar ---------- */
-.wy-nav-top {
-  background: var(--bg-2);
-  border-bottom: 1px solid var(--line);
-}
-.wy-nav-top a { color: var(--signal); font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; }
-.wy-nav-top i { color: var(--ink); }
-
-/* ---------- Breadcrumbs ---------- */
-.wy-breadcrumbs li a { color: var(--signal-dim); }
-.wy-breadcrumbs-aside a, .rst-content .viewcode-link { color: var(--ink-faint); }
-.rst-content .wy-breadcrumbs-aside a:hover { color: var(--signal); }
-hr { border-top: 1px solid var(--line); }
-
-/* ---------- Inline + block code ---------- */
-.rst-content code, .rst-content tt, code, .rst-content code.literal {
-  font-family: "JetBrains Mono", monospace;
-  background: var(--panel-2);
-  border: 1px solid var(--line-soft);
-  color: var(--signal);
-  border-radius: 4px;
-  padding: .1em .42em;
-  font-size: .84em;
-}
-.highlight {
-  background: var(--bg-2) !important;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-.rst-content div[class^="highlight"] { border: 0; }
-.highlight pre, .rst-content pre.literal-block {
-  font-family: "JetBrains Mono", monospace;
-  font-size: .82rem;
-  line-height: 1.6;
-  background: transparent;
-  color: #d7e0d4;
-}
-.rst-content .highlight > pre, .rst-content pre { color: #d7e0d4; }
-
-/* ---------- API signatures (autodoc) ---------- */
-.rst-content dl:not(.docutils) dt,
-.rst-content dl.py dt, html.writer-html5 .rst-content dl[class] > dt {
-  background: var(--panel);
-  border-top: 1px solid var(--line);
-  border-left: 3px solid var(--signal);
-  color: var(--ink);
-  font-family: "JetBrains Mono", monospace;
-}
-.rst-content dl:not(.docutils) dt .sig-name,
-.rst-content dl.py dt .sig-name { color: var(--signal); }
-.rst-content dl:not(.docutils) dl:not(.field-list) > dt {
-  background: var(--panel-2);
-  border-left: 2px solid var(--line);
-  color: var(--ink-soft);
-}
-.rst-content dl:not(.docutils) .property,
-.rst-content dl.py .property { color: var(--amber); }
-.rst-content dl.py .sig-param, .rst-content .sig-paren { color: var(--ink-soft); }
-.sig-prename, .rst-content .sig-prename { color: var(--ink-faint); }
-.rst-content dl dd { color: var(--ink-soft); }
-
-/* ---------- Tables ---------- */
-/* Reference tables (autosummary API index, parameter field-lists) are
-   primary content, so the description column reads at full --ink contrast
-   rather than the muted body tone, and each table is a contained panel
-   "card" so grouped symbol lists land as distinct blocks. */
-.wy-table-responsive table td, .wy-table-responsive table th,
-.rst-content table.docutils td, .rst-content table.docutils th,
-.rst-content table.field-list td, .rst-content table.field-list th {
-  background: transparent;
-  border-color: var(--line);
-  color: var(--ink);
-}
-.rst-content table.docutils td p { color: var(--ink); }
-.rst-content table.docutils, .wy-table-bordered-all {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.rst-content table.docutils thead th, .wy-table thead th {
-  background: var(--panel);
-  color: var(--ink);
-  border-color: var(--line);
-  font-family: "JetBrains Mono", monospace;
-  font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
-}
-.rst-content table.docutils tbody tr:nth-child(2n-1) td,
-.wy-table-odd td, .wy-table-striped tr:nth-child(2n-1) td {
-  background: var(--panel-2);
-}
-
-/* ---------- Admonitions ---------- */
-.rst-content .admonition, .rst-content .note, .rst-content .warning,
-.rst-content .tip, .rst-content .important, .rst-content .seealso,
-.rst-content .hint, .rst-content .attention, .rst-content .caution,
-.rst-content .danger, .rst-content .error {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--signal);
-  border-radius: 10px;
-  color: var(--ink-soft);
-}
-.rst-content .admonition-title {
-  background: rgba(197,240,45,.12);
-  color: var(--signal);
-  font-family: "JetBrains Mono", monospace;
-  font-size: .78rem; letter-spacing: .08em; text-transform: uppercase;
-}
-.rst-content .note { border-left-color: var(--cyan); }
-.rst-content .note .admonition-title { background: rgba(86,212,221,.12); color: var(--cyan); }
-.rst-content .warning, .rst-content .caution { border-left-color: var(--amber); }
-.rst-content .warning .admonition-title,
-.rst-content .caution .admonition-title { background: rgba(255,179,71,.12); color: var(--amber); }
-.rst-content .danger, .rst-content .error { border-left-color: #ff6b5e; }
-.rst-content .danger .admonition-title,
-.rst-content .error .admonition-title { background: rgba(255,107,94,.14); color: #ff8a7e; }
-
-/* ---------- Buttons / nav footer ---------- */
-.btn-neutral, .btn {
-  background: var(--panel) !important;
-  color: var(--ink) !important;
-  border: 1px solid var(--line) !important;
-  box-shadow: none !important;
-  font-family: "JetBrains Mono", monospace;
-}
-.btn-neutral:hover, .btn:hover { background: var(--panel-2) !important; border-color: #2c3742 !important; }
-.btn-neutral .fa { color: var(--signal) !important; }
-.rst-footer-buttons { margin-top: 1.4rem; }
-.rst-content .guilabel, .rst-content .kbd {
-  background: var(--panel-2); border-color: var(--line); color: var(--ink);
-}
-
-/* ---------- Footer ---------- */
-footer, .rst-content footer { color: var(--ink-faint); }
-footer p { color: var(--ink-faint); }
-.rst-content .footnote-reference, footer a { color: var(--signal-dim); }
-.wy-nav-content-wrap .rst-footer-buttons + hr + div { color: var(--ink-faint); }
-
-/* ---------- Search results & misc ---------- */
-.wy-side-nav-search img.logo, .wy-side-nav-search .wy-dropdown > a:before { color: var(--signal); }
-#search-results .search li { border-bottom: 1px solid var(--line); }
-.highlighted { background: rgba(197,240,45,.25); color: var(--ink); }
-
-/* ---------- Example gallery cards ---------- */
-/* Used by docs/Examples.md to turn the example index into a visual gallery:
-   figure-thumbnail cards for the paper examples, compact signal-glyph cards
-   for the workflow notebooks, and a quiet chip list for parity scaffolds. */
+/* ---------- Example gallery cards (docs/Examples.md) ---------- */
 .ex-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
@@ -302,8 +40,8 @@ footer p { color: var(--ink-faint); }
 }
 .ex-card:hover {
   transform: translateY(-3px);
-  border-color: var(--signal);
-  box-shadow: 0 14px 32px -18px rgba(197,240,45,.5);
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
 }
 .ex-card .ex-thumb {
   display: block; width: 100%; aspect-ratio: 16 / 10;
@@ -313,34 +51,75 @@ footer p { color: var(--ink-faint); }
 .ex-card .ex-body { display: block; padding: .8rem .92rem 1rem; }
 .ex-card .ex-eyebrow {
   display: block;
-  font-family: "JetBrains Mono", monospace;
-  font-size: .64rem; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--signal);
+  font-family: "Roboto Mono", SFMono-Regular, Menlo, monospace;
+  font-size: .64rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--accent-dim);
 }
 .ex-card .ex-title {
   display: block;
-  font-family: "Bricolage Grotesque", sans-serif;
   color: var(--ink); font-weight: 700; font-size: 1.0rem;
   margin: .25rem 0 .35rem; line-height: 1.2;
 }
 .ex-card .ex-desc { display: block; color: var(--ink-soft); font-size: .85rem; line-height: 1.45; }
-.ex-card:hover .ex-title { color: var(--signal); }
+.ex-card:hover .ex-title { color: var(--accent); }
 /* Compact (no-thumbnail) cards for the workflow notebooks. */
 .ex-card.ex-mini { flex-direction: row; align-items: flex-start; gap: .65rem; padding: .85rem .9rem; }
-.ex-card.ex-mini .ex-glyph { flex: 0 0 auto; margin-top: .15rem; color: var(--signal); }
+.ex-card.ex-mini .ex-glyph { flex: 0 0 auto; margin-top: .15rem; color: var(--accent); }
 .ex-card.ex-mini .ex-body { padding: 0; }
 .ex-card.ex-mini .ex-title { font-size: .92rem; margin: 0 0 .2rem; }
 /* Quiet chip list for parity-scaffold (non-tutorial) references. */
 .ex-refs { display: flex; flex-wrap: wrap; gap: .4rem; margin: .7rem 0 1.4rem; padding: 0; list-style: none; }
 .ex-refs a {
-  font-family: "JetBrains Mono", monospace; font-size: .8rem;
+  font-family: "Roboto Mono", SFMono-Regular, Menlo, monospace; font-size: .8rem;
   background: var(--panel-2); border: 1px solid var(--line);
   border-radius: 7px; padding: .3em .6em; color: var(--ink-soft) !important;
 }
-.ex-refs a:hover { border-color: var(--signal); color: var(--signal) !important; text-decoration: none; }
+.ex-refs a:hover { border-color: var(--accent); color: var(--accent) !important; text-decoration: none; }
 
-/* ---------- Scrollbar (webkit) ---------- */
-::-webkit-scrollbar { width: 11px; height: 11px; }
-::-webkit-scrollbar-track { background: var(--bg-2); }
-::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; border: 2px solid var(--bg-2); }
-::-webkit-scrollbar-thumb:hover { background: #2c3742; }
+/* ---------- Homepage "scope" hero (docs/index.rst) ---------- */
+.rst-content .nstat-hero {
+  margin: 1.3rem 0 1.1rem;
+  padding: .85rem 1.1rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg-2);
+}
+.rst-content .nstat-hero .line-block,
+.rst-content .nstat-hero .line { margin: 0; }
+.rst-content .nstat-hero .line {
+  font-family: "Roboto Mono", SFMono-Regular, Menlo, monospace;
+  font-size: .82rem; line-height: 1.8; color: var(--ink-soft);
+}
+.rst-content .nstat-hero code.literal { color: var(--accent-dim); }
+
+.rst-content .nstat-scope {
+  margin: 1.4rem 0 1.7rem;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow); overflow: hidden; position: relative;
+}
+.rst-content .nstat-scope .bar {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .55rem .9rem; border-bottom: 1px solid var(--line);
+  font-family: "Roboto Mono", SFMono-Regular, Menlo, monospace; font-size: .7rem;
+  color: var(--ink-faint); letter-spacing: .1em; text-transform: uppercase;
+}
+.rst-content .nstat-scope .bar .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.rst-content .nstat-scope .bar .dot.live { background: var(--trace); }
+.rst-content .nstat-scope .bar .ch { margin-left: auto; color: var(--accent-dim); }
+.rst-content .nstat-scope svg { display: block; width: 100%; height: 124px; background: var(--bg-2); }
+.rst-content .nstat-scope .trace { fill: none; stroke: var(--trace); stroke-width: 1.6; }
+.rst-content .nstat-scope .trace-2 { fill: none; stroke: #8fb8c4; stroke-width: 1.2; opacity: .7; }
+.rst-content .nstat-scope .raster {
+  position: absolute; inset: auto 0 0 0; height: 32px;
+  display: flex; align-items: stretch; gap: 0; padding: 0 1px; opacity: .85;
+}
+.rst-content .nstat-scope .raster i {
+  flex: 1; border-left: 1.5px solid var(--trace); opacity: 0;
+  animation: nstat-tick 3.2s linear infinite;
+}
+@keyframes nstat-tick { 0%,92%{opacity:0} 6%,40%{opacity:.8} 60%{opacity:.2} }
+@media (prefers-reduced-motion: reduce) {
+  .rst-content .nstat-scope .raster i { animation: none; opacity: .45; }
+}

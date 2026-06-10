@@ -151,9 +151,8 @@ html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_title = f"nSTAT Python {release}"
 
-# Dark-friendly Pygments tokens so code blocks read well on the dark code
-# surface defined in _static/custom.css.
-pygments_style = "monokai"
+# Light Pygments tokens to match the light Read-the-Docs theme.
+pygments_style = "friendly"
 
 # Copy standalone HTML pages into the build root.  Sphinx flattens a
 # directory entry's *contents* into the output root (the entry's own
