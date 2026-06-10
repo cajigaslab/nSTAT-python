@@ -199,14 +199,20 @@ hr { border-top: 1px solid var(--line); }
 .rst-content dl dd { color: var(--ink-soft); }
 
 /* ---------- Tables ---------- */
+/* Reference tables (autosummary API index, parameter field-lists) are
+   primary content, so the description column reads at full --ink contrast
+   rather than the muted body tone, and each table is a contained panel
+   "card" so grouped symbol lists land as distinct blocks. */
 .wy-table-responsive table td, .wy-table-responsive table th,
 .rst-content table.docutils td, .rst-content table.docutils th,
 .rst-content table.field-list td, .rst-content table.field-list th {
   background: transparent;
   border-color: var(--line);
-  color: var(--ink-soft);
+  color: var(--ink);
 }
+.rst-content table.docutils td p { color: var(--ink); }
 .rst-content table.docutils, .wy-table-bordered-all {
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;

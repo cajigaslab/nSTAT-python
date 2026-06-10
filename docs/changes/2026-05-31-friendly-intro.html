@@ -5,13 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Friendly intro landing page · nSTAT-python</title>
 <style>
+  /* Unconditional dark "oscilloscope" palette — matches docs/intro.html,
+     extras_summary.html, and the Sphinx site (docs/_static/custom.css). */
   :root {
-    --fg:#1a1a1a; --fg-muted:#555; --bg:#fdfdfd; --bg-card:#f5f5f7;
-    --bg-code:#eee; --accent:#2c5282; --border:#d0d0d8; --ok:#38a169;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --fg:#e6e6e6; --fg-muted:#aaa; --bg:#16161a; --bg-card:#22222a;
-            --bg-code:#2a2a33; --accent:#90cdf4; --border:#3a3a44; --ok:#68d391; }
+    --fg:#e8ede6; --fg-muted:#aab4ad; --bg:#0a0c10; --bg-card:#12161e;
+    --bg-code:#161b25; --accent:#c5f02d; --border:#1f2630; --ok:#68d391;
   }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
          color:var(--fg); background:var(--bg); line-height:1.6; margin:0; padding:2.5rem 1.2rem; }
