@@ -40,9 +40,9 @@ jobs:
     name: README intra-repo + image + import check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -62,7 +62,7 @@ jobs:
     # does not actually block — see continue-on-error below.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run lychee link checker
         uses: lycheeverse/lychee-action@v2
