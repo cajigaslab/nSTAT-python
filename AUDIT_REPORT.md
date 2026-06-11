@@ -1,9 +1,9 @@
 # nSTAT Cross-Toolbox Audit Report
 
-**Date:** 2026-03-10
+**Date:** 2026-03-10 (initial); refreshed 2026-06-11 with Phase 1-3 findings.
 **Scope:** Full method-by-method comparison of Matlab nSTAT vs Python nSTAT-python
 **Gold standard:** Matlab (cajigaslab/nSTAT)
-**Python version audited:** v0.2.0 (commit d1aa946)
+**Python version audited:** v0.2.0 (initial) → v0.4.x (Phase 1-3 audit)
 
 ---
 
@@ -11,7 +11,7 @@
 
 | Category | Count |
 |---|---|
-| **Matlab bugs found** | 11 |
+| **Matlab bugs found** (M1-M13 initial + M14-M21 Phase 1-3) | 21 |
 | **Python bugs found** | 9 |
 | **Missing Python methods (high priority)** | 5 |
 | **Missing Python methods (medium priority)** | 28 |
@@ -44,6 +44,40 @@
 | M11 | SignalObj | SignalObj.m | `times`/`rdivide` operator aliasing bug | LOW |
 | M12 | DecodingAlgorithms | DA.m:496-501,664 | Gamma broadcasting: loop variable `c` reused after loop exit; `gammaNew(:,c)` writes only to last column | MEDIUM |
 | M13 | nstColl | nstColl.m:~1484 | `getSpikeTimes()`: `count` variable uninitialized when mask excludes neuron 1 | LOW |
+
+### 1.3 New Bugs from 2026-06-11 Audit (Phase 1-3 session)
+
+Found by the 6 parallel audit agents (core data classes, collections,
+CIF/LinearCIF/History, Fitting/Analysis, DecodingAlgorithms, examples)
+plus the live Simulink-model inspection that resolved C4.
+
+| # | Class | File:Line | Description | Severity |
+|---|---|---|---|---|
+| M14 | SignalObj | SignalObj.m:1342-1353 | `resample` skips when `sampleRate` unchanged but `setMinTime`/`setMaxTime` can mutate the time window post-construction, making the equality check stale.  Length mismatches surface in `makeCompatible` chains. | MEDIUM |
+| M15 | nstColl | nstColl.m:178-180 | `getFieldVal`: pre-increments `cnt` before `neuronNumbers(cnt) = ...`, so the index-array is off by one relative to `fieldVal`. | HIGH |
+| M16 | nstColl | nstColl.m:397-399 | `getNSTnameFromInd`: bounds check `ind > 0 && nstCollObj.numSpikeTrains` lacks the `ind <= numSpikeTrains` clause — author forgot to write the comparison.  Out-of-bounds indices fall through silently. | MEDIUM |
+| M17 | Events | Events.m:87 | (was already fixed in MATLAB; Python `events.py:84` regressed to hardcoded `'r'` instead of `self.eventColor`).  Cross-port consistency fix: Python should match MATLAB's corrected behavior. | LOW |
+| M18 | DecodingAlgorithms | DA.m:479,546 | `estimateInfoMat`: `Ic(1:R,1:R) = ...` assigned twice; first formula at line 479 is silently overwritten at line 546.  Refactor leftover; harmless but misleading. | LOW |
+| M19 | TrialConfig | TrialConfig.m:162-164 | `fromStructure` passes `structure.covLag` as the 5th positional arg (interpreted as `ensCovMask`) and `structure.name` as the 6th (interpreted as `covLag`).  Argument shift silently corrupts every `.mat` round-trip involving `TrialConfig` serialisation.  (Python ``_trial_config_impl.py:190-197`` reproduces this bug; fix should land in both ports simultaneously.) | HIGH |
+| M20 | DecodingAlgorithms | DA.m / +nstat/+decoding/SSGLM.m:373 | `PPSS_EStep` binomial `JacobianLD`: MATLAB uses `(1 - 2*lambdaDelta**2)` but the canonical derivation of the expected complete-data log-likelihood for the binomial state-space model uses `(1 - 2*lambdaDelta)`.  Either MATLAB has a bug or Python has a "fix" that's actually a regression.  Requires mathematical derivation verification against the SSGLM paper.  Currently flagged `[needs verification]`. | NEEDS-VERIFICATION |
+| M21 | CovColl | CovColl.m:202-208 | `maskAwayAllExcept` correctly calls `maskAwayOnlyCov → resetMask` first.  Python's Phase 2 fix (PR #169) brought the Python port into line with this MATLAB behavior — the bug was Python-side (didn't reset).  Logged here as the diagnostic anchor for the NetworkTutorial CRITICAL pedagogical bug. | INFO |
+
+### 1.4 Simulink Model Behavior (C4 verification, 2026-06-11)
+
+Resolved by opening `PointProcessSimulation.mdl.r2013a` (textual MDL,
+ASCII) and `PointProcessSimulation.slx` (zip+XML).  Both formats
+confirm:
+
+| Sub-block | Annotation | Math |
+|---|---|---|
+| `Poisson` (SID 53) | `\lambda \cdot \Delta = e^{X \cdot \beta}` | `lambdaDelta = exp(eta)` directly (per-bin probability) |
+| `Binomial` (SID 48) | `\lambda \cdot \Delta = e^{X \cdot \beta}/(1+e^{X\cdot \beta})` | `lambdaDelta = sigmoid(eta)` |
+| `Switch` (SID 51) | `simTypeSelect = 1 → Poisson port` | `simType='poisson'` routes Poisson sub-block; `'binomial'` routes Binomial |
+
+Python's pre-PR-#167 `_simulateCIF_python` Poisson path applied
+`1 - exp(-exp(eta)*dt)` which double-counted `dt` and produced spike
+rates ~1/dt slow.  Fixed in PR #167 (commit `25b404d`).  The continuous-
+time companion `PointProcessSimulationCont.slx` uses the same math.
 
 ---
 
