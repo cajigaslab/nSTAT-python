@@ -43,6 +43,41 @@ def test_covcoll_masking_selector_and_time_matrix() -> None:
     shifted = coll.getCov("Stimulus")
     np.testing.assert_allclose(shifted.time, [0.5, 1.0, 1.5])
 
+    # Regression: setCovShift should REPLACE the prior shift, not
+    # accumulate on top of it (audit finding L1; matches MATLAB
+    # CovColl.m:504-520 which calls resetCovShift first).
+    coll.setCovShift(0.2)
+    re_shifted = coll.getCov("Stimulus")
+    np.testing.assert_allclose(re_shifted.time, [0.2, 0.7, 1.2])
+    assert coll.covShift == pytest.approx(0.2)
+
+
+def test_covcoll_addToColl_upsamples_existing_covariates_to_match_new_rate() -> None:
+    """Audit finding H3: when a higher-rate covariate is added to a
+    collection, the collection's stored covariates should be upsampled
+    to match (mirrors MATLAB ``CovColl.m:799-810``)."""
+    from nstat.trial import CovariateCollection
+    t_low = np.arange(0.0, 1.0, 0.01)   # 100 Hz
+    t_high = np.arange(0.0, 1.0, 0.001) # 1000 Hz
+    low = Covariate(t_low, np.ones_like(t_low), "Low", "time", "s", "", ["x"])
+    high = Covariate(t_high, np.ones_like(t_high), "High", "time", "s", "", ["y"])
+    coll = CovariateCollection([low])
+    assert coll.sampleRate == 100.0
+    coll.addToColl(high)
+    assert coll.sampleRate == 1000.0
+    assert coll.covArray[0].sampleRate == 1000.0
+    assert coll.covArray[1].sampleRate == 1000.0
+
+    # Reverse order: collection has higher rate; new low-rate cov should
+    # be upsampled (not the collection downsampled).
+    coll2 = CovariateCollection([high])
+    assert coll2.sampleRate == 1000.0
+    low_for_2 = Covariate(t_low, np.ones_like(t_low), "Low2", "time", "s", "", ["z"])
+    coll2.addToColl(low_for_2)
+    assert coll2.sampleRate == 1000.0
+    assert coll2.covArray[0].sampleRate == 1000.0
+    assert coll2.covArray[1].sampleRate == 1000.0
+
 
 def test_nstcoll_neighbors_mask_and_data_matrix() -> None:
     train1, train2 = _make_spikes()
