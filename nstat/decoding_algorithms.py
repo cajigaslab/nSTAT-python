@@ -219,7 +219,7 @@ def _lambda_delta_from_state(
     HkAll: np.ndarray,
     time_index: int,
 ) -> np.ndarray:
-    histterm = np.asarray(HkAll[time_index - 1], dtype=float) if HkAll.size else np.zeros((0, mu.size), dtype=float)
+    histterm = np.asarray(HkAll[time_index], dtype=float) if HkAll.size else np.zeros((0, mu.size), dtype=float)
     hist_effect = np.sum(gamma * histterm, axis=0) if histterm.size else np.zeros(mu.shape, dtype=float)
     lin_term = mu + beta.T @ x_state + hist_effect
     clipped = np.clip(lin_term, -20.0, 20.0)
@@ -1347,15 +1347,15 @@ class DecodingAlgorithms:
         lambda_delta = np.zeros((len(lambda_items), 1), dtype=float)
         sum_val_vec = np.zeros(x_vec.size, dtype=float)
         sum_val_mat = np.zeros((x_vec.size, x_vec.size), dtype=float)
-        observed = obs[:, idx - 1]
+        observed = obs[:, idx]
 
         for cell_index, cif in enumerate(lambda_items):
             if cif.historyMat.size == 0:
-                observed_prefix = obs[cell_index, :idx]
+                observed_prefix = obs[cell_index, : idx + 1]
                 spike_times = np.where(observed_prefix > 0.5)[0] * float(binwidth)
                 nst = nspikeTrain(spike_times, makePlots=-1)
                 nst.setMinTime(0.0)
-                nst.setMaxTime((idx - 1) * float(binwidth))
+                nst.setMaxTime(idx * float(binwidth))
                 nst = nst.resample(1.0 / float(binwidth))
                 lambda_delta[cell_index, 0] = float(cif.evalLambdaDelta(x_vec, idx, nst))
                 sum_val_vec += observed[cell_index] * np.asarray(cif.evalGradientLog(x_vec, idx, nst), dtype=float).reshape(-1)
@@ -1531,10 +1531,10 @@ class DecodingAlgorithms:
                 x_p[:, 0] = Amat[:, :, 0] @ x0_aug
                 W_p[:, :, 0] = Amat[:, :, 0] @ np.zeros((na, na), dtype=float) @ Amat[:, :, 0].T + Qmat[:, :, 0]
 
-                for time_index in range(1, N + 1):
-                    x_u[:, time_index - 1], W_u[:, :, time_index - 1], _ = DecodingAlgorithms.PPDecode_updateLinear(
-                        x_p[:, time_index - 1],
-                        W_p[:, :, time_index - 1],
+                for time_index in range(N):
+                    x_u[:, time_index], W_u[:, :, time_index], _ = DecodingAlgorithms.PPDecode_updateLinear(
+                        x_p[:, time_index],
+                        W_p[:, :, time_index],
                         obs,
                         mu_vec,
                         beta_aug,
@@ -1544,11 +1544,11 @@ class DecodingAlgorithms:
                         time_index,
                         None,
                     )
-                    A_t = Amat[:, :, min(time_index - 1, N - 1)]
-                    Q_t = Qmat[:, :, min(time_index - 1, N - 1)]
+                    A_t = Amat[:, :, min(time_index, N - 1)]
+                    Q_t = Qmat[:, :, min(time_index, N - 1)]
                     x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
-                        x_u[:, time_index - 1],
-                        W_u[:, :, time_index - 1],
+                        x_u[:, time_index],
+                        W_u[:, :, time_index],
                         A_t,
                         Q_t,
                         Wconv,
@@ -1609,10 +1609,10 @@ class DecodingAlgorithms:
                 x_p[:, 0] += ut[:, 0]
                 W_p[:, :, 0] += (Q1 @ invPitT_0) @ A1 @ Pi0_mat @ A1.T @ (Q1 @ invPitT_0).T
 
-                for time_index in range(1, N + 1):
-                    x_u[:, time_index - 1], W_u[:, :, time_index - 1], _ = DecodingAlgorithms.PPDecode_updateLinear(
-                        x_p[:, time_index - 1],
-                        W_p[:, :, time_index - 1],
+                for time_index in range(N):
+                    x_u[:, time_index], W_u[:, :, time_index], _ = DecodingAlgorithms.PPDecode_updateLinear(
+                        x_p[:, time_index],
+                        W_p[:, :, time_index],
                         obs,
                         mu_vec,
                         beta_mat,
@@ -1623,12 +1623,12 @@ class DecodingAlgorithms:
                         None,
                     )
                     if time_index < N:
-                        An = _select_time_matrix(A, time_index - 1, ns)
-                        Qn = _select_time_matrix(Q, time_index - 1, ns)
+                        An = _select_time_matrix(A, time_index, ns)
+                        Qn = _select_time_matrix(Q, time_index, ns)
                         invPitT_n1 = np.linalg.pinv(PitT[:, :, time_index])
-                        invPhitm1T = np.linalg.pinv(PhitT[:, :, time_index - 1])
+                        invPhitm1T = np.linalg.pinv(PhitT[:, :, time_index])
                         ut[:, time_index] = (Qn @ invPitT_n1) @ PhitT[:, :, time_index] @ (
-                            yT_vec - invPhitm1T @ x_u[:, time_index - 1]
+                            yT_vec - invPhitm1T @ x_u[:, time_index]
                         )
                         # MATLAB PPDecode_predict in non-augmented target branch
                         # uses Amat(:,:,min(size(A,3),n)) and Qmat(:,:,min(size(Qmat,3))).
@@ -1636,16 +1636,16 @@ class DecodingAlgorithms:
                         # min(1,n) = 1 → always B[:,:,0].
                         # min(size(Qmat,3)) = min(N) = N → always QT[:,:,N-1].
                         A_dim3 = A.shape[2] if A.ndim == 3 else 1
-                        A_t = Amat[:, :, min(A_dim3 - 1, time_index - 1)]
+                        A_t = Amat[:, :, min(A_dim3 - 1, time_index)]
                         Q_t = Qmat_arr[:, :, N - 1]
                         x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
-                            x_u[:, time_index - 1],
-                            W_u[:, :, time_index - 1],
+                            x_u[:, time_index],
+                            W_u[:, :, time_index],
                             A_t,
                             Q_t,
                         )
                         x_p[:, time_index] += ut[:, time_index]
-                        W_p[:, :, time_index] += (Qn @ invPitT_n1) @ An @ W_u[:, :, time_index - 1] @ An.T @ (Qn @ invPitT_n1).T
+                        W_p[:, :, time_index] += (Qn @ invPitT_n1) @ An @ W_u[:, :, time_index] @ An.T @ (Qn @ invPitT_n1).T
 
                 empty_vec = np.array([], dtype=float)
                 empty_cov = np.zeros((0, 0, 0), dtype=float)
@@ -1663,10 +1663,10 @@ class DecodingAlgorithms:
         Q0 = _select_time_matrix(Q, 0, ns)
         x_p[:, 0], W_p[:, :, 0] = DecodingAlgorithms.PPDecode_predict(x0_vec, Pi0_mat, A0, Q0, Wconv)
 
-        for time_index in range(1, N + 1):
-            x_u[:, time_index - 1], W_u[:, :, time_index - 1], _ = DecodingAlgorithms.PPDecode_updateLinear(
-                x_p[:, time_index - 1],
-                W_p[:, :, time_index - 1],
+        for time_index in range(N):
+            x_u[:, time_index], W_u[:, :, time_index], _ = DecodingAlgorithms.PPDecode_updateLinear(
+                x_p[:, time_index],
+                W_p[:, :, time_index],
                 obs,
                 mu_vec,
                 beta_mat,
@@ -1676,11 +1676,11 @@ class DecodingAlgorithms:
                 time_index,
                 None,
             )
-            A_t = _select_time_matrix(A, time_index - 1, ns)
-            Q_t = _select_time_matrix(Q, time_index - 1, ns)
+            A_t = _select_time_matrix(A, time_index, ns)
+            Q_t = _select_time_matrix(Q, time_index, ns)
             x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
-                x_u[:, time_index - 1],
-                W_u[:, :, time_index - 1],
+                x_u[:, time_index],
+                W_u[:, :, time_index],
                 A_t,
                 Q_t,
                 Wconv,
@@ -1759,21 +1759,21 @@ class DecodingAlgorithms:
         Q0 = _select_time_matrix(Q, 0, num_states)
         x_p[:, 0], W_p[:, :, 0] = DecodingAlgorithms.PPDecode_predict(x0_vec, Pi0_mat, A0, Q0, Wconv)
 
-        for time_index in range(1, num_steps + 1):
-            x_u[:, time_index - 1], W_u[:, :, time_index - 1], _ = DecodingAlgorithms.PPDecode_update(
-                x_p[:, time_index - 1],
-                W_p[:, :, time_index - 1],
+        for time_index in range(num_steps):
+            x_u[:, time_index], W_u[:, :, time_index], _ = DecodingAlgorithms.PPDecode_update(
+                x_p[:, time_index],
+                W_p[:, :, time_index],
                 obs,
                 lambda_items,
                 binwidth,
                 time_index,
                 None,
             )
-            A_t = _select_time_matrix(A, time_index - 1, num_states)
-            Q_t = _select_time_matrix(Q, time_index - 1, num_states)
+            A_t = _select_time_matrix(A, time_index, num_states)
+            Q_t = _select_time_matrix(Q, time_index, num_states)
             x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
-                x_u[:, time_index - 1],
-                W_u[:, :, time_index - 1],
+                x_u[:, time_index],
+                W_u[:, :, time_index],
                 A_t,
                 Q_t,
                 Wconv,
@@ -2056,8 +2056,8 @@ class DecodingAlgorithms:
                 MU_p = transition.T @ model_probs0
                 prev_probs = model_probs0
             else:
-                MU_p = transition.T @ MU_u[:, time_index - 1]
-                prev_probs = MU_u[:, time_index - 1]
+                MU_p = transition.T @ MU_u[:, time_index]
+                prev_probs = MU_u[:, time_index]
 
             p_ij_s = transition * prev_probs[:, None]
             column_norm = np.sum(p_ij_s, axis=0, keepdims=True)
@@ -2068,15 +2068,15 @@ class DecodingAlgorithms:
                 mixed_state = np.zeros(max_dim, dtype=float)
                 for source_model in range(n_models):
                     dim_i = state_dims[source_model]
-                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index]
                     mixed_state[:dim_i] += source_state * p_ij_s[source_model, target_model]
                 X_s[target_model][:, time_index] = mixed_state
 
                 mixed_cov = np.zeros((max_dim, max_dim), dtype=float)
                 for source_model in range(n_models):
                     dim_i = state_dims[source_model]
-                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
-                    source_cov = Pi0_models[source_model] if time_index == 0 else W_u[source_model][:, :, time_index - 1]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index]
+                    source_cov = Pi0_models[source_model] if time_index == 0 else W_u[source_model][:, :, time_index]
                     diff = source_state - mixed_state[:dim_i]
                     mixed_cov[:dim_i, :dim_i] += (
                         source_cov + np.outer(diff, diff)
@@ -2108,7 +2108,7 @@ class DecodingAlgorithms:
                     Qn_orig = _select_time_matrix(Q_models[model_index], time_index, dim)
                     invPitT_n = np.linalg.pinv(PitT_m[model_index][:, :, time_index])
                     if time_index > 0:
-                        invPhitm1 = np.linalg.pinv(PhitT_m[model_index][:, :, time_index - 1])
+                        invPhitm1 = np.linalg.pinv(PhitT_m[model_index][:, :, time_index])
                         ut = (Qn_orig @ invPitT_n) @ PhitT_m[model_index][:, :, time_index] @ (
                             yT_models[model_index] - invPhitm1 @ X_s[model_index][:dim, time_index]
                         )
@@ -2169,7 +2169,7 @@ class DecodingAlgorithms:
             if norm != 0.0 and np.isfinite(norm):
                 pNGivenS[:, time_index] /= norm
             elif time_index > 0:
-                pNGivenS[:, time_index] = pNGivenS[:, time_index - 1]
+                pNGivenS[:, time_index] = pNGivenS[:, time_index]
             else:
                 pNGivenS[:, time_index] = np.full(n_models, 0.5 if n_models == 2 else 1.0 / float(n_models), dtype=float)
 
@@ -2178,7 +2178,7 @@ class DecodingAlgorithms:
             if posterior_norm != 0.0 and np.isfinite(posterior_norm):
                 MU_u[:, time_index] = posterior / posterior_norm
             elif time_index > 0:
-                MU_u[:, time_index] = MU_u[:, time_index - 1]
+                MU_u[:, time_index] = MU_u[:, time_index]
             else:
                 MU_u[:, time_index] = model_probs0
 
@@ -2274,8 +2274,8 @@ class DecodingAlgorithms:
                 MU_p = transition.T @ model_probs0
                 prev_probs = model_probs0
             else:
-                MU_p = transition.T @ MU_u[:, time_index - 1]
-                prev_probs = MU_u[:, time_index - 1]
+                MU_p = transition.T @ MU_u[:, time_index]
+                prev_probs = MU_u[:, time_index]
 
             p_ij_s = transition * prev_probs[:, None]
             column_norm = np.sum(p_ij_s, axis=0, keepdims=True)
@@ -2286,15 +2286,15 @@ class DecodingAlgorithms:
                 mixed_state = np.zeros(max_dim, dtype=float)
                 for source_model in range(n_models):
                     dim_i = state_dims[source_model]
-                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index]
                     mixed_state[:dim_i] += source_state * p_ij_s[source_model, target_model]
                 X_s[target_model][:, time_index] = mixed_state
 
                 mixed_cov = np.zeros((max_dim, max_dim), dtype=float)
                 for source_model in range(n_models):
                     dim_i = state_dims[source_model]
-                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
-                    source_cov = Pi0_models[source_model] if time_index == 0 else W_u[source_model][:, :, time_index - 1]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index]
+                    source_cov = Pi0_models[source_model] if time_index == 0 else W_u[source_model][:, :, time_index]
                     diff = source_state - mixed_state[:dim_i]
                     mixed_cov[:dim_i, :dim_i] += (
                         source_cov + np.outer(diff, diff)
@@ -2353,7 +2353,7 @@ class DecodingAlgorithms:
             if norm != 0.0 and np.isfinite(norm):
                 pNGivenS[:, time_index] /= norm
             elif time_index > 0:
-                pNGivenS[:, time_index] = pNGivenS[:, time_index - 1]
+                pNGivenS[:, time_index] = pNGivenS[:, time_index]
             else:
                 pNGivenS[:, time_index] = np.full(n_models, 0.5 if n_models == 2 else 1.0 / float(n_models), dtype=float)
 
@@ -2362,7 +2362,7 @@ class DecodingAlgorithms:
             if posterior_norm != 0.0 and np.isfinite(posterior_norm):
                 MU_u[:, time_index] = posterior / posterior_norm
             elif time_index > 0:
-                MU_u[:, time_index] = MU_u[:, time_index - 1]
+                MU_u[:, time_index] = MU_u[:, time_index]
             else:
                 MU_u[:, time_index] = model_probs0
 
