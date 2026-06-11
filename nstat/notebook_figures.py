@@ -29,6 +29,22 @@ class FigureTracker:
         manifest_path = topic_dir / "manifest.json"
         if manifest_path.exists():
             manifest_path.unlink()
+        # Inside an IPython kernel (nbclient / jupyter), flush the active figure
+        # at the end of each cell so the last figure of a cell renders inline
+        # under that cell. Combined with the eager save in new_figure(), every
+        # figure is embedded under its producing cell — so figures show in the
+        # committed notebook and on GitHub, not just the gallery PNGs.
+        try:
+            from IPython import get_ipython
+
+            ip = get_ipython()
+            if ip is not None:
+                ip.events.register("post_run_cell", self._on_post_run_cell)
+        except Exception:
+            pass
+
+    def _on_post_run_cell(self, *_args, **_kwargs) -> None:
+        self._save_active()
 
     def _topic_dir(self) -> Path:
         out = self.output_root / self.topic
@@ -41,10 +57,37 @@ class FigureTracker:
         out = self._topic_dir() / f"fig_{self.count:03d}.png"
         self._active_fig.tight_layout()
         self._active_fig.savefig(out, dpi=180)
+        self._display_inline(self._active_fig)
         plt.close(self._active_fig)
         self._active_fig = None
         self._active_ax = None
         self._note_y = 0.95
+
+    def _display_inline(self, fig) -> None:
+        """Embed the figure as a cell output so it renders in the committed
+        notebook (and on GitHub), in addition to the saved gallery PNG.
+
+        Renders to PNG bytes and displays an ``image/png`` payload explicitly,
+        so it works under the Agg backend (without ``%matplotlib inline``).
+        No-op outside an IPython kernel, so gallery generation / tests are
+        unaffected.
+        """
+        try:
+            from IPython import get_ipython
+            from IPython.display import Image, display
+
+            if get_ipython() is None:
+                return
+            import io
+
+            # Lower DPI for the embedded copy (the gallery PNG stays 180) so
+            # notebooks with many figures stay well under the repo file-size
+            # guard while remaining crisp for on-screen / GitHub viewing.
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", dpi=110)
+            display(Image(data=buf.getvalue(), format="png"))
+        except Exception:
+            pass
 
     def new_figure(self, matlab_line: str | None = None) -> plt.Figure:
         """Start a new figure while preserving deterministic numbering."""
