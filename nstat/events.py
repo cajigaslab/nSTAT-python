@@ -20,6 +20,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+# MATLAB's single-letter colour codes use saturated primaries; matplotlib's
+# defaults are darker.  Translate so rendered colours match MATLAB exactly
+# (e.g. ``'g'`` → ``[0,1,0]`` rather than matplotlib's ``[0,0.5,0]``).
+_MATLAB_COLOR_LOOKUP: dict[str, tuple[float, float, float]] = {
+    "r": (1.0, 0.0, 0.0),
+    "g": (0.0, 1.0, 0.0),
+    "b": (0.0, 0.0, 1.0),
+    "c": (0.0, 1.0, 1.0),
+    "m": (1.0, 0.0, 1.0),
+    "y": (1.0, 1.0, 0.0),
+    "k": (0.0, 0.0, 0.0),
+    "w": (1.0, 1.0, 1.0),
+}
+
+
 class Events:
     """Experimental event markers for highlighting epochs in figures.
 
@@ -78,20 +93,24 @@ class Events:
         handle : Axes or list[Axes], optional
             Axes to plot into (default: current axes).
         colorString : str, optional
-            Override line colour for event lines (default: ``'r'``).
-            Matches Matlab ``Events.plot`` ``colorString`` parameter.
+            Override line colour for event lines.  When ``None`` (the
+            default), falls back to ``self.eventColor`` set at
+            construction.  Matches MATLAB ``Events.m:87`` after the
+            upstream fix from hardcoded ``'r'`` to ``EObj.eventColor``
+            (see AUDIT_REPORT M17).  Gold fixture
+            ``events_exactness.mat`` was regenerated 2026-06-11 against
+            this corrected MATLAB behavior.
 
         Notes
         -----
-        The default ``'r'`` matches the **old** MATLAB ``Events.m:87``
-        which hardcoded the color.  The current MATLAB upstream has
-        been fixed to use ``EObj.eventColor`` (see AUDIT_REPORT M17),
-        but the gold-fixture ``events_exactness.mat`` stores
-        ``plot_line_color = [1, 0, 0]`` from before that fix.  When the
-        fixture is regenerated against current MATLAB, this default
-        should change to ``self.eventColor``.
+        MATLAB single-letter colour codes (``'g'``, ``'b'``, ...) differ
+        from matplotlib's defaults: MATLAB's ``'g'`` is RGB ``[0,1,0]``
+        while matplotlib's ``'g'`` is the darker ``[0,0.5,0]``.  Single-
+        letter codes are translated to the MATLAB convention so the
+        rendered colour matches MATLAB exactly.
         """
-        color = colorString if colorString is not None else "r"
+        color = colorString if colorString is not None else self.eventColor
+        color = _MATLAB_COLOR_LOOKUP.get(color, color)
         if handle is None:
             handles = [plt.gca()]
         elif isinstance(handle, Sequence) and not hasattr(handle, "plot"):
@@ -111,7 +130,7 @@ class Events:
                         np.full(self.eventTimes.shape, float(v[3]), dtype=float),
                     ]
                 )
-                ax.plot(times, y, color, linewidth=4)
+                ax.plot(times, y, color=color, linewidth=4)
                 for event_time, label in zip(self.eventTimes, self.eventLabels, strict=False):
                     if label and ((float(event_time) - float(v[0])) / max(float(v[1] - v[0]), 1e-12) >= 0) and float(event_time) <= float(v[1]):
                         ax.text(
