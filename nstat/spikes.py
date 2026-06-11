@@ -23,7 +23,7 @@ class SpikeTrainCollection(_LegacySpikeTrainCollection):
     """Collection of aligned spike trains for ensemble analyses."""
 
     def __iter__(self):
-        for i in range(1, self.numSpikeTrains + 1):
+        for i in range(self.numSpikeTrains):
             yield self.getNST(i)
 
     def to_matrix(self, bin_edges: Sequence[float]) -> np.ndarray:

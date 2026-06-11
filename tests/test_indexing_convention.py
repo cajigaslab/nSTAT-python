@@ -42,9 +42,21 @@ ALLOWED_FILE_PREFIXES: tuple[str, ...] = ("compat/matlab/",)
 # Site-level allowlist for individual lines that must keep their pattern.
 # Key: (relative_path, source_line_stripped); Value: reason.
 ALLOWLIST: dict[tuple[str, str], str] = {
-    # populated by the v0.5.0 sweep as legitimately-1-based sites are
-    # discovered (e.g. ``f"b_{idx + 1}"`` style display labels — but
-    # those use ``+ 1``, not ``- 1``, so they don't trigger this scan).
+    # ---- Algorithmic patterns (NOT 1-based-to-0-based translation) ----
+    # Time-recursive update: ``post[t - 1]`` reads the PREVIOUS time step.
+    ("paper_examples_full.py", "pred0 = max(post[t - 1, 0] * p_ij[0, 0] + post[t - 1, 1] * p_ij[1, 0], 1e-15)"): "time recursion",
+    ("paper_examples_full.py", "pred1 = max(post[t - 1, 0] * p_ij[0, 1] + post[t - 1, 1] * p_ij[1, 1], 1e-15)"): "time recursion",
+    ("paper_examples_full.py", "for t in range(1, n_t):"): "time recursion: t=0 is initial condition",
+    # ``corr[N - 1]`` is the last element of an N-length array — algorithmic.
+    ("core.py", "corr = corr / corr[N - 1] if corr[N - 1] != 0 else corr"): "last-element normalization",
+    # Retry counter / iteration counter: 1-based by display intent.
+    ("data_manager.py", "for attempt in range(1, retries + 1):"): "retry counter (display)",
+    ("glm.py", "for n_iter in range(1, max_iter + 1):"): "iteration counter (display)",
+    # Time-recursive ensemble effects: ``spikes[i - 1, :]`` = previous time step.
+    ("simulators.py", "ens_effect[0] = ensemble_kernel_arr[0] * float(spikes[i - 1, 1])"): "previous-timestep ensemble effect",
+    ("simulators.py", "ens_effect[1] = ensemble_kernel_arr[1] * float(spikes[i - 1, 0])"): "previous-timestep ensemble effect",
+    # History covariates: lag values start at 1 (lag 0 = the spike itself).
+    ("paper_examples_full.py", "full_hist = _history_matrix(y_sel, list(range(1, int(candidate_q[-1]) + 1)))"): "history lags start at 1",
 }
 
 
