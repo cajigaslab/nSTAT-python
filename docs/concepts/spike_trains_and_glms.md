@@ -21,10 +21,10 @@ point process is its **conditional intensity function (CIF)**, written
 $\lambda(t \mid H_t)$:
 
 > $\lambda(t \mid H_t) \cdot \Delta$ ≈ the probability of a spike in the small interval
-> $[t, t+\Delta)$, given the history `H_t` of everything observed up to time `t`.
+> $[t, t+\Delta)$, given the history $H_t$ of everything observed up to time $t$.
 
 Intuitively, $\lambda(t \mid H_t)$ is an *instantaneous firing rate* (in spikes/s)
-that is allowed to depend on the past. The dependence on history `H_t` is what
+that is allowed to depend on the past. The dependence on history $H_t$ is what
 makes the CIF powerful: it captures refractoriness, bursting, and
 network coupling that a plain rate $\lambda(t)$ cannot. See
 [Daley & Vere-Jones (2003)](https://doi.org/10.1007/b97277) for the theory and
@@ -64,7 +64,7 @@ $$
 
 Each term answers a scientific question:
 
-- **Stimulus terms `s_k(t)`** — how does an external covariate (a sensory
+- **Stimulus terms $s_k(t)$** — how does an external covariate (a sensory
   stimulus, a movement, the animal's position) drive firing? Often expanded
   in a spline or other basis so the tuning can be nonlinear.
 - **History terms $n(t - \tau_j)$** — how does the neuron's own recent spiking
@@ -163,7 +163,7 @@ walks through it.
 <summary>Show answers</summary>
 
 1. The **probability of a spike** in the small interval $[t, t+\Delta)$, **given
-   the history** `H_t` of past spikes and covariates.
+   the history** $H_t$ of past spikes and covariates.
 2. The log link keeps the rate **positive**, makes covariates act
    **multiplicatively**, and yields a **concave** log-likelihood
    ([Paninski 2004](https://pubmed.ncbi.nlm.nih.gov/15600233/)) so the fit has a

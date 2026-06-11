@@ -90,7 +90,7 @@ band.
 
 Decoding is estimation too, so a decode also carries uncertainty. The
 point-process adaptive filter (PPAF) propagates a **posterior covariance**
-`Wₖ` alongside the state estimate `xₖ`: the square root of its diagonal is the
+$W_k$ alongside the state estimate $x_k$: the square root of its diagonal is the
 familiar 95% **credible band** around the decoded trajectory.
 
 ![PPAF decode of a hidden sinusoidal stimulus, tracking the truth inside a 95% credible band](figures/decoding.png)
@@ -118,9 +118,9 @@ for a smoother's output).
 1. **Neuron A.** Its interval excludes 0, so the effect is reliably positive.
    Neuron B's interval straddles 0 — the data are consistent with no stimulus
    effect at all, despite the identical point estimate.
-2. It roughly **grows by √2** (≈ 41% wider). Standard errors scale like
-   `1/√(information)`, and information accumulates with data, so halving the
-   data multiplies the interval width by about `√2`.
+2. It roughly **grows by $\sqrt{2}$** (≈ 41% wider). Standard errors scale like
+   $1/\sqrt{\text{information}}$, and information accumulates with data, so halving the
+   data multiplies the interval width by about $\sqrt{2}$.
 3. The rate is $\exp(\beta)$, a nonlinear transform. Pushing the symmetric endpoints
    $\beta \pm 1.96 \cdot \mathrm{se}$ through $\exp(\cdot)$ stretches the upper side more than the lower,
    giving an **asymmetric** rate interval. Transform the endpoints, never add a

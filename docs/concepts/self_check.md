@@ -44,7 +44,7 @@ These cut across topics. Try to answer in a sentence or two before expanding.
    is a direct synaptic connection, and say what analysis would help tell them
    apart.
 5. **When the answer needs an interval.** You report that a neuron's stimulus
-   coefficient is `β₁ = 0.5`. A colleague asks whether the neuron is really
+   coefficient is $\beta_1 = 0.5$. A colleague asks whether the neuron is really
    stimulus-driven. What single additional quantity do you need, and how would
    you compute it from the GLM fit?
 6. **Static vs. evolving tuning.** You fit a GLM per trial and the stimulus
@@ -85,8 +85,8 @@ These cut across topics. Try to answer in a sentence or two before expanding.
    an **ensemble GLM**, or a Granger-style test, helps separate them. See
    [network connectivity](network_connectivity.md).
 5. You need the coefficient's **confidence interval** (equivalently its standard
-   error). Compute the Fisher information `Xᵀ diag(λ) X`, invert it for the
-   covariance, take `se = √diag`, and report `β₁ ± 1.96·se`. If the interval
+   error). Compute the Fisher information $X^{\top} \mathrm{diag}(\lambda) X$, invert it for the
+   covariance, take $\mathrm{se} = \sqrt{\mathrm{diag}}$, and report $\beta_1 \pm 1.96 \cdot \mathrm{se}$. If the interval
    excludes 0 the neuron is convincingly stimulus-driven. See
    [uncertainty and confidence intervals](uncertainty_and_confidence.md).
 6. The **state-space GLM (SSGLM)**, fit by EM. It treats the coefficient as a

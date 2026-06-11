@@ -59,7 +59,7 @@ orthogonal **Slepian (DPSS) tapers**, computes a spectrum from each, and
 averages them. The tapers are designed to concentrate energy in a chosen
 frequency band, so averaging reduces variance while controlling leakage. The
 trade-off is a deliberate, quantified amount of spectral smoothing set by the
-**time–bandwidth product** `NW` (and the number of tapers `K ≈ 2·NW − 1`).
+**time–bandwidth product** $NW$ (and the number of tapers $K \approx 2 \cdot NW - 1$).
 [Mitra & Pesaran (1999)](https://pubmed.ncbi.nlm.nih.gov/9929474/) brought
 this method to neuroscience; it is the standard for LFP/EEG.
 

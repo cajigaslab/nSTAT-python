@@ -71,11 +71,11 @@ existing code is unchanged.
   `pinv(C) @ log(empirical_mean_rate)` so the implied initial firing
   rate matches what the data shows, removing one bad-init mode.  The
   random `C` draw is unchanged.  Recommended on weakly-observable data.
-- **`ridge_lambda=λ`** (PP_EM and hybrid; default `0.0`): biases the
-  A M-step toward the identity via a Gaussian prior at `A=I`:
-  `A = (S10 + λI)(S11 + λI)⁻¹`.  When `S10, S11 → 0` (the
-  weak-observability collapse mode) the limit becomes `I` rather than
-  `0`.  Try `0.1`–`1.0` if you see the `A → 0` collapse in
+- **`ridge_lambda`** (PP_EM and hybrid; default `0.0`): biases the
+  A M-step toward the identity via a Gaussian prior at $A = I$:
+  $A = (S_{10} + \lambda I)(S_{11} + \lambda I)^{-1}$.  When $S_{10}, S_{11} \to 0$ (the
+  weak-observability collapse mode) the limit becomes $I$ rather than
+  $0$.  Try `0.1`–`1.0` if you see the $A \to 0$ collapse in
   `*_best_of` traces.
 
 ```python
@@ -149,9 +149,9 @@ print(f"Learned Â:\n{result.transition_matrix}")
 > functions emit a `UserWarning` to this effect.
 
 **The gauge freedom, and how it is now pinned.**  A Poisson LDS has a
-gauge freedom: the transform `(A, C, x) → (T A T⁻¹, C T⁻¹, T x)` leaves
-the observable log-rate `C x` — and hence the likelihood — exactly
-invariant for any invertible `T` (the full `GL(d)` group, `d²` degrees
+gauge freedom: the transform $(A, C, x) \to (T A T^{-1}, C T^{-1}, T x)$ leaves
+the observable log-rate $C x$ — and hence the likelihood — exactly
+invariant for any invertible $T$ (the full $GL(d)$ group, $d^2$ degrees
 of freedom).  EM has no reason to prefer any point on this orbit, so an
 unconstrained fit lets the absolute scale and rotation of `A`/`C` drift
 freely (the original PR showed `|C|` of 5–100 on fits whose *rates*
@@ -164,13 +164,13 @@ iteration, which fights the Newton trust-region and destabilizes the
 fit:
 
 1. **Whiten** the latent so the empirical state second moment becomes
-   the identity (`T = M^{-1/2}`) — removes the symmetric gauge DOF.
+   the identity ($T = M^{-1/2}$) — removes the symmetric gauge DOF.
 2. **SVD-rotate** so the stacked emission matrix has orthogonal columns
-   ordered by descending singular value — removes the residual `O(d)`.
+   ordered by descending singular value — removes the residual $O(d)$.
 3. **Sign-fix** each axis so the largest-magnitude entry of each
-   emission column is positive — removes the `2^d` sign flips.
+   emission column is positive — removes the $2^d$ sign flips.
 
-The returned emission matrix therefore satisfies `CᵀC = diag(S²)`
+The returned emission matrix therefore satisfies $C^{\top} C = \mathrm{diag}(S^2)$
 (a machine-precision-exact, seed-stable invariant the tests assert).
 What remains is *local-optima* multiplicity — distinct fits with
 genuinely different likelihoods — not gauge freedom; pinning that would
@@ -243,12 +243,12 @@ PR):
   smoothed cross-covariances.  This stopped the previous A→0 collapse
   (the moment-matching approximation that dropped the cross-cov term
   biased `A` toward zero).
-- **Time-varying pseudo-observation noise** `R_t = 1/λ_t`: substituting
-  a fixed `R` (forced by a batched smoother) breaks the IRLS weight
+- **Time-varying pseudo-observation noise** $R_t = 1/\lambda_t$: substituting
+  a fixed $R$ (forced by a batched smoother) breaks the IRLS weight
   cancellation and was numerically unstable (SVD non-convergence) at
-  low rates.  The new smoother accepts per-timestep `R_t`.
-- **Gaussian `R` M-step trace correction**: now includes the
-  `C_g Σ_t C_g'` latent-uncertainty term, without which `R` collapsed
+  low rates.  The new smoother accepts per-timestep $R_t$.
+- **Gaussian $R$ M-step trace correction**: now includes the
+  $C_g \Sigma_t C_g^{\top}$ latent-uncertainty term, without which $R$ collapsed
   toward zero over iterations.
 - **Gauge + step bounding**: a cheap per-iteration unit-RMS *diagonal*
   scale pin plus a Newton trust-region keep `|C|` finite during the
@@ -256,7 +256,7 @@ PR):
   (whiten + SVD-rotate + sign-fix) pins the remaining rotational and
   sign freedom.  This is the Tier 0.1 identifiability pass — the
   `PP_EMCreateConstraints` equivalent; `A`/`C` are now returned in a
-  unique canonical frame (`CᵀC` diagonal, descending).
+  unique canonical frame ($C^{\top} C$ diagonal, descending).
 
 **Still approximate / deferred to a future release:**
 

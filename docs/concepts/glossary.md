@@ -90,28 +90,28 @@ beta power) rather than delivered continuously — a decode-then-actuate loop.
 (spikes). The right framework for spike trains.
 
 <a id="conditional-intensity-function"></a>
-**Conditional intensity function (CIF), `λ(t | H_t)`.** The instantaneous
-firing rate at time `t` given the history `H_t`; `λ·Δ` is the spike
+**Conditional intensity function (CIF), $\lambda(t \mid H_t)$.** The instantaneous
+firing rate at time $t$ given the history $H_t$; $\lambda \cdot \Delta$ is the spike
 probability in a small interval. The complete description of a point process.
 In nSTAT: `CIF`, `CIFModel`, `LinearCIF`.
 
 <a id="history"></a>
-**History `H_t`.** Everything observed up to time `t` — the neuron's own past
+**History $H_t$.** Everything observed up to time $t$ — the neuron's own past
 spikes, the ensemble's spikes, and covariates — that the CIF may depend on.
 
 <a id="homogeneous-inhomogeneous-poisson-process"></a>
 **Homogeneous / inhomogeneous Poisson process.** Point process with constant
-rate (`λ`) / time-varying rate (`λ(t)`) and *no* history dependence.
+rate ($\lambda$) / time-varying rate ($\lambda(t)$) and *no* history dependence.
 
 <a id="generalized-linear-model"></a>
-**Generalized linear model (GLM).** Here, a model of `log λ(t | H_t)` as a
+**Generalized linear model (GLM).** Here, a model of $\log \lambda(t \mid H_t)$ as a
 linear sum of covariate, history, and ensemble terms. Fit by
 `Analysis`/`fit_poisson_glm`; configured by `TrialConfig`. See
 [Spike trains and point-process GLMs](spike_trains_and_glms.md).
 
 <a id="link-function"></a>
 **Link function.** The transform applied to the rate; nSTAT uses the **log**
-link so `λ > 0` and covariates act multiplicatively.
+link so $\lambda > 0$ and covariates act multiplicatively.
 
 <a id="covariate"></a>
 **Covariate.** An external (extrinsic) signal — stimulus, position, movement —
@@ -199,8 +199,8 @@ See [Thomson 1982](https://doi.org/10.1109/PROC.1982.12433),
 [Mitra & Pesaran 1999](https://pubmed.ncbi.nlm.nih.gov/9929474/).
 
 <a id="time-bandwidth-product"></a>
-**Time–bandwidth product `NW`.** Sets the multitaper smoothing/resolution
-trade-off; the number of tapers is `K ≈ 2·NW − 1`.
+**Time–bandwidth product $NW$.** Sets the multitaper smoothing/resolution
+trade-off; the number of tapers is $K \approx 2 \cdot NW - 1$.
 
 <a id="spectrogram"></a>
 **Spectrogram.** Power as a function of both time and frequency, from a
