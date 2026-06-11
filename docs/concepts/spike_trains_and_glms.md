@@ -49,15 +49,18 @@ Special cases worth naming:
 
 ## The point-process GLM
 
-How do we *estimate* `λ(t | H_t)` from data? nSTAT uses a **generalized linear
-model**: model the **log** of the CIF as a linear combination of covariates,
+How do we *estimate* $\lambda(t \mid H_t)$ from data? nSTAT uses a
+**generalized linear model**: model the **log** of the CIF as a linear
+combination of covariates,
 
-```
-log λ(t | H_t) = β₀
-               + Σ_k  β_k · s_k(t)        # stimulus / extrinsic covariates
-               + Σ_j  γ_j · n(t − τ_j)    # the neuron's own spike history
-               + Σ_i  η_i · n_ensemble,i(t)  # other neurons (ensemble)
-```
+$$
+\begin{aligned}
+\log \lambda(t \mid H_t) \;=\; \beta_0
+  &\;+\; \underbrace{\sum_{k} \beta_{k}\, s_{k}(t)}_{\text{stimulus / extrinsic covariates}} \\
+  &\;+\; \underbrace{\sum_{j} \gamma_{j}\, n(t - \tau_{j})}_{\text{the neuron's own spike history}} \\
+  &\;+\; \underbrace{\sum_{i} \eta_{i}\, n_{\text{ensemble},\,i}(t)}_{\text{other neurons (ensemble)}}.
+\end{aligned}
+$$
 
 Each term answers a scientific question:
 

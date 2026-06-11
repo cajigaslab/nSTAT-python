@@ -51,6 +51,7 @@ extensions = [
     "sphinx.ext.intersphinx",       # Cross-link to numpy/scipy/python docs
     "sphinx.ext.viewcode",          # "[source]" links from docs to GitHub
     "sphinx.ext.todo",              # ``.. todo::`` directives surfaced
+    "sphinx.ext.mathjax",           # Render LaTeX math (client-side MathJax)
 ]
 
 exclude_patterns = ["_build", "_autosummary", "Thumbs.db", ".DS_Store", "superpowers"]
@@ -60,6 +61,12 @@ master_doc = "index"
 # section — e.g. ``self_check.md`` → ``goodness_of_fit_and_decoding.md#check-your-understanding``
 # — resolve under the strict ``-W`` build.
 myst_heading_anchors = 3
+
+# MyST: enable LaTeX math via ``$...$`` (inline) and ``$$...$$`` (block), plus
+# ``\begin{align}...\end{align}`` AMS environments. Same syntax that GitHub's
+# native MathJax integration uses for README math — one source renders on both
+# github.com and the Sphinx site.
+myst_enable_extensions = ["dollarmath", "amsmath"]
 
 
 # -- autosummary / autodoc ---------------------------------------------------

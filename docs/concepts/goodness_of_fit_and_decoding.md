@@ -18,14 +18,15 @@ A low AIC means a model fits *better than another model* — not that it fits
 *well*. For an absolute check, nSTAT uses the **time-rescaling theorem**
 ([Brown, Barbieri, Ventura, Kass & Frank 2002](https://pubmed.ncbi.nlm.nih.gov/11802915/)).
 
-The idea is elegant. Take the fitted conditional intensity `λ(t | H_t)` and
-integrate it between consecutive spikes to get the **rescaled intervals**
+The idea is elegant. Take the fitted conditional intensity
+$\lambda(t \mid H_t)$ and integrate it between consecutive spikes to get the
+**rescaled intervals**
 
-```
-z_k = ∫_{t_{k-1}}^{t_k} λ(u | H_u) du.
-```
+$$
+z_k \;=\; \int_{t_{k-1}}^{t_k} \lambda(u \mid H_u) \, du.
+$$
 
-The theorem says: **if the model is correct**, the `z_k` are independent and
+The theorem says: **if the model is correct**, the $z_k$ are independent and
 exponentially distributed with rate 1 — equivalently, after the transform
 `u_k = 1 − exp(−z_k)`, they are uniform on `[0, 1]`. So you can *test the
 model* by checking whether the `u_k` look uniform, with a **Kolmogorov–Smirnov
