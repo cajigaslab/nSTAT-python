@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tools.notebooks.changed_topics import infer_topics_from_paths, load_group, load_manifest
+from tools.notebook_build.changed_topics import infer_topics_from_paths, load_group, load_manifest
 
 
 def test_changed_notebook_paths_map_to_manifest_topics() -> None:
@@ -21,7 +21,7 @@ def test_notebook_infrastructure_changes_fall_back_to_parity_core_group() -> Non
     parity_core = load_group("parity_core")
 
     topics = infer_topics_from_paths(
-        ["tools/notebooks/run_notebooks.py", "parity/notebook_fidelity.yml"],
+        ["tools/notebook_build/run_notebooks.py", "parity/notebook_fidelity.yml"],
         manifest,
         parity_core,
     )

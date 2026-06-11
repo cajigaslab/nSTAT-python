@@ -4,7 +4,7 @@ from pathlib import Path
 
 import nbformat
 
-from tools.notebooks.build_network_tutorial_notebook import build_notebook
+from tools.notebook_build.build_network_tutorial_notebook import build_notebook
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

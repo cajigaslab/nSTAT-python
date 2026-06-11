@@ -7,7 +7,7 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TOPIC_GROUPS = yaml.safe_load((REPO_ROOT / "tools" / "notebooks" / "topic_groups.yml").read_text(encoding="utf-8")) or {}
+TOPIC_GROUPS = yaml.safe_load((REPO_ROOT / "tools" / "notebook_build" / "topic_groups.yml").read_text(encoding="utf-8")) or {}
 
 
 def test_notebooks_are_python_facing() -> None:
@@ -31,7 +31,7 @@ def test_readme_catalog_is_python_facing() -> None:
 
 
 def test_confidence_interval_overview_is_catalogued() -> None:
-    notebook_manifest = yaml.safe_load((REPO_ROOT / "tools" / "notebooks" / "notebook_manifest.yml").read_text(encoding="utf-8"))
+    notebook_manifest = yaml.safe_load((REPO_ROOT / "tools" / "notebook_build" / "notebook_manifest.yml").read_text(encoding="utf-8"))
     topics = {row["topic"] for row in notebook_manifest["notebooks"]}
     assert "ConfidenceIntervalOverview" in topics
 
@@ -53,6 +53,6 @@ def test_parity_core_notebooks_do_not_require_live_example_data_download() -> No
 
 
 def test_notebook_builder_sources_do_not_hard_require_live_example_data_download() -> None:
-    for path in sorted((REPO_ROOT / "tools" / "notebooks").glob("*.py")):
+    for path in sorted((REPO_ROOT / "tools" / "notebook_build").glob("*.py")):
         text = path.read_text(encoding="utf-8")
         assert "ensure_example_data(download=True)" not in text, f"{path.name} still hardcodes live example-data download"

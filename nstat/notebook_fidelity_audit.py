@@ -46,7 +46,7 @@ def _count_python_sections(notebook_path: Path) -> int:
 
 
 def _load_notebook_groups(base: Path) -> dict[str, set[str]]:
-    payload = yaml.safe_load((base / "tools" / "notebooks" / "topic_groups.yml").read_text(encoding="utf-8")) or {}
+    payload = yaml.safe_load((base / "tools" / "notebook_build" / "topic_groups.yml").read_text(encoding="utf-8")) or {}
     groups = payload.get("groups", {})
     return {str(name): {str(topic) for topic in values or []} for name, values in groups.items()}
 

@@ -6,8 +6,8 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-NOTEBOOK_MANIFEST_PATH = REPO_ROOT / "tools" / "notebooks" / "notebook_manifest.yml"
-TOPIC_GROUPS_PATH = REPO_ROOT / "tools" / "notebooks" / "topic_groups.yml"
+NOTEBOOK_MANIFEST_PATH = REPO_ROOT / "tools" / "notebook_build" / "notebook_manifest.yml"
+TOPIC_GROUPS_PATH = REPO_ROOT / "tools" / "notebook_build" / "topic_groups.yml"
 
 REQUIRED_CI_SMOKE_TOPICS = {
     "ConfidenceIntervalOverview",

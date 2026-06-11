@@ -102,7 +102,7 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     lines = [
         "# nSTAT Python Parity Report",
         "",
-        "Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebooks/parity_notes.yml`, and live runtime inspection of the audited Python public surface.",
+        "Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebook_build/parity_notes.yml`, and live runtime inspection of the audited Python public surface.",
         "",
         f"- MATLAB reference: {payload['source_repositories']['matlab']}",
         f"- Python target: {payload['source_repositories']['python']}",
@@ -192,7 +192,7 @@ def render_parity_report(repo_root: Path | None = None) -> str:
     )
     if notebook_partial:
         lines.append(
-            f"- Notebook fidelity: workflow coverage is complete, but {len(notebook_partial)} MATLAB-helpfile notebook ports are still marked partial in `tools/notebooks/parity_notes.yml`."
+            f"- Notebook fidelity: workflow coverage is complete, but {len(notebook_partial)} MATLAB-helpfile notebook ports are still marked partial in `tools/notebook_build/parity_notes.yml`."
         )
         lines.append(
             "- Notebook fidelity audit: structural section/figure comparisons plus placeholder/tracker-only cell detection are recorded in `parity/notebook_fidelity.yml`."
@@ -251,7 +251,7 @@ def render_parity_report(repo_root: Path | None = None) -> str:
 
     lines.extend(["", "## Remaining Notebook-Fidelity Deltas", ""])
     if not notebook_partial:
-        lines.append("No partial notebook-fidelity items remain in `tools/notebooks/parity_notes.yml`.")
+        lines.append("No partial notebook-fidelity items remain in `tools/notebook_build/parity_notes.yml`.")
     else:
         for row in notebook_partial:
             lines.append(

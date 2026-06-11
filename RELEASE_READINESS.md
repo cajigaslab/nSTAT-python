@@ -33,7 +33,7 @@ order):
   29 reference notebooks.
 - **Notebook ↔ concepts crosswalk** — a table mapping each concepts page
   to the notebooks/tutorials that demonstrate it. Either in `docs/Examples.md`
-  or a new `docs/notebooks.md`. 29 notebooks need a goal-oriented index.
+  or a new `docs/notebook_galleries.md`. 29 notebooks need a goal-oriented index.
 - **`notebooks/` index page** if the crosswalk grows large enough.
 
 ## Future release — v0.5.0 (queued; ship when upstream is ready)

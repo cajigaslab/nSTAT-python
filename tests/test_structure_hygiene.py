@@ -10,9 +10,9 @@ Canonical layout (the single home for each concern):
 
     nstat/                  the packaged Python toolbox (MATLAB-parity surface)
     notebooks/              the ONE source-of-truth for parity notebooks,
-                            catalogued 1:1 in tools/notebooks/notebook_manifest.yml
-    tools/notebooks/        notebook tooling (generators, runners, manifests)
-    docs/notebooks/         GENERATED galleries (output; not source notebooks)
+                            catalogued 1:1 in tools/notebook_build/notebook_manifest.yml
+    tools/notebook_build/        notebook tooling (generators, runners, manifests)
+    docs/notebook_galleries/         GENERATED galleries (output; not source notebooks)
     examples/paper/         the MATLAB-faithful paper-example scripts (drive the
                             committed docs/figures/example0N/ with CI parity)
     parity/                 the live MATLAB-parity manifests + reports
@@ -49,7 +49,7 @@ def _tracked_files() -> list[str]:
 def test_source_notebooks_live_only_in_canonical_dirs() -> None:
     """Source ``.ipynb`` files belong under ``notebooks/`` (the parity-notebook
     system) or ``examples/`` (standalone example notebooks).  This prevents
-    notebook sprawl into new ad-hoc directories.  ``docs/notebooks/`` holds
+    notebook sprawl into new ad-hoc directories.  ``docs/notebook_galleries/`` holds
     GENERATED galleries (README.md + PNG), never source ``.ipynb``.
     """
     allowed_prefixes = ("notebooks/", "examples/")
@@ -65,12 +65,12 @@ def test_source_notebooks_live_only_in_canonical_dirs() -> None:
 
 
 def test_notebook_manifest_matches_disk_one_to_one() -> None:
-    """``tools/notebooks/notebook_manifest.yml`` is the single authoritative
+    """``tools/notebook_build/notebook_manifest.yml`` is the single authoritative
     notebook catalogue and must stay exactly in sync with ``notebooks/*.ipynb``
     — no dangling entries, no uncatalogued notebooks.
     """
     manifest = yaml.safe_load(
-        (REPO_ROOT / "tools" / "notebooks" / "notebook_manifest.yml").read_text(encoding="utf-8")
+        (REPO_ROOT / "tools" / "notebook_build" / "notebook_manifest.yml").read_text(encoding="utf-8")
     )
     catalogued = {row["topic"] for row in manifest["notebooks"]}
     on_disk = {p.stem for p in (REPO_ROOT / "notebooks").glob("*.ipynb")}
@@ -87,7 +87,7 @@ def test_single_notebook_registry() -> None:
     """
     assert not (REPO_ROOT / "examples" / "nSTATPaperExamples").exists(), (
         "examples/nSTATPaperExamples/ is a removed duplicate notebook registry; "
-        "the single source of truth is tools/notebooks/notebook_manifest.yml"
+        "the single source of truth is tools/notebook_build/notebook_manifest.yml"
     )
 
 

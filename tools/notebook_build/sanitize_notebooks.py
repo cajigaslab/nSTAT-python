@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--notebook-dir", type=Path, default=Path("notebooks"))
-    parser.add_argument("--manifest", type=Path, default=Path("tools/notebooks/notebook_manifest.yml"))
+    parser.add_argument("--manifest", type=Path, default=Path("tools/notebook_build/notebook_manifest.yml"))
     return parser.parse_args()
 
 

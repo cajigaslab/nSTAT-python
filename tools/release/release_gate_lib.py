@@ -30,7 +30,7 @@ def build_release_gate_commands(repo: Path | None = None) -> list[list[str]]:
             "tests/test_parity_report.py",
             "tests/test_cleanroom_boundary.py",
         ],
-        [sys.executable, str(base / "tools" / "notebooks" / "run_notebooks.py"), "--group", "parity_core", "--timeout", "900"],
+        [sys.executable, str(base / "tools" / "notebook_build" / "run_notebooks.py"), "--group", "parity_core", "--timeout", "900"],
         [sys.executable, str(base / "tools" / "parity" / "build_report.py")],
     ]
 
