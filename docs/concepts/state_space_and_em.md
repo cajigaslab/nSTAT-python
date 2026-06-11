@@ -26,10 +26,10 @@ tuning is **fixed** for the whole recording. That is often false:
 
 A **state-space model** has two layers:
 
-1. A **state equation** describing how a hidden state `xₜ` evolves
-   (e.g. a random walk `xₜ = A·xₜ₋₁ + noise`).
+1. A **state equation** describing how a hidden state $x_t$ evolves
+   (e.g. a random walk $x_t = A \, x_{t-1} + \text{noise}$).
 2. An **observation equation** linking the state to what we measure — here,
-   spikes via a point-process GLM whose parameters depend on `xₜ`.
+   spikes via a point-process GLM whose parameters depend on $x_t$.
 
 The job is to estimate the *trajectory* of the hidden state (and the model
 parameters) from the spikes alone.
