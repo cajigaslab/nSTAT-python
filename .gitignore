@@ -29,3 +29,7 @@ tests/test_matlab_python_parity.py
 # Local AI-agent playbook (personal config; not shared with the repo).
 # The repository-wide AI-agent guidance lives in AGENT_GUIDE.md.
 CLAUDE.md
+
+# MATLAB-engine-driven helpfile captures (regenerated via
+# tools/parity/matlab/run_helpfile.py; not for commit).
+tests/parity/captured_matlab_helpfile_outputs/

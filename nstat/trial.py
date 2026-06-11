@@ -239,8 +239,33 @@ class CovariateCollection:
                 self.addToColl(cov)
             return
         if isinstance(covariates, Covariate):
-            self.covArray.append(_copy_covariate(covariates))
+            new_cov = _copy_covariate(covariates)
+            self.covArray.append(new_cov)
             self.covMask.append(np.ones(covariates.dimension, dtype=int))
+            # Reconcile sample rates per MATLAB ``CovColl.m:799-810``
+            # (audit finding H3): if the new covariate's rate is HIGHER
+            # than the collection's, the collection rate is bumped up
+            # and ``enforceSampleRate`` upsamples every previously-
+            # stored covariate.  If the collection rate is higher than
+            # the new covariate's, the new covariate is upsampled
+            # in-place to match.
+            cov_rate = float(new_cov.sampleRate) if np.isfinite(new_cov.sampleRate) else None
+            coll_rate = float(self.sampleRate) if np.isfinite(self.sampleRate) else None
+            # Use ``len(self.covArray)`` not ``self.numCov`` because
+            # ``_refresh_summary`` (which updates ``numCov``) runs at the
+            # very end of ``addToColl``; ``self.numCov`` is stale here.
+            n_after_append = len(self.covArray)
+            if cov_rate is not None:
+                if coll_rate is None or n_after_append == 1:
+                    # First element — adopt the new cov's rate.
+                    self.sampleRate = cov_rate
+                elif coll_rate < cov_rate:
+                    # New cov has higher rate — upsample the collection.
+                    self.sampleRate = cov_rate
+                    self.enforceSampleRate()
+                elif coll_rate > cov_rate:
+                    # New cov has lower rate — upsample only the new cov.
+                    new_cov.resampleMe(coll_rate)
             self._refresh_summary()
             return
         if isinstance(covariates, Sequence) and not isinstance(covariates, (str, bytes, np.ndarray)):
@@ -372,9 +397,28 @@ class CovariateCollection:
         self.setSampleRate(sampleRate)
 
     def enforceSampleRate(self) -> None:
-        """Ensure the collection's sample rate is finite and positive."""
+        """Resample every stored covariate to match ``self.sampleRate``.
+
+        Matches MATLAB ``CovColl.m:491-502`` which iterates each
+        covariate and calls ``resampleMe`` whenever its rate differs
+        from the collection's rate.  The previous Python implementation
+        only validated that ``self.sampleRate`` was finite; it did NOT
+        actually resample stored covariates.  Net effect: a collection
+        built by sequentially adding covariates at increasing rates
+        would report ``self.sampleRate`` at the highest rate but leave
+        earlier covariates at their original (lower) rates.  Closes
+        audit finding H3.
+        """
         if not np.isfinite(self.sampleRate) or self.sampleRate <= 0:
             self.sampleRate = self.findMaxSampleRate()
+        if not np.isfinite(self.sampleRate) or self.sampleRate <= 0:
+            return
+        target_rate = float(self.sampleRate)
+        for cov in self.covArray:
+            if not np.isfinite(cov.sampleRate):
+                continue
+            if round(cov.sampleRate, 6) != round(target_rate, 6):
+                cov.resampleMe(target_rate)
 
     def resetMask(self) -> None:
         """Enable all covariate dimensions (clear any masking)."""
@@ -546,7 +590,17 @@ class CovariateCollection:
                 self.covMask[idx - 1] = np.zeros(cov.dimension, dtype=int)
 
     def setCovShift(self, deltaT: float, identifier=None) -> "CovariateCollection":
-        """Apply a temporal shift *deltaT* to the collection's time axis."""
+        """Apply a temporal shift *deltaT* to the collection's time axis.
+
+        Matches MATLAB ``CovColl.m:504-520`` which calls
+        ``resetCovShift`` *first* (zeroing any previously-applied shift
+        and recomputing base bounds) and then sets the new shift.  The
+        previous Python implementation accumulated shifts: calling
+        ``setCovShift(0.2)`` twice produced ``base + 0.4`` instead of
+        the intended ``base + 0.2``.  Closes audit finding L1.
+        """
+        del identifier  # MATLAB-compat positional; not used (see CovColl.m:506).
+        self.resetCovShift()
         self.covShift = float(deltaT)
         if np.isfinite(self.minTime):
             self.minTime = float(self.minTime + self.covShift)
