@@ -28,6 +28,30 @@ def test_trial_analysis_pipeline() -> None:
     assert summary.meanAIC.shape == (1,)
 
 
+def test_run_analysis_for_all_neurons_honors_neuron_mask() -> None:
+    """Audit finding H3 (Agent 4): MATLAB ``Analysis.m`` iterates only
+    unmasked neurons.  Python previously iterated the full range,
+    silently fitting masked-out neurons."""
+    t = np.arange(0.0, 1.0, 0.001)
+    stim = np.sin(2 * np.pi * 2 * t)
+    cov = Covariate(t, stim, "stim", "time", "s", "a.u.", ["stim"])
+    model = CIFModel(t, 10.0 + 5.0 * np.maximum(stim, 0.0), name="lambda")
+    spikes = model.simulate(num_realizations=4, seed=3)
+    trial = Trial(spike_collection=spikes, covariate_collection=CovariateCollection([cov]))
+    cfgs = ConfigCollection([TrialConfig(covMask=[["stim", "stim"]], sampleRate=1000.0, name="stim_model")])
+
+    # Unmasked sanity check
+    fits_all = Analysis.run_analysis_for_all_neurons(trial, cfgs)
+    assert len(fits_all) == 4
+
+    # Mask out neurons 2 and 3 (1-based): keep [1, 4].
+    trial.spike_collection.setMask([1, 0, 0, 1])
+    fits_masked = Analysis.run_analysis_for_all_neurons(trial, cfgs)
+    assert len(fits_masked) == 2
+    # Reset for clarity
+    trial.spike_collection.setMask([1, 1, 1, 1])
+
+
 def test_analysis_helpers_accept_multi_trial_spike_inputs_like_matlab() -> None:
     time = np.arange(0.0, 1.1, 0.1)
     lam = Covariate(time, np.full(time.shape, 2.0), "\\lambda(t)", "time", "s", "Hz", ["lambda"])
