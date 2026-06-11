@@ -154,7 +154,7 @@ def _time_rescaled_z(counts: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarray:
 
 def _fit_lambda_matrix_to_covariate(lambda_time: np.ndarray, lambda_columns: list[np.ndarray], lambda_index: int) -> Covariate:
     data = np.column_stack([np.asarray(col, dtype=float).reshape(-1) for col in lambda_columns]) if lambda_columns else np.zeros((lambda_time.size, 0), dtype=float)
-    data_labels = [f"\\lambda_{{{idx}}}" for idx in range(1, data.shape[1] + 1)]
+    data_labels = [f"\\lambda_{{{idx + 1}}}" for idx in range(data.shape[1])]
     return Covariate(
         lambda_time,
         data,
@@ -484,7 +484,7 @@ class Analysis:
         spike_validation = None
         has_validation = False
 
-        for cfg_index in range(1, config_collection.numConfigs + 1):
+        for cfg_index in range(config_collection.numConfigs):
             _restore_trial_partition(trial, original_partition)
             config_collection.setConfig(trial, cfg_index)
 
@@ -567,7 +567,7 @@ class Analysis:
         # Compute KS stats for ALL fits (not just fit 1) so that history
         # sweeps and multi-model comparisons have correct KS statistics.
         import warnings as _warnings
-        for _fit_i in range(1, fit_result.numResults + 1):
+        for _fit_i in range(fit_result.numResults):
             try:
                 fit_result.computeKSStats(fit_num=_fit_i)
             except (np.linalg.LinAlgError, ValueError, ZeroDivisionError,
@@ -1232,10 +1232,10 @@ class Analysis:
 
         for target_offset, neuron_index in enumerate(neuron_indices):
             baseline_cfg = TrialConfig(cov_mask, sample_rate, tObj.history, ens_hist, ens_mask, name="Baseline")
-            neighbors = np.flatnonzero(ens_mask[:, neuron_index - 1] == 1) + 1
+            neighbors = np.flatnonzero(ens_mask[:, neuron_index] == 1)
             for neighbor in neighbors:
                 reduced_mask = ens_mask.copy()
-                reduced_mask[neighbor - 1, neuron_index - 1] = 0
+                reduced_mask[neighbor, neuron_index] = 0
                 excluded_cfg = TrialConfig(
                     cov_mask,
                     sample_rate,
@@ -1247,24 +1247,24 @@ class Analysis:
                 fit = Analysis.RunAnalysisForNeuron(tObj, neuron_index, ConfigCollection([baseline_cfg, excluded_cfg]), 0, Algorithm)
                 fitResults[target_offset].append(fit)
                 gamma = float(np.asarray(fit.logLL, dtype=float)[1] - np.asarray(fit.logLL, dtype=float)[0])
-                gammaMat[neighbor - 1, neuron_index - 1] = gamma
+                gammaMat[neighbor, neuron_index] = gamma
                 deviance = float(max(-2.0 * gamma, 0.0))
-                devianceMat[neighbor - 1, neuron_index - 1] = deviance
+                devianceMat[neighbor, neuron_index] = deviance
                 dim_diff = max(int(abs(np.diff(np.asarray(fit.numCoeffs, dtype=int))[0])), 1)
                 p_val = float(chi2.sf(deviance, dim_diff))
                 p_vals.append(p_val)
-                p_coords.append((neighbor - 1, neuron_index - 1))
+                p_coords.append((neighbor, neuron_index))
                 # Matlab: extract only the specific neighbor's ensemble
-                # coefficients from the BASELINE model (fit 1) for the sign.
+                # coefficients from the BASELINE model (fit 0) for the sign.
                 if np.any(np.asarray(fit.numHist, dtype=int) > 0):
-                    coeffs_all, labels_all, _ = fit.getCoeffsWithLabels(1)
+                    coeffs_all, labels_all, _ = fit.getCoeffsWithLabels(0)
                     neighbor_prefix = f"{neighbor}:["
                     neighbor_mask = np.array([str(lbl).startswith(neighbor_prefix) for lbl in labels_all], dtype=bool)
                     neighbor_coeffs = coeffs_all[neighbor_mask] if np.any(neighbor_mask) else np.array([], dtype=float)
                 else:
                     neighbor_coeffs = np.array([], dtype=float)
                 if neighbor_coeffs.size:
-                    phiMat[neighbor - 1, neuron_index - 1] = -float(np.sign(np.sum(neighbor_coeffs))) * gamma
+                    phiMat[neighbor, neuron_index] = -float(np.sign(np.sum(neighbor_coeffs))) * gamma
 
         if p_vals:
             keep = _benjamini_hochberg(np.asarray(p_vals, dtype=float), alpha=max(alpha, 1e-6))
@@ -1319,7 +1319,7 @@ class Analysis:
         neighbor_mask = np.zeros((tObj.nspikeColl.numSpikeTrains, tObj.nspikeColl.numSpikeTrains), dtype=int)
         neighbors = np.asarray(tObj.getNeuronNeighbors(neuron_index), dtype=int).reshape(-1)
         if neighbors.size:
-            neighbor_mask[neighbors - 1, neuron_index - 1] = 1
+            neighbor_mask[neighbors, neuron_index] = 1
 
         configs = [TrialConfig([], sampleRate, [], [], [], [], name="Baseline")]
         for i in range(2, windows.size + 1):
@@ -1358,15 +1358,15 @@ class Analysis:
         spike_times = np.asarray(train.getSpikeTimes(), dtype=float).reshape(-1)
         time_axis = np.arange(-float(windowSize) / 2.0, float(windowSize) / 2.0 + 1.0 / float(tObj.sampleRate), 1.0 / float(tObj.sampleRate))
         covariates = []
-        for cov_index in range(1, tObj.covarColl.numCov + 1):
+        for cov_index in range(tObj.covarColl.numCov):
             cov = tObj.getCov(cov_index)
             if spike_times.size == 0:
                 samples = np.zeros((time_axis.size, 0, cov.dimension), dtype=float)
             else:
                 sampled = [cov.getValueAt(spike_time + time_axis) for spike_time in spike_times]
                 samples = np.stack(sampled, axis=1)
-            for dim_index, label in enumerate(cov.dataLabels, start=1):
-                data = samples[:, :, dim_index - 1] if samples.size else np.zeros((time_axis.size, 0), dtype=float)
+            for dim_index, label in enumerate(cov.dataLabels):
+                data = samples[:, :, dim_index] if samples.size else np.zeros((time_axis.size, 0), dtype=float)
                 covariates.append(
                     Covariate(
                         time_axis,
@@ -1375,7 +1375,7 @@ class Analysis:
                         cov.xlabelval,
                         cov.xunits,
                         cov.yunits,
-                        [f"{label}_spike_{idx}" for idx in range(1, data.shape[1] + 1)] or [label],
+                        [f"{label}_spike_{idx + 1}" for idx in range(data.shape[1])] or [label],
                     )
                 )
         return CovariateCollection(covariates)
