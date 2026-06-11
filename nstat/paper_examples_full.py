@@ -512,9 +512,15 @@ def _evaluate_place_models(x: np.ndarray, y: np.ndarray, time: np.ndarray, neuro
         spike_times = np.asarray(neurons[idx].spikeTimes, dtype=float).reshape(-1)
         y_spike = _spike_indicator(time, spike_times)
         mg = fit_poisson_glm(x_gauss, y_spike, offset=offset, max_iter=70)
-        mz = fit_poisson_glm(x_zern, y_spike, offset=offset, max_iter=70)
+        # Zernike basis already includes the constant Z_0^0 mode, which
+        # acts as the intercept — matches MATLAB helpfile
+        # ``HippocampalPlaceCellExample.m:83-84`` (``tc{2}`` has only
+        # ``{Zernike.z1..z10}`` with no Baseline).  Without
+        # ``include_intercept=False`` we double-count and bias the fit.
+        mz = fit_poisson_glm(x_zern, y_spike, offset=offset,
+                             include_intercept=False, max_iter=70)
         aicg, bicg = _aic_bic(mg.log_likelihood, y_spike.shape[0], x_gauss.shape[1] + 1)
-        aicz, bicz = _aic_bic(mz.log_likelihood, y_spike.shape[0], x_zern.shape[1] + 1)
+        aicz, bicz = _aic_bic(mz.log_likelihood, y_spike.shape[0], x_zern.shape[1])
         d_aic.append(aicg - aicz)
         d_bic.append(bicg - bicz)
         gaussian_fields.append(mg.predict_rate(grid_gauss).reshape(xx.shape))

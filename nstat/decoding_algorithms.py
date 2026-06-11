@@ -2829,9 +2829,11 @@ class DecodingAlgorithms:
                     converged = True
                     break
 
-            # Clamp gamma — Matlab: gamma_new(gamma_new>1e2)=1e1
-            # Only reduce excessively large positive values to 10
+            # Clamp gamma — Matlab SSGLM.m:596-597. Symmetric clamp prevents
+            # exp(gamma * H) underflow in subsequent E-step (large-magnitude
+            # gamma → 0 or inf after exponentiation).
             gamma_new[gamma_new > 1e2] = 1e1
+            gamma_new[gamma_new < -1e2] = -1e1
 
         return Qhat, gamma_new
 

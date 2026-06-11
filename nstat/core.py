@@ -23,6 +23,21 @@ from typing import Any
 import numpy as np
 
 
+def _matlab_colon(start: float, step: float, stop: float) -> np.ndarray:
+    """Replicate MATLAB ``start:step:stop`` exactly.
+
+    MATLAB's colon operator computes ``m = fix((stop-start)/step)`` and
+    returns ``m+1`` samples.  ``np.arange`` accumulates float error and
+    occasionally produces one extra sample for stop values that lie just
+    below an integer multiple of step — silently corrupting any caller
+    that compares lengths or aligns with a MATLAB-generated time vector.
+    """
+    if step == 0.0:
+        raise ValueError("_matlab_colon: step must be non-zero")
+    m = int(np.floor((stop - start) / step + 1e-12))
+    return start + np.arange(m + 1) * step
+
+
 def _as_1d_float(values: Sequence[float] | np.ndarray, name: str) -> np.ndarray:
     array = np.asarray(values, dtype=float)
     if array.ndim == 0:
@@ -663,7 +678,10 @@ class SignalObj:
         if target < float(np.min(timeVec)):
             maxTime = float(np.max(timeVec))
             dt = 1.0 / self.sampleRate
-            newTime = np.arange(target, maxTime + 0.5 * dt, dt, dtype=float)
+            # MATLAB SignalObj.m:302 uses ``minTime:1/sampleRate:maxTime`` here.
+            # ``np.arange`` overshoots for stop values just below an integer
+            # multiple of dt; ``_matlab_colon`` matches MATLAB exactly.
+            newTime = _matlab_colon(target, dt, maxTime)
             numSamples = int(newTime.size - timeVec.size)
             if holdVals == 1:
                 pad = np.tile(self.data[0:1, :], (numSamples, 1))
