@@ -211,6 +211,20 @@ def main() -> int:
     index_rows: list[dict] = []
     failures: list[str] = []
 
+    def _row_from_existing(tgt) -> dict | None:
+        """Reconstruct an index row from a notebook's already-committed gallery,
+        so a subset run (e.g. --skip-execute over only the executed notebooks)
+        preserves every notebook's index entry instead of dropping it."""
+        existing = sorted((GALLERY_ROOT / tgt.topic).glob("fig_*.png"))
+        if not existing:
+            return None
+        return {
+            "topic": tgt.topic,
+            "count": len(existing),
+            "real_count": sum(1 for f in existing if has_real_content(f)),
+            "source_basename": tgt.path.name,
+        }
+
     for tgt in targets:
         if not tgt.path.exists():
             failures.append(f"missing notebook source: {tgt.path}")
@@ -227,13 +241,20 @@ def main() -> int:
         produced = OUTPUT_ROOT / tgt.topic
         manifest_path = produced / "manifest.json"
         if not manifest_path.exists():
-            # Notebook either has no FigureTracker or did not finalize.
-            print(f"  (skip) {tgt.topic}: no manifest.json under output/notebook_images/")
+            # Not executed this run (or no FigureTracker): keep its committed
+            # gallery and index entry rather than dropping it.
+            print(f"  (keep) {tgt.topic}: not executed this run; preserving committed gallery")
+            row = _row_from_existing(tgt)
+            if row:
+                index_rows.append(row)
             continue
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         figures = list(manifest.get("images", []))
         if not figures:
-            print(f"  (skip) {tgt.topic}: empty figure list")
+            print(f"  (keep) {tgt.topic}: empty figure list; preserving committed gallery")
+            row = _row_from_existing(tgt)
+            if row:
+                index_rows.append(row)
             continue
 
         gallery_dir = GALLERY_ROOT / tgt.topic
