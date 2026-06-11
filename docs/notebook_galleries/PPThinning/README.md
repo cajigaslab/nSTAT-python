@@ -7,7 +7,7 @@ MATLAB-line annotations look like blank pages with code snippets and indicate th
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
 - Source notebook: [`notebooks/PPThinning.ipynb`](../../notebooks/PPThinning.ipynb)
-- Figures: 3 (1 with substantive plot content)
+- Figures: 3 (3 with substantive plot content)
 
 ## Figures
 

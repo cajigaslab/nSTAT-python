@@ -7,7 +7,7 @@ MATLAB-line annotations look like blank pages with code snippets and indicate th
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
 - Source notebook: [`notebooks/PSTHEstimation.ipynb`](../../notebooks/PSTHEstimation.ipynb)
-- Figures: 2 (1 with substantive plot content)
+- Figures: 2 (2 with substantive plot content)
 
 ## Figures
 
