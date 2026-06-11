@@ -173,6 +173,17 @@ class History:
             num_samples = int(np.ceil(float(window_stop) / delta))
             start_sample = int(np.ceil(float(window_start) / delta)) + 1
             del row
+            # ``toFilter`` numerator is ``size = num_samples + 1`` with
+            # a leading zero — MATLAB-faithful per ``History.m:165-168``
+            # ``b(i,(StartSample:NumSamples)+1)=1; %delay by 1``.  The
+            # ``computeHistory`` / ``_compute_single_history`` path uses
+            # ``size = num_samples`` and applies its own ``[0, 1]`` delay
+            # filter externally, so the two construction paths produce
+            # the same final convolution with 1-sample shift offsets
+            # that cancel in the output.  Both match the MATLAB gold
+            # fixture ``history_exactness.mat``.  Audit finding H2:
+            # verified harmless; do NOT "unify" by dropping the leading
+            # zero — that breaks ``test_history_matches_matlab_gold_fixture``.
             numerator = np.zeros(num_samples + 1, dtype=float)
             denominator = np.zeros(num_samples + 1, dtype=float)
             denominator[0] = 1.0

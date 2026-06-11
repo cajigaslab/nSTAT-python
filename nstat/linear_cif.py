@@ -434,16 +434,19 @@ class LinearCIF:
         )
 
     def _link_inverse(self, eta: float) -> float:
-        """Apply the canonical inverse link to the linear predictor."""
+        """Apply the canonical inverse link to the linear predictor.
+
+        For ``fitType='binomial'`` this is a logistic sigmoid σ(η);
+        for ``'poisson'`` it is ``exp(η)``.  The sigmoid is the shared
+        :func:`nstat.cif._sigmoid` helper (audit finding H1 — unified
+        with the cif.py path so both CIF classes produce numerically
+        identical λ values).
+        """
         if self.fitType == "poisson":
             return float(np.exp(eta))
-        # binomial — numerically stable sigmoid (avoids overflow of exp(-eta)
-        # for very negative eta and of exp(eta) for very positive eta).
-        if eta >= 0:
-            ez = float(np.exp(-eta))
-            return 1.0 / (1.0 + ez)
-        ez = float(np.exp(eta))
-        return ez / (1.0 + ez)
+        # binomial — delegate to the shared two-branch stable sigmoid.
+        from .cif import _sigmoid as _shared_sigmoid
+        return float(_shared_sigmoid(np.asarray(eta, dtype=float)))
 
 
 # ----------------------------------------------------------------------
