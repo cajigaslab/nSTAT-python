@@ -10,7 +10,7 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-NOTES_PATH = REPO_ROOT / "tools" / "notebooks" / "parity_notes.yml"
+NOTES_PATH = REPO_ROOT / "tools" / "notebook_build" / "parity_notes.yml"
 MARKER = "<!-- parity-note -->"
 
 

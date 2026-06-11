@@ -10,7 +10,7 @@ import nbformat
 import yaml
 
 
-PARITY_NOTES_RELATIVE_PATH = Path("tools") / "notebooks" / "parity_notes.yml"
+PARITY_NOTES_RELATIVE_PATH = Path("tools") / "notebook_build" / "parity_notes.yml"
 NOTEBOOK_IMAGE_ROOT = Path("output") / "notebook_images"
 FIGURE_MANIFEST_NAME = "manifest.json"
 FIGURE_TRACKER_RE = re.compile(

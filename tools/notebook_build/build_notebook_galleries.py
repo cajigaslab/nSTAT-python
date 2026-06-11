@@ -7,17 +7,17 @@ For each notebook in the manifest, this script:
    the notebooks set ``matplotlib.use("Agg")`` and write figures to
    ``output/notebook_images/<topic>/`` via :class:`nstat.notebook_figures.FigureTracker`).
 2. Copies the produced PNGs from ``output/notebook_images/<topic>/`` into
-   ``docs/notebooks/<topic>/`` so they're tracked under git and render on
+   ``docs/notebook_galleries/<topic>/`` so they're tracked under git and render on
    the GitHub repo browser.
 3. Writes a per-notebook gallery ``README.md`` (PNG list with anchors) and
-   an index ``docs/notebooks/README.md`` table cross-referencing source
+   an index ``docs/notebook_galleries/README.md`` table cross-referencing source
    notebooks and figure galleries.
 
 Run via ``make regen-notebook-galleries`` or directly:
 
-    python tools/notebooks/build_notebook_galleries.py
-    python tools/notebooks/build_notebook_galleries.py --group smoke
-    python tools/notebooks/build_notebook_galleries.py --skip-execute   # use existing output/
+    python tools/notebook_build/build_notebook_galleries.py
+    python tools/notebook_build/build_notebook_galleries.py --group smoke
+    python tools/notebook_build/build_notebook_galleries.py --skip-execute   # use existing output/
 """
 from __future__ import annotations
 
@@ -38,9 +38,9 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 OUTPUT_ROOT = REPO_ROOT / "output" / "notebook_images"
-GALLERY_ROOT = REPO_ROOT / "docs" / "notebooks"
-MANIFEST = REPO_ROOT / "tools" / "notebooks" / "notebook_manifest.yml"
-GROUPS = REPO_ROOT / "tools" / "notebooks" / "topic_groups.yml"
+GALLERY_ROOT = REPO_ROOT / "docs" / "notebook_galleries"
+MANIFEST = REPO_ROOT / "tools" / "notebook_build" / "notebook_manifest.yml"
+GROUPS = REPO_ROOT / "tools" / "notebook_build" / "topic_groups.yml"
 
 
 @dataclass(frozen=True)
@@ -245,12 +245,12 @@ def main() -> int:
                 "source_basename": tgt.path.name,
             }
         )
-        print(f"  wrote docs/notebooks/{tgt.topic}/ ({len(figures)} PNG{'s' if len(figures)!=1 else ''}, real={real_count})")
+        print(f"  wrote docs/notebook_galleries/{tgt.topic}/ ({len(figures)} PNG{'s' if len(figures)!=1 else ''}, real={real_count})")
 
     index_rows.sort(key=lambda r: r["topic"])
     if index_rows:
         build_index_readme(index_rows)
-        print(f"wrote docs/notebooks/README.md ({len(index_rows)} entries)")
+        print(f"wrote docs/notebook_galleries/README.md ({len(index_rows)} entries)")
 
     if failures:
         print("", file=sys.stderr)

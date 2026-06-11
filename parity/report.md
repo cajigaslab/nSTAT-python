@@ -1,6 +1,6 @@
 # nSTAT Python Parity Report
 
-Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebooks/parity_notes.yml`, and live runtime inspection of the audited Python public surface.
+Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebook_build/parity_notes.yml`, and live runtime inspection of the audited Python public surface.
 
 - MATLAB reference: https://github.com/cajigaslab/nSTAT
 - Python target: https://github.com/cajigaslab/nSTAT-python
@@ -87,7 +87,7 @@ No partial or missing items remain in the mapping inventory.
 
 ## Remaining Notebook-Fidelity Deltas
 
-No partial notebook-fidelity items remain in `tools/notebooks/parity_notes.yml`.
+No partial notebook-fidelity items remain in `tools/notebook_build/parity_notes.yml`.
 
 ## Remaining Class-Fidelity Deltas
 

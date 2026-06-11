@@ -38,18 +38,18 @@ jobs:
           python -m pip install ipykernel
           python -m ipykernel install --user --name python3 --display-name "Python 3"
       - name: Execute mapped MATLAB helpfile notebooks
-        run: python tools/notebooks/run_notebooks.py --group helpfile_full --timeout 1200
-      - name: Rebuild docs/notebooks/ galleries
+        run: python tools/notebook_build/run_notebooks.py --group helpfile_full --timeout 1200
+      - name: Rebuild docs/notebook_galleries/ galleries
         # Bytes-must-match: regenerate galleries from the just-executed
         # notebooks and fail if anything drifts.  This is the
         # workflow_dispatch-only counterpart of the paper-figure drift
         # gate in ci.yml::regenerate-figures.
-        run: python tools/notebooks/build_notebook_galleries.py --group full --skip-execute
+        run: python tools/notebook_build/build_notebook_galleries.py --group full --skip-execute
       - name: Fail on notebook-gallery drift
         run: |
-          if ! git diff --quiet -- 'docs/notebooks/'; then
+          if ! git diff --quiet -- 'docs/notebook_galleries/'; then
             echo "DRIFT: regenerated notebook galleries differ from committed:" >&2
-            git --no-pager diff --stat -- 'docs/notebooks/' >&2
+            git --no-pager diff --stat -- 'docs/notebook_galleries/' >&2
             echo "Run 'make regen-notebook-galleries' locally and commit." >&2
             exit 1
           fi
@@ -58,5 +58,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: notebook-galleries
-          path: docs/notebooks/
+          path: docs/notebook_galleries/
           retention-days: 30

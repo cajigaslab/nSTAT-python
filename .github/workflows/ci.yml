@@ -167,7 +167,7 @@ jobs:
           python -m pip install ipykernel
           python -m ipykernel install --user --name python3 --display-name "Python 3"
       - name: Execute Python notebook smoke group
-        run: python tools/notebooks/run_notebooks.py --group ci_smoke --timeout 600
+        run: python tools/notebook_build/run_notebooks.py --group ci_smoke --timeout 600
 
   notebook-parity-core:
     runs-on: ubuntu-latest
@@ -191,7 +191,7 @@ jobs:
           python -m pip install ipykernel
           python -m ipykernel install --user --name python3 --display-name "Python 3"
       - name: Execute Python notebook parity-core group
-        run: python tools/notebooks/run_notebooks.py --group parity_core --timeout 900
+        run: python tools/notebook_build/run_notebooks.py --group parity_core --timeout 900
 
   notebook-changed-pr:
     if: github.event_name == 'pull_request'
@@ -220,14 +220,14 @@ jobs:
       - name: Resolve changed notebook topics
         id: changed_topics
         run: |
-          TOPICS=$(python tools/notebooks/changed_topics.py \
+          TOPICS=$(python tools/notebook_build/changed_topics.py \
             --base-sha "${{ github.event.pull_request.base.sha }}" \
             --head-sha "${{ github.sha }}")
           echo "topics=${TOPICS}" >> "$GITHUB_OUTPUT"
           echo "Resolved notebook topics: ${TOPICS:-<none>}"
       - name: Execute changed notebook topics
         if: steps.changed_topics.outputs.topics != ''
-        run: python tools/notebooks/run_notebooks.py --group full --topics "${{ steps.changed_topics.outputs.topics }}" --timeout 1200
+        run: python tools/notebook_build/run_notebooks.py --group full --topics "${{ steps.changed_topics.outputs.topics }}" --timeout 1200
       - name: No notebook changes detected
         if: steps.changed_topics.outputs.topics == ''
         run: echo "No changed notebook topics to execute."

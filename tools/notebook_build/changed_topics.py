@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = Path(__file__).resolve().parent / "notebook_manifest.yml"
 GROUPS_PATH = Path(__file__).resolve().parent / "topic_groups.yml"
 NOTEBOOK_INFRA_PATTERNS = (
-    "tools/notebooks/",
+    "tools/notebook_build/",
     "nstat/notebook_",
     "parity/notebook_fidelity.yml",
     "parity/report.md",

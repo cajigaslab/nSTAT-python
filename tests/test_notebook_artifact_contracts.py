@@ -10,7 +10,7 @@ from nstat.notebook_parity import extract_figure_contract
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-NOTEBOOK_MANIFEST_PATH = REPO_ROOT / "tools" / "notebooks" / "notebook_manifest.yml"
+NOTEBOOK_MANIFEST_PATH = REPO_ROOT / "tools" / "notebook_build" / "notebook_manifest.yml"
 
 
 def test_notebook_figure_tracker_contracts_match_manifest_topics() -> None:

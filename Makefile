@@ -68,16 +68,16 @@ regen-gallery:  ## docs/paper_examples.md + docs/figures/manifest.json + README 
 regen-parity:  ## parity/report.md from parity manifests.
 	$(PY) tools/parity/build_report.py
 
-regen-notebook-fidelity:  ## parity/notebook_fidelity.yml from tools/notebooks/parity_notes.yml.
+regen-notebook-fidelity:  ## parity/notebook_fidelity.yml from tools/notebook_build/parity_notes.yml.
 	$(PY) tools/parity/build_notebook_fidelity_audit.py
 
 regen-figures:  ## ~30 min — regenerate every paper-example PNG (needs figshare dataset).
 	@echo "Note: this requires the figshare paper dataset.  Set NSTAT_OFFLINE=1 to fail-fast."
 	$(PY) examples/paper/regenerate_all_figures.py
 
-regen-notebook-galleries:  ## Execute every notebook + rebuild docs/notebooks/<topic>/README.md + PNGs.
+regen-notebook-galleries:  ## Execute every notebook + rebuild docs/notebook_galleries/<topic>/README.md + PNGs.
 	@echo "Note: executes notebooks via nbclient; needs the figshare paper dataset for full coverage."
-	$(PY) tools/notebooks/build_notebook_galleries.py --group full
+	$(PY) tools/notebook_build/build_notebook_galleries.py --group full
 
 # --- docs ------------------------------------------------------------
 
