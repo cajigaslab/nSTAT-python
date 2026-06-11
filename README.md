@@ -16,6 +16,8 @@
 
 </div>
 
+**Jump to:** [Quickstart](#quickstart) · [Concepts learning track](#concepts-learning-track) · [Tutorials and notebooks](#tutorials-and-notebooks) · [Paper examples](#paper-examples) · [`nstat.extras` helpfiles](#nstatextras-helpfiles) · [Reference](#reference) · [Ecosystem](#ecosystem) · [Citation](#citation)
+
 > 📖 **New here?** Start with the
 > [**5-minute intro**](https://cajigaslab.github.io/nSTAT-python/intro.html) —
 > a friendly tour of the toolbox with runnable snippets, the
@@ -27,95 +29,125 @@
 > goodness-of-fit, and decoding — with figures, runnable examples, and cited
 > literature.
 >
-> 🛠 **Other ways in:** six runnable end-to-end lessons in
-> [`examples/tutorials/`](examples/tutorials/) (encoding → GOF, decoding,
-> network coupling, place-cell capstone, clinical microelectrode); the five
-> canonical paper examples in [`examples/paper/`](examples/paper/); and the
+> 🛠 **Other ways in:** the runnable [`00_getting_started.ipynb`](notebooks/00_getting_started.ipynb)
+> notebook; six end-to-end tutorial scripts in [`examples/tutorials/`](examples/tutorials/);
+> the five paper examples in [`examples/paper/`](examples/paper/); and the
 > reference notebooks in [`notebooks/`](notebooks/).
 
-`nSTAT-python` is a Python port of the [nSTAT](https://github.com/cajigaslab/nSTAT)
-open-source neural spike train analysis toolbox. It implements a range of models and
-algorithms for neural spike train data analysis, with a focus on point-process
-generalized linear models (GLMs), model fitting, model-order analysis, and adaptive
-decoding. In addition to point-process algorithms, nSTAT also provides tools for
-Gaussian signals — from correlation analysis to the Kalman filter — applicable to
-continuous neural signals such as LFP, EEG, and ECoG.
+`nSTAT-python` is the Python port of the
+[nSTAT toolbox](https://github.com/cajigaslab/nSTAT)
+([Cajigas, Malik & Brown 2012](https://doi.org/10.1016/j.jneumeth.2012.08.009)).
+It implements point-process generalized linear models (GLMs) with stimulus,
+history, and ensemble terms; the
+[time-rescaling KS test](https://cajigaslab.github.io/nSTAT-python/concepts/goodness_of_fit_and_decoding.html)
+for goodness-of-fit (per-neuron and population-level via
+`population_time_rescale`, [Tao et al. 2018](https://pubmed.ncbi.nlm.nih.gov/30298220/));
+adaptive decoding (PPAF / PPHF / Kalman / EM); and continuous-signal analysis
+for LFP / EEG / ECoG (multitaper spectra, spectrograms, Kalman filtering). An
+opt-in [`nstat.extras`](#nstatextras-helpfiles) namespace adds bridges to
+Dynamax (EM-trained state-space models), `replay_trajectory_classification`
+(clusterless decoding), Neo / pynapple / pynwb (data I/O), and
+validation oracles.
 
-One of nSTAT's key strengths is point-process generalized linear models for spike
-train signals that provide a formal statistical framework for processing signals
-recorded from ensembles of single neurons. It also has extensive support for model
-fitting, model-order analysis, and adaptive decoding. Goodness-of-fit can be
-assessed per neuron with the time-rescaling KS test (`FitResult.computeKSStats`)
-or jointly across a population with the multivariate marked point-process
-time-rescaling test (`nstat.population_time_rescale`, Tao et al. 2018), which
-catches inter-neuron coupling misfit that per-neuron tests miss.
+Although designed for neural signal processing, nSTAT works as a generic
+toolkit for analyzing any discrete or continuous time series. From the lab:
+[Neuroscience Statistics Research Laboratory](https://www.neurostat.mit.edu)
+and [RESToRe Lab](https://www.med.upenn.edu/cajigaslab/).
 
-Although created with neural signal processing in mind, nSTAT can be used as a
-generic tool for analyzing any types of discrete and continuous signals, and thus
-has wide applicability.
-
-Like all open-source projects, nSTAT will benefit from your involvement,
-suggestions and contributions. This platform is intended as a repository for
-extensions to the toolbox based on your code contributions as well as for flagging
-and tracking open issues.
-
-The current release can be installed from PyPI: `pip install nstat-toolbox`
-
-Lab websites:
-- Neuroscience Statistics Research Laboratory: https://www.neurostat.mit.edu
-- RESToRe Lab: https://www.med.upenn.edu/cajigaslab/
-
-## How to install nSTAT
+## Quickstart
 
 ```bash
 python -m pip install nstat-toolbox
+nstat-install --download-example-data always   # ~150 MB figshare dataset
 ```
 
-From source:
+```python
+import numpy as np
+from nstat import nspikeTrain
+
+times = np.sort(np.random.default_rng(0).uniform(0, 1, 100))
+st = nspikeTrain(times, name="neuron1", sampleRate=1000,
+                 minTime=0.0, maxTime=1.0)
+print(f"{st.n_spikes} spikes")
+```
+
+From source (development install):
 
 ```bash
 git clone git@github.com:cajigaslab/nSTAT-python.git
 cd nSTAT-python
 python -m pip install -e .[dev]
-```
-
-Install the example dataset:
-
-```bash
 nstat-install --download-example-data always
+pytest -q && python tools/paper_examples/build_gallery.py
 ```
 
-Equivalent Python API:
+The example dataset is also reachable from Python:
 
 ```python
 from nstat.data_manager import ensure_example_data
 data_dir = ensure_example_data(download=True)
 ```
 
-Quickstart:
+## Concepts learning track
 
-```bash
-cd /path/to/nSTAT-python
-pip install -e .[dev]
-nstat-install --download-example-data always
-pytest -q && python tools/paper_examples/build_gallery.py
-```
+A 15-page didactic track that teaches the neuroscience and statistics behind
+the API. Each page builds intuition first, then shows the matching nSTAT
+objects and a runnable snippet, and cites the primary literature. The
+[concepts index](https://cajigaslab.github.io/nSTAT-python/concepts/index.html)
+hosts the full path; the table below is the direct map.
 
-## Paper Examples (Self-Contained)
+| # | Page | What you'll learn |
+|---|---|---|
+| 1 | [Microelectrode recordings: spikes & the LFP](https://cajigaslab.github.io/nSTAT-python/concepts/microelectrode_recordings.html) | What an electrode measures; the broadband → spikes + LFP split; single vs multi-unit; spike sorting. |
+| 2 | [Spike trains & point-process GLMs](https://cajigaslab.github.io/nSTAT-python/concepts/spike_trains_and_glms.html) | Spike trains as point processes, the conditional intensity function, log-link GLMs with stimulus + history + ensemble terms. |
+| 3 | [The LFP & spectral analysis](https://cajigaslab.github.io/nSTAT-python/concepts/lfp_and_spectral.html) | Multitaper power spectra, spectrograms, the time–bandwidth trade-off, Kalman filtering. |
+| 4 | [Goodness-of-fit & decoding](https://cajigaslab.github.io/nSTAT-python/concepts/goodness_of_fit_and_decoding.html) | Time-rescaling KS, population GOF, PPAF / PPHF decoding, clusterless decoding from waveform features. |
+| 5 | [State-space models & EM](https://cajigaslab.github.io/nSTAT-python/concepts/state_space_and_em.html) | The across-trial SSGLM (forward–backward smoother); EM-trained latent state-space models with multi-restart selection. |
+| 6 | [Network connectivity](https://cajigaslab.github.io/nSTAT-python/concepts/network_connectivity.html) | Ensemble GLM coupling, cross-correlograms, Granger; why correlation is not connection (the common-input trap). |
+| 7 | [Uncertainty & confidence intervals](https://cajigaslab.github.io/nSTAT-python/concepts/uncertainty_and_confidence.html) | Fisher information, CIs on coefficients and firing rates, credible bands on a decode. |
+| 8 | [Rhythmic firing & the clinical microelectrode](https://cajigaslab.github.io/nSTAT-python/concepts/rhythmic_firing_and_clinical_microelectrode.html) | Tremor cells modelled as a periodic-covariate GLM; the beta-band biomarker that guides adaptive DBS. |
+| 9 | [Population geometry](https://cajigaslab.github.io/nSTAT-python/concepts/population_geometry.html) | A PCA sketch of population activity; neural manifolds; pointers to GPFA and dimensionality reduction. |
+| 10 | [From filters to deep learning](https://cajigaslab.github.io/nSTAT-python/concepts/from_filters_to_deep_learning.html) | What carries over from the PPAF to RNN / LSTM / transformer decoders, and what changes. |
+| 11 | [Further study](https://cajigaslab.github.io/nSTAT-python/concepts/further_study.html) | Topics nSTAT does not implement, with primary references for each. |
+| 12 | [Pitfalls & FAQ](https://cajigaslab.github.io/nSTAT-python/concepts/pitfalls_and_faq.html) | Common mistakes that quietly invalidate an analysis — bin width, multiple comparisons, missing history, multitaper choices, reproducibility & seeds. |
+| 13 | [Self-check](https://cajigaslab.github.io/nSTAT-python/concepts/self_check.html) | Per-topic quizzes plus cross-cutting synthesis questions; answers collapsible. |
+| 14 | [Glossary](https://cajigaslab.github.io/nSTAT-python/concepts/glossary.html) | Plain-language definitions of every term, with HTML anchors for deep-linking from any page. |
+| 15 | [Annotated bibliography](https://cajigaslab.github.io/nSTAT-python/concepts/bibliography.html) | Every cited reference with a one-line note on why it matters for nSTAT users. |
 
-Canonical source files:
-- `examples/paper/*.py`
-- `nstat/paper_examples_full.py`
+Every topical page opens with a **"Glossary jumps"** box that deep-links into
+the glossary entries it uses.
 
-Single command to regenerate the paper-example gallery metadata:
+## Tutorials and notebooks
+
+Runnable, end-to-end lessons organized by depth:
+
+| File | What you'll do |
+|---|---|
+| [`notebooks/00_getting_started.ipynb`](notebooks/00_getting_started.ipynb) | The executable mirror of the 5-minute intro: build a spike train, fit a GLM, run the KS test, decode a stimulus with the PPAF — all in one notebook. |
+| [`examples/tutorials/encoding_to_goodness_of_fit.py`](examples/tutorials/encoding_to_goodness_of_fit.py) | Encoding → GLM → time-rescaling KS, with a correct-vs-wrong model contrast. |
+| [`examples/tutorials/model_comparison.py`](examples/tutorials/model_comparison.py) | AIC / BIC + KS contrasts on nested GLMs, with Fisher-information confidence intervals on every coefficient. |
+| [`examples/tutorials/decoding_ppaf.py`](examples/tutorials/decoding_ppaf.py) | Decode a hidden stimulus from a population with the point-process adaptive filter; RMSE drops with population size. |
+| [`examples/tutorials/network_coupling.py`](examples/tutorials/network_coupling.py) | Recover known asymmetric excite/inhibit wiring from two simulated neurons via the cross-correlogram and a coupling GLM. |
+| [`examples/tutorials/clinical_microelectrode_walkthrough.py`](examples/tutorials/clinical_microelectrode_walkthrough.py) | A simulated tremor cell: encode → KS check → beta-band spectrum → PPAF phase decode. |
+| [`examples/tutorials/place_cell_walkthrough.py`](examples/tutorials/place_cell_walkthrough.py) | Capstone on **real** hippocampal place-cell data: encode → check → decode, with the honest lesson that a model can decode well yet still fail goodness-of-fit. |
+| [`examples/tutorials/Tutorial_MicroelectrodeToDecoding.ipynb`](examples/tutorials/Tutorial_MicroelectrodeToDecoding.ipynb) | Notebook-format guided tour spanning microelectrode signals → spikes → multitaper spectra → GLM → GOF → decoding. |
+
+Reference notebooks (MATLAB-help ports) live under
+[`notebooks/`](notebooks/) and the
+["By concept" crosswalk](https://cajigaslab.github.io/nSTAT-python/Examples.html#by-concept-where-to-start)
+in the Example Index maps each concepts page to the notebooks that
+demonstrate it.
+
+## Paper examples
+
+The five canonical examples from Cajigas, Malik & Brown (2012), each
+reproduced as a self-contained Python script with a generated figure gallery.
+
+Regenerate the gallery metadata after editing any paper-example script:
 
 ```bash
 python tools/paper_examples/build_gallery.py
 ```
-
-This writes `docs/paper_examples.md`, `docs/figures/manifest.json`, and
-refreshes the canonical README paper-example table from
-`examples/paper/manifest.yml`.
 
 | Example | Thumbnail | What question it answers | Run command | Links |
 |---|---|---|---|---|
@@ -126,141 +158,92 @@ refreshes the canonical README paper-example table from
 | Example 05 | ![Example 05](docs/figures/example05/fig01_univariate_setup.png) | How well do adaptive/hybrid point-process filters decode stimulus and reach state? | `python examples/paper/example05_decoding_ppaf_pphf.py` | [Script](examples/paper/example05_decoding_ppaf_pphf.py) · [Figures](docs/figures/example05/) |
 
 Expanded paper-example index and figure gallery:
-- [docs/paper_examples.md](docs/paper_examples.md)
+[docs/paper_examples.md](docs/paper_examples.md).
 
-Plot style policy:
+The figshare paper dataset is distributed separately from the Git repository:
+[DOI 10.6084/m9.figshare.4834640.v3](https://doi.org/10.6084/m9.figshare.4834640.v3)
+(`nstat-install --download-example-data always` fetches it; `NSTAT_OFFLINE=1`
+forces offline mode).
+
+Plot-style policy (modern readability vs strict-reproduction legacy):
 
 ```python
 from nstat.plot_style import set_plot_style
-
-# Modern readability-focused plots (default)
-set_plot_style('modern')
-
-# Legacy visual style for strict reproduction
-set_plot_style('legacy')
+set_plot_style('modern')   # default
+set_plot_style('legacy')   # strict paper reproduction
 ```
 
-## Documentation
+## `nstat.extras` helpfiles
 
-Full rendered documentation is published on
+Opt-in bridges (`nstat.extras.*`) to libraries in the modern Python
+systems-neuroscience stack. Each has a dedicated narrative helpfile under
+[`docs/extras/`](docs/extras/) covering install, intended use, gotchas, and
+runnable snippets. Install via the optional-dep group; install everything
+non-JAX at once with `pip install nstat-toolbox[all-extras]`.
+
+| Bridge | What it does | Helpfile | Optional dep |
+|---|---|---|---|
+| `nstat.extras.em.dynamax_bridge` | EM-trained linear-Gaussian / point-process / hybrid state-space models — the `KF_EM` / `PP_EM` / `mPPCO_EM` family. Held-out predictive log-likelihood + multi-restart selection (canonical-gauge identifiability). | [em_dynamax](docs/extras/em_dynamax.md) | `[dynamax]` (pulls JAX ~200 MB) |
+| `nstat.extras.decoding.clusterless_bridge` | Clusterless marked point-process decoding (no spike sorting) + trajectory-type classification — the modern descendant of nSTAT's PPAF / PPHF filters ([Denovellis et al. 2021](https://pubmed.ncbi.nlm.nih.gov/34570699/)). | [decoding_clusterless](docs/extras/decoding_clusterless.md) | `[clusterless]` (pulls JAX ~200 MB) |
+| `nstat.extras.interop.neo` | Vendor-format I/O via [Neo](https://github.com/NeuralEnsemble/python-neo) — Spike2 / NEX / Blackrock / Plexon / TDT / NWB. | [interop_neo](docs/extras/interop_neo.md) | `[neo]` |
+| `nstat.extras.interop.nwb` | BRAIN-Initiative NWB:N standard reader via [pynwb](https://github.com/NeurodataWithoutBorders/pynwb). | [interop_nwb](docs/extras/interop_nwb.md) | `[nwb]` |
+| `nstat.extras.interop.pynapple` | Time-series + epoch math via [pynapple](https://github.com/pynapple-org/pynapple), NWB-native. | [interop_pynapple](docs/extras/interop_pynapple.md) | `[pynapple]` |
+| `nstat.extras.validation.nemos_bridge` | JAX Poisson-GLM cross-validation oracle via [NeMoS](https://github.com/flatironinstitute/nemos). | [validation_nemos](docs/extras/validation_nemos.md) | `[nemos]` |
+| `nstat.extras.validation.pykalman_bridge` | Pure-NumPy Kalman cross-validation reference via [pykalman](https://github.com/pykalman/pykalman). | [validation_pykalman](docs/extras/validation_pykalman.md) | `[test-parity]` |
+| `nstat.extras.validation.statsmodels_bridge` | Poisson GLM IRLS cross-validation oracle (~1e-9 agreement) via [statsmodels](https://www.statsmodels.org). | [validation_statsmodels](docs/extras/validation_statsmodels.md) | `[test-parity]` |
+| `nstat.extras.metrics.spike_distances` | ISI / SPIKE-distance spike-train metrics via [PySpike](https://github.com/mariomulansky/PySpike). | [metrics_spike_distances](docs/extras/metrics_spike_distances.md) | `[metrics]` |
+
+The interactive [`extras_summary.html`](https://cajigaslab.github.io/nSTAT-python/extras_summary.html)
+landing page has the same content as bigger cards with code snippets.
+
+## Reference
+
+Full rendered documentation is on
 [**GitHub Pages**](https://cajigaslab.github.io/nSTAT-python/):
 
 | Page | What you'll find |
 |---|---|
-| [5-minute intro](https://cajigaslab.github.io/nSTAT-python/intro.html) | Friendly, illustrated tour with runnable snippets — start here |
-| [**Concepts & Background**](https://cajigaslab.github.io/nSTAT-python/concepts/index.html) | Learn the neuroscience & statistics — microelectrode recordings, spikes & the LFP, point-process GLMs, goodness-of-fit, decoding, state-space/EM, and rhythmic/tremor cells & the clinical microelectrode (with the beta-band biomarker that guides adaptive DBS) — with figures and cited literature |
-| [API reference](https://cajigaslab.github.io/nSTAT-python/api.html) | Every public symbol, auto-generated from docstrings |
+| [5-minute intro](https://cajigaslab.github.io/nSTAT-python/intro.html) | The friendly, illustrated tour with runnable snippets |
+| [API reference](https://cajigaslab.github.io/nSTAT-python/api.html) | Every public symbol, auto-generated from NumPy-style docstrings |
 | [Class definitions](https://cajigaslab.github.io/nSTAT-python/ClassDefinitions.html) | Method catalog for each MATLAB-faithful core class |
-| [Paper-aligned toolbox map](https://cajigaslab.github.io/nSTAT-python/PaperOverview.html) | Crosswalk between the 2012 paper and the Python API |
-| [`nstat.extras` summary](https://cajigaslab.github.io/nSTAT-python/extras_summary.html) | Per-bridge cards with install commands and snippets |
+| [Paper-aligned toolbox map](https://cajigaslab.github.io/nSTAT-python/PaperOverview.html) | Crosswalk between the 2012 paper's workflow categories (object model, fitting/assessment, simulation, decoding) and the Python API |
+| [`nstat.extras` summary](https://cajigaslab.github.io/nSTAT-python/extras_summary.html) | Per-bridge cards with install commands, status, and runnable snippets |
+| [Example Index](https://cajigaslab.github.io/nSTAT-python/Examples.html) | Visual gallery of every runnable example, including a "By concept" crosswalk back to the concepts pages |
 | [What's New](https://cajigaslab.github.io/nSTAT-python/whats_new.html) | Per-release change summaries |
+| [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | Full changelog (start here when upgrading) |
+| [Methods roadmap](parity/methods_roadmap.md) | What's queued for upcoming releases |
+| [Parity audit](parity/report.md) | MATLAB ↔ Python class & method parity verification |
 
-For mathematical and programmatic details of the toolbox, see:
+## Ecosystem
 
-Cajigas I, Malik WQ, Brown EN. nSTAT: Open-source neural spike train analysis
-toolbox for Matlab. Journal of Neuroscience Methods 211: 245–264, Nov. 2012.
-- DOI: [10.1016/j.jneumeth.2012.08.009](https://doi.org/10.1016/j.jneumeth.2012.08.009)
-- PubMed: [22981419](https://pubmed.ncbi.nlm.nih.gov/22981419/)
+The MATLAB reference toolbox lives in a separate repository:
+[github.com/cajigaslab/nSTAT](https://github.com/cajigaslab/nSTAT). It retains
+the original MATLAB classes, the `helpfiles/helptoc.xml` index, and the
+`.mlx` example workflows.
 
-## Paper-Aligned Toolbox Map
+For ecosystem peers nSTAT does **not** wrap (spike sorting, calcium imaging,
+deep-learning decoders), recommended alternatives — with rationale in
+[`parity/integration_opportunities.md`](parity/integration_opportunities.md):
 
-To keep terminology and workflows consistent with the 2012 toolbox paper,
-the documentation includes a dedicated mapping page:
-[docs/PaperOverview.md](docs/PaperOverview.md).
-
-This page ties the Python toolbox to the paper's workflow categories:
-
-- Class hierarchy and object model (`SignalObj`, `Covariate`, `Trial`,
-  `Analysis`, `FitResult`, `DecodingAlgorithms`)
-- Fitting and assessment workflow (GLM fitting, diagnostics, summaries)
-- Simulation workflow (conditional intensity and thinning examples)
-- Decoding workflow (univariate/bivariate and history-aware decoding)
-- Example-to-paper section mapping via `nSTATPaperExamples`
-
-If you use nSTAT in your work, please remember to cite the above paper in any publications.
-nSTAT is protected by the GPL v2 Open Source License.
-
-The code repository for the Python port of nSTAT is hosted on GitHub at
-https://github.com/cajigaslab/nSTAT-python.
-The paper-example dataset is distributed separately from the Git repository:
-- Figshare dataset DOI: https://doi.org/10.6084/m9.figshare.4834640.v3
-- Paper DOI: https://doi.org/10.1016/j.jneumeth.2012.08.009
-
-## Code audit (2026-03-11)
-
-The Python port was verified against the MATLAB reference through a comprehensive
-5-phase audit covering all 16 classes and 484 methods. **466 methods found in
-Python, 6 nominal (MATLAB-infrastructure) gaps.** Full class-level and behavioral
-parity verified.
-
-**Python bugs fixed during the port:**
-
-- `SignalObj.std()` used `ddof=0`; MATLAB uses `ddof=1` (N-1 normalization)
-- `CovariateCollection.isCovPresent()` off-by-one in boundary check
-- `SpikeTrainCollection.psthGLM()` was a stub; now wired to the full GLM path
-- `SpikeTrainCollection.getNSTnames()` / `getUniqueNSTnames()` ignored the
-  `selectorArray` filter parameter
-- `nspikeTrain.getNST()` missing resample check on retrieval
-
-**MATLAB bugs discovered (13 total, filed as GitHub issues):**
-
-- `FitResult.m` — KS test used `sampleRate` as bin width instead of
-  `1/sampleRate`, invalidating goodness-of-fit for any sampleRate != 1
-- `CIF.m` — `symvar()` reordered variables alphabetically, causing silent
-  argument mismatch for non-alphabetical variable names
-- `SignalObj.m` — `findPeaks('minima')` returned maxima; `findGlobalPeak('minima')`
-  crashed; handle aliasing mutated input signals in arithmetic
-- `DecodingAlgorithms.m` — `isa(condNum,'nan')` always false; `ExplambdaDeltaCubed`
-  used `.^2` instead of `.^3`
-- `Analysis.m` — Granger causality mask zeroed all columns instead of column `i`
-
-See [parity/report.md](parity/report.md) for the full audit.
-
-## MATLAB Toolbox
-
-The original MATLAB nSTAT toolbox lives in a separate repository:
-
-- https://github.com/cajigaslab/nSTAT
-
-That repository is MATLAB-focused and retains:
-
-- Original MATLAB class/source files
-- MATLAB helpfiles and help index (`helpfiles/helptoc.xml`)
-- MATLAB example workflows, including `.mlx` examples
-
-## Related Python projects
-
-> 📚 **Visual summary** with per-bridge cards, install matrix, and code snippets:
-> [`extras_summary.html`](https://cajigaslab.github.io/nSTAT-python/extras_summary.html).
-> **What's New** (per-iteration change summaries):
-> [`whats_new.html`](https://cajigaslab.github.io/nSTAT-python/whats_new.html).
-
-nstat ships **opt-in bridges** (`nstat.extras.*`) to libraries in the
-modern Python systems-neuroscience stack.  Install each via its
-optional-dep group:
-
-| Library | Use case | Bridge module | Install |
-|---|---|---|---|
-| [Neo](https://github.com/NeuralEnsemble/python-neo) | I/O for Spike2 / NEX / Blackrock / Plexon / TDT / NWB | `nstat.extras.interop.neo` | `pip install nstat-toolbox[neo]` |
-| [pynapple](https://github.com/pynapple-org/pynapple) | Time-series + epoch math, NWB-native | `nstat.extras.interop.pynapple` | `pip install nstat-toolbox[pynapple]` |
-| [pynwb](https://github.com/NeurodataWithoutBorders/pynwb) | BRAIN-Initiative NWB:N standard reader | `nstat.extras.interop.nwb` | `pip install nstat-toolbox[nwb]` |
-| [NeMoS](https://github.com/flatironinstitute/nemos) | JAX Poisson-GLM (cross-validation reference) | `nstat.extras.validation.nemos_bridge` | `pip install nstat-toolbox[nemos]` |
-| [pykalman](https://github.com/pykalman/pykalman) | Pure-NumPy Kalman (cross-validation reference) | `nstat.extras.validation.pykalman_bridge` | `pip install nstat-toolbox[test-parity]` |
-| [statsmodels](https://www.statsmodels.org) | Poisson GLM (IRLS — tightest cross-validation oracle, ~1e-9 agreement) | `nstat.extras.validation.statsmodels_bridge` | `pip install nstat-toolbox[test-parity]` |
-| [PySpike](https://github.com/mariomulansky/PySpike) | ISI / SPIKE-distance spike-train metrics | `nstat.extras.metrics.spike_distances` | `pip install nstat-toolbox[metrics]` |
-| [Dynamax](https://github.com/probml/dynamax) | EM-trained linear-Gaussian / point-process / hybrid state-space models — the `KF_EM` / `PP_EM` / `mPPCO_EM` family, with held-out predictive log-likelihood and multi-restart selection | `nstat.extras.em.dynamax_bridge` | `pip install nstat-toolbox[dynamax]` (pulls JAX ~200 MB) |
-| [replay_trajectory_classification](https://github.com/Eden-Kramer-Lab/replay_trajectory_classification) | Clusterless marked point-process decoding (no spike sorting) + trajectory-type classification — the modern descendant of nSTAT's PPAF / PPHF filters | `nstat.extras.decoding.clusterless_bridge` | `pip install nstat-toolbox[clusterless]` (pulls JAX ~200 MB) |
-
-For ecosystem peers nstat does **not** wrap (spike sorting, calcium
-imaging, deep-learning decoders), see
-[`parity/integration_opportunities.md`](parity/integration_opportunities.md)
-for the rationale and recommended alternatives:
-
-- **[SpikeInterface](https://github.com/SpikeInterface/spikeinterface)** — spike sorting (nstat assumes pre-sorted data).
+- **[SpikeInterface](https://github.com/SpikeInterface/spikeinterface)** — spike sorting (nSTAT consumes pre-sorted data).
 - **[Elephant](https://github.com/NeuralEnsemble/elephant)** — overlapping spike-train statistics; Neo-typed.
 - **[ssqueezepy](https://github.com/OverLordGoldDragon/ssqueezepy)** — wavelet synchrosqueezing; planned `nstat.extras.spectral`.
 
-Install every bridge at once: `pip install nstat-toolbox[all-extras]`
-(does **not** include `[dynamax]` or `[clusterless]` due to JAX install
-size — install those groups separately if you need EM-trained
-state-space models or clusterless decoding).
+nSTAT will benefit from your involvement. Open issues / PRs at
+[github.com/cajigaslab/nSTAT-python](https://github.com/cajigaslab/nSTAT-python).
+
+## Citation
+
+If you use nSTAT in your work, please cite the toolbox paper:
+
+> Cajigas I, Malik WQ, Brown EN. **nSTAT: Open-source neural spike train
+> analysis toolbox for Matlab.** *Journal of Neuroscience Methods* 211:
+> 245–264, Nov. 2012.
+> [doi:10.1016/j.jneumeth.2012.08.009](https://doi.org/10.1016/j.jneumeth.2012.08.009) ·
+> [PMID 22981419](https://pubmed.ncbi.nlm.nih.gov/22981419/)
+
+Method references for every page in the concepts track are in the
+[annotated bibliography](https://cajigaslab.github.io/nSTAT-python/concepts/bibliography.html).
+The paper-example dataset has its own
+[figshare DOI](https://doi.org/10.6084/m9.figshare.4834640.v3).
+nSTAT-python is distributed under the **GPL-2.0** license.
