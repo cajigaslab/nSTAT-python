@@ -44,7 +44,7 @@ firing rates alone.*
 
 **2. The coupling GLM — model-based.**
 Fit each neuron's firing with the *other* neuron's recent spikes as a covariate;
-the sign and size of the fitted `η` quantify the coupling. The runnable
+the sign and size of the fitted $\eta$ quantify the coupling. The runnable
 [network-coupling tutorial](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/tutorials/network_coupling.py)
 recovers exactly the asymmetric excite/inhibit wiring above (≈ +1.3 and −1.7,
 matching the simulated ±1.5).

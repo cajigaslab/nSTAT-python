@@ -18,33 +18,33 @@ A **point process** is a probabilistic model for a series of events in time —
 here, spike times. Instead of predicting a continuous waveform, it predicts
 *when* discrete events happen. The complete statistical description of a
 point process is its **conditional intensity function (CIF)**, written
-`λ(t | H_t)`:
+$\lambda(t \mid H_t)$:
 
-> `λ(t | H_t) · Δ` ≈ the probability of a spike in the small interval
-> `[t, t+Δ)`, given the history `H_t` of everything observed up to time `t`.
+> $\lambda(t \mid H_t) \cdot \Delta$ ≈ the probability of a spike in the small interval
+> $[t, t+\Delta)$, given the history `H_t` of everything observed up to time `t`.
 
-Intuitively, `λ(t | H_t)` is an *instantaneous firing rate* (in spikes/s)
+Intuitively, $\lambda(t \mid H_t)$ is an *instantaneous firing rate* (in spikes/s)
 that is allowed to depend on the past. The dependence on history `H_t` is what
 makes the CIF powerful: it captures refractoriness, bursting, and
-network coupling that a plain rate `λ(t)` cannot. See
+network coupling that a plain rate $\lambda(t)$ cannot. See
 [Daley & Vere-Jones (2003)](https://doi.org/10.1007/b97277) for the theory and
 [Truccolo et al. (2005)](https://pubmed.ncbi.nlm.nih.gov/15356183/) for the
 neuroscience framing.
 
 ![A stimulus-driven conditional intensity function and the spike raster it generates across repeated trials](figures/cif_raster.png)
 
-*Top: a conditional intensity function `λ(t)` driven by a stimulus. Bottom:
+*Top: a conditional intensity function $\lambda(t)$ driven by a stimulus. Bottom:
 spikes simulated from it on 25 repeated trials — different every time, but
-denser wherever `λ(t)` is high. The point process is the bridge between the
+denser wherever $\lambda(t)$ is high. The point process is the bridge between the
 two.*
 
 Special cases worth naming:
 
-- **Homogeneous Poisson:** `λ` constant. Spikes are "completely random" at a
+- **Homogeneous Poisson:** $\lambda$ constant. Spikes are "completely random" at a
   fixed rate; no history dependence.
-- **Inhomogeneous Poisson:** `λ(t)` varies with time (e.g. driven by a
+- **Inhomogeneous Poisson:** $\lambda(t)$ varies with time (e.g. driven by a
   stimulus) but still ignores history.
-- **History-dependent (renewal and beyond):** `λ(t | H_t)` depends on the
+- **History-dependent (renewal and beyond):** $\lambda(t \mid H_t)$ depends on the
   time since the last spike(s) — the regime real neurons live in.
 
 ## The point-process GLM
@@ -67,13 +67,13 @@ Each term answers a scientific question:
 - **Stimulus terms `s_k(t)`** — how does an external covariate (a sensory
   stimulus, a movement, the animal's position) drive firing? Often expanded
   in a spline or other basis so the tuning can be nonlinear.
-- **History terms `n(t − τ_j)`** — how does the neuron's own recent spiking
-  shape its firing? Negative `γ` near zero lag captures the refractory
+- **History terms $n(t - \tau_j)$** — how does the neuron's own recent spiking
+  shape its firing? Negative $\gamma$ near zero lag captures the refractory
   period; positive lobes capture bursting.
 - **Ensemble terms** — does another neuron's firing predict this one's,
   beyond the shared stimulus? This is functional coupling.
 
-Using the **log link** guarantees `λ > 0` (a rate can't be negative) and makes
+Using the **log link** guarantees $\lambda > 0$ (a rate can't be negative) and makes
 the model *multiplicative* in the covariates. A central practical fact:
 the point-process GLM log-likelihood is **concave**
 ([Paninski 2004](https://pubmed.ncbi.nlm.nih.gov/15600233/)), so fitting has a
@@ -156,13 +156,13 @@ walks through it.
 
 ## Check your understanding
 
-1. In words, what does `λ(t | H_t) · Δ` represent?
-2. Why does the GLM model `log λ` (a log link) rather than `λ` directly?
+1. In words, what does $\lambda(t \mid H_t) \cdot \Delta$ represent?
+2. Why does the GLM model $\log \lambda$ (a log link) rather than $\lambda$ directly?
 
 <details>
 <summary>Show answers</summary>
 
-1. The **probability of a spike** in the small interval `[t, t+Δ)`, **given
+1. The **probability of a spike** in the small interval $[t, t+\Delta)$, **given
    the history** `H_t` of past spikes and covariates.
 2. The log link keeps the rate **positive**, makes covariates act
    **multiplicatively**, and yields a **concave** log-likelihood
