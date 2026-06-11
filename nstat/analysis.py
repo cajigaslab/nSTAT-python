@@ -251,7 +251,7 @@ class Analysis:
         lambdaIndex: int,
         Algorithm: str = "GLM",
         *,
-        l2: float = 1e-6,
+        l2: float = 0.0,
         max_iter: int = 120,
     ):
         """Fit a point-process GLM for a single neuron from a Trial.
@@ -272,7 +272,7 @@ class Analysis:
             ``'GLM'`` — standard Poisson GLM regression.
             ``'BNLRCG'`` — truncated, L-2 regularised binomial logistic
             regression (requires binary spike representation).
-        l2 : float, default 1e-6
+        l2 : float, default 0.0
             L-2 regularisation strength.
         max_iter : int, default 120
             Maximum IRLS / CG iterations.
@@ -426,7 +426,7 @@ class Analysis:
         config_collection: ConfigCollection,
         *,
         algorithm: str = "GLM",
-        l2: float = 1e-6,
+        l2: float = 0.0,
         max_iter: int = 120,
     ) -> FitResult:
         """Run GLM analysis for one neuron across all configurations.
@@ -446,7 +446,7 @@ class Analysis:
             history, ensemble history).
         algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
             Regression algorithm.
-        l2 : float, default 1e-6
+        l2 : float, default 0.0
             L-2 regularisation strength.
         max_iter : int, default 120
             Maximum iterations for the GLM solver.
@@ -601,7 +601,7 @@ class Analysis:
         config_collection: ConfigCollection,
         *,
         algorithm: str = "GLM",
-        l2: float = 1e-6,
+        l2: float = 0.0,
         max_iter: int = 120,
     ) -> list[FitResult]:
         """Run GLM analysis for every unmasked neuron in the trial.
@@ -617,7 +617,7 @@ class Analysis:
             Configurations describing the fits to perform.
         algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
             Regression algorithm.
-        l2 : float, default 1e-6
+        l2 : float, default 0.0
             L-2 regularisation strength.
         max_iter : int, default 120
             Maximum iterations for the GLM solver.

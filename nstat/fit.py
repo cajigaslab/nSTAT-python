@@ -129,6 +129,29 @@ def _time_rescaled_uniforms(y: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarra
     return np.asarray(uniforms, dtype=float)
 
 
+def _format_coeff_label(label: object) -> str:
+    """Wrap a coefficient/covariate label for math rendering when needed.
+
+    MATLAB ``FitResult`` stores LaTeX-style names like ``\\mu``,
+    ``\\mu_{1}``, ``\\lambda_{const}`` in ``covLabels`` and these come
+    straight through to Python via the ``.mat`` round-trip.  matplotlib
+    only renders LaTeX when the string is wrapped in ``$...$``; without
+    the wrapping the user sees literal ``\\mu`` on the axis.  This
+    helper detects a LaTeX command, subscript, or superscript and adds
+    the math-mode dollars; it leaves plain identifiers (``stim``,
+    ``Baseline``, history-window bracket labels like ``[0,0.001]``)
+    unchanged.
+    """
+    text = str(label)
+    if not text:
+        return text
+    if text.startswith("$") and text.endswith("$"):
+        return text
+    if "\\" in text or "^{" in text or "_{" in text:
+        return f"${text}$"
+    return text
+
+
 def _ksdiscrete(
     pk: np.ndarray,
     st: np.ndarray,
@@ -1767,7 +1790,10 @@ class FitResult:
                         color=color, markersize=14.0)
 
         ax.set_xticks(xpos_all)
-        ax.set_xticklabels(all_labels, rotation=90, ha="center", fontsize=6)
+        ax.set_xticklabels(
+            [_format_coeff_label(lbl) for lbl in all_labels],
+            rotation=90, ha="center", fontsize=6,
+        )
         ax.set_ylabel("GLM Fit Coefficients", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_title("GLM Coefficients with 95% CIs (* p<0.05)",
                       fontweight="bold", fontsize=11, fontname="Arial")
@@ -1777,7 +1803,10 @@ class FitResult:
             spine.set_linewidth(1.0)
         # Add legend matching MATLAB: uses lambda dataLabels with NorthEast placement
         if errorbar_handles and lambda_labels:
-            legend_labels = [lambda_labels[min(fn - 1, len(lambda_labels) - 1)] for fn in fit_nums]
+            legend_labels = [
+                _format_coeff_label(lambda_labels[min(fn - 1, len(lambda_labels) - 1)])
+                for fn in fit_nums
+            ]
             ax.legend(errorbar_handles, legend_labels, loc="upper right", fontsize=10)
         return ax
 
@@ -1793,7 +1822,8 @@ class FitResult:
         xpos = np.arange(coeffs.size, dtype=float)
         ax.axhline(0.0, color="0.6", linewidth=1.0)
         ax.plot(xpos, coeffs, "o-", color="tab:blue", linewidth=1.0)
-        ax.set_xticks(xpos, labels, rotation=45, ha="right")
+        ax.set_xticks(xpos, [_format_coeff_label(lbl) for lbl in labels],
+                      rotation=45, ha="right")
         ax.set_ylabel("coefficient value")
         ax.set_title("GLM Coefficients Without History")
         return ax
@@ -1809,7 +1839,8 @@ class FitResult:
         ax.axhline(0.0, color="0.6", linewidth=1.0)
         if coeffs.size:
             ax.plot(xpos, coeffs, "o-", color="tab:orange", linewidth=1.0)
-            ax.set_xticks(xpos, labels, rotation=45, ha="right")
+            ax.set_xticks(xpos, [_format_coeff_label(lbl) for lbl in labels],
+                          rotation=45, ha="right")
         ax.set_ylabel("history coefficient")
         ax.set_title("History Coefficients")
         return ax

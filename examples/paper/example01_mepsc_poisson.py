@@ -278,9 +278,15 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
                  fontweight="bold", fontsize=12, fontfamily="Arial")
     ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_yticklabels([])
-    # Red epoch-transition markers (MATLAB: plot([495;495],[0,1],'r','LineWidth',4))
-    ax.plot([495, 495], [0, 1], "r", linewidth=4)
-    ax.plot([765, 765], [0, 1], "r", linewidth=4)
+    # Red epoch-transition markers — MATLAB ``plot([495;495],[0,1],'r','LineWidth',4)``
+    # works on a single-neuron raster where the spike at y=1 sits within [0,1].
+    # ``nstColl.plot`` in Python centers a 1-neuron raster at ``yOffset=1`` with
+    # ``dHeight=0.8`` (so y-range [0.6, 1.4]) and sets ``ylim=[0.25, 1.75]``;
+    # a literal ``plot([t,t],[0,1])`` then stops short of the raster top.
+    # ``axvline`` spans the full axes (ymin=0, ymax=1 in axes coords) so the
+    # marker always covers the raster regardless of y-data layout.
+    ax.axvline(495, color="r", linewidth=4)
+    ax.axvline(765, color="r", linewidth=4)
 
     ax = axes3[0, 1]
     resultWashout.plotInvGausTrans(handle=ax)

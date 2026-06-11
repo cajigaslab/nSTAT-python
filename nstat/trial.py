@@ -325,7 +325,14 @@ class CovariateCollection:
         return float(min(cov.minTime for cov in self.covArray))
 
     def findMaxTime(self) -> float:
-        """Return the latest ``maxTime`` across all stored covariates."""
+        """Return the latest ``maxTime`` across all stored covariates.
+
+        Note: MATLAB ``CovColl.m:371-380`` applies ``covShift`` twice
+        here (once inside the per-covariate ``max(...)`` and once after
+        the loop) — see AUDIT_REPORT M7 / nSTAT issue #18.  Python adds
+        the shift exactly once, in ``_refresh_summary`` and
+        ``setMaxTime``.  Do not "fix" this to match MATLAB's behavior.
+        """
         if self.numCov == 0:
             return float("-inf")
         return float(max(cov.maxTime for cov in self.covArray))

@@ -335,9 +335,22 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
         np.ones(xf.size), xf, yf, xf**2, yf**2, xf * yf
     ])
 
-    # Zernike design: [1, z1, z2, ..., z9] (intercept prepended)
-    zBasis = zernike_basis_from_cartesian(xf, yf, fill_value=0.0)
-    gridDesignZern = np.column_stack([np.ones(xf.size), zBasis])
+    # Zernike design: 10 modes [Z_0^0, Z_1^{-1}, ..., Z_3^3].  The Z_0^0
+    # mode IS the constant 1 and serves as the intercept — matching
+    # MATLAB helpfile ``HippocampalPlaceCellExample.m:83-84`` which
+    # configures ``tc{2}`` with only ``{Zernike.z1..z10}`` and *no*
+    # Baseline term.  Prepending a separate ``np.ones`` column would
+    # double-count the intercept and (via the ``[:, :coeffs_z.size]``
+    # slice below) silently drop the last Zernike mode (Z_3^3).
+    #
+    # ``fill_value=np.nan`` makes the Zernike basis NaN outside the
+    # unit disk so ``exp(η)`` is NaN there and the rendered mesh /
+    # heatmap drops those points — matching MATLAB which initialises
+    # each ``zpoly{i}`` with ``nan(size(x_new))`` (``HippocampalPlace
+    # CellExample.m:130``).  ``fill_value=0`` would silently render a
+    # flat plateau at ``exp(0)*sampleRate`` outside the disk.
+    zBasis = zernike_basis_from_cartesian(xf, yf, fill_value=np.nan)
+    gridDesignZern = zBasis
 
     # ==================================================================
     # Figures 3-6: Place field heatmaps
@@ -432,19 +445,26 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
 
     fig7 = plt.figure(figsize=(14, 9))
     ax3d = fig7.add_subplot(111, projection="3d")
-    # MATLAB: mesh(xGrid, yGrid, lambda, 'FaceAlpha',0.2, 'EdgeAlpha',0.2, 'EdgeColor','b'/'g')
-    # plot_wireframe matches MATLAB's mesh() (wireframe only, no filled faces)
-    ax3d.plot_wireframe(xx, yy, field_g, color="b", alpha=0.2,
-                        rstride=5, cstride=5, linewidth=0.3)
-    ax3d.plot_wireframe(xx, yy, field_z, color="g", alpha=0.2,
-                        rstride=5, cstride=5, linewidth=0.3)
+    # MATLAB ``HippocampalPlaceCellExample.m:240-246``: each mesh uses
+    # default ``mesh(...)`` with ``FaceAlpha=0.2, EdgeAlpha=0.2`` and an
+    # explicit ``EdgeColor`` ('b' / 'g').  MATLAB's default stride is 1
+    # so every grid edge appears.  Use ``rstride=2, cstride=2`` here
+    # (every other line) to keep the figure size reasonable on the 201x201
+    # grid while preserving enough detail for the place-field bump to be
+    # visible.
+    ax3d.plot_wireframe(xx, yy, field_g, color="b", alpha=0.35,
+                        rstride=2, cstride=2, linewidth=0.45)
+    ax3d.plot_wireframe(xx, yy, field_z, color="g", alpha=0.35,
+                        rstride=2, cstride=2, linewidth=0.45)
     # Overlay animal path at z=0 (MATLAB: 'k')
-    ax3d.plot(x1, y1, np.zeros_like(x1), "k-", linewidth=0.3)
+    ax3d.plot(x1, y1, np.zeros_like(x1), "k-", linewidth=0.4, alpha=0.5)
     # Overlay spike locations (MATLAB: 'r.')
     n_ex = neurons1[exampleCell]
     xn_ex = np.asarray(n_ex["xN"].item(), dtype=float).ravel()
     yn_ex = np.asarray(n_ex["yN"].item(), dtype=float).ravel()
-    ax3d.scatter(xn_ex, yn_ex, np.zeros_like(xn_ex), c="r", s=5)
+    ax3d.scatter(xn_ex, yn_ex, np.zeros_like(xn_ex), c="r", s=6)
+    # Match MATLAB's default 3D view: az=-37.5, el=30
+    ax3d.view_init(elev=30, azim=-37.5)
     ax3d.set_xlabel("x position")
     ax3d.set_ylabel("y position")
     ax3d.set_title(f"Animal#1, Cell#{exampleCell + 1}",
