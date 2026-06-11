@@ -154,7 +154,7 @@ class CovariateCollection:
     @property
     def covariates(self) -> list[Covariate]:
         """List of all covariates (copies with collection state applied)."""
-        return [self.getCov(i) for i in range(1, self.numCov + 1)]
+        return [self.getCov(i) for i in range(self.numCov)]
 
     @property
     def names(self) -> list[str]:
@@ -202,8 +202,8 @@ class CovariateCollection:
         if isinstance(identifier, str):
             return self.getCovIndFromName(identifier)
         index = int(identifier)
-        if index < 1 or index > self.numCov:
-            raise IndexError("Covariate index out of bounds (1-based indexing).")
+        if index < 0 or index >= self.numCov:
+            raise IndexError("Covariate index out of bounds.")
         return index
 
     def _apply_collection_state(self, cov: Covariate, index: int) -> Covariate:
@@ -216,7 +216,7 @@ class CovariateCollection:
             out = out.resample(self.sampleRate)
         if np.isfinite(self.minTime) and np.isfinite(self.maxTime) and out.time.size > 0:
             out = out.getSigInTimeWindow(self.minTime, self.maxTime, holdVals=1)
-        out.setMask(self.covMask[index - 1])
+        out.setMask(self.covMask[index])
         return out
 
     def add(self, covariate: Covariate) -> None:
@@ -277,13 +277,13 @@ class CovariateCollection:
     def removeCovariate(self, identifier: int | str) -> None:
         """Remove a covariate by 1-based index or name."""
         index = self._covariate_from_identifier(identifier)
-        del self.covArray[index - 1]
-        del self.covMask[index - 1]
+        del self.covArray[index]
+        del self.covMask[index]
         self._refresh_summary()
 
     def copy(self) -> "CovariateCollection":
         """Return a deep copy of this collection."""
-        cov = [self.getCov(i).copySignal() for i in range(1, self.numCov + 1)]
+        cov = [self.getCov(i).copySignal() for i in range(self.numCov)]
         return CovariateCollection(cov)
 
     def get(self, name: str) -> Covariate:
@@ -307,17 +307,17 @@ class CovariateCollection:
         if isinstance(identifier, np.ndarray) and identifier.ndim > 0:
             return [self.getCov(int(item)) for item in identifier.reshape(-1)]
         index = self._covariate_from_identifier(identifier)
-        return self._apply_collection_state(self.covArray[index - 1], index)
+        return self._apply_collection_state(self.covArray[index], index)
 
     def getCovIndFromName(self, name: str) -> int:
-        """Return the 1-based index of a covariate by *name*."""
-        for idx, cov in enumerate(self.covArray, start=1):
+        """Return the 0-based index of a covariate by *name*."""
+        for idx, cov in enumerate(self.covArray):
             if cov.name == name:
                 return idx
         raise KeyError(f"Covariate '{name}' not found")
 
     def getCovIndicesFromNames(self, name: Sequence[str] | str):
-        """Return 1-based index(es) for one or more covariate names."""
+        """Return 0-based index(es) for one or more covariate names."""
         if isinstance(name, str):
             return self.getCovIndFromName(name)
         return [self.getCovIndFromName(item) for item in name]
@@ -427,7 +427,7 @@ class CovariateCollection:
     def getCovDataMask(self, identifier: int | str) -> np.ndarray:
         """Return the binary dimension mask for a single covariate."""
         index = self._covariate_from_identifier(identifier)
-        return np.asarray(self.covMask[index - 1], dtype=int).copy()
+        return np.asarray(self.covMask[index], dtype=int).copy()
 
     def isCovMaskSet(self) -> bool:
         """Return ``True`` if any covariate dimension is currently masked out."""
@@ -457,9 +457,9 @@ class CovariateCollection:
             covIndex = self.getCovIndFromName(covName)
             currCov = self.getCov(covIndex)
             if len(dataSelector) == 1:
-                selectorCell[covIndex - 1] = currCov.getIndicesFromLabels([])
+                selectorCell[covIndex] = currCov.getIndicesFromLabels([])
             else:
-                selectorCell[covIndex - 1] = currCov.getIndicesFromLabels([str(v) for v in dataSelector[1:]])
+                selectorCell[covIndex] = currCov.getIndicesFromLabels([str(v) for v in dataSelector[1:]])
             return selectorCell
 
         for item in dataSelector:
@@ -472,9 +472,9 @@ class CovariateCollection:
             covIndex = self.getCovIndFromName(covName)
             currCov = self.getCov(covIndex)
             if len(parsed) == 1:
-                selectorCell[covIndex - 1] = currCov.getIndicesFromLabels([])
+                selectorCell[covIndex] = currCov.getIndicesFromLabels([])
             else:
-                selectorCell[covIndex - 1] = currCov.getIndicesFromLabels([str(v) for v in parsed[1:]])
+                selectorCell[covIndex] = currCov.getIndicesFromLabels([str(v) for v in parsed[1:]])
         return selectorCell
 
     def generateSelectorCell(self, dataSelector) -> list[list[int]]:
@@ -529,7 +529,7 @@ class CovariateCollection:
                 else:
                     if np.any(arr < 1) or np.any(arr > cov.dimension):
                         raise IndexError("Covariate selector index out of bounds.")
-                    mask[arr - 1] = 1
+                    mask[arr] = 1
             masks.append(mask)
         return masks
 
@@ -559,7 +559,7 @@ class CovariateCollection:
             identifiers = [identifier]
         for item in identifiers:
             index = self._covariate_from_identifier(item)
-            self.covMask[index - 1] = np.zeros(self.covArray[index - 1].dimension, dtype=int)
+            self.covMask[index] = np.zeros(self.covArray[index].dimension, dtype=int)
 
     def maskAwayOnlyCov(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
         """Reset all masks then mask away only the specified covariate(s)."""
@@ -583,11 +583,11 @@ class CovariateCollection:
             keep = {self._covariate_from_identifier(identifier)}
         else:
             keep = {self._covariate_from_identifier(item) for item in identifier}
-        for idx, cov in enumerate(self.covArray, start=1):
+        for idx, cov in enumerate(self.covArray):
             if idx in keep:
-                self.covMask[idx - 1] = np.ones(cov.dimension, dtype=int)
+                self.covMask[idx] = np.ones(cov.dimension, dtype=int)
             else:
-                self.covMask[idx - 1] = np.zeros(cov.dimension, dtype=int)
+                self.covMask[idx] = np.zeros(cov.dimension, dtype=int)
 
     def setCovShift(self, deltaT: float, identifier=None) -> "CovariateCollection":
         """Apply a temporal shift *deltaT* to the collection's time axis.
@@ -635,7 +635,7 @@ class CovariateCollection:
             If a single Axes or a list of Axes, plot into those directly.
             If None, a new figure is created.
         """
-        selected = [idx for idx in range(1, self.numCov + 1)]
+        selected = [idx for idx in range(self.numCov)]
 
         # Accept Figure, Axes, list-of-Axes, or None
         if handle is None:
@@ -666,16 +666,16 @@ class CovariateCollection:
     def getAllCovLabels(self) -> list[str]:
         """Return the data-labels of every covariate dimension (no mask filtering)."""
         labels: list[str] = []
-        for index in range(1, self.numCov + 1):
+        for index in range(self.numCov):
             labels.extend(self.getCov(index).dataLabels)
         return labels
 
     def getCovLabelsFromMask(self) -> list[str]:
         """Return data-labels only for dimensions that are currently unmasked."""
         labels: list[str] = []
-        for index in range(1, self.numCov + 1):
+        for index in range(self.numCov):
             cov = self.getCov(index)
-            mask = self.covMask[index - 1]
+            mask = self.covMask[index]
             labels.extend([label for keep, label in zip(mask, cov.dataLabels) if keep == 1])
         return labels
 
@@ -687,7 +687,7 @@ class CovariateCollection:
         Returns a 1-D int array whose *i*-th element is ``covs{i}.dimension``.
         """
         if identifier is None:
-            covs = [self.getCov(i) for i in range(1, self.numCov + 1)]
+            covs = [self.getCov(i) for i in range(self.numCov)]
         elif isinstance(identifier, (int, np.integer)):
             covs = [self.getCov(int(identifier))]
         elif isinstance(identifier, (list, np.ndarray)):
@@ -710,7 +710,7 @@ class CovariateCollection:
             raise ValueError("CovariateCollection is empty")
         if dataSelector is None:
             selectorCell = self.getSelectorFromMasks() if self.isCovMaskSet() else [
-                list(range(1, self.getCov(i).dimension + 1)) for i in range(1, self.numCov + 1)
+                list(range(self.getCov(i).dimension)) for i in range(self.numCov)
             ]
         else:
             selectorCell = self.generateSelectorCell(dataSelector)
@@ -725,13 +725,13 @@ class CovariateCollection:
         labels: list[str] = []
         for covIndex in active_cov:
             cov = self.getCov(covIndex).getSigRep(repType)
-            selector = selectorCell[covIndex - 1]
+            selector = selectorCell[covIndex]
             data = cov.dataToMatrix(selector)
             endInd = min(time.size, data.shape[0])
             block = np.zeros((time.size, data.shape[1]), dtype=float)
             block[:endInd, :] = data[:endInd, :]
             parts.append(block)
-            labels.extend([cov.dataLabels[idx - 1] for idx in selector])
+            labels.extend([cov.dataLabels[idx] for idx in selector])
         return time.copy(), np.hstack(parts) if parts else np.zeros((time.size, 0), dtype=float), labels
 
     def dataToMatrix(self, repType: str | Sequence[str] | None = "standard", dataSelector=None, *_) -> np.ndarray:
@@ -755,7 +755,7 @@ class CovariateCollection:
             if self.isCovMaskSet():
                 selectorCell = self.getSelectorFromMasks()
             else:
-                selectorCell = [list(range(1, self.getCov(i).dimension + 1)) for i in range(1, self.numCov + 1)]
+                selectorCell = [list(range(self.getCov(i).dimension)) for i in range(self.numCov)]
         dataMatrix = self.dataToMatrix("standard", selectorCell)
         return {
             "time": self.getCov(1).time.copy() if self.numCov else np.array([], dtype=float),
@@ -994,7 +994,7 @@ class SpikeTrainCollection:
         index = int(idx)
         if index < 1 or index > self.numSpikeTrains:
             raise IndexError("nstColl index out of bounds (1-based indexing).")
-        nst = _copy.deepcopy(self.nstrain[index - 1])
+        nst = _copy.deepcopy(self.nstrain[index])
         # Matlab resamples to collection sampleRate on retrieval.
         if nst.sampleRate != self.sampleRate:
             nst.resample(self.sampleRate)
@@ -1029,7 +1029,7 @@ class SpikeTrainCollection:
         index = int(ind)
         if index < 1 or index > self.numSpikeTrains:
             raise IndexError("Index is out of bounds!")
-        return str(self.nstrain[index - 1].name)
+        return str(self.nstrain[index].name)
 
     def getNSTFromName(self, neuronName=None):
         """Return spike train(s) matching the given neuron name(s)."""
@@ -1042,8 +1042,8 @@ class SpikeTrainCollection:
         """Collect a named field from every spike train (Matlab ``nstColl.getFieldVal``)."""
         fieldVal: list[float] = []
         neuronNumbers: list[int] = []
-        cnt = 1
-        for index in range(1, self.numSpikeTrains + 1):
+        cnt = 0
+        for index in range(self.numSpikeTrains):
             currVal = self.getNST(index).getFieldVal(fieldName)
             if currVal is None:
                 continue
@@ -1051,11 +1051,11 @@ class SpikeTrainCollection:
                 continue
             if len(fieldVal) < cnt:
                 fieldVal.extend([0.0] * (cnt - len(fieldVal)))
-            fieldVal[cnt - 1] = float(currVal)
+            fieldVal[cnt] = float(currVal)
             cnt += 1
             if len(neuronNumbers) < cnt:
                 neuronNumbers.extend([0] * (cnt - len(neuronNumbers)))
-            neuronNumbers[cnt - 1] = index
+            neuronNumbers[cnt] = index
         return np.asarray(fieldVal, dtype=float), np.asarray(neuronNumbers, dtype=int)
 
     def shiftTime(self, timeShift: float | None = None) -> "SpikeTrainCollection":
@@ -1086,7 +1086,7 @@ class SpikeTrainCollection:
             minTime = self.minTime
 
         if selectorArray is None:
-            selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+            selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
         elif isinstance(selectorArray, str) or _is_string_sequence(selectorArray):
             resolved = self.getNSTIndicesFromName(selectorArray)
             if isinstance(resolved, list):
@@ -1195,7 +1195,7 @@ class SpikeTrainCollection:
         if arr.size:
             if np.any(arr < 1) or np.any(arr > self.numSpikeTrains):
                 raise IndexError("Neuron index out of bounds.")
-            newMask[arr - 1] = 1
+            newMask[arr] = 1
         self.setNeuronMask(newMask)
 
     def setNeuronMask(self, mask: Sequence[int] | np.ndarray) -> None:
@@ -1210,11 +1210,11 @@ class SpikeTrainCollection:
         self.neuronMask = np.ones(self.numSpikeTrains, dtype=int)
 
     def getIndFromMask(self) -> list[int]:
-        """Return 1-based indices of neurons currently enabled by the mask."""
-        return (np.flatnonzero(self.neuronMask == 1) + 1).astype(int).tolist()
+        """Return 0-based indices of neurons currently enabled by the mask."""
+        return np.flatnonzero(self.neuronMask == 1).astype(int).tolist()
 
     def getIndFromMaskMinusOne(self, neuron: int) -> list[int]:
-        """Return active indices excluding *neuron* (1-based)."""
+        """Return active indices excluding *neuron* (0-based)."""
         return [idx for idx in self.getIndFromMask() if idx != int(neuron)]
 
     def isNeuronMaskSet(self) -> bool:
@@ -1233,7 +1233,7 @@ class SpikeTrainCollection:
                 return
             matrix = np.zeros((self.numSpikeTrains, max(self.numSpikeTrains - 1, 0)), dtype=int)
             for i in range(self.numSpikeTrains):
-                neighbors = [idx for idx in range(1, self.numSpikeTrains + 1) if idx != (i + 1)]
+                neighbors = [idx for idx in range(self.numSpikeTrains) if idx != i]
                 if neighbors:
                     matrix[i, : len(neighbors)] = neighbors
             self.neighbors = matrix
@@ -1258,15 +1258,15 @@ class SpikeTrainCollection:
         if not self.areNeighborsSet():
             self.setNeighbors()
         if isinstance(self.neighbors, list):
-            row = list(self.neighbors[neuron_idx - 1])
+            row = list(self.neighbors[neuron_idx])
         else:
-            row = np.asarray(self.neighbors[neuron_idx - 1], dtype=int).reshape(-1).tolist()
+            row = np.asarray(self.neighbors[neuron_idx], dtype=int).reshape(-1).tolist()
         available = set(self.getIndFromMaskMinusOne(neuron_idx))
         return [value for value in row if value in available and value > 0]
 
     def getMaxBinSizeBinary(self) -> float:
         """Return the largest bin-width that keeps all active trains binary."""
-        selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+        selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
         if not selectorArray:
             return np.inf
         values = [self.getNST(index).getMaxBinSizeBinary() for index in selectorArray]
@@ -1274,7 +1274,7 @@ class SpikeTrainCollection:
 
     def BinarySigRep(self) -> bool:
         """Return ``True`` if every train's signal representation is binary."""
-        return bool(all(self.getNST(index).isSigRepBinary() for index in range(1, self.numSpikeTrains + 1)))
+        return bool(all(self.getNST(index).isSigRepBinary() for index in range(self.numSpikeTrains)))
 
     def isSigRepBinary(self) -> bool:
         """Alias for :meth:`BinarySigRep`."""
@@ -1297,7 +1297,7 @@ class SpikeTrainCollection:
         if binwidth is None:
             binwidth = 1.0 / self.sampleRate
         if selectorArray is None:
-            selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+            selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
         elif isinstance(selectorArray, str) or _is_string_sequence(selectorArray):
             resolved = self.getNSTIndicesFromName(selectorArray)
             if isinstance(resolved, list):
@@ -1329,18 +1329,18 @@ class SpikeTrainCollection:
         from .history import History
 
         histObj = windowTimes if isinstance(windowTimes, History) else History(windowTimes)
-        ensembleCovariates = histObj.computeHistory(self.getNST(list(range(1, self.numSpikeTrains + 1))))
+        ensembleCovariates = histObj.computeHistory(self.getNST(list(range(self.numSpikeTrains))))
         ensembleCovariates.maskAwayAllExcept(allNeighbors)
         self.addNeuronNamesToEnsCovColl(ensembleCovariates)
         return ensembleCovariates
 
     def addNeuronNamesToEnsCovColl(self, ensembleCovariates: CovariateCollection) -> None:
         """Prefix ensemble-covariate labels with their neuron name."""
-        for i in range(1, ensembleCovariates.numCov + 1):
-            tempCov = ensembleCovariates.covArray[i - 1]
+        for i in range(ensembleCovariates.numCov):
+            tempCov = ensembleCovariates.covArray[i]
             name = self.getNST(i).name
             if not name:
-                name = str(i)
+                name = str(i + 1)
             dataLabels = [f"{name}:{label}" if label else str(name) for label in tempCov.dataLabels]
             tempCov.setDataLabels(dataLabels)
 
@@ -1394,7 +1394,7 @@ class SpikeTrainCollection:
         else:
             selected = self.getIndFromMask()
             if not selected:
-                selected = list(range(1, self.numSpikeTrains + 1))
+                selected = list(range(self.numSpikeTrains))
         if reverseOrder:
             selected = list(reversed(selected))
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(8.0, max(2.5, 0.55 * max(len(selected), 1) + 1.0)))[1]
@@ -1423,7 +1423,7 @@ class SpikeTrainCollection:
         if minTime is None:
             minTime = self.minTime
         if selectorArray is None or len(selectorArray) == 0:
-            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
         return [self.getNST(int(neuron)).getISIs(minTime, maxTime) for neuron in selectorArray]
 
     def plotISIHistogram(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None, handle=None):
@@ -1433,7 +1433,7 @@ class SpikeTrainCollection:
         if minTime is None:
             minTime = self.minTime
         if selectorArray is None or len(selectorArray) == 0:
-            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
         fig = handle if handle is not None else plt.figure(figsize=(7.0, max(2.5, 2.2 * len(selectorArray))))
         fig.clear()
         axes = fig.subplots(len(selectorArray), 1)
@@ -1458,7 +1458,7 @@ class SpikeTrainCollection:
         if minTime is None:
             minTime = self.minTime
         if selectorArray is None or len(selectorArray) == 0:
-            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
         fig = handle if handle is not None else plt.figure(figsize=(7.0, max(2.5, 2.2 * len(selectorArray))))
         fig.clear()
         axes = fig.subplots(len(selectorArray), 1)
@@ -1472,7 +1472,7 @@ class SpikeTrainCollection:
     def getSpikeTimes(self, minTime: float | None = None, maxTime: float | None = None) -> list[np.ndarray]:
         """Return a list of spike-time arrays, one per active neuron."""
         del minTime, maxTime
-        selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+        selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
         return [self.getNST(int(index)).getSpikeTimes() for index in selector]
 
     def psth(
@@ -1491,7 +1491,7 @@ class SpikeTrainCollection:
         min_time = self.minTime if minTime is None else float(minTime)
         max_time = self.maxTime if maxTime is None else float(maxTime)
         if selectorArray is None:
-            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
 
         span = max_time - min_time
         n_full = int(np.floor((span / binwidth) + 1e-12))
@@ -1592,7 +1592,7 @@ class SpikeTrainCollection:
         cfgColl.setConfig(trial, 1)
         stacked_x: list[np.ndarray] = []
         stacked_y: list[np.ndarray] = []
-        for idx in range(1, trial.nspikeColl.num_spike_trains + 1):
+        for idx in range(trial.nspikeColl.num_spike_trains):
             x_i = np.asarray(trial.getDesignMatrix(idx), dtype=float)
             y_i = np.asarray(trial.getSpikeVector(idx), dtype=float).reshape(-1)
             n_obs = min(x_i.shape[0], y_i.shape[0])
@@ -1764,7 +1764,7 @@ class SpikeTrainCollection:
         min_time = self.minTime if minTime is None else float(minTime)
         max_time = self.maxTime if maxTime is None else float(maxTime)
         if selectorArray is None or len(selectorArray) == 0:
-            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(1, self.numSpikeTrains + 1))
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
         selector = [int(item) for item in selectorArray]
         if not selector:
             raise ValueError("selectorArray must contain at least one neuron")
@@ -1886,19 +1886,19 @@ class SpikeTrainCollection:
         maxTime = float(self.maxTime)
         halfIters = min(int(np.floor(numIter / 2.0)), sumNumber)
 
-        for i in range(1, halfIters + 1):
+        for i in range(halfIters):
             subset = SpikeTrainCollection(self.getNST(list(range(i, i + sumNumber + 1))))
             subset.resample(1.0 / delta)
             subset.setMaxTime(maxTime)
             subset.setMinTime(minTime)
-            coeffs[:, i - 1] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+            coeffs[:, i] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
 
-        for i in range(numRealizations, numRealizations - halfIters, -1):
+        for i in range(numRealizations - 1, numRealizations - halfIters - 1, -1):
             subset = SpikeTrainCollection(self.getNST(list(range(i, i - sumNumber - 1, -1))))
             subset.resample(1.0 / delta)
             subset.setMaxTime(maxTime)
             subset.setMinTime(minTime)
-            coeffs[:, i - 1] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+            coeffs[:, i] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
 
         coeff_rows = [row[row != 0] for row in coeffs]
         max_width = max((row.size for row in coeff_rows), default=0)
@@ -2509,7 +2509,7 @@ class Trial:
         axes[cursor].set_title("Trial Spike Raster")
         cursor += 1
 
-        for cov_index in range(1, self.covarColl.numCov + 1):
+        for cov_index in range(self.covarColl.numCov):
             cov = self.covarColl.getCov(cov_index)
             cov.plot(handle=axes[cursor])
             axes[cursor].set_title(cov.name)
@@ -2815,7 +2815,7 @@ class Trial:
         if not self.isEnsCovHistSet() or self.ensCovColl is None:
             return np.zeros((self.nspikeColl.getNST(neuronNum).getSigRep().time.size, 0), dtype=float)
         if includedNeurons is None:
-            includedNeurons = np.flatnonzero(self.ensCovMask[:, neuronNum - 1] == 1) + 1
+            includedNeurons = np.flatnonzero(self.ensCovMask[:, neuronNum] == 1)
         ensCovCollTemp = CovariateCollection(self.ensCovColl.covArray)
         ensCovCollTemp.covMask = [mask.copy() for mask in self.ensCovColl.covMask]
         ensCovCollTemp.maskAwayAllExcept(includedNeurons)
@@ -2891,7 +2891,7 @@ class Trial:
         """Return ensemble-covariate labels for *neuronNum*, filtered by ``ensCovMask``."""
         if not self.isEnsCovHistSet() or self.ensCovColl is None:
             return []
-        included = np.flatnonzero(self.ensCovMask[:, neuronNum - 1] == 1) + 1
+        included = np.flatnonzero(self.ensCovMask[:, neuronNum] == 1)
         ensCovCollTemp = CovariateCollection(self.ensCovColl.covArray)
         ensCovCollTemp.covMask = [mask.copy() for mask in self.ensCovColl.covMask]
         ensCovCollTemp.maskAwayAllExcept(included)

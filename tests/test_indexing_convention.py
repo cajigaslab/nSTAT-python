@@ -82,6 +82,11 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     # alignSubSignals merge loop: dimension 0 is handled before the loop,
     # then dims 1..N-1 are merged in.
     ("core.py", "for i in range(1, self.dimension):"): "skip first dimension (handled before loop)",
+    # to_collapsed_train: ``selected_trains[idx - 1]`` is the previous train,
+    # not a 1-based index translation; idx here is the enumerate counter.
+    ("trial.py", "prev_train = selected_trains[idx - 1]"): "previous-element lookup",
+    # Display tick positions stay 1-indexed (math convention) for raster plots.
+    ("trial.py", "ax.set_yticks(range(1, len(selected) + 1), [str(item) for item in selected])"): "ytick display positions stay 1-indexed",
 }
 
 
