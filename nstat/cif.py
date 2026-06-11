@@ -105,7 +105,29 @@ def _check_kernel_sample_time(model_like, dt: float) -> None:
 
 
 def _sigmoid(values: np.ndarray) -> np.ndarray:
-    return 1.0 / (1.0 + np.exp(-np.clip(values, -20.0, 20.0)))
+    """Numerically stable logistic sigmoid σ(η) = e^η / (1 + e^η).
+
+    Uses the two-branch form (``1/(1+e^{-η})`` for η≥0,
+    ``e^η/(1+e^η)`` for η<0) to avoid overflow at large |η| without
+    clipping.  Matches ``LinearCIF._link_inverse`` for the binomial
+    fitType (audit finding H1 — unified sigmoid path between cif.py
+    and linear_cif.py so the two CIF classes produce numerically
+    identical lambda values for any η).
+    """
+    arr = np.asarray(values, dtype=float)
+    if arr.ndim == 0:
+        eta = float(arr)
+        if eta >= 0.0:
+            return np.asarray(1.0 / (1.0 + np.exp(-eta)), dtype=float)
+        ez = np.exp(eta)
+        return np.asarray(ez / (1.0 + ez), dtype=float)
+    out = np.empty_like(arr)
+    pos = arr >= 0.0
+    out[pos] = 1.0 / (1.0 + np.exp(-arr[pos]))
+    neg = ~pos
+    ez = np.exp(arr[neg])
+    out[neg] = ez / (1.0 + ez)
+    return out
 
 
 def _prepare_uniform_matrix(
@@ -549,10 +571,23 @@ class CIF:
         return eta, stim_coeffs, hist_coeffs, intercept
 
     def _lambda_delta(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None) -> float:
+        # H3 (audit): the sympy-compiled ``lambda_fn`` evaluates the closed
+        # form ``exp(η)/(1+exp(η))`` (binomial) or ``exp(η)`` (poisson) and
+        # can produce ``inf`` / ``nan`` for large |η| (e.g. ``exp(1000)``).
+        # Detect non-finite output and fall back to the numerically stable
+        # branched evaluation below.
         if self._expression_surface is not None and gamma is None:
-            return float(np.asarray(self._expression_surface["lambda_fn"](*self._surface_args(stimVal, time_index=time_index, nst=nst)), dtype=float).reshape(-1)[0])
+            raw = float(
+                np.asarray(
+                    self._expression_surface["lambda_fn"](*self._surface_args(stimVal, time_index=time_index, nst=nst)),
+                    dtype=float,
+                ).reshape(-1)[0]
+            )
+            if np.isfinite(raw):
+                return raw
+            # fall through to the stable path
         if self._expression_surface is not None and gamma is not None and self._expression_surface["lambda_gamma_fn"] is not None:
-            return float(
+            raw = float(
                 np.asarray(
                     self._expression_surface["lambda_gamma_fn"](
                         *self._surface_gamma_args(stimVal, time_index=time_index, nst=nst, gamma=gamma)
@@ -560,6 +595,9 @@ class CIF:
                     dtype=float,
                 ).reshape(-1)[0]
             )
+            if np.isfinite(raw):
+                return raw
+            # fall through to the stable path
         eta, _, _, _ = self._eta(stimVal, time_index=time_index, nst=nst, gamma=gamma)
         if self.fitType == "binomial":
             return float(_sigmoid(np.asarray([eta], dtype=float))[0])
