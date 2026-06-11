@@ -1254,8 +1254,18 @@ class CIF:
                     rate_hz = lambda_delta / max(dt, 1e-12)
                     spikes[idx] = float(draws[idx, realization] < lambda_delta)
                 else:
-                    rate_hz = float(np.exp(np.clip(eta, -20.0, 20.0)))
-                    lambda_delta = 1.0 - np.exp(-rate_hz * dt)
+                    # MATLAB Simulink PointProcessSimulation.slx "Poisson"
+                    # sub-block: ``lambda_delta = e^{X·β}`` directly (verified
+                    # against the textual ``PointProcessSimulation.mdl.r2013a``
+                    # at SID 63, line 1313).  Treats exp(eta) as the per-bin
+                    # spike probability — consistent with a GLM trained on
+                    # binary per-bin observations where eta = log(P_bin).
+                    # The previous Python code applied an extra Poisson-process
+                    # conversion ``1 - exp(-exp(eta) * dt)`` which double-counted
+                    # dt and silently under-estimated spike rates by ~1/dt
+                    # (e.g. 1000× at sampleRate=1 kHz).  Audit finding C4.
+                    lambda_delta = float(np.exp(np.clip(eta, -20.0, 20.0)))
+                    rate_hz = lambda_delta
                     spikes[idx] = float(draws[idx, realization] < np.clip(lambda_delta, 0.0, 1.0))
                 lambda_data[idx, realization] = rate_hz
                 lambda_delta_data[idx, realization] = lambda_delta
