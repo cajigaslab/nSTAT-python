@@ -170,9 +170,10 @@ CODE = [
             coeffs, labels, _ = fit.getCoeffsWithLabels(3)
             for coeff, label in zip(coeffs, labels, strict=False):
                 label_str = str(label)
-                if neuron_idx == 1 and label_str.startswith("2:"):
+                # Label format is "neuron_K:[...]" — see FitResult labels.
+                if neuron_idx == 1 and label_str.startswith("neuron_2:"):
                     estimated[0, 1] = float(coeff)
-                elif neuron_idx == 2 and label_str.startswith("1:"):
+                elif neuron_idx == 2 and label_str.startswith("neuron_1:"):
                     estimated[1, 0] = float(coeff)
         return estimated
     """,
@@ -288,6 +289,9 @@ CODE = [
     fitType = "binomial"
     Algorithm = "BNLRCG" if fitType == "binomial" else "GLM"
     spikeColl = network.spikes
+    # All-to-all neighbour graph so each neuron sees the other neuron's
+    # spike history as an ensemble covariate (Matlab nstColl.setNeighbors).
+    spikeColl.setNeighbors()
     trial = Trial(spikeColl, CovColl([stimCov, baselineCov]), None, History(selfHist))
     trial.setEnsCovHist(ensHist)
 
