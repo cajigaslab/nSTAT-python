@@ -627,8 +627,21 @@ class Analysis:
         list of FitResult
             One :class:`FitResult` per neuron.
         """
+        # Audit finding H3 (Agent 4): MATLAB ``Analysis.m:466,481`` passes
+        # only ``tObj.getNeuronIndFromMask()`` indices to
+        # ``RunAnalysisForNeuron``.  Python previously iterated the FULL
+        # ``range(num_spike_trains)``, which fitted masked-out neurons —
+        # the user-set ``neuronMask`` was silently ignored in the
+        # all-neurons workflow.  Honour the mask: when set, iterate only
+        # the unmasked 1-based selectors and translate to 0-based for
+        # ``run_analysis_for_neuron``.
+        if trial.spike_collection.isNeuronMaskSet():
+            unmasked_one_based = trial.spike_collection.getIndFromMask()
+            indices = [i - 1 for i in unmasked_one_based]
+        else:
+            indices = list(range(trial.spike_collection.num_spike_trains))
         out: list[FitResult] = []
-        for i in range(trial.spike_collection.num_spike_trains):
+        for i in indices:
             out.append(
                 Analysis.run_analysis_for_neuron(
                     trial,

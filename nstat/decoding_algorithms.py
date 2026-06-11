@@ -625,7 +625,19 @@ class DecodingAlgorithms:
 
     @staticmethod
     def kalman_predict(x_u, Pe_u, A, Pv, GnConv=None):
-        """Kalman filter predict step: ``x_p = A x_u``, ``Pe_p = A Pe A' + Pv``."""
+        """Kalman filter predict step: ``x_p = A x_u``, ``Pe_p = A Pe A' + Pv``.
+
+        When the converged-gain ``GnConv`` is provided the predict-step
+        covariance is taken from the previously-filtered ``Pe_u`` (which
+        is the steady-state covariance under the converged gain) rather
+        than recomputed.  Audit finding H1 (Agent 5): the prior
+        implementation used ``GnConv`` itself as the covariance — but
+        ``GnConv`` is a gain matrix (shape ``Dx x Dy``), not a
+        covariance (``Dx x Dx``).  The ``_kalman_filter_matlab`` path at
+        lines 611-614 had this right; the standalone ``kalman_predict``
+        diverged.  Matches MATLAB ``KalmanFilter.m:91``
+        (``Pe_p = Pe_u`` when ``Gn_conv`` set).
+        """
         x_vec = np.asarray(x_u, dtype=float).reshape(-1)
         dim = x_vec.size
         A_mat = _as_state_matrix(A, dim)
@@ -634,7 +646,7 @@ class DecodingAlgorithms:
             Pv_mat = _as_state_matrix(Pv, dim)
             Pe_p = _symmetrize(A_mat @ Pe_mat @ A_mat.T + Pv_mat)
         else:
-            Pe_p = _symmetrize(_as_state_matrix(GnConv, dim))
+            Pe_p = _symmetrize(Pe_mat)
         x_p = A_mat @ x_vec
         return x_p, Pe_p
 
