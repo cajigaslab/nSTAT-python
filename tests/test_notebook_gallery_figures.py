@@ -51,3 +51,45 @@ def test_gallery_is_non_empty() -> None:
     above isn't vacuously passing on an empty glob)."""
     figs = list(GALLERY_ROOT.glob("*/fig_*.png"))
     assert len(figs) > 100, f"expected the full notebook gallery, found {len(figs)} figures"
+
+
+def _embedded_image_count(nb) -> int:
+    return sum(
+        1
+        for cell in nb.cells
+        if cell.cell_type == "code"
+        for out in cell.get("outputs", [])
+        if any(key.startswith("image/") for key in out.get("data", {}))
+    )
+
+
+def test_notebooks_embed_their_figures() -> None:
+    """Every notebook that produces gallery figures must also EMBED those
+    figures as cell outputs, so they render in the committed ``.ipynb`` (and on
+    GitHub), not only in the gallery PNGs.
+
+    ``FigureTracker`` displays each figure inline as it is saved; this guard
+    fails if a notebook is committed output-stripped, or with fewer embedded
+    figures than it produces.
+    """
+    import nbformat
+
+    nb_dir = REPO_ROOT / "notebooks"
+    failures = []
+    for nb_path in sorted(nb_dir.glob("*.ipynb")):
+        gallery = GALLERY_ROOT / nb_path.stem
+        n_gallery = len(list(gallery.glob("fig_*.png"))) if gallery.exists() else 0
+        if n_gallery == 0:
+            continue  # notebooks with no figures (e.g. API-reference stubs)
+        nb = nbformat.read(nb_path, as_version=4)
+        n_embedded = _embedded_image_count(nb)
+        if n_embedded < n_gallery:
+            failures.append(
+                f"{nb_path.name}: {n_embedded} embedded figure(s) < {n_gallery} "
+                "gallery figure(s)"
+            )
+    assert not failures, (
+        "Notebooks must embed every figure they produce (run "
+        "`python tools/notebook_build/embed_figures.py --all`):\n  "
+        + "\n  ".join(failures)
+    )
