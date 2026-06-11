@@ -1,0 +1,175 @@
+{
+  "version": 1,
+  "metric": "ssim",
+  "normalized_size": [
+    800,
+    600
+  ],
+  "entries": [
+    {
+      "topic": "AnalysisExamples",
+      "figure_description": "Rat trajectory with spike locations",
+      "matlab_png": "helpfiles/AnalysisExamples_01.png",
+      "python_png": "docs/notebook_galleries/AnalysisExamples/fig_001.png",
+      "threshold": 0.45,
+      "stochastic": false,
+      "notes": "Color differs (MATLAB blue vs Python grey) and Python adds axis\nlabels with tick values; structure identical (same trajectory,\nsame spike locations).  Baseline 0.498 measured 2026-06-11.\n",
+      "ssim": 0.4979251263149635,
+      "passed": true
+    },
+    {
+      "topic": "AnalysisExamples",
+      "figure_description": "KS plot \u2014 linear vs quadratic GLM",
+      "matlab_png": "helpfiles/AnalysisExamples_04.png",
+      "python_png": "docs/notebook_galleries/AnalysisExamples/fig_004.png",
+      "threshold": 0.7,
+      "stochastic": false,
+      "notes": "After Phase 2 fix, Quadratic uses centered features",
+      "ssim": 0.7602849356815982,
+      "passed": true
+    },
+    {
+      "topic": "PPSimExample",
+      "figure_description": "Raster + stimulus",
+      "matlab_png": "helpfiles/PPSimExample_04.png",
+      "python_png": "docs/notebook_galleries/PPSimExample/fig_006.png",
+      "threshold": 0.5,
+      "stochastic": true,
+      "notes": "Stochastic spike draws differ between numpy and MATLAB random streams",
+      "ssim": 0.6287379330149648,
+      "passed": true
+    },
+    {
+      "topic": "NetworkTutorial",
+      "figure_description": "Actual vs estimated network connectivity",
+      "matlab_png": "helpfiles/NetworkTutorial_05.png",
+      "python_png": "docs/notebook_galleries/NetworkTutorial/fig_013.png",
+      "threshold": 0.7,
+      "stochastic": false,
+      "notes": "After Phase 2 fix (maskAwayAllExcept reset + label parser +\nsetNeighbors), the estimated panel matches the actual panel's\nsign pattern.  Magnitude unstable at l2=0; sign is what matters.\n",
+      "ssim": 0.735783665182539,
+      "passed": true
+    },
+    {
+      "topic": "DecodingExample",
+      "figure_description": "PPAF decoded stimulus",
+      "matlab_png": "helpfiles/DecodingExample_05.png",
+      "python_png": "docs/notebook_galleries/DecodingExample/fig_005.png",
+      "threshold": 0.5,
+      "stochastic": true,
+      "notes": "Stochastic spike draws differ; tracks the same sinusoid",
+      "ssim": 0.5421522350041952,
+      "passed": true
+    },
+    {
+      "topic": "CovariateExamples",
+      "figure_description": "Covariate signal visualization",
+      "matlab_png": "helpfiles/CovariateExamples_01.png",
+      "python_png": "docs/notebook_galleries/CovariateExamples/fig_001.png",
+      "threshold": 0.55,
+      "stochastic": false,
+      "notes": "Baseline 0.631 measured 2026-06-11; layout match good.",
+      "ssim": 0.6307817210244541,
+      "passed": true
+    },
+    {
+      "topic": "TrialExamples",
+      "figure_description": "Trial plot \u2014 spikes + covariates aligned",
+      "matlab_png": "helpfiles/TrialExamples_01.png",
+      "python_png": "docs/notebook_galleries/TrialExamples/fig_001.png",
+      "threshold": 0.7,
+      "stochastic": false,
+      "notes": "",
+      "ssim": 0.8147416530248175,
+      "passed": true
+    },
+    {
+      "topic": "mEPSCAnalysis",
+      "figure_description": "Constant Mg raster + Poisson model fit",
+      "matlab_png": "helpfiles/mEPSCAnalysis_01.png",
+      "python_png": "docs/notebook_galleries/mEPSCAnalysis/fig_001.png",
+      "threshold": 0.5,
+      "stochastic": true,
+      "notes": "After Phase 2 sampleRate fix (200\u21921000 Hz), the design-matrix\ndimension matches MATLAB so the rate-axis ranges agree.\n",
+      "ssim": 0.5231233584945347,
+      "passed": true
+    },
+    {
+      "topic": "mEPSCAnalysis",
+      "figure_description": "GLM coefficient comparison (\u03bc\u2081, \u03bc\u2082, \u03bc\u2083)",
+      "matlab_png": "helpfiles/mEPSCAnalysis_05.png",
+      "python_png": "docs/notebook_galleries/mEPSCAnalysis/fig_004.png",
+      "threshold": 0.6,
+      "stochastic": false,
+      "notes": "After Phase 1 + Phase 2 fixes (l2=0.0 + sampleRate=1000 +\nepoch boundaries [495,765]), coefficients should match MATLAB\nmagnitudes within stochastic-data tolerance.\n",
+      "ssim": 0.6862102329363011,
+      "passed": true
+    },
+    {
+      "topic": "HistoryExamples",
+      "figure_description": "History windows + covariate visualization",
+      "matlab_png": "helpfiles/HistoryExamples_01.png",
+      "python_png": "docs/notebook_galleries/HistoryExamples/fig_001.png",
+      "threshold": 0.5,
+      "stochastic": true,
+      "notes": "After Phase 2 fix (8 hand-typed \u2192 100 seeded random spikes\nmatching ``sort(rand(1,100))``), figure scope matches MATLAB.\nStochastic seed differs between numpy and MATLAB streams.\n",
+      "ssim": 0.6615960411819155,
+      "passed": true
+    },
+    {
+      "topic": "HippocampalPlaceCellExample",
+      "figure_description": "Cell 25 Gaussian vs Zernike place field (3D mesh overlay)",
+      "matlab_png": "helpfiles/HippocampalPlaceCellExample_10.png",
+      "python_png": "docs/notebook_galleries/HippocampalPlaceCellExample/fig_011.png",
+      "threshold": 0.5,
+      "stochastic": false,
+      "notes": "",
+      "skipped": true,
+      "skip_reason": "MATLAB renders an overlaid 3D wireframe at specific camera angle;\nPython uses plot_wireframe with view_init(elev=30, azim=-37.5).\nLayout/perspective mismatch is too large for SSIM until both\npaths agree on a single rendering convention.\n"
+    },
+    {
+      "topic": "PPThinning",
+      "figure_description": "Thinned realisations + scaled CIF overlay (log-y)",
+      "matlab_png": "helpfiles/PPThinning_04.png",
+      "python_png": "docs/notebook_galleries/PPThinning/fig_003.png",
+      "threshold": 0.5,
+      "stochastic": true,
+      "notes": "",
+      "skipped": true,
+      "skip_reason": "MATLAB overlays the scaled CIF on the raster with log-y axis;\nPython plots a plain raster only.  Layout pending Phase 4.\n"
+    },
+    {
+      "topic": "SignalObjExamples",
+      "figure_description": "SignalObj basic plot",
+      "matlab_png": "helpfiles/SignalObjExamples_01.png",
+      "python_png": "docs/notebook_galleries/SignalObjExamples/fig_001.png",
+      "threshold": 0.4,
+      "stochastic": false,
+      "notes": "Baseline 0.470 measured 2026-06-11; significant layout drift\n(MATLAB renders multi-axis SignalObj with custom labels,\nPython uses default matplotlib subplots).  Candidate for\nPhase 4 pedagogical fix.\n",
+      "ssim": 0.46963758826312346,
+      "passed": true
+    },
+    {
+      "topic": "nSpikeTrainExamples",
+      "figure_description": "nspikeTrain raster",
+      "matlab_png": "helpfiles/nSpikeTrainExamples_01.png",
+      "python_png": "docs/notebook_galleries/nSpikeTrainExamples/fig_001.png",
+      "threshold": 0.2,
+      "stochastic": false,
+      "notes": "Baseline 0.273 measured 2026-06-11; Python raster layout differs\nsubstantially from MATLAB's multi-panel published figure.\nMarker: gate baselines current state; lower threshold prevents\nfalse alarms but a future Phase 4 fix should target 0.50+.\n",
+      "ssim": 0.27330919607331056,
+      "passed": true
+    },
+    {
+      "topic": "nstCollExamples",
+      "figure_description": "nstColl raster aggregate",
+      "matlab_png": "helpfiles/nstCollExamples_01.png",
+      "python_png": "docs/notebook_galleries/nstCollExamples/fig_001.png",
+      "threshold": 0.18,
+      "stochastic": false,
+      "notes": "Baseline 0.214 measured 2026-06-11; similar to\nnSpikeTrainExamples \u2014 Python collection raster doesn't reproduce\nMATLAB's published multi-panel layout.  Phase 4 candidate.\n",
+      "ssim": 0.21354654219724914,
+      "passed": true
+    }
+  ]
+}

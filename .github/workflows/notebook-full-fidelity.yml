@@ -67,3 +67,18 @@ jobs:
           name: notebook-galleries
           path: docs/notebook_galleries/
           retention-days: 30
+      - name: Visual parity (SSIM) — Python-only baselines
+        # MATLAB checkout is not available in CI, so this step records the
+        # baseline scores against a "matlab repo unavailable" marker.  The
+        # gate becomes meaningful when the manifest entries lower their
+        # thresholds AND a future job mirrors the cajigaslab/nSTAT helpfile
+        # PNGs into the runner.
+        if: always()
+        run: python tools/parity/build_visual_comparison.py
+      - name: Upload visual parity results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-fidelity-results
+          path: parity/visual_fidelity_results.json
+          retention-days: 30
