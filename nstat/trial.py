@@ -523,13 +523,26 @@ class CovariateCollection:
         self.maskAwayCov(identifier)
 
     def maskAwayAllExcept(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
-        """Mask away every covariate *except* the ones specified."""
+        """Mask away every covariate *except* the ones specified.
+
+        Matches MATLAB ``CovColl.m:202-208`` (``maskAwayOnlyCov`` →
+        ``resetMask`` first, then ``maskAwayCov``).  Before the reset
+        the kept covariates' masks were preserved as-is, which silently
+        dropped any covariate whose stored mask was already all-zero —
+        e.g. the per-neighbor masks inside ``Trial.ensCovColl``, which
+        are initialised for neuron 1's view and contain zeros for the
+        other neuron's row.  Without resetting, ``getEnsCovMatrix(n=2)``
+        returned an empty matrix and the NetworkTutorial fit silently
+        dropped the inter-neuron coupling term.
+        """
         if isinstance(identifier, (int, str)):
             keep = {self._covariate_from_identifier(identifier)}
         else:
             keep = {self._covariate_from_identifier(item) for item in identifier}
         for idx, cov in enumerate(self.covArray, start=1):
-            if idx not in keep:
+            if idx in keep:
+                self.covMask[idx - 1] = np.ones(cov.dimension, dtype=int)
+            else:
                 self.covMask[idx - 1] = np.zeros(cov.dimension, dtype=int)
 
     def setCovShift(self, deltaT: float, identifier=None) -> "CovariateCollection":
