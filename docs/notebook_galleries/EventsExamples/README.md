@@ -7,7 +7,7 @@ MATLAB-line annotations look like blank pages with code snippets and indicate th
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
 - Source notebook: [`notebooks/EventsExamples.ipynb`](../../notebooks/EventsExamples.ipynb)
-- Figures: 3 (0 with substantive plot content)
+- Figures: 3 (3 with substantive plot content)
 
 ## Figures
 
