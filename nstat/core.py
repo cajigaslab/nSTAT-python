@@ -1080,8 +1080,16 @@ class SignalObj:
         self.minTime = float(np.min(newTime))
         self.maxTime = float(np.max(newTime))
 
-    @property
     def derivative(self) -> "SignalObj":
+        """Return the per-sample forward-difference derivative.
+
+        Matches MATLAB ``SignalObj.m:761`` which is a method (called as
+        ``s.derivative()``), not a property.  The previous Python
+        implementation was a ``@property`` so MATLAB-ported code calling
+        ``sig.derivative()`` silently failed with ``TypeError: 'SignalObj'
+        object is not callable``.  This is now a regular method; access
+        ``sig.derivative()`` (with parentheses) to compute the derivative.
+        """
         deriv = np.zeros_like(self.data, dtype=float)
         if self.data.shape[0] > 1:
             deriv[1:, :] = np.diff(self.data, axis=0) * float(self.sampleRate)
@@ -1091,7 +1099,7 @@ class SignalObj:
 
     def derivativeAt(self, x0: Sequence[float] | float):
         """Return the derivative value(s) at time(s) *x0*."""
-        deriv = self.derivative
+        deriv = self.derivative()
         values = deriv.getValueAt(x0)
         return values
 

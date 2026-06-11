@@ -185,7 +185,7 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
 
     # Subplot 3: Stimulus velocity (derivative, first 21 s, black line matching MATLAB)
     ax = axes1[2]
-    stimDeriv = stim.derivative
+    stimDeriv = stim.derivative()
     stimDerivView = stimDeriv.getSigInTimeWindow(0, viewWindow)
     ax.plot(stimDerivView.time, stimDerivView.data[:, 0], "k")
     ax.set_yticks(np.arange(-80, 81, 40))

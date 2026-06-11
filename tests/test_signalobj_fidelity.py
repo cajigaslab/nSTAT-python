@@ -73,7 +73,7 @@ def test_signalobj_arithmetic_derivative_and_merge_preserve_matlab_style_shapes(
     np.testing.assert_allclose(scaled.data[:, 0], [2.0, 4.0, 8.0])
     np.testing.assert_allclose(merged.data, sig.data)
 
-    deriv = sig.derivative
+    deriv = sig.derivative()
     assert deriv.dimension == 2
     np.testing.assert_allclose(sig.derivativeAt(1.0), deriv.getValueAt(1.0))
 
