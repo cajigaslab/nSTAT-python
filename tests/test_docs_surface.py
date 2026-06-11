@@ -44,9 +44,9 @@ def test_readme_links_to_github_pages_site() -> None:
 
 
 def test_readme_links_to_paper_overview() -> None:
-    """README links to PaperOverview from the toolbox map section."""
+    """README links to the PaperOverview page from the toolbox map section."""
     text = README_PATH.read_text(encoding="utf-8")
-    assert "[docs/PaperOverview.md](docs/PaperOverview.md)" in text
+    assert "cajigaslab.github.io/nSTAT-python/PaperOverview.html" in text
 
 
 def test_docs_conf_enables_markdown_support() -> None:

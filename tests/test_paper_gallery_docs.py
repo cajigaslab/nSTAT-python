@@ -24,8 +24,9 @@ def test_paper_examples_markdown_matches_generator() -> None:
 
 def test_readme_examples_block_matches_generator() -> None:
     committed = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    start = committed.index("## Paper Examples (Self-Contained)")
-    end = committed.index("\nPlot style policy:")
+    # Mirror the boundaries write_gallery_outputs() uses to splice the block.
+    start = committed.index("## Paper examples")
+    end = committed.index("Plot-style policy")
     assert committed[start:end].rstrip() == render_readme_examples_markdown(REPO_ROOT).rstrip()
 
 

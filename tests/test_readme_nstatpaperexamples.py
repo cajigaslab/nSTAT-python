@@ -11,7 +11,7 @@ README_PATH = REPO_ROOT / "README.md"
 def test_readme_links_to_generated_paper_gallery_and_figure_dirs() -> None:
     text = README_PATH.read_text(encoding="utf-8")
     match = re.search(
-        r"## Paper Examples \(Self-Contained\)\n(.*?)\nPlot style policy:",
+        r"## Paper examples\n(.*?)\nPlot-style policy",
         text,
         flags=re.S,
     )
