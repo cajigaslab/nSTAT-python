@@ -25,7 +25,7 @@ MATLAB-helpfile port) rather than substantive plots — those are marked.
 | [`PPSimExample`](PPSimExample/) | 9 | yes | [`notebooks/PPSimExample.ipynb`](../../notebooks/PPSimExample.ipynb) |
 | [`PPThinning`](PPThinning/) | 3 | yes | [`notebooks/PPThinning.ipynb`](../../notebooks/PPThinning.ipynb) |
 | [`PSTHEstimation`](PSTHEstimation/) | 2 | yes | [`notebooks/PSTHEstimation.ipynb`](../../notebooks/PSTHEstimation.ipynb) |
-| [`SignalObjExamples`](SignalObjExamples/) | 16 | yes | [`notebooks/SignalObjExamples.ipynb`](../../notebooks/SignalObjExamples.ipynb) |
+| [`SignalObjExamples`](SignalObjExamples/) | 17 | yes | [`notebooks/SignalObjExamples.ipynb`](../../notebooks/SignalObjExamples.ipynb) |
 | [`StimulusDecode2D`](StimulusDecode2D/) | 6 | yes | [`notebooks/StimulusDecode2D.ipynb`](../../notebooks/StimulusDecode2D.ipynb) |
 | [`TrialExamples`](TrialExamples/) | 6 | yes | [`notebooks/TrialExamples.ipynb`](../../notebooks/TrialExamples.ipynb) |
 | [`ValidationDataSet`](ValidationDataSet/) | 10 | yes | [`notebooks/ValidationDataSet.ipynb`](../../notebooks/ValidationDataSet.ipynb) |
