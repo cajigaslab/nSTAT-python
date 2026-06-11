@@ -54,7 +54,7 @@ extensions = [
     "sphinx.ext.mathjax",           # Render LaTeX math (client-side MathJax)
 ]
 
-exclude_patterns = ["_build", "_autosummary", "Thumbs.db", ".DS_Store", "superpowers"]
+exclude_patterns = ["_build", "_autosummary", "Thumbs.db", ".DS_Store", "superpowers", "notebooks"]
 master_doc = "index"
 
 # MyST: generate slug anchors for headings (h1–h3) so cross-page links to a

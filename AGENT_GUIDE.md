@@ -495,8 +495,8 @@ state model (A, Q)        ───►      ▼
   paper-example scripts default to `legacy` to preserve strict figure
   parity; pass `--plot-style modern` to opt into readability formatting.
 - **The figure tree is consolidated under `docs/figures/`**. The legacy
-  `examples/paper/figures/` directory still exists (byte-identical
-  duplicates) but is deprecated; see the README in that folder.
+  `examples/paper/figures/` duplicate tree was removed — paper scripts
+  now write only to `docs/figures/exampleNN/`.
 - **`__init__.py` does some `__class__` patching** to allow
   `nstat.SignalObj.SignalObj` to coexist with `nstat.SignalObj`. This is
   invisible at runtime but may confuse static analyzers (mypy/pyright).

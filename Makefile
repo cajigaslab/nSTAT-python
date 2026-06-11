@@ -21,6 +21,7 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
 .PHONY: help install test test-smoke test-fast test-datasets test-no-paper \
         regen regen-gallery regen-parity regen-figures regen-notebook-fidelity \
+        regen-notebook-galleries \
         docs docs-strict docs-open refresh-intersphinx-inv \
         diff-matlab readme-check helpfile-check freshness-check \
         format lint typecheck \
@@ -73,6 +74,10 @@ regen-notebook-fidelity:  ## parity/notebook_fidelity.yml from tools/notebooks/p
 regen-figures:  ## ~30 min — regenerate every paper-example PNG (needs figshare dataset).
 	@echo "Note: this requires the figshare paper dataset.  Set NSTAT_OFFLINE=1 to fail-fast."
 	$(PY) examples/paper/regenerate_all_figures.py
+
+regen-notebook-galleries:  ## Execute every notebook + rebuild docs/notebooks/<topic>/README.md + PNGs.
+	@echo "Note: executes notebooks via nbclient; needs the figshare paper dataset for full coverage."
+	$(PY) tools/notebooks/build_notebook_galleries.py --group full
 
 # --- docs ------------------------------------------------------------
 
