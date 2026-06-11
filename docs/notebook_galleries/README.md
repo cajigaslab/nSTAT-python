@@ -11,12 +11,12 @@ MATLAB-helpfile port) rather than substantive plots — those are marked.
 | Notebook | Figures | Substantive | Source |
 |---|---|---|---|
 | [`AnalysisExamples`](AnalysisExamples/) | 4 | yes | [`notebooks/AnalysisExamples.ipynb`](../../notebooks/AnalysisExamples.ipynb) |
-| [`AnalysisExamples2`](AnalysisExamples2/) | 5 | yes | [`notebooks/AnalysisExamples2.ipynb`](../../notebooks/AnalysisExamples2.ipynb) |
-| [`CovCollExamples`](CovCollExamples/) | 2 | placeholder only | [`notebooks/CovCollExamples.ipynb`](../../notebooks/CovCollExamples.ipynb) |
+| [`AnalysisExamples2`](AnalysisExamples2/) | 4 | yes | [`notebooks/AnalysisExamples2.ipynb`](../../notebooks/AnalysisExamples2.ipynb) |
+| [`CovCollExamples`](CovCollExamples/) | 2 | yes | [`notebooks/CovCollExamples.ipynb`](../../notebooks/CovCollExamples.ipynb) |
 | [`CovariateExamples`](CovariateExamples/) | 2 | yes | [`notebooks/CovariateExamples.ipynb`](../../notebooks/CovariateExamples.ipynb) |
 | [`DecodingExample`](DecodingExample/) | 5 | yes | [`notebooks/DecodingExample.ipynb`](../../notebooks/DecodingExample.ipynb) |
 | [`DecodingExampleWithHist`](DecodingExampleWithHist/) | 2 | yes | [`notebooks/DecodingExampleWithHist.ipynb`](../../notebooks/DecodingExampleWithHist.ipynb) |
-| [`EventsExamples`](EventsExamples/) | 3 | placeholder only | [`notebooks/EventsExamples.ipynb`](../../notebooks/EventsExamples.ipynb) |
+| [`EventsExamples`](EventsExamples/) | 3 | yes | [`notebooks/EventsExamples.ipynb`](../../notebooks/EventsExamples.ipynb) |
 | [`ExplicitStimulusWhiskerData`](ExplicitStimulusWhiskerData/) | 9 | yes | [`notebooks/ExplicitStimulusWhiskerData.ipynb`](../../notebooks/ExplicitStimulusWhiskerData.ipynb) |
 | [`HippocampalPlaceCellExample`](HippocampalPlaceCellExample/) | 11 | yes | [`notebooks/HippocampalPlaceCellExample.ipynb`](../../notebooks/HippocampalPlaceCellExample.ipynb) |
 | [`HistoryExamples`](HistoryExamples/) | 3 | yes | [`notebooks/HistoryExamples.ipynb`](../../notebooks/HistoryExamples.ipynb) |
@@ -25,13 +25,13 @@ MATLAB-helpfile port) rather than substantive plots — those are marked.
 | [`PPSimExample`](PPSimExample/) | 9 | yes | [`notebooks/PPSimExample.ipynb`](../../notebooks/PPSimExample.ipynb) |
 | [`PPThinning`](PPThinning/) | 3 | yes | [`notebooks/PPThinning.ipynb`](../../notebooks/PPThinning.ipynb) |
 | [`PSTHEstimation`](PSTHEstimation/) | 2 | yes | [`notebooks/PSTHEstimation.ipynb`](../../notebooks/PSTHEstimation.ipynb) |
-| [`SignalObjExamples`](SignalObjExamples/) | 16 | yes | [`notebooks/SignalObjExamples.ipynb`](../../notebooks/SignalObjExamples.ipynb) |
+| [`SignalObjExamples`](SignalObjExamples/) | 17 | yes | [`notebooks/SignalObjExamples.ipynb`](../../notebooks/SignalObjExamples.ipynb) |
 | [`StimulusDecode2D`](StimulusDecode2D/) | 6 | yes | [`notebooks/StimulusDecode2D.ipynb`](../../notebooks/StimulusDecode2D.ipynb) |
 | [`TrialExamples`](TrialExamples/) | 6 | yes | [`notebooks/TrialExamples.ipynb`](../../notebooks/TrialExamples.ipynb) |
-| [`ValidationDataSet`](ValidationDataSet/) | 10 | yes | [`notebooks/ValidationDataSet.ipynb`](../../notebooks/ValidationDataSet.ipynb) |
+| [`ValidationDataSet`](ValidationDataSet/) | 8 | yes | [`notebooks/ValidationDataSet.ipynb`](../../notebooks/ValidationDataSet.ipynb) |
 | [`mEPSCAnalysis`](mEPSCAnalysis/) | 4 | yes | [`notebooks/mEPSCAnalysis.ipynb`](../../notebooks/mEPSCAnalysis.ipynb) |
 | [`nSTATPaperExamples`](nSTATPaperExamples/) | 30 | yes | [`notebooks/nSTATPaperExamples.ipynb`](../../notebooks/nSTATPaperExamples.ipynb) |
-| [`nSpikeTrainExamples`](nSpikeTrainExamples/) | 4 | placeholder only | [`notebooks/nSpikeTrainExamples.ipynb`](../../notebooks/nSpikeTrainExamples.ipynb) |
+| [`nSpikeTrainExamples`](nSpikeTrainExamples/) | 4 | yes | [`notebooks/nSpikeTrainExamples.ipynb`](../../notebooks/nSpikeTrainExamples.ipynb) |
 | [`nstCollExamples`](nstCollExamples/) | 3 | yes | [`notebooks/nstCollExamples.ipynb`](../../notebooks/nstCollExamples.ipynb) |
 
 Regenerate this gallery with `make regen-notebook-galleries` (executes the smoke group; pass `--group full` for everything).

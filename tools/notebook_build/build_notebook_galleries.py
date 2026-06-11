@@ -118,13 +118,28 @@ def execute_notebook(path: Path, timeout: int) -> None:
 
 
 def has_real_content(png_path: Path) -> bool:
-    """Heuristic: a real plot is usually >25 KB; placeholder annotation
-    images from FigureTracker are <15 KB. We use this only to flag
-    galleries that are mostly placeholders, not to filter them out."""
+    """A real plot has drawn ink; a FigureTracker placeholder is a near-blank
+    canvas with only a title + a monospace annotation line.
+
+    Detect via the fraction of non-white pixels rather than file size: sparse
+    but legitimate plots (event-marker rasters, coarse step signal reps)
+    compress to small files yet clearly contain data.  Empty placeholders sit
+    around 0.004 non-white; the sparsest real plots are >0.01, so 0.008 cleanly
+    separates them.
+    """
     try:
-        return png_path.stat().st_size > 25_000
-    except FileNotFoundError:
-        return False
+        from PIL import Image
+        import numpy as np
+
+        arr = np.asarray(Image.open(png_path).convert("RGB"))
+        non_white = 1.0 - float(np.all(arr >= 245, axis=-1).mean())
+        return non_white > 0.008
+    except Exception:
+        # If Pillow/numpy unavailable, fall back to the old size heuristic.
+        try:
+            return png_path.stat().st_size > 25_000
+        except FileNotFoundError:
+            return False
 
 
 def build_per_notebook_readme(topic: str, gallery_dir: Path, source_rel: str, figures: list[str], real_count: int) -> None:
