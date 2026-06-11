@@ -93,13 +93,16 @@ def test_single_notebook_registry() -> None:
 
 def test_single_canonical_paper_examples_entry() -> None:
     """The paper examples have one canonical home: ``examples/paper/`` (the
-    MATLAB-faithful scripts) plus the ``nstat-paper-examples`` console script.
-    The stale CapCase wrapper ``examples/nSTATPaperExamples.py`` must not return.
+    MATLAB-faithful scripts) plus the ``nstat-paper-examples`` console script
+    (``nstat.paper_examples:main``).  The thin ``examples/`` launcher wrappers
+    (``nSTATPaperExamples.py`` / ``nstat_paper_examples.py``) are removed
+    duplicates of that console script and must not return.
     """
-    assert not (REPO_ROOT / "examples" / "nSTATPaperExamples.py").exists(), (
-        "examples/nSTATPaperExamples.py is a removed stale wrapper; use the "
-        "examples/paper/ scripts or the `nstat-paper-examples` console script"
-    )
+    for stale in ("nSTATPaperExamples.py", "nstat_paper_examples.py"):
+        assert not (REPO_ROOT / "examples" / stale).exists(), (
+            f"examples/{stale} duplicates the `nstat-paper-examples` console "
+            "script; use examples/paper/ scripts or the console entry point"
+        )
 
 
 def test_no_committed_simulink_or_binary_build_artifacts() -> None:
@@ -124,3 +127,69 @@ def test_no_dated_one_off_parity_snapshots() -> None:
         "Dated parity-diff snapshots should not be committed (regenerate via "
         f"tools/parity/diff_against_matlab.py): {[p.name for p in snapshots]}"
     )
+
+
+def test_no_tracked_python_or_build_caches() -> None:
+    """Build / cache output is regenerable and gitignored; it must never be
+    tracked.  Guards against accidentally committing __pycache__, compiled
+    bytecode, packaging metadata, or the Sphinx build/autosummary output.
+    """
+    offenders = [
+        f
+        for f in _tracked_files()
+        if (
+            "__pycache__/" in f
+            or f.endswith(".pyc")
+            or ".egg-info/" in f
+            or f.startswith("docs/_build/")
+            or f.startswith("docs/_autosummary/")
+            or ".pytest_cache/" in f
+        )
+    ]
+    assert not offenders, f"Build/cache artifacts must not be tracked: {offenders}"
+
+
+# Largest legitimately-tracked files are committed figure PNGs (~2.5 MB). The
+# figshare neural dataset is distributed separately (tens-to-hundreds of MB),
+# so a generous 5 MB ceiling blocks committing dataset dumps while allowing all
+# small fixtures (the data_cache offline fixture, nstat/data, MATLAB gold .mat).
+_MAX_TRACKED_FILE_KB = 5 * 1024
+
+
+def test_no_oversized_tracked_files() -> None:
+    """No single tracked file may exceed the size ceiling. This is the guard
+    against committing the figshare dataset (which ships via ``nstat-install``)
+    or other large binary dumps, independent of file extension.
+    """
+    offenders = []
+    for f in _tracked_files():
+        p = REPO_ROOT / f
+        try:
+            kb = p.stat().st_size // 1024
+        except OSError:
+            continue
+        if kb > _MAX_TRACKED_FILE_KB:
+            offenders.append(f"{f} ({kb // 1024} MB)")
+    assert not offenders, (
+        f"Tracked files exceed the {_MAX_TRACKED_FILE_KB // 1024} MB ceiling "
+        f"(large data ships via figshare/nstat-install, not git): {offenders}"
+    )
+
+
+def test_no_agent_artifact_directories() -> None:
+    """One-off AI-agent scratch dirs (e.g. docs/superpowers/) don't belong in
+    the published tree; design notes live in their proper home.
+    """
+    assert not (REPO_ROOT / "docs" / "superpowers").exists(), (
+        "docs/superpowers/ is an AI-agent artifact dir and was removed"
+    )
+
+
+def test_generated_galleries_hold_no_source_notebooks() -> None:
+    """docs/notebook_galleries/ is GENERATED output (README.md + PNGs). Source
+    notebooks live only in notebooks/; a stray .ipynb here means the source vs
+    generated boundary has blurred.
+    """
+    galleries = REPO_ROOT / "docs" / "notebook_galleries"
+    stray = [p.name for p in galleries.rglob("*.ipynb")] if galleries.exists() else []
+    assert not stray, f"docs/notebook_galleries/ must not contain source notebooks: {stray}"
