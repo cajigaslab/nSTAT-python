@@ -60,6 +60,8 @@ class nspikeTrain:
         yunits: str = "",
         dataLabels: str | Sequence[str] | None = "",
         makePlots: int = 0,
+        *,
+        binwidth: float | None = None,
     ) -> None:
         """Construct a point-process spike train (Matlab ``nspikeTrain``).
 
@@ -111,6 +113,17 @@ class nspikeTrain:
         """
         if spikeTimes is None:
             raise ValueError("nspikeTrain requires a spikeTimes array as input to create an object")
+        # MATLAB-style: ``binwidth`` (e.g. 0.001 s) is the historical
+        # constructor parameter.  When passed as a keyword, it overrides
+        # ``sampleRate`` via ``sampleRate = 1/binwidth``.  This prevents
+        # the silent-rate-inversion trap where MATLAB-ported code passing
+        # ``binwidth=0.001`` would otherwise be interpreted as
+        # ``sampleRate=0.001`` (1 mHz instead of 1 kHz).
+        if binwidth is not None:
+            bw = float(binwidth)
+            if bw <= 0:
+                raise ValueError(f"binwidth must be positive (got {bw!r})")
+            sampleRate = 1.0 / bw
         spikes = np.asarray(spikeTimes, dtype=float).reshape(-1)
         self.spikeTimes = np.sort(spikes)
         self.originalSpikeTimes = self.spikeTimes.copy()

@@ -80,6 +80,16 @@ class Events:
         colorString : str, optional
             Override line colour for event lines (default: ``'r'``).
             Matches Matlab ``Events.plot`` ``colorString`` parameter.
+
+        Notes
+        -----
+        The default ``'r'`` matches the **old** MATLAB ``Events.m:87``
+        which hardcoded the color.  The current MATLAB upstream has
+        been fixed to use ``EObj.eventColor`` (see AUDIT_REPORT M17),
+        but the gold-fixture ``events_exactness.mat`` stores
+        ``plot_line_color = [1, 0, 0]`` from before that fix.  When the
+        fixture is regenerated against current MATLAB, this default
+        should change to ``self.eventColor``.
         """
         color = colorString if colorString is not None else "r"
         if handle is None:

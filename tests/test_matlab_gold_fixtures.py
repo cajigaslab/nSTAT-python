@@ -89,7 +89,7 @@ def test_signalobj_matches_matlab_gold_fixture() -> None:
     signal_2 = SignalObj(np.arange(0.05, 0.5, 0.1), [0.0, 1.0, 0.0, -1.0, 0.0], "sig2", "time", "s", "u", ["x3"])
 
     filtered = signal.filter(_vector(payload, "filter_b"), _vector(payload, "filter_a"))
-    derivative = signal.derivative
+    derivative = signal.derivative()
     integral = signal.integral()
     resampled = signal.resample(_scalar(payload, "resample_rate"))
     xcorr = signal.getSubSignal(1).xcorr(signal.getSubSignal(2), int(_scalar(payload, "xcorr_maxlag")))
