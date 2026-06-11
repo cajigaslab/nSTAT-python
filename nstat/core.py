@@ -501,14 +501,14 @@ class SignalObj:
         return self.plotProps[idx]
 
     def getIndexFromLabel(self, label: str) -> list[int]:
-        """Return 1-based indices of dimensions whose label equals *label*."""
-        matches = [i + 1 for i, value in enumerate(self.dataLabels) if value == label]
+        """Return 0-based indices of dimensions whose label equals *label*."""
+        matches = [i for i, value in enumerate(self.dataLabels) if value == label]
         if not matches:
             raise ValueError("Label does not exist!")
         return matches
 
     def getIndicesFromLabels(self, label: Sequence[str] | str):
-        """Return 1-based index(es) for one or more data-label strings."""
+        """Return 0-based index(es) for one or more data-label strings."""
         if isinstance(label, str):
             matches = self.getIndexFromLabel(label)
             return matches[0] if len(matches) == 1 else matches
@@ -540,13 +540,14 @@ class SignalObj:
             return False
 
     def convertNamesToIndices(self, selectorArray) -> list[int] | np.ndarray:
-        """Convert label names (or mixed) to 1-based indices.
+        """Convert label names (or mixed) to 0-based indices.
 
-        Matches Matlab ``SignalObj.convertNamesToIndices()``.
+        Matches Matlab ``SignalObj.convertNamesToIndices()`` (the
+        Python port is 0-based throughout).
         """
         if isinstance(selectorArray, str):
             if selectorArray == "all":
-                return list(range(1, self.dimension + 1))
+                return list(range(self.dimension))
             if self.isLabelPresent(selectorArray):
                 return self.getIndexFromLabel(selectorArray)
             raise ValueError(f"Specified label '{selectorArray}' does not match data label")
@@ -563,7 +564,7 @@ class SignalObj:
                 else:
                     result.append(int(item))
             return result
-        return list(range(1, self.dimension + 1))
+        return list(range(self.dimension))
 
     def getValueAt(self, x: Sequence[float] | float) -> np.ndarray:
         """Return signal value(s) at time(s) *x* via nearest-neighbour lookup."""
@@ -581,11 +582,17 @@ class SignalObj:
         return out[0] if np.isscalar(x) else out
 
     def _selector_to_zero_based(self, selectorArray: Sequence[int] | np.ndarray | None) -> np.ndarray:
+        """Resolve a selector specification to a 0-based numpy index array.
+
+        The name is preserved for historical continuity, but inputs are
+        now expected to be 0-based; this method validates and normalises
+        (no ``- 1`` translation).
+        """
         if selectorArray is None:
             if self.isMaskSet():
                 selected = self.findIndFromDataMask()
             else:
-                selected = list(range(1, self.dimension + 1))
+                selected = list(range(self.dimension))
         else:
             if isinstance(selectorArray, str):
                 selected = self.getIndicesFromLabels(selectorArray)
@@ -594,9 +601,9 @@ class SignalObj:
         indices = np.asarray(selected, dtype=int).reshape(-1)
         if indices.size == 0:
             return np.array([], dtype=int)
-        if np.min(indices) < 1 or np.max(indices) > self.dimension:
-            raise IndexError("Signal index out of range. Indexing is 1-based.")
-        return indices - 1
+        if np.min(indices) < 0 or np.max(indices) >= self.dimension:
+            raise IndexError("Signal index out of range.")
+        return indices
 
     def dataToMatrix(self, selectorArray: Sequence[int] | np.ndarray | None = None) -> np.ndarray:
         """Return signal data as an ``(n, d)`` matrix.
@@ -618,7 +625,7 @@ class SignalObj:
         return [self.plotProps[int(i)] for i in zero_based]
 
     def getSubSignalFromInd(self, selectorArray: Sequence[int] | np.ndarray) -> "SignalObj":
-        """Return a new ``SignalObj`` with only the selected dimensions (1-based)."""
+        """Return a new ``SignalObj`` with only the selected dimensions (0-based)."""
         indices = self._selector_to_zero_based(selectorArray)
         return self._spawn(
             self.time,
@@ -647,24 +654,24 @@ class SignalObj:
         return self.getSubSignalFromInd(values)
 
     def findNearestTimeIndex(self, time: float) -> int:
-        """Return the 1-based index of the sample nearest to *time*."""
+        """Return the 0-based index of the sample nearest to *time*."""
         value = float(time)
         if value < self.minTime:
-            return 1
+            return 0
         if value > self.maxTime:
-            return self.time.size
+            return self.time.size - 1
         right = int(np.searchsorted(self.time, value, side="left"))
         if right <= 0:
-            return 1
+            return 0
         if right >= self.time.size:
-            return self.time.size
+            return self.time.size - 1
         left = right - 1
         if abs(self.time[right] - value) <= abs(self.time[left] - value):
-            return right + 1
-        return left + 1
+            return right
+        return left
 
     def findNearestTimeIndices(self, times: Sequence[float] | np.ndarray) -> np.ndarray:
-        """Return 1-based indices of the samples nearest to each time in *times*."""
+        """Return 0-based indices of the samples nearest to each time in *times*."""
         return np.asarray([self.findNearestTimeIndex(value) for value in np.asarray(times, dtype=float).reshape(-1)], dtype=int)
 
     def setMinTime(self, minTime: float | None = None, holdVals: int = 0) -> None:
@@ -690,7 +697,7 @@ class SignalObj:
             self.data = np.vstack([pad, self.data])
             self.time = newTime
         elif target > float(np.min(timeVec)):
-            startIndex = self.findNearestTimeIndex(target) - 1
+            startIndex = self.findNearestTimeIndex(target)
             self.time = self.time[startIndex:]
             self.data = self.data[startIndex:, :]
         self.minTime = float(np.min(self.time))
@@ -716,7 +723,7 @@ class SignalObj:
             self.data = np.vstack([self.data, pad])
             self.time = newTime
         elif float(np.max(timeVec)) > target:
-            endIndex = self.findNearestTimeIndex(target)
+            endIndex = self.findNearestTimeIndex(target) + 1
             self.time = self.time[:endIndex]
             self.data = self.data[:endIndex, :]
         self.maxTime = float(np.max(self.time))
@@ -867,8 +874,8 @@ class SignalObj:
             if right > current.maxTime:
                 current.setMaxTime(right, holdVals)
 
-            start = current.findNearestTimeIndex(left) - 1
-            stop = current.findNearestTimeIndex(right)
+            start = current.findNearestTimeIndex(left)
+            stop = current.findNearestTimeIndex(right) + 1
             current.time = current.time[start:stop]
             current.data = current.data[start:stop, :]
             labels = list(current.dataLabels)
@@ -898,8 +905,8 @@ class SignalObj:
         self.dataMask = np.ones(self.dimension, dtype=int)
 
     def findIndFromDataMask(self) -> list[int]:
-        """Return 1-based indices of dimensions currently visible (mask == 1)."""
-        return [int(index) + 1 for index in np.flatnonzero(self.dataMask == 1)]
+        """Return 0-based indices of dimensions currently visible (mask == 1)."""
+        return [int(index) for index in np.flatnonzero(self.dataMask == 1)]
 
     def isMaskSet(self) -> bool:
         """Return ``True`` if any dimension is currently masked out."""
@@ -1441,9 +1448,9 @@ class SignalObj:
         peak_times, _ = self.findGlobalPeak("maxima")
         mean_time = float(np.mean(peak_times))
         delta_t = -(peak_times - mean_time)
-        aligned = self.getSubSignal(1).shift(float(delta_t[0]))
+        aligned = self.getSubSignal(0).shift(float(delta_t[0]))
         for i in range(1, self.dimension):
-            aligned = aligned.merge(self.getSubSignal(i + 1).shift(float(delta_t[i])))
+            aligned = aligned.merge(self.getSubSignal(i).shift(float(delta_t[i])))
         return aligned, mean_time
 
     def windowedSignal(self, windowTimes) -> "SignalObj":
@@ -1584,7 +1591,7 @@ class SignalObj:
                 unique_labels = list(dict.fromkeys(self.dataLabels))
                 selectorArray = [self.getIndexFromLabel(lbl) for lbl in unique_labels]
             else:
-                selectorArray = list(range(1, self.dimension + 1))
+                selectorArray = list(range(self.dimension))
 
         _TAB_COLORS = [
             "tab:blue", "tab:orange", "tab:green", "tab:red",
@@ -1870,7 +1877,7 @@ class SignalObj:
         from .confidence_interval import MATLAB_COLOR_ORDER
 
         ax = plt.gca() if handle is None else handle
-        signal = self.getSubSignal(selectorArray) if selectorArray is not None else self.getSubSignal(self.findIndFromDataMask() or list(range(1, self.dimension + 1)))
+        signal = self.getSubSignal(selectorArray) if selectorArray is not None else self.getSubSignal(self.findIndFromDataMask() or list(range(self.dimension)))
         props = signal.plotProps if plotPropsIn is None else list(plotPropsIn)
         if len(props) == 1 and signal.dimension > 1:
             props = props * signal.dimension
@@ -2056,7 +2063,7 @@ class Covariate(SignalObj):
                 color = getattr(lines[line_index], "get_color", lambda: "b")()
                 if isinstance(color, (str, bytes)):
                     color = mcolors.to_rgb(color)
-                self.ci[selector - 1].plot(color, ax=ax)
+                self.ci[selector].plot(color, ax=ax)
         return lines
 
     def isConfIntervalSet(self) -> bool:
