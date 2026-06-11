@@ -111,21 +111,16 @@ def render_paper_examples_markdown(repo_root: Path | None = None) -> str:
 def render_readme_examples_markdown(repo_root: Path | None = None) -> str:
     manifest = build_gallery_manifest(repo_root)
     lines = [
-        "## Paper Examples (Self-Contained)",
+        "## Paper examples",
         "",
-        "Canonical source files:",
-        "- `examples/paper/*.py`",
-        "- `nstat/paper_examples_full.py`",
+        "The five canonical examples from Cajigas, Malik & Brown (2012), each",
+        "reproduced as a self-contained Python script with a generated figure gallery.",
         "",
-        "Single command to regenerate the paper-example gallery metadata:",
+        "Regenerate the gallery metadata after editing any paper-example script:",
         "",
         "```bash",
         "python tools/paper_examples/build_gallery.py",
         "```",
-        "",
-        "This writes `docs/paper_examples.md`, `docs/figures/manifest.json`, and",
-        "refreshes the canonical README paper-example table from",
-        "`examples/paper/manifest.yml`.",
         "",
         "| Example | Thumbnail | What question it answers | Run command | Links |",
         "|---|---|---|---|---|",
@@ -141,7 +136,12 @@ def render_readme_examples_markdown(repo_root: Path | None = None) -> str:
         [
             "",
             "Expanded paper-example index and figure gallery:",
-            "- [docs/paper_examples.md](docs/paper_examples.md)",
+            "[docs/paper_examples.md](docs/paper_examples.md).",
+            "",
+            "The figshare paper dataset is distributed separately from the Git repository:",
+            "[DOI 10.6084/m9.figshare.4834640.v3](https://doi.org/10.6084/m9.figshare.4834640.v3)",
+            "(`nstat-install --download-example-data always` fetches it; `NSTAT_OFFLINE=1`",
+            "forces offline mode).",
             "",
         ]
     )
@@ -181,8 +181,8 @@ def write_gallery_outputs(repo_root: Path | None = None) -> tuple[Path, Path, Pa
 
     readme_path = base / "README.md"
     readme_text = readme_path.read_text(encoding="utf-8")
-    start = readme_text.index("## Paper Examples (Self-Contained)")
-    end = readme_text.index("Plot style policy:")
+    start = readme_text.index("## Paper examples")
+    end = readme_text.index("Plot-style policy")
     gallery_text = render_readme_examples_markdown(base)
     readme_path.write_text(
         readme_text[:start] + gallery_text + "\n" + readme_text[end:],

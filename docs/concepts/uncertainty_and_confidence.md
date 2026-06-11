@@ -13,10 +13,10 @@
 
 ## Why a point estimate is not enough
 
-Suppose you fit a GLM and find a stimulus coefficient of `β₁ = 1.55`. Is the
+Suppose you fit a GLM and find a stimulus coefficient of $\beta_1 = 1.55$. Is the
 neuron *really* stimulus-driven? It depends entirely on the **uncertainty**: if
-the 95% confidence interval is `1.55 ± 0.10` the effect is solid; if it is
-`1.55 ± 0.80` you have learned almost nothing. The same estimate supports
+the 95% confidence interval is $1.55 \pm 0.10$ the effect is solid; if it is
+$1.55 \pm 0.80$ you have learned almost nothing. The same estimate supports
 opposite conclusions depending on its interval. Reporting estimates without
 intervals is the single most common way a spike-train analysis overstates what
 the data show.
@@ -73,8 +73,8 @@ uses exactly this recipe to report every coefficient with its interval.
 
 > **Watch the link function.** These intervals are on the **log-rate** scale
 > (the GLM's linear predictor). To get an interval on the firing rate itself,
-> transform the *endpoints* through `exp(·)` rather than adding a symmetric
-> band to `exp(β)` — the rate interval is asymmetric.
+> transform the *endpoints* through $\exp(\cdot)$ rather than adding a symmetric
+> band to $\exp(\beta)$ — the rate interval is asymmetric.
 
 ## Uncertainty in a firing-rate curve
 
@@ -104,7 +104,7 @@ for a smoother's output).
 
 ## Check your understanding
 
-1. Two neurons both have stimulus coefficient `β₁ = 0.8`, but neuron A's 95% CI
+1. Two neurons both have stimulus coefficient $\beta_1 = 0.8$, but neuron A's 95% CI
    is `[0.6, 1.0]` and neuron B's is `[-0.3, 1.9]`. Which neuron is convincingly
    stimulus-driven?
 2. You halve your recording length. Roughly what happens to the width of a
@@ -121,10 +121,10 @@ for a smoother's output).
 2. It roughly **grows by √2** (≈ 41% wider). Standard errors scale like
    `1/√(information)`, and information accumulates with data, so halving the
    data multiplies the interval width by about `√2`.
-3. The rate is `exp(β)`, a nonlinear transform. Pushing the symmetric endpoints
-   `β ± 1.96·se` through `exp(·)` stretches the upper side more than the lower,
+3. The rate is $\exp(\beta)$, a nonlinear transform. Pushing the symmetric endpoints
+   $\beta \pm 1.96 \cdot \mathrm{se}$ through $\exp(\cdot)$ stretches the upper side more than the lower,
    giving an **asymmetric** rate interval. Transform the endpoints, never add a
-   symmetric band to `exp(β)`.
+   symmetric band to $\exp(\beta)$.
 
 </details>
 
