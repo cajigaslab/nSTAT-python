@@ -22,14 +22,14 @@ EXPECTED_CANONICAL_QUESTIONS = {
 def _extract_examples_block(text: str) -> str:
     """Extract the Paper Examples section from README (MATLAB-aligned structure)."""
     match = re.search(
-        r"## Paper Examples \(Self-Contained\)\n(.*?)\nPlot style policy:",
+        r"## Paper examples\n(.*?)\nPlot-style policy",
         text,
         flags=re.S,
     )
     if not match:
         raise AssertionError(
-            "README is missing a Paper Examples block bounded by "
-            "'## Paper Examples (Self-Contained)' and 'Plot style policy:'."
+            "README is missing a Paper examples block bounded by "
+            "'## Paper examples' and 'Plot-style policy'."
         )
     return match.group(1)
 
