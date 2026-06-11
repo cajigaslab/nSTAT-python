@@ -79,6 +79,9 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ("paper_examples_full.py", "full_hist = _history_matrix(y_sel, list(range(1, int(candidate_q[-1]) + 1)))"): "history lags start at 1",
     # Lag iteration: lag values start at 1 (lag 0 = current step).
     ("decoding_algorithms.py", "for k in range(1, lag_count + 1):"): "lag values start at 1",
+    # alignSubSignals merge loop: dimension 0 is handled before the loop,
+    # then dims 1..N-1 are merged in.
+    ("core.py", "for i in range(1, self.dimension):"): "skip first dimension (handled before loop)",
 }
 
 
