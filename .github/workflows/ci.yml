@@ -283,19 +283,23 @@ jobs:
           python -m pip install -e .[dev]
       - name: Regenerate all paper figures
         run: python examples/paper/regenerate_all_figures.py
-      - name: Fail on figure drift
-        # Bytes-must-match: if regen produced a different image than the
-        # committed one, the example scripts have diverged from the
-        # checked-in PNGs.  Run `make regen-figures` locally and commit.
-        # Scoped to *.png — the gallery README.md and manifest.json are
-        # already drift-checked by the paper-gallery-artifacts job above.
+      - name: Fail on STRUCTURAL figure drift
+        # Structural only: a paper example adding or removing a figure is
+        # meaningful and deterministic.  PNG byte re-encoding is NOT — matplotlib
+        # / font / freetype versions produce different bytes for an identical
+        # plot — so do not byte-compare.  The gallery README.md + manifest.json
+        # (deterministic) are drift-checked by the paper-gallery-artifacts job.
         run: |
-          if ! git diff --quiet -- 'docs/figures/example0*/*.png'; then
-            echo "DRIFT: regenerated paper figures differ from committed PNGs:" >&2
-            git --no-pager diff --stat -- 'docs/figures/example0*/*.png' >&2
-            echo "Run 'make regen-figures' locally and commit the fresh PNGs." >&2
+          added=$(git ls-files --others --exclude-standard -- 'docs/figures/example0*/')
+          removed=$(git diff --name-only --diff-filter=D -- 'docs/figures/example0*/*.png')
+          if [ -n "$added$removed" ]; then
+            echo "DRIFT: paper figures added/removed:" >&2
+            [ -n "$added" ] && { echo "  added:"; echo "$added"; } >&2
+            [ -n "$removed" ] && { echo "  removed:"; echo "$removed"; } >&2
+            echo "A paper example's figure set changed — run 'make regen-figures' and commit." >&2
             exit 1
           fi
+          echo "No structural paper-figure drift (non-deterministic PNG bytes ignored)."
       - name: Upload regenerated figures
         if: always()
         uses: actions/upload-artifact@v7
