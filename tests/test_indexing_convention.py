@@ -39,6 +39,26 @@ ALLOWED_FILES: set[str] = {
 ALLOWED_FILE_PREFIXES: tuple[str, ...] = ("compat/matlab/",)
 
 
+# Variable-name allowlist for ``[<var> - 1]`` patterns that are algorithmic
+# (time recursion, last-element access, EM counters), not 1-based-to-0-based
+# parameter translation.  Keyed by (relative_path, var_name).
+#
+# Use ``("*", var)`` to apply across every file.  Use a specific path to scope
+# tightly when the same name has different meaning elsewhere.
+VARIABLE_ALLOWLIST: set[tuple[str, str]] = {
+    # decoding_algorithms.py: state-space Kalman / EM recursion variables.
+    # `k`, `time_index`, `num_steps`, `K`, `N` are time/length indices;
+    # ``[k - 1]`` is "previous time step", ``[N - 1]`` is "last element".
+    # ``cnt`` is the EM iteration counter; ``[cnt - 1]`` is "previous iter".
+    ("decoding_algorithms.py", "k"),
+    ("decoding_algorithms.py", "num_steps"),
+    ("decoding_algorithms.py", "K"),
+    ("decoding_algorithms.py", "N"),
+    ("decoding_algorithms.py", "n"),
+    ("decoding_algorithms.py", "cnt"),
+}
+
+
 # Site-level allowlist for individual lines that must keep their pattern.
 # Key: (relative_path, source_line_stripped); Value: reason.
 ALLOWLIST: dict[tuple[str, str], str] = {
@@ -57,6 +77,8 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ("simulators.py", "ens_effect[1] = ensemble_kernel_arr[1] * float(spikes[i - 1, 0])"): "previous-timestep ensemble effect",
     # History covariates: lag values start at 1 (lag 0 = the spike itself).
     ("paper_examples_full.py", "full_hist = _history_matrix(y_sel, list(range(1, int(candidate_q[-1]) + 1)))"): "history lags start at 1",
+    # Lag iteration: lag values start at 1 (lag 0 = current step).
+    ("decoding_algorithms.py", "for k in range(1, lag_count + 1):"): "lag values start at 1",
 }
 
 
@@ -69,8 +91,9 @@ def _is_allowed_file(rel_path: str) -> bool:
 class _Visitor(ast.NodeVisitor):
     """Collects HR2 (range-from-1) and HR3 ([x - 1] subscript) violations."""
 
-    def __init__(self, source_lines: list[str]) -> None:
+    def __init__(self, source_lines: list[str], rel_path: str) -> None:
         self.source_lines = source_lines
+        self.rel_path = rel_path
         self.range_hits: list[tuple[int, str]] = []  # (lineno, source)
         self.minus_one_hits: list[tuple[int, str]] = []
 
@@ -94,8 +117,20 @@ class _Visitor(ast.NodeVisitor):
     def visit_Subscript(self, node: ast.Subscript) -> None:
         for sub_expr in self._iter_index_components(node.slice):
             if self._is_identifier_minus_one(sub_expr):
+                ident = self._extract_identifier(sub_expr)
+                if ident is not None and (
+                    (self.rel_path, ident) in VARIABLE_ALLOWLIST
+                    or ("*", ident) in VARIABLE_ALLOWLIST
+                ):
+                    continue
                 self.minus_one_hits.append((sub_expr.lineno, self._line(sub_expr.lineno)))
         self.generic_visit(node)
+
+    @staticmethod
+    def _extract_identifier(node: ast.AST) -> str | None:
+        if isinstance(node, ast.BinOp) and isinstance(node.left, ast.Name):
+            return node.left.id
+        return None
 
     @staticmethod
     def _iter_index_components(slice_node: ast.AST):
@@ -135,7 +170,7 @@ def _collect_violations() -> tuple[list[str], list[str]]:
         except SyntaxError:
             continue
 
-        visitor = _Visitor(source.splitlines())
+        visitor = _Visitor(source.splitlines(), rel_path)
         visitor.visit(tree)
 
         for lineno, line in visitor.range_hits:
