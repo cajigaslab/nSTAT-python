@@ -21,7 +21,7 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
 .PHONY: help install test test-smoke test-fast test-datasets test-no-paper \
         regen regen-gallery regen-parity regen-figures regen-notebook-fidelity \
-        regen-notebook-galleries \
+        regen-notebook-galleries regen-visual-parity \
         docs docs-strict docs-open refresh-intersphinx-inv \
         diff-matlab readme-check helpfile-check freshness-check \
         format lint typecheck \
@@ -78,6 +78,10 @@ regen-figures:  ## ~30 min — regenerate every paper-example PNG (needs figshar
 regen-notebook-galleries:  ## Execute every notebook + rebuild docs/notebook_galleries/<topic>/README.md + PNGs.
 	@echo "Note: executes notebooks via nbclient; needs the figshare paper dataset for full coverage."
 	$(PY) tools/notebook_build/build_notebook_galleries.py --group full
+
+regen-visual-parity:  ## SSIM scores for parity/visual_fidelity.yml entries (needs sibling MATLAB checkout).
+	@echo "Note: requires the cajigaslab/nSTAT checkout at ../nSTAT for MATLAB PNG comparison."
+	$(PY) tools/parity/build_visual_comparison.py
 
 # --- docs ------------------------------------------------------------
 
