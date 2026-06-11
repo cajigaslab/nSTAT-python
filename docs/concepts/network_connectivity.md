@@ -18,13 +18,13 @@ A neuron's firing depends not only on the stimulus and its own history, but on
 **other neurons**. The point-process GLM already has a slot for this — the
 **ensemble** term on the [GLM page](spike_trains_and_glms.md):
 
-```
-log λ_i(t | H_t) = … + Σ_j η_ij · n_j(t − τ)
-```
+$$
+\log \lambda_{i}(t \mid H_t) \;=\; \cdots \;+\; \sum_{j} \eta_{ij}\, n_j(t - \tau).
+$$
 
-`n_j(t − τ)` is neuron *j*'s recent spiking, and `η_ij` measures how it raises
-(`η > 0`, excitation) or lowers (`η < 0`, inhibition) neuron *i*'s firing,
-**beyond** what the shared stimulus explains. This is *functional* (statistical)
+The term $n_j(t - \tau)$ is neuron $j$'s recent spiking, and $\eta_{ij}$
+measures how it raises ($\eta > 0$, excitation) or lowers ($\eta < 0$,
+inhibition) neuron $i$'s firing, **beyond** what the shared stimulus explains. This is *functional* (statistical)
 coupling — not necessarily a direct synapse, but a directed predictive
 relationship ([Truccolo et al. 2005](https://pubmed.ncbi.nlm.nih.gov/15356183/)).
 

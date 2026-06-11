@@ -37,9 +37,17 @@ a wide range of tuning strengths; by 120 s the coefficient is pinned down.*
 For a point-process / Poisson GLM, the uncertainty of the fitted coefficients
 comes from the **Fisher information** — the curvature of the log-likelihood at
 the optimum. Sharply curved (well-identified) parameters have small standard
-errors; flat directions have large ones. For the Poisson GLM with design matrix
-`X` and fitted per-bin intensity `λ`, the information matrix and standard errors
-are
+errors; flat directions have large ones. For the Poisson GLM with design
+matrix $X$ and fitted per-bin intensity $\lambda$, the information matrix and
+standard errors are
+
+$$
+I(\hat\beta) \;=\; X^{\top}\,\mathrm{diag}(\lambda)\,X,
+\qquad
+\mathrm{se}(\hat\beta) \;=\; \sqrt{\mathrm{diag}\!\left(I(\hat\beta)^{-1}\right)}.
+$$
+
+In Python:
 
 ```python
 import numpy as np
