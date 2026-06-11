@@ -22,6 +22,13 @@ FORBIDDEN_RUNTIME_PATTERNS = [
 # cleanroom (no MATLAB runtime dependency).
 BRIDGE_MODULE_ALLOWLIST = {"matlab_engine.py"}
 
+# ``tools/parity/matlab/`` houses the MATLAB-side parity tooling: it is
+# deliberately MATLAB-dependent (regenerates gold fixtures, runs MATLAB
+# helpfiles against the corresponding Python code).  These scripts are
+# not shipped with the installable package and run only on developers
+# who have MATLAB.  Skipped from the cleanroom scan.
+PARITY_MATLAB_TOOLS_DIR = REPO_ROOT / "tools" / "parity" / "matlab"
+
 
 def _assert_clean(paths: list[Path], *, allowlist: set[str] | None = None) -> None:
     allowlist = allowlist or set()
@@ -43,7 +50,14 @@ def test_installable_package_has_no_matlab_runtime_dependency() -> None:
 
 def test_notebooks_examples_and_ci_do_not_shell_out_to_matlab() -> None:
     targets = sorted((REPO_ROOT / "examples").glob("**/*.py"))
-    targets += sorted((REPO_ROOT / "tools").glob("**/*.py"))
+    # Exclude tools/parity/matlab/ — the MATLAB-side parity tooling is
+    # deliberately MATLAB-dependent (regenerates gold fixtures, runs
+    # helpfiles).  See PARITY_MATLAB_TOOLS_DIR.
+    targets += [
+        p
+        for p in sorted((REPO_ROOT / "tools").glob("**/*.py"))
+        if PARITY_MATLAB_TOOLS_DIR not in p.parents
+    ]
     targets += sorted((REPO_ROOT / "notebooks").glob("**/*.ipynb"))
     targets += sorted((REPO_ROOT / ".github" / "workflows").glob("**/*.yml"))
     _assert_clean(targets)
