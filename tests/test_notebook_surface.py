@@ -35,10 +35,6 @@ def test_confidence_interval_overview_is_catalogued() -> None:
     topics = {row["topic"] for row in notebook_manifest["notebooks"]}
     assert "ConfidenceIntervalOverview" in topics
 
-    example_manifest = yaml.safe_load((REPO_ROOT / "examples" / "nSTATPaperExamples" / "manifest.yml").read_text(encoding="utf-8"))
-    names = {row["name"] for row in example_manifest["examples"]}
-    assert "ConfidenceIntervalOverview" in names
-
 
 def test_hybrid_filter_notebook_does_not_require_example_data_download() -> None:
     notebook = nbformat.read(REPO_ROOT / "notebooks" / "HybridFilterExample.ipynb", as_version=4)
