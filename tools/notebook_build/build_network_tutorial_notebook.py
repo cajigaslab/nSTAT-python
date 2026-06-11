@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+# =====================================================================
+# HISTORICAL BOOTSTRAP GENERATOR — DO NOT RE-RUN.
+# This script originally scaffolded its notebooks under notebooks/.  Those
+# notebooks have since been hand-refined, sanitized (sanitize_notebooks.py),
+# parity-annotated (sync_parity_notes.py) and executed, and are now the
+# SOURCE OF TRUTH.  Generator output has diverged from them — re-running this
+# script OVERWRITES and CORRUPTS the committed notebooks.  Kept for provenance.
+# See tools/notebook_build/README.md.
+# =====================================================================
 from __future__ import annotations
 
 from pathlib import Path
