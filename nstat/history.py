@@ -263,7 +263,7 @@ class History:
         if hasattr(trains, "getNST") and hasattr(trains, "numSpikeTrains"):
             covariates = [
                 self._compute_single_history(trains.getNST(index), historyIndex, time_grid=time_grid)
-                for index in range(1, int(trains.numSpikeTrains) + 1)
+                for index in range(int(trains.numSpikeTrains))
             ]
             return CovariateCollection(covariates)
         if isinstance(trains, Sequence) and not isinstance(trains, (str, bytes, np.ndarray)):

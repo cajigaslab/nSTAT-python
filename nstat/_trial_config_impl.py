@@ -290,13 +290,13 @@ class ConfigCollection:
         return self.configArray[idx]
 
     def getConfig(self, idx: int):
-        """Return a config by 1-based index (Matlab ``ConfigColl.getConfig``)."""
-        if idx < 1 or idx > self.numConfigs:
+        """Return a config by 0-based index."""
+        if idx < 0 or idx >= self.numConfigs:
             raise IndexError("Index Out of Bounds")
-        return self.configArray[idx - 1]
+        return self.configArray[idx]
 
     def setConfig(self, trial: "Trial", index: int) -> None:
-        """Apply configuration *index* (1-based) to the given Trial."""
+        """Apply configuration *index* (0-based) to the given Trial."""
         config = self.getConfig(index)
         if isinstance(config, TrialConfig):
             config.setConfig(trial)
@@ -304,25 +304,25 @@ class ConfigCollection:
         raise ValueError("Cannot Set Empty Configs")
 
     def getConfigNames(self, index: Sequence[int] | None = None) -> list[str]:
-        """Return the names for selected configs (1-based), or all if *index* is ``None``."""
+        """Return the names for selected configs (0-based), or all if *index* is ``None``."""
         if index is None:
-            index = list(range(1, self.numConfigs + 1))
+            index = list(range(self.numConfigs))
         out: list[str] = []
         for i in index:
-            if i < 1 or i > self.numConfigs:
+            if i < 0 or i >= self.numConfigs:
                 raise IndexError("Index Out of Bounds")
-            tempName = self.configNames[i - 1]
-            out.append(tempName if tempName else f"Fit {i}")
+            tempName = self.configNames[i]
+            out.append(tempName if tempName else f"Fit {i + 1}")
         return out
 
     def setConfigNames(self, names, index: Sequence[int] | None = None) -> None:
-        """Set the human-readable names for configs at 1-based *index* positions."""
+        """Set the human-readable names for configs at 0-based *index* positions."""
         if index is None:
-            index = list(range(1, self.numConfigs + 1))
+            index = list(range(self.numConfigs))
         if isinstance(names, str):
             if len(index) != 1:
                 raise ValueError("If specifying a single name, index must be length 1.")
-            target = int(index[0]) - 1
+            target = int(index[0])
             while len(self.configNames) < self.numConfigs:
                 self.configNames.append("")
             self.configNames[target] = names if names else f"Fit {self.numConfigs}"
