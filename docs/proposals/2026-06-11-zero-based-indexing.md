@@ -1,13 +1,36 @@
 # Proposal — adopt 0-based indexing throughout (breaking, → v0.5.0)
 
-> **Status:** drafted 2026-06-11; pending Phase 4 completion.
+> **Status:** refined 2026-06-11 after Phase 4 closeout.  Awaiting `#177`
+> merge + deploy-docs before execution.
 > **Owner:** TBD.
 > **Type:** Architecture / public-API contract change.
-> **Lands after:** the Phase 4 PR queue (API-trap, Collections semantics,
-> CIF unification, Fitting/decoding, `AUDIT_REPORT` refresh).
-> **Effort:** ~2 days focused + ~1 day notebook sweep.
+> **Lands after:** PR #175 (CIF), #176 (Fitting/decoding), #177 (M20
+> docs) — all merged or queued.
+> **Effort:** ~6-7 focused hours; single working day.
 > **Risk:** HIGH — touches every public method that accepts a selector +
 > every notebook + every gold-fixture comparison.
+> **Strategy (decided 2026-06-11):**
+>   - **Completely silent flip** — no `RELEASE_NOTES.md` entry, no
+>     `AGENT_GUIDE.md` user-facing paragraph.  Version bump from 0.4.x →
+>     0.5.0 happens but the indexing shift itself is not surfaced.
+>   - **Single PR** containing all six subsystems (test guard, public-
+>     API flip, internal sweep, gold-fixture adapter, notebook sweep,
+>     version bump).
+>   - **No deprecation cycle** — drop `warn_matlab_one_based` from the
+>     original draft.  Hard-flip.  Parity tests + grep CI guard catch
+>     misses.
+>
+> ## Current survey (2026-06-11, post Phase 4 merges)
+>
+> - `158` `[... - 1]` index-arithmetic sites in `nstat/`
+> - `84` `range(1, ...)` loops in `nstat/`
+> - `68` explicit 1-based selector translations in
+>   `fit.py`/`trial.py`/`analysis.py`/`_spike_train_impl.py`
+> - Densest cluster: Granger causality block in
+>   `nstat/analysis.py:1235-1322` (~25 sites)
+>
+> Net change estimate: **+145 LOC, −200 LOC** (smaller than original
+> draft's ±200/250 because the deprecation shim was dropped).
 
 ---
 
@@ -80,77 +103,40 @@ Tests calling `loadmat(...).get("neuronNumbers")` route through this
 helper.  **Production code never sees the translation** — it's a
 one-line test-boundary adapter.
 
-## Migration path (deprecation cycle)
+## Execution sequence (single PR, six subsystems)
 
-### Phase A — this PR (v0.5.0)
+| # | Subsystem | Files | Net LOC | Risk |
+|---|---|---|---|---|
+| 1 | **Test guard** | `tests/test_indexing_convention.py` (new), `tests/conftest.py::matlab_to_python_indices` helper | +75 | LOW — red-bar; no production code |
+| 2 | **Public-API signatures flip** | `nstat/fit.py`, `nstat/trial.py`, `nstat/analysis.py`, `nstat/_spike_train_impl.py`, `nstat/decoding_algorithms.py` (default args `= 1` → `= 0`; strip first-line `- 1`) | ~−80 | HIGH — callsites break until subsystem 4 lands |
+| 3 | **Internal body sweep** | same modules + `nstat/core.py`, `nstat/cif.py` (`[idx - 1]` → `[idx]`; `range(1, n+1)` → `range(n)`) | ~−120 | MEDIUM — parity tests catch most regressions |
+| 4 | **Gold-fixture boundary** | `tests/conftest.py` adapter goes live; every `loadmat(...)["neuronNumbers"]`-style call routes through it | ~+30 | MEDIUM — fixture mismatches loud and obvious |
+| 5 | **Notebook sweep** | ~30 notebooks: `getNST(1)` → `getNST(0)`, `getCoeffsWithLabels(2)` → `getCoeffsWithLabels(1)`, etc. | mechanical | MEDIUM — `notebook-parity-core` re-execution catches misses |
+| 6 | **Version bump** | `pyproject.toml` + `nstat/__init__.py` (0.4.x → 0.5.0). **No `RELEASE_NOTES.md` entry, no `AGENT_GUIDE.md` paragraph** — silent flip per maintainer direction. | +2 | LOW |
 
-1. **Add `nstat/_compat.py::warn_matlab_one_based`** — a soft-deprecation
-   helper:
+### Step-by-step
 
-   ```python
-   def warn_matlab_one_based(idx: int, n: int, *, method_name: str) -> int:
-       """Detect a likely MATLAB-style 1-based call and emit a warning.
+1. Land subsystem 1 first (red bar — tests fail on every existing
+   `- 1`).  Allowlist starts populated; sweep drains entries.
+2. Subsystem 2 — signature flip across ~30 public methods.
+3. Subsystem 3 — body sweep, draining allowlist site by site.
+4. Subsystem 4 — gold-fixture adapter goes live; expected outputs flip
+   from MATLAB 1-based to Python 0-based at the test boundary.
+5. Run full `make test`.  Any parity-test cascade indicates a missed
+   internal site — fix and re-run until clean.
+6. Subsystem 5 — notebooks.  `make regen` for gallery + fidelity.
+7. Subsystem 6 — version bump.  No release notes.
+8. Open PR, fire `ci.yml`, fire `notebook-full-fidelity.yml` once.
 
-       Heuristic: ``idx == n`` is now the historical "last element via
-       1-based" pattern.  Emit a DeprecationWarning with migration hint,
-       and ALSO clip the index back to 0-based for one minor cycle so
-       existing code keeps working.  In v0.6.0 this helper goes away
-       entirely and the call sites silently use idx as Python 0-based.
-       """
-       if 1 <= idx == n:
-           warnings.warn(
-               f"{method_name}({idx}) called with what looks like a MATLAB-"
-               f"style 1-based selector.  Python uses 0-based indexing; "
-               f"pass {idx-1} instead.  This compatibility shim will be "
-               f"removed in v0.6.0.",
-               DeprecationWarning,
-               stacklevel=3,
-           )
-           return idx - 1
-       return idx
-   ```
+### Triage decisions (locked)
 
-2. **Wire `warn_matlab_one_based(...)` into each affected public method**
-   as the FIRST line:
-
-   ```python
-   def getNST(self, idx: int) -> nspikeTrain:
-       idx = warn_matlab_one_based(idx, self.numSpikeTrains, method_name="getNST")
-       return self.nstrain[idx]
-   ```
-
-3. **Sweep internal `idx - 1` patterns** — eliminate entirely.  Internal
-   code is uniform 0-based after this.
-
-4. **Update gold-fixture comparisons** via the `conftest.py` adapter.
-
-5. **Update notebooks** — 50 mechanical edits.
-
-6. **Update `AGENT_GUIDE.md`** — add the "Indexing" paragraph:
-
-   > **Indexing.** Python is 0-based everywhere — internal storage,
-   > loops, and the public API.  MATLAB users porting code subtract 1
-   > from selectors (e.g. `coll.getNST(0)` is the first train,
-   > equivalent to MATLAB `coll.getNST(1)`).  This is the only
-   > convention difference between the two ports; everything else
-   > mirrors MATLAB names verbatim.
-
-7. **Add `tests/test_indexing_convention.py`** — grep-based scan that
-   fails CI on any new `idx - 1` or `range(1, n+1)` pattern in `nstat/`.
-
-8. **`RELEASE_NOTES.md` + version bump** — entry under "Breaking
-   changes" with a one-page migration guide.
-
-### Phase B — v0.6.0 (later, no code work)
-
-1. **Remove `nstat/_compat.py::warn_matlab_one_based`** entirely.
-2. **Remove the wrappers** from the ~30 public methods.  Each becomes
-   a clean 0-based function.
-3. **Remove the deprecation paragraph** from `RELEASE_NOTES.md`
-   (covered by v0.5.0).
-
-After v0.6.0, nothing in the codebase mentions 1-based vs 0-based ever
-again.
+| Pattern | Treatment |
+|---|---|
+| `_matlab_colon(start, step, stop)` | **Keep** — range-generation, not indexing.  Allowlisted in grep test. |
+| `+ 1` in return values (e.g. `analysis.py:1235`) | **Strip** — no-op after `np.flatnonzero` etc. |
+| `fit_num: int = 1` defaults | **Flip** to `= 0`.  Notebook and example callsites flip in lockstep. |
+| `b_{idx + 1}` label format (`fit.py:1098`) | **Keep** — user-facing label string for plots; MATLAB-faithful.  Allowlist with a comment explaining the `+ 1` is for display, not indexing. |
+| Granger causality block (`analysis.py:1235-1322`) | **Single-function rewrite** — ~25 sites, all `neighbor - 1` / `neuron_index - 1`.  M4/M5 cross-port; rewrite as a clean 0-based block. |
 
 ## Files changed (preview)
 
