@@ -92,7 +92,7 @@ def test_nstcoll_neighbors_mask_and_data_matrix() -> None:
     assert coll.getNeighbors(0) == [1]
     assert coll.getNeighbors(1) == [0]
 
-    coll.setMask([1])
+    coll.setMask([0])
     assert coll.getIndFromMask() == [0]
     np.testing.assert_allclose(coll.getMaxBinSizeBinary(), 0.5)
 

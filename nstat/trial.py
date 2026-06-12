@@ -1046,13 +1046,13 @@ class SpikeTrainCollection:
                 continue
             if isinstance(currVal, np.ndarray) and currVal.size == 0:
                 continue
-            if len(fieldVal) < cnt:
-                fieldVal.extend([0.0] * (cnt - len(fieldVal)))
+            if len(fieldVal) <= cnt:
+                fieldVal.extend([0.0] * (cnt + 1 - len(fieldVal)))
             fieldVal[cnt] = float(currVal)
-            cnt += 1
-            if len(neuronNumbers) < cnt:
-                neuronNumbers.extend([0] * (cnt - len(neuronNumbers)))
+            if len(neuronNumbers) <= cnt:
+                neuronNumbers.extend([0] * (cnt + 1 - len(neuronNumbers)))
             neuronNumbers[cnt] = index
+            cnt += 1
         return np.asarray(fieldVal, dtype=float), np.asarray(neuronNumbers, dtype=int)
 
     def shiftTime(self, timeShift: float | None = None) -> "SpikeTrainCollection":
@@ -1190,7 +1190,7 @@ class SpikeTrainCollection:
         arr = np.asarray(mask, dtype=int).reshape(-1)
         newMask = np.zeros(self.numSpikeTrains, dtype=int)
         if arr.size:
-            if np.any(arr < 1) or np.any(arr > self.numSpikeTrains):
+            if np.any(arr < 0) or np.any(arr >= self.numSpikeTrains):
                 raise IndexError("Neuron index out of bounds.")
             newMask[arr] = 1
         self.setNeuronMask(newMask)
