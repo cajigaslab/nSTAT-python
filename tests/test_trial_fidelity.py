@@ -104,7 +104,7 @@ def test_nstcoll_psthbars_public_contract() -> None:
     train1, train2 = _make_spikes()
     coll = nstColl([train1, train2])
 
-    bars = coll.psthBars(0.5, [1, 2], 0.0, 1.0)
+    bars = coll.psthBars(0.5, [0, 1], 0.0, 1.0)
 
     assert isinstance(bars, SignalObj)
     assert bars.name == "PSTH_{bars}"
