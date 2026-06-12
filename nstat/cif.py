@@ -346,7 +346,7 @@ class CIFModel:
         trains = []
         for i in range(num_realizations):
             st = simulate_poisson_from_rate(self.time, self.rate_hz, rng=rng)
-            st.setName(str(i + 1))
+            st.setName(str(i))
             trains.append(st)
         return SpikeTrainCollection(trains)
 
