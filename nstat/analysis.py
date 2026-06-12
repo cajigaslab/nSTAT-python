@@ -460,7 +460,7 @@ class Analysis:
             raise IndexError("neuron_index must be >= 0")
 
         original_partition = np.asarray(trial.getTrialPartition(), dtype=float).reshape(-1)
-        neuron_number = int(neuron_index) + 1
+        neuron_number = int(neuron_index)
         labels: list[list[str]] = []
         lambda_parts: list[Covariate] = []
         b: list[np.ndarray] = []
@@ -479,7 +479,7 @@ class Analysis:
 
         spike_train = trial.nspikeColl.getNST(neuron_number).nstCopy()
         if not spike_train.name:
-            spike_train.setName(str(neuron_number))
+            spike_train.setName(str(neuron_number + 1))
 
         spike_validation = None
         has_validation = False
@@ -530,9 +530,9 @@ class Analysis:
                 has_validation = True
                 trial.setTrialTimesFor("validation")
                 xvalData.append(np.asarray(trial.getDesignMatrix(neuron_number), dtype=float))
-                xvalTime.append(np.asarray(trial.covarColl.getCov(1).time, dtype=float).copy())
+                xvalTime.append(np.asarray(trial.covarColl.getCov(0).time, dtype=float).copy())
                 spike_validation = trial.nspikeColl.getNST(neuron_number).nstCopy()
-                spike_validation.setName(str(neuron_number))
+                spike_validation.setName(str(neuron_number + 1))
                 trial.setTrialTimesFor("training")
             else:
                 xvalData.append(np.zeros((0, len(current_labels)), dtype=float))
@@ -633,11 +633,9 @@ class Analysis:
         # ``range(num_spike_trains)``, which fitted masked-out neurons —
         # the user-set ``neuronMask`` was silently ignored in the
         # all-neurons workflow.  Honour the mask: when set, iterate only
-        # the unmasked 1-based selectors and translate to 0-based for
-        # ``run_analysis_for_neuron``.
+        # the unmasked selectors (now 0-based after v0.5.0).
         if trial.spike_collection.isNeuronMaskSet():
-            unmasked_one_based = trial.spike_collection.getIndFromMask()
-            indices = [i - 1 for i in unmasked_one_based]
+            indices = trial.spike_collection.getIndFromMask()
         else:
             indices = list(range(trial.spike_collection.num_spike_trains))
         out: list[FitResult] = []

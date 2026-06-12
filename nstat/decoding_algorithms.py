@@ -1401,7 +1401,7 @@ class DecodingAlgorithms:
         gamma_mat = _normalize_gamma(gamma, num_windows, num_cells)
 
         lambda_delta = _lambda_delta_from_state(x_vec, mu_vec, beta_mat, str(fitType), gamma_mat, H_tensor, int(time_index))
-        observed = obs[:, int(time_index) - 1]
+        observed = obs[:, int(time_index)]
         if str(fitType) == "binomial":
             factor = (observed - lambda_delta) * (1.0 - lambda_delta)
             temp_vec = (observed + (1.0 - 2.0 * lambda_delta)) * (1.0 - lambda_delta) * lambda_delta
@@ -6310,8 +6310,8 @@ class DecodingAlgorithms:
         if gamma_mat.ndim == 2 and gamma_mat.shape[1] != numCells:
             gamma_mat = np.tile(gamma_mat, (1, numCells))
 
-        # time_index is 1-based; extract history at this time
-        tidx = int(time_index) - 1  # zero-based
+        # time_index is 0-based after the v0.5.0 migration.
+        tidx = int(time_index)
         if HkAll_arr.ndim == 3 and HkAll_arr.shape[2] > tidx:
             Histterm = HkAll_arr[:, :, tidx]  # (numWindows, numCells)
         else:
@@ -6330,7 +6330,7 @@ class DecodingAlgorithms:
             lambdaDeltaMat = exp_linTerm / (1.0 + exp_linTerm)
             lambdaDeltaMat = np.where(np.isnan(lambdaDeltaMat) | np.isinf(lambdaDeltaMat), 1.0, lambdaDeltaMat)
 
-            dN_t = obs[:, int(time_index) - 1]
+            dN_t = obs[:, int(time_index)]
             factor = (dN_t - lambdaDeltaMat) * (1.0 - lambdaDeltaMat)
             sumValVec = np.sum(beta_mat * factor[None, :], axis=1)
             tempVec = (dN_t + (1.0 - 2.0 * lambdaDeltaMat)) * (1.0 - lambdaDeltaMat) * lambdaDeltaMat
@@ -6341,7 +6341,7 @@ class DecodingAlgorithms:
             lambdaDeltaMat = np.exp(np.clip(linTerm, -500, 500))
             lambdaDeltaMat = np.where(np.isnan(lambdaDeltaMat) | np.isinf(lambdaDeltaMat), 1.0, lambdaDeltaMat)
 
-            dN_t = obs[:, int(time_index) - 1]
+            dN_t = obs[:, int(time_index)]
             sumValVec = np.sum(beta_mat * (dN_t - lambdaDeltaMat)[None, :], axis=1)
             sumValMat = (beta_mat * lambdaDeltaMat[None, :]) @ beta_mat.T
 

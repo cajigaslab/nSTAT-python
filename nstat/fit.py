@@ -978,9 +978,9 @@ class FitResult:
         return self
 
     def getSubsetFitResult(self, subfits) -> "FitResult":
-        """Return a new ``FitResult`` with only the selected fit indices (1-based)."""
+        """Return a new ``FitResult`` with only the selected fit indices (0-based)."""
         indices = np.asarray(subfits if isinstance(subfits, Sequence) and not isinstance(subfits, (str, bytes)) else [subfits], dtype=int).reshape(-1)
-        zero_based = [int(idx) - 1 for idx in indices]
+        zero_based = [int(idx) for idx in indices]
         from .trial import ConfigCollection
 
         config_items = []
