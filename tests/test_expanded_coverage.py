@@ -303,7 +303,7 @@ class TestAnalysisHelpers:
         """computeHistLag should run without error and return (FitResult, ConfigColl)."""
         result, tcc = Analysis.computeHistLag(
             simple_trial,
-            neuronNum=1,
+            neuronNum=0,
             windowTimes=[0.0, 0.01],
             CovLabels=[["stim", "stim"]],
             Algorithm="GLM",
@@ -331,7 +331,7 @@ class TestAnalysisHelpers:
 
     def test_spikeTrigAvg_basic(self, simple_trial) -> None:
         """spikeTrigAvg should return a cross-correlation-like signal."""
-        cc = Analysis.spikeTrigAvg(simple_trial, neuronNum=1, windowSize=0.02)
+        cc = Analysis.spikeTrigAvg(simple_trial, neuronNum=0, windowSize=0.02)
         assert cc is not None
 
     def test_psth_function(self) -> None:
