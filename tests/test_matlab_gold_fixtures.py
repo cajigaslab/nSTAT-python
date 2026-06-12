@@ -354,7 +354,7 @@ def test_nstcoll_matches_matlab_gold_fixture() -> None:
     ensembleCov = coll.getEnsembleNeuronCovariates(0, [], [0.0, 0.1])
     assert ensembleCov.getAllCovLabels() == _string_list(payload, "ensemble_labels")
     np.testing.assert_allclose(ensembleCov.dataToMatrix(), np.asarray(payload["ensemble_matrix"], dtype=float).reshape(-1, 1), rtol=1e-12, atol=1e-12)
-    psthCov = coll.psth(0.1, [1, 2], 0.0, 0.5)
+    psthCov = coll.psth(0.1, [0, 1], 0.0, 0.5)
     np.testing.assert_allclose(psthCov.time, _vector(payload, "psth_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(psthCov.data.reshape(-1), _vector(payload, "psth_data"), rtol=1e-12, atol=1e-12)
 
