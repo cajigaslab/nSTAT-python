@@ -909,7 +909,7 @@ class SpikeTrainCollection:
         """Append a single spike train (deep-copied) to the collection."""
         train = nst.nstCopy()
         if not getattr(train, "name", ""):
-            train.setName(str(self.numSpikeTrains + 1))
+            train.setName(str(self.numSpikeTrains))
         if self.numSpikeTrains == 0:
             self.minTime = float(train.minTime)
             self.maxTime = float(train.maxTime)
