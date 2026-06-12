@@ -1069,7 +1069,7 @@ class FitResult:
         labels = list(self.covLabels[fit_num]) if fit_num < len(self.covLabels) else []
         num_hist = int(self.numHist[fit_num]) if fit_num < len(self.numHist) else 0
         non_hist_count = max(len(labels) - num_hist, 0)
-        coeff_index = np.arange(1, non_hist_count + 1, dtype=int)
+        coeff_index = np.arange(non_hist_count, dtype=int)
         epoch_id = np.zeros(coeff_index.size, dtype=int)
         return coeff_index, epoch_id, 0
 
@@ -1081,7 +1081,7 @@ class FitResult:
         if num_hist <= 0:
             return np.array([], dtype=int), np.array([], dtype=int), 0
         start = max(len(labels) - num_hist, 0)
-        hist_index = np.arange(start + 1, len(labels) + 1, dtype=int)
+        hist_index = np.arange(start, len(labels), dtype=int)
         epoch_id = np.zeros(hist_index.size, dtype=int)
         return hist_index, epoch_id, 0
 
