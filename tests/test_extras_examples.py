@@ -78,6 +78,23 @@ def test_example_runs_when_backing_dep_installed(script: Path) -> None:
         pytest.skip(f"No backing-package mapping for {script.stem}")
     pytest.importorskip(pkg)
 
+    # Many opt-deps (notably nemos) lazily pull in jax, which in turn
+    # is sensitive to numpy version mismatches.  When the env can't load
+    # jax at all, the subprocess would crash with a confusing
+    # AttributeError rather than the expected "package missing" path.
+    # Treat transitive ImportErrors as skip-worthy rather than failures.
+    _TRANSITIVE_DEPS = {
+        "nemos": ("jax",),
+        "em_dynamax_demo": ("jax", "dynamax"),
+    }
+    for transitive in _TRANSITIVE_DEPS.get(pkg, ()):
+        try:
+            __import__(transitive)
+        except Exception as exc:
+            pytest.skip(
+                f"Transitive dep {transitive!r} for {pkg!r} unavailable: {exc}"
+            )
+
     # PYTHONPATH must include REPO_ROOT — ``python examples/extras/X.py``
     # adds the *script's* directory to sys.path[0] (not the cwd), so the
     # editable nstat install is invisible without this.

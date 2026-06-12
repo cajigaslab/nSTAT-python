@@ -33,3 +33,7 @@ CLAUDE.md
 # MATLAB-engine-driven helpfile captures (regenerated via
 # tools/parity/matlab/run_helpfile.py; not for commit).
 tests/parity/captured_matlab_helpfile_outputs/
+
+# Personal/local Claude Code config
+.claude/
+CLAUDE.md
