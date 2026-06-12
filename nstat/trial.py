@@ -1586,7 +1586,7 @@ class SpikeTrainCollection:
         # a single GLM fit.  Python's RunAnalysisForAllNeurons previously
         # ignored batchMode, fitting each trial separately — producing
         # single-trial coefficients instead of across-trial pooled ones.
-        cfgColl.setConfig(trial, 1)
+        cfgColl.setConfig(trial, 0)
         stacked_x: list[np.ndarray] = []
         stacked_y: list[np.ndarray] = []
         for idx in range(trial.nspikeColl.num_spike_trains):
