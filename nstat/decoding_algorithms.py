@@ -1333,7 +1333,7 @@ class DecodingAlgorithms:
         x_vec = np.asarray(x_p, dtype=float).reshape(-1)
         W_mat = _as_state_matrix(W_p, x_vec.size)
         obs = _as_observation_matrix(dN)
-        idx = max(1, min(int(time_index), obs.shape[1]))
+        idx = max(0, min(int(time_index), obs.shape[1] - 1))
 
         if isinstance(lambdaIn, CIF):
             lambda_items = [lambdaIn]
