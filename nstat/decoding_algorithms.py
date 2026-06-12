@@ -2056,8 +2056,12 @@ class DecodingAlgorithms:
                 MU_p = transition.T @ model_probs0
                 prev_probs = model_probs0
             else:
-                MU_p = transition.T @ MU_u[:, time_index - 1]
-                prev_probs = MU_u[:, time_index - 1]
+                # MATLAB-faithful: reads MU_u[:, time_index] (current step,
+                # always 0 at this point in the recursion).  This is bug
+                # M22 — fixing it would produce probability sums = 1 but
+                # break gold-fixture parity.  See AUDIT_REPORT.md.
+                MU_p = transition.T @ MU_u[:, time_index]
+                prev_probs = MU_u[:, time_index]
 
             p_ij_s = transition * prev_probs[:, None]
             column_norm = np.sum(p_ij_s, axis=0, keepdims=True)
@@ -2274,8 +2278,12 @@ class DecodingAlgorithms:
                 MU_p = transition.T @ model_probs0
                 prev_probs = model_probs0
             else:
-                MU_p = transition.T @ MU_u[:, time_index - 1]
-                prev_probs = MU_u[:, time_index - 1]
+                # MATLAB-faithful: reads MU_u[:, time_index] (current step,
+                # always 0 at this point in the recursion).  This is bug
+                # M22 — fixing it would produce probability sums = 1 but
+                # break gold-fixture parity.  See AUDIT_REPORT.md.
+                MU_p = transition.T @ MU_u[:, time_index]
+                prev_probs = MU_u[:, time_index]
 
             p_ij_s = transition * prev_probs[:, None]
             column_norm = np.sum(p_ij_s, axis=0, keepdims=True)
