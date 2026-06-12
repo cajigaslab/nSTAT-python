@@ -57,7 +57,7 @@ def test_analysis_fixture_remains_consumable_without_matlab_runtime() -> None:
     spike_train = nspikeTrain([0.1, 0.4, 0.7], "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
     trial = Trial(nstColl([spike_train]), CovColl([stim]))
     cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [], [], name="stim")
-    fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
+    fit = Analysis.RunAnalysisForNeuron(trial, 0, ConfigColl([cfg]))
     summary = FitResSummary([fit])
 
     assert np.asarray(payload["coeffs"], dtype=float).reshape(-1).size >= 1

@@ -265,7 +265,7 @@ class Analysis:
         tObj : Trial
             Trial containing spike trains and covariates.
         neuronNumber : int or str or sequence
-            Matlab-style 1-based neuron index, name, or sequence thereof.
+            Matlab-style 0-based neuron index, name, or sequence thereof.
         lambdaIndex : int
             Configuration index used for labelling the returned λ.
         Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
@@ -661,7 +661,7 @@ class Analysis:
         tObj : Trial
             Trial to analyse.
         neuronNumber : int or str or sequence
-            Matlab-style 1-based neuron index, name, or vector of indices.
+            Matlab-style 0-based neuron index, name, or vector of indices.
             If more than one neuron is specified the return value is a list.
         configColl : ConfigCollection
             Configurations describing the fits.
@@ -969,7 +969,7 @@ class Analysis:
         tObj : Trial
             Trial to analyse.
         neuronNum : int or None
-            Matlab-style 1-based neuron index.  If ``None``, uses the
+            Matlab-style 0-based neuron index.  If ``None``, uses the
             first unmasked neuron.
         windowTimes : array_like
             Vector of window boundary times.  ``len(windowTimes) - 1``
@@ -1087,7 +1087,7 @@ class Analysis:
         history : History
             History object defining the window structure.
         neuronNum : int or None
-            Matlab-style 1-based neuron index.  Defaults to the first
+            Matlab-style 0-based neuron index.  Defaults to the first
             unmasked neuron.
         neighbors : array_like or None
             Indices of neighbouring neurons.  Defaults to
@@ -1287,7 +1287,7 @@ class Analysis:
         tObj : Trial
             Trial to analyse.
         neuronNum : int or None
-            Matlab-style 1-based neuron index.
+            Matlab-style 0-based neuron index.
         sampleRate : float or None
             Sample rate override.
         windowTimes : array_like
@@ -1341,7 +1341,7 @@ class Analysis:
         tObj : Trial
             Trial containing spike trains and covariates.
         neuronNum : int
-            Matlab-style 1-based neuron index.
+            Matlab-style 0-based neuron index.
         windowSize : float
             Total window length (seconds) centred on each spike.
 

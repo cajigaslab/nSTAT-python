@@ -268,8 +268,8 @@ class LinearCIF:
             Either the full design vector (length ``len(varIn)``) or the
             stimulus-only subset (length ``len(stimVars)``).
         time_index : int or None
-            1-based time index into ``historyMat``.  Mirrors MATLAB's
-            1-based indexing (``nst.dataToMatrix(time_index)``).
+            0-based time index into ``historyMat``.  Mirrors MATLAB's
+            0-based indexing (``nst.dataToMatrix(time_index)``).
         nst : nspikeTrain or None
             On-the-fly history computation for the supplied train.
 

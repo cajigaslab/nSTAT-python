@@ -92,7 +92,7 @@ class CovariateCollection:
 
     Provides collection-level masking, time alignment, sample-rate
     enforcement, and covariate shifting.  Individual covariates are
-    accessed via 1-based indexing (``getCov(1)``) to match Matlab.
+    accessed via 0-based indexing (``getCov(1)``) to match Matlab.
 
     Parameters
     ----------
@@ -127,7 +127,7 @@ class CovariateCollection:
         each covariate (no dimensions masked out).  Time bounds and
         sample rate are recomputed lazily via ``_refresh_summary``.
 
-        Indexing is **1-based** to match MATLAB (``coll.getCov(0)`` is
+        Indexing is **0-based** to match MATLAB (``coll.getCov(0)`` is
         the first covariate).
 
         See Also
@@ -275,7 +275,7 @@ class CovariateCollection:
         raise TypeError("CovColl can only add Covariate instances or sequences of Covariates.")
 
     def removeCovariate(self, identifier: int | str) -> None:
-        """Remove a covariate by 1-based index or name."""
+        """Remove a covariate by 0-based index or name."""
         index = self._covariate_from_identifier(identifier)
         del self.covArray[index]
         del self.covMask[index]
@@ -296,7 +296,7 @@ class CovariateCollection:
         Parameters
         ----------
         identifier : int, str, or sequence
-            1-based index, covariate name, or sequence of either.
+            0-based index, covariate name, or sequence of either.
         """
         if isinstance(identifier, str):
             return self._apply_collection_state(self.covArray[self.getCovIndFromName(identifier) - 1], self.getCovIndFromName(identifier))
@@ -440,11 +440,11 @@ class CovariateCollection:
         return np.concatenate([np.asarray(mask, dtype=int).reshape(-1) for mask in self.covMask])
 
     def getSelectorFromMasks(self, covMask: list[np.ndarray] | None = None) -> list[list[int]]:
-        """Convert per-covariate binary masks to lists of active 1-based indices."""
+        """Convert per-covariate binary masks to lists of active 0-based indices."""
         current = self.covMask if covMask is None else covMask
         selector: list[list[int]] = []
         for mask in current:
-            active = np.flatnonzero(np.asarray(mask, dtype=int) == 1) + 1
+            active = np.flatnonzero(np.asarray(mask, dtype=int) == 1)
             selector.append(active.astype(int).tolist())
         return selector
 
@@ -715,7 +715,7 @@ class CovariateCollection:
         else:
             selectorCell = self.generateSelectorCell(dataSelector)
 
-        active_cov = [i + 1 for i, selector in enumerate(selectorCell) if selector]
+        active_cov = [i for i, selector in enumerate(selectorCell) if selector]
         if not active_cov:
             time = self.getCov(0).time
             return time.copy(), np.zeros((time.size, 0), dtype=float), []
@@ -813,7 +813,7 @@ class SpikeTrainCollection:
 
     Provides a neuron mask, neighbour graph, and methods for PSTH,
     GLM-PSTH, state-space GLM, raster plots, and data-matrix export.
-    Spike trains are accessed via 1-based indexing (``getNST(1)``) to
+    Spike trains are accessed via 0-based indexing (``getNST(1)``) to
     match Matlab conventions.
 
     Parameters
@@ -843,7 +843,7 @@ class SpikeTrainCollection:
         observation windows (in **seconds**), and initialises the neuron
         mask to all ones (no neurons masked out).
 
-        Indexing is **1-based** to match MATLAB (``coll.getNST(0)`` is
+        Indexing is **0-based** to match MATLAB (``coll.getNST(0)`` is
         the first spike train).  Trains added after construction are
         deep-copied (via :meth:`nspikeTrain.nstCopy`) to prevent shared
         mutable state.
@@ -977,7 +977,7 @@ class SpikeTrainCollection:
         return self.nstrain[idx]
 
     def getNST(self, idx) -> nspikeTrain | list[nspikeTrain]:
-        """Return spike train(s) by 1-based index (Matlab ``nstColl.getNST``).
+        """Return spike train(s) by 0-based index (Matlab ``nstColl.getNST``).
 
         Always returns a deep copy of the stored train (never the stored
         reference itself).  This is intentional — the PR #80 ``non-destructive``
@@ -1001,7 +1001,7 @@ class SpikeTrainCollection:
         return nst
 
     def getNSTnames(self, selectorArray=None) -> list[str]:
-        """Return neuron names, optionally filtered by *selectorArray* (1-based indices)."""
+        """Return neuron names, optionally filtered by *selectorArray* (0-based indices)."""
         all_names = [train.name for train in self.nstrain]
         if selectorArray is None:
             # Default: return names for all neurons in the mask
@@ -1016,16 +1016,16 @@ class SpikeTrainCollection:
         return list(dict.fromkeys(names))
 
     def getNSTIndicesFromName(self, name: Sequence[str] | str):
-        """Return 1-based index(es) for a neuron name (or list of names)."""
+        """Return 0-based index(es) for a neuron name (or list of names)."""
         if isinstance(name, str):
-            matches = [i + 1 for i, value in enumerate(self.getNSTnames()) if value == name]
+            matches = [i for i, value in enumerate(self.getNSTnames()) if value == name]
             if not matches:
                 raise KeyError(f"Neuron '{name}' not found")
             return matches if len(matches) > 1 else matches[0]
         return [self.getNSTIndicesFromName(item) for item in name]
 
     def getNSTnameFromInd(self, ind: int) -> str:
-        """Return the neuron name for 1-based index *ind*."""
+        """Return the neuron name for 0-based index *ind*."""
         index = int(ind)
         if index < 1 or index > self.numSpikeTrains:
             raise IndexError("Index is out of bounds!")
@@ -1181,7 +1181,7 @@ class SpikeTrainCollection:
         return float(max(train.sampleRate for train in self.nstrain))
 
     def setMask(self, mask: Sequence[int] | np.ndarray) -> None:
-        """Set the neuron mask from a binary array or 1-based indices."""
+        """Set the neuron mask from a binary array or 0-based indices."""
         arr = np.asarray(mask, dtype=int).reshape(-1)
         if arr.size == self.numSpikeTrains and np.all(np.isin(arr, [0, 1])):
             self.setNeuronMask(arr)
@@ -1189,7 +1189,7 @@ class SpikeTrainCollection:
         self.setNeuronMaskFromInd(arr)
 
     def setNeuronMaskFromInd(self, mask: Sequence[int] | np.ndarray) -> None:
-        """Set the neuron mask from 1-based neuron indices."""
+        """Set the neuron mask from 0-based neuron indices."""
         arr = np.asarray(mask, dtype=int).reshape(-1)
         newMask = np.zeros(self.numSpikeTrains, dtype=int)
         if arr.size:
@@ -1248,7 +1248,7 @@ class SpikeTrainCollection:
         return np.size(self.neighbors) > 0
 
     def getNeighbors(self, neuronNum: int | Sequence[int]):
-        """Return the 1-based neighbour indices for one or more neurons."""
+        """Return the 0-based neighbour indices for one or more neurons."""
         if isinstance(neuronNum, Sequence) and not isinstance(neuronNum, (str, bytes, np.ndarray)):
             rows = [self.getNeighbors(int(item)) for item in neuronNum]
             if rows and all(len(row) == len(rows[0]) for row in rows):
@@ -1379,7 +1379,7 @@ class SpikeTrainCollection:
         Parameters
         ----------
         selectorArray : sequence of int, optional
-            1-based indices of neurons to plot.  Defaults to the neuron mask
+            0-based indices of neurons to plot.  Defaults to the neuron mask
             (or all neurons if no mask is set).  Matches Matlab positional arg.
         minTime, maxTime : float, optional
             Time window to display.  Defaults to the collection's time span.
@@ -2705,7 +2705,7 @@ class Trial:
         self.makeConsistentTime()
 
     def removeCov(self, identifier: int | str) -> None:
-        """Remove a covariate by 1-based index or name."""
+        """Remove a covariate by 0-based index or name."""
         self.covarColl.removeCovariate(identifier)
         self.covMask = self.covarColl.covMask
         if not self.isSampleRateConsistent():
@@ -2719,10 +2719,10 @@ class Trial:
         ----------
         *args
             When empty, returns all neurons via ``dataToMatrix()``.  An int
-            selects a single neuron (1-based).  A sequence of bin edges
+            selects a single neuron (0-based).  A sequence of bin edges
             returns binned counts for the neuron given by *neuron_index*.
         neuron_index : int, default 1
-            Neuron to bin when *args* provides bin edges (1-based).
+            Neuron to bin when *args* provides bin edges (0-based).
         """
         if not args:
             return self.nspikeColl.dataToMatrix()
@@ -2742,7 +2742,7 @@ class Trial:
         return self.covarColl.matrixWithTime("standard", selected_covariates)
 
     def getDesignMatrix(self, neuronNum: int, dataSelector=None) -> np.ndarray:
-        """Build the full design matrix for neuron *neuronNum* (1-based).
+        """Build the full design matrix for neuron *neuronNum* (0-based).
 
         Horizontally concatenates covariates, spike-history columns, and
         ensemble-history columns — the complete regressor matrix used by
@@ -2773,7 +2773,7 @@ class Trial:
         Parameters
         ----------
         neuronIndex : int
-            1-based neuron index whose spike train supplies the history.
+            0-based neuron index whose spike train supplies the history.
 
         Returns
         -------
@@ -2795,7 +2795,7 @@ class Trial:
         return self.history.computeHistory(nst, time_grid=target_time)
 
     def getHistMatrices(self, neuronIndex: int) -> np.ndarray:
-        """Return the spike-history columns as a 2-D array for *neuronIndex* (1-based)."""
+        """Return the spike-history columns as a 2-D array for *neuronIndex* (0-based)."""
         if not self.isHistSet():
             time = self.nspikeColl.getNST(neuronIndex).getSigRep().time
             return np.zeros((time.size, 0), dtype=float)
@@ -2822,7 +2822,7 @@ class Trial:
         return ensCovCollTemp.dataToMatrix("standard")
 
     def getNeuronIndFromMask(self) -> list[int]:
-        """Return 1-based indices of currently unmasked neurons."""
+        """Return 0-based indices of currently unmasked neurons."""
         return self.nspikeColl.getIndFromMask()
 
     def getNumUniqueNeurons(self) -> int:
@@ -2838,7 +2838,7 @@ class Trial:
         return self.nspikeColl.getUniqueNSTnames()
 
     def getNeuronIndFromName(self, neuronName: str):
-        """Return 1-based indices matching *neuronName*, filtered by the neuron mask."""
+        """Return 0-based indices matching *neuronName*, filtered by the neuron mask."""
         tempInd = self.nspikeColl.getNSTIndicesFromName(neuronName)
         currMask = set(self.neuronMask_indices())
         if isinstance(tempInd, list):
@@ -2846,7 +2846,7 @@ class Trial:
         return [tempInd] if tempInd in currMask else []
 
     def neuronMask_indices(self) -> list[int]:
-        """Return 1-based indices of unmasked neurons (alias for ``getNeuronIndFromMask``)."""
+        """Return 0-based indices of unmasked neurons (alias for ``getNeuronIndFromMask``)."""
         return self.nspikeColl.getIndFromMask()
 
     def getNeuronNeighbors(self, neuronNum=None):
@@ -2860,11 +2860,11 @@ class Trial:
         return self.covarColl.getSelectorFromMasks()
 
     def getCov(self, identifier):
-        """Return a ``Covariate`` by 1-based index or name."""
+        """Return a ``Covariate`` by 0-based index or name."""
         return self.covarColl.getCov(identifier)
 
     def getNeuron(self, identifier):
-        """Return an ``nspikeTrain`` by 1-based index or name."""
+        """Return an ``nspikeTrain`` by 0-based index or name."""
         return self.nspikeColl.getNST(identifier)
 
     def getAllCovLabels(self) -> list[str]:

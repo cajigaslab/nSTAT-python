@@ -336,7 +336,7 @@ class ConfigCollection:
         raise TypeError("names must be a string or sequence of strings.")
 
     def getSubsetConfigs(self, subset: Sequence[int]) -> "ConfigCollection":
-        """Return a new collection containing only configs at 1-based *subset* indices."""
+        """Return a new collection containing only configs at 0-based *subset* indices."""
         tempconfigs = [self.getConfig(int(i)) for i in subset]
         return ConfigCollection(tempconfigs)
 

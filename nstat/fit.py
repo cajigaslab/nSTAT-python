@@ -169,7 +169,7 @@ def _ksdiscrete(
         st_arr = np.asarray(st, dtype=float).reshape(-1)
         if pk_arr.shape[0] != st_arr.shape[0]:
             raise ValueError("pk and spike train must be same length")
-        spike_indices = np.flatnonzero(st_arr == 1.0) + 1
+        spike_indices = np.flatnonzero(st_arr == 1.0)
     elif spikeflag == "spikeind":
         st_arr = np.asarray(st, dtype=float).reshape(-1)
         spike_indices = np.unique(np.asarray(st_arr, dtype=int))
@@ -180,9 +180,9 @@ def _ksdiscrete(
         rst = pk_arr.copy()
         return rst, np.sort(rst), np.asarray([], dtype=float), np.nan, np.sort(rst)
 
-    if spike_indices[0] < 1:
+    if spike_indices[0] < 0:
         raise ValueError("There is at least one spike with index less than 0")
-    if spike_indices[-1] > pk_arr.shape[0]:
+    if spike_indices[-1] >= pk_arr.shape[0]:
         raise ValueError("There is at least one spike with an index greater than the length of pk")
 
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -1035,18 +1035,18 @@ class FitResult:
         return self
 
     def _rawCoeffs(self, fit_num: int = 0) -> np.ndarray:
-        """Return the raw coefficient vector for *fit_num* (1-based)."""
+        """Return the raw coefficient vector for *fit_num* (0-based)."""
         return self.b[fit_num].copy()
 
     def getCoeffs(self, fit_num: int = 0) -> tuple[np.ndarray, list[str], np.ndarray]:
-        """Return ``(coeffMat, labels, SEMat)`` for *fit_num* (1-based).
+        """Return ``(coeffMat, labels, SEMat)`` for *fit_num* (0-based).
 
         Matches MATLAB: ``[coeffMat, labels, SEMat] = getCoeffs(fitObj, fitNum)``.
         """
         return self.getCoeffsWithLabels(fit_num)
 
     def getHistCoeffs(self, fit_num: int = 0) -> tuple[np.ndarray, list[str], np.ndarray]:
-        """Return ``(histMat, labels, SEMat)`` for *fit_num* (1-based).
+        """Return ``(histMat, labels, SEMat)`` for *fit_num* (0-based).
 
         Matches MATLAB: ``[histMat, labels, SEMat] = getHistCoeffs(fitObj, fitNum)``.
         """
@@ -1287,7 +1287,7 @@ class FitResult:
             "coeff_labels": np.asarray(coeff_labels, dtype=object),
         }
         self._diagnostic_cache[fit_num] = diagnostics
-        # Write KS stat to the correct index (fit_num is 1-based).
+        # Write KS stat to the correct index (fit_num is 0-based).
         # We avoid calling setKSStats here because it overwrites the
         # multi-column Z/U/KSXAxis/KSSorted arrays and always writes
         # the ks_stat scalar to index 0.  Instead, write directly to
@@ -2047,21 +2047,21 @@ class FitSummary:
         self.mapCovLabelsToUniqueLabels()
 
     def getDiffAIC(self, idx: int = 1) -> np.ndarray:
-        """Return ΔAIC relative to config *idx* (1-based)."""
+        """Return ΔAIC relative to config *idx* (0-based)."""
         if self.numResults > 1:
             keep = [col for col in range(self.AIC.shape[1]) if col != (idx - 1)]
             return self.AIC[:, keep] - self.AIC[:, [idx - 1]]
         return self.AIC.copy()
 
     def getDiffBIC(self, idx: int = 1) -> np.ndarray:
-        """Return ΔBIC relative to config *idx* (1-based)."""
+        """Return ΔBIC relative to config *idx* (0-based)."""
         if self.numResults > 1:
             keep = [col for col in range(self.BIC.shape[1]) if col != (idx - 1)]
             return self.BIC[:, keep] - self.BIC[:, [idx - 1]]
         return self.BIC.copy()
 
     def getDifflogLL(self, idx: int = 1) -> np.ndarray:
-        """Return Δlog-likelihood relative to config *idx* (1-based)."""
+        """Return Δlog-likelihood relative to config *idx* (0-based)."""
         if self.numResults > 1:
             keep = [col for col in range(self.logLL.shape[1]) if col != (idx - 1)]
             return self.logLL[:, keep] - self.logLL[:, [idx - 1]]
