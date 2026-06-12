@@ -2072,15 +2072,15 @@ class DecodingAlgorithms:
                 mixed_state = np.zeros(max_dim, dtype=float)
                 for source_model in range(n_models):
                     dim_i = state_dims[source_model]
-                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
                     mixed_state[:dim_i] += source_state * p_ij_s[source_model, target_model]
                 X_s[target_model][:, time_index] = mixed_state
 
                 mixed_cov = np.zeros((max_dim, max_dim), dtype=float)
                 for source_model in range(n_models):
                     dim_i = state_dims[source_model]
-                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index]
-                    source_cov = Pi0_models[source_model] if time_index == 0 else W_u[source_model][:, :, time_index]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
+                    source_cov = Pi0_models[source_model] if time_index == 0 else W_u[source_model][:, :, time_index - 1]
                     diff = source_state - mixed_state[:dim_i]
                     mixed_cov[:dim_i, :dim_i] += (
                         source_cov + np.outer(diff, diff)
@@ -2294,15 +2294,15 @@ class DecodingAlgorithms:
                 mixed_state = np.zeros(max_dim, dtype=float)
                 for source_model in range(n_models):
                     dim_i = state_dims[source_model]
-                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
                     mixed_state[:dim_i] += source_state * p_ij_s[source_model, target_model]
                 X_s[target_model][:, time_index] = mixed_state
 
                 mixed_cov = np.zeros((max_dim, max_dim), dtype=float)
                 for source_model in range(n_models):
                     dim_i = state_dims[source_model]
-                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index]
-                    source_cov = Pi0_models[source_model] if time_index == 0 else W_u[source_model][:, :, time_index]
+                    source_state = x0_models[source_model] if time_index == 0 else X_u[source_model][:, time_index - 1]
+                    source_cov = Pi0_models[source_model] if time_index == 0 else W_u[source_model][:, :, time_index - 1]
                     diff = source_state - mixed_state[:dim_i]
                     mixed_cov[:dim_i, :dim_i] += (
                         source_cov + np.outer(diff, diff)
