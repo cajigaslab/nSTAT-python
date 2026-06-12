@@ -460,6 +460,6 @@ if __name__ == "__main__":
     run_example02(
         export_figures=args.export_figures,
         export_dir=export_dir if args.export_figures else None,
-        visible=not args.no_display,
+        visible=not (args.no_display or args.export_figures),
         plot_style=args.plot_style,
     )
