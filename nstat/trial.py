@@ -527,14 +527,14 @@ class CovariateCollection:
                 if arr.size == cov.dimension and np.all(np.isin(arr, [0, 1])):
                     mask = arr.astype(int)
                 else:
-                    if np.any(arr < 1) or np.any(arr > cov.dimension):
+                    if np.any(arr < 0) or np.any(arr >= cov.dimension):
                         raise IndexError("Covariate selector index out of bounds.")
                     mask[arr] = 1
             masks.append(mask)
         return masks
 
     def setMasksFromSelector(self, selectorCell: list[list[int]]) -> None:
-        """Set covariate masks from a list of 1-based index lists."""
+        """Set covariate masks from a list of 0-based index lists."""
         self.covMask = self._selector_to_cov_mask(selectorCell)
 
     def setMask(self, cellInput) -> None:
@@ -992,8 +992,8 @@ class SpikeTrainCollection:
         if isinstance(idx, Sequence) and not isinstance(idx, (str, bytes, np.ndarray)):
             return [self.getNST(int(item)) for item in idx]
         index = int(idx)
-        if index < 1 or index > self.numSpikeTrains:
-            raise IndexError("nstColl index out of bounds (1-based indexing).")
+        if index < 0 or index >= self.numSpikeTrains:
+            raise IndexError("nstColl index out of bounds.")
         nst = _copy.deepcopy(self.nstrain[index])
         # Matlab resamples to collection sampleRate on retrieval.
         if nst.sampleRate != self.sampleRate:
@@ -1007,7 +1007,7 @@ class SpikeTrainCollection:
             # Default: return names for all neurons in the mask
             indices = [i for i, m in enumerate(self.neuronMask) if m]
         else:
-            indices = [int(idx) - 1 for idx in np.asarray(selectorArray, dtype=int).reshape(-1)]
+            indices = [int(idx) for idx in np.asarray(selectorArray, dtype=int).reshape(-1)]
         return [all_names[i] for i in indices if 0 <= i < len(all_names)]
 
     def getUniqueNSTnames(self, selectorArray=None) -> list[str]:

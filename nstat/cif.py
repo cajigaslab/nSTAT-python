@@ -522,7 +522,7 @@ class CIF:
             return np.zeros(self.histCoeffs.size, dtype=float)
         if time_index is None:
             return self.historyMat[-1, :].reshape(-1)
-        idx = max(int(time_index) - 1, 0)
+        idx = max(int(time_index), 0)
         idx = min(idx, self.historyMat.shape[0] - 1)
         return self.historyMat[idx, :].reshape(-1)
 

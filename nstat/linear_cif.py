@@ -389,13 +389,13 @@ class LinearCIF:
 
         Mirrors MATLAB ``LinearCIF.resolveHistVal``: when ``nst`` is
         absent and a pre-computed ``historyMat`` exists, slice at
-        ``time_index`` (1-based, matching MATLAB).  When ``nst`` is
-        provided, compute fresh history and use the last row.
+        ``time_index`` (0-based; the Python port flipped the indexing
+        convention in v0.5.0).  When ``nst`` is provided, compute fresh
+        history and use the last row.
         """
         if nst is None:
             if time_index is not None and self.historyMat is not None:
-                # MATLAB 1-based -> Python 0-based.
-                idx = int(time_index) - 1
+                idx = int(time_index)
                 return np.asarray(self.historyMat[idx, :], dtype=float).reshape(-1)
             return None
         if not isinstance(nst, nspikeTrain):

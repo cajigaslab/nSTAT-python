@@ -28,8 +28,8 @@ def test_covcoll_masking_selector_and_time_matrix() -> None:
     coll = CovColl([position, stimulus])
 
     assert coll.numCov == 2
-    assert coll.getCovIndFromName("Position") == 1
-    assert coll.getCovIndFromName("Stimulus") == 2
+    assert coll.getCovIndFromName("Position") == 0
+    assert coll.getCovIndFromName("Stimulus") == 1
 
     coll.setMask([["Position", "x"], ["Stimulus"]])
     time, matrix, labels = coll.matrixWithTime()
