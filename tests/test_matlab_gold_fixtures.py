@@ -328,7 +328,7 @@ def test_nstcoll_matches_matlab_gold_fixture() -> None:
 
     np.testing.assert_equal(coll.numSpikeTrains, int(_scalar(payload, "numSpikeTrains")))
     assert coll.getNST(0).name == _string(payload, "firstName")
-    np.testing.assert_allclose(coll.dataToMatrix([1, 2], 0.1, 0.0, 0.5), np.asarray(payload["dataMatrix"], dtype=float), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(coll.dataToMatrix([0, 1], 0.1, 0.0, 0.5), np.asarray(payload["dataMatrix"], dtype=float), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(collapsed.spikeTimes, _vector(payload, "collapsedSpikeTimes"), rtol=1e-8, atol=1e-10)
     assert collapsed.name == _string(payload, "collapsedName")
     np.testing.assert_allclose(float(collapsed.minTime), _scalar(payload, "collapsedMinTime"), rtol=1e-12, atol=1e-12)
