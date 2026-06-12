@@ -1546,7 +1546,7 @@ class DecodingAlgorithms:
                     )
                     A_t = Amat[:, :, min(time_index, N - 1)]
                     Q_t = Qmat[:, :, min(time_index, N - 1)]
-                    x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
+                    x_p[:, time_index + 1], W_p[:, :, time_index + 1] = DecodingAlgorithms.PPDecode_predict(
                         x_u[:, time_index],
                         W_u[:, :, time_index],
                         A_t,
@@ -1678,7 +1678,7 @@ class DecodingAlgorithms:
             )
             A_t = _select_time_matrix(A, time_index, ns)
             Q_t = _select_time_matrix(Q, time_index, ns)
-            x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
+            x_p[:, time_index + 1], W_p[:, :, time_index + 1] = DecodingAlgorithms.PPDecode_predict(
                 x_u[:, time_index],
                 W_u[:, :, time_index],
                 A_t,
@@ -1771,7 +1771,7 @@ class DecodingAlgorithms:
             )
             A_t = _select_time_matrix(A, time_index, num_states)
             Q_t = _select_time_matrix(Q, time_index, num_states)
-            x_p[:, time_index], W_p[:, :, time_index] = DecodingAlgorithms.PPDecode_predict(
+            x_p[:, time_index + 1], W_p[:, :, time_index + 1] = DecodingAlgorithms.PPDecode_predict(
                 x_u[:, time_index],
                 W_u[:, :, time_index],
                 A_t,
