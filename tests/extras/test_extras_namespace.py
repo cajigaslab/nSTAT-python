@@ -306,6 +306,12 @@ def test_kalman_filtered_means_agree_with_pykalman() -> None:
 
 def test_nemos_glm_agrees_with_nstat_within_tolerance() -> None:
     pytest.importorskip("nemos")
+    # nemos transitively imports jax; some envs have a numpy/jax mismatch
+    # that surfaces only when jax is actually loaded.  Treat as skip.
+    try:
+        import jax  # noqa: F401
+    except Exception as exc:
+        pytest.skip(f"Transitive dep 'jax' unavailable: {exc}")
     from nstat.extras.validation.nemos_bridge import cross_validate_poisson_glm
 
     rng = np.random.default_rng(0)
