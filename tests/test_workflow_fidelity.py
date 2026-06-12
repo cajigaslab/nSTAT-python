@@ -59,7 +59,7 @@ def test_analysis_returns_matlab_style_fitresult_surface() -> None:
     assert fit.numResults == 2
     assert fit.configNames == ["stim_hist", "vel_only"]
     assert fit.lambdaSignal.dimension == 2
-    assert fit.neuronNumber == 0.0
+    assert fit.neuronNumber == 1.0
     assert len(fit.covLabels) == 2
     assert "stim" in fit.uniqueCovLabels
     coeffs, labels, se = fit.getCoeffs(0)
