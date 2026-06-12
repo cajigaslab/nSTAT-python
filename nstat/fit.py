@@ -2157,7 +2157,7 @@ class FitSummary:
         # Build per-covariate data across all fits
         # bAct: (nNeurons, nCov), sigIdx: (nNeurons, nCov)
         coeff_mat, labels, se_mat = self.getCoeffs(0)  # (nNeurons, nCov)
-        sig_mat = self.getSigCoeffs(1)  # (nNeurons, nCov) boolean
+        sig_mat = self.getSigCoeffs(0)  # (nNeurons, nCov) boolean
 
         nCov = len(labels)
         N = np.zeros((edges.size - 1, nCov), dtype=float)
