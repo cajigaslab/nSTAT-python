@@ -1833,7 +1833,7 @@ class DecodingAlgorithms:
                 fitType,
                 gamma_mat,
                 H_tensor,
-                n + 1,
+                n,
                 None,
             )
             A_t = _select_time_matrix(A, n, num_states)
@@ -6482,7 +6482,7 @@ class DecodingAlgorithms:
                 y_arr[:, n] if y_arr.ndim == 2 else y_arr,
                 _sel_alpha(n),
                 dN, mu_vec, beta_mat, fitType,
-                gamma, Histtermperm, n + 1, None)
+                gamma, Histtermperm, n, None)
             if n < N - 1:
                 x_p[:, n + 1], W_p[:, :, n + 1] = DecodingAlgorithms.mPPCODecode_predict(
                     x_u[:, n], W_u[:, :, n], _sel_A(n), _sel_Q(n))

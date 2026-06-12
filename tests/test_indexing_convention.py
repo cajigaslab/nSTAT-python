@@ -52,6 +52,9 @@ VARIABLE_ALLOWLIST: set[tuple[str, str]] = {
     # ``cnt`` is the EM iteration counter; ``[cnt - 1]`` is "previous iter".
     ("decoding_algorithms.py", "k"),
     ("decoding_algorithms.py", "num_steps"),
+    # PPHybridFilterLinear time recursion: MU_u[:, time_index - 1] reads
+    # previous-step model probabilities (M22 fix); same in the m-step path.
+    ("decoding_algorithms.py", "time_index"),
     ("decoding_algorithms.py", "K"),
     ("decoding_algorithms.py", "N"),
     ("decoding_algorithms.py", "n"),
