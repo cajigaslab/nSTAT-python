@@ -296,8 +296,8 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
 
     ax = axes3[1, 1]
     lam = resultWashout.lambda_signal
-    ax.plot(lam.time, lam.getSubSignal(1).data[:, 0], "b", linewidth=2)
-    ax.plot(lam.time, lam.getSubSignal(2).data[:, 0], "g", linewidth=2)
+    ax.plot(lam.time, lam.getSubSignal(0).data[:, 0], "b", linewidth=2)
+    ax.plot(lam.time, lam.getSubSignal(1).data[:, 0], "g", linewidth=2)
     ax.set_ylim(0, 5)
     ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_ylabel(f"{lam.name} [{lam.yunits}]" if lam.yunits else lam.name,

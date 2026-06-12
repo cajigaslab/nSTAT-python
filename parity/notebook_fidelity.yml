@@ -94,7 +94,7 @@ items:
     calls; exact coefficients and plot styling still vary modestly because the Python
     GLM backend differs from MATLAB.
   python_sections: 9
-  python_expected_figures: 5
+  python_expected_figures: 4
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -105,7 +105,7 @@ items:
   matlab_sections: 9
   matlab_published_figures: 5
   section_delta: 0
-  figure_delta: 0
+  figure_delta: -1
 - topic: DecodingExample
   source_matlab: DecodingExample.mlx
   python_notebook: notebooks/DecodingExample.ipynb
@@ -291,7 +291,7 @@ items:
     local execution uses the MATLAB-scale simulation sizes, while CI switches to a
     documented shorter deterministic fast path for stability.
   python_sections: 11
-  python_expected_figures: 10
+  python_expected_figures: 8
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -302,7 +302,7 @@ items:
   matlab_sections: 11
   matlab_published_figures: 8
   section_delta: 0
-  figure_delta: 2
+  figure_delta: 0
 - topic: StimulusDecode2D
   source_matlab: StimulusDecode2D.mlx
   python_notebook: notebooks/StimulusDecode2D.ipynb

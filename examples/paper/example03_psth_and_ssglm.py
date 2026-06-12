@@ -354,7 +354,7 @@ def run_part_b(data_dir, export_dir=None):
             stim, ens, 1, "binomial",
             seed=iTrial, return_lambda=True,
         )
-        nst = sC.getNST(1)
+        nst = sC.getNST(0)
         nst = nst.nstCopy()
         nst.resample(1 / delta)
         trains.append(nst)
