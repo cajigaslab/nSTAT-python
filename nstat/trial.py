@@ -299,7 +299,7 @@ class CovariateCollection:
             0-based index, covariate name, or sequence of either.
         """
         if isinstance(identifier, str):
-            return self._apply_collection_state(self.covArray[self.getCovIndFromName(identifier) - 1], self.getCovIndFromName(identifier))
+            return self._apply_collection_state(self.covArray[self.getCovIndFromName(identifier)], self.getCovIndFromName(identifier))
         if isinstance(identifier, Sequence) and not isinstance(identifier, (str, bytes, np.ndarray)):
             if _is_string_sequence(identifier):
                 return [self.getCov(item) for item in identifier]
