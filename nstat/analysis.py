@@ -681,7 +681,7 @@ class Analysis:
         """
         del DTCorrection, batchMode
         indices = _as_neuron_indices(tObj, neuronNumber)
-        fits = [Analysis.run_analysis_for_neuron(tObj, idx - 1, configColl, algorithm=Algorithm) for idx in indices]
+        fits = [Analysis.run_analysis_for_neuron(tObj, idx, configColl, algorithm=Algorithm) for idx in indices]
         if makePlot and len(fits) == 1:
             fits[0].plotResults()
         return fits[0] if len(fits) == 1 else fits
