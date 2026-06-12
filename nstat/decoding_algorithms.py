@@ -1324,7 +1324,7 @@ class DecodingAlgorithms:
         return x_p, W_p
 
     @staticmethod
-    def PPDecode_update(x_p, W_p, dN, lambdaIn, binwidth=0.001, time_index=1, WuConv=None):
+    def PPDecode_update(x_p, W_p, dN, lambdaIn, binwidth=0.001, time_index=0, WuConv=None):
         """Point-process adaptive filter update step using CIF objects.
 
         Evaluates symbolic CIF gradients and Jacobians for the
@@ -1382,7 +1382,7 @@ class DecodingAlgorithms:
         return x_u, W_u, lambda_delta
 
     @staticmethod
-    def PPDecode_updateLinear(x_p, W_p, dN, mu, beta, fitType="poisson", gamma=None, HkAll=None, time_index=1, WuConv=None):
+    def PPDecode_updateLinear(x_p, W_p, dN, mu, beta, fitType="poisson", gamma=None, HkAll=None, time_index=0, WuConv=None):
         """Point-process adaptive filter update step using linear parameters.
 
         Uses ``mu``, ``beta``, and optional ``gamma`` history coefficients
@@ -6234,7 +6234,7 @@ class DecodingAlgorithms:
     @staticmethod
     def mPPCODecode_update(x_p, W_p, C, R, y, alpha, dN, mu, beta,
                            fitType='poisson', gamma=None, HkAll=None,
-                           time_index=1, WuConv=None):
+                           time_index=0, WuConv=None):
         """Update step for the mPPCO filter (PP + continuous observation).
 
         Matlab: ``DecodingAlgorithms.mPPCODecode_update``  (lines 4855-4944)
