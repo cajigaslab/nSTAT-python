@@ -479,7 +479,7 @@ class Analysis:
 
         spike_train = trial.nspikeColl.getNST(neuron_number).nstCopy()
         if not spike_train.name:
-            spike_train.setName(str(neuron_number + 1))
+            spike_train.setName(str(neuron_number))
 
         spike_validation = None
         has_validation = False
@@ -532,7 +532,7 @@ class Analysis:
                 xvalData.append(np.asarray(trial.getDesignMatrix(neuron_number), dtype=float))
                 xvalTime.append(np.asarray(trial.covarColl.getCov(0).time, dtype=float).copy())
                 spike_validation = trial.nspikeColl.getNST(neuron_number).nstCopy()
-                spike_validation.setName(str(neuron_number + 1))
+                spike_validation.setName(str(neuron_number))
                 trial.setTrialTimesFor("training")
             else:
                 xvalData.append(np.zeros((0, len(current_labels)), dtype=float))
