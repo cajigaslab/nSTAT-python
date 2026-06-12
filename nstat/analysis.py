@@ -318,7 +318,7 @@ class Analysis:
 
         for index in indices:
             x = np.asarray(tObj.getDesignMatrix(index), dtype=float)
-            lambda_time = np.asarray(tObj.getCov(1).time, dtype=float).reshape(-1)
+            lambda_time = np.asarray(tObj.getCov(0).time, dtype=float).reshape(-1)
             sample_rate = float(tObj.sampleRate)
             dt = 1.0 / max(sample_rate, 1e-12)
             # Use getSpikeVector (via getSigRep) to match MATLAB's GLMFit,

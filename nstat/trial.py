@@ -127,7 +127,7 @@ class CovariateCollection:
         each covariate (no dimensions masked out).  Time bounds and
         sample rate are recomputed lazily via ``_refresh_summary``.
 
-        Indexing is **1-based** to match MATLAB (``coll.getCov(1)`` is
+        Indexing is **1-based** to match MATLAB (``coll.getCov(0)`` is
         the first covariate).
 
         See Also
@@ -717,7 +717,7 @@ class CovariateCollection:
 
         active_cov = [i + 1 for i, selector in enumerate(selectorCell) if selector]
         if not active_cov:
-            time = self.getCov(1).time
+            time = self.getCov(0).time
             return time.copy(), np.zeros((time.size, 0), dtype=float), []
 
         time = self.getCov(active_cov[0]).getSigRep(repType).time
@@ -758,7 +758,7 @@ class CovariateCollection:
                 selectorCell = [list(range(self.getCov(i).dimension)) for i in range(self.numCov)]
         dataMatrix = self.dataToMatrix("standard", selectorCell)
         return {
-            "time": self.getCov(1).time.copy() if self.numCov else np.array([], dtype=float),
+            "time": self.getCov(0).time.copy() if self.numCov else np.array([], dtype=float),
             "signals": {"values": dataMatrix},
         }
 
@@ -843,7 +843,7 @@ class SpikeTrainCollection:
         observation windows (in **seconds**), and initialises the neuron
         mask to all ones (no neurons masked out).
 
-        Indexing is **1-based** to match MATLAB (``coll.getNST(1)`` is
+        Indexing is **1-based** to match MATLAB (``coll.getNST(0)`` is
         the first spike train).  Trains added after construction are
         deep-copied (via :meth:`nspikeTrain.nstCopy`) to prevent shared
         mutable state.
@@ -1307,7 +1307,7 @@ class SpikeTrainCollection:
         else:
             selector = [int(item) for item in selectorArray]
         if not selector:
-            testSig = self.getNST(1).getSigRep(binwidth, minTime, maxTime)
+            testSig = self.getNST(0).getSigRep(binwidth, minTime, maxTime)
             return np.zeros((testSig.dataToMatrix().shape[0], 0), dtype=float)
         testSig = self.getNST(selector[0]).getSigRep(binwidth, minTime, maxTime)
         dataMat = np.zeros((testSig.dataToMatrix().shape[0], len(selector)), dtype=float)
@@ -2784,7 +2784,7 @@ class Trial:
         if not self.isHistSet():
             raise ValueError("Set Trial history and retry")
         nst = self.nspikeColl.getNST(neuronIndex)
-        target_time = np.asarray(self.covarColl.getCov(1).time, dtype=float).reshape(-1) if self.covarColl.numCov else None
+        target_time = np.asarray(self.covarColl.getCov(0).time, dtype=float).reshape(-1) if self.covarColl.numCov else None
         if isinstance(self.history, list):
             histCovColl: CovariateCollection | None = None
             for i, hist in enumerate(self.history, start=1):
