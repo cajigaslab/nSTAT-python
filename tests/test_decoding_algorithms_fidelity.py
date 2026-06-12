@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from nstat.CIF import CIF
 from nstat.DecodingAlgorithms import DecodingAlgorithms
@@ -92,13 +91,6 @@ def test_ppdecode_update_matches_matlab_facing_public_surface() -> None:
     assert np.all(lambda_delta > 0.0)
 
 
-@pytest.mark.xfail(
-    reason="MATLAB bug M22: PPHybridFilterLinear time recursion uses "
-    "MU_u[:, time_index] (current step, always 0) instead of "
-    "MU_u[:, time_index - 1] (previous step), so probability sums "
-    "are not all 1.  Python preserves the MATLAB-faithful behavior to "
-    "match gold fixtures.  See AUDIT_REPORT.md M22."
-)
 def test_pphybridfilterlinear_returns_model_probabilities_and_state_banks() -> None:
     a = [np.array([[1.0]], dtype=float), np.array([[0.9]], dtype=float)]
     q = [np.array([[0.02]], dtype=float), np.array([[0.05]], dtype=float)]
