@@ -63,12 +63,12 @@ def _normalize_signal_matrix(data: Sequence[float] | Sequence[Sequence[float]] |
     raise ValueError("Data dimensions do not match the time vector specified.")
 
 
-def _coerce_1based_indices(values: Sequence[int] | np.ndarray, upper: int) -> list[int]:
+def _coerce_zero_based_indices(values: Sequence[int] | np.ndarray, upper: int) -> list[int]:
     out: list[int] = []
     for raw in np.asarray(values).reshape(-1):
         index = int(raw)
-        if index < 1 or index > upper:
-            raise IndexError("Signal index out of range. Indexing is 0-based.")
+        if index < 0 or index >= upper:
+            raise IndexError("Signal index out of range.")
         out.append(index)
     return out
 
@@ -411,7 +411,7 @@ class SignalObj:
                 self.plotProps = props
             return
 
-        indices = _coerce_1based_indices([index], self.dimension)
+        indices = _coerce_zero_based_indices([index], self.dimension)
         target = indices[0] - 1
         if not self.plotProps:
             self.plotProps = [None for _ in range(self.dimension)]
@@ -432,7 +432,7 @@ class SignalObj:
 
     def setMaskByInd(self, index: Sequence[int] | np.ndarray) -> None:
         """Enable only the dimensions at the given 0-based indices."""
-        selected = _coerce_1based_indices(index, self.dimension)
+        selected = _coerce_zero_based_indices(index, self.dimension)
         mask = np.zeros(self.dimension, dtype=int)
         mask[np.asarray(selected, dtype=int) - 1] = 1
         self.setDataMask(mask)
@@ -497,7 +497,7 @@ class SignalObj:
 
     def getPlotProps(self, index: int) -> Any:
         """Return the plot property for dimension *index* (0-based)."""
-        idx = _coerce_1based_indices([index], self.dimension)[0] - 1
+        idx = _coerce_zero_based_indices([index], self.dimension)[0]
         return self.plotProps[idx]
 
     def getIndexFromLabel(self, label: str) -> list[int]:

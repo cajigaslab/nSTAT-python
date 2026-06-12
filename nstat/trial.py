@@ -340,7 +340,7 @@ class CovariateCollection:
             return 1
         if isinstance(cov, (int, np.integer, float, np.floating)):
             index = int(cov)
-            return int(index > 0 and index <= self.numCov)
+            return int(index >= 0 and index < self.numCov)
         raise TypeError("Need either covariate class or name of covariate or index of covariate")
 
     def findMinTime(self) -> float:
@@ -1027,7 +1027,7 @@ class SpikeTrainCollection:
     def getNSTnameFromInd(self, ind: int) -> str:
         """Return the neuron name for 0-based index *ind*."""
         index = int(ind)
-        if index < 1 or index > self.numSpikeTrains:
+        if index < 0 or index >= self.numSpikeTrains:
             raise IndexError("Index is out of bounds!")
         return str(self.nstrain[index].name)
 
@@ -1262,7 +1262,7 @@ class SpikeTrainCollection:
         else:
             row = np.asarray(self.neighbors[neuron_idx], dtype=int).reshape(-1).tolist()
         available = set(self.getIndFromMaskMinusOne(neuron_idx))
-        return [value for value in row if value in available and value > 0]
+        return [value for value in row if value in available and value >= 0]
 
     def getMaxBinSizeBinary(self) -> float:
         """Return the largest bin-width that keeps all active trains binary."""
