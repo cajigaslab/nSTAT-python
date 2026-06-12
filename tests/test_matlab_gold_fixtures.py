@@ -364,7 +364,7 @@ def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
     structure = cfg.toStructure()
     roundtrip = TrialConfig.fromStructure(structure)
     coll = ConfigColl([cfg, cfg2])
-    subset = coll.getSubsetConfigs([1, 2])
+    subset = coll.getSubsetConfigs([0, 1])
     rebuilt = ConfigColl.fromStructure(coll.toStructure())
     renamed = ConfigColl([cfg, cfg2])
     renamed.setConfigNames("", [0])

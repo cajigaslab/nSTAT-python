@@ -150,7 +150,7 @@ def test_trialconfig_and_configcoll_apply_and_roundtrip() -> None:
     configs = ConfigColl([cfg, cfg2])
     assert configs.numConfigs == 2
     assert configs.getConfigNames() == ["stim_pos", "manual"]
-    subset = configs.getSubsetConfigs([1, 2])
+    subset = configs.getSubsetConfigs([0, 1])
     assert subset.numConfigs == 2
     rebuilt = ConfigColl.fromStructure(configs.toStructure())
     assert rebuilt.getConfigNames() == ["Fit 1", "Fit 2"]

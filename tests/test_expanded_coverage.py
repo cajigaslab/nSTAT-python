@@ -90,7 +90,7 @@ class TestEdgeCases:
         coll = nstColl([nst])
         assert coll.numSpikeTrains == 1
         assert coll.getNST(0).name == "only"
-        mat = coll.dataToMatrix([1], 0.1, 0.0, 1.0)
+        mat = coll.dataToMatrix([0], 0.1, 0.0, 1.0)
         assert mat.shape[1] == 1
 
     def test_single_spike_train_psth(self) -> None:
