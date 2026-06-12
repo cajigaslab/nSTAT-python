@@ -68,7 +68,7 @@ def _coerce_1based_indices(values: Sequence[int] | np.ndarray, upper: int) -> li
     for raw in np.asarray(values).reshape(-1):
         index = int(raw)
         if index < 1 or index > upper:
-            raise IndexError("Signal index out of range. Indexing is 1-based.")
+            raise IndexError("Signal index out of range. Indexing is 0-based.")
         out.append(index)
     return out
 
@@ -392,7 +392,7 @@ class SignalObj:
     def setPlotProps(self, plotProps: Sequence[Any] | str | None, index: int | None = None) -> None:
         """Set per-dimension Matplotlib format strings.
 
-        When *index* (1-based) is given, only that dimension is updated.
+        When *index* (0-based) is given, only that dimension is updated.
         """
         if index is None:
             if plotProps is None:
@@ -431,7 +431,7 @@ class SignalObj:
         self.dataMask = mask
 
     def setMaskByInd(self, index: Sequence[int] | np.ndarray) -> None:
-        """Enable only the dimensions at the given 1-based indices."""
+        """Enable only the dimensions at the given 0-based indices."""
         selected = _coerce_1based_indices(index, self.dimension)
         mask = np.zeros(self.dimension, dtype=int)
         mask[np.asarray(selected, dtype=int) - 1] = 1
@@ -452,7 +452,7 @@ class SignalObj:
         """Flexible mask setter accepting indices, labels, or a binary vector.
 
         ``None`` clears the mask (all hidden).  A binary vector of length
-        ``dimension`` is used directly.  A list of labels or 1-based indices
+        ``dimension`` is used directly.  A list of labels or 0-based indices
         enables only those dimensions.
         """
         if mask is None:
@@ -496,7 +496,7 @@ class SignalObj:
         return self._spawn(self.originalTime, self.originalData)
 
     def getPlotProps(self, index: int) -> Any:
-        """Return the plot property for dimension *index* (1-based)."""
+        """Return the plot property for dimension *index* (0-based)."""
         idx = _coerce_1based_indices([index], self.dimension)[0] - 1
         return self.plotProps[idx]
 
@@ -608,7 +608,7 @@ class SignalObj:
     def dataToMatrix(self, selectorArray: Sequence[int] | np.ndarray | None = None) -> np.ndarray:
         """Return signal data as an ``(n, d)`` matrix.
 
-        *selectorArray* is an optional sequence of 1-based dimension
+        *selectorArray* is an optional sequence of 0-based dimension
         indices.  When ``None``, the data mask selects visible dimensions.
         """
         indices = self._selector_to_zero_based(selectorArray)
@@ -1521,7 +1521,7 @@ class SignalObj:
         sig_index = np.flatnonzero(above_min & below_max)
         if sig_index.size == 0:
             return self.copySignal(), sig_index
-        # 1-based indices for getSubSignal
+        # 0-based indices for getSubSignal
         return self.getSubSignal((sig_index + 1).tolist()), sig_index
 
     # ------------------------------------------------------------------
@@ -1862,7 +1862,7 @@ class SignalObj:
         Parameters
         ----------
         selectorArray : optional
-            Dimension selector (labels, 1-based indices, or ``None`` for all
+            Dimension selector (labels, 0-based indices, or ``None`` for all
             visible dimensions).
         plotPropsIn : optional
             Override Matplotlib format strings for each dimension.

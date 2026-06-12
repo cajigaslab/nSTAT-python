@@ -367,7 +367,7 @@ def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
     subset = coll.getSubsetConfigs([1, 2])
     rebuilt = ConfigColl.fromStructure(coll.toStructure())
     renamed = ConfigColl([cfg, cfg2])
-    renamed.setConfigNames("", [1])
+    renamed.setConfigNames("", [0])
 
     assert cfg.name == _string(payload, "cfg_name")
     np.testing.assert_allclose(float(cfg.sampleRate), _scalar(payload, "cfg_sampleRate"), rtol=1e-12, atol=1e-12)
@@ -585,7 +585,7 @@ def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
     spike_train = nspikeTrain(spike_times, "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
     trial = Trial(nstColl([spike_train]), CovColl([stim]))
     cfg = TrialConfig([["Stimulus", "stim"]], sample_rate, [], [], name="stim")
-    fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
+    fit = Analysis.RunAnalysisForNeuron(trial, 0, ConfigColl([cfg]))
     summary = FitResSummary([fit])
 
     np.testing.assert_allclose(fit.getCoeffs(0)[0], _vector(payload, "coeffs"), rtol=1e-6, atol=1e-8)
@@ -679,7 +679,7 @@ def test_analysis_discrete_ks_arrays_match_matlab_gold_fixture() -> None:
     stim = Covariate(_vector(payload, "time"), _vector(payload, "stim_data"), "Stimulus", "time", "s", "", ["stim"])
     trial = Trial(nstColl([spike_train]), CovColl([stim]))
     cfg = TrialConfig([["Stimulus", "stim"]], _scalar(payload, "sample_rate"), [], [], name="stim")
-    fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]), makePlot=0)
+    fit = Analysis.RunAnalysisForNeuron(trial, 0, ConfigColl([cfg]), makePlot=0)
     fit.setKSStats(Z, U, xAxis, KSSorted, np.asarray([ks_stat], dtype=float))
     np.testing.assert_allclose(float(fit.KSStats[0, 0]), _scalar(payload, "ks_stat"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fit.KSPvalues[0]), _scalar(payload, "ks_pvalue"), rtol=1e-8, atol=1e-10)

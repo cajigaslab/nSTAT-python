@@ -6256,7 +6256,7 @@ class DecodingAlgorithms:
         fitType : 'poisson' or 'binomial'
         gamma : (numWindows,numCells) or scalar -- history coefficients
         HkAll : (numWindows,numCells,N) -- permuted history tensor with time on 3rd axis
-        time_index : int -- 1-based time index
+        time_index : int -- 0-based time index
         WuConv : converged covariance or None
 
         Returns
@@ -6475,7 +6475,7 @@ class DecodingAlgorithms:
         y_arr = np.asarray(y, dtype=float)
 
         for n in range(N):
-            # 1-based time_index for mPPCODecode_update
+            # 0-based time_index for mPPCODecode_update
             x_u[:, n], W_u[:, :, n], _ = DecodingAlgorithms.mPPCODecode_update(
                 x_p[:, n], W_p[:, :, n],
                 _sel_C(n), _sel_R(n),

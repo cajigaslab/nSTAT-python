@@ -643,7 +643,7 @@ class CIF:
         stimVal : array_like
             Stimulus variable values.
         time_index : int or None
-            1-based time index into the pre-computed history matrix.
+            0-based time index into the pre-computed history matrix.
         nst : nspikeTrain or None
             Spike train for on-the-fly history computation.
 
@@ -702,7 +702,7 @@ class CIF:
         stimVal : array_like
             Stimulus variable values.
         time_index : int or None
-            1-based time index into the history matrix.
+            0-based time index into the history matrix.
         nst : nspikeTrain or None
             Spike train for on-the-fly history computation.
         gamma : array_like or None
