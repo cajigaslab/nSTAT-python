@@ -174,11 +174,11 @@ def test_trial_partition_history_design_matrix_and_spike_vector() -> None:
     trial.setTrialTimesFor("validation")
     np.testing.assert_allclose([trial.minTime, trial.maxTime], [0.5, 1.0])
 
-    design = trial.getDesignMatrix(1)
+    design = trial.getDesignMatrix(0)
     assert design.shape[1] == 5
     spikes = trial.getSpikeVector()
     assert spikes.shape[1] == 2
-    np.testing.assert_allclose(trial.getSpikeVector(1).reshape(-1), spikes[:, 0])
+    np.testing.assert_allclose(trial.getSpikeVector(0).reshape(-1), spikes[:, 0])
 
 
 def test_events_validation_and_history_collection_output() -> None:
