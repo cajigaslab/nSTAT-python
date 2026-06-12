@@ -2135,7 +2135,7 @@ class DecodingAlgorithms:
                     fit_type,
                     gamma_mat,
                     H_tensor,
-                    time_index + 1,
+                    time_index,
                     None,
                 )
                 X_p[model_index][:, time_index] = pred_x
@@ -2319,7 +2319,7 @@ class DecodingAlgorithms:
                     obs,
                     lambda_items,
                     binwidth,
-                    time_index + 1,
+                    time_index,
                     None,
                 )
                 X_p[model_index][:, time_index] = pred_x

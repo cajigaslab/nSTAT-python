@@ -133,7 +133,7 @@ def test_nspiketrain_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(float(nst.An), _scalar(payload, "An"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(nst.burstIndex), _scalar(payload, "burstIndex"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(parts.getNST(0).spikeTimes, _vector(payload, "part1_spikes"), rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(parts.getNST(0).spikeTimes, _vector(payload, "part2_spikes"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(parts.getNST(1).spikeTimes, _vector(payload, "part2_spikes"), rtol=1e-8, atol=1e-10)
 
     restore_train = nspikeTrain(_vector(payload, "spikeTimes"), "restore", 5.0, -0.1, 0.8, "time", "s", "spikes", "spk", -1)
     restore_train.setSigRep(0.1, -0.1, 0.8)
@@ -463,7 +463,7 @@ def test_covcoll_matches_matlab_gold_fixture() -> None:
     shifted.restrictToTimeWindow(0.25, 1.25)
     np.testing.assert_allclose(float(shifted.minTime), _scalar(payload, "shifted_minTime"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(float(shifted.maxTime), _scalar(payload, "shifted_maxTime"), rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(shifted.getCov(0).time, _vector(payload, "shifted_stim_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(shifted.getCov(1).time, _vector(payload, "shifted_stim_time"), rtol=1e-12, atol=1e-12)
 
     assert coll.isCovPresent("Position") == int(_scalar(payload, "is_present_position"))
     # Matlab gold fixture has is_present_last_index=0 due to off-by-one bug
@@ -942,12 +942,12 @@ def test_simulated_network_matches_matlab_gold_fixture() -> None:
     dt = float(native.time[1] - native.time[0])
     native_state_head = np.column_stack([
         native.spikes.getNST(0).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
-        native.spikes.getNST(0).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
+        native.spikes.getNST(1).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
     ])
     np.testing.assert_allclose(native_state_head, np.asarray(payload["state_head"], dtype=float), rtol=1e-8, atol=1e-10)
     native_counts = np.array([
         len(native.spikes.getNST(0).spikeTimes),
-        len(native.spikes.getNST(0).spikeTimes),
+        len(native.spikes.getNST(1).spikeTimes),
     ], dtype=float)
     matlab_counts = _vector(payload, "spike_counts")
     assert native_counts.shape == matlab_counts.shape
