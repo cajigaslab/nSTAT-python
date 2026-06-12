@@ -226,7 +226,7 @@ def test_decoding_aliases_produce_state_and_covariance_outputs() -> None:
 
 def test_analysis_helper_surfaces_match_matlab_workflow_names() -> None:
     trial = _build_dense_trial()
-    fit, ensemble_cov, tcc = compHistEnsCoeff(trial, [0.0, 0.05, 0.10], 1, [2], None, 0)
+    fit, ensemble_cov, tcc = compHistEnsCoeff(trial, [0.0, 0.05, 0.10], 0, [1], None, 0)
     assert isinstance(fit, FitResult)
     assert ensemble_cov.numCov >= 1
     assert tcc.numConfigs == 1
@@ -236,11 +236,11 @@ def test_analysis_helper_surfaces_match_matlab_workflow_names() -> None:
     assert all_ensemble_cov is not None
     assert len(all_tcc) == 2
 
-    neighbor_fit, neighbor_tcc = computeNeighbors(trial, 1, trial.sampleRate, [0.0, 0.05, 0.10], 0)
+    neighbor_fit, neighbor_tcc = computeNeighbors(trial, 0, trial.sampleRate, [0.0, 0.05, 0.10], 0)
     assert isinstance(neighbor_fit, FitResult)
     assert neighbor_tcc.numConfigs == 3
 
-    sta = spikeTrigAvg(trial, 1, 0.2)
+    sta = spikeTrigAvg(trial, 0, 0.2)
     assert sta.numCov == trial.covarColl.numCov
 
     granger_results, gamma_mat, phi_mat, deviance_mat, sig_mat = computeGrangerCausalityMatrix(trial, "GLM", 0.95, 0)
