@@ -93,7 +93,7 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
     summary = FitSummary([fit])
 
     coeff_mat, labels, se_mat = summary.getCoeffs(0)
-    sig = summary.getSigCoeffs(1)
+    sig = summary.getSigCoeffs(0)
     bins, edges, percent_sig = summary.binCoeffs(-5.0, 5.0, 1.0)
     summary.setCoeffRange(-2.0, 2.0)
 

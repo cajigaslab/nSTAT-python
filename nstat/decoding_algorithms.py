@@ -2056,8 +2056,8 @@ class DecodingAlgorithms:
                 MU_p = transition.T @ model_probs0
                 prev_probs = model_probs0
             else:
-                MU_p = transition.T @ MU_u[:, time_index]
-                prev_probs = MU_u[:, time_index]
+                MU_p = transition.T @ MU_u[:, time_index - 1]
+                prev_probs = MU_u[:, time_index - 1]
 
             p_ij_s = transition * prev_probs[:, None]
             column_norm = np.sum(p_ij_s, axis=0, keepdims=True)
@@ -2274,8 +2274,8 @@ class DecodingAlgorithms:
                 MU_p = transition.T @ model_probs0
                 prev_probs = model_probs0
             else:
-                MU_p = transition.T @ MU_u[:, time_index]
-                prev_probs = MU_u[:, time_index]
+                MU_p = transition.T @ MU_u[:, time_index - 1]
+                prev_probs = MU_u[:, time_index - 1]
 
             p_ij_s = transition * prev_probs[:, None]
             column_norm = np.sum(p_ij_s, axis=0, keepdims=True)

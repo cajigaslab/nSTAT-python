@@ -97,7 +97,7 @@ class TestEdgeCases:
         """PSTH on single-neuron collection should still work."""
         nst = nspikeTrain([0.1, 0.5, 0.9], "n1", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
         coll = nstColl([nst])
-        psth = coll.psth(0.1, [1], 0.0, 1.0)
+        psth = coll.psth(0.1, [0], 0.0, 1.0)
         # nstColl.psth returns nstat.core.Covariate; check by class name to avoid module alias issues
         assert psth.__class__.__name__ == "Covariate"
         assert psth.data.shape[0] == len(psth.time)
