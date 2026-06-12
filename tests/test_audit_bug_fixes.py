@@ -77,7 +77,7 @@ def test_getnst_always_returns_a_copy_even_at_matching_sample_rate() -> None:
     # Same sample rate — collection rate matches train rate.
     assert coll.sampleRate == train.sampleRate
 
-    fetched = coll.getNST(1)
+    fetched = coll.getNST(0)
     # Identity check: fetched is NOT the stored reference.
     assert fetched is not coll.nstrain[0], (
         "getNST returned the stored train reference; mutations would "

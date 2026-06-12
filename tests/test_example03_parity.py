@@ -244,7 +244,7 @@ def run_matlab():
                 stf = tf([b1(iTrial)], 1, ts, 'Variable', 'z^-1');
                 etf = tf([0], 1, ts, 'Variable', 'z^-1');
                 [sC, ~] = CIF.simulateCIF(b0, htf, stf, etf, stim_sim, ens_sim, 1, 'binomial');
-                nst{iTrial} = sC.getNST(1);
+                nst{iTrial} = sC.getNST(0);
                 nst{iTrial} = nst{iTrial}.resample(1/delta);
             end
             spikeColl = nstColl(nst);

@@ -43,11 +43,11 @@ def test_network_fixture_remains_consumable_without_matlab_runtime() -> None:
     np.testing.assert_allclose(native.lambda_delta[:5], np.asarray(payload["prob_head"], dtype=float), rtol=1e-8, atol=1e-10)
     dt = float(native.time[1] - native.time[0])
     native_state_head = np.column_stack([
+        native.spikes.getNST(0).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
         native.spikes.getNST(1).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
-        native.spikes.getNST(2).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
     ])
     np.testing.assert_allclose(native_state_head, np.asarray(payload["state_head"], dtype=float), rtol=1e-8, atol=1e-10)
-    native_counts = np.array([len(native.spikes.getNST(1).spikeTimes), len(native.spikes.getNST(2).spikeTimes)], dtype=float)
+    native_counts = np.array([len(native.spikes.getNST(0).spikeTimes), len(native.spikes.getNST(1).spikeTimes)], dtype=float)
     assert np.all(np.abs(native_counts - np.asarray(payload["spike_counts"], dtype=float).reshape(-1)) <= 64.0)
 
 def test_analysis_fixture_remains_consumable_without_matlab_runtime() -> None:
