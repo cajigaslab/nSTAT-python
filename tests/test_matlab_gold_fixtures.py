@@ -344,7 +344,11 @@ def test_nstcoll_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(nst_from_name.spikeTimes, _vector(payload, "nstFromName1_spikeTimes"), rtol=1e-12, atol=1e-12)
     fieldVal, neuronNumbers = coll.getFieldVal("avgFiringRate")
     np.testing.assert_allclose(fieldVal, _vector(payload, "fieldVal_avgFiringRate"), rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(neuronNumbers + 1, _vector(payload, "fieldVal_neuronNumbers"), rtol=1e-12, atol=1e-12)
+    # Python intentionally fixes MATLAB bug M15 (nstColl.getFieldVal pre-increments
+    # cnt, producing one extra leading zero in MATLAB's neuronNumbers).  Compare
+    # only the trailing portion that matches.
+    expected_neuronNumbers = _vector(payload, "fieldVal_neuronNumbers")
+    np.testing.assert_allclose(neuronNumbers + 1, expected_neuronNumbers[-neuronNumbers.size:], rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(np.asarray(coll.getNeighbors(0), dtype=float) + 1, _vector(payload, "neighbors1"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(np.asarray(coll.getNeighbors(1), dtype=float) + 1, _vector(payload, "neighbors2"), rtol=1e-12, atol=1e-12)
     ensembleCov = coll.getEnsembleNeuronCovariates(0, [], [0.0, 0.1])
@@ -409,7 +413,7 @@ def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(np.asarray(trial.covarColl.getCov(0).time, dtype=float), _vector(payload, "applied_shifted_position_time"), rtol=1e-12, atol=1e-12)
 
     trial_from_coll = Trial(nstColl([n1, n2]), CovColl([position, stimulus]))
-    ConfigColl([cfg_applied]).setConfig(trial_from_coll, 1)
+    ConfigColl([cfg_applied]).setConfig(trial_from_coll, 0)
     np.testing.assert_allclose(float(trial_from_coll.sampleRate), _scalar(payload, "applied_coll_sampleRate"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(np.asarray(trial_from_coll.flattenCovMask(), dtype=float), _vector(payload, "applied_coll_flat_cov_mask"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(np.asarray(trial_from_coll.history.windowTimes, dtype=float), _vector(payload, "applied_coll_history_windowTimes"), rtol=1e-12, atol=1e-12)
@@ -468,8 +472,8 @@ def test_covcoll_matches_matlab_gold_fixture() -> None:
     assert coll.isCovPresent("Position") == int(_scalar(payload, "is_present_position"))
     # Matlab gold fixture has is_present_last_index=0 due to off-by-one bug
     # in CovColl.isCovPresent (cov < numCov instead of cov <= numCov).
-    # Python fixes this bug: index 2 with numCov=2 IS present (1-based).
-    assert coll.isCovPresent(2) == 1  # Correct behavior (Matlab bug: returns 0)
+    # Python fixes this bug: index 1 with numCov=2 IS present (0-based).
+    assert coll.isCovPresent(1) == 1  # Correct behavior (Matlab bug: returns 0)
     assert coll.copy().numCov == int(_scalar(payload, "copy_numCov"))
 
 
