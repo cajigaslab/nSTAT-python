@@ -2876,7 +2876,7 @@ class Trial:
         """Return string labels for all spike-history basis columns."""
         if not self.isHistSet():
             return []
-        return self.getHistForNeurons(1).getAllCovLabels()
+        return self.getHistForNeurons(0).getAllCovLabels()
 
     def getEnsCovLabels(self) -> list[str]:
         """Return string labels for all ensemble-covariate columns."""
