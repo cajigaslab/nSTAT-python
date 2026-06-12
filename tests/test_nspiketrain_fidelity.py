@@ -39,13 +39,13 @@ def test_nspiketrain_partition_and_min_isi_follow_matlab_semantics() -> None:
     parts = train.partitionNST([0.0, 0.5, 1.2], normalizeTime=0)
 
     assert parts.numSpikeTrains == 2
-    np.testing.assert_allclose(parts.getNST(1).spikeTimes, [0.1, 0.4])
-    np.testing.assert_allclose(parts.getNST(2).spikeTimes, [0.1, 0.6])
+    np.testing.assert_allclose(parts.getNST(0).spikeTimes, [0.1, 0.4])
+    np.testing.assert_allclose(parts.getNST(1).spikeTimes, [0.1, 0.6])
 
     normalized_parts = train.partitionNST([0.0, 0.5, 1.0], normalizeTime=1)
     assert normalized_parts.minTime == 0.0
     assert normalized_parts.maxTime == 1.0
-    np.testing.assert_allclose(normalized_parts.getNST(1).spikeTimes, [0.2, 0.8])
+    np.testing.assert_allclose(normalized_parts.getNST(0).spikeTimes, [0.2, 0.8])
 
 
 def test_nspiketrain_setsigrep_restore_and_field_access_match_matlab_surface() -> None:
@@ -83,9 +83,9 @@ def test_nspiketrain_partition_rounds_windows_and_uses_matlab_constructor_defaul
     parts = train.partitionNST([0.00049, 0.00151, 0.0101], normalizeTime=0)
 
     assert parts.numSpikeTrains == 2
-    np.testing.assert_allclose(parts.getNST(1).spikeTimes, [0.0004, 0.0014])
-    np.testing.assert_allclose(parts.getNST(2).spikeTimes, [0.0076])
-    assert parts.getNST(1).sampleRate == 1000.0
+    np.testing.assert_allclose(parts.getNST(0).spikeTimes, [0.0004, 0.0014])
+    np.testing.assert_allclose(parts.getNST(1).spikeTimes, [0.0076])
+    assert parts.getNST(0).sampleRate == 1000.0
 
 
 def test_nspiketrain_isi_plot_helpers_execute_and_return_matplotlib_objects() -> None:

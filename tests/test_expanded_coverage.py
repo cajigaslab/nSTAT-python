@@ -89,7 +89,7 @@ class TestEdgeCases:
         nst = nspikeTrain([0.1, 0.5, 0.9], "only", 1000.0, 0.0, 1.0, "time", "s", "spikes", "spk", -1)
         coll = nstColl([nst])
         assert coll.numSpikeTrains == 1
-        assert coll.getNST(1).name == "only"
+        assert coll.getNST(0).name == "only"
         mat = coll.dataToMatrix([1], 0.1, 0.0, 1.0)
         assert mat.shape[1] == 1
 
@@ -139,8 +139,8 @@ class TestSerializationRoundTrips:
         assert restored.getNumUniqueNeurons() == simple_trial.getNumUniqueNeurons()
         assert restored.covarColl.numCov == simple_trial.covarColl.numCov
         np.testing.assert_allclose(
-            restored.spikeColl.getNST(1).spikeTimes,
-            simple_trial.spikeColl.getNST(1).spikeTimes,
+            restored.spikeColl.getNST(0).spikeTimes,
+            simple_trial.spikeColl.getNST(0).spikeTimes,
             rtol=1e-12,
         )
 
@@ -182,7 +182,7 @@ class TestSerializationRoundTrips:
         restored = nstColl.fromStructure(structure)
         assert restored.numSpikeTrains == 2
         np.testing.assert_allclose(
-            restored.getNST(1).spikeTimes,
+            restored.getNST(0).spikeTimes,
             n1.spikeTimes,
             rtol=1e-12,
         )
@@ -277,7 +277,7 @@ class TestFitSummaryPlotting:
         plt.close("all")
 
     def test_boxPlot_returns_axes(self, fit_summary) -> None:
-        coeffs, labels, se = fit_summary.getCoeffs(1)
+        coeffs, labels, se = fit_summary.getCoeffs(0)
         ax = fit_summary.boxPlot(coeffs, dataLabels=labels)
         assert hasattr(ax, "boxplot") or hasattr(ax, "plot")
         plt.close("all")

@@ -56,7 +56,7 @@ def test_fitresult_matlab_style_helpers_expose_plot_params_and_subsets() -> None
 
     fit.setNeuronName("unitA")
     plot_params = fit.getPlotParams()
-    coeffs, labels, se = fit.getCoeffsWithLabels(1)
+    coeffs, labels, se = fit.getCoeffsWithLabels(0)
     param_vals, param_se, param_sig = fit.getParam(labels[0], 1)
     subset = fit.getSubsetFitResult([1])
     fit.setKSStats(np.array([0.1]), np.array([0.2]), np.array([0.3]), np.array([0.4]), np.array([0.5]))
@@ -92,7 +92,7 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
     fit = _build_fit_result()
     summary = FitSummary([fit])
 
-    coeff_mat, labels, se_mat = summary.getCoeffs(1)
+    coeff_mat, labels, se_mat = summary.getCoeffs(0)
     sig = summary.getSigCoeffs(1)
     bins, edges, percent_sig = summary.binCoeffs(-5.0, 5.0, 1.0)
     summary.setCoeffRange(-2.0, 2.0)

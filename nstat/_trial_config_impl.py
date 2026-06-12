@@ -276,7 +276,7 @@ class ConfigCollection:
         if isinstance(cfg, TrialConfig):
             self.numConfigs += 1
             self.configArray.append(cfg)
-            self.setConfigNames(cfg.name, [self.numConfigs])
+            self.setConfigNames(cfg.name, [self.numConfigs - 1])
             return
         if isinstance(cfg, str):
             # MATLAB's string branch dereferences tcObj.name and errors.

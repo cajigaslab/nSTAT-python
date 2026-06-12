@@ -132,8 +132,8 @@ def test_nspiketrain_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(float(nst.B), _scalar(payload, "B"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(nst.An), _scalar(payload, "An"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(nst.burstIndex), _scalar(payload, "burstIndex"), rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(parts.getNST(1).spikeTimes, _vector(payload, "part1_spikes"), rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(parts.getNST(2).spikeTimes, _vector(payload, "part2_spikes"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(parts.getNST(0).spikeTimes, _vector(payload, "part1_spikes"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(parts.getNST(0).spikeTimes, _vector(payload, "part2_spikes"), rtol=1e-8, atol=1e-10)
 
     restore_train = nspikeTrain(_vector(payload, "spikeTimes"), "restore", 5.0, -0.1, 0.8, "time", "s", "spikes", "spk", -1)
     restore_train.setSigRep(0.1, -0.1, 0.8)
@@ -327,7 +327,7 @@ def test_nstcoll_matches_matlab_gold_fixture() -> None:
     coll.setNeighbors()
 
     np.testing.assert_equal(coll.numSpikeTrains, int(_scalar(payload, "numSpikeTrains")))
-    assert coll.getNST(1).name == _string(payload, "firstName")
+    assert coll.getNST(0).name == _string(payload, "firstName")
     np.testing.assert_allclose(coll.dataToMatrix([1, 2], 0.1, 0.0, 0.5), np.asarray(payload["dataMatrix"], dtype=float), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(collapsed.spikeTimes, _vector(payload, "collapsedSpikeTimes"), rtol=1e-8, atol=1e-10)
     assert collapsed.name == _string(payload, "collapsedName")
@@ -406,7 +406,7 @@ def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(np.asarray(trial.history.windowTimes, dtype=float), _vector(payload, "applied_history_windowTimes"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(np.asarray(trial.ensCovHist.windowTimes, dtype=float), _vector(payload, "applied_ens_history_windowTimes"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(np.asarray(trial.ensCovMask, dtype=float), np.asarray(payload["applied_ens_mask"], dtype=float), rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(np.asarray(trial.covarColl.getCov(1).time, dtype=float), _vector(payload, "applied_shifted_position_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial.covarColl.getCov(0).time, dtype=float), _vector(payload, "applied_shifted_position_time"), rtol=1e-12, atol=1e-12)
 
     trial_from_coll = Trial(nstColl([n1, n2]), CovColl([position, stimulus]))
     ConfigColl([cfg_applied]).setConfig(trial_from_coll, 1)
@@ -415,7 +415,7 @@ def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(np.asarray(trial_from_coll.history.windowTimes, dtype=float), _vector(payload, "applied_coll_history_windowTimes"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(np.asarray(trial_from_coll.ensCovHist.windowTimes, dtype=float), _vector(payload, "applied_coll_ens_history_windowTimes"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(np.asarray(trial_from_coll.ensCovMask, dtype=float), np.asarray(payload["applied_coll_ens_mask"], dtype=float), rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(np.asarray(trial_from_coll.covarColl.getCov(1).time, dtype=float), _vector(payload, "applied_coll_shifted_position_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(trial_from_coll.covarColl.getCov(0).time, dtype=float), _vector(payload, "applied_coll_shifted_position_time"), rtol=1e-12, atol=1e-12)
 
 
 def test_covcoll_matches_matlab_gold_fixture() -> None:
@@ -426,7 +426,7 @@ def test_covcoll_matches_matlab_gold_fixture() -> None:
     coll = CovColl([position, stimulus])
     coll.setMask([["Position", "x"], ["Stimulus"]])
 
-    np.testing.assert_allclose(coll.getCov(1).time, _vector(payload, "masked_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(coll.getCov(0).time, _vector(payload, "masked_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(
         coll.dataToMatrix(),
         np.asarray(payload["masked_matrix"], dtype=float).reshape(coll.dataToMatrix().shape),
@@ -463,7 +463,7 @@ def test_covcoll_matches_matlab_gold_fixture() -> None:
     shifted.restrictToTimeWindow(0.25, 1.25)
     np.testing.assert_allclose(float(shifted.minTime), _scalar(payload, "shifted_minTime"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(float(shifted.maxTime), _scalar(payload, "shifted_maxTime"), rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(shifted.getCov(2).time, _vector(payload, "shifted_stim_time"), rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(shifted.getCov(0).time, _vector(payload, "shifted_stim_time"), rtol=1e-12, atol=1e-12)
 
     assert coll.isCovPresent("Position") == int(_scalar(payload, "is_present_position"))
     # Matlab gold fixture has is_present_last_index=0 due to off-by-one bug
@@ -518,10 +518,10 @@ def test_history_matches_matlab_gold_fixture() -> None:
     coll_cov = history.computeHistory(coll, 2)
     np.testing.assert_allclose(single_cov.dataToMatrix(), np.asarray(payload["single_history_matrix"], dtype=float), rtol=1e-12, atol=1e-12)
     assert single_cov.getAllCovLabels() == _string_list(payload, "single_history_labels")
-    assert single_cov.getCov(1).name == _string(payload, "single_history_name")
+    assert single_cov.getCov(0).name == _string(payload, "single_history_name")
     np.testing.assert_allclose(coll_cov.dataToMatrix(), np.asarray(payload["coll_history_matrix"], dtype=float), rtol=1e-12, atol=1e-12)
     assert coll_cov.getAllCovLabels() == _string_list(payload, "coll_history_labels")
-    assert [coll_cov.getCov(index).name for index in range(1, coll_cov.numCov + 1)] == _string_list(payload, "coll_cov_names")
+    assert [coll_cov.getCov(index).name for index in range(coll_cov.numCov)] == _string_list(payload, "coll_cov_names")
 
     filter_bank = history.toFilter(_scalar(payload, "filter_delta"))
     expected_num = _object_vectors(payload, "filter_num")
@@ -588,7 +588,7 @@ def test_analysis_fit_surface_matches_matlab_gold_fixture() -> None:
     fit = Analysis.RunAnalysisForNeuron(trial, 1, ConfigColl([cfg]))
     summary = FitResSummary([fit])
 
-    np.testing.assert_allclose(fit.getCoeffs(1)[0], _vector(payload, "coeffs"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(fit.getCoeffs(0)[0], _vector(payload, "coeffs"), rtol=1e-6, atol=1e-8)
     np.testing.assert_allclose(fit.lambdaSignal.time, _vector(payload, "lambda_time"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(fit.lambdaSignal.data[:, 0], _vector(payload, "lambda_data"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fit.AIC[0]), _scalar(payload, "AIC"), rtol=1e-8, atol=1e-10)
@@ -620,8 +620,8 @@ def test_analysis_multineuron_surface_matches_matlab_gold_fixture() -> None:
     assert isinstance(fits, list)
     assert len(fits) == int(_scalar(payload, "num_fits"))
 
-    np.testing.assert_allclose(fits[0].getCoeffs(1)[0], _vector(payload, "fit1_coeffs"), rtol=1e-6, atol=1e-8)
-    np.testing.assert_allclose(fits[1].getCoeffs(1)[0], _vector(payload, "fit2_coeffs"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(fits[0].getCoeffs(0)[0], _vector(payload, "fit1_coeffs"), rtol=1e-6, atol=1e-8)
+    np.testing.assert_allclose(fits[1].getCoeffs(0)[0], _vector(payload, "fit2_coeffs"), rtol=1e-6, atol=1e-8)
     np.testing.assert_allclose(float(fits[0].AIC[0]), _scalar(payload, "fit1_AIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fits[1].AIC[0]), _scalar(payload, "fit2_AIC"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(float(fits[0].BIC[0]), _scalar(payload, "fit1_BIC"), rtol=1e-8, atol=1e-10)
@@ -851,7 +851,7 @@ def test_cif_thinning_from_lambda_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(details["lambda_ratio"], _vector(payload, "lambda_ratio"), rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(details["thinning_uniforms"], _vector(payload, "thinning_uniforms"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(details["accepted_spike_times"], _vector(payload, "rounded_spike_times"), rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(spike_coll.getNST(1).spikeTimes, _vector(payload, "rounded_spike_times"), rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(spike_coll.getNST(0).spikeTimes, _vector(payload, "rounded_spike_times"), rtol=1e-8, atol=1e-10)
 
 
 def test_decoding_predict_matches_matlab_gold_fixture() -> None:
@@ -941,13 +941,13 @@ def test_simulated_network_matches_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(native.lambda_delta[:5], np.asarray(payload["prob_head"], dtype=float), rtol=1e-8, atol=1e-10)
     dt = float(native.time[1] - native.time[0])
     native_state_head = np.column_stack([
-        native.spikes.getNST(1).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
-        native.spikes.getNST(2).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
+        native.spikes.getNST(0).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
+        native.spikes.getNST(0).getSigRep(dt, float(native.time[0]), float(native.time[-1])).data[:5, 0],
     ])
     np.testing.assert_allclose(native_state_head, np.asarray(payload["state_head"], dtype=float), rtol=1e-8, atol=1e-10)
     native_counts = np.array([
-        len(native.spikes.getNST(1).spikeTimes),
-        len(native.spikes.getNST(2).spikeTimes),
+        len(native.spikes.getNST(0).spikeTimes),
+        len(native.spikes.getNST(0).spikeTimes),
     ], dtype=float)
     matlab_counts = _vector(payload, "spike_counts")
     assert native_counts.shape == matlab_counts.shape
