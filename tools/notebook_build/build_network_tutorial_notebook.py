@@ -166,14 +166,14 @@ CODE = [
 
     def _estimate_network(results):
         estimated = np.zeros((2, 2), dtype=float)
-        for neuron_idx, fit in enumerate(results, start=1):
-            coeffs, labels, _ = fit.getCoeffsWithLabels(3)
+        for neuron_idx, fit in enumerate(results):
+            coeffs, labels, _ = fit.getCoeffsWithLabels(2)
             for coeff, label in zip(coeffs, labels, strict=False):
                 label_str = str(label)
                 # Label format is "neuron_K:[...]" — see FitResult labels.
-                if neuron_idx == 1 and label_str.startswith("neuron_2:"):
+                if neuron_idx == 0 and label_str.startswith("neuron_2:"):
                     estimated[0, 1] = float(coeff)
-                elif neuron_idx == 2 and label_str.startswith("neuron_1:"):
+                elif neuron_idx == 1 and label_str.startswith("neuron_1:"):
                     estimated[1, 0] = float(coeff)
         return estimated
     """,
@@ -357,7 +357,7 @@ CODE = [
     print(
         {
             "algorithm": Algorithm,
-            "spike_counts": [spikeColl.getNST(1).n_spikes, spikeColl.getNST(2).n_spikes],
+            "spike_counts": [spikeColl.getNST(0).n_spikes, spikeColl.getNST(1).n_spikes],
             "estimated_network": np.round(estimated_network, 3).tolist(),
         }
     )
