@@ -9,7 +9,7 @@ from nstat.Covariate import Covariate
 from nstat.SignalObj import SignalObj
 
 
-def test_signalobj_normalizes_channel_orientation_and_uses_one_based_selection() -> None:
+def test_signalobj_normalizes_channel_orientation_and_uses_zero_based_selection() -> None:
     sig = SignalObj(
         [0.0, 0.5, 1.0],
         [[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]],
@@ -24,7 +24,7 @@ def test_signalobj_normalizes_channel_orientation_and_uses_one_based_selection()
     np.testing.assert_allclose(sig.data[:, 0], [1.0, 2.0, 3.0])
     np.testing.assert_allclose(sig.data[:, 1], [10.0, 20.0, 30.0])
 
-    sub = sig.getSubSignal(2)
+    sub = sig.getSubSignal(1)
     assert sub.dimension == 1
     assert sub.dataLabels == ["y"]
     np.testing.assert_allclose(sub.data[:, 0], [10.0, 20.0, 30.0])
@@ -66,7 +66,7 @@ def test_signalobj_arithmetic_derivative_and_merge_preserve_matlab_style_shapes(
     summed = sig + offset
     diffed = sig - 1.0
     scaled = 2.0 * sig
-    merged = sig.getSubSignal(1).merge(sig.getSubSignal(2))
+    merged = sig.getSubSignal(0).merge(sig.getSubSignal(1))
 
     np.testing.assert_allclose(summed.data[:, 0], [2.0, 3.0, 5.0])
     np.testing.assert_allclose(diffed.data[:, 1], [1.0, 2.0, 4.0])

@@ -89,14 +89,14 @@ def test_nstcoll_neighbors_mask_and_data_matrix() -> None:
     assert coll.getUniqueNSTnames() == ["n1", "n2"]
 
     coll.setNeighbors()
-    assert coll.getNeighbors(1) == [2]
-    assert coll.getNeighbors(2) == [1]
+    assert coll.getNeighbors(0) == [1]
+    assert coll.getNeighbors(1) == [0]
 
     coll.setMask([1])
-    assert coll.getIndFromMask() == [1]
+    assert coll.getIndFromMask() == [0]
     np.testing.assert_allclose(coll.getMaxBinSizeBinary(), 0.5)
 
-    matrix = coll.dataToMatrix([1, 2], 0.5, 0.0, 1.0)
+    matrix = coll.dataToMatrix([0, 1], 0.5, 0.0, 1.0)
     np.testing.assert_allclose(matrix, [[1.0, 0.0], [1.0, 1.0], [1.0, 1.0]])
 
 
@@ -154,8 +154,8 @@ def test_trialconfig_and_configcoll_apply_and_roundtrip() -> None:
     assert subset.numConfigs == 2
     rebuilt = ConfigColl.fromStructure(configs.toStructure())
     assert rebuilt.getConfigNames() == ["Fit 1", "Fit 2"]
-    assert rebuilt.getConfig(1).name == ""
-    assert rebuilt.getConfig(1).covLag == "stim_pos"
+    assert rebuilt.getConfig(0).name == ""
+    assert rebuilt.getConfig(0).covLag == "stim_pos"
 
 
 def test_trial_partition_history_design_matrix_and_spike_vector() -> None:

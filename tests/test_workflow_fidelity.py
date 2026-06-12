@@ -98,7 +98,7 @@ def test_cif_instantiation_evaluation_and_simulate_from_lambda() -> None:
     assert sim.numSpikeTrains == 2
 
     sim_single, details = CIF.simulateCIFByThinningFromLambda(
-        cov.getSubSignal(1),
+        cov.getSubSignal(0),
         numRealizations=1,
         random_values=np.array([0.8, 0.6, 0.4, 0.2], dtype=float),
         thinning_values=np.array([0.1, 0.9, 0.3, 0.7], dtype=float),
