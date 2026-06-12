@@ -524,12 +524,9 @@ class CovariateCollection:
             mask = np.zeros(cov.dimension, dtype=int)
             if selector:
                 arr = np.asarray(selector, dtype=int).reshape(-1)
-                if arr.size == cov.dimension and np.all(np.isin(arr, [0, 1])):
-                    mask = arr.astype(int)
-                else:
-                    if np.any(arr < 0) or np.any(arr >= cov.dimension):
-                        raise IndexError("Covariate selector index out of bounds.")
-                    mask[arr] = 1
+                if np.any(arr < 0) or np.any(arr >= cov.dimension):
+                    raise IndexError("Covariate selector index out of bounds.")
+                mask[arr] = 1
             masks.append(mask)
         return masks
 
