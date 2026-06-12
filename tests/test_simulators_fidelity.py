@@ -29,7 +29,7 @@ def test_simulate_two_neuron_network_matches_matlab_tutorial_defaults() -> None:
         rtol=1e-7,
         atol=1e-9,
     )
-    assert [sim.spikes.getNST(i + 1).n_spikes for i in range(2)] == [2590, 2365]
+    assert [sim.spikes.getNST(i).n_spikes for i in range(2)] == [2590, 2365]
 
 
 def test_simulate_point_process_retains_rate_and_time_shape() -> None:
