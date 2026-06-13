@@ -31,6 +31,7 @@ gotchas, and links to the runnable demos under ``examples/extras/``.
    extras/metrics_spike_distances
    extras/em_dynamax
    extras/decoding_clusterless
+   extras/spatial_point_processes
 
 
 .. currentmodule:: nstat.extras
@@ -83,3 +84,16 @@ Decoding — Bayesian point-process decoders
    :toctree: _autosummary
 
    decoding.clusterless_bridge
+
+
+Spatial — spatial & spatiotemporal point processes
+--------------------------------------------------
+
+.. autosummary::
+   :toctree: _autosummary
+
+   spatial.lgcp
+   spatial.spatial_gof
+   spatial.marked_gof
+   spatial.hawkes_bridge
+   spatial.dpp_bridge

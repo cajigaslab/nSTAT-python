@@ -41,6 +41,13 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "dynamax": "em_dynamax",
     "dynamax_bridge": "em_dynamax",
     "clusterless_bridge": "decoding_clusterless",
+    # nstat.extras.spatial — pure-core modules + optional bridges all
+    # share one help file (the curriculum Ch. 5 / Ch. 6 companion).
+    "lgcp": "spatial_point_processes",
+    "spatial_gof": "spatial_point_processes",
+    "marked_gof": "spatial_point_processes",
+    "hawkes_bridge": "spatial_point_processes",
+    "dpp_bridge": "spatial_point_processes",
 }
 
 
