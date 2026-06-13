@@ -70,3 +70,14 @@ repos:
         files: '^(nstat/__init__\.py|nstat/extras/__init__\.py|nstat/.*\.py|docs/ClassDefinitions\.md|AGENT_GUIDE\.md|tools/check_helpfile_freshness\.py)$'
         pass_filenames: false
         require_serial: true
+
+      # 0-based indexing convention scanner (HR2/HR3/HR4) across nstat/,
+      # examples/, tools/, notebooks/.  Catches drift like the 5-round
+      # CI loop we saw on PR #179 before it leaves the developer's machine.
+      - id: indexing-convention
+        name: 0-based indexing convention scan
+        entry: python -m pytest tests/test_indexing_convention.py -q
+        language: system
+        files: '^(nstat/.*\.py|examples/.*\.py|tools/.*\.py|notebooks/.*\.ipynb|tests/test_indexing_convention\.py)$'
+        pass_filenames: false
+        require_serial: true

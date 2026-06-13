@@ -4,6 +4,15 @@
 
 Internal consistency improvements and audit fixes.
 
+### Migration
+
+All public-API selectors (`getNST`, `getCov`, `getCoeffs`, `setConfig`,
+…) are now consistently 0-based.  MATLAB users porting code: subtract 1
+from every selector value you previously passed.  See PR
+[#179](https://github.com/cajigaslab/nSTAT-python/pull/179) for the
+full bug catalogue (incl. audit findings M22 and 9 upstream MATLAB
+issues filed against `cajigaslab/nSTAT`).
+
 ## v0.4.6 — 2026-06-10
 
 Onboarding deepening + post-v0.4.5 hygiene. **No public API changes, no
