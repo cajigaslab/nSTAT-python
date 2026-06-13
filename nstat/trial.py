@@ -1622,7 +1622,7 @@ class SpikeTrainCollection:
         # Build a proper FitResult for the third return value by fitting just
         # the first spike train (fast), then override its coefficients with
         # the batch-fit values.
-        fit = Analysis.RunAnalysisForNeuron(trial, 1, cfgColl, 0, algorithm)
+        fit = Analysis.RunAnalysisForNeuron(trial, 0, cfgColl, 0, algorithm)
         if isinstance(fit, list):
             fit = fit[0]
         # Override with batch-fit coefficients and standard errors
@@ -2027,7 +2027,7 @@ class SpikeTrainCollection:
                 cfgColl = ConfigCollection([cfg])
                 psthResult = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, "GLM", [], 1)
                 fit = psthResult[0] if isinstance(psthResult, list) else psthResult
-                gamma0 = np.asarray(fit.getHistCoeffs(1)[0], dtype=float).reshape(-1)
+                gamma0 = np.asarray(fit.getHistCoeffs(0)[0], dtype=float).reshape(-1)
                 gamma0 = np.where(np.isnan(gamma0), -5.0, gamma0)
             except Exception:
                 numHist = len(windowTimes) - 1
@@ -2134,7 +2134,7 @@ class SpikeTrainCollection:
                 cfgColl = ConfigCollection([cfg])
                 psthResult = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, "GLM", [], 1)
                 fit = psthResult[0] if isinstance(psthResult, list) else psthResult
-                gamma0 = np.asarray(fit.getHistCoeffs(1)[0], dtype=float).reshape(-1)
+                gamma0 = np.asarray(fit.getHistCoeffs(0)[0], dtype=float).reshape(-1)
                 gamma0 = np.where(np.isnan(gamma0), -5.0, gamma0)
             except Exception:
                 numHist = len(windowTimes) - 1

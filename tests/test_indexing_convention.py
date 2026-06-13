@@ -1,18 +1,26 @@
 """Test guard for the v0.5.0 0-based indexing convention.
 
-Implements hard rules HR2 and HR3 from
-``docs/proposals/2026-06-11-zero-based-indexing.md``:
+Implements hard rules from ``docs/proposals/2026-06-11-zero-based-indexing.md``:
 
-- HR2: no ``range(1, ...)`` loops in ``nstat/``
-- HR3: no ``arr[<identifier> - 1]`` subscript patterns in ``nstat/``
+- HR2: no ``range(1, ...)`` loops
+- HR3: no ``arr[<identifier> - 1]`` subscript patterns
+- HR4 (literal-arg): no hardcoded ``1``/``2``/``3`` passed as a selector
+  to known 0-based public methods (``getNST``, ``getCov``, ``getCoeffs``,
+  ``getSubSignal``, etc.)
 
-Uses AST-based scanning (not regex) so:
-- ``len(x) - 1`` outside a subscript does not trigger,
-- ``n - 1`` in math expressions does not trigger,
-- only literal-``1`` subtractions inside subscripts are flagged.
+Scans (Tier 1 hardening from the v0.5.0 retrospective):
+
+- ``nstat/**/*.py``  — package source
+- ``examples/**/*.py``  — example scripts (paper + extras)
+- ``tools/**/*.py``  — notebook builders / regen scripts
+- ``notebooks/**/*.ipynb``  — extracts code cells via ``nbformat`` and
+  scans their AST
+
+Uses AST scanning (not regex) so ``len(x) - 1`` outside a subscript and
+``n - 1`` in math expressions do not trigger.
 
 Each violation is keyed by ``(file, source_line_stripped)`` so the test
-is robust to line-number shifts during the sweep.  A site that is
+is robust to line-number shifts during a sweep.  A site that is
 intentionally 1-based (e.g. MATLAB-faithful display label formatting)
 goes into ``ALLOWLIST`` with a reason.
 """
@@ -22,10 +30,58 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import nbformat
 import pytest
 
 
-NSTAT_DIR = Path(__file__).resolve().parents[1] / "nstat"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+NSTAT_DIR = REPO_ROOT / "nstat"
+EXAMPLES_DIR = REPO_ROOT / "examples"
+TOOLS_DIR = REPO_ROOT / "tools"
+NOTEBOOKS_DIR = REPO_ROOT / "notebooks"
+
+
+# HR4: methods that take a 0-based selector as a positional/keyword arg.
+# Literal ``1``/``2``/``3`` passed to one of these gets flagged.  Each
+# entry says which arg position is the selector (0-indexed: 0 = first
+# positional, 1 = second positional, etc.); negative means "any literal
+# 1/2/3 passed positionally anywhere in this call is suspect."
+#
+# Kept tight on purpose — false positives are worse than false negatives
+# here (we'd rather miss a legit literal than reject a benign one).
+KNOWN_ZERO_BASED_METHODS: dict[str, int] = {
+    # Single-selector accessors (selector is the first positional arg)
+    "getNST": 0,
+    "getCov": 0,
+    "getCoeffs": 0,
+    "getCoeffsWithLabels": 0,
+    "getHistCoeffs": 0,
+    "getHistCoeffsWithLabels": 0,
+    "getSubSignal": 0,
+    "getConfig": 0,
+    "getSubSignalFromInd": 0,
+    "computeKSStats": 0,
+    "computeFitResidual": 0,
+    "evalLambda": 0,
+    "getSigCoeffs": 0,
+    "getNeighbors": 0,
+    "getDesignMatrix": 0,
+    "getHistMatrices": 0,
+    "getEnsCovMatrix": 0,
+    # Two-arg analysis helpers: trial is first, selector is second.
+    "RunAnalysisForNeuron": 1,
+    "run_analysis_for_neuron": 1,
+    "computeHistLag": 1,
+    "computeNeighbors": 1,
+    "spikeTrigAvg": 1,
+    "compHistEnsCoeff": 1,
+    # ConfigCollection.setConfig(trial, idx) — second positional arg.
+    "setConfig": 1,
+}
+
+
+def _is_literal_int(node: ast.AST, values: set[int]) -> bool:
+    return isinstance(node, ast.Constant) and isinstance(node.value, int) and node.value in values
 
 
 # Files whose 1-based patterns are intentionally allowed.
@@ -59,6 +115,15 @@ VARIABLE_ALLOWLIST: set[tuple[str, str]] = {
     ("decoding_algorithms.py", "N"),
     ("decoding_algorithms.py", "n"),
     ("decoding_algorithms.py", "cnt"),
+    # Tier 1 hardening — examples/notebooks/tools that use canonical
+    # time-recursion variables (``t``, ``k``, ``lt``, ``row``).
+    ("em_dynamax_demo.py", "t"),
+    ("validation_pykalman_demo.py", "t"),
+    ("example03_psth_and_ssglm.py", "lt"),
+    ("example05_decoding_ppaf_pphf.py", "k"),
+    # ValidationDataSet raster: ``axs[row - 1]`` because row is the
+    # display label (1-based math convention) while axs is 0-based.
+    ("ValidationDataSet.ipynb", "row"),
 }
 
 
@@ -90,6 +155,29 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ("trial.py", "prev_train = selected_trains[idx - 1]"): "previous-element lookup",
     # Display tick positions stay 1-indexed (math convention) for raster plots.
     ("trial.py", "ax.set_yticks(range(1, len(selected) + 1), [str(item) for item in selected])"): "ytick display positions stay 1-indexed",
+    # HR4 baseline: legitimate 0-based selectors > 0 (intentional, not stale 1-based).
+    # README example uses getNST(1) as a fallback after getNST(0) fails — supports
+    # objects with either indexing convention.
+    ("example2_simulate_cif_spiketrain_10s.py", "first_train = spike_obj.getNST(1)"): "fallback after getNST(0) failed",
+    # AnalysisExamples2: comparing nstat fit against glmfit reference using the
+    # second fit (0-based index 1, was MATLAB b{2}).
+    ("AnalysisExamples2.ipynb", "b_diff = b - fitResults.getCoeffs(1)[0]"): "MATLAB b{2} = 0-based fit 1",
+    # NetworkTutorial: third fit (0-based 2) is the connectivity-included model.
+    ("NetworkTutorial.ipynb", "coeffs, labels, _ = fit.getCoeffsWithLabels(2)"): "intentional 3rd fit (0-based)",
+    # NetworkTutorial: comparing first vs second spike train counts.
+    ("NetworkTutorial.ipynb", '"spike_counts": [spikeColl.getNST(0).n_spikes, spikeColl.getNST(1).n_spikes],'): "first + second train",
+    # PPSimExample: third subsignal (0-based 2) is the binomial model's lambda.
+    ("PPSimExample.ipynb", "results[0].lambdaSignal.getSubSignal(2).plot(handle=ax)"): "intentional 3rd subsignal (0-based)",
+    # Example01: second subsignal of lambda (0-based 1) for the green-curve plot.
+    ("example01_mepsc_poisson.py", 'ax.plot(lam.time, lam.getSubSignal(1).data[:, 0], "g", linewidth=2)'): "second subsignal (0-based)",
+    # Time-recursion `range(1, T)` patterns in examples and tools — t=0 is initial condition.
+    ("em_dynamax_demo.py", "for t in range(1, T):"): "time recursion: t=0 is initial",
+    ("validation_pykalman_demo.py", "for t in range(1, T):"): "time recursion: t=0 is initial",
+    ("example05_decoding_ppaf_pphf.py", "for k in range(1, T):"): "time recursion: k=0 is initial",
+    # run_helpfile: i is the 1-based figure number (display convention).
+    ("run_helpfile.py", "for i in range(1, n_figures + 1):"): "figure numbering (display)",
+    # DecodingExampleWithHist: idx is the canonical time recursion index.
+    ("DecodingExampleWithHist.ipynb", "for idx in range(1, len(time)):"): "time recursion",
 }
 
 
@@ -100,13 +188,14 @@ def _is_allowed_file(rel_path: str) -> bool:
 
 
 class _Visitor(ast.NodeVisitor):
-    """Collects HR2 (range-from-1) and HR3 ([x - 1] subscript) violations."""
+    """Collects HR2 (range-from-1), HR3 ([x - 1] subscript), HR4 (literal-arg) violations."""
 
     def __init__(self, source_lines: list[str], rel_path: str) -> None:
         self.source_lines = source_lines
         self.rel_path = rel_path
         self.range_hits: list[tuple[int, str]] = []  # (lineno, source)
         self.minus_one_hits: list[tuple[int, str]] = []
+        self.literal_arg_hits: list[tuple[int, str]] = []
 
     def _line(self, lineno: int) -> str:
         try:
@@ -115,6 +204,7 @@ class _Visitor(ast.NodeVisitor):
             return ""
 
     def visit_Call(self, node: ast.Call) -> None:
+        # HR2: range(1, ...) loops
         if (
             isinstance(node.func, ast.Name)
             and node.func.id == "range"
@@ -123,6 +213,18 @@ class _Visitor(ast.NodeVisitor):
             and node.args[0].value == 1
         ):
             self.range_hits.append((node.lineno, self._line(node.lineno)))
+
+        # HR4: literal 1/2/3 passed as selector arg to a known 0-based method.
+        method_name: str | None = None
+        if isinstance(node.func, ast.Attribute):
+            method_name = node.func.attr
+        elif isinstance(node.func, ast.Name):
+            method_name = node.func.id
+        if method_name in KNOWN_ZERO_BASED_METHODS:
+            sel_pos = KNOWN_ZERO_BASED_METHODS[method_name]
+            if sel_pos < len(node.args) and _is_literal_int(node.args[sel_pos], {1, 2, 3}):
+                self.literal_arg_hits.append((node.lineno, self._line(node.lineno)))
+
         self.generic_visit(node)
 
     def visit_Subscript(self, node: ast.Subscript) -> None:
@@ -131,6 +233,7 @@ class _Visitor(ast.NodeVisitor):
                 ident = self._extract_identifier(sub_expr)
                 if ident is not None and (
                     (self.rel_path, ident) in VARIABLE_ALLOWLIST
+                    or (Path(self.rel_path).name, ident) in VARIABLE_ALLOWLIST
                     or ("*", ident) in VARIABLE_ALLOWLIST
                 ):
                     continue
@@ -165,69 +268,150 @@ class _Visitor(ast.NodeVisitor):
         )
 
 
-def _collect_violations() -> tuple[list[str], list[str]]:
-    """Return (range_violations, minus_one_violations) as formatted lines."""
+def _notebook_source(nb_path: Path) -> str:
+    """Concatenate all code-cell source from an .ipynb into a synthetic .py.
+
+    Each cell is preceded by a blank line so line numbers don't collide
+    in the AST (rough; line-number reporting points to the start of the
+    notebook rather than the cell, but the source-line key in ALLOWLIST
+    still identifies the exact violating statement).
+    """
+    try:
+        nb = nbformat.read(nb_path, as_version=4)
+    except Exception:
+        return ""
+    parts: list[str] = []
+    for cell in nb.cells:
+        if cell.cell_type == "code":
+            parts.append(cell.source)
+    return "\n\n".join(parts)
+
+
+def _iter_scan_targets() -> list[tuple[str, Path, str]]:
+    """Yield ``(display_root, source_path, rel_display)`` for every file/notebook to scan."""
+    targets: list[tuple[str, Path, str]] = []
+    for root, name in [
+        (NSTAT_DIR, "nstat"),
+        (EXAMPLES_DIR, "examples"),
+        (TOOLS_DIR, "tools"),
+    ]:
+        if not root.exists():
+            continue
+        for py_file in sorted(root.rglob("*.py")):
+            rel = py_file.relative_to(root).as_posix()
+            targets.append((name, py_file, rel))
+    if NOTEBOOKS_DIR.exists():
+        for nb_file in sorted(NOTEBOOKS_DIR.rglob("*.ipynb")):
+            rel = nb_file.relative_to(NOTEBOOKS_DIR).as_posix()
+            targets.append(("notebooks", nb_file, rel))
+    return targets
+
+
+def _collect_violations() -> tuple[list[str], list[str], list[str]]:
+    """Return (range_violations, minus_one_violations, literal_arg_violations)."""
     range_violations: list[str] = []
     minus_one_violations: list[str] = []
+    literal_arg_violations: list[str] = []
 
-    for py_file in sorted(NSTAT_DIR.rglob("*.py")):
-        rel_path = py_file.relative_to(NSTAT_DIR).as_posix()
-        if _is_allowed_file(rel_path):
+    for display_root, src_path, rel in _iter_scan_targets():
+        # File-prefix allowlist still applies to nstat/ (compat/matlab shim).
+        if display_root == "nstat" and _is_allowed_file(rel):
             continue
 
-        source = py_file.read_text(encoding="utf-8")
+        if src_path.suffix == ".ipynb":
+            source = _notebook_source(src_path)
+            if not source:
+                continue
+        else:
+            source = src_path.read_text(encoding="utf-8")
+
         try:
-            tree = ast.parse(source, filename=str(py_file))
+            tree = ast.parse(source, filename=str(src_path))
         except SyntaxError:
             continue
 
-        visitor = _Visitor(source.splitlines(), rel_path)
+        visitor = _Visitor(source.splitlines(), rel)
         visitor.visit(tree)
 
         for lineno, line in visitor.range_hits:
-            if (rel_path, line) in ALLOWLIST:
+            if (rel, line) in ALLOWLIST or (Path(rel).name, line) in ALLOWLIST:
                 continue
-            range_violations.append(f"  nstat/{rel_path}:{lineno}: {line}")
+            range_violations.append(f"  {display_root}/{rel}:{lineno}: {line}")
 
         for lineno, line in visitor.minus_one_hits:
-            if (rel_path, line) in ALLOWLIST:
+            if (rel, line) in ALLOWLIST or (Path(rel).name, line) in ALLOWLIST:
                 continue
-            minus_one_violations.append(f"  nstat/{rel_path}:{lineno}: {line}")
+            minus_one_violations.append(f"  {display_root}/{rel}:{lineno}: {line}")
 
-    return range_violations, minus_one_violations
+        for lineno, line in visitor.literal_arg_hits:
+            if (rel, line) in ALLOWLIST or (Path(rel).name, line) in ALLOWLIST:
+                continue
+            literal_arg_violations.append(f"  {display_root}/{rel}:{lineno}: {line}")
+
+    return range_violations, minus_one_violations, literal_arg_violations
 
 
-def test_no_range_from_one_in_nstat() -> None:
-    """HR2: ``range(1, ...)`` loops indicate MATLAB-style 1-based indexing."""
-    range_violations, _ = _collect_violations()
+def _format_failure(rule: str, hint: str, violations: list[str]) -> str:
+    preview = violations[:15]
+    tail = f"\n  ... and {len(violations) - 15} more" if len(violations) > 15 else ""
+    return (
+        f"{rule} violations:\n"
+        + "\n".join(preview)
+        + tail
+        + f"\n\n{hint}  "
+        "See docs/proposals/2026-06-11-zero-based-indexing.md."
+    )
+
+
+def test_no_range_from_one() -> None:
+    """HR2: ``range(1, ...)`` loops indicate MATLAB-style 1-based indexing.
+
+    Scans nstat/, examples/, tools/, notebooks/.
+    """
+    range_violations, _, _ = _collect_violations()
     if range_violations:
-        preview = range_violations[:15]
-        tail = (
-            f"\n  ... and {len(range_violations) - 15} more" if len(range_violations) > 15 else ""
-        )
         pytest.fail(
-            "HR2 violations (`range(1, ...)` loops) in nstat/:\n"
-            + "\n".join(preview)
-            + tail
-            + "\n\nSweep to `range(N)` or `enumerate(...)`.  "
-            "See docs/proposals/2026-06-11-zero-based-indexing.md."
+            _format_failure(
+                "HR2 (`range(1, ...)` loops)",
+                "Sweep to `range(N)` or `enumerate(...)`.",
+                range_violations,
+            )
         )
 
 
-def test_no_identifier_minus_one_subscript_in_nstat() -> None:
-    """HR3: ``arr[idx - 1]`` patterns are MATLAB-style index translation."""
-    _, minus_one_violations = _collect_violations()
+def test_no_identifier_minus_one_subscript() -> None:
+    """HR3: ``arr[idx - 1]`` patterns are MATLAB-style index translation.
+
+    Scans nstat/, examples/, tools/, notebooks/.
+    """
+    _, minus_one_violations, _ = _collect_violations()
     if minus_one_violations:
-        preview = minus_one_violations[:15]
-        tail = (
-            f"\n  ... and {len(minus_one_violations) - 15} more"
-            if len(minus_one_violations) > 15
-            else ""
-        )
         pytest.fail(
-            "HR3 violations (`arr[<ident> - 1]` subscripts) in nstat/:\n"
-            + "\n".join(preview)
-            + tail
-            + "\n\nFlip the call sites to 0-based indexing.  "
-            "See docs/proposals/2026-06-11-zero-based-indexing.md."
+            _format_failure(
+                "HR3 (`arr[<ident> - 1]` subscripts)",
+                "Flip the call sites to 0-based indexing.",
+                minus_one_violations,
+            )
+        )
+
+
+def test_no_literal_arg_to_known_zero_based_method() -> None:
+    """HR4: literal ``1``/``2``/``3`` passed as a selector arg to a method
+    known to take 0-based indices (``getNST``, ``getCov``, ``getCoeffs``,
+    ``RunAnalysisForNeuron``, ``computeHistLag``, ``setConfig``, etc.).
+
+    This catches the drift that the AST scanner's HR2/HR3 patterns miss:
+    hardcoded selector literals in notebooks/examples/tools that look
+    fine to a regex sweep but are out-of-bounds after the v0.5.0 flip.
+    """
+    _, _, literal_arg_violations = _collect_violations()
+    if literal_arg_violations:
+        pytest.fail(
+            _format_failure(
+                "HR4 (literal 1/2/3 passed to a 0-based method)",
+                "Pass 0, 1, 2 instead.  If the literal is intentional"
+                " (e.g. fit_num=2 to select the third fit, 0-based), add it"
+                " to ALLOWLIST keyed by (file, source_line).",
+                literal_arg_violations,
+            )
         )
