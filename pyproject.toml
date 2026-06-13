@@ -106,6 +106,27 @@ clusterless = [
   "replay_trajectory_classification>=1.4",
 ]
 
+# Spatial / spatiotemporal point-process module (nstat.extras.spatial).
+# The CORE (lgcp, spatial_gof, marked_gof) needs only the already-present
+# numpy/scipy — NO extra to install for it.  These groups back only the
+# OPTIONAL heavier bridges; like [dynamax]/[clusterless] they are
+# deliberately NOT rolled into [all-extras].
+#   - spatial-gp: heavier GP path for lgcp_fit(backend="gpflow"); pulls
+#     gpflow + TensorFlow (heavy).
+spatial-gp = [
+  "gpflow>=2.9",
+]
+#   - hawkes: multivariate Hawkes via tick (Bacry et al. 2018, JMLR; BSD-3),
+#     backs nstat.extras.spatial.hawkes_bridge.
+hawkes = [
+  "tick>=0.7",
+]
+#   - dpp: DPP sampling via DPPy (MIT), backs nstat.extras.spatial.dpp_bridge.
+#     The inline NumPy eigen-sampler fallback needs NO dependency.
+dpp = [
+  "dppy>=0.3",
+]
+
 # PyTorch-based decoder bridges (placeholder; deferred to a future release).
 deep-learning = []
 

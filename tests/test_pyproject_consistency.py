@@ -47,7 +47,13 @@ META_GROUPS = frozenset({"all-extras", "dev"})
 # - ``dynamax`` pulls JAX (~200 MB).
 # - ``clusterless`` (``replay_trajectory_classification``) pulls JAX too
 #   (~200 MB) and is the same install-footprint hazard as dynamax.
-HEAVY_OPT_OUT_OF_ALL_EXTRAS = frozenset({"dynamax", "clusterless"})
+# - ``spatial-gp`` pulls gpflow + TensorFlow (heavy); ``hawkes`` (``tick``)
+#   and ``dpp`` (``DPPy``) back only the OPTIONAL bridges of the
+#   pure-NumPy/SciPy ``nstat.extras.spatial`` module, so they are not part
+#   of the always-installable core surface.
+HEAVY_OPT_OUT_OF_ALL_EXTRAS = frozenset(
+    {"dynamax", "clusterless", "spatial-gp", "hawkes", "dpp"}
+)
 
 
 # ----------------------------------------------------------------------
@@ -186,7 +192,18 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
         "dynamax_bridge": "dynamax",
         # decoding/
         "clusterless_bridge": "clusterless",
+        # spatial/  — OPTIONAL bridges have a backing group; the pure-core
+        # modules need none (see CORE_NO_DEP_MODULES below).
+        "hawkes_bridge": "hawkes",
+        "dpp_bridge": "dpp",
     }
+
+    # Pure-NumPy/SciPy extras modules that depend only on the core
+    # numpy/scipy already in [project.dependencies] — they correctly have
+    # NO backing optional-deps group.  (The nstat.extras.spatial core:
+    # lgcp / spatial_gof / marked_gof.)  The heavier optional GP path of
+    # lgcp is gated behind the [spatial-gp] group at call time.
+    CORE_NO_DEP_MODULES = frozenset({"lgcp", "spatial_gof", "marked_gof"})
 
     extras_root = REPO_ROOT / "nstat" / "extras"
     if not extras_root.exists():
@@ -201,6 +218,9 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
         if py_file.stem.startswith("_"):
             continue
         stem = py_file.stem
+        # Pure-core extras modules legitimately have no backing dep group.
+        if stem in CORE_NO_DEP_MODULES:
+            continue
         expected = EXPECTED_GROUP_FOR_MODULE.get(stem)
         if expected is None:
             # Unknown module — add it to the EXPECTED_GROUP_FOR_MODULE

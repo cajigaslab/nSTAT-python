@@ -443,6 +443,15 @@ Python projects" table in `README.md` for install commands.
   `PP_EM` / `mPPCO_EM` families are unported; use
   [Dynamax](https://github.com/probml/dynamax) instead (planned
   bridge `nstat.extras.em.dynamax`).
+- **Not** a spatial / spatiotemporal point-process estimator in core.
+  The Python-only `nstat.extras.spatial` module adds LGCP rate maps
+  (Laplace), inhomogeneous second-order goodness-of-fit, and the
+  discrete-time-rescaling KS correction (pure NumPy/SciPy core; optional
+  `tick` / `DPPy` / `gpflow` bridges via `[hawkes]` / `[dpp]` /
+  `[spatial-gp]`).  It is the companion to the bci-curriculum Ch. 5 /
+  Ch. 6 worked examples, has no MATLAB counterpart, and therefore
+  carries no `parity/manifest.yml` entry.  See
+  [`docs/extras/spatial_point_processes.md`](docs/extras/spatial_point_processes.md).
 - **Not** distributed.  All routines are single-process NumPy / SciPy.
 
 ---

@@ -1,0 +1,102 @@
+r"""Spatial & spatiotemporal point processes — Python-only ``nstat.extras`` module.
+
+This subpackage is the Python-only companion to the bci-curriculum's two
+point-process chapters (*Spatial Point Processes*, Ch. 5; *Spatiotemporal
+Point Processes*, Ch. 6).  It has **no MATLAB counterpart** and therefore
+no ``parity/manifest.yml`` entry — it lives in the opt-in ``extras/``
+namespace precisely so the core ``nstat`` MATLAB-parity contract is
+preserved.
+
+Pure-NumPy/SciPy core (no optional dependency required):
+
+- :mod:`~nstat.extras.spatial.lgcp` — log-Gaussian Cox process rate maps
+  by the Laplace approximation (Newton/IRLS to the posterior mode; a
+  log-normal credible band that widens in data-sparse cells).
+  :func:`~nstat.extras.spatial.lgcp.lgcp_fit` →
+  :class:`~nstat.extras.spatial.lgcp.LGCPResult` with ``.rate_map(level=...)``.
+- :mod:`~nstat.extras.spatial.spatial_gof` — inhomogeneous second-order
+  goodness-of-fit: the SOIRS-reweighted pair correlation
+  :func:`~nstat.extras.spatial.spatial_gof.pair_correlation`, the
+  inhomogeneous :func:`~nstat.extras.spatial.spatial_gof.k_inhom` /
+  :func:`~nstat.extras.spatial.spatial_gof.l_function`, the empty-space /
+  nearest-neighbour :func:`~nstat.extras.spatial.spatial_gof.nearest_neighbour_FGJ`,
+  and the Monte-Carlo
+  :func:`~nstat.extras.spatial.spatial_gof.global_envelope` (Myllymaki 2017).
+- :mod:`~nstat.extras.spatial.marked_gof` — the discrete-time-rescaling KS
+  correction (Haslinger-Pipa-Brown 2010) and marked goodness-of-fit:
+  :func:`~nstat.extras.spatial.marked_gof.marked_time_rescaling`.
+
+Optional bridges (lazy-import; fail gracefully with an install hint):
+
+- :mod:`~nstat.extras.spatial.hawkes_bridge` — multivariate Hawkes via
+  ``tick`` (``pip install nstat-toolbox[hawkes]``).
+- :mod:`~nstat.extras.spatial.dpp_bridge` — DPP sampling via ``DPPy``
+  (``pip install nstat-toolbox[dpp]``), with a dependency-free inline
+  NumPy eigen-sampler fallback (``sample_l_ensemble``).
+
+The heavier LGCP GP path (``gpflow``) is behind
+``pip install nstat-toolbox[spatial-gp]``; the default ``lgcp_fit`` backend
+is dependency-free.
+
+Install
+-------
+
+.. code-block:: bash
+
+    # core (lgcp, spatial_gof, marked_gof) needs only numpy/scipy — no extra.
+    pip install nstat-toolbox[spatial-gp]   # optional heavier GP path (gpflow)
+    pip install nstat-toolbox[hawkes]       # tick (multivariate Hawkes)
+    pip install nstat-toolbox[dpp]          # DPPy (DPP sampling)
+
+The convenience symbols below re-export the pure-core entry points so the
+curriculum worked examples can ``from nstat.extras.spatial import
+lgcp_fit, pair_correlation, global_envelope, marked_time_rescaling``.
+"""
+from __future__ import annotations
+
+# Pure-core submodules import cleanly with only numpy/scipy — safe to
+# re-export their public entry points at package import time.
+from nstat.extras.spatial.lgcp import LGCPResult, lgcp_fit
+from nstat.extras.spatial.marked_gof import (
+    MarkedGOFResult,
+    corrected_rescaled,
+    marked_time_rescaling,
+    multivariate_time_rescaling,
+    uncorrected_rescaled,
+)
+from nstat.extras.spatial.spatial_gof import (
+    EnvelopeResult,
+    global_envelope,
+    k_inhom,
+    l_function,
+    nearest_neighbour_FGJ,
+    pair_correlation,
+)
+
+# The optional-dep bridge submodules (hawkes_bridge, dpp_bridge) are NOT
+# eagerly imported — they are reached via explicit submodule import so the
+# package stays import-safe without tick / DPPy / gpflow installed:
+#
+#     from nstat.extras.spatial import dpp_bridge
+#     idx = dpp_bridge.sample_l_ensemble(L)        # dependency-free
+#     from nstat.extras.spatial import hawkes_bridge
+#     fit = hawkes_bridge.fit_hawkes_exp(events)   # needs [hawkes]
+
+__all__ = [
+    # lgcp
+    "lgcp_fit",
+    "LGCPResult",
+    # spatial_gof
+    "pair_correlation",
+    "k_inhom",
+    "l_function",
+    "nearest_neighbour_FGJ",
+    "global_envelope",
+    "EnvelopeResult",
+    # marked_gof
+    "marked_time_rescaling",
+    "multivariate_time_rescaling",
+    "uncorrected_rescaled",
+    "corrected_rescaled",
+    "MarkedGOFResult",
+]

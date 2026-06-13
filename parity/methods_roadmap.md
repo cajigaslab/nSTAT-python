@@ -189,6 +189,57 @@ freedom.
 
 ---
 
+## Tier 2.2 — Spatial / spatiotemporal point processes (`extras`) — SHIPPED
+
+### 2.2 `nstat.extras.spatial` — LGCP rate maps, inhomogeneous GoF, discrete-time rescaling — SHIPPED
+
+- **What:** The Python-only companion to the bci-curriculum's two
+  point-process chapters (*Spatial Point Processes*, Ch. 5;
+  *Spatiotemporal Point Processes*, Ch. 6).  Three pure-NumPy/SciPy
+  capabilities with no MATLAB counterpart:
+  1. **LGCP rate maps by the Laplace approximation** — bin counts → a
+     Matérn GP prior on `log Λ` → Newton/IRLS to the posterior mode →
+     a **log-normal credible band** that widens in data-sparse cells
+     (Rasmussen-Williams Alg. 3.1; Diggle 2013).
+  2. **Inhomogeneous second-order goodness-of-fit** — the SOIRS-reweighted
+     pair correlation `g(r)`, the inhomogeneous `K`/`L` functions
+     (Baddeley-Møller-Waagepetersen 2000), nearest-neighbour F/G/J, and a
+     Monte-Carlo global-rank envelope (Myllymäki et al. 2017), with the
+     plug-in-bias / held-out-λ̂ caveat flagged (Shaw et al. 2021).
+  3. **Discrete-time-rescaling KS correction** — the Haslinger-Pipa-Brown
+     (2010) randomized PIT `u_j = [∏(1−p_k)]·(1 − r_j·p_{k_j})` that fixes
+     the false-rejection of a correct model at finite bin width, plus
+     marked / multivariate (finite-channel) rescaling
+     (Gerhard-Haslinger-Pipa 2011).
+- **Done:** `nstat.extras.spatial` ships `lgcp_fit` → `LGCPResult`
+  (`.rate_map(level=...)`), `pair_correlation` / `k_inhom` / `l_function`
+  / `nearest_neighbour_FGJ` / `global_envelope` (+ `EnvelopeResult`), and
+  `marked_time_rescaling` / `uncorrected_rescaled` / `corrected_rescaled`
+  / `multivariate_time_rescaling` (+ `MarkedGOFResult`).  Optional bridges
+  (lazy import, graceful install hint): `hawkes_bridge.fit_hawkes_exp`
+  (`tick`, `[hawkes]`), `dpp_bridge.sample_dpp` (`DPPy`, `[dpp]`) with a
+  **dependency-free** inline NumPy eigen-sampler `sample_l_ensemble`
+  fallback, and an optional `gpflow` LGCP path (`[spatial-gp]`).  The
+  **core runs with only the already-present numpy/scipy** — no extra to
+  install.
+- **Placement:** `extras` (new `nstat.extras.spatial` subpackage).
+  **Parity preserved:** Python-only, no MATLAB `.m` counterpart, so
+  **no `parity/manifest.yml` entry** — the whole point of the opt-in
+  `extras/` namespace.  The `[spatial-gp]` / `[hawkes]` / `[dpp]` groups
+  are deliberately excluded from `[all-extras]` (heavy / niche), like
+  `[dynamax]` and `[clusterless]`.  Drift guards updated
+  (`HEAVY_OPT_OUT_OF_ALL_EXTRAS`, `EXPECTED_GROUP_FOR_MODULE` +
+  `CORE_NO_DEP_MODULES`, `EXPECTED_DOC_STEM_FOR_BRIDGE`).
+- **References:** [Rasmussen & Williams 2006](https://gaussianprocess.org/gpml/),
+  Baddeley-Møller-Waagepetersen 2000 (Statistica Neerlandica 54:329),
+  [Myllymäki et al. 2017 (JRSS-B 79:381)](https://doi.org/10.1111/rssb.12172),
+  Shaw-Møller-Waagepetersen 2021 (ANZJS 63:93),
+  [Haslinger-Pipa-Brown 2010 (Neural Comput 22:2477)](https://pubmed.ncbi.nlm.nih.gov/20608868/),
+  Gerhard-Haslinger-Pipa 2011 (Neural Comput 23:1452),
+  Kulesza-Taskar 2012, Bacry et al. 2018 (JMLR 18).
+
+---
+
 ## Tier 3 — Deeper state-space / encoding methods (moderate ports)
 
 ### 3.1 Conditionally Linear Dynamical Systems (CLDS)
