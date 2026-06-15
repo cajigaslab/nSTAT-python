@@ -237,7 +237,11 @@
     <tr><td><code>[nemos]</code></td><td>nemos (incl. JAX, ~200 MB)</td><td><code>extras.validation.nemos_bridge</code></td></tr>
     <tr><td><code>[test-parity]</code></td><td>nemos + pykalman + statsmodels + nitime</td><td>All cross-validation bridges</td></tr>
     <tr><td><code>[dynamax]</code></td><td>dynamax (incl. JAX, ~200 MB)</td><td><code>extras.em.dynamax_bridge</code></td></tr>
-    <tr><td><code>[all-extras]</code></td><td>Every functional group above <em>except</em> <code>[dynamax]</code></td><td>One-shot install (heavy <code>[dynamax]</code> opt-out documented in <code>tests/test_pyproject_consistency.py::HEAVY_OPT_OUT_OF_ALL_EXTRAS</code>)</td></tr>
+    <tr><td><code>[clusterless]</code></td><td>replay_trajectory_classification (incl. JAX, ~200 MB)</td><td><code>extras.decoding.clusterless_bridge</code></td></tr>
+    <tr><td><code>[spatial-gp]</code></td><td>gpflow + TensorFlow (heavy)</td><td><code>extras.spatial.lgcp</code> heavier GP path</td></tr>
+    <tr><td><code>[hawkes]</code></td><td>tick</td><td><code>extras.spatial.hawkes_bridge</code></td></tr>
+    <tr><td><code>[dpp]</code></td><td>dppy</td><td><code>extras.spatial.dpp_bridge</code> (NumPy fallback included)</td></tr>
+    <tr><td><code>[all-extras]</code></td><td>Every functional group above <em>except</em> <code>[dynamax]</code>, <code>[clusterless]</code>, <code>[spatial-gp]</code>, <code>[hawkes]</code>, <code>[dpp]</code></td><td>One-shot install (heavy/optional opt-outs documented in <code>tests/test_pyproject_consistency.py::HEAVY_OPT_OUT_OF_ALL_EXTRAS</code>)</td></tr>
   </tbody>
 </table>
 <p>The <code>[all-extras]</code> union is <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/tests/test_pyproject_consistency.py">CI-enforced</a> — adding a new group without updating <code>[all-extras]</code> fails the test suite.</p>
@@ -351,19 +355,53 @@ hy = fit_hybrid_em(spike_counts, lfp, state_dim=2, n_iter=30)</code></pre>
   <p class="badge">Details: <a href="extras/em_dynamax.html">em_dynamax.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/em_dynamax_demo.py"><code>em_dynamax_demo.py</code></a></p>
 </div>
 
+<div class="bridge-card">
+  <h4><span class="tier-tag a">A</span> nstat.extras.decoding.clusterless_bridge</h4>
+  <p class="install"><code>pip install nstat-toolbox[clusterless]</code> (pulls JAX, ~200 MB — not in <code>[all-extras]</code>)</p>
+  <p>Clusterless marked point-process decoding and trajectory-type classification via <a href="https://github.com/Eden-Kramer-Lab/replay_trajectory_classification">replay_trajectory_classification</a> (Denovellis et al. 2021, eLife). No spike sorting required — consumes each spike's waveform marks directly. The modern descendant of nSTAT's PPAF / PPHF filters.</p>
+  <ul>
+    <li><code>fit_clusterless_decoder(position, multiunits, ...)</code> → <code>ClusterlessDecoderResult</code> — single-state continuous decoder (random-walk prior).</li>
+    <li><code>fit_clusterless_classifier(position, multiunits, ...)</code> → <code>ClusterlessClassifierResult</code> — multi-state decoder with discrete trajectory-type latent (local / forward-replay / reverse-replay / fragmented).</li>
+  </ul>
+  <pre><code>from nstat.extras.decoding.clusterless_bridge import fit_clusterless_decoder
+
+result = fit_clusterless_decoder(position, multiunits, place_bin_size=5.0)
+print(result.posterior.shape, result.map_position.shape)</code></pre>
+  <p class="badge">Details: <a href="extras/decoding_clusterless.html">decoding_clusterless.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_clusterless_demo.py"><code>decoding_clusterless_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag a">A</span> nstat.extras.spatial</h4>
+  <p class="install">Core needs <strong>no extra install</strong> (pure NumPy/SciPy). Optional bridges: <code>[spatial-gp]</code> / <code>[hawkes]</code> / <code>[dpp]</code> — not in <code>[all-extras]</code>.</p>
+  <p>Spatial &amp; spatiotemporal point-process tools: a <strong>log-Gaussian Cox process</strong> rate map with posterior credible bands (wider in data-sparse regions), an <strong>inhomogeneous second-order GOF suite</strong> (<code>g(r)</code> / <code>K</code> / <code>L</code> / F/G/J / global-rank envelope), and the <strong>discrete-time-rescaling KS correction</strong> (Haslinger-Pipa-Brown 2010) that fixes false-rejection at finite bin width. Optional heavy bridges: multivariate Hawkes via <code>tick</code>, DPP sampling via <code>DPPy</code> (NumPy eigen-sampler fallback included), heavier GP path for LGCP via <code>gpflow</code>.</p>
+  <pre><code>from nstat.extras.spatial import lgcp_fit, pair_correlation, marked_time_rescaling
+
+# LGCP rate map with 90% credible band
+res = lgcp_fit(pts, domain=((0,1),(0,1)), grid=20)
+mean, lo, hi = res.rate_map(level=0.90)
+
+# Inhomogeneous g(r) GOF (use held-out intensity to avoid plug-in bias)
+g = pair_correlation(pts, lambda_hat, r_grid, domain=((0,1),(0,1)))
+
+# Discrete-time-rescaling KS correction
+mres = marked_time_rescaling(spike_bins, marks=None, p_k=p_k, n_draws=25)
+print("corrected passes:", mres.inside_corrected)</code></pre>
+  <p class="badge">Details: <a href="extras/spatial_point_processes.html">spatial_point_processes.html</a></p>
+</div>
+
 </section>
 
 <section id="planned">
 <h2>What's planned</h2>
 <div class="planned">
-  <strong>Beyond v0.4.x</strong> (see <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md"><code>parity/methods_roadmap.md</code></a> and <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/integration_opportunities.md"><code>integration_opportunities.md</code></a>):
+  <strong>Beyond v0.5.x</strong> (see <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md"><code>parity/methods_roadmap.md</code></a> and <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/integration_opportunities.md"><code>integration_opportunities.md</code></a>):
   <ul>
     <li><code>nstat.extras.spectral.synchrosqueeze</code> — ssqueezepy wrapper for synchrosqueezing wavelet analysis.</li>
     <li><code>nstat.extras.interop.spikeinterface</code> — spike-sorting-output bridge that hands sorted units off to <code>nspikeTrain</code> / <code>nstColl</code>.</li>
     <li><code>nstat.extras.deep_learning</code> — PyTorch decoder bridges, as an opt-in counterpart to the linear PPAF / PPHF / Kalman family.</li>
     <li><strong>Tier 3 extras</strong> — CLDS, NPNR, GP-based GLM coupling/history filters (each gated on upstream-code availability + license verification).</li>
   </ul>
-  <p style="margin-top:.8rem;font-size:.85rem;color:var(--ink-2);">Already shipped through v0.4.x: the EM trainer family (<code>fit_point_process_em</code>, <code>fit_hybrid_em</code>, <code>_best_of</code> variants with held-out predictive log-likelihood and canonical-gauge identifiability); exact lag-one cross-covariance + Laplace correction in the E-step; the multivariate (marked) time-rescaling GOF; and the clusterless decoding bridge.</p>
+  <p style="margin-top:.8rem;font-size:.85rem;color:var(--ink-2);">Already shipped through v0.5.x: the EM trainer family (<code>fit_point_process_em</code>, <code>fit_hybrid_em</code>, <code>_best_of</code> variants with held-out predictive log-likelihood and canonical-gauge identifiability); exact lag-one cross-covariance + Laplace correction in the E-step; the multivariate (marked) time-rescaling GOF; the clusterless decoding bridge (<code>nstat.extras.decoding.clusterless_bridge</code>); and the spatial &amp; spatiotemporal point-process module (<code>nstat.extras.spatial</code> — LGCP rate maps, inhomogeneous GOF suite, discrete-time-rescaling KS correction).</p>
 </div>
 </section>
 
@@ -378,7 +416,7 @@ hy = fit_hybrid_em(spike_counts, lfp, state_dim=2, n_iter=30)</code></pre>
 </section>
 
 <footer>
-  <p>See <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md">RELEASE_NOTES.md</a> for the full changelog (the <code>nstat.extras</code> namespace was introduced in v0.3.2 and substantially expanded across v0.4.x) or the <a href="extras.html">Extras Sphinx index</a> for per-bridge reference pages.</p>
+  <p>See <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md">RELEASE_NOTES.md</a> for the full changelog (the <code>nstat.extras</code> namespace was introduced in v0.3.2 and substantially expanded across v0.4.x–v0.5.x) or the <a href="extras.html">Extras Sphinx index</a> for per-bridge reference pages.</p>
   <p>Source: <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> · License: GPL-2.0 · Paper: <a href="https://pubmed.ncbi.nlm.nih.gov/22981419/">Cajigas, Malik &amp; Brown 2012, J Neurosci Methods</a></p>
 </footer>
 

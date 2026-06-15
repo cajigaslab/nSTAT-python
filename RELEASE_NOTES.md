@@ -1,5 +1,49 @@
 # Release Notes
 
+## Unreleased (post-v0.5.0)
+
+### Added
+
+- **`nstat.extras.spatial`** — spatial &amp; spatiotemporal point-process
+  module (PR [#182](https://github.com/cajigaslab/nSTAT-python/pull/182)).
+  Python-only, no MATLAB counterpart; lives in the opt-in `extras/`
+  namespace.  Pure NumPy/SciPy core (no extra to install for the core
+  modules); optional heavier bridges behind new dep groups.
+
+  Key sub-modules:
+  - **`lgcp.py`** (`lgcp_fit` → `LGCPResult`) — log-Gaussian Cox process
+    rate map by the Laplace / Newton-IRLS approximation (Rasmussen-Williams
+    Alg. 3.1).  `LGCPResult.rate_map(level=)` returns a log-normal credible
+    band that is correctly wider in data-sparse cells.  Optional
+    `backend="gpflow"` path for heavier variational GP (install
+    `[spatial-gp]`).
+  - **`spatial_gof.py`** — inhomogeneous second-order goodness-of-fit:
+    `pair_correlation` (SOIRS-reweighted `g(r)`), `k_inhom`
+    (Baddeley-Møller-Waagepetersen), `l_function`, `nearest_neighbour_FGJ`,
+    `global_envelope` (Myllymäki 2017 global-rank).  Plug-in-bias caveat
+    flagged in the helpfile.
+  - **`marked_gof.py`** — `marked_time_rescaling` + the discrete-time-rescaling
+    KS correction (Haslinger-Pipa-Brown 2010 randomized `u_j`); uncorrected
+    vs corrected paths; finite/continuous mark spaces;
+    `multivariate_time_rescaling`.
+  - **`hawkes_bridge.py`** — `fit_hawkes_exp` via `tick` (`[hawkes]`).
+  - **`dpp_bridge.py`** — DPP sampling via `DPPy` (`[dpp]`); inline NumPy
+    `L`-ensemble eigen-sampler fallback (no dependency required).
+
+  New optional dep groups in `pyproject.toml`: `[spatial-gp]`, `[hawkes]`,
+  `[dpp]` — deliberately excluded from `[all-extras]` (like
+  `[dynamax]`/`[clusterless]`).
+
+  New docs: `docs/extras/spatial_point_processes.md`; `extras.rst` toctree
+  and autosummary.  Tests (606 passed, 56 skipped) in
+  `tests/extras/test_spatial_*.py`.
+
+### Breaking changes
+
+None.
+
+---
+
 ## v0.5.0 — 2026-06-12
 
 Internal consistency improvements and audit fixes.
