@@ -204,7 +204,7 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
     # lgcp / spatial_gof / marked_gof.)  The heavier optional GP path of
     # lgcp is gated behind the [spatial-gp] group at call time.
     CORE_NO_DEP_MODULES = frozenset(
-        {"lgcp", "spatial_gof", "marked_gof", "wave_analysis"}
+        {"lgcp", "spatial_gof", "marked_gof", "basis", "wave_analysis"}
     )
 
     extras_root = REPO_ROOT / "nstat" / "extras"

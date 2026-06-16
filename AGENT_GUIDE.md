@@ -448,16 +448,35 @@ Python projects" table in `README.md` for install commands.
   (Laplace), inhomogeneous second-order goodness-of-fit, and the
   discrete-time-rescaling KS correction (pure NumPy/SciPy core; optional
   `tick` / `DPPy` / `gpflow` bridges via `[hawkes]` / `[dpp]` /
-  `[spatial-gp]`).  It is the companion to the bci-curriculum Ch. 5 /
-  Ch. 6 worked examples, has no MATLAB counterpart, and therefore
-  carries no `parity/manifest.yml` entry.  The same module also exposes
-  pure-NumPy spatiotemporal-wave diagnostics — `bartlett_spectrum` (the
-  frequency × wave-vector spectrum of a Hawkes triggering matrix),
+  `[spatial-gp]`).  Tensor-product B-spline log-rate bases
+  (`bspline_basis_1d`, `bspline_basis_2d`, `BSplineBasis2D`; de Boor 1978,
+  Eilers-Marx 1996) produce a design matrix that drops straight into
+  `nstat.glm.fit_poisson_glm` as the `x` argument, and the P-spline
+  second-difference penalty is available via `BSplineBasis2D.gram()`.
+  The basis-projected `lgcp_fit_glm(points, domain, basis, prior)`
+  (Diggle-Moraga-Rowlingson-Taylor 2013; Wood 2017 *GAMs*) fits an LGCP
+  through penalized Poisson IRLS on the B-spline coefficients — pair it
+  with `MaternPrior(nu, length_scale, marginal_var)` (the GP prior
+  evaluated at the basis' Greville abscissae) and prefer it over the
+  dense per-cell `lgcp_fit` when the grid is large (`G >= 50`), since
+  the cubic cost scales with the basis dimension `K` rather than the
+  cell count `G*G`.
+  The `pair_correlation` / `k_inhom` / `l_function` estimators take an
+  `edge_correction` keyword (default `"epanechnikov"`; also `"isotropic"`
+  for Ripley 1976/1977, `"translation"` for Ohser 1983, `"border"` for
+  Baddeley-Rubak-Turner 2015).  The same module also exposes pure-NumPy
+  spatiotemporal-wave diagnostics — `bartlett_spectrum` (the frequency
+  × wave-vector spectrum of a Hawkes triggering matrix),
   `reconstruct_kernel` (the parametric exponential-kernel
   reconstruction), and `detect_wave_peaks` returning a
   `WaveAnalysisResult` with `(freq, kx, ky, power, speed, direction)`
-  for each accepted peak.  See
+  for each accepted peak.  No MATLAB counterpart, so no
+  `parity/manifest.yml` entry.  See
   [`docs/extras/spatial_point_processes.md`](docs/extras/spatial_point_processes.md).
+  The per-channel discrete-time test `multivariate_time_rescaling` and
+  the population coupling test `nstat.population_time_rescale` (Tao
+  et al. 2018) compose via `multivariate_gof_with_coupling`, which
+  runs both on the same data and returns a `CoupledMarkedGOFResult`.
 - **Not** distributed.  All routines are single-process NumPy / SciPy.
 
 ---

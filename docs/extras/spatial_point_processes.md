@@ -1,13 +1,14 @@
 # `nstat.extras.spatial` — Spatial & spatiotemporal point processes
 
-The Python-only companion to the bci-curriculum's two point-process
-chapters — *Spatial Point Processes* (Ch. 5) and *Spatiotemporal Point
-Processes* (Ch. 6).  It turns a spatial point pattern into a **posterior
-rate map with credible bands** (log-Gaussian Cox process by the Laplace
-approximation), provides the **inhomogeneous second-order
-goodness-of-fit** suite a homogeneous `K`-function cannot give for a
-non-stationary neural field, and implements the **discrete-time-rescaling
-KS correction** that fixes a real bug in the naive time-rescaling test at
+The Python-only spatial / spatiotemporal point-process companion to
+`nstat`.  It turns a spatial point pattern into a **posterior rate map
+with credible bands** (log-Gaussian Cox process by the Laplace
+approximation), provides a **tensor-product B-spline log-rate basis**
+that drops into `nstat.glm.fit_poisson_glm`, exposes the **inhomogeneous
+second-order goodness-of-fit** suite a homogeneous `K`-function cannot
+give for a non-stationary neural field (with four published
+edge-correction modes), and implements the **discrete-time-rescaling KS
+correction** that fixes a real bug in the naive time-rescaling test at
 finite bin width.
 
 It has **no MATLAB counterpart** and therefore **no `parity/manifest.yml`
@@ -41,6 +42,8 @@ broader DPPy sampler catalogue.
 | Symbol | Notes |
 |---|---|
 | `lgcp_fit(points, domain, *, grid=20, kernel="matern52", length_scale=0.12, variance=1.0, prior_mean=None, max_iter=50, tol=1e-8, jitter=1e-6, backend="numpy")` | Bins events, places a Matern GP prior on `log Λ`, finds the posterior mode by Newton/IRLS (Rasmussen-Williams Alg. 3.1) → `LGCPResult` |
+| `lgcp_fit_glm(points, domain, basis, prior, *, grid=32, prior_mean=None, max_iter=50, tol=1e-6)` | Basis-projected LGCP: penalized Poisson IRLS on the B-spline coefficient vector with a `MaternPrior` evaluated at the Greville abscissae (Diggle-Moraga-Rowlingson-Taylor 2013; Wood 2017). The cubic cost scales with the basis dimension `K` (not the cell count `G*G`), so this is the routine to use at `G >= 50`. Returns the same `LGCPResult` as `lgcp_fit`. |
+| `MaternPrior(nu, length_scale, marginal_var=1.0, jitter=1e-6)` | Matern GP prior (`nu ∈ {0.5, 1.5, 2.5}`) used by `lgcp_fit_glm`; caches `K`, its Cholesky factor, `K_inv`, and `log_det` per `coords` array. On a Cholesky failure the jitter is bumped 10x and retried once. |
 | `LGCPResult.rate_map(level=0.90)` | `(mean, lo, hi)` log-normal credible band: `mean=exp(f̂+v/2)`, `lo/hi=exp(f̂∓z√v)`. Band is **wider in data-sparse cells** (where `Ŵ→0`, `v→` GP prior variance) |
 | `LGCPResult.rate_mean()` / `.intensity_fn()` | the posterior-mean rate / a callable `X→rate` for use as `lambda_hat` (mind the plug-in caveat) |
 
@@ -48,11 +51,38 @@ broader DPPy sampler catalogue.
 
 | Symbol | Notes |
 |---|---|
-| `pair_correlation(points, lambda_hat, r_grid, *, bw=None, domain=None)` | SOIRS-reweighted `g(r)`; `>1` clustering, `<1` repulsion, `=1` Poisson null |
-| `k_inhom(points, lambda_hat, r_grid, *, domain=None)` | inhomogeneous `K` (Baddeley-Møller-Waagepetersen 2000); `=πr²` for inhomogeneous Poisson (2-D) |
-| `l_function(points, lambda_hat, r_grid, *, domain=None)` | variance-stabilized `L(r)=√(K/π)`; `L(r)−r=0` under the null |
+| `pair_correlation(points, lambda_hat, r_grid, *, bw=None, domain=None, edge_correction="epanechnikov")` | SOIRS-reweighted `g(r)`; `>1` clustering, `<1` repulsion, `=1` Poisson null |
+| `k_inhom(points, lambda_hat, r_grid, *, domain=None, edge_correction="epanechnikov")` | inhomogeneous `K` (Baddeley-Møller-Waagepetersen 2000); `=πr²` for inhomogeneous Poisson (2-D) |
+| `l_function(points, lambda_hat, r_grid, *, domain=None, edge_correction="epanechnikov")` | variance-stabilized `L(r)=√(K/π)`; `L(r)−r=0` under the null |
 | `nearest_neighbour_FGJ(points, r_grid, *, domain=None, ...)` | empty-space `F`, nearest-neighbour `G`, `J=(1−G)/(1−F)` |
 | `global_envelope(points, lambda_hat, r_grid, *, n_sim=199, domain=None, statistic="pcf", bw=None, alpha=0.05, ...)` | Monte-Carlo global-rank envelope (Myllymäki et al. 2017) → `EnvelopeResult` (`observed`, `lo`, `hi`, `inside`, `p_interval`) |
+
+#### Edge corrections
+
+`pair_correlation`, `k_inhom`, and `l_function` accept an `edge_correction`
+keyword selecting one of four published modes.  The default
+(`"epanechnikov"`) is the original SOIRS estimator and is bit-identical
+to the pre-keyword behaviour.  The other three require a rectangular
+`domain = ((xlo, xhi), (ylo, yhi))`.
+
+| Mode | Reference | Notes |
+|---|---|---|
+| `"epanechnikov"` | Stoyan & Stoyan 1994 | Default; the SOIRS Epanechnikov-kernel estimator already shipped. **Output is bit-identical to omitting the kwarg.** |
+| `"isotropic"` | Ripley 1976, 1977 | Per pair `(i, j)` at distance `r`, weight by the symmetric average `0.5 * (1/frac_disc(p_i, r) + 1/frac_disc(p_j, r))` of the inverse fraction of the disc of radius `r` inside the rectangle (Baddeley-Rubak-Turner 2015 eq. 7.6; matches `spatstat::Kinhom`'s `correction="isotropic"`). |
+| `"translation"` | Ohser 1983 | Weight each pair by `|W| / |W ∩ W_h|` where `h` is the inter-event offset; symmetric in `i↔j` because the intersection depends only on `|h|`. |
+| `"border"` | Baddeley-Rubak-Turner 2015 §7.4 | Restrict the focal event set per radius to events with boundary-distance ≥ `r`; if no event qualifies at that radius, returns `NaN` (not a silent zero). |
+
+### B-spline log-rate basis (pure NumPy/SciPy)
+
+| Symbol | Notes |
+|---|---|
+| `bspline_basis_1d(grid, n_knots, degree=3, clamped=True)` | `(N, n_knots)` design matrix on a 1-D grid; rows sum to 1 (partition of unity) when `clamped=True`; de Boor 1978 |
+| `bspline_basis_2d(grid_x, grid_y, n_knots, degree=3, domain="rect", clamped=True)` | tensor-product `(Nx*Ny, nx*ny)` design matrix; **row layout is `indexing="ij"`** — row `i*Ny + j` evaluates at `(grid_x[i], grid_y[j])`; reshape with `pred.reshape(len(grid_x), len(grid_y))`; `domain="circular"` raises `NotImplementedError` |
+| `BSplineBasis2D.from_grid(grid_x, grid_y, n_knots, degree=3, clamped=True)` → `BSplineBasis2D` | frozen dataclass; `.design_matrix()` returns the cached design matrix, `.gram()` returns the P-spline second-difference penalty `Dx.T Dx ⊗ Iy + Ix ⊗ Dy.T Dy` (Eilers-Marx 1996) — symmetric PSD by construction; `.coefficient_coords()` returns the `(K, 2)` Greville-abscissa anchor points (de Boor 1978) of the basis coefficients in ij flattening — feed to `MaternPrior` for `lgcp_fit_glm`. |
+
+The 2-D design matrix is a valid `x` argument to
+`nstat.glm.fit_poisson_glm`; a smooth penalty can be added later by
+augmenting the IRLS Hessian with `rho * basis.gram()`.
 
 ### Marked / discrete-time-rescaling goodness-of-fit (pure NumPy/SciPy)
 
@@ -62,6 +92,7 @@ broader DPPy sampler catalogue.
 | `uncorrected_rescaled(spike_bins, p_k)` | naive `1−exp(−Σp_k)` variates — **false-rejects** at finite bin width |
 | `corrected_rescaled(spike_bins, p_k, rng=None)` | `u_j=[∏(1−p_k)]·(1−r_j·p_{k_j})` — exactly Unif(0,1) (Haslinger-Pipa-Brown 2010) |
 | `multivariate_time_rescaling(spike_bins_per_channel, p_k_per_channel, ...)` | per-channel rescaling for a finite (channel) mark space (Gerhard-Haslinger-Pipa 2011) |
+| `multivariate_gof_with_coupling(spike_bins_per_channel, p_k_per_channel, *, n_tau_bins=4, ...)` | runs the per-channel test *and* the population coupling test ([`nstat.population_time_rescale`](../api.html#nstat.population_time_rescale), Tao et al. 2018) on the same data → `CoupledMarkedGOFResult` (`per_channel`, `population`). Per-channel passing is necessary but not sufficient; this wrapper closes that gap |
 
 ### Optional bridges (lazy import; raise an install hint if the dep is absent)
 
@@ -136,6 +167,33 @@ env = global_envelope(pts, lam_at, r, n_sim=199, domain=((0, 1), (0, 1)))
 print("g(r) ~ 1:", round(float(np.nanmean(g)), 2), "| inside envelope:", env.inside)
 ```
 
+Basis-projected LGCP (cheap at large grids):
+
+```python
+import numpy as np
+from nstat.extras.spatial import lgcp_fit_glm, MaternPrior
+from nstat.extras.spatial.basis import BSplineBasis2D
+
+rng = np.random.default_rng(2)
+# Same single-bump pattern as above.
+mu, peak = np.array([0.45, 0.55]), 900.0
+Sinv = np.linalg.inv(np.array([[0.045, 0.008], [0.008, 0.035]]))
+def loglam(X):
+    d = X - mu
+    return np.log(peak) - 0.5 * np.einsum("ni,ij,nj->n", d, Sinv, d)
+n = rng.poisson(peak); P = rng.uniform(0, 1, (n, 2))
+pts = P[rng.uniform(0, 1, n) < np.exp(loglam(P)) / peak]
+
+# 64x64 cell grid, 10x10 cubic B-spline basis with a Matern-5/2 prior on
+# the coefficient vector.  Dominant solve is O(K^3) = O(100^3), not O(M^3).
+G = 64
+gx = np.linspace(0, 1, G); gy = np.linspace(0, 1, G)
+basis = BSplineBasis2D.from_grid(gx, gy, n_knots=10)
+prior = MaternPrior(nu=2.5, length_scale=0.18, marginal_var=1.0)
+res = lgcp_fit_glm(pts, ((0, 1), (0, 1)), basis, prior, grid=G)
+mean, lo, hi = res.rate_map(level=0.90)
+```
+
 Bartlett wave-vector spectrum of a Hawkes triggering matrix:
 
 ```python
@@ -157,7 +215,7 @@ print("speeds (pos-unit / s):", peaks.speed)
 print("directions (rad):", peaks.direction)
 ```
 
-Discrete-time-rescaling KS (Ch. 6):
+Discrete-time-rescaling KS:
 
 ```python
 import numpy as np
@@ -177,18 +235,37 @@ print("uncorrected rejects:", not res.inside_uncorrected,
 | Feature | Status |
 |---|---|
 | LGCP Laplace rate map + log-normal credible band | shipped (NumPy) |
+| Basis-projected LGCP (`lgcp_fit_glm` + `MaternPrior`) | shipped (NumPy) |
 | Inhomogeneous `g`/`K`/`L`, F/G/J, global-rank envelope | shipped (NumPy) |
 | Discrete-time-rescaling correction + marked / multivariate KS | shipped (NumPy) |
 | DPP eigen-sampler (`L`-ensemble) | shipped (NumPy fallback) + DPPy bridge |
 | Multivariate Hawkes | `tick` bridge (`[hawkes]`) |
 | Bartlett spectrum + wave-peak detection of a fitted Hawkes adjacency | shipped (NumPy) |
 | Heavier variational GP for the LGCP | optional `gpflow` path (`[spatial-gp]`) |
-| Auto-Poisson / SPDE-GMRF estimators | not in scope (theory-only in Ch. 5) |
+| Auto-Poisson / SPDE-GMRF estimators | not in scope |
 
 ## References
 
+- Møller J, Syversveen AR, Waagepetersen RP (1998). *Log Gaussian Cox
+  processes.* Scandinavian Journal of Statistics 25(3):451-482.
 - Rasmussen CE, Williams CKI (2006). *Gaussian Processes for Machine
   Learning*, Algorithm 3.1.
+- Diggle PJ, Moraga P, Rowlingson B, Taylor BM (2013). *Spatial and
+  spatio-temporal log-Gaussian Cox processes.* Statistical Science
+  28(4):542-563.
+- Wood SN (2017). *Generalized Additive Models: An Introduction with R.*
+  Chapman & Hall/CRC, 2nd ed.
+- de Boor C (1978). *A Practical Guide to Splines.* Springer.
+- Eilers PHC, Marx BD (1996). *Flexible Smoothing with B-splines and
+  Penalties.* Statistical Science 11(2):89-121.
+- Ripley BD (1976). *The second-order analysis of stationary point
+  processes.* J. Appl. Probab. 13(2):255-266.
+- Ripley BD (1977). *Modelling spatial patterns.* JRSS-B 39(2):172-212.
+- Ohser J (1983). *On estimators for the reduced second moment measure
+  of point processes.* Math. Operationsforsch. Statist., Ser. Statist.
+  14(1):63-71.
+- Baddeley A, Rubak E, Turner R (2015). *Spatial Point Patterns:
+  Methodology and Applications with R.* CRC Press.
 - Baddeley AJ, Møller J, Waagepetersen R (2000). *Non- and semi-parametric
   estimation of interaction in inhomogeneous point patterns.* Statistica
   Neerlandica 54(3):329.
