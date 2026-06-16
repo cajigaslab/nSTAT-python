@@ -3,10 +3,9 @@
 Pure NumPy/SciPy.  These back the GP prior in :mod:`nstat.extras.spatial.lgcp`
 and the second-order estimators in :mod:`nstat.extras.spatial.spatial_gof`.
 
-The functions here are deliberately small and dependency-free — they are
-the numerical primitives the curriculum's Ch. 5 / Ch. 6 worked examples
-build on (Matern covariances, Epanechnikov edge kernels, pairwise
-distances).
+The functions here are deliberately small and dependency-free — Matern
+covariances, the Epanechnikov edge kernel, and pairwise distances —
+shared between the LGCP and the inhomogeneous second-order estimators.
 """
 from __future__ import annotations
 
@@ -48,8 +47,7 @@ def matern_covariance(
     nu
         Smoothness.  Only the half-integer values ``0.5`` (exponential),
         ``1.5``, and ``2.5`` are implemented in closed form — these are
-        the practically-used Matern orders and the ones the curriculum
-        worked example (Matern-5/2) relies on.
+        the practically-used Matern orders for LGCP priors.
     jitter
         Added to the diagonal for numerical positive-definiteness.
 
@@ -60,9 +58,9 @@ def matern_covariance(
 
     Notes
     -----
-    Matern-5/2 is the default because it is the GP prior in the Ch. 5
-    Laplace LGCP worked example.  *Confidence: high — standard Matern
-    algebra (Rasmussen & Williams 2006, §4.2).*
+    Matern-5/2 is the default — a smooth-but-not-too-smooth GP prior
+    that is the standard choice for LGCP rate maps.  *Confidence:
+    high — standard Matern algebra (Rasmussen & Williams 2006, §4.2).*
     """
     coords = np.atleast_2d(np.asarray(coords, dtype=float))
     d = cdist(coords, coords)
@@ -124,8 +122,9 @@ def bin_counts(points: np.ndarray, edges) -> np.ndarray:
     """Exact integer cell counts on the grid defined by ``edges``.
 
     Row-major (meshgrid ``indexing='xy'``) flattening to match
-    :func:`make_grid`.  This is the *exact* operation of Prop. 5.A.1 — a
-    cell count is integer and loses nothing about the intensity integral.
+    :func:`make_grid`.  Cell counts of a Poisson point process on a
+    partition are themselves independent Poisson with mean equal to
+    the cell-integrated intensity (Møller-Waagepetersen 2003, Prop. 3.1).
     """
     points = np.atleast_2d(np.asarray(points, dtype=float))
     if points.shape[0] == 0:
