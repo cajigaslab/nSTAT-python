@@ -102,6 +102,20 @@ augmenting the IRLS Hessian with `rho * basis.gram()`.
 | `dpp_bridge.sample_dpp(L, rng=None, *, backend="auto")` | `DPPy` → NumPy fallback | `[dpp]` |
 | `lgcp_fit(..., backend="gpflow")` | `gpflow` | `[spatial-gp]` |
 
+### Spatiotemporal wave analysis (pure NumPy/SciPy)
+
+Bartlett (frequency × wave-vector) spectrum of a Hawkes triggering
+matrix and a top-N wave-peak detector — Python-only, no `[hawkes]`
+needed (despite living alongside `fit_hawkes_exp`).  Companion to
+Daley & Vere-Jones (2003) §8.4 / Bacry-Mastromatteo-Muzy (2015).
+
+| Symbol | Notes |
+|---|---|
+| `bartlett_spectrum(triggering_matrix, electrode_positions, freq_grid, wave_vector_grid, *, decay=1.0, return_complex=False)` | `(Nf, Nk)` real power by default; `return_complex=True` returns the complex spectrum.  Warns when the adjacency's spectral radius is `>= 1` (Hawkes stationarity violated). |
+| `reconstruct_kernel(adjacency, decays, tau_grid)` | `(C, C, Nt)` exponential-family kernel `A[c1, c2] * exp(-decays * tau)` for `tau >= 0`.  Non-exponential families are out of scope. |
+| `detect_wave_peaks(spectrum, freq_grid, wave_vector_grid, *, n_peaks=3, min_separation_bins=1)` → `WaveAnalysisResult` | Greedy descending-power sort + Chebyshev non-max suppression; masks DC `|k|=0` rows; returns `(freq, kx, ky, power, speed, direction)`. |
+| `WaveAnalysisResult` | Frozen dataclass; `speed = 2*pi*freq / |k|` in `position-unit / s`, `direction = atan2(ky, kx)` in radians. |
+
 ## Gotchas
 
 - **Plug-in bias (read this).** The reweighted `g`/`K`/`global_envelope`
@@ -179,6 +193,27 @@ res = lgcp_fit_glm(pts, ((0, 1), (0, 1)), basis, prior, grid=G)
 mean, lo, hi = res.rate_map(level=0.90)
 ```
 
+Bartlett wave-vector spectrum of a Hawkes triggering matrix:
+
+```python
+import numpy as np
+from nstat.extras.spatial import bartlett_spectrum, detect_wave_peaks
+
+# 4 electrodes on a unit grid; toy positive-excitation adjacency.
+pos = np.array([[0, 0], [1, 0], [0, 1], [1, 1]], dtype=float)
+adj = 0.05 * np.ones((4, 4))
+f = np.linspace(0.5, 5.0, 16)
+kx = np.linspace(-2.0, 2.0, 9)
+ky = np.linspace(-2.0, 2.0, 9)
+KX, KY = np.meshgrid(kx, ky, indexing="ij")
+k = np.stack([KX.ravel(), KY.ravel()], axis=1)
+
+S = bartlett_spectrum(adj, pos, f, k, decay=1.0)              # (Nf, Nk)
+peaks = detect_wave_peaks(S, f, k, n_peaks=3)
+print("speeds (pos-unit / s):", peaks.speed)
+print("directions (rad):", peaks.direction)
+```
+
 Discrete-time-rescaling KS:
 
 ```python
@@ -204,6 +239,7 @@ print("uncorrected rejects:", not res.inside_uncorrected,
 | Discrete-time-rescaling correction + marked / multivariate KS | shipped (NumPy) |
 | DPP eigen-sampler (`L`-ensemble) | shipped (NumPy fallback) + DPPy bridge |
 | Multivariate Hawkes | `tick` bridge (`[hawkes]`) |
+| Bartlett spectrum + wave-peak detection of a fitted Hawkes adjacency | shipped (NumPy) |
 | Heavier variational GP for the LGCP | optional `gpflow` path (`[spatial-gp]`) |
 | Auto-Poisson / SPDE-GMRF estimators | not in scope |
 
@@ -245,3 +281,9 @@ print("uncorrected rejects:", not res.inside_uncorrected,
   Learning.* FnT in ML 5(2-3):123.
 - Bacry E, Bompaire M, Gaïffas S, Poulsen S (2018). *tick: a Python library
   for statistical learning.* JMLR 18(214):1.
+- Bacry E, Mastromatteo I, Muzy J-F (2015). *Hawkes processes in finance.*
+  Market Microstructure and Liquidity 1(1):1550005.
+- Daley DJ, Vere-Jones D (2003). *An Introduction to the Theory of Point
+  Processes*, Vol. I, §8.4 — Bartlett spectrum.
+- Hansen NR, Reynaud-Bouret P, Rivoirard V (2015). *Lasso and probabilistic
+  inequalities for multivariate point processes.* Bernoulli 21(1):83.
