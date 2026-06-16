@@ -1,8 +1,8 @@
 r"""Inhomogeneous second-order spatial goodness-of-fit (pure NumPy/SciPy).
 
-This module is the Python-only companion to the curriculum's Chapter 5
-(*Spatial Point Processes*) goodness-of-fit suite.  It provides the
-intensity-reweighted second-order summary statistics that test what a
+A Python-only inhomogeneous second-order goodness-of-fit suite for
+spatial point processes.  It provides the intensity-reweighted
+second-order summary statistics that test what a
 fitted intensity :math:`\hat\lambda(\mathbf{x})` leaves over — the
 diagnostics a homogeneous :math:`K`-function cannot give for a
 non-stationary neural field:

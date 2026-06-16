@@ -506,6 +506,19 @@ def population_time_rescale(
     -------
     PopulationTimeRescaleResult
 
+    See Also
+    --------
+    nstat.extras.spatial.marked_gof.multivariate_time_rescaling :
+        Per-channel discrete-time-rescaling (Haslinger-Pipa-Brown 2010)
+        for the finite-mark / multi-channel case at finite bin width.
+        Per-channel passing is necessary but not sufficient; the
+        present function provides the population coupling diagnostic
+        that closes that gap.
+    nstat.extras.spatial.marked_gof.multivariate_gof_with_coupling :
+        Wrapper that runs both this function and
+        :func:`~nstat.extras.spatial.marked_gof.multivariate_time_rescaling`
+        on the same data and returns both results.
+
     References
     ----------
     Tao L, Weber KM, Arai K, Eden UT (2018).  "A common goodness-of-fit

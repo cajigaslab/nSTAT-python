@@ -1,14 +1,13 @@
 r"""Log-Gaussian Cox process rate maps by the Laplace approximation.
 
-Pure NumPy/SciPy.  This is the Python-only companion to the curriculum's
-Chapter 5 worked example (*Spatial Point Processes*): it turns a spatial
-point pattern into a *posterior* rate map with calibrated credible bands
-— the uncertainty a bare kernel-density rate map cannot provide.
+Pure NumPy/SciPy.  Turns a spatial point pattern into a *posterior*
+rate map with calibrated credible bands — the uncertainty a bare
+kernel-density rate map cannot provide.
 
-The model (Chapter 5, Eq. 5.4):
+The model:
 
-1. Bin the events onto a grid; cell counts :math:`y_m` are exact integers
-   (Prop. 5.A.1).
+1. Bin the events onto a grid; cell counts :math:`y_m` are exact
+   integers (Møller, Syversveen & Waagepetersen 1998).
 2. Place a Gaussian-process prior on the log-intensity field
    :math:`f = \log\Lambda`, :math:`f \sim \mathcal N(m_0, K)` with a
    Matern-5/2 covariance.
@@ -36,8 +35,7 @@ payoff): for a credible level with two-sided z-score :math:`z`,
 
 The band is **wider in data-sparse cells**: where there are no events,
 :math:`\hat W \to 0`, so :math:`v_m \to K_{mm}` (the GP prior variance) —
-this is the property the curriculum caption turns on, and the one the
-companion test asserts.
+this is the property the companion test asserts.
 
 An optional heavier GP path may bridge ``gpflow`` (install
 ``pip install nstat-toolbox[spatial-gp]``); the **default is
@@ -171,8 +169,9 @@ def lgcp_fit(
         Number of cells per dimension (``G``).  The analysis grid is
         ``G**d`` cells.
     kernel
-        GP covariance.  ``"matern52"`` (default, the curriculum choice),
-        ``"matern32"``, or ``"exponential"`` (Matern-1/2).
+        GP covariance.  ``"matern52"`` (default, the standard
+        smooth-but-not-too-smooth LGCP prior), ``"matern32"``, or
+        ``"exponential"`` (Matern-1/2).
     length_scale
         GP range parameter :math:`\ell`.
     variance

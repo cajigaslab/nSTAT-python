@@ -1,14 +1,13 @@
 # `nstat.extras.spatial` — Spatial & spatiotemporal point processes
 
-The Python-only companion to the bci-curriculum's two point-process
-chapters — *Spatial Point Processes* (Ch. 5) and *Spatiotemporal Point
-Processes* (Ch. 6).  It turns a spatial point pattern into a **posterior
-rate map with credible bands** (log-Gaussian Cox process by the Laplace
-approximation), provides the **inhomogeneous second-order
-goodness-of-fit** suite a homogeneous `K`-function cannot give for a
-non-stationary neural field, and implements the **discrete-time-rescaling
-KS correction** that fixes a real bug in the naive time-rescaling test at
-finite bin width.
+A Python-only spatial / spatiotemporal point-process module.  It turns
+a spatial point pattern into a **posterior rate map with credible
+bands** (log-Gaussian Cox process by the Laplace approximation),
+provides the **inhomogeneous second-order goodness-of-fit** suite a
+homogeneous `K`-function cannot give for a non-stationary neural
+field, and implements the **discrete-time-rescaling KS correction**
+that fixes a real bug in the naive time-rescaling test at finite bin
+width.
 
 It has **no MATLAB counterpart** and therefore **no `parity/manifest.yml`
 entry** — it lives in the opt-in `extras/` namespace precisely so the core
@@ -62,6 +61,7 @@ broader DPPy sampler catalogue.
 | `uncorrected_rescaled(spike_bins, p_k)` | naive `1−exp(−Σp_k)` variates — **false-rejects** at finite bin width |
 | `corrected_rescaled(spike_bins, p_k, rng=None)` | `u_j=[∏(1−p_k)]·(1−r_j·p_{k_j})` — exactly Unif(0,1) (Haslinger-Pipa-Brown 2010) |
 | `multivariate_time_rescaling(spike_bins_per_channel, p_k_per_channel, ...)` | per-channel rescaling for a finite (channel) mark space (Gerhard-Haslinger-Pipa 2011) |
+| `multivariate_gof_with_coupling(spike_bins_per_channel, p_k_per_channel, *, n_tau_bins=4, ...)` | runs the per-channel test *and* the population coupling test ([`nstat.population_time_rescale`](../api.html#nstat.population_time_rescale), Tao et al. 2018) on the same data → `CoupledMarkedGOFResult` (`per_channel`, `population`). Per-channel passing is necessary but not sufficient; this wrapper closes that gap |
 
 ### Optional bridges (lazy import; raise an install hint if the dep is absent)
 
@@ -122,7 +122,7 @@ env = global_envelope(pts, lam_at, r, n_sim=199, domain=((0, 1), (0, 1)))
 print("g(r) ~ 1:", round(float(np.nanmean(g)), 2), "| inside envelope:", env.inside)
 ```
 
-Discrete-time-rescaling KS (Ch. 6):
+Discrete-time-rescaling KS:
 
 ```python
 import numpy as np
@@ -147,7 +147,7 @@ print("uncorrected rejects:", not res.inside_uncorrected,
 | DPP eigen-sampler (`L`-ensemble) | shipped (NumPy fallback) + DPPy bridge |
 | Multivariate Hawkes | `tick` bridge (`[hawkes]`) |
 | Heavier variational GP for the LGCP | optional `gpflow` path (`[spatial-gp]`) |
-| Auto-Poisson / SPDE-GMRF estimators | not in scope (theory-only in Ch. 5) |
+| Auto-Poisson / SPDE-GMRF estimators | not in scope |
 
 ## References
 
