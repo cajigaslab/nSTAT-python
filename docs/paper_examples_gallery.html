@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>nSTAT Paper Examples — Output Gallery</title>
+<style>:root{--bg:#0f1419;--card:#1a1f29;--ink:#e6e6e6;--ink-2:#9aa4b1;--accent:#7ee787;--accent-2:#58a6ff;--border:#30363d;}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}.wrap{max-width:1100px;margin:0 auto;padding:2rem 1.25rem 3rem;}header{border-bottom:1px solid var(--border);padding-bottom:1.25rem;margin-bottom:1.5rem;}h1{margin:0 0 .35rem;font-size:1.6rem;color:var(--accent);}h2{margin:2rem 0 .75rem;font-size:1.2rem;color:var(--accent-2);border-top:1px solid var(--border);padding-top:1.25rem;}h3{margin:1.25rem 0 .35rem;font-size:1rem;color:var(--ink);}p{margin:.4rem 0;color:var(--ink);}.muted{color:var(--ink-2);font-size:.9rem;}code,pre{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85rem;background:#0b0e14;color:var(--accent);padding:.1rem .3rem;border-radius:3px;}pre{padding:.75rem 1rem;overflow-x:auto;border:1px solid var(--border);}nav.toc{background:var(--card);border:1px solid var(--border);padding:.75rem 1rem;border-radius:6px;margin-bottom:1.5rem;font-size:.9rem;}nav.toc a{color:var(--accent-2);text-decoration:none;margin-right:.9rem;}nav.toc a:hover{text-decoration:underline;}.example{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.5rem;margin:1.25rem 0;}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem;margin-top:.75rem;}.gallery figure{margin:0;background:#0b0e14;border:1px solid var(--border);border-radius:4px;padding:.5rem;}.gallery img{width:100%;height:auto;display:block;border-radius:2px;}.gallery figcaption{font-size:.78rem;color:var(--ink-2);margin-top:.4rem;word-break:break-word;}a{color:var(--accent-2);}footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--ink-2);font-size:.85rem;}</style>
+</head><body><div class="wrap">
+<header>
+<h1>Paper Examples — Output Gallery</h1>
+<p class="muted">Every <code>examples/paper/*.py</code> script registered in <code>examples/paper/manifest.yml</code>, with the figure outputs each produces.  Auto-generated from the manifest — re-render with <code>python tools/paper_examples/build_gallery.py</code>.</p>
+</header>
+<nav class="toc"><strong>Examples:</strong> 
+<a href="#example01">Example 01</a> · <a href="#example02">Example 02</a> · <a href="#example03">Example 03</a> · <a href="#example04">Example 04</a> · <a href="#example05">Example 05</a> · <a href="#example06">Example 06</a> · <a href="#example07">Example 07</a></nav>
+<section class="example" id="example01">
+<h2>Example 01: mEPSC Poisson Models Under Constant and Washout Magnesium</h2>
+<p><strong>Question:</strong> Do mEPSCs follow constant vs piecewise Poisson firing under Mg2+ washout?</p>
+<p class="muted">Fits constant and piecewise Poisson GLM baselines to mEPSC spike trains.</p>
+<p><strong>Run:</strong> <code>python examples/paper/example01_mepsc_poisson.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example01_mepsc_poisson.py">Script</a> · <a href="figures/example01/">Figures directory</a></p>
+<div class="gallery">
+<figure><img src="figures/example01/fig01_constant_mg_summary.png" alt="fig01_constant_mg_summary.png" loading="lazy"><figcaption>fig01_constant_mg_summary.png</figcaption></figure>
+<figure><img src="figures/example01/fig02_washout_raster_overview.png" alt="fig02_washout_raster_overview.png" loading="lazy"><figcaption>fig02_washout_raster_overview.png</figcaption></figure>
+<figure><img src="figures/example01/fig03_piecewise_baseline_comparison.png" alt="fig03_piecewise_baseline_comparison.png" loading="lazy"><figcaption>fig03_piecewise_baseline_comparison.png</figcaption></figure>
+</div>
+</section>
+<section class="example" id="example02">
+<h2>Example 02: Whisker Stimulus GLM With Lag and History Selection</h2>
+<p><strong>Question:</strong> How do explicit whisker stimulus and spike history improve thalamic GLM fits?</p>
+<p class="muted">Fits explicit-stimulus point-process GLMs and compares baseline, stimulus, and history models.</p>
+<p><strong>Run:</strong> <code>python examples/paper/example02_whisker_stimulus_thalamus.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example02_whisker_stimulus_thalamus.py">Script</a> · <a href="figures/example02/">Figures directory</a></p>
+<div class="gallery">
+<figure><img src="figures/example02/fig01_data_overview.png" alt="fig01_data_overview.png" loading="lazy"><figcaption>fig01_data_overview.png</figcaption></figure>
+<figure><img src="figures/example02/fig02_lag_and_model_comparison.png" alt="fig02_lag_and_model_comparison.png" loading="lazy"><figcaption>fig02_lag_and_model_comparison.png</figcaption></figure>
+</div>
+</section>
+<section class="example" id="example03">
+<h2>Example 03: PSTH and SSGLM Dynamics Example</h2>
+<p><strong>Question:</strong> How do PSTH and SSGLM capture within-trial and across-trial dynamics?</p>
+<p class="muted">Bundles simulated PSTH and SSGLM examples from the canonical paper workflow.</p>
+<p><strong>Run:</strong> <code>python examples/paper/example03_psth_and_ssglm.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example03_psth_and_ssglm.py">Script</a> · <a href="figures/example03/">Figures directory</a></p>
+<div class="gallery">
+<figure><img src="figures/example03/fig01_simulated_and_real_rasters.png" alt="fig01_simulated_and_real_rasters.png" loading="lazy"><figcaption>fig01_simulated_and_real_rasters.png</figcaption></figure>
+<figure><img src="figures/example03/fig02_psth_comparison.png" alt="fig02_psth_comparison.png" loading="lazy"><figcaption>fig02_psth_comparison.png</figcaption></figure>
+<figure><img src="figures/example03/fig03_ssglm_simulation_summary.png" alt="fig03_ssglm_simulation_summary.png" loading="lazy"><figcaption>fig03_ssglm_simulation_summary.png</figcaption></figure>
+<figure><img src="figures/example03/fig04_ssglm_fit_diagnostics.png" alt="fig04_ssglm_fit_diagnostics.png" loading="lazy"><figcaption>fig04_ssglm_fit_diagnostics.png</figcaption></figure>
+<figure><img src="figures/example03/fig05_stimulus_effect_surfaces.png" alt="fig05_stimulus_effect_surfaces.png" loading="lazy"><figcaption>fig05_stimulus_effect_surfaces.png</figcaption></figure>
+<figure><img src="figures/example03/fig06_learning_trial_comparison.png" alt="fig06_learning_trial_comparison.png" loading="lazy"><figcaption>fig06_learning_trial_comparison.png</figcaption></figure>
+</div>
+</section>
+<section class="example" id="example04">
+<h2>Example 04: Place-Cell Receptive Fields (Gaussian vs Zernike)</h2>
+<p><strong>Question:</strong> Which receptive-field basis (Gaussian vs Zernike) better fits place cells?</p>
+<p class="muted">Loads place-cell datasets and compares receptive-field model families.</p>
+<p><strong>Run:</strong> <code>python examples/paper/example04_place_cells_continuous_stimulus.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example04_place_cells_continuous_stimulus.py">Script</a> · <a href="figures/example04/">Figures directory</a></p>
+<div class="gallery">
+<figure><img src="figures/example04/fig01_example_cells_path_overlay.png" alt="fig01_example_cells_path_overlay.png" loading="lazy"><figcaption>fig01_example_cells_path_overlay.png</figcaption></figure>
+<figure><img src="figures/example04/fig02_model_summary_statistics.png" alt="fig02_model_summary_statistics.png" loading="lazy"><figcaption>fig02_model_summary_statistics.png</figcaption></figure>
+<figure><img src="figures/example04/fig03_gaussian_place_fields_animal1.png" alt="fig03_gaussian_place_fields_animal1.png" loading="lazy"><figcaption>fig03_gaussian_place_fields_animal1.png</figcaption></figure>
+<figure><img src="figures/example04/fig04_zernike_place_fields_animal1.png" alt="fig04_zernike_place_fields_animal1.png" loading="lazy"><figcaption>fig04_zernike_place_fields_animal1.png</figcaption></figure>
+<figure><img src="figures/example04/fig05_gaussian_place_fields_animal2.png" alt="fig05_gaussian_place_fields_animal2.png" loading="lazy"><figcaption>fig05_gaussian_place_fields_animal2.png</figcaption></figure>
+<figure><img src="figures/example04/fig06_zernike_place_fields_animal2.png" alt="fig06_zernike_place_fields_animal2.png" loading="lazy"><figcaption>fig06_zernike_place_fields_animal2.png</figcaption></figure>
+<figure><img src="figures/example04/fig07_example_cell_mesh_comparison.png" alt="fig07_example_cell_mesh_comparison.png" loading="lazy"><figcaption>fig07_example_cell_mesh_comparison.png</figcaption></figure>
+</div>
+</section>
+<section class="example" id="example05">
+<h2>Example 05: Stimulus Decoding With PPAF and PPHF</h2>
+<p><strong>Question:</strong> How well do adaptive/hybrid point-process filters decode stimulus and reach state?</p>
+<p class="muted">Bundles univariate, reaching, and hybrid decoding examples from the paper workflow.</p>
+<p><strong>Run:</strong> <code>python examples/paper/example05_decoding_ppaf_pphf.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example05_decoding_ppaf_pphf.py">Script</a> · <a href="figures/example05/">Figures directory</a></p>
+<div class="gallery">
+<figure><img src="figures/example05/fig01_univariate_setup.png" alt="fig01_univariate_setup.png" loading="lazy"><figcaption>fig01_univariate_setup.png</figcaption></figure>
+<figure><img src="figures/example05/fig02_univariate_decoding.png" alt="fig02_univariate_decoding.png" loading="lazy"><figcaption>fig02_univariate_decoding.png</figcaption></figure>
+<figure><img src="figures/example05/fig03_reach_and_population_setup.png" alt="fig03_reach_and_population_setup.png" loading="lazy"><figcaption>fig03_reach_and_population_setup.png</figcaption></figure>
+<figure><img src="figures/example05/fig04_ppaf_goal_vs_free.png" alt="fig04_ppaf_goal_vs_free.png" loading="lazy"><figcaption>fig04_ppaf_goal_vs_free.png</figcaption></figure>
+<figure><img src="figures/example05/fig05_hybrid_setup.png" alt="fig05_hybrid_setup.png" loading="lazy"><figcaption>fig05_hybrid_setup.png</figcaption></figure>
+<figure><img src="figures/example05/fig06_hybrid_decoding_summary.png" alt="fig06_hybrid_decoding_summary.png" loading="lazy"><figcaption>fig06_hybrid_decoding_summary.png</figcaption></figure>
+</div>
+</section>
+<section class="example" id="example06">
+<h2>Example 06: 2-D Place-Field Recovery With a B-Spline GLM Basis and an LGCP Comparator</h2>
+<p><strong>Question:</strong> How does a tensor-product B-spline Poisson GLM recover a known 2-D place field, and how do its rate and second-order diagnostics compare to an LGCP?</p>
+<p class="muted">Simulates a 2-D inhomogeneous Poisson process from a known log-Gaussian rate, recovers the rate via bspline_basis_2d + fit_poisson_glm, fits a comparator via lgcp_fit_glm, and runs pair_correlation + global_envelope with isotropic edge correction.</p>
+<p><strong>Run:</strong> <code>python examples/paper/example06_place_fields_glm_basis.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example06_place_fields_glm_basis.py">Script</a> · <a href="figures/example06/">Figures directory</a></p>
+<div class="gallery">
+<figure><img src="figures/example06/fig01_true_vs_basis_recovered_rate.png" alt="fig01_true_vs_basis_recovered_rate.png" loading="lazy"><figcaption>fig01_true_vs_basis_recovered_rate.png</figcaption></figure>
+<figure><img src="figures/example06/fig02_lgcp_glm_credible_band.png" alt="fig02_lgcp_glm_credible_band.png" loading="lazy"><figcaption>fig02_lgcp_glm_credible_band.png</figcaption></figure>
+<figure><img src="figures/example06/fig03_pcf_with_global_envelope.png" alt="fig03_pcf_with_global_envelope.png" loading="lazy"><figcaption>fig03_pcf_with_global_envelope.png</figcaption></figure>
+</div>
+</section>
+<section class="example" id="example07">
+<h2>Example 07: Spatiotemporal Wave Analysis of a Synthetic Planar-Wave Hawkes Adjacency</h2>
+<p><strong>Question:</strong> Can the Bartlett spectrum and wave-peak detector recover the speed and direction of a known planar wave embedded in a multivariate Hawkes triggering matrix?</p>
+<p class="muted">Constructs a synthetic planar-wave Hawkes adjacency on a grid of electrodes, computes the bartlett_spectrum, runs detect_wave_peaks, and verifies the recovered wave speed and direction against the ground-truth construction.</p>
+<p><strong>Run:</strong> <code>python examples/paper/example07_spatiotemporal_hawkes_waves.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example07_spatiotemporal_hawkes_waves.py">Script</a> · <a href="figures/example07/">Figures directory</a></p>
+<div class="gallery">
+<figure><img src="figures/example07/fig01_adjacency_and_positions.png" alt="fig01_adjacency_and_positions.png" loading="lazy"><figcaption>fig01_adjacency_and_positions.png</figcaption></figure>
+<figure><img src="figures/example07/fig02_bartlett_spectrum.png" alt="fig02_bartlett_spectrum.png" loading="lazy"><figcaption>fig02_bartlett_spectrum.png</figcaption></figure>
+<figure><img src="figures/example07/fig03_detected_peaks_overlay.png" alt="fig03_detected_peaks_overlay.png" loading="lazy"><figcaption>fig03_detected_peaks_overlay.png</figcaption></figure>
+</div>
+</section>
+<footer>
+<p>Source: <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> · License: GPL-2.0 · Paper: <a href="https://pubmed.ncbi.nlm.nih.gov/22981419/">Cajigas, Malik &amp; Brown 2012, J Neurosci Methods</a></p>
+</footer>
+</div></body></html>

@@ -182,7 +182,8 @@
   <a href="#install">Install matrix</a>
   <a href="#bridges">Per-bridge cards</a>
   <a href="#planned">What's planned</a>
-  <a href="#independence">Independence rule</a>
+  <a href="#license">License</a>
+  <a href="paper_examples_gallery.html">Paper examples gallery</a>
 </nav>
 
 <section id="what">
@@ -367,11 +368,8 @@ hy = fit_hybrid_em(spike_counts, lfp, state_dim=2, n_iter=30)</code></pre>
 </div>
 </section>
 
-<section id="independence">
-<h2>Independence rule</h2>
-<p>
-  Every <code>extras</code> module is <strong>Python-side only</strong>. No bridge introduces runtime coupling to the MATLAB <a href="https://github.com/cajigaslab/nSTAT"><code>cajigaslab/nSTAT</code></a> repository. The cleanroom-boundary CI gate (<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/tests/test_cleanroom_boundary.py"><code>tests/test_cleanroom_boundary.py</code></a>) scans every <code>nstat/extras/**/*.py</code> for the forbidden <code>matlab.engine</code> pattern and fails the build on any match.
-</p>
+<section id="license">
+<h2>License</h2>
 <p>
   License: <strong>GPL-2.0</strong> (matches core nSTAT-python). Every extras dep listed above is MIT / BSD-2 / BSD-3 / Apache-2 / GPL-2 — all GPL-2 compatible. The license audit lives in <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/parity/integration_opportunities.md#independence-considerations"><code>integration_opportunities.md</code></a>.
 </p>
