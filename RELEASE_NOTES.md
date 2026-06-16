@@ -1,5 +1,102 @@
 # Release Notes
 
+## v0.5.5 — 2026-06-16
+
+Major expansion of `nstat.extras.spatial` — Python-only spatial /
+spatiotemporal point-process tooling, all opt-in.  No core MATLAB-parity
+contract changes.
+
+### New `nstat.extras.spatial` public API
+
+- **`bspline_basis_1d`, `bspline_basis_2d`, `BSplineBasis2D`** (de Boor 1978;
+  Eilers-Marx 1996) — tensor-product cardinal B-spline log-rate bases for
+  2-D rectangular domains.  The design matrix is a valid `x` argument to
+  `nstat.glm.fit_poisson_glm`; `BSplineBasis2D.gram()` exposes the P-spline
+  second-difference penalty and `.coefficient_coords()` the Greville
+  abscissae
+  (PR [#184](https://github.com/cajigaslab/nSTAT-python/pull/184)).
+- **Named edge corrections** on `pair_correlation` / `k_inhom` /
+  `l_function` via an `edge_correction` kwarg.  Default
+  `"epanechnikov"` is bit-identical to v0.5.0.  New modes:
+  `"isotropic"` (Ripley 1976/1977), `"translation"` (Ohser 1983),
+  `"border"` (Baddeley-Rubak-Turner 2015).  Rectangular `domain` only
+  for the three named modes
+  (PR [#184](https://github.com/cajigaslab/nSTAT-python/pull/184)).
+- **`lgcp_fit_glm` + `MaternPrior`** (Diggle-Moraga-Rowlingson-Taylor
+  2013; Wood 2017) — basis-projected LGCP fit via penalized Poisson
+  IRLS on the B-spline coefficients.  Cubic cost scales with the basis
+  dimension `K` rather than the cell count, so it stays fast at grids
+  where the dense `lgcp_fit` becomes expensive
+  (PR [#189](https://github.com/cajigaslab/nSTAT-python/pull/189),
+  reopen of #185).
+- **`bartlett_spectrum`** (in `hawkes_bridge.py`; pure NumPy/SciPy — no
+  `tick` required) + **`reconstruct_kernel`, `detect_wave_peaks`,
+  `WaveAnalysisResult`** (in the new `wave_analysis.py`) — Bartlett
+  frequency × wave-vector spectrum (Daley & Vere-Jones 2003 §8.4;
+  Bacry-Mastromatteo-Muzy 2015) of a Hawkes triggering matrix, with
+  greedy descending-power peak detection and `(speed, direction)`
+  derivations
+  (PR [#186](https://github.com/cajigaslab/nSTAT-python/pull/186)).
+- **`multivariate_gof_with_coupling` + `CoupledMarkedGOFResult`** —
+  bundles the per-channel discrete-time test
+  (`multivariate_time_rescaling`) with `nstat.population_time_rescale`
+  on the same data so the coupling diagnostic Gerhard-Haslinger-Pipa
+  2011 calls out as the per-channel test's blind spot is one call away
+  (PR [#183](https://github.com/cajigaslab/nSTAT-python/pull/183)).
+
+### Examples + notebooks
+
+- `examples/paper/example06_place_fields_glm_basis.py` — 2-D
+  place-field recovery via B-spline GLM, LGCP-GLM comparator, and
+  edge-corrected pair-correlation envelope.
+- `examples/paper/example07_spatiotemporal_hawkes_waves.py` —
+  synthetic planar-wave Hawkes adjacency + Bartlett spectrum + peak
+  detection.  Documents the 6×6 grid undersampling honestly in the
+  docstring, script printout, and notebook recap.
+- `notebooks/PlaceFieldGLMBasis.ipynb` and
+  `notebooks/HawkesWaveAnalysis.ipynb` — interactive walkthroughs of
+  the new examples
+  (PR [#187](https://github.com/cajigaslab/nSTAT-python/pull/187)).
+
+### Documentation
+
+- **`docs/paper_examples_gallery.html`** — auto-regenerated
+  self-contained showcase of every paper example (currently 01–07)
+  with inline figure outputs, published at
+  `/paper_examples_gallery.html` on the docs site
+  (PR [#190](https://github.com/cajigaslab/nSTAT-python/pull/190),
+  reopen of #188).
+- `docs/ClassDefinitions.md` gains a "Spatial / spatiotemporal point
+  processes" section with entries for the three new dataclasses
+  (`BSplineBasis2D`, `MaternPrior`, `WaveAnalysisResult`).
+- `docs/extras/spatial_point_processes.md` extended with the
+  B-spline-basis subsection, edge-correction notes, Bartlett +
+  wave-analysis recipes, and an "Examples and notebooks" section
+  pointing to the new scripts and notebooks.
+- `docs/extras_summary.html` simplified — the Independence-rule
+  paragraph was redundant with the cleanroom-boundary CI gate
+  (enforced by `tests/test_release_check.py`).  Section renamed to
+  "License"; TOC gains a link to the new paper-examples gallery.
+
+### Repository-wide curriculum-reference cleanup
+
+A standing constraint: lab-internal curriculum references must not
+appear in the published repo.  PR #183 swept the spatial module
+(`marked_gof.py`, `lgcp.py`, `_kernels.py`, `hawkes_bridge.py`,
+`dpp_bridge.py`, `spatial_gof.py`, the spatial `__init__.py`,
+`tests/extras/test_spatial_marked_gof.py`, and
+`docs/extras/spatial_point_processes.md`) — citing the underlying
+published works directly (Møller-Waagepetersen 2003, Baddeley-Rubak-
+Turner 2015, Haslinger-Pipa-Brown 2010, Tao et al. 2018) instead.
+
+### No breaking changes
+
+Every existing public symbol in `nstat.*` and `nstat.extras.*` behaves
+identically to v0.5.0.  The new `edge_correction` kwarg's default
+preserves the pre-keyword output of `pair_correlation` / `k_inhom` /
+`l_function` bit-identically (asserted by an `np.array_equal` pin
+test).
+
 ## v0.5.0 — 2026-06-12
 
 Internal consistency improvements and audit fixes.
