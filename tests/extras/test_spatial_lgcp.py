@@ -246,3 +246,55 @@ def test_lgcp_fit_glm_completes_on_64x64():
     assert res.converged
     assert res.f_mode.shape == (G * G,)
     assert dt < 30.0, f"lgcp_fit_glm on 64x64 took {dt:.2f}s > 30s"
+
+
+def test_coefficient_coords_returns_greville_in_ij_order():
+    """Direct unit test for BSplineBasis2D.coefficient_coords().
+
+    Closes the explicit acceptance criterion: coefficient_coords() must
+    return Greville abscissae (de Boor 1978) in ij flattening, shape (K, 2).
+
+    For ``n_knots=4, degree=3, clamped=True`` on the unit interval the
+    four Greville abscissae are exactly ``[0, 1/3, 2/3, 1]``, so the
+    tensor product is a known 16x2 array — testable to machine precision.
+    """
+    grid_x = np.linspace(0.0, 1.0, 6)
+    grid_y = np.linspace(0.0, 1.0, 6)
+    basis = BSplineBasis2D.from_grid(grid_x, grid_y, n_knots=4, degree=3, clamped=True)
+    coords = basis.coefficient_coords()
+    # Shape: K_x * K_y rows, 2 cols.
+    assert coords.shape == (16, 2)
+    # ij flattening: x outer, y inner.  Column-0 stride: every 4 rows the
+    # x-anchor advances by the next Greville step; column-1 cycles 0..3.
+    expected_axis = np.array([0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0])
+    XX, YY = np.meshgrid(expected_axis, expected_axis, indexing="ij")
+    expected = np.column_stack([XX.ravel(), YY.ravel()])
+    assert np.allclose(coords, expected, atol=1e-12)
+    # Sanity: alignment with the design-matrix column order — column
+    # a*ny + b sits at (greville_x[a], greville_y[b]).
+    ny = 4
+    a, b = 2, 1
+    assert np.isclose(coords[a * ny + b, 0], expected_axis[a])
+    assert np.isclose(coords[a * ny + b, 1], expected_axis[b])
+
+
+def test_matern_prior_cache_idempotent():
+    """The (shape, tobytes) cache is keyed correctly: a repeat call on
+    an *equal* coords array returns the same K matrix object.
+
+    Float ndarrays aren't hashable, so MaternPrior must key on bytes.
+    Idempotency on a fresh-but-equal array is the most direct probe.
+    """
+    prior = MaternPrior(nu=1.5, length_scale=0.4, marginal_var=1.0)
+    rng = np.random.default_rng(15)
+    coords = rng.uniform(0, 1, size=(12, 2))
+    K1 = prior.K(coords)
+    # Make a byte-identical copy; the cache should hit on tobytes equality.
+    coords2 = coords.copy()
+    K2 = prior.K(coords2)
+    # Same object identity means the cache returned the stored entry.
+    assert K1 is K2
+    # And a different coords array misses the cache and produces a new K.
+    coords_other = rng.uniform(0, 1, size=(12, 2))
+    K3 = prior.K(coords_other)
+    assert K3 is not K1
