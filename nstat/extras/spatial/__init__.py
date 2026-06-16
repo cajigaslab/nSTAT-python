@@ -1,8 +1,12 @@
 r"""Spatial & spatiotemporal point processes — Python-only ``nstat.extras`` module.
 
-This subpackage has **no MATLAB counterpart** and therefore no
-``parity/manifest.yml`` entry — it lives in the opt-in ``extras/``
-namespace so the core ``nstat`` MATLAB-parity contract is preserved.
+A Python-only companion covering spatial and spatiotemporal
+point-process methods (Møller & Waagepetersen 2003; Diggle 2013;
+Baddeley, Rubak & Turner 2015; Haslinger-Pipa-Brown 2010; Tao et
+al. 2018).  This subpackage has **no MATLAB counterpart** and
+therefore no ``parity/manifest.yml`` entry — it lives in the opt-in
+``extras/`` namespace precisely so the core ``nstat`` MATLAB-parity
+contract is preserved.
 
 Pure-NumPy/SciPy core (no optional dependency required):
 
@@ -62,6 +66,10 @@ Install
     pip install nstat-toolbox[spatial-gp]   # optional heavier GP path (gpflow)
     pip install nstat-toolbox[hawkes]       # tick (multivariate Hawkes)
     pip install nstat-toolbox[dpp]          # DPPy (DPP sampling)
+
+The convenience symbols below re-export the pure-core entry points so
+worked examples can ``from nstat.extras.spatial import lgcp_fit,
+pair_correlation, global_envelope, marked_time_rescaling``.
 """
 from __future__ import annotations
 
@@ -79,9 +87,11 @@ from nstat.extras.spatial.lgcp import (
     lgcp_fit_glm,
 )
 from nstat.extras.spatial.marked_gof import (
+    CoupledMarkedGOFResult,
     MarkedGOFResult,
     corrected_rescaled,
     marked_time_rescaling,
+    multivariate_gof_with_coupling,
     multivariate_time_rescaling,
     uncorrected_rescaled,
 )
@@ -134,9 +144,11 @@ __all__ = [
     # marked_gof
     "marked_time_rescaling",
     "multivariate_time_rescaling",
+    "multivariate_gof_with_coupling",
     "uncorrected_rescaled",
     "corrected_rescaled",
     "MarkedGOFResult",
+    "CoupledMarkedGOFResult",
     # hawkes_bridge (pure-NumPy/SciPy Bartlett diagnostic; no [hawkes] needed)
     "bartlett_spectrum",
     # wave_analysis (pure NumPy/SciPy)

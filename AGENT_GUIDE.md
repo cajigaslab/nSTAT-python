@@ -464,7 +464,7 @@ Python projects" table in `README.md` for install commands.
   The `pair_correlation` / `k_inhom` / `l_function` estimators take an
   `edge_correction` keyword (default `"epanechnikov"`; also `"isotropic"`
   for Ripley 1976/1977, `"translation"` for Ohser 1983, `"border"` for
-  Baddeley-Rubak-Turner 2015).  The same module exposes pure-NumPy
+  Baddeley-Rubak-Turner 2015).  The same module also exposes pure-NumPy
   spatiotemporal-wave diagnostics — `bartlett_spectrum` (the frequency
   × wave-vector spectrum of a Hawkes triggering matrix),
   `reconstruct_kernel` (the parametric exponential-kernel
@@ -473,6 +473,10 @@ Python projects" table in `README.md` for install commands.
   for each accepted peak.  No MATLAB counterpart, so no
   `parity/manifest.yml` entry.  See
   [`docs/extras/spatial_point_processes.md`](docs/extras/spatial_point_processes.md).
+  The per-channel discrete-time test `multivariate_time_rescaling` and
+  the population coupling test `nstat.population_time_rescale` (Tao
+  et al. 2018) compose via `multivariate_gof_with_coupling`, which
+  runs both on the same data and returns a `CoupledMarkedGOFResult`.
   End-to-end demos: `examples/paper/example06_place_fields_glm_basis.py`,
   `examples/paper/example07_spatiotemporal_hawkes_waves.py`; companion
   notebooks `notebooks/PlaceFieldGLMBasis.ipynb`,
