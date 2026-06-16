@@ -477,6 +477,10 @@ Python projects" table in `README.md` for install commands.
   the population coupling test `nstat.population_time_rescale` (Tao
   et al. 2018) compose via `multivariate_gof_with_coupling`, which
   runs both on the same data and returns a `CoupledMarkedGOFResult`.
+  End-to-end demos: `examples/paper/example06_place_fields_glm_basis.py`,
+  `examples/paper/example07_spatiotemporal_hawkes_waves.py`; companion
+  notebooks `notebooks/PlaceFieldGLMBasis.ipynb`,
+  `notebooks/HawkesWaveAnalysis.ipynb`.
 - **Not** distributed.  All routines are single-process NumPy / SciPy.
 
 ---

@@ -272,7 +272,6 @@ def _greville(
     )
 
 
-
 @dataclass(frozen=True)
 class BSplineBasis2D:
     """Frozen container for a 2-D tensor-product B-spline basis.
@@ -360,7 +359,6 @@ class BSplineBasis2D:
         ay = _greville(self.grid_y, self.n_knots_y, self.degree, self.clamped)
         XX, YY = np.meshgrid(ax, ay, indexing="ij")
         return np.column_stack([XX.ravel(), YY.ravel()])
-
 
     def gram(self) -> np.ndarray:
         r"""P-spline 2-D second-difference penalty (Eilers & Marx 1996).

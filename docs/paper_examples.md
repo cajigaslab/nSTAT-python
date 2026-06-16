@@ -26,6 +26,8 @@ Outputs:
 | `example03` | ![Example 03](figures/example03/fig01_simulated_and_real_rasters.png) | [example03_psth_and_ssglm.py](../examples/paper/example03_psth_and_ssglm.py) | How do PSTH and SSGLM capture within-trial and across-trial dynamics? | `python examples/paper/example03_psth_and_ssglm.py` | [gallery page](./figures/example03/README.md) |
 | `example04` | ![Example 04](figures/example04/fig01_example_cells_path_overlay.png) | [example04_place_cells_continuous_stimulus.py](../examples/paper/example04_place_cells_continuous_stimulus.py) | Which receptive-field basis (Gaussian vs Zernike) better fits place cells? | `python examples/paper/example04_place_cells_continuous_stimulus.py` | [gallery page](./figures/example04/README.md) |
 | `example05` | ![Example 05](figures/example05/fig01_univariate_setup.png) | [example05_decoding_ppaf_pphf.py](../examples/paper/example05_decoding_ppaf_pphf.py) | How well do adaptive/hybrid point-process filters decode stimulus and reach state? | `python examples/paper/example05_decoding_ppaf_pphf.py` | [gallery page](./figures/example05/README.md) |
+| `example06` | ![Example 06](figures/example06/fig01_true_vs_basis_recovered_rate.png) | [example06_place_fields_glm_basis.py](../examples/paper/example06_place_fields_glm_basis.py) | How does a tensor-product B-spline Poisson GLM recover a known 2-D place field, and how do its rate and second-order diagnostics compare to an LGCP? | `python examples/paper/example06_place_fields_glm_basis.py` | [gallery page](./figures/example06/README.md) |
+| `example07` | ![Example 07](figures/example07/fig01_adjacency_and_positions.png) | [example07_spatiotemporal_hawkes_waves.py](../examples/paper/example07_spatiotemporal_hawkes_waves.py) | Can the Bartlett spectrum and wave-peak detector recover the speed and direction of a known planar wave embedded in a multivariate Hawkes triggering matrix? | `python examples/paper/example07_spatiotemporal_hawkes_waves.py` | [gallery page](./figures/example07/README.md) |
 
 ```{toctree}
 :hidden:
@@ -35,6 +37,8 @@ figures/example02/README
 figures/example03/README
 figures/example04/README
 figures/example05/README
+figures/example06/README
+figures/example07/README
 ```
 
 ## Gallery
@@ -112,3 +116,29 @@ Expected figure files:
 - `docs/figures/example05/fig04_ppaf_goal_vs_free.png`
 - `docs/figures/example05/fig05_hybrid_setup.png`
 - `docs/figures/example05/fig06_hybrid_decoding_summary.png`
+
+### Example 06: 2-D Place-Field Recovery With a B-Spline GLM Basis and an LGCP Comparator
+
+Question: How does a tensor-product B-spline Poisson GLM recover a known 2-D place field, and how do its rate and second-order diagnostics compare to an LGCP?
+
+Run command: `python examples/paper/example06_place_fields_glm_basis.py`
+
+![Example 06](figures/example06/fig01_true_vs_basis_recovered_rate.png)
+
+Expected figure files:
+- `docs/figures/example06/fig01_true_vs_basis_recovered_rate.png`
+- `docs/figures/example06/fig02_lgcp_glm_credible_band.png`
+- `docs/figures/example06/fig03_pcf_with_global_envelope.png`
+
+### Example 07: Spatiotemporal Wave Analysis of a Synthetic Planar-Wave Hawkes Adjacency
+
+Question: Can the Bartlett spectrum and wave-peak detector recover the speed and direction of a known planar wave embedded in a multivariate Hawkes triggering matrix?
+
+Run command: `python examples/paper/example07_spatiotemporal_hawkes_waves.py`
+
+![Example 07](figures/example07/fig01_adjacency_and_positions.png)
+
+Expected figure files:
+- `docs/figures/example07/fig01_adjacency_and_positions.png`
+- `docs/figures/example07/fig02_bartlett_spectrum.png`
+- `docs/figures/example07/fig03_detected_peaks_overlay.png`

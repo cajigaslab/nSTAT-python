@@ -19,6 +19,8 @@ EXPECTED_SCRIPT_NAMES = {
     "example03_psth_and_ssglm",
     "example04_place_cells_continuous_stimulus",
     "example05_decoding_ppaf_pphf",
+    "example06_place_fields_glm_basis",
+    "example07_spatiotemporal_hawkes_waves",
 }
 
 
@@ -27,7 +29,10 @@ def test_paper_example_manifest_covers_canonical_scripts() -> None:
     entries = payload["examples"]
     names = {row["name"] for row in entries}
     assert names == EXPECTED_SCRIPT_NAMES
-    assert [row["example_id"] for row in entries] == ["example01", "example02", "example03", "example04", "example05"]
+    assert [row["example_id"] for row in entries] == [
+        "example01", "example02", "example03", "example04", "example05",
+        "example06", "example07",
+    ]
 
 
 def test_paper_example_scripts_exist_and_support_help() -> None:

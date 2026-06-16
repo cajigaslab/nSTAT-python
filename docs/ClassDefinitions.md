@@ -341,5 +341,87 @@ the simulation.
 
 ---
 
+## Spatial / spatiotemporal point processes
+
+Python-only result types from `nstat.extras.spatial`.  No MATLAB
+counterpart, no `parity/manifest.yml` entry; see
+[`docs/extras/spatial_point_processes.md`](extras/spatial_point_processes.md)
+for the full API and recipes.
+
+### `BSplineBasis2D` (`nstat.extras.spatial.basis.BSplineBasis2D`)
+
+Frozen dataclass capturing a tensor-product B-spline log-rate basis on
+a rectangular grid.  Constructed via `BSplineBasis2D.from_grid(...)`;
+fed as the `basis` argument to `lgcp_fit_glm`.
+
+**Fields**:
+- `grid_x`, `grid_y` (`ndarray`) — evaluation grids in `x` and `y`.
+- `n_knots_x`, `n_knots_y` (`int`) — number of basis functions in each
+  axis (so the basis dimension is `K = n_knots_x * n_knots_y`).
+- `degree` (`int`) — B-spline degree (default `3`, cubic).
+- `clamped` (`bool`) — clamped (open uniform) knot vector when `True`
+  (partition-of-unity rows); periodic otherwise.
+
+**Methods**:
+- `from_grid(grid_x, grid_y, n_knots, degree=3, clamped=True)` →
+  `BSplineBasis2D` — class constructor.
+- `design_matrix()` → `ndarray` shape `(Nx*Ny, K)` — cached tensor-product
+  design matrix in `indexing="ij"` row layout.
+- `gram()` → `ndarray` shape `(K, K)` — P-spline second-difference
+  penalty `Dx.T Dx ⊗ Iy + Ix ⊗ Dy.T Dy`, symmetric PSD by construction
+  (Eilers-Marx 1996).
+- `coefficient_coords()` → `ndarray` shape `(K, 2)` — Greville-abscissa
+  anchor points of the coefficients in ij flattening; feed to
+  `MaternPrior` to evaluate the GP prior on the coefficient vector.
+
+References: de Boor C (1978), *A Practical Guide to Splines*, Springer;
+Eilers PHC, Marx BD (1996), *Flexible Smoothing with B-splines and
+Penalties*, Statistical Science 11(2):89-121.
+
+### `MaternPrior` (`nstat.extras.spatial.MaternPrior`)
+
+Frozen dataclass holding a Matern Gaussian-process prior evaluated at
+a fixed coordinate set (typically `BSplineBasis2D.coefficient_coords()`).
+Caches `K`, its Cholesky factor, `K_inv`, and `log_det` per `coords`
+array.
+
+**Fields**:
+- `nu` (`float`) — Matern smoothness parameter; supported `nu ∈ {0.5,
+  1.5, 2.5}`.
+- `length_scale` (`float`) — isotropic length scale.
+- `marginal_var` (`float`) — marginal variance of the GP (default `1.0`).
+- `jitter` (`float`) — diagonal Cholesky jitter (default `1e-6`); bumped
+  10x and retried once on a Cholesky failure.
+
+**Methods**:
+- `K(coords)` → `ndarray` — covariance matrix at `coords`.
+- `cholesky(coords)` → `ndarray` — lower Cholesky factor of `K(coords)`.
+- `K_inv(coords)` → `ndarray` — inverse covariance matrix.
+- `log_det(coords)` → `float` — `log |K(coords)|`.
+
+Reference: Rasmussen CE, Williams CKI (2006), *Gaussian Processes for
+Machine Learning*, Algorithm 3.1.
+
+### `WaveAnalysisResult` (`nstat.extras.spatial.WaveAnalysisResult`)
+
+Frozen dataclass returned by `detect_wave_peaks(...)`.  One entry per
+accepted spectral peak of a Hawkes triggering matrix's Bartlett
+(frequency × wave-vector) spectrum.
+
+**Fields**:
+- `freq` (`ndarray`) — temporal frequency of each peak (Hz).
+- `kx`, `ky` (`ndarray`) — wave-vector components at each peak.
+- `power` (`ndarray`) — spectral power at each peak.
+- `speed` (`ndarray`) — phase speed `2*pi*freq / |k|` in
+  `position-unit / s`.
+- `direction` (`ndarray`) — `atan2(ky, kx)` in radians.
+
+Reference: Bacry E, Mastromatteo I, Muzy J-F (2015), *Hawkes processes
+in finance*, Market Microstructure and Liquidity 1(1):1550005;
+Daley DJ, Vere-Jones D (2003), *An Introduction to the Theory of Point
+Processes*, Vol. I, §8.4.
+
+---
+
 See [Examples](Examples.md) for the full help-style index and
 [API Reference](api.rst) for the module layout.
