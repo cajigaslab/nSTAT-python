@@ -2,8 +2,9 @@ r"""Multivariate Hawkes process bridge via ``tick`` (optional).
 
 Lazy bridge to the Hawkes estimators of `tick
 <https://github.com/X-DataInitiative/tick>`_ (Bacry et al. 2018, JMLR 18;
-BSD-3) for the self/mutually-exciting temporal point processes of the
-curriculum's Chapter 6 (§6.B.1, §6.C — connectivity / triggering kernels).
+BSD-3) for self / mutually-exciting temporal point processes —
+functional-connectivity and triggering-kernel estimation for a
+multi-electrode ensemble.
 
 Install
 -------
@@ -12,12 +13,13 @@ Install
 
     pip install nstat-toolbox[hawkes]
 
-The fitted :math:`C \times C` triggering matrix is the **cell-averaged
-continuous triggering kernel** (Prop. 6.B.4): a propagating kernel
-:math:`\varphi(\tau, r) = \psi(\tau)\,\delta(r - v\tau)` gives off-diagonal
-entries peaked at :math:`\tau \approx \|r_{cc'}\|/\|v\|` — the §6.C.1
-Bartlett wave-vector peak.  This bridge is intentionally thin: it wraps
-``tick``'s exponential-kernel MLE and returns plain NumPy.
+The fitted :math:`C \times C` triggering matrix is the cell-averaged
+continuous triggering kernel: a propagating kernel
+:math:`\varphi(\tau, r) = \psi(\tau)\,\delta(r - v\tau)` gives
+off-diagonal entries peaked at :math:`\tau \approx \|r_{cc'}\|/\|v\|`,
+the signature of a traveling wave at speed :math:`v`.  This bridge is
+intentionally thin: it wraps ``tick``'s exponential-kernel MLE and
+returns plain NumPy.
 
 .. note::
 
