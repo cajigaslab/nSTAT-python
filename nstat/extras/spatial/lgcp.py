@@ -56,6 +56,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import scipy.linalg as sla
 from scipy.stats import norm
 
 from nstat.extras._lazy import require_optional
@@ -313,4 +314,391 @@ def _lgcp_fit_gpflow(
     )
 
 
-__all__ = ["LGCPResult", "lgcp_fit"]
+# ----------------------------------------------------------------------
+# Basis-projected LGCP (Tier B): Matern GP prior directly on B-spline
+# coefficients (de Boor 1978) at their Greville anchor points.
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class MaternPrior:
+    r"""Matern GP prior on the coefficient vector of a 2-D B-spline basis.
+
+    Used by :func:`lgcp_fit_glm` to place a smooth GP prior directly on the
+    :math:`K` B-spline coefficients (evaluated at their Greville abscissae,
+    de Boor 1978) rather than on the :math:`M = G^2` cell log-rates.  When
+    :math:`K \ll M` this is the difference between an :math:`O(K^3)` IRLS
+    step and an :math:`O(M^3)` one — for a 64x64 grid (:math:`M=4096`) with
+    a typical :math:`K=64`-coefficient basis the speedup is ~64x in the
+    dominant cubic cost.
+
+    Parameters
+    ----------
+    nu
+        Matern smoothness; one of ``{0.5, 1.5, 2.5}`` (closed-form Matern).
+    length_scale
+        Range parameter :math:`\ell > 0`.
+    marginal_var
+        Marginal variance :math:`\sigma^2 > 0` (default ``1.0``).
+    jitter
+        Diagonal stabilizer added to :math:`K` (default ``1e-6``); on a
+        :class:`numpy.linalg.LinAlgError` from Cholesky the jitter is
+        retried once at ``10 * jitter``.
+
+    Methods
+    -------
+    K(coords)
+        Dense ``(K, K)`` covariance.
+    cholesky(coords)
+        Lower Cholesky factor :math:`L` such that :math:`K = LL^\top`.
+    K_inv(coords)
+        Inverse :math:`K^{-1}` via :func:`scipy.linalg.cho_solve`.
+    log_det(coords)
+        :math:`\log\det K = 2\sum_i \log L_{ii}`.
+
+    Each derived quantity is computed once per ``coords`` and cached on
+    the instance, keyed by the array's shape and bytes.
+
+    References
+    ----------
+    - Rasmussen CE, Williams CKI (2006). *Gaussian Processes for Machine
+      Learning*, Ch. 4.
+    - Møller J, Syversveen AR, Waagepetersen RP (1998). *Log Gaussian Cox
+      processes.* Scand. J. Statistics 25(3):451-482.
+    """
+
+    nu: float
+    length_scale: float
+    marginal_var: float = 1.0
+    jitter: float = 1e-6
+
+    def __post_init__(self):
+        if self.nu not in (0.5, 1.5, 2.5):
+            raise ValueError(
+                f"MaternPrior.nu must be one of {{0.5, 1.5, 2.5}}; got {self.nu}"
+            )
+        if self.length_scale <= 0:
+            raise ValueError(
+                f"MaternPrior.length_scale must be positive; got {self.length_scale}"
+            )
+        if self.marginal_var <= 0:
+            raise ValueError(
+                f"MaternPrior.marginal_var must be positive; got {self.marginal_var}"
+            )
+        if self.jitter < 0:
+            raise ValueError(
+                f"MaternPrior.jitter must be non-negative; got {self.jitter}"
+            )
+        # frozen=True blocks normal attribute assignment; bypass to install
+        # the per-instance cache exactly once.
+        object.__setattr__(self, "_cache", {})
+
+    def _key(self, coords: np.ndarray) -> tuple:
+        arr = np.ascontiguousarray(np.asarray(coords, dtype=float))
+        return (arr.shape, arr.tobytes())
+
+    def _entry(self, coords: np.ndarray) -> dict:
+        cache = self._cache  # type: ignore[attr-defined]
+        key = self._key(coords)
+        if key in cache:
+            return cache[key]
+        # Build K, factor it, derive inverse and log-determinant once.
+        jitter = float(self.jitter)
+        for attempt in range(2):
+            K = matern_covariance(
+                coords,
+                length_scale=float(self.length_scale),
+                variance=float(self.marginal_var),
+                nu=float(self.nu),
+                jitter=jitter,
+            )
+            try:
+                L = np.linalg.cholesky(K)
+                break
+            except np.linalg.LinAlgError:
+                if attempt == 0:
+                    jitter = max(jitter, 1e-12) * 10.0
+                    continue
+                raise
+        # Inverse via cho_solve on the identity (uses the factor we already paid for).
+        K_inv = sla.cho_solve((L, True), np.eye(L.shape[0]))
+        log_det = 2.0 * float(np.sum(np.log(np.diag(L))))
+        entry = {"K": K, "L": L, "K_inv": K_inv, "log_det": log_det, "jitter": jitter}
+        cache[key] = entry
+        return entry
+
+    def K(self, coords: np.ndarray) -> np.ndarray:
+        """Dense Matern covariance ``(K, K)`` on ``coords``."""
+        return self._entry(coords)["K"]
+
+    def cholesky(self, coords: np.ndarray) -> np.ndarray:
+        """Lower Cholesky factor of :meth:`K`."""
+        return self._entry(coords)["L"]
+
+    def K_inv(self, coords: np.ndarray) -> np.ndarray:
+        """Inverse covariance (computed via the cached factor)."""
+        return self._entry(coords)["K_inv"]
+
+    def log_det(self, coords: np.ndarray) -> float:
+        """Log-determinant of :meth:`K`."""
+        return self._entry(coords)["log_det"]
+
+
+def _irls_penalized_glm(
+    B: np.ndarray,
+    y: np.ndarray,
+    offset: np.ndarray,
+    K_inv: np.ndarray,
+    m0: np.ndarray,
+    *,
+    max_iter: int = 50,
+    tol: float = 1e-6,
+) -> tuple[np.ndarray, np.ndarray, int, bool]:
+    """Penalized Poisson IRLS in coefficient space (private to ``lgcp.py``).
+
+    Solves
+
+    .. math::
+
+        \\hat\\beta = \\arg\\max_\\beta \\;
+        \\sum_m \\bigl(y_m \\eta_m - e^{\\eta_m}\\bigr)
+        - \\tfrac{1}{2}(\\beta - m_0)^\\top K^{-1} (\\beta - m_0),
+
+    with :math:`\\eta = B \\beta + \\text{offset}`, via Newton/IRLS:
+
+    - Gradient: :math:`g = B^\\top(y - \\lambda) - K^{-1}(\\beta - m_0)`.
+    - Hessian: :math:`H = B^\\top \\operatorname{diag}(\\lambda) B + K^{-1}`.
+    - Update: :math:`\\beta \\leftarrow \\beta + H^{-1} g`.
+
+    The Hessian is symmetric positive-definite (sum of a PSD weighted
+    Gram and PD :math:`K^{-1}`), so :func:`scipy.linalg.solve` with
+    ``assume_a="pos"`` is the right primitive.
+
+    Parameters
+    ----------
+    B
+        ``(M, K)`` basis design matrix (rows = grid cells, cols = coefs).
+    y
+        ``(M,)`` cell counts.
+    offset
+        ``(M,)`` log-offset added to the linear predictor (typically
+        ``log(cell_area)``).
+    K_inv
+        ``(K, K)`` precision matrix from the GP prior.
+    m0
+        ``(K,)`` prior mean.
+    max_iter, tol
+        Newton/IRLS stopping controls.
+
+    Returns
+    -------
+    beta : np.ndarray
+        ``(K,)`` coefficient mode.
+    Sigma_beta : np.ndarray
+        ``(K, K)`` posterior covariance :math:`H^{-1}` at the mode.
+    n_iter : int
+        Iterations actually run (1-based count when converged).
+    converged : bool
+        Whether the max-abs delta dropped below ``tol``.
+
+    References
+    ----------
+    - Rasmussen CE, Williams CKI (2006). *Gaussian Processes for Machine
+      Learning*, Algorithm 3.1 (Laplace approximation).
+    - Wood SN (2017). *Generalized Additive Models: An Introduction with R*,
+      Ch. 3, penalized IRLS for exponential-family GAMs.
+    """
+    K = K_inv.shape[0]
+    beta = np.array(m0, dtype=float, copy=True)
+    converged = False
+    n_iter = max_iter
+    for it in range(max_iter):
+        eta = B @ beta + offset
+        # Numerical guard: clip eta so exp doesn't overflow.  The IRLS
+        # iterate can spike eta on early steps before the prior pulls
+        # it back into a sensible range.
+        np.clip(eta, -50.0, 50.0, out=eta)
+        lam = np.exp(eta)
+        g = B.T @ (y - lam) - K_inv @ (beta - m0)
+        # H = B.T @ diag(lam) @ B + K_inv  (avoid building the dense diag).
+        BtW = B.T * lam  # shape (K, M)
+        H = BtW @ B + K_inv
+        delta = sla.solve(H, g, assume_a="pos")
+        beta = beta + delta
+        if np.max(np.abs(delta)) < tol:
+            converged = True
+            n_iter = it + 1
+            break
+    # Posterior covariance at the converged mode (one final factorization).
+    eta = B @ beta + offset
+    np.clip(eta, -50.0, 50.0, out=eta)
+    lam = np.exp(eta)
+    H = (B.T * lam) @ B + K_inv
+    c, low = sla.cho_factor(H, lower=True)
+    Sigma_beta = sla.cho_solve((c, low), np.eye(K))
+    return beta, Sigma_beta, n_iter, converged
+
+
+def lgcp_fit_glm(
+    points: np.ndarray,
+    domain,
+    basis,
+    prior: MaternPrior,
+    *,
+    grid: int = 32,
+    prior_mean: float | np.ndarray | None = None,
+    max_iter: int = 50,
+    tol: float = 1e-6,
+) -> LGCPResult:
+    r"""Basis-projected LGCP fit by penalized Poisson IRLS.
+
+    Bins events into a ``grid x grid`` cell grid, projects the
+    log-intensity onto a 2-D B-spline basis (:class:`~nstat.extras.spatial.basis.BSplineBasis2D`),
+    and finds the posterior mode of the basis coefficients under a
+    :class:`MaternPrior` evaluated at the Greville abscissae of the basis.
+    The resulting per-cell log-rate posterior :math:`(\hat f, v)` is
+    returned as the same :class:`LGCPResult` that :func:`lgcp_fit`
+    produces — so :meth:`LGCPResult.rate_map` is available unchanged.
+
+    The cubic cost of the dominant linear solve scales with the basis
+    dimension :math:`K`, not the grid size :math:`M`, so this is the
+    routine to reach for on grids where the dense-GP :func:`lgcp_fit`
+    would be slow (e.g. :math:`G \ge 50`).
+
+    Parameters
+    ----------
+    points
+        ``(n, 2)`` event coordinates.
+    domain
+        ``((xlo, xhi), (ylo, yhi))`` rectangular window.
+    basis
+        A :class:`~nstat.extras.spatial.basis.BSplineBasis2D` whose
+        ``grid_x`` / ``grid_y`` are the cell-centre axes of the analysis
+        grid (length ``grid`` each).  Use
+        :meth:`BSplineBasis2D.from_grid` to construct.
+    prior
+        :class:`MaternPrior` evaluated at the basis' Greville abscissae
+        (de Boor 1978) — the prior on the coefficient vector.
+    grid
+        Cells per axis (default 32).  Must equal ``len(basis.grid_x)`` /
+        ``len(basis.grid_y)``.
+    prior_mean
+        Constant prior mean :math:`m_0` for the log-rate (added on the
+        coefficient axis; scalar broadcasts).  ``None`` (default) sets
+        :math:`m_0 = \log(\max(n,1)/|D|) - \sigma^2/2` (matching
+        :func:`lgcp_fit`'s default and reflecting the log-normal mean
+        correction of Møller et al. 1998).
+    max_iter, tol
+        Newton/IRLS stopping controls.
+
+    Returns
+    -------
+    LGCPResult
+        With the same field semantics as :func:`lgcp_fit`: ``f_mode``
+        and ``f_var`` are per-cell log-rates (so :meth:`rate_map` works
+        without modification).
+
+    Notes
+    -----
+    *Confidence: high* — this is the standard penalized GLM/GAM Laplace
+    approximation (Wood 2017, Ch. 3; Diggle et al. 2013) with a Matern
+    prior on B-spline coefficients.  The basis-projection device is
+    Diggle, Moraga, Rowlingson & Taylor 2013, *Statistical Science*.
+
+    References
+    ----------
+    - Møller J, Syversveen AR, Waagepetersen RP (1998). *Log Gaussian Cox
+      processes.* Scand. J. Statistics 25(3):451-482.
+    - Rasmussen CE, Williams CKI (2006). *Gaussian Processes for Machine
+      Learning.*
+    - Diggle PJ, Moraga P, Rowlingson B, Taylor BM (2013). *Spatial and
+      spatio-temporal log-Gaussian Cox processes.* Statistical Science
+      28(4):542.
+    - Wood SN (2017). *Generalized Additive Models: An Introduction with R.*
+
+    See Also
+    --------
+    lgcp_fit : dense per-cell GP fit; the reference implementation
+        (cheaper at small ``G``, expensive at large ``G``).
+    """
+    pts = np.atleast_2d(np.asarray(points, dtype=float))
+    domain = tuple((float(lo), float(hi)) for lo, hi in domain)
+    if pts.shape[1] != 2 or len(domain) != 2:
+        raise ValueError("lgcp_fit_glm is 2-D only; points and domain must be 2-D")
+    G = int(grid)
+    if len(basis.grid_x) != G or len(basis.grid_y) != G:
+        raise ValueError(
+            f"basis grids must have length grid={G}; got "
+            f"({len(basis.grid_x)}, {len(basis.grid_y)})"
+        )
+
+    # Cell edges and centres in ij flattening (x outer, y inner) — matches
+    # the basis design-matrix column order.  Deliberately not via
+    # _kernels.make_grid, which is indexing='xy'.
+    (xlo, xhi), (ylo, yhi) = domain
+    edges_x = np.linspace(xlo, xhi, G + 1)
+    edges_y = np.linspace(ylo, yhi, G + 1)
+    cx = 0.5 * (edges_x[:-1] + edges_x[1:])
+    cy = 0.5 * (edges_y[:-1] + edges_y[1:])
+    XX, YY = np.meshgrid(cx, cy, indexing="ij")
+    cell_centres = np.column_stack([XX.ravel(), YY.ravel()])
+
+    # Bin events in ij flattening — histogram2d returns shape (Gx, Gy)
+    # already in ij order, so .ravel() is the right flattening (no swap).
+    if pts.shape[0] == 0:
+        y = np.zeros(G * G, dtype=float)
+    else:
+        H, _, _ = np.histogram2d(pts[:, 0], pts[:, 1], bins=[edges_x, edges_y])
+        y = H.ravel().astype(float)
+
+    cell_area = float((xhi - xlo) * (yhi - ylo) / (G * G))
+    area = float((xhi - xlo) * (yhi - ylo))
+
+    B = basis.design_matrix()
+    if B.shape[0] != G * G:
+        raise ValueError(
+            f"basis design matrix has {B.shape[0]} rows; expected G*G = {G * G}"
+        )
+    coef_coords = basis.coefficient_coords()
+    K_inv = prior.K_inv(coef_coords)
+    K_dim = B.shape[1]
+
+    if prior_mean is None:
+        m0_scalar = float(np.log(max(y.sum(), 1.0) / area) - 0.5 * float(prior.marginal_var))
+        m0 = np.full(K_dim, m0_scalar)
+    elif np.isscalar(prior_mean):
+        m0 = np.full(K_dim, float(prior_mean))
+    else:
+        m0 = np.asarray(prior_mean, dtype=float).reshape(-1)
+        if m0.shape != (K_dim,):
+            raise ValueError(
+                f"prior_mean must be scalar or shape ({K_dim},); got {m0.shape}"
+            )
+
+    offset = np.full(G * G, np.log(cell_area))
+    beta, Sigma_beta, n_iter, converged = _irls_penalized_glm(
+        B, y, offset, K_inv, m0, max_iter=max_iter, tol=tol,
+    )
+
+    # Per-cell posterior: f is log-rate per unit area (LGCPResult semantics
+    # — see lgcp_fit, where the log(cell_area) only enters the likelihood
+    # as an offset and is NOT stored in f_mode).  Without this, the stored
+    # f_mode is log-expected-count and rate_map() returns counts, not rates.
+    f_mode = B @ beta
+    # einsum is O(M * K^2); fine for the basis sizes this routine targets.
+    v = np.einsum("mi,ij,mj->m", B, Sigma_beta, B)
+    v = np.clip(v, 0.0, None)
+
+    return LGCPResult(
+        grid=cell_centres,
+        counts=y,
+        f_mode=f_mode,
+        f_var=v,
+        cell_area=cell_area,
+        edges=[edges_x, edges_y],
+        n_iter=n_iter,
+        converged=converged,
+    )
+
+
+__all__ = ["LGCPResult", "lgcp_fit", "lgcp_fit_glm", "MaternPrior"]

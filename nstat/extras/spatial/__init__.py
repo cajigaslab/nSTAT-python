@@ -64,7 +64,12 @@ from nstat.extras.spatial.basis import (
     bspline_basis_1d,
     bspline_basis_2d,
 )
-from nstat.extras.spatial.lgcp import LGCPResult, lgcp_fit
+from nstat.extras.spatial.lgcp import (
+    LGCPResult,
+    MaternPrior,
+    lgcp_fit,
+    lgcp_fit_glm,
+)
 from nstat.extras.spatial.marked_gof import (
     MarkedGOFResult,
     corrected_rescaled,
@@ -93,7 +98,9 @@ from nstat.extras.spatial.spatial_gof import (
 __all__ = [
     # lgcp
     "lgcp_fit",
+    "lgcp_fit_glm",
     "LGCPResult",
+    "MaternPrior",
     # spatial_gof
     "pair_correlation",
     "k_inhom",

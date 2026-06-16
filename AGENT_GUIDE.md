@@ -453,6 +453,14 @@ Python projects" table in `README.md` for install commands.
   Eilers-Marx 1996) produce a design matrix that drops straight into
   `nstat.glm.fit_poisson_glm` as the `x` argument, and the P-spline
   second-difference penalty is available via `BSplineBasis2D.gram()`.
+  The basis-projected `lgcp_fit_glm(points, domain, basis, prior)`
+  (Diggle-Moraga-Rowlingson-Taylor 2013; Wood 2017 *GAMs*) fits an LGCP
+  through penalized Poisson IRLS on the B-spline coefficients — pair it
+  with `MaternPrior(nu, length_scale, marginal_var)` (the GP prior
+  evaluated at the basis' Greville abscissae) and prefer it over the
+  dense per-cell `lgcp_fit` when the grid is large (`G >= 50`), since
+  the cubic cost scales with the basis dimension `K` rather than the
+  cell count `G*G`.
   The `pair_correlation` / `k_inhom` / `l_function` estimators take an
   `edge_correction` keyword (default `"epanechnikov"`; also `"isotropic"`
   for Ripley 1976/1977, `"translation"` for Ohser 1983, `"border"` for
