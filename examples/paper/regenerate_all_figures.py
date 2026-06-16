@@ -32,6 +32,8 @@ EXAMPLES = [
     ("example03_psth_and_ssglm", "example03", "run_example03"),
     ("example04_place_cells_continuous_stimulus", "example04", "run_example04"),
     ("example05_decoding_ppaf_pphf", "example05", "run_example05"),
+    ("example06_place_fields_glm_basis", "example06", "run_example06"),
+    ("example07_spatiotemporal_hawkes_waves", "example07", "run_example07"),
 ]
 
 
