@@ -229,6 +229,28 @@ print("uncorrected rejects:", not res.inside_uncorrected,
       "| corrected passes:", res.inside_corrected)
 ```
 
+## Examples and notebooks
+
+End-to-end demonstrations of the basis-projected LGCP path live in
+[`examples/paper/example06_place_fields_glm_basis.py`](../../examples/paper/example06_place_fields_glm_basis.py)
+with a companion walkthrough notebook
+[`notebooks/PlaceFieldGLMBasis.ipynb`](../../notebooks/PlaceFieldGLMBasis.ipynb).
+The example fits a synthetic place field with `BSplineBasis2D` /
+`MaternPrior` / `lgcp_fit_glm`, evaluates the inhomogeneous second-order
+diagnostics `pair_correlation` / `k_inhom` / `l_function` under each of
+the four `edge_correction` modes, and renders the posterior rate map
+with credible bands.
+
+The spatiotemporal wave path is demonstrated by
+[`examples/paper/example07_spatiotemporal_hawkes_waves.py`](../../examples/paper/example07_spatiotemporal_hawkes_waves.py)
+with the companion notebook
+[`notebooks/HawkesWaveAnalysis.ipynb`](../../notebooks/HawkesWaveAnalysis.ipynb).
+Both scripts build a small electrode-array Hawkes triggering matrix,
+compute its `bartlett_spectrum`, run `detect_wave_peaks` to surface a
+`WaveAnalysisResult` (speeds and directions), and use
+`reconstruct_kernel` to visualize the parametric exponential kernel
+underlying the fit.
+
 ## Scope
 
 | Feature | Status |

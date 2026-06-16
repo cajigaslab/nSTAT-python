@@ -473,6 +473,10 @@ Python projects" table in `README.md` for install commands.
   for each accepted peak.  No MATLAB counterpart, so no
   `parity/manifest.yml` entry.  See
   [`docs/extras/spatial_point_processes.md`](docs/extras/spatial_point_processes.md).
+  End-to-end demos: `examples/paper/example06_place_fields_glm_basis.py`,
+  `examples/paper/example07_spatiotemporal_hawkes_waves.py`; companion
+  notebooks `notebooks/PlaceFieldGLMBasis.ipynb`,
+  `notebooks/HawkesWaveAnalysis.ipynb`.
 - **Not** distributed.  All routines are single-process NumPy / SciPy.
 
 ---
