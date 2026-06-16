@@ -237,6 +237,41 @@ def _difference_penalty(n: int, order: int = 2) -> np.ndarray:
     return np.diff(np.eye(n), n=order, axis=0)
 
 
+def _greville(
+    grid: np.ndarray, n_knots: int, degree: int, clamped: bool
+) -> np.ndarray:
+    """Return Greville abscissae for a 1-D B-spline basis (de Boor 1978).
+
+    The :math:`i`-th Greville abscissa is the mean of the ``degree``
+    interior knots ``t[i+1], ..., t[i+degree]`` from the same knot vector
+    :func:`bspline_basis_1d` uses; it is the canonical anchor location of
+    the :math:`i`-th basis coefficient.
+
+    Parameters mirror :func:`bspline_basis_1d`; the knot vector is
+    reconstructed via :func:`_clamped_uniform_knots` / :func:`_nonclamped_uniform_knots`
+    so the abscissae stay consistent with the design matrix even if the
+    knot helpers ever change.
+    """
+    g = np.asarray(grid, dtype=float).ravel()
+    if g.size == 0:
+        a_eff, b_eff = 0.0, 1.0
+    else:
+        a, b = float(g.min()), float(g.max())
+        a_eff, b_eff = (a, b) if b > a else (a, a + 1.0)
+    if clamped:
+        t = _clamped_uniform_knots(a_eff, b_eff, n_knots, degree)
+    else:
+        t = _nonclamped_uniform_knots(a_eff, b_eff, n_knots, degree)
+    if degree == 0:
+        # Greville reduces to the midpoint of [t[i], t[i+1]] when degree=0;
+        # the formula t[i+1:i+1].mean() of an empty slice is NaN, so guard.
+        return 0.5 * (t[:-1] + t[1:])
+    return np.array(
+        [float(t[i + 1 : i + degree + 1].mean()) for i in range(n_knots)],
+        dtype=float,
+    )
+
+
 @dataclass(frozen=True)
 class BSplineBasis2D:
     """Frozen container for a 2-D tensor-product B-spline basis.
@@ -294,6 +329,36 @@ class BSplineBasis2D:
     def design_matrix(self) -> np.ndarray:
         """Return the dense ``(Nx*Ny, nx*ny)`` design matrix (ij layout)."""
         return self._design
+
+    def coefficient_coords(self) -> np.ndarray:
+        r"""Greville-abscissa anchor points for the basis coefficients.
+
+        Returns the tensor product of per-axis Greville abscissae (de Boor
+        1978) in **ij flattening** (x outer, y inner), matching the column
+        order of :meth:`design_matrix`: column ``a*ny + b`` has its anchor
+        at ``(greville_x[a], greville_y[b])``.
+
+        These coordinates are the canonical spatial locations of the
+        coefficients themselves — used by
+        :func:`nstat.extras.spatial.lgcp.lgcp_fit_glm` to evaluate a
+        Matern GP prior directly on the coefficient vector, sidestepping
+        the per-cell ``K`` matrix and producing an :math:`O(K^3)` rather
+        than :math:`O(M^3)` cost.
+
+        Returns
+        -------
+        np.ndarray
+            ``(n_knots_x * n_knots_y, 2)`` array of coefficient anchor
+            coordinates.
+
+        References
+        ----------
+        de Boor C (1978). *A Practical Guide to Splines.* Springer.
+        """
+        ax = _greville(self.grid_x, self.n_knots_x, self.degree, self.clamped)
+        ay = _greville(self.grid_y, self.n_knots_y, self.degree, self.clamped)
+        XX, YY = np.meshgrid(ax, ay, indexing="ij")
+        return np.column_stack([XX.ravel(), YY.ravel()])
 
     def gram(self) -> np.ndarray:
         r"""P-spline 2-D second-difference penalty (Eilers & Marx 1996).
