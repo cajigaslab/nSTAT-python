@@ -59,7 +59,16 @@ def test_readme_paper_example_rows_track_manifest() -> None:
 
 
 def test_paper_example_manifest_questions_match_matlab_gallery_wording() -> None:
+    # This check enforces MATLAB-parity wording for the canonical example01..05.
+    # Python-only extensions (example06/07 from the nstat.extras.spatial Tier D
+    # rollout) have no MATLAB counterpart and are excluded from the equality
+    # check — their wording is governed by the Python-only contract, not the
+    # MATLAB paper gallery.
     manifest = yaml.safe_load(PAPER_MANIFEST_PATH.read_text(encoding="utf-8")) or {}
     entries = manifest.get("examples", [])
-    questions = {str(row["name"]): str(row["question"]) for row in entries}
-    assert questions == EXPECTED_CANONICAL_QUESTIONS
+    matlab_entries = {
+        str(row["name"]): str(row["question"])
+        for row in entries
+        if row["name"] in EXPECTED_CANONICAL_QUESTIONS
+    }
+    assert matlab_entries == EXPECTED_CANONICAL_QUESTIONS

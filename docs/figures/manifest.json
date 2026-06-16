@@ -102,6 +102,42 @@
         "experiment5b",
         "experiment6"
       ]
+    },
+    {
+      "example_id": "example06",
+      "title": "2-D Place-Field Recovery With a B-Spline GLM Basis and an LGCP Comparator",
+      "source_script": "examples/paper/example06_place_fields_glm_basis.py",
+      "description": "Simulates a 2-D inhomogeneous Poisson process from a known log-Gaussian rate, recovers the rate via bspline_basis_2d + fit_poisson_glm, fits a comparator via lgcp_fit_glm, and runs pair_correlation + global_envelope with isotropic edge correction.",
+      "question": "How does a tensor-product B-spline Poisson GLM recover a known 2-D place field, and how do its rate and second-order diagnostics compare to an LGCP?",
+      "run_command": "python examples/paper/example06_place_fields_glm_basis.py",
+      "figure_dir": "docs/figures/example06",
+      "figure_files": [
+        "docs/figures/example06/fig01_true_vs_basis_recovered_rate.png",
+        "docs/figures/example06/fig02_lgcp_glm_credible_band.png",
+        "docs/figures/example06/fig03_pcf_with_global_envelope.png"
+      ],
+      "thumbnail_file": "docs/figures/example06/fig01_true_vs_basis_recovered_rate.png",
+      "sections": [
+        "experiment6"
+      ]
+    },
+    {
+      "example_id": "example07",
+      "title": "Spatiotemporal Wave Analysis of a Synthetic Planar-Wave Hawkes Adjacency",
+      "source_script": "examples/paper/example07_spatiotemporal_hawkes_waves.py",
+      "description": "Constructs a synthetic planar-wave Hawkes adjacency on a grid of electrodes, computes the bartlett_spectrum, runs detect_wave_peaks, and verifies the recovered wave speed and direction against the ground-truth construction.",
+      "question": "Can the Bartlett spectrum and wave-peak detector recover the speed and direction of a known planar wave embedded in a multivariate Hawkes triggering matrix?",
+      "run_command": "python examples/paper/example07_spatiotemporal_hawkes_waves.py",
+      "figure_dir": "docs/figures/example07",
+      "figure_files": [
+        "docs/figures/example07/fig01_adjacency_and_positions.png",
+        "docs/figures/example07/fig02_bartlett_spectrum.png",
+        "docs/figures/example07/fig03_detected_peaks_overlay.png"
+      ],
+      "thumbnail_file": "docs/figures/example07/fig01_adjacency_and_positions.png",
+      "sections": [
+        "experiment7"
+      ]
     }
   ]
 }
