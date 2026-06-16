@@ -234,6 +234,57 @@ def test_bartlett_fixture_invariance_on_reduced_grid():
 
 
 # --------------------------------------------------------------------------
+# A3b — Hermitian symmetry pin (verifier-added)
+#
+# Pins the math that justifies the substitution in A3 above: for a REAL
+# adjacency matrix, |S(f, k)|^2 == |S(f, -k)|^2.  This is the spatial-FT
+# Hermitian symmetry of a real signal — it formally rules out the
+# directional ridge that the architect's spec asked for, because power
+# at +k and -k are indistinguishable for any real-adjacency Hawkes
+# spectrum.  Any future change that breaks this (e.g. switching to a
+# truly complex adjacency, or introducing an even-vs-odd phase
+# convention bug) trips this test.
+# --------------------------------------------------------------------------
+
+
+def test_bartlett_spectrum_hermitian_symmetry_for_real_adjacency():
+    """For real A, |S(f, k)|^2 = |S(f, -k)|^2 exactly (rtol=1e-10).
+
+    Proof sketch: S(k) = G(f) * sum_{ij} A[i, j] * exp(-i k . (r_i - r_j)).
+    Then S(-k) = G(f) * sum_{ij} A[i, j] * exp(+i k . (r_i - r_j))
+              = (G(f) / conj(G(f))) * conj(conj(G(f)) *
+                  sum_{ij} A[i, j] * exp(-i k . (r_i - r_j)))
+              = (G/conj(G)) * conj(S(k)).
+    Since |G/conj(G)| = 1 for any complex G, |S(-k)| = |S(k)|.
+    """
+    rng = np.random.default_rng(0)
+    C = 5
+    adj = rng.random((C, C))                   # REAL, non-negative random
+    pos = rng.standard_normal((C, 2))
+    f = np.array([0.7, 1.5, 3.1])              # generic non-zero frequencies
+    # Several non-zero k's; antipodal pair construction.
+    k_plus = rng.standard_normal((6, 2))
+    # Guard: ensure none are accidentally tiny (would test |k|=0, not -k pairing).
+    assert np.all(np.linalg.norm(k_plus, axis=1) > 1e-6)
+    k_minus = -k_plus
+
+    S_plus = bartlett_spectrum(
+        adj, pos, f, k_plus, decay=1.0, return_complex=True
+    )
+    S_minus = bartlett_spectrum(
+        adj, pos, f, k_minus, decay=1.0, return_complex=True
+    )
+    np.testing.assert_allclose(
+        np.abs(S_plus), np.abs(S_minus), rtol=1e-10, atol=1e-14
+    )
+
+    # And the power output (return_complex=False) inherits the symmetry.
+    P_plus = bartlett_spectrum(adj, pos, f, k_plus, decay=1.0)
+    P_minus = bartlett_spectrum(adj, pos, f, k_minus, decay=1.0)
+    np.testing.assert_allclose(P_plus, P_minus, rtol=1e-10, atol=1e-14)
+
+
+# --------------------------------------------------------------------------
 # A4 — zero adjacency short-circuits to all zeros
 # --------------------------------------------------------------------------
 
