@@ -2,7 +2,7 @@
 
 Synthetic data only (np.random.default_rng); no patient data.
 
-Contract checks (mirroring the curriculum Ch. 6 demo):
+Contract checks:
 - At finite bin width with the TRUE model, the UNCORRECTED KS rejects more
   than nominal (statistic above the band) while the CORRECTED KS passes
   (inside the band) — Haslinger-Pipa-Brown 2010.
@@ -69,7 +69,7 @@ def test_uncorrected_rejects_corrected_passes_at_finite_bin_width():
     assert ks_corr < band
 
 
-def test_marked_time_rescaling_helper_matches_curriculum_call():
+def test_marked_time_rescaling_helper_with_conditional_mark_cdf():
     """marked_gof.marked_time_rescaling(sb, spike_m, p_k, mark_cdf, decoded=...)."""
     rng = np.random.default_rng(2)
     sb, sm, p_k, info = _simulate_marked_train(rng)

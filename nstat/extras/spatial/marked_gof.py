@@ -1,13 +1,13 @@
 r"""Marked / discrete-time-rescaling goodness-of-fit (pure NumPy/SciPy).
 
-This module is the Python-only companion to the curriculum's Chapter 6
-(*Spatiotemporal Point Processes*) goodness-of-fit pipeline.  Its centre
-of gravity is the **discrete-time-rescaling correction** of
-Haslinger, Pipa & Brown (2010), which fixes a real bug in the naive KS
-test at finite bin width.
+A Python-only companion to the discrete-time / marked
+goodness-of-fit framework.  Its centre of gravity is the
+**discrete-time-rescaling correction** of Haslinger, Pipa & Brown
+(2010), which fixes a real bug in the naive KS test at finite bin
+width.
 
-The problem (Thm 6.B.2)
------------------------
+The problem
+-----------
 Continuous time-rescaling says the rescaled inter-event times
 :math:`z_j = \Lambda(t_j) - \Lambda(t_{j-1})` are i.i.d. Exp(1), so a KS
 test against Exp(1) (equivalently Unif(0,1) after the CDF transform) is
@@ -30,16 +30,16 @@ is **exactly** Unif(0,1) under the true model.  A KS test on
 :math:`\{u_j\}` (averaged over several :math:`r_j` draws, or compared to a
 Monte-Carlo reference band) has the correct size.
 
-Mark spaces (Prop. 6.B.5)
--------------------------
+Mark spaces
+-----------
 Marked rescaling factors as (rescaled time) × (conditional mark).  A
 **finite** mark space (counting reference measure → mark = channel) is
-the multivariate-rescaling case; a **continuous** mark space (Lebesgue
+the multivariate-rescaling case (Gerhard-Haslinger-Pipa 2011); a
+**continuous** mark space (Lebesgue
 reference measure → e.g. a waveform amplitude) is rescaled through the
 conditional mark CDF :math:`F(m \mid \cdot)`.  A mis-specified
 :math:`p(m\mid\cdot)` shows up as a **mark-axis** KS departure while the
-time axis still passes — the signature the curriculum's optional cell
-B6.2 demonstrates.
+time axis still passes.
 
 All functions are pure NumPy/SciPy.
 
@@ -105,7 +105,7 @@ class MarkedGOFResult:
 
 
 # ----------------------------------------------------------------------
-# The discrete-time-rescaling variates (Thm 6.B.2)
+# The discrete-time-rescaling variates (Haslinger-Pipa-Brown 2010)
 # ----------------------------------------------------------------------
 
 
@@ -196,11 +196,12 @@ def marked_time_rescaling(
     r"""Discrete-time + marked goodness-of-fit in one call.
 
     Runs the time axis **both** the naive (uncorrected) way and the
-    discrete-time-corrected way (Thm 6.B.2), so the bin-width bias is
-    visible side by side, and — if marks and a conditional mark CDF are
-    supplied — the mark axis via :math:`F(m \mid \cdot)`.
+    discrete-time-corrected way (Haslinger-Pipa-Brown 2010), so the
+    bin-width bias is visible side by side, and — if marks and a
+    conditional mark CDF are supplied — the mark axis via
+    :math:`F(m \mid \cdot)`.
 
-    This is the helper the curriculum Chapter 6 worked example calls as::
+    Typical call::
 
         from nstat.extras.spatial import marked_gof
         ks = marked_gof.marked_time_rescaling(sb, spike_m, p_k, x_hat)
@@ -221,7 +222,7 @@ def marked_time_rescaling(
     mark_cdf
         Callable giving the conditional mark CDF.  Either ``mark_cdf(m)``
         (mark-only) or ``mark_cdf(m, x)`` when ``decoded`` is supplied —
-        the latter mirrors the curriculum's ``F(m | x_hat)``.
+        the latter is the conditional mark CDF ``F(m | x_hat)``.
     decoded
         Optional per-event covariate (e.g. decoded position) forwarded as
         the second argument to ``mark_cdf``.
@@ -252,9 +253,9 @@ def marked_time_rescaling(
     inside_mark = None
     if marks is not None and mark_cdf is not None:
         marks = np.asarray(marks, dtype=float)
-        # Marks are aligned with the ORIGINAL (unsorted) event order; the
-        # curriculum passes spike_bins/marks in event order and sorts only
-        # the bins.  Evaluate the mark CDF per event.
+        # Marks are aligned with the ORIGINAL (unsorted) event order;
+        # callers pass spike_bins / marks in event order and only the
+        # bins get sorted.  Evaluate the mark CDF per event.
         order = np.argsort(np.asarray(spike_bins, dtype=int))
         marks_sorted = marks[order]
         if decoded is not None:
@@ -295,15 +296,19 @@ def multivariate_time_rescaling(
 ) -> dict[int, MarkedGOFResult]:
     r"""Per-channel discrete-time rescaling for a finite (channel) mark space.
 
-    The finite-mark / multivariate case (Prop. 6.B.5; Gerhard-Haslinger-
-    Pipa 2011): rescale each channel by its own compensator computed under
-    the *joint* history.  Returns one :class:`MarkedGOFResult` per channel.
+    The finite-mark / multivariate case (Gerhard-Haslinger-Pipa 2011):
+    rescale each channel by its own compensator computed under the
+    *joint* history.  Returns one :class:`MarkedGOFResult` per channel.
 
     .. note::
 
-       A coupling-blind fit can pass every per-channel KS while the joint
-       model is wrong (Thm 6.B.3).  Per-channel passing is **necessary,
-       not sufficient**.
+       A coupling-blind fit can pass every per-channel KS while the
+       joint model is wrong (Gerhard-Haslinger-Pipa 2011, §4):
+       per-channel passing is **necessary, not sufficient**.  The
+       population-level diagnostic that closes that gap is
+       :func:`nstat.population_time_rescale` (Tao, Weber, Arai & Eden
+       2018); see :func:`multivariate_gof_with_coupling` for a single
+       call that runs both tests on the same data.
 
     Parameters
     ----------
@@ -318,6 +323,16 @@ def multivariate_time_rescaling(
     -------
     dict[int, MarkedGOFResult]
         Channel index → result.
+
+    See Also
+    --------
+    nstat.population_time_rescale :
+        Population-level (Tao et al. 2018) coupling diagnostic that
+        catches misfit invisible to per-channel KS.
+    multivariate_gof_with_coupling :
+        Convenience wrapper that runs this function *and*
+        :func:`nstat.population_time_rescale` on the same data and
+        returns both results.
     """
     rng = np.random.default_rng() if rng is None else rng
     out: dict[int, MarkedGOFResult] = {}
@@ -328,10 +343,144 @@ def multivariate_time_rescaling(
     return out
 
 
+@dataclass(frozen=True)
+class CoupledMarkedGOFResult:
+    """Bundled result of :func:`multivariate_gof_with_coupling`.
+
+    Attributes
+    ----------
+    per_channel
+        Mapping ``channel_index -> MarkedGOFResult`` returned by
+        :func:`multivariate_time_rescaling` — the discrete-time-corrected
+        KS test for each channel in isolation.
+    population
+        :class:`~nstat.PopulationTimeRescaleResult` returned by
+        :func:`nstat.population_time_rescale` — the ground-process KS and
+        marked-region Pearson :math:`\\chi^2` over the joint
+        :math:`(\\tau, k)` space, which catches cross-channel coupling
+        misfit invisible to the per-channel test.
+    """
+
+    per_channel: "dict[int, MarkedGOFResult]"
+    population: "object"  # nstat.PopulationTimeRescaleResult; quoted to avoid a hard import
+
+
+def multivariate_gof_with_coupling(
+    spike_bins_per_channel,
+    p_k_per_channel,
+    *,
+    n_draws: int = 25,
+    alpha: float = 0.05,
+    n_tau_bins: int = 4,
+    rng: np.random.Generator | None = None,
+) -> CoupledMarkedGOFResult:
+    r"""Discrete-time per-channel GoF *and* population coupling test, in one call.
+
+    Per-channel rescaling (Gerhard-Haslinger-Pipa 2011) catches finite-bin
+    bias in each channel's marginal fit but is blind to inter-channel
+    coupling: a model can pass every per-channel KS and still get the
+    joint distribution wrong.  The population marked-region
+    :math:`\chi^2` of Tao, Weber, Arai & Eden (2018) — implemented by
+    :func:`nstat.population_time_rescale` — closes that gap.  This
+    wrapper runs both on the same data so a caller does not have to
+    convert the inputs by hand.
+
+    Conversion of the per-channel inputs to the population-test format:
+
+    - ``counts_list[c] = np.bincount(spike_bins_per_channel[c],
+      minlength=T)`` where :math:`T` is the length of ``p_k_per_channel[c]``.
+    - ``lam_per_bin_list[c] = p_k_per_channel[c]``.  This treats the
+      per-bin spike *probability* :math:`p_k = 1 - e^{-\lambda_k\Delta}`
+      as the per-bin model-expected count :math:`\lambda_k\Delta`,
+      which is exact in the small-:math:`p_k` regime that the
+      discrete-time correction itself assumes.
+
+    Parameters
+    ----------
+    spike_bins_per_channel
+        Sequence of per-channel sorted event-bin index arrays.
+    p_k_per_channel
+        Sequence of per-channel per-bin spike-probability arrays; all
+        arrays must have the same length :math:`T`.
+    n_draws, alpha, rng
+        Forwarded to :func:`multivariate_time_rescaling`.
+    n_tau_bins
+        Number of equal-:math:`\tau` cells per channel in the population
+        :math:`\chi^2` partition (forwarded to
+        :func:`nstat.population_time_rescale`).  ``> 1`` resolves
+        within-channel timing and is what makes the test sensitive to
+        coupling.  Default 4 is a reasonable coupling-sensitive choice
+        for typical recordings; raise / lower to trade coupling
+        sensitivity against the expected-count-per-cell requirement of
+        the asymptotic :math:`\chi^2`.
+
+    Returns
+    -------
+    CoupledMarkedGOFResult
+        ``per_channel`` (dict) plus ``population``
+        (:class:`nstat.PopulationTimeRescaleResult`).
+
+    Raises
+    ------
+    ValueError
+        If ``spike_bins_per_channel`` and ``p_k_per_channel`` have
+        unequal length or if the per-channel ``p_k`` arrays disagree
+        in length.
+
+    See Also
+    --------
+    multivariate_time_rescaling : per-channel discrete-time test alone.
+    nstat.population_time_rescale : population coupling test alone.
+
+    References
+    ----------
+    Gerhard F, Haslinger R, Pipa G (2011), Neural Computation 23(6):1452.
+    Tao L, Weber KM, Arai K, Eden UT (2018), J Comput Neurosci 45:147.
+    """
+    from nstat.fit import population_time_rescale
+
+    spike_bins_per_channel = list(spike_bins_per_channel)
+    p_k_per_channel = list(p_k_per_channel)
+    if len(spike_bins_per_channel) != len(p_k_per_channel):
+        raise ValueError(
+            "spike_bins_per_channel and p_k_per_channel must have equal length"
+        )
+    if not p_k_per_channel:
+        raise ValueError("need at least one channel")
+    T = len(p_k_per_channel[0])
+    for c, pk in enumerate(p_k_per_channel):
+        if len(pk) != T:
+            raise ValueError(
+                f"p_k_per_channel[{c}] has length {len(pk)}, expected {T} "
+                "(all channels must share the same time grid)"
+            )
+
+    per_channel = multivariate_time_rescaling(
+        spike_bins_per_channel,
+        p_k_per_channel,
+        n_draws=n_draws,
+        alpha=alpha,
+        rng=rng,
+    )
+
+    counts_list = [
+        np.bincount(np.asarray(sb, dtype=int), minlength=T).astype(float)
+        for sb in spike_bins_per_channel
+    ]
+    lam_per_bin_list = [np.asarray(pk, dtype=float) for pk in p_k_per_channel]
+    population = population_time_rescale(
+        counts_list, lam_per_bin_list, n_tau_bins=int(n_tau_bins)
+    )
+
+    return CoupledMarkedGOFResult(per_channel=per_channel, population=population)
+
+
 __all__ = [
     "MarkedGOFResult",
+    "CoupledMarkedGOFResult",
     "uncorrected_rescaled",
     "corrected_rescaled",
     "marked_time_rescaling",
     "multivariate_time_rescaling",
+    "multivariate_gof_with_coupling",
 ]

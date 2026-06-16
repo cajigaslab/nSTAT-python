@@ -448,10 +448,13 @@ Python projects" table in `README.md` for install commands.
   (Laplace), inhomogeneous second-order goodness-of-fit, and the
   discrete-time-rescaling KS correction (pure NumPy/SciPy core; optional
   `tick` / `DPPy` / `gpflow` bridges via `[hawkes]` / `[dpp]` /
-  `[spatial-gp]`).  It is the companion to the bci-curriculum Ch. 5 /
-  Ch. 6 worked examples, has no MATLAB counterpart, and therefore
-  carries no `parity/manifest.yml` entry.  See
+  `[spatial-gp]`).  It has no MATLAB counterpart, and therefore carries
+  no `parity/manifest.yml` entry.  See
   [`docs/extras/spatial_point_processes.md`](docs/extras/spatial_point_processes.md).
+  The per-channel discrete-time test `multivariate_time_rescaling` and
+  the population coupling test `nstat.population_time_rescale` (Tao
+  et al. 2018) compose via `multivariate_gof_with_coupling`, which
+  runs both on the same data and returns a `CoupledMarkedGOFResult`.
 - **Not** distributed.  All routines are single-process NumPy / SciPy.
 
 ---
