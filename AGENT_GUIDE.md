@@ -450,7 +450,13 @@ Python projects" table in `README.md` for install commands.
   `tick` / `DPPy` / `gpflow` bridges via `[hawkes]` / `[dpp]` /
   `[spatial-gp]`).  It is the companion to the bci-curriculum Ch. 5 /
   Ch. 6 worked examples, has no MATLAB counterpart, and therefore
-  carries no `parity/manifest.yml` entry.  See
+  carries no `parity/manifest.yml` entry.  The same module also exposes
+  pure-NumPy spatiotemporal-wave diagnostics — `bartlett_spectrum` (the
+  frequency × wave-vector spectrum of a Hawkes triggering matrix),
+  `reconstruct_kernel` (the parametric exponential-kernel
+  reconstruction), and `detect_wave_peaks` returning a
+  `WaveAnalysisResult` with `(freq, kx, ky, power, speed, direction)`
+  for each accepted peak.  See
   [`docs/extras/spatial_point_processes.md`](docs/extras/spatial_point_processes.md).
 - **Not** distributed.  All routines are single-process NumPy / SciPy.
 
