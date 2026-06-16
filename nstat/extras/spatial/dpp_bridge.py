@@ -1,12 +1,11 @@
 r"""Determinantal point process (DPP) sampling — ``DPPy`` bridge + NumPy fallback.
 
-The repulsive foil to the LGCP's clustering (Chapter 5, Rem. 5.1.3 /
-Prop. 5.C.3): a discrete DPP on a finite ground set, where
-:math:`\Pr(Y = A) = \det(L_A)/\det(L + I)` for a PSD :math:`L`-ensemble,
-and the inclusion kernel is :math:`K = L(L+I)^{-1}`.  Used in the
-curriculum's optional cell B5.2 to draw a repulsive pattern whose pair
-correlation sits *below* the Poisson null (:math:`g(r) < 1`), mirroring
-the LGCP draw above it.
+The repulsive foil to the LGCP's clustering: a discrete DPP on a finite
+ground set, where :math:`\Pr(Y = A) = \det(L_A)/\det(L + I)` for a PSD
+:math:`L`-ensemble, and the inclusion kernel is
+:math:`K = L(L+I)^{-1}`.  Drawing from such an ensemble produces a
+repulsive pattern whose pair correlation sits *below* the Poisson
+null (:math:`g(r) < 1`), mirroring an LGCP draw that sits above it.
 
 Two paths:
 
@@ -15,8 +14,8 @@ Two paths:
   catalogue.
 - :func:`sample_l_ensemble` — a small **inline NumPy eigen-sampler**
   (Hough-Krishnapur-Peres-Virag 2006) that is always available — no
-  optional dependency.  This is the exact spectral sampler the curriculum
-  worked example uses, kept dependency-free so the foil runs anywhere.
+  optional dependency.  Kept dependency-free so the repulsive foil
+  runs anywhere.
 
 References
 ----------

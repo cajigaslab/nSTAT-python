@@ -92,6 +92,7 @@ augmenting the IRLS Hessian with `rho * basis.gram()`.
 | `uncorrected_rescaled(spike_bins, p_k)` | naive `1−exp(−Σp_k)` variates — **false-rejects** at finite bin width |
 | `corrected_rescaled(spike_bins, p_k, rng=None)` | `u_j=[∏(1−p_k)]·(1−r_j·p_{k_j})` — exactly Unif(0,1) (Haslinger-Pipa-Brown 2010) |
 | `multivariate_time_rescaling(spike_bins_per_channel, p_k_per_channel, ...)` | per-channel rescaling for a finite (channel) mark space (Gerhard-Haslinger-Pipa 2011) |
+| `multivariate_gof_with_coupling(spike_bins_per_channel, p_k_per_channel, *, n_tau_bins=4, ...)` | runs the per-channel test *and* the population coupling test ([`nstat.population_time_rescale`](../api.html#nstat.population_time_rescale), Tao et al. 2018) on the same data → `CoupledMarkedGOFResult` (`per_channel`, `population`). Per-channel passing is necessary but not sufficient; this wrapper closes that gap |
 
 ### Optional bridges (lazy import; raise an install hint if the dep is absent)
 
@@ -178,6 +179,7 @@ prior = MaternPrior(nu=2.5, length_scale=0.18, marginal_var=1.0)
 res = lgcp_fit_glm(pts, ((0, 1), (0, 1)), basis, prior, grid=G)
 mean, lo, hi = res.rate_map(level=0.90)
 ```
+
 
 Discrete-time-rescaling KS:
 

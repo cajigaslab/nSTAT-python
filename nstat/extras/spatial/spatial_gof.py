@@ -1,7 +1,8 @@
 r"""Inhomogeneous second-order spatial goodness-of-fit (pure NumPy/SciPy).
 
-Inhomogeneous second-order goodness-of-fit estimators: the
-intensity-reweighted summary statistics that test what a fitted intensity
+A Python-only inhomogeneous second-order goodness-of-fit suite for
+spatial point processes.  It provides the intensity-reweighted
+second-order summary statistics that test what a fitted intensity
 :math:`\hat\lambda(\mathbf{x})` leaves over — the diagnostics a
 homogeneous :math:`K`-function cannot give for a non-stationary neural
 field:
