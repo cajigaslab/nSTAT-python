@@ -1,11 +1,8 @@
 r"""Spatial & spatiotemporal point processes — Python-only ``nstat.extras`` module.
 
-This subpackage is the Python-only companion to the bci-curriculum's two
-point-process chapters (*Spatial Point Processes*, Ch. 5; *Spatiotemporal
-Point Processes*, Ch. 6).  It has **no MATLAB counterpart** and therefore
-no ``parity/manifest.yml`` entry — it lives in the opt-in ``extras/``
-namespace precisely so the core ``nstat`` MATLAB-parity contract is
-preserved.
+This subpackage has **no MATLAB counterpart** and therefore no
+``parity/manifest.yml`` entry — it lives in the opt-in ``extras/``
+namespace so the core ``nstat`` MATLAB-parity contract is preserved.
 
 Pure-NumPy/SciPy core (no optional dependency required):
 
@@ -22,6 +19,16 @@ Pure-NumPy/SciPy core (no optional dependency required):
   nearest-neighbour :func:`~nstat.extras.spatial.spatial_gof.nearest_neighbour_FGJ`,
   and the Monte-Carlo
   :func:`~nstat.extras.spatial.spatial_gof.global_envelope` (Myllymaki 2017).
+  Three published edge-correction modes are selectable via the
+  ``edge_correction`` keyword (Ripley 1976/1977; Ohser 1983;
+  Baddeley-Rubak-Turner 2015).
+- :mod:`~nstat.extras.spatial.basis` — tensor-product B-spline log-rate
+  bases (:func:`~nstat.extras.spatial.basis.bspline_basis_1d`,
+  :func:`~nstat.extras.spatial.basis.bspline_basis_2d`,
+  :class:`~nstat.extras.spatial.basis.BSplineBasis2D`); the resulting
+  design matrix is a valid ``x`` argument to
+  :func:`nstat.glm.fit_poisson_glm`, and the P-spline second-difference
+  penalty (Eilers-Marx 1996) is available via ``.gram()``.
 - :mod:`~nstat.extras.spatial.marked_gof` — the discrete-time-rescaling KS
   correction (Haslinger-Pipa-Brown 2010) and marked goodness-of-fit:
   :func:`~nstat.extras.spatial.marked_gof.marked_time_rescaling`.
@@ -43,19 +50,20 @@ Install
 
 .. code-block:: bash
 
-    # core (lgcp, spatial_gof, marked_gof) needs only numpy/scipy — no extra.
+    # core (lgcp, spatial_gof, marked_gof, basis) needs only numpy/scipy.
     pip install nstat-toolbox[spatial-gp]   # optional heavier GP path (gpflow)
     pip install nstat-toolbox[hawkes]       # tick (multivariate Hawkes)
     pip install nstat-toolbox[dpp]          # DPPy (DPP sampling)
-
-The convenience symbols below re-export the pure-core entry points so the
-curriculum worked examples can ``from nstat.extras.spatial import
-lgcp_fit, pair_correlation, global_envelope, marked_time_rescaling``.
 """
 from __future__ import annotations
 
 # Pure-core submodules import cleanly with only numpy/scipy — safe to
 # re-export their public entry points at package import time.
+from nstat.extras.spatial.basis import (
+    BSplineBasis2D,
+    bspline_basis_1d,
+    bspline_basis_2d,
+)
 from nstat.extras.spatial.lgcp import LGCPResult, lgcp_fit
 from nstat.extras.spatial.marked_gof import (
     MarkedGOFResult,
@@ -93,6 +101,10 @@ __all__ = [
     "nearest_neighbour_FGJ",
     "global_envelope",
     "EnvelopeResult",
+    # basis
+    "bspline_basis_1d",
+    "bspline_basis_2d",
+    "BSplineBasis2D",
     # marked_gof
     "marked_time_rescaling",
     "multivariate_time_rescaling",
