@@ -420,6 +420,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Example 06: 2-D Place-Field Recovery (B-spline GLM + LGCP)"
     )
+    parser.add_argument("--repo-root", type=Path, default=REPO_ROOT,
+                        help=("Repository root (used by other paper examples "
+                              "for dataset lookup; this script is data-free "
+                              "and only uses it to resolve the default "
+                              "export-dir under docs/figures/example06)."))
     parser.add_argument("--export-figures", action="store_true")
     parser.add_argument("--export-dir", type=Path, default=None)
     parser.add_argument("--output-json", type=Path, default=None)

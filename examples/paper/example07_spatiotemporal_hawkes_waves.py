@@ -16,8 +16,20 @@ A pure-Python end-to-end demonstration of the wave-analysis stack in
    Vere-Jones 2003 §8.4) on a (32, 17, 17) grid.
 4. We locate the top wave-vector peaks with
    :func:`~nstat.extras.spatial.detect_wave_peaks` (greedy descending
-   power with non-maximum suppression) and verify that the recovered
-   top peak's direction matches ``atan2(k_true[1], k_true[0])``.
+   power with non-maximum suppression) and compare the recovered top
+   peak's direction to ``atan2(k_true[1], k_true[0])``.
+
+.. note::
+
+   **Grid-undersampling caveat.** A 6x6 array on the unit square
+   covers only ~1.7 wavelengths of ``k_true = (5, 2)`` — well below
+   the spatial Nyquist regime that the planar-wave argument assumes.
+   The dominant spectral mass therefore lands near the reciprocal-
+   lattice DC neighbours instead of at ``k_true``, and the recovered
+   direction error can be ~0.4 rad.  This is an honest demonstration
+   of the workflow under acknowledged undersampling, not a tool bug.
+   The companion notebook (``notebooks/HawkesWaveAnalysis.ipynb``)
+   shows the same and discusses 8x8 / 10x10 alternatives.
 
 The example is **fully synthetic** — it never imports the optional
 ``tick`` dependency.
@@ -322,6 +334,12 @@ def run_example07(
         print(f"  recovered top-1 frequency    = "
               f"{recovered_top['freq']:.2f} Hz, speed = "
               f"{recovered_top['speed']:.3f} unit/s")
+        print(
+            f"  [note] {Cx}x{Cy} grid covers ~1.7 wavelengths of k_true; "
+            f"top spectral mass lands near DC (a real undersampling "
+            f"effect, not a tool bug). See the docstring note and the "
+            f"companion notebook for 8x8 / 10x10 alternatives."
+        )
 
     fig1 = _plot_adjacency(A, pos, Cx, Cy)
     fig2 = _plot_bartlett(S, freq, kx, ky, k_true)
@@ -369,6 +387,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Example 07: Spatiotemporal Wave Analysis (synthetic Hawkes)"
     )
+    parser.add_argument("--repo-root", type=Path, default=REPO_ROOT,
+                        help=("Repository root (used by other paper examples "
+                              "for dataset lookup; this script is data-free "
+                              "and only uses it to resolve the default "
+                              "export-dir under docs/figures/example07)."))
     parser.add_argument("--export-figures", action="store_true")
     parser.add_argument("--export-dir", type=Path, default=None)
     parser.add_argument("--output-json", type=Path, default=None)
