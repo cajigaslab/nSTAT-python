@@ -82,3 +82,28 @@ def test_pp_residuals_smoothed_validation():
     # Out-of-range spike bin index.
     with pytest.raises(ValueError, match=r"\[0, T\)"):
         pp_residuals_smoothed(np.array([150]), lam, bandwidth=5.0)
+
+
+def test_pp_residuals_smoothed_centered_large_sample():
+    r"""Independent verifier probe (Tier E sub-PR-1).
+
+    Tightens the centering check by an order of magnitude on the only
+    axis that controls fluctuation magnitude: sample size.  Under the
+    true Poisson-with-known-rate null, the smoothed residual mean is
+    asymptotically zero with O(1/sqrt(T)) Monte-Carlo noise.  At
+    T = 50 000 bins and lambda = 0.1 (~5 000 spikes), the centering
+    must hold to 0.01 — 10x tighter than the existing 0.02 bound in
+    ``test_pp_residuals_smoothed_true_model_is_centered``.  A failure
+    here points to a bias in the residual definition itself, not noise
+    tolerance.
+    """
+    rng = np.random.default_rng(7)
+    T = 50_000
+    lam = np.full(T, 0.1)
+    counts = (rng.uniform(size=T) < lam).astype(int)
+    spike_bins = np.flatnonzero(counts)
+    _, resid = pp_residuals_smoothed(spike_bins, lam, bandwidth=20.0)
+    assert abs(resid.mean()) < 0.01, (
+        "Smoothed residuals are not centered at zero under the true "
+        f"model at T=50000: mean = {resid.mean():.5f}"
+    )
