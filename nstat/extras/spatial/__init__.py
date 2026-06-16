@@ -23,6 +23,16 @@ Pure-NumPy/SciPy core (no optional dependency required):
   nearest-neighbour :func:`~nstat.extras.spatial.spatial_gof.nearest_neighbour_FGJ`,
   and the Monte-Carlo
   :func:`~nstat.extras.spatial.spatial_gof.global_envelope` (Myllymaki 2017).
+  Three published edge-correction modes are selectable via the
+  ``edge_correction`` keyword (Ripley 1976/1977; Ohser 1983;
+  Baddeley-Rubak-Turner 2015).
+- :mod:`~nstat.extras.spatial.basis` — tensor-product B-spline log-rate
+  bases (:func:`~nstat.extras.spatial.basis.bspline_basis_1d`,
+  :func:`~nstat.extras.spatial.basis.bspline_basis_2d`,
+  :class:`~nstat.extras.spatial.basis.BSplineBasis2D`); the resulting
+  design matrix is a valid ``x`` argument to
+  :func:`nstat.glm.fit_poisson_glm`, and the P-spline second-difference
+  penalty (Eilers-Marx 1996) is available via ``.gram()``.
 - :mod:`~nstat.extras.spatial.marked_gof` — the discrete-time-rescaling KS
   correction (Haslinger-Pipa-Brown 2010) and marked goodness-of-fit:
   :func:`~nstat.extras.spatial.marked_gof.marked_time_rescaling`.
@@ -44,7 +54,7 @@ Install
 
 .. code-block:: bash
 
-    # core (lgcp, spatial_gof, marked_gof) needs only numpy/scipy — no extra.
+    # core (lgcp, spatial_gof, marked_gof, basis) needs only numpy/scipy.
     pip install nstat-toolbox[spatial-gp]   # optional heavier GP path (gpflow)
     pip install nstat-toolbox[hawkes]       # tick (multivariate Hawkes)
     pip install nstat-toolbox[dpp]          # DPPy (DPP sampling)
@@ -57,6 +67,11 @@ from __future__ import annotations
 
 # Pure-core submodules import cleanly with only numpy/scipy — safe to
 # re-export their public entry points at package import time.
+from nstat.extras.spatial.basis import (
+    BSplineBasis2D,
+    bspline_basis_1d,
+    bspline_basis_2d,
+)
 from nstat.extras.spatial.lgcp import LGCPResult, lgcp_fit
 from nstat.extras.spatial.marked_gof import (
     CoupledMarkedGOFResult,
@@ -96,6 +111,10 @@ __all__ = [
     "nearest_neighbour_FGJ",
     "global_envelope",
     "EnvelopeResult",
+    # basis
+    "bspline_basis_1d",
+    "bspline_basis_2d",
+    "BSplineBasis2D",
     # marked_gof
     "marked_time_rescaling",
     "multivariate_time_rescaling",

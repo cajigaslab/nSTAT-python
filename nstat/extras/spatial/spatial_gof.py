@@ -2,10 +2,10 @@ r"""Inhomogeneous second-order spatial goodness-of-fit (pure NumPy/SciPy).
 
 A Python-only inhomogeneous second-order goodness-of-fit suite for
 spatial point processes.  It provides the intensity-reweighted
-second-order summary statistics that test what a
-fitted intensity :math:`\hat\lambda(\mathbf{x})` leaves over — the
-diagnostics a homogeneous :math:`K`-function cannot give for a
-non-stationary neural field:
+second-order summary statistics that test what a fitted intensity
+:math:`\hat\lambda(\mathbf{x})` leaves over — the diagnostics a
+homogeneous :math:`K`-function cannot give for a non-stationary neural
+field:
 
 - :func:`pair_correlation` — the SOIRS-reweighted pair correlation
   :math:`g(r)`; ``g(r) > 1`` indicates clustering, ``g(r) < 1`` repulsion,
@@ -53,8 +53,38 @@ from __future__ import annotations
 import numpy as np
 from scipy.spatial.distance import cdist, pdist
 
+from nstat.extras.spatial._edge import (
+    border_usable_mask,
+    frac_disc_in_rect,
+    frac_translation_rect,
+)
 from nstat.extras.spatial._envelopes import EnvelopeResult, global_rank_envelope
 from nstat.extras.spatial._kernels import epanechnikov
+
+_VALID_EDGE_CORRECTIONS = ("epanechnikov", "isotropic", "translation", "border")
+
+
+def _validate_edge_correction(name: str) -> None:
+    if name not in _VALID_EDGE_CORRECTIONS:
+        raise ValueError(
+            "edge_correction must be one of "
+            "{'epanechnikov','isotropic','translation','border'}; "
+            f"got {name!r}"
+        )
+
+
+def _ensure_rectangular_domain(domain, mode: str) -> None:
+    """Check that ``domain`` is a 2-tuple of 2-tuples for a rectangle."""
+    ok = (
+        isinstance(domain, tuple)
+        and len(domain) == 2
+        and all(isinstance(d, tuple) and len(d) == 2 for d in domain)
+    )
+    if not ok:
+        raise NotImplementedError(
+            "only rectangular domain is supported for non-epanechnikov edge "
+            "corrections in v0.6.0"
+        )
 
 
 # ----------------------------------------------------------------------
@@ -108,6 +138,7 @@ def pair_correlation(
     *,
     bw: float | None = None,
     domain=None,
+    edge_correction: str = "epanechnikov",
 ) -> np.ndarray:
     r"""SOIRS-reweighted inhomogeneous pair correlation :math:`g(r)`.
 
@@ -138,6 +169,13 @@ def pair_correlation(
     domain
         ``((lo, hi), ...)`` per dim.  Defaults to the bounding box of
         ``points`` — pass the true analysis window when known.
+    edge_correction
+        One of ``"epanechnikov"`` (default — the original SOIRS estimator),
+        ``"isotropic"`` (Ripley 1976/1977, symmetric i<->j average),
+        ``"translation"`` (Ohser 1983), or ``"border"`` (Baddeley-Rubak-
+        Turner 2015).  The three named modes require a rectangular
+        ``domain``; ``"border"`` returns ``NaN`` at radii where no event
+        has boundary-distance ``>= r``.
 
     Returns
     -------
@@ -150,6 +188,7 @@ def pair_correlation(
     the clustering/repulsion sign; the absolute scale is sensitive to the
     bandwidth and the plug-in caveat in the module docstring.
     """
+    _validate_edge_correction(edge_correction)
     pts = _as_points(points)
     r_grid = np.asarray(r_grid, dtype=float)
     if pts.shape[0] < 2:
@@ -169,13 +208,81 @@ def pair_correlation(
     d = cdist(pts, pts)[iu]
     wgt = 1.0 / (lam[iu[0]] * lam[iu[1]])
 
+    if edge_correction == "epanechnikov":
+        g = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            ring = 2.0 * np.pi * r * area
+            if ring <= 0:
+                g[k] = 0.0
+                continue
+            g[k] = 2.0 * np.sum(epanechnikov((d - r) / bw) / bw * wgt) / ring
+        return g
+
+    # Named-correction branches share the rectangular-window precondition.
+    _ensure_rectangular_domain(domain, edge_correction)
+    pi_i, pi_j = pts[iu[0]], pts[iu[1]]
+
+    if edge_correction == "isotropic":
+        g = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            ring = 2.0 * np.pi * r * area
+            if ring <= 0:
+                g[k] = 0.0
+                continue
+            ker = epanechnikov((d - r) / bw) / bw
+            # Per-pair Ripley weight, symmetric in i<->j at the pair distance.
+            w_iso = np.empty_like(d)
+            for m in range(d.size):
+                if ker[m] == 0.0:
+                    w_iso[m] = 0.0
+                    continue
+                fi = frac_disc_in_rect(pi_i[m], d[m], domain)
+                fj = frac_disc_in_rect(pi_j[m], d[m], domain)
+                w_iso[m] = 0.5 * (1.0 / fi + 1.0 / fj)
+            g[k] = 2.0 * np.sum(ker * wgt * w_iso) / ring
+        return g
+
+    if edge_correction == "translation":
+        # Translation weight depends only on the inter-event offset.
+        offs = pi_i - pi_j
+        w_tr = np.array(
+            [frac_translation_rect(o[0], o[1], domain) for o in offs], dtype=float
+        )
+        g = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            ring = 2.0 * np.pi * r * area
+            if ring <= 0:
+                g[k] = 0.0
+                continue
+            ker = epanechnikov((d - r) / bw) / bw
+            g[k] = 2.0 * np.sum(ker * wgt * w_tr) / ring
+        return g
+
+    # edge_correction == "border": restrict the focal points per radius.
     g = np.empty_like(r_grid)
     for k, r in enumerate(r_grid):
         ring = 2.0 * np.pi * r * area
         if ring <= 0:
             g[k] = 0.0
             continue
-        g[k] = 2.0 * np.sum(epanechnikov((d - r) / bw) / bw * wgt) / ring
+        usable = border_usable_mask(pts, domain, r)
+        if not usable.any():
+            g[k] = np.nan
+            continue
+        # Keep pairs whose first index is a usable focal point.
+        keep = usable[iu[0]]
+        if not keep.any():
+            g[k] = np.nan
+            continue
+        ker = epanechnikov((d[keep] - r) / bw) / bw
+        # Reduced "effective" window is the area of the eroded rectangle.
+        (xlo, xhi), (ylo, yhi) = domain
+        eff_area = max(0.0, (xhi - xlo) - 2 * r) * max(0.0, (yhi - ylo) - 2 * r)
+        if eff_area <= 0:
+            g[k] = np.nan
+            continue
+        ring_eff = 2.0 * np.pi * r * eff_area
+        g[k] = 2.0 * np.sum(ker * wgt[keep]) / ring_eff
     return g
 
 
@@ -190,6 +297,7 @@ def k_inhom(
     r_grid: np.ndarray,
     *,
     domain=None,
+    edge_correction: str = "epanechnikov",
 ) -> np.ndarray:
     r"""Inhomogeneous :math:`K`-function (Baddeley-Moller-Waagepetersen 2000).
 
@@ -210,12 +318,17 @@ def k_inhom(
         See :func:`pair_correlation`.  **Held-out** ``lambda_hat``.
     r_grid
         Upper radii at which to evaluate the cumulative statistic.
+    edge_correction
+        See :func:`pair_correlation` — one of ``"epanechnikov"`` (default,
+        identical to the previous implementation), ``"isotropic"``,
+        ``"translation"``, or ``"border"``.
 
     Returns
     -------
     np.ndarray
         :math:`\hat K_{\text{inhom}}(r)` at each lag.
     """
+    _validate_edge_correction(edge_correction)
     pts = _as_points(points)
     r_grid = np.asarray(r_grid, dtype=float)
     if pts.shape[0] < 2:
@@ -229,10 +342,55 @@ def k_inhom(
     d = pdist(pts)
     wgt = 1.0 / (lam[iu[0]] * lam[iu[1]])
 
+    if edge_correction == "epanechnikov":
+        K = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            # factor 2: the (i, j) and (j, i) ordered pairs both contribute.
+            K[k] = 2.0 * np.sum(wgt[d <= r]) / area
+        return K
+
+    _ensure_rectangular_domain(domain, edge_correction)
+    pi_i, pi_j = pts[iu[0]], pts[iu[1]]
+
+    if edge_correction == "isotropic":
+        # Per-pair isotropic weight is evaluated at the inter-event distance.
+        fi = np.array([frac_disc_in_rect(pi_i[m], d[m], domain) for m in range(d.size)])
+        fj = np.array([frac_disc_in_rect(pi_j[m], d[m], domain) for m in range(d.size)])
+        w_iso = 0.5 * (1.0 / fi + 1.0 / fj)
+        K = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            mask = d <= r
+            K[k] = 2.0 * np.sum(wgt[mask] * w_iso[mask]) / area
+        return K
+
+    if edge_correction == "translation":
+        offs = pi_i - pi_j
+        w_tr = np.array(
+            [frac_translation_rect(o[0], o[1], domain) for o in offs], dtype=float
+        )
+        K = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            mask = d <= r
+            K[k] = 2.0 * np.sum(wgt[mask] * w_tr[mask]) / area
+        return K
+
+    # border
     K = np.empty_like(r_grid)
     for k, r in enumerate(r_grid):
-        # factor 2: the (i, j) and (j, i) ordered pairs both contribute.
-        K[k] = 2.0 * np.sum(wgt[d <= r]) / area
+        usable = border_usable_mask(pts, domain, r)
+        if not usable.any():
+            K[k] = np.nan
+            continue
+        keep = usable[iu[0]] & (d <= r)
+        if not keep.any():
+            K[k] = 0.0
+            continue
+        (xlo, xhi), (ylo, yhi) = domain
+        eff_area = max(0.0, (xhi - xlo) - 2 * r) * max(0.0, (yhi - ylo) - 2 * r)
+        if eff_area <= 0:
+            K[k] = np.nan
+            continue
+        K[k] = 2.0 * np.sum(wgt[keep]) / eff_area
     return K
 
 
@@ -242,16 +400,21 @@ def l_function(
     r_grid: np.ndarray,
     *,
     domain=None,
+    edge_correction: str = "epanechnikov",
 ) -> np.ndarray:
     r"""Variance-stabilized inhomogeneous :math:`L`-function.
 
     :math:`L(r) = \sqrt{K_{\text{inhom}}(r)/\pi}` (2-D), so the centred
     statistic :math:`L(r) - r` is flat at zero under the inhomogeneous
     Poisson null.  Returns ``L(r)`` (subtract ``r_grid`` for the centred
-    form).
+    form).  The ``edge_correction`` kwarg passes through to
+    :func:`k_inhom`; ``"border"`` may yield ``NaN`` rows where no event is
+    usable as a focal point.
     """
-    K = k_inhom(points, lambda_hat, r_grid, domain=domain)
-    return np.sqrt(np.maximum(K, 0.0) / np.pi)
+    K = k_inhom(points, lambda_hat, r_grid, domain=domain, edge_correction=edge_correction)
+    # NaN propagates through sqrt and 0.0 floor.
+    out = np.where(np.isnan(K), np.nan, np.sqrt(np.maximum(K, 0.0) / np.pi))
+    return out
 
 
 # ----------------------------------------------------------------------

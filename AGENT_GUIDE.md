@@ -448,8 +448,16 @@ Python projects" table in `README.md` for install commands.
   (Laplace), inhomogeneous second-order goodness-of-fit, and the
   discrete-time-rescaling KS correction (pure NumPy/SciPy core; optional
   `tick` / `DPPy` / `gpflow` bridges via `[hawkes]` / `[dpp]` /
-  `[spatial-gp]`).  It has no MATLAB counterpart, and therefore carries
-  no `parity/manifest.yml` entry.  See
+  `[spatial-gp]`).  Tensor-product B-spline log-rate bases
+  (`bspline_basis_1d`, `bspline_basis_2d`, `BSplineBasis2D`; de Boor 1978,
+  Eilers-Marx 1996) produce a design matrix that drops straight into
+  `nstat.glm.fit_poisson_glm` as the `x` argument, and the P-spline
+  second-difference penalty is available via `BSplineBasis2D.gram()`.
+  The `pair_correlation` / `k_inhom` / `l_function` estimators take an
+  `edge_correction` keyword (default `"epanechnikov"`; also `"isotropic"`
+  for Ripley 1976/1977, `"translation"` for Ohser 1983, `"border"` for
+  Baddeley-Rubak-Turner 2015).  No MATLAB counterpart, so no
+  `parity/manifest.yml` entry.  See
   [`docs/extras/spatial_point_processes.md`](docs/extras/spatial_point_processes.md).
   The per-channel discrete-time test `multivariate_time_rescaling` and
   the population coupling test `nstat.population_time_rescale` (Tao

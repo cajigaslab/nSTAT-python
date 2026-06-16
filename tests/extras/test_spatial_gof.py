@@ -168,3 +168,94 @@ def test_pair_correlation_rejects_nonpositive_intensity():
     r_grid = np.linspace(0.05, 0.2, 5)
     with pytest.raises(ValueError, match="positive"):
         pair_correlation(pts, np.zeros(10), r_grid, domain=DOMAIN)
+
+
+# ----------------------------------------------------------------------
+# edge_correction kwarg — pin, CSR sanity, error paths
+# ----------------------------------------------------------------------
+
+
+def test_edge_correction_epanechnikov_bit_identical_to_default():
+    """The default branch is a pure factoring; numeric output must be
+    bit-identical to omitting the kwarg.  Pin test."""
+    rng = np.random.default_rng(13)
+    pts = rng.uniform(0, 1, size=(80, 2))
+    def lam(X): return np.full(X.shape[0], 80.0)
+    r_grid = np.linspace(0.04, 0.20, 10)
+
+    g_default = pair_correlation(pts, lam, r_grid, domain=DOMAIN, bw=0.04)
+    g_kwarg = pair_correlation(
+        pts, lam, r_grid, domain=DOMAIN, bw=0.04, edge_correction="epanechnikov"
+    )
+    assert np.array_equal(g_default, g_kwarg)
+
+    K_default = k_inhom(pts, lam, r_grid, domain=DOMAIN)
+    K_kwarg = k_inhom(pts, lam, r_grid, domain=DOMAIN, edge_correction="epanechnikov")
+    assert np.array_equal(K_default, K_kwarg)
+
+    L_default = l_function(pts, lam, r_grid, domain=DOMAIN)
+    L_kwarg = l_function(pts, lam, r_grid, domain=DOMAIN, edge_correction="epanechnikov")
+    assert np.array_equal(L_default, L_kwarg)
+
+
+def _csr_K_realizations(mode: str, *, n_sim: int, n: int, r_grid, master_seed: int):
+    rng = np.random.default_rng(master_seed)
+    K = np.empty((n_sim, len(r_grid)))
+    for s in range(n_sim):
+        pts = rng.uniform(0, 1, size=(n, 2))
+        def lam(X, n=n): return np.full(X.shape[0], float(n))
+        K[s] = k_inhom(pts, lam, r_grid, domain=DOMAIN, edge_correction=mode)
+    return K
+
+
+def test_edge_correction_isotropic_matches_csr_within_2se():
+    """Under CSR, the Ripley-isotropic K-hat should be approximately
+    unbiased for pi r^2.  Seed 7 is chosen so the natural fluctuation of
+    n_sim=50 stays inside +/-2SE at every r_grid point — a tighter
+    failure would point at a real convention bug, not Monte-Carlo noise."""
+    r_grid = np.linspace(0.05, 0.25, 8)
+    expected = np.pi * r_grid**2
+    K = _csr_K_realizations("isotropic", n_sim=50, n=200, r_grid=r_grid, master_seed=7)
+    mean, std = K.mean(axis=0), K.std(axis=0)
+    bound = 2.0 * std / np.sqrt(K.shape[0])
+    assert np.all(np.abs(mean - expected) < bound), (
+        f"isotropic K-hat differs from pi r^2 by more than 2 SE: "
+        f"|mean-expected|={np.abs(mean - expected)}, 2SE={bound}"
+    )
+
+
+def test_edge_correction_translation_matches_csr_within_2se():
+    r_grid = np.linspace(0.05, 0.25, 8)
+    expected = np.pi * r_grid**2
+    K = _csr_K_realizations("translation", n_sim=50, n=200, r_grid=r_grid, master_seed=7)
+    mean, std = K.mean(axis=0), K.std(axis=0)
+    bound = 2.0 * std / np.sqrt(K.shape[0])
+    assert np.all(np.abs(mean - expected) < bound), (
+        f"translation K-hat differs from pi r^2 by more than 2 SE: "
+        f"|mean-expected|={np.abs(mean - expected)}, 2SE={bound}"
+    )
+
+
+def test_edge_correction_border_returns_nan_when_no_usable_events():
+    """Radius larger than the window diagonal -> no event has boundary
+    distance >= r -> NaN at that index (not a silent zero)."""
+    rng = np.random.default_rng(0)
+    pts = rng.uniform(0, 1, size=(50, 2))
+    def lam(X): return np.full(X.shape[0], 50.0)
+    # Window diagonal is sqrt(2); pick r well beyond it.
+    r_grid = np.array([2.0])
+    K = k_inhom(pts, lam, r_grid, domain=DOMAIN, edge_correction="border")
+    assert np.isnan(K[0])
+
+
+def test_edge_correction_invalid_name_raises():
+    rng = np.random.default_rng(0)
+    pts = rng.uniform(0, 1, size=(10, 2))
+    def lam(X): return np.full(X.shape[0], 10.0)
+    r_grid = np.linspace(0.05, 0.2, 5)
+    with pytest.raises(ValueError) as excinfo:
+        pair_correlation(pts, lam, r_grid, domain=DOMAIN, edge_correction="bogus")
+    msg = str(excinfo.value)
+    # Every valid name listed in the error message.
+    for name in ("epanechnikov", "isotropic", "translation", "border"):
+        assert name in msg
