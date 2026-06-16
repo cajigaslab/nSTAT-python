@@ -42,6 +42,8 @@ broader DPPy sampler catalogue.
 | Symbol | Notes |
 |---|---|
 | `lgcp_fit(points, domain, *, grid=20, kernel="matern52", length_scale=0.12, variance=1.0, prior_mean=None, max_iter=50, tol=1e-8, jitter=1e-6, backend="numpy")` | Bins events, places a Matern GP prior on `log Λ`, finds the posterior mode by Newton/IRLS (Rasmussen-Williams Alg. 3.1) → `LGCPResult` |
+| `lgcp_fit_glm(points, domain, basis, prior, *, grid=32, prior_mean=None, max_iter=50, tol=1e-6)` | Basis-projected LGCP: penalized Poisson IRLS on the B-spline coefficient vector with a `MaternPrior` evaluated at the Greville abscissae (Diggle-Moraga-Rowlingson-Taylor 2013; Wood 2017). The cubic cost scales with the basis dimension `K` (not the cell count `G*G`), so this is the routine to use at `G >= 50`. Returns the same `LGCPResult` as `lgcp_fit`. |
+| `MaternPrior(nu, length_scale, marginal_var=1.0, jitter=1e-6)` | Matern GP prior (`nu ∈ {0.5, 1.5, 2.5}`) used by `lgcp_fit_glm`; caches `K`, its Cholesky factor, `K_inv`, and `log_det` per `coords` array. On a Cholesky failure the jitter is bumped 10x and retried once. |
 | `LGCPResult.rate_map(level=0.90)` | `(mean, lo, hi)` log-normal credible band: `mean=exp(f̂+v/2)`, `lo/hi=exp(f̂∓z√v)`. Band is **wider in data-sparse cells** (where `Ŵ→0`, `v→` GP prior variance) |
 | `LGCPResult.rate_mean()` / `.intensity_fn()` | the posterior-mean rate / a callable `X→rate` for use as `lambda_hat` (mind the plug-in caveat) |
 
@@ -76,7 +78,7 @@ to the pre-keyword behaviour.  The other three require a rectangular
 |---|---|
 | `bspline_basis_1d(grid, n_knots, degree=3, clamped=True)` | `(N, n_knots)` design matrix on a 1-D grid; rows sum to 1 (partition of unity) when `clamped=True`; de Boor 1978 |
 | `bspline_basis_2d(grid_x, grid_y, n_knots, degree=3, domain="rect", clamped=True)` | tensor-product `(Nx*Ny, nx*ny)` design matrix; **row layout is `indexing="ij"`** — row `i*Ny + j` evaluates at `(grid_x[i], grid_y[j])`; reshape with `pred.reshape(len(grid_x), len(grid_y))`; `domain="circular"` raises `NotImplementedError` |
-| `BSplineBasis2D.from_grid(grid_x, grid_y, n_knots, degree=3, clamped=True)` → `BSplineBasis2D` | frozen dataclass; `.design_matrix()` returns the cached design matrix, `.gram()` returns the P-spline second-difference penalty `Dx.T Dx ⊗ Iy + Ix ⊗ Dy.T Dy` (Eilers-Marx 1996) — symmetric PSD by construction |
+| `BSplineBasis2D.from_grid(grid_x, grid_y, n_knots, degree=3, clamped=True)` → `BSplineBasis2D` | frozen dataclass; `.design_matrix()` returns the cached design matrix, `.gram()` returns the P-spline second-difference penalty `Dx.T Dx ⊗ Iy + Ix ⊗ Dy.T Dy` (Eilers-Marx 1996) — symmetric PSD by construction; `.coefficient_coords()` returns the `(K, 2)` Greville-abscissa anchor points (de Boor 1978) of the basis coefficients in ij flattening — feed to `MaternPrior` for `lgcp_fit_glm`. |
 
 The 2-D design matrix is a valid `x` argument to
 `nstat.glm.fit_poisson_glm`; a smooth penalty can be added later by
@@ -151,6 +153,34 @@ env = global_envelope(pts, lam_at, r, n_sim=199, domain=((0, 1), (0, 1)))
 print("g(r) ~ 1:", round(float(np.nanmean(g)), 2), "| inside envelope:", env.inside)
 ```
 
+Basis-projected LGCP (cheap at large grids):
+
+```python
+import numpy as np
+from nstat.extras.spatial import lgcp_fit_glm, MaternPrior
+from nstat.extras.spatial.basis import BSplineBasis2D
+
+rng = np.random.default_rng(2)
+# Same single-bump pattern as above.
+mu, peak = np.array([0.45, 0.55]), 900.0
+Sinv = np.linalg.inv(np.array([[0.045, 0.008], [0.008, 0.035]]))
+def loglam(X):
+    d = X - mu
+    return np.log(peak) - 0.5 * np.einsum("ni,ij,nj->n", d, Sinv, d)
+n = rng.poisson(peak); P = rng.uniform(0, 1, (n, 2))
+pts = P[rng.uniform(0, 1, n) < np.exp(loglam(P)) / peak]
+
+# 64x64 cell grid, 10x10 cubic B-spline basis with a Matern-5/2 prior on
+# the coefficient vector.  Dominant solve is O(K^3) = O(100^3), not O(M^3).
+G = 64
+gx = np.linspace(0, 1, G); gy = np.linspace(0, 1, G)
+basis = BSplineBasis2D.from_grid(gx, gy, n_knots=10)
+prior = MaternPrior(nu=2.5, length_scale=0.18, marginal_var=1.0)
+res = lgcp_fit_glm(pts, ((0, 1), (0, 1)), basis, prior, grid=G)
+mean, lo, hi = res.rate_map(level=0.90)
+```
+
+
 Discrete-time-rescaling KS:
 
 ```python
@@ -171,6 +201,7 @@ print("uncorrected rejects:", not res.inside_uncorrected,
 | Feature | Status |
 |---|---|
 | LGCP Laplace rate map + log-normal credible band | shipped (NumPy) |
+| Basis-projected LGCP (`lgcp_fit_glm` + `MaternPrior`) | shipped (NumPy) |
 | Inhomogeneous `g`/`K`/`L`, F/G/J, global-rank envelope | shipped (NumPy) |
 | Discrete-time-rescaling correction + marked / multivariate KS | shipped (NumPy) |
 | DPP eigen-sampler (`L`-ensemble) | shipped (NumPy fallback) + DPPy bridge |
@@ -180,8 +211,15 @@ print("uncorrected rejects:", not res.inside_uncorrected,
 
 ## References
 
+- Møller J, Syversveen AR, Waagepetersen RP (1998). *Log Gaussian Cox
+  processes.* Scandinavian Journal of Statistics 25(3):451-482.
 - Rasmussen CE, Williams CKI (2006). *Gaussian Processes for Machine
   Learning*, Algorithm 3.1.
+- Diggle PJ, Moraga P, Rowlingson B, Taylor BM (2013). *Spatial and
+  spatio-temporal log-Gaussian Cox processes.* Statistical Science
+  28(4):542-563.
+- Wood SN (2017). *Generalized Additive Models: An Introduction with R.*
+  Chapman & Hall/CRC, 2nd ed.
 - de Boor C (1978). *A Practical Guide to Splines.* Springer.
 - Eilers PHC, Marx BD (1996). *Flexible Smoothing with B-splines and
   Penalties.* Statistical Science 11(2):89-121.
