@@ -2,7 +2,7 @@
 
 > **Audience:** AI coding assistants (Claude, GPT, Cursor, Copilot, etc.) and
 > autonomous agents that need to use the `nstat-python` toolbox correctly.
-> Updated: 2026-06-12. Package version: 0.5.0.
+> Updated: 2026-06-16. Package version: 0.5.5.
 >
 > The MATLAB reference toolbox lives in a *separate* repository
 > (https://github.com/cajigaslab/nSTAT) and is deliberately kept independent
