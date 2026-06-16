@@ -55,7 +55,9 @@ broader DPPy sampler catalogue.
 | `k_inhom(points, lambda_hat, r_grid, *, domain=None, edge_correction="epanechnikov")` | inhomogeneous `K` (Baddeley-Møller-Waagepetersen 2000); `=πr²` for inhomogeneous Poisson (2-D) |
 | `l_function(points, lambda_hat, r_grid, *, domain=None, edge_correction="epanechnikov")` | variance-stabilized `L(r)=√(K/π)`; `L(r)−r=0` under the null |
 | `nearest_neighbour_FGJ(points, r_grid, *, domain=None, ...)` | empty-space `F`, nearest-neighbour `G`, `J=(1−G)/(1−F)` |
-| `global_envelope(points, lambda_hat, r_grid, *, n_sim=199, domain=None, statistic="pcf", bw=None, alpha=0.05, ...)` | Monte-Carlo global-rank envelope (Myllymäki et al. 2017) → `EnvelopeResult` (`observed`, `lo`, `hi`, `inside`, `p_interval`) |
+| `global_envelope(points, lambda_hat, r_grid, *, n_sim=199, domain=None, statistic="pcf", bw=None, alpha=0.05, edge_correction="epanechnikov", ...)` | Monte-Carlo global-rank envelope (Myllymäki et al. 2017) → `EnvelopeResult` (`observed`, `lo`, `hi`, `inside`, `p_interval`); the `edge_correction` keyword is forwarded to the per-curve summary statistic |
+| `cross_k_inhom(points_A, points_B, lambda_A, lambda_B, r_grid, *, domain=None, edge_correction="epanechnikov")` | inhomogeneous cross `K_{AB}(r)` (Baddeley-Møller-Waagepetersen 2000) for two disjoint label classes; `=πr²` under independent inhomogeneous Poisson labels |
+| `cross_pair_correlation(points_A, points_B, lambda_A, lambda_B, r_grid, *, bw=None, domain=None, edge_correction="epanechnikov")` | cross pair correlation `g_{AB}(r)` — `>1` cross-attraction, `<1` cross-repulsion, `=1` independent labels |
 
 #### Edge corrections
 
@@ -93,6 +95,51 @@ augmenting the IRLS Hessian with `rho * basis.gram()`.
 | `corrected_rescaled(spike_bins, p_k, rng=None)` | `u_j=[∏(1−p_k)]·(1−r_j·p_{k_j})` — exactly Unif(0,1) (Haslinger-Pipa-Brown 2010) |
 | `multivariate_time_rescaling(spike_bins_per_channel, p_k_per_channel, ...)` | per-channel rescaling for a finite (channel) mark space (Gerhard-Haslinger-Pipa 2011) |
 | `multivariate_gof_with_coupling(spike_bins_per_channel, p_k_per_channel, *, n_tau_bins=4, ...)` | runs the per-channel test *and* the population coupling test ([`nstat.population_time_rescale`](../api.html#nstat.population_time_rescale), Tao et al. 2018) on the same data → `CoupledMarkedGOFResult` (`per_channel`, `population`). Per-channel passing is necessary but not sufficient; this wrapper closes that gap |
+
+### Marked-pattern second-order diagnostics (pure NumPy/SciPy)
+
+For a *single* labelled point pattern (one mark per event), the mark
+correlation function and mark variogram test whether the marks are
+independent of the geometry of the pattern.
+
+| Symbol | Notes |
+|---|---|
+| `mark_correlation(points, marks, r_grid, *, kernel="schlather", bw=None)` | Kernel mark correlation `k_f(r)` (Schlather 2001 product kernel by default; Stoyan-Stoyan 1994 §13).  `>1` mark clustering, `<1` mark repulsion, `=1` independent marks.  `kernel="isham"` gives the centred-product (mark covariance) form; `kernel="none"` skips the global normalisation. |
+| `mark_variogram(points, marks, r_grid, *, bw=None)` | Kernel mark variogram `γ_m(r) = ½ E[(m_i − m_j)² | ‖x_i − x_j‖ = r]` (Cressie-Hawkins 1980; Stoyan-Stoyan 1994 §13).  Identically zero for a constant mark field; approaches `Var(m)` under independent marks. |
+
+Both estimators return `NaN` at lags where the Epanechnikov kernel
+weight sums to zero (no pairs in support) — never a silent zero.
+
+### Rescaled-time autocorrelation (independence diagnostic)
+
+The discrete-time-rescaling KS test checks the *marginal* distribution
+of the rescaled variates (Unif(0,1)) but is blind to serial dependence
+(Brown et al. 2002).  `rescaled_acf` returns the lag autocorrelation
+of the normal-score-transformed uniforms `z_j = Φ⁻¹(u_j)` and an
+asymptotic Bartlett band (Andersen 1997; Truccolo et al. 2005) — a
+complement to, not a replacement for, the marginal KS test.
+
+| Symbol | Notes |
+|---|---|
+| `rescaled_acf(u_rescaled, *, n_lags=20)` → `RescaledACFResult` | `acf` at lags `1..n_lags`, with the two-sided `±1.96/√n` Bartlett band and a per-lag `inside_band` mask |
+
+### Smoothed point-process residuals
+
+| Symbol | Notes |
+|---|---|
+| `pp_residuals_smoothed(spike_bins, lam_per_bin, bandwidth, *, dt=1.0)` → `(t_grid, residuals)` | Convolves the per-bin residual `e_k = N_k − λ̂_k Δ` with a normalised Gaussian kernel of standard deviation `bandwidth` *bins*.  Centred at zero under the true model (Brown et al. 2002); a sustained drift flags a time-localised mis-fit (Andersen 1997; Truccolo et al. 2005) |
+
+### LGCP Bartlett density from pair correlation
+
+| Symbol | Notes |
+|---|---|
+| `bartlett_density_from_pcf(r_grid, g_of_r, k_grid=None)` → `(k_grid, S)` | Hankel-zero transform of `(g(r) − 1)` — the 2-D spatial Bartlett spectral density (Bartlett 1964; Stein 1999 §3).  Default `k_grid`: 64 log-spaced wavenumbers from `π / r_max` to `π / Δr_min`.  Accurate over the body of the wavenumber grid; the top decile near `k_max` is sensitive to the lag-grid truncation (Stein 1999 §3) and is best excluded from any closed-form comparison. |
+
+For an LGCP driven by a Gaussian log-rate field of covariance `C(r)`,
+the population pair correlation is `g(r) = exp(C(r))` (Møller,
+Syversveen & Waagepetersen 1998), so the Bartlett density of the
+empirical `g(r)` can be compared to the closed-form transform of
+`exp(C(r)) − 1` for parametric covariance families (Matérn, Gaussian).
 
 ### Optional bridges (lazy import; raise an install hint if the dep is absent)
 
@@ -310,3 +357,24 @@ underlying the fit.
   Processes*, Vol. I, §8.4 — Bartlett spectrum.
 - Hansen NR, Reynaud-Bouret P, Rivoirard V (2015). *Lasso and probabilistic
   inequalities for multivariate point processes.* Bernoulli 21(1):83.
+- Schlather M (2001). *On the second-order characteristics of marked
+  point processes.* Bernoulli 7(1):99-117.
+- Stoyan D, Stoyan H (1994). *Fractals, Random Shapes and Point Fields:
+  Methods of Geometrical Statistics.* Wiley.
+- Cressie N, Hawkins DM (1980). *Robust estimation of the variogram, I.*
+  Journal of the IAMG 12(2):115-125.
+- Illian J, Penttinen A, Stoyan H, Stoyan D (2008). *Statistical Analysis
+  and Modelling of Spatial Point Patterns.* Wiley.
+- Brown EN, Barbieri R, Ventura V, Kass RE, Frank LM (2002). *The
+  time-rescaling theorem and its application to neural spike train data
+  analysis.* Neural Computation 14(2):325-346.
+- Andersen PK (1997). *Statistical Models Based on Counting Processes.*
+  Springer.
+- Truccolo W, Eden UT, Fellows MR, Donoghue JP, Brown EN (2005). *A
+  point process framework for relating neural spiking activity to
+  spiking history, neural ensemble, and extrinsic covariate effects.*
+  Journal of Neurophysiology 93(2):1074-1089.
+- Bartlett MS (1964). *The spectral analysis of two-dimensional point
+  processes.* Biometrika 51(3-4):299-311.
+- Stein ML (1999). *Interpolation of Spatial Data: Some Theory for
+  Kriging.* Springer.

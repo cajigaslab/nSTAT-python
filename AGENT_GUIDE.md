@@ -477,6 +477,25 @@ Python projects" table in `README.md` for install commands.
   the population coupling test `nstat.population_time_rescale` (Tao
   et al. 2018) compose via `multivariate_gof_with_coupling`, which
   runs both on the same data and returns a `CoupledMarkedGOFResult`.
+  The second-order GoF suite extends to multi-type and marked patterns:
+  `cross_k_inhom` / `cross_pair_correlation` (Baddeley-Møller-Waagepetersen
+  2000) test the bivariate Poisson null between two disjoint label
+  classes; `mark_correlation` (Schlather 2001 product kernel, Stoyan-
+  Stoyan 1994 §13) and `mark_variogram` (Cressie-Hawkins 1980) probe
+  mark / geometry independence on a single labelled pattern.  `global_envelope`
+  now forwards an `edge_correction` keyword to its per-curve summary
+  statistic so the Monte-Carlo envelope can be built under any of the
+  four published corrections.  `rescaled_acf` returns a `RescaledACFResult`
+  (lag autocorrelation of the rescaled-time variates with a Bartlett
+  band; Brown et al. 2002, Andersen 1997, Truccolo et al. 2005) — the
+  serial-dependence diagnostic the marginal KS test is blind to.
+  `pp_residuals_smoothed` returns kernel-smoothed Pearson residuals on
+  a uniform time grid for time-localised mis-fit detection.
+  `bartlett_density_from_pcf` returns the Hankel-zero transform of
+  `(g(r) − 1)` — the 2-D spatial Bartlett spectral density (Bartlett
+  1964; Møller-Syversveen-Waagepetersen 1998; Stein 1999 §3), accurate
+  over the body of the wavenumber grid and useful for comparing an
+  empirical pair correlation to an LGCP closed form.
   End-to-end demos: `examples/paper/example06_place_fields_glm_basis.py`,
   `examples/paper/example07_spatiotemporal_hawkes_waves.py`; companion
   notebooks `notebooks/PlaceFieldGLMBasis.ipynb`,

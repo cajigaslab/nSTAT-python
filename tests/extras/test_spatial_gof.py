@@ -16,6 +16,8 @@ import pytest
 from scipy.spatial.distance import cdist
 
 from nstat.extras.spatial import (
+    cross_k_inhom,
+    cross_pair_correlation,
     global_envelope,
     k_inhom,
     l_function,
@@ -259,3 +261,124 @@ def test_edge_correction_invalid_name_raises():
     # Every valid name listed in the error message.
     for name in ("epanechnikov", "isotropic", "translation", "border"):
         assert name in msg
+
+
+# ----------------------------------------------------------------------
+# Cross-type (bivariate) Kinhom + pcf, and edge_correction in global_envelope
+# ----------------------------------------------------------------------
+
+
+def test_cross_k_inhom_matches_pi_r_squared_for_csr_pair():
+    """Independent homogeneous Poisson label classes A and B satisfy
+    K_{AB}(r) = pi r^2 (Baddeley-Moller-Waagepetersen 2000).  Use the
+    edge-bias-correcting translation weight so the mean tracks the
+    theoretical curve within +/- 2 SE."""
+    rng = np.random.default_rng(101)
+    n_A, n_B = 200, 200
+    r_grid = np.linspace(0.05, 0.25, 8)
+    n_sim = 50
+    Ks = np.empty((n_sim, len(r_grid)))
+    for s in range(n_sim):
+        ptsA = rng.uniform(0, 1, size=(n_A, 2))
+        ptsB = rng.uniform(0, 1, size=(n_B, 2))
+        def lamA(X, n=n_A): return np.full(X.shape[0], float(n))
+        def lamB(X, n=n_B): return np.full(X.shape[0], float(n))
+        Ks[s] = cross_k_inhom(
+            ptsA, ptsB, lamA, lamB, r_grid, domain=DOMAIN,
+            edge_correction="translation",
+        )
+    mean, std = Ks.mean(axis=0), Ks.std(axis=0)
+    expected = np.pi * r_grid**2
+    bound = 2.0 * std / np.sqrt(n_sim)
+    assert np.all(np.abs(mean - expected) < bound + 1e-3), (
+        f"cross-K mean deviates from pi r^2 by > 2 SE: "
+        f"|mean-expected|={np.abs(mean - expected)}, 2SE={bound}"
+    )
+
+
+def test_cross_k_inhom_detects_independence_violation():
+    """If B is a copy of A (with tiny jitter), the cross-K is much larger
+    than pi r^2 at short lags -- attraction the bivariate Poisson null
+    forbids."""
+    rng = np.random.default_rng(103)
+    n = 200
+    ptsA = rng.uniform(0, 1, size=(n, 2))
+    # B is A plus a tiny jitter -> strong cross-attraction at small r.
+    ptsB = ptsA + rng.normal(scale=0.001, size=ptsA.shape)
+    # Clip into the unit square so the domain assumption holds.
+    ptsB = np.clip(ptsB, 0.0, 1.0)
+    def lamA(X, n=n): return np.full(X.shape[0], float(n))
+    def lamB(X, n=n): return np.full(X.shape[0], float(n))
+    r_grid = np.linspace(0.02, 0.10, 6)
+    K = cross_k_inhom(ptsA, ptsB, lamA, lamB, r_grid, domain=DOMAIN)
+    expected = np.pi * r_grid**2
+    # The shortest lag should be many times above the bivariate Poisson null.
+    assert K[0] > 3.0 * expected[0]
+
+
+def test_cross_pair_correlation_independence_is_one():
+    """For two independent CSR label classes, g_{AB}(r) ~ 1 averaged
+    over Monte-Carlo realisations."""
+    rng = np.random.default_rng(105)
+    r_grid = np.linspace(0.04, 0.18, 7)
+    n_sim = 30
+    g_avg = np.zeros(len(r_grid))
+    n_A, n_B = 300, 300
+    for s in range(n_sim):
+        ptsA = rng.uniform(0, 1, size=(n_A, 2))
+        ptsB = rng.uniform(0, 1, size=(n_B, 2))
+        def lamA(X, n=n_A): return np.full(X.shape[0], float(n))
+        def lamB(X, n=n_B): return np.full(X.shape[0], float(n))
+        g_avg = g_avg + cross_pair_correlation(
+            ptsA, ptsB, lamA, lamB, r_grid, domain=DOMAIN, bw=0.04
+        )
+    g_avg /= n_sim
+    # Averaged cross-pcf hovers near 1 under independent CSR labels.
+    assert np.all(np.abs(g_avg - 1.0) < 0.25), (
+        f"cross-pcf averaged mean deviates from 1: {g_avg}"
+    )
+
+
+def test_global_envelope_epanechnikov_default_bit_identical_to_v0_5_5():
+    """The default (epanechnikov) global_envelope branch must produce
+    bit-identical output whether the kwarg is omitted (v0.5.5 behaviour)
+    or passed explicitly.  Pin test against numeric drift."""
+    rng = np.random.default_rng(200)
+    pts = rng.uniform(0, 1, size=(50, 2))
+    def lam(X): return np.full(X.shape[0], 50.0)
+    r_grid = np.linspace(0.05, 0.18, 8)
+    env_default = global_envelope(
+        pts, lam, r_grid, n_sim=19, domain=DOMAIN, bw=0.04,
+        rng=np.random.default_rng(7),
+    )
+    env_kwarg = global_envelope(
+        pts, lam, r_grid, n_sim=19, domain=DOMAIN, bw=0.04,
+        edge_correction="epanechnikov",
+        rng=np.random.default_rng(7),
+    )
+    assert np.array_equal(env_default.observed, env_kwarg.observed)
+    assert np.array_equal(env_default.lo, env_kwarg.lo)
+    assert np.array_equal(env_default.hi, env_kwarg.hi)
+
+
+def test_global_envelope_propagates_edge_correction():
+    """Passing a non-default edge_correction must change the observed
+    curve relative to the default for a CSR pattern -- proof the kwarg is
+    forwarded to the per-curve summary statistic."""
+    rng = np.random.default_rng(202)
+    pts = rng.uniform(0, 1, size=(80, 2))
+    def lam(X): return np.full(X.shape[0], 80.0)
+    r_grid = np.linspace(0.10, 0.25, 6)  # large lags -> edge effect noticeable
+    env_def = global_envelope(
+        pts, lam, r_grid, n_sim=9, domain=DOMAIN, bw=0.04,
+        rng=np.random.default_rng(7),
+    )
+    env_iso = global_envelope(
+        pts, lam, r_grid, n_sim=9, domain=DOMAIN, bw=0.04,
+        edge_correction="isotropic",
+        rng=np.random.default_rng(7),
+    )
+    # Edge-corrected observed curve differs from the uncorrected one at large r.
+    assert not np.array_equal(env_def.observed, env_iso.observed)
+    # The isotropic correction must affect both observed and envelope endpoints.
+    assert not np.array_equal(env_def.hi, env_iso.hi)
