@@ -116,3 +116,181 @@ def fit_hawkes_exp(
 
 
 __all__ = ["HawkesFit", "fit_hawkes_exp"]
+
+
+# --------------------------------------------------------------------------
+# Bartlett spectrum — pure NumPy/SciPy (no ``tick`` dependency).
+# --------------------------------------------------------------------------
+# Pure-NumPy/SciPy implementation: kept in this module because the input
+# (a fitted ``triggering_matrix``) is the natural output of ``fit_hawkes_exp``
+# and the §6.C.1 Bartlett spectrum is the canonical wave-vector diagnostic
+# for a propagating triggering kernel.  This function does NOT require
+# ``tick`` and is safe to eagerly re-export from
+# ``nstat.extras.spatial.__init__`` (see comments there).
+import warnings  # noqa: E402  -- intentionally local to the bartlett block
+
+
+def bartlett_spectrum(
+    triggering_matrix: np.ndarray,
+    electrode_positions: np.ndarray,
+    freq_grid: np.ndarray,
+    wave_vector_grid: np.ndarray,
+    *,
+    decay: float | np.ndarray = 1.0,
+    return_complex: bool = False,
+) -> np.ndarray:
+    r"""Bartlett (frequency × wave-vector) spectrum of a Hawkes triggering kernel.
+
+    Implements the §8.4 Bartlett spectrum of Daley & Vere-Jones (2003) for a
+    multivariate Hawkes process whose pairwise triggering kernel is
+    :math:`\varphi_{cc'}(\tau) = A_{cc'} \beta\,e^{-\beta\tau}\,1_{\tau\ge 0}`
+    (the parametric form returned by :func:`fit_hawkes_exp`).  The spectral
+    density at frequency :math:`f` and wave vector :math:`\mathbf{k}` is
+
+    .. math::
+
+        S(f, \mathbf{k}) = \frac{1}{\beta + i\,2\pi f}\,
+        \sum_{c,c'} A_{cc'}\,e^{-i\,\mathbf{k}\cdot(\mathbf{r}_c - \mathbf{r}_{c'})}.
+
+    A coherent propagating component
+    :math:`A_{cc'} \propto \exp(-\beta\,\mathbf{r}_{cc'}\!\cdot\!\mathbf{v}/\|\mathbf{v}\|^2)`
+    produces a ridge :math:`|\mathbf{k}\,\|\mathbf{v}\|| = 2\pi f` whose
+    direction is :math:`\hat{\mathbf{v}}` (Bacry-Mastromatteo-Muzy 2015).
+
+    Parameters
+    ----------
+    triggering_matrix
+        ``(C, C)`` adjacency / integrated triggering matrix (e.g.
+        :attr:`HawkesFit.adjacency`).
+    electrode_positions
+        ``(C, 2)`` planar electrode coordinates.
+    freq_grid
+        ``(Nf,)`` frequencies in Hz.
+    wave_vector_grid
+        ``(Nk, 2)`` wave vectors in rad / (position-unit).  Speed is
+        recovered as ``2*pi*f / |k|`` with units ``position-unit / s``.
+    decay
+        Exponential decay :math:`\beta` (scalar) or per-pair ``(C, C)``
+        array of decays.  Negative entries raise ``ValueError``.
+    return_complex
+        If ``False`` (default), return the **real, non-negative power**
+        :math:`|S(f, \mathbf{k})|^2`.  If ``True``, return the complex
+        spectrum so callers can take phases / cross-spectra.
+
+    Returns
+    -------
+    np.ndarray
+        ``(Nf, Nk)`` power (real, ``float``) if ``return_complex=False``,
+        else ``(Nf, Nk)`` complex spectrum.
+
+    Raises
+    ------
+    ValueError
+        On shape mismatch or negative ``decay``.
+
+    Warns
+    -----
+    UserWarning
+        If the adjacency matrix has spectral radius :math:`\ge 1` (the
+        Hawkes process is not stationary; the Bartlett formula assumes
+        stationarity).
+
+    References
+    ----------
+    Daley DJ, Vere-Jones D (2003). *An Introduction to the Theory of Point
+    Processes*, Vol. I, §8.4.  Bacry E, Mastromatteo I, Muzy J-F (2015).
+    *Hawkes processes in finance.* Market Microstructure and Liquidity
+    1(1):1550005.  Hansen NR, Reynaud-Bouret P, Rivoirard V (2015).
+    *Lasso and probabilistic inequalities for multivariate point processes.*
+    Bernoulli 21(1):83.
+    """
+    adj = np.asarray(triggering_matrix, dtype=float)
+    pos = np.asarray(electrode_positions, dtype=float)
+    f = np.asarray(freq_grid, dtype=float)
+    k = np.asarray(wave_vector_grid, dtype=float)
+
+    if adj.ndim != 2 or adj.shape[0] != adj.shape[1]:
+        raise ValueError(
+            f"triggering_matrix must be (C, C); got shape {adj.shape}"
+        )
+    C = adj.shape[0]
+    if pos.shape != (C, 2):
+        raise ValueError(
+            f"electrode_positions must be (C, 2) with C={C}; got shape {pos.shape}"
+        )
+    if f.ndim != 1:
+        raise ValueError(f"freq_grid must be 1-D; got shape {f.shape}")
+    if k.ndim != 2 or k.shape[1] != 2:
+        raise ValueError(
+            f"wave_vector_grid must be (Nk, 2); got shape {k.shape}"
+        )
+
+    decay_arr = np.asarray(decay, dtype=float)
+    if decay_arr.ndim == 0:
+        decay_scalar: float | None = float(decay_arr)
+        if decay_scalar < 0:
+            raise ValueError(f"decay must be non-negative; got {decay_scalar}")
+        decay_full = None
+    else:
+        if decay_arr.shape != (C, C):
+            raise ValueError(
+                f"decay array must be (C, C) with C={C}; got shape {decay_arr.shape}"
+            )
+        if np.any(decay_arr < 0):
+            raise ValueError("decay array contains negative entries")
+        decay_scalar = None
+        decay_full = decay_arr
+
+    Nf = f.shape[0]
+    Nk = k.shape[0]
+
+    if not np.any(adj):
+        dtype = complex if return_complex else float
+        return np.zeros((Nf, Nk), dtype=dtype)
+
+    rho = float(np.max(np.abs(np.linalg.eigvals(adj))))
+    if rho >= 1.0:
+        warnings.warn(
+            f"Hawkes adjacency has spectral radius {rho:.3f} >= 1.0; "
+            "stationarity assumption violated",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    # r[i, j, d] = pos[i, d] - pos[j, d]  (so r[i, j] = r_i - r_j)
+    r = pos[:, None, :] - pos[None, :, :]                # (C, C, 2)
+    phase = np.einsum("kd,ijd->kij", k, r)                # (Nk, C, C)
+    exp_phase = np.exp(-1j * phase)                        # (Nk, C, C) complex
+
+    if decay_scalar is not None:
+        # Factorized path: kernel = adj * exp(-i k . r)  is freq-independent;
+        # the frequency factor G(f) = 1 / (decay + i 2 pi f) multiplies across.
+        G = 1.0 / (decay_scalar + 1j * 2.0 * np.pi * f)   # (Nf,) complex
+        S_k = np.einsum("ij,kij->k", adj, exp_phase)      # (Nk,) complex
+        complex_spec = G[:, None] * S_k[None, :]          # (Nf, Nk) complex
+    else:
+        # Loop path: per-pair decay couples to frequency; chunk to bound memory.
+        complex_spec = np.empty((Nf, Nk), dtype=complex)
+        # Memory estimate for the full (Nf, C, C) G_mat plus (Nf, Nk) outputs:
+        # 16 bytes/complex * Nf * (C*C + Nk).  Slab over freq to keep < 32 MB.
+        bytes_per_freq = 16 * (C * C + Nk)
+        slab = max(1, min(Nf, (32 * 1024 * 1024) // max(bytes_per_freq, 1)))
+        # Pre-flatten exp_phase against adj weights once per slab.
+        for start in range(0, Nf, slab):
+            stop = min(start + slab, Nf)
+            f_slab = f[start:stop]                          # (Ns,)
+            # G_mat[s, c1, c2] = 1 / (decay[c1, c2] + i 2 pi f_slab[s])
+            G_mat = 1.0 / (
+                decay_full[None, :, :] + 1j * 2.0 * np.pi * f_slab[:, None, None]
+            )                                                # (Ns, C, C)
+            weighted = adj[None, :, :] * G_mat               # (Ns, C, C) complex
+            # S_fk[s, k] = sum_{ij} weighted[s, i, j] * exp_phase[k, i, j]
+            S_fk = np.einsum("sij,kij->sk", weighted, exp_phase)
+            complex_spec[start:stop, :] = S_fk
+
+    if return_complex:
+        return complex_spec.astype(complex)
+    return (np.abs(complex_spec) ** 2).astype(float)
+
+
+__all__ = ["HawkesFit", "fit_hawkes_exp", "bartlett_spectrum"]

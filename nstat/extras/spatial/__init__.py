@@ -36,6 +36,14 @@ Pure-NumPy/SciPy core (no optional dependency required):
 - :mod:`~nstat.extras.spatial.marked_gof` — the discrete-time-rescaling KS
   correction (Haslinger-Pipa-Brown 2010) and marked goodness-of-fit:
   :func:`~nstat.extras.spatial.marked_gof.marked_time_rescaling`.
+- :mod:`~nstat.extras.spatial.wave_analysis` — pure-NumPy spatiotemporal
+  wave diagnostics on top of a fitted Hawkes triggering matrix:
+  :func:`~nstat.extras.spatial.wave_analysis.reconstruct_kernel`,
+  :func:`~nstat.extras.spatial.wave_analysis.detect_wave_peaks`
+  (returning :class:`~nstat.extras.spatial.wave_analysis.WaveAnalysisResult`).
+  The companion frequency × wave-vector
+  :func:`~nstat.extras.spatial.hawkes_bridge.bartlett_spectrum` lives in
+  ``hawkes_bridge.py`` but is pure NumPy/SciPy (it does NOT require ``tick``).
 
 Optional bridges (lazy-import; fail gracefully with an install hint):
 
@@ -96,6 +104,17 @@ from nstat.extras.spatial.spatial_gof import (
     pair_correlation,
 )
 
+# ``bartlett_spectrum`` is pure NumPy/SciPy — safe to eagerly re-export
+# even though it lives in ``hawkes_bridge.py`` alongside ``fit_hawkes_exp``
+# (which is NOT touched here and still requires the optional ``tick`` dep
+# only when called).  Importing ``bartlett_spectrum`` does NOT import ``tick``.
+from nstat.extras.spatial.hawkes_bridge import bartlett_spectrum
+from nstat.extras.spatial.wave_analysis import (
+    WaveAnalysisResult,
+    detect_wave_peaks,
+    reconstruct_kernel,
+)
+
 # The optional-dep bridge submodules (hawkes_bridge, dpp_bridge) are NOT
 # eagerly imported — they are reached via explicit submodule import so the
 # package stays import-safe without tick / DPPy / gpflow installed:
@@ -130,4 +149,10 @@ __all__ = [
     "corrected_rescaled",
     "MarkedGOFResult",
     "CoupledMarkedGOFResult",
+    # hawkes_bridge (pure-NumPy/SciPy Bartlett diagnostic; no [hawkes] needed)
+    "bartlett_spectrum",
+    # wave_analysis (pure NumPy/SciPy)
+    "reconstruct_kernel",
+    "detect_wave_peaks",
+    "WaveAnalysisResult",
 ]

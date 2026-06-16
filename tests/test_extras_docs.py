@@ -49,6 +49,7 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "basis": "spatial_point_processes",
     "hawkes_bridge": "spatial_point_processes",
     "dpp_bridge": "spatial_point_processes",
+    "wave_analysis": "spatial_point_processes",
 }
 
 

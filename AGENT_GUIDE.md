@@ -464,7 +464,13 @@ Python projects" table in `README.md` for install commands.
   The `pair_correlation` / `k_inhom` / `l_function` estimators take an
   `edge_correction` keyword (default `"epanechnikov"`; also `"isotropic"`
   for Ripley 1976/1977, `"translation"` for Ohser 1983, `"border"` for
-  Baddeley-Rubak-Turner 2015).  No MATLAB counterpart, so no
+  Baddeley-Rubak-Turner 2015).  The same module also exposes pure-NumPy
+  spatiotemporal-wave diagnostics — `bartlett_spectrum` (the frequency
+  × wave-vector spectrum of a Hawkes triggering matrix),
+  `reconstruct_kernel` (the parametric exponential-kernel
+  reconstruction), and `detect_wave_peaks` returning a
+  `WaveAnalysisResult` with `(freq, kx, ky, power, speed, direction)`
+  for each accepted peak.  No MATLAB counterpart, so no
   `parity/manifest.yml` entry.  See
   [`docs/extras/spatial_point_processes.md`](docs/extras/spatial_point_processes.md).
   The per-channel discrete-time test `multivariate_time_rescaling` and
