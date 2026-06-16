@@ -90,3 +90,9 @@ notebooks:
 - topic: HybridFilterExample
   file: notebooks/HybridFilterExample.ipynb
   run_group: full
+- topic: PlaceFieldGLMBasis
+  file: notebooks/PlaceFieldGLMBasis.ipynb
+  run_group: smoke
+- topic: HawkesWaveAnalysis
+  file: notebooks/HawkesWaveAnalysis.ipynb
+  run_group: smoke
