@@ -411,9 +411,11 @@ def run_part_b(data_dir, export_dir=None):
 
     # (Row 2): True CIF heatmap spanning both columns
     ax = fig3.add_subplot(gs3[2, :])
-    ax.imshow(stimData.T, aspect="auto", origin="lower",
-              extent=[time[0], time[-1], 1, numRealizations],
-              cmap="jet")  # MATLAB default colormap for imagesc
+    im = ax.imshow(stimData.T, aspect="auto", origin="lower",
+                   extent=[time[0], time[-1], 1, numRealizations],
+                   cmap="jet")  # MATLAB default colormap for imagesc
+    fig3.colorbar(im, ax=ax, fraction=0.046, pad=0.04,
+                  label="Firing Rate [Hz]")
     ax.set_xlabel("time [s]")
     ax.set_ylabel("Trial [k]")
     ax.set_title("True Conditional Intensity Function", fontweight="bold",
@@ -525,8 +527,10 @@ def run_part_b(data_dir, export_dir=None):
     ]
     for ax, (title, data) in zip(axes5, surfaces):
         # MATLAB mesh(trial, time, data) viewed from above: x=trial, y=time
-        ax.pcolormesh(trial_axis, basis_time[:T_act], data,
-                       shading="gouraud", cmap="viridis")
+        im = ax.pcolormesh(trial_axis, basis_time[:T_act], data,
+                            shading="gouraud", cmap="viridis")
+        fig5.colorbar(im, ax=ax, fraction=0.046, pad=0.04,
+                      label="Stimulus Effect [Hz]")
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_title(title, fontweight="bold", fontsize=14, fontfamily="Arial")
