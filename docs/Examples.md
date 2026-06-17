@@ -8,7 +8,7 @@ The five canonical examples from Cajigas, Malik & Brown (2012), each reproduced 
 
 <div class="ex-grid">
 <a class="ex-card" href="figures/example01/README.html">
-  <img class="ex-thumb" src="_static/gallery/example01.png" alt="mEPSC Poisson models" loading="lazy">
+  <img class="ex-thumb" src="figures/example01/fig01_constant_mg_summary.png" alt="mEPSC Poisson models" loading="lazy">
   <span class="ex-body">
     <span class="ex-eyebrow">Example 01</span>
     <span class="ex-title">mEPSC Poisson models</span>
@@ -16,7 +16,7 @@ The five canonical examples from Cajigas, Malik & Brown (2012), each reproduced 
   </span>
 </a>
 <a class="ex-card" href="figures/example02/README.html">
-  <img class="ex-thumb" src="_static/gallery/example02.png" alt="Whisker-stimulus GLM" loading="lazy">
+  <img class="ex-thumb" src="figures/example02/fig01_data_overview.png" alt="Whisker-stimulus GLM" loading="lazy">
   <span class="ex-body">
     <span class="ex-eyebrow">Example 02</span>
     <span class="ex-title">Whisker-stimulus GLM</span>
@@ -24,7 +24,7 @@ The five canonical examples from Cajigas, Malik & Brown (2012), each reproduced 
   </span>
 </a>
 <a class="ex-card" href="figures/example03/README.html">
-  <img class="ex-thumb" src="_static/gallery/example03.png" alt="PSTH and SSGLM dynamics" loading="lazy">
+  <img class="ex-thumb" src="figures/example03/fig01_simulated_and_real_rasters.png" alt="PSTH and SSGLM dynamics" loading="lazy">
   <span class="ex-body">
     <span class="ex-eyebrow">Example 03</span>
     <span class="ex-title">PSTH and SSGLM dynamics</span>
@@ -32,7 +32,7 @@ The five canonical examples from Cajigas, Malik & Brown (2012), each reproduced 
   </span>
 </a>
 <a class="ex-card" href="figures/example04/README.html">
-  <img class="ex-thumb" src="_static/gallery/example04.png" alt="Place-cell receptive fields" loading="lazy">
+  <img class="ex-thumb" src="figures/example04/fig01_example_cells_path_overlay.png" alt="Place-cell receptive fields" loading="lazy">
   <span class="ex-body">
     <span class="ex-eyebrow">Example 04</span>
     <span class="ex-title">Place-cell receptive fields</span>
@@ -40,7 +40,7 @@ The five canonical examples from Cajigas, Malik & Brown (2012), each reproduced 
   </span>
 </a>
 <a class="ex-card" href="figures/example05/README.html">
-  <img class="ex-thumb" src="_static/gallery/example05.png" alt="PPAF and PPHF decoding" loading="lazy">
+  <img class="ex-thumb" src="figures/example05/fig01_univariate_setup.png" alt="PPAF and PPHF decoding" loading="lazy">
   <span class="ex-body">
     <span class="ex-eyebrow">Example 05</span>
     <span class="ex-title">PPAF and PPHF decoding</span>
