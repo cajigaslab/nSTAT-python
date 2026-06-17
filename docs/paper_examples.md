@@ -158,3 +158,5 @@ Expected figure files:
 - `docs/figures/example08/fig02_decoded_vs_true_position.png`
 - `docs/figures/example08/fig03_pair_correlation_envelope.png`
 - `docs/figures/example08/fig04_rescaled_acf.png`
+- `docs/figures/example08/fig05_velocity_speed_tuning.png`
+- `docs/figures/example08/fig06_decoder_baseline_vs_velocity.png`
