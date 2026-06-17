@@ -106,6 +106,15 @@ from nstat.extras.spatial.cluster_cox import (
     simulate_thomas,
     thomas_pair_correlation,
 )
+from nstat.extras.spatial.gibbs import (
+    AreaInteractionProcess,
+    GibbsFitResult,
+    GibbsStrauss,
+    HardcoreProcess,
+    pseudo_likelihood_fit,
+    simulate_hardcore_rejection,
+    simulate_strauss_birth_death,
+)
 from nstat.extras.spatial.inference import (
     MinContrastResult,
     fit_matern_cluster,
@@ -206,6 +215,14 @@ __all__ = [
     "min_contrast_estimator",
     "fit_thomas",
     "fit_matern_cluster",
+    # gibbs (Gibbs interaction models + Berman-Turner pseudo-likelihood)
+    "GibbsStrauss",
+    "HardcoreProcess",
+    "AreaInteractionProcess",
+    "simulate_strauss_birth_death",
+    "simulate_hardcore_rejection",
+    "pseudo_likelihood_fit",
+    "GibbsFitResult",
     # hawkes_bridge (pure-NumPy/SciPy Bartlett diagnostic; no [hawkes] needed)
     "bartlett_spectrum",
     # wave_analysis (pure NumPy/SciPy)
