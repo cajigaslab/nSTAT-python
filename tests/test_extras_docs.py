@@ -56,6 +56,7 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "cluster_cox": "spatial_point_processes",
     "inference": "spatial_point_processes",
     "gibbs": "spatial_point_processes",
+    "hawkes_em": "spatial_point_processes",
 }
 
 
