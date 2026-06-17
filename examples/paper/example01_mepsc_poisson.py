@@ -54,6 +54,7 @@ from nstat import (  # noqa: E402
     Trial,
     TrialConfig,
 )
+from nstat.core import _matlab_colon  # noqa: E402
 from nstat.signal import Covariate  # noqa: E402
 from nstat.data_manager import ensure_example_data  # noqa: E402
 
@@ -67,18 +68,6 @@ def _load_mepsc_times_seconds(path: Path) -> np.ndarray:
     # Column 2 is spike time in milliseconds at 1000 Hz
     times_ms = data[:, 1] if data.ndim == 2 else data
     return times_ms / 1000.0
-
-
-def _matlab_colon(start: float, step: float, stop: float) -> np.ndarray:
-    """Replicate MATLAB ``start:step:stop`` exactly.
-
-    ``np.arange`` accumulates floating-point error over many steps and can
-    produce off-by-one length mismatches.  This function computes the element
-    count first (like MATLAB's colon operator), then multiplies by integer
-    indices — giving bit-exact parity.
-    """
-    n = int(np.floor((stop - start) / step)) + 1
-    return start + np.arange(n) * step
 
 
 # =========================================================================
