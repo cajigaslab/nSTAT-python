@@ -1308,6 +1308,7 @@ notebooks:
       Show that the Bartlett spectrum localises a known planar wave
       vector on a small electrode grid.
     figures: []
+
   - topic: RealPlaceCellDecoding
     overview: |
       Narrative walkthrough of `example08_real_place_cells`: load
@@ -1322,6 +1323,7 @@ notebooks:
       pipeline on real hippocampal place cells with two honest
       goodness-of-fit diagnostics.
     figures: []
+
   - topic: MultitypeCrossK
     overview: |
       Two-label synthetic demo of `cross_k_inhom` and
