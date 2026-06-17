@@ -587,6 +587,7 @@ def _plot_place_fields_panel(
 ):
     """Figure 1: 2x2 B-spline place-field heatmaps."""
     n_cells = rate_maps.shape[0]
+    # === FIGURE: fig01_real_place_fields_panel.png ===
     fig, axes = plt.subplots(2, 2, figsize=(11, 9))
     axes = axes.ravel()
     for i in range(min(n_cells, 4)):
@@ -613,6 +614,7 @@ def _plot_place_fields_panel(
         "with held-out spike locations overlaid"
     )
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 
@@ -623,6 +625,7 @@ def _plot_decoded_vs_true(
     x_dec: np.ndarray,
 ):
     """Figure 2: 2-D path + per-axis traces."""
+    # === FIGURE: fig02_decoded_vs_true_position.png ===
     fig = plt.figure(figsize=(12.0, 6.5))
     ax_path = fig.add_subplot(1, 2, 1)
     ax_path.plot(pos_x_test, pos_y_test, "k-", lw=1.0, alpha=0.9, label="true")
@@ -657,11 +660,13 @@ def _plot_decoded_vs_true(
         f"({len(pos_time_test)} bins)"
     )
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 
 def _plot_pair_correlation_envelope(r_grid, g, env):
     """Figure 3: held-out g(r) with the inhomogeneous global envelope."""
+    # === FIGURE: fig03_pair_correlation_envelope.png ===
     fig, ax = plt.subplots(figsize=(7.0, 4.6))
     ax.fill_between(r_grid, env.lo, env.hi, color="0.7", alpha=0.45,
                     label=f"global envelope (n_sim={env.n_sim}, isotropic)")
@@ -677,11 +682,13 @@ def _plot_pair_correlation_envelope(r_grid, g, env):
     )
     ax.legend(loc="upper right", fontsize=8)
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 
 def _plot_rescaled_acf(acf_result):
     """Figure 4: population rescaled-time ACF with Bartlett band."""
+    # === FIGURE: fig04_rescaled_acf.png ===
     fig, ax = plt.subplots(figsize=(7.0, 4.4))
     ax.axhspan(-acf_result.band, acf_result.band, color="0.85", alpha=0.7,
                label=f"Bartlett band ±{acf_result.band:.3f}")
@@ -695,6 +702,7 @@ def _plot_rescaled_acf(acf_result):
     )
     ax.legend(loc="upper right", fontsize=8)
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 

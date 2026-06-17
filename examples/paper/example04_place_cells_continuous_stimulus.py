@@ -277,6 +277,7 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     # Figure 1: Example cells — spike locations over path (2x2)
     # ==================================================================
     exampleCells = [1, 20, 24, 48]  # 0-indexed (MATLAB: [2 21 25 49])
+    # === FIGURE: fig01_example_cells_path_overlay.png ===
     fig1, axes1 = plt.subplots(2, 2, figsize=(14, 9))  # MATLAB: 1400x900
     for i, cidx in enumerate(exampleCells):
         ax = axes1.flat[i]
@@ -293,10 +294,12 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
         if i == 3:
             ax.legend([h1, h2], ["Animal Path", "Location at time of spike"])
     fig1.tight_layout()
+    # === END FIGURE ===
 
     # ==================================================================
     # Figure 2: Population statistics (1x3 box plots)
     # ==================================================================
+    # === FIGURE: fig02_model_summary_statistics.png ===
     fig2, axes2 = plt.subplots(1, 3, figsize=(14, 9))  # MATLAB: 1400x900
 
     axes2[0].boxplot([dKS1[np.isfinite(dKS1)], dKS2[np.isfinite(dKS2)]],
@@ -318,6 +321,7 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
                        fontfamily="Arial")
 
     fig2.tight_layout()
+    # === END FIGURE ===
 
     # ==================================================================
     # 4. Build spatial grids and design matrices for heatmaps
@@ -443,6 +447,7 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
     field_z = _compute_place_field(
         coeffs_z, gridDesignZern[:, :coeffs_z.size], xx.shape, sr_ex)
 
+    # === FIGURE: fig07_example_cell_mesh_comparison.png ===
     fig7 = plt.figure(figsize=(14, 9))
     ax3d = fig7.add_subplot(111, projection="3d")
     # MATLAB ``HippocampalPlaceCellExample.m:240-246``: each mesh uses
@@ -481,6 +486,7 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
                label="Spike Locations"),
     ]
     ax3d.legend(handles=legend_elements, loc="best")
+    # === END FIGURE ===
 
     print(f"  Figure 7: 3D mesh for cell {exampleCell + 1}")
 

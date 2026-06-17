@@ -293,6 +293,15 @@ def test_extras_gallery_embeds_code_snippets_for_marked_figures():
     )
 
 
+def test_paper_examples_gallery_embeds_code_snippets_for_marked_figures():
+    """At least one figure in the paper-examples gallery shows a code snippet."""
+    html_path = REPO_ROOT / "docs" / "paper_examples_gallery.html"
+    text = html_path.read_text(encoding="utf-8")
+    assert 'class="code-detail"' in text, (
+        "paper_examples_gallery.html should embed code snippets for at least one figure"
+    )
+
+
 def test_galleries_index_html_links_each_category_page() -> None:
     """``docs/galleries.html`` is the landing page linking the per-category
     galleries; must reference paper-examples, notebooks, and extras galleries.

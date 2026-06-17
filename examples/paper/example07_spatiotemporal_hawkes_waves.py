@@ -129,6 +129,7 @@ def _build_planar_wave_adjacency(
 
 def _plot_adjacency(A: np.ndarray, pos: np.ndarray, Cx: int, Cy: int):
     """Heatmap of A plus the electrode-position scatter."""
+    # === FIGURE: fig01_adjacency_and_positions.png ===
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
     im = axes[0].imshow(A, cmap="magma", aspect="equal", origin="lower")
     axes[0].set_title(f"Adjacency A ({A.shape[0]}x{A.shape[1]})")
@@ -150,6 +151,7 @@ def _plot_adjacency(A: np.ndarray, pos: np.ndarray, Cx: int, Cy: int):
         "Example 07 — synthetic planar-wave Hawkes adjacency"
     )
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 
@@ -169,6 +171,7 @@ def _plot_bartlett(
     # Mean power across frequency, then reshape to the (kx, ky) grid.
     power_2d = S.mean(axis=0).reshape(nx, ny)
 
+    # === FIGURE: fig02_bartlett_spectrum.png ===
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
     im = axes[0].pcolormesh(
         kx_axis, ky_axis, power_2d.T, shading="auto", cmap="viridis"
@@ -202,6 +205,7 @@ def _plot_bartlett(
 
     fig.suptitle("Example 07 — Bartlett spectrum of the Hawkes adjacency")
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 
@@ -217,6 +221,7 @@ def _plot_peaks(
     ny = ky_axis.size
     power_2d = S.mean(axis=0).reshape(nx, ny)
 
+    # === FIGURE: fig03_detected_peaks_overlay.png ===
     fig, ax = plt.subplots(figsize=(6.6, 5.4))
     im = ax.pcolormesh(
         kx_axis, ky_axis, power_2d.T, shading="auto", cmap="viridis"
@@ -242,6 +247,7 @@ def _plot_peaks(
     )
     ax.legend(loc="upper right", fontsize=8)
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 
