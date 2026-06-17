@@ -50,6 +50,9 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "hawkes_bridge": "spatial_point_processes",
     "dpp_bridge": "spatial_point_processes",
     "wave_analysis": "spatial_point_processes",
+    "mark_gof": "spatial_point_processes",
+    "residuals": "spatial_point_processes",
+    "bartlett": "spatial_point_processes",
 }
 
 

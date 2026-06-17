@@ -496,6 +496,7 @@ def global_envelope(
     alpha: float = 0.05,
     lambda_grid=None,
     grid_points: np.ndarray | None = None,
+    edge_correction: str = "epanechnikov",
     rng: np.random.Generator | None = None,
 ) -> EnvelopeResult:
     r"""Monte-Carlo global-rank envelope test against the inhomogeneous null.
@@ -525,6 +526,11 @@ def global_envelope(
         used to find the dominating intensity for thinning.  If omitted,
         a default reference grid over ``domain`` is built and
         ``lambda_hat`` evaluated on it.
+    edge_correction
+        Edge correction forwarded to the per-curve summary statistic
+        (``"epanechnikov"`` default, ``"isotropic"``, ``"translation"``,
+        or ``"border"``).  The default branch is bit-identical to the
+        pre-kwarg behaviour.
     rng
         NumPy random generator for the simulations.
 
@@ -540,6 +546,7 @@ def global_envelope(
     intensity.  *Confidence: high on the mechanics; coverage validity is
     conditional on the held-out reweighting.*
     """
+    _validate_edge_correction(edge_correction)
     pts = _as_points(points)
     r_grid = np.asarray(r_grid, dtype=float)
     rng = np.random.default_rng() if rng is None else rng
@@ -548,9 +555,18 @@ def global_envelope(
     area = _domain_measure(domain)
 
     stat_fns = {
-        "pcf": lambda X: pair_correlation(X, lambda_hat, r_grid, bw=bw, domain=domain),
-        "kinhom": lambda X: k_inhom(X, lambda_hat, r_grid, domain=domain),
-        "linhom": lambda X: l_function(X, lambda_hat, r_grid, domain=domain),
+        "pcf": lambda X: pair_correlation(
+            X, lambda_hat, r_grid, bw=bw, domain=domain,
+            edge_correction=edge_correction,
+        ),
+        "kinhom": lambda X: k_inhom(
+            X, lambda_hat, r_grid, domain=domain,
+            edge_correction=edge_correction,
+        ),
+        "linhom": lambda X: l_function(
+            X, lambda_hat, r_grid, domain=domain,
+            edge_correction=edge_correction,
+        ),
     }
     if statistic not in stat_fns:
         raise ValueError(f"statistic must be one of {list(stat_fns)}; got {statistic!r}")
@@ -585,11 +601,311 @@ def global_envelope(
     return global_rank_envelope(observed, sims, r_grid, alpha=alpha)
 
 
+# ----------------------------------------------------------------------
+# Cross-type (bivariate) inhomogeneous second-order statistics
+# ----------------------------------------------------------------------
+
+
+def _cross_default_domain(pts_A: np.ndarray, pts_B: np.ndarray):
+    stacked = np.vstack([pts_A, pts_B])
+    return tuple((stacked[:, k].min(), stacked[:, k].max()) for k in range(stacked.shape[1]))
+
+
+def cross_k_inhom(
+    points_A: np.ndarray,
+    points_B: np.ndarray,
+    lambda_A,
+    lambda_B,
+    r_grid: np.ndarray,
+    *,
+    domain=None,
+    edge_correction: str = "epanechnikov",
+) -> np.ndarray:
+    r"""Inhomogeneous cross :math:`K`-function (Baddeley-Moller-Waagepetersen 2000).
+
+    For two disjoint label classes :math:`A` and :math:`B` with
+    intensities :math:`\hat\lambda_A` and :math:`\hat\lambda_B`,
+
+    .. math::
+
+        \hat K_{\text{inhom}}^{AB}(r) = \frac{1}{|D|}
+            \sum_{i \in A}\sum_{j \in B}
+            \frac{\mathbf{1}[\|x_i - x_j\| \le r]}
+                 {\hat\lambda_A(x_i)\,\hat\lambda_B(x_j)} .
+
+    Under independent inhomogeneous Poisson labels (the bivariate
+    Poisson null), :math:`K_{\text{inhom}}^{AB}(r) = \pi r^2` in 2-D —
+    the *CSR-pair* benchmark.
+
+    The edge-correction modes mirror the single-type
+    :func:`k_inhom`: ``"epanechnikov"`` (default, unweighted), and the
+    rectangular-domain modes ``"isotropic"`` (symmetric Ripley average
+    over the two events of each pair), ``"translation"`` (Ohser 1983),
+    and ``"border"`` (focal-event boundary distance ``>= r``).
+
+    Parameters
+    ----------
+    points_A, points_B
+        Event coordinates of each label class.  No self-exclusion is
+        applied: the disjoint label hypothesis is assumed.
+    lambda_A, lambda_B
+        Reweighting intensities — callables ``X -> lambda(X)`` or
+        per-point arrays aligned with ``points_A`` / ``points_B``.
+    r_grid
+        Upper radii at which to evaluate the cumulative statistic.
+    domain
+        ``((lo, hi), ...)`` per dim.  Defaults to the bounding box of
+        ``np.vstack([points_A, points_B])``.
+    edge_correction
+        See :func:`k_inhom`.
+
+    Returns
+    -------
+    np.ndarray
+        :math:`\hat K_{\text{inhom}}^{AB}(r)` at each lag.
+
+    Notes
+    -----
+    *Confidence: high* on the independent-pair limit
+    (:math:`K^{AB} \to \pi r^2` for independent inhomogeneous Poisson
+    label classes); same plug-in caveat as the single-type estimator.
+    """
+    _validate_edge_correction(edge_correction)
+    pts_A = _as_points(points_A)
+    pts_B = _as_points(points_B)
+    if pts_A.shape[1] != pts_B.shape[1]:
+        raise ValueError(
+            "points_A and points_B must share the spatial dimension; got "
+            f"{pts_A.shape[1]} vs {pts_B.shape[1]}"
+        )
+    r_grid = np.asarray(r_grid, dtype=float)
+    if pts_A.shape[0] == 0 or pts_B.shape[0] == 0:
+        return np.zeros_like(r_grid)
+    if domain is None:
+        domain = _cross_default_domain(pts_A, pts_B)
+    area = _domain_measure(domain)
+
+    lam_A = _intensity_at(lambda_A, pts_A)
+    lam_B = _intensity_at(lambda_B, pts_B)
+
+    d = cdist(pts_A, pts_B)
+    wgt = 1.0 / (lam_A[:, None] * lam_B[None, :])
+
+    if edge_correction == "epanechnikov":
+        K = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            mask = d <= r
+            K[k] = float(np.sum(wgt[mask])) / area
+        return K
+
+    _ensure_rectangular_domain(domain, edge_correction)
+
+    if edge_correction == "isotropic":
+        # Symmetric Ripley weight per pair at the pair distance, matching
+        # the single-type isotropic convention.
+        K = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            mask = d <= r
+            if not mask.any():
+                K[k] = 0.0
+                continue
+            ii, jj = np.where(mask)
+            w_iso = np.empty(ii.size, dtype=float)
+            for m in range(ii.size):
+                rij = d[ii[m], jj[m]]
+                fi = frac_disc_in_rect(pts_A[ii[m]], rij, domain)
+                fj = frac_disc_in_rect(pts_B[jj[m]], rij, domain)
+                w_iso[m] = 0.5 * (1.0 / fi + 1.0 / fj)
+            K[k] = float(np.sum(wgt[ii, jj] * w_iso)) / area
+        return K
+
+    if edge_correction == "translation":
+        offs = pts_A[:, None, :] - pts_B[None, :, :]
+        # Vectorised translation weight: rectangle / overlap area.
+        (xlo, xhi), (ylo, yhi) = domain
+        Lx, Ly = float(xhi - xlo), float(yhi - ylo)
+        ax = np.abs(offs[..., 0])
+        ay = np.abs(offs[..., 1])
+        overlap = np.maximum(Lx - ax, 0.0) * np.maximum(Ly - ay, 0.0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            w_tr = np.where(overlap > 0, (Lx * Ly) / overlap, np.inf)
+        K = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            mask = d <= r
+            K[k] = float(np.sum(wgt[mask] * w_tr[mask])) / area
+        return K
+
+    # border: focal A-events with boundary distance >= r.
+    K = np.empty_like(r_grid)
+    for k, r in enumerate(r_grid):
+        usable = border_usable_mask(pts_A, domain, r)
+        if not usable.any():
+            K[k] = np.nan
+            continue
+        (xlo, xhi), (ylo, yhi) = domain
+        eff_area = max(0.0, (xhi - xlo) - 2 * r) * max(0.0, (yhi - ylo) - 2 * r)
+        if eff_area <= 0:
+            K[k] = np.nan
+            continue
+        sub = wgt[usable, :]
+        sub_d = d[usable, :]
+        K[k] = float(np.sum(sub[sub_d <= r])) / eff_area
+    return K
+
+
+def cross_pair_correlation(
+    points_A: np.ndarray,
+    points_B: np.ndarray,
+    lambda_A,
+    lambda_B,
+    r_grid: np.ndarray,
+    *,
+    bw: float | None = None,
+    domain=None,
+    edge_correction: str = "epanechnikov",
+) -> np.ndarray:
+    r"""Cross pair correlation :math:`g_{AB}(r)` for two label classes.
+
+    Kernel estimator with the Epanechnikov edge kernel and the
+    cross-SOIRS reweighting :math:`1 / (\hat\lambda_A(x_i)\,
+    \hat\lambda_B(x_j))`:
+
+    .. math::
+
+        \hat g_{AB}(r) = \frac{1}{2\pi r\,|D|}
+            \sum_{i \in A}\sum_{j \in B}
+            \frac{k_{bw}(r - \|x_i - x_j\|)}
+                 {\hat\lambda_A(x_i)\,\hat\lambda_B(x_j)} .
+
+    Under independent inhomogeneous Poisson labels, :math:`g_{AB}(r) =
+    1` at every lag; :math:`> 1` indicates *cross-attraction*, ``< 1``
+    *cross-repulsion*.
+
+    Parameters
+    ----------
+    points_A, points_B, lambda_A, lambda_B, domain
+        See :func:`cross_k_inhom`.
+    r_grid
+        Lags at which to evaluate :math:`g_{AB}`.
+    bw
+        Kernel bandwidth; defaults to a Stoyan-style rule of thumb,
+        identical to the single-type :func:`pair_correlation` default.
+    edge_correction
+        See :func:`pair_correlation`.
+
+    Returns
+    -------
+    np.ndarray
+        :math:`\hat g_{AB}(r)` at each lag in ``r_grid``.
+
+    Notes
+    -----
+    *Confidence: high* on the bivariate-Poisson limit (:math:`g_{AB}
+    \to 1` for independent label classes).  Same plug-in caveat as the
+    single-type estimator — prefer held-out :math:`\hat\lambda_A,
+    \hat\lambda_B`.
+    """
+    _validate_edge_correction(edge_correction)
+    pts_A = _as_points(points_A)
+    pts_B = _as_points(points_B)
+    if pts_A.shape[1] != 2 or pts_B.shape[1] != 2:
+        raise ValueError("cross_pair_correlation is implemented for d=2 (planar).")
+    r_grid = np.asarray(r_grid, dtype=float)
+    if pts_A.shape[0] == 0 or pts_B.shape[0] == 0:
+        return np.zeros_like(r_grid)
+    if domain is None:
+        domain = _cross_default_domain(pts_A, pts_B)
+    area = _domain_measure(domain)
+
+    if bw is None:
+        n_total = pts_A.shape[0] + pts_B.shape[0]
+        bw = float(0.1 / np.sqrt(n_total / area)) if area > 0 else 0.05
+        bw = max(bw, float(np.mean(np.diff(r_grid))) if len(r_grid) > 1 else 0.05)
+
+    lam_A = _intensity_at(lambda_A, pts_A)
+    lam_B = _intensity_at(lambda_B, pts_B)
+    d = cdist(pts_A, pts_B)
+    wgt = 1.0 / (lam_A[:, None] * lam_B[None, :])
+
+    if edge_correction == "epanechnikov":
+        g = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            ring = 2.0 * np.pi * r * area
+            if ring <= 0:
+                g[k] = 0.0
+                continue
+            ker = epanechnikov((d - r) / bw) / bw
+            g[k] = float(np.sum(ker * wgt)) / ring
+        return g
+
+    _ensure_rectangular_domain(domain, edge_correction)
+
+    if edge_correction == "isotropic":
+        g = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            ring = 2.0 * np.pi * r * area
+            if ring <= 0:
+                g[k] = 0.0
+                continue
+            ker = epanechnikov((d - r) / bw) / bw
+            w_iso = np.zeros_like(d)
+            ii, jj = np.where(ker > 0)
+            for m in range(ii.size):
+                rij = d[ii[m], jj[m]]
+                fi = frac_disc_in_rect(pts_A[ii[m]], rij, domain)
+                fj = frac_disc_in_rect(pts_B[jj[m]], rij, domain)
+                w_iso[ii[m], jj[m]] = 0.5 * (1.0 / fi + 1.0 / fj)
+            g[k] = float(np.sum(ker * wgt * w_iso)) / ring
+        return g
+
+    if edge_correction == "translation":
+        offs = pts_A[:, None, :] - pts_B[None, :, :]
+        (xlo, xhi), (ylo, yhi) = domain
+        Lx, Ly = float(xhi - xlo), float(yhi - ylo)
+        ax = np.abs(offs[..., 0])
+        ay = np.abs(offs[..., 1])
+        overlap = np.maximum(Lx - ax, 0.0) * np.maximum(Ly - ay, 0.0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            w_tr = np.where(overlap > 0, (Lx * Ly) / overlap, np.inf)
+        g = np.empty_like(r_grid)
+        for k, r in enumerate(r_grid):
+            ring = 2.0 * np.pi * r * area
+            if ring <= 0:
+                g[k] = 0.0
+                continue
+            ker = epanechnikov((d - r) / bw) / bw
+            g[k] = float(np.sum(ker * wgt * w_tr)) / ring
+        return g
+
+    # border
+    g = np.empty_like(r_grid)
+    for k, r in enumerate(r_grid):
+        ring = 2.0 * np.pi * r * area
+        if ring <= 0:
+            g[k] = 0.0
+            continue
+        usable = border_usable_mask(pts_A, domain, r)
+        if not usable.any():
+            g[k] = np.nan
+            continue
+        (xlo, xhi), (ylo, yhi) = domain
+        eff_area = max(0.0, (xhi - xlo) - 2 * r) * max(0.0, (yhi - ylo) - 2 * r)
+        if eff_area <= 0:
+            g[k] = np.nan
+            continue
+        ring_eff = 2.0 * np.pi * r * eff_area
+        ker = epanechnikov((d[usable, :] - r) / bw) / bw
+        g[k] = float(np.sum(ker * wgt[usable, :])) / ring_eff
+    return g
+
+
 __all__ = [
     "pair_correlation",
     "k_inhom",
     "l_function",
     "nearest_neighbour_FGJ",
     "global_envelope",
+    "cross_k_inhom",
+    "cross_pair_correlation",
     "EnvelopeResult",
 ]

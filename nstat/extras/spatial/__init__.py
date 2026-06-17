@@ -86,17 +86,24 @@ from nstat.extras.spatial.lgcp import (
     lgcp_fit,
     lgcp_fit_glm,
 )
+from nstat.extras.spatial.bartlett import bartlett_density_from_pcf
+from nstat.extras.spatial.mark_gof import mark_correlation, mark_variogram
 from nstat.extras.spatial.marked_gof import (
     CoupledMarkedGOFResult,
     MarkedGOFResult,
+    RescaledACFResult,
     corrected_rescaled,
     marked_time_rescaling,
     multivariate_gof_with_coupling,
     multivariate_time_rescaling,
+    rescaled_acf,
     uncorrected_rescaled,
 )
+from nstat.extras.spatial.residuals import pp_residuals_smoothed
 from nstat.extras.spatial.spatial_gof import (
     EnvelopeResult,
+    cross_k_inhom,
+    cross_pair_correlation,
     global_envelope,
     k_inhom,
     l_function,
@@ -136,6 +143,8 @@ __all__ = [
     "l_function",
     "nearest_neighbour_FGJ",
     "global_envelope",
+    "cross_k_inhom",
+    "cross_pair_correlation",
     "EnvelopeResult",
     # basis
     "bspline_basis_1d",
@@ -147,8 +156,17 @@ __all__ = [
     "multivariate_gof_with_coupling",
     "uncorrected_rescaled",
     "corrected_rescaled",
+    "rescaled_acf",
     "MarkedGOFResult",
     "CoupledMarkedGOFResult",
+    "RescaledACFResult",
+    # mark_gof
+    "mark_correlation",
+    "mark_variogram",
+    # residuals
+    "pp_residuals_smoothed",
+    # bartlett (spatial Bartlett density of the pair correlation)
+    "bartlett_density_from_pcf",
     # hawkes_bridge (pure-NumPy/SciPy Bartlett diagnostic; no [hawkes] needed)
     "bartlett_spectrum",
     # wave_analysis (pure NumPy/SciPy)

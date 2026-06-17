@@ -286,6 +286,116 @@ def marked_time_rescaling(
     )
 
 
+# ----------------------------------------------------------------------
+# Rescaled-time autocorrelation (independence diagnostic)
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RescaledACFResult:
+    r"""Autocorrelation of the rescaled-time variates with a Bartlett band.
+
+    The discrete-time-rescaling KS test of
+    :func:`marked_time_rescaling` checks the *marginal* distribution of
+    the rescaled variates (Unif(0,1)) but is blind to serial dependence
+    (Brown et al. 2002).  This dataclass carries the lag-1..``n_lags``
+    autocorrelation of the normal-score-transformed uniforms,
+    :math:`z_j = \Phi^{-1}(u_j)`, together with the asymptotic
+    :math:`\pm 1.96/\sqrt{n}` Bartlett band (Andersen 1997; Truccolo
+    et al. 2005) and a per-lag in-band flag.
+
+    Attributes
+    ----------
+    lags
+        Integer lags ``1..n_lags``, shape ``(n_lags,)``.
+    acf
+        Sample autocorrelation of :math:`z_j` at each lag, shape
+        ``(n_lags,)``.
+    band
+        Two-sided :math:`\pm 1.96 / \sqrt{n}` Bartlett band — a scalar,
+        applied symmetrically about zero.
+    inside_band
+        Boolean ``(n_lags,)`` mask: ``True`` where ``|acf| < band``.
+    """
+
+    lags: np.ndarray
+    acf: np.ndarray
+    band: float
+    inside_band: np.ndarray
+
+
+def rescaled_acf(
+    u_rescaled: np.ndarray,
+    *,
+    n_lags: int = 20,
+) -> RescaledACFResult:
+    r"""Autocorrelation of the rescaled-time variates with a Bartlett band.
+
+    Steps:
+
+    1. Apply the normal-score transform :math:`z_j = \Phi^{-1}(u_j)`
+       (clamped to :math:`[10^{-12},\,1 - 10^{-12}]` so the tails are
+       finite).  Under the true model, :math:`u_j \sim \text{Unif}(0,1)`
+       i.i.d., so :math:`z_j \sim \mathcal{N}(0,1)` i.i.d.
+    2. Compute the centred sample autocorrelation of :math:`z_j` at lags
+       1 through ``n_lags`` via :func:`numpy.correlate`.
+    3. Flag in-band lags using the asymptotic
+       :math:`\pm 1.96 / \sqrt{n}` Bartlett band.
+
+    Parameters
+    ----------
+    u_rescaled
+        The rescaled-time uniforms, typically
+        :attr:`MarkedGOFResult.u_corrected`.  Must contain at least
+        ``n_lags + 2`` values.
+    n_lags
+        Number of positive lags to report.
+
+    Returns
+    -------
+    RescaledACFResult
+
+    Raises
+    ------
+    ValueError
+        If ``u_rescaled`` has fewer than ``n_lags + 2`` values.
+
+    Notes
+    -----
+    *Confidence: high* on the in-band behaviour under the true model
+    (the asymptotic Bartlett band is exact in the i.i.d. limit) and on
+    the band-violation behaviour under serial dependence.  Use as a
+    complement to the marginal KS test, not a replacement.
+    """
+    u = np.asarray(u_rescaled, dtype=float).ravel()
+    if n_lags < 1:
+        raise ValueError(f"n_lags must be >= 1; got {n_lags!r}")
+    if u.size < n_lags + 2:
+        raise ValueError(
+            f"u_rescaled must contain at least n_lags + 2 = {n_lags + 2} "
+            f"values; got {u.size}"
+        )
+    u_clamped = np.clip(u, 1e-12, 1.0 - 1e-12)
+    z = stats.norm.ppf(u_clamped)
+    z = z - z.mean()
+    full = np.correlate(z, z, mode="full")
+    mid = full.size // 2
+    var = full[mid]
+    if var <= 0:
+        acf = np.zeros(n_lags, dtype=float)
+    else:
+        acf = full[mid + 1: mid + 1 + n_lags] / var
+    band = float(1.96 / np.sqrt(u.size))
+    lags = np.arange(1, n_lags + 1, dtype=int)
+    inside = np.abs(acf) < band
+    return RescaledACFResult(
+        lags=lags,
+        acf=acf,
+        band=band,
+        inside_band=inside,
+    )
+
+
 def multivariate_time_rescaling(
     spike_bins_per_channel,
     p_k_per_channel,
@@ -478,9 +588,11 @@ def multivariate_gof_with_coupling(
 __all__ = [
     "MarkedGOFResult",
     "CoupledMarkedGOFResult",
+    "RescaledACFResult",
     "uncorrected_rescaled",
     "corrected_rescaled",
     "marked_time_rescaling",
     "multivariate_time_rescaling",
     "multivariate_gof_with_coupling",
+    "rescaled_acf",
 ]
