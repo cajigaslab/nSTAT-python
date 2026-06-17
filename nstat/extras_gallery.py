@@ -25,9 +25,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-from nstat.paper_gallery import _shared_gallery_css, render_galleries_index_html
+from nstat._gallery_common import (
+    _load_descriptions_indexed_by,
+    _load_gallery_yaml,
+    _shared_gallery_css,
+    render_galleries_index_html,
+)
 
 
 def _repo_root() -> Path:
@@ -38,7 +41,7 @@ def load_extras_manifest(repo_root: Path | None = None) -> list[dict[str, Any]]:
     """Load ``examples/extras/manifest.yml`` and return the ``extras`` list."""
     base = _repo_root() if repo_root is None else repo_root.resolve()
     path = base / "examples" / "extras" / "manifest.yml"
-    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    payload = _load_gallery_yaml(path) or {}
     return list(payload.get("extras", []))
 
 
@@ -46,8 +49,9 @@ def load_extras_descriptions(repo_root: Path | None = None) -> dict[str, dict[st
     """Load ``tools/extras_build/extras_descriptions.yml``, keyed by ``demo_id``."""
     base = _repo_root() if repo_root is None else repo_root.resolve()
     path = base / "tools" / "extras_build" / "extras_descriptions.yml"
-    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    return {row["demo_id"]: row for row in payload.get("extras", [])}
+    return _load_descriptions_indexed_by(
+        path, list_key="extras", index_key="demo_id"
+    )
 
 
 def render_extras_html(repo_root: Path | None = None) -> str:
