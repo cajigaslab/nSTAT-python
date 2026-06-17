@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,7 @@ from nstat._gallery_common import (
     _load_descriptions_indexed_by,
     _load_gallery_yaml,
     _shared_gallery_css,
+    extract_figure_code,
     render_galleries_index_html,
 )
 
@@ -180,7 +182,8 @@ def render_paper_examples_html(repo_root: Path | None = None) -> str:
     relative to ``docs/`` so the page works both locally and on
     GitHub Pages).
     """
-    manifest = build_gallery_manifest(repo_root)
+    base = _repo_root() if repo_root is None else repo_root.resolve()
+    manifest = build_gallery_manifest(base)
     examples = manifest["examples"]
 
     css = (
@@ -213,6 +216,22 @@ def render_paper_examples_html(repo_root: Path | None = None) -> str:
         ".gallery img{width:100%;height:auto;display:block;border-radius:2px;}"
         ".gallery figcaption{font-size:.78rem;color:var(--ink-2);margin-top:.4rem;"
         "word-break:break-word;}"
+        ".gallery .code-detail{margin-top:.45rem;font-size:.78rem;}"
+        ".gallery .code-detail summary{cursor:pointer;color:var(--accent-2);"
+        "padding:.15rem .4rem;background:#0b0e14;border:1px solid var(--border);"
+        "border-radius:3px;display:inline-block;list-style:none;"
+        "font-size:.75rem;}"
+        ".gallery .code-detail summary::-webkit-details-marker{display:none;}"
+        ".gallery .code-detail summary:hover{color:var(--accent);"
+        "border-color:var(--accent);}"
+        ".gallery .code-detail[open] summary{color:var(--accent);"
+        "border-color:var(--accent);}"
+        ".gallery .code-detail pre{margin:.4rem 0 0;padding:.6rem .8rem;"
+        "font-size:.72rem;line-height:1.45;overflow-x:auto;"
+        "background:#0b0e14;border:1px solid var(--border);border-radius:4px;"
+        "color:var(--ink);}"
+        ".gallery .code-detail code.language-python{background:transparent;"
+        "color:var(--ink);padding:0;font-size:inherit;}"
         "a{color:var(--accent-2);}"
         "footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);"
         "color:var(--ink-2);font-size:.85rem;}"
@@ -255,14 +274,28 @@ def render_paper_examples_html(repo_root: Path | None = None) -> str:
             f'<a href="figures/{row["example_id"]}/">Figures directory</a></p>'
         )
         parts.append('<div class="gallery">')
+        script_path = base / row["source_script"]
         for fig_path in row["figure_files"]:
             # fig_path is "docs/figures/exampleNN/figXX_name.png" — strip "docs/"
             # so the src is relative to the HTML file's location (docs/).
             rel = fig_path.replace("docs/", "", 1)
             filename = Path(fig_path).name
+            snippet = extract_figure_code(script_path, filename)
+            code_block = ""
+            if snippet:
+                code_block = (
+                    '<details class="code-detail">'
+                    "<summary>Show generating code</summary>"
+                    '<pre><code class="language-python">'
+                    f"{html.escape(snippet)}"
+                    "</code></pre>"
+                    "</details>"
+                )
             parts.append(
                 f'<figure><img src="{rel}" alt="{filename}" loading="lazy">'
-                f'<figcaption>{filename}</figcaption></figure>'
+                f'<figcaption>{filename}</figcaption>'
+                + code_block
+                + "</figure>"
             )
         parts.append("</div>")
         parts.append("</section>")

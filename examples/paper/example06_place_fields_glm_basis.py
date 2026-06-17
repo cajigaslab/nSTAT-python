@@ -222,6 +222,7 @@ def _plot_true_vs_basis(
     rate_lgcp_2d = lgcp_mean.reshape(n_grid, n_grid)
     vmax = float(max(rate_true.max(), rate_basis_2d.max(), rate_lgcp_2d.max()))
 
+    # === FIGURE: fig01_true_vs_basis_recovered_rate.png ===
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.2))
     titles = ("Ground truth", "B-spline GLM", "LGCP (Matern-5/2)")
     for ax, field, title in zip(
@@ -242,6 +243,7 @@ def _plot_true_vs_basis(
         fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     fig.suptitle("Example 06 — true vs basis-recovered rate (~600 events)")
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 
@@ -259,6 +261,7 @@ def _plot_lgcp_band(
     lo_2d = lgcp_lo.reshape(n_grid, n_grid)
     hi_2d = lgcp_hi.reshape(n_grid, n_grid)
 
+    # === FIGURE: fig02_lgcp_glm_credible_band.png ===
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
 
     im = axes[0].pcolormesh(axis, axis, mean_2d.T, shading="auto",
@@ -294,11 +297,13 @@ def _plot_lgcp_band(
 
     fig.suptitle("Example 06 — basis-projected LGCP with a Matern-5/2 prior")
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 
 def _plot_pcf_envelope(r_grid: np.ndarray, g: np.ndarray, env) -> "plt.Figure":
     """Pair correlation g(r) with the global-rank envelope."""
+    # === FIGURE: fig03_pcf_with_global_envelope.png ===
     fig, ax = plt.subplots(figsize=(7.0, 4.4))
     ax.fill_between(r_grid, env.lo, env.hi, color="gray", alpha=0.35,
                     label=f"global envelope (n_sim={env.n_sim})")
@@ -313,6 +318,7 @@ def _plot_pcf_envelope(r_grid: np.ndarray, g: np.ndarray, env) -> "plt.Figure":
     )
     ax.legend(loc="upper right", fontsize=8)
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 

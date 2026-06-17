@@ -521,6 +521,7 @@ def _plot_part_a(result):
     n_cells = result["n_cells"]
 
     # ── Figure 1: stimulus, CIF, spike raster (3 panels, matching MATLAB) ──
+    # === FIGURE: fig01_univariate_setup.png ===
     fig1, axes1 = plt.subplots(3, 1, figsize=(14, 9), sharex=True)
 
     # (3,1,1): Driving stimulus
@@ -550,8 +551,10 @@ def _plot_part_a(result):
     axes1[2].set_title("Point Process Sample Paths", fontweight="bold",
                         fontsize=14, fontfamily="Arial")
     fig1.tight_layout()
+    # === END FIGURE ===
 
     # ── Figure 2: Decoding results (MATLAB: black=decoded, blue=actual) ──
+    # === FIGURE: fig02_univariate_decoding.png ===
     fig2, ax2 = plt.subplots(1, 1, figsize=(14, 9))
     ax2.fill_between(
         time, result["ci_low"], result["ci_high"],
@@ -565,6 +568,7 @@ def _plot_part_a(result):
                   fontweight="bold", fontsize=18, fontfamily="Arial")
     ax2.legend(["Decoded", "Actual"], loc="upper right")
     fig2.tight_layout()
+    # === END FIGURE ===
 
     return fig1, fig2
 
@@ -579,6 +583,7 @@ def _plot_part_b(result):
     n_cells = result["n_cells"]
 
     # ── Figure 3: Reach trajectory and population setup (4×2 layout) ──
+    # === FIGURE: fig03_reach_and_population_setup.png ===
     fig3 = plt.figure(figsize=(14, 9))
 
     # Top-left [1,3]: 2D reach path (in cm)
@@ -634,8 +639,10 @@ def _plot_part_b(result):
     ax_cif.set_ylabel("Firing Rate [spikes/sec]")
 
     fig3.tight_layout()
+    # === END FIGURE ===
 
     # ── Figure 4: Overlaid decoded trajectories (4×2 layout, 20 runs) ──
+    # === FIGURE: fig04_ppaf_goal_vs_free.png ===
     fig4 = plt.figure(figsize=(14, 9))
 
     # Top [1:4]: 2D estimated vs actual reach paths
@@ -680,6 +687,7 @@ def _plot_part_b(result):
                       loc="lower right", fontsize=8)
 
     fig4.tight_layout()
+    # === END FIGURE ===
 
     return fig3, fig4
 
@@ -693,6 +701,7 @@ def _plot_part_c(result):
     n_cells = result["n_cells"]
 
     # ── Figure 5: Setup — reach path, traces, raster, discrete state (4×2) ──
+    # === FIGURE: fig05_hybrid_setup.png ===
     fig5 = plt.figure(figsize=(14, 9))
 
     # Top-left [1,3]: 2D reach path
@@ -744,8 +753,10 @@ def _plot_part_c(result):
     ax_state.set_title("Discrete Movement State", fontweight="bold", fontsize=14)
 
     fig5.tight_layout()
+    # === END FIGURE ===
 
     # ── Figure 6: Hybrid decoding results (4×3 layout, averaged over 20 sims) ──
+    # === FIGURE: fig06_hybrid_decoding_summary.png ===
     fig6 = plt.figure(figsize=(14, 9))
 
     # Mean across simulations
@@ -832,6 +843,7 @@ def _plot_part_c(result):
     ax_vy.set_title("Y Velocity", fontweight="bold", fontsize=12)
 
     fig6.tight_layout()
+    # === END FIGURE ===
 
     return fig5, fig6
 

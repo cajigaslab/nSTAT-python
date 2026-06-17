@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>nSTAT Paper Examples — Output Gallery</title>
-<style>:root{--bg:#0f1419;--card:#1a1f29;--ink:#e6e6e6;--ink-2:#9aa4b1;--accent:#7ee787;--accent-2:#58a6ff;--border:#30363d;}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}.wrap{max-width:1100px;margin:0 auto;padding:2rem 1.25rem 3rem;}header{border-bottom:1px solid var(--border);padding-bottom:1.25rem;margin-bottom:1.5rem;}h1{margin:0 0 .35rem;font-size:1.6rem;color:var(--accent);}h2{margin:2rem 0 .75rem;font-size:1.2rem;color:var(--accent-2);border-top:1px solid var(--border);padding-top:1.25rem;}h3{margin:1.25rem 0 .35rem;font-size:1rem;color:var(--ink);}p{margin:.4rem 0;color:var(--ink);}.muted{color:var(--ink-2);font-size:.9rem;}code,pre{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85rem;background:#0b0e14;color:var(--accent);padding:.1rem .3rem;border-radius:3px;}pre{padding:.75rem 1rem;overflow-x:auto;border:1px solid var(--border);}nav.toc{background:var(--card);border:1px solid var(--border);padding:.75rem 1rem;border-radius:6px;margin-bottom:1.5rem;font-size:.9rem;}nav.toc a{color:var(--accent-2);text-decoration:none;margin-right:.9rem;}nav.toc a:hover{text-decoration:underline;}.example{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.5rem;margin:1.25rem 0;}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem;margin-top:.75rem;}.gallery figure{margin:0;background:#0b0e14;border:1px solid var(--border);border-radius:4px;padding:.5rem;}.gallery img{width:100%;height:auto;display:block;border-radius:2px;}.gallery figcaption{font-size:.78rem;color:var(--ink-2);margin-top:.4rem;word-break:break-word;}a{color:var(--accent-2);}footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--ink-2);font-size:.85rem;}</style>
+<style>:root{--bg:#0f1419;--card:#1a1f29;--ink:#e6e6e6;--ink-2:#9aa4b1;--accent:#7ee787;--accent-2:#58a6ff;--border:#30363d;}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}.wrap{max-width:1100px;margin:0 auto;padding:2rem 1.25rem 3rem;}header{border-bottom:1px solid var(--border);padding-bottom:1.25rem;margin-bottom:1.5rem;}h1{margin:0 0 .35rem;font-size:1.6rem;color:var(--accent);}h2{margin:2rem 0 .75rem;font-size:1.2rem;color:var(--accent-2);border-top:1px solid var(--border);padding-top:1.25rem;}h3{margin:1.25rem 0 .35rem;font-size:1rem;color:var(--ink);}p{margin:.4rem 0;color:var(--ink);}.muted{color:var(--ink-2);font-size:.9rem;}code,pre{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85rem;background:#0b0e14;color:var(--accent);padding:.1rem .3rem;border-radius:3px;}pre{padding:.75rem 1rem;overflow-x:auto;border:1px solid var(--border);}nav.toc{background:var(--card);border:1px solid var(--border);padding:.75rem 1rem;border-radius:6px;margin-bottom:1.5rem;font-size:.9rem;}nav.toc a{color:var(--accent-2);text-decoration:none;margin-right:.9rem;}nav.toc a:hover{text-decoration:underline;}.example{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.5rem;margin:1.25rem 0;}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem;margin-top:.75rem;}.gallery figure{margin:0;background:#0b0e14;border:1px solid var(--border);border-radius:4px;padding:.5rem;}.gallery img{width:100%;height:auto;display:block;border-radius:2px;}.gallery figcaption{font-size:.78rem;color:var(--ink-2);margin-top:.4rem;word-break:break-word;}.gallery .code-detail{margin-top:.45rem;font-size:.78rem;}.gallery .code-detail summary{cursor:pointer;color:var(--accent-2);padding:.15rem .4rem;background:#0b0e14;border:1px solid var(--border);border-radius:3px;display:inline-block;list-style:none;font-size:.75rem;}.gallery .code-detail summary::-webkit-details-marker{display:none;}.gallery .code-detail summary:hover{color:var(--accent);border-color:var(--accent);}.gallery .code-detail[open] summary{color:var(--accent);border-color:var(--accent);}.gallery .code-detail pre{margin:.4rem 0 0;padding:.6rem .8rem;font-size:.72rem;line-height:1.45;overflow-x:auto;background:#0b0e14;border:1px solid var(--border);border-radius:4px;color:var(--ink);}.gallery .code-detail code.language-python{background:transparent;color:var(--ink);padding:0;font-size:inherit;}a{color:var(--accent-2);}footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--ink-2);font-size:.85rem;}</style>
 </head><body><div class="wrap">
 <header>
 <h1>Paper Examples — Output Gallery</h1>
@@ -16,9 +16,85 @@
 <p class="muted">Fits constant and piecewise Poisson GLM baselines to mEPSC spike trains.</p>
 <p><strong>Run:</strong> <code>python examples/paper/example01_mepsc_poisson.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example01_mepsc_poisson.py">Script</a> · <a href="figures/example01/">Figures directory</a></p>
 <div class="gallery">
-<figure><img src="figures/example01/fig01_constant_mg_summary.png" alt="fig01_constant_mg_summary.png" loading="lazy"><figcaption>fig01_constant_mg_summary.png</figcaption></figure>
-<figure><img src="figures/example01/fig02_washout_raster_overview.png" alt="fig02_washout_raster_overview.png" loading="lazy"><figcaption>fig02_washout_raster_overview.png</figcaption></figure>
-<figure><img src="figures/example01/fig03_piecewise_baseline_comparison.png" alt="fig03_piecewise_baseline_comparison.png" loading="lazy"><figcaption>fig03_piecewise_baseline_comparison.png</figcaption></figure>
+<figure><img src="figures/example01/fig01_constant_mg_summary.png" alt="fig01_constant_mg_summary.png" loading="lazy"><figcaption>fig01_constant_mg_summary.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, axes1 = plt.subplots(2, 2, figsize=(14, 9))
+
+ax = axes1[0, 0]
+spikeCollConst.plot(handle=ax)
+ax.set_title(r&quot;Neural Raster with constant Mg$^{2+}$ Concentration&quot;,
+             fontweight=&quot;bold&quot;, fontsize=12, fontfamily=&quot;Arial&quot;)
+ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_ylabel(&quot;mEPSCs&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_yticks([0, 1])
+
+ax = axes1[0, 1]
+resultConst.plotInvGausTrans(handle=ax)
+
+ax = axes1[1, 0]
+resultConst.KSPlot(handle=ax)
+
+ax = axes1[1, 1]
+lam = resultConst.lambda_signal
+ax.plot(lam.time, lam.data[:, 0], &quot;b&quot;, linewidth=2)
+ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_ylabel(f&quot;{lam.name} [{lam.yunits}]&quot; if lam.yunits else lam.name,
+              fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.legend([r&quot;$\lambda_{const}$&quot;], loc=&quot;upper right&quot;)
+
+fig1.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example01/fig02_washout_raster_overview.png" alt="fig02_washout_raster_overview.png" loading="lazy"><figcaption>fig02_washout_raster_overview.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, axes2 = plt.subplots(2, 1, figsize=(14, 9))
+
+ax = axes2[0]
+nstConst.plot(handle=ax)
+ax.set_yticks([0, 1])
+ax.set_ylabel(&quot;mEPSCs&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_title(r&quot;Neural Raster with constant Mg$^{2+}$ Concentration&quot;,
+             fontweight=&quot;bold&quot;, fontsize=12, fontfamily=&quot;Arial&quot;)
+ax.xaxis.label.set(fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+
+ax = axes2[1]
+nstWashout.plot(handle=ax)
+ax.set_yticks([0, 1])
+ax.set_ylabel(&quot;mEPSCs&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_title(r&quot;Neural Raster with decreasing Mg$^{2+}$ Concentration&quot;,
+             fontweight=&quot;bold&quot;, fontsize=12, fontfamily=&quot;Arial&quot;)
+ax.xaxis.label.set(fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+
+fig2.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example01/fig03_piecewise_baseline_comparison.png" alt="fig03_piecewise_baseline_comparison.png" loading="lazy"><figcaption>fig03_piecewise_baseline_comparison.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig3, axes3 = plt.subplots(2, 2, figsize=(14, 9))
+
+ax = axes3[0, 0]
+spikeCollWashout.plot(handle=ax)
+ax.set_title(r&quot;Neural Raster with decreasing Mg$^{2+}$ Concentration&quot;,
+             fontweight=&quot;bold&quot;, fontsize=12, fontfamily=&quot;Arial&quot;)
+ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_yticklabels([])
+# Red epoch-transition markers — MATLAB ``plot([495;495],[0,1],&#x27;r&#x27;,&#x27;LineWidth&#x27;,4)``
+# works on a single-neuron raster where the spike at y=1 sits within [0,1].
+# ``nstColl.plot`` in Python centers a 1-neuron raster at ``yOffset=1`` with
+# ``dHeight=0.8`` (so y-range [0.6, 1.4]) and sets ``ylim=[0.25, 1.75]``;
+# a literal ``plot([t,t],[0,1])`` then stops short of the raster top.
+# ``axvline`` spans the full axes (ymin=0, ymax=1 in axes coords) so the
+# marker always covers the raster regardless of y-data layout.
+ax.axvline(495, color=&quot;r&quot;, linewidth=4)
+ax.axvline(765, color=&quot;r&quot;, linewidth=4)
+
+ax = axes3[0, 1]
+resultWashout.plotInvGausTrans(handle=ax)
+
+ax = axes3[1, 0]
+resultWashout.KSPlot(handle=ax)
+
+ax = axes3[1, 1]
+lam = resultWashout.lambda_signal
+ax.plot(lam.time, lam.getSubSignal(0).data[:, 0], &quot;b&quot;, linewidth=2)
+ax.plot(lam.time, lam.getSubSignal(1).data[:, 0], &quot;g&quot;, linewidth=2)
+ax.set_ylim(0, 5)
+ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_ylabel(f&quot;{lam.name} [{lam.yunits}]&quot; if lam.yunits else lam.name,
+              fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.legend([r&quot;$\lambda_{const}$&quot;, r&quot;$\lambda_{const-epoch}$&quot;], loc=&quot;upper right&quot;)
+
+fig3.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="example02">
@@ -27,8 +103,125 @@
 <p class="muted">Fits explicit-stimulus point-process GLMs and compares baseline, stimulus, and history models.</p>
 <p><strong>Run:</strong> <code>python examples/paper/example02_whisker_stimulus_thalamus.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example02_whisker_stimulus_thalamus.py">Script</a> · <a href="figures/example02/">Figures directory</a></p>
 <div class="gallery">
-<figure><img src="figures/example02/fig01_data_overview.png" alt="fig01_data_overview.png" loading="lazy"><figcaption>fig01_data_overview.png</figcaption></figure>
-<figure><img src="figures/example02/fig02_lag_and_model_comparison.png" alt="fig02_lag_and_model_comparison.png" loading="lazy"><figcaption>fig02_lag_and_model_comparison.png</figcaption></figure>
+<figure><img src="figures/example02/fig01_data_overview.png" alt="fig01_data_overview.png" loading="lazy"><figcaption>fig01_data_overview.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, axes1 = plt.subplots(3, 1, figsize=(14, 9))
+viewWindow = 21.0  # First 21 seconds, matching Matlab
+
+# Subplot 1: Neural raster (first 21 s)
+ax = axes1[0]
+nstView = nspikeTrain(spikeTimes)
+nstView.setMaxTime(viewWindow)
+nstView.plot(handle=ax)
+ax.set_yticks([0, 1])
+xticks = np.arange(0, int(max(time)) + 1, 1)
+ax.set_xticks(xticks)
+ax.set_xticklabels([])  # No x-labels on top/middle subplots
+ax.set_xlabel(&quot;&quot;)
+ax.set_xlim(0, viewWindow)
+ax.set_ylabel(&quot;spikes&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_title(&quot;Neural Raster&quot;, fontweight=&quot;bold&quot;, fontsize=16, fontfamily=&quot;Arial&quot;)
+ax.spines[&quot;top&quot;].set_linewidth(1)
+ax.spines[&quot;right&quot;].set_linewidth(1)
+
+# Subplot 2: Stimulus displacement (first 21 s, black line matching MATLAB)
+ax = axes1[1]
+stimView = stim.getSigInTimeWindow(0, viewWindow)
+ax.plot(stimView.time, stimView.data[:, 0], &quot;k&quot;)
+ax.legend().set_visible(False) if ax.get_legend() else None
+ax.set_yticks(np.arange(0, 1.25, 0.25))
+ax.set_xticks(xticks)
+ax.set_xticklabels([])
+ax.set_xlabel(&quot;&quot;)
+ax.set_xlim(0, viewWindow)
+ax.set_ylabel(&quot;Displacement [mm]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_title(&quot;Stimulus - Whisker Displacement&quot;, fontweight=&quot;bold&quot;, fontsize=16, fontfamily=&quot;Arial&quot;)
+for spine in ax.spines.values():
+    spine.set_linewidth(1)
+
+# Subplot 3: Stimulus velocity (derivative, first 21 s, black line matching MATLAB)
+ax = axes1[2]
+stimDeriv = stim.derivative()
+stimDerivView = stimDeriv.getSigInTimeWindow(0, viewWindow)
+ax.plot(stimDerivView.time, stimDerivView.data[:, 0], &quot;k&quot;)
+ax.set_yticks(np.arange(-80, 81, 40))
+ax.set_xticks(xticks)
+ax.set_xlim(0, viewWindow)
+ax.set_ylim(-80, 80)
+ax.set_ylabel(&quot;Displacement Velocity [mm/s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_title(&quot;Displacement Velocity&quot;, fontweight=&quot;bold&quot;, fontsize=16, fontfamily=&quot;Arial&quot;)
+for spine in ax.spines.values():
+    spine.set_linewidth(1)
+
+fig1.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example02/fig02_lag_and_model_comparison.png" alt="fig02_lag_and_model_comparison.png" loading="lazy"><figcaption>fig02_lag_and_model_comparison.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2 = plt.figure(figsize=(14, 9))
+import matplotlib.gridspec as gridspec
+gs = gridspec.GridSpec(7, 2, figure=fig2, hspace=0.5, wspace=0.3)
+
+numResults = len(ksArr)
+
+# --- Left column, rows 1-3: Cross-correlation function ---
+ax_xcov = fig2.add_subplot(gs[0:3, 0])
+xcovWindowed.plot(handle=ax_xcov)
+ax_xcov.plot(shiftTime, peakVal, &quot;ro&quot;, linewidth=3,
+             markerfacecolor=&quot;r&quot;, markeredgecolor=&quot;r&quot;)
+ax_xcov.set_title(
+    f&quot;Cross Correlation Function - Peak at t={shiftTime:g} sec&quot;,
+    fontweight=&quot;bold&quot;, fontsize=12, fontfamily=&quot;Arial&quot;)
+ax_xcov.set_xlabel(&quot;Lag [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax_xcov.set_ylabel(&quot;&quot;)
+
+# --- Right column, row 1: KS statistic vs Q ---
+ax_ks_sweep = fig2.add_subplot(gs[0, 1])
+xvals = np.arange(numResults)
+ax_ks_sweep.plot(xvals, ksArr, &quot;.-&quot;)
+if windowIndex &lt; numResults:
+    ax_ks_sweep.plot(xvals[windowIndex], ksArr[windowIndex], &quot;r*&quot;)
+ax_ks_sweep.set_xlim(xvals[0], xvals[-1])
+ax_ks_sweep.set_xticks(np.arange(0, numResults, 5))
+ax_ks_sweep.set_xticklabels([])
+ax_ks_sweep.tick_params(length=4, which=&quot;major&quot;)
+ax_ks_sweep.minorticks_on()
+ax_ks_sweep.set_ylabel(&quot;KS Statistic&quot;)
+ax_ks_sweep.set_title(&quot;Model Selection via change\nin KS Statistic, AIC, and BIC&quot;,
+                      fontweight=&quot;bold&quot;, fontsize=12, fontfamily=&quot;Arial&quot;)
+
+# --- Right column, row 2: Delta AIC vs Q ---
+ax_daic = fig2.add_subplot(gs[1, 1])
+dAIC_full = aicArr - aicArr[0]
+ax_daic.plot(np.arange(len(dAIC_full)), dAIC_full, &quot;.-&quot;)
+if windowIndex &lt; len(dAIC_full):
+    ax_daic.plot(windowIndex, dAIC_full[windowIndex], &quot;r*&quot;)
+ax_daic.set_xlim(0, numResults - 1)
+ax_daic.set_xticks(np.arange(0, numResults, 5))
+ax_daic.set_xticklabels([])
+ax_daic.tick_params(length=4, which=&quot;major&quot;)
+ax_daic.minorticks_on()
+ax_daic.set_ylabel(r&quot;$\Delta$ AIC&quot;)
+
+# --- Right column, row 3: Delta BIC vs Q ---
+ax_dbic = fig2.add_subplot(gs[2, 1])
+dBIC_full = bicArr - bicArr[0]
+ax_dbic.plot(np.arange(len(dBIC_full)), dBIC_full, &quot;.-&quot;)
+if windowIndex &lt; len(dBIC_full):
+    ax_dbic.plot(windowIndex, dBIC_full[windowIndex], &quot;r*&quot;)
+ax_dbic.set_xlim(0, numResults - 1)
+ax_dbic.set_xticks(np.arange(0, numResults, 5))
+ax_dbic.tick_params(length=4, which=&quot;major&quot;)
+ax_dbic.minorticks_on()
+ax_dbic.set_xlabel(&quot;# History Windows, Q&quot;,
+                   fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax_dbic.set_ylabel(r&quot;$\Delta$ BIC&quot;,
+                   fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+
+# --- Left column, rows 5-7: KS plot (3 models) ---
+ax_ks = fig2.add_subplot(gs[4:7, 0])
+modelCompare.KSPlot(handle=ax_ks)
+
+# --- Right column, rows 5-7: Coefficient comparison ---
+ax_coeff = fig2.add_subplot(gs[4:7, 1])
+modelCompare.plotCoeffs(handle=ax_coeff)
+if ax_coeff.get_legend():
+    ax_coeff.get_legend().set_visible(False)</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="example03">
@@ -37,12 +230,225 @@
 <p class="muted">Bundles simulated PSTH and SSGLM examples from the canonical paper workflow.</p>
 <p><strong>Run:</strong> <code>python examples/paper/example03_psth_and_ssglm.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example03_psth_and_ssglm.py">Script</a> · <a href="figures/example03/">Figures directory</a></p>
 <div class="gallery">
-<figure><img src="figures/example03/fig01_simulated_and_real_rasters.png" alt="fig01_simulated_and_real_rasters.png" loading="lazy"><figcaption>fig01_simulated_and_real_rasters.png</figcaption></figure>
-<figure><img src="figures/example03/fig02_psth_comparison.png" alt="fig02_psth_comparison.png" loading="lazy"><figcaption>fig02_psth_comparison.png</figcaption></figure>
-<figure><img src="figures/example03/fig03_ssglm_simulation_summary.png" alt="fig03_ssglm_simulation_summary.png" loading="lazy"><figcaption>fig03_ssglm_simulation_summary.png</figcaption></figure>
-<figure><img src="figures/example03/fig04_ssglm_fit_diagnostics.png" alt="fig04_ssglm_fit_diagnostics.png" loading="lazy"><figcaption>fig04_ssglm_fit_diagnostics.png</figcaption></figure>
-<figure><img src="figures/example03/fig05_stimulus_effect_surfaces.png" alt="fig05_stimulus_effect_surfaces.png" loading="lazy"><figcaption>fig05_stimulus_effect_surfaces.png</figcaption></figure>
-<figure><img src="figures/example03/fig06_learning_trial_comparison.png" alt="fig06_learning_trial_comparison.png" loading="lazy"><figcaption>fig06_learning_trial_comparison.png</figcaption></figure>
+<figure><img src="figures/example03/fig01_simulated_and_real_rasters.png" alt="fig01_simulated_and_real_rasters.png" loading="lazy"><figcaption>fig01_simulated_and_real_rasters.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, axes1 = plt.subplots(2, 2, figsize=(14, 9))
+
+# Top-left: CIF
+ax = axes1[0, 0]
+ax.plot(time, lambdaData, &quot;b&quot;, linewidth=2, label=r&quot;$\lambda_i$&quot;)
+ax.set_title(&quot;Simulated Conditional Intensity Function (CIF)&quot;,
+             fontweight=&quot;bold&quot;, fontsize=14, fontfamily=&quot;Arial&quot;)
+ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_ylabel(r&quot;$\lambda(t)$ [spikes/sec]&quot;, fontsize=14, fontweight=&quot;bold&quot;,
+              fontfamily=&quot;Arial&quot;)
+ax.legend(loc=&quot;upper right&quot;)
+
+# Bottom-left: simulated raster
+ax = axes1[1, 0]
+spikeCollSim.plot(handle=ax)
+ax.set_yticks(range(0, numRealizations + 1, 5))
+ax.set_title(f&quot;{numRealizations} Simulated Point Process Sample Paths&quot;,
+             fontweight=&quot;bold&quot;, fontsize=14, fontfamily=&quot;Arial&quot;)
+ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+ax.set_ylabel(&quot;Trial [k]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
+
+# Top-right: real cell 6 raster
+ax = axes1[0, 1]
+spikeCollReal1.plot(handle=ax)
+ax.set_yticks(range(0, numTrials + 1, 2))
+ax.set_title(&quot;Response to Moving Visual Stimulus (Neuron 6)&quot;,
+             fontweight=&quot;bold&quot;, fontsize=14, fontname=&quot;Arial&quot;)
+ax.set_xlabel(&quot;time [s]&quot;, fontname=&quot;Arial&quot;, fontsize=12, fontweight=&quot;bold&quot;)
+ax.set_ylabel(&quot;Trial [k]&quot;, fontname=&quot;Arial&quot;, fontsize=12, fontweight=&quot;bold&quot;)
+
+# Bottom-right: real cell 1 raster
+ax = axes1[1, 1]
+spikeCollReal2.plot(handle=ax)
+ax.set_yticks(range(0, numTrials + 1, 2))
+ax.set_title(&quot;Response to Moving Visual Stimulus (Neuron 1)&quot;,
+             fontweight=&quot;bold&quot;, fontsize=14, fontname=&quot;Arial&quot;)
+ax.set_xlabel(&quot;time [s]&quot;, fontname=&quot;Arial&quot;, fontsize=12, fontweight=&quot;bold&quot;)
+ax.set_ylabel(&quot;Trial [k]&quot;, fontname=&quot;Arial&quot;, fontsize=12, fontweight=&quot;bold&quot;)
+
+fig1.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example03/fig02_psth_comparison.png" alt="fig02_psth_comparison.png" loading="lazy"><figcaption>fig02_psth_comparison.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, axes2 = plt.subplots(2, 3, figsize=(14, 9))
+
+# Top row: rasters
+spikeCollSim.plot(handle=axes2[0, 0])
+axes2[0, 0].set_yticks(range(0, numRealizations + 1, 2))
+axes2[0, 0].set_xlabel(&quot;time [s]&quot;)
+axes2[0, 0].set_ylabel(&quot;Trial [k]&quot;)
+
+spikeCollReal1.plot(handle=axes2[0, 1])
+axes2[0, 1].set_yticks(range(0, numTrials + 1, 2))
+axes2[0, 1].set_xlabel(&quot;time [s]&quot;)
+axes2[0, 1].set_ylabel(&quot;Trial [k]&quot;)
+
+spikeCollReal2.plot(handle=axes2[0, 2])
+axes2[0, 2].set_yticks(range(0, numTrials + 1, 2))
+axes2[0, 2].set_xlabel(&quot;time [s]&quot;)
+axes2[0, 2].set_ylabel(&quot;Trial [k]&quot;)
+
+# Bottom row: PSTH comparisons
+ax = axes2[1, 0]
+h_true, = ax.plot(time, lambdaData, &quot;b&quot;, linewidth=4, label=&quot;true&quot;)
+# MATLAB z-order: true, then GLM, then PSTH (markers on top)
+glm_time = np.asarray(psthGLMSim.time, dtype=float).ravel()
+glm_data = np.asarray(psthGLMSim.data, dtype=float).ravel()
+h_glm, = ax.plot(glm_time, glm_data, &quot;k&quot;, linewidth=4, label=&quot;PSTH_{glm}&quot;)
+psth_time = np.asarray(psthSim.time, dtype=float).ravel()
+psth_data = np.asarray(psthSim.data, dtype=float).ravel()
+h_psth, = ax.plot(psth_time, psth_data, &quot;rx&quot;, linewidth=4, label=&quot;PSTH&quot;)
+ax.legend(handles=[h_true, h_psth, h_glm])
+ax.set_xlabel(&quot;time [s]&quot;)
+ax.set_ylabel(&quot;[spikes/sec]&quot;)
+
+ax = axes2[1, 1]
+psth_t1 = np.asarray(psthReal1.time, dtype=float).ravel()
+psth_d1 = np.asarray(psthReal1.data, dtype=float).ravel()
+glm_t1 = np.asarray(psthGLMReal1.time, dtype=float).ravel()
+glm_d1 = np.asarray(psthGLMReal1.data, dtype=float).ravel()
+h2, = ax.plot(psth_t1, psth_d1, &quot;rx&quot;, linewidth=4, label=&quot;PSTH&quot;)
+h3, = ax.plot(glm_t1, glm_d1, &quot;k&quot;, linewidth=4, label=&quot;PSTH_{glm}&quot;)
+ax.legend(handles=[h2, h3])
+ax.set_xlabel(&quot;time [s]&quot;)
+ax.set_ylabel(&quot;[spikes/sec]&quot;)
+
+ax = axes2[1, 2]
+psth_t2 = np.asarray(psthReal2.time, dtype=float).ravel()
+psth_d2 = np.asarray(psthReal2.data, dtype=float).ravel()
+glm_t2 = np.asarray(psthGLMReal2.time, dtype=float).ravel()
+glm_d2 = np.asarray(psthGLMReal2.data, dtype=float).ravel()
+h2, = ax.plot(psth_t2, psth_d2, &quot;rx&quot;, linewidth=4, label=&quot;PSTH&quot;)
+h3, = ax.plot(glm_t2, glm_d2, &quot;k&quot;, linewidth=4, label=&quot;PSTH_{glm}&quot;)
+ax.legend(handles=[h2, h3])
+ax.set_xlabel(&quot;time [s]&quot;)
+ax.set_ylabel(&quot;[spikes/sec]&quot;)
+
+fig2.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example03/fig03_ssglm_simulation_summary.png" alt="fig03_ssglm_simulation_summary.png" loading="lazy"><figcaption>fig03_ssglm_simulation_summary.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig3, axes3 = plt.subplots(3, 2, figsize=(14, 9))
+
+# (1,1): Within-trial stimulus
+ax = axes3[0, 0]
+ax.plot(time, u, &quot;k&quot;, linewidth=3)
+ax.set_xlabel(&quot;time [s]&quot;)
+ax.set_ylabel(&quot;Stimulus&quot;)
+ax.set_title(&quot;Within Trial Stimulus&quot;, fontweight=&quot;bold&quot;, fontsize=14)
+
+# (1,2): Across-trial gain
+ax = axes3[0, 1]
+ax.plot(np.arange(1, numRealizations + 1), b1, &quot;k&quot;, linewidth=3)
+ax.set_xlabel(&quot;Trial [k]&quot;)
+ax.set_ylabel(&quot;Stimulus Gain&quot;)
+ax.set_title(&quot;Across Trial Stimulus Gain&quot;, fontweight=&quot;bold&quot;, fontsize=14)
+
+# (2,1)+(2,2): Raster spanning both columns
+axes3[1, 1].remove()
+ax = axes3[1, 0]
+ax.set_position(
+    [axes3[1, 0].get_position().x0,
+     axes3[1, 0].get_position().y0,
+     axes3[1, 1].get_position().x1 - axes3[1, 0].get_position().x0,
+     axes3[1, 0].get_position().height]
+)
+spikeColl.plot(handle=ax)
+ax.set_yticks(range(0, numRealizations + 1, 10))
+ax.set_xlabel(&quot;time [s]&quot;)
+ax.set_ylabel(&quot;Trial [k]&quot;)
+ax.set_title(&quot;Simulated Neural Raster&quot;, fontweight=&quot;bold&quot;, fontsize=14)
+
+# (3,1)+(3,2): True CIF heatmap spanning both columns
+axes3[2, 1].remove()
+ax = axes3[2, 0]
+ax.set_position(
+    [axes3[2, 0].get_position().x0,
+     axes3[2, 0].get_position().y0,
+     ax.get_position().width * 2.1,
+     axes3[2, 0].get_position().height]
+)
+ax.imshow(stimData.T, aspect=&quot;auto&quot;, origin=&quot;lower&quot;,
+          extent=[time[0], time[-1], 1, numRealizations],
+          cmap=&quot;jet&quot;)  # MATLAB default colormap for imagesc
+ax.set_xlabel(&quot;time [s]&quot;)
+ax.set_ylabel(&quot;Trial [k]&quot;)
+ax.set_title(&quot;True Conditional Intensity Function&quot;, fontweight=&quot;bold&quot;,
+             fontsize=14)
+ax.set_yticks(range(0, numRealizations + 1, 10))
+
+fig3.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example03/fig04_ssglm_fit_diagnostics.png" alt="fig04_ssglm_fit_diagnostics.png" loading="lazy"><figcaption>fig04_ssglm_fit_diagnostics.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig4, axes4 = plt.subplots(2, 2, figsize=(14, 9))
+tCompare.KSPlot(handle=axes4[0, 0])
+tCompare.plotResidual(handle=axes4[0, 1])
+tCompare.plotInvGausTrans(handle=axes4[1, 0])
+tCompare.plotSeqCorr(handle=axes4[1, 1])
+fig4.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example03/fig05_stimulus_effect_surfaces.png" alt="fig05_stimulus_effect_surfaces.png" loading="lazy"><figcaption>fig05_stimulus_effect_surfaces.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig5, axes5 = plt.subplots(3, 1, figsize=(14, 9))
+trial_axis = np.arange(1, numRealizations + 1)
+T_act = min(actStimEffect.shape[0], len(basis_time))
+
+surfaces = [
+    (&quot;True Stimulus Effect&quot;, actStimEffect[:T_act, :]),
+    (&quot;PSTH Estimated Stimulus Effect&quot;, psthSurface2D[:T_act, :]),
+    (&quot;SSGLM Estimated Stimulus Effect&quot;, estStimEffect[:T_act, :]),
+]
+for ax, (title, data) in zip(axes5, surfaces):
+    # MATLAB mesh(trial, time, data) viewed from above: x=trial, y=time
+    ax.pcolormesh(trial_axis, basis_time[:T_act], data,
+                   shading=&quot;gouraud&quot;, cmap=&quot;viridis&quot;)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_title(title, fontweight=&quot;bold&quot;, fontsize=14, fontfamily=&quot;Arial&quot;)
+
+fig5.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example03/fig06_learning_trial_comparison.png" alt="fig06_learning_trial_comparison.png" loading="lazy"><figcaption>fig06_learning_trial_comparison.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig6 = plt.figure(figsize=(14, 9))
+
+# (1,1): average spike rate with learning trial marker
+ax1 = fig6.add_subplot(2, 3, 1)
+rate_time = np.asarray(tRate.time, dtype=float).ravel()
+rate_data = np.asarray(tRate.data, dtype=float).ravel()
+ax1.plot(rate_time, rate_data, &quot;k&quot;, linewidth=4)
+ylims = ax1.get_ylim()
+ax1.plot([lt, lt], ylims, &quot;r&quot;, linewidth=2)
+ax1.set_xlabel(&quot;Trial [k]&quot;)
+ax1.set_ylabel(&quot;Average Firing Rate [spikes/sec]&quot;)
+ax1.set_title(f&quot;Learning Trial: {lt}&quot;, fontweight=&quot;bold&quot;, fontsize=12)
+
+# (1,2)+(1,3)+(2,2)+(2,3): significance matrix
+ax2 = fig6.add_subplot(2, 3, (2, 6))
+ax2.imshow(probMat, cmap=&quot;gray_r&quot;, aspect=&quot;auto&quot;)
+kTrials = sigMat.shape[0]
+for k in range(kTrials):
+    for m in range(k + 1, kTrials):
+        if sigMat[k, m] == 1:
+            ax2.plot(m, k, &quot;r*&quot;, markersize=6)
+ax2.xaxis.set_ticks_position(&quot;top&quot;)
+ax2.xaxis.set_label_position(&quot;top&quot;)
+ax2.yaxis.set_ticks_position(&quot;right&quot;)
+ax2.yaxis.set_label_position(&quot;right&quot;)
+ax2.set_xlabel(&quot;Trial Number&quot;)
+ax2.set_ylabel(&quot;Trial Number&quot;)
+
+# (2,1): CIF comparison for trial 1 vs learning trial
+ax3 = fig6.add_subplot(2, 3, 4)
+stim1_data = basisMat @ stimulus_true[:, 0]
+stimlt_data = basisMat @ stimulus_true[:, lt - 1]
+ci1_lo = basisMat @ stimCIs[:, 0, 0]
+ci1_hi = basisMat @ stimCIs[:, 0, 1]
+cilt_lo = basisMat @ stimCIs[:, lt - 1, 0]
+cilt_hi = basisMat @ stimCIs[:, lt - 1, 1]
+
+ax3.fill_between(basis_time, ci1_lo, ci1_hi, alpha=0.3, color=&quot;gray&quot;)
+ax3.fill_between(basis_time, cilt_lo, cilt_hi, alpha=0.3, color=&quot;red&quot;)
+h1, = ax3.plot(basis_time, stim1_data, &quot;k&quot;, linewidth=4,
+               label=r&quot;$\lambda_1(t)$&quot;)
+h2, = ax3.plot(basis_time, stimlt_data, &quot;r&quot;, linewidth=4,
+               label=rf&quot;$\lambda_{{{lt}}}(t)$&quot;)
+ax3.legend(handles=[h1, h2])
+ax3.set_xlabel(&quot;time [s]&quot;)
+ax3.set_ylabel(&quot;Firing Rate [spikes/sec]&quot;)
+ax3.set_title(&quot;Learning Trial Vs. Baseline Trial\nwith 95% CIs&quot;,
+              fontweight=&quot;bold&quot;, fontsize=12)
+
+fig6.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="example04">
@@ -51,13 +457,85 @@
 <p class="muted">Loads place-cell datasets and compares receptive-field model families.</p>
 <p><strong>Run:</strong> <code>python examples/paper/example04_place_cells_continuous_stimulus.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example04_place_cells_continuous_stimulus.py">Script</a> · <a href="figures/example04/">Figures directory</a></p>
 <div class="gallery">
-<figure><img src="figures/example04/fig01_example_cells_path_overlay.png" alt="fig01_example_cells_path_overlay.png" loading="lazy"><figcaption>fig01_example_cells_path_overlay.png</figcaption></figure>
-<figure><img src="figures/example04/fig02_model_summary_statistics.png" alt="fig02_model_summary_statistics.png" loading="lazy"><figcaption>fig02_model_summary_statistics.png</figcaption></figure>
+<figure><img src="figures/example04/fig01_example_cells_path_overlay.png" alt="fig01_example_cells_path_overlay.png" loading="lazy"><figcaption>fig01_example_cells_path_overlay.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, axes1 = plt.subplots(2, 2, figsize=(14, 9))  # MATLAB: 1400x900
+for i, cidx in enumerate(exampleCells):
+    ax = axes1.flat[i]
+    h1, = ax.plot(x1, y1, &quot;b-&quot;, linewidth=0.5)
+    n = neurons1[min(cidx, nCells1 - 1)]
+    xn = np.asarray(n[&quot;xN&quot;].item(), dtype=float).ravel()
+    yn = np.asarray(n[&quot;yN&quot;].item(), dtype=float).ravel()
+    h2, = ax.plot(xn, yn, &quot;r.&quot;, markersize=7)
+    ax.set_title(f&quot;Cell#{cidx + 1}&quot;, fontweight=&quot;bold&quot;, fontsize=12)
+    ax.set_xticks(np.arange(-1, 1.5, 0.5))
+    ax.set_yticks(np.arange(-1, 1.5, 0.5))
+    ax.set_aspect(&quot;equal&quot;)
+    ax.axis(&quot;square&quot;)
+    if i == 3:
+        ax.legend([h1, h2], [&quot;Animal Path&quot;, &quot;Location at time of spike&quot;])
+fig1.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example04/fig02_model_summary_statistics.png" alt="fig02_model_summary_statistics.png" loading="lazy"><figcaption>fig02_model_summary_statistics.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, axes2 = plt.subplots(1, 3, figsize=(14, 9))  # MATLAB: 1400x900
+
+axes2[0].boxplot([dKS1[np.isfinite(dKS1)], dKS2[np.isfinite(dKS2)]],
+                 **_boxplot_labels([&quot;Animal 1&quot;, &quot;Animal 2&quot;]),
+                 vert=True)
+axes2[0].set_title(r&quot;$\Delta$ KS Statistic&quot;, fontsize=14, fontweight=&quot;bold&quot;,
+                   fontfamily=&quot;Arial&quot;)
+
+axes2[1].boxplot([dAIC1[np.isfinite(dAIC1)], dAIC2[np.isfinite(dAIC2)]],
+                 **_boxplot_labels([&quot;Animal 1&quot;, &quot;Animal 2&quot;]),
+                 vert=True)
+axes2[1].set_title(r&quot;$\Delta$ AIC&quot;, fontsize=14, fontweight=&quot;bold&quot;,
+                   fontfamily=&quot;Arial&quot;)
+
+axes2[2].boxplot([dBIC1[np.isfinite(dBIC1)], dBIC2[np.isfinite(dBIC2)]],
+                 **_boxplot_labels([&quot;Animal 1&quot;, &quot;Animal 2&quot;]),
+                 vert=True)
+axes2[2].set_title(r&quot;$\Delta$ BIC&quot;, fontsize=14, fontweight=&quot;bold&quot;,
+                   fontfamily=&quot;Arial&quot;)
+
+fig2.tight_layout()</code></pre></details></figure>
 <figure><img src="figures/example04/fig03_gaussian_place_fields_animal1.png" alt="fig03_gaussian_place_fields_animal1.png" loading="lazy"><figcaption>fig03_gaussian_place_fields_animal1.png</figcaption></figure>
 <figure><img src="figures/example04/fig04_zernike_place_fields_animal1.png" alt="fig04_zernike_place_fields_animal1.png" loading="lazy"><figcaption>fig04_zernike_place_fields_animal1.png</figcaption></figure>
 <figure><img src="figures/example04/fig05_gaussian_place_fields_animal2.png" alt="fig05_gaussian_place_fields_animal2.png" loading="lazy"><figcaption>fig05_gaussian_place_fields_animal2.png</figcaption></figure>
 <figure><img src="figures/example04/fig06_zernike_place_fields_animal2.png" alt="fig06_zernike_place_fields_animal2.png" loading="lazy"><figcaption>fig06_zernike_place_fields_animal2.png</figcaption></figure>
-<figure><img src="figures/example04/fig07_example_cell_mesh_comparison.png" alt="fig07_example_cell_mesh_comparison.png" loading="lazy"><figcaption>fig07_example_cell_mesh_comparison.png</figcaption></figure>
+<figure><img src="figures/example04/fig07_example_cell_mesh_comparison.png" alt="fig07_example_cell_mesh_comparison.png" loading="lazy"><figcaption>fig07_example_cell_mesh_comparison.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig7 = plt.figure(figsize=(14, 9))
+ax3d = fig7.add_subplot(111, projection=&quot;3d&quot;)
+# MATLAB ``HippocampalPlaceCellExample.m:240-246``: each mesh uses
+# default ``mesh(...)`` with ``FaceAlpha=0.2, EdgeAlpha=0.2`` and an
+# explicit ``EdgeColor`` (&#x27;b&#x27; / &#x27;g&#x27;).  MATLAB&#x27;s default stride is 1
+# so every grid edge appears.  Use ``rstride=2, cstride=2`` here
+# (every other line) to keep the figure size reasonable on the 201x201
+# grid while preserving enough detail for the place-field bump to be
+# visible.
+ax3d.plot_wireframe(xx, yy, field_g, color=&quot;b&quot;, alpha=0.35,
+                    rstride=2, cstride=2, linewidth=0.45)
+ax3d.plot_wireframe(xx, yy, field_z, color=&quot;g&quot;, alpha=0.35,
+                    rstride=2, cstride=2, linewidth=0.45)
+# Overlay animal path at z=0 (MATLAB: &#x27;k&#x27;)
+ax3d.plot(x1, y1, np.zeros_like(x1), &quot;k-&quot;, linewidth=0.4, alpha=0.5)
+# Overlay spike locations (MATLAB: &#x27;r.&#x27;)
+n_ex = neurons1[exampleCell]
+xn_ex = np.asarray(n_ex[&quot;xN&quot;].item(), dtype=float).ravel()
+yn_ex = np.asarray(n_ex[&quot;yN&quot;].item(), dtype=float).ravel()
+ax3d.scatter(xn_ex, yn_ex, np.zeros_like(xn_ex), c=&quot;r&quot;, s=6)
+# Match MATLAB&#x27;s default 3D view: az=-37.5, el=30
+ax3d.view_init(elev=30, azim=-37.5)
+ax3d.set_xlabel(&quot;x position&quot;)
+ax3d.set_ylabel(&quot;y position&quot;)
+ax3d.set_title(f&quot;Animal#1, Cell#{exampleCell + 1}&quot;,
+               fontweight=&quot;bold&quot;, fontsize=12)
+# MATLAB legend (wireframe lines, not filled patches)
+from matplotlib.lines import Line2D
+legend_elements = [
+    Line2D([0], [0], color=&quot;b&quot;, alpha=0.5, linewidth=1.5,
+           label=r&quot;$\lambda_{Gaussian}$&quot;),
+    Line2D([0], [0], color=&quot;g&quot;, alpha=0.5, linewidth=1.5,
+           label=r&quot;$\lambda_{Zernike}$&quot;),
+    Line2D([0], [0], color=&quot;k&quot;, linewidth=0.5, label=&quot;Animal Path&quot;),
+    Line2D([0], [0], marker=&quot;.&quot;, color=&quot;r&quot;, linestyle=&quot;&quot;,
+           label=&quot;Spike Locations&quot;),
+]
+ax3d.legend(handles=legend_elements, loc=&quot;best&quot;)</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="example05">
@@ -66,12 +544,284 @@
 <p class="muted">Bundles univariate, reaching, and hybrid decoding examples from the paper workflow.</p>
 <p><strong>Run:</strong> <code>python examples/paper/example05_decoding_ppaf_pphf.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example05_decoding_ppaf_pphf.py">Script</a> · <a href="figures/example05/">Figures directory</a></p>
 <div class="gallery">
-<figure><img src="figures/example05/fig01_univariate_setup.png" alt="fig01_univariate_setup.png" loading="lazy"><figcaption>fig01_univariate_setup.png</figcaption></figure>
-<figure><img src="figures/example05/fig02_univariate_decoding.png" alt="fig02_univariate_decoding.png" loading="lazy"><figcaption>fig02_univariate_decoding.png</figcaption></figure>
-<figure><img src="figures/example05/fig03_reach_and_population_setup.png" alt="fig03_reach_and_population_setup.png" loading="lazy"><figcaption>fig03_reach_and_population_setup.png</figcaption></figure>
-<figure><img src="figures/example05/fig04_ppaf_goal_vs_free.png" alt="fig04_ppaf_goal_vs_free.png" loading="lazy"><figcaption>fig04_ppaf_goal_vs_free.png</figcaption></figure>
-<figure><img src="figures/example05/fig05_hybrid_setup.png" alt="fig05_hybrid_setup.png" loading="lazy"><figcaption>fig05_hybrid_setup.png</figcaption></figure>
-<figure><img src="figures/example05/fig06_hybrid_decoding_summary.png" alt="fig06_hybrid_decoding_summary.png" loading="lazy"><figcaption>fig06_hybrid_decoding_summary.png</figcaption></figure>
+<figure><img src="figures/example05/fig01_univariate_setup.png" alt="fig01_univariate_setup.png" loading="lazy"><figcaption>fig01_univariate_setup.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, axes1 = plt.subplots(3, 1, figsize=(14, 9), sharex=True)
+
+# (3,1,1): Driving stimulus
+axes1[0].plot(time, stimSignal, &quot;k&quot;, linewidth=1.5)
+axes1[0].set_ylabel(&quot;Stimulus&quot;)
+axes1[0].set_title(&quot;Driving Stimulus&quot;, fontweight=&quot;bold&quot;, fontsize=14,
+                    fontfamily=&quot;Arial&quot;)
+axes1[0].tick_params(labelbottom=False)
+
+# (3,1,2): CIFs overlaid in black
+lambdaAll = result[&quot;lambdaAll&quot;]
+for c in range(n_cells):
+    axes1[1].plot(time, lambdaAll[c, :], &quot;k&quot;, linewidth=0.5)
+axes1[1].set_ylabel(&quot;Firing Rate [spikes/sec]&quot;)
+axes1[1].set_title(&quot;Conditional Intensity Functions&quot;, fontweight=&quot;bold&quot;,
+                    fontsize=14, fontfamily=&quot;Arial&quot;)
+axes1[1].tick_params(labelbottom=False)
+
+# (3,1,3): Spike raster
+for c in range(n_cells):
+    spike_times = time[dN[c, :] &gt; 0]
+    axes1[2].plot(spike_times, np.full_like(spike_times, c + 1), &quot;|&quot;, color=&quot;k&quot;, markersize=4)
+axes1[2].set_ylabel(&quot;Cell Number&quot;)
+axes1[2].set_xlabel(&quot;time [s]&quot;)
+axes1[2].set_ylim(0.5, n_cells + 0.5)
+axes1[2].set_yticks(np.arange(0, n_cells + 1, 10))
+axes1[2].set_title(&quot;Point Process Sample Paths&quot;, fontweight=&quot;bold&quot;,
+                    fontsize=14, fontfamily=&quot;Arial&quot;)
+fig1.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example05/fig02_univariate_decoding.png" alt="fig02_univariate_decoding.png" loading="lazy"><figcaption>fig02_univariate_decoding.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, ax2 = plt.subplots(1, 1, figsize=(14, 9))
+ax2.fill_between(
+    time, result[&quot;ci_low&quot;], result[&quot;ci_high&quot;],
+    color=&quot;0.75&quot;, alpha=0.4, label=&quot;95% CI&quot;
+)
+ax2.plot(time, result[&quot;x_decoded&quot;], &quot;k-&quot;, linewidth=4, label=&quot;Decoded&quot;)
+ax2.plot(time, stimSignal, &quot;b-&quot;, linewidth=4, label=&quot;Actual&quot;)
+ax2.set_xlabel(&quot;time [s]&quot;)
+ax2.set_ylabel(&quot;Stimulus&quot;)  # MATLAB: ylabel(&#x27;Stimulus&#x27;,&#x27;Interpreter&#x27;,&#x27;none&#x27;)
+ax2.set_title(f&quot;Decoded Stimulus $\\pm$ 95% CIs with {result[&#x27;n_cells&#x27;]} cells&quot;,
+              fontweight=&quot;bold&quot;, fontsize=18, fontfamily=&quot;Arial&quot;)
+ax2.legend([&quot;Decoded&quot;, &quot;Actual&quot;], loc=&quot;upper right&quot;)
+fig2.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example05/fig03_reach_and_population_setup.png" alt="fig03_reach_and_population_setup.png" loading="lazy"><figcaption>fig03_reach_and_population_setup.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig3 = plt.figure(figsize=(14, 9))
+
+# Top-left [1,3]: 2D reach path (in cm)
+ax_path = fig3.add_subplot(4, 2, (1, 3))
+ax_path.plot(100 * xState[0, :], 100 * xState[1, :], &quot;k&quot;, linewidth=2)
+ax_path.plot(100 * xState[0, 0], 100 * xState[1, 0], &quot;bo&quot;, markersize=14,
+             markerfacecolor=&quot;none&quot;, markeredgewidth=2)
+ax_path.plot(100 * xState[0, -1], 100 * xState[1, -1], &quot;ro&quot;, markersize=14,
+             markerfacecolor=&quot;none&quot;, markeredgewidth=2)
+ax_path.legend([&quot;Path&quot;, &quot;Start&quot;, &quot;Finish&quot;], loc=&quot;upper right&quot;)
+ax_path.set_xlabel(&quot;X Position [cm]&quot;)
+ax_path.set_ylabel(&quot;Y Position [cm]&quot;)
+ax_path.set_title(&quot;Reach Path&quot;, fontweight=&quot;bold&quot;, fontsize=14)
+
+# Middle-left [5]: position vs time (in cm)
+ax_pos = fig3.add_subplot(4, 2, 5)
+h1, = ax_pos.plot(time, 100 * xState[0, :], &quot;k&quot;, linewidth=2)
+h2, = ax_pos.plot(time, 100 * xState[1, :], &quot;k-.&quot;, linewidth=2)
+ax_pos.legend([h1, h2], [&quot;x&quot;, &quot;y&quot;], loc=&quot;upper right&quot;)
+ax_pos.set_xlabel(&quot;time [s]&quot;)
+ax_pos.set_ylabel(&quot;Position [cm]&quot;)
+
+# Lower-left [7]: velocity vs time (in cm/s)
+ax_vel = fig3.add_subplot(4, 2, 7)
+h1, = ax_vel.plot(time, 100 * xState[2, :], &quot;k&quot;, linewidth=2)
+h2, = ax_vel.plot(time, 100 * xState[3, :], &quot;k-.&quot;, linewidth=2)
+ax_vel.legend([h1, h2], [&quot;$v_x$&quot;, &quot;$v_y$&quot;], loc=&quot;upper right&quot;)
+ax_vel.set_xlabel(&quot;time [s]&quot;)
+ax_vel.set_ylabel(&quot;Velocity [cm/s]&quot;)
+
+# Top-right [2,4]: neural raster
+ax_raster = fig3.add_subplot(4, 2, (2, 4))
+for c in range(n_cells):
+    spike_t = time[dN[c, :] &gt; 0]
+    ax_raster.plot(spike_t, np.full_like(spike_t, c + 1), &quot;|&quot;, color=&quot;k&quot;, markersize=4)
+ax_raster.set_ylabel(&quot;Cell Number&quot;)
+ax_raster.set_xticks([])
+ax_raster.set_xticklabels([])
+ax_raster.set_title(&quot;Neural Raster&quot;, fontweight=&quot;bold&quot;, fontsize=14)
+
+# Bottom-right [6,8]: CIF curves
+ax_cif = fig3.add_subplot(4, 2, (6, 8))
+muCoeffs = ex[&quot;muCoeffs&quot;]
+beta = ex[&quot;beta&quot;]
+for c in range(n_cells):
+    eta = muCoeffs[c] + beta[:, c] @ xState
+    exp_eta = np.exp(np.clip(eta, -20, 20))
+    lam = (exp_eta / (1.0 + exp_eta)) / delta
+    ax_cif.plot(time, lam, &quot;k&quot;, linewidth=0.5)
+ax_cif.set_title(&quot;Neural Conditional Intensity Functions&quot;,
+                 fontweight=&quot;bold&quot;, fontsize=14)
+ax_cif.set_xlabel(&quot;time [s]&quot;)
+ax_cif.set_ylabel(&quot;Firing Rate [spikes/sec]&quot;)
+
+fig3.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example05/fig04_ppaf_goal_vs_free.png" alt="fig04_ppaf_goal_vs_free.png" loading="lazy"><figcaption>fig04_ppaf_goal_vs_free.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig4 = plt.figure(figsize=(14, 9))
+
+# Top [1:4]: 2D estimated vs actual reach paths
+ax_2d = fig4.add_subplot(4, 2, (1, 4))
+ax_2d.plot(100 * xState[0, :], 100 * xState[1, :], &quot;k&quot;, linewidth=3)
+ax_2d.set_title(&quot;Estimated vs. Actual Reach Paths&quot;,
+                fontweight=&quot;bold&quot;, fontsize=12)
+
+for sim_idx in range(result[&quot;n_sims&quot;]):
+    x_u_goal = result[&quot;all_runs_goal&quot;][sim_idx]
+    x_u_free = result[&quot;all_runs_free&quot;][sim_idx]
+    ax_2d.plot(100 * x_u_goal[0, :], 100 * x_u_goal[1, :], &quot;b&quot;, linewidth=0.5)
+    ax_2d.plot(100 * x_u_free[0, :], 100 * x_u_free[1, :], &quot;g&quot;, linewidth=0.5)
+ax_2d.set_xlabel(&quot;x [cm]&quot;)
+ax_2d.set_ylabel(&quot;y [cm]&quot;)
+
+# Bottom panels: per-state traces
+state_labels = [&quot;x(t) [cm]&quot;, &quot;y(t) [cm]&quot;, &quot;$v_x$(t) [cm/s]&quot;, &quot;$v_y$(t) [cm/s]&quot;]
+subplot_indices = [5, 6, 7, 8]
+scale = 100.0  # meters → cm
+
+for d, (sp_idx, ylabel) in enumerate(zip(subplot_indices, state_labels)):
+    ax = fig4.add_subplot(4, 2, sp_idx)
+    ax.plot(time, scale * xState[d, :], &quot;k&quot;, linewidth=3)
+
+    for sim_idx in range(result[&quot;n_sims&quot;]):
+        x_u_goal = result[&quot;all_runs_goal&quot;][sim_idx]
+        x_u_free = result[&quot;all_runs_free&quot;][sim_idx]
+        hB, = ax.plot(time, scale * x_u_goal[d, :], &quot;b&quot;, linewidth=0.5)
+        hC, = ax.plot(time, scale * x_u_free[d, :], &quot;g&quot;, linewidth=0.5)
+
+    ax.set_ylabel(ylabel)
+    if d &gt;= 2:
+        ax.set_xlabel(&quot;time [s]&quot;)
+    else:
+        ax.set_xticklabels([])
+
+    # Add legend on y(t) panel (subplot 6), matching MATLAB
+    if d == 1:
+        hA, = ax.plot([], [], &quot;k&quot;, linewidth=3)
+        ax.legend([hA, hB, hC], [&quot;Actual&quot;, &quot;PPAF+Goal&quot;, &quot;PPAF&quot;],
+                  loc=&quot;lower right&quot;, fontsize=8)
+
+fig4.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example05/fig05_hybrid_setup.png" alt="fig05_hybrid_setup.png" loading="lazy"><figcaption>fig05_hybrid_setup.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig5 = plt.figure(figsize=(14, 9))
+
+# Top-left [1,3]: 2D reach path
+ax_path = fig5.add_subplot(4, 2, (1, 3))
+ax_path.plot(100 * X[0, :], 100 * X[1, :], &quot;k&quot;, linewidth=2)
+ax_path.plot(100 * X[0, 0], 100 * X[1, 0], &quot;bo&quot;, markersize=16,
+             markerfacecolor=&quot;none&quot;, markeredgewidth=2)
+ax_path.plot(100 * X[0, -1], 100 * X[1, -1], &quot;ro&quot;, markersize=16,
+             markerfacecolor=&quot;none&quot;, markeredgewidth=2)
+ax_path.set_xlabel(&quot;X [cm]&quot;)
+ax_path.set_ylabel(&quot;Y [cm]&quot;)
+ax_path.set_title(&quot;Reach Path&quot;, fontweight=&quot;bold&quot;, fontsize=14)
+
+# Middle-left [5]: position vs time
+ax_pos = fig5.add_subplot(4, 2, 5)
+h1, = ax_pos.plot(time, 100 * X[0, :], &quot;k&quot;, linewidth=2)
+h2, = ax_pos.plot(time, 100 * X[1, :], &quot;k-.&quot;, linewidth=2)
+ax_pos.legend([h1, h2], [&quot;x&quot;, &quot;y&quot;], loc=&quot;upper right&quot;)
+ax_pos.set_xlabel(&quot;time [s]&quot;)
+ax_pos.set_ylabel(&quot;Position [cm]&quot;)
+
+# Lower-left [7]: velocity vs time
+ax_vel = fig5.add_subplot(4, 2, 7)
+h1, = ax_vel.plot(time, 100 * X[2, :], &quot;k&quot;, linewidth=2)
+h2, = ax_vel.plot(time, 100 * X[3, :], &quot;k-.&quot;, linewidth=2)
+ax_vel.legend([h1, h2], [&quot;$v_x$&quot;, &quot;$v_y$&quot;], loc=&quot;upper right&quot;)
+ax_vel.set_xlabel(&quot;time [s]&quot;)
+ax_vel.set_ylabel(&quot;Velocity [cm/s]&quot;)
+
+# Top-right [2,4]: neural raster (show ALL cells, matching MATLAB)
+ax_raster = fig5.add_subplot(4, 2, (2, 4))
+for c in range(dN.shape[0]):
+    spike_t = time[dN[c, :] &gt; 0]
+    ax_raster.plot(spike_t, np.full_like(spike_t, c + 1), &quot;|&quot;, color=&quot;k&quot;, markersize=4)
+ax_raster.set_ylabel(&quot;Cell Number&quot;)
+ax_raster.set_yticklabels([])
+ax_raster.set_xticks([])
+ax_raster.set_xticklabels([])
+ax_raster.set_title(&quot;Neural Raster&quot;, fontweight=&quot;bold&quot;, fontsize=14)
+
+# Bottom-right [6,8]: discrete movement state
+ax_state = fig5.add_subplot(4, 2, (6, 8))
+ax_state.plot(time, mstate, &quot;k&quot;, linewidth=2)
+ax_state.set_ylim(0, 3)
+ax_state.set_yticks([1, 2])
+ax_state.set_yticklabels([&quot;N&quot;, &quot;M&quot;])
+ax_state.set_xlabel(&quot;time [s]&quot;)
+ax_state.set_ylabel(&quot;state&quot;)
+ax_state.set_title(&quot;Discrete Movement State&quot;, fontweight=&quot;bold&quot;, fontsize=14)
+
+fig5.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example05/fig06_hybrid_decoding_summary.png" alt="fig06_hybrid_decoding_summary.png" loading="lazy"><figcaption>fig06_hybrid_decoding_summary.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig6 = plt.figure(figsize=(14, 9))
+
+# Mean across simulations
+mS_est = np.mean(result[&quot;S_estAll&quot;], axis=0)
+mS_estNT = np.mean(result[&quot;S_estNTAll&quot;], axis=0)
+mMU_est = np.mean(result[&quot;MU_estAll&quot;][1, :, :], axis=1)   # P(M|data) for goal
+mMU_estNT = np.mean(result[&quot;MU_estNTAll&quot;][1, :, :], axis=1)  # P(M|data) for free
+mX_est = np.mean(100 * result[&quot;X_estAll&quot;], axis=2)
+mX_estNT = np.mean(100 * result[&quot;X_estNTAll&quot;], axis=2)
+
+# Left column: state estimation + probability
+# [1,4]: Estimated vs actual state
+ax_s = fig6.add_subplot(4, 3, (1, 4))
+ax_s.plot(time, mstate, &quot;k&quot;, linewidth=3)
+ax_s.plot(time, mS_est, &quot;b&quot;, linewidth=3)
+ax_s.plot(time, mS_estNT, &quot;g&quot;, linewidth=3)
+ax_s.set_yticks([1, 2.1])
+ax_s.set_yticklabels([&quot;N&quot;, &quot;M&quot;])
+ax_s.set_xticklabels([])
+ax_s.set_ylabel(&quot;state&quot;)
+ax_s.set_title(&quot;Estimated vs. Actual State&quot;, fontweight=&quot;bold&quot;, fontsize=12)
+
+# [7,10]: P(s(t)=M | data)
+ax_prob = fig6.add_subplot(4, 3, (7, 10))
+ax_prob.plot(time, mMU_est, &quot;b&quot;, linewidth=3)
+ax_prob.plot(time, mMU_estNT, &quot;g&quot;, linewidth=3)
+ax_prob.set_xlim(time[0], time[-1])
+ax_prob.set_ylim(0, 1.1)
+ax_prob.set_xlabel(&quot;time [s]&quot;)
+ax_prob.set_ylabel(&quot;P(s(t)=M | data)&quot;)
+ax_prob.set_title(&quot;Probability of State&quot;, fontweight=&quot;bold&quot;, fontsize=12)
+
+# Right top [2,3,5,6]: 2D estimated vs actual reach path
+ax_2d = fig6.add_subplot(4, 3, (2, 6))
+ax_2d.plot(100 * X[0, :], 100 * X[1, :], &quot;k&quot;, linewidth=1)
+ax_2d.plot(mX_est[0, :], mX_est[1, :], &quot;b&quot;, linewidth=3)
+ax_2d.plot(mX_estNT[0, :], mX_estNT[1, :], &quot;g&quot;, linewidth=3)
+ax_2d.plot(100 * X[0, 0], 100 * X[1, 0], &quot;bo&quot;, markersize=14,
+           markerfacecolor=&quot;none&quot;, markeredgewidth=2)
+ax_2d.plot(100 * X[0, -1], 100 * X[1, -1], &quot;ro&quot;, markersize=14,
+           markerfacecolor=&quot;none&quot;, markeredgewidth=2)
+ax_2d.set_xlabel(&quot;x [cm]&quot;)
+ax_2d.set_ylabel(&quot;y [cm]&quot;)
+ax_2d.set_title(&quot;Estimated vs. Actual Reach Path&quot;,
+                fontweight=&quot;bold&quot;, fontsize=12)
+
+# Bottom panels: per-state traces
+# [8]: x(t)
+ax_x = fig6.add_subplot(4, 3, 8)
+ax_x.plot(time, 100 * X[0, :], &quot;k&quot;, linewidth=3)
+ax_x.plot(time, mX_est[0, :], &quot;b&quot;, linewidth=3)
+ax_x.plot(time, mX_estNT[0, :], &quot;g&quot;, linewidth=3)
+ax_x.set_ylabel(&quot;x(t) [cm]&quot;)
+ax_x.set_xticklabels([])
+ax_x.set_title(&quot;X Position&quot;, fontweight=&quot;bold&quot;, fontsize=12)
+
+# [9]: y(t) with legend
+ax_y = fig6.add_subplot(4, 3, 9)
+h1, = ax_y.plot(time, 100 * X[1, :], &quot;k&quot;, linewidth=3)
+h2, = ax_y.plot(time, mX_est[1, :], &quot;b&quot;, linewidth=3)
+h3, = ax_y.plot(time, mX_estNT[1, :], &quot;g&quot;, linewidth=3)
+ax_y.legend([h1, h2, h3], [&quot;Actual&quot;, &quot;PPAF+Goal&quot;, &quot;PPAF&quot;],
+            loc=&quot;lower right&quot;, fontsize=8)
+ax_y.set_ylabel(&quot;y(t) [cm]&quot;)
+ax_y.set_xticklabels([])
+ax_y.set_title(&quot;Y Position&quot;, fontweight=&quot;bold&quot;, fontsize=12)
+
+# [11]: vx(t)
+ax_vx = fig6.add_subplot(4, 3, 11)
+ax_vx.plot(time, 100 * X[2, :], &quot;k&quot;, linewidth=3)
+ax_vx.plot(time, mX_est[2, :], &quot;b&quot;, linewidth=3)
+ax_vx.plot(time, mX_estNT[2, :], &quot;g&quot;, linewidth=3)
+ax_vx.set_ylabel(&quot;$v_x$(t) [cm/s]&quot;)
+ax_vx.set_xlabel(&quot;time [s]&quot;)
+ax_vx.set_title(&quot;X Velocity&quot;, fontweight=&quot;bold&quot;, fontsize=12)
+
+# [12]: vy(t)
+ax_vy = fig6.add_subplot(4, 3, 12)
+ax_vy.plot(time, 100 * X[3, :], &quot;k&quot;, linewidth=3)
+ax_vy.plot(time, mX_est[3, :], &quot;b&quot;, linewidth=3)
+ax_vy.plot(time, mX_estNT[3, :], &quot;g&quot;, linewidth=3)
+ax_vy.set_ylabel(&quot;$v_y$(t) [cm/s]&quot;)
+ax_vy.set_xlabel(&quot;time [s]&quot;)
+ax_vy.set_title(&quot;Y Velocity&quot;, fontweight=&quot;bold&quot;, fontsize=12)
+
+fig6.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="example06">
@@ -80,9 +830,75 @@
 <p class="muted">Simulates a 2-D inhomogeneous Poisson process from a known log-Gaussian rate, recovers the rate via bspline_basis_2d + fit_poisson_glm, fits a comparator via lgcp_fit_glm, and runs pair_correlation + global_envelope with isotropic edge correction.</p>
 <p><strong>Run:</strong> <code>python examples/paper/example06_place_fields_glm_basis.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example06_place_fields_glm_basis.py">Script</a> · <a href="figures/example06/">Figures directory</a></p>
 <div class="gallery">
-<figure><img src="figures/example06/fig01_true_vs_basis_recovered_rate.png" alt="fig01_true_vs_basis_recovered_rate.png" loading="lazy"><figcaption>fig01_true_vs_basis_recovered_rate.png</figcaption></figure>
-<figure><img src="figures/example06/fig02_lgcp_glm_credible_band.png" alt="fig02_lgcp_glm_credible_band.png" loading="lazy"><figcaption>fig02_lgcp_glm_credible_band.png</figcaption></figure>
-<figure><img src="figures/example06/fig03_pcf_with_global_envelope.png" alt="fig03_pcf_with_global_envelope.png" loading="lazy"><figcaption>fig03_pcf_with_global_envelope.png</figcaption></figure>
+<figure><img src="figures/example06/fig01_true_vs_basis_recovered_rate.png" alt="fig01_true_vs_basis_recovered_rate.png" loading="lazy"><figcaption>fig01_true_vs_basis_recovered_rate.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(1, 3, figsize=(13, 4.2))
+titles = (&quot;Ground truth&quot;, &quot;B-spline GLM&quot;, &quot;LGCP (Matern-5/2)&quot;)
+for ax, field, title in zip(
+    axes, (rate_true, rate_basis_2d, rate_lgcp_2d), titles
+):
+    im = ax.pcolormesh(
+        axis, axis, field.T, shading=&quot;auto&quot;, cmap=&quot;viridis&quot;,
+        vmin=0.0, vmax=vmax,
+    )
+    ax.scatter(pts[:, 0], pts[:, 1], s=3, color=&quot;w&quot;, alpha=0.45,
+               edgecolor=&quot;none&quot;)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect(&quot;equal&quot;)
+    ax.set_title(title)
+    ax.set_xlabel(&quot;x&quot;)
+    ax.set_ylabel(&quot;y&quot;)
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+fig.suptitle(&quot;Example 06 — true vs basis-recovered rate (~600 events)&quot;)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example06/fig02_lgcp_glm_credible_band.png" alt="fig02_lgcp_glm_credible_band.png" loading="lazy"><figcaption>fig02_lgcp_glm_credible_band.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
+
+im = axes[0].pcolormesh(axis, axis, mean_2d.T, shading=&quot;auto&quot;,
+                        cmap=&quot;magma&quot;)
+axes[0].scatter(pts[:, 0], pts[:, 1], s=3, color=&quot;w&quot;, alpha=0.4,
+                edgecolor=&quot;none&quot;)
+axes[0].set_aspect(&quot;equal&quot;)
+axes[0].set_xlabel(&quot;x&quot;)
+axes[0].set_ylabel(&quot;y&quot;)
+axes[0].set_title(&quot;LGCP posterior-mean rate&quot;)
+fig.colorbar(im, ax=axes[0], fraction=0.046, pad=0.04)
+axes[0].axhline(0.30, color=&quot;cyan&quot;, lw=1.0, ls=&quot;--&quot;, alpha=0.8,
+                label=&quot;slice y = 0.30&quot;)
+axes[0].legend(loc=&quot;upper right&quot;, fontsize=8)
+
+# Find the row of the analysis grid closest to y = 0.30.
+j = int(np.argmin(np.abs(axis - 0.30)))
+grid_pts = np.column_stack([axis, np.full_like(axis, axis[j])])
+rate_true = _true_rate(grid_pts)
+mean_slice = mean_2d[:, j]
+lo_slice = lo_2d[:, j]
+hi_slice = hi_2d[:, j]
+axes[1].fill_between(axis, lo_slice, hi_slice, color=&quot;tab:orange&quot;,
+                     alpha=0.30, label=&quot;90% credible band&quot;)
+axes[1].plot(axis, mean_slice, color=&quot;tab:orange&quot;, lw=1.8,
+             label=&quot;LGCP posterior mean&quot;)
+axes[1].plot(axis, rate_true, color=&quot;k&quot;, lw=1.4, ls=&quot;--&quot;,
+             label=&quot;Ground truth&quot;)
+axes[1].set_xlabel(&quot;x&quot;)
+axes[1].set_ylabel(&quot;rate(x, 0.30)&quot;)
+axes[1].set_title(&quot;LGCP log-normal credible band (slice)&quot;)
+axes[1].legend(loc=&quot;upper right&quot;, fontsize=8)
+
+fig.suptitle(&quot;Example 06 — basis-projected LGCP with a Matern-5/2 prior&quot;)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example06/fig03_pcf_with_global_envelope.png" alt="fig03_pcf_with_global_envelope.png" loading="lazy"><figcaption>fig03_pcf_with_global_envelope.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, ax = plt.subplots(figsize=(7.0, 4.4))
+ax.fill_between(r_grid, env.lo, env.hi, color=&quot;gray&quot;, alpha=0.35,
+                label=f&quot;global envelope (n_sim={env.n_sim})&quot;)
+ax.plot(r_grid, g, color=&quot;tab:blue&quot;, lw=1.8, marker=&quot;o&quot;, ms=4,
+        label=&quot;observed g(r) (isotropic)&quot;)
+ax.axhline(1.0, color=&quot;k&quot;, lw=1.0, ls=&quot;--&quot;, alpha=0.7,
+           label=&quot;Poisson null g(r) = 1&quot;)
+ax.set_xlabel(&quot;lag r&quot;)
+ax.set_ylabel(&quot;g(r)&quot;)
+ax.set_title(
+    &quot;Example 06 — edge-corrected pair correlation with global envelope&quot;
+)
+ax.legend(loc=&quot;upper right&quot;, fontsize=8)
+fig.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="example07">
@@ -91,9 +907,85 @@
 <p class="muted">Constructs a synthetic planar-wave Hawkes adjacency on a grid of electrodes, computes the bartlett_spectrum, runs detect_wave_peaks, and verifies the recovered wave speed and direction against the ground-truth construction.</p>
 <p><strong>Run:</strong> <code>python examples/paper/example07_spatiotemporal_hawkes_waves.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example07_spatiotemporal_hawkes_waves.py">Script</a> · <a href="figures/example07/">Figures directory</a></p>
 <div class="gallery">
-<figure><img src="figures/example07/fig01_adjacency_and_positions.png" alt="fig01_adjacency_and_positions.png" loading="lazy"><figcaption>fig01_adjacency_and_positions.png</figcaption></figure>
-<figure><img src="figures/example07/fig02_bartlett_spectrum.png" alt="fig02_bartlett_spectrum.png" loading="lazy"><figcaption>fig02_bartlett_spectrum.png</figcaption></figure>
-<figure><img src="figures/example07/fig03_detected_peaks_overlay.png" alt="fig03_detected_peaks_overlay.png" loading="lazy"><figcaption>fig03_detected_peaks_overlay.png</figcaption></figure>
+<figure><img src="figures/example07/fig01_adjacency_and_positions.png" alt="fig01_adjacency_and_positions.png" loading="lazy"><figcaption>fig01_adjacency_and_positions.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
+im = axes[0].imshow(A, cmap=&quot;magma&quot;, aspect=&quot;equal&quot;, origin=&quot;lower&quot;)
+axes[0].set_title(f&quot;Adjacency A ({A.shape[0]}x{A.shape[1]})&quot;)
+axes[0].set_xlabel(&quot;source electrode&quot;)
+axes[0].set_ylabel(&quot;target electrode&quot;)
+fig.colorbar(im, ax=axes[0], fraction=0.046, pad=0.04)
+
+axes[1].scatter(pos[:, 0], pos[:, 1], s=80, color=&quot;tab:blue&quot;,
+                edgecolor=&quot;k&quot;)
+for idx, (x, y) in enumerate(pos):
+    axes[1].text(x + 0.015, y + 0.015, str(idx), fontsize=7)
+axes[1].set_xlim(-0.05, 1.05)
+axes[1].set_ylim(-0.05, 1.05)
+axes[1].set_aspect(&quot;equal&quot;)
+axes[1].set_title(f&quot;Electrode grid ({Cx}x{Cy} on unit square)&quot;)
+axes[1].set_xlabel(&quot;x&quot;)
+axes[1].set_ylabel(&quot;y&quot;)
+fig.suptitle(
+    &quot;Example 07 — synthetic planar-wave Hawkes adjacency&quot;
+)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example07/fig02_bartlett_spectrum.png" alt="fig02_bartlett_spectrum.png" loading="lazy"><figcaption>fig02_bartlett_spectrum.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
+im = axes[0].pcolormesh(
+    kx_axis, ky_axis, power_2d.T, shading=&quot;auto&quot;, cmap=&quot;viridis&quot;
+)
+axes[0].scatter([k_true[0]], [k_true[1]], s=120, marker=&quot;x&quot;,
+                color=&quot;red&quot;, linewidths=2.5, label=&quot;k_true&quot;)
+axes[0].scatter([-k_true[0]], [-k_true[1]], s=80, marker=&quot;x&quot;,
+                color=&quot;red&quot;, linewidths=1.5, alpha=0.5,
+                label=&quot;-k_true (antipodal)&quot;)
+axes[0].set_xlabel(&quot;kx (rad / unit)&quot;)
+axes[0].set_ylabel(&quot;ky (rad / unit)&quot;)
+axes[0].set_title(&quot;frequency-mean Bartlett power&quot;)
+axes[0].set_aspect(&quot;equal&quot;)
+axes[0].legend(loc=&quot;upper right&quot;, fontsize=8)
+fig.colorbar(im, ax=axes[0], fraction=0.046, pad=0.04)
+
+# Frequency profile at the (kx, ky) cell closest to k_true.
+ix = int(np.argmin(np.abs(kx_axis - k_true[0])))
+iy = int(np.argmin(np.abs(ky_axis - k_true[1])))
+k_idx_true = ix * ny + iy
+profile_true = S[:, k_idx_true]
+profile_mean = S.mean(axis=1)
+axes[1].plot(freq, profile_true, color=&quot;tab:red&quot;, lw=1.8,
+             label=f&quot;at k_true (kx={kx_axis[ix]:.2f}, ky={ky_axis[iy]:.2f})&quot;)
+axes[1].plot(freq, profile_mean, color=&quot;tab:gray&quot;, lw=1.4, ls=&quot;--&quot;,
+             label=&quot;mean across k&quot;)
+axes[1].set_xlabel(&quot;frequency (Hz)&quot;)
+axes[1].set_ylabel(&quot;Bartlett power&quot;)
+axes[1].set_title(&quot;frequency profile of S(f, k)&quot;)
+axes[1].legend(loc=&quot;upper right&quot;, fontsize=8)
+
+fig.suptitle(&quot;Example 07 — Bartlett spectrum of the Hawkes adjacency&quot;)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example07/fig03_detected_peaks_overlay.png" alt="fig03_detected_peaks_overlay.png" loading="lazy"><figcaption>fig03_detected_peaks_overlay.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, ax = plt.subplots(figsize=(6.6, 5.4))
+im = ax.pcolormesh(
+    kx_axis, ky_axis, power_2d.T, shading=&quot;auto&quot;, cmap=&quot;viridis&quot;
+)
+fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+ax.scatter([k_true[0]], [k_true[1]], s=160, marker=&quot;x&quot;, color=&quot;red&quot;,
+           linewidths=2.5, label=&quot;k_true&quot;)
+for i in range(peaks.kx.size):
+    ax.scatter(peaks.kx[i], peaks.ky[i], s=110, marker=&quot;o&quot;,
+               facecolor=&quot;none&quot;, edgecolor=&quot;white&quot;, linewidths=2.0)
+    ax.annotate(
+        f&quot;#{i+1} f={peaks.freq[i]:.1f} Hz&quot;,
+        (peaks.kx[i], peaks.ky[i]),
+        xytext=(8, 8), textcoords=&quot;offset points&quot;, color=&quot;white&quot;,
+        fontsize=8,
+    )
+ax.set_xlabel(&quot;kx (rad / unit)&quot;)
+ax.set_ylabel(&quot;ky (rad / unit)&quot;)
+ax.set_aspect(&quot;equal&quot;)
+ax.set_title(
+    f&quot;Example 07 — detected wave peaks (top {peaks.kx.size}) &quot;
+    &quot;vs ground truth&quot;
+)
+ax.legend(loc=&quot;upper right&quot;, fontsize=8)
+fig.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="example08">
@@ -102,10 +994,94 @@
 <p class="muted">Loads Animal 1 from the figshare paper dataset, fits a 4-cell B-spline Poisson GLM, decodes position with PPDecodeFilter on a 2-D random walk, and runs pair_correlation + global_envelope (isotropic) and rescaled_acf on the held-out half.</p>
 <p><strong>Run:</strong> <code>python examples/paper/example08_real_place_cells.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example08_real_place_cells.py">Script</a> · <a href="figures/example08/">Figures directory</a></p>
 <div class="gallery">
-<figure><img src="figures/example08/fig01_real_place_fields_panel.png" alt="fig01_real_place_fields_panel.png" loading="lazy"><figcaption>fig01_real_place_fields_panel.png</figcaption></figure>
-<figure><img src="figures/example08/fig02_decoded_vs_true_position.png" alt="fig02_decoded_vs_true_position.png" loading="lazy"><figcaption>fig02_decoded_vs_true_position.png</figcaption></figure>
-<figure><img src="figures/example08/fig03_pair_correlation_envelope.png" alt="fig03_pair_correlation_envelope.png" loading="lazy"><figcaption>fig03_pair_correlation_envelope.png</figcaption></figure>
-<figure><img src="figures/example08/fig04_rescaled_acf.png" alt="fig04_rescaled_acf.png" loading="lazy"><figcaption>fig04_rescaled_acf.png</figcaption></figure>
+<figure><img src="figures/example08/fig01_real_place_fields_panel.png" alt="fig01_real_place_fields_panel.png" loading="lazy"><figcaption>fig01_real_place_fields_panel.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(2, 2, figsize=(11, 9))
+axes = axes.ravel()
+for i in range(min(n_cells, 4)):
+    ax = axes[i]
+    # ij-flattening convention: rows index x, cols index y.
+    # Transpose so that x runs across the figure and y vertically.
+    im = ax.pcolormesh(
+        grid_x, grid_y, rate_maps[i].T, shading=&quot;auto&quot;, cmap=&quot;viridis&quot;,
+    )
+    ax.scatter(pts_test[:, 0], pts_test[:, 1], s=2.0, c=&quot;w&quot;, alpha=0.35,
+               edgecolor=&quot;none&quot;)
+    ax.set_aspect(&quot;equal&quot;)
+    ax.set_xlabel(&quot;x&quot;)
+    ax.set_ylabel(&quot;y&quot;)
+    ax.set_title(
+        f&quot;Cell #{cell_indices[i] + 1} — B-spline place field &quot;
+        f&quot;(rate per bin; test spikes overlaid)&quot;
+    )
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+for j in range(n_cells, 4):
+    axes[j].axis(&quot;off&quot;)
+fig.suptitle(
+    &quot;Example 08 — Animal 1 B-spline place fields (training half)\n&quot;
+    &quot;with held-out spike locations overlaid&quot;
+)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig02_decoded_vs_true_position.png" alt="fig02_decoded_vs_true_position.png" loading="lazy"><figcaption>fig02_decoded_vs_true_position.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig = plt.figure(figsize=(12.0, 6.5))
+ax_path = fig.add_subplot(1, 2, 1)
+ax_path.plot(pos_x_test, pos_y_test, &quot;k-&quot;, lw=1.0, alpha=0.9, label=&quot;true&quot;)
+ax_path.plot(x_dec[0], x_dec[1], color=&quot;tab:blue&quot;, lw=1.0, alpha=0.85,
+             label=&quot;PPAF decoded&quot;)
+ax_path.scatter(pos_x_test[0], pos_y_test[0], s=80, marker=&quot;o&quot;,
+                edgecolor=&quot;k&quot;, facecolor=&quot;none&quot;, lw=1.8, label=&quot;start&quot;)
+ax_path.set_xlabel(&quot;x&quot;)
+ax_path.set_ylabel(&quot;y&quot;)
+ax_path.set_aspect(&quot;equal&quot;)
+ax_path.set_title(&quot;Held-out trajectory&quot;)
+ax_path.legend(loc=&quot;upper right&quot;, fontsize=9)
+
+ax_x = fig.add_subplot(2, 2, 2)
+ax_x.plot(pos_time_test, pos_x_test, &quot;k-&quot;, lw=1.2, label=&quot;true x&quot;)
+ax_x.plot(pos_time_test, x_dec[0], color=&quot;tab:blue&quot;, lw=1.0,
+          label=&quot;decoded x&quot;)
+ax_x.set_ylabel(&quot;x&quot;)
+ax_x.legend(loc=&quot;upper right&quot;, fontsize=8)
+ax_x.tick_params(labelbottom=False)
+
+ax_y = fig.add_subplot(2, 2, 4)
+ax_y.plot(pos_time_test, pos_y_test, &quot;k-&quot;, lw=1.2, label=&quot;true y&quot;)
+ax_y.plot(pos_time_test, x_dec[1], color=&quot;tab:blue&quot;, lw=1.0,
+          label=&quot;decoded y&quot;)
+ax_y.set_xlabel(&quot;time [s]&quot;)
+ax_y.set_ylabel(&quot;y&quot;)
+ax_y.legend(loc=&quot;upper right&quot;, fontsize=8)
+
+fig.suptitle(
+    &quot;Example 08 — held-out PPAF decoding of position &quot;
+    f&quot;({len(pos_time_test)} bins)&quot;
+)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig03_pair_correlation_envelope.png" alt="fig03_pair_correlation_envelope.png" loading="lazy"><figcaption>fig03_pair_correlation_envelope.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, ax = plt.subplots(figsize=(7.0, 4.6))
+ax.fill_between(r_grid, env.lo, env.hi, color=&quot;0.7&quot;, alpha=0.45,
+                label=f&quot;global envelope (n_sim={env.n_sim}, isotropic)&quot;)
+ax.plot(r_grid, g, color=&quot;tab:blue&quot;, lw=1.8, marker=&quot;o&quot;, ms=4,
+        label=&quot;held-out g(r)&quot;)
+ax.axhline(1.0, color=&quot;k&quot;, ls=&quot;--&quot;, lw=1.0, alpha=0.7,
+           label=&quot;Poisson null g(r) = 1&quot;)
+ax.set_xlabel(&quot;lag r&quot;)
+ax.set_ylabel(&quot;g(r)&quot;)
+ax.set_title(
+    &quot;Example 08 — held-out pair correlation vs inhomogeneous &quot;
+    &quot;Poisson envelope&quot;
+)
+ax.legend(loc=&quot;upper right&quot;, fontsize=8)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig04_rescaled_acf.png" alt="fig04_rescaled_acf.png" loading="lazy"><figcaption>fig04_rescaled_acf.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, ax = plt.subplots(figsize=(7.0, 4.4))
+ax.axhspan(-acf_result.band, acf_result.band, color=&quot;0.85&quot;, alpha=0.7,
+           label=f&quot;Bartlett band ±{acf_result.band:.3f}&quot;)
+ax.stem(acf_result.lags, acf_result.acf, basefmt=&quot; &quot;)
+ax.axhline(0.0, color=&quot;k&quot;, lw=0.8, alpha=0.7)
+ax.set_xlabel(&quot;lag (events)&quot;)
+ax.set_ylabel(&quot;ACF of z_j = Phi^{-1}(u_j)&quot;)
+ax.set_title(
+    &quot;Example 08 — population rescaled-time ACF &quot;
+    f&quot;(n_lags={acf_result.lags.size})&quot;
+)
+ax.legend(loc=&quot;upper right&quot;, fontsize=8)
+fig.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <footer>

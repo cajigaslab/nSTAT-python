@@ -149,6 +149,7 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     # ==================================================================
     # Figure 1: Data overview — raster, stimulus, velocity (3x1 layout)
     # ==================================================================
+    # === FIGURE: fig01_data_overview.png ===
     fig1, axes1 = plt.subplots(3, 1, figsize=(14, 9))
     viewWindow = 21.0  # First 21 seconds, matching Matlab
 
@@ -199,6 +200,7 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
         spine.set_linewidth(1)
 
     fig1.tight_layout()
+    # === END FIGURE ===
     figure_files.extend(_maybe_export(
         fig1, export_dir, "fig01_data_overview", plot_style=plot_style))
 
@@ -354,6 +356,7 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     # Figure 2: Lag selection, history diagnostics, KS, coefficients
     # (Matlab uses subplot(7,2,...) layout)
     # ==================================================================
+    # === FIGURE: fig02_lag_and_model_comparison.png ===
     fig2 = plt.figure(figsize=(14, 9))
     import matplotlib.gridspec as gridspec
     gs = gridspec.GridSpec(7, 2, figure=fig2, hspace=0.5, wspace=0.3)
@@ -423,6 +426,7 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     modelCompare.plotCoeffs(handle=ax_coeff)
     if ax_coeff.get_legend():
         ax_coeff.get_legend().set_visible(False)
+    # === END FIGURE ===
     figure_files.extend(_maybe_export(
         fig2, export_dir, "fig02_lag_and_model_comparison", plot_style=plot_style))
 

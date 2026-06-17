@@ -148,6 +148,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     # --- Figure 1: Constant Mg2+ diagnostics ---
     # MATLAB layout: 2x2 with (1,1) raster, (1,2) InvGausTrans,
     #   (2,1) KSPlot, (2,2) lambda plot.
+    # === FIGURE: fig01_constant_mg_summary.png ===
     fig1, axes1 = plt.subplots(2, 2, figsize=(14, 9))
 
     ax = axes1[0, 0]
@@ -173,6 +174,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.legend([r"$\lambda_{const}$"], loc="upper right")
 
     fig1.tight_layout()
+    # === END FIGURE ===
     figure_files.extend(_maybe_export(fig1, export_dir, "fig01_constant_mg_summary",
                                       plot_style=plot_style))
 
@@ -190,6 +192,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     timeWashout = _matlab_colon(260.0, 1.0 / sampleRate, nstWashout.maxTime)
 
     # --- Figure 2: Constant vs Decreasing Mg2+ rasters ---
+    # === FIGURE: fig02_washout_raster_overview.png ===
     fig2, axes2 = plt.subplots(2, 1, figsize=(14, 9))
 
     ax = axes2[0]
@@ -209,6 +212,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.xaxis.label.set(fontsize=12, fontweight="bold", fontfamily="Arial")
 
     fig2.tight_layout()
+    # === END FIGURE ===
     figure_files.extend(_maybe_export(fig2, export_dir, "fig02_washout_raster_overview",
                                       plot_style=plot_style))
 
@@ -259,6 +263,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     # --- Figure 3: Piecewise model diagnostics ---
     # MATLAB layout: 2x2 with (1,1) raster + red epoch lines,
     #   (1,2) InvGausTrans, (2,1) KSPlot, (2,2) dual-lambda plot.
+    # === FIGURE: fig03_piecewise_baseline_comparison.png ===
     fig3, axes3 = plt.subplots(2, 2, figsize=(14, 9))
 
     ax = axes3[0, 0]
@@ -294,6 +299,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.legend([r"$\lambda_{const}$", r"$\lambda_{const-epoch}$"], loc="upper right")
 
     fig3.tight_layout()
+    # === END FIGURE ===
     figure_files.extend(_maybe_export(fig3, export_dir, "fig03_piecewise_baseline_comparison",
                                       plot_style=plot_style))
 

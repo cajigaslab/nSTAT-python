@@ -201,6 +201,7 @@ def run_part_a(data_dir, export_dir=None):
     # ------------------------------------------------------------------
     # Figure 1: Simulated CIF + simulated/real rasters (2x2)
     # ------------------------------------------------------------------
+    # === FIGURE: fig01_simulated_and_real_rasters.png ===
     fig1, axes1 = plt.subplots(2, 2, figsize=(14, 9))
 
     # Top-left: CIF
@@ -241,6 +242,7 @@ def run_part_a(data_dir, export_dir=None):
     ax.set_ylabel("Trial [k]", fontname="Arial", fontsize=12, fontweight="bold")
 
     fig1.tight_layout()
+    # === END FIGURE ===
 
     # ------------------------------------------------------------------
     # 4. Compute PSTH and GLM-PSTH
@@ -259,6 +261,7 @@ def run_part_a(data_dir, export_dir=None):
     # ------------------------------------------------------------------
     # Figure 2: PSTH comparison (2x3)
     # ------------------------------------------------------------------
+    # === FIGURE: fig02_psth_comparison.png ===
     fig2, axes2 = plt.subplots(2, 3, figsize=(14, 9))
 
     # Top row: rasters
@@ -314,6 +317,7 @@ def run_part_a(data_dir, export_dir=None):
     ax.set_ylabel("[spikes/sec]")
 
     fig2.tight_layout()
+    # === END FIGURE ===
 
     figures = {"fig01_simulated_and_real_rasters": fig1, "fig02_psth_comparison": fig2}
     return figures, spikeCollSim, lambdaCov
@@ -373,6 +377,7 @@ def run_part_b(data_dir, export_dir=None):
     # ------------------------------------------------------------------
     # Figure 3: SSGLM simulation summary (3x2)
     # ------------------------------------------------------------------
+    # === FIGURE: fig03_ssglm_simulation_summary.png ===
     fig3, axes3 = plt.subplots(3, 2, figsize=(14, 9))
 
     # (1,1): Within-trial stimulus
@@ -423,6 +428,7 @@ def run_part_b(data_dir, export_dir=None):
     ax.set_yticks(range(0, numRealizations + 1, 10))
 
     fig3.tight_layout()
+    # === END FIGURE ===
 
     # ------------------------------------------------------------------
     # 2. Compute PSTH-GLM and prepare data matrices
@@ -475,12 +481,14 @@ def run_part_b(data_dir, export_dir=None):
     # ------------------------------------------------------------------
     # Figure 4: SSGLM vs PSTH diagnostics (2x2)
     # ------------------------------------------------------------------
+    # === FIGURE: fig04_ssglm_fit_diagnostics.png ===
     fig4, axes4 = plt.subplots(2, 2, figsize=(14, 9))
     tCompare.KSPlot(handle=axes4[0, 0])
     tCompare.plotResidual(handle=axes4[0, 1])
     tCompare.plotInvGausTrans(handle=axes4[1, 0])
     tCompare.plotSeqCorr(handle=axes4[1, 1])
     fig4.tight_layout()
+    # === END FIGURE ===
     print("  Figure 4: SSGLM vs PSTH diagnostics")
 
     # ------------------------------------------------------------------
@@ -512,6 +520,7 @@ def run_part_b(data_dir, export_dir=None):
     # Python equivalent: pcolormesh with viridis (≈MATLAB parula default).
     # MATLAB orientation: trial on x-axis, time on y-axis (view [90 -90]).
     # ------------------------------------------------------------------
+    # === FIGURE: fig05_stimulus_effect_surfaces.png ===
     fig5, axes5 = plt.subplots(3, 1, figsize=(14, 9))
     trial_axis = np.arange(1, numRealizations + 1)
     T_act = min(actStimEffect.shape[0], len(basis_time))
@@ -530,6 +539,7 @@ def run_part_b(data_dir, export_dir=None):
         ax.set_title(title, fontweight="bold", fontsize=14, fontfamily="Arial")
 
     fig5.tight_layout()
+    # === END FIGURE ===
     print("  Figure 5: Stimulus effect surfaces (top-down heatmap)")
 
     # ------------------------------------------------------------------
@@ -548,6 +558,7 @@ def run_part_b(data_dir, export_dir=None):
     # ------------------------------------------------------------------
     # Figure 6: Learning trial comparison + significance matrix (2x3)
     # ------------------------------------------------------------------
+    # === FIGURE: fig06_learning_trial_comparison.png ===
     fig6 = plt.figure(figsize=(14, 9))
 
     # (1,1): average spike rate with learning trial marker
@@ -598,6 +609,7 @@ def run_part_b(data_dir, export_dir=None):
                   fontweight="bold", fontsize=12)
 
     fig6.tight_layout()
+    # === END FIGURE ===
     print(f"  Figure 6: Learning trial = {lt}")
 
     figures = {
