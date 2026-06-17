@@ -1350,7 +1350,23 @@ class DecodingAlgorithms:
         observed = obs[:, idx]
 
         for cell_index, cif in enumerate(lambda_items):
-            if cif.historyMat.size == 0:
+            # Fast path: history-free CIFs do not consume nst.minTime,
+            # nst.maxTime, or binned spike counts — _history_values returns
+            # zeros(0) regardless of nst when (history is None or histCoeffs
+            # is empty).  Rebuilding+resampling an nspikeTrain every step
+            # cost O(idx) inside _build_sigrep, making the full forward
+            # pass O(C*T^2); skipping it restores the O(C*T) complexity.
+            if cif.historyMat.size == 0 and (cif.history is None or cif.histCoeffs.size == 0):
+                lambda_delta[cell_index, 0] = float(cif.evalLambdaDelta(x_vec, idx, None))
+                sum_val_vec += observed[cell_index] * np.asarray(cif.evalGradientLog(x_vec, idx, None), dtype=float).reshape(-1)
+                sum_val_vec -= np.asarray(cif.evalGradient(x_vec, idx, None), dtype=float).reshape(-1)
+                sum_val_mat -= np.asarray(cif.evalJacobianLog(x_vec, idx, None), dtype=float)
+                sum_val_mat += np.asarray(cif.evalJacobian(x_vec, idx, None), dtype=float)
+            elif cif.historyMat.size == 0:
+                # Edge case: History object attached but no spike train ever
+                # set, so historyMat is empty yet histCoeffs is non-trivial.
+                # The slow rebuild+resample produces real history values
+                # from the observed prefix; preserve the prior numerics.
                 observed_prefix = obs[cell_index, : idx + 1]
                 spike_times = np.where(observed_prefix > 0.5)[0] * float(binwidth)
                 nst = nspikeTrain(spike_times, makePlots=-1)

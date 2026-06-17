@@ -333,14 +333,17 @@ def _decode_position(
     Implementation note — why we go through ``PPDecodeFilterLinear``
     instead of ``PPDecodeFilter`` (CIF-object branch):
 
-    The CIF-object branch of :func:`DecodingAlgorithms.PPDecodeFilter`
-    rebuilds an ``nspikeTrain`` and ``resamples`` it to ``1 / binwidth``
-    inside ``PPDecode_update`` for every ``(cell, time_index)`` pair
-    when the CIF has no pre-attached history matrix (the default).
-    The resample step is O(time_index), so the full forward pass is
-    O(C * T^2) — on the ~13000-bin Animal-1 test slice this runs for
-    ~20 minutes per cell, dominating the paper-script wall-clock
-    budget for any reasonable stride.
+    Historically the CIF-object branch of
+    :func:`DecodingAlgorithms.PPDecodeFilter` rebuilt an
+    ``nspikeTrain`` and ``resampled`` it to ``1 / binwidth`` inside
+    ``PPDecode_update`` for every ``(cell, time_index)`` pair when the
+    CIF had no pre-attached history matrix (the default).  The
+    resample step was O(time_index), making the full forward pass
+    O(C * T^2) and dominating wall-clock on the ~13000-bin Animal-1
+    test slice.  That bug is now fixed (history-free CIFs take an
+    O(C * T) fast path), but we keep the linear call below: it is
+    still the canonical paper-script entry point and the numerics
+    match the CIF branch for our history-free quadratic models.
 
     ``_ppdecode_filter_linear`` performs the mathematically equivalent
     update for our position-only quadratic CIFs (no history terms; mu
