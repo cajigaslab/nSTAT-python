@@ -274,7 +274,238 @@ def render_paper_examples_html(repo_root: Path | None = None) -> str:
     return "\n".join(parts) + "\n"
 
 
-def write_gallery_outputs(repo_root: Path | None = None) -> tuple[Path, Path, Path, Path]:
+def _shared_gallery_css() -> str:
+    """The CSS used by every auto-generated standalone gallery HTML page."""
+    return (
+        ":root{--bg:#0f1419;--card:#1a1f29;--ink:#e6e6e6;--ink-2:#9aa4b1;"
+        "--accent:#7ee787;--accent-2:#58a6ff;--border:#30363d;}"
+        "*{box-sizing:border-box}"
+        "body{margin:0;background:var(--bg);color:var(--ink);"
+        "font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}"
+        ".wrap{max-width:1100px;margin:0 auto;padding:2rem 1.25rem 3rem;}"
+        "header{border-bottom:1px solid var(--border);padding-bottom:1.25rem;margin-bottom:1.5rem;}"
+        "h1{margin:0 0 .35rem;font-size:1.6rem;color:var(--accent);}"
+        "h2{margin:2rem 0 .75rem;font-size:1.2rem;color:var(--accent-2);"
+        "border-top:1px solid var(--border);padding-top:1.25rem;}"
+        "h3{margin:1.25rem 0 .35rem;font-size:1rem;color:var(--ink);}"
+        "p{margin:.4rem 0;color:var(--ink);}"
+        ".muted{color:var(--ink-2);font-size:.9rem;}"
+        ".tag{display:inline-block;background:#0b0e14;color:var(--accent);"
+        "padding:.05rem .4rem;border-radius:3px;font-size:.75rem;margin-left:.4rem;}"
+        "code,pre{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85rem;"
+        "background:#0b0e14;color:var(--accent);padding:.1rem .3rem;border-radius:3px;}"
+        "pre{padding:.75rem 1rem;overflow-x:auto;border:1px solid var(--border);}"
+        "nav.toc{background:var(--card);border:1px solid var(--border);"
+        "padding:.75rem 1rem;border-radius:6px;margin-bottom:1.5rem;font-size:.9rem;}"
+        "nav.toc a{color:var(--accent-2);text-decoration:none;margin-right:.9rem;}"
+        "nav.toc a:hover{text-decoration:underline;}"
+        ".example{background:var(--card);border:1px solid var(--border);"
+        "border-radius:8px;padding:1.25rem 1.5rem;margin:1.25rem 0;}"
+        ".gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));"
+        "gap:.85rem;margin-top:.75rem;}"
+        ".gallery figure{margin:0;background:#0b0e14;border:1px solid var(--border);"
+        "border-radius:4px;padding:.5rem;}"
+        ".gallery img{width:100%;height:auto;display:block;border-radius:2px;}"
+        ".gallery figcaption{font-size:.78rem;color:var(--ink-2);margin-top:.4rem;"
+        "word-break:break-word;}"
+        ".gallery .analysis{font-size:.78rem;color:var(--ink);margin-top:.3rem;}"
+        ".placeholder{padding:1rem;color:var(--ink-2);font-size:.8rem;"
+        "background:#0b0e14;border:1px dashed var(--border);border-radius:4px;text-align:center;}"
+        "a{color:var(--accent-2);}"
+        "footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);"
+        "color:var(--ink-2);font-size:.85rem;}"
+    )
+
+
+def load_notebook_descriptions(repo_root: Path | None = None) -> dict[str, Any]:
+    """Load ``tools/notebook_build/notebook_descriptions.yml``.
+
+    Returns ``{"notebooks": [...]}`` mirroring the on-disk schema.  Raises if
+    the file is missing — the renderer expects descriptions to be the source
+    of truth for the per-figure prose.
+    """
+    base = _repo_root() if repo_root is None else repo_root.resolve()
+    path = base / "tools" / "notebook_build" / "notebook_descriptions.yml"
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def render_notebooks_html(repo_root: Path | None = None) -> str:
+    """Self-contained HTML showcase of the notebook gallery.
+
+    Reads ``tools/notebook_build/notebook_manifest.yml`` for the canonical
+    notebook list and ``tools/notebook_build/notebook_descriptions.yml`` for
+    per-notebook prose (overview, goal, per-figure caption + analysis).  For
+    each figure, looks under ``docs/notebook_galleries/<topic>/<filename>`` —
+    that directory is populated by
+    ``tools/notebook_build/build_notebook_galleries.py``.  If a file is
+    absent (typical for notebooks whose figures are embedded as
+    ``display_data`` cell outputs in the ``.ipynb`` itself), renders a
+    placeholder pointing at the source notebook.
+
+    Paths in the rendered HTML are relative to ``docs/`` so the page works
+    both from the local Sphinx build and from the deployed GitHub Pages
+    site after Sphinx copies it via ``html_extra_path``.
+    """
+    base = _repo_root() if repo_root is None else repo_root.resolve()
+    manifest_path = base / "tools" / "notebook_build" / "notebook_manifest.yml"
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
+    notebooks_manifest = list(manifest.get("notebooks", []))
+    descriptions = {
+        row["topic"]: row
+        for row in load_notebook_descriptions(base).get("notebooks", [])
+    }
+    galleries_root = base / "docs" / "notebook_galleries"
+
+    css = _shared_gallery_css()
+
+    parts: list[str] = []
+    parts.append("<!doctype html>")
+    parts.append('<html lang="en"><head><meta charset="utf-8">')
+    parts.append('<meta name="viewport" content="width=device-width,initial-scale=1">')
+    parts.append("<title>nSTAT Notebooks — Output Gallery</title>")
+    parts.append(f"<style>{css}</style>")
+    parts.append("</head><body><div class=\"wrap\">")
+    parts.append("<header>")
+    parts.append("<h1>Notebooks — Output Gallery</h1>")
+    parts.append(
+        "<p class=\"muted\">Every notebook registered in "
+        "<code>tools/notebook_build/notebook_manifest.yml</code>, with the figure outputs "
+        "each produces and a short description of what every figure shows.  Auto-generated "
+        "from <code>notebook_descriptions.yml</code> — re-render with "
+        "<code>python tools/paper_examples/build_gallery.py</code> after editing the "
+        "descriptions.</p>"
+    )
+    parts.append("</header>")
+
+    parts.append('<nav class="toc"><strong>Notebooks:</strong> ')
+    nav_links = " · ".join(
+        f'<a href="#{row["topic"]}">{row["topic"]}</a>'
+        for row in notebooks_manifest
+    )
+    parts.append(nav_links + "</nav>")
+
+    for row in notebooks_manifest:
+        topic = row["topic"]
+        notebook_file = row["file"]
+        run_group = row.get("run_group", "smoke")
+        desc = descriptions.get(topic, {})
+        overview = desc.get("overview", "").strip()
+        goal = desc.get("goal", "").strip()
+        figures = desc.get("figures", []) or []
+
+        parts.append(f'<section class="example" id="{topic}">')
+        parts.append(
+            f'<h2>{topic}<span class="tag">{run_group}</span></h2>'
+        )
+        if goal:
+            parts.append(f"<p><strong>Goal:</strong> {goal}</p>")
+        if overview:
+            parts.append(f'<p class="muted">{overview}</p>')
+        parts.append(
+            f'<p><strong>Notebook:</strong> <code>{notebook_file}</code> · '
+            f'<a href="https://github.com/cajigaslab/nSTAT-python/blob/main/'
+            f'{notebook_file}">Source</a></p>'
+        )
+
+        if not figures:
+            parts.append(
+                '<p class="muted">No figure outputs registered for this notebook '
+                "(parity stub or class-reference scaffold).</p>"
+            )
+            parts.append("</section>")
+            continue
+
+        parts.append('<div class="gallery">')
+        gallery_dir = galleries_root / topic
+        for fig in figures:
+            filename = fig.get("filename", "")
+            caption = fig.get("caption", "").strip()
+            analysis = fig.get("analysis", "").strip()
+            png_path = gallery_dir / filename
+            if png_path.exists():
+                rel = f"notebook_galleries/{topic}/{filename}"
+                parts.append(
+                    f'<figure><img src="{rel}" alt="{filename}" loading="lazy">'
+                    f'<figcaption><strong>{filename}</strong><br>{caption}</figcaption>'
+                    + (f'<div class="analysis">{analysis}</div>' if analysis else "")
+                    + "</figure>"
+                )
+            else:
+                parts.append(
+                    f'<figure><div class="placeholder">'
+                    f"<code>{filename}</code><br>(figure embedded in notebook; "
+                    f'open the source <code>{notebook_file}</code> to view)</div>'
+                    f'<figcaption><strong>{filename}</strong><br>{caption}</figcaption>'
+                    + (f'<div class="analysis">{analysis}</div>' if analysis else "")
+                    + "</figure>"
+                )
+        parts.append("</div>")
+        parts.append("</section>")
+
+    parts.append("<footer>")
+    parts.append(
+        '<p>Source: <a href="https://github.com/cajigaslab/nSTAT-python">'
+        "cajigaslab/nSTAT-python</a> · License: GPL-2.0 · "
+        'Paper: <a href="https://pubmed.ncbi.nlm.nih.gov/22981419/">'
+        "Cajigas, Malik &amp; Brown 2012, J Neurosci Methods</a></p>"
+    )
+    parts.append("</footer>")
+    parts.append("</div></body></html>")
+    return "\n".join(parts) + "\n"
+
+
+def render_galleries_index_html() -> str:
+    """Tiny landing page that links the per-category galleries.
+
+    Auto-generated alongside the per-category pages; lives at
+    ``docs/galleries.html`` and is published via ``html_extra_path``.
+    """
+    css = _shared_gallery_css()
+    parts: list[str] = []
+    parts.append("<!doctype html>")
+    parts.append('<html lang="en"><head><meta charset="utf-8">')
+    parts.append('<meta name="viewport" content="width=device-width,initial-scale=1">')
+    parts.append("<title>nSTAT — Output Galleries</title>")
+    parts.append(f"<style>{css}</style>")
+    parts.append("</head><body><div class=\"wrap\">")
+    parts.append("<header><h1>Output Galleries</h1>")
+    parts.append(
+        '<p class="muted">Auto-generated landing page linking the three '
+        "review-without-diving-in showcases.  Each gallery is "
+        "self-contained (embedded CSS, inline images) and re-renders on "
+        "every <code>make regen</code>.</p></header>"
+    )
+    parts.append('<section class="example">')
+    parts.append(
+        '<h2><a href="paper_examples_gallery.html">Paper Examples</a></h2>'
+        '<p class="muted">Every <code>examples/paper/example0N_*.py</code> '
+        "script with its committed figure outputs and a one-line description "
+        "of what each figure shows.</p>"
+    )
+    parts.append("</section>")
+    parts.append('<section class="example">')
+    parts.append(
+        '<h2><a href="notebooks_gallery.html">Notebooks</a></h2>'
+        '<p class="muted">Every entry in '
+        "<code>tools/notebook_build/notebook_manifest.yml</code> with per-figure "
+        "captions and analysis notes drawn from "
+        "<code>notebook_descriptions.yml</code>.</p>"
+    )
+    parts.append("</section>")
+    parts.append('<section class="example">')
+    parts.append(
+        "<h2>Extras — coming next</h2>"
+        '<p class="muted">A future <code>extras_gallery.html</code> will showcase '
+        "every <code>nstat.extras.&lt;X&gt;</code> bridge with its demo-script "
+        "outputs, once the <code>examples/extras/*_demo.py</code> scripts "
+        "are standardized to emit figures via <code>--export-figures</code>.</p>"
+    )
+    parts.append("</section>")
+    parts.append("</div></body></html>")
+    return "\n".join(parts) + "\n"
+
+
+def write_gallery_outputs(repo_root: Path | None = None) -> tuple[Path, Path, Path, Path, Path, Path]:
     base = _repo_root() if repo_root is None else repo_root.resolve()
     ensure_gallery_dirs(base)
     docs_dir = base / "docs"
@@ -291,6 +522,12 @@ def write_gallery_outputs(repo_root: Path | None = None) -> tuple[Path, Path, Pa
     html_path = docs_dir / "paper_examples_gallery.html"
     html_path.write_text(render_paper_examples_html(base), encoding="utf-8")
 
+    notebooks_html_path = docs_dir / "notebooks_gallery.html"
+    notebooks_html_path.write_text(render_notebooks_html(base), encoding="utf-8")
+
+    galleries_index_path = docs_dir / "galleries.html"
+    galleries_index_path.write_text(render_galleries_index_html(), encoding="utf-8")
+
     readme_path = base / "README.md"
     readme_text = readme_path.read_text(encoding="utf-8")
     start = readme_text.index("## Paper examples")
@@ -300,13 +537,23 @@ def write_gallery_outputs(repo_root: Path | None = None) -> tuple[Path, Path, Pa
         readme_text[:start] + gallery_text + "\n" + readme_text[end:],
         encoding="utf-8",
     )
-    return manifest_path, markdown_path, html_path, readme_path
+    return (
+        manifest_path,
+        markdown_path,
+        html_path,
+        notebooks_html_path,
+        galleries_index_path,
+        readme_path,
+    )
 
 
 __all__ = [
     "build_gallery_manifest",
     "ensure_gallery_dirs",
+    "load_notebook_descriptions",
     "load_paper_example_manifest",
+    "render_galleries_index_html",
+    "render_notebooks_html",
     "render_paper_examples_html",
     "render_paper_examples_markdown",
     "render_readme_examples_markdown",

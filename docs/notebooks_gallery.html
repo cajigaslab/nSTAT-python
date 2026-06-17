@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>nSTAT Notebooks — Output Gallery</title>
+<style>:root{--bg:#0f1419;--card:#1a1f29;--ink:#e6e6e6;--ink-2:#9aa4b1;--accent:#7ee787;--accent-2:#58a6ff;--border:#30363d;}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}.wrap{max-width:1100px;margin:0 auto;padding:2rem 1.25rem 3rem;}header{border-bottom:1px solid var(--border);padding-bottom:1.25rem;margin-bottom:1.5rem;}h1{margin:0 0 .35rem;font-size:1.6rem;color:var(--accent);}h2{margin:2rem 0 .75rem;font-size:1.2rem;color:var(--accent-2);border-top:1px solid var(--border);padding-top:1.25rem;}h3{margin:1.25rem 0 .35rem;font-size:1rem;color:var(--ink);}p{margin:.4rem 0;color:var(--ink);}.muted{color:var(--ink-2);font-size:.9rem;}.tag{display:inline-block;background:#0b0e14;color:var(--accent);padding:.05rem .4rem;border-radius:3px;font-size:.75rem;margin-left:.4rem;}code,pre{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85rem;background:#0b0e14;color:var(--accent);padding:.1rem .3rem;border-radius:3px;}pre{padding:.75rem 1rem;overflow-x:auto;border:1px solid var(--border);}nav.toc{background:var(--card);border:1px solid var(--border);padding:.75rem 1rem;border-radius:6px;margin-bottom:1.5rem;font-size:.9rem;}nav.toc a{color:var(--accent-2);text-decoration:none;margin-right:.9rem;}nav.toc a:hover{text-decoration:underline;}.example{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.5rem;margin:1.25rem 0;}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem;margin-top:.75rem;}.gallery figure{margin:0;background:#0b0e14;border:1px solid var(--border);border-radius:4px;padding:.5rem;}.gallery img{width:100%;height:auto;display:block;border-radius:2px;}.gallery figcaption{font-size:.78rem;color:var(--ink-2);margin-top:.4rem;word-break:break-word;}.gallery .analysis{font-size:.78rem;color:var(--ink);margin-top:.3rem;}.placeholder{padding:1rem;color:var(--ink-2);font-size:.8rem;background:#0b0e14;border:1px dashed var(--border);border-radius:4px;text-align:center;}a{color:var(--accent-2);}footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--ink-2);font-size:.85rem;}</style>
+</head><body><div class="wrap">
+<header>
+<h1>Notebooks — Output Gallery</h1>
+<p class="muted">Every notebook registered in <code>tools/notebook_build/notebook_manifest.yml</code>, with the figure outputs each produces and a short description of what every figure shows.  Auto-generated from <code>notebook_descriptions.yml</code> — re-render with <code>python tools/paper_examples/build_gallery.py</code> after editing the descriptions.</p>
+</header>
+<nav class="toc"><strong>Notebooks:</strong> 
+<a href="#00_getting_started">00_getting_started</a> · <a href="#AnalysisExamples">AnalysisExamples</a> · <a href="#ConfigCollExamples">ConfigCollExamples</a> · <a href="#CovCollExamples">CovCollExamples</a> · <a href="#CovariateExamples">CovariateExamples</a> · <a href="#DecodingExample">DecodingExample</a> · <a href="#DecodingExampleWithHist">DecodingExampleWithHist</a> · <a href="#EventsExamples">EventsExamples</a> · <a href="#ExplicitStimulusWhiskerData">ExplicitStimulusWhiskerData</a> · <a href="#FitResSummaryExamples">FitResSummaryExamples</a> · <a href="#FitResultExamples">FitResultExamples</a> · <a href="#HippocampalPlaceCellExample">HippocampalPlaceCellExample</a> · <a href="#HistoryExamples">HistoryExamples</a> · <a href="#NetworkTutorial">NetworkTutorial</a> · <a href="#PPSimExample">PPSimExample</a> · <a href="#PPThinning">PPThinning</a> · <a href="#PSTHEstimation">PSTHEstimation</a> · <a href="#SignalObjExamples">SignalObjExamples</a> · <a href="#StimulusDecode2D">StimulusDecode2D</a> · <a href="#TrialConfigExamples">TrialConfigExamples</a> · <a href="#TrialExamples">TrialExamples</a> · <a href="#ValidationDataSet">ValidationDataSet</a> · <a href="#mEPSCAnalysis">mEPSCAnalysis</a> · <a href="#nSTATPaperExamples">nSTATPaperExamples</a> · <a href="#nSpikeTrainExamples">nSpikeTrainExamples</a> · <a href="#nstCollExamples">nstCollExamples</a> · <a href="#AnalysisExamples2">AnalysisExamples2</a> · <a href="#ConfidenceIntervalOverview">ConfidenceIntervalOverview</a> · <a href="#FitResultReference">FitResultReference</a> · <a href="#HybridFilterExample">HybridFilterExample</a> · <a href="#PlaceFieldGLMBasis">PlaceFieldGLMBasis</a> · <a href="#HawkesWaveAnalysis">HawkesWaveAnalysis</a></nav>
+<section class="example" id="00_getting_started">
+<h2>00_getting_started<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Confirm a fresh `pip install nstat-toolbox` reproduces the core spike
+analysis workflow without any dataset download or optional extras.</p>
+<p class="muted">A five-minute, end-to-end tour of the Python toolbox using only
+simulated data. Walks from building an `nspikeTrain`, grouping into an
+`nstColl`, fitting a stimulus-driven point-process GLM, running the
+time-rescaling KS test, and decoding the stimulus back from a
+population.</p>
+<p><strong>Notebook:</strong> <code>notebooks/00_getting_started.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/00_getting_started.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="AnalysisExamples">
+<h2>AnalysisExamples<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Show the MATLAB-style `Analysis.RunAnalysisForAllNeurons` path with
+real residual and goodness-of-fit diagnostics.</p>
+<p class="muted">Standard-GLM workflow on the canonical `glm_data.mat` dataset using
+the high-level `Analysis` driver: build a `Trial`, sweep covariates
+through a `ConfigColl`, fit each model, inspect KS plots, AIC, and
+coefficient tables.</p>
+<p><strong>Notebook:</strong> <code>notebooks/AnalysisExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/AnalysisExamples.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/AnalysisExamples/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Raw spike-count trace `xN` for the loaded `glm_data.mat` cell
+across the full recording window.</figcaption><div class="analysis">Inspect for stationarity and overall firing density before model
+fitting.</div></figure>
+<figure><img src="notebook_galleries/AnalysisExamples/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>GLM coefficient errorbar plot — fitted history-and-stimulus
+coefficients with their standard errors.</figcaption><div class="analysis">Coefficients with errorbars crossing zero indicate non-informative
+covariates.</div></figure>
+<figure><img src="notebook_galleries/AnalysisExamples/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>3D mesh / surface of the fitted conditional intensity over time
+and covariate value.</figcaption><div class="analysis">A smooth, non-flat surface confirms the GLM captured covariate
+tuning.</div></figure>
+<figure><img src="notebook_galleries/AnalysisExamples/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Time-rescaling KS plot of rescaled inter-spike intervals against
+the uniform CDF with 95% confidence bands.</figcaption><div class="analysis">A trace inside the bands supports adequacy of the fitted CIF.</div></figure>
+</div>
+</section>
+<section class="example" id="ConfigCollExamples">
+<h2>ConfigCollExamples<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Document the MATLAB figure sequence so the notebook fidelity audit
+can compare Python output against the reference.</p>
+<p class="muted">Tracker-only scaffold for the MATLAB `ConfigCollExamples` helpfile.
+Records the intended figure ordering for parity audits — no
+executable analysis or rendered plots. Use the executable
+`TrialConfig`/`Analysis` examples under `examples/paper/` for hands-on
+use.</p>
+<p><strong>Notebook:</strong> <code>notebooks/ConfigCollExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/ConfigCollExamples.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="CovCollExamples">
+<h2>CovCollExamples<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Show how multiple covariates compose into the design-matrix container
+that drives every `Analysis` call.</p>
+<p class="muted">Build a `CovColl` (`CovariateCollection`) from individual `Covariate`
+objects, inspect its labels and units, then plot all members on a
+shared time base. Mirrors the MATLAB `CovCollExamples` helpfile.</p>
+<p><strong>Notebook:</strong> <code>notebooks/CovCollExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/CovCollExamples.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/CovCollExamples/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Multi-panel plot of every `Covariate` in the collection, each on
+its own axis with native units.</figcaption><div class="analysis">Confirms `CovColl.plot()` lays out members one-per-panel in
+insertion order.</div></figure>
+<figure><img src="notebook_galleries/CovCollExamples/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>The same collection plotted in compact mode, overlaid on a single
+axis.</figcaption><div class="analysis">Useful for visually checking that covariates share a common time
+base.</div></figure>
+</div>
+</section>
+<section class="example" id="CovariateExamples">
+<h2>CovariateExamples<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Demonstrate the core `Covariate` constructor and the most-used
+transformation methods.</p>
+<p class="muted">Defines and plots scalar and multi-channel `Covariate` objects: a
+position covariate (`getSigRep`) and a force trace with both raw and
+zero-mean views. Mirrors the MATLAB `CovariateExamples` helpfile.</p>
+<p><strong>Notebook:</strong> <code>notebooks/CovariateExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/CovariateExamples.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/CovariateExamples/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Position covariate plotted via `getSigRep`, showing the
+time-aligned x-position trace.</figcaption><div class="analysis">A clean line confirms construction from `(time, value, label,
+units)` worked.</div></figure>
+<figure><img src="notebook_galleries/CovariateExamples/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Force covariate plotted twice — raw and zero-mean — to illustrate
+the centering transform.</figcaption><div class="analysis">The zero-mean trace should be a vertical shift of the raw trace.</div></figure>
+</div>
+</section>
+<section class="example" id="DecodingExample">
+<h2>DecodingExample<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Reproduce the MATLAB `DecodingExample` decoder trace with
+python-native simulation and GLM fitting.</p>
+<p class="muted">End-to-end 1D stimulus-decoding example: simulate sinusoidal CIF
+thinning for 10 cells, fit baseline-only and stimulus GLMs, then
+decode the stimulus from population spikes with the
+`PPDecodeFilterLinear` point-process adaptive filter.</p>
+<p><strong>Notebook:</strong> <code>notebooks/DecodingExample.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/DecodingExample.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/DecodingExample/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Top: raster of 10 spike trains generated by thinning a sinusoidal
+CIF over 10 s. Bottom: the underlying conditional intensity
+lambda(t) peaking near 120 Hz at t = 2.5 s.</figcaption><div class="analysis">Raster density should track the lambda(t) envelope — denser firing
+on the rising half of the sine.</div></figure>
+<figure><img src="notebook_galleries/DecodingExample/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Three-panel trial view: spike raster, stimulus covariate
+x(t) = sin(0.2 pi t), and the constant baseline regressor.</figcaption><div class="analysis">Confirms the design matrix that the GLM will actually fit.</div></figure>
+<figure><img src="notebook_galleries/DecodingExample/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Per-neuron baseline (b0) and stimulus (b1) GLM coefficients with
+their across-population mean.</figcaption><div class="analysis">Tight clustering of b1 above zero indicates consistent
+stimulus tuning across cells.</div></figure>
+<figure><img src="notebook_galleries/DecodingExample/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Mean AIC and mean log-likelihood across neurons for baseline-only
+vs baseline+stimulus models.</figcaption><div class="analysis">Lower AIC and higher log-likelihood for baseline+stimulus
+confirms the stimulus term is informative.</div></figure>
+<figure><img src="notebook_galleries/DecodingExample/fig_005.png" alt="fig_005.png" loading="lazy"><figcaption><strong>fig_005.png</strong><br>Decoded stimulus from the 10-cell population (blue mean, green
+plus/minus 3 sigma band) overlaid on the true sinusoid (black).</figcaption><div class="analysis">The mean should track the true sine; the 3 sigma band should
+bracket it for most of the trace.</div></figure>
+</div>
+</section>
+<section class="example" id="DecodingExampleWithHist">
+<h2>DecodingExampleWithHist<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Show that ignoring history degrades decoded-stimulus fidelity even
+when the GLM still fits the marginal rate.</p>
+<p class="muted">Adds spike-history covariates to the population decoding pipeline:
+simulates 20 history-dependent cells, fits stimulus+history GLMs,
+then compares decoded-stimulus traces with and without the history
+term.</p>
+<p><strong>Notebook:</strong> <code>notebooks/DecodingExampleWithHist.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/DecodingExampleWithHist.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/DecodingExampleWithHist/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>History-dependent raster of 20 simulated cells across a 1 s
+window with the underlying sinusoidal stimulus trace below.</figcaption><div class="analysis">Note the sparser, bursty firing pattern relative to the
+memoryless case.</div></figure>
+<figure><img src="notebook_galleries/DecodingExampleWithHist/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Two-panel decoder comparison — top: decoded stimulus with
+history included; bottom: decoded stimulus from a
+history-free fit, both with plus/minus 3 sigma bands.</figcaption><div class="analysis">The history-included decoder hugs the true sine (black); the
+history-free version drifts and attenuates the amplitude.</div></figure>
+</div>
+</section>
+<section class="example" id="EventsExamples">
+<h2>EventsExamples<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Show how discrete event markers compose with continuous signals
+inside the toolbox.</p>
+<p class="muted">Defines event-time objects, attaches labels, and plots them
+alongside signal traces. Mirrors the MATLAB `EventsExamples`
+helpfile.</p>
+<p><strong>Notebook:</strong> <code>notebooks/EventsExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/EventsExamples.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/EventsExamples/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Event ticks plotted on the time axis with labelled categories.</figcaption><div class="analysis">Tick placement should reflect the constructor's `(time,
+category)` pairs.</div></figure>
+<figure><img src="notebook_galleries/EventsExamples/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Events overlaid on an underlying continuous signal.</figcaption><div class="analysis">Used to visually align stimulus markers with neural responses.</div></figure>
+<figure><img src="notebook_galleries/EventsExamples/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Multi-category event raster with one row per event label.</figcaption><div class="analysis">Confirms `Events.plot()` groups by category when given a label
+vector.</div></figure>
+</div>
+</section>
+<section class="example" id="ExplicitStimulusWhiskerData">
+<h2>ExplicitStimulusWhiskerData<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Reproduce the MATLAB helpfile's lag search and history-effect
+workflow on real whisker-stimulus data.</p>
+<p class="muted">Dataset-backed whisker-stimulus analysis: build a `Trial` from
+explicit stimulus and spikes, search optimal stimulus lag,
+fit stimulus-only and stimulus+history GLMs, and compare
+goodness-of-fit across models.</p>
+<p><strong>Notebook:</strong> <code>notebooks/ExplicitStimulusWhiskerData.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/ExplicitStimulusWhiskerData.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/ExplicitStimulusWhiskerData/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Trial plot — stimulus waveform stacked above the recorded
+spike raster.</figcaption><div class="analysis">Inspect stimulus alignment and the rough stimulus-locked
+firing pattern before any GLM.</div></figure>
+<figure><img src="notebook_galleries/ExplicitStimulusWhiskerData/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Sub-window of the stimulus covariate via
+`getSigInTimeWindow`.</figcaption><div class="analysis">Used to confirm the lag-search will scan the right
+stimulus segment.</div></figure>
+<figure><img src="notebook_galleries/ExplicitStimulusWhiskerData/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>`plotResults` panel for the stimulus-only GLM fit — KS plot,
+residuals, and coefficient errorbars.</figcaption><div class="analysis">KS trace inside the band supports adequacy at the chosen lag.</div></figure>
+<figure><img src="notebook_galleries/ExplicitStimulusWhiskerData/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Cross-covariance of the GLM residual against the stimulus
+itself.</figcaption><div class="analysis">Residuals uncorrelated with the stimulus indicate the GLM
+captured the stimulus effect.</div></figure>
+<figure><img src="notebook_galleries/ExplicitStimulusWhiskerData/fig_005.png" alt="fig_005.png" loading="lazy"><figcaption><strong>fig_005.png</strong><br>`plotResults` panel for a refit at the best-lag stimulus
+term.</figcaption><div class="analysis">Compare against fig_003 to see KS and residual improvements
+after re-aligning the stimulus.</div></figure>
+<figure><img src="notebook_galleries/ExplicitStimulusWhiskerData/fig_006.png" alt="fig_006.png" loading="lazy"><figcaption><strong>fig_006.png</strong><br>Second `plotResults` view at the best lag — alternative
+diagnostic layout.</figcaption><div class="analysis">Cross-check residual structure and coefficient stability.</div></figure>
+<figure><img src="notebook_galleries/ExplicitStimulusWhiskerData/fig_007.png" alt="fig_007.png" loading="lazy"><figcaption><strong>fig_007.png</strong><br>`Summary.plotSummary` bar chart of AIC, BIC, and KS across
+the three competing fits.</figcaption><div class="analysis">The lowest AIC bar identifies the preferred model
+(stimulus + history at the right lag).</div></figure>
+<figure><img src="notebook_galleries/ExplicitStimulusWhiskerData/fig_008.png" alt="fig_008.png" loading="lazy"><figcaption><strong>fig_008.png</strong><br>History-coefficient stem plot — fitted history-effect
+weights vs lag (ms).</figcaption><div class="analysis">A strongly negative weight at short lag indicates absolute
+refractoriness.</div></figure>
+<figure><img src="notebook_galleries/ExplicitStimulusWhiskerData/fig_009.png" alt="fig_009.png" loading="lazy"><figcaption><strong>fig_009.png</strong><br>Final `plotResults` for the stimulus+history GLM.</figcaption><div class="analysis">KS hugging the diagonal here is the headline that history
+plus stimulus together capture the cell's CIF.</div></figure>
+</div>
+</section>
+<section class="example" id="FitResSummaryExamples">
+<h2>FitResSummaryExamples<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Document the MATLAB figure sequence so the notebook fidelity audit
+can compare Python output against the reference.</p>
+<p class="muted">Tracker-only scaffold for the MATLAB `FitResSummaryExamples`
+helpfile. The cells record the intended figure ordering for parity
+audits and do not render plots. Use the executable
+`FitResSummary` snippets under `examples/paper/` for hands-on use.</p>
+<p><strong>Notebook:</strong> <code>notebooks/FitResSummaryExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/FitResSummaryExamples.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="FitResultExamples">
+<h2>FitResultExamples<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Document the MATLAB figure sequence so the notebook fidelity audit
+can compare Python output against the reference.</p>
+<p class="muted">Tracker-only scaffold for the MATLAB `FitResultExamples` helpfile.
+Records the intended figure-output sequence for parity audits;
+cells do not run real analyses. Use the executable `FitResult`
+examples under `examples/paper/` for hands-on use.</p>
+<p><strong>Notebook:</strong> <code>notebooks/FitResultExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/FitResultExamples.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="HippocampalPlaceCellExample">
+<h2>HippocampalPlaceCellExample<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Reproduce the MATLAB place-cell helpfile's model-comparison and
+field-visualization workflow with the same Zernike basis.</p>
+<p class="muted">Place-cell receptive-field estimation on the dataset-backed
+hippocampal recording: fits Gaussian and 10-term Zernike GLM
+place-field models to two animals, compares AIC and BIC across
+cells, and visualizes the fitted firing-rate fields.</p>
+<p><strong>Notebook:</strong> <code>notebooks/HippocampalPlaceCellExample.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/HippocampalPlaceCellExample.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Animal 1, Cell 25 — animal trajectory (light blue) overlaid
+with this cell's spike positions (red) inside the circular
+arena.</figcaption><div class="analysis">Spikes cluster in the upper-left quadrant, suggesting a
+well-localized place field.</div></figure>
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Animal 1 model comparison — Gaussian minus Zernike AIC for
+each fitted cell.</figcaption><div class="analysis">Positive bars indicate Zernike's higher-dimensional basis
+fits these cells better than a 2D Gaussian.</div></figure>
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Animal 1 model comparison — Gaussian minus Zernike BIC for
+each fitted cell.</figcaption><div class="analysis">BIC penalises Zernike's extra parameters; smaller bars than
+fig_002 confirm the gap survives parsimony pressure.</div></figure>
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Animal 2 model comparison — Gaussian minus Zernike AIC,
+with Cell 2 showing the largest Zernike advantage (about 190).</figcaption><div class="analysis">Cell 2 has a non-Gaussian field, motivating the higher-order
+basis.</div></figure>
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_005.png" alt="fig_005.png" loading="lazy"><figcaption><strong>fig_005.png</strong><br>Animal 2 model comparison — Gaussian minus Zernike BIC,
+mirroring the AIC ranking.</figcaption><div class="analysis">Cell 3 dips slightly negative — its Gaussian fit is
+preferred under BIC.</div></figure>
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_006.png" alt="fig_006.png" loading="lazy"><figcaption><strong>fig_006.png</strong><br>2x2 mesh of fitted Gaussian place fields (viridis intensity,
+rate units) for Animal 1 cells 1, 2, 3, 25.</figcaption><div class="analysis">Each field is a smooth single-mode bump — what the Gaussian
+model can express.</div></figure>
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_007.png" alt="fig_007.png" loading="lazy"><figcaption><strong>fig_007.png</strong><br>2x2 mesh of fitted Zernike place fields for the same Animal 1
+cells, masked to the circular arena.</figcaption><div class="analysis">Cell 1's field shows an off-centre tilt the Gaussian model
+missed; this is the source of its large delta AIC.</div></figure>
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_008.png" alt="fig_008.png" loading="lazy"><figcaption><strong>fig_008.png</strong><br>2x2 mesh of fitted Gaussian place fields for Animal 2 cells.</figcaption><div class="analysis">Compare with fig_009 to see where the Gaussian basis cannot
+match the data.</div></figure>
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_009.png" alt="fig_009.png" loading="lazy"><figcaption><strong>fig_009.png</strong><br>2x2 mesh of fitted Zernike place fields for the same Animal 2
+cells.</figcaption><div class="analysis">Cell 2's compact off-centre peak is what drives the large
+delta AIC in fig_004.</div></figure>
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_010.png" alt="fig_010.png" loading="lazy"><figcaption><strong>fig_010.png</strong><br>Animal 2 example cell — Gaussian vs Zernike fitted field
+side-by-side with trajectory and spikes overlaid.</figcaption><div class="analysis">Identify which basis better localises the observed spike
+cluster.</div></figure>
+<figure><img src="notebook_galleries/HippocampalPlaceCellExample/fig_011.png" alt="fig_011.png" loading="lazy"><figcaption><strong>fig_011.png</strong><br>Animal 1 Cell 25 — Gaussian (left) and Zernike (right)
+fitted fields with the trajectory and spike positions
+overlaid on each.</figcaption><div class="analysis">Both bases place the peak rate in the upper-left quadrant
+where spikes cluster, with Zernike yielding a tighter mode.</div></figure>
+</div>
+</section>
+<section class="example" id="HistoryExamples">
+<h2>HistoryExamples<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Show how spike-history terms enter a GLM design matrix and how
+they differ between single-train and collection inputs.</p>
+<p class="muted">Demonstrates the `History` covariate factory: build history
+regressors for a single spike train and for an `nstColl`
+collection, then plot the resulting design columns. Mirrors the
+MATLAB `HistoryExamples` helpfile.</p>
+<p><strong>Notebook:</strong> <code>notebooks/HistoryExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/HistoryExamples.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/HistoryExamples/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>History design columns for a single spike train, plotted as
+binary-lag indicators over time.</figcaption><div class="analysis">Each column is the spike train shifted by a fixed lag — the
+building block of the GLM history term.</div></figure>
+<figure><img src="notebook_galleries/HistoryExamples/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>History columns for an `nstColl` of multiple trains,
+producing one design matrix per neuron.</figcaption><div class="analysis">Use to confirm history columns align in time across
+collection members.</div></figure>
+<figure><img src="notebook_galleries/HistoryExamples/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>The full collection's spike raster, plotted via
+`nstColl.plot()`.</figcaption><div class="analysis">Context plot — shows the raw data that fed the history-
+covariate construction above.</div></figure>
+</div>
+</section>
+<section class="example" id="NetworkTutorial">
+<h2>NetworkTutorial<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Show that the `Analysis` workflow recovers a known two-neuron
+connectivity matrix from simulated population spikes.</p>
+<p class="muted">Builds a two-neuron simulated network with bidirectional excitation
+and history kernels, simulates it with the recursive CIF, then
+recovers the connectivity by fitting GLMs per neuron and comparing
+estimated weights to ground truth.</p>
+<p><strong>Notebook:</strong> <code>notebooks/NetworkTutorial.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/NetworkTutorial.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/NetworkTutorial/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Two-neuron connectivity diagram — neurons 1 and 2 with
+history kernels [-4, -2, -1], stimulus weights S1 = +1,
+S2 = -1, and a recurrent excitation arrow (E2 = -4).</figcaption><div class="analysis">Anchors the simulation parameters before any plots of
+simulated data.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Block-diagram view of the conditional intensity in terms of
+baseline, history, stimulus, and ensemble inputs.</figcaption><div class="analysis">Reference for the equation form that the GLM will recover.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Equation panel for the per-bin CIF as a logistic of the
+linear predictor.</figcaption><div class="analysis">Pins the binomial link convention used by the simulator and
+fitter.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>History-kernel coefficients (-4, -2, -1) for lags 1, 2, 3
+plotted as a stem.</figcaption><div class="analysis">Strong negative entry at lag 1 implements an absolute
+refractory period.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_005.png" alt="fig_005.png" loading="lazy"><figcaption><strong>fig_005.png</strong><br>Stimulus-effect coefficient panel for neuron 1 (S1 = +1).</figcaption><div class="analysis">Sign convention — neuron 1 prefers positive stimulus
+deflections.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_006.png" alt="fig_006.png" loading="lazy"><figcaption><strong>fig_006.png</strong><br>Stimulus-effect coefficient panel for neuron 2 (S2 = -1).</figcaption><div class="analysis">Antisymmetric to neuron 1 — sets up the orthogonal-tuning
+test case.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_007.png" alt="fig_007.png" loading="lazy"><figcaption><strong>fig_007.png</strong><br>Ensemble-effect panel for neuron 1 (E1 = +1 from neuron 2).</figcaption><div class="analysis">Confirms the excitatory recurrent input from neuron 2.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_008.png" alt="fig_008.png" loading="lazy"><figcaption><strong>fig_008.png</strong><br>Ensemble-effect panel for neuron 2 (E2 = -4 from neuron 1).</figcaption><div class="analysis">Strong inhibitory pull-back from neuron 1 — the hardest
+coefficient to recover.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_009.png" alt="fig_009.png" loading="lazy"><figcaption><strong>fig_009.png</strong><br>Simulated two-cell raster (top) with the sinusoidal stimulus
+waveform (bottom), over a 5 s window.</figcaption><div class="analysis">Neurons fire on opposite stimulus phases — the population's
+push-pull signature.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_010.png" alt="fig_010.png" loading="lazy"><figcaption><strong>fig_010.png</strong><br>Simulated lambda_i(t) traces for each neuron over the same
+window.</figcaption><div class="analysis">Compare against the raster to confirm thinning follows
+lambda times delta.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_011.png" alt="fig_011.png" loading="lazy"><figcaption><strong>fig_011.png</strong><br>`plotResults` for neuron 1 — KS plot, residual ACF, GLM
+coefficients, and point-process residual across three
+competing model configurations.</figcaption><div class="analysis">The KS trace under the Stim+Hist+EnsHist model hugs the
+diagonal; the simpler models drift.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_012.png" alt="fig_012.png" loading="lazy"><figcaption><strong>fig_012.png</strong><br>`plotResults` panel for neuron 2 — same four-panel layout
+as fig_011.</figcaption><div class="analysis">Confirms the recovery worked on both members of the pair.</div></figure>
+<figure><img src="notebook_galleries/NetworkTutorial/fig_013.png" alt="fig_013.png" loading="lazy"><figcaption><strong>fig_013.png</strong><br>Actual vs estimated connectivity heatmap — recovered E
+weight is 0.97 (vs true 1.00), while the strong -4 entry is
+inflated to -117.77.</figcaption><div class="analysis">Sign and ordering recovered correctly; the magnitude on the
+inhibitory entry is biased and is a known limitation.</div></figure>
+</div>
+</section>
+<section class="example" id="PPSimExample">
+<h2>PPSimExample<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Reproduce the MATLAB `PPSimExample` recursive-CIF workflow with
+`CIF.simulateCIF` and `FitResSummary`.</p>
+<p class="muted">Recursive CIF simulation of a stimulus-driven neuron with history
+kernel [-1, -2, -4], multiple realizations, then fit and compare
+baseline / stimulus / stimulus+history GLMs across the sample
+paths.</p>
+<p><strong>Notebook:</strong> <code>notebooks/PPSimExample.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/PPSimExample.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/PPSimExample/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Top: raster of 5 sample paths from the recursive CIF over
+the first 10 s. Bottom: the driving sinusoidal stimulus.</figcaption><div class="analysis">Spike timing should cluster around stimulus peaks; the
+history term thins bursts.</div></figure>
+<figure><img src="notebook_galleries/PPSimExample/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>The simulated lambda(t) for one realization plotted over the
+same window.</figcaption><div class="analysis">Note suppression dips immediately following each spike —
+the history kernel at work.</div></figure>
+<figure><img src="notebook_galleries/PPSimExample/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>`plotResults` for the first realization with baseline,
+stimulus, and stimulus+history fits compared in one panel.</figcaption><div class="analysis">The Stim+Hist KS line should sit inside the band; the
+baseline-only line drifts.</div></figure>
+<figure><img src="notebook_galleries/PPSimExample/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>`plotResults` showing just the baseline-only fit
+diagnostics.</figcaption><div class="analysis">The KS plot is the worst here — a useful negative control.</div></figure>
+<figure><img src="notebook_galleries/PPSimExample/fig_005.png" alt="fig_005.png" loading="lazy"><figcaption><strong>fig_005.png</strong><br>`plotResults` for the stimulus-only fit.</figcaption><div class="analysis">KS improves over baseline but residual ACF still shows
+bursty structure.</div></figure>
+<figure><img src="notebook_galleries/PPSimExample/fig_006.png" alt="fig_006.png" loading="lazy"><figcaption><strong>fig_006.png</strong><br>`plotResults` for the stimulus+history fit — the
+best-fitting model.</figcaption><div class="analysis">Residual ACF flattens; KS sits inside the 95% band.</div></figure>
+<figure><img src="notebook_galleries/PPSimExample/fig_007.png" alt="fig_007.png" loading="lazy"><figcaption><strong>fig_007.png</strong><br>Fitted firing-rate trace for the best model, plotted via
+`lambdaSignal`.</figcaption><div class="analysis">Smoothness inherits from the sinusoidal stimulus; bursts
+reflect history kicks.</div></figure>
+<figure><img src="notebook_galleries/PPSimExample/fig_008.png" alt="fig_008.png" loading="lazy"><figcaption><strong>fig_008.png</strong><br>`Summary.plotSummary` bar chart of AIC, log-likelihood, and
+KS across the three configurations.</figcaption><div class="analysis">Stimulus+history wins on every panel.</div></figure>
+<figure><img src="notebook_galleries/PPSimExample/fig_009.png" alt="fig_009.png" loading="lazy"><figcaption><strong>fig_009.png</strong><br>Bar chart of mean AIC across realizations for the three
+configs.</figcaption><div class="analysis">The mean ordering matches the per-trial ordering — model
+selection is stable across stochastic draws.</div></figure>
+</div>
+</section>
+<section class="example" id="PPThinning">
+<h2>PPThinning<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Show that thinning under a known lambda(t) yields spikes whose
+empirical rate matches the rate function.</p>
+<p class="muted">Demonstrates Lewis-Shedler thinning to simulate inhomogeneous
+Poisson point processes — first a constant-rate sanity check,
+then a time-varying rate. Mirrors the MATLAB `PPThinning`
+helpfile.</p>
+<p><strong>Notebook:</strong> <code>notebooks/PPThinning.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/PPThinning.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/PPThinning/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Constant-rate Poisson spike train (top) and a thinned
+process from the same upper-bound rate (bottom).</figcaption><div class="analysis">Both trains share rate but the thinned one removes spikes
+to match a lower target — a sanity check on the algorithm.</div></figure>
+<figure><img src="notebook_galleries/PPThinning/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Thinned spikes overlaid on the scaled lambda(t) curve used
+for thinning.</figcaption><div class="analysis">Visual confirmation that spike density tracks the rate
+modulation.</div></figure>
+<figure><img src="notebook_galleries/PPThinning/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Empirical spike rate vs the target rate, in PSTH bins.</figcaption><div class="analysis">Bars should hug the rate curve up to Poisson sampling
+noise.</div></figure>
+</div>
+</section>
+<section class="example" id="PSTHEstimation">
+<h2>PSTHEstimation<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Show that the GLM PSTH and the bin-count PSTH agree, and that
+both recover the true sinusoidal rate.</p>
+<p class="muted">Estimate a PSTH from 20 simulated trains of a known sinusoidal
+rate, comparing the bin-count PSTH against a Poisson-GLM PSTH
+(`fit_poisson_glm`) with 500 ms windows. Mirrors the MATLAB
+`PSTHEstimation` helpfile.</p>
+<p><strong>Notebook:</strong> <code>notebooks/PSTHEstimation.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/PSTHEstimation.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/PSTHEstimation/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Raster of 20 simulated spike trains over 10 s — the input
+to PSTH estimation.</figcaption><div class="analysis">Vertical bands at rate peaks (around 2 s and 6 s) preview
+the PSTH shape.</div></figure>
+<figure><img src="notebook_galleries/PSTHEstimation/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>True rate (blue), GLM PSTH step function (black), and
+bin-count PSTH crosses (red), all on one axis over 500 ms
+windows.</figcaption><div class="analysis">GLM step and crosses overlap exactly; both track the blue
+sinusoid to within sampling noise.</div></figure>
+</div>
+</section>
+<section class="example" id="SignalObjExamples">
+<h2>SignalObjExamples<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Document every method on the core continuous-signal container
+using 17 worked figure outputs.</p>
+<p class="muted">Comprehensive `SignalObj` tour matching the MATLAB
+`SignalObjExamples` helpfile: construction, slicing, relabeling,
+resampling, arithmetic, spectral views, and confidence-interval
+overlays.</p>
+<p><strong>Notebook:</strong> <code>notebooks/SignalObjExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/SignalObjExamples.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/SignalObjExamples/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Example 1 — two sinusoidal signals s and s1 stacked; tests
+`SignalObj.plot()` for a multi-component container.</figcaption><div class="analysis">Confirms component traces appear on separate axes by
+default.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Example 1 — masked views of s using boolean indexing.</figcaption><div class="analysis">Masked regions blank out; the time axis is unchanged.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Example 1 — `getSubSignal({'v1'})` extracts one named
+component.</figcaption><div class="analysis">Verifies label-based component selection.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Example 2 — relabeled x-axis with custom unit string.</figcaption><div class="analysis">Tests `setXLabel`/`setXUnits` propagation through plot.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_005.png" alt="fig_005.png" loading="lazy"><figcaption><strong>fig_005.png</strong><br>Example 2 — same signal with a relabel plus a restricted
+time window.</figcaption><div class="analysis">Combines label edits with `getSigInTimeWindow`.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_006.png" alt="fig_006.png" loading="lazy"><figcaption><strong>fig_006.png</strong><br>Example 2 — per-component plot selection chooses a subset
+of channels.</figcaption><div class="analysis">Demonstrates `plot(handle=..., labels=...)` filtering.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_007.png" alt="fig_007.png" loading="lazy"><figcaption><strong>fig_007.png</strong><br>Example 3 — original signal resampled to 0.1x sample rate.</figcaption><div class="analysis">Resampled trace should overlay the original on coarse
+features only.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_008.png" alt="fig_008.png" loading="lazy"><figcaption><strong>fig_008.png</strong><br>Example 3 — `getSigInTimeWindow(-2, 3)` extracts a
+five-second slice.</figcaption><div class="analysis">Confirms slice respects the requested endpoints.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_009.png" alt="fig_009.png" loading="lazy"><figcaption><strong>fig_009.png</strong><br>Example 4 — zero-mean version of s (s minus mean of s).</figcaption><div class="analysis">Mean should be visibly zero; shape preserved.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_010.png" alt="fig_010.png" loading="lazy"><figcaption><strong>fig_010.png</strong><br>Example 4 — mean across components, collapsing the vector
+signal to a scalar trace.</figcaption><div class="analysis">Used as a quick population-average diagnostic.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_011.png" alt="fig_011.png" loading="lazy"><figcaption><strong>fig_011.png</strong><br>Example 4 — algebraic combination 2 times s plus s5.</figcaption><div class="analysis">Tests operator overloading on `SignalObj`.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_012.png" alt="fig_012.png" loading="lazy"><figcaption><strong>fig_012.png</strong><br>Example 4 — integral, derivative, and integral-of-
+derivative round-trip plotted on one axis.</figcaption><div class="analysis">The round-trip should match the original up to a constant.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_013.png" alt="fig_013.png" loading="lazy"><figcaption><strong>fig_013.png</strong><br>Example 5 — multitaper spectrum estimate of s.</figcaption><div class="analysis">Peaks should appear at the input sinusoid's frequencies.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_014.png" alt="fig_014.png" loading="lazy"><figcaption><strong>fig_014.png</strong><br>Example 5 — periodogram for the same signal.</figcaption><div class="analysis">Same peaks, noisier estimate — used to motivate
+multitapering.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_015.png" alt="fig_015.png" loading="lazy"><figcaption><strong>fig_015.png</strong><br>Example 6 — signals plotted with an all-component
+variability band.</figcaption><div class="analysis">Band covers the inter-component spread at every time
+point.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_016.png" alt="fig_016.png" loading="lazy"><figcaption><strong>fig_016.png</strong><br>Example 6 — per-label variability bands, one shaded region
+per labelled subset.</figcaption><div class="analysis">Verifies grouping logic in `plot(..., variability=...)`.</div></figure>
+<figure><img src="notebook_galleries/SignalObjExamples/fig_017.png" alt="fig_017.png" loading="lazy"><figcaption><strong>fig_017.png</strong><br>Example 6 — custom variability bands with user-supplied
+band ranges.</figcaption><div class="analysis">Tests pass-through of explicit `(lower, upper)` band
+arguments.</div></figure>
+</div>
+</section>
+<section class="example" id="StimulusDecode2D">
+<h2>StimulusDecode2D<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Reproduce the MATLAB `StimulusDecode2D` nonlinear-CIF decoding
+workflow with a documented linear-fallback branch.</p>
+<p class="muted">2D stimulus decoding using a nonlinear CIF: simulates a
+population whose firing rate depends nonlinearly on (px, py),
+fits the CIF, then decodes (px, py) over time with
+`DecodingAlgorithms.PPDecodeFilter` and a linear fallback.</p>
+<p><strong>Notebook:</strong> <code>notebooks/StimulusDecode2D.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/StimulusDecode2D.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/StimulusDecode2D/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>True 2D stimulus trajectory in (px, py) — the target the
+decoder must reconstruct.</figcaption><div class="analysis">Anchors what "good decoding" looks like.</div></figure>
+<figure><img src="notebook_galleries/StimulusDecode2D/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Simulated lambda_i(t) traces for each tuned cell over the
+same window.</figcaption><div class="analysis">Firing peaks should align with the cell's preferred
+stimulus value.</div></figure>
+<figure><img src="notebook_galleries/StimulusDecode2D/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Pseudocolor (pcolor) of the 2D tuning surface for one
+example cell.</figcaption><div class="analysis">A peak away from the origin confirms nonlinear 2D tuning.</div></figure>
+<figure><img src="notebook_galleries/StimulusDecode2D/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Updated state estimate x_u(1) from the point-process
+adaptive filter over time.</figcaption><div class="analysis">Tracks the true px trace.</div></figure>
+<figure><img src="notebook_galleries/StimulusDecode2D/fig_005.png" alt="fig_005.png" loading="lazy"><figcaption><strong>fig_005.png</strong><br>Decoded 2D trajectories vs ground truth in (px, py)
+space.</figcaption><div class="analysis">Decoded path should trace the true path; gaps highlight
+where the population cannot disambiguate.</div></figure>
+<figure><img src="notebook_galleries/StimulusDecode2D/fig_006.png" alt="fig_006.png" loading="lazy"><figcaption><strong>fig_006.png</strong><br>Decode RMSE summary across cells and dimensions.</figcaption><div class="analysis">Lower values indicate which dimension is easier to recover.</div></figure>
+</div>
+</section>
+<section class="example" id="TrialConfigExamples">
+<h2>TrialConfigExamples<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Document the MATLAB figure sequence so the notebook fidelity
+audit can compare Python output against the reference.</p>
+<p class="muted">Tracker-only scaffold for the MATLAB `TrialConfigExamples`
+helpfile. Records the intended figure-output sequence for parity
+audits and does not produce plots. Use executable
+`TrialConfig`/`ConfigColl` snippets under `examples/paper/` for
+hands-on use.</p>
+<p><strong>Notebook:</strong> <code>notebooks/TrialConfigExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/TrialConfigExamples.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="TrialExamples">
+<h2>TrialExamples<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Document the `Trial` container — the unit of analysis that
+ties together spikes, covariates, and configs.</p>
+<p class="muted">Builds `Trial` objects from spike trains and covariate
+collections, then walks through trial-level operations:
+windowing, plotting, attaching configs. Mirrors the MATLAB
+`TrialExamples` helpfile.</p>
+<p><strong>Notebook:</strong> <code>notebooks/TrialExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/TrialExamples.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/TrialExamples/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Trial plot — spike raster (top) and covariate panels
+(below) all sharing one time axis.</figcaption><div class="analysis">The canonical trial view; confirm rasters and covariates
+align in time.</div></figure>
+<figure><img src="notebook_galleries/TrialExamples/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Trial plot after restricting to a sub-window via
+`getSubTrial`.</figcaption><div class="analysis">Verifies cropping preserves alignment.</div></figure>
+<figure><img src="notebook_galleries/TrialExamples/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Trial with an added stimulus covariate after `addCovariate`.</figcaption><div class="analysis">Confirms the covariate collection grew by one panel.</div></figure>
+<figure><img src="notebook_galleries/TrialExamples/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Trial with a swapped or relabelled covariate.</figcaption><div class="analysis">Confirms label edits persist through the trial container.</div></figure>
+<figure><img src="notebook_galleries/TrialExamples/fig_005.png" alt="fig_005.png" loading="lazy"><figcaption><strong>fig_005.png</strong><br>Trial-level resample to a coarser bin rate.</figcaption><div class="analysis">Used to confirm spike-time precision survives resampling.</div></figure>
+<figure><img src="notebook_galleries/TrialExamples/fig_006.png" alt="fig_006.png" loading="lazy"><figcaption><strong>fig_006.png</strong><br>Trial plot with a config attached, ready for an
+`Analysis` call.</figcaption><div class="analysis">Final state before `RunAnalysisForAllNeurons` would be
+invoked.</div></figure>
+</div>
+</section>
+<section class="example" id="ValidationDataSet">
+<h2>ValidationDataSet<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Show that the toolbox recovers the right model on data where
+the answer is known by construction.</p>
+<p class="muted">Validates the GLM-fit pipeline against two known ground-truth
+rate models — a constant-rate Poisson process and a piecewise-
+rate process — by simulating, fitting, and checking that AIC
+and KS pick the correct model.</p>
+<p><strong>Notebook:</strong> <code>notebooks/ValidationDataSet.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/ValidationDataSet.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/ValidationDataSet/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>ISI histogram for the simulated constant-rate train, with
+the exponential reference overlaid.</figcaption><div class="analysis">Histogram should match the exponential — confirms
+simulation correctness.</div></figure>
+<figure><img src="notebook_galleries/ValidationDataSet/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>GLM coefficient estimate `mu` vs the true intercept used
+to simulate.</figcaption><div class="analysis">Estimate should land on the truth line within standard
+error.</div></figure>
+<figure><img src="notebook_galleries/ValidationDataSet/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Fitted lambda(t) trace from `results{1}.lambda.plot` for
+the constant-rate fit.</figcaption><div class="analysis">Flat trace confirms the homogeneous model was not
+oversmoothed.</div></figure>
+<figure><img src="notebook_galleries/ValidationDataSet/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Spike-time raster of the piecewise-rate simulation.</figcaption><div class="analysis">Density should jump at the piecewise breakpoints.</div></figure>
+<figure><img src="notebook_galleries/ValidationDataSet/fig_005.png" alt="fig_005.png" loading="lazy"><figcaption><strong>fig_005.png</strong><br>True piecewise rate function plotted over the simulation
+window.</figcaption><div class="analysis">Reference for what the GLM has to recover.</div></figure>
+<figure><img src="notebook_galleries/ValidationDataSet/fig_006.png" alt="fig_006.png" loading="lazy"><figcaption><strong>fig_006.png</strong><br>Fitted piecewise-rate lambda(t) trace from the GLM.</figcaption><div class="analysis">Fitted trace should track the step-changes in the true
+rate.</div></figure>
+<figure><img src="notebook_galleries/ValidationDataSet/fig_007.png" alt="fig_007.png" loading="lazy"><figcaption><strong>fig_007.png</strong><br>`Summary.plotSummary` across all candidate models on the
+piecewise data.</figcaption><div class="analysis">The piecewise model should win on AIC and KS.</div></figure>
+<figure><img src="notebook_galleries/ValidationDataSet/fig_008.png" alt="fig_008.png" loading="lazy"><figcaption><strong>fig_008.png</strong><br>Log-likelihood differences from `Summary.getDifflogLL`
+across candidate fits.</figcaption><div class="analysis">Positive values flag preferred models over the baseline.</div></figure>
+</div>
+</section>
+<section class="example" id="mEPSCAnalysis">
+<h2>mEPSCAnalysis<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Show the mEPSC paper-example workflow on the toolbox's
+dataset, replicating Figure 1 of the 2012 paper.</p>
+<p class="muted">mEPSC point-process analysis: load constant-magnesium and
+washout conditions, fit homogeneous Poisson and time-varying
+GLMs, and compare with `FitResSummary`.</p>
+<p><strong>Notebook:</strong> <code>notebooks/mEPSCAnalysis.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/mEPSCAnalysis.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/mEPSCAnalysis/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Constant-magnesium condition — homogeneous Poisson fit
+summary across the cell.</figcaption><div class="analysis">Stable rate trace with the time-rescaling KS in the band.</div></figure>
+<figure><img src="notebook_galleries/mEPSCAnalysis/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Washout-condition raster of mEPSC event times across the
+recording.</figcaption><div class="analysis">Look for rate elevation under washout vs the constant
+condition.</div></figure>
+<figure><img src="notebook_galleries/mEPSCAnalysis/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Washout `plotResults` panel — fitted rate, KS plot, and
+coefficient errorbars.</figcaption><div class="analysis">KS deviation flags the homogeneous model as inadequate
+under washout.</div></figure>
+<figure><img src="notebook_galleries/mEPSCAnalysis/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Washout `Summary.plotSummary` bar chart across competing
+rate models.</figcaption><div class="analysis">The time-varying model should beat the homogeneous one.</div></figure>
+</div>
+</section>
+<section class="example" id="nSTATPaperExamples">
+<h2>nSTATPaperExamples<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Reproduce all 30 published paper figures with the Python port,
+matching the MATLAB `nSTATPaperExamples` ordering.</p>
+<p class="muted">One-stop replication of every figure in the 2012 paper —
+Experiments 1 through 6 covering mEPSC analysis, whisker GLMs,
+PSTH estimation, gamma-state inference, place-cell fields,
+decoding, and the hybrid filter — driven by
+`run_experiment1` through `run_experiment6`.</p>
+<p><strong>Notebook:</strong> <code>notebooks/nSTATPaperExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nSTATPaperExamples.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Experiment 1 — constant-Mg homogeneous Poisson fit; rate
+trace pinned at about 9.23 Hz across the 60 s recording.</figcaption><div class="analysis">Flat line confirms the stationary fit on the
+constant-magnesium condition.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Experiment 1 — washout raster and per-second rate trace.</figcaption><div class="analysis">Look for the rate rise after washout onset.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Experiment 1 — KS plot for the constant-Mg fit.</figcaption><div class="analysis">Trace inside the 95% band supports the homogeneous model.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Experiment 1 — autocorrelation function of the rescaled
+ISIs.</figcaption><div class="analysis">Bars should sit inside the white-noise band; departures
+flag missed structure.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_005.png" alt="fig_005.png" loading="lazy"><figcaption><strong>fig_005.png</strong><br>Experiment 1 — model summary bar chart across the
+competing rate models.</figcaption><div class="analysis">Identifies the preferred model by AIC and KS.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_006.png" alt="fig_006.png" loading="lazy"><figcaption><strong>fig_006.png</strong><br>Experiment 2 — whisker stimulus waveform with the spike
+raster aligned beneath.</figcaption><div class="analysis">Confirms stimulus-locked firing in thalamic units.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_007.png" alt="fig_007.png" loading="lazy"><figcaption><strong>fig_007.png</strong><br>Experiment 2 — stimulus-spike cross-correlation.</figcaption><div class="analysis">Locates the lag of peak coupling for the GLM stimulus
+term.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_008.png" alt="fig_008.png" loading="lazy"><figcaption><strong>fig_008.png</strong><br>Experiment 2 — AIC and BIC bars across whisker GLM
+configurations.</figcaption><div class="analysis">The configuration with the lowest AIC is the paper's
+preferred model.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_009.png" alt="fig_009.png" loading="lazy"><figcaption><strong>fig_009.png</strong><br>Experiment 2 — KS comparison across the same configs.</figcaption><div class="analysis">Cross-check that AIC and KS agree on the winner.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_010.png" alt="fig_010.png" loading="lazy"><figcaption><strong>fig_010.png</strong><br>Experiment 2 — history-windows scan: KS, delta AIC, and
+delta BIC vs number of history lags.</figcaption><div class="analysis">The delta AIC dip near 7 windows marks the parsimonious
+history length.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_011.png" alt="fig_011.png" loading="lazy"><figcaption><strong>fig_011.png</strong><br>Experiment 2 — fitted whisker-GLM coefficients for the
+best model.</figcaption><div class="analysis">Identifies the dominant stimulus and history lags.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_012.png" alt="fig_012.png" loading="lazy"><figcaption><strong>fig_012.png</strong><br>Experiment 3 — true rate for the PSTH-estimation
+simulation.</figcaption><div class="analysis">Ground truth that the PSTH must recover.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_013.png" alt="fig_013.png" loading="lazy"><figcaption><strong>fig_013.png</strong><br>Experiment 3 — true rate vs GLM-PSTH step vs bin-count
+PSTH overlay.</figcaption><div class="analysis">GLM and bin estimates overlap exactly; both track the
+true rate.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_014.png" alt="fig_014.png" loading="lazy"><figcaption><strong>fig_014.png</strong><br>Experiment 3b — state estimates from the state-space
+gamma-process inference.</figcaption><div class="analysis">State trace should mirror the simulated regime changes.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_015.png" alt="fig_015.png" loading="lazy"><figcaption><strong>fig_015.png</strong><br>Experiment 3b — credible-interval widths over time.</figcaption><div class="analysis">Widths narrow where spikes are dense; widen on gaps.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_016.png" alt="fig_016.png" loading="lazy"><figcaption><strong>fig_016.png</strong><br>Experiment 3b — gamma-process posterior summary.</figcaption><div class="analysis">Confirms recovery of the regime-switch parameters.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_017.png" alt="fig_017.png" loading="lazy"><figcaption><strong>fig_017.png</strong><br>Experiment 4 — Animal 1 place-cell delta AIC bars
+(Gaussian minus Zernike).</figcaption><div class="analysis">Mirrors `HippocampalPlaceCellExample` fig_002 in this
+gallery.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_018.png" alt="fig_018.png" loading="lazy"><figcaption><strong>fig_018.png</strong><br>Experiment 4 — Animal 2 place-cell delta BIC bars; Cell 2
+shows a +148 BIC advantage for Zernike.</figcaption><div class="analysis">BIC sign agrees with AIC — basis choice is robust to the
+parsimony penalty.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_019.png" alt="fig_019.png" loading="lazy"><figcaption><strong>fig_019.png</strong><br>Experiment 4 — Gaussian place-field mesh (4 cells per
+animal).</figcaption><div class="analysis">Each mesh is a smooth single bump in firing rate.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_020.png" alt="fig_020.png" loading="lazy"><figcaption><strong>fig_020.png</strong><br>Experiment 4 — Zernike place-field mesh for the same
+cells.</figcaption><div class="analysis">Off-centre tilts that the Gaussian basis missed appear
+here.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_021.png" alt="fig_021.png" loading="lazy"><figcaption><strong>fig_021.png</strong><br>Experiment 5 — CIF setup: simulated raster and stimulus
+for the 1D decoding example.</figcaption><div class="analysis">Same workflow shape as `DecodingExample`.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_022.png" alt="fig_022.png" loading="lazy"><figcaption><strong>fig_022.png</strong><br>Experiment 5 — decoded stimulus trace with credible band.</figcaption><div class="analysis">Decoder mean should track the true stimulus inside the
+band.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_023.png" alt="fig_023.png" loading="lazy"><figcaption><strong>fig_023.png</strong><br>Experiment 5b — arm-reach setup: hand-position trajectory
+and neural raster.</figcaption><div class="analysis">Same reach used by `HybridFilterExample`.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_024.png" alt="fig_024.png" loading="lazy"><figcaption><strong>fig_024.png</strong><br>Experiment 5b — goal-aware decoding of reach position.</figcaption><div class="analysis">Compare against the free decode to see the goal prior's
+contribution.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_025.png" alt="fig_025.png" loading="lazy"><figcaption><strong>fig_025.png</strong><br>Experiment 5b — free (goal-agnostic) decoded trajectory.</figcaption><div class="analysis">Lacking the goal prior, the decoded path drifts away from
+the target.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_026.png" alt="fig_026.png" loading="lazy"><figcaption><strong>fig_026.png</strong><br>Experiment 6 — hybrid-filter setup: reach path (top
+left), discrete movement state (top right), velocity
+(bottom left), neural raster (bottom right).</figcaption><div class="analysis">Anchors the hybrid filter's inputs before any decoding.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_027.png" alt="fig_027.png" loading="lazy"><figcaption><strong>fig_027.png</strong><br>Experiment 6 — Pr(movement) state probability trace from
+the hybrid filter.</figcaption><div class="analysis">State posterior should rise during the reach window.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_028.png" alt="fig_028.png" loading="lazy"><figcaption><strong>fig_028.png</strong><br>Experiment 6 — decoded vs true (x, y) hand position.</figcaption><div class="analysis">Smooth tracking confirms the hybrid filter recovers
+position from spikes.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_029.png" alt="fig_029.png" loading="lazy"><figcaption><strong>fig_029.png</strong><br>Paper-gallery summary panel — cross-experiment
+goodness-of-fit comparison.</figcaption><div class="analysis">High-level dashboard: pass/fail at a glance for each
+experiment.</div></figure>
+<figure><img src="notebook_galleries/nSTATPaperExamples/fig_030.png" alt="fig_030.png" loading="lazy"><figcaption><strong>fig_030.png</strong><br>Paper-dataset summary panel — per-experiment dataset
+metadata.</figcaption><div class="analysis">Useful as the final caption-style reference figure.</div></figure>
+</div>
+</section>
+<section class="example" id="nSpikeTrainExamples">
+<h2>nSpikeTrainExamples<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Document the single-spike-train container and its three
+signal-representation paths.</p>
+<p class="muted">Build and manipulate single `nspikeTrain` objects — construction,
+plotting, time-window cropping, and sample-rate-aware
+conversions to binary `SignalObj` representations. Mirrors the
+MATLAB `nSpikeTrainExamples` helpfile.</p>
+<p><strong>Notebook:</strong> <code>notebooks/nSpikeTrainExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nSpikeTrainExamples.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/nSpikeTrainExamples/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Raster of one `nspikeTrain` via `nst.plot()`.</figcaption><div class="analysis">The canonical raster view used throughout the toolbox.</div></figure>
+<figure><img src="notebook_galleries/nSpikeTrainExamples/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Signal representation at 10 Hz — bin counts per 100 ms
+window.</figcaption><div class="analysis">Coarse view; bins absorb burst structure.</div></figure>
+<figure><img src="notebook_galleries/nSpikeTrainExamples/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Signal representation at 100 Hz — 10 ms bins.</figcaption><div class="analysis">Fine view; preserves most ISI structure.</div></figure>
+<figure><img src="notebook_galleries/nSpikeTrainExamples/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>Signal representation at the maximum binary bin rate (one
+spike per bin).</figcaption><div class="analysis">Used as the design-matrix input for GLM fitting.</div></figure>
+</div>
+</section>
+<section class="example" id="nstCollExamples">
+<h2>nstCollExamples<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Document the population-spike-train container that drives
+`Trial` and `Analysis`.</p>
+<p class="muted">`nstColl` (SpikeTrainCollection) operations: construct from
+multiple `nspikeTrain` objects, plot raster, signal
+representation, and fine-resolution view. Mirrors the MATLAB
+`nstCollExamples` helpfile.</p>
+<p><strong>Notebook:</strong> <code>notebooks/nstCollExamples.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/nstCollExamples.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/nstCollExamples/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>First train of the collection rendered three ways —
+raster, coarse `sigRep`, fine `sigRep`.</figcaption><div class="analysis">Side-by-side check that the same train projects
+consistently through each view.</div></figure>
+<figure><img src="notebook_galleries/nstCollExamples/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Full collection raster, one row per spike train.</figcaption><div class="analysis">Population-level view used in `Trial.plot()`.</div></figure>
+<figure><img src="notebook_galleries/nstCollExamples/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>PSTH-style population rate aggregated across the
+collection.</figcaption><div class="analysis">Useful summary of total population activity.</div></figure>
+</div>
+</section>
+<section class="example" id="AnalysisExamples2">
+<h2>AnalysisExamples2<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Reproduce the MATLAB `AnalysisExamples2` figure sequence
+end-to-end with the Python toolbox.</p>
+<p class="muted">Second-pass MATLAB-parity `Analysis` workflow on `glm_data.mat`
+with the executable Python `Trial`/`ConfigColl` path — fit a
+GLM, plot results, mesh the fitted intensity surface, and run
+the canonical history-lag computation.</p>
+<p><strong>Notebook:</strong> <code>notebooks/AnalysisExamples2.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/AnalysisExamples2.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/AnalysisExamples2/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Position covariate `getSubSignal('x')` trace over the
+recording.</figcaption><div class="analysis">Reference for the regressor the GLM will use.</div></figure>
+<figure><img src="notebook_galleries/AnalysisExamples2/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>`fitResults.plotResults` summary — KS plot, residuals, and
+coefficients side-by-side.</figcaption><div class="analysis">KS hugging the diagonal supports the fitted CIF.</div></figure>
+<figure><img src="notebook_galleries/AnalysisExamples2/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>3D mesh of the fitted firing rate vs (time, position).</figcaption><div class="analysis">Surface peaks identify the cell's tuning to position.</div></figure>
+<figure><img src="notebook_galleries/AnalysisExamples2/fig_004.png" alt="fig_004.png" loading="lazy"><figcaption><strong>fig_004.png</strong><br>`Analysis.computeHistLag` output — best history lag and
+surrounding cost surface.</figcaption><div class="analysis">The minimum picks the lag used in the final fit.</div></figure>
+</div>
+</section>
+<section class="example" id="ConfidenceIntervalOverview">
+<h2>ConfidenceIntervalOverview<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Document the simple two-bound time-series container used to
+attach confidence bands to fitted signals.</p>
+<p class="muted">Walks through the `ConfidenceInterval` class — construction
+from `(time, [lower, upper])`, the `lower` and `upper`
+accessors, and how it composes with `SignalObj` plots. Mirrors
+the MATLAB help page for the class.</p>
+<p><strong>Notebook:</strong> <code>notebooks/ConfidenceIntervalOverview.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/ConfidenceIntervalOverview.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="FitResultReference">
+<h2>FitResultReference<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Document the MATLAB figure sequence so the notebook fidelity
+audit can compare Python output against the reference.</p>
+<p class="muted">Tracker-only scaffold for the MATLAB `FitResultReference`
+helpfile. Records the intended figure ordering for parity
+audits and does not render plots. Use the executable
+`FitResult` snippets under `examples/paper/` for hands-on use.</p>
+<p><strong>Notebook:</strong> <code>notebooks/FitResultReference.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/FitResultReference.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="HybridFilterExample">
+<h2>HybridFilterExample<span class="tag">full</span></h2>
+<p><strong>Goal:</strong> Reproduce the MATLAB `HybridFilterExample` hybrid-filter
+simulation, single-run decode, and averaged-summary figures.</p>
+<p class="muted">Hybrid (movement / no-movement) state-space decoding of a
+simulated arm reach: 24 cells driven by position and velocity
+under a discrete movement state, run the hybrid filter once,
+then average across realizations for a stable summary.</p>
+<p><strong>Notebook:</strong> <code>notebooks/HybridFilterExample.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/HybridFilterExample.ipynb">Source</a></p>
+<div class="gallery">
+<figure><img src="notebook_galleries/HybridFilterExample/fig_001.png" alt="fig_001.png" loading="lazy"><figcaption><strong>fig_001.png</strong><br>Reach setup grid — true reach path (top left), neural
+raster (top right), discrete movement state, position and
+velocity traces, population spike fraction, and an example
+cumulative spike count. Reported decode RMSE about 0.22
+(x) and 0.17 (y) with 89.9% state accuracy.</figcaption><div class="analysis">Anchors all inputs feeding the hybrid filter.</div></figure>
+<figure><img src="notebook_galleries/HybridFilterExample/fig_002.png" alt="fig_002.png" loading="lazy"><figcaption><strong>fig_002.png</strong><br>Single-run hybrid-filter result — state estimate raster,
+Pr(movement) trace, decoded movement path, decoded
+position and velocity (true black, decoded blue),
+instantaneous path error, and spike-count histogram.</figcaption><div class="analysis">Position decode is noisy on a single run but follows the
+true cosine envelope; velocity is harder to recover.</div></figure>
+<figure><img src="notebook_galleries/HybridFilterExample/fig_003.png" alt="fig_003.png" loading="lazy"><figcaption><strong>fig_003.png</strong><br>Averaged-across-runs summary — average state estimate,
+average Pr(movement), averaged decoded path (collapsed
+near origin), and per-axis RMSE bars (X about 0.22,
+Y about 0.18).</figcaption><div class="analysis">Averaging shrinks the decoded path toward the centre —
+the filter has near-zero mean error but high variance.</div></figure>
+</div>
+</section>
+<section class="example" id="PlaceFieldGLMBasis">
+<h2>PlaceFieldGLMBasis<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Recover a known planar place field from sparse events and
+attach a 90% log-normal credible band.</p>
+<p class="muted">Self-contained extras-module demo of `nstat.extras.spatial`:
+simulate ~600 events from a sum-of-Gaussian-bumps rate field
+via thinning, fit a tensor-product cubic B-spline Poisson GLM
+with a log-area offset, fit a basis-projected LGCP with a
+Matern-5/2 prior, and diagnose with the edge-corrected pair
+correlation function.</p>
+<p><strong>Notebook:</strong> <code>notebooks/PlaceFieldGLMBasis.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/PlaceFieldGLMBasis.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="HawkesWaveAnalysis">
+<h2>HawkesWaveAnalysis<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Show that the Bartlett spectrum localises a known planar wave
+vector on a small electrode grid.</p>
+<p class="muted">Demonstrates the spatiotemporal wave-analysis stack in
+`nstat.extras.spatial`: build a synthetic 36-electrode Hawkes
+adjacency embedding a known planar wave, compute its Bartlett
+(frequency by wave-vector) spectrum, and recover the dominant
+wave-vector peaks by greedy non-maximum suppression. The 6x6
+electrode grid is acknowledged to be coarse, undersampling the
+embedded wave.</p>
+<p><strong>Notebook:</strong> <code>notebooks/HawkesWaveAnalysis.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/HawkesWaveAnalysis.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<footer>
+<p>Source: <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> · License: GPL-2.0 · Paper: <a href="https://pubmed.ncbi.nlm.nih.gov/22981419/">Cajigas, Malik &amp; Brown 2012, J Neurosci Methods</a></p>
+</footer>
+</div></body></html>
