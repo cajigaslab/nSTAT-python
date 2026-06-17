@@ -544,6 +544,32 @@ Python projects" table in `README.md` for install commands.
   Strauss fits emit `UserWarning("data appears clustered; consider
   fit_thomas")` when the raw `gamma` exceeds 1, and `gamma` is clipped
   to 1 in the returned `params`.
+  Single-realisation **univariate Hawkes EM** lives in
+  `nstat.extras.spatial.hawkes_em` — pure NumPy, no `[hawkes]` dep.  The
+  Veen-Schoenberg (2008) branching-structure EM with closed-form
+  M-step recovers `(mu, alpha, beta)` of a Hawkes(mu, alpha*exp(-beta t))
+  process from spike times: `HawkesEMSpec(mu0=None, alpha0=0.5,
+  beta0=1.0, max_iter=100, tol=1e-6)` carries the configuration
+  (auto-inferring `mu0 = N/T` when `None`, and warning when
+  `alpha0/beta0 >= 1` is super-critical); `em_hawkes_exponential(
+  event_times, T, *, spec=None, return_responsibilities=False)` runs the
+  fit and returns `HawkesEMResult(mu_hat, alpha_hat, beta_hat,
+  log_likelihood_trace, n_iter, converged, responsibilities)` with a
+  `.branching_ratio` property (`alpha_hat/beta_hat`).  The optional CSR
+  `responsibilities` matrix is lower-triangular: row `i` is event `i`'s
+  parent distribution (cell `[i, i]` = spontaneous-of-`i` probability,
+  cell `[i, j]` with `j < i` = probability `j` triggered `i`); rows sum
+  to 1.  The companion Ogata-thinning simulator
+  `simulate_hawkes_exponential(mu, alpha, beta, T, *, rng)` returns
+  sorted event times and rejects super-critical configurations.  Memory
+  is `O(N^2)` (the dense time-difference matrix) — for `N >> 5000`
+  prefer the optional tick-backed multivariate
+  `hawkes_bridge.fit_hawkes_exp`.  Single-realisation Hawkes is weakly
+  identified between `alpha` and `beta`; the branching ratio is the
+  tight summary, individual parameters are noisier.  Marsan & Lengliné
+  (2008) extended the same EM to cascaded space-time triggering in
+  seismology — the same mathematical machinery as the neural-spiking
+  analogue.
   End-to-end demos: `examples/paper/example06_place_fields_glm_basis.py`,
   `examples/paper/example07_spatiotemporal_hawkes_waves.py`,
   `examples/paper/example08_real_place_cells.py`; companion

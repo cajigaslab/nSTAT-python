@@ -216,6 +216,7 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
             "cluster_cox",
             "inference",
             "gibbs",
+            "hawkes_em",
         }
     )
 

@@ -115,6 +115,12 @@ from nstat.extras.spatial.gibbs import (
     simulate_hardcore_rejection,
     simulate_strauss_birth_death,
 )
+from nstat.extras.spatial.hawkes_em import (
+    HawkesEMResult,
+    HawkesEMSpec,
+    em_hawkes_exponential,
+    simulate_hawkes_exponential,
+)
 from nstat.extras.spatial.inference import (
     MinContrastResult,
     fit_matern_cluster,
@@ -225,6 +231,11 @@ __all__ = [
     "GibbsFitResult",
     # hawkes_bridge (pure-NumPy/SciPy Bartlett diagnostic; no [hawkes] needed)
     "bartlett_spectrum",
+    # hawkes_em (pure-NumPy branching-structure EM; Veen-Schoenberg 2008)
+    "HawkesEMSpec",
+    "HawkesEMResult",
+    "em_hawkes_exponential",
+    "simulate_hawkes_exponential",
     # wave_analysis (pure NumPy/SciPy)
     "reconstruct_kernel",
     "detect_wave_peaks",

@@ -208,6 +208,41 @@ Baddeley-Rubak-Turner 2015 §13.4 analytical correction
 `tests/extras/test_spatial_pseudo_likelihood.py` for the bias
 characterisation if you need calibrated intensity recovery.
 
+### Hawkes EM declustering (pure NumPy/SciPy)
+
+Pure-NumPy single-realisation EM for the univariate Hawkes process with
+an exponential triggering kernel (Veen-Schoenberg 2008; Marsan-Lengliné
+2008).  The algorithm exploits the **branching-structure** interpretation
+of the Hawkes process: every event is either spontaneous (parent = self,
+rate `mu`) or triggered by an earlier event `j` (kernel
+`alpha * exp(-beta * (t_i - t_j))`).  The E-step assigns soft
+responsibilities `p_ii` and `p_ij` from those rate weights; the M-step
+maximises the resulting `Q(theta)` in closed form for `mu`, `alpha`, and
+`beta` — no inner numerical optimisation.  This is the methodological
+opposite of the optional tick-backed `hawkes_bridge.fit_hawkes_exp`,
+which fits a multivariate Hawkes by SGD-style maximum-likelihood without
+recovering the latent parent assignments.
+
+| Symbol | Notes |
+|---|---|
+| `HawkesEMSpec(mu0=None, alpha0=0.5, beta0=1.0, max_iter=100, tol=1e-6)` | Frozen dataclass.  `mu0=None` auto-infers `N/T` at fit time.  Validates that `alpha0, beta0 > 0`, `mu0 > 0` (or `None`), `max_iter >= 1`, `tol > 0`; warns (`UserWarning`) when the initialisation is super-critical (`alpha0/beta0 >= 1`). |
+| `em_hawkes_exponential(event_times, T, *, spec=None, return_responsibilities=False)` → `HawkesEMResult` | Fits the Hawkes via Veen-Schoenberg EM.  Raises on empty input, unsorted event times, or `T <= event_times[-1]`.  Single-event input returns a degraded Poisson(`1/T`) result.  `return_responsibilities=True` lazy-imports `scipy.sparse` and attaches a lower-triangular CSR matrix where row `i` carries event `i`'s parent distribution. |
+| `HawkesEMResult` | Frozen dataclass: `mu_hat`, `alpha_hat`, `beta_hat`, `log_likelihood_trace` (per-iteration LL), `n_iter`, `converged`, `responsibilities` (CSR or `None`), and the `.branching_ratio` property (`alpha_hat / beta_hat`). |
+| `simulate_hawkes_exponential(mu, alpha, beta, T, *, rng)` → `(M,)` float64 | Ogata-thinning Hawkes simulator on `[0, T]`.  Raises `ValueError` on super-critical `alpha / beta >= 1` (expected event count is infinite). |
+
+**Memory caveat.**  The implementation materialises the full
+`(N, N)` time-difference matrix, so memory cost is `O(N^2)` — fine up
+to `N ≈ 5000` in dense NumPy, beyond which the tick-backed
+`hawkes_bridge.fit_hawkes_exp` (multivariate, stochastic-gradient inner
+loop) is the better choice even for the univariate case.
+
+**Identifiability caveat.**  The Hawkes log-likelihood is only weakly
+identified between the kernel amplitude `alpha` and decay `beta` on a
+single realisation — `alpha` and `beta` trade off along an iso-`alpha/beta`
+ridge.  The **branching ratio** `alpha/beta` exposed via
+`HawkesEMResult.branching_ratio` is by far the tightest summary; prefer
+it to the individual parameters when reporting recovered structure.
+
 ### Optional bridges (lazy import; raise an install hint if the dep is absent)
 
 | Symbol | Backend | Group |
@@ -495,3 +530,8 @@ catalogues can be inspected side-by-side.
   processes.* Biometrika 51(3-4):299-311.
 - Stein ML (1999). *Interpolation of Spatial Data: Some Theory for
   Kriging.* Springer.
+- Veen A, Schoenberg FP (2008). *Estimation of space-time branching
+  process models in seismology using an EM-type algorithm.* JASA
+  103(482):614-624.
+- Marsan D, Lengliné O (2008). *Extending earthquakes' reach through
+  cascading.* Science 319(5866):1076-1079.
