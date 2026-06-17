@@ -157,7 +157,9 @@
         "docs/figures/example08/fig07_history_kernels.png",
         "docs/figures/example08/fig08_decoder_baseline_vs_history.png",
         "docs/figures/example08/fig09_coupling_matrix.png",
-        "docs/figures/example08/fig10_decoder_baseline_vs_progression.png"
+        "docs/figures/example08/fig10_decoder_baseline_vs_progression.png",
+        "docs/figures/example08/fig11_per_cell_lag_ccf.png",
+        "docs/figures/example08/fig12_lag_corrected_comparison.png"
       ],
       "thumbnail_file": "docs/figures/example08/fig01_real_place_fields_panel.png",
       "sections": [
