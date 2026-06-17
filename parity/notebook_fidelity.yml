@@ -213,10 +213,12 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: The notebook now reproduces the hybrid-filter simulation,
-    single-run decoding, and averaged summary figures with real outputs; the Python
-    port still uses the current hybrid-filter implementation instead of every MATLAB-specific
-    reporting branch.
+  remaining_differences: The Python port loads the same paperHybridFilterExample.mat
+    fixture (state-space-driven kinematic reach at delta=0.001, Tmax=2s) and runs
+    the same PPHybridFilterLinear decoder in goal-directed and free modes that MATLAB
+    does. Spike-RNG-induced trial-to-trial variation is the only residual difference;
+    the canonical scenario, dynamics, and decoder match MATLAB to the gold-fixture's
+    precision.
   python_sections: 6
   python_expected_figures: 3
   python_uses_figure_tracker: true

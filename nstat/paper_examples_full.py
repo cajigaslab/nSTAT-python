@@ -716,54 +716,221 @@ def _hybrid_state_filter(spikes: np.ndarray, x: np.ndarray, dt: float, p_ij: np.
     return post
 
 
+def _load_hybrid_fixture(repo_root: Path) -> dict[str, object]:
+    """Load the MATLAB hybrid filter fixture (paperHybridFilterExample.mat).
+
+    Returns a dict with: time, delta, X (6×T), mstate (T,),
+    A (list of 2), Q (list of 2), p_ij (2×2), Px0 (list of 2), ind.
+    """
+    import scipy.io as sio
+
+    candidates = [
+        repo_root / "nstat" / "data" / "paperHybridFilterExample.mat",
+        repo_root / "helpfiles" / "paperHybridFilterExample.mat",
+    ]
+    mat_path = None
+    for p in candidates:
+        if p.exists() and p.stat().st_size > 200:  # skip LFS pointers
+            mat_path = p
+            break
+
+    if mat_path is None:
+        raise FileNotFoundError(
+            "Cannot find paperHybridFilterExample.mat fixture. "
+            "Ensure it is in nstat/data/ or helpfiles/."
+        )
+
+    f = sio.loadmat(str(mat_path))
+    time = f["time"].ravel().astype(float)
+    delta = float(f["delta"].ravel()[0])
+    X = f["X"].astype(float)  # (6, T)
+    mstate = f["mstate"].ravel().astype(int)  # (T,), values 1 or 2
+    p_ij = f["p_ij"].astype(float)  # (2, 2)
+
+    A_cell = f["A"]
+    Q_cell = f["Q"]
+    Px0_cell = f["Px0"]
+    ind_cell = f["ind"]
+
+    A = [A_cell[0, i].astype(float) for i in range(A_cell.shape[1])]
+    Q = [Q_cell[0, i].astype(float) for i in range(Q_cell.shape[1])]
+    Px0 = [Px0_cell[0, i].astype(float) for i in range(Px0_cell.shape[1])]
+    # ind: MATLAB 1-indexed → Python 0-indexed
+    ind = [ind_cell[0, i].ravel().astype(int) - 1 for i in range(ind_cell.shape[1])]
+
+    return {
+        "time": time,
+        "delta": delta,
+        "X": X,
+        "mstate": mstate,
+        "A": A,
+        "Q": Q,
+        "p_ij": p_ij,
+        "Px0": Px0,
+        "ind": ind,
+    }
+
+
+def _hybrid_simulate_binomial_spikes(
+    xState: np.ndarray,
+    muCoeffs: np.ndarray,
+    beta: np.ndarray,
+    rng: np.random.Generator,
+    delta: float = 0.001,
+) -> np.ndarray:
+    """Simulate binomial spikes from state, baseline, and tuning coefficients.
+
+    MATLAB-canonical encoder: lambda_c = exp(eta)/(1+exp(eta)) per time bin,
+    spikes drawn Bernoulli with p = lambda.  Mirrors
+    ``examples/paper/example05_decoding_ppaf_pphf.py::_simulate_binomial_spikes``.
+
+    Parameters
+    ----------
+    xState : (ns, T) array — kinematic state (position + velocity + accel).
+    muCoeffs : (C,) array — baseline log-odds per cell.
+    beta : (ns, C) array — per-state-dim tuning per cell.
+    rng : numpy Generator.
+    delta : float — bin width in seconds.
+
+    Returns
+    -------
+    dN : (C, T) array of {0,1} spike indicators.
+    """
+    T = xState.shape[1]
+    C = len(muCoeffs)
+    dataMat = np.column_stack([np.ones(T), xState.T])  # (T, 1+ns)
+    coeffs = np.column_stack([muCoeffs, beta.T])  # (C, 1+ns)
+    eta = dataMat @ coeffs.T  # (T, C)
+    eta = np.clip(eta, -20.0, 20.0)
+    expEta = np.exp(eta)
+    p = expEta / (1.0 + expEta)
+    return (rng.random(p.shape) < p).astype(float).T  # (C, T)
+
+
 def run_experiment6(
     repo_root: Path, seed: int = 37, *, return_payload: bool = False
 ) -> dict[str, float] | tuple[dict[str, float], dict[str, object]]:
-    del repo_root
+    """Hybrid Point Process Filter example — canonical MATLAB port.
+
+    Loads the bundled ``paperHybridFilterExample.mat`` fixture (delta=0.001,
+    Tmax=2 s, state-space-driven kinematic reach), simulates a 24-cell
+    binomial spike population with velocity tuning per Truccolo 2005,
+    and runs PPHybridFilterLinear in both goal-directed (with target)
+    and free (no target) modes.
+
+    Matches MATLAB helpfiles/HybridFilterExample.m lines 105-268.
+    """
     rng = np.random.default_rng(seed)
-    dt = 0.01
-    t = np.arange(0.0, 30.0, dt, dtype=float)
-    x_pos = 0.3 * np.sin(0.2 * t)
-    y_pos = 0.25 * np.cos(0.15 * t)
-    x_vel = np.gradient(x_pos, dt)
-    y_vel = np.gradient(y_pos, dt)
-    x = np.vstack([x_pos, y_pos, x_vel, y_vel])
-    mstate = np.where(np.sin(0.05 * t + 0.4) > 0.0, 1, 2).astype(int)
-    # Add mild stochasticity so state filter is non-trivial.
-    flip = rng.random(t.shape[0]) < 0.02
-    mstate[flip] = 3 - mstate[flip]
-    p_ij = np.array([[0.985, 0.015], [0.02, 0.98]], dtype=float)
 
+    fix = _load_hybrid_fixture(repo_root)
+    time = fix["time"]
+    delta = fix["delta"]
+    X = fix["X"]  # (6, T)
+    mstate = fix["mstate"]  # (T,), 1 or 2
+    p_ij = fix["p_ij"]
+    A_models = fix["A"]  # [A_hold (2×2), A_reach (6×6)]
+    Px0 = fix["Px0"]  # [Px0_hold (2×2), Px0_reach (6×6)]
+    ind = fix["ind"]  # [[0,1], [0,1,2,3,4,5]]
+    T = X.shape[1]
+
+    # Recompute Q from trajectory variance — MATLAB lines 197-202
+    nonMovingInd = np.where((X[4, :] == 0) & (X[5, :] == 0))[0]
+    movingInd = np.setdiff1d(np.arange(T), nonMovingInd)
+    Q_reach = np.diag(np.var(np.diff(X[:, movingInd], axis=1), axis=1))
+    Q_reach[:4, :4] = 0.0  # only acceleration carries noise
+    varNV = np.diag(np.var(np.diff(X[:, nonMovingInd], axis=1), axis=1))
+    Q_hold = varNV[:2, :2]
+    Q_models = [Q_hold, Q_reach]
+
+    dim_hold = A_models[0].shape[0]  # 2
+    dim_reach = A_models[1].shape[0]  # 6
+
+    # Encoding model — matches MATLAB lines 154-157 / 211-214
     n_cells = 24
-    spikes, wvx, wvy, b1, b2 = _simulate_hybrid_spikes(x, mstate, dt, n_cells=n_cells, seed=seed)
-    post = _hybrid_state_filter(spikes, x, dt, p_ij, wvx, wvy, b1, b2)
-    state_hat = np.argmax(post, axis=1) + 1
-    state_acc = np.mean(state_hat == mstate)
+    muCoeffs = np.log(10.0 * delta) + rng.standard_normal(n_cells)
+    beta_full = np.zeros((6, n_cells), dtype=float)
+    beta_full[2, :] = 10.0 * (rng.random(n_cells) - 0.5)  # vx tuning
+    beta_full[3, :] = 10.0 * (rng.random(n_cells) - 0.5)  # vy tuning
 
-    dx = DecodingAlgorithms.linear_decode(spikes, x[0, :])["decoded"]
-    dy = DecodingAlgorithms.linear_decode(spikes, x[1, :])["decoded"]
+    dN = _hybrid_simulate_binomial_spikes(X, muCoeffs, beta_full, rng, delta=delta)
+
+    # Initial / target conditions per mode — MATLAB lines 250-259
+    x0_list = [X[ind[0], 0], X[ind[1], 0]]
+    Pi0_list = Px0
+    yT_list = [X[ind[0], -1], X[ind[1], -1]]
+    piT_list = [1e-9 * np.eye(dim_hold), 1e-9 * np.eye(dim_reach)]
+    beta_hold = beta_full[ind[0], :]  # (2, C)
+    beta_reach = beta_full[ind[1], :]  # (6, C)
+    mu0 = np.array([0.5, 0.5])
+
+    # Goal-directed hybrid decode (with target)
+    S_est, X_est, _, MU_est, _, _, _ = DecodingAlgorithms.PPHybridFilterLinear(
+        A_models,
+        Q_models,
+        p_ij,
+        mu0,
+        dN,
+        [muCoeffs, muCoeffs],
+        [beta_hold, beta_reach],
+        "binomial",
+        delta,
+        None,
+        None,
+        x0_list,
+        Pi0_list,
+        yT_list,
+        piT_list,
+    )
+
+    # Free hybrid decode (no target)
+    S_estNT, X_estNT, _, MU_estNT, _, _, _ = DecodingAlgorithms.PPHybridFilterLinear(
+        A_models,
+        Q_models,
+        p_ij,
+        mu0,
+        dN,
+        [muCoeffs, muCoeffs],
+        [beta_hold, beta_reach],
+        "binomial",
+        delta,
+        None,
+        None,
+        x0_list,
+        Pi0_list,
+    )
+
     summary = {
-        "num_samples": float(x.shape[1]),
+        "num_samples": float(T),
         "num_cells": float(n_cells),
-        "state_accuracy": float(state_acc),
-        "decode_rmse_x": float(np.sqrt(np.mean((dx - x[0, :]) ** 2))),
-        "decode_rmse_y": float(np.sqrt(np.mean((dy - x[1, :]) ** 2))),
+        "state_accuracy": float(np.mean(S_est == mstate)),
+        "decode_rmse_x": float(np.sqrt(np.mean((X_est[0, :] - X[0, :]) ** 2))),
+        "decode_rmse_y": float(np.sqrt(np.mean((X_est[1, :] - X[1, :]) ** 2))),
     }
     if not return_payload:
         return summary
     payload = {
-        "time_s": t,
-        "x_pos": x[0, :],
-        "y_pos": x[1, :],
-        "x_vel": x[2, :],
-        "y_vel": x[3, :],
+        "time_s": time,
+        "x_pos": X[0, :],
+        "y_pos": X[1, :],
+        "x_vel": X[2, :],
+        "y_vel": X[3, :],
         "state_true": mstate.astype(float),
-        "state_hat": state_hat.astype(float),
-        "state_prob_1": post[:, 0],
-        "state_prob_2": post[:, 1],
-        "decoded_x": np.asarray(dx, dtype=float),
-        "decoded_y": np.asarray(dy, dtype=float),
-        "spikes": spikes,
+        "state_hat": S_est.astype(float),
+        "state_prob_1": MU_est[0, :],
+        "state_prob_2": MU_est[1, :],
+        "decoded_x": X_est[0, :],
+        "decoded_y": X_est[1, :],
+        "decoded_vx": X_est[2, :],
+        "decoded_vy": X_est[3, :],
+        "decoded_x_free": X_estNT[0, :],
+        "decoded_y_free": X_estNT[1, :],
+        "decoded_vx_free": X_estNT[2, :],
+        "decoded_vy_free": X_estNT[3, :],
+        "state_hat_free": S_estNT.astype(float),
+        "state_prob_2_free": MU_estNT[1, :],
+        "spikes": dN.T,  # (T, C) for notebook plotting
+        "n_cells": n_cells,
+        "delta": delta,
     }
     return summary, payload
 
