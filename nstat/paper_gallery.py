@@ -494,11 +494,13 @@ def render_galleries_index_html() -> str:
     parts.append("</section>")
     parts.append('<section class="example">')
     parts.append(
-        "<h2>Extras — coming next</h2>"
-        '<p class="muted">A future <code>extras_gallery.html</code> will showcase '
-        "every <code>nstat.extras.&lt;X&gt;</code> bridge with its demo-script "
-        "outputs, once the <code>examples/extras/*_demo.py</code> scripts "
-        "are standardized to emit figures via <code>--export-figures</code>.</p>"
+        '<h2><a href="extras_gallery.html">nstat.extras Demos</a></h2>'
+        '<p class="muted">Every <code>examples/extras/*_demo.py</code> script '
+        "registered in <code>examples/extras/manifest.yml</code> with per-figure "
+        "captions and analysis notes drawn from "
+        "<code>tools/extras_build/extras_descriptions.yml</code>.  "
+        "Figure-bearing demos show their <code>--export-figures</code> outputs; "
+        "validation/interop demos document the text-based assertions they exercise.</p>"
     )
     parts.append("</section>")
     parts.append("</div></body></html>")

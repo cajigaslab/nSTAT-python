@@ -1,0 +1,280 @@
+version: 1
+extras:
+  - demo_id: decoding_clusterless
+    overview: |
+      End-to-end exercise of ``nstat.extras.decoding.clusterless_bridge``
+      on a synthetic 1-D back-and-forth trajectory with sparse Poisson
+      marks across multiple electrodes.  Runs both the single-state
+      continuous decoder (``fit_clusterless_decoder``) and the
+      discrete-state classifier (``fit_clusterless_classifier``) so the
+      hybrid continuous/discrete latent-state replay model from
+      Denovellis 2021 is exercised in one shot.
+    goal: |
+      Fill the Tier 2.1 gap in ``parity/methods_roadmap.md`` — confirm
+      the JAX-backed clusterless replay decoder reproduces the spirit of
+      the classic PPAF / PPHF decode with marked observations.
+    figures: []
+
+  - demo_id: decoding_place_field
+    overview: |
+      Synthetic 3-cell place-cell trial: an OU random walk on the
+      unit interval drives three Gaussian-bump place fields, the
+      example08 pipeline (tensor-product B-spline encoder + quadratic
+      CIF refit + PPDecodeFilterLinear) is fit, and the decoded
+      trajectory plus the recovered place fields are plotted.
+    goal: |
+      Exercise the full example08 pipeline (``fit_place_field_decoder``)
+      on data that requires no figshare download — so anyone with a
+      fresh ``pip install nstat-toolbox`` can reproduce the place-field
+      encode-and-decode story.
+    figures:
+      - filename: fig01_decoded_trajectory.png
+        caption: |
+          Decoded position (blue) overlaid on the true OU-walk position
+          (black) over the 60 s trial, with the per-time-step posterior
+          standard deviation as a shaded band.
+        analysis: |
+          The decoded trace should track the OU walk closely inside the
+          shaded band whenever any of the three cells is active; gaps
+          flag time steps where no cell fires and the prior dominates.
+      - filename: fig02_place_fields.png
+        caption: |
+          Recovered tuning curves for the three synthetic cells (solid)
+          plotted against the Gaussian-bump ground truth (dashed), with
+          cell-centre markers from the B-spline GLM fit.
+        analysis: |
+          A close match of solid to dashed across the three centres
+          confirms the tensor-product B-spline basis is recovering the
+          true tuning; any mismatch at the edges is the usual basis
+          edge effect.
+
+  - demo_id: em_dynamax
+    overview: |
+      Walks through every routine in
+      ``nstat.extras.em.dynamax_bridge`` on synthetic fixtures with
+      known parameters: linear-Gaussian EM (KF_EM equivalent), CMGF
+      Poisson filter and smoother on a known Poisson-LGSSM, point-
+      process EM (PP_EM), hybrid Poisson+Gaussian EM (mPPCO_EM), and a
+      pure-NumPy held-out predictive log-likelihood.
+    goal: |
+      Close the AUDIT_REPORT.md §3.2 gap — provide an opt-in,
+      JAX-backed implementation of the 19 unported KF_EM / PP_EM /
+      mPPCO_EM MATLAB methods, plus the honest fit-quality metric
+      (predictive log-likelihood) on which all three EM workflows are
+      compared.
+    figures: []
+
+  - demo_id: interop_neo
+    overview: |
+      Builds a small ``nstat.nspikeTrain`` (3 spikes over a 2 s window),
+      converts it to ``neo.core.SpikeTrain``, round-trips back, and
+      packages a ``SpikeTrainCollection`` as a ``neo.core.Segment``.
+      The Segment is then ready for downstream consumption by
+      Elephant, SpikeInterface, or Brian2.
+    goal: |
+      Demonstrate the Neo bridge as the canonical hand-off between
+      nstat and the broader Neo ecosystem — round-trip integrity is the
+      regression-guard contract.
+    figures: []
+
+  - demo_id: interop_pynapple
+    overview: |
+      Builds a 10 s nstat ``nspikeTrain`` (50 Poisson spikes),
+      converts it to ``pynapple.Ts`` with the recording-window
+      ``IntervalSet``, restricts to ``[2, 5] s`` using pynapple's
+      epoch-math operators, and converts back to ``nspikeTrain`` with
+      the sub-epoch as support.
+    goal: |
+      Demonstrate that the pynapple bridge survives the most common
+      pynapple workflow (IntervalSet restriction) without losing the
+      recording-window metadata.
+    figures: []
+
+  - demo_id: interop_nwb
+    overview: |
+      Constructs a synthetic in-memory NWB file with 3 units (each
+      observed over ``[0, 10] s``), then converts its ``units`` table
+      to a ``SpikeTrainCollection`` two ways: (a) by resolving the
+      ``obs_intervals`` column, and (b) with an explicit
+      ``time_window=(t0, t1)`` override that silences the fallback
+      warning.
+    goal: |
+      Document the two supported NWB-window-resolution paths so
+      downstream pipelines (Allen, DANDI, OpenScope) know which path
+      applies to their file layout.
+    figures: []
+
+  - demo_id: latents_gpfa
+    overview: |
+      Simulates 4 multi-trial Poisson-spike datasets driven by a
+      shared 2-D smooth latent (two sinusoids at different frequencies),
+      fits GPFA with ``x_dim=2`` via the Elephant bridge, then prints a
+      recovery summary (final log-likelihood, best |Pearson r| of any
+      recovered latent vs the ground-truth latents).
+    goal: |
+      Confirm the GPFA bridge recovers a known shared smooth latent
+      across trials — the Yu et al. 2009 baseline result reproduced on
+      synthetic data.
+    figures:
+      - filename: fig01_latent_trajectories.png
+        caption: |
+          One subplot per simulated trial, each showing the two
+          recovered latent dimensions (coloured lines) over the trial
+          window.
+        analysis: |
+          Coherent shape across trials in each latent dimension
+          confirms GPFA is recovering the shared sinusoidal signal and
+          not over-fitting to per-trial noise.
+
+  - demo_id: metrics_spike_distances
+    overview: |
+      Simulates 5 inhomogeneous-Poisson spike trains with shared 0.5 Hz
+      sinusoidal rate modulation (so they're partially synchronous),
+      then computes the pairwise SPIKE-distance matrix via PySpike.
+      Exercises every scalar metric (``isi_distance``,
+      ``spike_distance``, ``spike_synchronization``) plus the
+      population-level ``pairwise_spike_distance_matrix``.
+    goal: |
+      Document the Kreuz-family pairwise distance metrics on a population
+      where the answer is known by construction — partial synchrony
+      driven by a shared rate modulation should show a structured but
+      not block-diagonal distance matrix.
+    figures: []
+
+  - demo_id: spatial_cluster_cox
+    overview: |
+      Simulates a Thomas process (Gaussian offspring, Thomas 1949) and
+      a Matérn-cluster process (uniform-disc offspring, Matérn 1986) on
+      the unit square, then recovers ``(sigma, lambda_p)`` and
+      ``(R, lambda_p)`` from each pattern via Diggle's (2013 §6.2.1)
+      minimum-contrast estimator on the SOIRS pair correlation.
+    goal: |
+      Exercise the cluster-Cox catalogue and minimum-contrast inference
+      shipped in ``nstat.extras.spatial`` — confirm that the two cluster
+      kernels are distinguishable from realised patterns and that the
+      offspring scale recovers within sampling error.
+    figures:
+      - filename: fig01_thomas_scatter.png
+        caption: |
+          Realised Thomas-process pattern on the unit square — each
+          coloured cluster groups offspring around an unobserved
+          parent location with isotropic Gaussian displacement.
+        analysis: |
+          Tight, roughly circular clusters confirm the Gaussian
+          offspring kernel; cluster radius previews the recovered
+          ``sigma``.
+      - filename: fig02_thomas_pcf.png
+        caption: |
+          Empirical pair-correlation function (PCF) of the Thomas
+          pattern (solid) overlaid on the Thomas-PCF model fit at the
+          minimum-contrast estimate ``(sigma_hat, lambda_p_hat)``
+          (dashed) and the Poisson null ``g(r) = 1`` (thin grey).
+        analysis: |
+          The model curve hugging the empirical PCF at short range and
+          relaxing to one at long range confirms the minimum-contrast
+          fit recovered the offspring scale.
+      - filename: fig03_matern_scatter.png
+        caption: |
+          Realised Matérn-cluster pattern on the unit square — uniform
+          offspring inside discs of radius ``R`` around unobserved
+          parent locations.
+        analysis: |
+          Sharper disc boundaries than fig01 reflect the uniform-disc
+          kernel; the disc radius previews the recovered ``R``.
+      - filename: fig04_matern_pcf.png
+        caption: |
+          Empirical PCF of the Matérn-cluster pattern (solid) overlaid
+          on the Matérn-cluster model fit at
+          ``(R_hat, lambda_p_hat)`` (dashed) and the Poisson null
+          (thin grey).
+        analysis: |
+          The PCF drop to one at ``r = 2 * R_hat`` is the signature of
+          the uniform-disc kernel — a useful eye-test for the
+          recovered radius.
+
+  - demo_id: spatial_gibbs
+    overview: |
+      Simulates a Strauss process at ``gamma = 0.4`` (mild inhibition)
+      via birth-death, a hard-core process at ``beta = 60`` via dart-
+      throwing rejection (deliberately below the packing-fraction
+      failure mode and the Berman-Turner numerical envelope), and an
+      area-interaction process at ``eta = 4.0`` (clustering) via
+      birth-death.  Each pattern is then refit via
+      :func:`nstat.extras.spatial.pseudo_likelihood_fit`.
+    goal: |
+      Exercise the Gibbs interaction catalogue and the Berman-Turner
+      pseudo-likelihood fitter (Berman-Turner 1992; Baddeley-Turner
+      2000) end-to-end (simulate then recover), and surface the
+      documented upward bias on the hard-core intensity plus the weak
+      identification of the area-interaction ``eta``.
+    figures:
+      - filename: fig01_strauss_scatter.png
+        caption: |
+          Realised Strauss pattern on the unit square at
+          ``gamma = 0.4`` — points repel softly at distances under the
+          interaction radius.
+        analysis: |
+          Visually sparser than a Poisson pattern at the same
+          intensity; nearest-neighbour gaps preview the recovered
+          ``gamma``.
+      - filename: fig02_hardcore_scatter.png
+        caption: |
+          Realised hard-core pattern on the unit square at
+          ``beta = 60``, drawn by dart-throwing rejection sampling.
+        analysis: |
+          Hard nearest-neighbour exclusion produces a roughly regular
+          tiling; the intercept-only Berman-Turner GLM is known to
+          overshoot ``beta`` here — the ``hardcore-bias`` note in the
+          script's stdout reports the expected magnitude.
+      - filename: fig03_area_interaction_scatter.png
+        caption: |
+          Realised area-interaction pattern at ``eta = 4.0`` — points
+          attract via overlap of the union-of-discs sufficient
+          statistic.
+        analysis: |
+          Visible clustering vs the Poisson null; the area-interaction
+          ``eta`` is weakly identified from a single realisation, so
+          the recovery is noisier than the Strauss/Thomas cases.
+
+  - demo_id: validation_nemos
+    overview: |
+      Generates a synthetic Poisson GLM fixture (n=1000, p=3) with
+      known intercept and coefficients, fits the same model with
+      ``nstat.fit_poisson_glm`` and ``nemos.glm.GLM``, and reports the
+      coefficient agreement via the
+      :meth:`GLMComparison.assert_agree` regression-guard hook.
+    goal: |
+      Tier 1 cross-validation of nstat's Poisson GLM against an
+      independent JAX-backed implementation (NeMoS uses optax first-
+      order optimisation, unlike nstat's IRLS), confirming the two
+      converge on the same optimum within ``atol``.
+    figures: []
+
+  - demo_id: validation_pykalman
+    overview: |
+      Simulates a 2-state linear-Gaussian process over 100 time steps,
+      fits the Kalman filter (and lag-``(T-1)`` augmented-state
+      smoother) in both nstat and pykalman, then surfaces the
+      documented disagreement budget (~2.6e-3 on filtered means from
+      the ``t=0`` initialisation convention; ~0.4 on smoothed means
+      from AUDIT D3, augmented-state finite lag vs full-window RTS).
+    goal: |
+      Document the empirical baselines under which
+      :meth:`KalmanComparison.assert_filtered_agree` and
+      :meth:`assert_smoothed_agree` can be used as parity hooks
+      without becoming flaky regression guards.
+    figures: []
+
+  - demo_id: validation_statsmodels
+    overview: |
+      Generates the same synthetic Poisson GLM fixture as the NeMoS
+      demo, fits with both ``nstat.fit_poisson_glm`` and
+      ``statsmodels.api.GLM`` (Poisson family), and reports the
+      coefficient agreement.  Because both fitters use IRLS, the
+      synthetic-fixture agreement is ~1e-9 — the tightest
+      cross-validation oracle in :mod:`nstat.extras.validation`.
+    goal: |
+      Pin the IRLS-vs-IRLS Poisson-GLM agreement at near machine
+      precision so any regression in nstat's IRLS path is caught
+      immediately.
+    figures: []

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>nstat.extras — runnable demo gallery</title>
+<style>:root{--bg:#0f1419;--card:#1a1f29;--ink:#e6e6e6;--ink-2:#9aa4b1;--accent:#7ee787;--accent-2:#58a6ff;--border:#30363d;}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}.wrap{max-width:1100px;margin:0 auto;padding:2rem 1.25rem 3rem;}header{border-bottom:1px solid var(--border);padding-bottom:1.25rem;margin-bottom:1.5rem;}h1{margin:0 0 .35rem;font-size:1.6rem;color:var(--accent);}h2{margin:2rem 0 .75rem;font-size:1.2rem;color:var(--accent-2);border-top:1px solid var(--border);padding-top:1.25rem;}h3{margin:1.25rem 0 .35rem;font-size:1rem;color:var(--ink);}p{margin:.4rem 0;color:var(--ink);}.muted{color:var(--ink-2);font-size:.9rem;}.tag{display:inline-block;background:#0b0e14;color:var(--accent);padding:.05rem .4rem;border-radius:3px;font-size:.75rem;margin-left:.4rem;}code,pre{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85rem;background:#0b0e14;color:var(--accent);padding:.1rem .3rem;border-radius:3px;}pre{padding:.75rem 1rem;overflow-x:auto;border:1px solid var(--border);}nav.toc{background:var(--card);border:1px solid var(--border);padding:.75rem 1rem;border-radius:6px;margin-bottom:1.5rem;font-size:.9rem;}nav.toc a{color:var(--accent-2);text-decoration:none;margin-right:.9rem;}nav.toc a:hover{text-decoration:underline;}.example{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.5rem;margin:1.25rem 0;}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem;margin-top:.75rem;}.gallery figure{margin:0;background:#0b0e14;border:1px solid var(--border);border-radius:4px;padding:.5rem;}.gallery img{width:100%;height:auto;display:block;border-radius:2px;}.gallery figcaption{font-size:.78rem;color:var(--ink-2);margin-top:.4rem;word-break:break-word;}.gallery .analysis{font-size:.78rem;color:var(--ink);margin-top:.3rem;}.placeholder{padding:1rem;color:var(--ink-2);font-size:.8rem;background:#0b0e14;border:1px dashed var(--border);border-radius:4px;text-align:center;}a{color:var(--accent-2);}footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--ink-2);font-size:.85rem;}</style>
+</head><body><div class="wrap">
+<header>
+<h1>nstat.extras — runnable demo gallery</h1>
+<p class="muted">Every <code>examples/extras/*_demo.py</code> script registered in <code>examples/extras/manifest.yml</code>, with the figure outputs each demo produces (when applicable) and a short description of what every figure shows.  Auto-generated from <code>tools/extras_build/extras_descriptions.yml</code> — re-render with <code>python tools/extras_build/build_extras_gallery.py</code> after editing the descriptions.</p>
+</header>
+<nav class="toc"><strong>Demos:</strong> 
+<a href="#decoding_clusterless">decoding_clusterless</a> · <a href="#decoding_place_field">decoding_place_field</a> · <a href="#em_dynamax">em_dynamax</a> · <a href="#interop_neo">interop_neo</a> · <a href="#interop_pynapple">interop_pynapple</a> · <a href="#interop_nwb">interop_nwb</a> · <a href="#latents_gpfa">latents_gpfa</a> · <a href="#metrics_spike_distances">metrics_spike_distances</a> · <a href="#spatial_cluster_cox">spatial_cluster_cox</a> · <a href="#spatial_gibbs">spatial_gibbs</a> · <a href="#validation_nemos">validation_nemos</a> · <a href="#validation_pykalman">validation_pykalman</a> · <a href="#validation_statsmodels">validation_statsmodels</a></nav>
+<section class="example" id="decoding_clusterless">
+<h2>Clusterless point-process decoding + trajectory classification</h2>
+<p><strong>Question:</strong> Does the JAX-backed clusterless replay decoder reproduce the PPAF/PPHF state-space decode on synthetic 1-D marks?</p>
+<p><strong>Goal:</strong> Fill the Tier 2.1 gap in ``parity/methods_roadmap.md`` — confirm
+the JAX-backed clusterless replay decoder reproduces the spirit of
+the classic PPAF / PPHF decode with marked observations.</p>
+<p class="muted">End-to-end exercise of ``nstat.extras.decoding.clusterless_bridge``
+on a synthetic 1-D back-and-forth trajectory with sparse Poisson
+marks across multiple electrodes.  Runs both the single-state
+continuous decoder (``fit_clusterless_decoder``) and the
+discrete-state classifier (``fit_clusterless_classifier``) so the
+hybrid continuous/discrete latent-state replay model from
+Denovellis 2021 is exercised in one shot.</p>
+<p><strong>Run:</strong> <code>python examples/extras/decoding_clusterless_demo.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_clusterless_demo.py">Script</a></p>
+<div class="placeholder">(no figure output — this is a text-based validation/interop demo; run the script for console output)</div>
+</section>
+<section class="example" id="decoding_place_field">
+<h2>2-D place-field encoding + PPAF decoding via ``fit_place_field_decoder``</h2>
+<p><strong>Question:</strong> Can the example08 pipeline (B-spline encoder + quadratic CIF refit + PPDecodeFilterLinear) recover an OU random walk from a 3-cell synthetic trial without figshare data?</p>
+<p><strong>Goal:</strong> Exercise the full example08 pipeline (``fit_place_field_decoder``)
+on data that requires no figshare download — so anyone with a
+fresh ``pip install nstat-toolbox`` can reproduce the place-field
+encode-and-decode story.</p>
+<p class="muted">Synthetic 3-cell place-cell trial: an OU random walk on the
+unit interval drives three Gaussian-bump place fields, the
+example08 pipeline (tensor-product B-spline encoder + quadratic
+CIF refit + PPDecodeFilterLinear) is fit, and the decoded
+trajectory plus the recovered place fields are plotted.</p>
+<p><strong>Run:</strong> <code>python examples/extras/decoding_place_field_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_place_field_demo.py">Script</a></p>
+<div class="gallery">
+<figure><div class="placeholder"><code>fig01_decoded_trajectory.png</code><br>(run <code>python examples/extras/decoding_place_field_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig01_decoded_trajectory.png</strong><br>Decoded position (blue) overlaid on the true OU-walk position
+(black) over the 60 s trial, with the per-time-step posterior
+standard deviation as a shaded band.</figcaption><div class="analysis">The decoded trace should track the OU walk closely inside the
+shaded band whenever any of the three cells is active; gaps
+flag time steps where no cell fires and the prior dominates.</div></figure>
+<figure><div class="placeholder"><code>fig02_place_fields.png</code><br>(run <code>python examples/extras/decoding_place_field_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig02_place_fields.png</strong><br>Recovered tuning curves for the three synthetic cells (solid)
+plotted against the Gaussian-bump ground truth (dashed), with
+cell-centre markers from the B-spline GLM fit.</figcaption><div class="analysis">A close match of solid to dashed across the three centres
+confirms the tensor-product B-spline basis is recovering the
+true tuning; any mismatch at the edges is the usual basis
+edge effect.</div></figure>
+</div>
+</section>
+<section class="example" id="em_dynamax">
+<h2>KF_EM / PP_EM / mPPCO_EM equivalents via the Dynamax bridge</h2>
+<p><strong>Question:</strong> Do the JAX-backed EM routines recover the AUDIT_REPORT.md §3.2 KF_EM / PP_EM / mPPCO_EM workflow on synthetic linear-Gaussian, Poisson, and hybrid fixtures?</p>
+<p><strong>Goal:</strong> Close the AUDIT_REPORT.md §3.2 gap — provide an opt-in,
+JAX-backed implementation of the 19 unported KF_EM / PP_EM /
+mPPCO_EM MATLAB methods, plus the honest fit-quality metric
+(predictive log-likelihood) on which all three EM workflows are
+compared.</p>
+<p class="muted">Walks through every routine in
+``nstat.extras.em.dynamax_bridge`` on synthetic fixtures with
+known parameters: linear-Gaussian EM (KF_EM equivalent), CMGF
+Poisson filter and smoother on a known Poisson-LGSSM, point-
+process EM (PP_EM), hybrid Poisson+Gaussian EM (mPPCO_EM), and a
+pure-NumPy held-out predictive log-likelihood.</p>
+<p><strong>Run:</strong> <code>python examples/extras/em_dynamax_demo.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/em_dynamax_demo.py">Script</a></p>
+<div class="placeholder">(no figure output — this is a text-based validation/interop demo; run the script for console output)</div>
+</section>
+<section class="example" id="interop_neo">
+<h2>nstat ↔ Neo round-trip and Segment construction</h2>
+<p><strong>Question:</strong> Does ``nspikeTrain`` round-trip through ``neo.core.SpikeTrain`` preserving spike times, recording window, and name, and can a ``SpikeTrainCollection`` be packaged as a ``neo.core.Segment`` for Elephant / SpikeInterface?</p>
+<p><strong>Goal:</strong> Demonstrate the Neo bridge as the canonical hand-off between
+nstat and the broader Neo ecosystem — round-trip integrity is the
+regression-guard contract.</p>
+<p class="muted">Builds a small ``nstat.nspikeTrain`` (3 spikes over a 2 s window),
+converts it to ``neo.core.SpikeTrain``, round-trips back, and
+packages a ``SpikeTrainCollection`` as a ``neo.core.Segment``.
+The Segment is then ready for downstream consumption by
+Elephant, SpikeInterface, or Brian2.</p>
+<p><strong>Run:</strong> <code>python examples/extras/interop_neo_demo.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/interop_neo_demo.py">Script</a></p>
+<div class="placeholder">(no figure output — this is a text-based validation/interop demo; run the script for console output)</div>
+</section>
+<section class="example" id="interop_pynapple">
+<h2>nstat ↔ pynapple round-trip with IntervalSet epoch math</h2>
+<p><strong>Question:</strong> Does the pynapple bridge round-trip a ``nspikeTrain`` through ``pynapple.Ts`` and preserve the recording window when ``IntervalSet`` epoch restriction is composed?</p>
+<p><strong>Goal:</strong> Demonstrate that the pynapple bridge survives the most common
+pynapple workflow (IntervalSet restriction) without losing the
+recording-window metadata.</p>
+<p class="muted">Builds a 10 s nstat ``nspikeTrain`` (50 Poisson spikes),
+converts it to ``pynapple.Ts`` with the recording-window
+``IntervalSet``, restricts to ``[2, 5] s`` using pynapple's
+epoch-math operators, and converts back to ``nspikeTrain`` with
+the sub-epoch as support.</p>
+<p><strong>Run:</strong> <code>python examples/extras/interop_pynapple_demo.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/interop_pynapple_demo.py">Script</a></p>
+<div class="placeholder">(no figure output — this is a text-based validation/interop demo; run the script for console output)</div>
+</section>
+<section class="example" id="interop_nwb">
+<h2>Read an NWB file into a ``SpikeTrainCollection``</h2>
+<p><strong>Question:</strong> Does the NWB bridge resolve per-unit observation windows from ``obs_intervals`` and honour an explicit ``time_window=`` override?</p>
+<p><strong>Goal:</strong> Document the two supported NWB-window-resolution paths so
+downstream pipelines (Allen, DANDI, OpenScope) know which path
+applies to their file layout.</p>
+<p class="muted">Constructs a synthetic in-memory NWB file with 3 units (each
+observed over ``[0, 10] s``), then converts its ``units`` table
+to a ``SpikeTrainCollection`` two ways: (a) by resolving the
+``obs_intervals`` column, and (b) with an explicit
+``time_window=(t0, t1)`` override that silences the fallback
+warning.</p>
+<p><strong>Run:</strong> <code>python examples/extras/interop_nwb_demo.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/interop_nwb_demo.py">Script</a></p>
+<div class="placeholder">(no figure output — this is a text-based validation/interop demo; run the script for console output)</div>
+</section>
+<section class="example" id="latents_gpfa">
+<h2>Gaussian-Process Factor Analysis (Yu et al. 2009) via the Elephant bridge</h2>
+<p><strong>Question:</strong> Does the Elephant-backed GPFA bridge recover a known shared 2-D smooth latent from 4 multi-trial Poisson populations?</p>
+<p><strong>Goal:</strong> Confirm the GPFA bridge recovers a known shared smooth latent
+across trials — the Yu et al. 2009 baseline result reproduced on
+synthetic data.</p>
+<p class="muted">Simulates 4 multi-trial Poisson-spike datasets driven by a
+shared 2-D smooth latent (two sinusoids at different frequencies),
+fits GPFA with ``x_dim=2`` via the Elephant bridge, then prints a
+recovery summary (final log-likelihood, best |Pearson r| of any
+recovered latent vs the ground-truth latents).</p>
+<p><strong>Run:</strong> <code>python examples/extras/latents_gpfa_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/latents_gpfa_demo.py">Script</a></p>
+<div class="gallery">
+<figure><div class="placeholder"><code>fig01_latent_trajectories.png</code><br>(run <code>python examples/extras/latents_gpfa_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig01_latent_trajectories.png</strong><br>One subplot per simulated trial, each showing the two
+recovered latent dimensions (coloured lines) over the trial
+window.</figcaption><div class="analysis">Coherent shape across trials in each latent dimension
+confirms GPFA is recovering the shared sinusoidal signal and
+not over-fitting to per-trial noise.</div></figure>
+</div>
+</section>
+<section class="example" id="metrics_spike_distances">
+<h2>ISI / SPIKE / SPIKE-synchronization metrics on a 5-train population</h2>
+<p><strong>Question:</strong> Do the PySpike-backed pairwise spike-distance metrics agree on a 5-train inhomogeneous-Poisson population with shared rate modulation?</p>
+<p><strong>Goal:</strong> Document the Kreuz-family pairwise distance metrics on a population
+where the answer is known by construction — partial synchrony
+driven by a shared rate modulation should show a structured but
+not block-diagonal distance matrix.</p>
+<p class="muted">Simulates 5 inhomogeneous-Poisson spike trains with shared 0.5 Hz
+sinusoidal rate modulation (so they're partially synchronous),
+then computes the pairwise SPIKE-distance matrix via PySpike.
+Exercises every scalar metric (``isi_distance``,
+``spike_distance``, ``spike_synchronization``) plus the
+population-level ``pairwise_spike_distance_matrix``.</p>
+<p><strong>Run:</strong> <code>python examples/extras/metrics_spike_distances_demo.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/metrics_spike_distances_demo.py">Script</a></p>
+<div class="placeholder">(no figure output — this is a text-based validation/interop demo; run the script for console output)</div>
+</section>
+<section class="example" id="spatial_cluster_cox">
+<h2>Cluster Cox processes + minimum-contrast estimation</h2>
+<p><strong>Question:</strong> Can the Diggle 2013 minimum-contrast estimator recover the offspring scale and parent intensity of a simulated Thomas / Matérn-cluster process on the unit square?</p>
+<p><strong>Goal:</strong> Exercise the cluster-Cox catalogue and minimum-contrast inference
+shipped in ``nstat.extras.spatial`` — confirm that the two cluster
+kernels are distinguishable from realised patterns and that the
+offspring scale recovers within sampling error.</p>
+<p class="muted">Simulates a Thomas process (Gaussian offspring, Thomas 1949) and
+a Matérn-cluster process (uniform-disc offspring, Matérn 1986) on
+the unit square, then recovers ``(sigma, lambda_p)`` and
+``(R, lambda_p)`` from each pattern via Diggle's (2013 §6.2.1)
+minimum-contrast estimator on the SOIRS pair correlation.</p>
+<p><strong>Run:</strong> <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/spatial_cluster_cox_demo.py">Script</a></p>
+<div class="gallery">
+<figure><div class="placeholder"><code>fig01_thomas_scatter.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig01_thomas_scatter.png</strong><br>Realised Thomas-process pattern on the unit square — each
+coloured cluster groups offspring around an unobserved
+parent location with isotropic Gaussian displacement.</figcaption><div class="analysis">Tight, roughly circular clusters confirm the Gaussian
+offspring kernel; cluster radius previews the recovered
+``sigma``.</div></figure>
+<figure><div class="placeholder"><code>fig02_thomas_pcf.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig02_thomas_pcf.png</strong><br>Empirical pair-correlation function (PCF) of the Thomas
+pattern (solid) overlaid on the Thomas-PCF model fit at the
+minimum-contrast estimate ``(sigma_hat, lambda_p_hat)``
+(dashed) and the Poisson null ``g(r) = 1`` (thin grey).</figcaption><div class="analysis">The model curve hugging the empirical PCF at short range and
+relaxing to one at long range confirms the minimum-contrast
+fit recovered the offspring scale.</div></figure>
+<figure><div class="placeholder"><code>fig03_matern_scatter.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig03_matern_scatter.png</strong><br>Realised Matérn-cluster pattern on the unit square — uniform
+offspring inside discs of radius ``R`` around unobserved
+parent locations.</figcaption><div class="analysis">Sharper disc boundaries than fig01 reflect the uniform-disc
+kernel; the disc radius previews the recovered ``R``.</div></figure>
+<figure><div class="placeholder"><code>fig04_matern_pcf.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig04_matern_pcf.png</strong><br>Empirical PCF of the Matérn-cluster pattern (solid) overlaid
+on the Matérn-cluster model fit at
+``(R_hat, lambda_p_hat)`` (dashed) and the Poisson null
+(thin grey).</figcaption><div class="analysis">The PCF drop to one at ``r = 2 * R_hat`` is the signature of
+the uniform-disc kernel — a useful eye-test for the
+recovered radius.</div></figure>
+</div>
+</section>
+<section class="example" id="spatial_gibbs">
+<h2>Gibbs interaction processes + Berman-Turner pseudo-likelihood</h2>
+<p><strong>Question:</strong> Can the Berman-Turner pseudo-likelihood recover ``(beta, gamma)``, ``beta``, and ``(beta, eta)`` for Strauss, hard-core, and area-interaction processes simulated by birth-death and rejection samplers?</p>
+<p><strong>Goal:</strong> Exercise the Gibbs interaction catalogue and the Berman-Turner
+pseudo-likelihood fitter (Berman-Turner 1992; Baddeley-Turner
+2000) end-to-end (simulate then recover), and surface the
+documented upward bias on the hard-core intensity plus the weak
+identification of the area-interaction ``eta``.</p>
+<p class="muted">Simulates a Strauss process at ``gamma = 0.4`` (mild inhibition)
+via birth-death, a hard-core process at ``beta = 60`` via dart-
+throwing rejection (deliberately below the packing-fraction
+failure mode and the Berman-Turner numerical envelope), and an
+area-interaction process at ``eta = 4.0`` (clustering) via
+birth-death.  Each pattern is then refit via
+:func:`nstat.extras.spatial.pseudo_likelihood_fit`.</p>
+<p><strong>Run:</strong> <code>python examples/extras/spatial_gibbs_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/spatial_gibbs_demo.py">Script</a></p>
+<div class="gallery">
+<figure><div class="placeholder"><code>fig01_strauss_scatter.png</code><br>(run <code>python examples/extras/spatial_gibbs_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig01_strauss_scatter.png</strong><br>Realised Strauss pattern on the unit square at
+``gamma = 0.4`` — points repel softly at distances under the
+interaction radius.</figcaption><div class="analysis">Visually sparser than a Poisson pattern at the same
+intensity; nearest-neighbour gaps preview the recovered
+``gamma``.</div></figure>
+<figure><div class="placeholder"><code>fig02_hardcore_scatter.png</code><br>(run <code>python examples/extras/spatial_gibbs_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig02_hardcore_scatter.png</strong><br>Realised hard-core pattern on the unit square at
+``beta = 60``, drawn by dart-throwing rejection sampling.</figcaption><div class="analysis">Hard nearest-neighbour exclusion produces a roughly regular
+tiling; the intercept-only Berman-Turner GLM is known to
+overshoot ``beta`` here — the ``hardcore-bias`` note in the
+script's stdout reports the expected magnitude.</div></figure>
+<figure><div class="placeholder"><code>fig03_area_interaction_scatter.png</code><br>(run <code>python examples/extras/spatial_gibbs_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig03_area_interaction_scatter.png</strong><br>Realised area-interaction pattern at ``eta = 4.0`` — points
+attract via overlap of the union-of-discs sufficient
+statistic.</figcaption><div class="analysis">Visible clustering vs the Poisson null; the area-interaction
+``eta`` is weakly identified from a single realisation, so
+the recovery is noisier than the Strauss/Thomas cases.</div></figure>
+</div>
+</section>
+<section class="example" id="validation_nemos">
+<h2>Cross-validate nstat's Poisson GLM against NeMoS</h2>
+<p><strong>Question:</strong> Do ``nstat.fit_poisson_glm`` and ``nemos.glm.GLM`` agree on the recovered Poisson-GLM coefficients for a known synthetic fixture?</p>
+<p><strong>Goal:</strong> Tier 1 cross-validation of nstat's Poisson GLM against an
+independent JAX-backed implementation (NeMoS uses optax first-
+order optimisation, unlike nstat's IRLS), confirming the two
+converge on the same optimum within ``atol``.</p>
+<p class="muted">Generates a synthetic Poisson GLM fixture (n=1000, p=3) with
+known intercept and coefficients, fits the same model with
+``nstat.fit_poisson_glm`` and ``nemos.glm.GLM``, and reports the
+coefficient agreement via the
+:meth:`GLMComparison.assert_agree` regression-guard hook.</p>
+<p><strong>Run:</strong> <code>python examples/extras/validation_nemos_demo.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/validation_nemos_demo.py">Script</a></p>
+<div class="placeholder">(no figure output — this is a text-based validation/interop demo; run the script for console output)</div>
+</section>
+<section class="example" id="validation_pykalman">
+<h2>Cross-validate nstat's Kalman filter against pykalman</h2>
+<p><strong>Question:</strong> How closely do nstat's Kalman filter and augmented-state lag smoother match pykalman's filter and full-window RTS smoother on a 2-state linear-Gaussian fixture?</p>
+<p><strong>Goal:</strong> Document the empirical baselines under which
+:meth:`KalmanComparison.assert_filtered_agree` and
+:meth:`assert_smoothed_agree` can be used as parity hooks
+without becoming flaky regression guards.</p>
+<p class="muted">Simulates a 2-state linear-Gaussian process over 100 time steps,
+fits the Kalman filter (and lag-``(T-1)`` augmented-state
+smoother) in both nstat and pykalman, then surfaces the
+documented disagreement budget (~2.6e-3 on filtered means from
+the ``t=0`` initialisation convention; ~0.4 on smoothed means
+from AUDIT D3, augmented-state finite lag vs full-window RTS).</p>
+<p><strong>Run:</strong> <code>python examples/extras/validation_pykalman_demo.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/validation_pykalman_demo.py">Script</a></p>
+<div class="placeholder">(no figure output — this is a text-based validation/interop demo; run the script for console output)</div>
+</section>
+<section class="example" id="validation_statsmodels">
+<h2>Cross-validate nstat's Poisson GLM against statsmodels</h2>
+<p><strong>Question:</strong> How tightly do nstat's IRLS Poisson GLM and statsmodels's IRLS Poisson GLM agree on a synthetic well-conditioned fixture?</p>
+<p><strong>Goal:</strong> Pin the IRLS-vs-IRLS Poisson-GLM agreement at near machine
+precision so any regression in nstat's IRLS path is caught
+immediately.</p>
+<p class="muted">Generates the same synthetic Poisson GLM fixture as the NeMoS
+demo, fits with both ``nstat.fit_poisson_glm`` and
+``statsmodels.api.GLM`` (Poisson family), and reports the
+coefficient agreement.  Because both fitters use IRLS, the
+synthetic-fixture agreement is ~1e-9 — the tightest
+cross-validation oracle in :mod:`nstat.extras.validation`.</p>
+<p><strong>Run:</strong> <code>python examples/extras/validation_statsmodels_demo.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/validation_statsmodels_demo.py">Script</a></p>
+<div class="placeholder">(no figure output — this is a text-based validation/interop demo; run the script for console output)</div>
+</section>
+<footer>
+<p>Source: <a href="https://github.com/cajigaslab/nSTAT-python">cajigaslab/nSTAT-python</a> · License: GPL-2.0 · Paper: <a href="https://pubmed.ncbi.nlm.nih.gov/22981419/">Cajigas, Malik &amp; Brown 2012, J Neurosci Methods</a></p>
+</footer>
+</div></body></html>

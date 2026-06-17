@@ -60,10 +60,13 @@ test-no-paper:  ## Full suite minus slow paper-example tests.
 
 # --- regenerated artifacts ------------------------------------------
 
-regen: regen-gallery regen-parity regen-notebook-fidelity  ## Regenerate all CI-drift-checked artifacts.
+regen: regen-gallery regen-extras-gallery regen-parity regen-notebook-fidelity  ## Regenerate all CI-drift-checked artifacts.
 
 regen-gallery:  ## docs/paper_examples.md + docs/figures/manifest.json + README table.
 	$(PY) tools/paper_examples/build_gallery.py
+
+regen-extras-gallery:  ## docs/extras_gallery.html + regenerated docs/galleries.html.
+	$(PY) tools/extras_build/build_extras_gallery.py
 
 regen-parity:  ## parity/report.md from parity manifests.
 	$(PY) tools/parity/build_report.py
