@@ -32,6 +32,7 @@ gotchas, and links to the runnable demos under ``examples/extras/``.
    extras/em_dynamax
    extras/decoding_clusterless
    extras/spatial_point_processes
+   extras/latents_gpfa
 
 
 .. currentmodule:: nstat.extras
@@ -97,3 +98,12 @@ Spatial — spatial & spatiotemporal point processes
    spatial.marked_gof
    spatial.hawkes_bridge
    spatial.dpp_bridge
+
+
+Latents — latent-variable / dimensionality-reduction bridges
+------------------------------------------------------------
+
+.. autosummary::
+   :toctree: _autosummary
+
+   latents.gpfa_bridge

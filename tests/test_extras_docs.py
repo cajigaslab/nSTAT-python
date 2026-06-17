@@ -57,6 +57,8 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "inference": "spatial_point_processes",
     "gibbs": "spatial_point_processes",
     "hawkes_em": "spatial_point_processes",
+    # latents/
+    "gpfa_bridge": "latents_gpfa",
 }
 
 
@@ -275,6 +277,7 @@ def test_every_help_file_links_to_its_example_script() -> None:
         "metrics_spike_distances": "metrics_spike_distances_demo",
         "em_dynamax": "em_dynamax_demo",
         "decoding_clusterless": "decoding_clusterless_demo",
+        "latents_gpfa": "latents_gpfa_demo",
     }
     missing_links: list[tuple[str, str]] = []
     for doc_stem, example_stem in DOC_TO_EXAMPLE.items():

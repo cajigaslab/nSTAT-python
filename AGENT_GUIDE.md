@@ -579,6 +579,43 @@ Python projects" table in `README.md` for install commands.
   `notebooks/MultitypeCrossK.ipynb`.
 - **Not** distributed.  All routines are single-process NumPy / SciPy.
 
+### Latents — Gaussian-Process Factor Analysis (`nstat.extras.latents`)
+
+- **Subpackage scope.**  `nstat.extras.latents` ships latent-dynamics /
+  dimensionality-reduction bridges.  Pure Python-only extensions; no
+  MATLAB nSTAT counterpart.  Install via
+  `pip install nstat-toolbox[latents]` (pulls Elephant + Neo +
+  quantities, ~50 MB).
+- **GPFA bridge.**  `nstat.extras.latents.gpfa_bridge` wraps
+  `elephant.gpfa.GPFA` (Yu et al. 2009, *J. Neurophysiol.* 102(1)) —
+  smooth low-dimensional latent trajectories from simultaneous multi-
+  trial spike trains.  Three public symbols (re-exported at
+  `nstat.extras.latents`):
+  - `GPFAConfig(x_dim, bin_size_s=0.02, em_max_iter=500, em_tol=1e-8,
+    min_var_frac=0.01)` — frozen dataclass with `__post_init__`
+    validation.
+  - `fit_gpfa(spike_trains, *, config=None, seed=None) -> GPFAResult` —
+    main entry point.  Accepts `list[Trial]` (native nstat) or
+    `list[list[neo.SpikeTrain]]` (Elephant native shape); requires
+    `>=2` trials (covariance estimation is degenerate on a single
+    trial).
+  - `GPFAResult(latent_trajectories, x_dim, bin_size_s, n_trials,
+    log_likelihood, elephant_model)` — per-trial latents stored as
+    `(n_bins, x_dim)` (nstat `(time, feature)` convention; Elephant's
+    native `(x_dim, n_bins)` is transposed inside the bridge).
+    `elephant_model` is the fitted `elephant.gpfa.GPFA` instance,
+    exposed so callers can re-`transform()` held-out data without
+    re-wrapping.
+- **Seed semantics.**  Elephant's GPFA consumes the legacy module-level
+  numpy RNG (no `rng=` parameter).  `seed=` on `fit_gpfa` wraps the fit
+  in `np.random.get_state()` / `set_state()` so it's reproducible AND
+  the caller's RNG context is preserved on exit — the sole exception
+  to the `default_rng`-only convention.
+- **Demo.**  `examples/extras/latents_gpfa_demo.py` runs a 4-trial
+  synthetic recovery with a 2-D sinusoidal ground-truth latent;
+  details and gotchas in
+  [`docs/extras/latents_gpfa.md`](docs/extras/latents_gpfa.md).
+
 ---
 
 ## 6. Data flow patterns

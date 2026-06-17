@@ -52,7 +52,7 @@ META_GROUPS = frozenset({"all-extras", "dev"})
 #   pure-NumPy/SciPy ``nstat.extras.spatial`` module, so they are not part
 #   of the always-installable core surface.
 HEAVY_OPT_OUT_OF_ALL_EXTRAS = frozenset(
-    {"dynamax", "clusterless", "spatial-gp", "hawkes", "dpp"}
+    {"dynamax", "clusterless", "spatial-gp", "hawkes", "dpp", "latents"}
 )
 
 
@@ -196,6 +196,8 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
         # modules need none (see CORE_NO_DEP_MODULES below).
         "hawkes_bridge": "hawkes",
         "dpp_bridge": "dpp",
+        # latents/
+        "gpfa_bridge": "latents",
     }
 
     # Pure-NumPy/SciPy extras modules that depend only on the core
