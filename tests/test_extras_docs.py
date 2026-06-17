@@ -58,6 +58,7 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "inference": "spatial_point_processes",
     "gibbs": "spatial_point_processes",
     "hawkes_em": "spatial_point_processes",
+    "sbm_hawkes": "spatial_point_processes",
     # latents/
     "gpfa_bridge": "latents_gpfa",
 }

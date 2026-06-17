@@ -219,6 +219,7 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
             "inference",
             "gibbs",
             "hawkes_em",
+            "sbm_hawkes",
             "place_field_decoder",
         }
     )
