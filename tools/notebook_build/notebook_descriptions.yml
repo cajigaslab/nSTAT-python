@@ -1308,3 +1308,31 @@ notebooks:
       Show that the Bartlett spectrum localises a known planar wave
       vector on a small electrode grid.
     figures: []
+
+  - topic: RealPlaceCellDecoding
+    overview: |
+      Narrative walkthrough of `example08_real_place_cells`: load
+      Animal 1 from the figshare paper dataset, fit a 4-cell
+      tensor-product B-spline Poisson GLM on the training half, refit
+      a quadratic CIF per cell for the PPAF decoder, and run the
+      held-out spatial pair-correlation against the inhomogeneous-
+      Poisson global-rank envelope plus the population
+      discrete-time-corrected rescaled-time ACF.
+    goal: |
+      Exercise the full `nstat.extras.spatial` encoding-to-decoding
+      pipeline on real hippocampal place cells with two honest
+      goodness-of-fit diagnostics.
+    figures: []
+
+  - topic: MultitypeCrossK
+    overview: |
+      Two-label synthetic demo of `cross_k_inhom` and
+      `cross_pair_correlation` (Baddeley-Moller-Waagepetersen 2000):
+      contrast an independent two-label Poisson pattern against a
+      shared-parent Thomas-cluster pattern, then plot both summary
+      statistics with their bivariate Poisson nulls.
+    goal: |
+      Show that the multitype K and g statistics detect cross-
+      attraction at the cluster-kernel scale while collapsing to the
+      bivariate Poisson null under independent labelling.
+    figures: []

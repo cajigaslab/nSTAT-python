@@ -96,3 +96,9 @@ notebooks:
 - topic: HawkesWaveAnalysis
   file: notebooks/HawkesWaveAnalysis.ipynb
   run_group: smoke
+- topic: RealPlaceCellDecoding
+  file: notebooks/RealPlaceCellDecoding.ipynb
+  run_group: smoke
+- topic: MultitypeCrossK
+  file: notebooks/MultitypeCrossK.ipynb
+  run_group: smoke

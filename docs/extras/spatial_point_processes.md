@@ -299,6 +299,21 @@ compute its `bartlett_spectrum`, run `detect_wave_peaks` to surface a
 `reconstruct_kernel` to visualize the parametric exponential kernel
 underlying the fit.
 
+The full encoding-then-decoding loop on real spikes lives in
+[`examples/paper/example08_real_place_cells.py`](../../examples/paper/example08_real_place_cells.py)
+with the companion notebook
+[`notebooks/RealPlaceCellDecoding.ipynb`](../../notebooks/RealPlaceCellDecoding.ipynb).
+The script loads Animal 1 of the figshare paper dataset, fits a
+4-cell B-spline Poisson GLM on the training half, decodes position
+with the PPAF on the held-out half, and runs `pair_correlation` plus
+`global_envelope` (Ripley isotropic) and the population
+`rescaled_acf` (Bartlett band) as a held-out goodness-of-fit suite.
+The multitype cross-correlation pipeline is exercised by
+[`notebooks/MultitypeCrossK.ipynb`](../../notebooks/MultitypeCrossK.ipynb),
+which contrasts an independent two-type Poisson labelling with a
+Thomas-clustered shared-parent labelling under `cross_k_inhom` and
+`cross_pair_correlation` (Baddeley-Moller-Waagepetersen 2000).
+
 ## Scope
 
 | Feature | Status |

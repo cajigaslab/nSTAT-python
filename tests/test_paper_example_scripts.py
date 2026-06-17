@@ -21,6 +21,7 @@ EXPECTED_SCRIPT_NAMES = {
     "example05_decoding_ppaf_pphf",
     "example06_place_fields_glm_basis",
     "example07_spatiotemporal_hawkes_waves",
+    "example08_real_place_cells",
 }
 
 
@@ -31,7 +32,7 @@ def test_paper_example_manifest_covers_canonical_scripts() -> None:
     assert names == EXPECTED_SCRIPT_NAMES
     assert [row["example_id"] for row in entries] == [
         "example01", "example02", "example03", "example04", "example05",
-        "example06", "example07",
+        "example06", "example07", "example08",
     ]
 
 

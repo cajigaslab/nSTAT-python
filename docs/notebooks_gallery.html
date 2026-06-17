@@ -9,7 +9,7 @@
 <p class="muted">Every notebook registered in <code>tools/notebook_build/notebook_manifest.yml</code>, with the figure outputs each produces and a short description of what every figure shows.  Auto-generated from <code>notebook_descriptions.yml</code> — re-render with <code>python tools/paper_examples/build_gallery.py</code> after editing the descriptions.</p>
 </header>
 <nav class="toc"><strong>Notebooks:</strong> 
-<a href="#00_getting_started">00_getting_started</a> · <a href="#AnalysisExamples">AnalysisExamples</a> · <a href="#ConfigCollExamples">ConfigCollExamples</a> · <a href="#CovCollExamples">CovCollExamples</a> · <a href="#CovariateExamples">CovariateExamples</a> · <a href="#DecodingExample">DecodingExample</a> · <a href="#DecodingExampleWithHist">DecodingExampleWithHist</a> · <a href="#EventsExamples">EventsExamples</a> · <a href="#ExplicitStimulusWhiskerData">ExplicitStimulusWhiskerData</a> · <a href="#FitResSummaryExamples">FitResSummaryExamples</a> · <a href="#FitResultExamples">FitResultExamples</a> · <a href="#HippocampalPlaceCellExample">HippocampalPlaceCellExample</a> · <a href="#HistoryExamples">HistoryExamples</a> · <a href="#NetworkTutorial">NetworkTutorial</a> · <a href="#PPSimExample">PPSimExample</a> · <a href="#PPThinning">PPThinning</a> · <a href="#PSTHEstimation">PSTHEstimation</a> · <a href="#SignalObjExamples">SignalObjExamples</a> · <a href="#StimulusDecode2D">StimulusDecode2D</a> · <a href="#TrialConfigExamples">TrialConfigExamples</a> · <a href="#TrialExamples">TrialExamples</a> · <a href="#ValidationDataSet">ValidationDataSet</a> · <a href="#mEPSCAnalysis">mEPSCAnalysis</a> · <a href="#nSTATPaperExamples">nSTATPaperExamples</a> · <a href="#nSpikeTrainExamples">nSpikeTrainExamples</a> · <a href="#nstCollExamples">nstCollExamples</a> · <a href="#AnalysisExamples2">AnalysisExamples2</a> · <a href="#ConfidenceIntervalOverview">ConfidenceIntervalOverview</a> · <a href="#FitResultReference">FitResultReference</a> · <a href="#HybridFilterExample">HybridFilterExample</a> · <a href="#PlaceFieldGLMBasis">PlaceFieldGLMBasis</a> · <a href="#HawkesWaveAnalysis">HawkesWaveAnalysis</a></nav>
+<a href="#00_getting_started">00_getting_started</a> · <a href="#AnalysisExamples">AnalysisExamples</a> · <a href="#ConfigCollExamples">ConfigCollExamples</a> · <a href="#CovCollExamples">CovCollExamples</a> · <a href="#CovariateExamples">CovariateExamples</a> · <a href="#DecodingExample">DecodingExample</a> · <a href="#DecodingExampleWithHist">DecodingExampleWithHist</a> · <a href="#EventsExamples">EventsExamples</a> · <a href="#ExplicitStimulusWhiskerData">ExplicitStimulusWhiskerData</a> · <a href="#FitResSummaryExamples">FitResSummaryExamples</a> · <a href="#FitResultExamples">FitResultExamples</a> · <a href="#HippocampalPlaceCellExample">HippocampalPlaceCellExample</a> · <a href="#HistoryExamples">HistoryExamples</a> · <a href="#NetworkTutorial">NetworkTutorial</a> · <a href="#PPSimExample">PPSimExample</a> · <a href="#PPThinning">PPThinning</a> · <a href="#PSTHEstimation">PSTHEstimation</a> · <a href="#SignalObjExamples">SignalObjExamples</a> · <a href="#StimulusDecode2D">StimulusDecode2D</a> · <a href="#TrialConfigExamples">TrialConfigExamples</a> · <a href="#TrialExamples">TrialExamples</a> · <a href="#ValidationDataSet">ValidationDataSet</a> · <a href="#mEPSCAnalysis">mEPSCAnalysis</a> · <a href="#nSTATPaperExamples">nSTATPaperExamples</a> · <a href="#nSpikeTrainExamples">nSpikeTrainExamples</a> · <a href="#nstCollExamples">nstCollExamples</a> · <a href="#AnalysisExamples2">AnalysisExamples2</a> · <a href="#ConfidenceIntervalOverview">ConfidenceIntervalOverview</a> · <a href="#FitResultReference">FitResultReference</a> · <a href="#HybridFilterExample">HybridFilterExample</a> · <a href="#PlaceFieldGLMBasis">PlaceFieldGLMBasis</a> · <a href="#HawkesWaveAnalysis">HawkesWaveAnalysis</a> · <a href="#RealPlaceCellDecoding">RealPlaceCellDecoding</a> · <a href="#MultitypeCrossK">MultitypeCrossK</a></nav>
 <section class="example" id="00_getting_started">
 <h2>00_getting_started<span class="tag">smoke</span></h2>
 <p><strong>Goal:</strong> Confirm a fresh `pip install nstat-toolbox` reproduces the core spike
@@ -759,6 +759,34 @@ wave-vector peaks by greedy non-maximum suppression. The 6x6
 electrode grid is acknowledged to be coarse, undersampling the
 embedded wave.</p>
 <p><strong>Notebook:</strong> <code>notebooks/HawkesWaveAnalysis.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/HawkesWaveAnalysis.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="RealPlaceCellDecoding">
+<h2>RealPlaceCellDecoding<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Exercise the full `nstat.extras.spatial` encoding-to-decoding
+pipeline on real hippocampal place cells with two honest
+goodness-of-fit diagnostics.</p>
+<p class="muted">Narrative walkthrough of `example08_real_place_cells`: load
+Animal 1 from the figshare paper dataset, fit a 4-cell
+tensor-product B-spline Poisson GLM on the training half, refit
+a quadratic CIF per cell for the PPAF decoder, and run the
+held-out spatial pair-correlation against the inhomogeneous-
+Poisson global-rank envelope plus the population
+discrete-time-corrected rescaled-time ACF.</p>
+<p><strong>Notebook:</strong> <code>notebooks/RealPlaceCellDecoding.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/RealPlaceCellDecoding.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="MultitypeCrossK">
+<h2>MultitypeCrossK<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Show that the multitype K and g statistics detect cross-
+attraction at the cluster-kernel scale while collapsing to the
+bivariate Poisson null under independent labelling.</p>
+<p class="muted">Two-label synthetic demo of `cross_k_inhom` and
+`cross_pair_correlation` (Baddeley-Moller-Waagepetersen 2000):
+contrast an independent two-label Poisson pattern against a
+shared-parent Thomas-cluster pattern, then plot both summary
+statistics with their bivariate Poisson nulls.</p>
+<p><strong>Notebook:</strong> <code>notebooks/MultitypeCrossK.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/MultitypeCrossK.ipynb">Source</a></p>
 <p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
 </section>
 <footer>

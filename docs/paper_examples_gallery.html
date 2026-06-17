@@ -9,7 +9,7 @@
 <p class="muted">Every <code>examples/paper/*.py</code> script registered in <code>examples/paper/manifest.yml</code>, with the figure outputs each produces.  Auto-generated from the manifest — re-render with <code>python tools/paper_examples/build_gallery.py</code>.</p>
 </header>
 <nav class="toc"><strong>Examples:</strong> 
-<a href="#example01">Example 01</a> · <a href="#example02">Example 02</a> · <a href="#example03">Example 03</a> · <a href="#example04">Example 04</a> · <a href="#example05">Example 05</a> · <a href="#example06">Example 06</a> · <a href="#example07">Example 07</a></nav>
+<a href="#example01">Example 01</a> · <a href="#example02">Example 02</a> · <a href="#example03">Example 03</a> · <a href="#example04">Example 04</a> · <a href="#example05">Example 05</a> · <a href="#example06">Example 06</a> · <a href="#example07">Example 07</a> · <a href="#example08">Example 08</a></nav>
 <section class="example" id="example01">
 <h2>Example 01: mEPSC Poisson Models Under Constant and Washout Magnesium</h2>
 <p><strong>Question:</strong> Do mEPSCs follow constant vs piecewise Poisson firing under Mg2+ washout?</p>
@@ -94,6 +94,18 @@
 <figure><img src="figures/example07/fig01_adjacency_and_positions.png" alt="fig01_adjacency_and_positions.png" loading="lazy"><figcaption>fig01_adjacency_and_positions.png</figcaption></figure>
 <figure><img src="figures/example07/fig02_bartlett_spectrum.png" alt="fig02_bartlett_spectrum.png" loading="lazy"><figcaption>fig02_bartlett_spectrum.png</figcaption></figure>
 <figure><img src="figures/example07/fig03_detected_peaks_overlay.png" alt="fig03_detected_peaks_overlay.png" loading="lazy"><figcaption>fig03_detected_peaks_overlay.png</figcaption></figure>
+</div>
+</section>
+<section class="example" id="example08">
+<h2>Example 08: Real Place-Cell Encoding-and-Decoding With Held-Out Spatial GoF</h2>
+<p><strong>Question:</strong> Does a B-spline Poisson GLM trained on real hippocampal place cells produce a held-out spatial pair-correlation inside the inhomogeneous global-rank envelope, and a population rescaled-time ACF inside the Bartlett band?</p>
+<p class="muted">Loads Animal 1 from the figshare paper dataset, fits a 4-cell B-spline Poisson GLM, decodes position with PPDecodeFilter on a 2-D random walk, and runs pair_correlation + global_envelope (isotropic) and rescaled_acf on the held-out half.</p>
+<p><strong>Run:</strong> <code>python examples/paper/example08_real_place_cells.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/paper/example08_real_place_cells.py">Script</a> · <a href="figures/example08/">Figures directory</a></p>
+<div class="gallery">
+<figure><img src="figures/example08/fig01_real_place_fields_panel.png" alt="fig01_real_place_fields_panel.png" loading="lazy"><figcaption>fig01_real_place_fields_panel.png</figcaption></figure>
+<figure><img src="figures/example08/fig02_decoded_vs_true_position.png" alt="fig02_decoded_vs_true_position.png" loading="lazy"><figcaption>fig02_decoded_vs_true_position.png</figcaption></figure>
+<figure><img src="figures/example08/fig03_pair_correlation_envelope.png" alt="fig03_pair_correlation_envelope.png" loading="lazy"><figcaption>fig03_pair_correlation_envelope.png</figcaption></figure>
+<figure><img src="figures/example08/fig04_rescaled_acf.png" alt="fig04_rescaled_acf.png" loading="lazy"><figcaption>fig04_rescaled_acf.png</figcaption></figure>
 </div>
 </section>
 <footer>

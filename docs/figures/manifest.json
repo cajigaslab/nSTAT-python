@@ -138,6 +138,25 @@
       "sections": [
         "experiment7"
       ]
+    },
+    {
+      "example_id": "example08",
+      "title": "Real Place-Cell Encoding-and-Decoding With Held-Out Spatial GoF",
+      "source_script": "examples/paper/example08_real_place_cells.py",
+      "description": "Loads Animal 1 from the figshare paper dataset, fits a 4-cell B-spline Poisson GLM, decodes position with PPDecodeFilter on a 2-D random walk, and runs pair_correlation + global_envelope (isotropic) and rescaled_acf on the held-out half.",
+      "question": "Does a B-spline Poisson GLM trained on real hippocampal place cells produce a held-out spatial pair-correlation inside the inhomogeneous global-rank envelope, and a population rescaled-time ACF inside the Bartlett band?",
+      "run_command": "python examples/paper/example08_real_place_cells.py",
+      "figure_dir": "docs/figures/example08",
+      "figure_files": [
+        "docs/figures/example08/fig01_real_place_fields_panel.png",
+        "docs/figures/example08/fig02_decoded_vs_true_position.png",
+        "docs/figures/example08/fig03_pair_correlation_envelope.png",
+        "docs/figures/example08/fig04_rescaled_acf.png"
+      ],
+      "thumbnail_file": "docs/figures/example08/fig01_real_place_fields_panel.png",
+      "sections": [
+        "experiment8"
+      ]
     }
   ]
 }
