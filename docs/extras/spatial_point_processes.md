@@ -174,6 +174,40 @@ and the natural targets for the minimum-contrast estimator below.
 2015 §7.4), so they handle the small-`r` `NaN` band correctly without
 extra plumbing.
 
+### Gibbs interaction processes (pure NumPy/SciPy)
+
+Inhibitory or interactive point patterns whose Papangelou conditional
+intensity factors into a log-linear form — fit via the Berman-Turner
+device (Baddeley-Rubak-Turner 2015 §13.5) by reformulating
+pseudo-likelihood as a weighted Poisson GLM and delegating to
+[`nstat.glm.fit_poisson_glm`](../api.html#nstat.glm.fit_poisson_glm).
+Companion to the cluster-Cox attractive models above.
+
+| Symbol | Notes |
+|---|---|
+| `GibbsStrauss(beta, gamma, interaction_radius)` | Strauss (1975): pairwise interaction `γ ∈ (0, 1]` on pairs within `R`.  `γ = 1` recovers Poisson; `γ < 1` repels.  Frozen dataclass; rejects `γ > 1` at construction (use `fit_thomas` for clustered data). |
+| `HardcoreProcess(beta, hardcore_radius)` | The `γ → 0` limit of Strauss — forbids pairs closer than `R`. |
+| `AreaInteractionProcess(beta, eta, interaction_radius)` | Baddeley-van Lieshout (1995): higher-order Widom-Rowlinson interaction on the union of `R`-discs. |
+| `simulate_strauss_birth_death(process, window, *, n_steps=5000, pixel_resolution=256, rng)` → `(n, 2)` | Metropolis birth-death sampler with conditional-intensity acceptance.  Defaults match Møller-Waagepetersen 2003 §10.4 mixing recommendations. |
+| `simulate_hardcore_rejection(process, window, *, max_attempts=1_000_000, rng)` → `(n, 2)` | Dart-throwing rejection; raises `RuntimeError("…; consider simulate_strauss_birth_death with γ ≈ 0…")` if it cannot place a target-Poisson(β·\|W\|) count after `max_attempts`. |
+| `pseudo_likelihood_fit(points, process, domain, *, n_dummies=None)` → `GibbsFitResult` | Berman-Turner fit.  Uses the equivalent `Y = z` (indicator) form with `offset = log(w)` — algebraically identical to the literal `Y = y/w` weighted formulation but numerically stable (Baddeley-Rubak-Turner 2015 §13.5 eq. 13.21).  Default `n_dummies = max(4·len(points), 1000)`. |
+| `GibbsFitResult` | Frozen dataclass: `theta_hat`, `glm_result` (the underlying `PoissonGLMResult`), `process_kind`, `interaction_radius`, `n_data`, `n_dummies`. |
+
+`pseudo_likelihood_fit` emits `UserWarning("data appears clustered;
+consider fit_thomas")` when the unclipped Strauss `γ` estimate exceeds
+1, then clips to the valid `(0, 1]` interval.  For `AreaInteractionProcess`,
+both the simulator and the fitter require `R ≥ 2 · pixel_size` to keep
+the discretised disc-union integrals well-defined.
+
+The hardcore intensity estimator is upward-biased (median ≈ 40% at
+small `R` for the dart-throwing simulator): the intercept-only GLM
+over-attributes activity to unexcluded quadrature area.  The
+Baddeley-Rubak-Turner 2015 §13.4 analytical correction
+`β̂ / (1 − π R² λ̂)` closes the gap but is not applied automatically
+— check the test docstring in
+`tests/extras/test_spatial_pseudo_likelihood.py` for the bias
+characterisation if you need calibrated intensity recovery.
+
 ### Optional bridges (lazy import; raise an install hint if the dep is absent)
 
 | Symbol | Backend | Group |

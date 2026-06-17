@@ -519,6 +519,31 @@ Python projects" table in `README.md` for install commands.
   intensity_parent)` or `(radius, intensity_parent)`; `mu_offspring`
   does not enter the pair correlation, so derive it post-hoc as
   `n / (lambda_p_hat * |W|)`).
+  Three **Gibbs interaction models** live in
+  `nstat.extras.spatial.gibbs` — the *repulsive / inhibitory*
+  counterpart to the cluster Cox catalogue.  Frozen dataclasses
+  `GibbsStrauss(beta, gamma, R)` (Strauss 1975), `HardcoreProcess(beta,
+  R)` (Strauss limit `gamma -> 0`), and `AreaInteractionProcess(beta,
+  eta, R)` (Widom-Rowlinson 1970; Baddeley-van Lieshout 1995) carry the
+  parameters; `simulate_strauss_birth_death(process, window, *,
+  n_steps=5000, pixel_resolution=256, rng)` runs a Metropolis-Hastings
+  birth-death chain (Geyer 1999) for both Strauss and area-interaction
+  (dispatched on the dataclass type) with a 50% burn-in, and
+  `simulate_hardcore_rejection(process, window, *, rng, max_attempts=
+  10000)` does dart-throwing for the hard-core process (raising with the
+  documented birth-death fallback hint if acceptance drops below
+  10%).  `pseudo_likelihood_fit(points, model_type, window, *, R,
+  n_dummy_per_event=10, l2=1e-6, pixel_resolution=256, rng=None)` fits
+  any of the three by the Berman-Turner (1992) reformulation of the
+  Besag (1977) pseudo-likelihood as a Poisson GLM — solved by
+  composition with `nstat.glm.fit_poisson_glm` (it is the only
+  `nstat.glm` consumer in the spatial extras).  Returns a
+  `GibbsFitResult(model_type, params, R, pseudo_log_likelihood, n_data,
+  n_dummy, glm_result)`; the PLL is recomputed from
+  `glm_result.coefficients`, NOT read off the GLM's optimizer state.
+  Strauss fits emit `UserWarning("data appears clustered; consider
+  fit_thomas")` when the raw `gamma` exceeds 1, and `gamma` is clipped
+  to 1 in the returned `params`.
   End-to-end demos: `examples/paper/example06_place_fields_glm_basis.py`,
   `examples/paper/example07_spatiotemporal_hawkes_waves.py`,
   `examples/paper/example08_real_place_cells.py`; companion
