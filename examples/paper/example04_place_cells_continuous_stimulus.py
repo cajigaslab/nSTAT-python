@@ -386,9 +386,10 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
 
             # Gaussian field
             ax = axesG[row, col]
+            im_g = None
             try:
                 field_g = _compute_place_field(coeffs_g, design_gauss[:, :coeffs_g.size], grid_shape, sr)
-                ax.pcolormesh(xx, yy, field_g, shading="gouraud", cmap="jet")
+                im_g = ax.pcolormesh(xx, yy, field_g, shading="gouraud", cmap="jet")
             except Exception:
                 pass
             ax.set_aspect("equal")
@@ -398,12 +399,16 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
             ax.spines["right"].set_visible(False)
             ax.spines["left"].set_visible(False)
             ax.spines["bottom"].set_visible(False)
+            if im_g is not None:
+                figG.colorbar(im_g, ax=ax, fraction=0.046, pad=0.04,
+                              label="Firing Rate [Hz]")
 
             # Zernike field
             ax = axesZ[row, col]
+            im_z = None
             try:
                 field_z = _compute_place_field(coeffs_z, design_zern[:, :coeffs_z.size], grid_shape, sr)
-                ax.pcolormesh(xx, yy, field_z, shading="gouraud", cmap="jet")
+                im_z = ax.pcolormesh(xx, yy, field_z, shading="gouraud", cmap="jet")
             except Exception:
                 pass
             ax.set_aspect("equal")
@@ -413,6 +418,9 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
             ax.spines["right"].set_visible(False)
             ax.spines["left"].set_visible(False)
             ax.spines["bottom"].set_visible(False)
+            if im_z is not None:
+                figZ.colorbar(im_z, ax=ax, fraction=0.046, pad=0.04,
+                              label="Firing Rate [Hz]")
 
         # Hide unused subplots
         for i in range(nCells, nRows * nCols):
