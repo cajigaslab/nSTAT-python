@@ -1165,6 +1165,102 @@ fig.suptitle(
     &quot;velocity-augmented (speed as extrinsic covariate)&quot;
 )
 fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig07_history_kernels.png" alt="fig07_history_kernels.png" loading="lazy"><figcaption>fig07_history_kernels.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+axes = axes.ravel()
+for i in range(min(n_cells, 4)):
+    ax = axes[i]
+    coefs = np.asarray(history_coefs[i], dtype=float).reshape(-1)
+    colors = [&quot;tab:red&quot; if v &lt; 0 else &quot;tab:blue&quot; for v in coefs]
+    ax.bar(
+        range(coefs.size), coefs,
+        color=colors, edgecolor=&quot;k&quot;, lw=0.8,
+    )
+    ax.axhline(0.0, color=&quot;k&quot;, lw=0.8, alpha=0.8)
+    ax.set_xticks(range(coefs.size))
+    ax.set_xticklabels(labels, rotation=20, ha=&quot;right&quot;, fontsize=8)
+    ax.set_xlabel(&quot;history window&quot;)
+    ax.set_ylabel(&quot;coefficient (gamma)&quot;)
+    ax.set_title(
+        f&quot;Cell #{cell_indices[i] + 1} — spike-history filter &quot;
+        f&quot;(encoder Poisson GLM gammas)&quot;
+    )
+    ax.grid(True, alpha=0.3, axis=&quot;y&quot;)
+    # Annotate each bar with its value for at-a-glance reading.
+    for x_pos, val, w in zip(range(coefs.size), coefs, widths_ms):
+        del w
+        ax.text(
+            x_pos, val + 0.02 * np.sign(val) if val != 0 else 0.02,
+            f&quot;{val:+.2f}&quot;,
+            ha=&quot;center&quot;, va=&quot;bottom&quot; if val &gt;= 0 else &quot;top&quot;,
+            fontsize=8,
+        )
+for j in range(n_cells, 4):
+    axes[j].axis(&quot;off&quot;)
+fig.suptitle(
+    &quot;Example 08 (history model) — per-cell spike-history filter &quot;
+    &quot;(refractoriness in early windows, recovery in late windows)&quot;
+)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig08_decoder_baseline_vs_history.png" alt="fig08_decoder_baseline_vs_history.png" loading="lazy"><figcaption>fig08_decoder_baseline_vs_history.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(1, 2, figsize=(12.5, 5.0))
+
+# Panel 1: 3-bar comparison (or 2-bar if velocity unavailable).
+ax_bar = axes[0]
+if velocity_rmse is not None:
+    labels = [&quot;baseline&quot;, &quot;+ velocity&quot;, &quot;+ history&quot;]
+    values = [baseline_rmse, velocity_rmse, history_rmse]
+    colors = [&quot;0.55&quot;, &quot;tab:orange&quot;, &quot;tab:blue&quot;]
+else:
+    labels = [&quot;baseline&quot;, &quot;+ history&quot;]
+    values = [baseline_rmse, history_rmse]
+    colors = [&quot;0.55&quot;, &quot;tab:blue&quot;]
+bars = ax_bar.bar(
+    labels, values, color=colors, edgecolor=&quot;k&quot;, lw=1.0,
+)
+for bar, val in zip(bars, values):
+    ax_bar.text(
+        bar.get_x() + bar.get_width() / 2.0,
+        bar.get_height() + 0.005,
+        f&quot;{val:.3f}&quot;,
+        ha=&quot;center&quot;, va=&quot;bottom&quot;, fontsize=10,
+    )
+improvement_pct = 100.0 * (baseline_rmse - history_rmse) / baseline_rmse
+sign = &quot;+&quot; if improvement_pct &gt;= 0.0 else &quot;&quot;
+ax_bar.set_ylabel(&quot;position RMSE (box units)&quot;)
+direction = &quot;improvement&quot; if improvement_pct &gt;= 0.0 else &quot;regression&quot;
+ax_bar.set_title(
+    f&quot;Held-out RMSE progression — history vs baseline: &quot;
+    f&quot;{sign}{improvement_pct:.1f}% ({direction})&quot;
+)
+ax_bar.set_ylim(0.0, max(values) * 1.20)
+ax_bar.grid(True, alpha=0.3, axis=&quot;y&quot;)
+
+# Panel 2: per-bin error scatter (baseline x, history y).
+ax_sc = axes[1]
+lim_hi = float(
+    max(baseline_per_bin_err.max(), history_per_bin_err.max()) * 1.05
+)
+ax_sc.plot([0, lim_hi], [0, lim_hi], &quot;k--&quot;, lw=1.0, alpha=0.7,
+           label=&quot;x = y (no change)&quot;)
+ax_sc.scatter(
+    baseline_per_bin_err, history_per_bin_err,
+    s=6, alpha=0.4, color=&quot;tab:blue&quot;, edgecolor=&quot;none&quot;,
+)
+improved = int(np.sum(history_per_bin_err &lt; baseline_per_bin_err))
+total = int(baseline_per_bin_err.size)
+ax_sc.set_xlabel(&quot;baseline per-bin error (box units)&quot;)
+ax_sc.set_ylabel(&quot;history per-bin error (box units)&quot;)
+ax_sc.set_xlim(0.0, lim_hi)
+ax_sc.set_ylim(0.0, lim_hi)
+ax_sc.set_aspect(&quot;equal&quot;)
+ax_sc.set_title(f&quot;per-bin error: {improved}/{total} bins improved&quot;)
+ax_sc.legend(loc=&quot;upper left&quot;, fontsize=9)
+ax_sc.grid(True, alpha=0.3)
+
+fig.suptitle(
+    &quot;Example 08 — PPAF decoder: baseline / velocity / history &quot;
+    &quot;(Truccolo et al. 2005 §3 history filter)&quot;
+)
+fig.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <footer>

@@ -36,10 +36,11 @@ EXAMPLES = [
     ("example06_place_fields_glm_basis", "example06", "run_example06", {}),
     ("example07_spatiotemporal_hawkes_waves", "example07",
      "run_example07", {}),
-    # example08 runs in velocity mode so all 6 manifest figures get
+    # example08 runs in history mode so all 8 manifest figures get
     # produced; the gallery-drift check requires the full set.
+    # History internally also runs the baseline and velocity stages.
     ("example08_real_place_cells", "example08", "run_example08",
-     {"model": "velocity"}),
+     {"model": "history"}),
 ]
 
 

@@ -71,11 +71,18 @@ Expected outputs:
 - Figure 3: Held-out pair correlation g(r) with the inhomogeneous
   global-rank envelope (isotropic edge correction).
 - Figure 4: Population rescaled-time ACF with the Bartlett band.
-- Figure 5 (model="velocity" only): per-cell firing rate vs speed
-  tuning curves, showing how the velocity-augmented encoder
-  recovers per-cell speed modulation.
-- Figure 6 (model="velocity" only): bar chart and per-bin error
-  scatter comparing baseline vs velocity-augmented decoder RMSE.
+- Figure 5 (model in {"velocity", "history"}): per-cell firing
+  rate vs speed tuning curves, showing how the velocity-augmented
+  encoder recovers per-cell speed modulation.
+- Figure 6 (model in {"velocity", "history"}): bar chart and
+  per-bin error scatter comparing baseline vs velocity-augmented
+  decoder RMSE.
+- Figure 7 (model="history" only): per-cell spike-history
+  coefficients (4-window refractory+recovery basis), showing the
+  expected negative early-window values (refractoriness).
+- Figure 8 (model="history" only): bar chart progression
+  (baseline -> +velocity -> +history) and per-bin error scatter
+  (baseline vs history).
 
 Model variants:
   ``run_example08(model="baseline")`` runs the position-only
@@ -91,6 +98,35 @@ Model variants:
   doubling the state dimension while exposing the speed-tuning
   contribution to RMSE.  Truccolo W, Eden UT, Fellows MR, Donoghue
   JP, Brown EN (2005). J Neurophysiol 93:1074-1089.
+
+  ``run_example08(model="history")`` runs the baseline + velocity
+  pipeline first (for the full bar-chart comparison) and then a
+  spike-history-augmented variant per Truccolo et al. 2005 §3
+  "spike history effects".  Each cell's CIF is extended with four
+  piecewise-constant history coefficients covering the windows
+  [0, 1 ms), [1, 5 ms), [5, 10 ms), [10, 50 ms) — the canonical
+  refractory + bursting + slow-recovery decomposition.  Like
+  velocity, history is treated as a known *extrinsic* covariate at
+  decode time (the observed spike train up to k is fed into the
+  history evaluation), so the PPAF state stays 2-D.
+
+  Resolution-mismatch caveat: the Animal-1 position lattice has
+  ``delta`` ≈ 33 ms, which is wider than three of the four brief
+  windows.  The Poisson-rate encoder GLM (with cell-area offset)
+  still recovers a refractoriness-shaped per-cell filter
+  (negative early-window gammas; positive late-window gammas; see
+  fig07).  The binomial decoder CIF cannot resolve the sub-bin
+  refractory effects and instead learns positive bursting-driven
+  gammas; folded into the PPAF filter as a time-varying mu, these
+  saturate the sigmoid during burst-decode-bins and cause a RMSE
+  regression vs baseline.  This is reported transparently in fig08
+  rather than masked.  See the module-level commit message for the
+  D.2 design discussion.
+
+  Produces two extra figures (fig07 per-cell encoder history
+  kernels showing the expected refractory signature, fig08
+  baseline vs velocity vs history decoder RMSE — currently a
+  documented regression).
 """
 from __future__ import annotations
 
@@ -109,7 +145,8 @@ REPO_ROOT = THIS_DIR.parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from nstat import CIF, DecodingAlgorithms, apply_plot_style  # noqa: E402
+from nstat import CIF, DecodingAlgorithms, History, apply_plot_style  # noqa: E402
+from nstat._spike_train_impl import nspikeTrain  # noqa: E402
 from nstat.data_manager import get_paper_data_dirs  # noqa: E402
 from nstat.extras.spatial import (  # noqa: E402
     bspline_basis_2d,
@@ -754,6 +791,414 @@ def _per_cell_speed_tuning(
 
 
 # =====================================================================
+# Spike-history covariates (model="history" only)
+# =====================================================================
+# Truccolo et al. 2005 §3 ("spike history effects") add a sum of
+# piecewise-constant filters over short-lag spike counts to the log
+# conditional intensity:
+#
+#     log lambda_k = mu + beta · state + sum_i gamma_i · h_i(N_{<k})
+#
+# We use the canonical four-window refractory + recovery basis from
+# the ``nstat.History`` MATLAB-parity-tested helper.  The windows
+# [0, 1 ms), [1, 5 ms), [5, 10 ms), [10, 50 ms) cover absolute
+# refractoriness, relative refractoriness, bursting, and the slow
+# tail of recovery — the same decomposition used in the
+# ``HistoryExamples.ipynb`` notebook and the gold fixture at
+# ``tests/parity/fixtures/matlab_gold/history_exactness.mat``.
+# Brief design (Tier D.2): windowTimes=[0.0, 0.001, 0.005, 0.010,
+# 0.050] gives 4 piecewise-constant windows covering 0-50 ms — the
+# canonical refractoriness + bursting + slow-recovery decomposition
+# also used in ``tests/parity/fixtures/matlab_gold/history_exactness.mat``.
+# Engineering note: the Animal-1 position lattice has ``delta`` ≈
+# 33 ms; the [0, 1 ms), [1, 5 ms), [5, 10 ms) sub-bin windows are
+# therefore mostly zero on this dataset, while [10, 50 ms) catches
+# any within-burst spike that lands in the prior position-bin's
+# 33 ms window.  The encoder + decoder are kept on the literal
+# brief windows so fig07 reports the same 4-window
+# refractory-style basis as the MATLAB gold fixture; the resulting
+# decoder gammas reflect what the *binomial* CIF can actually learn
+# at the position-bin time resolution (bursting-driven, not
+# 1-ms-refractoriness-driven).  See the run-time print for the
+# observed gamma magnitudes and the fig08 caption for the
+# realised vs expected RMSE.
+_HISTORY_WINDOW_TIMES: tuple[float, ...] = (0.0, 0.001, 0.005, 0.010, 0.050)
+# 1 kHz is the canonical rate for spike-history extraction in
+# nSTAT — it genuinely resolves the [0, 1 ms) window while still
+# being cheap to compute over the ~1460 s Animal-1 recording.
+_HISTORY_SAMPLE_RATE_HZ: float = 1000.0
+
+
+def _compute_history_at_position_times(
+    spike_times: np.ndarray,
+    pos_time: np.ndarray,
+    *,
+    window_times: tuple[float, ...] | None = None,
+    sample_rate_hz: float = _HISTORY_SAMPLE_RATE_HZ,
+) -> np.ndarray:
+    """Spike-history matrix at the position-time lattice.
+
+    Builds an :class:`~nstat.nspikeTrain` at ``sample_rate_hz``
+    (default 1 kHz) covering ``[pos_time[0], pos_time[-1]]``, runs
+    :meth:`~nstat.History.computeHistory` with the canonical
+    four-window refractoriness basis, then indexes the resulting
+    1 kHz history matrix at the position-time samples via
+    ``searchsorted``.
+
+    Returns
+    -------
+    ndarray of shape (n_pos, len(window_times) - 1)
+        Per-position-bin history values.  ``H[t, i]`` is the
+        spike count from cell own train in window ``i`` ending at
+        ``pos_time[t]``.  Rows whose ``pos_time[t]`` is before any
+        spike are zero by construction.
+    """
+    wt = (
+        tuple(_HISTORY_WINDOW_TIMES) if window_times is None
+        else tuple(window_times)
+    )
+    if pos_time.size == 0:
+        return np.zeros((0, len(wt) - 1), dtype=float)
+    t_lo = float(pos_time[0])
+    t_hi = float(pos_time[-1])
+    # Restrict to spikes inside the analysis window — ``nspikeTrain``
+    # would clip otherwise, but we avoid the boundary surprises by
+    # filtering up front.
+    mask = (spike_times >= t_lo) & (spike_times <= t_hi)
+    st_in = spike_times[mask]
+    if st_in.size == 0:
+        return np.zeros((pos_time.size, len(wt) - 1), dtype=float)
+    train = nspikeTrain(
+        st_in, name="hist", sampleRate=float(sample_rate_hz),
+        minTime=t_lo, maxTime=t_hi, makePlots=-1,
+    )
+    hist = History(windowTimes=list(wt))
+    coll = hist.computeHistory(train)
+    cov = coll.covArray[0]
+    H_1khz = np.asarray(cov.data, dtype=float)  # (n_1khz, num_windows)
+    t_1khz = np.asarray(cov.time, dtype=float).ravel()
+    # Index at the position-time samples via searchsorted-with-snap
+    # to nearest (same pattern as ``_bin_spikes_on_grid``).
+    idx = np.searchsorted(t_1khz, pos_time, side="left")
+    idx = np.clip(idx, 0, t_1khz.size - 1)
+    left = np.clip(idx - 1, 0, t_1khz.size - 1)
+    pick_left = (
+        (idx > 0)
+        & (np.abs(t_1khz[left] - pos_time) < np.abs(t_1khz[idx] - pos_time))
+    )
+    idx = np.where(pick_left, left, idx)
+    return H_1khz[idx, :]
+
+
+# =====================================================================
+# History-augmented B-spline encoder (model="history" only)
+# =====================================================================
+def _fit_bspline_encoder_with_history(
+    pos_x_train: np.ndarray,
+    pos_y_train: np.ndarray,
+    pos_time_train: np.ndarray,
+    spikes_per_cell: list[np.ndarray],
+    *,
+    window_times: tuple[float, ...] | None = None,
+    n_grid: int = 32,
+    n_knots: tuple[int, int] = (8, 8),
+    degree: int = 3,
+    box: tuple[float, float, float, float] = (-1.0, 1.0, -1.0, 1.0),
+):
+    """Like :func:`_fit_bspline_encoder` but appends 4 history columns per cell.
+
+    Each cell's spike-history matrix is computed at the position-time
+    grid via :func:`_compute_history_at_position_times`, then
+    spatially aggregated (mean over the position samples that land in
+    each spatial bin) — exactly the same per-cell pattern the
+    velocity encoder uses for mean speed per bin (option (a) in the
+    Tier D.1 brief).  The resulting per-cell design matrix is
+    ``B`` (n_grid**2, n_basis) concatenated with the per-cell
+    aggregated-history block (n_grid**2, 4).  Each cell gets its own
+    fit because each cell's history is its own.
+
+    Returns the same tuple as :func:`_fit_bspline_encoder` plus
+    ``history_coefs`` (one ``(4,)`` ndarray per cell).
+    """
+    wt = (
+        tuple(_HISTORY_WINDOW_TIMES) if window_times is None
+        else tuple(window_times)
+    )
+    x_lo, x_hi, y_lo, y_hi = box
+    grid_x = np.linspace(x_lo, x_hi, n_grid)
+    grid_y = np.linspace(y_lo, y_hi, n_grid)
+    edges_x = np.linspace(x_lo, x_hi, n_grid + 1)
+    edges_y = np.linspace(y_lo, y_hi, n_grid + 1)
+    B = bspline_basis_2d(grid_x, grid_y, n_knots=n_knots, degree=degree)
+    cell_area = float(((x_hi - x_lo) / n_grid) * ((y_hi - y_lo) / n_grid))
+    offset = np.full(B.shape[0], np.log(cell_area), dtype=float)
+
+    # Per-spatial-bin assignment of each training-position sample
+    # (same as the velocity helper).
+    ix = np.clip(
+        np.searchsorted(edges_x, pos_x_train, side="right") - 1, 0, n_grid - 1,
+    )
+    iy = np.clip(
+        np.searchsorted(edges_y, pos_y_train, side="right") - 1, 0, n_grid - 1,
+    )
+    count = np.zeros((n_grid, n_grid), dtype=float)
+    np.add.at(count, (ix, iy), 1.0)
+    bin_count = np.maximum(count.ravel(), 1.0)
+
+    n_windows = len(wt) - 1
+    rate_maps = np.zeros((len(spikes_per_cell), n_grid, n_grid), dtype=float)
+    glm_results = []
+    history_coefs: list[np.ndarray] = []
+    for c, st in enumerate(spikes_per_cell):
+        # Per-cell history at the training-position lattice.
+        H_cell = _compute_history_at_position_times(
+            st, pos_time_train, window_times=wt,
+        )  # (n_pos_train, n_windows)
+        # Aggregate by spatial bin → (n_grid**2, n_windows).
+        H_per_bin = np.zeros((n_grid * n_grid, n_windows), dtype=float)
+        flat_idx = ix * n_grid + iy
+        for w in range(n_windows):
+            np.add.at(H_per_bin[:, w], flat_idx, H_cell[:, w])
+        H_per_bin = H_per_bin / bin_count[:, None]
+        B_cell = np.hstack([B, H_per_bin])
+
+        H_counts = _bin_spikes_on_grid(
+            st, pos_x_train, pos_y_train, pos_time_train, edges_x, edges_y,
+        )
+        counts = H_counts.ravel().astype(float)
+        # The first three history columns at the 33 ms position
+        # lattice are very sparse (≪ 1% nonzero per the brief's
+        # ``windowTimes`` covering the sub-bin 1-10 ms range), so
+        # the augmented IRLS can wander into a numerical pathology
+        # for the highest-firing cells.  Strengthen the ridge from
+        # l2=1.0 (baseline) to l2=10.0 and double the iteration
+        # budget so all four cells converge.
+        glm = fit_poisson_glm(
+            B_cell, counts, offset=offset, include_intercept=False, l2=10.0,
+            max_iter=800,
+        )
+        eta = B_cell @ glm.coefficients
+        eta_clipped = np.clip(eta, -20.0, 8.0)
+        rate_maps[c, :, :] = np.exp(eta_clipped).reshape(n_grid, n_grid)
+        glm_results.append(glm)
+        # Final 4 coefficients are the history block.
+        history_coefs.append(
+            np.asarray(glm.coefficients[-n_windows:], dtype=float).copy()
+        )
+    return grid_x, grid_y, B, rate_maps, glm_results, history_coefs
+
+
+# =====================================================================
+# History-augmented quadratic-CIF refit + decoder (model="history")
+# =====================================================================
+def _design_quadratic_history(
+    x: np.ndarray, y: np.ndarray, H: np.ndarray,
+) -> np.ndarray:
+    """[1, x, y, x^2, y^2, x*y, h1, h2, h3, h4] design matrix (T, 10).
+
+    ``H`` is the per-cell history matrix at the same time lattice
+    (shape ``(T, n_windows)``).
+    """
+    base = np.column_stack([
+        np.ones(x.size), x, y, x * x, y * y, x * y,
+    ])
+    return np.hstack([base, H])
+
+
+def _fit_quadratic_cif_per_cell_with_history(
+    pos_x_train: np.ndarray,
+    pos_y_train: np.ndarray,
+    pos_time_train: np.ndarray,
+    spikes_per_cell: list[np.ndarray],
+    *,
+    delta: float,
+    window_times: tuple[float, ...] | None = None,
+):
+    """Refit a 10-coefficient binomial CIF per cell (quadratic + history).
+
+    Returns ``(cifs, history_coefs)`` where ``cifs`` is a list of
+    :class:`~nstat.CIF` (the spatial-quadratic part only, used for
+    GoF/ACF compatibility with the baseline plumbing) and
+    ``history_coefs`` is a list of ``(n_windows,)`` ndarrays — the
+    decoder uses these to evaluate the history contribution at decode
+    time.
+
+    The history columns are computed at the position-time lattice via
+    :func:`_compute_history_at_position_times` (1 kHz nspikeTrain ->
+    nearest-sample index), then concatenated to the 6-term spatial
+    quadratic before the binomial-GLM fit.
+    """
+    wt = (
+        _history_decoder_windows(delta) if window_times is None
+        else tuple(window_times)
+    )
+    n_bins = pos_time_train.size
+    cifs: list[CIF] = []
+    history_coefs: list[np.ndarray] = []
+    for st in spikes_per_cell:
+        H_cell = _compute_history_at_position_times(
+            st, pos_time_train, window_times=wt,
+        )  # (n_bins, n_windows)
+        X = _design_quadratic_history(pos_x_train, pos_y_train, H_cell)
+        # binomial spikes: collapse multi-spike bins to 1 (matches the
+        # baseline pipeline).
+        mask = (st >= float(pos_time_train[0])) & (st <= float(pos_time_train[-1]))
+        st_in = st[mask]
+        bin_idx = np.searchsorted(pos_time_train, st_in, side="left")
+        bin_idx = np.clip(bin_idx, 0, n_bins - 1)
+        y_binary = np.zeros(n_bins, dtype=float)
+        y_binary[bin_idx] = 1.0
+        from nstat.glm import fit_binomial_glm
+        # The four history columns at the 33 ms position lattice are
+        # very sparse (the bursting-driven nonzero rows dominate the
+        # few events).  An unregularised binomial fit can drive the
+        # gammas to log-odds 5-15, which saturates the PPAF sigmoid
+        # during decode and freezes the filter; the moderate ridge
+        # (l2=10.0) keeps gammas O(1) while letting the spatial
+        # quadratic part keep its baseline-converged values.
+        glm = fit_binomial_glm(
+            X[:, 1:], y_binary, include_intercept=True,
+            l2=10.0, max_iter=200,
+        )
+        b = np.concatenate([[glm.intercept], glm.coefficients])
+        # Split: first 6 coefficients = quadratic; last 4 = history.
+        b_quad = b[:6]
+        b_hist = b[6:]
+        cif = CIF(
+            b_quad.tolist(),
+            ["1", "x", "y", "x^2", "y^2", "x*y"],
+            ["x", "y"],
+            fitType="binomial",
+        )
+        cifs.append(cif)
+        history_coefs.append(np.asarray(b_hist, dtype=float).copy())
+    return cifs, history_coefs
+
+
+def _decode_position_with_history(
+    pos_x_test: np.ndarray,
+    pos_y_test: np.ndarray,
+    pos_time_test: np.ndarray,
+    spikes_per_cell: list[np.ndarray],
+    cifs: list[CIF],
+    history_coefs: list[np.ndarray],
+    *,
+    delta: float,
+    stride: int = 10,
+    window_times: tuple[float, ...] | None = None,
+):
+    """PPAF decode with spike-history treated as observed extrinsic covariate.
+
+    Per Truccolo et al. 2005 §3, the history term ``Sum_i gamma_i ·
+    h_i(spike_history)`` is a known function of past observations at
+    each decoding step.  The PPAF state stays 2-D (position); the
+    history contribution is folded into a *per-time-step* per-cell
+    baseline ``mu_t[c, k]``.
+
+    Why we run a custom forward loop instead of passing ``gamma`` and
+    ``windowTimes`` to :meth:`DecodingAlgorithms.PPDecodeFilterLinear`
+    directly: the linear-branch internal ``_compute_history_terms``
+    evaluates window membership at the *decoder* lattice rate
+    (``effective_delta = stride * delta`` ≈ 167 ms), at which all
+    four windows (1-50 ms) sit below the bin width and the resulting
+    history tensor is identically zero.  To resolve refractoriness we
+    must build the history at 1 kHz on each cell's full *test* spike
+    train, index it at the strided decode-times, and feed the
+    resulting ``(N, n_windows, n_cells)`` tensor straight into
+    :meth:`DecodingAlgorithms.PPDecode_updateLinear` per step.  This
+    is the same trick the baseline / velocity decoders already use to
+    fold the curvature and speed terms at the trajectory mean — we
+    just supply the per-step history outside the filter's standard
+    rebuild path.
+    """
+    wt = (
+        _history_decoder_windows(delta) if window_times is None
+        else tuple(window_times)
+    )
+    sub = slice(None, None, max(int(stride), 1))
+    pos_x_sub = pos_x_test[sub]
+    pos_y_sub = pos_y_test[sub]
+    pos_time_sub = pos_time_test[sub]
+    n_bins = pos_time_sub.size
+    effective_delta = float(stride * delta)
+    num_cells = len(cifs)
+    n_windows = len(wt) - 1
+
+    # Spike count per strided test bin (collapsed to 1 for binomial).
+    dN = np.zeros((num_cells, n_bins), dtype=float)
+    for c, st in enumerate(spikes_per_cell):
+        mask = (st >= float(pos_time_sub[0])) & (st <= float(pos_time_sub[-1]))
+        st_in = st[mask]
+        bin_idx = np.searchsorted(pos_time_sub, st_in, side="left")
+        bin_idx = np.clip(bin_idx, 0, n_bins - 1)
+        dN[c, bin_idx] = 1.0
+
+    # Per-cell history at the strided decode-time lattice — built at
+    # 1 kHz on each cell's full test spike train, then indexed.
+    H_tensor = np.zeros((n_bins, n_windows, num_cells), dtype=float)
+    for c, st in enumerate(spikes_per_cell):
+        H_cell = _compute_history_at_position_times(
+            st, pos_time_sub, window_times=wt,
+        )
+        H_tensor[:, :, c] = H_cell
+
+    # Gamma coefficients per cell.
+    gamma_mat = np.column_stack(history_coefs)  # (n_windows, num_cells)
+
+    # Linearize quadratic CIF at the trajectory mean — identical to
+    # the baseline/velocity path.
+    state_mean = np.array([float(pos_x_sub.mean()), float(pos_y_sub.mean())])
+    mu = np.zeros(num_cells, dtype=float)
+    beta = np.zeros((2, num_cells), dtype=float)
+    for c, cif in enumerate(cifs):
+        b = np.asarray(cif.b, dtype=float).reshape(-1)
+        mu[c] = float(
+            b[0]
+            + b[3] * state_mean[0] ** 2
+            + b[4] * state_mean[1] ** 2
+            + b[5] * state_mean[0] * state_mean[1]
+        )
+        beta[0, c] = float(
+            b[1] + 2.0 * b[3] * state_mean[0] + b[5] * state_mean[1]
+        )
+        beta[1, c] = float(
+            b[2] + 2.0 * b[4] * state_mean[1] + b[5] * state_mean[0]
+        )
+
+    train_dx = np.diff(pos_x_sub)
+    train_dy = np.diff(pos_y_sub)
+    qxx = float(np.var(train_dx)) if train_dx.size else 1e-3
+    qyy = float(np.var(train_dy)) if train_dy.size else 1e-3
+    A = np.eye(2, dtype=float)
+    Q = np.diag([qxx, qyy])
+    x0 = np.array([pos_x_sub[0], pos_y_sub[0]], dtype=float)
+    Pi0 = np.diag([qxx, qyy])
+
+    # Custom forward loop — same shape as the standard "no target"
+    # branch of ``_ppdecode_filter_linear`` but with a pre-supplied
+    # ``H_tensor`` (so we bypass the internal lattice-rate rebuild).
+    ns = 2
+    N = n_bins
+    x_p = np.zeros((ns, N + 1), dtype=float)
+    x_u = np.zeros((ns, N), dtype=float)
+    W_p = np.zeros((ns, ns, N + 1), dtype=float)
+    W_u = np.zeros((ns, ns, N), dtype=float)
+    x_p[:, 0], W_p[:, :, 0] = DecodingAlgorithms.PPDecode_predict(
+        x0, Pi0, A, Q, None,
+    )
+    for k in range(N):
+        x_u[:, k], W_u[:, :, k], _ = DecodingAlgorithms.PPDecode_updateLinear(
+            x_p[:, k], W_p[:, :, k], dN, mu, beta, "binomial",
+            gamma_mat, H_tensor, k, None,
+        )
+        x_p[:, k + 1], W_p[:, :, k + 1] = DecodingAlgorithms.PPDecode_predict(
+            x_u[:, k], W_u[:, :, k], A, Q, None,
+        )
+    del effective_delta  # not consumed downstream of the manual loop
+    return dN, x_u, W_u, pos_x_sub, pos_y_sub, pos_time_sub
+
+
+# =====================================================================
 # Held-out spatial pair correlation + global envelope
 # =====================================================================
 def _domain_area(box: tuple[float, float, float, float]) -> float:
@@ -1144,10 +1589,150 @@ def _plot_decoder_baseline_vs_velocity(
     return fig
 
 
+def _plot_history_kernels(
+    history_coefs: list[np.ndarray],
+    cell_indices: tuple[int, ...],
+    window_times: tuple[float, ...] = _HISTORY_WINDOW_TIMES,
+):
+    """Figure 7: per-cell spike-history coefficients (4-window basis)."""
+    n_cells = len(history_coefs)
+    edges_ms = np.asarray(window_times, dtype=float) * 1000.0
+    centers_ms = 0.5 * (edges_ms[:-1] + edges_ms[1:])
+    widths_ms = edges_ms[1:] - edges_ms[:-1]
+
+    def _fmt_edge(v: float) -> str:
+        if abs(v) >= 1000.0:
+            return f"{v / 1000.0:.2f} s"
+        if abs(v) >= 100.0:
+            return f"{v:.0f} ms"
+        return f"{v:.1f} ms"
+
+    labels = [
+        f"[{_fmt_edge(edges_ms[i])}, {_fmt_edge(edges_ms[i + 1])})"
+        for i in range(len(centers_ms))
+    ]
+    # === FIGURE: fig07_history_kernels.png ===
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+    axes = axes.ravel()
+    for i in range(min(n_cells, 4)):
+        ax = axes[i]
+        coefs = np.asarray(history_coefs[i], dtype=float).reshape(-1)
+        colors = ["tab:red" if v < 0 else "tab:blue" for v in coefs]
+        ax.bar(
+            range(coefs.size), coefs,
+            color=colors, edgecolor="k", lw=0.8,
+        )
+        ax.axhline(0.0, color="k", lw=0.8, alpha=0.8)
+        ax.set_xticks(range(coefs.size))
+        ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=8)
+        ax.set_xlabel("history window")
+        ax.set_ylabel("coefficient (gamma)")
+        ax.set_title(
+            f"Cell #{cell_indices[i] + 1} — spike-history filter "
+            f"(encoder Poisson GLM gammas)"
+        )
+        ax.grid(True, alpha=0.3, axis="y")
+        # Annotate each bar with its value for at-a-glance reading.
+        for x_pos, val, w in zip(range(coefs.size), coefs, widths_ms):
+            del w
+            ax.text(
+                x_pos, val + 0.02 * np.sign(val) if val != 0 else 0.02,
+                f"{val:+.2f}",
+                ha="center", va="bottom" if val >= 0 else "top",
+                fontsize=8,
+            )
+    for j in range(n_cells, 4):
+        axes[j].axis("off")
+    fig.suptitle(
+        "Example 08 (history model) — per-cell spike-history filter "
+        "(refractoriness in early windows, recovery in late windows)"
+    )
+    fig.tight_layout()
+    # === END FIGURE ===
+    return fig
+
+
+def _plot_decoder_baseline_velocity_history(
+    baseline_rmse: float,
+    velocity_rmse: float | None,
+    history_rmse: float,
+    baseline_per_bin_err: np.ndarray,
+    history_per_bin_err: np.ndarray,
+):
+    """Figure 8: 3-bar comparison + per-bin error scatter (baseline vs history).
+
+    ``velocity_rmse`` may be ``None`` if the velocity stage was
+    skipped — the bar chart degrades to a 2-bar plot in that case.
+    """
+    # === FIGURE: fig08_decoder_baseline_vs_history.png ===
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 5.0))
+
+    # Panel 1: 3-bar comparison (or 2-bar if velocity unavailable).
+    ax_bar = axes[0]
+    if velocity_rmse is not None:
+        labels = ["baseline", "+ velocity", "+ history"]
+        values = [baseline_rmse, velocity_rmse, history_rmse]
+        colors = ["0.55", "tab:orange", "tab:blue"]
+    else:
+        labels = ["baseline", "+ history"]
+        values = [baseline_rmse, history_rmse]
+        colors = ["0.55", "tab:blue"]
+    bars = ax_bar.bar(
+        labels, values, color=colors, edgecolor="k", lw=1.0,
+    )
+    for bar, val in zip(bars, values):
+        ax_bar.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            bar.get_height() + 0.005,
+            f"{val:.3f}",
+            ha="center", va="bottom", fontsize=10,
+        )
+    improvement_pct = 100.0 * (baseline_rmse - history_rmse) / baseline_rmse
+    sign = "+" if improvement_pct >= 0.0 else ""
+    ax_bar.set_ylabel("position RMSE (box units)")
+    direction = "improvement" if improvement_pct >= 0.0 else "regression"
+    ax_bar.set_title(
+        f"Held-out RMSE progression — history vs baseline: "
+        f"{sign}{improvement_pct:.1f}% ({direction})"
+    )
+    ax_bar.set_ylim(0.0, max(values) * 1.20)
+    ax_bar.grid(True, alpha=0.3, axis="y")
+
+    # Panel 2: per-bin error scatter (baseline x, history y).
+    ax_sc = axes[1]
+    lim_hi = float(
+        max(baseline_per_bin_err.max(), history_per_bin_err.max()) * 1.05
+    )
+    ax_sc.plot([0, lim_hi], [0, lim_hi], "k--", lw=1.0, alpha=0.7,
+               label="x = y (no change)")
+    ax_sc.scatter(
+        baseline_per_bin_err, history_per_bin_err,
+        s=6, alpha=0.4, color="tab:blue", edgecolor="none",
+    )
+    improved = int(np.sum(history_per_bin_err < baseline_per_bin_err))
+    total = int(baseline_per_bin_err.size)
+    ax_sc.set_xlabel("baseline per-bin error (box units)")
+    ax_sc.set_ylabel("history per-bin error (box units)")
+    ax_sc.set_xlim(0.0, lim_hi)
+    ax_sc.set_ylim(0.0, lim_hi)
+    ax_sc.set_aspect("equal")
+    ax_sc.set_title(f"per-bin error: {improved}/{total} bins improved")
+    ax_sc.legend(loc="upper left", fontsize=9)
+    ax_sc.grid(True, alpha=0.3)
+
+    fig.suptitle(
+        "Example 08 — PPAF decoder: baseline / velocity / history "
+        "(Truccolo et al. 2005 §3 history filter)"
+    )
+    fig.tight_layout()
+    # === END FIGURE ===
+    return fig
+
+
 # =====================================================================
 # Driver
 # =====================================================================
-_VALID_MODELS: tuple[str, ...] = ("baseline", "velocity")
+_VALID_MODELS: tuple[str, ...] = ("baseline", "velocity", "history")
 
 
 def run_example08(
@@ -1162,14 +1747,18 @@ def run_example08(
 
     Parameters
     ----------
-    model : {"baseline", "velocity"}, default "baseline"
+    model : {"baseline", "velocity", "history"}, default "baseline"
         ``"baseline"`` preserves the original 6-term quadratic CIF pipeline
         bit-for-bit and produces figures 1-4.  ``"velocity"`` runs the
         baseline first to capture its RMSE, then a velocity-augmented
         encoder + decoder per Truccolo et al. (2005) and produces two
         extra figures (fig05 speed tuning, fig06 baseline-vs-velocity
-        comparison).  Future Tier D PRs will extend the valid set with
-        ``"history"`` (D.2) and ``"coupling"`` (D.3).
+        comparison).  ``"history"`` runs both baseline and velocity
+        stages first, then a spike-history-augmented variant per
+        Truccolo et al. 2005 §3 and produces two more figures (fig07
+        per-cell history kernels, fig08 baseline-vs-velocity-vs-history
+        decoder comparison).  A future Tier D PR will extend the valid
+        set with ``"coupling"`` (D.3).
 
     Returns
     -------
@@ -1177,6 +1766,10 @@ def run_example08(
         Summary scalars and figure paths.  When ``model="velocity"`` the
         dict additionally carries ``baseline_rmse``, ``velocity_rmse``,
         ``rmse_improvement_pct``, ``speed_coefs``, and ``n_test_bins``.
+        When ``model="history"`` the dict additionally carries
+        ``history_rmse``, ``history_rmse_improvement_pct``,
+        ``history_coefs_encoder`` (list of ``(4,)`` ndarrays), and
+        ``history_coefs_decoder``.
     """
     if model not in _VALID_MODELS:
         raise ValueError(
@@ -1261,9 +1854,12 @@ def run_example08(
         (x_dec[0] - x_test_sub) ** 2 + (x_dec[1] - y_test_sub) ** 2
     )
 
-    # ----- Velocity-augmented variant (model="velocity") -----
+    # ----- Velocity-augmented variant (model="velocity" or "history") -----
+    # The history variant runs the velocity stage too so the full
+    # baseline -> velocity -> history progression is available for
+    # the 3-bar comparison in fig08.
     velocity_payload: dict | None = None
-    if model == "velocity":
+    if model in ("velocity", "history"):
         speed = _compute_speed(x, y, t)
         speed_train = speed[train_slice]
         speed_test = speed[test_slice]
@@ -1333,6 +1929,87 @@ def run_example08(
             "baseline_per_bin_err": baseline_per_bin_err,
             "velocity_per_bin_err": velocity_per_bin_err,
             "tuning": (bin_centers, rate_per_cell, sem_per_cell),
+        }
+
+    # ----- History-augmented variant (model="history") -----
+    history_payload: dict | None = None
+    if model == "history":
+        # Brief windows verbatim — see ``_HISTORY_WINDOW_TIMES``
+        # docstring above for the engineering note on the
+        # position-lattice / refractoriness mismatch.
+        history_wt = tuple(_HISTORY_WINDOW_TIMES)
+        print(
+            f"  history windows: "
+            f"{[round(w * 1000, 2) for w in history_wt]} ms "
+            f"(brief design per Truccolo et al. 2005 §3; position "
+            f"lattice delta = {delta * 1000:.1f} ms — see module "
+            f"docstring for the resolution-mismatch caveat)"
+        )
+        (
+            _grid_x_h, _grid_y_h, _B_h,
+            _rate_maps_h, glm_results_h, hist_coefs_encoder,
+        ) = _fit_bspline_encoder_with_history(
+            x[train_slice], y[train_slice], t[train_slice], spikes_per_cell,
+            window_times=history_wt,
+            n_grid=32, n_knots=(8, 8), degree=3, box=box,
+        )
+        converged_h = [int(g.converged) for g in glm_results_h]
+        hist_coefs_encoder_rounded = [
+            [round(float(v), 3) for v in arr] for arr in hist_coefs_encoder
+        ]
+        print(
+            f"  history-augmented B-spline GLM: converged per cell = "
+            f"{converged_h}; encoder gamma per cell = "
+            f"{hist_coefs_encoder_rounded}"
+        )
+
+        cifs_h, hist_coefs_decoder = (
+            _fit_quadratic_cif_per_cell_with_history(
+                x[train_slice], y[train_slice], t[train_slice],
+                spikes_per_cell, delta=delta, window_times=history_wt,
+            )
+        )
+        hist_coefs_decoder_rounded = [
+            [round(float(v), 3) for v in arr] for arr in hist_coefs_decoder
+        ]
+        print(
+            f"  history-augmented quadratic CIFs: decoder gamma per cell = "
+            f"{hist_coefs_decoder_rounded}"
+        )
+
+        (
+            _dN_h, x_dec_h, _W_h,
+            x_test_sub_h, y_test_sub_h, t_test_sub_h,
+        ) = _decode_position_with_history(
+            x[test_slice], y[test_slice], t[test_slice],
+            spikes_per_cell, cifs_h, hist_coefs_decoder,
+            delta=delta, stride=decode_stride,
+            window_times=history_wt,
+        )
+        history_rmse = float(np.sqrt(np.mean(
+            (x_dec_h[0] - x_test_sub_h) ** 2
+            + (x_dec_h[1] - y_test_sub_h) ** 2
+        )))
+        history_per_bin_err = np.sqrt(
+            (x_dec_h[0] - x_test_sub_h) ** 2
+            + (x_dec_h[1] - y_test_sub_h) ** 2
+        )
+        history_improvement_pct = (
+            100.0 * (baseline_rmse - history_rmse) / baseline_rmse
+        )
+        sign = "+" if history_improvement_pct >= 0.0 else ""
+        print(
+            f"  history decoder: RMSE = {history_rmse:.3f} "
+            f"({sign}{history_improvement_pct:.1f}% vs baseline "
+            f"{baseline_rmse:.3f})"
+        )
+        history_payload = {
+            "history_coefs_encoder": hist_coefs_encoder,
+            "history_coefs_decoder": hist_coefs_decoder,
+            "history_window_times": history_wt,
+            "history_rmse": history_rmse,
+            "history_improvement_pct": history_improvement_pct,
+            "history_per_bin_err": history_per_bin_err,
         }
 
     # ----- Held-out pair correlation + global envelope -----
@@ -1417,6 +2094,28 @@ def run_example08(
             "fig05_velocity_speed_tuning",
             "fig06_decoder_baseline_vs_velocity",
         ])
+    if history_payload is not None:
+        # Encoder gammas (Poisson-rate fit with cell-area offset)
+        # carry the meaningful refractoriness signature; see the
+        # ``model="history"`` doc block for why the decoder
+        # binomial gammas don't reproduce it at the 33 ms position
+        # lattice.
+        fig7 = _plot_history_kernels(
+            history_payload["history_coefs_encoder"], cell_indices,
+            window_times=history_payload["history_window_times"],
+        )
+        fig8 = _plot_decoder_baseline_velocity_history(
+            baseline_rmse,
+            velocity_payload["velocity_rmse"] if velocity_payload else None,
+            history_payload["history_rmse"],
+            baseline_per_bin_err,
+            history_payload["history_per_bin_err"],
+        )
+        figures.extend([fig7, fig8])
+        fig_names.extend([
+            "fig07_history_kernels",
+            "fig08_decoder_baseline_vs_history",
+        ])
 
     for fig in figures:
         apply_plot_style(fig, style=plot_style)
@@ -1475,6 +2174,21 @@ def run_example08(
                 float(c) for c in velocity_payload["speed_coefs_decoder"]
             ],
         })
+    if history_payload is not None:
+        result.update({
+            "history_rmse": float(history_payload["history_rmse"]),
+            "history_rmse_improvement_pct": float(
+                history_payload["history_improvement_pct"]
+            ),
+            "history_coefs_encoder": [
+                np.asarray(arr, dtype=float)
+                for arr in history_payload["history_coefs_encoder"]
+            ],
+            "history_coefs_decoder": [
+                np.asarray(arr, dtype=float)
+                for arr in history_payload["history_coefs_decoder"]
+            ],
+        })
     return result
 
 
@@ -1500,16 +2214,18 @@ if __name__ == "__main__":
                         default="legacy",
                         help="Figure styling.")
     parser.add_argument(
-        "--model", choices=_VALID_MODELS, default="velocity",
+        "--model", choices=_VALID_MODELS, default="history",
         help=(
             "Encoder/decoder variant.  ``baseline`` reproduces the "
             "original position-only pipeline (4 figures).  "
-            "``velocity`` (default) runs the baseline then a "
-            "velocity-augmented variant per Truccolo et al. 2005 "
-            "and produces 6 figures.  The CLI defaults to "
-            "``velocity`` so --export-figures yields the full "
-            "gallery the manifest expects; the Python "
-            "``run_example08`` default remains ``baseline``."
+            "``velocity`` runs the baseline then a velocity-augmented "
+            "variant per Truccolo et al. 2005 (6 figures).  "
+            "``history`` (default) additionally runs a "
+            "spike-history-augmented variant per Truccolo et al. 2005 "
+            "§3 (8 figures).  The CLI defaults to ``history`` so "
+            "``--export-figures`` yields the full gallery the manifest "
+            "expects; the Python ``run_example08`` default remains "
+            "``baseline``."
         ),
     )
     args = parser.parse_args()
@@ -1544,5 +2260,11 @@ if __name__ == "__main__":
                     "speed_coefs", "speed_coefs_decoder"):
             if key in result:
                 summary[key] = result[key]
+        for key in ("history_rmse", "history_rmse_improvement_pct"):
+            if key in result:
+                summary[key] = result[key]
+        for key in ("history_coefs_encoder", "history_coefs_decoder"):
+            if key in result:
+                summary[key] = [list(map(float, arr)) for arr in result[key]]
         args.output_json.write_text(json.dumps(summary, indent=2),
                                     encoding="utf-8")
