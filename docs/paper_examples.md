@@ -160,3 +160,5 @@ Expected figure files:
 - `docs/figures/example08/fig04_rescaled_acf.png`
 - `docs/figures/example08/fig05_velocity_speed_tuning.png`
 - `docs/figures/example08/fig06_decoder_baseline_vs_velocity.png`
+- `docs/figures/example08/fig07_history_kernels.png`
+- `docs/figures/example08/fig08_decoder_baseline_vs_history.png`

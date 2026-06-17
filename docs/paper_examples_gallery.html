@@ -1165,6 +1165,111 @@ fig.suptitle(
     &quot;velocity-augmented (speed as extrinsic covariate)&quot;
 )
 fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig07_history_kernels.png" alt="fig07_history_kernels.png" loading="lazy"><figcaption>fig07_history_kernels.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+axes = axes.ravel()
+for i in range(min(n_cells, 4)):
+    ax = axes[i]
+    coefs = np.asarray(history_coefs[i], dtype=float).reshape(-1)
+    colors = [&quot;tab:red&quot; if v &lt; 0 else &quot;tab:blue&quot; for v in coefs]
+    ax.bar(
+        range(coefs.size), coefs,
+        color=colors, edgecolor=&quot;k&quot;, lw=0.8,
+    )
+    ax.axhline(0.0, color=&quot;k&quot;, lw=0.8, alpha=0.8)
+    ax.set_xticks(range(coefs.size))
+    ax.set_xticklabels(labels, rotation=20, ha=&quot;right&quot;, fontsize=8)
+    ax.set_xlabel(&quot;history window&quot;)
+    ax.set_ylabel(&quot;coefficient (gamma)&quot;)
+    ax.set_title(
+        f&quot;Cell #{cell_indices[i] + 1} — spike-history filter &quot;
+        f&quot;(encoder Poisson GLM gammas)&quot;
+    )
+    ax.grid(True, alpha=0.3, axis=&quot;y&quot;)
+    # Annotate each bar with its value for at-a-glance reading.
+    for x_pos, val, w in zip(range(coefs.size), coefs, widths_ms):
+        del w
+        ax.text(
+            x_pos, val + 0.02 * np.sign(val) if val != 0 else 0.02,
+            f&quot;{val:+.2f}&quot;,
+            ha=&quot;center&quot;, va=&quot;bottom&quot; if val &gt;= 0 else &quot;top&quot;,
+            fontsize=8,
+        )
+for j in range(n_cells, 4):
+    axes[j].axis(&quot;off&quot;)
+fig.suptitle(
+    &quot;Example 08 (history model) — per-cell spike-history filter &quot;
+    &quot;(refractoriness in early windows, recovery in late windows)&quot;
+)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig08_decoder_baseline_vs_history.png" alt="fig08_decoder_baseline_vs_history.png" loading="lazy"><figcaption>fig08_decoder_baseline_vs_history.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(1, 2, figsize=(12.5, 5.0))
+
+# Panel 1: per-cell encoder log-likelihood, baseline vs history.
+ax_logL = axes[0]
+xs = np.arange(n_cells, dtype=float)
+width = 0.38
+ax_logL.bar(
+    xs - width / 2, logL_baseline, width=width,
+    color=&quot;0.55&quot;, edgecolor=&quot;k&quot;, lw=1.0, label=&quot;baseline (B-spline)&quot;,
+)
+ax_logL.bar(
+    xs + width / 2, logL_history, width=width,
+    color=&quot;tab:blue&quot;, edgecolor=&quot;k&quot;, lw=1.0,
+    label=&quot;+ history (B-spline + 4 windows)&quot;,
+)
+for i, (lb, lh) in enumerate(zip(logL_baseline, logL_history)):
+    gain = lh - lb
+    ax_logL.text(
+        float(i), max(lb, lh) + 0.02 * abs(max(lb, lh) or 1.0),
+        f&quot;{gain:+.1f}&quot;, ha=&quot;center&quot;, va=&quot;bottom&quot;, fontsize=8,
+    )
+ax_logL.set_xticks(xs)
+ax_logL.set_xticklabels(cell_labels)
+ax_logL.set_xlabel(&quot;cell (MATLAB-style 1-indexed)&quot;)
+ax_logL.set_ylabel(&quot;encoder log-likelihood&quot;)
+n_logL_improved = int(
+    sum(lh &gt; lb for lb, lh in zip(logL_baseline, logL_history))
+)
+ax_logL.set_title(
+    &quot;Encoder Poisson-GLM log-likelihood: baseline vs +history\n&quot;
+    f&quot;(gain annotated; both fits at l2=10 for fair comparison; &quot;
+    f&quot;{n_logL_improved}/{n_cells} cells improved)&quot;
+)
+ax_logL.legend(loc=&quot;best&quot;, fontsize=8)
+ax_logL.grid(True, alpha=0.3, axis=&quot;y&quot;)
+
+# Panel 2: per-cell refractoriness gamma ([1, 5 ms) window).
+ax_g = axes[1]
+gammas = np.asarray(refractory_gammas, dtype=float)
+colors = [&quot;tab:red&quot; if g &lt; 0 else &quot;tab:blue&quot; for g in gammas]
+bars = ax_g.bar(
+    xs, gammas, color=colors, edgecolor=&quot;k&quot;, lw=1.0,
+)
+for bar, g in zip(bars, gammas):
+    ax_g.text(
+        bar.get_x() + bar.get_width() / 2.0,
+        g + (0.02 * np.sign(g) if g != 0.0 else 0.02),
+        f&quot;{g:+.2f}&quot;,
+        ha=&quot;center&quot;, va=&quot;bottom&quot; if g &gt;= 0 else &quot;top&quot;,
+        fontsize=9,
+    )
+ax_g.axhline(0.0, color=&quot;k&quot;, lw=0.8, alpha=0.8)
+n_refract = int(np.sum(gammas &lt; 0.0))
+ax_g.set_xticks(xs)
+ax_g.set_xticklabels(cell_labels)
+ax_g.set_xlabel(&quot;cell (MATLAB-style 1-indexed)&quot;)
+ax_g.set_ylabel(f&quot;encoder gamma in {window_label}&quot;)
+ax_g.set_title(
+    f&quot;Refractoriness diagnostic: {n_refract}/{n_cells} cells with &quot;
+    f&quot;negative gamma\n(red = refractory signature; blue = recovery)&quot;
+)
+ax_g.grid(True, alpha=0.3, axis=&quot;y&quot;)
+
+fig.suptitle(
+    &quot;Example 08 — encoder fit quality with spike history\n&quot;
+    &quot;(Truccolo et al. 2005 §3 history filter, fit at 1 kHz; &quot;
+    &quot;decoder unchanged at 33 ms lattice)&quot;
+)
+fig.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <footer>
