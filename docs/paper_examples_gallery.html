@@ -1203,62 +1203,71 @@ fig.suptitle(
 fig.tight_layout()</code></pre></details></figure>
 <figure><img src="figures/example08/fig08_decoder_baseline_vs_history.png" alt="fig08_decoder_baseline_vs_history.png" loading="lazy"><figcaption>fig08_decoder_baseline_vs_history.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(1, 2, figsize=(12.5, 5.0))
 
-# Panel 1: 3-bar comparison (or 2-bar if velocity unavailable).
-ax_bar = axes[0]
-if velocity_rmse is not None:
-    labels = [&quot;baseline&quot;, &quot;+ velocity&quot;, &quot;+ history&quot;]
-    values = [baseline_rmse, velocity_rmse, history_rmse]
-    colors = [&quot;0.55&quot;, &quot;tab:orange&quot;, &quot;tab:blue&quot;]
-else:
-    labels = [&quot;baseline&quot;, &quot;+ history&quot;]
-    values = [baseline_rmse, history_rmse]
-    colors = [&quot;0.55&quot;, &quot;tab:blue&quot;]
-bars = ax_bar.bar(
-    labels, values, color=colors, edgecolor=&quot;k&quot;, lw=1.0,
+# Panel 1: per-cell encoder log-likelihood, baseline vs history.
+ax_logL = axes[0]
+xs = np.arange(n_cells, dtype=float)
+width = 0.38
+ax_logL.bar(
+    xs - width / 2, logL_baseline, width=width,
+    color=&quot;0.55&quot;, edgecolor=&quot;k&quot;, lw=1.0, label=&quot;baseline (B-spline)&quot;,
 )
-for bar, val in zip(bars, values):
-    ax_bar.text(
-        bar.get_x() + bar.get_width() / 2.0,
-        bar.get_height() + 0.005,
-        f&quot;{val:.3f}&quot;,
-        ha=&quot;center&quot;, va=&quot;bottom&quot;, fontsize=10,
+ax_logL.bar(
+    xs + width / 2, logL_history, width=width,
+    color=&quot;tab:blue&quot;, edgecolor=&quot;k&quot;, lw=1.0,
+    label=&quot;+ history (B-spline + 4 windows)&quot;,
+)
+for i, (lb, lh) in enumerate(zip(logL_baseline, logL_history)):
+    gain = lh - lb
+    ax_logL.text(
+        float(i), max(lb, lh) + 0.02 * abs(max(lb, lh) or 1.0),
+        f&quot;{gain:+.1f}&quot;, ha=&quot;center&quot;, va=&quot;bottom&quot;, fontsize=8,
     )
-improvement_pct = 100.0 * (baseline_rmse - history_rmse) / baseline_rmse
-sign = &quot;+&quot; if improvement_pct &gt;= 0.0 else &quot;&quot;
-ax_bar.set_ylabel(&quot;position RMSE (box units)&quot;)
-direction = &quot;improvement&quot; if improvement_pct &gt;= 0.0 else &quot;regression&quot;
-ax_bar.set_title(
-    f&quot;Held-out RMSE progression — history vs baseline: &quot;
-    f&quot;{sign}{improvement_pct:.1f}% ({direction})&quot;
+ax_logL.set_xticks(xs)
+ax_logL.set_xticklabels(cell_labels)
+ax_logL.set_xlabel(&quot;cell (MATLAB-style 1-indexed)&quot;)
+ax_logL.set_ylabel(&quot;encoder log-likelihood&quot;)
+n_logL_improved = int(
+    sum(lh &gt; lb for lb, lh in zip(logL_baseline, logL_history))
 )
-ax_bar.set_ylim(0.0, max(values) * 1.20)
-ax_bar.grid(True, alpha=0.3, axis=&quot;y&quot;)
+ax_logL.set_title(
+    &quot;Encoder Poisson-GLM log-likelihood: baseline vs +history\n&quot;
+    f&quot;(gain annotated; both fits at l2=10 for fair comparison; &quot;
+    f&quot;{n_logL_improved}/{n_cells} cells improved)&quot;
+)
+ax_logL.legend(loc=&quot;best&quot;, fontsize=8)
+ax_logL.grid(True, alpha=0.3, axis=&quot;y&quot;)
 
-# Panel 2: per-bin error scatter (baseline x, history y).
-ax_sc = axes[1]
-lim_hi = float(
-    max(baseline_per_bin_err.max(), history_per_bin_err.max()) * 1.05
+# Panel 2: per-cell refractoriness gamma ([1, 5 ms) window).
+ax_g = axes[1]
+gammas = np.asarray(refractory_gammas, dtype=float)
+colors = [&quot;tab:red&quot; if g &lt; 0 else &quot;tab:blue&quot; for g in gammas]
+bars = ax_g.bar(
+    xs, gammas, color=colors, edgecolor=&quot;k&quot;, lw=1.0,
 )
-ax_sc.plot([0, lim_hi], [0, lim_hi], &quot;k--&quot;, lw=1.0, alpha=0.7,
-           label=&quot;x = y (no change)&quot;)
-ax_sc.scatter(
-    baseline_per_bin_err, history_per_bin_err,
-    s=6, alpha=0.4, color=&quot;tab:blue&quot;, edgecolor=&quot;none&quot;,
+for bar, g in zip(bars, gammas):
+    ax_g.text(
+        bar.get_x() + bar.get_width() / 2.0,
+        g + (0.02 * np.sign(g) if g != 0.0 else 0.02),
+        f&quot;{g:+.2f}&quot;,
+        ha=&quot;center&quot;, va=&quot;bottom&quot; if g &gt;= 0 else &quot;top&quot;,
+        fontsize=9,
+    )
+ax_g.axhline(0.0, color=&quot;k&quot;, lw=0.8, alpha=0.8)
+n_refract = int(np.sum(gammas &lt; 0.0))
+ax_g.set_xticks(xs)
+ax_g.set_xticklabels(cell_labels)
+ax_g.set_xlabel(&quot;cell (MATLAB-style 1-indexed)&quot;)
+ax_g.set_ylabel(f&quot;encoder gamma in {window_label}&quot;)
+ax_g.set_title(
+    f&quot;Refractoriness diagnostic: {n_refract}/{n_cells} cells with &quot;
+    f&quot;negative gamma\n(red = refractory signature; blue = recovery)&quot;
 )
-improved = int(np.sum(history_per_bin_err &lt; baseline_per_bin_err))
-total = int(baseline_per_bin_err.size)
-ax_sc.set_xlabel(&quot;baseline per-bin error (box units)&quot;)
-ax_sc.set_ylabel(&quot;history per-bin error (box units)&quot;)
-ax_sc.set_xlim(0.0, lim_hi)
-ax_sc.set_ylim(0.0, lim_hi)
-ax_sc.set_aspect(&quot;equal&quot;)
-ax_sc.set_title(f&quot;per-bin error: {improved}/{total} bins improved&quot;)
-ax_sc.legend(loc=&quot;upper left&quot;, fontsize=9)
-ax_sc.grid(True, alpha=0.3)
+ax_g.grid(True, alpha=0.3, axis=&quot;y&quot;)
 
 fig.suptitle(
-    &quot;Example 08 — PPAF decoder: baseline / velocity / history &quot;
-    &quot;(Truccolo et al. 2005 §3 history filter)&quot;
+    &quot;Example 08 — encoder fit quality with spike history\n&quot;
+    &quot;(Truccolo et al. 2005 §3 history filter, fit at 1 kHz; &quot;
+    &quot;decoder unchanged at 33 ms lattice)&quot;
 )
 fig.tight_layout()</code></pre></details></figure>
 </div>
