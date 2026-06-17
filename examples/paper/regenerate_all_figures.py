@@ -36,12 +36,17 @@ EXAMPLES = [
     ("example06_place_fields_glm_basis", "example06", "run_example06", {}),
     ("example07_spatiotemporal_hawkes_waves", "example07",
      "run_example07", {}),
-    # example08 runs in coupling mode so all 10 manifest figures get
-    # produced; the gallery-drift check requires the full set.
-    # Coupling internally also runs the baseline, velocity, and
-    # history stages.
+    # example08 runs twice — once in coupling mode (produces
+    # fig01-fig10) and once in velocity_lag mode (produces fig11,
+    # fig12 — and overwrites fig01-fig06, which are identical to the
+    # baseline + velocity stages that velocity_lag also runs).  Both
+    # invocations are needed because the two variants share fig01-
+    # fig06 but produce disjoint figures from fig07 onwards; the
+    # manifest expects the full set of 12 PNGs.
     ("example08_real_place_cells", "example08", "run_example08",
      {"model": "coupling"}),
+    ("example08_real_place_cells", "example08", "run_example08",
+     {"model": "velocity_lag"}),
 ]
 
 

@@ -1341,6 +1341,114 @@ ax.set_title(
 ax.set_ylim(0.0, max(rmses) * 1.30)
 ax.grid(True, alpha=0.3, axis=&quot;y&quot;)
 fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig11_per_cell_lag_ccf.png" alt="fig11_per_cell_lag_ccf.png" loading="lazy"><figcaption>fig11_per_cell_lag_ccf.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(
+    4, 2, figsize=(11.5, 10.5), sharex=False, sharey=False,
+)
+for i in range(min(n_cells, 4)):
+    col = i % 2
+    row_top = 2 * (i // 2)
+    row_bot = row_top + 1
+    ax_top = axes[row_top, col]
+    ax_bot = axes[row_bot, col]
+
+    lags_p, ccf_p = ccf_pos[i]
+    ax_top.axvspan(window_pos[0], window_pos[1], color=&quot;0.85&quot;, alpha=0.7,
+                   label=(
+                       f&quot;search window &quot;
+                       f&quot;[{int(window_pos[0] * 1000)}, &quot;
+                       f&quot;{int(window_pos[1] * 1000)}] ms&quot;
+                   ))
+    ax_top.plot(lags_p, ccf_p, color=&quot;tab:blue&quot;, lw=1.0)
+    ax_top.axvline(lag_pos_per_cell[i], color=&quot;tab:red&quot;, lw=1.4,
+                   label=f&quot;peak: {lag_pos_per_cell[i] * 1000:+.1f} ms&quot;)
+    ax_top.axhline(0.0, color=&quot;k&quot;, lw=0.8, alpha=0.7)
+    ax_top.set_xlim(window_pos[0] - 0.05, window_pos[1] + 0.05)
+    ax_top.set_xlabel(&quot;lag tau (s)&quot;)
+    ax_top.set_ylabel(&quot;CCF (residual vs eta_pos)&quot;)
+    ax_top.set_title(
+        f&quot;Cell #{cell_indices[i] + 1} — position lag CCF&quot;
+    )
+    ax_top.legend(loc=&quot;best&quot;, fontsize=8)
+    ax_top.grid(True, alpha=0.3)
+
+    lags_v, ccf_v = ccf_vel[i]
+    ax_bot.axvspan(window_vel[0], window_vel[1], color=&quot;0.85&quot;, alpha=0.7,
+                   label=(
+                       f&quot;search window &quot;
+                       f&quot;[{int(window_vel[0] * 1000)}, &quot;
+                       f&quot;{int(window_vel[1] * 1000)}] ms&quot;
+                   ))
+    ax_bot.plot(lags_v, ccf_v, color=&quot;tab:green&quot;, lw=1.0)
+    ax_bot.axvline(lag_vel_per_cell[i], color=&quot;tab:red&quot;, lw=1.4,
+                   label=f&quot;peak: {lag_vel_per_cell[i] * 1000:+.1f} ms&quot;)
+    ax_bot.axhline(0.0, color=&quot;k&quot;, lw=0.8, alpha=0.7)
+    ax_bot.set_xlim(window_vel[0] - 0.05, window_vel[1] + 0.05)
+    ax_bot.set_xlabel(&quot;lag tau (s)&quot;)
+    ax_bot.set_ylabel(&quot;CCF (residual&#x27; vs speed)&quot;)
+    ax_bot.set_title(
+        f&quot;Cell #{cell_indices[i] + 1} — velocity lag CCF&quot;
+    )
+    ax_bot.legend(loc=&quot;best&quot;, fontsize=8)
+    ax_bot.grid(True, alpha=0.3)
+fig.suptitle(
+    &quot;Example 08 (velocity_lag model) — per-cell CCF lag-finding &quot;
+    &quot;diagnostic\n(Truccolo et al. 2005 §4: covariate-lag from &quot;
+    &quot;residual cross-covariance)&quot;
+)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig12_lag_corrected_comparison.png" alt="fig12_lag_corrected_comparison.png" loading="lazy"><figcaption>fig12_lag_corrected_comparison.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, ax = plt.subplots(figsize=(10.5, 5.4))
+labels = [&quot;baseline&quot;, &quot;velocity (no-lag)&quot;, &quot;velocity_lag&quot;]
+rmses = [baseline_rmse, velocity_rmse, velocity_lag_rmse]
+colors = [&quot;0.55&quot;, &quot;tab:blue&quot;, &quot;tab:orange&quot;]
+bars = ax.bar(labels, rmses, color=colors, edgecolor=&quot;k&quot;, lw=1.0)
+for bar, val, lab in zip(bars, rmses, labels):
+    if lab == &quot;baseline&quot;:
+        annot = f&quot;{val:.3f}\n(baseline)&quot;
+    else:
+        imp = 100.0 * (baseline_rmse - val) / baseline_rmse
+        sign = &quot;+&quot; if imp &gt;= 0.0 else &quot;&quot;
+        annot = f&quot;{val:.3f}\n({sign}{imp:.1f}% vs baseline)&quot;
+    ax.text(
+        bar.get_x() + bar.get_width() / 2.0,
+        bar.get_height() + 0.005,
+        annot,
+        ha=&quot;center&quot;, va=&quot;bottom&quot;, fontsize=10,
+    )
+ax.set_ylabel(&quot;position RMSE (box units)&quot;)
+sign_b = &quot;+&quot; if improvement_vs_baseline &gt;= 0.0 else &quot;&quot;
+sign_v = &quot;+&quot; if improvement_vs_velocity &gt;= 0.0 else &quot;&quot;
+ax.set_title(
+    &quot;Truccolo et al. 2005 §4 — per-cell CCF lag correction &quot;
+    &quot;(position + velocity)\n&quot;
+    f&quot;velocity_lag: {sign_b}{improvement_vs_baseline:.1f}% vs baseline, &quot;
+    f&quot;{sign_v}{improvement_vs_velocity:.1f}% vs velocity (no-lag)&quot;
+)
+ax.set_ylim(0.0, max(rmses) * 1.30)
+ax.grid(True, alpha=0.3, axis=&quot;y&quot;)
+
+# Inset: per-cell lag values in ms.
+inset = fig.add_axes([0.66, 0.45, 0.26, 0.30])
+n_cells = len(lag_pos_per_cell)
+xs = np.arange(n_cells, dtype=float)
+width = 0.38
+inset.bar(
+    xs - width / 2, [v * 1000.0 for v in lag_pos_per_cell],
+    width=width, color=&quot;tab:red&quot;, edgecolor=&quot;k&quot;, lw=0.6,
+    label=&quot;lag_pos&quot;,
+)
+inset.bar(
+    xs + width / 2, [v * 1000.0 for v in lag_vel_per_cell],
+    width=width, color=&quot;tab:green&quot;, edgecolor=&quot;k&quot;, lw=0.6,
+    label=&quot;lag_vel&quot;,
+)
+inset.axhline(0.0, color=&quot;k&quot;, lw=0.8, alpha=0.7)
+inset.set_xticks(xs)
+inset.set_xticklabels([f&quot;#{i+1}&quot; for i in range(n_cells)], fontsize=7)
+inset.set_ylabel(&quot;lag (ms)&quot;, fontsize=8)
+inset.tick_params(axis=&quot;y&quot;, labelsize=7)
+inset.legend(loc=&quot;best&quot;, fontsize=7)
+inset.set_title(&quot;per-cell lags&quot;, fontsize=9)
+inset.grid(True, alpha=0.3, axis=&quot;y&quot;)</code></pre></details></figure>
 </div>
 </section>
 <footer>

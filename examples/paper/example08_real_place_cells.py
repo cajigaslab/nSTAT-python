@@ -339,6 +339,145 @@ def _compute_speed(
 
 
 # =====================================================================
+# CCF-based per-cell lag finder (model="velocity_lag" only)
+# =====================================================================
+# Mirrors the lag-correction pattern of
+# ``examples/paper/example02_whisker_stimulus_thalamus.py`` (residual
+# cross-covariance windowed to a plausible-lag band, peak picked as the
+# optimal shift) but lifted to per-cell + per-covariate.  Truccolo et
+# al. 2005 §4 frames covariate-lag determination as residual x
+# covariate cross-correlation: a peak at negative lag means the spike
+# is *anticipating* the covariate (the cell leads), positive lag means
+# the cell *trails* the covariate.  For CA1 place cells the canonical
+# phase-precession picture predicts a small negative lag on position
+# (cells fire slightly *before* the rat reaches the field center).
+_LAG_WINDOW_POSITION_S: tuple[float, float] = (-0.150, +0.050)
+_LAG_WINDOW_VELOCITY_S: tuple[float, float] = (-0.200, +0.200)
+
+
+def _ccf_with_lag_peak(
+    residual: np.ndarray,
+    covariate: np.ndarray,
+    *,
+    dt: float,
+    lag_window: tuple[float, float],
+) -> tuple[float, float, np.ndarray, np.ndarray]:
+    """Cross-correlation peak finder used for per-cell lag determination.
+
+    Mean-centers both inputs (residual and covariate), computes the
+    full-mode cross-correlation, normalises by ``std(r) * std(c) * N``
+    so the result is bounded on ``[-1, +1]`` (Pearson-style
+    normalisation; the standard ``scipy.signal.correlate`` does not
+    normalise), then restricts to ``lag_window`` and returns the peak.
+
+    The sign convention matches ``scipy.signal.correlate(r, c)``:
+    a *negative* lag means the covariate ``c`` *leads* the residual
+    ``r`` (i.e. the cell anticipates the covariate); a positive lag
+    means the cell trails.
+
+    Returns
+    -------
+    peak_lag_sec, peak_value, lags_sec, ccf_values
+        ``peak_lag_sec`` and ``peak_value`` are the chosen lag (in
+        seconds) and its CCF magnitude.  ``lags_sec`` and
+        ``ccf_values`` are the full ``2N - 1``-length arrays returned
+        for the diagnostic figure.
+    """
+    # Lazy-import scipy.signal so importing this module stays cheap
+    # for unrelated paper-script invocations.
+    from scipy.signal import correlate
+
+    r = np.asarray(residual, dtype=float).reshape(-1)
+    c = np.asarray(covariate, dtype=float).reshape(-1)
+    if r.size == 0 or c.size != r.size:
+        raise ValueError(
+            "residual and covariate must be 1-D arrays of equal length"
+        )
+    r0 = r - float(np.mean(r))
+    c0 = c - float(np.mean(c))
+    ccf = correlate(r0, c0, mode="full")
+    norm = float(np.std(r0)) * float(np.std(c0)) * float(r0.size)
+    ccf = ccf / max(norm, 1e-12)
+    n = r0.size
+    lags = (np.arange(2 * n - 1) - (n - 1)) * float(dt)
+    window_mask = (lags >= float(lag_window[0])) & (lags <= float(lag_window[1]))
+    if not bool(window_mask.any()):
+        # Defensive: degenerate window collapses to no lags — return 0.
+        return 0.0, 0.0, lags, ccf
+    valid_lags = lags[window_mask]
+    valid_ccf = ccf[window_mask]
+    peak_idx = int(np.argmax(valid_ccf))
+    return float(valid_lags[peak_idx]), float(valid_ccf[peak_idx]), lags, ccf
+
+
+def _shift_position_by_lag(
+    pos_x: np.ndarray, pos_y: np.ndarray, lag_sec: float, dt: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Shift a 2-D position signal by ``lag_sec`` and return a NaN-edged copy.
+
+    The sign convention matches :func:`_ccf_with_lag_peak`:
+    a positive ``lag_sec`` means the position *trails* the residual
+    (so for bin ``t`` we should read position at ``t - lag_sec``,
+    i.e. an earlier sample); a negative ``lag_sec`` means the
+    position *leads* the residual (so for bin ``t`` we read position
+    at ``t + |lag_sec|``, i.e. a later sample — the "future peek"
+    standard in retrospective decoding evaluation).
+
+    Bins where the shift falls outside the original array are filled
+    with NaN; the returned ``valid_mask`` is ``True`` only for bins
+    where both shifted x and shifted y are finite.
+
+    Returns
+    -------
+    px_shifted, py_shifted, valid_mask
+    """
+    px = np.asarray(pos_x, dtype=float).reshape(-1)
+    py = np.asarray(pos_y, dtype=float).reshape(-1)
+    n = px.size
+    shift_bins = int(np.round(float(lag_sec) / float(dt)))
+    px_shifted = np.full(n, np.nan, dtype=float)
+    py_shifted = np.full(n, np.nan, dtype=float)
+    if shift_bins == 0:
+        px_shifted[:] = px
+        py_shifted[:] = py
+    elif shift_bins > 0:
+        # Read from index t - shift_bins for output index t.
+        # Output indices [shift_bins, n) source from [0, n - shift_bins).
+        px_shifted[shift_bins:] = px[: n - shift_bins]
+        py_shifted[shift_bins:] = py[: n - shift_bins]
+    else:
+        k = -shift_bins
+        # Output indices [0, n - k) source from [k, n).
+        px_shifted[: n - k] = px[k:]
+        py_shifted[: n - k] = py[k:]
+    valid_mask = ~(np.isnan(px_shifted) | np.isnan(py_shifted))
+    return px_shifted, py_shifted, valid_mask
+
+
+def _shift_scalar_by_lag(
+    sig: np.ndarray, lag_sec: float, dt: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Shift a 1-D signal by ``lag_sec`` with NaN edge padding.
+
+    Same sign convention as :func:`_shift_position_by_lag`.
+    Returns ``(shifted, valid_mask)``.
+    """
+    s = np.asarray(sig, dtype=float).reshape(-1)
+    n = s.size
+    shift_bins = int(np.round(float(lag_sec) / float(dt)))
+    out = np.full(n, np.nan, dtype=float)
+    if shift_bins == 0:
+        out[:] = s
+    elif shift_bins > 0:
+        out[shift_bins:] = s[: n - shift_bins]
+    else:
+        k = -shift_bins
+        out[: n - k] = s[k:]
+    valid = ~np.isnan(out)
+    return out, valid
+
+
+# =====================================================================
 # B-spline encoder
 # =====================================================================
 def _fit_bspline_encoder(
@@ -2164,11 +2303,171 @@ def _plot_decoder_baseline_vs_progression(
     return fig
 
 
+def _plot_per_cell_lag_ccf(
+    ccf_pos: list[tuple[np.ndarray, np.ndarray]],
+    ccf_vel: list[tuple[np.ndarray, np.ndarray]],
+    lag_pos_per_cell: list[float],
+    lag_vel_per_cell: list[float],
+    cell_indices: tuple[int, ...],
+    *,
+    window_pos: tuple[float, float] = _LAG_WINDOW_POSITION_S,
+    window_vel: tuple[float, float] = _LAG_WINDOW_VELOCITY_S,
+):
+    """Figure 11: per-cell CCF lag-finding diagnostic.
+
+    Per the brief, a 2x2 outer grid (one cell per outer panel); each
+    outer panel contains two stacked subplots — top: residual-x-
+    predicted-eta CCF with the position-lag search window shaded and
+    the chosen peak marked; bottom: residual-x-speed CCF with the
+    velocity-lag search window shaded and the chosen peak marked.
+    Implemented as a 4x2 subplot grid where rows = (pos_ccf_cell_i,
+    vel_ccf_cell_i, pos_ccf_cell_{i+2}, vel_ccf_cell_{i+2}); columns
+    map the four cells into a 2x2-of-pairs layout.
+    """
+    n_cells = len(ccf_pos)
+    # === FIGURE: fig11_per_cell_lag_ccf.png ===
+    fig, axes = plt.subplots(
+        4, 2, figsize=(11.5, 10.5), sharex=False, sharey=False,
+    )
+    for i in range(min(n_cells, 4)):
+        col = i % 2
+        row_top = 2 * (i // 2)
+        row_bot = row_top + 1
+        ax_top = axes[row_top, col]
+        ax_bot = axes[row_bot, col]
+
+        lags_p, ccf_p = ccf_pos[i]
+        ax_top.axvspan(window_pos[0], window_pos[1], color="0.85", alpha=0.7,
+                       label=(
+                           f"search window "
+                           f"[{int(window_pos[0] * 1000)}, "
+                           f"{int(window_pos[1] * 1000)}] ms"
+                       ))
+        ax_top.plot(lags_p, ccf_p, color="tab:blue", lw=1.0)
+        ax_top.axvline(lag_pos_per_cell[i], color="tab:red", lw=1.4,
+                       label=f"peak: {lag_pos_per_cell[i] * 1000:+.1f} ms")
+        ax_top.axhline(0.0, color="k", lw=0.8, alpha=0.7)
+        ax_top.set_xlim(window_pos[0] - 0.05, window_pos[1] + 0.05)
+        ax_top.set_xlabel("lag tau (s)")
+        ax_top.set_ylabel("CCF (residual vs eta_pos)")
+        ax_top.set_title(
+            f"Cell #{cell_indices[i] + 1} — position lag CCF"
+        )
+        ax_top.legend(loc="best", fontsize=8)
+        ax_top.grid(True, alpha=0.3)
+
+        lags_v, ccf_v = ccf_vel[i]
+        ax_bot.axvspan(window_vel[0], window_vel[1], color="0.85", alpha=0.7,
+                       label=(
+                           f"search window "
+                           f"[{int(window_vel[0] * 1000)}, "
+                           f"{int(window_vel[1] * 1000)}] ms"
+                       ))
+        ax_bot.plot(lags_v, ccf_v, color="tab:green", lw=1.0)
+        ax_bot.axvline(lag_vel_per_cell[i], color="tab:red", lw=1.4,
+                       label=f"peak: {lag_vel_per_cell[i] * 1000:+.1f} ms")
+        ax_bot.axhline(0.0, color="k", lw=0.8, alpha=0.7)
+        ax_bot.set_xlim(window_vel[0] - 0.05, window_vel[1] + 0.05)
+        ax_bot.set_xlabel("lag tau (s)")
+        ax_bot.set_ylabel("CCF (residual' vs speed)")
+        ax_bot.set_title(
+            f"Cell #{cell_indices[i] + 1} — velocity lag CCF"
+        )
+        ax_bot.legend(loc="best", fontsize=8)
+        ax_bot.grid(True, alpha=0.3)
+    fig.suptitle(
+        "Example 08 (velocity_lag model) — per-cell CCF lag-finding "
+        "diagnostic\n(Truccolo et al. 2005 §4: covariate-lag from "
+        "residual cross-covariance)"
+    )
+    fig.tight_layout()
+    # === END FIGURE ===
+    return fig
+
+
+def _plot_lag_corrected_comparison(
+    baseline_rmse: float,
+    velocity_rmse: float,
+    velocity_lag_rmse: float,
+    lag_pos_per_cell: list[float],
+    lag_vel_per_cell: list[float],
+):
+    """Figure 12: 4-bar capstone for the velocity_lag variant.
+
+    Bars: baseline RMSE / velocity (no-lag) RMSE / velocity_lag RMSE /
+    improvement % (vs baseline).  Inset shows the per-cell lag values
+    in ms; the "average per-cell lag" inset is a compact way to see
+    whether the population leans anticipatory (negative) or trailing.
+    """
+    improvement_vs_baseline = (
+        100.0 * (baseline_rmse - velocity_lag_rmse) / baseline_rmse
+    )
+    improvement_vs_velocity = (
+        100.0 * (velocity_rmse - velocity_lag_rmse) / velocity_rmse
+    )
+    # === FIGURE: fig12_lag_corrected_comparison.png ===
+    fig, ax = plt.subplots(figsize=(10.5, 5.4))
+    labels = ["baseline", "velocity (no-lag)", "velocity_lag"]
+    rmses = [baseline_rmse, velocity_rmse, velocity_lag_rmse]
+    colors = ["0.55", "tab:blue", "tab:orange"]
+    bars = ax.bar(labels, rmses, color=colors, edgecolor="k", lw=1.0)
+    for bar, val, lab in zip(bars, rmses, labels):
+        if lab == "baseline":
+            annot = f"{val:.3f}\n(baseline)"
+        else:
+            imp = 100.0 * (baseline_rmse - val) / baseline_rmse
+            sign = "+" if imp >= 0.0 else ""
+            annot = f"{val:.3f}\n({sign}{imp:.1f}% vs baseline)"
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            bar.get_height() + 0.005,
+            annot,
+            ha="center", va="bottom", fontsize=10,
+        )
+    ax.set_ylabel("position RMSE (box units)")
+    sign_b = "+" if improvement_vs_baseline >= 0.0 else ""
+    sign_v = "+" if improvement_vs_velocity >= 0.0 else ""
+    ax.set_title(
+        "Truccolo et al. 2005 §4 — per-cell CCF lag correction "
+        "(position + velocity)\n"
+        f"velocity_lag: {sign_b}{improvement_vs_baseline:.1f}% vs baseline, "
+        f"{sign_v}{improvement_vs_velocity:.1f}% vs velocity (no-lag)"
+    )
+    ax.set_ylim(0.0, max(rmses) * 1.30)
+    ax.grid(True, alpha=0.3, axis="y")
+
+    # Inset: per-cell lag values in ms.
+    inset = fig.add_axes([0.66, 0.45, 0.26, 0.30])
+    n_cells = len(lag_pos_per_cell)
+    xs = np.arange(n_cells, dtype=float)
+    width = 0.38
+    inset.bar(
+        xs - width / 2, [v * 1000.0 for v in lag_pos_per_cell],
+        width=width, color="tab:red", edgecolor="k", lw=0.6,
+        label="lag_pos",
+    )
+    inset.bar(
+        xs + width / 2, [v * 1000.0 for v in lag_vel_per_cell],
+        width=width, color="tab:green", edgecolor="k", lw=0.6,
+        label="lag_vel",
+    )
+    inset.axhline(0.0, color="k", lw=0.8, alpha=0.7)
+    inset.set_xticks(xs)
+    inset.set_xticklabels([f"#{i+1}" for i in range(n_cells)], fontsize=7)
+    inset.set_ylabel("lag (ms)", fontsize=8)
+    inset.tick_params(axis="y", labelsize=7)
+    inset.legend(loc="best", fontsize=7)
+    inset.set_title("per-cell lags", fontsize=9)
+    inset.grid(True, alpha=0.3, axis="y")
+    # === END FIGURE ===
+    return fig
+
+
 # =====================================================================
 # Driver
 # =====================================================================
 _VALID_MODELS: tuple[str, ...] = (
-    "baseline", "velocity", "history", "coupling",
+    "baseline", "velocity", "history", "coupling", "velocity_lag",
 )
 
 
@@ -2223,7 +2522,16 @@ def run_example08(
         (list of ``(6,)`` ndarrays per cell), and
         ``coupling_matrix_encoder`` / ``coupling_matrix_decoder``
         (each a ``(n_cells, n_cells, n_windows)`` tensor — target ×
-        source × window — with NaN on the diagonal).
+        source × window — with NaN on the diagonal).  When
+        ``model="velocity_lag"`` the dict additionally carries
+        ``velocity_lag_pos_seconds`` and ``velocity_lag_vel_seconds``
+        (per-cell position and velocity lag estimates, length
+        ``n_cells``), ``velocity_lag_ccf_pos_peaks`` and
+        ``velocity_lag_ccf_vel_peaks`` (per-cell CCF magnitudes at
+        the chosen peaks), ``velocity_lag_decoder_rmse``,
+        ``velocity_lag_rmse_improvement_pct`` (vs baseline), and
+        ``velocity_lag_rmse_improvement_pct_vs_velocity`` (vs the
+        velocity (no-lag) decoder).
     """
     if model not in _VALID_MODELS:
         raise ValueError(
@@ -2313,7 +2621,7 @@ def run_example08(
     # baseline -> velocity -> history progression is available for
     # the 3-bar comparison in fig08.
     velocity_payload: dict | None = None
-    if model in ("velocity", "history", "coupling"):
+    if model in ("velocity", "history", "coupling", "velocity_lag"):
         speed = _compute_speed(x, y, t)
         speed_train = speed[train_slice]
         speed_test = speed[test_slice]
@@ -2593,6 +2901,302 @@ def run_example08(
             "coupling_improvement_pct": coupling_improvement_pct,
         }
 
+    # ----- Velocity + per-cell lag-corrected variant -----
+    # D.1+: iterated per-cell CCF lag correction for BOTH position and
+    # velocity (Truccolo et al. 2005 §4; mirrors the lag-correction
+    # pattern of example02).  Runs only when ``model="velocity_lag"``
+    # so the baseline / velocity / history / coupling paths stay
+    # bit-for-bit identical.  Requires the velocity stage above to
+    # have run (gated on the same model list).
+    velocity_lag_payload: dict | None = None
+    if model == "velocity_lag":
+        assert velocity_payload is not None, (
+            "velocity_lag requires the velocity stage to have run"
+        )
+        speed_full = _compute_speed(x, y, t)
+        speed_train_lag = speed_full[train_slice]
+        speed_test_lag = speed_full[test_slice]
+        x_train = x[train_slice]
+        y_train = y[train_slice]
+        t_train = t[train_slice]
+        x_test = x[test_slice]
+        y_test = y[test_slice]
+        t_test = t[test_slice]
+
+        # The CCF is computed on the *training* lattice (the residual
+        # is naturally defined on the training half — the encoder is
+        # trained there).  The position-time spacing ``delta`` is the
+        # same lattice the canonical baseline encoder fits.
+        # ----------------------------------------------------------
+        # Stage 1: baseline encoder eta and residual, per cell, then
+        #          CCF for position lag.
+        # Stage 2: refit on shifted position.
+        # Stage 3: residual' x speed CCF for velocity lag.
+        # Stage 4+5: augmented encoder + decoder with both per-cell
+        #            lags.
+        # ----------------------------------------------------------
+        print(
+            f"  velocity_lag — per-cell CCF lag correction "
+            f"(position window {_LAG_WINDOW_POSITION_S}, "
+            f"velocity window {_LAG_WINDOW_VELOCITY_S}; "
+            f"Truccolo et al. 2005 §4)"
+        )
+
+        # Shared spatial-grid setup (same as the baseline + velocity
+        # encoders: 32x32 grid, 8x8 knots, degree 3).
+        n_grid_l = 32
+        x_lo, x_hi, y_lo, y_hi = box
+        edges_x_l = np.linspace(x_lo, x_hi, n_grid_l + 1)
+        edges_y_l = np.linspace(y_lo, y_hi, n_grid_l + 1)
+        grid_x_l = np.linspace(x_lo, x_hi, n_grid_l)
+        grid_y_l = np.linspace(y_lo, y_hi, n_grid_l)
+        B_l = bspline_basis_2d(
+            grid_x_l, grid_y_l, n_knots=(8, 8), degree=3,
+        )
+        cell_area_l = float(
+            ((x_hi - x_lo) / n_grid_l) * ((y_hi - y_lo) / n_grid_l)
+        )
+        offset_l = np.full(B_l.shape[0], np.log(cell_area_l), dtype=float)
+
+        lag_pos_per_cell: list[float] = []
+        lag_vel_per_cell: list[float] = []
+        ccf_pos_peaks: list[float] = []
+        ccf_vel_peaks: list[float] = []
+        ccf_pos_payload: list[tuple[np.ndarray, np.ndarray]] = []
+        ccf_vel_payload: list[tuple[np.ndarray, np.ndarray]] = []
+        cifs_l: list[CIF] = []
+        valid_train_counts: list[int] = []
+
+        for c, st in enumerate(spikes_per_cell):
+            # ---- Stage 1: baseline encoder per cell, on training lattice
+            # ----    at the *time* lattice (not the spatial bin lattice).
+            # We need a per-bin eta(t) and an observed count(t) on the
+            # training lattice to compute the residual.  Build a
+            # position-only design at the per-bin trajectory:
+            X_train_pos = _design_quadratic(x_train, y_train)
+            # Spike counts per training bin (collapse multi-spike bins
+            # to 1 — the binomial convention used by the decoder CIFs).
+            mask_tr = (st >= float(t_train[0])) & (st <= float(t_train[-1]))
+            st_tr = st[mask_tr]
+            bin_idx_tr = np.searchsorted(t_train, st_tr, side="left")
+            bin_idx_tr = np.clip(bin_idx_tr, 0, t_train.size - 1)
+            counts_tr = np.zeros(t_train.size, dtype=float)
+            np.add.at(counts_tr, bin_idx_tr, 1.0)
+            # Binomial logit fit on position only — gives us the
+            # log-rate eta on the same time lattice as ``counts_tr``.
+            from nstat.glm import fit_binomial_glm
+            counts_binary = (counts_tr > 0.0).astype(float)
+            glm_b1 = fit_binomial_glm(
+                X_train_pos[:, 1:], counts_binary, include_intercept=True,
+                l2=1e-3, max_iter=80,
+            )
+            b1 = np.concatenate([[glm_b1.intercept], glm_b1.coefficients])
+            eta_pos = X_train_pos @ b1
+            # Residual: observed - predicted spike probability.
+            p_pred = 1.0 / (1.0 + np.exp(-np.clip(eta_pos, -20.0, 20.0)))
+            residual_1 = counts_binary - p_pred
+
+            # ---- Stage 1: CCF residual vs predicted eta_pos.
+            lag_pos_c, peak_pos_c, lags_p, ccf_p = _ccf_with_lag_peak(
+                residual_1, eta_pos, dt=delta,
+                lag_window=_LAG_WINDOW_POSITION_S,
+            )
+
+            # ---- Stage 2: refit position-only encoder on shifted pos.
+            px_sh, py_sh, mask_pos = _shift_position_by_lag(
+                x_train, y_train, lag_pos_c, delta,
+            )
+            X_train_sh = _design_quadratic(px_sh, py_sh)
+            # Drop NaN bins for the refit.
+            keep_p = mask_pos
+            glm_b2 = fit_binomial_glm(
+                X_train_sh[keep_p, 1:], counts_binary[keep_p],
+                include_intercept=True, l2=1e-3, max_iter=80,
+            )
+            b2 = np.concatenate([[glm_b2.intercept], glm_b2.coefficients])
+            eta_pos_sh = X_train_sh @ b2  # has NaN where mask_pos is False
+            p_pred_sh = 1.0 / (
+                1.0 + np.exp(-np.clip(eta_pos_sh, -20.0, 20.0))
+            )
+            residual_2 = counts_binary - p_pred_sh
+            # Fill NaN edges with 0 so the CCF below is well-defined;
+            # the search window excludes the extreme tails anyway.
+            residual_2 = np.where(mask_pos, residual_2, 0.0)
+
+            # ---- Stage 3: residual' x speed CCF.
+            lag_vel_c, peak_vel_c, lags_v, ccf_v = _ccf_with_lag_peak(
+                residual_2, speed_train_lag, dt=delta,
+                lag_window=_LAG_WINDOW_VELOCITY_S,
+            )
+
+            # ---- Stage 4: refit augmented encoder with both lags.
+            # Shift position by lag_pos_c, speed by lag_vel_c.
+            px_sh_a, py_sh_a, mp_a = _shift_position_by_lag(
+                x_train, y_train, lag_pos_c, delta,
+            )
+            sp_sh_a, mv_a = _shift_scalar_by_lag(
+                speed_train_lag, lag_vel_c, delta,
+            )
+            keep_a = mp_a & mv_a
+            X_aug = _design_quadratic_speed(
+                np.where(keep_a, px_sh_a, 0.0),
+                np.where(keep_a, py_sh_a, 0.0),
+                np.where(keep_a, sp_sh_a, 0.0),
+            )
+            glm_aug = fit_binomial_glm(
+                X_aug[keep_a, 1:], counts_binary[keep_a],
+                include_intercept=True, l2=1e-3, max_iter=80,
+            )
+            b_aug = np.concatenate([[glm_aug.intercept], glm_aug.coefficients])
+            cif = CIF(
+                b_aug.tolist(),
+                ["1", "x", "y", "x^2", "y^2", "x*y", "s"],
+                ["x", "y", "s"],
+                fitType="binomial",
+            )
+
+            lag_pos_per_cell.append(float(lag_pos_c))
+            lag_vel_per_cell.append(float(lag_vel_c))
+            ccf_pos_peaks.append(float(peak_pos_c))
+            ccf_vel_peaks.append(float(peak_vel_c))
+            ccf_pos_payload.append((lags_p, ccf_p))
+            ccf_vel_payload.append((lags_v, ccf_v))
+            cifs_l.append(cif)
+            valid_train_counts.append(int(np.sum(keep_a)))
+
+            print(
+                f"    cell #{cell_indices[c] + 1}: lag_pos = "
+                f"{lag_pos_c * 1000:+.1f} ms (CCF = {peak_pos_c:+.3f}), "
+                f"lag_vel = {lag_vel_c * 1000:+.1f} ms "
+                f"(CCF = {peak_vel_c:+.3f}); "
+                f"training bins kept after NaN drop = "
+                f"{int(np.sum(keep_a))} / {t_train.size}"
+            )
+
+        # ---- Stage 5: decode with per-cell lags on the test half.
+        # The decoder applies each cell's own (lag_pos_c, lag_vel_c)
+        # to position / speed at test time.  When a lag is negative
+        # the decoder reads a *future* sample — standard in
+        # retrospective decoding evaluation; we document the "future
+        # peek" in the printed output.
+        sub_l = slice(None, None, max(int(decode_stride), 1))
+        x_test_sub_l = x_test[sub_l]
+        y_test_sub_l = y_test[sub_l]
+        t_test_sub_l = t_test[sub_l]
+        speed_test_sub_l = speed_test_lag[sub_l]
+        n_bins_l = t_test_sub_l.size
+        effective_delta_l = float(decode_stride * delta)
+
+        dN_l = np.zeros((len(spikes_per_cell), n_bins_l), dtype=float)
+        for c, st in enumerate(spikes_per_cell):
+            mask_te = (st >= float(t_test_sub_l[0])) & (
+                st <= float(t_test_sub_l[-1])
+            )
+            st_te = st[mask_te]
+            bi = np.searchsorted(t_test_sub_l, st_te, side="left")
+            bi = np.clip(bi, 0, n_bins_l - 1)
+            dN_l[c, bi] = 1.0
+
+        # Linearise each per-cell CIF around the trajectory mean of
+        # that cell's *lag-corrected* test trajectory.  Same pattern
+        # as :func:`_decode_position_with_speed` but with the per-cell
+        # shifted (position, speed) feeding the mean.
+        mu_l = np.zeros(len(cifs_l), dtype=float)
+        beta_l = np.zeros((2, len(cifs_l)), dtype=float)
+        for c, cif in enumerate(cifs_l):
+            px_te, py_te, mp_te = _shift_position_by_lag(
+                x_test_sub_l, y_test_sub_l,
+                lag_pos_per_cell[c], effective_delta_l,
+            )
+            sp_te, mv_te = _shift_scalar_by_lag(
+                speed_test_sub_l, lag_vel_per_cell[c], effective_delta_l,
+            )
+            keep_te = mp_te & mv_te
+            # Trajectory means used for linearisation.  NaN samples
+            # are excluded so the mean is taken over the valid bins.
+            if np.any(keep_te):
+                xm = float(np.nanmean(px_te[keep_te]))
+                ym = float(np.nanmean(py_te[keep_te]))
+                sm = float(np.nanmean(sp_te[keep_te]))
+            else:
+                xm = float(x_test_sub_l.mean())
+                ym = float(y_test_sub_l.mean())
+                sm = float(speed_test_sub_l.mean())
+            b = np.asarray(cif.b, dtype=float).reshape(-1)
+            mu_l[c] = float(
+                b[0]
+                + b[3] * xm ** 2
+                + b[4] * ym ** 2
+                + b[5] * xm * ym
+                + b[6] * sm
+            )
+            beta_l[0, c] = float(b[1] + 2.0 * b[3] * xm + b[5] * ym)
+            beta_l[1, c] = float(b[2] + 2.0 * b[4] * ym + b[5] * xm)
+
+        train_dx_l = np.diff(x_test_sub_l)
+        train_dy_l = np.diff(y_test_sub_l)
+        qxx_l = float(np.var(train_dx_l)) if train_dx_l.size else 1e-3
+        qyy_l = float(np.var(train_dy_l)) if train_dy_l.size else 1e-3
+        A_l = np.eye(2, dtype=float)
+        Q_l = np.diag([qxx_l, qyy_l])
+        x0_l = np.array([x_test_sub_l[0], y_test_sub_l[0]], dtype=float)
+        Pi0_l = np.diag([qxx_l, qyy_l])
+        (
+            _x_p_l, _W_p_l, x_u_l, _W_u_l, *_unused
+        ) = DecodingAlgorithms.PPDecodeFilterLinear(
+            A_l, Q_l, dN_l, mu_l, beta_l, "binomial", effective_delta_l,
+            None, None, x0_l, Pi0_l,
+        )
+        velocity_lag_rmse = float(np.sqrt(np.mean(
+            (x_u_l[0] - x_test_sub_l) ** 2
+            + (x_u_l[1] - y_test_sub_l) ** 2
+        )))
+        improvement_lag_vs_baseline = (
+            100.0 * (baseline_rmse - velocity_lag_rmse) / baseline_rmse
+        )
+        velocity_no_lag_rmse = float(velocity_payload["velocity_rmse"])
+        improvement_lag_vs_velocity = (
+            100.0 * (velocity_no_lag_rmse - velocity_lag_rmse)
+            / velocity_no_lag_rmse
+        )
+        sign_b = "+" if improvement_lag_vs_baseline >= 0.0 else ""
+        sign_v = "+" if improvement_lag_vs_velocity >= 0.0 else ""
+        print(
+            f"  velocity_lag decoder: RMSE = {velocity_lag_rmse:.3f} "
+            f"({sign_b}{improvement_lag_vs_baseline:.1f}% vs baseline "
+            f"{baseline_rmse:.3f}; {sign_v}"
+            f"{improvement_lag_vs_velocity:.1f}% vs velocity (no-lag) "
+            f"{velocity_no_lag_rmse:.3f})"
+        )
+        # Honest framing: CA1 cells are position-dominated, so the
+        # absolute decoder-RMSE improvement is typically modest
+        # (1-3%); the SCIENCE is the per-cell lag values themselves.
+        # Phase-precession would predict lag_pos < 0 for CA1.
+        n_anticip_pos = int(sum(v < 0.0 for v in lag_pos_per_cell))
+        n_anticip_vel = int(sum(v < 0.0 for v in lag_vel_per_cell))
+        print(
+            f"    sign-and-magnitude summary — {n_anticip_pos}/"
+            f"{len(lag_pos_per_cell)} cells show negative position "
+            f"lag (anticipatory); {n_anticip_vel}/{len(lag_vel_per_cell)} "
+            f"show negative velocity lag.  At test time the decoder reads "
+            f"position(t - lag_pos_c) and speed(t - lag_vel_c); when "
+            f"lag < 0 this is a 'future peek' (standard convention in "
+            f"retrospective decoding evaluation)."
+        )
+
+        velocity_lag_payload = {
+            "lag_pos_per_cell": lag_pos_per_cell,
+            "lag_vel_per_cell": lag_vel_per_cell,
+            "ccf_pos_peaks": ccf_pos_peaks,
+            "ccf_vel_peaks": ccf_vel_peaks,
+            "ccf_pos_payload": ccf_pos_payload,
+            "ccf_vel_payload": ccf_vel_payload,
+            "velocity_lag_rmse": velocity_lag_rmse,
+            "improvement_vs_baseline": improvement_lag_vs_baseline,
+            "improvement_vs_velocity": improvement_lag_vs_velocity,
+            "valid_train_counts": valid_train_counts,
+        }
+
     # ----- Held-out pair correlation + global envelope -----
     # Pool spike *locations* from all 4 cells on the test half — the
     # inhomogeneous-Poisson GoF treats them as one rate field whose
@@ -2696,6 +3300,28 @@ def run_example08(
         fig_names.extend([
             "fig07_history_kernels",
             "fig08_decoder_baseline_vs_history",
+        ])
+    if velocity_lag_payload is not None:
+        fig11 = _plot_per_cell_lag_ccf(
+            velocity_lag_payload["ccf_pos_payload"],
+            velocity_lag_payload["ccf_vel_payload"],
+            velocity_lag_payload["lag_pos_per_cell"],
+            velocity_lag_payload["lag_vel_per_cell"],
+            cell_indices,
+        )
+        fig12 = _plot_lag_corrected_comparison(
+            baseline_rmse=baseline_rmse,
+            velocity_rmse=float(velocity_payload["velocity_rmse"]),
+            velocity_lag_rmse=float(
+                velocity_lag_payload["velocity_lag_rmse"]
+            ),
+            lag_pos_per_cell=velocity_lag_payload["lag_pos_per_cell"],
+            lag_vel_per_cell=velocity_lag_payload["lag_vel_per_cell"],
+        )
+        figures.extend([fig11, fig12])
+        fig_names.extend([
+            "fig11_per_cell_lag_ccf",
+            "fig12_lag_corrected_comparison",
         ])
     if coupling_payload is not None:
         # Encoder matrix is the more interpretable of the two (Poisson
@@ -2842,6 +3468,42 @@ def run_example08(
                 coupling_payload["coupling_matrix_decoder"], dtype=float,
             ),
         })
+    if velocity_lag_payload is not None:
+        # velocity_lag field naming (D.1+):
+        # - ``velocity_lag_pos_seconds`` / ``velocity_lag_vel_seconds``:
+        #   per-cell position and velocity lag estimates (length
+        #   ``n_cells``).  Negative = cell anticipates the covariate.
+        # - ``velocity_lag_ccf_pos_peaks`` / ``velocity_lag_ccf_vel_peaks``:
+        #   the CCF magnitudes at the chosen peaks (diagnostic).
+        # - ``velocity_lag_decoder_rmse``: held-out RMSE of the
+        #   lag-corrected augmented decoder.
+        # - ``velocity_lag_rmse_improvement_pct``: percent improvement
+        #   vs ``baseline_rmse``.
+        # - ``velocity_lag_rmse_improvement_pct_vs_velocity``: percent
+        #   improvement vs the velocity (no-lag) decoder.
+        result.update({
+            "velocity_lag_pos_seconds": [
+                float(v) for v in velocity_lag_payload["lag_pos_per_cell"]
+            ],
+            "velocity_lag_vel_seconds": [
+                float(v) for v in velocity_lag_payload["lag_vel_per_cell"]
+            ],
+            "velocity_lag_ccf_pos_peaks": [
+                float(v) for v in velocity_lag_payload["ccf_pos_peaks"]
+            ],
+            "velocity_lag_ccf_vel_peaks": [
+                float(v) for v in velocity_lag_payload["ccf_vel_peaks"]
+            ],
+            "velocity_lag_decoder_rmse": float(
+                velocity_lag_payload["velocity_lag_rmse"]
+            ),
+            "velocity_lag_rmse_improvement_pct": float(
+                velocity_lag_payload["improvement_vs_baseline"]
+            ),
+            "velocity_lag_rmse_improvement_pct_vs_velocity": float(
+                velocity_lag_payload["improvement_vs_velocity"]
+            ),
+        })
     return result
 
 
@@ -2877,9 +3539,15 @@ if __name__ == "__main__":
             "spike-history-augmented variant per Truccolo et al. 2005 "
             "§3 (8 figures).  ``coupling`` (default) additionally "
             "runs an ensemble-coupling-augmented variant per "
-            "Truccolo et al. 2005 §3 (10 figures).  The CLI defaults "
+            "Truccolo et al. 2005 §3 (10 figures).  ``velocity_lag`` "
+            "runs the baseline + velocity chain then applies an "
+            "iterated per-cell CCF lag correction to both position "
+            "and velocity per Truccolo et al. 2005 §4, producing "
+            "fig11 (per-cell CCF diagnostic) and fig12 (4-bar "
+            "capstone) for a total of 8 figures.  The CLI defaults "
             "to ``coupling`` so ``--export-figures`` yields the full "
-            "gallery the manifest expects; the Python "
+            "fig01-fig10 set the manifest expects; ``velocity_lag`` "
+            "additionally yields fig11 and fig12.  The Python "
             "``run_example08`` default remains ``baseline``."
         ),
     )
@@ -2952,5 +3620,16 @@ if __name__ == "__main__":
                     ]
                     for i in range(mat.shape[0])
                 ]
+        for key in (
+            "velocity_lag_pos_seconds",
+            "velocity_lag_vel_seconds",
+            "velocity_lag_ccf_pos_peaks",
+            "velocity_lag_ccf_vel_peaks",
+            "velocity_lag_decoder_rmse",
+            "velocity_lag_rmse_improvement_pct",
+            "velocity_lag_rmse_improvement_pct_vs_velocity",
+        ):
+            if key in result:
+                summary[key] = result[key]
         args.output_json.write_text(json.dumps(summary, indent=2),
                                     encoding="utf-8")
