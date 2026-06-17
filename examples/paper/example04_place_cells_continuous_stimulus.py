@@ -291,6 +291,13 @@ def run_example04(*, export_figures: bool = False, export_dir: Path | None = Non
         ax.set_yticks(np.arange(-1, 1.5, 0.5))
         ax.set_aspect("equal")
         ax.axis("square")
+        # Label only the outer axes in the 2x2 grid to keep the panels clean:
+        # left column (i=0, 2) gets the Y-Position label, bottom row (i=2, 3)
+        # gets the X-Position label.
+        if i in (0, 2):
+            ax.set_ylabel("Y Position", fontweight="bold", fontsize=12)
+        if i in (2, 3):
+            ax.set_xlabel("X Position", fontweight="bold", fontsize=12)
         if i == 3:
             ax.legend([h1, h2], ["Animal Path", "Location at time of spike"])
     fig1.tight_layout()

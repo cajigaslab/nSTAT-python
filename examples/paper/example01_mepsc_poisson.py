@@ -169,7 +169,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     lam = resultConst.lambda_signal
     ax.plot(lam.time, lam.data[:, 0], "b", linewidth=2)
     ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
-    ax.set_ylabel(f"{lam.name} [{lam.yunits}]" if lam.yunits else lam.name,
+    ax.set_ylabel(r"$\lambda(t)$ [Hz]" if lam.yunits else r"$\lambda(t)$",
                   fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.legend([r"$\lambda_{const}$"], loc="upper right")
 
@@ -206,6 +206,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax = axes2[1]
     nstWashout.plot(handle=ax)
     ax.set_yticks([0, 1])
+    ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_title(r"Neural Raster with decreasing Mg$^{2+}$ Concentration",
                  fontweight="bold", fontsize=12, fontfamily="Arial")
@@ -294,7 +295,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.plot(lam.time, lam.getSubSignal(1).data[:, 0], "g", linewidth=2)
     ax.set_ylim(0, 5)
     ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
-    ax.set_ylabel(f"{lam.name} [{lam.yunits}]" if lam.yunits else lam.name,
+    ax.set_ylabel(r"$\lambda(t)$ [Hz]" if lam.yunits else r"$\lambda(t)$",
                   fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.legend([r"$\lambda_{const}$", r"$\lambda_{const-epoch}$"], loc="upper right")
 
