@@ -105,6 +105,7 @@ def _plot_decoded_trajectory(position, result):
     true_x = np.interp(trial_time, orig_t, position[:, 0])
     true_y = np.interp(trial_time, orig_t, position[:, 1])
 
+    # === FIGURE: fig01_decoded_trajectory.png ===
     fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.6))
     axes[0].plot(true_x, true_y, "k-", lw=1.0, alpha=0.7, label="true")
     axes[0].plot(
@@ -127,12 +128,14 @@ def _plot_decoded_trajectory(position, result):
     axes[1].set_title("x(t) trace")
     axes[1].legend(loc="upper right", fontsize=9)
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 
 def _plot_place_field_summary(result, cell_centres):
     import matplotlib.pyplot as plt
 
+    # === FIGURE: fig02_place_fields.png ===
     fig, ax = plt.subplots(figsize=(6.5, 5.0))
     for c_idx, kept in enumerate(result.cell_indices_kept):
         cx, cy = cell_centres[c_idx % len(cell_centres)]
@@ -147,6 +150,7 @@ def _plot_place_field_summary(result, cell_centres):
     if result.cell_indices_kept:
         ax.legend(loc="upper right", fontsize=9)
     fig.tight_layout()
+    # === END FIGURE ===
     return fig
 
 

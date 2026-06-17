@@ -22,6 +22,7 @@ page links the new gallery alongside paper-examples and notebooks.
 """
 from __future__ import annotations
 
+import html
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,7 @@ from nstat._gallery_common import (
     _load_descriptions_indexed_by,
     _load_gallery_yaml,
     _shared_gallery_css,
+    extract_figure_code,
     render_galleries_index_html,
 )
 
@@ -148,6 +150,7 @@ def render_extras_html(repo_root: Path | None = None) -> str:
             fig.get("filename", ""): fig for fig in figures
         }
         parts.append('<div class="gallery">')
+        script_path = base / script
         for fig in manifest_figures:
             filename = fig.get("filename", "")
             desc_fig = desc_by_filename.get(filename, {})
@@ -155,6 +158,17 @@ def render_extras_html(repo_root: Path | None = None) -> str:
             analysis = desc_fig.get("analysis", "").strip()
             rel = f"figures/extras/{demo_id}/{filename}"
             png_path = base / "docs" / "figures" / "extras" / demo_id / filename
+            snippet = extract_figure_code(script_path, filename)
+            code_block = ""
+            if snippet:
+                code_block = (
+                    '<details class="code-detail">'
+                    "<summary>Show generating code</summary>"
+                    '<pre><code class="language-python">'
+                    f"{html.escape(snippet)}"
+                    "</code></pre>"
+                    "</details>"
+                )
             if png_path.exists():
                 parts.append(
                     f'<figure><img src="{rel}" alt="{filename}" loading="lazy">'
@@ -162,6 +176,7 @@ def render_extras_html(repo_root: Path | None = None) -> str:
                     + (f"<br>{caption}" if caption else "")
                     + "</figcaption>"
                     + (f'<div class="analysis">{analysis}</div>' if analysis else "")
+                    + code_block
                     + "</figure>"
                 )
             else:
@@ -174,6 +189,7 @@ def render_extras_html(repo_root: Path | None = None) -> str:
                     + (f"<br>{caption}" if caption else "")
                     + "</figcaption>"
                     + (f'<div class="analysis">{analysis}</div>' if analysis else "")
+                    + code_block
                     + "</figure>"
                 )
         parts.append("</div>")

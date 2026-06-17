@@ -300,25 +300,31 @@ def run_demo(
     print(f"  pseudo log-lik   : {ai['pseudo_log_likelihood']:.3f}")
 
     # ---- Figures ----
+    # === FIGURE: fig01_strauss_scatter.png ===
     fig1, ax1 = plt.subplots(figsize=(5.5, 5.5))
     _plot_scatter_with_radius(
         ax1, st["points"], st["R"],
         f"Strauss (beta={st['beta_true']}, gamma={st['gamma_true']}, "
         f"R={st['R']}) — n={st['n_data']}",
     )
+    # === END FIGURE ===
 
+    # === FIGURE: fig02_hardcore_scatter.png ===
     fig2, ax2 = plt.subplots(figsize=(5.5, 5.5))
     _plot_scatter_with_radius(
         ax2, hc["points"], hc["R"],
         f"Hard-core (beta={hc['beta_true']}, R={hc['R']}) — n={hc['n_data']}",
     )
+    # === END FIGURE ===
 
+    # === FIGURE: fig03_area_interaction_scatter.png ===
     fig3, ax3 = plt.subplots(figsize=(5.5, 5.5))
     _plot_scatter_with_radius(
         ax3, ai["points"], ai["R"],
         f"Area-interaction (beta={ai['beta_true']}, "
         f"eta={ai['eta_true']}, R={ai['R']}) — n={ai['n_data']}",
     )
+    # === END FIGURE ===
 
     figures = [fig1, fig2, fig3]
     fig_names = (

@@ -15,6 +15,7 @@ distinct anchor schemes and figure-path semantics and are not merged.
 """
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +48,92 @@ def _load_descriptions_indexed_by(
     """
     payload = _load_gallery_yaml(path) or {}
     return {row[index_key]: row for row in payload.get(list_key, [])}
+
+
+def extract_figure_code(
+    script_path: Path, figure_filename: str
+) -> str | None:
+    """Extract the code region annotated for ``figure_filename`` from a demo script.
+
+    Returns the dedented code chunk between
+    ``# === FIGURE: <figure_filename> ===`` and ``# === END FIGURE ===``,
+    or ``None`` if no such marker pair is found.
+
+    Marker convention
+    -----------------
+    Demo scripts wrap each figure-producing block in a pair of comment
+    markers so the gallery renderer can extract and embed the exact code
+    that produced each PNG:
+
+    ::
+
+        # === FIGURE: fig01_thomas_scatter.png ===
+        fig, ax = plt.subplots(figsize=(5, 5))
+        ax.scatter(thomas_points[:, 0], thomas_points[:, 1])
+        fig.savefig(out_dir / "fig01_thomas_scatter.png", dpi=120)
+        # === END FIGURE ===
+
+    The opening marker shape is exact: one space after ``#``, three
+    ``=``, space, ``FIGURE:``, space, filename, space, three ``=``.  The
+    closing marker is the same shape with ``END FIGURE``.  Lines between
+    the markers (excluding the markers themselves) are returned with the
+    minimum common leading whitespace stripped via :func:`textwrap.dedent`.
+
+    Parameters
+    ----------
+    script_path
+        Absolute path to the demo script.  If the file does not exist
+        ``None`` is returned so script-path mismatches are caught by
+        other gates rather than tripping a hard failure here.
+    figure_filename
+        The figure's filename as it appears in the manifest (which is
+        also the filename in the opening marker and the ``fig.savefig``
+        call).
+
+    Raises
+    ------
+    ValueError
+        If multiple opening markers exist for the same filename, or if
+        an opening marker is found without a matching closing marker.
+        The build should fail loudly rather than silently truncating.
+    """
+    if not script_path.exists():
+        return None
+
+    text = script_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+
+    open_marker = f"# === FIGURE: {figure_filename} ==="
+    close_marker = "# === END FIGURE ==="
+
+    open_indices = [
+        i for i, line in enumerate(lines) if line.strip() == open_marker
+    ]
+    if not open_indices:
+        return None
+    if len(open_indices) > 1:
+        raise ValueError(
+            f"extract_figure_code: multiple opening markers for "
+            f"{figure_filename!r} in {script_path}: lines {open_indices}"
+        )
+
+    open_idx = open_indices[0]
+    close_idx: int | None = None
+    for j in range(open_idx + 1, len(lines)):
+        if lines[j].strip() == close_marker:
+            close_idx = j
+            break
+    if close_idx is None:
+        raise ValueError(
+            f"extract_figure_code: opening marker for {figure_filename!r} "
+            f"at line {open_idx + 1} of {script_path} has no matching "
+            f"'# === END FIGURE ===' closer"
+        )
+
+    body = "\n".join(lines[open_idx + 1 : close_idx])
+    # Dedent to the minimum common leading whitespace; strip the
+    # leading/trailing blank lines that often pad the marker region.
+    return textwrap.dedent(body).strip("\n")
 
 
 def _shared_gallery_css() -> str:
@@ -86,6 +173,22 @@ def _shared_gallery_css() -> str:
         ".gallery .analysis{font-size:.78rem;color:var(--ink);margin-top:.3rem;}"
         ".placeholder{padding:1rem;color:var(--ink-2);font-size:.8rem;"
         "background:#0b0e14;border:1px dashed var(--border);border-radius:4px;text-align:center;}"
+        ".gallery .code-detail{margin-top:.45rem;font-size:.78rem;}"
+        ".gallery .code-detail summary{cursor:pointer;color:var(--accent-2);"
+        "padding:.15rem .4rem;background:#0b0e14;border:1px solid var(--border);"
+        "border-radius:3px;display:inline-block;list-style:none;"
+        "font-size:.75rem;}"
+        ".gallery .code-detail summary::-webkit-details-marker{display:none;}"
+        ".gallery .code-detail summary:hover{color:var(--accent);"
+        "border-color:var(--accent);}"
+        ".gallery .code-detail[open] summary{color:var(--accent);"
+        "border-color:var(--accent);}"
+        ".gallery .code-detail pre{margin:.4rem 0 0;padding:.6rem .8rem;"
+        "font-size:.72rem;line-height:1.45;overflow-x:auto;"
+        "background:#0b0e14;border:1px solid var(--border);border-radius:4px;"
+        "color:var(--ink);}"
+        ".gallery .code-detail code.language-python{background:transparent;"
+        "color:var(--ink);padding:0;font-size:inherit;}"
         "a{color:var(--accent-2);}"
         "footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);"
         "color:var(--ink-2);font-size:.85rem;}"

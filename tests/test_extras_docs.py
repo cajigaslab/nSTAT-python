@@ -276,6 +276,23 @@ def test_extras_gallery_html_exists_and_covers_every_manifest_entry() -> None:
     )
 
 
+def test_extras_gallery_embeds_code_snippets_for_marked_figures():
+    """At least one figure in the extras gallery shows a code snippet.
+
+    Verifies the new "extract and embed" pipeline produced output —
+    catches the case where the extractor silently returned None for
+    every figure (e.g., due to a marker convention change).
+    """
+    html_path = REPO_ROOT / "docs" / "extras_gallery.html"
+    text = html_path.read_text(encoding="utf-8")
+    # The new details block opens with this exact class
+    assert 'class="code-detail"' in text, (
+        "extras_gallery.html should embed code snippets for at least one figure"
+        " (look for `class=\"code-detail\"` blocks). If you removed the marker"
+        " convention, update this test or the gallery template."
+    )
+
+
 def test_galleries_index_html_links_each_category_page() -> None:
     """``docs/galleries.html`` is the landing page linking the per-category
     galleries; must reference paper-examples, notebooks, and extras galleries.
