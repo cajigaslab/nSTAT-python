@@ -127,6 +127,15 @@ dpp = [
   "dppy>=0.3",
 ]
 
+# Latent-dynamics bridges (nstat.extras.latents).  Backs the Elephant
+# GPFA wrapper (Yu et al. 2009).  ~50 MB combined footprint; deliberately
+# NOT in [all-extras] (defer adoption-driven inclusion to a future PR).
+latents = [
+  "elephant>=1.2",
+  "neo>=0.13",
+  "quantities>=0.15",
+]
+
 # PyTorch-based decoder bridges (placeholder; deferred to a future release).
 deep-learning = []
 
