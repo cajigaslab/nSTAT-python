@@ -34,6 +34,7 @@ EXAMPLES = [
     ("example05_decoding_ppaf_pphf", "example05", "run_example05"),
     ("example06_place_fields_glm_basis", "example06", "run_example06"),
     ("example07_spatiotemporal_hawkes_waves", "example07", "run_example07"),
+    ("example08_real_place_cells", "example08", "run_example08"),
 ]
 
 

@@ -52,7 +52,7 @@ def test_generated_gallery_markdown_includes_thumbnail_rows_and_run_commands() -
 def test_paper_gallery_directories_exist() -> None:
     for example_id in (
         "example01", "example02", "example03", "example04", "example05",
-        "example06", "example07",
+        "example06", "example07", "example08",
     ):
         path = REPO_ROOT / "docs" / "figures" / example_id
         assert path.is_dir()

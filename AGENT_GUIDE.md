@@ -497,9 +497,12 @@ Python projects" table in `README.md` for install commands.
   over the body of the wavenumber grid and useful for comparing an
   empirical pair correlation to an LGCP closed form.
   End-to-end demos: `examples/paper/example06_place_fields_glm_basis.py`,
-  `examples/paper/example07_spatiotemporal_hawkes_waves.py`; companion
+  `examples/paper/example07_spatiotemporal_hawkes_waves.py`,
+  `examples/paper/example08_real_place_cells.py`; companion
   notebooks `notebooks/PlaceFieldGLMBasis.ipynb`,
-  `notebooks/HawkesWaveAnalysis.ipynb`.
+  `notebooks/HawkesWaveAnalysis.ipynb`,
+  `notebooks/RealPlaceCellDecoding.ipynb`,
+  `notebooks/MultitypeCrossK.ipynb`.
 - **Not** distributed.  All routines are single-process NumPy / SciPy.
 
 ---

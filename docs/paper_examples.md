@@ -28,6 +28,7 @@ Outputs:
 | `example05` | ![Example 05](figures/example05/fig01_univariate_setup.png) | [example05_decoding_ppaf_pphf.py](../examples/paper/example05_decoding_ppaf_pphf.py) | How well do adaptive/hybrid point-process filters decode stimulus and reach state? | `python examples/paper/example05_decoding_ppaf_pphf.py` | [gallery page](./figures/example05/README.md) |
 | `example06` | ![Example 06](figures/example06/fig01_true_vs_basis_recovered_rate.png) | [example06_place_fields_glm_basis.py](../examples/paper/example06_place_fields_glm_basis.py) | How does a tensor-product B-spline Poisson GLM recover a known 2-D place field, and how do its rate and second-order diagnostics compare to an LGCP? | `python examples/paper/example06_place_fields_glm_basis.py` | [gallery page](./figures/example06/README.md) |
 | `example07` | ![Example 07](figures/example07/fig01_adjacency_and_positions.png) | [example07_spatiotemporal_hawkes_waves.py](../examples/paper/example07_spatiotemporal_hawkes_waves.py) | Can the Bartlett spectrum and wave-peak detector recover the speed and direction of a known planar wave embedded in a multivariate Hawkes triggering matrix? | `python examples/paper/example07_spatiotemporal_hawkes_waves.py` | [gallery page](./figures/example07/README.md) |
+| `example08` | ![Example 08](figures/example08/fig01_real_place_fields_panel.png) | [example08_real_place_cells.py](../examples/paper/example08_real_place_cells.py) | Does a B-spline Poisson GLM trained on real hippocampal place cells produce a held-out spatial pair-correlation inside the inhomogeneous global-rank envelope, and a population rescaled-time ACF inside the Bartlett band? | `python examples/paper/example08_real_place_cells.py` | [gallery page](./figures/example08/README.md) |
 
 ```{toctree}
 :hidden:
@@ -39,6 +40,7 @@ figures/example04/README
 figures/example05/README
 figures/example06/README
 figures/example07/README
+figures/example08/README
 ```
 
 ## Gallery
@@ -142,3 +144,17 @@ Expected figure files:
 - `docs/figures/example07/fig01_adjacency_and_positions.png`
 - `docs/figures/example07/fig02_bartlett_spectrum.png`
 - `docs/figures/example07/fig03_detected_peaks_overlay.png`
+
+### Example 08: Real Place-Cell Encoding-and-Decoding With Held-Out Spatial GoF
+
+Question: Does a B-spline Poisson GLM trained on real hippocampal place cells produce a held-out spatial pair-correlation inside the inhomogeneous global-rank envelope, and a population rescaled-time ACF inside the Bartlett band?
+
+Run command: `python examples/paper/example08_real_place_cells.py`
+
+![Example 08](figures/example08/fig01_real_place_fields_panel.png)
+
+Expected figure files:
+- `docs/figures/example08/fig01_real_place_fields_panel.png`
+- `docs/figures/example08/fig02_decoded_vs_true_position.png`
+- `docs/figures/example08/fig03_pair_correlation_envelope.png`
+- `docs/figures/example08/fig04_rescaled_acf.png`

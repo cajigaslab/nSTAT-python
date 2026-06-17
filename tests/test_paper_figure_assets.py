@@ -16,7 +16,7 @@ MANIFEST_PATH = REPO_ROOT / "examples" / "paper" / "manifest.yml"
 # nstat.paper_figures builder registry.  Python-only nstat.extras.spatial
 # Tier D examples follow this pattern and are intentionally absent from
 # EXAMPLE_FIGURE_BUILDERS.
-_REGISTRY_EXEMPT_IDS = {"example06", "example07"}
+_REGISTRY_EXEMPT_IDS = {"example06", "example07", "example08"}
 
 
 def _load_examples() -> list[dict[str, object]]:
