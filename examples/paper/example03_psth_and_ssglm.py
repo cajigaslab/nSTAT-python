@@ -378,46 +378,39 @@ def run_part_b(data_dir, export_dir=None):
     # Figure 3: SSGLM simulation summary (3x2)
     # ------------------------------------------------------------------
     # === FIGURE: fig03_ssglm_simulation_summary.png ===
-    fig3, axes3 = plt.subplots(3, 2, figsize=(14, 9))
+    # Layout: row 0 = 2 side-by-side panels; rows 1 and 2 each span full width.
+    # GridSpec is used (rather than plt.subplots) so the row-spanning panels
+    # (raster, CIF heatmap) occupy the full figure width cleanly without
+    # post-hoc set_position() hacks.
+    from matplotlib.gridspec import GridSpec
 
-    # (1,1): Within-trial stimulus
-    ax = axes3[0, 0]
+    fig3 = plt.figure(figsize=(14, 9))
+    gs3 = GridSpec(3, 2, figure=fig3)
+
+    # (Row 0, Col 0): Within-trial stimulus
+    ax = fig3.add_subplot(gs3[0, 0])
     ax.plot(time, u, "k", linewidth=3)
     ax.set_xlabel("time [s]")
     ax.set_ylabel("Stimulus")
     ax.set_title("Within Trial Stimulus", fontweight="bold", fontsize=14)
 
-    # (1,2): Across-trial gain
-    ax = axes3[0, 1]
+    # (Row 0, Col 1): Across-trial gain
+    ax = fig3.add_subplot(gs3[0, 1])
     ax.plot(np.arange(1, numRealizations + 1), b1, "k", linewidth=3)
     ax.set_xlabel("Trial [k]")
     ax.set_ylabel("Stimulus Gain")
     ax.set_title("Across Trial Stimulus Gain", fontweight="bold", fontsize=14)
 
-    # (2,1)+(2,2): Raster spanning both columns
-    axes3[1, 1].remove()
-    ax = axes3[1, 0]
-    ax.set_position(
-        [axes3[1, 0].get_position().x0,
-         axes3[1, 0].get_position().y0,
-         axes3[1, 1].get_position().x1 - axes3[1, 0].get_position().x0,
-         axes3[1, 0].get_position().height]
-    )
+    # (Row 1): Raster spanning both columns
+    ax = fig3.add_subplot(gs3[1, :])
     spikeColl.plot(handle=ax)
     ax.set_yticks(range(0, numRealizations + 1, 10))
     ax.set_xlabel("time [s]")
     ax.set_ylabel("Trial [k]")
     ax.set_title("Simulated Neural Raster", fontweight="bold", fontsize=14)
 
-    # (3,1)+(3,2): True CIF heatmap spanning both columns
-    axes3[2, 1].remove()
-    ax = axes3[2, 0]
-    ax.set_position(
-        [axes3[2, 0].get_position().x0,
-         axes3[2, 0].get_position().y0,
-         ax.get_position().width * 2.1,
-         axes3[2, 0].get_position().height]
-    )
+    # (Row 2): True CIF heatmap spanning both columns
+    ax = fig3.add_subplot(gs3[2, :])
     ax.imshow(stimData.T, aspect="auto", origin="lower",
               extent=[time[0], time[-1], 1, numRealizations],
               cmap="jet")  # MATLAB default colormap for imagesc
