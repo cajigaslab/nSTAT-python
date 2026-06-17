@@ -9,7 +9,7 @@
 <p class="muted">Every notebook registered in <code>tools/notebook_build/notebook_manifest.yml</code>, with the figure outputs each produces and a short description of what every figure shows.  Auto-generated from <code>notebook_descriptions.yml</code> — re-render with <code>python tools/paper_examples/build_gallery.py</code> after editing the descriptions.</p>
 </header>
 <nav class="toc"><strong>Notebooks:</strong> 
-<a href="#00_getting_started">00_getting_started</a> · <a href="#AnalysisExamples">AnalysisExamples</a> · <a href="#ConfigCollExamples">ConfigCollExamples</a> · <a href="#CovCollExamples">CovCollExamples</a> · <a href="#CovariateExamples">CovariateExamples</a> · <a href="#DecodingExample">DecodingExample</a> · <a href="#DecodingExampleWithHist">DecodingExampleWithHist</a> · <a href="#EventsExamples">EventsExamples</a> · <a href="#ExplicitStimulusWhiskerData">ExplicitStimulusWhiskerData</a> · <a href="#FitResSummaryExamples">FitResSummaryExamples</a> · <a href="#FitResultExamples">FitResultExamples</a> · <a href="#HippocampalPlaceCellExample">HippocampalPlaceCellExample</a> · <a href="#HistoryExamples">HistoryExamples</a> · <a href="#NetworkTutorial">NetworkTutorial</a> · <a href="#PPSimExample">PPSimExample</a> · <a href="#PPThinning">PPThinning</a> · <a href="#PSTHEstimation">PSTHEstimation</a> · <a href="#SignalObjExamples">SignalObjExamples</a> · <a href="#StimulusDecode2D">StimulusDecode2D</a> · <a href="#TrialConfigExamples">TrialConfigExamples</a> · <a href="#TrialExamples">TrialExamples</a> · <a href="#ValidationDataSet">ValidationDataSet</a> · <a href="#mEPSCAnalysis">mEPSCAnalysis</a> · <a href="#nSTATPaperExamples">nSTATPaperExamples</a> · <a href="#nSpikeTrainExamples">nSpikeTrainExamples</a> · <a href="#nstCollExamples">nstCollExamples</a> · <a href="#AnalysisExamples2">AnalysisExamples2</a> · <a href="#ConfidenceIntervalOverview">ConfidenceIntervalOverview</a> · <a href="#FitResultReference">FitResultReference</a> · <a href="#HybridFilterExample">HybridFilterExample</a> · <a href="#PlaceFieldGLMBasis">PlaceFieldGLMBasis</a> · <a href="#HawkesWaveAnalysis">HawkesWaveAnalysis</a> · <a href="#RealPlaceCellDecoding">RealPlaceCellDecoding</a> · <a href="#MultitypeCrossK">MultitypeCrossK</a></nav>
+<a href="#00_getting_started">00_getting_started</a> · <a href="#AnalysisExamples">AnalysisExamples</a> · <a href="#ConfigCollExamples">ConfigCollExamples</a> · <a href="#CovCollExamples">CovCollExamples</a> · <a href="#CovariateExamples">CovariateExamples</a> · <a href="#DecodingExample">DecodingExample</a> · <a href="#DecodingExampleWithHist">DecodingExampleWithHist</a> · <a href="#EventsExamples">EventsExamples</a> · <a href="#ExplicitStimulusWhiskerData">ExplicitStimulusWhiskerData</a> · <a href="#FitResSummaryExamples">FitResSummaryExamples</a> · <a href="#FitResultExamples">FitResultExamples</a> · <a href="#HippocampalPlaceCellExample">HippocampalPlaceCellExample</a> · <a href="#HistoryExamples">HistoryExamples</a> · <a href="#NetworkTutorial">NetworkTutorial</a> · <a href="#PPSimExample">PPSimExample</a> · <a href="#PPThinning">PPThinning</a> · <a href="#PSTHEstimation">PSTHEstimation</a> · <a href="#SignalObjExamples">SignalObjExamples</a> · <a href="#StimulusDecode2D">StimulusDecode2D</a> · <a href="#TrialConfigExamples">TrialConfigExamples</a> · <a href="#TrialExamples">TrialExamples</a> · <a href="#ValidationDataSet">ValidationDataSet</a> · <a href="#mEPSCAnalysis">mEPSCAnalysis</a> · <a href="#nSTATPaperExamples">nSTATPaperExamples</a> · <a href="#nSpikeTrainExamples">nSpikeTrainExamples</a> · <a href="#nstCollExamples">nstCollExamples</a> · <a href="#AnalysisExamples2">AnalysisExamples2</a> · <a href="#ConfidenceIntervalOverview">ConfidenceIntervalOverview</a> · <a href="#FitResultReference">FitResultReference</a> · <a href="#HybridFilterExample">HybridFilterExample</a> · <a href="#PlaceFieldGLMBasis">PlaceFieldGLMBasis</a> · <a href="#HawkesWaveAnalysis">HawkesWaveAnalysis</a> · <a href="#RealPlaceCellDecoding">RealPlaceCellDecoding</a> · <a href="#MultitypeCrossK">MultitypeCrossK</a> · <a href="#SpatialClusterAndGibbs">SpatialClusterAndGibbs</a></nav>
 <section class="example" id="00_getting_started">
 <h2>00_getting_started<span class="tag">smoke</span></h2>
 <p><strong>Goal:</strong> Confirm a fresh `pip install nstat-toolbox` reproduces the core spike
@@ -787,6 +787,26 @@ contrast an independent two-label Poisson pattern against a
 shared-parent Thomas-cluster pattern, then plot both summary
 statistics with their bivariate Poisson nulls.</p>
 <p><strong>Notebook:</strong> <code>notebooks/MultitypeCrossK.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/MultitypeCrossK.ipynb">Source</a></p>
+<p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
+</section>
+<section class="example" id="SpatialClusterAndGibbs">
+<h2>SpatialClusterAndGibbs<span class="tag">smoke</span></h2>
+<p><strong>Goal:</strong> Exercise the cluster-Cox + Gibbs catalogues end-to-end (simulate
+then recover) and surface the documented upward bias on the
+hard-core intensity and the weak identification of the
+area-interaction eta.</p>
+<p class="muted">Companion walkthrough of the cluster-Cox (Thomas, Matern-cluster,
+Neyman-Scott) and Gibbs interaction (Strauss, hard-core, area-
+interaction) halves of `nstat.extras.spatial`: simulate each
+process on the unit square, recover its parameters by minimum
+contrast (Diggle 2013) or Berman-Turner pseudo-likelihood
+(Berman-Turner 1992; Baddeley-Turner 2000), and contrast the
+attractive (cluster) and repulsive (Gibbs) halves side-by-side.
+Hard-core beta is deliberately set to 60 (instead of the
+architect-resolved 100) because the intercept-only Berman-Turner
+GLM routinely overflows at higher densities — the bias-direction
+story is preserved at the lower value.</p>
+<p><strong>Notebook:</strong> <code>notebooks/SpatialClusterAndGibbs.ipynb</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/notebooks/SpatialClusterAndGibbs.ipynb">Source</a></p>
 <p class="muted">No figure outputs registered for this notebook (parity stub or class-reference scaffold).</p>
 </section>
 <footer>

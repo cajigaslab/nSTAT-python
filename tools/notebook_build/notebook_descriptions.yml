@@ -1336,3 +1336,23 @@ notebooks:
       attraction at the cluster-kernel scale while collapsing to the
       bivariate Poisson null under independent labelling.
     figures: []
+
+  - topic: SpatialClusterAndGibbs
+    overview: |
+      Companion walkthrough of the cluster-Cox (Thomas, Matern-cluster,
+      Neyman-Scott) and Gibbs interaction (Strauss, hard-core, area-
+      interaction) halves of `nstat.extras.spatial`: simulate each
+      process on the unit square, recover its parameters by minimum
+      contrast (Diggle 2013) or Berman-Turner pseudo-likelihood
+      (Berman-Turner 1992; Baddeley-Turner 2000), and contrast the
+      attractive (cluster) and repulsive (Gibbs) halves side-by-side.
+      Hard-core beta is deliberately set to 60 (instead of the
+      architect-resolved 100) because the intercept-only Berman-Turner
+      GLM routinely overflows at higher densities — the bias-direction
+      story is preserved at the lower value.
+    goal: |
+      Exercise the cluster-Cox + Gibbs catalogues end-to-end (simulate
+      then recover) and surface the documented upward bias on the
+      hard-core intensity and the weak identification of the
+      area-interaction eta.
+    figures: []

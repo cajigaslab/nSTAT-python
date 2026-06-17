@@ -381,6 +381,31 @@ which contrasts an independent two-type Poisson labelling with a
 Thomas-clustered shared-parent labelling under `cross_k_inhom` and
 `cross_pair_correlation` (Baddeley-Moller-Waagepetersen 2000).
 
+The cluster-Cox + Gibbs catalogue is exercised end-to-end by two
+companion synthetic demo scripts and one walkthrough notebook.
+[`examples/extras/spatial_cluster_cox_demo.py`](../../examples/extras/spatial_cluster_cox_demo.py)
+simulates a Thomas and a Matérn-cluster process on the unit square and
+recovers `(sigma, lambda_p)` / `(R, lambda_p)` via `fit_thomas` and
+`fit_matern_cluster` — the minimum-contrast (Diggle 2013 §6.2.1)
+estimators built on the SOIRS border-corrected pair correlation; the
+mean offspring count `mu` is then recovered post-hoc from `n / (lambda_p
+* |W|)` because second-order statistics do not identify it.
+[`examples/extras/spatial_gibbs_demo.py`](../../examples/extras/spatial_gibbs_demo.py)
+simulates a Strauss (`gamma = 0.4`), a hard-core, and an
+area-interaction (`eta = 4.0`) process via the Metropolis birth-death
+chain (Geyer 1999) and the dart-throwing rejection sampler, then recovers
+their parameters with `pseudo_likelihood_fit` — the Berman-Turner (1992)
+device routing through `nstat.glm.fit_poisson_glm`.  The hard-core demo
+deliberately uses `beta = 60` to land in the numerical envelope where
+the intercept-only GLM converges and the documented upward bias on
+`beta_hat` (BRT-2015 §13.4) is visible.
+
+The companion walkthrough notebook
+[`notebooks/SpatialClusterAndGibbs.ipynb`](../../notebooks/SpatialClusterAndGibbs.ipynb)
+runs both halves in one place — six processes, two estimators, a single
+recovery table — so the attractive (cluster-Cox) and repulsive (Gibbs)
+catalogues can be inspected side-by-side.
+
 ## Scope
 
 | Feature | Status |

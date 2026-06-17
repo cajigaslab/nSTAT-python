@@ -102,3 +102,6 @@ notebooks:
 - topic: MultitypeCrossK
   file: notebooks/MultitypeCrossK.ipynb
   run_group: smoke
+- topic: SpatialClusterAndGibbs
+  file: notebooks/SpatialClusterAndGibbs.ipynb
+  run_group: smoke
