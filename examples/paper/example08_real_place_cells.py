@@ -86,6 +86,17 @@ Expected outputs:
   gamma in the [1, 5 ms) refractory window (Panel 2), colored by
   sign to highlight cells whose negative gamma is a refractoriness
   signature.
+- Figure 9 (model="coupling" only): ensemble-coupling matrix as
+  two 4x4 heatmaps (target x source) — one per lattice-matched
+  window ([0, 33ms), [33, 200ms)) — with diagonals NaN/masked
+  (cells don't self-couple in this model).  Diverging RdBu_r
+  colormap so positive = excitatory, negative = inhibitory.  The
+  encoder matrix is shown (more interpretable than the binomial
+  decoder matrix).
+- Figure 10 (model="coupling" only): capstone 4-bar progression —
+  baseline RMSE / velocity RMSE / history-decoder RMSE / coupling
+  RMSE — with the per-step improvement % annotated.  Summarises
+  the full Truccolo et al. 2005 framework progression.
 
 Model variants:
   ``run_example08(model="baseline")`` runs the position-only
@@ -145,6 +156,26 @@ Model variants:
   diagnostic).  Decoder RMSE is reported as
   ``history_decoder_rmse`` and matches baseline bit-for-bit
   (the decoder pipeline is unchanged).
+
+  ``run_example08(model="coupling")`` runs the full
+  baseline + velocity + history chain first and then an
+  ensemble-coupling-augmented variant per Truccolo et al. 2005
+  §3 "ensemble coupling effects".  Each cell's encoder GLM and
+  decoder CIF are extended with six coupling coefficients
+  (3 source cells × 2 windows for the 4-cell subset), where the
+  windows are *lattice-matched* to the decoder bin:
+  [0, 33 ms) and [33, 200 ms).  D.2's lesson was that
+  sub-bin history filters can't be carried into the binomial
+  decoder without saturation; D.3 sidesteps that by picking
+  coupling windows that align with the 33 ms position lattice
+  and the 167 ms strided decode lattice.  At decode time the
+  coupling values are *observed* (held-out spike counts from
+  the other cells), folded into a time-mean ``mu`` exactly the
+  same way the velocity decoder folds in mean speed.  The
+  state stays 2-D position.  Produces two extra figures: fig09
+  (encoder coupling matrix, two windows side-by-side, NaN
+  diagonal) and fig10 (capstone 4-bar progression: baseline →
+  velocity → history (decoder) → coupling).
 """
 from __future__ import annotations
 
@@ -1010,6 +1041,419 @@ def _fit_bspline_encoder_with_history(
 
 
 # =====================================================================
+# Ensemble-coupling covariates (model="coupling" only)
+# =====================================================================
+# Truccolo et al. 2005 §3 ("ensemble coupling effects") add a sum of
+# piecewise-constant filters over the recent spike counts of the OTHER
+# cells in the ensemble to the log conditional intensity:
+#
+#     log lambda_{c, k} = mu_c + beta_c · state_k
+#                        + sum_{c' != c, w} gamma_{c, c', w} · N_{c', w}(k)
+#
+# Each ``N_{c', w}(k)`` is the spike count from source cell ``c'`` in
+# a recent-past window ``w`` ending at time ``t_k``.
+#
+# Lattice-matched windows (Tier D.3 brief).  The Animal-1 position
+# lattice has ``delta`` ≈ 33 ms.  D.2 established that sub-bin history
+# filters cannot be carried into the binomial decoder without
+# saturation regressions (the -464% RMSE regression on the prior
+# decoder-side prototype).  D.3 therefore picks coupling windows that
+# *match* the decode lattice so the binomial decoder can use them:
+#
+#   - Short window [0, 33 ms): one decode bin lookback (peri-spike
+#     coupling).  At the strided decode lattice this carries 0 or 1
+#     spike from each source cell — within the resolvable regime of
+#     the binomial CIF.
+#   - Long window [33 ms, 200 ms): multi-bin past (slow theta-cycle
+#     and behavioral-state modulation), spanning roughly 5 position
+#     bins (≈ 33 ms each).
+#
+# For 4 cells, each target cell gets 3 source cells × 2 windows =
+# 6 coupling columns.  No self-coupling (the diagonal of the coupling
+# tensor is left out — refractoriness on the source cell is already
+# the D.2 encoder-history concern).
+_COUPLING_WINDOW_TIMES_S: tuple[tuple[float, float], ...] = (
+    (0.0, 0.033),
+    (0.033, 0.200),
+)
+
+
+def _coupling_window_labels() -> tuple[str, str]:
+    """Human-readable labels for the two coupling windows (ms)."""
+    return ("[0, 33 ms)", "[33, 200 ms)")
+
+
+def _compute_coupling_columns_at_position_times(
+    spikes_by_source: list[np.ndarray],
+    pos_time: np.ndarray,
+    target_idx: int,
+    *,
+    window_times_s: tuple[tuple[float, float], ...] = _COUPLING_WINDOW_TIMES_S,
+) -> np.ndarray:
+    """Coupling-count matrix at the position-time lattice.
+
+    Builds the per-bin spike counts from each *source* cell
+    ``c' != target_idx`` in each recent-past window ``w``.  Each entry
+    ``H[t, j]`` is the number of spikes from source ``c'`` in the
+    interval ``(pos_time[t] - w_hi, pos_time[t] - w_lo]`` where
+    ``j = source_local_idx * num_windows + window_idx`` and the source
+    enumeration skips ``target_idx``.
+
+    Returns
+    -------
+    ndarray of shape (n_pos, (n_cells - 1) * len(window_times_s))
+        Coupling design columns at the position-time lattice.  Rows
+        whose ``pos_time[t]`` is before the long-window edge of any
+        spike are zero by construction.
+    """
+    n_pos = pos_time.size
+    n_cells = len(spikes_by_source)
+    n_sources = n_cells - 1
+    n_windows = len(window_times_s)
+    out = np.zeros((n_pos, n_sources * n_windows), dtype=float)
+    if n_pos == 0:
+        return out
+    source_iter = [c for c in range(n_cells) if c != target_idx]
+    for local_j, c_src in enumerate(source_iter):
+        st_src = spikes_by_source[c_src]
+        if st_src.size == 0:
+            continue
+        for w_idx, (lo, hi) in enumerate(window_times_s):
+            # Count spikes in (t - hi, t - lo] using cumulative-count
+            # differences via searchsorted.  ``side="right"`` matches
+            # the right-open / left-closed convention used elsewhere.
+            #
+            # For a window [lo, hi) measured backward from t, spikes
+            # contributing are those whose times are in
+            #     [t - hi, t - lo)
+            # The number of such spikes is
+            #     searchsorted(st_src, t - lo) - searchsorted(st_src, t - hi)
+            # under the ``side="left"`` convention.
+            right = np.searchsorted(st_src, pos_time - lo, side="left")
+            left = np.searchsorted(st_src, pos_time - hi, side="left")
+            col_idx = local_j * n_windows + w_idx
+            out[:, col_idx] = (right - left).astype(float)
+    return out
+
+
+# =====================================================================
+# Coupling-augmented B-spline encoder (model="coupling" only)
+# =====================================================================
+def _fit_bspline_encoder_with_coupling(
+    pos_x_train: np.ndarray,
+    pos_y_train: np.ndarray,
+    pos_time_train: np.ndarray,
+    spikes_per_cell: list[np.ndarray],
+    *,
+    window_times_s: tuple[tuple[float, float], ...] = _COUPLING_WINDOW_TIMES_S,
+    n_grid: int = 32,
+    n_knots: tuple[int, int] = (8, 8),
+    degree: int = 3,
+    box: tuple[float, float, float, float] = (-1.0, 1.0, -1.0, 1.0),
+):
+    """Like :func:`_fit_bspline_encoder` but appends coupling columns per cell.
+
+    Each cell's per-bin coupling counts (from the OTHER cells, in the
+    two lattice-matched windows) are aggregated by spatial bin (mean
+    over the position samples that land in each spatial bin), then
+    appended to the B-spline design matrix — exactly the same per-cell
+    aggregation pattern the velocity and history encoders use.  For
+    4 cells × 2 windows the per-cell design block is ``(n_grid**2, 6)``.
+
+    Returns the same tuple as :func:`_fit_bspline_encoder` plus
+    ``coupling_coefs`` (one ``(6,)`` ndarray per cell) and
+    ``coupling_matrix`` (``(n_cells, n_cells, n_windows)`` ndarray with
+    NaN on the diagonal).
+    """
+    x_lo, x_hi, y_lo, y_hi = box
+    grid_x = np.linspace(x_lo, x_hi, n_grid)
+    grid_y = np.linspace(y_lo, y_hi, n_grid)
+    edges_x = np.linspace(x_lo, x_hi, n_grid + 1)
+    edges_y = np.linspace(y_lo, y_hi, n_grid + 1)
+    B = bspline_basis_2d(grid_x, grid_y, n_knots=n_knots, degree=degree)
+    cell_area = float(((x_hi - x_lo) / n_grid) * ((y_hi - y_lo) / n_grid))
+    offset = np.full(B.shape[0], np.log(cell_area), dtype=float)
+
+    # Per-spatial-bin assignment of each training-position sample
+    # (same as the velocity/history helpers).
+    ix = np.clip(
+        np.searchsorted(edges_x, pos_x_train, side="right") - 1, 0, n_grid - 1,
+    )
+    iy = np.clip(
+        np.searchsorted(edges_y, pos_y_train, side="right") - 1, 0, n_grid - 1,
+    )
+    count = np.zeros((n_grid, n_grid), dtype=float)
+    np.add.at(count, (ix, iy), 1.0)
+    bin_count = np.maximum(count.ravel(), 1.0)
+
+    n_cells = len(spikes_per_cell)
+    n_windows = len(window_times_s)
+    n_coupling_cols = (n_cells - 1) * n_windows
+    rate_maps = np.zeros((n_cells, n_grid, n_grid), dtype=float)
+    glm_results = []
+    coupling_coefs: list[np.ndarray] = []
+    # (target, source, window) tensor; diagonal stays NaN.
+    coupling_matrix = np.full(
+        (n_cells, n_cells, n_windows), np.nan, dtype=float,
+    )
+    for c in range(n_cells):
+        st = spikes_per_cell[c]
+        # Per-target-cell coupling counts at the training-position
+        # lattice (n_pos_train, n_sources * n_windows).
+        C_cell = _compute_coupling_columns_at_position_times(
+            spikes_per_cell, pos_time_train, target_idx=c,
+            window_times_s=window_times_s,
+        )
+        # Aggregate by spatial bin → (n_grid**2, n_coupling_cols).
+        C_per_bin = np.zeros(
+            (n_grid * n_grid, n_coupling_cols), dtype=float,
+        )
+        flat_idx = ix * n_grid + iy
+        for j in range(n_coupling_cols):
+            np.add.at(C_per_bin[:, j], flat_idx, C_cell[:, j])
+        C_per_bin = C_per_bin / bin_count[:, None]
+        B_cell = np.hstack([B, C_per_bin])
+
+        H_counts = _bin_spikes_on_grid(
+            st, pos_x_train, pos_y_train, pos_time_train, edges_x, edges_y,
+        )
+        counts = H_counts.ravel().astype(float)
+        # Coupling columns are similar in spirit to the D.2 history
+        # columns — they can be sparse after spatial-mean aggregation
+        # and the augmented IRLS can wander.  Reuse the D.2 ridge
+        # (l2=10.0) and iteration budget (max_iter=400-800) so all
+        # four cells converge under the augmented design.
+        glm = fit_poisson_glm(
+            B_cell, counts, offset=offset, include_intercept=False, l2=10.0,
+            max_iter=400,
+        )
+        eta = B_cell @ glm.coefficients
+        eta_clipped = np.clip(eta, -20.0, 8.0)
+        rate_maps[c, :, :] = np.exp(eta_clipped).reshape(n_grid, n_grid)
+        glm_results.append(glm)
+        gammas = np.asarray(
+            glm.coefficients[-n_coupling_cols:], dtype=float,
+        ).copy()
+        coupling_coefs.append(gammas)
+        # Unpack ``gammas`` into the (target, source, window) tensor.
+        # Source enumeration skips ``c`` (the diagonal stays NaN).
+        source_iter = [s for s in range(n_cells) if s != c]
+        for local_j, s in enumerate(source_iter):
+            for w_idx in range(n_windows):
+                coupling_matrix[c, s, w_idx] = float(
+                    gammas[local_j * n_windows + w_idx]
+                )
+    return (
+        grid_x, grid_y, B, rate_maps, glm_results,
+        coupling_coefs, coupling_matrix,
+    )
+
+
+# =====================================================================
+# Coupling-augmented quadratic-CIF refit + decoder (model="coupling")
+# =====================================================================
+def _design_quadratic_coupling(
+    x: np.ndarray, y: np.ndarray, coupling_cols: np.ndarray,
+) -> np.ndarray:
+    """[1, x, y, x^2, y^2, x*y, coupling_cols...] design matrix."""
+    return np.column_stack([
+        np.ones(x.size), x, y, x * x, y * y, x * y, coupling_cols,
+    ])
+
+
+def _fit_quadratic_cif_per_cell_with_coupling(
+    pos_x_train: np.ndarray,
+    pos_y_train: np.ndarray,
+    pos_time_train: np.ndarray,
+    spikes_per_cell: list[np.ndarray],
+    *,
+    delta: float,
+    window_times_s: tuple[tuple[float, float], ...] = _COUPLING_WINDOW_TIMES_S,
+) -> tuple[list[CIF], list[np.ndarray], np.ndarray]:
+    """Refit a 12-term quadratic-plus-coupling binomial CIF per cell.
+
+    The CIF is
+
+        log_lambda = mu + bx*x + by*y + bxx*x^2 + byy*y^2 + bxy*x*y
+                     + sum_{c' != c, w} gamma_{c', w} * N_{c', w}(t)
+
+    where each ``N_{c', w}(t)`` is the spike count from source cell
+    ``c'`` in window ``w`` ending at ``t``.  These are treated as
+    *known extrinsic observables* at decode time (Truccolo et al.
+    2005 Section 3 with the lattice-matched windows of D.3 — see
+    module docstring for the rationale).
+
+    Returns
+    -------
+    cifs : list[CIF]
+        One :class:`CIF` per cell with 12 symbolic coefficients.
+    coupling_coefs_decoder : list[ndarray]
+        Per-cell ``(n_coupling_cols,)`` arrays of the decoder gammas.
+    coupling_matrix_decoder : ndarray
+        ``(n_cells, n_cells, n_windows)`` tensor with NaN diagonals.
+    """
+    n_bins = pos_time_train.size
+    n_cells = len(spikes_per_cell)
+    n_windows = len(window_times_s)
+    n_coupling_cols = (n_cells - 1) * n_windows
+    cifs: list[CIF] = []
+    coupling_coefs: list[np.ndarray] = []
+    coupling_matrix = np.full(
+        (n_cells, n_cells, n_windows), np.nan, dtype=float,
+    )
+
+    # Coupling-column variable names for the CIF symbolic expression.
+    # Per-target enumeration skips ``c``; the actual variable names
+    # ``c_{src}_{win}`` are bound at decode time to spike counts.
+    def _var_names_for_target(c: int) -> list[str]:
+        names = []
+        for s in range(n_cells):
+            if s == c:
+                continue
+            for w_idx in range(n_windows):
+                names.append(f"c_{s}_{w_idx}")
+        return names
+
+    for c in range(n_cells):
+        st = spikes_per_cell[c]
+        C_cell = _compute_coupling_columns_at_position_times(
+            spikes_per_cell, pos_time_train, target_idx=c,
+            window_times_s=window_times_s,
+        )  # (n_bins, n_coupling_cols)
+        X = _design_quadratic_coupling(
+            pos_x_train, pos_y_train, C_cell,
+        )  # (n_bins, 6 + n_coupling_cols)
+        mask = (st >= float(pos_time_train[0])) & (st <= float(pos_time_train[-1]))
+        st_in = st[mask]
+        bin_idx = np.searchsorted(pos_time_train, st_in, side="left")
+        bin_idx = np.clip(bin_idx, 0, n_bins - 1)
+        y_binary = np.zeros(n_bins, dtype=float)
+        y_binary[bin_idx] = 1.0
+        from nstat.glm import fit_binomial_glm
+        glm = fit_binomial_glm(
+            X[:, 1:], y_binary, include_intercept=True,
+            l2=1e-3, max_iter=80,
+        )
+        b = np.concatenate([[glm.intercept], glm.coefficients])
+        var_names = _var_names_for_target(c)
+        coupling_terms = list(var_names)
+        cif = CIF(
+            b.tolist(),
+            ["1", "x", "y", "x^2", "y^2", "x*y"] + coupling_terms,
+            ["x", "y"] + var_names,
+            fitType="binomial",
+        )
+        cifs.append(cif)
+        gammas = np.asarray(b[6:], dtype=float).copy()
+        coupling_coefs.append(gammas)
+        source_iter = [s for s in range(n_cells) if s != c]
+        for local_j, s in enumerate(source_iter):
+            for w_idx in range(n_windows):
+                coupling_matrix[c, s, w_idx] = float(
+                    gammas[local_j * n_windows + w_idx]
+                )
+    return cifs, coupling_coefs, coupling_matrix
+
+
+def _decode_position_with_coupling(
+    pos_x_test: np.ndarray,
+    pos_y_test: np.ndarray,
+    pos_time_test: np.ndarray,
+    spikes_per_cell: list[np.ndarray],
+    cifs: list[CIF],
+    *,
+    delta: float,
+    stride: int = 10,
+    window_times_s: tuple[tuple[float, float], ...] = _COUPLING_WINDOW_TIMES_S,
+):
+    """PPAF decode with ensemble coupling as a known extrinsic observable.
+
+    Following Truccolo et al. 2005 §3 (and the same mean-folding
+    pattern as :func:`_decode_position_with_speed`), the per-cell
+    coupling-count vector ``N_{c', w}(t)`` is *observed* at each
+    decode time step from the held-out spike trains of the OTHER
+    cells.  The PPAF state stays 2-D (position).  Like the velocity
+    decoder, we fold the time-mean coupling contribution into
+    ``mu_c`` and pass ``mu + beta @ state`` to PPDecodeFilterLinear.
+    The decoder is linearised at the trajectory mean, so the
+    *time-mean* coupling treatment is consistent with the existing
+    curvature and speed treatments.
+    """
+    sub = slice(None, None, max(int(stride), 1))
+    pos_x_sub = pos_x_test[sub]
+    pos_y_sub = pos_y_test[sub]
+    pos_time_sub = pos_time_test[sub]
+    n_bins = pos_time_sub.size
+    n_cells = len(spikes_per_cell)
+    n_windows = len(window_times_s)
+    n_coupling_cols = (n_cells - 1) * n_windows
+    effective_delta = float(stride * delta)
+
+    dN = np.zeros((n_cells, n_bins), dtype=float)
+    for c, st in enumerate(spikes_per_cell):
+        mask = (st >= float(pos_time_sub[0])) & (st <= float(pos_time_sub[-1]))
+        st_in = st[mask]
+        bin_idx = np.searchsorted(pos_time_sub, st_in, side="left")
+        bin_idx = np.clip(bin_idx, 0, n_bins - 1)
+        dN[c, bin_idx] = 1.0
+
+    # Per-target coupling-count time series at the *strided* decode
+    # lattice — same time base as ``dN``.  At the 167 ms strided
+    # lattice the [0, 33ms) short window will mostly carry zeros
+    # (it is sub-bin); the [33, 200ms) long window carries useful
+    # multi-bin lookback.  The time-mean folding handles this
+    # gracefully — only the trajectory mean of each coupling column
+    # enters the linearised mu.
+    coupling_means = np.zeros(
+        (n_cells, n_coupling_cols), dtype=float,
+    )
+    for c in range(n_cells):
+        C_c = _compute_coupling_columns_at_position_times(
+            spikes_per_cell, pos_time_sub, target_idx=c,
+            window_times_s=window_times_s,
+        )
+        coupling_means[c, :] = C_c.mean(axis=0)
+
+    state_mean = np.array([float(pos_x_sub.mean()), float(pos_y_sub.mean())])
+    mu = np.zeros(n_cells, dtype=float)
+    beta = np.zeros((2, n_cells), dtype=float)
+    for c, cif in enumerate(cifs):
+        b = np.asarray(cif.b, dtype=float).reshape(-1)
+        # b = [b0, bx, by, bxx, byy, bxy, gamma_0 ... gamma_{n-1}]
+        coupling_contrib = float(
+            np.dot(b[6:6 + n_coupling_cols], coupling_means[c])
+        )
+        mu[c] = float(
+            b[0]
+            + b[3] * state_mean[0] ** 2
+            + b[4] * state_mean[1] ** 2
+            + b[5] * state_mean[0] * state_mean[1]
+            + coupling_contrib
+        )
+        beta[0, c] = float(
+            b[1] + 2.0 * b[3] * state_mean[0] + b[5] * state_mean[1]
+        )
+        beta[1, c] = float(
+            b[2] + 2.0 * b[4] * state_mean[1] + b[5] * state_mean[0]
+        )
+
+    train_dx = np.diff(pos_x_sub)
+    train_dy = np.diff(pos_y_sub)
+    qxx = float(np.var(train_dx)) if train_dx.size else 1e-3
+    qyy = float(np.var(train_dy)) if train_dy.size else 1e-3
+    A = np.eye(2, dtype=float)
+    Q = np.diag([qxx, qyy])
+    x0 = np.array([pos_x_sub[0], pos_y_sub[0]], dtype=float)
+    Pi0 = np.diag([qxx, qyy])
+
+    x_p, W_p, x_u, W_u, *_ = DecodingAlgorithms.PPDecodeFilterLinear(
+        A, Q, dN, mu, beta, "binomial", effective_delta,
+        None, None, x0, Pi0,
+    )
+    return dN, x_u, W_u, pos_x_sub, pos_y_sub, pos_time_sub
+
+
+# =====================================================================
 # Decoder for the history-augmented variant.
 #
 # History is intentionally NOT carried into the decoder.  Truccolo et
@@ -1593,10 +2037,139 @@ def _plot_encoder_history_quality(
     return fig
 
 
+def _plot_coupling_matrix(
+    coupling_matrix: np.ndarray,
+    cell_indices: tuple[int, ...],
+    window_times_s: tuple[tuple[float, float], ...] = _COUPLING_WINDOW_TIMES_S,
+    *,
+    source_label: str = "encoder",
+):
+    """Figure 9: ensemble-coupling matrix per window (4×4 heatmap × 2).
+
+    ``coupling_matrix`` is the ``(n_cells, n_cells, n_windows)`` tensor
+    with NaN on the diagonal — target × source × window.  We plot
+    one 4×4 heatmap per window with a symmetric diverging colormap
+    so positive (excitatory) and negative (inhibitory) coefficients
+    are visually distinguishable.
+
+    ``source_label`` ("encoder" or "decoder") is recorded in the
+    suptitle / caption per the brief — the encoder matrix is the
+    more interpretable of the two (Poisson rate fit; decoder is
+    binomial, with logit-link distortion).
+    """
+    n_cells, _, n_windows = coupling_matrix.shape
+    labels = [f"#{cell_indices[i] + 1}" for i in range(n_cells)]
+    # Symmetric color scale spanning all non-NaN coefficients.
+    flat = coupling_matrix[~np.isnan(coupling_matrix)]
+    if flat.size == 0:
+        vmax = 1.0
+    else:
+        vmax = float(np.max(np.abs(flat)))
+        if vmax <= 0.0:
+            vmax = 1.0
+    # === FIGURE: fig09_coupling_matrix.png ===
+    fig, axes = plt.subplots(1, n_windows, figsize=(11.0, 4.6))
+    if n_windows == 1:
+        axes = np.array([axes])
+    for w_idx in range(n_windows):
+        ax = axes[w_idx]
+        M = coupling_matrix[:, :, w_idx]
+        # Display with rows = targets (top → bottom), cols = sources.
+        im = ax.imshow(
+            M, cmap="RdBu_r", vmin=-vmax, vmax=vmax,
+            aspect="equal", interpolation="nearest",
+        )
+        ax.set_xticks(range(n_cells))
+        ax.set_yticks(range(n_cells))
+        ax.set_xticklabels(labels)
+        ax.set_yticklabels(labels)
+        ax.set_xlabel("source cell")
+        ax.set_ylabel("target cell")
+        lo_ms, hi_ms = (
+            window_times_s[w_idx][0] * 1000.0,
+            window_times_s[w_idx][1] * 1000.0,
+        )
+        ax.set_title(f"window [{lo_ms:.0f}, {hi_ms:.0f} ms)")
+        # Annotate each non-NaN cell with its coefficient.
+        for i in range(n_cells):
+            for j in range(n_cells):
+                v = M[i, j]
+                if np.isnan(v):
+                    ax.text(
+                        j, i, "—", ha="center", va="center",
+                        color="0.3", fontsize=10,
+                    )
+                else:
+                    txt_color = "k" if abs(v) < 0.6 * vmax else "w"
+                    ax.text(
+                        j, i, f"{v:+.2f}", ha="center", va="center",
+                        color=txt_color, fontsize=9,
+                    )
+        cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label("coupling coefficient (gamma)")
+    fig.suptitle(
+        "Example 08 (coupling model) — ensemble-coupling matrix "
+        f"per lattice-matched window (source: {source_label} GLM; "
+        "diagonal NaN, positive = excitatory, negative = inhibitory)"
+    )
+    fig.tight_layout()
+    # === END FIGURE ===
+    return fig
+
+
+def _plot_decoder_baseline_vs_progression(
+    baseline_rmse: float,
+    velocity_rmse: float,
+    history_decoder_rmse: float,
+    coupling_rmse: float,
+):
+    """Figure 10: 4-bar progression — capstone summary for Tier D.
+
+    Shows the full Truccolo et al. 2005 framework progression in one
+    chart: baseline (position only) → velocity (extrinsic covariate) →
+    history-decoder (lattice-matched: matches baseline) → coupling
+    (ensemble coupling as extrinsic observable).
+    """
+    rmses = [baseline_rmse, velocity_rmse, history_decoder_rmse, coupling_rmse]
+    labels = ["baseline", "velocity", "history (decoder)", "coupling"]
+    colors = ["0.55", "tab:blue", "tab:green", "tab:purple"]
+    # === FIGURE: fig10_decoder_baseline_vs_progression.png ===
+    fig, ax = plt.subplots(figsize=(9.5, 5.0))
+    bars = ax.bar(
+        labels, rmses, color=colors, edgecolor="k", lw=1.0,
+    )
+    for bar, val, lab in zip(bars, rmses, labels):
+        improvement = 100.0 * (baseline_rmse - val) / baseline_rmse
+        sign = "+" if improvement >= 0.0 else ""
+        if lab == "baseline":
+            annot = f"{val:.3f}\n(baseline)"
+        else:
+            annot = f"{val:.3f}\n({sign}{improvement:.1f}%)"
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            bar.get_height() + 0.005,
+            annot,
+            ha="center", va="bottom", fontsize=10,
+        )
+    ax.set_ylabel("position RMSE (box units)")
+    ax.set_title(
+        "Truccolo et al. 2005 framework — progressive RMSE improvement\n"
+        "(velocity: extrinsic covariate; history-decoder: lattice-matched, "
+        "matches baseline; coupling: ensemble coupling)"
+    )
+    ax.set_ylim(0.0, max(rmses) * 1.30)
+    ax.grid(True, alpha=0.3, axis="y")
+    fig.tight_layout()
+    # === END FIGURE ===
+    return fig
+
+
 # =====================================================================
 # Driver
 # =====================================================================
-_VALID_MODELS: tuple[str, ...] = ("baseline", "velocity", "history")
+_VALID_MODELS: tuple[str, ...] = (
+    "baseline", "velocity", "history", "coupling",
+)
 
 
 def run_example08(
@@ -1611,7 +2184,7 @@ def run_example08(
 
     Parameters
     ----------
-    model : {"baseline", "velocity", "history"}, default "baseline"
+    model : {"baseline", "velocity", "history", "coupling"}, default "baseline"
         ``"baseline"`` preserves the original 6-term quadratic CIF pipeline
         bit-for-bit and produces figures 1-4.  ``"velocity"`` runs the
         baseline first to capture its RMSE, then a velocity-augmented
@@ -1621,8 +2194,11 @@ def run_example08(
         stages first, then a spike-history-augmented variant per
         Truccolo et al. 2005 §3 and produces two more figures (fig07
         per-cell history kernels, fig08 baseline-vs-velocity-vs-history
-        decoder comparison).  A future Tier D PR will extend the valid
-        set with ``"coupling"`` (D.3).
+        decoder comparison).  ``"coupling"`` (D.3) runs the full
+        baseline + velocity + history chain first, then an
+        ensemble-coupling-augmented variant per Truccolo et al. 2005
+        §3, producing two more figures (fig09 coupling matrix, fig10
+        4-bar capstone progression).
 
     Returns
     -------
@@ -1641,6 +2217,13 @@ def run_example08(
         the [1, 5 ms) window — negative values indicate
         refractoriness), and ``history_coefs_encoder`` (list of
         ``(4,)`` ndarrays with all four encoder gammas per cell).
+        When ``model="coupling"`` the dict additionally carries
+        ``coupling_decoder_rmse``, ``coupling_rmse_improvement_pct``
+        (vs baseline), ``coupling_coefs_encoder`` / ``coupling_coefs_decoder``
+        (list of ``(6,)`` ndarrays per cell), and
+        ``coupling_matrix_encoder`` / ``coupling_matrix_decoder``
+        (each a ``(n_cells, n_cells, n_windows)`` tensor — target ×
+        source × window — with NaN on the diagonal).
     """
     if model not in _VALID_MODELS:
         raise ValueError(
@@ -1730,7 +2313,7 @@ def run_example08(
     # baseline -> velocity -> history progression is available for
     # the 3-bar comparison in fig08.
     velocity_payload: dict | None = None
-    if model in ("velocity", "history"):
+    if model in ("velocity", "history", "coupling"):
         speed = _compute_speed(x, y, t)
         speed_train = speed[train_slice]
         speed_test = speed[test_slice]
@@ -1810,7 +2393,7 @@ def run_example08(
     # PPDecodeFilterLinear pipeline, so its RMSE matches baseline
     # bit-for-bit (and we report it as ``history_decoder_rmse``).
     history_payload: dict | None = None
-    if model == "history":
+    if model in ("history", "coupling"):
         history_wt = tuple(_HISTORY_WINDOW_TIMES)
         print(
             f"  history windows: "
@@ -1919,6 +2502,97 @@ def run_example08(
             "refractory_gammas": refractory_gammas,
         }
 
+    # ----- Ensemble-coupling-augmented variant (model="coupling") -----
+    # D.3: lattice-matched coupling windows ([0, 33ms), [33ms, 200ms))
+    # picked specifically so the binomial decoder can carry them
+    # without the saturation regression D.2 documented for sub-bin
+    # history filters.  Coupling is treated as an *extrinsic
+    # observable* at decode time, the same pattern velocity uses for
+    # speed: the OBSERVED held-out spike counts from the other cells
+    # are folded into a time-mean mu contribution and the PPAF state
+    # stays 2-D (position).
+    coupling_payload: dict | None = None
+    if model == "coupling":
+        cw_labels = _coupling_window_labels()
+        print(
+            f"  coupling windows: {cw_labels} "
+            f"(Truccolo et al. 2005 §3; lattice-matched at "
+            f"{delta * 1000:.1f} ms position bin and "
+            f"{decode_stride * delta * 1000:.1f} ms strided decode bin)"
+        )
+        (
+            _grid_x_c, _grid_y_c, _B_c, _rate_maps_c, glm_results_c,
+            coupling_coefs_enc, coupling_matrix_enc,
+        ) = _fit_bspline_encoder_with_coupling(
+            x[train_slice], y[train_slice], t[train_slice], spikes_per_cell,
+            n_grid=32, n_knots=(8, 8), degree=3, box=box,
+        )
+        converged_c = [int(g.converged) for g in glm_results_c]
+        coupling_enc_rounded = [
+            [round(float(v), 3) for v in arr] for arr in coupling_coefs_enc
+        ]
+        print(
+            f"  coupling-augmented B-spline GLM: converged per cell = "
+            f"{converged_c}; encoder coupling coefficients per cell = "
+            f"{coupling_enc_rounded}"
+        )
+
+        cifs_c, coupling_coefs_dec, coupling_matrix_dec = (
+            _fit_quadratic_cif_per_cell_with_coupling(
+                x[train_slice], y[train_slice], t[train_slice], spikes_per_cell,
+                delta=delta,
+            )
+        )
+        coupling_dec_rounded = [
+            [round(float(v), 3) for v in arr] for arr in coupling_coefs_dec
+        ]
+        print(
+            f"  coupling-augmented quadratic CIFs: decoder coupling "
+            f"coefficients per cell = {coupling_dec_rounded}"
+        )
+
+        (
+            _dN_c, x_dec_c, _W_c,
+            x_test_sub_c, y_test_sub_c, _t_test_sub_c,
+        ) = _decode_position_with_coupling(
+            x[test_slice], y[test_slice], t[test_slice],
+            spikes_per_cell, cifs_c, delta=delta, stride=decode_stride,
+        )
+        coupling_rmse = float(np.sqrt(np.mean(
+            (x_dec_c[0] - x_test_sub_c) ** 2
+            + (x_dec_c[1] - y_test_sub_c) ** 2
+        )))
+        coupling_improvement_pct = (
+            100.0 * (baseline_rmse - coupling_rmse) / baseline_rmse
+        )
+        sign = "+" if coupling_improvement_pct >= 0.0 else ""
+        print(
+            f"  coupling decoder: RMSE = {coupling_rmse:.3f} "
+            f"({sign}{coupling_improvement_pct:.1f}% vs baseline "
+            f"{baseline_rmse:.3f})"
+        )
+
+        # Light sanity prints for the contract summary.
+        flat_enc = coupling_matrix_enc[~np.isnan(coupling_matrix_enc)]
+        if flat_enc.size > 0:
+            max_abs_enc = float(np.max(np.abs(flat_enc)))
+            n_pos_enc = int(np.sum(flat_enc > 0.0))
+            n_neg_enc = int(np.sum(flat_enc < 0.0))
+            print(
+                f"  encoder coupling matrix: max |gamma| = {max_abs_enc:.3f}; "
+                f"{n_pos_enc} excitatory, {n_neg_enc} inhibitory off-diagonal "
+                f"entries"
+            )
+
+        coupling_payload = {
+            "coupling_coefs_encoder": coupling_coefs_enc,
+            "coupling_coefs_decoder": coupling_coefs_dec,
+            "coupling_matrix_encoder": coupling_matrix_enc,
+            "coupling_matrix_decoder": coupling_matrix_dec,
+            "coupling_rmse": coupling_rmse,
+            "coupling_improvement_pct": coupling_improvement_pct,
+        }
+
     # ----- Held-out pair correlation + global envelope -----
     # Pool spike *locations* from all 4 cells on the test half — the
     # inhomogeneous-Poisson GoF treats them as one rate field whose
@@ -2023,6 +2697,27 @@ def run_example08(
             "fig07_history_kernels",
             "fig08_decoder_baseline_vs_history",
         ])
+    if coupling_payload is not None:
+        # Encoder matrix is the more interpretable of the two (Poisson
+        # rate fit) — decoder is binomial with logit-link distortion.
+        # Documented in the figure caption per the brief.
+        fig9 = _plot_coupling_matrix(
+            coupling_payload["coupling_matrix_encoder"],
+            cell_indices, source_label="encoder",
+        )
+        fig10 = _plot_decoder_baseline_vs_progression(
+            baseline_rmse=baseline_rmse,
+            velocity_rmse=float(velocity_payload["velocity_rmse"]),
+            history_decoder_rmse=float(
+                history_payload["history_decoder_rmse"]
+            ),
+            coupling_rmse=float(coupling_payload["coupling_rmse"]),
+        )
+        figures.extend([fig9, fig10])
+        fig_names.extend([
+            "fig09_coupling_matrix",
+            "fig10_decoder_baseline_vs_progression",
+        ])
 
     for fig in figures:
         apply_plot_style(fig, style=plot_style)
@@ -2116,6 +2811,37 @@ def run_example08(
                 for arr in history_payload["history_coefs_encoder"]
             ],
         })
+    if coupling_payload is not None:
+        # Coupling field naming (D.3):
+        # - ``coupling_decoder_rmse`` is the held-out RMSE of the
+        #   coupling-augmented quadratic CIF decoder.
+        # - ``coupling_rmse_improvement_pct`` is the percent
+        #   improvement vs ``baseline_rmse``.
+        # - ``coupling_coefs_{encoder,decoder}`` carry the per-cell
+        #   ``(6,)`` gamma vectors (3 source cells × 2 windows).
+        # - ``coupling_matrix_{encoder,decoder}`` carry the
+        #   ``(n_cells, n_cells, n_windows)`` target-x-source-x-window
+        #   tensors with NaN on the diagonal.
+        result.update({
+            "coupling_decoder_rmse": float(coupling_payload["coupling_rmse"]),
+            "coupling_rmse_improvement_pct": float(
+                coupling_payload["coupling_improvement_pct"]
+            ),
+            "coupling_coefs_encoder": [
+                np.asarray(arr, dtype=float)
+                for arr in coupling_payload["coupling_coefs_encoder"]
+            ],
+            "coupling_coefs_decoder": [
+                np.asarray(arr, dtype=float)
+                for arr in coupling_payload["coupling_coefs_decoder"]
+            ],
+            "coupling_matrix_encoder": np.asarray(
+                coupling_payload["coupling_matrix_encoder"], dtype=float,
+            ),
+            "coupling_matrix_decoder": np.asarray(
+                coupling_payload["coupling_matrix_decoder"], dtype=float,
+            ),
+        })
     return result
 
 
@@ -2141,18 +2867,20 @@ if __name__ == "__main__":
                         default="legacy",
                         help="Figure styling.")
     parser.add_argument(
-        "--model", choices=_VALID_MODELS, default="history",
+        "--model", choices=_VALID_MODELS, default="coupling",
         help=(
             "Encoder/decoder variant.  ``baseline`` reproduces the "
             "original position-only pipeline (4 figures).  "
             "``velocity`` runs the baseline then a velocity-augmented "
             "variant per Truccolo et al. 2005 (6 figures).  "
-            "``history`` (default) additionally runs a "
+            "``history`` additionally runs a "
             "spike-history-augmented variant per Truccolo et al. 2005 "
-            "§3 (8 figures).  The CLI defaults to ``history`` so "
-            "``--export-figures`` yields the full gallery the manifest "
-            "expects; the Python ``run_example08`` default remains "
-            "``baseline``."
+            "§3 (8 figures).  ``coupling`` (default) additionally "
+            "runs an ensemble-coupling-augmented variant per "
+            "Truccolo et al. 2005 §3 (10 figures).  The CLI defaults "
+            "to ``coupling`` so ``--export-figures`` yields the full "
+            "gallery the manifest expects; the Python "
+            "``run_example08`` default remains ``baseline``."
         ),
     )
     args = parser.parse_args()
@@ -2199,5 +2927,30 @@ if __name__ == "__main__":
         for key in ("history_coefs_encoder",):
             if key in result:
                 summary[key] = [list(map(float, arr)) for arr in result[key]]
+        for key in (
+            "coupling_decoder_rmse",
+            "coupling_rmse_improvement_pct",
+        ):
+            if key in result:
+                summary[key] = result[key]
+        for key in ("coupling_coefs_encoder", "coupling_coefs_decoder"):
+            if key in result:
+                summary[key] = [list(map(float, arr)) for arr in result[key]]
+        for key in ("coupling_matrix_encoder", "coupling_matrix_decoder"):
+            if key in result:
+                # Serialize NaN as null so the JSON parses; nested
+                # list-of-list-of-list of floats keeps the
+                # (target, source, window) shape readable.
+                mat = result[key]
+                summary[key] = [
+                    [
+                        [
+                            (float(v) if np.isfinite(v) else None)
+                            for v in mat[i, j, :]
+                        ]
+                        for j in range(mat.shape[1])
+                    ]
+                    for i in range(mat.shape[0])
+                ]
         args.output_json.write_text(json.dumps(summary, indent=2),
                                     encoding="utf-8")
