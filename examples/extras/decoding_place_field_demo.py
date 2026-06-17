@@ -85,9 +85,12 @@ def _build_synthetic_trial(seed: int = 20260617):
         spike_collection=spikes,
         covariate_collection=CovariateCollection([x_cov, y_cov]),
     )
+    # Trial constructs covariates at its own sample grid (the spike-train
+    # default), which differs from the 50 Hz array we passed in. Read the
+    # covariates back so the position array is aligned to that grid.
     position = np.column_stack([
-        np.asarray(x_pos, dtype=float),
-        np.asarray(y_pos, dtype=float),
+        np.asarray(trial.covarColl.getCov(i).data, dtype=float).reshape(-1)
+        for i in range(2)
     ])
     return trial, position, cell_centres
 
