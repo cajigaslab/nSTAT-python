@@ -1,0 +1,1310 @@
+version: 1
+notebooks:
+  - topic: 00_getting_started
+    overview: |
+      A five-minute, end-to-end tour of the Python toolbox using only
+      simulated data. Walks from building an `nspikeTrain`, grouping into an
+      `nstColl`, fitting a stimulus-driven point-process GLM, running the
+      time-rescaling KS test, and decoding the stimulus back from a
+      population.
+    goal: |
+      Confirm a fresh `pip install nstat-toolbox` reproduces the core spike
+      analysis workflow without any dataset download or optional extras.
+    figures: []
+  - topic: AnalysisExamples
+    overview: |
+      Standard-GLM workflow on the canonical `glm_data.mat` dataset using
+      the high-level `Analysis` driver: build a `Trial`, sweep covariates
+      through a `ConfigColl`, fit each model, inspect KS plots, AIC, and
+      coefficient tables.
+    goal: |
+      Show the MATLAB-style `Analysis.RunAnalysisForAllNeurons` path with
+      real residual and goodness-of-fit diagnostics.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Raw spike-count trace `xN` for the loaded `glm_data.mat` cell
+          across the full recording window.
+        analysis: |
+          Inspect for stationarity and overall firing density before model
+          fitting.
+      - filename: fig_002.png
+        caption: |
+          GLM coefficient errorbar plot — fitted history-and-stimulus
+          coefficients with their standard errors.
+        analysis: |
+          Coefficients with errorbars crossing zero indicate non-informative
+          covariates.
+      - filename: fig_003.png
+        caption: |
+          3D mesh / surface of the fitted conditional intensity over time
+          and covariate value.
+        analysis: |
+          A smooth, non-flat surface confirms the GLM captured covariate
+          tuning.
+      - filename: fig_004.png
+        caption: |
+          Time-rescaling KS plot of rescaled inter-spike intervals against
+          the uniform CDF with 95% confidence bands.
+        analysis: |
+          A trace inside the bands supports adequacy of the fitted CIF.
+  - topic: ConfigCollExamples
+    overview: |
+      Tracker-only scaffold for the MATLAB `ConfigCollExamples` helpfile.
+      Records the intended figure ordering for parity audits — no
+      executable analysis or rendered plots. Use the executable
+      `TrialConfig`/`Analysis` examples under `examples/paper/` for hands-on
+      use.
+    goal: |
+      Document the MATLAB figure sequence so the notebook fidelity audit
+      can compare Python output against the reference.
+    figures: []
+  - topic: CovCollExamples
+    overview: |
+      Build a `CovColl` (`CovariateCollection`) from individual `Covariate`
+      objects, inspect its labels and units, then plot all members on a
+      shared time base. Mirrors the MATLAB `CovCollExamples` helpfile.
+    goal: |
+      Show how multiple covariates compose into the design-matrix container
+      that drives every `Analysis` call.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Multi-panel plot of every `Covariate` in the collection, each on
+          its own axis with native units.
+        analysis: |
+          Confirms `CovColl.plot()` lays out members one-per-panel in
+          insertion order.
+      - filename: fig_002.png
+        caption: |
+          The same collection plotted in compact mode, overlaid on a single
+          axis.
+        analysis: |
+          Useful for visually checking that covariates share a common time
+          base.
+  - topic: CovariateExamples
+    overview: |
+      Defines and plots scalar and multi-channel `Covariate` objects: a
+      position covariate (`getSigRep`) and a force trace with both raw and
+      zero-mean views. Mirrors the MATLAB `CovariateExamples` helpfile.
+    goal: |
+      Demonstrate the core `Covariate` constructor and the most-used
+      transformation methods.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Position covariate plotted via `getSigRep`, showing the
+          time-aligned x-position trace.
+        analysis: |
+          A clean line confirms construction from `(time, value, label,
+          units)` worked.
+      - filename: fig_002.png
+        caption: |
+          Force covariate plotted twice — raw and zero-mean — to illustrate
+          the centering transform.
+        analysis: |
+          The zero-mean trace should be a vertical shift of the raw trace.
+  - topic: DecodingExample
+    overview: |
+      End-to-end 1D stimulus-decoding example: simulate sinusoidal CIF
+      thinning for 10 cells, fit baseline-only and stimulus GLMs, then
+      decode the stimulus from population spikes with the
+      `PPDecodeFilterLinear` point-process adaptive filter.
+    goal: |
+      Reproduce the MATLAB `DecodingExample` decoder trace with
+      python-native simulation and GLM fitting.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Top: raster of 10 spike trains generated by thinning a sinusoidal
+          CIF over 10 s. Bottom: the underlying conditional intensity
+          lambda(t) peaking near 120 Hz at t = 2.5 s.
+        analysis: |
+          Raster density should track the lambda(t) envelope — denser firing
+          on the rising half of the sine.
+      - filename: fig_002.png
+        caption: |
+          Three-panel trial view: spike raster, stimulus covariate
+          x(t) = sin(0.2 pi t), and the constant baseline regressor.
+        analysis: |
+          Confirms the design matrix that the GLM will actually fit.
+      - filename: fig_003.png
+        caption: |
+          Per-neuron baseline (b0) and stimulus (b1) GLM coefficients with
+          their across-population mean.
+        analysis: |
+          Tight clustering of b1 above zero indicates consistent
+          stimulus tuning across cells.
+      - filename: fig_004.png
+        caption: |
+          Mean AIC and mean log-likelihood across neurons for baseline-only
+          vs baseline+stimulus models.
+        analysis: |
+          Lower AIC and higher log-likelihood for baseline+stimulus
+          confirms the stimulus term is informative.
+      - filename: fig_005.png
+        caption: |
+          Decoded stimulus from the 10-cell population (blue mean, green
+          plus/minus 3 sigma band) overlaid on the true sinusoid (black).
+        analysis: |
+          The mean should track the true sine; the 3 sigma band should
+          bracket it for most of the trace.
+  - topic: DecodingExampleWithHist
+    overview: |
+      Adds spike-history covariates to the population decoding pipeline:
+      simulates 20 history-dependent cells, fits stimulus+history GLMs,
+      then compares decoded-stimulus traces with and without the history
+      term.
+    goal: |
+      Show that ignoring history degrades decoded-stimulus fidelity even
+      when the GLM still fits the marginal rate.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          History-dependent raster of 20 simulated cells across a 1 s
+          window with the underlying sinusoidal stimulus trace below.
+        analysis: |
+          Note the sparser, bursty firing pattern relative to the
+          memoryless case.
+      - filename: fig_002.png
+        caption: |
+          Two-panel decoder comparison — top: decoded stimulus with
+          history included; bottom: decoded stimulus from a
+          history-free fit, both with plus/minus 3 sigma bands.
+        analysis: |
+          The history-included decoder hugs the true sine (black); the
+          history-free version drifts and attenuates the amplitude.
+  - topic: EventsExamples
+    overview: |
+      Defines event-time objects, attaches labels, and plots them
+      alongside signal traces. Mirrors the MATLAB `EventsExamples`
+      helpfile.
+    goal: |
+      Show how discrete event markers compose with continuous signals
+      inside the toolbox.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Event ticks plotted on the time axis with labelled categories.
+        analysis: |
+          Tick placement should reflect the constructor's `(time,
+          category)` pairs.
+      - filename: fig_002.png
+        caption: |
+          Events overlaid on an underlying continuous signal.
+        analysis: |
+          Used to visually align stimulus markers with neural responses.
+      - filename: fig_003.png
+        caption: |
+          Multi-category event raster with one row per event label.
+        analysis: |
+          Confirms `Events.plot()` groups by category when given a label
+          vector.
+  - topic: ExplicitStimulusWhiskerData
+    overview: |
+      Dataset-backed whisker-stimulus analysis: build a `Trial` from
+      explicit stimulus and spikes, search optimal stimulus lag,
+      fit stimulus-only and stimulus+history GLMs, and compare
+      goodness-of-fit across models.
+    goal: |
+      Reproduce the MATLAB helpfile's lag search and history-effect
+      workflow on real whisker-stimulus data.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Trial plot — stimulus waveform stacked above the recorded
+          spike raster.
+        analysis: |
+          Inspect stimulus alignment and the rough stimulus-locked
+          firing pattern before any GLM.
+      - filename: fig_002.png
+        caption: |
+          Sub-window of the stimulus covariate via
+          `getSigInTimeWindow`.
+        analysis: |
+          Used to confirm the lag-search will scan the right
+          stimulus segment.
+      - filename: fig_003.png
+        caption: |
+          `plotResults` panel for the stimulus-only GLM fit — KS plot,
+          residuals, and coefficient errorbars.
+        analysis: |
+          KS trace inside the band supports adequacy at the chosen lag.
+      - filename: fig_004.png
+        caption: |
+          Cross-covariance of the GLM residual against the stimulus
+          itself.
+        analysis: |
+          Residuals uncorrelated with the stimulus indicate the GLM
+          captured the stimulus effect.
+      - filename: fig_005.png
+        caption: |
+          `plotResults` panel for a refit at the best-lag stimulus
+          term.
+        analysis: |
+          Compare against fig_003 to see KS and residual improvements
+          after re-aligning the stimulus.
+      - filename: fig_006.png
+        caption: |
+          Second `plotResults` view at the best lag — alternative
+          diagnostic layout.
+        analysis: |
+          Cross-check residual structure and coefficient stability.
+      - filename: fig_007.png
+        caption: |
+          `Summary.plotSummary` bar chart of AIC, BIC, and KS across
+          the three competing fits.
+        analysis: |
+          The lowest AIC bar identifies the preferred model
+          (stimulus + history at the right lag).
+      - filename: fig_008.png
+        caption: |
+          History-coefficient stem plot — fitted history-effect
+          weights vs lag (ms).
+        analysis: |
+          A strongly negative weight at short lag indicates absolute
+          refractoriness.
+      - filename: fig_009.png
+        caption: |
+          Final `plotResults` for the stimulus+history GLM.
+        analysis: |
+          KS hugging the diagonal here is the headline that history
+          plus stimulus together capture the cell's CIF.
+  - topic: FitResSummaryExamples
+    overview: |
+      Tracker-only scaffold for the MATLAB `FitResSummaryExamples`
+      helpfile. The cells record the intended figure ordering for parity
+      audits and do not render plots. Use the executable
+      `FitResSummary` snippets under `examples/paper/` for hands-on use.
+    goal: |
+      Document the MATLAB figure sequence so the notebook fidelity audit
+      can compare Python output against the reference.
+    figures: []
+  - topic: FitResultExamples
+    overview: |
+      Tracker-only scaffold for the MATLAB `FitResultExamples` helpfile.
+      Records the intended figure-output sequence for parity audits;
+      cells do not run real analyses. Use the executable `FitResult`
+      examples under `examples/paper/` for hands-on use.
+    goal: |
+      Document the MATLAB figure sequence so the notebook fidelity audit
+      can compare Python output against the reference.
+    figures: []
+  - topic: HippocampalPlaceCellExample
+    overview: |
+      Place-cell receptive-field estimation on the dataset-backed
+      hippocampal recording: fits Gaussian and 10-term Zernike GLM
+      place-field models to two animals, compares AIC and BIC across
+      cells, and visualizes the fitted firing-rate fields.
+    goal: |
+      Reproduce the MATLAB place-cell helpfile's model-comparison and
+      field-visualization workflow with the same Zernike basis.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Animal 1, Cell 25 — animal trajectory (light blue) overlaid
+          with this cell's spike positions (red) inside the circular
+          arena.
+        analysis: |
+          Spikes cluster in the upper-left quadrant, suggesting a
+          well-localized place field.
+      - filename: fig_002.png
+        caption: |
+          Animal 1 model comparison — Gaussian minus Zernike AIC for
+          each fitted cell.
+        analysis: |
+          Positive bars indicate Zernike's higher-dimensional basis
+          fits these cells better than a 2D Gaussian.
+      - filename: fig_003.png
+        caption: |
+          Animal 1 model comparison — Gaussian minus Zernike BIC for
+          each fitted cell.
+        analysis: |
+          BIC penalises Zernike's extra parameters; smaller bars than
+          fig_002 confirm the gap survives parsimony pressure.
+      - filename: fig_004.png
+        caption: |
+          Animal 2 model comparison — Gaussian minus Zernike AIC,
+          with Cell 2 showing the largest Zernike advantage (about 190).
+        analysis: |
+          Cell 2 has a non-Gaussian field, motivating the higher-order
+          basis.
+      - filename: fig_005.png
+        caption: |
+          Animal 2 model comparison — Gaussian minus Zernike BIC,
+          mirroring the AIC ranking.
+        analysis: |
+          Cell 3 dips slightly negative — its Gaussian fit is
+          preferred under BIC.
+      - filename: fig_006.png
+        caption: |
+          2x2 mesh of fitted Gaussian place fields (viridis intensity,
+          rate units) for Animal 1 cells 1, 2, 3, 25.
+        analysis: |
+          Each field is a smooth single-mode bump — what the Gaussian
+          model can express.
+      - filename: fig_007.png
+        caption: |
+          2x2 mesh of fitted Zernike place fields for the same Animal 1
+          cells, masked to the circular arena.
+        analysis: |
+          Cell 1's field shows an off-centre tilt the Gaussian model
+          missed; this is the source of its large delta AIC.
+      - filename: fig_008.png
+        caption: |
+          2x2 mesh of fitted Gaussian place fields for Animal 2 cells.
+        analysis: |
+          Compare with fig_009 to see where the Gaussian basis cannot
+          match the data.
+      - filename: fig_009.png
+        caption: |
+          2x2 mesh of fitted Zernike place fields for the same Animal 2
+          cells.
+        analysis: |
+          Cell 2's compact off-centre peak is what drives the large
+          delta AIC in fig_004.
+      - filename: fig_010.png
+        caption: |
+          Animal 2 example cell — Gaussian vs Zernike fitted field
+          side-by-side with trajectory and spikes overlaid.
+        analysis: |
+          Identify which basis better localises the observed spike
+          cluster.
+      - filename: fig_011.png
+        caption: |
+          Animal 1 Cell 25 — Gaussian (left) and Zernike (right)
+          fitted fields with the trajectory and spike positions
+          overlaid on each.
+        analysis: |
+          Both bases place the peak rate in the upper-left quadrant
+          where spikes cluster, with Zernike yielding a tighter mode.
+  - topic: HistoryExamples
+    overview: |
+      Demonstrates the `History` covariate factory: build history
+      regressors for a single spike train and for an `nstColl`
+      collection, then plot the resulting design columns. Mirrors the
+      MATLAB `HistoryExamples` helpfile.
+    goal: |
+      Show how spike-history terms enter a GLM design matrix and how
+      they differ between single-train and collection inputs.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          History design columns for a single spike train, plotted as
+          binary-lag indicators over time.
+        analysis: |
+          Each column is the spike train shifted by a fixed lag — the
+          building block of the GLM history term.
+      - filename: fig_002.png
+        caption: |
+          History columns for an `nstColl` of multiple trains,
+          producing one design matrix per neuron.
+        analysis: |
+          Use to confirm history columns align in time across
+          collection members.
+      - filename: fig_003.png
+        caption: |
+          The full collection's spike raster, plotted via
+          `nstColl.plot()`.
+        analysis: |
+          Context plot — shows the raw data that fed the history-
+          covariate construction above.
+  - topic: NetworkTutorial
+    overview: |
+      Builds a two-neuron simulated network with bidirectional excitation
+      and history kernels, simulates it with the recursive CIF, then
+      recovers the connectivity by fitting GLMs per neuron and comparing
+      estimated weights to ground truth.
+    goal: |
+      Show that the `Analysis` workflow recovers a known two-neuron
+      connectivity matrix from simulated population spikes.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Two-neuron connectivity diagram — neurons 1 and 2 with
+          history kernels [-4, -2, -1], stimulus weights S1 = +1,
+          S2 = -1, and a recurrent excitation arrow (E2 = -4).
+        analysis: |
+          Anchors the simulation parameters before any plots of
+          simulated data.
+      - filename: fig_002.png
+        caption: |
+          Block-diagram view of the conditional intensity in terms of
+          baseline, history, stimulus, and ensemble inputs.
+        analysis: |
+          Reference for the equation form that the GLM will recover.
+      - filename: fig_003.png
+        caption: |
+          Equation panel for the per-bin CIF as a logistic of the
+          linear predictor.
+        analysis: |
+          Pins the binomial link convention used by the simulator and
+          fitter.
+      - filename: fig_004.png
+        caption: |
+          History-kernel coefficients (-4, -2, -1) for lags 1, 2, 3
+          plotted as a stem.
+        analysis: |
+          Strong negative entry at lag 1 implements an absolute
+          refractory period.
+      - filename: fig_005.png
+        caption: |
+          Stimulus-effect coefficient panel for neuron 1 (S1 = +1).
+        analysis: |
+          Sign convention — neuron 1 prefers positive stimulus
+          deflections.
+      - filename: fig_006.png
+        caption: |
+          Stimulus-effect coefficient panel for neuron 2 (S2 = -1).
+        analysis: |
+          Antisymmetric to neuron 1 — sets up the orthogonal-tuning
+          test case.
+      - filename: fig_007.png
+        caption: |
+          Ensemble-effect panel for neuron 1 (E1 = +1 from neuron 2).
+        analysis: |
+          Confirms the excitatory recurrent input from neuron 2.
+      - filename: fig_008.png
+        caption: |
+          Ensemble-effect panel for neuron 2 (E2 = -4 from neuron 1).
+        analysis: |
+          Strong inhibitory pull-back from neuron 1 — the hardest
+          coefficient to recover.
+      - filename: fig_009.png
+        caption: |
+          Simulated two-cell raster (top) with the sinusoidal stimulus
+          waveform (bottom), over a 5 s window.
+        analysis: |
+          Neurons fire on opposite stimulus phases — the population's
+          push-pull signature.
+      - filename: fig_010.png
+        caption: |
+          Simulated lambda_i(t) traces for each neuron over the same
+          window.
+        analysis: |
+          Compare against the raster to confirm thinning follows
+          lambda times delta.
+      - filename: fig_011.png
+        caption: |
+          `plotResults` for neuron 1 — KS plot, residual ACF, GLM
+          coefficients, and point-process residual across three
+          competing model configurations.
+        analysis: |
+          The KS trace under the Stim+Hist+EnsHist model hugs the
+          diagonal; the simpler models drift.
+      - filename: fig_012.png
+        caption: |
+          `plotResults` panel for neuron 2 — same four-panel layout
+          as fig_011.
+        analysis: |
+          Confirms the recovery worked on both members of the pair.
+      - filename: fig_013.png
+        caption: |
+          Actual vs estimated connectivity heatmap — recovered E
+          weight is 0.97 (vs true 1.00), while the strong -4 entry is
+          inflated to -117.77.
+        analysis: |
+          Sign and ordering recovered correctly; the magnitude on the
+          inhibitory entry is biased and is a known limitation.
+  - topic: PPSimExample
+    overview: |
+      Recursive CIF simulation of a stimulus-driven neuron with history
+      kernel [-1, -2, -4], multiple realizations, then fit and compare
+      baseline / stimulus / stimulus+history GLMs across the sample
+      paths.
+    goal: |
+      Reproduce the MATLAB `PPSimExample` recursive-CIF workflow with
+      `CIF.simulateCIF` and `FitResSummary`.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Top: raster of 5 sample paths from the recursive CIF over
+          the first 10 s. Bottom: the driving sinusoidal stimulus.
+        analysis: |
+          Spike timing should cluster around stimulus peaks; the
+          history term thins bursts.
+      - filename: fig_002.png
+        caption: |
+          The simulated lambda(t) for one realization plotted over the
+          same window.
+        analysis: |
+          Note suppression dips immediately following each spike —
+          the history kernel at work.
+      - filename: fig_003.png
+        caption: |
+          `plotResults` for the first realization with baseline,
+          stimulus, and stimulus+history fits compared in one panel.
+        analysis: |
+          The Stim+Hist KS line should sit inside the band; the
+          baseline-only line drifts.
+      - filename: fig_004.png
+        caption: |
+          `plotResults` showing just the baseline-only fit
+          diagnostics.
+        analysis: |
+          The KS plot is the worst here — a useful negative control.
+      - filename: fig_005.png
+        caption: |
+          `plotResults` for the stimulus-only fit.
+        analysis: |
+          KS improves over baseline but residual ACF still shows
+          bursty structure.
+      - filename: fig_006.png
+        caption: |
+          `plotResults` for the stimulus+history fit — the
+          best-fitting model.
+        analysis: |
+          Residual ACF flattens; KS sits inside the 95% band.
+      - filename: fig_007.png
+        caption: |
+          Fitted firing-rate trace for the best model, plotted via
+          `lambdaSignal`.
+        analysis: |
+          Smoothness inherits from the sinusoidal stimulus; bursts
+          reflect history kicks.
+      - filename: fig_008.png
+        caption: |
+          `Summary.plotSummary` bar chart of AIC, log-likelihood, and
+          KS across the three configurations.
+        analysis: |
+          Stimulus+history wins on every panel.
+      - filename: fig_009.png
+        caption: |
+          Bar chart of mean AIC across realizations for the three
+          configs.
+        analysis: |
+          The mean ordering matches the per-trial ordering — model
+          selection is stable across stochastic draws.
+  - topic: PPThinning
+    overview: |
+      Demonstrates Lewis-Shedler thinning to simulate inhomogeneous
+      Poisson point processes — first a constant-rate sanity check,
+      then a time-varying rate. Mirrors the MATLAB `PPThinning`
+      helpfile.
+    goal: |
+      Show that thinning under a known lambda(t) yields spikes whose
+      empirical rate matches the rate function.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Constant-rate Poisson spike train (top) and a thinned
+          process from the same upper-bound rate (bottom).
+        analysis: |
+          Both trains share rate but the thinned one removes spikes
+          to match a lower target — a sanity check on the algorithm.
+      - filename: fig_002.png
+        caption: |
+          Thinned spikes overlaid on the scaled lambda(t) curve used
+          for thinning.
+        analysis: |
+          Visual confirmation that spike density tracks the rate
+          modulation.
+      - filename: fig_003.png
+        caption: |
+          Empirical spike rate vs the target rate, in PSTH bins.
+        analysis: |
+          Bars should hug the rate curve up to Poisson sampling
+          noise.
+  - topic: PSTHEstimation
+    overview: |
+      Estimate a PSTH from 20 simulated trains of a known sinusoidal
+      rate, comparing the bin-count PSTH against a Poisson-GLM PSTH
+      (`fit_poisson_glm`) with 500 ms windows. Mirrors the MATLAB
+      `PSTHEstimation` helpfile.
+    goal: |
+      Show that the GLM PSTH and the bin-count PSTH agree, and that
+      both recover the true sinusoidal rate.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Raster of 20 simulated spike trains over 10 s — the input
+          to PSTH estimation.
+        analysis: |
+          Vertical bands at rate peaks (around 2 s and 6 s) preview
+          the PSTH shape.
+      - filename: fig_002.png
+        caption: |
+          True rate (blue), GLM PSTH step function (black), and
+          bin-count PSTH crosses (red), all on one axis over 500 ms
+          windows.
+        analysis: |
+          GLM step and crosses overlap exactly; both track the blue
+          sinusoid to within sampling noise.
+  - topic: SignalObjExamples
+    overview: |
+      Comprehensive `SignalObj` tour matching the MATLAB
+      `SignalObjExamples` helpfile: construction, slicing, relabeling,
+      resampling, arithmetic, spectral views, and confidence-interval
+      overlays.
+    goal: |
+      Document every method on the core continuous-signal container
+      using 17 worked figure outputs.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Example 1 — two sinusoidal signals s and s1 stacked; tests
+          `SignalObj.plot()` for a multi-component container.
+        analysis: |
+          Confirms component traces appear on separate axes by
+          default.
+      - filename: fig_002.png
+        caption: |
+          Example 1 — masked views of s using boolean indexing.
+        analysis: |
+          Masked regions blank out; the time axis is unchanged.
+      - filename: fig_003.png
+        caption: |
+          Example 1 — `getSubSignal({'v1'})` extracts one named
+          component.
+        analysis: |
+          Verifies label-based component selection.
+      - filename: fig_004.png
+        caption: |
+          Example 2 — relabeled x-axis with custom unit string.
+        analysis: |
+          Tests `setXLabel`/`setXUnits` propagation through plot.
+      - filename: fig_005.png
+        caption: |
+          Example 2 — same signal with a relabel plus a restricted
+          time window.
+        analysis: |
+          Combines label edits with `getSigInTimeWindow`.
+      - filename: fig_006.png
+        caption: |
+          Example 2 — per-component plot selection chooses a subset
+          of channels.
+        analysis: |
+          Demonstrates `plot(handle=..., labels=...)` filtering.
+      - filename: fig_007.png
+        caption: |
+          Example 3 — original signal resampled to 0.1x sample rate.
+        analysis: |
+          Resampled trace should overlay the original on coarse
+          features only.
+      - filename: fig_008.png
+        caption: |
+          Example 3 — `getSigInTimeWindow(-2, 3)` extracts a
+          five-second slice.
+        analysis: |
+          Confirms slice respects the requested endpoints.
+      - filename: fig_009.png
+        caption: |
+          Example 4 — zero-mean version of s (s minus mean of s).
+        analysis: |
+          Mean should be visibly zero; shape preserved.
+      - filename: fig_010.png
+        caption: |
+          Example 4 — mean across components, collapsing the vector
+          signal to a scalar trace.
+        analysis: |
+          Used as a quick population-average diagnostic.
+      - filename: fig_011.png
+        caption: |
+          Example 4 — algebraic combination 2 times s plus s5.
+        analysis: |
+          Tests operator overloading on `SignalObj`.
+      - filename: fig_012.png
+        caption: |
+          Example 4 — integral, derivative, and integral-of-
+          derivative round-trip plotted on one axis.
+        analysis: |
+          The round-trip should match the original up to a constant.
+      - filename: fig_013.png
+        caption: |
+          Example 5 — multitaper spectrum estimate of s.
+        analysis: |
+          Peaks should appear at the input sinusoid's frequencies.
+      - filename: fig_014.png
+        caption: |
+          Example 5 — periodogram for the same signal.
+        analysis: |
+          Same peaks, noisier estimate — used to motivate
+          multitapering.
+      - filename: fig_015.png
+        caption: |
+          Example 6 — signals plotted with an all-component
+          variability band.
+        analysis: |
+          Band covers the inter-component spread at every time
+          point.
+      - filename: fig_016.png
+        caption: |
+          Example 6 — per-label variability bands, one shaded region
+          per labelled subset.
+        analysis: |
+          Verifies grouping logic in `plot(..., variability=...)`.
+      - filename: fig_017.png
+        caption: |
+          Example 6 — custom variability bands with user-supplied
+          band ranges.
+        analysis: |
+          Tests pass-through of explicit `(lower, upper)` band
+          arguments.
+  - topic: StimulusDecode2D
+    overview: |
+      2D stimulus decoding using a nonlinear CIF: simulates a
+      population whose firing rate depends nonlinearly on (px, py),
+      fits the CIF, then decodes (px, py) over time with
+      `DecodingAlgorithms.PPDecodeFilter` and a linear fallback.
+    goal: |
+      Reproduce the MATLAB `StimulusDecode2D` nonlinear-CIF decoding
+      workflow with a documented linear-fallback branch.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          True 2D stimulus trajectory in (px, py) — the target the
+          decoder must reconstruct.
+        analysis: |
+          Anchors what "good decoding" looks like.
+      - filename: fig_002.png
+        caption: |
+          Simulated lambda_i(t) traces for each tuned cell over the
+          same window.
+        analysis: |
+          Firing peaks should align with the cell's preferred
+          stimulus value.
+      - filename: fig_003.png
+        caption: |
+          Pseudocolor (pcolor) of the 2D tuning surface for one
+          example cell.
+        analysis: |
+          A peak away from the origin confirms nonlinear 2D tuning.
+      - filename: fig_004.png
+        caption: |
+          Updated state estimate x_u(1) from the point-process
+          adaptive filter over time.
+        analysis: |
+          Tracks the true px trace.
+      - filename: fig_005.png
+        caption: |
+          Decoded 2D trajectories vs ground truth in (px, py)
+          space.
+        analysis: |
+          Decoded path should trace the true path; gaps highlight
+          where the population cannot disambiguate.
+      - filename: fig_006.png
+        caption: |
+          Decode RMSE summary across cells and dimensions.
+        analysis: |
+          Lower values indicate which dimension is easier to recover.
+  - topic: TrialConfigExamples
+    overview: |
+      Tracker-only scaffold for the MATLAB `TrialConfigExamples`
+      helpfile. Records the intended figure-output sequence for parity
+      audits and does not produce plots. Use executable
+      `TrialConfig`/`ConfigColl` snippets under `examples/paper/` for
+      hands-on use.
+    goal: |
+      Document the MATLAB figure sequence so the notebook fidelity
+      audit can compare Python output against the reference.
+    figures: []
+  - topic: TrialExamples
+    overview: |
+      Builds `Trial` objects from spike trains and covariate
+      collections, then walks through trial-level operations:
+      windowing, plotting, attaching configs. Mirrors the MATLAB
+      `TrialExamples` helpfile.
+    goal: |
+      Document the `Trial` container — the unit of analysis that
+      ties together spikes, covariates, and configs.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Trial plot — spike raster (top) and covariate panels
+          (below) all sharing one time axis.
+        analysis: |
+          The canonical trial view; confirm rasters and covariates
+          align in time.
+      - filename: fig_002.png
+        caption: |
+          Trial plot after restricting to a sub-window via
+          `getSubTrial`.
+        analysis: |
+          Verifies cropping preserves alignment.
+      - filename: fig_003.png
+        caption: |
+          Trial with an added stimulus covariate after `addCovariate`.
+        analysis: |
+          Confirms the covariate collection grew by one panel.
+      - filename: fig_004.png
+        caption: |
+          Trial with a swapped or relabelled covariate.
+        analysis: |
+          Confirms label edits persist through the trial container.
+      - filename: fig_005.png
+        caption: |
+          Trial-level resample to a coarser bin rate.
+        analysis: |
+          Used to confirm spike-time precision survives resampling.
+      - filename: fig_006.png
+        caption: |
+          Trial plot with a config attached, ready for an
+          `Analysis` call.
+        analysis: |
+          Final state before `RunAnalysisForAllNeurons` would be
+          invoked.
+  - topic: ValidationDataSet
+    overview: |
+      Validates the GLM-fit pipeline against two known ground-truth
+      rate models — a constant-rate Poisson process and a piecewise-
+      rate process — by simulating, fitting, and checking that AIC
+      and KS pick the correct model.
+    goal: |
+      Show that the toolbox recovers the right model on data where
+      the answer is known by construction.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          ISI histogram for the simulated constant-rate train, with
+          the exponential reference overlaid.
+        analysis: |
+          Histogram should match the exponential — confirms
+          simulation correctness.
+      - filename: fig_002.png
+        caption: |
+          GLM coefficient estimate `mu` vs the true intercept used
+          to simulate.
+        analysis: |
+          Estimate should land on the truth line within standard
+          error.
+      - filename: fig_003.png
+        caption: |
+          Fitted lambda(t) trace from `results{1}.lambda.plot` for
+          the constant-rate fit.
+        analysis: |
+          Flat trace confirms the homogeneous model was not
+          oversmoothed.
+      - filename: fig_004.png
+        caption: |
+          Spike-time raster of the piecewise-rate simulation.
+        analysis: |
+          Density should jump at the piecewise breakpoints.
+      - filename: fig_005.png
+        caption: |
+          True piecewise rate function plotted over the simulation
+          window.
+        analysis: |
+          Reference for what the GLM has to recover.
+      - filename: fig_006.png
+        caption: |
+          Fitted piecewise-rate lambda(t) trace from the GLM.
+        analysis: |
+          Fitted trace should track the step-changes in the true
+          rate.
+      - filename: fig_007.png
+        caption: |
+          `Summary.plotSummary` across all candidate models on the
+          piecewise data.
+        analysis: |
+          The piecewise model should win on AIC and KS.
+      - filename: fig_008.png
+        caption: |
+          Log-likelihood differences from `Summary.getDifflogLL`
+          across candidate fits.
+        analysis: |
+          Positive values flag preferred models over the baseline.
+  - topic: mEPSCAnalysis
+    overview: |
+      mEPSC point-process analysis: load constant-magnesium and
+      washout conditions, fit homogeneous Poisson and time-varying
+      GLMs, and compare with `FitResSummary`.
+    goal: |
+      Show the mEPSC paper-example workflow on the toolbox's
+      dataset, replicating Figure 1 of the 2012 paper.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Constant-magnesium condition — homogeneous Poisson fit
+          summary across the cell.
+        analysis: |
+          Stable rate trace with the time-rescaling KS in the band.
+      - filename: fig_002.png
+        caption: |
+          Washout-condition raster of mEPSC event times across the
+          recording.
+        analysis: |
+          Look for rate elevation under washout vs the constant
+          condition.
+      - filename: fig_003.png
+        caption: |
+          Washout `plotResults` panel — fitted rate, KS plot, and
+          coefficient errorbars.
+        analysis: |
+          KS deviation flags the homogeneous model as inadequate
+          under washout.
+      - filename: fig_004.png
+        caption: |
+          Washout `Summary.plotSummary` bar chart across competing
+          rate models.
+        analysis: |
+          The time-varying model should beat the homogeneous one.
+  - topic: nSTATPaperExamples
+    overview: |
+      One-stop replication of every figure in the 2012 paper —
+      Experiments 1 through 6 covering mEPSC analysis, whisker GLMs,
+      PSTH estimation, gamma-state inference, place-cell fields,
+      decoding, and the hybrid filter — driven by
+      `run_experiment1` through `run_experiment6`.
+    goal: |
+      Reproduce all 30 published paper figures with the Python port,
+      matching the MATLAB `nSTATPaperExamples` ordering.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Experiment 1 — constant-Mg homogeneous Poisson fit; rate
+          trace pinned at about 9.23 Hz across the 60 s recording.
+        analysis: |
+          Flat line confirms the stationary fit on the
+          constant-magnesium condition.
+      - filename: fig_002.png
+        caption: |
+          Experiment 1 — washout raster and per-second rate trace.
+        analysis: |
+          Look for the rate rise after washout onset.
+      - filename: fig_003.png
+        caption: |
+          Experiment 1 — KS plot for the constant-Mg fit.
+        analysis: |
+          Trace inside the 95% band supports the homogeneous model.
+      - filename: fig_004.png
+        caption: |
+          Experiment 1 — autocorrelation function of the rescaled
+          ISIs.
+        analysis: |
+          Bars should sit inside the white-noise band; departures
+          flag missed structure.
+      - filename: fig_005.png
+        caption: |
+          Experiment 1 — model summary bar chart across the
+          competing rate models.
+        analysis: |
+          Identifies the preferred model by AIC and KS.
+      - filename: fig_006.png
+        caption: |
+          Experiment 2 — whisker stimulus waveform with the spike
+          raster aligned beneath.
+        analysis: |
+          Confirms stimulus-locked firing in thalamic units.
+      - filename: fig_007.png
+        caption: |
+          Experiment 2 — stimulus-spike cross-correlation.
+        analysis: |
+          Locates the lag of peak coupling for the GLM stimulus
+          term.
+      - filename: fig_008.png
+        caption: |
+          Experiment 2 — AIC and BIC bars across whisker GLM
+          configurations.
+        analysis: |
+          The configuration with the lowest AIC is the paper's
+          preferred model.
+      - filename: fig_009.png
+        caption: |
+          Experiment 2 — KS comparison across the same configs.
+        analysis: |
+          Cross-check that AIC and KS agree on the winner.
+      - filename: fig_010.png
+        caption: |
+          Experiment 2 — history-windows scan: KS, delta AIC, and
+          delta BIC vs number of history lags.
+        analysis: |
+          The delta AIC dip near 7 windows marks the parsimonious
+          history length.
+      - filename: fig_011.png
+        caption: |
+          Experiment 2 — fitted whisker-GLM coefficients for the
+          best model.
+        analysis: |
+          Identifies the dominant stimulus and history lags.
+      - filename: fig_012.png
+        caption: |
+          Experiment 3 — true rate for the PSTH-estimation
+          simulation.
+        analysis: |
+          Ground truth that the PSTH must recover.
+      - filename: fig_013.png
+        caption: |
+          Experiment 3 — true rate vs GLM-PSTH step vs bin-count
+          PSTH overlay.
+        analysis: |
+          GLM and bin estimates overlap exactly; both track the
+          true rate.
+      - filename: fig_014.png
+        caption: |
+          Experiment 3b — state estimates from the state-space
+          gamma-process inference.
+        analysis: |
+          State trace should mirror the simulated regime changes.
+      - filename: fig_015.png
+        caption: |
+          Experiment 3b — credible-interval widths over time.
+        analysis: |
+          Widths narrow where spikes are dense; widen on gaps.
+      - filename: fig_016.png
+        caption: |
+          Experiment 3b — gamma-process posterior summary.
+        analysis: |
+          Confirms recovery of the regime-switch parameters.
+      - filename: fig_017.png
+        caption: |
+          Experiment 4 — Animal 1 place-cell delta AIC bars
+          (Gaussian minus Zernike).
+        analysis: |
+          Mirrors `HippocampalPlaceCellExample` fig_002 in this
+          gallery.
+      - filename: fig_018.png
+        caption: |
+          Experiment 4 — Animal 2 place-cell delta BIC bars; Cell 2
+          shows a +148 BIC advantage for Zernike.
+        analysis: |
+          BIC sign agrees with AIC — basis choice is robust to the
+          parsimony penalty.
+      - filename: fig_019.png
+        caption: |
+          Experiment 4 — Gaussian place-field mesh (4 cells per
+          animal).
+        analysis: |
+          Each mesh is a smooth single bump in firing rate.
+      - filename: fig_020.png
+        caption: |
+          Experiment 4 — Zernike place-field mesh for the same
+          cells.
+        analysis: |
+          Off-centre tilts that the Gaussian basis missed appear
+          here.
+      - filename: fig_021.png
+        caption: |
+          Experiment 5 — CIF setup: simulated raster and stimulus
+          for the 1D decoding example.
+        analysis: |
+          Same workflow shape as `DecodingExample`.
+      - filename: fig_022.png
+        caption: |
+          Experiment 5 — decoded stimulus trace with credible band.
+        analysis: |
+          Decoder mean should track the true stimulus inside the
+          band.
+      - filename: fig_023.png
+        caption: |
+          Experiment 5b — arm-reach setup: hand-position trajectory
+          and neural raster.
+        analysis: |
+          Same reach used by `HybridFilterExample`.
+      - filename: fig_024.png
+        caption: |
+          Experiment 5b — goal-aware decoding of reach position.
+        analysis: |
+          Compare against the free decode to see the goal prior's
+          contribution.
+      - filename: fig_025.png
+        caption: |
+          Experiment 5b — free (goal-agnostic) decoded trajectory.
+        analysis: |
+          Lacking the goal prior, the decoded path drifts away from
+          the target.
+      - filename: fig_026.png
+        caption: |
+          Experiment 6 — hybrid-filter setup: reach path (top
+          left), discrete movement state (top right), velocity
+          (bottom left), neural raster (bottom right).
+        analysis: |
+          Anchors the hybrid filter's inputs before any decoding.
+      - filename: fig_027.png
+        caption: |
+          Experiment 6 — Pr(movement) state probability trace from
+          the hybrid filter.
+        analysis: |
+          State posterior should rise during the reach window.
+      - filename: fig_028.png
+        caption: |
+          Experiment 6 — decoded vs true (x, y) hand position.
+        analysis: |
+          Smooth tracking confirms the hybrid filter recovers
+          position from spikes.
+      - filename: fig_029.png
+        caption: |
+          Paper-gallery summary panel — cross-experiment
+          goodness-of-fit comparison.
+        analysis: |
+          High-level dashboard: pass/fail at a glance for each
+          experiment.
+      - filename: fig_030.png
+        caption: |
+          Paper-dataset summary panel — per-experiment dataset
+          metadata.
+        analysis: |
+          Useful as the final caption-style reference figure.
+  - topic: nSpikeTrainExamples
+    overview: |
+      Build and manipulate single `nspikeTrain` objects — construction,
+      plotting, time-window cropping, and sample-rate-aware
+      conversions to binary `SignalObj` representations. Mirrors the
+      MATLAB `nSpikeTrainExamples` helpfile.
+    goal: |
+      Document the single-spike-train container and its three
+      signal-representation paths.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Raster of one `nspikeTrain` via `nst.plot()`.
+        analysis: |
+          The canonical raster view used throughout the toolbox.
+      - filename: fig_002.png
+        caption: |
+          Signal representation at 10 Hz — bin counts per 100 ms
+          window.
+        analysis: |
+          Coarse view; bins absorb burst structure.
+      - filename: fig_003.png
+        caption: |
+          Signal representation at 100 Hz — 10 ms bins.
+        analysis: |
+          Fine view; preserves most ISI structure.
+      - filename: fig_004.png
+        caption: |
+          Signal representation at the maximum binary bin rate (one
+          spike per bin).
+        analysis: |
+          Used as the design-matrix input for GLM fitting.
+  - topic: nstCollExamples
+    overview: |
+      `nstColl` (SpikeTrainCollection) operations: construct from
+      multiple `nspikeTrain` objects, plot raster, signal
+      representation, and fine-resolution view. Mirrors the MATLAB
+      `nstCollExamples` helpfile.
+    goal: |
+      Document the population-spike-train container that drives
+      `Trial` and `Analysis`.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          First train of the collection rendered three ways —
+          raster, coarse `sigRep`, fine `sigRep`.
+        analysis: |
+          Side-by-side check that the same train projects
+          consistently through each view.
+      - filename: fig_002.png
+        caption: |
+          Full collection raster, one row per spike train.
+        analysis: |
+          Population-level view used in `Trial.plot()`.
+      - filename: fig_003.png
+        caption: |
+          PSTH-style population rate aggregated across the
+          collection.
+        analysis: |
+          Useful summary of total population activity.
+  - topic: AnalysisExamples2
+    overview: |
+      Second-pass MATLAB-parity `Analysis` workflow on `glm_data.mat`
+      with the executable Python `Trial`/`ConfigColl` path — fit a
+      GLM, plot results, mesh the fitted intensity surface, and run
+      the canonical history-lag computation.
+    goal: |
+      Reproduce the MATLAB `AnalysisExamples2` figure sequence
+      end-to-end with the Python toolbox.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Position covariate `getSubSignal('x')` trace over the
+          recording.
+        analysis: |
+          Reference for the regressor the GLM will use.
+      - filename: fig_002.png
+        caption: |
+          `fitResults.plotResults` summary — KS plot, residuals, and
+          coefficients side-by-side.
+        analysis: |
+          KS hugging the diagonal supports the fitted CIF.
+      - filename: fig_003.png
+        caption: |
+          3D mesh of the fitted firing rate vs (time, position).
+        analysis: |
+          Surface peaks identify the cell's tuning to position.
+      - filename: fig_004.png
+        caption: |
+          `Analysis.computeHistLag` output — best history lag and
+          surrounding cost surface.
+        analysis: |
+          The minimum picks the lag used in the final fit.
+  - topic: ConfidenceIntervalOverview
+    overview: |
+      Walks through the `ConfidenceInterval` class — construction
+      from `(time, [lower, upper])`, the `lower` and `upper`
+      accessors, and how it composes with `SignalObj` plots. Mirrors
+      the MATLAB help page for the class.
+    goal: |
+      Document the simple two-bound time-series container used to
+      attach confidence bands to fitted signals.
+    figures: []
+  - topic: FitResultReference
+    overview: |
+      Tracker-only scaffold for the MATLAB `FitResultReference`
+      helpfile. Records the intended figure ordering for parity
+      audits and does not render plots. Use the executable
+      `FitResult` snippets under `examples/paper/` for hands-on use.
+    goal: |
+      Document the MATLAB figure sequence so the notebook fidelity
+      audit can compare Python output against the reference.
+    figures: []
+  - topic: HybridFilterExample
+    overview: |
+      Hybrid (movement / no-movement) state-space decoding of a
+      simulated arm reach: 24 cells driven by position and velocity
+      under a discrete movement state, run the hybrid filter once,
+      then average across realizations for a stable summary.
+    goal: |
+      Reproduce the MATLAB `HybridFilterExample` hybrid-filter
+      simulation, single-run decode, and averaged-summary figures.
+    figures:
+      - filename: fig_001.png
+        caption: |
+          Reach setup grid — reach path, neural raster, discrete
+          movement state, position and velocity, population spike
+          fraction, and an example cumulative spike count.
+        analysis: |
+          Anchors hybrid-filter inputs; reported single-run RMSE
+          about 0.22 (x) and 0.17 (y) with 89.9% state accuracy.
+      - filename: fig_002.png
+        caption: |
+          Single-run hybrid-filter result — state estimate raster,
+          Pr(movement) trace, decoded movement path, decoded
+          position and velocity (true black, decoded blue),
+          instantaneous path error, and spike-count histogram.
+        analysis: |
+          Position decode is noisy on a single run but follows the
+          true cosine envelope; velocity is harder to recover.
+      - filename: fig_003.png
+        caption: |
+          Averaged-across-runs summary — average state estimate,
+          average Pr(movement), averaged decoded path (collapsed
+          near origin), and per-axis RMSE bars (X about 0.22,
+          Y about 0.18).
+        analysis: |
+          Averaging shrinks the decoded path toward the centre —
+          the filter has near-zero mean error but high variance.
+  - topic: PlaceFieldGLMBasis
+    overview: |
+      Self-contained extras-module demo of `nstat.extras.spatial`:
+      simulate ~600 events from a sum-of-Gaussian-bumps rate field
+      via thinning, fit a tensor-product cubic B-spline Poisson GLM
+      with a log-area offset, fit a basis-projected LGCP with a
+      Matern-5/2 prior, and diagnose with the edge-corrected pair
+      correlation function.
+    goal: |
+      Recover a known planar place field from sparse events and
+      attach a 90% log-normal credible band.
+    figures: []
+  - topic: HawkesWaveAnalysis
+    overview: |
+      Demonstrates the spatiotemporal wave-analysis stack in
+      `nstat.extras.spatial`: build a synthetic 36-electrode Hawkes
+      adjacency embedding a known planar wave, compute its Bartlett
+      (frequency by wave-vector) spectrum, and recover the dominant
+      wave-vector peaks by greedy non-maximum suppression. The 6x6
+      electrode grid is acknowledged to be coarse, undersampling the
+      embedded wave.
+    goal: |
+      Show that the Bartlett spectrum localises a known planar wave
+      vector on a small electrode grid.
+    figures: []

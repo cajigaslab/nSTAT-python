@@ -13,8 +13,17 @@ from nstat.paper_gallery import write_gallery_outputs
 
 
 if __name__ == "__main__":
-    manifest_path, markdown_path, html_path, readme_path = write_gallery_outputs(REPO_ROOT)
+    (
+        manifest_path,
+        markdown_path,
+        html_path,
+        notebooks_html_path,
+        galleries_index_path,
+        readme_path,
+    ) = write_gallery_outputs(REPO_ROOT)
     print(manifest_path)
     print(markdown_path)
     print(html_path)
+    print(notebooks_html_path)
+    print(galleries_index_path)
     print(readme_path)
