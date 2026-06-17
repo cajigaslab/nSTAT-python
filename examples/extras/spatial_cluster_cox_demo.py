@@ -263,6 +263,7 @@ def run_demo(
               f"(target {ma['mu_offspring_true']:.4f})")
 
     # ---- Figures ----
+    # === FIGURE: fig01_thomas_scatter.png ===
     fig1, ax1 = plt.subplots(figsize=(5.5, 5.4))
     _plot_scatter(
         ax1, th["points"],
@@ -270,13 +271,17 @@ def run_demo(
         f"lambda_p={th['lambda_p_true']}, "
         f"n={th['points'].shape[0]})",
     )
+    # === END FIGURE ===
 
+    # === FIGURE: fig02_thomas_pcf.png ===
     fig2, ax2 = plt.subplots(figsize=(6.4, 4.8))
     _plot_pcf(
         ax2, th["r_grid"], th["g_emp"], th["g_fit"], th["g_true"],
         title="Thomas g(r) — empirical vs min-contrast fit vs truth",
     )
+    # === END FIGURE ===
 
+    # === FIGURE: fig03_matern_scatter.png ===
     fig3, ax3 = plt.subplots(figsize=(5.5, 5.4))
     _plot_scatter(
         ax3, ma["points"],
@@ -284,12 +289,15 @@ def run_demo(
         f"lambda_p={ma['lambda_p_true']}, "
         f"n={ma['points'].shape[0]})",
     )
+    # === END FIGURE ===
 
+    # === FIGURE: fig04_matern_pcf.png ===
     fig4, ax4 = plt.subplots(figsize=(6.4, 4.8))
     _plot_pcf(
         ax4, ma["r_grid"], ma["g_emp"], ma["g_fit"], ma["g_true"],
         title="Matérn-cluster g(r) — empirical vs min-contrast fit vs truth",
     )
+    # === END FIGURE ===
 
     figures = [fig1, fig2, fig3, fig4]
     fig_names = (

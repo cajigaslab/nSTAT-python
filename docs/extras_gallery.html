@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>nstat.extras — runnable demo gallery</title>
-<style>:root{--bg:#0f1419;--card:#1a1f29;--ink:#e6e6e6;--ink-2:#9aa4b1;--accent:#7ee787;--accent-2:#58a6ff;--border:#30363d;}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}.wrap{max-width:1100px;margin:0 auto;padding:2rem 1.25rem 3rem;}header{border-bottom:1px solid var(--border);padding-bottom:1.25rem;margin-bottom:1.5rem;}h1{margin:0 0 .35rem;font-size:1.6rem;color:var(--accent);}h2{margin:2rem 0 .75rem;font-size:1.2rem;color:var(--accent-2);border-top:1px solid var(--border);padding-top:1.25rem;}h3{margin:1.25rem 0 .35rem;font-size:1rem;color:var(--ink);}p{margin:.4rem 0;color:var(--ink);}.muted{color:var(--ink-2);font-size:.9rem;}.tag{display:inline-block;background:#0b0e14;color:var(--accent);padding:.05rem .4rem;border-radius:3px;font-size:.75rem;margin-left:.4rem;}code,pre{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85rem;background:#0b0e14;color:var(--accent);padding:.1rem .3rem;border-radius:3px;}pre{padding:.75rem 1rem;overflow-x:auto;border:1px solid var(--border);}nav.toc{background:var(--card);border:1px solid var(--border);padding:.75rem 1rem;border-radius:6px;margin-bottom:1.5rem;font-size:.9rem;}nav.toc a{color:var(--accent-2);text-decoration:none;margin-right:.9rem;}nav.toc a:hover{text-decoration:underline;}.example{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.5rem;margin:1.25rem 0;}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem;margin-top:.75rem;}.gallery figure{margin:0;background:#0b0e14;border:1px solid var(--border);border-radius:4px;padding:.5rem;}.gallery img{width:100%;height:auto;display:block;border-radius:2px;}.gallery figcaption{font-size:.78rem;color:var(--ink-2);margin-top:.4rem;word-break:break-word;}.gallery .analysis{font-size:.78rem;color:var(--ink);margin-top:.3rem;}.placeholder{padding:1rem;color:var(--ink-2);font-size:.8rem;background:#0b0e14;border:1px dashed var(--border);border-radius:4px;text-align:center;}a{color:var(--accent-2);}footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--ink-2);font-size:.85rem;}</style>
+<style>:root{--bg:#0f1419;--card:#1a1f29;--ink:#e6e6e6;--ink-2:#9aa4b1;--accent:#7ee787;--accent-2:#58a6ff;--border:#30363d;}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}.wrap{max-width:1100px;margin:0 auto;padding:2rem 1.25rem 3rem;}header{border-bottom:1px solid var(--border);padding-bottom:1.25rem;margin-bottom:1.5rem;}h1{margin:0 0 .35rem;font-size:1.6rem;color:var(--accent);}h2{margin:2rem 0 .75rem;font-size:1.2rem;color:var(--accent-2);border-top:1px solid var(--border);padding-top:1.25rem;}h3{margin:1.25rem 0 .35rem;font-size:1rem;color:var(--ink);}p{margin:.4rem 0;color:var(--ink);}.muted{color:var(--ink-2);font-size:.9rem;}.tag{display:inline-block;background:#0b0e14;color:var(--accent);padding:.05rem .4rem;border-radius:3px;font-size:.75rem;margin-left:.4rem;}code,pre{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85rem;background:#0b0e14;color:var(--accent);padding:.1rem .3rem;border-radius:3px;}pre{padding:.75rem 1rem;overflow-x:auto;border:1px solid var(--border);}nav.toc{background:var(--card);border:1px solid var(--border);padding:.75rem 1rem;border-radius:6px;margin-bottom:1.5rem;font-size:.9rem;}nav.toc a{color:var(--accent-2);text-decoration:none;margin-right:.9rem;}nav.toc a:hover{text-decoration:underline;}.example{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.5rem;margin:1.25rem 0;}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem;margin-top:.75rem;}.gallery figure{margin:0;background:#0b0e14;border:1px solid var(--border);border-radius:4px;padding:.5rem;}.gallery img{width:100%;height:auto;display:block;border-radius:2px;}.gallery figcaption{font-size:.78rem;color:var(--ink-2);margin-top:.4rem;word-break:break-word;}.gallery .analysis{font-size:.78rem;color:var(--ink);margin-top:.3rem;}.placeholder{padding:1rem;color:var(--ink-2);font-size:.8rem;background:#0b0e14;border:1px dashed var(--border);border-radius:4px;text-align:center;}.gallery .code-detail{margin-top:.45rem;font-size:.78rem;}.gallery .code-detail summary{cursor:pointer;color:var(--accent-2);padding:.15rem .4rem;background:#0b0e14;border:1px solid var(--border);border-radius:3px;display:inline-block;list-style:none;font-size:.75rem;}.gallery .code-detail summary::-webkit-details-marker{display:none;}.gallery .code-detail summary:hover{color:var(--accent);border-color:var(--accent);}.gallery .code-detail[open] summary{color:var(--accent);border-color:var(--accent);}.gallery .code-detail pre{margin:.4rem 0 0;padding:.6rem .8rem;font-size:.72rem;line-height:1.45;overflow-x:auto;background:#0b0e14;border:1px solid var(--border);border-radius:4px;color:var(--ink);}.gallery .code-detail code.language-python{background:transparent;color:var(--ink);padding:0;font-size:inherit;}a{color:var(--accent-2);}footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--ink-2);font-size:.85rem;}</style>
 </head><body><div class="wrap">
 <header>
 <h1>nstat.extras — runnable demo gallery</h1>
@@ -44,13 +44,47 @@ trajectory plus the recovered place fields are plotted.</p>
 (black) over the 60 s trial, with the per-time-step posterior
 standard deviation as a shaded band.</figcaption><div class="analysis">The decoded trace should track the OU walk closely inside the
 shaded band whenever any of the three cells is active; gaps
-flag time steps where no cell fires and the prior dominates.</div></figure>
+flag time steps where no cell fires and the prior dominates.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.6))
+axes[0].plot(true_x, true_y, &quot;k-&quot;, lw=1.0, alpha=0.7, label=&quot;true&quot;)
+axes[0].plot(
+    result.decoded_position[:, 0], result.decoded_position[:, 1],
+    color=&quot;tab:blue&quot;, lw=1.0, alpha=0.7, label=&quot;decoded&quot;,
+)
+axes[0].set_xlabel(&quot;x&quot;)
+axes[0].set_ylabel(&quot;y&quot;)
+axes[0].set_aspect(&quot;equal&quot;)
+axes[0].set_title(&quot;Decoded trajectory (PPAF, nonlinear CIF branch)&quot;)
+axes[0].legend(loc=&quot;upper right&quot;, fontsize=9)
+
+axes[1].plot(trial_time, true_x, &quot;k-&quot;, lw=1.0, label=&quot;true x&quot;)
+axes[1].plot(
+    trial_time, result.decoded_position[:, 0],
+    color=&quot;tab:blue&quot;, lw=1.0, label=&quot;decoded x&quot;,
+)
+axes[1].set_xlabel(&quot;time [s]&quot;)
+axes[1].set_ylabel(&quot;x&quot;)
+axes[1].set_title(&quot;x(t) trace&quot;)
+axes[1].legend(loc=&quot;upper right&quot;, fontsize=9)
+fig.tight_layout()</code></pre></details></figure>
 <figure><div class="placeholder"><code>fig02_place_fields.png</code><br>(run <code>python examples/extras/decoding_place_field_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig02_place_fields.png</strong><br>Recovered tuning curves for the three synthetic cells (solid)
 plotted against the Gaussian-bump ground truth (dashed), with
 cell-centre markers from the B-spline GLM fit.</figcaption><div class="analysis">A close match of solid to dashed across the three centres
 confirms the tensor-product B-spline basis is recovering the
 true tuning; any mismatch at the edges is the usual basis
-edge effect.</div></figure>
+edge effect.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, ax = plt.subplots(figsize=(6.5, 5.0))
+for c_idx, kept in enumerate(result.cell_indices_kept):
+    cx, cy = cell_centres[c_idx % len(cell_centres)]
+    ax.scatter([cx], [cy], s=160, marker=&quot;x&quot;, color=&quot;tab:red&quot;,
+               label=&quot;true field centres&quot; if c_idx == 0 else None)
+ax.set_xlim(0.0, 1.0)
+ax.set_ylim(0.0, 1.0)
+ax.set_aspect(&quot;equal&quot;)
+ax.set_xlabel(&quot;x&quot;)
+ax.set_ylabel(&quot;y&quot;)
+ax.set_title(&quot;True place-field centres (synthetic)&quot;)
+if result.cell_indices_kept:
+    ax.legend(loc=&quot;upper right&quot;, fontsize=9)
+fig.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="em_dynamax">
@@ -130,7 +164,22 @@ recovered latent vs the ground-truth latents).</p>
 recovered latent dimensions (coloured lines) over the trial
 window.</figcaption><div class="analysis">Coherent shape across trials in each latent dimension
 confirms GPFA is recovering the shared sinusoidal signal and
-not over-fitting to per-trial noise.</div></figure>
+not over-fitting to per-trial noise.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(
+    1, n_trials, figsize=(3.4 * n_trials, 3.6), sharey=True,
+)
+if n_trials == 1:
+    axes = [axes]
+t_bins = (np.arange(result.latent_trajectories[0].shape[0]) + 0.5) * bin_size_s
+for k, ax in enumerate(axes):
+    traj = result.latent_trajectories[k]
+    for i in range(traj.shape[1]):
+        ax.plot(t_bins, traj[:, i], lw=1.6, label=f&quot;latent {i}&quot;)
+    ax.set_title(f&quot;trial {k}  |r|={corrs[k]:.2f}&quot;)
+    ax.set_xlabel(&quot;time (s)&quot;)
+    if k == 0:
+        ax.set_ylabel(&quot;recovered latent&quot;)
+    ax.legend(loc=&quot;upper right&quot;, fontsize=8)
+fig.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="metrics_spike_distances">
@@ -167,23 +216,43 @@ minimum-contrast estimator on the SOIRS pair correlation.</p>
 coloured cluster groups offspring around an unobserved
 parent location with isotropic Gaussian displacement.</figcaption><div class="analysis">Tight, roughly circular clusters confirm the Gaussian
 offspring kernel; cluster radius previews the recovered
-``sigma``.</div></figure>
+``sigma``.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, ax1 = plt.subplots(figsize=(5.5, 5.4))
+_plot_scatter(
+    ax1, th[&quot;points&quot;],
+    f&quot;Thomas pattern (sigma={th[&#x27;sigma_true&#x27;]}, &quot;
+    f&quot;lambda_p={th[&#x27;lambda_p_true&#x27;]}, &quot;
+    f&quot;n={th[&#x27;points&#x27;].shape[0]})&quot;,
+)</code></pre></details></figure>
 <figure><div class="placeholder"><code>fig02_thomas_pcf.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig02_thomas_pcf.png</strong><br>Empirical pair-correlation function (PCF) of the Thomas
 pattern (solid) overlaid on the Thomas-PCF model fit at the
 minimum-contrast estimate ``(sigma_hat, lambda_p_hat)``
 (dashed) and the Poisson null ``g(r) = 1`` (thin grey).</figcaption><div class="analysis">The model curve hugging the empirical PCF at short range and
 relaxing to one at long range confirms the minimum-contrast
-fit recovered the offspring scale.</div></figure>
+fit recovered the offspring scale.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, ax2 = plt.subplots(figsize=(6.4, 4.8))
+_plot_pcf(
+    ax2, th[&quot;r_grid&quot;], th[&quot;g_emp&quot;], th[&quot;g_fit&quot;], th[&quot;g_true&quot;],
+    title=&quot;Thomas g(r) — empirical vs min-contrast fit vs truth&quot;,
+)</code></pre></details></figure>
 <figure><div class="placeholder"><code>fig03_matern_scatter.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig03_matern_scatter.png</strong><br>Realised Matérn-cluster pattern on the unit square — uniform
 offspring inside discs of radius ``R`` around unobserved
 parent locations.</figcaption><div class="analysis">Sharper disc boundaries than fig01 reflect the uniform-disc
-kernel; the disc radius previews the recovered ``R``.</div></figure>
+kernel; the disc radius previews the recovered ``R``.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig3, ax3 = plt.subplots(figsize=(5.5, 5.4))
+_plot_scatter(
+    ax3, ma[&quot;points&quot;],
+    f&quot;Matérn-cluster pattern (R={ma[&#x27;radius_true&#x27;]}, &quot;
+    f&quot;lambda_p={ma[&#x27;lambda_p_true&#x27;]}, &quot;
+    f&quot;n={ma[&#x27;points&#x27;].shape[0]})&quot;,
+)</code></pre></details></figure>
 <figure><div class="placeholder"><code>fig04_matern_pcf.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig04_matern_pcf.png</strong><br>Empirical PCF of the Matérn-cluster pattern (solid) overlaid
 on the Matérn-cluster model fit at
 ``(R_hat, lambda_p_hat)`` (dashed) and the Poisson null
 (thin grey).</figcaption><div class="analysis">The PCF drop to one at ``r = 2 * R_hat`` is the signature of
 the uniform-disc kernel — a useful eye-test for the
-recovered radius.</div></figure>
+recovered radius.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig4, ax4 = plt.subplots(figsize=(6.4, 4.8))
+_plot_pcf(
+    ax4, ma[&quot;r_grid&quot;], ma[&quot;g_emp&quot;], ma[&quot;g_fit&quot;], ma[&quot;g_true&quot;],
+    title=&quot;Matérn-cluster g(r) — empirical vs min-contrast fit vs truth&quot;,
+)</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="spatial_gibbs">
@@ -207,17 +276,31 @@ birth-death.  Each pattern is then refit via
 ``gamma = 0.4`` — points repel softly at distances under the
 interaction radius.</figcaption><div class="analysis">Visually sparser than a Poisson pattern at the same
 intensity; nearest-neighbour gaps preview the recovered
-``gamma``.</div></figure>
+``gamma``.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, ax1 = plt.subplots(figsize=(5.5, 5.5))
+_plot_scatter_with_radius(
+    ax1, st[&quot;points&quot;], st[&quot;R&quot;],
+    f&quot;Strauss (beta={st[&#x27;beta_true&#x27;]}, gamma={st[&#x27;gamma_true&#x27;]}, &quot;
+    f&quot;R={st[&#x27;R&#x27;]}) — n={st[&#x27;n_data&#x27;]}&quot;,
+)</code></pre></details></figure>
 <figure><div class="placeholder"><code>fig02_hardcore_scatter.png</code><br>(run <code>python examples/extras/spatial_gibbs_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig02_hardcore_scatter.png</strong><br>Realised hard-core pattern on the unit square at
 ``beta = 60``, drawn by dart-throwing rejection sampling.</figcaption><div class="analysis">Hard nearest-neighbour exclusion produces a roughly regular
 tiling; the intercept-only Berman-Turner GLM is known to
 overshoot ``beta`` here — the ``hardcore-bias`` note in the
-script's stdout reports the expected magnitude.</div></figure>
+script's stdout reports the expected magnitude.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, ax2 = plt.subplots(figsize=(5.5, 5.5))
+_plot_scatter_with_radius(
+    ax2, hc[&quot;points&quot;], hc[&quot;R&quot;],
+    f&quot;Hard-core (beta={hc[&#x27;beta_true&#x27;]}, R={hc[&#x27;R&#x27;]}) — n={hc[&#x27;n_data&#x27;]}&quot;,
+)</code></pre></details></figure>
 <figure><div class="placeholder"><code>fig03_area_interaction_scatter.png</code><br>(run <code>python examples/extras/spatial_gibbs_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig03_area_interaction_scatter.png</strong><br>Realised area-interaction pattern at ``eta = 4.0`` — points
 attract via overlap of the union-of-discs sufficient
 statistic.</figcaption><div class="analysis">Visible clustering vs the Poisson null; the area-interaction
 ``eta`` is weakly identified from a single realisation, so
-the recovery is noisier than the Strauss/Thomas cases.</div></figure>
+the recovery is noisier than the Strauss/Thomas cases.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig3, ax3 = plt.subplots(figsize=(5.5, 5.5))
+_plot_scatter_with_radius(
+    ax3, ai[&quot;points&quot;], ai[&quot;R&quot;],
+    f&quot;Area-interaction (beta={ai[&#x27;beta_true&#x27;]}, &quot;
+    f&quot;eta={ai[&#x27;eta_true&#x27;]}, R={ai[&#x27;R&#x27;]}) — n={ai[&#x27;n_data&#x27;]}&quot;,
+)</code></pre></details></figure>
 </div>
 </section>
 <section class="example" id="validation_nemos">

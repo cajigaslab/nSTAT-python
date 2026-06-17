@@ -160,6 +160,7 @@ def run_demo(
     for k, r in enumerate(corrs):
         print(f"    trial {k}: |r|={r:.3f}")
 
+    # === FIGURE: fig01_latent_trajectories.png ===
     fig, axes = plt.subplots(
         1, n_trials, figsize=(3.4 * n_trials, 3.6), sharey=True,
     )
@@ -176,6 +177,7 @@ def run_demo(
             ax.set_ylabel("recovered latent")
         ax.legend(loc="upper right", fontsize=8)
     fig.tight_layout()
+    # === END FIGURE ===
 
     figure_paths: list[Path] = []
     if export_figures:
