@@ -1270,6 +1270,77 @@ fig.suptitle(
     &quot;decoder unchanged at 33 ms lattice)&quot;
 )
 fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig09_coupling_matrix.png" alt="fig09_coupling_matrix.png" loading="lazy"><figcaption>fig09_coupling_matrix.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(1, n_windows, figsize=(11.0, 4.6))
+if n_windows == 1:
+    axes = np.array([axes])
+for w_idx in range(n_windows):
+    ax = axes[w_idx]
+    M = coupling_matrix[:, :, w_idx]
+    # Display with rows = targets (top → bottom), cols = sources.
+    im = ax.imshow(
+        M, cmap=&quot;RdBu_r&quot;, vmin=-vmax, vmax=vmax,
+        aspect=&quot;equal&quot;, interpolation=&quot;nearest&quot;,
+    )
+    ax.set_xticks(range(n_cells))
+    ax.set_yticks(range(n_cells))
+    ax.set_xticklabels(labels)
+    ax.set_yticklabels(labels)
+    ax.set_xlabel(&quot;source cell&quot;)
+    ax.set_ylabel(&quot;target cell&quot;)
+    lo_ms, hi_ms = (
+        window_times_s[w_idx][0] * 1000.0,
+        window_times_s[w_idx][1] * 1000.0,
+    )
+    ax.set_title(f&quot;window [{lo_ms:.0f}, {hi_ms:.0f} ms)&quot;)
+    # Annotate each non-NaN cell with its coefficient.
+    for i in range(n_cells):
+        for j in range(n_cells):
+            v = M[i, j]
+            if np.isnan(v):
+                ax.text(
+                    j, i, &quot;—&quot;, ha=&quot;center&quot;, va=&quot;center&quot;,
+                    color=&quot;0.3&quot;, fontsize=10,
+                )
+            else:
+                txt_color = &quot;k&quot; if abs(v) &lt; 0.6 * vmax else &quot;w&quot;
+                ax.text(
+                    j, i, f&quot;{v:+.2f}&quot;, ha=&quot;center&quot;, va=&quot;center&quot;,
+                    color=txt_color, fontsize=9,
+                )
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label(&quot;coupling coefficient (gamma)&quot;)
+fig.suptitle(
+    &quot;Example 08 (coupling model) — ensemble-coupling matrix &quot;
+    f&quot;per lattice-matched window (source: {source_label} GLM; &quot;
+    &quot;diagonal NaN, positive = excitatory, negative = inhibitory)&quot;
+)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig10_decoder_baseline_vs_progression.png" alt="fig10_decoder_baseline_vs_progression.png" loading="lazy"><figcaption>fig10_decoder_baseline_vs_progression.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, ax = plt.subplots(figsize=(9.5, 5.0))
+bars = ax.bar(
+    labels, rmses, color=colors, edgecolor=&quot;k&quot;, lw=1.0,
+)
+for bar, val, lab in zip(bars, rmses, labels):
+    improvement = 100.0 * (baseline_rmse - val) / baseline_rmse
+    sign = &quot;+&quot; if improvement &gt;= 0.0 else &quot;&quot;
+    if lab == &quot;baseline&quot;:
+        annot = f&quot;{val:.3f}\n(baseline)&quot;
+    else:
+        annot = f&quot;{val:.3f}\n({sign}{improvement:.1f}%)&quot;
+    ax.text(
+        bar.get_x() + bar.get_width() / 2.0,
+        bar.get_height() + 0.005,
+        annot,
+        ha=&quot;center&quot;, va=&quot;bottom&quot;, fontsize=10,
+    )
+ax.set_ylabel(&quot;position RMSE (box units)&quot;)
+ax.set_title(
+    &quot;Truccolo et al. 2005 framework — progressive RMSE improvement\n&quot;
+    &quot;(velocity: extrinsic covariate; history-decoder: lattice-matched, &quot;
+    &quot;matches baseline; coupling: ensemble coupling)&quot;
+)
+ax.set_ylim(0.0, max(rmses) * 1.30)
+ax.grid(True, alpha=0.3, axis=&quot;y&quot;)
+fig.tight_layout()</code></pre></details></figure>
 </div>
 </section>
 <footer>
