@@ -36,7 +36,7 @@ ax = axes1[1, 1]
 lam = resultConst.lambda_signal
 ax.plot(lam.time, lam.data[:, 0], &quot;b&quot;, linewidth=2)
 ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
-ax.set_ylabel(f&quot;{lam.name} [{lam.yunits}]&quot; if lam.yunits else lam.name,
+ax.set_ylabel(r&quot;$\lambda(t)$ [Hz]&quot; if lam.yunits else r&quot;$\lambda(t)$&quot;,
               fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
 ax.legend([r&quot;$\lambda_{const}$&quot;], loc=&quot;upper right&quot;)
 
@@ -54,6 +54,7 @@ ax.xaxis.label.set(fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Ar
 ax = axes2[1]
 nstWashout.plot(handle=ax)
 ax.set_yticks([0, 1])
+ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
 ax.set_ylabel(&quot;mEPSCs&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
 ax.set_title(r&quot;Neural Raster with decreasing Mg$^{2+}$ Concentration&quot;,
              fontweight=&quot;bold&quot;, fontsize=12, fontfamily=&quot;Arial&quot;)
@@ -90,7 +91,7 @@ ax.plot(lam.time, lam.getSubSignal(0).data[:, 0], &quot;b&quot;, linewidth=2)
 ax.plot(lam.time, lam.getSubSignal(1).data[:, 0], &quot;g&quot;, linewidth=2)
 ax.set_ylim(0, 5)
 ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
-ax.set_ylabel(f&quot;{lam.name} [{lam.yunits}]&quot; if lam.yunits else lam.name,
+ax.set_ylabel(r&quot;$\lambda(t)$ [Hz]&quot; if lam.yunits else r&quot;$\lambda(t)$&quot;,
               fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
 ax.legend([r&quot;$\lambda_{const}$&quot;, r&quot;$\lambda_{const-epoch}$&quot;], loc=&quot;upper right&quot;)
 
@@ -325,49 +326,44 @@ ax.set_xlabel(&quot;time [s]&quot;)
 ax.set_ylabel(&quot;[spikes/sec]&quot;)
 
 fig2.tight_layout()</code></pre></details></figure>
-<figure><img src="figures/example03/fig03_ssglm_simulation_summary.png" alt="fig03_ssglm_simulation_summary.png" loading="lazy"><figcaption>fig03_ssglm_simulation_summary.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig3, axes3 = plt.subplots(3, 2, figsize=(14, 9))
+<figure><img src="figures/example03/fig03_ssglm_simulation_summary.png" alt="fig03_ssglm_simulation_summary.png" loading="lazy"><figcaption>fig03_ssglm_simulation_summary.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python"># Layout: row 0 = 2 side-by-side panels; rows 1 and 2 each span full width.
+# GridSpec is used (rather than plt.subplots) so the row-spanning panels
+# (raster, CIF heatmap) occupy the full figure width cleanly without
+# post-hoc set_position() hacks.
+from matplotlib.gridspec import GridSpec
 
-# (1,1): Within-trial stimulus
-ax = axes3[0, 0]
+fig3 = plt.figure(figsize=(14, 9))
+gs3 = GridSpec(3, 2, figure=fig3)
+
+# (Row 0, Col 0): Within-trial stimulus
+ax = fig3.add_subplot(gs3[0, 0])
 ax.plot(time, u, &quot;k&quot;, linewidth=3)
 ax.set_xlabel(&quot;time [s]&quot;)
 ax.set_ylabel(&quot;Stimulus&quot;)
 ax.set_title(&quot;Within Trial Stimulus&quot;, fontweight=&quot;bold&quot;, fontsize=14)
 
-# (1,2): Across-trial gain
-ax = axes3[0, 1]
+# (Row 0, Col 1): Across-trial gain
+ax = fig3.add_subplot(gs3[0, 1])
 ax.plot(np.arange(1, numRealizations + 1), b1, &quot;k&quot;, linewidth=3)
 ax.set_xlabel(&quot;Trial [k]&quot;)
 ax.set_ylabel(&quot;Stimulus Gain&quot;)
 ax.set_title(&quot;Across Trial Stimulus Gain&quot;, fontweight=&quot;bold&quot;, fontsize=14)
 
-# (2,1)+(2,2): Raster spanning both columns
-axes3[1, 1].remove()
-ax = axes3[1, 0]
-ax.set_position(
-    [axes3[1, 0].get_position().x0,
-     axes3[1, 0].get_position().y0,
-     axes3[1, 1].get_position().x1 - axes3[1, 0].get_position().x0,
-     axes3[1, 0].get_position().height]
-)
+# (Row 1): Raster spanning both columns
+ax = fig3.add_subplot(gs3[1, :])
 spikeColl.plot(handle=ax)
 ax.set_yticks(range(0, numRealizations + 1, 10))
 ax.set_xlabel(&quot;time [s]&quot;)
 ax.set_ylabel(&quot;Trial [k]&quot;)
 ax.set_title(&quot;Simulated Neural Raster&quot;, fontweight=&quot;bold&quot;, fontsize=14)
 
-# (3,1)+(3,2): True CIF heatmap spanning both columns
-axes3[2, 1].remove()
-ax = axes3[2, 0]
-ax.set_position(
-    [axes3[2, 0].get_position().x0,
-     axes3[2, 0].get_position().y0,
-     ax.get_position().width * 2.1,
-     axes3[2, 0].get_position().height]
-)
-ax.imshow(stimData.T, aspect=&quot;auto&quot;, origin=&quot;lower&quot;,
-          extent=[time[0], time[-1], 1, numRealizations],
-          cmap=&quot;jet&quot;)  # MATLAB default colormap for imagesc
+# (Row 2): True CIF heatmap spanning both columns
+ax = fig3.add_subplot(gs3[2, :])
+im = ax.imshow(stimData.T, aspect=&quot;auto&quot;, origin=&quot;lower&quot;,
+               extent=[time[0], time[-1], 1, numRealizations],
+               cmap=&quot;jet&quot;)  # MATLAB default colormap for imagesc
+fig3.colorbar(im, ax=ax, fraction=0.046, pad=0.04,
+              label=&quot;Firing Rate [Hz]&quot;)
 ax.set_xlabel(&quot;time [s]&quot;)
 ax.set_ylabel(&quot;Trial [k]&quot;)
 ax.set_title(&quot;True Conditional Intensity Function&quot;, fontweight=&quot;bold&quot;,
@@ -392,8 +388,10 @@ surfaces = [
 ]
 for ax, (title, data) in zip(axes5, surfaces):
     # MATLAB mesh(trial, time, data) viewed from above: x=trial, y=time
-    ax.pcolormesh(trial_axis, basis_time[:T_act], data,
-                   shading=&quot;gouraud&quot;, cmap=&quot;viridis&quot;)
+    im = ax.pcolormesh(trial_axis, basis_time[:T_act], data,
+                        shading=&quot;gouraud&quot;, cmap=&quot;viridis&quot;)
+    fig5.colorbar(im, ax=ax, fraction=0.046, pad=0.04,
+                  label=&quot;Stimulus Effect [Hz]&quot;)
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_title(title, fontweight=&quot;bold&quot;, fontsize=14, fontfamily=&quot;Arial&quot;)
@@ -470,6 +468,13 @@ for i, cidx in enumerate(exampleCells):
     ax.set_yticks(np.arange(-1, 1.5, 0.5))
     ax.set_aspect(&quot;equal&quot;)
     ax.axis(&quot;square&quot;)
+    # Label only the outer axes in the 2x2 grid to keep the panels clean:
+    # left column (i=0, 2) gets the Y-Position label, bottom row (i=2, 3)
+    # gets the X-Position label.
+    if i in (0, 2):
+        ax.set_ylabel(&quot;Y Position&quot;, fontweight=&quot;bold&quot;, fontsize=12)
+    if i in (2, 3):
+        ax.set_xlabel(&quot;X Position&quot;, fontweight=&quot;bold&quot;, fontsize=12)
     if i == 3:
         ax.legend([h1, h2], [&quot;Animal Path&quot;, &quot;Location at time of spike&quot;])
 fig1.tight_layout()</code></pre></details></figure>
@@ -1075,12 +1080,90 @@ ax.axhspan(-acf_result.band, acf_result.band, color=&quot;0.85&quot;, alpha=0.7,
 ax.stem(acf_result.lags, acf_result.acf, basefmt=&quot; &quot;)
 ax.axhline(0.0, color=&quot;k&quot;, lw=0.8, alpha=0.7)
 ax.set_xlabel(&quot;lag (events)&quot;)
-ax.set_ylabel(&quot;ACF of z_j = Phi^{-1}(u_j)&quot;)
+ax.set_ylabel(r&quot;ACF of $z_j = \Phi^{-1}(u_j)$&quot;)
 ax.set_title(
     &quot;Example 08 — population rescaled-time ACF &quot;
     f&quot;(n_lags={acf_result.lags.size})&quot;
 )
 ax.legend(loc=&quot;upper right&quot;, fontsize=8)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig05_velocity_speed_tuning.png" alt="fig05_velocity_speed_tuning.png" loading="lazy"><figcaption>fig05_velocity_speed_tuning.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+axes = axes.ravel()
+for i in range(min(n_cells, 4)):
+    ax = axes[i]
+    r = rate_per_cell[i]
+    s = sem_per_cell[i]
+    finite = np.isfinite(r)
+    ax.errorbar(
+        bin_centers[finite], r[finite], yerr=s[finite],
+        marker=&quot;o&quot;, ms=5, lw=1.4, color=&quot;tab:blue&quot;,
+        ecolor=&quot;0.4&quot;, capsize=3, label=&quot;binned rate&quot;,
+    )
+    ax.set_xlabel(&quot;|v| (box units / s)&quot;)
+    ax.set_ylabel(&quot;firing rate (spk/s)&quot;)
+    ax.set_title(
+        f&quot;Cell #{cell_indices[i] + 1} — speed tuning &quot;
+        f&quot;(GLM bs = {speed_coefs[i]:+.3f})&quot;
+    )
+    ax.grid(True, alpha=0.3)
+for j in range(n_cells, 4):
+    axes[j].axis(&quot;off&quot;)
+fig.suptitle(
+    &quot;Example 08 (velocity model) — empirical firing-rate-vs-speed &quot;
+    &quot;tuning curves&quot;
+)
+fig.tight_layout()</code></pre></details></figure>
+<figure><img src="figures/example08/fig06_decoder_baseline_vs_velocity.png" alt="fig06_decoder_baseline_vs_velocity.png" loading="lazy"><figcaption>fig06_decoder_baseline_vs_velocity.png</figcaption><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.0))
+
+# Panel 1: bar chart.
+ax_bar = axes[0]
+bars = ax_bar.bar(
+    [&quot;baseline&quot;, &quot;velocity&quot;],
+    [baseline_rmse, velocity_rmse],
+    color=[&quot;0.55&quot;, &quot;tab:blue&quot;], edgecolor=&quot;k&quot;, lw=1.0,
+)
+for bar, val in zip(bars, [baseline_rmse, velocity_rmse]):
+    ax_bar.text(
+        bar.get_x() + bar.get_width() / 2.0,
+        bar.get_height() + 0.005,
+        f&quot;{val:.3f}&quot;,
+        ha=&quot;center&quot;, va=&quot;bottom&quot;, fontsize=10,
+    )
+sign = &quot;+&quot; if improvement_pct &gt;= 0.0 else &quot;&quot;
+ax_bar.set_ylabel(&quot;position RMSE (box units)&quot;)
+ax_bar.set_title(
+    f&quot;Held-out RMSE: {sign}{improvement_pct:.1f}% improvement&quot;
+)
+ax_bar.set_ylim(0.0, max(baseline_rmse, velocity_rmse) * 1.20)
+ax_bar.grid(True, alpha=0.3, axis=&quot;y&quot;)
+
+# Panel 2: per-bin error scatter (baseline x, velocity y).  Both
+# error vectors are on the same time base by construction.
+ax_sc = axes[1]
+lim_hi = float(
+    max(baseline_per_bin_err.max(), velocity_per_bin_err.max()) * 1.05
+)
+ax_sc.plot([0, lim_hi], [0, lim_hi], &quot;k--&quot;, lw=1.0, alpha=0.7,
+           label=&quot;x = y (no change)&quot;)
+ax_sc.scatter(
+    baseline_per_bin_err, velocity_per_bin_err,
+    s=6, alpha=0.4, color=&quot;tab:blue&quot;, edgecolor=&quot;none&quot;,
+)
+improved = int(np.sum(velocity_per_bin_err &lt; baseline_per_bin_err))
+total = int(baseline_per_bin_err.size)
+ax_sc.set_xlabel(&quot;baseline per-bin error (box units)&quot;)
+ax_sc.set_ylabel(&quot;velocity per-bin error (box units)&quot;)
+ax_sc.set_xlim(0.0, lim_hi)
+ax_sc.set_ylim(0.0, lim_hi)
+ax_sc.set_aspect(&quot;equal&quot;)
+ax_sc.set_title(f&quot;per-bin error: {improved}/{total} bins improved&quot;)
+ax_sc.legend(loc=&quot;upper left&quot;, fontsize=9)
+ax_sc.grid(True, alpha=0.3)
+
+fig.suptitle(
+    &quot;Example 08 — PPAF decoder: baseline (position only) vs &quot;
+    &quot;velocity-augmented (speed as extrinsic covariate)&quot;
+)
 fig.tight_layout()</code></pre></details></figure>
 </div>
 </section>

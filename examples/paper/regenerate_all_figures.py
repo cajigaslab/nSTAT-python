@@ -27,14 +27,19 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 EXAMPLES = [
-    ("example01_mepsc_poisson", "example01", "run_example01"),
-    ("example02_whisker_stimulus_thalamus", "example02", "run_example02"),
-    ("example03_psth_and_ssglm", "example03", "run_example03"),
-    ("example04_place_cells_continuous_stimulus", "example04", "run_example04"),
-    ("example05_decoding_ppaf_pphf", "example05", "run_example05"),
-    ("example06_place_fields_glm_basis", "example06", "run_example06"),
-    ("example07_spatiotemporal_hawkes_waves", "example07", "run_example07"),
-    ("example08_real_place_cells", "example08", "run_example08"),
+    ("example01_mepsc_poisson", "example01", "run_example01", {}),
+    ("example02_whisker_stimulus_thalamus", "example02", "run_example02", {}),
+    ("example03_psth_and_ssglm", "example03", "run_example03", {}),
+    ("example04_place_cells_continuous_stimulus", "example04",
+     "run_example04", {}),
+    ("example05_decoding_ppaf_pphf", "example05", "run_example05", {}),
+    ("example06_place_fields_glm_basis", "example06", "run_example06", {}),
+    ("example07_spatiotemporal_hawkes_waves", "example07",
+     "run_example07", {}),
+    # example08 runs in velocity mode so all 6 manifest figures get
+    # produced; the gallery-drift check requires the full set.
+    ("example08_real_place_cells", "example08", "run_example08",
+     {"model": "velocity"}),
 ]
 
 
@@ -51,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     ensure_example_data(download=True)
 
     failed = 0
-    for mod_name, dir_name, run_fn_name in EXAMPLES:
+    for mod_name, dir_name, run_fn_name, extra_kwargs in EXAMPLES:
         export_dir = FIGURES_ROOT / dir_name
         print(f"\n{'='*60}")
         print(f"  {mod_name}")
@@ -62,7 +67,8 @@ def main(argv: list[str] | None = None) -> int:
             )
             run_fn = getattr(mod, run_fn_name)
             run_fn(export_figures=True, export_dir=export_dir,
-                   visible=False, plot_style=args.plot_style)
+                   visible=False, plot_style=args.plot_style,
+                   **extra_kwargs)
             print(f"  OK: figures saved to {export_dir}")
         except Exception:
             traceback.print_exc()
