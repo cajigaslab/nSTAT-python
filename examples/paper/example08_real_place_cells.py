@@ -695,7 +695,7 @@ def _plot_rescaled_acf(acf_result):
     ax.stem(acf_result.lags, acf_result.acf, basefmt=" ")
     ax.axhline(0.0, color="k", lw=0.8, alpha=0.7)
     ax.set_xlabel("lag (events)")
-    ax.set_ylabel("ACF of z_j = Phi^{-1}(u_j)")
+    ax.set_ylabel(r"ACF of $z_j = \Phi^{-1}(u_j)$")
     ax.set_title(
         "Example 08 — population rescaled-time ACF "
         f"(n_lags={acf_result.lags.size})"
