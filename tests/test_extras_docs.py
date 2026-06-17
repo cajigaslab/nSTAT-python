@@ -41,6 +41,7 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "dynamax": "em_dynamax",
     "dynamax_bridge": "em_dynamax",
     "clusterless_bridge": "decoding_clusterless",
+    "place_field_decoder": "decoding_place_field",
     # nstat.extras.spatial — pure-core modules + optional bridges all
     # share one help file (docs/extras/spatial_point_processes.md).
     "lgcp": "spatial_point_processes",
@@ -277,6 +278,7 @@ def test_every_help_file_links_to_its_example_script() -> None:
         "metrics_spike_distances": "metrics_spike_distances_demo",
         "em_dynamax": "em_dynamax_demo",
         "decoding_clusterless": "decoding_clusterless_demo",
+        "decoding_place_field": "decoding_place_field_demo",
         "latents_gpfa": "latents_gpfa_demo",
     }
     missing_links: list[tuple[str, str]] = []
