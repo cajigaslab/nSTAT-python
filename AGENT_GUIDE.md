@@ -603,6 +603,24 @@ Python projects" table in `README.md` for install commands.
   (2008) extended the same EM to cascaded space-time triggering in
   seismology — the same mathematical machinery as the neural-spiking
   analogue.
+  The **SBM-prior multivariate generalisation** lives in
+  `nstat.extras.spatial.sbm_hawkes` (Linderman, Adams & Pillow 2014):
+  `N` processes are pooled into `K` latent communities with a `K x K`
+  block-coupling matrix.  `SBMHawkesSpec(n_blocks, alpha0=0.3,
+  alpha0_off=0.05, beta0=1.0, max_iter=100, tol=1e-6,
+  z_init="kmeans-rate")` configures the EM; `em_sbm_hawkes(
+  event_times_per_process, T, *, spec, seed=None)` runs hard-EM with a
+  closed-form `(mu, beta, A)` M-step and a greedy accept-if-LL-up
+  update for `z`, returning `SBMHawkesResult(z_hat, A_hat, beta_hat,
+  mu_hat, log_likelihood_trace, n_iter, converged, n_processes,
+  n_blocks)`.  Block labels are arbitrary — recovery must be compared
+  up to permutation (Hungarian alignment via
+  `scipy.optimize.linear_sum_assignment`).  The companion simulator
+  `simulate_sbm_hawkes(z, A, beta, mu, T, *, rng)` rejects
+  configurations where the *pairwise* spectral radius of `A * diag(
+  K_counts) / beta` reaches 1.  Recommended `N <= ~30` and total
+  events `<= ~5000` because the implementation builds an `O(sum_n n_n *
+  N)` per-receiver kernel-response cache for each beta value.
   End-to-end demos: `examples/paper/example06_place_fields_glm_basis.py`,
   `examples/paper/example07_spatiotemporal_hawkes_waves.py`,
   `examples/paper/example08_real_place_cells.py`; companion

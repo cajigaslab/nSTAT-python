@@ -121,6 +121,12 @@ from nstat.extras.spatial.hawkes_em import (
     em_hawkes_exponential,
     simulate_hawkes_exponential,
 )
+from nstat.extras.spatial.sbm_hawkes import (
+    SBMHawkesResult,
+    SBMHawkesSpec,
+    em_sbm_hawkes,
+    simulate_sbm_hawkes,
+)
 from nstat.extras.spatial.inference import (
     MinContrastResult,
     fit_matern_cluster,
@@ -236,6 +242,11 @@ __all__ = [
     "HawkesEMResult",
     "em_hawkes_exponential",
     "simulate_hawkes_exponential",
+    # sbm_hawkes (SBM-prior multivariate Hawkes EM; Linderman et al. 2014)
+    "SBMHawkesSpec",
+    "SBMHawkesResult",
+    "em_sbm_hawkes",
+    "simulate_sbm_hawkes",
     # wave_analysis (pure NumPy/SciPy)
     "reconstruct_kernel",
     "detect_wave_peaks",

@@ -243,6 +243,43 @@ ridge.  The **branching ratio** `alpha/beta` exposed via
 `HawkesEMResult.branching_ratio` is by far the tightest summary; prefer
 it to the individual parameters when reporting recovered structure.
 
+### SBM-prior multivariate Hawkes EM (pure NumPy)
+
+Latent-block extension of the Veen-Schoenberg branching-responsibilities
+EM (Linderman, Adams & Pillow 2014).  Where `em_hawkes_exponential`
+fits a *single* univariate Hawkes with `(mu, alpha, beta)`, the SBM
+prior pools `N` processes into `K` latent communities and fits the
+`K x K` block-coupling matrix `A` plus a shared exponential decay
+`beta` and per-process baseline rates `mu`.  Pure NumPy; no `[hawkes]`
+dep; built for `N` up to ~30 and total events up to ~5000.
+
+The block-coupling matrix `A` is per-(sender, receiver) pair, so for
+the multivariate process to be sub-critical the spectral radius of
+`A * diag(K_counts) / beta` (or equivalently `A_pair / beta` where
+`A_pair[m, n] = A[z_m, z_n]`) must be below 1.  The simulator enforces
+this; configurations failing it raise `ValueError("super-critical:
+spectral radius of A/beta = ...")`.
+
+| Symbol | Notes |
+|---|---|
+| `SBMHawkesSpec(n_blocks, alpha0=0.3, alpha0_off=0.05, beta0=1.0, max_iter=100, tol=1e-6, z_init="kmeans-rate")` | Frozen dataclass.  Validates `n_blocks >= 1`, `alpha0 > 0`, `alpha0_off >= 0`, `beta0 > 0`, `max_iter >= 1`, `tol > 0`, `z_init in {"random", "kmeans-rate"}`; warns when `alpha0/beta0 >= 1` (intra-block super-critical at init). |
+| `em_sbm_hawkes(event_times_per_process, T, *, spec, seed=None)` → `SBMHawkesResult` | Hard-EM with closed-form `(mu, beta, A)` M-step and a greedy accept-if-LL-up update for `z`.  Raises on empty list / silent process / unsorted events / `T <= max event` / `n_blocks > N`.  Algorithm builds a kernel-response cache `R[n][i, m] = sum_{j: t_j^m < t_i^n} exp(-beta(t_i^n - t_j^m))` once per beta to amortise the greedy z update. |
+| `SBMHawkesResult` | Frozen dataclass: `z_hat (N,) int`, `A_hat (K, K)`, `beta_hat`, `mu_hat (N,)`, `log_likelihood_trace`, `n_iter`, `converged`, `n_processes`, `n_blocks`. |
+| `simulate_sbm_hawkes(z, A, beta, mu, T, *, rng)` → `list[(M_n,) float64]` | Multivariate Ogata thinning with multiplicative-decay state updates.  Raises on super-critical configurations. |
+
+**Permutation caveat.**  Block labels are arbitrary; only the
+partition matters.  Recovery tests should compare `z_hat` to ground
+truth up to label permutation — `scipy.optimize.linear_sum_assignment`
+on the (negative) confusion matrix is the convenient Hungarian
+alignment.
+
+**Cost.**  Per EM iteration the dominant work is the `O(N^2 *
+avg_events^2)` build of `R` (re-done only when `beta` changes), plus
+`O(N * total_events * K)` per greedy z sweep.  For `N <= 30` and total
+events `<= 5000` the whole fit finishes in seconds.  For larger
+problems prefer the tick-backed multivariate
+`hawkes_bridge.fit_hawkes_exp`.
+
 ### Optional bridges (lazy import; raise an install hint if the dep is absent)
 
 | Symbol | Backend | Group |
@@ -535,3 +572,5 @@ catalogues can be inspected side-by-side.
   103(482):614-624.
 - Marsan D, Lengliné O (2008). *Extending earthquakes' reach through
   cascading.* Science 319(5866):1076-1079.
+- Linderman SW, Adams RP, Pillow JW (2014). *Discovering latent network
+  structure in point process data.* NeurIPS.
