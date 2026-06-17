@@ -40,7 +40,7 @@ CIF refit + PPDecodeFilterLinear) is fit, and the decoded
 trajectory plus the recovered place fields are plotted.</p>
 <p><strong>Run:</strong> <code>python examples/extras/decoding_place_field_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_place_field_demo.py">Script</a></p>
 <div class="gallery">
-<figure><div class="placeholder"><code>fig01_decoded_trajectory.png</code><br>(run <code>python examples/extras/decoding_place_field_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig01_decoded_trajectory.png</strong><br>Decoded position (blue) overlaid on the true OU-walk position
+<figure><img src="figures/extras/decoding_place_field/fig01_decoded_trajectory.png" alt="fig01_decoded_trajectory.png" loading="lazy"><figcaption><strong>fig01_decoded_trajectory.png</strong><br>Decoded position (blue) overlaid on the true OU-walk position
 (black) over the 60 s trial, with the per-time-step posterior
 standard deviation as a shaded band.</figcaption><div class="analysis">The decoded trace should track the OU walk closely inside the
 shaded band whenever any of the three cells is active; gaps
@@ -66,7 +66,7 @@ axes[1].set_ylabel(&quot;x&quot;)
 axes[1].set_title(&quot;x(t) trace&quot;)
 axes[1].legend(loc=&quot;upper right&quot;, fontsize=9)
 fig.tight_layout()</code></pre></details></figure>
-<figure><div class="placeholder"><code>fig02_place_fields.png</code><br>(run <code>python examples/extras/decoding_place_field_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig02_place_fields.png</strong><br>Recovered tuning curves for the three synthetic cells (solid)
+<figure><img src="figures/extras/decoding_place_field/fig02_place_fields.png" alt="fig02_place_fields.png" loading="lazy"><figcaption><strong>fig02_place_fields.png</strong><br>Recovered tuning curves for the three synthetic cells (solid)
 plotted against the Gaussian-bump ground truth (dashed), with
 cell-centre markers from the B-spline GLM fit.</figcaption><div class="analysis">A close match of solid to dashed across the three centres
 confirms the tensor-product B-spline basis is recovering the
@@ -160,7 +160,7 @@ recovery summary (final log-likelihood, best |Pearson r| of any
 recovered latent vs the ground-truth latents).</p>
 <p><strong>Run:</strong> <code>python examples/extras/latents_gpfa_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/latents_gpfa_demo.py">Script</a></p>
 <div class="gallery">
-<figure><div class="placeholder"><code>fig01_latent_trajectories.png</code><br>(run <code>python examples/extras/latents_gpfa_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig01_latent_trajectories.png</strong><br>One subplot per simulated trial, each showing the two
+<figure><img src="figures/extras/latents_gpfa/fig01_latent_trajectories.png" alt="fig01_latent_trajectories.png" loading="lazy"><figcaption><strong>fig01_latent_trajectories.png</strong><br>One subplot per simulated trial, each showing the two
 recovered latent dimensions (coloured lines) over the trial
 window.</figcaption><div class="analysis">Coherent shape across trials in each latent dimension
 confirms GPFA is recovering the shared sinusoidal signal and
@@ -212,7 +212,7 @@ the unit square, then recovers ``(sigma, lambda_p)`` and
 minimum-contrast estimator on the SOIRS pair correlation.</p>
 <p><strong>Run:</strong> <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/spatial_cluster_cox_demo.py">Script</a></p>
 <div class="gallery">
-<figure><div class="placeholder"><code>fig01_thomas_scatter.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig01_thomas_scatter.png</strong><br>Realised Thomas-process pattern on the unit square — each
+<figure><img src="figures/extras/spatial_cluster_cox/fig01_thomas_scatter.png" alt="fig01_thomas_scatter.png" loading="lazy"><figcaption><strong>fig01_thomas_scatter.png</strong><br>Realised Thomas-process pattern on the unit square — each
 coloured cluster groups offspring around an unobserved
 parent location with isotropic Gaussian displacement.</figcaption><div class="analysis">Tight, roughly circular clusters confirm the Gaussian
 offspring kernel; cluster radius previews the recovered
@@ -223,7 +223,7 @@ _plot_scatter(
     f&quot;lambda_p={th[&#x27;lambda_p_true&#x27;]}, &quot;
     f&quot;n={th[&#x27;points&#x27;].shape[0]})&quot;,
 )</code></pre></details></figure>
-<figure><div class="placeholder"><code>fig02_thomas_pcf.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig02_thomas_pcf.png</strong><br>Empirical pair-correlation function (PCF) of the Thomas
+<figure><img src="figures/extras/spatial_cluster_cox/fig02_thomas_pcf.png" alt="fig02_thomas_pcf.png" loading="lazy"><figcaption><strong>fig02_thomas_pcf.png</strong><br>Empirical pair-correlation function (PCF) of the Thomas
 pattern (solid) overlaid on the Thomas-PCF model fit at the
 minimum-contrast estimate ``(sigma_hat, lambda_p_hat)``
 (dashed) and the Poisson null ``g(r) = 1`` (thin grey).</figcaption><div class="analysis">The model curve hugging the empirical PCF at short range and
@@ -233,7 +233,7 @@ _plot_pcf(
     ax2, th[&quot;r_grid&quot;], th[&quot;g_emp&quot;], th[&quot;g_fit&quot;], th[&quot;g_true&quot;],
     title=&quot;Thomas g(r) — empirical vs min-contrast fit vs truth&quot;,
 )</code></pre></details></figure>
-<figure><div class="placeholder"><code>fig03_matern_scatter.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig03_matern_scatter.png</strong><br>Realised Matérn-cluster pattern on the unit square — uniform
+<figure><img src="figures/extras/spatial_cluster_cox/fig03_matern_scatter.png" alt="fig03_matern_scatter.png" loading="lazy"><figcaption><strong>fig03_matern_scatter.png</strong><br>Realised Matérn-cluster pattern on the unit square — uniform
 offspring inside discs of radius ``R`` around unobserved
 parent locations.</figcaption><div class="analysis">Sharper disc boundaries than fig01 reflect the uniform-disc
 kernel; the disc radius previews the recovered ``R``.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig3, ax3 = plt.subplots(figsize=(5.5, 5.4))
@@ -243,7 +243,7 @@ _plot_scatter(
     f&quot;lambda_p={ma[&#x27;lambda_p_true&#x27;]}, &quot;
     f&quot;n={ma[&#x27;points&#x27;].shape[0]})&quot;,
 )</code></pre></details></figure>
-<figure><div class="placeholder"><code>fig04_matern_pcf.png</code><br>(run <code>python examples/extras/spatial_cluster_cox_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig04_matern_pcf.png</strong><br>Empirical PCF of the Matérn-cluster pattern (solid) overlaid
+<figure><img src="figures/extras/spatial_cluster_cox/fig04_matern_pcf.png" alt="fig04_matern_pcf.png" loading="lazy"><figcaption><strong>fig04_matern_pcf.png</strong><br>Empirical PCF of the Matérn-cluster pattern (solid) overlaid
 on the Matérn-cluster model fit at
 ``(R_hat, lambda_p_hat)`` (dashed) and the Poisson null
 (thin grey).</figcaption><div class="analysis">The PCF drop to one at ``r = 2 * R_hat`` is the signature of
@@ -272,7 +272,7 @@ birth-death.  Each pattern is then refit via
 :func:`nstat.extras.spatial.pseudo_likelihood_fit`.</p>
 <p><strong>Run:</strong> <code>python examples/extras/spatial_gibbs_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/spatial_gibbs_demo.py">Script</a></p>
 <div class="gallery">
-<figure><div class="placeholder"><code>fig01_strauss_scatter.png</code><br>(run <code>python examples/extras/spatial_gibbs_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig01_strauss_scatter.png</strong><br>Realised Strauss pattern on the unit square at
+<figure><img src="figures/extras/spatial_gibbs/fig01_strauss_scatter.png" alt="fig01_strauss_scatter.png" loading="lazy"><figcaption><strong>fig01_strauss_scatter.png</strong><br>Realised Strauss pattern on the unit square at
 ``gamma = 0.4`` — points repel softly at distances under the
 interaction radius.</figcaption><div class="analysis">Visually sparser than a Poisson pattern at the same
 intensity; nearest-neighbour gaps preview the recovered
@@ -282,7 +282,7 @@ _plot_scatter_with_radius(
     f&quot;Strauss (beta={st[&#x27;beta_true&#x27;]}, gamma={st[&#x27;gamma_true&#x27;]}, &quot;
     f&quot;R={st[&#x27;R&#x27;]}) — n={st[&#x27;n_data&#x27;]}&quot;,
 )</code></pre></details></figure>
-<figure><div class="placeholder"><code>fig02_hardcore_scatter.png</code><br>(run <code>python examples/extras/spatial_gibbs_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig02_hardcore_scatter.png</strong><br>Realised hard-core pattern on the unit square at
+<figure><img src="figures/extras/spatial_gibbs/fig02_hardcore_scatter.png" alt="fig02_hardcore_scatter.png" loading="lazy"><figcaption><strong>fig02_hardcore_scatter.png</strong><br>Realised hard-core pattern on the unit square at
 ``beta = 60``, drawn by dart-throwing rejection sampling.</figcaption><div class="analysis">Hard nearest-neighbour exclusion produces a roughly regular
 tiling; the intercept-only Berman-Turner GLM is known to
 overshoot ``beta`` here — the ``hardcore-bias`` note in the
@@ -291,7 +291,7 @@ _plot_scatter_with_radius(
     ax2, hc[&quot;points&quot;], hc[&quot;R&quot;],
     f&quot;Hard-core (beta={hc[&#x27;beta_true&#x27;]}, R={hc[&#x27;R&#x27;]}) — n={hc[&#x27;n_data&#x27;]}&quot;,
 )</code></pre></details></figure>
-<figure><div class="placeholder"><code>fig03_area_interaction_scatter.png</code><br>(run <code>python examples/extras/spatial_gibbs_demo.py --export-figures</code> to generate this figure)</div><figcaption><strong>fig03_area_interaction_scatter.png</strong><br>Realised area-interaction pattern at ``eta = 4.0`` — points
+<figure><img src="figures/extras/spatial_gibbs/fig03_area_interaction_scatter.png" alt="fig03_area_interaction_scatter.png" loading="lazy"><figcaption><strong>fig03_area_interaction_scatter.png</strong><br>Realised area-interaction pattern at ``eta = 4.0`` — points
 attract via overlap of the union-of-discs sufficient
 statistic.</figcaption><div class="analysis">Visible clustering vs the Poisson null; the area-interaction
 ``eta`` is weakly identified from a single realisation, so
