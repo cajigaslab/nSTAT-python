@@ -38,6 +38,9 @@ EXAMPLE_BACKING_PACKAGE: dict[str, str] = {
     "metrics_spike_distances_demo": "pyspike",
     "em_dynamax_demo": "dynamax",
     "decoding_clusterless_demo": "replay_trajectory_classification",
+    # place_field_decoder is pure-core (numpy + scipy already required);
+    # "numpy" forces the run-as-main test to execute the demo end-to-end.
+    "decoding_place_field_demo": "numpy",
     "latents_gpfa_demo": "elephant",
     # nstat.extras.spatial cluster-Cox + Gibbs demos: pure NumPy/SciPy
     # (no opt-dep beyond the core stack), so "numpy" is the always-present

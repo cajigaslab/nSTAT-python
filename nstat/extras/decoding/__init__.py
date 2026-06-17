@@ -11,13 +11,30 @@ and discrete-state classifiers that postdate the MATLAB toolbox:
   point-process decoding (spike-waveform features replace spike
   sorting) and **trajectory-type classification** (e.g. replay vs.
   local).
+- :mod:`nstat.extras.decoding.place_field_decoder` — pure-core
+  one-call wrapper around the canonical 2-D place-cell decoder pattern
+  (B-spline encoding + quadratic-CIF refit + PPAF decoding) from
+  ``examples/paper/example08_real_place_cells.py``.
 
 Install:
 
 .. code-block:: bash
 
     pip install nstat-toolbox[clusterless]   # pulls JAX (~200 MB)
+
+The place-field decoder has no opt-deps — it uses only the core nstat
+stack (numpy + scipy).
 """
 from __future__ import annotations
 
-__all__: list[str] = []
+from nstat.extras.decoding.place_field_decoder import (
+    PlaceFieldDecoderConfig,
+    PlaceFieldDecoderResult,
+    fit_place_field_decoder,
+)
+
+__all__: list[str] = [
+    "PlaceFieldDecoderConfig",
+    "PlaceFieldDecoderResult",
+    "fit_place_field_decoder",
+]

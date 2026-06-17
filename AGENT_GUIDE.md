@@ -245,6 +245,39 @@ x_decoded, W, _ = DecodingAlgorithms.PPDecodeFilterLinear(
     A, Q, C, lambda_cif, dN, x0, W0, delta)
 ```
 
+### Recipe H: 2-D place-cell encoding + PPAF decoding
+
+For the canonical example08 pipeline (B-spline Poisson encoder per
+cell → quadratic-CIF refit → PPDecodeFilterLinear) wrapped behind one
+call, use `nstat.extras.decoding.fit_place_field_decoder`:
+
+```python
+from nstat.extras.decoding import (
+    PlaceFieldDecoderConfig, fit_place_field_decoder,
+)
+
+# ``trial`` is an nstat.Trial; ``position`` is (n_time, 2) aligned to
+# the trial covariate sample grid (i.e. trial.covarColl.getCov(0).data).
+cfg = PlaceFieldDecoderConfig(
+    bin_width_s=0.020,
+    n_basis_per_dim=8,
+    cif_kind="quadratic",       # or "linear"
+    decode_filter="linear",     # PR #198 O(C*T) fast path; "nonlinear" for full CIF
+    min_n_spikes_per_cell=10,
+)
+result = fit_place_field_decoder(trial, position, config=cfg)
+print(result.decoded_position.shape, result.mean_decoding_error)
+print("kept:", result.cell_indices_kept, "skipped:", result.cell_indices_skipped)
+```
+
+Pure-core wrapper (no opt-deps).  See
+[docs/extras/decoding_place_field.md](docs/extras/decoding_place_field.md)
+for the full API table and
+[examples/extras/decoding_place_field_demo.py](examples/extras/decoding_place_field_demo.py)
+for a runnable 3-cell synthetic demo.  The unwrapped reference
+workflow with held-out spatial GoF lives in
+[examples/paper/example08_real_place_cells.py](examples/paper/example08_real_place_cells.py).
+
 ---
 
 ## 4. Toolbox capabilities — what nSTAT does well

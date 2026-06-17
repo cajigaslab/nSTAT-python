@@ -31,6 +31,7 @@ gotchas, and links to the runnable demos under ``examples/extras/``.
    extras/metrics_spike_distances
    extras/em_dynamax
    extras/decoding_clusterless
+   extras/decoding_place_field
    extras/spatial_point_processes
    extras/latents_gpfa
 
@@ -85,6 +86,7 @@ Decoding — Bayesian point-process decoders
    :toctree: _autosummary
 
    decoding.clusterless_bridge
+   decoding.place_field_decoder
 
 
 Spatial — spatial & spatiotemporal point processes
