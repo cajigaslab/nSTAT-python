@@ -174,6 +174,8 @@ pygments_style = "friendly"
 html_extra_path = [
     "extras_summary.html",
     "paper_examples_gallery.html",
+    "notebooks_gallery.html",
+    "galleries.html",
     "intro.html",
     "changes",
 ]
