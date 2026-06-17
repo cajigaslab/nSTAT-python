@@ -496,6 +496,29 @@ Python projects" table in `README.md` for install commands.
   1964; Møller-Syversveen-Waagepetersen 1998; Stein 1999 §3), accurate
   over the body of the wavenumber grid and useful for comparing an
   empirical pair correlation to an LGCP closed form.
+  Three **cluster Cox process** simulators and their closed-form pair
+  correlations live in `nstat.extras.spatial.cluster_cox`: the Thomas
+  process (Thomas 1949) with Gaussian offspring displacement
+  `simulate_thomas` / `thomas_pair_correlation` (parameters carried by
+  `ThomasProcess(intensity_parent, mu_offspring, sigma)`), the Matérn
+  cluster process (Matérn 1986) with uniform-on-disc offspring
+  `simulate_matern_cluster` / `matern_cluster_pair_correlation`
+  (`MaternClusterProcess(intensity_parent, mu_offspring, radius)`),
+  and the generic Neyman-Scott Cox (Neyman & Scott 1958)
+  `simulate_neyman_scott` taking a user-supplied displacement kernel
+  via `NeymanScottCox(..., offspring_kernel=..., pad=...)`.  All three simulators take a
+  `window=(xmin, ymin, xmax, ymax)` 4-tuple and an `rng=
+  np.random.default_rng(seed)`.  The companion minimum-contrast
+  estimator (Diggle 2013 §6.2.1; Møller-Waagepetersen 2003 §4.2) lives
+  in `nstat.extras.spatial.inference`: `min_contrast_estimator(g_emp,
+  g_model_fn, r_grid, theta0, *, bounds=None, q=0.25)` returns a
+  `MinContrastResult(theta_hat, objective_value, g_model_at_theta,
+  n_iter, success, message)`; `fit_thomas(points, domain, r_grid)` and
+  `fit_matern_cluster(points, domain, r_grid)` are the
+  parametric-shape convenience wrappers (they estimate `(sigma,
+  intensity_parent)` or `(radius, intensity_parent)`; `mu_offspring`
+  does not enter the pair correlation, so derive it post-hoc as
+  `n / (lambda_p_hat * |W|)`).
   End-to-end demos: `examples/paper/example06_place_fields_glm_basis.py`,
   `examples/paper/example07_spatiotemporal_hawkes_waves.py`,
   `examples/paper/example08_real_place_cells.py`; companion

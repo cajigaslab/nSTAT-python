@@ -53,6 +53,8 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "mark_gof": "spatial_point_processes",
     "residuals": "spatial_point_processes",
     "bartlett": "spatial_point_processes",
+    "cluster_cox": "spatial_point_processes",
+    "inference": "spatial_point_processes",
 }
 
 

@@ -213,6 +213,8 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
             "mark_gof",
             "residuals",
             "bartlett",
+            "cluster_cox",
+            "inference",
         }
     )
 

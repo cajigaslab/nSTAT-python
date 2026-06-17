@@ -141,6 +141,39 @@ Syversveen & Waagepetersen 1998), so the Bartlett density of the
 empirical `g(r)` can be compared to the closed-form transform of
 `exp(C(r)) − 1` for parametric covariance families (Matérn, Gaussian).
 
+### Cluster Cox processes (pure NumPy/SciPy)
+
+Three canonical cluster Cox processes — homogeneous Poisson parents
+with `Poisson(μ)` offspring counts scattered by an offspring kernel.
+They are the discrete-burst counterpart to the smoothly-varying
+log-Gaussian Cox process in [`lgcp`](#lgcp-rate-map-pure-numpyscipy)
+and the natural targets for the minimum-contrast estimator below.
+
+| Symbol | Notes |
+|---|---|
+| `ThomasProcess(intensity_parent, mu_offspring, sigma)` | Thomas (1949): isotropic Gaussian offspring displacement of standard deviation `σ`.  Frozen dataclass; rejects non-positive parameters at construction. |
+| `MaternClusterProcess(intensity_parent, mu_offspring, radius)` | Matérn (1986): offspring uniform on the disc of radius `R`. |
+| `NeymanScottCox(intensity_parent, mu_offspring, offspring_kernel, pad=0.0)` | Neyman & Scott (1958): generic cluster Cox with a user-supplied `offspring_kernel(n, rng) -> (n, 2)` displacement.  Emits a warning at simulation time if `pad == 0` (the parent window is unbuffered and the in-window pattern is edge-biased). |
+| `thomas_pair_correlation(r, sigma, intensity_parent, mu_offspring)` → `g(r)` | Closed form `1 + exp(-r²/(4σ²)) / (4π σ² λ_p)` (Møller-Waagepetersen 2003 §5.3).  `mu_offspring` is accepted for API symmetry but does not enter `g(r)`. |
+| `matern_cluster_pair_correlation(r, radius, intensity_parent, mu_offspring)` → `g(r)` | `g(r) = 1 + h(r;R)/(π R² λ_p)` on `r ≤ 2R`, `g(r) = 1` thereafter, with `h(r;R) = (1/π)·[2 arccos(r/(2R)) − (r/R)·√(1 − r²/(4R²))]` (Diggle 2013 §6.2.1). |
+| `simulate_thomas(intensity_parent, mu_offspring, sigma, window, *, rng)` → `(n, 2)` float64 | Parent buffer `pad = 3σ`; offspring cropped to `window = (xmin, ymin, xmax, ymax)`. |
+| `simulate_matern_cluster(intensity_parent, mu_offspring, radius, window, *, rng)` → `(n, 2)` | Parent buffer `pad = R` (exact kernel support). |
+| `simulate_neyman_scott(process, window, *, rng, return_parents=False)` | Generic dispatcher; `return_parents=True` additionally returns the (un-cropped) parent locations. |
+
+### Minimum-contrast estimation (Diggle 2013 §6.2.1)
+
+| Symbol | Notes |
+|---|---|
+| `min_contrast_estimator(g_emp, g_model_fn, r_grid, theta0, *, bounds=None, q=0.25)` → `MinContrastResult` | Minimises `S(θ) = ∫ [g_emp(r)^q − g_model(r;θ)^q]² dr` by L-BFGS-B (Simpson integration on the lag grid).  NaN samples (typical of the `"border"` edge correction at small `r`) are silently dropped before integration; the call NEVER raises on a non-converging optimiser — `success=False` propagates instead.  Default `q = 0.25` (Møller-Waagepetersen 2003 §4.2). |
+| `fit_thomas(points, domain, r_grid, theta0=None)` → `MinContrastResult` | Fits `(σ, λ_p)`.  Default `theta0 = (0.1·diam, 10.0)`; bounds `[(1e-6, None), (1e-3, None)]`.  Recover `μ̂ = n / (λ̂_p · |W|)` post-hoc — second-order statistics do NOT identify `μ`. |
+| `fit_matern_cluster(points, domain, r_grid, theta0=None)` → `MinContrastResult` | Same shape for `(R, λ_p)`. |
+| `MinContrastResult` | Frozen dataclass: `theta_hat`, `objective_value`, `g_model_at_theta`, `n_iter`, `success`, `message`. |
+
+`fit_thomas` / `fit_matern_cluster` build the empirical `g(r)` with
+`pair_correlation(..., edge_correction="border")` (Baddeley-Rubak-Turner
+2015 §7.4), so they handle the small-`r` `NaN` band correctly without
+extra plumbing.
+
 ### Optional bridges (lazy import; raise an install hint if the dep is absent)
 
 | Symbol | Backend | Group |
@@ -359,6 +392,16 @@ Thomas-clustered shared-parent labelling under `cross_k_inhom` and
   estimators for K- and pair correlation functions.* ANZJS 63(1):93.
 - Haslinger R, Pipa G, Brown E (2010). *Discrete time rescaling theorem.*
   Neural Computation 22(10):2477.
+- Thomas M (1949). *A generalization of Poisson's binomial limit for use
+  in ecology.* Biometrika 36(1/2):18.
+- Matérn B (1986). *Spatial Variation* (2nd ed.). Springer Lecture
+  Notes in Statistics 36.
+- Neyman J, Scott EL (1958). *Statistical approach to problems of
+  cosmology.* J. R. Stat. Soc. B 20(1):1.
+- Møller J, Waagepetersen RP (2003). *Statistical Inference and
+  Simulation for Spatial Point Processes.* Chapman & Hall.
+- Diggle PJ (2013). *Statistical Analysis of Spatial and
+  Spatio-Temporal Point Patterns* (3rd ed.). CRC.
 - Gerhard F, Haslinger R, Pipa G (2011). *Applying the multivariate
   time-rescaling theorem to neural population models.* Neural Computation
   23(6):1452.

@@ -33,6 +33,15 @@ Pure-NumPy/SciPy core (no optional dependency required):
   design matrix is a valid ``x`` argument to
   :func:`nstat.glm.fit_poisson_glm`, and the P-spline second-difference
   penalty (Eilers-Marx 1996) is available via ``.gram()``.
+- :mod:`~nstat.extras.spatial.cluster_cox` — Thomas (1949), Matérn-cluster
+  (Matérn 1986), and generic Neyman-Scott (1958) Cox-process simulators
+  and closed-form pair correlations.  Pair with
+  :mod:`~nstat.extras.spatial.inference` for minimum-contrast estimation.
+- :mod:`~nstat.extras.spatial.inference` — minimum-contrast estimator
+  (Diggle 2013 §6.2.1; Møller-Waagepetersen 2003 §4.2):
+  :func:`~nstat.extras.spatial.inference.min_contrast_estimator` plus the
+  convenience wrappers :func:`~nstat.extras.spatial.inference.fit_thomas` /
+  :func:`~nstat.extras.spatial.inference.fit_matern_cluster`.
 - :mod:`~nstat.extras.spatial.marked_gof` — the discrete-time-rescaling KS
   correction (Haslinger-Pipa-Brown 2010) and marked goodness-of-fit:
   :func:`~nstat.extras.spatial.marked_gof.marked_time_rescaling`.
@@ -87,6 +96,22 @@ from nstat.extras.spatial.lgcp import (
     lgcp_fit_glm,
 )
 from nstat.extras.spatial.bartlett import bartlett_density_from_pcf
+from nstat.extras.spatial.cluster_cox import (
+    MaternClusterProcess,
+    NeymanScottCox,
+    ThomasProcess,
+    matern_cluster_pair_correlation,
+    simulate_matern_cluster,
+    simulate_neyman_scott,
+    simulate_thomas,
+    thomas_pair_correlation,
+)
+from nstat.extras.spatial.inference import (
+    MinContrastResult,
+    fit_matern_cluster,
+    fit_thomas,
+    min_contrast_estimator,
+)
 from nstat.extras.spatial.mark_gof import mark_correlation, mark_variogram
 from nstat.extras.spatial.marked_gof import (
     CoupledMarkedGOFResult,
@@ -167,6 +192,20 @@ __all__ = [
     "pp_residuals_smoothed",
     # bartlett (spatial Bartlett density of the pair correlation)
     "bartlett_density_from_pcf",
+    # cluster_cox (Thomas / Matern-cluster / Neyman-Scott Cox processes)
+    "ThomasProcess",
+    "MaternClusterProcess",
+    "NeymanScottCox",
+    "thomas_pair_correlation",
+    "matern_cluster_pair_correlation",
+    "simulate_thomas",
+    "simulate_matern_cluster",
+    "simulate_neyman_scott",
+    # inference (minimum-contrast estimation; Diggle 2013 §6.2.1)
+    "MinContrastResult",
+    "min_contrast_estimator",
+    "fit_thomas",
+    "fit_matern_cluster",
     # hawkes_bridge (pure-NumPy/SciPy Bartlett diagnostic; no [hawkes] needed)
     "bartlett_spectrum",
     # wave_analysis (pure NumPy/SciPy)
