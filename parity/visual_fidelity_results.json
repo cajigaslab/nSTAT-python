@@ -14,7 +14,7 @@
       "threshold": 0.45,
       "stochastic": false,
       "notes": "Color differs (MATLAB blue vs Python grey) and Python adds axis\nlabels with tick values; structure identical (same trajectory,\nsame spike locations).  Baseline 0.498 measured 2026-06-11.\n",
-      "ssim": 0.4979251263149635,
+      "ssim": 0.4996816669315074,
       "passed": true
     },
     {
@@ -25,7 +25,7 @@
       "threshold": 0.7,
       "stochastic": false,
       "notes": "After Phase 2 fix, Quadratic uses centered features",
-      "ssim": 0.7602849356815982,
+      "ssim": 0.7557686154366668,
       "passed": true
     },
     {
@@ -36,7 +36,7 @@
       "threshold": 0.5,
       "stochastic": true,
       "notes": "Stochastic spike draws differ between numpy and MATLAB random streams",
-      "ssim": 0.6287379330149648,
+      "ssim": 0.6149897478571977,
       "passed": true
     },
     {
@@ -47,7 +47,7 @@
       "threshold": 0.7,
       "stochastic": false,
       "notes": "After Phase 2 fix (maskAwayAllExcept reset + label parser +\nsetNeighbors), the estimated panel matches the actual panel's\nsign pattern.  Magnitude unstable at l2=0; sign is what matters.\n",
-      "ssim": 0.735783665182539,
+      "ssim": 0.7610291471083733,
       "passed": true
     },
     {
@@ -58,7 +58,7 @@
       "threshold": 0.5,
       "stochastic": true,
       "notes": "Stochastic spike draws differ; tracks the same sinusoid",
-      "ssim": 0.5421522350041952,
+      "ssim": 0.5949421785573427,
       "passed": true
     },
     {
@@ -69,7 +69,7 @@
       "threshold": 0.55,
       "stochastic": false,
       "notes": "Baseline 0.631 measured 2026-06-11; layout match good.",
-      "ssim": 0.6307817210244541,
+      "ssim": 0.6417133069787587,
       "passed": true
     },
     {
@@ -80,7 +80,7 @@
       "threshold": 0.7,
       "stochastic": false,
       "notes": "",
-      "ssim": 0.8147416530248175,
+      "ssim": 0.8164910712645054,
       "passed": true
     },
     {
@@ -91,7 +91,7 @@
       "threshold": 0.5,
       "stochastic": true,
       "notes": "After Phase 2 sampleRate fix (200\u21921000 Hz), the design-matrix\ndimension matches MATLAB so the rate-axis ranges agree.\n",
-      "ssim": 0.5231233584945347,
+      "ssim": 0.5771855765675786,
       "passed": true
     },
     {
@@ -102,7 +102,7 @@
       "threshold": 0.6,
       "stochastic": false,
       "notes": "After Phase 1 + Phase 2 fixes (l2=0.0 + sampleRate=1000 +\nepoch boundaries [495,765]), coefficients should match MATLAB\nmagnitudes within stochastic-data tolerance.\n",
-      "ssim": 0.6862102329363011,
+      "ssim": 0.8062980581786116,
       "passed": true
     },
     {
@@ -113,7 +113,7 @@
       "threshold": 0.5,
       "stochastic": true,
       "notes": "After Phase 2 fix (8 hand-typed \u2192 100 seeded random spikes\nmatching ``sort(rand(1,100))``), figure scope matches MATLAB.\nStochastic seed differs between numpy and MATLAB streams.\n",
-      "ssim": 0.6615960411819155,
+      "ssim": 0.5753600618008033,
       "passed": true
     },
     {
@@ -146,7 +146,7 @@
       "threshold": 0.4,
       "stochastic": false,
       "notes": "Baseline 0.470 measured 2026-06-11; significant layout drift\n(MATLAB renders multi-axis SignalObj with custom labels,\nPython uses default matplotlib subplots).  Candidate for\nPhase 4 pedagogical fix.\n",
-      "ssim": 0.46963758826312346,
+      "ssim": 0.4453166373078689,
       "passed": true
     },
     {
@@ -157,7 +157,7 @@
       "threshold": 0.2,
       "stochastic": false,
       "notes": "Baseline 0.273 measured 2026-06-11; Python raster layout differs\nsubstantially from MATLAB's multi-panel published figure.\nMarker: gate baselines current state; lower threshold prevents\nfalse alarms but a future Phase 4 fix should target 0.50+.\n",
-      "ssim": 0.27330919607331056,
+      "ssim": 0.3020069080552126,
       "passed": true
     },
     {
@@ -168,7 +168,7 @@
       "threshold": 0.18,
       "stochastic": false,
       "notes": "Baseline 0.214 measured 2026-06-11; similar to\nnSpikeTrainExamples \u2014 Python collection raster doesn't reproduce\nMATLAB's published multi-panel layout.  Phase 4 candidate.\n",
-      "ssim": 0.21354654219724914,
+      "ssim": 0.25402005046834863,
       "passed": true
     }
   ]

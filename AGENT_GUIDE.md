@@ -27,11 +27,22 @@ Every function, class, and method that exists in the MATLAB nSTAT toolbox
 **must** have an exact mirror in Python. Parity is enforced at **three
 levels**, all binding:
 
-**(a) Numerical output** — same name (MATLAB-style identifiers like
-`nspikeTrain`, `GLMFit`, `computeKSStats`, `PPDecodeFilterLinear` are
-preserved verbatim), same public signature semantics, and same numerical
-behavior on equivalent inputs (within documented float / RNG tolerance —
-see `tests/parity/fixtures/matlab_gold/*.mat`).
+**(a) Numerical output** — every MATLAB function/class/method has an exact
+Python mirror: same name (MATLAB-style identifiers like `nspikeTrain`,
+`GLMFit`, `computeKSStats`, `PPDecodeFilterLinear` are preserved verbatim),
+same signature, computing the same scientific quantity. Numerical agreement
+within float/RNG tolerance is the default, but Python is allowed (and
+encouraged) to:
+
+- Use a more numerically stable algorithm
+- Use a more efficient algorithm
+- Fix bugs in the MATLAB implementation rather than faithfully reproduce them
+
+These are **not** parity violations — they are the point of porting. Each
+such divergence must be documented in `parity/matlab_defects.md` with the
+reason. Gold fixtures (`tests/parity/fixtures/matlab_gold/*.mat`) may be
+refreshed when justified by an improvement; refresh must be paired with a
+defects-ledger entry and a commit body explaining the change.
 
 **(b) Figure content** — same number of figures, same panel layout, same
 data shown in each panel, same axis ranges and tick conventions, same

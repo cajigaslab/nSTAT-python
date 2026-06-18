@@ -26,7 +26,8 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
         diff-matlab readme-check helpfile-check freshness-check \
         format lint typecheck \
         version-check sanity clean release-check \
-        ci-local drift-check
+        ci-local drift-check \
+        parity-check parity-check-quick
 
 # --- help ------------------------------------------------------------
 
@@ -187,6 +188,14 @@ drift-check:  ## Regenerate deterministic CI-checked artifacts and fail if they 
 	|| { echo "DRIFT: regenerated artifacts differ — commit the regenerated files above."; exit 1; }
 	@echo "Note: parity/notebook_fidelity.yml is environment-coupled (it records the"
 	@echo "      local MATLAB-checkout path) and is validated on GitHub Actions, not here."
+
+# --- top-level parity sweep -----------------------------------------
+
+parity-check:  ## Full MATLAB↔Python parity sweep (~30 min): extract → execute → score → composite.
+	$(PY) tools/parity/run_full_check.py
+
+parity-check-quick:  ## Composite + SSIM only against current gallery state (~30s).
+	$(PY) tools/parity/run_full_check.py --quick
 
 clean:  ## Remove built artifacts (__pycache__, .pytest_cache, docs/_build, dist).
 	rm -rf docs/_build dist build *.egg-info

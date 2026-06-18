@@ -1593,9 +1593,12 @@ class SignalObj:
             else:
                 selectorArray = list(range(self.dimension))
 
+        # MATLAB R2014b+ "lines" palette — mirrors the default prop_cycle that
+        # apply_matlab_style() installs, so axes built via prop_cycle and axes
+        # built here look consistent.
         _TAB_COLORS = [
-            "tab:blue", "tab:orange", "tab:green", "tab:red",
-            "tab:purple", "tab:brown", "tab:pink", "tab:gray",
+            "#0072BD", "#D95319", "#EDB120", "#7E2F8E",
+            "#77AC30", "#4DBEEE", "#A2142F", "#A0A0A0",
         ]
         handles = []
         if isinstance(selectorArray, list) and selectorArray and isinstance(selectorArray[0], (list, tuple, np.ndarray)):

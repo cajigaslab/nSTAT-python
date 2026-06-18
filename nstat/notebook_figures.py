@@ -6,8 +6,54 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+
+
+# MATLAB R2014b+ "lines" color order
+_MATLAB_LINES = [
+    "#0072BD",  # blue
+    "#D95319",  # orange
+    "#EDB120",  # yellow
+    "#7E2F8E",  # purple
+    "#77AC30",  # green
+    "#4DBEEE",  # light blue
+    "#A2142F",  # dark red
+]
+
+
+def _matlab_style() -> dict:
+    """Return a dict of matplotlib rcParams matching MATLAB defaults."""
+    return {
+        "axes.prop_cycle": mpl.cycler(color=_MATLAB_LINES),
+        "image.cmap": "jet",
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+        "axes.edgecolor": "#1f1f1f",
+        "axes.linewidth": 0.8,
+        "axes.grid": False,
+        "grid.color": "#bfbfbf",
+        "grid.linestyle": ":",
+        "grid.linewidth": 0.5,
+        "xtick.color": "#1f1f1f",
+        "ytick.color": "#1f1f1f",
+        "xtick.direction": "in",
+        "ytick.direction": "in",
+        "font.family": "Helvetica",
+        "font.size": 10,
+        "axes.titlesize": 11,
+        "axes.labelsize": 10,
+        "legend.frameon": True,
+        "legend.fontsize": 9,
+        "lines.linewidth": 1.0,
+        "lines.markersize": 5,
+    }
+
+
+def apply_matlab_style() -> None:
+    """Apply the MATLAB-default rcParams to the current matplotlib session."""
+    mpl.rcParams.update(_matlab_style())
 
 
 @dataclass
@@ -23,6 +69,11 @@ class FigureTracker:
     _note_y: float = field(default=0.95, init=False, repr=False)
 
     def __post_init__(self) -> None:
+        # Apply the MATLAB-default theme to the current matplotlib session so
+        # every notebook that constructs a FigureTracker automatically picks up
+        # the MATLAB color cycle, jet colormap, and font/tick conventions —
+        # without each notebook having to call apply_matlab_style() itself.
+        apply_matlab_style()
         topic_dir = self._topic_dir()
         for img_path in topic_dir.glob("fig_*.png"):
             img_path.unlink()

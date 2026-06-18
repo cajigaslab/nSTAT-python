@@ -11,8 +11,7 @@ MATLAB-helpfile port) rather than substantive plots — those are marked.
 | Notebook | Figures | Substantive | Source |
 |---|---|---|---|
 | [`AnalysisExamples`](AnalysisExamples/) | 4 | yes | [`notebooks/AnalysisExamples.ipynb`](../../notebooks/AnalysisExamples.ipynb) |
-| [`AnalysisExamples2`](AnalysisExamples2/) | 6 | yes | [`notebooks/AnalysisExamples2.ipynb`](../../notebooks/AnalysisExamples2.ipynb) |
-| [`CovCollExamples`](CovCollExamples/) | 2 | placeholder only | [`notebooks/CovCollExamples.ipynb`](../../notebooks/CovCollExamples.ipynb) |
+| [`CovCollExamples`](CovCollExamples/) | 2 | yes | [`notebooks/CovCollExamples.ipynb`](../../notebooks/CovCollExamples.ipynb) |
 | [`CovariateExamples`](CovariateExamples/) | 2 | yes | [`notebooks/CovariateExamples.ipynb`](../../notebooks/CovariateExamples.ipynb) |
 | [`DecodingExample`](DecodingExample/) | 7 | yes | [`notebooks/DecodingExample.ipynb`](../../notebooks/DecodingExample.ipynb) |
 | [`DecodingExampleWithHist`](DecodingExampleWithHist/) | 2 | yes | [`notebooks/DecodingExampleWithHist.ipynb`](../../notebooks/DecodingExampleWithHist.ipynb) |

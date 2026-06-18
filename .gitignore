@@ -37,3 +37,6 @@ tests/parity/captured_matlab_helpfile_outputs/
 # Personal/local Claude Code config
 .claude/
 CLAUDE.md
+
+# Parity-check artifacts (regenerable, see make parity-check)
+/.parity-review/
