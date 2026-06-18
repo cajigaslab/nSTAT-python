@@ -36,7 +36,7 @@
       "threshold": 0.5,
       "stochastic": true,
       "notes": "Stochastic spike draws differ between numpy and MATLAB random streams",
-      "ssim": 0.6150119181212466,
+      "ssim": 0.6160620588747588,
       "passed": true
     },
     {
@@ -47,7 +47,7 @@
       "threshold": 0.7,
       "stochastic": false,
       "notes": "After Phase 2 fix (maskAwayAllExcept reset + label parser +\nsetNeighbors), the estimated panel matches the actual panel's\nsign pattern.  Magnitude unstable at l2=0; sign is what matters.\n",
-      "ssim": 0.7609333685224705,
+      "ssim": 0.7610291471083733,
       "passed": true
     },
     {
@@ -58,7 +58,7 @@
       "threshold": 0.5,
       "stochastic": true,
       "notes": "Stochastic spike draws differ; tracks the same sinusoid",
-      "ssim": 0.5970894051696071,
+      "ssim": 0.5965051809891695,
       "passed": true
     },
     {
@@ -91,7 +91,7 @@
       "threshold": 0.5,
       "stochastic": true,
       "notes": "After Phase 2 sampleRate fix (200\u21921000 Hz), the design-matrix\ndimension matches MATLAB so the rate-axis ranges agree.\n",
-      "ssim": 0.5771995474476755,
+      "ssim": 0.5635747697936311,
       "passed": true
     },
     {
@@ -245,7 +245,7 @@
       "threshold": 0.3,
       "stochastic": false,
       "notes": "Baseline measured 0.348 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
-      "ssim": 0.34789960145075954,
+      "ssim": 0.3594560361808205,
       "passed": true
     },
     {

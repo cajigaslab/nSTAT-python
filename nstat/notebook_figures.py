@@ -56,6 +56,36 @@ def apply_matlab_style() -> None:
     mpl.rcParams.update(_matlab_style())
 
 
+def _matlab_axes(
+    ax,
+    *,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    title: str | None = None,
+    grid: bool = False,
+    tick_in: bool = True,
+) -> None:
+    """Apply MATLAB-style axis decoration in one call.
+
+    Sets axis labels and title using the MATLAB default font (Helvetica,
+    size 10), routes tick marks inward (MATLAB default), turns the grid off
+    unless explicitly requested, and forces spine line widths to 0.8 to
+    match MATLAB's default axis line weight.
+    """
+    label_kwargs = {"fontfamily": "Helvetica", "fontsize": 10}
+    if xlabel is not None:
+        ax.set_xlabel(xlabel, **label_kwargs)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel, **label_kwargs)
+    if title is not None:
+        ax.set_title(title, **label_kwargs)
+    if tick_in:
+        ax.tick_params(direction="in")
+    ax.grid(bool(grid))
+    for spine in ax.spines.values():
+        spine.set_linewidth(0.8)
+
+
 @dataclass
 class FigureTracker:
     """Track figure creation order and save deterministic notebook images."""
