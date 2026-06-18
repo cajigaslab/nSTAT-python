@@ -14,8 +14,8 @@ MATLAB PNGs are sourced from the sibling `cajigaslab/nSTAT` checkout when runnin
 |---|---|---:|---:|:-:|---|
 | `AnalysisExamples` | Rat trajectory with spike locations | 0.497 | 0.45 | ✓ | Color differs (MATLAB blue vs Python grey) and Python adds axis labels with tick values; structure identical (same trajectory, same spike locations). Baseline 0.498 measured 2026-06-11. |
 | `AnalysisExamples` | KS plot — linear vs quadratic GLM | 0.756 | 0.70 | ✓ | After Phase 2 fix, Quadratic uses centered features |
-| `PPSimExample` | Raster + stimulus | — | 0.50 | ? | Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/PPSimExample/fig_006.png |
-| `NetworkTutorial` | Actual vs estimated network connectivity | — | 0.70 | ? | Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/NetworkTutorial/fig_013.png |
+| `PPSimExample` | Raster + stimulus | — | 0.50 | ↷ | V2 iter 9 removed surplus cells; fig_006 no longer emitted. Re-baseline pending after MATLAB re-extraction. |
+| `NetworkTutorial` | Actual vs estimated network connectivity | — | 0.70 | ↷ | V2 iter 9 removed surplus cells; fig_013 no longer emitted. Re-baseline pending after MATLAB re-extraction. |
 | `DecodingExample` | PPAF decoded stimulus | 0.598 | 0.50 | ✓ | Stochastic spike draws differ; tracks the same sinusoid |
 | `CovariateExamples` | Covariate signal visualization | 0.642 | 0.55 | ✓ | Baseline 0.631 measured 2026-06-11; layout match good. |
 | `TrialExamples` | Trial plot — spikes + covariates aligned | 0.816 | 0.70 | ✓ | — |

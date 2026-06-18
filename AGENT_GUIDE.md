@@ -119,6 +119,20 @@ Default to parity. Ship the MATLAB-mirroring change; redesign the failing
 test in the same PR; document the rationale in the commit body so the
 record is permanent.
 
+## Re-running the parity check
+
+After any parity-affecting change:
+- `make parity-check` — full sweep (~30 min)
+- `make parity-check-quick` — composite + SSIM only (~30s)
+- `gh workflow run parity-check.yml --ref main` — manual remote dispatch
+
+Documentation:
+- `PARITY.md` — user-facing summary
+- `parity/matlab_defects.md` — Python improvements over MATLAB (3 entries)
+- `parity/matlab_pedagogical_gaps.md` — Python pedagogical extras (5 entries)
+- `parity/numerical_drift_spec.yml` — numerical drift entries (10)
+- `parity/visual_fidelity.yml` — SSIM gate manifest (23+)
+
 ---
 
 ## 1. What this package is (one paragraph)
