@@ -655,8 +655,18 @@ def run_experiment4(data_dir: Path, *, return_payload: bool = False) -> dict[str
     path2 = data_dir / "Place Cells" / "PlaceCellDataAnimal2.mat"
     x2, y2, time2, neurons2 = _load_placecell_dataset(path2)
 
-    selected1 = [0, 1, min(2, len(neurons1) - 1), min(24, len(neurons1) - 1)]
-    selected2 = [0, 1, min(2, len(neurons2) - 1), min(24, len(neurons2) - 1)]
+    # MATLAB HippocampalPlaceCellExample fits every cell in the dataset and tiles
+    # one panel per cell into the place-field grid figures.  Mirror that: include
+    # all cells (cap defensively to keep the grid renderable in CI).  The legacy
+    # MATLAB-mesh figure (figure(8)/figure(9)) still picks the last cell of the
+    # legacy 4-cell selection so its title remains "Cell 25" for parity with the
+    # MATLAB published mesh figures.
+    _MAX_CELLS_GRID = 36
+    selected1 = list(range(min(len(neurons1), _MAX_CELLS_GRID)))
+    selected2 = list(range(min(len(neurons2), _MAX_CELLS_GRID)))
+    _legacy_mesh_idx = min(24, len(neurons1) - 1)
+    if _legacy_mesh_idx not in selected1:
+        selected1.append(_legacy_mesh_idx)
     animal1 = _evaluate_place_models(x1, y1, time1, neurons1, selected1)
     animal2 = _evaluate_place_models(x2, y2, time2, neurons2, selected2)
 
@@ -668,15 +678,18 @@ def run_experiment4(data_dir: Path, *, return_payload: bool = False) -> dict[str
     if not return_payload:
         return summary
 
-    mesh_idx = int(selected1[-1])
+    mesh_idx = int(_legacy_mesh_idx)
+    # Map mesh_idx onto its position in the fitted selected1 list so we can pull
+    # the right gaussian/zernike field for the mesh figures below.
+    _mesh_pos = selected1.index(mesh_idx)
     mesh_spike_times = np.asarray(neurons1[mesh_idx].spikeTimes, dtype=float).reshape(-1)
     payload = {
         "animal1": animal1,
         "animal2": animal2,
         "mesh": {
             "cell_index": mesh_idx,
-            "gaussian_field": animal1["gaussian_fields"][-1],
-            "zernike_field": animal1["zernike_fields"][-1],
+            "gaussian_field": animal1["gaussian_fields"][_mesh_pos],
+            "zernike_field": animal1["zernike_fields"][_mesh_pos],
             "grid_x": animal1["grid_x"],
             "grid_y": animal1["grid_y"],
             "x_pos": x1,

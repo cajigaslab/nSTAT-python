@@ -117,7 +117,7 @@ items:
   remaining_differences: Workflow, model fitting, and decoded-stimulus figures now
     follow the MATLAB helpfile closely; exact traces still depend on stochastic simulation
     draws and Python plotting defaults.
-  python_sections: 4
+  python_sections: 3
   python_expected_figures: 7
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -128,7 +128,7 @@ items:
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
   matlab_sections: 4
   matlab_published_figures: 5
-  section_delta: 0
+  section_delta: -1
   figure_delta: 2
 - topic: DecodingExampleWithHist
   source_matlab: DecodingExampleWithHist.mlx
@@ -167,7 +167,7 @@ items:
     and coefficient values still vary modestly from MATLAB because the Python GLM
     backend and plotting defaults are different.
   python_sections: 6
-  python_expected_figures: 11
+  python_expected_figures: 10
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -178,7 +178,7 @@ items:
   matlab_sections: 6
   matlab_published_figures: 9
   section_delta: 0
-  figure_delta: 2
+  figure_delta: 1
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
   python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
@@ -192,8 +192,8 @@ items:
     Zernike basis used by MATLAB; exact AIC/BIC values and surface styling still vary
     modestly because the Python GLM solver and plotting backend are not byte-identical
     to MATLAB.
-  python_sections: 5
-  python_expected_figures: 10
+  python_sections: 6
+  python_expected_figures: 12
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -203,8 +203,8 @@ items:
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
   matlab_sections: 5
   matlab_published_figures: 9
-  section_delta: 0
-  figure_delta: 1
+  section_delta: 1
+  figure_delta: 3
 - topic: HybridFilterExample
   source_matlab: HybridFilterExample.mlx
   python_notebook: notebooks/HybridFilterExample.ipynb
@@ -267,7 +267,7 @@ items:
   remaining_differences: Mirrors the MATLAB helpfile section order and all 13 published
     figures with a native Python network simulator and MATLAB-style `Analysis` workflow.
     Only inherent NumPy vs Simulink random streams differ.
-  python_sections: 10
+  python_sections: 6
   python_expected_figures: 8
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -278,7 +278,7 @@ items:
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
   matlab_sections: 10
   matlab_published_figures: 13
-  section_delta: 0
+  section_delta: -4
   figure_delta: -5
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx

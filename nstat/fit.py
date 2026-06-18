@@ -1507,7 +1507,16 @@ class FitResult:
         self.plotSeqCorr(fit_num=None, handle=ax_sc)
         self.plotCoeffs(fit_num=None, handle=ax_co)
         self.plotResidual(fit_num=None, handle=ax_re)
-        fig.tight_layout()
+        # Tighten title/legend density to match MATLAB's compact CI panels.
+        for _ax in (ax_ks, ax_ig, ax_sc, ax_co, ax_re):
+            _title = _ax.get_title()
+            if _title:
+                _ax.set_title(_title, fontweight="bold", fontsize=10, fontname="Arial")
+            _legend = _ax.get_legend()
+            if _legend is not None:
+                for _txt in _legend.get_texts():
+                    _txt.set_fontsize(8)
+        fig.tight_layout(pad=0.4)
         return fig
 
     # MATLAB color cycle used by Analysis.colors: b, g, r, c, m, y, k
@@ -1534,12 +1543,22 @@ class FitResult:
 
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 4.0))[1]
 
-        # Draw reference diagonal and confidence bands from the first model
-        first_diag = self._compute_diagnostics(fit_nums[0])
-        ideal_ref = np.asarray(first_diag["ks_ideal"], dtype=float)
-        ci_ref = np.asarray(first_diag["ks_ci"], dtype=float)
+        # Draw reference diagonal unconditionally so the panel never renders
+        # blank even if the first model's diagnostics are empty.
+        ax.plot([0.0, 1.0], [0.0, 1.0], "k-.", linewidth=1.0)
+
+        # Confidence bands from the first model with non-empty diagnostics
+        ideal_ref = np.empty(0, dtype=float)
+        ci_ref = np.empty(0, dtype=float)
+        for _fn_probe in fit_nums:
+            _probe_diag = self._compute_diagnostics(_fn_probe)
+            _probe_ideal = np.asarray(_probe_diag["ks_ideal"], dtype=float)
+            _probe_ci = np.asarray(_probe_diag["ks_ci"], dtype=float)
+            if _probe_ideal.size:
+                ideal_ref = _probe_ideal
+                ci_ref = _probe_ci
+                break
         if ideal_ref.size:
-            ax.plot([0.0, 1.0], [0.0, 1.0], "k-.", linewidth=1.0)
             ax.plot(ideal_ref, np.clip(ideal_ref + ci_ref, 0.0, 1.0), "r", linewidth=1.0)
             ax.plot(ideal_ref, np.clip(ideal_ref - ci_ref, 0.0, 1.0), "r", linewidth=1.0)
 
@@ -1560,16 +1579,17 @@ class FitResult:
                 labels_for_legend.append(label)
 
         if handles_for_legend:
-            ax.legend(handles_for_legend, labels_for_legend, loc="lower right", fontsize=14)
+            ax.legend(handles_for_legend, labels_for_legend, loc="lower right", fontsize=8)
 
         ax.set_xlim(0.0, 1.0)
         ax.set_ylim(0.0, 1.0)
         ax.set_xticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
         ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-        ax.set_xlabel("Ideal Uniform CDF", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_ylabel("Empirical CDF", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_xlabel("Ideal Uniform CDF", fontname="Arial", fontsize=10, fontweight="bold")
+        ax.set_ylabel("Empirical CDF", fontname="Arial", fontsize=10, fontweight="bold")
         ax.set_title("KS Plot of Rescaled ISIs with 95% Confidence Intervals",
                       fontweight="bold", fontsize=11, fontname="Arial")
+        ax.tick_params(axis="both", labelsize=9)
         ax.tick_params(length=6, width=1)
         for spine in ax.spines.values():
             spine.set_linewidth(1.0)
@@ -1595,28 +1615,38 @@ class FitResult:
             if getattr(self.lambda_signal, "dataLabels", None)
             else []
         )
+        n_fits = len(fit_nums)
         for i, fn in enumerate(fit_nums):
             residual = self.computeFitResidual(fn)
             color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
             label = _ensure_mathtext(
                 data_labels[fn] if fn < len(data_labels) else f"Model {fn + 1}"
             )
-            ax.plot(
-                np.asarray(residual.time, dtype=float),
-                np.asarray(residual.data[:, 0], dtype=float),
-                color=color, linewidth=1.0, label=label,
-            )
+            t = np.asarray(residual.time, dtype=float)
+            y = np.asarray(residual.data[:, 0], dtype=float)
+            # Draw earlier (lower index) fits ON TOP so neither trace is
+            # buried — keeps both lambda_1 and lambda_2 simultaneously
+            # legible when multiple fits are overlaid (matches MATLAB).
+            z = 3 + (n_fits - i)
+            alpha = 0.7 if i == n_fits - 1 and n_fits > 1 else 1.0
+            lw = 1.2 if i < n_fits - 1 else 0.6
+            # MATLAB renders slim vertical lines with a marker at the top of
+            # each residual; vlines + a thin scatter mirrors that look.
+            ax.vlines(t, 0.0, y, colors=color, linewidth=lw, label=label,
+                      alpha=alpha, zorder=z)
+            if t.size:
+                ax.plot(t, y, marker="o", linestyle="none",
+                        color=color, markersize=2.0, alpha=alpha, zorder=z)
         ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
         if len(fit_nums) > 1:
-            ax.legend(loc="upper right", fontsize=14)
+            ax.legend(loc="upper right", fontsize=8)
         ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_ylabel("", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_title("Point Process Residual",
                       fontweight="bold", fontsize=11, fontname="Arial")
-        # Match MATLAB: symmetric y-axis with 10% margin
-        ylims = ax.get_ylim()
-        max_y = max(abs(ylims[0]), abs(ylims[1])) * 1.1
-        ax.set_ylim(-max_y, max_y)
+        # Match MATLAB: y-axis fixed to [-2, 2] so the two traces aren't
+        # crammed and a comparable visual scale is used across diagnostics.
+        ax.set_ylim(-2.0, 2.0)
         ax.tick_params(length=6, width=1)
         for spine in ax.spines.values():
             spine.set_linewidth(1.0)
@@ -1670,11 +1700,21 @@ class FitResult:
             ax.axhline(-ci_val, color="r", linewidth=1.0)
 
         if legend_handles:
-            ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=14)
+            ax.legend(
+                legend_handles,
+                legend_labels,
+                loc="upper left",
+                bbox_to_anchor=(0.01, 0.99),
+                fontsize=8,
+                frameon=False,
+            )
         ax.set_xlabel("", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_ylabel("", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_title("Autocorrelation Function of Rescaled ISIs with 95% CIs",
+        ax.set_title("Autocorrelation Function\nof Rescaled ISIs with 95% CIs",
                       fontweight="bold", fontsize=11, fontname="Arial")
+        # Pin y-axis range so the 95% CI bars sit well inside the panel
+        # (MATLAB default for this diagnostic spans roughly [-0.35, 0.35]).
+        ax.set_ylim(-0.35, 0.35)
         ax.tick_params(length=6, width=1)
         for spine in ax.spines.values():
             spine.set_linewidth(1.0)
@@ -1738,13 +1778,16 @@ class FitResult:
         if legend_handles:
             ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=14)
 
-        ax.set_title("Sequential Correlation of Rescaled ISIs",
+        ax.set_title("Sequential Correlation of\nRescaled ISIs",
                       fontweight="bold", fontsize=11, fontname="Arial")
         ax.set_xlabel("$u_j$", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_ylabel("$u_{j+1}$", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
-        ax.set_xticks([0.0, 0.25, 0.5, 0.75, 1.0])
+        # Reduce x-tick label density to prevent run-on rendering in narrow
+        # subplot columns; MATLAB-equivalent ticks (0, 0.25, 0.5, 0.75, 1) are
+        # kept on the y-axis so the (u_j, u_{j+1}) grid still reads cleanly.
+        ax.set_xticks([0.0, 0.5, 1.0])
         ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
         ax.tick_params(length=6, width=1)
         for spine in ax.spines.values():
@@ -1784,6 +1827,13 @@ class FitResult:
         lambda_labels = list(self.lambda_signal.dataLabels) if getattr(self.lambda_signal, "dataLabels", None) else []
         errorbar_handles = []
 
+        # Collect data so we can set a sensible y-axis range that includes
+        # both the coefficient values + their CI bars and the significance
+        # stars above.  Without this the panel auto-scales tight to the
+        # error-bar envelope and the stars float at the upper edge.
+        sig_specs: list[tuple[np.ndarray, str]] = []
+        y_min = np.inf
+        y_max = -np.inf
         for i, fn in enumerate(fit_nums):
             diag = self._compute_diagnostics(fn)
             coeffs = np.asarray(diag["coefficients"], dtype=float)
@@ -1799,17 +1849,34 @@ class FitResult:
                             linewidth=1.5, markersize=8.0, capsize=5.0,
                             markeredgecolor=color, markerfacecolor=color)
             errorbar_handles.append(h)
+            if coeffs.size:
+                y_min = min(y_min, float(np.nanmin(coeffs - ci95)))
+                y_max = max(y_max, float(np.nanmax(coeffs + ci95)))
             if plotSignificance and np.any(sig > 0):
-                ylims = ax.get_ylim()
-                y_star = 0.8 * ylims[1] - i * 0.1
                 sig_idx = xpos[sig.astype(bool)]
+                sig_specs.append((sig_idx, color))
+
+        # Fix y-axis range BEFORE placing significance stars so the stars
+        # land at the same fraction of the visible axes for every fit.
+        if np.isfinite(y_min) and np.isfinite(y_max):
+            span = max(y_max - y_min, 1.0)
+            ax.set_ylim(y_min - 0.15 * span, y_max + 0.20 * span)
+
+        if sig_specs:
+            y_lo, y_hi = ax.get_ylim()
+            y_span = y_hi - y_lo
+            for i, (sig_idx, color) in enumerate(sig_specs):
+                y_star = y_hi - (0.05 + i * 0.06) * y_span
                 ax.plot(sig_idx, np.full(sig_idx.size, y_star), "*",
                         color=color, markersize=14.0)
 
         ax.set_xticks(xpos_all)
+        # Fontsize 6 is too small to read for low-coefficient-count panels;
+        # scale fontsize inversely with the number of ticks.
+        xtick_fontsize = 9 if len(all_labels) <= 4 else 6
         ax.set_xticklabels(
             [_format_coeff_label(lbl) for lbl in all_labels],
-            rotation=90, ha="center", fontsize=6,
+            rotation=90, ha="center", fontsize=xtick_fontsize,
         )
         ax.set_ylabel("GLM Fit Coefficients", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_title("GLM Coefficients with 95% CIs (* p<0.05)",
