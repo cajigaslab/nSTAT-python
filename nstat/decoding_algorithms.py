@@ -2528,7 +2528,9 @@ class DecodingAlgorithms:
         x1, X1, P1, X2 = DecodingAlgorithms.ukf_ut(fstate, X, Wm, Wc, L, Q)
         z1, Z1, P2, Z2 = DecodingAlgorithms.ukf_ut(hmeas, X1, Wm, Wc, m, R)
         P12 = X2 @ np.diag(Wc) @ Z2.T
-        K = P12 @ np.linalg.inv(P2)
+        # Case C: K = P12 @ inv(P2) → solve via P2.T @ K.T = P12.T.
+        # Avoids the explicit inverse, more stable for ill-conditioned P2.
+        K = np.linalg.solve(P2.T, P12.T).T
         x_out = x1 + K @ (z - z1)
         P_out = P1 - K @ P12.T
         return x_out, P_out
