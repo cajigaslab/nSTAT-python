@@ -193,7 +193,7 @@ items:
     modestly because the Python GLM solver and plotting backend are not byte-identical
     to MATLAB.
   python_sections: 5
-  python_expected_figures: 12
+  python_expected_figures: 10
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -204,7 +204,7 @@ items:
   matlab_sections: 5
   matlab_published_figures: 9
   section_delta: 0
-  figure_delta: 3
+  figure_delta: 1
 - topic: HybridFilterExample
   source_matlab: HybridFilterExample.mlx
   python_notebook: notebooks/HybridFilterExample.ipynb

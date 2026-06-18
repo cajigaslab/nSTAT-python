@@ -419,10 +419,17 @@ def run_experiment2(data_dir: Path, *, return_payload: bool = False) -> dict[str
         return summary
 
     view_n = int(min(int(round(21.0 / dt)), y.shape[0]))
+    # MATLAB nSTATPaperExamples.m: nst2.setMaxTime(21) mutates nst2 only; nst (unclipped)
+    # is what nst.plot draws -- so the raster spans the full recording (~50.73 s, ~966 spikes).
+    # Expose the full-length spike train and time vector so the notebook can mirror MATLAB.
+    # MATLAB plots data.t in raw volts (0..9.953 V); the /10 normalization is GLM-internal only.
     payload = {
         "time_s": np.arange(view_n, dtype=float) * dt,
         "spike_indicator": y[:view_n],
         "stimulus": stim[:view_n],
+        "stimulus_raw_v": stim_raw,
+        "spike_indicator_full": y,
+        "time_s_full": np.arange(y.shape[0], dtype=float) * dt,
         "velocity": stim_vel[:view_n],
         "xcorr_lags_s": lags_s,
         "xcorr_values": xcorr,

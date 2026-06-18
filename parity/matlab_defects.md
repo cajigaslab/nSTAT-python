@@ -98,6 +98,65 @@ Schema for each entry:
 
 ---
 
+### Documented MATLAB quirk preserved: nst2.setMaxTime(21) mutates nst2 but not nst
+
+- **MATLAB location:** `nSTATPaperExamples.m` lines 121-145 (Experiment 2,
+  Explicit Stimulus / Whisker Data).
+- **Defect class:** Bug (preserved for exact-mirror parity, not "fixed")
+- **MATLAB behavior:** The script copies `nst2 = nst.copy()`, calls
+  `nst2.setMaxTime(21)`, then later plots `nst.plot` for the spike raster
+  — the unclipped `nst` object is what's drawn, so MATLAB's figure 2 top
+  panel shows the full ~50.73 s record with ~966 spikes despite the script
+  appearing to clip to 21 s. The stimulus side IS clipped via
+  `stim.getSigInTimeWindow(0, 21)`.
+- **Correct behavior (per the exact-mirror rule):** Reproduce MATLAB's actual
+  output. The previous Python port "fixed" what it read as a MATLAB bug by
+  clipping the spike train to 21 s in `payload['spike_indicator']`, which
+  produced ~360 spikes over 0..21 s and diverged from MATLAB.
+- **Python implementation:** `nstat/paper_examples_full.py:421-432` now
+  exposes both `spike_indicator_full`/`time_s_full` (matching MATLAB's
+  `nst.plot`) and the original 21 s-clipped arrays (used elsewhere by the
+  GLM fits). The notebook
+  `notebooks/ExplicitStimulusWhiskerData.ipynb` cell 4 was updated to draw
+  the figure-1 raster and figure-2 top panel from the full-length arrays.
+  Stimulus axes in MATLAB are raw volts (0..9.953 V); the GLM-internal
+  `/10` normalization is now kept in `stim` and the raw signal is exposed
+  as `payload['stimulus_raw_v']` for plotting.
+- **Fixture impact:** No `.mat` gold fixture change — this affects notebook
+  figures only.
+- **Discovered:** iter 14 / 2026-06-18
+
+---
+
+### RNG-stream divergence: MATLAB Mersenne Twister vs NumPy default_rng
+
+- **MATLAB location:** Multiple paper-example scripts: `nSTATPaperExamples.m`
+  Experiment 5 (StimulusDecode2D) draws coefficients
+  `coeffs = -|randn(80,5)|` and innovations `r = 0.01*randn(2,N)`;
+  `TrialExamples.m:33` draws spike times via `sort(rand(1,100))*lengthTrial`.
+- **Defect class:** Stability (no behavioural change; intentional architectural
+  divergence)
+- **MATLAB behavior:** Uses MATLAB's Mersenne Twister via `randn`/`rand`,
+  seeded with `rng(seed)`.
+- **Python behavior:** Uses `np.random.default_rng(seed)` (PCG64), the
+  modern NumPy-recommended generator. Per the porting guideline that
+  random sequences need not be bit-identical across language runtimes,
+  we do not try to replicate MT19937 bit-stream in Python.
+- **Evidence of formula equivalence:** When MATLAB's `dataMat` and `coeffs`
+  are piped into the Python `_simulate_decode` formula
+  `exp(eta)/(1+exp(eta))/delta`, output matches MATLAB to ~1e-13 — the
+  pipeline is structurally identical; only the random draws differ.
+- **Python implementation:** `notebooks/StimulusDecode2D.ipynb` and
+  `notebooks/TrialExamples.ipynb`. `TrialExamples` previously used a
+  deterministic quasi-uniform `np.linspace` grid (CV<<1); iter 14 fixed
+  this to `np.sort(rng.uniform(0, length_trial, 100))` to recover the
+  Poisson-like ISI character (CV~1) MATLAB produces. `StimulusDecode2D`
+  RNG choice is intentional and not changed.
+- **Fixture impact:** No `.mat` gold fixture change.
+- **Discovered:** iter 14 / 2026-06-18
+
+---
+
 ## Reviewer checklist for parity-affecting PRs
 
 - [ ] Every modified gold fixture has a defects-ledger entry
