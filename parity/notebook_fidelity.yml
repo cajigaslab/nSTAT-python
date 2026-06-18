@@ -20,7 +20,7 @@ items:
   remaining_differences: Workflow, API surface, dataset loading, and all 30 figures
     now follow the MATLAB paper-example helpfile. Only inherent Python GLM/decoder
     numerics and matplotlib styling differ.
-  python_sections: 40
+  python_sections: 29
   python_expected_figures: 30
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -29,9 +29,9 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 37
+  matlab_sections: 31
   matlab_published_figures: 26
-  section_delta: 3
+  section_delta: -2
   figure_delta: 4
 - topic: TrialExamples
   source_matlab: TrialExamples.mlx
@@ -43,7 +43,7 @@ items:
   fixture_backed: false
   remaining_differences: Workflow, API surface, and output structure match the MATLAB
     Trial helpfile one-for-one. Only inherent cross-language plotting defaults differ.
-  python_sections: 9
+  python_sections: 2
   python_expected_figures: 6
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -52,9 +52,9 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 9
+  matlab_sections: 3
   matlab_published_figures: 6
-  section_delta: 0
+  section_delta: -1
   figure_delta: 0
 - topic: AnalysisExamples
   source_matlab: AnalysisExamples.mlx
@@ -68,7 +68,7 @@ items:
     with the canonical `glm_data.mat` dataset and real KS/model-visualization figures;
     coefficient values and styling still vary modestly because the Python GLM backend
     and plotting defaults differ from MATLAB.
-  python_sections: 7
+  python_sections: 2
   python_expected_figures: 4
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -77,7 +77,7 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 7
+  matlab_sections: 2
   matlab_published_figures: 4
   section_delta: 0
   figure_delta: 0
@@ -93,7 +93,7 @@ items:
     canonical `glm_data.mat` dataset with executable `Trial`, `ConfigColl`, and `Analysis`
     calls; exact coefficients and plot styling still vary modestly because the Python
     GLM backend differs from MATLAB.
-  python_sections: 9
+  python_sections: 3
   python_expected_figures: 4
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -102,7 +102,7 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 9
+  matlab_sections: 3
   matlab_published_figures: 5
   section_delta: 0
   figure_delta: -1
@@ -166,7 +166,7 @@ items:
     stimulus-effect, and history-effect workflow with real figures; exact KS traces
     and coefficient values still vary modestly from MATLAB because the Python GLM
     backend and plotting defaults are different.
-  python_sections: 8
+  python_sections: 6
   python_expected_figures: 11
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -175,9 +175,9 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 7
+  matlab_sections: 6
   matlab_published_figures: 9
-  section_delta: 1
+  section_delta: 0
   figure_delta: 2
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
@@ -243,7 +243,7 @@ items:
   remaining_differences: Follows the MATLAB recursive-CIF workflow with the native
     Python `CIF.simulateCIF` path and all 9 published figures. Only inherent Simulink
     vs Python solver timing and stochastic draws differ.
-  python_sections: 17
+  python_sections: 9
   python_expected_figures: 9
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -252,7 +252,7 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 17
+  matlab_sections: 9
   matlab_published_figures: 8
   section_delta: 0
   figure_delta: 1
@@ -267,7 +267,7 @@ items:
   remaining_differences: Mirrors the MATLAB helpfile section order and all 13 published
     figures with a native Python network simulator and MATLAB-style `Analysis` workflow.
     Only inherent NumPy vs Simulink random streams differ.
-  python_sections: 21
+  python_sections: 10
   python_expected_figures: 13
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -276,7 +276,7 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 21
+  matlab_sections: 10
   matlab_published_figures: 13
   section_delta: 0
   figure_delta: 0
@@ -292,7 +292,7 @@ items:
     validation workflows with real `Trial`/`Analysis` objects and figure outputs;
     local execution uses the MATLAB-scale simulation sizes, while CI switches to a
     documented shorter deterministic fast path for stability.
-  python_sections: 16
+  python_sections: 3
   python_expected_figures: 12
   python_uses_figure_tracker: true
   python_has_finalize_call: true
@@ -301,9 +301,9 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 11
+  matlab_sections: 3
   matlab_published_figures: 8
-  section_delta: 5
+  section_delta: 0
   figure_delta: 4
 - topic: StimulusDecode2D
   source_matlab: StimulusDecode2D.mlx

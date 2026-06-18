@@ -30,8 +30,43 @@ def default_matlab_repo_root(repo_root: Path | None = None) -> Path:
 
 
 def _count_matlab_sections(matlab_m_path: Path) -> int:
+    """Count MATLAB live-script sections.
+
+    Prefers the sibling ``.mlx`` file (the live-script source) over the ``.m``
+    flat export, because the ``.mlx`` heading-paragraph structure is what the
+    Python ``# SECTION N:`` markers align to (per iter 3 of the parity push).
+    The flat ``.m`` export has more ``%%`` cell breaks than the ``.mlx`` has
+    headings — the extra ``%%`` are MATLAB live-script export artifacts, not
+    semantic sections. See ``tools/parity/extract_mlx.py`` for the .mlx
+    parsing logic that this function mirrors at a coarser level.
+    """
+    mlx_path = matlab_m_path.with_suffix(".mlx")
+    if mlx_path.exists():
+        try:
+            return _count_mlx_sections(mlx_path)
+        except Exception:
+            pass  # fall through to .m %% counting
     text = matlab_m_path.read_text(encoding="utf-8", errors="ignore")
     return len(SECTION_RE.findall(text))
+
+
+def _count_mlx_sections(mlx_path: Path) -> int:
+    """Count heading-paragraph sections in a .mlx live-script archive."""
+    import xml.etree.ElementTree as ET
+    import zipfile
+
+    ns_uri = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    with zipfile.ZipFile(mlx_path) as zf:
+        with zf.open("matlab/document.xml") as fh:
+            tree = ET.parse(fh)
+    count = 0
+    for p in tree.getroot().iter(f"{{{ns_uri}}}p"):
+        pstyle = p.find(f"{{{ns_uri}}}pPr/{{{ns_uri}}}pStyle")
+        if pstyle is not None:
+            val = pstyle.get(f"{{{ns_uri}}}val", "")
+            if val in ("heading", "title"):
+                count += 1
+    return count
 
 
 def _count_matlab_published_figures(matlab_html_path: Path) -> int:
