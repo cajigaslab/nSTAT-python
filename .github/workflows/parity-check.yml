@@ -1,0 +1,55 @@
+name: parity-check
+
+# MANUAL-ONLY policy (GitHub Actions minute conservation) — see ci.yml.
+# Drives the top-level MATLAB↔Python parity sweep via
+# tools/parity/run_full_check.py and uploads the .parity-review/ artifacts.
+on:
+  workflow_dispatch:
+    inputs:
+      quick:
+        description: "Run --quick (no notebook execution)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: parity-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+      - name: Run parity-check orchestrator
+        # SSIM scoring needs the sibling cajigaslab/nSTAT checkout for MATLAB
+        # PNG references; that checkout is unavailable in CI, so SSIM
+        # entries fall through to the "matlab repo unavailable" branch
+        # rather than failing the workflow.  Allow continue-on-error so the
+        # artifact upload always runs.
+        continue-on-error: true
+        env:
+          NSTAT_OFFLINE: "1"
+        run: |
+          if [ "${{ inputs.quick }}" = "true" ]; then
+            python tools/parity/run_full_check.py --quick
+          else
+            python tools/parity/run_full_check.py
+          fi
+      - name: Upload parity-review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-review-${{ github.run_id }}
+          path: .parity-review/
+          if-no-files-found: warn

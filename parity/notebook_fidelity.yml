@@ -166,8 +166,8 @@ items:
     stimulus-effect, and history-effect workflow with real figures; exact KS traces
     and coefficient values still vary modestly from MATLAB because the Python GLM
     backend and plotting defaults are different.
-  python_sections: 7
-  python_expected_figures: 9
+  python_sections: 8
+  python_expected_figures: 11
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -177,8 +177,8 @@ items:
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
   matlab_sections: 7
   matlab_published_figures: 9
-  section_delta: 0
-  figure_delta: 0
+  section_delta: 1
+  figure_delta: 2
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
   python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
@@ -292,8 +292,8 @@ items:
     validation workflows with real `Trial`/`Analysis` objects and figure outputs;
     local execution uses the MATLAB-scale simulation sizes, while CI switches to a
     documented shorter deterministic fast path for stability.
-  python_sections: 11
-  python_expected_figures: 8
+  python_sections: 16
+  python_expected_figures: 12
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -303,8 +303,8 @@ items:
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
   matlab_sections: 11
   matlab_published_figures: 8
-  section_delta: 0
-  figure_delta: 0
+  section_delta: 5
+  figure_delta: 4
 - topic: StimulusDecode2D
   source_matlab: StimulusDecode2D.mlx
   python_notebook: notebooks/StimulusDecode2D.ipynb

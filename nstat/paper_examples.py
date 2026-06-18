@@ -299,10 +299,10 @@ def _save_paper_example_plots(plot_payloads: PlotPayloads, plots_dir: Path) -> l
     # Experiment 2: explicit stimulus + model comparison.
     e2 = plot_payloads["experiment2"]
     fig, (ax_rate, ax_metrics) = plt.subplots(2, 1, figsize=(11, 8), constrained_layout=True)
-    ax_rate.plot(e2["time_binned_s"], e2["obs_rate_hz"], label="Observed spike rate", color="tab:blue", lw=1.5)
-    ax_rate.plot(e2["time_binned_s"], e2["rate1_binned_hz"], label="Model 1 rate", color="tab:orange", lw=1.2)
-    ax_rate.plot(e2["time_binned_s"], e2["rate2_binned_hz"], label="Model 2 rate", color="tab:green", lw=1.2)
-    ax_rate.plot(e2["time_binned_s"], e2["rate3_binned_hz"], label="Model 3 rate", color="tab:red", lw=1.2)
+    ax_rate.plot(e2["time_binned_s"], e2["obs_rate_hz"], label="Observed spike rate", lw=1.5)
+    ax_rate.plot(e2["time_binned_s"], e2["rate1_binned_hz"], label="Model 1 rate", lw=1.2)
+    ax_rate.plot(e2["time_binned_s"], e2["rate2_binned_hz"], label="Model 2 rate", lw=1.2)
+    ax_rate.plot(e2["time_binned_s"], e2["rate3_binned_hz"], label="Model 3 rate", lw=1.2)
     ax_rate.set_title("Experiment 2: Stimulus and GLM Rate Fits")
     ax_rate.set_xlabel("Time (s)")
     ax_rate.set_ylabel("Rate (Hz)")
@@ -317,8 +317,8 @@ def _save_paper_example_plots(plot_payloads: PlotPayloads, plots_dir: Path) -> l
     ax_rate.legend(handles1 + handles2, labels1 + labels2, loc="upper right", fontsize=8)
 
     xloc = np.arange(3)
-    ax_metrics.bar(xloc - 0.175, e2["aic"], width=0.35, label="AIC", color="tab:purple")
-    ax_metrics.bar(xloc + 0.175, e2["bic"], width=0.35, label="BIC", color="tab:brown")
+    ax_metrics.bar(xloc - 0.175, e2["aic"], width=0.35, label="AIC", color="#7E2F8E")
+    ax_metrics.bar(xloc + 0.175, e2["bic"], width=0.35, label="BIC", color="#A2142F")
     ax_metrics.set_xticks(xloc, ["Model 1", "Model 2", "Model 3"])
     ax_metrics.set_ylabel("Information Criterion")
     ax_metrics.set_title("Experiment 2: Model Comparison")
@@ -338,7 +338,6 @@ def _save_paper_example_plots(plot_payloads: PlotPayloads, plots_dir: Path) -> l
         e3["psth_bin_centers_s"],
         e3["psth_rate_hz"],
         where="mid",
-        color="tab:blue",
         lw=2.0,
         label="Estimated PSTH",
     )
@@ -366,7 +365,7 @@ def _save_paper_example_plots(plot_payloads: PlotPayloads, plots_dir: Path) -> l
     # Experiment 4: trajectory and model deltas.
     e4 = plot_payloads["experiment4"]
     fig, (ax_traj, ax_delta) = plt.subplots(1, 2, figsize=(13, 5.5), constrained_layout=True)
-    ax_traj.plot(e4["x_pos"], e4["y_pos"], color="tab:blue", alpha=0.45, lw=0.8, label="Trajectory")
+    ax_traj.plot(e4["x_pos"], e4["y_pos"], alpha=0.45, lw=0.8, label="Trajectory")
     spike_x = np.interp(e4["first_cell_spike_times_s"], e4["time_s"], e4["x_pos"])
     spike_y = np.interp(e4["first_cell_spike_times_s"], e4["time_s"], e4["y_pos"])
     ax_traj.scatter(spike_x, spike_y, s=8, color="tab:red", alpha=0.6, label="Cell 1 spikes")
@@ -378,8 +377,8 @@ def _save_paper_example_plots(plot_payloads: PlotPayloads, plots_dir: Path) -> l
     ax_traj.legend(loc="upper right", fontsize=8)
 
     cells = np.arange(1, len(e4["delta_aic"]) + 1)
-    ax_delta.plot(cells, e4["delta_aic"], marker="o", lw=1.5, color="tab:purple", label="Delta AIC")
-    ax_delta.plot(cells, e4["delta_bic"], marker="s", lw=1.5, color="tab:green", label="Delta BIC")
+    ax_delta.plot(cells, e4["delta_aic"], marker="o", lw=1.5, color="#7E2F8E", label="Delta AIC")
+    ax_delta.plot(cells, e4["delta_bic"], marker="s", lw=1.5, color="#77AC30", label="Delta BIC")
     ax_delta.axhline(0.0, color="black", lw=1.0, alpha=0.5)
     ax_delta.set_title("Experiment 4: Gaussian - Zernike Model Delta")
     ax_delta.set_xlabel("Cell index")
@@ -395,9 +394,9 @@ def _save_paper_example_plots(plot_payloads: PlotPayloads, plots_dir: Path) -> l
     # Experiment 5: decode quality with confidence bounds.
     e5 = plot_payloads["experiment5"]
     fig, ax = plt.subplots(1, 1, figsize=(11, 4.5), constrained_layout=True)
-    ax.plot(e5["time_s"], e5["stimulus"], color="tab:blue", lw=1.8, label="True stimulus")
-    ax.plot(e5["time_s"], e5["decoded"], color="tab:orange", lw=1.5, label="Decoded stimulus")
-    ax.fill_between(e5["time_s"], e5["ci_low"], e5["ci_high"], color="tab:orange", alpha=0.2, label="95% CI")
+    ax.plot(e5["time_s"], e5["stimulus"], color="#0072BD", lw=1.8, label="True stimulus")
+    ax.plot(e5["time_s"], e5["decoded"], color="#D95319", lw=1.5, label="Decoded stimulus")
+    ax.fill_between(e5["time_s"], e5["ci_low"], e5["ci_high"], color="#D95319", alpha=0.2, label="95% CI")
     ax.set_title("Experiment 5: Linear Decoding of Simulated Stimulus")
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Stimulus (a.u.)")

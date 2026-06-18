@@ -155,6 +155,11 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ("trial.py", "prev_train = selected_trains[idx - 1]"): "previous-element lookup",
     # Display tick positions stay 1-indexed (math convention) for raster plots.
     ("trial.py", "ax.set_yticks(range(1, len(selected) + 1), [str(item) for item in selected])"): "ytick display positions stay 1-indexed",
+    # nstCollExamples: raster ytick positions/labels use 1..N for human-readable
+    # neuron numbering (Neuron1, Neuron2, ...) matching MATLAB raster convention.
+    ("nstCollExamples.ipynb", "_ax.set_yticks(list(range(1, 21)))"): "raster ytick positions 1..N for MATLAB-style display",
+    ("nstCollExamples.ipynb", '_ax.set_yticklabels([f"Neuron{i}" for i in range(1, 21)], fontstyle="italic")'): "Neuron1..NeuronN labels mirror MATLAB raster",
+    ("nstCollExamples.ipynb", "_ax.set_yticks(list(range(1, len(labels) + 1)))"): "raster ytick positions 1..N for MATLAB-style display",
     # HR4 baseline: legitimate 0-based selectors > 0 (intentional, not stale 1-based).
     # README example uses getNST(1) as a fallback after getNST(0) fails — supports
     # objects with either indexing convention.

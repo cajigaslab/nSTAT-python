@@ -1835,7 +1835,7 @@ class FitResult:
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
         xpos = np.arange(coeffs.size, dtype=float)
         ax.axhline(0.0, color="0.6", linewidth=1.0)
-        ax.plot(xpos, coeffs, "o-", color="tab:blue", linewidth=1.0)
+        ax.plot(xpos, coeffs, "o-", linewidth=1.0)
         ax.set_xticks(xpos, [_format_coeff_label(lbl) for lbl in labels],
                       rotation=45, ha="right")
         ax.set_ylabel("coefficient value")
@@ -1852,7 +1852,7 @@ class FitResult:
         xpos = np.arange(coeffs.size, dtype=float)
         ax.axhline(0.0, color="0.6", linewidth=1.0)
         if coeffs.size:
-            ax.plot(xpos, coeffs, "o-", color="tab:orange", linewidth=1.0)
+            ax.plot(xpos, coeffs, "o-", linewidth=1.0)
             ax.set_xticks(xpos, [_format_coeff_label(lbl) for lbl in labels],
                           rotation=45, ha="right")
         ax.set_ylabel("history coefficient")
@@ -2253,7 +2253,7 @@ class FitSummary:
             ("AIC", "BIC", "log likelihood"),
             strict=False,
         ):
-            ax.bar(x, np.asarray(values, dtype=float), color="tab:blue", alpha=0.8)
+            ax.bar(x, np.asarray(values, dtype=float), color="#0072BD", alpha=0.8)
             ax.set_xticks(x, labels, rotation=30, ha="right")
             ax.set_title(title)
             ax.grid(axis="y", alpha=0.25)

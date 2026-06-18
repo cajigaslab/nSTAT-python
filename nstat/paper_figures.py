@@ -63,7 +63,7 @@ def build_example01_constant_mg_summary(summary: dict[str, float], payload: dict
     ax_raster.set_xlabel("time [s]")
     ax_raster.set_ylabel("mEPSCs")
 
-    ax_acf.scatter(acf_lags_s, acf_values, s=6, color="tab:blue", alpha=0.85, linewidths=0.0)
+    ax_acf.scatter(acf_lags_s, acf_values, s=6, color="#0072BD", alpha=0.85, linewidths=0.0)
     ax_acf.axhline(acf_ci, color="red", linewidth=1.2)
     ax_acf.axhline(-acf_ci, color="red", linewidth=1.2)
     ax_acf.set_title("Autocorrelation Function\nof Rescaled ISIs with 95% CIs")
@@ -80,7 +80,7 @@ def build_example01_constant_mg_summary(summary: dict[str, float], payload: dict
     ax_ks.set_xlabel("Ideal Uniform CDF")
     ax_ks.set_ylabel("Empirical CDF")
 
-    ax_rate.plot(time_s, rate_hz, color="tab:blue", linewidth=1.4)
+    ax_rate.plot(time_s, rate_hz, linewidth=1.4)
     ax_rate.set_xlim(float(time_s[0]), float(time_s[-1]))
     ax_rate.set_title(r"$\lambda_{\mathrm{const}}$ baseline")
     ax_rate.set_xlabel("time [s]")
@@ -124,10 +124,10 @@ def build_example01_piecewise_baseline(summary: dict[str, float], payload: dict[
 
     fig, ax = plt.subplots(1, 1, figsize=(11.0, 4.8))
     ax.plot(time_s, observed_rate_hz, color="black", linewidth=1.0, alpha=0.45, label="Observed rate")
-    ax.plot(time_s, piecewise_rate_hz, color="tab:orange", linewidth=1.6, label="Piecewise baseline")
-    ax.plot(time_s, piecewise_hist_rate_hz, color="tab:red", linewidth=1.4, label="Piecewise + history")
+    ax.plot(time_s, piecewise_rate_hz, color="#D95319", linewidth=1.6, label="Piecewise baseline")
+    ax.plot(time_s, piecewise_hist_rate_hz, color="#A2142F", linewidth=1.4, label="Piecewise + history")
     for edge in segment_edges_s[1:-1]:
-        ax.axvline(float(edge), color="tab:blue", linestyle="--", linewidth=0.9, alpha=0.7)
+        ax.axvline(float(edge), color="#0072BD", linestyle="--", linewidth=0.9, alpha=0.7)
     ax.set_title("Piecewise Baseline Comparison During Mg$^{2+}$ Washout")
     ax.set_xlabel("time [s]")
     ax.set_ylabel("rate [Hz]")
@@ -213,7 +213,7 @@ def build_example02_model_comparison(summary: dict[str, float], payload: dict[st
     ax_bic.set_xlabel("# History Windows, Q")
 
     ax_ks.plot(ks_ideal, ks_const, color="#7e2de1", linewidth=1.5, label=r"$\lambda_{\mathrm{const}}$")
-    ax_ks.plot(ks_ideal, ks_stim, color="tab:green", linewidth=1.3, label=r"$\lambda_{\mathrm{const+stim}}$")
+    ax_ks.plot(ks_ideal, ks_stim, color="#77AC30", linewidth=1.3, label=r"$\lambda_{\mathrm{const+stim}}$")
     ax_ks.plot(ks_ideal, ks_hist, color="#39bced", linewidth=1.3, label=r"$\lambda_{\mathrm{const+stim+hist}}$")
     ax_ks.plot([0.0, 1.0], [0.0, 1.0], color="black", linewidth=1.0, alpha=0.7)
     ax_ks.plot(ks_ideal, np.clip(ks_ideal + ks_ci, 0.0, 1.0), color="red", linewidth=1.0, alpha=0.85)
@@ -251,7 +251,7 @@ def build_example03_simulated_and_real_rasters(summary: dict[str, object], paylo
     fig, axes = plt.subplots(2, 2, figsize=(11.6, 8.0))
     ax_rate, ax_real, ax_sim, ax_est = axes.ravel()
 
-    ax_rate.plot(time_s, true_rate_hz, color="tab:blue", linewidth=1.6)
+    ax_rate.plot(time_s, true_rate_hz, linewidth=1.6)
     ax_rate.set_title("Simulated Conditional Intensity Function (CIF)")
     ax_rate.set_xlabel("time [s]")
     ax_rate.set_ylabel(r"$\lambda(t)$ [spikes/sec]")
@@ -290,7 +290,7 @@ def build_example03_psth_comparison(summary: dict[str, object], payload: dict[st
 
     fig, (ax_rate, ax_raster) = plt.subplots(2, 1, figsize=(10.8, 7.0), sharex=False)
     ax_rate.plot(time_s, true_rate_hz, color="black", linewidth=1.3, label="True CIF")
-    ax_rate.step(psth_bin_centers_s, psth_rate_hz, where="mid", color="tab:blue", linewidth=2.0, label="PSTH")
+    ax_rate.step(psth_bin_centers_s, psth_rate_hz, where="mid", color="#0072BD", linewidth=2.0, label="PSTH")
     ax_rate.set_title("PSTH Comparison")
     ax_rate.set_xlabel("time [s]")
     ax_rate.set_ylabel("rate [Hz]")
@@ -323,7 +323,7 @@ def build_example03_ssglm_simulation_summary(summary: dict[str, object], payload
     axes[0, 0].set_title("Observed Stimulus")
     fig.colorbar(im0, ax=axes[0, 0], fraction=0.046, pad=0.04)
 
-    im1 = axes[0, 1].imshow(xk, aspect="auto", origin="lower", cmap="viridis")
+    im1 = axes[0, 1].imshow(xk, aspect="auto", origin="lower")
     axes[0, 1].set_title("Estimated State")
     fig.colorbar(im1, ax=axes[0, 1], fraction=0.046, pad=0.04)
 
@@ -331,7 +331,7 @@ def build_example03_ssglm_simulation_summary(summary: dict[str, object], payload
     axes[1, 0].set_title("95% CI Width")
     fig.colorbar(im2, ax=axes[1, 0], fraction=0.046, pad=0.04)
 
-    axes[1, 1].plot(np.arange(1, qhat.size + 1), qhat, color="tab:blue", linewidth=1.5, marker="o")
+    axes[1, 1].plot(np.arange(1, qhat.size + 1), qhat, linewidth=1.5, marker="o")
     axes[1, 1].set_title("Qhat by Trial")
     axes[1, 1].set_xlabel("Trial [k]")
     axes[1, 1].set_ylabel("Qhat")
@@ -350,25 +350,25 @@ def build_example03_ssglm_fit_diagnostics(summary: dict[str, object], payload: d
 
     fig, axes = plt.subplots(2, 2, figsize=(11.2, 7.6))
     axes[0, 0].plot(stimulus.mean(axis=0), color="black", linewidth=1.5, label="Observed mean")
-    axes[0, 0].plot(xk.mean(axis=0), color="tab:blue", linewidth=1.5, label="Estimated mean")
+    axes[0, 0].plot(xk.mean(axis=0), color="#0072BD", linewidth=1.5, label="Estimated mean")
     axes[0, 0].set_title("Mean Trial Dynamics")
     axes[0, 0].set_xlabel("time bin")
     axes[0, 0].set_ylabel("state")
     axes[0, 0].legend(loc="upper right")
 
-    axes[0, 1].plot(np.arange(1, qhat_all.shape[0] + 1), qhat_all.mean(axis=1), color="tab:orange", linewidth=1.5)
+    axes[0, 1].plot(np.arange(1, qhat_all.shape[0] + 1), qhat_all.mean(axis=1), linewidth=1.5)
     axes[0, 1].set_title("Mean Qhat Across Fits")
     axes[0, 1].set_xlabel("Trial [k]")
     axes[0, 1].set_ylabel("mean Qhat")
     axes[0, 1].grid(alpha=0.25)
 
-    axes[1, 0].bar(np.arange(1, gammahat_all.size + 1), gammahat_all, color="tab:green", alpha=0.8)
+    axes[1, 0].bar(np.arange(1, gammahat_all.size + 1), gammahat_all, color="#77AC30", alpha=0.8)
     axes[1, 0].set_title("Gammahat Across Fits")
     axes[1, 0].set_xlabel("fit index")
     axes[1, 0].set_ylabel("gammahat")
 
     residual = xk - stimulus
-    axes[1, 1].hist(residual.ravel(), bins=40, color="tab:purple", alpha=0.8)
+    axes[1, 1].hist(residual.ravel(), bins=40, color="#7E2F8E", alpha=0.8)
     axes[1, 1].set_title("State Residual Histogram")
     axes[1, 1].set_xlabel("estimate - stimulus")
     axes[1, 1].set_ylabel("count")
@@ -571,7 +571,7 @@ def build_example05_univariate_setup(summary: dict[str, object], payload: dict[s
     spikes = np.asarray(e5["spikes"], dtype=float)
 
     fig, (ax_stim, ax_raster) = plt.subplots(2, 1, figsize=(11.0, 6.6), sharex=True)
-    ax_stim.plot(time_s, stimulus, color="tab:blue", linewidth=1.7)
+    ax_stim.plot(time_s, stimulus, linewidth=1.7)
     ax_stim.set_title("Univariate Decoding Setup")
     ax_stim.set_ylabel("stimulus")
     ax_stim.grid(alpha=0.25)
@@ -599,8 +599,8 @@ def build_example05_univariate_decoding(summary: dict[str, object], payload: dic
 
     fig, ax = plt.subplots(1, 1, figsize=(11.0, 4.6))
     ax.plot(time_s, stimulus, color="black", linewidth=1.7, label="Actual")
-    ax.plot(time_s, decoded, color="tab:blue", linewidth=1.5, label="Decoded")
-    ax.fill_between(time_s, ci_low, ci_high, color="tab:blue", alpha=0.18, label="95% CI")
+    ax.plot(time_s, decoded, color="#0072BD", linewidth=1.5, label="Decoded")
+    ax.fill_between(time_s, ci_low, ci_high, color="#0072BD", alpha=0.18, label="95% CI")
     ax.set_title("Univariate Stimulus Decoding")
     ax.set_xlabel("time [s]")
     ax.set_ylabel("stimulus")
@@ -688,8 +688,8 @@ def build_example05_hybrid_setup(summary: dict[str, object], payload: dict[str, 
     axes[0].set_title("Hybrid Setup: Hidden State")
     axes[0].set_ylabel("state")
 
-    axes[1].plot(time_s, x_pos, color="tab:blue", linewidth=1.4, label="x")
-    axes[1].plot(time_s, y_pos, color="tab:green", linewidth=1.4, label="y")
+    axes[1].plot(time_s, x_pos, color="#0072BD", linewidth=1.4, label="x")
+    axes[1].plot(time_s, y_pos, color="#77AC30", linewidth=1.4, label="y")
     axes[1].set_title("Reach Position")
     axes[1].set_ylabel("position")
     axes[1].legend(loc="upper right", fontsize=8)
@@ -723,7 +723,7 @@ def build_example05_hybrid_summary(summary: dict[str, object], payload: dict[str
     axes[0, 0].set_title("Estimated vs. Actual State")
     axes[0, 0].legend(loc="upper right", fontsize=8)
 
-    axes[1, 0].plot(time_s, state_prob_1, color="tab:blue", linewidth=1.4)
+    axes[1, 0].plot(time_s, state_prob_1, linewidth=1.4)
     axes[1, 0].set_title("Probability of State 1")
     axes[1, 0].set_xlabel("time [s]")
 
@@ -735,7 +735,7 @@ def build_example05_hybrid_summary(summary: dict[str, object], payload: dict[str
     axes[0, 1].legend(loc="lower left", fontsize=8)
 
     axes[1, 1].plot(time_s, x_pos, color="black", linewidth=1.4, label="Actual x")
-    axes[1, 1].plot(time_s, decoded_x, color="tab:blue", linewidth=1.4, label="Decoded x")
+    axes[1, 1].plot(time_s, decoded_x, color="#0072BD", linewidth=1.4, label="Decoded x")
     axes[1, 1].plot(time_s, y_pos, color="0.45", linewidth=1.2, label="Actual y")
     axes[1, 1].plot(time_s, decoded_y, color="limegreen", linewidth=1.2, label="Decoded y")
     axes[1, 1].set_title("Decoded State Components")
