@@ -17,6 +17,7 @@ entries:
     same spike locations).  Baseline 0.498 measured 2026-06-11.
 
     '
+  ssim_baseline_v3: 0.497
 - topic: AnalysisExamples
   matlab_png: helpfiles/AnalysisExamples_04.png
   python_png: docs/notebook_galleries/AnalysisExamples/fig_004.png
@@ -24,6 +25,7 @@ entries:
   ssim_threshold: 0.7
   stochastic: false
   notes: After Phase 2 fix, Quadratic uses centered features
+  ssim_baseline_v3: 0.756
 - topic: PPSimExample
   matlab_png: helpfiles/PPSimExample_04.png
   python_png: docs/notebook_galleries/PPSimExample/fig_006.png
@@ -31,7 +33,7 @@ entries:
   ssim_threshold: 0.5
   stochastic: true
   skip_ci: true
-  skip_reason: 'V2 iter 9 removed surplus cells; fig_006 no longer emitted. Re-baseline pending after MATLAB re-extraction.'
+  skip_reason: V2 iter 9 removed surplus cells; fig_006 no longer emitted. Re-baseline pending after MATLAB re-extraction.
   notes: Stochastic spike draws differ between numpy and MATLAB random streams
 - topic: NetworkTutorial
   matlab_png: helpfiles/NetworkTutorial_05.png
@@ -40,7 +42,7 @@ entries:
   ssim_threshold: 0.7
   stochastic: false
   skip_ci: true
-  skip_reason: 'V2 iter 9 removed surplus cells; fig_013 no longer emitted. Re-baseline pending after MATLAB re-extraction.'
+  skip_reason: V2 iter 9 removed surplus cells; fig_013 no longer emitted. Re-baseline pending after MATLAB re-extraction.
   notes: 'After Phase 2 fix (maskAwayAllExcept reset + label parser +
 
     setNeighbors), the estimated panel matches the actual panel''s
@@ -55,6 +57,7 @@ entries:
   ssim_threshold: 0.5
   stochastic: true
   notes: Stochastic spike draws differ; tracks the same sinusoid
+  ssim_baseline_v3: 0.598
 - topic: CovariateExamples
   matlab_png: helpfiles/CovariateExamples_01.png
   python_png: docs/notebook_galleries/CovariateExamples/fig_001.png
@@ -62,12 +65,14 @@ entries:
   ssim_threshold: 0.55
   stochastic: false
   notes: Baseline 0.631 measured 2026-06-11; layout match good.
+  ssim_baseline_v3: 0.642
 - topic: TrialExamples
   matlab_png: helpfiles/TrialExamples_01.png
   python_png: docs/notebook_galleries/TrialExamples/fig_001.png
   figure_description: "Trial plot \u2014 spikes + covariates aligned"
   ssim_threshold: 0.7
   stochastic: false
+  ssim_baseline_v3: 0.816
 - topic: mEPSCAnalysis
   matlab_png: helpfiles/mEPSCAnalysis_01.png
   python_png: docs/notebook_galleries/mEPSCAnalysis/fig_001.png
@@ -76,6 +81,7 @@ entries:
   stochastic: true
   notes: "After Phase 2 sampleRate fix (200\u21921000 Hz), the design-matrix\ndimension matches MATLAB so the rate-axis ranges\
     \ agree.\n"
+  ssim_baseline_v3: 0.564
 - topic: mEPSCAnalysis
   matlab_png: helpfiles/mEPSCAnalysis_05.png
   python_png: docs/notebook_galleries/mEPSCAnalysis/fig_004.png
@@ -97,6 +103,7 @@ entries:
   stochastic: true
   notes: "After Phase 2 fix (8 hand-typed \u2192 100 seeded random spikes\nmatching ``sort(rand(1,100))``), figure scope matches\
     \ MATLAB.\nStochastic seed differs between numpy and MATLAB streams.\n"
+  ssim_baseline_v3: 0.582
 - topic: HippocampalPlaceCellExample
   matlab_png: helpfiles/HippocampalPlaceCellExample_10.png
   python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_011.png
@@ -140,6 +147,7 @@ entries:
     Phase 4 pedagogical fix.
 
     '
+  ssim_baseline_v3: 0.445
 - topic: nSpikeTrainExamples
   matlab_png: helpfiles/nSpikeTrainExamples_01.png
   python_png: docs/notebook_galleries/nSpikeTrainExamples/fig_001.png
@@ -155,6 +163,7 @@ entries:
     false alarms but a future Phase 4 fix should target 0.50+.
 
     '
+  ssim_baseline_v3: 0.319
 - topic: nstCollExamples
   matlab_png: helpfiles/nstCollExamples_01.png
   python_png: docs/notebook_galleries/nstCollExamples/fig_001.png
@@ -163,6 +172,7 @@ entries:
   stochastic: false
   notes: "Baseline 0.214 measured 2026-06-11; similar to\nnSpikeTrainExamples \u2014 Python collection raster doesn't reproduce\n\
     MATLAB's published multi-panel layout.  Phase 4 candidate.\n"
+  ssim_baseline_v3: 0.268
 - topic: AnalysisExamples2
   matlab_png: helpfiles/AnalysisExamples2_01.png
   python_png: docs/notebook_galleries/AnalysisExamples2/fig_001.png
@@ -171,6 +181,7 @@ entries:
   stochastic: false
   notes: "Baseline measured 0.493 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
     \ so the gate fires on substantial regressions but not on minor rendering variance."
+  ssim_baseline_v3: 0.493
 - topic: CovCollExamples
   matlab_png: helpfiles/CovCollExamples_01.png
   python_png: docs/notebook_galleries/CovCollExamples/fig_001.png
@@ -179,6 +190,7 @@ entries:
   stochastic: false
   notes: "Baseline measured 0.545 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
     \ so the gate fires on substantial regressions but not on minor rendering variance."
+  ssim_baseline_v3: 0.545
 - topic: DecodingExampleWithHist
   matlab_png: helpfiles/DecodingExampleWithHist_01.png
   python_png: docs/notebook_galleries/DecodingExampleWithHist/fig_001.png
@@ -187,6 +199,7 @@ entries:
   stochastic: false
   notes: "Baseline measured 0.549 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
     \ so the gate fires on substantial regressions but not on minor rendering variance."
+  ssim_baseline_v3: 0.549
 - topic: EventsExamples
   matlab_png: helpfiles/EventsExamples_01.png
   python_png: docs/notebook_galleries/EventsExamples/fig_001.png
@@ -195,6 +208,7 @@ entries:
   stochastic: false
   notes: "Baseline measured 0.827 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
     \ so the gate fires on substantial regressions but not on minor rendering variance."
+  ssim_baseline_v3: 0.827
 - topic: ExplicitStimulusWhiskerData
   matlab_png: helpfiles/ExplicitStimulusWhiskerData_01.png
   python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_001.png
@@ -203,6 +217,7 @@ entries:
   stochastic: false
   notes: "Baseline measured 0.504 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
     \ so the gate fires on substantial regressions but not on minor rendering variance."
+  ssim_baseline_v3: 0.504
 - topic: HybridFilterExample
   matlab_png: helpfiles/HybridFilterExample_01.png
   python_png: docs/notebook_galleries/HybridFilterExample/fig_001.png
@@ -211,6 +226,7 @@ entries:
   stochastic: false
   notes: "Baseline measured 0.663 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
     \ so the gate fires on substantial regressions but not on minor rendering variance."
+  ssim_baseline_v3: 0.663
 - topic: PSTHEstimation
   matlab_png: helpfiles/PSTHEstimation_01.png
   python_png: docs/notebook_galleries/PSTHEstimation/fig_001.png
@@ -219,6 +235,7 @@ entries:
   stochastic: false
   notes: "Baseline measured 0.348 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
     \ so the gate fires on substantial regressions but not on minor rendering variance."
+  ssim_baseline_v3: 0.371
 - topic: StimulusDecode2D
   matlab_png: helpfiles/StimulusDecode2D_01.png
   python_png: docs/notebook_galleries/StimulusDecode2D/fig_001.png
@@ -227,6 +244,7 @@ entries:
   stochastic: false
   notes: "Baseline measured 0.859 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
     \ so the gate fires on substantial regressions but not on minor rendering variance."
+  ssim_baseline_v3: 0.859
 - topic: ValidationDataSet
   matlab_png: helpfiles/ValidationDataSet_01.png
   python_png: docs/notebook_galleries/ValidationDataSet/fig_001.png
@@ -235,6 +253,7 @@ entries:
   stochastic: false
   notes: "Baseline measured 0.689 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
     \ so the gate fires on substantial regressions but not on minor rendering variance."
+  ssim_baseline_v3: 0.689
 - topic: nSTATPaperExamples
   matlab_png: helpfiles/nSTATPaperExamples_01.png
   python_png: docs/notebook_galleries/nSTATPaperExamples/fig_001.png
@@ -243,3 +262,977 @@ entries:
   stochastic: false
   notes: "Baseline measured 0.649 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
     \ so the gate fires on substantial regressions but not on minor rendering variance."
+  ssim_baseline_v3: 0.649
+- topic: AnalysisExamples
+  matlab_png: helpfiles/AnalysisExamples_02.png
+  python_png: docs/notebook_galleries/AnalysisExamples/fig_002.png
+  figure_description: "AnalysisExamples AnalysisExamples_02 \u2194 fig_002"
+  ssim_threshold: 0.77
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.902; threshold ~0.85\xD7baseline."
+- topic: AnalysisExamples
+  matlab_png: helpfiles/AnalysisExamples_03.png
+  python_png: docs/notebook_galleries/AnalysisExamples/fig_003.png
+  figure_description: "AnalysisExamples AnalysisExamples_03 \u2194 fig_003"
+  ssim_threshold: 0.62
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.727; threshold ~0.85\xD7baseline."
+- topic: AnalysisExamples2
+  matlab_png: helpfiles/AnalysisExamples2_02.png
+  python_png: docs/notebook_galleries/AnalysisExamples2/fig_002.png
+  figure_description: "AnalysisExamples2 AnalysisExamples2_02 \u2194 fig_002"
+  ssim_threshold: 0.45
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.534; threshold ~0.85\xD7baseline."
+- topic: AnalysisExamples2
+  matlab_png: helpfiles/AnalysisExamples2_03.png
+  python_png: docs/notebook_galleries/AnalysisExamples2/fig_003.png
+  figure_description: "AnalysisExamples2 AnalysisExamples2_03 \u2194 fig_003"
+  ssim_threshold: 0.49
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.575; threshold ~0.85\xD7baseline."
+- topic: AnalysisExamples2
+  matlab_png: helpfiles/AnalysisExamples2_04.png
+  python_png: docs/notebook_galleries/AnalysisExamples2/fig_004.png
+  figure_description: "AnalysisExamples2 AnalysisExamples2_04 \u2194 fig_004"
+  ssim_threshold: 0.39
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.460; threshold ~0.85\xD7baseline."
+- topic: CovCollExamples
+  matlab_png: helpfiles/CovCollExamples_02.png
+  python_png: docs/notebook_galleries/CovCollExamples/fig_002.png
+  figure_description: "CovCollExamples CovCollExamples_02 \u2194 fig_002"
+  ssim_threshold: 0.6
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.707; threshold ~0.85\xD7baseline."
+- topic: CovariateExamples
+  matlab_png: helpfiles/CovariateExamples_02.png
+  python_png: docs/notebook_galleries/CovariateExamples/fig_002.png
+  figure_description: "CovariateExamples CovariateExamples_02 \u2194 fig_002"
+  ssim_threshold: 0.36
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.428; threshold ~0.85\xD7baseline."
+- topic: DecodingExample
+  matlab_png: helpfiles/DecodingExample_01.png
+  python_png: docs/notebook_galleries/DecodingExample/fig_001.png
+  figure_description: "DecodingExample DecodingExample_01 \u2194 fig_001"
+  ssim_threshold: 0.44
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.523; threshold ~0.85\xD7baseline."
+- topic: DecodingExample
+  matlab_png: helpfiles/DecodingExample_02.png
+  python_png: docs/notebook_galleries/DecodingExample/fig_002.png
+  figure_description: "DecodingExample DecodingExample_02 \u2194 fig_002"
+  ssim_threshold: 0.38
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.448; threshold ~0.85\xD7baseline."
+- topic: DecodingExample
+  matlab_png: helpfiles/DecodingExample_03.png
+  python_png: docs/notebook_galleries/DecodingExample/fig_003.png
+  figure_description: "DecodingExample DecodingExample_03 \u2194 fig_003"
+  ssim_threshold: 0.7
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.826; threshold ~0.85\xD7baseline."
+- topic: DecodingExample
+  matlab_png: helpfiles/DecodingExample_04.png
+  python_png: docs/notebook_galleries/DecodingExample/fig_004.png
+  figure_description: "DecodingExample DecodingExample_04 \u2194 fig_004"
+  ssim_threshold: 0.45
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.531; threshold ~0.85\xD7baseline."
+- topic: DecodingExample
+  matlab_png: helpfiles/DecodingExample_06.png
+  python_png: docs/notebook_galleries/DecodingExample/fig_006.png
+  figure_description: "DecodingExample DecodingExample_06 \u2194 fig_006"
+  ssim_threshold: 0.44
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.513; threshold ~0.85\xD7baseline."
+- topic: DecodingExample
+  matlab_png: helpfiles/DecodingExample_07.png
+  python_png: docs/notebook_galleries/DecodingExample/fig_007.png
+  figure_description: "DecodingExample DecodingExample_07 \u2194 fig_007"
+  ssim_threshold: 0.5
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.586; threshold ~0.85\xD7baseline."
+- topic: DecodingExampleWithHist
+  matlab_png: helpfiles/DecodingExampleWithHist_02.png
+  python_png: docs/notebook_galleries/DecodingExampleWithHist/fig_002.png
+  figure_description: "DecodingExampleWithHist DecodingExampleWithHist_02 \u2194 fig_002"
+  ssim_threshold: 0.5
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.585; threshold ~0.85\xD7baseline."
+- topic: EventsExamples
+  matlab_png: helpfiles/EventsExamples_02.png
+  python_png: docs/notebook_galleries/EventsExamples/fig_002.png
+  figure_description: "EventsExamples EventsExamples_02 \u2194 fig_002"
+  ssim_threshold: 0.7
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.828; threshold ~0.85\xD7baseline."
+- topic: EventsExamples
+  matlab_png: helpfiles/EventsExamples_03.png
+  python_png: docs/notebook_galleries/EventsExamples/fig_003.png
+  figure_description: "EventsExamples EventsExamples_03 \u2194 fig_003"
+  ssim_threshold: 0.71
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.831; threshold ~0.85\xD7baseline."
+- topic: EventsExamples
+  matlab_png: helpfiles/EventsExamples_04.png
+  python_png: docs/notebook_galleries/EventsExamples/fig_004.png
+  figure_description: "EventsExamples EventsExamples_04 \u2194 fig_004"
+  ssim_threshold: 0.71
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.833; threshold ~0.85\xD7baseline."
+- topic: ExplicitStimulusWhiskerData
+  matlab_png: helpfiles/ExplicitStimulusWhiskerData_02.png
+  python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_002.png
+  figure_description: "ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_02 \u2194 fig_002"
+  ssim_threshold: 0.21
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.248; threshold ~0.85\xD7baseline."
+- topic: ExplicitStimulusWhiskerData
+  matlab_png: helpfiles/ExplicitStimulusWhiskerData_03.png
+  python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_003.png
+  figure_description: "ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_03 \u2194 fig_003"
+  ssim_threshold: 0.59
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.698; threshold ~0.85\xD7baseline."
+- topic: ExplicitStimulusWhiskerData
+  matlab_png: helpfiles/ExplicitStimulusWhiskerData_04.png
+  python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_004.png
+  figure_description: "ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_04 \u2194 fig_004"
+  ssim_threshold: 0.51
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.604; threshold ~0.85\xD7baseline."
+- topic: ExplicitStimulusWhiskerData
+  matlab_png: helpfiles/ExplicitStimulusWhiskerData_05.png
+  python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_005.png
+  figure_description: "ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_05 \u2194 fig_005"
+  ssim_threshold: 0.52
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.614; threshold ~0.85\xD7baseline."
+- topic: ExplicitStimulusWhiskerData
+  matlab_png: helpfiles/ExplicitStimulusWhiskerData_06.png
+  python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_006.png
+  figure_description: "ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_06 \u2194 fig_006"
+  ssim_threshold: 0.58
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.680; threshold ~0.85\xD7baseline."
+- topic: ExplicitStimulusWhiskerData
+  matlab_png: helpfiles/ExplicitStimulusWhiskerData_07.png
+  python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_007.png
+  figure_description: "ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_07 \u2194 fig_007"
+  ssim_threshold: 0.64
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.757; threshold ~0.85\xD7baseline."
+- topic: ExplicitStimulusWhiskerData
+  matlab_png: helpfiles/ExplicitStimulusWhiskerData_08.png
+  python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_008.png
+  figure_description: "ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_08 \u2194 fig_008"
+  ssim_threshold: 0.69
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.808; threshold ~0.85\xD7baseline."
+- topic: ExplicitStimulusWhiskerData
+  matlab_png: helpfiles/ExplicitStimulusWhiskerData_09.png
+  python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_009.png
+  figure_description: "ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_09 \u2194 fig_009"
+  ssim_threshold: 0.52
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.614; threshold ~0.85\xD7baseline."
+- topic: ExplicitStimulusWhiskerData
+  matlab_png: helpfiles/ExplicitStimulusWhiskerData_10.png
+  python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_010.png
+  figure_description: "ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_10 \u2194 fig_010"
+  ssim_threshold: 0.47
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.553; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_01.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_001.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_01 \u2194 fig_001"
+  ssim_threshold: 0.39
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.457; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_02.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_002.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_02 \u2194 fig_002"
+  ssim_threshold: 0.62
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.729; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_03.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_003.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_03 \u2194 fig_003"
+  ssim_threshold: 0.63
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.739; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_04.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_004.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_04 \u2194 fig_004"
+  ssim_threshold: 0.57
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.671; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_05.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_005.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_05 \u2194 fig_005"
+  ssim_threshold: 0.55
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.647; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_06.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_006.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_06 \u2194 fig_006"
+  ssim_threshold: 0.37
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.441; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_07.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_007.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_07 \u2194 fig_007"
+  ssim_threshold: 0.39
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.459; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_08.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_008.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_08 \u2194 fig_008"
+  ssim_threshold: 0.26
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.311; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_09.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_009.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_09 \u2194 fig_009"
+  ssim_threshold: 0.36
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.429; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_10.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_010.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_10 \u2194 fig_010"
+  ssim_threshold: 0.35
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.407; threshold ~0.85\xD7baseline."
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_11.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_011.png
+  figure_description: "HippocampalPlaceCellExample HippocampalPlaceCellExample_11 \u2194 fig_011"
+  ssim_threshold: 0.38
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.451; threshold ~0.85\xD7baseline."
+- topic: HistoryExamples
+  matlab_png: helpfiles/HistoryExamples_02.png
+  python_png: docs/notebook_galleries/HistoryExamples/fig_002.png
+  figure_description: "HistoryExamples HistoryExamples_02 \u2194 fig_002"
+  ssim_threshold: 0.3
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.359; threshold ~0.85\xD7baseline."
+- topic: HistoryExamples
+  matlab_png: helpfiles/HistoryExamples_03.png
+  python_png: docs/notebook_galleries/HistoryExamples/fig_003.png
+  figure_description: "HistoryExamples HistoryExamples_03 \u2194 fig_003"
+  ssim_threshold: 0.44
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.514; threshold ~0.85\xD7baseline."
+- topic: HistoryExamples
+  matlab_png: helpfiles/HistoryExamples_04.png
+  python_png: docs/notebook_galleries/HistoryExamples/fig_004.png
+  figure_description: "HistoryExamples HistoryExamples_04 \u2194 fig_004"
+  ssim_threshold: 0.64
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.752; threshold ~0.85\xD7baseline."
+- topic: HistoryExamples
+  matlab_png: helpfiles/HistoryExamples_05.png
+  python_png: docs/notebook_galleries/HistoryExamples/fig_005.png
+  figure_description: "HistoryExamples HistoryExamples_05 \u2194 fig_005"
+  ssim_threshold: 0.65
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.762; threshold ~0.85\xD7baseline."
+- topic: HistoryExamples
+  matlab_png: helpfiles/HistoryExamples_06.png
+  python_png: docs/notebook_galleries/HistoryExamples/fig_006.png
+  figure_description: "HistoryExamples HistoryExamples_06 \u2194 fig_006"
+  ssim_threshold: 0.64
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.750; threshold ~0.85\xD7baseline."
+- topic: HistoryExamples
+  matlab_png: helpfiles/HistoryExamples_07.png
+  python_png: docs/notebook_galleries/HistoryExamples/fig_007.png
+  figure_description: "HistoryExamples HistoryExamples_07 \u2194 fig_007"
+  ssim_threshold: 0.51
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.600; threshold ~0.85\xD7baseline."
+- topic: HybridFilterExample
+  matlab_png: helpfiles/HybridFilterExample_02.png
+  python_png: docs/notebook_galleries/HybridFilterExample/fig_002.png
+  figure_description: "HybridFilterExample HybridFilterExample_02 \u2194 fig_002"
+  ssim_threshold: 0.51
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.603; threshold ~0.85\xD7baseline."
+- topic: NetworkTutorial
+  matlab_png: helpfiles/NetworkTutorial_01.png
+  python_png: docs/notebook_galleries/NetworkTutorial/fig_001.png
+  figure_description: "NetworkTutorial NetworkTutorial_01 \u2194 fig_001"
+  ssim_threshold: 0.52
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.615; threshold ~0.85\xD7baseline."
+- topic: NetworkTutorial
+  matlab_png: helpfiles/NetworkTutorial_02.png
+  python_png: docs/notebook_galleries/NetworkTutorial/fig_002.png
+  figure_description: "NetworkTutorial NetworkTutorial_02 \u2194 fig_002"
+  ssim_threshold: 0.56
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.657; threshold ~0.85\xD7baseline."
+- topic: NetworkTutorial
+  matlab_png: helpfiles/NetworkTutorial_03.png
+  python_png: docs/notebook_galleries/NetworkTutorial/fig_003.png
+  figure_description: "NetworkTutorial NetworkTutorial_03 \u2194 fig_003"
+  ssim_threshold: 0.61
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.717; threshold ~0.85\xD7baseline."
+- topic: NetworkTutorial
+  matlab_png: helpfiles/NetworkTutorial_04.png
+  python_png: docs/notebook_galleries/NetworkTutorial/fig_004.png
+  figure_description: "NetworkTutorial NetworkTutorial_04 \u2194 fig_004"
+  ssim_threshold: 0.63
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.741; threshold ~0.85\xD7baseline."
+- topic: NetworkTutorial
+  matlab_png: helpfiles/NetworkTutorial_05.png
+  python_png: docs/notebook_galleries/NetworkTutorial/fig_005.png
+  figure_description: "NetworkTutorial NetworkTutorial_05 \u2194 fig_005"
+  ssim_threshold: 0.42
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.490; threshold ~0.85\xD7baseline."
+- topic: PPSimExample
+  matlab_png: helpfiles/PPSimExample_01.png
+  python_png: docs/notebook_galleries/PPSimExample/fig_001.png
+  figure_description: "PPSimExample PPSimExample_01 \u2194 fig_001"
+  ssim_threshold: 0.38
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.446; threshold ~0.85\xD7baseline."
+- topic: PPSimExample
+  matlab_png: helpfiles/PPSimExample_02.png
+  python_png: docs/notebook_galleries/PPSimExample/fig_002.png
+  figure_description: "PPSimExample PPSimExample_02 \u2194 fig_002"
+  ssim_threshold: 0.34
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.399; threshold ~0.85\xD7baseline."
+- topic: PPSimExample
+  matlab_png: helpfiles/PPSimExample_03.png
+  python_png: docs/notebook_galleries/PPSimExample/fig_003.png
+  figure_description: "PPSimExample PPSimExample_03 \u2194 fig_003"
+  ssim_threshold: 0.54
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.639; threshold ~0.85\xD7baseline."
+- topic: PPSimExample
+  matlab_png: helpfiles/PPSimExample_04.png
+  python_png: docs/notebook_galleries/PPSimExample/fig_004.png
+  figure_description: "PPSimExample PPSimExample_04 \u2194 fig_004"
+  ssim_threshold: 0.51
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.594; threshold ~0.85\xD7baseline."
+- topic: PPThinning
+  matlab_png: helpfiles/PPThinning_01.png
+  python_png: docs/notebook_galleries/PPThinning/fig_001.png
+  figure_description: "PPThinning PPThinning_01 \u2194 fig_001"
+  ssim_threshold: 0.45
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.532; threshold ~0.85\xD7baseline."
+- topic: PPThinning
+  matlab_png: helpfiles/PPThinning_02.png
+  python_png: docs/notebook_galleries/PPThinning/fig_002.png
+  figure_description: "PPThinning PPThinning_02 \u2194 fig_002"
+  ssim_threshold: 0.26
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.304; threshold ~0.85\xD7baseline."
+- topic: PPThinning
+  matlab_png: helpfiles/PPThinning_03.png
+  python_png: docs/notebook_galleries/PPThinning/fig_003.png
+  figure_description: "PPThinning PPThinning_03 \u2194 fig_003"
+  ssim_threshold: 0.26
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.309; threshold ~0.85\xD7baseline."
+- topic: PPThinning
+  matlab_png: helpfiles/PPThinning_04.png
+  python_png: docs/notebook_galleries/PPThinning/fig_004.png
+  figure_description: "PPThinning PPThinning_04 \u2194 fig_004"
+  ssim_threshold: 0.26
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.303; threshold ~0.85\xD7baseline."
+- topic: PSTHEstimation
+  matlab_png: helpfiles/PSTHEstimation_02.png
+  python_png: docs/notebook_galleries/PSTHEstimation/fig_002.png
+  figure_description: "PSTHEstimation PSTHEstimation_02 \u2194 fig_002"
+  ssim_threshold: 0.65
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.766; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_02.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_002.png
+  figure_description: "SignalObjExamples SignalObjExamples_02 \u2194 fig_002"
+  ssim_threshold: 0.33
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.393; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_03.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_003.png
+  figure_description: "SignalObjExamples SignalObjExamples_03 \u2194 fig_003"
+  ssim_threshold: 0.4
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.465; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_04.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_004.png
+  figure_description: "SignalObjExamples SignalObjExamples_04 \u2194 fig_004"
+  ssim_threshold: 0.35
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.415; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_05.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_005.png
+  figure_description: "SignalObjExamples SignalObjExamples_05 \u2194 fig_005"
+  ssim_threshold: 0.38
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.448; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_06.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_006.png
+  figure_description: "SignalObjExamples SignalObjExamples_06 \u2194 fig_006"
+  ssim_threshold: 0.37
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.431; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_07.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_007.png
+  figure_description: "SignalObjExamples SignalObjExamples_07 \u2194 fig_007"
+  ssim_threshold: 0.34
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.406; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_08.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_008.png
+  figure_description: "SignalObjExamples SignalObjExamples_08 \u2194 fig_008"
+  ssim_threshold: 0.36
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.424; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_09.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_009.png
+  figure_description: "SignalObjExamples SignalObjExamples_09 \u2194 fig_009"
+  ssim_threshold: 0.44
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.519; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_10.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_010.png
+  figure_description: "SignalObjExamples SignalObjExamples_10 \u2194 fig_010"
+  ssim_threshold: 0.34
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.396; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_11.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_011.png
+  figure_description: "SignalObjExamples SignalObjExamples_11 \u2194 fig_011"
+  ssim_threshold: 0.39
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.457; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_12.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_012.png
+  figure_description: "SignalObjExamples SignalObjExamples_12 \u2194 fig_012"
+  ssim_threshold: 0.34
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.396; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_13.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_013.png
+  figure_description: "SignalObjExamples SignalObjExamples_13 \u2194 fig_013"
+  ssim_threshold: 0.43
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.512; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_14.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_014.png
+  figure_description: "SignalObjExamples SignalObjExamples_14 \u2194 fig_014"
+  ssim_threshold: 0.59
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.694; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_15.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_015.png
+  figure_description: "SignalObjExamples SignalObjExamples_15 \u2194 fig_015"
+  ssim_threshold: 0.63
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.739; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_16.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_016.png
+  figure_description: "SignalObjExamples SignalObjExamples_16 \u2194 fig_016"
+  ssim_threshold: 0.54
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.633; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_17.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_017.png
+  figure_description: "SignalObjExamples SignalObjExamples_17 \u2194 fig_017"
+  ssim_threshold: 0.58
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.679; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_18.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_018.png
+  figure_description: "SignalObjExamples SignalObjExamples_18 \u2194 fig_018"
+  ssim_threshold: 0.53
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.621; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_19.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_019.png
+  figure_description: "SignalObjExamples SignalObjExamples_19 \u2194 fig_019"
+  ssim_threshold: 0.52
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.609; threshold ~0.85\xD7baseline."
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_20.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_020.png
+  figure_description: "SignalObjExamples SignalObjExamples_20 \u2194 fig_020"
+  ssim_threshold: 0.55
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.648; threshold ~0.85\xD7baseline."
+- topic: StimulusDecode2D
+  matlab_png: helpfiles/StimulusDecode2D_02.png
+  python_png: docs/notebook_galleries/StimulusDecode2D/fig_002.png
+  figure_description: "StimulusDecode2D StimulusDecode2D_02 \u2194 fig_002"
+  ssim_threshold: 0.22
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.258; threshold ~0.85\xD7baseline."
+- topic: StimulusDecode2D
+  matlab_png: helpfiles/StimulusDecode2D_03.png
+  python_png: docs/notebook_galleries/StimulusDecode2D/fig_003.png
+  figure_description: "StimulusDecode2D StimulusDecode2D_03 \u2194 fig_003"
+  ssim_threshold: 0.6
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.708; threshold ~0.85\xD7baseline."
+- topic: StimulusDecode2D
+  matlab_png: helpfiles/StimulusDecode2D_04.png
+  python_png: docs/notebook_galleries/StimulusDecode2D/fig_004.png
+  figure_description: "StimulusDecode2D StimulusDecode2D_04 \u2194 fig_004"
+  ssim_threshold: 0.71
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.833; threshold ~0.85\xD7baseline."
+- topic: StimulusDecode2D
+  matlab_png: helpfiles/StimulusDecode2D_05.png
+  python_png: docs/notebook_galleries/StimulusDecode2D/fig_005.png
+  figure_description: "StimulusDecode2D StimulusDecode2D_05 \u2194 fig_005"
+  ssim_threshold: 0.59
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.696; threshold ~0.85\xD7baseline."
+- topic: StimulusDecode2D
+  matlab_png: helpfiles/StimulusDecode2D_06.png
+  python_png: docs/notebook_galleries/StimulusDecode2D/fig_006.png
+  figure_description: "StimulusDecode2D StimulusDecode2D_06 \u2194 fig_006"
+  ssim_threshold: 0.7
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.822; threshold ~0.85\xD7baseline."
+- topic: TrialExamples
+  matlab_png: helpfiles/TrialExamples_02.png
+  python_png: docs/notebook_galleries/TrialExamples/fig_002.png
+  figure_description: "TrialExamples TrialExamples_02 \u2194 fig_002"
+  ssim_threshold: 0.6
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.701; threshold ~0.85\xD7baseline."
+- topic: TrialExamples
+  matlab_png: helpfiles/TrialExamples_03.png
+  python_png: docs/notebook_galleries/TrialExamples/fig_003.png
+  figure_description: "TrialExamples TrialExamples_03 \u2194 fig_003"
+  ssim_threshold: 0.73
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.859; threshold ~0.85\xD7baseline."
+- topic: TrialExamples
+  matlab_png: helpfiles/TrialExamples_04.png
+  python_png: docs/notebook_galleries/TrialExamples/fig_004.png
+  figure_description: "TrialExamples TrialExamples_04 \u2194 fig_004"
+  ssim_threshold: 0.27
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.316; threshold ~0.85\xD7baseline."
+- topic: TrialExamples
+  matlab_png: helpfiles/TrialExamples_05.png
+  python_png: docs/notebook_galleries/TrialExamples/fig_005.png
+  figure_description: "TrialExamples TrialExamples_05 \u2194 fig_005"
+  ssim_threshold: 0.36
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.429; threshold ~0.85\xD7baseline."
+- topic: TrialExamples
+  matlab_png: helpfiles/TrialExamples_06.png
+  python_png: docs/notebook_galleries/TrialExamples/fig_006.png
+  figure_description: "TrialExamples TrialExamples_06 \u2194 fig_006"
+  ssim_threshold: 0.39
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.455; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_02.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_002.png
+  figure_description: "ValidationDataSet ValidationDataSet_02 \u2194 fig_002"
+  ssim_threshold: 0.49
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.572; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_03.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_003.png
+  figure_description: "ValidationDataSet ValidationDataSet_03 \u2194 fig_003"
+  ssim_threshold: 0.47
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.554; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_04.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_004.png
+  figure_description: "ValidationDataSet ValidationDataSet_04 \u2194 fig_004"
+  ssim_threshold: 0.51
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.597; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_05.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_005.png
+  figure_description: "ValidationDataSet ValidationDataSet_05 \u2194 fig_005"
+  ssim_threshold: 0.55
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.649; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_06.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_006.png
+  figure_description: "ValidationDataSet ValidationDataSet_06 \u2194 fig_006"
+  ssim_threshold: 0.31
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.365; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_07.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_007.png
+  figure_description: "ValidationDataSet ValidationDataSet_07 \u2194 fig_007"
+  ssim_threshold: 0.68
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.801; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_08.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_008.png
+  figure_description: "ValidationDataSet ValidationDataSet_08 \u2194 fig_008"
+  ssim_threshold: 0.52
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.608; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_09.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_009.png
+  figure_description: "ValidationDataSet ValidationDataSet_09 \u2194 fig_009"
+  ssim_threshold: 0.5
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.584; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_10.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_010.png
+  figure_description: "ValidationDataSet ValidationDataSet_10 \u2194 fig_010"
+  ssim_threshold: 0.65
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.764; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_11.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_011.png
+  figure_description: "ValidationDataSet ValidationDataSet_11 \u2194 fig_011"
+  ssim_threshold: 0.53
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.620; threshold ~0.85\xD7baseline."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_12.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_012.png
+  figure_description: "ValidationDataSet ValidationDataSet_12 \u2194 fig_012"
+  ssim_threshold: 0.66
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.778; threshold ~0.85\xD7baseline."
+- topic: mEPSCAnalysis
+  matlab_png: helpfiles/mEPSCAnalysis_02.png
+  python_png: docs/notebook_galleries/mEPSCAnalysis/fig_002.png
+  figure_description: "mEPSCAnalysis mEPSCAnalysis_02 \u2194 fig_002"
+  ssim_threshold: 0.25
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.293; threshold ~0.85\xD7baseline."
+- topic: mEPSCAnalysis
+  matlab_png: helpfiles/mEPSCAnalysis_03.png
+  python_png: docs/notebook_galleries/mEPSCAnalysis/fig_003.png
+  figure_description: "mEPSCAnalysis mEPSCAnalysis_03 \u2194 fig_003"
+  ssim_threshold: 0.47
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.554; threshold ~0.85\xD7baseline."
+- topic: mEPSCAnalysis
+  matlab_png: helpfiles/mEPSCAnalysis_04.png
+  python_png: docs/notebook_galleries/mEPSCAnalysis/fig_004.png
+  figure_description: "mEPSCAnalysis mEPSCAnalysis_04 \u2194 fig_004"
+  ssim_threshold: 0.69
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.807; threshold ~0.85\xD7baseline."
+- topic: mEPSCAnalysis
+  matlab_png: helpfiles/mEPSCAnalysis_05.png
+  python_png: docs/notebook_galleries/mEPSCAnalysis/fig_005.png
+  figure_description: "mEPSCAnalysis mEPSCAnalysis_05 \u2194 fig_005"
+  ssim_threshold: 0.66
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.772; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_02.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_002.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_02 \u2194 fig_002"
+  ssim_threshold: 0.23
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.275; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_03.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_003.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_03 \u2194 fig_003"
+  ssim_threshold: 0.54
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.638; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_04.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_004.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_04 \u2194 fig_004"
+  ssim_threshold: 0.34
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.396; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_05.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_005.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_05 \u2194 fig_005"
+  ssim_threshold: 0.61
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.720; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_06.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_006.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_06 \u2194 fig_006"
+  ssim_threshold: 0.27
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.314; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_07.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_007.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_07 \u2194 fig_007"
+  ssim_threshold: 0.55
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.646; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_08.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_008.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_08 \u2194 fig_008"
+  ssim_threshold: 0.49
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.573; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_09.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_009.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_09 \u2194 fig_009"
+  ssim_threshold: 0.5
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.584; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_10.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_010.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_10 \u2194 fig_010"
+  ssim_threshold: 0.48
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.559; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_11.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_011.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_11 \u2194 fig_011"
+  ssim_threshold: 0.55
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.650; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_12.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_012.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_12 \u2194 fig_012"
+  ssim_threshold: 0.5
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.593; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_13.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_013.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_13 \u2194 fig_013"
+  ssim_threshold: 0.42
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.495; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_14.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_014.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_14 \u2194 fig_014"
+  ssim_threshold: 0.42
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.491; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_15.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_015.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_15 \u2194 fig_015"
+  ssim_threshold: 0.53
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.627; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_16.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_016.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_16 \u2194 fig_016"
+  ssim_threshold: 0.52
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.615; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_17.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_017.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_17 \u2194 fig_017"
+  ssim_threshold: 0.5
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.587; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_18.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_018.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_18 \u2194 fig_018"
+  ssim_threshold: 0.54
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.639; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_19.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_019.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_19 \u2194 fig_019"
+  ssim_threshold: 0.65
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.761; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_20.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_020.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_20 \u2194 fig_020"
+  ssim_threshold: 0.61
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.721; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_21.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_021.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_21 \u2194 fig_021"
+  ssim_threshold: 0.48
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.563; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_22.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_022.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_22 \u2194 fig_022"
+  ssim_threshold: 0.47
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.558; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_23.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_023.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_23 \u2194 fig_023"
+  ssim_threshold: 0.52
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.616; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_24.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_024.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_24 \u2194 fig_024"
+  ssim_threshold: 0.49
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.581; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_25.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_025.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_25 \u2194 fig_025"
+  ssim_threshold: 0.45
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.531; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_26.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_026.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_26 \u2194 fig_026"
+  ssim_threshold: 0.51
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.600; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_27.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_027.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_27 \u2194 fig_027"
+  ssim_threshold: 0.49
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.578; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_28.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_028.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_28 \u2194 fig_028"
+  ssim_threshold: 0.54
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.630; threshold ~0.85\xD7baseline."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_29.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_029.png
+  figure_description: "nSTATPaperExamples nSTATPaperExamples_29 \u2194 fig_029"
+  ssim_threshold: 0.5
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.592; threshold ~0.85\xD7baseline."
+- topic: nSpikeTrainExamples
+  matlab_png: helpfiles/nSpikeTrainExamples_02.png
+  python_png: docs/notebook_galleries/nSpikeTrainExamples/fig_002.png
+  figure_description: "nSpikeTrainExamples nSpikeTrainExamples_02 \u2194 fig_002"
+  ssim_threshold: 0.72
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.845; threshold ~0.85\xD7baseline."
+- topic: nSpikeTrainExamples
+  matlab_png: helpfiles/nSpikeTrainExamples_03.png
+  python_png: docs/notebook_galleries/nSpikeTrainExamples/fig_003.png
+  figure_description: "nSpikeTrainExamples nSpikeTrainExamples_03 \u2194 fig_003"
+  ssim_threshold: 0.34
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.400; threshold ~0.85\xD7baseline."
+- topic: nSpikeTrainExamples
+  matlab_png: helpfiles/nSpikeTrainExamples_04.png
+  python_png: docs/notebook_galleries/nSpikeTrainExamples/fig_004.png
+  figure_description: "nSpikeTrainExamples nSpikeTrainExamples_04 \u2194 fig_004"
+  ssim_threshold: 0.72
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.843; threshold ~0.85\xD7baseline."
+- topic: nSpikeTrainExamples
+  matlab_png: helpfiles/nSpikeTrainExamples_05.png
+  python_png: docs/notebook_galleries/nSpikeTrainExamples/fig_005.png
+  figure_description: "nSpikeTrainExamples nSpikeTrainExamples_05 \u2194 fig_005"
+  ssim_threshold: 0.54
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.639; threshold ~0.85\xD7baseline."
+- topic: nSpikeTrainExamples
+  matlab_png: helpfiles/nSpikeTrainExamples_06.png
+  python_png: docs/notebook_galleries/nSpikeTrainExamples/fig_006.png
+  figure_description: "nSpikeTrainExamples nSpikeTrainExamples_06 \u2194 fig_006"
+  ssim_threshold: 0.29
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.342; threshold ~0.85\xD7baseline."
+- topic: nstCollExamples
+  matlab_png: helpfiles/nstCollExamples_02.png
+  python_png: docs/notebook_galleries/nstCollExamples/fig_002.png
+  figure_description: "nstCollExamples nstCollExamples_02 \u2194 fig_002"
+  ssim_threshold: 0.23
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.268; threshold ~0.85\xD7baseline."
+- topic: nstCollExamples
+  matlab_png: helpfiles/nstCollExamples_03.png
+  python_png: docs/notebook_galleries/nstCollExamples/fig_003.png
+  figure_description: "nstCollExamples nstCollExamples_03 \u2194 fig_003"
+  ssim_threshold: 0.29
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.342; threshold ~0.85\xD7baseline."
+- topic: nstCollExamples
+  matlab_png: helpfiles/nstCollExamples_04.png
+  python_png: docs/notebook_galleries/nstCollExamples/fig_004.png
+  figure_description: "nstCollExamples nstCollExamples_04 \u2194 fig_004"
+  ssim_threshold: 0.29
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.342; threshold ~0.85\xD7baseline."
+- topic: nstCollExamples
+  matlab_png: helpfiles/nstCollExamples_05.png
+  python_png: docs/notebook_galleries/nstCollExamples/fig_005.png
+  figure_description: "nstCollExamples nstCollExamples_05 \u2194 fig_005"
+  ssim_threshold: 0.47
+  stochastic: false
+  notes: "Auto-added in v3 iter 11; baseline SSIM 0.557; threshold ~0.85\xD7baseline."
