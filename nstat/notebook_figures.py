@@ -86,6 +86,189 @@ def _matlab_axes(
         spine.set_linewidth(0.8)
 
 
+# MATLAB-parity subplot layouts.
+#
+# Each entry describes how a MATLAB plotting method tiles its figure: the
+# overall (rows, cols) gridspec, the per-row/col size ratios, and a list of
+# (panel_name, row_start, col_start, rowspan, colspan) tuples in 0-indexed
+# gridspec coordinates. The names are the logical roles the caller plots
+# into, decoupled from MATLAB subplot indices.
+_MATLAB_SUBPLOT_LAYOUTS: dict[str, dict] = {
+    "plotResults": {
+        "grid": (2, 4),
+        "width_ratios": [1, 1, 1, 1],
+        "height_ratios": [1, 1],
+        "panels": [
+            ("KSPlot", 0, 0, 1, 2),
+            ("plotInvGausTrans", 0, 2, 1, 1),
+            ("plotSeqCorr", 0, 3, 1, 1),
+            ("plotCoeffs", 1, 0, 1, 2),
+            ("plotResidual", 1, 2, 1, 2),
+        ],
+    },
+    "plotSummary": {
+        "grid": (2, 4),
+        "width_ratios": [1, 1, 1, 1],
+        "height_ratios": [1, 1],
+        "panels": [
+            ("plotAllCoeffs", 0, 0, 2, 2),
+            ("KSStatsBoxplot", 0, 2, 1, 2),
+            ("getDiffAIC", 1, 2, 1, 1),
+            ("getDiffBIC", 1, 3, 1, 1),
+        ],
+    },
+    "plotIC": {
+        "grid": (3, 1),
+        "width_ratios": [1],
+        "height_ratios": [1, 1, 1],
+        "panels": [
+            ("getDiffAIC", 0, 0, 1, 1),
+            ("getDiffBIC", 1, 0, 1, 1),
+            ("getDifflogLL", 2, 0, 1, 1),
+        ],
+    },
+    "RunAnalysisForNeuron": {
+        "grid": (2, 4),
+        "width_ratios": [1, 1, 1, 1],
+        "height_ratios": [1, 1],
+        "panels": [
+            ("KSPlot", 0, 0, 1, 2),
+            ("plotInvGausTrans", 0, 2, 1, 1),
+            ("plotSeqCorr", 0, 3, 1, 1),
+            ("plotCoeffs", 1, 0, 1, 2),
+            ("plotFitResidual", 1, 2, 1, 2),
+        ],
+    },
+    # Alias for the diagnostic panel produced by computeHistLag's caller
+    # (RunAnalysisForNeuron in MATLAB nSTAT). Same layout.
+    "computeHistLag": {
+        "grid": (2, 4),
+        "width_ratios": [1, 1, 1, 1],
+        "height_ratios": [1, 1],
+        "panels": [
+            ("KSPlot", 0, 0, 1, 2),
+            ("plotInvGausTrans", 0, 2, 1, 1),
+            ("plotSeqCorr", 0, 3, 1, 1),
+            ("plotCoeffs", 1, 0, 1, 2),
+            ("plotFitResidual", 1, 2, 1, 2),
+        ],
+    },
+    "CovColl.plot.nCov2": {
+        "grid": (2, 1),
+        "width_ratios": [1],
+        "height_ratios": [1, 1],
+        "panels": [
+            ("covariate_1", 0, 0, 1, 1),
+            ("covariate_2", 1, 0, 1, 1),
+        ],
+    },
+    "CovColl.plot.nCov3": {
+        "grid": (3, 1),
+        "width_ratios": [1],
+        "height_ratios": [1, 1, 1],
+        "panels": [
+            ("covariate_1", 0, 0, 1, 1),
+            ("covariate_2", 1, 0, 1, 1),
+            ("covariate_3", 2, 0, 1, 1),
+        ],
+    },
+    "CovColl.plot.nCov4": {
+        "grid": (2, 2),
+        "width_ratios": [1, 1],
+        "height_ratios": [1, 1],
+        "panels": [
+            ("covariate_1", 0, 0, 1, 1),
+            ("covariate_2", 0, 1, 1, 1),
+            ("covariate_3", 1, 0, 1, 1),
+            ("covariate_4", 1, 1, 1, 1),
+        ],
+    },
+    "plotCoeffsWithoutHistory": {
+        "grid": (1, 1),
+        "width_ratios": [1],
+        "height_ratios": [1],
+        "panels": [
+            ("coefficients_with_CI", 0, 0, 1, 1),
+        ],
+    },
+    "plotHistCoeffs": {
+        "grid": (1, 1),
+        "width_ratios": [1],
+        "height_ratios": [1],
+        "panels": [
+            ("coefficients_with_CI", 0, 0, 1, 1),
+        ],
+    },
+    # Convenience aliases (no MATLAB analog, but mirror common call sites).
+    "plotVariability": {
+        "grid": (1, 1),
+        "width_ratios": [1],
+        "height_ratios": [1],
+        "panels": [
+            ("variability", 0, 0, 1, 1),
+        ],
+    },
+}
+
+
+def _matlab_subplot_layout(
+    fig: Figure, *, kind: str
+) -> dict[str, mpl.axes.Axes]:
+    """Lay out a figure's panels to match MATLAB's convention for ``kind``.
+
+    Builds a ``gridspec`` on ``fig`` whose rows/columns and panel spans mirror
+    the corresponding MATLAB plotting method, then creates one Axes per
+    logical panel and returns a name → Axes mapping.
+
+    Parameters
+    ----------
+    fig
+        The matplotlib Figure to subdivide. Existing axes are not cleared.
+    kind
+        Layout key. Supported values:
+
+        - ``"plotResults"`` — FitResult.plotResults (2x4)
+        - ``"plotSummary"`` — FitResSummary.plotSummary (2x4)
+        - ``"plotIC"`` — FitResSummary.plotIC (3x1)
+        - ``"RunAnalysisForNeuron"`` / ``"computeHistLag"`` —
+          Analysis.RunAnalysisForNeuron diagnostic panel (2x4)
+        - ``"CovColl.plot.nCov2"``, ``"CovColl.plot.nCov3"``,
+          ``"CovColl.plot.nCov4"`` — CovColl.plot variants
+        - ``"plotCoeffsWithoutHistory"`` / ``"plotHistCoeffs"`` (1x1)
+        - ``"plotVariability"`` (1x1; Python-only convenience)
+
+    Returns
+    -------
+    dict[str, matplotlib.axes.Axes]
+        Logical panel name → Axes. Callers plot into each panel by name.
+
+    Raises
+    ------
+    ValueError
+        If ``kind`` is not a known layout.
+    """
+    try:
+        spec = _MATLAB_SUBPLOT_LAYOUTS[kind]
+    except KeyError as exc:
+        valid = ", ".join(sorted(_MATLAB_SUBPLOT_LAYOUTS))
+        raise ValueError(
+            f"Unknown subplot layout kind: {kind!r}. Valid kinds: {valid}"
+        ) from exc
+
+    rows, cols = spec["grid"]
+    gs = fig.add_gridspec(
+        rows,
+        cols,
+        width_ratios=spec["width_ratios"],
+        height_ratios=spec["height_ratios"],
+    )
+    panels: dict[str, mpl.axes.Axes] = {}
+    for name, r0, c0, rspan, cspan in spec["panels"]:
+        ax = fig.add_subplot(gs[r0 : r0 + rspan, c0 : c0 + cspan])
+        panels[name] = ax
+    return panels
+
+
 @dataclass
 class FigureTracker:
     """Track figure creation order and save deterministic notebook images."""

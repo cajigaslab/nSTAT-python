@@ -16,7 +16,7 @@ MATLAB PNGs are sourced from the sibling `cajigaslab/nSTAT` checkout when runnin
 | `AnalysisExamples` | KS plot — linear vs quadratic GLM | 0.756 | 0.70 | ✓ | After Phase 2 fix, Quadratic uses centered features |
 | `PPSimExample` | Raster + stimulus | 0.616 | 0.50 | ✓ | Stochastic spike draws differ between numpy and MATLAB random streams |
 | `NetworkTutorial` | Actual vs estimated network connectivity | 0.761 | 0.70 | ✓ | After Phase 2 fix (maskAwayAllExcept reset + label parser + setNeighbors), the estimated panel matches the actual panel's sign pattern. Magnitude unstable at l2=0; sign is what matters. |
-| `DecodingExample` | PPAF decoded stimulus | 0.597 | 0.50 | ✓ | Stochastic spike draws differ; tracks the same sinusoid |
+| `DecodingExample` | PPAF decoded stimulus | 0.596 | 0.50 | ✓ | Stochastic spike draws differ; tracks the same sinusoid |
 | `CovariateExamples` | Covariate signal visualization | 0.642 | 0.55 | ✓ | Baseline 0.631 measured 2026-06-11; layout match good. |
 | `TrialExamples` | Trial plot — spikes + covariates aligned | 0.816 | 0.70 | ✓ | — |
 | `mEPSCAnalysis` | Constant Mg raster + Poisson model fit | 0.564 | 0.50 | ✓ | After Phase 2 sampleRate fix (200→1000 Hz), the design-matrix dimension matches MATLAB so the rate-axis ranges agree. |

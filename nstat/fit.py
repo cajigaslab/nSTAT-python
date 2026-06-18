@@ -1483,17 +1483,17 @@ class FitResult:
             [1,2]  KSPlot (double-wide)    [3] InvGausTrans  [4] SeqCorr
             [5,6]  plotCoeffs (double-wide) [7,8] plotResidual (double-wide)
         """
-        import matplotlib.gridspec as gridspec
+        from .notebook_figures import _matlab_subplot_layout
 
         fig = handle if handle is not None else plt.figure(figsize=(14.0, 8.0))
         fig.clear()
-        gs = gridspec.GridSpec(2, 4, figure=fig)
+        panels = _matlab_subplot_layout(fig, kind="plotResults")
 
-        ax_ks = fig.add_subplot(gs[0, 0:2])
-        ax_ig = fig.add_subplot(gs[0, 2])
-        ax_sc = fig.add_subplot(gs[0, 3])
-        ax_co = fig.add_subplot(gs[1, 0:2])
-        ax_re = fig.add_subplot(gs[1, 2:4])
+        ax_ks = panels["KSPlot"]
+        ax_ig = panels["plotInvGausTrans"]
+        ax_sc = panels["plotSeqCorr"]
+        ax_co = panels["plotCoeffs"]
+        ax_re = panels["plotResidual"]
 
         self.KSPlot(fit_num=None, handle=ax_ks)
         # Add neuron number label (matching Matlab)
@@ -2196,12 +2196,14 @@ class FitSummary:
 
     def plotIC(self, handle=None):
         """Plot AIC, BIC, and log-likelihood box-plots side by side."""
+        from .notebook_figures import _matlab_subplot_layout
+
         fig = handle if handle is not None else plt.figure(figsize=(9.0, 3.5))
         fig.clear()
-        axes = fig.subplots(1, 3)
-        self.plotAIC(handle=axes[0])
-        self.plotBIC(handle=axes[1])
-        self.plotlogLL(handle=axes[2])
+        panels = _matlab_subplot_layout(fig, kind="plotIC")
+        self.plotAIC(handle=panels["getDiffAIC"])
+        self.plotBIC(handle=panels["getDiffBIC"])
+        self.plotlogLL(handle=panels["getDifflogLL"])
         fig.tight_layout()
         return fig
 

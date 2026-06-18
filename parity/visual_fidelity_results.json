@@ -58,7 +58,7 @@
       "threshold": 0.5,
       "stochastic": true,
       "notes": "Stochastic spike draws differ; tracks the same sinusoid",
-      "ssim": 0.5965051809891695,
+      "ssim": 0.5960394059461392,
       "passed": true
     },
     {
