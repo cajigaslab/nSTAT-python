@@ -16,26 +16,165 @@ MATLAB PNGs are sourced from the sibling `cajigaslab/nSTAT` checkout when runnin
 | `AnalysisExamples` | KS plot — linear vs quadratic GLM | 0.756 | 0.70 | ✓ | After Phase 2 fix, Quadratic uses centered features |
 | `PPSimExample` | Raster + stimulus | — | 0.50 | ↷ | V2 iter 9 removed surplus cells; fig_006 no longer emitted. Re-baseline pending after MATLAB re-extraction. |
 | `NetworkTutorial` | Actual vs estimated network connectivity | — | 0.70 | ↷ | V2 iter 9 removed surplus cells; fig_013 no longer emitted. Re-baseline pending after MATLAB re-extraction. |
-| `DecodingExample` | PPAF decoded stimulus | 0.598 | 0.50 | ✓ | Stochastic spike draws differ; tracks the same sinusoid |
-| `CovariateExamples` | Covariate signal visualization | 0.642 | 0.55 | ✓ | Baseline 0.631 measured 2026-06-11; layout match good. |
-| `TrialExamples` | Trial plot — spikes + covariates aligned | 0.816 | 0.70 | ✓ | — |
+| `DecodingExample` | PPAF decoded stimulus | 0.595 | 0.56 | ✓ | Stochastic spike draws differ; tracks the same sinusoid |
+| `CovariateExamples` | Covariate signal visualization | 0.642 | 0.61 | ✓ | Baseline 0.631 measured 2026-06-11; layout match good. |
+| `TrialExamples` | Trial plot — spikes + covariates aligned | 0.816 | 0.79 | ✓ | — |
 | `mEPSCAnalysis` | Constant Mg raster + Poisson model fit | 0.564 | 0.50 | ✓ | After Phase 2 sampleRate fix (200→1000 Hz), the design-matrix dimension matches MATLAB so the rate-axis ranges agree. |
-| `mEPSCAnalysis` | GLM coefficient comparison (μ₁, μ₂, μ₃) | 0.806 | 0.60 | ✓ | After Phase 1 + Phase 2 fixes (l2=0.0 + sampleRate=1000 + epoch boundaries [495,765]), coefficients should match MATLAB magnitudes within stochastic-data tolerance. |
-| `HistoryExamples` | History windows + covariate visualization | 0.582 | 0.50 | ✓ | After Phase 2 fix (8 hand-typed → 100 seeded random spikes matching ``sort(rand(1,100))``), figure scope matches MATLAB. Stochastic seed differs between numpy and MATLAB streams. |
+| `mEPSCAnalysis` | GLM coefficient comparison (μ₁, μ₂, μ₃) | 0.806 | 0.78 | ✓ | After Phase 1 + Phase 2 fixes (l2=0.0 + sampleRate=1000 + epoch boundaries [495,765]), coefficients should match MATLAB magnitudes within stochastic-data tolerance. |
+| `HistoryExamples` | History windows + covariate visualization | 0.582 | 0.55 | ✓ | After Phase 2 fix (8 hand-typed → 100 seeded random spikes matching ``sort(rand(1,100))``), figure scope matches MATLAB. Stochastic seed differs between numpy and MATLAB streams. |
 | `HippocampalPlaceCellExample` | Cell 25 Gaussian vs Zernike place field (3D mesh overlay) | — | 0.50 | ↷ | MATLAB renders an overlaid 3D wireframe at specific camera angle; Python uses plot_wireframe with view_init(elev=30, azim=-37.5). Layout/perspective mismatch is too large for SSIM until both paths agree on a single rendering convention. |
 | `PPThinning` | Thinned realisations + scaled CIF overlay (log-y) | — | 0.50 | ↷ | MATLAB overlays the scaled CIF on the raster with log-y axis; Python plots a plain raster only. Layout pending Phase 4. |
-| `SignalObjExamples` | SignalObj basic plot | 0.445 | 0.40 | ✓ | Baseline 0.470 measured 2026-06-11; significant layout drift (MATLAB renders multi-axis SignalObj with custom labels, Python uses default matplotlib subplots). Candidate for Phase 4 pedagogical fix. |
-| `nSpikeTrainExamples` | nspikeTrain raster | 0.319 | 0.20 | ✓ | Baseline 0.273 measured 2026-06-11; Python raster layout differs substantially from MATLAB's multi-panel published figure. Marker: gate baselines current state; lower threshold prevents false alarms but a future Phase 4 fix should target 0.50+. |
-| `nstCollExamples` | nstColl raster aggregate | 0.268 | 0.18 | ✓ | Baseline 0.214 measured 2026-06-11; similar to nSpikeTrainExamples — Python collection raster doesn't reproduce MATLAB's published multi-panel layout. Phase 4 candidate. |
+| `SignalObjExamples` | SignalObj basic plot | 0.442 | 0.40 | ✓ | Baseline 0.470 measured 2026-06-11; significant layout drift (MATLAB renders multi-axis SignalObj with custom labels, Python uses default matplotlib subplots). Candidate for Phase 4 pedagogical fix. |
+| `nSpikeTrainExamples` | nspikeTrain raster | 0.304 | 0.27 | ✓ | Baseline 0.273 measured 2026-06-11; Python raster layout differs substantially from MATLAB's multi-panel published figure. Marker: gate baselines current state; lower threshold prevents false alarms but a future Phase 4 fix should target 0.50+. |
+| `nstCollExamples` | nstColl raster aggregate | 0.264 | 0.23 | ✓ | Baseline 0.214 measured 2026-06-11; similar to nSpikeTrainExamples — Python collection raster doesn't reproduce MATLAB's published multi-panel layout. Phase 4 candidate. |
 | `AnalysisExamples2` | AnalysisExamples2 introductory figure (auto-added in parity iter 5) | 0.493 | 0.42 | ✓ | Baseline measured 0.493 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
-| `CovCollExamples` | CovCollExamples introductory figure (auto-added in parity iter 5) | 0.545 | 0.46 | ✓ | Baseline measured 0.545 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
+| `CovCollExamples` | CovCollExamples introductory figure (auto-added in parity iter 5) | 0.545 | 0.52 | ✓ | Baseline measured 0.545 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
 | `DecodingExampleWithHist` | DecodingExampleWithHist introductory figure (auto-added in parity iter 5) | 0.549 | 0.47 | ✓ | Baseline measured 0.549 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
-| `EventsExamples` | EventsExamples introductory figure (auto-added in parity iter 5) | 0.827 | 0.70 | ✓ | Baseline measured 0.827 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
-| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData introductory figure (auto-added in parity iter 5) | 0.504 | 0.43 | ✓ | Baseline measured 0.504 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
-| `HybridFilterExample` | HybridFilterExample introductory figure (auto-added in parity iter 5) | 0.663 | 0.56 | ✓ | Baseline measured 0.663 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
+| `EventsExamples` | EventsExamples introductory figure (auto-added in parity iter 5) | 0.827 | 0.80 | ✓ | Baseline measured 0.827 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData introductory figure (auto-added in parity iter 5) | 0.496 | 0.43 | ✓ | Baseline measured 0.504 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
+| `HybridFilterExample` | HybridFilterExample introductory figure (auto-added in parity iter 5) | 0.663 | 0.63 | ✓ | Baseline measured 0.663 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
 | `PSTHEstimation` | PSTHEstimation introductory figure (auto-added in parity iter 5) | 0.371 | 0.30 | ✓ | Baseline measured 0.348 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
-| `StimulusDecode2D` | StimulusDecode2D introductory figure (auto-added in parity iter 5) | 0.859 | 0.73 | ✓ | Baseline measured 0.859 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
-| `ValidationDataSet` | ValidationDataSet introductory figure (auto-added in parity iter 5) | 0.689 | 0.59 | ✓ | Baseline measured 0.689 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
-| `nSTATPaperExamples` | nSTATPaperExamples introductory figure (auto-added in parity iter 5) | 0.649 | 0.55 | ✓ | Baseline measured 0.649 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
+| `StimulusDecode2D` | StimulusDecode2D introductory figure (auto-added in parity iter 5) | 0.859 | 0.83 | ✓ | Baseline measured 0.859 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
+| `ValidationDataSet` | ValidationDataSet introductory figure (auto-added in parity iter 5) | 0.689 | 0.66 | ✓ | Baseline measured 0.689 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
+| `nSTATPaperExamples` | nSTATPaperExamples introductory figure (auto-added in parity iter 5) | 0.649 | 0.62 | ✓ | Baseline measured 0.649 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85×baseline so the gate fires on substantial regressions but not on minor rendering variance. |
+| `AnalysisExamples` | AnalysisExamples AnalysisExamples_02 ↔ fig_002 | 0.902 | 0.87 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.902; threshold ~0.85×baseline. |
+| `AnalysisExamples` | AnalysisExamples AnalysisExamples_03 ↔ fig_003 | 0.727 | 0.70 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.727; threshold ~0.85×baseline. |
+| `AnalysisExamples2` | AnalysisExamples2 AnalysisExamples2_02 ↔ fig_002 | 0.534 | 0.50 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.534; threshold ~0.85×baseline. |
+| `AnalysisExamples2` | AnalysisExamples2 AnalysisExamples2_03 ↔ fig_003 | 0.575 | 0.55 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.575; threshold ~0.85×baseline. |
+| `AnalysisExamples2` | AnalysisExamples2 AnalysisExamples2_04 ↔ fig_004 | 0.460 | 0.39 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.460; threshold ~0.85×baseline. |
+| `CovCollExamples` | CovCollExamples CovCollExamples_02 ↔ fig_002 | 0.707 | 0.68 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.707; threshold ~0.85×baseline. |
+| `CovariateExamples` | CovariateExamples CovariateExamples_02 ↔ fig_002 | 0.428 | 0.36 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.428; threshold ~0.85×baseline. |
+| `DecodingExample` | DecodingExample DecodingExample_01 ↔ fig_001 | 0.523 | 0.49 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.523; threshold ~0.85×baseline. |
+| `DecodingExample` | DecodingExample DecodingExample_02 ↔ fig_002 | 0.450 | 0.38 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.448; threshold ~0.85×baseline. |
+| `DecodingExample` | DecodingExample DecodingExample_03 ↔ fig_003 | 0.839 | 0.81 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.826; threshold ~0.85×baseline. |
+| `DecodingExample` | DecodingExample DecodingExample_04 ↔ fig_004 | 0.531 | 0.50 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.531; threshold ~0.85×baseline. |
+| `DecodingExample` | DecodingExample DecodingExample_06 ↔ fig_006 | 0.510 | 0.44 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.513; threshold ~0.85×baseline. |
+| `DecodingExample` | DecodingExample DecodingExample_07 ↔ fig_007 | 0.590 | 0.56 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.586; threshold ~0.85×baseline. |
+| `DecodingExampleWithHist` | DecodingExampleWithHist DecodingExampleWithHist_02 ↔ fig_002 | 0.585 | 0.56 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.585; threshold ~0.85×baseline. |
+| `EventsExamples` | EventsExamples EventsExamples_02 ↔ fig_002 | 0.828 | 0.80 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.828; threshold ~0.85×baseline. |
+| `EventsExamples` | EventsExamples EventsExamples_03 ↔ fig_003 | 0.831 | 0.80 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.831; threshold ~0.85×baseline. |
+| `EventsExamples` | EventsExamples EventsExamples_04 ↔ fig_004 | 0.833 | 0.80 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.833; threshold ~0.85×baseline. |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_02 ↔ fig_002 | 0.293 | 0.26 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.248; threshold ~0.85×baseline. |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_03 ↔ fig_003 | 0.698 | 0.67 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.698; threshold ~0.85×baseline. |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_04 ↔ fig_004 | 0.604 | 0.57 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.604; threshold ~0.85×baseline. |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_05 ↔ fig_005 | 0.614 | 0.58 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.614; threshold ~0.85×baseline. |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_06 ↔ fig_006 | 0.680 | 0.65 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.680; threshold ~0.85×baseline. |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_07 ↔ fig_007 | 0.757 | 0.73 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.757; threshold ~0.85×baseline. |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_08 ↔ fig_008 | 0.808 | 0.78 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.808; threshold ~0.85×baseline. |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_09 ↔ fig_009 | 0.614 | 0.58 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.614; threshold ~0.85×baseline. |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_10 ↔ fig_010 | 0.553 | 0.52 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.553; threshold ~0.85×baseline. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_01 ↔ fig_001 | 0.461 | 0.39 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.457; threshold ~0.85×baseline. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_02 ↔ fig_002 | 0.657 | 0.62 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.729; threshold ~0.85×baseline. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_03 ↔ fig_003 | 0.683 | 0.63 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.739; threshold ~0.85×baseline. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_04 ↔ fig_004 | 0.375 | 0.35 | ✓ | Threshold lowered in v3 iter 15: iter-14 collapsed Summary.plotSummary panels into 2x1 grids to align with MATLAB figure-emission ordering (which fixed fig_008 trajectory mapping). The restructure dropped figs 4 & 5 SSIM from ~0.65 to ~0.38 because each Python figure now contains both AIC and BIC panels (where MATLAB has just one). Accepted regression — see parity/matlab_pedagogical_gaps.md. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_05 ↔ fig_005 | 0.384 | 0.35 | ✓ | Threshold lowered in v3 iter 15: see HippocampalPlaceCellExample_04 note. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_06 ↔ fig_006 | 0.379 | 0.37 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.441; threshold ~0.85×baseline. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_07 ↔ fig_007 | 0.390 | 0.39 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.459; threshold ~0.85×baseline. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_08 ↔ fig_008 | 0.352 | 0.32 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.311; threshold ~0.85×baseline. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_09 ↔ fig_009 | 0.439 | 0.36 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.429; threshold ~0.85×baseline. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_10 ↔ fig_010 | 0.697 | 0.67 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.407; threshold ~0.85×baseline. |
+| `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_11 ↔ fig_011 | — | 0.38 | ? | Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/HippocampalPlaceCellExample/fig_011.png |
+| `HistoryExamples` | HistoryExamples HistoryExamples_02 ↔ fig_002 | 0.359 | 0.30 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.359; threshold ~0.85×baseline. |
+| `HistoryExamples` | HistoryExamples HistoryExamples_03 ↔ fig_003 | 0.514 | 0.44 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.514; threshold ~0.85×baseline. |
+| `HistoryExamples` | HistoryExamples HistoryExamples_04 ↔ fig_004 | 0.752 | 0.72 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.752; threshold ~0.85×baseline. |
+| `HistoryExamples` | HistoryExamples HistoryExamples_05 ↔ fig_005 | 0.762 | 0.73 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.762; threshold ~0.85×baseline. |
+| `HistoryExamples` | HistoryExamples HistoryExamples_06 ↔ fig_006 | 0.750 | 0.72 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.750; threshold ~0.85×baseline. |
+| `HistoryExamples` | HistoryExamples HistoryExamples_07 ↔ fig_007 | 0.600 | 0.57 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.600; threshold ~0.85×baseline. |
+| `HybridFilterExample` | HybridFilterExample HybridFilterExample_02 ↔ fig_002 | 0.603 | 0.57 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.603; threshold ~0.85×baseline. |
+| `NetworkTutorial` | NetworkTutorial NetworkTutorial_01 ↔ fig_001 | 0.615 | 0.58 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.615; threshold ~0.85×baseline. |
+| `NetworkTutorial` | NetworkTutorial NetworkTutorial_02 ↔ fig_002 | 0.657 | 0.63 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.657; threshold ~0.85×baseline. |
+| `NetworkTutorial` | NetworkTutorial NetworkTutorial_03 ↔ fig_003 | 0.717 | 0.69 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.717; threshold ~0.85×baseline. |
+| `NetworkTutorial` | NetworkTutorial NetworkTutorial_04 ↔ fig_004 | 0.741 | 0.71 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.741; threshold ~0.85×baseline. |
+| `NetworkTutorial` | NetworkTutorial NetworkTutorial_05 ↔ fig_005 | 0.490 | 0.42 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.490; threshold ~0.85×baseline. |
+| `PPSimExample` | PPSimExample PPSimExample_01 ↔ fig_001 | 0.446 | 0.38 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.446; threshold ~0.85×baseline. |
+| `PPSimExample` | PPSimExample PPSimExample_02 ↔ fig_002 | 0.399 | 0.34 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.399; threshold ~0.85×baseline. |
+| `PPSimExample` | PPSimExample PPSimExample_03 ↔ fig_003 | 0.639 | 0.61 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.639; threshold ~0.85×baseline. |
+| `PPSimExample` | PPSimExample PPSimExample_04 ↔ fig_004 | 0.594 | 0.56 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.594; threshold ~0.85×baseline. |
+| `PPThinning` | PPThinning PPThinning_01 ↔ fig_001 | 0.524 | 0.45 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.532; threshold ~0.85×baseline. |
+| `PPThinning` | PPThinning PPThinning_02 ↔ fig_002 | 0.283 | 0.26 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.304; threshold ~0.85×baseline. |
+| `PPThinning` | PPThinning PPThinning_03 ↔ fig_003 | 0.334 | 0.26 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.309; threshold ~0.85×baseline. |
+| `PPThinning` | PPThinning PPThinning_04 ↔ fig_004 | 0.326 | 0.26 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.303; threshold ~0.85×baseline. |
+| `PSTHEstimation` | PSTHEstimation PSTHEstimation_02 ↔ fig_002 | 0.766 | 0.74 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.766; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_02 ↔ fig_002 | 0.390 | 0.33 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.393; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_03 ↔ fig_003 | 0.465 | 0.40 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.465; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_04 ↔ fig_004 | 0.412 | 0.35 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.415; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_05 ↔ fig_005 | 0.447 | 0.38 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.448; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_06 ↔ fig_006 | 0.428 | 0.37 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.431; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_07 ↔ fig_007 | 0.403 | 0.34 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.406; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_08 ↔ fig_008 | 0.421 | 0.36 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.424; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_09 ↔ fig_009 | 0.517 | 0.44 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.519; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_10 ↔ fig_010 | 0.396 | 0.34 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.396; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_11 ↔ fig_011 | 0.457 | 0.39 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.457; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_12 ↔ fig_012 | 0.396 | 0.34 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.396; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_13 ↔ fig_013 | 0.508 | 0.43 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.512; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_14 ↔ fig_014 | 0.694 | 0.66 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.694; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_15 ↔ fig_015 | 0.739 | 0.71 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.739; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_16 ↔ fig_016 | 0.633 | 0.60 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.633; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_17 ↔ fig_017 | 0.679 | 0.65 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.679; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_18 ↔ fig_018 | 0.621 | 0.59 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.621; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_19 ↔ fig_019 | 0.609 | 0.58 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.609; threshold ~0.85×baseline. |
+| `SignalObjExamples` | SignalObjExamples SignalObjExamples_20 ↔ fig_020 | 0.648 | 0.62 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.648; threshold ~0.85×baseline. |
+| `StimulusDecode2D` | StimulusDecode2D StimulusDecode2D_02 ↔ fig_002 | 0.258 | 0.22 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.258; threshold ~0.85×baseline. |
+| `StimulusDecode2D` | StimulusDecode2D StimulusDecode2D_03 ↔ fig_003 | 0.708 | 0.68 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.708; threshold ~0.85×baseline. |
+| `StimulusDecode2D` | StimulusDecode2D StimulusDecode2D_04 ↔ fig_004 | 0.833 | 0.80 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.833; threshold ~0.85×baseline. |
+| `StimulusDecode2D` | StimulusDecode2D StimulusDecode2D_05 ↔ fig_005 | 0.696 | 0.67 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.696; threshold ~0.85×baseline. |
+| `StimulusDecode2D` | StimulusDecode2D StimulusDecode2D_06 ↔ fig_006 | 0.822 | 0.79 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.822; threshold ~0.85×baseline. |
+| `TrialExamples` | TrialExamples TrialExamples_02 ↔ fig_002 | 0.701 | 0.67 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.701; threshold ~0.85×baseline. |
+| `TrialExamples` | TrialExamples TrialExamples_03 ↔ fig_003 | 0.859 | 0.83 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.859; threshold ~0.85×baseline. |
+| `TrialExamples` | TrialExamples TrialExamples_04 ↔ fig_004 | 0.364 | 0.33 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.316; threshold ~0.85×baseline. |
+| `TrialExamples` | TrialExamples TrialExamples_05 ↔ fig_005 | 0.431 | 0.36 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.429; threshold ~0.85×baseline. |
+| `TrialExamples` | TrialExamples TrialExamples_06 ↔ fig_006 | 0.457 | 0.39 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.455; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_02 ↔ fig_002 | 0.572 | 0.54 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.572; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_03 ↔ fig_003 | 0.554 | 0.52 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.554; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_04 ↔ fig_004 | 0.597 | 0.57 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.597; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_05 ↔ fig_005 | 0.649 | 0.62 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.649; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_06 ↔ fig_006 | 0.365 | 0.31 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.365; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_07 ↔ fig_007 | 0.801 | 0.77 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.801; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_08 ↔ fig_008 | 0.608 | 0.58 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.608; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_09 ↔ fig_009 | 0.584 | 0.55 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.584; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_10 ↔ fig_010 | 0.764 | 0.73 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.764; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_11 ↔ fig_011 | 0.620 | 0.59 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.620; threshold ~0.85×baseline. |
+| `ValidationDataSet` | ValidationDataSet ValidationDataSet_12 ↔ fig_012 | 0.778 | 0.75 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.778; threshold ~0.85×baseline. |
+| `mEPSCAnalysis` | mEPSCAnalysis mEPSCAnalysis_02 ↔ fig_002 | 0.293 | 0.25 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.293; threshold ~0.85×baseline. |
+| `mEPSCAnalysis` | mEPSCAnalysis mEPSCAnalysis_03 ↔ fig_003 | 0.554 | 0.52 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.554; threshold ~0.85×baseline. |
+| `mEPSCAnalysis` | mEPSCAnalysis mEPSCAnalysis_04 ↔ fig_004 | 0.807 | 0.78 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.807; threshold ~0.85×baseline. |
+| `mEPSCAnalysis` | mEPSCAnalysis mEPSCAnalysis_05 ↔ fig_005 | 0.772 | 0.74 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.772; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_02 ↔ fig_002 | 0.328 | 0.30 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.275; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_03 ↔ fig_003 | 0.638 | 0.61 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.638; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_04 ↔ fig_004 | 0.396 | 0.34 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.396; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_05 ↔ fig_005 | 0.720 | 0.69 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.720; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_06 ↔ fig_006 | 0.340 | 0.27 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.314; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_07 ↔ fig_007 | 0.646 | 0.62 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.646; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_08 ↔ fig_008 | 0.573 | 0.54 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.573; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_09 ↔ fig_009 | 0.582 | 0.55 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.584; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_10 ↔ fig_010 | 0.559 | 0.48 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.559; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_11 ↔ fig_011 | 0.650 | 0.62 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.650; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_12 ↔ fig_012 | 0.593 | 0.56 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.593; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_13 ↔ fig_013 | 0.521 | 0.49 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.495; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_14 ↔ fig_014 | 0.491 | 0.42 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.491; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_15 ↔ fig_015 | 0.627 | 0.60 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.627; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_16 ↔ fig_016 | 0.615 | 0.58 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.615; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_17 ↔ fig_017 | 0.587 | 0.56 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.587; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_18 ↔ fig_018 | 0.639 | 0.61 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.639; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_19 ↔ fig_019 | 0.761 | 0.73 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.761; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_20 ↔ fig_020 | 0.721 | 0.69 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.721; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_21 ↔ fig_021 | 0.563 | 0.53 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.563; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_22 ↔ fig_022 | 0.558 | 0.53 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.558; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_23 ↔ fig_023 | 0.616 | 0.59 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.616; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_24 ↔ fig_024 | 0.581 | 0.55 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.581; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_25 ↔ fig_025 | 0.531 | 0.50 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.531; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_26 ↔ fig_026 | 0.600 | 0.57 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.600; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_27 ↔ fig_027 | 0.578 | 0.55 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.578; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_28 ↔ fig_028 | 0.630 | 0.60 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.630; threshold ~0.85×baseline. |
+| `nSTATPaperExamples` | nSTATPaperExamples nSTATPaperExamples_29 ↔ fig_029 | 0.592 | 0.56 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.592; threshold ~0.85×baseline. |
+| `nSpikeTrainExamples` | nSpikeTrainExamples nSpikeTrainExamples_02 ↔ fig_002 | 0.825 | 0.80 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.845; threshold ~0.85×baseline. |
+| `nSpikeTrainExamples` | nSpikeTrainExamples nSpikeTrainExamples_03 ↔ fig_003 | 0.377 | 0.34 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.400; threshold ~0.85×baseline. |
+| `nSpikeTrainExamples` | nSpikeTrainExamples nSpikeTrainExamples_04 ↔ fig_004 | 0.823 | 0.79 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.843; threshold ~0.85×baseline. |
+| `nSpikeTrainExamples` | nSpikeTrainExamples nSpikeTrainExamples_05 ↔ fig_005 | 0.614 | 0.54 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.639; threshold ~0.85×baseline. |
+| `nSpikeTrainExamples` | nSpikeTrainExamples nSpikeTrainExamples_06 ↔ fig_006 | 0.327 | 0.29 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.342; threshold ~0.85×baseline. |
+| `nstCollExamples` | nstCollExamples nstCollExamples_02 ↔ fig_002 | 0.264 | 0.23 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.268; threshold ~0.85×baseline. |
+| `nstCollExamples` | nstCollExamples nstCollExamples_03 ↔ fig_003 | 0.392 | 0.36 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.342; threshold ~0.85×baseline. |
+| `nstCollExamples` | nstCollExamples nstCollExamples_04 ↔ fig_004 | 0.392 | 0.36 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.342; threshold ~0.85×baseline. |
+| `nstCollExamples` | nstCollExamples nstCollExamples_05 ↔ fig_005 | 0.557 | 0.53 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.557; threshold ~0.85×baseline. |
 
 Regenerate with `make regen-visual-parity` (requires the sibling MATLAB checkout for full coverage).

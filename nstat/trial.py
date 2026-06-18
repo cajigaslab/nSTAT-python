@@ -2498,7 +2498,17 @@ class Trial:
         panel_count = 1 + cov_count + event_count
         fig = handle if handle is not None else plt.figure(figsize=(9.0, max(4.0, 2.2 * panel_count)))
         fig.clear()
-        axes = fig.subplots(panel_count, 1, sharex=True)
+        # MATLAB-parity: events panel is a compact marker strip, not a full-height panel.
+        # Give the spike raster + covariate panels equal weight (1.0) and the events
+        # panel a slimmer slot (0.35) so the data panels are not vertically compressed.
+        if event_count:
+            height_ratios = [1.0] * (panel_count - 1) + [0.35]
+            axes = fig.subplots(
+                panel_count, 1, sharex=True,
+                gridspec_kw={"height_ratios": height_ratios},
+            )
+        else:
+            axes = fig.subplots(panel_count, 1, sharex=True)
         if not isinstance(axes, np.ndarray):
             axes = np.asarray([axes], dtype=object)
 

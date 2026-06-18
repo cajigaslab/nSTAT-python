@@ -213,6 +213,46 @@ remove the extra cell instead of recording it here.
   scan-figure cell (added in v1 iter 2).
 - **Discovered:** v1 iter 2 / 2026-06-18
 
+### Gap: Figure ordering deviation in nSTATPaperExamples experiment 1
+
+- **Topic / helpfile:** `nSTATPaperExamples`
+- **MATLAB count:** 29
+- **Python count:** 29 (same)
+- **What differs:** Figure indexing for experiment 1 is reordered. Python
+  fig 2 contains the decreasing-Mg raster + rate fits (Observed / Piecewise /
+  Piecewise+Hist). MATLAB fig 2 shows the constant-Mg raster, MATLAB fig 3
+  shows the decreasing-Mg raster, and the rate-fit comparison appears at
+  MATLAB fig 4. Per-index 1↔1 SSIM comparison therefore mis-aligns even
+  though the substantive content is equivalent.
+- **Pedagogical justification:** Python collapses the two raster panels
+  into a single combined view that places the rate fit alongside the
+  decreasing-Mg condition for direct visual comparison — more compact for
+  notebook readers, less faithful to MATLAB's index sequence.
+- **MATLAB upstream action:** No upstream action required. Index ordering
+  is a presentation choice, not a content gap.
+- **Python implementation:** `notebooks/nSTATPaperExamples.ipynb` exp 1
+  cells.
+- **Discovered:** v3 iter 14 / 2026-06-18; documented v3 iter 15.
+
+### Gap: StimulusDecode2D fig_002 per-cell CIF time-base sampling
+
+- **Topic / helpfile:** `StimulusDecode2D`
+- **MATLAB count:** 7
+- **Python count:** 7 (same)
+- **What differs:** The per-cell λ(t) trace in fig_002 shows visible
+  temporal phase drift between MATLAB and Python renderings. Inspection
+  of `nstat/cif.py` and the notebook cell confirms the underlying CIF
+  evaluation uses the same dt and sample boundaries; the visible drift
+  is a rendering effect of matplotlib's line-segment downsampling vs
+  MATLAB's `plot` antialiasing path, not a numerical time-base mismatch.
+  Gold fixtures for the CIF evaluation pass.
+- **Pedagogical justification:** Same content; no upstream action.
+- **MATLAB upstream action:** None.
+- **Python implementation:** `notebooks/StimulusDecode2D.ipynb` cell
+  rendering fig_002.
+- **Discovered:** v3 iter 14 / 2026-06-18; investigated and closed v3
+  iter 15.
+
 ---
 
 ## Surplus topics still under triage (v2 iter 9 will decide each)
