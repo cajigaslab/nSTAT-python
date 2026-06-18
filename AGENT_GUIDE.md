@@ -16,6 +16,100 @@ and [docs/ClassDefinitions.md](docs/ClassDefinitions.md).
 
 ---
 
+## 0. MATLAB parity principle — read first, applies everywhere
+
+The single binding contract for this codebase. All other rules in this guide
+defer to it.
+
+### 0.1 Exact-mirror rule (binding)
+
+Every function, class, and method that exists in the MATLAB nSTAT toolbox
+**must** have an exact mirror in Python. Parity is enforced at **three
+levels**, all binding:
+
+**(a) Numerical output** — same name (MATLAB-style identifiers like
+`nspikeTrain`, `GLMFit`, `computeKSStats`, `PPDecodeFilterLinear` are
+preserved verbatim), same public signature semantics, and same numerical
+behavior on equivalent inputs (within documented float / RNG tolerance —
+see `tests/parity/fixtures/matlab_gold/*.mat`).
+
+**(b) Figure content** — same number of figures, same panel layout, same
+data shown in each panel, same axis ranges and tick conventions, same
+titles / axis labels / legends. If MATLAB shows two representative place
+fields and two decoded-path comparisons, Python ships those same four
+panels in the same role.
+
+**(c) Figure appearance** — same colormap (e.g., `jet` for MATLAB
+heatmaps, not modern viridis substitutions), same line styles (solid
+black for "true", dashed blue for "predicted", etc.), same overlay
+conventions (Start / Finish markers, trajectory + spike scatter), same
+spine / tick treatment. Visual parity is part of the contract; it is not
+a stylistic preference.
+
+This is the parity contract. Breaking any of the three levels is a bug.
+
+### 0.2 Extension rule (Python may add, freely)
+
+It is explicitly OK — and encouraged — for Python to ship items that have
+**no MATLAB counterpart**:
+
+- New functions, classes, helpers (often under `nstat.extras.*`).
+- New notebooks, examples, demos.
+- Modern conveniences (lazy imports, type hints, frozen dataclasses, async,
+  property accessors, etc.).
+- New tooling (gallery generators, parity audit reports, build scripts).
+
+Adding new functionality does **not** violate parity. Parity is about
+MATLAB→Python coverage, not Python→MATLAB equivalence.
+
+### 0.3 Organization rule (folder layouts can diverge)
+
+The internal organization of the Python port is free to use Python-native
+conventions:
+
+- Folder layouts, package structure, file naming, notebook conventions,
+  build tooling, gallery system — all Python-native.
+- The MATLAB toolbox uses `+nstat/+decoding/`; Python uses
+  `nstat/decoding_algorithms.py`. That difference is fine.
+- What matters is the **public function surface**, not the directory tree.
+
+### 0.4 Tests serve parity — they do not constrain it
+
+When a test fails because parity work made Python **more** like MATLAB:
+
+1. **Investigate first.** Read the test source; understand what invariant
+   it was protecting and whether that invariant still aligns with parity.
+2. **Default action: redesign the test**, not revert the parity work.
+   Tests should encode invariants that align with the parity contract, not
+   arbitrary constraints from an earlier development state.
+3. Reverting parity-improving code to satisfy a stale test is **backwards**.
+
+Concrete examples of legitimate test redesign:
+
+- An audit-delta test (e.g., `figure_delta ≤ 4`) that flags Python adding
+  figures to match MATLAB's output: re-baseline the audit YAML; if the
+  threshold no longer encodes a real invariant, raise or remove it.
+- A "parity notebooks must not download example data" test that fails
+  when a parity port legitimately requires the dataset: extend the allowlist
+  or reframe the test to permit dataset-dependent notebooks.
+- A scope-fence test that flags a registration-dict entry needed for a new
+  parity-aligned module: extend the dict, the test isn't catching a regression.
+
+Concrete examples where the test is right and the code is wrong:
+
+- A `matlab_gold/*.mat` fixture that fails after a code change: the gold
+  fixture is canonical; the code change broke parity. Revert or fix the code.
+- A `test_api_surface.py` row that fails because an `__all__` symbol was
+  removed: that's a public-API regression. Restore the symbol.
+
+### 0.5 When in doubt
+
+Default to parity. Ship the MATLAB-mirroring change; redesign the failing
+test in the same PR; document the rationale in the commit body so the
+record is permanent.
+
+---
+
 ## 1. What this package is (one paragraph)
 
 `nstat-python` is a Python port of the MATLAB **nSTAT** (neural spike train
