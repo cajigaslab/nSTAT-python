@@ -1543,12 +1543,22 @@ class FitResult:
 
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 4.0))[1]
 
-        # Draw reference diagonal and confidence bands from the first model
-        first_diag = self._compute_diagnostics(fit_nums[0])
-        ideal_ref = np.asarray(first_diag["ks_ideal"], dtype=float)
-        ci_ref = np.asarray(first_diag["ks_ci"], dtype=float)
+        # Draw reference diagonal unconditionally so the panel never renders
+        # blank even if the first model's diagnostics are empty.
+        ax.plot([0.0, 1.0], [0.0, 1.0], "k-.", linewidth=1.0)
+
+        # Confidence bands from the first model with non-empty diagnostics
+        ideal_ref = np.empty(0, dtype=float)
+        ci_ref = np.empty(0, dtype=float)
+        for _fn_probe in fit_nums:
+            _probe_diag = self._compute_diagnostics(_fn_probe)
+            _probe_ideal = np.asarray(_probe_diag["ks_ideal"], dtype=float)
+            _probe_ci = np.asarray(_probe_diag["ks_ci"], dtype=float)
+            if _probe_ideal.size:
+                ideal_ref = _probe_ideal
+                ci_ref = _probe_ci
+                break
         if ideal_ref.size:
-            ax.plot([0.0, 1.0], [0.0, 1.0], "k-.", linewidth=1.0)
             ax.plot(ideal_ref, np.clip(ideal_ref + ci_ref, 0.0, 1.0), "r", linewidth=1.0)
             ax.plot(ideal_ref, np.clip(ideal_ref - ci_ref, 0.0, 1.0), "r", linewidth=1.0)
 

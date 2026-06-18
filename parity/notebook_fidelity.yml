@@ -167,7 +167,7 @@ items:
     and coefficient values still vary modestly from MATLAB because the Python GLM
     backend and plotting defaults are different.
   python_sections: 6
-  python_expected_figures: 11
+  python_expected_figures: 10
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -178,7 +178,7 @@ items:
   matlab_sections: 6
   matlab_published_figures: 9
   section_delta: 0
-  figure_delta: 2
+  figure_delta: 1
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
   python_notebook: notebooks/HippocampalPlaceCellExample.ipynb

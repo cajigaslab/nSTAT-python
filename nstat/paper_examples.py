@@ -317,8 +317,10 @@ def _save_paper_example_plots(plot_payloads: PlotPayloads, plots_dir: Path) -> l
     ax_rate.legend(handles1 + handles2, labels1 + labels2, loc="upper right", fontsize=8)
 
     xloc = np.arange(3)
-    ax_metrics.bar(xloc - 0.175, e2["aic"], width=0.35, label="AIC", color="#7E2F8E")
-    ax_metrics.bar(xloc + 0.175, e2["bic"], width=0.35, label="BIC", color="#A2142F")
+    ax_metrics.bar(xloc - 0.175, e2["aic"], width=0.35, label="AIC",
+                   color="#77AC30", edgecolor="black", linewidth=0.5)
+    ax_metrics.bar(xloc + 0.175, e2["bic"], width=0.35, label="BIC",
+                   color="#A2142F", edgecolor="black", linewidth=0.5)
     ax_metrics.set_xticks(xloc, ["Model 1", "Model 2", "Model 3"])
     ax_metrics.set_ylabel("Information Criterion")
     ax_metrics.set_title("Experiment 2: Model Comparison")

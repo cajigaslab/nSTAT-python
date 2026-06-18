@@ -560,9 +560,23 @@ def _plot_part_a(result):
         time, result["ci_low"], result["ci_high"],
         color="0.75", alpha=0.4, label="95% CI"
     )
+    # Faint spike-raster overlay (population activity context behind the
+    # decoded sinusoid) — scaled to the stimulus y-range so the rasters
+    # remain visible without obscuring the decoded trace.
+    stim_lo = float(np.min(stimSignal))
+    stim_hi = float(np.max(stimSignal))
+    stim_span = max(stim_hi - stim_lo, 1e-9)
+    for c in range(n_cells):
+        spike_t = time[dN[c, :] > 0]
+        if spike_t.size == 0:
+            continue
+        y = stim_lo + (c + 1) / (n_cells + 1) * stim_span
+        ax2.plot(spike_t, np.full_like(spike_t, y), "|",
+                 color="0.55", markersize=3, alpha=0.35, zorder=0)
     ax2.plot(time, result["x_decoded"], "k-", linewidth=4, label="Decoded")
     ax2.plot(time, stimSignal, "b-", linewidth=4, label="Actual")
-    ax2.set_xlabel("time [s]")
+    ax2.set_xlim(time[0], time[-1])
+    ax2.set_xlabel("Time (s)")
     ax2.set_ylabel("Stimulus")  # MATLAB: ylabel('Stimulus','Interpreter','none')
     ax2.set_title(f"Decoded Stimulus $\\pm$ 95% CIs with {result['n_cells']} cells",
                   fontweight="bold", fontsize=18, fontfamily="Arial")
