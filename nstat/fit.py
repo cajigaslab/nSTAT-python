@@ -124,7 +124,9 @@ def _time_rescaled_uniforms(y: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarra
         accum += float(max(lam_i, 1e-12))
         if count >= 1.0:
             for _ in range(int(round(count))):
-                uniforms.append(1.0 - np.exp(-accum))
+                # Case C: -expm1(-accum) preserves precision when accum
+                # is small (low integrated CIF between consecutive spikes).
+                uniforms.append(float(-np.expm1(-accum)))
                 accum = 0.0
     return np.asarray(uniforms, dtype=float)
 

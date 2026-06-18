@@ -72,7 +72,9 @@ def simulate_point_process(
 
     dt = np.diff(t)
     dt = np.concatenate([dt, [dt[-1]]])
-    p = 1.0 - np.exp(-np.clip(r, 0.0, np.inf) * dt)
+    # Case C: use -expm1 for accurate 1 - exp(-x) at small x*dt
+    # (preserves precision at low rates / small bins).
+    p = -np.expm1(-np.clip(r, 0.0, np.inf) * dt)
     p = np.clip(p, 0.0, 1.0)
 
     if uniform_values is None:
