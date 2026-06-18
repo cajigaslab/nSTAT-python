@@ -1496,9 +1496,17 @@ class FitResult:
         ax_re = panels["plotResidual"]
 
         self.KSPlot(fit_num=None, handle=ax_ks)
-        # Add neuron number label (matching Matlab)
+        # Add neuron number label (matching Matlab).  MATLAB renders
+        # ``Neuron:1`` as an integer; ``_parse_neuron_number`` returns a float
+        # when the underlying name parses cleanly, so format it as an int when
+        # the value is integral to avoid the cosmetic "Neuron:1.0" drift.
+        _nn = self.neuronNumber
+        if isinstance(_nn, float) and _nn.is_integer():
+            _nn_display = str(int(_nn))
+        else:
+            _nn_display = str(_nn)
         ax_ks.text(
-            0.45, 0.95, f"Neuron:{self.neuronNumber}",
+            0.45, 0.95, f"Neuron:{_nn_display}",
             transform=ax_ks.transAxes, fontname="Arial",
             fontweight="bold", fontsize=10,
             verticalalignment="top",
