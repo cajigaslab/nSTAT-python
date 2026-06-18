@@ -7,7 +7,7 @@ MATLAB-line annotations look like blank pages with code snippets and indicate th
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
 - Source notebook: [`notebooks/SignalObjExamples.ipynb`](../../notebooks/SignalObjExamples.ipynb)
-- Figures: 17 (17 with substantive plot content)
+- Figures: 20 (20 with substantive plot content)
 
 ## Figures
 
@@ -78,3 +78,15 @@ notebook is a MATLAB-helpfile port rather than a narrative example.
 ### fig_017.png
 
 ![fig_017](./fig_017.png)
+
+### fig_018.png
+
+![fig_018](./fig_018.png)
+
+### fig_019.png
+
+![fig_019](./fig_019.png)
+
+### fig_020.png
+
+![fig_020](./fig_020.png)

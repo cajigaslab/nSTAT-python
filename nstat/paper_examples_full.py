@@ -311,6 +311,30 @@ def run_experiment2(data_dir: Path, *, return_payload: bool = False) -> dict[str
     delta_aic = aic_series - aic_series[0]
     delta_bic = bic_series - bic_series[0]
 
+    # MATLAB Summary.plotSummary: per-window coefficient errorbar panel needs values+CIs for each scan iteration.
+    scan_coef_values: list[np.ndarray] = []
+    scan_coef_lower: list[np.ndarray] = []
+    scan_coef_upper: list[np.ndarray] = []
+    scan_coef_names: list[list[str]] = []
+    for idx, q in enumerate(candidate_q.tolist()):
+        x_sel = np.column_stack([stim_sel, stim_vel_sel, full_hist[:, :q]])
+        model_q = fit_poisson_glm(x_sel, y_sel, offset=offset_sel, max_iter=45)
+        beta_q, lower_q, upper_q = _coefficient_intervals(x_sel, model_q, offset_sel)
+        # Order: history bins [0..q*dt], constant μ, stim, stim_vel
+        n_hist = q
+        coefs_hist = beta_q[3 : 3 + n_hist]
+        low_hist = lower_q[3 : 3 + n_hist]
+        up_hist = upper_q[3 : 3 + n_hist]
+        names_hist = [f"[{(i)*dt:.3f},{(i+1)*dt:.3f}]" for i in range(n_hist)]
+        coefs_full = np.concatenate([coefs_hist, [beta_q[0], beta_q[1], beta_q[2]]])
+        low_full = np.concatenate([low_hist, [lower_q[0], lower_q[1], lower_q[2]]])
+        up_full = np.concatenate([up_hist, [upper_q[0], upper_q[1], upper_q[2]]])
+        names_full = names_hist + ["μ", "stim", "stim_vel"]
+        scan_coef_values.append(coefs_full)
+        scan_coef_lower.append(low_full)
+        scan_coef_upper.append(up_full)
+        scan_coef_names.append(names_full)
+
     xcorr_window = int(min(20000, y.shape[0]))
     xcorr = correlate(y[:xcorr_window] - np.mean(y[:xcorr_window]), stim[:xcorr_window] - np.mean(stim[:xcorr_window]), mode="full", method="fft")
     lags = correlation_lags(xcorr_window, xcorr_window, mode="full")
@@ -329,6 +353,57 @@ def run_experiment2(data_dir: Path, *, return_payload: bool = False) -> dict[str
     coef_values = np.concatenate([coef_beta[3:], [coef_beta[0], coef_beta[1]]])
     coef_lower_plot = np.concatenate([coef_lower[3:], [coef_lower[0], coef_lower[1]]])
     coef_upper_plot = np.concatenate([coef_upper[3:], [coef_upper[0], coef_upper[1]]])
+
+    # MATLAB plotResults companion fields: ACF of rescaled uniforms, sequential corr u_{j+1} vs u_j,
+    # GLM coefficient intervals per model, and point-process residual M(t_k).
+    def _seq_corr(u: np.ndarray) -> tuple[float, float, np.ndarray, np.ndarray]:
+        u_arr = np.asarray(u, dtype=float).reshape(-1)
+        if u_arr.size < 3:
+            return 0.0, 1.0, u_arr, u_arr
+        a, b = u_arr[:-1], u_arr[1:]
+        a_mean, b_mean = float(np.mean(a)), float(np.mean(b))
+        num = float(np.sum((a - a_mean) * (b - b_mean)))
+        den = float(np.sqrt(np.sum((a - a_mean) ** 2) * np.sum((b - b_mean) ** 2)))
+        rho = num / den if den > 0 else 0.0
+        # approx p-value via Fisher transform
+        n = a.size
+        if abs(rho) >= 1.0 or n < 4:
+            pval = 0.0 if abs(rho) >= 1.0 else 1.0
+        else:
+            z = 0.5 * np.log((1.0 + rho) / (1.0 - rho)) * np.sqrt(max(n - 3, 1))
+            from math import erfc
+            pval = float(erfc(abs(z) / np.sqrt(2.0)))
+        return float(rho), float(pval), a, b
+
+    def _residual(y_in: np.ndarray, lam_in: np.ndarray) -> np.ndarray:
+        # M(t_k) = cumulative (count - intensity) in spikes (dimensionless)
+        return np.cumsum(np.asarray(y_in, dtype=float) - np.asarray(lam_in, dtype=float))
+
+    acf_max_lag = 50
+    acf_lags1, acf_vals1 = _autocorrelation(u1, acf_max_lag)
+    acf_lags2, acf_vals2 = _autocorrelation(u2, acf_max_lag)
+    acf_lags3, acf_vals3 = _autocorrelation(u3, acf_max_lag)
+    acf_ci_val = 1.96 / np.sqrt(max(u1.size, 1))
+
+    rho1, p1, uj1_a, uj1_b = _seq_corr(u1)
+    rho2, p2, uj2_a, uj2_b = _seq_corr(u2)
+    rho3, p3, uj3_a, uj3_b = _seq_corr(u3)
+
+    # Per-model coefficient intervals (intercept + covariates). Model 1: intercept only.
+    m1_x = np.zeros((y.shape[0], 0), dtype=float)
+    beta1, low1, up1 = _coefficient_intervals(m1_x, m1, offset)
+    beta2, low2, up2 = _coefficient_intervals(x2, m2, offset)
+    beta3, low3, up3 = _coefficient_intervals(x3, m3, offset)
+    coef_names_m1 = ["μ"]
+    coef_names_m2 = ["μ", "stim", "stim_vel"]
+    coef_names_m3 = ["μ", "stim", "stim_vel"] + [f"hist{i+1}" for i in range(hist.shape[1])]
+
+    # Point-process residual restricted to the 0..50s view window (or full range; MATLAB uses analysis span)
+    resid_view_n = int(min(int(round(50.0 / dt)), y.shape[0]))
+    residual_t = np.arange(resid_view_n, dtype=float) * dt
+    residual_m1 = _residual(y[:resid_view_n], lam1[:resid_view_n])
+    residual_m2 = _residual(y[:resid_view_n], lam2[:resid_view_n])
+    residual_m3 = _residual(y[:resid_view_n], lam3[:resid_view_n])
 
     summary = {
         "n_samples": float(y.shape[0]),
@@ -364,6 +439,30 @@ def run_experiment2(data_dir: Path, *, return_payload: bool = False) -> dict[str
         "coef_values": coef_values,
         "coef_lower": coef_lower_plot,
         "coef_upper": coef_upper_plot,
+        # ACF of rescaled ISIs (per model)
+        "acf_lags": acf_lags1,
+        "acf_m1": acf_vals1,
+        "acf_m2": acf_vals2,
+        "acf_m3": acf_vals3,
+        "acf_ci": float(acf_ci_val),
+        # Sequential correlation u_{j+1} vs u_j with summary statistics
+        "seq_corr_m1": {"uj": uj1_a, "uj1": uj1_b, "rho": rho1, "p": p1},
+        "seq_corr_m2": {"uj": uj2_a, "uj1": uj2_b, "rho": rho2, "p": p2},
+        "seq_corr_m3": {"uj": uj3_a, "uj1": uj3_b, "rho": rho3, "p": p3},
+        # GLM coefficient intervals per model
+        "glm_m1": {"names": coef_names_m1, "values": beta1, "lower": low1, "upper": up1},
+        "glm_m2": {"names": coef_names_m2, "values": beta2, "lower": low2, "upper": up2},
+        "glm_m3": {"names": coef_names_m3, "values": beta3, "lower": low3, "upper": up3},
+        # Point-process residual M(t_k)
+        "residual_t": residual_t,
+        "residual_m1": residual_m1,
+        "residual_m2": residual_m2,
+        "residual_m3": residual_m3,
+        # Per-window scan coefficients (for Summary.plotSummary GLM panel)
+        "scan_coef_values": scan_coef_values,
+        "scan_coef_lower": scan_coef_lower,
+        "scan_coef_upper": scan_coef_upper,
+        "scan_coef_names": scan_coef_names,
     }
     return summary, payload
 
