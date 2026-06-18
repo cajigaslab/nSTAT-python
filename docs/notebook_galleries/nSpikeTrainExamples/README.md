@@ -7,7 +7,7 @@ MATLAB-line annotations look like blank pages with code snippets and indicate th
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
 - Source notebook: [`notebooks/nSpikeTrainExamples.ipynb`](../../notebooks/nSpikeTrainExamples.ipynb)
-- Figures: 6 (6 with substantive plot content)
+- Figures: 7 (7 with substantive plot content)
 
 ## Figures
 
@@ -34,3 +34,7 @@ notebook is a MATLAB-helpfile port rather than a narrative example.
 ### fig_006.png
 
 ![fig_006](./fig_006.png)
+
+### fig_007.png
+
+![fig_007](./fig_007.png)

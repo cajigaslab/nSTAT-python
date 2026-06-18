@@ -133,14 +133,21 @@ class Events:
                 ax.plot(times, y, color=color, linewidth=4)
                 for event_time, label in zip(self.eventTimes, self.eventLabels, strict=False):
                     if label and ((float(event_time) - float(v[0])) / max(float(v[1] - v[0]), 1e-12) >= 0) and float(event_time) <= float(v[1]):
+                        # Match MATLAB Events.m:97 intent — label sits in data-x
+                        # above its event line. Using get_xaxis_transform keeps
+                        # x in data coordinates (tracks the line even with tight
+                        # xlim) and y in axes coordinates (just above the axis),
+                        # ha='center' replaces MATLAB's -0.02 normalized nudge.
                         ax.text(
-                            (float(event_time) - float(v[0])) / max(float(v[1] - v[0]), 1e-12) - 0.02,
-                            1.03,
+                            float(event_time),
+                            1.02,
                             label,
                             rotation=0,
                             fontsize=10,
                             color=[0, 0, 0],
-                            transform=ax.transAxes,
+                            ha="center",
+                            va="bottom",
+                            transform=ax.get_xaxis_transform(),
                         )
         return last_ax
 
