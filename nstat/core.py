@@ -434,7 +434,7 @@ class SignalObj:
         """Enable only the dimensions at the given 0-based indices."""
         selected = _coerce_zero_based_indices(index, self.dimension)
         mask = np.zeros(self.dimension, dtype=int)
-        mask[np.asarray(selected, dtype=int) - 1] = 1
+        mask[np.asarray(selected, dtype=int)] = 1
         self.setDataMask(mask)
 
     def setMaskByLabels(self, labels: Sequence[str] | str) -> None:

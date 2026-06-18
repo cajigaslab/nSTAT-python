@@ -177,6 +177,10 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ("NetworkTutorial.ipynb", '"spike_counts": [spikeColl.getNST(0).n_spikes, spikeColl.getNST(1).n_spikes],'): "first + second train",
     # PPSimExample: third subsignal (0-based 2) is the binomial model's lambda.
     ("PPSimExample.ipynb", "results[0].lambdaSignal.getSubSignal(2).plot(handle=ax)"): "intentional 3rd subsignal (0-based)",
+    # StimulusDecode2D: extent uses last valid grid index (slice upper bound is exclusive,
+    # so the right edge is _grid_vec[upper - 1]) — legitimate "edge sample" pattern.
+    ("StimulusDecode2D.ipynb", "ext = [float(_grid_vec[_ix_lo]), float(_grid_vec[_ix_hi - 1]),"): "right-edge sample of half-open slice",
+    ("StimulusDecode2D.ipynb", "float(_grid_vec[_iy_lo]), float(_grid_vec[_iy_hi - 1])]"): "right-edge sample of half-open slice",
     # Example01: second subsignal of lambda (0-based 1) for the green-curve plot.
     ("example01_mepsc_poisson.py", 'ax.plot(lam.time, lam.getSubSignal(1).data[:, 0], "g", linewidth=2)'): "second subsignal (0-based)",
     # Time-recursion `range(1, T)` patterns in examples and tools — t=0 is initial condition.
