@@ -160,6 +160,10 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ("nstCollExamples.ipynb", "_ax.set_yticks(list(range(1, 21)))"): "raster ytick positions 1..N for MATLAB-style display",
     ("nstCollExamples.ipynb", '_ax.set_yticklabels([f"Neuron{i}" for i in range(1, 21)], fontstyle="italic")'): "Neuron1..NeuronN labels mirror MATLAB raster",
     ("nstCollExamples.ipynb", "_ax.set_yticks(list(range(1, len(labels) + 1)))"): "raster ytick positions 1..N for MATLAB-style display",
+    # nstCollExamples: ytick labels mirror raster row indices 1..N to mirror MATLAB
+    # display convention (see other nstCollExamples exemptions above).
+    ("nstCollExamples.ipynb", "_ax.set_yticklabels([str(i) for i in range(1, 21)])"): "raster ytick labels 1..N for MATLAB-style display",
+    ("nstCollExamples.ipynb", "_ax.set_yticklabels([str(i) for i in range(1, len(labels) + 1)])"): "raster ytick labels 1..N for MATLAB-style display",
     # HR4 baseline: legitimate 0-based selectors > 0 (intentional, not stale 1-based).
     # README example uses getNST(1) as a fallback after getNST(0) fails — supports
     # objects with either indexing convention.
