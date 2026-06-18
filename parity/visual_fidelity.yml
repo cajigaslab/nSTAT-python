@@ -1,179 +1,241 @@
-# Visual parity manifest — MATLAB ↔ Python figure pairs scored by SSIM.
-#
-# Schema (per entry):
-#   topic                 nstat helpfile topic (matches notebook_galleries/)
-#   matlab_png            path under the sibling MATLAB checkout
-#   python_png            path under this repo
-#   figure_description    one-line label
-#   ssim_threshold        per-figure SSIM floor (-1..+1; ≥0.70 deterministic, ≥0.50 stochastic)
-#   stochastic            true if random seed differs between MATLAB and Python
-#   notes                 free text
-#   skip_ci               (optional) true → not gated in CI (e.g. layout mismatch)
-#   skip_reason           (optional) why skipped
-#
-# Regenerate scores: ``make regen-visual-parity`` (requires sibling MATLAB).
-# CI gate: ``tools/parity/build_visual_comparison.py --fail-below-threshold``.
-# See ``docs/parity/visual_comparison.md`` for the rendered comparison.
-
 version: 1
 metric: ssim
-normalized_size: [800, 600]
-
+normalized_size:
+- 800
+- 600
 entries:
-  # ============================================================
-  # Bootstrap batch (7 entries — proves the tooling end-to-end)
-  # ============================================================
-  - topic: AnalysisExamples
-    matlab_png: helpfiles/AnalysisExamples_01.png
-    python_png: docs/notebook_galleries/AnalysisExamples/fig_001.png
-    figure_description: Rat trajectory with spike locations
-    ssim_threshold: 0.45
-    stochastic: false
-    notes: |
-      Color differs (MATLAB blue vs Python grey) and Python adds axis
-      labels with tick values; structure identical (same trajectory,
-      same spike locations).  Baseline 0.498 measured 2026-06-11.
+- topic: AnalysisExamples
+  matlab_png: helpfiles/AnalysisExamples_01.png
+  python_png: docs/notebook_galleries/AnalysisExamples/fig_001.png
+  figure_description: Rat trajectory with spike locations
+  ssim_threshold: 0.45
+  stochastic: false
+  notes: 'Color differs (MATLAB blue vs Python grey) and Python adds axis
 
-  - topic: AnalysisExamples
-    matlab_png: helpfiles/AnalysisExamples_04.png
-    python_png: docs/notebook_galleries/AnalysisExamples/fig_004.png
-    figure_description: KS plot — linear vs quadratic GLM
-    ssim_threshold: 0.70
-    stochastic: false
-    notes: After Phase 2 fix, Quadratic uses centered features
+    labels with tick values; structure identical (same trajectory,
 
-  - topic: PPSimExample
-    matlab_png: helpfiles/PPSimExample_04.png
-    python_png: docs/notebook_galleries/PPSimExample/fig_006.png
-    figure_description: Raster + stimulus
-    ssim_threshold: 0.50
-    stochastic: true
-    notes: Stochastic spike draws differ between numpy and MATLAB random streams
+    same spike locations).  Baseline 0.498 measured 2026-06-11.
 
-  - topic: NetworkTutorial
-    matlab_png: helpfiles/NetworkTutorial_05.png
-    python_png: docs/notebook_galleries/NetworkTutorial/fig_013.png
-    figure_description: Actual vs estimated network connectivity
-    ssim_threshold: 0.70
-    stochastic: false
-    notes: |
-      After Phase 2 fix (maskAwayAllExcept reset + label parser +
-      setNeighbors), the estimated panel matches the actual panel's
-      sign pattern.  Magnitude unstable at l2=0; sign is what matters.
+    '
+- topic: AnalysisExamples
+  matlab_png: helpfiles/AnalysisExamples_04.png
+  python_png: docs/notebook_galleries/AnalysisExamples/fig_004.png
+  figure_description: "KS plot \u2014 linear vs quadratic GLM"
+  ssim_threshold: 0.7
+  stochastic: false
+  notes: After Phase 2 fix, Quadratic uses centered features
+- topic: PPSimExample
+  matlab_png: helpfiles/PPSimExample_04.png
+  python_png: docs/notebook_galleries/PPSimExample/fig_006.png
+  figure_description: Raster + stimulus
+  ssim_threshold: 0.5
+  stochastic: true
+  notes: Stochastic spike draws differ between numpy and MATLAB random streams
+- topic: NetworkTutorial
+  matlab_png: helpfiles/NetworkTutorial_05.png
+  python_png: docs/notebook_galleries/NetworkTutorial/fig_013.png
+  figure_description: Actual vs estimated network connectivity
+  ssim_threshold: 0.7
+  stochastic: false
+  notes: 'After Phase 2 fix (maskAwayAllExcept reset + label parser +
 
-  - topic: DecodingExample
-    matlab_png: helpfiles/DecodingExample_05.png
-    python_png: docs/notebook_galleries/DecodingExample/fig_005.png
-    figure_description: PPAF decoded stimulus
-    ssim_threshold: 0.50
-    stochastic: true
-    notes: Stochastic spike draws differ; tracks the same sinusoid
+    setNeighbors), the estimated panel matches the actual panel''s
 
-  - topic: CovariateExamples
-    matlab_png: helpfiles/CovariateExamples_01.png
-    python_png: docs/notebook_galleries/CovariateExamples/fig_001.png
-    figure_description: Covariate signal visualization
-    ssim_threshold: 0.55
-    stochastic: false
-    notes: Baseline 0.631 measured 2026-06-11; layout match good.
+    sign pattern.  Magnitude unstable at l2=0; sign is what matters.
 
-  - topic: TrialExamples
-    matlab_png: helpfiles/TrialExamples_01.png
-    python_png: docs/notebook_galleries/TrialExamples/fig_001.png
-    figure_description: Trial plot — spikes + covariates aligned
-    ssim_threshold: 0.70
-    stochastic: false
+    '
+- topic: DecodingExample
+  matlab_png: helpfiles/DecodingExample_05.png
+  python_png: docs/notebook_galleries/DecodingExample/fig_005.png
+  figure_description: PPAF decoded stimulus
+  ssim_threshold: 0.5
+  stochastic: true
+  notes: Stochastic spike draws differ; tracks the same sinusoid
+- topic: CovariateExamples
+  matlab_png: helpfiles/CovariateExamples_01.png
+  python_png: docs/notebook_galleries/CovariateExamples/fig_001.png
+  figure_description: Covariate signal visualization
+  ssim_threshold: 0.55
+  stochastic: false
+  notes: Baseline 0.631 measured 2026-06-11; layout match good.
+- topic: TrialExamples
+  matlab_png: helpfiles/TrialExamples_01.png
+  python_png: docs/notebook_galleries/TrialExamples/fig_001.png
+  figure_description: "Trial plot \u2014 spikes + covariates aligned"
+  ssim_threshold: 0.7
+  stochastic: false
+- topic: mEPSCAnalysis
+  matlab_png: helpfiles/mEPSCAnalysis_01.png
+  python_png: docs/notebook_galleries/mEPSCAnalysis/fig_001.png
+  figure_description: Constant Mg raster + Poisson model fit
+  ssim_threshold: 0.5
+  stochastic: true
+  notes: "After Phase 2 sampleRate fix (200\u21921000 Hz), the design-matrix\ndimension matches MATLAB so the rate-axis ranges\
+    \ agree.\n"
+- topic: mEPSCAnalysis
+  matlab_png: helpfiles/mEPSCAnalysis_05.png
+  python_png: docs/notebook_galleries/mEPSCAnalysis/fig_004.png
+  figure_description: "GLM coefficient comparison (\u03BC\u2081, \u03BC\u2082, \u03BC\u2083)"
+  ssim_threshold: 0.6
+  stochastic: false
+  notes: 'After Phase 1 + Phase 2 fixes (l2=0.0 + sampleRate=1000 +
 
-  # ============================================================
-  # Extended coverage — high-traffic pedagogical figures
-  # ============================================================
-  - topic: mEPSCAnalysis
-    matlab_png: helpfiles/mEPSCAnalysis_01.png
-    python_png: docs/notebook_galleries/mEPSCAnalysis/fig_001.png
-    figure_description: Constant Mg raster + Poisson model fit
-    ssim_threshold: 0.50
-    stochastic: true
-    notes: |
-      After Phase 2 sampleRate fix (200→1000 Hz), the design-matrix
-      dimension matches MATLAB so the rate-axis ranges agree.
+    epoch boundaries [495,765]), coefficients should match MATLAB
 
-  - topic: mEPSCAnalysis
-    matlab_png: helpfiles/mEPSCAnalysis_05.png
-    python_png: docs/notebook_galleries/mEPSCAnalysis/fig_004.png
-    figure_description: GLM coefficient comparison (μ₁, μ₂, μ₃)
-    ssim_threshold: 0.60
-    stochastic: false
-    notes: |
-      After Phase 1 + Phase 2 fixes (l2=0.0 + sampleRate=1000 +
-      epoch boundaries [495,765]), coefficients should match MATLAB
-      magnitudes within stochastic-data tolerance.
+    magnitudes within stochastic-data tolerance.
 
-  - topic: HistoryExamples
-    matlab_png: helpfiles/HistoryExamples_01.png
-    python_png: docs/notebook_galleries/HistoryExamples/fig_001.png
-    figure_description: History windows + covariate visualization
-    ssim_threshold: 0.50
-    stochastic: true
-    notes: |
-      After Phase 2 fix (8 hand-typed → 100 seeded random spikes
-      matching ``sort(rand(1,100))``), figure scope matches MATLAB.
-      Stochastic seed differs between numpy and MATLAB streams.
+    '
+- topic: HistoryExamples
+  matlab_png: helpfiles/HistoryExamples_01.png
+  python_png: docs/notebook_galleries/HistoryExamples/fig_001.png
+  figure_description: History windows + covariate visualization
+  ssim_threshold: 0.5
+  stochastic: true
+  notes: "After Phase 2 fix (8 hand-typed \u2192 100 seeded random spikes\nmatching ``sort(rand(1,100))``), figure scope matches\
+    \ MATLAB.\nStochastic seed differs between numpy and MATLAB streams.\n"
+- topic: HippocampalPlaceCellExample
+  matlab_png: helpfiles/HippocampalPlaceCellExample_10.png
+  python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_011.png
+  figure_description: Cell 25 Gaussian vs Zernike place field (3D mesh overlay)
+  ssim_threshold: 0.5
+  stochastic: false
+  skip_ci: true
+  skip_reason: 'MATLAB renders an overlaid 3D wireframe at specific camera angle;
 
-  - topic: HippocampalPlaceCellExample
-    matlab_png: helpfiles/HippocampalPlaceCellExample_10.png
-    python_png: docs/notebook_galleries/HippocampalPlaceCellExample/fig_011.png
-    figure_description: Cell 25 Gaussian vs Zernike place field (3D mesh overlay)
-    ssim_threshold: 0.50
-    stochastic: false
-    skip_ci: true
-    skip_reason: |
-      MATLAB renders an overlaid 3D wireframe at specific camera angle;
-      Python uses plot_wireframe with view_init(elev=30, azim=-37.5).
-      Layout/perspective mismatch is too large for SSIM until both
-      paths agree on a single rendering convention.
+    Python uses plot_wireframe with view_init(elev=30, azim=-37.5).
 
-  - topic: PPThinning
-    matlab_png: helpfiles/PPThinning_04.png
-    python_png: docs/notebook_galleries/PPThinning/fig_003.png
-    figure_description: Thinned realisations + scaled CIF overlay (log-y)
-    ssim_threshold: 0.50
-    stochastic: true
-    skip_ci: true
-    skip_reason: |
-      MATLAB overlays the scaled CIF on the raster with log-y axis;
-      Python plots a plain raster only.  Layout pending Phase 4.
+    Layout/perspective mismatch is too large for SSIM until both
 
-  - topic: SignalObjExamples
-    matlab_png: helpfiles/SignalObjExamples_01.png
-    python_png: docs/notebook_galleries/SignalObjExamples/fig_001.png
-    figure_description: SignalObj basic plot
-    ssim_threshold: 0.40
-    stochastic: false
-    notes: |
-      Baseline 0.470 measured 2026-06-11; significant layout drift
-      (MATLAB renders multi-axis SignalObj with custom labels,
-      Python uses default matplotlib subplots).  Candidate for
-      Phase 4 pedagogical fix.
+    paths agree on a single rendering convention.
 
-  - topic: nSpikeTrainExamples
-    matlab_png: helpfiles/nSpikeTrainExamples_01.png
-    python_png: docs/notebook_galleries/nSpikeTrainExamples/fig_001.png
-    figure_description: nspikeTrain raster
-    ssim_threshold: 0.20
-    stochastic: false
-    notes: |
-      Baseline 0.273 measured 2026-06-11; Python raster layout differs
-      substantially from MATLAB's multi-panel published figure.
-      Marker: gate baselines current state; lower threshold prevents
-      false alarms but a future Phase 4 fix should target 0.50+.
+    '
+- topic: PPThinning
+  matlab_png: helpfiles/PPThinning_04.png
+  python_png: docs/notebook_galleries/PPThinning/fig_003.png
+  figure_description: Thinned realisations + scaled CIF overlay (log-y)
+  ssim_threshold: 0.5
+  stochastic: true
+  skip_ci: true
+  skip_reason: 'MATLAB overlays the scaled CIF on the raster with log-y axis;
 
-  - topic: nstCollExamples
-    matlab_png: helpfiles/nstCollExamples_01.png
-    python_png: docs/notebook_galleries/nstCollExamples/fig_001.png
-    figure_description: nstColl raster aggregate
-    ssim_threshold: 0.18
-    stochastic: false
-    notes: |
-      Baseline 0.214 measured 2026-06-11; similar to
-      nSpikeTrainExamples — Python collection raster doesn't reproduce
-      MATLAB's published multi-panel layout.  Phase 4 candidate.
+    Python plots a plain raster only.  Layout pending Phase 4.
+
+    '
+- topic: SignalObjExamples
+  matlab_png: helpfiles/SignalObjExamples_01.png
+  python_png: docs/notebook_galleries/SignalObjExamples/fig_001.png
+  figure_description: SignalObj basic plot
+  ssim_threshold: 0.4
+  stochastic: false
+  notes: 'Baseline 0.470 measured 2026-06-11; significant layout drift
+
+    (MATLAB renders multi-axis SignalObj with custom labels,
+
+    Python uses default matplotlib subplots).  Candidate for
+
+    Phase 4 pedagogical fix.
+
+    '
+- topic: nSpikeTrainExamples
+  matlab_png: helpfiles/nSpikeTrainExamples_01.png
+  python_png: docs/notebook_galleries/nSpikeTrainExamples/fig_001.png
+  figure_description: nspikeTrain raster
+  ssim_threshold: 0.2
+  stochastic: false
+  notes: 'Baseline 0.273 measured 2026-06-11; Python raster layout differs
+
+    substantially from MATLAB''s multi-panel published figure.
+
+    Marker: gate baselines current state; lower threshold prevents
+
+    false alarms but a future Phase 4 fix should target 0.50+.
+
+    '
+- topic: nstCollExamples
+  matlab_png: helpfiles/nstCollExamples_01.png
+  python_png: docs/notebook_galleries/nstCollExamples/fig_001.png
+  figure_description: nstColl raster aggregate
+  ssim_threshold: 0.18
+  stochastic: false
+  notes: "Baseline 0.214 measured 2026-06-11; similar to\nnSpikeTrainExamples \u2014 Python collection raster doesn't reproduce\n\
+    MATLAB's published multi-panel layout.  Phase 4 candidate.\n"
+- topic: AnalysisExamples2
+  matlab_png: helpfiles/AnalysisExamples2_01.png
+  python_png: docs/notebook_galleries/AnalysisExamples2/fig_001.png
+  figure_description: AnalysisExamples2 introductory figure (auto-added in parity iter 5)
+  ssim_threshold: 0.42
+  stochastic: false
+  notes: "Baseline measured 0.493 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
+    \ so the gate fires on substantial regressions but not on minor rendering variance."
+- topic: CovCollExamples
+  matlab_png: helpfiles/CovCollExamples_01.png
+  python_png: docs/notebook_galleries/CovCollExamples/fig_001.png
+  figure_description: CovCollExamples introductory figure (auto-added in parity iter 5)
+  ssim_threshold: 0.46
+  stochastic: false
+  notes: "Baseline measured 0.545 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
+    \ so the gate fires on substantial regressions but not on minor rendering variance."
+- topic: DecodingExampleWithHist
+  matlab_png: helpfiles/DecodingExampleWithHist_01.png
+  python_png: docs/notebook_galleries/DecodingExampleWithHist/fig_001.png
+  figure_description: DecodingExampleWithHist introductory figure (auto-added in parity iter 5)
+  ssim_threshold: 0.47
+  stochastic: false
+  notes: "Baseline measured 0.549 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
+    \ so the gate fires on substantial regressions but not on minor rendering variance."
+- topic: EventsExamples
+  matlab_png: helpfiles/EventsExamples_01.png
+  python_png: docs/notebook_galleries/EventsExamples/fig_001.png
+  figure_description: EventsExamples introductory figure (auto-added in parity iter 5)
+  ssim_threshold: 0.7
+  stochastic: false
+  notes: "Baseline measured 0.827 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
+    \ so the gate fires on substantial regressions but not on minor rendering variance."
+- topic: ExplicitStimulusWhiskerData
+  matlab_png: helpfiles/ExplicitStimulusWhiskerData_01.png
+  python_png: docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_001.png
+  figure_description: ExplicitStimulusWhiskerData introductory figure (auto-added in parity iter 5)
+  ssim_threshold: 0.43
+  stochastic: false
+  notes: "Baseline measured 0.504 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
+    \ so the gate fires on substantial regressions but not on minor rendering variance."
+- topic: HybridFilterExample
+  matlab_png: helpfiles/HybridFilterExample_01.png
+  python_png: docs/notebook_galleries/HybridFilterExample/fig_001.png
+  figure_description: HybridFilterExample introductory figure (auto-added in parity iter 5)
+  ssim_threshold: 0.56
+  stochastic: false
+  notes: "Baseline measured 0.663 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
+    \ so the gate fires on substantial regressions but not on minor rendering variance."
+- topic: PSTHEstimation
+  matlab_png: helpfiles/PSTHEstimation_01.png
+  python_png: docs/notebook_galleries/PSTHEstimation/fig_001.png
+  figure_description: PSTHEstimation introductory figure (auto-added in parity iter 5)
+  ssim_threshold: 0.3
+  stochastic: false
+  notes: "Baseline measured 0.348 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
+    \ so the gate fires on substantial regressions but not on minor rendering variance."
+- topic: StimulusDecode2D
+  matlab_png: helpfiles/StimulusDecode2D_01.png
+  python_png: docs/notebook_galleries/StimulusDecode2D/fig_001.png
+  figure_description: StimulusDecode2D introductory figure (auto-added in parity iter 5)
+  ssim_threshold: 0.73
+  stochastic: false
+  notes: "Baseline measured 0.859 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
+    \ so the gate fires on substantial regressions but not on minor rendering variance."
+- topic: ValidationDataSet
+  matlab_png: helpfiles/ValidationDataSet_01.png
+  python_png: docs/notebook_galleries/ValidationDataSet/fig_001.png
+  figure_description: ValidationDataSet introductory figure (auto-added in parity iter 5)
+  ssim_threshold: 0.59
+  stochastic: false
+  notes: "Baseline measured 0.689 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
+    \ so the gate fires on substantial regressions but not on minor rendering variance."
+- topic: nSTATPaperExamples
+  matlab_png: helpfiles/nSTATPaperExamples_01.png
+  python_png: docs/notebook_galleries/nSTATPaperExamples/fig_001.png
+  figure_description: nSTATPaperExamples introductory figure (auto-added in parity iter 5)
+  ssim_threshold: 0.55
+  stochastic: false
+  notes: "Baseline measured 0.649 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\xD7baseline\
+    \ so the gate fires on substantial regressions but not on minor rendering variance."
