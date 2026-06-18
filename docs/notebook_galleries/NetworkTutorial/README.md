@@ -7,7 +7,7 @@ MATLAB-line annotations look like blank pages with code snippets and indicate th
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
 - Source notebook: [`notebooks/NetworkTutorial.ipynb`](../../notebooks/NetworkTutorial.ipynb)
-- Figures: 13 (13 with substantive plot content)
+- Figures: 8 (8 with substantive plot content)
 
 ## Figures
 
@@ -42,23 +42,3 @@ notebook is a MATLAB-helpfile port rather than a narrative example.
 ### fig_008.png
 
 ![fig_008](./fig_008.png)
-
-### fig_009.png
-
-![fig_009](./fig_009.png)
-
-### fig_010.png
-
-![fig_010](./fig_010.png)
-
-### fig_011.png
-
-![fig_011](./fig_011.png)
-
-### fig_012.png
-
-![fig_012](./fig_012.png)
-
-### fig_013.png
-
-![fig_013](./fig_013.png)

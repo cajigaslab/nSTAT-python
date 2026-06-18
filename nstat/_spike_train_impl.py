@@ -650,10 +650,14 @@ class nspikeTrain:
         ax = plt.gca() if (currentHandle is None and handle is None) else (currentHandle or handle)
         lines = []
         for spike_time in self.spikeTimes:
+            # MATLAB rasters draw thin tick marks (~0.5 pt) rather than
+            # matplotlib's default 1.5 pt; matches helpfile parity targets
+            # for nSpikeTrainExamples / nstCollExamples / PSTHEstimation.
             (line,) = ax.plot(
                 [spike_time, spike_time],
                 [yOffset - dHeight / 2.0, yOffset + dHeight / 2.0],
                 "k",
+                linewidth=0.5,
             )
             lines.append(line)
         if currentHandle is None and handle is None:

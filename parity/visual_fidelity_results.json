@@ -14,7 +14,7 @@
       "threshold": 0.45,
       "stochastic": false,
       "notes": "Color differs (MATLAB blue vs Python grey) and Python adds axis\nlabels with tick values; structure identical (same trajectory,\nsame spike locations).  Baseline 0.498 measured 2026-06-11.\n",
-      "ssim": 0.4996816669315074,
+      "ssim": 0.4972334001023517,
       "passed": true
     },
     {
@@ -35,9 +35,9 @@
       "python_png": "docs/notebook_galleries/PPSimExample/fig_006.png",
       "threshold": 0.5,
       "stochastic": true,
-      "notes": "Stochastic spike draws differ between numpy and MATLAB random streams",
-      "ssim": 0.6160620588747588,
-      "passed": true
+      "notes": "Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/PPSimExample/fig_006.png",
+      "ssim": null,
+      "passed": false
     },
     {
       "topic": "NetworkTutorial",
@@ -46,9 +46,9 @@
       "python_png": "docs/notebook_galleries/NetworkTutorial/fig_013.png",
       "threshold": 0.7,
       "stochastic": false,
-      "notes": "After Phase 2 fix (maskAwayAllExcept reset + label parser +\nsetNeighbors), the estimated panel matches the actual panel's\nsign pattern.  Magnitude unstable at l2=0; sign is what matters.\n",
-      "ssim": 0.7610291471083733,
-      "passed": true
+      "notes": "Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/NetworkTutorial/fig_013.png",
+      "ssim": null,
+      "passed": false
     },
     {
       "topic": "DecodingExample",
@@ -58,7 +58,7 @@
       "threshold": 0.5,
       "stochastic": true,
       "notes": "Stochastic spike draws differ; tracks the same sinusoid",
-      "ssim": 0.5960394059461392,
+      "ssim": 0.5984765637237496,
       "passed": true
     },
     {
@@ -113,7 +113,7 @@
       "threshold": 0.5,
       "stochastic": true,
       "notes": "After Phase 2 fix (8 hand-typed \u2192 100 seeded random spikes\nmatching ``sort(rand(1,100))``), figure scope matches MATLAB.\nStochastic seed differs between numpy and MATLAB streams.\n",
-      "ssim": 0.5753600618008033,
+      "ssim": 0.5816232146669854,
       "passed": true
     },
     {
@@ -157,7 +157,7 @@
       "threshold": 0.2,
       "stochastic": false,
       "notes": "Baseline 0.273 measured 2026-06-11; Python raster layout differs\nsubstantially from MATLAB's multi-panel published figure.\nMarker: gate baselines current state; lower threshold prevents\nfalse alarms but a future Phase 4 fix should target 0.50+.\n",
-      "ssim": 0.3020069080552126,
+      "ssim": 0.3191423620140967,
       "passed": true
     },
     {
@@ -168,7 +168,7 @@
       "threshold": 0.18,
       "stochastic": false,
       "notes": "Baseline 0.214 measured 2026-06-11; similar to\nnSpikeTrainExamples \u2014 Python collection raster doesn't reproduce\nMATLAB's published multi-panel layout.  Phase 4 candidate.\n",
-      "ssim": 0.25402005046834863,
+      "ssim": 0.26803484556432433,
       "passed": true
     },
     {
@@ -245,7 +245,7 @@
       "threshold": 0.3,
       "stochastic": false,
       "notes": "Baseline measured 0.348 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
-      "ssim": 0.3594560361808205,
+      "ssim": 0.37070606207901324,
       "passed": true
     },
     {

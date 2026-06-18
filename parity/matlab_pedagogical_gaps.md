@@ -79,6 +79,119 @@ remove the extra cell instead of recording it here.
   diagnostic-suite cell (added in v1 iter 2).
 - **Discovered:** v1 iter 2 / 2026-06-18
 
+### Gap: Monte Carlo mean-trajectory + RMSE summary for hybrid decoder
+
+- **Topic / helpfile:** `HybridFilterExample`
+- **MATLAB count:** 2
+- **Python count:** 3 (+1)
+- **What Python adds:** `fig_003` is a 2×2 summary of the n=20 Monte Carlo
+  hybrid-filter runs: (top-left) mean estimated discrete state vs.
+  ground truth, (top-right) mean P(s(t)=M | data) with vs. without the
+  goal-target prior, (bottom-left) mean 2D reach path overlay, and
+  (bottom-right) bar chart of single-run X / Y position RMSE.
+- **Pedagogical justification:** MATLAB's figure 2 shows the raw
+  spaghetti of all n=20 PPAF+Goal and PPAF runs but never collapses
+  them into a comparable summary. The mean curves make the systematic
+  advantage of the goal-target prior (faster, cleaner discrete-state
+  recovery; tighter mean trajectory) visible at a glance, and the
+  RMSE bar gives a single scalar a learner can quote when comparing
+  decoder variants. Without this figure, a reader can only assess
+  decoder quality by visually averaging the dense spaghetti plot.
+- **MATLAB upstream action:** Add a `figure(3)` cell to
+  `helpfiles/HybridFilterExample.mlx` that, after the n=20 Monte Carlo
+  loop, computes `mean(stateHat, 3)`, `mean(probM, 3)`,
+  `mean(xHat, 3)`, `mean(yHat, 3)`, plots them in a 2×2 `subplot`
+  layout, and adds a `bar([xRMSE yRMSE])` panel.
+- **Python implementation:** `notebooks/HybridFilterExample.ipynb`
+  final 2×2 summary cell (the cell building `axs[0,0]` "Mean
+  Estimated vs. Actual State (n=20)" through `axs[1,1]` "Single-run
+  decoding RMSE [m]").
+- **Discovered:** v2 iter 9 / 2026-06-18
+
+### Gap: Conditional intensity function (CIF) trace for PP sample-path generation
+
+- **Topic / helpfile:** `PPSimExample`
+- **MATLAB count:** 4
+- **Python count:** 4 (+1 extra, -1 MATLAB live-script duplicate)
+- **What Python adds:** `fig_002` is a time-series plot of the realized
+  conditional intensity λ(t) for the first sample path, showing the
+  exponential-link CIF modulated by the sine stimulus and 3-lag history
+  effect on the same x-window as the raster/stimulus figure (`tMax/5`).
+- **Pedagogical justification:** MATLAB's helpfile generates spikes from
+  the CIF but never plots λ(t) itself — the learner sees the raster and
+  the input stimulus but has no visual link between the two. The CIF
+  trace makes the input→intensity→spikes pipeline explicit: peaks of λ
+  align with peaks of `u_stim(t)`, and the history term injects the
+  refractory dips visible in the raster.
+- **MATLAB upstream action:** Add a `figure` cell to
+  `helpfiles/PPSimExample.mlx` after the `simulateCIF` call with
+  `sC.lambdaCIF.plot; xlim([0 tMax/5])` (or equivalent — the
+  `simulateCIF` output already carries the realized λ as a property).
+- **Python implementation:** `notebooks/PPSimExample.ipynb` cell 13
+  (`lambda_cov.getSubSignal(0).plot`). Note that one MATLAB figure
+  (the `plotSummary` post-cell live-script re-render that produces
+  `PPSimExample_04.png`) is intentionally not duplicated on the Python
+  side — it shows identical data to `PPSimExample_03.png`.
+- **Discovered:** v2 iter 9 / 2026-06-18
+
+### Gap: Programmatic schematic / equation panels for the two-neuron network model
+
+- **Topic / helpfile:** `NetworkTutorial`
+- **MATLAB count:** 5
+- **Python count:** 8 (+3 schematic mirrors)
+- **What Python adds:** `fig_001` is a matplotlib redraw of the two-neuron
+  connectivity diagram (`SimulatedNetwork2.png` in the MATLAB helpfile),
+  labelling each neuron with its baseline `mu_i`, history coefficients,
+  stimulus filter `S_i`, and ensemble weight `E_i` directly on the graph.
+  `fig_002` redraws the conditional-intensity block diagram
+  (`PPSimExample-BlockDiagram.png` in the MATLAB helpfile) showing the
+  Baseline / History / Stimulus / Ensemble summation feeding the logistic
+  link. `fig_003` is a text panel rendering the CIF equation
+  `lambda_i * Delta = logistic(mu_i + H*DeltaN_i[n] + S*u_stim[n] + E*DeltaN_k[n])`.
+- **Pedagogical justification:** MATLAB embeds these three panels in the
+  `.mlx` helpfile as inline image / TeX assets, but they are not counted
+  as figures and a learner reading the published Python notebook would
+  lose them entirely if we treated the MATLAB figure count (5) as
+  authoritative. Rendering them programmatically keeps the explanatory
+  scaffolding visible in the executed notebook, the gallery, and the
+  Sphinx build, with no extra binary assets to track.
+- **MATLAB upstream action:** Already present in
+  `helpfiles/NetworkTutorial.mlx` as inline assets
+  (`SimulatedNetwork2.png`, `PPSimExample-BlockDiagram.png`, and the
+  `$$lambda_i \cdot \Delta = logistic(...)$$` block) — no upstream change
+  required. The gap is purely a counting-convention difference: Python
+  renders schematics as matplotlib figures, MATLAB embeds them as page
+  assets.
+- **Python implementation:** `notebooks/NetworkTutorial.ipynb` cells 4, 5,
+  6 (the three `_figure(...)` calls that invoke `_draw_network`,
+  `_draw_block_diagram`, and `_text_panel`).
+- **Discovered:** v2 iter 9 / 2026-06-18
+
+### Gap: Self-history kernel stem plot for the two-neuron network
+
+- **Topic / helpfile:** `NetworkTutorial`
+- **MATLAB count:** 5
+- **Python count:** 8 (+1, in addition to the schematic-mirror gap above)
+- **What Python adds:** `fig_004` is a red stem plot of the three-tap
+  self-history kernel `H = [-4, -2, -1]` (coefficient vs. lag in ms),
+  emphasising the strong inhibition at lag 1 ms (refractory period) and
+  the decay over the next two lags.
+- **Pedagogical justification:** MATLAB renders this kernel only as a TeX
+  equation in the helpfile (`$$1*h[n]=-4*\Delta N[n-1]-2*\Delta N[n-2]-1*\Delta N[n-3]$$`),
+  which is hard to read at a glance. A stem plot makes the three taps and
+  their decay pattern immediately visible, anchoring the simulated raster
+  the reader sees a few cells later. This is the only multi-tap filter in
+  the network model — the scalar stimulus and ensemble filters were
+  intentionally trimmed during triage because they each reduce to a
+  single dot already stated in the connectivity-diagram labels.
+- **MATLAB upstream action:** Add a `figure` cell to
+  `helpfiles/NetworkTutorial.mlx` immediately after the History Effect
+  section with `stem([-4 -2 -1]); xlabel('lag (ms)'); ylabel('coefficient');
+  title('Self-history kernel');`.
+- **Python implementation:** `notebooks/NetworkTutorial.ipynb` cell 13
+  (the `_figure("1*h[n]=...")` call invoking `_stem_kernel`).
+- **Discovered:** v2 iter 9 / 2026-06-18
+
 ### Gap: KS / ΔAIC / ΔBIC scan-figure overlay for stimulus-lag selection
 
 - **Topic / helpfile:** `ExplicitStimulusWhiskerData`
@@ -110,10 +223,8 @@ been classified. Each will be **either** justified here as pedagogical
 
 | Topic | MATLAB | Python | Δ | Status |
 |---|---:|---:|---:|---|
-| `HybridFilterExample` | 2 | 3 | +1 | pending triage |
-| `NetworkTutorial` | 5 | 13 | +8 | pending triage |
-| `PPSimExample` | 4 | 9 | +5 | pending triage |
-| `nSTATPaperExamples` | 29 | 30 | +1 | pending triage |
+| `NetworkTutorial` | 5 | 8 | +3 | resolved (v2 iter 9 / 2026-06-18) — 5 incidental figures removed (4 scalar single-stem filter plots and 1 empty CIF-trajectory plot); remaining +3 schematic mirrors + 1 multi-tap kernel logged below |
+| `nSTATPaperExamples` | 29 | 29 | 0 | trimmed (v2 iter 9 / 2026-06-18) — removed incidental "paper dataset summary" bar chart (scale-mismatched, not pedagogical) |
 
 ---
 
