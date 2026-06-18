@@ -7,7 +7,7 @@ MATLAB-line annotations look like blank pages with code snippets and indicate th
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
 - Source notebook: [`notebooks/nSTATPaperExamples.ipynb`](../../notebooks/nSTATPaperExamples.ipynb)
-- Figures: 30 (30 with substantive plot content)
+- Figures: 29 (29 with substantive plot content)
 
 ## Figures
 
@@ -126,7 +126,3 @@ notebook is a MATLAB-helpfile port rather than a narrative example.
 ### fig_029.png
 
 ![fig_029](./fig_029.png)
-
-### fig_030.png
-
-![fig_030](./fig_030.png)

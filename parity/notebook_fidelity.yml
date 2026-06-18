@@ -21,7 +21,7 @@ items:
     now follow the MATLAB paper-example helpfile. Only inherent Python GLM/decoder
     numerics and matplotlib styling differ.
   python_sections: 29
-  python_expected_figures: 30
+  python_expected_figures: 29
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -32,7 +32,7 @@ items:
   matlab_sections: 31
   matlab_published_figures: 26
   section_delta: -2
-  figure_delta: 4
+  figure_delta: 3
 - topic: TrialExamples
   source_matlab: TrialExamples.mlx
   python_notebook: notebooks/TrialExamples.ipynb
@@ -244,7 +244,7 @@ items:
     Python `CIF.simulateCIF` path and all 9 published figures. Only inherent Simulink
     vs Python solver timing and stochastic draws differ.
   python_sections: 9
-  python_expected_figures: 9
+  python_expected_figures: 4
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -255,7 +255,7 @@ items:
   matlab_sections: 9
   matlab_published_figures: 8
   section_delta: 0
-  figure_delta: 1
+  figure_delta: -4
 - topic: NetworkTutorial
   source_matlab: NetworkTutorial.mlx
   python_notebook: notebooks/NetworkTutorial.ipynb
@@ -268,7 +268,7 @@ items:
     figures with a native Python network simulator and MATLAB-style `Analysis` workflow.
     Only inherent NumPy vs Simulink random streams differ.
   python_sections: 10
-  python_expected_figures: 13
+  python_expected_figures: 8
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -279,7 +279,7 @@ items:
   matlab_sections: 10
   matlab_published_figures: 13
   section_delta: 0
-  figure_delta: 0
+  figure_delta: -5
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb

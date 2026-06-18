@@ -1405,6 +1405,7 @@ class SpikeTrainCollection:
             lo = float(minTime) if minTime is not None else float(self.minTime)
             hi = float(maxTime) if maxTime is not None else float(self.maxTime)
             ax.set_xlim(lo, hi)
+        ax.set_xlabel("time [s]")
         ax.set_title("Spike Train Raster")
         return ax
 

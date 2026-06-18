@@ -1483,17 +1483,17 @@ class FitResult:
             [1,2]  KSPlot (double-wide)    [3] InvGausTrans  [4] SeqCorr
             [5,6]  plotCoeffs (double-wide) [7,8] plotResidual (double-wide)
         """
-        import matplotlib.gridspec as gridspec
+        from .notebook_figures import _matlab_subplot_layout
 
         fig = handle if handle is not None else plt.figure(figsize=(14.0, 8.0))
         fig.clear()
-        gs = gridspec.GridSpec(2, 4, figure=fig)
+        panels = _matlab_subplot_layout(fig, kind="plotResults")
 
-        ax_ks = fig.add_subplot(gs[0, 0:2])
-        ax_ig = fig.add_subplot(gs[0, 2])
-        ax_sc = fig.add_subplot(gs[0, 3])
-        ax_co = fig.add_subplot(gs[1, 0:2])
-        ax_re = fig.add_subplot(gs[1, 2:4])
+        ax_ks = panels["KSPlot"]
+        ax_ig = panels["plotInvGausTrans"]
+        ax_sc = panels["plotSeqCorr"]
+        ax_co = panels["plotCoeffs"]
+        ax_re = panels["plotResidual"]
 
         self.KSPlot(fit_num=None, handle=ax_ks)
         # Add neuron number label (matching Matlab)
@@ -1568,7 +1568,7 @@ class FitResult:
         ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
         ax.set_xlabel("Ideal Uniform CDF", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_ylabel("Empirical CDF", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_title("KS Plot of Rescaled ISIs\nwith 95% Confidence Intervals",
+        ax.set_title("KS Plot of Rescaled ISIs with 95% Confidence Intervals",
                       fontweight="bold", fontsize=11, fontname="Arial")
         ax.tick_params(length=6, width=1)
         for spine in ax.spines.values():
@@ -1610,7 +1610,7 @@ class FitResult:
         if len(fit_nums) > 1:
             ax.legend(loc="upper right", fontsize=14)
         ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_ylabel("count residual", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_ylabel("", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_title("Point Process Residual",
                       fontweight="bold", fontsize=11, fontname="Arial")
         # Match MATLAB: symmetric y-axis with 10% margin
@@ -1671,9 +1671,9 @@ class FitResult:
 
         if legend_handles:
             ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=14)
-        ax.set_xlabel(r"$\Delta\tau$ [sec]", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_ylabel(r"$ACF(\Phi^{-1}(u_n))$", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_title("Autocorrelation Function\nof Rescaled ISIs\nwith 95% CIs",
+        ax.set_xlabel("", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_ylabel("", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_title("Autocorrelation Function of Rescaled ISIs with 95% CIs",
                       fontweight="bold", fontsize=11, fontname="Arial")
         ax.tick_params(length=6, width=1)
         for spine in ax.spines.values():
@@ -1738,7 +1738,7 @@ class FitResult:
         if legend_handles:
             ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=14)
 
-        ax.set_title("Sequential Correlation of\nRescaled ISIs",
+        ax.set_title("Sequential Correlation of Rescaled ISIs",
                       fontweight="bold", fontsize=11, fontname="Arial")
         ax.set_xlabel("$u_j$", fontname="Arial", fontsize=12, fontweight="bold")
         ax.set_ylabel("$u_{j+1}$", fontname="Arial", fontsize=12, fontweight="bold")
@@ -2196,12 +2196,14 @@ class FitSummary:
 
     def plotIC(self, handle=None):
         """Plot AIC, BIC, and log-likelihood box-plots side by side."""
+        from .notebook_figures import _matlab_subplot_layout
+
         fig = handle if handle is not None else plt.figure(figsize=(9.0, 3.5))
         fig.clear()
-        axes = fig.subplots(1, 3)
-        self.plotAIC(handle=axes[0])
-        self.plotBIC(handle=axes[1])
-        self.plotlogLL(handle=axes[2])
+        panels = _matlab_subplot_layout(fig, kind="plotIC")
+        self.plotAIC(handle=panels["getDiffAIC"])
+        self.plotBIC(handle=panels["getDiffBIC"])
+        self.plotlogLL(handle=panels["getDifflogLL"])
         fig.tight_layout()
         return fig
 
@@ -2309,6 +2311,7 @@ class FitSummary:
         ax.set_xticks(x)
         ax.set_xticklabels(labels, rotation=90, fontsize=8)
         ax.set_ylabel("Fit Coefficients")
+        ax.set_title("GLM Coefficients Across Neurons with 95% CIs (* p<0.05)")
         ax.grid(True, alpha=0.3)
         ax.axhline(0, color="0.5", linewidth=0.5, linestyle="--")
         return ax
