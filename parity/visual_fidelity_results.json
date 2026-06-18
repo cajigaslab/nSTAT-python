@@ -170,6 +170,116 @@
       "notes": "Baseline 0.214 measured 2026-06-11; similar to\nnSpikeTrainExamples \u2014 Python collection raster doesn't reproduce\nMATLAB's published multi-panel layout.  Phase 4 candidate.\n",
       "ssim": 0.25402005046834863,
       "passed": true
+    },
+    {
+      "topic": "AnalysisExamples2",
+      "figure_description": "AnalysisExamples2 introductory figure (auto-added in parity iter 5)",
+      "matlab_png": "helpfiles/AnalysisExamples2_01.png",
+      "python_png": "docs/notebook_galleries/AnalysisExamples2/fig_001.png",
+      "threshold": 0.42,
+      "stochastic": false,
+      "notes": "Baseline measured 0.493 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
+      "ssim": 0.49349934168644555,
+      "passed": true
+    },
+    {
+      "topic": "CovCollExamples",
+      "figure_description": "CovCollExamples introductory figure (auto-added in parity iter 5)",
+      "matlab_png": "helpfiles/CovCollExamples_01.png",
+      "python_png": "docs/notebook_galleries/CovCollExamples/fig_001.png",
+      "threshold": 0.46,
+      "stochastic": false,
+      "notes": "Baseline measured 0.545 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
+      "ssim": 0.5445102671516956,
+      "passed": true
+    },
+    {
+      "topic": "DecodingExampleWithHist",
+      "figure_description": "DecodingExampleWithHist introductory figure (auto-added in parity iter 5)",
+      "matlab_png": "helpfiles/DecodingExampleWithHist_01.png",
+      "python_png": "docs/notebook_galleries/DecodingExampleWithHist/fig_001.png",
+      "threshold": 0.47,
+      "stochastic": false,
+      "notes": "Baseline measured 0.549 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
+      "ssim": 0.5487873651768823,
+      "passed": true
+    },
+    {
+      "topic": "EventsExamples",
+      "figure_description": "EventsExamples introductory figure (auto-added in parity iter 5)",
+      "matlab_png": "helpfiles/EventsExamples_01.png",
+      "python_png": "docs/notebook_galleries/EventsExamples/fig_001.png",
+      "threshold": 0.7,
+      "stochastic": false,
+      "notes": "Baseline measured 0.827 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
+      "ssim": 0.8272516810758305,
+      "passed": true
+    },
+    {
+      "topic": "ExplicitStimulusWhiskerData",
+      "figure_description": "ExplicitStimulusWhiskerData introductory figure (auto-added in parity iter 5)",
+      "matlab_png": "helpfiles/ExplicitStimulusWhiskerData_01.png",
+      "python_png": "docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_001.png",
+      "threshold": 0.43,
+      "stochastic": false,
+      "notes": "Baseline measured 0.504 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
+      "ssim": 0.5043342228555132,
+      "passed": true
+    },
+    {
+      "topic": "HybridFilterExample",
+      "figure_description": "HybridFilterExample introductory figure (auto-added in parity iter 5)",
+      "matlab_png": "helpfiles/HybridFilterExample_01.png",
+      "python_png": "docs/notebook_galleries/HybridFilterExample/fig_001.png",
+      "threshold": 0.56,
+      "stochastic": false,
+      "notes": "Baseline measured 0.663 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
+      "ssim": 0.6633986895216565,
+      "passed": true
+    },
+    {
+      "topic": "PSTHEstimation",
+      "figure_description": "PSTHEstimation introductory figure (auto-added in parity iter 5)",
+      "matlab_png": "helpfiles/PSTHEstimation_01.png",
+      "python_png": "docs/notebook_galleries/PSTHEstimation/fig_001.png",
+      "threshold": 0.3,
+      "stochastic": false,
+      "notes": "Baseline measured 0.348 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
+      "ssim": 0.34789960145075954,
+      "passed": true
+    },
+    {
+      "topic": "StimulusDecode2D",
+      "figure_description": "StimulusDecode2D introductory figure (auto-added in parity iter 5)",
+      "matlab_png": "helpfiles/StimulusDecode2D_01.png",
+      "python_png": "docs/notebook_galleries/StimulusDecode2D/fig_001.png",
+      "threshold": 0.73,
+      "stochastic": false,
+      "notes": "Baseline measured 0.859 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
+      "ssim": 0.8585532131398135,
+      "passed": true
+    },
+    {
+      "topic": "ValidationDataSet",
+      "figure_description": "ValidationDataSet introductory figure (auto-added in parity iter 5)",
+      "matlab_png": "helpfiles/ValidationDataSet_01.png",
+      "python_png": "docs/notebook_galleries/ValidationDataSet/fig_001.png",
+      "threshold": 0.59,
+      "stochastic": false,
+      "notes": "Baseline measured 0.689 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
+      "ssim": 0.6893133786760618,
+      "passed": true
+    },
+    {
+      "topic": "nSTATPaperExamples",
+      "figure_description": "nSTATPaperExamples introductory figure (auto-added in parity iter 5)",
+      "matlab_png": "helpfiles/nSTATPaperExamples_01.png",
+      "python_png": "docs/notebook_galleries/nSTATPaperExamples/fig_001.png",
+      "threshold": 0.55,
+      "stochastic": false,
+      "notes": "Baseline measured 0.649 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
+      "ssim": 0.6485794849992522,
+      "passed": true
     }
   ]
 }
