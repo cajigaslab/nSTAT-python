@@ -335,8 +335,19 @@ def run_experiment2(data_dir: Path, *, return_payload: bool = False) -> dict[str
         scan_coef_upper.append(up_full)
         scan_coef_names.append(names_full)
 
+    # MATLAB: results.Residual.xcov(stim).windowedSignal([0,1]).plot.
+    # The cross-covariance is between the BASELINE point-process residual M(t_k) = cumsum(y - lam1)
+    # and the raw stimulus, NOT between the spike train and the stimulus. Using the residual
+    # preserves the stimulus-locked oscillatory peaks across [0, 1] s that MATLAB renders.
     xcorr_window = int(min(20000, y.shape[0]))
-    xcorr = correlate(y[:xcorr_window] - np.mean(y[:xcorr_window]), stim[:xcorr_window] - np.mean(stim[:xcorr_window]), mode="full", method="fft")
+    resid_xcov = np.cumsum(y[:xcorr_window].astype(float) - lam1[:xcorr_window].astype(float))
+    stim_xcov = stim[:xcorr_window].astype(float)
+    xcorr = correlate(
+        resid_xcov - np.mean(resid_xcov),
+        stim_xcov - np.mean(stim_xcov),
+        mode="full",
+        method="fft",
+    )
     lags = correlation_lags(xcorr_window, xcorr_window, mode="full")
     keep = np.abs(lags) <= 1000
     xcorr = xcorr[keep]

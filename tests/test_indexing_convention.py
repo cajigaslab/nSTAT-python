@@ -164,6 +164,12 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     # display convention (see other nstCollExamples exemptions above).
     ("nstCollExamples.ipynb", "_ax.set_yticklabels([str(i) for i in range(1, 21)])"): "raster ytick labels 1..N for MATLAB-style display",
     ("nstCollExamples.ipynb", "_ax.set_yticklabels([str(i) for i in range(1, len(labels) + 1)])"): "raster ytick labels 1..N for MATLAB-style display",
+    # v5 iter 19 Reviewer-recommended "Neuron N" labels per MATLAB convention.
+    ("nstCollExamples.ipynb", '_ax.set_yticklabels([f"Neuron{i}" for i in range(1, 21)])'): "Neuron1..N labels mirror MATLAB raster",
+    # v5 iter 20 Reviewer-recommended z1..z10 covariate names (mirrors MATLAB's
+    # ensemble-history covariate naming z1, z2, ..., zN — these are MATLAB-style
+    # display labels for covariates, not array indices).
+    ('HippocampalPlaceCellExample.ipynb', '_F2_NAMES = [f"z{k}" for k in range(1, 11)]'): "MATLAB-style covariate names z1..zN",
     # HR4 baseline: legitimate 0-based selectors > 0 (intentional, not stale 1-based).
     # README example uses getNST(1) as a fallback after getNST(0) fails — supports
     # objects with either indexing convention.

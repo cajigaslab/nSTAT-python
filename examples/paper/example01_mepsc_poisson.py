@@ -158,6 +158,8 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_yticks([0, 1])
+    # Match MATLAB raster: ticks span full panel (linelengths=1.0).
+    ax.set_ylim(0, 1)
 
     ax = axes1[0, 1]
     resultConst.plotInvGausTrans(handle=ax)
@@ -198,6 +200,8 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax = axes2[0]
     nstConst.plot(handle=ax)
     ax.set_yticks([0, 1])
+    # Match MATLAB raster: ticks span full panel (linelengths=1.0).
+    ax.set_ylim(0, 1)
     ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_title(r"Neural Raster with constant Mg$^{2+}$ Concentration",
                  fontweight="bold", fontsize=12, fontfamily="Arial")
@@ -206,6 +210,7 @@ def run_example01(*, export_figures: bool = False, export_dir: Path | None = Non
     ax = axes2[1]
     nstWashout.plot(handle=ax)
     ax.set_yticks([0, 1])
+    ax.set_ylim(0, 1)
     ax.set_xlabel("time [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_ylabel("mEPSCs", fontsize=12, fontweight="bold", fontfamily="Arial")
     ax.set_title(r"Neural Raster with decreasing Mg$^{2+}$ Concentration",

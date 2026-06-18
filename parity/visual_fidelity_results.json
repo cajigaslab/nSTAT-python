@@ -58,8 +58,8 @@
       "threshold": 0.58,
       "stochastic": true,
       "notes": "Stochastic spike draws differ; tracks the same sinusoid",
-      "ssim": 0.5951422385720819,
-      "passed": true
+      "ssim": 0.5176680386959445,
+      "passed": false
     },
     {
       "topic": "CovariateExamples",
@@ -91,7 +91,7 @@
       "threshold": 0.54,
       "stochastic": true,
       "notes": "After Phase 2 sampleRate fix (200\u21921000 Hz), the design-matrix\ndimension matches MATLAB so the rate-axis ranges agree.\n",
-      "ssim": 0.5635747697936311,
+      "ssim": 0.596173047618162,
       "passed": true
     },
     {
@@ -102,7 +102,7 @@
       "threshold": 0.79,
       "stochastic": false,
       "notes": "After Phase 1 + Phase 2 fixes (l2=0.0 + sampleRate=1000 +\nepoch boundaries [495,765]), coefficients should match MATLAB\nmagnitudes within stochastic-data tolerance.\n",
-      "ssim": 0.8062980581786116,
+      "ssim": 0.7912505438937745,
       "passed": true
     },
     {
@@ -146,8 +146,8 @@
       "threshold": 0.42,
       "stochastic": false,
       "notes": "Baseline 0.470 measured 2026-06-11; significant layout drift\n(MATLAB renders multi-axis SignalObj with custom labels,\nPython uses default matplotlib subplots).  Candidate for\nPhase 4 pedagogical fix.\n",
-      "ssim": 0.4421256203060392,
-      "passed": true
+      "ssim": 0.40419217533050394,
+      "passed": false
     },
     {
       "topic": "nSpikeTrainExamples",
@@ -168,7 +168,7 @@
       "threshold": 0.24,
       "stochastic": false,
       "notes": "Baseline 0.214 measured 2026-06-11; similar to\nnSpikeTrainExamples \u2014 Python collection raster doesn't reproduce\nMATLAB's published multi-panel layout.  Phase 4 candidate.\n",
-      "ssim": 0.26406493484289545,
+      "ssim": 0.3041103853183739,
       "passed": true
     },
     {
@@ -223,7 +223,7 @@
       "threshold": 0.48,
       "stochastic": false,
       "notes": "Baseline measured 0.504 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
-      "ssim": 0.49599942956076615,
+      "ssim": 0.5695758101087893,
       "passed": true
     },
     {
@@ -256,7 +256,7 @@
       "threshold": 0.84,
       "stochastic": false,
       "notes": "Baseline measured 0.859 in iter 5 of parity push (2026-06-18). Threshold set conservatively at ~0.85\u00d7baseline so the gate fires on substantial regressions but not on minor rendering variance.",
-      "ssim": 0.8585532131398135,
+      "ssim": 0.85612832686363,
       "passed": true
     },
     {
@@ -366,7 +366,7 @@
       "threshold": 0.5,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.523; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.522594108605972,
+      "ssim": 0.5464527854172708,
       "passed": true
     },
     {
@@ -377,7 +377,7 @@
       "threshold": 0.43,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.448; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.45008717901860573,
+      "ssim": 0.44855423537411304,
       "passed": true
     },
     {
@@ -388,7 +388,7 @@
       "threshold": 0.82,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.826; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.8393456494317794,
+      "ssim": 0.8218624458694352,
       "passed": true
     },
     {
@@ -399,7 +399,7 @@
       "threshold": 0.51,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.531; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.530920964018472,
+      "ssim": 0.5620882406611467,
       "passed": true
     },
     {
@@ -410,7 +410,7 @@
       "threshold": 0.49,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.513; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5101380671816562,
+      "ssim": 0.49817848715284796,
       "passed": true
     },
     {
@@ -420,9 +420,9 @@
       "python_png": "docs/notebook_galleries/DecodingExample/fig_007.png",
       "threshold": 0.57,
       "stochastic": false,
-      "notes": "Auto-added in v3 iter 11; baseline SSIM 0.586; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5902068678246907,
-      "passed": true
+      "notes": "Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/DecodingExample/fig_007.png",
+      "ssim": null,
+      "passed": false
     },
     {
       "topic": "DecodingExampleWithHist",
@@ -476,7 +476,7 @@
       "threshold": 0.27,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.248; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.2934658782407594,
+      "ssim": 0.29203265085486696,
       "passed": true
     },
     {
@@ -487,7 +487,7 @@
       "threshold": 0.68,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.698; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6976436077938338,
+      "ssim": 0.717166051479656,
       "passed": true
     },
     {
@@ -498,7 +498,7 @@
       "threshold": 0.58,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.604; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6040124640096077,
+      "ssim": 0.6184094247132742,
       "passed": true
     },
     {
@@ -509,7 +509,7 @@
       "threshold": 0.59,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.614; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6141172311084554,
+      "ssim": 0.6079322173075977,
       "passed": true
     },
     {
@@ -520,8 +520,8 @@
       "threshold": 0.66,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.680; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6798746254632922,
-      "passed": true
+      "ssim": 0.6269176512404,
+      "passed": false
     },
     {
       "topic": "ExplicitStimulusWhiskerData",
@@ -531,8 +531,8 @@
       "threshold": 0.74,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.757; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.757295772545421,
-      "passed": true
+      "ssim": 0.6275971145960736,
+      "passed": false
     },
     {
       "topic": "ExplicitStimulusWhiskerData",
@@ -542,8 +542,8 @@
       "threshold": 0.79,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.808; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.808482354865558,
-      "passed": true
+      "ssim": 0.5938867203788426,
+      "passed": false
     },
     {
       "topic": "ExplicitStimulusWhiskerData",
@@ -553,7 +553,7 @@
       "threshold": 0.59,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.614; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6135860913853308,
+      "ssim": 0.5924549045558005,
       "passed": true
     },
     {
@@ -563,9 +563,9 @@
       "python_png": "docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_010.png",
       "threshold": 0.53,
       "stochastic": false,
-      "notes": "Auto-added in v3 iter 11; baseline SSIM 0.553; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5526150772736518,
-      "passed": true
+      "notes": "Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_010.png",
+      "ssim": null,
+      "passed": false
     },
     {
       "topic": "HippocampalPlaceCellExample",
@@ -575,7 +575,7 @@
       "threshold": 0.44,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.457; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.461200932814909,
+      "ssim": 0.5077829787261432,
       "passed": true
     },
     {
@@ -586,7 +586,7 @@
       "threshold": 0.64,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.729; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6574446852955486,
+      "ssim": 0.678649425297899,
       "passed": true
     },
     {
@@ -597,7 +597,7 @@
       "threshold": 0.66,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.739; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6831076800357184,
+      "ssim": 0.6925966900878475,
       "passed": true
     },
     {
@@ -608,8 +608,8 @@
       "threshold": 0.36,
       "stochastic": false,
       "notes": "Threshold lowered in v3 iter 15: iter-14 collapsed Summary.plotSummary panels into 2x1 grids to align with MATLAB figure-emission ordering (which fixed fig_008 trajectory mapping). The restructure dropped figs 4 & 5 SSIM from ~0.65 to ~0.38 because each Python figure now contains both AIC and BIC panels (where MATLAB has just one). Accepted regression \u2014 see parity/matlab_pedagogical_gaps.md.",
-      "ssim": 0.3754260984924693,
-      "passed": true
+      "ssim": 0.29719654797407996,
+      "passed": false
     },
     {
       "topic": "HippocampalPlaceCellExample",
@@ -619,7 +619,7 @@
       "threshold": 0.36,
       "stochastic": false,
       "notes": "Threshold lowered in v3 iter 15: see HippocampalPlaceCellExample_04 note.",
-      "ssim": 0.38357572908627474,
+      "ssim": 0.41127232128942276,
       "passed": true
     },
     {
@@ -630,8 +630,8 @@
       "threshold": 0.37,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.441; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.37864518553100207,
-      "passed": true
+      "ssim": 0.3298866384701026,
+      "passed": false
     },
     {
       "topic": "HippocampalPlaceCellExample",
@@ -641,8 +641,8 @@
       "threshold": 0.39,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.459; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.3904953212677187,
-      "passed": true
+      "ssim": 0.3279619777384958,
+      "passed": false
     },
     {
       "topic": "HippocampalPlaceCellExample",
@@ -652,7 +652,7 @@
       "threshold": 0.33,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.311; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.35158163848916907,
+      "ssim": 0.5077829787261432,
       "passed": true
     },
     {
@@ -663,7 +663,7 @@
       "threshold": 0.42,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.429; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.43892708008752546,
+      "ssim": 0.7008220140701812,
       "passed": true
     },
     {
@@ -674,7 +674,7 @@
       "threshold": 0.68,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.407; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6972993793948253,
+      "ssim": 0.6976276739816333,
       "passed": true
     },
     {
@@ -684,9 +684,9 @@
       "python_png": "docs/notebook_galleries/HippocampalPlaceCellExample/fig_011.png",
       "threshold": 0.38,
       "stochastic": false,
-      "notes": "Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/HippocampalPlaceCellExample/fig_011.png",
-      "ssim": null,
-      "passed": false
+      "notes": "Auto-added in v3 iter 11; baseline SSIM 0.451; threshold ~0.85\u00d7baseline.",
+      "ssim": 0.7083944023081017,
+      "passed": true
     },
     {
       "topic": "HistoryExamples",
@@ -773,8 +773,8 @@
       "threshold": 0.6,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.615; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6154201314024585,
-      "passed": true
+      "ssim": 0.5050181165236025,
+      "passed": false
     },
     {
       "topic": "NetworkTutorial",
@@ -784,8 +784,8 @@
       "threshold": 0.64,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.657; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.657032407175128,
-      "passed": true
+      "ssim": 0.5914746064097345,
+      "passed": false
     },
     {
       "topic": "NetworkTutorial",
@@ -795,8 +795,8 @@
       "threshold": 0.7,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.717; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.7165488673519735,
-      "passed": true
+      "ssim": 0.6108054166095488,
+      "passed": false
     },
     {
       "topic": "NetworkTutorial",
@@ -806,7 +806,7 @@
       "threshold": 0.72,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.741; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.7408886922963845,
+      "ssim": 0.8294135839524859,
       "passed": true
     },
     {
@@ -817,7 +817,7 @@
       "threshold": 0.47,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.490; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.49045438411246345,
+      "ssim": 0.8277958307684352,
       "passed": true
     },
     {
@@ -850,7 +850,7 @@
       "threshold": 0.62,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.639; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6392946192983875,
+      "ssim": 0.6310736240294603,
       "passed": true
     },
     {
@@ -872,8 +872,8 @@
       "threshold": 0.5,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.532; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5241257792250912,
-      "passed": true
+      "ssim": 0.3923035926732449,
+      "passed": false
     },
     {
       "topic": "PPThinning",
@@ -883,7 +883,7 @@
       "threshold": 0.26,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.304; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.2827531419459461,
+      "ssim": 0.30747304497788935,
       "passed": true
     },
     {
@@ -894,8 +894,8 @@
       "threshold": 0.31,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.309; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.33435657557661086,
-      "passed": true
+      "ssim": 0.25077081698155756,
+      "passed": false
     },
     {
       "topic": "PPThinning",
@@ -904,9 +904,9 @@
       "python_png": "docs/notebook_galleries/PPThinning/fig_004.png",
       "threshold": 0.31,
       "stochastic": false,
-      "notes": "Auto-added in v3 iter 11; baseline SSIM 0.303; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.32596871127509575,
-      "passed": true
+      "notes": "Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/PPThinning/fig_004.png",
+      "ssim": null,
+      "passed": false
     },
     {
       "topic": "PSTHEstimation",
@@ -927,7 +927,7 @@
       "threshold": 0.37,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.393; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.39010824731957205,
+      "ssim": 0.37171685455984865,
       "passed": true
     },
     {
@@ -938,7 +938,7 @@
       "threshold": 0.44,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.465; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.46491602741369753,
+      "ssim": 0.44213363268892414,
       "passed": true
     },
     {
@@ -949,8 +949,8 @@
       "threshold": 0.39,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.415; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.4118824740737686,
-      "passed": true
+      "ssim": 0.3729415459139007,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -960,8 +960,8 @@
       "threshold": 0.43,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.448; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.4466474331612649,
-      "passed": true
+      "ssim": 0.4144024725468118,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -971,8 +971,8 @@
       "threshold": 0.41,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.431; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.4277551330571794,
-      "passed": true
+      "ssim": 0.39218252930129593,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -982,8 +982,8 @@
       "threshold": 0.38,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.406; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.4025860240822763,
-      "passed": true
+      "ssim": 0.3669438634641503,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -993,8 +993,8 @@
       "threshold": 0.4,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.424; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.4207643917103453,
-      "passed": true
+      "ssim": 0.3879640550048378,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -1004,8 +1004,8 @@
       "threshold": 0.5,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.519; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5168886736507451,
-      "passed": true
+      "ssim": 0.4910211140819371,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -1015,8 +1015,8 @@
       "threshold": 0.38,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.396; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.3956999826660935,
-      "passed": true
+      "ssim": 0.3649358864973993,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -1026,8 +1026,8 @@
       "threshold": 0.44,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.457; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.4568953962468668,
-      "passed": true
+      "ssim": 0.435947730331519,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -1037,8 +1037,8 @@
       "threshold": 0.38,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.396; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.3958754777787721,
-      "passed": true
+      "ssim": 0.3420544629783142,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -1048,7 +1048,7 @@
       "threshold": 0.49,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.512; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5082693435628282,
+      "ssim": 0.5117609385609909,
       "passed": true
     },
     {
@@ -1059,7 +1059,7 @@
       "threshold": 0.67,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.694; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6943405562308191,
+      "ssim": 0.6864177793014542,
       "passed": true
     },
     {
@@ -1070,8 +1070,8 @@
       "threshold": 0.72,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.739; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.7391439752658768,
-      "passed": true
+      "ssim": 0.6936263430180274,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -1081,7 +1081,7 @@
       "threshold": 0.61,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.633; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6328762953382333,
+      "ssim": 0.638525965328031,
       "passed": true
     },
     {
@@ -1092,8 +1092,8 @@
       "threshold": 0.66,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.679; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6790168997906076,
-      "passed": true
+      "ssim": 0.6088072037474201,
+      "passed": false
     },
     {
       "topic": "SignalObjExamples",
@@ -1103,7 +1103,7 @@
       "threshold": 0.6,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.621; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6205602613008955,
+      "ssim": 0.6287297499847799,
       "passed": true
     },
     {
@@ -1114,7 +1114,7 @@
       "threshold": 0.59,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.609; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6091756584532265,
+      "ssim": 0.6590910010218193,
       "passed": true
     },
     {
@@ -1125,7 +1125,7 @@
       "threshold": 0.63,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.648; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6476552958288463,
+      "ssim": 0.6361335489466815,
       "passed": true
     },
     {
@@ -1136,8 +1136,8 @@
       "threshold": 0.24,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.258; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.2578030820554015,
-      "passed": true
+      "ssim": 0.23690511610399154,
+      "passed": false
     },
     {
       "topic": "StimulusDecode2D",
@@ -1147,8 +1147,8 @@
       "threshold": 0.69,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.708; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.7077226684562603,
-      "passed": true
+      "ssim": 0.21937732005679572,
+      "passed": false
     },
     {
       "topic": "StimulusDecode2D",
@@ -1158,7 +1158,7 @@
       "threshold": 0.81,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.833; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.8325653584252098,
+      "ssim": 0.8500848403350783,
       "passed": true
     },
     {
@@ -1169,8 +1169,8 @@
       "threshold": 0.68,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.696; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6961632945449897,
-      "passed": true
+      "ssim": 0.43560905019557516,
+      "passed": false
     },
     {
       "topic": "StimulusDecode2D",
@@ -1180,7 +1180,7 @@
       "threshold": 0.8,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.822; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.8220149412835942,
+      "ssim": 0.8419827791978214,
       "passed": true
     },
     {
@@ -1257,7 +1257,7 @@
       "threshold": 0.53,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.554; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5544039120698758,
+      "ssim": 0.5830037686676041,
       "passed": true
     },
     {
@@ -1268,7 +1268,7 @@
       "threshold": 0.58,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.597; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5973530354052159,
+      "ssim": 0.6498990190263231,
       "passed": true
     },
     {
@@ -1312,7 +1312,7 @@
       "threshold": 0.59,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.608; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6080683781498081,
+      "ssim": 0.6491938624374012,
       "passed": true
     },
     {
@@ -1323,7 +1323,7 @@
       "threshold": 0.56,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.584; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.584007715079951,
+      "ssim": 0.622414487519869,
       "passed": true
     },
     {
@@ -1367,8 +1367,8 @@
       "threshold": 0.27,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.293; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.29252360396184895,
-      "passed": true
+      "ssim": 0.22519909992027748,
+      "passed": false
     },
     {
       "topic": "mEPSCAnalysis",
@@ -1378,7 +1378,7 @@
       "threshold": 0.53,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.554; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5535965272181342,
+      "ssim": 0.5764352896079978,
       "passed": true
     },
     {
@@ -1389,7 +1389,7 @@
       "threshold": 0.79,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.807; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.8065105392094749,
+      "ssim": 0.7908717295366491,
       "passed": true
     },
     {
@@ -1400,7 +1400,7 @@
       "threshold": 0.75,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.772; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.7722283704290214,
+      "ssim": 0.791246895150046,
       "passed": true
     },
     {
@@ -1576,8 +1576,8 @@
       "threshold": 0.57,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.587; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5869192978470923,
-      "passed": true
+      "ssim": 0.5634204100098528,
+      "passed": false
     },
     {
       "topic": "nSTATPaperExamples",
@@ -1587,8 +1587,8 @@
       "threshold": 0.62,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.639; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.6394449862008946,
-      "passed": true
+      "ssim": 0.5674920743332427,
+      "passed": false
     },
     {
       "topic": "nSTATPaperExamples",
@@ -1774,7 +1774,7 @@
       "threshold": 0.24,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.268; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.26406493484289545,
+      "ssim": 0.3041103853183739,
       "passed": true
     },
     {
@@ -1785,8 +1785,8 @@
       "threshold": 0.37,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.342; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.3918508394741061,
-      "passed": true
+      "ssim": 0.3660342536748926,
+      "passed": false
     },
     {
       "topic": "nstCollExamples",
@@ -1796,8 +1796,8 @@
       "threshold": 0.37,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.342; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.3918508394741061,
-      "passed": true
+      "ssim": 0.3660342536748926,
+      "passed": false
     },
     {
       "topic": "nstCollExamples",
@@ -1807,7 +1807,7 @@
       "threshold": 0.54,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.557; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.5571410095246393,
+      "ssim": 0.5553864218018584,
       "passed": true
     }
   ]

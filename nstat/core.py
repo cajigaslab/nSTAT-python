@@ -1687,6 +1687,11 @@ class SignalObj:
 
         Loops over all signal dimensions like the Matlab implementation.
 
+        When *NFFT* is ``None`` we match MATLAB's default of
+        ``max(256, 2**nextpow2(N))`` rather than scipy's default of
+        ``N``, producing the denser frequency grid (and characteristic
+        zero-notch comb) seen in the MATLAB reference figures.
+
         Returns ``(frequencies, psd)`` where *psd* has shape
         ``(nfreqs,)`` for 1-D signals or ``(nfreqs, dimension)`` for
         multi-dimensional signals.
@@ -1694,6 +1699,9 @@ class SignalObj:
         from scipy.signal import periodogram as _periodogram
 
         fs = float(self.sampleRate)
+        N = self.data.shape[0]
+        if NFFT is None:
+            NFFT = max(256, int(2 ** np.ceil(np.log2(N))))
         psd_cols: list[np.ndarray] = []
         f_out: np.ndarray | None = None
         ndim = self.dimension
@@ -1746,7 +1754,10 @@ class SignalObj:
         if Kmax is None:
             Kmax = int(2 * NW - 1)
         if NFFT is None:
-            NFFT = int(2 ** np.ceil(np.log2(N)))
+            # MATLAB's pmtm pads to max(256, 2**nextpow2(2*N)) for a denser
+            # frequency grid -- a plain 2**nextpow2(N) misses the harmonic
+            # peaks of v2 = sin(v1^2) visible in SignalObjExamples_14.png.
+            NFFT = max(256, int(2 ** np.ceil(np.log2(2 * N))))
 
         tapers, eigenvalues = dpss(N, NW, Kmax, return_ratios=True)
         frequencies = np.fft.rfftfreq(NFFT, d=1.0 / fs)

@@ -7,7 +7,7 @@ MATLAB-line annotations look like blank pages with code snippets and indicate th
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
 - Source notebook: [`notebooks/HippocampalPlaceCellExample.ipynb`](../../notebooks/HippocampalPlaceCellExample.ipynb)
-- Figures: 12 (12 with substantive plot content)
+- Figures: 11 (11 with substantive plot content)
 
 ## Figures
 
@@ -54,7 +54,3 @@ notebook is a MATLAB-helpfile port rather than a narrative example.
 ### fig_011.png
 
 ![fig_011](./fig_011.png)
-
-### fig_012.png
-
-![fig_012](./fig_012.png)
