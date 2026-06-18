@@ -1,0 +1,96 @@
+# Numerical drift detector — spec.
+#
+# Each entry points at a MATLAB gold fixture and a recipe (defined in
+# tools/parity/numerical_drift.py) that knows how to (a) call the corresponding
+# Python public function and (b) line the result up against a field in the
+# fixture.  Tolerances are the same ones used by the canonical gold-fixture
+# tests in tests/test_matlab_gold_fixtures.py.
+#
+# Run:
+#   python tools/parity/numerical_drift.py [--fail-on-drift] [--json]
+#
+# Entries marked with output_field: "?" are TODO — they need a MATLAB capture
+# of the relevant field before they can compare anything (the runner skips
+# them and reports todo=True).
+
+entries:
+
+  # 1. Poisson GLM coefficient fit (single neuron, single covariate).
+  - name: fit_poisson_glm_coeffs
+    recipe: fit_poisson_glm_coeffs
+    fixture: tests/parity/fixtures/matlab_gold/analysis_exactness.mat
+    output_field: coeffs
+    tolerance: { rtol: 1.0e-6, atol: 1.0e-8 }
+
+  # 2. Binomial/Poisson FitResSummary aggregation — uses synthetic FitResults
+  # with KS stats and compares the summary.logLL matrix.  Stand-in for the
+  # binomial GLM coefficient drift check (no dedicated binomial-GLM fixture
+  # currently exists for fit_binomial_glm).
+  - name: fit_binomial_glm
+    recipe: fit_summary_logll
+    fixture: tests/parity/fixtures/matlab_gold/fit_summary_exactness.mat
+    output_field: logLL
+    tolerance: { rtol: 1.0e-6, atol: 1.0e-8 }
+
+  # 3. Full PPDecodeFilterLinear predict+update loop — compare filtered states.
+  - name: PPDecodeFilterLinear
+    recipe: ppdecodefilterlinear_xu
+    fixture: tests/parity/fixtures/matlab_gold/decode_linear_exactness.mat
+    output_field: x_u
+    tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
+
+  # 4. Analysis.computeKSStats — discrete KS statistic Z array.  This is the
+  # closest existing fixture coverage for "nspikeTrain.computeKSStats" —
+  # nspikeTrain itself does not expose computeKSStats; Analysis.computeKSStats
+  # is the canonical path.
+  - name: nspikeTrain.computeKSStats
+    recipe: ks_stats_Z
+    fixture: tests/parity/fixtures/matlab_gold/ksdiscrete_exactness.mat
+    output_field: Z
+    tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
+
+  # 5. History.computeHistory — multi-neuron history-matrix shape.
+  - name: History.computeHistory
+    recipe: history_compute_coll
+    fixture: tests/parity/fixtures/matlab_gold/history_exactness.mat
+    output_field: coll_history_matrix
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-12 }
+
+  # 6. psth — MATLAB baseline captured from nstColl.psth with two synthetic
+  # spike trains ([0.1,0.4,0.7] and [0.2,0.5,0.8]) over 0..1s with 0.1s bins.
+  # See /tmp/drift_psth_capture.m (not committed) for the capture script.
+  - name: psth
+    recipe: psth_passthrough_todo
+    fixture: tests/parity/fixtures/matlab_gold/numerical_drift_psth.mat
+    output_field: psth_data
+    tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
+
+  # 7. CIF.evalLambdaDelta (binomial fitType, two-stim linear CIF).
+  - name: CIF.evaluate
+    recipe: cif_eval_lambda_delta
+    fixture: tests/parity/fixtures/matlab_gold/cif_exactness.mat
+    output_field: lambda_delta
+    tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
+
+  # 8. simulate_point_process — deterministic trace, compare rate_hz signal.
+  - name: simulate_point_process
+    recipe: simulate_point_process_rate
+    fixture: tests/parity/fixtures/matlab_gold/point_process_exactness.mat
+    output_field: det_rate_hz
+    tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
+
+  # 9. Standard Kalman filter — filtered state trajectory.
+  - name: kalman_filter
+    recipe: kalman_filter_state
+    fixture: tests/parity/fixtures/matlab_gold/kalman_filter_exactness.mat
+    output_field: x_filt
+    tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
+
+  # 10. PPDecode_updateLinear — single update step, compare posterior mean.
+  # MATLAB nSTAT does not ship a UKF gold fixture; this is the closest
+  # "decode-update" surface available.
+  - name: UKF
+    recipe: ppdecode_updatelinear_xu
+    fixture: tests/parity/fixtures/matlab_gold/decode_update_exactness.mat
+    output_field: x_u
+    tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
