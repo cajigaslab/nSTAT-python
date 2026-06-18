@@ -44,7 +44,10 @@ def simulate_poisson_from_rate(
 
     dt = np.diff(t)
     dt = np.concatenate([dt, [dt[-1]]])
-    p = 1.0 - np.exp(-np.clip(r, 0.0, np.inf) * dt)
+    # Case C: use -expm1 for accurate 1 - exp(-x) at small x*dt
+    # (e.g. low firing rates / small bins) — avoids catastrophic
+    # cancellation that biases bin probabilities towards zero.
+    p = -np.expm1(-np.clip(r, 0.0, np.inf) * dt)
     p = np.clip(p, 0.0, 1.0)
     keep = rng.random(t.shape[0]) < p
     return nspikeTrain(spikeTimes=t[keep])
