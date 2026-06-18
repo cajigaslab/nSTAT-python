@@ -30,7 +30,7 @@ MATLAB-helpfile port) rather than substantive plots — those are marked.
 | [`ValidationDataSet`](ValidationDataSet/) | 12 | yes | [`notebooks/ValidationDataSet.ipynb`](../../notebooks/ValidationDataSet.ipynb) |
 | [`mEPSCAnalysis`](mEPSCAnalysis/) | 5 | yes | [`notebooks/mEPSCAnalysis.ipynb`](../../notebooks/mEPSCAnalysis.ipynb) |
 | [`nSTATPaperExamples`](nSTATPaperExamples/) | 30 | yes | [`notebooks/nSTATPaperExamples.ipynb`](../../notebooks/nSTATPaperExamples.ipynb) |
-| [`nSpikeTrainExamples`](nSpikeTrainExamples/) | 6 | yes | [`notebooks/nSpikeTrainExamples.ipynb`](../../notebooks/nSpikeTrainExamples.ipynb) |
+| [`nSpikeTrainExamples`](nSpikeTrainExamples/) | 7 | yes | [`notebooks/nSpikeTrainExamples.ipynb`](../../notebooks/nSpikeTrainExamples.ipynb) |
 | [`nstCollExamples`](nstCollExamples/) | 5 | yes | [`notebooks/nstCollExamples.ipynb`](../../notebooks/nstCollExamples.ipynb) |
 
 Regenerate this gallery with `make regen-notebook-galleries` (executes the smoke group; pass `--group full` for everything).

@@ -1496,8 +1496,9 @@ class FitResult:
         self.KSPlot(fit_num=None, handle=ax_ks)
         # Add neuron number label (matching Matlab)
         ax_ks.text(
-            0.45, 0.95, f"Neuron: {self.neuronNumber}",
-            transform=ax_ks.transAxes, fontweight="bold", fontsize=10,
+            0.45, 0.95, f"Neuron:{self.neuronNumber}",
+            transform=ax_ks.transAxes, fontname="Arial",
+            fontweight="bold", fontsize=10,
             verticalalignment="top",
         )
         self.plotInvGausTrans(fit_num=None, handle=ax_ig)
