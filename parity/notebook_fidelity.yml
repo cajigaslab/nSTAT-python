@@ -268,7 +268,7 @@ items:
     figures with a native Python network simulator and MATLAB-style `Analysis` workflow.
     Only inherent NumPy vs Simulink random streams differ.
   python_sections: 6
-  python_expected_figures: 8
+  python_expected_figures: 5
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -279,7 +279,7 @@ items:
   matlab_sections: 10
   matlab_published_figures: 13
   section_delta: -4
-  figure_delta: -5
+  figure_delta: -8
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb
@@ -318,8 +318,8 @@ items:
     linear fallback branch as MATLAB. Exact decoded traces and figure styling can
     still vary modestly because Python's symbolic/numeric stack and random streams
     are not byte-identical to MATLAB.
-  python_sections: 3
-  python_expected_figures: 4
+  python_sections: 5
+  python_expected_figures: 6
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -329,5 +329,5 @@ items:
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
   matlab_sections: 4
   matlab_published_figures: 4
-  section_delta: -1
-  figure_delta: 0
+  section_delta: 1
+  figure_delta: 2
