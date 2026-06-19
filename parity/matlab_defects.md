@@ -588,12 +588,10 @@ Schema for each entry:
   with `max|err|=1.417e-01` against Case-C tolerance
   `rtol=1e+1, atol=1e+0`.
 - **Discovered:** iter 49 / 2026-06-19
-- **Upstream status:** filed (recapture-blocked at iter 61)
-- **Resolved in:** cajigaslab/nSTAT@main (post-2026-06-19, fix for #90)
-- **Resolved iter:** v11 mini-reconciliation / 2026-06-19
-- **Resolved notes:** Upstream merged the K=size(dN,2) fix. pplfp_EM now runs end-to-end on rectangular dN. v11 mini-reconciliation confirmed: existing fixture values byte-identical (the original capture used numCells==K_time and dodged the bug); future recaptures with rectangular dN now succeed.
-
-  v13 iter 61 update: SE recapture succeeds against the user's #99-fixed checkout; pplfp_EM recapture STILL FAILS with the same matmul error #98 was filed for. Either #98 not yet merged in this checkout, or a different downstream regression. Committed pplfp_EM.mat remains valid; Python drift continues to PASS.
+- **Upstream status:** adopted-upstream
+- **Resolved in:** cajigaslab/nSTAT@main + nstat-python capture-script fix
+- **Resolved iter:** v13 iter 63 post-merge fixup / 2026-06-19
+- **Resolved notes:** Recapture finally succeeded after pulling latest MATLAB (commits 49a84d6 #90, ca45d3f #95, 49415e0 #98+#99) AND fixing a capture-script bug: the script passed `gamma=[]` at PPLFP_EM position 12, but EStep at PPLFP.m:2147 computes `gammaC' * Hk` after repmat — which collapses on an empty gamma. The fix is to pass `gamma=0` (scalar) matching the Python recipe. Recapture produced a cleanly-converged EM (8 iterations, NewtonRaphson) and Python drift on xKFinal tightened from max_abs=0.117 to max_abs=0.034 (3× better). atol further tightened 0.5 → 0.1. Lesson: 4 upstream issues (#90, #95, #98) were filed for what was partly a self-inflicted capture-script bug.
 - **Upstream issue:** cajigaslab/nSTAT#90
 
 ---
