@@ -186,6 +186,59 @@ class History:
         plot_handles = signal.plot(handle=ax)
         return ax if created_ax else plot_handles
 
+    @classmethod
+    def raisedCosine(cls, K: int, tMin: float | None = None, tMax: float | None = None) -> "History":
+        """Construct a ``History`` with ``K`` log-spaced windows in ``[tMin, tMax]``.
+
+        Windowed-basis analog of the Pillow et al. 2008 raised-cosine basis on
+        log time — log-spaced lag scales capture refractory effects at short
+        lags (small bins) and slow adaptation at long lags (large bins).
+
+        Parameters
+        ----------
+        K : int
+            Number of history windows (typical: 5–10). Must be ``>= 2``.
+        tMin : float, optional
+            Shortest lag in seconds. Default ``0.002`` (2 ms — absolute
+            refractory edge).
+        tMax : float, optional
+            Longest lag in seconds. Default ``0.100`` (100 ms — typical
+            slow-adaptation horizon).
+
+        Returns
+        -------
+        History
+            History object whose ``windowTimes`` is ``[0, peaks...]`` with
+            ``K`` log-spaced peaks in ``[tMin, tMax]``. The leading ``0``
+            defines the first window from spike-onset to ``tMin``.
+
+        Notes
+        -----
+        Returns the WINDOWED-basis approximation of the Pillow 2008
+        raised-cosine basis. The true Pillow basis is a set of smooth cosine
+        bumps; reproducing those requires a separate ``RaisedCosineBasis``
+        class with overloaded ``computeHistory``. For PP-GLM history-coefficient
+        fitting where the basis is collapsed into bin counts the log-spaced
+        windowed approximation is sufficient.
+
+        Mirrors MATLAB ``History.raisedCosine`` (History.m:197).
+        """
+        if tMin is None:
+            tMin = 0.002
+        if tMax is None:
+            tMax = 0.100
+        K = int(K)
+        if K < 2:
+            raise ValueError(f"K must be >= 2 (need at least 2 log-spaced peaks); got {K}.")
+        if tMin <= 0:
+            raise ValueError(f"tMin must be > 0 for log spacing (got {tMin}).")
+        if tMax <= tMin:
+            raise ValueError(f"tMax ({tMax}) must exceed tMin ({tMin}).")
+
+        peaks = np.logspace(np.log10(float(tMin)), np.log10(float(tMax)), K)
+        windowTimes = np.concatenate(([0.0], peaks))
+        return cls(windowTimes)
+
     def toFilter(self, delta: float) -> HistoryFilterBank:
         """Convert the history windows to a discrete-time filter bank.
 

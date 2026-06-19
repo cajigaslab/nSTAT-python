@@ -195,6 +195,12 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     # v6 iter 24 LCS dynamic-programming previous-cell lookups in the parity tool.
     ('class_method_parity.py', 'cur[j] = prev[j - 1] + 1'): "DP previous-element lookup",
     ('class_method_parity.py', 'cur[j] = max(prev[j], cur[j - 1])'): "DP previous-element lookup",
+    # v7 iter 29 — PPLFP EM-algorithm time-recursion: x_K[:, k-1] refers to the
+    # previous time step in the smoother lag block. Standard time-recursion pattern
+    # (Sxkm1xk = sum_{k} x_K[:, k-1] x_K[:, k].T) — analogous to the existing
+    # simulators.py time-recursion exemptions.
+    ('decoding/PPLFP.py', 'Sxkm1xk += Wku[:, :, k - 1, k] + np.outer(x_K[:, k - 1], x_K[:, k])'): "PPLFP EM time-recursion",
+    ('decoding/PPLFP.py', 'Sxkm1xkm1 += Wku[:, :, k - 1, k - 1] + np.outer(x_K[:, k - 1], x_K[:, k - 1])'): "PPLFP EM time-recursion",
     # StimulusDecode2D: extent uses last valid grid index (slice upper bound is exclusive,
     # so the right edge is _grid_vec[upper - 1]) — legitimate "edge sample" pattern.
     ("StimulusDecode2D.ipynb", "ext = [float(_grid_vec[_ix_lo]), float(_grid_vec[_ix_hi - 1]),"): "right-edge sample of half-open slice",

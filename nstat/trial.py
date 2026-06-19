@@ -719,8 +719,41 @@ class CovariateCollection:
             labels.extend([cov.dataLabels[idx] for idx in selector])
         return time.copy(), np.hstack(parts) if parts else np.zeros((time.size, 0), dtype=float), labels
 
-    # TODO(parity): port MATLAB method dataToMatrixFromNames from cajigaslab/nSTAT@main
-    # TODO(parity): port MATLAB method dataToMatrixFromSel from cajigaslab/nSTAT@main
+    def dataToMatrixFromNames(
+        self,
+        repType: str = "standard",
+        dataSelector=None,
+        *args,
+    ) -> np.ndarray:
+        """Return the data matrix for a name-based ``dataSelector``.
+
+        Thin wrapper that resolves the name-based selector through
+        :meth:`generateSelectorCell` and dispatches to
+        :meth:`dataToMatrixFromSel`. Mirrors MATLAB
+        ``CovColl.dataToMatrixFromNames`` (CovColl.m:563).
+        """
+        selectorCell = self.generateSelectorCell(dataSelector)
+        return self.dataToMatrixFromSel(repType, selectorCell, *args)
+
+    def dataToMatrixFromSel(
+        self,
+        repType: str = "standard",
+        selectorCell=None,
+        *_args,
+    ) -> np.ndarray:
+        """Return the data matrix for an explicit per-covariate ``selectorCell``.
+
+        Each entry of ``selectorCell`` is a list of 0-based dimension indices
+        for the corresponding covariate. Mirrors MATLAB
+        ``CovColl.dataToMatrixFromSel`` (CovColl.m:567).
+        """
+        if selectorCell is None:
+            if self.isCovMaskSet():
+                selectorCell = self.getSelectorFromMasks()
+            else:
+                selectorCell = [list(range(self.getCov(i).dimension)) for i in range(self.numCov)]
+        _, matrix, _ = self.matrixWithTime(str(repType), selectorCell)
+        return matrix
 
     def dataToStructure(
         self,

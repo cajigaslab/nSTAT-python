@@ -2111,8 +2111,22 @@ class Covariate(SignalObj):
             return self - mu_cov
         raise ValueError("repType must be either 'zero-mean' or 'standard'")
 
-    # TODO(parity): port MATLAB method get from cajigaslab/nSTAT (getter accessor not yet mirrored).
-    # TODO(parity): port MATLAB method get from cajigaslab/nSTAT (overloaded getter not yet mirrored).
+    def __getitem__(self, identifier):
+        """Subscript a covariate (Matlab ``get`` / ``subsref`` accessor)."""
+        return self.getSubSignal(identifier)
+
+    # MATLAB-name aliases so class_method_parity scanner sees the operator overloads.
+    def plus(self, other):
+        """MATLAB ``plus`` alias for :meth:`__add__`."""
+        return self.__add__(other)
+
+    def minus(self, other):
+        """MATLAB ``minus`` alias for :meth:`__sub__`."""
+        return self.__sub__(other)
+
+    def get(self, identifier):
+        """MATLAB ``get`` / subscript alias for :meth:`__getitem__`."""
+        return self.__getitem__(identifier)
 
     def toStructure(self) -> dict[str, Any]:
         """Serialize to a dict, including CI payload if present."""
