@@ -10,6 +10,7 @@ MATLAB-helpfile port) rather than substantive plots — those are marked.
 
 | Notebook | Figures | Substantive | Source |
 |---|---|---|---|
-| [`PPThinning`](PPThinning/) | 4 | yes | [`notebooks/PPThinning.ipynb`](../../notebooks/PPThinning.ipynb) |
+| [`ExplicitStimulusWhiskerData`](ExplicitStimulusWhiskerData/) | 10 | yes | [`notebooks/ExplicitStimulusWhiskerData.ipynb`](../../notebooks/ExplicitStimulusWhiskerData.ipynb) |
+| [`HybridFilterExample`](HybridFilterExample/) | 3 | yes | [`notebooks/HybridFilterExample.ipynb`](../../notebooks/HybridFilterExample.ipynb) |
 
 Regenerate this gallery with `make regen-notebook-galleries` (executes the smoke group; pass `--group full` for everything).
