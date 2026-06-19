@@ -77,6 +77,18 @@ entries:
       `notebooks/HippocampalPlaceCellExample.ipynb` final 3D wireframe
       cell using `mpl_toolkits.mplot3d`.
     discovered: "v1 iter 2 / 2026-06-17"
+    upstream_issue: "cajigaslab/nSTAT#81"
+    upstream_status: "adopted-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "iter 45 / 2026-06-19"
+    resolved_notes: |
+      Upstream merged the requested pedagogical addition.
+      `helpfiles/HippocampalPlaceCellExample.mlx` now includes the 3D
+      wireframe overlay (MATLAB figure 12 = Gaussian + Zernike `mesh`
+      overlay). Verified in iter 44 by re-capturing MATLAB gold
+      fixtures: no `.mat` fixture impact (the change is figure-only).
+      Notebook fidelity audit YAML for HippocampalPlaceCellExample will
+      need to bump `matlab_published_figures` from 11 to 12 in iter 47.
 
   - id: isi-diagnostic-suite
     title: "Per-cell ISI diagnostic-suite composite"
@@ -105,6 +117,20 @@ entries:
       `notebooks/nSpikeTrainExamples.ipynb` final diagnostic-suite cell
       (added in v1 iter 2).
     discovered: "v1 iter 2 / 2026-06-18"
+    upstream_issue: "cajigaslab/nSTAT#82"
+    upstream_status: "adopted-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "iter 45 / 2026-06-19"
+    resolved_notes: |
+      Upstream merged the requested ISI diagnostic suite.
+      `helpfiles/nSpikeTrainExamples.mlx` now exercises
+      `plotISIHistogram`, `plotJointISIHistogram`,
+      `plotISISpectrumFunction`, `plotExponentialFit`, `plotProbPlot` in
+      a 2×3 composite at MATLAB figure 7. Verified in iter 44 by
+      re-capturing MATLAB gold fixtures: no `.mat` fixture impact
+      (figure-only addition). Notebook fidelity audit YAML for
+      nSpikeTrainExamples will need to bump `matlab_published_figures`
+      from 6 to 7 in iter 47.
 
   - id: hybrid-monte-carlo-summary
     title: "Monte Carlo mean-trajectory + RMSE summary for hybrid decoder"
@@ -137,6 +163,18 @@ entries:
       cell building `axs[0,0]` "Mean Estimated vs. Actual State (n=20)"
       through `axs[1,1]` "Single-run decoding RMSE [m]").
     discovered: "v2 iter 9 / 2026-06-18"
+    upstream_issue: "cajigaslab/nSTAT#84"
+    upstream_status: "adopted-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "iter 45 / 2026-06-19"
+    resolved_notes: |
+      Upstream merged the requested Monte Carlo + RMSE summary cell.
+      `helpfiles/HybridFilterExample.mlx` now contains a `figure(3)`
+      2×2 summary after the n=20 Monte Carlo loop (mean state, mean
+      P(s=M|data), mean 2D path, RMSE bar). Verified in iter 44 by
+      re-capturing MATLAB gold fixtures: no `.mat` fixture impact.
+      Notebook fidelity audit YAML for HybridFilterExample will need to
+      bump `matlab_published_figures` from 2 to 3 in iter 47.
 
   - id: ppsim-cif-trace
     title: "Conditional intensity function (CIF) trace for PP sample-path generation"
@@ -169,6 +207,18 @@ entries:
       duplicated on the Python side — it shows identical data to
       `PPSimExample_03.png`.
     discovered: "v2 iter 9 / 2026-06-18"
+    upstream_issue: "cajigaslab/nSTAT#85"
+    upstream_status: "adopted-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "iter 45 / 2026-06-19"
+    resolved_notes: |
+      Upstream merged the requested CIF λ(t) trace.
+      `helpfiles/PPSimExample.mlx` now plots the realized conditional
+      intensity after `simulateCIF` (via `sC.lambdaCIF.plot;
+      xlim([0 tMax/5])`). Verified in iter 44 by re-capturing MATLAB
+      gold fixtures: no `.mat` fixture impact. Notebook fidelity audit
+      YAML for PPSimExample will need adjusting in iter 47 to reflect
+      the new MATLAB figure-count baseline.
 
   - id: network-tutorial-schematics
     title: "Programmatic schematic / equation panels for the two-neuron network model"
@@ -208,6 +258,19 @@ entries:
       `_figure(...)` calls that invoke `_draw_network`,
       `_draw_block_diagram`, and `_text_panel`).
     discovered: "v2 iter 9 / 2026-06-18"
+    upstream_issue: "cajigaslab/nSTAT#86"
+    upstream_status: "adopted-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "iter 45 / 2026-06-19"
+    resolved_notes: |
+      Upstream merged the requested two-neuron schematic and equation
+      panels. `helpfiles/NetworkTutorial.mlx` now renders the
+      connectivity diagram, block-diagram, and CIF equation panel as
+      proper MATLAB figures (rather than only embedded page assets).
+      Verified in iter 44 by re-capturing MATLAB gold fixtures: no
+      `.mat` fixture impact (figure-only). Notebook fidelity audit YAML
+      for NetworkTutorial will need adjusting in iter 47 to reflect
+      the new MATLAB figure-count baseline.
 
   - id: network-tutorial-history-kernel
     title: "Self-history kernel stem plot for the two-neuron network"
@@ -265,6 +328,21 @@ entries:
       `notebooks/ExplicitStimulusWhiskerData.ipynb` scan-figure cell
       (added in v1 iter 2).
     discovered: "v1 iter 2 / 2026-06-18"
+    upstream_issue: "cajigaslab/nSTAT#83"
+    upstream_status: "adopted-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "iter 45 / 2026-06-19"
+    resolved_notes: |
+      Upstream merged the requested KS / ΔAIC / ΔBIC scan figure.
+      `helpfiles/ExplicitStimulusWhiskerData.mlx` now contains a
+      `figure(11)` cell mirroring `helpfiles/HistoryExamples.mlx`'s
+      lag-selection scan pattern. Verified in iter 44 by re-capturing
+      MATLAB gold fixtures: no `.mat` fixture impact (figure-only).
+      Notebook fidelity audit YAML for ExplicitStimulusWhiskerData
+      will need adjusting in iter 47 to reflect the new MATLAB
+      figure-count baseline (this is the audit-YAML drop the iter-44
+      report flagged as "MATLAB section count for at least one
+      helpfile dropped").
 
   - id: nstatpaper-exp1-reorder
     title: "Figure ordering deviation in nSTATPaperExamples experiment 1"

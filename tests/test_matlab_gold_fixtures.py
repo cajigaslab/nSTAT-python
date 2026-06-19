@@ -377,14 +377,28 @@ def test_trialconfig_and_configcoll_match_matlab_gold_fixture() -> None:
     np.testing.assert_allclose(float(cfg.sampleRate), _scalar(payload, "cfg_sampleRate"), rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(float(cfg.covLag), _scalar(payload, "cfg_covLag"), rtol=1e-12, atol=1e-12)
     assert roundtrip.name == _string(payload, "roundtrip_name")
-    assert roundtrip.covLag == _string(payload, "roundtrip_covLag")
-    np.testing.assert_allclose(float(roundtrip.ensCovMask), _scalar(payload, "roundtrip_ensCovMask"), rtol=1e-12, atol=1e-12)
+    # ``covLag`` is a numeric scalar (0.5), and ``ensCovMask`` is left empty
+    # by ``fromStructure`` (per the MATLAB convention) — compare both as
+    # arrays so the assertion is shape-agnostic across fixture regenerations
+    # (MATLAB now emits scalars as ``(1,1)`` rather than ``(0,0)``/``(1,0)``).
+    np.testing.assert_allclose(float(roundtrip.covLag), _scalar(payload, "roundtrip_covLag"), rtol=1e-12, atol=1e-12)
+    expected_ens = np.asarray(payload["roundtrip_ensCovMask"], dtype=float).reshape(-1)
+    actual_ens = np.asarray(roundtrip.ensCovMask, dtype=float).reshape(-1)
+    assert actual_ens.shape == expected_ens.shape
+    if expected_ens.size:
+        np.testing.assert_allclose(actual_ens, expected_ens, rtol=1e-12, atol=1e-12)
     assert coll.getConfigNames() == _string_list(payload, "config_names")
     assert subset.getConfigNames() == _string_list(payload, "subset_names")
     assert rebuilt.getConfigNames() == _string_list(payload, "rebuilt_names")
     assert rebuilt.getConfig(0).name == _string(payload, "rebuilt_first_name")
-    assert rebuilt.getConfig(0).covLag == _string(payload, "rebuilt_first_covLag")
-    np.testing.assert_allclose(float(rebuilt.getConfig(0).ensCovMask), _scalar(payload, "rebuilt_first_ensCovMask"), rtol=1e-12, atol=1e-12)
+    # Same shape-agnostic comparison as roundtrip above — ``covLag`` is a
+    # numeric scalar, ``ensCovMask`` is empty post-``fromStructure``.
+    np.testing.assert_allclose(float(rebuilt.getConfig(0).covLag), _scalar(payload, "rebuilt_first_covLag"), rtol=1e-12, atol=1e-12)
+    expected_rebuilt_ens = np.asarray(payload["rebuilt_first_ensCovMask"], dtype=float).reshape(-1)
+    actual_rebuilt_ens = np.asarray(rebuilt.getConfig(0).ensCovMask, dtype=float).reshape(-1)
+    assert actual_rebuilt_ens.shape == expected_rebuilt_ens.shape
+    if expected_rebuilt_ens.size:
+        np.testing.assert_allclose(actual_rebuilt_ens, expected_rebuilt_ens, rtol=1e-12, atol=1e-12)
     assert default_coll.numConfigs == int(_scalar(payload, "default_numConfigs"))
     assert default_coll.getConfigNames() == _string_list(payload, "default_names")
     assert empty_coll.numConfigs == int(_scalar(payload, "empty_numConfigs"))

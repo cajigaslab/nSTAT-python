@@ -14,7 +14,7 @@ MATLAB-helpfile port) rather than substantive plots — those are marked.
 | [`AnalysisExamples2`](AnalysisExamples2/) | 4 | yes | [`notebooks/AnalysisExamples2.ipynb`](../../notebooks/AnalysisExamples2.ipynb) |
 | [`CovCollExamples`](CovCollExamples/) | 2 | yes | [`notebooks/CovCollExamples.ipynb`](../../notebooks/CovCollExamples.ipynb) |
 | [`CovariateExamples`](CovariateExamples/) | 2 | yes | [`notebooks/CovariateExamples.ipynb`](../../notebooks/CovariateExamples.ipynb) |
-| [`DecodingExample`](DecodingExample/) | 5 | yes | [`notebooks/DecodingExample.ipynb`](../../notebooks/DecodingExample.ipynb) |
+| [`DecodingExample`](DecodingExample/) | 7 | yes | [`notebooks/DecodingExample.ipynb`](../../notebooks/DecodingExample.ipynb) |
 | [`DecodingExampleWithHist`](DecodingExampleWithHist/) | 2 | yes | [`notebooks/DecodingExampleWithHist.ipynb`](../../notebooks/DecodingExampleWithHist.ipynb) |
 | [`EventsExamples`](EventsExamples/) | 4 | yes | [`notebooks/EventsExamples.ipynb`](../../notebooks/EventsExamples.ipynb) |
 | [`ExplicitStimulusWhiskerData`](ExplicitStimulusWhiskerData/) | 10 | yes | [`notebooks/ExplicitStimulusWhiskerData.ipynb`](../../notebooks/ExplicitStimulusWhiskerData.ipynb) |
@@ -26,7 +26,7 @@ MATLAB-helpfile port) rather than substantive plots — those are marked.
 | [`PPThinning`](PPThinning/) | 4 | yes | [`notebooks/PPThinning.ipynb`](../../notebooks/PPThinning.ipynb) |
 | [`PSTHEstimation`](PSTHEstimation/) | 2 | yes | [`notebooks/PSTHEstimation.ipynb`](../../notebooks/PSTHEstimation.ipynb) |
 | [`SignalObjExamples`](SignalObjExamples/) | 20 | yes | [`notebooks/SignalObjExamples.ipynb`](../../notebooks/SignalObjExamples.ipynb) |
-| [`StimulusDecode2D`](StimulusDecode2D/) | 5 | yes | [`notebooks/StimulusDecode2D.ipynb`](../../notebooks/StimulusDecode2D.ipynb) |
+| [`StimulusDecode2D`](StimulusDecode2D/) | 6 | yes | [`notebooks/StimulusDecode2D.ipynb`](../../notebooks/StimulusDecode2D.ipynb) |
 | [`TrialExamples`](TrialExamples/) | 6 | yes | [`notebooks/TrialExamples.ipynb`](../../notebooks/TrialExamples.ipynb) |
 | [`ValidationDataSet`](ValidationDataSet/) | 12 | yes | [`notebooks/ValidationDataSet.ipynb`](../../notebooks/ValidationDataSet.ipynb) |
 | [`mEPSCAnalysis`](mEPSCAnalysis/) | 5 | yes | [`notebooks/mEPSCAnalysis.ipynb`](../../notebooks/mEPSCAnalysis.ipynb) |

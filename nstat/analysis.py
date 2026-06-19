@@ -658,19 +658,28 @@ class Analysis:
             b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
             dev = _glm_deviance(y, lambda_delta, distribution)
 
-        # MATLAB stores logLL using the legacy per-bin convention
-        # `sum(y.*log(data*delta) + (1-y).*(1-data*delta))` for both GLM branches.
-        # NOTE: this is *not* a true log-likelihood (the negative-class term is
-        # missing the outer ``log``).  We retain it under the ``logLL`` name for
-        # MATLAB parity, and expose the true Bernoulli/Poisson log-likelihood
-        # in ``stats["loglik"]`` below so callers can use the standard
-        # AIC = -2*loglik + 2*k relation.
-        matlab_bin_mass = np.maximum(rate_hz / max(sample_rate, 1e-12), 1e-12)
-        logLL = float(np.sum(y * np.log(matlab_bin_mass) + (1.0 - y) * (1.0 - matlab_bin_mass)))
+        # MATLAB logLL — standard Bernoulli per-bin log-likelihood.  Upstream
+        # MATLAB "Task 0.1c" (Analysis.m:639) corrected a long-standing bug
+        # whose formula omitted the ``log`` wrapper on the negative-class term;
+        # the comment in the upstream source literally said
+        # "missing log wrapper".  Both Python and MATLAB now compute
+        # ``sum(y*log(λΔ) + (1-y)*log(1-λΔ))`` with ``eps`` floors, which
+        # is the correct Bernoulli per-bin log-likelihood and supports the
+        # standard ``AIC = -2*logLL + 2*k`` relation.  ``stats["matlab_logLL"]``
+        # is retained as an alias for back-compat for one release cycle and
+        # holds the same value as ``logLL``.
+        # MATLAB's floor is ``eps`` (≈ 2.22e-16), not 1e-12.  Match it exactly:
+        # several of the parity fixtures have λΔ ≈ 1 bins where the (1-λΔ)
+        # term gets clipped at the floor, and a different floor shifts logLL.
+        _eps = float(np.finfo(float).eps)
+        matlab_bin_mass = np.maximum(rate_hz / max(sample_rate, 1e-12), _eps)
+        one_minus_bm = np.maximum(1.0 - rate_hz / max(sample_rate, 1e-12), _eps)
+        logLL = float(np.sum(y * np.log(matlab_bin_mass) + (1.0 - y) * np.log(one_minus_bm)))
 
-        # True Bernoulli/Poisson per-bin log-likelihood (for AIC/BIC reasoning).
-        p = np.clip(matlab_bin_mass, 1e-12, 1.0 - 1e-12)
-        loglik = float(np.sum(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)))
+        # True Bernoulli per-bin log-likelihood (numerically identical to
+        # ``logLL`` post-fix; kept under the ``stats["loglik"]`` name so
+        # downstream callers that already use it continue to work).
+        loglik = logLL
 
         n_params = int(b.size)
         AIC = float(2.0 * n_params + dev)

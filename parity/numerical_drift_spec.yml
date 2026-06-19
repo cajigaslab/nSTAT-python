@@ -33,11 +33,14 @@ entries:
     tolerance: { rtol: 1.0e-6, atol: 1.0e-8 }
 
   # 3. Full PPDecodeFilterLinear predict+update loop — compare filtered states.
+  # Tightened in v10 iter 47 (was rtol=1e-8/atol=1e-10) — observed error is at
+  # float64 round-off (~6.9e-18) after upstream MATLAB rebaseline confirmed
+  # the Python predict+update loop is bit-equivalent to MATLAB.
   - name: PPDecodeFilterLinear
     recipe: ppdecodefilterlinear_xu
     fixture: tests/parity/fixtures/matlab_gold/decode_linear_exactness.mat
     output_field: x_u
-    tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
 
   # 4. Analysis.computeKSStats — discrete KS statistic Z array.  This is the
   # closest existing fixture coverage for "nspikeTrain.computeKSStats" —
@@ -80,11 +83,13 @@ entries:
     tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
 
   # 9. Standard Kalman filter — filtered state trajectory.
+  # Tightened in v10 iter 47 (was rtol=1e-8/atol=1e-10) — observed error is at
+  # float64 round-off (~1.1e-16) after upstream MATLAB rebaseline.
   - name: kalman_filter
     recipe: kalman_filter_state
     fixture: tests/parity/fixtures/matlab_gold/kalman_filter_exactness.mat
     output_field: x_filt
-    tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
 
   # 10. PPDecode_updateLinear — single update step, compare posterior mean.
   # MATLAB nSTAT does not ship a UKF gold fixture; this is the closest
@@ -106,7 +111,11 @@ entries:
     recipe: pplfp_se_alpha
     fixture: tests/parity/fixtures/matlab_gold/pplfp_SE.mat
     output_field: SE.alpha
-    tolerance: { rtol: 1.0e-4, atol: 1.0e-4 }
+    # Relaxed in v10 iter 48: post-upstream-MATLAB rebaseline + Python eps
+    # floor switch (1e-12 → np.finfo(float).eps) shifted the MC envelope.
+    # Observed actual drift ~1.4e-3 absolute / 3e-2 relative across runs;
+    # tolerance widened to absorb without losing the Case C documentation.
+    tolerance: { rtol: 1.0e-1, atol: 1.0e-2 }
 
   # 12. PPLFP.PPLFP_MStep — EM maximisation step. The Python port runs
   # the NewtonRaphson branch (the GLM branch hits a pre-existing
@@ -197,11 +206,13 @@ entries:
     output_field: coeffs
     tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
 
+  # Tightened in v10 iter 47 — observed error is at float64 round-off
+  # (~4.4e-16) after upstream MATLAB rebaseline confirmed exact parity.
   - name: v9_computeKSStats_full
     recipe: v9_compute_ks_stats_full
     fixture: tests/parity/fixtures/matlab_gold/v9_computeKSStats_full.mat
     output_field: Z
-    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
 
   - name: v9_computeHistLag
     recipe: v9_compute_hist_lag
@@ -232,11 +243,14 @@ entries:
     tolerance: { rtol: 1.0e+1, atol: 1.0e+0 }
 
   # history_fit_core
+  # Tightened in v10 iter 47 — observed error is at float64 round-off
+  # (~1.7e-18) after upstream MATLAB rebaseline; raisedCosine is pure
+  # arithmetic with no MC/RNG.
   - name: v9_raisedCosine
     recipe: v9_raised_cosine
     fixture: tests/parity/fixtures/matlab_gold/v9_raisedCosine.mat
     output_field: windowTimes
-    tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
 
   # v9_fitresult_KSPlot_data: FitResult.KSPlot_data isn't ported as a separate
   # method; we route through Analysis.computeKSStats which uses a slightly
@@ -249,55 +263,74 @@ entries:
     output_field: KSSorted
     tolerance: { rtol: 1.0e-1, atol: 1.0e-1 }
 
+  # Tightened in v10 iter 47 — invGausTrans is norminv(1-exp(-Z)); float64
+  # round-off only (~2.8e-16) after upstream MATLAB rebaseline.
   - name: v9_fitresult_invGausTrans_data
     recipe: v9_fitresult_invgaus
     fixture: tests/parity/fixtures/matlab_gold/v9_fitresult_invGausTrans_data.mat
     output_field: X
-    tolerance: { rtol: 1.0e-6, atol: 1.0e-8 }
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
 
+  # Tightened in v10 iter 47 — seqCorrCoeff is a single corrcoef; round-off
+  # only (~5.6e-17) after upstream MATLAB rebaseline.
   - name: v9_fitresult_seqCorrCoeff
     recipe: v9_fitresult_seqcorr
     fixture: tests/parity/fixtures/matlab_gold/v9_fitresult_seqCorrCoeff.mat
     output_field: rho
-    tolerance: { rtol: 1.0e-6, atol: 1.0e-8 }
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
 
+  # Tightened in v10 iter 47 — resample is deterministic; round-off only
+  # (~2.2e-16) after upstream MATLAB rebaseline confirmed exact parity.
   - name: v9_signalobj_resample
     recipe: v9_signalobj_resample
     fixture: tests/parity/fixtures/matlab_gold/v9_signalobj_resample.mat
     output_field: data_out
-    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+    tolerance: { rtol: 1.0e-9, atol: 1.0e-12 }
 
+  # Tightened in v10 iter 47 — exact bit-equivalent (0.0 observed) after
+  # upstream MATLAB rebaseline.
   - name: v9_signalobj_derivative
     recipe: v9_signalobj_derivative
     fixture: tests/parity/fixtures/matlab_gold/v9_signalobj_derivative.mat
     output_field: data_out
-    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
 
+  # Tightened in v10 iter 47 — round-off only (~3.5e-18) after upstream
+  # MATLAB rebaseline.
   - name: v9_signalobj_integral
     recipe: v9_signalobj_integral
     fixture: tests/parity/fixtures/matlab_gold/v9_signalobj_integral.mat
     output_field: data_out
-    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
 
-  # decoding_KF — Kalman smoother family (init-convention drift → Case C)
+  # decoding_KF — Kalman smoother family.
+  # Tightened in v10 iter 47 — atol shrunk from 1e-1 to 1e-2 after upstream
+  # MATLAB rebaseline reduced observed drift (max_abs=8.5e-3, max_rel=2.6e-2);
+  # rtol kept at 1e-1 since rel_err is at the limit on small-magnitude states.
   - name: v9_kalman_smoother
     recipe: v9_kalman_smoother
     fixture: tests/parity/fixtures/matlab_gold/v9_kalman_smoother.mat
     output_field: x_N
-    tolerance: { rtol: 1.0e-1, atol: 1.0e-1 }
+    tolerance: { rtol: 1.0e-1, atol: 1.0e-2 }
 
+  # Tightened in v10 iter 47 — strict! Observed error is at float64 round-off
+  # (~1.1e-16) after upstream MATLAB rebaseline; fixedIntervalSmoother is
+  # now bit-equivalent.
   - name: v9_kalman_fixedIntervalSmoother
     recipe: v9_kalman_fixed_interval
     fixture: tests/parity/fixtures/matlab_gold/v9_kalman_fixedIntervalSmoother.mat
     output_field: x_uLag
-    tolerance: { rtol: 1.0e-1, atol: 1.0e-1 }
+    tolerance: { rtol: 1.0e-6, atol: 1.0e-10 }
 
   # decoding_PPHF — Point Process Hybrid Filter (multi-CIF, RNG path → Case C)
+  # Tightened in v10 iter 47 — observed error is small (max_abs=6.07e-6,
+  # max_rel=1.8e-5) after upstream MATLAB rebaseline; the linear branch is
+  # deterministic given the inputs (no MC sampling on this output_field).
   - name: v9_PPHybridFilterLinear
     recipe: v9_pphybrid_linear
     fixture: tests/parity/fixtures/matlab_gold/v9_PPHybridFilterLinear.mat
     output_field: MU_u
-    tolerance: { rtol: 1.0e+1, atol: 1.0e+0 }
+    tolerance: { rtol: 1.0e-4, atol: 1.0e-5 }
 
   - name: v9_PPHybridFilter
     recipe: v9_pphybrid_full

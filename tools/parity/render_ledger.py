@@ -76,6 +76,25 @@ def _format_list_bullet(label: str, items: list[str]) -> list[str]:
     return out
 
 
+# Fields surfaced when an entry has been resolved (typically by upstream
+# MATLAB adoption). Rendered as a bullet block after ``Discovered:``.
+_RESOLUTION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("upstream_status", "Upstream status"),
+    ("resolved_in", "Resolved in"),
+    ("resolved_iter", "Resolved iter"),
+    ("resolved_notes", "Resolved notes"),
+)
+
+
+def _format_resolution_bullets(entry: dict) -> list[str]:
+    """Append upstream/resolution bullets (only those present in the YAML)."""
+    out: list[str] = []
+    for key, label in _RESOLUTION_FIELDS:
+        if key in entry and entry[key] not in (None, ""):
+            out.extend(_format_bullet(label, str(entry[key])))
+    return out
+
+
 def render_defects(data: dict) -> str:
     parts: list[str] = []
     parts.append("# MATLAB defects and Python improvements ledger")
@@ -102,6 +121,7 @@ def render_defects(data: dict) -> str:
         parts.extend(_format_list_bullet("Python implementation", impl))
         parts.extend(_format_bullet("Fixture impact", entry.get("fixture_impact", "")))
         parts.extend(_format_bullet("Discovered", entry.get("discovered", "")))
+        parts.extend(_format_resolution_bullets(entry))
         if entry.get("upstream_issue"):
             parts.extend(_format_bullet("Upstream issue", entry["upstream_issue"]))
         parts.append("")
@@ -154,6 +174,7 @@ def render_pedagogical(data: dict) -> str:
             _format_bullet("Python implementation", entry.get("python_implementation", ""))
         )
         parts.extend(_format_bullet("Discovered", entry.get("discovered", "")))
+        parts.extend(_format_resolution_bullets(entry))
         parts.append("")
 
     deficits = data.get("deficits", [])
@@ -189,6 +210,7 @@ def render_pedagogical(data: dict) -> str:
                 _format_bullet("MATLAB upstream action", d.get("matlab_upstream_action", ""))
             )
             parts.extend(_format_bullet("Discovered", d.get("discovered", "")))
+            parts.extend(_format_resolution_bullets(d))
             parts.append("")
 
     trailer = (data.get("trailer") or "").rstrip()

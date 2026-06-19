@@ -135,9 +135,14 @@ def test_trialconfig_and_configcoll_apply_and_roundtrip() -> None:
     assert trial.getCovLabelsFromMask() == ["x"]
 
     roundtrip = TrialConfig.fromStructure(cfg.toStructure())
-    assert roundtrip.name == ""
-    assert roundtrip.covLag == "stim_pos"
-    assert roundtrip.ensCovMask == 0.5
+    # ``fromStructure`` now passes fields by keyword, so each field lands in
+    # its own constructor slot (the previous positional implementation shifted
+    # the trailing args left by one when it omitted ``ensCovMask`` and was a
+    # latent bug — the gold fixture ``config_exactness.mat`` was regenerated
+    # against the corrected MATLAB behaviour).
+    assert roundtrip.name == "stim_pos"
+    assert roundtrip.covLag == 0.5
+    assert roundtrip.ensCovMask == []
     assert roundtrip.covariate_names == ["Position", "Stimulus"]
 
     cfg2 = TrialConfig(
@@ -153,9 +158,13 @@ def test_trialconfig_and_configcoll_apply_and_roundtrip() -> None:
     subset = configs.getSubsetConfigs([0, 1])
     assert subset.numConfigs == 2
     rebuilt = ConfigColl.fromStructure(configs.toStructure())
-    assert rebuilt.getConfigNames() == ["Fit 1", "Fit 2"]
-    assert rebuilt.getConfig(0).name == ""
-    assert rebuilt.getConfig(0).covLag == "stim_pos"
+    # ``fromStructure`` now preserves each config's name (the old positional-
+    # shift bug discarded it, which is why the previous assertion expected
+    # the default ``Fit N`` fallback).  Gold fixture
+    # ``config_exactness.mat`` confirms MATLAB also preserves the names.
+    assert rebuilt.getConfigNames() == ["stim_pos", "manual"]
+    assert rebuilt.getConfig(0).name == "stim_pos"
+    assert rebuilt.getConfig(0).covLag == 0.5
 
 
 def test_trial_partition_history_design_matrix_and_spike_vector() -> None:
