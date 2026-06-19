@@ -176,13 +176,16 @@ entries:
   # end-to-end; the committed pplfp_EM.mat is therefore preserved verbatim
   # and Python drift continues to PASS against it.
   # v13 iter 60: recipe wrapped in seeded_global_rng(42) — Python output is
-  # now deterministic. atol tightened 1e+0 → 0.5 (2× win) reflecting the
-  # actual ~0.12 max_abs envelope of the EM driver under MatlabRNG seeding.
+  # now deterministic. atol initially tightened 1e+0 → 0.5.
+  # v13 iter 63 (post-merge fixup): pplfp_EM.mat recaptured against
+  # post-#98 MATLAB with the corrected `gamma=0` (not `[]`) capture
+  # argument. End-to-end EM now runs cleanly; actual max_abs dropped
+  # to ~0.034. atol further tightened 0.5 → 0.1 (5× additional, 10× total).
   - name: PPLFP_EM
     recipe: pplfp_em
     fixture: tests/parity/fixtures/matlab_gold/pplfp_EM.mat
     output_field: xKFinal
-    tolerance: { rtol: 1.0e+1, atol: 0.5 }
+    tolerance: { rtol: 1.0e+1, atol: 0.1 }
 
   # v9 iter 40 — recipe-backed entries for the 22 v9_* captures.
   # Each entry's recipe is defined in tools/parity/numerical_drift.py.
