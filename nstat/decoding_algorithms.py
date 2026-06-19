@@ -7893,6 +7893,68 @@ class DecodingAlgorithms:
 
         return Ahat, Qhat, Chat, Rhat, alphahat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
 
+    # ------------------------------------------------------------------
+    # PPLFP family — deprecated shims.
+    #
+    # The canonical implementations live in :mod:`nstat.decoding.PPLFP`.
+    # These wrappers preserve the historical ``DecodingAlgorithms.PPLFP_*``
+    # entry points while call sites migrate to the new import path.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def PPLFP_Decode_predict(*args, **kwargs):
+        """[DEPRECATED] Use nstat.decoding.PPLFP.PPLFP_Decode_predict instead."""
+        from nstat.decoding.PPLFP import PPLFP
+        return getattr(PPLFP, "PPLFP_Decode_predict")(*args, **kwargs)
+
+    @staticmethod
+    def PPLFP_Decode_update(*args, **kwargs):
+        """[DEPRECATED] Use nstat.decoding.PPLFP.PPLFP_Decode_update instead."""
+        from nstat.decoding.PPLFP import PPLFP
+        return getattr(PPLFP, "PPLFP_Decode_update")(*args, **kwargs)
+
+    @staticmethod
+    def PPLFP_DecodeLinear(*args, **kwargs):
+        """[DEPRECATED] Use nstat.decoding.PPLFP.PPLFP_DecodeLinear instead."""
+        from nstat.decoding.PPLFP import PPLFP
+        return getattr(PPLFP, "PPLFP_DecodeLinear")(*args, **kwargs)
+
+    @staticmethod
+    def PPLFP_fixedIntervalSmoother(*args, **kwargs):
+        """[DEPRECATED] Use nstat.decoding.PPLFP.PPLFP_fixedIntervalSmoother instead."""
+        from nstat.decoding.PPLFP import PPLFP
+        return getattr(PPLFP, "PPLFP_fixedIntervalSmoother")(*args, **kwargs)
+
+    @staticmethod
+    def PPLFP_EMCreateConstraints(*args, **kwargs):
+        """[DEPRECATED] Use nstat.decoding.PPLFP.PPLFP_EMCreateConstraints instead."""
+        from nstat.decoding.PPLFP import PPLFP
+        return getattr(PPLFP, "PPLFP_EMCreateConstraints")(*args, **kwargs)
+
+    @staticmethod
+    def PPLFP_ComputeParamStandardErrors(*args, **kwargs):
+        """[DEPRECATED] Use nstat.decoding.PPLFP.PPLFP_ComputeParamStandardErrors instead."""
+        from nstat.decoding.PPLFP import PPLFP
+        return getattr(PPLFP, "PPLFP_ComputeParamStandardErrors")(*args, **kwargs)
+
+    @staticmethod
+    def PPLFP_EM(*args, **kwargs):
+        """[DEPRECATED] Use nstat.decoding.PPLFP.PPLFP_EM instead."""
+        from nstat.decoding.PPLFP import PPLFP
+        return getattr(PPLFP, "PPLFP_EM")(*args, **kwargs)
+
+    @staticmethod
+    def PPLFP_EStep(*args, **kwargs):
+        """[DEPRECATED] Use nstat.decoding.PPLFP.PPLFP_EStep instead."""
+        from nstat.decoding.PPLFP import PPLFP
+        return getattr(PPLFP, "PPLFP_EStep")(*args, **kwargs)
+
+    @staticmethod
+    def PPLFP_MStep(*args, **kwargs):
+        """[DEPRECATED] Use nstat.decoding.PPLFP.PPLFP_MStep instead."""
+        from nstat.decoding.PPLFP import PPLFP
+        return getattr(PPLFP, "PPLFP_MStep")(*args, **kwargs)
+
 
 
 
