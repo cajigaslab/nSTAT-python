@@ -8,12 +8,15 @@ Drives the full parity-sweep pipeline end-to-end:
 3. Rebuild `docs/notebook_galleries/` from executed notebooks.
 4. Score visual parity (SSIM) against MATLAB references.
 5. Build side-by-side composite PNGs (if helper available).
-6. Write a summary Markdown report under ``.parity-review/``.
+6. Run section-aligned code-structure diff (MATLAB helpfiles ↔ notebooks).
+7. Run class-method parity audit (MATLAB classes ↔ Python classes).
+8. Write a summary Markdown report under ``.parity-review/``.
 
 Two modes
 ---------
 - *full* (default): every stage above (~30 minutes).
-- ``--quick``: skip extraction + notebook execution; composite + SSIM only
+- ``--quick``: skip extraction + notebook execution AND skip the
+  code-structure / class-method parity stages; composite + SSIM only
   against the current gallery state (~30 seconds).
 
 Exit code
@@ -109,6 +112,50 @@ def _try_build_composites(review_dir: Path) -> dict:
     )
     return {
         "stage": "build_composites",
+        "status": "ok" if rc == 0 else "error",
+        "exit_code": rc,
+        "tail": tail,
+    }
+
+
+def _run_code_structure_diff(review_dir: Path) -> dict:
+    """Run ``tools/parity/code_structure_diff.py --all`` if present."""
+    script = REPO_ROOT / "tools" / "parity" / "code_structure_diff.py"
+    if not script.exists():
+        return {
+            "stage": "code_structure_diff",
+            "status": "skipped",
+            "reason": "tools/parity/code_structure_diff.py not present",
+        }
+    rc, tail = _run(
+        [sys.executable, str(script), "--all"],
+        stage="code_structure_diff",
+        log_path=review_dir / "code_structure_diff.log",
+    )
+    return {
+        "stage": "code_structure_diff",
+        "status": "ok" if rc == 0 else "error",
+        "exit_code": rc,
+        "tail": tail,
+    }
+
+
+def _run_class_method_parity(review_dir: Path) -> dict:
+    """Run ``tools/parity/class_method_parity.py --all`` if present."""
+    script = REPO_ROOT / "tools" / "parity" / "class_method_parity.py"
+    if not script.exists():
+        return {
+            "stage": "class_method_parity",
+            "status": "skipped",
+            "reason": "tools/parity/class_method_parity.py not present",
+        }
+    rc, tail = _run(
+        [sys.executable, str(script), "--all"],
+        stage="class_method_parity",
+        log_path=review_dir / "class_method_parity.log",
+    )
+    return {
+        "stage": "class_method_parity",
         "status": "ok" if rc == 0 else "error",
         "exit_code": rc,
         "tail": tail,
@@ -338,7 +385,12 @@ def main(argv: list[str] | None = None) -> int:
     # 5. Composite generation (optional helper).
     stages.append(_try_build_composites(REVIEW_DIR))
 
-    # 6. Summarize.
+    # 6. Code-structure diff + class-method parity audit (default mode only).
+    if not args.quick:
+        stages.append(_run_code_structure_diff(REVIEW_DIR))
+        stages.append(_run_class_method_parity(REVIEW_DIR))
+
+    # 7. Summarize.
     ssim_entries = _load_ssim_results()
     summary_path = _write_summary(
         REVIEW_DIR,

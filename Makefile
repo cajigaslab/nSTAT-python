@@ -190,8 +190,23 @@ drift-check:  ## Regenerate deterministic CI-checked artifacts and fail if they 
 	@echo "      local MATLAB-checkout path) and is validated on GitHub Actions, not here."
 
 # --- top-level parity sweep -----------------------------------------
+#
+# ``parity-check`` is the canonical entry point for the full MATLAB↔Python
+# parity sweep.  Stages executed by ``tools/parity/run_full_check.py``:
+#
+#   1. extract_mlx              — pull figures from MATLAB ``.mlx`` sources
+#   2. run_notebooks            — execute the notebook fleet
+#   3. build_notebook_galleries — rebuild ``docs/notebook_galleries/``
+#   4. build_visual_comparison  — SSIM scoring against MATLAB references
+#   5. build_composites         — side-by-side composite PNGs (optional)
+#   6. code_structure_diff      — section-aligned helpfile ↔ notebook diff
+#   7. class_method_parity      — MATLAB-class ↔ Python-class method audit
+#
+# Per-stage logs and reports land under ``.parity-review/``; the summary
+# Markdown is ``SUMMARY_run_<timestamp>.md``.  ``parity-check-quick``
+# skips stages 1-3 and 6-7 (composite + SSIM only).
 
-parity-check:  ## Full MATLAB↔Python parity sweep (~30 min): extract → execute → score → composite.
+parity-check:  ## Full MATLAB↔Python parity sweep (~30 min): extract → execute → score → composite → structure → class-method.
 	$(PY) tools/parity/run_full_check.py
 
 parity-check-quick:  ## Composite + SSIM only against current gallery state (~30s).

@@ -1180,7 +1180,7 @@
       "threshold": 0.8,
       "stochastic": false,
       "notes": "Auto-added in v3 iter 11; baseline SSIM 0.822; threshold ~0.85\u00d7baseline.",
-      "ssim": 0.8419827791978214,
+      "ssim": 0.8417228687312821,
       "passed": true
     },
     {
