@@ -963,7 +963,17 @@ class SpikeTrainCollection:
         values = [self.getNST(index).getMaxBinSizeBinary() for index in selectorArray]
         return float(np.min(values))
 
-    # TODO(parity): port MATLAB method `get` from cajigaslab/nSTAT (generic name-based getter; see nstColl.m line ~66).
+    def get(self, name: str | None = None):
+        """Return spike train(s) by neuron name (Matlab ``nstColl.get``).
+
+        Mirrors MATLAB's ``get.uniqueNeuronNames`` property accessor, which
+        delegates to :meth:`getUniqueNSTnames`.  When *name* is ``None`` the
+        list of unique neuron names is returned; when a name is supplied the
+        corresponding spike train(s) are returned via :meth:`getNSTFromName`.
+        """
+        if name is None:
+            return self.getUniqueNSTnames()
+        return self.getNSTFromName(name)
 
     def getNeighbors(self, neuronNum: int | Sequence[int]):
         """Return the 0-based neighbour indices for one or more neurons."""
