@@ -147,3 +147,142 @@ entries:
     fixture: tests/parity/fixtures/matlab_gold/pplfp_EM.mat
     output_field: xKFinal
     tolerance: { rtol: 1.0e+1, atol: 1.0e+0 }
+
+  # v9 — decoding_PPSS category captures (state-space GLM EM)
+  - name: v9_PPSS_EM
+    function: 'nstat.decoding_algorithms:PPSS_EM'
+    baseline: tests/parity/fixtures/matlab_gold/v9_PPSS_EM.mat
+    baseline_field: xKFinal
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_PPSS_EStep
+    function: 'nstat.decoding_algorithms:PPSS_EStep'
+    baseline: tests/parity/fixtures/matlab_gold/v9_PPSS_EStep.mat
+    baseline_field: x_K
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_PPSS_MStep
+    function: 'nstat.decoding_algorithms:PPSS_MStep'
+    baseline: tests/parity/fixtures/matlab_gold/v9_PPSS_MStep.mat
+    baseline_field: Qhat
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  # v9 — decoding_PPAF category captures (point-process adaptive filter)
+  - name: v9_PPDecode_predict
+    function: 'nstat.decoding_algorithms:PPDecode_predict'
+    baseline: tests/parity/fixtures/matlab_gold/v9_PPDecode_predict.mat
+    baseline_field: x_p
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_PPDecode_update
+    function: 'nstat.decoding_algorithms:PPDecode_update'
+    baseline: tests/parity/fixtures/matlab_gold/v9_PPDecode_update.mat
+    baseline_field: x_u
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  # v9 — analysis category captures (Analysis static methods)
+  - name: v9_RunAnalysisForNeuron
+    function: 'nstat.analysis:Analysis.RunAnalysisForNeuron'
+    baseline: tests/parity/fixtures/matlab_gold/v9_RunAnalysisForNeuron.mat
+    baseline_field: coeffs
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_computeKSStats_full
+    function: 'nstat.analysis:Analysis.computeKSStats'
+    baseline: tests/parity/fixtures/matlab_gold/v9_computeKSStats_full.mat
+    baseline_field: Z
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_computeHistLag
+    function: 'nstat.analysis:Analysis.computeHistLag'
+    baseline: tests/parity/fixtures/matlab_gold/v9_computeHistLag.mat
+    baseline_field: fit0_coeffs
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_computeFitResidual
+    function: 'nstat.analysis:Analysis.computeFitResidual'
+    baseline: tests/parity/fixtures/matlab_gold/v9_computeFitResidual.mat
+    baseline_field: M_data
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  # v9 — cif category captures (conditional intensity function thinning)
+  - name: v9_simulateCIFByThinningFromLambda
+    function: 'nstat.cif:simulateCIFByThinningFromLambda'
+    baseline: tests/parity/fixtures/matlab_gold/v9_simulateCIFByThinningFromLambda.mat
+    baseline_field: lambdaBound
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_simulateCIFByThinning
+    function: 'nstat.cif:simulateCIFByThinning'
+    baseline: tests/parity/fixtures/matlab_gold/v9_simulateCIFByThinning.mat
+    baseline_field: lambda_data
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  # v9 — history_fit_core category captures
+  - name: v9_raisedCosine
+    function: 'nstat.history:History.raisedCosine'
+    baseline: tests/parity/fixtures/matlab_gold/v9_raisedCosine.mat
+    baseline_field: windowTimes
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_fitresult_KSPlot_data
+    function: 'nstat.fit:FitResult.KSPlot_data'
+    baseline: tests/parity/fixtures/matlab_gold/v9_fitresult_KSPlot_data.mat
+    baseline_field: KSSorted
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_fitresult_invGausTrans_data
+    function: 'nstat.fit:FitResult.invGausTrans_data'
+    baseline: tests/parity/fixtures/matlab_gold/v9_fitresult_invGausTrans_data.mat
+    baseline_field: X
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_fitresult_seqCorrCoeff
+    function: 'nstat.fit:FitResult.seqCorrCoeff'
+    baseline: tests/parity/fixtures/matlab_gold/v9_fitresult_seqCorrCoeff.mat
+    baseline_field: rho
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_signalobj_resample
+    function: 'nstat.core:SignalObj.resample'
+    baseline: tests/parity/fixtures/matlab_gold/v9_signalobj_resample.mat
+    baseline_field: data_out
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_signalobj_derivative
+    function: 'nstat.core:SignalObj.derivative'
+    baseline: tests/parity/fixtures/matlab_gold/v9_signalobj_derivative.mat
+    baseline_field: data_out
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_signalobj_integral
+    function: 'nstat.core:SignalObj.integral'
+    baseline: tests/parity/fixtures/matlab_gold/v9_signalobj_integral.mat
+    baseline_field: data_out
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  # v9 — decoding_KF category captures (Kalman smoother family)
+  - name: v9_kalman_smoother
+    function: 'nstat.decoding_algorithms:kalman_smoother'
+    baseline: tests/parity/fixtures/matlab_gold/v9_kalman_smoother.mat
+    baseline_field: x_N
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_kalman_fixedIntervalSmoother
+    function: 'nstat.decoding_algorithms:kalman_fixedIntervalSmoother'
+    baseline: tests/parity/fixtures/matlab_gold/v9_kalman_fixedIntervalSmoother.mat
+    baseline_field: x_uLag
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  # v9 — decoding_PPHF category captures (Point Process Hybrid Filter)
+  - name: v9_PPHybridFilterLinear
+    function: 'nstat.decoding_algorithms:DecodingAlgorithms.PPHybridFilterLinear'
+    baseline: tests/parity/fixtures/matlab_gold/v9_PPHybridFilterLinear.mat
+    baseline_field: MU_u
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  - name: v9_PPHybridFilter
+    function: 'nstat.decoding_algorithms:DecodingAlgorithms.PPHybridFilter'
+    baseline: tests/parity/fixtures/matlab_gold/v9_PPHybridFilter.mat
+    baseline_field: X
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
