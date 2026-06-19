@@ -251,6 +251,145 @@ def _time_history_compute_history() -> float:
 
 
 # ---------------------------------------------------------------------------
+# Iter-56 expansion: 5 additional baseline paths
+# ---------------------------------------------------------------------------
+
+
+def _time_analysis_run_for_all_neurons_10cell() -> float:
+    """``Analysis.RunAnalysisForAllNeurons`` on a 10-cell ensemble.
+
+    Exercises the multi-neuron + FitResSummary path.  Each cell gets a
+    200-spike Poisson train; one shared sinusoidal stimulus + 4-window
+    history kernel.
+    """
+    from nstat.analysis import Analysis
+    from nstat.ConfigColl import ConfigColl
+    from nstat.CovColl import CovColl
+    from nstat.Covariate import Covariate
+    from nstat.Events import Events
+    from nstat.History import History
+    from nstat.nspikeTrain import nspikeTrain
+    from nstat.nstColl import nstColl
+    from nstat.Trial import Trial
+    from nstat.TrialConfig import TrialConfig
+
+    rng = np.random.default_rng(42)
+    T = 5.0
+    fs = 1000.0
+    n_cells = 10
+    time_grid = np.arange(0.0, T, 1.0 / fs)
+    stim_values = np.sin(2 * np.pi * 3.0 * time_grid)
+    stim = Covariate(time_grid, stim_values, "Stimulus", "time", "s", "", ["stim"])
+
+    trains = []
+    for k in range(n_cells):
+        spike_times = np.sort(rng.uniform(0.0, T, size=200))
+        trains.append(nspikeTrain(spike_times, str(k + 1), fs, 0.0, T, makePlots=-1))
+    spikes = nstColl(trains)
+    history = History([0.0, 0.005, 0.010, 0.020, 0.040])
+    trial = Trial(spikes, CovColl([stim]), Events([0.0], ["cue"]), history)
+
+    cfg = TrialConfig(
+        covMask=[["Stimulus", "stim"]],
+        sampleRate=fs,
+        history=[0.0, 0.005, 0.010, 0.020, 0.040],
+        name="stim_hist",
+    )
+    configs = ConfigColl([cfg])
+
+    t0 = time.perf_counter()
+    Analysis.RunAnalysisForAllNeurons(trial, configs, makePlot=0)
+    return time.perf_counter() - t0
+
+
+def _time_cif_eval_lambda_delta_loop() -> float:
+    """``CIF.evalLambdaDelta`` looped over 1000 stimulus values.
+
+    Exercises the sympy-backed CIF symbolic-eval surface — each call
+    triggers a ``lambdify`` invocation.  Tests cumulative dispatch
+    overhead in tight inner loops.
+    """
+    from nstat.cif import CIF
+
+    cif = CIF(
+        beta=[0.5, 0.2],
+        Xnames=["x1", "x2"],
+        stimNames=["x1", "x2"],
+        fitType="binomial",
+    )
+    rng = np.random.default_rng(42)
+    stim_vals = rng.standard_normal((1000, 2))
+
+    t0 = time.perf_counter()
+    for row in stim_vals:
+        cif.evalLambdaDelta(row)
+    return time.perf_counter() - t0
+
+
+def _time_analysis_compute_ks_stats() -> float:
+    """``Analysis.computeKSStats`` on a 10k-bin trial with 200 spikes.
+
+    Exercises the time-rescaling KS path.  Builds a constant-rate
+    Covariate (λΔ = 0.01) over 10 s @ 1 kHz, then rescales 200 spike
+    times against it.
+    """
+    from nstat.analysis import Analysis
+    from nstat.Covariate import Covariate
+    from nstat.nspikeTrain import nspikeTrain
+
+    rng = np.random.default_rng(42)
+    T = 10.0
+    fs = 1000.0
+    time_grid = np.arange(0.0, T, 1.0 / fs)
+    lam_data = np.full_like(time_grid, 0.01)
+    lam_cov = Covariate(time_grid, lam_data, "lambdaDelta", "time", "s", "", ["lambda"])
+
+    spikes = np.sort(rng.uniform(0.0, T, size=200))
+    train = nspikeTrain(spikes, "1", fs, 0.0, T, makePlots=-1)
+
+    t0 = time.perf_counter()
+    Analysis.computeKSStats(train, lam_cov, 1)
+    return time.perf_counter() - t0
+
+
+def _time_signal_obj_filter() -> float:
+    """``SignalObj.filter`` (5th-order IIR) on a 100k-sample 1-D signal.
+
+    Exercises the DSP path — wraps scipy.signal.lfilter.
+    """
+    from nstat.core import SignalObj
+    from scipy.signal import butter
+
+    rng = np.random.default_rng(42)
+    n = 100_000
+    fs = 1000.0
+    time_grid = np.arange(n) / fs
+    data = rng.standard_normal(n)
+    sig = SignalObj(time_grid, data, "x", "time", "s", "", ["x"])
+    # 5th-order lowpass at 50 Hz (Nyquist = 500 Hz)
+    b, a = butter(5, 0.1)
+
+    t0 = time.perf_counter()
+    sig.filter(b, a)
+    return time.perf_counter() - t0
+
+
+def _time_history_to_filter() -> float:
+    """``History.toFilter(delta=0.001)`` on a 4-window history kernel.
+
+    Exercises the filter-bank construction path: builds N FIR
+    numerator/denominator pairs at sample-step resolution.
+    """
+    from nstat.History import History
+
+    hist = History([0.0, 0.005, 0.010, 0.020, 0.040])
+
+    t0 = time.perf_counter()
+    hist.toFilter(0.001)
+    return time.perf_counter() - t0
+
+
+# ---------------------------------------------------------------------------
 # MATLAB-side bodies
 # ---------------------------------------------------------------------------
 #
@@ -316,6 +455,56 @@ _MATLAB_BODIES = {
         hist = History([0.0 0.005 0.010 0.020 0.040]);
         hist.computeHistory(train);
     """,
+    # ----- iter-56 new paths -----
+    "analysis_run_for_all_neurons_10cell": r"""
+        rng(42);
+        T = 5.0; fs = 1000.0;
+        tg = (0:1/fs:T-1/fs)';
+        stim = Covariate(tg, sin(2*pi*3.0*tg), 'Stimulus', 'time', 's', '', {'stim'});
+        trains = cell(1, 10);
+        for k = 1:10
+            st = sort(rand(200,1) * T);
+            trains{k} = nspikeTrain(st, num2str(k), fs, 0.0, T);
+        end
+        spikes = nstColl(trains);
+        hist = History([0.0 0.005 0.010 0.020 0.040]);
+        trial = Trial(spikes, CovColl({stim}), Events(0.0, {'cue'}), hist);
+        cfg = TrialConfig({{'Stimulus','stim'}}, fs, [0.0 0.005 0.010 0.020 0.040], [], 'stim_hist');
+        configs = ConfigColl({cfg});
+        Analysis.RunAnalysisForAllNeurons(trial, configs, 0);
+    """,
+    "cif_eval_lambda_delta_loop": r"""
+        rng(42);
+        beta = [0.5, 0.2];
+        cif = CIF(beta, {'x1','x2'}, {'x1','x2'}, 'binomial');
+        stim_vals = randn(1000, 2);
+        for i = 1:1000
+            cif.evalLambdaDelta(stim_vals(i,:));
+        end
+    """,
+    "analysis_compute_ks_stats": r"""
+        rng(42);
+        T = 10.0; fs = 1000.0;
+        tg = (0:1/fs:T-1/fs)';
+        lam_data = 0.01 * ones(size(tg));
+        lam_cov = Covariate(tg, lam_data, 'lambdaDelta', 'time', 's', '', {'lambda'});
+        st = sort(rand(200,1) * T);
+        train = nspikeTrain(st, '1', fs, 0.0, T);
+        Analysis.computeKSStats(train, lam_cov, 1);
+    """,
+    "signal_obj_filter": r"""
+        rng(42);
+        n = 100000; fs = 1000.0;
+        tg = (0:n-1)' / fs;
+        data = randn(n, 1);
+        sig = SignalObj(tg, data, 'x', 'time', 's', '', {'x'});
+        [b, a] = butter(5, 0.1);
+        sig.filter(b, a);
+    """,
+    "history_to_filter": r"""
+        hist = History([0.0 0.005 0.010 0.020 0.040]);
+        hist.toFilter(0.001);
+    """,
 }
 
 
@@ -371,6 +560,47 @@ def _build_paths() -> list[HotPath]:
             input_size="200-spike train @ 1kHz over 10s, 4 history windows",
             python_timer=_time_history_compute_history,
             matlab_body=_MATLAB_BODIES["history_compute_history"],
+        ),
+        # ----- iter-56 new paths -----
+        HotPath(
+            name="analysis_run_for_all_neurons_10cell",
+            python_function="nstat.analysis.Analysis.RunAnalysisForAllNeurons",
+            matlab_function="Analysis.RunAnalysisForAllNeurons",
+            input_size="10-cell ensemble, 200 spikes/cell, sin-3Hz stim, 4-window history, 5s @ 1kHz",
+            python_timer=_time_analysis_run_for_all_neurons_10cell,
+            matlab_body=_MATLAB_BODIES["analysis_run_for_all_neurons_10cell"],
+        ),
+        HotPath(
+            name="cif_eval_lambda_delta_loop",
+            python_function="nstat.cif.CIF.evalLambdaDelta",
+            matlab_function="CIF.evalLambdaDelta",
+            input_size="binomial CIF, 1000-stimulus-value loop, 2 stim vars",
+            python_timer=_time_cif_eval_lambda_delta_loop,
+            matlab_body=_MATLAB_BODIES["cif_eval_lambda_delta_loop"],
+        ),
+        HotPath(
+            name="analysis_compute_ks_stats",
+            python_function="nstat.analysis.Analysis.computeKSStats",
+            matlab_function="Analysis.computeKSStats",
+            input_size="200-spike train vs constant-rate lambda Covariate, 10s @ 1kHz",
+            python_timer=_time_analysis_compute_ks_stats,
+            matlab_body=_MATLAB_BODIES["analysis_compute_ks_stats"],
+        ),
+        HotPath(
+            name="signal_obj_filter",
+            python_function="nstat.core.SignalObj.filter",
+            matlab_function="SignalObj.filter",
+            input_size="100k-sample 1-D signal, 5th-order Butterworth lowpass",
+            python_timer=_time_signal_obj_filter,
+            matlab_body=_MATLAB_BODIES["signal_obj_filter"],
+        ),
+        HotPath(
+            name="history_to_filter",
+            python_function="nstat.history.History.toFilter",
+            matlab_function="History.toFilter",
+            input_size="4-window kernel, delta=0.001s",
+            python_timer=_time_history_to_filter,
+            matlab_body=_MATLAB_BODIES["history_to_filter"],
         ),
     ]
 

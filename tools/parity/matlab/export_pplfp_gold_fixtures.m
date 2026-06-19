@@ -243,6 +243,21 @@ function export_pplfp_EM_fixture(fixtureRoot)
 % EM is RNG-dependent (NewtonRaphson MC + optional Ikeda mvnrnd) AND
 % iteration-sensitive (log-likelihood floating-point noise can change
 % convergence-iter). `rng(42)` is set for determinism.
+%
+% v12 iter 57 status — BLOCKED by upstream regression
+% ---------------------------------------------------
+% Although cajigaslab/nSTAT#90 (PPLFP_EM `K=size(dN,1)` mis-sizing) is
+% marked fixed upstream (commit 49a84d6), the fix actually broke a
+% different code path: `PPLFP_Decode_update` lines 328/357 were changed
+% from `HkAll(:,:,time_index)` to `squeeze(HkAll(time_index,:,:))`, but
+% `PPLFP_EStep` line 273 still passes `Histtermperm = permute(HkAll,[2 3 1])`
+% (which puts time on the 3rd dim, per the inline comment "expects History
+% with time on 3rd index"). The new slice indexes the FIRST dim of the
+% permuted tensor (hist_cols), producing wrong-shape Histterm and a matmul
+% failure at line 368. Result: ALL FOUR PPLFP recipes (EStep/MStep/EM/SE)
+% now fail end-to-end on the upstream MATLAB checkout. The committed
+% fixtures remain valid and Python drift continues to PASS against them.
+% Re-filing upstream is queued for v13.
 
 fixturePath = fullfile(fixtureRoot, 'pplfp_EM.mat');
 fprintf('  [EM] loading inputs from %s\n', fixturePath);

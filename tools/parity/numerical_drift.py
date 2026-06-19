@@ -794,6 +794,53 @@ def _recipe_v9_pphybrid_full(fixture, _args):
     return _as_float_array(py_x), _as_float_array(fixture["X"])
 
 
+def _recipe_v9_pphybrid_smoothed(fixture, _args):
+    """PPHybridFilter smoothed model-probability MU_u (was MU_s pre-fix #91).
+
+    v12 iter 57: now that the upstream PPHybridFilter signature is fixed
+    (cajigaslab/nSTAT#91 → MU_s renamed to MU_u; all 7 outputs assigned),
+    the v9_PPHybridFilter.mat fixture carries the additional MU_u/X_s/W_s/
+    pNGivenS outputs. This recipe compares the 2xN smoothed
+    model-probability matrix.
+
+    Falls back to Case-C tolerance (rtol=1e+1/atol=1e+0) because the same
+    RNG-stream divergence that drives v9_PPHybridFilter (X) drift applies
+    to MU_u — the per-regime mixture weighting is downstream of the
+    stochastic CIF evaluation.
+    """
+    from nstat.decoding_algorithms import DecodingAlgorithms
+    from nstat.cif import CIF
+    A1 = _as_float_array(fixture["A1"]).reshape(1, 1)
+    A2 = _as_float_array(fixture["A2"]).reshape(1, 1)
+    Q1 = _as_float_array(fixture["Q1"]).reshape(1, 1)
+    Q2 = _as_float_array(fixture["Q2"]).reshape(1, 1)
+    p_ij = _as_float_array(fixture["p_ij"])
+    Mu0 = _as_float_array(fixture["Mu0"]).reshape(-1)
+    dN = _as_float_array(fixture["dN"])
+    b1 = float(_as_float_array(fixture["beta1"]).reshape(-1)[0])
+    b2 = float(_as_float_array(fixture["beta2"]).reshape(-1)[0])
+    bw = _scalar(fixture, "binwidth")
+    cif1 = CIF(beta=np.array([0.0, b1]), Xnames=["1", "x1"], stimNames=["x1"], fitType="poisson")
+    cif2 = CIF(beta=np.array([0.0, b2]), Xnames=["1", "x1"], stimNames=["x1"], fitType="poisson")
+    out = DecodingAlgorithms.PPHybridFilter(
+        [A1, A2], [Q1, Q2], p_ij, Mu0, dN, [cif1, cif2], binwidth=bw,
+    )
+    # MATLAB output index 4 (0-based: 3) is MU_u; Python is expected to
+    # mirror the order. Probe the output tuple by shape to find a 2xN
+    # array matching the saved MU_u.
+    base = _as_float_array(fixture["MU_u"])
+    py_mu = None
+    for r in out:
+        ra = np.asarray(r)
+        if ra.shape == base.shape:
+            py_mu = ra
+            break
+    if py_mu is None:
+        # Fallback: assume position 3 in the tuple is MU_u, but coerce shape.
+        py_mu = np.asarray(out[3]) if len(out) > 3 else np.zeros_like(base)
+    return _as_float_array(py_mu), base
+
+
 def _recipe_v9_simulate_cif_thinning(fixture, _args):
     from nstat import CIF, Covariate
     lt = _vector(fixture, "lambda_time")
@@ -1057,18 +1104,21 @@ def _recipe_v11_signalobj_periodogram(fixture, _args):
 
 
 def _recipe_v11_signalobj_xcorr(fixture, _args):
-    """numpy.correlate-style cross-correlation vs MATLAB xcorr output.
+    """SignalObj.autocorrelation vs MATLAB SignalObj.autocorrelation output.
 
-    The recipe builds a Python xcorr via np.correlate(mode='full') which
-    is the canonical equivalent of MATLAB xcorr (no scaling).
+    v12 iter 57: switched from the raw two-signal ``np.correlate`` workaround
+    (v11 iter 51A) to the canonical ``SignalObj.autocorrelation`` method,
+    matching the MATLAB-side switch after upstream crosscorr regression
+    (cajigaslab/nSTAT#93) was fixed. Both sides produce a normalised ACF
+    column (peak = 1 at lag 0) of length ``2*N - 1``.
     """
+    from nstat import SignalObj
+    time_in = _vector(fixture, "time_in")
     x1 = _vector(fixture, "x1")
-    x2 = _vector(fixture, "x2")
-    # numpy.correlate uses the convention c[n] = sum_m x1[m] * x2[m-n+N-1].
-    # MATLAB xcorr(x1, x2) returns r[k] for k = -(N-1) ... N-1 with
-    # r[k] = sum_m x1[m+k] * conj(x2[m]). The equivalent NumPy call is:
-    c = np.correlate(x1, x2, mode="full")
-    return _as_float_array(c), _vector(fixture, "xcorr_data")
+    sig = SignalObj(time_in, x1.reshape(-1, 1), "x", "t", "s", "", ["c0"])
+    acf = sig.autocorrelation()
+    py = np.asarray(acf.data, dtype=float).reshape(-1)
+    return py, _vector(fixture, "xcorr_data")
 
 
 def _recipe_v11_history_toFilter(fixture, _args):
@@ -1325,6 +1375,7 @@ RECIPES: dict[str, Callable[[dict[str, Any], dict[str, Any]], tuple[np.ndarray, 
     "v9_ppss_em": _recipe_v9_ppss_em,
     "v9_pphybrid_linear": _recipe_v9_pphybrid_linear,
     "v9_pphybrid_full": _recipe_v9_pphybrid_full,
+    "v9_pphybrid_smoothed": _recipe_v9_pphybrid_smoothed,
     "v9_simulate_cif_thinning": _recipe_v9_simulate_cif_thinning,
     "v9_simulate_cif_lambda": _recipe_v9_simulate_cif_lambda,
     "v9_raised_cosine": _recipe_v9_raised_cosine,

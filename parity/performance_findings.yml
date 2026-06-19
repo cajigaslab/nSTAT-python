@@ -1,0 +1,686 @@
+# Per-path cProfile findings — iter 54 diagnosis (no optimisation here).
+#
+# Each entry lists the top-3 cumulative-time functions inside the path
+# (closure + import overhead from perf_check.py is intentionally excluded;
+# we report the first non-wrapper frame).  Raw cProfile dumps live at
+# `.parity-review/perf_profile_<name>.txt` and are produced by
+# `tools/parity/perf_profile.py`.
+#
+# Classification vocabulary (see iter-54 brief):
+#   algorithmic            — Python uses a different algorithm than MATLAB
+#   vectorization-gap      — Python loops where MATLAB calls a BLAS-like primitive
+#   allocation             — array creation inside a loop
+#   symbolic-eval-uncached — sympy.lambdify re-evaluated per call
+#   wrapper-overhead       — Python dispatch overhead on fast paths
+#   linalg-inverse         — np.linalg.inv where scipy.linalg.solve is faster + stabler
+#
+# These estimates assume the recommended fix is applied in isolation; combined
+# wins are non-multiplicative and noted in `estimated_speedup`.
+
+version: 1
+captured: "2026-06-19"
+baseline_file: "parity/performance_baseline.yml"
+profile_dir: ".parity-review/"
+profiler: "tools/parity/perf_profile.py"
+n_runs_aggregated: 3
+
+paths:
+
+  # ------------------------------------------------------------------
+  # 1. pp_decode_filter_linear — the headline "needs investigation" path
+  # ------------------------------------------------------------------
+  - name: pp_decode_filter_linear
+    current_ratio: 5.656
+    target_ratio: 2.0
+    profile_file: ".parity-review/perf_profile_pp_decode_filter_linear.txt"
+    aggregate_total_tt_sec: 1.934
+    hot_functions:
+      - function: "nstat/decoding_algorithms.py:672:PPDecode_updateLinear"
+        ncalls: 30000
+        cumtime_pct: 56.62
+        classification: vectorization-gap
+        note: |
+          Called once per timestep × per cell (10000 × 3 runs).  Holds the
+          per-step Gauss-Newton update.  No outer T-axis vectorisation — every
+          timestep is a separate Python call with its own per-step linalg.
+      - function: "numpy/linalg/linalg.py:1702:cond"
+        ncalls: 30003
+        cumtime_pct: 20.89
+        classification: wrapper-overhead
+        note: |
+          np.linalg.cond is invoked per-step (likely guarding against an
+          ill-conditioned covariance).  Calls SVD (linalg.py:1499) 30003
+          times.  MATLAB has no analogue in PPDecodeFilterLinear.  Almost
+          certainly a defensive check that can be removed or replaced with
+          a single one-shot try/except around solve().
+      - function: "nstat/decoding_algorithms.py:213:_lambda_delta_from_state"
+        ncalls: 30000
+        cumtime_pct: 9.25
+        classification: vectorization-gap
+        note: |
+          Computes lambda*delta from the current state vector per timestep.
+          The CIF expression is fixed across time — could be precomputed
+          (binomial link is closed form) or vectorised once over T.
+    recommended_fix: |
+      In priority order:
+      1. Remove the per-step np.linalg.cond guard (or run it once outside
+         the loop).  Save ~21% directly.
+      2. Inline the per-step update or vectorise the binomial-link
+         _lambda_delta_from_state across T — the link function is constant
+         and does not need a Python call per timestep.
+      3. Audit the per-step _symmetrize/_as_state_matrix wrappers (60003 +
+         180015 calls) for inlining; they're cheap per-call but add up.
+    estimated_speedup: "2.5-3x (combined: cond-guard removal alone ~1.25x)"
+    estimated_post_fix_ratio: 2.0
+
+  # ------------------------------------------------------------------
+  # 2. analysis_run_for_neuron — slowest absolute, but dominated by import
+  # ------------------------------------------------------------------
+  - name: analysis_run_for_neuron
+    current_ratio: 2.579
+    target_ratio: 1.5
+    profile_file: ".parity-review/perf_profile_analysis_run_for_neuron.txt"
+    aggregate_total_tt_sec: 4.318
+    hot_functions:
+      - function: "nstat/_spike_train_impl.py:303:_build_sigrep"
+        ncalls: 129
+        cumtime_pct: 56.50
+        classification: vectorization-gap
+        note: |
+          43 calls per run × 3 runs = 129.  Inside _build_sigrep there are
+          ~513k np.sum calls — i.e. ~3978 per call.  This is the classic
+          per-bin-per-window double-loop pattern; MATLAB would express
+          the same thing as a single histogram or convolution.  Tottime
+          1.337s (31% pure-self), cumtime 2.440s.
+      - function: "nstat/fit.py:223:_matlab_compute_ks_arrays"
+        ncalls: 3
+        cumtime_pct: 22.0
+        classification: algorithmic
+        note: |
+          KS diagnostic array construction.  Marked _matlab_compute_ks_arrays
+          implies a faithful port of the MATLAB loop; this is one of the
+          paths where the MATLAB-parity rule constrains how aggressively we
+          can vectorise without breaking the gold fixtures.  Investigate
+          whether a vectorised equivalent produces bit-identical KS arrays.
+      - function: "nstat/_spike_train_impl.py:354:setSigRep + .resample"
+        ncalls: 12
+        cumtime_pct: 17.0
+        classification: allocation
+        note: |
+          Resampling allocates a fresh signal matrix per call.  Called 12x
+          per run = 4x per analysis pass.  Likely fine, but candidate for
+          a reusable buffer if profile time becomes critical.
+    recommended_fix: |
+      1. Replace the np.sum-per-bin pattern in _build_sigrep with a single
+         np.histogram or np.add.at against the bin index array.  Highest
+         pct_total target.
+      2. Investigate whether _matlab_compute_ks_arrays can be vectorised
+         while preserving the parity-fixture exact match (verify with
+         tests/parity/fixtures/matlab_gold/ before/after).
+      Note: ~50% of the wall time on this path is import overhead from the
+      perf_check closure (lazy imports inside the function); that overhead
+      is not present in real user code and is NOT a fix target.
+    estimated_speedup: "1.5-2x on the pure-compute portion"
+    estimated_post_fix_ratio: 1.5
+    notes_on_import_overhead: |
+      In a single-process repeat run the import cost drops from ~50% of
+      wall time to ~40% as caches warm.  Real user code (notebooks,
+      scripts) only pays the cost once; the perf_check closure pays it
+      every invocation.
+
+  # ------------------------------------------------------------------
+  # 3. kalman_filter — fast in absolute terms, mid-ratio
+  # ------------------------------------------------------------------
+  - name: kalman_filter
+    current_ratio: 4.356
+    target_ratio: 2.0
+    profile_file: ".parity-review/perf_profile_kalman_filter.txt"
+    aggregate_total_tt_sec: 0.051
+    hot_functions:
+      - function: "nstat/decoding_algorithms.py:1752:_kalman_filter_matlab"
+        ncalls: 3
+        cumtime_pct: 64.18  # 0.033 self-tottime / 0.051
+        classification: vectorization-gap
+        note: |
+          The per-timestep Kalman update loop in pure Python.  3000
+          timesteps × the per-step linalg work.  Cannot easily be
+          vectorised across T (state depends on previous), but the per-step
+          body can be tightened.  This is the single biggest contributor.
+      - function: "nstat/decoding_algorithms.py:46:_symmetrize"
+        ncalls: 6000
+        cumtime_pct: 16.38
+        classification: wrapper-overhead
+        note: |
+          6000 calls = 2 per timestep (predict + update covariance
+          symmetrisation).  Each call does `0.5 * (P + P.T)`.  Could be
+          inlined.  Trivial fix.
+      - function: "numpy/linalg/linalg.py:329:solve"
+        ncalls: 912
+        cumtime_pct: 11.15
+        classification: wrapper-overhead
+        note: |
+          912 / (3 runs × 1000 steps) ≈ 0.3 calls per step — so already
+          using `solve` (not `inv`), which is good.  Per-call overhead
+          dominates the actual BLAS work because the matrices are tiny
+          (4x4).  No easy win here.
+    recommended_fix: |
+      1. Inline _symmetrize at its 2 call sites in the per-step loop.
+         Save ~16% directly.
+      2. The remaining slowdown is per-step Python overhead on small
+         matrices — would need a Cython/Numba pass or a fully vectorised
+         per-step body to close.  Not justified by the absolute time
+         (0.031s median).
+    estimated_speedup: "1.2-1.4x"
+    estimated_post_fix_ratio: 3.0
+
+  # ------------------------------------------------------------------
+  # 4. simulate_point_process — already competitive (0.14x); diagnose only
+  # ------------------------------------------------------------------
+  - name: simulate_point_process
+    current_ratio: 0.143
+    target_ratio: 1.5
+    profile_file: ".parity-review/perf_profile_simulate_point_process.txt"
+    aggregate_total_tt_sec: 0.003
+    hot_functions:
+      - function: "nstat/_spike_train_impl.py:303:_build_sigrep"
+        ncalls: 3
+        cumtime_pct: 47.55
+        classification: vectorization-gap
+        note: |
+          Same _build_sigrep hotspot as the analysis path — the
+          nspikeTrain constructor calls computeStatistics → getLStatistic
+          → getSigRep → _build_sigrep.  Even at <1ms total this dominates.
+          Cross-path target: fixing _build_sigrep helps 3 of 5 baseline
+          paths.
+      - function: "nstat/_spike_train_impl.py:221:computeStatistics"
+        ncalls: 3
+        cumtime_pct: 72.98
+        classification: algorithmic
+        note: |
+          Wraps _build_sigrep + getLStatistic; the cumulative number is
+          high but most of it is _build_sigrep.  No independent fix.
+      - function: "nstat/simulators.py:59:simulate_point_process"
+        ncalls: 3
+        cumtime_pct: 93.24  # closure self time
+        classification: wrapper-overhead
+        note: |
+          The thinning routine itself is ~0.2ms — the nspikeTrain
+          construction (which we do at the end) is what takes the rest.
+          Already faster than MATLAB (0.14x ratio); diagnose-only.
+    recommended_fix: |
+      No fix needed at this ratio.  But: the _build_sigrep hotspot is
+      shared with analysis_run_for_neuron and history_compute_history,
+      so a fix there is a cross-cutting win.
+    estimated_speedup: "n/a (already 7x faster than MATLAB)"
+    estimated_post_fix_ratio: 0.1
+
+  # ------------------------------------------------------------------
+  # 5. history_compute_history — competitive but profile is informative
+  # ------------------------------------------------------------------
+  - name: history_compute_history
+    current_ratio: 1.234
+    target_ratio: 1.0
+    profile_file: ".parity-review/perf_profile_history_compute_history.txt"
+    aggregate_total_tt_sec: 0.177
+    hot_functions:
+      - function: "nstat/_spike_train_impl.py:303:_build_sigrep"
+        ncalls: 3
+        cumtime_pct: 94.44
+        classification: vectorization-gap
+        note: |
+          Overwhelmingly dominant — the entire computeHistory path is
+          essentially _build_sigrep.  30003 np.sum calls inside it
+          (16.58% of total via fromnumeric.sum).  Confirms _build_sigrep
+          as the single most impactful cross-path optimisation target.
+      - function: "numpy/core/fromnumeric.py:2177:sum"
+        ncalls: 30003
+        cumtime_pct: 46.58
+        classification: vectorization-gap
+        note: |
+          30003 np.sum invocations originating in _build_sigrep — one per
+          bin per history window.  Replace with a single histogram /
+          cumsum operation.
+      - function: "numpy/core/fromnumeric.py:71:_wrapreduction"
+        ncalls: 30141
+        cumtime_pct: 35.65
+        classification: wrapper-overhead
+        note: |
+          The numpy reduce wrapper invoked by every np.sum — symptom of
+          the same per-bin loop.  Will disappear when np.sum is replaced
+          by a single vectorised primitive.
+    recommended_fix: |
+      Replace the per-bin np.sum loop in _spike_train_impl.py:303
+      (_build_sigrep) with a vectorised np.histogram or np.add.at
+      against the bin index array.  Verify against matlab_gold fixtures
+      for the affected nspikeTrain methods (computeStatistics, getSigRep,
+      computeHistory).
+    estimated_speedup: "3-5x"
+    estimated_post_fix_ratio: 0.3
+
+
+# ---------------------------------------------------------------------------
+# Cross-cutting findings
+# ---------------------------------------------------------------------------
+
+cross_cutting:
+  - id: build_sigrep_loop
+    affected_paths:
+      - analysis_run_for_neuron
+      - simulate_point_process
+      - history_compute_history
+    summary: |
+      `_spike_train_impl.py:303:_build_sigrep` is a top-3 hot function in
+      3 of 5 baseline paths.  It uses a per-bin-per-window np.sum loop
+      where MATLAB calls a single histogram-like primitive.  A single fix
+      here improves three paths simultaneously — best-leverage target for
+      iter 55/56.
+    classification: vectorization-gap
+    estimated_combined_speedup: "1.5-2x on analysis, 3-5x on history, negligible on simulate"
+
+  - id: per_step_np_linalg_cond
+    affected_paths:
+      - pp_decode_filter_linear
+    summary: |
+      `np.linalg.cond` is called 30003 times inside PPDecodeFilterLinear,
+      consuming 20.89% of the path's runtime via 30003 SVDs.  MATLAB does
+      not perform this check.  A defensive guard is being applied per
+      timestep; should be removed or moved outside the loop.
+    classification: wrapper-overhead
+    estimated_speedup: "1.25x on pp_decode_filter_linear"
+
+  - id: symmetrize_inlining
+    affected_paths:
+      - pp_decode_filter_linear
+      - kalman_filter
+    summary: |
+      `_symmetrize` is called 60003 times in pp_decode_filter_linear and
+      6000 times in kalman_filter.  Each call is `0.5 * (P + P.T)` — a
+      trivial inline.  Removes a Python function-call frame per timestep.
+    classification: wrapper-overhead
+    estimated_speedup: "~5% on pp_decode, ~16% on kalman"
+
+
+# ---------------------------------------------------------------------------
+# Largest single-fix wins (single-fix speedup >= 2x)
+# ---------------------------------------------------------------------------
+
+single_fix_2x_wins:
+  - path: history_compute_history
+    fix: "Vectorise _build_sigrep with np.histogram / np.add.at"
+    expected_speedup: "3-5x"
+  - path: pp_decode_filter_linear
+    fix: "Remove per-step np.linalg.cond guard + vectorise the binomial-link _lambda_delta_from_state"
+    expected_speedup: "2-2.5x"
+
+
+# ---------------------------------------------------------------------------
+# Algorithmic (not optimisable without algorithm change)
+# ---------------------------------------------------------------------------
+
+algorithmic_blockers:
+  - path: analysis_run_for_neuron
+    function: "nstat/fit.py:223:_matlab_compute_ks_arrays"
+    note: |
+      Named `_matlab_*` — implies a faithful per-step port of the MATLAB
+      KS diagnostic construction.  Vectorising it risks breaking the
+      `matlab_gold/*.mat` fixtures.  Per the MATLAB-parity rule the gold
+      fixtures win — needs careful before/after parity verification or
+      can be left alone.  Constitutes ~19% of analysis_run_for_neuron.
+  - path: kalman_filter
+    function: "nstat/decoding_algorithms.py:1752:_kalman_filter_matlab"
+    note: |
+      The per-timestep loop body itself is the bottleneck and cannot be
+      vectorised across T (state depends on previous state).  Closing
+      the 4.36x gap fully would require Cython/Numba or a fundamentally
+      different formulation.  Not justified by the absolute time
+      (0.031s median).
+
+
+# ---------------------------------------------------------------------------
+# Open questions for iter 55
+# ---------------------------------------------------------------------------
+
+open_questions:
+  - |
+    Is the per-step np.linalg.cond in PPDecodeFilterLinear actually load-
+    bearing for correctness?  Profile shows 30003 SVDs.  If it's a
+    "warn on ill-conditioning" check, can it move outside the loop or be
+    a try/except around solve()?
+  - |
+    Does the _matlab_compute_ks_arrays function have a vectorised
+    equivalent that produces *bit-identical* outputs against the gold
+    fixtures?  If so it's the second-largest analysis_run_for_neuron win.
+  - |
+    Will the _build_sigrep vectorisation hold the `numSpikesPerBurst +
+    1.0` and similar MATLAB-idiosyncratic conventions noted in
+    AUDIT_REPORT.md?  The fix needs gold-fixture verification before
+    merging.
+  - |
+    The closure timing on analysis_run_for_neuron includes ~2.5s of
+    one-time imports (49.59% of wall clock).  perf_check.py measures
+    this; cProfile sees it.  Should iter 56's expanded baseline warm
+    imports before timing, or is leaving them in part of the intended
+    "first call is the first call" design?
+
+
+# ---------------------------------------------------------------------------
+# Iter 55 — applied fixes (Phase A + Phase B)
+# ---------------------------------------------------------------------------
+#
+# Two orthogonal interventions landed in iter 55:
+#
+#   A. `_ppdecode_filter_linear` standard-no-target loop was inlined and
+#      simplified.  The per-step `np.linalg.cond` SVD (30003 calls) was
+#      replaced with a cheap `np.isfinite` NaN check on the predicted
+#      covariance; `PPDecode_updateLinear`/`PPDecode_predict` wrapper
+#      dispatch is bypassed inside the hot loop (still exposed publicly
+#      for the gold-fixture single-step tests at lines 877 / 1136 of
+#      tests/test_matlab_gold_fixtures.py); A/Q are normalised once
+#      outside the loop instead of every step.
+#
+#   B. `_build_sigrep`'s per-bin np.sum loop (3978 sums per call) was
+#      replaced with a single `np.searchsorted` pair.  Spikes are
+#      sorted on construction so the vectorised path is exact; the
+#      special-cased last-bin closed-on-right edge is preserved with
+#      one extra `searchsorted(side='right')` call.  MATLAB-idiom
+#      `numSpikesPerBurst + 1.0` lives in `computeStatistics`, not
+#      `_build_sigrep`, so it is unaffected.
+#
+# Cross-path impact (Python median, 3 runs, --python-only) vs the iter-54
+# baseline.  MATLAB medians taken from `parity/performance_baseline.yml`.
+#
+#   | Path                       | Before (s) | After (s) | Before ratio | After ratio |
+#   |----------------------------|------------|-----------|--------------|-------------|
+#   | analysis_run_for_neuron    |   0.679    |  0.046    |  2.579       |  ~0.18      |
+#   | pp_decode_filter_linear    |   0.457    |  0.250    |  5.656       |  ~3.09      |
+#   | kalman_filter              |   0.031    |  0.013    |  4.356       |  ~1.81      |
+#   | simulate_point_process     |  0.00066   |  0.00040  |  0.143       |  ~0.08      |
+#   | history_compute_history    |   0.031    |  0.002    |  1.234       |  ~0.08      |
+#
+# All 52 numerical-drift assertions PASS; 27 matlab-gold-fixture tests
+# PASS; full pytest suite (809 passed, 42 skipped) PASS.  No tolerance
+# bumps required.
+
+iter_55_applied:
+  pp_decode_filter_linear:
+    files_edited:
+      - "nstat/decoding_algorithms.py:585-604"   # PPDecode_predict rcond guard cheapened
+      - "nstat/decoding_algorithms.py:945-1052"  # standard-no-target loop inlined
+    changes_summary: |
+      - Removed per-step `np.linalg.cond` SVD; replaced with cheaper
+        `np.linalg.det` + Frobenius-norm scale check (still cheaper than
+        cond) in the public `PPDecode_predict` path, and with a single
+        `np.isfinite(W_pred[0,0])` NaN guard in the standard fast-path
+        loop (semantic equivalent of MATLAB's rcond NaN branch for
+        well-formed inputs).
+      - Inlined `PPDecode_updateLinear` and `PPDecode_predict` bodies
+        inside the no-target loop to remove ~7 wrapper-normalisation
+        calls per step (`_as_state_matrix`, `_as_observation_matrix`,
+        `_normalize_mu`, `_normalize_beta`, `_normalize_history_tensor`,
+        `_normalize_gamma`, `_is_empty_value`).
+      - Pre-normalised A/Q once outside the loop using
+        `_as_state_matrix` (handles scalar / 1x1 / time-varying shapes).
+      - Cached `sum_val_mat @ W_mat_t` (was computed twice per step).
+    before_sec: 0.457
+    after_sec:  0.250
+    before_ratio: 5.66
+    after_ratio:  3.09
+    target_ratio: 2.0
+    target_met: false
+    note: |
+      Target of 2.0x not met.  Remaining slowdown is per-step Python loop
+      dispatch over N=10000 small (2x2) matrix solves: `np.linalg.solve`
+      is 9µs per call dominated by `_wrapreduction`/`_makearray` Python
+      overhead, not BLAS.  Closing the last gap requires either a
+      Cython/Numba pass on the per-step body or a fundamentally
+      different formulation that batches multiple time steps' linalg
+      together.  Both are larger lifts than this iter's scope.
+
+  build_sigrep:
+    files_edited:
+      - "nstat/_spike_train_impl.py:332-376"     # vectorised bin counts
+    changes_summary: |
+      - Replaced the ~3978-sum-per-call Python loop with a single
+        `np.searchsorted` pair (`side='left'` for both edges, plus one
+        `side='right'` for the closed last bin) — semantically
+        identical to the original `[left, right)` half-open / closed
+        last-bin behaviour.  `_roundn` preserves order; the
+        construction guarantees `spikeTimes` is sorted.
+      - Preserved MATLAB idiosyncrasy notes inline (numSpikesPerBurst
+        lives elsewhere, not affected).
+    cross_path_impact:
+      analysis_run_for_neuron:
+        before_sec: 0.679
+        after_sec:  0.046
+        before_ratio: 2.58
+        after_ratio:  0.18    # well below 1.5x target
+        speedup: 14.8
+      history_compute_history:
+        before_sec: 0.031
+        after_sec:  0.002
+        before_ratio: 1.23
+        after_ratio:  0.08    # well below 0.5x target
+        speedup: 15.5
+      simulate_point_process:
+        before_sec: 0.00066
+        after_sec:  0.00040
+        before_ratio: 0.14
+        after_ratio:  0.08
+        speedup: 1.6
+
+  open_questions_for_iter_56:
+    - |
+      kalman_filter ratio collateral-dropped from 4.36x to 1.81x because
+      perf_check.py reuses a hot Python interpreter (process caches),
+      not because we edited that code.  Confirm the improvement is
+      real by re-running with `--runs 5` and a cold interpreter before
+      claiming the win.
+    - |
+      pp_decode_filter_linear stuck at 3.09x ratio.  Profile now shows
+      ~50% of wall time is `np.linalg.solve` + `det` dispatch on 2x2
+      matrices.  Closing to <=2x likely requires Cython/Numba on the
+      per-step body or a batched multi-step formulation.  Algorithmic
+      change, not a vectorisation gap.
+    - |
+      The inlined fast path inside `_ppdecode_filter_linear` duplicates
+      the maths in `PPDecode_updateLinear` / `PPDecode_predict`.  If
+      the public single-step methods ever change semantics, both copies
+      must update together.  Consider extracting a shared private
+      `_update_linear_inline(...)` helper to avoid drift.
+
+
+# ---------------------------------------------------------------------------
+# Iter 56 — cold-cache re-verification + 5 new baseline paths
+# ---------------------------------------------------------------------------
+#
+# Task A (cold re-verify): each of the 5 iter-55 paths was timed in a
+# fresh Python process (5 runs, --python-only).  Findings:
+#   - analysis_run_for_neuron     0.046s  ratio 0.20x   (unchanged from iter55)
+#   - pp_decode_filter_linear     0.224s  ratio 2.78x   (~iter55, stable)
+#   - kalman_filter               0.018s  ratio 2.27x   (REGRESSED from
+#                                                        iter55's claimed
+#                                                        1.81x — that was a
+#                                                        cache artifact)
+#   - simulate_point_process      0.0003s ratio 0.09x   (~iter55)
+#   - history_compute_history     0.0021s ratio 0.09x   (~iter55)
+#
+# Task B (5 new baseline paths): added 5 hot paths to expand baseline
+# from 5 → 10.  All 5 are competitive (<1.5x) except as noted.
+#
+# Task C (kalman polish): per the brief, applied the `_symmetrize` inline
+# fix to `_kalman_filter_matlab`'s 3 per-step call sites.
+# nstat/decoding_algorithms.py:1922-1934 — `0.5 * (P + P.T)` inlined,
+# saving 3 Python-frame entries per step over N=1000 steps.
+# Verification: 52/52 numerical-drift PASS, 33/33 targeted tests PASS,
+# python median dropped from ~0.025s (regressed) to ~0.016s.
+# Final kalman ratio: 2.27x.
+
+iter_56_applied:
+
+  kalman_symmetrize_inline:
+    files_edited:
+      - "nstat/decoding_algorithms.py:1920-1936"
+    changes_summary: |
+      Inlined 3 `_symmetrize` call sites inside `_kalman_filter_matlab`'s
+      per-step loop (update covariance, predict covariance, GnConv
+      branch).  Each becomes `0.5 * (P + P.T)` directly.  Marker comment
+      added to flag the duplication of the helper's semantics so a future
+      change to `_symmetrize` (e.g. tighter floating-point handling)
+      gets propagated.
+    before_sec: 0.025  # cold-cache iter-56 pre-fix
+    after_sec:  0.018  # cold-cache iter-56 post-fix
+    before_ratio: 3.74
+    after_ratio:  2.27
+    target_ratio: 2.0
+    target_met: false
+    note: |
+      Improvement ~1.4x as predicted in iter-54 profile.  Remaining gap
+      (2.27x) is per-step `np.linalg.solve` Python overhead on tiny
+      (4x4) matrices — the same algorithmic blocker as the
+      pp_decode_filter_linear gap.  Both would need Cython/Numba or a
+      vectorised multi-step batching formulation.
+
+  pp_decode_filter_linear_at_3x:
+    files_edited: []
+    diagnosis: |
+      Left at 2.71-2.78x for v12 per brief direction.  Re-profiling shows
+      the per-step `np.linalg.solve` dispatch is now the dominant cost
+      (~50% of wall time on 2x2 matrices).  Closing to <=2x requires
+      either:
+        - Cython/Numba on the per-step body (out of v12 scope)
+        - A multi-step batching formulation (algorithmic, not vectorisation)
+      Documented as algorithmic_blocker.
+
+  duplicated_fast_path:
+    files_edited: []
+    diagnosis: |
+      The inlined fast path in `_ppdecode_filter_linear` duplicates the
+      math in `PPDecode_updateLinear`/`PPDecode_predict`.  Decided NOT
+      to extract `_update_linear_inline()` in iter 56 because the extra
+      Python-call frame would erase the iter-55 win.  Instead left
+      "CAREFUL: duplicates ..." marker comments at both call sites so
+      any future maths change is flagged in code review.
+
+
+# ---------------------------------------------------------------------------
+# Iter 56 — 5 new baseline paths (descriptions + diagnoses)
+# ---------------------------------------------------------------------------
+
+iter_56_new_paths:
+
+  - name: analysis_run_for_all_neurons_10cell
+    python_function: "nstat.analysis.Analysis.RunAnalysisForAllNeurons"
+    matlab_function: "Analysis.RunAnalysisForAllNeurons"
+    input_size: "10-cell ensemble, 200 spikes/cell, sin-3Hz stim, 4-window history, 5s @ 1kHz"
+    py_median_sec: 0.811
+    ml_median_sec: 0.606
+    ratio: 1.34
+    flag: competitive
+    diagnosis: |
+      Multi-neuron path through FitResSummary.  Scales linearly with cell
+      count.  Ratio ~1.3x reflects per-neuron Python dispatch (GLM,
+      computeKSStats, summary-row construction).  No single bottleneck;
+      gain follows from the iter-55 _build_sigrep vectorisation.
+
+  - name: cif_eval_lambda_delta_loop
+    python_function: "nstat.cif.CIF.evalLambdaDelta"
+    matlab_function: "CIF.evalLambdaDelta"
+    input_size: "binomial CIF, 1000-stimulus-value loop, 2 stim vars"
+    py_median_sec: 0.0021
+    ml_median_sec: 0.386
+    ratio: 0.01
+    flag: competitive
+    diagnosis: |
+      Python sympy-backed `lambdify` is ~180x faster than MATLAB's
+      `matlabFunction` symbolic dispatch in a tight loop.  MATLAB pays
+      a steep per-call symbolic-engine overhead; Python pre-compiles
+      the lambda once in __init__.  Expected; no action.
+
+  - name: analysis_compute_ks_stats
+    python_function: "nstat.analysis.Analysis.computeKSStats"
+    matlab_function: "Analysis.computeKSStats"
+    input_size: "200-spike train vs constant-rate lambda Covariate, 10s @ 1kHz"
+    py_median_sec: 0.0077
+    ml_median_sec: 0.072
+    ratio: 0.11
+    flag: competitive
+    diagnosis: |
+      Time-rescaling KS path.  Python ~9x faster than MATLAB — likely
+      because the underlying nspikeTrain resample + getSigRep call
+      chain hits the vectorised `_build_sigrep` from iter 55.
+
+  - name: signal_obj_filter
+    python_function: "nstat.core.SignalObj.filter"
+    matlab_function: "SignalObj.filter"
+    input_size: "100k-sample 1-D signal, 5th-order Butterworth lowpass"
+    py_median_sec: 0.0013
+    ml_median_sec: 0.0066
+    ratio: 0.19
+    flag: competitive
+    diagnosis: |
+      `scipy.signal.lfilter` outperforms MATLAB's `filter` on 100k
+      samples.  Expected; SciPy is a thin C wrapper.
+
+  - name: history_to_filter
+    python_function: "nstat.history.History.toFilter"
+    matlab_function: "History.toFilter"
+    input_size: "4-window kernel, delta=0.001s"
+    py_median_sec: 1.6e-05
+    ml_median_sec: 0.0038
+    ratio: 0.01
+    flag: competitive
+    diagnosis: |
+      Python `HistoryFilterBank` is a dataclass holding numpy arrays;
+      MATLAB constructs a `tf` (transfer function) object that triggers
+      Control System Toolbox setup.  Apples-to-oranges by construction
+      — MATLAB's overhead is the object-class init, not the filter
+      coefficients themselves.  Flag as "competitive" but note the
+      caveat in the input_size description.
+
+
+# ---------------------------------------------------------------------------
+# Iter 56 — final 10-path summary
+# ---------------------------------------------------------------------------
+
+iter_56_final_summary:
+  total_paths: 10
+  paths_over_5x: 0
+  paths_over_2x: 2  # pp_decode_filter_linear (2.78), kalman_filter (2.27)
+  paths_competitive: 8
+  paths_acceptable: 2
+  paths_needs_investigation: 0
+  remarks: |
+    Both >2x paths are bottlenecked on per-step `np.linalg.solve` Python
+    dispatch over small matrices.  Closing further requires Cython/Numba
+    or a batched formulation; out of v12 scope.  All other paths are
+    competitive with MATLAB (<=1.5x) or faster.
+
+
+# ---------------------------------------------------------------------------
+# Iter 56 — open questions for iter 57
+# ---------------------------------------------------------------------------
+
+open_questions_for_iter_57:
+  - |
+    pp_decode_filter_linear and kalman_filter both hover at ~2.5-3x
+    bottlenecked on `np.linalg.solve` overhead for small (2x2, 4x4)
+    matrices.  Is a Numba JIT pass in `nstat.extras` (opt-in, not core)
+    a reasonable v13 direction, or should we accept the ratios as the
+    cost of pure-Python parity?
+  - |
+    The `history_to_filter` MATLAB analogue constructs a `tf` object
+    (Control System Toolbox).  Python's `HistoryFilterBank` is a
+    dataclass.  Is there a meaningful apples-to-apples MATLAB analogue
+    that excludes CST object init?  The current MATLAB body times the
+    whole `toFilter` including `tf()`; the ratio (0.01x) is dominated
+    by CST setup, not numerical work.
+  - |
+    `analysis_run_for_all_neurons_10cell` ratio is 1.34x at 10 cells.
+    Does it scale super-linearly with cell count (e.g. 50 cells)?
+    Worth a one-off check to see if `FitResSummary` aggregation
+    becomes a bottleneck at higher counts.
+  - |
+    The MATLAB process segfaulted once during a 5-run capture pass.
+    Probably unrelated to perf_check, but worth a retry-on-segfault
+    wrapper if it recurs (iter 56 worked around it by retrying with
+    `--runs 3`).
