@@ -328,6 +328,21 @@ topics:
       reason: "MATLAB figure(N) creates a figure with explicit handle; Python port uses _start_fig() helper that wraps __tracker.new_figure internally, so subsequent figure(N) calls have no structural mirror at cell scope."
 
   PPSimExample:
+    # Permanence note (v12 iter 57)
+    # -----------------------------
+    # This whole topic's exemption block is permanent. PPSimExample is a
+    # single-cell schematic notebook; the MATLAB helpfile's plotting blocks
+    # illustrate the point-process simulation algorithm rather than calling
+    # reusable nSTAT plotting helpers, so the structure-diff score
+    # genuinely does not correlate with parity quality. Accepted in v8
+    # iter 36, reaffirmed in v9, and reaffirmed again in v12 iter 57. The
+    # Holistic Reviewer verdict has been `match` since v9. The
+    # below `- call:` entries enumerate the specific MATLAB call sites
+    # exempted; the loader (tools/parity/code_structure_diff.py
+    # _load_exemptions) only consumes `- call:` / `- drop_section:` /
+    # `- extend_matlab_section:` list entries, so the human-targeted
+    # rationale lives here in this comment block.
+    #
     # MATLAB Control System Toolbox: tf([num],[den],Ts,'Variable','z^-1')
     # builds a discrete-time transfer-function object for the History, Stimulus,
     # and Ensemble effects. The Python port stores impulse-response coefficients

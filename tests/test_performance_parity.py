@@ -4,13 +4,19 @@ This test deliberately does NOT run the timing harness: that needs
 MATLAB and the local MATLAB checkout (see ``tools/parity/perf_check.py``
 and ``docs/parity/runbook.md`` "Performance parity").  It only
 validates that ``parity/performance_baseline.yml`` exists, parses, and
-records the five hot paths in the expected shape, so that schema
+records the registered hot paths in the expected shape, so that schema
 regressions in the baseline file get caught by ``make test-smoke``.
 
 When a builder edits ``tools/parity/perf_check.py`` and re-captures the
 baseline with ``make perf-check-capture``, these assertions defend the
 shape consumers (this test, the runbook table, future CI gates) depend
 on.
+
+History
+-------
+- v11 iter 53 introduced the initial 5 hot paths.
+- v12 iter 56 expanded to 10 paths to cover ensemble GLM, CIF eval,
+  KS stats, DSP, and history-filter construction.
 """
 from __future__ import annotations
 
@@ -22,12 +28,23 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BASELINE_PATH = REPO_ROOT / "parity" / "performance_baseline.yml"
 
+# v12 iter 56: expanded from 5 to 10 paths.  These are the canonical
+# performance-parity hot paths registered in
+# ``tools/parity/perf_check.py``.  Keep this set in sync with the
+# ``_build_paths()`` registry in that file.
 EXPECTED_PATH_NAMES = {
+    # ----- iter 53 (v11) -----
     "analysis_run_for_neuron",
     "pp_decode_filter_linear",
     "kalman_filter",
     "simulate_point_process",
     "history_compute_history",
+    # ----- iter 56 (v12) -----
+    "analysis_run_for_all_neurons_10cell",
+    "cif_eval_lambda_delta_loop",
+    "analysis_compute_ks_stats",
+    "signal_obj_filter",
+    "history_to_filter",
 }
 
 
@@ -51,11 +68,16 @@ def test_baseline_top_level_schema(baseline: dict) -> None:
     assert isinstance(baseline["paths"], list)
 
 
-def test_baseline_lists_all_five_hot_paths(baseline: dict) -> None:
-    """The five hot paths from v11 iter 53 are the contract; drift is a fail."""
+def test_baseline_lists_all_registered_hot_paths(baseline: dict) -> None:
+    """The registered hot paths are the contract; drift is a fail.
+
+    v11 iter 53 → 5 paths.  v12 iter 56 → 10 paths.  When ``perf_check.py``
+    gains/loses a path, update :data:`EXPECTED_PATH_NAMES` in this file
+    and re-capture the baseline in the same PR.
+    """
     names = {entry["name"] for entry in baseline["paths"]}
     assert names == EXPECTED_PATH_NAMES, (
-        f"performance baseline must list exactly the five hot paths; "
+        f"performance baseline must list exactly the registered hot paths; "
         f"missing={EXPECTED_PATH_NAMES - names}, extra={names - EXPECTED_PATH_NAMES}"
     )
 

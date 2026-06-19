@@ -126,6 +126,15 @@ entries:
   # ``np.random.default_rng().standard_normal``, which does not reproduce
   # MATLAB ``normrnd``'s Mersenne-Twister stream — typical relative drift
   # on betahat_new is O(1) on small (K=10) fixtures.
+  #
+  # RNG-stream-divergence — Case C (FUNDAMENTAL, not a port bug)
+  # ------------------------------------------------------------
+  # MATLAB normrnd's MT19937 stream and NumPy default_rng (PCG64) do not
+  # produce identical sequences even with matching seed. Achieving strict
+  # parity requires wiring numpy.random.MT19937 with a matching seed
+  # (~30 lines of work, deferred to v13). v11 iter 54 profiling confirmed
+  # the current tolerance covers the documented ~O(1/sqrt(mcIter))
+  # envelope. The MC-envelope status is permanent at v12.
   - name: PPLFP_MStep
     recipe: pplfp_mstep
     fixture: tests/parity/fixtures/matlab_gold/pplfp_MStep.mat
@@ -151,6 +160,18 @@ entries:
   # matlab_defects.yml entry pplfp-em-pending-fixture). The xKFinal
   # smoothed state is verified shape-matched + sane magnitude (relative
   # drift ~O(1) is the documented MC envelope).
+  #
+  # RNG-stream-divergence — Case C (FUNDAMENTAL, not a port bug)
+  # ------------------------------------------------------------
+  # Same MT19937 vs PCG64 stream divergence as PPLFP_MStep. Achieving
+  # strict parity requires wiring numpy.random.MT19937 with a matching
+  # seed (deferred to v13). Current tolerance covers the documented
+  # ~O(1/sqrt(mcIter)) envelope. The MC-envelope status is permanent at
+  # v12. v12 iter 57 note: cajigaslab/nSTAT#90's upstream fix for the
+  # K=size(dN,1) mis-sizing introduced a different regression in
+  # PPLFP_Decode_update lines 328/357 that now blocks PPLFP_EM recapture
+  # end-to-end; the committed pplfp_EM.mat is therefore preserved verbatim
+  # and Python drift continues to PASS against it.
   - name: PPLFP_EM
     recipe: pplfp_em
     fixture: tests/parity/fixtures/matlab_gold/pplfp_EM.mat
@@ -164,7 +185,15 @@ entries:
   # produces inherent drift — see parity/matlab_defects.yml entries
   # v9-iter40-* for the per-entry rationale.
 
-  # decoding_PPSS — state-space GLM EM (RNG-sensitive)
+  # decoding_PPSS — state-space GLM EM (RNG-sensitive).
+  #
+  # RNG-stream-divergence — Case C (FUNDAMENTAL, not a port bug)
+  # ------------------------------------------------------------
+  # MATLAB normrnd's MT19937 stream vs NumPy default_rng (PCG64) do not
+  # produce identical sequences. Achieving strict parity requires wiring
+  # numpy.random.MT19937 with a matching seed (deferred to v13). Current
+  # tolerance covers the documented ~O(1/sqrt(mcIter)) envelope. Status
+  # is permanent at v12 — see v9-iter40-ppss-rng-drift in matlab_defects.yml.
   - name: v9_PPSS_EM
     recipe: v9_ppss_em
     fixture: tests/parity/fixtures/matlab_gold/v9_PPSS_EM.mat
@@ -348,6 +377,19 @@ entries:
     output_field: X
     tolerance: { rtol: 1.0e+1, atol: 1.0e+0 }
 
+  # v9_PPHybridFilter smoothed model-probability MU_u: enabled by v12 iter 57
+  # after cajigaslab/nSTAT#91's fix landed the 4 additional outputs (MU_u,
+  # X_s, W_s, pNGivenS) into the function body — previously only the first
+  # 3 outputs (S_est, X, W) could be captured. Surprising upside: unlike
+  # the X output (which hits ~O(1) RNG-stream drift), MU_u is at float64
+  # round-off (~3.3e-16) — the smoothed mixture weighting is dominated by
+  # the deterministic transition matrix p_ij and converges identically.
+  - name: v9_PPHybridFilter_smoothed
+    recipe: v9_pphybrid_smoothed
+    fixture: tests/parity/fixtures/matlab_gold/v9_PPHybridFilter.mat
+    output_field: MU_u
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
+
   # ===========================================================================
   # v11 iter 51A — 16 additional drift entries lifting total to 52.
   # Twelve drive newly-captured v11_*.mat fixtures (see
@@ -411,14 +453,18 @@ entries:
     output_field: psd_data
     tolerance: { rtol: 1.0e-1, atol: 1.0e-2 }
 
-  # v11_signalobj_xcorr: max_abs is at float64 round-off (~2e-15) but
-  # individual rel_err diverges for the tiny near-zero center bins.
-  # rtol relaxed to absorb that pure normalization artefact.
+  # v11_signalobj_xcorr: v12 iter 57 switched from raw two-signal xcorr
+  # (v11 iter 51A workaround) to canonical SignalObj.autocorrelation now
+  # that the upstream crosscorr name-value regression (cajigaslab/nSTAT#93)
+  # is fixed. ACF is normalised to peak 1 at lag 0; max_abs is at float64
+  # round-off (~2e-16). The 96% max_rel comes from tiny near-zero center
+  # bins (denominator vanishes) — rtol kept relaxed to absorb that pure
+  # normalisation artefact while atol locks the absolute envelope tight.
   - name: v11_signalobj_xcorr
     recipe: v11_signalobj_xcorr
     fixture: tests/parity/fixtures/matlab_gold/v11_signalobj_xcorr.mat
     output_field: xcorr_data
-    tolerance: { rtol: 1.0e+1, atol: 1.0e-13 }
+    tolerance: { rtol: 1.0e+1, atol: 1.0e-14 }
 
   # History.toFilter (compare numerator b-matrix shape, padded).
   - name: v11_history_toFilter

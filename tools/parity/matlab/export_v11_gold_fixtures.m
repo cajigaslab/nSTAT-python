@@ -280,22 +280,33 @@ end
 
 
 function export_v11_signalobj_xcorr(fixtureRoot) %#ok<DEFNU>
-% Cross-correlation between channel-0 and channel-1 of a 2-channel signal.
-% MATLAB-side SignalObj.autocorrelation is blocked by a newer-MATLAB
-% crosscorr-API regression (Expected a string for the parameter name),
-% so capture the simpler manual xcorr instead.
+% Auto-correlation of a single-channel SignalObj.
+%
+% v12 iter 57: switched from the raw two-signal `xcorr` workaround (v11
+% iter 51A) to the canonical `SignalObj.autocorrelation` method, now that
+% the upstream crosscorr name-value API regression (cajigaslab/nSTAT#93)
+% is fixed in `cajigaslab/nSTAT@main` (commit 49a84d6). The capture is
+% normalised so the peak at lag 0 equals 1 — matches Python's
+% `SignalObj.autocorrelation` (nstat/core.py SignalObj.autocorrelation).
+%
+% Field set unchanged on disk: ``time_in``, ``x1``, ``sr``,
+% ``xcorr_data`` (the ACF column), ``xcorr_lags`` (lags in seconds). The
+% legacy ``x2`` field is dropped because autocorrelation is single-signal;
+% the Python recipe in tools/parity/numerical_drift.py was updated to
+% mirror the new convention.
 rng(42); %#ok<RNG>
 sr = 50;
 T = 1.0;
 time_in = (0:1/sr:T - 1/sr)';
 x1 = sin(2*pi*5*time_in);
-x2 = cos(2*pi*3*time_in);
-[c, lags] = xcorr(x1, x2);
-xcorr_data = double(c);
-xcorr_lags = double(lags(:)) / sr;
+
+sig = SignalObj(time_in, x1, 'x', 't', 's', '', {'c0'});
+sigACF = sig.autocorrelation();
+xcorr_data = double(reshape(sigACF.data, [], 1));
+xcorr_lags = double(reshape(sigACF.time, [], 1));
 
 out = fullfile(fixtureRoot, 'v11_signalobj_xcorr.mat');
-save(out, 'time_in', 'x1', 'x2', 'sr', 'xcorr_data', 'xcorr_lags', '-v7');
+save(out, 'time_in', 'x1', 'sr', 'xcorr_data', 'xcorr_lags', '-v7');
 fprintf('  [signalobj_xcorr] saved %s\n', out);
 end
 

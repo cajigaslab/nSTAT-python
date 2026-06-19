@@ -870,6 +870,20 @@ Schema for each entry:
 
 ---
 
+### Bug (upstream MATLAB regression, blocks fixture recapture): PPLFP_Decode_update HkAll slice (post-#90) conflicts with PPLFP_EStep permute convention
+
+- **MATLAB location:** +nstat/+decoding/PPLFP.m:273 (EStep permute), :328/:357 (Decode_update slice) in cajigaslab/nSTAT@main
+- **Defect class:** Bug (upstream MATLAB regression, blocks fixture recapture)
+- **MATLAB behavior:** The fix for #90 (commit 49a84d6) changed PPLFP_Decode_update lines 328/357 from HkAll(:,:,time_index) to squeeze(HkAll(time_index,:,:)). But PPLFP_EStep:273 still passes a permuted HkAll (permute([2 3 1])) with time on dim 3. The new slice expects time on dim 1, causing dimension mismatch at the inner matmul.
+- **Correct behavior:** Either revert the slice change at 328/357 to HkAll(:,:,time_index), or drop the permute at EStep:273 and audit all downstream consumers. Option A is lower-risk.
+- **Python implementation:** tools/parity/matlab/export_pplfp_gold_fixtures.m (all 4 capture functions blocked end-to-end)
+- **Fixture impact:** v12 iter 57 attempted recapture of pplfp_EM.mat (originally blocked by #90); surfaced this regression. Committed fixtures remain valid; future maintenance is blocked.
+- **Discovered:** v12 iter 57 / 2026-06-19
+- **Upstream status:** filed
+- **Upstream issue:** cajigaslab/nSTAT#95
+
+---
+
 ## Reviewer checklist for parity-affecting PRs
 
 - [ ] Every modified gold fixture has a defects-ledger entry

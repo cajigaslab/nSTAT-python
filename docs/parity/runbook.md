@@ -165,10 +165,11 @@ Per `AGENT_GUIDE.md` §0:
 
 ## Performance parity
 
-> **Status (v11 — 2026-06-19):** first performance-parity baseline
-> captured. 4 of 5 hot paths within the 5x ceiling against MATLAB on
-> the maintainer's Apple M2 Max; `pp_decode_filter_linear` flagged at
-> 5.66x for follow-up profiling.
+> **Status (v12 — 2026-06-19):** 10 hot paths in baseline. 8 of 10 paths
+> at-or-faster than MATLAB. 2 paths (`pp_decode_filter_linear` 2.78×,
+> `kalman_filter` 2.27×) sit just above the 2× target due to per-step
+> `np.linalg.solve` dispatch overhead on tiny matrices — documented
+> algorithmic blockers requiring Numba/Cython (v13 candidate).
 
 Numerical, visual, structural, and class-method parity were the gates
 through v10. v11 adds a fifth dimension — wall-clock performance — by

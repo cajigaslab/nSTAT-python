@@ -497,21 +497,44 @@ binwidth = double(data.binwidth);
 cif1 = CIF([0, b1], {'one', 'x1'}, {'x1'}, 'poisson');
 cif2 = CIF([0, b2], {'one', 'x1'}, {'x1'}, 'poisson');
 
-% Upstream MATLAB bug: PPHybridFilter declares 7 outputs (S_est, X, W,
-% MU_s, X_s, W_s, pNGivenS) but only the first 3 are ever assigned in the
-% function body. Requesting MU_s or beyond errors with "Output argument
-% MU_s not assigned a value". Ledger entry: pphybridfilter-undeclared-outputs.
+% Upstream MATLAB bug (cajigaslab/nSTAT#91) was fixed in commit 49a84d6:
+% the 4th declared output was renamed MU_s -> MU_u to match the function
+% body (which only ever assigned MU_u). The full 7-output signature now
+% is [S_est, X, W, MU_u, X_s, W_s, pNGivenS] — identical to the sister
+% PPHybridFilterLinear API. v12 iter 57 expands the capture to all 7
+% outputs; X_s and W_s are 1xnmodels cell arrays (per-regime estimates).
+%
+% The saved field name ``MU_s`` is retained for backward compatibility
+% with downstream Python recipes that referenced the original header
+% name; its value is whatever upstream now assigns (i.e. MU_u).
 rng(42); %#ok<RNG>
-[S_est, X, W] = nstat.decoding.PPHF.PPHybridFilter( ...
+[S_est, X, W, MU_u, X_s, W_s, pNGivenS] = nstat.decoding.PPHF.PPHybridFilter( ...
     {A1, A2}, {Q1, Q2}, p_ij, Mu0, dN, {cif1, cif2}, binwidth);
 
-% The committed fixture stored only the first 3 outputs (S_est, W, X);
-% preserve that minimal field set on re-save.
+% Persist the 4 additional outputs. X_s and W_s are cell arrays per
+% regime; break them into X_s_1/X_s_2 and W_s_1/W_s_2 to mirror the
+% PPHybridFilterLinear capture convention (v9 iter 50A).
+if iscell(X_s)
+    X_s_1 = X_s{1};
+    X_s_2 = X_s{2};
+else
+    X_s_1 = X_s(:, :, :, 1);
+    X_s_2 = X_s(:, :, :, 2);
+end
+if iscell(W_s)
+    W_s_1 = W_s{1};
+    W_s_2 = W_s{2};
+else
+    W_s_1 = W_s(:, :, :, 1);
+    W_s_2 = W_s(:, :, :, 2);
+end
+MU_s = MU_u; %#ok<NASGU> backward-compat alias
 beta1 = b1; %#ok<NASGU>
 beta2 = b2; %#ok<NASGU>
 save(fixturePath, 'A1', 'A2', 'Q1', 'Q2', 'p_ij', 'Mu0', 'dN', ...
     'beta1', 'beta2', 'binwidth', ...
-    'S_est', 'X', 'W', '-v7');
+    'S_est', 'X', 'W', 'MU_s', 'MU_u', ...
+    'X_s_1', 'X_s_2', 'W_s_1', 'W_s_2', 'pNGivenS', '-v7');
 fprintf('  [PPHybridFilter] saved %s\n', fixturePath);
 end %#ok<DEFNU>
 
