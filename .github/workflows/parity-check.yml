@@ -10,6 +10,14 @@ on:
         description: "Run --quick (no notebook execution)"
         type: boolean
         default: false
+      enforce_gates:
+        description: "Enforce parity gates (code-structure>=0.85, class-method fail-on-drift, numerical-drift fail-on-drift)"
+        type: boolean
+        default: true
+      code_structure_threshold:
+        description: "Fail if any topic's code-structure-diff score is below this fraction"
+        type: string
+        default: "0.85"
 
 concurrency:
   group: parity-check-${{ github.ref }}
@@ -41,11 +49,21 @@ jobs:
         env:
           NSTAT_OFFLINE: "1"
         run: |
+          ARGS=""
           if [ "${{ inputs.quick }}" = "true" ]; then
-            python tools/parity/run_full_check.py --quick
-          else
-            python tools/parity/run_full_check.py
+            ARGS="--quick"
           fi
+          # v6 iter 28: gate per-stage on parity-quality thresholds.  When
+          # enforce_gates is true (the default), the orchestrator returns
+          # non-zero if code-structure scores dip below the threshold OR
+          # class-method parity shows drift OR numerical drift exceeds
+          # the per-entry tolerance.
+          if [ "${{ inputs.enforce_gates }}" = "true" ] && [ "${{ inputs.quick }}" != "true" ]; then
+            ARGS="$ARGS --code-structure-threshold ${{ inputs.code_structure_threshold }}"
+            ARGS="$ARGS --class-method-fail-on-drift"
+            ARGS="$ARGS --numerical-drift-fail"
+          fi
+          python tools/parity/run_full_check.py $ARGS
       - name: Upload parity-review artifacts
         if: always()
         uses: actions/upload-artifact@v4

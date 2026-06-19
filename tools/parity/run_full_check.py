@@ -118,7 +118,9 @@ def _try_build_composites(review_dir: Path) -> dict:
     }
 
 
-def _run_code_structure_diff(review_dir: Path) -> dict:
+def _run_code_structure_diff(
+    review_dir: Path, *, fail_below_threshold: float | None = None
+) -> dict:
     """Run ``tools/parity/code_structure_diff.py --all`` if present."""
     script = REPO_ROOT / "tools" / "parity" / "code_structure_diff.py"
     if not script.exists():
@@ -127,8 +129,11 @@ def _run_code_structure_diff(review_dir: Path) -> dict:
             "status": "skipped",
             "reason": "tools/parity/code_structure_diff.py not present",
         }
+    cmd = [sys.executable, str(script), "--all"]
+    if fail_below_threshold is not None:
+        cmd += ["--fail-below-threshold", f"{fail_below_threshold}"]
     rc, tail = _run(
-        [sys.executable, str(script), "--all"],
+        cmd,
         stage="code_structure_diff",
         log_path=review_dir / "code_structure_diff.log",
     )
@@ -140,7 +145,9 @@ def _run_code_structure_diff(review_dir: Path) -> dict:
     }
 
 
-def _run_class_method_parity(review_dir: Path) -> dict:
+def _run_class_method_parity(
+    review_dir: Path, *, fail_on_drift: bool = False
+) -> dict:
     """Run ``tools/parity/class_method_parity.py --all`` if present."""
     script = REPO_ROOT / "tools" / "parity" / "class_method_parity.py"
     if not script.exists():
@@ -149,13 +156,41 @@ def _run_class_method_parity(review_dir: Path) -> dict:
             "status": "skipped",
             "reason": "tools/parity/class_method_parity.py not present",
         }
+    cmd = [sys.executable, str(script), "--all"]
+    if fail_on_drift:
+        cmd += ["--fail-on-drift"]
     rc, tail = _run(
-        [sys.executable, str(script), "--all"],
+        cmd,
         stage="class_method_parity",
         log_path=review_dir / "class_method_parity.log",
     )
     return {
         "stage": "class_method_parity",
+        "status": "ok" if rc == 0 else "error",
+        "exit_code": rc,
+        "tail": tail,
+    }
+
+
+def _run_numerical_drift(review_dir: Path, *, fail_on_drift: bool = False) -> dict:
+    """Run ``tools/parity/numerical_drift.py`` if present."""
+    script = REPO_ROOT / "tools" / "parity" / "numerical_drift.py"
+    if not script.exists():
+        return {
+            "stage": "numerical_drift",
+            "status": "skipped",
+            "reason": "tools/parity/numerical_drift.py not present",
+        }
+    cmd = [sys.executable, str(script)]
+    if fail_on_drift:
+        cmd += ["--fail-on-drift"]
+    rc, tail = _run(
+        cmd,
+        stage="numerical_drift",
+        log_path=review_dir / "numerical_drift.log",
+    )
+    return {
+        "stage": "numerical_drift",
         "status": "ok" if rc == 0 else "error",
         "exit_code": rc,
         "tail": tail,
@@ -304,6 +339,30 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Skip extraction + notebook execution; composite + SSIM only.",
     )
+    parser.add_argument(
+        "--code-structure-threshold",
+        type=float,
+        default=None,
+        help=(
+            "If set, fail if any topic's code-structure-diff score is "
+            "strictly below this fraction (0..1).  Recommended: 0.85 for "
+            "the priority topics."
+        ),
+    )
+    parser.add_argument(
+        "--class-method-fail-on-drift",
+        action="store_true",
+        help=(
+            "Forward --fail-on-drift to class_method_parity (any class with "
+            "order<100%%, missing methods, or signature deltas fails). "
+            "Use this once the per-class scores reach 0.9+ for every class."
+        ),
+    )
+    parser.add_argument(
+        "--numerical-drift-fail",
+        action="store_true",
+        help="Forward --fail-on-drift to numerical_drift.",
+    )
     args = parser.parse_args(argv)
 
     mode = "quick" if args.quick else "full"
@@ -387,8 +446,32 @@ def main(argv: list[str] | None = None) -> int:
 
     # 6. Code-structure diff + class-method parity audit (default mode only).
     if not args.quick:
-        stages.append(_run_code_structure_diff(REVIEW_DIR))
-        stages.append(_run_class_method_parity(REVIEW_DIR))
+        cs_stage = _run_code_structure_diff(
+            REVIEW_DIR,
+            fail_below_threshold=args.code_structure_threshold,
+        )
+        stages.append(cs_stage)
+        if (
+            args.code_structure_threshold is not None
+            and cs_stage.get("exit_code", 0) == 2
+        ):
+            hard_failure = True
+
+        cm_stage = _run_class_method_parity(
+            REVIEW_DIR,
+            fail_on_drift=args.class_method_fail_on_drift,
+        )
+        stages.append(cm_stage)
+        if args.class_method_fail_on_drift and cm_stage.get("exit_code", 0) != 0:
+            hard_failure = True
+
+        nd_stage = _run_numerical_drift(
+            REVIEW_DIR,
+            fail_on_drift=args.numerical_drift_fail,
+        )
+        stages.append(nd_stage)
+        if args.numerical_drift_fail and nd_stage.get("exit_code", 0) != 0:
+            hard_failure = True
 
     # 7. Summarize.
     ssim_entries = _load_ssim_results()
