@@ -459,7 +459,7 @@ class PPLFP:
 
         # MATLAB ``permute(HkAll, [2 3 1])`` maps (N, K, C) -> (K, C, N).
         # PPLFP_Decode_update expects history with "time on 3rd index".
-        Histtermperm = HkAll.transpose(1, 2, 0)
+        Histtermperm = HkAll  # PPLFP_Decode_update expects (N, n_windows, num_cells)
 
         # --- Forward filter loop (MATLAB lines 275-289) -------------------
         for n in range(N):
@@ -1252,7 +1252,9 @@ class PPLFP:
         n8 = IMuComp.shape[0]
         n9 = IBetaComp.shape[0]
         if gamma_is_scalar:
-            n10 = 0 if float(gammahat) == 0.0 else IGammaComp.shape[0]
+            # MATLAB: if(numel(gammahat)==1 && gammahat==0) n10=0; else n10=size(IGammaComp,1)
+            _gscal = float(np.asarray(gammahat).reshape(-1)[0])
+            n10 = 0 if _gscal == 0.0 else IGammaComp.shape[0]
         else:
             n10 = IGammaComp.shape[0]
 
@@ -1496,7 +1498,7 @@ class PPLFP:
             parts.append(ScoreMuMc)
             parts.append(ScoreBetaMc)
             include_gamma = (
-                (gamma_is_scalar and float(gammahat) != 0.0)
+                (gamma_is_scalar and float(np.asarray(gammahat).reshape(-1)[0]) != 0.0)
                 or (not gamma_is_scalar)
             )
             if include_gamma:
@@ -1606,7 +1608,7 @@ class PPLFP:
         SE["mu"] = SEMu
         SE["beta"] = SEBeta
         SEGamma = None
-        if (gamma_is_scalar and float(gammahat) != 0.0) or (not gamma_is_scalar):
+        if (gamma_is_scalar and float(np.asarray(gammahat).reshape(-1)[0]) != 0.0) or (not gamma_is_scalar):
             if n10 > 0:
                 if gammahat.ndim > 1:
                     SEGamma = SEGammaTerms.reshape(
@@ -1700,7 +1702,7 @@ class PPLFP:
         Pvals["beta"] = p_b.reshape(betahat.shape, order="F")
 
         include_gamma = (
-            (gamma_is_scalar and float(gammahat) != 0.0)
+            (gamma_is_scalar and float(np.asarray(gammahat).reshape(-1)[0]) != 0.0)
             or (not gamma_is_scalar)
         )
         if include_gamma and SEGamma is not None:
@@ -2436,28 +2438,60 @@ class PPLFP:
         x_u = np.asarray(x_u, dtype=float)
         W_u = np.asarray(W_u, dtype=float)
 
-        # Smoother (RTS): match shape conventions from sibling EStep ports.
+        # Smoother (RTS): PPLFP_DecodeLinear returns predictions of length K+1
+        # (one extra forward step) and updates of length K, both in MATLAB
+        # column-major layout: x_* is (Dx, T), W_* is (Dx, Dx, T).  Convert to
+        # the smoother's time-major (T, Dx) and (T, Dx, Dx) before calling and
+        # convert back after.
         N = K
-        x_K, W_K, _Lk = DecodingAlgorithms.kalman_smootherFromFiltered(
-            A_2d,
-            x_p[:, :N] if x_p.shape[1] >= N else x_p,
-            W_p[:, :, :N] if W_p.shape[2] >= N else W_p,
-            x_u,
-            W_u,
+        x_p_in = x_p[:, :N] if x_p.shape[1] >= N else x_p
+        W_p_in = W_p[:, :, :N] if W_p.shape[2] >= N else W_p
+        x_u_in = x_u[:, :N] if x_u.shape[1] >= N else x_u
+        W_u_in = W_u[:, :, :N] if W_u.shape[2] >= N else W_u
+
+        x_p_tm = x_p_in.T  # (N, Dx)
+        x_u_tm = x_u_in.T
+        W_p_tm = np.transpose(W_p_in, (2, 0, 1))  # (N, Dx, Dx)
+        W_u_tm = np.transpose(W_u_in, (2, 0, 1))
+
+        x_K_tm, W_K_tm, _Lk = DecodingAlgorithms.kalman_smootherFromFiltered(
+            A_2d, x_p_tm, W_p_tm, x_u_tm, W_u_tm,
         )
-        x_K = np.asarray(x_K, dtype=float)
-        W_K = np.asarray(W_K, dtype=float)
-        if x_K.ndim == 2 and x_K.shape[0] == K and x_K.shape[1] == Dx:
-            x_K = x_K.T
-        if W_K.ndim == 3 and W_K.shape[0] == K:
-            W_K = np.transpose(W_K, (1, 2, 0))
+        x_K_tm = np.asarray(x_K_tm, dtype=float)
+        W_K_tm = np.asarray(W_K_tm, dtype=float)
+
+        # Convert back to MATLAB column-major (Dx, K) / (Dx, Dx, K).
+        if x_K_tm.ndim == 2 and x_K_tm.shape == (K, Dx):
+            x_K = x_K_tm.T
+        elif x_K_tm.ndim == 2 and x_K_tm.shape == (Dx, K):
+            x_K = x_K_tm
+        else:
+            x_K = x_K_tm
+        if W_K_tm.ndim == 3 and W_K_tm.shape[0] == K:
+            W_K = np.transpose(W_K_tm, (1, 2, 0))
+        else:
+            W_K = W_K_tm
 
         # Best estimates of the initial state given the data.
         # MATLAB: W1G0 = A*Px0*A' + Q; L0 = Px0*A' / W1G0.
+        # MATLAB B/W1G0 = B * inv(W1G0); use solve via transposes for stability.
         W1G0 = A_2d @ Px0 @ A_2d.T + Q_2d
-        L0 = Px0 @ A_2d.T @ np.linalg.pinv(W1G0)
+        # L0 = (Px0 @ A.T) / W1G0  ->  (W1G0.T) L0.T = (Px0 A.T).T
+        try:
+            L0 = np.linalg.solve(W1G0.T, (Px0 @ A_2d.T).T).T
+        except np.linalg.LinAlgError:
+            L0 = (Px0 @ A_2d.T) @ np.linalg.pinv(W1G0)
         Ex0Gy = x0 + L0 @ (x_K[:, 0] - x_p[:, 0])
-        Px0Gy = Px0 + L0 @ (np.linalg.pinv(W_K[:, :, 0]) - np.linalg.pinv(W1G0)) @ L0.T
+        # Px0Gy = Px0 + L0 * (inv(W_K[:,:,0]) - inv(W1G0)) * L0.T
+        try:
+            inv_WK0 = np.linalg.solve(W_K[:, :, 0], np.eye(Dx))
+        except np.linalg.LinAlgError:
+            inv_WK0 = np.linalg.pinv(W_K[:, :, 0])
+        try:
+            inv_W1G0 = np.linalg.solve(W1G0, np.eye(Dx))
+        except np.linalg.LinAlgError:
+            inv_W1G0 = np.linalg.pinv(W1G0)
+        Px0Gy = Px0 + L0 @ (inv_WK0 - inv_W1G0) @ L0.T
         Px0Gy = _symmetrize(Px0Gy)
 
         # Cross-covariance Wku (de Jong & MacKinnon 1988): Tk = A.
@@ -2468,7 +2502,13 @@ class PPLFP:
             Wku[:, :, k, k] = W_K[:, :, k]
         for u in range(K - 1, 0, -1):
             k = u - 1
-            Dk = W_u[:, :, k] @ A_2d.T @ np.linalg.pinv(W_p[:, :, k + 1])
+            # Dk = W_u[:,:,k] * A.T / W_p[:,:,k+1]
+            try:
+                Dk = np.linalg.solve(
+                    W_p[:, :, k + 1].T, (W_u[:, :, k] @ A_2d.T).T
+                ).T
+            except np.linalg.LinAlgError:
+                Dk = W_u[:, :, k] @ A_2d.T @ np.linalg.pinv(W_p[:, :, k + 1])
             Wku[:, :, k, u] = Dk @ Wku[:, :, k + 1, u]
             Wku[:, :, u, k] = Wku[:, :, k, u].T
 
@@ -2482,7 +2522,14 @@ class PPLFP:
         alpha_vec = alpha.reshape(-1)
         for k in range(K):
             if k == 0:
-                Sxkm1xk += Px0 @ A_2d.T @ np.linalg.pinv(W_p[:, :, 0]) @ Wku[:, :, 0, 0]
+                # Px0*A' / W_p(:,:,1) * Wku(:,:,1,1)
+                try:
+                    PxA_div_Wp0 = np.linalg.solve(
+                        W_p[:, :, 0].T, (Px0 @ A_2d.T).T
+                    ).T
+                except np.linalg.LinAlgError:
+                    PxA_div_Wp0 = (Px0 @ A_2d.T) @ np.linalg.pinv(W_p[:, :, 0])
+                Sxkm1xk += PxA_div_Wp0 @ Wku[:, :, 0, 0]
                 Sxkm1xkm1 += Px0 + np.outer(x0, x0)
             else:
                 Sxkm1xk += Wku[:, :, k - 1, k] + np.outer(x_K[:, k - 1], x_K[:, k])
@@ -2518,7 +2565,9 @@ class PPLFP:
                 else:
                     terms = mu_vec + beta_mat.T @ xk
                 Wk = W_K[:, :, k]
-                ld = np.exp(np.clip(terms, -500, 500))
+                # MATLAB: ld = exp(terms); no clip.  Preserve overflow behaviour.
+                with np.errstate(over='ignore'):
+                    ld = np.exp(terms)
                 bt = beta_mat
                 ExplambdaDelta = ld + 0.5 * (ld * np.diag(bt.T @ Wk @ bt))
                 ExplogLD = terms
@@ -2542,21 +2591,32 @@ class PPLFP:
                 else:
                     terms = mu_vec + beta_mat.T @ xk
                 Wk = W_K[:, :, k]
-                ld_raw = np.exp(np.clip(terms, -500, 500))
+                # MATLAB: ld = exp(terms)./(1+exp(terms)).
+                with np.errstate(over='ignore'):
+                    ld_raw = np.exp(terms)
                 ld = ld_raw / (1.0 + ld_raw)
                 bt = beta_mat
                 ExplambdaDelta = ld + 0.5 * (ld * (1 - ld) * (1 - 2 * ld)) * np.diag(bt.T @ Wk @ bt)
-                ExplogLD = (np.log(np.clip(ld, 1e-300, None))
-                            + 0.5 * (-ld * (1 - ld)) * np.diag(bt.T @ Wk @ bt))
+                with np.errstate(divide='ignore'):
+                    ExplogLD = (np.log(ld)
+                                + 0.5 * (-ld * (1 - ld)) * np.diag(bt.T @ Wk @ bt))
                 sumPPll += float(np.sum(obs[:, k] * ExplogLD - ExplambdaDelta))
 
         # Complete-data log-likelihood lower bound (MATLAB lines 2169-2173).
+        # MATLAB uses raw log(det(.)) — preserve that, falling back to a tiny
+        # floor only if det is non-positive to avoid -inf/NaN cascades.
+        def _safe_logdet(M):
+            d = np.linalg.det(M)
+            if d <= 0 or not np.isfinite(d):
+                return float(np.log(max(abs(d), 1e-300)))
+            return float(np.log(d))
+
         logll = (-Dx * K / 2.0 * np.log(2 * np.pi)
-                 - K / 2.0 * np.log(max(np.linalg.det(Q_2d), 1e-300))
+                 - K / 2.0 * _safe_logdet(Q_2d)
                  - Dy * K / 2.0 * np.log(2 * np.pi)
-                 - K / 2.0 * np.log(max(np.linalg.det(R_2d), 1e-300))
+                 - K / 2.0 * _safe_logdet(R_2d)
                  - Dx / 2.0 * np.log(2 * np.pi)
-                 - 0.5 * np.log(max(np.linalg.det(Px0), 1e-300))
+                 - 0.5 * _safe_logdet(Px0)
                  + sumPPll
                  - 0.5 * np.trace(np.linalg.solve(Q_2d, sumXkTerms))
                  - 0.5 * np.trace(np.linalg.solve(R_2d, sumYkTerms))
@@ -2768,12 +2828,12 @@ class PPLFP:
 
             if gamma_is_zero:
                 c0 = TrialConfig(
-                    [[["Baseline", "constant"], labels2]],
+                    [["Baseline", "constant"], labels2],
                     sampleRate, None, None,
                 )
             else:
                 c0 = TrialConfig(
-                    [[["Baseline", "constant"], labels2]],
+                    [["Baseline", "constant"], labels2],
                     sampleRate, windowTimes, None,
                 )
             try:

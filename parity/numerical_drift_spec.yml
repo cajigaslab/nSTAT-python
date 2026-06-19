@@ -94,3 +94,59 @@ entries:
     fixture: tests/parity/fixtures/matlab_gold/decode_update_exactness.mat
     output_field: x_u
     tolerance: { rtol: 1.0e-8, atol: 1.0e-10 }
+
+  # 11. PPLFP.PPLFP_ComputeParamStandardErrors — observed-information SE for
+  # the PPLFP EM-fit parameters. Compares the deterministic alpha-SE field
+  # only; all other fields (A/Q/C/R/Px0/x0/mu/beta) depend on Monte Carlo
+  # sampling whose RNG path differs between MATLAB's normrnd and NumPy's
+  # default_rng, producing inherent ~O(1/sqrt(mcIter)) drift that cannot
+  # be tightened without a deterministic-MC redesign. See matlab_defects.yml
+  # entry pplfp_se_mc_drift (Case C).
+  - name: PPLFP_ComputeParamStandardErrors
+    function: 'nstat.decoding.PPLFP:PPLFP.PPLFP_ComputeParamStandardErrors'
+    recipe: pplfp_se_alpha_passthrough_todo
+    fixture: tests/parity/fixtures/matlab_gold/pplfp_SE.mat
+    output_field: SE.alpha
+    tolerance: { rtol: 1.0e-4, atol: 1.0e-4 }
+
+  # 11. PPLFP.PPLFP_MStep — EM maximisation step (full port, NewtonRaphson
+  # branch verified). Baseline .mat was NOT captured during the iter-29
+  # baseline phase (file pplfp_PPLFP_MStep.mat absent); recipe is staged so
+  # iter-35+ verify catches drift once the fixture lands. Tolerance relaxed
+  # to rtol=1e-4 per Case-C stability rule (Monte-Carlo Newton-Raphson uses
+  # an RNG; the GLM branch routes through Analysis/Trial machinery).
+  - name: PPLFP_MStep
+    function: 'nstat.decoding.PPLFP:PPLFP.PPLFP_MStep'
+    recipe: pplfp_mstep
+    fixture: tests/parity/fixtures/matlab_gold/pplfp_PPLFP_MStep.mat
+    output_field: betahat_new
+    tolerance: { rtol: 1.0e-4, atol: 1.0e-6 }
+    todo: true  # fixture missing — see parity/matlab_defects.yml Case C entry
+
+  # PPLFP.PPLFP_EStep — E-step of the PPLFP EM algorithm.  Forward filter +
+  # RTS smoother + sufficient statistics + complete-data lower bound.  Baseline
+  # fixture not yet captured; see parity/matlab_defects.yml Case C entry.
+  - name: PPLFP_EStep
+    function: 'nstat.decoding.PPLFP:PPLFP.PPLFP_EStep'
+    recipe: pplfp_estep
+    fixture: tests/parity/fixtures/matlab_gold/pplfp_PPLFP_EStep.mat
+    output_field: x_K
+    tolerance: { rtol: 1.0e-6, atol: 1.0e-8 }
+    todo: true  # fixture missing — see parity/matlab_defects.yml Case C entry
+
+  # PPLFP.PPLFP_EM — full EM driver (E-step / M-step loop) for the PPLFP
+  # state-space model.  Baseline fixture pplfp_PPLFP_EM.mat was NOT captured
+  # during the baseline phase; recipe is staged so iter-35+ verify catches
+  # drift once the fixture lands.  Tolerance relaxed to rtol=1e-4 per Case-C
+  # stability rule: EM convergence is iteration-count + RNG sensitive (Ikeda
+  # acceleration uses np.random.default_rng for ykNew draws; downstream
+  # MStep+EStep depend on Monte-Carlo paths that diverge from MATLAB's
+  # mvnrnd / normrnd RNG).  See parity/matlab_defects.yml entry
+  # pplfp_em_pending_fixture (Case C).
+  - name: PPLFP_EM
+    function: 'nstat.decoding.PPLFP:PPLFP.PPLFP_EM'
+    recipe: pplfp_em
+    fixture: tests/parity/fixtures/matlab_gold/pplfp_PPLFP_EM.mat
+    output_field: xKFinal
+    tolerance: { rtol: 1.0e-4, atol: 1.0e-6 }
+    todo: true  # fixture missing — see parity/matlab_defects.yml Case C entry
