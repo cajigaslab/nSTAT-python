@@ -14,7 +14,7 @@ MATLAB-helpfile port) rather than substantive plots — those are marked.
 | [`AnalysisExamples2`](AnalysisExamples2/) | 4 | yes | [`notebooks/AnalysisExamples2.ipynb`](../../notebooks/AnalysisExamples2.ipynb) |
 | [`CovCollExamples`](CovCollExamples/) | 2 | yes | [`notebooks/CovCollExamples.ipynb`](../../notebooks/CovCollExamples.ipynb) |
 | [`CovariateExamples`](CovariateExamples/) | 2 | yes | [`notebooks/CovariateExamples.ipynb`](../../notebooks/CovariateExamples.ipynb) |
-| [`DecodingExample`](DecodingExample/) | 4 | yes | [`notebooks/DecodingExample.ipynb`](../../notebooks/DecodingExample.ipynb) |
+| [`DecodingExample`](DecodingExample/) | 5 | yes | [`notebooks/DecodingExample.ipynb`](../../notebooks/DecodingExample.ipynb) |
 | [`DecodingExampleWithHist`](DecodingExampleWithHist/) | 2 | yes | [`notebooks/DecodingExampleWithHist.ipynb`](../../notebooks/DecodingExampleWithHist.ipynb) |
 | [`EventsExamples`](EventsExamples/) | 4 | yes | [`notebooks/EventsExamples.ipynb`](../../notebooks/EventsExamples.ipynb) |
 | [`ExplicitStimulusWhiskerData`](ExplicitStimulusWhiskerData/) | 10 | yes | [`notebooks/ExplicitStimulusWhiskerData.ipynb`](../../notebooks/ExplicitStimulusWhiskerData.ipynb) |
