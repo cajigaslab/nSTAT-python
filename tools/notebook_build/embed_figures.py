@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import io
 from pathlib import Path
 
 import nbformat
@@ -28,6 +29,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 NB_DIR = REPO_ROOT / "notebooks"
 GALLERY = REPO_ROOT / "docs" / "notebook_galleries"
 TOKENS = ("new_figure(", "_prepare_figure(", "capture(")
+
+# Compression caps for embedded copies.  The full-quality PNGs remain in
+# ``docs/notebook_galleries/<topic>/``; embedded copies are downscaled so the
+# notebook file size stays under the structure-hygiene ceiling.  Notebooks
+# producing many large figures (HippocampalPlaceCellExample, SignalObjExamples)
+# would otherwise blow past 5 MB once base64-encoded.
+_EMBED_MAX_WIDTH = 1024
+_EMBED_MAX_BYTES = 200 * 1024  # 200 KB per embedded figure cap
 
 
 def _fig_token_count(src: str) -> int:
@@ -41,10 +50,46 @@ def _fig_token_count(src: str) -> int:
     return n
 
 
+def _compress_for_embed(png_bytes: bytes) -> bytes:
+    """Return a (likely smaller) PNG suitable for inline embedding.
+
+    Keeps embed copies under the notebook size ceiling without removing them
+    (``test_notebooks_embed_their_figures`` requires every gallery figure to
+    appear inline).  The full-quality gallery PNG is unaffected.
+    """
+    if len(png_bytes) <= _EMBED_MAX_BYTES:
+        return png_bytes
+    try:
+        from PIL import Image  # local import: keeps the bootstrap path light
+    except ImportError:
+        return png_bytes
+    img = Image.open(io.BytesIO(png_bytes))
+    if img.width > _EMBED_MAX_WIDTH:
+        ratio = _EMBED_MAX_WIDTH / img.width
+        new_size = (_EMBED_MAX_WIDTH, max(1, int(img.height * ratio)))
+        img = img.resize(new_size, Image.LANCZOS)
+    # Re-quantize to 8-bit palette as a fallback for the largest figures (e.g.
+    # 2-D place-field heatmaps).  We only do this when an RGB resize alone
+    # still exceeds the cap, since palette mode loses subtle colour gradients.
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    out = buf.getvalue()
+    if len(out) > _EMBED_MAX_BYTES and img.mode != "P":
+        # Try palette-quantized fallback.
+        pal = img.convert("P", palette=Image.ADAPTIVE, colors=256)
+        buf = io.BytesIO()
+        pal.save(buf, format="PNG", optimize=True)
+        candidate = buf.getvalue()
+        if len(candidate) < len(out):
+            out = candidate
+    return out
+
+
 def _image_output(png_bytes: bytes) -> nbformat.NotebookNode:
+    compressed = _compress_for_embed(png_bytes)
     return nbformat.v4.new_output(
         "display_data",
-        data={"image/png": base64.b64encode(png_bytes).decode("ascii")},
+        data={"image/png": base64.b64encode(compressed).decode("ascii")},
         metadata={},
     )
 

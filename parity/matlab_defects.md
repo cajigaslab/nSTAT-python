@@ -493,6 +493,167 @@ Schema for each entry:
 
 ---
 
+### Case D (fixture provenance recovery): PPLFP_EStep gold fixture re-baselined from reproducible MATLAB recipe
+
+- **MATLAB location:** `+nstat/+decoding/PPLFP.m` `PPLFP_EStep` in `cajigaslab/nSTAT@main` (post-2026-06-19)
+- **Defect class:** Case D (fixture provenance recovery)
+- **MATLAB behavior:** The original `pplfp_EStep.mat` was captured ad-hoc by v9 iter ~38-40
+  via a `/opt/homebrew/bin/matlab -batch` snippet that was never
+  committed. The capture seed/inputs were unrecoverable; v11 iter 49
+  re-ran `PPLFP_EStep` against the inputs already serialised in the
+  committed fixture (A, Q, C, R, y, alpha, dN, mu, beta, gamma, HkAll,
+  x0, Px0, fitType, delta) under `rng(42)`.
+- **Correct behavior:** `PPLFP_EStep` has no internal `normrnd`/`rand` calls — its output is
+  a deterministic function of the inputs. The re-baselined fixture is
+  numerically equivalent to the original at every comparable field
+  (max absolute drift `0.0` across all 11 ExpectationSums + x_K + W_K +
+  logll). Only the `save` metadata differs (`.mat` file bytes change
+  because MATLAB timestamps the container).
+- **Python implementation:**
+  - `tools/parity/matlab/export_pplfp_gold_fixtures.m` `export_pplfp_EStep_fixture`
+  - `tools/parity/numerical_drift.py` `_recipe_pplfp_estep`
+- **Fixture impact:** `tests/parity/fixtures/matlab_gold/pplfp_EStep.mat` re-saved by v11
+  iter 49. Drift detector PPLFP_EStep: max|err| `1.735e-17` (unchanged
+  vs prior baseline, `rtol=1e-6, atol=1e-8` PASS).
+- **Discovered:** iter 49 / 2026-06-19
+
+---
+
+### Case D (fixture provenance recovery): PPLFP_MStep gold fixture re-baselined under deterministic rng(42)
+
+- **MATLAB location:** `+nstat/+decoding/PPLFP.m` `PPLFP_MStep` Newton-Raphson branch in `cajigaslab/nSTAT@main` (post-2026-06-19)
+- **Defect class:** Case D (fixture provenance recovery)
+- **MATLAB behavior:** `PPLFP_MStep` with `MstepMethod='NewtonRaphson'` draws `McExp=50`
+  Monte-Carlo state samples per inner iteration via `normrnd(0,1,...)`.
+  The original capture's MATLAB RNG state was unrecorded; v11 iter 49
+  re-runs the MStep under `rng(42)` against the inputs already
+  serialised in the fixture (including the upstream `PPLFP_EStep` call
+  that produces the `ExpectationSums` input).
+- **Correct behavior:** The closed-form parameter updates (`Ahat, Qhat, Chat, Rhat, alphahat,
+  x0hat, Px0hat`) are deterministic functions of the sufficient stats
+  and match the original fixture byte-exactly. The Newton-Raphson MC
+  block updates `betahat_new`, `muhat_new`, `gammahat_new` — these
+  drift from the original fixture by `max|Δβ|≈2.82, max|Δμ|≈1.04`
+  because the rng(42) stream differs from the original capture's
+  stream. The Python recipe `_recipe_pplfp_mstep` compares
+  `betahat_new` at Case-C tolerance (`rtol=1e+1, atol=1e+1`); drift on
+  the re-baselined fixture is `max|err|=6.706e-01` (PASS), improved
+  from the prior baseline's `2.990e+00`.
+- **Python implementation:**
+  - `tools/parity/matlab/export_pplfp_gold_fixtures.m` `export_pplfp_MStep_fixture`
+  - `tools/parity/numerical_drift.py` `_recipe_pplfp_mstep`
+- **Fixture impact:** `tests/parity/fixtures/matlab_gold/pplfp_MStep.mat` re-saved by v11
+  iter 49 with rng(42)-deterministic `betahat_new` and `muhat_new`.
+  Drift detector PPLFP_MStep PASSes at existing Case-C tolerance with
+  ~5x tighter drift margin.
+- **Discovered:** iter 49 / 2026-06-19
+
+---
+
+### Bug (upstream MATLAB, blocks fixture recapture): PPLFP_EM internal HkAll mis-sized — `K = size(dN,1)` should be `size(dN,2)`
+
+- **MATLAB location:** `+nstat/+decoding/PPLFP.m:1612-1626` in `cajigaslab/nSTAT@main` (post-2026-06-19)
+- **Defect class:** Bug (upstream MATLAB, blocks fixture recapture)
+- **MATLAB behavior:** `PPLFP_EM` line 1611 sets `maxTime=(size(dN,2)-1)*delta` (time = dim 2)
+  but line 1612 sets `K=size(dN,1)` (numCells = dim 1) then uses K to
+  size the internal `HkAll(:,:,k)` loop. This builds `HkAll` of shape
+  `(1, 1, numCells)` instead of `(K_time, 1, numCells)`. When the inner
+  `PPLFP_EStep` call then indexes `HkAll(:,:,time_index)` with
+  `time_index > numCells`, MATLAB throws "Index in position 3 exceeds
+  array bounds". The bug also fires through the `if(~isempty(windowTimes))`
+  branch because the same `K` symbol is reused.
+- **Correct behavior:** Both lines should read `size(dN,2)` — the EStep convention is
+  `[numCells, K] = size(dN)`. With this fix, `PPLFP_EM` would run
+  end-to-end and the v9-era `pplfp_EM.mat` capture would reproduce.
+  v11 iter 49 confirmed the bug is present in the upstream
+  `cajigaslab/nSTAT@main` checkout and blocks `pplfp_EM.mat`
+  reproduction from any `dN` shape larger than `numCells`. The
+  committed `pplfp_EM.mat` is therefore left unchanged (kept from the
+  v9 original capture); Python's `_recipe_pplfp_em` still PASSes drift
+  against it at Case-C tolerance.
+- **Python implementation:**
+  - `tools/parity/matlab/export_pplfp_gold_fixtures.m` `export_pplfp_EM_fixture` is wrapped in a top-level try/catch; on the upstream EM bug the committed fixture is left untouched and a warning is logged.
+  - `nstat/decoding/PPLFP.py` `PPLFP.PPLFP_EM` is a faithful port but uses the correct `K = size(dN, 1)` (Python time-major convention), so Python avoids the bug at the cost of not bit-mirroring this MATLAB code path.
+  - `tools/parity/numerical_drift.py` `_recipe_pplfp_em` (unchanged).
+- **Fixture impact:** `tests/parity/fixtures/matlab_gold/pplfp_EM.mat` kept byte-identical
+  to the v9 original capture. Drift detector PPLFP_EM unchanged: PASS
+  with `max|err|=1.417e-01` against Case-C tolerance
+  `rtol=1e+1, atol=1e+0`.
+- **Discovered:** iter 49 / 2026-06-19
+- **Upstream status:** adopted-upstream
+- **Resolved in:** cajigaslab/nSTAT@main (post-2026-06-19, fix for #90)
+- **Resolved iter:** v11 mini-reconciliation / 2026-06-19
+- **Resolved notes:** Upstream merged the K=size(dN,2) fix. pplfp_EM now runs end-to-end on rectangular dN. v11 mini-reconciliation confirmed: existing fixture values byte-identical (the original capture used numCells==K_time and dodged the bug); future recaptures with rectangular dN now succeed.
+- **Upstream issue:** cajigaslab/nSTAT#90
+
+---
+
+### Case D (fixture provenance recovery): PPLFP_ComputeParamStandardErrors gold fixture re-baselined under rng(42)
+
+- **MATLAB location:** `+nstat/+decoding/PPLFP.m` `PPLFP_ComputeParamStandardErrors` in `cajigaslab/nSTAT@main` (post-2026-06-19)
+- **Defect class:** Case D (fixture provenance recovery)
+- **MATLAB behavior:** `PPLFP_ComputeParamStandardErrors` draws `mcIter=500` Monte-Carlo
+  samples via `normrnd` for the observed-information block; the
+  original capture's RNG state was unrecorded. v11 iter 49 re-runs the
+  SE computation under `rng(42)` against the EM-converged params
+  already serialised in the fixture (Ahat, Qhat, Chat, Rhat, alphahat,
+  muhat_new, betahat_new, gammahat_new, x0hat, Px0hat, xKFinal,
+  WKFinal). `ExpectationSumsFinal` is reconstituted by calling
+  `PPLFP_EStep(Ahat, …, alphahat, …)` mirroring the EM final-step
+  contract.
+- **Correct behavior:** The deterministic `SE.alpha` field (which only depends on
+  `IAlphaComp = N*inv(Rhat)`) is recovered bit-exactly. MC-dependent
+  fields (SE.A/Q/C/R/Px0/x0/mu/beta) carry the rng(42) envelope and
+  differ from the original capture. The Python recipe
+  `_recipe_pplfp_se_alpha` regresses only `SE.alpha` at
+  `rtol=1e-1, atol=1e-2` and the re-baselined fixture passes with
+  `max|err|=6.794e-06` — ~30x tighter than the prior baseline
+  (`2.044e-04`).
+- **Python implementation:**
+  - `tools/parity/matlab/export_pplfp_gold_fixtures.m` `export_pplfp_SE_fixture`
+  - `tools/parity/numerical_drift.py` `_recipe_pplfp_se_alpha`
+- **Fixture impact:** `tests/parity/fixtures/matlab_gold/pplfp_SE.mat` re-saved by v11
+  iter 49. Drift detector PPLFP_ComputeParamStandardErrors PASSes at
+  existing Case-C tolerance with substantially tighter drift margin.
+- **Discovered:** iter 49 / 2026-06-19
+
+---
+
+### Case D (rebaseline / re-derivation): v11 iter 50D — fit/SignalObj/History v9 fixtures rebaselined from canonical MATLAB recipes
+
+- **MATLAB location:** `Analysis.computeKSStats`, `norminv`, `corrcoef`, `SignalObj.resample/derivative/integral`, `History.raisedCosine` in `cajigaslab/nSTAT`
+- **Defect class:** Case D (rebaseline / re-derivation)
+- **MATLAB behavior:** The original v9 iter ~40 ad-hoc `matlab -batch` snippets that
+  seeded the seven `v9_fitresult_*`, `v9_signalobj_*` and
+  `v9_raisedCosine` fixtures were never committed to the repo.
+  This left the fixtures' provenance unverifiable and the
+  `v9_fitresult_KSPlot_data` tolerance pinned at `1e-1` based on
+  historic drift.
+- **Correct behavior:** Iter 50D adds the missing recipes to
+  `tools/parity/matlab/export_v9_gold_fixtures.m`. Each loads the
+  committed inputs verbatim and re-runs the canonical MATLAB
+  function, so the baseline is now reproducible from a clean
+  MATLAB checkout. Six of the seven fixtures regenerate
+  byte-for-byte equivalent baselines (drift unchanged at float64
+  round-off). `v9_fitresult_KSPlot_data` regenerates a slightly
+  different KSSorted because the original snippet's
+  `Analysis.computeKSStats` invocation produced a slightly
+  different baseline than the canonical call from a freshly
+  `rng(42)`-seeded MATLAB session; the new baseline halves the
+  observed drift (max_abs 2.97e-2 → 1.46e-2). Tolerance tightened
+  from `rtol=1e-1, atol=1e-1` to `rtol=5e-2, atol=5e-2`,
+  preserving ~3x margin over observed drift.
+- **Python implementation:**
+  - `tools/parity/matlab/export_v9_gold_fixtures.m` functions `export_v9_raisedCosine_fixture`, `export_v9_fitresult_KSPlot_data_fixture`, `export_v9_fitresult_invGausTrans_data_fixture`, `export_v9_fitresult_seqCorrCoeff_fixture`, `export_v9_signalobj_resample_fixture`, `export_v9_signalobj_derivative_fixture`, `export_v9_signalobj_integral_fixture`
+  - `parity/numerical_drift_spec.yml` entry `v9_fitresult_KSPlot_data` (tolerance tightened)
+- **Fixture impact:** Seven fixtures rebaselined. Six are bit-equivalent /
+  round-off-equivalent to prior committed bytes. One
+  (`v9_fitresult_KSPlot_data`) has a deliberately re-derived
+  KSSorted/Z/U/xAxis/ks_stat baseline.
+- **Discovered:** iter 50D / 2026-06-19
+
+---
+
 ### Stability (cosmetic): MATLAB now writes scalar struct fields as 1×1 instead of empty 0×0 / 1×0
 
 - **MATLAB location:** TrialConfig.save / nstColl.save / CovColl.save / Events.save (post-2026-06-19)
@@ -510,6 +671,202 @@ Schema for each entry:
 - **Upstream status:** convention-change-upstream
 - **Resolved in:** cajigaslab/nSTAT@main (post-2026-06-19)
 - **Resolved iter:** to be resolved in iter 47
+
+---
+
+### Case D (re-baselined to match upstream semantics): v9_simulateCIFByThinning lambda_data rebaselined to post-C4 convention
+
+- **MATLAB location:** `@CIF/simulateCIFByThinning.m` in `cajigaslab/nSTAT` (Simulink-backed)
+- **Defect class:** Case D (re-baselined to match upstream semantics)
+- **MATLAB behavior:** The original v9 iter ~40 fixture stored ``lambda_data`` on the
+  pre-C4-audit convention ``rate_hz = lambda_delta / dt`` (values
+  47-119 with mu=-3, Ts=1e-5).  Audit finding C4 (`nstat/cif.py`
+  lines 1294-1307) removed the spurious ``/dt`` divide in the
+  Poisson sub-block of ``_simulateCIF_python`` because the Simulink
+  ``PointProcessSimulation.slx`` model treats ``exp(eta)`` directly
+  as a per-bin probability, not a per-second rate.  After the audit
+  the stored fixture no longer matched what Python computes, and the
+  drift was hidden behind a relaxed tolerance (rtol=1e+1, atol=1e+0).
+- **Correct behavior:** v11 iter 50C re-exports ``lambda_data`` deterministically as
+  ``exp(mu + 1.0*stim)`` so it matches the python recipe's coefficient
+  triple (hist=[-1.0], stim=[1.0], ens=[0.0]) modulo a small
+  RNG-driven history-feedback residual on the bernoulli draws.
+  ``stim_data`` / ``ens_data`` / ``mu_val`` / ``Ts_val`` / ``nReal``
+  stay on the same grid (T=0.05, sr=1000, 51 samples).  A new
+  ``spikeTimes_r1`` field is added for posterity; the Python recipe
+  does not consume it.
+- **Python implementation:**
+  - `tools/parity/matlab/export_v9_gold_fixtures.m`: `export_v9_simulateCIFByThinning_fixture`
+  - `parity/numerical_drift_spec.yml`: `v9_simulateCIFByThinning` tolerance tightened rtol=1e+1/atol=1e+0 → rtol=1e-1/atol=1e-1
+  - `tests/parity/fixtures/matlab_gold/v9_simulateCIFByThinning.mat`
+- **Fixture impact:** `v9_simulateCIFByThinning.mat` rebaselined.  Post-rebaseline drift:
+  max_abs=8.55e-2 (lambda envelope ~ [0.018, 0.135]) vs rtol=1e-1 /
+  atol=1e-1 — PASS.  ``v9_simulateCIFByThinningFromLambda.mat`` was
+  regenerated on the same envelope shape (range 5-15, lambdaBound=15);
+  the Python comparison there is the deterministic ``max(ld) ==
+  lambdaBound`` check which continues to pass at 0/0.
+- **Discovered:** v11 iter 50C / 2026-06-19
+- **Upstream status:** internal-rebaseline
+- **Resolved iter:** v11 iter 50C
+
+---
+
+### Bug (upstream MATLAB): PPHybridFilter declares 4 outputs (MU_s, X_s, W_s, pNGivenS) it never assigns
+
+- **MATLAB location:** +nstat/+decoding/PPHF.m:509 (PPHybridFilter signature)
+- **Defect class:** Bug (upstream MATLAB)
+- **MATLAB behavior:** The function header declares 7 outputs
+  `[S_est, X, W, MU_s, X_s, W_s, pNGivenS]` but the function body only
+  ever assigns the first 3 (S_est, X, W). Requesting any of the trailing
+  4 raises "Output argument MU_s (and possibly others) not assigned a
+  value in the execution".
+  The sister function `PPHybridFilterLinear` (PPHF.m:25) assigns all 7
+  and works as documented, suggesting the trailing outputs were planned
+  for PPHybridFilter as well but never implemented.
+- **Correct behavior:** Capture script calls `PPHybridFilter` with only 3 output arguments;
+  the Python recipe `_recipe_v9_pphybrid_full` and the committed fixture
+  only carry the 3 assigned outputs (S_est, W, X), which matches the
+  shape comparison the recipe performs.
+- **Python implementation:**
+  - `tools/parity/matlab/export_v9_gold_fixtures.m` `export_v9_PPHybridFilter_fixture`
+  - `tools/parity/numerical_drift.py` `_recipe_v9_pphybrid_full`
+- **Fixture impact:** `tests/parity/fixtures/matlab_gold/v9_PPHybridFilter.mat` re-saved in
+  v11 iter 50A with only {A1,A2,Q1,Q2,p_ij,Mu0,dN,beta1,beta2,binwidth,
+  S_est,X,W}. Drift detector reports max_abs=1.04 / max_rel=6.96e+2
+  under existing Case-C tolerance rtol=1e+1/atol=1e+0 — PASS.
+- **Discovered:** v11 iter 50A / 2026-06-19
+- **Upstream status:** adopted-upstream
+- **Resolved in:** cajigaslab/nSTAT@main (post-2026-06-19, fix for #91)
+- **Resolved iter:** v11 mini-reconciliation / 2026-06-19
+- **Resolved notes:** Upstream merged the missing-output assignments. PPHybridFilter now returns all 7 outputs. v11 mini-reconciliation confirmed: existing 3-output capture is byte-identical; future recaptures can request the additional 4 outputs.
+- **Upstream issue:** cajigaslab/nSTAT#91
+
+---
+
+### Stability (port convention): MATLAB CIF.evalGradient/Jacobian differentiate over full varIn (incl. intercept)
+
+- **MATLAB location:** CIF.m:300-315 (gradient/jacobian symbolic build) and CIF.m:evalGradient/evalJacobian
+- **Defect class:** Stability (port convention)
+- **MATLAB behavior:** MATLAB's CIF stores `varIn = [one; stim1; stim2; ...]` — the constant
+  intercept symbol 'one' is the first element of the symbolic variable
+  vector. The gradient is taken wrt the full varIn, so for an N-stim CIF
+  `evalGradient(stimVal)` returns a 1x(N+1) matrix whose first column
+  is the partial wrt 'one' and the remaining columns are partials wrt
+  the stim symbols. Because `lambda = exp(beta * varIn)`, all partials
+  are scalar multiples of lambda — in particular the intercept and stim
+  columns are numerically identical (intercept is a constant
+  pass-through). evalJacobian similarly returns an (N+1)x(N+1) symmetric
+  block.
+- **Correct behavior:** Python's CIF.evalGradient and evalJacobian differentiate only wrt the
+  actual non-intercept stim variables — return shapes are 1xN and NxN.
+  This is the mathematically meaningful Jacobian (the intercept partial
+  is redundant / not used downstream). The v11 drift recipe compares
+  Python's NxN block against the top-left NxN sub-block of MATLAB's
+  (N+1)x(N+1) output. Bit-equivalent (max_abs ~ 5e-16) at strict
+  tolerance rtol=1e-10/atol=1e-12.
+- **Python implementation:**
+  - `nstat/cif.py: CIF.evalGradient / evalGradientLog / evalJacobian / evalJacobianLog`
+  - `tools/parity/numerical_drift.py: _recipe_v11_cif_eval{Gradient,GradientLog,Jacobian,JacobianLog}`
+- **Fixture impact:** `tests/parity/fixtures/matlab_gold/v11_cif_evalGradient.mat`,
+  `v11_cif_evalGradientLog.mat`, `v11_cif_evalJacobian.mat`,
+  `v11_cif_evalJacobianLog.mat` captured fresh in v11 iter 51A — store
+  MATLAB's full (N+1)-wide output for record; recipe slices.
+- **Discovered:** v11 iter 51A / 2026-06-19
+- **Upstream status:** not-fixed-upstream
+
+---
+
+### Stability: SignalObj.periodogram NFFT / window defaults differ between MATLAB and SciPy
+
+- **MATLAB location:** SignalObj.m:periodogram (MATLAB calls `pmtm`-adjacent default)
+- **Defect class:** Stability
+- **MATLAB behavior:** MATLAB's periodogram defaults to NFFT = max(256, 2*nextpow2(N)) and
+  its own Hann-window energy correction. For N=100 the bin count is 513
+  (one-sided), and the PSD scaling differs from SciPy's by the window
+  energy ratio.
+- **Correct behavior:** Python's SignalObj.periodogram (nstat/core.py:1692-1722) uses
+  NFFT = max(256, 2**nextpow2(N)) with SciPy's boxcar window and
+  'density' scaling. For N=100 this yields 129 one-sided bins. Peak
+  *locations* (in Hz) match MATLAB exactly (both find the 5 Hz tone),
+  but raw PSD magnitudes differ on every bin. The v11 drift recipe
+  therefore compares the dominant peak frequency between the two
+  spectra rather than the raw PSD vector. Observed drift after this
+  reframing: max_abs ~ 1e-1 Hz (one MATLAB-bin width at the higher
+  resolution); the binwidth-quantized peak is within 0.1 Hz of 5 Hz on
+  both sides — Case C tolerance rtol=1e-1/atol=1e-2.
+- **Python implementation:**
+  - `nstat/core.py:SignalObj.periodogram`
+  - `tools/parity/numerical_drift.py: _recipe_v11_signalobj_periodogram`
+- **Fixture impact:** `tests/parity/fixtures/matlab_gold/v11_signalobj_periodogram.mat`
+  captured fresh in v11 iter 51A — stores MATLAB's psd_data + freq
+  grids; recipe extracts argmax-based peak frequency only.
+- **Discovered:** v11 iter 51A / 2026-06-19
+- **Upstream status:** not-fixed-upstream
+
+---
+
+### Stability: v11 signalobj_xcorr rel_err diverges on the near-zero edge bins
+
+- **MATLAB location:** (not a MATLAB defect — comparison artefact)
+- **Defect class:** Stability
+- **MATLAB behavior:** MATLAB xcorr(x1, x2) and numpy.correlate(x1, x2, mode='full') produce
+  bit-equivalent outputs (max_abs ~ 2e-15, float64 round-off). The
+  cross-correlation has very small (near-zero) values at the long-lag
+  tails where one signal extends past the other's support; relative
+  error in those bins blows up to O(1) even though absolute error is
+  at float-epsilon.
+- **Correct behavior:** Tolerance for `v11_signalobj_xcorr` is relaxed to rtol=1e+1 / atol=1e-13
+  to absorb the small-value rel-error artefact while still flagging any
+  actual numerical drift. Absolute error remains float64 round-off.
+- **Python implementation:** `tools/parity/numerical_drift.py: _recipe_v11_signalobj_xcorr` (uses np.correlate mode='full')
+- **Fixture impact:** `tests/parity/fixtures/matlab_gold/v11_signalobj_xcorr.mat` captured
+  fresh in v11 iter 51A.
+- **Discovered:** v11 iter 51A / 2026-06-19
+- **Upstream status:** n/a
+
+---
+
+### Stability (port convention): CIF constructor's Xnames intercept entry must be a valid MATLAB identifier
+
+- **MATLAB location:** CIF.m:252-263 (constructor `cifObj.varIn` build)
+- **Defect class:** Stability (port convention)
+- **MATLAB behavior:** The CIF constructor builds a symbolic variable vector from `Xnames`
+  and evaluates `lambdaDelta = exp(beta*cifObj.varIn)`. If `Xnames`
+  contains '1' (the canonical intercept marker in the published nSTAT
+  docs), `sym('1')` returns a numeric symbol and the matrix product
+  errors with "Variable names must be valid MATLAB variable names" or
+  a downstream "Dimensions do not match". A 2026-06-19 in-file comment
+  states: "Callers must use valid variable names (e.g. 'one' not '1')
+  for the constant/intercept term."
+- **Correct behavior:** Capture scripts that build CIF objects for fixture recapture use
+  `{'one', 'x1', ...}` as Xnames. The Python `CIF` class does not have
+  this restriction — Python recipes can pass `['1','x1']` because they
+  do not roundtrip through MATLAB's `sym()`.
+- **Python implementation:** `tools/parity/matlab/export_v9_gold_fixtures.m` `export_v9_PPDecode_update_fixture` and `export_v9_PPHybridFilter_fixture`
+- **Fixture impact:** No fixture impact — capture-side convention only.
+- **Discovered:** v11 iter 50A / 2026-06-19
+- **Upstream status:** adopted-upstream
+- **Resolved in:** cajigaslab/nSTAT@main (post-2026-06-19, fix for #92)
+- **Resolved iter:** v11 mini-reconciliation / 2026-06-19
+- **Resolved notes:** Upstream merged the constructor sanitization. Both '1' and 'one' as Xnames[0] are now accepted. v11 mini-reconciliation confirmed: existing fixtures use 'one' and remain byte-identical.
+- **Upstream issue:** cajigaslab/nSTAT#92
+
+---
+
+### Bug (upstream MATLAB): SignalObj.autocorrelation broken by newer-MATLAB crosscorr API change
+
+- **MATLAB location:** @SignalObj/autocorrelation.m in cajigaslab/nSTAT@main
+- **Defect class:** Bug (upstream MATLAB)
+- **MATLAB behavior:** MATLAB's crosscorr (Econometrics Toolbox) changed from positional args (crosscorr(x,y,numLags,numSTD)) to name-value (crosscorr(x,y,NumLags=...,NumSTD=...)) in R2023b. SignalObj.autocorrelation used the legacy positional form and errored on newer MATLAB with 'Expected a string scalar or character vector for the parameter name'.
+- **Correct behavior:** Switch to name-value calling convention: [acf, lags, bounds] = crosscorr(self.data, self.data, NumLags=numLags, NumSTD=numSTD). Works back to R2019a and forward through current.
+- **Python implementation:** nstat/core.py SignalObj.autocorrelation
+- **Fixture impact:** v11 iter 51A capture script for v11_signalobj_xcorr used raw xcorr to work around. With upstream fix, future captures can use SignalObj.autocorrelation directly.
+- **Discovered:** v11 iter 51 / 2026-06-19
+- **Upstream status:** adopted-upstream
+- **Resolved in:** cajigaslab/nSTAT@main (post-2026-06-19, fix for #93)
+- **Resolved iter:** v11 mini-reconciliation / 2026-06-19
+- **Resolved notes:** Upstream merged the name-value crosscorr call. SignalObj.autocorrelation now works on R2024a+. v11 mini-reconciliation confirmed: existing v11_signalobj_xcorr.mat (captured via raw xcorr workaround) is byte-identical; future captures can use SignalObj.autocorrelation directly.
+- **Upstream issue:** cajigaslab/nSTAT#93
 
 ---
 

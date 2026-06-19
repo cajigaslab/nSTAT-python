@@ -1,4 +1,50 @@
 version: 1
+
+# Architectural exemptions for tools/parity/class_method_parity.py.
+#
+# Each MATLAB method listed below is removed from BOTH the LCS denominator
+# and the missing/extra accounting before scoring, because the Python port
+# expresses the same role through a different idiom.
+#
+# Schema:
+#   exemptions:
+#     <MatlabClassName>:
+#       - matlab_method: <name as it appears in classdef>
+#         python_equivalent: <name in the Python class or "N/A">
+#         reason: <one-line architectural justification>
+#
+# Keep entries narrow. Only exempt methods whose Python role is *fully*
+# satisfied by a different idiom that the scanner cannot infer (operator
+# overloads with no Python operator, property accessors that Python expresses
+# as @property, etc.). Do not exempt to paper over genuinely missing ports.
+exemptions:
+  SignalObj:
+    - matlab_method: transpose
+      python_equivalent: T (attribute) / __invert__ (ctranspose)
+      reason: |
+        MATLAB `transpose` (`.'`) has no Python operator. The conjugate
+        transpose (`ctranspose`, MATLAB `'`) maps to `__invert__`, and the
+        plain transpose is exposed as the `T` attribute on the Python class.
+  Covariate:
+    - matlab_method: get.mu
+      python_equivalent: mu (@property)
+      reason: |
+        MATLAB property getter `get.mu` is exposed in Python as a
+        `@property mu` on `Covariate`. Same role, different idiom.
+    - matlab_method: get.sigma
+      python_equivalent: sigma (@property)
+      reason: |
+        MATLAB property getter `get.sigma` is exposed in Python as a
+        `@property sigma` on `Covariate`. Same role, different idiom.
+  nstColl:
+    - matlab_method: get.uniqueNeuronNames
+      python_equivalent: uniqueNeuronNames (@property) / get(name=None)
+      reason: |
+        MATLAB property getter `get.uniqueNeuronNames` is exposed in Python
+        as a `@property uniqueNeuronNames` on `SpikeTrainCollection`, plus
+        an explicit `get(name=None)` method that mirrors the MATLAB
+        `nstColl.get` call site. Same role, different idiom.
+
 cases:
   - id: signalobj_basic
     class: nstat.SignalObj.SignalObj
