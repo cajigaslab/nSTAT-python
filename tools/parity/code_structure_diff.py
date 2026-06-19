@@ -84,6 +84,114 @@ DEFAULT_MATLAB_REPO = Path(
     os.environ.get("NSTAT_MATLAB_PATH", "/Users/iahncajigas/projects/nstat")
 )
 OUTPUT_DIR = REPO_ROOT / ".parity-review"
+EXEMPTIONS_PATH = REPO_ROOT / "parity" / "code_structure_exemptions.yml"
+
+
+@dataclass(frozen=True)
+class TopicExemption:
+    """Loaded exemption payload for one topic.
+
+    ``call_names`` are bare lowercase callable names that should be excluded
+    from BOTH the numerator and denominator across every section of the topic.
+
+    ``drop_sections`` are MATLAB section indices (1-based) whose entire body
+    should be excluded from scoring. Use for whole sections whose Python
+    equivalent runs inside a helper (so the notebook cell deliberately has a
+    different call shape).
+    """
+
+    call_names: frozenset[str]
+    drop_sections: frozenset[int]
+    # Map MATLAB section index -> tuple of additional Python section indices
+    # whose calls should be concatenated onto the paired Python section's
+    # call list before LCS alignment. Use when the MATLAB helpfile keeps a
+    # per-trial loop and a batch-summary block in one section while the
+    # Python port splits them into adjacent cells.
+    extend_pairs: dict[int, tuple[int, ...]]
+
+
+def _load_exemptions(path: Path = EXEMPTIONS_PATH) -> dict[str, TopicExemption]:
+    """Load per-topic call-name and section exemptions from a YAML file.
+
+    Returns a mapping ``{topic: TopicExemption}``. Missing file, missing
+    PyYAML, or a malformed payload all degrade gracefully to an empty dict.
+
+    The YAML schema is::
+
+        version: 1
+        topics:
+          <TopicName>:
+            # Per-call exemption (applies across every section of the topic):
+            - call: "<bare_call_name>"
+              reason: "<why this isn't drift>"
+            # Optional: drop entire MATLAB section from scoring:
+            - drop_section: <1-based-MATLAB-section-index>
+              reason: "<why this section has no Python mirror>"
+
+    Per-call exemptions are removed from BOTH the MATLAB call list and the
+    score denominator before LCS alignment runs. Per-section exemptions drop
+    the whole MATLAB section from scoring while still surfacing it in the
+    per-section report under an ``exempted section`` header.
+    """
+    if not path.exists():
+        return {}
+    try:
+        import yaml  # type: ignore[import-untyped]
+    except ImportError:  # pragma: no cover - PyYAML is a dev dep
+        print(
+            f"WARNING: PyYAML not installed; ignoring {path.name}.",
+            file=sys.stderr,
+        )
+        return {}
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as e:  # pragma: no cover - defensive
+        print(f"WARNING: failed to parse {path.name}: {e}", file=sys.stderr)
+        return {}
+    topics = payload.get("topics") or {}
+    out: dict[str, TopicExemption] = {}
+    for topic, entries in topics.items():
+        names: set[str] = set()
+        sections: set[int] = set()
+        extend: dict[int, tuple[int, ...]] = {}
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if isinstance(entry, dict):
+                if "call" in entry:
+                    names.add(str(entry["call"]).lower())
+                elif "drop_section" in entry:
+                    try:
+                        sections.add(int(entry["drop_section"]))
+                    except (TypeError, ValueError):
+                        continue
+                elif "extend_matlab_section" in entry:
+                    # Schema:
+                    #   - extend_matlab_section: <matlab_index>
+                    #     with_python_sections: [<idx>, <idx>, ...]
+                    try:
+                        m_idx = int(entry["extend_matlab_section"])
+                    except (TypeError, ValueError):
+                        continue
+                    raw_with = entry.get("with_python_sections") or []
+                    if not isinstance(raw_with, list):
+                        continue
+                    py_idxs: list[int] = []
+                    for v in raw_with:
+                        try:
+                            py_idxs.append(int(v))
+                        except (TypeError, ValueError):
+                            continue
+                    if py_idxs:
+                        extend[m_idx] = tuple(py_idxs)
+            elif isinstance(entry, str):
+                names.add(entry.lower())
+        out[str(topic)] = TopicExemption(
+            call_names=frozenset(names),
+            drop_sections=frozenset(sections),
+            extend_pairs=extend,
+        )
+    return out
 
 
 # ----------------------------------------------------------------------------
@@ -121,6 +229,7 @@ class AlignedPair:
     matched: list[tuple[Call, Call]] = field(default_factory=list)
     matlab_only: list[Call] = field(default_factory=list)
     python_only: list[Call] = field(default_factory=list)
+    exempted: list[Call] = field(default_factory=list)
 
 
 # ----------------------------------------------------------------------------
@@ -180,10 +289,16 @@ FUZZY_ALIASES: dict[str, str] = {
     "figure": "figure",
     "savefig": "savefig",
     "saveas": "savefig",
-    # Random helpers
+    # Random helpers — MATLAB rand/randn/randi vs NumPy new-style Generator
+    # methods (rng.random / rng.standard_normal / rng.integers). Collapse both
+    # families to a canonical "rand" / "randn" / "randi" token so the call
+    # sequences line up under LCS without forcing notebook reorders.
     "rand": "rand",
+    "random": "rand",                # rng.random / np.random.random
     "randn": "randn",
+    "standard_normal": "randn",      # rng.standard_normal
     "randi": "randi",
+    "integers": "randi",             # rng.integers
     # ndarray creation
     "linspace": "linspace",
     "logspace": "logspace",
@@ -341,6 +456,14 @@ def parse_matlab_helpfile(path: Path) -> list[Section]:
     A section opens on a line that *starts* (after optional whitespace) with
     ``%%`` and the first non-blank text after the marker is the title. All
     subsequent lines, until the next ``%%`` or EOF, form the section body.
+
+    MATLAB helpfiles commonly insert untitled ``%%`` markers to break a
+    semantically continuous block into multiple cells (for the Publish
+    formatter — block diagrams, LaTeX equations, single-statement code
+    cells). These untitled sections are *merged into the preceding titled
+    section* before scoring, so the Python notebook only needs to track
+    the higher-level titled blocks. If untitled sections appear before the
+    first titled one, they are dropped (MATLAB-only scaffolding).
     """
     text = path.read_text(encoding="utf-8", errors="replace")
     lines = text.splitlines()
@@ -375,6 +498,55 @@ def parse_matlab_helpfile(path: Path) -> list[Section]:
     return sections
 
 
+# Heuristic threshold: an "untitled" MATLAB section with more than this many
+# call sites is treated as a logically distinct section rather than a Publish
+# typesetting cell. Real typesetting cells (block diagrams, equation displays)
+# have 0–2 calls; substantive code blocks routinely exceed 10.
+_UNTITLED_MERGE_CALL_THRESHOLD = 5
+
+
+def _merge_untitled_into_previous(sections: list[Section]) -> list[Section]:
+    """Fold *small* ``(untitled section)`` blocks into the preceding titled section.
+
+    MATLAB Publish uses bare ``%%`` markers to break the rendered helpfile
+    into typesetting cells (block diagrams, equation displays, single
+    `TrialConfig({...})` lines). These don't correspond to logical Python
+    notebook sections — the Python port groups them under the parent
+    titled block.
+
+    HOWEVER, some helpfiles use a bare ``%%`` to start a substantive
+    code block (e.g. DecodingExample.m line 52 begins the decode stage
+    with just ``%% `` and a markdown intro, then ~28 call sites). Those
+    blocks are logically distinct and the Python port keeps them as their
+    own ``# SECTION N:`` cell — merging them here just hides parity.
+
+    Heuristic: an untitled section with more than
+    :data:`_UNTITLED_MERGE_CALL_THRESHOLD` calls is kept as its own section
+    (re-titled ``"(untitled section)"``); smaller ones are merged into the
+    preceding titled section as before. Untitled sections before the
+    first titled block are always dropped.
+
+    The returned list re-indexes sections starting at 1.
+    """
+    merged: list[Section] = []
+    for sec in sections:
+        if sec.title == "(untitled section)":
+            if len(sec.calls) > _UNTITLED_MERGE_CALL_THRESHOLD:
+                # Substantive untitled block — keep as its own section.
+                merged.append(
+                    Section(index=len(merged) + 1, title=sec.title, calls=list(sec.calls))
+                )
+                continue
+            if merged:
+                # Small typesetting block — append calls to previous section.
+                merged[-1].calls.extend(sec.calls)
+            # else: drop (no previous titled section to attach to).
+            continue
+        # Reindex into the merged list to keep ordinals contiguous.
+        merged.append(Section(index=len(merged) + 1, title=sec.title, calls=list(sec.calls)))
+    return merged
+
+
 def _extract_matlab_calls(body: str) -> list[Call]:
     """Pull function-call sites from a MATLAB section body."""
     cleaned = _strip_matlab_noise(body)
@@ -399,7 +571,14 @@ _SECTION_HEADER_RE = re.compile(r"^\s*#\s*SECTION\s+(\d+)\s*:\s*(.*?)\s*$", re.I
 
 
 def parse_python_notebook(path: Path) -> list[Section]:
-    """Walk a notebook, capturing ``# SECTION N: <title>`` code cells."""
+    """Walk a notebook, capturing ``# SECTION N: <title>`` code cells.
+
+    Untitled SECTION cells (header is just ``# SECTION N:`` with no title text)
+    are merged into the preceding titled section — symmetric to the MATLAB
+    parser's handling of bare ``%%`` markers. This lets a Python notebook
+    that splits a MATLAB-titled block across multiple sub-cells align with
+    the single MATLAB titled section.
+    """
     nb = nbformat.read(path, as_version=4)
     sections: list[Section] = []
     for cell in nb.cells:
@@ -435,10 +614,21 @@ def _extract_python_calls(src: str) -> list[Call]:
         # Cell may contain a partial/illegal snippet; skip rather than crash.
         return []
 
+    # Collect Call nodes with their (line, col) source positions so we can
+    # emit them in source order. ast.walk yields nodes in BFS order, which
+    # interleaves nested vs top-level calls and ruins the LCS alignment when
+    # the same line contains several calls (e.g. ``float(np.max(x))`` walks
+    # float, then max, but BFS-walk yields max first if float is the parent).
+    # Sorting by (lineno, col_offset) restores left-to-right source order.
+    nodes: list[ast.Call] = [
+        n for n in ast.walk(tree) if isinstance(n, ast.Call)
+    ]
+    nodes.sort(
+        key=lambda n: (getattr(n, "lineno", 0), getattr(n, "col_offset", 0))
+    )
+
     calls: list[Call] = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
+    for node in nodes:
         raw = _format_call_target(node.func)
         if raw is None:
             continue
@@ -489,14 +679,27 @@ def align_sections(
 
     py_norm = {p.index: _normalize_title(p.title) for p in python}
 
+    def _is_untitled(norm: str) -> bool:
+        """True if the normalized title is empty or 'untitled section'."""
+        return norm == "" or norm == "untitled section"
+
     for m_sec in matlab:
         m_norm = _normalize_title(m_sec.title)
+        m_untitled = _is_untitled(m_norm)
         best_idx: int | None = None
         best_score = 0.55  # minimum acceptance threshold
         for p_sec in python:
             if p_sec.index in py_used:
                 continue
-            ratio = difflib.SequenceMatcher(None, m_norm, py_norm[p_sec.index]).ratio()
+            p_norm = py_norm[p_sec.index]
+            # Special case: untitled MATLAB and untitled/empty Python sections
+            # should pair by ordinal proximity rather than by title similarity
+            # (both normalize to similar tokens but SequenceMatcher rates the
+            # 'untitled section' literal vs '' at ratio 0.0).
+            if m_untitled and _is_untitled(p_norm):
+                ratio = 0.8
+            else:
+                ratio = difflib.SequenceMatcher(None, m_norm, py_norm[p_sec.index]).ratio()
             # Mild ordinal-proximity tiebreaker (max ±0.05 bonus).
             ord_bonus = max(0.0, 0.05 - 0.01 * abs(m_sec.index - p_sec.index))
             score = ratio + ord_bonus
@@ -575,9 +778,20 @@ class TopicResult:
 
 
 def diff_topic(
-    topic: str, matlab_repo: Path, notebooks_dir: Path
+    topic: str, matlab_repo: Path, notebooks_dir: Path,
+    exemptions: dict[str, TopicExemption] | None = None,
 ) -> TopicResult:
-    """Compute the section-aligned call-match score for one topic."""
+    """Compute the section-aligned call-match score for one topic.
+
+    ``exemptions`` is the result of :func:`_load_exemptions`. Any MATLAB call
+    whose bare (lowercased) name is in ``exemptions[topic]`` is dropped from
+    both the MATLAB call list and the score denominator BEFORE LCS alignment,
+    on the principle that those calls have no Python equivalent (handle
+    graphics, filesystem helpers, MATLAB-specific user-variable indexing
+    mis-detected as calls, etc.). The dropped calls are still surfaced in
+    the per-section report under the ``exempted`` heading so reviewers can
+    audit them.
+    """
     m_path = matlab_repo / "helpfiles" / f"{topic}.m"
     n_path = notebooks_dir / f"{topic}.ipynb"
     if not m_path.exists():
@@ -590,18 +804,75 @@ def diff_topic(
 
     pairs = align_sections(matlab_sections, python_sections)
 
+    exempt_names: frozenset[str] = frozenset()
+    drop_sections: frozenset[int] = frozenset()
+    extend_pairs: dict[int, tuple[int, ...]] = {}
+    if exemptions:
+        topic_exempt = exemptions.get(topic)
+        if topic_exempt is not None:
+            exempt_names = topic_exempt.call_names
+            drop_sections = topic_exempt.drop_sections
+            extend_pairs = topic_exempt.extend_pairs
+
+    # Build a quick lookup of Python sections by index for extension splicing.
+    python_by_index = {p.index: p for p in python_sections}
+
     total_calls = 0
     matched_total = 0
     for pair in pairs:
-        m_calls = pair.matlab.calls
-        total_calls += len(m_calls)
-        if pair.python is None:
-            pair.matlab_only = list(m_calls)
+        # Whole-section drop: surface every call as exempted, skip scoring.
+        # Use for MATLAB sections whose Python equivalent runs inside a
+        # helper so the cell deliberately has a different call shape.
+        if pair.matlab.index in drop_sections:
+            pair.exempted = list(pair.matlab.calls)
+            pair.matlab_only = []
             continue
-        matched, mo, po = lcs_call_match(m_calls, pair.python.calls)
+        # An exemption entry may match either the bare call name
+        # (e.g. "find"), the full raw dotted form (e.g. "epsc2.data"), or
+        # the fuzzy canonical form (e.g. "imagesc" → "imshow"). All
+        # comparisons are lower-cased.
+        def _is_exempt(c: Call) -> bool:
+            return (
+                c.name.lower() in exempt_names
+                or c.raw.lower() in exempt_names
+                or canonicalize(c.raw) in exempt_names
+            )
+
+        if pair.python is None:
+            # No Python pair — every MATLAB call is unmatched. Drop the
+            # exempted ones from the denominator entirely.
+            exempted_calls = [c for c in pair.matlab.calls if _is_exempt(c)]
+            kept_calls = [c for c in pair.matlab.calls if not _is_exempt(c)]
+            pair.exempted = exempted_calls
+            pair.matlab_only = list(kept_calls)
+            total_calls += len(kept_calls)
+            continue
+
+        # Optionally extend the Python side with calls from additional
+        # Python sections (concatenated in order) before LCS alignment.
+        # Use when the MATLAB helpfile keeps both a per-trial loop and
+        # a batch-summary block in one section while the Python port
+        # splits them across adjacent cells.
+        py_calls: list[Call] = list(pair.python.calls)
+        for idx in extend_pairs.get(pair.matlab.index, ()):
+            extra = python_by_index.get(idx)
+            if extra is not None and extra.index != pair.python.index:
+                py_calls.extend(extra.calls)
+
+        # Two-phase exemption for paired sections: run LCS over ALL MATLAB
+        # calls so matched occurrences of high-volume primitives (set,
+        # figure, subplot, etc.) still score as parity wins where Python
+        # has them. Then drop EXEMPT calls only from the unmatched residue.
+        # An exempted call neither helps when matched (it would have
+        # matched anyway) nor hurts when unmatched.
+        matched, mo, po = lcs_call_match(pair.matlab.calls, py_calls)
+        exempted_residue = [c for c in mo if _is_exempt(c)]
+        kept_mo = [c for c in mo if not _is_exempt(c)]
         pair.matched = matched
-        pair.matlab_only = mo
+        pair.matlab_only = kept_mo
         pair.python_only = po
+        pair.exempted = exempted_residue
+        total_calls += len(matched) + len(kept_mo)
         matched_total += len(matched)
 
     paired_py_indices = {p.python.index for p in pairs if p.python is not None}
@@ -773,9 +1044,10 @@ def main(argv: list[str] | None = None) -> int:
     else:
         topics = IN_SCOPE_TOPICS
 
+    exemptions = _load_exemptions()
     results: list[TopicResult] = []
     for t in topics:
-        result = diff_topic(t, args.matlab_repo, args.notebooks_dir)
+        result = diff_topic(t, args.matlab_repo, args.notebooks_dir, exemptions)
         results.append(result)
         report_path = write_topic_report(result, args.output_dir)
         if result.error:
