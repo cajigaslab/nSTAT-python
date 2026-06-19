@@ -481,6 +481,12 @@ entries:
   fixture_impact: Existing fixture `tests/parity/fixtures/matlab_gold/pplfp_SE.mat`
     reused; no refresh required.
   discovered: iter 34 / 2026-06-18
+  upstream_status: adopted-upstream
+  resolved_in: 'cajigaslab/nSTAT@main + nstat-python MatlabRNG + #99 fix'
+  resolved_iter: v13 iter 60/61 / 2026-06-19
+  resolved_notes: 'v13 iter 60: seeded_global_rng(42) makes Python MC deterministic.
+    v13 iter 61: #99 fix (matlabpool→parpool) lets SE recapture run end-to-end; fixture
+    refreshed (numerically identical). Drift max_abs=1.158e-05 PASS.'
 - id: pplfp-em-pending-fixture
   title: PPLFP_EM baseline .mat absent and downstream MStep/EStep glue still drifting
     — numerical drift unverified
@@ -595,6 +601,12 @@ entries:
   - '`parity/numerical_drift_spec.yml` entries `v9_PPSS_EM`, `v9_PPSS_EStep`'
   fixture_impact: no fixture impact — tolerance only
   discovered: iter 40 / 2026-06-19
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@main + nstat-python MatlabRNG wiring
+  resolved_iter: v13 iter 60/61 / 2026-06-19
+  resolved_notes: 'v13 iter 60: routed through seeded_global_rng(42) — output now
+    deterministic. atol tightened 1e+0 → 0.1 (10×). Full strict tolerance requires
+    Ziggurat port (deferred).'
 - id: v9-iter40-pphybrid-mc-envelope
   title: v9 PPHybridFilter / PPHybridFilterLinear — multi-CIF MC envelope
   defect_class: Case C (stability / tolerance relaxation)
@@ -1002,13 +1014,19 @@ entries:
     '
   discovered: iter 49 / 2026-06-19
   upstream_issue: cajigaslab/nSTAT#90
-  upstream_status: adopted-upstream
+  upstream_status: filed (recapture-blocked at iter 61)
   resolved_in: 'cajigaslab/nSTAT@main (post-2026-06-19, fix for #90)'
   resolved_iter: v11 mini-reconciliation / 2026-06-19
   resolved_notes: 'Upstream merged the K=size(dN,2) fix. pplfp_EM now runs end-to-end
     on rectangular dN. v11 mini-reconciliation confirmed: existing fixture values
     byte-identical (the original capture used numCells==K_time and dodged the bug);
-    future recaptures with rectangular dN now succeed.'
+    future recaptures with rectangular dN now succeed.
+
+
+    v13 iter 61 update: SE recapture succeeds against the user''s #99-fixed checkout;
+    pplfp_EM recapture STILL FAILS with the same matmul error #98 was filed for. Either
+    #98 not yet merged in this checkout, or a different downstream regression. Committed
+    pplfp_EM.mat remains valid; Python drift continues to PASS.'
 - id: pplfp-se-recipe-rebaseline
   title: PPLFP_ComputeParamStandardErrors gold fixture re-baselined under rng(42)
   defect_class: Case D (fixture provenance recovery)
@@ -1061,6 +1079,11 @@ entries:
 
     '
   discovered: iter 49 / 2026-06-19
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@main + nstat-python v13 iter 61 recapture
+  resolved_iter: v13 iter 60/61 / 2026-06-19
+  resolved_notes: 'v13 iter 61: SE recapture against #99-fixed MATLAB succeeded. Fixture
+    is byte-fresh; values unchanged.'
 - id: v11-iter50d-fit-signalobj-history-rebaseline
   title: v11 iter 50D — fit/SignalObj/History v9 fixtures rebaselined from canonical
     MATLAB recipes

@@ -276,6 +276,10 @@ Schema for each entry:
   - `parity/numerical_drift_spec.yml` entry `PPLFP_ComputeParamStandardErrors` checks the deterministic `SE.alpha` field at `rtol=1e-4`; MC-dependent fields are intentionally not regression-tested.
 - **Fixture impact:** Existing fixture `tests/parity/fixtures/matlab_gold/pplfp_SE.mat` reused; no refresh required.
 - **Discovered:** iter 34 / 2026-06-18
+- **Upstream status:** adopted-upstream
+- **Resolved in:** cajigaslab/nSTAT@main + nstat-python MatlabRNG + #99 fix
+- **Resolved iter:** v13 iter 60/61 / 2026-06-19
+- **Resolved notes:** v13 iter 60: seeded_global_rng(42) makes Python MC deterministic. v13 iter 61: #99 fix (matlabpool→parpool) lets SE recapture run end-to-end; fixture refreshed (numerically identical). Drift max_abs=1.158e-05 PASS.
 
 ---
 
@@ -335,6 +339,10 @@ Schema for each entry:
   - `parity/numerical_drift_spec.yml` entries `v9_PPSS_EM`, `v9_PPSS_EStep`
 - **Fixture impact:** no fixture impact — tolerance only
 - **Discovered:** iter 40 / 2026-06-19
+- **Upstream status:** adopted-upstream
+- **Resolved in:** cajigaslab/nSTAT@main + nstat-python MatlabRNG wiring
+- **Resolved iter:** v13 iter 60/61 / 2026-06-19
+- **Resolved notes:** v13 iter 60: routed through seeded_global_rng(42) — output now deterministic. atol tightened 1e+0 → 0.1 (10×). Full strict tolerance requires Ziggurat port (deferred).
 
 ---
 
@@ -580,10 +588,12 @@ Schema for each entry:
   with `max|err|=1.417e-01` against Case-C tolerance
   `rtol=1e+1, atol=1e+0`.
 - **Discovered:** iter 49 / 2026-06-19
-- **Upstream status:** adopted-upstream
+- **Upstream status:** filed (recapture-blocked at iter 61)
 - **Resolved in:** cajigaslab/nSTAT@main (post-2026-06-19, fix for #90)
 - **Resolved iter:** v11 mini-reconciliation / 2026-06-19
 - **Resolved notes:** Upstream merged the K=size(dN,2) fix. pplfp_EM now runs end-to-end on rectangular dN. v11 mini-reconciliation confirmed: existing fixture values byte-identical (the original capture used numCells==K_time and dodged the bug); future recaptures with rectangular dN now succeed.
+
+  v13 iter 61 update: SE recapture succeeds against the user's #99-fixed checkout; pplfp_EM recapture STILL FAILS with the same matmul error #98 was filed for. Either #98 not yet merged in this checkout, or a different downstream regression. Committed pplfp_EM.mat remains valid; Python drift continues to PASS.
 - **Upstream issue:** cajigaslab/nSTAT#90
 
 ---
@@ -616,6 +626,10 @@ Schema for each entry:
   iter 49. Drift detector PPLFP_ComputeParamStandardErrors PASSes at
   existing Case-C tolerance with substantially tighter drift margin.
 - **Discovered:** iter 49 / 2026-06-19
+- **Upstream status:** adopted-upstream
+- **Resolved in:** cajigaslab/nSTAT@main + nstat-python v13 iter 61 recapture
+- **Resolved iter:** v13 iter 60/61 / 2026-06-19
+- **Resolved notes:** v13 iter 61: SE recapture against #99-fixed MATLAB succeeded. Fixture is byte-fresh; values unchanged.
 
 ---
 

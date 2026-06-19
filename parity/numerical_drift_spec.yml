@@ -135,11 +135,14 @@ entries:
   # (~30 lines of work, deferred to v13). v11 iter 54 profiling confirmed
   # the current tolerance covers the documented ~O(1/sqrt(mcIter))
   # envelope. The MC-envelope status is permanent at v12.
+  # v13 iter 60: recipe wrapped in seeded_global_rng(42) — Python output is
+  # now deterministic run-to-run. Box-Muller vs MATLAB Ziggurat keeps abs
+  # error ~0.5 on betahat_new; atol tightened 1e+1 → 1.0 (10× win).
   - name: PPLFP_MStep
     recipe: pplfp_mstep
     fixture: tests/parity/fixtures/matlab_gold/pplfp_MStep.mat
     output_field: betahat_new
-    tolerance: { rtol: 1.0e+1, atol: 1.0e+1 }
+    tolerance: { rtol: 1.0e+1, atol: 1.0 }
 
   # 13. PPLFP.PPLFP_EStep — E-step of the PPLFP EM algorithm. Forward filter
   # + RTS smoother + sufficient statistics + complete-data lower bound.
@@ -172,11 +175,14 @@ entries:
   # PPLFP_Decode_update lines 328/357 that now blocks PPLFP_EM recapture
   # end-to-end; the committed pplfp_EM.mat is therefore preserved verbatim
   # and Python drift continues to PASS against it.
+  # v13 iter 60: recipe wrapped in seeded_global_rng(42) — Python output is
+  # now deterministic. atol tightened 1e+0 → 0.5 (2× win) reflecting the
+  # actual ~0.12 max_abs envelope of the EM driver under MatlabRNG seeding.
   - name: PPLFP_EM
     recipe: pplfp_em
     fixture: tests/parity/fixtures/matlab_gold/pplfp_EM.mat
     output_field: xKFinal
-    tolerance: { rtol: 1.0e+1, atol: 1.0e+0 }
+    tolerance: { rtol: 1.0e+1, atol: 0.5 }
 
   # v9 iter 40 — recipe-backed entries for the 22 v9_* captures.
   # Each entry's recipe is defined in tools/parity/numerical_drift.py.
@@ -194,11 +200,14 @@ entries:
   # numpy.random.MT19937 with a matching seed (deferred to v13). Current
   # tolerance covers the documented ~O(1/sqrt(mcIter)) envelope. Status
   # is permanent at v12 — see v9-iter40-ppss-rng-drift in matlab_defects.yml.
+  # v13 iter 60: recipe wrapped in seeded_global_rng(42) — Python output is
+  # now deterministic. atol tightened 1e+0 → 0.1 (10× win) reflecting the
+  # actual ~0.035 max_abs envelope under MatlabRNG seeding.
   - name: v9_PPSS_EM
     recipe: v9_ppss_em
     fixture: tests/parity/fixtures/matlab_gold/v9_PPSS_EM.mat
     output_field: xKFinal
-    tolerance: { rtol: 1.0e+1, atol: 1.0e+0 }
+    tolerance: { rtol: 1.0e+1, atol: 0.1 }
 
   # v9_PPSS_EStep: small absolute drift (~3e-2) but baseline values are tiny
   # → rel_err diverges. Case C: state-space EM EStep is iteration-history /

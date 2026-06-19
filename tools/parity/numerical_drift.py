@@ -365,8 +365,16 @@ def _recipe_pplfp_mstep(fixture: dict[str, Any], _args: dict[str, Any]) -> tuple
     statistics. We reconstitute them by calling PPLFP_EStep first, then
     pass the resulting ExpectationSums dict to PPLFP_MStep. This mirrors
     how MATLAB's capture script chained the two calls.
+
+    v13 iter 60: the call is wrapped in ``seeded_global_rng(42)`` which
+    seeds the legacy ``np.random`` global state AND monkey-patches
+    ``np.random.default_rng`` to return a deterministically-seeded
+    Generator. This makes the Python-side McExp Monte-Carlo draws
+    reproducible run-to-run (still not bit-equivalent to MATLAB's
+    Ziggurat-based ``normrnd``, but the Python output is now stable).
     """
     from nstat.decoding.PPLFP import PPLFP
+    from nstat.extras.matlab_rng import seeded_global_rng
 
     dN_arr = _as_float_array(fixture["dN"])
     num_cells, K = dN_arr.shape if dN_arr.ndim == 2 else (1, dN_arr.size)
@@ -407,22 +415,23 @@ def _recipe_pplfp_mstep(fixture: dict[str, Any], _args: dict[str, Any]) -> tuple
     # GLM path (see matlab_defects.yml entry pplfp-mstep-fixture-missing).
     # The Newton-Raphson branch is the same MATLAB code path used to
     # capture the baseline.
-    result = PPLFP.PPLFP_MStep(
-        dN_arr,
-        _as_float_array(fixture["y"]),
-        x_K,
-        W_K,
-        _vector(fixture, "x0"),
-        _as_float_array(fixture["Px0"]),
-        es,
-        _string(fixture, "fitType"),
-        _vector(fixture, "mu"),
-        _as_float_array(fixture["beta"]),
-        gamma_vec,
-        None,  # windowTimes
-        HkAll,
-        MstepMethod="NewtonRaphson",
-    )
+    with seeded_global_rng(42):
+        result = PPLFP.PPLFP_MStep(
+            dN_arr,
+            _as_float_array(fixture["y"]),
+            x_K,
+            W_K,
+            _vector(fixture, "x0"),
+            _as_float_array(fixture["Px0"]),
+            es,
+            _string(fixture, "fitType"),
+            _vector(fixture, "mu"),
+            _as_float_array(fixture["beta"]),
+            gamma_vec,
+            None,  # windowTimes
+            HkAll,
+            MstepMethod="NewtonRaphson",
+        )
     # Return order: Ahat, Qhat, Chat, Rhat, alphahat,
     #               muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
     betahat_new = _as_float_array(result[6])
@@ -431,8 +440,15 @@ def _recipe_pplfp_mstep(fixture: dict[str, Any], _args: dict[str, Any]) -> tuple
 
 
 def _recipe_pplfp_em(fixture: dict[str, Any], _args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
-    """PPLFP_EM — compare final smoothed state ``xKFinal``."""
+    """PPLFP_EM — compare final smoothed state ``xKFinal``.
+
+    v13 iter 60: wrapped in ``seeded_global_rng(42)`` so the per-iter
+    MStep Monte-Carlo draws are reproducible run-to-run.  Still not
+    bit-equivalent to MATLAB normrnd Ziggurat (see matlab_rng module
+    docstring) — but Python output is now deterministic.
+    """
     from nstat.decoding.PPLFP import PPLFP
+    from nstat.extras.matlab_rng import seeded_global_rng
 
     # NewtonRaphson branch — see PPLFP_MStep recipe for rationale.
     # Constraints: hold x0 / Px0 fixed during EM to avoid Px0 driving
@@ -443,23 +459,24 @@ def _recipe_pplfp_em(fixture: dict[str, Any], _args: dict[str, Any]) -> tuple[np
         EstimateA=1, AhatDiag=0, QhatDiag=1, RhatDiag=1,
         Estimatex0=0, EstimatePx0=0, mcIter=int(fixture.get("mcIter", 50)),
     )
-    out = PPLFP.PPLFP_EM(
-        _as_float_array(fixture["y"]),
-        _as_float_array(fixture["dN"]),
-        _as_float_array(fixture["Ahat0"]),
-        _as_float_array(fixture["Qhat0"]),
-        _as_float_array(fixture["Chat0"]),
-        _as_float_array(fixture["Rhat0"]),
-        _vector(fixture, "alphahat0"),
-        _vector(fixture, "mu"),
-        _as_float_array(fixture["beta"]),
-        fitType=_string(fixture, "fitType"),
-        delta=_scalar(fixture, "delta"),
-        x0=_vector(fixture, "x0"),
-        Px0=_as_float_array(fixture["Px0"]),
-        PPLFP_EM_Constraints=constraints,
-        MstepMethod="NewtonRaphson",
-    )
+    with seeded_global_rng(42):
+        out = PPLFP.PPLFP_EM(
+            _as_float_array(fixture["y"]),
+            _as_float_array(fixture["dN"]),
+            _as_float_array(fixture["Ahat0"]),
+            _as_float_array(fixture["Qhat0"]),
+            _as_float_array(fixture["Chat0"]),
+            _as_float_array(fixture["Rhat0"]),
+            _vector(fixture, "alphahat0"),
+            _vector(fixture, "mu"),
+            _as_float_array(fixture["beta"]),
+            fitType=_string(fixture, "fitType"),
+            delta=_scalar(fixture, "delta"),
+            x0=_vector(fixture, "x0"),
+            Px0=_as_float_array(fixture["Px0"]),
+            PPLFP_EM_Constraints=constraints,
+            MstepMethod="NewtonRaphson",
+        )
     xKFinal = out[0]
     return _as_float_array(xKFinal), _as_float_array(fixture["xKFinal"])
 
@@ -713,7 +730,12 @@ def _recipe_v9_ppss_mstep(fixture, _args):
 
 
 def _recipe_v9_ppss_em(fixture, _args):
+    """v9 PPSS EM driver — wrapped in seeded_global_rng(42) for
+    run-to-run reproducible Python output.  See matlab_rng module
+    docstring (v13 iter 60).
+    """
     from nstat.decoding_algorithms import DecodingAlgorithms
+    from nstat.extras.matlab_rng import seeded_global_rng
     A = _as_float_array(fixture["A"])
     Q0 = _as_float_array(fixture["Q0"]).reshape(-1)
     x0 = _vector(fixture, "x0")
@@ -724,7 +746,8 @@ def _recipe_v9_ppss_em(fixture, _args):
     wt = _vector(fixture, "windowTimes")
     numBasis = int(_scalar(fixture, "numBasis"))
     HkAll = fixture["HkAll"]
-    out = DecodingAlgorithms.PPSS_EM(A, Q0, x0, dN, fitType, delta, gamma0, wt, numBasis, HkAll)
+    with seeded_global_rng(42):
+        out = DecodingAlgorithms.PPSS_EM(A, Q0, x0, dN, fitType, delta, gamma0, wt, numBasis, HkAll)
     xKFinal = _as_float_array(out[0])
     return xKFinal, _as_float_array(fixture["xKFinal"])
 
