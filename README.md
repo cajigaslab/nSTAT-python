@@ -88,6 +88,25 @@ from nstat.data_manager import ensure_example_data
 data_dir = ensure_example_data(download=True)
 ```
 
+### Performance — Numba opt-in (v0.5.6+)
+
+For the two hot per-step filter paths, an opt-in Numba JIT closes
+the last performance gaps vs. MATLAB:
+
+```bash
+python -m pip install nstat-toolbox[numba]
+```
+
+Once Numba is installed, `DecodingAlgorithms.PPDecodeFilterLinear` and
+`DecodingAlgorithms.kalman_filter` route through JIT'd kernels
+transparently — 14× and 20× faster than MATLAB respectively on the
+maintainer's M2 Max baseline. Default install is unchanged; the JIT
+path is dual-mode tested in CI to preserve bit-equivalence against
+the gold-fixture suite.
+
+`docs/parity/runbook.md` documents the 10-path performance baseline
+and the workflow for re-timing after a code change.
+
 ## Concepts learning track
 
 A 15-page didactic track that teaches the neuroscience and statistics behind
