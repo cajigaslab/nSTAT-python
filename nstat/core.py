@@ -389,6 +389,60 @@ class SignalObj:
             raise ValueError("Need the number of labels to match the number of dimensions of the SignalObj")
         self.dataLabels = labels
 
+    def setMinTime(self, minTime: float | None = None, holdVals: int = 0) -> None:
+        """Extend or trim the signal to start at *minTime*.
+
+        If *holdVals* is 1, endpoint values are held when extending;
+        otherwise the signal is zero-padded.
+        """
+        target = self.time[0] if minTime is None else float(minTime)
+        timeVec = self.getTime()
+        if target < float(np.min(timeVec)):
+            maxTime = float(np.max(timeVec))
+            dt = 1.0 / self.sampleRate
+            # MATLAB SignalObj.m:302 uses ``minTime:1/sampleRate:maxTime`` here.
+            # ``np.arange`` overshoots for stop values just below an integer
+            # multiple of dt; ``_matlab_colon`` matches MATLAB exactly.
+            newTime = _matlab_colon(target, dt, maxTime)
+            numSamples = int(newTime.size - timeVec.size)
+            if holdVals == 1:
+                pad = np.tile(self.data[0:1, :], (numSamples, 1))
+            else:
+                pad = np.zeros((numSamples, self.dimension), dtype=float)
+            self.data = np.vstack([pad, self.data])
+            self.time = newTime
+        elif target > float(np.min(timeVec)):
+            startIndex = self.findNearestTimeIndex(target)
+            self.time = self.time[startIndex:]
+            self.data = self.data[startIndex:, :]
+        self.minTime = float(np.min(self.time))
+
+    def setMaxTime(self, maxTime: float | None = None, holdVals: int = 0) -> None:
+        """Extend or trim the signal to end at *maxTime*.
+
+        If *holdVals* is 1, endpoint values are held when extending;
+        otherwise the signal is zero-padded.
+        """
+        target = self.time[-1] if maxTime is None else float(maxTime)
+        timeVec = self.getTime()
+        if float(np.max(timeVec)) < target:
+            minTime = float(np.min(timeVec))
+            n_samples = int(float(self.sampleRate) * (target - minTime) + 1.0)
+            n_samples = max(n_samples, timeVec.size)
+            newTime = np.linspace(minTime, target, n_samples, dtype=float)
+            numSamples = int(newTime.size - timeVec.size)
+            if holdVals == 1:
+                pad = np.tile(self.data[-1:, :], (numSamples, 1))
+            else:
+                pad = np.zeros((numSamples, self.dimension), dtype=float)
+            self.data = np.vstack([self.data, pad])
+            self.time = newTime
+        elif float(np.max(timeVec)) > target:
+            endIndex = self.findNearestTimeIndex(target) + 1
+            self.time = self.time[:endIndex]
+            self.data = self.data[:endIndex, :]
+        self.maxTime = float(np.max(self.time))
+
     def setPlotProps(self, plotProps: Sequence[Any] | str | None, index: int | None = None) -> None:
         """Set per-dimension Matplotlib format strings.
 
@@ -495,6 +549,21 @@ class SignalObj:
         """Return the original (pre-resample) data as a new ``SignalObj``."""
         return self._spawn(self.originalTime, self.originalData)
 
+    def getValueAt(self, x: Sequence[float] | float) -> np.ndarray:
+        """Return signal value(s) at time(s) *x* via nearest-neighbour lookup."""
+        query = np.asarray(x, dtype=float).reshape(-1)
+        out = np.zeros((query.size, self.dimension), dtype=float)
+        valid = (query >= self.minTime) & (query <= self.maxTime)
+        if np.any(valid):
+            q_valid = query[valid]
+            right = np.searchsorted(self.time, q_valid, side="left")
+            right = np.clip(right, 0, self.time.size - 1)
+            left = np.clip(right - 1, 0, self.time.size - 1)
+            choose_right = np.abs(self.time[right] - q_valid) <= np.abs(self.time[left] - q_valid)
+            indices = np.where(choose_right, right, left)
+            out[valid] = self.data[indices]
+        return out[0] if np.isscalar(x) else out
+
     def getPlotProps(self, index: int) -> Any:
         """Return the plot property for dimension *index* (0-based)."""
         idx = _coerce_zero_based_indices([index], self.dimension)[0]
@@ -565,21 +634,6 @@ class SignalObj:
                     result.append(int(item))
             return result
         return list(range(self.dimension))
-
-    def getValueAt(self, x: Sequence[float] | float) -> np.ndarray:
-        """Return signal value(s) at time(s) *x* via nearest-neighbour lookup."""
-        query = np.asarray(x, dtype=float).reshape(-1)
-        out = np.zeros((query.size, self.dimension), dtype=float)
-        valid = (query >= self.minTime) & (query <= self.maxTime)
-        if np.any(valid):
-            q_valid = query[valid]
-            right = np.searchsorted(self.time, q_valid, side="left")
-            right = np.clip(right, 0, self.time.size - 1)
-            left = np.clip(right - 1, 0, self.time.size - 1)
-            choose_right = np.abs(self.time[right] - q_valid) <= np.abs(self.time[left] - q_valid)
-            indices = np.where(choose_right, right, left)
-            out[valid] = self.data[indices]
-        return out[0] if np.isscalar(x) else out
 
     def _selector_to_zero_based(self, selectorArray: Sequence[int] | np.ndarray | None) -> np.ndarray:
         """Resolve a selector specification to a 0-based numpy index array.
@@ -673,60 +727,6 @@ class SignalObj:
     def findNearestTimeIndices(self, times: Sequence[float] | np.ndarray) -> np.ndarray:
         """Return 0-based indices of the samples nearest to each time in *times*."""
         return np.asarray([self.findNearestTimeIndex(value) for value in np.asarray(times, dtype=float).reshape(-1)], dtype=int)
-
-    def setMinTime(self, minTime: float | None = None, holdVals: int = 0) -> None:
-        """Extend or trim the signal to start at *minTime*.
-
-        If *holdVals* is 1, endpoint values are held when extending;
-        otherwise the signal is zero-padded.
-        """
-        target = self.time[0] if minTime is None else float(minTime)
-        timeVec = self.getTime()
-        if target < float(np.min(timeVec)):
-            maxTime = float(np.max(timeVec))
-            dt = 1.0 / self.sampleRate
-            # MATLAB SignalObj.m:302 uses ``minTime:1/sampleRate:maxTime`` here.
-            # ``np.arange`` overshoots for stop values just below an integer
-            # multiple of dt; ``_matlab_colon`` matches MATLAB exactly.
-            newTime = _matlab_colon(target, dt, maxTime)
-            numSamples = int(newTime.size - timeVec.size)
-            if holdVals == 1:
-                pad = np.tile(self.data[0:1, :], (numSamples, 1))
-            else:
-                pad = np.zeros((numSamples, self.dimension), dtype=float)
-            self.data = np.vstack([pad, self.data])
-            self.time = newTime
-        elif target > float(np.min(timeVec)):
-            startIndex = self.findNearestTimeIndex(target)
-            self.time = self.time[startIndex:]
-            self.data = self.data[startIndex:, :]
-        self.minTime = float(np.min(self.time))
-
-    def setMaxTime(self, maxTime: float | None = None, holdVals: int = 0) -> None:
-        """Extend or trim the signal to end at *maxTime*.
-
-        If *holdVals* is 1, endpoint values are held when extending;
-        otherwise the signal is zero-padded.
-        """
-        target = self.time[-1] if maxTime is None else float(maxTime)
-        timeVec = self.getTime()
-        if float(np.max(timeVec)) < target:
-            minTime = float(np.min(timeVec))
-            n_samples = int(float(self.sampleRate) * (target - minTime) + 1.0)
-            n_samples = max(n_samples, timeVec.size)
-            newTime = np.linspace(minTime, target, n_samples, dtype=float)
-            numSamples = int(newTime.size - timeVec.size)
-            if holdVals == 1:
-                pad = np.tile(self.data[-1:, :], (numSamples, 1))
-            else:
-                pad = np.zeros((numSamples, self.dimension), dtype=float)
-            self.data = np.vstack([self.data, pad])
-            self.time = newTime
-        elif float(np.max(timeVec)) > target:
-            endIndex = self.findNearestTimeIndex(target) + 1
-            self.time = self.time[:endIndex]
-            self.data = self.data[:endIndex, :]
-        self.maxTime = float(np.max(self.time))
 
     def merge(self, other: "SignalObj", holdVals: int = 0) -> "SignalObj":
         """Merge *other* signal columns into *self*.
@@ -912,6 +912,139 @@ class SignalObj:
         """Return ``True`` if any dimension is currently masked out."""
         return bool(np.any(self.dataMask == 0))
 
+    # TODO(parity): port MATLAB methods `plus`, `minus`, `uplus`, `uminus`,
+    # `times`, `mtimes`, `rdivide`, `ctranspose`, `transpose` from
+    # cajigaslab/nSTAT @ SignalObj.m (positions 21-32 in classdef).  The
+    # Python port currently routes these through dunder operators
+    # (`__add__`, `__sub__`, `__mul__`, `__matmul__`, `__truediv__`, `T`)
+    # rather than exposing the MATLAB method names directly.
+
+    def power(self, exponent: float) -> "SignalObj":
+        """Element-wise power ``data ** exponent`` (Matlab ``power``)."""
+        return self.__class__(
+            self.time.copy(),
+            np.power(self.data, float(exponent)),
+            f"{self.name}^{exponent}",
+            self.xlabelval,
+            self.xunits,
+            self.yunits,
+            list(self.dataLabels),
+            list(self.plotProps),
+        )
+
+    def sqrt(self) -> "SignalObj":
+        """Element-wise square root (Matlab ``sqrt``)."""
+        return self.power(0.5)
+
+    def derivative(self) -> "SignalObj":
+        """Return the per-sample forward-difference derivative.
+
+        Matches MATLAB ``SignalObj.m:761`` which is a method (called as
+        ``s.derivative()``), not a property.  The previous Python
+        implementation was a ``@property`` so MATLAB-ported code calling
+        ``sig.derivative()`` silently failed with ``TypeError: 'SignalObj'
+        object is not callable``.  This is now a regular method; access
+        ``sig.derivative()`` (with parentheses) to compute the derivative.
+        """
+        deriv = np.zeros_like(self.data, dtype=float)
+        if self.data.shape[0] > 1:
+            deriv[1:, :] = np.diff(self.data, axis=0) * float(self.sampleRate)
+        deriv[~np.isfinite(deriv)] = 0.0
+        labels = [f"d_{label}" if label else "" for label in self.dataLabels]
+        return self._spawn(self.time, deriv, data_labels=labels)
+
+    def derivativeAt(self, x0: Sequence[float] | float):
+        """Return the derivative value(s) at time(s) *x0*."""
+        deriv = self.derivative()
+        values = deriv.getValueAt(x0)
+        return values
+
+    def integral(self, t0: float | None = None, tf: float | None = None) -> "SignalObj":
+        """Cumulative integral of the signal from *t0* to *tf*.
+
+        Computed via a causal IIR accumulator:
+        ``y[n] = y[n-1] + x[n] * deltaT``.  If *t0* / *tf* are not
+        specified, ``minTime`` / ``maxTime`` are used.
+        """
+        start = self.minTime if t0 is None else float(t0)
+        stop = self.maxTime if tf is None else float(tf)
+        integrated = self.getSigInTimeWindow(start, stop)
+        dt = 1.0 / max(float(integrated.sampleRate), 1e-12)
+        integrated = integrated.filter([dt], [1.0, -1.0])
+        if integrated.yunits and integrated.xunits:
+            integrated.setYUnits(f"{integrated.yunits}*{integrated.xunits}")
+        elif integrated.xunits:
+            integrated.setYUnits(integrated.xunits)
+        dtstr = " d\\tau"
+        integrated.setName(f"\\int_{integrated.minTime:g}^{integrated.xlabelval[:1]}\\!\\!{{{integrated.name}{dtstr}}}")
+        labels_empty = all(not str(label) for label in integrated.dataLabels)
+        if not labels_empty:
+            updated_labels: list[str] = []
+            for label in self.dataLabels:
+                if label:
+                    updated_labels.append(f"\\int_{integrated.minTime:g}^{integrated.xlabelval[:1]}\\!\\!{{{label}{dtstr}}}")
+                else:
+                    updated_labels.append("")
+            integrated.setDataLabels(updated_labels)
+        return integrated
+
+    def filter(self, B, A=1) -> "SignalObj":
+        """Apply a causal IIR/FIR filter ``(B, A)`` to each dimension.
+
+        Equivalent to ``scipy.signal.lfilter(B, A, data)``.
+        """
+        try:
+            from scipy.signal import lfilter
+        except Exception as exc:  # pragma: no cover
+            raise ImportError("scipy is required for SignalObj.filter") from exc
+
+        b = np.asarray(B, dtype=float).reshape(-1)
+        a = np.asarray(A, dtype=float).reshape(-1)
+        filtered = np.column_stack([lfilter(b, a, self.data[:, index]) for index in range(self.dimension)])
+        return self._spawn(self.time, filtered, data_labels=list(self.dataLabels))
+
+    def filtfilt(self, B, A=1) -> "SignalObj":
+        """Apply a zero-phase IIR/FIR filter ``(B, A)`` to each dimension.
+
+        Equivalent to ``scipy.signal.filtfilt(B, A, data)``.
+        """
+        try:
+            from scipy.signal import filtfilt
+        except Exception as exc:  # pragma: no cover
+            raise ImportError("scipy is required for SignalObj.filtfilt") from exc
+
+        b = np.asarray(B, dtype=float).reshape(-1)
+        a = np.asarray(A, dtype=float).reshape(-1)
+        filtered = np.column_stack([filtfilt(b, a, self.data[:, index]) for index in range(self.dimension)])
+        return self._spawn(self.time, filtered, data_labels=list(self.dataLabels))
+
+    def makeCompatible(self, other: "SignalObj", holdVals: int = 0) -> tuple["SignalObj", "SignalObj"]:
+        if (
+            self.minTime == other.minTime
+            and self.maxTime == other.maxTime
+            and round(float(self.sampleRate), 9) == round(float(other.sampleRate), 9)
+            and self.time.shape == other.time.shape
+            and np.max(np.abs(self.time - other.time)) <= 1e-9
+        ):
+            return self, other
+
+        s1c = self.copySignal()
+        s2c = other.copySignal()
+        min_time = min(s1c.minTime, s2c.minTime)
+        max_time = max(s1c.maxTime, s2c.maxTime)
+        sample_rate = max(float(s1c.sampleRate), float(s2c.sampleRate))
+        s1c.setSampleRate(sample_rate)
+        s2c.setSampleRate(sample_rate)
+        s1c.setMinTime(min_time, holdVals)
+        s2c.setMinTime(min_time, holdVals)
+        s1c.setMaxTime(max_time, holdVals)
+        s2c.setMaxTime(max_time, holdVals)
+        s2c.data = _nearest_sample_matrix(s1c.time, s2c.time, s2c.data)
+        s2c.time = s1c.time.copy()
+        s2c.minTime = float(np.min(s2c.time))
+        s2c.maxTime = float(np.max(s2c.time))
+        return s1c, s2c
+
     def abs(self) -> "SignalObj":
         """Element-wise absolute value (Matlab ``abs``)."""
         labels = [f"|{label}|" if label else "" for label in self.dataLabels]
@@ -1087,115 +1220,6 @@ class SignalObj:
         self.minTime = float(np.min(newTime))
         self.maxTime = float(np.max(newTime))
 
-    def derivative(self) -> "SignalObj":
-        """Return the per-sample forward-difference derivative.
-
-        Matches MATLAB ``SignalObj.m:761`` which is a method (called as
-        ``s.derivative()``), not a property.  The previous Python
-        implementation was a ``@property`` so MATLAB-ported code calling
-        ``sig.derivative()`` silently failed with ``TypeError: 'SignalObj'
-        object is not callable``.  This is now a regular method; access
-        ``sig.derivative()`` (with parentheses) to compute the derivative.
-        """
-        deriv = np.zeros_like(self.data, dtype=float)
-        if self.data.shape[0] > 1:
-            deriv[1:, :] = np.diff(self.data, axis=0) * float(self.sampleRate)
-        deriv[~np.isfinite(deriv)] = 0.0
-        labels = [f"d_{label}" if label else "" for label in self.dataLabels]
-        return self._spawn(self.time, deriv, data_labels=labels)
-
-    def derivativeAt(self, x0: Sequence[float] | float):
-        """Return the derivative value(s) at time(s) *x0*."""
-        deriv = self.derivative()
-        values = deriv.getValueAt(x0)
-        return values
-
-    def integral(self, t0: float | None = None, tf: float | None = None) -> "SignalObj":
-        """Cumulative integral of the signal from *t0* to *tf*.
-
-        Computed via a causal IIR accumulator:
-        ``y[n] = y[n-1] + x[n] * deltaT``.  If *t0* / *tf* are not
-        specified, ``minTime`` / ``maxTime`` are used.
-        """
-        start = self.minTime if t0 is None else float(t0)
-        stop = self.maxTime if tf is None else float(tf)
-        integrated = self.getSigInTimeWindow(start, stop)
-        dt = 1.0 / max(float(integrated.sampleRate), 1e-12)
-        integrated = integrated.filter([dt], [1.0, -1.0])
-        if integrated.yunits and integrated.xunits:
-            integrated.setYUnits(f"{integrated.yunits}*{integrated.xunits}")
-        elif integrated.xunits:
-            integrated.setYUnits(integrated.xunits)
-        dtstr = " d\\tau"
-        integrated.setName(f"\\int_{integrated.minTime:g}^{integrated.xlabelval[:1]}\\!\\!{{{integrated.name}{dtstr}}}")
-        labels_empty = all(not str(label) for label in integrated.dataLabels)
-        if not labels_empty:
-            updated_labels: list[str] = []
-            for label in self.dataLabels:
-                if label:
-                    updated_labels.append(f"\\int_{integrated.minTime:g}^{integrated.xlabelval[:1]}\\!\\!{{{label}{dtstr}}}")
-                else:
-                    updated_labels.append("")
-            integrated.setDataLabels(updated_labels)
-        return integrated
-
-    def filter(self, B, A=1) -> "SignalObj":
-        """Apply a causal IIR/FIR filter ``(B, A)`` to each dimension.
-
-        Equivalent to ``scipy.signal.lfilter(B, A, data)``.
-        """
-        try:
-            from scipy.signal import lfilter
-        except Exception as exc:  # pragma: no cover
-            raise ImportError("scipy is required for SignalObj.filter") from exc
-
-        b = np.asarray(B, dtype=float).reshape(-1)
-        a = np.asarray(A, dtype=float).reshape(-1)
-        filtered = np.column_stack([lfilter(b, a, self.data[:, index]) for index in range(self.dimension)])
-        return self._spawn(self.time, filtered, data_labels=list(self.dataLabels))
-
-    def filtfilt(self, B, A=1) -> "SignalObj":
-        """Apply a zero-phase IIR/FIR filter ``(B, A)`` to each dimension.
-
-        Equivalent to ``scipy.signal.filtfilt(B, A, data)``.
-        """
-        try:
-            from scipy.signal import filtfilt
-        except Exception as exc:  # pragma: no cover
-            raise ImportError("scipy is required for SignalObj.filtfilt") from exc
-
-        b = np.asarray(B, dtype=float).reshape(-1)
-        a = np.asarray(A, dtype=float).reshape(-1)
-        filtered = np.column_stack([filtfilt(b, a, self.data[:, index]) for index in range(self.dimension)])
-        return self._spawn(self.time, filtered, data_labels=list(self.dataLabels))
-
-    def makeCompatible(self, other: "SignalObj", holdVals: int = 0) -> tuple["SignalObj", "SignalObj"]:
-        if (
-            self.minTime == other.minTime
-            and self.maxTime == other.maxTime
-            and round(float(self.sampleRate), 9) == round(float(other.sampleRate), 9)
-            and self.time.shape == other.time.shape
-            and np.max(np.abs(self.time - other.time)) <= 1e-9
-        ):
-            return self, other
-
-        s1c = self.copySignal()
-        s2c = other.copySignal()
-        min_time = min(s1c.minTime, s2c.minTime)
-        max_time = max(s1c.maxTime, s2c.maxTime)
-        sample_rate = max(float(s1c.sampleRate), float(s2c.sampleRate))
-        s1c.setSampleRate(sample_rate)
-        s2c.setSampleRate(sample_rate)
-        s1c.setMinTime(min_time, holdVals)
-        s2c.setMinTime(min_time, holdVals)
-        s1c.setMaxTime(max_time, holdVals)
-        s2c.setMaxTime(max_time, holdVals)
-        s2c.data = _nearest_sample_matrix(s1c.time, s2c.time, s2c.data)
-        s2c.time = s1c.time.copy()
-        s2c.minTime = float(np.min(s2c.time))
-        s2c.maxTime = float(np.max(s2c.time))
-        return s1c, s2c
-
     def autocorrelation(self) -> "SignalObj":
         """Normalized auto-correlation for each signal dimension.
 
@@ -1340,25 +1364,6 @@ class SignalObj:
             self.shiftMe(float(newTime) - float(timeMarker))
 
     # ------------------------------------------------------------------
-    # Element-wise arithmetic helpers (match Matlab SignalObj)
-    # ------------------------------------------------------------------
-    def power(self, exponent: float) -> "SignalObj":
-        """Element-wise power ``data ** exponent`` (Matlab ``power``)."""
-        return self.__class__(
-            self.time.copy(),
-            np.power(self.data, float(exponent)),
-            f"{self.name}^{exponent}",
-            self.xlabelval,
-            self.xunits,
-            self.yunits,
-            list(self.dataLabels),
-            list(self.plotProps),
-        )
-
-    def sqrt(self) -> "SignalObj":
-        """Element-wise square root (Matlab ``sqrt``)."""
-        return self.power(0.5)
-
     # ------------------------------------------------------------------
     # Peak-finding helpers (match Matlab SignalObj)
     # ------------------------------------------------------------------
@@ -2026,6 +2031,54 @@ class Covariate(SignalObj):
         newCov.setConfInterval(confInt)
         return newCov
 
+    def plot(self, selectorArray=None, plotPropsIn=None, handle=None):
+        """Plot signal dimensions with shaded confidence intervals."""
+        lines = super().plot(selectorArray, plotPropsIn, handle)
+        if self.isConfIntervalSet():
+            import matplotlib.pyplot as plt
+            import matplotlib.colors as mcolors
+
+            ax = plt.gca() if handle is None else handle
+            selectors = self.findIndFromDataMask() if selectorArray is None else (
+                self.getIndicesFromLabels(selectorArray) if isinstance(selectorArray, str) else list(np.asarray(selectorArray).reshape(-1))
+            )
+            if not isinstance(selectors, list):
+                selectors = [selectors]
+            if selectors and isinstance(selectors[0], list):
+                selectors = [item[0] for item in selectors]
+            for line_index, selector in enumerate(selectors):
+                color = getattr(lines[line_index], "get_color", lambda: "b")()
+                if isinstance(color, (str, bytes)):
+                    color = mcolors.to_rgb(color)
+                self.ci[selector].plot(color, ax=ax)
+        return lines
+
+    def getSubSignal(self, identifier) -> "Covariate":
+        """Return a sub-covariate preserving matching CIs."""
+        sub = super().getSubSignal(identifier)
+        cov = Covariate(
+            sub.time,
+            sub.data,
+            sub.name,
+            sub.xlabelval,
+            sub.xunits,
+            sub.yunits,
+            list(sub.dataLabels),
+            list(sub.plotProps),
+        )
+        if self.isConfIntervalSet():
+            selected: list[int] = []
+            for label in cov.dataLabels:
+                if label:
+                    match = next((i for i, original in enumerate(self.dataLabels) if original == label), None)
+                    if match is None:
+                        raise ValueError("Unable to align Covariate confidence interval with sub-signal labels.")
+                    selected.append(match)
+                else:
+                    selected.append(len(selected))
+            cov.setConfInterval([self.ci[index] for index in selected])
+        return cov
+
     def getSigRep(self, repType: str = "standard") -> "Covariate":
         """Return a signal representation of this covariate.
 
@@ -2058,27 +2111,20 @@ class Covariate(SignalObj):
             return self - mu_cov
         raise ValueError("repType must be either 'zero-mean' or 'standard'")
 
-    def plot(self, selectorArray=None, plotPropsIn=None, handle=None):
-        """Plot signal dimensions with shaded confidence intervals."""
-        lines = super().plot(selectorArray, plotPropsIn, handle)
-        if self.isConfIntervalSet():
-            import matplotlib.pyplot as plt
-            import matplotlib.colors as mcolors
+    # TODO(parity): port MATLAB method get from cajigaslab/nSTAT (getter accessor not yet mirrored).
+    # TODO(parity): port MATLAB method get from cajigaslab/nSTAT (overloaded getter not yet mirrored).
 
-            ax = plt.gca() if handle is None else handle
-            selectors = self.findIndFromDataMask() if selectorArray is None else (
-                self.getIndicesFromLabels(selectorArray) if isinstance(selectorArray, str) else list(np.asarray(selectorArray).reshape(-1))
-            )
-            if not isinstance(selectors, list):
-                selectors = [selectors]
-            if selectors and isinstance(selectors[0], list):
-                selectors = [item[0] for item in selectors]
-            for line_index, selector in enumerate(selectors):
-                color = getattr(lines[line_index], "get_color", lambda: "b")()
-                if isinstance(color, (str, bytes)):
-                    color = mcolors.to_rgb(color)
-                self.ci[selector].plot(color, ax=ax)
-        return lines
+    def toStructure(self) -> dict[str, Any]:
+        """Serialize to a dict, including CI payload if present."""
+        structure = super().toStructure()
+        if self.isConfIntervalSet():
+            ci_payload: list[dict[str, Any]] = []
+            for item in self.ci or []:
+                if hasattr(item, "dataToStructure"):
+                    ci_payload.append(item.dataToStructure())
+            if ci_payload:
+                structure["ci"] = ci_payload[0] if len(ci_payload) == 1 else ci_payload
+        return structure
 
     def isConfIntervalSet(self) -> bool:
         """Return ``True`` if at least one dimension has a CI attached."""
@@ -2118,34 +2164,8 @@ class Covariate(SignalObj):
             )
         return copied
 
-    def getSubSignal(self, identifier) -> "Covariate":
-        """Return a sub-covariate preserving matching CIs."""
-        sub = super().getSubSignal(identifier)
-        cov = Covariate(
-            sub.time,
-            sub.data,
-            sub.name,
-            sub.xlabelval,
-            sub.xunits,
-            sub.yunits,
-            list(sub.dataLabels),
-            list(sub.plotProps),
-        )
-        if self.isConfIntervalSet():
-            selected: list[int] = []
-            for label in cov.dataLabels:
-                if label:
-                    match = next((i for i, original in enumerate(self.dataLabels) if original == label), None)
-                    if match is None:
-                        raise ValueError("Unable to align Covariate confidence interval with sub-signal labels.")
-                    selected.append(match)
-                else:
-                    selected.append(len(selected))
-            cov.setConfInterval([self.ci[index] for index in selected])
-        return cov
-
     def __add__(self, other):
-        """Add two covariates, propagating confidence intervals."""
+        """Add two covariates, propagating confidence intervals (Matlab ``plus``)."""
         covOut = super().__add__(other)
         if isinstance(other, Covariate):
             if self.isConfIntervalSet() and not other.isConfIntervalSet():
@@ -2157,7 +2177,7 @@ class Covariate(SignalObj):
         return covOut
 
     def __sub__(self, other):
-        """Subtract two covariates, propagating confidence intervals."""
+        """Subtract two covariates, propagating confidence intervals (Matlab ``minus``)."""
         covOut = super().__sub__(other)
         if isinstance(other, Covariate):
             if self.isConfIntervalSet() and not other.isConfIntervalSet():
@@ -2167,18 +2187,6 @@ class Covariate(SignalObj):
             elif (not self.isConfIntervalSet()) and other.isConfIntervalSet():
                 covOut.setConfInterval([self.getSubSignal(index + 1) - other.ci[index] for index in range(other.dimension)])
         return covOut
-
-    def toStructure(self) -> dict[str, Any]:
-        """Serialize to a dict, including CI payload if present."""
-        structure = super().toStructure()
-        if self.isConfIntervalSet():
-            ci_payload: list[dict[str, Any]] = []
-            for item in self.ci or []:
-                if hasattr(item, "dataToStructure"):
-                    ci_payload.append(item.dataToStructure())
-            if ci_payload:
-                structure["ci"] = ci_payload[0] if len(ci_payload) == 1 else ci_payload
-        return structure
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "Covariate":

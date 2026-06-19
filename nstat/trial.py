@@ -219,17 +219,202 @@ class CovariateCollection:
         out.setMask(self.covMask[index])
         return out
 
-    def add(self, covariate: Covariate) -> None:
-        """Alias for :meth:`addToColl`."""
-        self.addToColl(covariate)
+    def setMinTime(self, minTime: float | None = None) -> None:
+        """Set the collection-level minimum time (applies shift if set)."""
+        if minTime is None:
+            minTime = self.findMinTime() + float(self.covShift)
+        self.minTime = float(minTime)
 
-    def addCovariate(self, covariate: Covariate) -> None:
-        """Alias for :meth:`addToColl`."""
-        self.addToColl(covariate)
+    def setMaxTime(self, maxTime: float | None = None) -> None:
+        """Set the collection-level maximum time (applies shift if set)."""
+        if maxTime is None:
+            maxTime = self.findMaxTime() + float(self.covShift)
+        self.maxTime = float(maxTime)
 
-    def addCovCollection(self, covariates: "CovariateCollection") -> None:
-        """Merge all covariates from another collection into this one."""
-        self.addToColl(covariates)
+    def setSampleRate(self, sampleRate: float) -> None:
+        """Set the collection sample rate and enforce it on all covariates."""
+        if self.originalSampleRate is None and np.isfinite(self.sampleRate):
+            self.originalSampleRate = float(self.sampleRate)
+        self.sampleRate = float(sampleRate)
+        self.enforceSampleRate()
+
+    def setMask(self, cellInput) -> None:
+        """Set the covariate mask from a selector or ``'all'`` to reset.
+
+        Accepts the same formats as :meth:`generateSelectorCell`.
+        """
+        if isinstance(cellInput, str) and cellInput == "all":
+            self.resetMask()
+            return
+        selectorCell = self.generateSelectorCell(cellInput)
+        self.setMasksFromSelector(selectorCell)
+
+    def getCovDataMask(self, identifier: int | str) -> np.ndarray:
+        """Return the binary dimension mask for a single covariate."""
+        index = self._covariate_from_identifier(identifier)
+        return np.asarray(self.covMask[index], dtype=int).copy()
+
+    def isCovMaskSet(self) -> bool:
+        """Return ``True`` if any covariate dimension is currently masked out."""
+        return any(np.any(mask == 0) for mask in self.covMask)
+
+    def nActCovar(self) -> int:
+        """Return the number of covariates with at least one active dimension."""
+        return int(sum(1 for selector in self.getSelectorFromMasks() if selector))
+
+    def maskAwayCov(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
+        """Zero-out the mask for the specified covariate(s)."""
+        identifiers = identifier
+        if isinstance(identifier, (int, str)):
+            identifiers = [identifier]
+        for item in identifiers:
+            index = self._covariate_from_identifier(item)
+            self.covMask[index] = np.zeros(self.covArray[index].dimension, dtype=int)
+
+    def copy(self) -> "CovariateCollection":
+        """Return a deep copy of this collection."""
+        cov = [self.getCov(i).copySignal() for i in range(self.numCov)]
+        return CovariateCollection(cov)
+
+    def maskAwayOnlyCov(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
+        """Reset all masks then mask away only the specified covariate(s)."""
+        self.resetMask()
+        self.maskAwayCov(identifier)
+
+    def maskAwayAllExcept(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
+        """Mask away every covariate *except* the ones specified.
+
+        Matches MATLAB ``CovColl.m:202-208`` (``maskAwayOnlyCov`` →
+        ``resetMask`` first, then ``maskAwayCov``).  Before the reset
+        the kept covariates' masks were preserved as-is, which silently
+        dropped any covariate whose stored mask was already all-zero —
+        e.g. the per-neighbor masks inside ``Trial.ensCovColl``, which
+        are initialised for neuron 1's view and contain zeros for the
+        other neuron's row.  Without resetting, ``getEnsCovMatrix(n=2)``
+        returned an empty matrix and the NetworkTutorial fit silently
+        dropped the inter-neuron coupling term.
+        """
+        if isinstance(identifier, (int, str)):
+            keep = {self._covariate_from_identifier(identifier)}
+        else:
+            keep = {self._covariate_from_identifier(item) for item in identifier}
+        for idx, cov in enumerate(self.covArray):
+            if idx in keep:
+                self.covMask[idx] = np.ones(cov.dimension, dtype=int)
+            else:
+                self.covMask[idx] = np.zeros(cov.dimension, dtype=int)
+
+    def getCov(self, identifier: int | str | Sequence[int] | Sequence[str]):
+        """Return a covariate copy with collection state (shift, mask, rate) applied.
+
+        Parameters
+        ----------
+        identifier : int, str, or sequence
+            0-based index, covariate name, or sequence of either.
+        """
+        if isinstance(identifier, str):
+            return self._apply_collection_state(self.covArray[self.getCovIndFromName(identifier)], self.getCovIndFromName(identifier))
+        if isinstance(identifier, Sequence) and not isinstance(identifier, (str, bytes, np.ndarray)):
+            if _is_string_sequence(identifier):
+                return [self.getCov(item) for item in identifier]
+            return [self.getCov(int(item)) for item in identifier]
+        if isinstance(identifier, np.ndarray) and identifier.ndim > 0:
+            return [self.getCov(int(item)) for item in identifier.reshape(-1)]
+        index = self._covariate_from_identifier(identifier)
+        return self._apply_collection_state(self.covArray[index], index)
+
+    def get(self, name: str) -> Covariate:
+        """Retrieve a covariate by name (convenience alias for :meth:`getCov`)."""
+        return self.getCov(name)
+
+    def getCovIndFromName(self, name: str) -> int:
+        """Return the 0-based index of a covariate by *name*."""
+        for idx, cov in enumerate(self.covArray):
+            if cov.name == name:
+                return idx
+        raise KeyError(f"Covariate '{name}' not found")
+
+    def getCovIndicesFromNames(self, name: Sequence[str] | str):
+        """Return 0-based index(es) for one or more covariate names."""
+        if isinstance(name, str):
+            return self.getCovIndFromName(name)
+        return [self.getCovIndFromName(item) for item in name]
+
+    def getCovDimension(self, identifier=None) -> np.ndarray:
+        """Return the dimension of each covariate selected by *identifier*.
+
+        Matlab signature: ``dim = getCovDimension(ccObj, identifier)``
+
+        Returns a 1-D int array whose *i*-th element is ``covs{i}.dimension``.
+        """
+        if identifier is None:
+            covs = [self.getCov(i) for i in range(self.numCov)]
+        elif isinstance(identifier, (int, np.integer)):
+            covs = [self.getCov(int(identifier))]
+        elif isinstance(identifier, (list, np.ndarray)):
+            covs = [self.getCov(int(idx)) for idx in identifier]
+        else:
+            covs = [self.getCov(identifier)]
+        return np.array([int(c.dimension) for c in covs], dtype=int)
+
+    def getAllCovLabels(self) -> list[str]:
+        """Return the data-labels of every covariate dimension (no mask filtering)."""
+        labels: list[str] = []
+        for index in range(self.numCov):
+            labels.extend(self.getCov(index).dataLabels)
+        return labels
+
+    def getCovLabelsFromMask(self) -> list[str]:
+        """Return data-labels only for dimensions that are currently unmasked."""
+        labels: list[str] = []
+        for index in range(self.numCov):
+            cov = self.getCov(index)
+            mask = self.covMask[index]
+            labels.extend([label for keep, label in zip(mask, cov.dataLabels) if keep == 1])
+        return labels
+
+    def toStructure(self) -> dict[str, Any]:
+        """Serialize to a plain dict (Matlab ``CovColl.toStructure``)."""
+        self.resetMask()
+        structure: dict[str, Any] = {
+            "numCov": int(self.numCov),
+            "minTime": float(self.minTime),
+            "maxTime": float(self.maxTime),
+            "covDimensions": [int(value) for value in self.covDimensions],
+            "covMask": [np.asarray(mask, dtype=int).reshape(-1).tolist() for mask in self.covMask],
+            "covShift": float(self.covShift),
+            "sampleRate": float(self.sampleRate) if np.isfinite(self.sampleRate) else self.sampleRate,
+            "originalSampleRate": self.originalSampleRate,
+            "originalMinTime": self.originalMinTime,
+            "originalMaxTime": self.originalMaxTime,
+            "covArray": [cov.toStructure() for cov in self.covArray],
+        }
+        return structure
+
+    def findMinTime(self) -> float:
+        """Return the earliest ``minTime`` across all stored covariates."""
+        if self.numCov == 0:
+            return float("inf")
+        return float(min(cov.minTime for cov in self.covArray))
+
+    def findMaxTime(self) -> float:
+        """Return the latest ``maxTime`` across all stored covariates.
+
+        Note: MATLAB ``CovColl.m:371-380`` applies ``covShift`` twice
+        here (once inside the per-covariate ``max(...)`` and once after
+        the loop) — see AUDIT_REPORT M7 / nSTAT issue #18.  Python adds
+        the shift exactly once, in ``_refresh_summary`` and
+        ``setMaxTime``.  Do not "fix" this to match MATLAB's behavior.
+        """
+        if self.numCov == 0:
+            return float("-inf")
+        return float(max(cov.maxTime for cov in self.covArray))
+
+    def findMaxSampleRate(self) -> float:
+        """Return the highest sample rate across all stored covariates."""
+        if self.numCov == 0:
+            return float("nan")
+        return float(max(cov.sampleRate for cov in self.covArray if np.isfinite(cov.sampleRate)))
 
     def addToColl(self, covariates: Sequence[Covariate] | Covariate | "CovariateCollection" | None) -> None:
         if covariates is None:
@@ -274,53 +459,17 @@ class CovariateCollection:
             return
         raise TypeError("CovColl can only add Covariate instances or sequences of Covariates.")
 
-    def removeCovariate(self, identifier: int | str) -> None:
-        """Remove a covariate by 0-based index or name."""
-        index = self._covariate_from_identifier(identifier)
-        del self.covArray[index]
-        del self.covMask[index]
-        self._refresh_summary()
+    def add(self, covariate: Covariate) -> None:
+        """Alias for :meth:`addToColl`."""
+        self.addToColl(covariate)
 
-    def copy(self) -> "CovariateCollection":
-        """Return a deep copy of this collection."""
-        cov = [self.getCov(i).copySignal() for i in range(self.numCov)]
-        return CovariateCollection(cov)
+    def addCovariate(self, covariate: Covariate) -> None:
+        """Alias for :meth:`addToColl`."""
+        self.addToColl(covariate)
 
-    def get(self, name: str) -> Covariate:
-        """Retrieve a covariate by name (convenience alias for :meth:`getCov`)."""
-        return self.getCov(name)
-
-    def getCov(self, identifier: int | str | Sequence[int] | Sequence[str]):
-        """Return a covariate copy with collection state (shift, mask, rate) applied.
-
-        Parameters
-        ----------
-        identifier : int, str, or sequence
-            0-based index, covariate name, or sequence of either.
-        """
-        if isinstance(identifier, str):
-            return self._apply_collection_state(self.covArray[self.getCovIndFromName(identifier)], self.getCovIndFromName(identifier))
-        if isinstance(identifier, Sequence) and not isinstance(identifier, (str, bytes, np.ndarray)):
-            if _is_string_sequence(identifier):
-                return [self.getCov(item) for item in identifier]
-            return [self.getCov(int(item)) for item in identifier]
-        if isinstance(identifier, np.ndarray) and identifier.ndim > 0:
-            return [self.getCov(int(item)) for item in identifier.reshape(-1)]
-        index = self._covariate_from_identifier(identifier)
-        return self._apply_collection_state(self.covArray[index], index)
-
-    def getCovIndFromName(self, name: str) -> int:
-        """Return the 0-based index of a covariate by *name*."""
-        for idx, cov in enumerate(self.covArray):
-            if cov.name == name:
-                return idx
-        raise KeyError(f"Covariate '{name}' not found")
-
-    def getCovIndicesFromNames(self, name: Sequence[str] | str):
-        """Return 0-based index(es) for one or more covariate names."""
-        if isinstance(name, str):
-            return self.getCovIndFromName(name)
-        return [self.getCovIndFromName(item) for item in name]
+    def addCovCollection(self, covariates: "CovariateCollection") -> None:
+        """Merge all covariates from another collection into this one."""
+        self.addToColl(covariates)
 
     def isCovPresent(self, cov) -> int:
         """Return ``1`` if a covariate is in this collection, ``0`` otherwise."""
@@ -343,58 +492,36 @@ class CovariateCollection:
             return int(index >= 0 and index < self.numCov)
         raise TypeError("Need either covariate class or name of covariate or index of covariate")
 
-    def findMinTime(self) -> float:
-        """Return the earliest ``minTime`` across all stored covariates."""
-        if self.numCov == 0:
-            return float("inf")
-        return float(min(cov.minTime for cov in self.covArray))
+    def resample(self, sampleRate: float) -> None:
+        """Alias for :meth:`setSampleRate`."""
+        self.setSampleRate(sampleRate)
 
-    def findMaxTime(self) -> float:
-        """Return the latest ``maxTime`` across all stored covariates.
-
-        Note: MATLAB ``CovColl.m:371-380`` applies ``covShift`` twice
-        here (once inside the per-covariate ``max(...)`` and once after
-        the loop) — see AUDIT_REPORT M7 / nSTAT issue #18.  Python adds
-        the shift exactly once, in ``_refresh_summary`` and
-        ``setMaxTime``.  Do not "fix" this to match MATLAB's behavior.
-        """
-        if self.numCov == 0:
-            return float("-inf")
-        return float(max(cov.maxTime for cov in self.covArray))
-
-    def findMaxSampleRate(self) -> float:
-        """Return the highest sample rate across all stored covariates."""
-        if self.numCov == 0:
-            return float("nan")
-        return float(max(cov.sampleRate for cov in self.covArray if np.isfinite(cov.sampleRate)))
-
-    def setMinTime(self, minTime: float | None = None) -> None:
-        """Set the collection-level minimum time (applies shift if set)."""
-        if minTime is None:
-            minTime = self.findMinTime() + float(self.covShift)
-        self.minTime = float(minTime)
-
-    def setMaxTime(self, maxTime: float | None = None) -> None:
-        """Set the collection-level maximum time (applies shift if set)."""
-        if maxTime is None:
-            maxTime = self.findMaxTime() + float(self.covShift)
-        self.maxTime = float(maxTime)
+    def restoreToOriginal(self) -> None:
+        """Restore original sample rate, time bounds, shift, and masks."""
+        self.covShift = 0.0
+        if self.originalSampleRate is not None:
+            self.sampleRate = float(self.originalSampleRate)
+        else:
+            self.sampleRate = self.findMaxSampleRate()
+        self.setMinTime(self.findMinTime())
+        self.setMaxTime(self.findMaxTime())
+        self.resetMask()
 
     def restrictToTimeWindow(self, wMin: float, wMax: float) -> None:
         """Set both min and max time to restrict the visible window."""
         self.setMinTime(wMin)
         self.setMaxTime(wMax)
 
-    def setSampleRate(self, sampleRate: float) -> None:
-        """Set the collection sample rate and enforce it on all covariates."""
-        if self.originalSampleRate is None and np.isfinite(self.sampleRate):
-            self.originalSampleRate = float(self.sampleRate)
-        self.sampleRate = float(sampleRate)
-        self.enforceSampleRate()
+    def removeCovariate(self, identifier: int | str) -> None:
+        """Remove a covariate by 0-based index or name."""
+        index = self._covariate_from_identifier(identifier)
+        del self.covArray[index]
+        del self.covMask[index]
+        self._refresh_summary()
 
-    def resample(self, sampleRate: float) -> None:
-        """Alias for :meth:`setSampleRate`."""
-        self.setSampleRate(sampleRate)
+    def resetMask(self) -> None:
+        """Enable all covariate dimensions (clear any masking)."""
+        self.covMask = [np.ones(cov.dimension, dtype=int) for cov in self.covArray]
 
     def enforceSampleRate(self) -> None:
         """Resample every stored covariate to match ``self.sampleRate``.
@@ -420,18 +547,30 @@ class CovariateCollection:
             if round(cov.sampleRate, 6) != round(target_rate, 6):
                 cov.resampleMe(target_rate)
 
-    def resetMask(self) -> None:
-        """Enable all covariate dimensions (clear any masking)."""
-        self.covMask = [np.ones(cov.dimension, dtype=int) for cov in self.covArray]
+    def setCovShift(self, deltaT: float, identifier=None) -> "CovariateCollection":
+        """Apply a temporal shift *deltaT* to the collection's time axis.
 
-    def getCovDataMask(self, identifier: int | str) -> np.ndarray:
-        """Return the binary dimension mask for a single covariate."""
-        index = self._covariate_from_identifier(identifier)
-        return np.asarray(self.covMask[index], dtype=int).copy()
+        Matches MATLAB ``CovColl.m:504-520`` which calls
+        ``resetCovShift`` *first* (zeroing any previously-applied shift
+        and recomputing base bounds) and then sets the new shift.  The
+        previous Python implementation accumulated shifts: calling
+        ``setCovShift(0.2)`` twice produced ``base + 0.4`` instead of
+        the intended ``base + 0.2``.  Closes audit finding L1.
+        """
+        del identifier  # MATLAB-compat positional; not used (see CovColl.m:506).
+        self.resetCovShift()
+        self.covShift = float(deltaT)
+        if np.isfinite(self.minTime):
+            self.minTime = float(self.minTime + self.covShift)
+        if np.isfinite(self.maxTime):
+            self.maxTime = float(self.maxTime + self.covShift)
+        return self
 
-    def isCovMaskSet(self) -> bool:
-        """Return ``True`` if any covariate dimension is currently masked out."""
-        return any(np.any(mask == 0) for mask in self.covMask)
+    def resetCovShift(self) -> None:
+        """Remove the temporal shift and recompute time bounds."""
+        self.covShift = 0.0
+        self.setMinTime()
+        self.setMaxTime()
 
     def flattenCovMask(self) -> np.ndarray:
         """Concatenate all per-covariate masks into a single 1-D binary array."""
@@ -534,164 +673,13 @@ class CovariateCollection:
         """Set covariate masks from a list of 0-based index lists."""
         self.covMask = self._selector_to_cov_mask(selectorCell)
 
-    def setMask(self, cellInput) -> None:
-        """Set the covariate mask from a selector or ``'all'`` to reset.
-
-        Accepts the same formats as :meth:`generateSelectorCell`.
-        """
-        if isinstance(cellInput, str) and cellInput == "all":
-            self.resetMask()
-            return
-        selectorCell = self.generateSelectorCell(cellInput)
-        self.setMasksFromSelector(selectorCell)
-
-    def nActCovar(self) -> int:
-        """Return the number of covariates with at least one active dimension."""
-        return int(sum(1 for selector in self.getSelectorFromMasks() if selector))
-
-    def maskAwayCov(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
-        """Zero-out the mask for the specified covariate(s)."""
-        identifiers = identifier
-        if isinstance(identifier, (int, str)):
-            identifiers = [identifier]
-        for item in identifiers:
-            index = self._covariate_from_identifier(item)
-            self.covMask[index] = np.zeros(self.covArray[index].dimension, dtype=int)
-
-    def maskAwayOnlyCov(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
-        """Reset all masks then mask away only the specified covariate(s)."""
-        self.resetMask()
-        self.maskAwayCov(identifier)
-
-    def maskAwayAllExcept(self, identifier: int | str | Sequence[int] | Sequence[str]) -> None:
-        """Mask away every covariate *except* the ones specified.
-
-        Matches MATLAB ``CovColl.m:202-208`` (``maskAwayOnlyCov`` →
-        ``resetMask`` first, then ``maskAwayCov``).  Before the reset
-        the kept covariates' masks were preserved as-is, which silently
-        dropped any covariate whose stored mask was already all-zero —
-        e.g. the per-neighbor masks inside ``Trial.ensCovColl``, which
-        are initialised for neuron 1's view and contain zeros for the
-        other neuron's row.  Without resetting, ``getEnsCovMatrix(n=2)``
-        returned an empty matrix and the NetworkTutorial fit silently
-        dropped the inter-neuron coupling term.
-        """
-        if isinstance(identifier, (int, str)):
-            keep = {self._covariate_from_identifier(identifier)}
-        else:
-            keep = {self._covariate_from_identifier(item) for item in identifier}
-        for idx, cov in enumerate(self.covArray):
-            if idx in keep:
-                self.covMask[idx] = np.ones(cov.dimension, dtype=int)
-            else:
-                self.covMask[idx] = np.zeros(cov.dimension, dtype=int)
-
-    def setCovShift(self, deltaT: float, identifier=None) -> "CovariateCollection":
-        """Apply a temporal shift *deltaT* to the collection's time axis.
-
-        Matches MATLAB ``CovColl.m:504-520`` which calls
-        ``resetCovShift`` *first* (zeroing any previously-applied shift
-        and recomputing base bounds) and then sets the new shift.  The
-        previous Python implementation accumulated shifts: calling
-        ``setCovShift(0.2)`` twice produced ``base + 0.4`` instead of
-        the intended ``base + 0.2``.  Closes audit finding L1.
-        """
-        del identifier  # MATLAB-compat positional; not used (see CovColl.m:506).
-        self.resetCovShift()
-        self.covShift = float(deltaT)
-        if np.isfinite(self.minTime):
-            self.minTime = float(self.minTime + self.covShift)
-        if np.isfinite(self.maxTime):
-            self.maxTime = float(self.maxTime + self.covShift)
-        return self
-
-    def resetCovShift(self) -> None:
-        """Remove the temporal shift and recompute time bounds."""
-        self.covShift = 0.0
-        self.setMinTime()
-        self.setMaxTime()
-
-    def restoreToOriginal(self) -> None:
-        """Restore original sample rate, time bounds, shift, and masks."""
-        self.covShift = 0.0
-        if self.originalSampleRate is not None:
-            self.sampleRate = float(self.originalSampleRate)
-        else:
-            self.sampleRate = self.findMaxSampleRate()
-        self.setMinTime(self.findMinTime())
-        self.setMaxTime(self.findMaxTime())
-        self.resetMask()
-
-    def plot(self, *_, handle=None, **__):
-        """Plot each covariate in a vertically stacked panel layout.
-
-        Parameters
-        ----------
-        handle : matplotlib Figure, Axes, list of Axes, or None
-            If a Figure, new subplots are created.
-            If a single Axes or a list of Axes, plot into those directly.
-            If None, a new figure is created.
-        """
-        selected = [idx for idx in range(self.numCov)]
-
-        # Accept Figure, Axes, list-of-Axes, or None
-        if handle is None:
-            fig = plt.figure(figsize=(8.5, max(2.5, 2.2 * max(len(selected), 1))))
-            fig.clear()
-            axes = fig.subplots(len(selected), 1, sharex=True)
-        elif isinstance(handle, plt.Figure):
-            fig = handle
-            fig.clear()
-            axes = fig.subplots(len(selected), 1, sharex=True)
-        elif isinstance(handle, (list, np.ndarray)):
-            axes = handle
-            fig = handle[0].get_figure() if len(handle) else plt.gcf()
-        else:
-            # Single Axes
-            axes = [handle]
-            fig = handle.get_figure()
-
-        if not isinstance(axes, np.ndarray):
-            axes = np.asarray([axes] if not isinstance(axes, list) else axes, dtype=object)
-        for ax, cov_index in zip(axes.reshape(-1), selected, strict=False):
-            cov = self.getCov(cov_index)
-            cov.plot(handle=ax)
-            ax.set_title(cov.name)
-        fig.tight_layout()
-        return fig
-
-    def getAllCovLabels(self) -> list[str]:
-        """Return the data-labels of every covariate dimension (no mask filtering)."""
-        labels: list[str] = []
-        for index in range(self.numCov):
-            labels.extend(self.getCov(index).dataLabels)
-        return labels
-
-    def getCovLabelsFromMask(self) -> list[str]:
-        """Return data-labels only for dimensions that are currently unmasked."""
-        labels: list[str] = []
-        for index in range(self.numCov):
-            cov = self.getCov(index)
-            mask = self.covMask[index]
-            labels.extend([label for keep, label in zip(mask, cov.dataLabels) if keep == 1])
-        return labels
-
-    def getCovDimension(self, identifier=None) -> np.ndarray:
-        """Return the dimension of each covariate selected by *identifier*.
-
-        Matlab signature: ``dim = getCovDimension(ccObj, identifier)``
-
-        Returns a 1-D int array whose *i*-th element is ``covs{i}.dimension``.
-        """
-        if identifier is None:
-            covs = [self.getCov(i) for i in range(self.numCov)]
-        elif isinstance(identifier, (int, np.integer)):
-            covs = [self.getCov(int(identifier))]
-        elif isinstance(identifier, (list, np.ndarray)):
-            covs = [self.getCov(int(idx)) for idx in identifier]
-        else:
-            covs = [self.getCov(identifier)]
-        return np.array([int(c.dimension) for c in covs], dtype=int)
+    def dataToMatrix(self, repType: str | Sequence[str] | None = "standard", dataSelector=None, *_) -> np.ndarray:
+        """Return the covariate data matrix (no time column) for active dimensions."""
+        if repType not in {"standard", "zero-mean"}:
+            dataSelector = repType
+            repType = "standard"
+        _, matrix, _ = self.matrixWithTime(str(repType), dataSelector)
+        return matrix
 
     def matrixWithTime(self, repType: str = "standard", dataSelector=None) -> tuple[np.ndarray, np.ndarray, list[str]]:
         """Return ``(time, data_matrix, labels)`` for active covariate dimensions.
@@ -731,13 +719,8 @@ class CovariateCollection:
             labels.extend([cov.dataLabels[idx] for idx in selector])
         return time.copy(), np.hstack(parts) if parts else np.zeros((time.size, 0), dtype=float), labels
 
-    def dataToMatrix(self, repType: str | Sequence[str] | None = "standard", dataSelector=None, *_) -> np.ndarray:
-        """Return the covariate data matrix (no time column) for active dimensions."""
-        if repType not in {"standard", "zero-mean"}:
-            dataSelector = repType
-            repType = "standard"
-        _, matrix, _ = self.matrixWithTime(str(repType), dataSelector)
-        return matrix
+    # TODO(parity): port MATLAB method dataToMatrixFromNames from cajigaslab/nSTAT@main
+    # TODO(parity): port MATLAB method dataToMatrixFromSel from cajigaslab/nSTAT@main
 
     def dataToStructure(
         self,
@@ -759,23 +742,43 @@ class CovariateCollection:
             "signals": {"values": dataMatrix},
         }
 
-    def toStructure(self) -> dict[str, Any]:
-        """Serialize to a plain dict (Matlab ``CovColl.toStructure``)."""
-        self.resetMask()
-        structure: dict[str, Any] = {
-            "numCov": int(self.numCov),
-            "minTime": float(self.minTime),
-            "maxTime": float(self.maxTime),
-            "covDimensions": [int(value) for value in self.covDimensions],
-            "covMask": [np.asarray(mask, dtype=int).reshape(-1).tolist() for mask in self.covMask],
-            "covShift": float(self.covShift),
-            "sampleRate": float(self.sampleRate) if np.isfinite(self.sampleRate) else self.sampleRate,
-            "originalSampleRate": self.originalSampleRate,
-            "originalMinTime": self.originalMinTime,
-            "originalMaxTime": self.originalMaxTime,
-            "covArray": [cov.toStructure() for cov in self.covArray],
-        }
-        return structure
+    def plot(self, *_, handle=None, **__):
+        """Plot each covariate in a vertically stacked panel layout.
+
+        Parameters
+        ----------
+        handle : matplotlib Figure, Axes, list of Axes, or None
+            If a Figure, new subplots are created.
+            If a single Axes or a list of Axes, plot into those directly.
+            If None, a new figure is created.
+        """
+        selected = [idx for idx in range(self.numCov)]
+
+        # Accept Figure, Axes, list-of-Axes, or None
+        if handle is None:
+            fig = plt.figure(figsize=(8.5, max(2.5, 2.2 * max(len(selected), 1))))
+            fig.clear()
+            axes = fig.subplots(len(selected), 1, sharex=True)
+        elif isinstance(handle, plt.Figure):
+            fig = handle
+            fig.clear()
+            axes = fig.subplots(len(selected), 1, sharex=True)
+        elif isinstance(handle, (list, np.ndarray)):
+            axes = handle
+            fig = handle[0].get_figure() if len(handle) else plt.gcf()
+        else:
+            # Single Axes
+            axes = [handle]
+            fig = handle.get_figure()
+
+        if not isinstance(axes, np.ndarray):
+            axes = np.asarray([axes] if not isinstance(axes, list) else axes, dtype=object)
+        for ax, cov_index in zip(axes.reshape(-1), selected, strict=False):
+            cov = self.getCov(cov_index)
+            cov.plot(handle=ax)
+            ax.set_title(cov.name)
+        fig.tight_layout()
+        return fig
 
     @staticmethod
     def fromStructure(structure) -> "CovariateCollection" | list["CovariateCollection"]:
@@ -902,6 +905,193 @@ class SpikeTrainCollection:
         if self.neuronMask.size != self.numSpikeTrains:
             self.neuronMask = np.ones(self.numSpikeTrains, dtype=int)
 
+    def merge(self, nstColl2: "SpikeTrainCollection") -> "SpikeTrainCollection":
+        """Merge another collection into this one (in-place)."""
+        self.addToColl(nstColl2)
+        return self
+
+    def getFirstSpikeTime(self) -> float:
+        """Return the earliest time boundary across all trains."""
+        return float(self.minTime)
+
+    def getLastSpikeTime(self) -> float:
+        """Return the latest time boundary across all trains."""
+        return float(self.maxTime)
+
+    def length(self) -> int:
+        """Return the number of spike trains (Matlab ``nstColl.length``)."""
+        return int(self.numSpikeTrains)
+
+    def getMaxBinSizeBinary(self) -> float:
+        """Return the largest bin-width that keeps all active trains binary."""
+        selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
+        if not selectorArray:
+            return np.inf
+        values = [self.getNST(index).getMaxBinSizeBinary() for index in selectorArray]
+        return float(np.min(values))
+
+    # TODO(parity): port MATLAB method `get` from cajigaslab/nSTAT (generic name-based getter; see nstColl.m line ~66).
+
+    def getNeighbors(self, neuronNum: int | Sequence[int]):
+        """Return the 0-based neighbour indices for one or more neurons."""
+        if isinstance(neuronNum, Sequence) and not isinstance(neuronNum, (str, bytes, np.ndarray)):
+            rows = [self.getNeighbors(int(item)) for item in neuronNum]
+            if rows and all(len(row) == len(rows[0]) for row in rows):
+                return np.asarray(rows, dtype=int)
+            return rows
+        neuron_idx = int(neuronNum)
+        if not self.areNeighborsSet():
+            self.setNeighbors()
+        if isinstance(self.neighbors, list):
+            row = list(self.neighbors[neuron_idx])
+        else:
+            row = np.asarray(self.neighbors[neuron_idx], dtype=int).reshape(-1).tolist()
+        available = set(self.getIndFromMaskMinusOne(neuron_idx))
+        return [value for value in row if value in available and value >= 0]
+
+    def getFieldVal(self, fieldName: str):
+        """Collect a named field from every spike train (Matlab ``nstColl.getFieldVal``)."""
+        fieldVal: list[float] = []
+        neuronNumbers: list[int] = []
+        cnt = 0
+        for index in range(self.numSpikeTrains):
+            currVal = self.getNST(index).getFieldVal(fieldName)
+            if currVal is None:
+                continue
+            if isinstance(currVal, np.ndarray) and currVal.size == 0:
+                continue
+            if len(fieldVal) <= cnt:
+                fieldVal.extend([0.0] * (cnt + 1 - len(fieldVal)))
+            fieldVal[cnt] = float(currVal)
+            if len(neuronNumbers) <= cnt:
+                neuronNumbers.extend([0] * (cnt + 1 - len(neuronNumbers)))
+            neuronNumbers[cnt] = index
+            cnt += 1
+        return np.asarray(fieldVal, dtype=float), np.asarray(neuronNumbers, dtype=int)
+
+    def shiftTime(self, timeShift: float | None = None) -> "SpikeTrainCollection":
+        """Return a new collection with spike times shifted by *timeShift*."""
+        if timeShift is None:
+            timeShift = -float(self.minTime)
+        shifted = [nspikeTrain(np.asarray(train.spikeTimes, dtype=float) + float(timeShift)) for train in self.nstrain]
+        return SpikeTrainCollection(shifted)
+
+    def setMinTime(self, value: float | None = None) -> None:
+        """Set the minimum time for every train in the collection."""
+        if value is None:
+            value = self.minTime
+        for train in self.nstrain:
+            train.setMinTime(float(value))
+        self.minTime = float(value)
+
+    def setMaxTime(self, value: float | None = None) -> None:
+        """Set the maximum time for every train in the collection."""
+        if value is None:
+            value = self.maxTime
+        for train in self.nstrain:
+            train.setMaxTime(float(value))
+        self.maxTime = float(value)
+
+    def setMask(self, mask: Sequence[int] | np.ndarray) -> None:
+        """Set the neuron mask from a binary array or 0-based indices."""
+        arr = np.asarray(mask, dtype=int).reshape(-1)
+        if arr.size == self.numSpikeTrains and np.all(np.isin(arr, [0, 1])):
+            self.setNeuronMask(arr)
+            return
+        self.setNeuronMaskFromInd(arr)
+
+    def setNeuronMaskFromInd(self, mask: Sequence[int] | np.ndarray) -> None:
+        """Set the neuron mask from 0-based neuron indices."""
+        arr = np.asarray(mask, dtype=int).reshape(-1)
+        newMask = np.zeros(self.numSpikeTrains, dtype=int)
+        if arr.size:
+            if np.any(arr < 0) or np.any(arr >= self.numSpikeTrains):
+                raise IndexError("Neuron index out of bounds.")
+            newMask[arr] = 1
+        self.setNeuronMask(newMask)
+
+    def setNeuronMask(self, mask: Sequence[int] | np.ndarray) -> None:
+        """Set the binary neuron mask directly (length must match ``numSpikeTrains``)."""
+        arr = np.asarray(mask, dtype=int).reshape(-1)
+        if arr.size != self.numSpikeTrains:
+            raise ValueError("neuronMask length must match number of spike trains.")
+        self.neuronMask = arr.astype(int)
+
+    def setNeighbors(self, neighborArray: Sequence[Sequence[int]] | np.ndarray | None = None) -> None:
+        """Set or auto-generate the neuron neighbour matrix.
+
+        If *neighborArray* is ``None``, every neuron is a neighbour of
+        every other neuron (all-to-all minus self).
+        """
+        if neighborArray is None:
+            if self.numSpikeTrains == 0:
+                self.neighbors = []
+                return
+            matrix = np.zeros((self.numSpikeTrains, max(self.numSpikeTrains - 1, 0)), dtype=int)
+            for i in range(self.numSpikeTrains):
+                neighbors = [idx for idx in range(self.numSpikeTrains) if idx != i]
+                if neighbors:
+                    matrix[i, : len(neighbors)] = neighbors
+            self.neighbors = matrix
+            return
+        arr = np.asarray(neighborArray, dtype=int)
+        if arr.ndim != 2 or arr.shape[0] != self.numSpikeTrains:
+            raise ValueError("Neighbor Array is not of appropriate dimensions")
+        self.neighbors = arr
+
+    def getIndFromMask(self) -> list[int]:
+        """Return 0-based indices of neurons currently enabled by the mask."""
+        return np.flatnonzero(self.neuronMask == 1).astype(int).tolist()
+
+    def getIndFromMaskMinusOne(self, neuron: int) -> list[int]:
+        """Return active indices excluding *neuron* (0-based)."""
+        return [idx for idx in self.getIndFromMask() if idx != int(neuron)]
+
+    def isNeuronMaskSet(self) -> bool:
+        """Return ``True`` if any neuron is currently masked out."""
+        return bool(np.any(self.neuronMask == 0))
+
+    def areNeighborsSet(self) -> bool:
+        """Return ``True`` if the neighbour matrix has been initialized."""
+        return np.size(self.neighbors) > 0
+
+    def restoreToOriginal(self, rMask: int = 0) -> None:
+        """Restore all trains to their original state; optionally reset the mask."""
+        for train in self.nstrain:
+            train.restoreToOriginal()
+        self._refresh_summary()
+        self.sampleRate = self.findMaxSampleRate()
+        self.resample(self.sampleRate)
+        if rMask == 1:
+            self.resetMask()
+
+    def ensureConsistancy(self) -> None:
+        """Enforce consistent sample rate and time bounds across all trains."""
+        self.enforceSampleRate()
+        self.setMinTime()
+        self.setMaxTime()
+
+    def updateTimes(self, nst: nspikeTrain) -> None:
+        """Expand collection time bounds to include *nst*, or clamp *nst*."""
+        if float(nst.minTime) <= float(self.minTime):
+            self.setMinTime(float(nst.minTime))
+        else:
+            nst.setMinTime(float(self.minTime))
+        if float(nst.maxTime) >= float(self.maxTime):
+            self.setMaxTime(float(nst.maxTime))
+        else:
+            nst.setMaxTime(float(self.maxTime))
+
+    def findMaxSampleRate(self) -> float:
+        """Return the highest sample rate among all trains."""
+        if self.numSpikeTrains == 0:
+            return float("-inf")
+        return float(max(train.sampleRate for train in self.nstrain))
+
+    def resetMask(self) -> None:
+        """Enable all neurons (ones-mask)."""
+        self.neuronMask = np.ones(self.numSpikeTrains, dtype=int)
+
     def addSingleSpikeToColl(self, nst: nspikeTrain) -> None:
         """Append a single spike train (deep-copied) to the collection."""
         train = nst.nstCopy()
@@ -950,28 +1140,43 @@ class SpikeTrainCollection:
             return
         raise TypeError("nstColl can only add nspikeTrain instances or sequences of nspikeTrain.")
 
-    def merge(self, nstColl2: "SpikeTrainCollection") -> "SpikeTrainCollection":
-        """Merge another collection into this one (in-place)."""
-        self.addToColl(nstColl2)
-        return self
+    def getUniqueNSTnames(self, selectorArray=None) -> list[str]:
+        """Return unique, insertion-ordered neuron names."""
+        names = [name for name in self.getNSTnames(selectorArray) if name]
+        return list(dict.fromkeys(names))
 
-    def length(self) -> int:
-        """Return the number of spike trains (Matlab ``nstColl.length``)."""
-        return int(self.numSpikeTrains)
+    def getNSTnames(self, selectorArray=None) -> list[str]:
+        """Return neuron names, optionally filtered by *selectorArray* (0-based indices)."""
+        all_names = [train.name for train in self.nstrain]
+        if selectorArray is None:
+            # Default: return names for all neurons in the mask
+            indices = [i for i, m in enumerate(self.neuronMask) if m]
+        else:
+            indices = [int(idx) for idx in np.asarray(selectorArray, dtype=int).reshape(-1)]
+        return [all_names[i] for i in indices if 0 <= i < len(all_names)]
 
-    def getFirstSpikeTime(self) -> float:
-        """Return the earliest time boundary across all trains."""
-        return float(self.minTime)
+    def getNSTIndicesFromName(self, name: Sequence[str] | str):
+        """Return 0-based index(es) for a neuron name (or list of names)."""
+        if isinstance(name, str):
+            matches = [i for i, value in enumerate(self.getNSTnames()) if value == name]
+            if not matches:
+                raise KeyError(f"Neuron '{name}' not found")
+            return matches if len(matches) > 1 else matches[0]
+        return [self.getNSTIndicesFromName(item) for item in name]
 
-    def getLastSpikeTime(self) -> float:
-        """Return the latest time boundary across all trains."""
-        return float(self.maxTime)
+    def getNSTnameFromInd(self, ind: int) -> str:
+        """Return the neuron name for 0-based index *ind*."""
+        index = int(ind)
+        if index < 0 or index >= self.numSpikeTrains:
+            raise IndexError("Index is out of bounds!")
+        return str(self.nstrain[index].name)
 
-    def get_nst(self, idx: int) -> nspikeTrain:
-        """Return a spike train by 0-based index (Pythonic API)."""
-        if idx < 0 or idx >= self.numSpikeTrains:
-            raise IndexError("SpikeTrainCollection index out of bounds (0-based indexing).")
-        return self.nstrain[idx]
+    def getNSTFromName(self, neuronName=None):
+        """Return spike train(s) matching the given neuron name(s)."""
+        if neuronName is None:
+            neuronName = self.getUniqueNSTnames()
+        indices = self.getNSTIndicesFromName(neuronName)
+        return self.getNST(indices)
 
     def getNST(self, idx) -> nspikeTrain | list[nspikeTrain]:
         """Return spike train(s) by 0-based index (Matlab ``nstColl.getNST``).
@@ -997,70 +1202,102 @@ class SpikeTrainCollection:
             nst.resample(self.sampleRate)
         return nst
 
-    def getNSTnames(self, selectorArray=None) -> list[str]:
-        """Return neuron names, optionally filtered by *selectorArray* (0-based indices)."""
-        all_names = [train.name for train in self.nstrain]
-        if selectorArray is None:
-            # Default: return names for all neurons in the mask
-            indices = [i for i, m in enumerate(self.neuronMask) if m]
+    def get_nst(self, idx: int) -> nspikeTrain:
+        """Return a spike train by 0-based index (Pythonic API)."""
+        if idx < 0 or idx >= self.numSpikeTrains:
+            raise IndexError("SpikeTrainCollection index out of bounds (0-based indexing).")
+        return self.nstrain[idx]
+
+    def resample(self, sampleRate: float) -> None:
+        """Resample all trains to *sampleRate* and align time bounds."""
+        self.sampleRate = float(sampleRate)
+        for train in self.nstrain:
+            train.resample(sampleRate)
+            train.setMinTime(float(self.minTime))
+            train.setMaxTime(float(self.maxTime))
+
+    def enforceSampleRate(self) -> None:
+        """Resample any train whose rate differs from the collection rate.
+
+        Accesses ``self.nstrain`` directly (not via ``getNST``) because the
+        intent is in-place mutation of the stored trains.
+        """
+        target = float(self.sampleRate)
+        for train in self.nstrain:
+            if round(float(train.sampleRate), 9) != round(target, 9):
+                train.resample(target)
+
+    def isSigRepBinary(self) -> bool:
+        """Alias for :meth:`BinarySigRep`."""
+        return self.BinarySigRep()
+
+    def BinarySigRep(self) -> bool:
+        """Return ``True`` if every train's signal representation is binary."""
+        return bool(all(self.getNST(index).isSigRepBinary() for index in range(self.numSpikeTrains)))
+
+    def getEnsembleNeuronCovariates(self, neuronNum: int = 1, neighborIndex=None, windowTimes=None):
+        """Build ensemble-history covariates for *neuronNum* from its neighbours."""
+        if neighborIndex is None or (
+            isinstance(neighborIndex, (list, tuple, np.ndarray)) and np.asarray(neighborIndex).size == 0
+        ):
+            allNeighbors = self.getNeighbors(neuronNum)
         else:
-            indices = [int(idx) for idx in np.asarray(selectorArray, dtype=int).reshape(-1)]
-        return [all_names[i] for i in indices if 0 <= i < len(all_names)]
+            allNeighbors = [int(item) for item in np.asarray(neighborIndex, dtype=int).reshape(-1)]
+        if windowTimes is None:
+            windowTimes = [0.0, 0.001]
+        from .history import History
 
-    def getUniqueNSTnames(self, selectorArray=None) -> list[str]:
-        """Return unique, insertion-ordered neuron names."""
-        names = [name for name in self.getNSTnames(selectorArray) if name]
-        return list(dict.fromkeys(names))
+        histObj = windowTimes if isinstance(windowTimes, History) else History(windowTimes)
+        ensembleCovariates = histObj.computeHistory(self.getNST(list(range(self.numSpikeTrains))))
+        ensembleCovariates.maskAwayAllExcept(allNeighbors)
+        self.addNeuronNamesToEnsCovColl(ensembleCovariates)
+        return ensembleCovariates
 
-    def getNSTIndicesFromName(self, name: Sequence[str] | str):
-        """Return 0-based index(es) for a neuron name (or list of names)."""
-        if isinstance(name, str):
-            matches = [i for i, value in enumerate(self.getNSTnames()) if value == name]
-            if not matches:
-                raise KeyError(f"Neuron '{name}' not found")
-            return matches if len(matches) > 1 else matches[0]
-        return [self.getNSTIndicesFromName(item) for item in name]
+    def addNeuronNamesToEnsCovColl(self, ensembleCovariates: CovariateCollection) -> None:
+        """Prefix ensemble-covariate labels with their neuron name."""
+        for i in range(ensembleCovariates.numCov):
+            tempCov = ensembleCovariates.covArray[i]
+            name = self.getNST(i).name
+            if not name:
+                name = str(i + 1)
+            dataLabels = [f"{name}:{label}" if label else str(name) for label in tempCov.dataLabels]
+            tempCov.setDataLabels(dataLabels)
 
-    def getNSTnameFromInd(self, ind: int) -> str:
-        """Return the neuron name for 0-based index *ind*."""
-        index = int(ind)
-        if index < 0 or index >= self.numSpikeTrains:
-            raise IndexError("Index is out of bounds!")
-        return str(self.nstrain[index].name)
-
-    def getNSTFromName(self, neuronName=None):
-        """Return spike train(s) matching the given neuron name(s)."""
-        if neuronName is None:
-            neuronName = self.getUniqueNSTnames()
-        indices = self.getNSTIndicesFromName(neuronName)
-        return self.getNST(indices)
-
-    def getFieldVal(self, fieldName: str):
-        """Collect a named field from every spike train (Matlab ``nstColl.getFieldVal``)."""
-        fieldVal: list[float] = []
-        neuronNumbers: list[int] = []
-        cnt = 0
-        for index in range(self.numSpikeTrains):
-            currVal = self.getNST(index).getFieldVal(fieldName)
-            if currVal is None:
-                continue
-            if isinstance(currVal, np.ndarray) and currVal.size == 0:
-                continue
-            if len(fieldVal) <= cnt:
-                fieldVal.extend([0.0] * (cnt + 1 - len(fieldVal)))
-            fieldVal[cnt] = float(currVal)
-            if len(neuronNumbers) <= cnt:
-                neuronNumbers.extend([0] * (cnt + 1 - len(neuronNumbers)))
-            neuronNumbers[cnt] = index
-            cnt += 1
-        return np.asarray(fieldVal, dtype=float), np.asarray(neuronNumbers, dtype=int)
-
-    def shiftTime(self, timeShift: float | None = None) -> "SpikeTrainCollection":
-        """Return a new collection with spike times shifted by *timeShift*."""
-        if timeShift is None:
-            timeShift = -float(self.minTime)
-        shifted = [nspikeTrain(np.asarray(train.spikeTimes, dtype=float) + float(timeShift)) for train in self.nstrain]
-        return SpikeTrainCollection(shifted)
+    def dataToMatrix(
+        self,
+        selectorArray: Sequence[int] | Sequence[str] | str | None = None,
+        binwidth: float | None = None,
+        minTime: float | None = None,
+        maxTime: float | None = None,
+    ) -> np.ndarray:
+        """Return an ``(nTimeBins, nNeurons)`` binary spike-count matrix."""
+        if self.numSpikeTrains == 0:
+            return np.zeros((0, 0), dtype=float)
+        if maxTime is None:
+            maxTime = self.maxTime
+        if minTime is None:
+            minTime = self.minTime
+        if binwidth is None:
+            binwidth = 1.0 / self.sampleRate
+        if selectorArray is None:
+            selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
+        elif isinstance(selectorArray, str) or _is_string_sequence(selectorArray):
+            resolved = self.getNSTIndicesFromName(selectorArray)
+            if isinstance(resolved, list):
+                selector = [int(item) if not isinstance(item, list) else int(item[0]) for item in resolved]
+            else:
+                selector = [int(resolved)]
+        else:
+            selector = [int(item) for item in selectorArray]
+        if not selector:
+            testSig = self.getNST(0).getSigRep(binwidth, minTime, maxTime)
+            return np.zeros((testSig.dataToMatrix().shape[0], 0), dtype=float)
+        testSig = self.getNST(selector[0]).getSigRep(binwidth, minTime, maxTime)
+        dataMat = np.zeros((testSig.dataToMatrix().shape[0], len(selector)), dtype=float)
+        for idx, neuron in enumerate(selector):
+            sig = self.getNST(neuron).getSigRep(binwidth, minTime, maxTime)
+            dataMat[:, idx] = sig.dataToMatrix().reshape(-1)
+        return dataMat
 
     def toSpikeTrain(
         self,
@@ -1136,343 +1373,6 @@ class SpikeTrainCollection:
         collapsed.resample(1.0 / max(delta, 1e-12))
         return collapsed
 
-    def setMinTime(self, value: float | None = None) -> None:
-        """Set the minimum time for every train in the collection."""
-        if value is None:
-            value = self.minTime
-        for train in self.nstrain:
-            train.setMinTime(float(value))
-        self.minTime = float(value)
-
-    def setMaxTime(self, value: float | None = None) -> None:
-        """Set the maximum time for every train in the collection."""
-        if value is None:
-            value = self.maxTime
-        for train in self.nstrain:
-            train.setMaxTime(float(value))
-        self.maxTime = float(value)
-
-    def resample(self, sampleRate: float) -> None:
-        """Resample all trains to *sampleRate* and align time bounds."""
-        self.sampleRate = float(sampleRate)
-        for train in self.nstrain:
-            train.resample(sampleRate)
-            train.setMinTime(float(self.minTime))
-            train.setMaxTime(float(self.maxTime))
-
-    def enforceSampleRate(self) -> None:
-        """Resample any train whose rate differs from the collection rate.
-
-        Accesses ``self.nstrain`` directly (not via ``getNST``) because the
-        intent is in-place mutation of the stored trains.
-        """
-        target = float(self.sampleRate)
-        for train in self.nstrain:
-            if round(float(train.sampleRate), 9) != round(target, 9):
-                train.resample(target)
-
-    def findMaxSampleRate(self) -> float:
-        """Return the highest sample rate among all trains."""
-        if self.numSpikeTrains == 0:
-            return float("-inf")
-        return float(max(train.sampleRate for train in self.nstrain))
-
-    def setMask(self, mask: Sequence[int] | np.ndarray) -> None:
-        """Set the neuron mask from a binary array or 0-based indices."""
-        arr = np.asarray(mask, dtype=int).reshape(-1)
-        if arr.size == self.numSpikeTrains and np.all(np.isin(arr, [0, 1])):
-            self.setNeuronMask(arr)
-            return
-        self.setNeuronMaskFromInd(arr)
-
-    def setNeuronMaskFromInd(self, mask: Sequence[int] | np.ndarray) -> None:
-        """Set the neuron mask from 0-based neuron indices."""
-        arr = np.asarray(mask, dtype=int).reshape(-1)
-        newMask = np.zeros(self.numSpikeTrains, dtype=int)
-        if arr.size:
-            if np.any(arr < 0) or np.any(arr >= self.numSpikeTrains):
-                raise IndexError("Neuron index out of bounds.")
-            newMask[arr] = 1
-        self.setNeuronMask(newMask)
-
-    def setNeuronMask(self, mask: Sequence[int] | np.ndarray) -> None:
-        """Set the binary neuron mask directly (length must match ``numSpikeTrains``)."""
-        arr = np.asarray(mask, dtype=int).reshape(-1)
-        if arr.size != self.numSpikeTrains:
-            raise ValueError("neuronMask length must match number of spike trains.")
-        self.neuronMask = arr.astype(int)
-
-    def resetMask(self) -> None:
-        """Enable all neurons (ones-mask)."""
-        self.neuronMask = np.ones(self.numSpikeTrains, dtype=int)
-
-    def getIndFromMask(self) -> list[int]:
-        """Return 0-based indices of neurons currently enabled by the mask."""
-        return np.flatnonzero(self.neuronMask == 1).astype(int).tolist()
-
-    def getIndFromMaskMinusOne(self, neuron: int) -> list[int]:
-        """Return active indices excluding *neuron* (0-based)."""
-        return [idx for idx in self.getIndFromMask() if idx != int(neuron)]
-
-    def isNeuronMaskSet(self) -> bool:
-        """Return ``True`` if any neuron is currently masked out."""
-        return bool(np.any(self.neuronMask == 0))
-
-    def setNeighbors(self, neighborArray: Sequence[Sequence[int]] | np.ndarray | None = None) -> None:
-        """Set or auto-generate the neuron neighbour matrix.
-
-        If *neighborArray* is ``None``, every neuron is a neighbour of
-        every other neuron (all-to-all minus self).
-        """
-        if neighborArray is None:
-            if self.numSpikeTrains == 0:
-                self.neighbors = []
-                return
-            matrix = np.zeros((self.numSpikeTrains, max(self.numSpikeTrains - 1, 0)), dtype=int)
-            for i in range(self.numSpikeTrains):
-                neighbors = [idx for idx in range(self.numSpikeTrains) if idx != i]
-                if neighbors:
-                    matrix[i, : len(neighbors)] = neighbors
-            self.neighbors = matrix
-            return
-        arr = np.asarray(neighborArray, dtype=int)
-        if arr.ndim != 2 or arr.shape[0] != self.numSpikeTrains:
-            raise ValueError("Neighbor Array is not of appropriate dimensions")
-        self.neighbors = arr
-
-    def areNeighborsSet(self) -> bool:
-        """Return ``True`` if the neighbour matrix has been initialized."""
-        return np.size(self.neighbors) > 0
-
-    def getNeighbors(self, neuronNum: int | Sequence[int]):
-        """Return the 0-based neighbour indices for one or more neurons."""
-        if isinstance(neuronNum, Sequence) and not isinstance(neuronNum, (str, bytes, np.ndarray)):
-            rows = [self.getNeighbors(int(item)) for item in neuronNum]
-            if rows and all(len(row) == len(rows[0]) for row in rows):
-                return np.asarray(rows, dtype=int)
-            return rows
-        neuron_idx = int(neuronNum)
-        if not self.areNeighborsSet():
-            self.setNeighbors()
-        if isinstance(self.neighbors, list):
-            row = list(self.neighbors[neuron_idx])
-        else:
-            row = np.asarray(self.neighbors[neuron_idx], dtype=int).reshape(-1).tolist()
-        available = set(self.getIndFromMaskMinusOne(neuron_idx))
-        return [value for value in row if value in available and value >= 0]
-
-    def getMaxBinSizeBinary(self) -> float:
-        """Return the largest bin-width that keeps all active trains binary."""
-        selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
-        if not selectorArray:
-            return np.inf
-        values = [self.getNST(index).getMaxBinSizeBinary() for index in selectorArray]
-        return float(np.min(values))
-
-    def BinarySigRep(self) -> bool:
-        """Return ``True`` if every train's signal representation is binary."""
-        return bool(all(self.getNST(index).isSigRepBinary() for index in range(self.numSpikeTrains)))
-
-    def isSigRepBinary(self) -> bool:
-        """Alias for :meth:`BinarySigRep`."""
-        return self.BinarySigRep()
-
-    def dataToMatrix(
-        self,
-        selectorArray: Sequence[int] | Sequence[str] | str | None = None,
-        binwidth: float | None = None,
-        minTime: float | None = None,
-        maxTime: float | None = None,
-    ) -> np.ndarray:
-        """Return an ``(nTimeBins, nNeurons)`` binary spike-count matrix."""
-        if self.numSpikeTrains == 0:
-            return np.zeros((0, 0), dtype=float)
-        if maxTime is None:
-            maxTime = self.maxTime
-        if minTime is None:
-            minTime = self.minTime
-        if binwidth is None:
-            binwidth = 1.0 / self.sampleRate
-        if selectorArray is None:
-            selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
-        elif isinstance(selectorArray, str) or _is_string_sequence(selectorArray):
-            resolved = self.getNSTIndicesFromName(selectorArray)
-            if isinstance(resolved, list):
-                selector = [int(item) if not isinstance(item, list) else int(item[0]) for item in resolved]
-            else:
-                selector = [int(resolved)]
-        else:
-            selector = [int(item) for item in selectorArray]
-        if not selector:
-            testSig = self.getNST(0).getSigRep(binwidth, minTime, maxTime)
-            return np.zeros((testSig.dataToMatrix().shape[0], 0), dtype=float)
-        testSig = self.getNST(selector[0]).getSigRep(binwidth, minTime, maxTime)
-        dataMat = np.zeros((testSig.dataToMatrix().shape[0], len(selector)), dtype=float)
-        for idx, neuron in enumerate(selector):
-            sig = self.getNST(neuron).getSigRep(binwidth, minTime, maxTime)
-            dataMat[:, idx] = sig.dataToMatrix().reshape(-1)
-        return dataMat
-
-    def getEnsembleNeuronCovariates(self, neuronNum: int = 1, neighborIndex=None, windowTimes=None):
-        """Build ensemble-history covariates for *neuronNum* from its neighbours."""
-        if neighborIndex is None or (
-            isinstance(neighborIndex, (list, tuple, np.ndarray)) and np.asarray(neighborIndex).size == 0
-        ):
-            allNeighbors = self.getNeighbors(neuronNum)
-        else:
-            allNeighbors = [int(item) for item in np.asarray(neighborIndex, dtype=int).reshape(-1)]
-        if windowTimes is None:
-            windowTimes = [0.0, 0.001]
-        from .history import History
-
-        histObj = windowTimes if isinstance(windowTimes, History) else History(windowTimes)
-        ensembleCovariates = histObj.computeHistory(self.getNST(list(range(self.numSpikeTrains))))
-        ensembleCovariates.maskAwayAllExcept(allNeighbors)
-        self.addNeuronNamesToEnsCovColl(ensembleCovariates)
-        return ensembleCovariates
-
-    def addNeuronNamesToEnsCovColl(self, ensembleCovariates: CovariateCollection) -> None:
-        """Prefix ensemble-covariate labels with their neuron name."""
-        for i in range(ensembleCovariates.numCov):
-            tempCov = ensembleCovariates.covArray[i]
-            name = self.getNST(i).name
-            if not name:
-                name = str(i + 1)
-            dataLabels = [f"{name}:{label}" if label else str(name) for label in tempCov.dataLabels]
-            tempCov.setDataLabels(dataLabels)
-
-    def restoreToOriginal(self, rMask: int = 0) -> None:
-        """Restore all trains to their original state; optionally reset the mask."""
-        for train in self.nstrain:
-            train.restoreToOriginal()
-        self._refresh_summary()
-        self.sampleRate = self.findMaxSampleRate()
-        self.resample(self.sampleRate)
-        if rMask == 1:
-            self.resetMask()
-
-    def ensureConsistancy(self) -> None:
-        """Enforce consistent sample rate and time bounds across all trains."""
-        self.enforceSampleRate()
-        self.setMinTime()
-        self.setMaxTime()
-
-    def updateTimes(self, nst: nspikeTrain) -> None:
-        """Expand collection time bounds to include *nst*, or clamp *nst*."""
-        if float(nst.minTime) <= float(self.minTime):
-            self.setMinTime(float(nst.minTime))
-        else:
-            nst.setMinTime(float(self.minTime))
-        if float(nst.maxTime) >= float(self.maxTime):
-            self.setMaxTime(float(nst.maxTime))
-        else:
-            nst.setMaxTime(float(self.maxTime))
-
-    def plot(self, selectorArray: Sequence[int] | None = None,
-             minTime: float | None = None, maxTime: float | None = None,
-             handle=None, reverseOrder: bool = False, **__):
-        """Plot a spike-train raster.
-
-        Parameters
-        ----------
-        selectorArray : sequence of int, optional
-            0-based indices of neurons to plot.  Defaults to the neuron mask
-            (or all neurons if no mask is set).  Matches Matlab positional arg.
-        minTime, maxTime : float, optional
-            Time window to display.  Defaults to the collection's time span.
-        handle : matplotlib Axes, optional
-            Axes to plot into.
-        reverseOrder : bool
-            If ``True``, reverse the display order so the last neuron is at
-            the top.  Matches Matlab ``reverseOrderPlot`` parameter.
-        """
-        if selectorArray is not None and len(selectorArray) > 0:
-            selected = [int(x) for x in selectorArray]
-        else:
-            selected = self.getIndFromMask()
-            if not selected:
-                selected = list(range(self.numSpikeTrains))
-        if reverseOrder:
-            selected = list(reversed(selected))
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(8.0, max(2.5, 0.55 * max(len(selected), 1) + 1.0)))[1]
-        ax.clear()
-        for row, neuron_index in enumerate(selected, start=1):
-            train = self.getNST(neuron_index)
-            train.plot(dHeight=0.8, yOffset=float(row), currentHandle=ax)
-        ax.set_ylim(0.25, len(selected) + 0.75)
-        ax.set_yticks(range(1, len(selected) + 1), [str(item) for item in selected])
-        if minTime is not None or maxTime is not None:
-            lo = float(minTime) if minTime is not None else float(self.minTime)
-            hi = float(maxTime) if maxTime is not None else float(self.maxTime)
-            ax.set_xlim(lo, hi)
-        ax.set_xlabel("time [s]")
-        ax.set_title("Spike Train Raster")
-        return ax
-
-    def getMinISIs(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
-        """Return the minimum ISI for each selected neuron."""
-        isis = self.getISIs(selectorArray, minTime, maxTime)
-        return np.asarray([float(np.min(values)) if values.size else 0.0 for values in isis], dtype=float)
-
-    def getISIs(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None) -> list[np.ndarray]:
-        """Return a list of ISI arrays, one per selected neuron."""
-        if maxTime is None:
-            maxTime = self.maxTime
-        if minTime is None:
-            minTime = self.minTime
-        if selectorArray is None or len(selectorArray) == 0:
-            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
-        return [self.getNST(int(neuron)).getISIs(minTime, maxTime) for neuron in selectorArray]
-
-    def plotISIHistogram(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None, handle=None):
-        """Plot ISI histograms for each selected neuron in stacked subplots."""
-        if maxTime is None:
-            maxTime = self.maxTime
-        if minTime is None:
-            minTime = self.minTime
-        if selectorArray is None or len(selectorArray) == 0:
-            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
-        fig = handle if handle is not None else plt.figure(figsize=(7.0, max(2.5, 2.2 * len(selectorArray))))
-        fig.clear()
-        axes = fig.subplots(len(selectorArray), 1)
-        if not isinstance(axes, np.ndarray):
-            axes = np.asarray([axes], dtype=object)
-        for ax, neuron in zip(axes.reshape(-1), selectorArray, strict=False):
-            self.getNST(int(neuron)).plotISIHistogram(minTime, maxTime, handle=ax)
-        fig.tight_layout()
-        return fig
-
-    def plotExponentialFit(
-        self,
-        selectorArray: Sequence[int] | None = None,
-        minTime: float | None = None,
-        maxTime: float | None = None,
-        numBins: int | None = None,
-        handle=None,
-    ):
-        """Plot exponential-distribution fits of ISIs for selected neurons."""
-        if maxTime is None:
-            maxTime = self.maxTime
-        if minTime is None:
-            minTime = self.minTime
-        if selectorArray is None or len(selectorArray) == 0:
-            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
-        fig = handle if handle is not None else plt.figure(figsize=(7.0, max(2.5, 2.2 * len(selectorArray))))
-        fig.clear()
-        axes = fig.subplots(len(selectorArray), 1)
-        if not isinstance(axes, np.ndarray):
-            axes = np.asarray([axes], dtype=object)
-        for ax, neuron in zip(axes.reshape(-1), selectorArray, strict=False):
-            self.getNST(int(neuron)).plotExponentialFit(minTime, maxTime, numBins, handle=ax)
-        fig.tight_layout()
-        return fig
-
-    def getSpikeTimes(self, minTime: float | None = None, maxTime: float | None = None) -> list[np.ndarray]:
-        """Return a list of spike-time arrays, one per active neuron."""
-        del minTime, maxTime
-        selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
-        return [self.getNST(int(index)).getSpikeTimes() for index in selector]
-
     def psth(
         self,
         binwidth: float = 0.100,
@@ -1534,215 +1434,6 @@ class SpikeTrainCollection:
         psth_data = psth_hist[:-1] / binwidth / float(len(selectorArray))
         time = (window_times[1:] + window_times[:-1]) * 0.5
         return Covariate(time, psth_data, "PSTH", "time", "s", "Hz", ["psth"])
-
-    def psthGLM(self, basisWidth: float | None = None, history=None, fitType: str = "poisson",
-                selectorArray=None, minTime=None, maxTime=None, sampleRate=None,
-                *, binwidth: float | None = None, windowTimes=None,
-                alphaVal: float = 0.05, Mc: int = 1000):
-        """GLM-based PSTH estimation (Matlab ``nstColl.psthGLM``).
-
-        Parameters match MATLAB:
-        ``psthGLM(basisWidth, history, fitType, selectorArray, minTime, maxTime, sampleRate)``
-
-        The Python keyword-only ``binwidth`` and ``windowTimes`` are accepted
-        as aliases for ``basisWidth`` and ``history`` respectively.
-
-        Returns ``(psth_covariate, histSignal, psthFitResult)`` matching the
-        Matlab signature.
-        """
-        # Resolve aliases: binwidth ↔ basisWidth, windowTimes ↔ history
-        if basisWidth is None and binwidth is not None:
-            basisWidth = binwidth
-        elif basisWidth is None and binwidth is None:
-            basisWidth = 0.100  # MATLAB default
-        if windowTimes is not None and history is None:
-            history = windowTimes
-        windowTimes = history  # use unified name internally
-        from .analysis import Analysis
-        from .confidence_interval import ConfidenceInterval
-        from .glm import fit_poisson_glm
-
-        # Use MATLAB-compatible param names (selectorArray/minTime/maxTime/sampleRate unused in current impl)
-        _sr = float(sampleRate) if sampleRate is not None else float(self.sampleRate)
-        _minT = float(minTime) if minTime is not None else float(self.minTime)
-        _maxT = float(maxTime) if maxTime is not None else float(self.maxTime)
-        basis = self.generateUnitImpulseBasis(
-            float(basisWidth), _minT, _maxT, _sr
-        )
-        trial = Trial(
-            SpikeTrainCollection([train.nstCopy() for train in self.nstrain]),
-            CovariateCollection([basis]),
-        )
-        hist = [] if windowTimes is None else np.asarray(windowTimes, dtype=float).reshape(-1)
-        label_select = [[basis.name, *list(basis.dataLabels)]]
-        cfg = TrialConfig(label_select, float(self.sampleRate), hist, [])
-        cfg.setName("GLM-PSTH+Hist" if np.asarray(hist).size else "GLM-PSTH")
-        cfgColl = ConfigCollection([cfg])
-        algorithm = "GLM" if str(fitType or "poisson").lower() == "poisson" else "BNLRCG"
-
-        # ---- Matlab batchMode=1: concatenate Y and X across ALL trials ----
-        # Matlab nstColl.psthGLM (line 1003-1004) calls
-        #   RunAnalysisForAllNeurons(trial, cfgColl, 0, Algorithm, [], 1)
-        # with batchMode=1, which pools all trials of the same neuron into
-        # a single GLM fit.  Python's RunAnalysisForAllNeurons previously
-        # ignored batchMode, fitting each trial separately — producing
-        # single-trial coefficients instead of across-trial pooled ones.
-        cfgColl.setConfig(trial, 0)
-        stacked_x: list[np.ndarray] = []
-        stacked_y: list[np.ndarray] = []
-        for idx in range(trial.nspikeColl.num_spike_trains):
-            x_i = np.asarray(trial.getDesignMatrix(idx), dtype=float)
-            y_i = np.asarray(trial.getSpikeVector(idx), dtype=float).reshape(-1)
-            n_obs = min(x_i.shape[0], y_i.shape[0])
-            stacked_x.append(x_i[:n_obs])
-            stacked_y.append(y_i[:n_obs])
-        X = np.vstack(stacked_x)
-        y = np.concatenate(stacked_y)
-
-        if algorithm == "GLM":
-            glm_res = fit_poisson_glm(X, y, include_intercept=False)
-            raw_coeffs = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
-            lambda_hat = glm_res.predict_rate(X)
-            W = np.maximum(lambda_hat, 1e-12)
-        else:
-            from .glm import fit_binomial_glm
-            glm_res = fit_binomial_glm(X, y, include_intercept=False)
-            raw_coeffs = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
-            lambda_hat = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
-            W = lambda_hat * (1.0 - lambda_hat)
-            W = np.maximum(W, 1e-12)
-
-        # Standard errors from Fisher information (Hessian inverse)
-        try:
-            XtWX = X.T @ (X * W[:, None]) + 1e-6 * np.eye(X.shape[1])
-            covb = np.linalg.inv(XtWX)
-            se_vec = np.sqrt(np.maximum(np.diag(covb), 0.0))
-        except np.linalg.LinAlgError:
-            se_vec = np.full(raw_coeffs.size, np.nan, dtype=float)
-
-        # Build a proper FitResult for the third return value by fitting just
-        # the first spike train (fast), then override its coefficients with
-        # the batch-fit values.
-        fit = Analysis.RunAnalysisForNeuron(trial, 0, cfgColl, 0, algorithm)
-        if isinstance(fit, list):
-            fit = fit[0]
-        # Override with batch-fit coefficients and standard errors
-        fit.b[0] = raw_coeffs.copy()
-        if fit.stats and isinstance(fit.stats[0], dict):
-            fit.stats[0]["se"] = se_vec.copy()
-
-        numBasis = basis.dimension
-
-        if raw_coeffs.size < numBasis:
-            padded = np.zeros(numBasis, dtype=float)
-            padded[: raw_coeffs.size] = raw_coeffs
-            bVals = padded
-            se_padded = np.full(numBasis, np.nan, dtype=float)
-            se_padded[: se_vec.size] = se_vec[:numBasis] if se_vec.size >= numBasis else se_vec
-            se_basis = se_padded
-        else:
-            bVals = raw_coeffs[:numBasis]
-            se_basis = se_vec[:numBasis]
-
-        is_poisson = str(fitType or "poisson").lower() == "poisson"
-        sr = float(self.sampleRate)
-
-        # basis.data is (nTimeBins x numBasis): multiply to get GLM rate
-        bdata = np.asarray(basis.data, dtype=float)
-        lambda_glm = np.exp(bdata @ bVals) * sr
-        psth_cov = Covariate(
-            basis.time.copy(),
-            lambda_glm.reshape(-1, 1),
-            "GLM-PSTH",
-            basis.xlabelval,
-            basis.xunits,
-            "Hz",
-            ["\\lambda_{GLM}"],
-        )
-
-        # ---- Monte Carlo confidence intervals for PSTH (Matlab parity) ----
-        se_clean = np.where(np.isnan(se_basis), 0.0, se_basis)
-        if np.any(se_clean > 0):
-            rng = np.random.default_rng()
-            z = rng.standard_normal((se_clean.size, Mc))
-            xKDraw = bVals[:, None] + se_clean[:, None] * z  # (numBasis, Mc)
-            if is_poisson:
-                lambdaDraw = np.exp(np.clip(xKDraw, -30, 30)) * sr
-            else:
-                xc = np.clip(xKDraw, -30, 30)
-                lambdaDraw = (np.exp(xc) / (1.0 + np.exp(xc))) * sr
-            lambdaDraw = np.where(np.isinf(lambdaDraw), 0.0, lambdaDraw)
-
-            # Per-coefficient empirical quantiles
-            CIs = np.column_stack([
-                np.quantile(lambdaDraw, alphaVal / 2.0, axis=1),
-                np.quantile(lambdaDraw, 1.0 - alphaVal / 2.0, axis=1),
-            ])  # (numBasis, 2)
-            lower = bdata @ CIs[:, 0]
-            upper = bdata @ CIs[:, 1]
-
-            ciPSTHGLM = ConfidenceInterval(
-                basis.time, np.column_stack([lower, upper]),
-                "CI_{psth_GLM}", psth_cov.xlabelval, psth_cov.xunits, "Hz",
-            )
-            psth_cov.setConfInterval(ciPSTHGLM)
-
-        # ---- History signal (only present when windowTimes is specified) ----
-        histSignal = None
-        if np.asarray(hist).size and raw_coeffs.size > numBasis:
-            histVals = raw_coeffs[numBasis:]
-            se_hist = se_vec[numBasis:] if se_vec.size > numBasis else np.zeros_like(histVals)
-
-            # Build piecewise-constant basis for history time axis (Matlab style)
-            selfHist = np.asarray(hist, dtype=float).reshape(-1)
-            histTime = np.arange(0.0, float(np.max(selfHist)) + 0.001, 0.001)
-            nHistBins = len(selfHist) - 1
-            if len(histTime) > 0 and nHistBins > 0:
-                basisMat = np.zeros((len(histTime), nHistBins), dtype=float)
-                for i in range(nHistBins):
-                    if i == nHistBins - 1:
-                        col = (histTime >= selfHist[i]) & (histTime <= selfHist[i + 1])
-                    else:
-                        col = (histTime >= selfHist[i]) & (histTime < selfHist[i + 1])
-                    basisMat[:, i] = col.astype(float)
-
-                expHistVals = np.exp(histVals[:nHistBins])
-                histSignal = Covariate(
-                    histTime, (basisMat @ expHistVals).reshape(-1, 1),
-                    "PSTH_{glm}", "time", "s", "Hz",
-                )
-
-                # Monte Carlo CIs for history signal
-                se_h_clean = np.where(np.isnan(se_hist[:nHistBins]), 0.0, se_hist[:nHistBins])
-                if np.any(se_h_clean > 0):
-                    rng2 = np.random.default_rng()
-                    z2 = rng2.standard_normal((se_h_clean.size, Mc))
-                    # Matlab centers on zero for history CIs (variability around null)
-                    xKDrawH = se_h_clean[:, None] * z2
-                    if is_poisson:
-                        histDraw = np.exp(np.clip(xKDrawH, -30, 30)) * sr
-                    else:
-                        xc2 = np.clip(xKDrawH, -30, 30)
-                        histDraw = (np.exp(xc2) / (1.0 + np.exp(xc2))) * sr
-                    CIsH = np.column_stack([
-                        np.quantile(histDraw, alphaVal / 2.0, axis=1),
-                        np.quantile(histDraw, 1.0 - alphaVal / 2.0, axis=1),
-                    ])
-                    lowerH = basisMat @ CIsH[:, 0]
-                    upperH = basisMat @ CIsH[:, 1]
-                    ciHist = ConfidenceInterval(
-                        histTime, np.column_stack([lowerH, upperH]),
-                        "CI_{psth_GLMHIST}", psth_cov.xlabelval, psth_cov.xunits, "Hz",
-                    )
-                    histSignal.setConfInterval(ciHist)
-            else:
-                histSignal = Covariate(
-                    np.arange(len(histVals), dtype=float),
-                    histVals.reshape(-1, 1),
-                    "History", "lag", "bins", "", ["h"],
-                )
-
-        return psth_cov, histSignal, fit
 
     def psthBars(
         self,
@@ -1822,133 +1513,6 @@ class SpikeTrainCollection:
             "Hz",
             ["mode", "mean", "ciLower", "ciUpper"],
         )
-
-    def _psth_glm_coeffs(
-        self,
-        basisWidth: float,
-        windowTimes=None,
-        fitType: str = "poisson",
-    ) -> np.ndarray:
-        from .analysis import Analysis
-
-        basis = self.generateUnitImpulseBasis(float(basisWidth), float(self.minTime), float(self.maxTime), float(self.sampleRate))
-        trial = Trial(SpikeTrainCollection([train.nstCopy() for train in self.nstrain]), CovariateCollection([basis]))
-        hist = [] if windowTimes is None else np.asarray(windowTimes, dtype=float).reshape(-1)
-        label_select = [[basis.name, *list(basis.dataLabels)]]
-        cfg = TrialConfig(label_select, float(self.sampleRate), hist, [])
-        cfg.setName("GLM-PSTH+Hist" if np.asarray(hist).size else "GLM-PSTH")
-        cfgColl = ConfigCollection([cfg])
-        algorithm = "GLM" if str(fitType or "poisson").lower() == "poisson" else "BNLRCG"
-        psth_result = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, algorithm, [], 1)
-        fit = psth_result[0] if isinstance(psth_result, list) else psth_result
-        coeffs = fit._rawCoeffs(1)
-        numBasis = basis.dimension
-        if coeffs.size < numBasis:
-            padded = np.zeros(numBasis, dtype=float)
-            padded[: coeffs.size] = coeffs
-            return padded
-        return coeffs[:numBasis]
-
-    def estimateVarianceAcrossTrials(
-        self,
-        numBasis: int | None = None,
-        windowTimes=None,
-        numIter: int | None = None,
-        fitType: str | None = None,
-    ) -> np.ndarray:
-        """Estimate the state-noise covariance ``Q`` from bootstrap GLM fits.
-
-        Used internally by :meth:`ssglm` / :meth:`ssglmFB` to initialise
-        the EM algorithm's state-noise prior.
-        """
-        if fitType is None or fitType == "":
-            fitType = "poisson"
-        if numIter is None:
-            numIter = 20
-        if windowTimes is None:
-            windowTimes = []
-        if numBasis is None:
-            numBasis = 20
-
-        numBasis = int(numBasis)
-        numIter = int(numIter)
-        coeffs = np.zeros((numBasis, numIter), dtype=float)
-        numRealizations = int(self.numSpikeTrains)
-        if numRealizations == 0 or numBasis <= 0 or numIter <= 0:
-            return np.zeros((max(numBasis, 0), max(numBasis, 0)), dtype=float)
-
-        basisWidth = (float(self.maxTime) - float(self.minTime)) / float(numBasis)
-        sumNumber = max(int(np.floor(numRealizations / 2.0 - 1.0)), 0)
-        delta = 1.0 / float(self.sampleRate)
-        minTime = float(self.minTime)
-        maxTime = float(self.maxTime)
-        halfIters = min(int(np.floor(numIter / 2.0)), sumNumber)
-
-        for i in range(halfIters):
-            subset = SpikeTrainCollection(self.getNST(list(range(i, i + sumNumber + 1))))
-            subset.resample(1.0 / delta)
-            subset.setMaxTime(maxTime)
-            subset.setMinTime(minTime)
-            coeffs[:, i] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
-
-        for i in range(numRealizations - 1, numRealizations - halfIters - 1, -1):
-            subset = SpikeTrainCollection(self.getNST(list(range(i, i - sumNumber - 1, -1))))
-            subset.resample(1.0 / delta)
-            subset.setMaxTime(maxTime)
-            subset.setMinTime(minTime)
-            coeffs[:, i] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
-
-        coeff_rows = [row[row != 0] for row in coeffs]
-        max_width = max((row.size for row in coeff_rows), default=0)
-        if max_width == 0:
-            return np.zeros((numBasis, numBasis), dtype=float)
-        coeffsTemp = np.full((numBasis, max_width), np.nan, dtype=float)
-        for idx, row in enumerate(coeff_rows):
-            coeffsTemp[idx, : row.size] = row
-
-        nTerms = 4
-        filt_num = np.ones(nTerms, dtype=float) / float(nTerms)
-        coeffsTemp[np.isnan(coeffsTemp)] = 0.0
-        if coeffsTemp.T.shape[0] > 3 * nTerms:
-            from scipy.signal import filtfilt  # lazy: avoid scipy on import
-            fcoeffs = filtfilt(filt_num, [1.0], coeffsTemp.T, axis=0).T
-        else:
-            fcoeffs = coeffsTemp
-
-        diffs = np.diff(fcoeffs, axis=1)
-        if diffs.shape[1] <= 1:
-            varEst = np.full(numBasis, np.nan, dtype=float)
-        else:
-            with np.errstate(invalid="ignore", divide="ignore"):
-                varEst = np.nanvar(diffs, axis=1, ddof=1)
-        return np.diag(varEst)
-
-    @staticmethod
-    def generateUnitImpulseBasis(basisWidth: float, minTime: float, maxTime: float, sampleRate: float = 1000.0) -> Covariate:
-        """Create a piecewise-constant (unit impulse) basis :class:`Covariate`.
-
-        Each column is a rectangular pulse spanning one *basisWidth*
-        interval, used as the design matrix for GLM-PSTH estimation.
-        """
-        windowTimes = np.arange(float(minTime), float(maxTime), float(basisWidth))
-        if windowTimes.size == 0 or not np.isclose(windowTimes[-1], maxTime):
-            windowTimes = np.append(windowTimes, float(maxTime))
-        else:
-            windowTimes[-1] = float(maxTime)
-        if windowTimes.size < 2:
-            windowTimes = np.array([float(minTime), float(maxTime)], dtype=float)
-        timeVec = np.arange(float(minTime), float(maxTime) + (1.0 / float(sampleRate)), 1.0 / float(sampleRate))
-        dataMat = np.zeros((timeVec.size, windowTimes.size - 1), dtype=float)
-        dataLabels: list[str] = []
-        for i in range(windowTimes.size - 1):
-            start = float(windowTimes[i])
-            stop = float(windowTimes[i + 1])
-            if i == windowTimes.size - 2:
-                dataMat[:, i] = ((timeVec >= start) & (timeVec <= stop)).astype(float)
-            else:
-                dataMat[:, i] = ((timeVec >= start) & (timeVec < stop)).astype(float)
-            dataLabels.append(f"b{i + 1:02d}" if i + 1 < 10 else f"b{i + 1}")
-        return Covariate(timeVec, dataMat, "UnitPulseBasis", "time", "s", "", dataLabels)
 
     def ssglm(
         self,
@@ -2159,6 +1723,420 @@ class SpikeTrainCollection:
             A, Q0_diag, x0, dN, fitType, delta, gamma0, windowTimes, numBasis, neuronName
         )
 
+    def _psth_glm_coeffs(
+        self,
+        basisWidth: float,
+        windowTimes=None,
+        fitType: str = "poisson",
+    ) -> np.ndarray:
+        from .analysis import Analysis
+
+        basis = self.generateUnitImpulseBasis(float(basisWidth), float(self.minTime), float(self.maxTime), float(self.sampleRate))
+        trial = Trial(SpikeTrainCollection([train.nstCopy() for train in self.nstrain]), CovariateCollection([basis]))
+        hist = [] if windowTimes is None else np.asarray(windowTimes, dtype=float).reshape(-1)
+        label_select = [[basis.name, *list(basis.dataLabels)]]
+        cfg = TrialConfig(label_select, float(self.sampleRate), hist, [])
+        cfg.setName("GLM-PSTH+Hist" if np.asarray(hist).size else "GLM-PSTH")
+        cfgColl = ConfigCollection([cfg])
+        algorithm = "GLM" if str(fitType or "poisson").lower() == "poisson" else "BNLRCG"
+        psth_result = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, algorithm, [], 1)
+        fit = psth_result[0] if isinstance(psth_result, list) else psth_result
+        coeffs = fit._rawCoeffs(1)
+        numBasis = basis.dimension
+        if coeffs.size < numBasis:
+            padded = np.zeros(numBasis, dtype=float)
+            padded[: coeffs.size] = coeffs
+            return padded
+        return coeffs[:numBasis]
+
+    def psthGLM(self, basisWidth: float | None = None, history=None, fitType: str = "poisson",
+                selectorArray=None, minTime=None, maxTime=None, sampleRate=None,
+                *, binwidth: float | None = None, windowTimes=None,
+                alphaVal: float = 0.05, Mc: int = 1000):
+        """GLM-based PSTH estimation (Matlab ``nstColl.psthGLM``).
+
+        Parameters match MATLAB:
+        ``psthGLM(basisWidth, history, fitType, selectorArray, minTime, maxTime, sampleRate)``
+
+        The Python keyword-only ``binwidth`` and ``windowTimes`` are accepted
+        as aliases for ``basisWidth`` and ``history`` respectively.
+
+        Returns ``(psth_covariate, histSignal, psthFitResult)`` matching the
+        Matlab signature.
+        """
+        # Resolve aliases: binwidth ↔ basisWidth, windowTimes ↔ history
+        if basisWidth is None and binwidth is not None:
+            basisWidth = binwidth
+        elif basisWidth is None and binwidth is None:
+            basisWidth = 0.100  # MATLAB default
+        if windowTimes is not None and history is None:
+            history = windowTimes
+        windowTimes = history  # use unified name internally
+        from .analysis import Analysis
+        from .confidence_interval import ConfidenceInterval
+        from .glm import fit_poisson_glm
+
+        # Use MATLAB-compatible param names (selectorArray/minTime/maxTime/sampleRate unused in current impl)
+        _sr = float(sampleRate) if sampleRate is not None else float(self.sampleRate)
+        _minT = float(minTime) if minTime is not None else float(self.minTime)
+        _maxT = float(maxTime) if maxTime is not None else float(self.maxTime)
+        basis = self.generateUnitImpulseBasis(
+            float(basisWidth), _minT, _maxT, _sr
+        )
+        trial = Trial(
+            SpikeTrainCollection([train.nstCopy() for train in self.nstrain]),
+            CovariateCollection([basis]),
+        )
+        hist = [] if windowTimes is None else np.asarray(windowTimes, dtype=float).reshape(-1)
+        label_select = [[basis.name, *list(basis.dataLabels)]]
+        cfg = TrialConfig(label_select, float(self.sampleRate), hist, [])
+        cfg.setName("GLM-PSTH+Hist" if np.asarray(hist).size else "GLM-PSTH")
+        cfgColl = ConfigCollection([cfg])
+        algorithm = "GLM" if str(fitType or "poisson").lower() == "poisson" else "BNLRCG"
+
+        # ---- Matlab batchMode=1: concatenate Y and X across ALL trials ----
+        # Matlab nstColl.psthGLM (line 1003-1004) calls
+        #   RunAnalysisForAllNeurons(trial, cfgColl, 0, Algorithm, [], 1)
+        # with batchMode=1, which pools all trials of the same neuron into
+        # a single GLM fit.  Python's RunAnalysisForAllNeurons previously
+        # ignored batchMode, fitting each trial separately — producing
+        # single-trial coefficients instead of across-trial pooled ones.
+        cfgColl.setConfig(trial, 0)
+        stacked_x: list[np.ndarray] = []
+        stacked_y: list[np.ndarray] = []
+        for idx in range(trial.nspikeColl.num_spike_trains):
+            x_i = np.asarray(trial.getDesignMatrix(idx), dtype=float)
+            y_i = np.asarray(trial.getSpikeVector(idx), dtype=float).reshape(-1)
+            n_obs = min(x_i.shape[0], y_i.shape[0])
+            stacked_x.append(x_i[:n_obs])
+            stacked_y.append(y_i[:n_obs])
+        X = np.vstack(stacked_x)
+        y = np.concatenate(stacked_y)
+
+        if algorithm == "GLM":
+            glm_res = fit_poisson_glm(X, y, include_intercept=False)
+            raw_coeffs = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            lambda_hat = glm_res.predict_rate(X)
+            W = np.maximum(lambda_hat, 1e-12)
+        else:
+            from .glm import fit_binomial_glm
+            glm_res = fit_binomial_glm(X, y, include_intercept=False)
+            raw_coeffs = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            lambda_hat = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
+            W = lambda_hat * (1.0 - lambda_hat)
+            W = np.maximum(W, 1e-12)
+
+        # Standard errors from Fisher information (Hessian inverse)
+        try:
+            XtWX = X.T @ (X * W[:, None]) + 1e-6 * np.eye(X.shape[1])
+            covb = np.linalg.inv(XtWX)
+            se_vec = np.sqrt(np.maximum(np.diag(covb), 0.0))
+        except np.linalg.LinAlgError:
+            se_vec = np.full(raw_coeffs.size, np.nan, dtype=float)
+
+        # Build a proper FitResult for the third return value by fitting just
+        # the first spike train (fast), then override its coefficients with
+        # the batch-fit values.
+        fit = Analysis.RunAnalysisForNeuron(trial, 0, cfgColl, 0, algorithm)
+        if isinstance(fit, list):
+            fit = fit[0]
+        # Override with batch-fit coefficients and standard errors
+        fit.b[0] = raw_coeffs.copy()
+        if fit.stats and isinstance(fit.stats[0], dict):
+            fit.stats[0]["se"] = se_vec.copy()
+
+        numBasis = basis.dimension
+
+        if raw_coeffs.size < numBasis:
+            padded = np.zeros(numBasis, dtype=float)
+            padded[: raw_coeffs.size] = raw_coeffs
+            bVals = padded
+            se_padded = np.full(numBasis, np.nan, dtype=float)
+            se_padded[: se_vec.size] = se_vec[:numBasis] if se_vec.size >= numBasis else se_vec
+            se_basis = se_padded
+        else:
+            bVals = raw_coeffs[:numBasis]
+            se_basis = se_vec[:numBasis]
+
+        is_poisson = str(fitType or "poisson").lower() == "poisson"
+        sr = float(self.sampleRate)
+
+        # basis.data is (nTimeBins x numBasis): multiply to get GLM rate
+        bdata = np.asarray(basis.data, dtype=float)
+        lambda_glm = np.exp(bdata @ bVals) * sr
+        psth_cov = Covariate(
+            basis.time.copy(),
+            lambda_glm.reshape(-1, 1),
+            "GLM-PSTH",
+            basis.xlabelval,
+            basis.xunits,
+            "Hz",
+            ["\\lambda_{GLM}"],
+        )
+
+        # ---- Monte Carlo confidence intervals for PSTH (Matlab parity) ----
+        se_clean = np.where(np.isnan(se_basis), 0.0, se_basis)
+        if np.any(se_clean > 0):
+            rng = np.random.default_rng()
+            z = rng.standard_normal((se_clean.size, Mc))
+            xKDraw = bVals[:, None] + se_clean[:, None] * z  # (numBasis, Mc)
+            if is_poisson:
+                lambdaDraw = np.exp(np.clip(xKDraw, -30, 30)) * sr
+            else:
+                xc = np.clip(xKDraw, -30, 30)
+                lambdaDraw = (np.exp(xc) / (1.0 + np.exp(xc))) * sr
+            lambdaDraw = np.where(np.isinf(lambdaDraw), 0.0, lambdaDraw)
+
+            # Per-coefficient empirical quantiles
+            CIs = np.column_stack([
+                np.quantile(lambdaDraw, alphaVal / 2.0, axis=1),
+                np.quantile(lambdaDraw, 1.0 - alphaVal / 2.0, axis=1),
+            ])  # (numBasis, 2)
+            lower = bdata @ CIs[:, 0]
+            upper = bdata @ CIs[:, 1]
+
+            ciPSTHGLM = ConfidenceInterval(
+                basis.time, np.column_stack([lower, upper]),
+                "CI_{psth_GLM}", psth_cov.xlabelval, psth_cov.xunits, "Hz",
+            )
+            psth_cov.setConfInterval(ciPSTHGLM)
+
+        # ---- History signal (only present when windowTimes is specified) ----
+        histSignal = None
+        if np.asarray(hist).size and raw_coeffs.size > numBasis:
+            histVals = raw_coeffs[numBasis:]
+            se_hist = se_vec[numBasis:] if se_vec.size > numBasis else np.zeros_like(histVals)
+
+            # Build piecewise-constant basis for history time axis (Matlab style)
+            selfHist = np.asarray(hist, dtype=float).reshape(-1)
+            histTime = np.arange(0.0, float(np.max(selfHist)) + 0.001, 0.001)
+            nHistBins = len(selfHist) - 1
+            if len(histTime) > 0 and nHistBins > 0:
+                basisMat = np.zeros((len(histTime), nHistBins), dtype=float)
+                for i in range(nHistBins):
+                    if i == nHistBins - 1:
+                        col = (histTime >= selfHist[i]) & (histTime <= selfHist[i + 1])
+                    else:
+                        col = (histTime >= selfHist[i]) & (histTime < selfHist[i + 1])
+                    basisMat[:, i] = col.astype(float)
+
+                expHistVals = np.exp(histVals[:nHistBins])
+                histSignal = Covariate(
+                    histTime, (basisMat @ expHistVals).reshape(-1, 1),
+                    "PSTH_{glm}", "time", "s", "Hz",
+                )
+
+                # Monte Carlo CIs for history signal
+                se_h_clean = np.where(np.isnan(se_hist[:nHistBins]), 0.0, se_hist[:nHistBins])
+                if np.any(se_h_clean > 0):
+                    rng2 = np.random.default_rng()
+                    z2 = rng2.standard_normal((se_h_clean.size, Mc))
+                    # Matlab centers on zero for history CIs (variability around null)
+                    xKDrawH = se_h_clean[:, None] * z2
+                    if is_poisson:
+                        histDraw = np.exp(np.clip(xKDrawH, -30, 30)) * sr
+                    else:
+                        xc2 = np.clip(xKDrawH, -30, 30)
+                        histDraw = (np.exp(xc2) / (1.0 + np.exp(xc2))) * sr
+                    CIsH = np.column_stack([
+                        np.quantile(histDraw, alphaVal / 2.0, axis=1),
+                        np.quantile(histDraw, 1.0 - alphaVal / 2.0, axis=1),
+                    ])
+                    lowerH = basisMat @ CIsH[:, 0]
+                    upperH = basisMat @ CIsH[:, 1]
+                    ciHist = ConfidenceInterval(
+                        histTime, np.column_stack([lowerH, upperH]),
+                        "CI_{psth_GLMHIST}", psth_cov.xlabelval, psth_cov.xunits, "Hz",
+                    )
+                    histSignal.setConfInterval(ciHist)
+            else:
+                histSignal = Covariate(
+                    np.arange(len(histVals), dtype=float),
+                    histVals.reshape(-1, 1),
+                    "History", "lag", "bins", "", ["h"],
+                )
+
+        return psth_cov, histSignal, fit
+
+    def plot(self, selectorArray: Sequence[int] | None = None,
+             minTime: float | None = None, maxTime: float | None = None,
+             handle=None, reverseOrder: bool = False, **__):
+        """Plot a spike-train raster.
+
+        Parameters
+        ----------
+        selectorArray : sequence of int, optional
+            0-based indices of neurons to plot.  Defaults to the neuron mask
+            (or all neurons if no mask is set).  Matches Matlab positional arg.
+        minTime, maxTime : float, optional
+            Time window to display.  Defaults to the collection's time span.
+        handle : matplotlib Axes, optional
+            Axes to plot into.
+        reverseOrder : bool
+            If ``True``, reverse the display order so the last neuron is at
+            the top.  Matches Matlab ``reverseOrderPlot`` parameter.
+        """
+        if selectorArray is not None and len(selectorArray) > 0:
+            selected = [int(x) for x in selectorArray]
+        else:
+            selected = self.getIndFromMask()
+            if not selected:
+                selected = list(range(self.numSpikeTrains))
+        if reverseOrder:
+            selected = list(reversed(selected))
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(8.0, max(2.5, 0.55 * max(len(selected), 1) + 1.0)))[1]
+        ax.clear()
+        for row, neuron_index in enumerate(selected, start=1):
+            train = self.getNST(neuron_index)
+            train.plot(dHeight=0.8, yOffset=float(row), currentHandle=ax)
+        ax.set_ylim(0.25, len(selected) + 0.75)
+        ax.set_yticks(range(1, len(selected) + 1), [str(item) for item in selected])
+        if minTime is not None or maxTime is not None:
+            lo = float(minTime) if minTime is not None else float(self.minTime)
+            hi = float(maxTime) if maxTime is not None else float(self.maxTime)
+            ax.set_xlim(lo, hi)
+        ax.set_xlabel("time [s]")
+        ax.set_title("Spike Train Raster")
+        return ax
+
+    def getMinISIs(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
+        """Return the minimum ISI for each selected neuron."""
+        isis = self.getISIs(selectorArray, minTime, maxTime)
+        return np.asarray([float(np.min(values)) if values.size else 0.0 for values in isis], dtype=float)
+
+    def getISIs(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None) -> list[np.ndarray]:
+        """Return a list of ISI arrays, one per selected neuron."""
+        if maxTime is None:
+            maxTime = self.maxTime
+        if minTime is None:
+            minTime = self.minTime
+        if selectorArray is None or len(selectorArray) == 0:
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
+        return [self.getNST(int(neuron)).getISIs(minTime, maxTime) for neuron in selectorArray]
+
+    def plotISIHistogram(self, selectorArray: Sequence[int] | None = None, minTime: float | None = None, maxTime: float | None = None, handle=None):
+        """Plot ISI histograms for each selected neuron in stacked subplots."""
+        if maxTime is None:
+            maxTime = self.maxTime
+        if minTime is None:
+            minTime = self.minTime
+        if selectorArray is None or len(selectorArray) == 0:
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
+        fig = handle if handle is not None else plt.figure(figsize=(7.0, max(2.5, 2.2 * len(selectorArray))))
+        fig.clear()
+        axes = fig.subplots(len(selectorArray), 1)
+        if not isinstance(axes, np.ndarray):
+            axes = np.asarray([axes], dtype=object)
+        for ax, neuron in zip(axes.reshape(-1), selectorArray, strict=False):
+            self.getNST(int(neuron)).plotISIHistogram(minTime, maxTime, handle=ax)
+        fig.tight_layout()
+        return fig
+
+    def plotExponentialFit(
+        self,
+        selectorArray: Sequence[int] | None = None,
+        minTime: float | None = None,
+        maxTime: float | None = None,
+        numBins: int | None = None,
+        handle=None,
+    ):
+        """Plot exponential-distribution fits of ISIs for selected neurons."""
+        if maxTime is None:
+            maxTime = self.maxTime
+        if minTime is None:
+            minTime = self.minTime
+        if selectorArray is None or len(selectorArray) == 0:
+            selectorArray = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
+        fig = handle if handle is not None else plt.figure(figsize=(7.0, max(2.5, 2.2 * len(selectorArray))))
+        fig.clear()
+        axes = fig.subplots(len(selectorArray), 1)
+        if not isinstance(axes, np.ndarray):
+            axes = np.asarray([axes], dtype=object)
+        for ax, neuron in zip(axes.reshape(-1), selectorArray, strict=False):
+            self.getNST(int(neuron)).plotExponentialFit(minTime, maxTime, numBins, handle=ax)
+        fig.tight_layout()
+        return fig
+
+    def estimateVarianceAcrossTrials(
+        self,
+        numBasis: int | None = None,
+        windowTimes=None,
+        numIter: int | None = None,
+        fitType: str | None = None,
+    ) -> np.ndarray:
+        """Estimate the state-noise covariance ``Q`` from bootstrap GLM fits.
+
+        Used internally by :meth:`ssglm` / :meth:`ssglmFB` to initialise
+        the EM algorithm's state-noise prior.
+        """
+        if fitType is None or fitType == "":
+            fitType = "poisson"
+        if numIter is None:
+            numIter = 20
+        if windowTimes is None:
+            windowTimes = []
+        if numBasis is None:
+            numBasis = 20
+
+        numBasis = int(numBasis)
+        numIter = int(numIter)
+        coeffs = np.zeros((numBasis, numIter), dtype=float)
+        numRealizations = int(self.numSpikeTrains)
+        if numRealizations == 0 or numBasis <= 0 or numIter <= 0:
+            return np.zeros((max(numBasis, 0), max(numBasis, 0)), dtype=float)
+
+        basisWidth = (float(self.maxTime) - float(self.minTime)) / float(numBasis)
+        sumNumber = max(int(np.floor(numRealizations / 2.0 - 1.0)), 0)
+        delta = 1.0 / float(self.sampleRate)
+        minTime = float(self.minTime)
+        maxTime = float(self.maxTime)
+        halfIters = min(int(np.floor(numIter / 2.0)), sumNumber)
+
+        for i in range(halfIters):
+            subset = SpikeTrainCollection(self.getNST(list(range(i, i + sumNumber + 1))))
+            subset.resample(1.0 / delta)
+            subset.setMaxTime(maxTime)
+            subset.setMinTime(minTime)
+            coeffs[:, i] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+
+        for i in range(numRealizations - 1, numRealizations - halfIters - 1, -1):
+            subset = SpikeTrainCollection(self.getNST(list(range(i, i - sumNumber - 1, -1))))
+            subset.resample(1.0 / delta)
+            subset.setMaxTime(maxTime)
+            subset.setMinTime(minTime)
+            coeffs[:, i] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+
+        coeff_rows = [row[row != 0] for row in coeffs]
+        max_width = max((row.size for row in coeff_rows), default=0)
+        if max_width == 0:
+            return np.zeros((numBasis, numBasis), dtype=float)
+        coeffsTemp = np.full((numBasis, max_width), np.nan, dtype=float)
+        for idx, row in enumerate(coeff_rows):
+            coeffsTemp[idx, : row.size] = row
+
+        nTerms = 4
+        filt_num = np.ones(nTerms, dtype=float) / float(nTerms)
+        coeffsTemp[np.isnan(coeffsTemp)] = 0.0
+        if coeffsTemp.T.shape[0] > 3 * nTerms:
+            from scipy.signal import filtfilt  # lazy: avoid scipy on import
+            fcoeffs = filtfilt(filt_num, [1.0], coeffsTemp.T, axis=0).T
+        else:
+            fcoeffs = coeffsTemp
+
+        diffs = np.diff(fcoeffs, axis=1)
+        if diffs.shape[1] <= 1:
+            varEst = np.full(numBasis, np.nan, dtype=float)
+        else:
+            with np.errstate(invalid="ignore", divide="ignore"):
+                varEst = np.nanvar(diffs, axis=1, ddof=1)
+        return np.diag(varEst)
+
+    def getSpikeTimes(self, minTime: float | None = None, maxTime: float | None = None) -> list[np.ndarray]:
+        """Return a list of spike-time arrays, one per active neuron."""
+        del minTime, maxTime
+        selector = self.getIndFromMask() if self.isNeuronMaskSet() else list(range(self.numSpikeTrains))
+        return [self.getNST(int(index)).getSpikeTimes() for index in selector]
+
     def toStructure(self) -> dict[str, Any]:
         """Serialize to a plain dict (Matlab ``nstColl.toStructure``)."""
         self.resetMask()
@@ -2186,6 +2164,33 @@ class SpikeTrainCollection:
         if neighbors and np.size(neighbors):
             coll.setNeighbors(np.asarray(neighbors, dtype=int))
         return coll
+    @staticmethod
+    def generateUnitImpulseBasis(basisWidth: float, minTime: float, maxTime: float, sampleRate: float = 1000.0) -> Covariate:
+        """Create a piecewise-constant (unit impulse) basis :class:`Covariate`.
+
+        Each column is a rectangular pulse spanning one *basisWidth*
+        interval, used as the design matrix for GLM-PSTH estimation.
+        """
+        windowTimes = np.arange(float(minTime), float(maxTime), float(basisWidth))
+        if windowTimes.size == 0 or not np.isclose(windowTimes[-1], maxTime):
+            windowTimes = np.append(windowTimes, float(maxTime))
+        else:
+            windowTimes[-1] = float(maxTime)
+        if windowTimes.size < 2:
+            windowTimes = np.array([float(minTime), float(maxTime)], dtype=float)
+        timeVec = np.arange(float(minTime), float(maxTime) + (1.0 / float(sampleRate)), 1.0 / float(sampleRate))
+        dataMat = np.zeros((timeVec.size, windowTimes.size - 1), dtype=float)
+        dataLabels: list[str] = []
+        for i in range(windowTimes.size - 1):
+            start = float(windowTimes[i])
+            stop = float(windowTimes[i + 1])
+            if i == windowTimes.size - 2:
+                dataMat[:, i] = ((timeVec >= start) & (timeVec <= stop)).astype(float)
+            else:
+                dataMat[:, i] = ((timeVec >= start) & (timeVec < stop)).astype(float)
+            dataLabels.append(f"b{i + 1:02d}" if i + 1 < 10 else f"b{i + 1}")
+        return Covariate(timeVec, dataMat, "UnitPulseBasis", "time", "s", "", dataLabels)
+
 
 
 
@@ -2343,15 +2348,6 @@ class Trial:
     def covarColl(self, value: CovariateCollection) -> None:
         self._covarColl = value
 
-    def getTrialPartition(self) -> np.ndarray:
-        """Return ``[trainMin, trainMax, valMin, valMax]`` partition times."""
-        training = [] if self.trainingWindow is None else list(self.trainingWindow)
-        validation = [] if self.validationWindow is None else list(self.validationWindow)
-        p = training + validation
-        if not p:
-            return np.asarray([self.minTime, self.maxTime, self.maxTime, self.maxTime], dtype=float)
-        return np.asarray(p, dtype=float)
-
     def setTrialPartition(self, partitionTimes) -> None:
         """Set training and validation time windows from a 3- or 4-element array."""
         if partitionTimes is None or len(partitionTimes) == 0:
@@ -2369,6 +2365,15 @@ class Trial:
         self.validationWindow = validationWindow
         self.setMinTime(trainingWindow[0])
         self.setMaxTime(trainingWindow[1])
+
+    def getTrialPartition(self) -> np.ndarray:
+        """Return ``[trainMin, trainMax, valMin, valMax]`` partition times."""
+        training = [] if self.trainingWindow is None else list(self.trainingWindow)
+        validation = [] if self.validationWindow is None else list(self.validationWindow)
+        p = training + validation
+        if not p:
+            return np.asarray([self.minTime, self.maxTime, self.maxTime, self.maxTime], dtype=float)
+        return np.asarray(p, dtype=float)
 
     def setTrialTimesFor(self, partitionName: str = "training") -> None:
         """Set trial time bounds to either the ``'training'`` or ``'validation'`` window."""

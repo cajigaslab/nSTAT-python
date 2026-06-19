@@ -391,914 +391,186 @@ class DecodingAlgorithms:
     """
 
     @staticmethod
-    def linear_decode(spike_counts: np.ndarray, stimulus: np.ndarray) -> dict[str, np.ndarray]:
-        """Ordinary-least-squares linear decoder (spike counts → stimulus).
+    def PPDecodeFilter(A, Q, Px0, dN, lambdaCIFColl, binwidth=0.001, x0=None, Pi0=None, yT=None, PiT=None, estimateTarget=0, Wconv=None):
+        """Point-process adaptive filter using CIF object collection.
 
-        Returns a dict with keys ``'coefficients'``, ``'decoded'``,
-        ``'residual'``, and ``'ci'`` (95 % confidence band).
+        Runs the full forward filter loop, evaluating CIF objects at each
+        time step.  When *yT* / *PiT* are supplied, delegates to the
+        linear-parameter variant with goal-state estimation.
+
+        Returns ``(x_p, W_p, x_u, W_u, xT, WT, MT, MT_cov)``.
         """
-        x = np.asarray(spike_counts, dtype=float)
-        y = np.asarray(stimulus, dtype=float).reshape(-1)
-        if x.ndim == 1:
-            x = x[:, None]
-        if x.shape[0] != y.shape[0]:
-            raise ValueError("spike_counts and stimulus must align")
-
-        x_aug = np.column_stack([np.ones(x.shape[0]), x])
-        beta, *_ = np.linalg.lstsq(x_aug, y, rcond=None)
-        y_hat = x_aug @ beta
-        resid = y - y_hat
-        sigma = float(np.std(resid))
-        ci = np.column_stack([y_hat - 1.96 * sigma, y_hat + 1.96 * sigma])
-        return {"coefficients": beta, "decoded": y_hat, "residual": resid, "ci": ci}
-
-    @staticmethod
-    def kalman_filter(
-        A=None, C=None, Pv=None, Pw=None, Px0=None, x0=None, y=None, GnConv=None,
-        *,
-        observations=None, transition=None, observation_matrix=None,
-        q_cov=None, r_cov=None, p0=None,
-    ):
-        """Discrete-time Kalman filter.
-
-        Accepts **both** the MATLAB-compatible signature::
-
-            kalman_filter(A, C, Pv, Pw, Px0, x0, y, GnConv)
-
-        and the Pythonic keyword signature::
-
-            kalman_filter(observations=y, transition=A,
-                          observation_matrix=C, q_cov=Pv,
-                          r_cov=Pw, x0=x0, p0=Px0)
-
-        When MATLAB-style positional args are provided, delegates to
-        ``_kalman_filter_matlab``.  Otherwise runs a simple Pythonic
-        Kalman filter returning ``dict(state=..., cov=...)``.
-
-        Returns
-        -------
-        dict with keys:
-            ``state`` : (N, Dx) — updated (posterior) state estimates.
-            ``cov``   : (N, Dx, Dx) — updated covariances.
-        """
-        # Detect MATLAB-style positional call: kalman_filter(A, C, Pv, Pw, Px0, x0, y, GnConv)
-        # MATLAB call has 7-8 positional args where y (arg 7) is the observation matrix.
-        # Pythonic call has 7 args where the first is observations (2D time-series).
-        # Distinguish by checking: in MATLAB style, A is square (Dx,Dx) and y is (Dy,N);
-        # in Pythonic style, the first arg ('A' slot) is observations (N,Dy).
-        _all_positional = A is not None and C is not None and Pv is not None and Pw is not None
-        if _all_positional and y is not None and GnConv is None:
-            # 7 positional args: could be MATLAB (A,C,Pv,Pw,Px0,x0,y) or Pythonic (obs,A,C,Q,R,x0,p0)
-            # MATLAB: A is square state matrix, y is observation time-series
-            # Pythonic: first arg (A slot) IS the observation time-series
-            a_arr = np.asarray(A, dtype=float)
-            y_arr = np.asarray(y, dtype=float)
-            # If A is 2D square and y has more rows than A, it's MATLAB style
-            if a_arr.ndim == 2 and a_arr.shape[0] == a_arr.shape[1] and y_arr.ndim >= 2 and y_arr.shape[1] > a_arr.shape[0]:
-                return DecodingAlgorithms._kalman_filter_matlab(A, C, Pv, Pw, Px0, x0, y, GnConv)
-        elif _all_positional and y is not None and GnConv is not None:
-            # 8 positional args: must be MATLAB (A,C,Pv,Pw,Px0,x0,y,GnConv)
-            return DecodingAlgorithms._kalman_filter_matlab(A, C, Pv, Pw, Px0, x0, y, GnConv)
-
-        # Pythonic positional call: kalman_filter(observations, transition, obs_matrix, q, r, x0, p0)
-        # When 7 positional args are given and it's NOT MATLAB-style, treat as:
-        # A=observations, C=transition, Pv=obs_matrix, Pw=q_cov, Px0=r_cov, x0=x0, y=p0
-        if observations is not None:
-            # Keyword call: use keyword values
-            obs = observations
-            a = transition if transition is not None else A
-            h = observation_matrix if observation_matrix is not None else C
-            q = q_cov if q_cov is not None else Pv
-            r = r_cov if r_cov is not None else Pw
-            x0_vec = x0
-            p0_mat = p0 if p0 is not None else Px0
-        else:
-            # Positional Pythonic call: A=obs, C=A, Pv=C, Pw=Q, Px0=R, x0=x0, y=p0
-            obs = A
-            a = C
-            h = Pv
-            q = Pw
-            r = Px0
-            x0_vec = x0
-            p0_mat = y
-
-        obs = np.asarray(obs, dtype=float)
-        a = np.asarray(a, dtype=float)
-        h = np.asarray(h, dtype=float)
-        q = np.asarray(q, dtype=float)
-        r = np.asarray(r, dtype=float)
-        x_prev = np.asarray(x0_vec, dtype=float).reshape(-1)
-        p_prev = np.asarray(p0_mat, dtype=float)
-
-        n_t = obs.shape[0]
-        n_x = x_prev.shape[0]
-        xs = np.zeros((n_t, n_x), dtype=float)
-        ps = np.zeros((n_t, n_x, n_x), dtype=float)
-
-        for t in range(n_t):
-            x_pred = a @ x_prev
-            p_pred = a @ p_prev @ a.T + q
-
-            innovation = obs[t] - h @ x_pred
-            s_cov = h @ p_pred @ h.T + r
-            k_gain = p_pred @ h.T @ np.linalg.pinv(s_cov)
-
-            x_post = x_pred + k_gain @ innovation
-            p_post = _symmetrize((np.eye(n_x) - k_gain @ h) @ p_pred)
-
-            xs[t] = x_post
-            ps[t] = p_post
-            x_prev = x_post
-            p_prev = p_post
-
-        return {"state": xs, "cov": ps}
-
-    @staticmethod
-    def _kalman_filter_matlab(A, C, Pv, Pw, Px0, x0, y, GnConv=None):
-        """Discrete-time Kalman filter matching the Matlab API (internal).
-
-        Implements the DT Kalman filter for the system::
-
-            x(:, n+1) = A(:,:,n) x(:, n) + v(:, n)
-            y(:, n)   = C(:,:,n) x(:, n) + w(:, n)
-
-        where ``Pv(:,:,n)``, ``Pw(:,:,n)`` are the covariances of v(n) and
-        w(n), and ``Px0`` is the initial state covariance.
-
-        Supports **time-varying** system matrices when supplied as 3-D arrays
-        (e.g. ``A.shape == (Dx, Dx, N)``).  Time-invariant (2-D) matrices
-        are broadcast automatically.
-
-        Parameters
-        ----------
-        A : (Dx, Dx) or (Dx, Dx, N) — state transition.
-        C : (Dy, Dx) or (Dy, Dx, N) — observation matrix.
-        Pv : (Dx, Dx) or (Dx, Dx, N) — process noise covariance.
-        Pw : (Dy, Dy) or (Dy, Dy, N) — observation noise covariance.
-        Px0 : (Dx, Dx) — initial error covariance.
-        x0 : (Dx,) — initial state estimate.
-        y : (Dy, N) or (N, Dy) — observations (auto-detected layout).
-        GnConv : array or None, optional
-            Pre-converged Kalman gain.  When ``None``, gain convergence
-            is auto-detected during filtering.
-
-        Returns
-        -------
-        x_p : (Dx, N+1) — predicted states (``x_p[:, 0] == x0``).
-        Pe_p : (Dx, Dx, N+1) — predicted covariances.
-        x_u : (Dx, N) — updated states.
-        Pe_u : (Dx, Dx, N) — updated covariances.
-        Gn : (Dx, Dy, N) — Kalman gain history.
-        GnConvIter : int or None — iteration at which gain converged.
-        """
-        A = np.asarray(A, dtype=float)
-        C = np.asarray(C, dtype=float)
-        Pv = np.asarray(Pv, dtype=float)
-        Pw = np.asarray(Pw, dtype=float)
-        Px0 = np.asarray(Px0, dtype=float)
-        x0_vec = np.asarray(x0, dtype=float).reshape(-1)
-        y = np.asarray(y, dtype=float)
-        if y.ndim == 1:
-            y = y[None, :]
-
-        Dx = A.shape[0]
-        Dy = C.shape[0]
-
-        # Auto-detect layout: Matlab expects (Dy, N) state-major.
-        # If y is (N, Dy) time-major, transpose.
-        if y.shape[0] != Dy and y.shape[1] == Dy:
-            y = y.T
-        N = y.shape[1]
-
-        def _sel(M, n):
-            """Select time-varying slice M[:,:,n] or broadcast M[:,:] if 2-D."""
-            if M.ndim == 3:
-                return M[:, :, min(n, M.shape[2] - 1)]
-            return M
-
-        x_p = np.zeros((Dx, N + 1), dtype=float)
-        Pe_p = np.zeros((Dx, Dx, N + 1), dtype=float)
-        x_u = np.zeros((Dx, N), dtype=float)
-        Pe_u = np.zeros((Dx, Dx, N), dtype=float)
-        Gn = np.zeros((Dx, Dy, N), dtype=float)
-
-        x_p[:, 0] = x0_vec
-        Pe_p[:, :, 0] = Px0
-
-        GnConvIter = None
-        _GnConv = None
-        if GnConv is not None and not _is_empty_value(GnConv):
-            _GnConv = np.asarray(GnConv, dtype=float)
-
-        for n in range(N):
-            An = _sel(A, n)
-            Cn = _sel(C, n)
-            Pvn = _sel(Pv, n)
-            Pwn = _sel(Pw, n)
-
-            # --- Update ---
-            if _GnConv is not None:
-                G = _GnConv
-            else:
-                S = Cn @ Pe_p[:, :, n] @ Cn.T + Pwn
-                G = Pe_p[:, :, n] @ Cn.T @ np.linalg.solve(S, np.eye(Dy))
-            x_u[:, n] = x_p[:, n] + G @ (y[:, n] - Cn @ x_p[:, n])
-            Pe_u[:, :, n] = Pe_p[:, :, n] - G @ Cn @ Pe_p[:, :, n]
-            Pe_u[:, :, n] = _symmetrize(Pe_u[:, :, n])
-            Gn[:, :, n] = G
-
-            # --- Predict ---
-            if _GnConv is not None:
-                Pe_p[:, :, n + 1] = _symmetrize(Pe_u[:, :, n])
-            else:
-                Pe_p[:, :, n + 1] = _symmetrize(An @ Pe_u[:, :, n] @ An.T + Pvn)
-            x_p[:, n + 1] = An @ x_u[:, n]
-
-            # --- Gain convergence detection ---
-            if n > 0 and _GnConv is None:
-                diffGn = np.abs(Gn[:, :, n] - Gn[:, :, n - 1])
-                if np.max(diffGn) < 1e-6:
-                    _GnConv = Gn[:, :, n]
-                    GnConvIter = n
-
-        return x_p, Pe_p, x_u, Pe_u, Gn, GnConvIter
-
-    @staticmethod
-    def kalman_predict(x_u, Pe_u, A, Pv, GnConv=None):
-        """Kalman filter predict step: ``x_p = A x_u``, ``Pe_p = A Pe A' + Pv``.
-
-        When the converged-gain ``GnConv`` is provided the predict-step
-        covariance is taken from the previously-filtered ``Pe_u`` (which
-        is the steady-state covariance under the converged gain) rather
-        than recomputed.  Audit finding H1 (Agent 5): the prior
-        implementation used ``GnConv`` itself as the covariance — but
-        ``GnConv`` is a gain matrix (shape ``Dx x Dy``), not a
-        covariance (``Dx x Dx``).  The ``_kalman_filter_matlab`` path at
-        lines 611-614 had this right; the standalone ``kalman_predict``
-        diverged.  Matches MATLAB ``KalmanFilter.m:91``
-        (``Pe_p = Pe_u`` when ``Gn_conv`` set).
-        """
-        x_vec = np.asarray(x_u, dtype=float).reshape(-1)
-        dim = x_vec.size
-        A_mat = _as_state_matrix(A, dim)
-        Pe_mat = _as_state_matrix(Pe_u, dim)
-        if _is_empty_value(GnConv):
-            Pv_mat = _as_state_matrix(Pv, dim)
-            Pe_p = _symmetrize(A_mat @ Pe_mat @ A_mat.T + Pv_mat)
-        else:
-            Pe_p = _symmetrize(Pe_mat)
-        x_p = A_mat @ x_vec
-        return x_p, Pe_p
-
-    @staticmethod
-    def kalman_update(x_p, Pe_p, C, Pw, y, GnConv=None):
-        """Kalman filter update step: incorporate observation *y* and return ``(x_u, Pe_u, G)``."""
-        x_vec = np.asarray(x_p, dtype=float).reshape(-1)
-        dim = x_vec.size
-        C_mat = np.asarray(C, dtype=float)
-        if C_mat.ndim == 1:
-            C_mat = C_mat.reshape(1, -1)
-        if C_mat.shape[1] != dim:
-            raise ValueError("C must have one column per state dimension")
-        Pe_mat = _as_state_matrix(Pe_p, dim)
-        y_vec = np.asarray(y, dtype=float).reshape(-1)
-        if _is_empty_value(GnConv):
-            Pw_mat = _as_state_matrix(Pw, y_vec.size)
-            innovation = y_vec - C_mat @ x_vec
-            S_cov = _symmetrize(C_mat @ Pe_mat @ C_mat.T + Pw_mat)
-            G = Pe_mat @ C_mat.T @ np.linalg.pinv(S_cov)
-            x_u = x_vec + G @ innovation
-            Pe_u = _symmetrize((np.eye(dim, dtype=float) - G @ C_mat) @ Pe_mat)
-        else:
-            G = np.asarray(GnConv, dtype=float)
-            innovation = y_vec - C_mat @ x_vec
-            x_u = x_vec + G @ innovation
-            Pe_u = _symmetrize((np.eye(dim, dtype=float) - G @ C_mat) @ Pe_mat)
-        return x_u, Pe_u, G
-
-    @staticmethod
-    def _state_history_time_major(x, P):
-        x_arr = np.asarray(x, dtype=float)
-        P_arr = np.asarray(P, dtype=float)
-        if P_arr.ndim != 3:
-            raise ValueError("Covariance history must be 3D")
-        transposed = False
-        if x_arr.ndim == 1:
-            x_arr = x_arr[:, None]
-        if x_arr.shape[0] == P_arr.shape[0]:
-            return x_arr, P_arr, transposed
-        if x_arr.shape[1] == P_arr.shape[0]:
-            return x_arr.T, P_arr, True
-        raise ValueError("State history shape does not align with covariance history")
-
-    @staticmethod
-    def kalman_smootherFromFiltered(A, x_p, Pe_p, x_u, Pe_u):
-        """RTS backward smoother from precomputed filter estimates.
-
-        Returns ``(x_N, P_N, Ln)`` — smoothed states, covariances, and
-        backward Kalman gains.
-        """
-        x_p_tm, Pe_p_tm, predicted_transposed = DecodingAlgorithms._state_history_time_major(x_p, Pe_p)
-        x_u_tm, Pe_u_tm, updated_transposed = DecodingAlgorithms._state_history_time_major(x_u, Pe_u)
-        if predicted_transposed != updated_transposed:
-            raise ValueError("Predicted and updated state histories must share an orientation")
-
-        n_t, n_x = x_u_tm.shape
-        x_N = x_u_tm.copy()
-        P_N = Pe_u_tm.copy()
-        Ln = np.zeros((max(n_t - 1, 0), n_x, n_x), dtype=float)
-
-        for t in range(n_t - 2, -1, -1):
-            A_t = _select_time_matrix(A, t, n_x)
-            gain = Pe_u_tm[t] @ A_t.T @ np.linalg.pinv(Pe_p_tm[t + 1])
-            Ln[t] = gain
-            x_N[t] = x_u_tm[t] + gain @ (x_N[t + 1] - x_p_tm[t + 1])
-            P_N[t] = _symmetrize(Pe_u_tm[t] + gain @ (P_N[t + 1] - Pe_p_tm[t + 1]) @ gain.T)
-
-        if updated_transposed:
-            return x_N.T, P_N, Ln
-        return x_N, P_N, Ln
-
-    @staticmethod
-    def kalman_smoother(A, C, Pv, Pw, Px0, x0, y):
-        """Run a Kalman filter followed by an RTS smoother.
-
-        Returns ``(x_N, P_N, Ln, x_p, Pe_p, x_u, Pe_u)``.
-        """
-        observations = np.asarray(y, dtype=float)
-        if observations.ndim == 1:
-            observations = observations[:, None]
-
-        x_prev = np.asarray(x0, dtype=float).reshape(-1)
-        Pe_prev = _as_state_matrix(Px0, x_prev.size)
-        n_t = observations.shape[0]
-        n_x = x_prev.size
-        x_p = np.zeros((n_t, n_x), dtype=float)
-        Pe_p = np.zeros((n_t, n_x, n_x), dtype=float)
-        x_u = np.zeros((n_t, n_x), dtype=float)
-        Pe_u = np.zeros((n_t, n_x, n_x), dtype=float)
-
-        for t in range(n_t):
-            x_p[t], Pe_p[t] = DecodingAlgorithms.kalman_predict(x_prev, Pe_prev, A, Pv)
-            x_u[t], Pe_u[t], _ = DecodingAlgorithms.kalman_update(x_p[t], Pe_p[t], C, Pw, observations[t])
-            x_prev = x_u[t]
-            Pe_prev = Pe_u[t]
-
-        x_N, P_N, Ln = DecodingAlgorithms.kalman_smootherFromFiltered(A, x_p, Pe_p, x_u, Pe_u)
-        return x_N, P_N, Ln, x_p, Pe_p, x_u, Pe_u
-
-    @staticmethod
-    def kalman_fixedIntervalSmoother(A, C, Pv, Pw, Px0, x0, y, lags):
-        """Kalman fixed-interval (fixed-lag) smoother via augmented state.
-
-        Matches the Matlab implementation: builds an augmented state
-        of dimension ``(1 + lags) * n_x`` and runs ``kalman_filter``
-        on the augmented system.  The lagged portion of the augmented
-        state gives the exact smoothed estimate at lag *lags*.
-
-        Parameters
-        ----------
-        A, C, Pv, Pw : arrays
-            System matrices (may be time-varying 3-D arrays).
-        Px0 : (Dx, Dx) — initial covariance.
-        x0 : (Dx,) — initial state.
-        y : (N, Dy) or (Dy, N) — observations (auto-detected layout).
-        lags : int — number of smoothing lags.
-
-        Returns
-        -------
-        x_pLag : (N+1, Dx) — predicted states at the lagged component (time-major).
-        Pe_pLag : (N+1, Dx, Dx) — predicted covariances at the lagged component.
-        x_uLag : (N, Dx) — updated states at the lagged component.
-        Pe_uLag : (N, Dx, Dx) — updated covariances at the lagged component.
-        """
-        A = np.asarray(A, dtype=float)
-        C = np.asarray(C, dtype=float)
-        Pv = np.asarray(Pv, dtype=float)
-        Pw = np.asarray(Pw, dtype=float)
-        Px0 = np.asarray(Px0, dtype=float)
-        x0_vec = np.asarray(x0, dtype=float).reshape(-1)
-        y = np.asarray(y, dtype=float)
-        if y.ndim == 1:
-            y = y[None, :]
-
-        nStates = A.shape[0]
-        nObs = C.shape[0]
-
-        # Auto-detect layout: convert to state-major (Dy, N) for kalman_filter
-        if y.shape[0] != nObs and y.shape[1] == nObs:
-            y = y.T
-        N = y.shape[1]
-        lags = max(int(lags), 1)
-        aug_dim = (lags + 1) * nStates
-
-        def _sel(M, n):
-            if M.ndim == 3:
-                return M[:, :, min(n, M.shape[2] - 1)]
-            return M
-
-        # Build augmented time-varying matrices
-        Alag = np.zeros((aug_dim, aug_dim, N), dtype=float)
-        Pvlag = np.zeros((aug_dim, aug_dim, N), dtype=float)
-        Clag = np.zeros((nObs, aug_dim, N), dtype=float)
-        Pwlag = np.zeros((nObs, nObs, N), dtype=float)
-
-        for n in range(N):
-            offset = 0
-            for i in range(lags + 1):
-                sl = slice(offset, offset + nStates)
-                if i == 0:
-                    Alag[sl, sl, n] = _sel(A, n)
-                    Pvlag[sl, sl, n] = _sel(Pv, n)
-                    Clag[:, sl, n] = _sel(C, n)
-                    Pwlag[:, :, n] = _sel(Pw, n)
-                else:
-                    prev_sl = slice(offset - nStates, offset)
-                    Alag[sl, prev_sl, n] = np.eye(nStates)
-                offset += nStates
-
-        # Augmented initial state and covariance
-        x0lag = np.zeros(aug_dim, dtype=float)
-        x0lag[:nStates] = x0_vec
-        Px0lag = np.zeros((aug_dim, aug_dim), dtype=float)
-        Px0lag[:nStates, :nStates] = Px0
-
-        # Run Kalman filter on augmented system (internal Matlab API)
-        x_p, Pe_p, x_u, Pe_u, _, _ = DecodingAlgorithms._kalman_filter_matlab(
-            Alag, Clag, Pvlag, Pwlag, Px0lag, x0lag, y
-        )
-
-        # Extract the lagged portion — state-major
-        lag_sl = slice(lags * nStates, (lags + 1) * nStates)
-
-        # x_p is (aug_dim, N+1), x_u is (aug_dim, N)
-        # Return N time steps (drop initial prediction at column 0) for
-        # backward compatibility with the Python API where both predicted
-        # and updated arrays have the same N rows.
-        x_pLag_sm = x_p[lag_sl, 1:]            # (Dx, N)
-        Pe_pLag_sm = Pe_p[lag_sl, lag_sl, 1:]   # (Dx, Dx, N)  -- uses numpy advanced slicing on dim 3 so extract via loop
-        x_uLag_sm = x_u[lag_sl, :]              # (Dx, N)
-        Pe_uLag_sm = Pe_u[lag_sl, lag_sl, :]     # (Dx, Dx, N)
-
-        # Correct the Pe slicing (nested slice on 3-D doesn't work as expected)
-        Pe_pLag_sm = Pe_p[lags * nStates:(lags + 1) * nStates,
-                          lags * nStates:(lags + 1) * nStates, 1:]
-        Pe_uLag_sm = Pe_u[lags * nStates:(lags + 1) * nStates,
-                          lags * nStates:(lags + 1) * nStates, :]
-
-        # Return time-major to match kalman_smoother convention: (N, Dx)
-        x_pLag = x_pLag_sm.T
-        Pe_pLag = np.transpose(Pe_pLag_sm, (2, 0, 1))
-        x_uLag = x_uLag_sm.T
-        Pe_uLag = np.transpose(Pe_uLag_sm, (2, 0, 1))
-
-        return x_pLag, Pe_pLag, x_uLag, Pe_uLag
-
-    @staticmethod
-    def ComputeStimulusCIs(fitType, xK, Wku, delta, Mc=None, alphaVal=0.05):
-        """Confidence intervals for stimulus estimate.
-
-        When ``Wku`` is a 4-D array ``(numBasis, numBasis, K, K)`` (SSGLM
-        cross-trial covariance), uses Monte Carlo sampling matching Matlab's
-        ``DecodingAlgorithms.ComputeStimulusCIs``.
-
-        When ``Wku`` is a 3-D array ``(N, Dx, Dx)`` (e.g. smoother output),
-        falls back to z-score Gaussian CIs with inverse-link transform.
-
-        Parameters
-        ----------
-        fitType : str
-            ``'poisson'`` or ``'binomial'``.
-        xK : array
-            Smoothed state estimates.  Shape ``(numBasis, K)`` for SSGLM
-            or ``(N, Dx)`` for smoother output.
-        Wku : array
-            Covariance.  Shape ``(numBasis, numBasis, K, K)`` for SSGLM
-            or ``(N, Dx, Dx)`` for smoother output.
-        delta : float
-            Time-step size in seconds.
-        Mc : int, optional
-            Number of Monte Carlo draws (default 3000).  Ignored when
-            using z-score fallback.
-        alphaVal : float, optional
-            Significance level for two-sided CIs (default 0.05).
-
-        Returns
-        -------
-        CIs : array, shape ``(..., 2)``
-            Lower and upper confidence bounds.
-        stimulus : array
-            Point estimate (inverse-link of xK, divided by delta for MC mode).
-        """
-        Wku_arr = np.asarray(Wku, dtype=float)
-
-        # SSGLM cross-trial path: 4-D covariance (numBasis, numBasis, K, K)
-        if Wku_arr.ndim == 4:
-            if Mc is None:
-                Mc = 3000
-            return DecodingAlgorithms._ComputeStimulusCIs_MC(
-                fitType, xK, Wku, delta, Mc=Mc, alphaVal=alphaVal
+        obs = _as_observation_matrix(dN)
+        lambda_items = _normalize_cif_collection(lambdaCIFColl)
+        num_cells, num_steps = obs.shape
+        if len(lambda_items) != num_cells:
+            raise ValueError("Number of CIF objects must match the number of observed cells")
+
+        num_states = _infer_state_dim(A, np.array([0.0]), num_cells)
+        uses_target_branch = not _is_empty_value(yT) or not _is_empty_value(PiT) or int(estimateTarget) != 0
+        if uses_target_branch:
+            mu, beta, fitType, gamma, windowTimes = _extract_linear_terms_from_cifs(lambda_items, num_states, num_cells)
+            initial_cov = Px0 if _is_empty_value(Pi0) else Pi0
+            return DecodingAlgorithms._ppdecode_filter_linear(
+                A,
+                Q,
+                obs,
+                mu,
+                beta,
+                fitType,
+                binwidth,
+                gamma,
+                windowTimes,
+                x0,
+                initial_cov,
+                yT,
+                PiT,
+                estimateTarget,
+                Wconv,
             )
 
-        # Fallback: 3-D covariance (N, Dx, Dx) from smoother — z-score CIs
-        x_tm, W_tm, transposed = DecodingAlgorithms._state_history_time_major(xK, Wku)
-        variances = np.clip(np.diagonal(W_tm, axis1=1, axis2=2), 0.0, None)
-        z = float(norm.ppf(1.0 - float(alphaVal) / 2.0))
-        lower = x_tm - z * np.sqrt(variances)
-        upper = x_tm + z * np.sqrt(variances)
-        fit_type = str(fitType).lower()
-        if fit_type == "poisson":
-            stimulus = np.exp(np.clip(x_tm, -20.0, 20.0))
-            ci_lower = np.exp(np.clip(lower, -20.0, 20.0))
-            ci_upper = np.exp(np.clip(upper, -20.0, 20.0))
-        elif fit_type == "binomial":
-            stimulus = 1.0 / (1.0 + np.exp(-np.clip(x_tm, -20.0, 20.0)))
-            ci_lower = 1.0 / (1.0 + np.exp(-np.clip(lower, -20.0, 20.0)))
-            ci_upper = 1.0 / (1.0 + np.exp(-np.clip(upper, -20.0, 20.0)))
-        else:
-            stimulus = x_tm
-            ci_lower = lower
-            ci_upper = upper
+        x0_vec = np.zeros(num_states, dtype=float) if _is_empty_value(x0) else np.asarray(x0, dtype=float).reshape(-1)
+        if x0_vec.size != num_states:
+            raise ValueError("x0 must match the decoding state dimension")
+        # MATLAB PPDecodeFilter's standard branch initializes from Pi0, and
+        # when Pi0 is omitted it falls back to zeros rather than using Px0.
+        Pi0_mat = np.zeros((num_states, num_states), dtype=float) if _is_empty_value(Pi0) else _as_state_matrix(Pi0, num_states)
 
-        ci = np.stack([ci_lower, ci_upper], axis=-1)
-        if transposed:
-            return np.transpose(ci, (1, 0, 2)), stimulus.T
-        return ci, stimulus
+        x_p = np.zeros((num_states, num_steps + 1), dtype=float)
+        x_u = np.zeros((num_states, num_steps), dtype=float)
+        W_p = np.zeros((num_states, num_states, num_steps + 1), dtype=float)
+        W_u = np.zeros((num_states, num_states, num_steps), dtype=float)
 
-    @staticmethod
-    def computeSpikeRateCIs(
-        xK,
-        Wku,
-        dN,
-        t0: float,
-        tf: float,
-        fitType: str = "poisson",
-        delta: float = 0.001,
-        gamma=None,
-        windowTimes=None,
-        Mc: int = 500,
-        alphaVal: float = 0.05,
-    ):
-        """Monte Carlo spike-rate confidence intervals.
+        A0 = _select_time_matrix(A, 0, num_states)
+        Q0 = _select_time_matrix(Q, 0, num_states)
+        x_p[:, 0], W_p[:, :, 0] = DecodingAlgorithms.PPDecode_predict(x0_vec, Pi0_mat, A0, Q0, Wconv)
 
-        Computes the average firing rate over ``[t0, tf]`` for each trial
-        by drawing ``Mc`` samples from the smoothing distribution and
-        evaluating the conditional intensity.
+        for time_index in range(num_steps):
+            x_u[:, time_index], W_u[:, :, time_index], _ = DecodingAlgorithms.PPDecode_update(
+                x_p[:, time_index],
+                W_p[:, :, time_index],
+                obs,
+                lambda_items,
+                binwidth,
+                time_index,
+                None,
+            )
+            A_t = _select_time_matrix(A, time_index, num_states)
+            Q_t = _select_time_matrix(Q, time_index, num_states)
+            x_p[:, time_index + 1], W_p[:, :, time_index + 1] = DecodingAlgorithms.PPDecode_predict(
+                x_u[:, time_index],
+                W_u[:, :, time_index],
+                A_t,
+                Q_t,
+                Wconv,
+            )
 
-        Parameters
-        ----------
-        xK : array, shape (numBasis, K)
-            Smoothed state estimates (basis coefficients × trials).
-        Wku : array, shape (numBasis, numBasis, K, K) or compatible
-            Smoothed state covariance.
-        dN : array, shape (C, N)
-            Observation (spike indicator) matrix.
-        t0, tf : float
-            Time window over which to compute the average rate.
-        fitType : str
-            ``'poisson'`` or ``'binomial'``.
-        delta : float
-            Time-step size in seconds.
-        gamma : array or None
-            History-effect coefficients.
-        windowTimes : array or None
-            History window boundaries.
-        Mc : int
-            Number of Monte Carlo draws.
-        alphaVal : float
-            Significance level for CIs (one-sided).
-
-        Returns
-        -------
-        spikeRateSig : Covariate
-            Mean spike rate per trial with attached ConfidenceInterval.
-        ProbMat : ndarray, shape (K, K)
-            ``ProbMat[k, m]`` = P(rate_m > rate_k) estimated from MC draws.
-        sigMat : ndarray, shape (K, K)
-            Binary significance matrix at level ``1 - alphaVal``.
-        """
-        from .confidence_interval import ConfidenceInterval
-        from .core import Covariate
-        from .history import History
-        from .nspikeTrain import nspikeTrain
-        from .trial import SpikeTrainCollection
-
-        xK = np.asarray(xK, dtype=float)
-        dN = np.asarray(dN, dtype=float)
-        if dN.ndim == 1:
-            dN = dN.reshape(1, -1)
-        numBasis, K = xK.shape
-        minTime = 0.0
-        maxTime = (dN.shape[1] - 1) * delta
-
-        # Build unit-impulse basis matrix
-        basisWidth = (maxTime - minTime) / numBasis
-        sampleRate = 1.0 / delta
-        unitPulseBasis = SpikeTrainCollection.generateUnitImpulseBasis(
-            basisWidth, minTime, maxTime, sampleRate
-        )
-        basisMat = unitPulseBasis.data  # shape (T, numBasis)
-
-        # Build history matrices if windowTimes provided
-        Hk = {}
-        if windowTimes is not None and len(windowTimes) > 0:
-            histObj = History(windowTimes, minTime, maxTime)
-            for k in range(K):
-                spike_idx = np.flatnonzero(dN[k, :] == 1)
-                spike_times = (spike_idx) * delta
-                nst_k = nspikeTrain(spike_times)
-                nst_k.setMinTime(minTime)
-                nst_k.setMaxTime(maxTime)
-                hist_cov = histObj.computeHistory(nst_k)
-                Hk[k] = hist_cov.dataToMatrix()
-        else:
-            for k in range(K):
-                Hk[k] = 0.0
-            gamma = 0.0
-
-        if gamma is None:
-            gamma = 0.0
-        gamma = np.asarray(gamma, dtype=float)
-
-        # Monte Carlo draws from smoothing distribution
-        Wku = np.asarray(Wku, dtype=float)
-        xKDraw = np.zeros((numBasis, K, Mc), dtype=float)
-        for r in range(numBasis):
-            WkuTemp = Wku[r, r, :, :].squeeze() if Wku.ndim == 4 else Wku[r, r]
-            WkuTemp = np.atleast_2d(WkuTemp)
-            if WkuTemp.shape[0] != K:
-                WkuTemp = np.diag(np.full(K, float(WkuTemp.flat[0])))
-            try:
-                chol_m = np.linalg.cholesky(WkuTemp)
-            except np.linalg.LinAlgError:
-                eigvals = np.linalg.eigvalsh(WkuTemp)
-                WkuTemp += np.eye(K) * (abs(min(eigvals.min(), 0.0)) + 1e-10)
-                chol_m = np.linalg.cholesky(WkuTemp)
-            for c in range(Mc):
-                z = np.random.randn(K)
-                xKDraw[r, :, c] = xK[r, :] + chol_m.T @ z
-
-        # Compute lambda for each MC draw and each trial
-        time_vec = np.arange(minTime, maxTime + delta, delta)
-        T = basisMat.shape[0]
-        fit_type = str(fitType).lower()
-        spikeRate = np.zeros((Mc, K), dtype=float)
-
-        for c in range(Mc):
-            for k in range(K):
-                stimK = basisMat @ xKDraw[:, k, c]
-                if fit_type == "poisson":
-                    histEffect = np.exp(gamma @ Hk[k].T).ravel() if not np.isscalar(Hk[k]) else np.ones(T)
-                    stimEffect = np.exp(np.clip(stimK, -20.0, 20.0))
-                    lambdaDelta_kc = stimEffect * histEffect[:T]
-                elif fit_type == "binomial":
-                    if np.isscalar(Hk[k]):
-                        eta = stimK
-                    else:
-                        eta = stimK + (gamma @ Hk[k].T).ravel()[:T]
-                    eta = np.clip(eta, -20.0, 20.0)
-                    lambdaDelta_kc = np.exp(eta) / (1.0 + np.exp(eta))
-                else:
-                    lambdaDelta_kc = np.exp(np.clip(stimK, -20.0, 20.0))
-
-                # Integrate via cumulative trapezoid
-                rate_per_sec = lambdaDelta_kc / delta
-                time_k = time_vec[:len(rate_per_sec)]
-                cum_integral = np.zeros(len(rate_per_sec))
-                cum_integral[1:] = np.cumsum(rate_per_sec[:-1] * delta + 0.5 * np.diff(rate_per_sec) * delta)
-
-                # Interpolate integral at t0 and tf
-                val_t0 = np.interp(t0, time_k, cum_integral)
-                val_tf = np.interp(tf, time_k, cum_integral)
-                spikeRate[c, k] = (1.0 / (tf - t0)) * (val_tf - val_t0)
-
-        # Compute CIs from ECDF (one-sided)
-        CIs = np.zeros((K, 2), dtype=float)
-        for k in range(K):
-            sorted_rates = np.sort(spikeRate[:, k])
-            ecdf = np.arange(1, Mc + 1, dtype=float) / float(Mc)
-            lower_idx = np.flatnonzero(ecdf < alphaVal)
-            upper_idx = np.flatnonzero(ecdf > (1.0 - alphaVal))
-            CIs[k, 0] = sorted_rates[lower_idx[-1]] if lower_idx.size else sorted_rates[0]
-            CIs[k, 1] = sorted_rates[upper_idx[0]] if upper_idx.size else sorted_rates[-1]
-
-        trial_axis = np.arange(1, K + 1, dtype=float)
-        mean_rate = np.mean(spikeRate, axis=0)
-        spikeRateSig = Covariate(
-            trial_axis,
-            mean_rate,
-            f"({tf:g}-{t0:g})^{{-1}} * \\Lambda({tf:g}-{t0:g})",
-            "Trial",
-            "k",
-            "Hz",
-        )
-        ciSpikeRate = ConfidenceInterval(
-            trial_axis, CIs, "CI_{spikeRate}", "Trial", "k", "Hz"
-        )
-        spikeRateSig.setConfInterval(ciSpikeRate)
-
-        # Pairwise probability matrix
-        ProbMat = np.zeros((K, K), dtype=float)
-        for k in range(K):
-            for m in range(k + 1, K):
-                ProbMat[k, m] = np.sum(spikeRate[:, m] > spikeRate[:, k]) / float(Mc)
-
-        sigMat = (ProbMat > (1.0 - alphaVal)).astype(float)
-
-        return spikeRateSig, ProbMat, sigMat
+        empty_vec = np.array([], dtype=float)
+        empty_cov = np.zeros((0, 0, 0), dtype=float)
+        return x_p, W_p, x_u, W_u, empty_vec, empty_cov, empty_vec, empty_cov
 
     @staticmethod
-    def computeSpikeRateDiffCIs(
-        xK,
-        Wku,
-        dN,
-        time1,
-        time2,
-        fitType: str = "poisson",
-        delta: float = 0.001,
-        gamma=None,
-        windowTimes=None,
-        Mc: int = 500,
-        alphaVal: float = 0.05,
-    ):
-        """Monte Carlo CIs for the difference in spike rates between two time windows.
+    def PPDecodeFilterLinear(*args, **kwargs):
+        """Point-process adaptive filter using linear GLM parameters.
 
-        Computes the difference of average firing rates
-        ``rate(time1) - rate(time2)`` for each trial by drawing ``Mc``
-        samples from the smoothing distribution.
-
-        Parameters
-        ----------
-        xK : array, shape (numBasis, K)
-            Smoothed state estimates (basis coefficients × trials).
-        Wku : array, shape (numBasis, numBasis, K, K) or compatible
-            Smoothed state covariance.
-        dN : array, shape (C, N)
-            Observation (spike indicator) matrix.
-        time1 : array-like, length 2
-            ``[t0_1, tf_1]`` — first time window.
-        time2 : array-like, length 2
-            ``[t0_2, tf_2]`` — second time window.
-        fitType : str
-            ``'poisson'`` or ``'binomial'``.
-        delta : float
-            Time-step size in seconds.
-        gamma : array or None
-            History-effect coefficients.
-        windowTimes : array or None
-            History window boundaries.
-        Mc : int
-            Number of Monte Carlo draws.
-        alphaVal : float
-            Significance level for CIs (one-sided).
-
-        Returns
-        -------
-        spikeRateSig : Covariate
-            Mean spike-rate difference per trial with attached CI.
-        ProbMat : ndarray, shape (K, K)
-            ``ProbMat[k, m]`` = P(diff_m > diff_k) from MC draws.
-        sigMat : ndarray, shape (K, K)
-            Binary significance matrix at level ``1 - alphaVal``.
+        Dispatches to ``_ppdecode_filter_linear`` when a ``fitType`` string
+        is present, otherwise falls back to ``kalman_filter``.  Matches the
+        Matlab ``DecodingAlgorithms.PPDecodeFilterLinear`` signature.
         """
-        from .confidence_interval import ConfidenceInterval
-        from .core import Covariate
-        from .history import History
-        from .nspikeTrain import nspikeTrain
-        from .trial import SpikeTrainCollection
+        if len(args) >= 6 and isinstance(args[5], str):
+            return DecodingAlgorithms._ppdecode_filter_linear(*args, **kwargs)
+        if "fitType" in kwargs or "delta" in kwargs:
+            return DecodingAlgorithms._ppdecode_filter_linear(*args, **kwargs)
+        return DecodingAlgorithms.kalman_filter(*args, **kwargs)
 
-        xK = np.asarray(xK, dtype=float)
-        dN = np.asarray(dN, dtype=float)
-        if dN.ndim == 1:
-            dN = dN.reshape(1, -1)
-        numBasis, K = xK.shape
-        minTime = 0.0
-        maxTime = (dN.shape[1] - 1) * delta
+    @staticmethod
+    def PP_fixedIntervalSmoother(A, Q, dN, lags, mu, beta, fitType="poisson", delta=0.001, gamma=None, windowTimes=None, x0=None, Pi0=None):
+        """Point-process fixed-interval (fixed-lag) smoother.
 
-        time1 = np.asarray(time1, dtype=float).ravel()
-        time2 = np.asarray(time2, dtype=float).ravel()
+        Runs ``PPDecode_updateLinear`` forward, then applies backward
+        RTS-style smoothing at each step with the specified number of
+        *lags*.  Returns ``(x_pLag, W_pLag, x_uLag, W_uLag)``.
+        """
+        obs = _as_observation_matrix(dN)
+        num_cells, num_steps = obs.shape
+        num_states = _infer_state_dim(A, beta, num_cells)
+        mu_vec = _normalize_mu(mu, num_cells)
+        beta_mat = _normalize_beta(beta, num_states, num_cells)
 
-        # Build unit-impulse basis matrix
-        basisWidth = (maxTime - minTime) / numBasis
-        sampleRate = 1.0 / delta
-        unitPulseBasis = SpikeTrainCollection.generateUnitImpulseBasis(
-            basisWidth, minTime, maxTime, sampleRate
-        )
-        basisMat = unitPulseBasis.data
+        x0_vec = np.zeros(num_states, dtype=float) if _is_empty_value(x0) else np.asarray(x0, dtype=float).reshape(-1)
+        if x0_vec.size != num_states:
+            raise ValueError("x0 must match the decoding state dimension")
+        Pi0_mat = np.zeros((num_states, num_states), dtype=float) if _is_empty_value(Pi0) else _as_state_matrix(Pi0, num_states)
 
-        # Build history matrices if windowTimes provided
-        Hk = {}
-        if windowTimes is not None and len(windowTimes) > 0:
-            histObj = History(windowTimes, minTime, maxTime)
-            for k in range(K):
-                spike_idx = np.flatnonzero(dN[k, :] == 1)
-                spike_times = (spike_idx) * delta
-                nst_k = nspikeTrain(spike_times)
-                nst_k.setMinTime(minTime)
-                nst_k.setMaxTime(maxTime)
-                hist_cov = histObj.computeHistory(nst_k)
-                Hk[k] = hist_cov.dataToMatrix()
+        if _is_empty_value(windowTimes):
+            H_tensor = np.zeros((num_steps, 0, num_cells), dtype=float)
+            gamma_mat = np.zeros((0, num_cells), dtype=float)
         else:
-            for k in range(K):
-                Hk[k] = 0.0
-            gamma = 0.0
+            H_tensor = _compute_history_terms(obs, float(delta), windowTimes)
+            gamma_mat = _normalize_gamma(gamma, H_tensor.shape[1], num_cells)
 
-        if gamma is None:
-            gamma = 0.0
-        gamma = np.asarray(gamma, dtype=float)
+        x_p = np.zeros((num_states, num_steps + 1), dtype=float)
+        x_u = np.zeros((num_states, num_steps), dtype=float)
+        W_p = np.zeros((num_states, num_states, num_steps + 1), dtype=float)
+        W_u = np.zeros((num_states, num_states, num_steps), dtype=float)
+        x_p[:, 0] = x0_vec
+        W_p[:, :, 0] = Pi0_mat
 
-        # Monte Carlo draws from smoothing distribution
-        Wku = np.asarray(Wku, dtype=float)
-        xKDraw = np.zeros((numBasis, K, Mc), dtype=float)
-        for r in range(numBasis):
-            WkuTemp = Wku[r, r, :, :].squeeze() if Wku.ndim == 4 else Wku[r, r]
-            WkuTemp = np.atleast_2d(WkuTemp)
-            if WkuTemp.shape[0] != K:
-                WkuTemp = np.diag(np.full(K, float(WkuTemp.flat[0])))
-            try:
-                chol_m = np.linalg.cholesky(WkuTemp)
-            except np.linalg.LinAlgError:
-                eigvals = np.linalg.eigvalsh(WkuTemp)
-                WkuTemp += np.eye(K) * (abs(min(eigvals.min(), 0.0)) + 1e-10)
-                chol_m = np.linalg.cholesky(WkuTemp)
-            for c in range(Mc):
-                z = np.random.randn(K)
-                xKDraw[r, :, c] = xK[r, :] + chol_m.T @ z
+        lag_count = max(int(lags), 1)
+        num_states, num_steps = x_u.shape
+        x_uLag = np.zeros_like(x_u)
+        W_uLag = np.zeros_like(W_u)
+        x_pLag = np.zeros_like(x_p)
+        W_pLag = np.zeros_like(W_p)
 
-        # Compute lambda and spike-rate difference for each MC draw
-        time_vec = np.arange(minTime, maxTime + delta, delta)
-        T = basisMat.shape[0]
-        fit_type = str(fitType).lower()
-        spikeRate = np.zeros((Mc, K), dtype=float)
+        for n in range(num_steps):
+            x_u[:, n], W_u[:, :, n], _ = DecodingAlgorithms.PPDecode_updateLinear(
+                x_p[:, n],
+                W_p[:, :, n],
+                obs,
+                mu_vec,
+                beta_mat,
+                fitType,
+                gamma_mat,
+                H_tensor,
+                n,
+                None,
+            )
+            A_t = _select_time_matrix(A, n, num_states)
+            Q_t = _select_time_matrix(Q, n, num_states)
+            x_p[:, n + 1], W_p[:, :, n + 1] = DecodingAlgorithms.PPDecode_predict(
+                x_u[:, n],
+                W_u[:, :, n],
+                A_t,
+                Q_t,
+            )
+            if n < lag_count:
+                continue
 
-        for c in range(Mc):
-            for k in range(K):
-                stimK = basisMat @ xKDraw[:, k, c]
-                if fit_type == "poisson":
-                    histEffect = np.exp(gamma @ Hk[k].T).ravel() if not np.isscalar(Hk[k]) else np.ones(T)
-                    stimEffect = np.exp(np.clip(stimK, -20.0, 20.0))
-                    lambdaDelta_kc = stimEffect * histEffect[:T]
-                elif fit_type == "binomial":
-                    if np.isscalar(Hk[k]):
-                        eta = stimK
-                    else:
-                        eta = stimK + (gamma @ Hk[k].T).ravel()[:T]
-                    eta = np.clip(eta, -20.0, 20.0)
-                    lambdaDelta_kc = np.exp(eta) / (1.0 + np.exp(eta))
-                else:
-                    lambdaDelta_kc = np.exp(np.clip(stimK, -20.0, 20.0))
+            x_bank: list[np.ndarray] = []
+            w_bank: list[np.ndarray] = []
+            for k in range(1, lag_count + 1):
+                idx = n - k
+                A_k = _select_time_matrix(A, idx, num_states)
+                gain = W_u[:, :, idx] @ A_k.T @ np.linalg.pinv(W_p[:, :, idx + 1])
+                target_x = x_u[:, idx + 1] if k == 1 else x_bank[k - 2]
+                target_W = W_u[:, :, idx + 1] if k == 1 else w_bank[k - 2]
+                x_k = x_u[:, idx] + gain @ (target_x - x_p[:, idx + 1])
+                W_k = W_u[:, :, idx] + gain @ (target_W - W_p[:, :, idx + 1]) @ gain.T
+                W_k = _symmetrize(W_k)
+                x_bank.append(x_k)
+                w_bank.append(W_k)
 
-                # Integrate via cumulative sum
-                rate_per_sec = lambdaDelta_kc / delta
-                time_k = time_vec[:len(rate_per_sec)]
-                cum_integral = np.zeros(len(rate_per_sec))
-                cum_integral[1:] = np.cumsum(rate_per_sec[:-1] * delta + 0.5 * np.diff(rate_per_sec) * delta)
+            x_uLag[:, n] = x_bank[-1]
+            W_uLag[:, :, n] = w_bank[-1]
+            if lag_count > 1:
+                x_pLag[:, n + 1] = x_bank[-2]
+                W_pLag[:, :, n + 1] = w_bank[-1]
+            else:
+                x_pLag[:, n + 1] = x_u[:, n]
+                W_pLag[:, :, n + 1] = W_u[:, :, n]
 
-                # Rate for time window 1
-                t0_1, tf_1 = float(min(time1)), float(max(time1))
-                val_t0_1 = np.interp(t0_1, time_k, cum_integral)
-                val_tf_1 = np.interp(tf_1, time_k, cum_integral)
-                rate1 = (1.0 / (tf_1 - t0_1)) * (val_tf_1 - val_t0_1)
-
-                # Rate for time window 2
-                t0_2, tf_2 = float(min(time2)), float(max(time2))
-                val_t0_2 = np.interp(t0_2, time_k, cum_integral)
-                val_tf_2 = np.interp(tf_2, time_k, cum_integral)
-                rate2 = (1.0 / (tf_2 - t0_2)) * (val_tf_2 - val_t0_2)
-
-                spikeRate[c, k] = rate1 - rate2
-
-        # Compute CIs from ECDF (one-sided)
-        CIs = np.zeros((K, 2), dtype=float)
-        for k in range(K):
-            sorted_rates = np.sort(spikeRate[:, k])
-            ecdf = np.arange(1, Mc + 1, dtype=float) / float(Mc)
-            lower_idx = np.flatnonzero(ecdf < alphaVal)
-            upper_idx = np.flatnonzero(ecdf > (1.0 - alphaVal))
-            CIs[k, 0] = sorted_rates[lower_idx[-1]] if lower_idx.size else sorted_rates[0]
-            CIs[k, 1] = sorted_rates[upper_idx[0]] if upper_idx.size else sorted_rates[-1]
-
-        trial_axis = np.arange(1, K + 1, dtype=float)
-        mean_rate = np.mean(spikeRate, axis=0)
-        label = (
-            r"(t_{1f}-t_{1o})^{-1} \Lambda(t_{1f}-t_{1o})"
-            r" - (t_{2f}-t_{2o})^{-1} \Lambda(t_{2f}-t_{2o})"
-        )
-        spikeRateSig = Covariate(trial_axis, mean_rate, label, "Trial", "k", "Hz")
-        ciSpikeRate = ConfidenceInterval(
-            trial_axis, CIs, "CI_{spikeRate}", "Trial", "k", "Hz"
-        )
-        spikeRateSig.setConfInterval(ciSpikeRate)
-
-        # Pairwise probability matrix
-        ProbMat = np.zeros((K, K), dtype=float)
-        for k in range(K):
-            for m in range(k + 1, K):
-                ProbMat[k, m] = np.sum(spikeRate[:, m] > spikeRate[:, k]) / float(Mc)
-
-        sigMat = (ProbMat > (1.0 - alphaVal)).astype(float)
-
-        return spikeRateSig, ProbMat, sigMat
+        return x_pLag, W_pLag, x_uLag, W_uLag
 
     @staticmethod
     def PPDecode_predict(x_u, W_u, A, Q, Wconv=None):
@@ -1705,188 +977,6 @@ class DecodingAlgorithms:
         empty_vec = np.array([], dtype=float)
         empty_cov = np.zeros((0, 0, 0), dtype=float)
         return x_p, W_p, x_u, W_u, empty_vec, empty_cov, empty_vec, empty_cov
-
-    @staticmethod
-    def PPDecodeFilterLinear(*args, **kwargs):
-        """Point-process adaptive filter using linear GLM parameters.
-
-        Dispatches to ``_ppdecode_filter_linear`` when a ``fitType`` string
-        is present, otherwise falls back to ``kalman_filter``.  Matches the
-        Matlab ``DecodingAlgorithms.PPDecodeFilterLinear`` signature.
-        """
-        if len(args) >= 6 and isinstance(args[5], str):
-            return DecodingAlgorithms._ppdecode_filter_linear(*args, **kwargs)
-        if "fitType" in kwargs or "delta" in kwargs:
-            return DecodingAlgorithms._ppdecode_filter_linear(*args, **kwargs)
-        return DecodingAlgorithms.kalman_filter(*args, **kwargs)
-
-    @staticmethod
-    def PPDecodeFilter(A, Q, Px0, dN, lambdaCIFColl, binwidth=0.001, x0=None, Pi0=None, yT=None, PiT=None, estimateTarget=0, Wconv=None):
-        """Point-process adaptive filter using CIF object collection.
-
-        Runs the full forward filter loop, evaluating CIF objects at each
-        time step.  When *yT* / *PiT* are supplied, delegates to the
-        linear-parameter variant with goal-state estimation.
-
-        Returns ``(x_p, W_p, x_u, W_u, xT, WT, MT, MT_cov)``.
-        """
-        obs = _as_observation_matrix(dN)
-        lambda_items = _normalize_cif_collection(lambdaCIFColl)
-        num_cells, num_steps = obs.shape
-        if len(lambda_items) != num_cells:
-            raise ValueError("Number of CIF objects must match the number of observed cells")
-
-        num_states = _infer_state_dim(A, np.array([0.0]), num_cells)
-        uses_target_branch = not _is_empty_value(yT) or not _is_empty_value(PiT) or int(estimateTarget) != 0
-        if uses_target_branch:
-            mu, beta, fitType, gamma, windowTimes = _extract_linear_terms_from_cifs(lambda_items, num_states, num_cells)
-            initial_cov = Px0 if _is_empty_value(Pi0) else Pi0
-            return DecodingAlgorithms._ppdecode_filter_linear(
-                A,
-                Q,
-                obs,
-                mu,
-                beta,
-                fitType,
-                binwidth,
-                gamma,
-                windowTimes,
-                x0,
-                initial_cov,
-                yT,
-                PiT,
-                estimateTarget,
-                Wconv,
-            )
-
-        x0_vec = np.zeros(num_states, dtype=float) if _is_empty_value(x0) else np.asarray(x0, dtype=float).reshape(-1)
-        if x0_vec.size != num_states:
-            raise ValueError("x0 must match the decoding state dimension")
-        # MATLAB PPDecodeFilter's standard branch initializes from Pi0, and
-        # when Pi0 is omitted it falls back to zeros rather than using Px0.
-        Pi0_mat = np.zeros((num_states, num_states), dtype=float) if _is_empty_value(Pi0) else _as_state_matrix(Pi0, num_states)
-
-        x_p = np.zeros((num_states, num_steps + 1), dtype=float)
-        x_u = np.zeros((num_states, num_steps), dtype=float)
-        W_p = np.zeros((num_states, num_states, num_steps + 1), dtype=float)
-        W_u = np.zeros((num_states, num_states, num_steps), dtype=float)
-
-        A0 = _select_time_matrix(A, 0, num_states)
-        Q0 = _select_time_matrix(Q, 0, num_states)
-        x_p[:, 0], W_p[:, :, 0] = DecodingAlgorithms.PPDecode_predict(x0_vec, Pi0_mat, A0, Q0, Wconv)
-
-        for time_index in range(num_steps):
-            x_u[:, time_index], W_u[:, :, time_index], _ = DecodingAlgorithms.PPDecode_update(
-                x_p[:, time_index],
-                W_p[:, :, time_index],
-                obs,
-                lambda_items,
-                binwidth,
-                time_index,
-                None,
-            )
-            A_t = _select_time_matrix(A, time_index, num_states)
-            Q_t = _select_time_matrix(Q, time_index, num_states)
-            x_p[:, time_index + 1], W_p[:, :, time_index + 1] = DecodingAlgorithms.PPDecode_predict(
-                x_u[:, time_index],
-                W_u[:, :, time_index],
-                A_t,
-                Q_t,
-                Wconv,
-            )
-
-        empty_vec = np.array([], dtype=float)
-        empty_cov = np.zeros((0, 0, 0), dtype=float)
-        return x_p, W_p, x_u, W_u, empty_vec, empty_cov, empty_vec, empty_cov
-
-    @staticmethod
-    def PP_fixedIntervalSmoother(A, Q, dN, lags, mu, beta, fitType="poisson", delta=0.001, gamma=None, windowTimes=None, x0=None, Pi0=None):
-        """Point-process fixed-interval (fixed-lag) smoother.
-
-        Runs ``PPDecode_updateLinear`` forward, then applies backward
-        RTS-style smoothing at each step with the specified number of
-        *lags*.  Returns ``(x_pLag, W_pLag, x_uLag, W_uLag)``.
-        """
-        obs = _as_observation_matrix(dN)
-        num_cells, num_steps = obs.shape
-        num_states = _infer_state_dim(A, beta, num_cells)
-        mu_vec = _normalize_mu(mu, num_cells)
-        beta_mat = _normalize_beta(beta, num_states, num_cells)
-
-        x0_vec = np.zeros(num_states, dtype=float) if _is_empty_value(x0) else np.asarray(x0, dtype=float).reshape(-1)
-        if x0_vec.size != num_states:
-            raise ValueError("x0 must match the decoding state dimension")
-        Pi0_mat = np.zeros((num_states, num_states), dtype=float) if _is_empty_value(Pi0) else _as_state_matrix(Pi0, num_states)
-
-        if _is_empty_value(windowTimes):
-            H_tensor = np.zeros((num_steps, 0, num_cells), dtype=float)
-            gamma_mat = np.zeros((0, num_cells), dtype=float)
-        else:
-            H_tensor = _compute_history_terms(obs, float(delta), windowTimes)
-            gamma_mat = _normalize_gamma(gamma, H_tensor.shape[1], num_cells)
-
-        x_p = np.zeros((num_states, num_steps + 1), dtype=float)
-        x_u = np.zeros((num_states, num_steps), dtype=float)
-        W_p = np.zeros((num_states, num_states, num_steps + 1), dtype=float)
-        W_u = np.zeros((num_states, num_states, num_steps), dtype=float)
-        x_p[:, 0] = x0_vec
-        W_p[:, :, 0] = Pi0_mat
-
-        lag_count = max(int(lags), 1)
-        num_states, num_steps = x_u.shape
-        x_uLag = np.zeros_like(x_u)
-        W_uLag = np.zeros_like(W_u)
-        x_pLag = np.zeros_like(x_p)
-        W_pLag = np.zeros_like(W_p)
-
-        for n in range(num_steps):
-            x_u[:, n], W_u[:, :, n], _ = DecodingAlgorithms.PPDecode_updateLinear(
-                x_p[:, n],
-                W_p[:, :, n],
-                obs,
-                mu_vec,
-                beta_mat,
-                fitType,
-                gamma_mat,
-                H_tensor,
-                n,
-                None,
-            )
-            A_t = _select_time_matrix(A, n, num_states)
-            Q_t = _select_time_matrix(Q, n, num_states)
-            x_p[:, n + 1], W_p[:, :, n + 1] = DecodingAlgorithms.PPDecode_predict(
-                x_u[:, n],
-                W_u[:, :, n],
-                A_t,
-                Q_t,
-            )
-            if n < lag_count:
-                continue
-
-            x_bank: list[np.ndarray] = []
-            w_bank: list[np.ndarray] = []
-            for k in range(1, lag_count + 1):
-                idx = n - k
-                A_k = _select_time_matrix(A, idx, num_states)
-                gain = W_u[:, :, idx] @ A_k.T @ np.linalg.pinv(W_p[:, :, idx + 1])
-                target_x = x_u[:, idx + 1] if k == 1 else x_bank[k - 2]
-                target_W = W_u[:, :, idx + 1] if k == 1 else w_bank[k - 2]
-                x_k = x_u[:, idx] + gain @ (target_x - x_p[:, idx + 1])
-                W_k = W_u[:, :, idx] + gain @ (target_W - W_p[:, :, idx + 1]) @ gain.T
-                W_k = _symmetrize(W_k)
-                x_bank.append(x_k)
-                w_bank.append(W_k)
-
-            x_uLag[:, n] = x_bank[-1]
-            W_uLag[:, :, n] = w_bank[-1]
-            if lag_count > 1:
-                x_pLag[:, n + 1] = x_bank[-2]
-                W_pLag[:, :, n + 1] = w_bank[-1]
-            else:
-                x_pLag[:, n + 1] = x_u[:, n]
-                W_pLag[:, :, n + 1] = W_u[:, :, n]
-
-        return x_pLag, W_pLag, x_uLag, W_uLag
 
     @staticmethod
     def PPHybridFilterLinear(
@@ -2423,58 +1513,6 @@ class DecodingAlgorithms:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def ukf_sigmas(x: np.ndarray, P: np.ndarray, c: float) -> np.ndarray:
-        """Generate sigma points around reference point *x*.
-
-        Parameters
-        ----------
-        x : (L,) state vector
-        P : (L, L) covariance
-        c : scaling coefficient
-
-        Returns
-        -------
-        X : (L, 2L+1) sigma-point matrix
-        """
-        x = np.asarray(x, dtype=float).reshape(-1)
-        P = np.asarray(P, dtype=float)
-        A = c * np.linalg.cholesky(P)  # (L, L)
-        L = len(x)
-        Y = np.tile(x[:, None], (1, L))
-        X = np.column_stack([x[:, None], Y + A, Y - A])
-        return X
-
-    @staticmethod
-    def ukf_ut(f, X: np.ndarray, Wm: np.ndarray, Wc: np.ndarray,
-               n: int, R: np.ndarray):
-        """Unscented transformation.
-
-        Parameters
-        ----------
-        f : callable mapping (L,) -> (n,)
-        X : (L, 2L+1) sigma points
-        Wm, Wc : (2L+1,) weights
-        n : output dimensionality
-        R : (n, n) additive covariance
-
-        Returns
-        -------
-        y : (n,) transformed mean
-        Y : (n, 2L+1) transformed sigma points
-        P : (n, n) transformed covariance
-        Y1 : (n, 2L+1) deviations
-        """
-        Lpts = X.shape[1]
-        y = np.zeros(n)
-        Y = np.zeros((n, Lpts))
-        for k in range(Lpts):
-            Y[:, k] = np.asarray(f(X[:, k]), dtype=float).reshape(-1)[:n]
-            y += Wm[k] * Y[:, k]
-        Y1 = Y - y[:, None]
-        P = Y1 @ np.diag(Wc) @ Y1.T + np.asarray(R, dtype=float).reshape(n, n)
-        return y, Y, P, Y1
-
-    @staticmethod
     def ukf(fstate, x: np.ndarray, P: np.ndarray, hmeas,
             z: np.ndarray, Q: np.ndarray, R: np.ndarray):
         """Unscented Kalman Filter for nonlinear systems.
@@ -2535,7 +1573,523 @@ class DecodingAlgorithms:
         P_out = P1 - K @ P12.T
         return x_out, P_out
 
+    @staticmethod
+    def ukf_ut(f, X: np.ndarray, Wm: np.ndarray, Wc: np.ndarray,
+               n: int, R: np.ndarray):
+        """Unscented transformation.
+
+        Parameters
+        ----------
+        f : callable mapping (L,) -> (n,)
+        X : (L, 2L+1) sigma points
+        Wm, Wc : (2L+1,) weights
+        n : output dimensionality
+        R : (n, n) additive covariance
+
+        Returns
+        -------
+        y : (n,) transformed mean
+        Y : (n, 2L+1) transformed sigma points
+        P : (n, n) transformed covariance
+        Y1 : (n, 2L+1) deviations
+        """
+        Lpts = X.shape[1]
+        y = np.zeros(n)
+        Y = np.zeros((n, Lpts))
+        for k in range(Lpts):
+            Y[:, k] = np.asarray(f(X[:, k]), dtype=float).reshape(-1)[:n]
+            y += Wm[k] * Y[:, k]
+        Y1 = Y - y[:, None]
+        P = Y1 @ np.diag(Wc) @ Y1.T + np.asarray(R, dtype=float).reshape(n, n)
+        return y, Y, P, Y1
+
+    @staticmethod
+    def ukf_sigmas(x: np.ndarray, P: np.ndarray, c: float) -> np.ndarray:
+        """Generate sigma points around reference point *x*.
+
+        Parameters
+        ----------
+        x : (L,) state vector
+        P : (L, L) covariance
+        c : scaling coefficient
+
+        Returns
+        -------
+        X : (L, 2L+1) sigma-point matrix
+        """
+        x = np.asarray(x, dtype=float).reshape(-1)
+        P = np.asarray(P, dtype=float)
+        A = c * np.linalg.cholesky(P)  # (L, L)
+        L = len(x)
+        Y = np.tile(x[:, None], (1, L))
+        X = np.column_stack([x[:, None], Y + A, Y - A])
+        return X
+
     # ------------------------------------------------------------------
+    @staticmethod
+    def linear_decode(spike_counts: np.ndarray, stimulus: np.ndarray) -> dict[str, np.ndarray]:
+        """Ordinary-least-squares linear decoder (spike counts → stimulus).
+
+        Returns a dict with keys ``'coefficients'``, ``'decoded'``,
+        ``'residual'``, and ``'ci'`` (95 % confidence band).
+        """
+        x = np.asarray(spike_counts, dtype=float)
+        y = np.asarray(stimulus, dtype=float).reshape(-1)
+        if x.ndim == 1:
+            x = x[:, None]
+        if x.shape[0] != y.shape[0]:
+            raise ValueError("spike_counts and stimulus must align")
+
+        x_aug = np.column_stack([np.ones(x.shape[0]), x])
+        beta, *_ = np.linalg.lstsq(x_aug, y, rcond=None)
+        y_hat = x_aug @ beta
+        resid = y - y_hat
+        sigma = float(np.std(resid))
+        ci = np.column_stack([y_hat - 1.96 * sigma, y_hat + 1.96 * sigma])
+        return {"coefficients": beta, "decoded": y_hat, "residual": resid, "ci": ci}
+
+    @staticmethod
+    def kalman_filter(
+        A=None, C=None, Pv=None, Pw=None, Px0=None, x0=None, y=None, GnConv=None,
+        *,
+        observations=None, transition=None, observation_matrix=None,
+        q_cov=None, r_cov=None, p0=None,
+    ):
+        """Discrete-time Kalman filter.
+
+        Accepts **both** the MATLAB-compatible signature::
+
+            kalman_filter(A, C, Pv, Pw, Px0, x0, y, GnConv)
+
+        and the Pythonic keyword signature::
+
+            kalman_filter(observations=y, transition=A,
+                          observation_matrix=C, q_cov=Pv,
+                          r_cov=Pw, x0=x0, p0=Px0)
+
+        When MATLAB-style positional args are provided, delegates to
+        ``_kalman_filter_matlab``.  Otherwise runs a simple Pythonic
+        Kalman filter returning ``dict(state=..., cov=...)``.
+
+        Returns
+        -------
+        dict with keys:
+            ``state`` : (N, Dx) — updated (posterior) state estimates.
+            ``cov``   : (N, Dx, Dx) — updated covariances.
+        """
+        # Detect MATLAB-style positional call: kalman_filter(A, C, Pv, Pw, Px0, x0, y, GnConv)
+        # MATLAB call has 7-8 positional args where y (arg 7) is the observation matrix.
+        # Pythonic call has 7 args where the first is observations (2D time-series).
+        # Distinguish by checking: in MATLAB style, A is square (Dx,Dx) and y is (Dy,N);
+        # in Pythonic style, the first arg ('A' slot) is observations (N,Dy).
+        _all_positional = A is not None and C is not None and Pv is not None and Pw is not None
+        if _all_positional and y is not None and GnConv is None:
+            # 7 positional args: could be MATLAB (A,C,Pv,Pw,Px0,x0,y) or Pythonic (obs,A,C,Q,R,x0,p0)
+            # MATLAB: A is square state matrix, y is observation time-series
+            # Pythonic: first arg (A slot) IS the observation time-series
+            a_arr = np.asarray(A, dtype=float)
+            y_arr = np.asarray(y, dtype=float)
+            # If A is 2D square and y has more rows than A, it's MATLAB style
+            if a_arr.ndim == 2 and a_arr.shape[0] == a_arr.shape[1] and y_arr.ndim >= 2 and y_arr.shape[1] > a_arr.shape[0]:
+                return DecodingAlgorithms._kalman_filter_matlab(A, C, Pv, Pw, Px0, x0, y, GnConv)
+        elif _all_positional and y is not None and GnConv is not None:
+            # 8 positional args: must be MATLAB (A,C,Pv,Pw,Px0,x0,y,GnConv)
+            return DecodingAlgorithms._kalman_filter_matlab(A, C, Pv, Pw, Px0, x0, y, GnConv)
+
+        # Pythonic positional call: kalman_filter(observations, transition, obs_matrix, q, r, x0, p0)
+        # When 7 positional args are given and it's NOT MATLAB-style, treat as:
+        # A=observations, C=transition, Pv=obs_matrix, Pw=q_cov, Px0=r_cov, x0=x0, y=p0
+        if observations is not None:
+            # Keyword call: use keyword values
+            obs = observations
+            a = transition if transition is not None else A
+            h = observation_matrix if observation_matrix is not None else C
+            q = q_cov if q_cov is not None else Pv
+            r = r_cov if r_cov is not None else Pw
+            x0_vec = x0
+            p0_mat = p0 if p0 is not None else Px0
+        else:
+            # Positional Pythonic call: A=obs, C=A, Pv=C, Pw=Q, Px0=R, x0=x0, y=p0
+            obs = A
+            a = C
+            h = Pv
+            q = Pw
+            r = Px0
+            x0_vec = x0
+            p0_mat = y
+
+        obs = np.asarray(obs, dtype=float)
+        a = np.asarray(a, dtype=float)
+        h = np.asarray(h, dtype=float)
+        q = np.asarray(q, dtype=float)
+        r = np.asarray(r, dtype=float)
+        x_prev = np.asarray(x0_vec, dtype=float).reshape(-1)
+        p_prev = np.asarray(p0_mat, dtype=float)
+
+        n_t = obs.shape[0]
+        n_x = x_prev.shape[0]
+        xs = np.zeros((n_t, n_x), dtype=float)
+        ps = np.zeros((n_t, n_x, n_x), dtype=float)
+
+        for t in range(n_t):
+            x_pred = a @ x_prev
+            p_pred = a @ p_prev @ a.T + q
+
+            innovation = obs[t] - h @ x_pred
+            s_cov = h @ p_pred @ h.T + r
+            k_gain = p_pred @ h.T @ np.linalg.pinv(s_cov)
+
+            x_post = x_pred + k_gain @ innovation
+            p_post = _symmetrize((np.eye(n_x) - k_gain @ h) @ p_pred)
+
+            xs[t] = x_post
+            ps[t] = p_post
+            x_prev = x_post
+            p_prev = p_post
+
+        return {"state": xs, "cov": ps}
+
+    @staticmethod
+    def _kalman_filter_matlab(A, C, Pv, Pw, Px0, x0, y, GnConv=None):
+        """Discrete-time Kalman filter matching the Matlab API (internal).
+
+        Implements the DT Kalman filter for the system::
+
+            x(:, n+1) = A(:,:,n) x(:, n) + v(:, n)
+            y(:, n)   = C(:,:,n) x(:, n) + w(:, n)
+
+        where ``Pv(:,:,n)``, ``Pw(:,:,n)`` are the covariances of v(n) and
+        w(n), and ``Px0`` is the initial state covariance.
+
+        Supports **time-varying** system matrices when supplied as 3-D arrays
+        (e.g. ``A.shape == (Dx, Dx, N)``).  Time-invariant (2-D) matrices
+        are broadcast automatically.
+
+        Parameters
+        ----------
+        A : (Dx, Dx) or (Dx, Dx, N) — state transition.
+        C : (Dy, Dx) or (Dy, Dx, N) — observation matrix.
+        Pv : (Dx, Dx) or (Dx, Dx, N) — process noise covariance.
+        Pw : (Dy, Dy) or (Dy, Dy, N) — observation noise covariance.
+        Px0 : (Dx, Dx) — initial error covariance.
+        x0 : (Dx,) — initial state estimate.
+        y : (Dy, N) or (N, Dy) — observations (auto-detected layout).
+        GnConv : array or None, optional
+            Pre-converged Kalman gain.  When ``None``, gain convergence
+            is auto-detected during filtering.
+
+        Returns
+        -------
+        x_p : (Dx, N+1) — predicted states (``x_p[:, 0] == x0``).
+        Pe_p : (Dx, Dx, N+1) — predicted covariances.
+        x_u : (Dx, N) — updated states.
+        Pe_u : (Dx, Dx, N) — updated covariances.
+        Gn : (Dx, Dy, N) — Kalman gain history.
+        GnConvIter : int or None — iteration at which gain converged.
+        """
+        A = np.asarray(A, dtype=float)
+        C = np.asarray(C, dtype=float)
+        Pv = np.asarray(Pv, dtype=float)
+        Pw = np.asarray(Pw, dtype=float)
+        Px0 = np.asarray(Px0, dtype=float)
+        x0_vec = np.asarray(x0, dtype=float).reshape(-1)
+        y = np.asarray(y, dtype=float)
+        if y.ndim == 1:
+            y = y[None, :]
+
+        Dx = A.shape[0]
+        Dy = C.shape[0]
+
+        # Auto-detect layout: Matlab expects (Dy, N) state-major.
+        # If y is (N, Dy) time-major, transpose.
+        if y.shape[0] != Dy and y.shape[1] == Dy:
+            y = y.T
+        N = y.shape[1]
+
+        def _sel(M, n):
+            """Select time-varying slice M[:,:,n] or broadcast M[:,:] if 2-D."""
+            if M.ndim == 3:
+                return M[:, :, min(n, M.shape[2] - 1)]
+            return M
+
+        x_p = np.zeros((Dx, N + 1), dtype=float)
+        Pe_p = np.zeros((Dx, Dx, N + 1), dtype=float)
+        x_u = np.zeros((Dx, N), dtype=float)
+        Pe_u = np.zeros((Dx, Dx, N), dtype=float)
+        Gn = np.zeros((Dx, Dy, N), dtype=float)
+
+        x_p[:, 0] = x0_vec
+        Pe_p[:, :, 0] = Px0
+
+        GnConvIter = None
+        _GnConv = None
+        if GnConv is not None and not _is_empty_value(GnConv):
+            _GnConv = np.asarray(GnConv, dtype=float)
+
+        for n in range(N):
+            An = _sel(A, n)
+            Cn = _sel(C, n)
+            Pvn = _sel(Pv, n)
+            Pwn = _sel(Pw, n)
+
+            # --- Update ---
+            if _GnConv is not None:
+                G = _GnConv
+            else:
+                S = Cn @ Pe_p[:, :, n] @ Cn.T + Pwn
+                G = Pe_p[:, :, n] @ Cn.T @ np.linalg.solve(S, np.eye(Dy))
+            x_u[:, n] = x_p[:, n] + G @ (y[:, n] - Cn @ x_p[:, n])
+            Pe_u[:, :, n] = Pe_p[:, :, n] - G @ Cn @ Pe_p[:, :, n]
+            Pe_u[:, :, n] = _symmetrize(Pe_u[:, :, n])
+            Gn[:, :, n] = G
+
+            # --- Predict ---
+            if _GnConv is not None:
+                Pe_p[:, :, n + 1] = _symmetrize(Pe_u[:, :, n])
+            else:
+                Pe_p[:, :, n + 1] = _symmetrize(An @ Pe_u[:, :, n] @ An.T + Pvn)
+            x_p[:, n + 1] = An @ x_u[:, n]
+
+            # --- Gain convergence detection ---
+            if n > 0 and _GnConv is None:
+                diffGn = np.abs(Gn[:, :, n] - Gn[:, :, n - 1])
+                if np.max(diffGn) < 1e-6:
+                    _GnConv = Gn[:, :, n]
+                    GnConvIter = n
+
+        return x_p, Pe_p, x_u, Pe_u, Gn, GnConvIter
+
+    @staticmethod
+    def kalman_predict(x_u, Pe_u, A, Pv, GnConv=None):
+        """Kalman filter predict step: ``x_p = A x_u``, ``Pe_p = A Pe A' + Pv``.
+
+        When the converged-gain ``GnConv`` is provided the predict-step
+        covariance is taken from the previously-filtered ``Pe_u`` (which
+        is the steady-state covariance under the converged gain) rather
+        than recomputed.  Audit finding H1 (Agent 5): the prior
+        implementation used ``GnConv`` itself as the covariance — but
+        ``GnConv`` is a gain matrix (shape ``Dx x Dy``), not a
+        covariance (``Dx x Dx``).  The ``_kalman_filter_matlab`` path at
+        lines 611-614 had this right; the standalone ``kalman_predict``
+        diverged.  Matches MATLAB ``KalmanFilter.m:91``
+        (``Pe_p = Pe_u`` when ``Gn_conv`` set).
+        """
+        x_vec = np.asarray(x_u, dtype=float).reshape(-1)
+        dim = x_vec.size
+        A_mat = _as_state_matrix(A, dim)
+        Pe_mat = _as_state_matrix(Pe_u, dim)
+        if _is_empty_value(GnConv):
+            Pv_mat = _as_state_matrix(Pv, dim)
+            Pe_p = _symmetrize(A_mat @ Pe_mat @ A_mat.T + Pv_mat)
+        else:
+            Pe_p = _symmetrize(Pe_mat)
+        x_p = A_mat @ x_vec
+        return x_p, Pe_p
+
+    @staticmethod
+    def kalman_update(x_p, Pe_p, C, Pw, y, GnConv=None):
+        """Kalman filter update step: incorporate observation *y* and return ``(x_u, Pe_u, G)``."""
+        x_vec = np.asarray(x_p, dtype=float).reshape(-1)
+        dim = x_vec.size
+        C_mat = np.asarray(C, dtype=float)
+        if C_mat.ndim == 1:
+            C_mat = C_mat.reshape(1, -1)
+        if C_mat.shape[1] != dim:
+            raise ValueError("C must have one column per state dimension")
+        Pe_mat = _as_state_matrix(Pe_p, dim)
+        y_vec = np.asarray(y, dtype=float).reshape(-1)
+        if _is_empty_value(GnConv):
+            Pw_mat = _as_state_matrix(Pw, y_vec.size)
+            innovation = y_vec - C_mat @ x_vec
+            S_cov = _symmetrize(C_mat @ Pe_mat @ C_mat.T + Pw_mat)
+            G = Pe_mat @ C_mat.T @ np.linalg.pinv(S_cov)
+            x_u = x_vec + G @ innovation
+            Pe_u = _symmetrize((np.eye(dim, dtype=float) - G @ C_mat) @ Pe_mat)
+        else:
+            G = np.asarray(GnConv, dtype=float)
+            innovation = y_vec - C_mat @ x_vec
+            x_u = x_vec + G @ innovation
+            Pe_u = _symmetrize((np.eye(dim, dtype=float) - G @ C_mat) @ Pe_mat)
+        return x_u, Pe_u, G
+
+    @staticmethod
+    def _state_history_time_major(x, P):
+        x_arr = np.asarray(x, dtype=float)
+        P_arr = np.asarray(P, dtype=float)
+        if P_arr.ndim != 3:
+            raise ValueError("Covariance history must be 3D")
+        transposed = False
+        if x_arr.ndim == 1:
+            x_arr = x_arr[:, None]
+        if x_arr.shape[0] == P_arr.shape[0]:
+            return x_arr, P_arr, transposed
+        if x_arr.shape[1] == P_arr.shape[0]:
+            return x_arr.T, P_arr, True
+        raise ValueError("State history shape does not align with covariance history")
+
+    @staticmethod
+    def kalman_smootherFromFiltered(A, x_p, Pe_p, x_u, Pe_u):
+        """RTS backward smoother from precomputed filter estimates.
+
+        Returns ``(x_N, P_N, Ln)`` — smoothed states, covariances, and
+        backward Kalman gains.
+        """
+        x_p_tm, Pe_p_tm, predicted_transposed = DecodingAlgorithms._state_history_time_major(x_p, Pe_p)
+        x_u_tm, Pe_u_tm, updated_transposed = DecodingAlgorithms._state_history_time_major(x_u, Pe_u)
+        if predicted_transposed != updated_transposed:
+            raise ValueError("Predicted and updated state histories must share an orientation")
+
+        n_t, n_x = x_u_tm.shape
+        x_N = x_u_tm.copy()
+        P_N = Pe_u_tm.copy()
+        Ln = np.zeros((max(n_t - 1, 0), n_x, n_x), dtype=float)
+
+        for t in range(n_t - 2, -1, -1):
+            A_t = _select_time_matrix(A, t, n_x)
+            gain = Pe_u_tm[t] @ A_t.T @ np.linalg.pinv(Pe_p_tm[t + 1])
+            Ln[t] = gain
+            x_N[t] = x_u_tm[t] + gain @ (x_N[t + 1] - x_p_tm[t + 1])
+            P_N[t] = _symmetrize(Pe_u_tm[t] + gain @ (P_N[t + 1] - Pe_p_tm[t + 1]) @ gain.T)
+
+        if updated_transposed:
+            return x_N.T, P_N, Ln
+        return x_N, P_N, Ln
+
+    @staticmethod
+    def kalman_smoother(A, C, Pv, Pw, Px0, x0, y):
+        """Run a Kalman filter followed by an RTS smoother.
+
+        Returns ``(x_N, P_N, Ln, x_p, Pe_p, x_u, Pe_u)``.
+        """
+        observations = np.asarray(y, dtype=float)
+        if observations.ndim == 1:
+            observations = observations[:, None]
+
+        x_prev = np.asarray(x0, dtype=float).reshape(-1)
+        Pe_prev = _as_state_matrix(Px0, x_prev.size)
+        n_t = observations.shape[0]
+        n_x = x_prev.size
+        x_p = np.zeros((n_t, n_x), dtype=float)
+        Pe_p = np.zeros((n_t, n_x, n_x), dtype=float)
+        x_u = np.zeros((n_t, n_x), dtype=float)
+        Pe_u = np.zeros((n_t, n_x, n_x), dtype=float)
+
+        for t in range(n_t):
+            x_p[t], Pe_p[t] = DecodingAlgorithms.kalman_predict(x_prev, Pe_prev, A, Pv)
+            x_u[t], Pe_u[t], _ = DecodingAlgorithms.kalman_update(x_p[t], Pe_p[t], C, Pw, observations[t])
+            x_prev = x_u[t]
+            Pe_prev = Pe_u[t]
+
+        x_N, P_N, Ln = DecodingAlgorithms.kalman_smootherFromFiltered(A, x_p, Pe_p, x_u, Pe_u)
+        return x_N, P_N, Ln, x_p, Pe_p, x_u, Pe_u
+
+    @staticmethod
+    def kalman_fixedIntervalSmoother(A, C, Pv, Pw, Px0, x0, y, lags):
+        """Kalman fixed-interval (fixed-lag) smoother via augmented state.
+
+        Matches the Matlab implementation: builds an augmented state
+        of dimension ``(1 + lags) * n_x`` and runs ``kalman_filter``
+        on the augmented system.  The lagged portion of the augmented
+        state gives the exact smoothed estimate at lag *lags*.
+
+        Parameters
+        ----------
+        A, C, Pv, Pw : arrays
+            System matrices (may be time-varying 3-D arrays).
+        Px0 : (Dx, Dx) — initial covariance.
+        x0 : (Dx,) — initial state.
+        y : (N, Dy) or (Dy, N) — observations (auto-detected layout).
+        lags : int — number of smoothing lags.
+
+        Returns
+        -------
+        x_pLag : (N+1, Dx) — predicted states at the lagged component (time-major).
+        Pe_pLag : (N+1, Dx, Dx) — predicted covariances at the lagged component.
+        x_uLag : (N, Dx) — updated states at the lagged component.
+        Pe_uLag : (N, Dx, Dx) — updated covariances at the lagged component.
+        """
+        A = np.asarray(A, dtype=float)
+        C = np.asarray(C, dtype=float)
+        Pv = np.asarray(Pv, dtype=float)
+        Pw = np.asarray(Pw, dtype=float)
+        Px0 = np.asarray(Px0, dtype=float)
+        x0_vec = np.asarray(x0, dtype=float).reshape(-1)
+        y = np.asarray(y, dtype=float)
+        if y.ndim == 1:
+            y = y[None, :]
+
+        nStates = A.shape[0]
+        nObs = C.shape[0]
+
+        # Auto-detect layout: convert to state-major (Dy, N) for kalman_filter
+        if y.shape[0] != nObs and y.shape[1] == nObs:
+            y = y.T
+        N = y.shape[1]
+        lags = max(int(lags), 1)
+        aug_dim = (lags + 1) * nStates
+
+        def _sel(M, n):
+            if M.ndim == 3:
+                return M[:, :, min(n, M.shape[2] - 1)]
+            return M
+
+        # Build augmented time-varying matrices
+        Alag = np.zeros((aug_dim, aug_dim, N), dtype=float)
+        Pvlag = np.zeros((aug_dim, aug_dim, N), dtype=float)
+        Clag = np.zeros((nObs, aug_dim, N), dtype=float)
+        Pwlag = np.zeros((nObs, nObs, N), dtype=float)
+
+        for n in range(N):
+            offset = 0
+            for i in range(lags + 1):
+                sl = slice(offset, offset + nStates)
+                if i == 0:
+                    Alag[sl, sl, n] = _sel(A, n)
+                    Pvlag[sl, sl, n] = _sel(Pv, n)
+                    Clag[:, sl, n] = _sel(C, n)
+                    Pwlag[:, :, n] = _sel(Pw, n)
+                else:
+                    prev_sl = slice(offset - nStates, offset)
+                    Alag[sl, prev_sl, n] = np.eye(nStates)
+                offset += nStates
+
+        # Augmented initial state and covariance
+        x0lag = np.zeros(aug_dim, dtype=float)
+        x0lag[:nStates] = x0_vec
+        Px0lag = np.zeros((aug_dim, aug_dim), dtype=float)
+        Px0lag[:nStates, :nStates] = Px0
+
+        # Run Kalman filter on augmented system (internal Matlab API)
+        x_p, Pe_p, x_u, Pe_u, _, _ = DecodingAlgorithms._kalman_filter_matlab(
+            Alag, Clag, Pvlag, Pwlag, Px0lag, x0lag, y
+        )
+
+        # Extract the lagged portion — state-major
+        lag_sl = slice(lags * nStates, (lags + 1) * nStates)
+
+        # x_p is (aug_dim, N+1), x_u is (aug_dim, N)
+        # Return N time steps (drop initial prediction at column 0) for
+        # backward compatibility with the Python API where both predicted
+        # and updated arrays have the same N rows.
+        x_pLag_sm = x_p[lag_sl, 1:]            # (Dx, N)
+        Pe_pLag_sm = Pe_p[lag_sl, lag_sl, 1:]   # (Dx, Dx, N)  -- uses numpy advanced slicing on dim 3 so extract via loop
+        x_uLag_sm = x_u[lag_sl, :]              # (Dx, N)
+        Pe_uLag_sm = Pe_u[lag_sl, lag_sl, :]     # (Dx, Dx, N)
+
+        # Correct the Pe slicing (nested slice on 3-D doesn't work as expected)
+        Pe_pLag_sm = Pe_p[lags * nStates:(lags + 1) * nStates,
+                          lags * nStates:(lags + 1) * nStates, 1:]
+        Pe_uLag_sm = Pe_u[lags * nStates:(lags + 1) * nStates,
+                          lags * nStates:(lags + 1) * nStates, :]
+
+        # Return time-major to match kalman_smoother convention: (N, Dx)
+        x_pLag = x_pLag_sm.T
+        Pe_pLag = np.transpose(Pe_pLag_sm, (2, 0, 1))
+        x_uLag = x_uLag_sm.T
+        Pe_uLag = np.transpose(Pe_uLag_sm, (2, 0, 1))
+
+        return x_pLag, Pe_pLag, x_uLag, Pe_uLag
+
     # State-Space GLM (SSGLM) via EM Forward-Backward
     # Ported from Matlab DecodingAlgorithms.m (PPSS_EMFB and helpers)
     # ------------------------------------------------------------------
@@ -2575,6 +2129,317 @@ class DecodingAlgorithms:
             return HkAll
         else:
             return [np.zeros((N, 0), dtype=float) for _ in range(K)]
+
+    @staticmethod
+    def PPSS_EMFB(A, Q0, x0, dN, fitType, delta, gamma0, windowTimes, numBasis, neuronName=None):
+        """EM Forward-Backward algorithm for state-space GLM.
+
+        Wraps PPSS_EM in a forward-backward-forward cycle for improved convergence.
+
+        Parameters
+        ----------
+        A : (R, R) state transition matrix (typically identity for random walk)
+        Q0 : (R,) initial state noise variance
+        x0 : (R,) initial state coefficients
+        dN : (K, N) binary spike observations (K trials, N time bins)
+        fitType : 'poisson' or 'binomial'
+        delta : time bin width in seconds
+        gamma0 : (J,) initial history coefficients
+        windowTimes : array of history window boundaries
+        numBasis : number of basis functions R
+        neuronName : identifier for the neuron (for labeling)
+
+        Returns
+        -------
+        xKFinal : (R, K) estimated state trajectories
+        WKFinal : (R, R, K) estimated state covariances
+        WkuFinal : (R, R, K, K) cross-trial covariances
+        Qhat : (R,) estimated state noise variance
+        gammahat : (J,) estimated history coefficients
+        fitResults : FitResult object with goodness-of-fit diagnostics
+        stimulus : (R, K) estimated stimulus effect
+        stimCIs : (R, K, 2) stimulus confidence intervals
+        logll : float, log-likelihood at convergence
+        QhatAll : parameter history
+        gammahatAll : parameter history
+        nIter : total EM iterations
+        """
+        K, N = dN.shape
+        fitType = str(fitType or "poisson").lower()
+
+        Q0_vec = np.asarray(Q0, dtype=float).reshape(-1)
+        if Q0_vec.size == numBasis * numBasis:
+            Q0_vec = np.diag(Q0_vec.reshape(numBasis, numBasis))
+
+        gamma0_vec = np.asarray(gamma0, dtype=float).reshape(-1) if gamma0 is not None else np.array([], dtype=float)
+
+        Qhat_cur = Q0_vec.copy()
+        gammahat_cur = gamma0_vec.copy()
+        xK0 = np.asarray(x0, dtype=float).reshape(-1)
+
+        # Build history matrices
+        HkAll = DecodingAlgorithms._ssglm_build_history(dN, windowTimes, delta)
+        HkAllR = list(reversed(HkAll))
+
+        tolAbs = 1e-3
+        tolRel = 1e-3
+        llTol = 1e-3
+        maxIter = 2000
+
+        Qhat_history = [Qhat_cur.copy()]
+        gammahat_history = [gammahat_cur.copy()]
+        logll_list = []
+        stoppingCriteria = False
+        cnt = 0
+
+        xK = None
+        WK = None
+        Wku = None
+
+        while not stoppingCriteria and cnt < maxIter:
+            # Forward EM
+            xK, WK, Wku, Qnew, gnew, ll, _, _, _, negLL = DecodingAlgorithms.PPSS_EM(
+                A, Qhat_cur, xK0, dN, fitType, delta, gammahat_cur, windowTimes, numBasis, HkAll
+            )
+
+            if not negLL:
+                # Backward EM (reversed trial order)
+                xKR, _, _, QnewR, gnewR, _, _, _, _, negLLR = DecodingAlgorithms.PPSS_EM(
+                    A, Qnew, xK[:, -1], np.flipud(dN), fitType, delta, gnew, windowTimes, numBasis, HkAllR
+                )
+
+                if not negLLR:
+                    # Forward EM again with backward-updated parameters
+                    # Matlab: PPSS_EM(A, QhatR(:,cnt+1), xKR(:,end), dN, ...)
+                    # Use backward EM's final state as initial state for forward pass
+                    xK2, WK2, Wku2, Qnew2, gnew2, ll2, _, _, _, negLL2 = DecodingAlgorithms.PPSS_EM(
+                        A, QnewR, xKR[:, -1], dN, fitType, delta, gnewR,
+                        windowTimes, numBasis, HkAll
+                    )
+
+                    if not negLL2:
+                        xK = xK2
+                        WK = WK2
+                        Wku = Wku2
+                        Qnew = Qnew2
+                        gnew = gnew2
+                        ll = ll2
+
+            Qhat_cur = Qnew
+            gammahat_cur = gnew
+            Qhat_history.append(Qnew.copy())
+            gammahat_history.append(gnew.copy())
+            logll_list.append(ll)
+
+            xK0 = xK[:, 0]
+
+            # Check convergence
+            if cnt > 0:
+                dLikelihood = logll_list[cnt] - logll_list[cnt - 1]
+            else:
+                dLikelihood = np.inf
+
+            if len(Qhat_history) >= 2:
+                Q_prev = Qhat_history[-2]
+                Q_cur = Qhat_history[-1]
+                dQvals = np.abs(np.sqrt(np.maximum(Q_cur, 0)) - np.sqrt(np.maximum(Q_prev, 0)))
+                g_prev = gammahat_history[-2]
+                g_cur = gammahat_history[-1]
+                dGamma = np.abs(g_cur - g_prev) if g_cur.size > 0 else np.array([0.0])
+
+                dMax = max(float(np.max(dQvals)), float(np.max(dGamma)))
+
+                Q_denom = np.sqrt(np.maximum(Q_prev, 1e-30))
+                dQRel = float(np.max(np.abs(dQvals / Q_denom)))
+                if g_prev.size > 0 and np.any(g_prev != 0):
+                    g_denom = np.maximum(np.abs(g_prev), 1e-30)
+                    dGammaRel = float(np.max(np.abs(dGamma / g_denom)))
+                    dMaxRel = max(dQRel, dGammaRel)
+                else:
+                    dMaxRel = dQRel
+
+                if dMax < tolAbs and dMaxRel < tolRel:
+                    stoppingCriteria = True
+
+                if abs(dLikelihood) < llTol or dLikelihood < 0:
+                    stoppingCriteria = True
+
+            cnt += 1
+
+        # Select best iteration
+        logll_arr = np.array(logll_list)
+        if logll_arr.size > 0:
+            maxLLIndex = int(np.argmax(logll_arr))
+        else:
+            maxLLIndex = 0
+
+        xKFinal = xK
+        WKFinal = WK
+        WkuFinal = Wku
+        Qhat = Qhat_history[min(maxLLIndex + 1, len(Qhat_history) - 1)]
+        gammahat = gammahat_history[min(maxLLIndex + 1, len(gammahat_history) - 1)]
+        logll = float(logll_arr[maxLLIndex]) if logll_arr.size > 0 else -np.inf
+
+        QhatAll = np.column_stack(Qhat_history) if Qhat_history else Q0_vec.reshape(-1, 1)
+        gammahatAll = np.vstack(gammahat_history) if gammahat_history and gammahat_history[0].size > 0 else np.array([[]])
+
+        R = numBasis
+        x0Final = xK[:, 0] if xK is not None else np.zeros(R)
+        SumXkTermsFinal = np.diag(Qhat) * K
+        McInfo = 100
+        McCI = 3000
+
+        # Observed log-likelihood
+        logllobs = logll + R * K * np.log(2 * np.pi) + K / 2.0 * np.log(
+            max(float(np.prod(np.maximum(Qhat, np.finfo(float).eps))), np.finfo(float).eps)
+        ) + 0.5 * float(np.trace(np.linalg.pinv(np.diag(Qhat)) @ SumXkTermsFinal))
+
+        nIter = cnt
+
+        # Information matrix and result packaging
+        InfoMat = DecodingAlgorithms.estimateInfoMat(
+            fitType, dN, HkAll, A, x0Final, xKFinal, WKFinal, WkuFinal,
+            Qhat, gammahat, windowTimes, SumXkTermsFinal, delta, McInfo
+        )
+        fitResults = DecodingAlgorithms.prepareEMResults(
+            fitType, neuronName, dN, HkAll, xKFinal, WKFinal,
+            Qhat, gammahat, windowTimes, delta, InfoMat, logllobs
+        )
+
+        stimCIs, stimulus = DecodingAlgorithms._ComputeStimulusCIs_MC(
+            fitType, xKFinal, WkuFinal, delta, McCI
+        )
+
+        return (xKFinal, WKFinal, WkuFinal, Qhat, gammahat, fitResults,
+                stimulus, stimCIs, logll, QhatAll, gammahatAll, nIter)
+
+    @staticmethod
+    def PPSS_EM(A, Q0, x0, dN, fitType, delta, gamma0, windowTimes, numBasis, HkAll):
+        """Inner EM loop for state-space GLM.
+
+        Parameters
+        ----------
+        A : (R, R) state transition
+        Q0 : (R,) initial state noise variance
+        x0 : (R,) initial state
+        dN : (K, N) observations
+        fitType : 'poisson' or 'binomial'
+        delta : time bin width
+        gamma0 : (J,) initial history coefficients
+        windowTimes : history window boundaries
+        numBasis : number of basis functions
+        HkAll : precomputed history matrices
+
+        Returns
+        -------
+        xKFinal, WKFinal, WkuFinal, Qhat, gammahat, logll, QhatAll, gammahatAll, nIter, negLL
+        """
+        if numBasis is None:
+            numBasis = 20
+        if delta is None or delta == 0:
+            delta = 0.001
+        fitType = str(fitType or "poisson").lower()
+
+        Q0_vec = np.asarray(Q0, dtype=float).reshape(-1)
+        if Q0_vec.size == numBasis * numBasis:
+            Q0_vec = np.diag(Q0_vec.reshape(numBasis, numBasis))
+
+        gamma0_vec = np.asarray(gamma0, dtype=float).reshape(-1) if gamma0 is not None else np.array([], dtype=float)
+
+        tolAbs = 1e-3
+        tolRel = 1e-3
+        llTol = 1e-3
+        maxIter = 100
+        numToKeep = 10
+
+        # Circular buffer storage
+        Qhat = np.zeros((Q0_vec.size, numToKeep), dtype=float)
+        Qhat[:, 0] = Q0_vec
+        gammahat = np.zeros((numToKeep, gamma0_vec.size), dtype=float)
+        gammahat[0, :] = gamma0_vec
+
+        xK_buf = [None] * numToKeep
+        WK_buf = [None] * numToKeep
+        Wku_buf = [None] * numToKeep
+
+        x0hat = np.asarray(x0, dtype=float).reshape(-1)
+        logll_list = []
+        dLikelihood = [np.inf]
+        negLL = False
+        stoppingCriteria = False
+        cnt = 0
+
+        while not stoppingCriteria and cnt < maxIter:
+            si = cnt % numToKeep
+            si_p1 = (cnt + 1) % numToKeep
+            si_m1 = (cnt - 1) % numToKeep
+
+            xK_cur, WK_cur, Wku_cur, ll, SumXkTerms, _ = DecodingAlgorithms.PPSS_EStep(
+                A, Qhat[:, si], x0hat, dN, HkAll, fitType, delta, gammahat[si, :], numBasis
+            )
+            xK_buf[si] = xK_cur
+            WK_buf[si] = WK_cur
+            Wku_buf[si] = Wku_cur
+            logll_list.append(ll)
+
+            Qnew, gnew = DecodingAlgorithms.PPSS_MStep(
+                dN, HkAll, fitType, xK_cur, WK_cur, gammahat[si, :], delta, SumXkTerms, windowTimes
+            )
+            Qhat[:, si_p1] = Qnew
+            gammahat[si_p1, :] = gnew
+
+            if cnt == 0:
+                dLikelihood.append(np.inf)
+            else:
+                dLikelihood.append(logll_list[cnt] - logll_list[cnt - 1])
+
+            # Check convergence
+            if cnt > 0:
+                dQvals = np.abs(np.sqrt(np.maximum(Qhat[:, si], 0)) - np.sqrt(np.maximum(Qhat[:, si_m1], 0)))
+                dGamma = np.abs(gammahat[si, :] - gammahat[si_m1, :])
+                dMax = max(np.max(dQvals), np.max(dGamma)) if dGamma.size > 0 else float(np.max(dQvals))
+
+                Q_prev = np.sqrt(np.maximum(Qhat[:, si_m1], 1e-30))
+                dQRel = float(np.max(np.abs(dQvals / Q_prev)))
+                if dGamma.size > 0:
+                    g_prev = np.maximum(np.abs(gammahat[si_m1, :]), 1e-30)
+                    dGammaRel = float(np.max(np.abs(dGamma / g_prev)))
+                    dMaxRel = max(dQRel, dGammaRel)
+                else:
+                    dMaxRel = dQRel
+
+                if dMax < tolAbs and dMaxRel < tolRel:
+                    stoppingCriteria = True
+                    negLL = False
+
+                if abs(dLikelihood[-1]) < llTol or dLikelihood[-1] < 0:
+                    stoppingCriteria = True
+                    negLL = True
+
+            cnt += 1
+
+        # Select best iteration by log-likelihood
+        logll_arr = np.array(logll_list)
+        if logll_arr.size > 0:
+            maxLLIndex = int(np.argmax(logll_arr))
+        else:
+            maxLLIndex = 0
+
+        maxLLIndMod = maxLLIndex % numToKeep
+        nIter = cnt
+
+        xKFinal = xK_buf[maxLLIndMod] if xK_buf[maxLLIndMod] is not None else np.zeros((numBasis, dN.shape[0]))
+        WKFinal = WK_buf[maxLLIndMod] if WK_buf[maxLLIndMod] is not None else np.zeros((numBasis, numBasis, dN.shape[0]))
+        WkuFinal = Wku_buf[maxLLIndMod] if Wku_buf[maxLLIndMod] is not None else np.zeros((numBasis, numBasis, dN.shape[0], dN.shape[0]))
+
+        QhatFinal = Qhat[:, maxLLIndMod]
+        gammahatFinal = gammahat[maxLLIndMod, :]
+        logllFinal = float(logll_arr[maxLLIndex]) if logll_arr.size > 0 else -np.inf
+
+        QhatAll = Qhat[:, : min(cnt + 1, numToKeep)]
+        gammahatAll = gammahat[: min(cnt + 1, numToKeep), :]
+
+        return xKFinal, WKFinal, WkuFinal, QhatFinal, gammahatFinal, logllFinal, QhatAll, gammahatAll, nIter, negLL
 
     @staticmethod
     def PPSS_EStep(A, Q, x0, dN, HkAll, fitType, delta, gamma, numBasis):
@@ -2876,317 +2741,6 @@ class DecodingAlgorithms:
         return Qhat, gamma_new
 
     @staticmethod
-    def PPSS_EM(A, Q0, x0, dN, fitType, delta, gamma0, windowTimes, numBasis, HkAll):
-        """Inner EM loop for state-space GLM.
-
-        Parameters
-        ----------
-        A : (R, R) state transition
-        Q0 : (R,) initial state noise variance
-        x0 : (R,) initial state
-        dN : (K, N) observations
-        fitType : 'poisson' or 'binomial'
-        delta : time bin width
-        gamma0 : (J,) initial history coefficients
-        windowTimes : history window boundaries
-        numBasis : number of basis functions
-        HkAll : precomputed history matrices
-
-        Returns
-        -------
-        xKFinal, WKFinal, WkuFinal, Qhat, gammahat, logll, QhatAll, gammahatAll, nIter, negLL
-        """
-        if numBasis is None:
-            numBasis = 20
-        if delta is None or delta == 0:
-            delta = 0.001
-        fitType = str(fitType or "poisson").lower()
-
-        Q0_vec = np.asarray(Q0, dtype=float).reshape(-1)
-        if Q0_vec.size == numBasis * numBasis:
-            Q0_vec = np.diag(Q0_vec.reshape(numBasis, numBasis))
-
-        gamma0_vec = np.asarray(gamma0, dtype=float).reshape(-1) if gamma0 is not None else np.array([], dtype=float)
-
-        tolAbs = 1e-3
-        tolRel = 1e-3
-        llTol = 1e-3
-        maxIter = 100
-        numToKeep = 10
-
-        # Circular buffer storage
-        Qhat = np.zeros((Q0_vec.size, numToKeep), dtype=float)
-        Qhat[:, 0] = Q0_vec
-        gammahat = np.zeros((numToKeep, gamma0_vec.size), dtype=float)
-        gammahat[0, :] = gamma0_vec
-
-        xK_buf = [None] * numToKeep
-        WK_buf = [None] * numToKeep
-        Wku_buf = [None] * numToKeep
-
-        x0hat = np.asarray(x0, dtype=float).reshape(-1)
-        logll_list = []
-        dLikelihood = [np.inf]
-        negLL = False
-        stoppingCriteria = False
-        cnt = 0
-
-        while not stoppingCriteria and cnt < maxIter:
-            si = cnt % numToKeep
-            si_p1 = (cnt + 1) % numToKeep
-            si_m1 = (cnt - 1) % numToKeep
-
-            xK_cur, WK_cur, Wku_cur, ll, SumXkTerms, _ = DecodingAlgorithms.PPSS_EStep(
-                A, Qhat[:, si], x0hat, dN, HkAll, fitType, delta, gammahat[si, :], numBasis
-            )
-            xK_buf[si] = xK_cur
-            WK_buf[si] = WK_cur
-            Wku_buf[si] = Wku_cur
-            logll_list.append(ll)
-
-            Qnew, gnew = DecodingAlgorithms.PPSS_MStep(
-                dN, HkAll, fitType, xK_cur, WK_cur, gammahat[si, :], delta, SumXkTerms, windowTimes
-            )
-            Qhat[:, si_p1] = Qnew
-            gammahat[si_p1, :] = gnew
-
-            if cnt == 0:
-                dLikelihood.append(np.inf)
-            else:
-                dLikelihood.append(logll_list[cnt] - logll_list[cnt - 1])
-
-            # Check convergence
-            if cnt > 0:
-                dQvals = np.abs(np.sqrt(np.maximum(Qhat[:, si], 0)) - np.sqrt(np.maximum(Qhat[:, si_m1], 0)))
-                dGamma = np.abs(gammahat[si, :] - gammahat[si_m1, :])
-                dMax = max(np.max(dQvals), np.max(dGamma)) if dGamma.size > 0 else float(np.max(dQvals))
-
-                Q_prev = np.sqrt(np.maximum(Qhat[:, si_m1], 1e-30))
-                dQRel = float(np.max(np.abs(dQvals / Q_prev)))
-                if dGamma.size > 0:
-                    g_prev = np.maximum(np.abs(gammahat[si_m1, :]), 1e-30)
-                    dGammaRel = float(np.max(np.abs(dGamma / g_prev)))
-                    dMaxRel = max(dQRel, dGammaRel)
-                else:
-                    dMaxRel = dQRel
-
-                if dMax < tolAbs and dMaxRel < tolRel:
-                    stoppingCriteria = True
-                    negLL = False
-
-                if abs(dLikelihood[-1]) < llTol or dLikelihood[-1] < 0:
-                    stoppingCriteria = True
-                    negLL = True
-
-            cnt += 1
-
-        # Select best iteration by log-likelihood
-        logll_arr = np.array(logll_list)
-        if logll_arr.size > 0:
-            maxLLIndex = int(np.argmax(logll_arr))
-        else:
-            maxLLIndex = 0
-
-        maxLLIndMod = maxLLIndex % numToKeep
-        nIter = cnt
-
-        xKFinal = xK_buf[maxLLIndMod] if xK_buf[maxLLIndMod] is not None else np.zeros((numBasis, dN.shape[0]))
-        WKFinal = WK_buf[maxLLIndMod] if WK_buf[maxLLIndMod] is not None else np.zeros((numBasis, numBasis, dN.shape[0]))
-        WkuFinal = Wku_buf[maxLLIndMod] if Wku_buf[maxLLIndMod] is not None else np.zeros((numBasis, numBasis, dN.shape[0], dN.shape[0]))
-
-        QhatFinal = Qhat[:, maxLLIndMod]
-        gammahatFinal = gammahat[maxLLIndMod, :]
-        logllFinal = float(logll_arr[maxLLIndex]) if logll_arr.size > 0 else -np.inf
-
-        QhatAll = Qhat[:, : min(cnt + 1, numToKeep)]
-        gammahatAll = gammahat[: min(cnt + 1, numToKeep), :]
-
-        return xKFinal, WKFinal, WkuFinal, QhatFinal, gammahatFinal, logllFinal, QhatAll, gammahatAll, nIter, negLL
-
-    @staticmethod
-    def PPSS_EMFB(A, Q0, x0, dN, fitType, delta, gamma0, windowTimes, numBasis, neuronName=None):
-        """EM Forward-Backward algorithm for state-space GLM.
-
-        Wraps PPSS_EM in a forward-backward-forward cycle for improved convergence.
-
-        Parameters
-        ----------
-        A : (R, R) state transition matrix (typically identity for random walk)
-        Q0 : (R,) initial state noise variance
-        x0 : (R,) initial state coefficients
-        dN : (K, N) binary spike observations (K trials, N time bins)
-        fitType : 'poisson' or 'binomial'
-        delta : time bin width in seconds
-        gamma0 : (J,) initial history coefficients
-        windowTimes : array of history window boundaries
-        numBasis : number of basis functions R
-        neuronName : identifier for the neuron (for labeling)
-
-        Returns
-        -------
-        xKFinal : (R, K) estimated state trajectories
-        WKFinal : (R, R, K) estimated state covariances
-        WkuFinal : (R, R, K, K) cross-trial covariances
-        Qhat : (R,) estimated state noise variance
-        gammahat : (J,) estimated history coefficients
-        fitResults : FitResult object with goodness-of-fit diagnostics
-        stimulus : (R, K) estimated stimulus effect
-        stimCIs : (R, K, 2) stimulus confidence intervals
-        logll : float, log-likelihood at convergence
-        QhatAll : parameter history
-        gammahatAll : parameter history
-        nIter : total EM iterations
-        """
-        K, N = dN.shape
-        fitType = str(fitType or "poisson").lower()
-
-        Q0_vec = np.asarray(Q0, dtype=float).reshape(-1)
-        if Q0_vec.size == numBasis * numBasis:
-            Q0_vec = np.diag(Q0_vec.reshape(numBasis, numBasis))
-
-        gamma0_vec = np.asarray(gamma0, dtype=float).reshape(-1) if gamma0 is not None else np.array([], dtype=float)
-
-        Qhat_cur = Q0_vec.copy()
-        gammahat_cur = gamma0_vec.copy()
-        xK0 = np.asarray(x0, dtype=float).reshape(-1)
-
-        # Build history matrices
-        HkAll = DecodingAlgorithms._ssglm_build_history(dN, windowTimes, delta)
-        HkAllR = list(reversed(HkAll))
-
-        tolAbs = 1e-3
-        tolRel = 1e-3
-        llTol = 1e-3
-        maxIter = 2000
-
-        Qhat_history = [Qhat_cur.copy()]
-        gammahat_history = [gammahat_cur.copy()]
-        logll_list = []
-        stoppingCriteria = False
-        cnt = 0
-
-        xK = None
-        WK = None
-        Wku = None
-
-        while not stoppingCriteria and cnt < maxIter:
-            # Forward EM
-            xK, WK, Wku, Qnew, gnew, ll, _, _, _, negLL = DecodingAlgorithms.PPSS_EM(
-                A, Qhat_cur, xK0, dN, fitType, delta, gammahat_cur, windowTimes, numBasis, HkAll
-            )
-
-            if not negLL:
-                # Backward EM (reversed trial order)
-                xKR, _, _, QnewR, gnewR, _, _, _, _, negLLR = DecodingAlgorithms.PPSS_EM(
-                    A, Qnew, xK[:, -1], np.flipud(dN), fitType, delta, gnew, windowTimes, numBasis, HkAllR
-                )
-
-                if not negLLR:
-                    # Forward EM again with backward-updated parameters
-                    # Matlab: PPSS_EM(A, QhatR(:,cnt+1), xKR(:,end), dN, ...)
-                    # Use backward EM's final state as initial state for forward pass
-                    xK2, WK2, Wku2, Qnew2, gnew2, ll2, _, _, _, negLL2 = DecodingAlgorithms.PPSS_EM(
-                        A, QnewR, xKR[:, -1], dN, fitType, delta, gnewR,
-                        windowTimes, numBasis, HkAll
-                    )
-
-                    if not negLL2:
-                        xK = xK2
-                        WK = WK2
-                        Wku = Wku2
-                        Qnew = Qnew2
-                        gnew = gnew2
-                        ll = ll2
-
-            Qhat_cur = Qnew
-            gammahat_cur = gnew
-            Qhat_history.append(Qnew.copy())
-            gammahat_history.append(gnew.copy())
-            logll_list.append(ll)
-
-            xK0 = xK[:, 0]
-
-            # Check convergence
-            if cnt > 0:
-                dLikelihood = logll_list[cnt] - logll_list[cnt - 1]
-            else:
-                dLikelihood = np.inf
-
-            if len(Qhat_history) >= 2:
-                Q_prev = Qhat_history[-2]
-                Q_cur = Qhat_history[-1]
-                dQvals = np.abs(np.sqrt(np.maximum(Q_cur, 0)) - np.sqrt(np.maximum(Q_prev, 0)))
-                g_prev = gammahat_history[-2]
-                g_cur = gammahat_history[-1]
-                dGamma = np.abs(g_cur - g_prev) if g_cur.size > 0 else np.array([0.0])
-
-                dMax = max(float(np.max(dQvals)), float(np.max(dGamma)))
-
-                Q_denom = np.sqrt(np.maximum(Q_prev, 1e-30))
-                dQRel = float(np.max(np.abs(dQvals / Q_denom)))
-                if g_prev.size > 0 and np.any(g_prev != 0):
-                    g_denom = np.maximum(np.abs(g_prev), 1e-30)
-                    dGammaRel = float(np.max(np.abs(dGamma / g_denom)))
-                    dMaxRel = max(dQRel, dGammaRel)
-                else:
-                    dMaxRel = dQRel
-
-                if dMax < tolAbs and dMaxRel < tolRel:
-                    stoppingCriteria = True
-
-                if abs(dLikelihood) < llTol or dLikelihood < 0:
-                    stoppingCriteria = True
-
-            cnt += 1
-
-        # Select best iteration
-        logll_arr = np.array(logll_list)
-        if logll_arr.size > 0:
-            maxLLIndex = int(np.argmax(logll_arr))
-        else:
-            maxLLIndex = 0
-
-        xKFinal = xK
-        WKFinal = WK
-        WkuFinal = Wku
-        Qhat = Qhat_history[min(maxLLIndex + 1, len(Qhat_history) - 1)]
-        gammahat = gammahat_history[min(maxLLIndex + 1, len(gammahat_history) - 1)]
-        logll = float(logll_arr[maxLLIndex]) if logll_arr.size > 0 else -np.inf
-
-        QhatAll = np.column_stack(Qhat_history) if Qhat_history else Q0_vec.reshape(-1, 1)
-        gammahatAll = np.vstack(gammahat_history) if gammahat_history and gammahat_history[0].size > 0 else np.array([[]])
-
-        R = numBasis
-        x0Final = xK[:, 0] if xK is not None else np.zeros(R)
-        SumXkTermsFinal = np.diag(Qhat) * K
-        McInfo = 100
-        McCI = 3000
-
-        # Observed log-likelihood
-        logllobs = logll + R * K * np.log(2 * np.pi) + K / 2.0 * np.log(
-            max(float(np.prod(np.maximum(Qhat, np.finfo(float).eps))), np.finfo(float).eps)
-        ) + 0.5 * float(np.trace(np.linalg.pinv(np.diag(Qhat)) @ SumXkTermsFinal))
-
-        nIter = cnt
-
-        # Information matrix and result packaging
-        InfoMat = DecodingAlgorithms.estimateInfoMat(
-            fitType, dN, HkAll, A, x0Final, xKFinal, WKFinal, WkuFinal,
-            Qhat, gammahat, windowTimes, SumXkTermsFinal, delta, McInfo
-        )
-        fitResults = DecodingAlgorithms.prepareEMResults(
-            fitType, neuronName, dN, HkAll, xKFinal, WKFinal,
-            Qhat, gammahat, windowTimes, delta, InfoMat, logllobs
-        )
-
-        stimCIs, stimulus = DecodingAlgorithms._ComputeStimulusCIs_MC(
-            fitType, xKFinal, WkuFinal, delta, McCI
-        )
-
-        return (xKFinal, WKFinal, WkuFinal, Qhat, gammahat, fitResults,
-                stimulus, stimCIs, logll, QhatAll, gammahatAll, nIter)
-
-    @staticmethod
     def _ComputeStimulusCIs_MC(fitType, xK, Wku, delta, Mc=3000, alphaVal=0.05):
         """Monte Carlo confidence intervals for SSGLM stimulus estimate.
 
@@ -3232,152 +2786,6 @@ class DecodingAlgorithms:
             stimulus = xK / delta
 
         return CIs, stimulus
-
-    @staticmethod
-    def estimateInfoMat(fitType, dN, HkAll, A, x0, xK, WK, Wku, Q, gamma,
-                        windowTimes, SumXkTerms, delta, Mc=500):
-        """Observed information matrix via Louis' identity with Monte Carlo.
-
-        Computes I_obs = I_complete - I_missing where I_missing is estimated
-        by MC sampling from the smoothing distribution.
-        """
-        fitType = str(fitType).lower()
-        K, N = dN.shape
-        gamma_vec = np.asarray(gamma, dtype=float).reshape(-1)
-        J = gamma_vec.size if (windowTimes is not None and len(windowTimes) > 0) else 0
-
-        Q_vec = np.asarray(Q, dtype=float).reshape(-1)
-        R = Q_vec.size
-        Q_mat = np.diag(Q_vec)
-        numBasis = R
-
-        # Build basis matrix
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-        basisMat = DecodingAlgorithms._ssglm_build_basis(numBasis, minTime, maxTime, delta)
-        if basisMat.shape[0] != N:
-            basisMat = basisMat[:N, :] if basisMat.shape[0] > N else np.vstack(
-                [basisMat, np.zeros((N - basisMat.shape[0], basisMat.shape[1]))]
-            )
-
-        # Complete data information matrix
-        Ic = np.zeros((R + J, R + J), dtype=float)
-        Q_mat_safe = np.diag(np.maximum(Q_vec, np.finfo(float).eps))
-        Q2 = Q_mat_safe @ Q_mat_safe
-        Q3 = Q2 @ Q_mat_safe
-
-        Ic[:R, :R] = K / 2.0 * np.linalg.inv(Q2) + np.linalg.inv(Q3) @ SumXkTerms
-
-        # History portion of information matrix
-        jacQ = np.zeros((J, J), dtype=float) if J > 0 else np.zeros((0, 0))
-        if fitType == "poisson" and J > 0:
-            for k in range(K):
-                Hk = HkAll[k]
-                if Hk.shape[1] == 0:
-                    continue
-                Wk = basisMat @ np.diag(WK[:, :, k])
-                stimK = basisMat @ xK[:, k]
-                stimK_clip = np.clip(stimK, -30, 30)
-                hist_term = np.clip(gamma_vec @ Hk.T, -30, 30)
-                histEffect = np.exp(hist_term)
-                stimEffect = np.exp(stimK_clip) + np.exp(stimK_clip) / 2.0 * Wk
-                lambdaDelta = stimEffect * histEffect
-                jacQ -= (Hk * lambdaDelta[:, None]).T @ Hk
-        elif fitType == "binomial" and J > 0:
-            for k in range(K):
-                Hk = HkAll[k]
-                if Hk.shape[1] == 0:
-                    continue
-                Wk = basisMat @ np.diag(WK[:, :, k])
-                stimK = basisMat @ xK[:, k]
-                linpred = np.clip(stimK + Hk @ gamma_vec, -30, 30)
-                histEffect = np.exp(np.clip(gamma_vec @ Hk.T, -30, 30))
-                stimEffect = np.exp(np.clip(stimK, -30, 30))
-                C = stimEffect * histEffect
-                M = np.where(C > 1e-30, 1.0 / C, 1e30)
-                lambdaDelta = 1.0 / (1.0 + np.exp(-linpred))
-                ExpLDSquaredTimesInvExp = lambdaDelta ** 2 * M
-                ExpLDCubedTimesInvExpSquared = (
-                    lambdaDelta ** 3 * M ** 2
-                    + Wk / 2.0 * (3.0 * M ** 4 * lambdaDelta ** 3
-                                   + 12.0 * lambdaDelta ** 3 * M ** 3
-                                   - 12.0 * M ** 4 * lambdaDelta ** 4)
-                )
-                jacQ -= (Hk * (ExpLDSquaredTimesInvExp * dN[k, :])[:, None]).T @ Hk \
-                        + (Hk * ExpLDSquaredTimesInvExp[:, None]).T @ Hk \
-                        + (Hk * (2.0 * ExpLDCubedTimesInvExpSquared)[:, None]).T @ Hk
-
-        Ic[:R, :R] = K * np.linalg.inv(2.0 * Q2) + np.linalg.inv(Q3) @ SumXkTerms
-        if J > 0:
-            Ic[R:R + J, R:R + J] = -jacQ
-
-        # MC estimation of missing information
-        xKDraw = np.zeros((numBasis, K, Mc), dtype=float)
-        for r in range(numBasis):
-            WkuTemp = Wku[r, r, :, :]
-            try:
-                chol_m = np.linalg.cholesky(WkuTemp + 1e-10 * np.eye(K))
-            except np.linalg.LinAlgError:
-                eigvals, eigvecs = np.linalg.eigh(WkuTemp)
-                eigvals = np.maximum(eigvals, 1e-10)
-                chol_m = eigvecs @ np.diag(np.sqrt(eigvals))
-
-            for c in range(Mc):
-                z = np.random.randn(K)
-                xKDraw[r, :, c] = xK[r, :] + chol_m.T @ z
-
-        ImMC = np.zeros((R + J, R + J), dtype=float)
-        A_mat = np.asarray(A, dtype=float)
-        if A_mat.ndim < 2:
-            A_mat = np.eye(R) * A_mat
-        x0_vec = np.asarray(x0, dtype=float).reshape(-1)
-        Q_inv = np.linalg.inv(Q_mat_safe)
-
-        for c in range(Mc):
-            gradQGammahat = np.zeros(J, dtype=float) if J > 0 else np.array([], dtype=float)
-            gradQQhat = np.zeros(R, dtype=float)
-
-            for k in range(K):
-                Hk = HkAll[k]
-                stimK = basisMat @ xKDraw[:, k, c]
-
-                if fitType == "poisson":
-                    hist_term = np.clip(gamma_vec @ Hk.T, -30, 30) if J > 0 and Hk.shape[1] > 0 else np.zeros(N)
-                    histEffect = np.exp(hist_term)
-                    stimK_clip = np.clip(stimK, -30, 30)
-                    stimEffect = np.exp(stimK_clip)
-                    lambdaDelta = stimEffect * histEffect
-                    if J > 0 and Hk.shape[1] > 0:
-                        gradQGammahat += Hk.T @ dN[k, :] - Hk.T @ lambdaDelta
-                elif fitType == "binomial":
-                    Wk = basisMat @ np.diag(WK[:, :, k])
-                    linpred = np.clip(stimK + (Hk @ gamma_vec if J > 0 and Hk.shape[1] > 0 else 0.0), -30, 30)
-                    histEffect = np.exp(np.clip(gamma_vec @ Hk.T, -30, 30)) if J > 0 and Hk.shape[1] > 0 else np.ones(N)
-                    stimEffect = np.exp(np.clip(stimK, -30, 30))
-                    C = stimEffect * histEffect
-                    M = np.where(C > 1e-30, 1.0 / C, 1e30)
-                    lambdaDelta = 1.0 / (1.0 + np.exp(-linpred))
-                    ExpLambdaDelta = lambdaDelta + Wk * (lambdaDelta * (1.0 - lambdaDelta) * (1.0 - 2.0 * lambdaDelta)) / 2.0
-                    ExpLDSquaredTimesInvExp = lambdaDelta ** 2 * M
-                    if J > 0 and Hk.shape[1] > 0:
-                        gradQGammahat += (Hk * (1.0 - ExpLambdaDelta)[:, None]).T @ dN[k, :] \
-                                         - (Hk * (ExpLDSquaredTimesInvExp / np.maximum(lambdaDelta, 1e-30))[:, None]).T @ lambdaDelta
-
-                if k == 0:
-                    diff = xKDraw[:, k, c] - A_mat @ x0_vec
-                else:
-                    diff = xKDraw[:, k, c] - A_mat @ xKDraw[:, k - 1, c]
-                gradQQhat += diff * diff
-
-            gradQQhat_scaled = 0.5 * Q_inv @ gradQQhat - np.diag(K / 2.0 * np.linalg.inv(Q2))
-            ImMC[:R, :R] += np.outer(gradQQhat_scaled, gradQQhat_scaled)
-            if J > 0:
-                ImMC[R:R + J, R:R + J] += np.diag(gradQGammahat ** 2)
-
-        Im = ImMC / Mc
-        InfoMatrix = Ic - Im
-
-        return InfoMatrix
 
     @staticmethod
     def prepareEMResults(fitType, neuronNumber, dN, HkAll, xK, WK, Q, gamma,
@@ -3564,11 +2972,603 @@ class DecodingAlgorithms:
 
         return fitResults
 
+    @staticmethod
+    def ComputeStimulusCIs(fitType, xK, Wku, delta, Mc=None, alphaVal=0.05):
+        """Confidence intervals for stimulus estimate.
+
+        When ``Wku`` is a 4-D array ``(numBasis, numBasis, K, K)`` (SSGLM
+        cross-trial covariance), uses Monte Carlo sampling matching Matlab's
+        ``DecodingAlgorithms.ComputeStimulusCIs``.
+
+        When ``Wku`` is a 3-D array ``(N, Dx, Dx)`` (e.g. smoother output),
+        falls back to z-score Gaussian CIs with inverse-link transform.
+
+        Parameters
+        ----------
+        fitType : str
+            ``'poisson'`` or ``'binomial'``.
+        xK : array
+            Smoothed state estimates.  Shape ``(numBasis, K)`` for SSGLM
+            or ``(N, Dx)`` for smoother output.
+        Wku : array
+            Covariance.  Shape ``(numBasis, numBasis, K, K)`` for SSGLM
+            or ``(N, Dx, Dx)`` for smoother output.
+        delta : float
+            Time-step size in seconds.
+        Mc : int, optional
+            Number of Monte Carlo draws (default 3000).  Ignored when
+            using z-score fallback.
+        alphaVal : float, optional
+            Significance level for two-sided CIs (default 0.05).
+
+        Returns
+        -------
+        CIs : array, shape ``(..., 2)``
+            Lower and upper confidence bounds.
+        stimulus : array
+            Point estimate (inverse-link of xK, divided by delta for MC mode).
+        """
+        Wku_arr = np.asarray(Wku, dtype=float)
+
+        # SSGLM cross-trial path: 4-D covariance (numBasis, numBasis, K, K)
+        if Wku_arr.ndim == 4:
+            if Mc is None:
+                Mc = 3000
+            return DecodingAlgorithms._ComputeStimulusCIs_MC(
+                fitType, xK, Wku, delta, Mc=Mc, alphaVal=alphaVal
+            )
+
+        # Fallback: 3-D covariance (N, Dx, Dx) from smoother — z-score CIs
+        x_tm, W_tm, transposed = DecodingAlgorithms._state_history_time_major(xK, Wku)
+        variances = np.clip(np.diagonal(W_tm, axis1=1, axis2=2), 0.0, None)
+        z = float(norm.ppf(1.0 - float(alphaVal) / 2.0))
+        lower = x_tm - z * np.sqrt(variances)
+        upper = x_tm + z * np.sqrt(variances)
+        fit_type = str(fitType).lower()
+        if fit_type == "poisson":
+            stimulus = np.exp(np.clip(x_tm, -20.0, 20.0))
+            ci_lower = np.exp(np.clip(lower, -20.0, 20.0))
+            ci_upper = np.exp(np.clip(upper, -20.0, 20.0))
+        elif fit_type == "binomial":
+            stimulus = 1.0 / (1.0 + np.exp(-np.clip(x_tm, -20.0, 20.0)))
+            ci_lower = 1.0 / (1.0 + np.exp(-np.clip(lower, -20.0, 20.0)))
+            ci_upper = 1.0 / (1.0 + np.exp(-np.clip(upper, -20.0, 20.0)))
+        else:
+            stimulus = x_tm
+            ci_lower = lower
+            ci_upper = upper
+
+        ci = np.stack([ci_lower, ci_upper], axis=-1)
+        if transposed:
+            return np.transpose(ci, (1, 0, 2)), stimulus.T
+        return ci, stimulus
+
+    @staticmethod
+    def estimateInfoMat(fitType, dN, HkAll, A, x0, xK, WK, Wku, Q, gamma,
+                        windowTimes, SumXkTerms, delta, Mc=500):
+        """Observed information matrix via Louis' identity with Monte Carlo.
+
+        Computes I_obs = I_complete - I_missing where I_missing is estimated
+        by MC sampling from the smoothing distribution.
+        """
+        fitType = str(fitType).lower()
+        K, N = dN.shape
+        gamma_vec = np.asarray(gamma, dtype=float).reshape(-1)
+        J = gamma_vec.size if (windowTimes is not None and len(windowTimes) > 0) else 0
+
+        Q_vec = np.asarray(Q, dtype=float).reshape(-1)
+        R = Q_vec.size
+        Q_mat = np.diag(Q_vec)
+        numBasis = R
+
+        # Build basis matrix
+        minTime = 0.0
+        maxTime = (N - 1) * delta
+        basisMat = DecodingAlgorithms._ssglm_build_basis(numBasis, minTime, maxTime, delta)
+        if basisMat.shape[0] != N:
+            basisMat = basisMat[:N, :] if basisMat.shape[0] > N else np.vstack(
+                [basisMat, np.zeros((N - basisMat.shape[0], basisMat.shape[1]))]
+            )
+
+        # Complete data information matrix
+        Ic = np.zeros((R + J, R + J), dtype=float)
+        Q_mat_safe = np.diag(np.maximum(Q_vec, np.finfo(float).eps))
+        Q2 = Q_mat_safe @ Q_mat_safe
+        Q3 = Q2 @ Q_mat_safe
+
+        Ic[:R, :R] = K / 2.0 * np.linalg.inv(Q2) + np.linalg.inv(Q3) @ SumXkTerms
+
+        # History portion of information matrix
+        jacQ = np.zeros((J, J), dtype=float) if J > 0 else np.zeros((0, 0))
+        if fitType == "poisson" and J > 0:
+            for k in range(K):
+                Hk = HkAll[k]
+                if Hk.shape[1] == 0:
+                    continue
+                Wk = basisMat @ np.diag(WK[:, :, k])
+                stimK = basisMat @ xK[:, k]
+                stimK_clip = np.clip(stimK, -30, 30)
+                hist_term = np.clip(gamma_vec @ Hk.T, -30, 30)
+                histEffect = np.exp(hist_term)
+                stimEffect = np.exp(stimK_clip) + np.exp(stimK_clip) / 2.0 * Wk
+                lambdaDelta = stimEffect * histEffect
+                jacQ -= (Hk * lambdaDelta[:, None]).T @ Hk
+        elif fitType == "binomial" and J > 0:
+            for k in range(K):
+                Hk = HkAll[k]
+                if Hk.shape[1] == 0:
+                    continue
+                Wk = basisMat @ np.diag(WK[:, :, k])
+                stimK = basisMat @ xK[:, k]
+                linpred = np.clip(stimK + Hk @ gamma_vec, -30, 30)
+                histEffect = np.exp(np.clip(gamma_vec @ Hk.T, -30, 30))
+                stimEffect = np.exp(np.clip(stimK, -30, 30))
+                C = stimEffect * histEffect
+                M = np.where(C > 1e-30, 1.0 / C, 1e30)
+                lambdaDelta = 1.0 / (1.0 + np.exp(-linpred))
+                ExpLDSquaredTimesInvExp = lambdaDelta ** 2 * M
+                ExpLDCubedTimesInvExpSquared = (
+                    lambdaDelta ** 3 * M ** 2
+                    + Wk / 2.0 * (3.0 * M ** 4 * lambdaDelta ** 3
+                                   + 12.0 * lambdaDelta ** 3 * M ** 3
+                                   - 12.0 * M ** 4 * lambdaDelta ** 4)
+                )
+                jacQ -= (Hk * (ExpLDSquaredTimesInvExp * dN[k, :])[:, None]).T @ Hk \
+                        + (Hk * ExpLDSquaredTimesInvExp[:, None]).T @ Hk \
+                        + (Hk * (2.0 * ExpLDCubedTimesInvExpSquared)[:, None]).T @ Hk
+
+        Ic[:R, :R] = K * np.linalg.inv(2.0 * Q2) + np.linalg.inv(Q3) @ SumXkTerms
+        if J > 0:
+            Ic[R:R + J, R:R + J] = -jacQ
+
+        # MC estimation of missing information
+        xKDraw = np.zeros((numBasis, K, Mc), dtype=float)
+        for r in range(numBasis):
+            WkuTemp = Wku[r, r, :, :]
+            try:
+                chol_m = np.linalg.cholesky(WkuTemp + 1e-10 * np.eye(K))
+            except np.linalg.LinAlgError:
+                eigvals, eigvecs = np.linalg.eigh(WkuTemp)
+                eigvals = np.maximum(eigvals, 1e-10)
+                chol_m = eigvecs @ np.diag(np.sqrt(eigvals))
+
+            for c in range(Mc):
+                z = np.random.randn(K)
+                xKDraw[r, :, c] = xK[r, :] + chol_m.T @ z
+
+        ImMC = np.zeros((R + J, R + J), dtype=float)
+        A_mat = np.asarray(A, dtype=float)
+        if A_mat.ndim < 2:
+            A_mat = np.eye(R) * A_mat
+        x0_vec = np.asarray(x0, dtype=float).reshape(-1)
+        Q_inv = np.linalg.inv(Q_mat_safe)
+
+        for c in range(Mc):
+            gradQGammahat = np.zeros(J, dtype=float) if J > 0 else np.array([], dtype=float)
+            gradQQhat = np.zeros(R, dtype=float)
+
+            for k in range(K):
+                Hk = HkAll[k]
+                stimK = basisMat @ xKDraw[:, k, c]
+
+                if fitType == "poisson":
+                    hist_term = np.clip(gamma_vec @ Hk.T, -30, 30) if J > 0 and Hk.shape[1] > 0 else np.zeros(N)
+                    histEffect = np.exp(hist_term)
+                    stimK_clip = np.clip(stimK, -30, 30)
+                    stimEffect = np.exp(stimK_clip)
+                    lambdaDelta = stimEffect * histEffect
+                    if J > 0 and Hk.shape[1] > 0:
+                        gradQGammahat += Hk.T @ dN[k, :] - Hk.T @ lambdaDelta
+                elif fitType == "binomial":
+                    Wk = basisMat @ np.diag(WK[:, :, k])
+                    linpred = np.clip(stimK + (Hk @ gamma_vec if J > 0 and Hk.shape[1] > 0 else 0.0), -30, 30)
+                    histEffect = np.exp(np.clip(gamma_vec @ Hk.T, -30, 30)) if J > 0 and Hk.shape[1] > 0 else np.ones(N)
+                    stimEffect = np.exp(np.clip(stimK, -30, 30))
+                    C = stimEffect * histEffect
+                    M = np.where(C > 1e-30, 1.0 / C, 1e30)
+                    lambdaDelta = 1.0 / (1.0 + np.exp(-linpred))
+                    ExpLambdaDelta = lambdaDelta + Wk * (lambdaDelta * (1.0 - lambdaDelta) * (1.0 - 2.0 * lambdaDelta)) / 2.0
+                    ExpLDSquaredTimesInvExp = lambdaDelta ** 2 * M
+                    if J > 0 and Hk.shape[1] > 0:
+                        gradQGammahat += (Hk * (1.0 - ExpLambdaDelta)[:, None]).T @ dN[k, :] \
+                                         - (Hk * (ExpLDSquaredTimesInvExp / np.maximum(lambdaDelta, 1e-30))[:, None]).T @ lambdaDelta
+
+                if k == 0:
+                    diff = xKDraw[:, k, c] - A_mat @ x0_vec
+                else:
+                    diff = xKDraw[:, k, c] - A_mat @ xKDraw[:, k - 1, c]
+                gradQQhat += diff * diff
+
+            gradQQhat_scaled = 0.5 * Q_inv @ gradQQhat - np.diag(K / 2.0 * np.linalg.inv(Q2))
+            ImMC[:R, :R] += np.outer(gradQQhat_scaled, gradQQhat_scaled)
+            if J > 0:
+                ImMC[R:R + J, R:R + J] += np.diag(gradQGammahat ** 2)
+
+        Im = ImMC / Mc
+        InfoMatrix = Ic - Im
+
+        return InfoMatrix
+
 
     # ------------------------------------------------------------------
     # Kalman Filter EM (KF_EM) family
     # Ported from Matlab DecodingAlgorithms.m lines 3295-4586
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def computeSpikeRateCIs(
+        xK,
+        Wku,
+        dN,
+        t0: float,
+        tf: float,
+        fitType: str = "poisson",
+        delta: float = 0.001,
+        gamma=None,
+        windowTimes=None,
+        Mc: int = 500,
+        alphaVal: float = 0.05,
+    ):
+        """Monte Carlo spike-rate confidence intervals.
+
+        Computes the average firing rate over ``[t0, tf]`` for each trial
+        by drawing ``Mc`` samples from the smoothing distribution and
+        evaluating the conditional intensity.
+
+        Parameters
+        ----------
+        xK : array, shape (numBasis, K)
+            Smoothed state estimates (basis coefficients × trials).
+        Wku : array, shape (numBasis, numBasis, K, K) or compatible
+            Smoothed state covariance.
+        dN : array, shape (C, N)
+            Observation (spike indicator) matrix.
+        t0, tf : float
+            Time window over which to compute the average rate.
+        fitType : str
+            ``'poisson'`` or ``'binomial'``.
+        delta : float
+            Time-step size in seconds.
+        gamma : array or None
+            History-effect coefficients.
+        windowTimes : array or None
+            History window boundaries.
+        Mc : int
+            Number of Monte Carlo draws.
+        alphaVal : float
+            Significance level for CIs (one-sided).
+
+        Returns
+        -------
+        spikeRateSig : Covariate
+            Mean spike rate per trial with attached ConfidenceInterval.
+        ProbMat : ndarray, shape (K, K)
+            ``ProbMat[k, m]`` = P(rate_m > rate_k) estimated from MC draws.
+        sigMat : ndarray, shape (K, K)
+            Binary significance matrix at level ``1 - alphaVal``.
+        """
+        from .confidence_interval import ConfidenceInterval
+        from .core import Covariate
+        from .history import History
+        from .nspikeTrain import nspikeTrain
+        from .trial import SpikeTrainCollection
+
+        xK = np.asarray(xK, dtype=float)
+        dN = np.asarray(dN, dtype=float)
+        if dN.ndim == 1:
+            dN = dN.reshape(1, -1)
+        numBasis, K = xK.shape
+        minTime = 0.0
+        maxTime = (dN.shape[1] - 1) * delta
+
+        # Build unit-impulse basis matrix
+        basisWidth = (maxTime - minTime) / numBasis
+        sampleRate = 1.0 / delta
+        unitPulseBasis = SpikeTrainCollection.generateUnitImpulseBasis(
+            basisWidth, minTime, maxTime, sampleRate
+        )
+        basisMat = unitPulseBasis.data  # shape (T, numBasis)
+
+        # Build history matrices if windowTimes provided
+        Hk = {}
+        if windowTimes is not None and len(windowTimes) > 0:
+            histObj = History(windowTimes, minTime, maxTime)
+            for k in range(K):
+                spike_idx = np.flatnonzero(dN[k, :] == 1)
+                spike_times = (spike_idx) * delta
+                nst_k = nspikeTrain(spike_times)
+                nst_k.setMinTime(minTime)
+                nst_k.setMaxTime(maxTime)
+                hist_cov = histObj.computeHistory(nst_k)
+                Hk[k] = hist_cov.dataToMatrix()
+        else:
+            for k in range(K):
+                Hk[k] = 0.0
+            gamma = 0.0
+
+        if gamma is None:
+            gamma = 0.0
+        gamma = np.asarray(gamma, dtype=float)
+
+        # Monte Carlo draws from smoothing distribution
+        Wku = np.asarray(Wku, dtype=float)
+        xKDraw = np.zeros((numBasis, K, Mc), dtype=float)
+        for r in range(numBasis):
+            WkuTemp = Wku[r, r, :, :].squeeze() if Wku.ndim == 4 else Wku[r, r]
+            WkuTemp = np.atleast_2d(WkuTemp)
+            if WkuTemp.shape[0] != K:
+                WkuTemp = np.diag(np.full(K, float(WkuTemp.flat[0])))
+            try:
+                chol_m = np.linalg.cholesky(WkuTemp)
+            except np.linalg.LinAlgError:
+                eigvals = np.linalg.eigvalsh(WkuTemp)
+                WkuTemp += np.eye(K) * (abs(min(eigvals.min(), 0.0)) + 1e-10)
+                chol_m = np.linalg.cholesky(WkuTemp)
+            for c in range(Mc):
+                z = np.random.randn(K)
+                xKDraw[r, :, c] = xK[r, :] + chol_m.T @ z
+
+        # Compute lambda for each MC draw and each trial
+        time_vec = np.arange(minTime, maxTime + delta, delta)
+        T = basisMat.shape[0]
+        fit_type = str(fitType).lower()
+        spikeRate = np.zeros((Mc, K), dtype=float)
+
+        for c in range(Mc):
+            for k in range(K):
+                stimK = basisMat @ xKDraw[:, k, c]
+                if fit_type == "poisson":
+                    histEffect = np.exp(gamma @ Hk[k].T).ravel() if not np.isscalar(Hk[k]) else np.ones(T)
+                    stimEffect = np.exp(np.clip(stimK, -20.0, 20.0))
+                    lambdaDelta_kc = stimEffect * histEffect[:T]
+                elif fit_type == "binomial":
+                    if np.isscalar(Hk[k]):
+                        eta = stimK
+                    else:
+                        eta = stimK + (gamma @ Hk[k].T).ravel()[:T]
+                    eta = np.clip(eta, -20.0, 20.0)
+                    lambdaDelta_kc = np.exp(eta) / (1.0 + np.exp(eta))
+                else:
+                    lambdaDelta_kc = np.exp(np.clip(stimK, -20.0, 20.0))
+
+                # Integrate via cumulative trapezoid
+                rate_per_sec = lambdaDelta_kc / delta
+                time_k = time_vec[:len(rate_per_sec)]
+                cum_integral = np.zeros(len(rate_per_sec))
+                cum_integral[1:] = np.cumsum(rate_per_sec[:-1] * delta + 0.5 * np.diff(rate_per_sec) * delta)
+
+                # Interpolate integral at t0 and tf
+                val_t0 = np.interp(t0, time_k, cum_integral)
+                val_tf = np.interp(tf, time_k, cum_integral)
+                spikeRate[c, k] = (1.0 / (tf - t0)) * (val_tf - val_t0)
+
+        # Compute CIs from ECDF (one-sided)
+        CIs = np.zeros((K, 2), dtype=float)
+        for k in range(K):
+            sorted_rates = np.sort(spikeRate[:, k])
+            ecdf = np.arange(1, Mc + 1, dtype=float) / float(Mc)
+            lower_idx = np.flatnonzero(ecdf < alphaVal)
+            upper_idx = np.flatnonzero(ecdf > (1.0 - alphaVal))
+            CIs[k, 0] = sorted_rates[lower_idx[-1]] if lower_idx.size else sorted_rates[0]
+            CIs[k, 1] = sorted_rates[upper_idx[0]] if upper_idx.size else sorted_rates[-1]
+
+        trial_axis = np.arange(1, K + 1, dtype=float)
+        mean_rate = np.mean(spikeRate, axis=0)
+        spikeRateSig = Covariate(
+            trial_axis,
+            mean_rate,
+            f"({tf:g}-{t0:g})^{{-1}} * \\Lambda({tf:g}-{t0:g})",
+            "Trial",
+            "k",
+            "Hz",
+        )
+        ciSpikeRate = ConfidenceInterval(
+            trial_axis, CIs, "CI_{spikeRate}", "Trial", "k", "Hz"
+        )
+        spikeRateSig.setConfInterval(ciSpikeRate)
+
+        # Pairwise probability matrix
+        ProbMat = np.zeros((K, K), dtype=float)
+        for k in range(K):
+            for m in range(k + 1, K):
+                ProbMat[k, m] = np.sum(spikeRate[:, m] > spikeRate[:, k]) / float(Mc)
+
+        sigMat = (ProbMat > (1.0 - alphaVal)).astype(float)
+
+        return spikeRateSig, ProbMat, sigMat
+
+    @staticmethod
+    def computeSpikeRateDiffCIs(
+        xK,
+        Wku,
+        dN,
+        time1,
+        time2,
+        fitType: str = "poisson",
+        delta: float = 0.001,
+        gamma=None,
+        windowTimes=None,
+        Mc: int = 500,
+        alphaVal: float = 0.05,
+    ):
+        """Monte Carlo CIs for the difference in spike rates between two time windows.
+
+        Computes the difference of average firing rates
+        ``rate(time1) - rate(time2)`` for each trial by drawing ``Mc``
+        samples from the smoothing distribution.
+
+        Parameters
+        ----------
+        xK : array, shape (numBasis, K)
+            Smoothed state estimates (basis coefficients × trials).
+        Wku : array, shape (numBasis, numBasis, K, K) or compatible
+            Smoothed state covariance.
+        dN : array, shape (C, N)
+            Observation (spike indicator) matrix.
+        time1 : array-like, length 2
+            ``[t0_1, tf_1]`` — first time window.
+        time2 : array-like, length 2
+            ``[t0_2, tf_2]`` — second time window.
+        fitType : str
+            ``'poisson'`` or ``'binomial'``.
+        delta : float
+            Time-step size in seconds.
+        gamma : array or None
+            History-effect coefficients.
+        windowTimes : array or None
+            History window boundaries.
+        Mc : int
+            Number of Monte Carlo draws.
+        alphaVal : float
+            Significance level for CIs (one-sided).
+
+        Returns
+        -------
+        spikeRateSig : Covariate
+            Mean spike-rate difference per trial with attached CI.
+        ProbMat : ndarray, shape (K, K)
+            ``ProbMat[k, m]`` = P(diff_m > diff_k) from MC draws.
+        sigMat : ndarray, shape (K, K)
+            Binary significance matrix at level ``1 - alphaVal``.
+        """
+        from .confidence_interval import ConfidenceInterval
+        from .core import Covariate
+        from .history import History
+        from .nspikeTrain import nspikeTrain
+        from .trial import SpikeTrainCollection
+
+        xK = np.asarray(xK, dtype=float)
+        dN = np.asarray(dN, dtype=float)
+        if dN.ndim == 1:
+            dN = dN.reshape(1, -1)
+        numBasis, K = xK.shape
+        minTime = 0.0
+        maxTime = (dN.shape[1] - 1) * delta
+
+        time1 = np.asarray(time1, dtype=float).ravel()
+        time2 = np.asarray(time2, dtype=float).ravel()
+
+        # Build unit-impulse basis matrix
+        basisWidth = (maxTime - minTime) / numBasis
+        sampleRate = 1.0 / delta
+        unitPulseBasis = SpikeTrainCollection.generateUnitImpulseBasis(
+            basisWidth, minTime, maxTime, sampleRate
+        )
+        basisMat = unitPulseBasis.data
+
+        # Build history matrices if windowTimes provided
+        Hk = {}
+        if windowTimes is not None and len(windowTimes) > 0:
+            histObj = History(windowTimes, minTime, maxTime)
+            for k in range(K):
+                spike_idx = np.flatnonzero(dN[k, :] == 1)
+                spike_times = (spike_idx) * delta
+                nst_k = nspikeTrain(spike_times)
+                nst_k.setMinTime(minTime)
+                nst_k.setMaxTime(maxTime)
+                hist_cov = histObj.computeHistory(nst_k)
+                Hk[k] = hist_cov.dataToMatrix()
+        else:
+            for k in range(K):
+                Hk[k] = 0.0
+            gamma = 0.0
+
+        if gamma is None:
+            gamma = 0.0
+        gamma = np.asarray(gamma, dtype=float)
+
+        # Monte Carlo draws from smoothing distribution
+        Wku = np.asarray(Wku, dtype=float)
+        xKDraw = np.zeros((numBasis, K, Mc), dtype=float)
+        for r in range(numBasis):
+            WkuTemp = Wku[r, r, :, :].squeeze() if Wku.ndim == 4 else Wku[r, r]
+            WkuTemp = np.atleast_2d(WkuTemp)
+            if WkuTemp.shape[0] != K:
+                WkuTemp = np.diag(np.full(K, float(WkuTemp.flat[0])))
+            try:
+                chol_m = np.linalg.cholesky(WkuTemp)
+            except np.linalg.LinAlgError:
+                eigvals = np.linalg.eigvalsh(WkuTemp)
+                WkuTemp += np.eye(K) * (abs(min(eigvals.min(), 0.0)) + 1e-10)
+                chol_m = np.linalg.cholesky(WkuTemp)
+            for c in range(Mc):
+                z = np.random.randn(K)
+                xKDraw[r, :, c] = xK[r, :] + chol_m.T @ z
+
+        # Compute lambda and spike-rate difference for each MC draw
+        time_vec = np.arange(minTime, maxTime + delta, delta)
+        T = basisMat.shape[0]
+        fit_type = str(fitType).lower()
+        spikeRate = np.zeros((Mc, K), dtype=float)
+
+        for c in range(Mc):
+            for k in range(K):
+                stimK = basisMat @ xKDraw[:, k, c]
+                if fit_type == "poisson":
+                    histEffect = np.exp(gamma @ Hk[k].T).ravel() if not np.isscalar(Hk[k]) else np.ones(T)
+                    stimEffect = np.exp(np.clip(stimK, -20.0, 20.0))
+                    lambdaDelta_kc = stimEffect * histEffect[:T]
+                elif fit_type == "binomial":
+                    if np.isscalar(Hk[k]):
+                        eta = stimK
+                    else:
+                        eta = stimK + (gamma @ Hk[k].T).ravel()[:T]
+                    eta = np.clip(eta, -20.0, 20.0)
+                    lambdaDelta_kc = np.exp(eta) / (1.0 + np.exp(eta))
+                else:
+                    lambdaDelta_kc = np.exp(np.clip(stimK, -20.0, 20.0))
+
+                # Integrate via cumulative sum
+                rate_per_sec = lambdaDelta_kc / delta
+                time_k = time_vec[:len(rate_per_sec)]
+                cum_integral = np.zeros(len(rate_per_sec))
+                cum_integral[1:] = np.cumsum(rate_per_sec[:-1] * delta + 0.5 * np.diff(rate_per_sec) * delta)
+
+                # Rate for time window 1
+                t0_1, tf_1 = float(min(time1)), float(max(time1))
+                val_t0_1 = np.interp(t0_1, time_k, cum_integral)
+                val_tf_1 = np.interp(tf_1, time_k, cum_integral)
+                rate1 = (1.0 / (tf_1 - t0_1)) * (val_tf_1 - val_t0_1)
+
+                # Rate for time window 2
+                t0_2, tf_2 = float(min(time2)), float(max(time2))
+                val_t0_2 = np.interp(t0_2, time_k, cum_integral)
+                val_tf_2 = np.interp(tf_2, time_k, cum_integral)
+                rate2 = (1.0 / (tf_2 - t0_2)) * (val_tf_2 - val_t0_2)
+
+                spikeRate[c, k] = rate1 - rate2
+
+        # Compute CIs from ECDF (one-sided)
+        CIs = np.zeros((K, 2), dtype=float)
+        for k in range(K):
+            sorted_rates = np.sort(spikeRate[:, k])
+            ecdf = np.arange(1, Mc + 1, dtype=float) / float(Mc)
+            lower_idx = np.flatnonzero(ecdf < alphaVal)
+            upper_idx = np.flatnonzero(ecdf > (1.0 - alphaVal))
+            CIs[k, 0] = sorted_rates[lower_idx[-1]] if lower_idx.size else sorted_rates[0]
+            CIs[k, 1] = sorted_rates[upper_idx[0]] if upper_idx.size else sorted_rates[-1]
+
+        trial_axis = np.arange(1, K + 1, dtype=float)
+        mean_rate = np.mean(spikeRate, axis=0)
+        label = (
+            r"(t_{1f}-t_{1o})^{-1} \Lambda(t_{1f}-t_{1o})"
+            r" - (t_{2f}-t_{2o})^{-1} \Lambda(t_{2f}-t_{2o})"
+        )
+        spikeRateSig = Covariate(trial_axis, mean_rate, label, "Trial", "k", "Hz")
+        ciSpikeRate = ConfidenceInterval(
+            trial_axis, CIs, "CI_{spikeRate}", "Trial", "k", "Hz"
+        )
+        spikeRateSig.setConfInterval(ciSpikeRate)
+
+        # Pairwise probability matrix
+        ProbMat = np.zeros((K, K), dtype=float)
+        for k in range(K):
+            for m in range(k + 1, K):
+                ProbMat[k, m] = np.sum(spikeRate[:, m] > spikeRate[:, k]) / float(Mc)
+
+        sigMat = (ProbMat > (1.0 - alphaVal)).astype(float)
+
+        return spikeRateSig, ProbMat, sigMat
 
     @staticmethod
     def KF_EMCreateConstraints(
@@ -3725,278 +3725,6 @@ class DecodingAlgorithms:
             )
 
         return x_K, W_K, Lk
-
-    @staticmethod
-    def KF_EStep(A, Q, C, R, y, alpha, x0, Px0):
-        """E-step for the Kalman Filter EM algorithm.
-
-        Runs the forward Kalman filter followed by the backward RTS smoother
-        and computes sufficient statistics (expectation sums) for the M-step.
-
-        Parameters
-        ----------
-        A : (Dx, Dx) state transition matrix
-        Q : (Dx, Dx) process noise covariance
-        C : (Dy, Dx) observation matrix
-        R : (Dy, Dy) observation noise covariance
-        y : (Dy, K) observations (state-major)
-        alpha : (Dy, 1) or (Dy,) observation offset
-        x0 : (Dx,) initial state
-        Px0 : (Dx, Dx) initial state covariance
-
-        Returns
-        -------
-        x_K : (Dx, K) smoothed states
-        W_K : (Dx, Dx, K) smoothed covariances
-        logll : float — complete-data log-likelihood
-        ExpectationSums : dict of sufficient statistics
-        """
-        A = np.asarray(A, dtype=float)
-        Q = np.asarray(Q, dtype=float)
-        C = np.asarray(C, dtype=float)
-        R = np.asarray(R, dtype=float)
-        y = np.asarray(y, dtype=float)
-        alpha = np.asarray(alpha, dtype=float).reshape(-1, 1)
-        x0 = np.asarray(x0, dtype=float).reshape(-1)
-        Px0 = np.asarray(Px0, dtype=float)
-
-        Dx = A.shape[1]
-        Dy = C.shape[0]
-        K = y.shape[1]
-
-        # Forward filter with offset subtracted: y - alpha*ones(1,K)
-        y_centered = y - alpha @ np.ones((1, K))
-        x_p, Pe_p, x_u, Pe_u = DecodingAlgorithms._kf_filter_stateMajor(
-            A, C, Q, R, Px0, x0, y_centered
-        )
-
-        # Backward RTS smoother
-        x_K, W_K, Lk = DecodingAlgorithms._kf_smootherFromFiltered_stateMajor(
-            A, x_p, Pe_p, x_u, Pe_u
-        )
-
-        # Best estimates of initial states given the data
-        # Matlab: W1G0 = A*Px0*A' + Q
-        W1G0 = A @ Px0 @ A.T + Q
-        L0 = Px0 @ A.T @ np.linalg.pinv(W1G0)
-
-        # Ex0Gy = x0 + L0*(x_K(:,1) - x_p(:,1))
-        Ex0Gy = x0 + L0 @ (x_K[:, 0] - x_p[:, 0])
-        # Px0Gy = Px0 + L0*(inv(W_K(:,:,1)) - inv(W1G0))*L0'
-        Px0Gy = Px0 + L0 @ (
-            np.linalg.pinv(W_K[:, :, 0]) - np.linalg.pinv(W1G0)
-        ) @ L0.T
-        Px0Gy = _symmetrize(Px0Gy)
-
-        # Cross-covariance terms Wku(:,:,k,u) from de Jong and MacKinnon 1988
-        # Only compute the elements actually needed for the sums:
-        # Wku(:,:,k,k) = W_K(:,:,k) and off-diagonal lags (k, k+1)
-        # Matlab: Dk(:,:,k) = W_u(:,:,k)*A'/(W_p(:,:,k+1))
-        # Wku(:,:,k,u) = Dk(:,:,k)*Wku(:,:,k+1,u)
-        # We only need Wku(:,:,k-1,k) for the expectation sums.
-        Wku_lag1 = np.zeros((Dx, Dx, K), dtype=float)  # Wku_lag1[:,:,k] = Wku(:,:,k-1,k)
-        for k in range(K - 1, 0, -1):
-            # Dk = Pe_u[:,:,k-1] * A' / Pe_p[:,:,k]
-            Dk = Pe_u[:, :, k - 1] @ A.T @ np.linalg.pinv(Pe_p[:, :, k])
-            if k == K - 1:
-                # Wku(:,:,k-1,k) = Dk * W_K(:,:,k)
-                Wku_lag1[:, :, k] = Dk @ W_K[:, :, k]
-            else:
-                # Wku(:,:,k-1,k) = Dk * Wku(:,:,k,k) = Dk * W_K(:,:,k)
-                Wku_lag1[:, :, k] = Dk @ W_K[:, :, k]
-
-        # Also need Wku(:,:,0,0) = W_K(:,:,0) and Px0*A'/W_p(:,:,0) for k==0
-        # Matlab: Sxkm1xk at k==1: Px0*A'/W_p(:,:,1)*Wku(:,:,1,1)
-        # Note: Matlab 1-indexed, W_p(:,:,1) is our Pe_p[:,:,0]
-        # But the Matlab filter stores x_p(:,1)=x0, Pe_p(:,:,1)=Px0
-        # and W_p(:,:,1) after the first predict is actually Pe_p(:,:,1) in Matlab = Pe_p[:,:,0] here
-        # Actually let me re-read: Matlab's filter has Pe_p(:,:,1)=Px0 and the first
-        # iteration does update then predict, so Pe_p(:,:,2) = A*Pe_u(:,:,1)*A'+Q.
-        # In our _kf_filter_stateMajor, Pe_p[:,:,0]=Px0 and Pe_p[:,:,1]=A*Pe_u[:,:,0]*A'+Q
-        # So Matlab's W_p(:,:,1) = Pe_p(:,:,1) in Matlab = our Pe_p[:,:,0] = Px0
-
-        # Sufficient statistics (expectation sums)
-        Sxkm1xk = np.zeros((Dx, Dx), dtype=float)
-        Sxkm1xkm1 = np.zeros((Dx, Dx), dtype=float)
-        Sxkxk = np.zeros((Dx, Dx), dtype=float)
-        Sykyk = np.zeros((Dy, Dy), dtype=float)
-        Sxkyk = np.zeros((Dx, Dy), dtype=float)
-
-        for k in range(K):
-            if k == 0:
-                # Matlab: Sxkm1xk = Sxkm1xk + Px0*A'/W_p(:,:,1)*Wku(:,:,1,1)
-                # W_p(:,:,1) in Matlab is Pe_p[:,:,0] = Px0 here
-                # Wku(:,:,1,1) = W_K(:,:,1) in Matlab = W_K[:,:,0] here
-                Sxkm1xk += Px0 @ A.T @ np.linalg.pinv(Pe_p[:, :, 0]) @ W_K[:, :, 0]
-                Sxkm1xkm1 += Px0 + np.outer(x0, x0)
-            else:
-                # Wku(:,:,k-1,k) is Wku_lag1[:,:,k]
-                Sxkm1xk += Wku_lag1[:, :, k] + np.outer(x_K[:, k - 1], x_K[:, k])
-                Sxkm1xkm1 += W_K[:, :, k - 1] + np.outer(x_K[:, k - 1], x_K[:, k - 1])
-            Sxkxk += W_K[:, :, k] + np.outer(x_K[:, k], x_K[:, k])
-            Sykyk += np.outer(y[:, k] - alpha.ravel(), y[:, k] - alpha.ravel())
-            Sxkyk += np.outer(x_K[:, k], y[:, k] - alpha.ravel())
-
-        Sxkxk = _symmetrize(Sxkxk)
-        Sykyk = _symmetrize(Sykyk)
-
-        sumXkTerms = Sxkxk - A @ Sxkm1xk - Sxkm1xk.T @ A.T + A @ Sxkm1xkm1 @ A.T
-        sumYkTerms = Sykyk - C @ Sxkyk - Sxkyk.T @ C.T + C @ Sxkxk @ C.T
-        Sxkxkm1 = Sxkm1xk.T
-
-        sumXkTerms = _symmetrize(sumXkTerms)
-        sumYkTerms = _symmetrize(sumYkTerms)
-
-        # Complete-data log-likelihood
-        # Matlab: logll = -Dx*K/2*log(2*pi) - K/2*log(det(Q))
-        #         - Dy*K/2*log(2*pi) - K/2*log(det(R))
-        #         - Dx/2*log(2*pi) - 1/2*log(det(Px0))
-        #         - 1/2*trace(inv(Q)*sumXkTerms) - 1/2*trace(inv(R)*sumYkTerms)
-        #         - Dx/2
-        sign_Q, logdet_Q = np.linalg.slogdet(Q)
-        sign_R, logdet_R = np.linalg.slogdet(R)
-        sign_P, logdet_P = np.linalg.slogdet(Px0)
-        logll = (
-            -Dx * K / 2.0 * np.log(2.0 * np.pi)
-            - K / 2.0 * logdet_Q
-            - Dy * K / 2.0 * np.log(2.0 * np.pi)
-            - K / 2.0 * logdet_R
-            - Dx / 2.0 * np.log(2.0 * np.pi)
-            - 0.5 * logdet_P
-            - 0.5 * np.trace(np.linalg.solve(Q, sumXkTerms))
-            - 0.5 * np.trace(np.linalg.solve(R, sumYkTerms))
-            - Dx / 2.0
-        )
-        logll = float(logll)
-        print(f"logll: {logll}")
-
-        ExpectationSums = {
-            "Sxkm1xkm1": Sxkm1xkm1,
-            "Sxkm1xk": Sxkm1xk,
-            "Sxkxkm1": Sxkxkm1,
-            "Sxkxk": Sxkxk,
-            "Sxkyk": Sxkyk,
-            "Sykyk": Sykyk,
-            "sumXkTerms": sumXkTerms,
-            "sumYkTerms": sumYkTerms,
-            "Sx0": Ex0Gy,
-            "Sx0x0": Px0Gy + np.outer(Ex0Gy, Ex0Gy),
-        }
-
-        return x_K, W_K, logll, ExpectationSums
-
-    @staticmethod
-    def KF_MStep(y, x_K, x0, Px0, ExpectationSums, KFEM_Constraints=None):
-        """M-step for the Kalman Filter EM algorithm.
-
-        Updates all state-space model parameters given the sufficient
-        statistics from :meth:`KF_EStep`.
-
-        Parameters
-        ----------
-        y : (Dy, K) observations
-        x_K : (Dx, K) smoothed states from E-step
-        x0 : (Dx,) current initial state estimate
-        Px0 : (Dx, Dx) current initial covariance estimate
-        ExpectationSums : dict from :meth:`KF_EStep`
-        KFEM_Constraints : dict from :meth:`KF_EMCreateConstraints`, or *None*
-
-        Returns
-        -------
-        Ahat, Qhat, Chat, Rhat, alphahat, x0hat, Px0hat
-        """
-        if KFEM_Constraints is None:
-            KFEM_Constraints = DecodingAlgorithms.KF_EMCreateConstraints()
-
-        Sxkm1xkm1 = ExpectationSums["Sxkm1xkm1"]
-        Sxkxkm1 = ExpectationSums["Sxkxkm1"]
-        Sxkxk = ExpectationSums["Sxkxk"]
-        Sxkyk = ExpectationSums["Sxkyk"]
-        sumXkTerms = ExpectationSums["sumXkTerms"]
-        sumYkTerms = ExpectationSums["sumYkTerms"]
-        Sx0 = ExpectationSums["Sx0"]
-        Sx0x0 = ExpectationSums["Sx0x0"]
-
-        y = np.asarray(y, dtype=float)
-        x_K = np.asarray(x_K, dtype=float)
-        x0 = np.asarray(x0, dtype=float).reshape(-1)
-        Px0 = np.asarray(Px0, dtype=float)
-
-        N, K = x_K.shape  # N = Dx (num states), K = num time steps
-
-        # Ahat
-        if KFEM_Constraints["AhatDiag"]:
-            I_N = np.eye(N)
-            Ahat = (Sxkxkm1 * I_N) @ np.linalg.pinv(Sxkm1xkm1 * I_N)
-        else:
-            Ahat = Sxkxkm1 @ np.linalg.pinv(Sxkm1xkm1)
-
-        # Chat = Sxkyk' / Sxkxk  (Matlab: Chat = Sxkyk'/Sxkxk)
-        Chat = Sxkyk.T @ np.linalg.pinv(Sxkxk)
-
-        # alphahat = sum(y - Chat*x_K, 2) / K
-        alphahat = np.sum(y - Chat @ x_K, axis=1, keepdims=True) / K
-
-        # Qhat
-        if KFEM_Constraints["QhatDiag"]:
-            if KFEM_Constraints["QhatIsotropic"]:
-                Qhat = (1.0 / (N * K)) * np.trace(sumXkTerms) * np.eye(N)
-            else:
-                I_N = np.eye(N)
-                Qhat = (1.0 / K) * (sumXkTerms * I_N)
-                Qhat = _symmetrize(Qhat)
-        else:
-            Qhat = (1.0 / K) * sumXkTerms
-            Qhat = _symmetrize(Qhat)
-
-        # Rhat
-        dy = sumYkTerms.shape[0]
-        if KFEM_Constraints["RhatDiag"]:
-            if KFEM_Constraints["RhatIsotropic"]:
-                I_dy = np.eye(dy)
-                Rhat = (1.0 / (dy * K)) * np.trace(sumYkTerms) * I_dy
-            else:
-                I_dy = np.eye(dy)
-                Rhat = (1.0 / K) * (sumYkTerms * I_dy)
-                Rhat = _symmetrize(Rhat)
-        else:
-            Rhat = (1.0 / K) * sumYkTerms
-            Rhat = _symmetrize(Rhat)
-
-        # x0hat — uses the newly computed Ahat and Qhat
-        if KFEM_Constraints["Estimatex0"]:
-            # Matlab: x0hat = (inv(Px0)+Ahat'/Qhat*Ahat)\(Ahat'/Qhat*x_K(:,1)+Px0\x0)
-            Px0_inv = np.linalg.pinv(Px0)
-            AQ = np.linalg.solve(Qhat, Ahat)  # Qhat\Ahat
-            lhs = Px0_inv + Ahat.T @ AQ
-            rhs = Ahat.T @ np.linalg.solve(Qhat, x_K[:, 0]) + np.linalg.solve(Px0, x0)
-            x0hat = np.linalg.solve(lhs, rhs)
-        else:
-            x0hat = x0.copy()
-
-        # Px0hat
-        if KFEM_Constraints["EstimatePx0"]:
-            if KFEM_Constraints["Px0Isotropic"]:
-                diff = x0hat - x0
-                Px0hat = (np.trace(np.outer(diff, diff)) / (N * K)) * np.eye(N)
-            else:
-                I_N = np.eye(N)
-                diff = x0hat - x0
-                Px0hat = (
-                    np.outer(x0hat, x0hat)
-                    - np.outer(x0, x0hat)
-                    - np.outer(x0hat, x0)
-                    + np.outer(x0, x0)
-                ) * I_N
-                Px0hat = _symmetrize(Px0hat)
-                eigvals, eigvecs = np.linalg.eigh(Px0hat)
-                if np.min(eigvals) < np.finfo(float).eps:
-                    eigvals[eigvals == np.min(eigvals)] = np.finfo(float).eps
-                    Px0hat = eigvecs @ np.diag(eigvals) @ eigvecs.T
-        else:
-            Px0hat = Px0.copy()
-
-        return Ahat, Qhat, Chat, Rhat, alphahat, x0hat, Px0hat
 
     @staticmethod
     def KF_ComputeParamStandardErrors(
@@ -4815,6 +4543,288 @@ class DecodingAlgorithms:
         )
 
     @staticmethod
+    def KF_EStep(A, Q, C, R, y, alpha, x0, Px0):
+        """E-step for the Kalman Filter EM algorithm.
+
+        Runs the forward Kalman filter followed by the backward RTS smoother
+        and computes sufficient statistics (expectation sums) for the M-step.
+
+        Parameters
+        ----------
+        A : (Dx, Dx) state transition matrix
+        Q : (Dx, Dx) process noise covariance
+        C : (Dy, Dx) observation matrix
+        R : (Dy, Dy) observation noise covariance
+        y : (Dy, K) observations (state-major)
+        alpha : (Dy, 1) or (Dy,) observation offset
+        x0 : (Dx,) initial state
+        Px0 : (Dx, Dx) initial state covariance
+
+        Returns
+        -------
+        x_K : (Dx, K) smoothed states
+        W_K : (Dx, Dx, K) smoothed covariances
+        logll : float — complete-data log-likelihood
+        ExpectationSums : dict of sufficient statistics
+        """
+        A = np.asarray(A, dtype=float)
+        Q = np.asarray(Q, dtype=float)
+        C = np.asarray(C, dtype=float)
+        R = np.asarray(R, dtype=float)
+        y = np.asarray(y, dtype=float)
+        alpha = np.asarray(alpha, dtype=float).reshape(-1, 1)
+        x0 = np.asarray(x0, dtype=float).reshape(-1)
+        Px0 = np.asarray(Px0, dtype=float)
+
+        Dx = A.shape[1]
+        Dy = C.shape[0]
+        K = y.shape[1]
+
+        # Forward filter with offset subtracted: y - alpha*ones(1,K)
+        y_centered = y - alpha @ np.ones((1, K))
+        x_p, Pe_p, x_u, Pe_u = DecodingAlgorithms._kf_filter_stateMajor(
+            A, C, Q, R, Px0, x0, y_centered
+        )
+
+        # Backward RTS smoother
+        x_K, W_K, Lk = DecodingAlgorithms._kf_smootherFromFiltered_stateMajor(
+            A, x_p, Pe_p, x_u, Pe_u
+        )
+
+        # Best estimates of initial states given the data
+        # Matlab: W1G0 = A*Px0*A' + Q
+        W1G0 = A @ Px0 @ A.T + Q
+        L0 = Px0 @ A.T @ np.linalg.pinv(W1G0)
+
+        # Ex0Gy = x0 + L0*(x_K(:,1) - x_p(:,1))
+        Ex0Gy = x0 + L0 @ (x_K[:, 0] - x_p[:, 0])
+        # Px0Gy = Px0 + L0*(inv(W_K(:,:,1)) - inv(W1G0))*L0'
+        Px0Gy = Px0 + L0 @ (
+            np.linalg.pinv(W_K[:, :, 0]) - np.linalg.pinv(W1G0)
+        ) @ L0.T
+        Px0Gy = _symmetrize(Px0Gy)
+
+        # Cross-covariance terms Wku(:,:,k,u) from de Jong and MacKinnon 1988
+        # Only compute the elements actually needed for the sums:
+        # Wku(:,:,k,k) = W_K(:,:,k) and off-diagonal lags (k, k+1)
+        # Matlab: Dk(:,:,k) = W_u(:,:,k)*A'/(W_p(:,:,k+1))
+        # Wku(:,:,k,u) = Dk(:,:,k)*Wku(:,:,k+1,u)
+        # We only need Wku(:,:,k-1,k) for the expectation sums.
+        Wku_lag1 = np.zeros((Dx, Dx, K), dtype=float)  # Wku_lag1[:,:,k] = Wku(:,:,k-1,k)
+        for k in range(K - 1, 0, -1):
+            # Dk = Pe_u[:,:,k-1] * A' / Pe_p[:,:,k]
+            Dk = Pe_u[:, :, k - 1] @ A.T @ np.linalg.pinv(Pe_p[:, :, k])
+            if k == K - 1:
+                # Wku(:,:,k-1,k) = Dk * W_K(:,:,k)
+                Wku_lag1[:, :, k] = Dk @ W_K[:, :, k]
+            else:
+                # Wku(:,:,k-1,k) = Dk * Wku(:,:,k,k) = Dk * W_K(:,:,k)
+                Wku_lag1[:, :, k] = Dk @ W_K[:, :, k]
+
+        # Also need Wku(:,:,0,0) = W_K(:,:,0) and Px0*A'/W_p(:,:,0) for k==0
+        # Matlab: Sxkm1xk at k==1: Px0*A'/W_p(:,:,1)*Wku(:,:,1,1)
+        # Note: Matlab 1-indexed, W_p(:,:,1) is our Pe_p[:,:,0]
+        # But the Matlab filter stores x_p(:,1)=x0, Pe_p(:,:,1)=Px0
+        # and W_p(:,:,1) after the first predict is actually Pe_p(:,:,1) in Matlab = Pe_p[:,:,0] here
+        # Actually let me re-read: Matlab's filter has Pe_p(:,:,1)=Px0 and the first
+        # iteration does update then predict, so Pe_p(:,:,2) = A*Pe_u(:,:,1)*A'+Q.
+        # In our _kf_filter_stateMajor, Pe_p[:,:,0]=Px0 and Pe_p[:,:,1]=A*Pe_u[:,:,0]*A'+Q
+        # So Matlab's W_p(:,:,1) = Pe_p(:,:,1) in Matlab = our Pe_p[:,:,0] = Px0
+
+        # Sufficient statistics (expectation sums)
+        Sxkm1xk = np.zeros((Dx, Dx), dtype=float)
+        Sxkm1xkm1 = np.zeros((Dx, Dx), dtype=float)
+        Sxkxk = np.zeros((Dx, Dx), dtype=float)
+        Sykyk = np.zeros((Dy, Dy), dtype=float)
+        Sxkyk = np.zeros((Dx, Dy), dtype=float)
+
+        for k in range(K):
+            if k == 0:
+                # Matlab: Sxkm1xk = Sxkm1xk + Px0*A'/W_p(:,:,1)*Wku(:,:,1,1)
+                # W_p(:,:,1) in Matlab is Pe_p[:,:,0] = Px0 here
+                # Wku(:,:,1,1) = W_K(:,:,1) in Matlab = W_K[:,:,0] here
+                Sxkm1xk += Px0 @ A.T @ np.linalg.pinv(Pe_p[:, :, 0]) @ W_K[:, :, 0]
+                Sxkm1xkm1 += Px0 + np.outer(x0, x0)
+            else:
+                # Wku(:,:,k-1,k) is Wku_lag1[:,:,k]
+                Sxkm1xk += Wku_lag1[:, :, k] + np.outer(x_K[:, k - 1], x_K[:, k])
+                Sxkm1xkm1 += W_K[:, :, k - 1] + np.outer(x_K[:, k - 1], x_K[:, k - 1])
+            Sxkxk += W_K[:, :, k] + np.outer(x_K[:, k], x_K[:, k])
+            Sykyk += np.outer(y[:, k] - alpha.ravel(), y[:, k] - alpha.ravel())
+            Sxkyk += np.outer(x_K[:, k], y[:, k] - alpha.ravel())
+
+        Sxkxk = _symmetrize(Sxkxk)
+        Sykyk = _symmetrize(Sykyk)
+
+        sumXkTerms = Sxkxk - A @ Sxkm1xk - Sxkm1xk.T @ A.T + A @ Sxkm1xkm1 @ A.T
+        sumYkTerms = Sykyk - C @ Sxkyk - Sxkyk.T @ C.T + C @ Sxkxk @ C.T
+        Sxkxkm1 = Sxkm1xk.T
+
+        sumXkTerms = _symmetrize(sumXkTerms)
+        sumYkTerms = _symmetrize(sumYkTerms)
+
+        # Complete-data log-likelihood
+        # Matlab: logll = -Dx*K/2*log(2*pi) - K/2*log(det(Q))
+        #         - Dy*K/2*log(2*pi) - K/2*log(det(R))
+        #         - Dx/2*log(2*pi) - 1/2*log(det(Px0))
+        #         - 1/2*trace(inv(Q)*sumXkTerms) - 1/2*trace(inv(R)*sumYkTerms)
+        #         - Dx/2
+        sign_Q, logdet_Q = np.linalg.slogdet(Q)
+        sign_R, logdet_R = np.linalg.slogdet(R)
+        sign_P, logdet_P = np.linalg.slogdet(Px0)
+        logll = (
+            -Dx * K / 2.0 * np.log(2.0 * np.pi)
+            - K / 2.0 * logdet_Q
+            - Dy * K / 2.0 * np.log(2.0 * np.pi)
+            - K / 2.0 * logdet_R
+            - Dx / 2.0 * np.log(2.0 * np.pi)
+            - 0.5 * logdet_P
+            - 0.5 * np.trace(np.linalg.solve(Q, sumXkTerms))
+            - 0.5 * np.trace(np.linalg.solve(R, sumYkTerms))
+            - Dx / 2.0
+        )
+        logll = float(logll)
+        print(f"logll: {logll}")
+
+        ExpectationSums = {
+            "Sxkm1xkm1": Sxkm1xkm1,
+            "Sxkm1xk": Sxkm1xk,
+            "Sxkxkm1": Sxkxkm1,
+            "Sxkxk": Sxkxk,
+            "Sxkyk": Sxkyk,
+            "Sykyk": Sykyk,
+            "sumXkTerms": sumXkTerms,
+            "sumYkTerms": sumYkTerms,
+            "Sx0": Ex0Gy,
+            "Sx0x0": Px0Gy + np.outer(Ex0Gy, Ex0Gy),
+        }
+
+        return x_K, W_K, logll, ExpectationSums
+
+    @staticmethod
+    def KF_MStep(y, x_K, x0, Px0, ExpectationSums, KFEM_Constraints=None):
+        """M-step for the Kalman Filter EM algorithm.
+
+        Updates all state-space model parameters given the sufficient
+        statistics from :meth:`KF_EStep`.
+
+        Parameters
+        ----------
+        y : (Dy, K) observations
+        x_K : (Dx, K) smoothed states from E-step
+        x0 : (Dx,) current initial state estimate
+        Px0 : (Dx, Dx) current initial covariance estimate
+        ExpectationSums : dict from :meth:`KF_EStep`
+        KFEM_Constraints : dict from :meth:`KF_EMCreateConstraints`, or *None*
+
+        Returns
+        -------
+        Ahat, Qhat, Chat, Rhat, alphahat, x0hat, Px0hat
+        """
+        if KFEM_Constraints is None:
+            KFEM_Constraints = DecodingAlgorithms.KF_EMCreateConstraints()
+
+        Sxkm1xkm1 = ExpectationSums["Sxkm1xkm1"]
+        Sxkxkm1 = ExpectationSums["Sxkxkm1"]
+        Sxkxk = ExpectationSums["Sxkxk"]
+        Sxkyk = ExpectationSums["Sxkyk"]
+        sumXkTerms = ExpectationSums["sumXkTerms"]
+        sumYkTerms = ExpectationSums["sumYkTerms"]
+        Sx0 = ExpectationSums["Sx0"]
+        Sx0x0 = ExpectationSums["Sx0x0"]
+
+        y = np.asarray(y, dtype=float)
+        x_K = np.asarray(x_K, dtype=float)
+        x0 = np.asarray(x0, dtype=float).reshape(-1)
+        Px0 = np.asarray(Px0, dtype=float)
+
+        N, K = x_K.shape  # N = Dx (num states), K = num time steps
+
+        # Ahat
+        if KFEM_Constraints["AhatDiag"]:
+            I_N = np.eye(N)
+            Ahat = (Sxkxkm1 * I_N) @ np.linalg.pinv(Sxkm1xkm1 * I_N)
+        else:
+            Ahat = Sxkxkm1 @ np.linalg.pinv(Sxkm1xkm1)
+
+        # Chat = Sxkyk' / Sxkxk  (Matlab: Chat = Sxkyk'/Sxkxk)
+        Chat = Sxkyk.T @ np.linalg.pinv(Sxkxk)
+
+        # alphahat = sum(y - Chat*x_K, 2) / K
+        alphahat = np.sum(y - Chat @ x_K, axis=1, keepdims=True) / K
+
+        # Qhat
+        if KFEM_Constraints["QhatDiag"]:
+            if KFEM_Constraints["QhatIsotropic"]:
+                Qhat = (1.0 / (N * K)) * np.trace(sumXkTerms) * np.eye(N)
+            else:
+                I_N = np.eye(N)
+                Qhat = (1.0 / K) * (sumXkTerms * I_N)
+                Qhat = _symmetrize(Qhat)
+        else:
+            Qhat = (1.0 / K) * sumXkTerms
+            Qhat = _symmetrize(Qhat)
+
+        # Rhat
+        dy = sumYkTerms.shape[0]
+        if KFEM_Constraints["RhatDiag"]:
+            if KFEM_Constraints["RhatIsotropic"]:
+                I_dy = np.eye(dy)
+                Rhat = (1.0 / (dy * K)) * np.trace(sumYkTerms) * I_dy
+            else:
+                I_dy = np.eye(dy)
+                Rhat = (1.0 / K) * (sumYkTerms * I_dy)
+                Rhat = _symmetrize(Rhat)
+        else:
+            Rhat = (1.0 / K) * sumYkTerms
+            Rhat = _symmetrize(Rhat)
+
+        # x0hat — uses the newly computed Ahat and Qhat
+        if KFEM_Constraints["Estimatex0"]:
+            # Matlab: x0hat = (inv(Px0)+Ahat'/Qhat*Ahat)\(Ahat'/Qhat*x_K(:,1)+Px0\x0)
+            Px0_inv = np.linalg.pinv(Px0)
+            AQ = np.linalg.solve(Qhat, Ahat)  # Qhat\Ahat
+            lhs = Px0_inv + Ahat.T @ AQ
+            rhs = Ahat.T @ np.linalg.solve(Qhat, x_K[:, 0]) + np.linalg.solve(Px0, x0)
+            x0hat = np.linalg.solve(lhs, rhs)
+        else:
+            x0hat = x0.copy()
+
+        # Px0hat
+        if KFEM_Constraints["EstimatePx0"]:
+            if KFEM_Constraints["Px0Isotropic"]:
+                diff = x0hat - x0
+                Px0hat = (np.trace(np.outer(diff, diff)) / (N * K)) * np.eye(N)
+            else:
+                I_N = np.eye(N)
+                diff = x0hat - x0
+                Px0hat = (
+                    np.outer(x0hat, x0hat)
+                    - np.outer(x0, x0hat)
+                    - np.outer(x0hat, x0)
+                    + np.outer(x0, x0)
+                ) * I_N
+                Px0hat = _symmetrize(Px0hat)
+                eigvals, eigvecs = np.linalg.eigh(Px0hat)
+                if np.min(eigvals) < np.finfo(float).eps:
+                    eigvals[eigvals == np.min(eigvals)] = np.finfo(float).eps
+                    Px0hat = eigvecs @ np.diag(eigvals) @ eigvecs.T
+        else:
+            Px0hat = Px0.copy()
+
+        return Ahat, Qhat, Chat, Rhat, alphahat, x0hat, Px0hat
+
+    # TODO(parity): port MATLAB method PPLFP_fixedIntervalSmoother from cajigaslab/nSTAT@2d86602
+    # TODO(parity): port MATLAB method PPLFP_DecodeLinear from cajigaslab/nSTAT@2d86602
+    # TODO(parity): port MATLAB method PPLFP_Decode_predict from cajigaslab/nSTAT@2d86602
+    # TODO(parity): port MATLAB method PPLFP_Decode_update from cajigaslab/nSTAT@2d86602
+    # TODO(parity): port MATLAB method PPLFP_EMCreateConstraints from cajigaslab/nSTAT@2d86602
+    # TODO(parity): port MATLAB method PPLFP_ComputeParamStandardErrors from cajigaslab/nSTAT@2d86602
+    # TODO(parity): port MATLAB method PPLFP_EM from cajigaslab/nSTAT@2d86602
+    # TODO(parity): port MATLAB method PPLFP_EStep from cajigaslab/nSTAT@2d86602
+    # TODO(parity): port MATLAB method PPLFP_MStep from cajigaslab/nSTAT@2d86602
+
+    @staticmethod
     # PP_EM family: Point-Process state-space EM (without basis functions)
     # ------------------------------------------------------------------
 
@@ -5423,6 +5433,334 @@ class DecodingAlgorithms:
         return SE, Pvals, nTerms
 
     @staticmethod
+    def PP_EM(
+        dN,
+        Ahat0,
+        Qhat0,
+        mu,
+        beta,
+        fitType="poisson",
+        delta=0.001,
+        gamma=None,
+        windowTimes=None,
+        x0=None,
+        Px0=None,
+        PPEM_Constraints=None,
+        MstepMethod="NewtonRaphson",
+    ):
+        """Full Point-Process state-space EM algorithm.
+
+        Estimates state-space model parameters (A, Q, mu, beta, gamma) via EM
+        for point-process observations. Unlike PPSS_EM, this operates on raw
+        spike observations with explicit beta/mu/gamma parameters (no basis
+        functions).
+
+        Parameters
+        ----------
+        dN : (C, N) binary spike observations
+        Ahat0 : (dx, dx) initial state transition matrix
+        Qhat0 : (dx, dx) initial state noise covariance
+        mu : (C,) initial baseline log-rates
+        beta : (dx, C) initial stimulus coefficients
+        fitType : 'poisson' or 'binomial'
+        delta : float, time bin width
+        gamma : (nW, C) or scalar, initial history coefficients
+        windowTimes : history window boundaries
+        x0 : (dx,) initial state (default zeros)
+        Px0 : (dx, dx) initial state covariance
+        PPEM_Constraints : dict from PP_EMCreateConstraints
+        MstepMethod : 'NewtonRaphson' or 'GLM'
+
+        Returns
+        -------
+        xKFinal, WKFinal, Ahat, Qhat, muhat, betahat, gammahat,
+        x0hat, Px0hat, IC, SE, Pvals, nIter
+        """
+        from .history import History  # local import to avoid circular dependency
+
+        Ahat0 = np.atleast_2d(Ahat0).astype(float)
+        Qhat0 = np.atleast_2d(Qhat0).astype(float)
+        numStates = Ahat0.shape[0]
+        dN = np.atleast_2d(dN).astype(float)
+
+        if PPEM_Constraints is None:
+            PPEM_Constraints = DecodingAlgorithms.PP_EMCreateConstraints()
+        if Px0 is None:
+            Px0 = 1e-9 * np.eye(numStates)
+        else:
+            Px0 = np.atleast_2d(Px0).astype(float)
+        if x0 is None:
+            x0 = np.zeros(numStates)
+        else:
+            x0 = np.asarray(x0, dtype=float).reshape(-1)
+        if gamma is None:
+            gamma = np.zeros(0)
+        gamma = np.asarray(gamma, dtype=float)
+
+        if delta is None or delta == 0:
+            delta = 0.001
+
+        if windowTimes is None:
+            gamma_flat = gamma.ravel()
+            if gamma_flat.size == 0 or (gamma_flat.size == 1 and gamma_flat[0] == 0):
+                windowTimes = []
+            else:
+                windowTimes = np.arange(0, (gamma.shape[0] + 2) * delta, delta).tolist()
+
+        mu = np.asarray(mu, dtype=float).reshape(-1)
+        beta = np.atleast_2d(beta).astype(float)
+
+        # Build HkAll from spike trains and history windows
+        K_cells = dN.shape[0]
+        N_time = dN.shape[1]
+        minTime = 0.0
+        maxTime = (N_time - 1) * delta
+
+        if len(windowTimes) > 0:
+            histObj = History(windowTimes, minTime, maxTime)
+            HkAll_list = []
+            for k in range(K_cells):
+                spike_indices = np.where(dN[k, :] == 1)[0]
+                spike_times = (spike_indices) * delta
+                nst = nspikeTrain(spike_times)
+                nst.setMinTime(minTime)
+                nst.setMaxTime(maxTime)
+                hmat = histObj.computeHistory(nst).dataToMatrix()
+                HkAll_list.append(hmat)
+            # Stack: (N_time, nW, K_cells)
+            HkAll = np.stack(HkAll_list, axis=2)
+        else:
+            HkAll = np.zeros((N_time, 0, K_cells))
+            gamma = np.zeros(1)
+            gamma[0] = 0.0
+
+        # EM setup
+        tolAbs = 1e-3
+        llTol = 1e-3
+        maxIter = 100
+        numToKeep = 10
+
+        # Circular buffer storage
+        A_buf = [None] * numToKeep
+        Q_buf = [None] * numToKeep
+        x0_buf = [None] * numToKeep
+        Px0_buf = [None] * numToKeep
+        mu_buf = [None] * numToKeep
+        beta_buf = [None] * numToKeep
+        gamma_buf = [None] * numToKeep
+        x_K_buf = [None] * numToKeep
+        W_K_buf = [None] * numToKeep
+        ExpSums_buf = [None] * numToKeep
+
+        # Scaled system initialization
+        A0 = Ahat0.copy()
+        Q0 = Qhat0.copy()
+
+        A_buf[0] = A0.copy()
+        Q_buf[0] = Q0.copy()
+        x0_buf[0] = x0.copy()
+        Px0_buf[0] = Px0.copy()
+        mu_buf[0] = mu.copy()
+        beta_buf[0] = beta.copy()
+        gamma_buf[0] = gamma.copy()
+
+        # Apply scaling
+        try:
+            Tq = np.linalg.solve(np.linalg.cholesky(Q_buf[0]).T, np.eye(numStates))
+        except np.linalg.LinAlgError:
+            Tq = np.eye(numStates)
+        TqInv = np.linalg.inv(Tq)
+
+        A_buf[0] = Tq @ A_buf[0] @ TqInv
+        Q_buf[0] = Tq @ Q_buf[0] @ Tq.T
+        x0_buf[0] = Tq @ x0
+        Px0_buf[0] = Tq @ Px0 @ Tq.T
+        beta_buf[0] = np.linalg.solve(Tq.T, beta_buf[0])
+
+        ll_list = []
+        dLikelihood = [np.inf]
+        stoppingCriteria = False
+        cnt = 0
+
+        print("                        Point-Process Observation EM Algorithm                        ")
+        while not stoppingCriteria and cnt < maxIter:
+            si = cnt % numToKeep
+            si_p1 = (cnt + 1) % numToKeep
+            si_m1 = (cnt - 1) % numToKeep
+
+            print("-" * 80)
+            print(f"Iteration #{cnt + 1}")
+            print("-" * 80)
+
+            # E-step
+            x_K_cur, W_K_cur, ll, ExpSums = DecodingAlgorithms.PP_EStep(
+                A_buf[si], Q_buf[si], dN, mu_buf[si], beta_buf[si],
+                fitType, gamma_buf[si], HkAll, x0_buf[si], Px0_buf[si]
+            )
+            x_K_buf[si] = x_K_cur
+            W_K_buf[si] = W_K_cur
+            ExpSums_buf[si] = ExpSums
+            ll_list.append(ll)
+
+            # M-step
+            Anew, Qnew, munew, bnew, gnew, x0new, Px0new = DecodingAlgorithms.PP_MStep(
+                dN, x_K_cur, W_K_cur, x0_buf[si], Px0_buf[si], ExpSums,
+                fitType, mu_buf[si], beta_buf[si], gamma_buf[si],
+                windowTimes, HkAll, PPEM_Constraints, MstepMethod
+            )
+            A_buf[si_p1] = Anew
+            Q_buf[si_p1] = Qnew
+            mu_buf[si_p1] = munew
+            beta_buf[si_p1] = bnew
+            gamma_buf[si_p1] = gnew
+            x0_buf[si_p1] = x0new
+            Px0_buf[si_p1] = Px0new
+
+            if not PPEM_Constraints["EstimateA"]:
+                A_buf[si_p1] = A_buf[si]
+
+            # Convergence check
+            if cnt == 0:
+                dLikelihood.append(np.inf)
+                dMax = np.inf
+            else:
+                dLikelihood.append(ll_list[cnt] - ll_list[cnt - 1])
+                dQvals = float(np.max(np.abs(np.sqrt(np.maximum(np.abs(Q_buf[si]), 0)) - np.sqrt(np.maximum(np.abs(Q_buf[si_m1]), 0)))))
+                dAvals = float(np.max(np.abs(A_buf[si] - A_buf[si_m1])))
+                dMuvals = float(np.max(np.abs(mu_buf[si] - mu_buf[si_m1])))
+                dBetavals = float(np.max(np.abs(beta_buf[si] - beta_buf[si_m1])))
+                gam_cur = gamma_buf[si].ravel() if gamma_buf[si] is not None else np.zeros(1)
+                gam_prev = gamma_buf[si_m1].ravel() if gamma_buf[si_m1] is not None else np.zeros(1)
+                dGammavals = float(np.max(np.abs(gam_cur[:min(len(gam_cur), len(gam_prev))] - gam_prev[:min(len(gam_cur), len(gam_prev))]))) if gam_cur.size > 0 else 0.0
+                dMax = max(dQvals, dAvals, dMuvals, dBetavals, dGammavals)
+
+            if cnt == 0:
+                print("Max Parameter Change: N/A")
+            else:
+                print(f"Max Parameter Change: {dMax:.6f}")
+
+            cnt += 1
+            if dMax < tolAbs:
+                stoppingCriteria = True
+                print(f"         EM converged at iteration# {cnt} b/c change in params was within criteria")
+
+            if abs(dLikelihood[-1]) < llTol or dLikelihood[-1] < 0:
+                stoppingCriteria = True
+                print(f"         EM stopped at iteration# {cnt} b/c change in likelihood was negative")
+
+        print("-" * 80)
+
+        # Select best iteration
+        ll_arr = np.array(ll_list)
+        if ll_arr.size > 0:
+            maxLLIndex = int(np.argmax(ll_arr))
+        else:
+            maxLLIndex = 0
+        maxLLIndMod = maxLLIndex % numToKeep
+        nIter = cnt
+
+        xKFinal = x_K_buf[maxLLIndMod] if x_K_buf[maxLLIndMod] is not None else np.zeros((numStates, N_time))
+        WKFinal = W_K_buf[maxLLIndMod] if W_K_buf[maxLLIndMod] is not None else np.zeros((numStates, numStates, N_time))
+        Ahat = A_buf[maxLLIndMod] if A_buf[maxLLIndMod] is not None else A0
+        Qhat = Q_buf[maxLLIndMod] if Q_buf[maxLLIndMod] is not None else Q0
+        muhat = mu_buf[maxLLIndMod] if mu_buf[maxLLIndMod] is not None else mu
+        betahat = beta_buf[maxLLIndMod] if beta_buf[maxLLIndMod] is not None else beta
+        gammahat = gamma_buf[maxLLIndMod] if gamma_buf[maxLLIndMod] is not None else gamma
+        x0hat = x0_buf[maxLLIndMod] if x0_buf[maxLLIndMod] is not None else x0
+        Px0hat = Px0_buf[maxLLIndMod] if Px0_buf[maxLLIndMod] is not None else Px0
+        ExpSumsFinal = ExpSums_buf[maxLLIndMod] if ExpSums_buf[maxLLIndMod] is not None else {}
+
+        # Unscale system
+        try:
+            Tq_unscale = np.linalg.solve(np.linalg.cholesky(Q0).T, np.eye(numStates))
+        except np.linalg.LinAlgError:
+            Tq_unscale = np.eye(numStates)
+        TqInv_unscale = np.linalg.inv(Tq_unscale)
+
+        Ahat = TqInv_unscale @ Ahat @ Tq_unscale
+        Qhat = TqInv_unscale @ Qhat @ TqInv_unscale.T
+        xKFinal = TqInv_unscale @ xKFinal
+        x0hat = TqInv_unscale @ x0hat
+        Px0hat = TqInv_unscale @ Px0hat @ TqInv_unscale.T
+        if WKFinal.ndim == 3:
+            for kk in range(WKFinal.shape[2]):
+                WKFinal[:, :, kk] = TqInv_unscale @ WKFinal[:, :, kk] @ TqInv_unscale.T
+        betahat = (betahat.T @ Tq_unscale).T
+
+        # Compute standard errors
+        SE = {}
+        Pvals = {}
+        if ExpSumsFinal:
+            try:
+                SE, Pvals, _ = DecodingAlgorithms.PP_ComputeParamStandardErrors(
+                    dN, xKFinal, WKFinal, Ahat, Qhat, x0hat, Px0hat,
+                    ExpSumsFinal, fitType, muhat, betahat, gammahat,
+                    windowTimes, HkAll, PPEM_Constraints
+                )
+            except Exception:
+                pass
+
+        # Information criteria
+        K_total = xKFinal.shape[1]
+        Dx = Ahat.shape[1]
+
+        # Count parameters
+        if PPEM_Constraints["EstimateA"] and PPEM_Constraints["AhatDiag"]:
+            n1_ic = Ahat.shape[0]
+        elif PPEM_Constraints["EstimateA"]:
+            n1_ic = Ahat.size
+        else:
+            n1_ic = 0
+        if PPEM_Constraints["QhatDiag"] and PPEM_Constraints["QhatIsotropic"]:
+            n2_ic = 1
+        elif PPEM_Constraints["QhatDiag"]:
+            n2_ic = Qhat.shape[0]
+        else:
+            n2_ic = Qhat.size
+        if PPEM_Constraints["EstimatePx0"] and PPEM_Constraints["Px0Isotropic"]:
+            n3_ic = 1
+        elif PPEM_Constraints["EstimatePx0"]:
+            n3_ic = Px0hat.shape[0]
+        else:
+            n3_ic = 0
+        n4_ic = x0hat.size if PPEM_Constraints["Estimatex0"] else 0
+        n5_ic = muhat.size
+        n6_ic = betahat.size
+        gammahat_flat = gammahat.ravel()
+        if gammahat_flat.size == 1 and gammahat_flat[0] == 0:
+            n7_ic = 0
+        else:
+            n7_ic = gammahat.size
+        nTerms_ic = n1_ic + n2_ic + n3_ic + n4_ic + n5_ic + n6_ic + n7_ic
+
+        sumXkTerms_ic = ExpSumsFinal.get("sumXkTerms", np.zeros((Dx, Dx)))
+        ll_best = ll_list[maxLLIndex] if ll_list else 0.0
+        det_Q = max(float(np.linalg.det(Qhat)), np.finfo(float).tiny)
+        det_Px0 = max(float(np.linalg.det(Px0hat)), np.finfo(float).tiny)
+
+        llobs = (ll_best
+                 + Dx * K_total / 2.0 * np.log(2.0 * np.pi)
+                 + K_total / 2.0 * np.log(det_Q)
+                 + 0.5 * np.trace(np.linalg.solve(Qhat, sumXkTerms_ic))
+                 + Dx / 2.0 * np.log(2.0 * np.pi)
+                 + 0.5 * np.log(det_Px0)
+                 + 0.5 * Dx)
+        AIC = 2 * nTerms_ic - 2 * llobs
+        AICc = AIC + 2 * nTerms_ic * (nTerms_ic + 1) / max(K_total - nTerms_ic - 1, 1)
+        BIC = -2 * llobs + nTerms_ic * np.log(K_total)
+
+        IC = {
+            "AIC": AIC,
+            "AICc": AICc,
+            "BIC": BIC,
+            "llobs": llobs,
+            "llcomp": ll_best,
+        }
+
+        return (xKFinal, WKFinal, Ahat, Qhat, muhat, betahat, gammahat,
+                x0hat, Px0hat, IC, SE, Pvals, nIter)
+
+    @staticmethod
     def PP_EStep(A, Q, dN, mu, beta, fitType, gamma, HkAll, x0, Px0):
         """E-step for PP EM: forward filter + RTS smoother + cross-covariance.
 
@@ -5897,337 +6235,257 @@ class DecodingAlgorithms:
 
         return Ahat, Qhat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
 
-    @staticmethod
-    def PP_EM(
-        dN,
-        Ahat0,
-        Qhat0,
-        mu,
-        beta,
-        fitType="poisson",
-        delta=0.001,
-        gamma=None,
-        windowTimes=None,
-        x0=None,
-        Px0=None,
-        PPEM_Constraints=None,
-        MstepMethod="NewtonRaphson",
-    ):
-        """Full Point-Process state-space EM algorithm.
-
-        Estimates state-space model parameters (A, Q, mu, beta, gamma) via EM
-        for point-process observations. Unlike PPSS_EM, this operates on raw
-        spike observations with explicit beta/mu/gamma parameters (no basis
-        functions).
-
-        Parameters
-        ----------
-        dN : (C, N) binary spike observations
-        Ahat0 : (dx, dx) initial state transition matrix
-        Qhat0 : (dx, dx) initial state noise covariance
-        mu : (C,) initial baseline log-rates
-        beta : (dx, C) initial stimulus coefficients
-        fitType : 'poisson' or 'binomial'
-        delta : float, time bin width
-        gamma : (nW, C) or scalar, initial history coefficients
-        windowTimes : history window boundaries
-        x0 : (dx,) initial state (default zeros)
-        Px0 : (dx, dx) initial state covariance
-        PPEM_Constraints : dict from PP_EMCreateConstraints
-        MstepMethod : 'NewtonRaphson' or 'GLM'
-
-        Returns
-        -------
-        xKFinal, WKFinal, Ahat, Qhat, muhat, betahat, gammahat,
-        x0hat, Px0hat, IC, SE, Pvals, nIter
-        """
-        from .history import History  # local import to avoid circular dependency
-
-        Ahat0 = np.atleast_2d(Ahat0).astype(float)
-        Qhat0 = np.atleast_2d(Qhat0).astype(float)
-        numStates = Ahat0.shape[0]
-        dN = np.atleast_2d(dN).astype(float)
-
-        if PPEM_Constraints is None:
-            PPEM_Constraints = DecodingAlgorithms.PP_EMCreateConstraints()
-        if Px0 is None:
-            Px0 = 1e-9 * np.eye(numStates)
-        else:
-            Px0 = np.atleast_2d(Px0).astype(float)
-        if x0 is None:
-            x0 = np.zeros(numStates)
-        else:
-            x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if gamma is None:
-            gamma = np.zeros(0)
-        gamma = np.asarray(gamma, dtype=float)
-
-        if delta is None or delta == 0:
-            delta = 0.001
-
-        if windowTimes is None:
-            gamma_flat = gamma.ravel()
-            if gamma_flat.size == 0 or (gamma_flat.size == 1 and gamma_flat[0] == 0):
-                windowTimes = []
-            else:
-                windowTimes = np.arange(0, (gamma.shape[0] + 2) * delta, delta).tolist()
-
-        mu = np.asarray(mu, dtype=float).reshape(-1)
-        beta = np.atleast_2d(beta).astype(float)
-
-        # Build HkAll from spike trains and history windows
-        K_cells = dN.shape[0]
-        N_time = dN.shape[1]
-        minTime = 0.0
-        maxTime = (N_time - 1) * delta
-
-        if len(windowTimes) > 0:
-            histObj = History(windowTimes, minTime, maxTime)
-            HkAll_list = []
-            for k in range(K_cells):
-                spike_indices = np.where(dN[k, :] == 1)[0]
-                spike_times = (spike_indices) * delta
-                nst = nspikeTrain(spike_times)
-                nst.setMinTime(minTime)
-                nst.setMaxTime(maxTime)
-                hmat = histObj.computeHistory(nst).dataToMatrix()
-                HkAll_list.append(hmat)
-            # Stack: (N_time, nW, K_cells)
-            HkAll = np.stack(HkAll_list, axis=2)
-        else:
-            HkAll = np.zeros((N_time, 0, K_cells))
-            gamma = np.zeros(1)
-            gamma[0] = 0.0
-
-        # EM setup
-        tolAbs = 1e-3
-        llTol = 1e-3
-        maxIter = 100
-        numToKeep = 10
-
-        # Circular buffer storage
-        A_buf = [None] * numToKeep
-        Q_buf = [None] * numToKeep
-        x0_buf = [None] * numToKeep
-        Px0_buf = [None] * numToKeep
-        mu_buf = [None] * numToKeep
-        beta_buf = [None] * numToKeep
-        gamma_buf = [None] * numToKeep
-        x_K_buf = [None] * numToKeep
-        W_K_buf = [None] * numToKeep
-        ExpSums_buf = [None] * numToKeep
-
-        # Scaled system initialization
-        A0 = Ahat0.copy()
-        Q0 = Qhat0.copy()
-
-        A_buf[0] = A0.copy()
-        Q_buf[0] = Q0.copy()
-        x0_buf[0] = x0.copy()
-        Px0_buf[0] = Px0.copy()
-        mu_buf[0] = mu.copy()
-        beta_buf[0] = beta.copy()
-        gamma_buf[0] = gamma.copy()
-
-        # Apply scaling
-        try:
-            Tq = np.linalg.solve(np.linalg.cholesky(Q_buf[0]).T, np.eye(numStates))
-        except np.linalg.LinAlgError:
-            Tq = np.eye(numStates)
-        TqInv = np.linalg.inv(Tq)
-
-        A_buf[0] = Tq @ A_buf[0] @ TqInv
-        Q_buf[0] = Tq @ Q_buf[0] @ Tq.T
-        x0_buf[0] = Tq @ x0
-        Px0_buf[0] = Tq @ Px0 @ Tq.T
-        beta_buf[0] = np.linalg.solve(Tq.T, beta_buf[0])
-
-        ll_list = []
-        dLikelihood = [np.inf]
-        stoppingCriteria = False
-        cnt = 0
-
-        print("                        Point-Process Observation EM Algorithm                        ")
-        while not stoppingCriteria and cnt < maxIter:
-            si = cnt % numToKeep
-            si_p1 = (cnt + 1) % numToKeep
-            si_m1 = (cnt - 1) % numToKeep
-
-            print("-" * 80)
-            print(f"Iteration #{cnt + 1}")
-            print("-" * 80)
-
-            # E-step
-            x_K_cur, W_K_cur, ll, ExpSums = DecodingAlgorithms.PP_EStep(
-                A_buf[si], Q_buf[si], dN, mu_buf[si], beta_buf[si],
-                fitType, gamma_buf[si], HkAll, x0_buf[si], Px0_buf[si]
-            )
-            x_K_buf[si] = x_K_cur
-            W_K_buf[si] = W_K_cur
-            ExpSums_buf[si] = ExpSums
-            ll_list.append(ll)
-
-            # M-step
-            Anew, Qnew, munew, bnew, gnew, x0new, Px0new = DecodingAlgorithms.PP_MStep(
-                dN, x_K_cur, W_K_cur, x0_buf[si], Px0_buf[si], ExpSums,
-                fitType, mu_buf[si], beta_buf[si], gamma_buf[si],
-                windowTimes, HkAll, PPEM_Constraints, MstepMethod
-            )
-            A_buf[si_p1] = Anew
-            Q_buf[si_p1] = Qnew
-            mu_buf[si_p1] = munew
-            beta_buf[si_p1] = bnew
-            gamma_buf[si_p1] = gnew
-            x0_buf[si_p1] = x0new
-            Px0_buf[si_p1] = Px0new
-
-            if not PPEM_Constraints["EstimateA"]:
-                A_buf[si_p1] = A_buf[si]
-
-            # Convergence check
-            if cnt == 0:
-                dLikelihood.append(np.inf)
-                dMax = np.inf
-            else:
-                dLikelihood.append(ll_list[cnt] - ll_list[cnt - 1])
-                dQvals = float(np.max(np.abs(np.sqrt(np.maximum(np.abs(Q_buf[si]), 0)) - np.sqrt(np.maximum(np.abs(Q_buf[si_m1]), 0)))))
-                dAvals = float(np.max(np.abs(A_buf[si] - A_buf[si_m1])))
-                dMuvals = float(np.max(np.abs(mu_buf[si] - mu_buf[si_m1])))
-                dBetavals = float(np.max(np.abs(beta_buf[si] - beta_buf[si_m1])))
-                gam_cur = gamma_buf[si].ravel() if gamma_buf[si] is not None else np.zeros(1)
-                gam_prev = gamma_buf[si_m1].ravel() if gamma_buf[si_m1] is not None else np.zeros(1)
-                dGammavals = float(np.max(np.abs(gam_cur[:min(len(gam_cur), len(gam_prev))] - gam_prev[:min(len(gam_cur), len(gam_prev))]))) if gam_cur.size > 0 else 0.0
-                dMax = max(dQvals, dAvals, dMuvals, dBetavals, dGammavals)
-
-            if cnt == 0:
-                print("Max Parameter Change: N/A")
-            else:
-                print(f"Max Parameter Change: {dMax:.6f}")
-
-            cnt += 1
-            if dMax < tolAbs:
-                stoppingCriteria = True
-                print(f"         EM converged at iteration# {cnt} b/c change in params was within criteria")
-
-            if abs(dLikelihood[-1]) < llTol or dLikelihood[-1] < 0:
-                stoppingCriteria = True
-                print(f"         EM stopped at iteration# {cnt} b/c change in likelihood was negative")
-
-        print("-" * 80)
-
-        # Select best iteration
-        ll_arr = np.array(ll_list)
-        if ll_arr.size > 0:
-            maxLLIndex = int(np.argmax(ll_arr))
-        else:
-            maxLLIndex = 0
-        maxLLIndMod = maxLLIndex % numToKeep
-        nIter = cnt
-
-        xKFinal = x_K_buf[maxLLIndMod] if x_K_buf[maxLLIndMod] is not None else np.zeros((numStates, N_time))
-        WKFinal = W_K_buf[maxLLIndMod] if W_K_buf[maxLLIndMod] is not None else np.zeros((numStates, numStates, N_time))
-        Ahat = A_buf[maxLLIndMod] if A_buf[maxLLIndMod] is not None else A0
-        Qhat = Q_buf[maxLLIndMod] if Q_buf[maxLLIndMod] is not None else Q0
-        muhat = mu_buf[maxLLIndMod] if mu_buf[maxLLIndMod] is not None else mu
-        betahat = beta_buf[maxLLIndMod] if beta_buf[maxLLIndMod] is not None else beta
-        gammahat = gamma_buf[maxLLIndMod] if gamma_buf[maxLLIndMod] is not None else gamma
-        x0hat = x0_buf[maxLLIndMod] if x0_buf[maxLLIndMod] is not None else x0
-        Px0hat = Px0_buf[maxLLIndMod] if Px0_buf[maxLLIndMod] is not None else Px0
-        ExpSumsFinal = ExpSums_buf[maxLLIndMod] if ExpSums_buf[maxLLIndMod] is not None else {}
-
-        # Unscale system
-        try:
-            Tq_unscale = np.linalg.solve(np.linalg.cholesky(Q0).T, np.eye(numStates))
-        except np.linalg.LinAlgError:
-            Tq_unscale = np.eye(numStates)
-        TqInv_unscale = np.linalg.inv(Tq_unscale)
-
-        Ahat = TqInv_unscale @ Ahat @ Tq_unscale
-        Qhat = TqInv_unscale @ Qhat @ TqInv_unscale.T
-        xKFinal = TqInv_unscale @ xKFinal
-        x0hat = TqInv_unscale @ x0hat
-        Px0hat = TqInv_unscale @ Px0hat @ TqInv_unscale.T
-        if WKFinal.ndim == 3:
-            for kk in range(WKFinal.shape[2]):
-                WKFinal[:, :, kk] = TqInv_unscale @ WKFinal[:, :, kk] @ TqInv_unscale.T
-        betahat = (betahat.T @ Tq_unscale).T
-
-        # Compute standard errors
-        SE = {}
-        Pvals = {}
-        if ExpSumsFinal:
-            try:
-                SE, Pvals, _ = DecodingAlgorithms.PP_ComputeParamStandardErrors(
-                    dN, xKFinal, WKFinal, Ahat, Qhat, x0hat, Px0hat,
-                    ExpSumsFinal, fitType, muhat, betahat, gammahat,
-                    windowTimes, HkAll, PPEM_Constraints
-                )
-            except Exception:
-                pass
-
-        # Information criteria
-        K_total = xKFinal.shape[1]
-        Dx = Ahat.shape[1]
-
-        # Count parameters
-        if PPEM_Constraints["EstimateA"] and PPEM_Constraints["AhatDiag"]:
-            n1_ic = Ahat.shape[0]
-        elif PPEM_Constraints["EstimateA"]:
-            n1_ic = Ahat.size
-        else:
-            n1_ic = 0
-        if PPEM_Constraints["QhatDiag"] and PPEM_Constraints["QhatIsotropic"]:
-            n2_ic = 1
-        elif PPEM_Constraints["QhatDiag"]:
-            n2_ic = Qhat.shape[0]
-        else:
-            n2_ic = Qhat.size
-        if PPEM_Constraints["EstimatePx0"] and PPEM_Constraints["Px0Isotropic"]:
-            n3_ic = 1
-        elif PPEM_Constraints["EstimatePx0"]:
-            n3_ic = Px0hat.shape[0]
-        else:
-            n3_ic = 0
-        n4_ic = x0hat.size if PPEM_Constraints["Estimatex0"] else 0
-        n5_ic = muhat.size
-        n6_ic = betahat.size
-        gammahat_flat = gammahat.ravel()
-        if gammahat_flat.size == 1 and gammahat_flat[0] == 0:
-            n7_ic = 0
-        else:
-            n7_ic = gammahat.size
-        nTerms_ic = n1_ic + n2_ic + n3_ic + n4_ic + n5_ic + n6_ic + n7_ic
-
-        sumXkTerms_ic = ExpSumsFinal.get("sumXkTerms", np.zeros((Dx, Dx)))
-        ll_best = ll_list[maxLLIndex] if ll_list else 0.0
-        det_Q = max(float(np.linalg.det(Qhat)), np.finfo(float).tiny)
-        det_Px0 = max(float(np.linalg.det(Px0hat)), np.finfo(float).tiny)
-
-        llobs = (ll_best
-                 + Dx * K_total / 2.0 * np.log(2.0 * np.pi)
-                 + K_total / 2.0 * np.log(det_Q)
-                 + 0.5 * np.trace(np.linalg.solve(Qhat, sumXkTerms_ic))
-                 + Dx / 2.0 * np.log(2.0 * np.pi)
-                 + 0.5 * np.log(det_Px0)
-                 + 0.5 * Dx)
-        AIC = 2 * nTerms_ic - 2 * llobs
-        AICc = AIC + 2 * nTerms_ic * (nTerms_ic + 1) / max(K_total - nTerms_ic - 1, 1)
-        BIC = -2 * llobs + nTerms_ic * np.log(K_total)
-
-        IC = {
-            "AIC": AIC,
-            "AICc": AICc,
-            "BIC": BIC,
-            "llobs": llobs,
-            "llcomp": ll_best,
-        }
-
-        return (xKFinal, WKFinal, Ahat, Qhat, muhat, betahat, gammahat,
-                x0hat, Px0hat, IC, SE, Pvals, nIter)
-
 
     # mPPCO family -- mixed Point-Process & Continuous Observation
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def mPPCO_fixedIntervalSmoother(A, Q, C, R, y, alpha, dN, lags, mu, beta,
+                                     fitType, delta=0.001, gamma=None,
+                                     windowTimes=None, x0=None, Px0=None, HkAll=None):
+        """State-augmentation smoother for the mPPCO filter.
+
+        Matlab: ``DecodingAlgorithms.mPPCO_fixedIntervalSmoother``  (lines 4587-4688)
+
+        Returns
+        -------
+        x_pLag, W_pLag, x_uLag, W_uLag -- lagged state estimates
+        """
+        obs = _as_observation_matrix(dN)
+        numCells, N = obs.shape
+        A_arr = np.asarray(A, dtype=float)
+        ns = A_arr.shape[0]
+        nObs = np.asarray(C, dtype=float).shape[0]
+
+        if Px0 is None or _is_empty_value(Px0):
+            Px0 = np.zeros((ns, ns), dtype=float)
+        else:
+            Px0 = np.asarray(Px0, dtype=float).reshape(ns, ns)
+        if x0 is None or _is_empty_value(x0):
+            x0 = np.zeros(ns, dtype=float)
+        else:
+            x0 = np.asarray(x0, dtype=float).reshape(-1)
+        if gamma is None:
+            gamma = 0
+        if delta is None:
+            delta = 0.001
+
+        minTime = 0.0
+        maxTime = (N - 1) * delta
+
+        # Build history if needed
+        if HkAll is None or _is_empty_value(HkAll):
+            if windowTimes is not None and not _is_empty_value(windowTimes):
+                wt = np.asarray(windowTimes, dtype=float).reshape(-1)
+                HkAll = _compute_history_terms(dN, delta, wt)
+                gamma_arr = np.asarray(gamma, dtype=float)
+                if gamma_arr.ndim <= 1 and gamma_arr.size == 1 and numCells > 1:
+                    gamma = np.tile(gamma_arr.reshape(-1, 1), (1, numCells))
+            else:
+                HkAll = np.zeros((N, 1, numCells), dtype=float)
+                gamma = np.zeros(numCells, dtype=float)
+
+        gamma_arr = np.asarray(gamma, dtype=float)
+        if gamma_arr.ndim == 2 and gamma_arr.shape[1] != numCells:
+            gamma = gamma_arr.T
+
+        lags = int(lags)
+        nStates = ns
+
+        # Build augmented system
+        aug_dim = (lags + 1) * nStates
+
+        def _sel_A(n):
+            if A_arr.ndim == 3:
+                return A_arr[:, :, min(n, A_arr.shape[2] - 1)]
+            return A_arr.reshape(ns, ns)
+
+        def _sel_Q(n):
+            Q_arr = np.asarray(Q, dtype=float)
+            if Q_arr.ndim == 3:
+                return Q_arr[:, :, min(n, Q_arr.shape[2] - 1)]
+            return Q_arr.reshape(ns, ns)
+
+        def _sel_C(n):
+            C_arr = np.asarray(C, dtype=float)
+            if C_arr.ndim == 3:
+                return C_arr[:, :, min(n, C_arr.shape[2] - 1)]
+            return C_arr
+
+        def _sel_R(n):
+            R_arr = np.asarray(R, dtype=float)
+            if R_arr.ndim == 3:
+                return R_arr[:, :, min(n, R_arr.shape[2] - 1)]
+            return R_arr
+
+        Alag = np.zeros((aug_dim, aug_dim, N), dtype=float)
+        Qlag = np.zeros((aug_dim, aug_dim, N), dtype=float)
+        Clag = np.zeros((nObs, aug_dim, N), dtype=float)
+        Rlag = np.zeros((nObs, nObs, N), dtype=float)
+        x0lag = np.zeros(aug_dim, dtype=float)
+        Px0lag = np.zeros((aug_dim, aug_dim), dtype=float)
+        Px0lag[:nStates, :nStates] = Px0
+        x0lag[:nStates] = x0
+
+        for n in range(N):
+            offset = 0
+            for i in range(lags + 1):
+                if i == 0:
+                    Alag[offset:offset + nStates, offset:offset + nStates, n] = _sel_A(n)
+                    Qlag[offset:offset + nStates, offset:offset + nStates, n] = _sel_Q(n)
+                    Clag[:nObs, offset:offset + nStates, n] = _sel_C(n)
+                    Rlag[:nObs, :nObs, n] = _sel_R(n)
+                else:
+                    Alag[offset:offset + nStates, offset - nStates:offset, n] = np.eye(nStates)
+                    # Qlag block remains zeros
+                    # Clag block remains zeros
+                offset += nStates
+
+        betaLag = np.zeros((aug_dim, numCells), dtype=float)
+        beta_mat = np.asarray(beta, dtype=float)
+        if beta_mat.ndim == 1:
+            beta_mat = beta_mat.reshape(-1, 1)
+        betaLag[:nStates, :numCells] = beta_mat
+
+        x_p, W_p, x_u, W_u = DecodingAlgorithms.mPPCODecodeLinear(
+            Alag, Qlag, Clag, Rlag, y, alpha, dN,
+            mu, betaLag, fitType, delta, gamma, windowTimes,
+            x0lag, Px0lag, HkAll)
+
+        # Extract lagged portion
+        lag_start = lags * nStates
+        lag_end = (lags + 1) * nStates
+        x_pLag = x_p[lag_start:lag_end, :]
+        W_pLag = W_p[lag_start:lag_end, lag_start:lag_end, :]
+        x_uLag = x_u[lag_start:lag_end, :]
+        W_uLag = W_u[lag_start:lag_end, lag_start:lag_end, :]
+
+        return x_pLag, W_pLag, x_uLag, W_uLag
+
+    @staticmethod
+    def mPPCODecodeLinear(A, Q, C, R, y, alpha, dN, mu, beta,
+                          fitType='poisson', delta=0.001, gamma=None,
+                          windowTimes=None, x0=None, Px0=None, HkAll=None):
+        """Full mPPCO decode filter (linear CIF version).
+
+        Matlab: ``DecodingAlgorithms.mPPCODecodeLinear``  (lines 4689-4845)
+
+        Returns
+        -------
+        x_p, W_p, x_u, W_u  -- predicted / updated states & covariances
+            x_p : (ns, N+1),  W_p : (ns, ns, N+1)
+            x_u : (ns, N),    W_u : (ns, ns, N)
+        """
+        obs = _as_observation_matrix(dN)
+        numCells, N = obs.shape
+        A_arr = np.asarray(A, dtype=float)
+        ns = A_arr.shape[0]
+
+        # Defaults
+        if Px0 is None or _is_empty_value(Px0):
+            Px0 = np.zeros((ns, ns), dtype=float)
+        else:
+            Px0 = np.asarray(Px0, dtype=float).reshape(ns, ns)
+        if x0 is None or _is_empty_value(x0):
+            x0 = np.zeros(ns, dtype=float)
+        else:
+            x0 = np.asarray(x0, dtype=float).reshape(-1)
+        if gamma is None:
+            gamma = 0
+        if delta is None:
+            delta = 0.001
+
+        minTime = 0.0
+        maxTime = (N - 1) * delta
+
+        # Build history tensor if not provided
+        if HkAll is None or _is_empty_value(HkAll):
+            if windowTimes is not None and not _is_empty_value(windowTimes):
+                wt = np.asarray(windowTimes, dtype=float).reshape(-1)
+                HkAll = _compute_history_terms(dN, delta, wt)  # (N, numWindows, numCells)
+                gamma_arr = np.asarray(gamma, dtype=float)
+                if gamma_arr.ndim <= 1 and gamma_arr.size == 1 and numCells > 1:
+                    gamma = np.tile(gamma_arr.reshape(-1, 1), (1, numCells))
+            else:
+                HkAll = np.zeros((N, 1, numCells), dtype=float)
+                gamma = np.zeros(numCells, dtype=float)
+        else:
+            HkAll = np.asarray(HkAll, dtype=float)
+
+        gamma_arr = np.asarray(gamma, dtype=float)
+        if gamma_arr.ndim == 2 and gamma_arr.shape[1] != numCells:
+            gamma = gamma_arr.T
+
+        # Permute HkAll from (N, numWindows, numCells) to (numWindows, numCells, N)
+        # This is Matlab: permute(HkAll, [2 3 1])
+        if HkAll.ndim == 3 and HkAll.shape[0] == N:
+            Histtermperm = np.transpose(HkAll, (1, 2, 0))
+        else:
+            Histtermperm = HkAll
+
+        mu_vec = np.asarray(mu, dtype=float).reshape(-1)
+        beta_mat = np.asarray(beta, dtype=float)
+        if beta_mat.ndim == 1:
+            beta_mat = beta_mat.reshape(-1, 1)
+
+        # Allocate outputs
+        x_p = np.zeros((ns, N + 1), dtype=float)
+        x_u = np.zeros((ns, N), dtype=float)
+        W_p = np.zeros((ns, ns, N + 1), dtype=float)
+        W_u = np.zeros((ns, ns, N), dtype=float)
+
+        # Time-varying or static matrices: pick slice for time 0
+        def _sel_A(n):
+            if A_arr.ndim == 3:
+                return A_arr[:, :, min(n, A_arr.shape[2] - 1)]
+            return A_arr.reshape(ns, ns)
+
+        def _sel_Q(n):
+            Q_arr = np.asarray(Q, dtype=float)
+            if Q_arr.ndim == 3:
+                return Q_arr[:, :, min(n, Q_arr.shape[2] - 1)]
+            return Q_arr.reshape(ns, ns)
+
+        def _sel_C(n):
+            C_arr = np.asarray(C, dtype=float)
+            if C_arr.ndim == 3:
+                return C_arr[:, :, min(n, C_arr.shape[2] - 1)]
+            return C_arr
+
+        def _sel_R(n):
+            R_arr = np.asarray(R, dtype=float)
+            if R_arr.ndim == 3:
+                return R_arr[:, :, min(n, R_arr.shape[2] - 1)]
+            return R_arr
+
+        def _sel_alpha(n):
+            alpha_arr = np.asarray(alpha, dtype=float)
+            if alpha_arr.ndim >= 2 and alpha_arr.shape[-1] > 1:
+                return alpha_arr[:, min(n, alpha_arr.shape[-1] - 1)]
+            return alpha_arr.reshape(-1)
+
+        # Initial prediction
+        A1 = _sel_A(0)
+        Q1 = _sel_Q(0)
+        x_p[:, 0] = A1 @ x0
+        W_p[:, :, 0] = A1 @ Px0 @ A1.T + Q1
+
+        y_arr = np.asarray(y, dtype=float)
+
+        for n in range(N):
+            # 0-based time_index for mPPCODecode_update
+            x_u[:, n], W_u[:, :, n], _ = DecodingAlgorithms.mPPCODecode_update(
+                x_p[:, n], W_p[:, :, n],
+                _sel_C(n), _sel_R(n),
+                y_arr[:, n] if y_arr.ndim == 2 else y_arr,
+                _sel_alpha(n),
+                dN, mu_vec, beta_mat, fitType,
+                gamma, Histtermperm, n, None)
+            if n < N - 1:
+                x_p[:, n + 1], W_p[:, :, n + 1] = DecodingAlgorithms.mPPCODecode_predict(
+                    x_u[:, n], W_u[:, :, n], _sel_A(n), _sel_Q(n))
+
+        return x_p, W_p, x_u, W_u
 
     @staticmethod
     def mPPCODecode_predict(x_u, W_u, A, Q):
@@ -6389,254 +6647,6 @@ class DecodingAlgorithms:
         x_u = x_p + W_u @ sumValVec + W_u @ C.T @ np.linalg.solve(R, y - C @ x_p - alpha)
 
         return x_u, W_u, lambdaDeltaMat.reshape(-1, 1)
-
-    @staticmethod
-    def mPPCODecodeLinear(A, Q, C, R, y, alpha, dN, mu, beta,
-                          fitType='poisson', delta=0.001, gamma=None,
-                          windowTimes=None, x0=None, Px0=None, HkAll=None):
-        """Full mPPCO decode filter (linear CIF version).
-
-        Matlab: ``DecodingAlgorithms.mPPCODecodeLinear``  (lines 4689-4845)
-
-        Returns
-        -------
-        x_p, W_p, x_u, W_u  -- predicted / updated states & covariances
-            x_p : (ns, N+1),  W_p : (ns, ns, N+1)
-            x_u : (ns, N),    W_u : (ns, ns, N)
-        """
-        obs = _as_observation_matrix(dN)
-        numCells, N = obs.shape
-        A_arr = np.asarray(A, dtype=float)
-        ns = A_arr.shape[0]
-
-        # Defaults
-        if Px0 is None or _is_empty_value(Px0):
-            Px0 = np.zeros((ns, ns), dtype=float)
-        else:
-            Px0 = np.asarray(Px0, dtype=float).reshape(ns, ns)
-        if x0 is None or _is_empty_value(x0):
-            x0 = np.zeros(ns, dtype=float)
-        else:
-            x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if gamma is None:
-            gamma = 0
-        if delta is None:
-            delta = 0.001
-
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-
-        # Build history tensor if not provided
-        if HkAll is None or _is_empty_value(HkAll):
-            if windowTimes is not None and not _is_empty_value(windowTimes):
-                wt = np.asarray(windowTimes, dtype=float).reshape(-1)
-                HkAll = _compute_history_terms(dN, delta, wt)  # (N, numWindows, numCells)
-                gamma_arr = np.asarray(gamma, dtype=float)
-                if gamma_arr.ndim <= 1 and gamma_arr.size == 1 and numCells > 1:
-                    gamma = np.tile(gamma_arr.reshape(-1, 1), (1, numCells))
-            else:
-                HkAll = np.zeros((N, 1, numCells), dtype=float)
-                gamma = np.zeros(numCells, dtype=float)
-        else:
-            HkAll = np.asarray(HkAll, dtype=float)
-
-        gamma_arr = np.asarray(gamma, dtype=float)
-        if gamma_arr.ndim == 2 and gamma_arr.shape[1] != numCells:
-            gamma = gamma_arr.T
-
-        # Permute HkAll from (N, numWindows, numCells) to (numWindows, numCells, N)
-        # This is Matlab: permute(HkAll, [2 3 1])
-        if HkAll.ndim == 3 and HkAll.shape[0] == N:
-            Histtermperm = np.transpose(HkAll, (1, 2, 0))
-        else:
-            Histtermperm = HkAll
-
-        mu_vec = np.asarray(mu, dtype=float).reshape(-1)
-        beta_mat = np.asarray(beta, dtype=float)
-        if beta_mat.ndim == 1:
-            beta_mat = beta_mat.reshape(-1, 1)
-
-        # Allocate outputs
-        x_p = np.zeros((ns, N + 1), dtype=float)
-        x_u = np.zeros((ns, N), dtype=float)
-        W_p = np.zeros((ns, ns, N + 1), dtype=float)
-        W_u = np.zeros((ns, ns, N), dtype=float)
-
-        # Time-varying or static matrices: pick slice for time 0
-        def _sel_A(n):
-            if A_arr.ndim == 3:
-                return A_arr[:, :, min(n, A_arr.shape[2] - 1)]
-            return A_arr.reshape(ns, ns)
-
-        def _sel_Q(n):
-            Q_arr = np.asarray(Q, dtype=float)
-            if Q_arr.ndim == 3:
-                return Q_arr[:, :, min(n, Q_arr.shape[2] - 1)]
-            return Q_arr.reshape(ns, ns)
-
-        def _sel_C(n):
-            C_arr = np.asarray(C, dtype=float)
-            if C_arr.ndim == 3:
-                return C_arr[:, :, min(n, C_arr.shape[2] - 1)]
-            return C_arr
-
-        def _sel_R(n):
-            R_arr = np.asarray(R, dtype=float)
-            if R_arr.ndim == 3:
-                return R_arr[:, :, min(n, R_arr.shape[2] - 1)]
-            return R_arr
-
-        def _sel_alpha(n):
-            alpha_arr = np.asarray(alpha, dtype=float)
-            if alpha_arr.ndim >= 2 and alpha_arr.shape[-1] > 1:
-                return alpha_arr[:, min(n, alpha_arr.shape[-1] - 1)]
-            return alpha_arr.reshape(-1)
-
-        # Initial prediction
-        A1 = _sel_A(0)
-        Q1 = _sel_Q(0)
-        x_p[:, 0] = A1 @ x0
-        W_p[:, :, 0] = A1 @ Px0 @ A1.T + Q1
-
-        y_arr = np.asarray(y, dtype=float)
-
-        for n in range(N):
-            # 0-based time_index for mPPCODecode_update
-            x_u[:, n], W_u[:, :, n], _ = DecodingAlgorithms.mPPCODecode_update(
-                x_p[:, n], W_p[:, :, n],
-                _sel_C(n), _sel_R(n),
-                y_arr[:, n] if y_arr.ndim == 2 else y_arr,
-                _sel_alpha(n),
-                dN, mu_vec, beta_mat, fitType,
-                gamma, Histtermperm, n, None)
-            if n < N - 1:
-                x_p[:, n + 1], W_p[:, :, n + 1] = DecodingAlgorithms.mPPCODecode_predict(
-                    x_u[:, n], W_u[:, :, n], _sel_A(n), _sel_Q(n))
-
-        return x_p, W_p, x_u, W_u
-
-    @staticmethod
-    def mPPCO_fixedIntervalSmoother(A, Q, C, R, y, alpha, dN, lags, mu, beta,
-                                     fitType, delta=0.001, gamma=None,
-                                     windowTimes=None, x0=None, Px0=None, HkAll=None):
-        """State-augmentation smoother for the mPPCO filter.
-
-        Matlab: ``DecodingAlgorithms.mPPCO_fixedIntervalSmoother``  (lines 4587-4688)
-
-        Returns
-        -------
-        x_pLag, W_pLag, x_uLag, W_uLag -- lagged state estimates
-        """
-        obs = _as_observation_matrix(dN)
-        numCells, N = obs.shape
-        A_arr = np.asarray(A, dtype=float)
-        ns = A_arr.shape[0]
-        nObs = np.asarray(C, dtype=float).shape[0]
-
-        if Px0 is None or _is_empty_value(Px0):
-            Px0 = np.zeros((ns, ns), dtype=float)
-        else:
-            Px0 = np.asarray(Px0, dtype=float).reshape(ns, ns)
-        if x0 is None or _is_empty_value(x0):
-            x0 = np.zeros(ns, dtype=float)
-        else:
-            x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if gamma is None:
-            gamma = 0
-        if delta is None:
-            delta = 0.001
-
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-
-        # Build history if needed
-        if HkAll is None or _is_empty_value(HkAll):
-            if windowTimes is not None and not _is_empty_value(windowTimes):
-                wt = np.asarray(windowTimes, dtype=float).reshape(-1)
-                HkAll = _compute_history_terms(dN, delta, wt)
-                gamma_arr = np.asarray(gamma, dtype=float)
-                if gamma_arr.ndim <= 1 and gamma_arr.size == 1 and numCells > 1:
-                    gamma = np.tile(gamma_arr.reshape(-1, 1), (1, numCells))
-            else:
-                HkAll = np.zeros((N, 1, numCells), dtype=float)
-                gamma = np.zeros(numCells, dtype=float)
-
-        gamma_arr = np.asarray(gamma, dtype=float)
-        if gamma_arr.ndim == 2 and gamma_arr.shape[1] != numCells:
-            gamma = gamma_arr.T
-
-        lags = int(lags)
-        nStates = ns
-
-        # Build augmented system
-        aug_dim = (lags + 1) * nStates
-
-        def _sel_A(n):
-            if A_arr.ndim == 3:
-                return A_arr[:, :, min(n, A_arr.shape[2] - 1)]
-            return A_arr.reshape(ns, ns)
-
-        def _sel_Q(n):
-            Q_arr = np.asarray(Q, dtype=float)
-            if Q_arr.ndim == 3:
-                return Q_arr[:, :, min(n, Q_arr.shape[2] - 1)]
-            return Q_arr.reshape(ns, ns)
-
-        def _sel_C(n):
-            C_arr = np.asarray(C, dtype=float)
-            if C_arr.ndim == 3:
-                return C_arr[:, :, min(n, C_arr.shape[2] - 1)]
-            return C_arr
-
-        def _sel_R(n):
-            R_arr = np.asarray(R, dtype=float)
-            if R_arr.ndim == 3:
-                return R_arr[:, :, min(n, R_arr.shape[2] - 1)]
-            return R_arr
-
-        Alag = np.zeros((aug_dim, aug_dim, N), dtype=float)
-        Qlag = np.zeros((aug_dim, aug_dim, N), dtype=float)
-        Clag = np.zeros((nObs, aug_dim, N), dtype=float)
-        Rlag = np.zeros((nObs, nObs, N), dtype=float)
-        x0lag = np.zeros(aug_dim, dtype=float)
-        Px0lag = np.zeros((aug_dim, aug_dim), dtype=float)
-        Px0lag[:nStates, :nStates] = Px0
-        x0lag[:nStates] = x0
-
-        for n in range(N):
-            offset = 0
-            for i in range(lags + 1):
-                if i == 0:
-                    Alag[offset:offset + nStates, offset:offset + nStates, n] = _sel_A(n)
-                    Qlag[offset:offset + nStates, offset:offset + nStates, n] = _sel_Q(n)
-                    Clag[:nObs, offset:offset + nStates, n] = _sel_C(n)
-                    Rlag[:nObs, :nObs, n] = _sel_R(n)
-                else:
-                    Alag[offset:offset + nStates, offset - nStates:offset, n] = np.eye(nStates)
-                    # Qlag block remains zeros
-                    # Clag block remains zeros
-                offset += nStates
-
-        betaLag = np.zeros((aug_dim, numCells), dtype=float)
-        beta_mat = np.asarray(beta, dtype=float)
-        if beta_mat.ndim == 1:
-            beta_mat = beta_mat.reshape(-1, 1)
-        betaLag[:nStates, :numCells] = beta_mat
-
-        x_p, W_p, x_u, W_u = DecodingAlgorithms.mPPCODecodeLinear(
-            Alag, Qlag, Clag, Rlag, y, alpha, dN,
-            mu, betaLag, fitType, delta, gamma, windowTimes,
-            x0lag, Px0lag, HkAll)
-
-        # Extract lagged portion
-        lag_start = lags * nStates
-        lag_end = (lags + 1) * nStates
-        x_pLag = x_p[lag_start:lag_end, :]
-        W_pLag = W_p[lag_start:lag_end, lag_start:lag_end, :]
-        x_uLag = x_u[lag_start:lag_end, :]
-        W_uLag = W_u[lag_start:lag_end, lag_start:lag_end, :]
-
-        return x_pLag, W_pLag, x_uLag, W_uLag
 
     @staticmethod
     def mPPCO_EMCreateConstraints(EstimateA=1, AhatDiag=0, QhatDiag=1,
@@ -7151,6 +7161,303 @@ class DecodingAlgorithms:
         return SE, Pvals, nTerms
 
     @staticmethod
+    def mPPCO_EM(y, dN, Ahat0, Qhat0, Chat0, Rhat0, alphahat0, mu, beta,
+                 fitType='poisson', delta=0.001, gamma=None, windowTimes=None,
+                 x0=None, Px0=None, mPPCOEM_Constraints=None, MstepMethod='GLM'):
+        """Full EM algorithm for the mixed Point-Process / Continuous Observation model.
+
+        Matlab: ``DecodingAlgorithms.mPPCO_EM``  (lines 6139-6554)
+
+        Returns
+        -------
+        xKFinal, WKFinal, Ahat, Qhat, Chat, Rhat, alphahat,
+        muhat, betahat, gammahat, x0hat, Px0hat, IC, SE, Pvals
+        """
+        Ahat0 = np.asarray(Ahat0, dtype=float)
+        Qhat0 = np.asarray(Qhat0, dtype=float)
+        Chat0 = np.asarray(Chat0, dtype=float)
+        Rhat0 = np.asarray(Rhat0, dtype=float)
+        alphahat0 = np.asarray(alphahat0, dtype=float).reshape(-1)
+        mu = np.asarray(mu, dtype=float).reshape(-1)
+        beta = np.asarray(beta, dtype=float)
+        if beta.ndim == 1:
+            beta = beta.reshape(-1, 1)
+        numStates = Ahat0.shape[0]
+        obs = _as_observation_matrix(dN)
+        numCells_K, N = obs.shape
+
+        if mPPCOEM_Constraints is None:
+            mPPCOEM_Constraints = DecodingAlgorithms.mPPCO_EMCreateConstraints()
+        if Px0 is None or _is_empty_value(Px0):
+            Px0 = 1e-9 * np.eye(numStates)
+        else:
+            Px0 = np.asarray(Px0, dtype=float).reshape(numStates, numStates)
+        if x0 is None or _is_empty_value(x0):
+            x0 = np.zeros(numStates, dtype=float)
+        else:
+            x0 = np.asarray(x0, dtype=float).reshape(-1)
+        if gamma is None:
+            gamma = np.array(0.0)
+        else:
+            gamma = np.asarray(gamma, dtype=float)
+        if delta is None:
+            delta = 0.001
+        if windowTimes is None or _is_empty_value(windowTimes):
+            if gamma is not None and np.any(gamma != 0):
+                windowTimes = np.arange(gamma.size + 2, dtype=float) * delta
+            else:
+                windowTimes = None
+
+        minTime = 0.0
+        maxTime = (N - 1) * delta
+        K_cells = numCells_K
+
+        # Build history
+        if windowTimes is not None and not _is_empty_value(windowTimes):
+            wt = np.asarray(windowTimes, dtype=float).reshape(-1)
+            HkAll = _compute_history_terms(dN, delta, wt)
+        else:
+            HkAll = np.zeros((N, 1, K_cells), dtype=float)
+            gamma = np.array(0.0)
+
+        y_arr = np.asarray(y, dtype=float)
+        yOrig = y_arr.copy()
+
+        tolAbs = 1e-3
+        llTol = 1e-3
+        maxIter = 100
+        numToKeep = 10
+
+        # Circular buffers
+        Ahat_buf = [None] * numToKeep
+        Qhat_buf = [None] * numToKeep
+        Chat_buf = [None] * numToKeep
+        Rhat_buf = [None] * numToKeep
+        alphahat_buf = [None] * numToKeep
+        muhat_buf = [None] * numToKeep
+        betahat_buf = [None] * numToKeep
+        gammahat_buf = [None] * numToKeep
+        x0hat_buf = [None] * numToKeep
+        Px0hat_buf = [None] * numToKeep
+        x_K_buf = [None] * numToKeep
+        W_K_buf = [None] * numToKeep
+        ExpSums_buf = [None] * numToKeep
+        ll_list = []
+
+        # Initialize (scaled system)
+        A0 = Ahat0.copy()
+        Q0 = Qhat0.copy()
+        C0 = Chat0.copy()
+        R0 = Rhat0.copy()
+
+        Tq = np.linalg.solve(np.linalg.cholesky(Q0), np.eye(numStates))
+        Tr = np.linalg.solve(np.linalg.cholesky(R0), np.eye(R0.shape[0]))
+
+        Ahat_buf[0] = Tq @ A0 @ np.linalg.inv(Tq)
+        Chat_buf[0] = Tr @ C0 @ np.linalg.inv(Tq)
+        Qhat_buf[0] = Tq @ Q0 @ Tq.T
+        Rhat_buf[0] = Tr @ R0 @ Tr.T
+        y_arr = Tr @ y_arr
+        x0hat_buf[0] = Tq @ x0
+        Px0hat_buf[0] = Tq @ Px0 @ Tq.T
+        alphahat_buf[0] = Tr @ alphahat0
+        betahat_buf[0] = np.linalg.solve(Tq.T, beta)
+        muhat_buf[0] = mu.copy()
+        gammahat_buf[0] = gamma.copy()
+
+        cnt = 0
+        stoppingCriteria = False
+
+        print("                        Joint Point-Process/Gaussian Observation EM Algorithm                        ")
+
+        while not stoppingCriteria and cnt < maxIter:
+            si = cnt % numToKeep
+            si_p1 = (cnt + 1) % numToKeep
+            si_m1 = (cnt - 1) % numToKeep
+
+            print("-" * 80)
+            print(f"Iteration #{cnt + 1}")
+            print("-" * 80)
+
+            # E-step
+            x_K_buf[si], W_K_buf[si], ll_val, ExpSums_buf[si] = DecodingAlgorithms.mPPCO_EStep(
+                Ahat_buf[si], Qhat_buf[si], Chat_buf[si], Rhat_buf[si],
+                y_arr, alphahat_buf[si], dN,
+                muhat_buf[si], betahat_buf[si], fitType, delta,
+                gammahat_buf[si], HkAll, x0hat_buf[si], Px0hat_buf[si])
+            ll_list.append(ll_val)
+
+            # M-step
+            (Ahat_buf[si_p1], Qhat_buf[si_p1], Chat_buf[si_p1], Rhat_buf[si_p1],
+             alphahat_buf[si_p1], muhat_buf[si_p1], betahat_buf[si_p1],
+             gammahat_buf[si_p1], x0hat_buf[si_p1], Px0hat_buf[si_p1]) = \
+                DecodingAlgorithms.mPPCO_MStep(
+                    dN, y_arr, x_K_buf[si], W_K_buf[si],
+                    x0hat_buf[si], Px0hat_buf[si], ExpSums_buf[si],
+                    fitType, muhat_buf[si], betahat_buf[si],
+                    gammahat_buf[si], windowTimes, HkAll,
+                    mPPCOEM_Constraints, MstepMethod)
+
+            if not mPPCOEM_Constraints['EstimateA']:
+                Ahat_buf[si_p1] = Ahat_buf[si].copy()
+
+            # Convergence check
+            if cnt == 0:
+                dMax = np.inf
+            else:
+                diffs = []
+                for arr_curr, arr_prev in [
+                    (Qhat_buf[si], Qhat_buf[si_m1]),
+                    (Rhat_buf[si], Rhat_buf[si_m1]),
+                    (Ahat_buf[si], Ahat_buf[si_m1]),
+                    (Chat_buf[si], Chat_buf[si_m1]),
+                ]:
+                    if arr_curr is not None and arr_prev is not None:
+                        diffs.append(float(np.max(np.abs(np.sqrt(np.abs(arr_curr)) - np.sqrt(np.abs(arr_prev))))) if 'Q' in str(id(arr_curr)) else float(np.max(np.abs(arr_curr - arr_prev))))
+                for arr_curr, arr_prev in [
+                    (muhat_buf[si], muhat_buf[si_m1]),
+                    (alphahat_buf[si], alphahat_buf[si_m1]),
+                    (betahat_buf[si], betahat_buf[si_m1]),
+                    (gammahat_buf[si], gammahat_buf[si_m1]),
+                ]:
+                    if arr_curr is not None and arr_prev is not None:
+                        diffs.append(float(np.max(np.abs(np.asarray(arr_curr) - np.asarray(arr_prev)))))
+                dMax = max(diffs) if diffs else np.inf
+
+            if cnt == 0:
+                print("Max Parameter Change: N/A")
+            else:
+                print(f"Max Parameter Change: {dMax}")
+
+            cnt += 1
+
+            if dMax < tolAbs:
+                stoppingCriteria = True
+                print(f"         EM converged at iteration# {cnt} b/c change in params was within criteria")
+
+            if cnt >= 2:
+                dll = ll_list[-1] - ll_list[-2]
+                if abs(dll) < llTol or dll < 0:
+                    stoppingCriteria = True
+                    print(f"         EM stopped at iteration# {cnt} b/c change in likelihood was negative or small")
+
+        print("-" * 80)
+
+        # Select best iteration
+        ll_arr = np.array(ll_list)
+        maxLLIndex = int(np.argmax(ll_arr))
+        maxLLIndMod = maxLLIndex % numToKeep
+
+        xKFinal = x_K_buf[maxLLIndMod]
+        WKFinal = W_K_buf[maxLLIndMod]
+        Ahat_out = Ahat_buf[maxLLIndMod]
+        Qhat_out = Qhat_buf[maxLLIndMod]
+        Chat_out = Chat_buf[maxLLIndMod]
+        Rhat_out = Rhat_buf[maxLLIndMod]
+        alphahat_out = alphahat_buf[maxLLIndMod]
+        muhat_out = muhat_buf[maxLLIndMod]
+        betahat_out = betahat_buf[maxLLIndMod]
+        gammahat_out = gammahat_buf[maxLLIndMod]
+        x0hat_out = x0hat_buf[maxLLIndMod]
+        Px0hat_out = Px0hat_buf[maxLLIndMod]
+        ExpectationSumsFinal = ExpSums_buf[maxLLIndMod]
+
+        # Unscale
+        Tq = np.linalg.solve(np.linalg.cholesky(Q0), np.eye(numStates))
+        Tr = np.linalg.solve(np.linalg.cholesky(R0), np.eye(R0.shape[0]))
+        Tq_inv = np.linalg.inv(Tq)
+        Tr_inv = np.linalg.inv(Tr)
+
+        Ahat_out = Tq_inv @ Ahat_out @ Tq
+        Qhat_out = Tq_inv @ Qhat_out @ np.linalg.inv(Tq.T)
+        Chat_out = Tr_inv @ Chat_out @ Tq
+        Rhat_out = Tr_inv @ Rhat_out @ np.linalg.inv(Tr.T)
+        alphahat_out = Tr_inv @ alphahat_out
+        xKFinal = Tq_inv @ xKFinal
+        x0hat_out = Tq_inv @ x0hat_out
+        Px0hat_out = Tq_inv @ Px0hat_out @ np.linalg.inv(Tq.T)
+        for kk in range(WKFinal.shape[2]):
+            WKFinal[:, :, kk] = Tq_inv @ WKFinal[:, :, kk] @ np.linalg.inv(Tq.T)
+        betahat_out = (betahat_out.T @ Tq).T
+
+        # Information criteria
+        ll_best = ll_arr[maxLLIndex]
+        # Count parameters
+        if mPPCOEM_Constraints['EstimateA'] and mPPCOEM_Constraints['AhatDiag']:
+            n1 = Ahat_out.shape[0]
+        elif mPPCOEM_Constraints['EstimateA']:
+            n1 = Ahat_out.size
+        else:
+            n1 = 0
+
+        if mPPCOEM_Constraints['QhatDiag'] and mPPCOEM_Constraints['QhatIsotropic']:
+            n2 = 1
+        elif mPPCOEM_Constraints['QhatDiag']:
+            n2 = Qhat_out.shape[0]
+        else:
+            n2 = Qhat_out.size
+
+        n3 = Chat_out.size
+
+        if mPPCOEM_Constraints['RhatDiag'] and mPPCOEM_Constraints['RhatIsotropic']:
+            n4 = 1
+        elif mPPCOEM_Constraints['RhatDiag']:
+            n4 = Rhat_out.shape[0]
+        else:
+            n4 = Rhat_out.size
+
+        if mPPCOEM_Constraints['EstimatePx0'] and mPPCOEM_Constraints['Px0Isotropic']:
+            n5 = 1
+        elif mPPCOEM_Constraints['EstimatePx0']:
+            n5 = Px0hat_out.shape[0]
+        else:
+            n5 = 0
+
+        n6 = x0hat_out.size if mPPCOEM_Constraints['Estimatex0'] else 0
+        n7 = alphahat_out.size
+        n8 = muhat_out.size
+        n9 = betahat_out.size
+        if gammahat_out.size == 1 and float(gammahat_out.flat[0]) == 0:
+            n10 = 0
+        else:
+            n10 = gammahat_out.size
+        nTerms = n1 + n2 + n3 + n4 + n5 + n6 + n7 + n8 + n9 + n10
+
+        Dx = Ahat_out.shape[1]
+        sumXkTerms = ExpectationSumsFinal['sumXkTerms']
+        llobs = (ll_best + Dx * N / 2.0 * np.log(2 * np.pi)
+                 + N / 2.0 * np.log(max(np.linalg.det(Qhat_out), 1e-300))
+                 + 0.5 * np.trace(np.linalg.solve(Qhat_out, sumXkTerms))
+                 + Dx / 2.0 * np.log(2 * np.pi)
+                 + 0.5 * np.log(max(np.linalg.det(Px0hat_out), 1e-300))
+                 + 0.5 * Dx)
+
+        AIC = 2 * nTerms - 2 * llobs
+        AICc = AIC + 2 * nTerms * (nTerms + 1) / max(N - nTerms - 1, 1)
+        BIC = -2 * llobs + nTerms * np.log(max(N, 1))
+
+        IC = {
+            'AIC': AIC, 'AICc': AICc, 'BIC': BIC,
+            'llobs': llobs, 'llcomp': ll_best,
+        }
+
+        # Standard errors
+        SE = {}
+        Pvals = {}
+        try:
+            SE, Pvals, _ = DecodingAlgorithms.mPPCO_ComputeParamStandardErrors(
+                yOrig, dN, xKFinal, WKFinal, Ahat_out, Qhat_out,
+                Chat_out, Rhat_out, alphahat_out, x0hat_out, Px0hat_out,
+                ExpectationSumsFinal, fitType, muhat_out, betahat_out,
+                gammahat_out, windowTimes, HkAll, mPPCOEM_Constraints)
+        except Exception:
+            pass
+
+        return (xKFinal, WKFinal, Ahat_out, Qhat_out, Chat_out, Rhat_out,
+                alphahat_out, muhat_out, betahat_out, gammahat_out,
+                x0hat_out, Px0hat_out, IC, SE, Pvals)
+
+    @staticmethod
     def mPPCO_EStep(A, Q, C, R, y, alpha, dN, mu, beta, fitType='poisson',
                     delta=0.001, gamma=None, HkAll=None, x0=None, Px0=None):
         """E-step for the mPPCO EM algorithm.
@@ -7585,303 +7892,6 @@ class DecodingAlgorithms:
                     gammahat_new = gammaC
 
         return Ahat, Qhat, Chat, Rhat, alphahat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
-
-    @staticmethod
-    def mPPCO_EM(y, dN, Ahat0, Qhat0, Chat0, Rhat0, alphahat0, mu, beta,
-                 fitType='poisson', delta=0.001, gamma=None, windowTimes=None,
-                 x0=None, Px0=None, mPPCOEM_Constraints=None, MstepMethod='GLM'):
-        """Full EM algorithm for the mixed Point-Process / Continuous Observation model.
-
-        Matlab: ``DecodingAlgorithms.mPPCO_EM``  (lines 6139-6554)
-
-        Returns
-        -------
-        xKFinal, WKFinal, Ahat, Qhat, Chat, Rhat, alphahat,
-        muhat, betahat, gammahat, x0hat, Px0hat, IC, SE, Pvals
-        """
-        Ahat0 = np.asarray(Ahat0, dtype=float)
-        Qhat0 = np.asarray(Qhat0, dtype=float)
-        Chat0 = np.asarray(Chat0, dtype=float)
-        Rhat0 = np.asarray(Rhat0, dtype=float)
-        alphahat0 = np.asarray(alphahat0, dtype=float).reshape(-1)
-        mu = np.asarray(mu, dtype=float).reshape(-1)
-        beta = np.asarray(beta, dtype=float)
-        if beta.ndim == 1:
-            beta = beta.reshape(-1, 1)
-        numStates = Ahat0.shape[0]
-        obs = _as_observation_matrix(dN)
-        numCells_K, N = obs.shape
-
-        if mPPCOEM_Constraints is None:
-            mPPCOEM_Constraints = DecodingAlgorithms.mPPCO_EMCreateConstraints()
-        if Px0 is None or _is_empty_value(Px0):
-            Px0 = 1e-9 * np.eye(numStates)
-        else:
-            Px0 = np.asarray(Px0, dtype=float).reshape(numStates, numStates)
-        if x0 is None or _is_empty_value(x0):
-            x0 = np.zeros(numStates, dtype=float)
-        else:
-            x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if gamma is None:
-            gamma = np.array(0.0)
-        else:
-            gamma = np.asarray(gamma, dtype=float)
-        if delta is None:
-            delta = 0.001
-        if windowTimes is None or _is_empty_value(windowTimes):
-            if gamma is not None and np.any(gamma != 0):
-                windowTimes = np.arange(gamma.size + 2, dtype=float) * delta
-            else:
-                windowTimes = None
-
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-        K_cells = numCells_K
-
-        # Build history
-        if windowTimes is not None and not _is_empty_value(windowTimes):
-            wt = np.asarray(windowTimes, dtype=float).reshape(-1)
-            HkAll = _compute_history_terms(dN, delta, wt)
-        else:
-            HkAll = np.zeros((N, 1, K_cells), dtype=float)
-            gamma = np.array(0.0)
-
-        y_arr = np.asarray(y, dtype=float)
-        yOrig = y_arr.copy()
-
-        tolAbs = 1e-3
-        llTol = 1e-3
-        maxIter = 100
-        numToKeep = 10
-
-        # Circular buffers
-        Ahat_buf = [None] * numToKeep
-        Qhat_buf = [None] * numToKeep
-        Chat_buf = [None] * numToKeep
-        Rhat_buf = [None] * numToKeep
-        alphahat_buf = [None] * numToKeep
-        muhat_buf = [None] * numToKeep
-        betahat_buf = [None] * numToKeep
-        gammahat_buf = [None] * numToKeep
-        x0hat_buf = [None] * numToKeep
-        Px0hat_buf = [None] * numToKeep
-        x_K_buf = [None] * numToKeep
-        W_K_buf = [None] * numToKeep
-        ExpSums_buf = [None] * numToKeep
-        ll_list = []
-
-        # Initialize (scaled system)
-        A0 = Ahat0.copy()
-        Q0 = Qhat0.copy()
-        C0 = Chat0.copy()
-        R0 = Rhat0.copy()
-
-        Tq = np.linalg.solve(np.linalg.cholesky(Q0), np.eye(numStates))
-        Tr = np.linalg.solve(np.linalg.cholesky(R0), np.eye(R0.shape[0]))
-
-        Ahat_buf[0] = Tq @ A0 @ np.linalg.inv(Tq)
-        Chat_buf[0] = Tr @ C0 @ np.linalg.inv(Tq)
-        Qhat_buf[0] = Tq @ Q0 @ Tq.T
-        Rhat_buf[0] = Tr @ R0 @ Tr.T
-        y_arr = Tr @ y_arr
-        x0hat_buf[0] = Tq @ x0
-        Px0hat_buf[0] = Tq @ Px0 @ Tq.T
-        alphahat_buf[0] = Tr @ alphahat0
-        betahat_buf[0] = np.linalg.solve(Tq.T, beta)
-        muhat_buf[0] = mu.copy()
-        gammahat_buf[0] = gamma.copy()
-
-        cnt = 0
-        stoppingCriteria = False
-
-        print("                        Joint Point-Process/Gaussian Observation EM Algorithm                        ")
-
-        while not stoppingCriteria and cnt < maxIter:
-            si = cnt % numToKeep
-            si_p1 = (cnt + 1) % numToKeep
-            si_m1 = (cnt - 1) % numToKeep
-
-            print("-" * 80)
-            print(f"Iteration #{cnt + 1}")
-            print("-" * 80)
-
-            # E-step
-            x_K_buf[si], W_K_buf[si], ll_val, ExpSums_buf[si] = DecodingAlgorithms.mPPCO_EStep(
-                Ahat_buf[si], Qhat_buf[si], Chat_buf[si], Rhat_buf[si],
-                y_arr, alphahat_buf[si], dN,
-                muhat_buf[si], betahat_buf[si], fitType, delta,
-                gammahat_buf[si], HkAll, x0hat_buf[si], Px0hat_buf[si])
-            ll_list.append(ll_val)
-
-            # M-step
-            (Ahat_buf[si_p1], Qhat_buf[si_p1], Chat_buf[si_p1], Rhat_buf[si_p1],
-             alphahat_buf[si_p1], muhat_buf[si_p1], betahat_buf[si_p1],
-             gammahat_buf[si_p1], x0hat_buf[si_p1], Px0hat_buf[si_p1]) = \
-                DecodingAlgorithms.mPPCO_MStep(
-                    dN, y_arr, x_K_buf[si], W_K_buf[si],
-                    x0hat_buf[si], Px0hat_buf[si], ExpSums_buf[si],
-                    fitType, muhat_buf[si], betahat_buf[si],
-                    gammahat_buf[si], windowTimes, HkAll,
-                    mPPCOEM_Constraints, MstepMethod)
-
-            if not mPPCOEM_Constraints['EstimateA']:
-                Ahat_buf[si_p1] = Ahat_buf[si].copy()
-
-            # Convergence check
-            if cnt == 0:
-                dMax = np.inf
-            else:
-                diffs = []
-                for arr_curr, arr_prev in [
-                    (Qhat_buf[si], Qhat_buf[si_m1]),
-                    (Rhat_buf[si], Rhat_buf[si_m1]),
-                    (Ahat_buf[si], Ahat_buf[si_m1]),
-                    (Chat_buf[si], Chat_buf[si_m1]),
-                ]:
-                    if arr_curr is not None and arr_prev is not None:
-                        diffs.append(float(np.max(np.abs(np.sqrt(np.abs(arr_curr)) - np.sqrt(np.abs(arr_prev))))) if 'Q' in str(id(arr_curr)) else float(np.max(np.abs(arr_curr - arr_prev))))
-                for arr_curr, arr_prev in [
-                    (muhat_buf[si], muhat_buf[si_m1]),
-                    (alphahat_buf[si], alphahat_buf[si_m1]),
-                    (betahat_buf[si], betahat_buf[si_m1]),
-                    (gammahat_buf[si], gammahat_buf[si_m1]),
-                ]:
-                    if arr_curr is not None and arr_prev is not None:
-                        diffs.append(float(np.max(np.abs(np.asarray(arr_curr) - np.asarray(arr_prev)))))
-                dMax = max(diffs) if diffs else np.inf
-
-            if cnt == 0:
-                print("Max Parameter Change: N/A")
-            else:
-                print(f"Max Parameter Change: {dMax}")
-
-            cnt += 1
-
-            if dMax < tolAbs:
-                stoppingCriteria = True
-                print(f"         EM converged at iteration# {cnt} b/c change in params was within criteria")
-
-            if cnt >= 2:
-                dll = ll_list[-1] - ll_list[-2]
-                if abs(dll) < llTol or dll < 0:
-                    stoppingCriteria = True
-                    print(f"         EM stopped at iteration# {cnt} b/c change in likelihood was negative or small")
-
-        print("-" * 80)
-
-        # Select best iteration
-        ll_arr = np.array(ll_list)
-        maxLLIndex = int(np.argmax(ll_arr))
-        maxLLIndMod = maxLLIndex % numToKeep
-
-        xKFinal = x_K_buf[maxLLIndMod]
-        WKFinal = W_K_buf[maxLLIndMod]
-        Ahat_out = Ahat_buf[maxLLIndMod]
-        Qhat_out = Qhat_buf[maxLLIndMod]
-        Chat_out = Chat_buf[maxLLIndMod]
-        Rhat_out = Rhat_buf[maxLLIndMod]
-        alphahat_out = alphahat_buf[maxLLIndMod]
-        muhat_out = muhat_buf[maxLLIndMod]
-        betahat_out = betahat_buf[maxLLIndMod]
-        gammahat_out = gammahat_buf[maxLLIndMod]
-        x0hat_out = x0hat_buf[maxLLIndMod]
-        Px0hat_out = Px0hat_buf[maxLLIndMod]
-        ExpectationSumsFinal = ExpSums_buf[maxLLIndMod]
-
-        # Unscale
-        Tq = np.linalg.solve(np.linalg.cholesky(Q0), np.eye(numStates))
-        Tr = np.linalg.solve(np.linalg.cholesky(R0), np.eye(R0.shape[0]))
-        Tq_inv = np.linalg.inv(Tq)
-        Tr_inv = np.linalg.inv(Tr)
-
-        Ahat_out = Tq_inv @ Ahat_out @ Tq
-        Qhat_out = Tq_inv @ Qhat_out @ np.linalg.inv(Tq.T)
-        Chat_out = Tr_inv @ Chat_out @ Tq
-        Rhat_out = Tr_inv @ Rhat_out @ np.linalg.inv(Tr.T)
-        alphahat_out = Tr_inv @ alphahat_out
-        xKFinal = Tq_inv @ xKFinal
-        x0hat_out = Tq_inv @ x0hat_out
-        Px0hat_out = Tq_inv @ Px0hat_out @ np.linalg.inv(Tq.T)
-        for kk in range(WKFinal.shape[2]):
-            WKFinal[:, :, kk] = Tq_inv @ WKFinal[:, :, kk] @ np.linalg.inv(Tq.T)
-        betahat_out = (betahat_out.T @ Tq).T
-
-        # Information criteria
-        ll_best = ll_arr[maxLLIndex]
-        # Count parameters
-        if mPPCOEM_Constraints['EstimateA'] and mPPCOEM_Constraints['AhatDiag']:
-            n1 = Ahat_out.shape[0]
-        elif mPPCOEM_Constraints['EstimateA']:
-            n1 = Ahat_out.size
-        else:
-            n1 = 0
-
-        if mPPCOEM_Constraints['QhatDiag'] and mPPCOEM_Constraints['QhatIsotropic']:
-            n2 = 1
-        elif mPPCOEM_Constraints['QhatDiag']:
-            n2 = Qhat_out.shape[0]
-        else:
-            n2 = Qhat_out.size
-
-        n3 = Chat_out.size
-
-        if mPPCOEM_Constraints['RhatDiag'] and mPPCOEM_Constraints['RhatIsotropic']:
-            n4 = 1
-        elif mPPCOEM_Constraints['RhatDiag']:
-            n4 = Rhat_out.shape[0]
-        else:
-            n4 = Rhat_out.size
-
-        if mPPCOEM_Constraints['EstimatePx0'] and mPPCOEM_Constraints['Px0Isotropic']:
-            n5 = 1
-        elif mPPCOEM_Constraints['EstimatePx0']:
-            n5 = Px0hat_out.shape[0]
-        else:
-            n5 = 0
-
-        n6 = x0hat_out.size if mPPCOEM_Constraints['Estimatex0'] else 0
-        n7 = alphahat_out.size
-        n8 = muhat_out.size
-        n9 = betahat_out.size
-        if gammahat_out.size == 1 and float(gammahat_out.flat[0]) == 0:
-            n10 = 0
-        else:
-            n10 = gammahat_out.size
-        nTerms = n1 + n2 + n3 + n4 + n5 + n6 + n7 + n8 + n9 + n10
-
-        Dx = Ahat_out.shape[1]
-        sumXkTerms = ExpectationSumsFinal['sumXkTerms']
-        llobs = (ll_best + Dx * N / 2.0 * np.log(2 * np.pi)
-                 + N / 2.0 * np.log(max(np.linalg.det(Qhat_out), 1e-300))
-                 + 0.5 * np.trace(np.linalg.solve(Qhat_out, sumXkTerms))
-                 + Dx / 2.0 * np.log(2 * np.pi)
-                 + 0.5 * np.log(max(np.linalg.det(Px0hat_out), 1e-300))
-                 + 0.5 * Dx)
-
-        AIC = 2 * nTerms - 2 * llobs
-        AICc = AIC + 2 * nTerms * (nTerms + 1) / max(N - nTerms - 1, 1)
-        BIC = -2 * llobs + nTerms * np.log(max(N, 1))
-
-        IC = {
-            'AIC': AIC, 'AICc': AICc, 'BIC': BIC,
-            'llobs': llobs, 'llcomp': ll_best,
-        }
-
-        # Standard errors
-        SE = {}
-        Pvals = {}
-        try:
-            SE, Pvals, _ = DecodingAlgorithms.mPPCO_ComputeParamStandardErrors(
-                yOrig, dN, xKFinal, WKFinal, Ahat_out, Qhat_out,
-                Chat_out, Rhat_out, alphahat_out, x0hat_out, Px0hat_out,
-                ExpectationSumsFinal, fitType, muhat_out, betahat_out,
-                gammahat_out, windowTimes, HkAll, mPPCOEM_Constraints)
-        except Exception:
-            pass
-
-        return (xKFinal, WKFinal, Ahat_out, Qhat_out, Chat_out, Rhat_out,
-                alphahat_out, muhat_out, betahat_out, gammahat_out,
-                x0hat_out, Px0hat_out, IC, SE, Pvals)
 
 
 

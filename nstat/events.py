@@ -67,24 +67,6 @@ class Events:
         self.event_times = self.eventTimes
         self.labels = self.eventLabels
 
-    def toStructure(self) -> dict[str, Any]:
-        """Serialise the Events to a plain dictionary."""
-        return {
-            "eventTimes": self.eventTimes.tolist(),
-            "eventLabels": list(self.eventLabels),
-            "eventColor": self.eventColor,
-        }
-
-    @staticmethod
-    def fromStructure(structure: dict[str, Any] | None) -> "Events" | None:
-        """Reconstruct Events from a dictionary (inverse of :meth:`toStructure`)."""
-        if structure is None:
-            return None
-        event_times = structure.get("eventTimes", structure.get("event_times", []))
-        event_labels = structure.get("eventLabels", structure.get("labels"))
-        event_color = structure.get("eventColor", "r")
-        return Events(event_times, event_labels, event_color)
-
     def plot(self, *_, handle=None, colorString: str | None = None, **__):
         """Plot event markers on one or more axes.
 
@@ -150,6 +132,24 @@ class Events:
                             transform=ax.get_xaxis_transform(),
                         )
         return last_ax
+
+    def toStructure(self) -> dict[str, Any]:
+        """Serialise the Events to a plain dictionary."""
+        return {
+            "eventTimes": self.eventTimes.tolist(),
+            "eventLabels": list(self.eventLabels),
+            "eventColor": self.eventColor,
+        }
+
+    @staticmethod
+    def fromStructure(structure: dict[str, Any] | None) -> "Events" | None:
+        """Reconstruct Events from a dictionary (inverse of :meth:`toStructure`)."""
+        if structure is None:
+            return None
+        event_times = structure.get("eventTimes", structure.get("event_times", []))
+        event_labels = structure.get("eventLabels", structure.get("labels"))
+        event_color = structure.get("eventColor", "r")
+        return Events(event_times, event_labels, event_color)
 
 
 __all__ = ["Events"]

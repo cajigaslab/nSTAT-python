@@ -5,6 +5,12 @@ readability.  ``nstat.core`` continues to re-export ``nspikeTrain`` for
 back-compat — all existing import paths
 (``from nstat.core import nspikeTrain``, ``from nstat.nspikeTrain import
 nspikeTrain``, ``from nstat import nspikeTrain``) still work.
+
+Method declaration order mirrors the MATLAB ``nspikeTrain.m`` classdef
+order (Cajigas Lab, ``cajigaslab/nSTAT``) for parity-audit alignment.
+Python-only conveniences (properties, ``_cache_key`` / ``_build_sigrep``
+private helpers, ``to_binned_counts``) are interleaved at logical
+positions adjacent to the MATLAB methods they support.
 """
 from __future__ import annotations
 
@@ -163,6 +169,8 @@ class nspikeTrain:
             self.stdSpikesPerBurst = None
             self.Lstatistic = None
 
+    # --- Python-only convenience properties (no MATLAB counterpart) ---
+
     @property
     def times(self) -> np.ndarray:
         """Alias for ``spikeTimes``."""
@@ -184,6 +192,22 @@ class nspikeTrain:
         if self.duration <= 0:
             return 0.0
         return float(self.n_spikes / self.duration)
+
+    # --- MATLAB classdef-order methods begin ---
+
+    def getLStatistic(self) -> float:
+        """Return the L-statistic (number of unique bin counts in ``sigRep``)."""
+        isi = self.getISIs()
+        if isi.size == 0:
+            return np.nan
+        mean_isi = float(np.mean(isi))
+        if not np.isfinite(mean_isi) or mean_isi <= 0:
+            return np.nan
+        duration = self.maxTime - self.minTime
+        if not np.isfinite(duration) or duration <= 0:
+            return np.nan
+        approx = self.getSigRep(mean_isi)
+        return float(np.unique(approx.data[:, 0]).size)
 
     def setMER(self, MERSig: SignalObj) -> None:
         """Attach a micro-electrode recording signal to this spike train."""
@@ -271,19 +295,7 @@ class nspikeTrain:
         if makePlots == 1:
             self.plot()
 
-    def getLStatistic(self) -> float:
-        """Return the L-statistic (number of unique bin counts in ``sigRep``)."""
-        isi = self.getISIs()
-        if isi.size == 0:
-            return np.nan
-        mean_isi = float(np.mean(isi))
-        if not np.isfinite(mean_isi) or mean_isi <= 0:
-            return np.nan
-        duration = self.maxTime - self.minTime
-        if not np.isfinite(duration) or duration <= 0:
-            return np.nan
-        approx = self.getSigRep(mean_isi)
-        return float(np.unique(approx.data[:, 0]).size)
+    # --- Private sigRep build helpers (used by setSigRep / getSigRep) ---
 
     def _cache_key(self, binwidth: float, minTime: float, maxTime: float) -> tuple[float, float, float]:
         return (round(float(binwidth), 12), round(float(minTime), 12), round(float(maxTime), 12))
@@ -352,12 +364,6 @@ class nspikeTrain:
         self.computeStatistics(0)
         return self.sigRep
 
-    def clearSigRep(self) -> None:
-        """Invalidate the cached signal representation."""
-        self.sigRep = None
-        self._sigrep_cache_key = None
-        self.isSigRepBin = None
-
     def setMinTime(self, minTime: float) -> None:
         """Set the observation-window start and recompute statistics."""
         self.minTime = float(minTime)
@@ -370,32 +376,17 @@ class nspikeTrain:
         self.clearSigRep()
         self.computeStatistics(0)
 
+    def clearSigRep(self) -> None:
+        """Invalidate the cached signal representation."""
+        self.sigRep = None
+        self._sigrep_cache_key = None
+        self.isSigRepBin = None
+
     def resample(self, sampleRate: float) -> "nspikeTrain":
         """Rebuild the signal representation at *sampleRate* Hz."""
         self.setSigRep(1.0 / float(sampleRate), self.minTime, self.maxTime)
         self.sampleRate = float(sampleRate)
         return self
-
-    def getSpikeTimes(self, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
-        """Return spike times within ``[minTime, maxTime]``."""
-        start = self.minTime if minTime is None else float(minTime)
-        stop = self.maxTime if maxTime is None else float(maxTime)
-        spikes = self.spikeTimes[(self.spikeTimes >= start) & (self.spikeTimes <= stop)]
-        return spikes.copy()
-
-    def getISIs(self, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
-        """Return inter-spike intervals within the given time window."""
-        spikes = self.getSpikeTimes(minTime, maxTime)
-        if spikes.size < 2:
-            return np.array([], dtype=float)
-        return np.diff(spikes)
-
-    def getMinISI(self, minTime: float | None = None, maxTime: float | None = None) -> float:
-        """Return the minimum ISI (refractory period estimate)."""
-        isi = self.getISIs(minTime, maxTime)
-        if isi.size == 0:
-            return float("nan")
-        return float(np.min(isi))
 
     def getSigRep(
         self,
@@ -426,85 +417,6 @@ class nspikeTrain:
             return np.inf
         return float(np.min(isi))
 
-    def isSigRepBinary(self) -> bool:
-        """Return ``True`` if every bin in the default ``sigRep`` has <= 1 spike."""
-        default_key = self._cache_key(1.0 / float(self.sampleRate), float(self.minTime), float(self.maxTime))
-        if self._sigrep_cache_key != default_key or self.isSigRepBin is None:
-            self.getSigRep(1.0 / float(self.sampleRate), float(self.minTime), float(self.maxTime))
-        return bool(self.isSigRepBin)
-
-    def computeRate(self) -> SignalObj:
-        """Return firing rate ``sigRep * sampleRate`` in spikes/sec."""
-        sig = self.getSigRep()
-        if self.sampleRate <= 0:
-            return sig
-        rate = np.asarray(sig.data[:, 0], dtype=float) * float(self.sampleRate)
-        return SignalObj(sig.time, rate, self.name, sig.xlabelval, sig.xunits, "spikes/sec", sig.dataLabels)
-
-    def restoreToOriginal(self) -> None:
-        """Reset spike times and time bounds to original values."""
-        self.spikeTimes = self.originalSpikeTimes.copy()
-        self.minTime = float(np.min(self.spikeTimes)) if self.spikeTimes.size else 0.0
-        self.maxTime = float(np.max(self.spikeTimes)) if self.spikeTimes.size else 0.0
-        self.clearSigRep()
-
-    def partitionNST(
-        self,
-        windowTimes: Sequence[float],
-        normalizeTime: int | bool | None = None,
-        lbound: float | None = None,
-        ubound: float | None = None,
-    ):
-        """Partition into per-trial spike trains (Matlab ``partitionNST``).
-
-        Parameters
-        ----------
-        windowTimes : sequence of float
-            Edge times defining trial boundaries (N edges -> N-1 trials).
-        normalizeTime : bool, optional
-            If ``True``, rescale each trial's spikes to [0, 1].
-        lbound, ubound : float, optional
-            Accept only windows whose duration falls in ``[lbound, ubound]``.
-
-        Returns
-        -------
-        nstColl
-        """
-        from .nstColl import nstColl
-
-        windows = np.asarray(windowTimes, dtype=float).reshape(-1)
-        if windows.size <= 1:
-            return nstColl([])
-        if ubound is None:
-            ubound = lbound
-
-        normalize = bool(normalizeTime) if normalizeTime is not None else False
-        partitions: list[nspikeTrain] = []
-        for index, (window_start, window_stop) in enumerate(zip(windows[:-1], windows[1:]), start=1):
-            window_start = round(float(window_start) * self.sampleRate) / self.sampleRate
-            window_stop = round(float(window_stop) * self.sampleRate) / self.sampleRate
-            duration = float(window_stop - window_start)
-            if lbound is not None and ubound is not None and not (float(lbound) <= abs(duration) <= float(ubound)):
-                continue
-            if index == windows.size - 1:
-                subset = self.spikeTimes[(self.spikeTimes >= window_start) & (self.spikeTimes <= window_stop)]
-            else:
-                subset = self.spikeTimes[(self.spikeTimes >= window_start) & (self.spikeTimes < window_stop)]
-            subset = subset - float(window_start)
-            if normalize and duration != 0:
-                subset = subset / duration
-            partitions.append(nspikeTrain(subset, self.name, makePlots=-1))
-
-        coll = nstColl(partitions)
-        if normalize:
-            coll.setMinTime(0.0)
-            coll.setMaxTime(1.0)
-        return coll
-
-    def getFieldVal(self, fieldName: str):
-        """Return the value of attribute *fieldName* (Matlab ``getFieldVal``)."""
-        return getattr(self, fieldName, [])
-
     def plotISISpectrumFunction(self):
         """Plot ISI vs. time (Matlab ``plotISISpectrumFunction``)."""
         import matplotlib.pyplot as plt
@@ -518,6 +430,13 @@ class nspikeTrain:
         ax.set_xlabel("time [s]")
         ax.set_ylabel("ISI [s]")
         return line
+
+    def getSpikeTimes(self, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
+        """Return spike times within ``[minTime, maxTime]``."""
+        start = self.minTime if minTime is None else float(minTime)
+        stop = self.maxTime if maxTime is None else float(maxTime)
+        spikes = self.spikeTimes[(self.spikeTimes >= start) & (self.spikeTimes <= stop)]
+        return spikes.copy()
 
     def plotJointISIHistogram(self):
         """Joint ISI scatter plot: ISI(t) vs ISI(t+1) on log-log axes."""
@@ -542,6 +461,10 @@ class nspikeTrain:
         ax.set_xlabel("ISI(t) [s]")
         ax.set_ylabel("ISI(t+1) [s]")
         return ax
+
+    def getFieldVal(self, fieldName: str):
+        """Return the value of attribute *fieldName* (Matlab ``getFieldVal``)."""
+        return getattr(self, fieldName, [])
 
     def plotISIHistogram(self, minTime: float | None = None, maxTime: float | None = None, numBins: int | None = None, handle=None):
         """Plot ISI histogram (Matlab ``plotISIHistogram``).
@@ -602,6 +525,18 @@ class nspikeTrain:
         ax.autoscale(enable=True, axis="x", tight=True)
         return counts
 
+    def plotExponentialFit(self, minTime: float | None = None, maxTime: float | None = None, numBins: int | None = None, handle=None):
+        """ISI histogram + exponential prob-plot side by side."""
+        import matplotlib.pyplot as plt
+
+        fig = handle if handle is not None else plt.figure(figsize=(10.0, 4.0))
+        fig.clear()
+        axes = fig.subplots(1, 2)
+        self.plotISIHistogram(minTime, maxTime, numBins, axes[0])
+        self.plotProbPlot(minTime, maxTime, axes[1])
+        fig.tight_layout()
+        return fig
+
     def plotProbPlot(self, minTime: float | None = None, maxTime: float | None = None, handle=None):
         """Exponential probability plot of ISIs (Matlab ``plotProbPlot``)."""
         import matplotlib.pyplot as plt
@@ -621,17 +556,128 @@ class nspikeTrain:
             ax.plot(sorted_isi, exp_quantiles, linestyle="none", marker=".")
         return ax
 
-    def plotExponentialFit(self, minTime: float | None = None, maxTime: float | None = None, numBins: int | None = None, handle=None):
-        """ISI histogram + exponential prob-plot side by side."""
-        import matplotlib.pyplot as plt
+    def getISIs(self, minTime: float | None = None, maxTime: float | None = None) -> np.ndarray:
+        """Return inter-spike intervals within the given time window."""
+        spikes = self.getSpikeTimes(minTime, maxTime)
+        if spikes.size < 2:
+            return np.array([], dtype=float)
+        return np.diff(spikes)
 
-        fig = handle if handle is not None else plt.figure(figsize=(10.0, 4.0))
-        fig.clear()
-        axes = fig.subplots(1, 2)
-        self.plotISIHistogram(minTime, maxTime, numBins, axes[0])
-        self.plotProbPlot(minTime, maxTime, axes[1])
-        fig.tight_layout()
-        return fig
+    def getMinISI(self, minTime: float | None = None, maxTime: float | None = None) -> float:
+        """Return the minimum ISI (refractory period estimate)."""
+        isi = self.getISIs(minTime, maxTime)
+        if isi.size == 0:
+            return float("nan")
+        return float(np.min(isi))
+
+    def partitionNST(
+        self,
+        windowTimes: Sequence[float],
+        normalizeTime: int | bool | None = None,
+        lbound: float | None = None,
+        ubound: float | None = None,
+    ):
+        """Partition into per-trial spike trains (Matlab ``partitionNST``).
+
+        Parameters
+        ----------
+        windowTimes : sequence of float
+            Edge times defining trial boundaries (N edges -> N-1 trials).
+        normalizeTime : bool, optional
+            If ``True``, rescale each trial's spikes to [0, 1].
+        lbound, ubound : float, optional
+            Accept only windows whose duration falls in ``[lbound, ubound]``.
+
+        Returns
+        -------
+        nstColl
+        """
+        from .nstColl import nstColl
+
+        windows = np.asarray(windowTimes, dtype=float).reshape(-1)
+        if windows.size <= 1:
+            return nstColl([])
+        if ubound is None:
+            ubound = lbound
+
+        normalize = bool(normalizeTime) if normalizeTime is not None else False
+        partitions: list[nspikeTrain] = []
+        for index, (window_start, window_stop) in enumerate(zip(windows[:-1], windows[1:]), start=1):
+            window_start = round(float(window_start) * self.sampleRate) / self.sampleRate
+            window_stop = round(float(window_stop) * self.sampleRate) / self.sampleRate
+            duration = float(window_stop - window_start)
+            if lbound is not None and ubound is not None and not (float(lbound) <= abs(duration) <= float(ubound)):
+                continue
+            if index == windows.size - 1:
+                subset = self.spikeTimes[(self.spikeTimes >= window_start) & (self.spikeTimes <= window_stop)]
+            else:
+                subset = self.spikeTimes[(self.spikeTimes >= window_start) & (self.spikeTimes < window_stop)]
+            subset = subset - float(window_start)
+            if normalize and duration != 0:
+                subset = subset / duration
+            partitions.append(nspikeTrain(subset, self.name, makePlots=-1))
+
+        coll = nstColl(partitions)
+        if normalize:
+            coll.setMinTime(0.0)
+            coll.setMaxTime(1.0)
+        return coll
+
+    def isSigRepBinary(self) -> bool:
+        """Return ``True`` if every bin in the default ``sigRep`` has <= 1 spike."""
+        default_key = self._cache_key(1.0 / float(self.sampleRate), float(self.minTime), float(self.maxTime))
+        if self._sigrep_cache_key != default_key or self.isSigRepBin is None:
+            self.getSigRep(1.0 / float(self.sampleRate), float(self.minTime), float(self.maxTime))
+        return bool(self.isSigRepBin)
+
+    def computeRate(self) -> SignalObj:
+        """Return firing rate ``sigRep * sampleRate`` in spikes/sec."""
+        sig = self.getSigRep()
+        if self.sampleRate <= 0:
+            return sig
+        rate = np.asarray(sig.data[:, 0], dtype=float) * float(self.sampleRate)
+        return SignalObj(sig.time, rate, self.name, sig.xlabelval, sig.xunits, "spikes/sec", sig.dataLabels)
+
+    def restoreToOriginal(self) -> None:
+        """Reset spike times and time bounds to original values."""
+        self.spikeTimes = self.originalSpikeTimes.copy()
+        self.minTime = float(np.min(self.spikeTimes)) if self.spikeTimes.size else 0.0
+        self.maxTime = float(np.max(self.spikeTimes)) if self.spikeTimes.size else 0.0
+        self.clearSigRep()
+
+    def nstCopy(self) -> "nspikeTrain":
+        """Return a deep copy (Matlab ``nstCopy``).
+
+        Matlab's ``nstCopy`` builds the copy's sigRep and calls
+        ``computeStatistics(0)`` so the copy has valid burst parameters.
+
+        Notes
+        -----
+        The constructor would otherwise overwrite the copy's
+        ``originalSpikeTimes`` / ``originalMinTime`` / ``originalMaxTime``
+        with the *current* (possibly windowed) state of ``self``.  We
+        explicitly carry the source's "original" fields over after
+        construction so that ``copy.restoreToOriginal()`` actually
+        restores to the true original state.
+        """
+        copy = nspikeTrain(
+            self.spikeTimes.copy(),
+            self.name,
+            self.sampleRate if self.sampleRate > 0 else 1000.0,
+            self.minTime,
+            self.maxTime,
+            self.xlabelval,
+            self.xunits,
+            self.yunits,
+            self.dataLabels,
+            0,
+        )
+        # Preserve the source's original state — see Notes above.
+        copy.originalSpikeTimes = self.originalSpikeTimes.copy()
+        copy.originalSampleRate = self.originalSampleRate
+        copy.originalMinTime = self.originalMinTime
+        copy.originalMaxTime = self.originalMaxTime
+        return copy
 
     def plot(self, dHeight: float = 1.0, yOffset: float = 0.5, currentHandle=None, handle=None):
         """Raster plot: vertical tick per spike (Matlab ``plot``).
@@ -669,46 +715,6 @@ class nspikeTrain:
                 ax.set_xlim(self.minTime, self.maxTime)
         return lines
 
-    def nstCopy(self) -> "nspikeTrain":
-        """Return a deep copy (Matlab ``nstCopy``).
-
-        Matlab's ``nstCopy`` builds the copy's sigRep and calls
-        ``computeStatistics(0)`` so the copy has valid burst parameters.
-
-        Notes
-        -----
-        The constructor would otherwise overwrite the copy's
-        ``originalSpikeTimes`` / ``originalMinTime`` / ``originalMaxTime``
-        with the *current* (possibly windowed) state of ``self``.  We
-        explicitly carry the source's "original" fields over after
-        construction so that ``copy.restoreToOriginal()`` actually
-        restores to the true original state.
-        """
-        copy = nspikeTrain(
-            self.spikeTimes.copy(),
-            self.name,
-            self.sampleRate if self.sampleRate > 0 else 1000.0,
-            self.minTime,
-            self.maxTime,
-            self.xlabelval,
-            self.xunits,
-            self.yunits,
-            self.dataLabels,
-            0,
-        )
-        # Preserve the source's original state — see Notes above.
-        copy.originalSpikeTimes = self.originalSpikeTimes.copy()
-        copy.originalSampleRate = self.originalSampleRate
-        copy.originalMinTime = self.originalMinTime
-        copy.originalMaxTime = self.originalMaxTime
-        return copy
-
-    def to_binned_counts(self, bin_edges: Sequence[float]) -> np.ndarray:
-        """Histogram spike times into *bin_edges* and return count vector."""
-        edges = np.asarray(bin_edges, dtype=float).reshape(-1)
-        counts, _ = np.histogram(self.spikeTimes, bins=edges)
-        return counts.astype(float)
-
     def toStructure(self) -> dict[str, Any]:
         """Serialize to a plain dict (Matlab ``toStructure``)."""
         return {
@@ -722,6 +728,14 @@ class nspikeTrain:
             "yunits": self.yunits,
             "dataLabels": self.dataLabels,
         }
+
+    # --- Python-only serialization helper (no MATLAB counterpart) ---
+
+    def to_binned_counts(self, bin_edges: Sequence[float]) -> np.ndarray:
+        """Histogram spike times into *bin_edges* and return count vector."""
+        edges = np.asarray(bin_edges, dtype=float).reshape(-1)
+        counts, _ = np.histogram(self.spikeTimes, bins=edges)
+        return counts.astype(float)
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "nspikeTrain":

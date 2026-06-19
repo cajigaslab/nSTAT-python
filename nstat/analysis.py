@@ -245,181 +245,6 @@ class Analysis:
         return psth(spike_trains, bin_edges)
 
     @staticmethod
-    def GLMFit(
-        tObj: Trial,
-        neuronNumber,
-        lambdaIndex: int,
-        Algorithm: str = "GLM",
-        *,
-        l2: float = 0.0,
-        max_iter: int = 120,
-    ):
-        """Fit a point-process GLM for a single neuron from a Trial.
-
-        Extracts the design matrix *X* from the current covariate masks,
-        history, and ensemble history in the Trial, and the observation
-        vector *Y*, then performs the GLM regression.
-
-        Parameters
-        ----------
-        tObj : Trial
-            Trial containing spike trains and covariates.
-        neuronNumber : int or str or sequence
-            Matlab-style 0-based neuron index, name, or sequence thereof.
-        lambdaIndex : int
-            Configuration index used for labelling the returned λ.
-        Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
-            ``'GLM'`` — standard Poisson GLM regression.
-            ``'BNLRCG'`` — truncated, L-2 regularised binomial logistic
-            regression (requires binary spike representation).
-        l2 : float, default 0.0
-            L-2 regularisation strength.
-        max_iter : int, default 120
-            Maximum IRLS / CG iterations.
-
-        Returns
-        -------
-        lambda_sig : Covariate
-            Conditional intensity function evaluated on the design-matrix
-            time grid.
-        b : ndarray
-            GLM regression coefficients.
-        dev : float
-            Deviance of the fit.
-        stats : dict
-            Fit statistics (standard errors, convergence info, covariance
-            matrix).
-        AIC : float
-            Akaike information criterion.
-        BIC : float
-            Bayesian information criterion.
-        logLL : float
-            Log-likelihood evaluated with the fit parameters.
-        distribution : str
-            ``'poisson'`` or ``'binomial'``.
-        """
-        algorithm = str(Algorithm or "GLM").upper()
-        if algorithm not in {"GLM", "BNLRCG"}:
-            raise ValueError("Algorithm not supported!")
-
-        indices = _as_neuron_indices(tObj, neuronNumber)
-        if not indices:
-            raise ValueError("No neurons matched the MATLAB-style selector")
-
-        binary_rep = all(tObj.nspikeColl.getNST(idx).isSigRepBinary() for idx in indices)
-        if algorithm == "BNLRCG" and not binary_rep:
-            raise ValueError("To use BNLRCG Algorithm, spikeTrain must have a binary representation. Increase sampleRate and try again")
-
-        stacked_y: list[np.ndarray] = []
-        stacked_x: list[np.ndarray] = []
-        lambda_segments: list[np.ndarray] = []
-        lambda_time_segments: list[np.ndarray] = []
-        time_offset = 0.0
-
-        for index in indices:
-            x = np.asarray(tObj.getDesignMatrix(index), dtype=float)
-            lambda_time = np.asarray(tObj.getCov(0).time, dtype=float).reshape(-1)
-            sample_rate = float(tObj.sampleRate)
-            dt = 1.0 / max(sample_rate, 1e-12)
-            # Use getSpikeVector (via getSigRep) to match MATLAB's GLMFit,
-            # which calls tObj.getSpikeVector(neuronIndex).  The alternative
-            # to_binned_counts uses np.histogram bin edges that can assign
-            # spikes to adjacent bins when spike times fall on floating-point
-            # boundary values, causing small but systematic deviance offsets.
-            y = np.asarray(tObj.getSpikeVector(index), dtype=float).reshape(-1)
-
-            n_obs = min(x.shape[0], y.shape[0], lambda_time.shape[0])
-            x = x[:n_obs, :]
-            y = y[:n_obs]
-            lambda_time = lambda_time[:n_obs]
-
-            stacked_x.append(x)
-            stacked_y.append(y)
-            lambda_time_segments.append(lambda_time + time_offset)
-            time_offset = float(lambda_time[-1] + dt) if lambda_time.size else time_offset
-
-        X = np.vstack(stacked_x) if stacked_x else np.zeros((0, 0), dtype=float)
-        y = np.concatenate(stacked_y) if stacked_y else np.array([], dtype=float)
-        lambda_time_full = np.concatenate(lambda_time_segments) if lambda_time_segments else np.array([], dtype=float)
-        sample_rate = float(tObj.sampleRate)
-
-        if algorithm == "BNLRCG":
-            glm_res = fit_binomial_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
-            lambda_delta = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
-            rate_hz = lambda_delta * sample_rate
-            distribution = "binomial"
-            b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
-            dev = _glm_deviance(y, lambda_delta, distribution)
-        else:
-            glm_res = fit_poisson_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
-            lambda_delta = glm_res.predict_rate(X)
-            rate_hz = lambda_delta * sample_rate
-            distribution = "poisson"
-            b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
-            dev = _glm_deviance(y, lambda_delta, distribution)
-
-        # MATLAB stores logLL using the legacy per-bin convention
-        # `sum(y.*log(data*delta) + (1-y).*(1-data*delta))` for both GLM branches.
-        # NOTE: this is *not* a true log-likelihood (the negative-class term is
-        # missing the outer ``log``).  We retain it under the ``logLL`` name for
-        # MATLAB parity, and expose the true Bernoulli/Poisson log-likelihood
-        # in ``stats["loglik"]`` below so callers can use the standard
-        # AIC = -2*loglik + 2*k relation.
-        matlab_bin_mass = np.maximum(rate_hz / max(sample_rate, 1e-12), 1e-12)
-        logLL = float(np.sum(y * np.log(matlab_bin_mass) + (1.0 - y) * (1.0 - matlab_bin_mass)))
-
-        # True Bernoulli/Poisson per-bin log-likelihood (for AIC/BIC reasoning).
-        p = np.clip(matlab_bin_mass, 1e-12, 1.0 - 1e-12)
-        loglik = float(np.sum(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)))
-
-        n_params = int(b.size)
-        AIC = float(2.0 * n_params + dev)
-        BIC = float(np.log(max(y.shape[0], 1)) * n_params + dev)
-
-        start = 0
-        for x_seg in stacked_x:
-            stop = start + x_seg.shape[0]
-            lambda_segments.append(rate_hz[start:stop])
-            start = stop
-
-        lambda_sig = _fit_lambda_matrix_to_covariate(lambda_time_full, lambda_segments, int(lambdaIndex))
-
-        # Compute standard errors from Fisher information (Hessian inverse)
-        # Poisson: W = diag(mu);  Binomial: W = diag(mu*(1-mu))
-        try:
-            if distribution == "binomial":
-                W = lambda_delta * (1.0 - lambda_delta)
-            else:
-                W = lambda_delta.copy()
-            W = np.maximum(W, 1e-12)
-            XtWX = X.T @ (X * W[:, None]) + l2 * np.eye(X.shape[1])
-            covb = np.linalg.inv(XtWX)
-            se = np.sqrt(np.maximum(np.diag(covb), 0.0))
-        except np.linalg.LinAlgError:
-            se = np.full(b.size, np.nan, dtype=float)
-            covb = None
-
-        stats = {
-            "intercept": float(glm_res.intercept),
-            "n_iter": int(glm_res.n_iter),
-            "converged": bool(glm_res.converged),
-            "se": se,
-            "covb": covb,
-            "loglik": loglik,
-            "matlab_logLL": logLL,
-        }
-        return GLMFitResult(
-            lambda_signal=lambda_sig,
-            b=b,
-            dev=dev,
-            stats=stats,
-            AIC=AIC,
-            BIC=BIC,
-            logLL=logLL,
-            distribution=distribution,
-        )
-
-    @staticmethod
     def run_analysis_for_neuron(
         trial: Trial,
         neuron_index: int,
@@ -720,39 +545,273 @@ class Analysis:
         return fits[0] if len(fits) == 1 else fits
 
     @staticmethod
-    def computeKSStats(nspikeObj, lambdaInput: Covariate, DTCorrection: int = 1, *, random_values=None):
-        """Compute KS goodness-of-fit statistics via the time-rescaling theorem.
+    def GLMFit(
+        tObj: Trial,
+        neuronNumber,
+        lambdaIndex: int,
+        Algorithm: str = "GLM",
+        *,
+        l2: float = 0.0,
+        max_iter: int = 120,
+    ):
+        """Fit a point-process GLM for a single neuron from a Trial.
 
-        Given a neural spike train and a candidate conditional intensity
-        function, computes the rescaled ISIs and the KS plot data.
+        Extracts the design matrix *X* from the current covariate masks,
+        history, and ensemble history in the Trial, and the observation
+        vector *Y*, then performs the GLM regression.
 
         Parameters
         ----------
-        nspikeObj : nspikeTrain or SpikeTrainCollection or sequence
-            Neural spike train(s).
-        lambdaInput : Covariate
-            Candidate conditional intensity function.
-        DTCorrection : int, default 1
-            If ``1``, apply discrete-time correction to KS plot.
-        random_values : array_like, optional
-            Pre-drawn uniform random values for reproducibility.
+        tObj : Trial
+            Trial containing spike trains and covariates.
+        neuronNumber : int or str or sequence
+            Matlab-style 0-based neuron index, name, or sequence thereof.
+        lambdaIndex : int
+            Configuration index used for labelling the returned λ.
+        Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
+            ``'GLM'`` — standard Poisson GLM regression.
+            ``'BNLRCG'`` — truncated, L-2 regularised binomial logistic
+            regression (requires binary spike representation).
+        l2 : float, default 0.0
+            L-2 regularisation strength.
+        max_iter : int, default 120
+            Maximum IRLS / CG iterations.
 
         Returns
         -------
-        Z : ndarray
-            Rescaled spike times.
-        U : ndarray
-            Z transformed to uniform(0, 1).
-        xAxis : ndarray
-            x-axis of the KS plot.
-        KSSorted : ndarray
-            Sorted rescaled times (y-axis of KS plot).
-        ks_stat : ndarray
-            KS statistic — maximum deviation from the 45° line for each
-            conditional intensity function.
+        lambda_sig : Covariate
+            Conditional intensity function evaluated on the design-matrix
+            time grid.
+        b : ndarray
+            GLM regression coefficients.
+        dev : float
+            Deviance of the fit.
+        stats : dict
+            Fit statistics (standard errors, convergence info, covariance
+            matrix).
+        AIC : float
+            Akaike information criterion.
+        BIC : float
+            Bayesian information criterion.
+        logLL : float
+            Log-likelihood evaluated with the fit parameters.
+        distribution : str
+            ``'poisson'`` or ``'binomial'``.
         """
-        nspikeObj = Analysis._collapse_spike_input(nspikeObj)
-        return _matlab_compute_ks_arrays(nspikeObj, lambdaInput, dt_correction=DTCorrection, random_values=random_values)
+        algorithm = str(Algorithm or "GLM").upper()
+        if algorithm not in {"GLM", "BNLRCG"}:
+            raise ValueError("Algorithm not supported!")
+
+        indices = _as_neuron_indices(tObj, neuronNumber)
+        if not indices:
+            raise ValueError("No neurons matched the MATLAB-style selector")
+
+        binary_rep = all(tObj.nspikeColl.getNST(idx).isSigRepBinary() for idx in indices)
+        if algorithm == "BNLRCG" and not binary_rep:
+            raise ValueError("To use BNLRCG Algorithm, spikeTrain must have a binary representation. Increase sampleRate and try again")
+
+        stacked_y: list[np.ndarray] = []
+        stacked_x: list[np.ndarray] = []
+        lambda_segments: list[np.ndarray] = []
+        lambda_time_segments: list[np.ndarray] = []
+        time_offset = 0.0
+
+        for index in indices:
+            x = np.asarray(tObj.getDesignMatrix(index), dtype=float)
+            lambda_time = np.asarray(tObj.getCov(0).time, dtype=float).reshape(-1)
+            sample_rate = float(tObj.sampleRate)
+            dt = 1.0 / max(sample_rate, 1e-12)
+            # Use getSpikeVector (via getSigRep) to match MATLAB's GLMFit,
+            # which calls tObj.getSpikeVector(neuronIndex).  The alternative
+            # to_binned_counts uses np.histogram bin edges that can assign
+            # spikes to adjacent bins when spike times fall on floating-point
+            # boundary values, causing small but systematic deviance offsets.
+            y = np.asarray(tObj.getSpikeVector(index), dtype=float).reshape(-1)
+
+            n_obs = min(x.shape[0], y.shape[0], lambda_time.shape[0])
+            x = x[:n_obs, :]
+            y = y[:n_obs]
+            lambda_time = lambda_time[:n_obs]
+
+            stacked_x.append(x)
+            stacked_y.append(y)
+            lambda_time_segments.append(lambda_time + time_offset)
+            time_offset = float(lambda_time[-1] + dt) if lambda_time.size else time_offset
+
+        X = np.vstack(stacked_x) if stacked_x else np.zeros((0, 0), dtype=float)
+        y = np.concatenate(stacked_y) if stacked_y else np.array([], dtype=float)
+        lambda_time_full = np.concatenate(lambda_time_segments) if lambda_time_segments else np.array([], dtype=float)
+        sample_rate = float(tObj.sampleRate)
+
+        if algorithm == "BNLRCG":
+            glm_res = fit_binomial_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
+            lambda_delta = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
+            rate_hz = lambda_delta * sample_rate
+            distribution = "binomial"
+            b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            dev = _glm_deviance(y, lambda_delta, distribution)
+        else:
+            glm_res = fit_poisson_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
+            lambda_delta = glm_res.predict_rate(X)
+            rate_hz = lambda_delta * sample_rate
+            distribution = "poisson"
+            b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            dev = _glm_deviance(y, lambda_delta, distribution)
+
+        # MATLAB stores logLL using the legacy per-bin convention
+        # `sum(y.*log(data*delta) + (1-y).*(1-data*delta))` for both GLM branches.
+        # NOTE: this is *not* a true log-likelihood (the negative-class term is
+        # missing the outer ``log``).  We retain it under the ``logLL`` name for
+        # MATLAB parity, and expose the true Bernoulli/Poisson log-likelihood
+        # in ``stats["loglik"]`` below so callers can use the standard
+        # AIC = -2*loglik + 2*k relation.
+        matlab_bin_mass = np.maximum(rate_hz / max(sample_rate, 1e-12), 1e-12)
+        logLL = float(np.sum(y * np.log(matlab_bin_mass) + (1.0 - y) * (1.0 - matlab_bin_mass)))
+
+        # True Bernoulli/Poisson per-bin log-likelihood (for AIC/BIC reasoning).
+        p = np.clip(matlab_bin_mass, 1e-12, 1.0 - 1e-12)
+        loglik = float(np.sum(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)))
+
+        n_params = int(b.size)
+        AIC = float(2.0 * n_params + dev)
+        BIC = float(np.log(max(y.shape[0], 1)) * n_params + dev)
+
+        start = 0
+        for x_seg in stacked_x:
+            stop = start + x_seg.shape[0]
+            lambda_segments.append(rate_hz[start:stop])
+            start = stop
+
+        lambda_sig = _fit_lambda_matrix_to_covariate(lambda_time_full, lambda_segments, int(lambdaIndex))
+
+        # Compute standard errors from Fisher information (Hessian inverse)
+        # Poisson: W = diag(mu);  Binomial: W = diag(mu*(1-mu))
+        try:
+            if distribution == "binomial":
+                W = lambda_delta * (1.0 - lambda_delta)
+            else:
+                W = lambda_delta.copy()
+            W = np.maximum(W, 1e-12)
+            XtWX = X.T @ (X * W[:, None]) + l2 * np.eye(X.shape[1])
+            covb = np.linalg.inv(XtWX)
+            se = np.sqrt(np.maximum(np.diag(covb), 0.0))
+        except np.linalg.LinAlgError:
+            se = np.full(b.size, np.nan, dtype=float)
+            covb = None
+
+        stats = {
+            "intercept": float(glm_res.intercept),
+            "n_iter": int(glm_res.n_iter),
+            "converged": bool(glm_res.converged),
+            "se": se,
+            "covb": covb,
+            "loglik": loglik,
+            "matlab_logLL": logLL,
+        }
+        return GLMFitResult(
+            lambda_signal=lambda_sig,
+            b=b,
+            dev=dev,
+            stats=stats,
+            AIC=AIC,
+            BIC=BIC,
+            logLL=logLL,
+            distribution=distribution,
+        )
+
+    @staticmethod
+    def plotInvGausTrans(fitResults: FitResult, makePlot: int = 0):
+        """Compute and optionally plot the inverse-Gaussian transform ACF.
+
+        Parameters
+        ----------
+        fitResults : FitResult
+            Fit result to compute the transform for.
+        makePlot : int, default 0
+            If ``1``, generate the ACF plot.
+
+        Returns
+        -------
+        list
+            Plot handles (empty list when *makePlot* is ``0``).
+        """
+        fitResults.computeInvGausTrans()
+        return fitResults.plotInvGausTrans() if makePlot else []
+
+    @staticmethod
+    def plotFitResidual(fitResults: FitResult, windowSize: float = 0.01, makePlot: int = 1):
+        """Compute and plot the point-process residual.
+
+        Parameters
+        ----------
+        fitResults : FitResult
+            Fit result to compute the residual for.
+        windowSize : float, default 0.01
+            Integration window size (seconds).
+        makePlot : int, default 1
+            If ``1``, generate the residual plot.
+
+        Returns
+        -------
+        list
+            Plot handles (empty list when *makePlot* is ``0``).
+        """
+        fitResults.computeFitResidual(windowSize=windowSize)
+        return fitResults.plotResidual() if makePlot else []
+
+    @staticmethod
+    def KSPlot(fitResults: FitResult, DTCorrection: int = 1, makePlot: int = 1):
+        """Compute KS statistics and optionally generate the KS plot.
+
+        Parameters
+        ----------
+        fitResults : FitResult
+            Fit result to compute KS statistics for.
+        DTCorrection : int, default 1
+            Discrete-time correction flag.
+        makePlot : int, default 1
+            If ``1``, generate the KS plot.
+
+        Returns
+        -------
+        list
+            Plot handles (empty list when *makePlot* is ``0``).
+        """
+        fitResults.computeKSStats(dt_correction=DTCorrection)
+        return fitResults.KSPlot() if makePlot else []
+
+    @staticmethod
+    def plotSeqCorr(fitResults: FitResult):
+        """Plot the sequential correlation of rescaled ISIs (z_j vs z_{j-1}).
+
+        Parameters
+        ----------
+        fitResults : FitResult
+            Fit result (inverse-Gaussian transform is computed if needed).
+
+        Returns
+        -------
+        list
+            Plot handles.
+        """
+        fitResults.computeInvGausTrans()
+        return fitResults.plotSeqCorr()
+
+    @staticmethod
+    def plotCoeffs(fitResults: FitResult):
+        """Plot regression coefficients for all fits in *fitResults*.
+
+        Parameters
+        ----------
+        fitResults : FitResult
+            Fit result whose coefficients to plot.
+
+        Returns
+        -------
+        list
+            Plot handles.
+        """
+        return fitResults.plotCoeffs()
 
     @staticmethod
     def computeInvGausTrans(Z):
@@ -803,6 +862,45 @@ class Analysis:
         rhoSig = SignalObj(lags, rho, "ACF[ \\Phi^-1(u_i) ]", "Lag \\Delta \\tau", "sec")
         confBoundSig = SignalObj(lags, conf, "ACF[ \\Phi^-1(u_i) ]", "\\Delta \\tau", "sec")
         return X, rhoSig, confBoundSig
+
+    @staticmethod
+    def computeKSStats(nspikeObj, lambdaInput: Covariate, DTCorrection: int = 1, *, random_values=None):
+        """Compute KS goodness-of-fit statistics via the time-rescaling theorem.
+
+        Given a neural spike train and a candidate conditional intensity
+        function, computes the rescaled ISIs and the KS plot data.
+
+        Parameters
+        ----------
+        nspikeObj : nspikeTrain or SpikeTrainCollection or sequence
+            Neural spike train(s).
+        lambdaInput : Covariate
+            Candidate conditional intensity function.
+        DTCorrection : int, default 1
+            If ``1``, apply discrete-time correction to KS plot.
+        random_values : array_like, optional
+            Pre-drawn uniform random values for reproducibility.
+
+        Returns
+        -------
+        Z : ndarray
+            Rescaled spike times.
+        U : ndarray
+            Z transformed to uniform(0, 1).
+        xAxis : ndarray
+            x-axis of the KS plot.
+        KSSorted : ndarray
+            Sorted rescaled times (y-axis of KS plot).
+        ks_stat : ndarray
+            KS statistic — maximum deviation from the 45° line for each
+            conditional intensity function.
+        """
+        nspikeObj = Analysis._collapse_spike_input(nspikeObj)
+        return _matlab_compute_ks_arrays(nspikeObj, lambdaInput, dt_correction=DTCorrection, random_values=random_values)
+
+    # TODO(parity): port MATLAB method ksdiscrete from cajigaslab/nSTAT@2d86602
+    # (Analysis.m static method; thin wrapper around file-local ksdiscrete
+    #  used by computeKSStats for discrete-time KS correction).
 
     @staticmethod
     def computeFitResidual(nspikeObj, lambdaInput: Covariate, windowSize: float = 0.01):
@@ -863,98 +961,206 @@ class Analysis:
         )
 
     @staticmethod
-    def KSPlot(fitResults: FitResult, DTCorrection: int = 1, makePlot: int = 1):
-        """Compute KS statistics and optionally generate the KS plot.
+    def compHistEnsCoeffForAll(tObj: Trial, history, makePlot=1):
+        """Compute ensemble-history coefficients for all unmasked neurons.
+
+        Calls :meth:`compHistEnsCoeff` for each neuron that is not
+        masked.
 
         Parameters
         ----------
-        fitResults : FitResult
-            Fit result to compute KS statistics for.
-        DTCorrection : int, default 1
-            Discrete-time correction flag.
+        tObj : Trial
+            Trial to analyse.
+        history : History
+            History object defining the window structure.
         makePlot : int, default 1
-            If ``1``, generate the KS plot.
+            Summary plot flag.
 
         Returns
         -------
-        list
-            Plot handles (empty list when *makePlot* is ``0``).
+        fit_results : list of FitResult
+            One fit result per neuron.
+        ensemble_cov : CovariateCollection or None
+            Ensemble covariates from the last neuron.
+        config_collections : list of ConfigCollection
+            Configuration collections used per neuron.
         """
-        fitResults.computeKSStats(dt_correction=DTCorrection)
-        return fitResults.KSPlot() if makePlot else []
+        neuron_indices = tObj.getNeuronIndFromMask()
+        if not neuron_indices:
+            return [], None, []
+        fit_results = []
+        config_collections = []
+        ensemble_cov = None
+        for neuron_index in neuron_indices:
+            fit, ensemble_cov_current, tcc = Analysis.compHistEnsCoeff(
+                tObj,
+                history,
+                neuron_index,
+                tObj.getNeuronNeighbors(neuron_index),
+                None,
+                makePlot,
+            )
+            fit_results.append(fit)
+            config_collections.append(tcc)
+            if ensemble_cov is None:
+                ensemble_cov = ensemble_cov_current
+        return fit_results, ensemble_cov, config_collections
 
     @staticmethod
-    def plotFitResidual(fitResults: FitResult, windowSize: float = 0.01, makePlot: int = 1):
-        """Compute and plot the point-process residual.
+    def compHistEnsCoeff(tObj: Trial, history, neuronNum=None, neighbors=None, ensembleCov=None, makePlot=1):
+        """Compute ensemble-history coefficients for one neuron.
+
+        Builds a covariate collection from the spiking history of
+        neighbouring neurons and fits a GLM with ensemble history as the
+        design matrix.
 
         Parameters
         ----------
-        fitResults : FitResult
-            Fit result to compute the residual for.
-        windowSize : float, default 0.01
-            Integration window size (seconds).
+        tObj : Trial
+            Trial containing spike trains and covariates.
+        history : History
+            History object defining the window structure.
+        neuronNum : int or None
+            Matlab-style 0-based neuron index.  Defaults to the first
+            unmasked neuron.
+        neighbors : array_like or None
+            Indices of neighbouring neurons.  Defaults to
+            ``tObj.getNeuronNeighbors(neuronNum)``.
+        ensembleCov : CovariateCollection or None
+            Pre-computed ensemble covariates.  If ``None``, computed
+            automatically.
         makePlot : int, default 1
-            If ``1``, generate the residual plot.
+            Summary plot flag.
 
         Returns
         -------
-        list
-            Plot handles (empty list when *makePlot* is ``0``).
+        fitResults : FitResult
+            Fit result for the ensemble-history model.
+        ensembleCov : CovariateCollection
+            Ensemble covariates used in the fit.
+        tcc : ConfigCollection
+            Configuration collection used.
         """
-        fitResults.computeFitResidual(windowSize=windowSize)
-        return fitResults.plotResidual() if makePlot else []
+        from .trial import TrialConfig
+
+        neuron_index = _as_neuron_indices(tObj, neuronNum if neuronNum is not None else tObj.getNeuronIndFromMask()[0])[0]
+        if neighbors is None or (isinstance(neighbors, Sequence) and not neighbors):
+            neighbors = tObj.getNeuronNeighbors(neuron_index)
+        if ensembleCov is None:
+            ensembleCov = tObj.getEnsembleNeuronCovariates(neuron_index, neighbors, history)
+
+        ensemble_trial = Trial(tObj.nspikeColl, ensembleCov)
+        tc = TrialConfig("all", ensemble_trial.sampleRate, [], [], [], [], name="EnsembleHistory")
+        tcc = ConfigCollection(tc)
+        fitResults = Analysis.RunAnalysisForNeuron(ensemble_trial, neuron_index, tcc, makePlot)
+        return fitResults, ensembleCov, tcc
 
     @staticmethod
-    def plotInvGausTrans(fitResults: FitResult, makePlot: int = 0):
-        """Compute and optionally plot the inverse-Gaussian transform ACF.
+    def computeGrangerCausalityMatrix(tObj: Trial, Algorithm="GLM", confidenceInterval=0.95, batchMode=0):
+        """Compute the Granger-causality matrix for the neural ensemble.
+
+        For every pair of neurons, fits a baseline model (full ensemble
+        history) and a reduced model (one neighbour excluded), then
+        computes the log-likelihood ratio.  Statistical significance is
+        corrected for multiple comparisons with Benjamini–Hochberg FDR.
 
         Parameters
         ----------
-        fitResults : FitResult
-            Fit result to compute the transform for.
-        makePlot : int, default 0
-            If ``1``, generate the ACF plot.
+        tObj : Trial
+            Trial with ensemble history configured.
+        Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
+            Regression algorithm.
+        confidenceInterval : float, default 0.95
+            Confidence level for the significance test.
+        batchMode : int
+            Unused (Matlab API parity).
 
         Returns
         -------
-        list
-            Plot handles (empty list when *makePlot* is ``0``).
+        fitResults : list of list of FitResult
+            ``fitResults[i][j]`` is the fit result for the test of
+            neighbour *j* → neuron *i*.
+        gammaMat : ndarray, shape (N, N)
+            Log-likelihood ratio Γ matrix.
+        phiMat : ndarray, shape (N, N)
+            Signed Γ matrix (sign from sum of excluded coefficients).
+        devianceMat : ndarray, shape (N, N)
+            Deviance (−2Γ) matrix.
+        sigMat : ndarray, shape (N, N)
+            Binary significance matrix after FDR correction.
         """
-        fitResults.computeInvGausTrans()
-        return fitResults.plotInvGausTrans() if makePlot else []
+        del batchMode
+        neuron_indices = tObj.getNeuronIndFromMask()
+        n_neurons = tObj.nspikeColl.numSpikeTrains
+        gammaMat = np.zeros((n_neurons, n_neurons), dtype=float)
+        phiMat = np.zeros_like(gammaMat)
+        devianceMat = np.zeros_like(gammaMat)
+        sigMat = np.zeros_like(gammaMat, dtype=int)
+        fitResults: list[list[FitResult]] = [[] for _ in neuron_indices]
 
-    @staticmethod
-    def plotSeqCorr(fitResults: FitResult):
-        """Plot the sequential correlation of rescaled ISIs (z_j vs z_{j-1}).
+        ens_hist = tObj.ensCovHist if tObj.isEnsCovHistSet() else tObj.history
+        if ens_hist is None or (isinstance(ens_hist, np.ndarray) and ens_hist.size == 0) or (
+            isinstance(ens_hist, Sequence) and not isinstance(ens_hist, (str, bytes, np.ndarray)) and len(ens_hist) == 0
+        ):
+            raise ValueError("Trial must define history or ensemble-history before computing Granger causality")
 
-        Parameters
-        ----------
-        fitResults : FitResult
-            Fit result (inverse-Gaussian transform is computed if needed).
+        cov_mask = tObj.covMask
+        sample_rate = tObj.sampleRate
+        ens_mask = np.asarray(tObj.ensCovMask, dtype=int) if np.asarray(tObj.ensCovMask).size else (
+            np.ones((n_neurons, n_neurons), dtype=int) - np.eye(n_neurons, dtype=int)
+        )
 
-        Returns
-        -------
-        list
-            Plot handles.
-        """
-        fitResults.computeInvGausTrans()
-        return fitResults.plotSeqCorr()
+        from .trial import TrialConfig
 
-    @staticmethod
-    def plotCoeffs(fitResults: FitResult):
-        """Plot regression coefficients for all fits in *fitResults*.
+        p_vals: list[float] = []
+        p_coords: list[tuple[int, int]] = []
+        alpha = 1.0 - float(confidenceInterval)
 
-        Parameters
-        ----------
-        fitResults : FitResult
-            Fit result whose coefficients to plot.
+        for target_offset, neuron_index in enumerate(neuron_indices):
+            baseline_cfg = TrialConfig(cov_mask, sample_rate, tObj.history, ens_hist, ens_mask, name="Baseline")
+            neighbors = np.flatnonzero(ens_mask[:, neuron_index] == 1)
+            for neighbor in neighbors:
+                reduced_mask = ens_mask.copy()
+                reduced_mask[neighbor, neuron_index] = 0
+                excluded_cfg = TrialConfig(
+                    cov_mask,
+                    sample_rate,
+                    tObj.history,
+                    ens_hist,
+                    reduced_mask,
+                    name=f"{neighbor}excluded from {neuron_index}",
+                )
+                fit = Analysis.RunAnalysisForNeuron(tObj, neuron_index, ConfigCollection([baseline_cfg, excluded_cfg]), 0, Algorithm)
+                fitResults[target_offset].append(fit)
+                gamma = float(np.asarray(fit.logLL, dtype=float)[1] - np.asarray(fit.logLL, dtype=float)[0])
+                gammaMat[neighbor, neuron_index] = gamma
+                deviance = float(max(-2.0 * gamma, 0.0))
+                devianceMat[neighbor, neuron_index] = deviance
+                dim_diff = max(int(abs(np.diff(np.asarray(fit.numCoeffs, dtype=int))[0])), 1)
+                p_val = float(chi2.sf(deviance, dim_diff))
+                p_vals.append(p_val)
+                p_coords.append((neighbor, neuron_index))
+                # Matlab: extract only the specific neighbor's ensemble
+                # coefficients from the BASELINE model (fit 0) for the sign.
+                if np.any(np.asarray(fit.numHist, dtype=int) > 0):
+                    coeffs_all, labels_all, _ = fit.getCoeffsWithLabels(0)
+                    neighbor_prefix = f"{neighbor}:["
+                    neighbor_mask = np.array([str(lbl).startswith(neighbor_prefix) for lbl in labels_all], dtype=bool)
+                    neighbor_coeffs = coeffs_all[neighbor_mask] if np.any(neighbor_mask) else np.array([], dtype=float)
+                else:
+                    neighbor_coeffs = np.array([], dtype=float)
+                if neighbor_coeffs.size:
+                    phiMat[neighbor, neuron_index] = -float(np.sign(np.sum(neighbor_coeffs))) * gamma
 
-        Returns
-        -------
-        list
-            Plot handles.
-        """
-        return fitResults.plotCoeffs()
+        if p_vals:
+            keep = _benjamini_hochberg(np.asarray(p_vals, dtype=float), alpha=max(alpha, 1e-6))
+            for include, (row, col) in zip(keep, p_coords, strict=False):
+                sigMat[row, col] = int(include)
+
+        # Restore the ensemble covariate mask to its default state (Matlab parity).
+        tObj.resetEnsCovMask()
+
+        return fitResults, gammaMat, phiMat, devianceMat, sigMat
 
     @staticmethod
     def computeHistLag(tObj: Trial, neuronNum=None, windowTimes=None, CovLabels=None, Algorithm="GLM", batchMode=0, sampleRate=None, makePlot=1, histMinTimes=None, histMaxTimes=None):
@@ -1071,208 +1277,6 @@ class Analysis:
             )
             results.append(fit)
         return results
-
-    @staticmethod
-    def compHistEnsCoeff(tObj: Trial, history, neuronNum=None, neighbors=None, ensembleCov=None, makePlot=1):
-        """Compute ensemble-history coefficients for one neuron.
-
-        Builds a covariate collection from the spiking history of
-        neighbouring neurons and fits a GLM with ensemble history as the
-        design matrix.
-
-        Parameters
-        ----------
-        tObj : Trial
-            Trial containing spike trains and covariates.
-        history : History
-            History object defining the window structure.
-        neuronNum : int or None
-            Matlab-style 0-based neuron index.  Defaults to the first
-            unmasked neuron.
-        neighbors : array_like or None
-            Indices of neighbouring neurons.  Defaults to
-            ``tObj.getNeuronNeighbors(neuronNum)``.
-        ensembleCov : CovariateCollection or None
-            Pre-computed ensemble covariates.  If ``None``, computed
-            automatically.
-        makePlot : int, default 1
-            Summary plot flag.
-
-        Returns
-        -------
-        fitResults : FitResult
-            Fit result for the ensemble-history model.
-        ensembleCov : CovariateCollection
-            Ensemble covariates used in the fit.
-        tcc : ConfigCollection
-            Configuration collection used.
-        """
-        from .trial import TrialConfig
-
-        neuron_index = _as_neuron_indices(tObj, neuronNum if neuronNum is not None else tObj.getNeuronIndFromMask()[0])[0]
-        if neighbors is None or (isinstance(neighbors, Sequence) and not neighbors):
-            neighbors = tObj.getNeuronNeighbors(neuron_index)
-        if ensembleCov is None:
-            ensembleCov = tObj.getEnsembleNeuronCovariates(neuron_index, neighbors, history)
-
-        ensemble_trial = Trial(tObj.nspikeColl, ensembleCov)
-        tc = TrialConfig("all", ensemble_trial.sampleRate, [], [], [], [], name="EnsembleHistory")
-        tcc = ConfigCollection(tc)
-        fitResults = Analysis.RunAnalysisForNeuron(ensemble_trial, neuron_index, tcc, makePlot)
-        return fitResults, ensembleCov, tcc
-
-    @staticmethod
-    def compHistEnsCoeffForAll(tObj: Trial, history, makePlot=1):
-        """Compute ensemble-history coefficients for all unmasked neurons.
-
-        Calls :meth:`compHistEnsCoeff` for each neuron that is not
-        masked.
-
-        Parameters
-        ----------
-        tObj : Trial
-            Trial to analyse.
-        history : History
-            History object defining the window structure.
-        makePlot : int, default 1
-            Summary plot flag.
-
-        Returns
-        -------
-        fit_results : list of FitResult
-            One fit result per neuron.
-        ensemble_cov : CovariateCollection or None
-            Ensemble covariates from the last neuron.
-        config_collections : list of ConfigCollection
-            Configuration collections used per neuron.
-        """
-        neuron_indices = tObj.getNeuronIndFromMask()
-        if not neuron_indices:
-            return [], None, []
-        fit_results = []
-        config_collections = []
-        ensemble_cov = None
-        for neuron_index in neuron_indices:
-            fit, ensemble_cov_current, tcc = Analysis.compHistEnsCoeff(
-                tObj,
-                history,
-                neuron_index,
-                tObj.getNeuronNeighbors(neuron_index),
-                None,
-                makePlot,
-            )
-            fit_results.append(fit)
-            config_collections.append(tcc)
-            if ensemble_cov is None:
-                ensemble_cov = ensemble_cov_current
-        return fit_results, ensemble_cov, config_collections
-
-    @staticmethod
-    def computeGrangerCausalityMatrix(tObj: Trial, Algorithm="GLM", confidenceInterval=0.95, batchMode=0):
-        """Compute the Granger-causality matrix for the neural ensemble.
-
-        For every pair of neurons, fits a baseline model (full ensemble
-        history) and a reduced model (one neighbour excluded), then
-        computes the log-likelihood ratio.  Statistical significance is
-        corrected for multiple comparisons with Benjamini–Hochberg FDR.
-
-        Parameters
-        ----------
-        tObj : Trial
-            Trial with ensemble history configured.
-        Algorithm : {'GLM', 'BNLRCG'}, default ``'GLM'``
-            Regression algorithm.
-        confidenceInterval : float, default 0.95
-            Confidence level for the significance test.
-        batchMode : int
-            Unused (Matlab API parity).
-
-        Returns
-        -------
-        fitResults : list of list of FitResult
-            ``fitResults[i][j]`` is the fit result for the test of
-            neighbour *j* → neuron *i*.
-        gammaMat : ndarray, shape (N, N)
-            Log-likelihood ratio Γ matrix.
-        phiMat : ndarray, shape (N, N)
-            Signed Γ matrix (sign from sum of excluded coefficients).
-        devianceMat : ndarray, shape (N, N)
-            Deviance (−2Γ) matrix.
-        sigMat : ndarray, shape (N, N)
-            Binary significance matrix after FDR correction.
-        """
-        del batchMode
-        neuron_indices = tObj.getNeuronIndFromMask()
-        n_neurons = tObj.nspikeColl.numSpikeTrains
-        gammaMat = np.zeros((n_neurons, n_neurons), dtype=float)
-        phiMat = np.zeros_like(gammaMat)
-        devianceMat = np.zeros_like(gammaMat)
-        sigMat = np.zeros_like(gammaMat, dtype=int)
-        fitResults: list[list[FitResult]] = [[] for _ in neuron_indices]
-
-        ens_hist = tObj.ensCovHist if tObj.isEnsCovHistSet() else tObj.history
-        if ens_hist is None or (isinstance(ens_hist, np.ndarray) and ens_hist.size == 0) or (
-            isinstance(ens_hist, Sequence) and not isinstance(ens_hist, (str, bytes, np.ndarray)) and len(ens_hist) == 0
-        ):
-            raise ValueError("Trial must define history or ensemble-history before computing Granger causality")
-
-        cov_mask = tObj.covMask
-        sample_rate = tObj.sampleRate
-        ens_mask = np.asarray(tObj.ensCovMask, dtype=int) if np.asarray(tObj.ensCovMask).size else (
-            np.ones((n_neurons, n_neurons), dtype=int) - np.eye(n_neurons, dtype=int)
-        )
-
-        from .trial import TrialConfig
-
-        p_vals: list[float] = []
-        p_coords: list[tuple[int, int]] = []
-        alpha = 1.0 - float(confidenceInterval)
-
-        for target_offset, neuron_index in enumerate(neuron_indices):
-            baseline_cfg = TrialConfig(cov_mask, sample_rate, tObj.history, ens_hist, ens_mask, name="Baseline")
-            neighbors = np.flatnonzero(ens_mask[:, neuron_index] == 1)
-            for neighbor in neighbors:
-                reduced_mask = ens_mask.copy()
-                reduced_mask[neighbor, neuron_index] = 0
-                excluded_cfg = TrialConfig(
-                    cov_mask,
-                    sample_rate,
-                    tObj.history,
-                    ens_hist,
-                    reduced_mask,
-                    name=f"{neighbor}excluded from {neuron_index}",
-                )
-                fit = Analysis.RunAnalysisForNeuron(tObj, neuron_index, ConfigCollection([baseline_cfg, excluded_cfg]), 0, Algorithm)
-                fitResults[target_offset].append(fit)
-                gamma = float(np.asarray(fit.logLL, dtype=float)[1] - np.asarray(fit.logLL, dtype=float)[0])
-                gammaMat[neighbor, neuron_index] = gamma
-                deviance = float(max(-2.0 * gamma, 0.0))
-                devianceMat[neighbor, neuron_index] = deviance
-                dim_diff = max(int(abs(np.diff(np.asarray(fit.numCoeffs, dtype=int))[0])), 1)
-                p_val = float(chi2.sf(deviance, dim_diff))
-                p_vals.append(p_val)
-                p_coords.append((neighbor, neuron_index))
-                # Matlab: extract only the specific neighbor's ensemble
-                # coefficients from the BASELINE model (fit 0) for the sign.
-                if np.any(np.asarray(fit.numHist, dtype=int) > 0):
-                    coeffs_all, labels_all, _ = fit.getCoeffsWithLabels(0)
-                    neighbor_prefix = f"{neighbor}:["
-                    neighbor_mask = np.array([str(lbl).startswith(neighbor_prefix) for lbl in labels_all], dtype=bool)
-                    neighbor_coeffs = coeffs_all[neighbor_mask] if np.any(neighbor_mask) else np.array([], dtype=float)
-                else:
-                    neighbor_coeffs = np.array([], dtype=float)
-                if neighbor_coeffs.size:
-                    phiMat[neighbor, neuron_index] = -float(np.sign(np.sum(neighbor_coeffs))) * gamma
-
-        if p_vals:
-            keep = _benjamini_hochberg(np.asarray(p_vals, dtype=float), alpha=max(alpha, 1e-6))
-            for include, (row, col) in zip(keep, p_coords, strict=False):
-                sigMat[row, col] = int(include)
-
-        # Restore the ensemble covariate mask to its default state (Matlab parity).
-        tObj.resetEnsCovMask()
-
-        return fitResults, gammaMat, phiMat, devianceMat, sigMat
 
     @staticmethod
     def computeNeighbors(tObj: Trial, neuronNum=None, sampleRate=None, windowTimes=None, makePlot=1):

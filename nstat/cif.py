@@ -756,17 +756,6 @@ class CIF:
             )
         return self._gradient(stimVal, time_index=time_index, nst=nst, gamma=gamma, log=True)
 
-    def evalJacobianLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
-        """Hessian of λΔ w.r.t. gamma (history-coefficient scaling)."""
-        if self._expression_surface is not None and self._expression_surface["jacobian_gamma_fn"] is not None:
-            return _reshape_square(
-                self._expression_surface["jacobian_gamma_fn"](
-                    *self._surface_gamma_args(stimVal, time_index=time_index, nst=nst, gamma=gamma)
-                ),
-                self.histCoeffs.size,
-            )
-        return self._jacobian(stimVal, time_index=time_index, nst=nst, gamma=gamma)
-
     def evalJacobianLogLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
         """Hessian of log(λΔ) w.r.t. gamma (history-coefficient scaling)."""
         if self._expression_surface is not None and self._expression_surface["jacobian_log_gamma_fn"] is not None:
@@ -777,6 +766,17 @@ class CIF:
                 self.histCoeffs.size,
             )
         return self._jacobian(stimVal, time_index=time_index, nst=nst, gamma=gamma, log=True)
+
+    def evalJacobianLDGamma(self, stimVal, time_index: int | None = None, nst: nspikeTrain | None = None, gamma=None):
+        """Hessian of λΔ w.r.t. gamma (history-coefficient scaling)."""
+        if self._expression_surface is not None and self._expression_surface["jacobian_gamma_fn"] is not None:
+            return _reshape_square(
+                self._expression_surface["jacobian_gamma_fn"](
+                    *self._surface_gamma_args(stimVal, time_index=time_index, nst=nst, gamma=gamma)
+                ),
+                self.histCoeffs.size,
+            )
+        return self._jacobian(stimVal, time_index=time_index, nst=nst, gamma=gamma)
 
     def isSymBeta(self) -> bool:
         """Return ``True`` if the coefficients contain symbolic expressions."""

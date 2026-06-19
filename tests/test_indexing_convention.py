@@ -170,10 +170,19 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     # ensemble-history covariate naming z1, z2, ..., zN — these are MATLAB-style
     # display labels for covariates, not array indices).
     ('HippocampalPlaceCellExample.ipynb', '_F2_NAMES = [f"z{k}" for k in range(1, 11)]'): "MATLAB-style covariate names z1..zN",
+    # v6 iter 25 MATLAB-mirroring: numRealizations 1-based loop matches MATLAB's "for i = 1:numRealizations" idiom.
+    ('DecodingExample.ipynb', 'for i in range(1, numRealizations):'): "MATLAB-mirror 1-based loop",
     # HR4 baseline: legitimate 0-based selectors > 0 (intentional, not stale 1-based).
     # README example uses getNST(1) as a fallback after getNST(0) fails — supports
     # objects with either indexing convention.
     ("example2_simulate_cif_spiketrain_10s.py", "first_train = spike_obj.getNST(1)"): "fallback after getNST(0) failed",
+    # v6 iter 25 MATLAB-mirroring: MATLAB uses 1-based indexing for fits/covariates;
+    # iter 25 aligned Python notebooks to call evalLambda(1)/evalLambda(2) etc. as the
+    # MATLAB equivalents (where Python's evalLambda happens to accept 1-based indices,
+    # since MATLAB callsite is the parity-rule source of truth).  This is intentional.
+    ('AnalysisExamples2.ipynb', 'lambda_1 = fitResults.evalLambda(1, newData)'): "MATLAB fit_num=1 (1-based) mirror",
+    ('AnalysisExamples2.ipynb', 'lambda_2 = fitResults.evalLambda(2, newData)'): "MATLAB fit_num=2 (1-based) mirror",
+    ('CovCollExamples.ipynb', "cc.getCov(1)  # returns position"): "MATLAB 1-based covariate selector mirror",
     # AnalysisExamples2: comparing nstat fit against glmfit reference using the
     # second fit (0-based index 1, was MATLAB b{2}).
     ("AnalysisExamples2.ipynb", "b_diff = b - fitResults.getCoeffs(1)[0]"): "MATLAB b{2} = 0-based fit 1",
@@ -183,6 +192,9 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ("NetworkTutorial.ipynb", '"spike_counts": [spikeColl.getNST(0).n_spikes, spikeColl.getNST(1).n_spikes],'): "first + second train",
     # PPSimExample: third subsignal (0-based 2) is the binomial model's lambda.
     ("PPSimExample.ipynb", "results[0].lambdaSignal.getSubSignal(2).plot(handle=ax)"): "intentional 3rd subsignal (0-based)",
+    # v6 iter 24 LCS dynamic-programming previous-cell lookups in the parity tool.
+    ('class_method_parity.py', 'cur[j] = prev[j - 1] + 1'): "DP previous-element lookup",
+    ('class_method_parity.py', 'cur[j] = max(prev[j], cur[j - 1])'): "DP previous-element lookup",
     # StimulusDecode2D: extent uses last valid grid index (slice upper bound is exclusive,
     # so the right edge is _grid_vec[upper - 1]) — legitimate "edge sample" pattern.
     ("StimulusDecode2D.ipynb", "ext = [float(_grid_vec[_ix_lo]), float(_grid_vec[_ix_hi - 1]),"): "right-edge sample of half-open slice",

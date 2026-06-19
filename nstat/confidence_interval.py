@@ -259,31 +259,6 @@ class ConfidenceInterval:
         """Alias for :meth:`dataToStructure`."""
         return self.dataToStructure()
 
-    @staticmethod
-    def fromStructure(structure: dict) -> "ConfidenceInterval":
-        """Reconstruct a ConfidenceInterval from a dictionary."""
-        signals = structure.get("signals", {})
-        values = signals.get("values", structure.get("data"))
-        ci = ConfidenceInterval(
-            structure["time"],
-            values,
-            structure.get("name", ""),
-            structure.get("xlabelval", "time"),
-            structure.get("xunits", "s"),
-            structure.get("yunits", ""),
-            structure.get("dataLabels"),
-            structure.get("plotProps"),
-        )
-        if "dataMask" in structure:
-            ci.dataMask = np.asarray(structure["dataMask"], dtype=int).reshape(-1)
-        if "sampleRate" in structure:
-            ci.sampleRate = float(structure["sampleRate"])
-        if "minTime" in structure:
-            ci.minTime = float(structure["minTime"])
-        if "maxTime" in structure:
-            ci.maxTime = float(structure["maxTime"])
-        return ci
-
     def plot(self, color: str | None = None, alphaVal: float = 0.2, drawPatches: int = 0, ax=None):
         """Plot the confidence interval.
 
@@ -318,3 +293,28 @@ class ConfidenceInterval:
             for index, line in enumerate(lines):
                 line.set_color(MATLAB_COLOR_ORDER[index % MATLAB_COLOR_ORDER.shape[0]])
         return lines
+
+    @staticmethod
+    def fromStructure(structure: dict) -> "ConfidenceInterval":
+        """Reconstruct a ConfidenceInterval from a dictionary."""
+        signals = structure.get("signals", {})
+        values = signals.get("values", structure.get("data"))
+        ci = ConfidenceInterval(
+            structure["time"],
+            values,
+            structure.get("name", ""),
+            structure.get("xlabelval", "time"),
+            structure.get("xunits", "s"),
+            structure.get("yunits", ""),
+            structure.get("dataLabels"),
+            structure.get("plotProps"),
+        )
+        if "dataMask" in structure:
+            ci.dataMask = np.asarray(structure["dataMask"], dtype=int).reshape(-1)
+        if "sampleRate" in structure:
+            ci.sampleRate = float(structure["sampleRate"])
+        if "minTime" in structure:
+            ci.minTime = float(structure["minTime"])
+        if "maxTime" in structure:
+            ci.maxTime = float(structure["maxTime"])
+        return ci
