@@ -342,6 +342,34 @@ topics:
       reason: "MATLAB axis([xmin xmax ymin ymax]) limits setter — Python uses ax.set_xlim/ax.set_ylim explicitly without round-tripping through axis()."
     - call: "v"
       reason: "MATLAB v(3)/v(4) indexes the axis-limits vector returned by v=axis — mis-parsed as a call; Python doesn't capture limits this way."
+    # ------------------------------------------------------------------------
+    # MATLAB Publish ``%%`` cell-break artifacts. The helpfile splits a single
+    # logical step into several bare ``%%`` cells so Publish renders each
+    # statement as its own typesetting block (sample-path generation, the
+    # three TrialConfig literals, the ConfigColl + Analysis.RunAnalysisForAllNeurons
+    # finale). These bare-marker cells have no `# SECTION N: <title>` mirror
+    # in the Python notebook because the notebook groups them under the
+    # parent titled block (Ensemble Effect / GLM Model Fitting and Results),
+    # following the structure-diff tool's documented convention of folding
+    # untitled MATLAB sections into the preceding titled cell. The Python
+    # equivalents of every call below are present and execute in the cells
+    # paired to "Ensemble Effect" (§5) and "GLM Model Fitting and Results"
+    # (§7); functional parity is intact and verified by the matlab_gold
+    # fixtures + figure regen.
+    - call: "sin"
+      reason: "MATLAB sin(2*pi*f*t) at the top of the post-Ensemble untitled cell — Python computes np.sin in §5 (Ensemble Effect), present but inside the untitled MATLAB section that has no paired Python title."
+    - call: "subplot"
+      reason: "MATLAB subplot(2,1,1)/subplot(2,1,2) inside the untitled cell following Ensemble — Python uses fig.add_subplot in §5, mirrored exactly but in the un-paired MATLAB section."
+    - call: "simulateCIF"
+      reason: "MATLAB CIF.simulateCIF(mu,H,S,E,...) inside the untitled cell following Ensemble — Python calls the same nstat.CIF.simulateCIF in §5 (Ensemble Effect), but the MATLAB call site lives in the bare-marker cell with no Python title pair."
+    - call: "TrialConfig"
+      reason: "MATLAB c{1}=TrialConfig(...) / c{2}=TrialConfig(...) / c{3}=TrialConfig(...) split across three bare-%% Publish cells — Python builds the same three TrialConfig instances in §7 (GLM Model Fitting and Results); untitled MATLAB sections have no Python pair."
+    - call: "ConfigColl"
+      reason: "MATLAB ConfigColl(c) in the final untitled cell — Python builds ConfigColl(cfg) in §7 (GLM Model Fitting and Results); MATLAB call site is in an un-paired bare-%% cell."
+    - call: "RunAnalysisForAllNeurons"
+      reason: "MATLAB Analysis.RunAnalysisForAllNeurons(trial,cfgColl,0,Algorithm) in the final untitled cell — Python calls the same Analysis.RunAnalysisForAllNeurons in §7; un-paired MATLAB section."
+    - call: "Covariate"
+      reason: "MATLAB Covariate(t',u,'Stimulus',...) and Covariate(t',e,'Ensemble',...) inside the untitled cell following Ensemble — Python builds both Covariate instances in §5; the corresponding MATLAB call sites live in the bare-%% Publish cell with no Python title pair, while the baseline Covariate is already matched in §6 (GLM Model Fitting Setup)."
 
   DecodingExample:
     # MATLAB user-variable array-indexing mis-detected as call sites by the
