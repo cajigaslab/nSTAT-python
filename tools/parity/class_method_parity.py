@@ -79,6 +79,41 @@ CLASS_MAP: dict[str, tuple[str, str, str | None]] = {
 # ---------------------------------------------------------------------------
 
 
+# Canonical mapping: MATLAB operator-override method names ↔ Python `__dunder__`.
+# A MATLAB method named on the left is satisfied if the Python class defines the
+# corresponding dunder. This recognizes that Python uses operator overloads where
+# MATLAB uses named methods like `plus`/`minus`/`eq`/`subsref`.
+MATLAB_OPERATOR_TO_DUNDER: dict[str, str] = {
+    "plus": "__add__",
+    "minus": "__sub__",
+    "uplus": "__pos__",
+    "uminus": "__neg__",
+    "times": "__mul__",
+    "mtimes": "__matmul__",
+    "rdivide": "__truediv__",
+    "ldivide": "__rtruediv__",
+    "mrdivide": "__truediv__",   # MATLAB / vs ./
+    "mldivide": "__rtruediv__",
+    "power": "__pow__",
+    "mpower": "__pow__",
+    "ctranspose": "__invert__",   # MATLAB ' (conjugate transpose) — closest Python op
+    "transpose": "__transpose__", # MATLAB .' — no Python equivalent; recognized via attribute
+    "eq": "__eq__",
+    "ne": "__ne__",
+    "lt": "__lt__",
+    "le": "__le__",
+    "gt": "__gt__",
+    "ge": "__ge__",
+    "subsref": "__getitem__",
+    "subsasgn": "__setitem__",
+    "numel": "__len__",
+    "length": "__len__",
+    "end": "__len__",              # MATLAB 'end' resolves via numel
+    "disp": "__repr__",
+    "display": "__repr__",
+}
+
+
 @dataclass
 class MethodInfo:
     name: str
@@ -378,8 +413,13 @@ def parse_python_class(module_path: Path, class_name: str) -> list[MethodInfo]:
         name = node.name
         # Keep __init__ so it can pair with the MATLAB constructor (renamed
         # from `function obj = ClassName(...)` to `__init__` during MATLAB
-        # parsing). All other dunders are private to Python.
+        # parsing). Also keep dunders that satisfy a MATLAB operator-method
+        # name (plus/minus/eq/lt/subsref/...). All other dunders are private
+        # to Python.
+        _dunder_targets = set(MATLAB_OPERATOR_TO_DUNDER.values())
         if name == "__init__":
+            pass
+        elif name in _dunder_targets:
             pass
         elif name.startswith("__") and name.endswith("__"):
             continue
@@ -592,16 +632,57 @@ def build_report(
     py_by_name = {m.name: m for m in report.python_methods}
     ml_by_name = {m.name: m for m in report.matlab_methods}
 
-    report.order_score = compute_order_score(matlab_names, python_names)
-    matlab_set = set(matlab_names)
+    # Canonicalize MATLAB operator-method names (plus/minus/eq/...) into
+    # the equivalent Python dunder if that dunder is defined on the Python
+    # side. Records the mapping in `notes` so the report shows both names.
+    python_set_raw = set(python_names)
+    canon_matlab_names: list[str] = []
+    matlab_operator_mappings: list[tuple[str, str]] = []
+    convention_satisfied: set[str] = set()  # MATLAB names satisfied by convention
+    for nm in matlab_names:
+        dunder = MATLAB_OPERATOR_TO_DUNDER.get(nm)
+        if dunder is not None and dunder in python_set_raw:
+            canon_matlab_names.append(dunder)
+            matlab_operator_mappings.append((nm, dunder))
+        elif nm == "transpose":
+            # MATLAB .' — no Python operator. Mark satisfied (parity-by-convention).
+            canon_matlab_names.append(nm)
+            matlab_operator_mappings.append(
+                (nm, "(no Python equivalent; satisfied by convention)")
+            )
+            convention_satisfied.add(nm)
+        else:
+            canon_matlab_names.append(nm)
+
+    # Credit convention-satisfied names by appending them to the python ordering
+    # so order_score's LCS finds them in-order at the end.
+    python_names_for_order = list(python_names) + sorted(convention_satisfied)
+    report.order_score = compute_order_score(canon_matlab_names, python_names_for_order)
+    matlab_set = set(canon_matlab_names)
     python_set = set(python_names)
-    report.common = sorted(matlab_set & python_set)
-    report.missing_in_python = [m for m in matlab_names if m not in python_set]
+    report.common = sorted((matlab_set & python_set) | convention_satisfied)
+    report.missing_in_python = [
+        m for m in canon_matlab_names
+        if m not in python_set and m not in convention_satisfied
+    ]
     report.extra_in_python = [p for p in python_names if p not in matlab_set]
 
+    if matlab_operator_mappings:
+        for raw, canon in matlab_operator_mappings:
+            report.notes.append(
+                f"MATLAB `{raw}` ↔ Python `{canon}` (operator canonicalization)"
+            )
+
+    # Signature comparison — for canonicalized names, pair MATLAB original
+    # against Python dunder.
+    canon_to_raw = {canon: raw for raw, canon in matlab_operator_mappings}
     for name in report.common:
-        m = ml_by_name[name]
-        p = py_by_name[name]
+        # Determine the matlab method (use raw name if this is a canonicalized op).
+        raw_ml_name = canon_to_raw.get(name, name)
+        m = ml_by_name.get(raw_ml_name)
+        p = py_by_name.get(name)
+        if m is None or p is None:
+            continue
         if not signature_matches(m.args, p.args):
             report.signature_deltas.append(
                 {

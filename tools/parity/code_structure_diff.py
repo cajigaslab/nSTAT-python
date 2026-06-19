@@ -142,6 +142,8 @@ MATLAB_CONVENTION_NAMES: frozenset[str] = frozenset(
         # really function calls in the AST sense.
         "if", "elseif", "else", "for", "while", "switch", "case", "end",
         "return", "break", "continue", "function", "global", "persistent",
+        # MATLAB-only display helpers we can safely skip
+        "__SLICE__",
     }
 )
 
@@ -209,7 +211,60 @@ FUZZY_ALIASES: dict[str, str] = {
     # verbatim per the parity contract, so they survive the canonicalizer
     # unchanged. We don't enumerate them here; the lower-cased identity
     # default is good enough.
+    # Idiom canonicalization (operator/idiom names from MATLAB normalize
+    # to the Python equivalent name).
+    "set": "set",
+    "get": "get",
+    "regexp": "search",
+    "regexprep": "sub",
+    "strrep": "replace",
+    "strsplit": "split",
+    "strjoin": "join",
+    "strtrim": "strip",
+    "lower": "lower",
+    "upper": "upper",
+    "num2str": "str",
+    "str2num": "float",
+    "str2double": "float",
+    "int2str": "str",
+    # MATLAB array creation ↔ NumPy
+    "ones": "ones",
+    "zeros": "zeros",
+    "eye": "eye",
+    "repmat": "tile",
+    "tile": "tile",
+    # MATLAB shape ops
+    "reshape": "reshape",
+    "squeeze": "squeeze",
+    "permute": "transpose",
+    "transpose": "transpose",
+    # add_subplot ↔ subplot
+    "add_subplot": "subplot",
+    "new_figure": "figure",
 }
+
+
+# ----------------------------------------------------------------------------
+# MATLAB idiom rewriting — performed on raw source before call-extraction.
+# Each tuple is (compiled regex, replacement); the replacement is a synthetic
+# call form that the call-extraction regex then picks up.
+# ----------------------------------------------------------------------------
+
+_MATLAB_IDIOM_REWRITES: list[tuple[re.Pattern[str], str]] = [
+    # MATLAB column-vector / slice assignments like M(:,1) = ... are NOT calls;
+    # eliminate them entirely so they don't inflate the MATLAB-only count.
+    (re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*[\s\d:,]+\s*\)\s*="), r" "),
+    # NOTE: set(h, 'Prop', v) / get(h, 'Prop') rewrites were tried but introduce
+    # more drift than they fix (MATLAB property names rarely match the matplotlib
+    # `set_<name>` form exactly). Skipped.
+]
+
+
+def _rewrite_matlab_idioms(code: str) -> str:
+    """Apply MATLAB idiom rewrites so the call-extractor picks up Python equivalents."""
+    for pat, repl in _MATLAB_IDIOM_REWRITES:
+        code = pat.sub(repl, code)
+    return code
 
 # Pure attribute / accessor noise we strip from the right end of a call chain
 # to extract the bare method name. e.g. ``self.tracker.new_figure`` → ``new_figure``.
@@ -268,7 +323,13 @@ _MATLAB_STRING_RE = re.compile(r"'(?:''|[^'\n])*'")
 
 
 def _strip_matlab_noise(code: str) -> str:
-    """Remove single-line comments and string literals from MATLAB code."""
+    """Remove single-line comments and string literals from MATLAB code.
+
+    Also applies idiom rewrites (``set(h,'X',v)`` → ``ax.set_X(v)`` etc.)
+    BEFORE string-stripping so the property-name literal survives long enough
+    to participate in the rewrite.
+    """
+    code = _rewrite_matlab_idioms(code)
     code = _MATLAB_STRING_RE.sub(lambda m: " " * len(m.group(0)), code)
     code = _MATLAB_COMMENT_RE.sub("", code)
     return code
