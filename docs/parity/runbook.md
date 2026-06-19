@@ -162,3 +162,77 @@ Per `AGENT_GUIDE.md` §0:
 - Defect fix (MATLAB bug) → `parity/matlab_defects.yml` + refresh gold fixture
 - Stability improvement (`-expm1`, etc) → same
 - Efficiency improvement (bit-equivalent) → no fixture refresh; just code comment
+
+## Performance parity
+
+> **Status (v11 — 2026-06-19):** first performance-parity baseline
+> captured. 4 of 5 hot paths within the 5x ceiling against MATLAB on
+> the maintainer's Apple M2 Max; `pp_decode_filter_linear` flagged at
+> 5.66x for follow-up profiling.
+
+Numerical, visual, structural, and class-method parity were the gates
+through v10. v11 adds a fifth dimension — wall-clock performance — by
+timing five high-traffic public functions on both implementations and
+recording the ratio. The five paths and the current baseline live in
+[`parity/performance_baseline.yml`](../../parity/performance_baseline.yml).
+
+### The five hot paths
+
+| Path | Target (py/ml) | Investigate above |
+|---|---|---|
+| `analysis_run_for_neuron` (single neuron, 1000 spikes) | ≤ 1.5x | 5.0x |
+| `pp_decode_filter_linear` (10000 steps, 2 cells) | ≤ 1.5x | 5.0x |
+| `kalman_filter` (1000 steps, 4 states) | ≤ 1.5x | 5.0x |
+| `simulate_point_process` (10 s @ 1 kHz, 10 Hz rate) | ≤ 1.5x | 5.0x |
+| `history_compute_history` (200 spikes, 4 windows) | ≤ 1.5x | 5.0x |
+
+Each MATLAB-side analogue is the same-name MATLAB function except
+`simulate_point_process`, which compares against
+`CIF.simulateCIFByThinningFromLambda` — the closest reachable surface
+in the MATLAB checkout (the brief's preferred `simulatePointProcess` is
+a Python-only convenience and `CIF.simulateCIFByThinning` requires
+hist+stim+ens covariates the Python entry point does not expose).
+
+### Re-running the baseline
+
+```bash
+make perf-check               # 3 runs/side, prints Markdown table  (~2-3 min)
+make perf-check-full          # 10 runs/side, statistically tighter (~5-10 min)
+make perf-check-capture       # 5 runs/side AND rewrites parity/performance_baseline.yml
+```
+
+The runner needs `/opt/homebrew/bin/matlab` and the local MATLAB
+checkout (override with `--matlab-bin` and `--matlab-repo`, or set
+`MATLAB_BIN` / `NSTAT_MATLAB_PATH`). All MATLAB tic/toc reps run inside
+*one* `matlab -batch` invocation so the 5-10 s startup is amortised
+across the runs, not multiplied by N.
+
+The first MATLAB tic/toc per process is significantly slower than the
+subsequent reps (MATLAB JIT warm-up). The runner reports both
+`median_sec` (robust) and `runs_sec` (the per-rep list) so warm-up
+spikes are visible without skewing the headline number.
+
+CI does NOT run this gauntlet — MATLAB on the runner isn't available
+and the wall-clock numbers are host-specific. The schema of
+`parity/performance_baseline.yml` is validated by
+`tests/test_performance_parity.py`, which runs in `make test` and
+`make test-smoke`.
+
+### When perf ratios regress
+
+If a PR pushes a path's ratio above the previous baseline, investigate
+before tightening or widening the target — performance ratios are
+stability indicators, and a sudden 2x slowdown is a real signal. Common
+causes:
+
+1. **An extra defensive copy in a hot loop** — frequent for numerical
+   work; usually fixable in-place with a view.
+2. **A new Python-side validation pass on the input** — fine if rare,
+   bad if it scales with the input length.
+3. **A new sympy-backed CIF evaluation in a previously-vectorised
+   path** — sympy is correct but slow; cache the lambdified callable.
+
+Only after the cause is understood is it appropriate to either
+re-capture the baseline (genuine algorithmic change, ratio acceptable)
+or widen `target_for_parity` (genuine algorithmic complexity increase,
+documented in the commit message).

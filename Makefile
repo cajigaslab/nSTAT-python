@@ -27,7 +27,8 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
         format lint typecheck \
         version-check sanity clean release-check \
         ci-local drift-check \
-        parity-check parity-check-quick
+        parity-check parity-check-quick \
+        perf-check perf-check-full perf-check-capture
 
 # --- help ------------------------------------------------------------
 
@@ -211,6 +212,27 @@ parity-check:  ## Full MATLAB↔Python parity sweep (~30 min): extract → execu
 
 parity-check-quick:  ## Composite + SSIM only against current gallery state (~30s).
 	$(PY) tools/parity/run_full_check.py --quick
+
+# --- performance parity (v11+) --------------------------------------
+#
+# Times five hot-path public functions against MATLAB equivalents on the
+# local MATLAB checkout. Records ratios (py/ml) and flags any path above
+# the 5x parity ceiling. See docs/parity/runbook.md "Performance parity"
+# for the five paths, the targets, and the workflow when ratios regress.
+#
+# These targets are NOT run by ci-local — the MATLAB side needs the
+# local /opt/homebrew/bin/matlab + the nSTAT checkout at
+# $NSTAT_MATLAB_PATH (default /Users/iahncajigas/projects/nstat). For
+# CI-side validation see tests/test_performance_parity.py (schema only).
+
+perf-check:  ## Time the 5 hot paths against MATLAB (~2-3 min, 3 runs/side; informational, never fails the make target).
+	-$(PY) tools/parity/perf_check.py --runs 3
+
+perf-check-full:  ## Time the 5 hot paths against MATLAB (~5-10 min, 10 runs/side, statistically tighter).
+	-$(PY) tools/parity/perf_check.py --runs 10
+
+perf-check-capture:  ## Re-capture parity/performance_baseline.yml (5 runs/side; commit the diff).
+	$(PY) tools/parity/perf_check.py --runs 5 --capture-baseline
 
 clean:  ## Remove built artifacts (__pycache__, .pytest_cache, docs/_build, dist).
 	rm -rf docs/_build dist build *.egg-info

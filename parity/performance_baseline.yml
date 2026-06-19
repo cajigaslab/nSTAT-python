@@ -1,0 +1,134 @@
+version: 1
+captured: '2026-06-19'
+matlab_repo: cajigaslab/nSTAT@f7143f5 (2026-06-19T08:26:05-04:00)
+matlab_bin: /opt/homebrew/bin/matlab
+python_version: 3.12.4
+hardware: arm64 | Darwin | 25.5.0 | Apple M2 Max
+n_runs_per_side: 3
+paths:
+- name: analysis_run_for_neuron
+  python_function: nstat.analysis.Analysis.RunAnalysisForNeuron
+  matlab_function: Analysis.RunAnalysisForNeuron
+  input_size: 1000-spike single-cell trial, sin-3Hz stim, 4-window history, 10s @
+    1kHz
+  python:
+    runs_sec:
+    - 0.64039
+    - 0.679155
+    - 0.886615
+    median_sec: 0.679155
+    min_sec: 0.64039
+    max_sec: 0.886615
+  matlab:
+    status: ok
+    runs_sec:
+    - 0.936888
+    - 0.263351
+    - 0.238797
+    median_sec: 0.263351
+    min_sec: 0.238797
+    max_sec: 0.936888
+  ratio_py_over_ml: 2.579
+  target_for_competitive: 1.5
+  target_for_parity: 5.0
+  flag: acceptable
+- name: pp_decode_filter_linear
+  python_function: nstat.decoding_algorithms.DecodingAlgorithms.PPDecodeFilterLinear
+  matlab_function: DecodingAlgorithms.PPDecodeFilterLinear
+  input_size: 10000-step 2-state binomial-link adaptive filter, 2 cells
+  python:
+    runs_sec:
+    - 0.571187
+    - 0.456922
+    - 0.396759
+    median_sec: 0.456922
+    min_sec: 0.396759
+    max_sec: 0.571187
+  matlab:
+    status: ok
+    runs_sec:
+    - 0.322179
+    - 0.080791
+    - 0.075349
+    median_sec: 0.080791
+    min_sec: 0.075349
+    max_sec: 0.322179
+  ratio_py_over_ml: 5.656
+  target_for_competitive: 1.5
+  target_for_parity: 5.0
+  flag: needs investigation
+- name: kalman_filter
+  python_function: nstat.decoding_algorithms.DecodingAlgorithms.kalman_filter
+  matlab_function: DecodingAlgorithms.kalman_filter
+  input_size: 1000-step 4-state linear-Gaussian system, 2 obs
+  python:
+    runs_sec:
+    - 0.031409
+    - 0.018372
+    - 0.043333
+    median_sec: 0.031409
+    min_sec: 0.018372
+    max_sec: 0.043333
+  matlab:
+    status: ok
+    runs_sec:
+    - 0.178217
+    - 0.007211
+    - 0.006292
+    median_sec: 0.007211
+    min_sec: 0.006292
+    max_sec: 0.178217
+  ratio_py_over_ml: 4.356
+  target_for_competitive: 1.5
+  target_for_parity: 5.0
+  flag: acceptable
+- name: simulate_point_process
+  python_function: nstat.simulators.simulate_point_process
+  matlab_function: CIF.simulateCIFByThinningFromLambda
+  input_size: 10s @ 1kHz, constant rate 10Hz
+  python:
+    runs_sec:
+    - 0.00141
+    - 0.00066
+    - 0.00062
+    median_sec: 0.00066
+    min_sec: 0.00062
+    max_sec: 0.00141
+  matlab:
+    status: ok
+    runs_sec:
+    - 0.213653
+    - 0.004764
+    - 0.003597
+    median_sec: 0.004764
+    min_sec: 0.003597
+    max_sec: 0.213653
+  ratio_py_over_ml: 0.139
+  target_for_competitive: 1.5
+  target_for_parity: 5.0
+  flag: competitive
+- name: history_compute_history
+  python_function: nstat.history.History.computeHistory
+  matlab_function: History.computeHistory
+  input_size: 200-spike train @ 1kHz over 10s, 4 history windows
+  python:
+    runs_sec:
+    - 0.0309
+    - 0.029457
+    - 0.037081
+    median_sec: 0.0309
+    min_sec: 0.029457
+    max_sec: 0.037081
+  matlab:
+    status: ok
+    runs_sec:
+    - 0.229794
+    - 0.025099
+    - 0.024413
+    median_sec: 0.025099
+    min_sec: 0.024413
+    max_sec: 0.229794
+  ratio_py_over_ml: 1.231
+  target_for_competitive: 1.5
+  target_for_parity: 5.0
+  flag: competitive

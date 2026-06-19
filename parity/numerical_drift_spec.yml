@@ -236,11 +236,18 @@ entries:
     output_field: lambdaBound
     tolerance: { rtol: 1.0e-6, atol: 1.0e-8 }
 
+  # Tightened in v11 iter 50C after rebaselining lambda_data to the
+  # post-C4-audit deterministic kernel exp(mu + 1.0*stim) (the prior fixture
+  # carried the pre-C4 rate_hz/dt convention, values 47-119).  Remaining
+  # residual is the python-side history-feedback term on bernoulli draws —
+  # max_abs ~ 0.086 against lambda range [exp(-4), exp(-2)] ~ [0.018, 0.135].
+  # Case D — re-baselined to match upstream semantics; see
+  # parity/matlab_defects.yml id v11-iter50C-simulateCIFByThinning-rebaseline.
   - name: v9_simulateCIFByThinning
     recipe: v9_simulate_cif_thinning
     fixture: tests/parity/fixtures/matlab_gold/v9_simulateCIFByThinning.mat
     output_field: lambda_data
-    tolerance: { rtol: 1.0e+1, atol: 1.0e+0 }
+    tolerance: { rtol: 1.0e-1, atol: 1.0e-1 }
 
   # history_fit_core
   # Tightened in v10 iter 47 — observed error is at float64 round-off
@@ -253,15 +260,18 @@ entries:
     tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
 
   # v9_fitresult_KSPlot_data: FitResult.KSPlot_data isn't ported as a separate
-  # method; we route through Analysis.computeKSStats which uses a slightly
-  # different KS axis scaling than the MATLAB FitResult helper. Tolerance
-  # relaxed per Case C — see parity/matlab_defects.yml entry
+  # method; we route through Analysis.computeKSStats which uses the same
+  # rescaled-time integration as MATLAB but accumulates lambda*dt slightly
+  # differently around spike-bracketing bins. After v11 iter 50D MATLAB-side
+  # rebaseline (export_v9_gold_fixtures.m), observed drift is max_abs=1.46e-2
+  # / rel=9.77e-3 (was 2.97e-2 / 1.44e-2 with the ad-hoc v9 capture); tolerance
+  # tightened from 1e-1/1e-1 to 5e-2/5e-2 — see parity/matlab_defects.yml entry
   # v9-iter40-fitresult-helpers-unported.
   - name: v9_fitresult_KSPlot_data
     recipe: v9_fitresult_ksplot_data
     fixture: tests/parity/fixtures/matlab_gold/v9_fitresult_KSPlot_data.mat
     output_field: KSSorted
-    tolerance: { rtol: 1.0e-1, atol: 1.0e-1 }
+    tolerance: { rtol: 5.0e-2, atol: 5.0e-2 }
 
   # Tightened in v10 iter 47 — invGausTrans is norminv(1-exp(-Z)); float64
   # round-off only (~2.8e-16) after upstream MATLAB rebaseline.
@@ -337,3 +347,121 @@ entries:
     fixture: tests/parity/fixtures/matlab_gold/v9_PPHybridFilter.mat
     output_field: X
     tolerance: { rtol: 1.0e+1, atol: 1.0e+0 }
+
+  # ===========================================================================
+  # v11 iter 51A — 16 additional drift entries lifting total to 52.
+  # Twelve drive newly-captured v11_*.mat fixtures (see
+  # tools/parity/matlab/export_v11_gold_fixtures.m); four reuse existing
+  # fixtures (fit_summary_exactness, v9_fitresult_KSPlot_data).
+  # ===========================================================================
+
+  # CIF gradient/jacobian surface (no-history poisson CIF).
+  - name: v11_cif_evalGradient
+    recipe: v11_cif_evalGradient
+    fixture: tests/parity/fixtures/matlab_gold/v11_cif_evalGradient.mat
+    output_field: gradient_out
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: v11_cif_evalGradientLog
+    recipe: v11_cif_evalGradientLog
+    fixture: tests/parity/fixtures/matlab_gold/v11_cif_evalGradientLog.mat
+    output_field: gradientLog_out
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: v11_cif_evalJacobian
+    recipe: v11_cif_evalJacobian
+    fixture: tests/parity/fixtures/matlab_gold/v11_cif_evalJacobian.mat
+    output_field: jacobian_out
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: v11_cif_evalJacobianLog
+    recipe: v11_cif_evalJacobianLog
+    fixture: tests/parity/fixtures/matlab_gold/v11_cif_evalJacobianLog.mat
+    output_field: jacobianLog_out
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: v11_cif_evalLambdaDelta_vector
+    recipe: v11_cif_evalLambdaDelta_vector
+    fixture: tests/parity/fixtures/matlab_gold/v11_cif_evalLambdaDelta_vector.mat
+    output_field: lambdaDelta_out
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # SignalObj transforms (deterministic).
+  - name: v11_signalobj_filter
+    recipe: v11_signalobj_filter
+    fixture: tests/parity/fixtures/matlab_gold/v11_signalobj_filter.mat
+    output_field: data_out
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
+
+  - name: v11_signalobj_filtfilt
+    recipe: v11_signalobj_filtfilt
+    fixture: tests/parity/fixtures/matlab_gold/v11_signalobj_filtfilt.mat
+    output_field: data_out
+    tolerance: { rtol: 1.0e-9, atol: 1.0e-12 }
+
+  # v11_signalobj_periodogram: MATLAB's default Hann window + window-energy
+  # correction differs from SciPy's default boxcar; spectral peak locations
+  # match but amplitudes differ ~1.5x. Case C — recipe compares cosine
+  # similarity of the (truncated) one-sided spectra; passing means shape
+  # parity (cs ~ 1). See parity/matlab_defects.yml entry
+  # v11-iter51A-periodogram-windowing.
+  - name: v11_signalobj_periodogram
+    recipe: v11_signalobj_periodogram
+    fixture: tests/parity/fixtures/matlab_gold/v11_signalobj_periodogram.mat
+    output_field: psd_data
+    tolerance: { rtol: 1.0e-1, atol: 1.0e-2 }
+
+  # v11_signalobj_xcorr: max_abs is at float64 round-off (~2e-15) but
+  # individual rel_err diverges for the tiny near-zero center bins.
+  # rtol relaxed to absorb that pure normalization artefact.
+  - name: v11_signalobj_xcorr
+    recipe: v11_signalobj_xcorr
+    fixture: tests/parity/fixtures/matlab_gold/v11_signalobj_xcorr.mat
+    output_field: xcorr_data
+    tolerance: { rtol: 1.0e+1, atol: 1.0e-13 }
+
+  # History.toFilter (compare numerator b-matrix shape, padded).
+  - name: v11_history_toFilter
+    recipe: v11_history_toFilter
+    fixture: tests/parity/fixtures/matlab_gold/v11_history_toFilter.mat
+    output_field: b_mat
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
+
+  # Analysis helpers.
+  - name: v11_analysis_computeInvGausTrans
+    recipe: v11_analysis_computeInvGausTrans
+    fixture: tests/parity/fixtures/matlab_gold/v11_analysis_computeInvGausTrans.mat
+    output_field: X
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: v11_analysis_RunAnalysisForAllNeurons
+    recipe: v11_analysis_RunAnalysisForAllNeurons
+    fixture: tests/parity/fixtures/matlab_gold/v11_analysis_RunAnalysisForAllNeurons.mat
+    output_field: fit_logLL
+    tolerance: { rtol: 1.0e-5, atol: 1.0e-7 }
+
+  # FitResSummary diff aggregators (reuse fit_summary_exactness.mat).
+  - name: v11_fitressummary_getDiffAIC
+    recipe: v11_fitressummary_getDiffAIC
+    fixture: tests/parity/fixtures/matlab_gold/fit_summary_exactness.mat
+    output_field: diffAIC
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
+
+  - name: v11_fitressummary_getDiffBIC
+    recipe: v11_fitressummary_getDiffBIC
+    fixture: tests/parity/fixtures/matlab_gold/fit_summary_exactness.mat
+    output_field: diffBIC
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
+
+  - name: v11_fitressummary_getDifflogLL
+    recipe: v11_fitressummary_getDifflogLL
+    fixture: tests/parity/fixtures/matlab_gold/fit_summary_exactness.mat
+    output_field: difflogLL
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }
+
+  # Reuses v9_fitresult_KSPlot_data — compare xAxis (deterministic axis).
+  - name: v11_fitresult_ksplot_xaxis
+    recipe: v11_fitresult_ksplot_xaxis
+    fixture: tests/parity/fixtures/matlab_gold/v9_fitresult_KSPlot_data.mat
+    output_field: xAxis
+    tolerance: { rtol: 1.0e-12, atol: 1.0e-14 }

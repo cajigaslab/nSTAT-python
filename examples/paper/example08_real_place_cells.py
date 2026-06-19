@@ -2467,7 +2467,7 @@ def _plot_lag_corrected_comparison(
 # Driver
 # =====================================================================
 _VALID_MODELS: tuple[str, ...] = (
-    "baseline", "velocity", "history", "coupling", "velocity_lag",
+    "baseline", "velocity", "history", "coupling", "velocity_lag", "all",
 )
 
 
@@ -2483,7 +2483,7 @@ def run_example08(
 
     Parameters
     ----------
-    model : {"baseline", "velocity", "history", "coupling"}, default "baseline"
+    model : {"baseline", "velocity", "history", "coupling", "velocity_lag", "all"}, default "baseline"
         ``"baseline"`` preserves the original 6-term quadratic CIF pipeline
         bit-for-bit and produces figures 1-4.  ``"velocity"`` runs the
         baseline first to capture its RMSE, then a velocity-augmented
@@ -2621,7 +2621,7 @@ def run_example08(
     # baseline -> velocity -> history progression is available for
     # the 3-bar comparison in fig08.
     velocity_payload: dict | None = None
-    if model in ("velocity", "history", "coupling", "velocity_lag"):
+    if model in ("velocity", "history", "coupling", "velocity_lag", "all"):
         speed = _compute_speed(x, y, t)
         speed_train = speed[train_slice]
         speed_test = speed[test_slice]
@@ -2701,7 +2701,7 @@ def run_example08(
     # PPDecodeFilterLinear pipeline, so its RMSE matches baseline
     # bit-for-bit (and we report it as ``history_decoder_rmse``).
     history_payload: dict | None = None
-    if model in ("history", "coupling"):
+    if model in ("history", "coupling", "all"):
         history_wt = tuple(_HISTORY_WINDOW_TIMES)
         print(
             f"  history windows: "
@@ -2820,7 +2820,7 @@ def run_example08(
     # are folded into a time-mean mu contribution and the PPAF state
     # stays 2-D (position).
     coupling_payload: dict | None = None
-    if model == "coupling":
+    if model in ("coupling", "all"):
         cw_labels = _coupling_window_labels()
         print(
             f"  coupling windows: {cw_labels} "
@@ -2904,12 +2904,15 @@ def run_example08(
     # ----- Velocity + per-cell lag-corrected variant -----
     # D.1+: iterated per-cell CCF lag correction for BOTH position and
     # velocity (Truccolo et al. 2005 §4; mirrors the lag-correction
-    # pattern of example02).  Runs only when ``model="velocity_lag"``
-    # so the baseline / velocity / history / coupling paths stay
-    # bit-for-bit identical.  Requires the velocity stage above to
-    # have run (gated on the same model list).
+    # pattern of example02).  Runs when ``model="velocity_lag"`` or
+    # ``model="all"``; the ``velocity_lag`` model alone leaves the
+    # baseline / velocity / history / coupling paths bit-for-bit
+    # identical, and ``all`` runs every variant to produce the full
+    # fig01-fig12 canonical figure set the manifest tracks.  Requires
+    # the velocity stage above to have run (gated on the same model
+    # list).
     velocity_lag_payload: dict | None = None
-    if model == "velocity_lag":
+    if model in ("velocity_lag", "all"):
         assert velocity_payload is not None, (
             "velocity_lag requires the velocity stage to have run"
         )
@@ -3529,7 +3532,7 @@ if __name__ == "__main__":
                         default="legacy",
                         help="Figure styling.")
     parser.add_argument(
-        "--model", choices=_VALID_MODELS, default="coupling",
+        "--model", choices=_VALID_MODELS, default="all",
         help=(
             "Encoder/decoder variant.  ``baseline`` reproduces the "
             "original position-only pipeline (4 figures).  "
@@ -3537,17 +3540,20 @@ if __name__ == "__main__":
             "variant per Truccolo et al. 2005 (6 figures).  "
             "``history`` additionally runs a "
             "spike-history-augmented variant per Truccolo et al. 2005 "
-            "§3 (8 figures).  ``coupling`` (default) additionally "
-            "runs an ensemble-coupling-augmented variant per "
-            "Truccolo et al. 2005 §3 (10 figures).  ``velocity_lag`` "
-            "runs the baseline + velocity chain then applies an "
-            "iterated per-cell CCF lag correction to both position "
-            "and velocity per Truccolo et al. 2005 §4, producing "
-            "fig11 (per-cell CCF diagnostic) and fig12 (4-bar "
-            "capstone) for a total of 8 figures.  The CLI defaults "
-            "to ``coupling`` so ``--export-figures`` yields the full "
-            "fig01-fig10 set the manifest expects; ``velocity_lag`` "
-            "additionally yields fig11 and fig12.  The Python "
+            "§3 (8 figures).  ``coupling`` runs the full "
+            "baseline + velocity + history chain plus an "
+            "ensemble-coupling-augmented variant per "
+            "Truccolo et al. 2005 §3 (10 figures: fig01-fig10).  "
+            "``velocity_lag`` runs the baseline + velocity chain then "
+            "applies an iterated per-cell CCF lag correction to both "
+            "position and velocity per Truccolo et al. 2005 §4, "
+            "producing fig11 (per-cell CCF diagnostic) and fig12 "
+            "(4-bar capstone) for a total of 8 figures.  ``all`` "
+            "(default) runs every variant — baseline + velocity + "
+            "history + coupling + velocity_lag — producing the full "
+            "fig01-fig12 canonical set the manifest tracks; this is "
+            "what ``--export-figures`` needs in order to satisfy the "
+            "paper-example manifest contract.  The Python "
             "``run_example08`` default remains ``baseline``."
         ),
     )

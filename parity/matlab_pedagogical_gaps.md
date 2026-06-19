@@ -340,6 +340,57 @@ These need closure: either close the count gap or document why MATLAB's extra fi
   (e.g. residual histogram).
 - **Discovered:** v1 iter 5 / 2026-06-18
 
+### Deficit: PPThinning — RNG-driven raster pattern residual (figures 3 & 4)
+
+- **Topic:** `PPThinning`
+- **MATLAB count:** 4
+- **Python count:** 4 (Δ = 0)
+- **MATLAB extras:** No count delta — Python emits the same 4 figures.  The residual is a
+  *pixel-level* visual divergence in figures 3 & 4 (20-realization
+  thinning raster + sinusoidal lambda overlay) driven by the different
+  random streams underlying the thinning step.  MATLAB's classic RNG
+  (Mersenne Twister with MATLAB-default state) and NumPy's
+  ``default_rng(1)`` produce different spike-time sequences from the
+  same conditional intensity, so the raster fill pattern differs even
+  when the overlay curve and axes match exactly.
+- **Pedagogical impact:** None — the figures convey the identical lesson (thinning produces a
+  raster modulated by lambda(t)).  Density envelopes line up with the
+  sine peaks/troughs in both renderings.
+- **Decision:** Accept the residual.  Builder iter-52A tested four approaches before
+  accepting:
+
+  * **Approach A — pixel diff.**  Mean abs RGB difference at common
+    DPI ~55 (cap 255).  Almost all of this is the raster fill, not
+    the sine.  Quantified, not closeable without re-seeding.
+  * **Approach B — z-order.**  Verified raster (drawn by
+    ``nstColl.plot``) goes first, lambda overlay drawn second on the
+    same axis — matches MATLAB ``hold on`` draw order.  No change.
+  * **Approach C — color, capstyle, linewidth.**  Switched lambda
+    from ``'#0000ee'`` to MATLAB's true MLX-rendered ``(0,0,1)``
+    (sampled from ``PPThinning_04.png``: dominant blue ~(10,10,243)),
+    bumped linewidth to 2.5, added ``solid_capstyle='round'``,
+    ``solid_joinstyle='round'``, explicit ``antialiased=True``.
+    Closes the sine-curve appearance gap.
+  * **Approach D — cairo backend.**  Not adopted: switching matplotlib
+    backends inside a notebook is brittle, and the gallery executor
+    forces ``agg``.  The smoother Bezier rendering cairo offers is not
+    worth the infra cost when the sine-overlay polish (Approach C)
+    already reads as MATLAB-equivalent.
+
+  Two structural fixes were also applied: (1) suppress the
+  ``"Spike Train Raster"`` panel title that ``nstColl.plot`` injects
+  (MATLAB has no panel title), (2) hide numeric y-tick labels so the
+  raster body — not an off-by-one row index — is what the eye reads
+  (MATLAB renders a placeholder ``"1"`` per row, visually a blank
+  column).
+- **MATLAB upstream action:** None recommended — the visible divergence is a faithful consequence
+  of the toolboxes using different RNGs.  Documenting the
+  MATLAB-default ``rng`` seed alongside the helpfile would let
+  reproducers regenerate the published PNG, but doesn't affect the
+  lesson.
+- **Discovered:** v11 iter 52A / 2026-06-19
+- **Resolved iter:** v11 iter 52A (accepted)
+
 ---
 
 ## Surplus topics still under triage (v2 iter 9 will decide each)

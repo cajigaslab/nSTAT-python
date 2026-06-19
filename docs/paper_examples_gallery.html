@@ -25,6 +25,8 @@ ax.set_title(r&quot;Neural Raster with constant Mg$^{2+}$ Concentration&quot;,
 ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
 ax.set_ylabel(&quot;mEPSCs&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
 ax.set_yticks([0, 1])
+# Match MATLAB raster: ticks span full panel (linelengths=1.0).
+ax.set_ylim(0, 1)
 
 ax = axes1[0, 1]
 resultConst.plotInvGausTrans(handle=ax)
@@ -46,6 +48,8 @@ fig1.tight_layout()</code></pre></details></figure>
 ax = axes2[0]
 nstConst.plot(handle=ax)
 ax.set_yticks([0, 1])
+# Match MATLAB raster: ticks span full panel (linelengths=1.0).
+ax.set_ylim(0, 1)
 ax.set_ylabel(&quot;mEPSCs&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
 ax.set_title(r&quot;Neural Raster with constant Mg$^{2+}$ Concentration&quot;,
              fontweight=&quot;bold&quot;, fontsize=12, fontfamily=&quot;Arial&quot;)
@@ -54,6 +58,7 @@ ax.xaxis.label.set(fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Ar
 ax = axes2[1]
 nstWashout.plot(handle=ax)
 ax.set_yticks([0, 1])
+ax.set_ylim(0, 1)
 ax.set_xlabel(&quot;time [s]&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
 ax.set_ylabel(&quot;mEPSCs&quot;, fontsize=12, fontweight=&quot;bold&quot;, fontfamily=&quot;Arial&quot;)
 ax.set_title(r&quot;Neural Raster with decreasing Mg$^{2+}$ Concentration&quot;,
@@ -583,9 +588,23 @@ ax2.fill_between(
     time, result[&quot;ci_low&quot;], result[&quot;ci_high&quot;],
     color=&quot;0.75&quot;, alpha=0.4, label=&quot;95% CI&quot;
 )
+# Faint spike-raster overlay (population activity context behind the
+# decoded sinusoid) — scaled to the stimulus y-range so the rasters
+# remain visible without obscuring the decoded trace.
+stim_lo = float(np.min(stimSignal))
+stim_hi = float(np.max(stimSignal))
+stim_span = max(stim_hi - stim_lo, 1e-9)
+for c in range(n_cells):
+    spike_t = time[dN[c, :] &gt; 0]
+    if spike_t.size == 0:
+        continue
+    y = stim_lo + (c + 1) / (n_cells + 1) * stim_span
+    ax2.plot(spike_t, np.full_like(spike_t, y), &quot;|&quot;,
+             color=&quot;0.55&quot;, markersize=3, alpha=0.35, zorder=0)
 ax2.plot(time, result[&quot;x_decoded&quot;], &quot;k-&quot;, linewidth=4, label=&quot;Decoded&quot;)
 ax2.plot(time, stimSignal, &quot;b-&quot;, linewidth=4, label=&quot;Actual&quot;)
-ax2.set_xlabel(&quot;time [s]&quot;)
+ax2.set_xlim(time[0], time[-1])
+ax2.set_xlabel(&quot;Time (s)&quot;)
 ax2.set_ylabel(&quot;Stimulus&quot;)  # MATLAB: ylabel(&#x27;Stimulus&#x27;,&#x27;Interpreter&#x27;,&#x27;none&#x27;)
 ax2.set_title(f&quot;Decoded Stimulus $\\pm$ 95% CIs with {result[&#x27;n_cells&#x27;]} cells&quot;,
               fontweight=&quot;bold&quot;, fontsize=18, fontfamily=&quot;Arial&quot;)

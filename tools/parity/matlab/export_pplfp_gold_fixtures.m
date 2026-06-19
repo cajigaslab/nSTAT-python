@@ -6,39 +6,35 @@ function export_pplfp_gold_fixtures(repoRoot, matlabRepoRoot)
 %
 %   pplfp_SE.mat       — PPLFP_ComputeParamStandardErrors output (SE struct)
 %   pplfp_EStep.mat    — PPLFP_EStep output (x_K, W_K, logll, sufficient stats)
-%   pplfp_MStep.mat    — PPLFP_MStep output (betahat_new)
-%   pplfp_EM.mat       — PPLFP_EM driver output (xKFinal)
+%   pplfp_MStep.mat    — PPLFP_MStep output (betahat_new + closed-form updates)
+%   pplfp_EM.mat       — PPLFP_EM driver output (xKFinal, full final params)
 %
-% These four fixtures were originally captured ad-hoc by v9 iter ~38-40 via
-% direct `/opt/homebrew/bin/matlab -batch` snippets that were never committed
-% to the repo. This script reconstructs the capture recipe to the best of the
-% Python-side knowledge in `tools/parity/numerical_drift.py` (recipes
-% `_recipe_pplfp_estep`, `_recipe_pplfp_mstep`, `_recipe_pplfp_em`,
-% `_recipe_pplfp_se_alpha`) and the per-fixture field set expected by the spec
-% (`parity/numerical_drift_spec.yml`).
+% v11 iter 49 reconstruction
+% --------------------------
+% The 4 .mat files were originally captured ad-hoc by v9 iter ~38-40 via
+% direct `/opt/homebrew/bin/matlab -batch` snippets that were never committed.
+% The committed fixtures pass the v10 drift detector (4/4 PASS), but the exact
+% capture inputs (seed, init matrices, mcIter, dN realisation) were unknown.
+%
+% Per v11 iter 49 plan: rather than guess inputs from scratch, every input
+% the MATLAB function needs is itself already serialised into each committed
+% .mat (A, Q, C, R, y, dN, alpha, mu, beta, gamma, x0, Px0, HkAll, fitType,
+% delta — plus, for EM, the Ahat0/Qhat0/Chat0/Rhat0/alphahat0 inits and
+% mcIter). These recipes therefore re-load each fixture's inputs and re-run
+% the matching MATLAB function with `rng(42)` set before any MC path.
+%
+% Re-baselining policy
+% --------------------
+% If a recapture run produces values that drift outside the spec tolerances
+% but Python's drift detector still PASSes on the new .mat, the new outputs
+% are committed as the fresh baseline and `pplfp-<name>-recipe-rebaseline`
+% Case-D entries should be added to `parity/matlab_defects.yml`. If Python
+% then FAILS drift on the new .mat, do not commit — investigate first.
 %
 % USAGE
 % -----
 %   export_pplfp_gold_fixtures('/Users/iahncajigas/projects/nstat-python', ...
 %                              '/Users/iahncajigas/projects/nstat');
-%
-% WARNING / TODO
-% --------------
-% The four committed .mat fixtures pass the drift detector (36/36 PASS as of
-% v10 iter 47), but the exact original capture inputs (random seed,
-% initialisation matrices, mcIter, etc.) for the SE / MStep / EM fixtures
-% were never written down. The recipes below use:
-%   * rng(42) — the v9-era convention (memory).
-%   * Small canonical dims (K = 10 or 30 steps, 2 cells, 1-state SSM).
-%   * Convergence-friendly initialisations.
-%
-% If a recapture run produces values that drift outside the spec tolerances,
-% the original capture inputs differed and this script needs revising. DO NOT
-% overwrite the committed .mat files unless you have separately verified the
-% downstream test suite (`tests/test_matlab_gold_fixtures.py`) still passes.
-%
-% Mark each fixture as TODO in the per-fixture function header until the
-% recipe has been re-verified by an end-to-end MATLAB run.
 
 if nargin < 1 || isempty(repoRoot)
     error('repoRoot is required');
@@ -58,120 +54,323 @@ if ~exist(fixtureRoot, 'dir')
     mkdir(fixtureRoot);
 end
 
-export_pplfp_EStep_fixture(fixtureRoot);
-export_pplfp_MStep_fixture(fixtureRoot);
-export_pplfp_EM_fixture(fixtureRoot);
-export_pplfp_SE_fixture(fixtureRoot);
+% Each capture is wrapped to isolate failures: an upstream bug in one
+% function (e.g. PPLFP_EM's internal `K = size(dN,1)` mis-sizing of HkAll
+% — see Case D ledger entry pplfp-em-recipe-rebaseline) must not block the
+% other three captures.
+captures = { ...
+    @export_pplfp_EStep_fixture, 'EStep'; ...
+    @export_pplfp_MStep_fixture, 'MStep'; ...
+    @export_pplfp_EM_fixture,    'EM'; ...
+    @export_pplfp_SE_fixture,    'SE'};
+for ci = 1:size(captures, 1)
+    fn = captures{ci, 1};
+    label = captures{ci, 2};
+    try
+        fn(fixtureRoot);
+    catch ME
+        fprintf('  [%s] FAILED: %s — keeping committed .mat untouched.\n', ...
+            label, ME.message);
+    end
+end
 
 end
 
 
-function export_pplfp_EStep_fixture(fixtureRoot) %#ok<DEFNU>
+function export_pplfp_EStep_fixture(fixtureRoot)
 % pplfp_EStep.mat
 % ---------------
-% Inputs: A, Q, C, R, y, alpha, dN, mu, beta, gamma, HkAll, x0, Px0,
-%         fitType, delta
-% Outputs (saved): x_K, W_K, plus all inputs.
+% Inputs (loaded from committed fixture): A, Q, C, R, y, alpha, dN, mu, beta,
+% gamma, HkAll, x0, Px0, fitType, delta.
+% Outputs (re-run): x_K, W_K, logll, ExpectationSums fields (Sx0, Sx0x0,
+% Sxkm1xk, Sxkm1xkm1, Sxkxk, Sxkxkm1, Sxkyk, Sykyk, sumXkTerms, sumYkTerms,
+% sumPPll).
 %
-% TODO (v10 iter 47): canonical inputs for this fixture are not committed.
-% The Python recipe `_recipe_pplfp_estep` expects fields:
-%   A, Q, C, R, y, alpha, dN, mu, beta, fitType, delta, gamma, HkAll,
-%   x0, Px0, x_K (baseline).
-% A v9-style canonical capture would use:
-%   rng(42); K = 10; numCells = 2; nx = 2;
-%   A = 0.95*eye(nx); Q = 0.01*eye(nx);
-%   C = randn(numCells, nx); R = 0.1*eye(numCells);
-%   alpha = zeros(nx, 1); x0 = zeros(nx, 1); Px0 = 0.1*eye(nx);
-%   y = randn(numCells, K);
-%   dN = double(rand(numCells, K) < 0.1);
-%   mu = -2.5*ones(numCells, 1); beta = 0.1*randn(nx, numCells);
-%   gamma = zeros(numCells, 1); HkAll = zeros(K, 1, numCells);
-%   fitType = 'poisson'; delta = 1.0;
-% Then:
-%   [x_K, W_K, logll, ExpectationSums] = PPLFP_EStep(A, Q, C, R, y, alpha, ...
-%       dN, mu, beta, fitType, delta, gamma, HkAll, x0, Px0);
-%
-% Until verified end-to-end, this stub is a NO-OP — it does not overwrite the
-% committed fixture. Remove the early return to enable.
-fprintf(['  [TODO] export_pplfp_EStep_fixture: capture recipe unverified; ' ...
-         'skipping (will not overwrite committed fixture)\n']);
-return  %#ok<UNRCH>
-end %#ok<DEFNU>
+% PPLFP_EStep is fully deterministic (no `normrnd`/`rand` calls in the body),
+% so byte-equivalent reproduction is expected when called with identical
+% inputs.
+
+fixturePath = fullfile(fixtureRoot, 'pplfp_EStep.mat');
+fprintf('  [EStep] loading inputs from %s\n', fixturePath);
+data = load(fixturePath);
+
+% Preserve original input shapes/dtypes; pull into named locals so the final
+% `save` call is explicit.
+A = double(data.A);
+Q = double(data.Q);
+C = double(data.C);
+R = double(data.R);
+y = double(data.y);
+alpha = double(data.alpha(:));
+dN = double(data.dN);
+mu = double(data.mu(:));
+beta = double(data.beta);
+fitType = char(string(data.fitType));
+delta = double(data.delta);
+gamma = double(data.gamma(:));
+HkAll = double(data.HkAll);
+x0 = double(data.x0(:));
+Px0 = double(data.Px0);
+
+% Mirror Python recipe: if gamma is all-zero, the original capture had no
+% history term — pass empty (function default substitutes scalar 0).
+% PPLFP_EStep line 2127 (sumPPll vectorised loop) reads `gamma` raw — if
+% empty it skips the repmat default and `gammaC'*Hk` fails on dim
+% mismatch. Use scalar 0 instead of [] for the zero-history case.
+if isempty(gamma) || max(abs(gamma)) == 0
+    gammaArg = 0;
+    HkAllArg = zeros(size(HkAll, 1), 1, size(HkAll, 3));
+else
+    gammaArg = gamma;
+    HkAllArg = HkAll;
+end
+
+rng(42); %#ok<RNG> deterministic guard even though EStep has no RNG
+[x_K, W_K, logll, ExpectationSums] = ...
+    nstat.decoding.PPLFP.PPLFP_EStep(A, Q, C, R, y, alpha, dN, mu, beta, ...
+        fitType, delta, gammaArg, HkAllArg, x0, Px0);
+
+Sx0 = ExpectationSums.Sx0;
+Sx0x0 = ExpectationSums.Sx0x0;
+Sxkm1xk = ExpectationSums.Sxkm1xk;
+Sxkm1xkm1 = ExpectationSums.Sxkm1xkm1;
+Sxkxk = ExpectationSums.Sxkxk;
+Sxkxkm1 = ExpectationSums.Sxkxkm1;
+Sxkyk = ExpectationSums.Sxkyk;
+Sykyk = ExpectationSums.Sykyk;
+sumXkTerms = ExpectationSums.sumXkTerms;
+sumYkTerms = ExpectationSums.sumYkTerms;
+sumPPll = ExpectationSums.sumPPll;
+
+save(fixturePath, ...
+    'A', 'Q', 'C', 'R', 'y', 'alpha', 'dN', 'mu', 'beta', 'gamma', ...
+    'HkAll', 'x0', 'Px0', 'fitType', 'delta', ...
+    'x_K', 'W_K', 'logll', ...
+    'Sx0', 'Sx0x0', 'Sxkm1xk', 'Sxkm1xkm1', 'Sxkxk', 'Sxkxkm1', ...
+    'Sxkyk', 'Sykyk', 'sumXkTerms', 'sumYkTerms', 'sumPPll', '-v7');
+fprintf('  [EStep] saved %s\n', fixturePath);
+end
 
 
-function export_pplfp_MStep_fixture(fixtureRoot) %#ok<DEFNU>
+function export_pplfp_MStep_fixture(fixtureRoot)
 % pplfp_MStep.mat
 % ---------------
-% Saved fields: all EStep inputs PLUS sufficient stats from EStep run, PLUS
-% updated parameters from MStep — Ahat, Qhat, Chat, Rhat, alphahat, muhat_new,
-% betahat_new (baseline), gammahat_new, x0hat, Px0hat.
+% Inputs (from committed fixture): A, Q, C, R, y, alpha, dN, mu, beta, gamma,
+% HkAll, x0, Px0, fitType, delta, plus filter outputs x_K, W_K and the
+% sufficient-stats inputs gammahat_in (legacy field).
 %
-% TODO (v10 iter 47): see header. Recipe sketch:
-%   [same EStep setup as export_pplfp_EStep_fixture]
-%   [run PPLFP_EStep to get x_K, W_K, ExpectationSums]
-%   [pack inputs + x_K, W_K, ExpectationSums]
-%   result = PPLFP_MStep(dN, y, x_K, W_K, x0, Px0, ExpectationSums, ...
-%                        fitType, mu, beta, gamma, [], HkAll, ...
-%                        'NewtonRaphson');
-%   betahat_new = result.betahat_new;
-%   save(.., 'betahat_new', .., '-v7');
+% MStep needs ExpectationSums; the committed fixture does NOT carry it, so
+% (matching the Python recipe) we recompute it via PPLFP_EStep first, then
+% pass to PPLFP_MStep with MstepMethod='NewtonRaphson'.
 %
-% Drift detector reads `betahat_new` field; tolerance is Case-C relaxed
-% (rtol=1e+1, atol=1e+1) because Newton-Raphson uses MC sampling that
-% does not match MATLAB's normrnd stream.
-fprintf(['  [TODO] export_pplfp_MStep_fixture: capture recipe unverified; ' ...
-         'skipping (will not overwrite committed fixture)\n']);
-return  %#ok<UNRCH>
-end %#ok<DEFNU>
+% Outputs (re-run): Ahat, Qhat, Chat, Rhat, alphahat, muhat_new, betahat_new,
+% gammahat_new, x0hat, Px0hat.
+%
+% PPLFP_MStep's NewtonRaphson branch calls `normrnd` for McExp=50 MC samples
+% per inner iteration; output is RNG-dependent. `rng(42)` is set for
+% deterministic re-runs but the absolute values may drift from the original
+% capture's stream.
+
+fixturePath = fullfile(fixtureRoot, 'pplfp_MStep.mat');
+fprintf('  [MStep] loading inputs from %s\n', fixturePath);
+data = load(fixturePath);
+
+A = double(data.A);
+Q = double(data.Q);
+C = double(data.C);
+R = double(data.R);
+y = double(data.y);
+alpha = double(data.alpha(:));
+dN = double(data.dN);
+mu = double(data.mu(:));
+beta = double(data.beta);
+fitType = char(string(data.fitType));
+delta = double(data.delta);
+gamma = double(data.gamma(:));
+HkAll = double(data.HkAll);
+x0 = double(data.x0(:));
+Px0 = double(data.Px0);
+gammahat_in = double(data.gammahat_in);
+
+% PPLFP_EStep line 2127 (sumPPll vectorised loop) reads `gamma` raw — if
+% empty it skips the repmat default and `gammaC'*Hk` fails on dim
+% mismatch. Use scalar 0 instead of [] for the zero-history case.
+if isempty(gamma) || max(abs(gamma)) == 0
+    gammaArg = 0;
+    HkAllArg = zeros(size(HkAll, 1), 1, size(HkAll, 3));
+else
+    gammaArg = gamma;
+    HkAllArg = HkAll;
+end
+
+rng(42); %#ok<RNG>
+[~, ~, ~, ExpectationSums] = ...
+    nstat.decoding.PPLFP.PPLFP_EStep(A, Q, C, R, y, alpha, dN, mu, beta, ...
+        fitType, delta, gammaArg, HkAllArg, x0, Px0);
+
+x_K = double(data.x_K);
+W_K = double(data.W_K);
+
+% Default constraints (mcIter=1000 by default; lower to keep capture fast
+% and to match the v9-era capture envelope).
+constraints = nstat.decoding.PPLFP.PPLFP_EMCreateConstraints( ...
+    1, 0, 1, 0, 1, 0, 1, 1, 0, 50, 0);
+
+rng(42); %#ok<RNG>
+[Ahat, Qhat, Chat, Rhat, alphahat, muhat_new, betahat_new, gammahat_new, ...
+    x0hat, Px0hat] = nstat.decoding.PPLFP.PPLFP_MStep( ...
+        dN, y, x_K, W_K, x0, Px0, ExpectationSums, fitType, ...
+        mu, beta, gammaArg, [], HkAllArg, constraints, 'NewtonRaphson');
+
+save(fixturePath, ...
+    'A', 'Q', 'C', 'R', 'y', 'alpha', 'dN', 'mu', 'beta', 'gamma', ...
+    'HkAll', 'x0', 'Px0', 'fitType', 'delta', ...
+    'x_K', 'W_K', 'gammahat_in', ...
+    'Ahat', 'Qhat', 'Chat', 'Rhat', 'alphahat', 'muhat_new', ...
+    'betahat_new', 'gammahat_new', 'x0hat', 'Px0hat', '-v7');
+fprintf('  [MStep] saved %s\n', fixturePath);
+end
 
 
-function export_pplfp_EM_fixture(fixtureRoot) %#ok<DEFNU>
+function export_pplfp_EM_fixture(fixtureRoot)
 % pplfp_EM.mat
 % ------------
-% Driver fixture for full PPLFP_EM. Saved fields include initial guesses
-% (Ahat0, Qhat0, Chat0, Rhat0, alphahat0) and final smoothed state
-% xKFinal (the comparison baseline).
+% Inputs (from committed fixture): y, dN, Ahat0, Qhat0, Chat0, Rhat0,
+% alphahat0, mu, beta, fitType, delta, x0, Px0, mcIter.
+% Outputs (re-run): xKFinal, WKFinal, Ahat, Qhat, Chat, Rhat, alphahat,
+% muhat, betahat, gammahat, x0hat, Px0hat, IC, SE, Pvals.
 %
-% TODO (v10 iter 47): see header. Recipe sketch:
-%   rng(42); K = 30; numCells = 2; nx = 2;
-%   y = randn(numCells, K);
-%   dN = double(rand(numCells, K) < 0.1);
-%   Ahat0 = 0.9*eye(nx); Qhat0 = 0.01*eye(nx);
-%   Chat0 = randn(numCells, nx); Rhat0 = 0.1*eye(numCells);
-%   alphahat0 = zeros(nx, 1);
-%   mu = -2.5*ones(numCells, 1); beta = 0.1*randn(nx, numCells);
-%   x0 = zeros(nx, 1); Px0 = 0.1*eye(nx);
-%   Constraints = PPLFP_EMCreateConstraints('EstimateA', 1, 'AhatDiag', 0, ...
-%       'QhatDiag', 1, 'RhatDiag', 1, 'Estimatex0', 0, 'EstimatePx0', 0, ...
-%       'mcIter', 50);
-%   [xKFinal, ...] = PPLFP_EM(y, dN, Ahat0, Qhat0, Chat0, Rhat0, alphahat0, ...
-%       mu, beta, 'poisson', 1.0, x0, Px0, Constraints, 'NewtonRaphson');
-%   mcIter = 50;
-%   save(.., 'xKFinal', 'Ahat0', .., 'mcIter', '-v7');
-fprintf(['  [TODO] export_pplfp_EM_fixture: capture recipe unverified; ' ...
-         'skipping (will not overwrite committed fixture)\n']);
-return  %#ok<UNRCH>
-end %#ok<DEFNU>
+% EM is RNG-dependent (NewtonRaphson MC + optional Ikeda mvnrnd) AND
+% iteration-sensitive (log-likelihood floating-point noise can change
+% convergence-iter). `rng(42)` is set for determinism.
+
+fixturePath = fullfile(fixtureRoot, 'pplfp_EM.mat');
+fprintf('  [EM] loading inputs from %s\n', fixturePath);
+data = load(fixturePath);
+
+y = double(data.y);
+dN = double(data.dN);
+Ahat0 = double(data.Ahat0);
+Qhat0 = double(data.Qhat0);
+Chat0 = double(data.Chat0);
+Rhat0 = double(data.Rhat0);
+alphahat0 = double(data.alphahat0(:));
+mu = double(data.mu(:));
+beta = double(data.beta);
+fitType = char(string(data.fitType));
+delta = double(data.delta);
+x0 = double(data.x0(:));
+Px0 = double(data.Px0);
+mcIter = double(data.mcIter);
+
+constraints = nstat.decoding.PPLFP.PPLFP_EMCreateConstraints( ...
+    1, 0, 1, 0, 1, 0, 0, 0, 0, mcIter, 0);  % Estimatex0=0, EstimatePx0=0
+
+% PPLFP_EM internally builds HkAll. Its `else` branch (no windowTimes)
+% has the upstream bug `K=size(dN,1)` which mis-sizes HkAll's 3rd dim to
+% numCells instead of time-steps. Use a single-window windowTimes so the
+% History/computeHistory path runs and HkAll's K-dim is correct. This
+% gives `gammahat` shape (1, numCells) — matching the committed fixture's
+% gammahat slot.
+K = size(dN, 2);
+maxTime = (K - 1) * delta;
+windowTimes = [0, maxTime];
+
+rng(42); %#ok<RNG>
+[xKFinal, WKFinal, Ahat, Qhat, Chat, Rhat, alphahat, muhat, betahat, ...
+    gammahat, x0hat, Px0hat, IC, SE, Pvals] = ...
+    nstat.decoding.PPLFP.PPLFP_EM(y, dN, Ahat0, Qhat0, Chat0, Rhat0, ...
+        alphahat0, mu, beta, fitType, delta, [], windowTimes, x0, Px0, ...
+        constraints, 'NewtonRaphson');
+
+save(fixturePath, ...
+    'y', 'dN', 'Ahat0', 'Qhat0', 'Chat0', 'Rhat0', 'alphahat0', ...
+    'mu', 'beta', 'fitType', 'delta', 'x0', 'Px0', 'mcIter', ...
+    'xKFinal', 'WKFinal', 'Ahat', 'Qhat', 'Chat', 'Rhat', 'alphahat', ...
+    'muhat', 'betahat', 'gammahat', 'x0hat', 'Px0hat', ...
+    'IC', 'SE', 'Pvals', '-v7');
+fprintf('  [EM] saved %s\n', fixturePath);
+end
 
 
-function export_pplfp_SE_fixture(fixtureRoot) %#ok<DEFNU>
+function export_pplfp_SE_fixture(fixtureRoot)
 % pplfp_SE.mat
 % ------------
-% Captures the SE struct returned by PPLFP_ComputeParamStandardErrors after
-% a full EM converged run. Only the SE.alpha field is currently compared
-% (rest are RNG-sensitive — see matlab_defects.yml entry pplfp-se-mc-drift).
+% Inputs (from committed fixture): A, Q, C, R, y, alpha, dN, mu, beta, gamma,
+% HkAll, x0, Px0, fitType, delta, plus EM-converged params (Ahat, Qhat,
+% Chat, Rhat, alphahat, betahat_new, gammahat_new, muhat_new, x0hat, Px0hat)
+% and smoothed state (xKFinal, WKFinal).
+% Outputs (re-run): SE struct, Pvals struct, nTerms.
 %
-% TODO (v10 iter 47): see header. Recipe sketch:
-%   [same EM setup as export_pplfp_EM_fixture]
-%   [run PPLFP_EM to get xKFinal, WKFinal, Ahat, Qhat, Chat, Rhat,
-%    alphahat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat,
-%    ExpectationSums]
-%   [SE, Pvals, nTerms] = PPLFP_ComputeParamStandardErrors(y, dN, ...
-%       xKFinal, WKFinal, Ahat, Qhat, Chat, Rhat, alphahat, x0hat, ...
-%       Px0hat, ExpectationSums, 'poisson', muhat_new, betahat_new, ...
-%       gammahat_new, [], HkAll);
-%   save(.., 'SE', .., '-v7');
-fprintf(['  [TODO] export_pplfp_SE_fixture: capture recipe unverified; ' ...
-         'skipping (will not overwrite committed fixture)\n']);
-return  %#ok<UNRCH>
-end %#ok<DEFNU>
+% PPLFP_ComputeParamStandardErrors uses Monte Carlo (mcIter samples) via
+% normrnd for the observed-information block — output is RNG-dependent. Only
+% SE.alpha is regressed (it's deterministic from N and Rhat); other fields
+% carry the MC envelope per matlab_defects.yml entry pplfp-se-mc-drift.
+
+fixturePath = fullfile(fixtureRoot, 'pplfp_SE.mat');
+fprintf('  [SE] loading inputs from %s\n', fixturePath);
+data = load(fixturePath);
+
+A = double(data.A);
+Q = double(data.Q);
+C = double(data.C);
+R = double(data.R);
+y = double(data.y);
+alpha = double(data.alpha(:));
+dN = double(data.dN);
+mu = double(data.mu(:));
+beta = double(data.beta);
+fitType = char(string(data.fitType));
+delta = double(data.delta);
+gamma = double(data.gamma(:));
+HkAll = double(data.HkAll);
+x0 = double(data.x0(:));
+Px0 = double(data.Px0);
+Ahat = double(data.Ahat);
+Qhat = double(data.Qhat);
+Chat = double(data.Chat);
+Rhat = double(data.Rhat);
+alphahat = double(data.alphahat(:));
+betahat_new = double(data.betahat_new);
+gammahat_new = double(data.gammahat_new(:));
+muhat_new = double(data.muhat_new(:));
+x0hat = double(data.x0hat(:));
+Px0hat = double(data.Px0hat);
+xKFinal = double(data.xKFinal);
+WKFinal = double(data.WKFinal);
+
+% Reconstitute ExpectationSums via PPLFP_EStep using the *EM-converged*
+% params (Ahat, Qhat, Chat, Rhat, alphahat, betahat_new, muhat_new,
+% gammahat_new) — this matches MATLAB's PPLFP_EM final-step call signature.
+if isempty(gammahat_new) || max(abs(gammahat_new)) == 0
+    gammaSEArg = 0;
+    HkAllSEArg = zeros(size(HkAll, 1), 1, size(HkAll, 3));
+else
+    gammaSEArg = gammahat_new;
+    HkAllSEArg = HkAll;
+end
+
+rng(42); %#ok<RNG>
+[~, ~, ~, ExpectationSumsFinal] = ...
+    nstat.decoding.PPLFP.PPLFP_EStep(Ahat, Qhat, Chat, Rhat, y, alphahat, ...
+        dN, muhat_new, betahat_new, fitType, delta, gammaSEArg, HkAllSEArg, ...
+        x0hat, Px0hat);
+
+constraints = nstat.decoding.PPLFP.PPLFP_EMCreateConstraints( ...
+    1, 0, 1, 0, 1, 0, 1, 1, 0, 500, 0);
+
+rng(42); %#ok<RNG>
+[SE, Pvals, nTerms] = ...
+    nstat.decoding.PPLFP.PPLFP_ComputeParamStandardErrors( ...
+        y, dN, xKFinal, WKFinal, Ahat, Qhat, Chat, Rhat, alphahat, ...
+        x0hat, Px0hat, ExpectationSumsFinal, fitType, muhat_new, ...
+        betahat_new, gammaSEArg, [], HkAllSEArg, constraints);
+
+save(fixturePath, ...
+    'A', 'Q', 'C', 'R', 'y', 'alpha', 'dN', 'mu', 'beta', 'gamma', ...
+    'HkAll', 'x0', 'Px0', 'fitType', 'delta', ...
+    'Ahat', 'Qhat', 'Chat', 'Rhat', 'alphahat', 'betahat_new', ...
+    'gammahat_new', 'muhat_new', 'x0hat', 'Px0hat', ...
+    'xKFinal', 'WKFinal', 'SE', 'Pvals', 'nTerms', '-v7');
+fprintf('  [SE] saved %s\n', fixturePath);
+end

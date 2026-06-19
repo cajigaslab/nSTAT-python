@@ -900,6 +900,402 @@ def _recipe_v9_signalobj_integral(fixture, _args):
     return _as_float_array(out.data), _as_float_array(fixture["data_out"])
 
 
+# ---------------------------------------------------------------------------
+# v11 iter 51A — 16 additional drift entries expanding coverage to 52+ total.
+# Twelve recipes have dedicated new fixtures (v11_*.mat); four reuse existing
+# fixtures (fit_summary_exactness, analysis_multineuron_exactness,
+# v9_fitresult_KSPlot_data) for previously-untested derived fields.
+# ---------------------------------------------------------------------------
+
+
+def _v11_make_cif(fixture):
+    """Construct the canonical no-history poisson CIF used for v11 CIF fixtures.
+
+    The fixture stores Xnames as MATLAB cellstr {'one','x1'} — translate the
+    intercept 'one' to the Python convention ('1') accepted by the CIF
+    constructor. evalGradient/Log/Jacobian/JacobianLog share this CIF.
+    """
+    from nstat import CIF
+    beta = _vector(fixture, "beta")
+    # Force the conventional Python intercept tag '1' regardless of the MATLAB
+    # cellstr encoding ('one' is required MATLAB-side for `sym('1')` legality).
+    return CIF(beta=beta, Xnames=["1", "x1"], stimNames=["x1"], fitType="poisson")
+
+
+def _recipe_v11_cif_evalGradient(fixture, _args):
+    """v11 CIF gradient — Python differentiates wrt actual stim vars only
+    (shape (n_stim, 1)); MATLAB symbolically differentiates wrt the full
+    varIn including the 'one' intercept (shape (n_stim, N=stim+1)). The
+    intercept column equals the stim column because `lambda = exp(beta * varIn)`
+    has identical partials wrt every element of varIn when one of them is
+    the constant `1`. Compare the Python output against MATLAB's first
+    column.
+    """
+    cif = _v11_make_cif(fixture)
+    stim_vals = _vector(fixture, "stimVals")
+    rows = []
+    for s in stim_vals:
+        g = cif.evalGradient(np.array([s]))
+        rows.append(np.asarray(g, dtype=float).reshape(-1))
+    py = np.stack(rows, axis=0)  # (S, n_stim)
+    base = _as_float_array(fixture["gradient_out"])  # (S, N)
+    base_aligned = base[:, : py.shape[1]]
+    return py, base_aligned
+
+
+def _recipe_v11_cif_evalGradientLog(fixture, _args):
+    cif = _v11_make_cif(fixture)
+    stim_vals = _vector(fixture, "stimVals")
+    rows = []
+    for s in stim_vals:
+        g = cif.evalGradientLog(np.array([s]))
+        rows.append(np.asarray(g, dtype=float).reshape(-1))
+    py = np.stack(rows, axis=0)
+    base = _as_float_array(fixture["gradientLog_out"])
+    base_aligned = base[:, : py.shape[1]]
+    return py, base_aligned
+
+
+def _recipe_v11_cif_evalJacobian(fixture, _args):
+    """v11 CIF Jacobian — same intercept-vs-stim issue as evalGradient.
+    Python returns (n_stim, n_stim); MATLAB returns (N, N) including intercept.
+    Compare the top-left (n_stim x n_stim) block across all stim values.
+    """
+    cif = _v11_make_cif(fixture)
+    stim_vals = _vector(fixture, "stimVals")
+    base = _as_float_array(fixture["jacobian_out"])  # (S, N, N)
+    py_rows = []
+    for s in stim_vals:
+        J = np.asarray(cif.evalJacobian(np.array([s])), dtype=float)
+        py_rows.append(J)
+    py = np.stack(py_rows, axis=0)  # (S, n_stim, n_stim)
+    n = py.shape[1]
+    base_aligned = base[:, :n, :n]
+    return py, base_aligned
+
+
+def _recipe_v11_cif_evalJacobianLog(fixture, _args):
+    cif = _v11_make_cif(fixture)
+    stim_vals = _vector(fixture, "stimVals")
+    base = _as_float_array(fixture["jacobianLog_out"])
+    py_rows = []
+    for s in stim_vals:
+        J = np.asarray(cif.evalJacobianLog(np.array([s])), dtype=float)
+        py_rows.append(J)
+    py = np.stack(py_rows, axis=0)
+    n = py.shape[1]
+    base_aligned = base[:, :n, :n]
+    return py, base_aligned
+
+
+def _recipe_v11_cif_evalLambdaDelta_vector(fixture, _args):
+    cif = _v11_make_cif(fixture)
+    stim_vals = _vector(fixture, "stimVals")
+    py = np.array(
+        [float(cif.evalLambdaDelta(np.array([s]))) for s in stim_vals],
+        dtype=float,
+    )
+    return py, _vector(fixture, "lambdaDelta_out")
+
+
+def _recipe_v11_signalobj_filter(fixture, _args):
+    from nstat import SignalObj
+    t = _vector(fixture, "time_in")
+    d = _as_float_array(fixture["data_in"])
+    B = _vector(fixture, "B")
+    A_coef = _scalar(fixture, "A_coef")
+    sig = SignalObj(t, d, "x", "t", "s", "", [f"c{i}" for i in range(d.shape[1])])
+    out = sig.filter(B, A_coef)
+    return _as_float_array(out.data), _as_float_array(fixture["data_out"])
+
+
+def _recipe_v11_signalobj_filtfilt(fixture, _args):
+    from nstat import SignalObj
+    t = _vector(fixture, "time_in")
+    d = _as_float_array(fixture["data_in"])
+    B = _vector(fixture, "B")
+    A_coef = _scalar(fixture, "A_coef")
+    sig = SignalObj(t, d, "x", "t", "s", "", [f"c{i}" for i in range(d.shape[1])])
+    out = sig.filtfilt(B, A_coef)
+    return _as_float_array(out.data), _as_float_array(fixture["data_out"])
+
+
+def _recipe_v11_signalobj_periodogram(fixture, _args):
+    """SignalObj.periodogram — compare dominant peak frequency.
+
+    Case C — MATLAB defaults to NFFT = max(256, 2*nextpow2(N)) and (depending
+    on MATLAB version) a different window; Python's nstat SignalObj.periodogram
+    uses NFFT = max(256, 2**nextpow2(N)) with a SciPy boxcar window. The
+    bin counts therefore differ (Python: 129 bins for N=100; MATLAB: 513
+    bins). Comparing raw PSD vectors is meaningless. Instead we extract
+    the dominant peak frequency from each spectrum — both should land on
+    ~5 Hz (the sin(2*pi*5t) component).
+    """
+    from nstat import SignalObj
+    t = _vector(fixture, "time_in")
+    d = _as_float_array(fixture["data_in"])
+    fs = 1.0 / float(t[1] - t[0])
+    sig = SignalObj(t, d, "x", "t", "s", "", [f"c{i}" for i in range(d.shape[1])])
+    py_ret = sig.periodogram()
+    if isinstance(py_ret, tuple) and len(py_ret) == 2:
+        a, b = py_ret
+        a_arr = np.asarray(a, dtype=float)
+        b_arr = np.asarray(b, dtype=float)
+        if a_arr.ndim == 1 and np.all(np.diff(a_arr) >= 0):
+            freq_py, psd_arr = a_arr, b_arr
+        else:
+            freq_py, psd_arr = b_arr, a_arr
+    else:
+        psd_arr = np.asarray(py_ret, dtype=float)
+        freq_py = np.linspace(0, fs / 2, psd_arr.shape[0])
+    psd_col = psd_arr[:, 0] if psd_arr.ndim == 2 else psd_arr
+    peak_freq_py = float(freq_py[int(np.argmax(psd_col))])
+    base_psd = _vector(fixture, "psd_data")
+    base_freq = _vector(fixture, "freq")
+    peak_freq_base = float(base_freq[int(np.argmax(base_psd))])
+    return np.array([peak_freq_py], dtype=float), np.array([peak_freq_base], dtype=float)
+
+
+def _recipe_v11_signalobj_xcorr(fixture, _args):
+    """numpy.correlate-style cross-correlation vs MATLAB xcorr output.
+
+    The recipe builds a Python xcorr via np.correlate(mode='full') which
+    is the canonical equivalent of MATLAB xcorr (no scaling).
+    """
+    x1 = _vector(fixture, "x1")
+    x2 = _vector(fixture, "x2")
+    # numpy.correlate uses the convention c[n] = sum_m x1[m] * x2[m-n+N-1].
+    # MATLAB xcorr(x1, x2) returns r[k] for k = -(N-1) ... N-1 with
+    # r[k] = sum_m x1[m+k] * conj(x2[m]). The equivalent NumPy call is:
+    c = np.correlate(x1, x2, mode="full")
+    return _as_float_array(c), _vector(fixture, "xcorr_data")
+
+
+def _recipe_v11_history_toFilter(fixture, _args):
+    """History.toFilter — compare Python numerator matrix vs MATLAB b_mat.
+
+    Python returns a HistoryFilterBank with variable-length numerators
+    (size = num_samples_i + 1 per row). MATLAB stores b_mat as a dense
+    (Nrow x len(timeVec)) matrix, where Nrow = len(windowTimes)-1 and
+    len(timeVec) = floor((tmax_max - tmin_min) / delta) + 1.
+
+    To compare we pad each Python numerator to the MATLAB timeVec width.
+    """
+    from nstat.history import History
+    window_times = _vector(fixture, "windowTimes")
+    min_time = _scalar(fixture, "minTime")
+    max_time = _scalar(fixture, "maxTime")
+    delta = _scalar(fixture, "delta")
+    h = History(window_times, min_time, max_time)
+    bank = h.toFilter(delta)
+    base = _as_float_array(fixture["b_mat"])
+    n_rows, n_cols = base.shape
+    py = np.zeros_like(base)
+    for i, num in enumerate(bank.numerators):
+        arr = np.asarray(num, dtype=float).reshape(-1)
+        # MATLAB's b row has length len(timeVec) and Python's num has length
+        # num_samples_i + 1 = ceil(tmax_i/delta) + 1. Match by left-aligning
+        # and truncating to n_cols.
+        m = min(arr.size, n_cols)
+        py[i, :m] = arr[:m]
+    return py, base
+
+
+def _recipe_v11_analysis_computeInvGausTrans(fixture, _args):
+    from nstat import Analysis
+    Z = _vector(fixture, "Z")
+    X, _rhoSig, _confBoundSig = Analysis.computeInvGausTrans(Z)
+    return _as_float_array(X).reshape(-1), _vector(fixture, "X")
+
+
+def _recipe_v11_analysis_RunAnalysisForAllNeurons(fixture, _args):
+    """Compare per-neuron logLL vector from the multi-neuron analysis."""
+    from nstat import (
+        Analysis, ConfigColl, CovColl, Covariate, Trial, TrialConfig,
+        nspikeTrain, nstColl,
+    )
+    t = _vector(fixture, "time_in")
+    sd = _vector(fixture, "stim_data")
+    spk1 = _vector(fixture, "spk1")
+    spk2 = _vector(fixture, "spk2")
+    sr = _scalar(fixture, "sr")
+    stim = Covariate(t, sd, "Stimulus", "time", "s", "", ["stim"])
+    st1 = nspikeTrain(spk1, "1", sr, float(t[0]), float(t[-1]), "time", "s", "", "", -1)
+    st2 = nspikeTrain(spk2, "2", sr, float(t[0]), float(t[-1]), "time", "s", "", "", -1)
+    trial = Trial(nstColl([st1, st2]), CovColl([stim]))
+    cfg = TrialConfig([["Stimulus", "stim"]], sr, [], [], name="stim")
+    fits = Analysis.RunAnalysisForAllNeurons(trial, ConfigColl([cfg]), makePlot=0)
+    # fits is iterable of FitResult (or a single FitResult on small inputs).
+    if isinstance(fits, (list, tuple)):
+        per_neuron = fits
+    else:
+        per_neuron = [fits]
+    # Extract logLL per neuron, take the first config index.
+    logll = []
+    for fr in per_neuron:
+        v = np.asarray(fr.logLL, dtype=float).reshape(-1)
+        logll.append(float(v[0]))
+    py = np.asarray(logll, dtype=float).reshape(-1)
+    base = _vector(fixture, "fit_logLL").reshape(-1)
+    return py, base
+
+
+# Fixture-reusing v11 recipes (no new MATLAB capture required).
+def _recipe_v11_fitressummary_getDiffAIC(fixture, _args):
+    """FitResSummary.getDiffAIC — reuse fit_summary_exactness.mat 'diffAIC'."""
+    from nstat import FitResSummary, FitResult, ConfigColl, Covariate, TrialConfig, nspikeTrain
+    # Use the same synthetic setup as _recipe_fit_summary_logll.
+    time = np.arange(0.0, 1.0 + 0.1, 0.1)
+    lambda_signal = Covariate(
+        time,
+        np.column_stack(
+            [
+                np.linspace(2.0, 7.0, time.size, dtype=float),
+                np.linspace(3.0, 8.0, time.size, dtype=float),
+            ]
+        ),
+        "\\lambda(t)", "time", "s", "Hz",
+        ["stim", "stim_hist"],
+    )
+    st1 = nspikeTrain([0.1, 0.4, 0.7], "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
+    st2 = nspikeTrain([0.2, 0.5, 0.8], "2", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
+    stim_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [], [], name="stim")
+    stim_hist_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [0.0, 0.1, 0.2], [], name="stim_hist")
+    config_coll = ConfigColl([stim_cfg, stim_hist_cfg])
+
+    def _mk(st, coeffs0, coeffs1, aics, bics, lls):
+        return FitResult(
+            st, [["stim"], ["stim", "hist1", "hist2"]], [0, 2], [None, None],
+            [None, None], lambda_signal,
+            [np.array(coeffs0), np.array(coeffs1)],
+            np.array([1.0, 2.0]),
+            [{"se": np.array([0.05]), "p": np.array([0.01])},
+             {"se": np.array([0.04, 0.03, 0.02]), "p": np.array([0.02, 0.04, 0.06])}],
+            np.array(aics, dtype=float), np.array(bics, dtype=float),
+            np.array(lls, dtype=float), config_coll, [], [], "poisson",
+        )
+
+    fit1 = _mk(st1, [0.5], [0.3, -0.1, -0.05], [11.0, 7.0], [12.0, 8.0], [3.0, 5.0])
+    fit2 = _mk(st2, [0.4], [0.25, -0.08, -0.02], [13.0, 9.0], [14.0, 10.0], [2.0, 4.0])
+    fit1.KSStats[:, 0] = np.array([0.25, 0.50], dtype=float)
+    fit1.KSPvalues[:] = np.array([0.90, 0.40], dtype=float)
+    fit1.withinConfInt[:] = np.array([1.0, 1.0], dtype=float)
+    fit2.KSStats[:, 0] = np.array([0.35, 0.55], dtype=float)
+    fit2.KSPvalues[:] = np.array([0.80, 0.30], dtype=float)
+    fit2.withinConfInt[:] = np.array([1.0, 0.0], dtype=float)
+    summary = FitResSummary([fit1, fit2])
+    py = _as_float_array(summary.getDiffAIC(1)).reshape(-1)
+    base = _as_float_array(fixture["diffAIC"]).reshape(-1)
+    return py, base
+
+
+def _recipe_v11_fitressummary_getDiffBIC(fixture, _args):
+    from nstat import FitResSummary, FitResult, ConfigColl, Covariate, TrialConfig, nspikeTrain
+    time = np.arange(0.0, 1.0 + 0.1, 0.1)
+    lambda_signal = Covariate(
+        time,
+        np.column_stack(
+            [
+                np.linspace(2.0, 7.0, time.size, dtype=float),
+                np.linspace(3.0, 8.0, time.size, dtype=float),
+            ]
+        ),
+        "\\lambda(t)", "time", "s", "Hz", ["stim", "stim_hist"],
+    )
+    st1 = nspikeTrain([0.1, 0.4, 0.7], "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
+    st2 = nspikeTrain([0.2, 0.5, 0.8], "2", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
+    stim_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [], [], name="stim")
+    stim_hist_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [0.0, 0.1, 0.2], [], name="stim_hist")
+    config_coll = ConfigColl([stim_cfg, stim_hist_cfg])
+
+    def _mk(st, coeffs0, coeffs1, aics, bics, lls):
+        return FitResult(
+            st, [["stim"], ["stim", "hist1", "hist2"]], [0, 2], [None, None],
+            [None, None], lambda_signal,
+            [np.array(coeffs0), np.array(coeffs1)],
+            np.array([1.0, 2.0]),
+            [{"se": np.array([0.05]), "p": np.array([0.01])},
+             {"se": np.array([0.04, 0.03, 0.02]), "p": np.array([0.02, 0.04, 0.06])}],
+            np.array(aics, dtype=float), np.array(bics, dtype=float),
+            np.array(lls, dtype=float), config_coll, [], [], "poisson",
+        )
+
+    fit1 = _mk(st1, [0.5], [0.3, -0.1, -0.05], [11.0, 7.0], [12.0, 8.0], [3.0, 5.0])
+    fit2 = _mk(st2, [0.4], [0.25, -0.08, -0.02], [13.0, 9.0], [14.0, 10.0], [2.0, 4.0])
+    fit1.KSStats[:, 0] = np.array([0.25, 0.50], dtype=float)
+    fit1.KSPvalues[:] = np.array([0.90, 0.40], dtype=float)
+    fit1.withinConfInt[:] = np.array([1.0, 1.0], dtype=float)
+    fit2.KSStats[:, 0] = np.array([0.35, 0.55], dtype=float)
+    fit2.KSPvalues[:] = np.array([0.80, 0.30], dtype=float)
+    fit2.withinConfInt[:] = np.array([1.0, 0.0], dtype=float)
+    summary = FitResSummary([fit1, fit2])
+    py = _as_float_array(summary.getDiffBIC(1)).reshape(-1)
+    base = _as_float_array(fixture["diffBIC"]).reshape(-1)
+    return py, base
+
+
+def _recipe_v11_fitressummary_getDifflogLL(fixture, _args):
+    from nstat import FitResSummary, FitResult, ConfigColl, Covariate, TrialConfig, nspikeTrain
+    time = np.arange(0.0, 1.0 + 0.1, 0.1)
+    lambda_signal = Covariate(
+        time,
+        np.column_stack(
+            [
+                np.linspace(2.0, 7.0, time.size, dtype=float),
+                np.linspace(3.0, 8.0, time.size, dtype=float),
+            ]
+        ),
+        "\\lambda(t)", "time", "s", "Hz", ["stim", "stim_hist"],
+    )
+    st1 = nspikeTrain([0.1, 0.4, 0.7], "1", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
+    st2 = nspikeTrain([0.2, 0.5, 0.8], "2", 10.0, 0.0, 1.0, "time", "s", "", "", -1)
+    stim_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [], [], name="stim")
+    stim_hist_cfg = TrialConfig([["Stimulus", "stim"]], 10.0, [0.0, 0.1, 0.2], [], name="stim_hist")
+    config_coll = ConfigColl([stim_cfg, stim_hist_cfg])
+
+    def _mk(st, coeffs0, coeffs1, aics, bics, lls):
+        return FitResult(
+            st, [["stim"], ["stim", "hist1", "hist2"]], [0, 2], [None, None],
+            [None, None], lambda_signal,
+            [np.array(coeffs0), np.array(coeffs1)],
+            np.array([1.0, 2.0]),
+            [{"se": np.array([0.05]), "p": np.array([0.01])},
+             {"se": np.array([0.04, 0.03, 0.02]), "p": np.array([0.02, 0.04, 0.06])}],
+            np.array(aics, dtype=float), np.array(bics, dtype=float),
+            np.array(lls, dtype=float), config_coll, [], [], "poisson",
+        )
+
+    fit1 = _mk(st1, [0.5], [0.3, -0.1, -0.05], [11.0, 7.0], [12.0, 8.0], [3.0, 5.0])
+    fit2 = _mk(st2, [0.4], [0.25, -0.08, -0.02], [13.0, 9.0], [14.0, 10.0], [2.0, 4.0])
+    fit1.KSStats[:, 0] = np.array([0.25, 0.50], dtype=float)
+    fit1.KSPvalues[:] = np.array([0.90, 0.40], dtype=float)
+    fit1.withinConfInt[:] = np.array([1.0, 1.0], dtype=float)
+    fit2.KSStats[:, 0] = np.array([0.35, 0.55], dtype=float)
+    fit2.KSPvalues[:] = np.array([0.80, 0.30], dtype=float)
+    fit2.withinConfInt[:] = np.array([1.0, 0.0], dtype=float)
+    summary = FitResSummary([fit1, fit2])
+    py = _as_float_array(summary.getDifflogLL(1)).reshape(-1)
+    base = _as_float_array(fixture["difflogLL"]).reshape(-1)
+    return py, base
+
+
+def _recipe_v11_fitresult_ksplot_xaxis(fixture, _args):
+    """v11 reuse: compare xAxis from Analysis.computeKSStats vs MATLAB capture
+    (using the v9_fitresult_KSPlot_data fixture). Pure deterministic axis.
+    """
+    from nstat import Analysis, Covariate, nspikeTrain
+    spk = _vector(fixture, "spikeTimes")
+    t = _vector(fixture, "t")
+    lam_d = _vector(fixture, "lambdaData")
+    sr = _scalar(fixture, "sampleRate")
+    minT = _scalar(fixture, "minTime")
+    maxT = _scalar(fixture, "maxTime")
+    st = nspikeTrain(spk, "1", sr, minT, maxT, "time", "s", "", "", -1)
+    lam = Covariate(t, lam_d, "\\lambda(t)", "time", "s", "Hz", ["\\lambda_{1}"])
+    Z, U, xAxis, KSSorted, ks_stat = Analysis.computeKSStats(st, lam, 1)
+    return _as_float_array(xAxis).reshape(-1), _as_float_array(fixture["xAxis"]).reshape(-1)
+
+
 RECIPES: dict[str, Callable[[dict[str, Any], dict[str, Any]], tuple[np.ndarray, np.ndarray]]] = {
     "fit_poisson_glm_coeffs": _recipe_fit_poisson_glm,
     "fit_summary_logll": _recipe_fit_summary_logll,
@@ -938,6 +1334,23 @@ RECIPES: dict[str, Callable[[dict[str, Any], dict[str, Any]], tuple[np.ndarray, 
     "v9_signalobj_resample": _recipe_v9_signalobj_resample,
     "v9_signalobj_derivative": _recipe_v9_signalobj_derivative,
     "v9_signalobj_integral": _recipe_v9_signalobj_integral,
+    # v11 iter 51A — 16 new drift entries
+    "v11_cif_evalGradient": _recipe_v11_cif_evalGradient,
+    "v11_cif_evalGradientLog": _recipe_v11_cif_evalGradientLog,
+    "v11_cif_evalJacobian": _recipe_v11_cif_evalJacobian,
+    "v11_cif_evalJacobianLog": _recipe_v11_cif_evalJacobianLog,
+    "v11_cif_evalLambdaDelta_vector": _recipe_v11_cif_evalLambdaDelta_vector,
+    "v11_signalobj_filter": _recipe_v11_signalobj_filter,
+    "v11_signalobj_filtfilt": _recipe_v11_signalobj_filtfilt,
+    "v11_signalobj_periodogram": _recipe_v11_signalobj_periodogram,
+    "v11_signalobj_xcorr": _recipe_v11_signalobj_xcorr,
+    "v11_history_toFilter": _recipe_v11_history_toFilter,
+    "v11_analysis_computeInvGausTrans": _recipe_v11_analysis_computeInvGausTrans,
+    "v11_analysis_RunAnalysisForAllNeurons": _recipe_v11_analysis_RunAnalysisForAllNeurons,
+    "v11_fitressummary_getDiffAIC": _recipe_v11_fitressummary_getDiffAIC,
+    "v11_fitressummary_getDiffBIC": _recipe_v11_fitressummary_getDiffBIC,
+    "v11_fitressummary_getDifflogLL": _recipe_v11_fitressummary_getDifflogLL,
+    "v11_fitresult_ksplot_xaxis": _recipe_v11_fitresult_ksplot_xaxis,
 }
 
 

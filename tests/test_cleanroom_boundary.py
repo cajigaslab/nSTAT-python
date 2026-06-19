@@ -29,6 +29,19 @@ BRIDGE_MODULE_ALLOWLIST = {"matlab_engine.py"}
 # who have MATLAB.  Skipped from the cleanroom scan.
 PARITY_MATLAB_TOOLS_DIR = REPO_ROOT / "tools" / "parity" / "matlab"
 
+# Per-file allowlist of developer-only parity tools that legitimately
+# shell out to MATLAB.  These are NOT shipped with the installable
+# package and run only on developers who have MATLAB + the local nSTAT
+# checkout.  Add new entries here only when the script's sole purpose
+# is parity measurement (timing, fixture capture, diff).
+DEVELOPER_PARITY_TOOLS_ALLOWLIST = {
+    # v11 iter 53: performance-parity baseline harness — invokes
+    # /opt/homebrew/bin/matlab -batch with a tic/toc script and parses
+    # elapsed seconds from stdout.  Documented in
+    # docs/parity/runbook.md "Performance parity".
+    "perf_check.py",
+}
+
 
 def _assert_clean(paths: list[Path], *, allowlist: set[str] | None = None) -> None:
     allowlist = allowlist or set()
@@ -57,6 +70,7 @@ def test_notebooks_examples_and_ci_do_not_shell_out_to_matlab() -> None:
         p
         for p in sorted((REPO_ROOT / "tools").glob("**/*.py"))
         if PARITY_MATLAB_TOOLS_DIR not in p.parents
+        and p.name not in DEVELOPER_PARITY_TOOLS_ALLOWLIST
     ]
     targets += sorted((REPO_ROOT / "notebooks").glob("**/*.ipynb"))
     targets += sorted((REPO_ROOT / ".github" / "workflows").glob("**/*.yml"))

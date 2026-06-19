@@ -46,6 +46,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PY_PACKAGE = REPO_ROOT / "nstat"
 DEFAULT_MATLAB_REPO = REPO_ROOT.parent / "nstat"
 OUTPUT_DIR = REPO_ROOT / ".parity-review"
+EXEMPTIONS_PATH = REPO_ROOT / "parity" / "class_contracts.yml"
 
 # Mapping: MATLAB class name -> (matlab_filename_stem, python_module, python_class_name)
 # A python_class_name of None means "same as MATLAB class name".
@@ -114,6 +115,51 @@ MATLAB_OPERATOR_TO_DUNDER: dict[str, str] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Architectural exemptions (parity/class_contracts.yml)
+# ---------------------------------------------------------------------------
+
+
+def _load_exemptions(path: Path = EXEMPTIONS_PATH) -> dict[str, dict[str, str]]:
+    """Load per-class MATLAB-method exemptions.
+
+    Returns ``{matlab_class: {matlab_method: reason}}``. A MATLAB method
+    listed here is dropped from the parity denominator AND from the
+    missing-in-Python list before scoring — the Python port satisfies the
+    method's role through a different idiom that this scanner cannot infer
+    (e.g. ``transpose`` has no Python operator; ``get.mu`` becomes a
+    ``@property mu``).
+
+    YAML lazily imported to keep the module importable without PyYAML.
+    """
+    if not path.exists():
+        return {}
+    try:
+        import yaml  # type: ignore[import-untyped]
+    except Exception:
+        return {}
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+    raw = payload.get("exemptions") or {}
+    out: dict[str, dict[str, str]] = {}
+    for cls_name, entries in raw.items():
+        if not isinstance(entries, list):
+            continue
+        per_class: dict[str, str] = {}
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            ml = str(entry.get("matlab_method", "")).strip()
+            if not ml:
+                continue
+            per_class[ml] = str(entry.get("reason", "")).strip()
+        if per_class:
+            out[str(cls_name)] = per_class
+    return out
+
+
 @dataclass
 class MethodInfo:
     name: str
@@ -152,9 +198,13 @@ _FUNCTION_RE = re.compile(
     #   function out = name(args)
     #   function [a, b] = name(args)
     #   function name              (no args, no parens)
+    #   function name = get.Prop(args)   (MATLAB property getter)
+    #   function set.Prop(args)          (MATLAB property setter)
+    # The (?P<name>...) group accepts `get.Prop` / `set.Prop` directly so
+    # the scoring layer can canonicalize them to the Python `@property` name.
     r"^\s*function\s+"
     r"(?:(?:\[[^\]]*\]|\w+)\s*=\s*)?"
-    r"(?P<name>\w+)"
+    r"(?P<name>(?:get|set)\.\w+|\w+)"
     r"\s*(?:\((?P<args>[^)]*)\))?"
 )
 
@@ -599,6 +649,7 @@ def signature_matches(matlab_args: list[str], python_args: list[str]) -> bool:
 def build_report(
     matlab_class: str,
     matlab_repo: Path,
+    exemptions: dict[str, dict[str, str]] | None = None,
 ) -> ClassParityReport:
     matlab_stem, py_module, py_class = CLASS_MAP[matlab_class]
     py_class = py_class or matlab_class
@@ -627,6 +678,28 @@ def build_report(
                 f"Python class '{py_class}' not found in {python_path}"
             )
 
+    # Apply architectural exemptions: drop MATLAB methods that have a
+    # Python equivalent expressed through a different idiom (operator with
+    # no Python counterpart, `@property`-backed `get.PROP`, etc.). These
+    # are removed from both the LCS denominator and the missing-in-Python
+    # list so they neither help nor hurt the score.
+    exempted = (exemptions or {}).get(matlab_class, {})
+    if exempted:
+        before = len(report.matlab_methods)
+        report.matlab_methods = [
+            m for m in report.matlab_methods if m.name not in exempted
+        ]
+        dropped = before - len(report.matlab_methods)
+        for name, reason in exempted.items():
+            short = reason.splitlines()[0] if reason else ""
+            report.notes.append(
+                f"Exemption: MATLAB `{name}` — {short}"
+            )
+        if dropped:
+            report.notes.append(
+                f"({dropped} MATLAB method(s) removed from denominator via exemptions)"
+            )
+
     matlab_names = [m.name for m in report.matlab_methods]
     python_names = [m.name for m in report.python_methods]
     py_by_name = {m.name: m for m in report.python_methods}
@@ -634,36 +707,36 @@ def build_report(
 
     # Canonicalize MATLAB operator-method names (plus/minus/eq/...) into
     # the equivalent Python dunder if that dunder is defined on the Python
-    # side. Records the mapping in `notes` so the report shows both names.
+    # side. Also canonicalize MATLAB property accessors `get.PROP` /
+    # `set.PROP` to `PROP` so they pair with Python `@property PROP` (or a
+    # regular `PROP()` method). Records each mapping in `notes` so the
+    # report shows both names.
     python_set_raw = set(python_names)
     canon_matlab_names: list[str] = []
     matlab_operator_mappings: list[tuple[str, str]] = []
-    convention_satisfied: set[str] = set()  # MATLAB names satisfied by convention
     for nm in matlab_names:
         dunder = MATLAB_OPERATOR_TO_DUNDER.get(nm)
         if dunder is not None and dunder in python_set_raw:
             canon_matlab_names.append(dunder)
             matlab_operator_mappings.append((nm, dunder))
-        elif nm == "transpose":
-            # MATLAB .' — no Python operator. Mark satisfied (parity-by-convention).
-            canon_matlab_names.append(nm)
-            matlab_operator_mappings.append(
-                (nm, "(no Python equivalent; satisfied by convention)")
-            )
-            convention_satisfied.add(nm)
+        elif nm.startswith("get.") or nm.startswith("set."):
+            prop = nm.split(".", 1)[1]
+            if prop in python_set_raw:
+                canon_matlab_names.append(prop)
+                matlab_operator_mappings.append(
+                    (nm, f"{prop} (@property)")
+                )
+            else:
+                canon_matlab_names.append(nm)
         else:
             canon_matlab_names.append(nm)
 
-    # Credit convention-satisfied names by appending them to the python ordering
-    # so order_score's LCS finds them in-order at the end.
-    python_names_for_order = list(python_names) + sorted(convention_satisfied)
-    report.order_score = compute_order_score(canon_matlab_names, python_names_for_order)
+    report.order_score = compute_order_score(canon_matlab_names, python_names)
     matlab_set = set(canon_matlab_names)
     python_set = set(python_names)
-    report.common = sorted((matlab_set & python_set) | convention_satisfied)
+    report.common = sorted(matlab_set & python_set)
     report.missing_in_python = [
-        m for m in canon_matlab_names
-        if m not in python_set and m not in convention_satisfied
+        m for m in canon_matlab_names if m not in python_set
     ]
     report.extra_in_python = [p for p in python_names if p not in matlab_set]
 
@@ -824,9 +897,10 @@ def run(
     output_dir: Path,
     fail_on_drift: bool,
 ) -> int:
+    exemptions = _load_exemptions()
     reports: list[ClassParityReport] = []
     for name in class_names:
-        rep = build_report(name, matlab_repo)
+        rep = build_report(name, matlab_repo, exemptions=exemptions)
         path = write_report(rep, output_dir)
         print(
             f"[{name}] order={rep.order_score:.2%} "
