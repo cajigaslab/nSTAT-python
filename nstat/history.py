@@ -135,6 +135,10 @@ class History:
     def numWindows(self) -> int:
         return int(self.windowTimes.size - 1)
 
+    def computeHistory(self, trains, historyIndex: int | None = None, time_grid=None):
+        """Matlab-facing alias for :meth:`compute_history`."""
+        return self.compute_history(trains, historyIndex, time_grid=time_grid)
+
     def setWindow(self, windowTimes) -> None:
         """Replace the window-times vector.
 
@@ -148,6 +152,39 @@ class History:
         self.windowTimes = replacement.windowTimes
         self.minTime = replacement.minTime
         self.maxTime = replacement.maxTime
+
+    def plot(self, *_, handle=None, **__):
+        """Plot each of the history windows as step functions.
+
+        Parameters
+        ----------
+        handle : Axes or None
+            Matplotlib axes to draw into.  If ``None``, a new figure is
+            created.
+
+        Returns
+        -------
+        Axes or list
+            The axes or plot handles.
+        """
+        tmin = np.asarray(self.windowTimes[:-1], dtype=float)
+        tmax = np.asarray(self.windowTimes[1:], dtype=float)
+        sampleRate = 1000.0
+        num_samples = max(1, int(round((float(np.max(tmax)) - float(np.min(tmin))) * sampleRate)))
+        data = np.zeros((num_samples, tmax.size), dtype=float)
+        dataLabels: list[str] = []
+        for index, (start, stop) in enumerate(zip(tmin, tmax)):
+            indMin = max(1, int(round((float(start) - float(np.min(tmin))) * sampleRate)))
+            indMax = int(round((float(stop) - float(np.min(tmin))) * sampleRate))
+            if indMax >= indMin:
+                data[indMin - 1 : indMax, index] = 1.0
+            dataLabels.append(f"[{start:.3g},{stop:.3g}]")
+        time = np.linspace(float(np.min(tmin)), float(np.max(tmax)), num_samples)
+        signal = SignalObj(time, data, "History", "time", "s", "", dataLabels)
+        created_ax = handle is None
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 2.2))[1]
+        plot_handles = signal.plot(handle=ax)
+        return ax if created_ax else plot_handles
 
     def toFilter(self, delta: float) -> HistoryFilterBank:
         """Convert the history windows to a discrete-time filter bank.
@@ -271,10 +308,6 @@ class History:
             return CovariateCollection(covariates)
         raise TypeError("History can only be computed from nspikeTrain, nstColl, or sequences of nspikeTrain")
 
-    def computeHistory(self, trains, historyIndex: int | None = None, time_grid=None):
-        """Matlab-facing alias for :meth:`compute_history`."""
-        return self.compute_history(trains, historyIndex, time_grid=time_grid)
-
     def toStructure(self) -> dict[str, Any]:
         """Serialise the History to a plain dictionary."""
         return {
@@ -303,38 +336,9 @@ class History:
             name=structure.get("name", "History"),
         )
 
-    def plot(self, *_, handle=None, **__):
-        """Plot each of the history windows as step functions.
-
-        Parameters
-        ----------
-        handle : Axes or None
-            Matplotlib axes to draw into.  If ``None``, a new figure is
-            created.
-
-        Returns
-        -------
-        Axes or list
-            The axes or plot handles.
-        """
-        tmin = np.asarray(self.windowTimes[:-1], dtype=float)
-        tmax = np.asarray(self.windowTimes[1:], dtype=float)
-        sampleRate = 1000.0
-        num_samples = max(1, int(round((float(np.max(tmax)) - float(np.min(tmin))) * sampleRate)))
-        data = np.zeros((num_samples, tmax.size), dtype=float)
-        dataLabels: list[str] = []
-        for index, (start, stop) in enumerate(zip(tmin, tmax)):
-            indMin = max(1, int(round((float(start) - float(np.min(tmin))) * sampleRate)))
-            indMax = int(round((float(stop) - float(np.min(tmin))) * sampleRate))
-            if indMax >= indMin:
-                data[indMin - 1 : indMax, index] = 1.0
-            dataLabels.append(f"[{start:.3g},{stop:.3g}]")
-        time = np.linspace(float(np.min(tmin)), float(np.max(tmax)), num_samples)
-        signal = SignalObj(time, data, "History", "time", "s", "", dataLabels)
-        created_ax = handle is None
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 2.2))[1]
-        plot_handles = signal.plot(handle=ax)
-        return ax if created_ax else plot_handles
+    # TODO(parity): port MATLAB method raisedCosine from cajigaslab/nSTAT@main
+    # (History.raisedCosine — log-spaced windowed approximation of the
+    # Pillow 2008 raised-cosine basis on log time; see History.m §raisedCosine).
 
 
 HistoryBasis = History

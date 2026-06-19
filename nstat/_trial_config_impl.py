@@ -119,27 +119,6 @@ class TrialConfig:
         self.covLag = [] if covLag is None else covLag
         self.name = str(name)
 
-    @property
-    def covariate_names(self) -> list[str]:
-        """Return the name of each covariate group in the mask."""
-        if not self.covMask:
-            return []
-        names: list[str] = []
-        for item in self.covMask:
-            if isinstance(item, str):
-                names.append(item)
-            elif isinstance(item, Sequence) and item:
-                names.append(str(item[0]))
-        return names
-
-    def getName(self) -> str:
-        """Return this configuration's human-readable name."""
-        return self.name
-
-    def setName(self, name: str) -> None:
-        """Set this configuration's human-readable name."""
-        self.name = str(name)
-
     def setConfig(self, trial: "Trial") -> None:
         """Apply this configuration to a Trial (in place).
 
@@ -168,6 +147,14 @@ class TrialConfig:
             trial.setEnsCovHist()
             trial.setEnsCovMask()
 
+    def getName(self) -> str:
+        """Return this configuration's human-readable name."""
+        return self.name
+
+    def setName(self, name: str) -> None:
+        """Set this configuration's human-readable name."""
+        self.name = str(name)
+
     def toStructure(self) -> dict[str, Any]:
         """Serialize to a plain dict (Matlab ``TrialConfig.toStructure``)."""
         return {
@@ -195,6 +182,23 @@ class TrialConfig:
             structure.get("covLag"),
             structure.get("name", ""),
         )
+
+    # ------------------------------------------------------------------
+    # Python-only extensions (no MATLAB counterpart)
+    # ------------------------------------------------------------------
+
+    @property
+    def covariate_names(self) -> list[str]:
+        """Return the name of each covariate group in the mask."""
+        if not self.covMask:
+            return []
+        names: list[str] = []
+        for item in self.covMask:
+            if isinstance(item, str):
+                names.append(item)
+            elif isinstance(item, Sequence) and item:
+                names.append(str(item[0]))
+        return names
 
 
 class ConfigCollection:

@@ -908,7 +908,6 @@ class FitResult:
     # heavily for MATLAB-style code.  The remaining historical aliases below
     # delegate to ``lambda_signal`` with a ``DeprecationWarning`` so callers
     # know to migrate.
-
     @property
     def lambdaSignal(self) -> Covariate:
         """MATLAB-style alias for :attr:`lambda_signal`."""
@@ -980,17 +979,36 @@ class FitResult:
         self.neuronNumber = str(name)
         return self
 
-    def mapCovLabelsToUniqueLabels(self):
-        """Rebuild the unique-label map and ``flatMask`` from ``covLabels``."""
-        self.uniqueCovLabels = _ordered_unique([label for labels in self.covLabels for label in labels])
-        self.indicesToUniqueLabels = []
-        self.flatMask = np.zeros((len(self.uniqueCovLabels), max(len(self.covLabels), 1)), dtype=int)
-        for fit_idx, labels in enumerate(self.covLabels):
-            indices = [self.uniqueCovLabels.index(label) + 1 for label in labels]
-            self.indicesToUniqueLabels.append(indices)
-            if indices:
-                self.flatMask[np.asarray(indices, dtype=int) - 1, fit_idx] = 1
-        return self
+    def mergeResults(self, other: "FitResult") -> "FitResult":
+        """Concatenate another ``FitResult``'s configs into this one."""
+        from .trial import ConfigCollection
+
+        if isinstance(self.lambda_signal, Covariate) and isinstance(other.lambda_signal, Covariate):
+            lambda_signal = self.lambda_signal.merge(other.lambda_signal)
+        else:
+            lambda_signal = self.lambda_signal
+        configs = ConfigCollection(
+            [*(self.configs.configArray if self.configs is not None else []), *(other.configs.configArray if other.configs is not None else [])]
+        )
+        return FitResult(
+            self.neuralSpikeTrain,
+            [*self.covLabels, *other.covLabels],
+            [*self.numHist, *other.numHist],
+            [*self.histObjects, *other.histObjects],
+            [*self.ensHistObjects, *other.ensHistObjects],
+            lambda_signal,
+            [*self.b, *other.b],
+            np.concatenate([self.dev, other.dev]),
+            [*self.stats, *other.stats],
+            np.concatenate([self.AIC, other.AIC]),
+            np.concatenate([self.BIC, other.BIC]),
+            np.concatenate([self.logLL, other.logLL]),
+            configs,
+            [*self.XvalData, *other.XvalData],
+            [*self.XvalTime, *other.XvalTime],
+            [*self.fitType, *other.fitType],
+            fits=[*self.fits, *other.fits],
+        )
 
     def getSubsetFitResult(self, subfits) -> "FitResult":
         """Return a new ``FitResult`` with only the selected fit indices (0-based)."""
@@ -1049,64 +1067,96 @@ class FitResult:
         self.__dict__.update(merged.__dict__)
         return self
 
+    def computeValLambda(self) -> tuple[Covariate, np.ndarray]:
+        """Compute the conditional intensity on validation data (Matlab ``computeValLambda``).
+
+        Returns
+        -------
+        lambda_val : Covariate
+            The validation-set conditional intensity function.
+        logLL : np.ndarray
+            Log-likelihood for each fit configuration on the validation data.
+        """
+        if not self.XvalTime or not self.XvalData:
+            raise ValueError("No validation data available (XvalData / XvalTime are empty)")
+
+        time_vec = np.asarray(self.XvalTime[0], dtype=float).reshape(-1)
+        lambda_data = np.zeros((time_vec.size, self.numResults), dtype=float)
+        for i in range(self.numResults):
+            xval = self.XvalData[i] if i < len(self.XvalData) else self.XvalData[0]
+            lambda_data[:, i] = self.evalLambda(i + 1, xval)
+
+        lambda_val = Covariate(
+            time_vec,
+            lambda_data,
+            "\\lambda(t)",
+            self.lambda_signal.xlabelval,
+            self.lambda_signal.xunits,
+            "Hz",
+            list(self.lambda_signal.dataLabels),
+        )
+
+        delta = 1.0 / max(float(lambda_val.sampleRate), 1e-12)
+        # ``neuralSpikeTrain`` may be either a single train or a sequence
+        # (multi-trial fits).  Pick the canonical train consistently with
+        # other methods in this class (see lines 681–684).
+        if isinstance(self.neuralSpikeTrain, nspikeTrain):
+            _train = self.neuralSpikeTrain
+        elif isinstance(self.neuralSpikeTrain, Sequence) and len(self.neuralSpikeTrain) > 0:
+            _train = self.neuralSpikeTrain[0]
+        else:
+            raise ValueError(
+                "FitResult.computeValLambda: neuralSpikeTrain is empty "
+                "or has an unexpected type"
+            )
+        y = _train.getSigRep().dataToMatrix().reshape(-1)
+        # Truncate or pad y to match validation lambda length
+        n = min(y.size, lambda_data.shape[0])
+        logLL_arr = np.zeros(self.numResults, dtype=float)
+        for col in range(self.numResults):
+            lam = np.maximum(lambda_data[:n, col] * delta, 1e-30)
+            y_trunc = y[:n]
+            logLL_arr[col] = float(np.sum(
+                y_trunc * np.log(lam) + (1.0 - y_trunc) * np.log(np.maximum(1.0 - lam, 1e-30))
+            ))
+
+        return lambda_val, logLL_arr
+
+    def mapCovLabelsToUniqueLabels(self):
+        """Rebuild the unique-label map and ``flatMask`` from ``covLabels``."""
+        self.uniqueCovLabels = _ordered_unique([label for labels in self.covLabels for label in labels])
+        self.indicesToUniqueLabels = []
+        self.flatMask = np.zeros((len(self.uniqueCovLabels), max(len(self.covLabels), 1)), dtype=int)
+        for fit_idx, labels in enumerate(self.covLabels):
+            indices = [self.uniqueCovLabels.index(label) + 1 for label in labels]
+            self.indicesToUniqueLabels.append(indices)
+            if indices:
+                self.flatMask[np.asarray(indices, dtype=int) - 1, fit_idx] = 1
+        return self
+
+    def getPlotParams(self):
+        """Alias for :meth:`computePlotParams`."""
+        return self.computePlotParams()
+
+    def plotValidation(self):
+        """Plot validation fit results (if present)."""
+        if self.validation is not None:
+            return self.validation.plotResults()
+        return None
+
+    def isValDataPresent(self) -> bool:
+        """Return ``True`` if cross-validation data was stored."""
+        if not self.XvalTime or not self.XvalData:
+            return False
+        for time in self.XvalTime:
+            arr = np.asarray(time, dtype=float).reshape(-1)
+            if arr.size >= 2 and arr[-1] > arr[0]:
+                return True
+        return False
+
     def _rawCoeffs(self, fit_num: int = 0) -> np.ndarray:
         """Return the raw coefficient vector for *fit_num* (0-based)."""
         return self.b[fit_num].copy()
-
-    def getCoeffs(self, fit_num: int = 0) -> tuple[np.ndarray, list[str], np.ndarray]:
-        """Return ``(coeffMat, labels, SEMat)`` for *fit_num* (0-based).
-
-        Matches MATLAB: ``[coeffMat, labels, SEMat] = getCoeffs(fitObj, fitNum)``.
-        """
-        return self.getCoeffsWithLabels(fit_num)
-
-    def getHistCoeffs(self, fit_num: int = 0) -> tuple[np.ndarray, list[str], np.ndarray]:
-        """Return ``(histMat, labels, SEMat)`` for *fit_num* (0-based).
-
-        Matches MATLAB: ``[histMat, labels, SEMat] = getHistCoeffs(fitObj, fitNum)``.
-        """
-        return self.getHistCoeffsWithLabels(fit_num)
-
-    def getHistCoeffsWithLabels(self, fit_num: int = 0) -> tuple[np.ndarray, list[str], np.ndarray]:
-        """Return ``(histMat, labels, SEMat)`` — Matlab multi-output form.
-
-        Matlab: ``[histMat, labels, SEMat] = getHistCoeffs(fitObj, fitNum)``
-        """
-        num_hist = int(self.numHist[fit_num]) if fit_num < len(self.numHist) else 0
-        coeffs, labels, se = self.getCoeffsWithLabels(fit_num)
-        if num_hist <= 0:
-            return np.array([], dtype=float), [], np.array([], dtype=float)
-        return coeffs[-num_hist:], labels[-num_hist:], se[-num_hist:]
-
-    def getCoeffIndex(self, fit_num: int = 0, sortByEpoch: int = 0):
-        """Return ``(indices, epochIds, numEpochs)`` for non-history coefficients."""
-        del sortByEpoch
-        labels = list(self.covLabels[fit_num]) if fit_num < len(self.covLabels) else []
-        num_hist = int(self.numHist[fit_num]) if fit_num < len(self.numHist) else 0
-        non_hist_count = max(len(labels) - num_hist, 0)
-        coeff_index = np.arange(non_hist_count, dtype=int)
-        epoch_id = np.zeros(coeff_index.size, dtype=int)
-        return coeff_index, epoch_id, 0
-
-    def getHistIndex(self, fit_num: int = 0, sortByEpoch: int = 0):
-        """Return ``(indices, epochIds, numEpochs)`` for history coefficients."""
-        del sortByEpoch
-        labels = list(self.covLabels[fit_num]) if fit_num < len(self.covLabels) else []
-        num_hist = int(self.numHist[fit_num]) if fit_num < len(self.numHist) else 0
-        if num_hist <= 0:
-            return np.array([], dtype=int), np.array([], dtype=int), 0
-        start = max(len(labels) - num_hist, 0)
-        hist_index = np.arange(start, len(labels), dtype=int)
-        epoch_id = np.zeros(hist_index.size, dtype=int)
-        return hist_index, epoch_id, 0
-
-    def getParam(self, paramNames, fit_num: int = 0):
-        """Return ``(coeffs, SE, significance)`` for named parameters."""
-        names = [paramNames] if isinstance(paramNames, str) else list(paramNames)
-        coeffs, labels, se = self.getCoeffsWithLabels(fit_num)
-        sig = _extract_significance_mask(self.stats[fit_num] if fit_num < len(self.stats) else None, coeffs, se)
-        indices = [labels.index(name) for name in names if name in labels]
-        return coeffs[indices], se[indices], sig[indices]
 
     def getCoeffsWithLabels(self, fit_num: int = 0) -> tuple[np.ndarray, list[str], np.ndarray]:
         """Return ``(coefficients, labels, standardErrors)`` for *fit_num*."""
@@ -1119,85 +1169,16 @@ class FitResult:
         se = _extract_standard_errors(self.stats[fit_num] if fit_num < len(self.stats) else None, coeffs.size)
         return coeffs, labels, se
 
-    def computePlotParams(self, fit_num: int | None = None):
-        """Compute the aligned coefficient / SE / significance arrays for plotting."""
-        del fit_num
-        if not self.uniqueCovLabels:
-            self.mapCovLabelsToUniqueLabels()
-            return self.plotParams
+    def getHistCoeffsWithLabels(self, fit_num: int = 0) -> tuple[np.ndarray, list[str], np.ndarray]:
+        """Return ``(histMat, labels, SEMat)`` — Matlab multi-output form.
 
-        b_act = np.full((len(self.uniqueCovLabels), self.numResults), np.nan, dtype=float)
-        se_act = np.full((len(self.uniqueCovLabels), self.numResults), np.nan, dtype=float)
-        sig_index = np.zeros((len(self.uniqueCovLabels), self.numResults), dtype=float)
-        for result_index in range(self.numResults):
-            coeffs, labels, se = self.getCoeffsWithLabels(result_index)
-            sig = _extract_significance_mask(self.stats[result_index] if result_index < len(self.stats) else None, coeffs, se)
-            for coeff_value, coeff_se, coeff_sig, label in zip(coeffs, se, sig, labels, strict=False):
-                if label not in self.uniqueCovLabels:
-                    continue
-                row = self.uniqueCovLabels.index(label)
-                b_act[row, result_index] = coeff_value
-                se_act[row, result_index] = coeff_se
-                sig_index[row, result_index] = coeff_sig
-        self.plotParams = {
-            "bAct": b_act,
-            "seAct": se_act,
-            "sigIndex": sig_index,
-            "xLabels": list(self.uniqueCovLabels),
-            "numResultsCoeffPresent": np.sum(np.isfinite(b_act), axis=1).astype(int),
-        }
-        return self.plotParams
-
-    def getPlotParams(self):
-        """Alias for :meth:`computePlotParams`."""
-        return self.computePlotParams()
-
-    def isValDataPresent(self) -> bool:
-        """Return ``True`` if cross-validation data was stored."""
-        if not self.XvalTime or not self.XvalData:
-            return False
-        for time in self.XvalTime:
-            arr = np.asarray(time, dtype=float).reshape(-1)
-            if arr.size >= 2 and arr[-1] > arr[0]:
-                return True
-        return False
-
-    def plotValidation(self):
-        """Plot validation fit results (if present)."""
-        if self.validation is not None:
-            return self.validation.plotResults()
-        return None
-
-    def mergeResults(self, other: "FitResult") -> "FitResult":
-        """Concatenate another ``FitResult``'s configs into this one."""
-        from .trial import ConfigCollection
-
-        if isinstance(self.lambda_signal, Covariate) and isinstance(other.lambda_signal, Covariate):
-            lambda_signal = self.lambda_signal.merge(other.lambda_signal)
-        else:
-            lambda_signal = self.lambda_signal
-        configs = ConfigCollection(
-            [*(self.configs.configArray if self.configs is not None else []), *(other.configs.configArray if other.configs is not None else [])]
-        )
-        return FitResult(
-            self.neuralSpikeTrain,
-            [*self.covLabels, *other.covLabels],
-            [*self.numHist, *other.numHist],
-            [*self.histObjects, *other.histObjects],
-            [*self.ensHistObjects, *other.ensHistObjects],
-            lambda_signal,
-            [*self.b, *other.b],
-            np.concatenate([self.dev, other.dev]),
-            [*self.stats, *other.stats],
-            np.concatenate([self.AIC, other.AIC]),
-            np.concatenate([self.BIC, other.BIC]),
-            np.concatenate([self.logLL, other.logLL]),
-            configs,
-            [*self.XvalData, *other.XvalData],
-            [*self.XvalTime, *other.XvalTime],
-            [*self.fitType, *other.fitType],
-            fits=[*self.fits, *other.fits],
-        )
+        Matlab: ``[histMat, labels, SEMat] = getHistCoeffs(fitObj, fitNum)``
+        """
+        num_hist = int(self.numHist[fit_num]) if fit_num < len(self.numHist) else 0
+        coeffs, labels, se = self.getCoeffsWithLabels(fit_num)
+        if num_hist <= 0:
+            return np.array([], dtype=float), [], np.array([], dtype=float)
+        return coeffs[-num_hist:], labels[-num_hist:], se[-num_hist:]
 
     def _lambda_series(self, fit_num: int = 0) -> tuple[np.ndarray, np.ndarray]:
         time = np.asarray(self.lambda_signal.time, dtype=float).reshape(-1)
@@ -1421,385 +1402,104 @@ class FitResult:
         rate = np.exp(np.clip(eta, -20.0, 20.0)) * float(self.lambda_signal.sampleRate)
         return rate.reshape(np.asarray(newData[0] if isinstance(newData, list) else x[:, 0]).shape) if x.size else rate
 
-    def computeValLambda(self) -> tuple[Covariate, np.ndarray]:
-        """Compute the conditional intensity on validation data (Matlab ``computeValLambda``).
+    def computePlotParams(self, fit_num: int | None = None):
+        """Compute the aligned coefficient / SE / significance arrays for plotting."""
+        del fit_num
+        if not self.uniqueCovLabels:
+            self.mapCovLabelsToUniqueLabels()
+            return self.plotParams
 
-        Returns
-        -------
-        lambda_val : Covariate
-            The validation-set conditional intensity function.
-        logLL : np.ndarray
-            Log-likelihood for each fit configuration on the validation data.
-        """
-        if not self.XvalTime or not self.XvalData:
-            raise ValueError("No validation data available (XvalData / XvalTime are empty)")
+        b_act = np.full((len(self.uniqueCovLabels), self.numResults), np.nan, dtype=float)
+        se_act = np.full((len(self.uniqueCovLabels), self.numResults), np.nan, dtype=float)
+        sig_index = np.zeros((len(self.uniqueCovLabels), self.numResults), dtype=float)
+        for result_index in range(self.numResults):
+            coeffs, labels, se = self.getCoeffsWithLabels(result_index)
+            sig = _extract_significance_mask(self.stats[result_index] if result_index < len(self.stats) else None, coeffs, se)
+            for coeff_value, coeff_se, coeff_sig, label in zip(coeffs, se, sig, labels, strict=False):
+                if label not in self.uniqueCovLabels:
+                    continue
+                row = self.uniqueCovLabels.index(label)
+                b_act[row, result_index] = coeff_value
+                se_act[row, result_index] = coeff_se
+                sig_index[row, result_index] = coeff_sig
+        self.plotParams = {
+            "bAct": b_act,
+            "seAct": se_act,
+            "sigIndex": sig_index,
+            "xLabels": list(self.uniqueCovLabels),
+            "numResultsCoeffPresent": np.sum(np.isfinite(b_act), axis=1).astype(int),
+        }
+        return self.plotParams
 
-        time_vec = np.asarray(self.XvalTime[0], dtype=float).reshape(-1)
-        lambda_data = np.zeros((time_vec.size, self.numResults), dtype=float)
-        for i in range(self.numResults):
-            xval = self.XvalData[i] if i < len(self.XvalData) else self.XvalData[0]
-            lambda_data[:, i] = self.evalLambda(i + 1, xval)
+    def getCoeffIndex(self, fit_num: int = 0, sortByEpoch: int = 0):
+        """Return ``(indices, epochIds, numEpochs)`` for non-history coefficients."""
+        del sortByEpoch
+        labels = list(self.covLabels[fit_num]) if fit_num < len(self.covLabels) else []
+        num_hist = int(self.numHist[fit_num]) if fit_num < len(self.numHist) else 0
+        non_hist_count = max(len(labels) - num_hist, 0)
+        coeff_index = np.arange(non_hist_count, dtype=int)
+        epoch_id = np.zeros(coeff_index.size, dtype=int)
+        return coeff_index, epoch_id, 0
 
-        lambda_val = Covariate(
-            time_vec,
-            lambda_data,
-            "\\lambda(t)",
-            self.lambda_signal.xlabelval,
-            self.lambda_signal.xunits,
-            "Hz",
-            list(self.lambda_signal.dataLabels),
-        )
-
-        delta = 1.0 / max(float(lambda_val.sampleRate), 1e-12)
-        # ``neuralSpikeTrain`` may be either a single train or a sequence
-        # (multi-trial fits).  Pick the canonical train consistently with
-        # other methods in this class (see lines 681–684).
-        if isinstance(self.neuralSpikeTrain, nspikeTrain):
-            _train = self.neuralSpikeTrain
-        elif isinstance(self.neuralSpikeTrain, Sequence) and len(self.neuralSpikeTrain) > 0:
-            _train = self.neuralSpikeTrain[0]
-        else:
-            raise ValueError(
-                "FitResult.computeValLambda: neuralSpikeTrain is empty "
-                "or has an unexpected type"
-            )
-        y = _train.getSigRep().dataToMatrix().reshape(-1)
-        # Truncate or pad y to match validation lambda length
-        n = min(y.size, lambda_data.shape[0])
-        logLL_arr = np.zeros(self.numResults, dtype=float)
-        for col in range(self.numResults):
-            lam = np.maximum(lambda_data[:n, col] * delta, 1e-30)
-            y_trunc = y[:n]
-            logLL_arr[col] = float(np.sum(
-                y_trunc * np.log(lam) + (1.0 - y_trunc) * np.log(np.maximum(1.0 - lam, 1e-30))
-            ))
-
-        return lambda_val, logLL_arr
-
-    def plotResults(self, fit_num: int = 0, handle=None):
-        """Matlab-matching 2x4 subplot layout with 5 diagnostic panels.
-
-        Layout (matching Matlab ``subplot(2,4,...)``):
-            [1,2]  KSPlot (double-wide)    [3] InvGausTrans  [4] SeqCorr
-            [5,6]  plotCoeffs (double-wide) [7,8] plotResidual (double-wide)
-        """
-        from .notebook_figures import _matlab_subplot_layout
-
-        fig = handle if handle is not None else plt.figure(figsize=(14.0, 8.0))
-        fig.clear()
-        panels = _matlab_subplot_layout(fig, kind="plotResults")
-
-        ax_ks = panels["KSPlot"]
-        ax_ig = panels["plotInvGausTrans"]
-        ax_sc = panels["plotSeqCorr"]
-        ax_co = panels["plotCoeffs"]
-        ax_re = panels["plotResidual"]
-
-        self.KSPlot(fit_num=None, handle=ax_ks)
-        # Add neuron number label (matching Matlab).  MATLAB renders
-        # ``Neuron:1`` as an integer; ``_parse_neuron_number`` returns a float
-        # when the underlying name parses cleanly, so format it as an int when
-        # the value is integral to avoid the cosmetic "Neuron:1.0" drift.
-        _nn = self.neuronNumber
-        if isinstance(_nn, float) and _nn.is_integer():
-            _nn_display = str(int(_nn))
-        else:
-            _nn_display = str(_nn)
-        ax_ks.text(
-            0.45, 0.95, f"Neuron:{_nn_display}",
-            transform=ax_ks.transAxes, fontname="Arial",
-            fontweight="bold", fontsize=10,
-            verticalalignment="top",
-        )
-        self.plotInvGausTrans(fit_num=None, handle=ax_ig)
-        self.plotSeqCorr(fit_num=None, handle=ax_sc)
-        self.plotCoeffs(fit_num=None, handle=ax_co)
-        self.plotResidual(fit_num=None, handle=ax_re)
-        # Tighten title/legend density to match MATLAB's compact CI panels.
-        for _ax in (ax_ks, ax_ig, ax_sc, ax_co, ax_re):
-            _title = _ax.get_title()
-            if _title:
-                _ax.set_title(_title, fontweight="bold", fontsize=10, fontname="Arial")
-            _legend = _ax.get_legend()
-            if _legend is not None:
-                for _txt in _legend.get_texts():
-                    _txt.set_fontsize(8)
-        fig.tight_layout(pad=0.4)
-        return fig
-
-    # MATLAB color cycle used by Analysis.colors: b, g, r, c, m, y, k
-    _MATLAB_KS_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
-
-    def KSPlot(self, fit_num: int | list[int] | None = None, handle=None):
-        """KS goodness-of-fit plot with 95 % confidence bands (Matlab ``KSPlot``).
-
-        Parameters
-        ----------
-        fit_num : int, list of int, or None
-            Which model(s) to plot.  ``None`` (default) plots all models
-            (``1:numResults``), matching the MATLAB default behaviour.
-            A single int plots one model; a list plots the specified subset.
-        handle : matplotlib Axes, optional
-            Axes to draw on.  A new figure is created when *None*.
-        """
-        if fit_num is None:
-            fit_nums = list(range(self.numResults))
-        elif isinstance(fit_num, int):
-            fit_nums = [fit_num]
-        else:
-            fit_nums = list(fit_num)
-
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 4.0))[1]
-
-        # Draw reference diagonal unconditionally so the panel never renders
-        # blank even if the first model's diagnostics are empty.
-        ax.plot([0.0, 1.0], [0.0, 1.0], "k-.", linewidth=1.0)
-
-        # Confidence bands from the first model with non-empty diagnostics
-        ideal_ref = np.empty(0, dtype=float)
-        ci_ref = np.empty(0, dtype=float)
-        for _fn_probe in fit_nums:
-            _probe_diag = self._compute_diagnostics(_fn_probe)
-            _probe_ideal = np.asarray(_probe_diag["ks_ideal"], dtype=float)
-            _probe_ci = np.asarray(_probe_diag["ks_ci"], dtype=float)
-            if _probe_ideal.size:
-                ideal_ref = _probe_ideal
-                ci_ref = _probe_ci
-                break
-        if ideal_ref.size:
-            ax.plot(ideal_ref, np.clip(ideal_ref + ci_ref, 0.0, 1.0), "r", linewidth=1.0)
-            ax.plot(ideal_ref, np.clip(ideal_ref - ci_ref, 0.0, 1.0), "r", linewidth=1.0)
-
-        # Plot each model's empirical CDF (matching MATLAB colour cycle)
-        labels_for_legend: list[str] = []
-        handles_for_legend: list[object] = []
-        data_labels = list(self.lambda_signal.dataLabels) if getattr(self.lambda_signal, "dataLabels", None) else []
-        for i, fn in enumerate(fit_nums):
-            diag = self._compute_diagnostics(fn)
-            ideal = np.asarray(diag["ks_ideal"], dtype=float)
-            empirical = np.asarray(diag["ks_empirical"], dtype=float)
-            color = self._MATLAB_KS_COLORS[i % len(self._MATLAB_KS_COLORS)]
-            raw_label = data_labels[fn] if fn < len(data_labels) else f"Model {fn + 1}"
-            label = _ensure_mathtext(raw_label)
-            if ideal.size:
-                h, = ax.plot(ideal, empirical, color=color, linewidth=2.0)
-                handles_for_legend.append(h)
-                labels_for_legend.append(label)
-
-        if handles_for_legend:
-            ax.legend(handles_for_legend, labels_for_legend, loc="lower right", fontsize=8)
-
-        ax.set_xlim(0.0, 1.0)
-        ax.set_ylim(0.0, 1.0)
-        ax.set_xticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-        ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-        ax.set_xlabel("Ideal Uniform CDF", fontname="Arial", fontsize=10, fontweight="bold")
-        ax.set_ylabel("Empirical CDF", fontname="Arial", fontsize=10, fontweight="bold")
-        ax.set_title("KS Plot of Rescaled ISIs with 95% Confidence Intervals",
-                      fontweight="bold", fontsize=11, fontname="Arial")
-        ax.tick_params(axis="both", labelsize=9)
-        ax.tick_params(length=6, width=1)
-        for spine in ax.spines.values():
-            spine.set_linewidth(1.0)
+    def plotCoeffsWithoutHistory(self, fit_num: int = 0, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
+        """Plot non-history (stimulus/baseline) coefficients only."""
+        del sortByEpoch, plotSignificance
+        coeffs, labels, _ = self.getCoeffsWithLabels(fit_num)
+        num_hist = int(self.numHist[fit_num]) if fit_num < len(self.numHist) else 0
+        if num_hist > 0:
+            coeffs = coeffs[:-num_hist]
+            labels = labels[:-num_hist]
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        xpos = np.arange(coeffs.size, dtype=float)
+        ax.axhline(0.0, color="0.6", linewidth=1.0)
+        ax.plot(xpos, coeffs, "o-", linewidth=1.0)
+        ax.set_xticks(xpos, [_format_coeff_label(lbl) for lbl in labels],
+                      rotation=45, ha="right")
+        ax.set_ylabel("coefficient value")
+        ax.set_title("GLM Coefficients Without History")
         return ax
 
-    def plotResidual(self, fit_num: int | list[int] | None = None, handle=None):
-        """Plot the martingale residual M(t) for one or more fits.
+    def getHistIndex(self, fit_num: int = 0, sortByEpoch: int = 0):
+        """Return ``(indices, epochIds, numEpochs)`` for history coefficients."""
+        del sortByEpoch
+        labels = list(self.covLabels[fit_num]) if fit_num < len(self.covLabels) else []
+        num_hist = int(self.numHist[fit_num]) if fit_num < len(self.numHist) else 0
+        if num_hist <= 0:
+            return np.array([], dtype=int), np.array([], dtype=int), 0
+        start = max(len(labels) - num_hist, 0)
+        hist_index = np.arange(start, len(labels), dtype=int)
+        epoch_id = np.zeros(hist_index.size, dtype=int)
+        return hist_index, epoch_id, 0
 
-        Matches Matlab ``plotResidual``: plots all residuals with per-fit
-        colours and a legend using ``lambda.dataLabels``.
+    def getCoeffs(self, fit_num: int = 0) -> tuple[np.ndarray, list[str], np.ndarray]:
+        """Return ``(coeffMat, labels, SEMat)`` for *fit_num* (0-based).
+
+        Matches MATLAB: ``[coeffMat, labels, SEMat] = getCoeffs(fitObj, fitNum)``.
         """
-        if fit_num is None:
-            fit_nums = list(range(self.numResults))
-        elif isinstance(fit_num, int):
-            fit_nums = [fit_num]
-        else:
-            fit_nums = list(fit_num)
+        return self.getCoeffsWithLabels(fit_num)
 
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
-        data_labels = (
-            list(self.lambda_signal.dataLabels)
-            if getattr(self.lambda_signal, "dataLabels", None)
-            else []
-        )
-        n_fits = len(fit_nums)
-        for i, fn in enumerate(fit_nums):
-            residual = self.computeFitResidual(fn)
-            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
-            label = _ensure_mathtext(
-                data_labels[fn] if fn < len(data_labels) else f"Model {fn + 1}"
-            )
-            t = np.asarray(residual.time, dtype=float)
-            y = np.asarray(residual.data[:, 0], dtype=float)
-            # Draw earlier (lower index) fits ON TOP so neither trace is
-            # buried — keeps both lambda_1 and lambda_2 simultaneously
-            # legible when multiple fits are overlaid (matches MATLAB).
-            z = 3 + (n_fits - i)
-            alpha = 0.7 if i == n_fits - 1 and n_fits > 1 else 1.0
-            lw = 1.2 if i < n_fits - 1 else 0.6
-            # MATLAB renders slim vertical lines with a marker at the top of
-            # each residual; vlines + a thin scatter mirrors that look.
-            ax.vlines(t, 0.0, y, colors=color, linewidth=lw, label=label,
-                      alpha=alpha, zorder=z)
-            if t.size:
-                ax.plot(t, y, marker="o", linestyle="none",
-                        color=color, markersize=2.0, alpha=alpha, zorder=z)
-        ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
-        if len(fit_nums) > 1:
-            ax.legend(loc="upper right", fontsize=8)
-        ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_ylabel("", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_title("Point Process Residual",
-                      fontweight="bold", fontsize=11, fontname="Arial")
-        # Match MATLAB: y-axis fixed to [-2, 2] so the two traces aren't
-        # crammed and a comparable visual scale is used across diagnostics.
-        ax.set_ylim(-2.0, 2.0)
-        ax.tick_params(length=6, width=1)
-        for spine in ax.spines.values():
-            spine.set_linewidth(1.0)
-        return ax
+    def getHistCoeffs(self, fit_num: int = 0) -> tuple[np.ndarray, list[str], np.ndarray]:
+        """Return ``(histMat, labels, SEMat)`` for *fit_num* (0-based).
 
-    def plotInvGausTrans(self, fit_num: int | list[int] | None = None, handle=None):
-        """Plot ACF of gaussianized rescaled ISIs with 95% CIs.
-
-        Matlab: plotInvGausTrans computes X_j = Φ⁻¹(U_j) and plots the
-        autocorrelation function of X_j with 95% confidence bounds.
-        Supports multi-fit overlay with per-fit colours matching KS/SeqCorr.
+        Matches MATLAB: ``[histMat, labels, SEMat] = getHistCoeffs(fitObj, fitNum)``.
         """
-        if fit_num is None:
-            fit_nums = list(range(self.numResults))
-        elif isinstance(fit_num, int):
-            fit_nums = [fit_num]
-        else:
-            fit_nums = list(fit_num)
+        return self.getHistCoeffsWithLabels(fit_num)
 
+    def plotHistCoeffs(self, fit_num: int = 0, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
+        """Plot history-filter coefficients (Matlab ``plotHistCoeffs``)."""
+        del sortByEpoch, plotSignificance
+        coeffs, labels, _se = self.getHistCoeffsWithLabels(fit_num)
+        if not labels:
+            labels = [f"hist_{idx + 1}" for idx in range(coeffs.size)]
         ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        data_labels = (
-            list(self.lambda_signal.dataLabels)
-            if getattr(self.lambda_signal, "dataLabels", None)
-            else []
-        )
-        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
-        legend_handles: list[object] = []
-        legend_labels: list[str] = []
-        ci_val = None
-
-        for i, fn in enumerate(fit_nums):
-            diag = self._compute_diagnostics(fn)
-            lags = np.asarray(diag["acf_lags"], dtype=float)
-            acf = np.asarray(diag["acf_values"], dtype=float)
-            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
-            base_label = _ensure_mathtext(
-                data_labels[fn] if fn < len(data_labels) else f"Model {fn + 1}"
-            )
-            if lags.size:
-                # MATLAB: scatter dots (plot with '.') — use small markers
-                # so individual lags are visible, not bar-like blobs.
-                h, = ax.plot(lags, acf, ".", color=color, markersize=3.0)
-                legend_handles.append(h)
-                legend_labels.append(base_label)
-                if ci_val is None:
-                    ci_val = float(diag["acf_ci"])
-
-        # Plot 95% CI lines (solid red, matching MATLAB)
-        if ci_val is not None:
-            ax.axhline(ci_val, color="r", linewidth=1.0)
-            ax.axhline(-ci_val, color="r", linewidth=1.0)
-
-        if legend_handles:
-            ax.legend(
-                legend_handles,
-                legend_labels,
-                loc="upper left",
-                bbox_to_anchor=(0.01, 0.99),
-                fontsize=8,
-                frameon=False,
-            )
-        ax.set_xlabel("", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_ylabel("", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_title("Autocorrelation Function\nof Rescaled ISIs with 95% CIs",
-                      fontweight="bold", fontsize=11, fontname="Arial")
-        # Pin y-axis range so the 95% CI bars sit well inside the panel
-        # (MATLAB default for this diagnostic spans roughly [-0.35, 0.35]).
-        ax.set_ylim(-0.35, 0.35)
-        ax.tick_params(length=6, width=1)
-        for spine in ax.spines.values():
-            spine.set_linewidth(1.0)
-        return ax
-
-    def plotSeqCorr(self, fit_num: int | list[int] | None = None, handle=None):
-        """Plot U_j vs U_{j+1} scatter with correlation coefficient and p-value.
-
-        Matlab: plotSeqCorr plots the sequential correlation scatter of
-        U_j (uniform-transformed rescaled ISIs) to detect serial dependence.
-        When multiple models are present, each is plotted with a different
-        colour and a legend entry showing ``label, ρ=X.XX (p=Y.YY)``.
-
-        Parameters
-        ----------
-        fit_num : int, list of int, or None
-            Which model(s) to plot.  ``None`` (default) plots all models,
-            matching the MATLAB default behaviour.
-        handle : matplotlib Axes, optional
-            Axes to draw on.  A new figure is created when *None*.
-        """
-        if fit_num is None:
-            fit_nums = list(range(self.numResults))
-        elif isinstance(fit_num, int):
-            fit_nums = [fit_num]
-        else:
-            fit_nums = list(fit_num)
-
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        data_labels = (
-            list(self.lambda_signal.dataLabels)
-            if getattr(self.lambda_signal, "dataLabels", None)
-            else []
-        )
-        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
-        legend_labels: list[str] = []
-        legend_handles: list[object] = []
-
-        for i, fn in enumerate(fit_nums):
-            diag = self._compute_diagnostics(fn)
-            u = np.asarray(diag.get("uniforms", []), dtype=float)
-            base_label = _ensure_mathtext(
-                data_labels[fn] if fn < len(data_labels) else f"Model {fn + 1}"
-            )
-            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
-            if u.size > 1:
-                uj = u[:-1]
-                uj1 = u[1:]
-                h, = ax.plot(uj, uj1, ".", color=color, markersize=4.0)
-                # FIX: filter non-finite values before correlation
-                finite = np.isfinite(uj) & np.isfinite(uj1)
-                uj_f, uj1_f = uj[finite], uj1[finite]
-                if uj_f.size > 2 and np.std(uj_f) > 0 and np.std(uj1_f) > 0:
-                    rho, pval = pearsonr(uj_f, uj1_f)
-                    label = f"{base_label}, $\\rho$={rho:.2g} (p={pval:.2g})"
-                else:
-                    label = base_label
-                legend_handles.append(h)
-                legend_labels.append(label)
-
-        if legend_handles:
-            ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=14)
-
-        ax.set_title("Sequential Correlation of\nRescaled ISIs",
-                      fontweight="bold", fontsize=11, fontname="Arial")
-        ax.set_xlabel("$u_j$", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_ylabel("$u_{j+1}$", fontname="Arial", fontsize=12, fontweight="bold")
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        # Reduce x-tick label density to prevent run-on rendering in narrow
-        # subplot columns; MATLAB-equivalent ticks (0, 0.25, 0.5, 0.75, 1) are
-        # kept on the y-axis so the (u_j, u_{j+1}) grid still reads cleanly.
-        ax.set_xticks([0.0, 0.5, 1.0])
-        ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
-        ax.tick_params(length=6, width=1)
-        for spine in ax.spines.values():
-            spine.set_linewidth(1.0)
+        xpos = np.arange(coeffs.size, dtype=float)
+        ax.axhline(0.0, color="0.6", linewidth=1.0)
+        if coeffs.size:
+            ax.plot(xpos, coeffs, "o-", linewidth=1.0)
+            ax.set_xticks(xpos, [_format_coeff_label(lbl) for lbl in labels],
+                          rotation=45, ha="right")
+        ax.set_ylabel("history coefficient")
+        ax.set_title("History Coefficients")
         return ax
 
     def plotCoeffs(self, fit_num: int | list[int] | None = None, handle=None, plotSignificance: int = 1):
@@ -1902,75 +1602,131 @@ class FitResult:
             ax.legend(errorbar_handles, legend_labels, loc="upper right", fontsize=10)
         return ax
 
-    def plotCoeffsWithoutHistory(self, fit_num: int = 0, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
-        """Plot non-history (stimulus/baseline) coefficients only."""
-        del sortByEpoch, plotSignificance
-        coeffs, labels, _ = self.getCoeffsWithLabels(fit_num)
-        num_hist = int(self.numHist[fit_num]) if fit_num < len(self.numHist) else 0
-        if num_hist > 0:
-            coeffs = coeffs[:-num_hist]
-            labels = labels[:-num_hist]
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        xpos = np.arange(coeffs.size, dtype=float)
-        ax.axhline(0.0, color="0.6", linewidth=1.0)
-        ax.plot(xpos, coeffs, "o-", linewidth=1.0)
-        ax.set_xticks(xpos, [_format_coeff_label(lbl) for lbl in labels],
-                      rotation=45, ha="right")
-        ax.set_ylabel("coefficient value")
-        ax.set_title("GLM Coefficients Without History")
-        return ax
+    def plotResults(self, fit_num: int = 0, handle=None):
+        """Matlab-matching 2x4 subplot layout with 5 diagnostic panels.
 
-    def plotHistCoeffs(self, fit_num: int = 0, sortByEpoch: int = 0, plotSignificance: int = 1, handle=None):
-        """Plot history-filter coefficients (Matlab ``plotHistCoeffs``)."""
-        del sortByEpoch, plotSignificance
-        coeffs, labels, _se = self.getHistCoeffsWithLabels(fit_num)
-        if not labels:
-            labels = [f"hist_{idx + 1}" for idx in range(coeffs.size)]
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        xpos = np.arange(coeffs.size, dtype=float)
-        ax.axhline(0.0, color="0.6", linewidth=1.0)
-        if coeffs.size:
-            ax.plot(xpos, coeffs, "o-", linewidth=1.0)
-            ax.set_xticks(xpos, [_format_coeff_label(lbl) for lbl in labels],
-                          rotation=45, ha="right")
-        ax.set_ylabel("history coefficient")
-        ax.set_title("History Coefficients")
-        return ax
+        Layout (matching Matlab ``subplot(2,4,...)``):
+            [1,2]  KSPlot (double-wide)    [3] InvGausTrans  [4] SeqCorr
+            [5,6]  plotCoeffs (double-wide) [7,8] plotResidual (double-wide)
+        """
+        from .notebook_figures import _matlab_subplot_layout
 
-    def setKSStats(self, Z, U, xAxis, KSSorted, ks_stat):
-        """Store pre-computed KS-test arrays (Matlab ``setKSStats``)."""
-        self.Z = np.asarray(Z, dtype=float)
-        self.U = np.asarray(U, dtype=float)
-        self.KSXAxis = np.asarray(xAxis, dtype=float)
-        self.KSSorted = np.asarray(KSSorted, dtype=float)
-        x_axis = np.asarray(xAxis, dtype=float)
-        ks_sorted = np.asarray(KSSorted, dtype=float)
-        if x_axis.ndim == 1:
-            x_axis = x_axis[:, None]
-        if ks_sorted.ndim == 1:
-            ks_sorted = ks_sorted[:, None]
+        fig = handle if handle is not None else plt.figure(figsize=(14.0, 8.0))
+        fig.clear()
+        panels = _matlab_subplot_layout(fig, kind="plotResults")
 
-        if x_axis.size and ks_sorted.size:
-            n_cols = min(x_axis.shape[1], ks_sorted.shape[1], self.numResults)
-            for idx in range(n_cols):
-                different, p_value, stat = _matlab_kstest2(x_axis[:, idx], ks_sorted[:, idx])
-                self.KSStats[idx, 0] = stat
-                self.KSPvalues[idx] = p_value
-                self.withinConfInt[idx] = float(not different)
+        ax_ks = panels["KSPlot"]
+        ax_ig = panels["plotInvGausTrans"]
+        ax_sc = panels["plotSeqCorr"]
+        ax_co = panels["plotCoeffs"]
+        ax_re = panels["plotResidual"]
+
+        self.KSPlot(fit_num=None, handle=ax_ks)
+        # Add neuron number label (matching Matlab).  MATLAB renders
+        # ``Neuron:1`` as an integer; ``_parse_neuron_number`` returns a float
+        # when the underlying name parses cleanly, so format it as an int when
+        # the value is integral to avoid the cosmetic "Neuron:1.0" drift.
+        _nn = self.neuronNumber
+        if isinstance(_nn, float) and _nn.is_integer():
+            _nn_display = str(int(_nn))
         else:
-            value = np.asarray(ks_stat, dtype=float).reshape(-1)
-            self.KSStats[: value.size, 0] = value
-        return self
+            _nn_display = str(_nn)
+        ax_ks.text(
+            0.45, 0.95, f"Neuron:{_nn_display}",
+            transform=ax_ks.transAxes, fontname="Arial",
+            fontweight="bold", fontsize=10,
+            verticalalignment="top",
+        )
+        self.plotInvGausTrans(fit_num=None, handle=ax_ig)
+        self.plotSeqCorr(fit_num=None, handle=ax_sc)
+        self.plotCoeffs(fit_num=None, handle=ax_co)
+        self.plotResidual(fit_num=None, handle=ax_re)
+        # Tighten title/legend density to match MATLAB's compact CI panels.
+        for _ax in (ax_ks, ax_ig, ax_sc, ax_co, ax_re):
+            _title = _ax.get_title()
+            if _title:
+                _ax.set_title(_title, fontweight="bold", fontsize=10, fontname="Arial")
+            _legend = _ax.get_legend()
+            if _legend is not None:
+                for _txt in _legend.get_texts():
+                    _txt.set_fontsize(8)
+        fig.tight_layout(pad=0.4)
+        return fig
 
-    def setInvGausStats(self, X, rhoSig, confBoundSig):
-        """Store pre-computed inverse-Gaussian transform statistics."""
-        self.invGausStats = {"X": np.asarray(X, dtype=float), "rhoSig": rhoSig, "confBoundSig": confBoundSig}
-        return self
+    # MATLAB color cycle used by Analysis.colors: b, g, r, c, m, y, k
+    _MATLAB_KS_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
+    def KSPlot(self, fit_num: int | list[int] | None = None, handle=None):
+        """KS goodness-of-fit plot with 95 % confidence bands (Matlab ``KSPlot``).
 
-    def setFitResidual(self, M):
-        """Store the pre-computed fit residual ``Covariate``."""
-        self.Residual = M
-        return self
+        Parameters
+        ----------
+        fit_num : int, list of int, or None
+            Which model(s) to plot.  ``None`` (default) plots all models
+            (``1:numResults``), matching the MATLAB default behaviour.
+            A single int plots one model; a list plots the specified subset.
+        handle : matplotlib Axes, optional
+            Axes to draw on.  A new figure is created when *None*.
+        """
+        if fit_num is None:
+            fit_nums = list(range(self.numResults))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 4.0))[1]
+
+        # Draw reference diagonal unconditionally so the panel never renders
+        # blank even if the first model's diagnostics are empty.
+        ax.plot([0.0, 1.0], [0.0, 1.0], "k-.", linewidth=1.0)
+
+        # Confidence bands from the first model with non-empty diagnostics
+        ideal_ref = np.empty(0, dtype=float)
+        ci_ref = np.empty(0, dtype=float)
+        for _fn_probe in fit_nums:
+            _probe_diag = self._compute_diagnostics(_fn_probe)
+            _probe_ideal = np.asarray(_probe_diag["ks_ideal"], dtype=float)
+            _probe_ci = np.asarray(_probe_diag["ks_ci"], dtype=float)
+            if _probe_ideal.size:
+                ideal_ref = _probe_ideal
+                ci_ref = _probe_ci
+                break
+        if ideal_ref.size:
+            ax.plot(ideal_ref, np.clip(ideal_ref + ci_ref, 0.0, 1.0), "r", linewidth=1.0)
+            ax.plot(ideal_ref, np.clip(ideal_ref - ci_ref, 0.0, 1.0), "r", linewidth=1.0)
+
+        # Plot each model's empirical CDF (matching MATLAB colour cycle)
+        labels_for_legend: list[str] = []
+        handles_for_legend: list[object] = []
+        data_labels = list(self.lambda_signal.dataLabels) if getattr(self.lambda_signal, "dataLabels", None) else []
+        for i, fn in enumerate(fit_nums):
+            diag = self._compute_diagnostics(fn)
+            ideal = np.asarray(diag["ks_ideal"], dtype=float)
+            empirical = np.asarray(diag["ks_empirical"], dtype=float)
+            color = self._MATLAB_KS_COLORS[i % len(self._MATLAB_KS_COLORS)]
+            raw_label = data_labels[fn] if fn < len(data_labels) else f"Model {fn + 1}"
+            label = _ensure_mathtext(raw_label)
+            if ideal.size:
+                h, = ax.plot(ideal, empirical, color=color, linewidth=2.0)
+                handles_for_legend.append(h)
+                labels_for_legend.append(label)
+
+        if handles_for_legend:
+            ax.legend(handles_for_legend, labels_for_legend, loc="lower right", fontsize=8)
+
+        ax.set_xlim(0.0, 1.0)
+        ax.set_ylim(0.0, 1.0)
+        ax.set_xticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+        ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+        ax.set_xlabel("Ideal Uniform CDF", fontname="Arial", fontsize=10, fontweight="bold")
+        ax.set_ylabel("Empirical CDF", fontname="Arial", fontsize=10, fontweight="bold")
+        ax.set_title("KS Plot of Rescaled ISIs with 95% Confidence Intervals",
+                      fontweight="bold", fontsize=11, fontname="Arial")
+        ax.tick_params(axis="both", labelsize=9)
+        ax.tick_params(length=6, width=1)
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.0)
+        return ax
 
     def toStructure(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dict (Matlab ``toStructure``)."""
@@ -2013,6 +1769,248 @@ class FitResult:
             ],
             "XvalTime": [np.asarray(item, dtype=float).tolist() for item in self.XvalTime],
         }
+
+    def plotSeqCorr(self, fit_num: int | list[int] | None = None, handle=None):
+        """Plot U_j vs U_{j+1} scatter with correlation coefficient and p-value.
+
+        Matlab: plotSeqCorr plots the sequential correlation scatter of
+        U_j (uniform-transformed rescaled ISIs) to detect serial dependence.
+        When multiple models are present, each is plotted with a different
+        colour and a legend entry showing ``label, ρ=X.XX (p=Y.YY)``.
+
+        Parameters
+        ----------
+        fit_num : int, list of int, or None
+            Which model(s) to plot.  ``None`` (default) plots all models,
+            matching the MATLAB default behaviour.
+        handle : matplotlib Axes, optional
+            Axes to draw on.  A new figure is created when *None*.
+        """
+        if fit_num is None:
+            fit_nums = list(range(self.numResults))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        data_labels = (
+            list(self.lambda_signal.dataLabels)
+            if getattr(self.lambda_signal, "dataLabels", None)
+            else []
+        )
+        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
+        legend_labels: list[str] = []
+        legend_handles: list[object] = []
+
+        for i, fn in enumerate(fit_nums):
+            diag = self._compute_diagnostics(fn)
+            u = np.asarray(diag.get("uniforms", []), dtype=float)
+            base_label = _ensure_mathtext(
+                data_labels[fn] if fn < len(data_labels) else f"Model {fn + 1}"
+            )
+            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
+            if u.size > 1:
+                uj = u[:-1]
+                uj1 = u[1:]
+                h, = ax.plot(uj, uj1, ".", color=color, markersize=4.0)
+                # FIX: filter non-finite values before correlation
+                finite = np.isfinite(uj) & np.isfinite(uj1)
+                uj_f, uj1_f = uj[finite], uj1[finite]
+                if uj_f.size > 2 and np.std(uj_f) > 0 and np.std(uj1_f) > 0:
+                    rho, pval = pearsonr(uj_f, uj1_f)
+                    label = f"{base_label}, $\\rho$={rho:.2g} (p={pval:.2g})"
+                else:
+                    label = base_label
+                legend_handles.append(h)
+                legend_labels.append(label)
+
+        if legend_handles:
+            ax.legend(legend_handles, legend_labels, loc="upper right", fontsize=14)
+
+        ax.set_title("Sequential Correlation of\nRescaled ISIs",
+                      fontweight="bold", fontsize=11, fontname="Arial")
+        ax.set_xlabel("$u_j$", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_ylabel("$u_{j+1}$", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        # Reduce x-tick label density to prevent run-on rendering in narrow
+        # subplot columns; MATLAB-equivalent ticks (0, 0.25, 0.5, 0.75, 1) are
+        # kept on the y-axis so the (u_j, u_{j+1}) grid still reads cleanly.
+        ax.set_xticks([0.0, 0.5, 1.0])
+        ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+        ax.tick_params(length=6, width=1)
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.0)
+        return ax
+
+    def plotInvGausTrans(self, fit_num: int | list[int] | None = None, handle=None):
+        """Plot ACF of gaussianized rescaled ISIs with 95% CIs.
+
+        Matlab: plotInvGausTrans computes X_j = Φ⁻¹(U_j) and plots the
+        autocorrelation function of X_j with 95% confidence bounds.
+        Supports multi-fit overlay with per-fit colours matching KS/SeqCorr.
+        """
+        if fit_num is None:
+            fit_nums = list(range(self.numResults))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        data_labels = (
+            list(self.lambda_signal.dataLabels)
+            if getattr(self.lambda_signal, "dataLabels", None)
+            else []
+        )
+        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
+        legend_handles: list[object] = []
+        legend_labels: list[str] = []
+        ci_val = None
+
+        for i, fn in enumerate(fit_nums):
+            diag = self._compute_diagnostics(fn)
+            lags = np.asarray(diag["acf_lags"], dtype=float)
+            acf = np.asarray(diag["acf_values"], dtype=float)
+            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
+            base_label = _ensure_mathtext(
+                data_labels[fn] if fn < len(data_labels) else f"Model {fn + 1}"
+            )
+            if lags.size:
+                # MATLAB: scatter dots (plot with '.') — use small markers
+                # so individual lags are visible, not bar-like blobs.
+                h, = ax.plot(lags, acf, ".", color=color, markersize=3.0)
+                legend_handles.append(h)
+                legend_labels.append(base_label)
+                if ci_val is None:
+                    ci_val = float(diag["acf_ci"])
+
+        # Plot 95% CI lines (solid red, matching MATLAB)
+        if ci_val is not None:
+            ax.axhline(ci_val, color="r", linewidth=1.0)
+            ax.axhline(-ci_val, color="r", linewidth=1.0)
+
+        if legend_handles:
+            ax.legend(
+                legend_handles,
+                legend_labels,
+                loc="upper left",
+                bbox_to_anchor=(0.01, 0.99),
+                fontsize=8,
+                frameon=False,
+            )
+        ax.set_xlabel("", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_ylabel("", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_title("Autocorrelation Function\nof Rescaled ISIs with 95% CIs",
+                      fontweight="bold", fontsize=11, fontname="Arial")
+        # Pin y-axis range so the 95% CI bars sit well inside the panel
+        # (MATLAB default for this diagnostic spans roughly [-0.35, 0.35]).
+        ax.set_ylim(-0.35, 0.35)
+        ax.tick_params(length=6, width=1)
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.0)
+        return ax
+
+    def plotResidual(self, fit_num: int | list[int] | None = None, handle=None):
+        """Plot the martingale residual M(t) for one or more fits.
+
+        Matches Matlab ``plotResidual``: plots all residuals with per-fit
+        colours and a legend using ``lambda.dataLabels``.
+        """
+        if fit_num is None:
+            fit_nums = list(range(self.numResults))
+        elif isinstance(fit_num, int):
+            fit_nums = [fit_num]
+        else:
+            fit_nums = list(fit_num)
+
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        _SEQ_COLORS = ["tab:blue", "tab:green", "tab:red", "tab:cyan", "tab:purple", "tab:olive", "k"]
+        data_labels = (
+            list(self.lambda_signal.dataLabels)
+            if getattr(self.lambda_signal, "dataLabels", None)
+            else []
+        )
+        n_fits = len(fit_nums)
+        for i, fn in enumerate(fit_nums):
+            residual = self.computeFitResidual(fn)
+            color = _SEQ_COLORS[i % len(_SEQ_COLORS)]
+            label = _ensure_mathtext(
+                data_labels[fn] if fn < len(data_labels) else f"Model {fn + 1}"
+            )
+            t = np.asarray(residual.time, dtype=float)
+            y = np.asarray(residual.data[:, 0], dtype=float)
+            # Draw earlier (lower index) fits ON TOP so neither trace is
+            # buried — keeps both lambda_1 and lambda_2 simultaneously
+            # legible when multiple fits are overlaid (matches MATLAB).
+            z = 3 + (n_fits - i)
+            alpha = 0.7 if i == n_fits - 1 and n_fits > 1 else 1.0
+            lw = 1.2 if i < n_fits - 1 else 0.6
+            # MATLAB renders slim vertical lines with a marker at the top of
+            # each residual; vlines + a thin scatter mirrors that look.
+            ax.vlines(t, 0.0, y, colors=color, linewidth=lw, label=label,
+                      alpha=alpha, zorder=z)
+            if t.size:
+                ax.plot(t, y, marker="o", linestyle="none",
+                        color=color, markersize=2.0, alpha=alpha, zorder=z)
+        ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
+        if len(fit_nums) > 1:
+            ax.legend(loc="upper right", fontsize=8)
+        ax.set_xlabel("time [s]", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_ylabel("", fontname="Arial", fontsize=12, fontweight="bold")
+        ax.set_title("Point Process Residual",
+                      fontweight="bold", fontsize=11, fontname="Arial")
+        # Match MATLAB: y-axis fixed to [-2, 2] so the two traces aren't
+        # crammed and a comparable visual scale is used across diagnostics.
+        ax.set_ylim(-2.0, 2.0)
+        ax.tick_params(length=6, width=1)
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.0)
+        return ax
+
+    def setKSStats(self, Z, U, xAxis, KSSorted, ks_stat):
+        """Store pre-computed KS-test arrays (Matlab ``setKSStats``)."""
+        self.Z = np.asarray(Z, dtype=float)
+        self.U = np.asarray(U, dtype=float)
+        self.KSXAxis = np.asarray(xAxis, dtype=float)
+        self.KSSorted = np.asarray(KSSorted, dtype=float)
+        x_axis = np.asarray(xAxis, dtype=float)
+        ks_sorted = np.asarray(KSSorted, dtype=float)
+        if x_axis.ndim == 1:
+            x_axis = x_axis[:, None]
+        if ks_sorted.ndim == 1:
+            ks_sorted = ks_sorted[:, None]
+
+        if x_axis.size and ks_sorted.size:
+            n_cols = min(x_axis.shape[1], ks_sorted.shape[1], self.numResults)
+            for idx in range(n_cols):
+                different, p_value, stat = _matlab_kstest2(x_axis[:, idx], ks_sorted[:, idx])
+                self.KSStats[idx, 0] = stat
+                self.KSPvalues[idx] = p_value
+                self.withinConfInt[idx] = float(not different)
+        else:
+            value = np.asarray(ks_stat, dtype=float).reshape(-1)
+            self.KSStats[: value.size, 0] = value
+        return self
+
+    def setInvGausStats(self, X, rhoSig, confBoundSig):
+        """Store pre-computed inverse-Gaussian transform statistics."""
+        self.invGausStats = {"X": np.asarray(X, dtype=float), "rhoSig": rhoSig, "confBoundSig": confBoundSig}
+        return self
+
+    def setFitResidual(self, M):
+        """Store the pre-computed fit residual ``Covariate``."""
+        self.Residual = M
+        return self
+
+    def getParam(self, paramNames, fit_num: int = 0):
+        """Return ``(coeffs, SE, significance)`` for named parameters."""
+        names = [paramNames] if isinstance(paramNames, str) else list(paramNames)
+        coeffs, labels, se = self.getCoeffsWithLabels(fit_num)
+        sig = _extract_significance_mask(self.stats[fit_num] if fit_num < len(self.stats) else None, coeffs, se)
+        indices = [labels.index(name) for name in names if name in labels]
+        return coeffs[indices], se[indices], sig[indices]
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "FitResult":
@@ -2137,6 +2135,13 @@ class FitSummary:
         self.plotParams: dict[str, Any] = {}
         self.mapCovLabelsToUniqueLabels()
 
+    def mapCovLabelsToUniqueLabels(self):
+        """Rebuild the union of covariate labels across all neurons."""
+        self.uniqueCovLabels = _ordered_unique(
+            [label for fit in self.fitResCell for labels in fit.covLabels for label in labels]
+        )
+        return self.uniqueCovLabels
+
     def getDiffAIC(self, idx: int = 1) -> np.ndarray:
         """Return ΔAIC relative to config *idx* (0-based)."""
         if self.numResults > 1:
@@ -2157,75 +2162,6 @@ class FitSummary:
             keep = [col for col in range(self.logLL.shape[1]) if col != (idx - 1)]
             return self.logLL[:, keep] - self.logLL[:, [idx - 1]]
         return self.logLL.copy()
-
-    def mapCovLabelsToUniqueLabels(self):
-        """Rebuild the union of covariate labels across all neurons."""
-        self.uniqueCovLabels = _ordered_unique(
-            [label for fit in self.fitResCell for labels in fit.covLabels for label in labels]
-        )
-        return self.uniqueCovLabels
-
-    def setCoeffRange(self, minVal, maxVal):
-        """Set the coefficient range used by ``binCoeffs``."""
-        self.coeffMin = float(minVal)
-        self.coeffMax = float(maxVal)
-        return self
-
-    def getCoeffs(self, fitNum: int = 0):
-        """Return ``(coeffMat, labels, seMat)`` aligned to unique labels."""
-        labels = self.uniqueCovLabels
-        coeff_rows = []
-        se_rows = []
-        for fit in self.fitResCell:
-            coeffs, fit_labels, se = fit.getCoeffsWithLabels(fitNum)
-            row = np.full(len(labels), np.nan, dtype=float)
-            se_row = np.full(len(labels), np.nan, dtype=float)
-            for coeff, coeff_se, label in zip(coeffs, se, fit_labels, strict=False):
-                if label in labels:
-                    idx = labels.index(label)
-                    row[idx] = coeff
-                    se_row[idx] = coeff_se
-            coeff_rows.append(row)
-            se_rows.append(se_row)
-        return np.asarray(coeff_rows, dtype=float), labels, np.asarray(se_rows, dtype=float)
-
-    def getHistCoeffs(self, fitNum: int = 0):
-        """Return ``(histMat, labels, seMat)`` for history coefficients."""
-        labels = _ordered_unique(
-            [label for fit in self.fitResCell for label in fit.covLabels[fitNum][-int(fit.numHist[fitNum]) :] if fitNum < len(fit.covLabels) and int(fit.numHist[fitNum]) > 0]
-        )
-        if not labels:
-            return np.zeros((self.numNeurons, 0), dtype=float), [], np.zeros((self.numNeurons, 0), dtype=float)
-        coeff_rows = []
-        se_rows = []
-        for fit in self.fitResCell:
-            coeffs, fit_labels, se_hist = fit.getHistCoeffsWithLabels(fitNum)
-            if not fit_labels:
-                fit_labels = list(fit.covLabels[fitNum])[-coeffs.size :] if coeffs.size and fitNum < len(fit.covLabels) else []
-                se_all = _extract_standard_errors(fit.stats[fitNum] if fitNum < len(fit.stats) else None, fit._rawCoeffs(fitNum).size)
-                se_hist = se_all[-coeffs.size :] if coeffs.size else np.array([], dtype=float)
-            row = np.full(len(labels), np.nan, dtype=float)
-            se_row = np.full(len(labels), np.nan, dtype=float)
-            for coeff, coeff_se, label in zip(coeffs, se_hist, fit_labels, strict=False):
-                if label in labels:
-                    idx = labels.index(label)
-                    row[idx] = coeff
-                    se_row[idx] = coeff_se
-            coeff_rows.append(row)
-            se_rows.append(se_row)
-        return np.asarray(coeff_rows, dtype=float), labels, np.asarray(se_rows, dtype=float)
-
-    def getSigCoeffs(self, fitNum: int = 0):
-        """Return (nNeurons × nCov) binary significance matrix."""
-        coeff_mat, labels, se_mat = self.getCoeffs(fitNum)
-        sig = np.zeros_like(coeff_mat, dtype=float)
-        for row_idx, fit in enumerate(self.fitResCell):
-            coeffs, fit_labels, se = fit.getCoeffsWithLabels(fitNum)
-            mask = _extract_significance_mask(fit.stats[fitNum] if fitNum < len(fit.stats) else None, coeffs, se)
-            for label, value in zip(fit_labels, mask, strict=False):
-                if label in labels:
-                    sig[row_idx, labels.index(label)] = value
-        return sig
 
     def binCoeffs(self, minVal=-12.0, maxVal=12.0, binSize=0.1):
         """Histogram of regression coefficients per covariate.
@@ -2269,6 +2205,24 @@ class FitSummary:
 
         return N, edges, percentSig
 
+    def setCoeffRange(self, minVal, maxVal):
+        """Set the coefficient range used by ``binCoeffs``."""
+        self.coeffMin = float(minVal)
+        self.coeffMax = float(maxVal)
+        return self
+
+    def getSigCoeffs(self, fitNum: int = 0):
+        """Return (nNeurons × nCov) binary significance matrix."""
+        coeff_mat, labels, se_mat = self.getCoeffs(fitNum)
+        sig = np.zeros_like(coeff_mat, dtype=float)
+        for row_idx, fit in enumerate(self.fitResCell):
+            coeffs, fit_labels, se = fit.getCoeffsWithLabels(fitNum)
+            mask = _extract_significance_mask(fit.stats[fitNum] if fitNum < len(fit.stats) else None, coeffs, se)
+            for label, value in zip(fit_labels, mask, strict=False):
+                if label in labels:
+                    sig[row_idx, labels.index(label)] = value
+        return sig
+
     def plotIC(self, handle=None):
         """Plot AIC, BIC, and log-likelihood box-plots side by side."""
         from .notebook_figures import _matlab_subplot_layout
@@ -2281,82 +2235,6 @@ class FitSummary:
         self.plotlogLL(handle=panels["getDifflogLL"])
         fig.tight_layout()
         return fig
-
-    def plotAIC(self, handle=None):
-        """Box-plot of AIC across neurons (Matlab ``plotAIC``)."""
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.AIC, **{_MPL_TICK_LABELS_KEY: self.fitNames})
-        ax.set_ylabel("AIC")
-        ax.set_title("AIC Across Neurons")
-        return ax
-
-    def plotBIC(self, handle=None):
-        """Box-plot of BIC across neurons (Matlab ``plotBIC``)."""
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.BIC, **{_MPL_TICK_LABELS_KEY: self.fitNames})
-        ax.set_ylabel("BIC")
-        ax.set_title("BIC Across Neurons")
-        return ax
-
-    def plotlogLL(self, handle=None):
-        """Box-plot of log-likelihood across neurons (Matlab ``plotlogLL``)."""
-        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
-        ax.boxplot(self.logLL, **{_MPL_TICK_LABELS_KEY: self.fitNames})
-        ax.set_ylabel("log likelihood")
-        ax.set_title("log likelihood Across Neurons")
-        return ax
-
-    def plotResidualSummary(self, handle=None):
-        """Overlay all neurons' martingale residuals (Matlab ``plotResidualSummary``)."""
-        fig = handle if handle is not None else plt.figure(figsize=(8.0, 3.5))
-        fig.clear()
-        ax = fig.subplots(1, 1)
-        for fit in self.fitResCell:
-            residual = fit.computeFitResidual().dataToMatrix().reshape(-1)
-            ax.plot(residual, alpha=0.6)
-        ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
-        ax.set_title("Residual Summary")
-        ax.set_ylabel("count residual")
-        fig.tight_layout()
-        return fig
-
-    def plotSummary(self, handle=None):
-        """Bar chart of mean AIC, BIC, and log-likelihood across configs."""
-        fig = handle if handle is not None else plt.figure(figsize=(10.0, 4.5))
-        fig.clear()
-        axes = fig.subplots(1, 3)
-        x = np.arange(self.numResults, dtype=float)
-        labels = list(self.fitNames)
-        for ax, values, title in zip(
-            axes,
-            (self.meanAIC, self.meanBIC, self.meanlogLL),
-            ("AIC", "BIC", "log likelihood"),
-            strict=False,
-        ):
-            ax.bar(x, np.asarray(values, dtype=float), color="#0072BD", alpha=0.8)
-            ax.set_xticks(x, labels, rotation=30, ha="right")
-            ax.set_title(title)
-            ax.grid(axis="y", alpha=0.25)
-        fig.tight_layout()
-        return fig
-
-    def boxPlot(self, X, diffIndex: int = 1, h=None, dataLabels=None, **kwargs):
-        """General-purpose box-plot of *X* columns with fit-name labels."""
-        del kwargs
-        ax = h if h is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
-        values = np.asarray(X, dtype=float)
-        if values.ndim == 1:
-            values = values[:, None]
-        if dataLabels is not None:
-            labels = list(dataLabels)
-        elif values.shape[1] == len(self.fitNames):
-            labels = list(self.fitNames)
-        elif values.shape[1] == max(len(self.fitNames) - 1, 1):
-            labels = [name for idx, name in enumerate(self.fitNames, start=1) if idx != diffIndex]
-        else:
-            labels = list(self.fitNames[: values.shape[1]])
-        ax.boxplot(values, **{_MPL_TICK_LABELS_KEY: labels})
-        return ax
 
     # ------------------------------------------------------------------
     # Coefficient plotting (match Matlab FitResSummary)
@@ -2390,56 +2268,6 @@ class FitSummary:
         ax.grid(True, alpha=0.3)
         ax.axhline(0, color="0.5", linewidth=0.5, linestyle="--")
         return ax
-
-    def _is_hist_label(self, label: str) -> bool:
-        """Return True if *label* looks like a history window term (e.g. ``[0.001,0.01]``)."""
-        return bool(re.match(r"^\[", label))
-
-    def getHistIndex(self, fitNum: int | list[int] | None = None) -> list[int]:
-        """Return 0-based indices into *uniqueCovLabels* that are history terms."""
-        if fitNum is None:
-            fitNum = list(range(self.numResults))
-        if isinstance(fitNum, int):
-            fitNum = [fitNum]
-        coeff_mat, labels, _ = self.getCoeffs(fitNum[0])
-        hist_indices: list[int] = []
-        for idx, label in enumerate(labels):
-            if self._is_hist_label(label):
-                # Only include if at least one neuron has a non-NaN value
-                if np.any(np.isfinite(coeff_mat[:, idx])):
-                    hist_indices.append(idx)
-        return hist_indices
-
-    def getCoeffIndex(self, fitNum: int | list[int] | None = None) -> list[int]:
-        """Return 0-based indices into *uniqueCovLabels* that are NOT history terms."""
-        if fitNum is None:
-            fitNum = list(range(self.numResults))
-        if isinstance(fitNum, int):
-            fitNum = [fitNum]
-        coeff_mat, labels, _ = self.getCoeffs(fitNum[0])
-        hist_set = set(self.getHistIndex(fitNum))
-        coeff_indices: list[int] = []
-        for idx, label in enumerate(labels):
-            if idx not in hist_set:
-                if np.any(np.isfinite(coeff_mat[:, idx])):
-                    coeff_indices.append(idx)
-        return coeff_indices
-
-    def plotCoeffsWithoutHistory(self, fitNum: int | list[int] | None = None,
-                                 plotSignificance: bool = True,
-                                 handle=None):
-        """Plot coefficients excluding history terms (Matlab ``plotCoeffsWithoutHistory``)."""
-        coeffIndex = self.getCoeffIndex(fitNum)
-        return self.plotAllCoeffs(fitNum=fitNum, plotSignificance=plotSignificance,
-                                  subIndex=coeffIndex, handle=handle)
-
-    def plotHistCoeffs(self, fitNum: int | list[int] | None = None,
-                       plotSignificance: bool = True,
-                       handle=None):
-        """Plot only the history coefficients (Matlab ``plotHistCoeffs``)."""
-        histIndex = self.getHistIndex(fitNum)
-        return self.plotAllCoeffs(fitNum=fitNum, plotSignificance=plotSignificance,
-                                  subIndex=histIndex, handle=handle)
 
     def plot3dCoeffSummary(self, handle=None):
         """3D ribbon plot of binned coefficient distributions (Matlab ``plot3dCoeffSummary``)."""
@@ -2543,6 +2371,82 @@ class FitSummary:
         fig.tight_layout()
         return fig
 
+    def plotAIC(self, handle=None):
+        """Box-plot of AIC across neurons (Matlab ``plotAIC``)."""
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
+        ax.boxplot(self.AIC, **{_MPL_TICK_LABELS_KEY: self.fitNames})
+        ax.set_ylabel("AIC")
+        ax.set_title("AIC Across Neurons")
+        return ax
+
+    def plotBIC(self, handle=None):
+        """Box-plot of BIC across neurons (Matlab ``plotBIC``)."""
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
+        ax.boxplot(self.BIC, **{_MPL_TICK_LABELS_KEY: self.fitNames})
+        ax.set_ylabel("BIC")
+        ax.set_title("BIC Across Neurons")
+        return ax
+
+    def plotlogLL(self, handle=None):
+        """Box-plot of log-likelihood across neurons (Matlab ``plotlogLL``)."""
+        ax = handle if handle is not None else plt.subplots(1, 1, figsize=(5.0, 3.5))[1]
+        ax.boxplot(self.logLL, **{_MPL_TICK_LABELS_KEY: self.fitNames})
+        ax.set_ylabel("log likelihood")
+        ax.set_title("log likelihood Across Neurons")
+        return ax
+
+    def plotResidualSummary(self, handle=None):
+        """Overlay all neurons' martingale residuals (Matlab ``plotResidualSummary``)."""
+        fig = handle if handle is not None else plt.figure(figsize=(8.0, 3.5))
+        fig.clear()
+        ax = fig.subplots(1, 1)
+        for fit in self.fitResCell:
+            residual = fit.computeFitResidual().dataToMatrix().reshape(-1)
+            ax.plot(residual, alpha=0.6)
+        ax.axhline(0.0, color="0.4", linewidth=1.0, linestyle="--")
+        ax.set_title("Residual Summary")
+        ax.set_ylabel("count residual")
+        fig.tight_layout()
+        return fig
+
+    def plotSummary(self, handle=None):
+        """Bar chart of mean AIC, BIC, and log-likelihood across configs."""
+        fig = handle if handle is not None else plt.figure(figsize=(10.0, 4.5))
+        fig.clear()
+        axes = fig.subplots(1, 3)
+        x = np.arange(self.numResults, dtype=float)
+        labels = list(self.fitNames)
+        for ax, values, title in zip(
+            axes,
+            (self.meanAIC, self.meanBIC, self.meanlogLL),
+            ("AIC", "BIC", "log likelihood"),
+            strict=False,
+        ):
+            ax.bar(x, np.asarray(values, dtype=float), color="#0072BD", alpha=0.8)
+            ax.set_xticks(x, labels, rotation=30, ha="right")
+            ax.set_title(title)
+            ax.grid(axis="y", alpha=0.25)
+        fig.tight_layout()
+        return fig
+
+    def boxPlot(self, X, diffIndex: int = 1, h=None, dataLabels=None, **kwargs):
+        """General-purpose box-plot of *X* columns with fit-name labels."""
+        del kwargs
+        ax = h if h is not None else plt.subplots(1, 1, figsize=(6.0, 3.5))[1]
+        values = np.asarray(X, dtype=float)
+        if values.ndim == 1:
+            values = values[:, None]
+        if dataLabels is not None:
+            labels = list(dataLabels)
+        elif values.shape[1] == len(self.fitNames):
+            labels = list(self.fitNames)
+        elif values.shape[1] == max(len(self.fitNames) - 1, 1):
+            labels = [name for idx, name in enumerate(self.fitNames, start=1) if idx != diffIndex]
+        else:
+            labels = list(self.fitNames[: values.shape[1]])
+        ax.boxplot(values, **{_MPL_TICK_LABELS_KEY: labels})
+        return ax
+
     def toStructure(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dict."""
         return {
@@ -2558,6 +2462,100 @@ class FitSummary:
             "KSPvalues": self.KSPvalues.tolist(),
             "withinConfInt": self.withinConfInt.tolist(),
         }
+
+    def _is_hist_label(self, label: str) -> bool:
+        """Return True if *label* looks like a history window term (e.g. ``[0.001,0.01]``)."""
+        return bool(re.match(r"^\[", label))
+
+    def getCoeffIndex(self, fitNum: int | list[int] | None = None) -> list[int]:
+        """Return 0-based indices into *uniqueCovLabels* that are NOT history terms."""
+        if fitNum is None:
+            fitNum = list(range(self.numResults))
+        if isinstance(fitNum, int):
+            fitNum = [fitNum]
+        coeff_mat, labels, _ = self.getCoeffs(fitNum[0])
+        hist_set = set(self.getHistIndex(fitNum))
+        coeff_indices: list[int] = []
+        for idx, label in enumerate(labels):
+            if idx not in hist_set:
+                if np.any(np.isfinite(coeff_mat[:, idx])):
+                    coeff_indices.append(idx)
+        return coeff_indices
+
+    def plotCoeffsWithoutHistory(self, fitNum: int | list[int] | None = None,
+                                 plotSignificance: bool = True,
+                                 handle=None):
+        """Plot coefficients excluding history terms (Matlab ``plotCoeffsWithoutHistory``)."""
+        coeffIndex = self.getCoeffIndex(fitNum)
+        return self.plotAllCoeffs(fitNum=fitNum, plotSignificance=plotSignificance,
+                                  subIndex=coeffIndex, handle=handle)
+
+    def getHistIndex(self, fitNum: int | list[int] | None = None) -> list[int]:
+        """Return 0-based indices into *uniqueCovLabels* that are history terms."""
+        if fitNum is None:
+            fitNum = list(range(self.numResults))
+        if isinstance(fitNum, int):
+            fitNum = [fitNum]
+        coeff_mat, labels, _ = self.getCoeffs(fitNum[0])
+        hist_indices: list[int] = []
+        for idx, label in enumerate(labels):
+            if self._is_hist_label(label):
+                # Only include if at least one neuron has a non-NaN value
+                if np.any(np.isfinite(coeff_mat[:, idx])):
+                    hist_indices.append(idx)
+        return hist_indices
+
+    def getCoeffs(self, fitNum: int = 0):
+        """Return ``(coeffMat, labels, seMat)`` aligned to unique labels."""
+        labels = self.uniqueCovLabels
+        coeff_rows = []
+        se_rows = []
+        for fit in self.fitResCell:
+            coeffs, fit_labels, se = fit.getCoeffsWithLabels(fitNum)
+            row = np.full(len(labels), np.nan, dtype=float)
+            se_row = np.full(len(labels), np.nan, dtype=float)
+            for coeff, coeff_se, label in zip(coeffs, se, fit_labels, strict=False):
+                if label in labels:
+                    idx = labels.index(label)
+                    row[idx] = coeff
+                    se_row[idx] = coeff_se
+            coeff_rows.append(row)
+            se_rows.append(se_row)
+        return np.asarray(coeff_rows, dtype=float), labels, np.asarray(se_rows, dtype=float)
+
+    def getHistCoeffs(self, fitNum: int = 0):
+        """Return ``(histMat, labels, seMat)`` for history coefficients."""
+        labels = _ordered_unique(
+            [label for fit in self.fitResCell for label in fit.covLabels[fitNum][-int(fit.numHist[fitNum]) :] if fitNum < len(fit.covLabels) and int(fit.numHist[fitNum]) > 0]
+        )
+        if not labels:
+            return np.zeros((self.numNeurons, 0), dtype=float), [], np.zeros((self.numNeurons, 0), dtype=float)
+        coeff_rows = []
+        se_rows = []
+        for fit in self.fitResCell:
+            coeffs, fit_labels, se_hist = fit.getHistCoeffsWithLabels(fitNum)
+            if not fit_labels:
+                fit_labels = list(fit.covLabels[fitNum])[-coeffs.size :] if coeffs.size and fitNum < len(fit.covLabels) else []
+                se_all = _extract_standard_errors(fit.stats[fitNum] if fitNum < len(fit.stats) else None, fit._rawCoeffs(fitNum).size)
+                se_hist = se_all[-coeffs.size :] if coeffs.size else np.array([], dtype=float)
+            row = np.full(len(labels), np.nan, dtype=float)
+            se_row = np.full(len(labels), np.nan, dtype=float)
+            for coeff, coeff_se, label in zip(coeffs, se_hist, fit_labels, strict=False):
+                if label in labels:
+                    idx = labels.index(label)
+                    row[idx] = coeff
+                    se_row[idx] = coeff_se
+            coeff_rows.append(row)
+            se_rows.append(se_row)
+        return np.asarray(coeff_rows, dtype=float), labels, np.asarray(se_rows, dtype=float)
+
+    def plotHistCoeffs(self, fitNum: int | list[int] | None = None,
+                       plotSignificance: bool = True,
+                       handle=None):
+        """Plot only the history coefficients (Matlab ``plotHistCoeffs``)."""
+        histIndex = self.getHistIndex(fitNum)
+        return self.plotAllCoeffs(fitNum=fitNum, plotSignificance=plotSignificance,
+                                  subIndex=histIndex, handle=handle)
 
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "FitSummary":

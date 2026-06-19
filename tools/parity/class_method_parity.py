@@ -149,9 +149,20 @@ def parse_matlab_classdef(path: Path) -> list[MethodInfo]:
     Tracks block nesting inside ``methods`` blocks so we only collect top-level
     method ``function`` declarations (not nested helpers, which MATLAB doesn't
     really allow but defensively skip).
+
+    The MATLAB constructor (``function obj = ClassName(...)``) is renamed to
+    ``__init__`` so it pairs against Python's constructor instead of being
+    reported as missing.
     """
     text = path.read_text(encoding="utf-8", errors="replace")
     lines = text.splitlines()
+    # Class name from "classdef ClassName" — used to detect the constructor.
+    class_name_for_ctor = path.stem
+    for raw in lines:
+        m = re.match(r"^\s*classdef\s+(?:\([^)]*\)\s+)?(\w+)", raw)
+        if m:
+            class_name_for_ctor = m.group(1)
+            break
 
     methods: list[MethodInfo] = []
     in_methods_block = False
@@ -221,6 +232,11 @@ def parse_matlab_classdef(path: Path) -> list[MethodInfo]:
                 # drop it from the signature for comparison purposes.
                 if not methods_static and args:
                     args = args[1:]
+                # The MATLAB constructor is `function obj = ClassName(args)` —
+                # rename it to __init__ so it pairs with Python's constructor
+                # instead of being reported as a missing method.
+                if name == class_name_for_ctor and not methods_static:
+                    name = "__init__"
                 docstring = ""
                 # Look at the next non-blank line for a leading `%` comment.
                 for look in lines[idx + 1 : idx + 6]:
@@ -360,9 +376,14 @@ def parse_python_class(module_path: Path, class_name: str) -> list[MethodInfo]:
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         name = node.name
-        if name.startswith("__") and name.endswith("__"):
+        # Keep __init__ so it can pair with the MATLAB constructor (renamed
+        # from `function obj = ClassName(...)` to `__init__` during MATLAB
+        # parsing). All other dunders are private to Python.
+        if name == "__init__":
+            pass
+        elif name.startswith("__") and name.endswith("__"):
             continue
-        if name.startswith("_"):
+        elif name.startswith("_"):
             continue
         if name in seen_names:
             continue
@@ -431,29 +452,99 @@ def normalize_arg(a: str) -> str:
     return a.strip().lstrip("*")
 
 
+# Canonical aliases: arg-names that differ between MATLAB and the Python port
+# but mean the same thing. Both sides are normalized to the canonical form
+# before comparison so e.g. MATLAB `index` and Python `idx` are treated as
+# equal, and likewise `n` <-> `name`, `obj`/`this`/`self` -> `self`.
+_CANONICAL_ALIASES: dict[str, str] = {
+    # receiver-handle variants
+    "obj": "self",
+    "this": "self",
+    "self": "self",
+    # index variants
+    "index": "idx",
+    "idx": "idx",
+    "i": "idx",
+    "ind": "idx",
+    # name variants
+    "n": "name",
+    "name": "name",
+    "nm": "name",
+    # time variants
+    "t": "time",
+    "time": "time",
+    "tt": "time",
+    # signal variants
+    "s": "signal",
+    "sig": "signal",
+    "signal": "signal",
+    # data variants
+    "d": "data",
+    "dat": "data",
+    "data": "data",
+    # value
+    "v": "value",
+    "val": "value",
+    "value": "value",
+    # struct
+    "s_struct": "struct",
+    "structure": "struct",
+    "struct": "struct",
+    "structin": "struct",
+}
+
+
+def _canonicalize(arg: str) -> str:
+    a = arg.strip().lstrip("*").lower()
+    return _CANONICAL_ALIASES.get(a, a)
+
+
 def signature_matches(matlab_args: list[str], python_args: list[str]) -> bool:
     """Lenient signature comparison.
 
     MATLAB and Python arg lists almost never match name-for-name in this
     codebase (MATLAB uses camelCase, Python often uses snake_case; Python
-    also adds ``*args`` / ``**kwargs``). We compare by arity within a
-    tolerance and by overlap of normalized names.
+    also adds ``*args`` / ``**kwargs``, plus keyword-only knobs like
+    ``seed=None``). We:
+
+      * canonicalize argument names through ``_CANONICAL_ALIASES``
+        (index/idx, n/name, obj/self, etc.),
+      * drop ``self``/``cls``-style leading-receiver names,
+      * tolerate Python having additional kw-only / variadic args
+        (these are extensions, not parity drift),
+      * accept by name-overlap among the shared prefix.
     """
-    m = [normalize_arg(a) for a in matlab_args]
-    p = [normalize_arg(a) for a in python_args if not a.startswith(("*", "**"))]
-    # Drop any **kwargs / *args from MATLAB (none) and Python (above).
-    if abs(len(m) - len(p)) > 1:
-        # If Python wraps everything in **kwargs we forgive that.
-        if any(a.startswith("**") for a in python_args):
+    m_raw = [normalize_arg(a) for a in matlab_args]
+    # Split python args into positional vs variadic/kw-only for tolerance.
+    p_positional = [a for a in python_args if not a.startswith(("*", "**"))]
+    p_has_var = any(a.startswith(("*", "**")) for a in python_args)
+    p_raw = [normalize_arg(a) for a in p_positional]
+
+    # Canonical forms.
+    m = [_canonicalize(a) for a in m_raw if _canonicalize(a) != "self"]
+    p = [_canonicalize(a) for a in p_raw if _canonicalize(a) != "self"]
+
+    # Python may add EXTRA positional/kw-only args (e.g. seed=None). That is
+    # an extension, not drift — provided every MATLAB arg has a counterpart.
+    if len(p) >= len(m):
+        # If Python contains every MATLAB arg in canonical form, accept.
+        if all(name in p for name in m):
             return True
-        return False
-    # If names overlap by half or more, accept.
+
+    # Both empty: identical.
     if not m and not p:
         return True
     if not m or not p:
+        # If MATLAB has args but Python takes **kwargs / *args, forgive.
+        if not p and p_has_var:
+            return True
         return False
-    m_set = {x.lower() for x in m}
-    p_set = {x.lower() for x in p}
+
+    # Fallback: arity within +/-1 AND >=50% name overlap.
+    if abs(len(m) - len(p)) > 1 and not p_has_var:
+        return False
+    m_set = set(m)
+    p_set = set(p)
     overlap = len(m_set & p_set)
     if overlap >= max(1, min(len(m_set), len(p_set)) // 2):
         return True
