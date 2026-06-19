@@ -2,7 +2,7 @@
 
 > **Audience:** AI coding assistants (Claude, GPT, Cursor, Copilot, etc.) and
 > autonomous agents that need to use the `nstat-python` toolbox correctly.
-> Updated: 2026-06-16. Package version: 0.5.5.
+> Updated: 2026-06-19. Package version: 0.5.6.
 >
 > The MATLAB reference toolbox lives in a *separate* repository
 > (https://github.com/cajigaslab/nSTAT) and is deliberately kept independent
@@ -981,6 +981,56 @@ pip install nstat-toolbox[all-extras]   # everything at once
 
 Each extras module should raise a clear, actionable `ImportError` at
 import time when its optional dependency is missing.
+
+### 7.7.1 `nstat.extras._numba_kernels` — opt-in Numba JIT (v0.5.6+)
+
+Activated transparently when `pip install nstat-toolbox[numba]` is
+satisfied. Routes `DecodingAlgorithms.PPDecodeFilterLinear` and
+`DecodingAlgorithms.kalman_filter` per-step loops through JIT'd
+kernels. Public API unchanged.
+
+```python
+# No code change needed at the call site:
+from nstat import DecodingAlgorithms
+# If numba is importable, the JIT path runs automatically.
+# Otherwise the pure-Python path runs (identical results).
+```
+
+Bit-equivalence is preserved (`@numba.njit(cache=True, fastmath=False)`)
+and dual-mode tests exercise both Numba and pure-Python paths in CI.
+Speedups on the maintainer's M2 Max baseline:
+
+| Path | Pure-Python | Numba | vs MATLAB |
+|---|---:|---:|---:|
+| `PPDecodeFilterLinear` (10k steps, 2-state) | 0.231 s | 0.006 s | **14× faster** |
+| `kalman_filter` (1k steps, 4-state) | 0.013 s | 0.0004 s | **20× faster** |
+
+### 7.7.2 `nstat.extras.matlab_rng` — MT19937 RNG-stream parity (v0.5.6+)
+
+For Monte Carlo paths where matching MATLAB's RNG stream matters
+(`PPLFP_MStep`, `PPLFP_EM`, `v9_PPSS_EM` Case C drift entries).
+
+```python
+from nstat.extras.matlab_rng import MatlabRNG, seeded_global_rng
+
+# Bit-equivalent to MATLAB rand under matching seed:
+r = MatlabRNG(42)
+u = r.rand(3)              # matches MATLAB rand(1,3) under rng(42)
+n = r.randn(3)             # Box-Muller from same MT stream (deterministic)
+
+# Context manager: seeds NumPy global state + monkey-patches default_rng:
+import numpy as np
+with seeded_global_rng(42) as rng:
+    a = np.random.randn(3)      # deterministic
+    g = np.random.default_rng() # also deterministic
+```
+
+**What's bit-equivalent to MATLAB:** the MT19937 state after seeding
+and the uniform `rand()` stream. **What's not bit-equivalent:** `randn`
+— MATLAB uses Ziggurat (R14sp1+), Python's `MatlabRNG.randn` uses
+Box-Muller from the same MT stream. Statistically identical
+distribution; not bit-identical values. A Ziggurat port is on the
+backlog if any recipe needs strict MC parity.
 
 **Independence.**  The "no MATLAB-repo coupling" rule applies equally to
 `nstat.extras.*`.  Extras may depend on any *Python* package but must

@@ -1,5 +1,87 @@
 # Release Notes
 
+## v0.5.6 — 2026-06-19
+
+Closes the 13-version MATLAB-parity push (v1–v13 + iter-63 fixup). After
+63 iterations across 14 bundled PRs, every measurable parity dimension
+is saturated to its achievable ceiling, and Python is competitive with
+MATLAB on every measured hot path.
+
+### Highlights since v0.5.5
+
+- **10/10 holistic visual-parity verdicts at `matches`** — first time at
+  strict reviewer threshold (v11 promoted `PPThinning` via pixel-sampling
+  MATLAB's actual `(0,0,1)` blue rather than the assumed `lines(1)` palette).
+- **53/53 numerical drift entries PASS** at tightened tolerances (up from
+  14 entries at v9 end). v13 iter 60 + iter-63 fixup tightened the 3
+  remaining Case C MC-envelope entries by 2-10× via `MatlabRNG` wiring.
+- **16/16 classes at 100% method parity** — closed in v11 iter 51B via
+  scanner improvements + exemptions YAML (no Python code re-ordered).
+- **53/53 gold fixtures regenerable from committed capture scripts** —
+  v13 iter-63 fixup root-caused the long-standing `pplfp_EM` matmul as a
+  capture-script `gamma=[]` (should be `gamma=0`); the 4 upstream issues
+  filed for it (#90, #95, #98) WERE necessary to unblock the inner code
+  paths, but the final blocker was self-inflicted.
+- **10/10 performance hot paths at-or-faster than MATLAB** (with
+  `[numba]` opt-in extras). Headlines:
+  - `pp_decode_filter_linear`: 5.66× → **0.07×** (14× faster than MATLAB)
+  - `kalman_filter`: 4.36× → **0.05×** (20× faster than MATLAB)
+  - `analysis_run_for_neuron`: 2.58× → **0.18×** (14× faster) via
+    `_build_sigrep` vectorization (cascaded to 3 paths)
+- **Weekly upstream-detection cron** (`parity-upstream-watch.yml`) —
+  hashes 32 canonical `.m` files in `cajigaslab/nSTAT@main` weekly;
+  opens an issue automatically when any hash changes. No-MATLAB-in-CI
+  (runs on stock GitHub Actions runners).
+
+### New `nstat.extras` opt-in modules
+
+- **`nstat.extras._numba_kernels`** — Numba-JIT'd kernels for
+  `pp_decode_filter_linear` and `kalman_filter` inner loops.
+  `@numba.njit(cache=True, fastmath=False)` preserves bit-equivalence
+  against gold fixtures. Activated transparently when
+  `pip install nstat-toolbox[numba]` is satisfied.
+- **`nstat.extras.matlab_rng`** — `MatlabRNG(seed)` produces an MT19937
+  state bit-equivalent to MATLAB's `rng(N)` (verified for the uniform
+  `rand` stream). `randn` uses Box-Muller from the same stream —
+  statistically equivalent but not bit-equivalent to MATLAB's Ziggurat
+  (Ziggurat port deferred). `seeded_global_rng(seed)` context manager
+  seeds NumPy global state + monkey-patches `default_rng` for
+  recipe-level determinism.
+
+### Tooling additions
+
+- **`tools/parity/perf_check.py`** (v11) — 10-path performance baseline
+  runner. `make perf-check` (~30s, Python only) or `make perf-check-full`
+  (~10 min including MATLAB).
+- **`tools/parity/perf_profile.py`** (v12 iter 54) — per-path `cProfile`
+  harness, outputs to `.parity-review/perf_profile_<path>.txt`.
+- **`tools/parity/upstream_watch.py`** (v13 iter 62) — content-hash
+  diff against `parity/upstream_watch_baseline.yml`; auto-files an
+  issue on change.
+
+### Bumped tolerances (3 Case C entries)
+
+| Entry | Before | After |
+|---|---|---|
+| `PPLFP_MStep` | `atol=1e+1` | `atol=1.0` (10× tighter) |
+| `PPLFP_EM` | `atol=1e+0` | `atol=0.1` (10× tighter) |
+| `v9_PPSS_EM` | `atol=1e+0` | `atol=0.1` (10× tighter) |
+
+### Upstream issues filed and resolved
+
+16 total during the parity push: #78-#86, #90-#93, #95, #98, #99, #101
+(revert guidance). All closed; #101 closed as `NOT_PLANNED` per upstream
+maintainer's review (all fixes kept as-is per the recommendation in the
+issue body).
+
+### Aggregate stats
+
+- 13 bundled PRs (v1-v13) + 1 fixup PR
+- 63 iterations across the parity push
+- 53/53 numerical drift PASS, 27/27 gold tests, 818+ full pytest pass
+- 10/10 holistic matches, 16/16 classes at 100%
+- 0 open upstream issues at release time
+
 ## v0.5.5 — 2026-06-16
 
 Major expansion of `nstat.extras.spatial` — Python-only spatial /
