@@ -2375,6 +2375,16 @@ class Trial:
         """Alias for :attr:`spike_collection` (Matlab compat)."""
         return self.nspikeColl
 
+    @property
+    def numCov(self) -> int:
+        """Number of covariates in the trial's covariate collection (delegates to ``CovariateCollection.numCov``)."""
+        return int(self.covarColl.numCov)
+
+    @property
+    def numSpikeTrains(self) -> int:
+        """Number of spike trains in the trial's spike collection (delegates to ``SpikeTrainCollection.numSpikeTrains``)."""
+        return int(self.nspikeColl.numSpikeTrains)
+
     def setTrialEvents(self, event: Events | None) -> None:
         """Attach an :class:`Events` object (or ``None`` to clear)."""
         self.ev = event if isinstance(event, Events) else None

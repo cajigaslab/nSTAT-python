@@ -76,6 +76,23 @@ def list_matlab_topics(matlab_helpfiles: Path) -> dict[str, list[Path]]:
     return out
 
 
+def index_matlab_figs(matlab_helpfiles: Path, topic: str) -> dict[int, Path]:
+    """Return ``{NN: path}`` for ``<topic>_NN.png`` figures.
+
+    Strict-index pairing helper: builds a numeric-index → path map so the
+    composite renderer can align figure N on the MATLAB side with figure N on
+    the Python side, regardless of skips, gaps, or extras on either side.
+    """
+    paths = list_matlab_topics(matlab_helpfiles).get(topic, [])
+    out: dict[int, Path] = {}
+    for p in paths:
+        m = _TOPIC_RE.match(p.name)
+        if not m:
+            continue
+        out[int(m.group("idx"))] = p
+    return out
+
+
 def list_py_figs(py_galleries: Path, topic: str) -> list[Path]:
     """Return sorted ``fig_NNN.png`` figures for ``py_galleries/<topic>/``."""
     gallery = py_galleries / topic
@@ -89,6 +106,20 @@ def list_py_figs(py_galleries: Path, topic: str) -> list[Path]:
             figs.append(p)
     figs.sort(key=lambda q: int(_PY_FIG_RE.match(q.name).group("idx")))
     return figs
+
+
+def index_py_figs(py_galleries: Path, topic: str) -> dict[int, Path]:
+    """Return ``{NNN: path}`` for ``fig_NNN.png`` figures under ``<topic>/``.
+
+    Strict-index pairing helper: see :func:`index_matlab_figs`.
+    """
+    out: dict[int, Path] = {}
+    for p in list_py_figs(py_galleries, topic):
+        m = _PY_FIG_RE.match(p.name)
+        if not m:
+            continue
+        out[int(m.group("idx"))] = p
+    return out
 
 
 # --- Font loading -----------------------------------------------------------
@@ -233,11 +264,16 @@ def build_composite(
     dict
         ``{"ml_count": int, "py_count": int, "rows_shown": int}``.
     """
-    ml_topics = list_matlab_topics(matlab_helpfiles)
-    ml_paths: list[Path] = ml_topics.get(topic, [])
-    py_paths: list[Path] = list_py_figs(py_galleries, topic)
+    ml_by_idx = index_matlab_figs(matlab_helpfiles, topic)
+    py_by_idx = index_py_figs(py_galleries, topic)
 
-    n_rows = min(max(len(ml_paths), len(py_paths)), max_rows)
+    # Strict index pairing: a MATLAB figure with index N is paired with the
+    # Python figure whose numeric suffix is also N. Either side can be missing
+    # for any given index, in which case the cell renders as "(missing)".
+    all_indices = sorted(set(ml_by_idx.keys()) | set(py_by_idx.keys()))
+    n_rows = min(len(all_indices), max_rows)
+    indices = all_indices[:n_rows]
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     if n_rows == 0:
@@ -257,9 +293,9 @@ def build_composite(
     # CELL_W so wide MATLAB figures don't blow up the composite.
     per_row_max_h = int(CELL_W * 1.15)
     row_heights: list[int] = []
-    for i in range(n_rows):
-        ml = ml_paths[i] if i < len(ml_paths) else None
-        py = py_paths[i] if i < len(py_paths) else None
+    for idx in indices:
+        ml = ml_by_idx.get(idx)
+        py = py_by_idx.get(idx)
         row_heights.append(_row_height(ml, py, per_row_max_h))
 
     total_w = CELL_W * 2 + COL_GAP
@@ -269,25 +305,27 @@ def build_composite(
 
     # Header band -----------------------------------------------------------
     draw.rectangle((0, 0, total_w, HEADER_H), fill=(30, 30, 30))
-    title = f"{topic}    MATLAB ({len(ml_paths)})  vs.  Python ({len(py_paths)})"
+    title = (
+        f"{topic}    MATLAB ({len(ml_by_idx)})  vs.  Python ({len(py_by_idx)})"
+    )
     draw.text((12, 14), title, fill=TEXT_COLOR, font=font_h)
     draw.line((0, HEADER_H - 1, total_w, HEADER_H - 1), fill=DIVIDER, width=1)
     draw.line((CELL_W, HEADER_H, CELL_W, total_h), fill=DIVIDER, width=1)
 
     # Rows ------------------------------------------------------------------
     y = HEADER_H
-    for i in range(n_rows):
-        rh = row_heights[i]
-        ml = ml_paths[i] if i < len(ml_paths) else None
-        py = py_paths[i] if i < len(py_paths) else None
+    for row_i, idx in enumerate(indices):
+        rh = row_heights[row_i]
+        ml = ml_by_idx.get(idx)
+        py = py_by_idx.get(idx)
         ml_cap = ml.name if ml else "(missing)"
         py_cap = py.name if py else "(missing)"
 
         _draw_cell(canvas, draw, 0, y, CELL_W, rh, ml, ml_cap, font_small)
         _draw_cell(canvas, draw, CELL_W + COL_GAP, y, CELL_W, rh, py, py_cap, font_small)
 
-        # Row index badge along the divider
-        idx_txt = f"{i + 1:02d}"
+        # Row index badge along the divider — show the shared numeric index.
+        idx_txt = f"{idx:02d}"
         tw, th = _text_size(draw, idx_txt, font_row)
         bx = CELL_W - tw // 2
         by = y + 6
@@ -298,8 +336,8 @@ def build_composite(
 
     canvas.save(out_path, format="PNG", optimize=True)
     return {
-        "ml_count": len(ml_paths),
-        "py_count": len(py_paths),
+        "ml_count": len(ml_by_idx),
+        "py_count": len(py_by_idx),
         "rows_shown": n_rows,
     }
 
@@ -324,16 +362,17 @@ def write_topic_html(
 
     Uses ``file://`` URIs so the page works without a web server.
     """
-    ml_paths = list_matlab_topics(matlab_helpfiles).get(topic, [])
-    py_paths = list_py_figs(py_galleries, topic)
-    n = max(len(ml_paths), len(py_paths))
+    ml_by_idx = index_matlab_figs(matlab_helpfiles, topic)
+    py_by_idx = index_py_figs(py_galleries, topic)
+    indices = sorted(set(ml_by_idx.keys()) | set(py_by_idx.keys()))
+    n = len(indices)
 
     rows: list[str] = []
-    for i in range(n):
-        ml = ml_paths[i] if i < len(ml_paths) else None
-        py = py_paths[i] if i < len(py_paths) else None
-        ml_idx = f"{int(_TOPIC_RE.match(ml.name).group('idx')):02d}" if ml else "—"
-        py_idx = f"{int(_PY_FIG_RE.match(py.name).group('idx')):03d}" if py else "—"
+    for idx in indices:
+        ml = ml_by_idx.get(idx)
+        py = py_by_idx.get(idx)
+        ml_idx = f"{idx:02d}" if ml is not None else "—"
+        py_idx = f"{idx:03d}" if py is not None else "—"
 
         if ml is not None:
             ml_cell = (
@@ -352,9 +391,12 @@ def write_topic_html(
             py_cell = '<td class="missing">(no Python figure)</td>'
 
         rows.append(
-            f'<tr><th>{i + 1}<br><small>MATLAB {ml_idx} / Python {py_idx}'
+            f'<tr><th>{idx}<br><small>MATLAB {ml_idx} / Python {py_idx}'
             f"</small></th>{ml_cell}{py_cell}</tr>"
         )
+
+    ml_paths = list(ml_by_idx.values())
+    py_paths = list(py_by_idx.values())
 
     doc = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>{html.escape(topic)} parity</title>

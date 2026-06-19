@@ -118,7 +118,7 @@ items:
     follow the MATLAB helpfile closely; exact traces still depend on stochastic simulation
     draws and Python plotting defaults.
   python_sections: 4
-  python_expected_figures: 6
+  python_expected_figures: 5
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -129,7 +129,7 @@ items:
   matlab_sections: 4
   matlab_published_figures: 5
   section_delta: 0
-  figure_delta: 1
+  figure_delta: 0
 - topic: DecodingExampleWithHist
   source_matlab: DecodingExampleWithHist.mlx
   python_notebook: notebooks/DecodingExampleWithHist.ipynb
