@@ -219,3 +219,128 @@ documented in `AGENT_GUIDE.md` / `docs/ClassDefinitions.md`.
 - v5 (iters 19–23): reviewer-judgment-driven holistic pass on all 10
   priority topics; 8 reusable plotting helpers extracted; all topics
   land at `minor` (cosmetic-only residuals) verdict; ship-ready.
+
+## v6 (iters 24–28) — 2026-06-19
+
+Structural-parity pass. Where v3 measured pixels (SSIM) and v5 weighed
+reviewer judgment on the rendered output, v6 adds two new parity
+dimensions that operate *upstream* of the figure: **code-structure
+parity** (line-for-line correspondence between MATLAB `.mlx` cells and
+Python notebook cells) and **class-method parity** (method ordering and
+coverage between MATLAB class files and their Python ports). These
+dimensions catch drift that visual review misses — a notebook can render
+the right figures while having silently reordered, merged, or dropped
+cells; a class can produce the right numerics while exposing methods in
+a different order than the MATLAB reference. Both regress the
+"a careful reader would say this is the same code" test that the
+parity contract implicitly requires.
+
+**New parity dimensions (added v6)**
+
+| Dimension | Tool | Captured by |
+|---|---|---|
+| Code-structure (notebook ↔ `.mlx`) | `tools/parity/code_structure_diff.py` | per-topic line-correspondence score |
+| Class-method order | `tools/parity/class_method_parity.py` | per-class method-order percentage |
+
+These run alongside the existing numerical / visual gates and write
+their reports into `parity/code_structure/` and `parity/class_methods/`.
+
+**Per-topic verdict matrix (iter 27 reviewer pass)**
+
+| Topic | Verdict | Improvement vs v5 iter 23 |
+|---|---|---|
+| `nstCollExamples` | match | Promoted from minor → match after iter 24–26 cell + method alignment closed the structural drift behind the v5 cosmetic residuals. |
+| `StimulusDecode2D` | minor | Trajectory/legend rows tighter; receptive-field grid in row 3 still an intentional Python extension. |
+| `PPThinning` | minor | 3 rendered pairs tighter post iter 26; residual is one un-rendered 4th MATLAB figure (placeholder tile) rather than per-panel drift. |
+| `ExplicitStimulusWhiskerData` | minor | 1:1 figure pairing across composite; one Python panel blank where MATLAB has content + minor renderer differences. |
+| `mEPSCAnalysis` | minor | Panel alignment + figure counts agree across all 5 composites; v5 gaps in fig_04/fig_05 closed; only cosmetic colour/marker residuals. |
+| `nSTATPaperExamples` | minor | Cell-ordering + class-method ordering gaps from v5 closed; remaining residuals are font/tick/colormap-shading cosmetics. |
+| `HippocampalPlaceCellExample` | match | Promoted from minor → match; trajectory/occupancy/normalized-rate/KS/3D-surface groups all align cleanly. |
+| `SignalObjExamples` | match | Promoted from minor → match; cell + method ordering aligned, residuals are renderer-level only. |
+| `NetworkTutorial` | match | Promoted from minor → match; 2×2 coupling-matrix tiles, raster + sinusoid, KS triptychs all align with no listed residuals. |
+| `DecodingExample` | minor | Notebook cell alignment + class method order now structurally aligned; only rendering-engine cosmetics remain. |
+
+**Aggregate counts — v5 iter 23 → v6 iter 27**
+
+| Verdict | v5 iter 23 | v6 iter 27 |
+|---|---|---|
+| match | 0 | 4 |
+| minor | 10 | 6 |
+| major | 0 | 0 |
+| blocked | 0 | 0 |
+
+Four topics cross the match threshold for the first time
+(`nstCollExamples`, `HippocampalPlaceCellExample`, `SignalObjExamples`,
+`NetworkTutorial`); the remaining six stay at minor with smaller, more
+clearly-bounded residual sets than at v5 iter 23.
+
+**Structural-parity metrics**
+
+| Metric | v6 baseline (iter 24 start) | v6 iter 28 | Δ |
+|---|---|---|---|
+| Mean code-structure score (notebook ↔ `.mlx`) | 4% | ~66% | +62 pp |
+| Mean class-method parity score | 59% | ~91% | +32 pp |
+| Classes at 100% method-order parity | — | 10 / 16 | — |
+
+The code-structure jump (4% → 66%) reflects iter 24–26 cell-by-cell
+alignment of the 10 priority notebooks against their `.mlx` sources —
+cells reordered, merged or split to match MATLAB section order, with
+narrative text restored where v5 had silently dropped it. The
+class-method jump (59% → 91%) reflects iter 25–27 reordering of public
+method declarations in the Python class files to match the MATLAB
+`classdef` member order. Neither sweep changed numerical output —
+gold fixtures still pass 27/27 — but both bring the *source code* into
+the same "exact mirror" posture the rendered figures already enjoyed.
+
+**Remaining structural TODOs (carry into v7)**
+
+Six classes are not yet at 100% method-order parity. The residual gaps
+are concentrated in four areas:
+
+- **`SignalObj` operator methods** — arithmetic / comparison dunder
+  ordering doesn't match the MATLAB operator overload sequence; needs a
+  sweep to re-order `__add__` / `__sub__` / `__mul__` / `__eq__`
+  alongside their MATLAB `plus` / `minus` / `mtimes` / `eq` siblings.
+- **`DecodingAlgorithms.PPLFP_*` family** — the LFP-coupled
+  point-process filter variants (`PPLFP`, `PPLFP_EM`, `PPLFP_Kalman`)
+  are present and numerically correct but appear out of MATLAB order
+  inside `nstat.decoding_algorithms`.
+- **`Covariate`** — a handful of accessor/mutator methods (`setName`,
+  `setLabels`, time-window helpers) are interleaved with private
+  helpers in a different order than the MATLAB class.
+- **`History.raisedCosine`** — the raised-cosine basis static methods
+  on `History` need re-ordering to match MATLAB's class-method block;
+  also missing one private helper that the MATLAB version exposes as
+  static.
+
+Each is a mechanical re-ordering rather than a behavioural change;
+expected to close in one focused v7 iteration without touching the
+public surface or gold-fixture results.
+
+**Pointers**
+
+- Iter 27 reviewer JSON archived at
+  `.parity-review/iter27_verdicts.json` (git-ignored). The verdict
+  matrix above is its rendered form.
+- Code-structure-diff reports per topic land in
+  `parity/code_structure/<Topic>.md` (regenerated by
+  `tools/parity/code_structure_diff.py`).
+- Class-method parity per class lands in
+  `parity/class_methods/<ClassName>.md` (regenerated by
+  `tools/parity/class_method_parity.py`).
+- The four match-verdict topics carry no listed residuals; they are
+  ship-ready under the binding parity contract in `AGENT_GUIDE.md` §0
+  across all four levels (numerical, content, appearance, structure).
+
+**v1 + v2 + v3 + v4 + v5 + v6 — 28 iterations total**
+
+- v1–v3 (iters 1–15): figure-count parity, SSIM bootstrap, expansion,
+  threshold tightening.
+- v4 (iters 16–18): structural pass on three high-value topics.
+- v5 (iters 19–23): reviewer-judgment holistic pass; 8 plotting
+  helpers; all topics at minor.
+- v6 (iters 24–28): added code-structure + class-method parity
+  dimensions; cell-by-cell notebook alignment; class-method
+  re-ordering; 4 topics promoted to match, 10/16 classes at 100%
+  method-order parity, code-structure score 4% → 66%, class-method
+  parity 59% → 91%.
