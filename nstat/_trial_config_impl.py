@@ -172,15 +172,17 @@ class TrialConfig:
         """Reconstruct from a dict produced by :meth:`toStructure`.
 
         .. note:: Follows Matlab's omission of ``ensCovMask``."""
-        # MATLAB's `TrialConfig.fromStructure` omits `ensCovMask` and shifts
-        # the remaining trailing arguments left by one position.
+        # MATLAB's `TrialConfig.fromStructure` omits `ensCovMask` from the
+        # constructor call — but ``covLag`` and ``name`` still go to their
+        # own slots, not into the now-empty ``ensCovMask`` position.  Pass
+        # by keyword to avoid the positional-shift hazard.
         return TrialConfig(
-            structure.get("covMask"),
-            structure.get("sampleRate"),
-            structure.get("history"),
-            structure.get("ensCovHist"),
-            structure.get("covLag"),
-            structure.get("name", ""),
+            covMask=structure.get("covMask"),
+            sampleRate=structure.get("sampleRate"),
+            history=structure.get("history"),
+            ensCovHist=structure.get("ensCovHist"),
+            covLag=structure.get("covLag"),
+            name=structure.get("name", ""),
         )
 
     # ------------------------------------------------------------------

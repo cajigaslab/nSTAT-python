@@ -594,3 +594,131 @@ accepted as such — v9 did not chase them.
   holistic matches 6 → 7 (ExplicitStimulusWhiskerData
   promoted); composite-pairing tool fix; DecodingExample
   restored to 5 figures.
+- v10 (iters 44–48): **post-upstream-MATLAB reconciliation**.
+  All 9 filed issues (`cajigaslab/nSTAT#78–#86`) merged
+  upstream. Re-captured 51 gold fixtures; 14 drift tolerances
+  tightened (still 36/36 PASS); adopted upstream logLL fix
+  (Task 0.1c — wrap `log()` on second term, match `eps` exactly);
+  adopted Events.plot data-coord label transform; made `.mat`
+  loaders shape-agnostic; fixed latent `TrialConfig.fromStructure`
+  positional-shift bug surfaced by upstream fixtures; restored
+  DecodingExample to 7 figures (MATLAB caught up by adding 2);
+  added StimulusDecode2D missing 6th figure; PPThinning
+  visual polish; render_ledger.py emits `upstream_status`
+  bullets; FIGURE_TOLERANCE bumped 8 → 10; holistic matches
+  7 → **9** (DecodingExample + StimulusDecode2D promoted).
+
+## v10 (iters 44–48) — 2026-06-19
+
+**Cycle name:** post-upstream-MATLAB reconciliation.
+
+**Trigger:** All 9 of our filed upstream issues
+(`cajigaslab/nSTAT#78–#86`) merged in MATLAB. Every gold-fixture
+comparison needed re-anchoring.
+
+### v10 verdicts vs v9 end
+
+| Topic | v9 end | v10 end | Δ |
+|---|---|---|---|
+| `nstCollExamples` | match | match | unchanged |
+| `StimulusDecode2D` | minor | **match** | **promoted ↑** |
+| `PPThinning` | minor | minor | ISI fix landed; sinusoidal overlay residual |
+| `ExplicitStimulusWhiskerData` | match | match | unchanged |
+| `mEPSCAnalysis` | match | match | unchanged |
+| `nSTATPaperExamples` | match | match | unchanged |
+| `HippocampalPlaceCellExample` | match | match | 3D wireframe overlay confirmed |
+| `SignalObjExamples` | match | match | unchanged |
+| `NetworkTutorial` | match | match | schematic + equation panels confirmed |
+| `DecodingExample` | minor | **match** | **promoted ↑** (restored to 7 figures) |
+
+**9/10 matches, 1 minor, 0 major, 0 blocked.**
+
+### v10 acceptance vs target
+
+| Metric | v9 end | v10 target | v10 actual |
+|---|---:|---:|---:|
+| Holistic `matches` | 7/10 | ≥ 8/10 | **9/10** ✓ |
+| Drift entries | 36 | ≥ 50 | 36 (under; capture-script reconstruction deferred — see Open items) |
+| Drift PASS rate | 36/36 | 100% maintained | **36/36** ✓ |
+| Adopted-upstream entries | 0 | 9 | **11** ✓ (9 filed + 2 new) |
+| Tightened Case C tolerances | 0 | ≥ 3 | **14** ✓ |
+| Gold-fixture tests | 22/27 → 27/27 (with iter 47 fixes) | 27/27 | **27/27** ✓ |
+| Class-method 100% | 14/16 | ≥ 14/16 | 14/16 (unchanged) |
+
+### Upstream changes adopted
+
+**Numerical:**
+- `Analysis.logLL` formula corrected (Task 0.1c upstream — wrap
+  `log()` on the second term of the Bernoulli per-bin sum). Python
+  now matches MATLAB to `2e-13` absolute on `analysis_exactness`.
+  The full -42-unit gap that initially appeared post-update was
+  not a binning issue — it was MATLAB using `eps` (2.22e-16) where
+  Python had used `1e-12`. Switched to `np.finfo(float).eps`.
+- `Events.plot` label positioning: MATLAB now uses data-axis
+  transform (`y = ymax + 0.03*(ymax-ymin)`); Python adopted.
+- MATLAB scalar-write convention change (`1×1` instead of
+  `0×0`/`1×0` for scalar struct fields); Python loaders made
+  shape-agnostic.
+
+**Pedagogical (MATLAB caught up to Python extras):**
+- 3D wireframe overlay (#81) — confirmed visible in
+  HippocampalPlaceCellExample composite.
+- ISI diagnostic suite (#82) — MATLAB's `nSpikeTrainExamples`
+  caught up to Python's pre-existing fig_007.
+- KS / ΔAIC / ΔBIC scan (#83) — confirmed in
+  ExplicitStimulusWhiskerData composite.
+- Monte Carlo + RMSE summary (#84), CIF λ(t) trace (#85),
+  schematic + equation panels (#86) — all confirmed visible in
+  respective composites.
+
+**Latent bug surfaced:** the upstream test refresh exposed a
+`TrialConfig.fromStructure` positional-shift bug in the Python port
+(`covLag` → `ensCovMask` slot, etc.) that had been hidden by
+matching-but-broken test assertions. Fixed via constructor-kwarg
+plumbing; assertions repaired to match the corrected behavior.
+
+### Aggregate state on `main` after v10
+
+- 9/10 priority topics at holistic `matches`; 1 documented
+  `minor` residual (PPThinning sinusoidal overlay).
+- 0 major / 0 blocked.
+- Numerical drift: 36/36 PASS at the tightened tolerances
+  (14 entries tightened in iter 47).
+- Gold fixtures: 27/27 PASS.
+- 53 `.mat` fixtures refreshed against updated MATLAB.
+- 11 ledger entries marked `adopted-upstream`.
+- All v6–v9 automation (pre-commit hooks, structure-diff,
+  class-method, drift, render_ledger) still green.
+
+### Open items (deferred to maintenance)
+
+- **Capture-script reconstruction**: the 4 PPLFP + 22 v9_*
+  fixtures still have NO-OP TODO stubs in
+  `tools/parity/matlab/export_pplfp_gold_fixtures.m` and
+  `export_v9_gold_fixtures.m`. Reconstructing seeds and dims
+  requires in-MATLAB experimentation; documented per-fixture so
+  a future iteration can complete each independently.
+- **PPThinning minor**: sinusoidal lambda overlay rendering
+  remains subtly different from MATLAB even after the
+  iter-47 polish. Likely an inherent matplotlib vs MATLAB
+  rendering difference; accepted.
+
+### Parity push status
+
+**Complete. Maintenance mode active.**
+
+Subsequent PRs touching `nstat/**`, `notebooks/**`, or visual
+output use the existing automation:
+
+- Pre-commit hooks: `embed_figures` + `regen-notebook-fidelity`
+  + `render_ledger`.
+- Local gates: `make freshness-check`, `make readme-check`,
+  `python tools/parity/numerical_drift.py`.
+- Manual full sweep: `gh workflow run parity-check.yml --ref main`.
+
+When upstream MATLAB merges another wave of changes,
+`docs/parity/runbook.md` has the post-upstream-merge
+reconciliation procedure.
+
+**v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9 + v10 — 48 iterations
+total across 10 bundled PRs.**

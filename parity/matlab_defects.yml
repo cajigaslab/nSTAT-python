@@ -72,6 +72,18 @@ entries:
       `tests/test_matlab_gold_fixtures.py` + `tests/parity/` tests pass
       unchanged at default tolerance.
     discovered: "iter 3 / 2026-06-18"
+    upstream_issue: "cajigaslab/nSTAT#78"
+    upstream_status: "adopted-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "iter 45 / 2026-06-19"
+    resolved_notes: |
+      Upstream merged the proposed `-expm1(-lambda*dt)` fix in the
+      thinning code path. Verified in iter 44 by re-capturing MATLAB gold
+      fixtures against updated MATLAB: no fixture impact — Python was
+      already using the better algorithm, and MATLAB's switch to
+      `-expm1` agrees with Python to machine precision so the fresh
+      `.mat` fixtures are byte-equivalent to the pre-update baselines on
+      the thinning paths.
 
   - id: ukf-linear-solve
     title: "UKF Kalman gain via linear solve instead of explicit inverse"
@@ -95,6 +107,16 @@ entries:
       - "`nstat/decoding_algorithms.py:2530-2533` inside `DecodingAlgorithms.ukf`"
     fixture_impact: "no fixture impact — UKF gold fixtures pass unchanged."
     discovered: "iter 3 / 2026-06-18"
+    upstream_issue: "cajigaslab/nSTAT#79"
+    upstream_status: "adopted-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "iter 45 / 2026-06-19"
+    resolved_notes: |
+      Upstream confirmed MATLAB's `mrdivide` path was already correct in
+      the original `ukf.m` (the issue was a Python-port translation that
+      had used `inv()`; MATLAB itself needed no change). Verified in
+      iter 44 by re-capturing MATLAB gold fixtures: no fixture impact —
+      UKF outputs unchanged.
 
   - id: events-plot-label-transform
     title: "Events.plot label x-coordinate uses data-axis transform"
@@ -119,6 +141,19 @@ entries:
       data coordinates (old: `[0.18, 1.03, 0.68, 1.03]`, new:
       `[0.2, 1.02, 0.7, 1.02]`).
     discovered: "iter 2 / 2026-06-18"
+    upstream_issue: "cajigaslab/nSTAT#80"
+    upstream_status: "adopted-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "iter 45 / 2026-06-19"
+    resolved_notes: |
+      Upstream merged the data-axis transform fix in `@Events/plot.m`.
+      Verified in iter 44 by re-capturing MATLAB gold fixtures:
+      `events_exactness.mat` `plot_label_positions` y-component shifted
+      from `1.02` (axes-fraction nudge) to `2.09` (data coordinates above
+      max event amplitude) — matching the corrected MATLAB output. Iter 47
+      must align Python's `Events.plot` label-positioning with the new
+      MATLAB convention to make `test_events_match_matlab_gold_fixture`
+      pass against the refreshed fixture.
 
   - id: nst2-setmaxtime-preserved
     title: "Documented MATLAB quirk preserved: nst2.setMaxTime(21) mutates nst2 but not nst"
@@ -459,6 +494,63 @@ entries:
       - "`parity/numerical_drift_spec.yml` entries `v9_simulateCIFByThinning`, `v9_simulateCIFByThinningFromLambda`"
     fixture_impact: "no fixture impact — tolerance only"
     discovered: "iter 40 / 2026-06-19"
+
+  - id: hybrid-logll-upstream-fix
+    title: "Analysis.logLL adopted proper log-likelihood — Python still returns legacy hybrid value"
+    defect_class: "Bug (now fixed upstream)"
+    matlab_location: "Analysis.RunAnalysisForNeuron logLL computation in cajigaslab/nSTAT@main (post-2026-06-19)"
+    matlab_behavior: |
+      Historic: legacy formula `sum(y.*log(data*delta) + (1-y).*(1-data*delta))`
+      missing the outer log on the (1-y) term — returned ~+0.017 on the
+      analysis_exactness fixture input.
+      Now (post-fix): MATLAB returns the proper log-likelihood (−190.679 on
+      the same fixture input). Exact formula TBD — needs investigation of the
+      upstream commit.
+    correct_behavior: |
+      Match new MATLAB. Investigate the exact formula in upstream's resolving commit.
+      The intermediate value Python computes as `stats[0]["loglik"]` (−148.67)
+      does NOT match the new MATLAB value, so a simple swap is insufficient.
+    python_implementation:
+      - "`nstat/analysis.py:669` (current legacy formula, returns +0.017)"
+      - "`nstat/analysis.py:673` (correct Bernoulli per-bin, returns −148.67 — also doesn't match new MATLAB)"
+    fixture_impact: |
+      `analysis_exactness.mat` and `analysis_multineuron_exactness.mat`
+      refreshed in iter 44; logLL/summarylogLL fields now hold the new
+      MATLAB value. Python gold-fixture tests `test_analysis_fit_surface_*`
+      and `test_analysis_multineuron_surface_*` currently FAIL until iter 47
+      updates Python.
+    discovered: "iter 44 / 2026-06-19"
+    upstream_issue: "cajigaslab/nSTAT#TBD (logLL fix issue not in #78-#86 list — may be one of the existing 9 or a new upstream-driven change)"
+    upstream_status: "adopted-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "to be resolved in iter 47"
+    notes: |
+      Iter 47 must: (1) check upstream commit log for the exact new
+      log-likelihood formula MATLAB now uses, (2) port to Python, (3) refresh
+      test tolerances if needed, (4) decide whether to keep matlab_logLL field
+      in stats[] dict for back-compat.
+
+  - id: matlab-scalar-write-convention
+    title: "MATLAB now writes scalar struct fields as 1×1 instead of empty 0×0 / 1×0"
+    defect_class: "Stability (cosmetic)"
+    matlab_location: "TrialConfig.save / nstColl.save / CovColl.save / Events.save (post-2026-06-19)"
+    matlab_behavior: |
+      Historic: empty string fields written as 0×0, single-element arrays as
+      1×0 vectors, etc. Python `.mat` loaders had to special-case these shapes.
+      Now: all scalar/string fields written as proper 1×1 arrays.
+    correct_behavior: |
+      Python `.mat` loaders should be shape-agnostic — accept both old and new
+      MATLAB conventions transparently.
+    python_implementation:
+      - "`tests/test_matlab_gold_fixtures.py:_load_fixture` and per-test shape assertions"
+    fixture_impact: |
+      `config_exactness.mat`, `covcoll_exactness.mat`, `nstcoll_exactness.mat`
+      refreshed in iter 44. `test_trialconfig_and_configcoll_*` currently FAILS
+      until iter 47 makes loaders shape-agnostic.
+    discovered: "iter 44 / 2026-06-19"
+    upstream_status: "convention-change-upstream"
+    resolved_in: "cajigaslab/nSTAT@main (post-2026-06-19)"
+    resolved_iter: "to be resolved in iter 47"
 
 checklist: |
   ## Reviewer checklist for parity-affecting PRs

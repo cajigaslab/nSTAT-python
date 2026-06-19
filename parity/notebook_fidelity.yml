@@ -118,7 +118,7 @@ items:
     follow the MATLAB helpfile closely; exact traces still depend on stochastic simulation
     draws and Python plotting defaults.
   python_sections: 4
-  python_expected_figures: 5
+  python_expected_figures: 7
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -129,7 +129,7 @@ items:
   matlab_sections: 4
   matlab_published_figures: 5
   section_delta: 0
-  figure_delta: 0
+  figure_delta: 2
 - topic: DecodingExampleWithHist
   source_matlab: DecodingExampleWithHist.mlx
   python_notebook: notebooks/DecodingExampleWithHist.ipynb
@@ -175,10 +175,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 6
-  matlab_published_figures: 9
-  section_delta: 1
-  figure_delta: 1
+  matlab_sections: 7
+  matlab_published_figures: 3
+  section_delta: 0
+  figure_delta: 7
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
   python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
@@ -228,10 +228,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 6
-  matlab_published_figures: 3
-  section_delta: 0
-  figure_delta: 0
+  matlab_sections: 7
+  matlab_published_figures: 4
+  section_delta: -1
+  figure_delta: -1
 - topic: PPSimExample
   source_matlab: PPSimExample.mlx
   python_notebook: notebooks/PPSimExample.ipynb
@@ -252,10 +252,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 9
-  matlab_published_figures: 8
-  section_delta: 0
-  figure_delta: -4
+  matlab_sections: 10
+  matlab_published_figures: 9
+  section_delta: -1
+  figure_delta: -5
 - topic: NetworkTutorial
   source_matlab: NetworkTutorial.mlx
   python_notebook: notebooks/NetworkTutorial.ipynb
@@ -276,10 +276,10 @@ items:
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
   matlab_repo_root: /Users/iahncajigas/projects/nSTAT
-  matlab_sections: 10
-  matlab_published_figures: 13
-  section_delta: 0
-  figure_delta: -8
+  matlab_sections: 14
+  matlab_published_figures: 14
+  section_delta: -4
+  figure_delta: -9
 - topic: ValidationDataSet
   source_matlab: ValidationDataSet.mlx
   python_notebook: notebooks/ValidationDataSet.ipynb
@@ -319,7 +319,7 @@ items:
     still vary modestly because Python's symbolic/numeric stack and random streams
     are not byte-identical to MATLAB.
   python_sections: 4
-  python_expected_figures: 5
+  python_expected_figures: 6
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -330,4 +330,4 @@ items:
   matlab_sections: 4
   matlab_published_figures: 4
   section_delta: 0
-  figure_delta: 1
+  figure_delta: 2
