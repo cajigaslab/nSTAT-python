@@ -167,7 +167,7 @@ items:
     and coefficient values still vary modestly from MATLAB because the Python GLM
     backend and plotting defaults are different.
   python_sections: 7
-  python_expected_figures: 9
+  python_expected_figures: 10
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -178,7 +178,7 @@ items:
   matlab_sections: 6
   matlab_published_figures: 9
   section_delta: 1
-  figure_delta: 0
+  figure_delta: 1
 - topic: HippocampalPlaceCellExample
   source_matlab: HippocampalPlaceCellExample.mlx
   python_notebook: notebooks/HippocampalPlaceCellExample.ipynb
@@ -319,7 +319,7 @@ items:
     still vary modestly because Python's symbolic/numeric stack and random streams
     are not byte-identical to MATLAB.
   python_sections: 4
-  python_expected_figures: 6
+  python_expected_figures: 5
   python_uses_figure_tracker: true
   python_has_finalize_call: true
   python_placeholder_cells: 0
@@ -330,4 +330,4 @@ items:
   matlab_sections: 4
   matlab_published_figures: 4
   section_delta: 0
-  figure_delta: 2
+  figure_delta: 1

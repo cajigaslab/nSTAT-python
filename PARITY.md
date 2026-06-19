@@ -456,7 +456,49 @@ panels that do render.
   `AGENT_GUIDE.md` §0 across all four levels (numerical, content,
   appearance, structure).
 
-**v1 + v2 + v3 + v4 + v5 + v6 + v7 — 33 iterations total**
+**v8 (iters 34–38) — 2026-06-19**
+
+v8 closed the convergence gaps with explicit per-iteration exit criteria.
+
+- **PPLFP EM machinery completed** (~2650 MATLAB lines → Python):
+  full E-step / M-step / parameter standard errors / EM driver,
+  with 4 MATLAB-captured gold fixtures
+  (`PPLFP_EStep`, `PPLFP_MStep`,
+  `PPLFP_ComputeParamStandardErrors`, `PPLFP_EM`). All four
+  enter `numerical_drift.py` and pass; one entry sits at
+  rtol=1.3e-4 within the documented Case-C tolerance.
+- **Class-method parity: 14/16 classes at 100%** (was 10/16 at
+  v7 end). The 2 remaining (`SignalObj` 98%, `Covariate` 93.75%)
+  carry minor signature deltas that don't affect call sites.
+- **Code-structure parity: 23/23 topics ≥85%** (was 22/23 at v7
+  end), mean above 96%. `nSTATPaperExamples` reached 98.4%; the
+  ≤2 unmatched calls are MATLAB-only display idioms covered by
+  `code_structure_exemptions.yml`.
+- **Holistic verdicts: 6/10 matches** (was 5/10). The
+  +1 was earned by surgical promotion in iter 37; targeted ≥7,
+  short by one.
+- **4 remaining minor topics** (documented as accepted
+  divergence in `parity/matlab_pedagogical_gaps.yml`):
+  - `StimulusDecode2D` — Python row 3 differs from MATLAB row 3
+    (composite ordering, layout-only).
+  - `PPThinning` — blank ISI panel persists (MATLAB renders
+    empty panel; Python preserves slot, intentional fidelity).
+  - `ExplicitStimulusWhiskerData` — varying-richness Python
+    figures vs MATLAB single panel.
+  - `DecodingExample` — Python ships 7 figures vs MATLAB's 5
+    (Python adds 2 intermediate-step figures for pedagogy).
+- **Helper coverage: 42.9%** (15/35 notebooks); unchanged from
+  v7 — additional sweeps did not yield bit-equivalent migrations.
+- **Tests + drift + gold all passing**: 200 tests pass; 14/14
+  numerical drift entries within tolerance.
+- **Maintenance runbook** added at `docs/parity/runbook.md` —
+  pointers for ongoing drift surveillance, ledger discipline,
+  and when to add a defect entry. Subsequent PRs touching
+  `nstat/*.py`, `notebooks/*.ipynb`, or `tools/parity/*.py`
+  should follow that runbook rather than re-derive process from
+  this section.
+
+**v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 — 38 iterations total**
 
 - v1–v3 (iters 1–15): figure-count parity, SSIM bootstrap,
   expansion, threshold tightening.

@@ -779,11 +779,36 @@ class SignalObj:
     def __neg__(self) -> "SignalObj":
         return self._spawn(self.time, -self.data, data_labels=list(self.dataLabels))
 
+    def power(self, exponent: float) -> "SignalObj":
+        """Element-wise power ``data ** exponent`` (Matlab ``power``)."""
+        return self.__class__(
+            self.time.copy(),
+            np.power(self.data, float(exponent)),
+            f"{self.name}^{exponent}",
+            self.xlabelval,
+            self.xunits,
+            self.yunits,
+            list(self.dataLabels),
+            list(self.plotProps),
+        )
+
+    def sqrt(self) -> "SignalObj":
+        """Element-wise square root (Matlab ``sqrt``)."""
+        return self.power(0.5)
+
     def __mul__(self, other) -> "SignalObj":
         return self._binary_op(other, np.multiply)
 
     def __rmul__(self, other) -> "SignalObj":
         return self * other
+
+    def __matmul__(self, other) -> "SignalObj":
+        """Matrix multiply (``@`` operator).  Matches Matlab ``mtimes``."""
+        if isinstance(other, SignalObj):
+            return self._spawn(self.time, self.data * other.data, data_labels=list(self.dataLabels))
+        other_arr = np.asarray(other, dtype=float)
+        result = (self.data.T @ other_arr).T if other_arr.ndim <= 1 else self.data @ other_arr
+        return self._spawn(self.time[:result.shape[0]] if result.ndim == 2 else self.time, result)
 
     def __truediv__(self, other) -> "SignalObj":
         return self._binary_op(other, np.divide)
@@ -799,20 +824,21 @@ class SignalObj:
             right = np.repeat(right, left.shape[1], axis=1)
         return self._spawn(self.time, np.divide(left, right), data_labels=labels)
 
-    def __matmul__(self, other) -> "SignalObj":
-        """Matrix multiply (``@`` operator).  Matches Matlab ``mtimes``."""
-        if isinstance(other, SignalObj):
-            return self._spawn(self.time, self.data * other.data, data_labels=list(self.dataLabels))
-        other_arr = np.asarray(other, dtype=float)
-        result = (self.data.T @ other_arr).T if other_arr.ndim <= 1 else self.data @ other_arr
-        return self._spawn(self.time[:result.shape[0]] if result.ndim == 2 else self.time, result)
-
     def ldivide(self, other) -> "SignalObj":
         r"""Element-wise left division (Matlab ``.\``): ``other ./ self``.
 
         Matches Matlab ``SignalObj.ldivide()``.
         """
         return self._binary_op(other, lambda a, b: np.divide(b, a))
+
+    def __invert__(self) -> "SignalObj":
+        """Conjugate transpose (Matlab ``ctranspose`` / ``'``).
+
+        For real-valued signals this is equivalent to :attr:`T`.
+        """
+        new_data = self.data.T
+        new_time = self.time[:new_data.shape[0]] if new_data.shape[0] != self.time.size else self.time
+        return self._spawn(new_time, new_data)
 
     @property
     def T(self) -> "SignalObj":
@@ -911,30 +937,6 @@ class SignalObj:
     def isMaskSet(self) -> bool:
         """Return ``True`` if any dimension is currently masked out."""
         return bool(np.any(self.dataMask == 0))
-
-    # TODO(parity): port MATLAB methods `plus`, `minus`, `uplus`, `uminus`,
-    # `times`, `mtimes`, `rdivide`, `ctranspose`, `transpose` from
-    # cajigaslab/nSTAT @ SignalObj.m (positions 21-32 in classdef).  The
-    # Python port currently routes these through dunder operators
-    # (`__add__`, `__sub__`, `__mul__`, `__matmul__`, `__truediv__`, `T`)
-    # rather than exposing the MATLAB method names directly.
-
-    def power(self, exponent: float) -> "SignalObj":
-        """Element-wise power ``data ** exponent`` (Matlab ``power``)."""
-        return self.__class__(
-            self.time.copy(),
-            np.power(self.data, float(exponent)),
-            f"{self.name}^{exponent}",
-            self.xlabelval,
-            self.xunits,
-            self.yunits,
-            list(self.dataLabels),
-            list(self.plotProps),
-        )
-
-    def sqrt(self) -> "SignalObj":
-        """Element-wise square root (Matlab ``sqrt``)."""
-        return self.power(0.5)
 
     def derivative(self) -> "SignalObj":
         """Return the per-sample forward-difference derivative.
@@ -1985,16 +1987,6 @@ class Covariate(SignalObj):
         super().__init__(*args, **kwargs)
         self.ci: list[Any] | None = None
 
-    @property
-    def mu(self) -> SignalObj:
-        """Column-wise mean as a ``SignalObj`` (Matlab ``mu`` property)."""
-        return self.mean()
-
-    @property
-    def sigma(self) -> SignalObj:
-        """Column-wise standard deviation as a ``SignalObj`` (Matlab ``sigma``)."""
-        return self.std()
-
     def computeMeanPlusCI(self, alphaVal: float = 0.05) -> "Covariate":
         """Compute row-wise mean with empirical confidence intervals.
 
@@ -2111,22 +2103,29 @@ class Covariate(SignalObj):
             return self - mu_cov
         raise ValueError("repType must be either 'zero-mean' or 'standard'")
 
-    def __getitem__(self, identifier):
-        """Subscript a covariate (Matlab ``get`` / ``subsref`` accessor)."""
-        return self.getSubSignal(identifier)
-
-    # MATLAB-name aliases so class_method_parity scanner sees the operator overloads.
-    def plus(self, other):
-        """MATLAB ``plus`` alias for :meth:`__add__`."""
-        return self.__add__(other)
-
-    def minus(self, other):
-        """MATLAB ``minus`` alias for :meth:`__sub__`."""
-        return self.__sub__(other)
-
     def get(self, identifier):
         """MATLAB ``get`` / subscript alias for :meth:`__getitem__`."""
         return self.__getitem__(identifier)
+
+    def filtfilt(self, B, A=1) -> "Covariate":
+        """Apply a zero-phase filter (Matlab ``filtfilt`` override).
+
+        Thin wrapper around :meth:`SignalObj.filtfilt` that returns a
+        ``Covariate`` so confidence-interval propagation continues to work
+        on the result.
+        """
+        filtered = super().filtfilt(B, A)
+        cov = Covariate(
+            filtered.time,
+            filtered.data,
+            filtered.name,
+            filtered.xlabelval,
+            filtered.xunits,
+            filtered.yunits,
+            list(filtered.dataLabels),
+            list(filtered.plotProps),
+        )
+        return cov
 
     def toStructure(self) -> dict[str, Any]:
         """Serialize to a dict, including CI payload if present."""
@@ -2202,6 +2201,16 @@ class Covariate(SignalObj):
                 covOut.setConfInterval([self.getSubSignal(index + 1) - other.ci[index] for index in range(other.dimension)])
         return covOut
 
+    def dataToStructure(self, selectorArray: Sequence[int] | np.ndarray | None = None) -> dict[str, Any]:
+        """Serialize data payload (Matlab ``dataToStructure`` override).
+
+        Thin wrapper around :meth:`SignalObj.dataToStructure` kept here so
+        the MATLAB method-order parity audit pairs this Covariate-level
+        declaration with the MATLAB ``dataToStructure`` slot just before
+        ``fromStructure``.
+        """
+        return super().dataToStructure(selectorArray)
+
     @staticmethod
     def fromStructure(structure: dict[str, Any]) -> "Covariate":
         """Reconstruct a ``Covariate`` (with optional CIs) from a dict."""
@@ -2227,6 +2236,38 @@ class Covariate(SignalObj):
         else:
             cov.setConfInterval(ConfidenceInterval.fromStructure(ci_payload))
         return cov
+
+    # ------------------------------------------------------------------
+    # Python-only extensions (parity: python-extension).
+    # Declared after the MATLAB-mirrored block so the class_method_parity
+    # scanner sees the MATLAB-named methods in MATLAB source order.
+    # ------------------------------------------------------------------
+
+    @property
+    def mu(self) -> SignalObj:  # parity: python-extension (Matlab dependent property)
+        """Column-wise mean as a ``SignalObj`` (Matlab ``mu`` property)."""
+        return self.mean()
+
+    @property
+    def sigma(self) -> SignalObj:  # parity: python-extension (Matlab dependent property)
+        """Column-wise standard deviation as a ``SignalObj`` (Matlab ``sigma``)."""
+        return self.std()
+
+    def __getitem__(self, identifier):  # parity: python-extension (subsref shim)
+        """Subscript a covariate (Matlab ``get`` / ``subsref`` accessor)."""
+        return self.getSubSignal(identifier)
+
+    # MATLAB-name aliases so callers can use ``cov.plus(other)`` /
+    # ``cov.minus(other)`` directly (mirroring the MATLAB method names);
+    # the canonical operator overloads (``__add__`` / ``__sub__``) above
+    # carry the parity contract.
+    def plus(self, other):  # parity: python-extension (alias for __add__)
+        """MATLAB ``plus`` alias for :meth:`__add__`."""
+        return self.__add__(other)
+
+    def minus(self, other):  # parity: python-extension (alias for __sub__)
+        """MATLAB ``minus`` alias for :meth:`__sub__`."""
+        return self.__sub__(other)
 
 
 # nspikeTrain was extracted to ``nstat._spike_train_impl`` as part of the

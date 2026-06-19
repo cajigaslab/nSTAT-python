@@ -309,6 +309,235 @@ def _recipe_ppdecode_updatelinear(fixture: dict[str, Any], _args: dict[str, Any]
     return _as_float_array(x_u), _vector(fixture, "x_u")
 
 
+def _pplfp_hkall_3d(fixture: dict[str, Any], num_steps: int, num_cells: int) -> np.ndarray:
+    """Coerce the fixture HkAll (typically (K, numCells)) into 3D (K, 1, C)."""
+    hk = _as_float_array(fixture["HkAll"])
+    if hk.ndim == 2 and hk.shape == (num_steps, num_cells):
+        return hk.reshape(num_steps, 1, num_cells)
+    if hk.ndim == 2 and hk.shape == (num_cells, num_steps):
+        return hk.T.reshape(num_steps, 1, num_cells)
+    if hk.ndim == 3:
+        return hk
+    # Fallback: zero history.
+    return np.zeros((num_steps, 1, num_cells), dtype=float)
+
+
+def _recipe_pplfp_estep(fixture: dict[str, Any], _args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
+    """PPLFP_EStep — compare smoothed state mean ``x_K``."""
+    from nstat.decoding.PPLFP import PPLFP
+
+    dN = _as_float_array(fixture["dN"])
+    num_cells, K = dN.shape if dN.ndim == 2 else (1, dN.size)
+    HkAll = _pplfp_hkall_3d(fixture, K, num_cells)
+    gamma_vec = _vector(fixture, "gamma")
+    # If gamma is all-zero, the MATLAB capture didn't fit a history term;
+    # collapse to scalar 0 + zero HkAll so the per-cell broadcast in the
+    # link evaluation lines up (gamma.size==1 triggers the tile branch).
+    if gamma_vec.size > 1 and float(np.max(np.abs(gamma_vec))) == 0.0:
+        gamma_vec = np.array(0.0)
+        HkAll = np.zeros((K, 1, num_cells), dtype=float)
+
+    x_K, W_K, logll, sums = PPLFP.PPLFP_EStep(
+        _as_float_array(fixture["A"]),
+        _as_float_array(fixture["Q"]),
+        _as_float_array(fixture["C"]),
+        _as_float_array(fixture["R"]),
+        _as_float_array(fixture["y"]),
+        _vector(fixture, "alpha"),
+        dN,
+        _vector(fixture, "mu"),
+        _as_float_array(fixture["beta"]),
+        fitType=_string(fixture, "fitType"),
+        delta=_scalar(fixture, "delta"),
+        gamma=gamma_vec,
+        HkAll=HkAll,
+        x0=_vector(fixture, "x0"),
+        Px0=_as_float_array(fixture["Px0"]),
+    )
+    return _as_float_array(x_K), _as_float_array(fixture["x_K"])
+
+
+def _recipe_pplfp_mstep(fixture: dict[str, Any], _args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
+    """PPLFP_MStep — compare updated ``betahat_new``.
+
+    The MStep fixture ships only filter/smoother outputs (x_K, W_K) and
+    inputs (A, Q, C, R, y, dN, ...) — not the expectation sufficient
+    statistics. We reconstitute them by calling PPLFP_EStep first, then
+    pass the resulting ExpectationSums dict to PPLFP_MStep. This mirrors
+    how MATLAB's capture script chained the two calls.
+    """
+    from nstat.decoding.PPLFP import PPLFP
+
+    dN_arr = _as_float_array(fixture["dN"])
+    num_cells, K = dN_arr.shape if dN_arr.ndim == 2 else (1, dN_arr.size)
+    HkAll = _pplfp_hkall_3d(fixture, K, num_cells)
+    gamma_vec = _vector(fixture, "gamma")
+    if gamma_vec.size > 1 and float(np.max(np.abs(gamma_vec))) == 0.0:
+        gamma_vec = np.array(0.0)
+        HkAll = np.zeros((K, 1, num_cells), dtype=float)
+
+    # Compute sufficient stats via PPLFP_EStep using the same input params
+    # the MStep fixture was captured with.
+    _x_K, _W_K, _ll, es = PPLFP.PPLFP_EStep(
+        _as_float_array(fixture["A"]),
+        _as_float_array(fixture["Q"]),
+        _as_float_array(fixture["C"]),
+        _as_float_array(fixture["R"]),
+        _as_float_array(fixture["y"]),
+        _vector(fixture, "alpha"),
+        dN_arr,
+        _vector(fixture, "mu"),
+        _as_float_array(fixture["beta"]),
+        fitType=_string(fixture, "fitType"),
+        delta=_scalar(fixture, "delta"),
+        gamma=gamma_vec,
+        HkAll=HkAll,
+        x0=_vector(fixture, "x0"),
+        Px0=_as_float_array(fixture["Px0"]),
+    )
+
+    x_K = _as_float_array(fixture["x_K"])
+    if x_K.ndim == 1:
+        x_K = x_K.reshape(1, -1)
+
+    W_K = _as_float_array(fixture["W_K"])
+    # NewtonRaphson branch avoids the GLM Analysis machinery which fails on
+    # this fixture's 2-cell synthetic trial due to a pre-existing
+    # FitResSummary.getCoeffs() inhomogeneous-shape bug in PPLFP_MStep's
+    # GLM path (see matlab_defects.yml entry pplfp-mstep-fixture-missing).
+    # The Newton-Raphson branch is the same MATLAB code path used to
+    # capture the baseline.
+    result = PPLFP.PPLFP_MStep(
+        dN_arr,
+        _as_float_array(fixture["y"]),
+        x_K,
+        W_K,
+        _vector(fixture, "x0"),
+        _as_float_array(fixture["Px0"]),
+        es,
+        _string(fixture, "fitType"),
+        _vector(fixture, "mu"),
+        _as_float_array(fixture["beta"]),
+        gamma_vec,
+        None,  # windowTimes
+        HkAll,
+        MstepMethod="NewtonRaphson",
+    )
+    # Return order: Ahat, Qhat, Chat, Rhat, alphahat,
+    #               muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
+    betahat_new = _as_float_array(result[6])
+    baseline = _as_float_array(fixture["betahat_new"])
+    return betahat_new, baseline
+
+
+def _recipe_pplfp_em(fixture: dict[str, Any], _args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
+    """PPLFP_EM — compare final smoothed state ``xKFinal``."""
+    from nstat.decoding.PPLFP import PPLFP
+
+    # NewtonRaphson branch — see PPLFP_MStep recipe for rationale.
+    # Constraints: hold x0 / Px0 fixed during EM to avoid Px0 driving
+    # singular after a few iterations (pre-existing driver issue tracked
+    # in matlab_defects.yml entry pplfp-em-pending-fixture). With these
+    # constraints, EM converges in <10 iters on the 30-step fixture.
+    constraints = PPLFP.PPLFP_EMCreateConstraints(
+        EstimateA=1, AhatDiag=0, QhatDiag=1, RhatDiag=1,
+        Estimatex0=0, EstimatePx0=0, mcIter=int(fixture.get("mcIter", 50)),
+    )
+    out = PPLFP.PPLFP_EM(
+        _as_float_array(fixture["y"]),
+        _as_float_array(fixture["dN"]),
+        _as_float_array(fixture["Ahat0"]),
+        _as_float_array(fixture["Qhat0"]),
+        _as_float_array(fixture["Chat0"]),
+        _as_float_array(fixture["Rhat0"]),
+        _vector(fixture, "alphahat0"),
+        _vector(fixture, "mu"),
+        _as_float_array(fixture["beta"]),
+        fitType=_string(fixture, "fitType"),
+        delta=_scalar(fixture, "delta"),
+        x0=_vector(fixture, "x0"),
+        Px0=_as_float_array(fixture["Px0"]),
+        PPLFP_EM_Constraints=constraints,
+        MstepMethod="NewtonRaphson",
+    )
+    xKFinal = out[0]
+    return _as_float_array(xKFinal), _as_float_array(fixture["xKFinal"])
+
+
+def _recipe_pplfp_se_alpha(fixture: dict[str, Any], _args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
+    """PPLFP_ComputeParamStandardErrors — compare deterministic ``SE.alpha``.
+
+    All other SE entries depend on Monte-Carlo paths whose RNG stream
+    differs from MATLAB ``normrnd``; see ``parity/matlab_defects.yml``
+    entry ``pplfp-se-mc-drift`` (Case C).
+    """
+    from nstat.decoding.PPLFP import PPLFP
+
+    # Reconstitute ExpectationSums dict from whatever sufficient stats
+    # the fixture ships; fall back to deriving from xKFinal / y.
+    xKFinal = _as_float_array(fixture["xKFinal"])
+    if xKFinal.ndim == 1:
+        xKFinal = xKFinal.reshape(1, -1)
+    y = _as_float_array(fixture["y"])
+    if y.ndim == 1:
+        y = y.reshape(1, -1)
+    es = {}
+    for key in (
+        "Sxkm1xkm1", "Sxkm1xk", "Sxkxkm1", "Sxkxk", "Sxkyk", "Sykyk",
+        "sumXkTerms", "sumYkTerms", "Sx0", "Sx0x0",
+    ):
+        if key in fixture:
+            es[key] = _as_float_array(fixture[key])
+    if "Sxkm1xkm1" not in es:
+        es["Sxkm1xkm1"] = xKFinal[:, :-1] @ xKFinal[:, :-1].T
+    if "Sxkxk" not in es:
+        es["Sxkxk"] = xKFinal @ xKFinal.T
+    if "Sxkxkm1" not in es:
+        es["Sxkxkm1"] = xKFinal[:, 1:] @ xKFinal[:, :-1].T
+    if "Sxkm1xk" not in es:
+        es["Sxkm1xk"] = es["Sxkxkm1"].T
+    if "Sxkyk" not in es:
+        es["Sxkyk"] = xKFinal @ y.T
+    if "Sykyk" not in es:
+        es["Sykyk"] = y @ y.T
+    if "sumXkTerms" not in es:
+        es["sumXkTerms"] = es["Sxkxk"]
+    if "sumYkTerms" not in es:
+        es["sumYkTerms"] = es["Sykyk"]
+    if "Sx0" not in es:
+        es["Sx0"] = xKFinal[:, 0]
+    if "Sx0x0" not in es:
+        es["Sx0x0"] = np.outer(es["Sx0"], es["Sx0"])
+
+    dN_arr = _as_float_array(fixture["dN"])
+    num_cells, K = dN_arr.shape if dN_arr.ndim == 2 else (1, dN_arr.size)
+    HkAll = _pplfp_hkall_3d(fixture, K, num_cells)
+    SE, Pvals, nTerms = PPLFP.PPLFP_ComputeParamStandardErrors(
+        y,
+        dN_arr,
+        xKFinal,
+        _as_float_array(fixture["WKFinal"]),
+        _as_float_array(fixture["Ahat"]),
+        _as_float_array(fixture["Qhat"]),
+        _as_float_array(fixture["Chat"]),
+        _as_float_array(fixture["Rhat"]),
+        _vector(fixture, "alphahat"),
+        _vector(fixture, "x0hat"),
+        _as_float_array(fixture["Px0hat"]),
+        es,
+        _string(fixture, "fitType"),
+        _vector(fixture, "muhat_new"),
+        _as_float_array(fixture["betahat_new"]),
+        _vector(fixture, "gammahat_new"),
+        None,  # windowTimes
+        HkAll,
+    )
+    se_alpha_py = _as_float_array(SE["alpha"]).reshape(-1)
+    se_struct = fixture["SE"]
+    se_alpha_ml = _as_float_array(getattr(se_struct, "alpha")).reshape(-1)
+    return se_alpha_py, se_alpha_ml
+
+
 RECIPES: dict[str, Callable[[dict[str, Any], dict[str, Any]], tuple[np.ndarray, np.ndarray]]] = {
     "fit_poisson_glm_coeffs": _recipe_fit_poisson_glm,
     "fit_summary_logll": _recipe_fit_summary_logll,
@@ -320,6 +549,10 @@ RECIPES: dict[str, Callable[[dict[str, Any], dict[str, Any]], tuple[np.ndarray, 
     "simulate_point_process_rate": _recipe_simulate_point_process,
     "kalman_filter_state": _recipe_kalman_filter,
     "ppdecode_updatelinear_xu": _recipe_ppdecode_updatelinear,
+    "pplfp_estep": _recipe_pplfp_estep,
+    "pplfp_mstep": _recipe_pplfp_mstep,
+    "pplfp_em": _recipe_pplfp_em,
+    "pplfp_se_alpha": _recipe_pplfp_se_alpha,
 }
 
 

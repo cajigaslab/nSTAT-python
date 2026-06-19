@@ -27,7 +27,7 @@ import numpy as np
 from scipy.stats import chi2, norm
 
 from .SignalObj import SignalObj
-from .fit import FitResult, _SingleFit, _matlab_compute_ks_arrays
+from .fit import FitResult, _SingleFit, _ksdiscrete, _matlab_compute_ks_arrays
 from .glm import fit_binomial_glm, fit_poisson_glm
 from .signal import Covariate
 from .trial import ConfigCollection, SpikeTrainCollection, Trial
@@ -898,9 +898,44 @@ class Analysis:
         nspikeObj = Analysis._collapse_spike_input(nspikeObj)
         return _matlab_compute_ks_arrays(nspikeObj, lambdaInput, dt_correction=DTCorrection, random_values=random_values)
 
-    # TODO(parity): port MATLAB method ksdiscrete from cajigaslab/nSTAT@2d86602
-    # (Analysis.m static method; thin wrapper around file-local ksdiscrete
-    #  used by computeKSStats for discrete-time KS correction).
+    @staticmethod
+    def ksdiscrete(pk, st, spikeflag: str, *, random_values=None):
+        """Thin static wrapper around the file-local ``ksdiscrete`` helper.
+
+        Mirrors the MATLAB ``Analysis.ksdiscrete`` static method (see
+        ``Analysis.m``), which exposes the file-local discrete-time
+        time-rescaling helper for unit testing.  Production code calls
+        the same helper via :meth:`computeKSStats`; both routes share
+        the same implementation.
+
+        Parameters
+        ----------
+        pk : array_like
+            Discrete-time conditional probabilities (each value in [0, 1]).
+        st : array_like
+            Spike train (binary vector) or spike-index vector, selected by
+            *spikeflag*.
+        spikeflag : {'spiketrain', 'spikeind'}
+            Interpret *st* as a binary spike train or as spike indices.
+        random_values : array_like, optional
+            Uniform random draws used by the discrete-time rescaling.
+            When ``None`` the routine draws its own with
+            :func:`numpy.random.random_sample`.
+
+        Returns
+        -------
+        rst, rstsort, xks, cb, rstoldsort : tuple of numpy.ndarray
+            Same five outputs as the MATLAB function: unsorted rescaled
+            times, sorted rescaled times, x-axis values for the KS plot,
+            the 95% confidence-bound scalar, and sorted rescaled times
+            without the discrete-time correction.
+
+        References
+        ----------
+        Haslinger, Pipa & Brown (2010), discrete-time time-rescaling
+        correction.
+        """
+        return _ksdiscrete(pk, st, spikeflag, random_values=random_values)
 
     @staticmethod
     def computeFitResidual(nspikeObj, lambdaInput: Covariate, windowSize: float = 0.01):
