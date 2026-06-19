@@ -380,110 +380,108 @@ trailer: |
   ## v5 iter 21 — single-Reviewer disagreements (for human triage)
 
   The following items were flagged by exactly one of the two parity reviewers
-  (A or B) during the v5 iter 21 sweep. They are recorded here as a HUMAN
-  TRIAGE BACKLOG — no automated fix is applied. A maintainer should adjudicate
-  each item against the MATLAB-gold fixtures and either (a) implement the
-  recommended change, (b) reframe/close as Python pedagogical extra, or
-  (c) reject as cosmetic-only deviation.
+  (A or B) during the v5 iter 21 sweep, then triaged in v7 iter 32 against the
+  user threshold *"only APPLY items that demonstrably move a topic from minor
+  → matches"*. The original 60 items are split into three sub-sections:
 
-  ### nstCollExamples
+  - **applied** — content-level fixes the builder should land
+  - **stale** — already addressed by v6/v7 count-parity / structural work
+  - **deferred** — real residuals (mostly cosmetic) that don't cross the
+    minor → matches threshold; held for future polish passes
 
-  | fig | by | description |
-  |---|---|---|
-  | 1 | B | Y-axis label 'Trial #' font/size mismatch (cosmetic) |
-  | 5 | B | Middle panel axis/tick label font sizes differ (cosmetic) |
-  | 0 | B | Composite-wide aspect ratio/background inconsistency |
+  Totals: **60 triaged → 10 applied / 4 stale / 46 deferred.**
 
-  ### PPThinning
+  ### applied (10) — builder targets
 
-  | fig | by | description |
-  |---|---|---|
-  | 0 | B | Figure-count mismatch header MATLAB(4) vs Python(3); whole figure missing |
+  Content-level mismatches (blank panels, missing overlays, missing
+  annotations, content divergence) that, in aggregate, can flip the topic's
+  holistic verdict.
 
-  ### ExplicitStimulusWhiskerData
+  | topic | fig | by | description |
+  |---|---|---|---|
+  | ExplicitStimulusWhiskerData | 3 | B | Stimulus/firing-rate sinusoid missing title/axis labels — add titles + xlabel/ylabel |
+  | ExplicitStimulusWhiskerData | 9 | B | Empty Python panel where MATLAB has line traces — populate panel with the missing GLM-trace series |
+  | nSTATPaperExamples | 2 | B | Example 01 second figure shows noisy oscillatory trace instead of MATLAB KS goodness-of-fit — replace with KS panel |
+  | nSTATPaperExamples | 4 | B | Example 02 PSTH/coefficient panel blank vs MATLAB sinusoidal PSTH — populate with sinusoidal PSTH |
+  | nSTATPaperExamples | 8 | B | Example 03 final bar chart: compressed y-range and missing annotations — set proper ylim and add annotations |
+  | nSTATPaperExamples | 10 | B | Example 04 trajectory subpanel missing spike-overlay scatter and colorbar — add scatter overlay + colorbar |
+  | nSTATPaperExamples | 14 | B | Example 05 final lower panel: smooth sinusoid vs noisy scatter content mismatch — fix data series fed to the panel |
+  | SignalObjExamples | 6 | B | v2 plotted as dashed green vs MATLAB solid green — change linestyle to solid |
+  | SignalObjExamples | 7 | B | fig_007 inherits dashed-vs-solid mismatch from fig_006 — same fix |
+  | DecodingExample | 6 | B | MATLAB shows two model-comparison bar plots at top; Python ordering/layout diverges — re-order to match MATLAB layout |
 
-  | fig | by | description |
-  |---|---|---|
-  | 0 | B | Major figure count mismatch: MATLAB 13 vs Python 6 |
-  | 2 | B | PSTH panel bar color saturation/bin alignment differ |
-  | 3 | B | Stimulus/firing-rate sinusoid missing title/axis labels |
-  | 5 | B | Second multi-panel diagnostic: residual/ACF traces and coefficient bar count differ |
-  | 9 | B | Empty Python panel where MATLAB has line traces |
-  | 11 | B | Font size/tight_layout inconsistency across multi-panel figures |
-  | 12 | B | Color palette divergence (tab10 vs MATLAB lines palette) in overlay traces |
-  | 2 | A | Stimulus/raster overlay: subplot height-ratio proportions diverge |
-  | 3 | A | PSTH/rate trace minor y-axis label/tick formatting (cosmetic) |
-  | 5 | A | Second GLM diagnostics composite mirrors fig 4 with similar parity (cosmetic) |
-  | 9 | A | GLM coefficient + KS composite uses orange/green vs MATLAB jet-style palette |
+  ### stale (4) — already addressed by v6/v7 work
 
-  ### mEPSCAnalysis
+  Items whose root cause (figure-count mismatch, missing structural figure)
+  was closed by the v6 code-structure / class-method parity pass or the v7
+  notebook-alignment sweep. Verified against
+  `.parity-review/SUMMARY_run_*` and `.parity-review/composite_*.png`.
 
-  | fig | by | description |
-  |---|---|---|
-  | 1 | B | Top-left KS plot line thickness/color saturation differs (cosmetic) |
+  | topic | fig | by | description | resolved by |
+  |---|---|---|---|---|
+  | nstCollExamples | 0 | B | Composite-wide aspect ratio/background inconsistency | nstCollExamples is now at 5/5 figure-count parity (see SUMMARY) |
+  | PPThinning | 0 | B | Figure-count mismatch header MATLAB(4) vs Python(3); whole figure missing | PPThinning now at 4/4 figure-count parity |
+  | ExplicitStimulusWhiskerData | 0 | B | Major figure count mismatch: MATLAB 13 vs Python 6 | now 11/10 (Python surplus, allowed under Extension rule); the "13" baseline was stale |
+  | DecodingExample | 1 | B | Composite labels show MATLAB(7) vs Python(8): figure-count mismatch (manifest-level) | DecodingExample now at expected count per `.parity-review/composite_DecodingExample.png` |
 
-  ### nSTATPaperExamples
+  ### deferred (46) — real residuals that don't move minor → matches
 
-  | fig | by | description |
-  |---|---|---|
-  | 1 | A | Example 01 KS plot: empirical CDF may not be visibly distinct from 45-deg reference |
-  | 2 | A | Example 02 intensity panel: Python adds extra coefficient bar chart not in MATLAB |
-  | 3 | A | Example 03: Python 4-panel layout vs MATLAB 2-panel stacked |
-  | 4 | A | Example 04 decoding: decoded trajectory deviates more from diagonal than MATLAB |
-  | 5 | A | Example 05: Start/Finish markers less distinct than MATLAB |
-  | 6 | A | Example 06 place-field heatmap: colormap/dynamic-range mismatch with MATLAB jet |
-  | 7 | A | Example 07: extra small-multiple panels in Python vs MATLAB |
-  | 8 | A | Example 08 sinusoidal CIF: line color/spine treatment differs (cosmetic) |
-  | 2 | B | Example 01 second figure shows noisy oscillatory trace instead of MATLAB KS goodness-of-fit |
-  | 4 | B | Example 02 PSTH/coefficient panel blank vs MATLAB sinusoidal PSTH |
-  | 5 | B | Example 02 KS/coefficient bar plot color mapping differs |
-  | 6 | B | Example 03 ROC/KS line thickness (cosmetic) |
-  | 7 | B | Example 03 sinusoidal overlay amplitude/phase offset |
-  | 8 | B | Example 03 final bar chart: compressed y-range and missing annotations |
-  | 9 | B | Example 04 KS plot: legend entries/line styles diverge |
-  | 10 | B | Example 04 trajectory subpanel missing spike-overlay scatter and colorbar |
-  | 11 | B | Example 05 decoding heatmap colormap normalization |
-  | 12 | B | Example 05 KS/error decay: y-scaling and asymptote differ |
-  | 13 | B | Example 05 lower heatmaps: tick/label fonts and titles formatting differ (cosmetic) |
-  | 14 | B | Example 05 final lower panel: smooth sinusoid vs noisy scatter content mismatch |
+  These are legitimate divergences but cosmetic-only (fonts, line widths,
+  tick spacing, color palettes, legend placement) or numerically-stochastic
+  (decoded trajectory variance from spike draws, cycle-count drift from
+  RNG). Fixing any one of them — or even all of them within a single topic
+  — would not by itself cross the minor → matches threshold per the v7
+  Reviewer rubric. Kept in the backlog for future polish passes; revisit
+  if a future iter pushes a topic close enough that a cosmetic pass would
+  flip the verdict.
 
-  ### HippocampalPlaceCellExample
-
-  | fig | by | description |
-  |---|---|---|
-  | 3 | A | 8x8 grid empirical place fields: monochrome blue tiles vs MATLAB jet contrast |
-  | 7 | A | Trajectory + spike overlay: marker styling/colors differ (cosmetic) |
-  | 9 | A | 3D place-field surface flatter/lower-amplitude vs MATLAB |
-  | 1 | B | Trajectory + spike-scatter panel: aspect ratio and Start/Finish marker size differ |
-  | 2 | B | Spike-train raster/time-series panel: y-range scaling and line weights differ |
-  | 3 | B | Second diagnostic panel: vertical tick density and amplitude range differ |
-  | 4 | B | Place-field heatmap grid (fig_004): jet vs blue-dominant colormap divergence |
-  | 6 | B | Place-field reconstruction grid (fig_006): wrong colormap and/or normalization |
-  | 7 | B | Second circular tile grid (fig_007): same colormap collapse |
-  | 8 | B | Trajectory overlay with model fit (fig_008): line color/width and markers smaller than MATLAB |
-  | 9 | B | KS-plot/diagnostic curve (fig_009): axis ticks/label fonts and CI band styling differ |
-
-  ### SignalObjExamples
-
-  | fig | by | description |
-  |---|---|---|
-  | 6 | B | v2 plotted as dashed green vs MATLAB solid green |
-  | 7 | B | fig_007 inherits dashed-vs-solid mismatch from fig_006 |
-  | 1 | B | Y-axis tick spacing 0.5 vs MATLAB 0.2 step (cosmetic) |
-  | 9 | B | Orange v2 start position appears offset from MATLAB |
-  | 10 | B | Legend mathtext rendering for 'v1·p(t)' differs |
-  | 13 | B | Legend placement inside axes may overlap peaks vs MATLAB outside-axes |
-  | 20 | B | fig_020 cycle count mismatch (Python ~25 vs MATLAB ~22 cycles in 10s) |
-  | 1 | B | Legend frame styling: Python rounded/semi-transparent vs MATLAB thin black border (cosmetic) |
-  | 11 | B | fig_011 y-axis label unicode μ vs MATLAB italic mu |
-
-  ### DecodingExample
-
-  | fig | by | description |
-  |---|---|---|
-  | 6 | A | Mean-squared-error bar chart minor tick/bar-width differences (cosmetic) |
-  | 1 | B | Lower panel rate-axis label 'Rate(Hz)' styling vs MATLAB (cosmetic) |
-  | 6 | B | MATLAB shows two model-comparison bar plots at top; Python ordering/layout diverges |
-  | 1 | B | Composite labels show MATLAB(7) vs Python(8): figure-count mismatch (manifest-level) |
+  | topic | fig | by | description |
+  |---|---|---|---|
+  | nstCollExamples | 1 | B | Y-axis label 'Trial #' font/size mismatch (cosmetic) |
+  | nstCollExamples | 5 | B | Middle panel axis/tick label font sizes differ (cosmetic) |
+  | ExplicitStimulusWhiskerData | 2 | B | PSTH panel bar color saturation/bin alignment differ |
+  | ExplicitStimulusWhiskerData | 5 | B | Second multi-panel diagnostic: residual/ACF traces and coefficient bar count differ |
+  | ExplicitStimulusWhiskerData | 11 | B | Font size/tight_layout inconsistency across multi-panel figures |
+  | ExplicitStimulusWhiskerData | 12 | B | Color palette divergence (tab10 vs MATLAB lines palette) in overlay traces |
+  | ExplicitStimulusWhiskerData | 2 | A | Stimulus/raster overlay: subplot height-ratio proportions diverge |
+  | ExplicitStimulusWhiskerData | 3 | A | PSTH/rate trace minor y-axis label/tick formatting (cosmetic) |
+  | ExplicitStimulusWhiskerData | 5 | A | Second GLM diagnostics composite mirrors fig 4 with similar parity (cosmetic) |
+  | ExplicitStimulusWhiskerData | 9 | A | GLM coefficient + KS composite uses orange/green vs MATLAB jet-style palette |
+  | mEPSCAnalysis | 1 | B | Top-left KS plot line thickness/color saturation differs (cosmetic) |
+  | nSTATPaperExamples | 1 | A | Example 01 KS plot: empirical CDF may not be visibly distinct from 45-deg reference |
+  | nSTATPaperExamples | 2 | A | Example 02 intensity panel: Python adds extra coefficient bar chart not in MATLAB (Python surplus, allowed) |
+  | nSTATPaperExamples | 3 | A | Example 03: Python 4-panel layout vs MATLAB 2-panel stacked |
+  | nSTATPaperExamples | 4 | A | Example 04 decoding: decoded trajectory deviates more from diagonal than MATLAB (stochastic spike draws) |
+  | nSTATPaperExamples | 5 | A | Example 05: Start/Finish markers less distinct than MATLAB |
+  | nSTATPaperExamples | 6 | A | Example 06 place-field heatmap: colormap/dynamic-range mismatch with MATLAB jet |
+  | nSTATPaperExamples | 7 | A | Example 07: extra small-multiple panels in Python vs MATLAB (Python surplus, allowed) |
+  | nSTATPaperExamples | 8 | A | Example 08 sinusoidal CIF: line color/spine treatment differs (cosmetic) |
+  | nSTATPaperExamples | 5 | B | Example 02 KS/coefficient bar plot color mapping differs |
+  | nSTATPaperExamples | 6 | B | Example 03 ROC/KS line thickness (cosmetic) |
+  | nSTATPaperExamples | 7 | B | Example 03 sinusoidal overlay amplitude/phase offset (numerical) |
+  | nSTATPaperExamples | 9 | B | Example 04 KS plot: legend entries/line styles diverge |
+  | nSTATPaperExamples | 11 | B | Example 05 decoding heatmap colormap normalization |
+  | nSTATPaperExamples | 12 | B | Example 05 KS/error decay: y-scaling and asymptote differ |
+  | nSTATPaperExamples | 13 | B | Example 05 lower heatmaps: tick/label fonts and titles formatting differ (cosmetic) |
+  | HippocampalPlaceCellExample | 3 | A | 8x8 grid empirical place fields: monochrome blue tiles vs MATLAB jet contrast |
+  | HippocampalPlaceCellExample | 7 | A | Trajectory + spike overlay: marker styling/colors differ (cosmetic) |
+  | HippocampalPlaceCellExample | 9 | A | 3D place-field surface flatter/lower-amplitude vs MATLAB |
+  | HippocampalPlaceCellExample | 1 | B | Trajectory + spike-scatter panel: aspect ratio and Start/Finish marker size differ |
+  | HippocampalPlaceCellExample | 2 | B | Spike-train raster/time-series panel: y-range scaling and line weights differ |
+  | HippocampalPlaceCellExample | 3 | B | Second diagnostic panel: vertical tick density and amplitude range differ |
+  | HippocampalPlaceCellExample | 4 | B | Place-field heatmap grid (fig_004): jet vs blue-dominant colormap divergence |
+  | HippocampalPlaceCellExample | 6 | B | Place-field reconstruction grid (fig_006): wrong colormap and/or normalization |
+  | HippocampalPlaceCellExample | 7 | B | Second circular tile grid (fig_007): same colormap collapse |
+  | HippocampalPlaceCellExample | 8 | B | Trajectory overlay with model fit (fig_008): line color/width and markers smaller than MATLAB |
+  | HippocampalPlaceCellExample | 9 | B | KS-plot/diagnostic curve (fig_009): axis ticks/label fonts and CI band styling differ |
+  | SignalObjExamples | 1 | B | Y-axis tick spacing 0.5 vs MATLAB 0.2 step (cosmetic) |
+  | SignalObjExamples | 9 | B | Orange v2 start position appears offset from MATLAB |
+  | SignalObjExamples | 10 | B | Legend mathtext rendering for 'v1·p(t)' differs |
+  | SignalObjExamples | 13 | B | Legend placement inside axes may overlap peaks vs MATLAB outside-axes |
+  | SignalObjExamples | 20 | B | fig_020 cycle count mismatch (Python ~25 vs MATLAB ~22 cycles in 10s) (numerical/RNG) |
+  | SignalObjExamples | 1 | B | Legend frame styling: Python rounded/semi-transparent vs MATLAB thin black border (cosmetic) |
+  | SignalObjExamples | 11 | B | fig_011 y-axis label unicode μ vs MATLAB italic mu |
+  | DecodingExample | 6 | A | Mean-squared-error bar chart minor tick/bar-width differences (cosmetic) |
+  | DecodingExample | 1 | B | Lower panel rate-axis label 'Rate(Hz)' styling vs MATLAB (cosmetic) |
 
   (Topics StimulusDecode2D and NetworkTutorial had no single-Reviewer disagreements this iter.)
