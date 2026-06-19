@@ -136,6 +136,17 @@ latents = [
   "quantities>=0.15",
 ]
 
+# Numba JIT acceleration for the PPAF / Kalman hot loops in
+# nstat.decoding_algorithms.  Backs nstat.extras._numba_kernels.  When
+# installed, ``DecodingAlgorithms.PPDecodeFilterLinear`` and
+# ``DecodingAlgorithms.kalman_filter`` transparently route their
+# time-invariant fast paths through ``@numba.njit(cache=True,
+# fastmath=False)`` kernels.  Pure-Python (NumPy) paths remain the
+# default when this extras key is not installed.  BSD-2.
+numba = [
+  "numba>=0.60",
+]
+
 # PyTorch-based decoder bridges (placeholder; deferred to a future release).
 deep-learning = []
 

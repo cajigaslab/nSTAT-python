@@ -51,8 +51,13 @@ META_GROUPS = frozenset({"all-extras", "dev"})
 #   and ``dpp`` (``DPPy``) back only the OPTIONAL bridges of the
 #   pure-NumPy/SciPy ``nstat.extras.spatial`` module, so they are not part
 #   of the always-installable core surface.
+# - ``numba`` pulls LLVM (~100 MB), is opt-in by design (the JIT'd
+#   PPAF/Kalman kernels in ``nstat.extras._numba_kernels`` are a
+#   performance accelerator, not a functional feature), and the pure-
+#   Python fallback paths in ``nstat.decoding_algorithms`` are the
+#   default-install contract.
 HEAVY_OPT_OUT_OF_ALL_EXTRAS = frozenset(
-    {"dynamax", "clusterless", "spatial-gp", "hawkes", "dpp", "latents"}
+    {"dynamax", "clusterless", "spatial-gp", "hawkes", "dpp", "latents", "numba"}
 )
 
 

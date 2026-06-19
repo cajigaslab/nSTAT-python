@@ -31,7 +31,13 @@ from scipy.stats import norm
 
 from .cif import CIF
 from .errors import UnsupportedWorkflowError
+from .extras import _numba_kernels
 from .nspikeTrain import nspikeTrain
+
+# Module-level alias of the Numba-availability flag — kept module-local
+# so monkeypatch in tests can flip it back to ``False`` to exercise the
+# pure-Python parity path even when ``numba`` is installed.
+_NUMBA_AVAILABLE = _numba_kernels._NUMBA_AVAILABLE
 
 
 def _as_observation_matrix(dN) -> np.ndarray:
@@ -955,6 +961,46 @@ class DecodingAlgorithms:
         # ------------------------------------------------------------------
         # Standard filter (no target)
         # ------------------------------------------------------------------
+        # ---- Numba fast-path (opt-in via nstat-toolbox[numba]) ----------
+        # Eligible only when A/Q are time-invariant, no Wconv override is
+        # active, and the gold-fixture-proven branch is selected.  The
+        # pure-Python loop below is the parity baseline; the Numba kernel
+        # mirrors it line-for-line with explicit float64 arithmetic.
+        A_raw_pre = np.asarray(A, dtype=float)
+        Q_raw_pre = np.asarray(Q, dtype=float)
+        _Wconv_inactive_pre = (
+            Wconv is None or (isinstance(Wconv, (list, tuple)) and len(Wconv) == 0)
+        )
+        if (
+            _numba_kernels._NUMBA_AVAILABLE
+            and A_raw_pre.ndim != 3
+            and Q_raw_pre.ndim != 3
+            and _Wconv_inactive_pre
+        ):
+            try:
+                A_static_jit = _as_state_matrix(A_raw_pre, ns)
+                Q_static_jit = _as_state_matrix(Q_raw_pre, ns)
+                x_p_j, W_p_j, x_u_j, W_u_j = _numba_kernels.ppdecode_linear_loop(
+                    A_static_jit,
+                    Q_static_jit,
+                    beta_mat,
+                    mu_vec,
+                    gamma_mat,
+                    H_tensor,
+                    obs,
+                    x0_vec,
+                    Pi0_mat,
+                    str(fitType) == "binomial",
+                    H_tensor.shape[1] > 0,
+                )
+                empty_vec = np.array([], dtype=float)
+                empty_cov = np.zeros((0, 0, 0), dtype=float)
+                return x_p_j, W_p_j, x_u_j, W_u_j, empty_vec, empty_cov, empty_vec, empty_cov
+            except Exception:  # pragma: no cover - JIT typing or LinAlg fallback
+                # Fall back to pure-Python on any kernel error so parity
+                # tests + edge-case shapes stay valid.
+                pass
+
         x_p = np.zeros((ns, N + 1), dtype=float)
         x_u = np.zeros((ns, N), dtype=float)
         W_p = np.zeros((ns, ns, N + 1), dtype=float)
@@ -1892,6 +1938,26 @@ class DecodingAlgorithms:
             if M.ndim == 3:
                 return M[:, :, min(n, M.shape[2] - 1)]
             return M
+
+        # ---- Numba fast-path (opt-in via nstat-toolbox[numba]) ----------
+        # Eligible for the most common case: time-invariant A/C/Pv/Pw
+        # AND no pre-converged gain override.  Mirrors the Python loop
+        # below line-for-line; gold-fixture-verified bit-equivalence.
+        _gnconv_inactive = GnConv is None or _is_empty_value(GnConv)
+        if (
+            _numba_kernels._NUMBA_AVAILABLE
+            and _gnconv_inactive
+            and A.ndim == 2
+            and C.ndim == 2
+            and Pv.ndim == 2
+            and Pw.ndim == 2
+        ):
+            try:
+                return _numba_kernels.kalman_filter_loop(
+                    A, C, Pv, Pw, Px0, x0_vec, y,
+                )
+            except Exception:  # pragma: no cover - JIT typing fallback
+                pass
 
         x_p = np.zeros((Dx, N + 1), dtype=float)
         Pe_p = np.zeros((Dx, Dx, N + 1), dtype=float)

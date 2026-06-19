@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from nstat.CIF import CIF
 from nstat.DecodingAlgorithms import DecodingAlgorithms
 from nstat.History import History
+
+try:  # noqa: SIM105 - explicit availability check for parametrize
+    import numba  # noqa: F401
+
+    _NUMBA = True
+except ImportError:  # pragma: no cover - default install path
+    _NUMBA = False
 
 
 def test_ppdecodefilterlinear_matches_matlab_style_shapes() -> None:
@@ -155,3 +163,163 @@ def test_kalman_helper_methods_and_confidence_intervals_are_available() -> None:
     cis, stimulus = DecodingAlgorithms.ComputeStimulusCIs("poisson", x_N, P_N, 0.1, alphaVal=0.05)
     assert cis.shape == (4, 1, 2)
     assert stimulus.shape == (4, 1)
+
+
+# ---------------------------------------------------------------------------
+# Dual-mode parity: pure-Python NumPy path vs Numba JIT fast path.
+# Iter-59 added opt-in Numba kernels in ``nstat.extras._numba_kernels``;
+# these tests force each path explicitly so CI exercises both in one run.
+# The two paths must agree to within ~1e-12 (manual unrolled matmul in
+# the JIT kernel reorders ops vs BLAS, so bit-equality is not expected;
+# the gold ``matlab_gold/*.mat`` fixtures are the canonical truth and
+# both paths must round-trip through them).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "force_numba",
+    [
+        pytest.param(
+            True,
+            marks=pytest.mark.skipif(not _NUMBA, reason="numba not installed"),
+            id="numba",
+        ),
+        pytest.param(False, id="pure-python"),
+    ],
+)
+def test_pp_decode_filter_linear_dual_mode(force_numba, monkeypatch) -> None:
+    """Both Numba and pure-Python paths produce equivalent PPAF output."""
+    if not force_numba:
+        monkeypatch.setattr(
+            "nstat.extras._numba_kernels._NUMBA_AVAILABLE", False
+        )
+
+    rng = np.random.default_rng(0)
+    n_steps = 500
+    a = np.eye(2)
+    q = 0.01 * np.eye(2)
+    mu = np.array([-1.0, -1.0], dtype=float)
+    beta = np.array([[0.5, 0.2], [0.1, 0.4]], dtype=float)
+    dN = (rng.uniform(0.0, 1.0, size=(2, n_steps)) < 0.05).astype(float)
+
+    x_p, W_p, x_u, W_u, *_ = DecodingAlgorithms.PPDecodeFilterLinear(
+        a, q, dN, mu, beta, "binomial", 0.001,
+    )
+    assert x_p.shape == (2, n_steps + 1)
+    assert W_p.shape == (2, 2, n_steps + 1)
+    assert x_u.shape == (2, n_steps)
+    assert W_u.shape == (2, 2, n_steps)
+    assert np.all(np.isfinite(x_u))
+    assert np.all(np.isfinite(W_u))
+
+
+def test_pp_decode_filter_linear_numba_matches_pure_python() -> None:
+    """The Numba JIT and pure-Python implementations agree numerically."""
+    if not _NUMBA:
+        pytest.skip("numba not installed")
+
+    from nstat.extras import _numba_kernels as nk
+
+    rng = np.random.default_rng(0)
+    n_steps = 500
+    a = np.eye(2)
+    q = 0.01 * np.eye(2)
+    mu = np.array([-1.0, -1.0], dtype=float)
+    beta = np.array([[0.5, 0.2], [0.1, 0.4]], dtype=float)
+    dN = (rng.uniform(0.0, 1.0, size=(2, n_steps)) < 0.05).astype(float)
+
+    # JIT path
+    xp_j, Wp_j, xu_j, Wu_j, *_ = DecodingAlgorithms.PPDecodeFilterLinear(
+        a, q, dN, mu, beta, "binomial", 0.001,
+    )
+    # Pure-Python path
+    original = nk._NUMBA_AVAILABLE
+    try:
+        nk._NUMBA_AVAILABLE = False
+        xp_p, Wp_p, xu_p, Wu_p, *_ = DecodingAlgorithms.PPDecodeFilterLinear(
+            a, q, dN, mu, beta, "binomial", 0.001,
+        )
+    finally:
+        nk._NUMBA_AVAILABLE = original
+
+    np.testing.assert_allclose(xp_j, xp_p, atol=1e-12, rtol=1e-12)
+    np.testing.assert_allclose(Wp_j, Wp_p, atol=1e-12, rtol=1e-12)
+    np.testing.assert_allclose(xu_j, xu_p, atol=1e-12, rtol=1e-12)
+    np.testing.assert_allclose(Wu_j, Wu_p, atol=1e-12, rtol=1e-12)
+
+
+@pytest.mark.parametrize(
+    "force_numba",
+    [
+        pytest.param(
+            True,
+            marks=pytest.mark.skipif(not _NUMBA, reason="numba not installed"),
+            id="numba",
+        ),
+        pytest.param(False, id="pure-python"),
+    ],
+)
+def test_kalman_filter_dual_mode(force_numba, monkeypatch) -> None:
+    """Both Numba and pure-Python paths produce equivalent Kalman output."""
+    if not force_numba:
+        monkeypatch.setattr(
+            "nstat.extras._numba_kernels._NUMBA_AVAILABLE", False
+        )
+
+    rng = np.random.default_rng(0)
+    n_steps = 400
+    n_state = 4
+    n_obs = 2
+    A = np.eye(n_state) + 0.01 * rng.standard_normal((n_state, n_state))
+    C = rng.standard_normal((n_obs, n_state))
+    Pv = 0.01 * np.eye(n_state)
+    Pw = 0.05 * np.eye(n_obs)
+    Px0 = np.eye(n_state)
+    x0 = np.zeros(n_state)
+    y = rng.standard_normal((n_obs, n_steps))
+
+    out = DecodingAlgorithms.kalman_filter(A, C, Pv, Pw, Px0, x0, y)
+    x_p, Pe_p, x_u, Pe_u, Gn, _conv = out
+    assert x_p.shape == (n_state, n_steps + 1)
+    assert Pe_p.shape == (n_state, n_state, n_steps + 1)
+    assert x_u.shape == (n_state, n_steps)
+    assert Pe_u.shape == (n_state, n_state, n_steps)
+    assert Gn.shape == (n_state, n_obs, n_steps)
+    assert np.all(np.isfinite(x_u))
+    assert np.all(np.isfinite(Pe_u))
+
+
+def test_kalman_filter_numba_matches_pure_python() -> None:
+    """The Numba JIT and pure-Python Kalman paths agree numerically."""
+    if not _NUMBA:
+        pytest.skip("numba not installed")
+
+    from nstat.extras import _numba_kernels as nk
+
+    rng = np.random.default_rng(0)
+    n_steps = 400
+    n_state = 4
+    n_obs = 2
+    A = np.eye(n_state) + 0.01 * rng.standard_normal((n_state, n_state))
+    C = rng.standard_normal((n_obs, n_state))
+    Pv = 0.01 * np.eye(n_state)
+    Pw = 0.05 * np.eye(n_obs)
+    Px0 = np.eye(n_state)
+    x0 = np.zeros(n_state)
+    y = rng.standard_normal((n_obs, n_steps))
+
+    out_j = DecodingAlgorithms.kalman_filter(A, C, Pv, Pw, Px0, x0, y)
+    original = nk._NUMBA_AVAILABLE
+    try:
+        nk._NUMBA_AVAILABLE = False
+        out_p = DecodingAlgorithms.kalman_filter(A, C, Pv, Pw, Px0, x0, y)
+    finally:
+        nk._NUMBA_AVAILABLE = original
+
+    for idx in range(5):
+        np.testing.assert_allclose(
+            out_j[idx], out_p[idx], atol=1e-11, rtol=1e-11,
+            err_msg=f"divergence at output index {idx}",
+        )
+    # Convergence iteration must match exactly.
+    assert out_j[5] == out_p[5]

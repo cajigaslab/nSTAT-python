@@ -1,0 +1,66 @@
+name: parity-upstream-watch
+
+# Watches cajigaslab/nSTAT@main for changes to canonical MATLAB function
+# bodies that the nstat-python parity audit tracks. When the hash of any
+# tracked .m file changes vs the last recorded baseline, opens a GitHub
+# issue summarizing the diff so a v10-style reconciliation cycle can run.
+#
+# No-MATLAB-in-CI: the workflow only reads .m source files and computes
+# content hashes. It does not execute MATLAB. Works on stock GitHub
+# Actions runners.
+#
+# Triggers (per repo convention all CI is manual unless explicitly cron'd):
+#   - workflow_dispatch — primary trigger; maintainer-initiated
+#   - schedule — weekly check (Monday 7AM UTC); can be removed if too noisy
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 7 * * 1'  # weekly, Monday 07:00 UTC
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  detect-upstream-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout nstat-python
+        uses: actions/checkout@v4
+        with:
+          path: nstat-python
+
+      - name: Checkout cajigaslab/nSTAT@main
+        uses: actions/checkout@v4
+        with:
+          repository: cajigaslab/nSTAT
+          ref: main
+          path: nSTAT
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compute upstream content hashes
+        id: hashes
+        run: |
+          cd nstat-python
+          python tools/parity/upstream_watch.py \
+            --matlab-repo "$GITHUB_WORKSPACE/nSTAT" \
+            --baseline-file parity/upstream_watch_baseline.yml \
+            --output-summary $GITHUB_STEP_SUMMARY \
+            --changes-output /tmp/changes.json
+
+      - name: Open issue if changes detected
+        if: success() && hashFiles('/tmp/changes.json') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd nstat-python
+          # The script writes changes.json only when there are changes;
+          # if missing, no-op. If present, format a title + body and file.
+          if [ -s /tmp/changes.json ]; then
+            python tools/parity/upstream_watch.py --file-issue /tmp/changes.json
+          fi
