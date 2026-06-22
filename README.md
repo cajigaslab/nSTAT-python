@@ -31,7 +31,7 @@
 >
 > 🛠 **Other ways in:** the runnable [`00_getting_started.ipynb`](notebooks/00_getting_started.ipynb)
 > notebook; six end-to-end tutorial scripts in [`examples/tutorials/`](examples/tutorials/);
-> the five paper examples in [`examples/paper/`](examples/paper/); and the
+> the eight paper examples in [`examples/paper/`](examples/paper/); and the
 > reference notebooks in [`notebooks/`](notebooks/).
 
 `nSTAT-python` is the Python port of the
@@ -164,8 +164,9 @@ demonstrate it.
 
 ## Paper examples
 
-The five canonical examples from Cajigas, Malik & Brown (2012), each
-reproduced as a self-contained Python script with a generated figure gallery.
+Eight example scripts — five from the original Cajigas, Malik & Brown (2012)
+paper (01–05) and three extended analyses (06–08) — each reproduced as a
+self-contained Python script with a generated figure gallery.
 
 Regenerate the gallery metadata after editing any paper-example script:
 
@@ -220,6 +221,9 @@ non-JAX at once with `pip install nstat-toolbox[all-extras]`.
 | `nstat.extras.validation.pykalman_bridge` | Pure-NumPy Kalman cross-validation reference via [pykalman](https://github.com/pykalman/pykalman). | [validation_pykalman](docs/extras/validation_pykalman.md) | `[test-parity]` |
 | `nstat.extras.validation.statsmodels_bridge` | Poisson GLM IRLS cross-validation oracle (~1e-9 agreement) via [statsmodels](https://www.statsmodels.org). | [validation_statsmodels](docs/extras/validation_statsmodels.md) | `[test-parity]` |
 | `nstat.extras.metrics.spike_distances` | ISI / SPIKE-distance spike-train metrics via [PySpike](https://github.com/mariomulansky/PySpike). | [metrics_spike_distances](docs/extras/metrics_spike_distances.md) | `[metrics]` |
+| `nstat.extras.decoding.place_field_decoder` | One-call wrapper around the canonical 2-D place-cell encoding + decoding pipeline — B-spline Poisson GLM, quadratic CIF refit, and `PPDecodeFilterLinear` — as demonstrated in Example 08. | [decoding_place_field](docs/extras/decoding_place_field.md) | core: none |
+| `nstat.extras.latents.gpfa_bridge` | Gaussian-Process Factor Analysis ([Yu et al. 2009](https://pubmed.ncbi.nlm.nih.gov/19535480/)) for low-dimensional latent trajectories from simultaneous spike trains, via [Elephant](https://elephant.readthedocs.io/). | [latents_gpfa](docs/extras/latents_gpfa.md) | `[latents]` (~50 MB: Elephant + Neo) |
+| `nstat.extras.matlab_rng` | MATLAB-aligned MT19937 RNG (`MatlabRNG(seed)`) for deterministic Monte Carlo parity. Uniform draws are bit-equivalent to MATLAB `rand`; normals use Box-Muller from the same stream. `seeded_global_rng` context manager seeds both the legacy and `default_rng` paths. | [matlab_rng](docs/extras/matlab_rng.md) | core: none |
 
 The interactive [`extras_summary.html`](https://cajigaslab.github.io/nSTAT-python/extras_summary.html)
 landing page has the same content as bigger cards with code snippets.
