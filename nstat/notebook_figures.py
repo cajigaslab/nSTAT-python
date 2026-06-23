@@ -17,7 +17,7 @@ from matplotlib.figure import Figure
 
 
 # MATLAB R2014b+ "lines" color order
-_MATLAB_LINES = [
+MATLAB_LINES: list[str] = [
     "#0072BD",  # blue
     "#D95319",  # orange
     "#EDB120",  # yellow
@@ -26,6 +26,48 @@ _MATLAB_LINES = [
     "#4DBEEE",  # light blue
     "#A2142F",  # dark red
 ]
+
+# Backwards-compatible private alias — pre-existing call sites within this
+# module use the underscored name. Keep both pointing at the same list so
+# callers that mutate or compare either name stay in sync.
+_MATLAB_LINES = MATLAB_LINES
+
+
+def matlab_palette(n: int = 7) -> list[str]:
+    """Return the first ``n`` colors of MATLAB's default ``lines()`` palette.
+
+    Matplotlib's default cycle (``"C0"``, ``"C1"``, ...) and MATLAB's default
+    line colors differ subtly — Python defaults are ``#1f77b4`` / ``#ff7f0e``
+    while MATLAB's ``lines(2)`` returns ``#0072BD`` / ``#D95319``. For figures
+    that need to look-alike against a MATLAB helpfile reference, use this
+    helper instead of the matplotlib defaults::
+
+        from nstat.notebook_figures import matlab_palette
+        ax.bar(["A", "B"], [1, 2], color=matlab_palette(2))
+
+    Parameters
+    ----------
+    n : int, default 7
+        Number of colors to return (1 <= n <= 7).
+
+    Returns
+    -------
+    list[str]
+        A list of ``n`` hex color strings.
+
+    Raises
+    ------
+    ValueError
+        If ``n`` is outside the supported range [1, 7].
+
+    Notes
+    -----
+    Source: MATLAB R2014b+ default ``lines(7)`` colormap. The 7 colors are the
+    canonical line color order; index 7+ wraps around modulo 7 in MATLAB.
+    """
+    if not 1 <= n <= 7:
+        raise ValueError(f"n must be in [1, 7], got {n}")
+    return list(MATLAB_LINES[:n])
 
 
 def _matlab_style() -> dict:

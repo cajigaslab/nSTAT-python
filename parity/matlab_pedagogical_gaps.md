@@ -316,6 +316,28 @@ remove the extra cell instead of recording it here.
 - **Python implementation:** `notebooks/StimulusDecode2D.ipynb` cell rendering fig_002.
 - **Discovered:** v3 iter 14 / 2026-06-18; investigated and closed v3 iter 15.
 
+### Gap: Tick density / panel sizing / legend placement — inherent matplotlib vs MATLAB renderer
+
+- **Topic / helpfile:** `HybridFilterExample`
+- **MATLAB count:** 3
+- **Python count:** 3 (0)
+- **What Python adds:** After v14 iter 65B closed the substantive deltas (palette swap to MATLAB `lines(2)`, alpha/linewidth bump on dash-dot overlays, line vs step rendering), the iter 66 verification Reviewer reported `minor` with residuals limited to tick density, panel aspect, and a Python-side estimate-vs-actual scatter that MATLAB does not include. Accepted as inherent renderer differences (matplotlib auto-layout vs MATLAB `publish()`) plus a documented Python pedagogical extension. v14 iter 66 / 2026-06-19.
+- **Pedagogical justification:** 
+- **MATLAB upstream action:** 
+- **Python implementation:** 
+- **Discovered:** 
+
+### Gap: Tick density / panel layout / legend placement — inherent matplotlib vs MATLAB renderer
+
+- **Topic / helpfile:** `ExplicitStimulusWhiskerData`
+- **MATLAB count:** 10
+- **Python count:** 10 (0)
+- **What Python adds:** After v14 iter 65B closed the substantive deltas (raster polarity to MATLAB black-bg/white-spikes, dBIC stem palette to `#0072BD`, `fill_between` CI bands removed per user decision, 3-panel stem colors to `matlab_palette()[0,1,4]`), the iter 66 verification Reviewer reported `minor` with residuals limited to tick density, panel aspect, axis padding. Accepted as inherent renderer differences. Rows 3, 7, 8 of MATLAB helpfile render near-blank (1.5-2.7% nonwhite pixels) — filed upstream as `cajigaslab/nSTAT#102` (suggests `xticklabel_rotate` → `xtickangle(90)`). Python output is canonical for those rows. v14 iter 66 / 2026-06-19.
+- **Pedagogical justification:** 
+- **MATLAB upstream action:** 
+- **Python implementation:** 
+- **Discovered:** 
+
 ---
 
 ## Deficit topics (Python < MATLAB)
