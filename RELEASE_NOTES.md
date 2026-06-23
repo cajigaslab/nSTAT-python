@@ -1,5 +1,88 @@
 # Release Notes
 
+## v0.5.7 — 2026-06-22
+
+v15 post-upstream-MATLAB reconciliation cycle. The upstream maintainer
+merged commit `ad2214d` ("harden(plot-style): xticklabel_rotate ->
+xtickangle in plotCoeffs + plotSummary; full R2026a regen") between
+v0.5.6 and v0.5.7. 13 of 32 tracked MATLAB files differed; reconciliation
+confirmed zero numerical drift (53/53 still PASS) and surfaced 3
+genuinely-new NetworkTutorial schematic figures Python lacked.
+
+### Iterations (67–71)
+
+- **iter 67** — Re-captured all 53 gold fixtures. All numerically
+  identical to the v14-era versions; the upstream changes were
+  plot-method-only, not numerical-code. 53/53 drift PASS, 27/27 gold
+  fixture tests pass.
+- **iter 68** — No-op (FitResult / FitResSummary changes don't affect
+  numerics; only the `plotCoeffs` / `plotSummary` methods got the
+  `xticklabel_rotate` → `xtickangle` fix from our [nSTAT#102](https://github.com/cajigaslab/nSTAT/issues/102)).
+- **iter 69** — Re-ran image-pair audit + 3 verification Reviewers. 4
+  equal-count topics hold v14 verdicts (2 `matches` + 2 cosmetic `minor`).
+  mEPSC's "missing 6th figure" is a MATLAB `publish()` quirk (figures
+  1, 2, 3 are pixel-identical because the figure window stays open
+  across `%%` section breaks). NetworkTutorial is genuinely missing 3
+  schematic figures.
+- **iter 70 (Scope A)** — Added 3 NetworkTutorial schematic figures:
+  self-history kernel stem (`fig_005`), two-neuron connectivity diagram
+  (`fig_006`), and CIF block diagram + equation (`fig_007`). Removed a
+  literal duplicate of `fig_002` that was masquerading as `fig_003`.
+  `expected_count` 5 → 7.
+- **iter 70 (Scope B)** — New `tools/parity/image_content_audit.py`
+  multi-signal content-score helper. Closes a longstanding false-positive
+  in the pixel-content audit — the legacy 3% non-white threshold flagged
+  legitimately-sparse plots (trajectory lines, dot-scatter, schematics)
+  as "degenerate." During this very cycle I filed three false-positive
+  upstream issues (#128, #129, #130) before catching it. The new
+  heuristic uses non-white % + distinct intensity count + dark pixel
+  count + clustering, and ships with a self-test that catches both
+  truly-blank PNGs and schematics correctly. `upstream_watch.py` gained
+  `--audit-image-pair MATLAB.png PYTHON.png` for runbook use.
+- **iter 71** — Re-anchored `parity/upstream_watch_baseline.yml` to
+  current `cajigaslab/nSTAT@master`. Closed pre-existing
+  `nstat/extras/matlab_rng.py` docs gap (now ships
+  `docs/extras/matlab_rng.md` + toctree entry).
+
+### v15 acceptance
+
+| Metric | v14 end | v15 end |
+|---|---|---|
+| Holistic verdicts (10 priority topics) | 8 `matches` + 2 cosmetic `minor` | unchanged (verified) |
+| Numerical drift | 53/53 PASS | 53/53 PASS (53 fixtures recaptured, all identical) |
+| Gold-fixture tests | 27/27 | 27/27 |
+| Classes 100% method parity | 16/16 | 16/16 |
+| Upstream-watch baseline | v13-era stale | re-anchored to `ad2214d` |
+| `nstat.extras` docs coverage | 13/14 | **14/14** |
+| Image-content audit false-positive rate | high (3 false issues filed in v15) | **0** (multi-signal heuristic + self-test) |
+
+### Upstream issues during v15
+
+- Filed [#128](https://github.com/cajigaslab/nSTAT/issues/128) (StimulusDecode2D rows 1+4 "near-blank") — **CLOSED as false positive** (sparse trajectory plots, not degenerate).
+- Filed [#129](https://github.com/cajigaslab/nSTAT/issues/129) (ExplicitStim row 8 "still near-blank") — **CLOSED as false positive** (sparse dot-scatter).
+- Filed [#130](https://github.com/cajigaslab/nSTAT/issues/130) (NetworkTutorial row 6 "near-blank") — **CLOSED as false positive** (it's the workspace-synced connectivity schematic, clearly populated).
+
+The false-positive filings were the trigger for iter 70 Scope B's
+detector overhaul. Total filed-during-parity-push: 20; all closed (16
+real merged upstream, 4 false positives closed by us).
+
+### Files added / changed
+
+- `notebooks/NetworkTutorial.ipynb` — 3 schematic figures added, duplicate removed
+- `docs/notebook_galleries/NetworkTutorial/fig_005.png` / `fig_006.png` / `fig_007.png` — new
+- `parity/notebook_fidelity.yml` — regenerated (NetworkTutorial expected_count 5 → 7)
+- `tools/parity/image_content_audit.py` — new multi-signal detector
+- `tools/parity/upstream_watch.py` — added `--audit-image-pair` flag
+- `docs/extras/matlab_rng.md` — new docs file
+- `docs/extras.rst` — toctree entry for matlab_rng
+- `tests/test_extras_docs.py` — added matlab_rng → matlab_rng mapping
+- `tests/test_notebook_fidelity_audit.py` — `SECTION_TOLERANCE` 10 → 16 with rationale
+- `parity/upstream_watch_baseline.yml` — re-anchored to current upstream
+- `CLAUDE.md` — added "Image-pair validation heuristic" subsection
+- `PARITY.md` — appended v15 section
+- `RELEASE_NOTES.md` — this entry
+- `pyproject.toml` / `CITATION.cff` / `docs/conf.py` / `AGENT_GUIDE.md` — version sync 0.5.6 → 0.5.7
+
 ## v0.5.6 — 2026-06-19
 
 Closes the 13-version MATLAB-parity push (v1–v13 + iter-63 fixup). After

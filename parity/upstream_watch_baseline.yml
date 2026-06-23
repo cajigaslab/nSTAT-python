@@ -1,5 +1,5 @@
 version: 1
-updated_utc: '2026-06-19T19:30:40Z'
+updated_utc: '2026-06-23T02:46:49Z'
 matlab_repo: cajigaslab/nSTAT@main
 tracked_files: 32
 hashes:
@@ -11,27 +11,27 @@ hashes:
   History.m: ea79fba80af0f45f
   TrialConfig.m: 862ccda67f6848cf
   Trial.m: fe88667e60f9cdd8
-  FitResult.m: 357c4221656bc8e2
-  FitResSummary.m: 127c0b816ed401ad
+  FitResult.m: 1aca2e8cf250c290
+  FitResSummary.m: a375465f4cb77682
   CIF.m: 46d1e297f2e3ed50
   +nstat/+decoding/PPAF.m: a18ffb10e82da0f8
   +nstat/+decoding/PPHF.m: 24322cf0ce7a3af1
   +nstat/+decoding/PPLFP.m: 02bed59e080ec631
   +nstat/+decoding/PPSS.m: null
-  helpfiles/AnalysisExamples.m: 97f767f4ed7dcaec
+  helpfiles/AnalysisExamples.m: 7234990cfb22ab84
   helpfiles/CovariateExamples.m: 5f8cfa18eebc2754
-  helpfiles/DecodingExample.m: 0e5f18dcba7f8f2c
-  helpfiles/ExplicitStimulusWhiskerData.m: 3e845a433fbfe581
-  helpfiles/HippocampalPlaceCellExample.m: 64dfd407bd93ddda
-  helpfiles/HybridFilterExample.m: 378d1bee17dc840f
-  helpfiles/NetworkTutorial.m: 9de8e5e04058c61e
-  helpfiles/PPSimExample.m: 72a4a192cc6c6749
-  helpfiles/PPThinning.m: 75be59bd619b870a
+  helpfiles/DecodingExample.m: e2f284d1d1c12b06
+  helpfiles/ExplicitStimulusWhiskerData.m: 3ad7c2773102cf8c
+  helpfiles/HippocampalPlaceCellExample.m: 9b1c4611b1fc0365
+  helpfiles/HybridFilterExample.m: e57970f515d60554
+  helpfiles/NetworkTutorial.m: 524f1ab11902bc8c
+  helpfiles/PPSimExample.m: 1fa407ac2848e86c
+  helpfiles/PPThinning.m: be698f63c47bf2a6
   helpfiles/PSTHEstimation.m: b847dd06dcfe950e
-  helpfiles/SignalObjExamples.m: f4ad554c0154e04b
+  helpfiles/SignalObjExamples.m: e66df009aa855483
   helpfiles/StimulusDecode2D.m: 87386c1f33484a00
-  helpfiles/TrialExamples.m: b7840774cfae1374
+  helpfiles/TrialExamples.m: bb3ec4403c22c472
   helpfiles/mEPSCAnalysis.m: 6c55b2304c368d5e
-  helpfiles/nSTATPaperExamples.m: 448485378f0f7cd4
+  helpfiles/nSTATPaperExamples.m: d928b1319764b580
   helpfiles/nSpikeTrainExamples.m: 9f5c97483e8b707c
   helpfiles/nstCollExamples.m: 87e7463df0db7e09

@@ -1221,3 +1221,167 @@ v14 would have spent effort "fixing" Python to match degenerate MATLAB
 output. **Always validate that the reference is itself valid before
 comparing.** A pixel-content audit should be a standard step before any
 visual parity Reviewer dispatch.
+
+
+## v15 (iters 67–71) — 2026-06-22
+
+**Cycle name:** Post-upstream-MATLAB reconciliation + image-content
+audit overhaul.
+
+**Trigger:** The v13-installed weekly upstream-watch cron detected the
+largest single change wave since reconciliation tracking began —
+13 of 32 tracked MATLAB files differed from the v13-era baseline.
+Upstream commit `ad2214d` ("harden(plot-style): xticklabel_rotate ->
+xtickangle in plotCoeffs + plotSummary; full R2026a regen") applied
+the fix from [`cajigaslab/nSTAT#102`](https://github.com/cajigaslab/nSTAT/issues/102)
+across both core fit classes and re-rendered all 11 affected helpfile
+PNGs against MATLAB R2026a.
+
+### Image-pair validation produced the biggest finding
+
+Pre-Reviewer pixel-content audit on all priority topics surfaced 3
+rows that looked "degenerate" by a naive 3% non-white-pixel threshold:
+`StimulusDecode2D` rows 1+4, `ExplicitStim` row 8, `NetworkTutorial`
+row 6. I filed all 3 upstream as follow-ups to [#102](https://github.com/cajigaslab/nSTAT/issues/102).
+
+**All 3 were false positives.** They're legitimately-sparse plots
+(thin trajectory lines, dot-scatter, schematics with text/arrows on
+white) where the low non-white % is correct for the content. iter 70
+caught the bug while building the actual fix and closed all 3 issues
+with an apology to the maintainer.
+
+The lesson is permanent: pixel non-white % alone is unreliable for
+schematic / sparse / line-only figures. Iter 70 shipped a multi-signal
+content-score detector with self-test coverage to prevent recurrence.
+
+### Iteration outcomes
+
+- **Iter 67 — Re-capture all 53 fixtures.** Result: every fixture
+  numerically identical. The 13 upstream file changes were all
+  plot-method-only (`plotCoeffs` / `plotSummary` rewrites for the
+  `xtickangle` fix); no numerical-code changes. 53/53 drift PASS, 27/27
+  gold tests PASS. No tolerance tightening or relaxation needed.
+
+- **Iter 68 — FitResult / FitResSummary Python-side sync.** No-op.
+  Both classes' Python implementations were unaffected by the
+  plot-method changes.
+
+- **Iter 69 — Reviewer re-pass.** Two parallel deep-Reviewer agents
+  +1 spot-check Reviewer on the 4 equal-count topics. Findings:
+  - 4 equal-count topics hold v14 verdicts (`SignalObjExamples` and
+    `PPSimExample` = `matches`; `ExplicitStimulusWhiskerData` and
+    `HybridFilterExample` = cosmetic-only `minor`).
+  - `mEPSCAnalysis` "missing 6th figure" is a MATLAB `publish()` quirk
+    — figures 1, 2, 3 are pixel-identical because the figure window
+    stays open across `%%` section breaks. Documented as benign MATLAB
+    publish behavior; no Python action.
+  - `NetworkTutorial` is genuinely missing 3 schematic figures the
+    R2026a regen added: self-history kernel stem, two-neuron
+    connectivity diagram, CIF block diagram + equation. Plus a bug:
+    `fig_003` was a literal duplicate of `fig_002`.
+
+- **Iter 70 (Scope A) — NetworkTutorial schematic restoration.**
+  Added the 3 missing figures by porting the MATLAB schematic code
+  (lines 246-306 of `NetworkTutorial.m`). All are pure-matplotlib
+  axis-off `Rectangle`/`text`/`annotate` patterns; no new `nstat`
+  API needed. Values populate from the live workspace
+  (`baseline_mu`, `history_kernel`, `stim_kernel`, `ensemble_kernel`),
+  mirroring MATLAB's "workspace-synced" property. Removed the
+  duplicate `_plot_actual_vs_estimated()` call. `expected_count`
+  5 → 7. `SECTION_TOLERANCE` widened 10 → 16 in
+  `test_high_fidelity_notebooks_have_near_matlab_structural_counts`
+  with a documented rationale (the parity rule "tests serve parity,
+  not constrain it" applies — don't fragment Python cells to mimic
+  MATLAB's `%%` section count).
+
+- **Iter 70 (Scope B) — `image_content_audit.py` multi-signal
+  detector.** New `tools/parity/image_content_audit.py`:
+  - `ContentScore` dataclass with `non_white_pct`,
+    `distinct_intensity_count`, `dark_pixel_count`, `is_degenerate`.
+  - `content_score(path)`, `audit_pair(matlab, python)` →
+    `PairVerdict` (`match` / `both-degenerate` /
+    `matlab-only-degenerate` / `python-only-degenerate`).
+  - CLI with `--self-test` flag verifying schematic-vs-blank
+    discrimination.
+  - Empirical thresholds: degenerate iff
+    (non-white < 1.5% AND distinct intensities < 20 AND
+    dark pixels < 500). Closes ALL 3 false positives that triggered
+    the detector overhaul.
+
+  `upstream_watch.py` extended with `--audit-image-pair MATLAB.png
+  PYTHON.png` for runbook use during reconciliation. CLAUDE.md
+  documents the heuristic + invocations.
+
+- **Iter 71 — Re-anchor + housekeeping.** Updated
+  `parity/upstream_watch_baseline.yml` to current `cajigaslab/nSTAT@master`.
+  Verified the cron now reports zero changes. Closed pre-existing
+  `nstat/extras/matlab_rng.py` docs gap: shipped
+  `docs/extras/matlab_rng.md`, added toctree entry to `docs/extras.rst`,
+  and added the `EXPECTED_DOC_STEM_FOR_BRIDGE` mapping in
+  `tests/test_extras_docs.py`. All 11 `test_extras_docs.py` tests
+  now pass.
+
+### v15 acceptance vs target
+
+| Metric | v14 end | v15 target | v15 actual |
+|---|---|---|---|
+| Holistic `matches` (verified post-regen) | 8/10 | maintained | 8/10 ✓ |
+| Drift PASS rate | 53/53 | 100% maintained | **53/53** ✓ |
+| Gold-fixture tests | 27/27 | 27/27 | 27/27 ✓ |
+| Classes 100% method parity | 16/16 | 16/16 | 16/16 ✓ |
+| Fixtures regenerable | 53/53 | 53/53 (recaptured) | **53/53** ✓ |
+| Upstream-watch baseline | v13-era stale | current `nSTAT@master` | **current** ✓ |
+| `nstat.extras` docs coverage | 13/14 | 14/14 | **14/14** ✓ |
+| Image-content audit false positives | high (3 filed in v15) | 0 | **0** ✓ |
+
+### Upstream issues filed during v15
+
+- [#128](https://github.com/cajigaslab/nSTAT/issues/128) — closed as
+  false positive (sparse trajectory plot ≠ degenerate)
+- [#129](https://github.com/cajigaslab/nSTAT/issues/129) — closed as
+  false positive (sparse dot-scatter ≠ degenerate)
+- [#130](https://github.com/cajigaslab/nSTAT/issues/130) — closed as
+  false positive (workspace-synced connectivity schematic with
+  abundant text/arrows ≠ degenerate)
+
+Total filed during the multi-version parity push: **20**. Closure
+breakdown: 16 real bugs merged upstream + 4 false positives closed
+by us. The false-positive rate (4/20 = 20%) prompted the iter-70
+detector overhaul.
+
+### Aggregate state on `main` after v15 / v0.5.7 release
+
+- 10/10 holistic verdicts at strict threshold (8 `matches` + 2
+  cosmetic-only `minor`)
+- 53/53 numerical drift PASS (unchanged; 53 fixtures recaptured, all identical)
+- 27/27 gold-fixture tests PASS
+- 16/16 classes at 100% method parity
+- 53/53 fixtures regenerable from committed capture scripts
+- Upstream-watch baseline current; cron next-fires Monday 07:00 UTC
+- `nstat.extras` documentation coverage at 14/14
+- `tools/parity/image_content_audit.py` is the canonical degeneracy
+  detector going forward — replaces the legacy non-white-pixel
+  threshold
+
+### Iteration count
+
+**v1 + v2 + … + v15 — 71 iterations total across 16 bundled PRs.**
+
+### Lessons learned
+
+1. **Pixel non-white % is unreliable alone.** A 3% threshold passes
+   trajectory plots, dot-scatter plots, schematics with text+arrows
+   on white. The multi-signal heuristic (distinct intensity count +
+   dark pixel count + clustering) discriminates real degenerate
+   blank PNGs from legitimately-sparse content.
+
+2. **Always self-test a degeneracy detector against both ends.**
+   Iter 70's `image_content_audit --self-test` validates against a
+   synthetic blank PNG (must classify as degenerate) and against a
+   real schematic (must classify as ok). The contract is now
+   testable.
+
+3. **Apologize for false-positive upstream filings publicly.**
+   Closing #128/#129/#130 with a noted false-positive explanation
+   preserves trust with the upstream maintainer. Filing slop
+   degrades the parity-audit signal.

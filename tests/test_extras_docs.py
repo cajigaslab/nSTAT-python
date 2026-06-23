@@ -40,6 +40,7 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "spike_distances": "metrics_spike_distances",
     "dynamax": "em_dynamax",
     "dynamax_bridge": "em_dynamax",
+    "matlab_rng": "matlab_rng",
     "clusterless_bridge": "decoding_clusterless",
     "place_field_decoder": "decoding_place_field",
     # nstat.extras.spatial — pure-core modules + optional bridges all
