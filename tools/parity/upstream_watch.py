@@ -21,11 +21,22 @@ Modes:
         Recompute baseline from the current upstream and commit to YAML.
         Use after each successful reconciliation cycle to re-anchor.
 
+    --audit-image-pair MATLAB_PNG PYTHON_PNG
+        Run the multi-signal content-score heuristic on a MATLAB/Python
+        figure pair (see ``image_content_audit.content_score``) and print
+        the verdict.  Use this during reconciliation BEFORE filing a
+        "degenerate Python figure" issue — the legacy non-white-pixel
+        threshold produced recurring false positives on schematics,
+        trajectory plots, and dot-scatters.
+
 Usage:
     python tools/parity/upstream_watch.py \\
         --matlab-repo /path/to/nSTAT \\
         --baseline-file parity/upstream_watch_baseline.yml \\
         --changes-output /tmp/changes.json
+
+    python tools/parity/upstream_watch.py \\
+        --audit-image-pair MATLAB_PNG PYTHON_PNG
 """
 from __future__ import annotations
 
@@ -220,7 +231,29 @@ def main() -> int:
     parser.add_argument("--output-summary", type=Path)
     parser.add_argument("--file-issue", type=Path)
     parser.add_argument("--update-baseline", action="store_true")
+    parser.add_argument(
+        "--audit-image-pair",
+        nargs=2,
+        metavar=("MATLAB_PNG", "PYTHON_PNG"),
+        type=Path,
+        help=(
+            "Multi-signal content-score audit on a MATLAB/Python PNG pair. "
+            "Use before filing a 'degenerate figure' issue."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.audit_image_pair:
+        # Import the sibling helper without requiring a packaged ``tools.``
+        # namespace — the parity tools historically run as plain scripts.
+        sys.path.insert(0, str(Path(__file__).parent))
+        from image_content_audit import audit_pair  # noqa: E402
+
+        verdict = audit_pair(*args.audit_image_pair)
+        print(f"MATLAB: {verdict.matlab.as_dict()}")
+        print(f"PYTHON: {verdict.python.as_dict()}")
+        print(f"VERDICT: {verdict.verdict}")
+        return 0
 
     if args.file_issue:
         file_issue(args.file_issue)

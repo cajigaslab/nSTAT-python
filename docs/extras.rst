@@ -34,6 +34,7 @@ gotchas, and links to the runnable demos under ``examples/extras/``.
    extras/decoding_place_field
    extras/spatial_point_processes
    extras/latents_gpfa
+   extras/matlab_rng
 
 
 .. currentmodule:: nstat.extras
