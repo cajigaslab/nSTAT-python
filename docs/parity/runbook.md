@@ -237,3 +237,45 @@ Only after the cause is understood is it appropriate to either
 re-capture the baseline (genuine algorithmic change, ratio acceptable)
 or widen `target_for_parity` (genuine algorithmic complexity increase,
 documented in the commit message).
+
+## Filing "near-blank PNG" upstream issues — MANDATORY pre-step
+
+Before filing ANY GitHub issue against `cajigaslab/nSTAT` alleging that
+a MATLAB helpfile renders as a near-blank / degenerate PNG, run the
+content-aware audit:
+
+```bash
+python tools/parity/image_content_audit.py <SUSPECT_PNG_PATH>
+# OR for a pair comparison:
+python tools/parity/upstream_watch.py --audit-image-pair <MATLAB.png> <PYTHON.png>
+```
+
+**Only file if the verdict is `[DEGENERATE]`.** The detector uses a
+multi-signal score (non-white % + distinct intensity count + dark pixel
+count + clustering) that correctly distinguishes:
+
+- **Truly broken / blank** rendering (verdict: `[DEGENERATE]`) — file the issue
+- **Sparse but valid** content (thin trajectory lines, dot-scatter, schematics
+  with text/arrows on white) (verdict: `[ok]`) — DO NOT file
+
+### Why this guardrail exists
+
+v15 (2026-06-22) filed three false positives — [cajigaslab/nSTAT#128](https://github.com/cajigaslab/nSTAT/issues/128),
+[#129](https://github.com/cajigaslab/nSTAT/issues/129), [#130](https://github.com/cajigaslab/nSTAT/issues/130) — using a
+naive `non_white_pct < 3%` heuristic against sparse-but-valid plots
+(`StimulusDecode2D_01`/`_04`, `ExplicitStimulusWhiskerData_08`,
+`NetworkTutorial_06`). All three were closed `NOT_PLANNED` after
+visual inspection confirmed the PNGs were rendering correctly. The
+content-aware audit ships with a `--self-test` flag that validates
+both halves — schematics correctly non-degenerate AND truly-blank PNGs
+correctly degenerate.
+
+### What is NOT automated
+
+There is **no CI workflow** that auto-files "near-blank PNG" issues to
+the MATLAB repo. The only auto-file path is
+`tools/parity/upstream_watch.py:file_issue()`, which files for
+upstream-MATLAB-hash-drift (file content changed) only — never for
+visual / pixel-content analysis. The v15 false positives originated
+from a maintainer running an ad-hoc one-liner during reconciliation,
+not from any committed audit. This guardrail formalizes the lesson.
