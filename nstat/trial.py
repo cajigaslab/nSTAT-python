@@ -1784,7 +1784,7 @@ class SpikeTrainCollection:
         algorithm = "GLM" if str(fitType or "poisson").lower() == "poisson" else "BNLRCG"
         psth_result = Analysis.RunAnalysisForAllNeurons(trial, cfgColl, 0, algorithm, [], 1)
         fit = psth_result[0] if isinstance(psth_result, list) else psth_result
-        coeffs = fit._rawCoeffs(1)
+        coeffs = fit._rawCoeffs(0)  # 0-based: single-config analysis yields one fit at index 0 (MATLAB port used 1)
         numBasis = basis.dimension
         if coeffs.size < numBasis:
             padded = np.zeros(numBasis, dtype=float)
@@ -2135,21 +2135,31 @@ class SpikeTrainCollection:
         maxTime = float(self.maxTime)
         halfIters = min(int(np.floor(numIter / 2.0)), sumNumber)
 
+        col = 0  # running column index (MATLAB used a shared `indexValue` across both loops)
         for i in range(halfIters):
             subset = SpikeTrainCollection(self.getNST(list(range(i, i + sumNumber + 1))))
             subset.resample(1.0 / delta)
             subset.setMaxTime(maxTime)
             subset.setMinTime(minTime)
-            coeffs[:, i] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+            coeffs[:, col] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+            col += 1
 
         for i in range(numRealizations - 1, numRealizations - halfIters - 1, -1):
+            if col >= numIter:
+                break
             subset = SpikeTrainCollection(self.getNST(list(range(i, i - sumNumber - 1, -1))))
             subset.resample(1.0 / delta)
             subset.setMaxTime(maxTime)
             subset.setMinTime(minTime)
-            coeffs[:, i] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+            coeffs[:, col] = subset._psth_glm_coeffs(basisWidth, windowTimes, fitType)
+            col += 1
 
-        coeff_rows = [row[row != 0] for row in coeffs]
+        # Drop unfilled (0) columns AND degenerate empty-bin fits: a unit-impulse
+        # basis bin with no spikes in a subset is unidentified and the inner GLM
+        # floors its coeff to a large-negative value (~ -120). |log-rate| > 30 is
+        # non-physical (rate < 3e-11 Hz); including it inflates Q and blows up EM.
+        _SENTINEL = 30.0
+        coeff_rows = [row[(row != 0) & (np.abs(row) < _SENTINEL)] for row in coeffs]
         max_width = max((row.size for row in coeff_rows), default=0)
         if max_width == 0:
             return np.zeros((numBasis, numBasis), dtype=float)

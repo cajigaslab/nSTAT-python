@@ -53,6 +53,42 @@ def _symmetrize(matrix: np.ndarray) -> np.ndarray:
     return 0.5 * (matrix + matrix.T)
 
 
+# State-space GLM (PPSS) regularization. High-rate / bursting units, or sparse
+# unit-impulse basis bins, drive the observed-information matrix to extreme
+# conditioning (lambdaDelta up to e^30 ~ 1e13). The bare invert-then-eigh update
+# then returns non-finite entries and ``np.linalg.eigh`` raises "Eigenvalues did
+# not converge", aborting the EM. ``SSGLM_STATE_BOUND`` keeps the log-rate state
+# physical (|x| <= 50 ⟺ rate within (e^-50, e^50)/delta), which stops a diverged
+# trial from poisoning the next trial's prior; ``_robust_psd_inverse`` makes the
+# covariance update nan-safe and guaranteed PSD without altering behaviour on
+# well-conditioned problems (no non-finite entries, eigenvalues already >= eps).
+SSGLM_STATE_BOUND = 50.0
+
+
+def _robust_psd_inverse(precision: np.ndarray, dim: int, ridge: float = 1e-12) -> np.ndarray:
+    """Invert a precision matrix and project to the nearest PSD matrix, robust to
+    non-finite entries from extreme observed-information conditioning.
+
+    Mirrors the original ``inv`` + eigenvalue-flooring update, but (a) scrubs
+    non-finite entries, (b) symmetrizes, (c) falls back to ``pinv`` and finally a
+    ridge-only covariance if the decomposition cannot converge. On well-conditioned
+    inputs it returns the same PSD matrix the previous code did.
+    """
+    precision = np.where(np.isfinite(precision), precision, 0.0)
+    precision = _symmetrize(precision) + ridge * np.eye(dim)
+    try:
+        cov = np.linalg.inv(precision)
+    except np.linalg.LinAlgError:
+        cov = np.linalg.pinv(precision)
+    cov = _symmetrize(np.where(np.isfinite(cov), cov, 0.0))
+    try:
+        eigvals, eigvecs = np.linalg.eigh(cov)
+    except np.linalg.LinAlgError:
+        return np.eye(dim) * max(ridge, np.finfo(float).eps)
+    eigvals = np.clip(eigvals, np.finfo(float).eps, None)
+    return (eigvecs * eigvals) @ eigvecs.T
+
+
 def _normalize_probabilities(values) -> np.ndarray:
     arr = np.asarray(values, dtype=float).reshape(-1)
     if arr.size == 0:
@@ -2705,17 +2741,20 @@ class DecodingAlgorithms:
             else:
                 raise ValueError(f"Unsupported fitType: {fitType}")
 
-            # Kalman update
+            # Kalman update (regularized: see _robust_psd_inverse / SSGLM_STATE_BOUND).
+            # The posterior precision invW_u can become ill-conditioned / non-finite
+            # for high-rate or sparse bins; invert robustly and project to PSD so the
+            # EM cannot abort on an eigh non-convergence.
             W_p_inv = np.linalg.inv(W_p[:, :, k] + 1e-12 * np.eye(R))
             invW_u = W_p_inv + sumValMat
-            W_u[:, :, k] = np.linalg.inv(invW_u + 1e-12 * np.eye(R))
+            W_u[:, :, k] = _robust_psd_inverse(invW_u, R)
 
-            # Ensure positive definiteness
-            eigvals, eigvecs = np.linalg.eigh(W_u[:, :, k])
-            eigvals = np.maximum(eigvals, np.finfo(float).eps)
-            W_u[:, :, k] = eigvecs @ np.diag(eigvals) @ eigvecs.T
-
-            x_u[:, k] = x_p[:, k] + W_u[:, :, k] @ sumValVec
+            # Keep the log-rate state physical so a diverged trial cannot poison the
+            # next trial's prior (real states sit near log(rate*delta), ~[-12, 5]).
+            x_u[:, k] = np.clip(
+                x_p[:, k] + W_u[:, :, k] @ sumValVec,
+                -SSGLM_STATE_BOUND, SSGLM_STATE_BOUND,
+            )
 
         # Backward RTS smoother
         x_K = np.zeros((R, K), dtype=float)
