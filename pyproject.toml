@@ -93,8 +93,11 @@ dynamax = [
 test-parity = [
   "nemos>=0.2",
   "pykalman>=0.11",
-  "statsmodels>=0.14",
+  "statsmodels>=0.14.6",  # scipy._lib._util._lazywhere removed; pre-0.14.6 imports it
   "nitime>=0.12",
+  # numpy>=2.0 required by recent jax (np.dtypes.StringDType()) which nemos pulls.
+  # Pinning here so [test-parity] is actually installable end-to-end.
+  "numpy>=2.0",
 ]
 
 # Bridge to replay_trajectory_classification (Denovellis 2021, eLife;
@@ -103,7 +106,11 @@ test-parity = [
 # JAX-heavy (~200 MB).  Like [dynamax], deliberately NOT in [all-extras];
 # install explicitly when you need it.
 clusterless = [
-  "replay_trajectory_classification>=1.4",
+  # NOTE: pinned to 1.3.x because 1.4+ removed the `environments=` kwarg
+  # on ClusterlessDecoder.__init__() and changed the state-transition
+  # construction in ClusterlessClassifier. The bridge code targets the
+  # 1.3.x API; updating to 1.4+ is a separate task tracked in issue #128.
+  "replay_trajectory_classification>=1.3,<1.4",
 ]
 
 # Spatial / spatiotemporal point-process module (nstat.extras.spatial).
@@ -162,8 +169,10 @@ all-extras = [
   "pyspike>=0.8",
   "nemos>=0.2",
   "pykalman>=0.11",
-  "statsmodels>=0.14",
+  "statsmodels>=0.14.6",  # scipy._lib._util._lazywhere removed; pre-0.14.6 imports it
   "nitime>=0.12",
+  # numpy>=2.0 required by recent jax (np.dtypes.StringDType()) which nemos pulls.
+  "numpy>=2.0",
 ]
 
 [tool.setuptools.packages.find]
