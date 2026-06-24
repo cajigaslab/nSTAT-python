@@ -214,6 +214,7 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
         {
             "lgcp",
             "spatial_gof",
+            "matlab_rng",  # MATLAB-aligned MT19937 wrapper — only needs numpy (core dep)
             "marked_gof",
             "basis",
             "wave_analysis",
