@@ -220,6 +220,7 @@ non-JAX at once with `pip install nstat-toolbox[all-extras]`.
 | `nstat.extras.validation.pykalman_bridge` | Pure-NumPy Kalman cross-validation reference via [pykalman](https://github.com/pykalman/pykalman). | [validation_pykalman](docs/extras/validation_pykalman.md) | `[test-parity]` |
 | `nstat.extras.validation.statsmodels_bridge` | Poisson GLM IRLS cross-validation oracle (~1e-9 agreement) via [statsmodels](https://www.statsmodels.org). | [validation_statsmodels](docs/extras/validation_statsmodels.md) | `[test-parity]` |
 | `nstat.extras.metrics.spike_distances` | ISI / SPIKE-distance spike-train metrics via [PySpike](https://github.com/mariomulansky/PySpike). | [metrics_spike_distances](docs/extras/metrics_spike_distances.md) | `[metrics]` |
+| `nstat.extras.matlab_rng` | MATLAB-aligned MT19937 RNG — `MatlabRNG(seed)` produces uniform draws bit-equivalent to MATLAB's `rng(N); rand(...)`. `seeded_global_rng(seed)` context manager seeds NumPy global state for recipe-level determinism. `randn` is statistically (not bit-) equivalent (Box-Muller vs. MATLAB Ziggurat). | [matlab_rng](docs/extras/matlab_rng.md) | core (no extra) |
 
 The interactive [`extras_summary.html`](https://cajigaslab.github.io/nSTAT-python/extras_summary.html)
 landing page has the same content as bigger cards with code snippets.

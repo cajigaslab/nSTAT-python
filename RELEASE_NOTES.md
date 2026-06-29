@@ -1,5 +1,69 @@
 # Release Notes
 
+## Unreleased (post-v0.5.7 — 2026-06-24)
+
+### Bug fixes
+
+#### SSGLM (ssglmFB / ssglm) — 3 crash-level bugs + EM divergence fixed (#249)
+
+Three MATLAB→Python port bugs made the across-trial state-space GLM
+initialization path crash on all real input, and the EM diverged on
+high-rate / sparse units. Fixes [#248](https://github.com/cajigaslab/nSTAT-python/issues/248).
+
+**`nstat/trial.py`:**
+- **`_psth_glm_coeffs`**: read fit index `1` instead of `0` — a
+  single-config analysis yields one fit at index 0; the wrong index
+  caused `IndexError` on every call.
+- **`estimateVarianceAcrossTrials`** (backward loop): indexed
+  coefficient columns by the realization number `i` (e.g. 98) into an
+  `(numBasis, numIter)` array — caused `IndexError`. Fixed by using a
+  running column counter shared across both loops (matching MATLAB's
+  `indexValue` convention).
+- **`estimateVarianceAcrossTrials`** (variance propagation): degenerate
+  empty-bin coefficients (≈ −120) were propagated into the across-subset
+  variance, exploding `Qhat` to ~1e3–1e4 and causing EM divergence even
+  on clean data. Non-physical `|log-rate| > 30` values are now masked.
+
+**`nstat/decoding_algorithms.py` (`PPSS_EStep` regularization):**
+Added `_robust_psd_inverse` (nan-safe, pinv/ridge fallback, PSD
+projection) and a `SSGLM_STATE_BOUND` log-rate clamp so a diverged
+trial cannot poison the next trial's prior. No behavioral change on
+well-conditioned problems.
+
+A new end-to-end CI test (`tests/test_ssglm_end_to_end.py`) exercises
+the full EM init + forward-backward path on synthetic clean and
+high-rate bursty spike data, asserting finite/physical state, recovered
+rate, and O(1) `Qhat`.
+
+#### Extras dependency pins (#250)
+
+Resolves three extras CI failures caused by upstream version drift
+(closes [#127](https://github.com/cajigaslab/nSTAT-python/issues/127),
+[#128](https://github.com/cajigaslab/nSTAT-python/issues/128),
+[#180](https://github.com/cajigaslab/nSTAT-python/issues/180)):
+
+- **`statsmodels>=0.14.6`** in `[test-parity]` and `[all-extras]` —
+  earlier versions imported the private `scipy._lib._util._lazywhere`
+  symbol that SciPy removed.
+- **`numpy>=2.0`** in `[test-parity]` and `[all-extras]` — required by
+  recent JAX (which calls `np.dtypes.StringDType()` at import time);
+  `nemos` transitively pulls JAX.
+- **`clusterless` pinned to `>=1.3,<1.4`** — `replay_trajectory_classification`
+  1.4+ removed the `environments=` kwarg on `ClusterlessDecoder.__init__()`
+  and changed state-transition construction. The bridge in
+  `nstat/extras/decoding/clusterless_bridge.py` targets the 1.3.x API.
+  A full bridge rewrite for the 1.4+ API is tracked in
+  [#128](https://github.com/cajigaslab/nSTAT-python/issues/128).
+- `nstat/extras/matlab_rng.py` added to `CORE_NO_DEP_MODULES` allowlist
+  in `tests/test_pyproject_consistency.py` (it depends only on NumPy,
+  which is a core dependency).
+
+### No breaking changes
+
+All existing public symbols behave identically to v0.5.7.
+
+---
+
 ## v0.5.7 — 2026-06-22
 
 v15 post-upstream-MATLAB reconciliation cycle. The upstream maintainer
