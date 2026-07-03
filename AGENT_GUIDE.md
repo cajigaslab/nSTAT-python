@@ -2,7 +2,7 @@
 
 > **Audience:** AI coding assistants (Claude, GPT, Cursor, Copilot, etc.) and
 > autonomous agents that need to use the `nstat-python` toolbox correctly.
-> Updated: 2026-06-22. Package version: 0.5.7.
+> Updated: 2026-07-03. Package version: 0.6.0.
 >
 > The MATLAB reference toolbox lives in a *separate* repository
 > (https://github.com/cajigaslab/nSTAT) and is deliberately kept independent
@@ -747,6 +747,67 @@ Python projects" table in `README.md` for install commands.
   `notebooks/HawkesWaveAnalysis.ipynb`,
   `notebooks/RealPlaceCellDecoding.ipynb`,
   `notebooks/MultitypeCrossK.ipynb`.
+  A **spatiotemporal tier** (v0.6.0, all pure NumPy/SciPy, no MATLAB
+  counterpart) extends the whole catalogue above from static spatial
+  `(x, y)` patterns to full space-time `(x, y, t)` patterns, in six
+  new modules: **ST intensity** —
+  `intensity_st_kde(points, times, *, domain, period=None, bw_space=None,
+  bw_time=None, separable=False, grid=(40,40,40), kernel="gaussian")`
+  (Diggle 2013 Ch. 7 boundary-corrected product-kernel `lambda_hat(x,t)`)
+  returns `STIntensityResult` with `.evaluate(x, t)`. **ST second-order
+  GoF** — `k_st_inhom` / `pair_correlation_st` / `global_envelope_st`
+  (Diggle-Chetwynd-Haggkvist-Morris 1995; Gabriel-Diggle 2009;
+  Møller-Ghorbani 2012; Myllymäki et al. 2017) are the space-time
+  analogues of `k_inhom`/`pair_correlation`/`global_envelope` above,
+  returning `STKResult`/`STEnvelopeResult`; the space-time Poisson null
+  is `K_st(r,t) = pi*r**2*2*t`, `g(r,t) = 1`. **Spatial Hawkes/ETAS** —
+  `em_spatial_hawkes(points, times, *, domain, T, spec=None,
+  return_responsibilities=False)` (Veen-Schoenberg 2008 branching EM
+  with a homogeneous background and an isotropic-Gaussian-in-space x
+  exponential-in-time triggering kernel) returns `SpatialHawkesResult`;
+  because both kernel factors are individually normalised, `K_branch_hat`
+  *is* the branching ratio directly (unlike the static `hawkes_em`'s
+  `alpha/beta` ratio); `SpatialHawkesSpec` carries the initial guesses,
+  and `simulate_spatial_hawkes(mu, K_branch, c, sigma_space, *, domain,
+  T, rng)` is the companion branching simulator. **ST-LGCP** —
+  `lgcp_st_fit(points, times, *, domain, period, grid=(24,24,24),
+  length_scale_space=0.12, length_scale_time=0.1, nu=1.5, variance=1.0,
+  ...)` fits a separable Matern-GP-prior log-rate field on a 3-D
+  `(x, y, t)` grid by a Kronecker-structured, matrix-free
+  conjugate-gradient Laplace approximation (Rasmussen-Williams 2006;
+  Saatci 2011) — `variance -> inf` is the Poisson-MLE limit, not
+  `variance -> 0` — returning `LGCPSTResult` with `.rate_map(t,
+  level=0.90)` (a log-normal credible band at a queried time slice) and
+  `.intensity_fn()`. **Cox-Hawkes** — `fit_cox_hawkes(points, times, *,
+  domain, period, grid=(24,24,24), ...)` composes an LGCP background
+  with spatial-Hawkes excitation (Miscouridou et al. 2022) via an
+  alternating declustering EM with a deterministic weighted-histogram
+  background M-step (no RNG parameter; bit-identical repeat calls),
+  returning `CoxHawkesResult` (`background`, `K_branch_hat`, `c_hat`,
+  `sigma_space_hat`, `background_fraction`); its `length_scale_space`/
+  `length_scale_time` defaults assume a unit-square domain, so rescale
+  them (or fit on a normalised domain) for a physically-sized array.
+  `simulate_cox_hawkes(background_intensity_fn, K_branch, c, sigma_space,
+  *, domain, T, rng, bg_max=None)` is the matching two-stage (LGCP
+  -background immigrants + Hawkes cascade) simulator. **Modulated
+  renewal** — `fit_modulated_renewal(spike_times, covariates, *,
+  renewal="inverse_gaussian", basis=None, dt=None, penalty=0.0,
+  max_iter=100, tol=1e-6, n_inner=12)` (Barbieri-Quirk-Frank-Wilson-Brown
+  2001; Cox 1955) fits a rate-modulated conditional-ISI CIF
+  `lambda(t|H_t) = lambda_0(t) * r(s(t); theta)` by alternating a
+  Poisson-GLM beta-step (damped-Picard inner loop) with a 1-D renewal
+  -shape theta-step, returning `ModulatedRenewalResult` (`.rate_fn()`,
+  `.cv = 1/sqrt(shape_param)`); `simulate_modulated_renewal(
+  rate_fn_or_beta, shape_param, *, T, renewal="inverse_gaussian", rng,
+  dt=0.001)` is the time-rescaling-inverse simulator, and
+  `renewal_hazard(tau, shape_param, renewal=...)` /
+  `renewal_cdf(u, shape_param, renewal=...)` expose the gamma / inverse
+  -Gaussian renewal hazard and CDF (the latter is the PIT used for the
+  time-rescaling GoF tie).  Demos:
+  `examples/extras/spatial_stlgcp_microelectrode_demo.py`,
+  `examples/extras/spatial_gof_ecog_demo.py`,
+  `examples/extras/spatial_hawkes_ecog_demo.py`,
+  `examples/extras/modulated_renewal_microelectrode_demo.py`.
 - **Not** distributed.  All routines are single-process NumPy / SciPy.
 
 ### Latents — Gaussian-Process Factor Analysis (`nstat.extras.latents`)

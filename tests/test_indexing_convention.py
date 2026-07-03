@@ -124,6 +124,11 @@ VARIABLE_ALLOWLIST: set[tuple[str, str]] = {
     # ValidationDataSet raster: ``axs[row - 1]`` because row is the
     # display label (1-based math convention) while axs is 0-based.
     ("ValidationDataSet.ipynb", "row"),
+    # _envelopes.py Myllymäki global-rank envelope: ``k = floor(alpha*m)``
+    # is a 1-based order-statistic RANK; the k-th order statistic of the
+    # sorted extreme-rank array lives at 0-based index ``k - 1``. This is
+    # an inherent rank→index conversion, not a 1-based parameter idiom.
+    ("_envelopes.py", "k"),
 }
 
 

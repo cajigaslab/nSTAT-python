@@ -303,6 +303,74 @@ Daley & Vere-Jones (2003) §8.4 / Bacry-Mastromatteo-Muzy (2015).
 | `detect_wave_peaks(spectrum, freq_grid, wave_vector_grid, *, n_peaks=3, min_separation_bins=1)` → `WaveAnalysisResult` | Greedy descending-power sort + Chebyshev non-max suppression; masks DC `|k|=0` rows; returns `(freq, kx, ky, power, speed, direction)`. |
 | `WaveAnalysisResult` | Frozen dataclass; `speed = 2*pi*freq / |k|` in `position-unit / s`, `direction = atan2(ky, kx)` in radians. |
 
+### Spatiotemporal point processes (v0.6.0, pure NumPy/SciPy)
+
+Six modules extend the static-spatial toolkit above to full space-time
+`(x, y, t)` point processes — kernel intensity estimation, second-order
+goodness-of-fit, two self-exciting (Hawkes/ETAS) families, a
+spatiotemporal log-Gaussian Cox process, and a rate-modulated renewal
+(conditional-ISI) model.  Every one is an original implementation
+directly from the published equations cited per module below — none is
+a port of an external package — and, like the rest of this module,
+none has a MATLAB nSTAT counterpart, so there is no
+`parity/manifest.yml` entry for any of them.
+
+#### Space-time kernel intensity (`st_intensity`)
+
+| Symbol | Notes |
+|---|---|
+| `intensity_st_kde(points, times, *, domain, period=None, bw_space=None, bw_time=None, separable=False, grid=(40,40,40), kernel="gaussian")` | Boundary-corrected product-kernel space-time intensity λ̂(x,t) (Diggle 2013, Ch. 7). The edge correction is a query-point-evaluated **uniform/local edge correction in the spirit of Diggle (1985)** — not his original per-event correction — so `∫∫ λ̂ ≈ n` only *approximately* (exact well inside the window, approximate near the boundary). `separable=True` fits the marginal `m(x)`/`mu(t)` independently and combines as `m(x)*mu(t)/N`; the default (`False`) fits the full non-separable product kernel. `period` defaults to `(times.min(), times.max())` and, despite the parameter name, is an *observation interval* used for the boundary correction — **not** a periodic/wrap-around condition. `bw_space`/`bw_time` default to Silverman's (1986) normal-reference rule of thumb. → `STIntensityResult` |
+| `STIntensityResult` | Frozen dataclass: `grid_x` (`(Gx*Gy, 2)`), `grid_t` (`(Gt,)`), `intensity` (`(Gt, Gx*Gy)`), `bw_space`, `bw_time`, `separable`, `domain`, `period`, `kernel`, `points`, `times`. `.evaluate(x, t)` re-evaluates the estimator formula at arbitrary query points (`x` is `(m, 2)` or `(2,)`, `t` is `(m,)` or scalar; broadcasts when one side has length 1) rather than interpolating the grid — this is the exact callable the space-time `K`/pair-correlation estimators below expect as `lambda_hat`. |
+
+#### Space-time inhomogeneous second-order goodness-of-fit (`spatiotemporal_gof`)
+
+| Symbol | Notes |
+|---|---|
+| `k_st_inhom(points, times, lambda_hat, r_grid, t_grid, *, domain, period, edge_correction="translation")` | SOIRS-reweighted inhomogeneous space-time `K`-function (Diggle-Chetwynd-Haggkvist-Morris 1995; Gabriel-Diggle 2009). **Poisson null:** `K_st(r, t) = pi * r**2 * 2*t`. `edge_correction` is `"isotropic"` (Ripley spatial factor × 1-D translation temporal factor), `"translation"` (Ohser 1983 spatial × 1-D translation temporal — the default), or `"border"` (Baddeley-Rubak-Turner 2015 spatial × 1-D border temporal; `NaN` where no event/interval qualifies as a usable focal point). → `STKResult`, with a `.l_st()` variance-stabilising transform `sqrt(K_st / (2*pi))`. |
+| `pair_correlation_st(points, times, lambda_hat, r_grid, t_grid, *, bw_r=None, bw_t=None, domain, period)` | SOIRS-reweighted space-time pair correlation `g(r, t)` (Møller-Ghorbani 2012). **Poisson null:** `g(r, t) ≡ 1`; `>1` clustering, `<1` inhibition. No geometric edge correction beyond the SOIRS reweighting (matches the static `pair_correlation`'s uncorrected default) — use `k_st_inhom`'s `edge_correction` instead when the boundary matters for a cumulative statistic. Returns a plain `(len(r_grid), len(t_grid))` array, not a result dataclass. |
+| `global_envelope_st(points, times, lambda_hat, r_grid, t_grid, *, n_sim=199, statistic="kst", alpha=0.05, domain, period, rng=None, edge_correction="translation")` | Monte-Carlo **global-rank envelope** test (Myllymäki et al. 2017) against the inhomogeneous space-time Poisson null — the joint extreme-rank envelope over the flattened `(r, t)` surface, not per-cell order statistics. Null realisations are drawn by Lewis-Shedler thinning of the fitted `lambda_hat` over `domain x period`. `statistic` is `"kst"` (default, `K_st`), `"lst"` (the `.l_st()` transform), or `"gst"` (`pair_correlation_st`, always uncorrected regardless of `edge_correction`). → `STEnvelopeResult` with `.inside` (`True` ⇒ fails to reject the null) and `.p_interval` (conservative/liberal p-value bounds). |
+| `STKResult` | Frozen dataclass: `r_grid`, `t_grid`, `k_st` (`(nr, nt)`), `edge_correction`; carries the `.l_st()` method above. |
+| `STEnvelopeResult` | Frozen dataclass: `r_grid`, `t_grid`, `observed`, `lo`, `hi` (each `(nr, nt)`), `inside`, `p_interval`. |
+
+Same **plug-in-bias** caveat as the static-spatial module applies here:
+pass a **held-out** `lambda_hat` (e.g. `intensity_st_kde` fit to a
+disjoint calibration epoch), never a fit to the same pattern being
+tested.
+
+#### Space-time Hawkes / ETAS via branching EM (`spatial_hawkes`)
+
+| Symbol | Notes |
+|---|---|
+| `em_spatial_hawkes(points, times, *, domain, T, spec=None, return_responsibilities=False)` | Branching EM (Veen-Schoenberg 2008) for a separable space-time self-exciting process with a **homogeneous** background: `lambda(x, t) = mu/|W| + sum_{t_j<t} K * c*exp(-c*(t-t_j)) * N(x-x_j; sigma^2 I)`. Both the temporal kernel `g(t) = c*exp(-c*t)` and the spatial kernel `h(r)` are individually normalised to integrate to 1, so **`K` IS the branching ratio directly** — no `alpha/beta`-style division needed (contrast the static `hawkes_em.HawkesEMResult.branching_ratio` property). Dense `O(N^2)` implementation, same memory caveat as the static `hawkes_em`. → `SpatialHawkesResult` |
+| `simulate_spatial_hawkes(mu, K_branch, c, sigma_space, *, domain, T, rng)` → `(points, times)` | Branching/Poisson-cluster simulator (Møller-Rasmussen 2005): homogeneous background immigrants on `W x [0, T]` plus `Poisson(K_branch)` direct offspring per event with an `Exp(c)` temporal delay and an `N(0, sigma_space^2 I)` spatial offset. Raises `ValueError` on `K_branch >= 1` (super-critical: infinite expected event count). |
+| `SpatialHawkesSpec(mu0=None, K0=0.5, c0=1.0, sigma0=0.1, max_iter=200, tol=1e-6)` | Frozen dataclass of initial guesses + convergence config. `mu0=None` auto-infers `N/T` at fit time. Warns (`UserWarning`) when `K0 >= 1` (super-critical initialisation). |
+| `SpatialHawkesResult` | Frozen dataclass: `mu_hat` (**total** background rate over the whole window `W`, so the background density is `mu_hat/|W|`), `K_branch_hat`, `c_hat`, `sigma_space_hat`, `log_likelihood_trace`, `n_iter`, `converged`, `responsibilities` (lower-triangular CSR or `None`; row `i`'s diagonal cell is P(background), cell `[i, j]` with `j < i` is P(`j` triggered `i`); rows sum to 1). |
+
+#### Spatiotemporal LGCP by Kronecker Laplace approximation (`lgcp_st`)
+
+| Symbol | Notes |
+|---|---|
+| `lgcp_st_fit(points, times, *, domain, period, grid=(24,24,24), length_scale_space=0.12, length_scale_time=0.1, nu=1.5, variance=1.0, prior_mean=None, max_iter=50, tol=1e-8, jitter=1e-6)` | Bins events on a 3-D `(x, y, t)` grid; places a **separable Matérn GP prior** on the log-rate with `K = Kx ⊗ Ky ⊗ Kt` (Kronecker product of three 1-D Matérn factors); finds the posterior mode by Newton/IRLS (Rasmussen-Williams 2006 Alg. 3.1) using a **matrix-free conjugate-gradient** solve (`scipy.sparse.linalg.cg` against a `LinearOperator`) that never forms the dense `(Gx*Gy*Gt)^2` covariance, and estimates the posterior-variance diagonal by a **Hutchinson stochastic estimator** (64 Rademacher probes; Hutchinson 1990). `nu` (shared Matérn smoothness for all three axes) is one of `{0.5, 1.5, 2.5}`. Higher `variance` gives a heavier-tailed / less-informative prior; **`variance -> inf` is the Poisson-MLE limit** (flat prior everywhere, mode collapses to `log(count / cell_volume)` per cell) — **not** `variance -> 0`. → `LGCPSTResult` |
+| `LGCPSTResult` | Frozen dataclass: `grid_x`, `grid_t`, `counts`, `f_mode`, `f_var` (all `(Gt, Gx*Gy)` except `grid_x`/`grid_t`), `cell_volume`, `n_iter`, `converged`. `.rate_map(t, level=0.90)` snaps `t` to the nearest `grid_t` entry and returns the `(mean, lo, hi)` **log-normal credible band** at that time slice: `mean = exp(f_mode + f_var/2)`, `lo/hi = exp(f_mode ∓ z*sqrt(f_var))`. `.intensity_fn()` returns a callable `(X, t) -> rate` (nearest-cell lookup of the posterior-mean rate) — a convenient Cox-process background function, e.g. for `simulate_cox_hawkes` below. |
+
+#### Cox-Hawkes: LGCP background × spatial-Hawkes excitation (`cox_hawkes`)
+
+| Symbol | Notes |
+|---|---|
+| `fit_cox_hawkes(points, times, *, domain, period, grid=(24,24,24), length_scale_space=0.12, length_scale_time=0.1, max_outer=20, tol=1e-4, hawkes_spec=None)` | Alternating estimator for the doubly-stochastic model of Miscouridou et al. (2022) — an inhomogeneous LGCP background plus spatial-Hawkes excitation — fit by a declustering EM built from the two modules above (not that paper's own joint-MCMC inference): init `lgcp_st_fit` treating every event as background → E-step soft background/triggered responsibilities → **deterministic weighted-histogram** LGCP background refit (bins each event's background-responsibility *mass* rather than a stochastic thinning draw, so `fit_cox_hawkes` has **no RNG parameter**; repeated calls on the same input are bit-identical) → closed-form excitation M-step (`K`, `c`, `sigma_space`) → iterate to `tol`/`max_outer`. `length_scale_space`/`length_scale_time` forward unchanged to *every* background refit; the defaults (0.12, 0.1) are calibrated for a **unit-square domain** — for a physically-sized domain (e.g. an 8mm microelectrode array), scale them to the domain extent or fit on a normalised `((0, 1), (0, 1))` domain and rescale the rate afterward. → `CoxHawkesResult` |
+| `simulate_cox_hawkes(background_intensity_fn, K_branch, c, sigma_space, *, domain, T, rng, bg_max=None)` → `(points, times)` | Two-stage simulator: inhomogeneous background immigrants via Lewis-Shedler (1979) dominating-rate thinning of `background_intensity_fn(X, t)`, then the same branching offspring cascade as `simulate_spatial_hawkes`. `bg_max=None` auto-estimates a dominating rate by probing 5000 random points and padding by 1.25x (a heuristic, not a guarantee — pass an explicit `bg_max` if the true peak of `background_intensity_fn` is known). |
+| `CoxHawkesResult` | Frozen dataclass: `background` (an `LGCPSTResult`), `K_branch_hat`, `c_hat`, `sigma_space_hat`, `background_fraction` (mean posterior P(background) across all events), `log_likelihood_trace`, `n_outer`, `converged`, `event_points`, `event_times`. `.intensity_fn()` returns the **exact** fitted `(X, t) -> rate` callable (background + excitation summed over the observed event history, not a mean-field `1/(1-K)` surrogate). |
+
+#### Modulated renewal / conditional-ISI point process (`modulated_renewal`)
+
+| Symbol | Notes |
+|---|---|
+| `fit_modulated_renewal(spike_times, covariates, *, renewal="inverse_gaussian", basis=None, dt=None, penalty=0.0, max_iter=100, tol=1e-6, n_inner=12)` | Penalized-ML fit of a rate-modulated renewal CIF (Barbieri-Quirk-Frank-Wilson-Brown 2001; the Cox 1955 time-change construction): `lambda(t | H_t) = lambda_0(t) * r(s(t); theta)`, where `lambda_0(t) = exp(x(t)'beta)` is a log-linear Poisson-GLM rate and `s(t)` is elapsed time since the last spike measured in `lambda_0`-rescaled ("operational") time. `renewal` is `"gamma"` or `"inverse_gaussian"` (default); both are parametrised with mean 1 so `theta` alone sets `CV = 1/sqrt(theta)` — gamma `theta=1` is exactly Exponential(1), the exact Poisson limit. Outer alternation of a beta-step (`nstat.glm.fit_poisson_glm` on the modulated design with `offset = log(hazard) + log(dt)`, itself an inner **damped Picard** loop of up to `n_inner` steps because the offset depends on the current `lambda_0` estimate) and a theta-step (1-D MLE of the renewal shape on the current operational-time ISIs). `basis` (e.g. a B-spline design from `bspline_basis_1d`) overrides `covariates` as the GLM design matrix when given. → `ModulatedRenewalResult` |
+| `simulate_modulated_renewal(rate_fn_or_beta, shape_param, *, T, renewal="inverse_gaussian", rng, dt=0.001)` → spike times | Time-rescaling inverse-method simulator (Ogata 1988; Brown et al. 2002), generalised from the Poisson `Exp(1)` case to a general renewal density: draw i.i.d. operational-time increments (mean 1), partial-sum them, and invert through `Lambda_0^{-1}` (linear interpolation on a dense `dt` grid) to recover real spike times. |
+| `renewal_hazard(tau, shape_param, renewal="inverse_gaussian")` | Renewal hazard `r(tau; theta) = f(tau; theta) / S(tau; theta)` — the multiplicative history term, evaluated at elapsed operational time `tau`. |
+| `renewal_cdf(u, shape_param, renewal="inverse_gaussian")` | Renewal CDF `F(u; theta)` — the probability-integral transform used for the goodness-of-fit tie: under the true model, `renewal_cdf(rescaled_isis, shape_param, renewal)` is Uniform(0,1) (the classical time-rescaling-theorem check of Brown et al. 2002). |
+| `ModulatedRenewalResult` | Frozen dataclass: `beta`, `shape_param`, `renewal`, `rescaled_isis` (operational-time ISIs, length `len(spike_times) - 1`), `cv` (`= 1/sqrt(shape_param)`; `~1` Poisson-like, `<1` regular), `log_likelihood`, `n_iter`, `converged`, `spike_times`, `dt`. `.rate_fn()` returns a callable `t -> lambda(t | H_t)` (the fitted CIF, nearest-bin covariate lookup) — feed its output through `dt` to build per-bin probabilities for `marked_time_rescaling` / the rest of `nstat.extras.spatial.marked_gof`. |
+
 ## Gotchas
 
 - **Plug-in bias (read this).** The reweighted `g`/`K`/`global_envelope`
@@ -322,6 +390,32 @@ Daley & Vere-Jones (2003) §8.4 / Bacry-Mastromatteo-Muzy (2015).
   multivariate time-rescaling theorem).
 - **`pair_correlation` is planar (`d=2`).** `lgcp_fit` / `k_inhom` work in
   general `d`, but the `g(r)` ring normalization assumes the plane.
+- **`fit_cox_hawkes`'s length scales assume a unit-square domain.**
+  `length_scale_space=0.12`/`length_scale_time=0.1` forward unchanged to
+  *every* background refit; on a physically-sized domain (mm/cm) they are
+  far shorter than one grid cell and produce an under-smoothed, speckled
+  background. Rescale the length scales to the domain extent, or simulate
+  and fit on a normalised `((0, 1), (0, 1))` domain and rescale the
+  recovered rate/positions back afterward (see the ECoG-grid demo).
+- **`lgcp_st_fit`'s `variance -> inf` is the Poisson-MLE limit, not
+  `variance -> 0`.** A larger `variance` widens (flattens) the Matérn GP
+  prior on the log-rate, so the Newton/IRLS mode drifts toward the
+  unregularised per-cell Poisson MLE `log(count / cell_volume)`; a
+  *smaller* `variance` pulls the fit toward the (informative) prior mean
+  instead.
+- **`em_spatial_hawkes`'s `K_branch_hat` IS the branching ratio,
+  directly.** Unlike the static `hawkes_em.HawkesEMResult`, whose
+  `branching_ratio` property divides an unnormalised amplitude `alpha` by
+  a decay `beta`, the space-time triggering kernel here is individually
+  normalised in both space and time, so `K` itself already equals the
+  expected number of direct offspring per event — do not divide it by
+  anything.
+- **`global_envelope_st` needs a held-out `lambda_hat`, same caveat as
+  the static `global_envelope`.** Reweighting by an intensity fit to the
+  *same* pattern under test deflates the statistic's variance and shrinks
+  the envelope below nominal coverage; fit `intensity_st_kde` (or
+  `lgcp_st_fit`) on a disjoint calibration epoch and pass that estimate's
+  `.evaluate` (or `.intensity_fn()`) as `lambda_hat` instead.
 
 ## Recipe
 
@@ -416,6 +510,38 @@ print("uncorrected rejects:", not res.inside_uncorrected,
       "| corrected passes:", res.inside_corrected)
 ```
 
+Spatiotemporal: simulate a sub-critical space-time Hawkes/ETAS catalogue
+and recover its parameters by branching EM (`K_branch_hat` is the
+branching ratio directly — no `alpha/beta` division needed):
+
+```python
+import numpy as np
+from nstat.extras.spatial import (
+    SpatialHawkesSpec,
+    em_spatial_hawkes,
+    simulate_spatial_hawkes,
+)
+
+rng = np.random.default_rng(3)
+domain = ((0.0, 1.0), (0.0, 1.0))
+T = 300.0
+
+points, times = simulate_spatial_hawkes(
+    mu=0.5, K_branch=0.35, c=1.0, sigma_space=0.05,
+    domain=domain, T=T, rng=rng,
+)
+
+fit = em_spatial_hawkes(
+    points, times, domain=domain, T=T,
+    spec=SpatialHawkesSpec(K0=0.3, c0=1.0, sigma0=0.1),
+)
+print(
+    "K_branch_hat:", round(fit.K_branch_hat, 2),
+    "| c_hat:", round(fit.c_hat, 2),
+    "| converged:", fit.converged,
+)
+```
+
 ## Examples and notebooks
 
 End-to-end demonstrations of the basis-projected LGCP path live in
@@ -477,6 +603,31 @@ The companion walkthrough notebook
 runs both halves in one place — six processes, two estimators, a single
 recovery table — so the attractive (cluster-Cox) and repulsive (Gibbs)
 catalogues can be inspected side-by-side.
+
+The spatiotemporal tier is exercised by four standalone demo scripts,
+each grounded in a realistic electrode-array recording geometry (Utah
+-style microelectrode array or ECoG surface grid) with fully synthetic
+spikes — no figshare dataset access required.
+[`examples/extras/spatial_stlgcp_microelectrode_demo.py`](../../examples/extras/spatial_stlgcp_microelectrode_demo.py)
+simulates a Gaussian rate "bump" translating across a 10x10 Utah-style
+array and recovers it with both `intensity_st_kde` and `lgcp_st_fit`
+(including its posterior credible band).
+[`examples/extras/spatial_gof_ecog_demo.py`](../../examples/extras/spatial_gof_ecog_demo.py)
+compares a baseline (inhomogeneous-Poisson) epoch against a clustered
+/traveling-wave epoch on an 8x8 ECoG grid, using a held-out
+`intensity_st_kde` fit and `k_st_inhom` / `pair_correlation_st` /
+`global_envelope_st` to confirm the baseline fails to reject and the
+clustered epoch rejects the space-time Poisson null.
+[`examples/extras/spatial_hawkes_ecog_demo.py`](../../examples/extras/spatial_hawkes_ecog_demo.py)
+recovers propagating-activity kernels on the same ECoG geometry via
+`em_spatial_hawkes` (homogeneous background) and `fit_cox_hawkes`
+(inhomogeneous LGCP background), decomposing background from
+self-excitation.
+[`examples/extras/modulated_renewal_microelectrode_demo.py`](../../examples/extras/modulated_renewal_microelectrode_demo.py)
+fits a single regular-spiking microelectrode unit with
+`fit_modulated_renewal` (gamma renewal, CV < 1) and shows the continuous
+and discrete-time-rescaling KS checks both pass, unlike a naive
+Poisson-CV=1 assumption on the same rescaled ISIs.
 
 ## Scope
 
@@ -574,3 +725,56 @@ catalogues can be inspected side-by-side.
   cascading.* Science 319(5866):1076-1079.
 - Linderman SW, Adams RP, Pillow JW (2014). *Discovering latent network
   structure in point process data.* NeurIPS.
+- Diggle PJ (1985). *A kernel method for smoothing point process data.*
+  Journal of the Royal Statistical Society, Series C 34(2):138-147.
+- Diggle PJ, Chetwynd AG, Haggkvist R, Morris SE (1995). *Second-order
+  analysis of space-time clustering.* Journal of the Royal Statistical
+  Society, Series C 44(1):71-86.
+- Gabriel E, Diggle PJ (2009). *Second-order analysis of inhomogeneous
+  spatio-temporal point process data.* Statistica Neerlandica
+  63(1):43-51.
+- Møller J, Ghorbani M (2012). *Aspects of second-order analysis of
+  structured inhomogeneous spatio-temporal point processes.* Statistica
+  Neerlandica 66(4):472-491.
+- Fuentes-Santos I, González-Manteiga W, Mateu J (2018). *A
+  nonparametric test for the comparison of first-order structures of
+  spatial point processes.* Spatial Statistics 25:44-63.
+- Ogata Y (1998). *Space-time point-process models for earthquake
+  occurrences.* Annals of the Institute of Statistical Mathematics
+  50(2):379-402.
+- Zhuang J, Ogata Y, Vere-Jones D (2002). *Stochastic declustering of
+  space-time earthquake occurrences.* Journal of the American
+  Statistical Association 97(458):369-380.
+- Møller J, Rasmussen JG (2005). *Perfect simulation of Hawkes
+  processes.* Advances in Applied Probability 37(3):629-646.
+- Saatçi Y (2011). *Scalable Inference for Structured Gaussian Process
+  Models.* PhD thesis, University of Cambridge.
+- Wilson AG, Nickisch H (2015). *Kernel Interpolation for Scalable
+  Structured Gaussian Processes (KISS-GP).* ICML.
+- Hutchinson MF (1990). *A stochastic estimator of the trace of the
+  influence matrix for Laplacian smoothing splines.* Communications in
+  Statistics — Simulation and Computation 19(2):433-450.
+- Bekas C, Kokiopoulou E, Saad Y (2007). *An estimator for the diagonal
+  of a matrix.* Applied Numerical Mathematics 57(11-12):1214-1229.
+- Miscouridou X, Bhatt S, Mohler G, Flaxman S, Bhamidi S (2022).
+  *Cox-Hawkes: doubly stochastic spatiotemporal Poisson processes.*
+  Transactions on Machine Learning Research.
+- Celeux G, Diebolt J (1985). *The SEM algorithm: a probabilistic
+  teacher algorithm derived from the EM algorithm for the mixture
+  problem.* Computational Statistics Quarterly 2:73-82.
+- Lewis PAW, Shedler GS (1979). *Simulation of nonhomogeneous Poisson
+  processes by thinning.* Naval Research Logistics Quarterly
+  26(3):403-413.
+- Cox DR (1955). *Some statistical methods connected with series of
+  events.* Journal of the Royal Statistical Society, Series B
+  17(2):129-164.
+- Barbieri R, Quirk MC, Frank LM, Wilson MA, Brown EN (2001).
+  *Construction and analysis of non-Poisson stimulus-response models of
+  neural spiking activity.* Journal of Neuroscience Methods 105:25-37.
+- Kass RE, Ventura V (2001). *A spike-train probability model.* Neural
+  Computation 13:1713-1720.
+- Chhikara RS, Folks JL (1974). *Estimation of the inverse Gaussian
+  distribution function.* Journal of the American Statistical
+  Association 69(345):250-254.
+- Chhikara RS, Folks JL (1989). *The Inverse Gaussian Distribution:
+  Theory, Methodology, and Applications.* Marcel Dekker.

@@ -227,6 +227,14 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
             "hawkes_em",
             "sbm_hawkes",
             "place_field_decoder",
+            # spatiotemporal additions (v16 STPP tier) — pure NumPy/SciPy,
+            # no optional dependency group (scipy is a core dependency).
+            "st_intensity",
+            "spatiotemporal_gof",
+            "spatial_hawkes",
+            "lgcp_st",
+            "cox_hawkes",
+            "modulated_renewal",
         }
     )
 
