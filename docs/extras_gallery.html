@@ -244,11 +244,12 @@ ax1b.plot(t_plot, fitted_lam0, color=&quot;tab:red&quot;, lw=1.8, label=&quot;fi
 ax1b.set_xlabel(&quot;time (s)&quot;)
 ax1b.set_ylabel(&quot;rate (Hz)&quot;)
 ax1b.legend(loc=&quot;upper right&quot;, fontsize=8)</code></pre></details></figure>
-<figure><img src="figures/extras/modulated_renewal_microelectrode/fig02_isi_vs_renewal.png" alt="fig02_isi_vs_renewal.png" loading="lazy"><figcaption><strong>fig02_isi_vs_renewal.png</strong><br>Histogram of the fitted model's operational-time (rescaled)
-inter-spike intervals, overlaid with the fitted gamma density
-(solid) and the Exp(1) Poisson-null density (dashed).</figcaption><div class="analysis">The rescaled-ISI histogram tracking the fitted gamma density
-rather than the flatter Exp(1) curve is the direct visual
-signature of sub-Poisson spike-timing regularity (CV < 1).</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, ax2 = plt.subplots(figsize=(7.0, 4.8))
+<figure><img src="figures/extras/modulated_renewal_microelectrode/fig02_isi_vs_renewal.png" alt="fig02_isi_vs_renewal.png" loading="lazy"><figcaption><strong>fig02_isi_vs_renewal.png</strong><br>Histogram of the fitted model's operational-time (rescaled) inter-spike
+intervals, overlaid with the ground-truth renewal density (dotted, the shape the
+data were simulated with), the fitted renewal density (solid), and the Exp(1)
+Poisson-null density (dashed).</figcaption><div class="analysis">The fitted density recovering the true density -- and both tracking the histogram
+far better than the flat Exp(1) curve -- is the direct visual signature of
+sub-Poisson spike-timing regularity (CV < 1) that a Poisson model misses.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, ax2 = plt.subplots(figsize=(7.0, 4.8))
 u_grid = np.linspace(1e-4, 3.0, 400)
 h = 1e-4
 pdf_fit = (
@@ -259,17 +260,25 @@ pdf_poisson = (
     renewal_cdf(u_grid + h, 1.0, RENEWAL)
     - renewal_cdf(np.maximum(u_grid - h, 0.0), 1.0, RENEWAL)
 ) / (2.0 * h)
+# Ground-truth renewal density (the shape the data were simulated with),
+# so the reader can see the fitted density recover it.
+pdf_true = (
+    renewal_cdf(u_grid + h, SHAPE_TRUE, RENEWAL)
+    - renewal_cdf(np.maximum(u_grid - h, 0.0), SHAPE_TRUE, RENEWAL)
+) / (2.0 * h)
 ax2.hist(
     fit.rescaled_isis, bins=30, density=True, color=&quot;tab:blue&quot;, alpha=0.45,
     label=&quot;operational-time ISIs (rescaled)&quot;,
 )
+ax2.plot(u_grid, pdf_true, color=&quot;black&quot;, lw=1.6, ls=&quot;:&quot;,
+          label=f&quot;true {RENEWAL} density (shape={SHAPE_TRUE:.1f})&quot;)
 ax2.plot(u_grid, pdf_fit, color=&quot;tab:red&quot;, lw=1.8,
-          label=f&quot;fitted {RENEWAL} density (CV={fit.cv:.2f})&quot;)
+          label=f&quot;fitted {RENEWAL} density (shape={fit.shape_param:.1f}, CV={fit.cv:.2f})&quot;)
 ax2.plot(u_grid, pdf_poisson, color=&quot;gray&quot;, lw=1.4, ls=&quot;--&quot;,
           label=&quot;Exp(1) density (Poisson null)&quot;)
 ax2.set_xlabel(&quot;operational-time ISI u (mean 1)&quot;)
 ax2.set_ylabel(&quot;density&quot;)
-ax2.set_title(&quot;Rescaled-ISI histogram vs fitted renewal density&quot;)
+ax2.set_title(&quot;Rescaled-ISI histogram: true vs fitted renewal density&quot;)
 ax2.legend(loc=&quot;upper right&quot;, fontsize=8)</code></pre></details></figure>
 <figure><img src="figures/extras/modulated_renewal_microelectrode/fig03_ks_rescaled.png" alt="fig03_ks_rescaled.png" loading="lazy"><figcaption><strong>fig03_ks_rescaled.png</strong><br>Left: continuous time-rescaling KS check — empirical CDF of
 the rescaled ISIs under the fitted gamma model (red) and under
@@ -442,27 +451,66 @@ calibration epoch, and tests both epochs with
 inhomogeneous space-time Poisson null.</p>
 <p><strong>Run:</strong> <code>python examples/extras/spatial_gof_ecog_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/spatial_gof_ecog_demo.py">Script</a></p>
 <div class="gallery">
-<figure><img src="figures/extras/spatial_gof_ecog/fig01_kst_envelope.png" alt="fig01_kst_envelope.png" loading="lazy"><figcaption><strong>fig01_kst_envelope.png</strong><br>Observed space-time K-function K_st(r, t) at the largest
-temporal lag (red) overlaid on the Monte-Carlo global-rank
-envelope (blue band) for the baseline epoch (left) and the
-clustered epoch (right).</figcaption><div class="analysis">The baseline curve stays inside the envelope (fails to reject
-the null) while the clustered curve pokes outside it — the
-global-rank verdict printed in each panel title confirms the
-test discriminates the two epochs as designed.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, axes1 = plt.subplots(1, 2, figsize=(12.0, 4.8), sharey=True)
-for ax, res in zip(axes1, (baseline, clustered)):
+<figure><img src="figures/extras/spatial_gof_ecog/fig01_kst_envelope.png" alt="fig01_kst_envelope.png" loading="lazy"><figcaption><strong>fig01_kst_envelope.png</strong><br>Top row: the ground-truth event patterns each epoch produced, overlaid on the
+(known) inhomogeneous background rate field -- the baseline (left) is pure
+inhomogeneous Poisson; the clustered epoch (right) adds a self-exciting cascade
+with visible clumps. Bottom row: the space-time K-function K_st(r, t) the model
+derives from each pattern (red) vs the Monte-Carlo global-rank envelope of the
+fitted-background null (blue band).</figcaption><div class="analysis">Reading each column top-to-bottom shows why the test fires: the clustered
+pattern's tight clumps push its K_st far outside the envelope (rejects the null),
+while the pure-background pattern stays inside it (fails to reject). The
+ground-truth data and the model's verdict are shown together.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python"># Top row = the GROUND-TRUTH event patterns each epoch actually produced,
+# overlaid on the (known) inhomogeneous background rate field.  Bottom row
+# = the space-time K-function the MODEL DERIVES from each pattern, vs the
+# Monte-Carlo global-rank envelope of the fitted-background null.  Reading
+# top-to-bottom shows *why* the test fires: the clustered epoch&#x27;s visible
+# clumps (self-excitation) push its K_st far outside the envelope, while
+# the pure-background epoch stays inside.
+fig1, axes1 = plt.subplots(2, 2, figsize=(11.5, 9.0))
+gx = np.linspace(DOMAIN[0][0], DOMAIN[0][1], 60)
+gy = np.linspace(DOMAIN[1][0], DOMAIN[1][1], 60)
+grid_x, grid_y = np.meshgrid(gx, gy)
+bg_field = _background_rate(
+    np.column_stack([grid_x.ravel(), grid_y.ravel()]), 0.0
+).reshape(grid_x.shape)
+for col, res in enumerate((baseline, clustered)):
+    ax = axes1[0, col]
+    pcm = ax.pcolormesh(grid_x, grid_y, bg_field, cmap=&quot;Greys&quot;,
+                        shading=&quot;auto&quot;, alpha=0.85)
+    ax.scatter(electrodes[:, 0], electrodes[:, 1], marker=&quot;s&quot;, s=9,
+               facecolors=&quot;none&quot;, edgecolors=&quot;0.4&quot;, linewidths=0.5)
+    pts = res[&quot;points&quot;]
+    ax.scatter(pts[:, 0], pts[:, 1], c=res[&quot;times&quot;], cmap=&quot;autumn&quot;, s=18,
+               edgecolors=&quot;k&quot;, linewidths=0.2, zorder=3)
+    ax.set_title(f&quot;ground truth: {res[&#x27;label&#x27;]}\n({pts.shape[0]} events)&quot;)
+    ax.set_xlabel(&quot;x (cm)&quot;)
+    ax.set_ylabel(&quot;y (cm)&quot;)
+    ax.set_aspect(&quot;equal&quot;)
+    fig1.colorbar(pcm, ax=ax, fraction=0.046, pad=0.04,
+                  label=&quot;true bg rate (Hz/cm^2)&quot;)
+k_ymax = max(
+    float(clustered[&quot;env&quot;].observed[:, t_idx].max()),
+    float(clustered[&quot;env&quot;].hi[:, t_idx].max()),
+)
+for col, res in enumerate((baseline, clustered)):
+    ax = axes1[1, col]
     env = res[&quot;env&quot;]
     ax.fill_between(
         R_GRID, env.lo[:, t_idx], env.hi[:, t_idx],
-        color=&quot;tab:blue&quot;, alpha=0.25, label=&quot;MC envelope&quot;,
+        color=&quot;tab:blue&quot;, alpha=0.25, label=&quot;MC envelope (null)&quot;,
     )
     ax.plot(R_GRID, env.observed[:, t_idx], color=&quot;tab:red&quot;, lw=1.8,
             marker=&quot;o&quot;, ms=4, label=&quot;observed K_st&quot;)
     verdict = &quot;INSIDE&quot; if env.inside else &quot;OUTSIDE (reject)&quot;
-    ax.set_title(f&quot;{res[&#x27;label&#x27;]}\nt={T_GRID[t_idx]:.2f}s -- {verdict}&quot;)
+    ax.set_title(f&quot;model: K_st test, t={T_GRID[t_idx]:.2f}s -- {verdict}&quot;)
     ax.set_xlabel(&quot;spatial lag r (cm)&quot;)
+    ax.set_ylabel(&quot;K_st(r, t)&quot;)
+    ax.set_ylim(0.0, k_ymax * 1.05)
     ax.legend(loc=&quot;upper left&quot;, fontsize=8)
-axes1[0].set_ylabel(&quot;K_st(r, t)&quot;)
-fig1.suptitle(&quot;Space-time K-function vs Monte-Carlo global-rank envelope&quot;)</code></pre></details></figure>
+fig1.suptitle(
+    &quot;Ground-truth event patterns (top) vs the space-time K-function the &quot;
+    &quot;model derives and its global-rank envelope test (bottom)&quot;
+)</code></pre></details></figure>
 <figure><img src="figures/extras/spatial_gof_ecog/fig02_pcf_g.png" alt="fig02_pcf_g.png" loading="lazy"><figcaption><strong>fig02_pcf_g.png</strong><br>Space-time pair correlation g(r, t) at the largest temporal
 lag for the baseline (green) and clustered (red) epochs,
 against the Poisson null g=1 (dotted gray).</figcaption><div class="analysis">The clustered epoch's g(r, t) rising well above 1 at short
@@ -676,25 +724,53 @@ ax1.set_title(
     fontsize=10,
 )
 ax1.legend(loc=&quot;upper left&quot;, fontsize=8)</code></pre></details></figure>
-<figure><img src="figures/extras/spatial_stlgcp_microelectrode/fig02_kde_snapshots.png" alt="fig02_kde_snapshots.png" loading="lazy"><figcaption><strong>fig02_kde_snapshots.png</strong><br>Space-time KDE rate field lambda_hat(x, t) at three time
-slices (20%, 50%, 80% of the trial), with a white star marking
-the true bump centre.</figcaption><div class="analysis">The KDE hot spot tracking the white star across the three
-panels confirms the kernel intensity estimator resolves the
-bump's translation despite the coarse electrode footprint.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, axes2 = plt.subplots(1, 3, figsize=(13.5, 4.6))
-for ax, t_query, row in zip(axes2, slice_times, recovery_rows):
+<figure><img src="figures/extras/spatial_stlgcp_microelectrode/fig02_kde_snapshots.png" alt="fig02_kde_snapshots.png" loading="lazy"><figcaption><strong>fig02_kde_snapshots.png</strong><br>Top row: the ground-truth moving-bump intensity field lambda(x, t) at three time
+slices (20%, 50%, 80% of the trial). Bottom row: the space-time KDE estimate
+lambda_hat(x, t) the model derives from the observed events alone. A white star
+marks the true bump centre in both rows.</figcaption><div class="analysis">The KDE hot spot (bottom) tracking the true bump (top, white star) across the
+three slices confirms the kernel intensity estimator recovers the bump's
+location and translation from spikes alone, despite the coarse electrode
+footprint and Monte-Carlo noise.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python"># Top row = the GROUND-TRUTH moving-bump intensity field at each slice;
+# bottom row = the space-time KDE estimate the model DERIVES from the
+# observed events alone.  The white star marks the true bump centre in both
+# rows, so the reader can check that the estimated hot-spot tracks the
+# truth as the bump drifts across the array.
+tf_x = np.linspace(DOMAIN[0][0], DOMAIN[0][1], 60)
+tf_y = np.linspace(DOMAIN[1][0], DOMAIN[1][1], 60)
+tf_gx, tf_gy = np.meshgrid(tf_x, tf_y)
+tf_pts = np.column_stack([tf_gx.ravel(), tf_gy.ravel()])
+fig2, axes2 = plt.subplots(2, 3, figsize=(13.5, 8.6))
+for col, (t_query, row) in enumerate(zip(slice_times, recovery_rows)):
+    tc = row[&quot;true_center&quot;]
+
+    ax_true = axes2[0, col]
+    true_field = _true_intensity(tf_pts, t_query).reshape(tf_gx.shape)
+    im_t = ax_true.imshow(
+        true_field, origin=&quot;lower&quot;, cmap=&quot;viridis&quot;,
+        extent=(*DOMAIN[0], *DOMAIN[1]), aspect=&quot;equal&quot;,
+    )
+    ax_true.plot(tc[0], tc[1], marker=&quot;*&quot;, color=&quot;white&quot;, ms=14, mec=&quot;black&quot;)
+    ax_true.set_title(f&quot;true lambda(x, t={t_query:.2f}s)&quot;)
+    ax_true.set_xlabel(&quot;x (mm)&quot;)
+    ax_true.set_ylabel(&quot;y (mm)&quot;)
+    fig2.colorbar(im_t, ax=ax_true, fraction=0.046, pad=0.04)
+
+    ax_kde = axes2[1, col]
     idx = int(np.argmin(np.abs(kde.grid_t - t_query)))
     img = kde.intensity[idx].reshape(Gy_kde, Gx_kde)
-    im = ax.imshow(
+    im_k = ax_kde.imshow(
         img, origin=&quot;lower&quot;, cmap=&quot;viridis&quot;, extent=(*DOMAIN[0], *DOMAIN[1]),
         aspect=&quot;equal&quot;,
     )
-    tc = row[&quot;true_center&quot;]
-    ax.plot(tc[0], tc[1], marker=&quot;*&quot;, color=&quot;white&quot;, ms=14, mec=&quot;black&quot;)
-    ax.set_xlabel(&quot;x (mm)&quot;)
-    ax.set_ylabel(&quot;y (mm)&quot;)
-    ax.set_title(f&quot;KDE lambda_hat(x, t={t_query:.2f}s)&quot;)
-    fig2.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-fig2.suptitle(&quot;Space-time KDE rate-field snapshots (white star = true bump centre)&quot;)</code></pre></details></figure>
+    ax_kde.plot(tc[0], tc[1], marker=&quot;*&quot;, color=&quot;white&quot;, ms=14, mec=&quot;black&quot;)
+    ax_kde.set_title(f&quot;KDE lambda_hat(x, t={t_query:.2f}s)&quot;)
+    ax_kde.set_xlabel(&quot;x (mm)&quot;)
+    ax_kde.set_ylabel(&quot;y (mm)&quot;)
+    fig2.colorbar(im_k, ax=ax_kde, fraction=0.046, pad=0.04)
+fig2.suptitle(
+    &quot;Ground-truth moving-bump intensity (top) vs the space-time KDE &quot;
+    &quot;estimate the model derives (bottom); white star = true bump centre&quot;
+)</code></pre></details></figure>
 <figure><img src="figures/extras/spatial_stlgcp_microelectrode/fig03_lgcp_snapshots.png" alt="fig03_lgcp_snapshots.png" loading="lazy"><figcaption><strong>fig03_lgcp_snapshots.png</strong><br>Top row: LGCP posterior mean rate at the same three time
 slices (white star = true centre, red x = recovered
 centroid). Bottom row: the corresponding 90% credible band

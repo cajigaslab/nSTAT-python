@@ -247,17 +247,25 @@ def run_demo(
         renewal_cdf(u_grid + h, 1.0, RENEWAL)
         - renewal_cdf(np.maximum(u_grid - h, 0.0), 1.0, RENEWAL)
     ) / (2.0 * h)
+    # Ground-truth renewal density (the shape the data were simulated with),
+    # so the reader can see the fitted density recover it.
+    pdf_true = (
+        renewal_cdf(u_grid + h, SHAPE_TRUE, RENEWAL)
+        - renewal_cdf(np.maximum(u_grid - h, 0.0), SHAPE_TRUE, RENEWAL)
+    ) / (2.0 * h)
     ax2.hist(
         fit.rescaled_isis, bins=30, density=True, color="tab:blue", alpha=0.45,
         label="operational-time ISIs (rescaled)",
     )
+    ax2.plot(u_grid, pdf_true, color="black", lw=1.6, ls=":",
+              label=f"true {RENEWAL} density (shape={SHAPE_TRUE:.1f})")
     ax2.plot(u_grid, pdf_fit, color="tab:red", lw=1.8,
-              label=f"fitted {RENEWAL} density (CV={fit.cv:.2f})")
+              label=f"fitted {RENEWAL} density (shape={fit.shape_param:.1f}, CV={fit.cv:.2f})")
     ax2.plot(u_grid, pdf_poisson, color="gray", lw=1.4, ls="--",
               label="Exp(1) density (Poisson null)")
     ax2.set_xlabel("operational-time ISI u (mean 1)")
     ax2.set_ylabel("density")
-    ax2.set_title("Rescaled-ISI histogram vs fitted renewal density")
+    ax2.set_title("Rescaled-ISI histogram: true vs fitted renewal density")
     ax2.legend(loc="upper right", fontsize=8)
     # === END FIGURE ===
 

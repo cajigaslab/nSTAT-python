@@ -261,21 +261,58 @@ def run_demo(
     t_idx = -1  # largest temporal lag: clustering signal is most visible here
 
     # === FIGURE: fig01_kst_envelope.png ===
-    fig1, axes1 = plt.subplots(1, 2, figsize=(12.0, 4.8), sharey=True)
-    for ax, res in zip(axes1, (baseline, clustered)):
+    # Top row = the GROUND-TRUTH event patterns each epoch actually produced,
+    # overlaid on the (known) inhomogeneous background rate field.  Bottom row
+    # = the space-time K-function the MODEL DERIVES from each pattern, vs the
+    # Monte-Carlo global-rank envelope of the fitted-background null.  Reading
+    # top-to-bottom shows *why* the test fires: the clustered epoch's visible
+    # clumps (self-excitation) push its K_st far outside the envelope, while
+    # the pure-background epoch stays inside.
+    fig1, axes1 = plt.subplots(2, 2, figsize=(11.5, 9.0))
+    gx = np.linspace(DOMAIN[0][0], DOMAIN[0][1], 60)
+    gy = np.linspace(DOMAIN[1][0], DOMAIN[1][1], 60)
+    grid_x, grid_y = np.meshgrid(gx, gy)
+    bg_field = _background_rate(
+        np.column_stack([grid_x.ravel(), grid_y.ravel()]), 0.0
+    ).reshape(grid_x.shape)
+    for col, res in enumerate((baseline, clustered)):
+        ax = axes1[0, col]
+        pcm = ax.pcolormesh(grid_x, grid_y, bg_field, cmap="Greys",
+                            shading="auto", alpha=0.85)
+        ax.scatter(electrodes[:, 0], electrodes[:, 1], marker="s", s=9,
+                   facecolors="none", edgecolors="0.4", linewidths=0.5)
+        pts = res["points"]
+        ax.scatter(pts[:, 0], pts[:, 1], c=res["times"], cmap="autumn", s=18,
+                   edgecolors="k", linewidths=0.2, zorder=3)
+        ax.set_title(f"ground truth: {res['label']}\n({pts.shape[0]} events)")
+        ax.set_xlabel("x (cm)")
+        ax.set_ylabel("y (cm)")
+        ax.set_aspect("equal")
+        fig1.colorbar(pcm, ax=ax, fraction=0.046, pad=0.04,
+                      label="true bg rate (Hz/cm^2)")
+    k_ymax = max(
+        float(clustered["env"].observed[:, t_idx].max()),
+        float(clustered["env"].hi[:, t_idx].max()),
+    )
+    for col, res in enumerate((baseline, clustered)):
+        ax = axes1[1, col]
         env = res["env"]
         ax.fill_between(
             R_GRID, env.lo[:, t_idx], env.hi[:, t_idx],
-            color="tab:blue", alpha=0.25, label="MC envelope",
+            color="tab:blue", alpha=0.25, label="MC envelope (null)",
         )
         ax.plot(R_GRID, env.observed[:, t_idx], color="tab:red", lw=1.8,
                 marker="o", ms=4, label="observed K_st")
         verdict = "INSIDE" if env.inside else "OUTSIDE (reject)"
-        ax.set_title(f"{res['label']}\nt={T_GRID[t_idx]:.2f}s -- {verdict}")
+        ax.set_title(f"model: K_st test, t={T_GRID[t_idx]:.2f}s -- {verdict}")
         ax.set_xlabel("spatial lag r (cm)")
+        ax.set_ylabel("K_st(r, t)")
+        ax.set_ylim(0.0, k_ymax * 1.05)
         ax.legend(loc="upper left", fontsize=8)
-    axes1[0].set_ylabel("K_st(r, t)")
-    fig1.suptitle("Space-time K-function vs Monte-Carlo global-rank envelope")
+    fig1.suptitle(
+        "Ground-truth event patterns (top) vs the space-time K-function the "
+        "model derives and its global-rank envelope test (bottom)"
+    )
     # === END FIGURE ===
 
     # === FIGURE: fig02_pcf_g.png ===

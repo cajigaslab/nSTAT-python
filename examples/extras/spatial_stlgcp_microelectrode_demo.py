@@ -272,21 +272,47 @@ def run_demo(
     # === END FIGURE ===
 
     # === FIGURE: fig02_kde_snapshots.png ===
-    fig2, axes2 = plt.subplots(1, 3, figsize=(13.5, 4.6))
-    for ax, t_query, row in zip(axes2, slice_times, recovery_rows):
+    # Top row = the GROUND-TRUTH moving-bump intensity field at each slice;
+    # bottom row = the space-time KDE estimate the model DERIVES from the
+    # observed events alone.  The white star marks the true bump centre in both
+    # rows, so the reader can check that the estimated hot-spot tracks the
+    # truth as the bump drifts across the array.
+    tf_x = np.linspace(DOMAIN[0][0], DOMAIN[0][1], 60)
+    tf_y = np.linspace(DOMAIN[1][0], DOMAIN[1][1], 60)
+    tf_gx, tf_gy = np.meshgrid(tf_x, tf_y)
+    tf_pts = np.column_stack([tf_gx.ravel(), tf_gy.ravel()])
+    fig2, axes2 = plt.subplots(2, 3, figsize=(13.5, 8.6))
+    for col, (t_query, row) in enumerate(zip(slice_times, recovery_rows)):
+        tc = row["true_center"]
+
+        ax_true = axes2[0, col]
+        true_field = _true_intensity(tf_pts, t_query).reshape(tf_gx.shape)
+        im_t = ax_true.imshow(
+            true_field, origin="lower", cmap="viridis",
+            extent=(*DOMAIN[0], *DOMAIN[1]), aspect="equal",
+        )
+        ax_true.plot(tc[0], tc[1], marker="*", color="white", ms=14, mec="black")
+        ax_true.set_title(f"true lambda(x, t={t_query:.2f}s)")
+        ax_true.set_xlabel("x (mm)")
+        ax_true.set_ylabel("y (mm)")
+        fig2.colorbar(im_t, ax=ax_true, fraction=0.046, pad=0.04)
+
+        ax_kde = axes2[1, col]
         idx = int(np.argmin(np.abs(kde.grid_t - t_query)))
         img = kde.intensity[idx].reshape(Gy_kde, Gx_kde)
-        im = ax.imshow(
+        im_k = ax_kde.imshow(
             img, origin="lower", cmap="viridis", extent=(*DOMAIN[0], *DOMAIN[1]),
             aspect="equal",
         )
-        tc = row["true_center"]
-        ax.plot(tc[0], tc[1], marker="*", color="white", ms=14, mec="black")
-        ax.set_xlabel("x (mm)")
-        ax.set_ylabel("y (mm)")
-        ax.set_title(f"KDE lambda_hat(x, t={t_query:.2f}s)")
-        fig2.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    fig2.suptitle("Space-time KDE rate-field snapshots (white star = true bump centre)")
+        ax_kde.plot(tc[0], tc[1], marker="*", color="white", ms=14, mec="black")
+        ax_kde.set_title(f"KDE lambda_hat(x, t={t_query:.2f}s)")
+        ax_kde.set_xlabel("x (mm)")
+        ax_kde.set_ylabel("y (mm)")
+        fig2.colorbar(im_k, ax=ax_kde, fraction=0.046, pad=0.04)
+    fig2.suptitle(
+        "Ground-truth moving-bump intensity (top) vs the space-time KDE "
+        "estimate the model derives (bottom); white star = true bump centre"
+    )
     # === END FIGURE ===
 
     # === FIGURE: fig03_lgcp_snapshots.png ===
