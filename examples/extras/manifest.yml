@@ -104,14 +104,21 @@ extras:
   - demo_id: latents_gpfa
     name: latents_gpfa_demo
     script: examples/extras/latents_gpfa_demo.py
-    title: Gaussian-Process Factor Analysis (Yu et al. 2009) via the Elephant bridge
-    question: Does the Elephant-backed GPFA bridge recover a known shared 2-D smooth latent from 4 multi-trial Poisson populations?
+    title: Single-trial rotational motor-cortical manifold recovery via GPFA (Yu et al. 2009; Churchland et al. 2012)
+    question: Do motor populations occupy a low-dimensional rotational neural manifold -- a single shared rotational dynamical system, condition-invariant in frequency -- recoverable on single trials by GPFA, and does reconstruction fidelity improve with population size?
     description: |
-      End-to-end exercise of :mod:`nstat.extras.latents.gpfa_bridge`:
-      simulates 4 multi-trial Poisson-spike datasets driven by a shared
-      2-D smooth latent (two sinusoids), fits GPFA with ``x_dim=2``,
-      and reports the best |Pearson r| of any recovered latent vs the
-      ground truth.
+      A 2-D skew-symmetric rotation generator drives six reach
+      conditions' latent trajectories (shared angular frequency, distinct
+      per-condition initial amplitude/phase -- the rotational-dynamics
+      signature of Churchland et al. 2012), projected through a fixed
+      random loading matrix into an 80-unit Poisson population with
+      condition-locked baseline-rate offsets. GPFA (``x_dim=2``, via
+      :mod:`nstat.extras.latents.gpfa_bridge`) is fit across all
+      trials/conditions pooled; each recovered single-trial trajectory is
+      realigned onto the true phase plane and scored with the multiple
+      correlation coefficient. A population-size sweep (8/20/40/80
+      neurons) shows reconstruction fidelity improving with population
+      size, echoing Gallego et al. 2018/2020's manifold-stability results.
     figures:
       - filename: fig01_latent_trajectories.png
 

@@ -204,25 +204,41 @@ extras:
 
 - demo_id: latents_gpfa
   overview: |
-    Simulates 4 multi-trial Poisson-spike datasets driven by a
-    shared 2-D smooth latent (two sinusoids at different frequencies),
-    fits GPFA with ``x_dim=2`` via the Elephant bridge, then prints a
-    recovery summary (final log-likelihood, best |Pearson r| of any
-    recovered latent vs the ground-truth latents).
+    Simulates six reach conditions whose latent trajectories share one
+    2-D skew-symmetric rotation generator (same angular frequency,
+    distinct per-condition initial amplitude/phase -- the rotational
+    signature Churchland et al. 2012 found in M1/PMd population
+    recordings), projected through a fixed random loading matrix into
+    an 80-unit Poisson population with condition-locked baseline-rate
+    offsets. Fits GPFA with ``x_dim=2`` via the Elephant bridge across
+    all trials/conditions pooled, then realigns each recovered
+    single-trial trajectory onto the true phase plane (ordinary least
+    squares) and scores it with the multiple correlation coefficient.
+    A population-size sweep (8/20/40/80 neurons) re-runs the full
+    simulate-then-fit pipeline to show fidelity improving with more
+    neurons.
   goal: |
-    Confirm the GPFA bridge recovers a known shared smooth latent
-    across trials — the Yu et al. 2009 baseline result reproduced on
-    synthetic data.
+    Confirm GPFA recovers a shared rotational motor-cortical manifold
+    on single trials, without ever being given the condition label or
+    the generating equations -- and that reconstruction fidelity
+    improves with population size, echoing the manifold-stability
+    results of Gallego et al. 2018/2020.
   figures:
   - filename: fig01_latent_trajectories.png
     caption: |
-      One subplot per simulated trial, each showing the two
-      recovered latent dimensions (coloured lines) over the trial
-      window.
+      Left: ground-truth rotational phase portrait (one colour per
+      reach condition, solid) overlaid with GPFA-recovered single-trial
+      trajectories (same colour, dotted, realigned onto the true phase
+      plane). Right: mean reconstruction fidelity (multiple correlation
+      vs. true rotation) as a function of population size.
     analysis: |
-      Coherent shape across trials in each latent dimension
-      confirms GPFA is recovering the shared sinusoidal signal and
-      not over-fitting to per-trial noise.
+      Recovered single-trial trajectories closely track their
+      condition's true circular orbit despite never being told the
+      condition label, confirming GPFA recovers the shared rotational
+      structure from spiking alone; fidelity rises monotonically from
+      the smallest to the largest simulated population, reproducing
+      the population-size dependence Gallego et al. 2018/2020 report
+      for manifold recovery.
 
 - demo_id: metrics_spike_distances
   overview: |
