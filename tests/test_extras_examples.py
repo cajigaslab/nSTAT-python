@@ -36,7 +36,11 @@ EXAMPLE_BACKING_PACKAGE: dict[str, str] = {
     "validation_pykalman_demo": "pykalman",
     "validation_statsmodels_demo": "statsmodels",
     "metrics_spike_distances_demo": "pyspike",
-    "em_dynamax_demo": "dynamax",
+    # em_dynamax_demo's naive-KF vs. ReFIT-KF contrast is pure NumPy/SciPy
+    # and always runs; the dynamax-backed EM appendix is an opt-in extra
+    # that gracefully skips (not a failure) when dynamax is absent.
+    # "numpy" forces the run-as-main test to execute the demo end-to-end.
+    "em_dynamax_demo": "numpy",
     "decoding_clusterless_demo": "replay_trajectory_classification",
     # place_field_decoder is pure-core (numpy + scipy already required);
     # "numpy" forces the run-as-main test to execute the demo end-to-end.

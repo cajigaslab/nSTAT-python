@@ -40,15 +40,28 @@ extras:
   - demo_id: em_dynamax
     name: em_dynamax_demo
     script: examples/extras/em_dynamax_demo.py
-    title: KF_EM / PP_EM / mPPCO_EM equivalents via the Dynamax bridge
-    question: Do the JAX-backed EM routines recover the AUDIT_REPORT.md §3.2 KF_EM / PP_EM / mPPCO_EM workflow on synthetic linear-Gaussian, Poisson, and hybrid fixtures?
+    title: Motor-BCI decoder calibration — naive-KF vs. ReFIT-KF recalibration
+    question: How should a decoder be calibrated from neural + behavioral training data, and does closed-loop-aware (ReFIT) recalibration correct a systematic directional bias baked into an open-loop-calibrated decoder's training label, relative to a naively calibrated Kalman decoder?
     description: |
-      Exercises every routine in ``nstat.extras.em.dynamax_bridge`` —
-      linear-Gaussian EM, point-process filter/smoother, point-process EM,
+      A Wu (2006)-style linear-Gaussian arm state (position/velocity)
+      coupled to a 40-unit population with linear velocity encoding
+      drives an 8-target center-out reach+hold task. A naive-KF decoder,
+      calibrated from a constant-velocity, never-decelerating training
+      label (a stand-in for open-loop/passive calibration blocks), is
+      contrasted against a ReFIT-KF decoder (Gilja et al. 2012)
+      recalibrated by relabeling the same recorded neural data with the
+      true target-directed, decelerating kinematics. Both share the same
+      generic Kalman motion model and are decoded with
+      ``nstat.decoding_algorithms.DecodingAlgorithms.kalman_filter`` — a
+      pure NumPy/SciPy contrast that always runs. Also exercises every
+      routine in ``nstat.extras.em.dynamax_bridge`` — linear-Gaussian EM,
+      point-process filter/smoother (Eden et al. 2004), point-process EM,
       hybrid Poisson+Gaussian EM, and a pure-NumPy held-out predictive
-      log-likelihood.  Closes the AUDIT_REPORT.md §3.2 gap (19 unported
-      MATLAB methods).
-    figures: []
+      log-likelihood — as an opt-in appendix, closing the
+      AUDIT_REPORT.md §3.2 gap (19 unported MATLAB methods).
+    figures:
+      - filename: fig01_bci_reach_trajectories.png
+      - filename: fig02_acquisition_metrics.png
 
   - demo_id: interop_neo
     name: interop_neo_demo

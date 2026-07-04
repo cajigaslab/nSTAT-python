@@ -94,19 +94,73 @@ extras:
 
 - demo_id: em_dynamax
   overview: |
-    Walks through every routine in
-    ``nstat.extras.em.dynamax_bridge`` on synthetic fixtures with
-    known parameters: linear-Gaussian EM (KF_EM equivalent), CMGF
-    Poisson filter and smoother on a known Poisson-LGSSM, point-
-    process EM (PP_EM), hybrid Poisson+Gaussian EM (mPPCO_EM), and a
-    pure-NumPy held-out predictive log-likelihood.
+    A Wu (2006)-style linear-Gaussian arm state (position/velocity)
+    coupled to a 40-unit population with linear velocity encoding
+    drives an 8-target center-out reach+hold task. A naive-KF decoder
+    is calibrated from a constant-velocity, never-decelerating
+    training label with a directional drift that is never corrected
+    (a stand-in for open-loop/passive calibration blocks that never
+    captured the deceleration/stop epoch of a real reach); a
+    ReFIT-KF decoder (Gilja, Nuyujukian, Chestek, Cunningham, Yu,
+    Fan, Churchland, Kaufman, Kao, Ryu & Shenoy 2012) is recalibrated
+    by relabeling the *same* recorded neural data with the true
+    target-directed, decelerating kinematics. Both share one generic
+    Kalman motion model and are decoded with
+    ``nstat.decoding_algorithms.DecodingAlgorithms.kalman_filter`` on
+    held-out trials -- a pure NumPy/SciPy contrast that always runs,
+    with no optional dependency. An opt-in appendix (behind the
+    ``[dynamax]`` extra) then walks through every routine in
+    ``nstat.extras.em.dynamax_bridge``: linear-Gaussian EM (KF_EM
+    equivalent), CMGF Poisson filter/smoother on a known Poisson-LGSSM
+    (the point-process adaptive-filtering framework of Eden, Frank,
+    Barbieri, Solo & Brown 2004), point-process EM (PP_EM), hybrid
+    Poisson+Gaussian EM (mPPCO_EM), and a pure-NumPy held-out
+    predictive log-likelihood.
   goal: |
-    Close the AUDIT_REPORT.md §3.2 gap — provide an opt-in,
-    JAX-backed implementation of the 19 unported KF_EM / PP_EM /
-    mPPCO_EM MATLAB methods, plus the honest fit-quality metric
-    (predictive log-likelihood) on which all three EM workflows are
-    compared.
-  figures: []
+    Show that decoder *calibration*, not just decoder architecture,
+    determines closed-loop BCI performance: the naive decoder's
+    uncorrected directional bias makes it mis-aim on every reach, so
+    it curves away from every target and never acquires it, while
+    ReFIT recalibration -- relabeling the same neural data with the
+    intended, target-directed kinematics -- corrects the bias and
+    acquires all 8 targets, illustrating in miniature the
+    ReFIT-relabeling principle of Gilja et al. (2012) (this demo does
+    not measure target-acquisition time and does not reproduce their
+    specific acquisition-time speedup).  Also closes the
+    AUDIT_REPORT.md §3.2 gap -- an opt-in, JAX-backed implementation
+    of the 19 unported KF_EM / PP_EM / mPPCO_EM MATLAB methods, plus
+    the honest fit-quality metric (predictive log-likelihood) on
+    which all three EM workflows are compared.
+  figures:
+  - filename: fig01_bci_reach_trajectories.png
+    caption: |
+      True reach+hold trajectories (dotted) vs. decoded trajectories
+      (solid) to 8 center-out targets (blue dots): naive-KF (left,
+      red) vs. ReFIT-KF (right, green).
+    analysis: |
+      The naive decoder -- calibrated from a non-decelerating,
+      directionally drifting training label typical of open-loop
+      calibration blocks -- curves away from every target and never
+      settles near it. The ReFIT decoder, recalibrated by relabeling
+      the same recorded neural data with the true target-directed,
+      decelerating kinematics (Gilja et al. 2012), tracks every reach
+      closely and comes to rest at the target.
+  - filename: fig02_acquisition_metrics.png
+    caption: |
+      Left: mean hold-period distance from the decoded cursor to the
+      true target, per target (dashed line = acquisition radius).
+      Right: number of targets (of 8) at which the decoded cursor
+      acquired and held the target.
+    analysis: |
+      Naive-KF never brings the cursor within the acquisition radius
+      on any of the 8 targets (0/8 acquired); ReFIT-KF acquires and
+      holds all 8. This illustrates the ReFIT-relabeling principle of
+      Gilja et al. (2012) -- calibrating on the inferred intended
+      target-directed kinematics, not the raw open-loop label, fixes
+      a systematically mis-aiming decoder. (The two decoders' path
+      efficiencies are nearly identical, ~0.93-0.95; the naive
+      failure mode here is a directional bias, not overshoot or
+      oscillation, and this demo does not measure acquisition time.)
 
 - demo_id: interop_neo
   overview: |
