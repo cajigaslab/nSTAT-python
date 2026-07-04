@@ -21,12 +21,18 @@ extras:
   - demo_id: decoding_place_field
     name: decoding_place_field_demo
     script: examples/extras/decoding_place_field_demo.py
-    title: 2-D place-field encoding + PPAF decoding via ``fit_place_field_decoder``
-    question: Can the example08 pipeline (B-spline encoder + quadratic CIF refit + PPDecodeFilterLinear) recover an OU random walk from a 3-cell synthetic trial without figshare data?
+    title: Population-vector bias vs. maximum-likelihood decode of reach direction
+    question: Is the classic population vector (Georgopoulos et al. 1982/1986) biased when M1 preferred directions are non-uniformly distributed, and does a maximum-likelihood/Bayesian tuning-curve decode (Sanger 1996) stay unbiased where the population vector fails?
     description: |
-      Mirrors the canonical example08 pipeline on a fully-synthetic 3-cell
-      place-cell trial — no figshare data, no opt-deps beyond core ``nstat``.
-      Plots the decoded trajectory and the recovered place-field summary.
+      An 80-unit M1 population on an 8-direction center-out task, with
+      preferred directions deliberately clustered (Sanger 1996's
+      nonuniform-PD scenario) rather than uniform. Per-neuron cosine/
+      von-Mises tuning curves are fit with ``nstat.fit_poisson_glm``,
+      then held-out trials are decoded with the classic population
+      vector and with a maximum-likelihood grid search over the fitted
+      tuning curves. The population vector is systematically biased
+      toward the dense preferred-direction region; the ML decoder is
+      not.
     figures:
       - filename: fig01_decoded_trajectory.png
       - filename: fig02_place_fields.png

@@ -52,36 +52,45 @@ extras:
 
 - demo_id: decoding_place_field
   overview: |
-    Synthetic 3-cell place-cell trial: an OU random walk on the
-    unit interval drives three Gaussian-bump place fields, the
-    example08 pipeline (tensor-product B-spline encoder + quadratic
-    CIF refit + PPDecodeFilterLinear) is fit, and the decoded
-    trajectory plus the recovered place fields are plotted.
+    An 80-unit M1 population performs an 8-direction center-out task
+    (Georgopoulos et al. 1982). Preferred directions are deliberately
+    clustered rather than uniform (Sanger 1996's critique), each unit's
+    von-Mises-shaped tuning curve is fit from training trials with
+    ``nstat.fit_poisson_glm``, and held-out trials are decoded with (a)
+    the classic Georgopoulos population vector and (b) a
+    maximum-likelihood grid search over the fitted tuning curves.
   goal: |
-    Exercise the full example08 pipeline (``fit_place_field_decoder``)
-    on data that requires no figshare download — so anyone with a
-    fresh ``pip install nstat-toolbox`` can reproduce the place-field
-    encode-and-decode story.
+    Reproduce Sanger's (1996) central result directly: population-vector
+    decoding implicitly assumes preferred directions uniformly tile the
+    circle, so it is systematically biased toward the dense
+    preferred-direction region when they do not, while the
+    maximum-likelihood/probability-density decoder stays unbiased.
   figures:
   - filename: fig01_decoded_trajectory.png
     caption: |
-      Decoded position (blue) overlaid on the true OU-walk position
-      (black) over the 60 s trial, with the per-time-step posterior
-      standard deviation as a shaded band.
+      True target direction (black triangles) vs. the mean
+      population-vector decode (red circles) and mean ML decode
+      (green squares) for each of the 8 center-out directions (left,
+      polar); true vs. decoded direction per held-out trial, PV vs.
+      ML, against the y=x perfect-decode line (right).
     analysis: |
-      The decoded trace should track the OU walk closely inside the
-      shaded band whenever any of the three cells is active; gaps
-      flag time steps where no cell fires and the prior dominates.
+      The PV markers sit rotated toward the dense preferred-direction
+      cluster relative to the true targets, most visibly for targets on
+      the far side of the circle from the cluster; the ML markers sit
+      on the true targets throughout. Mean angular error is reported in
+      the right panel's title -- ML is lower than PV.
   - filename: fig02_place_fields.png
     caption: |
-      Recovered tuning curves for the three synthetic cells (solid)
-      plotted against the Gaussian-bump ground truth (dashed), with
-      cell-centre markers from the B-spline GLM fit.
+      Polar histogram of the population's preferred directions (left,
+      showing the deliberate clustering) and six example neurons'
+      fitted (solid) vs. true (dashed) directional tuning curves with
+      training-trial mean firing rates overlaid (right).
     analysis: |
-      A close match of solid to dashed across the three centres
-      confirms the tensor-product B-spline basis is recovering the
-      true tuning; any mismatch at the edges is the usual basis
-      edge effect.
+      The polar histogram shows the non-uniform preferred-direction
+      distribution driving the population-vector bias in fig01; the
+      per-neuron panels confirm the GLM recovers each unit's baseline
+      rate, modulation depth, and preferred direction closely from
+      spiking data alone.
 
 - demo_id: em_dynamax
   overview: |
