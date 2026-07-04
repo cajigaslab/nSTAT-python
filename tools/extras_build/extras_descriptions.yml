@@ -655,18 +655,56 @@ extras:
 
 - demo_id: validation_pykalman
   overview: |
-    Simulates a 2-state linear-Gaussian process over 100 time steps,
-    fits the Kalman filter (and lag-``(T-1)`` augmented-state
-    smoother) in both nstat and pykalman, then surfaces the
-    documented disagreement budget (~2.6e-3 on filtered means from
-    the ``t=0`` initialisation convention; ~0.4 on smoothed means
-    from AUDIT D3, augmented-state finite lag vs full-window RTS).
+    Part 1 (requires the optional ``pykalman`` dependency): a synthetic
+    14-unit M1 velocity-encoding population (Wu, Gao, Bienenstock,
+    Donoghue & Black 2006) drives a 2-state ``(v_x, v_y)``
+    linear-Gaussian fixture over 100 time bins -- the same clinical
+    workhorse decoder whose steady-state form Malik, Truccolo, Brown &
+    Hochberg (2011) deploy in a human neural interface system. nstat's
+    ``DecodingAlgorithms.kalman_filter``/``kalman_smoother`` and
+    ``pykalman.KalmanFilter`` filter/smooth the same simulated activity,
+    surfacing the documented ~3.7e-3 filtered-mean disagreement (``t=0``
+    initialisation convention) via
+    :meth:`KalmanComparison.assert_filtered_agree`. Gracefully skipped
+    (not a failure) when ``pykalman`` is absent. Part 2 (pure
+    NumPy/SciPy, always runs, no optional dependency): a 24-unit M1
+    population is calibrated once on Day 0, then decoded with nstat's
+    own Kalman filter across 15 simulated recording days under two
+    documented chronic-recording nonstationarities -- per-unit
+    gain/baseline random-walk drift (Perge, Homer, Malik, Cash,
+    Eskandar, Friehs, Donoghue & Hochberg 2013) and unit turnover
+    (Downey, Schwed, Chase, Schwartz & Collinger 2018) -- with and
+    without recalibrating every 5 days from a short same-day
+    calibration block.
   goal: |
-    Document the empirical baselines under which
-    :meth:`KalmanComparison.assert_filtered_agree` and
-    :meth:`assert_smoothed_agree` can be used as parity hooks
-    without becoming flaky regression guards.
-  figures: []
+    Show that the clinical velocity Kalman decoder's numerics replicate
+    across independent implementations (the ``assert_filtered_agree``
+    regression guard), and that its real vulnerability in a chronic
+    intracortical BCI is not the algorithm but the nonstationary
+    population underneath it: a decoder frozen at Day-0 calibration
+    decodes a steadily worsening velocity correlation coefficient as
+    per-unit drift and unit turnover accumulate, while a decoder
+    periodically recalibrated from a brief same-day calibration block
+    holds its accuracy close to Day-0 levels throughout -- illustrating
+    why periodic recalibration, not decoder architecture alone, is what
+    keeps a chronic BCI clinically usable session after session.
+  figures:
+  - filename: fig01_chronic_drift.png
+    caption: |
+      Left/middle: decoded velocity (``v_x``, ``v_y``) over time --
+      true (dotted black), nstat (solid blue), pykalman (dashed
+      orange, when installed). Right: decode accuracy (velocity
+      correlation coefficient) vs. simulated day, without
+      recalibration (red) vs. with recalibration every 5 days (green,
+      dotted verticals mark recalibration days).
+    analysis: |
+      The nstat and pykalman filtered velocity traces overlap almost
+      exactly, confirming the two independent Kalman implementations
+      agree numerically. Across simulated days, per-unit gain/baseline
+      drift (Perge et al. 2013) and unit turnover (Downey et al. 2018)
+      steadily erode the Day-0-calibrated decoder's accuracy, while
+      periodic recalibration from a short same-day calibration block
+      holds accuracy close to Day-0 levels throughout.
 
 - demo_id: validation_statsmodels
   overview: |

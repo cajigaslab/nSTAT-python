@@ -33,7 +33,12 @@ EXAMPLE_BACKING_PACKAGE: dict[str, str] = {
     "interop_pynapple_demo": "pynapple",
     "interop_nwb_demo": "pynwb",
     "validation_nemos_demo": "nemos",
-    "validation_pykalman_demo": "pykalman",
+    # validation_pykalman_demo's chronic-drift recalibration panel is pure
+    # NumPy/SciPy and always runs; only the nstat<->pykalman agreement
+    # check requires the optional pykalman dependency, and it gracefully
+    # skips (not a failure) when pykalman is absent.  "numpy" forces the
+    # run-as-main test to execute the demo end-to-end regardless.
+    "validation_pykalman_demo": "numpy",
     "validation_statsmodels_demo": "statsmodels",
     "metrics_spike_distances_demo": "pyspike",
     # em_dynamax_demo's naive-KF vs. ReFIT-KF contrast is pure NumPy/SciPy

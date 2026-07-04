@@ -281,16 +281,25 @@ extras:
   - demo_id: validation_pykalman
     name: validation_pykalman_demo
     script: examples/extras/validation_pykalman_demo.py
-    title: Cross-validate nstat's Kalman filter against pykalman
-    question: How closely do nstat's Kalman filter and augmented-state lag smoother match pykalman's filter and full-window RTS smoother on a 2-state linear-Gaussian fixture?
+    title: Clinical velocity Kalman decoder — pykalman cross-check + chronic-drift recalibration
+    question: Does the clinical workhorse velocity Kalman decoder (Wu 2006; Malik et al. 2011) replicate across independent implementations, and how does its decode accuracy degrade under chronic per-unit drift (Perge et al. 2013) and unit turnover (Downey et al. 2018) — and is periodic recalibration what restores it?
     description: |
-      Simulates a 2-state linear-Gaussian process, fits the Kalman
-      filter (and lag-``(T-1)`` augmented-state smoother) in both nstat
-      and pykalman, and surfaces the documented ~2.6e-3 filtered-mean
-      and ~0.4 smoothed-mean disagreement (AUDIT D3) via
-      :meth:`KalmanComparison.assert_filtered_agree` and
-      :meth:`assert_smoothed_agree`.
-    figures: []
+      A synthetic M1 velocity-encoding population drives a 2-state
+      ``(v_x, v_y)`` linear-Gaussian fixture; nstat's
+      ``DecodingAlgorithms.kalman_filter``/``kalman_smoother`` and
+      ``pykalman.KalmanFilter`` filter/smooth the same activity, and
+      :meth:`KalmanComparison.assert_filtered_agree` is the regression-guard
+      hook (gracefully skipped, not a failure, when the optional
+      ``pykalman`` dependency is absent). A separate, pure NumPy/SciPy
+      chronic-drift panel (always runs, no optional dependency) then
+      decodes a larger M1 population across 15 simulated recording days
+      under Perge-et-al.-2013-style per-unit gain/baseline random-walk
+      drift and Downey-et-al.-2018-style unit turnover: a decoder frozen
+      at its Day-0 calibration shows decode accuracy decay, while one
+      periodically recalibrated from a short same-day calibration block
+      holds accuracy near Day-0 levels throughout.
+    figures:
+      - filename: fig01_chronic_drift.png
 
   - demo_id: validation_statsmodels
     name: validation_statsmodels_demo
