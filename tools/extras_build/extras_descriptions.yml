@@ -290,9 +290,10 @@ extras:
 
 - demo_id: spatial_gof_ecog
   overview: |
-    Simulates a baseline (inhomogeneous-Poisson) and a clustered
-    (spatial-Hawkes-cascade-on-the-same-background) epoch on a
-    synthetic 8x8 ECoG grid, fits a held-out
+    Simulates a static-hot-spot (inhomogeneous-Poisson, temporally
+    static rate bump) epoch and a traveling-wave (migrating Gaussian
+    intensity bump, drawn by thinning against its own exact peak) epoch
+    on a synthetic 8x8 ECoG grid, fits a held-out
     :func:`nstat.extras.spatial.intensity_st_kde` from a separate
     calibration epoch, and tests both epochs with
     :func:`nstat.extras.spatial.k_st_inhom`,
@@ -300,42 +301,53 @@ extras:
     :func:`nstat.extras.spatial.global_envelope_st` against the
     inhomogeneous space-time Poisson null.
   goal: |
-    Confirm the space-time global-rank envelope test correctly fails
-    to reject the baseline epoch (a true inhomogeneous space-time
-    Poisson process) while rejecting the clustered/traveling-wave
-    epoch, using a held-out intensity estimate to avoid plug-in bias.
+    Answer the clinical question "is ictal propagation a genuine
+    traveling wave, or a static hot-spot consistent with an
+    inhomogeneous-Poisson null?" Confirm the space-time global-rank
+    envelope test correctly fails to reject the static-hot-spot epoch
+    (a true inhomogeneous space-time Poisson process, however spatially
+    concentrated) while rejecting the traveling-wave epoch, using a
+    held-out intensity estimate to avoid plug-in bias -- exactly what a
+    naive per-electrode rate map cannot do, since both epochs produce a
+    similarly concentrated firing-rate footprint.
   figures:
   - filename: fig01_kst_envelope.png
     caption: |
       Top row: the ground-truth event patterns each epoch produced, overlaid on the
-      (known) inhomogeneous background rate field -- the baseline (left) is pure
-      inhomogeneous Poisson; the clustered epoch (right) adds a self-exciting cascade
-      with visible clumps. Bottom row: the space-time K-function K_st(r, t) the model
-      derives from each pattern (red) vs the Monte-Carlo global-rank envelope of the
-      fitted-background null (blue band).
+      true rate field -- the static hot-spot (left) is a fixed, temporally-static
+      bump; the traveling wave (right) shows the rate field at t=0 plus the
+      wavefront's straight-line path to t=T_TEST, with events coloured by time so
+      the temporal sweep is visible. Bottom row: the space-time K-function K_st(r, t)
+      the model derives from each pattern (red) vs the Monte-Carlo global-rank
+      envelope of the fitted-background null (blue band).
     analysis: |
-      Reading each column top-to-bottom shows why the test fires: the clustered
-      pattern's tight clumps push its K_st far outside the envelope (rejects the null),
-      while the pure-background pattern stays inside it (fails to reject). The
-      ground-truth data and the model's verdict are shown together.
+      Reading each column top-to-bottom shows why the test fires: the migrating
+      wavefront's space-time-correlated events push its K_st far outside the
+      envelope (rejects the null), while the static hot-spot -- however spatially
+      concentrated -- stays inside it (fails to reject). A naive per-electrode rate
+      map would look similar for both; only the second-order space-time structure
+      tells them apart.
   - filename: fig02_pcf_g.png
     caption: |
       Space-time pair correlation g(r, t) at the largest temporal
-      lag for the baseline (green) and clustered (red) epochs,
-      against the Poisson null g=1 (dotted gray).
+      lag for the static-hot-spot (green) and traveling-wave (red)
+      epochs, against the Poisson null g=1 (dotted gray).
     analysis: |
-      The clustered epoch's g(r, t) rising well above 1 at short
-      spatial lags is the second-order signature of the added
-      self-exciting cascade; the baseline epoch hugs the null line.
+      The traveling wave's g(r, t) sits persistently closer to the Poisson null
+      than the static hot-spot's, whose g(r, t) stays well below 1 at every lag --
+      its apparent spatial concentration is fully explained away by the fitted
+      background once reweighted. This single time-slice is suggestive but not
+      dispositive; it is the full r-by-t K_st surface (fig01, bottom row) that the
+      global-rank envelope test evaluates, rejecting the null only for the wave.
   - filename: fig03_verdict.png
     caption: |
       Text summary of the global-rank envelope verdict (inside/
       outside) and conservative/liberal p-value interval for each
       epoch.
     analysis: |
-      A compact pass/fail readout confirming numerically what the
-      two plots above show visually — baseline INSIDE, clustered
-      OUTSIDE (rejects).
+      A compact pass/fail readout confirming numerically what the two plots above
+      show visually — static hot-spot INSIDE (consistent with the Poisson null),
+      traveling wave OUTSIDE (rejects the null, i.e. genuine propagation).
 
 - demo_id: spatial_hawkes_ecog
   overview: |

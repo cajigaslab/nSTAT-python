@@ -158,17 +158,20 @@ extras:
   - demo_id: spatial_gof_ecog
     name: spatial_gof_ecog_demo
     script: examples/extras/spatial_gof_ecog_demo.py
-    title: Space-time inhomogeneous K/PCF + global-rank envelope on an ECoG grid
-    question: Does the space-time global-rank envelope test correctly fail to reject a baseline inhomogeneous-Poisson ECoG epoch while rejecting a clustered/traveling-wave epoch built from the same held-out background?
+    title: Traveling-wave vs static-hot-spot GOF via space-time K/PCF + global-rank envelope on an ECoG grid
+    question: Is ictal propagation a genuine traveling wave, or a static hot-spot consistent with an inhomogeneous-Poisson (independent-site) null -- and does the space-time global-rank envelope test correctly separate the two from the same held-out background?
     description: |
-      Simulates a baseline (inhomogeneous-Poisson) and a clustered
-      (spatial-Hawkes-cascade-on-the-same-background) epoch on a synthetic
-      8x8 ECoG grid, fits a held-out :func:`nstat.extras.spatial.intensity_st_kde`
-      from a separate calibration epoch, then tests both epochs with
+      Simulates a static-hot-spot (inhomogeneous-Poisson, temporally static
+      rate bump) epoch and a traveling-wave (migrating Gaussian intensity
+      bump, drawn by thinning) epoch on a synthetic 8x8 ECoG grid, fits a
+      held-out :func:`nstat.extras.spatial.intensity_st_kde` from a
+      separate calibration epoch, then tests both epochs with
       :func:`nstat.extras.spatial.k_st_inhom`,
       :func:`nstat.extras.spatial.pair_correlation_st`, and
       :func:`nstat.extras.spatial.global_envelope_st` against the
-      inhomogeneous space-time Poisson null.
+      inhomogeneous space-time Poisson null -- the envelope rejects the
+      null only for the traveling wave, where a naive per-electrode rate
+      map cannot separate the two scenarios.
     figures:
       - filename: fig01_kst_envelope.png
       - filename: fig02_pcf_g.png
