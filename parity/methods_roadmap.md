@@ -238,6 +238,78 @@ freedom.
   Gerhard-Haslinger-Pipa 2011 (Neural Comput 23:1452),
   Kulesza-Taskar 2012, Bacry et al. 2018 (JMLR 18).
 
+### Done (v0.6.0 spatiotemporal extension)
+
+Extends Tier 2.2 from static spatial `(x, y)` patterns to full space-time
+`(x, y, t)` patterns.  Six new pure-NumPy/SciPy modules ship in
+`nstat.extras.spatial`, all original implementations directly from the
+published equations cited below (no external package ported):
+
+1. **Space-time kernel intensity** (`st_intensity.py`) —
+   `intensity_st_kde` gives a boundary-corrected product-kernel
+   estimate `lambda_hat(x, t)` (Diggle 2013, Ch. 7; Diggle 1985)
+   returning `STIntensityResult` with an `.evaluate(x, t)` method.
+2. **Space-time inhomogeneous second-order goodness-of-fit**
+   (`spatiotemporal_gof.py`) — `k_st_inhom` / `pair_correlation_st` are
+   the SOIRS-reweighted space-time `K`-function and pair correlation
+   (Diggle-Chetwynd-Haggkvist-Morris 1995; Gabriel-Diggle 2009;
+   Møller-Ghorbani 2012), and `global_envelope_st` is the Monte-Carlo
+   global-rank envelope test (Myllymäki et al. 2017) extended to the
+   flattened `(r, t)` surface.
+3. **Space-time Hawkes / ETAS branching EM** (`spatial_hawkes.py`) —
+   `em_spatial_hawkes` fits a homogeneous-background, isotropic
+   -Gaussian-in-space x exponential-in-time self-exciting process
+   (Veen-Schoenberg 2008; Ogata 1998), with the branching ratio
+   recovered directly (both kernel factors are individually
+   normalised); `simulate_spatial_hawkes` is the companion
+   branching/Poisson-cluster simulator (Møller-Rasmussen 2005).
+4. **Kronecker-Laplace spatiotemporal LGCP** (`lgcp_st.py`) —
+   `lgcp_st_fit` places a separable Matérn-GP prior on the log-rate
+   over a 3-D `(x, y, t)` grid and finds the posterior mode by a
+   matrix-free conjugate-gradient Newton/IRLS solve (Rasmussen-Williams
+   2006; Saatçi 2011) with a Hutchinson stochastic-diagonal posterior
+   -variance estimator (Hutchinson 1990; Bekas-Kokiopoulou-Saad 2007),
+   returning `LGCPSTResult` with a `.rate_map(t, level=...)`
+   log-normal credible band.
+5. **LGCP-background Cox-Hawkes** (`cox_hawkes.py`) — `fit_cox_hawkes`
+   composes an LGCP background with spatial-Hawkes excitation
+   (Miscouridou et al. 2022) via a deterministic (no-RNG) alternating
+   declustering EM with an exact weighted-histogram background M-step;
+   `simulate_cox_hawkes` is the matching LGCP-background-immigrants +
+   Hawkes-cascade simulator.
+6. **Modulated-renewal conditional-ISI process** (`modulated_renewal.py`)
+   — `fit_modulated_renewal` fits a rate-modulated renewal CIF
+   (Barbieri-Quirk-Frank-Wilson-Brown 2001; Cox 1955) by alternating a
+   Poisson-GLM beta-step against a 1-D renewal-shape theta-step, with
+   `renewal_hazard`/`renewal_cdf` (Chhikara-Folks 1974/1989) exposing
+   the gamma / inverse-Gaussian renewal primitives used for the
+   time-rescaling goodness-of-fit tie (Brown et al. 2002).
+
+**Placement / parity:** `extras` (same `nstat.extras.spatial`
+subpackage); Python-only, no MATLAB counterpart, no
+`parity/manifest.yml` entry.  Four new demo scripts
+(`examples/extras/spatial_stlgcp_microelectrode_demo.py`,
+`spatial_gof_ecog_demo.py`, `spatial_hawkes_ecog_demo.py`,
+`modulated_renewal_microelectrode_demo.py`) exercise the six modules on
+realistic microelectrode-array / ECoG-grid geometries with fully
+synthetic data.
+
+**References:** Diggle PJ (1985, JRSS-C 34:138), Diggle PJ (2013,
+*Statistical Analysis of Spatial and Spatio-Temporal Point Patterns*
+3rd ed., Ch. 7), Diggle-Chetwynd-Haggkvist-Morris 1995 (JRSS-C 44:71),
+Gabriel-Diggle 2009 (Statistica Neerlandica 63:43), Møller-Ghorbani 2012
+(Statistica Neerlandica 66:472), Veen-Schoenberg 2008 (JASA 103:614),
+Ogata 1998 (Ann Inst Statist Math 50:379), Zhuang-Ogata-Vere-Jones 2002
+(JASA 97:369), Møller-Rasmussen 2005 (Adv Appl Probab 37:629),
+Rasmussen & Williams 2006 (Alg. 3.1), Saatçi 2011 (PhD thesis,
+Cambridge), Wilson-Nickisch 2015 (ICML, KISS-GP), Hutchinson 1990
+(Comm Statist Sim Comput 19:433), Bekas-Kokiopoulou-Saad 2007 (Appl
+Numer Math 57:1214), Miscouridou-Bhatt-Mohler-Flaxman-Bhamidi 2022
+(TMLR, Cox-Hawkes), Barbieri-Quirk-Frank-Wilson-Brown 2001 (J Neurosci
+Methods 105:25), Cox 1955 (JRSS-B 17:129), Chhikara-Folks 1974 (JASA
+69:250) / 1989 (*The Inverse Gaussian Distribution*, Marcel Dekker),
+Brown et al. 2002 (Neural Comput 14:325).
+
 ---
 
 ## Tier 3 — Deeper state-space / encoding methods (moderate ports)

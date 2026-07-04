@@ -47,6 +47,13 @@ EXAMPLE_BACKING_PACKAGE: dict[str, str] = {
     # marker that forces the run-as-main test to execute the demo.
     "spatial_cluster_cox_demo": "numpy",
     "spatial_gibbs_demo": "numpy",
+    # Spatiotemporal microelectrode-array / ECoG-grid demos (KDE + LGCP,
+    # space-time GOF, space-time Hawkes, modulated-renewal): also pure
+    # NumPy/SciPy, "numpy" forces run-as-main execution.
+    "spatial_stlgcp_microelectrode_demo": "numpy",
+    "spatial_gof_ecog_demo": "numpy",
+    "spatial_hawkes_ecog_demo": "numpy",
+    "modulated_renewal_microelectrode_demo": "numpy",
 }
 
 

@@ -104,6 +104,25 @@ extras:
       :func:`pairwise_spike_distance_matrix`.
     figures: []
 
+  - demo_id: modulated_renewal_microelectrode
+    name: modulated_renewal_microelectrode_demo
+    script: examples/extras/modulated_renewal_microelectrode_demo.py
+    title: Modulated-renewal (conditional-ISI) fit for a regular-spiking microelectrode unit
+    question: Does a gamma modulated-renewal CIF recover the true stimulus-modulated rate and sub-Poisson ISI regularity of a synthetic microelectrode unit, and does its rescaled-ISI KS test pass where a naive Poisson (CV=1) assumption fails?
+    description: |
+      Simulates a single regular-spiking unit as a stimulus-modulated gamma
+      renewal process (Barbieri, Quirk, Frank, Wilson & Brown 2001), fits it
+      with :func:`nstat.extras.spatial.fit_modulated_renewal`, and checks
+      the fitted model's operational-time ISIs against Uniform(0,1) via
+      :func:`nstat.extras.spatial.renewal_cdf` (continuous time-rescaling)
+      and :mod:`nstat.extras.spatial.marked_gof` (discrete-time-rescaling
+      correction), contrasting both against a naive Poisson assumption on
+      the same data.
+    figures:
+      - filename: fig01_raster_rate.png
+      - filename: fig02_isi_vs_renewal.png
+      - filename: fig03_ks_rescaled.png
+
   - demo_id: spatial_cluster_cox
     name: spatial_cluster_cox_demo
     script: examples/extras/spatial_cluster_cox_demo.py
@@ -135,6 +154,63 @@ extras:
       - filename: fig01_strauss_scatter.png
       - filename: fig02_hardcore_scatter.png
       - filename: fig03_area_interaction_scatter.png
+
+  - demo_id: spatial_gof_ecog
+    name: spatial_gof_ecog_demo
+    script: examples/extras/spatial_gof_ecog_demo.py
+    title: Space-time inhomogeneous K/PCF + global-rank envelope on an ECoG grid
+    question: Does the space-time global-rank envelope test correctly fail to reject a baseline inhomogeneous-Poisson ECoG epoch while rejecting a clustered/traveling-wave epoch built from the same held-out background?
+    description: |
+      Simulates a baseline (inhomogeneous-Poisson) and a clustered
+      (spatial-Hawkes-cascade-on-the-same-background) epoch on a synthetic
+      8x8 ECoG grid, fits a held-out :func:`nstat.extras.spatial.intensity_st_kde`
+      from a separate calibration epoch, then tests both epochs with
+      :func:`nstat.extras.spatial.k_st_inhom`,
+      :func:`nstat.extras.spatial.pair_correlation_st`, and
+      :func:`nstat.extras.spatial.global_envelope_st` against the
+      inhomogeneous space-time Poisson null.
+    figures:
+      - filename: fig01_kst_envelope.png
+      - filename: fig02_pcf_g.png
+      - filename: fig03_verdict.png
+
+  - demo_id: spatial_hawkes_ecog
+    name: spatial_hawkes_ecog_demo
+    script: examples/extras/spatial_hawkes_ecog_demo.py
+    title: Space-time Hawkes/ETAS + Cox-Hawkes background/excitation decomposition on an ECoG grid
+    question: Do branching EM (homogeneous background) and the Cox-Hawkes alternating estimator (inhomogeneous LGCP background) recover the true self-excitation kernels and separate background from triggered activity on synthetic propagating ECoG catalogues?
+    description: |
+      Simulates a homogeneous-background propagating catalogue with
+      :func:`nstat.extras.spatial.simulate_spatial_hawkes` and recovers
+      ``(mu, K_branch, c, sigma_space)`` with
+      :func:`nstat.extras.spatial.em_spatial_hawkes`, then simulates a
+      second catalogue with an inhomogeneous LGCP background via
+      :func:`nstat.extras.spatial.simulate_cox_hawkes` and recovers the
+      background/excitation decomposition with
+      :func:`nstat.extras.spatial.fit_cox_hawkes` on a synthetic 8x8 ECoG
+      grid.
+    figures:
+      - filename: fig01_propagation_scatter.png
+      - filename: fig02_recovered_kernels.png
+      - filename: fig03_background_excitation_decomposition.png
+
+  - demo_id: spatial_stlgcp_microelectrode
+    name: spatial_stlgcp_microelectrode_demo
+    script: examples/extras/spatial_stlgcp_microelectrode_demo.py
+    title: Space-time KDE + Kronecker-Laplace LGCP tracking a moving rate bump on a microelectrode array
+    question: Do the space-time kernel intensity estimate and the spatiotemporal LGCP posterior mean (with credible bands) both track a Gaussian rate bump translating across a Utah-style microelectrode array?
+    description: |
+      Simulates a Gaussian population-rate bump translating across a 10x10
+      Utah-style microelectrode array over a ~1.5s trial, then fits
+      :func:`nstat.extras.spatial.intensity_st_kde` and
+      :func:`nstat.extras.spatial.lgcp_st_fit` and compares the true,
+      KDE-estimated, and LGCP-estimated bump centroid (with credible
+      bands from :meth:`nstat.extras.spatial.LGCPSTResult.rate_map`) at
+      several time slices.
+    figures:
+      - filename: fig01_array_scatter.png
+      - filename: fig02_kde_snapshots.png
+      - filename: fig03_lgcp_snapshots.png
 
   - demo_id: validation_nemos
     name: validation_nemos_demo

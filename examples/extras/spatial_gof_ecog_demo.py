@@ -1,0 +1,417 @@
+#!/usr/bin/env python3
+"""Demo: is multi-electrode spiking clustered in space-time on an ECoG grid?
+
+End-to-end exercise of the space-time inhomogeneous second-order
+goodness-of-fit machinery shipped in :mod:`nstat.extras.spatial`, grounded
+in a realistic **ECoG (electrocorticography) surface-grid** recording
+geometry:
+
+**Scenario.**  An **8x8 ECoG grid** (1cm electrode pitch, the standard
+subdural-strip/grid spacing) records multiunit/local-field events over a
+cortical region with a mildly inhomogeneous baseline rate (e.g. a region
+near an epileptogenic focus is chronically more active than the rest of
+the grid).  Two ~1s epochs are compared against the same held-out
+inhomogeneous-Poisson background:
+
+- a **baseline** epoch, where events really are an inhomogeneous Poisson
+  process (no space-time clustering beyond the known rate inhomogeneity);
+- a **clustered / traveling-wave** epoch, where each event additionally
+  triggers nearby-and-soon offspring events (a spatial-Hawkes cascade
+  layered on the *same* background) -- the textbook signature of a
+  propagating interictal discharge or travelling wave.
+
+The question the demo answers: **does the second-order space-time
+structure of each epoch look like the inhomogeneous-Poisson null implied
+by the fitted background rate, or does it reject that null?**  All
+spikes are fully synthetic (Lewis-Shedler / branching simulation) -- no
+real recording or dataset is used or claimed.
+
+Demonstrates:
+
+1. :func:`nstat.extras.spatial.intensity_st_kde` -- fit a **held-out**
+   space-time intensity lambda_hat from a separate "characterization"
+   recording (the plug-in-bias caveat documented in the module: reusing
+   the *same* pattern's own KDE fit deflates the test's variance).
+2. :func:`nstat.extras.spatial.k_st_inhom` /
+   :func:`nstat.extras.spatial.pair_correlation_st` -- the SOIRS-reweighted
+   space-time K-function / pair correlation, using that held-out
+   lambda_hat.
+3. :func:`nstat.extras.spatial.global_envelope_st` -- a Monte-Carlo
+   global-rank envelope test: the baseline epoch should stay INSIDE the
+   envelope; the clustered epoch should reject (fall OUTSIDE).
+
+The script is **fully synthetic** -- no figshare dataset access required.
+
+Run::
+
+    python examples/extras/spatial_gof_ecog_demo.py            # interactive
+    python examples/extras/spatial_gof_ecog_demo.py --no-display
+    python examples/extras/spatial_gof_ecog_demo.py --export-figures
+
+PNGs from ``--export-figures`` are written into a user-chosen directory
+(``--export-dir``, defaulting to
+``docs/figures/extras/spatial_gof_ecog/``) and are NOT committed to the
+repository -- the export flag exists for local inspection only.  CI
+never invokes it.
+
+References:
+- Diggle PJ, Chetwynd AG, Haggkvist R, Morris SE (1995). *Second-order
+  analysis of space-time clustering.* J. R. Statist. Soc. C 44(1):71-86.
+- Gabriel E, Diggle PJ (2009). *Second-order analysis of inhomogeneous
+  spatio-temporal point process data.* Statistica Neerlandica 63(1):43-51.
+- Moller J, Ghorbani M (2012). *Aspects of second-order analysis of
+  structured inhomogeneous spatio-temporal point processes.* Statistica
+  Neerlandica 66(4):472-491.
+- Myllymaki M, Mrkvicka T, Grabarnik P, Seijo H, Hahn U (2017). *Global
+  envelope tests for spatial processes.* J. R. Statist. Soc. B
+  79(2):381-404.
+- Diggle PJ (2013). *Statistical Analysis of Spatial and Spatio-Temporal
+  Point Patterns* (3rd ed.). CRC Press, Chapter 7 (lambda_hat KDE).
+- Miscouridou X, Bhatt S, Mohler G, Flaxman S, Bhamidi S (2022).
+  *Cox-Hawkes: doubly stochastic spatiotemporal Poisson processes.*
+  TMLR (source of :func:`nstat.extras.spatial.simulate_cox_hawkes`, reused
+  here purely as a convenient inhomogeneous-background-plus-clustering
+  data generator; the demo's subject is goodness-of-fit, not Cox-Hawkes
+  estimation -- see ``spatial_hawkes_ecog_demo.py`` for that).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+
+THIS_DIR = Path(__file__).resolve().parent
+REPO_ROOT = THIS_DIR.parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+
+# ---------------------------------------------------------------------------
+# 8x8 ECoG grid geometry (1cm pitch) + inhomogeneous background
+# ---------------------------------------------------------------------------
+
+N_SIDE = 8
+PITCH_CM = 1.0
+MARGIN_CM = 0.5
+GRID_EDGE_CM = 2.0 * MARGIN_CM + PITCH_CM * (N_SIDE - 1)  # == 8.0 cm
+
+DOMAIN = ((0.0, GRID_EDGE_CM), (0.0, GRID_EDGE_CM))
+
+FOCUS_CENTER = np.array([5.5, 2.5])  # cm -- e.g. a chronically-active focus
+FOCUS_SIGMA = 1.3
+BASELINE_RATE = 1.2  # Hz/cm^2
+AMP_RATE = 2.5  # Hz/cm^2
+
+T_CALIB = 3.0
+T_TEST = 1.0
+
+K_BRANCH_CLUSTERED = 0.55
+C_CLUSTERED = 6.0
+SIGMA_SPACE_CLUSTERED = 0.4
+
+R_GRID = np.linspace(0.25, 1.75, 6)
+T_GRID = np.linspace(0.05, 0.35, 5)
+N_SIM = 39
+ALPHA = 0.1
+
+
+def _electrode_positions() -> np.ndarray:
+    coords = MARGIN_CM + PITCH_CM * np.arange(N_SIDE)
+    xx, yy = np.meshgrid(coords, coords, indexing="xy")
+    return np.column_stack([xx.ravel(), yy.ravel()])
+
+
+def _background_rate(x: np.ndarray, t: np.ndarray | float) -> np.ndarray:
+    """Time-invariant, spatially inhomogeneous ECoG background (Hz/cm^2)."""
+    x = np.atleast_2d(np.asarray(x, dtype=float))
+    d2 = np.sum((x - FOCUS_CENTER[None, :]) ** 2, axis=1)
+    return BASELINE_RATE + AMP_RATE * np.exp(-d2 / (2.0 * FOCUS_SIGMA**2))
+
+
+def _clip_to_domain(
+    points: np.ndarray, times: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Keep only events that fall on the observed ECoG grid footprint.
+
+    ``simulate_cox_hawkes``'s offspring offsets are not clipped to the
+    background window (matching ``simulate_spatial_hawkes``'s convention),
+    but an ECoG grid can only ever record activity from *under* the grid
+    -- so events that drift outside the array footprint are dropped here,
+    exactly as a real recording would simply not observe them.
+    """
+    (xlo, xhi), (ylo, yhi) = DOMAIN
+    mask = (
+        (points[:, 0] >= xlo) & (points[:, 0] <= xhi)
+        & (points[:, 1] >= ylo) & (points[:, 1] <= yhi)
+    )
+    return points[mask], times[mask]
+
+
+# ---------------------------------------------------------------------------
+# Driver
+# ---------------------------------------------------------------------------
+
+
+def run_demo(
+    *,
+    seed: int = 20260703,
+    export_figures: bool = False,
+    export_dir: Path | None = None,
+    visible: bool = True,
+    plot_style: str = "legacy",
+) -> dict:
+    """Run the ECoG space-time clustering goodness-of-fit demo.
+
+    Returns
+    -------
+    dict
+        ``{"baseline": ..., "clustered": ..., "figure_paths": [...]}``.
+    """
+    import matplotlib.pyplot as plt
+
+    from nstat import apply_plot_style
+    from nstat.extras.spatial import (
+        global_envelope_st,
+        intensity_st_kde,
+        k_st_inhom,
+        pair_correlation_st,
+        simulate_cox_hawkes,
+    )
+
+    print("=" * 72)
+    print("Space-time clustering GOF on a synthetic 8x8 ECoG grid")
+    print("=" * 72)
+    print(
+        f"Grid footprint: {GRID_EDGE_CM:.1f}cm x {GRID_EDGE_CM:.1f}cm, "
+        f"{N_SIDE}x{N_SIDE} electrodes, {PITCH_CM:.0f}cm pitch "
+        "(fully synthetic events -- no real recording)"
+    )
+
+    rng = np.random.default_rng(seed)
+
+    # ---- Held-out characterization ("calibration") epoch: pure background. ----
+    calib_pts, calib_t = simulate_cox_hawkes(
+        _background_rate, 0.0, 1.0, 1.0,
+        domain=DOMAIN, T=T_CALIB, rng=rng,
+    )
+    calib_pts, calib_t = _clip_to_domain(calib_pts, calib_t)
+    kde_calib = intensity_st_kde(
+        calib_pts, calib_t, domain=DOMAIN, period=(0.0, T_CALIB), grid=(16, 16, 8)
+    )
+    print(f"Calibration epoch: {calib_pts.shape[0]} events over {T_CALIB:.1f}s")
+
+    # ---- Baseline TEST epoch: fresh draw, inhomogeneous Poisson (null true). ----
+    base_pts, base_t = simulate_cox_hawkes(
+        _background_rate, 0.0, 1.0, 1.0,
+        domain=DOMAIN, T=T_TEST, rng=rng,
+    )
+    base_pts, base_t = _clip_to_domain(base_pts, base_t)
+
+    # ---- Clustered TEST epoch: same background + spatial-Hawkes cascade. ----
+    clus_pts, clus_t = simulate_cox_hawkes(
+        _background_rate, K_BRANCH_CLUSTERED, C_CLUSTERED, SIGMA_SPACE_CLUSTERED,
+        domain=DOMAIN, T=T_TEST, rng=rng,
+    )
+    clus_pts, clus_t = _clip_to_domain(clus_pts, clus_t)
+
+    print(f"Baseline epoch:   {base_pts.shape[0]} events over {T_TEST:.1f}s")
+    print(f"Clustered epoch:  {clus_pts.shape[0]} events over {T_TEST:.1f}s")
+
+    def _analyze(points, times, label):
+        env = global_envelope_st(
+            points, times, kde_calib.evaluate, R_GRID, T_GRID,
+            n_sim=N_SIM, statistic="kst", alpha=ALPHA,
+            domain=DOMAIN, period=(0.0, T_TEST), rng=rng,
+        )
+        k_obs = k_st_inhom(
+            points, times, kde_calib.evaluate, R_GRID, T_GRID,
+            domain=DOMAIN, period=(0.0, T_TEST),
+        )
+        g_obs = pair_correlation_st(
+            points, times, kde_calib.evaluate, R_GRID, T_GRID,
+            domain=DOMAIN, period=(0.0, T_TEST),
+        )
+        return {
+            "label": label,
+            "points": points,
+            "times": times,
+            "env": env,
+            "k_st": k_obs.k_st,
+            "g_st": g_obs,
+        }
+
+    baseline = _analyze(base_pts, base_t, "baseline (Poisson null)")
+    clustered = _analyze(clus_pts, clus_t, "clustered (traveling-wave)")
+
+    print()
+    print("Global-rank envelope verdict (K_st statistic, alpha=%.2f):" % ALPHA)
+    for res in (baseline, clustered):
+        env = res["env"]
+        verdict = "INSIDE (fails to reject null)" if env.inside else "OUTSIDE (rejects null)"
+        print(
+            f"  {res['label']:28s}: {verdict}  "
+            f"p_interval=({env.p_interval[0]:.3f}, {env.p_interval[1]:.3f})"
+        )
+
+    # ---- Figures ----
+    electrodes = _electrode_positions()
+    t_idx = -1  # largest temporal lag: clustering signal is most visible here
+
+    # === FIGURE: fig01_kst_envelope.png ===
+    fig1, axes1 = plt.subplots(1, 2, figsize=(12.0, 4.8), sharey=True)
+    for ax, res in zip(axes1, (baseline, clustered)):
+        env = res["env"]
+        ax.fill_between(
+            R_GRID, env.lo[:, t_idx], env.hi[:, t_idx],
+            color="tab:blue", alpha=0.25, label="MC envelope",
+        )
+        ax.plot(R_GRID, env.observed[:, t_idx], color="tab:red", lw=1.8,
+                marker="o", ms=4, label="observed K_st")
+        verdict = "INSIDE" if env.inside else "OUTSIDE (reject)"
+        ax.set_title(f"{res['label']}\nt={T_GRID[t_idx]:.2f}s -- {verdict}")
+        ax.set_xlabel("spatial lag r (cm)")
+        ax.legend(loc="upper left", fontsize=8)
+    axes1[0].set_ylabel("K_st(r, t)")
+    fig1.suptitle("Space-time K-function vs Monte-Carlo global-rank envelope")
+    # === END FIGURE ===
+
+    # === FIGURE: fig02_pcf_g.png ===
+    fig2, ax2 = plt.subplots(figsize=(6.6, 4.8))
+    ax2.axhline(1.0, color="gray", lw=1.0, ls=":", label="Poisson null (g=1)")
+    ax2.plot(R_GRID, baseline["g_st"][:, t_idx], color="tab:green", lw=1.8,
+              marker="o", ms=4, label=baseline["label"])
+    ax2.plot(R_GRID, clustered["g_st"][:, t_idx], color="tab:red", lw=1.8,
+              marker="s", ms=4, label=clustered["label"])
+    ax2.set_xlabel("spatial lag r (cm)")
+    ax2.set_ylabel(f"g(r, t={T_GRID[t_idx]:.2f}s)")
+    ax2.set_title("Space-time pair correlation")
+    ax2.legend(loc="upper right", fontsize=8)
+    # === END FIGURE ===
+
+    # === FIGURE: fig03_verdict.png ===
+    fig3, ax3 = plt.subplots(figsize=(7.5, 3.0))
+    ax3.axis("off")
+    lines = ["epoch                          verdict                    p_interval",
+             "-" * 74]
+    for res in (baseline, clustered):
+        env = res["env"]
+        verdict = "INSIDE (fails to reject)" if env.inside else "OUTSIDE (rejects null)"
+        lines.append(
+            f"{res['label']:30s} {verdict:26s} "
+            f"({env.p_interval[0]:.3f}, {env.p_interval[1]:.3f})"
+        )
+    ax3.text(
+        0.02, 0.85, "\n".join(lines), family="monospace", fontsize=10,
+        va="top", transform=ax3.transAxes,
+    )
+    ax3.set_title("Global-rank envelope verdict summary")
+    # === END FIGURE ===
+
+    figures = [fig1, fig2, fig3]
+    fig_names = ("fig01_kst_envelope", "fig02_pcf_g", "fig03_verdict")
+    for fig in figures:
+        fig.tight_layout()
+        apply_plot_style(fig, style=plot_style)
+
+    figure_paths: list[Path] = []
+    if export_figures:
+        if export_dir is None:
+            export_dir = (
+                REPO_ROOT / "docs" / "figures" / "extras" / "spatial_gof_ecog"
+            )
+        export_dir = Path(export_dir)
+        export_dir.mkdir(parents=True, exist_ok=True)
+        for fig, name in zip(figures, fig_names):
+            path = export_dir / f"{name}.png"
+            fig.savefig(path, dpi=180, facecolor="w", edgecolor="none")
+            figure_paths.append(path)
+            print(f"  Saved: {path}")
+
+    if visible:
+        plt.show()
+    else:
+        plt.close("all")
+
+    return {
+        "baseline_inside": bool(baseline["env"].inside),
+        "clustered_inside": bool(clustered["env"].inside),
+        "baseline_p_interval": baseline["env"].p_interval,
+        "clustered_p_interval": clustered["env"].p_interval,
+        "n_baseline": int(base_pts.shape[0]),
+        "n_clustered": int(clus_pts.shape[0]),
+        "figure_paths": [str(p) for p in figure_paths],
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Space-time clustering GOF demo on a synthetic "
+                    "ECoG grid",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=20260703,
+        help="np.random.default_rng seed.",
+    )
+    parser.add_argument(
+        "--export-figures", action="store_true",
+        help="Write the three PNGs to --export-dir.",
+    )
+    parser.add_argument(
+        "--export-dir", type=Path, default=None,
+        help="Override the PNG export directory.",
+    )
+    parser.add_argument(
+        "--output-json", type=Path, default=None,
+        help="Write a compact verdict summary as JSON.",
+    )
+    parser.add_argument(
+        "--show", action="store_true",
+        help="Display figures interactively.",
+    )
+    parser.add_argument(
+        "--no-display", action="store_true",
+        help="Run without showing figures (headless).",
+    )
+    parser.add_argument(
+        "--plot-style", choices=("modern", "legacy"), default="legacy",
+        help="Figure styling forwarded to nstat.apply_plot_style.",
+    )
+    args = parser.parse_args(argv)
+
+    if args.no_display:
+        import matplotlib
+        matplotlib.use("Agg")
+        visible = False
+    else:
+        visible = bool(args.show)
+
+    result = run_demo(
+        seed=args.seed,
+        export_figures=args.export_figures,
+        export_dir=args.export_dir,
+        visible=visible,
+        plot_style=args.plot_style,
+    )
+
+    if args.output_json is not None:
+        summary = {
+            "baseline_inside": result["baseline_inside"],
+            "clustered_inside": result["clustered_inside"],
+            "baseline_p_interval": list(result["baseline_p_interval"]),
+            "clustered_p_interval": list(result["clustered_p_interval"]),
+            "n_baseline": result["n_baseline"],
+            "n_clustered": result["n_clustered"],
+            "figure_paths": result["figure_paths"],
+        }
+        args.output_json.write_text(
+            json.dumps(summary, indent=2), encoding="utf-8"
+        )
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

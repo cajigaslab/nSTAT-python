@@ -168,6 +168,43 @@ from nstat.extras.spatial.wave_analysis import (
     reconstruct_kernel,
 )
 
+# Spatiotemporal point-process tier (v16) — all pure NumPy/SciPy, no
+# optional dependency. Space-time intensity, second-order goodness-of-fit,
+# self-exciting and doubly-stochastic models, and conditional-ISI renewal.
+from nstat.extras.spatial.st_intensity import (
+    STIntensityResult,
+    intensity_st_kde,
+)
+from nstat.extras.spatial.spatiotemporal_gof import (
+    STEnvelopeResult,
+    STKResult,
+    global_envelope_st,
+    k_st_inhom,
+    pair_correlation_st,
+)
+from nstat.extras.spatial.spatial_hawkes import (
+    SpatialHawkesResult,
+    SpatialHawkesSpec,
+    em_spatial_hawkes,
+    simulate_spatial_hawkes,
+)
+from nstat.extras.spatial.lgcp_st import (
+    LGCPSTResult,
+    lgcp_st_fit,
+)
+from nstat.extras.spatial.cox_hawkes import (
+    CoxHawkesResult,
+    fit_cox_hawkes,
+    simulate_cox_hawkes,
+)
+from nstat.extras.spatial.modulated_renewal import (
+    ModulatedRenewalResult,
+    fit_modulated_renewal,
+    renewal_cdf,
+    renewal_hazard,
+    simulate_modulated_renewal,
+)
+
 # The optional-dep bridge submodules (hawkes_bridge, dpp_bridge) are NOT
 # eagerly imported — they are reached via explicit submodule import so the
 # package stays import-safe without tick / DPPy / gpflow installed:
@@ -251,4 +288,34 @@ __all__ = [
     "reconstruct_kernel",
     "detect_wave_peaks",
     "WaveAnalysisResult",
+    # --- spatiotemporal tier (v16), all pure NumPy/SciPy ---
+    # st_intensity (space-time kernel intensity; Diggle 2013 Ch. 7)
+    "intensity_st_kde",
+    "STIntensityResult",
+    # spatiotemporal_gof (space-time inhomogeneous second-order GoF;
+    # Diggle-Chetwynd-Haggkvist 1995, Gabriel-Diggle 2009, Moller-Ghorbani 2012)
+    "k_st_inhom",
+    "pair_correlation_st",
+    "global_envelope_st",
+    "STKResult",
+    "STEnvelopeResult",
+    # spatial_hawkes (ETAS-style space-time self-exciting EM;
+    # Ogata 1998, Veen-Schoenberg 2008)
+    "em_spatial_hawkes",
+    "simulate_spatial_hawkes",
+    "SpatialHawkesSpec",
+    "SpatialHawkesResult",
+    # lgcp_st (spatiotemporal LGCP, Kronecker Laplace; Diggle-Rowlingson-Su 2005)
+    "lgcp_st_fit",
+    "LGCPSTResult",
+    # cox_hawkes (LGCP-background x Hawkes-excitation; Miscouridou et al. 2022)
+    "fit_cox_hawkes",
+    "simulate_cox_hawkes",
+    "CoxHawkesResult",
+    # modulated_renewal (conditional-ISI renewal; Barbieri-Frank-Brown 2001)
+    "fit_modulated_renewal",
+    "simulate_modulated_renewal",
+    "renewal_hazard",
+    "renewal_cdf",
+    "ModulatedRenewalResult",
 ]

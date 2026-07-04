@@ -9,7 +9,7 @@
 <p class="muted">Every <code>examples/extras/*_demo.py</code> script registered in <code>examples/extras/manifest.yml</code>, with the figure outputs each demo produces (when applicable) and a short description of what every figure shows.  Auto-generated from <code>tools/extras_build/extras_descriptions.yml</code> — re-render with <code>python tools/extras_build/build_extras_gallery.py</code> after editing the descriptions.</p>
 </header>
 <nav class="toc"><strong>Demos:</strong> 
-<a href="#decoding_clusterless">decoding_clusterless</a> · <a href="#decoding_place_field">decoding_place_field</a> · <a href="#em_dynamax">em_dynamax</a> · <a href="#interop_neo">interop_neo</a> · <a href="#interop_pynapple">interop_pynapple</a> · <a href="#interop_nwb">interop_nwb</a> · <a href="#latents_gpfa">latents_gpfa</a> · <a href="#metrics_spike_distances">metrics_spike_distances</a> · <a href="#spatial_cluster_cox">spatial_cluster_cox</a> · <a href="#spatial_gibbs">spatial_gibbs</a> · <a href="#validation_nemos">validation_nemos</a> · <a href="#validation_pykalman">validation_pykalman</a> · <a href="#validation_statsmodels">validation_statsmodels</a></nav>
+<a href="#decoding_clusterless">decoding_clusterless</a> · <a href="#decoding_place_field">decoding_place_field</a> · <a href="#em_dynamax">em_dynamax</a> · <a href="#interop_neo">interop_neo</a> · <a href="#interop_pynapple">interop_pynapple</a> · <a href="#interop_nwb">interop_nwb</a> · <a href="#latents_gpfa">latents_gpfa</a> · <a href="#metrics_spike_distances">metrics_spike_distances</a> · <a href="#modulated_renewal_microelectrode">modulated_renewal_microelectrode</a> · <a href="#spatial_cluster_cox">spatial_cluster_cox</a> · <a href="#spatial_gibbs">spatial_gibbs</a> · <a href="#spatial_gof_ecog">spatial_gof_ecog</a> · <a href="#spatial_hawkes_ecog">spatial_hawkes_ecog</a> · <a href="#spatial_stlgcp_microelectrode">spatial_stlgcp_microelectrode</a> · <a href="#validation_nemos">validation_nemos</a> · <a href="#validation_pykalman">validation_pykalman</a> · <a href="#validation_statsmodels">validation_statsmodels</a></nav>
 <section class="example" id="decoding_clusterless">
 <h2>Clusterless point-process decoding + trajectory classification</h2>
 <p><strong>Question:</strong> Does the JAX-backed clusterless replay decoder reproduce the PPAF/PPHF state-space decode on synthetic 1-D marks?</p>
@@ -198,6 +198,127 @@ population-level ``pairwise_spike_distance_matrix``.</p>
 <p><strong>Run:</strong> <code>python examples/extras/metrics_spike_distances_demo.py</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/metrics_spike_distances_demo.py">Script</a></p>
 <div class="placeholder">(no figure output — this is a text-based validation/interop demo; run the script for console output)</div>
 </section>
+<section class="example" id="modulated_renewal_microelectrode">
+<h2>Modulated-renewal (conditional-ISI) fit for a regular-spiking microelectrode unit</h2>
+<p><strong>Question:</strong> Does a gamma modulated-renewal CIF recover the true stimulus-modulated rate and sub-Poisson ISI regularity of a synthetic microelectrode unit, and does its rescaled-ISI KS test pass where a naive Poisson (CV=1) assumption fails?</p>
+<p><strong>Goal:</strong> Confirm the modulated-renewal CIF recovers both the covariate-driven
+rate and the sub-Poisson ISI regularity of a synthetic regular
+-spiking unit, and that its rescaled-ISI KS tests pass where the
+same data tested under a naive Poisson assumption fails.</p>
+<p class="muted">Simulates a single stimulus-modulated, regular-spiking
+microelectrode unit as a gamma modulated-renewal process
+(Barbieri, Quirk, Frank, Wilson & Brown 2001; shape=9.0, CV~=0.33),
+fits it with :func:`nstat.extras.spatial.fit_modulated_renewal`,
+and checks the fitted operational-time ISIs against Uniform(0,1)
+both continuously (:func:`nstat.extras.spatial.renewal_cdf`) and
+with the discrete-time-rescaling correction
+(:mod:`nstat.extras.spatial.marked_gof`), contrasting both against
+a naive Poisson (CV=1) assumption on the same rescaled ISIs.</p>
+<p><strong>Run:</strong> <code>python examples/extras/modulated_renewal_microelectrode_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/modulated_renewal_microelectrode_demo.py">Script</a></p>
+<div class="gallery">
+<figure><img src="figures/extras/modulated_renewal_microelectrode/fig01_raster_rate.png" alt="fig01_raster_rate.png" loading="lazy"><figcaption><strong>fig01_raster_rate.png</strong><br>Top: spike raster for the first 10s of the 30s trial. Bottom:
+the true stimulus-driven baseline rate lambda_0(t) (dotted)
+overlaid on the fitted rate (solid).</figcaption><div class="analysis">Close overlap of the fitted and true rate curves confirms the
+beta-step of the alternating fit recovered the stimulus
+-modulation coefficients; the raster shows the elevated firing
+near the rate peaks.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, (ax1a, ax1b) = plt.subplots(
+    2, 1, figsize=(9.5, 5.2), sharex=True,
+    gridspec_kw={&quot;height_ratios&quot;: [1, 2]},
+)
+show_t = 10.0
+show_mask = spike_times &lt;= show_t
+ax1a.eventplot(
+    spike_times[show_mask], lineoffsets=0.5, linelengths=0.8, colors=&quot;black&quot;,
+)
+ax1a.set_yticks([])
+ax1a.set_ylabel(&quot;unit&quot;)
+ax1a.set_title(f&quot;Raster (first {show_t:.0f}s of {T_TRIAL:.0f}s trial)&quot;)
+
+t_plot = np.linspace(0.0, show_t, 1000)
+ax1b.plot(t_plot, _true_rate_fn(t_plot), color=&quot;black&quot;, lw=1.4, ls=&quot;:&quot;,
+          label=&quot;true lambda_0(t)&quot;)
+fitted_lam0 = np.exp(
+    fit.beta[0] + fit.beta[1] * np.cos(2.0 * np.pi * STIM_FREQ_HZ * t_plot)
+)
+ax1b.plot(t_plot, fitted_lam0, color=&quot;tab:red&quot;, lw=1.8, label=&quot;fitted lambda_0(t)&quot;)
+ax1b.set_xlabel(&quot;time (s)&quot;)
+ax1b.set_ylabel(&quot;rate (Hz)&quot;)
+ax1b.legend(loc=&quot;upper right&quot;, fontsize=8)</code></pre></details></figure>
+<figure><img src="figures/extras/modulated_renewal_microelectrode/fig02_isi_vs_renewal.png" alt="fig02_isi_vs_renewal.png" loading="lazy"><figcaption><strong>fig02_isi_vs_renewal.png</strong><br>Histogram of the fitted model's operational-time (rescaled)
+inter-spike intervals, overlaid with the fitted gamma density
+(solid) and the Exp(1) Poisson-null density (dashed).</figcaption><div class="analysis">The rescaled-ISI histogram tracking the fitted gamma density
+rather than the flatter Exp(1) curve is the direct visual
+signature of sub-Poisson spike-timing regularity (CV < 1).</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, ax2 = plt.subplots(figsize=(7.0, 4.8))
+u_grid = np.linspace(1e-4, 3.0, 400)
+h = 1e-4
+pdf_fit = (
+    renewal_cdf(u_grid + h, fit.shape_param, RENEWAL)
+    - renewal_cdf(np.maximum(u_grid - h, 0.0), fit.shape_param, RENEWAL)
+) / (2.0 * h)
+pdf_poisson = (
+    renewal_cdf(u_grid + h, 1.0, RENEWAL)
+    - renewal_cdf(np.maximum(u_grid - h, 0.0), 1.0, RENEWAL)
+) / (2.0 * h)
+ax2.hist(
+    fit.rescaled_isis, bins=30, density=True, color=&quot;tab:blue&quot;, alpha=0.45,
+    label=&quot;operational-time ISIs (rescaled)&quot;,
+)
+ax2.plot(u_grid, pdf_fit, color=&quot;tab:red&quot;, lw=1.8,
+          label=f&quot;fitted {RENEWAL} density (CV={fit.cv:.2f})&quot;)
+ax2.plot(u_grid, pdf_poisson, color=&quot;gray&quot;, lw=1.4, ls=&quot;--&quot;,
+          label=&quot;Exp(1) density (Poisson null)&quot;)
+ax2.set_xlabel(&quot;operational-time ISI u (mean 1)&quot;)
+ax2.set_ylabel(&quot;density&quot;)
+ax2.set_title(&quot;Rescaled-ISI histogram vs fitted renewal density&quot;)
+ax2.legend(loc=&quot;upper right&quot;, fontsize=8)</code></pre></details></figure>
+<figure><img src="figures/extras/modulated_renewal_microelectrode/fig03_ks_rescaled.png" alt="fig03_ks_rescaled.png" loading="lazy"><figcaption><strong>fig03_ks_rescaled.png</strong><br>Left: continuous time-rescaling KS check — empirical CDF of
+the rescaled ISIs under the fitted gamma model (red) and under
+a naive Poisson assumption (gray dashed) against Uniform(0,1)
+(dotted). Right: the discrete-time-rescaling correction
+(Haslinger-Pipa-Brown 2010) applied to the fitted model's own
+per-bin conditional intensity, uncorrected vs corrected.</figcaption><div class="analysis">The fitted-model curve hugging the Uniform(0,1) diagonal while
+the naive-Poisson curve deviates confirms the renewal model —
+not a Poisson CIF — is required to pass goodness-of-fit; the
+right panel confirms the discrete-time correction does not
+spuriously reject the correctly-specified fitted model.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig3, (ax3a, ax3b) = plt.subplots(1, 2, figsize=(12.0, 4.8))
+
+grid01 = np.linspace(0.0, 1.0, 200)
+ax3a.plot(grid01, grid01, color=&quot;black&quot;, lw=1.0, ls=&quot;:&quot;, label=&quot;Uniform(0,1)&quot;)
+ax3a.plot(
+    np.sort(u_fit), np.linspace(0, 1, len(u_fit), endpoint=False),
+    color=&quot;tab:red&quot;, lw=1.8,
+    label=f&quot;fitted {RENEWAL} (D={ks_fit.statistic:.3f})&quot;,
+)
+ax3a.plot(
+    np.sort(u_poisson), np.linspace(0, 1, len(u_poisson), endpoint=False),
+    color=&quot;tab:gray&quot;, lw=1.4, ls=&quot;--&quot;,
+    label=f&quot;assumed Poisson (D={ks_poisson.statistic:.3f})&quot;,
+)
+ax3a.set_xlabel(&quot;u&quot;)
+ax3a.set_ylabel(&quot;empirical CDF&quot;)
+ax3a.set_title(&quot;Continuous time-rescaling KS&quot;)
+ax3a.legend(loc=&quot;lower right&quot;, fontsize=7)
+
+ax3b.plot(grid01, grid01, color=&quot;black&quot;, lw=1.0, ls=&quot;:&quot;, label=&quot;Uniform(0,1)&quot;)
+ax3b.plot(
+    np.sort(gof.u_uncorrected),
+    np.linspace(0, 1, len(gof.u_uncorrected), endpoint=False),
+    color=&quot;tab:orange&quot;, lw=1.6,
+    label=f&quot;uncorrected (D={gof.ks_uncorrected:.3f})&quot;,
+)
+ax3b.plot(
+    np.sort(gof.u_corrected),
+    np.linspace(0, 1, len(gof.u_corrected), endpoint=False),
+    color=&quot;tab:green&quot;, lw=1.8,
+    label=f&quot;discrete-corrected (D={gof.ks_corrected:.3f})&quot;,
+)
+ax3b.set_xlabel(&quot;u&quot;)
+ax3b.set_ylabel(&quot;empirical CDF&quot;)
+ax3b.set_title(&quot;Discrete-time-rescaling correction (marked_gof)&quot;)
+ax3b.legend(loc=&quot;lower right&quot;, fontsize=7)
+fig3.suptitle(&quot;Goodness-of-fit: rescaled ISIs vs Uniform(0,1)&quot;)</code></pre></details></figure>
+</div>
+</section>
 <section class="example" id="spatial_cluster_cox">
 <h2>Cluster Cox processes + minimum-contrast estimation</h2>
 <p><strong>Question:</strong> Can the Diggle 2013 minimum-contrast estimator recover the offspring scale and parent intensity of a simulated Thomas / Matérn-cluster process on the unit square?</p>
@@ -300,6 +421,321 @@ _plot_scatter_with_radius(
     ax3, ai[&quot;points&quot;], ai[&quot;R&quot;],
     f&quot;Area-interaction (beta={ai[&#x27;beta_true&#x27;]}, &quot;
     f&quot;eta={ai[&#x27;eta_true&#x27;]}, R={ai[&#x27;R&#x27;]}) — n={ai[&#x27;n_data&#x27;]}&quot;,
+)</code></pre></details></figure>
+</div>
+</section>
+<section class="example" id="spatial_gof_ecog">
+<h2>Space-time inhomogeneous K/PCF + global-rank envelope on an ECoG grid</h2>
+<p><strong>Question:</strong> Does the space-time global-rank envelope test correctly fail to reject a baseline inhomogeneous-Poisson ECoG epoch while rejecting a clustered/traveling-wave epoch built from the same held-out background?</p>
+<p><strong>Goal:</strong> Confirm the space-time global-rank envelope test correctly fails
+to reject the baseline epoch (a true inhomogeneous space-time
+Poisson process) while rejecting the clustered/traveling-wave
+epoch, using a held-out intensity estimate to avoid plug-in bias.</p>
+<p class="muted">Simulates a baseline (inhomogeneous-Poisson) and a clustered
+(spatial-Hawkes-cascade-on-the-same-background) epoch on a
+synthetic 8x8 ECoG grid, fits a held-out
+:func:`nstat.extras.spatial.intensity_st_kde` from a separate
+calibration epoch, and tests both epochs with
+:func:`nstat.extras.spatial.k_st_inhom`,
+:func:`nstat.extras.spatial.pair_correlation_st`, and
+:func:`nstat.extras.spatial.global_envelope_st` against the
+inhomogeneous space-time Poisson null.</p>
+<p><strong>Run:</strong> <code>python examples/extras/spatial_gof_ecog_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/spatial_gof_ecog_demo.py">Script</a></p>
+<div class="gallery">
+<figure><img src="figures/extras/spatial_gof_ecog/fig01_kst_envelope.png" alt="fig01_kst_envelope.png" loading="lazy"><figcaption><strong>fig01_kst_envelope.png</strong><br>Observed space-time K-function K_st(r, t) at the largest
+temporal lag (red) overlaid on the Monte-Carlo global-rank
+envelope (blue band) for the baseline epoch (left) and the
+clustered epoch (right).</figcaption><div class="analysis">The baseline curve stays inside the envelope (fails to reject
+the null) while the clustered curve pokes outside it — the
+global-rank verdict printed in each panel title confirms the
+test discriminates the two epochs as designed.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, axes1 = plt.subplots(1, 2, figsize=(12.0, 4.8), sharey=True)
+for ax, res in zip(axes1, (baseline, clustered)):
+    env = res[&quot;env&quot;]
+    ax.fill_between(
+        R_GRID, env.lo[:, t_idx], env.hi[:, t_idx],
+        color=&quot;tab:blue&quot;, alpha=0.25, label=&quot;MC envelope&quot;,
+    )
+    ax.plot(R_GRID, env.observed[:, t_idx], color=&quot;tab:red&quot;, lw=1.8,
+            marker=&quot;o&quot;, ms=4, label=&quot;observed K_st&quot;)
+    verdict = &quot;INSIDE&quot; if env.inside else &quot;OUTSIDE (reject)&quot;
+    ax.set_title(f&quot;{res[&#x27;label&#x27;]}\nt={T_GRID[t_idx]:.2f}s -- {verdict}&quot;)
+    ax.set_xlabel(&quot;spatial lag r (cm)&quot;)
+    ax.legend(loc=&quot;upper left&quot;, fontsize=8)
+axes1[0].set_ylabel(&quot;K_st(r, t)&quot;)
+fig1.suptitle(&quot;Space-time K-function vs Monte-Carlo global-rank envelope&quot;)</code></pre></details></figure>
+<figure><img src="figures/extras/spatial_gof_ecog/fig02_pcf_g.png" alt="fig02_pcf_g.png" loading="lazy"><figcaption><strong>fig02_pcf_g.png</strong><br>Space-time pair correlation g(r, t) at the largest temporal
+lag for the baseline (green) and clustered (red) epochs,
+against the Poisson null g=1 (dotted gray).</figcaption><div class="analysis">The clustered epoch's g(r, t) rising well above 1 at short
+spatial lags is the second-order signature of the added
+self-exciting cascade; the baseline epoch hugs the null line.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, ax2 = plt.subplots(figsize=(6.6, 4.8))
+ax2.axhline(1.0, color=&quot;gray&quot;, lw=1.0, ls=&quot;:&quot;, label=&quot;Poisson null (g=1)&quot;)
+ax2.plot(R_GRID, baseline[&quot;g_st&quot;][:, t_idx], color=&quot;tab:green&quot;, lw=1.8,
+          marker=&quot;o&quot;, ms=4, label=baseline[&quot;label&quot;])
+ax2.plot(R_GRID, clustered[&quot;g_st&quot;][:, t_idx], color=&quot;tab:red&quot;, lw=1.8,
+          marker=&quot;s&quot;, ms=4, label=clustered[&quot;label&quot;])
+ax2.set_xlabel(&quot;spatial lag r (cm)&quot;)
+ax2.set_ylabel(f&quot;g(r, t={T_GRID[t_idx]:.2f}s)&quot;)
+ax2.set_title(&quot;Space-time pair correlation&quot;)
+ax2.legend(loc=&quot;upper right&quot;, fontsize=8)</code></pre></details></figure>
+<figure><img src="figures/extras/spatial_gof_ecog/fig03_verdict.png" alt="fig03_verdict.png" loading="lazy"><figcaption><strong>fig03_verdict.png</strong><br>Text summary of the global-rank envelope verdict (inside/
+outside) and conservative/liberal p-value interval for each
+epoch.</figcaption><div class="analysis">A compact pass/fail readout confirming numerically what the
+two plots above show visually — baseline INSIDE, clustered
+OUTSIDE (rejects).</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig3, ax3 = plt.subplots(figsize=(7.5, 3.0))
+ax3.axis(&quot;off&quot;)
+lines = [&quot;epoch                          verdict                    p_interval&quot;,
+         &quot;-&quot; * 74]
+for res in (baseline, clustered):
+    env = res[&quot;env&quot;]
+    verdict = &quot;INSIDE (fails to reject)&quot; if env.inside else &quot;OUTSIDE (rejects null)&quot;
+    lines.append(
+        f&quot;{res[&#x27;label&#x27;]:30s} {verdict:26s} &quot;
+        f&quot;({env.p_interval[0]:.3f}, {env.p_interval[1]:.3f})&quot;
+    )
+ax3.text(
+    0.02, 0.85, &quot;\n&quot;.join(lines), family=&quot;monospace&quot;, fontsize=10,
+    va=&quot;top&quot;, transform=ax3.transAxes,
+)
+ax3.set_title(&quot;Global-rank envelope verdict summary&quot;)</code></pre></details></figure>
+</div>
+</section>
+<section class="example" id="spatial_hawkes_ecog">
+<h2>Space-time Hawkes/ETAS + Cox-Hawkes background/excitation decomposition on an ECoG grid</h2>
+<p><strong>Question:</strong> Do branching EM (homogeneous background) and the Cox-Hawkes alternating estimator (inhomogeneous LGCP background) recover the true self-excitation kernels and separate background from triggered activity on synthetic propagating ECoG catalogues?</p>
+<p><strong>Goal:</strong> Confirm branching EM and the Cox-Hawkes alternating estimator both
+recover the true spatial (sigma_space) and temporal (1/c)
+triggering scales, and that Cox-Hawkes correctly separates a
+spatially-varying background from self-excitation.</p>
+<p class="muted">Simulates a homogeneous-background propagating catalogue with
+:func:`nstat.extras.spatial.simulate_spatial_hawkes` and recovers
+``(mu, K_branch, c, sigma_space)`` with
+:func:`nstat.extras.spatial.em_spatial_hawkes`, then simulates a
+second catalogue with an inhomogeneous LGCP background via
+:func:`nstat.extras.spatial.simulate_cox_hawkes` and recovers the
+background/excitation decomposition with
+:func:`nstat.extras.spatial.fit_cox_hawkes`, both on a synthetic
+8x8 ECoG grid over multi-minute continuous epochs.</p>
+<p><strong>Run:</strong> <code>python examples/extras/spatial_hawkes_ecog_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/spatial_hawkes_ecog_demo.py">Script</a></p>
+<div class="gallery">
+<figure><img src="figures/extras/spatial_hawkes_ecog/fig01_propagation_scatter.png" alt="fig01_propagation_scatter.png" loading="lazy"><figcaption><strong>fig01_propagation_scatter.png</strong><br>First 30s excerpt of catalogue A's events over the 8x8 ECoG
+grid, coloured by event time, overlaid on the electrode
+positions.</figcaption><div class="analysis">Tight, colour-graded clusters of events are individual
+propagation cascades — nearby-and-soon-after triggered
+offspring visually distinguishable from the sparser background.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python"># A short excerpt (not the full multi-minute catalogue) is shown so
+# individual propagation cascades -- tight in time, spreading in
+# space -- are visually distinguishable.
+excerpt_s = 30.0
+excerpt_mask = t_a &lt;= excerpt_s
+fig1, ax1 = plt.subplots(figsize=(7.2, 5.6))
+ax1.scatter(
+    electrodes[:, 0], electrodes[:, 1],
+    marker=&quot;s&quot;, s=10, color=&quot;0.6&quot;, zorder=1, label=&quot;electrode&quot;,
+)
+sc = ax1.scatter(
+    pts_a[excerpt_mask, 0], pts_a[excerpt_mask, 1], c=t_a[excerpt_mask],
+    s=22, cmap=&quot;plasma&quot;, alpha=0.85, zorder=2, label=&quot;event&quot;,
+)
+fig1.colorbar(sc, ax=ax1, label=&quot;time (s)&quot;)
+ax1.set_xlim(*DOMAIN[0])
+ax1.set_ylim(*DOMAIN[1])
+ax1.set_aspect(&quot;equal&quot;)
+ax1.set_xlabel(&quot;x (cm)&quot;)
+ax1.set_ylabel(&quot;y (cm)&quot;)
+ax1.set_title(
+    f&quot;Catalogue A: first {excerpt_s:.0f}s excerpt &quot;
+    f&quot;({int(excerpt_mask.sum())} of {pts_a.shape[0]} events)\n&quot;
+    f&quot;full catalogue spans {T_A:.0f}s on the {N_SIDE}x{N_SIDE} ECoG grid&quot;,
+    fontsize=10,
+)
+ax1.legend(loc=&quot;upper left&quot;, fontsize=8)</code></pre></details></figure>
+<figure><img src="figures/extras/spatial_hawkes_ecog/fig02_recovered_kernels.png" alt="fig02_recovered_kernels.png" loading="lazy"><figcaption><strong>fig02_recovered_kernels.png</strong><br>True (dotted) vs recovered (solid) temporal triggering kernel
+g(t) = c*exp(-c*t) (left) and spatial triggering kernel h(r),
+an isotropic Gaussian (right), from catalogue A.</figcaption><div class="analysis">Close overlap of the recovered and true kernel curves confirms
+branching EM identified both the temporal decay and the
+spatial spread of triggering from the single-realisation
+catalogue.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, (ax2a, ax2b) = plt.subplots(1, 2, figsize=(11.5, 4.6))
+t_grid = np.linspace(0.0, 5.0, 200)
+ax2a.plot(t_grid, C_TRUE * np.exp(-C_TRUE * t_grid), color=&quot;black&quot;, lw=1.4,
+          ls=&quot;:&quot;, label=&quot;true g(t)&quot;)
+ax2a.plot(
+    t_grid, fit_a.c_hat * np.exp(-fit_a.c_hat * t_grid), color=&quot;tab:red&quot;,
+    lw=1.8, label=&quot;recovered g(t)&quot;,
+)
+ax2a.set_xlabel(&quot;elapsed time since parent (s)&quot;)
+ax2a.set_ylabel(&quot;g(t) = c * exp(-c t)&quot;)
+ax2a.set_title(&quot;Temporal triggering kernel&quot;)
+ax2a.legend(loc=&quot;upper right&quot;, fontsize=8)
+
+r_grid = np.linspace(0.0, 2.0, 200)
+h_true = np.exp(-r_grid**2 / (2 * SIGMA_SPACE_TRUE**2)) / (
+    2 * np.pi * SIGMA_SPACE_TRUE**2
+)
+h_hat = np.exp(-r_grid**2 / (2 * fit_a.sigma_space_hat**2)) / (
+    2 * np.pi * fit_a.sigma_space_hat**2
+)
+ax2b.plot(r_grid, h_true, color=&quot;black&quot;, lw=1.4, ls=&quot;:&quot;, label=&quot;true h(r)&quot;)
+ax2b.plot(r_grid, h_hat, color=&quot;tab:red&quot;, lw=1.8, label=&quot;recovered h(r)&quot;)
+ax2b.set_xlabel(&quot;spatial offset r (cm)&quot;)
+ax2b.set_ylabel(&quot;h(r), isotropic Gaussian&quot;)
+ax2b.set_title(&quot;Spatial triggering kernel&quot;)
+ax2b.legend(loc=&quot;upper right&quot;, fontsize=8)
+fig2.suptitle(&quot;Recovered ETAS-style triggering kernels (catalogue A)&quot;)</code></pre></details></figure>
+<figure><img src="figures/extras/spatial_hawkes_ecog/fig03_background_excitation_decomposition.png" alt="fig03_background_excitation_decomposition.png" loading="lazy"><figcaption><strong>fig03_background_excitation_decomposition.png</strong><br>Left: catalogue A events coloured by P(background) from the
+branching-EM declustering. Middle: the true background rate
+field for catalogue B. Right: the fitted LGCP background rate
+field for catalogue B.</figcaption><div class="analysis">The declustering panel separates background (warm colour) from
+triggered (cool colour) events; the fitted LGCP background
+(right) reproducing the true field's hot spot (middle)
+confirms the alternating estimator recovered the inhomogeneous
+background despite the overlaid self-excitation.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig3, axes3 = plt.subplots(1, 3, figsize=(15.5, 5.0))
+
+resp_diag = np.asarray(fit_a.responsibilities.diagonal()) if (
+    fit_a.responsibilities is not None
+) else np.full(pts_a.shape[0], np.nan)
+sc3 = axes3[0].scatter(
+    pts_a[:, 0], pts_a[:, 1], c=resp_diag, s=18, cmap=&quot;coolwarm&quot;,
+    vmin=0.0, vmax=1.0,
+)
+fig3.colorbar(sc3, ax=axes3[0], label=&quot;P(background)&quot;)
+axes3[0].set_xlim(*DOMAIN[0])
+axes3[0].set_ylim(*DOMAIN[1])
+axes3[0].set_aspect(&quot;equal&quot;)
+axes3[0].set_xlabel(&quot;x (cm)&quot;)
+axes3[0].set_ylabel(&quot;y (cm)&quot;)
+axes3[0].set_title(&quot;Declustering (catalogue A)&quot;)
+
+# Displayed in physical cm units for readability (see the DOMAIN_B note):
+# rate density lambda_cm = lambda_unit / GRID_EDGE_CM^2, x_cm = x_unit * GRID_EDGE_CM.
+Gx_l, Gy_l, _ = LGCP_GRID
+grid_x_bg = fit_b.background.grid_x
+true_bg_vals = _cox_background_rate(grid_x_bg, np.zeros(grid_x_bg.shape[0]))
+true_bg_vals_cm = true_bg_vals / GRID_EDGE_CM**2
+cm_extent = (0.0, GRID_EDGE_CM, 0.0, GRID_EDGE_CM)
+im_true = axes3[1].imshow(
+    true_bg_vals_cm.reshape(Gy_l, Gx_l), origin=&quot;lower&quot;, cmap=&quot;viridis&quot;,
+    extent=cm_extent, aspect=&quot;equal&quot;,
+)
+axes3[1].set_xlabel(&quot;x (cm)&quot;)
+axes3[1].set_ylabel(&quot;y (cm)&quot;)
+axes3[1].set_title(&quot;True background rate (catalogue B)&quot;)
+fig3.colorbar(im_true, ax=axes3[1], fraction=0.046, pad=0.04, label=&quot;Hz/cm^2&quot;)
+
+mean_bg, _lo_bg, _hi_bg = fit_b.background.rate_map(T_B / 2.0, level=0.9)
+mean_bg_cm = mean_bg / GRID_EDGE_CM**2
+im_fit = axes3[2].imshow(
+    mean_bg_cm.reshape(Gy_l, Gx_l), origin=&quot;lower&quot;, cmap=&quot;viridis&quot;,
+    extent=cm_extent, aspect=&quot;equal&quot;,
+)
+axes3[2].set_xlabel(&quot;x (cm)&quot;)
+axes3[2].set_ylabel(&quot;y (cm)&quot;)
+axes3[2].set_title(&quot;Fitted LGCP background (catalogue B)&quot;)
+fig3.colorbar(im_fit, ax=axes3[2], fraction=0.046, pad=0.04, label=&quot;Hz/cm^2&quot;)
+
+fig3.suptitle(&quot;Background vs excitation decomposition&quot;)</code></pre></details></figure>
+</div>
+</section>
+<section class="example" id="spatial_stlgcp_microelectrode">
+<h2>Space-time KDE + Kronecker-Laplace LGCP tracking a moving rate bump on a microelectrode array</h2>
+<p><strong>Question:</strong> Do the space-time kernel intensity estimate and the spatiotemporal LGCP posterior mean (with credible bands) both track a Gaussian rate bump translating across a Utah-style microelectrode array?</p>
+<p><strong>Goal:</strong> Confirm both the space-time kernel intensity estimate and the
+Kronecker-Laplace spatiotemporal LGCP posterior mean track a
+moving population-activity locus across a realistic electrode
+-array footprint, and that the LGCP credible band widens away from
+the well-sampled bump.</p>
+<p class="muted">Simulates a Gaussian population-rate bump translating across a
+10x10 Utah-style microelectrode array over a ~1.5s trial, then
+fits :func:`nstat.extras.spatial.intensity_st_kde` and
+:func:`nstat.extras.spatial.lgcp_st_fit` and compares the true,
+KDE-estimated, and LGCP-estimated bump centroid (with credible
+bands from :meth:`nstat.extras.spatial.LGCPSTResult.rate_map`) at
+several time slices.</p>
+<p><strong>Run:</strong> <code>python examples/extras/spatial_stlgcp_microelectrode_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/spatial_stlgcp_microelectrode_demo.py">Script</a></p>
+<div class="gallery">
+<figure><img src="figures/extras/spatial_stlgcp_microelectrode/fig01_array_scatter.png" alt="fig01_array_scatter.png" loading="lazy"><figcaption><strong>fig01_array_scatter.png</strong><br>The 10x10 Utah-style electrode array (squares) and the
+simulated events (dots, coloured by time) over the 4mm x 4mm
+footprint.</figcaption><div class="analysis">The event colour gradient sweeping across the array from one
+corner to the other is the raw visual signature of the moving
+rate bump the two rate estimators below are asked to recover.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig1, ax1 = plt.subplots(figsize=(7.2, 5.6))
+ax1.scatter(
+    electrodes[:, 0], electrodes[:, 1],
+    marker=&quot;s&quot;, s=10, color=&quot;0.6&quot;, zorder=1, label=&quot;electrode&quot;,
+)
+sc = ax1.scatter(
+    points[:, 0], points[:, 1], c=times, s=8, cmap=&quot;viridis&quot;,
+    alpha=0.8, zorder=2, label=&quot;event&quot;,
+)
+fig1.colorbar(sc, ax=ax1, label=&quot;time (s)&quot;)
+ax1.set_xlim(*DOMAIN[0])
+ax1.set_ylim(*DOMAIN[1])
+ax1.set_aspect(&quot;equal&quot;)
+ax1.set_xlabel(&quot;x (mm)&quot;)
+ax1.set_ylabel(&quot;y (mm)&quot;)
+ax1.set_title(
+    f&quot;Utah-style {N_SIDE}x{N_SIDE} MEA -- {n} synthetic events\n&quot;
+    &quot;(moving-bump intensity)&quot;,
+    fontsize=10,
+)
+ax1.legend(loc=&quot;upper left&quot;, fontsize=8)</code></pre></details></figure>
+<figure><img src="figures/extras/spatial_stlgcp_microelectrode/fig02_kde_snapshots.png" alt="fig02_kde_snapshots.png" loading="lazy"><figcaption><strong>fig02_kde_snapshots.png</strong><br>Space-time KDE rate field lambda_hat(x, t) at three time
+slices (20%, 50%, 80% of the trial), with a white star marking
+the true bump centre.</figcaption><div class="analysis">The KDE hot spot tracking the white star across the three
+panels confirms the kernel intensity estimator resolves the
+bump's translation despite the coarse electrode footprint.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig2, axes2 = plt.subplots(1, 3, figsize=(13.5, 4.6))
+for ax, t_query, row in zip(axes2, slice_times, recovery_rows):
+    idx = int(np.argmin(np.abs(kde.grid_t - t_query)))
+    img = kde.intensity[idx].reshape(Gy_kde, Gx_kde)
+    im = ax.imshow(
+        img, origin=&quot;lower&quot;, cmap=&quot;viridis&quot;, extent=(*DOMAIN[0], *DOMAIN[1]),
+        aspect=&quot;equal&quot;,
+    )
+    tc = row[&quot;true_center&quot;]
+    ax.plot(tc[0], tc[1], marker=&quot;*&quot;, color=&quot;white&quot;, ms=14, mec=&quot;black&quot;)
+    ax.set_xlabel(&quot;x (mm)&quot;)
+    ax.set_ylabel(&quot;y (mm)&quot;)
+    ax.set_title(f&quot;KDE lambda_hat(x, t={t_query:.2f}s)&quot;)
+    fig2.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+fig2.suptitle(&quot;Space-time KDE rate-field snapshots (white star = true bump centre)&quot;)</code></pre></details></figure>
+<figure><img src="figures/extras/spatial_stlgcp_microelectrode/fig03_lgcp_snapshots.png" alt="fig03_lgcp_snapshots.png" loading="lazy"><figcaption><strong>fig03_lgcp_snapshots.png</strong><br>Top row: LGCP posterior mean rate at the same three time
+slices (white star = true centre, red x = recovered
+centroid). Bottom row: the corresponding 90% credible band
+width.</figcaption><div class="analysis">The red recovered-centroid markers tracking the white true
+-centre markers confirms the LGCP posterior mean also resolves
+the moving bump; the credible-band-width panels being smallest
+near the bump and larger elsewhere is the expected
+data-sparse-cells-widen-the-band behaviour.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">Gy_l, Gx_l = 12, 12
+fig3, axes3 = plt.subplots(2, 3, figsize=(13.5, 8.6))
+for col, (t_query, row) in enumerate(zip(slice_times, recovery_rows)):
+    mean, lo, hi = lgcp.rate_map(t_query, level=0.9)
+    band_width = hi - lo
+    tc = row[&quot;true_center&quot;]
+
+    ax_mean = axes3[0, col]
+    im0 = ax_mean.imshow(
+        mean.reshape(Gy_l, Gx_l), origin=&quot;lower&quot;, cmap=&quot;viridis&quot;,
+        extent=(*DOMAIN[0], *DOMAIN[1]), aspect=&quot;equal&quot;,
+    )
+    ax_mean.plot(tc[0], tc[1], marker=&quot;*&quot;, color=&quot;white&quot;, ms=14, mec=&quot;black&quot;)
+    ax_mean.plot(
+        row[&quot;lgcp_center&quot;][0], row[&quot;lgcp_center&quot;][1],
+        marker=&quot;x&quot;, color=&quot;red&quot;, ms=10, mew=2,
+    )
+    ax_mean.set_title(f&quot;posterior mean, t={t_query:.2f}s&quot;)
+    ax_mean.set_xlabel(&quot;x (mm)&quot;)
+    ax_mean.set_ylabel(&quot;y (mm)&quot;)
+    fig3.colorbar(im0, ax=ax_mean, fraction=0.046, pad=0.04)
+
+    ax_band = axes3[1, col]
+    im1 = ax_band.imshow(
+        band_width.reshape(Gy_l, Gx_l), origin=&quot;lower&quot;, cmap=&quot;magma&quot;,
+        extent=(*DOMAIN[0], *DOMAIN[1]), aspect=&quot;equal&quot;,
+    )
+    ax_band.set_title(&quot;90% credible band width&quot;)
+    ax_band.set_xlabel(&quot;x (mm)&quot;)
+    ax_band.set_ylabel(&quot;y (mm)&quot;)
+    fig3.colorbar(im1, ax=ax_band, fraction=0.046, pad=0.04)
+fig3.suptitle(
+    &quot;Spatiotemporal LGCP posterior mean + credible-band snapshots &quot;
+    &quot;(white star = truth, red x = recovered centroid)&quot;
 )</code></pre></details></figure>
 </div>
 </section>

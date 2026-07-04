@@ -124,16 +124,32 @@ def global_rank_envelope(
     # either tail).
     extreme_rank = np.minimum(rank_lo.min(axis=1), rank_hi.min(axis=1))  # (m,)
 
-    # Critical extreme-rank index for the global level alpha (0-based):
-    # ``floor(alpha * m)`` counts the curves allowed to fall outside the
-    # band, so the lower envelope is that order statistic (0-based) and the
-    # upper is its mirror from the top.
-    k0 = max(int(np.floor(alpha * m)) - 1, 0)
-    # Build the envelope from the simulated curves only (exclude observed,
-    # curve index 0) at the k-th smallest / largest order statistics.
-    sim_sorted = np.sort(simulated, axis=0)
-    lo = sim_sorted[k0]
-    hi = sim_sorted[n_sim - 1 - k0]
+    # Critical extreme-rank threshold d_alpha (Myllymaki et al. 2017): the
+    # largest extreme-rank value d such that the fraction of the m pooled
+    # curves with R_i <= d does not exceed alpha. Equivalently, the
+    # floor(alpha*m)-th order statistic of the (sorted, ties included)
+    # extreme-rank array -- with no ties this is exactly the largest value
+    # satisfying #{R_i <= d}/m <= alpha; under (heavy) ties it is the
+    # standard conservative convention (excluding the whole tied block at
+    # the threshold, rather than under-shooting alpha), which matters in
+    # practice when many simulated curves coincide exactly (e.g. K/pcf
+    # cells with zero pairs).
+    sorted_er = np.sort(extreme_rank)
+    k = int(np.floor(alpha * m))
+    d_alpha = float(sorted_er[k - 1]) if k >= 1 else 0.0
+
+    # Surviving (jointly non-extreme) curves: S = {i : R_i > d_alpha}. This
+    # is a FIXED index set shared across every lag -- the defining property
+    # of a *global* (simultaneous) envelope, as opposed to a pointwise one
+    # built from independent per-lag order statistics.
+    survivors = extreme_rank > d_alpha
+    if not np.any(survivors):
+        # Degenerate corner case (all m curves tied at the same extreme
+        # rank): fall back to the full pool rather than return an empty
+        # band.
+        survivors = np.ones(m, dtype=bool)
+    lo = all_curves[survivors].min(axis=0)
+    hi = all_curves[survivors].max(axis=0)
 
     inside = bool(np.all((observed >= lo) & (observed <= hi)))
 

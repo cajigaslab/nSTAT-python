@@ -141,6 +141,57 @@ extras:
       not block-diagonal distance matrix.
     figures: []
 
+  - demo_id: modulated_renewal_microelectrode
+    overview: |
+      Simulates a single stimulus-modulated, regular-spiking
+      microelectrode unit as a gamma modulated-renewal process
+      (Barbieri, Quirk, Frank, Wilson & Brown 2001; shape=9.0, CV~=0.33),
+      fits it with :func:`nstat.extras.spatial.fit_modulated_renewal`,
+      and checks the fitted operational-time ISIs against Uniform(0,1)
+      both continuously (:func:`nstat.extras.spatial.renewal_cdf`) and
+      with the discrete-time-rescaling correction
+      (:mod:`nstat.extras.spatial.marked_gof`), contrasting both against
+      a naive Poisson (CV=1) assumption on the same rescaled ISIs.
+    goal: |
+      Confirm the modulated-renewal CIF recovers both the covariate-driven
+      rate and the sub-Poisson ISI regularity of a synthetic regular
+      -spiking unit, and that its rescaled-ISI KS tests pass where the
+      same data tested under a naive Poisson assumption fails.
+    figures:
+      - filename: fig01_raster_rate.png
+        caption: |
+          Top: spike raster for the first 10s of the 30s trial. Bottom:
+          the true stimulus-driven baseline rate lambda_0(t) (dotted)
+          overlaid on the fitted rate (solid).
+        analysis: |
+          Close overlap of the fitted and true rate curves confirms the
+          beta-step of the alternating fit recovered the stimulus
+          -modulation coefficients; the raster shows the elevated firing
+          near the rate peaks.
+      - filename: fig02_isi_vs_renewal.png
+        caption: |
+          Histogram of the fitted model's operational-time (rescaled)
+          inter-spike intervals, overlaid with the fitted gamma density
+          (solid) and the Exp(1) Poisson-null density (dashed).
+        analysis: |
+          The rescaled-ISI histogram tracking the fitted gamma density
+          rather than the flatter Exp(1) curve is the direct visual
+          signature of sub-Poisson spike-timing regularity (CV < 1).
+      - filename: fig03_ks_rescaled.png
+        caption: |
+          Left: continuous time-rescaling KS check — empirical CDF of
+          the rescaled ISIs under the fitted gamma model (red) and under
+          a naive Poisson assumption (gray dashed) against Uniform(0,1)
+          (dotted). Right: the discrete-time-rescaling correction
+          (Haslinger-Pipa-Brown 2010) applied to the fitted model's own
+          per-bin conditional intensity, uncorrected vs corrected.
+        analysis: |
+          The fitted-model curve hugging the Uniform(0,1) diagonal while
+          the naive-Poisson curve deviates confirms the renewal model —
+          not a Poisson CIF — is required to pass goodness-of-fit; the
+          right panel confirms the discrete-time correction does not
+          spuriously reject the correctly-specified fitted model.
+
   - demo_id: spatial_cluster_cox
     overview: |
       Simulates a Thomas process (Gaussian offspring, Thomas 1949) and
@@ -235,6 +286,149 @@ extras:
           Visible clustering vs the Poisson null; the area-interaction
           ``eta`` is weakly identified from a single realisation, so
           the recovery is noisier than the Strauss/Thomas cases.
+
+  - demo_id: spatial_gof_ecog
+    overview: |
+      Simulates a baseline (inhomogeneous-Poisson) and a clustered
+      (spatial-Hawkes-cascade-on-the-same-background) epoch on a
+      synthetic 8x8 ECoG grid, fits a held-out
+      :func:`nstat.extras.spatial.intensity_st_kde` from a separate
+      calibration epoch, and tests both epochs with
+      :func:`nstat.extras.spatial.k_st_inhom`,
+      :func:`nstat.extras.spatial.pair_correlation_st`, and
+      :func:`nstat.extras.spatial.global_envelope_st` against the
+      inhomogeneous space-time Poisson null.
+    goal: |
+      Confirm the space-time global-rank envelope test correctly fails
+      to reject the baseline epoch (a true inhomogeneous space-time
+      Poisson process) while rejecting the clustered/traveling-wave
+      epoch, using a held-out intensity estimate to avoid plug-in bias.
+    figures:
+      - filename: fig01_kst_envelope.png
+        caption: |
+          Observed space-time K-function K_st(r, t) at the largest
+          temporal lag (red) overlaid on the Monte-Carlo global-rank
+          envelope (blue band) for the baseline epoch (left) and the
+          clustered epoch (right).
+        analysis: |
+          The baseline curve stays inside the envelope (fails to reject
+          the null) while the clustered curve pokes outside it — the
+          global-rank verdict printed in each panel title confirms the
+          test discriminates the two epochs as designed.
+      - filename: fig02_pcf_g.png
+        caption: |
+          Space-time pair correlation g(r, t) at the largest temporal
+          lag for the baseline (green) and clustered (red) epochs,
+          against the Poisson null g=1 (dotted gray).
+        analysis: |
+          The clustered epoch's g(r, t) rising well above 1 at short
+          spatial lags is the second-order signature of the added
+          self-exciting cascade; the baseline epoch hugs the null line.
+      - filename: fig03_verdict.png
+        caption: |
+          Text summary of the global-rank envelope verdict (inside/
+          outside) and conservative/liberal p-value interval for each
+          epoch.
+        analysis: |
+          A compact pass/fail readout confirming numerically what the
+          two plots above show visually — baseline INSIDE, clustered
+          OUTSIDE (rejects).
+
+  - demo_id: spatial_hawkes_ecog
+    overview: |
+      Simulates a homogeneous-background propagating catalogue with
+      :func:`nstat.extras.spatial.simulate_spatial_hawkes` and recovers
+      ``(mu, K_branch, c, sigma_space)`` with
+      :func:`nstat.extras.spatial.em_spatial_hawkes`, then simulates a
+      second catalogue with an inhomogeneous LGCP background via
+      :func:`nstat.extras.spatial.simulate_cox_hawkes` and recovers the
+      background/excitation decomposition with
+      :func:`nstat.extras.spatial.fit_cox_hawkes`, both on a synthetic
+      8x8 ECoG grid over multi-minute continuous epochs.
+    goal: |
+      Confirm branching EM and the Cox-Hawkes alternating estimator both
+      recover the true spatial (sigma_space) and temporal (1/c)
+      triggering scales, and that Cox-Hawkes correctly separates a
+      spatially-varying background from self-excitation.
+    figures:
+      - filename: fig01_propagation_scatter.png
+        caption: |
+          First 30s excerpt of catalogue A's events over the 8x8 ECoG
+          grid, coloured by event time, overlaid on the electrode
+          positions.
+        analysis: |
+          Tight, colour-graded clusters of events are individual
+          propagation cascades — nearby-and-soon-after triggered
+          offspring visually distinguishable from the sparser background.
+      - filename: fig02_recovered_kernels.png
+        caption: |
+          True (dotted) vs recovered (solid) temporal triggering kernel
+          g(t) = c*exp(-c*t) (left) and spatial triggering kernel h(r),
+          an isotropic Gaussian (right), from catalogue A.
+        analysis: |
+          Close overlap of the recovered and true kernel curves confirms
+          branching EM identified both the temporal decay and the
+          spatial spread of triggering from the single-realisation
+          catalogue.
+      - filename: fig03_background_excitation_decomposition.png
+        caption: |
+          Left: catalogue A events coloured by P(background) from the
+          branching-EM declustering. Middle: the true background rate
+          field for catalogue B. Right: the fitted LGCP background rate
+          field for catalogue B.
+        analysis: |
+          The declustering panel separates background (warm colour) from
+          triggered (cool colour) events; the fitted LGCP background
+          (right) reproducing the true field's hot spot (middle)
+          confirms the alternating estimator recovered the inhomogeneous
+          background despite the overlaid self-excitation.
+
+  - demo_id: spatial_stlgcp_microelectrode
+    overview: |
+      Simulates a Gaussian population-rate bump translating across a
+      10x10 Utah-style microelectrode array over a ~1.5s trial, then
+      fits :func:`nstat.extras.spatial.intensity_st_kde` and
+      :func:`nstat.extras.spatial.lgcp_st_fit` and compares the true,
+      KDE-estimated, and LGCP-estimated bump centroid (with credible
+      bands from :meth:`nstat.extras.spatial.LGCPSTResult.rate_map`) at
+      several time slices.
+    goal: |
+      Confirm both the space-time kernel intensity estimate and the
+      Kronecker-Laplace spatiotemporal LGCP posterior mean track a
+      moving population-activity locus across a realistic electrode
+      -array footprint, and that the LGCP credible band widens away from
+      the well-sampled bump.
+    figures:
+      - filename: fig01_array_scatter.png
+        caption: |
+          The 10x10 Utah-style electrode array (squares) and the
+          simulated events (dots, coloured by time) over the 4mm x 4mm
+          footprint.
+        analysis: |
+          The event colour gradient sweeping across the array from one
+          corner to the other is the raw visual signature of the moving
+          rate bump the two rate estimators below are asked to recover.
+      - filename: fig02_kde_snapshots.png
+        caption: |
+          Space-time KDE rate field lambda_hat(x, t) at three time
+          slices (20%, 50%, 80% of the trial), with a white star marking
+          the true bump centre.
+        analysis: |
+          The KDE hot spot tracking the white star across the three
+          panels confirms the kernel intensity estimator resolves the
+          bump's translation despite the coarse electrode footprint.
+      - filename: fig03_lgcp_snapshots.png
+        caption: |
+          Top row: LGCP posterior mean rate at the same three time
+          slices (white star = true centre, red x = recovered
+          centroid). Bottom row: the corresponding 90% credible band
+          width.
+        analysis: |
+          The red recovered-centroid markers tracking the white true
+          -centre markers confirms the LGCP posterior mean also resolves
+          the moving bump; the credible-band-width panels being smallest
+          near the bump and larger elsewhere is the expected
+          data-sparse-cells-widen-the-band behaviour.
 
   - demo_id: validation_nemos
     overview: |

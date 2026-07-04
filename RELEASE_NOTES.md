@@ -1,5 +1,92 @@
 # Release Notes
 
+## v0.6.0 — 2026-07-03
+
+**Spatiotemporal point processes for `nstat.extras.spatial`.** Six new
+pure-NumPy/SciPy modules (21 new public symbols) extend the static-spatial
+toolkit to full space-time `(x, y, t)` point processes. Every one is an
+original implementation written directly from the published equations —
+none is a port of an external package, and none has a MATLAB nSTAT
+counterpart (so, like the rest of `nstat.extras.spatial`, there is no
+`parity/manifest.yml` entry). The stable `nstat.*` core is untouched;
+this is additive `extras`-only capability, hence a minor bump.
+
+### New modules
+
+- **`st_intensity`** — boundary-corrected product-kernel space-time
+  intensity `λ̂(x, t)` (`intensity_st_kde` → `STIntensityResult`, with an
+  `.evaluate(x, t)` callable the second-order estimators consume as their
+  held-out `lambda_hat`). Diggle (1985, 2013); Silverman (1986).
+- **`spatiotemporal_gof`** — inhomogeneous space-time second-order
+  goodness-of-fit: SOIRS-reweighted `K_st(r, t)` (`k_st_inhom`) with
+  isotropic / translation / border edge corrections, space-time pair
+  correlation `g(r, t)` (`pair_correlation_st`), and a Monte-Carlo
+  **global-rank envelope** test (`global_envelope_st` → `STEnvelopeResult`,
+  `statistic ∈ {kst, lst, gst}`). Diggle-Chetwynd-Häggkvist-Morris (1995);
+  Gabriel-Diggle (2009); Møller-Ghorbani (2012); Myllymäki et al. (2017).
+- **`spatial_hawkes`** — separable space-time Hawkes/ETAS by branching EM
+  (`em_spatial_hawkes` → `SpatialHawkesResult`; `simulate_spatial_hawkes`;
+  `SpatialHawkesSpec`). Normalised space/time kernels, so `K` is the
+  branching ratio directly. Ogata (1988/1998); Veen-Schoenberg (2008).
+- **`lgcp_st`** — spatiotemporal LGCP by a **Kronecker Laplace
+  approximation** (`lgcp_st_fit` → `LGCPSTResult.rate_map(t, level)`):
+  separable Matérn GP prior `Kx ⊗ Ky ⊗ Kt`, matrix-free conjugate-gradient
+  posterior-mode solve, Hutchinson stochastic variance diagonal — scales
+  past the dense-covariance regime. Rasmussen-Williams (2006); Saatçi
+  (2011); Diggle-Rowlingson-Su (2005); Simpson et al. (2016).
+- **`cox_hawkes`** — doubly-stochastic LGCP-background × spatial-Hawkes
+  excitation, fit by a **deterministic** declustering EM (`fit_cox_hawkes`
+  → `CoxHawkesResult`; `simulate_cox_hawkes`). The weighted-histogram
+  background M-step carries no RNG, so repeated fits are bit-identical.
+  `length_scale_space` / `length_scale_time` now forward to every
+  background refit for physically-sized domains. Cox (1955); Hawkes
+  (1971); Miscouridou et al. (2022, model).
+- **`modulated_renewal`** — rate-modulated renewal (conditional-ISI) CIF
+  with gamma / inverse-Gaussian operational-time renewal densities
+  (`fit_modulated_renewal` → `ModulatedRenewalResult`;
+  `simulate_modulated_renewal`; `renewal_hazard`; `renewal_cdf`).
+  Barbieri-Quirk-Frank-Wilson-Brown (2001); Brown et al. (2002).
+
+### New examples — grounded in real recording modalities
+
+Four fully-synthetic, opt-dep-free demos in `examples/extras/` (each
+exports three figures, integrated into the extras gallery):
+
+- `spatial_stlgcp_microelectrode_demo` — Utah-style 10×10 microelectrode
+  array; a drifting rate-bump recovered by `intensity_st_kde` + `lgcp_st_fit`.
+- `spatial_gof_ecog_demo` — 8×8 ECoG surface grid; the global-rank
+  envelope fails to reject a Poisson baseline epoch and rejects a
+  clustered traveling-wave epoch.
+- `spatial_hawkes_ecog_demo` — ECoG propagating spread decomposed into
+  background vs. self-excitation by `em_spatial_hawkes` + `fit_cox_hawkes`.
+- `modulated_renewal_microelectrode_demo` — a regular-spiking single unit
+  whose sub-Poisson ISI structure a gamma modulated-renewal CIF captures
+  and a naive Poisson (CV = 1) model fails, shown via the rescaled-ISI KS test.
+
+### Documentation
+
+- `docs/extras/spatial_point_processes.md` — a full space-time API section
+  (per-symbol signatures, math, result-class fields), new gotchas, a
+  runnable recipe, and cross-links to the four demos.
+- `AGENT_GUIDE.md` — every new symbol named in the spatial-extras prose.
+- `parity/methods_roadmap.md` — Tier 2.2 extended with the shipped
+  spatiotemporal modules.
+- README extras-capability row and the regenerated extras gallery updated.
+
+### Also fixed
+
+- **`_envelopes.global_rank_envelope`** — corrected from per-column order
+  statistics to the Myllymäki (2017) **joint extreme-rank** envelope. This
+  also repairs the already-shipped static `spatial_gof.global_envelope`;
+  null-coverage calibration improves from ≈0.80 to ≈0.925 at the nominal
+  0.95 level.
+
+### Verification
+
+Full suite green (955 passed, 43 skipped); `docs-strict` (`-W`) build
+succeeds; freshness / helpfile / readme / extras-doc-contract gates pass;
+all 12 new figures clear the multi-signal image-content audit.
+
 ## v0.5.7 — 2026-06-22
 
 v15 post-upstream-MATLAB reconciliation cycle. The upstream maintainer

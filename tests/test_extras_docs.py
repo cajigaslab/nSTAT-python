@@ -60,6 +60,13 @@ EXPECTED_DOC_STEM_FOR_BRIDGE = {
     "gibbs": "spatial_point_processes",
     "hawkes_em": "spatial_point_processes",
     "sbm_hawkes": "spatial_point_processes",
+    # spatiotemporal additions (v16 STPP tier)
+    "st_intensity": "spatial_point_processes",
+    "spatiotemporal_gof": "spatial_point_processes",
+    "spatial_hawkes": "spatial_point_processes",
+    "lgcp_st": "spatial_point_processes",
+    "cox_hawkes": "spatial_point_processes",
+    "modulated_renewal": "spatial_point_processes",
     # latents/
     "gpfa_bridge": "latents_gpfa",
 }

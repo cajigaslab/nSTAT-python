@@ -151,6 +151,43 @@ def test_global_envelope_covers_null_pattern():
     assert env.inside  # ground-truth intensity passes its own null
 
 
+def test_global_envelope_coverage_calibration_under_null():
+    """Coverage-calibration check for the shared
+    ``nstat.extras.spatial._envelopes.global_rank_envelope`` machinery
+    (math-review fix): it previously built its ``lo``/``hi`` band from
+    per-column (pointwise) order statistics of the simulated curves
+    rather than from the curves selected by their *joint* extreme rank,
+    which under-covered a nominal 95% envelope (~80% measured on this
+    exact 6-point grid/seed combination before the fix). After the fix
+    (band built from ``S = {i : R_i > d_alpha}``, the fixed set of
+    curves surviving the joint two-sided extreme-rank threshold), a
+    homogeneous-Poisson null realization should land inside its own
+    nominal envelope close to the nominal rate."""
+    lam_const = 300.0
+
+    def lam_at(X):
+        return np.full(X.shape[0], lam_const)
+
+    r_grid = np.linspace(0.03, 0.18, 6)
+    master_rng = np.random.default_rng(42)
+    n_reps = 40
+    inside_count = 0
+    for rep in range(n_reps):
+        n = master_rng.poisson(lam_const)
+        pts = master_rng.uniform(0, 1, size=(n, 2))
+        env = global_envelope(
+            pts, lam_at, r_grid, n_sim=79, domain=DOMAIN, statistic="pcf",
+            rng=np.random.default_rng(42 * 97 + rep),
+        )
+        inside_count += int(env.inside)
+
+    coverage = inside_count / n_reps
+    # With this exact seed/parameter combination coverage measures
+    # 37/40 = 0.925; 0.85 is a tight-but-safe floor for n_reps=40
+    # (binomial noise around p=0.95) that the pre-fix ~0.80 result fails.
+    assert coverage >= 0.85
+
+
 def test_nearest_neighbour_fgj_shapes_and_csr_behaviour():
     rng = np.random.default_rng(9)
     pts = rng.uniform(0, 1, size=(120, 2))  # homogeneous Poisson ~ CSR
