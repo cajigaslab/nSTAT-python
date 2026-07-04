@@ -465,19 +465,24 @@ extras:
 
 - demo_id: spatial_stlgcp_microelectrode
   overview: |
-    Simulates a Gaussian population-rate bump translating across a
-    10x10 Utah-style microelectrode array over a ~1.5s trial, then
-    fits :func:`nstat.extras.spatial.intensity_st_kde` and
+    Simulates a Gaussian population-rate wavefront -- a synthetic
+    spreading-depolarisation / seizure wavefront -- translating across
+    a 10x10 Utah-style microelectrode array at a realistic ictal-front
+    speed (~1.9 mm/s) over a short recording epoch, then fits
+    :func:`nstat.extras.spatial.intensity_st_kde` and
     :func:`nstat.extras.spatial.lgcp_st_fit` and compares the true,
-    KDE-estimated, and LGCP-estimated bump centroid (with credible
+    KDE-estimated, and LGCP-estimated wavefront centroid (with credible
     bands from :meth:`nstat.extras.spatial.LGCPSTResult.rate_map`) at
-    several time slices.
+    several time slices, plus a recovered-vs-true propagation-speed
+    readout from a line fit through the recovered peak trajectory.
   goal: |
     Confirm both the space-time kernel intensity estimate and the
     Kronecker-Laplace spatiotemporal LGCP posterior mean track a
-    moving population-activity locus across a realistic electrode
-    -array footprint, and that the LGCP credible band widens away from
-    the well-sampled bump.
+    propagating spreading-depolarisation / seizure wavefront across a
+    realistic electrode-array footprint, that the LGCP credible band
+    widens away from the well-sampled wavefront, and that a line fit
+    through the recovered peak trajectory recovers the true
+    propagation speed to within tolerance.
   figures:
   - filename: fig01_array_scatter.png
     caption: |
@@ -486,31 +491,39 @@ extras:
       footprint.
     analysis: |
       The event colour gradient sweeping across the array from one
-      corner to the other is the raw visual signature of the moving
-      rate bump the two rate estimators below are asked to recover.
+      corner to the other is the raw visual signature of the
+      propagating wavefront the two rate estimators below are asked
+      to recover.
   - filename: fig02_kde_snapshots.png
     caption: |
-      Top row: the ground-truth moving-bump intensity field lambda(x, t) at three time
+      Top row: the ground-truth wavefront intensity field lambda(x, t) at three time
       slices (20%, 50%, 80% of the trial). Bottom row: the space-time KDE estimate
       lambda_hat(x, t) the model derives from the observed events alone. A white star
-      marks the true bump centre in both rows.
+      marks the true wavefront centre in both rows.
     analysis: |
-      The KDE hot spot (bottom) tracking the true bump (top, white star) across the
-      three slices confirms the kernel intensity estimator recovers the bump's
-      location and translation from spikes alone, despite the coarse electrode
-      footprint and Monte-Carlo noise.
+      The KDE hot spot (bottom) tracking the true wavefront (top, white star) across
+      the three slices confirms the kernel intensity estimator recovers the
+      wavefront's location and translation from spikes alone, despite the coarse
+      electrode footprint and Monte-Carlo noise.
   - filename: fig03_lgcp_snapshots.png
     caption: |
-      Top row: LGCP posterior mean rate at the same three time
-      slices (white star = true centre, red x = recovered
-      centroid). Bottom row: the corresponding 90% credible band
-      width.
+      Top two rows: LGCP posterior mean rate at the same three time
+      slices (white star = true centre, red x = recovered centroid)
+      and the corresponding 90% credible band width. Bottom row: the
+      true-vs-recovered wavefront trajectory in the (x, y) plane, with
+      the true and each estimator's recovered propagation speed
+      annotated.
     analysis: |
       The red recovered-centroid markers tracking the white true
       -centre markers confirms the LGCP posterior mean also resolves
-      the moving bump; the credible-band-width panels being smallest
-      near the bump and larger elsewhere is the expected
-      data-sparse-cells-widen-the-band behaviour.
+      the propagating wavefront; the credible-band-width panels being
+      smallest near the wavefront and larger elsewhere is the expected
+      data-sparse-cells-widen-the-band behaviour. The bottom-row
+      trajectory panel shows both estimators' recovered peak locations
+      tracking the true diagonal path, and the annotated propagation
+      speeds (KDE and LGCP, each compared against the true
+      by-construction speed) confirm the line-fit recovery works from
+      sparse events alone, without fitting a parametric wave model.
 
 - demo_id: validation_nemos
   overview: |

@@ -216,16 +216,18 @@ extras:
   - demo_id: spatial_stlgcp_microelectrode
     name: spatial_stlgcp_microelectrode_demo
     script: examples/extras/spatial_stlgcp_microelectrode_demo.py
-    title: Space-time KDE + Kronecker-Laplace LGCP tracking a moving rate bump on a microelectrode array
-    question: Do the space-time kernel intensity estimate and the spatiotemporal LGCP posterior mean (with credible bands) both track a Gaussian rate bump translating across a Utah-style microelectrode array?
+    title: Tracking a spreading-depolarisation / seizure wavefront with space-time KDE + Kronecker-Laplace LGCP
+    question: Can the space-time kernel intensity estimate and the spatiotemporal LGCP posterior mean (with credible bands) recover a spreading-depolarisation / seizure wavefront's trajectory and propagation speed on a Utah-style microelectrode array, without fitting a parametric wave model?
     description: |
-      Simulates a Gaussian population-rate bump translating across a 10x10
-      Utah-style microelectrode array over a ~1.5s trial, then fits
+      Simulates a Gaussian population-rate wavefront translating across a
+      10x10 Utah-style microelectrode array at a realistic ictal-wavefront
+      speed over a short recording epoch, then fits
       :func:`nstat.extras.spatial.intensity_st_kde` and
       :func:`nstat.extras.spatial.lgcp_st_fit` and compares the true,
-      KDE-estimated, and LGCP-estimated bump centroid (with credible
+      KDE-estimated, and LGCP-estimated wavefront centroid (with credible
       bands from :meth:`nstat.extras.spatial.LGCPSTResult.rate_map`) at
-      several time slices.
+      several time slices, plus a recovered-vs-true propagation-speed
+      readout from a line fit through the recovered peak trajectory.
     figures:
       - filename: fig01_array_scatter.png
       - filename: fig02_kde_snapshots.png
