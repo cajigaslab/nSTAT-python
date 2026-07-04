@@ -10,6 +10,6 @@ MATLAB-helpfile port) rather than substantive plots — those are marked.
 
 | Notebook | Figures | Substantive | Source |
 |---|---|---|---|
-| [`NetworkTutorial`](NetworkTutorial/) | 7 | yes | [`notebooks/NetworkTutorial.ipynb`](../../notebooks/NetworkTutorial.ipynb) |
+| [`StimulusDecode2D`](StimulusDecode2D/) | 6 | yes | [`notebooks/StimulusDecode2D.ipynb`](../../notebooks/StimulusDecode2D.ipynb) |
 
 Regenerate this gallery with `make regen-notebook-galleries` (executes the smoke group; pass `--group full` for everything).

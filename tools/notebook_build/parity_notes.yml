@@ -4,85 +4,64 @@ notes:
   file: notebooks/nSTATPaperExamples.ipynb
   source_matlab: nSTATPaperExamples.mlx
   fidelity_status: exact
-  remaining_differences: Workflow, API surface, dataset loading, and all 30 figures now follow the MATLAB paper-example helpfile.
-    Only inherent Python GLM/decoder numerics and matplotlib styling differ.
+  remaining_differences: Workflow, API surface, dataset loading, and all 30 figures now follow the MATLAB paper-example helpfile. Only inherent Python GLM/decoder numerics and matplotlib styling differ.
 - topic: TrialExamples
   file: notebooks/TrialExamples.ipynb
   source_matlab: TrialExamples.mlx
   fidelity_status: exact
-  remaining_differences: Workflow, API surface, and output structure match the MATLAB Trial helpfile one-for-one. Only inherent
-    cross-language plotting defaults differ.
+  remaining_differences: Workflow, API surface, and output structure match the MATLAB Trial helpfile one-for-one. Only inherent cross-language plotting defaults differ.
 - topic: AnalysisExamples
   file: notebooks/AnalysisExamples.ipynb
   source_matlab: AnalysisExamples.mlx
   fidelity_status: exact
-  remaining_differences: The notebook now follows the MATLAB standard-GLM workflow with the canonical `glm_data.mat` dataset
-    and real KS/model-visualization figures; coefficient values and styling still vary modestly because the Python GLM backend
-    and plotting defaults differ from MATLAB.
+  remaining_differences: The notebook now follows the MATLAB standard-GLM workflow with the canonical `glm_data.mat` dataset and real KS/model-visualization figures; coefficient values and styling still vary modestly because the Python GLM backend and plotting defaults differ from MATLAB.
 - topic: AnalysisExamples2
   file: notebooks/AnalysisExamples2.ipynb
   source_matlab: AnalysisExamples2.mlx
   fidelity_status: exact
-  remaining_differences: The notebook now follows the MATLAB toolbox workflow on the canonical `glm_data.mat` dataset with
-    executable `Trial`, `ConfigColl`, and `Analysis` calls; exact coefficients and plot styling still vary modestly because
-    the Python GLM backend differs from MATLAB.
+  remaining_differences: The notebook now follows the MATLAB toolbox workflow on the canonical `glm_data.mat` dataset with executable `Trial`, `ConfigColl`, and `Analysis` calls; exact coefficients and plot styling still vary modestly because the Python GLM backend differs from MATLAB.
 - topic: DecodingExample
   file: notebooks/DecodingExample.ipynb
   source_matlab: DecodingExample.mlx
   fidelity_status: high_fidelity
-  remaining_differences: Workflow, model fitting, and decoded-stimulus figures now follow the MATLAB helpfile closely; exact
-    traces still depend on stochastic simulation draws and Python plotting defaults.
+  remaining_differences: Workflow, model fitting, and decoded-stimulus figures now follow the MATLAB helpfile closely; exact traces still depend on stochastic simulation draws and Python plotting defaults.
 - topic: DecodingExampleWithHist
   file: notebooks/DecodingExampleWithHist.ipynb
   source_matlab: DecodingExampleWithHist.mlx
   fidelity_status: high_fidelity
-  remaining_differences: The notebook now mirrors the MATLAB history-aware decoding workflow closely; exact stochastic trajectories
-    and figure styling still vary slightly under Python execution.
+  remaining_differences: The notebook now mirrors the MATLAB history-aware decoding workflow closely; exact stochastic trajectories and figure styling still vary slightly under Python execution.
 - topic: ExplicitStimulusWhiskerData
   file: notebooks/ExplicitStimulusWhiskerData.ipynb
   source_matlab: ExplicitStimulusWhiskerData.mlx
   fidelity_status: high_fidelity
-  remaining_differences: The notebook now reproduces the dataset-backed lag search, stimulus-effect, and history-effect workflow
-    with real figures; exact KS traces and coefficient values still vary modestly from MATLAB because the Python GLM backend
-    and plotting defaults are different.
+  remaining_differences: The notebook now reproduces the dataset-backed lag search, stimulus-effect, and history-effect workflow with real figures; exact KS traces and coefficient values still vary modestly from MATLAB because the Python GLM backend and plotting defaults are different.
 - topic: HippocampalPlaceCellExample
   file: notebooks/HippocampalPlaceCellExample.ipynb
   source_matlab: HippocampalPlaceCellExample.mlx
   fidelity_status: high_fidelity
-  remaining_differences: The notebook now reproduces the dataset-backed place-cell model-comparison and field-visualization
-    workflow with the same normalized 10-term Zernike basis used by MATLAB; exact AIC/BIC values and surface styling still
-    vary modestly because the Python GLM solver and plotting backend are not byte-identical to MATLAB.
+  remaining_differences: The notebook now reproduces the dataset-backed place-cell model-comparison and field-visualization workflow with the same normalized 10-term Zernike basis used by MATLAB; exact AIC/BIC values and surface styling still vary modestly because the Python GLM solver and plotting backend are not byte-identical to MATLAB.
 - topic: HybridFilterExample
   file: notebooks/HybridFilterExample.ipynb
   source_matlab: HybridFilterExample.mlx
   fidelity_status: high_fidelity
-  remaining_differences: The Python port loads the same paperHybridFilterExample.mat fixture (state-space-driven kinematic
-    reach at delta=0.001, Tmax=2s) and runs the same PPHybridFilterLinear decoder in goal-directed and free modes that MATLAB
-    does. Spike-RNG-induced trial-to-trial variation is the only residual difference; the canonical scenario, dynamics, and
-    decoder match MATLAB to the gold-fixture's precision.
+  remaining_differences: The Python port loads the same paperHybridFilterExample.mat fixture (state-space-driven kinematic reach at delta=0.001, Tmax=2s) and runs the same PPHybridFilterLinear decoder in goal-directed and free modes that MATLAB does. Spike-RNG-induced trial-to-trial variation is the only residual difference; the canonical scenario, dynamics, and decoder match MATLAB to the gold-fixture's precision.
 - topic: PPSimExample
   file: notebooks/PPSimExample.ipynb
   source_matlab: PPSimExample.mlx
   fidelity_status: exact
-  remaining_differences: Follows the MATLAB recursive-CIF workflow with the native Python `CIF.simulateCIF` path and all 9
-    published figures. Only inherent Simulink vs Python solver timing and stochastic draws differ.
+  remaining_differences: Follows the MATLAB recursive-CIF workflow with the native Python `CIF.simulateCIF` path and all 9 published figures. Only inherent Simulink vs Python solver timing and stochastic draws differ.
 - topic: NetworkTutorial
   file: notebooks/NetworkTutorial.ipynb
   source_matlab: NetworkTutorial.mlx
   fidelity_status: exact
-  remaining_differences: Mirrors the MATLAB helpfile section order and all 13 published figures with a native Python network
-    simulator and MATLAB-style `Analysis` workflow. Only inherent NumPy vs Simulink random streams differ.
+  remaining_differences: Mirrors the MATLAB helpfile section order and all 13 published figures with a native Python network simulator and MATLAB-style `Analysis` workflow. Only inherent NumPy vs Simulink random streams differ.
 - topic: ValidationDataSet
   file: notebooks/ValidationDataSet.ipynb
   source_matlab: ValidationDataSet.mlx
   fidelity_status: high_fidelity
-  remaining_differences: The notebook now reproduces the constant-rate and piecewise-rate validation workflows with real `Trial`/`Analysis`
-    objects and figure outputs; local execution uses the MATLAB-scale simulation sizes, while CI switches to a documented
-    shorter deterministic fast path for stability.
+  remaining_differences: The notebook now reproduces the constant-rate and piecewise-rate validation workflows with real `Trial`/`Analysis` objects and figure outputs; local execution uses the MATLAB-scale simulation sizes, while CI switches to a documented shorter deterministic fast path for stability.
 - topic: StimulusDecode2D
   file: notebooks/StimulusDecode2D.ipynb
   source_matlab: StimulusDecode2D.mlx
   fidelity_status: high_fidelity
-  remaining_differences: The notebook now follows the MATLAB nonlinear-CIF decoding workflow and uses `DecodingAlgorithms.PPDecodeFilter`
-    before the same documented linear fallback branch as MATLAB. Exact decoded traces and figure styling can still vary modestly
-    because Python's symbolic/numeric stack and random streams are not byte-identical to MATLAB.
+  remaining_differences: "Corrected 2026-07-03: original example was information-starved (trajectory spanned ~+-0.12 while place fields were tuned on a +-2 scale, so the decoded path barely moved). Fixed in BOTH repos together (cajigaslab/nSTAT StimulusDecode2D decode fix): arena-spanning trajectory + tiled Gaussian place fields form a well-posed population code, so the decoder tracks. The notebook still mirrors the MATLAB workflow (DecodingAlgorithms.PPDecodeFilter; MATLAB uses the documented linear fallback because its symbolic CIF setup raises CIF:InvalidXname). Exact traces/styling vary modestly because Python's symbolic/numeric stack and RNG are not byte-identical to MATLAB."

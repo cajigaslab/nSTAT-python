@@ -313,11 +313,15 @@ items:
   executable_in_ci: true
   current_run_group: helpfile_full
   fixture_backed: false
-  remaining_differences: The notebook now follows the MATLAB nonlinear-CIF decoding
-    workflow and uses `DecodingAlgorithms.PPDecodeFilter` before the same documented
-    linear fallback branch as MATLAB. Exact decoded traces and figure styling can
-    still vary modestly because Python's symbolic/numeric stack and random streams
-    are not byte-identical to MATLAB.
+  remaining_differences: 'Corrected 2026-07-03: original example was information-starved
+    (trajectory spanned ~+-0.12 while place fields were tuned on a +-2 scale, so the
+    decoded path barely moved). Fixed in BOTH repos together (cajigaslab/nSTAT StimulusDecode2D
+    decode fix): arena-spanning trajectory + tiled Gaussian place fields form a well-posed
+    population code, so the decoder tracks. The notebook still mirrors the MATLAB
+    workflow (DecodingAlgorithms.PPDecodeFilter; MATLAB uses the documented linear
+    fallback because its symbolic CIF setup raises CIF:InvalidXname). Exact traces/styling
+    vary modestly because Python''s symbolic/numeric stack and RNG are not byte-identical
+    to MATLAB.'
   python_sections: 4
   python_expected_figures: 6
   python_uses_figure_tracker: true
