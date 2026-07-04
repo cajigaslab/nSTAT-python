@@ -180,18 +180,24 @@ extras:
   - demo_id: spatial_hawkes_ecog
     name: spatial_hawkes_ecog_demo
     script: examples/extras/spatial_hawkes_ecog_demo.py
-    title: Space-time Hawkes/ETAS + Cox-Hawkes background/excitation decomposition on an ECoG grid
-    question: Do branching EM (homogeneous background) and the Cox-Hawkes alternating estimator (inhomogeneous LGCP background) recover the true self-excitation kernels and separate background from triggered activity on synthetic propagating ECoG catalogues?
+    title: Seizure core/penumbra decomposition via space-time Hawkes + Cox-Hawkes on an ECoG grid
+    question: How much seizure activity is tonic background (a hyperexcitable seizure-onset zone, the clinical "penumbra") vs. self-excited recruitment (the actively-recruited ictal "core")? Do branching EM (homogeneous background) and the Cox-Hawkes alternating estimator (inhomogeneous LGCP background) recover the true recruitment kernel and separate core from penumbra activity on synthetic ECoG catalogues?
     description: |
-      Simulates a homogeneous-background propagating catalogue with
-      :func:`nstat.extras.spatial.simulate_spatial_hawkes` and recovers
-      ``(mu, K_branch, c, sigma_space)`` with
-      :func:`nstat.extras.spatial.em_spatial_hawkes`, then simulates a
-      second catalogue with an inhomogeneous LGCP background via
-      :func:`nstat.extras.spatial.simulate_cox_hawkes` and recovers the
-      background/excitation decomposition with
+      Simulates a homogeneous-background catalogue with
+      :func:`nstat.extras.spatial.simulate_spatial_hawkes` and
+      recovers ``(mu, K_branch, c, sigma_space)`` -- the self-exciting
+      recruitment (core) kernel plus per-event core/penumbra declustering
+      -- with :func:`nstat.extras.spatial.em_spatial_hawkes`, then
+      simulates a second catalogue with an inhomogeneous LGCP
+      background anchored at a fixed hyperexcitable seizure-onset zone
+      via :func:`nstat.extras.spatial.simulate_cox_hawkes` and recovers
+      the core/penumbra (excitation/background) decomposition with
       :func:`nstat.extras.spatial.fit_cox_hawkes` on a synthetic 8x8 ECoG
-      grid.
+      grid. Both catalogues recover the same within-recording
+      core/penumbra split; they differ only in the background model.
+      Presents Cox-Hawkes applied to the epilepsy core/penumbra
+      decomposition as a methodological opportunity not yet explored in
+      the epilepsy literature.
     figures:
       - filename: fig01_propagation_scatter.png
       - filename: fig02_recovered_kernels.png

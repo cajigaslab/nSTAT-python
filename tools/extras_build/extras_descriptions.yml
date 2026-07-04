@@ -351,52 +351,67 @@ extras:
 
 - demo_id: spatial_hawkes_ecog
   overview: |
-    Simulates a homogeneous-background propagating catalogue with
-    :func:`nstat.extras.spatial.simulate_spatial_hawkes` and recovers
-    ``(mu, K_branch, c, sigma_space)`` with
+    Reframes the space-time Hawkes / Cox-Hawkes background-excitation
+    decomposition as the clinical seizure "core" (self-exciting
+    recruitment cascade) vs. "penumbra" (tonic background) split
+    described by Schevon et al. (2012); both catalogues below recover
+    that same within-recording core/penumbra split and differ only in
+    the background model. Simulates a homogeneous-background catalogue
+    with :func:`nstat.extras.spatial.simulate_spatial_hawkes` and
+    recovers ``(mu, K_branch, c, sigma_space)`` -- the core-cascade
+    kernel plus a per-event core/penumbra declustering -- with
     :func:`nstat.extras.spatial.em_spatial_hawkes`, then simulates a
-    second catalogue with an inhomogeneous LGCP background via
+    second catalogue with an inhomogeneous LGCP background anchored at a
+    fixed hyperexcitable seizure-onset zone via
     :func:`nstat.extras.spatial.simulate_cox_hawkes` and recovers the
-    background/excitation decomposition with
+    core/penumbra decomposition with
     :func:`nstat.extras.spatial.fit_cox_hawkes`, both on a synthetic
-    8x8 ECoG grid over multi-minute continuous epochs.
+    8x8 ECoG grid over multi-minute continuous epochs. Presents
+    Cox-Hawkes applied to the epilepsy core/penumbra decomposition as a
+    methodological opportunity -- not a result from any published
+    epilepsy study.
   goal: |
     Confirm branching EM and the Cox-Hawkes alternating estimator both
     recover the true spatial (sigma_space) and temporal (1/c)
-    triggering scales, and that Cox-Hawkes correctly separates a
-    spatially-varying background from self-excitation.
+    core-recruitment scales, and that Cox-Hawkes correctly separates
+    the spatially-varying penumbra (hyperexcitable seizure-onset-zone
+    background) from the core self-excitation riding on top of it.
   figures:
   - filename: fig01_propagation_scatter.png
     caption: |
-      First 30s excerpt of catalogue A's events over the 8x8 ECoG
-      grid, coloured by event time, overlaid on the electrode
-      positions.
+      First 30s excerpt of catalogue A's (homogeneous-background
+      variant) events over the 8x8 ECoG grid, coloured by event time,
+      overlaid on the electrode positions.
     analysis: |
-      Tight, colour-graded clusters of events are individual
-      propagation cascades — nearby-and-soon-after triggered
-      offspring visually distinguishable from the sparser background.
+      Tight, colour-graded clusters of events are suggestive of
+      individual core recruitment cascades — nearby-and-soon-after
+      recruited offspring visually distinguishable from the sparser
+      penumbra background. Colour encodes elapsed time only, not
+      P(background), so a tight cluster is suggestive rather than
+      diagnostic of a cascade.
   - filename: fig02_recovered_kernels.png
     caption: |
-      True (dotted) vs recovered (solid) temporal triggering kernel
-      g(t) = c*exp(-c*t) (left) and spatial triggering kernel h(r),
-      an isotropic Gaussian (right), from catalogue A.
+      True (dotted) vs recovered (solid) temporal core-recruitment
+      kernel g(t) = c*exp(-c*t) (left) and spatial core-recruitment
+      kernel h(r), an isotropic Gaussian (right), from catalogue A.
     analysis: |
       Close overlap of the recovered and true kernel curves confirms
       branching EM identified both the temporal decay and the
-      spatial spread of triggering from the single-realisation
+      spatial spread of core recruitment from the single-realisation
       catalogue.
   - filename: fig03_background_excitation_decomposition.png
     caption: |
-      Left: catalogue A events coloured by P(background) from the
-      branching-EM declustering. Middle: the true background rate
-      field for catalogue B. Right: the fitted LGCP background rate
-      field for catalogue B.
+      Left: catalogue A events coloured by P(background) = P(penumbra)
+      from the branching-EM declustering. Middle: the true
+      seizure-onset-zone (penumbra source) rate field for catalogue B.
+      Right: the fitted LGCP seizure-onset-zone rate field for
+      catalogue B.
     analysis: |
-      The declustering panel separates background (warm colour) from
-      triggered (cool colour) events; the fitted LGCP background
-      (right) reproducing the true field's hot spot (middle)
-      confirms the alternating estimator recovered the inhomogeneous
-      background despite the overlaid self-excitation.
+      The declustering panel separates penumbra (warm colour) from
+      core (cool colour) events; the fitted seizure-onset-zone field
+      (right) reproducing the true field's hot spot (middle) confirms
+      the alternating estimator recovered the hyperexcitable penumbra
+      source despite the overlaid core self-excitation.
 
 - demo_id: spatial_stlgcp_microelectrode
   overview: |

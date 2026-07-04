@@ -1,40 +1,103 @@
 #!/usr/bin/env python3
-"""Demo: propagating cortical activity across an ECoG grid (space-time Hawkes).
+"""Demo: seizure "core" vs. "penumbra" via space-time Hawkes + Cox-Hawkes
+on an ECoG grid.
 
 End-to-end exercise of the space-time self-exciting (ETAS-style) Hawkes
 process and the Cox-Hawkes background/excitation decomposition shipped in
 :mod:`nstat.extras.spatial`, grounded in a realistic **ECoG surface-grid**
 recording geometry:
 
+**Clinical question.**  Human intracranial recordings of focal seizures
+show a sharp spatial split between a small territory of intense,
+hypersynchronous firing where neurons are actively **recruited** into the
+seizure (the "ictal core") and a surrounding "ictal penumbra" where
+large-amplitude field potentials mask only sparse, unstructured firing,
+held back by a fast feedforward inhibitory restraint (Schevon et al.
+2012).  That same recruited-core / restrained-penumbra split organizes
+seizure activity across spatial scales as a self-propagating wave
+(Martinet et al. 2017), and shows up as tight, millisecond-precision
+neuronal-ensemble synchrony specifically within the recruited core
+(Truccolo et al. 2014).  This demo asks: **given only observed event
+times and positions, can a background/triggering decomposition recover
+which events were pulled into the self-exciting recruitment cascade (the
+core) vs. which were unrecruited background activity (the penumbra), and
+can it also localize *where* on the grid the underlying hyperexcitable
+tissue (a seizure-onset zone) sits?**
+
+**Modeling correspondence.**  The self-exciting Hawkes triggering kernel
+*is* the recruitment mechanism that builds a core: each discharge raises
+the near-term, nearby-in-space probability that its neighbours are
+recruited into synchronized firing -- exactly the hypersynchronous-cascade
+phenomenology above.  The background intensity -- homogeneous in
+catalogue A, an inhomogeneous log-Gaussian-Cox (LGCP) field anchored at a
+fixed hyperexcitable "seizure-onset zone" in catalogue B -- is the source
+of unrecruited, penumbra-like activity.  Declustering an event catalogue
+(branching EM's ``P(background)`` responsibilities) therefore *is* a
+core/penumbra classification at the single-event level: low
+``P(background)`` events were recruited into a cascade (core); high
+``P(background)`` events were not (penumbra).
+
 **Scenario.**  An **8x8 ECoG grid** (1cm pitch) captures self-exciting
 spatiotemporal spread of cortical events over a multi-minute continuous
 epoch -- the textbook model for interictal-spike propagation or
 travelling waves: each event *raises the probability* of a
-nearby-and-soon-after event, on top of a background rate that may itself
-vary across the grid (e.g. a chronically more active region near a
-lesion or epileptogenic focus).  Clinical interictal-spike-propagation
-studies routinely analyze continuous multi-minute (not sub-second)
-epochs precisely because the temporal/spatial triggering kernel is only
-well identified once many propagation cascades have been observed --
-this demo's ~4-8 minute synthetic epochs are chosen for that reason, not
-for narrative convenience.  All catalogues are fully synthetic branching
-simulations -- no real recording or dataset is used or claimed.
+nearby-and-soon-after event (recruitment into the core), on top of a
+background rate that supplies the unrecruited penumbra activity.  Both
+catalogues below demonstrate that *same* core(=triggered)/
+penumbra(=background) decomposition within a single recording; they
+differ only in the background model the estimator must contend with, not
+in which one is "core" and which is "penumbra".  Catalogue A gives the
+background a **homogeneous** rate everywhere on the grid -- no spatial
+landmark to go by, so branching EM's per-event declustering is the only
+way to tell core (triggered) from penumbra (background) events apart.
+Catalogue B instead anchors the background to a fixed,
+spatially-**inhomogeneous** hyperexcitable "seizure-onset zone", so that
+both the elevated background rate and the self-exciting cascade it seeds
+concentrate near that zone, and the Cox-Hawkes alternating estimator must
+separate the slow hyperexcitable-tissue field from the fast recruitment
+kernel riding on top of it.  Clinical interictal-spike-propagation studies routinely
+analyze continuous multi-minute (not sub-second) epochs precisely because
+the temporal/spatial triggering kernel is only well identified once many
+recruitment cascades have been observed -- this demo's ~4-8 minute
+synthetic epochs are chosen for that reason, not for narrative
+convenience.  All catalogues are fully synthetic branching simulations --
+no real recording or dataset is used or claimed.
+
+**Novelty.**  Cox-Hawkes (Miscouridou et al. 2022) -- a doubly-stochastic
+LGCP-background-plus-Hawkes-triggering model developed in the statistics
+literature for seismology/social-media cascades -- has not, to our
+knowledge, previously been applied to the epilepsy core/penumbra
+decomposition.  This demo presents that combination as a methodological
+opportunity for separating recruited-core from restrained-penumbra
+activity and localizing the seizure-onset zone, not as a result drawn
+from any published epilepsy study.
 
 Demonstrates:
 
-1. :func:`nstat.extras.spatial.simulate_spatial_hawkes` -- a synthetic
-   propagating catalogue on the grid with a **homogeneous** background.
+1. :func:`nstat.extras.spatial.simulate_spatial_hawkes` -- catalogue A,
+   the **homogeneous-background variant**: a synthetic recruitment-cascade
+   catalogue on the grid with a spatially uniform background.
 2. :func:`nstat.extras.spatial.em_spatial_hawkes` -- recover
    ``(mu, K_branch, c, sigma_space)`` by branching EM; ``sigma_space`` is
-   the **spatial spread of triggering** (how far, in cm, one event's
-   influence reaches) and ``1 / c`` is the **temporal triggering window**
-   (how soon offspring tend to follow, in seconds).
+   the **spatial spread of recruitment** (how far, in cm, one discharge's
+   influence reaches) and ``1 / c`` is the **temporal recruitment window**
+   (how soon recruited offspring tend to follow, in seconds); the
+   returned responsibilities also give a per-event core/penumbra
+   declustering.
 3. :func:`nstat.extras.spatial.simulate_cox_hawkes` /
-   :func:`nstat.extras.spatial.fit_cox_hawkes` -- a second catalogue with
-   an **inhomogeneous** log-Gaussian-Cox background (a fixed "hot" region
-   of the grid) plus the same self-excitation; the alternating estimator
-   separates the slow background-rate field from the fast self-excitation
-   kernel.
+   :func:`nstat.extras.spatial.fit_cox_hawkes` -- catalogue B, the
+   **inhomogeneous LGCP-background variant**: a second catalogue with a
+   fixed hyperexcitable "seizure-onset zone" background plus the same
+   self-exciting recruitment; the alternating estimator separates the
+   slow hyperexcitable-tissue (penumbra-source) field from the fast
+   recruitment (core) kernel.
+
+See also :mod:`spatial_gof_ecog_demo` -- asks whether concentrated ECoG
+activity is a genuinely propagating wavefront or a static hot-spot, the
+question this demo's core/penumbra decomposition presupposes an answer
+to; and :mod:`spatial_gibbs_demo` -- a complementary second-order-structure
+story (repulsion / exclusion-zone spacing) for electrode and contact
+placement rather than event recruitment.
 
 The script is **fully synthetic** -- no figshare dataset access required.
 
@@ -51,6 +114,21 @@ the repository -- the export flag exists for local inspection only.  CI
 never invokes it.
 
 References:
+
+Clinical motivation (human ictal core/penumbra structure):
+
+- Schevon CA, Weiss SA, McKhann G Jr, Goodman RR, Yuste R, Emerson RG,
+  Trevelyan AJ (2012). *Evidence of an inhibitory restraint of seizure
+  activity in humans.* Nat Commun 3:1060.
+- Truccolo W, Ahmed OJ, Harrison MT, Eskandar EN, Cosgrove GR, Madsen JR,
+  Blum AS, Potter NS, Hochberg LR, Cash SS (2014). *Neuronal ensemble
+  synchrony during human focal seizures.* J Neurosci 34(30):9927-9944.
+- Martinet LE, Fiddyment G, Madsen JR, Eskandar EN, Truccolo W, Eden UT,
+  Cash SS, Kramer MA (2017). *Human seizures couple across spatial scales
+  through travelling wave dynamics.* Nat Commun 8:14896.
+
+Statistical methods:
+
 - Veen A, Schoenberg FP (2008). *Estimation of space-time branching
   process models in seismology using an EM-type algorithm.* JASA
   103(482):614-624.
@@ -60,6 +138,8 @@ References:
   occurrences.* Ann. Inst. Statist. Math. 50(2):379-402.
 - Miscouridou X, Bhatt S, Mohler G, Flaxman S, Bhamidi S (2022).
   *Cox-Hawkes: doubly stochastic spatiotemporal Poisson processes.* TMLR.
+  (Applying it to the epilepsy core/penumbra decomposition is, to our
+  knowledge, novel -- see "Novelty" above.)
 - Moller J, Rasmussen JG (2005). *Perfect simulation of Hawkes
   processes.* Adv. Appl. Probab. 37(3):629-646 (branching simulator).
 """
@@ -89,10 +169,14 @@ GRID_EDGE_CM = 2.0 * MARGIN_CM + PITCH_CM * (N_SIDE - 1)  # == 8.0 cm
 
 DOMAIN = ((0.0, GRID_EDGE_CM), (0.0, GRID_EDGE_CM))
 
-# Catalogue A: homogeneous background + self-excitation.  ``c`` (temporal
-# decay, /s) and ``T`` are chosen so that T is long relative to the mean
-# triggering delay 1/c -- branching EM only identifies (K_branch, c) well
-# once many decay cycles have been observed (per the companion test
+# Catalogue A: homogeneous-background variant -- a spatially uniform
+# background (no anatomical landmark) plus the same self-exciting
+# recruitment cascade (core) as catalogue B.  Branching EM recovers the
+# core (triggered) vs. penumbra (background) split for each event via its
+# ``P(background)`` responsibilities.  ``c`` (temporal decay, /s) and
+# ``T`` are chosen so that T is long relative to the mean recruitment
+# delay 1/c -- branching EM only identifies (K_branch, c) well once many
+# recruitment cascades have been observed (per the companion test
 # ``tests/extras/test_spatial_spatial_hawkes.py::test_em_recovers_all_four_params``,
 # which uses the same T >> 1/c regime).
 MU_TRUE = 0.4  # events/s
@@ -101,7 +185,12 @@ C_TRUE = 1.2  # mean triggering delay 1/c ~= 0.83s
 SIGMA_SPACE_TRUE = 0.35
 T_A = 500.0  # ~8.3 minute continuous epoch
 
-# Catalogue B: inhomogeneous (Cox) background + self-excitation.
+# Catalogue B: inhomogeneous LGCP-background variant -- a spatially
+# varying (Cox) hyperexcitable "seizure-onset zone" background, near
+# which the self-exciting recruitment cascade concentrates, plus the
+# same self-excitation kernel as catalogue A.  The Cox-Hawkes alternating
+# estimator recovers the same core (triggered) vs. penumbra (background)
+# split as catalogue A, this time against a non-uniform background field.
 #
 # ``fit_cox_hawkes`` has no ``length_scale_space``/``length_scale_time``
 # passthrough to its internal ``lgcp_st_fit`` call -- it always uses that
@@ -170,7 +259,7 @@ def run_demo(
     visible: bool = True,
     plot_style: str = "legacy",
 ) -> dict:
-    """Run the ECoG propagating-activity space-time Hawkes demo.
+    """Run the ECoG seizure core/penumbra space-time Hawkes + Cox-Hawkes demo.
 
     Returns
     -------
@@ -189,7 +278,8 @@ def run_demo(
     )
 
     print("=" * 72)
-    print("Space-time Hawkes propagation on a synthetic 8x8 ECoG grid")
+    print("Seizure core/penumbra decomposition via space-time Hawkes "
+          "on a synthetic 8x8 ECoG grid")
     print("=" * 72)
     print(
         f"Grid footprint: {GRID_EDGE_CM:.1f}cm x {GRID_EDGE_CM:.1f}cm, "
@@ -204,12 +294,16 @@ def run_demo(
     # not silently shift whenever catalogue A's simulation code changes.
     rng_b = np.random.default_rng(seed + 3)
 
-    # ---- Catalogue A: homogeneous background + self-excitation. ----
+    # ---- Catalogue A: homogeneous-background variant + the same
+    # self-exciting recruitment (core) cascade as catalogue B. ----
     pts_a, t_a = simulate_spatial_hawkes(
         MU_TRUE, K_BRANCH_TRUE, C_TRUE, SIGMA_SPACE_TRUE,
         domain=DOMAIN, T=T_A, rng=rng,
     )
-    print(f"Catalogue A (homogeneous bg): {pts_a.shape[0]} events over {T_A:.1f}s")
+    print(
+        f"Catalogue A -- homogeneous-background variant: "
+        f"{pts_a.shape[0]} events over {T_A:.1f}s"
+    )
 
     fit_a = em_spatial_hawkes(
         pts_a, t_a, domain=DOMAIN, T=T_A,
@@ -217,19 +311,21 @@ def run_demo(
         return_responsibilities=True,
     )
     print()
-    print("Catalogue A recovery (branching EM):")
+    print("Catalogue A recovery (branching EM -- core-cascade kernel + penumbra declustering):")
     print(f"  {'param':>14} | {'true':>8} | {'fitted':>8}")
     print(f"  {'mu (rate, /s)':>14} | {MU_TRUE:8.3f} | {fit_a.mu_hat:8.3f}")
     print(f"  {'K_branch':>14} | {K_BRANCH_TRUE:8.3f} | {fit_a.K_branch_hat:8.3f}")
     print(f"  {'c (1/s)':>14} | {C_TRUE:8.3f} | {fit_a.c_hat:8.3f}")
     print(f"  {'sigma_space (cm)':>14} | {SIGMA_SPACE_TRUE:8.3f} | {fit_a.sigma_space_hat:8.3f}")
     print(
-        f"  interpretation: triggering reaches ~{fit_a.sigma_space_hat:.2f}cm "
+        f"  interpretation: core recruitment reaches ~{fit_a.sigma_space_hat:.2f}cm "
         f"spatially and decays with a ~{1.0 / fit_a.c_hat:.2f}s time window "
         f"(converged={fit_a.converged}, n_iter={fit_a.n_iter})"
     )
 
-    # ---- Catalogue B: inhomogeneous (Cox) background + self-excitation. ----
+    # ---- Catalogue B: inhomogeneous LGCP-background variant
+    # (seizure-onset-zone background) + the same self-exciting
+    # recruitment cascade as catalogue A. ----
     # Simulated + fit on the normalized unit-square DOMAIN_B (see the
     # module-level note by DOMAIN_B for why).
     pts_b, t_b = simulate_cox_hawkes(
@@ -238,7 +334,11 @@ def run_demo(
     )
     pts_b, t_b = _clip_to_domain(pts_b, t_b, domain=DOMAIN_B)
     print()
-    print(f"Catalogue B (inhomogeneous bg): {pts_b.shape[0]} events over {T_B:.1f}s")
+    print(
+        f"Catalogue B -- inhomogeneous LGCP-background variant "
+        f"(seizure-onset-zone background): {pts_b.shape[0]} events over "
+        f"{T_B:.1f}s"
+    )
 
     fit_b = fit_cox_hawkes(
         pts_b, t_b, domain=DOMAIN_B, period=(0.0, T_B), grid=LGCP_GRID,
@@ -246,7 +346,10 @@ def run_demo(
         hawkes_spec=SpatialHawkesSpec(K0=0.3, c0=1.0, sigma0=SIGMA_SPACE_COX_TRUE),
     )
     print()
-    print("Catalogue B recovery (Cox-Hawkes alternating estimator):")
+    print(
+        "Catalogue B recovery (Cox-Hawkes alternating estimator -- "
+        "seizure-onset-zone field + core-cascade kernel):"
+    )
     print(f"  {'param':>14} | {'true':>8} | {'fitted':>8}")
     print(f"  {'K_branch':>14} | {K_BRANCH_COX_TRUE:8.3f} | {fit_b.K_branch_hat:8.3f}")
     print(f"  {'c (1/s)':>14} | {C_COX_TRUE:8.3f} | {fit_b.c_hat:8.3f}")
@@ -255,17 +358,22 @@ def run_demo(
         f"{fit_b.sigma_space_hat * GRID_EDGE_CM:8.3f}"
     )
     print(
-        f"  background_fraction={fit_b.background_fraction:.3f} "
-        f"(converged={fit_b.converged}, n_outer={fit_b.n_outer})"
+        f"  background_fraction={fit_b.background_fraction:.3f} (penumbra, "
+        f"i.e. background, share of events; converged={fit_b.converged}, "
+        f"n_outer={fit_b.n_outer})"
     )
 
     # ---- Figures ----
     electrodes = _electrode_positions()
 
     # === FIGURE: fig01_propagation_scatter.png ===
-    # A short excerpt (not the full multi-minute catalogue) is shown so
-    # individual propagation cascades -- tight in time, spreading in
-    # space -- are visually distinguishable.
+    # A short excerpt (not the full multi-minute catalogue) is shown,
+    # coloured by elapsed time, so that visually tight temporal clusters
+    # -- suggestive of individual recruitment cascades building a "core"
+    # -- stand out against the sparser, scattered "penumbra" background
+    # events.  Colour encodes time only, not P(background), so a tight
+    # cluster is suggestive of a cascade, not proof of one (temporally
+    # close background events can look the same).
     excerpt_s = 30.0
     excerpt_mask = t_a <= excerpt_s
     fig1, ax1 = plt.subplots(figsize=(7.2, 5.6))
@@ -284,8 +392,10 @@ def run_demo(
     ax1.set_xlabel("x (cm)")
     ax1.set_ylabel("y (cm)")
     ax1.set_title(
-        f"Catalogue A: first {excerpt_s:.0f}s excerpt "
-        f"({int(excerpt_mask.sum())} of {pts_a.shape[0]} events)\n"
+        f"Catalogue A (homogeneous-background variant): first "
+        f"{excerpt_s:.0f}s excerpt ({int(excerpt_mask.sum())} of "
+        f"{pts_a.shape[0]} events), coloured by time\n"
+        f"tight same-colour clusters suggest core recruitment cascades\n"
         f"full catalogue spans {T_A:.0f}s on the {N_SIDE}x{N_SIDE} ECoG grid",
         fontsize=10,
     )
@@ -303,7 +413,7 @@ def run_demo(
     )
     ax2a.set_xlabel("elapsed time since parent (s)")
     ax2a.set_ylabel("g(t) = c * exp(-c t)")
-    ax2a.set_title("Temporal triggering kernel")
+    ax2a.set_title("Temporal recruitment (core) kernel")
     ax2a.legend(loc="upper right", fontsize=8)
 
     r_grid = np.linspace(0.0, 2.0, 200)
@@ -317,9 +427,12 @@ def run_demo(
     ax2b.plot(r_grid, h_hat, color="tab:red", lw=1.8, label="recovered h(r)")
     ax2b.set_xlabel("spatial offset r (cm)")
     ax2b.set_ylabel("h(r), isotropic Gaussian")
-    ax2b.set_title("Spatial triggering kernel")
+    ax2b.set_title("Spatial recruitment (core) kernel")
     ax2b.legend(loc="upper right", fontsize=8)
-    fig2.suptitle("Recovered ETAS-style triggering kernels (catalogue A)")
+    fig2.suptitle(
+        "Recovered self-exciting recruitment-cascade (core) kernels "
+        "(catalogue A, homogeneous-background variant)"
+    )
     # === END FIGURE ===
 
     # === FIGURE: fig03_background_excitation_decomposition.png ===
@@ -332,13 +445,13 @@ def run_demo(
         pts_a[:, 0], pts_a[:, 1], c=resp_diag, s=18, cmap="coolwarm",
         vmin=0.0, vmax=1.0,
     )
-    fig3.colorbar(sc3, ax=axes3[0], label="P(background)")
+    fig3.colorbar(sc3, ax=axes3[0], label="P(background) = P(penumbra)")
     axes3[0].set_xlim(*DOMAIN[0])
     axes3[0].set_ylim(*DOMAIN[1])
     axes3[0].set_aspect("equal")
     axes3[0].set_xlabel("x (cm)")
     axes3[0].set_ylabel("y (cm)")
-    axes3[0].set_title("Declustering (catalogue A)")
+    axes3[0].set_title("Core vs. penumbra (catalogue A)", fontsize=10)
 
     # Displayed in physical cm units for readability (see the DOMAIN_B note):
     # rate density lambda_cm = lambda_unit / GRID_EDGE_CM^2, x_cm = x_unit * GRID_EDGE_CM.
@@ -353,7 +466,7 @@ def run_demo(
     )
     axes3[1].set_xlabel("x (cm)")
     axes3[1].set_ylabel("y (cm)")
-    axes3[1].set_title("True background rate (catalogue B)")
+    axes3[1].set_title("True seizure-onset-zone rate (catalogue B)")
     fig3.colorbar(im_true, ax=axes3[1], fraction=0.046, pad=0.04, label="Hz/cm^2")
 
     mean_bg, _lo_bg, _hi_bg = fit_b.background.rate_map(T_B / 2.0, level=0.9)
@@ -364,10 +477,10 @@ def run_demo(
     )
     axes3[2].set_xlabel("x (cm)")
     axes3[2].set_ylabel("y (cm)")
-    axes3[2].set_title("Fitted LGCP background (catalogue B)")
+    axes3[2].set_title("Fitted seizure-onset-zone rate (catalogue B)")
     fig3.colorbar(im_fit, ax=axes3[2], fraction=0.046, pad=0.04, label="Hz/cm^2")
 
-    fig3.suptitle("Background vs excitation decomposition")
+    fig3.suptitle("Core (self-excited cascade) vs. penumbra (background) decomposition")
     # === END FIGURE ===
 
     figures = [fig1, fig2, fig3]
@@ -410,8 +523,8 @@ def run_demo(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Space-time Hawkes propagation demo on a synthetic "
-                    "ECoG grid",
+        description="Seizure core/penumbra decomposition via space-time "
+                    "Hawkes + Cox-Hawkes on a synthetic ECoG grid",
     )
     parser.add_argument(
         "--seed", type=int, default=20260703,
