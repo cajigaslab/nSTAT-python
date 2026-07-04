@@ -257,55 +257,75 @@ extras:
 
 - demo_id: modulated_renewal_microelectrode
   overview: |
-    Simulates a single stimulus-modulated, regular-spiking
-    microelectrode unit as a gamma modulated-renewal process
-    (Barbieri, Quirk, Frank, Wilson & Brown 2001; shape=9.0, CV~=0.33),
-    fits it with :func:`nstat.extras.spatial.fit_modulated_renewal`,
-    and checks the fitted operational-time ISIs against Uniform(0,1)
-    both continuously (:func:`nstat.extras.spatial.renewal_cdf`) and
-    with the discrete-time-rescaling correction
-    (:mod:`nstat.extras.spatial.marked_gof`), contrasting both against
-    a naive Poisson (CV=1) assumption on the same rescaled ISIs.
+    Simulates three synthetic single units along one DBS microelectrode
+    (MER) pass -- a tonic-regular unit (high-shape gamma renewal, CV well
+    below 1), a tremor-locked bursting unit (baseline rate modulated at
+    a 4-6 Hz tremor-band frequency, shape~=1 local renewal), and an
+    irregular/high-entropy unit (plain shape=1 Poisson, unmodulated) --
+    and fits each independently with
+    :func:`nstat.extras.spatial.fit_modulated_renewal`
+    (Barbieri, Quirk, Frank, Wilson & Brown 2001; Barbieri-Brown
+    renewal/time-rescaling lineage). Checks each fit's operational-time
+    ISIs against Uniform(0,1) both continuously
+    (:func:`nstat.extras.spatial.renewal_cdf`) and with the
+    discrete-time-rescaling correction
+    (:mod:`nstat.extras.spatial.marked_gof`), and recovers a raw-ISI
+    burst index by resimulating from each fit's own recovered rate and
+    renewal shape.
   goal: |
-    Confirm the modulated-renewal CIF recovers both the covariate-driven
-    rate and the sub-Poisson ISI regularity of a synthetic regular
-    -spiking unit, and that its rescaled-ISI KS tests pass where the
-    same data tested under a naive Poisson assumption fails.
+    Confirm the modulated-renewal CIF recovers, from spikes alone, the
+    three-way firing-phenotype separation neurosurgeons use to confirm
+    STN/GPi MER targeting (Bergman et al. 1994; Levy et al. 2000; Sterio
+    et al. 2002; Sedov et al. 2025): tonic-regular units show low
+    renewal CV, irregular units show a Poisson-like renewal CV, and
+    tremor-locked bursting units show a Poisson-like renewal CV *but* an
+    elevated, oscillation-driven burst index -- the statistic that
+    separates rate-modulation-driven bursting from plain irregularity.
   figures:
   - filename: fig01_raster_rate.png
     caption: |
-      Top: spike raster for the first 10s of the 30s trial. Bottom:
-      the true stimulus-driven baseline rate lambda_0(t) (dotted)
-      overlaid on the fitted rate (solid).
+      Per phenotype (rows): spike raster over a representative window
+      (left) and the true baseline rate lambda_0(t) (dotted) overlaid on
+      the fitted rate (solid, right).
     analysis: |
-      Close overlap of the fitted and true rate curves confirms the
-      beta-step of the alternating fit recovered the stimulus
-      -modulation coefficients; the raster shows the elevated firing
-      near the rate peaks.
+      The fitted rate curve tracks the true curve for all three
+      phenotypes, including the large-amplitude 4-6 Hz oscillation that
+      produces the tremor-locked unit's periodic bursts visible in its
+      raster -- confirming the beta-step of the alternating fit recovers
+      the covariate-driven rate regardless of phenotype.
   - filename: fig02_isi_vs_renewal.png
     caption: |
-      Histogram of the fitted model's operational-time (rescaled) inter-spike
-      intervals, overlaid with the ground-truth renewal density (dotted, the shape the
-      data were simulated with), the fitted renewal density (solid), and the Exp(1)
-      Poisson-null density (dashed).
+      Per phenotype: histogram of the fitted model's operational-time
+      (rescaled) inter-spike intervals, overlaid with the ground-truth
+      renewal density (dotted), the fitted renewal density (solid), and
+      the Exp(1) Poisson-null density (dashed).
     analysis: |
-      The fitted density recovering the true density -- and both tracking the histogram
-      far better than the flat Exp(1) curve -- is the direct visual signature of
-      sub-Poisson spike-timing regularity (CV < 1) that a Poisson model misses.
+      The fitted density recovers the true density in all three panels.
+      The tonic-regular panel's fitted/true densities visibly diverge
+      from the flat Exp(1) curve -- the signature of sub-Poisson
+      spike-timing regularity -- while the tremor-locked and irregular
+      panels both closely track Exp(1), confirming their renewal terms
+      really are close to Poisson even though one of them fires in
+      obvious periodic bursts.
   - filename: fig03_ks_rescaled.png
     caption: |
-      Left: continuous time-rescaling KS check — empirical CDF of
-      the rescaled ISIs under the fitted gamma model (red) and under
-      a naive Poisson assumption (gray dashed) against Uniform(0,1)
-      (dotted). Right: the discrete-time-rescaling correction
-      (Haslinger-Pipa-Brown 2010) applied to the fitted model's own
-      per-bin conditional intensity, uncorrected vs corrected.
+      Top row, per phenotype: KS diagnostic -- empirical CDF of the
+      rescaled ISIs under the fitted model (colored), a naive Poisson
+      assumption (gray dashed), and the discrete-time-rescaling
+      correction (Haslinger-Pipa-Brown 2010, green dash-dot) against
+      Uniform(0,1) (dotted). Bottom: recovered renewal CV and raw-ISI
+      burst index per phenotype (bars), with true values (black
+      diamonds) for comparison.
     analysis: |
-      The fitted-model curve hugging the Uniform(0,1) diagonal while
-      the naive-Poisson curve deviates confirms the renewal model —
-      not a Poisson CIF — is required to pass goodness-of-fit; the
-      right panel confirms the discrete-time correction does not
-      spuriously reject the correctly-specified fitted model.
+      All three fitted-model curves hug the Uniform(0,1) diagonal
+      (KS passes), while the naive-Poisson curve visibly deviates only
+      for the tonic-regular unit -- confirming a renewal model is
+      needed there but the tremor-locked and irregular units are both
+      well described by a Poisson renewal term. The bottom bar chart
+      shows why that alone does not identify the tremor-locked
+      phenotype: its renewal CV sits near 1, same as the irregular
+      unit's, but its burst index is markedly higher, recovering the
+      three-way phenotype separation from the fits alone.
 
 - demo_id: spatial_cluster_cox
   overview: |

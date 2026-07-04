@@ -139,17 +139,19 @@ extras:
   - demo_id: modulated_renewal_microelectrode
     name: modulated_renewal_microelectrode_demo
     script: examples/extras/modulated_renewal_microelectrode_demo.py
-    title: Modulated-renewal (conditional-ISI) fit for a regular-spiking microelectrode unit
-    question: Does a gamma modulated-renewal CIF recover the true stimulus-modulated rate and sub-Poisson ISI regularity of a synthetic microelectrode unit, and does its rescaled-ISI KS test pass where a naive Poisson (CV=1) assumption fails?
+    title: STN/GPi firing-phenotype recovery along one DBS microelectrode (MER) pass
+    question: Can a gamma modulated-renewal CIF recover, from spikes alone, the three firing phenotypes (tonic-regular / tremor-locked bursting / irregular-high-entropy) neurosurgeons use to confirm MER targeting of the STN/GPi during DBS surgery?
     description: |
-      Simulates a single regular-spiking unit as a stimulus-modulated gamma
-      renewal process (Barbieri, Quirk, Frank, Wilson & Brown 2001), fits it
-      with :func:`nstat.extras.spatial.fit_modulated_renewal`, and checks
-      the fitted model's operational-time ISIs against Uniform(0,1) via
-      :func:`nstat.extras.spatial.renewal_cdf` (continuous time-rescaling)
-      and :mod:`nstat.extras.spatial.marked_gof` (discrete-time-rescaling
-      correction), contrasting both against a naive Poisson assumption on
-      the same data.
+      Simulates three synthetic single units along one MER pass -- a
+      tonic-regular high-shape gamma renewal unit, a tremor-locked
+      bursting unit (baseline rate modulated at 4-6 Hz), and an
+      irregular/high-entropy (shape~=1, Poisson) unit -- and fits each
+      independently with :func:`nstat.extras.spatial.fit_modulated_renewal`.
+      Recovers rate, renewal-CV regularity, a raw-ISI burst index, and
+      rescaled-ISI KS goodness-of-fit
+      (:func:`nstat.extras.spatial.renewal_cdf`,
+      :mod:`nstat.extras.spatial.marked_gof`) per phenotype, reproducing
+      the three-way phenotype separation clinicians read off MER traces.
     figures:
       - filename: fig01_raster_rate.png
       - filename: fig02_isi_vs_renewal.png
