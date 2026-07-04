@@ -195,54 +195,76 @@ extras:
 
 - demo_id: spatial_cluster_cox
   overview: |
-    Simulates a Thomas process (Gaussian offspring, Thomas 1949) and
-    a Matérn-cluster process (uniform-disc offspring, Matérn 1986) on
-    the unit square, then recovers ``(sigma, lambda_p)`` and
-    ``(R, lambda_p)`` from each pattern via Diggle's (2013 §6.2.1)
-    minimum-contrast estimator on the SOIRS pair correlation.
+    Simulates a Thomas process — ``kappa`` hidden epileptogenic hub
+    sites (never observed), each seeding several sub-mm-dispersed
+    Gaussian microdischarge offspring (Thomas 1949; Stead et al. 2010's
+    isolated-microelectrode microseizure geometry) — and a
+    Matérn-cluster process repeating the same hidden-hub question with
+    an alternative uniform-disc offspring geometry (Matérn 1986).
+    Recovers ``(sigma, lambda_p)`` and ``(R, lambda_p)`` — the
+    dispersion and hub intensity ``kappa`` — from each offspring
+    pattern alone via Diggle's (2013 §6.2.1) minimum-contrast
+    estimator on the SOIRS pair correlation.
   goal: |
-    Exercise the cluster-Cox catalogue and minimum-contrast inference
-    shipped in ``nstat.extras.spatial`` — confirm that the two cluster
-    kernels are distinguishable from realised patterns and that the
-    offspring scale recovers within sampling error.
+    Answer "are microdischarges organised around a few hidden
+    epileptogenic hubs, or randomly scattered?" without ever observing
+    the hub sites directly — confirm minimum-contrast estimation
+    recovers the hub intensity ``kappa`` and dispersion scale within
+    sampling error, and that the recovery holds regardless of whether
+    the offspring geometry is Gaussian (Thomas) or hard-edged uniform
+    (Matérn).
   figures:
   - filename: fig01_thomas_scatter.png
     caption: |
-      Realised Thomas-process pattern on the unit square — each
-      coloured cluster groups offspring around an unobserved
-      parent location with isotropic Gaussian displacement.
+      Realised Thomas-process pattern on the unit square — gold stars
+      mark the true (simulated, never observed by the estimator) hub
+      locations; blue dots are microdischarge offspring displaced by
+      an isotropic Gaussian around each hub. The inset box compares
+      the true in-window hub count against the recovered hub
+      intensity ``kappa_hat``.
     analysis: |
-      Tight, roughly circular clusters confirm the Gaussian
-      offspring kernel; cluster radius previews the recovered
-      ``sigma``.
+      Tight, roughly circular clusters, each anchored on a true-hub
+      star, confirm the Gaussian offspring kernel; cluster radius
+      previews the recovered ``sigma``, and ``kappa_hat`` tracking the
+      true hub count shows a naive "count active sites" heuristic is
+      unnecessary — minimum-contrast estimation recovers the hidden
+      hub structure directly from the offspring alone.
   - filename: fig02_thomas_pcf.png
     caption: |
       Empirical pair-correlation function (PCF) of the Thomas
       pattern (solid) overlaid on the Thomas-PCF model fit at the
       minimum-contrast estimate ``(sigma_hat, lambda_p_hat)``
-      (dashed) and the Poisson null ``g(r) = 1`` (thin grey).
+      (dashed), the closed-form truth (dotted), and the CSR
+      (complete-spatial-randomness, "no hidden hubs") null
+      ``g(r) = 1`` (grey line).
     analysis: |
       The model curve hugging the empirical PCF at short range and
-      relaxing to one at long range confirms the minimum-contrast
-      fit recovered the offspring scale.
+      relaxing onto the CSR null at long range confirms both that the
+      minimum-contrast fit recovered the offspring scale and that the
+      pattern is statistically distinguishable from a no-hub (CSR)
+      scatter at short lags.
   - filename: fig03_matern_scatter.png
     caption: |
-      Realised Matérn-cluster pattern on the unit square — uniform
-      offspring inside discs of radius ``R`` around unobserved
-      parent locations.
+      Realised Matérn-cluster pattern on the unit square — gold stars
+      mark the true hub locations; blue dots are offspring scattered
+      uniformly inside a disc of radius ``R`` around each hub. Same
+      true-vs-recovered inset as fig01.
     analysis: |
-      Sharper disc boundaries than fig01 reflect the uniform-disc
-      kernel; the disc radius previews the recovered ``R``.
+      Sharper, hard-edged disc boundaries than fig01's Gaussian
+      clusters reflect the uniform-disc kernel; the disc radius
+      previews the recovered ``R``, demonstrating hub recovery holds
+      under this alternative offspring geometry too.
   - filename: fig04_matern_pcf.png
     caption: |
       Empirical PCF of the Matérn-cluster pattern (solid) overlaid
       on the Matérn-cluster model fit at
-      ``(R_hat, lambda_p_hat)`` (dashed) and the Poisson null
-      (thin grey).
+      ``(R_hat, lambda_p_hat)`` (dashed), the closed-form truth
+      (dotted), and the CSR null (grey line).
     analysis: |
-      The PCF drop to one at ``r = 2 * R_hat`` is the signature of
-      the uniform-disc kernel — a useful eye-test for the
-      recovered radius.
+      The PCF drop to the CSR null at ``r = 2 * R_hat`` is the
+      signature of the uniform-disc kernel — a useful eye-test for
+      the recovered radius and a sharper cutoff than the Gaussian
+      Thomas PCF's smooth decay in fig02.
 
 - demo_id: spatial_gibbs
   overview: |

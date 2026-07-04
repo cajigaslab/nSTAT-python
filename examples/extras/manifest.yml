@@ -126,13 +126,18 @@ extras:
   - demo_id: spatial_cluster_cox
     name: spatial_cluster_cox_demo
     script: examples/extras/spatial_cluster_cox_demo.py
-    title: Cluster Cox processes + minimum-contrast estimation
-    question: Can the Diggle 2013 minimum-contrast estimator recover the offspring scale and parent intensity of a simulated Thomas / Matérn-cluster process on the unit square?
+    title: Hidden epileptogenic hubs — Thomas / Matérn-cluster recovery via minimum-contrast estimation
+    question: Are clinically "silent" microdischarges organised around a few hidden epileptogenic hub sites, or randomly scattered — and can minimum-contrast estimation recover the hub count and dispersion from the offspring pattern alone?
     description: |
-      Simulates Thomas (Gaussian offspring) and Matérn-cluster (uniform-disc
-      offspring) processes, then recovers ``(sigma, lambda_p)`` and
-      ``(R, lambda_p)`` from each via the SOIRS-pair-correlation
-      minimum-contrast estimator in :mod:`nstat.extras.spatial`.
+      Simulates a Thomas process — ``kappa`` latent, never-observed
+      epileptogenic hub sites, each seeding several Gaussian-dispersed
+      microdischarge offspring (sub-mm scale, per Stead 2010) — and a
+      Matérn-cluster process repeating the same hidden-hub question with
+      an alternative uniform-disc offspring geometry.  Recovers
+      ``(sigma, lambda_p)`` and ``(R, lambda_p)`` — i.e. the dispersion
+      and hub intensity ``kappa`` — from the offspring locations alone via
+      the SOIRS-pair-correlation minimum-contrast estimator in
+      :mod:`nstat.extras.spatial`.
     figures:
       - filename: fig01_thomas_scatter.png
       - filename: fig02_thomas_pcf.png
