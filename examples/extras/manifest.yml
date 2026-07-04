@@ -147,14 +147,19 @@ extras:
   - demo_id: spatial_gibbs
     name: spatial_gibbs_demo
     script: examples/extras/spatial_gibbs_demo.py
-    title: Gibbs interaction processes + Berman-Turner pseudo-likelihood
-    question: Can the Berman-Turner pseudo-likelihood recover ``(beta, gamma)``, ``beta``, and ``(beta, eta)`` for Strauss, hard-core, and area-interaction processes simulated by birth-death and rejection samplers?
+    title: Co-active/implanted-site spacing -- CSR vs. minimum-distance exclusion (hard-core) via Berman-Turner pseudo-likelihood
+    question: When is co-active-site / implanted-electrode-contact spacing governed by a minimum-distance repulsion (hard-core exclusion) rather than independent placement (CSR) -- and can the Berman-Turner pseudo-likelihood recover the exclusion distance and confirm gamma ~= 1 (no interaction) for CSR?
     description: |
-      Simulates Strauss (mild inhibition), hard-core (deliberately set at
-      ``beta = 60`` to stay inside the Berman-Turner numerical envelope),
-      and area-interaction (clustering) processes on the unit square,
-      then recovers each parameter set via
-      :func:`nstat.extras.spatial.pseudo_likelihood_fit`.
+      Simulates CSR (independent placement) and a hard-core process
+      enforcing a minimum inter-site distance ``R = 0.04`` (~4 mm on a
+      10 cm x 10 cm cortical/subdural patch -- inside the range of SEEG
+      trajectory-planning safety margins and optimal electrode-spacing
+      analyses) at the same target intensity, then recovers the
+      exclusion distance directly from the hard-core pattern's minimum
+      inter-point distance and confirms ``gamma_hat ~= 1`` for CSR via
+      :func:`nstat.extras.spatial.pseudo_likelihood_fit`. Strauss (mild
+      inhibition) and area-interaction (clustering) processes are kept
+      as secondary, purely contrastive panels.
     figures:
       - filename: fig01_strauss_scatter.png
       - filename: fig02_hardcore_scatter.png

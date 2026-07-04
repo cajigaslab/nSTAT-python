@@ -268,23 +268,31 @@ extras:
 
 - demo_id: spatial_gibbs
   overview: |
-    Simulates a Strauss process at ``gamma = 0.4`` (mild inhibition)
-    via birth-death, a hard-core process at ``beta = 60`` via dart-
-    throwing rejection (deliberately below the packing-fraction
-    failure mode and the Berman-Turner numerical envelope), and an
-    area-interaction process at ``eta = 4.0`` (clustering) via
-    birth-death.  Each pattern is then refit via
-    :func:`nstat.extras.spatial.pseudo_likelihood_fit`.
+    Simulates CSR (independent co-active/implanted-site placement) and
+    a hard-core process enforcing a minimum inter-site distance
+    ``R = 0.04`` (~4 mm on a 10 cm x 10 cm cortical/subdural patch, inside
+    the range of SEEG trajectory-planning safety margins and optimal
+    electrode-spacing analyses) at the same target intensity
+    ``beta = 60``.  The exclusion distance is recovered directly from
+    the hard-core pattern's minimum inter-point distance, and
+    :func:`nstat.extras.spatial.pseudo_likelihood_fit` confirms
+    ``gamma_hat ~= 1`` (no interaction) for CSR.  A Strauss process at
+    ``gamma = 0.4`` (mild inhibition) and an area-interaction process at
+    ``eta = 4.0`` (clustering) are kept as secondary, purely contrastive
+    panels of the same Gibbs catalogue.
   goal: |
-    Exercise the Gibbs interaction catalogue and the Berman-Turner
-    pseudo-likelihood fitter (Berman-Turner 1992; Baddeley-Turner
-    2000) end-to-end (simulate then recover), and surface the
-    documented upward bias on the hard-core intensity plus the weak
-    identification of the area-interaction ``eta``.
+    Answer "is co-active/implanted-site spacing governed by independent
+    placement or by a minimum-distance exclusion zone?" -- confirm the
+    Berman-Turner pseudo-likelihood (Berman-Turner 1992; Baddeley-Turner
+    2000) recovers ``gamma_hat ~= 1`` for CSR and that the observed
+    minimum inter-point distance recovers the true hard-core exclusion
+    radius, while surfacing the documented upward bias on the hard-core
+    *intensity* and the weak identification of the area-interaction
+    ``eta``.
   figures:
   - filename: fig01_strauss_scatter.png
     caption: |
-      Realised Strauss pattern on the unit square at
+      Secondary panel: realised Strauss pattern on the unit square at
       ``gamma = 0.4`` — points repel softly at distances under the
       interaction radius.
     analysis: |
@@ -293,18 +301,38 @@ extras:
       ``gamma``.
   - filename: fig02_hardcore_scatter.png
     caption: |
-      Realised hard-core pattern on the unit square at
-      ``beta = 60``, drawn by dart-throwing rejection sampling.
+      Primary ground-truth-vs-estimate figure: CSR (independent
+      placement) vs. hard-core (minimum-distance exclusion, ``R = 0.04``)
+      point patterns side by side, their empirical-vs-fitted pair
+      correlation ``g(r)``, and the recovered-vs-true exclusion distance
+      / CSR interaction strength.
     analysis: |
-      Hard nearest-neighbour exclusion produces a roughly regular
-      tiling; the intercept-only Berman-Turner GLM is known to
-      overshoot ``beta`` here — the ``hardcore-bias`` note in the
-      script's stdout reports the expected magnitude.
+      The hard-core pattern's ``g(r)`` dips to ~0 below ``R`` and rises
+      thereafter, while the CSR pattern's ``g(r)`` never dips toward
+      zero -- the repulsion signature the recovery table quantifies.
+      The CSR curve does sit visibly *elevated* above the theoretical
+      ``g(r) = 1`` null at short lags (annotated on the panel): at
+      n ~ 50-70 points, ``nstat.extras.spatial.pair_correlation`` has no
+      boundary/edge correction, so its kernel estimate is finite-sample
+      biased upward near ``r = 0`` (Baddeley-Rubak-Turner 2015 Sec. 13)
+      -- this is expected estimator bias, not clustering. The diagnostic
+      signal is the *contrast* with the hard-core curve, not the CSR
+      curve's absolute height: only the hard-core pattern shows a
+      genuine dip toward zero below its exclusion distance, and the CSR
+      curve never does, however elevated it runs elsewhere. The
+      recovered exclusion distance (read directly off the data as the
+      observed minimum inter-point distance) lands within a few percent
+      of the true ``R``; the fitted CSR ``gamma_hat`` lands at ~1,
+      confirming no interaction despite the visibly biased empirical
+      curve. The intercept-only Berman-Turner GLM is separately known to
+      overshoot the hard-core *intensity* ``beta`` — the
+      ``hardcore-bias`` note in the script's stdout reports the expected
+      magnitude.
   - filename: fig03_area_interaction_scatter.png
     caption: |
-      Realised area-interaction pattern at ``eta = 4.0`` — points
-      attract via overlap of the union-of-discs sufficient
-      statistic.
+      Secondary panel: realised area-interaction pattern at
+      ``eta = 4.0`` — points attract via overlap of the union-of-discs
+      sufficient statistic.
     analysis: |
       Visible clustering vs the Poisson null; the area-interaction
       ``eta`` is weakly identified from a single realisation, so
