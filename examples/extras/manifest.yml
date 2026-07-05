@@ -81,14 +81,17 @@ extras:
   - demo_id: interop_pynapple
     name: interop_pynapple_demo
     script: examples/extras/interop_pynapple_demo.py
-    title: nstat ↔ pynapple round-trip with IntervalSet epoch math
-    question: Does the pynapple bridge round-trip a ``nspikeTrain`` through ``pynapple.Ts`` and preserve the recording window when ``IntervalSet`` epoch restriction is composed?
+    title: Bug-resistant clinical epoch bookkeeping -- nstat ↔ pynapple round-trip via IntervalSet
+    question: Does the pynapple bridge round-trip a ``nspikeTrain`` through ``pynapple.Ts`` and preserve the recording window when ``IntervalSet.restrict`` -- the epoch algebra Viejo et al. (2023) built for exactly this bookkeeping -- carves out a clinically-meaningful sub-epoch, such as an interictal-only iEEG window or a single BCI-trial window?
     description: |
       Demonstrates :mod:`nstat.extras.interop.pynapple`: converts to
       :class:`pynapple.Ts` with the recording-window
-      :class:`pynapple.IntervalSet`, restricts to a sub-epoch using
-      pynapple's epoch math, and converts back with the sub-epoch as
-      support.
+      :class:`pynapple.IntervalSet`, restricts to a sub-epoch --
+      standing in for an interictal-only window in an iEEG recording,
+      or a single BCI-trial window -- using pynapple's
+      ``IntervalSet.restrict`` epoch math instead of hand-rolled index
+      arithmetic, and converts back with the sub-epoch as support.
+      Reference: Viejo et al. (2023), eLife 12:e85786.
     figures: []
 
   - demo_id: interop_nwb

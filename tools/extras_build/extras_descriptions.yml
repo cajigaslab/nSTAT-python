@@ -182,15 +182,21 @@ extras:
 
 - demo_id: interop_pynapple
   overview: |
-    Builds a 10 s nstat ``nspikeTrain`` (50 Poisson spikes),
-    converts it to ``pynapple.Ts`` with the recording-window
-    ``IntervalSet``, restricts to ``[2, 5] s`` using pynapple's
-    epoch-math operators, and converts back to ``nspikeTrain`` with
-    the sub-epoch as support.
+    Builds a 10 s nstat ``nspikeTrain`` (50 Poisson spikes), converts
+    it to ``pynapple.Ts`` with the recording-window ``IntervalSet``,
+    restricts to ``[2, 5] s`` -- standing in for a clinically
+    meaningful epoch such as an interictal-only iEEG window or a
+    single BCI-trial window -- using pynapple's ``IntervalSet.restrict``
+    epoch-math operators, and converts back to ``nspikeTrain`` with the
+    sub-epoch as support.
   goal: |
     Demonstrate that the pynapple bridge survives the most common
     pynapple workflow (IntervalSet restriction) without losing the
-    recording-window metadata.
+    recording-window metadata, so restricting to interictal-only or
+    BCI-trial epochs (Viejo et al. 2023, eLife 12:e85786) never
+    requires hand-rolled index arithmetic -- a common source of silent
+    alignment bugs when spikes, LFP, and behavior stream at different
+    rates.
   figures: []
 
 - demo_id: interop_nwb
