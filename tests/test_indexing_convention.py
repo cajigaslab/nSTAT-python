@@ -145,6 +145,12 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     # Retry counter / iteration counter: 1-based by display intent.
     ("data_manager.py", "for attempt in range(1, retries + 1):"): "retry counter (display)",
     ("glm.py", "for n_iter in range(1, max_iter + 1):"): "iteration counter (display)",
+    # Reground-extras demos (BCI/clinical scenarios): legitimate range(1, ...)
+    # uses that are NOT 1-based array indexing.
+    ("validation_pykalman_demo.py", "for t in range(1, n_bins):"): "time recursion: t=0 is initial condition",
+    ("validation_pykalman_demo.py", "for t in range(1, T_XVAL):"): "time recursion: t=0 is initial condition",
+    ("metrics_spike_distances_demo.py", "ax.set_yticks(range(1, N_UNITS + 1))"): "1-based y-tick display labels for unit rows",
+    ("decoding_place_field_demo.py", "axes_tc = [fig.add_subplot(gs[r, c]) for r in range(2) for c in range(1, 4)]"): "gridspec columns 1-3 (col 0 is the polar PV-vs-ML panel)",
     # Time-recursive ensemble effects: ``spikes[i - 1, :]`` = previous time step.
     ("simulators.py", "ens_effect[0] = ensemble_kernel_arr[0] * float(spikes[i - 1, 1])"): "previous-timestep ensemble effect",
     ("simulators.py", "ens_effect[1] = ensemble_kernel_arr[1] * float(spikes[i - 1, 0])"): "previous-timestep ensemble effect",
