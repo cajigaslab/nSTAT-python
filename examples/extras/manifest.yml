@@ -331,12 +331,17 @@ extras:
   - demo_id: validation_statsmodels
     name: validation_statsmodels_demo
     script: examples/extras/validation_statsmodels_demo.py
-    title: Cross-validate nstat's Poisson GLM against statsmodels
-    question: How tightly do nstat's IRLS Poisson GLM and statsmodels's IRLS Poisson GLM agree on a synthetic well-conditioned fixture?
+    title: Regression guard for a clinical spike-encoding GLM -- nstat vs. statsmodels
+    question: Does refitting the identical spike-encoding design matrix with statsmodels (Seabold & Perktold 2010) -- an independent, general-purpose reference implementation that, like nstat, fits the Poisson GLM by IRLS -- recover the same coefficients, catching any silent regression in nstat's own IRLS path?
     description: |
       Both nstat and statsmodels run IRLS (unlike NeMoS's optax-driven
       first-order optimizer), so the recovered coefficients should agree
-      to near machine precision (~1e-9 on the synthetic fixture).  This
-      is the tightest cross-validation oracle in
-      :mod:`nstat.extras.validation`.
+      to near machine precision (~1e-9 on the synthetic spike-encoding
+      fixture). This is the tightest cross-validation oracle in
+      :mod:`nstat.extras.validation`, and the regression guard best
+      suited to catching a silent break in nstat's own IRLS path.
+      Reference: Seabold & Perktold (2010), Proc. 9th Python in Science
+      Conf. (SciPy 2010), pp. 92-96 -- the statsmodels software paper,
+      cited here for statsmodels as the independent reference GLM
+      implementation, not as a neuroscience source.
     figures: []

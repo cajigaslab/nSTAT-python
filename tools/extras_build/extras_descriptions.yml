@@ -790,14 +790,20 @@ extras:
 
 - demo_id: validation_statsmodels
   overview: |
-    Generates the same synthetic Poisson GLM fixture as the NeMoS
-    demo, fits with both ``nstat.fit_poisson_glm`` and
-    ``statsmodels.api.GLM`` (Poisson family), and reports the
-    coefficient agreement.  Because both fitters use IRLS, the
+    Generates the same synthetic spike-encoding Poisson-GLM fixture as
+    the NeMoS demo -- a synthetic unit's known encoding coefficients
+    driving spike counts through a log-linear Poisson GLM -- fits with
+    both ``nstat.fit_poisson_glm`` and ``statsmodels.api.GLM`` (Poisson
+    family, Seabold & Perktold 2010), and reports the coefficient
+    agreement. Because both fitters solve the Poisson GLM by IRLS, the
     synthetic-fixture agreement is ~1e-9 — the tightest
     cross-validation oracle in :mod:`nstat.extras.validation`.
   goal: |
-    Pin the IRLS-vs-IRLS Poisson-GLM agreement at near machine
-    precision so any regression in nstat's IRLS path is caught
-    immediately.
+    The regression guard for a clinical encoding model: pin the
+    IRLS-vs-IRLS Poisson-GLM agreement between nstat and statsmodels
+    (Seabold & Perktold 2010, Proc. 9th Python in Science Conf., pp.
+    92-96 — the statsmodels software paper, cited here for statsmodels
+    as an independent, general-purpose reference GLM implementation,
+    not as a neuroscience source) at near machine precision, so any
+    silent regression in nstat's own IRLS path is caught immediately.
   figures: []
