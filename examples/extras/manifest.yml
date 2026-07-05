@@ -291,14 +291,18 @@ extras:
   - demo_id: validation_nemos
     name: validation_nemos_demo
     script: examples/extras/validation_nemos_demo.py
-    title: Cross-validate nstat's Poisson GLM against NeMoS
-    question: Do ``nstat.fit_poisson_glm`` and ``nemos.glm.GLM`` agree on the recovered Poisson-GLM coefficients for a known synthetic fixture?
+    title: Reviewer-grade cross-check of a reach-tuned encoding GLM -- nstat vs. NeMoS
+    question: Does refitting the identical design matrix of a reach-tuned motor-cortex encoding GLM -- an instance of the point-process Poisson-GLM encoding family (Weber & Pillow 2017 show GLMs of this form reproduce diverse single-neuron response dynamics) -- in a second, independently-maintained implementation -- ``nemos.glm.GLM`` -- recover the same coefficients as ``nstat.fit_poisson_glm``, the reviewer-grade rigor check a clinical encoding-model paper's tuning claims would need?
     description: |
       Generates a synthetic Poisson spike-count fixture with known
-      coefficients, fits the same model in :func:`nstat.fit_poisson_glm`
-      and :class:`nemos.glm.GLM`, then exercises
+      coefficients -- standing in for a reach-tuned unit's encoding
+      coefficients driven by reach-kinematic covariates -- fits the same
+      GLM with :func:`nstat.fit_poisson_glm` and NeMoS's
+      (Flatiron Institute Center for Computational Neuroscience)
+      :class:`nemos.glm.GLM`, and exercises
       :meth:`GLMComparison.assert_agree` — the regression-guard hook for
-      parity tests.
+      parity tests. Reference: Weber & Pillow (2017), Neural Comput
+      29:3260-3289 (arXiv:1602.07389).
     figures: []
 
   - demo_id: validation_pykalman

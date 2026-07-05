@@ -715,16 +715,24 @@ extras:
 
 - demo_id: validation_nemos
   overview: |
-    Generates a synthetic Poisson GLM fixture (n=1000, p=3) with
-    known intercept and coefficients, fits the same model with
-    ``nstat.fit_poisson_glm`` and ``nemos.glm.GLM``, and reports the
-    coefficient agreement via the
+    Generates a synthetic Poisson GLM fixture (n=1000, p=3) standing
+    in for a reach-tuned motor-cortex unit -- a single-unit firing
+    rate driven by reach-kinematic covariates through a log-linear
+    Poisson GLM, an instance of the point-process Poisson-GLM
+    encoding family (Weber & Pillow 2017 show GLMs of this form
+    reproduce diverse single-neuron response dynamics) -- with known
+    intercept and coefficients, fits the same model with
+    ``nstat.fit_poisson_glm`` and
+    ``nemos.glm.GLM``, and reports the coefficient agreement via the
     :meth:`GLMComparison.assert_agree` regression-guard hook.
   goal: |
-    Tier 1 cross-validation of nstat's Poisson GLM against an
-    independent JAX-backed implementation (NeMoS uses optax first-
-    order optimisation, unlike nstat's IRLS), confirming the two
-    converge on the same optimum within ``atol``.
+    The reviewer-grade numerical cross-check a clinical encoding-model
+    paper's tuning-coefficient claims would need: refitting the
+    identical design matrix in a second, independently-maintained
+    implementation (NeMoS -- a JAX-backed GLM toolbox from the
+    Flatiron Institute Center for Computational Neuroscience, using
+    optax first-order optimisation, unlike nstat's IRLS) and
+    confirming the two converge on the same optimum within ``atol``.
   figures: []
 
 - demo_id: validation_pykalman
