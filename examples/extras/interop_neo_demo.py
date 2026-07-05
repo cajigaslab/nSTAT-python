@@ -1,11 +1,24 @@
-"""Demo: nstat ↔ Neo round-trip and Neo Segment construction.
+"""Demo: vendor-agnostic ingestion for a multi-site intracortical-BCI (iBCI) trial.
 
-Demonstrates :mod:`nstat.extras.interop.neo`:
+A multi-site iBCI trial rarely runs on one recording stack: one site records
+on a Blackrock Utah array (``.ns5``/``.nev``), another on Plexon, another on
+TDT — each with its own vendor SDK and file format. `Neo
+<https://neuralensemble.org/neo/>`_ (Garcia et al. 2014) is the common object
+model that absorbs that heterogeneity, so a single ``nstat`` analysis
+pipeline can serve every site without per-vendor branching. This demo shows
+the ingestion path in miniature via :mod:`nstat.extras.interop.neo`:
 
-- Convert an :class:`nstat.nspikeTrain` to :class:`neo.core.SpikeTrain`.
-- Round-trip back to :class:`nstat.nspikeTrain` (spike times, window, name preserved).
+- Convert an :class:`nstat.nspikeTrain` (nstat's native spike-train type) to
+  :class:`neo.core.SpikeTrain` (the vendor-neutral hand-off object).
+- Round-trip back to :class:`nstat.nspikeTrain` (spike times, window, name
+  preserved) — the regression-guard contract for the bridge.
 - Build a :class:`neo.core.Segment` from a :class:`nstat.SpikeTrainCollection`
-  for downstream consumption by Elephant / SpikeInterface / Brian2.
+  (one unit per site/channel), ready for downstream consumption by Elephant /
+  SpikeInterface / Brian2, regardless of which rig produced the raw file.
+
+Reference: Garcia S, Guarino D, Jaillet F, et al. (2014). Neo: an object
+model for handling electrophysiology data in multiple formats. Frontiers in
+Neuroinformatics, 8:10.
 
 Run::
 

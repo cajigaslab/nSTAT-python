@@ -320,8 +320,19 @@ Counterpart to MATLAB nSTAT's `PPDecodeFilter` / `PP_fixedIntervalSmoother`.
 ## End-to-end demo
 
 [`examples/extras/em_dynamax_demo.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/em_dynamax_demo.py)
-fits a 2-state LG model on 300 samples and prints the parameter
-estimates + EM log-likelihood trace.
+is a motor-BCI **decoder calibration** study: a naive Kalman decoder
+calibrated from an open-loop/passive training label (a constant-velocity,
+never-decelerating reach that never corrects a directional drift) is
+contrasted against a **ReFIT** recalibration (Wu, Gao, Bienenstock,
+Donoghue & Black 2006; Gilja, Nuyujukian, Chestek, Cunningham, Yu, Fan,
+Churchland, Kaufman, Kao, Ryu & Shenoy 2012) that relabels the same
+recorded population activity with the true target-directed, decelerating
+kinematics. This naive-vs-ReFIT panel is pure NumPy/SciPy and always
+runs, including without the `[dynamax]` extra. When `[dynamax]` is
+installed, the same script also runs a JAX-backed EM appendix that fits
+a 2-state LG model on 300 samples and prints the parameter estimates +
+EM log-likelihood trace, exercising every routine in
+`nstat.extras.em.dynamax_bridge`.
 
 ## Upstream references
 

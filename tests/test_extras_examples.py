@@ -33,10 +33,25 @@ EXAMPLE_BACKING_PACKAGE: dict[str, str] = {
     "interop_pynapple_demo": "pynapple",
     "interop_nwb_demo": "pynwb",
     "validation_nemos_demo": "nemos",
-    "validation_pykalman_demo": "pykalman",
+    # validation_pykalman_demo's chronic-drift recalibration panel is pure
+    # NumPy/SciPy and always runs; only the nstat<->pykalman agreement
+    # check requires the optional pykalman dependency, and it gracefully
+    # skips (not a failure) when pykalman is absent.  "numpy" forces the
+    # run-as-main test to execute the demo end-to-end regardless.
+    "validation_pykalman_demo": "numpy",
     "validation_statsmodels_demo": "statsmodels",
-    "metrics_spike_distances_demo": "pyspike",
-    "em_dynamax_demo": "dynamax",
+    # metrics_spike_distances_demo's beta-burst simulation + ground-truth
+    # figure are pure NumPy and always run; only the PySpike-backed
+    # sliding-window ISI-/SPIKE-distance/-synchronization comparison is an
+    # opt-in appendix that gracefully skips (not a failure) when pyspike
+    # is absent.  "numpy" forces the run-as-main test to execute the demo
+    # end-to-end regardless.
+    "metrics_spike_distances_demo": "numpy",
+    # em_dynamax_demo's naive-KF vs. ReFIT-KF contrast is pure NumPy/SciPy
+    # and always runs; the dynamax-backed EM appendix is an opt-in extra
+    # that gracefully skips (not a failure) when dynamax is absent.
+    # "numpy" forces the run-as-main test to execute the demo end-to-end.
+    "em_dynamax_demo": "numpy",
     "decoding_clusterless_demo": "replay_trajectory_classification",
     # place_field_decoder is pure-core (numpy + scipy already required);
     # "numpy" forces the run-as-main test to execute the demo end-to-end.

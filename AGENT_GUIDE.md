@@ -393,7 +393,10 @@ Pure-core wrapper (no opt-deps).  See
 [docs/extras/decoding_place_field.md](docs/extras/decoding_place_field.md)
 for the full API table and
 [examples/extras/decoding_place_field_demo.py](examples/extras/decoding_place_field_demo.py)
-for a runnable 3-cell synthetic demo.  The unwrapped reference
+for a runnable demo -- an ~80-unit, non-uniformly-tuned M1 population
+built on `fit_poisson_glm` that contrasts a population-vector decode
+against a maximum-likelihood decode of reach direction, reproducing
+Sanger (1996)'s population-vector-bias result.  The unwrapped reference
 workflow with held-out spatial GoF lives in
 [examples/paper/example08_real_place_cells.py](examples/paper/example08_real_place_cells.py).
 
@@ -842,9 +845,10 @@ Python projects" table in `README.md` for install commands.
   in `np.random.get_state()` / `set_state()` so it's reproducible AND
   the caller's RNG context is preserved on exit — the sole exception
   to the `default_rng`-only convention.
-- **Demo.**  `examples/extras/latents_gpfa_demo.py` runs a 4-trial
-  synthetic recovery with a 2-D sinusoidal ground-truth latent;
-  details and gotchas in
+- **Demo.**  `examples/extras/latents_gpfa_demo.py` runs a 12-trial
+  (6 reach conditions x 2 trials each) synthetic recovery of a
+  single-trial rotational M1/PMd manifold from a shared 2-D
+  skew-symmetric rotation generator; details and gotchas in
   [`docs/extras/latents_gpfa.md`](docs/extras/latents_gpfa.md).
 
 ---

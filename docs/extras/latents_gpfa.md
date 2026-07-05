@@ -24,7 +24,18 @@ Pulls Elephant (>=1.2) plus Neo and quantities (~50 MB combined).
 
 ## Worked example
 
-[see examples/extras/latents_gpfa_demo.py](../../examples/extras/latents_gpfa_demo.py)
+[`examples/extras/latents_gpfa_demo.py`](../../examples/extras/latents_gpfa_demo.py)
+recovers a single-trial **rotational** motor-cortical manifold (Yu et
+al. 2009; Churchland, Cunningham, Kaufman, Foster, Nuyujukian, Ryu &
+Shenoy 2012): a 2-D skew-symmetric generator drives a pure rotation at a
+fixed angular frequency shared by six simulated reach conditions
+(differing only in initial amplitude/phase), which is projected through
+a fixed random loading matrix into an ~80-unit Poisson population. GPFA
+is fit with `x_dim=2` across all trials/conditions pooled, without ever
+seeing the condition labels, and each recovered single-trial trajectory
+is realigned onto the true 2-D phase plane to confirm GPFA recovers the
+shared rotation from spiking alone — and that reconstruction fidelity
+improves with population size.
 
 ## Notes
 

@@ -80,8 +80,12 @@ assert np.allclose(D, D.T)
 ## End-to-end demo
 
 [`examples/extras/metrics_spike_distances_demo.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/metrics_spike_distances_demo.py)
-generates a 5-train population with shared sinusoidal rate modulation,
-then computes pairwise scalars and the full distance matrix.
+simulates an 8-unit STN population under a shared, time-varying 15-30 Hz
+beta-burst drive, contrasting a Parkinsonian-OFF regime (long,
+synchronized bursts) against an adaptive-DBS regime (truncated,
+desynchronized bursts), and tracks the transition with sliding-window
+ISI-distance / SPIKE-distance / SPIKE-synchronization plus the pairwise
+distance matrix.
 
 ## Upstream references
 

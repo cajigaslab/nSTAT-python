@@ -95,7 +95,11 @@ result = fit_place_field_decoder(trial, position, config=cfg)
 print(result.decoded_position.shape, result.mean_decoding_error)
 ```
 
-Live runnable demo (3-cell synthetic trial with the same pipeline):
+Live runnable demo (an ~80-unit, non-uniformly-tuned M1 population built
+on `fit_poisson_glm`, contrasting a population-vector decode against a
+maximum-likelihood decode of reach direction to reproduce Sanger
+(1996)'s population-vector-bias result -- a different reach-direction
+scenario than this page's 2-D place-field pipeline):
 [`examples/extras/decoding_place_field_demo.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_place_field_demo.py).
 
 ## Notes on the underlying pipeline

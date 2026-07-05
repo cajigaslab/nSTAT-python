@@ -2,267 +2,485 @@ version: 1
 extras:
 - demo_id: decoding_clusterless
   overview: |
-    End-to-end exercise of ``nstat.extras.decoding.clusterless_bridge``
-    on a synthetic 1-D back-and-forth trajectory with sparse Poisson
-    marks across multiple electrodes.  Runs both the single-state
-    continuous decoder (``fit_clusterless_decoder``) and the
-    discrete-state classifier (``fit_clusterless_classifier``) so the
-    hybrid continuous/discrete latent-state replay model from
-    Denovellis 2021 is exercised in one shot.
+    Four place-/kinematic-tuned units ride a synthetic 1-D back-and-forth
+    trajectory and emit **unsorted** multiunit events on a single tetrode:
+    which unit generated a given event is ambiguous, and its 4-channel
+    waveform mark is drawn from overlapping per-unit clusters (Kloosterman
+    2014; Deng 2015).  ``fit_clusterless_decoder`` decodes position
+    directly from the never-sorted marks (Denovellis 2021, eLife) exactly
+    once, since its accuracy cannot depend on spike-sorting quality.  A
+    comparator built from the same upstream library's
+    ``SortedSpikesDecoder`` then decodes from spike trains whose true
+    unit-identity labels are corrupted at a tunable sort-error rate — a
+    stand-in for cumulative merge/split spike-sorting mistakes — swept
+    from a perfect sort up to fully scrambled labels.  Also runs the
+    discrete-state classifier (``fit_clusterless_classifier``).
   goal: |
-    Fill the Tier 2.1 gap in ``parity/methods_roadmap.md`` — confirm
-    the JAX-backed clusterless replay decoder reproduces the spirit of
-    the classic PPAF / PPHF decode with marked observations.
-  figures: []
+    Answer the motor/hippocampal decoding question directly: does
+    clusterless decoding match or beat sorted decoding as sorting
+    degrades?  The clusterless decoder degrades gracefully (it never used
+    unit identity in the first place) while the sorted comparator holds
+    up at low sort-error rates and then collapses once corrupted labels
+    dominate — filling the Tier 2.1 gap in ``parity/methods_roadmap.md``
+    with a concrete clusterless-vs-sorted robustness story rather than a
+    bare bridge smoke test.
+  figures:
+  - filename: fig01_trajectory_posteriors.png
+    caption: |
+      True trajectory (white) overlaid on three decoded posteriors: the
+      clusterless decoder (left, unsorted marks), the sorted decoder at a
+      perfect sort (middle, sort-error rate 0), and the sorted decoder at
+      a fully scrambled sort (right, sort-error rate 1).
+    analysis: |
+      The clusterless and perfect-sort posteriors both track the true
+      sine trajectory tightly.  The scrambled-sort posterior visibly
+      drifts away from the true trajectory (e.g. near the trough around
+      t≈350-400), showing the sorted decoder's dependence on correct
+      unit labels that the clusterless decoder never needed.
+  - filename: fig02_decode_error_vs_sort_rate.png
+    caption: |
+      Mean absolute decode error vs. simulated sort-error rate: the
+      sorted decoder (red) rises gradually then collapses past
+      sort-error rate 0.9, while the clusterless decoder's error (blue
+      dashed) stays flat since it never depends on sorting quality.
+    analysis: |
+      The sorted decoder starts below the clusterless decoder at a
+      perfect sort (identity information is more direct than marks) but
+      crosses above it once sort-error exceeds roughly 0.8-0.9 and then
+      collapses — the clusterless-degrades-gracefully /
+      sorted-collapses recovery this demo sets out to show.
 
 - demo_id: decoding_place_field
   overview: |
-    Synthetic 3-cell place-cell trial: an OU random walk on the
-    unit interval drives three Gaussian-bump place fields, the
-    example08 pipeline (tensor-product B-spline encoder + quadratic
-    CIF refit + PPDecodeFilterLinear) is fit, and the decoded
-    trajectory plus the recovered place fields are plotted.
+    An 80-unit M1 population performs an 8-direction center-out task
+    (Georgopoulos et al. 1982). Preferred directions are deliberately
+    clustered rather than uniform (Sanger 1996's critique), each unit's
+    von-Mises-shaped tuning curve is fit from training trials with
+    ``nstat.fit_poisson_glm``, and held-out trials are decoded with (a)
+    the classic Georgopoulos population vector and (b) a
+    maximum-likelihood grid search over the fitted tuning curves.
   goal: |
-    Exercise the full example08 pipeline (``fit_place_field_decoder``)
-    on data that requires no figshare download — so anyone with a
-    fresh ``pip install nstat-toolbox`` can reproduce the place-field
-    encode-and-decode story.
+    Reproduce Sanger's (1996) central result directly: population-vector
+    decoding implicitly assumes preferred directions uniformly tile the
+    circle, so it is systematically biased toward the dense
+    preferred-direction region when they do not, while the
+    maximum-likelihood/probability-density decoder stays unbiased.
   figures:
-  - filename: fig01_decoded_trajectory.png
+  - filename: fig01_pv_vs_ml_decode.png
     caption: |
-      Decoded position (blue) overlaid on the true OU-walk position
-      (black) over the 60 s trial, with the per-time-step posterior
-      standard deviation as a shaded band.
+      True target direction (black triangles) vs. the mean
+      population-vector decode (red circles) and mean ML decode
+      (green squares) for each of the 8 center-out directions (left,
+      polar); true vs. decoded direction per held-out trial, PV vs.
+      ML, against the y=x perfect-decode line (right).
     analysis: |
-      The decoded trace should track the OU walk closely inside the
-      shaded band whenever any of the three cells is active; gaps
-      flag time steps where no cell fires and the prior dominates.
-  - filename: fig02_place_fields.png
+      The PV markers sit rotated toward the dense preferred-direction
+      cluster relative to the true targets, most visibly for targets on
+      the far side of the circle from the cluster; the ML markers sit
+      on the true targets throughout. Mean angular error is reported in
+      the right panel's title -- ML is lower than PV.
+  - filename: fig02_tuning_curves.png
     caption: |
-      Recovered tuning curves for the three synthetic cells (solid)
-      plotted against the Gaussian-bump ground truth (dashed), with
-      cell-centre markers from the B-spline GLM fit.
+      Polar histogram of the population's preferred directions (left,
+      showing the deliberate clustering) and six example neurons'
+      fitted (solid) vs. true (dashed) directional tuning curves with
+      training-trial mean firing rates overlaid (right).
     analysis: |
-      A close match of solid to dashed across the three centres
-      confirms the tensor-product B-spline basis is recovering the
-      true tuning; any mismatch at the edges is the usual basis
-      edge effect.
+      The polar histogram shows the non-uniform preferred-direction
+      distribution driving the population-vector bias in fig01; the
+      per-neuron panels confirm the GLM recovers each unit's baseline
+      rate, modulation depth, and preferred direction closely from
+      spiking data alone.
 
 - demo_id: em_dynamax
   overview: |
-    Walks through every routine in
-    ``nstat.extras.em.dynamax_bridge`` on synthetic fixtures with
-    known parameters: linear-Gaussian EM (KF_EM equivalent), CMGF
-    Poisson filter and smoother on a known Poisson-LGSSM, point-
-    process EM (PP_EM), hybrid Poisson+Gaussian EM (mPPCO_EM), and a
-    pure-NumPy held-out predictive log-likelihood.
+    A Wu (2006)-style linear-Gaussian arm state (position/velocity)
+    coupled to a 40-unit population with linear velocity encoding
+    drives an 8-target center-out reach+hold task. A naive-KF decoder
+    is calibrated from a constant-velocity, never-decelerating
+    training label with a directional drift that is never corrected
+    (a stand-in for open-loop/passive calibration blocks that never
+    captured the deceleration/stop epoch of a real reach); a
+    ReFIT-KF decoder (Gilja, Nuyujukian, Chestek, Cunningham, Yu,
+    Fan, Churchland, Kaufman, Kao, Ryu & Shenoy 2012) is recalibrated
+    by relabeling the *same* recorded neural data with the true
+    target-directed, decelerating kinematics. Both share one generic
+    Kalman motion model and are decoded with
+    ``nstat.decoding_algorithms.DecodingAlgorithms.kalman_filter`` on
+    held-out trials -- a pure NumPy/SciPy contrast that always runs,
+    with no optional dependency. An opt-in appendix (behind the
+    ``[dynamax]`` extra) then walks through every routine in
+    ``nstat.extras.em.dynamax_bridge``: linear-Gaussian EM (KF_EM
+    equivalent), CMGF Poisson filter/smoother on a known Poisson-LGSSM
+    (the point-process adaptive-filtering framework of Eden, Frank,
+    Barbieri, Solo & Brown 2004), point-process EM (PP_EM), hybrid
+    Poisson+Gaussian EM (mPPCO_EM), and a pure-NumPy held-out
+    predictive log-likelihood.
   goal: |
-    Close the AUDIT_REPORT.md §3.2 gap — provide an opt-in,
-    JAX-backed implementation of the 19 unported KF_EM / PP_EM /
-    mPPCO_EM MATLAB methods, plus the honest fit-quality metric
-    (predictive log-likelihood) on which all three EM workflows are
-    compared.
-  figures: []
+    Show that decoder *calibration*, not just decoder architecture,
+    determines closed-loop BCI performance: the naive decoder's
+    uncorrected directional bias makes it mis-aim on every reach, so
+    it curves away from every target and never acquires it, while
+    ReFIT recalibration -- relabeling the same neural data with the
+    intended, target-directed kinematics -- corrects the bias and
+    acquires all 8 targets, illustrating in miniature the
+    ReFIT-relabeling principle of Gilja et al. (2012) (this demo does
+    not measure target-acquisition time and does not reproduce their
+    specific acquisition-time speedup).  Also closes the
+    AUDIT_REPORT.md §3.2 gap -- an opt-in, JAX-backed implementation
+    of the 19 unported KF_EM / PP_EM / mPPCO_EM MATLAB methods, plus
+    the honest fit-quality metric (predictive log-likelihood) on
+    which all three EM workflows are compared.
+  figures:
+  - filename: fig01_bci_reach_trajectories.png
+    caption: |
+      True reach+hold trajectories (dotted) vs. decoded trajectories
+      (solid) to 8 center-out targets (blue dots): naive-KF (left,
+      red) vs. ReFIT-KF (right, green).
+    analysis: |
+      The naive decoder -- calibrated from a non-decelerating,
+      directionally drifting training label typical of open-loop
+      calibration blocks -- curves away from every target and never
+      settles near it. The ReFIT decoder, recalibrated by relabeling
+      the same recorded neural data with the true target-directed,
+      decelerating kinematics (Gilja et al. 2012), tracks every reach
+      closely and comes to rest at the target.
+  - filename: fig02_acquisition_metrics.png
+    caption: |
+      Left: mean hold-period distance from the decoded cursor to the
+      true target, per target (dashed line = acquisition radius).
+      Right: number of targets (of 8) at which the decoded cursor
+      acquired and held the target.
+    analysis: |
+      Naive-KF never brings the cursor within the acquisition radius
+      on any of the 8 targets (0/8 acquired); ReFIT-KF acquires and
+      holds all 8. This illustrates the ReFIT-relabeling principle of
+      Gilja et al. (2012) -- calibrating on the inferred intended
+      target-directed kinematics, not the raw open-loop label, fixes
+      a systematically mis-aiming decoder. (The two decoders' path
+      efficiencies are nearly identical, ~0.93-0.95; the naive
+      failure mode here is a directional bias, not overshoot or
+      oscillation, and this demo does not measure acquisition time.)
 
 - demo_id: interop_neo
   overview: |
-    Builds a small ``nstat.nspikeTrain`` (3 spikes over a 2 s window),
-    converts it to ``neo.core.SpikeTrain``, round-trips back, and
-    packages a ``SpikeTrainCollection`` as a ``neo.core.Segment``.
-    The Segment is then ready for downstream consumption by
-    Elephant, SpikeInterface, or Brian2.
+    A multi-site iBCI trial mixes recording hardware: one site's
+    Blackrock Utah array, another site's Plexon or TDT system. Builds
+    a small ``nstat.nspikeTrain`` (3 spikes over a 2 s window) standing
+    in for a unit from any one of those rigs, converts it to
+    ``neo.core.SpikeTrain``, round-trips back, and packages a
+    ``SpikeTrainCollection`` as a ``neo.core.Segment``. The Segment is
+    then ready for downstream consumption by Elephant, SpikeInterface,
+    or Brian2 — one pipeline, any vendor.
   goal: |
-    Demonstrate the Neo bridge as the canonical hand-off between
-    nstat and the broader Neo ecosystem — round-trip integrity is the
+    Demonstrate the Neo bridge (Garcia et al. 2014, Front Neuroinform
+    8:10) as the canonical, vendor-agnostic hand-off between nstat and
+    the broader Neo ecosystem, so a single ingestion path serves every
+    site of a multi-site trial — round-trip integrity is the
     regression-guard contract.
   figures: []
 
 - demo_id: interop_pynapple
   overview: |
-    Builds a 10 s nstat ``nspikeTrain`` (50 Poisson spikes),
-    converts it to ``pynapple.Ts`` with the recording-window
-    ``IntervalSet``, restricts to ``[2, 5] s`` using pynapple's
-    epoch-math operators, and converts back to ``nspikeTrain`` with
-    the sub-epoch as support.
+    Builds a 10 s nstat ``nspikeTrain`` (50 Poisson spikes), converts
+    it to ``pynapple.Ts`` with the recording-window ``IntervalSet``,
+    restricts to ``[2, 5] s`` -- standing in for a clinically
+    meaningful epoch such as an interictal-only iEEG window or a
+    single BCI-trial window -- using pynapple's ``IntervalSet.restrict``
+    epoch-math operators, and converts back to ``nspikeTrain`` with the
+    sub-epoch as support.
   goal: |
     Demonstrate that the pynapple bridge survives the most common
     pynapple workflow (IntervalSet restriction) without losing the
-    recording-window metadata.
+    recording-window metadata, so restricting to interictal-only or
+    BCI-trial epochs (Viejo et al. 2023, eLife 12:e85786) never
+    requires hand-rolled index arithmetic -- a common source of silent
+    alignment bugs when spikes, LFP, and behavior stream at different
+    rates.
   figures: []
 
 - demo_id: interop_nwb
   overview: |
-    Constructs a synthetic in-memory NWB file with 3 units (each
-    observed over ``[0, 10] s``), then converts its ``units`` table
-    to a ``SpikeTrainCollection`` two ways: (a) by resolving the
-    ``obs_intervals`` column, and (b) with an explicit
+    AJILE12 (Peterson et al. 2022, Sci Data 9:184; DANDI dandiset
+    000055) is a real human-iEEG dataset on the DANDI Archive:
+    naturalistic, days-long chronic ECoG paired with upper-body pose,
+    recorded from 12 subjects during clinical epilepsy monitoring, and
+    stored in NWB (Teeters et al. 2015; Rübel et al. 2022) — a concrete
+    example of why a robust, standardized NWB reader matters for
+    clinical/BCI neurophysiology data sharing. AJILE12 itself stores
+    continuous 500 Hz ECoG voltage as a
+    ``pynwb.ecephys.ElectricalSeries``, not a spike-sorted
+    ``units``/``obs_intervals`` table -- ECoG at that scale doesn't
+    yield sortable single units. This demo exercises the general
+    ``units``/``obs_intervals`` ingestion path used by spike-sorted
+    (single/multi-unit) NWB datasets on a synthetic in-memory NWB file
+    with 3 units (each observed over ``[0, 10] s``), converting the
+    ``units`` table to a ``SpikeTrainCollection`` two ways: (a) by
+    resolving the ``obs_intervals`` column, and (b) with an explicit
     ``time_window=(t0, t1)`` override that silences the fallback
-    warning.
+    warning. This demo does not download AJILE12 or any other DANDI
+    dataset.
   goal: |
-    Document the two supported NWB-window-resolution paths so
-    downstream pipelines (Allen, DANDI, OpenScope) know which path
-    applies to their file layout.
+    Document the two supported NWB-window-resolution paths for
+    spike-sorted ``units``/``obs_intervals`` tables, so downstream
+    pipelines reading Allen / DANDI / OpenScope NWB files know which
+    path applies to their file layout, and situate that ingestion path
+    against the kind of real clinical human-iEEG NWB/DANDI dataset
+    (AJILE12) that motivates a robust reader in the first place.
   figures: []
 
 - demo_id: latents_gpfa
   overview: |
-    Simulates 4 multi-trial Poisson-spike datasets driven by a
-    shared 2-D smooth latent (two sinusoids at different frequencies),
-    fits GPFA with ``x_dim=2`` via the Elephant bridge, then prints a
-    recovery summary (final log-likelihood, best |Pearson r| of any
-    recovered latent vs the ground-truth latents).
+    Simulates six reach conditions whose latent trajectories share one
+    2-D skew-symmetric rotation generator (same angular frequency,
+    distinct per-condition initial amplitude/phase -- the rotational
+    signature Churchland et al. 2012 found in M1/PMd population
+    recordings), projected through a fixed random loading matrix into
+    an 80-unit Poisson population with condition-locked baseline-rate
+    offsets. Fits GPFA with ``x_dim=2`` via the Elephant bridge across
+    all trials/conditions pooled, then realigns each recovered
+    single-trial trajectory onto the true phase plane (ordinary least
+    squares) and scores it with the multiple correlation coefficient.
+    A population-size sweep (8/20/40/80 neurons) re-runs the full
+    simulate-then-fit pipeline to show fidelity improving with more
+    neurons.
   goal: |
-    Confirm the GPFA bridge recovers a known shared smooth latent
-    across trials — the Yu et al. 2009 baseline result reproduced on
-    synthetic data.
+    Confirm GPFA recovers a shared rotational motor-cortical manifold
+    on single trials, without ever being given the condition label or
+    the generating equations -- and that reconstruction fidelity
+    improves with population size, echoing the manifold-stability
+    results of Gallego et al. 2018/2020.
   figures:
   - filename: fig01_latent_trajectories.png
     caption: |
-      One subplot per simulated trial, each showing the two
-      recovered latent dimensions (coloured lines) over the trial
-      window.
+      Left: ground-truth rotational phase portrait (one colour per
+      reach condition, solid) overlaid with GPFA-recovered single-trial
+      trajectories (same colour, dotted, realigned onto the true phase
+      plane). Right: mean reconstruction fidelity (multiple correlation
+      vs. true rotation) as a function of population size.
     analysis: |
-      Coherent shape across trials in each latent dimension
-      confirms GPFA is recovering the shared sinusoidal signal and
-      not over-fitting to per-trial noise.
+      Recovered single-trial trajectories closely track their
+      condition's true circular orbit despite never being told the
+      condition label, confirming GPFA recovers the shared rotational
+      structure from spiking alone; fidelity rises monotonically from
+      the smallest to the largest simulated population, reproducing
+      the population-size dependence Gallego et al. 2018/2020 report
+      for manifold recovery.
 
 - demo_id: metrics_spike_distances
   overview: |
-    Simulates 5 inhomogeneous-Poisson spike trains with shared 0.5 Hz
-    sinusoidal rate modulation (so they're partially synchronous),
-    then computes the pairwise SPIKE-distance matrix via PySpike.
-    Exercises every scalar metric (``isi_distance``,
-    ``spike_distance``, ``spike_synchronization``) plus the
-    population-level ``pairwise_spike_distance_matrix``.
+    Simulates an 8-unit STN population under a shared, time-varying
+    15-30 Hz beta-burst drive that toggles between a synchronized
+    "Parkinsonian OFF" regime (long bursts, tight coincident firing;
+    Tinkhauser et al. 2017) and a desynchronized "adaptive-DBS" regime
+    (truncated bursts, independent firing).  Sliding-window
+    ``isi_distance``, ``spike_distance``, and ``spike_synchronization``
+    (Kreuz et al. 2011/2012; Satuvuori et al. 2017) -- averaged over
+    every unit pair, plus the population-level
+    ``pairwise_spike_distance_matrix`` -- track the injected synchrony
+    envelope, and the two regimes' burst-duration distributions are
+    compared directly.
   goal: |
-    Document the Kreuz-family pairwise distance metrics on a population
-    where the answer is known by construction — partial synchrony
-    driven by a shared rate modulation should show a structured but
-    not block-diagonal distance matrix.
-  figures: []
+    Show that time-resolved, parameter-free spike-train synchrony
+    metrics recover a clinically meaningful signal by construction:
+    population synchrony tracks the injected beta-burst envelope,
+    running higher during the long-burst Parkinsonian-OFF regime than
+    during the truncated-burst adaptive-DBS regime (Kuhn et al. 2009) --
+    the same population-level beta-synchrony biomarker that motivates
+    closed-loop adaptive DBS.
+  figures:
+  - filename: fig01_beta_burst_synchrony.png
+    caption: |
+      Top: zoomed population raster around one representative burst per
+      regime (red shading = true beta-burst envelope; blue/green
+      background = Parkinsonian-OFF / adaptive-DBS epoch). Middle:
+      sliding-window SPIKE-synchronization, ISI-distance, and
+      SPIKE-distance (population pairwise means) overlaid on the true
+      burst-duty-fraction envelope across the full recording. Bottom:
+      synchrony-burst duration distributions per regime.
+    analysis: |
+      The time-resolved metric trace tracks the injected envelope --
+      SPIKE-synchronization runs higher, and ISI-/SPIKE-distance run
+      lower, during the long-burst Parkinsonian-OFF epoch than during
+      the truncated-burst adaptive-DBS epoch, and each metric's
+      window-by-window trace correlates strongly with the
+      ground-truth burst-duty fraction it was never given. The
+      burst-duration histograms confirm the injected regime contrast
+      by construction: long (~1-2.5s) bursts in the OFF regime vs.
+      truncated (~0.1-0.3s) bursts under adaptive DBS.
 
 - demo_id: modulated_renewal_microelectrode
   overview: |
-    Simulates a single stimulus-modulated, regular-spiking
-    microelectrode unit as a gamma modulated-renewal process
-    (Barbieri, Quirk, Frank, Wilson & Brown 2001; shape=9.0, CV~=0.33),
-    fits it with :func:`nstat.extras.spatial.fit_modulated_renewal`,
-    and checks the fitted operational-time ISIs against Uniform(0,1)
-    both continuously (:func:`nstat.extras.spatial.renewal_cdf`) and
-    with the discrete-time-rescaling correction
-    (:mod:`nstat.extras.spatial.marked_gof`), contrasting both against
-    a naive Poisson (CV=1) assumption on the same rescaled ISIs.
+    Simulates three synthetic single units along one DBS microelectrode
+    (MER) pass -- a tonic-regular unit (high-shape gamma renewal, CV well
+    below 1), a tremor-locked bursting unit (baseline rate modulated at
+    a 4-6 Hz tremor-band frequency, shape~=1 local renewal), and an
+    irregular/high-entropy unit (plain shape=1 Poisson, unmodulated) --
+    and fits each independently with
+    :func:`nstat.extras.spatial.fit_modulated_renewal`
+    (Barbieri, Quirk, Frank, Wilson & Brown 2001; Barbieri-Brown
+    renewal/time-rescaling lineage). Checks each fit's operational-time
+    ISIs against Uniform(0,1) both continuously
+    (:func:`nstat.extras.spatial.renewal_cdf`) and with the
+    discrete-time-rescaling correction
+    (:mod:`nstat.extras.spatial.marked_gof`), and recovers a raw-ISI
+    burst index by resimulating from each fit's own recovered rate and
+    renewal shape.
   goal: |
-    Confirm the modulated-renewal CIF recovers both the covariate-driven
-    rate and the sub-Poisson ISI regularity of a synthetic regular
-    -spiking unit, and that its rescaled-ISI KS tests pass where the
-    same data tested under a naive Poisson assumption fails.
+    Confirm the modulated-renewal CIF recovers, from spikes alone, the
+    three-way firing-phenotype separation neurosurgeons use to confirm
+    STN/GPi MER targeting (Bergman et al. 1994; Levy et al. 2000; Sterio
+    et al. 2002; Sedov et al. 2025): tonic-regular units show low
+    renewal CV, irregular units show a Poisson-like renewal CV, and
+    tremor-locked bursting units show a Poisson-like renewal CV *but* an
+    elevated, oscillation-driven burst index -- the statistic that
+    separates rate-modulation-driven bursting from plain irregularity.
   figures:
   - filename: fig01_raster_rate.png
     caption: |
-      Top: spike raster for the first 10s of the 30s trial. Bottom:
-      the true stimulus-driven baseline rate lambda_0(t) (dotted)
-      overlaid on the fitted rate (solid).
+      Per phenotype (rows): spike raster over a representative window
+      (left) and the true baseline rate lambda_0(t) (dotted) overlaid on
+      the fitted rate (solid, right).
     analysis: |
-      Close overlap of the fitted and true rate curves confirms the
-      beta-step of the alternating fit recovered the stimulus
-      -modulation coefficients; the raster shows the elevated firing
-      near the rate peaks.
+      The fitted rate curve tracks the true curve for all three
+      phenotypes, including the large-amplitude 4-6 Hz oscillation that
+      produces the tremor-locked unit's periodic bursts visible in its
+      raster -- confirming the beta-step of the alternating fit recovers
+      the covariate-driven rate regardless of phenotype.
   - filename: fig02_isi_vs_renewal.png
     caption: |
-      Histogram of the fitted model's operational-time (rescaled) inter-spike
-      intervals, overlaid with the ground-truth renewal density (dotted, the shape the
-      data were simulated with), the fitted renewal density (solid), and the Exp(1)
-      Poisson-null density (dashed).
+      Per phenotype: histogram of the fitted model's operational-time
+      (rescaled) inter-spike intervals, overlaid with the ground-truth
+      renewal density (dotted), the fitted renewal density (solid), and
+      the Exp(1) Poisson-null density (dashed).
     analysis: |
-      The fitted density recovering the true density -- and both tracking the histogram
-      far better than the flat Exp(1) curve -- is the direct visual signature of
-      sub-Poisson spike-timing regularity (CV < 1) that a Poisson model misses.
+      The fitted density recovers the true density in all three panels.
+      The tonic-regular panel's fitted/true densities visibly diverge
+      from the flat Exp(1) curve -- the signature of sub-Poisson
+      spike-timing regularity -- while the tremor-locked and irregular
+      panels both closely track Exp(1), confirming their renewal terms
+      really are close to Poisson even though one of them fires in
+      obvious periodic bursts.
   - filename: fig03_ks_rescaled.png
     caption: |
-      Left: continuous time-rescaling KS check — empirical CDF of
-      the rescaled ISIs under the fitted gamma model (red) and under
-      a naive Poisson assumption (gray dashed) against Uniform(0,1)
-      (dotted). Right: the discrete-time-rescaling correction
-      (Haslinger-Pipa-Brown 2010) applied to the fitted model's own
-      per-bin conditional intensity, uncorrected vs corrected.
+      Top row, per phenotype: KS diagnostic -- empirical CDF of the
+      rescaled ISIs under the fitted model (colored), a naive Poisson
+      assumption (gray dashed), and the discrete-time-rescaling
+      correction (Haslinger-Pipa-Brown 2010, green dash-dot) against
+      Uniform(0,1) (dotted). Bottom: recovered renewal CV and raw-ISI
+      burst index per phenotype (bars), with true values (black
+      diamonds) for comparison.
     analysis: |
-      The fitted-model curve hugging the Uniform(0,1) diagonal while
-      the naive-Poisson curve deviates confirms the renewal model —
-      not a Poisson CIF — is required to pass goodness-of-fit; the
-      right panel confirms the discrete-time correction does not
-      spuriously reject the correctly-specified fitted model.
+      All three fitted-model curves hug the Uniform(0,1) diagonal
+      (KS passes), while the naive-Poisson curve visibly deviates only
+      for the tonic-regular unit -- confirming a renewal model is
+      needed there but the tremor-locked and irregular units are both
+      well described by a Poisson renewal term. The bottom bar chart
+      shows why that alone does not identify the tremor-locked
+      phenotype: its renewal CV sits near 1, same as the irregular
+      unit's, but its burst index is markedly higher, recovering the
+      three-way phenotype separation from the fits alone.
 
 - demo_id: spatial_cluster_cox
   overview: |
-    Simulates a Thomas process (Gaussian offspring, Thomas 1949) and
-    a Matérn-cluster process (uniform-disc offspring, Matérn 1986) on
-    the unit square, then recovers ``(sigma, lambda_p)`` and
-    ``(R, lambda_p)`` from each pattern via Diggle's (2013 §6.2.1)
-    minimum-contrast estimator on the SOIRS pair correlation.
+    Simulates a Thomas process — ``kappa`` hidden epileptogenic hub
+    sites (never observed), each seeding several sub-mm-dispersed
+    Gaussian microdischarge offspring (Thomas 1949; Stead et al. 2010's
+    isolated-microelectrode microseizure geometry) — and a
+    Matérn-cluster process repeating the same hidden-hub question with
+    an alternative uniform-disc offspring geometry (Matérn 1986).
+    Recovers ``(sigma, lambda_p)`` and ``(R, lambda_p)`` — the
+    dispersion and hub intensity ``kappa`` — from each offspring
+    pattern alone via Diggle's (2013 §6.2.1) minimum-contrast
+    estimator on the SOIRS pair correlation.
   goal: |
-    Exercise the cluster-Cox catalogue and minimum-contrast inference
-    shipped in ``nstat.extras.spatial`` — confirm that the two cluster
-    kernels are distinguishable from realised patterns and that the
-    offspring scale recovers within sampling error.
+    Answer "are microdischarges organised around a few hidden
+    epileptogenic hubs, or randomly scattered?" without ever observing
+    the hub sites directly — confirm minimum-contrast estimation
+    recovers the hub intensity ``kappa`` and dispersion scale within
+    sampling error, and that the recovery holds regardless of whether
+    the offspring geometry is Gaussian (Thomas) or hard-edged uniform
+    (Matérn).
   figures:
   - filename: fig01_thomas_scatter.png
     caption: |
-      Realised Thomas-process pattern on the unit square — each
-      coloured cluster groups offspring around an unobserved
-      parent location with isotropic Gaussian displacement.
+      Realised Thomas-process pattern on the unit square — gold stars
+      mark the true (simulated, never observed by the estimator) hub
+      locations; blue dots are microdischarge offspring displaced by
+      an isotropic Gaussian around each hub. The inset box compares
+      the true in-window hub count against the recovered hub
+      intensity ``kappa_hat``.
     analysis: |
-      Tight, roughly circular clusters confirm the Gaussian
-      offspring kernel; cluster radius previews the recovered
-      ``sigma``.
+      Tight, roughly circular clusters, each anchored on a true-hub
+      star, confirm the Gaussian offspring kernel; cluster radius
+      previews the recovered ``sigma``, and ``kappa_hat`` tracking the
+      true hub count shows a naive "count active sites" heuristic is
+      unnecessary — minimum-contrast estimation recovers the hidden
+      hub structure directly from the offspring alone.
   - filename: fig02_thomas_pcf.png
     caption: |
       Empirical pair-correlation function (PCF) of the Thomas
       pattern (solid) overlaid on the Thomas-PCF model fit at the
       minimum-contrast estimate ``(sigma_hat, lambda_p_hat)``
-      (dashed) and the Poisson null ``g(r) = 1`` (thin grey).
+      (dashed), the closed-form truth (dotted), and the CSR
+      (complete-spatial-randomness, "no hidden hubs") null
+      ``g(r) = 1`` (grey line).
     analysis: |
       The model curve hugging the empirical PCF at short range and
-      relaxing to one at long range confirms the minimum-contrast
-      fit recovered the offspring scale.
+      relaxing onto the CSR null at long range confirms both that the
+      minimum-contrast fit recovered the offspring scale and that the
+      pattern is statistically distinguishable from a no-hub (CSR)
+      scatter at short lags.
   - filename: fig03_matern_scatter.png
     caption: |
-      Realised Matérn-cluster pattern on the unit square — uniform
-      offspring inside discs of radius ``R`` around unobserved
-      parent locations.
+      Realised Matérn-cluster pattern on the unit square — gold stars
+      mark the true hub locations; blue dots are offspring scattered
+      uniformly inside a disc of radius ``R`` around each hub. Same
+      true-vs-recovered inset as fig01.
     analysis: |
-      Sharper disc boundaries than fig01 reflect the uniform-disc
-      kernel; the disc radius previews the recovered ``R``.
+      Sharper, hard-edged disc boundaries than fig01's Gaussian
+      clusters reflect the uniform-disc kernel; the disc radius
+      previews the recovered ``R``, demonstrating hub recovery holds
+      under this alternative offspring geometry too.
   - filename: fig04_matern_pcf.png
     caption: |
       Empirical PCF of the Matérn-cluster pattern (solid) overlaid
       on the Matérn-cluster model fit at
-      ``(R_hat, lambda_p_hat)`` (dashed) and the Poisson null
-      (thin grey).
+      ``(R_hat, lambda_p_hat)`` (dashed), the closed-form truth
+      (dotted), and the CSR null (grey line).
     analysis: |
-      The PCF drop to one at ``r = 2 * R_hat`` is the signature of
-      the uniform-disc kernel — a useful eye-test for the
-      recovered radius.
+      The PCF drop to the CSR null at ``r = 2 * R_hat`` is the
+      signature of the uniform-disc kernel — a useful eye-test for
+      the recovered radius and a sharper cutoff than the Gaussian
+      Thomas PCF's smooth decay in fig02.
 
 - demo_id: spatial_gibbs
   overview: |
-    Simulates a Strauss process at ``gamma = 0.4`` (mild inhibition)
-    via birth-death, a hard-core process at ``beta = 60`` via dart-
-    throwing rejection (deliberately below the packing-fraction
-    failure mode and the Berman-Turner numerical envelope), and an
-    area-interaction process at ``eta = 4.0`` (clustering) via
-    birth-death.  Each pattern is then refit via
-    :func:`nstat.extras.spatial.pseudo_likelihood_fit`.
+    Simulates CSR (independent co-active/implanted-site placement) and
+    a hard-core process enforcing a minimum inter-site distance
+    ``R = 0.04`` (~4 mm on a 10 cm x 10 cm cortical/subdural patch, inside
+    the range of SEEG trajectory-planning safety margins and optimal
+    electrode-spacing analyses) at the same target intensity
+    ``beta = 60``.  The exclusion distance is recovered directly from
+    the hard-core pattern's minimum inter-point distance, and
+    :func:`nstat.extras.spatial.pseudo_likelihood_fit` confirms
+    ``gamma_hat ~= 1`` (no interaction) for CSR.  A Strauss process at
+    ``gamma = 0.4`` (mild inhibition) and an area-interaction process at
+    ``eta = 4.0`` (clustering) are kept as secondary, purely contrastive
+    panels of the same Gibbs catalogue.
   goal: |
-    Exercise the Gibbs interaction catalogue and the Berman-Turner
-    pseudo-likelihood fitter (Berman-Turner 1992; Baddeley-Turner
-    2000) end-to-end (simulate then recover), and surface the
-    documented upward bias on the hard-core intensity plus the weak
-    identification of the area-interaction ``eta``.
+    Answer "is co-active/implanted-site spacing governed by independent
+    placement or by a minimum-distance exclusion zone?" -- confirm the
+    Berman-Turner pseudo-likelihood (Berman-Turner 1992; Baddeley-Turner
+    2000) recovers ``gamma_hat ~= 1`` for CSR and that the observed
+    minimum inter-point distance recovers the true hard-core exclusion
+    radius, while surfacing the documented upward bias on the hard-core
+    *intensity* and the weak identification of the area-interaction
+    ``eta``.
   figures:
   - filename: fig01_strauss_scatter.png
     caption: |
-      Realised Strauss pattern on the unit square at
+      Secondary panel: realised Strauss pattern on the unit square at
       ``gamma = 0.4`` — points repel softly at distances under the
       interaction radius.
     analysis: |
@@ -271,18 +489,38 @@ extras:
       ``gamma``.
   - filename: fig02_hardcore_scatter.png
     caption: |
-      Realised hard-core pattern on the unit square at
-      ``beta = 60``, drawn by dart-throwing rejection sampling.
+      Primary ground-truth-vs-estimate figure: CSR (independent
+      placement) vs. hard-core (minimum-distance exclusion, ``R = 0.04``)
+      point patterns side by side, their empirical-vs-fitted pair
+      correlation ``g(r)``, and the recovered-vs-true exclusion distance
+      / CSR interaction strength.
     analysis: |
-      Hard nearest-neighbour exclusion produces a roughly regular
-      tiling; the intercept-only Berman-Turner GLM is known to
-      overshoot ``beta`` here — the ``hardcore-bias`` note in the
-      script's stdout reports the expected magnitude.
+      The hard-core pattern's ``g(r)`` dips to ~0 below ``R`` and rises
+      thereafter, while the CSR pattern's ``g(r)`` never dips toward
+      zero -- the repulsion signature the recovery table quantifies.
+      The CSR curve does sit visibly *elevated* above the theoretical
+      ``g(r) = 1`` null at short lags (annotated on the panel): at
+      n ~ 50-70 points, ``nstat.extras.spatial.pair_correlation`` has no
+      boundary/edge correction, so its kernel estimate is finite-sample
+      biased upward near ``r = 0`` (Baddeley-Rubak-Turner 2015 Sec. 13)
+      -- this is expected estimator bias, not clustering. The diagnostic
+      signal is the *contrast* with the hard-core curve, not the CSR
+      curve's absolute height: only the hard-core pattern shows a
+      genuine dip toward zero below its exclusion distance, and the CSR
+      curve never does, however elevated it runs elsewhere. The
+      recovered exclusion distance (read directly off the data as the
+      observed minimum inter-point distance) lands within a few percent
+      of the true ``R``; the fitted CSR ``gamma_hat`` lands at ~1,
+      confirming no interaction despite the visibly biased empirical
+      curve. The intercept-only Berman-Turner GLM is separately known to
+      overshoot the hard-core *intensity* ``beta`` — the
+      ``hardcore-bias`` note in the script's stdout reports the expected
+      magnitude.
   - filename: fig03_area_interaction_scatter.png
     caption: |
-      Realised area-interaction pattern at ``eta = 4.0`` — points
-      attract via overlap of the union-of-discs sufficient
-      statistic.
+      Secondary panel: realised area-interaction pattern at
+      ``eta = 4.0`` — points attract via overlap of the union-of-discs
+      sufficient statistic.
     analysis: |
       Visible clustering vs the Poisson null; the area-interaction
       ``eta`` is weakly identified from a single realisation, so
@@ -290,9 +528,10 @@ extras:
 
 - demo_id: spatial_gof_ecog
   overview: |
-    Simulates a baseline (inhomogeneous-Poisson) and a clustered
-    (spatial-Hawkes-cascade-on-the-same-background) epoch on a
-    synthetic 8x8 ECoG grid, fits a held-out
+    Simulates a static-hot-spot (inhomogeneous-Poisson, temporally
+    static rate bump) epoch and a traveling-wave (migrating Gaussian
+    intensity bump, drawn by thinning against its own exact peak) epoch
+    on a synthetic 8x8 ECoG grid, fits a held-out
     :func:`nstat.extras.spatial.intensity_st_kde` from a separate
     calibration epoch, and tests both epochs with
     :func:`nstat.extras.spatial.k_st_inhom`,
@@ -300,107 +539,138 @@ extras:
     :func:`nstat.extras.spatial.global_envelope_st` against the
     inhomogeneous space-time Poisson null.
   goal: |
-    Confirm the space-time global-rank envelope test correctly fails
-    to reject the baseline epoch (a true inhomogeneous space-time
-    Poisson process) while rejecting the clustered/traveling-wave
-    epoch, using a held-out intensity estimate to avoid plug-in bias.
+    Answer the clinical question "is ictal propagation a genuine
+    traveling wave, or a static hot-spot consistent with an
+    inhomogeneous-Poisson null?" Confirm the space-time global-rank
+    envelope test correctly fails to reject the static-hot-spot epoch
+    (a true inhomogeneous space-time Poisson process, however spatially
+    concentrated) while rejecting the traveling-wave epoch, using a
+    held-out intensity estimate to avoid plug-in bias -- exactly what a
+    naive per-electrode rate map cannot do, since both epochs produce a
+    similarly concentrated firing-rate footprint.
   figures:
   - filename: fig01_kst_envelope.png
     caption: |
       Top row: the ground-truth event patterns each epoch produced, overlaid on the
-      (known) inhomogeneous background rate field -- the baseline (left) is pure
-      inhomogeneous Poisson; the clustered epoch (right) adds a self-exciting cascade
-      with visible clumps. Bottom row: the space-time K-function K_st(r, t) the model
-      derives from each pattern (red) vs the Monte-Carlo global-rank envelope of the
-      fitted-background null (blue band).
+      true rate field -- the static hot-spot (left) is a fixed, temporally-static
+      bump; the traveling wave (right) shows the rate field at t=0 plus the
+      wavefront's straight-line path to t=T_TEST, with events coloured by time so
+      the temporal sweep is visible. Bottom row: the space-time K-function K_st(r, t)
+      the model derives from each pattern (red) vs the Monte-Carlo global-rank
+      envelope of the fitted-background null (blue band).
     analysis: |
-      Reading each column top-to-bottom shows why the test fires: the clustered
-      pattern's tight clumps push its K_st far outside the envelope (rejects the null),
-      while the pure-background pattern stays inside it (fails to reject). The
-      ground-truth data and the model's verdict are shown together.
+      Reading each column top-to-bottom shows why the test fires: the migrating
+      wavefront's space-time-correlated events push its K_st far outside the
+      envelope (rejects the null), while the static hot-spot -- however spatially
+      concentrated -- stays inside it (fails to reject). A naive per-electrode rate
+      map would look similar for both; only the second-order space-time structure
+      tells them apart.
   - filename: fig02_pcf_g.png
     caption: |
       Space-time pair correlation g(r, t) at the largest temporal
-      lag for the baseline (green) and clustered (red) epochs,
-      against the Poisson null g=1 (dotted gray).
+      lag for the static-hot-spot (green) and traveling-wave (red)
+      epochs, against the Poisson null g=1 (dotted gray).
     analysis: |
-      The clustered epoch's g(r, t) rising well above 1 at short
-      spatial lags is the second-order signature of the added
-      self-exciting cascade; the baseline epoch hugs the null line.
+      The traveling wave's g(r, t) sits persistently closer to the Poisson null
+      than the static hot-spot's, whose g(r, t) stays well below 1 at every lag --
+      its apparent spatial concentration is fully explained away by the fitted
+      background once reweighted. This single time-slice is suggestive but not
+      dispositive; it is the full r-by-t K_st surface (fig01, bottom row) that the
+      global-rank envelope test evaluates, rejecting the null only for the wave.
   - filename: fig03_verdict.png
     caption: |
       Text summary of the global-rank envelope verdict (inside/
       outside) and conservative/liberal p-value interval for each
       epoch.
     analysis: |
-      A compact pass/fail readout confirming numerically what the
-      two plots above show visually — baseline INSIDE, clustered
-      OUTSIDE (rejects).
+      A compact pass/fail readout confirming numerically what the two plots above
+      show visually — static hot-spot INSIDE (consistent with the Poisson null),
+      traveling wave OUTSIDE (rejects the null, i.e. genuine propagation).
 
 - demo_id: spatial_hawkes_ecog
   overview: |
-    Simulates a homogeneous-background propagating catalogue with
-    :func:`nstat.extras.spatial.simulate_spatial_hawkes` and recovers
-    ``(mu, K_branch, c, sigma_space)`` with
+    Reframes the space-time Hawkes / Cox-Hawkes background-excitation
+    decomposition as the clinical seizure "core" (self-exciting
+    recruitment cascade) vs. "penumbra" (tonic background) split
+    described by Schevon et al. (2012); both catalogues below recover
+    that same within-recording core/penumbra split and differ only in
+    the background model. Simulates a homogeneous-background catalogue
+    with :func:`nstat.extras.spatial.simulate_spatial_hawkes` and
+    recovers ``(mu, K_branch, c, sigma_space)`` -- the core-cascade
+    kernel plus a per-event core/penumbra declustering -- with
     :func:`nstat.extras.spatial.em_spatial_hawkes`, then simulates a
-    second catalogue with an inhomogeneous LGCP background via
+    second catalogue with an inhomogeneous LGCP background anchored at a
+    fixed hyperexcitable seizure-onset zone via
     :func:`nstat.extras.spatial.simulate_cox_hawkes` and recovers the
-    background/excitation decomposition with
+    core/penumbra decomposition with
     :func:`nstat.extras.spatial.fit_cox_hawkes`, both on a synthetic
-    8x8 ECoG grid over multi-minute continuous epochs.
+    8x8 ECoG grid over multi-minute continuous epochs. Presents
+    Cox-Hawkes applied to the epilepsy core/penumbra decomposition as a
+    methodological opportunity -- not a result from any published
+    epilepsy study.
   goal: |
     Confirm branching EM and the Cox-Hawkes alternating estimator both
     recover the true spatial (sigma_space) and temporal (1/c)
-    triggering scales, and that Cox-Hawkes correctly separates a
-    spatially-varying background from self-excitation.
+    core-recruitment scales, and that Cox-Hawkes correctly separates
+    the spatially-varying penumbra (hyperexcitable seizure-onset-zone
+    background) from the core self-excitation riding on top of it.
   figures:
   - filename: fig01_propagation_scatter.png
     caption: |
-      First 30s excerpt of catalogue A's events over the 8x8 ECoG
-      grid, coloured by event time, overlaid on the electrode
-      positions.
+      First 30s excerpt of catalogue A's (homogeneous-background
+      variant) events over the 8x8 ECoG grid, coloured by event time,
+      overlaid on the electrode positions.
     analysis: |
-      Tight, colour-graded clusters of events are individual
-      propagation cascades — nearby-and-soon-after triggered
-      offspring visually distinguishable from the sparser background.
+      Tight, colour-graded clusters of events are suggestive of
+      individual core recruitment cascades — nearby-and-soon-after
+      recruited offspring visually distinguishable from the sparser
+      penumbra background. Colour encodes elapsed time only, not
+      P(background), so a tight cluster is suggestive rather than
+      diagnostic of a cascade.
   - filename: fig02_recovered_kernels.png
     caption: |
-      True (dotted) vs recovered (solid) temporal triggering kernel
-      g(t) = c*exp(-c*t) (left) and spatial triggering kernel h(r),
-      an isotropic Gaussian (right), from catalogue A.
+      True (dotted) vs recovered (solid) temporal core-recruitment
+      kernel g(t) = c*exp(-c*t) (left) and spatial core-recruitment
+      kernel h(r), an isotropic Gaussian (right), from catalogue A.
     analysis: |
       Close overlap of the recovered and true kernel curves confirms
       branching EM identified both the temporal decay and the
-      spatial spread of triggering from the single-realisation
+      spatial spread of core recruitment from the single-realisation
       catalogue.
   - filename: fig03_background_excitation_decomposition.png
     caption: |
-      Left: catalogue A events coloured by P(background) from the
-      branching-EM declustering. Middle: the true background rate
-      field for catalogue B. Right: the fitted LGCP background rate
-      field for catalogue B.
+      Left: catalogue A events coloured by P(background) = P(penumbra)
+      from the branching-EM declustering. Middle: the true
+      seizure-onset-zone (penumbra source) rate field for catalogue B.
+      Right: the fitted LGCP seizure-onset-zone rate field for
+      catalogue B.
     analysis: |
-      The declustering panel separates background (warm colour) from
-      triggered (cool colour) events; the fitted LGCP background
-      (right) reproducing the true field's hot spot (middle)
-      confirms the alternating estimator recovered the inhomogeneous
-      background despite the overlaid self-excitation.
+      The declustering panel separates penumbra (warm colour) from
+      core (cool colour) events; the fitted seizure-onset-zone field
+      (right) reproducing the true field's hot spot (middle) confirms
+      the alternating estimator recovered the hyperexcitable penumbra
+      source despite the overlaid core self-excitation.
 
 - demo_id: spatial_stlgcp_microelectrode
   overview: |
-    Simulates a Gaussian population-rate bump translating across a
-    10x10 Utah-style microelectrode array over a ~1.5s trial, then
-    fits :func:`nstat.extras.spatial.intensity_st_kde` and
+    Simulates a Gaussian population-rate wavefront -- a synthetic
+    spreading-depolarisation / seizure wavefront -- translating across
+    a 10x10 Utah-style microelectrode array at a realistic ictal-front
+    speed (~1.9 mm/s) over a short recording epoch, then fits
+    :func:`nstat.extras.spatial.intensity_st_kde` and
     :func:`nstat.extras.spatial.lgcp_st_fit` and compares the true,
-    KDE-estimated, and LGCP-estimated bump centroid (with credible
+    KDE-estimated, and LGCP-estimated wavefront centroid (with credible
     bands from :meth:`nstat.extras.spatial.LGCPSTResult.rate_map`) at
-    several time slices.
+    several time slices, plus a recovered-vs-true propagation-speed
+    readout from a line fit through the recovered peak trajectory.
   goal: |
     Confirm both the space-time kernel intensity estimate and the
     Kronecker-Laplace spatiotemporal LGCP posterior mean track a
-    moving population-activity locus across a realistic electrode
-    -array footprint, and that the LGCP credible band widens away from
-    the well-sampled bump.
+    propagating spreading-depolarisation / seizure wavefront across a
+    realistic electrode-array footprint, that the LGCP credible band
+    widens away from the well-sampled wavefront, and that a line fit
+    through the recovered peak trajectory recovers the true
+    propagation speed to within tolerance.
   figures:
   - filename: fig01_array_scatter.png
     caption: |
@@ -409,71 +679,131 @@ extras:
       footprint.
     analysis: |
       The event colour gradient sweeping across the array from one
-      corner to the other is the raw visual signature of the moving
-      rate bump the two rate estimators below are asked to recover.
+      corner to the other is the raw visual signature of the
+      propagating wavefront the two rate estimators below are asked
+      to recover.
   - filename: fig02_kde_snapshots.png
     caption: |
-      Top row: the ground-truth moving-bump intensity field lambda(x, t) at three time
+      Top row: the ground-truth wavefront intensity field lambda(x, t) at three time
       slices (20%, 50%, 80% of the trial). Bottom row: the space-time KDE estimate
       lambda_hat(x, t) the model derives from the observed events alone. A white star
-      marks the true bump centre in both rows.
+      marks the true wavefront centre in both rows.
     analysis: |
-      The KDE hot spot (bottom) tracking the true bump (top, white star) across the
-      three slices confirms the kernel intensity estimator recovers the bump's
-      location and translation from spikes alone, despite the coarse electrode
-      footprint and Monte-Carlo noise.
+      The KDE hot spot (bottom) tracking the true wavefront (top, white star) across
+      the three slices confirms the kernel intensity estimator recovers the
+      wavefront's location and translation from spikes alone, despite the coarse
+      electrode footprint and Monte-Carlo noise.
   - filename: fig03_lgcp_snapshots.png
     caption: |
-      Top row: LGCP posterior mean rate at the same three time
-      slices (white star = true centre, red x = recovered
-      centroid). Bottom row: the corresponding 90% credible band
-      width.
+      Top two rows: LGCP posterior mean rate at the same three time
+      slices (white star = true centre, red x = recovered centroid)
+      and the corresponding 90% credible band width. Bottom row: the
+      true-vs-recovered wavefront trajectory in the (x, y) plane, with
+      the true and each estimator's recovered propagation speed
+      annotated.
     analysis: |
       The red recovered-centroid markers tracking the white true
       -centre markers confirms the LGCP posterior mean also resolves
-      the moving bump; the credible-band-width panels being smallest
-      near the bump and larger elsewhere is the expected
-      data-sparse-cells-widen-the-band behaviour.
+      the propagating wavefront; the credible-band-width panels being
+      smallest near the wavefront and larger elsewhere is the expected
+      data-sparse-cells-widen-the-band behaviour. The bottom-row
+      trajectory panel shows both estimators' recovered peak locations
+      tracking the true diagonal path, and the annotated propagation
+      speeds (KDE and LGCP, each compared against the true
+      by-construction speed) confirm the line-fit recovery works from
+      sparse events alone, without fitting a parametric wave model.
 
 - demo_id: validation_nemos
   overview: |
-    Generates a synthetic Poisson GLM fixture (n=1000, p=3) with
-    known intercept and coefficients, fits the same model with
-    ``nstat.fit_poisson_glm`` and ``nemos.glm.GLM``, and reports the
-    coefficient agreement via the
+    Generates a synthetic Poisson GLM fixture (n=1000, p=3) standing
+    in for a reach-tuned motor-cortex unit -- a single-unit firing
+    rate driven by reach-kinematic covariates through a log-linear
+    Poisson GLM, an instance of the point-process Poisson-GLM
+    encoding family (Weber & Pillow 2017 show GLMs of this form
+    reproduce diverse single-neuron response dynamics) -- with known
+    intercept and coefficients, fits the same model with
+    ``nstat.fit_poisson_glm`` and
+    ``nemos.glm.GLM``, and reports the coefficient agreement via the
     :meth:`GLMComparison.assert_agree` regression-guard hook.
   goal: |
-    Tier 1 cross-validation of nstat's Poisson GLM against an
-    independent JAX-backed implementation (NeMoS uses optax first-
-    order optimisation, unlike nstat's IRLS), confirming the two
-    converge on the same optimum within ``atol``.
+    The reviewer-grade numerical cross-check a clinical encoding-model
+    paper's tuning-coefficient claims would need: refitting the
+    identical design matrix in a second, independently-maintained
+    implementation (NeMoS -- a JAX-backed GLM toolbox from the
+    Flatiron Institute Center for Computational Neuroscience, using
+    optax first-order optimisation, unlike nstat's IRLS) and
+    confirming the two converge on the same optimum within ``atol``.
   figures: []
 
 - demo_id: validation_pykalman
   overview: |
-    Simulates a 2-state linear-Gaussian process over 100 time steps,
-    fits the Kalman filter (and lag-``(T-1)`` augmented-state
-    smoother) in both nstat and pykalman, then surfaces the
-    documented disagreement budget (~2.6e-3 on filtered means from
-    the ``t=0`` initialisation convention; ~0.4 on smoothed means
-    from AUDIT D3, augmented-state finite lag vs full-window RTS).
+    Part 1 (requires the optional ``pykalman`` dependency): a synthetic
+    14-unit M1 velocity-encoding population (Wu, Gao, Bienenstock,
+    Donoghue & Black 2006) drives a 2-state ``(v_x, v_y)``
+    linear-Gaussian fixture over 100 time bins -- the same clinical
+    workhorse decoder whose steady-state form Malik, Truccolo, Brown &
+    Hochberg (2011) deploy in a human neural interface system. nstat's
+    ``DecodingAlgorithms.kalman_filter``/``kalman_smoother`` and
+    ``pykalman.KalmanFilter`` filter/smooth the same simulated activity,
+    surfacing the documented ~3.7e-3 filtered-mean disagreement (``t=0``
+    initialisation convention) via
+    :meth:`KalmanComparison.assert_filtered_agree`. Gracefully skipped
+    (not a failure) when ``pykalman`` is absent. Part 2 (pure
+    NumPy/SciPy, always runs, no optional dependency): a 24-unit M1
+    population is calibrated once on Day 0, then decoded with nstat's
+    own Kalman filter across 15 simulated recording days under two
+    documented chronic-recording nonstationarities -- per-unit
+    gain/baseline random-walk drift (Perge, Homer, Malik, Cash,
+    Eskandar, Friehs, Donoghue & Hochberg 2013) and unit turnover
+    (Downey, Schwed, Chase, Schwartz & Collinger 2018) -- with and
+    without recalibrating every 5 days from a short same-day
+    calibration block.
   goal: |
-    Document the empirical baselines under which
-    :meth:`KalmanComparison.assert_filtered_agree` and
-    :meth:`assert_smoothed_agree` can be used as parity hooks
-    without becoming flaky regression guards.
-  figures: []
+    Show that the clinical velocity Kalman decoder's numerics replicate
+    across independent implementations (the ``assert_filtered_agree``
+    regression guard), and that its real vulnerability in a chronic
+    intracortical BCI is not the algorithm but the nonstationary
+    population underneath it: a decoder frozen at Day-0 calibration
+    decodes a steadily worsening velocity correlation coefficient as
+    per-unit drift and unit turnover accumulate, while a decoder
+    periodically recalibrated from a brief same-day calibration block
+    holds its accuracy close to Day-0 levels throughout -- illustrating
+    why periodic recalibration, not decoder architecture alone, is what
+    keeps a chronic BCI clinically usable session after session.
+  figures:
+  - filename: fig01_chronic_drift.png
+    caption: |
+      Left/middle: decoded velocity (``v_x``, ``v_y``) over time --
+      true (dotted black), nstat (solid blue), pykalman (dashed
+      orange, when installed). Right: decode accuracy (velocity
+      correlation coefficient) vs. simulated day, without
+      recalibration (red) vs. with recalibration every 5 days (green,
+      dotted verticals mark recalibration days).
+    analysis: |
+      The nstat and pykalman filtered velocity traces overlap almost
+      exactly, confirming the two independent Kalman implementations
+      agree numerically. Across simulated days, per-unit gain/baseline
+      drift (Perge et al. 2013) and unit turnover (Downey et al. 2018)
+      steadily erode the Day-0-calibrated decoder's accuracy, while
+      periodic recalibration from a short same-day calibration block
+      holds accuracy close to Day-0 levels throughout.
 
 - demo_id: validation_statsmodels
   overview: |
-    Generates the same synthetic Poisson GLM fixture as the NeMoS
-    demo, fits with both ``nstat.fit_poisson_glm`` and
-    ``statsmodels.api.GLM`` (Poisson family), and reports the
-    coefficient agreement.  Because both fitters use IRLS, the
+    Generates the same synthetic spike-encoding Poisson-GLM fixture as
+    the NeMoS demo -- a synthetic unit's known encoding coefficients
+    driving spike counts through a log-linear Poisson GLM -- fits with
+    both ``nstat.fit_poisson_glm`` and ``statsmodels.api.GLM`` (Poisson
+    family, Seabold & Perktold 2010), and reports the coefficient
+    agreement. Because both fitters solve the Poisson GLM by IRLS, the
     synthetic-fixture agreement is ~1e-9 — the tightest
     cross-validation oracle in :mod:`nstat.extras.validation`.
   goal: |
-    Pin the IRLS-vs-IRLS Poisson-GLM agreement at near machine
-    precision so any regression in nstat's IRLS path is caught
-    immediately.
+    The regression guard for a clinical encoding model: pin the
+    IRLS-vs-IRLS Poisson-GLM agreement between nstat and statsmodels
+    (Seabold & Perktold 2010, Proc. 9th Python in Science Conf., pp.
+    92-96 — the statsmodels software paper, cited here for statsmodels
+    as an independent, general-purpose reference GLM implementation,
+    not as a neuroscience source) at near machine precision, so any
+    silent regression in nstat's own IRLS path is caught immediately.
   figures: []
