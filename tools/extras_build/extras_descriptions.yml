@@ -195,16 +195,32 @@ extras:
 
 - demo_id: interop_nwb
   overview: |
-    Constructs a synthetic in-memory NWB file with 3 units (each
-    observed over ``[0, 10] s``), then converts its ``units`` table
-    to a ``SpikeTrainCollection`` two ways: (a) by resolving the
-    ``obs_intervals`` column, and (b) with an explicit
+    AJILE12 (Peterson et al. 2022, Sci Data 9:184; DANDI dandiset
+    000055) is a real human-iEEG dataset on the DANDI Archive:
+    naturalistic, days-long chronic ECoG paired with upper-body pose,
+    recorded from 12 subjects during clinical epilepsy monitoring, and
+    stored in NWB (Teeters et al. 2015; Rübel et al. 2022) — a concrete
+    example of why a robust, standardized NWB reader matters for
+    clinical/BCI neurophysiology data sharing. AJILE12 itself stores
+    continuous 500 Hz ECoG voltage as a
+    ``pynwb.ecephys.ElectricalSeries``, not a spike-sorted
+    ``units``/``obs_intervals`` table -- ECoG at that scale doesn't
+    yield sortable single units. This demo exercises the general
+    ``units``/``obs_intervals`` ingestion path used by spike-sorted
+    (single/multi-unit) NWB datasets on a synthetic in-memory NWB file
+    with 3 units (each observed over ``[0, 10] s``), converting the
+    ``units`` table to a ``SpikeTrainCollection`` two ways: (a) by
+    resolving the ``obs_intervals`` column, and (b) with an explicit
     ``time_window=(t0, t1)`` override that silences the fallback
-    warning.
+    warning. This demo does not download AJILE12 or any other DANDI
+    dataset.
   goal: |
-    Document the two supported NWB-window-resolution paths so
-    downstream pipelines (Allen, DANDI, OpenScope) know which path
-    applies to their file layout.
+    Document the two supported NWB-window-resolution paths for
+    spike-sorted ``units``/``obs_intervals`` tables, so downstream
+    pipelines reading Allen / DANDI / OpenScope NWB files know which
+    path applies to their file layout, and situate that ingestion path
+    against the kind of real clinical human-iEEG NWB/DANDI dataset
+    (AJILE12) that motivates a robust reader in the first place.
   figures: []
 
 - demo_id: latents_gpfa

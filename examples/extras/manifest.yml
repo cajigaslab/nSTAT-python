@@ -94,14 +94,23 @@ extras:
   - demo_id: interop_nwb
     name: interop_nwb_demo
     script: examples/extras/interop_nwb_demo.py
-    title: Read an NWB file into a ``SpikeTrainCollection``
-    question: Does the NWB bridge resolve per-unit observation windows from ``obs_intervals`` and honour an explicit ``time_window=`` override?
+    title: Read an NWB file into a ``SpikeTrainCollection`` -- the units/obs_intervals path, motivated by AJILE12's DANDI clinical iEEG data
+    question: Does the NWB bridge resolve per-unit observation windows from ``obs_intervals`` -- the ``units`` table shape used by spike-sorted (single/multi-unit) NWB datasets -- and honour an explicit ``time_window=`` override, the general ingestion pattern that also matters for clinical human-iEEG NWB/DANDI datasets such as AJILE12 (Peterson et al. 2022)?
     description: |
       Builds a synthetic in-memory NWB file (so the demo runs without any
-      on-disk data) and converts its ``units`` table to nstat primitives
-      using both the ``obs_intervals`` resolution path and the explicit
+      download or new dependency) with a ``units``/``obs_intervals``
+      table -- the shape used by spike-sorted (single/multi-unit) NWB
+      datasets -- and converts it to nstat primitives using both the
+      ``obs_intervals`` resolution path and the explicit
       ``time_window=(t0, t1)`` override that silences the fallback
-      warning.
+      warning. AJILE12 (Peterson et al. 2022, Sci Data 9:184; DANDI
+      dandiset 000055) -- a real chronic-ECoG-plus-pose human-iEEG
+      dataset on DANDI, stored in NWB -- motivates why a robust NWB
+      reader matters for clinical/BCI data, though AJILE12 itself stores
+      continuous ECoG voltage as an ``ElectricalSeries``, not a units
+      table. References: Teeters et al. (2015), Neuron 88:629; Rübel
+      et al. (2022), eLife 11:e78362; Peterson et al. (2022), Sci Data
+      9:184 (DANDI dandiset 000055).
     figures: []
 
   - demo_id: latents_gpfa

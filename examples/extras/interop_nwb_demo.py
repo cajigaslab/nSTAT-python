@@ -1,9 +1,26 @@
 """Demo: read an NWB file into an nstat :class:`SpikeTrainCollection`.
 
-Builds a synthetic in-memory NWB file (so the demo runs without any
-on-disk data), then converts its ``units`` table to nstat primitives
+NWB (Neurodata Without Borders; Teeters et al. 2015, Rübel et al. 2022) is
+the standard container behind the DANDI Archive's human intracranial
+datasets. One such dataset is **AJILE12** (Peterson et al. 2022, Sci Data
+9:184; DANDI dandiset 000055): naturalistic, days-long chronic ECoG paired
+with upper-body pose tracking, recorded from 12 human subjects during
+clinical epilepsy monitoring, stored in NWB on DANDI. AJILE12 itself
+stores continuous 500 Hz ECoG voltage as a ``pynwb.ecephys.ElectricalSeries``
+(macro-electrode LFP-band data), not spike-sorted units in an NWB
+``Units`` table -- ECoG at that scale doesn't yield sortable single
+units -- but it is a concrete example of why a robust, standardized NWB
+reader matters for clinical/BCI neurophysiology data sharing.
+
+This demo does **not** download AJILE12 or any other DANDI dataset. It
+exercises the general NWB ``units``/``obs_intervals`` ingestion path --
+the pattern used by spike-sorted (single/multi-unit) NWB datasets, not
+AJILE12's continuous ECoG data -- on a small synthetic in-memory NWB
+file with per-unit spike times plus ``obs_intervals`` recording windows
+that vary in duration across units, then converts it to nstat primitives
 using both the ``obs_intervals`` resolution path and the explicit
-``time_window=`` override.
+``time_window=`` override. The file itself stays fully synthetic so the
+demo runs with no download and no new dependency.
 
 Demonstrates :mod:`nstat.extras.interop.nwb`:
 
@@ -11,6 +28,13 @@ Demonstrates :mod:`nstat.extras.interop.nwb`:
   windows derived from ``obs_intervals``.
 - The same call with an explicit ``time_window=(t0, t1)`` that
   overrides obs_intervals and silences the fallback warning.
+
+References: Teeters JL et al. (2015). Neurodata Without Borders: Creating
+a Common Data Format for Neurophysiology. Neuron 88:629. Rübel O et al.
+(2022). The Neurodata Without Borders ecosystem for neurophysiological
+data science. eLife 11:e78362. Peterson SM et al. (2022). AJILE12: Long-
+term naturalistic human intracranial neural recordings and pose. Scientific
+Data 9:184 (DANDI dandiset 000055).
 
 Run::
 
