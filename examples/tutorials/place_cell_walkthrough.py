@@ -60,6 +60,7 @@ if str(ROOT) not in sys.path:
 from nstat import (  # noqa: E402
     get_dataset_path, fit_poisson_glm, population_time_rescale,
 )
+from nstat.data_manager import ensure_example_data  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +72,8 @@ def load_place_cells():
     `spike_counts` is a (T, C) matrix: spikes of each of C cells in each of the
     T position frames (the camera sampled position at ~30 Hz).
     """
-    path = get_dataset_path("place_cell_animal1")   # downloads on first call
+    ensure_example_data(download=True)              # fetch the recording if absent
+    path = get_dataset_path("place_cell_animal1")
     d = loadmat(str(path), squeeze_me=True)
     x = np.asarray(d["x"], dtype=float).ravel()
     y = np.asarray(d["y"], dtype=float).ravel()
