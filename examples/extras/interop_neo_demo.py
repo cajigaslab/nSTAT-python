@@ -1,7 +1,7 @@
 """Demo: vendor-agnostic ingestion for a multi-site intracortical-BCI (iBCI) trial.
 
 A multi-site iBCI trial rarely runs on one recording stack: one site records
-on a Blackrock Utah array (``.ns5``/``.nev``), another on Ripple, another on
+on a Blackrock Utah array (``.ns5``/``.nev``), another on Plexon, another on
 TDT — each with its own vendor SDK and file format. `Neo
 <https://neuralensemble.org/neo/>`_ (Garcia et al. 2014) is the common object
 model that absorbs that heterogeneity, so a single ``nstat`` analysis

@@ -354,14 +354,14 @@ fig2.suptitle(&quot;Naive-KF vs. ReFIT-KF acquisition performance&quot;)</code><
 </section>
 <section class="example" id="interop_neo">
 <h2>Vendor-agnostic ingestion for a multi-site iBCI trial via Neo</h2>
-<p><strong>Question:</strong> Can a ``nspikeTrain`` from any recording vendor (Blackrock, Ripple, TDT) round-trip through ``neo.core.SpikeTrain`` — the common object model Garcia et al. (2014) designed for exactly this heterogeneity — preserving spike times, recording window, and name, and be packaged as a ``neo.core.Segment`` for Elephant / SpikeInterface?</p>
+<p><strong>Question:</strong> Can a ``nspikeTrain`` from any recording vendor (Blackrock, Plexon, TDT) round-trip through ``neo.core.SpikeTrain`` — the common object model Garcia et al. (2014) designed for exactly this heterogeneity — preserving spike times, recording window, and name, and be packaged as a ``neo.core.Segment`` for Elephant / SpikeInterface?</p>
 <p><strong>Goal:</strong> Demonstrate the Neo bridge (Garcia et al. 2014, Front Neuroinform
 8:10) as the canonical, vendor-agnostic hand-off between nstat and
 the broader Neo ecosystem, so a single ingestion path serves every
 site of a multi-site trial — round-trip integrity is the
 regression-guard contract.</p>
 <p class="muted">A multi-site iBCI trial mixes recording hardware: one site's
-Blackrock Utah array, another site's Ripple or TDT system. Builds
+Blackrock Utah array, another site's Plexon or TDT system. Builds
 a small ``nstat.nspikeTrain`` (3 spikes over a 2 s window) standing
 in for a unit from any one of those rigs, converts it to
 ``neo.core.SpikeTrain``, round-trips back, and packages a

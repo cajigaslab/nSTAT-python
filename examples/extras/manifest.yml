@@ -67,7 +67,7 @@ extras:
     name: interop_neo_demo
     script: examples/extras/interop_neo_demo.py
     title: Vendor-agnostic ingestion for a multi-site iBCI trial via Neo
-    question: Can a ``nspikeTrain`` from any recording vendor (Blackrock, Ripple, TDT) round-trip through ``neo.core.SpikeTrain`` — the common object model Garcia et al. (2014) designed for exactly this heterogeneity — preserving spike times, recording window, and name, and be packaged as a ``neo.core.Segment`` for Elephant / SpikeInterface?
+    question: Can a ``nspikeTrain`` from any recording vendor (Blackrock, Plexon, TDT) round-trip through ``neo.core.SpikeTrain`` — the common object model Garcia et al. (2014) designed for exactly this heterogeneity — preserving spike times, recording window, and name, and be packaged as a ``neo.core.Segment`` for Elephant / SpikeInterface?
     description: |
       Demonstrates :mod:`nstat.extras.interop.neo` as one ingestion path
       that serves every site of a multi-site iBCI trial regardless of

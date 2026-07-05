@@ -393,7 +393,10 @@ Pure-core wrapper (no opt-deps).  See
 [docs/extras/decoding_place_field.md](docs/extras/decoding_place_field.md)
 for the full API table and
 [examples/extras/decoding_place_field_demo.py](examples/extras/decoding_place_field_demo.py)
-for a runnable 3-cell synthetic demo.  The unwrapped reference
+for a runnable demo -- an ~80-unit, non-uniformly-tuned M1 population
+built on `fit_poisson_glm` that contrasts a population-vector decode
+against a maximum-likelihood decode of reach direction, reproducing
+Sanger (1996)'s population-vector-bias result.  The unwrapped reference
 workflow with held-out spatial GoF lives in
 [examples/paper/example08_real_place_cells.py](examples/paper/example08_real_place_cells.py).
 

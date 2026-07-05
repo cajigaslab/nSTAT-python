@@ -32,8 +32,9 @@ Gaussian wavefront of elevated activity that **translates across the
 array at a constant ~1.9 mm/s (~113 mm/min)** -- a speed at the fast,
 ictal end of the SD-to-seizure continuum, chosen so the wavefront is
 trackable within a short recording window on a 4mm array.  True cortical
-spreading depression proper is 10-50x slower (2-5 mm/min, per Lauritzen
-et al. 2011) and would take tens of minutes to cross the same array. All
+spreading depression proper is roughly 20-60x slower (2-5 mm/min, per
+Lauritzen et al. 2011) and would take tens of minutes to cross the same
+array. All
 spikes are drawn from a known, fully synthetic space-time Poisson
 intensity (Lewis-Shedler thinning) -- **no real recording or dataset is
 used or claimed**.

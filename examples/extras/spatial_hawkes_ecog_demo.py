@@ -15,9 +15,15 @@ large-amplitude field potentials mask only sparse, unstructured firing,
 held back by a fast feedforward inhibitory restraint (Schevon et al.
 2012).  That same recruited-core / restrained-penumbra split organizes
 seizure activity across spatial scales as a self-propagating wave
-(Martinet et al. 2017), and shows up as tight, millisecond-precision
-neuronal-ensemble synchrony specifically within the recruited core
-(Truccolo et al. 2014).  This demo asks: **given only observed event
+(Martinet et al. 2017).  Separately, point-process/GLM analysis of
+human single-unit **ensemble** spiking during focal seizures -- the
+kind of single-unit ensemble data a spatiotemporal Hawkes model targets
+-- found spiking largely irregular and asynchronous during gamma-band
+seizures, versus coarse (50-100 ms) phase-locked synchrony -- with only
+transient fine (<10 ms) synchrony in the initial ~20 ms of the
+spike-wave-complex phase -- during spike-wave-complex seizures
+(Truccolo et al. 2014).
+This demo asks: **given only observed event
 times and positions, can a background/triggering decomposition recover
 which events were pulled into the self-exciting recruitment cascade (the
 core) vs. which were unrecruited background activity (the penumbra), and

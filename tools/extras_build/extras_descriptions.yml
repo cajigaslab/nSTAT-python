@@ -165,7 +165,7 @@ extras:
 - demo_id: interop_neo
   overview: |
     A multi-site iBCI trial mixes recording hardware: one site's
-    Blackrock Utah array, another site's Ripple or TDT system. Builds
+    Blackrock Utah array, another site's Plexon or TDT system. Builds
     a small ``nstat.nspikeTrain`` (3 spikes over a 2 s window) standing
     in for a unit from any one of those rigs, converts it to
     ``neo.core.SpikeTrain``, round-trips back, and packages a
