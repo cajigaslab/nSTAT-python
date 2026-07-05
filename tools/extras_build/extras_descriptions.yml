@@ -242,18 +242,45 @@ extras:
 
 - demo_id: metrics_spike_distances
   overview: |
-    Simulates 5 inhomogeneous-Poisson spike trains with shared 0.5 Hz
-    sinusoidal rate modulation (so they're partially synchronous),
-    then computes the pairwise SPIKE-distance matrix via PySpike.
-    Exercises every scalar metric (``isi_distance``,
-    ``spike_distance``, ``spike_synchronization``) plus the
-    population-level ``pairwise_spike_distance_matrix``.
+    Simulates an 8-unit STN population under a shared, time-varying
+    15-30 Hz beta-burst drive that toggles between a synchronized
+    "Parkinsonian OFF" regime (long bursts, tight coincident firing;
+    Tinkhauser et al. 2017) and a desynchronized "adaptive-DBS" regime
+    (truncated bursts, independent firing).  Sliding-window
+    ``isi_distance``, ``spike_distance``, and ``spike_synchronization``
+    (Kreuz et al. 2011/2012; Satuvuori et al. 2017) -- averaged over
+    every unit pair, plus the population-level
+    ``pairwise_spike_distance_matrix`` -- track the injected synchrony
+    envelope, and the two regimes' burst-duration distributions are
+    compared directly.
   goal: |
-    Document the Kreuz-family pairwise distance metrics on a population
-    where the answer is known by construction — partial synchrony
-    driven by a shared rate modulation should show a structured but
-    not block-diagonal distance matrix.
-  figures: []
+    Show that time-resolved, parameter-free spike-train synchrony
+    metrics recover a clinically meaningful signal by construction:
+    population synchrony tracks the injected beta-burst envelope,
+    running higher during the long-burst Parkinsonian-OFF regime than
+    during the truncated-burst adaptive-DBS regime (Kuhn et al. 2009) --
+    the same population-level beta-synchrony biomarker that motivates
+    closed-loop adaptive DBS.
+  figures:
+  - filename: fig01_beta_burst_synchrony.png
+    caption: |
+      Top: zoomed population raster around one representative burst per
+      regime (red shading = true beta-burst envelope; blue/green
+      background = Parkinsonian-OFF / adaptive-DBS epoch). Middle:
+      sliding-window SPIKE-synchronization, ISI-distance, and
+      SPIKE-distance (population pairwise means) overlaid on the true
+      burst-duty-fraction envelope across the full recording. Bottom:
+      synchrony-burst duration distributions per regime.
+    analysis: |
+      The time-resolved metric trace tracks the injected envelope --
+      SPIKE-synchronization runs higher, and ISI-/SPIKE-distance run
+      lower, during the long-burst Parkinsonian-OFF epoch than during
+      the truncated-burst adaptive-DBS epoch, and each metric's
+      window-by-window trace correlates strongly with the
+      ground-truth burst-duty fraction it was never given. The
+      burst-duration histograms confirm the injected regime contrast
+      by construction: long (~1-2.5s) bursts in the OFF regime vs.
+      truncated (~0.1-0.3s) bursts under adaptive DBS.
 
 - demo_id: modulated_renewal_microelectrode
   overview: |

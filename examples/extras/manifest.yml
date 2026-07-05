@@ -125,16 +125,22 @@ extras:
   - demo_id: metrics_spike_distances
     name: metrics_spike_distances_demo
     script: examples/extras/metrics_spike_distances_demo.py
-    title: ISI / SPIKE / SPIKE-synchronization metrics on a 5-train population
-    question: Do the PySpike-backed pairwise spike-distance metrics agree on a 5-train inhomogeneous-Poisson population with shared rate modulation?
+    title: Pathological beta-burst synchrony in Parkinson's disease -- OFF vs. adaptive DBS
+    question: Can time-resolved SPIKE-distance / SPIKE-synchronization / ISI-distance metrics track the emergence and collapse of pathological beta-burst synchrony across an STN population as it toggles between a Parkinsonian-OFF regime (long beta bursts, tight coincident firing) and an adaptive-DBS regime (truncated bursts, units returning toward independent firing)?
     description: |
-      Generates 5 inhomogeneous-Poisson spike trains with shared rate
-      modulation (so they're partially synchronous), then computes the
-      pairwise SPIKE-distance matrix via PySpike.  Exercises
-      :func:`isi_distance`, :func:`spike_distance`,
-      :func:`spike_synchronization`, and
-      :func:`pairwise_spike_distance_matrix`.
-    figures: []
+      Simulates an 8-unit STN population driven by a shared, time-varying
+      15-30 Hz beta-burst envelope that alternates between a synchronized
+      "Parkinsonian OFF" regime (long bursts pulling units into tight
+      coincident firing; Tinkhauser et al. 2017) and a desynchronized
+      "adaptive-DBS" regime (truncated bursts, units returning toward
+      independent firing).  Sliding-window ISI-distance / SPIKE-distance /
+      SPIKE-synchronization (Kreuz et al. 2011/2012; Satuvuori et al. 2017)
+      track the injected ground-truth synchrony envelope, and a summary
+      compares synchrony-burst-duration distributions between the two
+      regimes -- the same population-level beta-synchrony biomarker
+      (Kuhn et al. 2009) that motivates closed-loop adaptive DBS.
+    figures:
+      - filename: fig01_beta_burst_synchrony.png
 
   - demo_id: modulated_renewal_microelectrode
     name: modulated_renewal_microelectrode_demo

@@ -40,7 +40,13 @@ EXAMPLE_BACKING_PACKAGE: dict[str, str] = {
     # run-as-main test to execute the demo end-to-end regardless.
     "validation_pykalman_demo": "numpy",
     "validation_statsmodels_demo": "statsmodels",
-    "metrics_spike_distances_demo": "pyspike",
+    # metrics_spike_distances_demo's beta-burst simulation + ground-truth
+    # figure are pure NumPy and always run; only the PySpike-backed
+    # sliding-window ISI-/SPIKE-distance/-synchronization comparison is an
+    # opt-in appendix that gracefully skips (not a failure) when pyspike
+    # is absent.  "numpy" forces the run-as-main test to execute the demo
+    # end-to-end regardless.
+    "metrics_spike_distances_demo": "numpy",
     # em_dynamax_demo's naive-KF vs. ReFIT-KF contrast is pure NumPy/SciPy
     # and always runs; the dynamax-backed EM appendix is an opt-in extra
     # that gracefully skips (not a failure) when dynamax is absent.
