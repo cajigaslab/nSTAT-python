@@ -55,7 +55,7 @@ assert len(segment.spiketrains) == 3
 
 - **Units.** Neo requires `quantities.Quantity` units. The bridge
   assumes seconds throughout (matching nstat's `spikeTimes` convention
-  — see [CLAUDE.md "Time and units"](https://github.com/cajigaslab/nSTAT-python/blob/main/CLAUDE.md)).
+  — see [AGENT_GUIDE.md "Conventions and gotchas"](https://github.com/cajigaslab/nSTAT-python/blob/main/AGENT_GUIDE.md#7-conventions-and-gotchas)).
   If you pass a Neo `SpikeTrain` whose times are in `ms`, the
   `rescale(pq.s)` conversion is automatic.
 - **Window.** `t_start` / `t_stop` map to `minTime` / `maxTime`.  If
