@@ -845,9 +845,10 @@ Python projects" table in `README.md` for install commands.
   in `np.random.get_state()` / `set_state()` so it's reproducible AND
   the caller's RNG context is preserved on exit — the sole exception
   to the `default_rng`-only convention.
-- **Demo.**  `examples/extras/latents_gpfa_demo.py` runs a 4-trial
-  synthetic recovery with a 2-D sinusoidal ground-truth latent;
-  details and gotchas in
+- **Demo.**  `examples/extras/latents_gpfa_demo.py` runs a 12-trial
+  (6 reach conditions x 2 trials each) synthetic recovery of a
+  single-trial rotational M1/PMd manifold from a shared 2-D
+  skew-symmetric rotation generator; details and gotchas in
   [`docs/extras/latents_gpfa.md`](docs/extras/latents_gpfa.md).
 
 ---

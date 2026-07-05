@@ -109,7 +109,7 @@ the classic Georgopoulos population vector and (b) a
 maximum-likelihood grid search over the fitted tuning curves.</p>
 <p><strong>Run:</strong> <code>python examples/extras/decoding_place_field_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_place_field_demo.py">Script</a></p>
 <div class="gallery">
-<figure><img src="figures/extras/decoding_place_field/fig01_decoded_trajectory.png" alt="fig01_decoded_trajectory.png" loading="lazy"><figcaption><strong>fig01_decoded_trajectory.png</strong><br>True target direction (black triangles) vs. the mean
+<figure><img src="figures/extras/decoding_place_field/fig01_pv_vs_ml_decode.png" alt="fig01_pv_vs_ml_decode.png" loading="lazy"><figcaption><strong>fig01_pv_vs_ml_decode.png</strong><br>True target direction (black triangles) vs. the mean
 population-vector decode (red circles) and mean ML decode
 (green squares) for each of the 8 center-out directions (left,
 polar); true vs. decoded direction per held-out trial, PV vs.
@@ -176,7 +176,7 @@ fig.suptitle(
     &quot;non-uniform preferred directions&quot;
 )
 fig.tight_layout()</code></pre></details></figure>
-<figure><img src="figures/extras/decoding_place_field/fig02_place_fields.png" alt="fig02_place_fields.png" loading="lazy"><figcaption><strong>fig02_place_fields.png</strong><br>Polar histogram of the population's preferred directions (left,
+<figure><img src="figures/extras/decoding_place_field/fig02_tuning_curves.png" alt="fig02_tuning_curves.png" loading="lazy"><figcaption><strong>fig02_tuning_curves.png</strong><br>Polar histogram of the population's preferred directions (left,
 showing the deliberate clustering) and six example neurons'
 fitted (solid) vs. true (dashed) directional tuning curves with
 training-trial mean firing rates overlaid (right).</figcaption><div class="analysis">The polar histogram shows the non-uniform preferred-direction

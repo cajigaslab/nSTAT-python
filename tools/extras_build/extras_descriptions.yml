@@ -66,7 +66,7 @@ extras:
     preferred-direction region when they do not, while the
     maximum-likelihood/probability-density decoder stays unbiased.
   figures:
-  - filename: fig01_decoded_trajectory.png
+  - filename: fig01_pv_vs_ml_decode.png
     caption: |
       True target direction (black triangles) vs. the mean
       population-vector decode (red circles) and mean ML decode
@@ -79,7 +79,7 @@ extras:
       the far side of the circle from the cluster; the ML markers sit
       on the true targets throughout. Mean angular error is reported in
       the right panel's title -- ML is lower than PV.
-  - filename: fig02_place_fields.png
+  - filename: fig02_tuning_curves.png
     caption: |
       Polar histogram of the population's preferred directions (left,
       showing the deliberate clustering) and six example neurons'

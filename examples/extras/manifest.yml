@@ -34,8 +34,8 @@ extras:
       toward the dense preferred-direction region; the ML decoder is
       not.
     figures:
-      - filename: fig01_decoded_trajectory.png
-      - filename: fig02_place_fields.png
+      - filename: fig01_pv_vs_ml_decode.png
+      - filename: fig02_tuning_curves.png
 
   - demo_id: em_dynamax
     name: em_dynamax_demo

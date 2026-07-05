@@ -343,17 +343,13 @@ def _run_experiment(seed: int) -> dict:
 def _plot_tuning_curves(result: dict):
     """Per-neuron tuning-curve panel: PD-clustering polar histogram plus a
     handful of example neurons' fitted-vs-true tuning curves.
-
-    Retains the pre-existing ``fig02_place_fields.png`` filename (this
-    demo's M1 directional-tuning curves are the motor-cortex analogue of
-    the hippocampal place field the original demo plotted).
     """
     import matplotlib.pyplot as plt
 
     pd_true = result["pd_true"]
     n_neurons = pd_true.shape[0]
 
-    # === FIGURE: fig02_place_fields.png ===
+    # === FIGURE: fig02_tuning_curves.png ===
     fig = plt.figure(figsize=(14.0, 7.0))
     gs = fig.add_gridspec(2, 4, width_ratios=[1.3, 1.0, 1.0, 1.0])
 
@@ -422,10 +418,6 @@ def _plot_tuning_curves(result: dict):
 def _plot_decode_comparison(result: dict):
     """Polar plot of true vs. population-vector vs. ML decoded direction,
     plus a Cartesian true-vs-decoded view with the unity reference line.
-
-    Retains the pre-existing ``fig01_decoded_trajectory.png`` filename
-    (each of the 8 center-out reach directions is a "trajectory" whose
-    decoded heading is compared here across the two decoders).
     """
     import matplotlib.pyplot as plt
 
@@ -433,7 +425,7 @@ def _plot_decode_comparison(result: dict):
     pv_decode = result["pv_decode"]
     ml_decode = result["ml_decode"]
 
-    # === FIGURE: fig01_decoded_trajectory.png ===
+    # === FIGURE: fig01_pv_vs_ml_decode.png ===
     fig = plt.figure(figsize=(13.0, 6.0))
     ax_polar = fig.add_subplot(1, 2, 1, projection="polar")
     ax_cart = fig.add_subplot(1, 2, 2)
@@ -561,10 +553,10 @@ def main() -> int:
         if args.export_figures:
             args.export_dir.mkdir(parents=True, exist_ok=True)
             fig_decode.savefig(
-                args.export_dir / "fig01_decoded_trajectory.png", dpi=160
+                args.export_dir / "fig01_pv_vs_ml_decode.png", dpi=160
             )
             fig_tuning.savefig(
-                args.export_dir / "fig02_place_fields.png", dpi=160
+                args.export_dir / "fig02_tuning_curves.png", dpi=160
             )
             print(f"  saved figures under {args.export_dir}")
         if args.show:

@@ -82,8 +82,20 @@ disagreements), not as claims of correctness.
 ## End-to-end demo
 
 [`examples/extras/validation_pykalman_demo.py`](https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/validation_pykalman_demo.py)
-runs the full filter + smoother comparison and prints the empirical
-baselines.
+has two parts. Part 1 is the cross-implementation check above: nstat's
+own **clinical velocity Kalman decoder** (Wu, Gao, Bienenstock, Donoghue
+& Black 2006; the same recursion underlying the steady-state clinical
+implementation of Malik, Truccolo, Brown & Hochberg 2011) filters/smooths
+a synthetic M1 velocity-encoding population alongside `pykalman`, and the
+script prints the empirical filter/smoother disagreement baselines.
+Part 2 is a pure NumPy/SciPy **chronic-drift** panel (no `pykalman`
+required) that calibrates the same decoder once on a Day-0 recording,
+then lets per-unit gain/baseline drift (Perge, Homer, Malik, Cash,
+Eskandar, Friehs, Donoghue & Hochberg 2013) and unit turnover (Downey,
+Schwed, Chase, Schwartz & Collinger 2018) accumulate over simulated
+recording days; a frozen decoder's accuracy steadily degrades while
+periodic recalibration holds it near Day-0 levels, producing
+`fig01_chronic_drift.png`.
 
 ## Upstream references
 
