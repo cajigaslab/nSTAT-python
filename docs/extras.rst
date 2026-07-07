@@ -35,6 +35,7 @@ gotchas, and links to the runnable demos under ``examples/extras/``.
    extras/spatial_point_processes
    extras/latents_gpfa
    extras/matlab_rng
+   extras/continuous_cif
 
 
 .. currentmodule:: nstat.extras

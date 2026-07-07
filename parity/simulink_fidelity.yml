@@ -49,24 +49,40 @@ items:
   required_remediation: none
 - model_name: PointProcessSimulationCont
   model_path: PointProcessSimulationCont.slx
-  purpose: Continuous-time companion model kept with the MATLAB toolbox for simulation/reference
-    work.
+  purpose: Continuous-time companion model to PointProcessSimulation.slx; ported
+    natively to Python as an nstat.extras enhancement (it has zero MATLAB-side
+    callers — no MATLAB helpfile or paper workflow invokes it — so this is not a
+    core-parity obligation).
   matlab_usage: used_for_reference
-  python_strategy: reference_only
-  current_python_status: reference_only
-  chosen_interoperability_strategy: Keep as reference while the Python port uses the
-    native discrete simulation path.
+  python_strategy: native_python
+  current_python_status: high_fidelity_native_python
+  chosen_interoperability_strategy: |
+    Native Python port via `nstat.extras.continuous_cif.simulate_cif_continuous`:
+    the stimulus/ensemble filters (S, E) are realised as genuinely continuous LTI
+    systems integrated with `scipy.signal.lsim` across the full input grid, while
+    the self-history feedback filter (H) is discretized to the spike-generation
+    sample time via `scipy.signal.cont2discrete` (zero-order hold) and stepped
+    once per bin. No matlab.engine bridge is offered (or needed) — this is a
+    Python-only extras feature, not a dual-backend model like
+    PointProcessSimulation/SimulatedNetwork2.
   fidelity_risks:
-  - No Python-executable equivalent currently mirrors the continuous Simulink model
-    directly.
+  - With H = 0, eta/lambda_delta are bit-close deterministic and validated
+    directly against the MATLAB gold fixture; with H != 0, the realised spike
+    sequence is stochastic and MATLAB's DSP Random Source RNG is not reproducible
+    in NumPy, so that path is validated Python-side via injected uniforms rather
+    than a bit-exact MATLAB comparison (same category of risk documented for
+    PointProcessSimulation/SimulatedNetwork2's Python fallback).
   validation_plan:
-  - Audit whether any MATLAB helpfile or paper workflow depends on the continuous
-    model before promoting it beyond reference-only.
-  status: reference_only
-  python_equivalent: None
-  validation_strategy: inventory-only reference classification
-  required_remediation: Keep reference_only unless a published workflow is shown to
-    depend on the continuous model.
+  - Deterministic (H = 0) eta and lambda_delta traces validated bit-close against
+    the MATLAB gold fixture tests/parity/fixtures/matlab_gold/cif_cont_lambda.mat.
+  - History-feedback (H != 0) recursion validated Python-side via injected
+    uniform_values for exact reproducibility.
+  status: high_fidelity_native_python
+  python_equivalent: nstat.extras.continuous_cif.simulate_cif_continuous
+  validation_strategy: native Python continuous-LTI realization; deterministic lambda
+    trace validated bit-close vs the cif_cont_lambda.mat gold fixture (H=0); history
+    feedback validated via injected uniforms.
+  required_remediation: none
 - model_name: PointProcessSimulationLegacy2010b
   model_path: PointProcessSimulation.mdl.r2010b
   purpose: Legacy pre-SLX discrete point-process model retained for MATLAB compatibility

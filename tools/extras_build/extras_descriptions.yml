@@ -1,5 +1,49 @@
 version: 1
 extras:
+- demo_id: continuous_cif
+  overview: |
+    Native-Python port of the MATLAB Simulink model
+    ``PointProcessSimulationCont.slx``
+    (:func:`nstat.extras.continuous_cif.simulate_cif_continuous`). A
+    single simulated cortical unit's firing probability is driven by a
+    slow 1 Hz oscillatory "LFP" stimulus, filtered through a continuous
+    first-order lowpass synaptic filter ``S(s) = K/(tau*s + 1))``
+    integrated with ``scipy.signal.lsim`` -- continuous-time filtering,
+    not a discrete pre-sampled sequence. Independently, the unit carries
+    an inhibitory continuous self-history filter
+    ``H(s) = -G/(tau_h*s + 1)`` modeling post-spike refractoriness as a
+    continuous decay rather than a fixed-bin dead time. Two runs share
+    the exact same injected ``U(0,1)`` variates -- one with ``H = 0``,
+    one with the nonzero inhibitory ``H`` -- so any difference in the
+    realised spike train is attributable to ``H`` alone.
+  goal: |
+    Confirm the continuous LTI realization matches known filter theory
+    (the numerically realised ``scipy.signal.lsim`` drive agrees with
+    the closed-form steady-state sinusoidal response once the initial
+    transient dies out), and confirm the nonzero continuous
+    self-history filter produces the expected qualitative refractory
+    signature: a lower interspike-interval coefficient of variation
+    relative to the same drive with no self-history feedback.
+  figures:
+  - filename: fig01_continuous_stim_filter_and_history.png
+    caption: |
+      Top: the continuous lowpass stimulus filter's analytic
+      steady-state response (dotted) overlaid on the numerically
+      realised ``scipy.signal.lsim`` drive (solid), with the initial
+      transient shaded. Middle: the resulting instantaneous rate
+      lambda(t)/Ts with (red) and without (gray) continuous
+      self-history feedback. Bottom: spike rasters for both conditions
+      over the first 2 seconds, annotated with each condition's ISI
+      coefficient of variation.
+    analysis: |
+      The analytic and numerically realised filtered-stimulus traces
+      overlap almost exactly outside the shaded transient window,
+      confirming the continuous LTI realization matches linear-systems
+      theory. The inhibitory continuous self-history run shows a lower
+      ISI coefficient of variation than the ``H = 0`` run at a
+      comparable mean firing rate -- the expected refractory signature
+      of continuous post-spike self-inhibition.
+
 - demo_id: decoding_clusterless
   overview: |
     Four place-/kinematic-tuned units ride a synthetic 1-D back-and-forth

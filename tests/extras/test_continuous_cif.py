@@ -148,6 +148,41 @@ def test_history_feedback_changes_eta_versus_zero_history():
     assert np.abs(nonzero_hist.history_effect).max() > 0.0
 
 
+def test_bare_scalar_history_is_treated_as_static_gain_feedthrough():
+    """A bare nonzero scalar ``hist`` exercises the ``_discretize_history``
+    / ``cont2discrete`` zero-order-hold path with a static-gain (no
+    filter dynamics) system: ``tf2ss([gain], [1.0])`` yields A=B=C=0,
+    D=gain, so the discretized history feedback collapses to a pure
+    ``gain * pp_delayed`` feedthrough with no internal state evolution.
+    This complements the existing bare-array *stimulus* static-gain
+    test, which does not exercise ``_discretize_history`` at all.
+    """
+    t, u, e = _stim_grid()
+    rng = np.random.default_rng(3)
+    draws = rng.random(t.shape[0])
+    stim = (np.array([1.0]), np.array([1.0]))
+    gain = 5.0
+
+    zero_hist = simulate_cif_continuous(
+        -2.0, stim, 0.0, 0.0, (t, u), (t, e),
+        Ts=0.001, simType="binomial", uniform_values=draws, return_details=True,
+    )
+    static_gain_hist = simulate_cif_continuous(
+        -2.0, stim, 0.0, np.array([gain]), (t, u), (t, e),
+        Ts=0.001, simType="binomial", uniform_values=draws, return_details=True,
+    )
+
+    # Runs without error and the static-gain history feedthrough changes
+    # eta relative to H = 0.
+    assert not np.allclose(zero_hist.eta, static_gain_hist.eta)
+    # The feedback is an exact pure-gain feedthrough of the *previous*
+    # bin's own realised spike indicator (no filter dynamics/state decay).
+    expected_history_effect = gain * np.concatenate(
+        ([0.0], static_gain_hist.spike_indicator[:-1])
+    )
+    np.testing.assert_allclose(static_gain_hist.history_effect, expected_history_effect)
+
+
 def test_injected_uniform_values_reproduce_exact_spike_sequence():
     t, u, e = _stim_grid()
     draws = np.random.default_rng(7).random(t.shape[0])

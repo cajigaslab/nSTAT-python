@@ -9,7 +9,88 @@
 <p class="muted">Every <code>examples/extras/*_demo.py</code> script registered in <code>examples/extras/manifest.yml</code>, with the figure outputs each demo produces (when applicable) and a short description of what every figure shows.  Auto-generated from <code>tools/extras_build/extras_descriptions.yml</code> — re-render with <code>python tools/extras_build/build_extras_gallery.py</code> after editing the descriptions.</p>
 </header>
 <nav class="toc"><strong>Demos:</strong> 
-<a href="#decoding_clusterless">decoding_clusterless</a> · <a href="#decoding_place_field">decoding_place_field</a> · <a href="#em_dynamax">em_dynamax</a> · <a href="#interop_neo">interop_neo</a> · <a href="#interop_pynapple">interop_pynapple</a> · <a href="#interop_nwb">interop_nwb</a> · <a href="#latents_gpfa">latents_gpfa</a> · <a href="#metrics_spike_distances">metrics_spike_distances</a> · <a href="#modulated_renewal_microelectrode">modulated_renewal_microelectrode</a> · <a href="#spatial_cluster_cox">spatial_cluster_cox</a> · <a href="#spatial_gibbs">spatial_gibbs</a> · <a href="#spatial_gof_ecog">spatial_gof_ecog</a> · <a href="#spatial_hawkes_ecog">spatial_hawkes_ecog</a> · <a href="#spatial_stlgcp_microelectrode">spatial_stlgcp_microelectrode</a> · <a href="#validation_nemos">validation_nemos</a> · <a href="#validation_pykalman">validation_pykalman</a> · <a href="#validation_statsmodels">validation_statsmodels</a></nav>
+<a href="#continuous_cif">continuous_cif</a> · <a href="#decoding_clusterless">decoding_clusterless</a> · <a href="#decoding_place_field">decoding_place_field</a> · <a href="#em_dynamax">em_dynamax</a> · <a href="#interop_neo">interop_neo</a> · <a href="#interop_pynapple">interop_pynapple</a> · <a href="#interop_nwb">interop_nwb</a> · <a href="#latents_gpfa">latents_gpfa</a> · <a href="#metrics_spike_distances">metrics_spike_distances</a> · <a href="#modulated_renewal_microelectrode">modulated_renewal_microelectrode</a> · <a href="#spatial_cluster_cox">spatial_cluster_cox</a> · <a href="#spatial_gibbs">spatial_gibbs</a> · <a href="#spatial_gof_ecog">spatial_gof_ecog</a> · <a href="#spatial_hawkes_ecog">spatial_hawkes_ecog</a> · <a href="#spatial_stlgcp_microelectrode">spatial_stlgcp_microelectrode</a> · <a href="#validation_nemos">validation_nemos</a> · <a href="#validation_pykalman">validation_pykalman</a> · <a href="#validation_statsmodels">validation_statsmodels</a></nav>
+<section class="example" id="continuous_cif">
+<h2>Continuous-time CIF simulator — filtered stimulus drive + inhibitory self-history</h2>
+<p><strong>Question:</strong> Does a continuous LTI stimulus filter integrated with scipy.signal.lsim reproduce closed-form linear-systems-theory filtering, and does a nonzero continuous self-history feedback filter measurably regularize spiking relative to no history?</p>
+<p><strong>Goal:</strong> Confirm the continuous LTI realization matches known filter theory
+(the numerically realised ``scipy.signal.lsim`` drive agrees with
+the closed-form steady-state sinusoidal response once the initial
+transient dies out), and confirm the nonzero continuous
+self-history filter produces the expected qualitative refractory
+signature: a lower interspike-interval coefficient of variation
+relative to the same drive with no self-history feedback.</p>
+<p class="muted">Native-Python port of the MATLAB Simulink model
+``PointProcessSimulationCont.slx``
+(:func:`nstat.extras.continuous_cif.simulate_cif_continuous`). A
+single simulated cortical unit's firing probability is driven by a
+slow 1 Hz oscillatory "LFP" stimulus, filtered through a continuous
+first-order lowpass synaptic filter ``S(s) = K/(tau*s + 1))``
+integrated with ``scipy.signal.lsim`` -- continuous-time filtering,
+not a discrete pre-sampled sequence. Independently, the unit carries
+an inhibitory continuous self-history filter
+``H(s) = -G/(tau_h*s + 1)`` modeling post-spike refractoriness as a
+continuous decay rather than a fixed-bin dead time. Two runs share
+the exact same injected ``U(0,1)`` variates -- one with ``H = 0``,
+one with the nonzero inhibitory ``H`` -- so any difference in the
+realised spike train is attributable to ``H`` alone.</p>
+<p><strong>Run:</strong> <code>python examples/extras/continuous_cif_demo.py --export-figures</code> · <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/continuous_cif_demo.py">Script</a></p>
+<div class="gallery">
+<figure><img src="figures/extras/continuous_cif/fig01_continuous_stim_filter_and_history.png" alt="fig01_continuous_stim_filter_and_history.png" loading="lazy"><figcaption><strong>fig01_continuous_stim_filter_and_history.png</strong><br>Top: the continuous lowpass stimulus filter's analytic
+steady-state response (dotted) overlaid on the numerically
+realised ``scipy.signal.lsim`` drive (solid), with the initial
+transient shaded. Middle: the resulting instantaneous rate
+lambda(t)/Ts with (red) and without (gray) continuous
+self-history feedback. Bottom: spike rasters for both conditions
+over the first 2 seconds, annotated with each condition's ISI
+coefficient of variation.</figcaption><div class="analysis">The analytic and numerically realised filtered-stimulus traces
+overlap almost exactly outside the shaded transient window,
+confirming the continuous LTI realization matches linear-systems
+theory. The inhibitory continuous self-history run shows a lower
+ISI coefficient of variation than the ``H = 0`` run at a
+comparable mean firing rate -- the expected refractory signature
+of continuous post-spike self-inhibition.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, axes = plt.subplots(3, 1, figsize=(9.5, 10.5))
+
+ax0 = axes[0]
+ax0.plot(t, analytic_drive, color=&quot;black&quot;, lw=1.6, ls=&quot;:&quot;,
+         label=&quot;analytic steady-state (linear-systems theory)&quot;)
+ax0.plot(t, result_zero.stim_drive, color=&quot;tab:blue&quot;, lw=1.4, alpha=0.85,
+         label=&quot;numerically realised (scipy.signal.lsim)&quot;)
+ax0.axvspan(0.0, BURN_IN_S, color=&quot;gray&quot;, alpha=0.15, label=f&quot;transient (&lt; {BURN_IN_S:.1f}s)&quot;)
+ax0.set_ylabel(&quot;filtered stimulus drive&quot;)
+ax0.set_title(
+    &quot;Ground truth vs. recovered: continuous lowpass S(s) applied to a &quot;
+    f&quot;{F_STIM_HZ:.0f} Hz stimulus (RMSE={ground_truth_rmse:.4f}, t&gt;={BURN_IN_S:.1f}s)&quot;,
+    fontsize=10,
+)
+ax0.legend(loc=&quot;upper right&quot;, fontsize=8)
+
+ax1 = axes[1]
+ax1.plot(t, result_zero.rate_hz, color=&quot;tab:gray&quot;, lw=1.2, label=&quot;H = 0&quot;)
+ax1.plot(t, result_hist.rate_hz, color=&quot;tab:red&quot;, lw=1.2, alpha=0.85,
+          label=&quot;H = inhibitory (refractory)&quot;)
+ax1.set_ylabel(&quot;instantaneous rate (Hz)&quot;)
+ax1.set_title(&quot;lambda(t)/Ts: with vs. without continuous self-history feedback&quot;, fontsize=10)
+ax1.legend(loc=&quot;upper right&quot;, fontsize=8)
+
+ax2 = axes[2]
+show_t = 2.0
+show_zero = result_zero.spikes.spikeTimes
+show_hist = result_hist.spikes.spikeTimes
+ax2.eventplot(show_zero[show_zero &lt;= show_t], lineoffsets=1.0, linelengths=0.8,
+              colors=&quot;tab:gray&quot;)
+ax2.eventplot(show_hist[show_hist &lt;= show_t], lineoffsets=0.0, linelengths=0.8,
+              colors=&quot;tab:red&quot;)
+ax2.set_yticks([0.0, 1.0])
+ax2.set_yticklabels([f&quot;H=inhib.\n(CV={cv_hist:.2f})&quot;, f&quot;H=0\n(CV={cv_zero:.2f})&quot;], fontsize=8)
+ax2.set_xlim(0.0, show_t)
+ax2.set_xlabel(&quot;time (s)&quot;)
+ax2.set_title(
+    f&quot;Spike rasters (first {show_t:.0f}s): inhibitory continuous self-history &quot;
+    &quot;regularizes ISIs&quot;, fontsize=10,
+)</code></pre></details></figure>
+</div>
+</section>
 <section class="example" id="decoding_clusterless">
 <h2>Clusterless decoding vs. a sorted decoder as spike sorting degrades</h2>
 <p><strong>Question:</strong> Can we decode kinematics/position from unsorted multiunit events + waveform marks, and does clusterless decoding match/beat sorted decoding as sorting quality degrades?</p>

@@ -1,5 +1,26 @@
 version: 1
 extras:
+  - demo_id: continuous_cif
+    name: continuous_cif_demo
+    script: examples/extras/continuous_cif_demo.py
+    title: Continuous-time CIF simulator — filtered stimulus drive + inhibitory self-history
+    question: Does a continuous LTI stimulus filter integrated with scipy.signal.lsim reproduce closed-form linear-systems-theory filtering, and does a nonzero continuous self-history feedback filter measurably regularize spiking relative to no history?
+    description: |
+      Native-Python port of the MATLAB Simulink model
+      ``PointProcessSimulationCont.slx``
+      (:func:`nstat.extras.continuous_cif.simulate_cif_continuous`). A
+      slow 1 Hz "LFP" stimulus is filtered through a continuous
+      first-order lowpass ``S(s)`` before driving a simulated unit's
+      firing probability, while an inhibitory continuous self-history
+      filter ``H(s)`` models post-spike refractoriness. Compares the
+      numerically realised filtered drive against the closed-form
+      steady-state sinusoidal response (ground truth vs. recovered),
+      and contrasts spike rasters / ISI coefficient-of-variation with
+      vs. without the continuous self-history feedback (same injected
+      uniform draws in both runs).
+    figures:
+      - filename: fig01_continuous_stim_filter_and_history.png
+
   - demo_id: decoding_clusterless
     name: decoding_clusterless_demo
     script: examples/extras/decoding_clusterless_demo.py

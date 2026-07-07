@@ -51,24 +51,24 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 |---|---:|
 | `exact_native_python` | 0 |
 | `exact_with_matlab_engine_bridge` | 2 |
-| `high_fidelity_native_python` | 0 |
+| `high_fidelity_native_python` | 1 |
 | `generated_code_wrapped` | 0 |
 | `packaged_runtime` | 0 |
 | `matlab_engine_reference` | 0 |
-| `reference_only` | 11 |
+| `reference_only` | 10 |
 | `unsupported` | 0 |
 
 ## Simulink Strategy Summary
 
 | Strategy | Count |
 |---|---:|
-| `native_python` | 0 |
+| `native_python` | 1 |
 | `native_python_with_matlab_engine_bridge` | 2 |
 | `generated_code_wrapped` | 0 |
 | `packaged_runtime` | 0 |
 | `matlab_engine_fallback` | 0 |
 | `unsupported` | 0 |
-| `reference_only` | 11 |
+| `reference_only` | 10 |
 
 ## Coverage Notes
 
@@ -79,7 +79,7 @@ Generated from `parity/manifest.yml`, `parity/class_fidelity.yml`, `tools/notebo
 - Paper examples and docs gallery: all canonical paper examples and committed gallery directories are mapped.
 - Class fidelity: the class audit reports no partial, wrapper-only, or missing items.
 - Runtime symbol verification: every audited MATLAB-facing Python symbol marked present in `parity/class_fidelity.yml` resolves on the live public surface.
-- Simulink fidelity: native Python coverage exists for the required published workflows, deterministic injected-input fixtures now back the required native paths, and 11 inventoried MATLAB assets remain reference-only.
+- Simulink fidelity: native Python coverage exists for the required published workflows, deterministic injected-input fixtures now back the required native paths, and 10 inventoried MATLAB assets remain reference-only.
 
 ## Remaining Mapping Deltas
 
@@ -99,7 +99,6 @@ No audit/runtime symbol mismatches were detected.
 
 ## Simulink Fidelity Deltas
 
-- `PointProcessSimulationCont` -> `PointProcessSimulationCont.slx` [reference_only]: Keep as reference while the Python port uses the native discrete simulation path.
 - `PointProcessSimulationLegacy2010b` -> `PointProcessSimulation.mdl.r2010b` [reference_only]: Treat as a compatibility/reference asset because the native Python port targets the current `PointProcessSimulation.slx` behavior rather than every historic MATLAB model format.
 - `PointProcessSimulationLegacy2011a` -> `PointProcessSimulation.mdl.r2011a` [reference_only]: Treat as a compatibility/reference asset alongside the current `.slx` model.
 - `PointProcessSimulationLegacy2011b` -> `PointProcessSimulation.mdl.r2011b` [reference_only]: Treat as a compatibility/reference asset alongside the current `.slx` model.

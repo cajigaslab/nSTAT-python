@@ -138,7 +138,10 @@ def simulate_cif_continuous(
     simType : {'binomial', 'poisson'}, default 'binomial'
         Link function: logistic (``sigmoid(eta)``) for ``'binomial'``,
         exponential (``exp(eta)``, clipped to ``|eta| <= 20`` for
-        numerical safety) for ``'poisson'``.
+        numerical safety) for ``'poisson'``.  The binomial link uses the
+        numerically-stable :func:`nstat.cif._sigmoid` (branches on the
+        sign of ``eta`` internally, no ``eta`` clipping needed); the
+        poisson link clips ``|eta| <= 20`` before exponentiating instead.
     seed : int or None, optional
         Seed for :func:`numpy.random.default_rng` when ``uniform_values``
         is not supplied.
@@ -165,6 +168,10 @@ def simulate_cif_continuous(
         If ``Ts <= 0``, ``simType`` is not ``'poisson'``/``'binomial'``,
         the stimulus/ensemble grids disagree, or ``uniform_values`` does
         not match the time grid length.
+    TypeError
+        If ``input_stim`` or ``input_ens`` is neither a Covariate-like
+        object (exposing ``.time``/``.values``) nor a ``(time, values)``
+        tuple (see :func:`_extract_time_series`).
     """
     if Ts <= 0:
         raise ValueError("Ts must be > 0")

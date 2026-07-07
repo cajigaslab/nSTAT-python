@@ -1102,6 +1102,47 @@ backlog if any recipe needs strict MC parity.
 not introduce runtime dependencies on the MATLAB nSTAT repository
 beyond the sanctioned `matlab.engine` bridge in `nstat.matlab_engine`.
 
+### 7.7.3 `nstat.extras.continuous_cif` — continuous-time CIF simulator (v0.6.0+)
+
+Native-Python port of the MATLAB Simulink model
+`PointProcessSimulationCont.slx` — the continuous-time companion to the
+discrete `PointProcessSimulation.slx` (which `CIF.simulateCIF` already
+mirrors). It has zero MATLAB-side callers, so this is a Python-only
+`nstat.extras` enhancement, not a core-parity obligation.
+
+```python
+import numpy as np
+from nstat.extras.continuous_cif import simulate_cif_continuous
+
+Ts = 0.001
+t = np.arange(5000) * Ts
+u_stim = np.sin(2.0 * np.pi * 1.0 * t)
+u_ens = np.zeros_like(t)
+
+stim_filter = (np.array([1.5]), np.array([0.05, 1.0]))  # continuous lowpass S(s)
+hist_filter = (np.array([-4.0]), np.array([0.01, 1.0]))  # continuous inhibitory H(s)
+
+result = simulate_cif_continuous(
+    -4.0, stim_filter, 0.0, hist_filter, (t, u_stim), (t, u_ens),
+    Ts=Ts, simType="binomial", seed=0,
+)
+result.spikes.spikeTimes   # realised spikes
+result.rate_hz             # lambda_delta / Ts
+```
+
+The stimulus/ensemble filters `S`/`E` are integrated as genuinely
+continuous LTI systems via `scipy.signal.lsim`; the self-history filter
+`H` is discretized to the bin grid via `scipy.signal.cont2discrete`
+(zero-order hold) and stepped once per bin. Validation splits along the
+only source of stochasticity: with `H = 0`, `eta`/`lambda_delta` are
+bit-close deterministic and validated against the MATLAB gold fixture
+`tests/parity/fixtures/matlab_gold/cif_cont_lambda.mat`; with `H != 0`,
+validation uses injected `uniform_values` for exact reproducibility
+(MATLAB's DSP Random Source RNG is not reproducible in NumPy). See
+`docs/extras/continuous_cif.md` and
+`examples/extras/continuous_cif_demo.py` for the full usage guide and a
+runnable demo.
+
 ---
 
 ## 8. Where to look when stuck
