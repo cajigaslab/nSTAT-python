@@ -69,6 +69,10 @@ EXAMPLE_BACKING_PACKAGE: dict[str, str] = {
     "spatial_gof_ecog_demo": "numpy",
     "spatial_hawkes_ecog_demo": "numpy",
     "modulated_renewal_microelectrode_demo": "numpy",
+    # continuous_cif_demo is pure NumPy/SciPy (no opt-dep beyond the core
+    # stack, matching nstat.extras.continuous_cif itself); "numpy" forces
+    # run-as-main execution.
+    "continuous_cif_demo": "numpy",
 }
 
 

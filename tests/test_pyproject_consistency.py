@@ -215,6 +215,7 @@ def test_every_extras_subpackage_has_corresponding_deps_group() -> None:
             "lgcp",
             "spatial_gof",
             "matlab_rng",  # MATLAB-aligned MT19937 wrapper — only needs numpy (core dep)
+            "continuous_cif",  # continuous-time CIF simulator — only needs numpy+scipy (core deps)
             "marked_gof",
             "basis",
             "wave_analysis",
