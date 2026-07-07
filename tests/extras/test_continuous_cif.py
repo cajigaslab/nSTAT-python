@@ -62,7 +62,7 @@ def test_lsim_of_S_matches_gold_eta_directly():
     g = _gold_arrays()
     _, y, _ = lsim((g["Snum"], g["Sden"]), g["u"], g["t"])
     eta_direct = g["mu"] + y
-    np.testing.assert_allclose(eta_direct, g["eta"], rtol=1e-6, atol=1e-9)
+    np.testing.assert_allclose(eta_direct, g["eta"], rtol=1e-9, atol=1e-9)
 
 
 def test_simulate_cif_continuous_eta_matches_gold_via_return_details():
@@ -72,7 +72,43 @@ def test_simulate_cif_continuous_eta_matches_gold_via_return_details():
         (g["t"], g["u"]), (g["t"], g["e"]),
         Ts=g["Ts"], simType="poisson", seed=0, return_details=True,
     )
-    np.testing.assert_allclose(result.eta, g["eta"], rtol=1e-6, atol=1e-9)
+    np.testing.assert_allclose(result.eta, g["eta"], rtol=1e-9, atol=1e-9)
+
+
+def test_ensemble_filter_path_matches_independent_lsim_computation():
+    """Dedicated regression test for the E (ensemble) LTI channel.
+
+    Every other test in this module drives ``ens=0.0`` with an all-zero
+    ensemble series, so ``ens_drive = _lsim_drive(E_num, E_den, u_ens, t)``
+    is never exercised with non-trivial dynamics anywhere else -- a real
+    lowpass ``E`` could be silently dropped or mis-routed (e.g. swapped
+    with the stimulus channel) without any test noticing. Route a
+    non-trivial lowpass E filter over a sinusoidal ensemble series, with
+    ``stim`` and ``hist`` held at zero, so ``eta`` is driven *only* by the
+    E channel, then independently recompute the expected drive with a
+    bare ``scipy.signal.lsim`` call and compare to ~1e-9.
+    """
+    t, _, _ = _stim_grid(n=500, Ts=0.001, freq_hz=2.0)
+    zeros = np.zeros_like(t)
+    u_ens = np.sin(2.0 * np.pi * 3.0 * t)
+    mu = -1.5
+    E_system = (np.array([1.0]), np.array([0.05, 1.0]))  # non-trivial lowpass
+
+    result = simulate_cif_continuous(
+        mu, 0.0, E_system, 0.0,
+        (t, zeros), (t, u_ens),
+        Ts=0.001, simType="poisson", seed=0, return_details=True,
+    )
+
+    _, y_expected, _ = lsim(E_system, u_ens, t)
+    eta_expected = mu + y_expected
+
+    # The E channel alone must reproduce an independently computed lsim.
+    np.testing.assert_allclose(result.ens_drive, y_expected, rtol=1e-9, atol=1e-9)
+    np.testing.assert_allclose(result.eta, eta_expected, rtol=1e-9, atol=1e-9)
+    # And it must not have been dropped or routed onto the stim channel.
+    np.testing.assert_allclose(result.stim_drive, 0.0, atol=1e-12)
+    assert np.abs(result.ens_drive).max() > 0.0
 
 
 # ----------------------------------------------------------------------
@@ -94,7 +130,7 @@ def test_deterministic_rate_matches_gold_for_both_links(sim_type, gold_key):
         Ts=g["Ts"], simType=sim_type, seed=123,
     )
     # Model logs lambda on t[1:] (drops t=0); gold[k] <-> eta[k+1].
-    np.testing.assert_allclose(result.rate_hz[1:], g[gold_key], rtol=1e-6, atol=1e-6)
+    np.testing.assert_allclose(result.rate_hz[1:], g[gold_key], rtol=1e-9, atol=1e-6)
 
 
 def test_deterministic_rate_is_seed_independent_when_history_is_zero():

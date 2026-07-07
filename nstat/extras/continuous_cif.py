@@ -142,6 +142,19 @@ def simulate_cif_continuous(
         numerically-stable :func:`nstat.cif._sigmoid` (branches on the
         sign of ``eta`` internally, no ``eta`` clipping needed); the
         poisson link clips ``|eta| <= 20`` before exponentiating instead.
+
+        .. note::
+           **Poisson-link footgun.** For ``simType='poisson'``,
+           ``lambdaDelta = exp(eta)`` is unbounded above and can exceed 1
+           whenever ``eta > 0``.  Since the per-bin spike test is ``U(0,1)
+           < lambdaDelta``, a ``lambdaDelta >= 1`` fires on *every* draw,
+           producing deterministic (non-random) spiking every bin. This is
+           faithful to the MATLAB Simulink model (no clamping to ``[0,
+           1]`` is applied), but it is easy to trip over. Users who want a
+           genuinely rate-limited process should keep ``eta`` negative
+           (small ``mu`` / gains so ``exp(eta) < 1``) or use
+           ``simType='binomial'``, whose logistic link is bounded in
+           ``(0, 1)`` for any ``eta``.
     seed : int or None, optional
         Seed for :func:`numpy.random.default_rng` when ``uniform_values``
         is not supplied.

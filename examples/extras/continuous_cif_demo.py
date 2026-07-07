@@ -320,6 +320,13 @@ def main(argv: list[str] | None = None) -> int:
         plot_style=args.plot_style,
     )
 
+    assert result["cv_nonzero_history"] < result["cv_zero_history"], (
+        "expected the inhibitory continuous self-history filter to regularize "
+        "ISIs (lower coefficient of variation) relative to H=0, but got "
+        f"cv_hist={result['cv_nonzero_history']:.3f} >= "
+        f"cv_zero={result['cv_zero_history']:.3f}"
+    )
+
     if args.output_json is not None:
         args.output_json.write_text(json.dumps(result, indent=2), encoding="utf-8")
 
