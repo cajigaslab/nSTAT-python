@@ -148,6 +148,13 @@ def test_extras_summary_html_exists_and_is_self_contained() -> None:
         "nstat.extras.validation.pykalman_bridge",
         "nstat.extras.validation.statsmodels_bridge",
         "nstat.extras.metrics.spike_distances",
+        "nstat.extras.em.dynamax_bridge",
+        "nstat.extras.decoding.clusterless_bridge",
+        "nstat.extras.decoding.place_field_decoder",
+        "nstat.extras.spatial",
+        "nstat.extras.latents.gpfa_bridge",
+        "nstat.extras.continuous_cif",
+        "nstat.extras.matlab_rng",
     )
     missing = [b for b in REQUIRED_BRIDGES if b not in text]
     assert not missing, (
@@ -341,6 +348,26 @@ def test_readme_links_to_extras_summary_html() -> None:
     assert "extras_summary.html" in readme, (
         "README.md must link to extras_summary.html in the "
         "'Related Python projects' section."
+    )
+
+
+def test_readme_helpfiles_table_lists_every_extras_doc() -> None:
+    """The README's ``nstat.extras`` helpfiles table must link every
+    ``docs/extras/*.md`` file.
+
+    Guards against the drift class where a new bridge ships a help file
+    (and gets added to ``docs/extras.rst``) but nobody adds the
+    corresponding row to the README's landing-page table, leaving it
+    undiscoverable from the GitHub repo view.
+    """
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    doc_stems = sorted(p.stem for p in EXTRAS_DOCS_DIR.glob("*.md"))
+    missing = [
+        stem for stem in doc_stems if f"docs/extras/{stem}.md" not in readme
+    ]
+    assert not missing, (
+        f"README.md's 'nstat.extras helpfiles' table is missing rows "
+        f"linking to: {missing}. Add a table row for each."
     )
 
 
