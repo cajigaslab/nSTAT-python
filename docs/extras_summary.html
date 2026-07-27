@@ -22,12 +22,13 @@
     --signal-dim:#356d18;
     --cyan:      #0b6e8c;   /* tier B — interop */
     --amber:     #9a5b00;   /* tier C — metrics */
+    --violet:    #6a4fb0;   /* tier D — modeling (decoding / spatial / latents / simulation) */
     --shadow:    0 8px 24px -14px rgba(20,30,40,.28);
     /* Legacy aliases mapped onto the new palette */
     --fg: var(--ink); --fg-muted: var(--ink-soft);
     --bg-card: var(--panel); --bg-code: var(--panel-2);
     --accent: var(--signal); --border: var(--line);
-    --tier-a: var(--signal); --tier-b: var(--cyan); --tier-c: var(--amber);
+    --tier-a: var(--signal); --tier-b: var(--cyan); --tier-c: var(--amber); --tier-d: var(--violet);
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -113,6 +114,7 @@
   .tier.a { border-left-color: var(--signal); }
   .tier.b { border-left-color: var(--cyan); }
   .tier.c { border-left-color: var(--amber); }
+  .tier.d { border-left-color: var(--violet); }
   .tier p { color: var(--ink-soft); }
   .tier-tag {
     display: inline-flex; align-items: center; gap: .4em;
@@ -125,6 +127,7 @@
   .tier-tag.a { background: rgba(197,240,45,.1); color: var(--signal); border: 1px solid rgba(197,240,45,.32); }
   .tier-tag.b { background: rgba(86,212,221,.1); color: var(--cyan); border: 1px solid rgba(86,212,221,.32); }
   .tier-tag.c { background: rgba(255,179,71,.1); color: var(--amber); border: 1px solid rgba(255,179,71,.32); }
+  .tier-tag.d { background: rgba(147,112,219,.1); color: var(--violet); border: 1px solid rgba(147,112,219,.32); }
   .bridge-card {
     border: 1px solid var(--line); border-radius: 12px;
     padding: 1.2rem 1.35rem; margin: 1.2rem 0; background: var(--panel);
@@ -200,7 +203,7 @@
 </section>
 
 <section id="tiers">
-<h2>Three tiers</h2>
+<h2>Four tiers</h2>
 <div class="tier-grid">
 
   <div class="tier a">
@@ -221,6 +224,12 @@
     <p class="badge">C/Cython-accelerated; suitable for population-level distance matrices.</p>
   </div>
 
+  <div class="tier d">
+    <h3><span class="tier-tag d">D</span> Modeling</h3>
+    <p><code>nstat.extras.decoding.*</code> / <code>.spatial.*</code> / <code>.latents.*</code> / <code>.em.*</code> / <code>.continuous_cif</code> — Python-only estimators and simulators with no MATLAB counterpart: clusterless &amp; place-field decoding, spatial/spatiotemporal point processes, GPFA latent trajectories, Dynamax state-space EM, and a continuous-time CIF simulator.</p>
+    <p class="badge">The largest and fastest-growing tier — new neuroscience-modeling capability, not a cross-check on existing <code>nstat</code> output.</p>
+  </div>
+
 </div>
 </section>
 
@@ -238,7 +247,12 @@
     <tr><td><code>[nemos]</code></td><td>nemos (incl. JAX, ~200 MB)</td><td><code>extras.validation.nemos_bridge</code></td></tr>
     <tr><td><code>[test-parity]</code></td><td>nemos + pykalman + statsmodels + nitime</td><td>All cross-validation bridges</td></tr>
     <tr><td><code>[dynamax]</code></td><td>dynamax (incl. JAX, ~200 MB)</td><td><code>extras.em.dynamax_bridge</code></td></tr>
-    <tr><td><code>[all-extras]</code></td><td>Every functional group above <em>except</em> <code>[dynamax]</code></td><td>One-shot install (heavy <code>[dynamax]</code> opt-out documented in <code>tests/test_pyproject_consistency.py::HEAVY_OPT_OUT_OF_ALL_EXTRAS</code>)</td></tr>
+    <tr><td><code>[clusterless]</code></td><td>replay_trajectory_classification (incl. JAX, ~200 MB)</td><td><code>extras.decoding.clusterless_bridge</code></td></tr>
+    <tr><td><code>[latents]</code></td><td>elephant + neo + quantities (~50 MB)</td><td><code>extras.latents.gpfa_bridge</code></td></tr>
+    <tr><td><code>[spatial-gp]</code></td><td>gpflow (+ TensorFlow)</td><td><code>extras.spatial.lgcp_fit(backend="gpflow")</code></td></tr>
+    <tr><td><code>[hawkes]</code></td><td>tick</td><td><code>extras.spatial.hawkes_bridge</code></td></tr>
+    <tr><td><code>[dpp]</code></td><td>dppy</td><td><code>extras.spatial.dpp_bridge</code> (NumPy fallback needs no extra)</td></tr>
+    <tr><td><code>[all-extras]</code></td><td><code>[neo]</code> + <code>[pynapple]</code> + <code>[nwb]</code> + <code>[metrics]</code> + <code>[test-parity]</code></td><td>One-shot install of the lighter groups; the heavy/niche groups (<code>[dynamax]</code>, <code>[clusterless]</code>, <code>[latents]</code>, <code>[spatial-gp]</code>, <code>[hawkes]</code>, <code>[dpp]</code>) are deliberately excluded — install explicitly. Opt-out documented in <code>tests/test_pyproject_consistency.py::HEAVY_OPT_OUT_OF_ALL_EXTRAS</code>.</td></tr>
   </tbody>
 </table>
 <p>The <code>[all-extras]</code> union is <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/tests/test_pyproject_consistency.py">CI-enforced</a> — adding a new group without updating <code>[all-extras]</code> fails the test suite.</p>
@@ -330,7 +344,7 @@ D = pairwise_spike_distance_matrix(trains)  # (N, N)</code></pre>
 </div>
 
 <div class="bridge-card">
-  <h4><span class="tier-tag a">A</span> nstat.extras.em.dynamax_bridge</h4>
+  <h4><span class="tier-tag d">D</span> nstat.extras.em.dynamax_bridge</h4>
   <p class="install"><code>pip install nstat-toolbox[dynamax]</code> (pulls JAX, ~200 MB)</p>
   <p>State-space estimation closing the unported MATLAB <code>KF_EM</code> / <code>PP_EM</code> / <code>mPPCO_EM</code> families (AUDIT_REPORT.md §3.2 — 19 methods / ~7,500 LOC of MATLAB). Three EM trainers + two point-process inference routines:</p>
   <ul>
@@ -350,6 +364,64 @@ print(pp.observation_matrix, pp.marginal_log_likelihoods[-1])
 # Hybrid Poisson + Gaussian observations sharing one latent (mPPCO_EM)
 hy = fit_hybrid_em(spike_counts, lfp, state_dim=2, n_iter=30)</code></pre>
   <p class="badge">Details: <a href="extras/em_dynamax.html">em_dynamax.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/em_dynamax_demo.py"><code>em_dynamax_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag d">D</span> nstat.extras.decoding.clusterless_bridge</h4>
+  <p class="install"><code>pip install nstat-toolbox[clusterless]</code> (pulls JAX, ~200 MB)</p>
+  <p>Wraps <a href="https://github.com/Eden-Kramer-Lab/replay_trajectory_classification">replay_trajectory_classification</a> (Denovellis et al. 2021, eLife) for clusterless marked point-process decoding — position decode straight from spike waveform "marks", no spike sorting required — plus discrete-state trajectory-type classification (local / forward replay / reverse replay / fragmented).</p>
+  <pre><code>from nstat.extras.decoding.clusterless_bridge import fit_clusterless_decoder
+
+result = fit_clusterless_decoder(position, multiunits, place_bin_size=5.0)
+result.posterior.shape, result.map_position.shape</code></pre>
+  <p class="badge">Details: <a href="extras/decoding_clusterless.html">decoding_clusterless.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_clusterless_demo.py"><code>decoding_clusterless_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag d">D</span> nstat.extras.decoding.place_field_decoder</h4>
+  <p class="install"><code>pip install nstat-toolbox</code> (pure-core, no extras group)</p>
+  <p>One-call wrapper around the canonical 2-D place-cell pipeline from <code>examples/paper/example08_real_place_cells.py</code>: tensor-product B-spline Poisson-GLM encoding, per-cell quadratic CIF refit, and <code>DecodingAlgorithms.PPDecodeFilterLinear</code> (history-free O(C·T) fast path) decoding.</p>
+  <pre><code>from nstat.extras.decoding.place_field_decoder import fit_place_field_decoder
+
+result = fit_place_field_decoder(trial, position)
+result.decoded_position.shape, result.mean_decoding_error</code></pre>
+  <p class="badge">Details: <a href="extras/decoding_place_field.html">decoding_place_field.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/decoding_place_field_demo.py"><code>decoding_place_field_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag d">D</span> nstat.extras.spatial</h4>
+  <p class="install">core: none (numpy/scipy already required) · <code>[spatial-gp]</code> / <code>[hawkes]</code> / <code>[dpp]</code> optional</p>
+  <p>Spatial &amp; spatiotemporal point processes: LGCP posterior rate maps with credible bands (Laplace approximation), inhomogeneous second-order goodness-of-fit (<code>g</code>/<code>K</code>/<code>L</code>, F/G/J, global-rank envelope, four edge-correction modes), and the discrete-time-rescaling KS correction. Spatiotemporal tier adds space-time kernel intensity, Kronecker-Laplace LGCP, Hawkes/ETAS branching EM, Cox-Hawkes, and a modulated-renewal (conditional-ISI) CIF.</p>
+  <pre><code>from nstat.extras.spatial.lgcp import lgcp_fit
+
+result = lgcp_fit(points, domain, grid=20, kernel="matern52")
+mean, lo, hi = result.rate_map(level=0.90)</code></pre>
+  <p class="badge">Details: <a href="extras/spatial_point_processes.html">spatial_point_processes.html</a> · Demos: <a href="https://github.com/cajigaslab/nSTAT-python/tree/main/examples/extras"><code>spatial_*_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag d">D</span> nstat.extras.latents.gpfa_bridge</h4>
+  <p class="install"><code>pip install nstat-toolbox[latents]</code> (elephant + neo + quantities, ~50 MB)</p>
+  <p>Gaussian-Process Factor Analysis (Yu et al. 2009, J Neurophysiol) via <a href="https://elephant.readthedocs.io/en/latest/reference/gpfa.html">elephant.gpfa.GPFA</a> — infers smooth low-dimensional latent trajectories shared across simultaneously-recorded spike trains. Requires &ge;2 trials (EM covariance estimation is degenerate on one).</p>
+  <pre><code>from nstat.extras.latents.gpfa_bridge import fit_gpfa, GPFAConfig
+
+result = fit_gpfa(trials, config=GPFAConfig(x_dim=2))
+result.latent_trajectories[0].shape   # (n_bins, x_dim)</code></pre>
+  <p class="badge">Details: <a href="extras/latents_gpfa.html">latents_gpfa.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/latents_gpfa_demo.py"><code>latents_gpfa_demo.py</code></a></p>
+</div>
+
+<div class="bridge-card">
+  <h4><span class="tier-tag d">D</span> nstat.extras.continuous_cif</h4>
+  <p class="install"><code>pip install nstat-toolbox</code> (pure-core, no extras group)</p>
+  <p>Native continuous-time CIF simulator — a Python-only port of the orphan MATLAB Simulink model <code>PointProcessSimulationCont.slx</code> (zero MATLAB callers, so no parity obligation). Continuous stimulus/ensemble LTI filters integrated via <code>scipy.signal.lsim</code>; self-history feedback ZOH-discretized to the spike-generation sample time via <code>scipy.signal.cont2discrete</code>.</p>
+  <pre><code>from nstat.extras.continuous_cif import simulate_cif_continuous
+
+result = simulate_cif_continuous(
+    -4.0, stim_filter, 0.0, hist_filter, (t, u_stim), (t, u_ens),
+    Ts=Ts, simType="binomial", seed=0,
+)
+result.spikes.spikeTimes, result.rate_hz</code></pre>
+  <p class="badge">Details: <a href="extras/continuous_cif.html">continuous_cif.html</a> · Demo: <a href="https://github.com/cajigaslab/nSTAT-python/blob/main/examples/extras/continuous_cif_demo.py"><code>continuous_cif_demo.py</code></a></p>
 </div>
 
 </section>

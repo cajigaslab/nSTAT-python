@@ -4,7 +4,9 @@ This namespace is the home for features that have no counterpart in
 upstream MATLAB nSTAT and would dilute the MATLAB-parity contract of
 the core :mod:`nstat` package if added there.
 
-Five subpackages ship today:
+Seven subpackages ship today, plus the standalone
+:mod:`nstat.extras.continuous_cif` and :mod:`nstat.extras.matlab_rng`
+modules:
 
 - :mod:`nstat.extras.interop` — converters between :class:`nstat.nspikeTrain`
   / :class:`nstat.SpikeTrainCollection` / :class:`nstat.Trial` and the
@@ -21,8 +23,18 @@ Five subpackages ship today:
   families) via **Dynamax**, with held-out predictive log-likelihood,
   identifiability-gauge canonicalization, and multi-restart selection.
 - :mod:`nstat.extras.decoding` — Bayesian point-process decoders that
-  extend nSTAT's PPAF / PPHF mathematics, including **clusterless**
-  marked point-process decoding via **replay_trajectory_classification**.
+  extend nSTAT's PPAF / PPHF mathematics: **clusterless** marked
+  point-process decoding via **replay_trajectory_classification**, and a
+  pure-core 2-D place-field encoding/decoding wrapper
+  (``place_field_decoder``, no optional dependency).
+- :mod:`nstat.extras.spatial` — spatial / spatiotemporal point processes:
+  LGCP rate maps, inhomogeneous second-order goodness-of-fit, the
+  discrete-time-rescaling KS correction, and a spatiotemporal tier
+  (Hawkes/ETAS branching EM, Cox-Hawkes, modulated-renewal CIF). Pure
+  NumPy/SciPy core; optional **GPflow** / **tick** / **DPPy** bridges.
+- :mod:`nstat.extras.latents` — Gaussian-Process Factor Analysis via
+  **Elephant** for inferring smooth low-dimensional latent trajectories
+  from simultaneous spike trains.
 
 Stability contract
 ------------------
@@ -60,7 +72,19 @@ dependency set.  Install them via the extras keys declared in
     pip install nstat-toolbox[nwb]              # pynwb
     pip install nstat-toolbox[metrics]          # pyspike
     pip install nstat-toolbox[test-parity]      # nemos, pykalman, statsmodels, nitime
-    pip install nstat-toolbox[all-extras]       # install everything
+    pip install nstat-toolbox[dynamax]          # dynamax (~200 MB, JAX)
+    pip install nstat-toolbox[clusterless]      # replay_trajectory_classification (~200 MB, JAX)
+    pip install nstat-toolbox[latents]          # elephant, neo, quantities (~50 MB)
+    pip install nstat-toolbox[spatial-gp]       # gpflow (optional spatial.lgcp GP backend)
+    pip install nstat-toolbox[hawkes]           # tick (optional spatial.hawkes_bridge)
+    pip install nstat-toolbox[dpp]              # dppy (optional spatial.dpp_bridge)
+    pip install nstat-toolbox[all-extras]       # neo/pynapple/nwb/metrics/test-parity union
+                                                 # (dynamax/clusterless/latents/spatial-gp/hawkes/dpp
+                                                 # are deliberately excluded — install explicitly)
+
+``continuous_cif`` and ``matlab_rng`` ship with the core package — no
+optional dependency beyond NumPy/SciPy, which ``nstat-toolbox`` already
+requires.
 
 Each extras module raises a clear, actionable ``ImportError`` at import
 time when its optional dependency is missing.
