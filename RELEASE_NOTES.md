@@ -87,6 +87,21 @@ Full suite green (955 passed, 43 skipped); `docs-strict` (`-W`) build
 succeeds; freshness / helpfile / readme / extras-doc-contract gates pass;
 all 12 new figures clear the multi-signal image-content audit.
 
+### Also added — continuous-time CIF simulator
+
+**`nstat.extras.continuous_cif`** (`simulate_cif_continuous`) — a
+native-Python port of the orphan MATLAB Simulink model
+`PointProcessSimulationCont.slx`. Stimulus and ensemble drives are
+realised as continuous LTI filters integrated with `scipy.signal.lsim`;
+the self-history feedback is discretized to the spike-generation sample
+time via `scipy.signal.cont2discrete` (zero-order hold) and stepped once
+per bin. Verified against MATLAB-captured gold fixtures to ~1e-13 for the
+`H = 0` deterministic path; the `H != 0` path is validated Python-side
+with injected uniforms, since the model has zero MATLAB callers (no
+parity obligation). Ships with core `nstat-toolbox` — no optional
+dependency. New helpfile: `docs/extras/continuous_cif.md`. New demo:
+`examples/extras/continuous_cif_demo.py`.
+
 ## v0.5.7 — 2026-06-22
 
 v15 post-upstream-MATLAB reconciliation cycle. The upstream maintainer
