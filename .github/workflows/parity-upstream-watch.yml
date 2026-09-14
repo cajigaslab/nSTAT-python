@@ -27,19 +27,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout nstat-python
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: nstat-python
 
       - name: Checkout cajigaslab/nSTAT@main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: cajigaslab/nSTAT
           ref: main
           path: nSTAT
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
