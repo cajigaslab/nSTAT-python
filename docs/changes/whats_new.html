@@ -46,6 +46,70 @@
   </header>
 
   <div class="entry">
+    <div class="date">2026-07-03</div>
+    <h2><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md#v060--2026-07-03">v0.6.0 — Spatiotemporal point processes</a>
+      <span class="tag flagship">extras / spatial</span></h2>
+    <p>Six new pure-NumPy/SciPy modules (21 new public symbols) extend
+    <code>nstat.extras.spatial</code> from static to full space-time
+    <code>(x, y, t)</code> point processes: space-time kernel intensity,
+    Kronecker-Laplace LGCP with credible bands, space-time inhomogeneous
+    <code>K</code>/pair-correlation with a global-rank envelope test,
+    space-time Hawkes/ETAS branching EM, LGCP-background Cox-Hawkes, and a
+    modulated-renewal (conditional-ISI) CIF. Every one is an original
+    implementation from the published equations &mdash; none has a MATLAB
+    nSTAT counterpart. No changes to the core <code>nstat.*</code>
+    contract.</p>
+  </div>
+
+  <div class="entry">
+    <div class="date">2026-06-22</div>
+    <h2><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md#v057--2026-06-22">v0.5.7 — v15 post-upstream-MATLAB reconciliation</a>
+      <span class="tag hygiene">hygiene / parity</span></h2>
+    <p>Re-captured all 53 gold fixtures against the latest upstream MATLAB
+    commit (zero numerical drift), added 3 NetworkTutorial schematic
+    figures Python lacked, and shipped a multi-signal image-content-audit
+    detector that replaces the false-positive-prone pixel-threshold
+    heuristic. Also closes <code>nstat/extras/matlab_rng.py</code>'s
+    docs gap.</p>
+  </div>
+
+  <div class="entry">
+    <div class="date">2026-06-19</div>
+    <h2><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md#v056--2026-06-19">v0.5.6 — MATLAB-parity push complete</a>
+      <span class="tag release">release</span></h2>
+    <p>Closes the 13-version, 63-iteration MATLAB-parity push: 10/10
+    holistic visual-parity verdicts at <code>matches</code>, 53/53
+    numerical drift entries PASS, and 16/16 classes at 100% method parity.
+    Python is now competitive with MATLAB on every measured hot path.</p>
+  </div>
+
+  <div class="entry">
+    <div class="date">2026-06-16</div>
+    <h2><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md#v055--2026-06-16">v0.5.5 — B-spline rate-map bases + named edge corrections</a>
+      <span class="tag">extras / spatial</span></h2>
+    <p>Major expansion of <code>nstat.extras.spatial</code>: tensor-product
+    B-spline log-rate bases (<code>bspline_basis_1d</code>/<code>2d</code>,
+    <code>BSplineBasis2D</code>) for 2-D rate-map fitting, and named edge
+    corrections (<code>"isotropic"</code>, <code>"translation"</code>,
+    <code>"border"</code>) on <code>pair_correlation</code> /
+    <code>k_inhom</code> / <code>l_function</code>. All opt-in; the default
+    edge correction is bit-identical to v0.5.0.</p>
+  </div>
+
+  <div class="entry">
+    <div class="date">2026-06-12</div>
+    <h2><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md#v050--2026-06-12">v0.5.0 — Selectors are now 0-based</a>
+      <span class="tag release">release</span></h2>
+    <p>&#9888;&#65039; <strong>Breaking:</strong> all public-API selectors
+    (<code>getNST</code>, <code>getCov</code>, <code>getCoeffs</code>,
+    <code>setConfig</code>, &hellip;) are now consistently 0-based. MATLAB
+    users porting code: subtract 1 from every selector value you
+    previously passed. See
+    <a href="https://github.com/cajigaslab/nSTAT-python/pull/179">PR #179</a>
+    for the full bug catalogue.</p>
+  </div>
+
+  <div class="entry">
     <div class="date">2026-06-10</div>
     <h2><a href="2026-06-10-v0.4.6-onboarding-deepening.html">v0.4.6 — Onboarding deepening + post-v0.4.5 hygiene</a>
       <span class="tag">docs</span></h2>
