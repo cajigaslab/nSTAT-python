@@ -1,12 +1,12 @@
 # TrialExamples — figure gallery
 
 This page is the rendered figure output of
-[`notebooks/TrialExamples.ipynb`](../../notebooks/TrialExamples.ipynb).
+[`notebooks/TrialExamples.ipynb`](../../../notebooks/TrialExamples.ipynb).
 Each PNG is an output of the notebook's ``FigureTracker``; placeholder
 MATLAB-line annotations look like blank pages with code snippets and indicate the
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
-- Source notebook: [`notebooks/TrialExamples.ipynb`](../../notebooks/TrialExamples.ipynb)
+- Source notebook: [`notebooks/TrialExamples.ipynb`](../../../notebooks/TrialExamples.ipynb)
 - Figures: 6 (6 with substantive plot content)
 
 ## Figures

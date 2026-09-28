@@ -220,6 +220,7 @@ non-JAX at once with `pip install nstat-toolbox[all-extras]`.
 | `nstat.extras.validation.pykalman_bridge` | Pure-NumPy Kalman cross-validation reference via [pykalman](https://github.com/pykalman/pykalman). | [validation_pykalman](docs/extras/validation_pykalman.md) | `[test-parity]` |
 | `nstat.extras.validation.statsmodels_bridge` | Poisson GLM IRLS cross-validation oracle (~1e-9 agreement) via [statsmodels](https://www.statsmodels.org). | [validation_statsmodels](docs/extras/validation_statsmodels.md) | `[test-parity]` |
 | `nstat.extras.metrics.spike_distances` | ISI / SPIKE-distance spike-train metrics via [PySpike](https://github.com/mariomulansky/PySpike). | [metrics_spike_distances](docs/extras/metrics_spike_distances.md) | `[metrics]` |
+| `nstat.extras.continuous_cif` | Native-Python continuous-time CIF simulator — port of the orphan MATLAB Simulink model `PointProcessSimulationCont.slx` (continuous stimulus/ensemble LTI filters + discretized self-history feedback). | [continuous_cif](docs/extras/continuous_cif.md) | core: none (numpy+scipy only) |
 
 The interactive [`extras_summary.html`](https://cajigaslab.github.io/nSTAT-python/extras_summary.html)
 landing page has the same content as bigger cards with code snippets.

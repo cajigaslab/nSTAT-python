@@ -1,12 +1,12 @@
 # NetworkTutorial — figure gallery
 
 This page is the rendered figure output of
-[`notebooks/NetworkTutorial.ipynb`](../../notebooks/NetworkTutorial.ipynb).
+[`notebooks/NetworkTutorial.ipynb`](../../../notebooks/NetworkTutorial.ipynb).
 Each PNG is an output of the notebook's ``FigureTracker``; placeholder
 MATLAB-line annotations look like blank pages with code snippets and indicate the
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
-- Source notebook: [`notebooks/NetworkTutorial.ipynb`](../../notebooks/NetworkTutorial.ipynb)
+- Source notebook: [`notebooks/NetworkTutorial.ipynb`](../../../notebooks/NetworkTutorial.ipynb)
 - Figures: 7 (7 with substantive plot content)
 
 ## Figures

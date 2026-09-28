@@ -1,5 +1,27 @@
 # Release Notes
 
+## Unreleased
+
+**`nstat.extras.continuous_cif` — continuous-time CIF simulator.** Native-Python
+port of the orphan MATLAB Simulink model `PointProcessSimulationCont.slx`:
+stimulus and ensemble drives are realised as continuous LTI filters
+integrated with `scipy.signal.lsim`, while the self-history feedback is
+discretized to the spike-generation sample time via
+`scipy.signal.cont2discrete` (zero-order hold). Python-only `extras`
+feature — no MATLAB-parity obligation. No optional dependency; ships with
+core (numpy+scipy only).
+
+**All 17 `nstat.extras` demo scripts reground in BCI/clinical neuroscience
+framing.** `examples/extras/*.py` were rewritten around concrete
+BCI/clinical scenarios (e.g. closed-loop decoder recalibration,
+Parkinsonian beta-burst synchrony, seizure core/penumbra decomposition,
+STN firing-phenotype MER targeting) instead of generic synthetic demos,
+with the gallery, figures, and helpfiles regenerated to match.
+
+**Fixes:** `examples/tutorials/place_cell_walkthrough.py` now self-downloads
+its dataset instead of requiring a manual fetch; a broken `CLAUDE.md` link
+in the `interop_neo` helpfile was corrected.
+
 ## v0.6.0 — 2026-07-03
 
 **Spatiotemporal point processes for `nstat.extras.spatial`.** Six new

@@ -1,12 +1,12 @@
 # ExplicitStimulusWhiskerData — figure gallery
 
 This page is the rendered figure output of
-[`notebooks/ExplicitStimulusWhiskerData.ipynb`](../../notebooks/ExplicitStimulusWhiskerData.ipynb).
+[`notebooks/ExplicitStimulusWhiskerData.ipynb`](../../../notebooks/ExplicitStimulusWhiskerData.ipynb).
 Each PNG is an output of the notebook's ``FigureTracker``; placeholder
 MATLAB-line annotations look like blank pages with code snippets and indicate the
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
-- Source notebook: [`notebooks/ExplicitStimulusWhiskerData.ipynb`](../../notebooks/ExplicitStimulusWhiskerData.ipynb)
+- Source notebook: [`notebooks/ExplicitStimulusWhiskerData.ipynb`](../../../notebooks/ExplicitStimulusWhiskerData.ipynb)
 - Figures: 10 (10 with substantive plot content)
 
 ## Figures
