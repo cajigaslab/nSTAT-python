@@ -368,8 +368,10 @@ def _em_history_windows(gamma, windowTimes, delta, num_cells: int):
 
     NumPy has no row/column distinction for 1-D arrays: a 1-D ``gamma`` is
     read as MATLAB's row, i.e. ``(1, C)`` when its length is the number of
-    cells and the shared ``(numWindows, 1)`` column otherwise.  A 0-d scalar
-    stays 0-d unless it is expanded.
+    cells and the shared ``(numWindows, 1)`` column otherwise (with explicit
+    ``windowTimes`` too, where MATLAB would reject a row).  A 2-D ``(1, n)``
+    row is made a column only in the default-window branch, as in MATLAB.  A
+    0-d scalar stays 0-d unless it is expanded.
 
     Returns ``(gamma, windowTimes)`` with ``gamma`` a float array.
     """
@@ -384,6 +386,12 @@ def _em_history_windows(gamma, windowTimes, delta, num_cells: int):
     if _is_empty_value(windowTimes):
         if g.size == 0 or (g.size == 1 and float(g.reshape(-1)[0]) == 0.0):
             return g, None
+        # MATLAB: if(isrow(gamma) && numel(gamma)~=size(dN,1)) gamma = gamma(:)
+        # -- in this default-window branch only.  A 2-D (1, n) row (what
+        # scipy.io.loadmat returns for a MATLAB row vector) with n != C is the
+        # shared coefficient list.
+        if g.ndim == 2 and g.shape[0] == 1 and g.size != num_cells:
+            g = g.reshape(-1, 1)
         delta_w = 0.001 if delta is None else float(delta)
         num_windows = 1 if g.ndim == 0 else g.shape[0]
         windowTimes = _matlab_colon_exact(0.0, delta_w, num_windows * delta_w)
@@ -6783,6 +6791,10 @@ class DecodingAlgorithms:
                 else:
                     gammahat_new = gammaC.reshape(gammahat_new.shape)
 
+        if gammahat.ndim == 0:
+            # A scalar history coefficient comes back as a scalar (it is worked
+            # on as a 1-element vector above), as PPLFP_MStep returns it.
+            gammahat_new = gammahat_new.reshape(())
         return Ahat, Qhat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
 
 

@@ -1862,7 +1862,7 @@ class PPLFP:
         y_arr = np.asarray(y, dtype=float)
         if y_arr.ndim == 1:
             y_arr = y_arr.reshape(1, -1)
-        yOrig = y_arr.copy()
+        yOrig = y_arr.copy()  # noqa: F841  (MATLAB keeps yOrig too, unused; see the SE call)
 
         # ---- EM tolerance settings ------------------------------------
         # MATLAB references ``nstat.Defaults.EM_TolAbs`` / ``EM_LogLTol``;
@@ -2244,35 +2244,36 @@ class PPLFP:
 
         ll_best = float(ll_arr[maxLLIndex])
 
-        # ---- Standard errors (if PPLFP_ComputeParamStandardErrors ready)
-        SE: dict = {}
-        Pvals: dict = {}
-        try:
-            SE, Pvals = PPLFP.PPLFP_ComputeParamStandardErrors(
-                yOrig,
-                dN_arr,
-                xKFinal,
-                WKFinal,
-                Ahat_out,
-                Qhat_out,
-                Chat_out,
-                Rhat_out,
-                alphahat_out,
-                x0hat_out,
-                Px0hat_out,
-                ExpectationSumsFinal,
-                fitType,
-                muhat_out,
-                betahat_out,
-                gammahat_out,
-                windowTimes,
-                HkAll,
-                PPLFP_EM_Constraints,
-            )
-        except Exception:
-            # Helper not yet ported / failed -> leave empty (mirrors
-            # MATLAB nargout-guarded behaviour).
-            pass
+        # ---- Standard errors ------------------------------------------
+        # MATLAB computes them (when SE/Pvals are requested) without a guard.
+        # This used to unpack the routine's three outputs into two inside an
+        # ``except Exception: pass`` block, so SE = Pvals = {} on every call.
+        # OPEN PARITY QUESTION: MATLAB passes its scaled observations
+        # (``y = Tr*y`` above; ``yOrig`` is never used) together with the
+        # UNSCALED C / alpha / R; whether that is a MATLAB defect is being
+        # checked upstream.  Until then this mirrors the pinned MATLAB
+        # (fix/pp-em @ a457b54) exactly and passes the scaled y_arr.
+        SE, Pvals, _ = PPLFP.PPLFP_ComputeParamStandardErrors(
+            y_arr,
+            dN_arr,
+            xKFinal,
+            WKFinal,
+            Ahat_out,
+            Qhat_out,
+            Chat_out,
+            Rhat_out,
+            alphahat_out,
+            x0hat_out,
+            Px0hat_out,
+            ExpectationSumsFinal,
+            fitType,
+            muhat_out,
+            betahat_out,
+            gammahat_out,
+            windowTimes,
+            HkAll,
+            PPLFP_EM_Constraints,
+        )
 
         # ---- Information criteria (parity with MATLAB) ---------------
         if PPLFP_EM_Constraints.get("EstimateA", 0) and PPLFP_EM_Constraints.get(

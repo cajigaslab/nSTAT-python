@@ -164,17 +164,23 @@ def _pplfp_mle_extra(P, seed=1):
     return y, Chat, alpha, R
 
 
-def _pplfp_se(P, y, Chat, alpha, R, HkAll=None):
+def _pplfp_se(P, y, Chat, alpha, R, HkAll=None, seed=0):
+    from nstat.extras.matlab_rng import seeded_global_rng
+
     cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, 10, 0)
     ES = dict(P["ES"])
-    return PPLFP.PPLFP_ComputeParamStandardErrors(
-        y, P["dN"], P["x"], P["WK"], P["A"], P["Q"], Chat, R, alpha, P["x0"], 1e-9 * np.eye(P["dx"]), ES,
-        P["fit"], P["mu"], P["beta"], P.get("gamma_arg", P["gamma"]), P["wt"],
-        P["HkAll"] if HkAll is None else HkAll, cons,
-    )
+    with seeded_global_rng(seed):  # PPLFP draws through np.random.default_rng()
+        return PPLFP.PPLFP_ComputeParamStandardErrors(
+            y, P["dN"], P["x"], P["WK"], P["A"], P["Q"], Chat, R, alpha, P["x0"], 1e-9 * np.eye(P["dx"]), ES,
+            P["fit"], P["mu"], P["beta"], P.get("gamma_arg", P["gamma"]), P["wt"],
+            P["HkAll"] if HkAll is None else HkAll, cons,
+        )
 
 
-SE_RTOL = 1e-4  # measured agreement <= 3.4e-8 (posterior noise of the 1e-12 draws, FD error)
+# Measured agreement over 20 Monte-Carlo seeds x every case below (640 SE
+# computations): <= 6.2e-8 (posterior noise of the 1e-12 draws, FD error), so
+# 1e-6 (MATLAB's own FD tolerance) leaves a >15x margin.
+SE_RTOL = 1e-6
 
 # C = 1 with W = 1 is a single history coefficient; it is also passed as a
 # 0-d scalar ("C1W1s").  The MATLAB SE routines left the gamma parameter
@@ -801,14 +807,71 @@ def test_bare_default_pplfp_em_and_mppco_em_converge(monkeypatch) -> None:
 
 @pytest.mark.parametrize("gamma", [-0.3, np.array([[-0.3]])], ids=["scalar", "1x1"])
 def test_single_cell_single_window_em_runs_with_one_gamma_parameter(gamma) -> None:
-    # C == 1, W == 1: one history coefficient.  PP_EM computes its SEs with it
-    # (the MATLAB SE routines left that parameter count unassigned; a 1 x 1
-    # gamma raised in PP_MStep / the SE routine and a scalar in PPLFP_MStep).
+    # C == 1, W == 1: one history coefficient.  Both EMs compute their SEs with
+    # it (the MATLAB SE routines left that parameter count unassigned; a 1 x 1
+    # gamma raised in PP_MStep / the SE routine and a scalar in PPLFP_MStep,
+    # and PPLFP_EM's SE pass never ran).
     P = _em_problem(C=1)
     for wt in (None, [0.0, 0.001]):
-        out = _run_em("PP", P, gamma, wt)
-        assert np.size(out[6]) == 1 and np.shape(out[6]) == np.shape(gamma)
-        assert np.size(out[10]["gamma"]) == 1 and np.all(np.isfinite(out[10]["gamma"]))
-        assert np.size(out[11]["gamma"]) == 1
-        out = _run_em("PPLFP", P, gamma, wt)
-        assert np.size(out[9]) == 1 and np.shape(out[9]) == np.shape(gamma) and np.isfinite(out[12]["llcomp"])
+        for family, ig, ise, ip in (("PP", 6, 10, 11), ("PPLFP", 9, 13, 14)):
+            out = _run_em(family, P, gamma, wt)
+            assert np.size(out[ig]) == 1 and np.shape(out[ig]) == np.shape(gamma)
+            assert np.size(out[ise]["gamma"]) == 1 and np.all(np.isfinite(out[ise]["gamma"])), family
+            assert np.size(out[ip]["gamma"]) == 1 and np.all(np.isfinite(out[ip]["gamma"])), family
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+@pytest.mark.parametrize("gamma", [-0.3, np.array([[-0.3]])], ids=["scalar", "1x1"])
+def test_single_gamma_mstep_keeps_the_callers_shape(family, gamma) -> None:
+    # The M-step itself (not just the EM's selected iterate) returns one
+    # estimated coefficient in the shape it was given (PP_MStep returned a
+    # scalar as shape (1,)).
+    P = _mstep_problem("poisson", C=1, nW=1)
+    out = _run_pp_mstep(P, "poisson", gamma=gamma) if family == "PP" else _run_pplfp_mstep(P, "poisson", gamma=gamma)
+    g_out = np.asarray(out[4] if family == "PP" else out[7])
+    assert g_out.shape == np.shape(gamma)
+    assert np.isfinite(g_out).all() and float(g_out.reshape(-1)[0]) != -0.3  # estimated
+
+
+def test_pplfp_em_returns_standard_errors_from_the_scaled_observations(monkeypatch) -> None:
+    # PPLFP_EM computes its SEs (it unpacked the routine's three outputs into
+    # two inside `except Exception: pass`, so SE = Pvals = {} always).  It
+    # mirrors the pinned MATLAB, which passes its whitened observations
+    # y = Tr*y (Tr = inv(chol(R0))) -- an open parity question upstream.
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    args = _pplfp_em_gold_args()
+    seen = {}
+    real = PPLFP.PPLFP_ComputeParamStandardErrors
+
+    def spy(*a, **k):
+        seen["y"] = np.asarray(a[0], dtype=float)
+        return real(*a, **k)
+
+    monkeypatch.setattr(PPLFP, "PPLFP_ComputeParamStandardErrors", staticmethod(spy))
+    with seeded_global_rng(42):
+        out = PPLFP.PPLFP_EM(*args)
+    SE, Pvals = out[13], out[14]
+    assert sorted(SE) == sorted(Pvals) == ["A", "C", "Q", "R", "alpha", "beta", "mu"]  # the MATLAB gold's fields
+    for d in (SE, Pvals):
+        for key, value in d.items():
+            assert np.all(np.isfinite(np.asarray(value, dtype=float))), key
+    Tr = np.linalg.inv(np.linalg.cholesky(args[5]).T)
+    np.testing.assert_array_equal(seen["y"], Tr @ args[0])
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_default_windows_read_a_2d_row_as_the_shared_column(family) -> None:
+    # MATLAB (default-window branch): if(isrow(gamma) && numel(gamma)~=C)
+    # gamma = gamma(:).  A (1, 3) row -- what scipy.io.loadmat returns for a
+    # MATLAB row vector -- with C = 4 is 3 shared windows, expanded to the
+    # cells: exactly the explicit 3-window call with the replicated gamma.
+    # It raised in both drivers.
+    from nstat.core import _matlab_colon_exact
+
+    P = _em_problem(C=4)
+    row = np.array([[-0.6, -0.3, -0.15]])
+    a = _run_em(family, P, row, None)
+    b = _run_em(family, P, np.tile(row.reshape(3, 1), (1, 4)), _matlab_colon_exact(0.0, 0.001, 3 * 0.001))
+    _assert_outputs_identical(a, b)
+    assert np.shape(a[6] if family == "PP" else a[9]) == (3, 4)

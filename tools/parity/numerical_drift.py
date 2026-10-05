@@ -558,8 +558,8 @@ def _recipe_pplfp_se_alpha(fixture: dict[str, Any], _args: dict[str, Any]) -> tu
 def _recipe_pp_estep(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
     """PointProcessEM.PP_EStep — every output of one ``pp_estep.mat`` case.
 
-    ``args.case`` selects the case prefix (``c1`` .. ``c4``; see
-    ``tools/parity/matlab/capture_pp_estep.m``).  Returns the concatenation
+    ``args.case`` selects the case prefix (``c1`` .. ``c6``; c5 / c6 have a
+    square history, nW == C; see ``tools/parity/matlab/capture_pp_estep.m``).  Returns the concatenation
     of x_K (every time step), W_K, logll and every ExpectationSums field, in
     the fixture's field order, so a drift in any of them is caught.
     """
