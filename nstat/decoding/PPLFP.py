@@ -779,8 +779,8 @@ class PPLFP:
         QhatIsotropic: int | bool = 0,
         RhatDiag: int | bool = 1,
         RhatIsotropic: int | bool = 0,
-        Estimatex0: int | bool = 1,
-        EstimatePx0: int | bool = 1,
+        Estimatex0: int | bool = 0,
+        EstimatePx0: int | bool = 0,
         Px0Isotropic: int | bool = 0,
         mcIter: int = 1000,
         EnableIkeda: int | bool = 0,
@@ -791,11 +791,17 @@ class PPLFP:
         ``+nstat/+decoding/PPLFP.m::PPLFP_EMCreateConstraints``
         (lines 389-449).
 
-        By default all parameters are estimated. To impose diagonal
-        structure on the EM parameter results, pass in the corresponding
-        constraint flags. Isotropic constraints are only honored when
-        the corresponding diagonal/estimate flag is enabled, matching
-        the MATLAB conditional gating.
+        Defaults follow the repaired MATLAB (fix/pp-em round 3, B8):
+        ``EstimateA=1, AhatDiag=0, QhatDiag=1, QhatIsotropic=0, RhatDiag=1,
+        RhatIsotropic=0, Estimatex0=0, EstimatePx0=0, Px0Isotropic=0,
+        mcIter=1000, EnableIkeda=0``.  x0 and Px0 are NOT estimated by default
+        (they were 1 and 1): the Px0 M-step ``(x0hat - x0)(x0hat - x0)' .* I``
+        is a single-sample estimate that collapses to ~0 (or slightly
+        negative) after one iteration and sends the E-step log-likelihood to
+        +Inf / NaN (MATLAB report C2).  Pass ``Estimatex0=1, EstimatePx0=1``
+        explicitly for the old behaviour.  Isotropic constraints are only
+        honored when the corresponding diagonal/estimate flag is enabled,
+        matching the MATLAB conditional gating.
 
         Parameters
         ----------
@@ -813,9 +819,9 @@ class PPLFP:
         RhatIsotropic : bool/int, default 0
             Constrain Rhat to an isotropic matrix. Only effective when
             ``RhatDiag`` is true.
-        Estimatex0 : bool/int, default 1
+        Estimatex0 : bool/int, default 0
             Whether to estimate the initial state x0.
-        EstimatePx0 : bool/int, default 1
+        EstimatePx0 : bool/int, default 0
             Whether to estimate the initial state covariance Px0.
         Px0Isotropic : bool/int, default 0
             Constrain Px0hat to isotropic. Only effective when
@@ -1752,9 +1758,24 @@ class PPLFP:
         x0=None,
         Px0=None,
         PPLFP_EM_Constraints=None,
-        MstepMethod: str = "GLM",
+        MstepMethod: str = "NewtonRaphson",
     ):
         """Full PPLFP EM driver (E-step / M-step loop).
+
+        Defaults (repaired MATLAB, B8): ``fitType='poisson'``,
+        ``delta=0.001``, no history, ``x0 = 0``, ``Px0 = 1e-9 I``,
+        ``PPLFP_EM_Constraints = PPLFP_EMCreateConstraints()`` (x0 / Px0 not
+        estimated -- that estimator collapses Px0 and drives the log-likelihood
+        to +Inf / NaN) and ``MstepMethod='NewtonRaphson'`` (was ``'GLM'``): the
+        Monte-Carlo Newton-Raphson M-step maximises the expected complete-data
+        log-likelihood over the smoothed state posterior, whereas the 'GLM'
+        M-step is a plug-in fit on the smoothed means that ignores W_K,
+        inflates beta and drifts.  'GLM' remains selectable.  With ``gamma``
+        given and ``windowTimes`` empty there is one history window per
+        coefficient (``0:delta:size(gamma,1)*delta``) and a nonzero shared
+        gamma column is expanded to every cell.  EM stops before the M-step if
+        the E-step log-likelihood is not finite and returns the best finite
+        iterate.
 
         Direct port of MATLAB ``PPLFP_EM`` in
         ``+nstat/+decoding/PPLFP.m`` (lines 1577-1989).  Structurally
@@ -2691,10 +2712,11 @@ class PPLFP:
         x0, Px0)`` from sufficient statistics in ``ExpectationSums``, then
         CIF param updates ``(mu, beta, gamma)`` via either a GLM fit
         (``MstepMethod='GLM'``) or Monte-Carlo Newton-Raphson
-        (``MstepMethod='NewtonRaphson'``).
+        (``MstepMethod='NewtonRaphson'``, the default since the repaired
+        MATLAB, B8; it was 'GLM' -- see PPLFP_EM).
         """
         if MstepMethod is None:
-            MstepMethod = "GLM"
+            MstepMethod = "NewtonRaphson"
         if PPLFP_EM_Constraints is None:
             PPLFP_EM_Constraints = PPLFP.PPLFP_EMCreateConstraints()
 

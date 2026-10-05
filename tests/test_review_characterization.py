@@ -376,12 +376,15 @@ _SE_CASES = {
     # Poisson with 2-window history (gamma block present); WKFinal[:, :, 7]
     # non-PD -> inline eigh-clip fallback; staticmethod _nearestSPD on the
     # (indefinite) inverse observed information.
+    # (x0 / Px0 estimation is passed explicitly: PP_EMCreateConstraints no
+    # longer estimates them by default -- repaired MATLAB round 2 -- and these
+    # cases pin the Px0 / x0 blocks.)
     "PP-A": (_call_pp, lambda: _pp_inputs(12, nonpd_slice=7),
-             ("PP", dict(mcIter=50)), 6),
+             ("PP", dict(Estimatex0=1, EstimatePx0=1, mcIter=50)), 6),
     # Binomial without history; diagonal A, isotropic Q/Px0; Px0hat non-PD ->
     # inline eigh-clip fallback on the x0 draw.
     "PP-B": (_call_pp, lambda: _pp_inputs(22, fit="binomial", history=False, px0=(0.2, -0.1)),
-             ("PP", dict(AhatDiag=1, QhatIsotropic=1, Px0Isotropic=1, mcIter=50)), 6),
+             ("PP", dict(AhatDiag=1, QhatIsotropic=1, Estimatex0=1, EstimatePx0=1, Px0Isotropic=1, mcIter=50)), 6),
 }
 
 

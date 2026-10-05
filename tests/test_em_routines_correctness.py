@@ -611,3 +611,132 @@ def test_pplfp_shared_gamma_column_reaches_every_cell(which) -> None:
     for u, v in zip(shared, replicated):
         np.testing.assert_array_equal(u, v)
     assert not np.array_equal(shared[2], zero_history[2])  # the history does act
+
+
+# ---------------------------------------------------------------------------
+# Defaults (repaired MATLAB round 2 / B8): NewtonRaphson M-step, x0 / Px0 not
+# estimated -- the Px0 estimator collapses Px0 and drives the logll to +Inf
+# ---------------------------------------------------------------------------
+
+
+def test_new_constraint_defaults() -> None:
+    import warnings
+
+    pp = DecodingAlgorithms.PP_EMCreateConstraints()
+    assert [pp[k] for k in ("EstimateA", "AhatDiag", "QhatDiag", "QhatIsotropic", "Estimatex0", "EstimatePx0",
+                            "Px0Isotropic", "mcIter", "EnableIkeda")] == [1, 0, 1, 0, 0, 0, 0, 1000, 0]
+    lfp = PPLFP.PPLFP_EMCreateConstraints()
+    assert [lfp[k] for k in ("EstimateA", "AhatDiag", "QhatDiag", "QhatIsotropic", "RhatDiag", "RhatIsotropic",
+                             "Estimatex0", "EstimatePx0", "Px0Isotropic", "mcIter", "EnableIkeda")] == \
+        [1, 0, 1, 0, 1, 0, 0, 0, 0, 1000, 0]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        assert DecodingAlgorithms.mPPCO_EMCreateConstraints() == lfp
+
+
+def test_mstep_defaults_equal_the_explicit_defaults() -> None:
+    # Omitted constraints / MstepMethod resolve to PP_/PPLFP_EMCreateConstraints()
+    # and 'NewtonRaphson' (PPLFP_MStep used to default to the GLM branch).
+    P = _mstep_problem("poisson")
+    args_pp = (P["dN"], P["x"], P["W_K"], np.zeros(2), 1e-9 * np.eye(2), P["ES"], "poisson", P["mu"], P["beta"],
+               P["gamma"], P["wt"], P["HkAll"])
+    np.random.seed(9)
+    a = DecodingAlgorithms.PP_MStep(*args_pp)
+    np.random.seed(9)
+    b = DecodingAlgorithms.PP_MStep(*args_pp, DecodingAlgorithms.PP_EMCreateConstraints(), "NewtonRaphson")
+    _assert_outputs_identical(a, b)
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    args_lfp = (P["dN"], P["y"], P["x"], P["W_K"], np.zeros(2), 1e-9 * np.eye(2), P["ES"], "poisson", P["mu"],
+                P["beta"], P["gamma"], P["wt"], P["HkAll"])
+    with seeded_global_rng(9):
+        a = PPLFP.PPLFP_MStep(*args_lfp)
+    with seeded_global_rng(9):
+        b = PPLFP.PPLFP_MStep(*args_lfp, PPLFP.PPLFP_EMCreateConstraints(), "NewtonRaphson")
+    _assert_outputs_identical(a, b)
+
+
+def _bare_problem():
+    """MATLAB testPPLFPEMCorrectness.makeProblem('poisson', false, 600) analogue."""
+    rng = np.random.default_rng(22)
+    N = 600
+    A, Q = 0.98 * np.eye(2), 0.01 * np.eye(2)
+    x = np.zeros((2, N))
+    prev = np.zeros(2)
+    for k in range(N):
+        prev = A @ prev + rng.multivariate_normal(np.zeros(2), Q)
+        x[:, k] = prev
+    mu = np.log(40 * 0.001) * np.ones(4)
+    beta = np.array([[1.0, -0.5], [0.3, 0.8], [-0.7, 0.4], [0.6, 0.6]]).T
+    dN = (rng.random((4, N)) < np.minimum(np.exp(mu[:, None] + beta.T @ x), 1)).astype(float)
+    Cm, alpha, R = np.array([[1.0, 0.5], [-0.3, 1.0]]), np.array([0.1, -0.1]), 0.05 * np.eye(2)
+    y = Cm @ x + alpha[:, None] + rng.multivariate_normal(np.zeros(2), R, size=N).T
+    return dict(A=A, Q=Q, mu=mu, beta=beta, dN=dN, y=y, Cm=Cm, alpha=alpha, R=R)
+
+
+def _record_ll(monkeypatch, owner, name):
+    real = getattr(owner, name)
+    trace: list = []
+
+    def wrapped(*a, **k):
+        out = real(*a, **k)
+        trace.append(out[2])
+        return out
+
+    monkeypatch.setattr(owner, name, staticmethod(wrapped))
+    return trace
+
+
+def _assert_converging(trace):
+    ll = np.asarray(trace, dtype=float)
+    assert ll.size > 2 and np.all(np.isfinite(ll))
+    assert ll[1] > ll[0]
+    assert np.all(np.diff(ll[:-1]) >= 0)
+
+
+def test_bare_default_pp_em_converges(monkeypatch) -> None:
+    # PP_EM(dN, A, Q, mu, beta, 'poisson', delta) with every other argument
+    # defaulted.  (The SE pass, default mcIter = 1000, is stubbed for speed --
+    # MATLAB's own test requests 10 outputs, which skips it.)
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    P = _bare_problem()
+    trace = _record_ll(monkeypatch, DecodingAlgorithms, "PP_EStep")
+    monkeypatch.setattr(DecodingAlgorithms, "PP_ComputeParamStandardErrors", staticmethod(lambda *a, **k: ({}, {}, 0)))
+    with seeded_global_rng(42):
+        out = DecodingAlgorithms.PP_EM(P["dN"], P["A"], P["Q"], P["mu"], P["beta"], "poisson", 0.001)
+    _assert_converging(trace)
+    assert out[12] == len(trace) and out[12] > 2
+    assert np.max(np.abs(out[4] - P["mu"])) < 0.5
+    assert np.max(np.abs(out[5] - P["beta"])) < 0.8
+    # x0 / Px0 are not estimated by default (they stay at 0 and 1e-9 I).
+    assert np.array_equal(out[7], np.zeros(2))
+    np.testing.assert_allclose(out[8], 1e-9 * np.eye(2), rtol=1e-10, atol=1e-24)
+
+
+def test_bare_default_pplfp_em_and_mppco_em_converge(monkeypatch) -> None:
+    # PPLFP_EM(y, dN, A, Q, C, R, alpha, mu, beta): the default M-step used to
+    # be the (broken) GLM branch; the mPPCO_EM alias forwards the bare call
+    # unchanged.
+    import warnings
+
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    P = _bare_problem()
+    args = (P["y"], P["dN"], P["A"], P["Q"], P["Cm"], P["R"], P["alpha"], P["mu"], P["beta"])
+    monkeypatch.setattr(PPLFP, "PPLFP_ComputeParamStandardErrors", staticmethod(lambda *a, **k: ({}, {}, 0)))
+    with seeded_global_rng(42):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            alias = DecodingAlgorithms.mPPCO_EM(*args)
+    trace = _record_ll(monkeypatch, PPLFP, "PPLFP_EStep")
+    with seeded_global_rng(42):
+        out = PPLFP.PPLFP_EM(*args)
+    _assert_outputs_identical(alias, out)
+    _assert_converging(trace)
+    assert np.max(np.abs(out[7] - P["mu"])) < 0.5
+    assert np.max(np.abs(out[8] - P["beta"])) < 0.8
+    assert np.max(np.abs(out[4] - P["Cm"])) < 0.1
+    assert np.max(np.abs(np.ravel(out[6]) - P["alpha"])) < 0.1
+    assert np.array_equal(np.ravel(out[10]), np.zeros(2))
+    np.testing.assert_allclose(out[11], 1e-9 * np.eye(2), rtol=1e-10, atol=1e-24)

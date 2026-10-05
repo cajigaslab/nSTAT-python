@@ -5291,13 +5291,24 @@ class DecodingAlgorithms:
         AhatDiag=0,
         QhatDiag=1,
         QhatIsotropic=0,
-        Estimatex0=1,
-        EstimatePx0=1,
+        Estimatex0=0,
+        EstimatePx0=0,
         Px0Isotropic=0,
         mcIter=1000,
         EnableIkeda=0,
     ):
         """Build a constraints dict for PP_EM.
+
+        Matlab: ``PointProcessEM.PP_EMCreateConstraints``.  Defaults follow the
+        repaired MATLAB (fix/pp-em round 2): ``EstimateA=1, AhatDiag=0,
+        QhatDiag=1, QhatIsotropic=0, Estimatex0=0, EstimatePx0=0,
+        Px0Isotropic=0, mcIter=1000, EnableIkeda=0``.  x0 and Px0 are NOT
+        estimated by default (they were 1 and 1): the Px0 M-step,
+        ``Px0hat = (x0hat - x0)(x0hat - x0)' .* I``, is a single-sample estimate
+        that collapses to ~0 after one iteration, which drives
+        ``-1/2 log det(Px0)`` and hence the E-step log-likelihood to +Inf and
+        stops EM after ~2 iterations (MATLAB report C2).  Pass
+        ``Estimatex0=1, EstimatePx0=1`` explicitly for the old behaviour.
 
         Parameters
         ----------
@@ -5310,9 +5321,9 @@ class DecodingAlgorithms:
         QhatIsotropic : int
             Constrain Q to be isotropic (scalar * I).
         Estimatex0 : int
-            Whether to estimate the initial state x0.
+            Whether to estimate the initial state x0 (default 0; see above).
         EstimatePx0 : int
-            Whether to estimate the initial state covariance Px0.
+            Whether to estimate the initial state covariance Px0 (default 0).
         Px0Isotropic : int
             Constrain Px0 to be isotropic.
         mcIter : int
@@ -5943,6 +5954,23 @@ class DecodingAlgorithms:
         spike observations with explicit beta/mu/gamma parameters (no basis
         functions).
 
+        Matlab: ``PointProcessEM.PP_EM`` (repaired, fix/pp-em).  Defaults:
+        ``fitType='poisson'``, ``delta=0.001``, no history (``gamma`` empty or
+        0 with ``windowTimes`` empty), ``x0 = 0``, ``Px0 = 1e-9 I``,
+        ``PPEM_Constraints = PP_EMCreateConstraints()`` (x0 / Px0 not
+        estimated: that estimator collapses Px0 and stops EM after ~2
+        iterations) and ``MstepMethod='NewtonRaphson'`` -- the Monte-Carlo
+        Newton-Raphson M-step maximises the expected complete-data
+        log-likelihood over the smoothed state posterior.  (MATLAB's
+        alternative 'GLM' M-step is a plug-in regression on the smoothed means
+        that ignores W_K, inflates beta and drifts; this port's PP_MStep runs
+        the Newton-Raphson step for any MstepMethod.)  With ``gamma`` given and
+        ``windowTimes`` empty there is one history window per coefficient,
+        ``windowTimes = 0:delta:size(gamma,1)*delta``, and a nonzero shared
+        ``numWindows x 1`` gamma is expanded to every cell.  History is built
+        on the ``delta`` grid.  EM stops before the M-step if the E-step
+        log-likelihood is not finite and returns the best finite iterate.
+
         Parameters
         ----------
         dN : (C, N) binary spike observations
@@ -6477,8 +6505,12 @@ class DecodingAlgorithms:
         gammahat : scalar or (nW, C) current history coefficients
         windowTimes : history window boundaries or None
         HkAll : (N, nW, C) history tensor
-        PPEM_Constraints : dict from PP_EMCreateConstraints
-        MstepMethod : 'NewtonRaphson' (default) or 'GLM'
+        PPEM_Constraints : dict from PP_EMCreateConstraints (default
+            ``PP_EMCreateConstraints()``: x0 / Px0 not estimated)
+        MstepMethod : 'NewtonRaphson' (default, as in the repaired MATLAB) or
+            'GLM'.  This port runs the Monte-Carlo Newton-Raphson step for
+            either value (MATLAB's plug-in GLM M-step on the smoothed means is
+            not ported here).
 
         Returns
         -------
@@ -6959,8 +6991,8 @@ class DecodingAlgorithms:
     @staticmethod
     def mPPCO_EMCreateConstraints(EstimateA=1, AhatDiag=0, QhatDiag=1,
                                   QhatIsotropic=0, RhatDiag=1,
-                                  RhatIsotropic=0, Estimatex0=1,
-                                  EstimatePx0=1, Px0Isotropic=0,
+                                  RhatIsotropic=0, Estimatex0=0,
+                                  EstimatePx0=0, Px0Isotropic=0,
                                   mcIter=1000, EnableIkeda=0):
         """[DEPRECATED] Alias of :meth:`PPLFP_EMCreateConstraints` (EM constraints builder).
 
@@ -6972,6 +7004,10 @@ class DecodingAlgorithms:
         argument positionally to :meth:`PPLFP_EMCreateConstraints`, so it
         returns exactly what ``PPLFP_EMCreateConstraints`` returns: the
         constraints ``dict``.
+
+        Its defaults are ``PPLFP_EMCreateConstraints``'s (MATLAB forwards
+        ``varargin``, so the alias inherits them): ``Estimatex0=0`` and
+        ``EstimatePx0=0`` since the repaired MATLAB (B8).
 
         Use :meth:`PPLFP_EMCreateConstraints` (or
         ``nstat.decoding.PPLFP.PPLFP_EMCreateConstraints``) instead.
@@ -7015,7 +7051,7 @@ class DecodingAlgorithms:
     @staticmethod
     def mPPCO_EM(y, dN, Ahat0, Qhat0, Chat0, Rhat0, alphahat0, mu, beta,
                  fitType='poisson', delta=0.001, gamma=None, windowTimes=None,
-                 x0=None, Px0=None, mPPCOEM_Constraints=None, MstepMethod='GLM'):
+                 x0=None, Px0=None, mPPCOEM_Constraints=None, MstepMethod='NewtonRaphson'):
         """[DEPRECATED] Alias of :meth:`PPLFP_EM` (the full EM driver).
 
         Matlab: ``DecodingAlgorithms.mPPCO_EM`` is a deprecation shim that
@@ -7026,7 +7062,9 @@ class DecodingAlgorithms:
         returns exactly what ``PPLFP_EM`` returns: ``(xKFinal, WKFinal, Ahat,
         Qhat, Chat, Rhat, alphahat, muhat, betahat, gammahat, x0hat, Px0hat,
         IC, SE, Pvals)``. ``mPPCOEM_Constraints`` is the legacy name of
-        ``PPLFP_EM_Constraints``; it is passed positionally.
+        ``PPLFP_EM_Constraints``; it is passed positionally.  ``MstepMethod``
+        defaults to ``PPLFP_EM``'s ``'NewtonRaphson'`` (the repaired MATLAB's,
+        B8, which the MATLAB alias inherits through ``varargin``).
 
         Use :meth:`PPLFP_EM` (or ``nstat.decoding.PPLFP.PPLFP_EM``) instead.
         """
@@ -7060,7 +7098,7 @@ class DecodingAlgorithms:
     @staticmethod
     def mPPCO_MStep(dN, y, x_K, W_K, x0, Px0, ExpectationSums, fitType='poisson',
                     muhat=None, betahat=None, gammahat=None, windowTimes=None,
-                    HkAll=None, mPPCOEM_Constraints=None, MstepMethod='GLM'):
+                    HkAll=None, mPPCOEM_Constraints=None, MstepMethod='NewtonRaphson'):
         """[DEPRECATED] Alias of :meth:`PPLFP_MStep` (the EM maximisation step).
 
         Matlab: ``DecodingAlgorithms.mPPCO_MStep`` is a deprecation shim that
@@ -7078,8 +7116,9 @@ class DecodingAlgorithms:
         / ``HkAll`` defaults that ``PPLFP_MStep`` (and MATLAB) do not have;
         the signature is frozen, so those defaults are forwarded as-is. Supply
         all six: omitting them is unsupported (MATLAB raises, here
-        ``PPLFP_MStep`` receives ``None``). ``MstepMethod='GLM'`` equals
-        ``PPLFP_MStep``'s ``None`` default, which it resolves to ``'GLM'``.
+        ``PPLFP_MStep`` receives ``None``). ``MstepMethod`` defaults to
+        ``'NewtonRaphson'``, ``PPLFP_MStep``'s default since the repaired MATLAB
+        (B8), which the MATLAB alias inherits through ``varargin``.
 
         Use :meth:`PPLFP_MStep` (or ``nstat.decoding.PPLFP.PPLFP_MStep``)
         instead.

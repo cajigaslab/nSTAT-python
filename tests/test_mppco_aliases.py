@@ -39,7 +39,11 @@ from nstat.extras.matlab_rng import seeded_global_rng
 
 FIXTURE_ROOT = Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab_gold"
 
-# (alias, PPLFP target, signature string on main @ 98d468d)
+# (alias, PPLFP target, signature string on main @ 98d468d -- except the three
+# defaults the repaired MATLAB changed (B8): mPPCO_EMCreateConstraints'
+# Estimatex0 / EstimatePx0 (1 -> 0) and mPPCO_EM / mPPCO_MStep's MstepMethod
+# ('GLM' -> 'NewtonRaphson').  MATLAB's aliases forward varargin, so they
+# inherit PPLFP_*'s defaults; the Python aliases spell them out and follow.)
 ALIASES = [
     (
         "mPPCO_fixedIntervalSmoother",
@@ -62,7 +66,7 @@ ALIASES = [
         "mPPCO_EMCreateConstraints",
         "PPLFP_EMCreateConstraints",
         "(EstimateA=1, AhatDiag=0, QhatDiag=1, QhatIsotropic=0, RhatDiag=1, "
-        "RhatIsotropic=0, Estimatex0=1, EstimatePx0=1, Px0Isotropic=0, mcIter=1000, "
+        "RhatIsotropic=0, Estimatex0=0, EstimatePx0=0, Px0Isotropic=0, mcIter=1000, "
         "EnableIkeda=0)",
     ),
     (
@@ -77,7 +81,7 @@ ALIASES = [
         "PPLFP_EM",
         "(y, dN, Ahat0, Qhat0, Chat0, Rhat0, alphahat0, mu, beta, fitType='poisson', "
         "delta=0.001, gamma=None, windowTimes=None, x0=None, Px0=None, "
-        "mPPCOEM_Constraints=None, MstepMethod='GLM')",
+        "mPPCOEM_Constraints=None, MstepMethod='NewtonRaphson')",
     ),
     (
         "mPPCO_EStep",
@@ -90,7 +94,7 @@ ALIASES = [
         "PPLFP_MStep",
         "(dN, y, x_K, W_K, x0, Px0, ExpectationSums, fitType='poisson', muhat=None, "
         "betahat=None, gammahat=None, windowTimes=None, HkAll=None, "
-        "mPPCOEM_Constraints=None, MstepMethod='GLM')",
+        "mPPCOEM_Constraints=None, MstepMethod='NewtonRaphson')",
     ),
 ]
 _ALIAS_IDS = [a[0] for a in ALIASES]
