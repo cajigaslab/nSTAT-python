@@ -206,7 +206,41 @@ def _find_dataset_root(extracted_root: Path) -> Path:
     )
 
 
+def _carry_over_missing(old: Path, new: Path) -> None:
+    """Copy into ``new`` every entry of ``old`` that ``new`` does not have.
+
+    Recurses into directories present in both trees and never overwrites an
+    existing entry of ``new``.  Copies rather than moves, so a failure part-way
+    leaves ``old`` complete for the caller's rollback.
+    """
+    for entry in old.iterdir():
+        target = new / entry.name
+        if os.path.lexists(target):
+            if (
+                entry.is_dir() and not entry.is_symlink()
+                and target.is_dir() and not target.is_symlink()
+            ):
+                _carry_over_missing(entry, target)
+            continue
+        if entry.is_dir() and not entry.is_symlink():
+            shutil.copytree(entry, target, symlinks=True)
+        else:
+            shutil.copy2(entry, target, follow_symlinks=False)
+
+
 def _atomic_replace_tree(source: Path, destination: Path) -> None:
+    """Swap ``source`` in as ``destination``, keeping entries only ``destination`` had.
+
+    ``destination`` is renamed to ``<name>.bak`` and ``source`` renamed into
+    place.  Every entry of the backup that the new tree lacks (files and
+    directories, at any depth) is then copied in before the backup is
+    deleted; content from ``source`` is never overwritten.  This keeps files
+    that live in the data directory but not in the downloaded archive -- e.g.
+    the git-tracked ``data_cache/nstat_data/paperHybridFilterExample.{h5,mat}``
+    -- which were previously deleted with the backup.  (A stale sentinel
+    carried over this way is rewritten by the caller.)  On any failure the
+    new tree is removed and the backup restored.
+    """
     destination.parent.mkdir(parents=True, exist_ok=True)
     backup = destination.with_name(f"{destination.name}.bak")
     if backup.exists():
@@ -215,6 +249,8 @@ def _atomic_replace_tree(source: Path, destination: Path) -> None:
         destination.rename(backup)
     try:
         source.rename(destination)
+        if backup.is_dir():
+            _carry_over_missing(backup, destination)
     except Exception:
         if destination.exists():
             shutil.rmtree(destination)
