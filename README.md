@@ -240,6 +240,7 @@ Full rendered documentation is on
 | [What's New](https://cajigaslab.github.io/nSTAT-python/whats_new.html) | Per-release change summaries |
 | [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | Full changelog (start here when upgrading) |
 | [Methods roadmap](parity/methods_roadmap.md) | What's queued for upcoming releases |
+| [`RELEASE_READINESS.md`](RELEASE_READINESS.md) | Release procedure for maintainers; note that pushing a `v*` tag triggers the PyPI publish workflow (`publish.yml`) |
 | [Parity audit](parity/report.md) | MATLAB ↔ Python class & method parity verification |
 
 ## Ecosystem

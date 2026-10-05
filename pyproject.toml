@@ -150,6 +150,8 @@ latents = [
 # time-invariant fast paths through ``@numba.njit(cache=True,
 # fastmath=False)`` kernels.  Pure-Python (NumPy) paths remain the
 # default when this extras key is not installed.  BSD-2.
+# Deliberately NOT in [all-extras] (it is an opt-in performance accelerator,
+# not a feature bridge); install explicitly when you want the JIT paths.
 numba = [
   "numba>=0.60",
 ]
@@ -157,10 +159,11 @@ numba = [
 # PyTorch-based decoder bridges (placeholder; deferred to a future release).
 deep-learning = []
 
-# Convenience: install every functional extras group at once.
-# This MUST be the union of all individually-installable groups above
-# (otherwise the README claim that ``[all-extras]`` is the one-shot
-# install would be a lie).
+# Convenience: install the lightweight functional extras groups at once.
+# This is NOT the union of every group above: dynamax, clusterless,
+# spatial-gp, hawkes, dpp, latents and numba are deliberately excluded
+# (install size / opt-in acceleration; see the notes on each group) and must
+# be installed individually.  Keep this list in sync with that policy.
 all-extras = [
   "neo>=0.13",
   "quantities>=0.15",

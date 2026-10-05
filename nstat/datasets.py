@@ -57,6 +57,20 @@ def _sha256(path: Path) -> str:
 
 
 def list_datasets() -> list[str]:
+    """List the names of all datasets registered in the manifest.
+
+    Returns
+    -------
+    list of str
+        Dataset names from ``nstat/data/manifest.json``, sorted alphabetically.
+
+    Raises
+    ------
+    nstat.errors.DataNotFoundError
+        If the manifest file is missing.
+    ValueError
+        If the manifest's ``datasets`` entry is not a mapping.
+    """
     return sorted(_load_manifest().keys())
 
 
@@ -75,6 +89,27 @@ def _resolve_dataset_target(rel_path: str) -> Path:
 
 
 def get_dataset_path(name: str) -> Path:
+    """Resolve a registered dataset name to its path on disk.
+
+    Parameters
+    ----------
+    name : str
+        Dataset name, one of :func:`list_datasets`.
+
+    Returns
+    -------
+    pathlib.Path
+        Existing filesystem path of the dataset.  Entries under ``data/``
+        are looked up in the example-data cache (see
+        :func:`nstat.data_manager.ensure_example_data`); no download is
+        attempted.
+
+    Raises
+    ------
+    nstat.errors.DataNotFoundError
+        If ``name`` is not in the manifest, the example data is not
+        installed, or the resolved path does not exist.
+    """
     entries = _load_manifest()
     if name not in entries:
         raise DataNotFoundError(f"Unknown dataset '{name}'. Available: {', '.join(sorted(entries))}")
@@ -86,6 +121,21 @@ def get_dataset_path(name: str) -> Path:
 
 
 def verify_checksums() -> dict[str, bool]:
+    """Verify every manifest dataset against its recorded SHA-256 digest.
+
+    Returns
+    -------
+    dict of str to bool
+        Maps each dataset name to ``True`` when the file exists and its
+        SHA-256 digest equals the manifest value.  ``False`` is reported for
+        a missing or uninstalled file and for a manifest entry that has no
+        digest.
+
+    Raises
+    ------
+    nstat.errors.DataNotFoundError
+        If the manifest file itself is missing.
+    """
     entries = _load_manifest()
     result: dict[str, bool] = {}
     for name, item in entries.items():

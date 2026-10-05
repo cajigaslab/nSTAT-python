@@ -32,6 +32,37 @@ def simulate_poisson_from_rate(
     rate_hz: np.ndarray,
     rng: np.random.Generator | None = None,
 ) -> nspikeTrain:
+    """Simulate one spike train from a sampled rate by Bernoulli thinning.
+
+    In each time bin the spike probability is ``1 - exp(-rate_hz * dt)``
+    (``dt`` is the local bin width; the last bin reuses the previous width).
+    A spike is emitted, stamped at the bin's time value, when a uniform draw
+    falls below that probability.
+
+    Parameters
+    ----------
+    time : array_like, shape (n,)
+        Monotonic time grid in seconds.
+    rate_hz : array_like, shape (n,)
+        Conditional intensity in Hz on the same grid.  Negative values are
+        treated as zero.
+    rng : numpy.random.Generator, optional
+        Random generator used for the draws.  A fresh
+        ``numpy.random.default_rng()`` is created when omitted (not
+        reproducible); pass ``np.random.default_rng(seed)`` for repeatable
+        output.
+
+    Returns
+    -------
+    nspikeTrain
+        Simulated spike train.  It is empty when fewer than two time samples
+        are given.
+
+    Raises
+    ------
+    ValueError
+        If ``time`` and ``rate_hz`` differ in length.
+    """
     t = np.asarray(time, dtype=float).reshape(-1)
     r = np.asarray(rate_hz, dtype=float).reshape(-1)
     if t.shape[0] != r.shape[0]:
