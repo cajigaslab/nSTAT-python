@@ -6799,7 +6799,7 @@ class DecodingAlgorithms:
         Matlab: ``DecodingAlgorithms.mPPCODecode_update``  (lines 4855-4944)
 
         This combines both the point-process update terms (sumValVec/sumValMat)
-        AND the Kalman/continuous-observation terms C'*R^{-1}*C and C'*R^{-1}*(y-Cx-alpha).
+        AND the Kalman/continuous-observation terms ``C'*R^{-1}*C`` and ``C'*R^{-1}*(y-Cx-alpha)``.
 
         Parameters
         ----------

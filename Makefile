@@ -23,7 +23,7 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
         regen regen-gallery regen-parity regen-figures regen-notebook-fidelity \
         regen-notebook-galleries regen-visual-parity \
         docs docs-strict docs-open refresh-intersphinx-inv \
-        diff-matlab readme-check helpfile-check freshness-check \
+        diff-matlab readme-check helpfile-check docs-snippet-check freshness-check \
         format lint typecheck \
         version-check sanity clean release-check \
         ci-local drift-check \
@@ -94,11 +94,15 @@ docs:  ## Build the Sphinx site (writes to docs/_build/html).
 	$(SPHINX) -b html docs docs/_build/html
 
 docs-strict:  ## Build docs with -W (warnings as errors, matches CI).
-	# Two-pass build: the first run populates docs/_autosummary so the
-	# strict run doesn't trip on cold-start "stub file not found"
-	# warnings.  Mirrors the CI docs-build job.
+	# Two-pass build.  Pass 1 (warm-up) populates docs/_autosummary so the
+	# strict pass doesn't trip on cold-start "stub file not found" warnings.
+	# Pass 2 runs with -E (ignore the saved environment, re-read EVERY
+	# source) because a plain `-W` rebuild after the warm-up is incremental:
+	# it re-reads nothing, so it emitted no warnings even when a fresh build
+	# produced 150+.  --keep-going lists all warnings instead of stopping at
+	# the first.  Mirrors the CI docs-build / deploy-docs strict step.
 	$(SPHINX) -b html docs docs/_build/html
-	$(SPHINX) -W -b html docs docs/_build/html
+	$(SPHINX) -E -W --keep-going -b html docs docs/_build/html
 
 docs-open: docs  ## Build docs and open in default browser (macOS / linux).
 	@command -v open >/dev/null && open docs/_build/html/index.html || \
@@ -121,7 +125,13 @@ readme-check:  ## Verify README intra-repo links, images, and code-snippet impor
 helpfile-check:  ## Verify every nstat.__all__ symbol is documented in AGENT_GUIDE + ClassDefinitions.
 	$(PY) tools/check_helpfile_freshness.py
 
-freshness-check: readme-check helpfile-check  ## Run both README and helpfile freshness checks.
+docs-snippet-check:  ## Verify links/images/imports in AGENT_GUIDE.md and docs/extras/*.md.
+	@for f in AGENT_GUIDE.md docs/extras/*.md; do \
+		$(PY) tools/check_readme_links.py --readme $$f --quiet || exit 1; \
+	done
+	@echo "docs-snippet-check OK (AGENT_GUIDE.md + docs/extras/*.md)"
+
+freshness-check: readme-check helpfile-check docs-snippet-check  ## Run README, helpfile, and docs-snippet freshness checks.
 
 # --- formatting / linting (no enforcement; recommendations only) ----
 

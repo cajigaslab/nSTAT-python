@@ -1,3 +1,7 @@
+---
+orphan: true
+---
+
 # Proposal — adopt 0-based indexing throughout (breaking, → v0.5.0)
 
 > **Status:** refined 2026-06-11 after Phase 4 closeout.  Awaiting `#177`

@@ -54,13 +54,24 @@ extensions = [
     "sphinx.ext.mathjax",           # Render LaTeX math (client-side MathJax)
 ]
 
-exclude_patterns = ["_build", "_autosummary", "Thumbs.db", ".DS_Store", "superpowers", "notebook_galleries", "parity"]
+templates_path = ["_templates"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "superpowers", "notebook_galleries", "parity"]
 master_doc = "index"
 
 # MyST: generate slug anchors for headings (h1–h3) so cross-page links to a
 # section — e.g. ``self_check.md`` → ``goodness_of_fit_and_decoding.md#check-your-understanding``
 # — resolve under the strict ``-W`` build.
 myst_heading_anchors = 3
+
+
+# MyST resolves ``glossary.md#slug`` links only against heading slugs, and
+# explicit ``(target)=`` / ``{#id}`` markup is not consulted for that form.
+# The glossary terms have long headings ("Local field potential (LFP)") but
+# are linked by short slugs (``#local-field-potential``), so
+# ``docs/_glossary_slugs.py`` overrides the slug for exactly those headings
+# (it lives in an importable module because MyST's config is pickled into
+# Sphinx's environment cache, and a function defined in conf.py cannot be).
+myst_heading_slug_func = "docs._glossary_slugs.heading_slug"
 
 # MyST: enable LaTeX math via ``$...$`` (inline) and ``$$...$$`` (block), plus
 # ``\begin{align}...\end{align}`` AMS environments. Same syntax that GitHub's
@@ -72,10 +83,36 @@ myst_enable_extensions = ["dollarmath", "amsmath"]
 # -- autosummary / autodoc ---------------------------------------------------
 
 # Auto-generate API stubs on every build.  Output is written to
-# ``docs/_autosummary/`` and is in ``exclude_patterns`` so the raw stubs
-# aren't published — only the rendered HTML is.
+# ``docs/_autosummary/``.  The stubs must NOT be in ``exclude_patterns``:
+# Sphinx only renders (and links) the autosummary table entries for stub
+# documents that are part of the build, so excluding them leaves every
+# api.rst / extras.rst entry unlinked and emits "stub file not found"
+# warnings.  The generated stubs are git-ignored.
 autosummary_generate = True
 autosummary_imported_members = False  # only document symbols defined in nstat
+
+
+def _class_target(fullname: str) -> dict:
+    """Template helper for ``_templates/autosummary/class.rst``.
+
+    Returns the real ``module``/``qualname`` of the class behind a public
+    name, and whether the public name is an alias of it.
+    """
+    from sphinx.ext.autosummary import import_by_name
+
+    obj = import_by_name(fullname)[1]
+    return {
+        "module": obj.__module__,
+        "qualname": obj.__qualname__,
+        "is_alias": obj.__name__ != fullname.rsplit(".", 1)[-1],
+    }
+
+
+autosummary_context = {"class_target": _class_target}
+# Case-insensitive filesystems (macOS default) cannot hold both
+# ``nstat.nstat_install.rst`` and ``nstat.nSTAT_Install.rst``; give the
+# second a distinct stub name so the toctree finds both everywhere.
+autosummary_filename_map = {"nstat.nSTAT_Install": "nstat.nSTAT_Install-case"}  # only document symbols defined in nstat
 
 # Document members by default, including dunders only when explicitly
 # documented in the source.  ``inherited-members`` would balloon every
@@ -94,14 +131,26 @@ autodoc_class_signature = "mixed"   # show __init__ signature inline with class 
 # don't fail the build, just emit a warning.  CI's ``docs-build`` job
 # runs with -W (warnings as errors) so genuine doc gaps DO surface, but
 # missing-docstring warnings are noisy enough that we exempt them.
-suppress_warnings = ["autodoc.import_object"]
+# ``config.cache``: ``autosummary_context`` holds a function, which Sphinx
+# cannot pickle into its config cache; it is rebuilt from conf.py on every
+# run, so the "cannot cache unpickleable configuration value" notice is
+# harmless.
+suppress_warnings = ["autodoc.import_object", "config.cache"]
 
 
 # -- napoleon (NumPy-style docstrings) ---------------------------------------
 
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
-napoleon_include_init_with_doc = True
+# False: the autosummary class template already emits
+# ``.. automethod:: __init__``; letting napoleon also inject ``__init__``
+# documents it twice ("duplicate object description" warnings).
+napoleon_include_init_with_doc = False
+# Render NumPy "Attributes" sections as :ivar: fields rather than
+# ``.. attribute::`` directives: autodoc also documents dataclass fields as
+# members, so the directive form registered every field twice
+# ("duplicate object description").
+napoleon_use_ivar = True
 napoleon_use_param = True
 napoleon_use_rtype = True
 

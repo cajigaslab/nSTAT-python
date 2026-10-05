@@ -344,16 +344,13 @@ class MaternPrior:
         :class:`numpy.linalg.LinAlgError` from Cholesky the jitter is
         retried once at ``10 * jitter``.
 
-    Methods
-    -------
-    K(coords)
-        Dense ``(K, K)`` covariance.
-    cholesky(coords)
-        Lower Cholesky factor :math:`L` such that :math:`K = LL^\top`.
-    K_inv(coords)
-        Inverse :math:`K^{-1}` via :func:`scipy.linalg.cho_solve`.
-    log_det(coords)
-        :math:`\log\det K = 2\sum_i \log L_{ii}`.
+    Notes
+    -----
+    Derived quantities (each a method taking ``coords``): ``K`` is the dense
+    ``(K, K)`` covariance; ``cholesky`` the lower Cholesky factor :math:`L`
+    with :math:`K = LL^\top`; ``K_inv`` the inverse :math:`K^{-1}` via
+    :func:`scipy.linalg.cho_solve`; ``log_det``
+    :math:`\log\det K = 2\sum_i \log L_{ii}`.
 
     Each derived quantity is computed once per ``coords`` and cached on
     the instance, keyed by the array's shape and bytes.

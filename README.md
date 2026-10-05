@@ -205,8 +205,10 @@ set_plot_style('legacy')   # strict paper reproduction
 Opt-in bridges (`nstat.extras.*`) to libraries in the modern Python
 systems-neuroscience stack. Each has a dedicated narrative helpfile under
 [`docs/extras/`](docs/extras/) covering install, intended use, gotchas, and
-runnable snippets. Install via the optional-dep group; install everything
-non-JAX at once with `pip install nstat-toolbox[all-extras]`.
+runnable snippets. Install via the optional-dep group; install the lightweight
+groups at once with `pip install nstat-toolbox[all-extras]` (this is not every
+group: `latents`, `numba`, `clusterless`, `spatial-gp`, `hawkes`, `dpp` and
+`dynamax` are excluded by design — install them individually).
 
 | Bridge | What it does | Helpfile | Optional dep |
 |---|---|---|---|

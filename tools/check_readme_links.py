@@ -15,7 +15,11 @@ What this script catches
 
 3. **Stale code-snippet imports** — ``from nstat import X`` or
    ``import nstat.X`` inside fenced ``python`` code blocks where the
-   symbol no longer resolves via ``importlib``.  Catches renames,
+   symbol no longer resolves via ``importlib``.  Imports are extracted
+   with ``ast`` (multi-line parenthesised imports, trailing comments).
+   Fenced blocks and inline code spans are ignored when scanning for
+   links/images, and ``.html`` targets (site-relative links to built
+   Sphinx pages) are not checked against the working tree.  Catches renames,
    removals, and additions-not-yet-exported.
 
 What this script does NOT catch
@@ -49,6 +53,7 @@ Used by:
 from __future__ import annotations
 
 import argparse
+import ast
 import importlib
 import re
 import sys
@@ -84,19 +89,17 @@ _PYTHON_FENCE_RE = re.compile(
     re.DOTALL,
 )
 
-# Match ``from nstat import X[, Y, Z]`` or ``from nstat.module import X``.
-# We only handle the ``nstat`` namespace — the README's code snippets
-# don't import anything else that's worth checking.
-_IMPORT_FROM_RE = re.compile(
-    r"^from\s+(nstat(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s+import\s+(.+)$",
-    re.MULTILINE,
-)
+# Any fenced code block (``` or ~~~, any info string) and inline code spans.
+# Stripped before scanning for links/images so ``[text](path)`` placeholders
+# shown inside code are not mistaken for real links.
+_ANY_FENCE_RE = re.compile(r"^(```|~~~)[^\n]*\n.*?^\1[ \t]*$", re.DOTALL | re.MULTILINE)
+_INLINE_CODE_RE = re.compile(r"(`+)(?:(?!\1).)+?\1", re.DOTALL)
 
-# Match ``import nstat`` or ``import nstat.module``.
-_IMPORT_RE = re.compile(
-    r"^import\s+(nstat(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*(?:as\s+\w+)?\s*$",
-    re.MULTILINE,
-)
+
+def _strip_code(text: str) -> str:
+    """Blank out fenced blocks and inline code spans (keeps line structure)."""
+    text = _ANY_FENCE_RE.sub("", text)
+    return _INLINE_CODE_RE.sub("", text)
 
 
 # ----------------------------------------------------------------------
@@ -124,7 +127,7 @@ def check_intra_repo_links(readme_path: Path, repo_root: Path) -> list[tuple[str
     before the existence check — we verify the *file* exists, not the
     anchor inside it.
     """
-    text = readme_path.read_text(encoding="utf-8")
+    text = _strip_code(readme_path.read_text(encoding="utf-8"))
     broken: list[tuple[str, str]] = []
     seen: set[str] = set()  # de-dup repeated identical targets
     for match in _LINK_RE.finditer(text):
@@ -140,6 +143,11 @@ def check_intra_repo_links(readme_path: Path, repo_root: Path) -> list[tuple[str
         clean = target.split("#", 1)[0]
         if not clean:  # pure anchor link, no file portion
             continue
+        if clean.endswith(".html"):
+            # Site-relative link to a built Sphinx page (docs/extras/*.md
+            # link to ``../api.html``); not a repo path, so not checkable
+            # against the working tree.
+            continue
         resolved = (readme_path.parent / clean).resolve()
         if not resolved.exists():
             broken.append((link_text, target))
@@ -148,7 +156,7 @@ def check_intra_repo_links(readme_path: Path, repo_root: Path) -> list[tuple[str
 
 def check_image_existence(readme_path: Path, repo_root: Path) -> list[tuple[str, str]]:
     """Return [(alt_text, broken_image_target), ...] for missing images."""
-    text = readme_path.read_text(encoding="utf-8")
+    text = _strip_code(readme_path.read_text(encoding="utf-8"))
     broken: list[tuple[str, str]] = []
     seen: set[str] = set()
     for match in _LINK_RE.finditer(text):
@@ -183,34 +191,70 @@ def check_code_snippet_imports(readme_path: Path) -> list[tuple[str, str]]:
         block = block_match.group(1)
         block_excerpt = block.strip().splitlines()[0][:80] if block.strip() else "<empty>"
 
-        # ``from nstat import X, Y``
-        for imp_match in _IMPORT_FROM_RE.finditer(block):
-            module_path, names_blob = imp_match.groups()
-            try:
-                module = importlib.import_module(module_path)
-            except Exception as exc:
-                broken.append((block_excerpt, f"{imp_match.group(0)}  # {type(exc).__name__}: {exc}"))
-                continue
-            # Names may be comma-separated and may include ``as`` clauses.
-            names = [
-                n.split(" as ")[0].strip()
-                for n in names_blob.split(",")
-            ]
-            for name in names:
-                if not name:
-                    continue
-                if not _has_attribute(module, name):
-                    broken.append((block_excerpt, f"from {module_path} import {name}"))
+        try:
+            tree = ast.parse(block)
+        except SyntaxError:
+            # Snippets with ``...`` placeholders, REPL prompts, etc. are not
+            # always parseable; fall back to the import lines only.
+            tree = ast.parse(_import_lines_only(block))
 
-        # ``import nstat[.X]``
-        for imp_match in _IMPORT_RE.finditer(block):
-            module_path = imp_match.group(1)
-            try:
-                importlib.import_module(module_path)
-            except Exception as exc:
-                broken.append((block_excerpt, f"{imp_match.group(0)}  # {type(exc).__name__}: {exc}"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                if node.level or not node.module or not _is_nstat(node.module):
+                    continue
+                try:
+                    module = importlib.import_module(node.module)
+                except Exception as exc:
+                    broken.append((block_excerpt, f"from {node.module} import ...  # {type(exc).__name__}: {exc}"))
+                    continue
+                for alias in node.names:
+                    if alias.name == "*":
+                        continue
+                    if _has_attribute(module, alias.name):
+                        continue
+                    # ``from nstat.extras import spatial`` style: a submodule.
+                    try:
+                        importlib.import_module(f"{node.module}.{alias.name}")
+                    except Exception:
+                        broken.append((block_excerpt, f"from {node.module} import {alias.name}"))
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    if not _is_nstat(alias.name):
+                        continue
+                    try:
+                        importlib.import_module(alias.name)
+                    except Exception as exc:
+                        broken.append((block_excerpt, f"import {alias.name}  # {type(exc).__name__}: {exc}"))
 
     return broken
+
+
+def _is_nstat(module_path: str) -> bool:
+    return module_path == "nstat" or module_path.startswith("nstat.")
+
+
+def _import_lines_only(block: str) -> str:
+    """Best-effort salvage of an unparseable snippet: keep top-level import
+    statements (joining parenthesised multi-line ones), drop everything else."""
+    lines = block.splitlines()
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if re.match(r"(from\s+\S+\s+import\b|import\s+\S)", line):
+            stmt = [line]
+            depth = line.count("(") - line.count(")")
+            while depth > 0 and i + 1 < len(lines):
+                i += 1
+                stmt.append(lines[i])
+                depth += lines[i].count("(") - lines[i].count(")")
+            out.extend(stmt)
+        i += 1
+    try:
+        ast.parse("\n".join(out))
+    except SyntaxError:
+        return ""
+    return "\n".join(out)
 
 
 def _has_attribute(module: Any, name: str) -> bool:
