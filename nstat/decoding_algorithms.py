@@ -5386,6 +5386,13 @@ class DecodingAlgorithms:
         K = N
         numCells = betahat.shape[1]
         fitType = str(fitType).lower()
+        # MATLAB stores a one-cell N x nW x 1 history as an N x nW matrix and its
+        # HkAll(k,:,c) slices read it as such (B6: single-cell history SEs).
+        # Restore the cell axis; otherwise the ndim == 3 tests below silently
+        # dropped the history from every block.
+        HkAll = np.asarray(HkAll, dtype=float)
+        if numCells == 1 and HkAll.ndim == 2:
+            HkAll = HkAll.reshape(HkAll.shape[0], HkAll.shape[1], 1)
 
         # ---- Complete Information Matrices ----
 
@@ -5513,7 +5520,14 @@ class DecodingAlgorithms:
                     ExplambdaDeltaXkXk = 1.0 / McExp * (ld[None, :] * xk) @ xk.T
                     ExplambdaDeltaSqXkXkT = 1.0 / McExp * (ld[None, :] ** 2 * xk) @ xk.T
                     ExplambdaDeltaCubeXkXkT = 1.0 / McExp * (ld[None, :] ** 3 * xk) @ xk.T
-                    HessianTerm[:, :, k] = ExplambdaDeltaXkXk + ExplambdaDeltaSqXkXkT - 2 * ExplambdaDeltaCubeXkXkT
+                    # For log L = dN*log(p) - p with logistic p the beta Hessian is
+                    # -p(1-p)(1+dN-2p) x x' = (-(dN+1)p + (dN+3)p^2 - 2p^3) x x', the
+                    # form the mu and gamma blocks below use (MATLAB
+                    # PP_ComputeParamStandardErrors, repaired).  The former
+                    # E[p] + E[p^2] - 2E[p^3] made IBetaComp negative definite.
+                    HessianTerm[:, :, k] = (-(dN[c, k] + 1) * ExplambdaDeltaXkXk
+                                            + (dN[c, k] + 3) * ExplambdaDeltaSqXkXkT
+                                            - 2 * ExplambdaDeltaCubeXkXkT)
 
             startInd = dx * c
             endInd = dx * (c + 1)
@@ -5542,7 +5556,10 @@ class DecodingAlgorithms:
                     ExplambdaDelta = 1.0 / McExp * np.sum(ld)
                     ExplambdaDeltaSq = 1.0 / McExp * np.sum(ld ** 2)
                     ExplambdaDeltaCubed = 1.0 / McExp * np.sum(ld ** 3)
-                    HessianTerm += -(dN[c, k] + 1) * ExplambdaDelta + (dN[c, k] + 3) * ExplambdaDeltaSq - 3 * ExplambdaDeltaCubed
+                    # d/dmu of the score (dN-p)(1-p) is -(dN+1)p + (dN+3)p^2 - 2p^3; the
+                    # cubic coefficient was -3 (MATLAB, repaired, uses -2 as here and
+                    # in PP_MStep's mu Newton step).
+                    HessianTerm += -(dN[c, k] + 1) * ExplambdaDelta + (dN[c, k] + 3) * ExplambdaDeltaSq - 2 * ExplambdaDeltaCubed
             IMuComp[c, c] = -HessianTerm
 
         # Gamma information
@@ -5818,16 +5835,28 @@ class DecodingAlgorithms:
         SE["mu"] = SEMu
         Pvals["mu"] = pMu
 
-        # Beta
+        # Beta.  SEBetaTerms is stacked cell by cell (dx entries per cell), so the
+        # row-major reshape to (C, dx) followed by .T puts cell c's block in column
+        # c -- MATLAB's repaired reshape(SEBetaTerms, dx, C).  (MATLAB's former
+        # reshape(..., C, dx)' scrambled it; this port never did.)
         SEBeta = SEBetaTerms.reshape(betahat.shape[1], betahat.shape[0]).T
         pBeta = DecodingAlgorithms._ztest_pvalue(betahat.ravel(), SEBeta.ravel()).reshape(betahat.shape)
         SE["beta"] = SEBeta
         Pvals["beta"] = pBeta
 
-        # Gamma
+        # Gamma: same cell-by-cell layout (nW entries per cell) ->
+        # reshape(SEGammaTerms, nW, C).  The p-value pairs each gamma(w, c) with
+        # SEGamma(w, c), as MATLAB's ztest over reshape(gammahat) /
+        # reshape(SEGamma) does.  (It used to pair gammahat.ravel() -- window-major --
+        # with the cell-major SEGammaTerms, scrambling Pvals.gamma whenever nW > 1
+        # and C > 1.)
         if has_gamma and n7 > 0:
-            SEGamma = SEGammaTerms.reshape(gammahat.shape[1], gammahat.shape[0]).T if gammahat.ndim == 2 else SEGammaTerms
-            pGamma = DecodingAlgorithms._ztest_pvalue(gammahat.ravel(), SEGammaTerms).reshape(gammahat.shape) if gammahat.ndim == 2 else DecodingAlgorithms._ztest_pvalue(gammahat.ravel(), SEGammaTerms)
+            if gammahat.ndim == 2:
+                SEGamma = SEGammaTerms.reshape(gammahat.shape[1], gammahat.shape[0]).T
+                pGamma = DecodingAlgorithms._ztest_pvalue(gammahat.ravel(), SEGamma.ravel()).reshape(gammahat.shape)
+            else:
+                SEGamma = SEGammaTerms
+                pGamma = DecodingAlgorithms._ztest_pvalue(gammahat.ravel(), SEGammaTerms)
             SE["gamma"] = SEGamma
             Pvals["gamma"] = pGamma
 

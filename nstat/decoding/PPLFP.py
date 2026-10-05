@@ -951,6 +951,10 @@ class PPLFP:
         betahat = np.atleast_2d(np.asarray(betahat, dtype=float))
         gammahat = np.asarray(gammahat, dtype=float)
         HkAll = np.asarray(HkAll, dtype=float)
+        # MATLAB stores a one-cell N x nW x 1 history as N x nW; its HkAll(k,:,c)
+        # slices read that directly (B6: single-cell history SEs).
+        if betahat.shape[1] == 1 and HkAll.ndim == 2:
+            HkAll = HkAll.reshape(HkAll.shape[0], HkAll.shape[1], 1)
 
         # Expectation sums (dict-like)
         def _es(name):
@@ -1171,7 +1175,12 @@ class PPLFP:
                     Ex1 = (1.0 / McExp) * ((ld[None, :] * xk) @ xk.T)
                     Ex2 = (1.0 / McExp) * (((ld ** 2)[None, :] * xk) @ xk.T)
                     Ex3 = (1.0 / McExp) * (((ld ** 3)[None, :] * xk) @ xk.T)
-                    HessianTerm = HessianTerm + Ex1 + Ex2 - 2.0 * Ex3
+                    # MATLAB (repaired, A4): the beta Hessian of
+                    # dN*log(p) - p, logistic p, is
+                    # (-(dN+1)p + (dN+3)p^2 - 2p^3) x x'.  The former
+                    # Ex1 + Ex2 - 2*Ex3 had the wrong sign and form.
+                    HessianTerm = (HessianTerm - (dN[c, k] + 1) * Ex1
+                                   + (dN[c, k] + 3) * Ex2 - 2.0 * Ex3)
             si = beta_rows * c
             ei = beta_rows * (c + 1)
             IBetaComp[si:ei, si:ei] = -HessianTerm
@@ -1198,11 +1207,12 @@ class PPLFP:
                     Ed = (1.0 / McExp) * np.sum(ld)
                     Ed2 = (1.0 / McExp) * np.sum(ld ** 2)
                     Ed3 = (1.0 / McExp) * np.sum(ld ** 3)
+                    # MATLAB (repaired, A1): cubic coefficient -2, not -3.
                     HessianTerm = (
                         HessianTerm
                         - (dN[c, k] + 1) * Ed
                         + (dN[c, k] + 3) * Ed2
-                        - 3.0 * Ed3
+                        - 2.0 * Ed3
                     )
             IMuComp[c, c] = -HessianTerm
 
