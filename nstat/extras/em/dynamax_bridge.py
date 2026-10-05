@@ -39,19 +39,12 @@ from dataclasses import dataclass
 
 import numpy as np
 
-
-_IMPORT_ERROR_MSG = (
-    "nstat.extras.em.dynamax_bridge requires the 'dynamax' package, which is "
-    "not installed.  Install with: pip install nstat-toolbox[dynamax]"
-)
+from nstat.extras._lazy import require_optionals
 
 
 def _require_dynamax():
-    try:
-        import dynamax  # noqa: F401
-        import jax  # noqa: F401
-    except ImportError as e:
-        raise ImportError(_IMPORT_ERROR_MSG) from e
+    """Gate on Dynamax and JAX (both ship with ``nstat-toolbox[dynamax]``)."""
+    require_optionals("dynamax", "jax", install_key="dynamax")
 
 
 @dataclass(frozen=True)

@@ -25,20 +25,16 @@ from dataclasses import dataclass
 import numpy as np
 
 from nstat import fit_poisson_glm
-
-
-_IMPORT_ERROR_MSG = (
-    "nstat.extras.validation.statsmodels_bridge requires the 'statsmodels' "
-    "package, which is not installed.  "
-    "Install with: pip install nstat-toolbox[test-parity]"
-)
+from nstat.extras._lazy import require_optional
 
 
 def _require_statsmodels():
-    try:
-        import statsmodels.api  # noqa: F401
-    except ImportError as e:
-        raise ImportError(_IMPORT_ERROR_MSG) from e
+    """Gate on ``statsmodels.api`` (shipped with ``nstat-toolbox[test-parity]``).
+
+    The gate only imports statsmodels, so a plain ``pip install
+    statsmodels`` also satisfies it (as the module docstring notes).
+    """
+    require_optional("statsmodels.api", install_key="test-parity")
 
 
 @dataclass(frozen=True)
