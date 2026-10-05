@@ -1,5 +1,44 @@
 # Release Notes
 
+## Unreleased
+
+**Package**
+
+- `import nstat` is ~2.3x faster: `scipy.stats`, `scipy.signal`, numba and the
+  paper-example module now load lazily (`nstat.extras`, `nstat.zernike`,
+  `nstat.paper_examples_full` and `nstat.run_full_paper_examples` still resolve
+  on attribute access and appear in `dir(nstat)`).
+- Faster hot paths with bit-identical results; gains grow with problem size:
+  `cross_k_inhom` (isotropic) up to ~10x on typical radius grids,
+  `PPSS_EStep` up to ~2.6x, `_ppem_newton_C` ~1.3-1.5x.
+- The EM routines (`KF_EM`, `PP_EM`, `mPPCO_EM`) report progress through
+  `logging` (logger `nstat.decoding_algorithms`) instead of `print`; they are
+  silent by default.
+- Optional-dependency errors now distinguish "not installed" from "installed
+  but failed to import" (for example an ABI mismatch).
+- A broken numba install no longer breaks `import nstat` or the decoders
+  (`kalman_filter`, `PPDecodeFilterLinear`): any numba failure falls back to the
+  pure-Python path.
+- Fix: downloading the example dataset no longer deletes other files in the
+  target directory (the repo data cache or a custom `NSTAT_DATA_DIR`), including
+  the bundled Example 05 hybrid-filter data.
+- Fix: the neuron-selector error message now says "zero-based".
+
+**Docs**
+
+- The API reference links every entry to its docstring page; glossary links
+  resolve; every AGENT_GUIDE recipe runs; missing and incorrect docstrings are
+  fixed; the docs build now fails on any warning.
+
+**Tests and tooling**
+
+- Tests skip, with accurate reasons, when an optional dependency is installed
+  but broken.
+- Python 3.10 (the declared minimum) test collection is fixed and 3.10 is added
+  to the CI matrix.
+- New `slow` / `matlab` pytest markers with `make test-slow`, `make test-matlab`
+  and `make test-quick`; new `make numerical-drift-check`.
+
 ## v0.6.0 — 2026-07-03
 
 **Spatiotemporal point processes for `nstat.extras.spatial`.** Six new

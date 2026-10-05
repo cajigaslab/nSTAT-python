@@ -438,14 +438,14 @@ class LinearCIF:
 
         For ``fitType='binomial'`` this is a logistic sigmoid σ(η);
         for ``'poisson'`` it is ``exp(η)``.  The sigmoid is the shared
-        :func:`nstat.cif._sigmoid` helper (audit finding H1 — unified
+        :func:`nstat._numerics._sigmoid` helper (audit finding H1 — unified
         with the cif.py path so both CIF classes produce numerically
         identical λ values).
         """
         if self.fitType == "poisson":
             return float(np.exp(eta))
         # binomial — delegate to the shared two-branch stable sigmoid.
-        from .cif import _sigmoid as _shared_sigmoid
+        from ._numerics import _sigmoid as _shared_sigmoid
         return float(_shared_sigmoid(np.asarray(eta, dtype=float)))
 
 

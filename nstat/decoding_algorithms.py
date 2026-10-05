@@ -7,37 +7,62 @@ static-method namespace.
 Covered families (all entry points are ``@staticmethod``):
 
 - **Point-process adaptive filters (PPAF)** — ``PPDecodeFilter``,
-  ``PPDecodeFilterLinear``, ``PP_RTSSmoother``.
+  ``PPDecodeFilterLinear``, ``PP_fixedIntervalSmoother``.
 - **Point-process hybrid filters (PPHF)** — discrete + continuous
   hybrid recursions for mixed-mode decoding.
 - **Kalman filtering / smoothing** — ``kalman_filter``,
-  ``kalman_smoother``, ``RTSSmoother``, plus their static-coefficient
+  ``kalman_smoother``, ``kalman_smootherFromFiltered``,
+  ``kalman_fixedIntervalSmoother``, plus their static-coefficient
   variants.
 - **Expectation-maximisation** — ``PPSS_EMFB`` (state-space GLM EM) and
-  ``PPCO_EMFB`` (mixed point-process / continuous-observation EM).
+  ``mPPCO_EM`` (mixed point-process / continuous-observation EM).
 
 Most algorithms follow the derivations in the original 2012 paper (see
 :doc:`/PaperOverview`).  Spike trains are :class:`~nstat.nspikeTrain.nspikeTrain`
 objects; observations are ``CxN`` binary matrices; time is in **seconds**.
-This is the largest single module in the package (~7.9k lines) and is
-deliberately kept flat to match the MATLAB layout.
+This is the largest single module in the package and is deliberately
+kept flat to match the MATLAB layout.
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 
 import numpy as np
-from scipy.stats import norm
 
 from .cif import CIF
 from .errors import UnsupportedWorkflowError
-from .extras import _numba_kernels
 from .nspikeTrain import nspikeTrain
 
-# Module-level alias of the Numba-availability flag — kept module-local
-# so monkeypatch in tests can flip it back to ``False`` to exercise the
-# pure-Python parity path even when ``numba`` is installed.
-_NUMBA_AVAILABLE = _numba_kernels._NUMBA_AVAILABLE
+# EM progress messages (KF_EM / KF_EStep / PP_EM / mPPCO_EM) go to this
+# logger at INFO level -- silent unless the caller configures logging, e.g.
+# ``logging.basicConfig(level=logging.INFO)``.  MATLAB's DecodingAlgorithms.m
+# prints nothing here, so these are Python-only diagnostics.
+_logger = logging.getLogger(__name__)
+
+# EM convergence hyperparameters shared by PPSS_EMFB, PPSS_EM, KF_EM, PP_EM
+# and mPPCO_EM (same values as the literals they replace; none of these
+# MATLAB-mirrored methods exposes them as arguments).
+_EM_TOL_ABS = 1e-3  # absolute parameter-change tolerance (tolAbs)
+_EM_TOL_REL = 1e-3  # relative tolerance (tolRel; PPSS_EMFB and PPSS_EM)
+_EM_LL_TOL = 1e-3  # log-likelihood change tolerance (llTol)
+_EM_MAX_ITER = 100  # maxIter for PPSS_EM, KF_EM, PP_EM, mPPCO_EM
+_PPSS_EMFB_MAX_ITER = 2000  # PPSS_EMFB's own, larger maxIter
+
+
+def _numba_kernels_module():
+    """Return :mod:`nstat.extras._numba_kernels`, importing it on first use.
+
+    The opt-in Numba accelerator is imported lazily -- at the first
+    fast-path dispatch, not at ``import nstat`` -- so the core package does
+    not depend on ``nstat.extras`` (or probe ``numba``) at import time.
+    Callers read ``_numba_kernels._NUMBA_AVAILABLE`` from the returned
+    module at call time, so tests can still monkeypatch that attribute to
+    ``False`` to force the pure-Python parity path.
+    """
+    from .extras import _numba_kernels
+
+    return _numba_kernels
 
 
 def _as_observation_matrix(dN) -> np.ndarray:
@@ -411,6 +436,8 @@ def _ztest_pvalue(param: float, se: float) -> float:
     """Two-tailed z-test p-value: H0 param == 0, matching Matlab ``ztest``."""
     if se <= 0 or not np.isfinite(se):
         return 1.0
+    from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
     z = param / se
     return float(2.0 * norm.sf(np.abs(z)))
 
@@ -1007,13 +1034,14 @@ class DecodingAlgorithms:
         _Wconv_inactive_pre = (
             Wconv is None or (isinstance(Wconv, (list, tuple)) and len(Wconv) == 0)
         )
-        if (
-            _numba_kernels._NUMBA_AVAILABLE
-            and A_raw_pre.ndim != 3
-            and Q_raw_pre.ndim != 3
-            and _Wconv_inactive_pre
-        ):
+        if A_raw_pre.ndim != 3 and Q_raw_pre.ndim != 3 and _Wconv_inactive_pre:
             try:
+                # Obtained only for eligible calls, inside the ``try``: any
+                # failure (import, decoration, kernel) falls back to the
+                # pure-Python path below.
+                _numba_kernels = _numba_kernels_module()
+                if not _numba_kernels._NUMBA_AVAILABLE:
+                    raise RuntimeError("numba fast path unavailable")
                 A_static_jit = _as_state_matrix(A_raw_pre, ns)
                 Q_static_jit = _as_state_matrix(Q_raw_pre, ns)
                 x_p_j, W_p_j, x_u_j, W_u_j = _numba_kernels.ppdecode_linear_loop(
@@ -1981,14 +2009,19 @@ class DecodingAlgorithms:
         # below line-for-line; gold-fixture-verified bit-equivalence.
         _gnconv_inactive = GnConv is None or _is_empty_value(GnConv)
         if (
-            _numba_kernels._NUMBA_AVAILABLE
-            and _gnconv_inactive
+            _gnconv_inactive
             and A.ndim == 2
             and C.ndim == 2
             and Pv.ndim == 2
             and Pw.ndim == 2
         ):
             try:
+                # Obtained only for eligible calls, inside the ``try``: any
+                # failure (import, decoration, kernel) falls back to the
+                # pure-Python path below.
+                _numba_kernels = _numba_kernels_module()
+                if not _numba_kernels._NUMBA_AVAILABLE:
+                    raise RuntimeError("numba fast path unavailable")
                 return _numba_kernels.kalman_filter_loop(
                     A, C, Pv, Pw, Px0, x0_vec, y,
                 )
@@ -2386,10 +2419,10 @@ class DecodingAlgorithms:
         HkAll = DecodingAlgorithms._ssglm_build_history(dN, windowTimes, delta)
         HkAllR = list(reversed(HkAll))
 
-        tolAbs = 1e-3
-        tolRel = 1e-3
-        llTol = 1e-3
-        maxIter = 2000
+        tolAbs = _EM_TOL_ABS
+        tolRel = _EM_TOL_REL
+        llTol = _EM_LL_TOL
+        maxIter = _PPSS_EMFB_MAX_ITER
 
         Qhat_history = [Qhat_cur.copy()]
         gammahat_history = [gammahat_cur.copy()]
@@ -2551,10 +2584,10 @@ class DecodingAlgorithms:
 
         gamma0_vec = np.asarray(gamma0, dtype=float).reshape(-1) if gamma0 is not None else np.array([], dtype=float)
 
-        tolAbs = 1e-3
-        tolRel = 1e-3
-        llTol = 1e-3
-        maxIter = 100
+        tolAbs = _EM_TOL_ABS
+        tolRel = _EM_TOL_REL
+        llTol = _EM_LL_TOL
+        maxIter = _EM_MAX_ITER
         numToKeep = 10
 
         # Circular buffer storage
@@ -2775,10 +2808,14 @@ class DecodingAlgorithms:
         for k in range(K):
             Wku[:, :, k, k] = W_K[:, :, k]
 
+        # Dk depends on k only, not on u: build it in one backward pass rather
+        # than re-inverting W_p inside the u-loop (K-1 inversions instead of
+        # K(K-1)/2; bit-identical output).
         Dk = np.zeros((R, R, K), dtype=float)
+        for k in range(K - 2, -1, -1):
+            Dk[:, :, k] = W_u[:, :, k] @ A_mat.T @ np.linalg.inv(W_p[:, :, k + 1] + 1e-12 * np.eye(R))
         for u in range(K - 1, 0, -1):
             for k in range(u - 1, -1, -1):
-                Dk[:, :, k] = W_u[:, :, k] @ A_mat.T @ np.linalg.inv(W_p[:, :, k + 1] + 1e-12 * np.eye(R))
                 Wku[:, :, k, u] = Dk[:, :, k] @ Wku[:, :, k + 1, u]
                 Wku[:, :, u, k] = Wku[:, :, k, u]
 
@@ -3229,6 +3266,8 @@ class DecodingAlgorithms:
         # Fallback: 3-D covariance (N, Dx, Dx) from smoother — z-score CIs
         x_tm, W_tm, transposed = DecodingAlgorithms._state_history_time_major(xK, Wku)
         variances = np.clip(np.diagonal(W_tm, axis1=1, axis2=2), 0.0, None)
+        from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
         z = float(norm.ppf(1.0 - float(alphaVal) / 2.0))
         lower = x_tm - z * np.sqrt(variances)
         upper = x_tm + z * np.sqrt(variances)
@@ -4454,9 +4493,9 @@ class DecodingAlgorithms:
         else:
             x0 = np.asarray(x0, dtype=float).reshape(-1)
 
-        tolAbs = 1e-3
-        llTol = 1e-3
-        maxIter = 100
+        tolAbs = _EM_TOL_ABS
+        llTol = _EM_LL_TOL
+        maxIter = _EM_MAX_ITER
         numToKeep = 10
 
         # Save originals for un-scaling later
@@ -4518,16 +4557,16 @@ class DecodingAlgorithms:
         IkedaAcc = KFEM_Constraints["EnableIkeda"]
         stoppingCriteria = False
 
-        print("                       Kalman Filter/Gaussian Observation EM Algorithm                        ")
+        _logger.info("                       Kalman Filter/Gaussian Observation EM Algorithm                        ")
 
         while not stoppingCriteria and cnt < maxIter:
             storeInd = cnt % numToKeep
             storeIndP1 = (cnt + 1) % numToKeep
             storeIndM1 = (cnt - 1) % numToKeep
 
-            print("-" * 100)
-            print(f"Iteration #{cnt + 1}")
-            print("-" * 100)
+            _logger.info("-" * 100)
+            _logger.info("Iteration #%s", cnt + 1)
+            _logger.info("-" * 100)
 
             # E-step
             x_K_buf[storeInd], W_K_buf[storeInd], ll_val, ExpSums_buf[storeInd] = (
@@ -4554,7 +4593,7 @@ class DecodingAlgorithms:
 
             # Ikeda acceleration
             if IkedaAcc:
-                print("****Ikeda Acceleration Step****")
+                _logger.info("****Ikeda Acceleration Step****")
                 K_obs = x_K_buf[storeInd].shape[1]
                 mean_y = (
                     Chat_buf[storeIndP1] @ x_K_buf[storeInd]
@@ -4616,21 +4655,21 @@ class DecodingAlgorithms:
                 dMax = max(dQvals, dRvals, dAvals, dCvals, dAlphavals)
 
             if cnt == 0:
-                print("Max Parameter Change: N/A")
+                _logger.info("Max Parameter Change: N/A")
             else:
-                print(f"Max Parameter Change: {dMax}")
+                _logger.info("Max Parameter Change: %s", dMax)
 
             cnt += 1
 
             if dMax < tolAbs:
                 stoppingCriteria = True
-                print(f"         EM converged at iteration# {cnt} b/c change in params was within criteria")
+                _logger.info("         EM converged at iteration# %s b/c change in params was within criteria", cnt)
 
             if abs(dLikelihood_val) < llTol or dLikelihood_val < 0:
                 stoppingCriteria = True
-                print(f"         EM stopped at iteration# {cnt} b/c change in likelihood was negative")
+                _logger.info("         EM stopped at iteration# %s b/c change in likelihood was negative", cnt)
 
-        print("-" * 100)
+        _logger.info("-" * 100)
 
         # Select best iteration by max log-likelihood
         ll_arr = np.array(ll_list)
@@ -4905,7 +4944,7 @@ class DecodingAlgorithms:
             - Dx / 2.0
         )
         logll = float(logll)
-        print(f"logll: {logll}")
+        _logger.info("logll: %s", logll)
 
         ExpectationSums = {
             "Sxkm1xkm1": Sxkm1xkm1,
@@ -5189,6 +5228,8 @@ class DecodingAlgorithms:
     @staticmethod
     def _ztest_pvalue(param, se):
         """Two-sided z-test p-value for H0: param == 0."""
+        from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
         se_safe = np.where(se > 0, se, 1.0)
         z = np.abs(param / se_safe)
         p = 2.0 * (1.0 - norm.cdf(z))
@@ -5810,9 +5851,9 @@ class DecodingAlgorithms:
             gamma[0] = 0.0
 
         # EM setup
-        tolAbs = 1e-3
-        llTol = 1e-3
-        maxIter = 100
+        tolAbs = _EM_TOL_ABS
+        llTol = _EM_LL_TOL
+        maxIter = _EM_MAX_ITER
         numToKeep = 10
 
         # Circular buffer storage
@@ -5857,15 +5898,15 @@ class DecodingAlgorithms:
         stoppingCriteria = False
         cnt = 0
 
-        print("                        Point-Process Observation EM Algorithm                        ")
+        _logger.info("                        Point-Process Observation EM Algorithm                        ")
         while not stoppingCriteria and cnt < maxIter:
             si = cnt % numToKeep
             si_p1 = (cnt + 1) % numToKeep
             si_m1 = (cnt - 1) % numToKeep
 
-            print("-" * 80)
-            print(f"Iteration #{cnt + 1}")
-            print("-" * 80)
+            _logger.info("-" * 80)
+            _logger.info("Iteration #%s", cnt + 1)
+            _logger.info("-" * 80)
 
             # E-step
             x_K_cur, W_K_cur, ll, ExpSums = DecodingAlgorithms.PP_EStep(
@@ -5910,20 +5951,20 @@ class DecodingAlgorithms:
                 dMax = max(dQvals, dAvals, dMuvals, dBetavals, dGammavals)
 
             if cnt == 0:
-                print("Max Parameter Change: N/A")
+                _logger.info("Max Parameter Change: N/A")
             else:
-                print(f"Max Parameter Change: {dMax:.6f}")
+                _logger.info("Max Parameter Change: %.6f", dMax)
 
             cnt += 1
             if dMax < tolAbs:
                 stoppingCriteria = True
-                print(f"         EM converged at iteration# {cnt} b/c change in params was within criteria")
+                _logger.info("         EM converged at iteration# %s b/c change in params was within criteria", cnt)
 
             if abs(dLikelihood[-1]) < llTol or dLikelihood[-1] < 0:
                 stoppingCriteria = True
-                print(f"         EM stopped at iteration# {cnt} b/c change in likelihood was negative")
+                _logger.info("         EM stopped at iteration# %s b/c change in likelihood was negative", cnt)
 
-        print("-" * 80)
+        _logger.info("-" * 80)
 
         # Select best iteration
         ll_arr = np.array(ll_list)
@@ -7498,9 +7539,9 @@ class DecodingAlgorithms:
         y_arr = np.asarray(y, dtype=float)
         yOrig = y_arr.copy()
 
-        tolAbs = 1e-3
-        llTol = 1e-3
-        maxIter = 100
+        tolAbs = _EM_TOL_ABS
+        llTol = _EM_LL_TOL
+        maxIter = _EM_MAX_ITER
         numToKeep = 10
 
         # Circular buffers
@@ -7543,16 +7584,16 @@ class DecodingAlgorithms:
         cnt = 0
         stoppingCriteria = False
 
-        print("                        Joint Point-Process/Gaussian Observation EM Algorithm                        ")
+        _logger.info("                        Joint Point-Process/Gaussian Observation EM Algorithm                        ")
 
         while not stoppingCriteria and cnt < maxIter:
             si = cnt % numToKeep
             si_p1 = (cnt + 1) % numToKeep
             si_m1 = (cnt - 1) % numToKeep
 
-            print("-" * 80)
-            print(f"Iteration #{cnt + 1}")
-            print("-" * 80)
+            _logger.info("-" * 80)
+            _logger.info("Iteration #%s", cnt + 1)
+            _logger.info("-" * 80)
 
             # E-step
             x_K_buf[si], W_K_buf[si], ll_val, ExpSums_buf[si] = DecodingAlgorithms.mPPCO_EStep(
@@ -7600,23 +7641,23 @@ class DecodingAlgorithms:
                 dMax = max(diffs) if diffs else np.inf
 
             if cnt == 0:
-                print("Max Parameter Change: N/A")
+                _logger.info("Max Parameter Change: N/A")
             else:
-                print(f"Max Parameter Change: {dMax}")
+                _logger.info("Max Parameter Change: %s", dMax)
 
             cnt += 1
 
             if dMax < tolAbs:
                 stoppingCriteria = True
-                print(f"         EM converged at iteration# {cnt} b/c change in params was within criteria")
+                _logger.info("         EM converged at iteration# %s b/c change in params was within criteria", cnt)
 
             if cnt >= 2:
                 dll = ll_list[-1] - ll_list[-2]
                 if abs(dll) < llTol or dll < 0:
                     stoppingCriteria = True
-                    print(f"         EM stopped at iteration# {cnt} b/c change in likelihood was negative or small")
+                    _logger.info("         EM stopped at iteration# %s b/c change in likelihood was negative or small", cnt)
 
-        print("-" * 80)
+        _logger.info("-" * 80)
 
         # Select best iteration
         ll_arr = np.array(ll_list)

@@ -587,7 +587,7 @@ def run_demo(
         rc_em |= _demo_hybrid_em()
     except ImportError as exc:
         dynamax_available = False
-        print(f"  dynamax not installed ({exc}); skipping the JAX-backed "
+        print(f"  {exc}; skipping the JAX-backed "
               "KF_EM/CMGF/PP_EM/mPPCO_EM demos -- the naive-KF vs. ReFIT-KF "
               "contrast above already ran fully without it.")
     dynamax_appendix_ok = rc_em == 0

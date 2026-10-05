@@ -24,7 +24,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
-from scipy.stats import chi2, norm
 
 from .SignalObj import SignalObj
 from .fit import FitResult, _SingleFit, _ksdiscrete, _matlab_compute_ks_arrays
@@ -125,7 +124,7 @@ def _as_neuron_indices(trial: Trial, neuron_selector) -> list[int]:
         for item in neuron_selector:
             out.extend(_as_neuron_indices(trial, item))
         return out
-    raise TypeError("neuron selector must be a MATLAB-style one-based index, name, or sequence of either")
+    raise TypeError("neuron selector must be a zero-based index, name, or sequence of either")
 
 
 def _restore_trial_partition(trial: Trial, original_partition: np.ndarray) -> None:
@@ -133,23 +132,6 @@ def _restore_trial_partition(trial: Trial, original_partition: np.ndarray) -> No
     if original_partition.size:
         trial.setTrialPartition(original_partition)
         trial.setTrialTimesFor("training")
-
-
-def _time_rescaled_z(counts: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarray:
-    y_arr = np.asarray(counts, dtype=float).reshape(-1)
-    lam = np.asarray(lam_per_bin, dtype=float).reshape(-1)
-    if y_arr.shape != lam.shape:
-        raise ValueError("counts and lam_per_bin must have matching shapes")
-    z_values: list[float] = []
-    accum = 0.0
-    for count, lam_i in zip(y_arr, lam, strict=False):
-        accum += float(max(lam_i, 1e-12))
-        if count >= 1.0:
-            repeats = max(int(round(count)), 1)
-            for _ in range(repeats):
-                z_values.append(accum)
-                accum = 0.0
-    return np.asarray(z_values, dtype=float)
 
 
 def _fit_lambda_matrix_to_covariate(lambda_time: np.ndarray, lambda_columns: list[np.ndarray], lambda_index: int) -> Covariate:
@@ -851,6 +833,8 @@ class Analysis:
             z = z[:, None]
         U = 1.0 - np.exp(-z)
         U = np.clip(U, 1e-6, 1.0 - 1e-6)
+        from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
         X = norm.ppf(U)
         if X.shape[0] <= 1:
             lags = np.asarray([], dtype=float)
@@ -1181,6 +1165,8 @@ class Analysis:
                 deviance = float(max(-2.0 * gamma, 0.0))
                 devianceMat[neighbor, neuron_index] = deviance
                 dim_diff = max(int(abs(np.diff(np.asarray(fit.numCoeffs, dtype=int))[0])), 1)
+                from scipy.stats import chi2  # lazy: keep scipy.stats out of `import nstat`
+
                 p_val = float(chi2.sf(deviance, dim_diff))
                 p_vals.append(p_val)
                 p_coords.append((neighbor, neuron_index))

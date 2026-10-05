@@ -33,17 +33,59 @@ from __future__ import annotations
 
 import numpy as np
 
+# Probe numba once, when this module is first imported.  Core
+# ``nstat.decoding_algorithms`` imports this module lazily (at the first
+# fast-path dispatch), so ``import nstat`` never runs the probe.  Any
+# failure -- not just ``ImportError`` -- disables the fast path: an
+# installed numba that is binary-incompatible with the installed NumPy can
+# raise ``ValueError`` / ``RuntimeError`` / ``AttributeError`` from inside
+# its own import, and that must fall back to the pure-Python path rather
+# than crash the caller.  The exception is kept in ``_NUMBA_IMPORT_ERROR``
+# for diagnostics (``None`` when numba imported cleanly).
+#
+# ``_NUMBA_AVAILABLE`` is a plain module attribute that the dispatch in
+# ``nstat.decoding_algorithms`` reads at call time; tests monkeypatch it to
+# ``False`` to force the pure-Python parity path.
+_NUMBA_IMPORT_ERROR: Exception | None
 try:
     import numba as _numba  # type: ignore[import-not-found]
 
     _NUMBA_AVAILABLE = True
-except ImportError:  # pragma: no cover - exercised on default install
+    _NUMBA_IMPORT_ERROR = None
+except Exception as _exc:  # pragma: no cover - exercised on default install
     _numba = None  # type: ignore[assignment]
     _NUMBA_AVAILABLE = False
+    _NUMBA_IMPORT_ERROR = _exc
+
+
+def _njit(*args, **kwargs):
+    """``numba.njit`` that fails soft.
+
+    Decoration can raise even when ``import numba`` succeeded (e.g.
+    ``RuntimeError: cannot cache function ... no locator available`` on a
+    read-only site-packages).  Any such failure disables the fast path
+    (``_NUMBA_AVAILABLE = False``, error kept in ``_NUMBA_IMPORT_ERROR``)
+    and returns the function undecorated, so this module still imports
+    successfully and stays cached in ``sys.modules``.
+    """
+
+    def deco(func):
+        global _NUMBA_AVAILABLE, _NUMBA_IMPORT_ERROR
+        if not _NUMBA_AVAILABLE:
+            return func
+        try:
+            return _numba.njit(*args, **kwargs)(func)
+        except Exception as exc:
+            _NUMBA_AVAILABLE = False
+            _NUMBA_IMPORT_ERROR = exc
+            return func
+
+    return deco
 
 
 __all__ = [
     "_NUMBA_AVAILABLE",
+    "_NUMBA_IMPORT_ERROR",
     "ppdecode_linear_loop",
     "kalman_filter_loop",
 ]
@@ -51,7 +93,7 @@ __all__ = [
 
 if _NUMBA_AVAILABLE:
 
-    @_numba.njit(cache=True, fastmath=False)
+    @_njit(cache=True, fastmath=False)
     def _ppdecode_linear_loop_jit(
         A_static,
         Q_static,
@@ -257,7 +299,7 @@ if _NUMBA_AVAILABLE:
 
         return x_p, W_p, x_u, W_u
 
-    @_numba.njit(cache=True, fastmath=False)
+    @_njit(cache=True, fastmath=False)
     def _kalman_filter_matlab_loop_jit(
         A_static,
         C_static,

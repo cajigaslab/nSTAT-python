@@ -46,7 +46,6 @@ def _matplotlib_version_tuple() -> tuple[int, int]:
 
 
 _MPL_TICK_LABELS_KEY = "tick_labels" if _matplotlib_version_tuple() >= (3, 9) else "labels"
-from scipy.stats import norm, pearsonr
 
 from .core import Covariate, nspikeTrain
 
@@ -1053,7 +1052,7 @@ class FitResult:
         merged = self.mergeResults(
             FitResult(
                 self.neuralSpikeTrain,
-                [list(labels) for labels in getattr(configColl, "configNames", [])] if False else self.covLabels[:0],
+                self.covLabels[:0],
                 [],
                 [],
                 [],
@@ -1250,6 +1249,8 @@ class FitResult:
             ks_stat = 1.0
             ks_pvalue = np.nan
             within = np.nan
+        from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
         gaussianized = norm.ppf(np.clip(uniforms, 1e-6, 1.0 - 1e-6))
         lags, acf = _autocorrelation(gaussianized)
         acf_ci = 1.96 / np.sqrt(float(gaussianized.size)) if gaussianized.size else np.nan
@@ -1824,6 +1825,8 @@ class FitResult:
                 finite = np.isfinite(uj) & np.isfinite(uj1)
                 uj_f, uj1_f = uj[finite], uj1[finite]
                 if uj_f.size > 2 and np.std(uj_f) > 0 and np.std(uj1_f) > 0:
+                    from scipy.stats import pearsonr  # lazy: keep scipy.stats out of `import nstat`
+
                     rho, pval = pearsonr(uj_f, uj1_f)
                     label = f"{base_label}, $\\rho$={rho:.2g} (p={pval:.2g})"
                 else:

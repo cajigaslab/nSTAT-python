@@ -702,21 +702,30 @@ def cross_k_inhom(
 
     if edge_correction == "isotropic":
         # Symmetric Ripley weight per pair at the pair distance, matching
-        # the single-type isotropic convention.
+        # the single-type isotropic convention.  The weight depends on the
+        # pair only, not on r, so compute it once for every pair some r in
+        # the grid reaches (the mask is cumulative, as in k_inhom) instead
+        # of once per bin.  Each bin then sums the same products in the
+        # same row-major order as before, so K is bit-identical.
+        reach = np.zeros(d.shape, dtype=bool)
+        for r in r_grid:
+            reach |= d <= r
+        ii, jj = np.nonzero(reach)
+        w_iso = np.empty(ii.size, dtype=float)
+        for m in range(ii.size):
+            rij = d[ii[m], jj[m]]
+            fi = frac_disc_in_rect(pts_A[ii[m]], rij, domain)
+            fj = frac_disc_in_rect(pts_B[jj[m]], rij, domain)
+            w_iso[m] = 0.5 * (1.0 / fi + 1.0 / fj)
+        d_pair = d[ii, jj]
+        contrib = wgt[ii, jj] * w_iso
         K = np.empty_like(r_grid)
         for k, r in enumerate(r_grid):
-            mask = d <= r
-            if not mask.any():
+            sel = d_pair <= r
+            if not sel.any():
                 K[k] = 0.0
                 continue
-            ii, jj = np.where(mask)
-            w_iso = np.empty(ii.size, dtype=float)
-            for m in range(ii.size):
-                rij = d[ii[m], jj[m]]
-                fi = frac_disc_in_rect(pts_A[ii[m]], rij, domain)
-                fj = frac_disc_in_rect(pts_B[jj[m]], rij, domain)
-                w_iso[m] = 0.5 * (1.0 / fi + 1.0 / fj)
-            K[k] = float(np.sum(wgt[ii, jj] * w_iso)) / area
+            K[k] = float(np.sum(contrib[sel])) / area
         return K
 
     if edge_correction == "translation":

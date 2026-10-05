@@ -39,19 +39,12 @@ from dataclasses import dataclass
 
 import numpy as np
 
-
-_IMPORT_ERROR_MSG = (
-    "nstat.extras.em.dynamax_bridge requires the 'dynamax' package, which is "
-    "not installed.  Install with: pip install nstat-toolbox[dynamax]"
-)
+from nstat.extras._lazy import require_optionals
 
 
 def _require_dynamax():
-    try:
-        import dynamax  # noqa: F401
-        import jax  # noqa: F401
-    except ImportError as e:
-        raise ImportError(_IMPORT_ERROR_MSG) from e
+    """Gate on Dynamax and JAX (both ship with ``nstat-toolbox[dynamax]``)."""
+    require_optionals("dynamax", "jax", install_key="dynamax")
 
 
 @dataclass(frozen=True)
@@ -670,6 +663,13 @@ def _ppem_newton_C(
     T, state_dim = smoothed_means.shape
     emission_dim = observations.shape[1]
     C = np.asarray(C_init, dtype=float).copy()
+    if int(n_newton) <= 0:
+        return C
+    # Loop-invariant: E[x_t x_t'] = mu_t mu_t' + Sigma_t depends only on the
+    # smoothed moments, which are fixed for the whole call -- build it once
+    # rather than once per (Newton iteration, emission channel).
+    outer_mu = smoothed_means[:, :, None] * smoothed_means[:, None, :]
+    second_moment = outer_mu + smoothed_covariances
 
     for _ in range(int(n_newton)):
         for i in range(emission_dim):
@@ -680,8 +680,7 @@ def _ppem_newton_C(
             exp_term = np.exp(np.clip(lin + quad, -20.0, 20.0))
             y_i = observations[:, i]
             grad = ((y_i - exp_term)[:, None] * smoothed_means).sum(axis=0)
-            outer_mu = smoothed_means[:, :, None] * smoothed_means[:, None, :]
-            hess = -(exp_term[:, None, None] * (outer_mu + smoothed_covariances)).sum(axis=0)
+            hess = -(exp_term[:, None, None] * second_moment).sum(axis=0)
             hess = hess - 1e-6 * np.eye(state_dim)
             try:
                 step = np.linalg.solve(hess, grad)
