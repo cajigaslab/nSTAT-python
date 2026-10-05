@@ -47,6 +47,14 @@ class ProbeResult(NamedTuple):
     module: ModuleType | None
 
 
+#: Packages that load their submodules lazily: ``import pkg`` succeeds even when
+#: the real implementation (and its compiled backends) cannot import, and the
+#: failure only surfaces later as a confusing ``AttributeError`` on the lazy
+#: module.  Probe the listed submodule too so a broken backend becomes a skip.
+#: (pynapple: ``pynapple.core`` pulls in pandas, which may be ABI-broken.)
+_DEEP_PROBE: dict[str, str] = {"pynapple": "pynapple.core"}
+
+
 def probe_optional(pkg: str) -> ProbeResult:
     """Import third-party ``pkg``; classify the failure mode, never raise."""
     try:
@@ -55,6 +63,8 @@ def probe_optional(pkg: str) -> ProbeResult:
         spec = None
     try:
         module = importlib.import_module(pkg)
+        if pkg in _DEEP_PROBE:
+            importlib.import_module(_DEEP_PROBE[pkg])
     except ImportError as exc:
         if spec is None:
             return ProbeResult(False, False, f"{pkg} not installed", None)
