@@ -104,15 +104,26 @@ pending upstream merge); the Python port now matches them:
 - `PP_EM` / `PPLFP_EM` stop before the M-step when the E-step
   log-likelihood is not finite and return the best finite iterate (a NaN
   iterate could be returned before). `PP_EM` no longer hides a failure of
-  its standard-error pass (it returned empty `SE` / `Pvals`).
+  its standard-error pass (it returned empty `SE` / `Pvals`). `PPLFP_EM` now
+  returns its standard errors: its `SE` / `Pvals` were always empty (a
+  mis-unpacked call inside a blanket `except`). As in MATLAB, they are
+  computed from the whitened observations `Tr*y` (an open parity question:
+  MATLAB pairs them with the unscaled `C`, `alpha`, `R`), and with the default
+  `mcIter = 1000` they add measurable time (3.8 s of a 4.8 s fit at N = 600,
+  four cells).
 - `PP_MStep` no longer estimates an all-zero `gamma` ("no history").
 - History windows: with `windowTimes` omitted, `PP_EM` / `PPLFP_EM` use one
   window per history coefficient, `0:delta:size(gamma,1)*delta` (it was one
-  window too many), and expand a nonzero shared `gamma` column to every
-  cell; `PP_EM` builds its history on the `delta` grid (it raised for
-  `delta` other than 1 ms). `PPDecodeFilterLinear` and `PPHybridFilterLinear`
-  accept MATLAB's shared `numWindows x 1` `gamma` column (it raised), and
-  `PPHybridFilterLinear` with history windows now matches MATLAB.
+  window too many), read a row of coefficients whose length is not the number
+  of cells (1-D, or a `1 x n` row as `scipy.io.loadmat` returns it) as one
+  shared column, and expand a nonzero shared `gamma` column to every cell;
+  `PP_EM` builds its history on the `delta` grid (it raised for `delta`
+  other than 1 ms). MATLAB's shared `numWindows x 1` `gamma` column is now
+  accepted as the replicated `numWindows x C` gamma by `PPDecodeFilterLinear`,
+  `PP_fixedIntervalSmoother`, `PPDecode_updateLinear`, `PPHybridFilterLinear`,
+  `PP_EStep`, `PPLFP_Decode_update` and `PPLFP_EStep` (all raised;
+  `PPLFP_DecodeLinear` / `PPLFP_fixedIntervalSmoother` already accepted it),
+  and `PPHybridFilterLinear` with history windows now matches MATLAB.
 - Gold fixtures recaptured from the repaired MATLAB: `pplfp_SE.mat` /
   `pplfp_EM.mat` (`SE.beta` / `Pvals.beta` layout; the port's layout was
   already right), `pp_estep.mat` (square-history cases added) and
