@@ -26,6 +26,11 @@ if TYPE_CHECKING:
 
 def _require_pynapple() -> "type[nap.Ts]":
     nap = require_optional("pynapple", install_key="pynapple")
+    # pynapple loads its submodules lazily, so ``import pynapple`` succeeds even
+    # when its pandas backend cannot import; the failure would then surface as an
+    # opaque ``AttributeError: '_LazyModule' object has no attribute 'Ts'``.
+    # Importing the core here makes require_optional report the real cause.
+    require_optional("pynapple.core", install_key="pynapple")
     return nap.Ts
 
 

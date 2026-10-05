@@ -224,3 +224,33 @@ def test_migrated_bridge_gates_report_abi_broken_dependency(
         getattr(mod, gate)()
     _assert_broken_message(str(excinfo.value), package, f"ValueError: {_ABI_TEXT}", key)
     assert excinfo.value.__cause__ is original
+
+
+def test_pynapple_bridge_reports_broken_lazy_backend(monkeypatch) -> None:
+    """pynapple loads its submodules lazily: ``import pynapple`` succeeds even
+    when its pandas backend is ABI-broken. The bridge must force the core import
+    so the user gets the actionable "installed but failed to import" message
+    rather than ``AttributeError: '_LazyModule' object has no attribute 'Ts'``."""
+    import importlib
+    import importlib.util
+
+    if importlib.util.find_spec("pynapple") is None:
+        pytest.skip("pynapple is not installed; the installed-but-broken path is unreachable")
+    from nstat.extras.interop import pynapple as bridge
+
+    real_import = _lazy.import_module
+    original = ImportError("numpy.core.multiarray failed to import")
+
+    def lazy_backend_broken(name, package=None):
+        if name == "pynapple.core":
+            raise original
+        return real_import(name, package)
+
+    monkeypatch.setattr(_lazy, "import_module", lazy_backend_broken)
+    with pytest.raises(ImportError) as excinfo:
+        bridge._require_pynapple()
+    _assert_broken_message(
+        str(excinfo.value), "pynapple.core",
+        "ImportError: numpy.core.multiarray failed to import", "pynapple",
+    )
+    assert excinfo.value.__cause__ is original
