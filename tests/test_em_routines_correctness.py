@@ -146,7 +146,7 @@ def _pp_se(P, HkAll=None):
     np.random.seed(0)
     return DecodingAlgorithms.PP_ComputeParamStandardErrors(
         P["dN"], P["x"], P["WK"], P["A"], P["Q"], P["x0"], 1e-9 * np.eye(P["dx"]), P["ES"], P["fit"],
-        P["mu"], P["beta"], P["gamma"], P["wt"], P["HkAll"] if HkAll is None else HkAll, cons,
+        P["mu"], P["beta"], P.get("gamma_arg", P["gamma"]), P["wt"], P["HkAll"] if HkAll is None else HkAll, cons,
     )
 
 
@@ -169,34 +169,57 @@ def _pplfp_se(P, y, Chat, alpha, R, HkAll=None):
     ES = dict(P["ES"])
     return PPLFP.PPLFP_ComputeParamStandardErrors(
         y, P["dN"], P["x"], P["WK"], P["A"], P["Q"], Chat, R, alpha, P["x0"], 1e-9 * np.eye(P["dx"]), ES,
-        P["fit"], P["mu"], P["beta"], P["gamma"], P["wt"], P["HkAll"] if HkAll is None else HkAll, cons,
+        P["fit"], P["mu"], P["beta"], P.get("gamma_arg", P["gamma"]), P["wt"],
+        P["HkAll"] if HkAll is None else HkAll, cons,
     )
 
 
 SE_RTOL = 1e-4  # measured agreement <= 3.4e-8 (posterior noise of the 1e-12 draws, FD error)
 
+# C = 1 with W = 1 is a single history coefficient; it is also passed as a
+# 0-d scalar ("C1W1s").  The MATLAB SE routines left the gamma parameter
+# count unassigned there (fixed upstream after a457b54: one gamma parameter,
+# as in PP_EM's IC count); a 1 x 1 gamma raised in the PP routines here.
+SE_SHAPES = [dict(C=2, nW=3), dict(C=1, nW=3), dict(C=1, nW=1), dict(C=1, nW=1, scalar=True)]
+SE_SHAPE_IDS = ["C2W3", "C1W3", "C1W1", "C1W1s"]
+
+
+def _se_problem(fit, shape):
+    shape = dict(shape)
+    scalar = shape.pop("scalar", False)
+    P = _mle_problem(fit, **shape)
+    if scalar:
+        P["gamma_arg"] = np.asarray(float(P["gamma"][0, 0]))
+    return P
+
 
 @pytest.mark.parametrize("fit", ["poisson", "binomial"])
-@pytest.mark.parametrize("shape", [dict(C=2, nW=3), dict(C=1, nW=3)], ids=["C2W3", "C1W3"])
+@pytest.mark.parametrize("shape", SE_SHAPES, ids=SE_SHAPE_IDS)
 def test_pp_standard_errors_match_finite_difference(fit, shape) -> None:
-    P = _mle_problem(fit, **shape)
-    SE, Pvals, _ = _pp_se(P)
+    P = _se_problem(fit, shape)
+    SE, Pvals, nTerms = _pp_se(P)
+    # A (full, dx^2) + Q (diagonal, dx) + mu + beta + gamma
+    assert nTerms == P["dx"] ** 2 + P["dx"] + P["C"] * (1 + P["dx"] + P["nW"])
     se_mu, se_beta, se_gamma = _expected_se(P)
     np.testing.assert_allclose(SE["mu"], se_mu, rtol=SE_RTOL, err_msg="SE.mu")
     np.testing.assert_allclose(SE["beta"], se_beta, rtol=SE_RTOL, err_msg="SE.beta")
-    np.testing.assert_allclose(SE["gamma"], se_gamma, rtol=SE_RTOL, err_msg="SE.gamma")
+    se_g = np.ravel(SE["gamma"]) if "gamma_arg" in P else SE["gamma"]  # 0-d gamma -> 1-element SE
+    np.testing.assert_allclose(se_g, se_gamma.reshape(np.shape(se_g)), rtol=SE_RTOL, err_msg="SE.gamma")
 
 
 @pytest.mark.parametrize("fit", ["poisson", "binomial"])
-@pytest.mark.parametrize("shape", [dict(C=2, nW=3), dict(C=1, nW=3)], ids=["C2W3", "C1W3"])
+@pytest.mark.parametrize("shape", SE_SHAPES, ids=SE_SHAPE_IDS)
 def test_pplfp_standard_errors_match_finite_difference(fit, shape) -> None:
-    P = _mle_problem(fit, **shape)
+    P = _se_problem(fit, shape)
     y, Chat, alpha, R = _pplfp_mle_extra(P)
-    SE, Pvals, _ = _pplfp_se(P, y, Chat, alpha, R)
+    SE, Pvals, nTerms = _pplfp_se(P, y, Chat, alpha, R)
+    # A + Q + C (1 x dx) + R + alpha (1 channel) + mu + beta + gamma
+    assert nTerms == P["dx"] ** 2 + P["dx"] + P["dx"] + 1 + 1 + P["C"] * (1 + P["dx"] + P["nW"])
     se_mu, se_beta, se_gamma = _expected_se(P)
     np.testing.assert_allclose(np.ravel(SE["mu"]), se_mu, rtol=SE_RTOL, err_msg="SE.mu")
     np.testing.assert_allclose(SE["beta"], se_beta, rtol=SE_RTOL, err_msg="SE.beta")
-    np.testing.assert_allclose(SE["gamma"], se_gamma, rtol=SE_RTOL, err_msg="SE.gamma")
+    se_g = np.ravel(SE["gamma"]) if "gamma_arg" in P else SE["gamma"]
+    np.testing.assert_allclose(se_g, se_gamma.reshape(np.shape(se_g)), rtol=SE_RTOL, err_msg="SE.gamma")
 
 
 @pytest.mark.parametrize("family", ["PP", "PPLFP"])
@@ -740,3 +763,18 @@ def test_bare_default_pplfp_em_and_mppco_em_converge(monkeypatch) -> None:
     assert np.max(np.abs(np.ravel(out[6]) - P["alpha"])) < 0.1
     assert np.array_equal(np.ravel(out[10]), np.zeros(2))
     np.testing.assert_allclose(out[11], 1e-9 * np.eye(2), rtol=1e-10, atol=1e-24)
+
+
+@pytest.mark.parametrize("gamma", [-0.3, np.array([[-0.3]])], ids=["scalar", "1x1"])
+def test_single_cell_single_window_em_runs_with_one_gamma_parameter(gamma) -> None:
+    # C == 1, W == 1: one history coefficient.  PP_EM computes its SEs with it
+    # (the MATLAB SE routines left that parameter count unassigned; a 1 x 1
+    # gamma raised in PP_MStep / the SE routine and a scalar in PPLFP_MStep).
+    P = _em_problem(C=1)
+    for wt in (None, [0.0, 0.001]):
+        out = _run_em("PP", P, gamma, wt)
+        assert np.size(out[6]) == 1 and np.shape(out[6]) == np.shape(gamma)
+        assert np.size(out[10]["gamma"]) == 1 and np.all(np.isfinite(out[10]["gamma"]))
+        assert np.size(out[11]["gamma"]) == 1
+        out = _run_em("PPLFP", P, gamma, wt)
+        assert np.size(out[9]) == 1 and np.shape(out[9]) == np.shape(gamma) and np.isfinite(out[12]["llcomp"])

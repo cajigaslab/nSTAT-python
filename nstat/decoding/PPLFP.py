@@ -3121,6 +3121,12 @@ class PPLFP:
             and np.any(gammahat_new != 0)
         )
         if has_gamma:
+            # A single (scalar) history coefficient -- one cell, one window --
+            # is MATLAB's 1 x 1 gammahat_new(:,c); slice it as such and restore
+            # the caller's shape afterwards (a 0-d gamma used to raise here).
+            gamma_shape = gammahat_new.shape
+            if gammahat_new.size == 1:
+                gammahat_new = gammahat_new.reshape(1, 1)
             for c in range(numCells):
                 converged = False
                 it = 1
@@ -3205,6 +3211,8 @@ class PPLFP:
                         converged = True
                     gammahat_new[:, c] = gammahat_newTemp.ravel()
                     it += 1
+            if gammahat_new.size == 1:
+                gammahat_new = gammahat_new.reshape(gamma_shape)
 
         return (
             Ahat, Qhat, Chat, Rhat, alphahat,

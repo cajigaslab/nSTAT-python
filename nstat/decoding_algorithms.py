@@ -5574,7 +5574,7 @@ class DecodingAlgorithms:
                 Hk = HkAll[k, :, c] if HkAll.ndim == 3 else np.zeros(0)
                 xk = xkPerm[:, :, k]  # (dx, McExp)
 
-                gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, c]
+                gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, c]
                 gammaC = np.atleast_1d(gammaC)
 
                 Hk_vec = np.atleast_1d(Hk)
@@ -5611,7 +5611,7 @@ class DecodingAlgorithms:
                 Hk_vec = Hk_full[k, :] if Hk_full.ndim == 2 and Hk_full.shape[0] > k else np.zeros(0)
                 xk = xkPerm[:, :, k]
 
-                gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, c]
+                gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, c]
                 gammaC = np.atleast_1d(gammaC)
                 Hk_vec = np.atleast_1d(Hk_vec)
                 hist_term = float(gammaC @ Hk_vec) if Hk_vec.size == gammaC.size and gammaC.size > 0 else 0.0
@@ -5643,7 +5643,7 @@ class DecodingAlgorithms:
                 for k in range(K):
                     Hk_vec = Hk_full[k, :]
                     xk = xkPerm[:, :, k]
-                    gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, c]
+                    gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, c]
                     gammaC = np.atleast_1d(gammaC)
                     hist_term = float(gammaC @ Hk_vec) if Hk_vec.size == gammaC.size else 0.0
                     terms = muhat[c] + betahat[:, c] @ xk + hist_term
@@ -5798,7 +5798,7 @@ class DecodingAlgorithms:
             for nc in range(numCells):
                 Hk_full = HkAll[:, :, nc] if HkAll.ndim == 3 else np.zeros((K, 0))
                 nHist_c = Hk_full.shape[1]
-                gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, nc]
+                gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, nc]
                 gammaC = np.atleast_1d(gammaC)
 
                 hist_terms = Hk_full @ gammaC if gammaC.size == nHist_c and nHist_c > 0 else np.zeros(K)
@@ -6618,7 +6618,7 @@ class DecodingAlgorithms:
                     Hk_vec = Hk_full[k, :] if Hk_full.ndim == 2 and Hk_full.shape[0] > k else np.zeros(0)
                     xk = xkPerm[:, :, k]  # (dx, McExp)
 
-                    gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, c]
+                    gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, c]
                     gammaC = np.atleast_1d(gammaC)
                     Hk_vec = np.atleast_1d(Hk_vec)
                     hist_term = float(gammaC @ Hk_vec) if Hk_vec.size == gammaC.size and gammaC.size > 0 else 0.0
@@ -6677,7 +6677,7 @@ class DecodingAlgorithms:
                     Hk_vec = Hk_full[k, :] if Hk_full.ndim == 2 and Hk_full.shape[0] > k else np.zeros(0)
                     xk = xkPerm[:, :, k]
 
-                    gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, c]
+                    gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, c]
                     gammaC = np.atleast_1d(gammaC)
                     Hk_vec = np.atleast_1d(Hk_vec)
                     hist_term = float(gammaC @ Hk_vec) if Hk_vec.size == gammaC.size and gammaC.size > 0 else 0.0
@@ -6725,7 +6725,7 @@ class DecodingAlgorithms:
             for c in range(numCells):
                 converged = False
                 maxIter_nr = 100
-                gammaC = gammahat_new if gammahat_new.ndim == 0 or gammahat_new.size == 1 else gammahat_new[:, c] if gammahat_new.ndim == 2 else gammahat_new
+                gammaC = np.ravel(gammahat_new) if gammahat_new.size == 1 else gammahat_new[:, c] if gammahat_new.ndim == 2 else gammahat_new
                 gammaC = np.atleast_1d(gammaC).copy()
 
                 for iteration in range(maxIter_nr):
@@ -6774,7 +6774,7 @@ class DecodingAlgorithms:
                 if gammahat_new.ndim == 2:
                     gammahat_new[:, c] = gammaC
                 else:
-                    gammahat_new = gammaC
+                    gammahat_new = gammaC.reshape(gammahat_new.shape)
 
         return Ahat, Qhat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
 
