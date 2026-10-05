@@ -962,11 +962,12 @@ def test_single_gamma_mstep_keeps_the_callers_shape(family, gamma) -> None:
     assert np.isfinite(g_out).all() and float(g_out.reshape(-1)[0]) != -0.3  # estimated
 
 
-def test_pplfp_em_returns_standard_errors_from_the_scaled_observations(monkeypatch) -> None:
+def test_pplfp_em_returns_standard_errors_from_the_original_observations(monkeypatch) -> None:
     # PPLFP_EM computes its SEs (it unpacked the routine's three outputs into
-    # two inside `except Exception: pass`, so SE = Pvals = {} always).  It
-    # mirrors the pinned MATLAB, which passes its whitened observations
-    # y = Tr*y (Tr = inv(chol(R0))) -- an open parity question upstream.
+    # two inside `except Exception: pass`, so SE = Pvals = {} always).  The SE
+    # routine receives the ORIGINAL observations y (MATLAB F8, fix/pp-em
+    # bac99f9): it used to get the whitened y = Tr*y (Tr = inv(chol(R0)))
+    # together with the unscaled C / alpha / R.
     from nstat.extras.matlab_rng import seeded_global_rng
 
     args = _pplfp_em_gold_args()
@@ -985,8 +986,7 @@ def test_pplfp_em_returns_standard_errors_from_the_scaled_observations(monkeypat
     for d in (SE, Pvals):
         for key, value in d.items():
             assert np.all(np.isfinite(np.asarray(value, dtype=float))), key
-    Tr = np.linalg.inv(np.linalg.cholesky(args[5]).T)
-    np.testing.assert_array_equal(seen["y"], Tr @ args[0])
+    np.testing.assert_array_equal(seen["y"], args[0])
 
 
 @pytest.mark.parametrize("family", ["PP", "PPLFP"])
@@ -1099,3 +1099,119 @@ def test_em_maps_covariances_back_with_the_transposed_factor(family, monkeypatch
         np.testing.assert_allclose(M, MT, rtol=0, atol=1e-12 * np.max(np.abs(M)), err_msg=key)
     # Px0 is not estimated: it comes back exactly as passed (up to round-off).
     np.testing.assert_allclose(mats["Px0hat"], P["Px0"], rtol=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# Standard errors of the EM drivers on one scale (MATLAB F8, fix/pp-em
+# bac99f9), with the dx = 2 non-diagonal Q0 / R0 cases that pin the
+# (Tq\S)/Tq' orientation (MATLAB G3; at dx = 1 a transposition passes)
+# ---------------------------------------------------------------------------
+
+
+def _f8_problem():
+    """MATLAB's F8 problem shape: dx = 1, Q0 = 0.01 (Tq = 10), R0 = diag(0.05, 0.08), 3 poisson cells."""
+    rng = np.random.default_rng(3)
+    N, C = 400, 3
+    x = np.zeros((1, N))
+    prev = 0.0
+    for k in range(N):
+        prev = 0.97 * prev + 0.1 * rng.standard_normal()
+        x[0, k] = prev
+    mu = np.log(40e-3) * np.ones(C)
+    beta = np.array([[1.0, -0.8, 0.6]])
+    dN = (rng.random((C, N)) < np.minimum(np.exp(mu[:, None] + beta.T @ x), 1)).astype(float)
+    Cm, R, alpha = np.array([[1.0], [-0.5]]), np.diag([0.05, 0.08]), np.array([0.1, -0.1])
+    y = Cm @ x + alpha[:, None] + np.sqrt(np.diag(R))[:, None] * rng.standard_normal((2, N))
+    return dict(A=np.array([[0.97]]), Q=np.array([[0.01]]), mu=mu, beta=beta, dN=dN, Cm=Cm, R=R, alpha=alpha, y=y,
+                x0=np.zeros(1), Px0=1e-3 * np.eye(1), delta=0.001)
+
+
+_SCALE_PROBLEMS = {"dx1": _f8_problem, "dx2_nondiag": _nondiag_problem}
+
+
+def _run_scaled_em(family, P, t=1.0, s=1.0, mcIter=50):
+    """EM on the problem with the state rescaled by t (x -> t x) and the observations by s (y -> s y)."""
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    with seeded_global_rng(42):
+        if family == "PP":
+            cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0, 0, mcIter)
+            return DecodingAlgorithms.PP_EM(P["dN"], P["A"], t * t * P["Q"], P["mu"], P["beta"] / t, "poisson",
+                                            P["delta"], None, None, t * P["x0"], t * t * P["Px0"], cons)
+        cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, mcIter, 0)
+        return PPLFP.PPLFP_EM(s * P["y"], P["dN"], P["A"], t * t * P["Q"], s * P["Cm"] / t, s * s * P["R"],
+                              s * P["alpha"], P["mu"], P["beta"] / t, "poisson", P["delta"], None, None, t * P["x0"],
+                              t * t * P["Px0"], cons)
+
+
+@pytest.mark.parametrize("problem", sorted(_SCALE_PROBLEMS))
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_em_standard_errors_receive_the_original_scale_inputs(family, problem, monkeypatch) -> None:
+    # The SE routine reads ES.Sxkm1xkm1 (A information), ES.Sxkxk (C
+    # information, PPLFP) and y (PPLFP alpha / C / R scores).  With every
+    # estimate on the original scale they must be the original-scale values:
+    # exactly what the E-step returns when run in the original coordinates at
+    # the returned estimates (the best iterate's parameters), and the input y.
+    # They used to be the scaled system's sums (and the scaled y).
+    P = _SCALE_PROBLEMS[problem]()
+    owner = DecodingAlgorithms if family == "PP" else PPLFP
+    name = "PP_ComputeParamStandardErrors" if family == "PP" else "PPLFP_ComputeParamStandardErrors"
+    real = getattr(owner, name)
+    seen = {}
+
+    def spy(*a, **k):
+        seen["args"] = a
+        return real(*a, **k)
+
+    monkeypatch.setattr(owner, name, staticmethod(spy))
+    out = _run_scaled_em(family, P)
+    a = seen["args"]
+    if family == "PP":
+        ES, HkAll, gamma = a[7], a[13], a[11]
+        Ahat, Qhat, mu, beta, x0, Px0 = out[2], out[3], out[4], out[5], out[7], out[8]
+        ref = DecodingAlgorithms.PP_EStep(Ahat, Qhat, P["dN"], mu, beta, "poisson", gamma, HkAll, x0, Px0)[3]
+        keys = ["Sxkm1xkm1"]
+    else:
+        np.testing.assert_array_equal(a[0], P["y"])
+        ES, HkAll, gamma = a[11], a[17], a[15]
+        ref = PPLFP.PPLFP_EStep(out[2], out[3], out[4], out[5], P["y"], out[6], P["dN"], out[7], out[8], "poisson",
+                                P["delta"], gamma, HkAll, out[10], out[11])[3]
+        keys = ["Sxkm1xkm1", "Sxkxk"]
+    for key in keys:
+        np.testing.assert_allclose(ES[key], ref[key], rtol=1e-9, err_msg=key)
+
+
+@pytest.mark.parametrize("problem", sorted(_SCALE_PROBLEMS))
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_em_standard_errors_are_equivariant_to_rescaling(family, problem, monkeypatch) -> None:
+    # MATLAB testStandardErrorsInvariantToStateScaling /
+    # ...ToObservationScaling.  x -> t x (t = 3: Q0 -> t^2 Q0, C -> C/t,
+    # beta -> beta/t, x0 -> t x0, Px0 -> t^2 Px0) leaves the scaled problem,
+    # the EM path and the draws unchanged, so SE.A, SE.mu, SE.alpha, SE.R are
+    # unchanged, SE.Q scales by t^2 and SE.C, SE.beta by 1/t.  y -> s y
+    # (s = 2: C, alpha -> s, R -> s^2) scales SE.C, SE.alpha by s and SE.R by
+    # s^2.  The nearest-SPD projection of the inverse observed information
+    # is not equivariant (a recorded MATLAB property, F8 / final defect 5):
+    # it is disabled here, which makes the relations exact (measured
+    # <= 2e-12; before F8 SE.A was off by up to a factor 3).
+    import sys
+
+    monkeypatch.setattr(DecodingAlgorithms, "_nearestSPD", staticmethod(lambda A: A))
+    monkeypatch.setattr(sys.modules[PPLFP.__module__], "_nearest_spd", lambda A: A)
+    P = _SCALE_PROBLEMS[problem]()
+    ise = 10 if family == "PP" else 13
+    base = _run_scaled_em(family, P)[ise]
+    t = 3.0
+    expect = {"A": 1.0, "Q": t * t, "C": 1 / t, "beta": 1 / t, "mu": 1.0, "alpha": 1.0, "R": 1.0}
+    scaled = _run_scaled_em(family, P, t=t)[ise]
+    assert sorted(scaled) == sorted(base)
+    for key in base:
+        np.testing.assert_allclose(scaled[key], expect[key] * np.asarray(base[key]), rtol=1e-9, atol=0,
+                                   err_msg=f"state x{t}: SE.{key}")
+    if family == "PPLFP":
+        s = 2.0
+        expect = {"A": 1.0, "Q": 1.0, "C": s, "beta": 1.0, "mu": 1.0, "alpha": s, "R": s * s}
+        scaled = _run_scaled_em(family, P, s=s)[ise]
+        for key in base:
+            np.testing.assert_allclose(scaled[key], expect[key] * np.asarray(base[key]), rtol=1e-9, atol=0,
+                                       err_msg=f"observation x{s}: SE.{key}")

@@ -6246,9 +6246,18 @@ class DecodingAlgorithms:
         SE = {}
         Pvals = {}
         if ExpSumsFinal:
+            # MATLAB F8 (fix/pp-em bac99f9): the expectation sums come from the
+            # E-step of the SCALED system (x_s = Tq x) while every estimate
+            # passed here is back on the original scale; the SE routine reads
+            # ES.Sxkm1xkm1 (A information Q^-1 (x) Sxkm1xkm1) with the unscaled
+            # Qhat, so SE.A was off by the Tq factor whenever Q0 != I.  Map the
+            # sum it reads back: Sxkm1xkm1 = (Tq\S_s)/Tq'.  (A copy: the
+            # information criteria below read the buffer's own sums.)
+            ESforSE = dict(ExpSumsFinal)
+            ESforSE["Sxkm1xkm1"] = TqInv_unscale @ np.asarray(ExpSumsFinal["Sxkm1xkm1"]) @ TqInv_unscale.T
             SE, Pvals, _ = DecodingAlgorithms.PP_ComputeParamStandardErrors(
                 dN, xKFinal, WKFinal, Ahat, Qhat, x0hat, Px0hat,
-                ExpSumsFinal, fitType, muhat, betahat, gammahat,
+                ESforSE, fitType, muhat, betahat, gammahat,
                 windowTimes, HkAll, PPEM_Constraints
             )
 

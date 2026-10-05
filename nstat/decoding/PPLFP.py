@@ -68,6 +68,34 @@ def _is_empty_value(v: Any) -> bool:
     return arr.size == 0
 
 
+def _nearest_spd(A):
+    """Nearest symmetric positive-definite matrix (MATLAB ``nearestSPD``, as
+    used on the inverse observed information of
+    ``PPLFP_ComputeParamStandardErrors``)."""
+    B = 0.5 * (A + A.T)
+    try:
+        _, s, V = np.linalg.svd(B)
+        H = V.T @ np.diag(s) @ V
+        A2 = 0.5 * (B + H)
+        A3 = 0.5 * (A2 + A2.T)
+        eps_v = np.spacing(np.linalg.norm(A3))
+        I_e = np.eye(A.shape[0])
+        k_iter = 0
+        while True:
+            try:
+                np.linalg.cholesky(A3)
+                break
+            except np.linalg.LinAlgError:
+                mineig = np.min(np.real(np.linalg.eigvals(A3)))
+                A3 = A3 + I_e * (-mineig * (k_iter + 1) ** 2 + eps_v)
+                k_iter += 1
+                if k_iter > 50:
+                    break
+        return A3
+    except np.linalg.LinAlgError:
+        return B
+
+
 def _unwhiten(T, S):
     """MATLAB ``(T\\S)/T'`` = ``T^-1 S T^-T``: a scaled-system covariance (or
     second-moment sum) mapped back to the original scale."""
@@ -1537,30 +1565,6 @@ class PPLFP:
         except np.linalg.LinAlgError:
             invIObs = np.linalg.pinv(IObs)
 
-        def _nearest_spd(A):
-            B = 0.5 * (A + A.T)
-            try:
-                _, s, V = np.linalg.svd(B)
-                H = V.T @ np.diag(s) @ V
-                A2 = 0.5 * (B + H)
-                A3 = 0.5 * (A2 + A2.T)
-                eps_v = np.spacing(np.linalg.norm(A3))
-                I_e = np.eye(A.shape[0])
-                k_iter = 0
-                while True:
-                    try:
-                        np.linalg.cholesky(A3)
-                        break
-                    except np.linalg.LinAlgError:
-                        mineig = np.min(np.real(np.linalg.eigvals(A3)))
-                        A3 = A3 + I_e * (-mineig * (k_iter + 1) ** 2 + eps_v)
-                        k_iter += 1
-                        if k_iter > 50:
-                            break
-                return A3
-            except np.linalg.LinAlgError:
-                return B
-
         invIObs = _nearest_spd(invIObs)
         VarVec = np.diag(invIObs)
         SEVec = np.sqrt(np.abs(VarVec))
@@ -1859,7 +1863,7 @@ class PPLFP:
         y_arr = np.asarray(y, dtype=float)
         if y_arr.ndim == 1:
             y_arr = y_arr.reshape(1, -1)
-        yOrig = y_arr.copy()  # noqa: F841  (MATLAB keeps yOrig too, unused; see the SE call)
+        yOrig = y_arr.copy()  # the original-scale y, for the SE call (MATLAB F8)
 
         # ---- EM tolerance settings ------------------------------------
         # MATLAB references ``nstat.Defaults.EM_TolAbs`` / ``EM_LogLTol``;
@@ -2252,13 +2256,22 @@ class PPLFP:
         # MATLAB computes them (when SE/Pvals are requested) without a guard.
         # This used to unpack the routine's three outputs into two inside an
         # ``except Exception: pass`` block, so SE = Pvals = {} on every call.
-        # OPEN PARITY QUESTION: MATLAB passes its scaled observations
-        # (``y = Tr*y`` above; ``yOrig`` is never used) together with the
-        # UNSCALED C / alpha / R; whether that is a MATLAB defect is being
-        # checked upstream.  Until then this mirrors the pinned MATLAB
-        # (fix/pp-em @ a457b54) exactly and passes the scaled y_arr.
+        # MATLAB F8 (fix/pp-em bac99f9): EM runs on the SCALED system (x_s =
+        # Tq x, y_s = Tr y) and every estimate passed here is back on the
+        # original scale, but the SE call used to receive the scaled y and
+        # the scaled expectation sums.  The SE routine reads y (alpha, C and R
+        # scores), ES.Sxkm1xkm1 (A information) and ES.Sxkxk (C information),
+        # so SE.A / SE.C / SE.R mixed scales whenever Q0 or R0 != I.  Pass the
+        # original y and map those two sums back: S = (Tq\S_s)/Tq'.  (A copy:
+        # the information criteria below read the buffer's own sums.)
+        ySE = y_arr
+        ESforSE = dict(ExpectationSumsFinal)
+        if scaledSystem:
+            ySE = yOrig
+            ESforSE["Sxkm1xkm1"] = _unwhiten(Tq, np.asarray(ExpectationSumsFinal["Sxkm1xkm1"], dtype=float))
+            ESforSE["Sxkxk"] = _unwhiten(Tq, np.asarray(ExpectationSumsFinal["Sxkxk"], dtype=float))
         SE, Pvals, _ = PPLFP.PPLFP_ComputeParamStandardErrors(
-            y_arr,
+            ySE,
             dN_arr,
             xKFinal,
             WKFinal,
@@ -2269,7 +2282,7 @@ class PPLFP:
             alphahat_out,
             x0hat_out,
             Px0hat_out,
-            ExpectationSumsFinal,
+            ESforSE,
             fitType,
             muhat_out,
             betahat_out,
