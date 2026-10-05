@@ -5684,6 +5684,14 @@ class DecodingAlgorithms:
         if PPEM_Constraints["EstimateA"]:
             n1_A, n2_A = Ahat.shape
             Qinv = np.linalg.inv(Qhat)
+            # The A (and full-Q) parameters are ordered row by row, as in
+            # MATLAB (loop l over rows, m over columns; termvec =
+            # reshape(termMat', 1, n) and ScoreAMc = reshape(ScorA', n, 1) are
+            # row-major; SE.A = reshape(SEAterms, ncol, nrow)').  This port
+            # filled each column column-major (termMat.T.ravel()), so the A
+            # block was a row permutation of the Fisher information Q^-1 (x)
+            # Sxkm1xkm1 -- not symmetric for dx >= 2 -- and its scores and
+            # SE.A were column-major.
             if PPEM_Constraints["AhatDiag"]:
                 IAComp = np.zeros((n1_A, n1_A))
                 for l in range(n1_A):
@@ -5691,7 +5699,10 @@ class DecodingAlgorithms:
                     el[l] = 1.0
                     em = np.zeros(n2_A)
                     em[l] = 1.0
-                    termMat = Qinv @ np.outer(el, em) @ (ExpectationSumsFinal["Sxkm1xkm1"] * np.eye(n1_A))
+                    # MATLAB Qhat\el*em'*S.*eye (left to right):
+                    # ((Q^-1 e e' S) .* I).  The former Q^-1 e e' (S .* I) differs
+                    # whenever Q is not diagonal.
+                    termMat = (Qinv @ np.outer(el, em) @ ExpectationSumsFinal["Sxkm1xkm1"]) * np.eye(n1_A)
                     IAComp[:, l] = np.diag(termMat)
             else:
                 nA = Ahat.size
@@ -5704,7 +5715,7 @@ class DecodingAlgorithms:
                         em = np.zeros(n2_A)
                         em[m] = 1.0
                         termMat = Qinv @ np.outer(el, em) @ ExpectationSumsFinal["Sxkm1xkm1"]
-                        IAComp[:, cnt] = termMat.T.ravel()
+                        IAComp[:, cnt] = termMat.ravel()
                         cnt += 1
         else:
             IAComp = np.zeros((0, 0))
@@ -5735,7 +5746,7 @@ class DecodingAlgorithms:
                     em = np.zeros(n2_Q)
                     em[m] = 1.0
                     termMat = N / 2.0 * Qinv @ np.outer(em, el) @ Qinv
-                    IQComp[:, cnt] = termMat.T.ravel()
+                    IQComp[:, cnt] = termMat.ravel()  # row-major, as MATLAB (see the A block)
                     cnt += 1
 
         # Px0 information
@@ -5955,7 +5966,7 @@ class DecodingAlgorithms:
                 if PPEM_Constraints["AhatDiag"]:
                     ScoreAMc = np.diag(ScorA)
                 else:
-                    ScoreAMc = ScorA.T.ravel()
+                    ScoreAMc = ScorA.ravel()  # row-major: MATLAB reshape(ScorA', n, 1)
             else:
                 ScoreAMc = np.array([])
 
@@ -5969,7 +5980,7 @@ class DecodingAlgorithms:
                     ScoreQMc = np.diag(ScoreQ)
             else:
                 ScoreQ = -0.5 * np.linalg.solve(Qhat, K * np.eye(dx) - np.linalg.solve(Qhat, sumXkTerms_mc).T)
-                ScoreQMc = ScoreQ.T.ravel()
+                ScoreQMc = ScoreQ.ravel()  # row-major: MATLAB reshape(ScoreQ', n, 1)
 
             # Score for Px0
             if PPEM_Constraints["Px0Isotropic"]:
@@ -6058,7 +6069,9 @@ class DecodingAlgorithms:
                 SEA = np.diag(SEAterms)
                 pA = np.diag(DecodingAlgorithms._ztest_pvalue(np.diag(Ahat), np.diag(SEA)))
             else:
-                SEA = SEAterms.reshape(Ahat.shape[1], Ahat.shape[0]).T
+                # Row-major, as the parameters are ordered: MATLAB
+                # reshape(SEAterms, ncol, nrow)'.
+                SEA = SEAterms.reshape(Ahat.shape)
                 pA = DecodingAlgorithms._ztest_pvalue(Ahat.ravel(), SEA.ravel()).reshape(Ahat.shape)
             SE["A"] = SEA
             Pvals["A"] = pA
@@ -6071,7 +6084,7 @@ class DecodingAlgorithms:
             else:
                 pQ = np.diag(DecodingAlgorithms._ztest_pvalue(np.diag(Qhat), np.diag(SEQ)))
         else:
-            SEQ = SEQterms.reshape(Qhat.shape[1], Qhat.shape[0]).T
+            SEQ = SEQterms.reshape(Qhat.shape)  # row-major: MATLAB reshape(SEQterms, ncol, nrow)'
             pQ = DecodingAlgorithms._ztest_pvalue(Qhat.ravel(), SEQ.ravel()).reshape(Qhat.shape)
         SE["Q"] = SEQ
         Pvals["Q"] = pQ

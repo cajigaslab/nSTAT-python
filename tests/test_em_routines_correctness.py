@@ -1694,3 +1694,166 @@ def test_standard_errors_honour_every_constraint_set(family) -> None:
         if v[0] and v[1]:
             assert np.count_nonzero(SE["A"] - np.diag(np.diag(SE["A"]))) == 0, v
     assert not np.array_equal(se(_G2_CONSTRAINTS[0], 5)[0]["mu"], se(_G2_CONSTRAINTS[0], 7)[0]["mu"])
+
+
+# ---------------------------------------------------------------------------
+# Covariance information blocks of the SE routines (MATLAB H1: the MATLAB
+# expression N/2*(Q)\e*e'/(Q) evaluates left to right as (N/2 Q)^-1 e e' Q^-1;
+# the intended block is (N/2) Q^-1 e e' Q^-1 -- likewise R and 1/2 Px0).
+# The port computes the intended form; this pins every reachable block.
+# ---------------------------------------------------------------------------
+
+
+def _vanishing_problem(K=1500, seed=5, correlated=False):
+    """Known states (W_K = 1e-12 I) and every parameter at its complete-data MLE (missing information ~ 0)."""
+    rng = np.random.default_rng(seed)
+    dx, C = 2, 2
+    L = np.linalg.cholesky(np.array([[0.02, 0.012], [0.012, 0.03]])) if correlated else np.sqrt(0.02) * np.eye(2)
+    x = np.zeros((dx, K))
+    prev = np.zeros(dx)
+    for k in range(K):
+        prev = 0.99 * prev + L @ rng.standard_normal(dx)
+        x[:, k] = prev
+    muT, betaT = np.log(0.05) * np.ones(C), np.array([[1.0, -0.8], [0.5, 0.7]])
+    dN = (rng.random((C, K)) < np.minimum(np.exp(muT[:, None] + betaT.T @ x), 1)).astype(float)
+    mu, beta = np.zeros(C), np.zeros((dx, C))
+    for c in range(C):
+        th = _cell_mle(np.column_stack([np.ones(K), x.T]), dN[c], "poisson", np.concatenate([[muT[c]], betaT[:, c]]))
+        mu[c], beta[:, c] = th[0], th[1:]
+    x0 = np.zeros(dx)
+    xm1 = np.column_stack([x0, x[:, :-1]])
+    Sx1, Sx10 = xm1 @ xm1.T, x @ xm1.T
+    A = Sx10 @ np.linalg.inv(Sx1)
+    sumX = x @ x.T - A @ Sx10.T - Sx10 @ A.T + A @ Sx1 @ A.T
+    Cm, alphaT, Rt = np.array([[1.0, 0.5], [-0.3, 1.0]]), np.array([0.1, -0.1]), np.diag([0.05, 0.08])
+    y = Cm @ x + alphaT[:, None] + np.sqrt(np.diag(Rt))[:, None] * rng.standard_normal((2, K))
+    Z = np.vstack([x, np.ones((1, K))])
+    CA = (y @ Z.T) @ np.linalg.inv(Z @ Z.T)
+    Chat, alphahat = CA[:, :dx], CA[:, dx]
+    res = y - Chat @ x - alphahat[:, None]
+    ES = dict(Sxkm1xkm1=Sx1, Sxkxk=x @ x.T)
+    return dict(x=x, dN=dN, mu=mu, beta=beta, A=A, Sx1=Sx1, sumX=sumX, y=y, Chat=Chat, alphahat=alphahat,
+                resres=res @ res.T, ES=ES, K=K, dx=dx, WK=np.tile((1e-12 * np.eye(dx))[:, :, None], (1, 1, K)))
+
+
+_COV_CASES = {
+    # name: (EstimateA, QhatDiag, QhatIsotropic, RhatIsotropic, EstimatePx0, Px0Isotropic)
+    "Qdiag": (1, 1, 0, 0, 0, 0),
+    "Qiso": (1, 1, 1, 1, 0, 0),
+    "EstimateA0": (0, 1, 0, 0, 0, 0),
+    "Px0diag": (0, 1, 0, 0, 1, 0),
+    "Px0iso": (0, 1, 0, 0, 1, 1),
+}
+
+
+@pytest.mark.parametrize("case", sorted(_COV_CASES))
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_covariance_information_blocks_match_the_complete_information(family, case, monkeypatch) -> None:
+    # Every parameter at its complete-data MLE given known states, so the
+    # missing information vanishes and each SE is 1/sqrt(complete
+    # information): SE.Q = q sqrt(2/K) (diagonal) or q sqrt(2/(K dx))
+    # (isotropic), SE.R likewise with dy, SE.A(i, j) = sqrt(q_i inv(Sx1)_jj),
+    # SE.C(i, j) = sqrt(r_i inv(Sxkxk)_jj), SE.alpha = sqrt(r / K).  For Px0
+    # (not otherwise vanishing) the x0 draws are replaced by x0 +- sqrt(p),
+    # where the Px0 score is exactly 0: SE.Px0 = p sqrt(2) (diagonal) or
+    # p sqrt(2/dx) (isotropic).  MATLAB's block evaluated to (2/K) Q^-1 e e'
+    # Q^-1 (SE.Q, SE.R about K/2 too large) and (2) P^-1 e e' P^-1 (SE.Px0
+    # half) -- MATLAB H1; the port already had the intended form (a pin).
+    # The A / C checks found two Python-only layout defects, fixed with this
+    # test: PP's A information block was filled column-major against
+    # row-major parameters (a row permutation of Q^-1 (x) Sxkm1xkm1, not
+    # symmetric), and both routines unpacked SE.A / SE.C (and a full SE.Q)
+    # column-major, i.e. transposed.
+    import sys
+
+    import nstat.decoding_algorithms as da
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    EstA, QDiag, QIso, RIso, EPx0, Px0Iso = _COV_CASES[case]
+    P = _vanishing_problem()
+    K, dx, sumX = P["K"], P["dx"], P["sumX"]
+    Q = (np.trace(sumX) / (K * dx)) * np.eye(dx) if QIso else np.diag(np.diag(sumX)) / K
+    R = (np.trace(P["resres"]) / (K * 2)) * np.eye(2) if RIso else np.diag(np.diag(P["resres"])) / K
+    x0 = np.zeros(dx)
+    Px0 = np.diag([0.3, 0.3]) if Px0Iso else (np.diag([0.3, 0.2]) if EPx0 else 1e-6 * np.eye(dx))
+    real = da._mc_state_draws
+
+    def draws(m, W, M, normal, **kw):
+        out = real(m, W, M, normal, **kw)
+        if EPx0 and np.array_equal(np.asarray(W), Px0) and np.array_equal(np.asarray(m).reshape(-1), x0):
+            signs = np.where(np.arange(M) % 2 == 0, 1.0, -1.0)
+            out = x0[:, None] + np.sqrt(np.diag(Px0))[:, None] * np.vstack([signs, signs[::-1]])
+        return out
+
+    monkeypatch.setattr(da, "_mc_state_draws", draws)
+    monkeypatch.setattr(sys.modules[PPLFP.__module__], "_mc_state_draws", draws)
+    with seeded_global_rng(1):
+        if family == "PP":
+            cons = DecodingAlgorithms.PP_EMCreateConstraints(EstA, 0, QDiag, QIso, 0, EPx0, Px0Iso, 20)
+            SE = DecodingAlgorithms.PP_ComputeParamStandardErrors(
+                P["dN"], P["x"], P["WK"], P["A"], Q, x0, Px0, P["ES"], "poisson", P["mu"], P["beta"],
+                np.array(0.0), [], np.zeros((K, 1, 2)), cons)[0]
+        else:
+            cons = PPLFP.PPLFP_EMCreateConstraints(EstA, 0, QDiag, QIso, 1, RIso, 0, EPx0, Px0Iso, 20, 0)
+            SE = PPLFP.PPLFP_ComputeParamStandardErrors(
+                P["y"], P["dN"], P["x"], P["WK"], P["A"], Q, P["Chat"], R, P["alphahat"], x0, Px0, P["ES"],
+                "poisson", P["mu"], P["beta"], np.array(0.0), [], np.zeros((K, 1, 2)), cons)[0]
+    rtol = 1e-6
+    q = np.diag(Q)
+    se_q = q[:1] * np.sqrt(2 / (K * dx)) if QIso else q * np.sqrt(2 / K)
+    if not EPx0:  # the x0 draws below move the Q score (x_1 - A x_0), so Q is checked without them
+        np.testing.assert_allclose(np.diag(np.atleast_2d(SE["Q"]))[:se_q.size], se_q, rtol=rtol, err_msg="SE.Q")
+    if EstA:
+        np.testing.assert_allclose(SE["A"], np.sqrt(np.outer(q, np.diag(np.linalg.inv(P["Sx1"])))), rtol=rtol,
+                                   err_msg="SE.A")
+    if EPx0:
+        p = np.diag(Px0)
+        se_p = p[:1] * np.sqrt(2 / dx) if Px0Iso else p * np.sqrt(2)
+        np.testing.assert_allclose(np.diag(np.atleast_2d(SE["Px0"]))[:se_p.size], se_p, rtol=rtol, err_msg="SE.Px0")
+    if family == "PPLFP":
+        r = np.diag(R)
+        se_r = r[:1] * np.sqrt(2 / (K * 2)) if RIso else r * np.sqrt(2 / K)
+        np.testing.assert_allclose(np.diag(np.atleast_2d(SE["R"]))[:se_r.size], se_r, rtol=rtol, err_msg="SE.R")
+        Sxx_inv = np.linalg.inv(P["ES"]["Sxkxk"])
+        np.testing.assert_allclose(SE["C"], np.sqrt(np.outer(r, np.diag(Sxx_inv))), rtol=rtol, err_msg="SE.C")
+        np.testing.assert_allclose(np.ravel(SE["alpha"]), np.sqrt(r / K), rtol=rtol, err_msg="SE.alpha")
+
+
+def test_pp_diagonal_a_information_with_a_full_q(monkeypatch) -> None:
+    # AhatDiag = 1 with a non-diagonal Q (QhatDiag = 0): the diagonal-A
+    # information is I(i, l) = (Q^-1)_il Sxkm1xkm1_il, MATLAB's
+    # (Q^-1 e_l e_l' S) .* I evaluated left to right.  The port computed
+    # Q^-1 e_l e_l' (S .* I), which keeps only i == l.  (A, Q) are at their
+    # joint complete-data MLE (A diagonal, Q full), so SE.A = sqrt(diag(inv(I))).
+    # A full Q is parameterised by all dx^2 entries (MATLAB too), so its
+    # information block is singular; the nearest-SPD projection would spread
+    # that over every SE, so it is disabled here (the A block of the
+    # block-diagonal inverse is exact).
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    monkeypatch.setattr(DecodingAlgorithms, "_nearestSPD", staticmethod(lambda A: A))
+
+    P = _vanishing_problem(correlated=True)
+    K, dx, x = P["K"], P["dx"], P["x"]
+    xm1 = np.column_stack([np.zeros(dx), x[:, :-1]])
+    Sx1, Sx10 = xm1 @ xm1.T, x @ xm1.T
+    a = np.diag(P["A"]).copy()
+    for _ in range(500):  # the diagonal-A / full-Q MLE, by alternating the two closed forms
+        r = x - np.diag(a) @ xm1
+        Qi = np.linalg.inv(r @ r.T / K)
+        a_new = np.linalg.solve(Qi * Sx1, np.diag(Qi @ Sx10))  # diag(Q^-1 (Sx10 - A Sx1)) = 0
+        if np.max(np.abs(a_new - a)) < 1e-15:
+            break
+        a = a_new
+    A = np.diag(a)
+    r = x - A @ xm1
+    Q = r @ r.T / K
+    assert abs(Q[0, 1]) > 0.2 * np.sqrt(Q[0, 0] * Q[1, 1])
+    with seeded_global_rng(1):
+        cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 1, 0, 0, 0, 0, 0, 20)
+        SE = DecodingAlgorithms.PP_ComputeParamStandardErrors(
+            P["dN"], x, P["WK"], A, Q, np.zeros(dx), 1e-6 * np.eye(dx), dict(Sxkm1xkm1=Sx1), "poisson", P["mu"],
+            P["beta"], np.array(0.0), [], np.zeros((K, 1, 2)), cons)[0]
+    expected = np.sqrt(np.diag(np.linalg.inv(np.linalg.inv(Q) * Sx1)))
+    np.testing.assert_allclose(np.diag(SE["A"]), expected, rtol=1e-8)
+    assert np.count_nonzero(SE["A"] - np.diag(np.diag(SE["A"]))) == 0

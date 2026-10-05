@@ -1611,10 +1611,15 @@ class PPLFP:
             if AhatDiag == 1:
                 SEA = np.diag(SEAterms)
             else:
-                SEA = SEAterms.reshape(Ahat.shape[1], Ahat.shape[0]).T
+                # The A / C / full-Q parameters (information columns and
+                # scores) are ordered row by row, as in MATLAB, whose
+                # reshape(SEterms, ncol, nrow)' unpacks them row-major.  The
+                # former reshape(ncol, nrow).T (NumPy is row-major) unpacked
+                # them column-major: SE.A and SE.C came back transposed.
+                SEA = SEAterms.reshape(Ahat.shape)
             SE["A"] = SEA
 
-        SEC = SECterms.reshape(Chat.shape[1], Chat.shape[0]).T
+        SEC = SECterms.reshape(Chat.shape)
         SEAlpha = SEAlphaterms.reshape(alphahat.shape[1], alphahat.shape[0]).T
 
         if RhatDiag == 1:
@@ -1625,7 +1630,7 @@ class PPLFP:
         if QhatDiag == 1:
             SEQ = np.diag(SEQterms)
         else:
-            SEQ = SEQterms.reshape(Qhat.shape[1], Qhat.shape[0]).T
+            SEQ = SEQterms.reshape(Qhat.shape)  # row-major (see SE.A)
 
         SE["Q"] = SEQ
         SE["C"] = SEC
