@@ -188,6 +188,58 @@ before and after with `make perf-check`.
 **Dropped:** docs-10 (refuted: the `Trial` aliases are documented inline), tests/F10
 (refuted: `RELEASE_NOTES.md` is the changelog).
 
+## Execution notes (from a second review of this plan)
+
+**The environment sets the scope of Tier B.** On the current env (C8) these items cannot be
+verified:
+- B7's `dynamax` Newton hoist: `dynamax` isn't installed, and no test calls `_ppem_newton_C`.
+- The numba fast path behind B5: numba is ABI-broken here.
+- B9: needs a CI dispatch, since there is no 3.10 interpreter locally.
+
+The non-invasive option is a **dedicated venv** for this work, leaving the base anaconda env
+untouched. Before/after `perf-check` must then run in that same venv.
+
+**Ordering within PR 4.**
+- **B8 before perf/F6.** Moving `scipy.stats` imports into functions can turn a use site in
+  untested code into a `NameError`. Write the characterization tests first, then check every
+  `norm`, `chi2` and `pearsonr` use site.
+- **A6 alias removal and B5's numba probe go in one edit** (`decoding_algorithms.py:34-41`).
+  Verified: `tests/test_decoding_algorithms_fidelity.py` patches
+  `nstat.extras._numba_kernels._NUMBA_AVAILABLE` (not the dead alias) to force the
+  fallback path. So **a lazy probe must keep that module attribute patchable**; an
+  `lru_cache`'d probe that ignores it would silently disable those tests.
+- **The C4 shared time-rescaling helper keeps the existing `1e-12` floor exactly.** Changing
+  the floor is C1 (numerics) and must not happen inside a refactor.
+- **A3 (`nspikeTrain` docstring) and B1 (`napoleon_include_init_with_doc`)** affect the same
+  rendered page. Check the built `nspikeTrain` page shows `sampleRate` after both land.
+
+**Traps in otherwise-correct items.**
+- **#256 `_TRANSITIVE_DEPS`: remove the entry; don't re-key it.** Re-keying it correctly
+  would make `em_dynamax_demo` require jax and dynamax, which aren't installed, so a
+  demo that runs today would be skipped.
+- **A7's broad `except` wraps third-party probes only.** If it wrapped `import nstat.extras.X`,
+  a real bug in nstat's own code would turn into a skip.
+- **PPSS_EStep hoist (B7): prove it with a direct `np.array_equal` before/after on fixed
+  inputs.** The `v9_PPSS_EStep` drift spec has deliberately relaxed tolerances (rtol 1e2,
+  atol 1e-1) and would pass a real numeric change.
+- **`cross_k_inhom` hoist: measure the speedup before claiming it.** Only `pair_correlation`
+  was timed, and it got slower.
+- **B4 checked:** no committed notebook output captures the EM iteration prints, so moving to
+  `logging` causes no notebook-fidelity drift.
+- **A13:** run `tests/extras/test_lazy_import.py` (it pins a canonical message) and the
+  dpp and hawkes bridge tests.
+- **A2:** expect heading-slug mismatches (en-dashes, slashes, e.g. "Kolmogorov–Smirnov test /
+  KS plot"). Use explicit `(label)=` targets for the ones that don't match. The `-E` rebuild
+  confirms.
+
+**Every one of the 153 warnings now has an owner:** 72 stub warnings → B1; 77 glossary → A2;
+2 dead `api.html` anchors (`spatial_point_processes.md:97,179`) → B1. The 2 previously
+unassigned ones also go to B1:
+- `spatial_point_processes.md:14` links to `parity/methods_roadmap`, which is excluded from
+  the build. Point it at the file on GitHub, or drop the link.
+- `docs/proposals/2026-06-11-zero-based-indexing.md` isn't in any toctree. Add it to one,
+  or mark the page `orphan`.
+
 ## Suggested execution
 
 | PR | Contents | Gate |
