@@ -187,6 +187,41 @@ entries:
     output_field: xKFinal
     tolerance: { rtol: 1.0e+1, atol: 0.1 }
 
+  # 15. PointProcessEM.PP_EStep — point-process EM E-step (PPAF forward
+  # filter + RTS smoother + cross-covariances + sufficient statistics +
+  # expected log-likelihood).  Deterministic; captured by
+  # tools/parity/matlab/capture_pp_estep.m.  Each entry compares the
+  # concatenation of x_K (every step), W_K, logll and every ExpectationSums
+  # field for one case.  Measured max abs error <= 2.7e-12 (logll; arrays
+  # <= 1e-13), so rtol 1e-10 / atol 1e-12 is a >=100x margin.
+  - name: PP_EStep_poisson_nohist
+    recipe: pp_estep
+    args: { case: c1 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c1_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_poisson_hist
+    recipe: pp_estep
+    args: { case: c2 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c2_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_binomial_hist
+    recipe: pp_estep
+    args: { case: c3 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c3_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_binomial_nohist
+    recipe: pp_estep
+    args: { case: c4 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c4_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
   # v9 iter 40 — recipe-backed entries for the 22 v9_* captures.
   # Each entry's recipe is defined in tools/parity/numerical_drift.py.
   # Tolerances per-entry: tightened where the Python port is bit-equivalent,

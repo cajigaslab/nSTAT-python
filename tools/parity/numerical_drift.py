@@ -555,6 +555,49 @@ def _recipe_pplfp_se_alpha(fixture: dict[str, Any], _args: dict[str, Any]) -> tu
     return se_alpha_py, se_alpha_ml
 
 
+def _recipe_pp_estep(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
+    """PointProcessEM.PP_EStep — every output of one ``pp_estep.mat`` case.
+
+    ``args.case`` selects the case prefix (``c1`` .. ``c4``; see
+    ``tools/parity/matlab/capture_pp_estep.m``).  Returns the concatenation
+    of x_K (every time step), W_K, logll and every ExpectationSums field, in
+    the fixture's field order, so a drift in any of them is caught.
+    """
+    from nstat.decoding_algorithms import DecodingAlgorithms
+
+    case = str(args.get("case", "c1"))
+
+    def f(key: str) -> Any:
+        return fixture[f"{case}_{key}"]
+
+    dN = _as_float_array(f("dN"))
+    num_cells, K = dN.shape
+    HkAll = _as_float_array(f("HkAll"))
+    if HkAll.ndim == 2:  # squeeze_me drops the singleton window axis of N x 1 x C
+        HkAll = HkAll.reshape(K, 1, num_cells)
+    gamma = _as_float_array(f("gamma"))
+    gamma_arg: Any = float(gamma.reshape(-1)[0]) if gamma.size == 1 else gamma
+    x_K, W_K, logll, sums = DecodingAlgorithms.PP_EStep(
+        _as_float_array(f("A")),
+        _as_float_array(f("Q")),
+        dN,
+        _vector(fixture, f"{case}_mu"),
+        _as_float_array(f("beta")),
+        _string(fixture, f"{case}_fitType"),
+        gamma_arg,
+        HkAll,
+        _vector(fixture, f"{case}_x0"),
+        _as_float_array(f("Px0")),
+    )
+    es_keys = [k[len(case) + 4:] for k in fixture if k.startswith(f"{case}_ES_")]
+    py = [x_K, W_K, logll] + [sums[k] for k in es_keys]
+    ml = [f("x_K"), f("W_K"), f("logll")] + [f(f"ES_{k}") for k in es_keys]
+    return (
+        np.concatenate([_as_float_array(a).reshape(-1) for a in py]),
+        np.concatenate([_as_float_array(a).reshape(-1) for a in ml]),
+    )
+
+
 # ---------------------------------------------------------------------------
 # v9 iter 39/40 — recipes for the 22 v9_* drift entries.
 # Each pairs a MATLAB gold fixture with a thin call into the corresponding
@@ -1384,6 +1427,7 @@ RECIPES: dict[str, Callable[[dict[str, Any], dict[str, Any]], tuple[np.ndarray, 
     "pplfp_mstep": _recipe_pplfp_mstep,
     "pplfp_em": _recipe_pplfp_em,
     "pplfp_se_alpha": _recipe_pplfp_se_alpha,
+    "pp_estep": _recipe_pp_estep,
     # v9 iter 40 — wire 22 v9_* drift entries
     "v9_run_analysis_for_neuron": _recipe_v9_run_analysis_for_neuron,
     "v9_compute_ks_stats_full": _recipe_v9_compute_ks_stats_full,

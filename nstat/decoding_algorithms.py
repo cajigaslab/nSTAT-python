@@ -6140,12 +6140,15 @@ class DecodingAlgorithms:
         x_p[:, 0] = A @ x0
         W_p[:, :, 0] = A @ Px0 @ A.T + Q
 
-        # Permute HkAll for PPDecode_updateLinear: (nW, C, N)
-        HkPerm = np.transpose(HkAll, (1, 2, 0)) if HkAll.ndim == 3 else HkAll
-
+        # MATLAB passes HkPerm = permute(HkAll,[2 3 1]) (nW x C x N) and the
+        # 1-based k, because its PPDecode_updateLinear reads
+        # HkAll(:,:,time_index) and dN(:,time_index).  The Python
+        # PPDecode_updateLinear takes the canonical (N, nW, C) history tensor
+        # (it infers nW from axis 1 and slices time on axis 0) and a 0-based
+        # time index, so the faithful translation is HkAll as-is and k.
         for k in range(K):
             x_u[:, k], W_u[:, :, k], _ = DecodingAlgorithms.PPDecode_updateLinear(
-                x_p[:, k], W_p[:, :, k], dN, mu, beta, fitType, gamma, HkPerm, k + 1, None
+                x_p[:, k], W_p[:, :, k], dN, mu, beta, fitType, gamma, HkAll, k, None
             )
             A_k = A[:, :, min(k, A.shape[2] - 1)] if A.ndim == 3 else A
             Q_k = Q[:, :, min(k, Q.shape[2] - 1)] if Q.ndim == 3 else Q

@@ -21,6 +21,13 @@
   returns. The previous standalone implementation could not run (`mPPCO_EStep`
   and `mPPCO_EM` raised `NameError`; `mPPCO_ComputeParamStandardErrors` always
   failed). Signatures are unchanged; use the `PPLFP_*` names.
+- Fix: `DecodingAlgorithms.PP_EStep` could not run: it passed MATLAB's 1-based
+  bin index and MATLAB's permuted `(nW, C, N)` history tensor to the zero-based
+  Python `PPDecode_updateLinear`, so it read the next bin at every step and
+  raised on the last one (or at once whenever the number of history windows
+  differed from the number of cells). It now matches MATLAB `PP_EStep` at every
+  time step to ~1e-12 (new gold fixture `pp_estep.mat`), and `PP_EM` no longer
+  fails in its first E-step.
 - Optional-dependency errors now distinguish "not installed" from "installed
   but failed to import" (for example an ABI mismatch).
 - A broken numba install no longer breaks `import nstat` or the decoders
