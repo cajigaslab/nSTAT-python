@@ -63,7 +63,7 @@ def simulate_point_process(
     seed: int | None = None,
     uniform_values: np.ndarray | None = None,
 ) -> PointProcessSimulation:
-    """Simulate one spike train from a sampled rate by Bernoulli thinning.
+    """Simulate one spike train from a sampled rate by per-bin Bernoulli sampling.
 
     In each time bin the spike probability is ``1 - exp(-rate_hz * dt)``
     (``dt`` is the local bin width; the last bin reuses the previous width).

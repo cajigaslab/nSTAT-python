@@ -86,7 +86,7 @@ def fit_poisson_glm(
     max_iter: int = 120,
     tol: float = 1e-8,
 ) -> PoissonGLMResult:
-    """Fit a Poisson GLM (log link) by damped Newton-Raphson with a ridge penalty.
+    """Fit a Poisson GLM (log link) by Newton-Raphson with an L2 ridge penalty.
 
     Maximises the L2-penalised Poisson log-likelihood
     ``sum(y * eta - exp(eta))`` with ``eta = X @ beta + offset``.  The linear

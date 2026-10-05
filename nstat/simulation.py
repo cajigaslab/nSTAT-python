@@ -32,7 +32,7 @@ def simulate_poisson_from_rate(
     rate_hz: np.ndarray,
     rng: np.random.Generator | None = None,
 ) -> nspikeTrain:
-    """Simulate one spike train from a sampled rate by Bernoulli thinning.
+    """Simulate one spike train from a sampled rate by per-bin Bernoulli sampling.
 
     In each time bin the spike probability is ``1 - exp(-rate_hz * dt)``
     (``dt`` is the local bin width; the last bin reuses the previous width).
@@ -94,8 +94,9 @@ def simulate_cif_from_stimulus(
     """Simulate a spike train from a log-linear CIF driven by a stimulus.
 
     Computes the conditional intensity ``lambda(t) = exp(beta0 + beta1 * x(t))``
-    in spikes/second, then draws spikes via Bernoulli thinning at the time-grid
-    resolution implied by ``time``.
+    in spikes/second, then draws spikes by independent per-bin Bernoulli sampling
+    (``p = 1 - exp(-rate*dt)``) at the time-grid resolution implied by
+    ``time``.
 
     Parameters
     ----------

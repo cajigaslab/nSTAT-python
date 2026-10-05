@@ -161,11 +161,11 @@ examples/paper/         5 canonical paper-example scripts (Cajigas 2012)
 examples/tutorials/     6 runnable end-to-end teaching scripts + 1 notebook
 examples/extras/        per-bridge demos for nstat.extras
 examples/readme_examples/   4 short snippets
-notebooks/              35 Jupyter notebooks (many MATLAB-help-derived)
+notebooks/              Jupyter notebooks (many MATLAB-help-derived; count: ls notebooks/*.ipynb | wc -l)
 docs/                   Sphinx + MyST documentation
-docs/concepts/          neuroscience + statistics learning track (16 pages)
+docs/concepts/          neuroscience + statistics learning track (pages incl. index, glossary, bibliography; ls docs/concepts)
 parity/                 MATLAB↔Python parity manifests + audit report
-tests/                  ~104 test files, ~1,020 tests (pytest --collect-only -q)
+tests/                  pytest suite (re-derive counts: pytest --collect-only -q | tail -1)
 tools/{extras_build,notebook_build,paper_examples,parity,release}/  build/maintenance scripts
 ```
 
@@ -284,7 +284,7 @@ trial = Trial(nstc, covc)
 from nstat import TrialConfig, ConfigCollection, Analysis
 
 cfg = TrialConfig(covMask=[["stim", "stim"]], sampleRate=sample_rate,
-                  name="stim_model")
+                  history=[0.001, 0.002, 0.005, 0.01], name="stim_model")
 configs = ConfigCollection([cfg])
 
 # Run the analysis (model selection across configs)
@@ -292,6 +292,8 @@ results = Analysis.run_analysis_for_all_neurons(trial, configs)
 fit = results[0]   # FitResult for neuron 0 under config 0 (1 config here)
 print("AIC:", fit.AIC, "BIC:", fit.BIC)
 print("KS stat:", fit.computeKSStats())
+# NOTE: this 4-spike toy trial gives degenerate statistics (KS = 1.0); use a
+# real recording for meaningful AIC/KS values.
 ```
 
 For a single GLM fit (no model-selection sweep), use ``Analysis.GLMFit``
@@ -577,6 +579,8 @@ list below records the current state.
   reproducibility via `np.random.default_rng(seed)` is not yet plumbed.
 
 ### 5.4 Module layout (post-refactor)
+
+Line counts below are approximate (re-derive: `wc -l nstat/core.py nstat/trial.py`).
 
 - `nstat/core.py` (~2,300 lines) hosts `SignalObj` + `Covariate`.  The
   `nspikeTrain` class was extracted to `nstat/_spike_train_impl.py`
