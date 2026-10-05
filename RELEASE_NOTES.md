@@ -19,10 +19,13 @@
   `mPPCO_ComputeParamStandardErrors`, `mPPCO_EM`, `mPPCO_EStep` and
   `mPPCO_MStep` are now, as in MATLAB, deprecated aliases: each emits a
   `DeprecationWarning` and returns exactly what the matching `PPLFP_*` method
-  returns. The previous standalone EM implementation could not run
-  (`mPPCO_EStep` and `mPPCO_EM` raised `NameError`;
+  returns, bit for bit. The previous standalone EM implementation could not
+  run (`mPPCO_EStep` and `mPPCO_EM` raised `NameError`;
   `mPPCO_ComputeParamStandardErrors` always failed). Signatures are unchanged;
-  use the `PPLFP_*` names. (`mPPCODecode_update` is unchanged.)
+  use the `PPLFP_*` names. (`mPPCODecode_update` is unchanged.) Known,
+  pre-existing and pending a fix: the default GLM M-step
+  (`MstepMethod='GLM'`, the default of `PPLFP_EM`, `PPLFP_MStep` and their
+  `mPPCO_*` aliases) raises `ValueError`; only `'NewtonRaphson'` runs.
 - Fix: `DecodingAlgorithms.PP_EStep` could not run: it passed MATLAB's 1-based
   bin index and MATLAB's permuted `(nW, C, N)` history tensor to the zero-based
   Python `PPDecode_updateLinear`, so it read the next bin at every step and
