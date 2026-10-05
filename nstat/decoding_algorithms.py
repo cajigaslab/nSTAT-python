@@ -40,6 +40,15 @@ from .nspikeTrain import nspikeTrain
 # prints nothing here, so these are Python-only diagnostics.
 _logger = logging.getLogger(__name__)
 
+# EM convergence hyperparameters shared by PPSS_EMFB, PPSS_EM, KF_EM, PP_EM
+# and mPPCO_EM (same values as the literals they replace; none of these
+# MATLAB-mirrored methods exposes them as arguments).
+_EM_TOL_ABS = 1e-3  # absolute parameter-change tolerance (tolAbs)
+_EM_TOL_REL = 1e-3  # relative tolerance (tolRel; PPSS_EMFB and PPSS_EM)
+_EM_LL_TOL = 1e-3  # log-likelihood change tolerance (llTol)
+_EM_MAX_ITER = 100  # maxIter for PPSS_EM, KF_EM, PP_EM, mPPCO_EM
+_PPSS_EMFB_MAX_ITER = 2000  # PPSS_EMFB's own, larger maxIter
+
 
 def _numba_kernels_module():
     """Return :mod:`nstat.extras._numba_kernels`, importing it on first use.
@@ -2406,10 +2415,10 @@ class DecodingAlgorithms:
         HkAll = DecodingAlgorithms._ssglm_build_history(dN, windowTimes, delta)
         HkAllR = list(reversed(HkAll))
 
-        tolAbs = 1e-3
-        tolRel = 1e-3
-        llTol = 1e-3
-        maxIter = 2000
+        tolAbs = _EM_TOL_ABS
+        tolRel = _EM_TOL_REL
+        llTol = _EM_LL_TOL
+        maxIter = _PPSS_EMFB_MAX_ITER
 
         Qhat_history = [Qhat_cur.copy()]
         gammahat_history = [gammahat_cur.copy()]
@@ -2571,10 +2580,10 @@ class DecodingAlgorithms:
 
         gamma0_vec = np.asarray(gamma0, dtype=float).reshape(-1) if gamma0 is not None else np.array([], dtype=float)
 
-        tolAbs = 1e-3
-        tolRel = 1e-3
-        llTol = 1e-3
-        maxIter = 100
+        tolAbs = _EM_TOL_ABS
+        tolRel = _EM_TOL_REL
+        llTol = _EM_LL_TOL
+        maxIter = _EM_MAX_ITER
         numToKeep = 10
 
         # Circular buffer storage
@@ -4476,9 +4485,9 @@ class DecodingAlgorithms:
         else:
             x0 = np.asarray(x0, dtype=float).reshape(-1)
 
-        tolAbs = 1e-3
-        llTol = 1e-3
-        maxIter = 100
+        tolAbs = _EM_TOL_ABS
+        llTol = _EM_LL_TOL
+        maxIter = _EM_MAX_ITER
         numToKeep = 10
 
         # Save originals for un-scaling later
@@ -5834,9 +5843,9 @@ class DecodingAlgorithms:
             gamma[0] = 0.0
 
         # EM setup
-        tolAbs = 1e-3
-        llTol = 1e-3
-        maxIter = 100
+        tolAbs = _EM_TOL_ABS
+        llTol = _EM_LL_TOL
+        maxIter = _EM_MAX_ITER
         numToKeep = 10
 
         # Circular buffer storage
@@ -7522,9 +7531,9 @@ class DecodingAlgorithms:
         y_arr = np.asarray(y, dtype=float)
         yOrig = y_arr.copy()
 
-        tolAbs = 1e-3
-        llTol = 1e-3
-        maxIter = 100
+        tolAbs = _EM_TOL_ABS
+        llTol = _EM_LL_TOL
+        maxIter = _EM_MAX_ITER
         numToKeep = 10
 
         # Circular buffers

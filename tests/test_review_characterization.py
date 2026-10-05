@@ -16,9 +16,9 @@ loop hoists) cannot silently change it:
   ``_ztest_pvalue`` -> ``norm.cdf``; ``ComputeStimulusCIs`` -> ``norm.ppf``;
   ``Analysis.computeInvGausTrans`` -> ``norm.ppf``;
   ``Analysis.computeGrangerCausalityMatrix`` -> ``chi2.sf``);
-* the two time-rescaling helpers ``fit._time_rescaled_uniforms`` and
-  ``analysis._time_rescaled_z`` (review finding C4), including the
-  ``sum(counts) <= 1`` guard that only the former has.
+* the time-rescaling helper ``fit._time_rescaled_uniforms`` (review finding
+  C4), including its ``sum(counts) <= 1`` guard.  (Its near-duplicate
+  ``analysis._time_rescaled_z`` had no callers and was deleted.)
 
 These are characterization tests, not correctness tests: where the current
 behavior is a known defect it is pinned and labelled as such (for example
@@ -37,8 +37,7 @@ ULPs, so:
   construction on any IEEE-754 platform: diagonal inputs to ``_nearestSPD``
   (SVD/eigh of a diagonal matrix involve no rounding), the ``se <= 0`` /
   non-finite / ``z == 0`` p-value branches, p-values that underflow to exactly
-  ``0.0``, pure-addition time rescaling, empty guard outputs, shapes, keys
-  and integer outputs.
+  ``0.0``, empty guard outputs, shapes, keys and integer outputs.
 * ``rtol=1e-12`` (``atol=0``) for direct, unamplified evaluations of libm /
   ``scipy.special`` functions (``exp``, ``expm1``, ``ndtr``, ``ndtri``).
 * The ``*_ComputeParamStandardErrors`` outputs pass through BLAS products, a
@@ -67,7 +66,6 @@ from collections.abc import Iterator
 import numpy as np
 import pytest
 
-import nstat.analysis as analysis_mod
 import nstat.decoding_algorithms as da
 import nstat.fit as fit_mod
 from nstat.analysis import Analysis
@@ -581,28 +579,25 @@ def test_analysis_compute_granger_causality_matrix_pinned() -> None:
 
 
 # ===========================================================================
-# 5. Time-rescaling helpers (fit._time_rescaled_uniforms vs analysis._time_rescaled_z)
+# 5. Time-rescaling helper (fit._time_rescaled_uniforms)
 # ===========================================================================
+# analysis._time_rescaled_z (the C4 near-duplicate) had no callers and was
+# deleted in the review follow-up; only fit.py's helper remains to pin.
 
 _TR_COUNTS = np.array([0.0, 1.0, 0.0, 0.0, 2.0, 0.0, 0.99, 1.5, 0.0, 2.5, 1.0, 0.0, 1.0])
 _TR_LAM = np.array([0.1, 0.2, -0.5, 0.0, 0.3, 0.25, 0.125, 0.5, 1e-15, 0.75, 0.0625, np.nan, 0.5])
 
 
-def test_time_rescaled_z_exact() -> None:
-    # Pure float addition with a 1e-12 floor; round() is banker's rounding
-    # (1.5 -> 2 repeats, 2.5 -> 2 repeats); 0.99 is not a spike; a NaN rate
-    # poisons only its own inter-spike interval.
-    z = analysis_mod._time_rescaled_z(_TR_COUNTS, _TR_LAM)
+def test_time_rescaled_uniforms_values() -> None:
+    # Accumulated rate per inter-spike interval: pure float addition with a
+    # 1e-12 floor; round() is banker's rounding (1.5 -> 2 repeats, 2.5 -> 2
+    # repeats); 0.99 is not a spike; a NaN rate poisons only its own interval.
     a = 0.1 + 0.2
     b = 1e-12 + 1e-12 + 0.3
     c = 0.25 + 0.125 + 0.5
     d = 1e-12 + 0.75
-    np.testing.assert_array_equal(z, [a, b, 0.0, c, 0.0, d, 0.0, 0.0625, np.nan])
-
-
-def test_time_rescaled_uniforms_values() -> None:
+    z = np.array([a, b, 0.0, c, 0.0, d, 0.0, 0.0625, np.nan])
     u = fit_mod._time_rescaled_uniforms(_TR_COUNTS, _TR_LAM)
-    z = analysis_mod._time_rescaled_z(_TR_COUNTS, _TR_LAM)
     assert u.shape == z.shape
     finite = np.isfinite(z)
     np.testing.assert_allclose(u[finite], -np.expm1(-z[finite]), rtol=1e-12, atol=0.0)
@@ -612,29 +607,24 @@ def test_time_rescaled_uniforms_values() -> None:
 
 
 @pytest.mark.parametrize(
-    ("counts", "lam", "expected_z"),
+    ("counts", "lam"),
     [
-        # sum(counts) <= 1: fit.py returns [] (guard); analysis.py has no guard.
-        ([0.0, 0.0, 1.0, 0.0], [0.5, 0.25, 0.125, 1.0], [0.875]),
-        ([1.0], [0.3], [0.3]),
-        ([0.5, 0.5], [0.2, 0.2], []),
-        ([0.0, 0.0], [0.2, 0.2], []),
-        ([], [], []),
+        # sum(counts) <= 1: fit.py's guard returns an empty float array.
+        ([0.0, 0.0, 1.0, 0.0], [0.5, 0.25, 0.125, 1.0]),
+        ([1.0], [0.3]),
+        ([0.5, 0.5], [0.2, 0.2]),
+        ([0.0, 0.0], [0.2, 0.2]),
+        ([], []),
     ],
 )
-def test_time_rescaling_guard_asymmetry(counts, lam, expected_z) -> None:
+def test_time_rescaling_guard(counts, lam) -> None:
     u = fit_mod._time_rescaled_uniforms(np.asarray(counts, dtype=float), np.asarray(lam, dtype=float))
-    z = analysis_mod._time_rescaled_z(np.asarray(counts, dtype=float), np.asarray(lam, dtype=float))
     assert u.shape == (0,) and u.dtype == float
-    np.testing.assert_array_equal(z, np.asarray(expected_z, dtype=float))
-    assert z.dtype == float
 
 
-def test_time_rescaling_shape_mismatch_errors() -> None:
+def test_time_rescaling_shape_mismatch_error() -> None:
     with pytest.raises(ValueError, match="y and lam_per_bin must have the same shape"):
         fit_mod._time_rescaled_uniforms(np.ones(3), np.ones(4))
-    with pytest.raises(ValueError, match="counts and lam_per_bin must have matching shapes"):
-        analysis_mod._time_rescaled_z(np.ones(3), np.ones(4))
 
 
 # ===========================================================================

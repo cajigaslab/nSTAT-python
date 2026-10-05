@@ -27,6 +27,7 @@ import numpy as np
 import sympy as sp
 from sympy.parsing.sympy_parser import convert_xor, parse_expr, standard_transformations
 
+from ._numerics import _sigmoid  # shared with linear_cif / extras.continuous_cif
 from .history import History
 from .signal import Covariate
 from .simulation import simulate_poisson_from_rate
@@ -102,32 +103,6 @@ def _check_kernel_sample_time(model_like, dt: float) -> None:
         ts = float(getattr(model_like, "Ts"))
         if not np.isclose(ts, dt):
             raise ValueError("History and Stimulus Transfer functions be discrete and have 'Ts' equal to 1/inputStimSignal.sampleRate")
-
-
-def _sigmoid(values: np.ndarray) -> np.ndarray:
-    """Numerically stable logistic sigmoid σ(η) = e^η / (1 + e^η).
-
-    Uses the two-branch form (``1/(1+e^{-η})`` for η≥0,
-    ``e^η/(1+e^η)`` for η<0) to avoid overflow at large |η| without
-    clipping.  Matches ``LinearCIF._link_inverse`` for the binomial
-    fitType (audit finding H1 — unified sigmoid path between cif.py
-    and linear_cif.py so the two CIF classes produce numerically
-    identical lambda values for any η).
-    """
-    arr = np.asarray(values, dtype=float)
-    if arr.ndim == 0:
-        eta = float(arr)
-        if eta >= 0.0:
-            return np.asarray(1.0 / (1.0 + np.exp(-eta)), dtype=float)
-        ez = np.exp(eta)
-        return np.asarray(ez / (1.0 + ez), dtype=float)
-    out = np.empty_like(arr)
-    pos = arr >= 0.0
-    out[pos] = 1.0 / (1.0 + np.exp(-arr[pos]))
-    neg = ~pos
-    ez = np.exp(arr[neg])
-    out[neg] = ez / (1.0 + ez)
-    return out
 
 
 def _prepare_uniform_matrix(

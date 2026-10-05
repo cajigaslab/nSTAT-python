@@ -134,23 +134,6 @@ def _restore_trial_partition(trial: Trial, original_partition: np.ndarray) -> No
         trial.setTrialTimesFor("training")
 
 
-def _time_rescaled_z(counts: np.ndarray, lam_per_bin: np.ndarray) -> np.ndarray:
-    y_arr = np.asarray(counts, dtype=float).reshape(-1)
-    lam = np.asarray(lam_per_bin, dtype=float).reshape(-1)
-    if y_arr.shape != lam.shape:
-        raise ValueError("counts and lam_per_bin must have matching shapes")
-    z_values: list[float] = []
-    accum = 0.0
-    for count, lam_i in zip(y_arr, lam, strict=False):
-        accum += float(max(lam_i, 1e-12))
-        if count >= 1.0:
-            repeats = max(int(round(count)), 1)
-            for _ in range(repeats):
-                z_values.append(accum)
-                accum = 0.0
-    return np.asarray(z_values, dtype=float)
-
-
 def _fit_lambda_matrix_to_covariate(lambda_time: np.ndarray, lambda_columns: list[np.ndarray], lambda_index: int) -> Covariate:
     data = np.column_stack([np.asarray(col, dtype=float).reshape(-1) for col in lambda_columns]) if lambda_columns else np.zeros((lambda_time.size, 0), dtype=float)
     data_labels = [f"\\lambda_{{{idx + 1}}}" for idx in range(data.shape[1])]

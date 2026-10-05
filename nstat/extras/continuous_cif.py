@@ -40,7 +40,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.signal import cont2discrete, lsim, tf2ss
 
-from ..cif import _sigmoid
+from .._numerics import _sigmoid
 from ..simulators import PointProcessSimulation
 from ..spikes import SpikeTrain
 
@@ -139,7 +139,7 @@ def simulate_cif_continuous(
         Link function: logistic (``sigmoid(eta)``) for ``'binomial'``,
         exponential (``exp(eta)``, clipped to ``|eta| <= 20`` for
         numerical safety) for ``'poisson'``.  The binomial link uses the
-        numerically-stable :func:`nstat.cif._sigmoid` (branches on the
+        numerically-stable :func:`nstat._numerics._sigmoid` (branches on the
         sign of ``eta`` internally, no ``eta`` clipping needed); the
         poisson link clips ``|eta| <= 20`` before exponentiating instead.
 
