@@ -777,15 +777,18 @@ _SE_EXPECTED = {
         # fix/pp-em @ 8dbd0e4; WKFinal is not diagonal here) and then for the
         # row-major A information block (it was a row permutation of
         # Q^-1 (x) Sxkm1xkm1, not symmetric; with the nearest-SPD projection
-        # of the inverse observed information every SE moves).  Each array
-        # keeps max(previous rtol, regenerated rtol).
+        # of the inverse observed information every SE moves).  Each rtol
+        # is the file's rule, re-measured over 32 perturbation trials at the
+        # repinned code: SE.Px0, P.Px0 and SE.beta measured s = 3.9e-14,
+        # 2.6e-14 and 2.8e-14, so the rule gives 1e-11 (they were 1e-12);
+        # the others are unchanged.
         'SE': {
             'A': ((2, 2), (
                 0.06575029623416388, 0.07648745260371417, 0.120198931536466, 0.06601777074607007,
             ), 1e-11),
-            'Q': ((2, 2), (0.00369000673505248, 0.0, 0.0, 0.004942853483976949), 1e-08),
+            'Q': ((2, 2), (0.00369000673505248, 0.0, 0.0, 0.004942853483976949), 1e-09),
             'Px0': ((2, 2), (0.4561088629433646, 0.0, 0.0, 0.346865285617716), 1e-11),
-            'x0': ((2,), (0.038624591961970114, 0.04859985143850256), 1e-10),
+            'x0': ((2,), (0.038624591961970114, 0.04859985143850256), 1e-11),
             'mu': ((2,), (0.339681659759639, 0.28482002350223584), 1e-12),
             'beta': ((2, 2), (
                 1.299898947183878, 0.8901538990902549, 1.639191682070296, 0.94425035707467,
@@ -816,7 +819,9 @@ _SE_EXPECTED = {
             # Binomial: the beta information block has the repaired sign/form and
             # the mu block the -2 cubic coefficient (MATLAB C4 / A1); every SE
             # moves because the inverse observed information couples the blocks.
-            # Repinned for the chol(W)' z Monte Carlo draws (MATLAB F9).
+            # Repinned for the chol(W)' z Monte Carlo draws (MATLAB F9).  SE.A
+            # measured s = 2.7e-13 (32 trials), so the file's rule gives 1e-10
+            # (it was 1e-11).
             'A': ((2, 2), (0.08322154277513939, 0.0, 0.0, 0.055552006039660005), 1e-10),
             'Q': ((1, 1), (0.0009607018973312874,), 1e-07),
             'Px0': ((1, 1), (0.35001091792912054,), 1e-12),
