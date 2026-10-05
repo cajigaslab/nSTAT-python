@@ -1004,3 +1004,79 @@ def test_default_windows_read_a_2d_row_as_the_shared_column(family) -> None:
     b = _run_em(family, P, np.tile(row.reshape(3, 1), (1, 4)), _matlab_colon_exact(0.0, 0.001, 3 * 0.001))
     _assert_outputs_identical(a, b)
     assert np.shape(a[6] if family == "PP" else a[9]) == (3, 4)
+
+
+# ---------------------------------------------------------------------------
+# EM whitening with a non-diagonal Q0 / R0 (MATLAB G1, repaired after
+# fix/pp-em @ 8dbd0e4: Tq = inv(chol(Q0, 'lower')), Tr = inv(chol(R0, 'lower')))
+# ---------------------------------------------------------------------------
+
+
+def _nondiag_problem(N=400, C=3):
+    """The reviewer's probe4 problem: dx = 2, non-diagonal state and observation noise."""
+    rng = np.random.default_rng(7)
+    delta, dx = 0.001, 2
+    A = np.array([[0.95, 0.10], [-0.05, 0.90]])
+    Q = np.array([[0.010, 0.006], [0.006, 0.020]])
+    x = np.zeros((dx, N))
+    prev = np.zeros(dx)
+    for k in range(N):
+        prev = A @ prev + np.linalg.cholesky(Q) @ rng.standard_normal(dx)
+        x[:, k] = prev
+    mu = np.log(40 * delta) * np.ones(C)
+    beta = np.array([[1.0, -0.6, 0.8], [0.4, 0.9, -0.7]])[:, :C]
+    dN = (rng.random((C, N)) < np.minimum(np.exp(mu[:, None] + beta.T @ x), 1)).astype(float)
+    Cm = np.array([[1.0, 0.5], [-0.3, 1.0]])
+    R = np.array([[0.05, 0.02], [0.02, 0.08]])
+    alpha = np.array([0.1, -0.1])
+    y = Cm @ x + alpha[:, None] + np.linalg.cholesky(R) @ rng.standard_normal((2, N))
+    x0, Px0 = np.array([0.05, -0.02]), np.array([[2e-3, 5e-4], [5e-4, 1e-3]])
+    return dict(A=A, Q=Q, mu=mu, beta=beta, dN=dN, Cm=Cm, R=R, alpha=alpha, y=y, x0=x0, Px0=Px0, delta=delta)
+
+
+def _run_nondiag_em(family, P, monkeypatch, mcIter=20, **scale):
+    """PP_EM / PPLFP_EM with the default diagonal-Q (R) constraints; returns (outputs, E-step calls)."""
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    owner = DecodingAlgorithms if family == "PP" else PPLFP
+    name = "PP_EStep" if family == "PP" else "PPLFP_EStep"
+    real = getattr(owner, name)
+    calls = []
+
+    def spy(*a, **k):
+        out = real(*a, **k)
+        calls.append((a, out))
+        return out
+
+    monkeypatch.setattr(owner, name, staticmethod(spy))
+    with seeded_global_rng(42):
+        if family == "PP":
+            cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0, 0, mcIter)
+            out = DecodingAlgorithms.PP_EM(P["dN"], P["A"], P["Q"], P["mu"], P["beta"], "poisson", P["delta"], None,
+                                           None, P["x0"], P["Px0"], cons)
+        else:
+            cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, mcIter, 0)
+            out = PPLFP.PPLFP_EM(P["y"], P["dN"], P["A"], P["Q"], P["Cm"], P["R"], P["alpha"], P["mu"], P["beta"],
+                                 "poisson", P["delta"], None, None, P["x0"], P["Px0"], cons)
+    monkeypatch.setattr(owner, name, staticmethod(real))
+    return out, calls
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_em_whitening_maps_a_nondiagonal_noise_covariance_to_the_identity(family, monkeypatch) -> None:
+    # The scaled system's initial Q (and R) must be the identity.  With the
+    # former Tq = inv(chol(Q0)) -- the upper factor -- Tq*Q0*Tq' != I for a
+    # non-diagonal Q0, the default diagonal-Q constraint acted on a mixed
+    # parameterisation, the first M-step lowered the log-likelihood and EM
+    # returned the initial parameters (MATLAB reviewer probe4: 2 iterations,
+    # |Ahat - A0| ~ 1e-17).
+    P = _nondiag_problem()
+    out, calls = _run_nondiag_em(family, P, monkeypatch)
+    first = calls[0][0]
+    np.testing.assert_allclose(first[1], np.eye(2), atol=1e-12)  # Q
+    if family == "PPLFP":
+        np.testing.assert_allclose(first[3], np.eye(2), atol=1e-12)  # R
+    ll = [c[1][2] for c in calls]
+    assert len(ll) > 2 and ll[1] > ll[0], ll
+    Ahat = out[2]
+    assert np.max(np.abs(Ahat - P["A"])) > 1e-4

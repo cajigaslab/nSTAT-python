@@ -1888,9 +1888,16 @@ class PPLFP:
 
         scaledSystem = True
         if scaledSystem:
-            # MATLAB ``chol(X)`` is upper-triangular; numpy is lower.
-            chol_Q0 = np.linalg.cholesky(Q0).T
-            chol_R0 = np.linalg.cholesky(R0).T
+            # Tq = inv(chol(Q0, 'lower')), Tr = inv(chol(R0, 'lower')) -- NumPy's
+            # cholesky is the lower factor -- so Tq*Q0*Tq' = I and
+            # Tr*R0*Tr' = I (MATLAB G1, repaired after fix/pp-em 8dbd0e4).
+            # With the former upper factor R (R'R = Q0) the transform did not
+            # whiten a non-diagonal Q0 / R0, the diagonal / isotropic Q and R
+            # constraints acted on a mixed parameterisation, and with the
+            # default constraints EM returned the initial parameters.
+            # Identical for a diagonal Q0 / R0.
+            chol_Q0 = np.linalg.cholesky(Q0)
+            chol_R0 = np.linalg.cholesky(R0)
             Tq = np.linalg.solve(chol_Q0, np.eye(numStates))
             Tr = np.linalg.solve(chol_R0, np.eye(R0.shape[0]))
 
@@ -2204,8 +2211,10 @@ class PPLFP:
 
         # ---- Reverse the scaling (MATLAB final ``scaledSystem==1``) ---
         if scaledSystem:
-            chol_Q0 = np.linalg.cholesky(Q0).T
-            chol_R0 = np.linalg.cholesky(R0).T
+            # The same Tq = inv(chol(Q0, 'lower')), Tr = inv(chol(R0, 'lower'))
+            # as the forward scaling (MATLAB G1).
+            chol_Q0 = np.linalg.cholesky(Q0)
+            chol_R0 = np.linalg.cholesky(R0)
             Tq = np.linalg.solve(chol_Q0, np.eye(numStates))
             Tr = np.linalg.solve(chol_R0, np.eye(R0.shape[0]))
 

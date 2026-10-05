@@ -6096,9 +6096,15 @@ class DecodingAlgorithms:
         beta_buf[0] = beta.copy()
         gamma_buf[0] = gamma.copy()
 
-        # Apply scaling
+        # Apply scaling.  Tq = inv(chol(Q0, 'lower')), so Tq*Q0*Tq' = I (MATLAB
+        # G1, repaired after fix/pp-em 8dbd0e4).  It was inv(chol(Q0)) with the
+        # UPPER factor R (R'R = Q0): then Tq*Q0*Tq' != I for a non-diagonal
+        # Q0, the diagonal / isotropic Q constraints acted on a mixed
+        # parameterisation, and with the default QhatDiag = 1 the first
+        # M-step lowered the log-likelihood and EM returned the initial
+        # parameters.  Identical for a diagonal Q0.
         try:
-            Tq = np.linalg.solve(np.linalg.cholesky(Q_buf[0]).T, np.eye(numStates))
+            Tq = np.linalg.solve(np.linalg.cholesky(Q_buf[0]), np.eye(numStates))
         except np.linalg.LinAlgError:
             Tq = np.eye(numStates)
         TqInv = np.linalg.inv(Tq)
@@ -6217,9 +6223,9 @@ class DecodingAlgorithms:
         Px0hat = Px0_buf[maxLLIndMod] if Px0_buf[maxLLIndMod] is not None else Px0
         ExpSumsFinal = ExpSums_buf[maxLLIndMod] if ExpSums_buf[maxLLIndMod] is not None else {}
 
-        # Unscale system
+        # Unscale system (the same Tq = inv(chol(Q0, 'lower')) as above)
         try:
-            Tq_unscale = np.linalg.solve(np.linalg.cholesky(Q0).T, np.eye(numStates))
+            Tq_unscale = np.linalg.solve(np.linalg.cholesky(Q0), np.eye(numStates))
         except np.linalg.LinAlgError:
             Tq_unscale = np.eye(numStates)
         TqInv_unscale = np.linalg.inv(Tq_unscale)
