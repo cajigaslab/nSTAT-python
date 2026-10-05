@@ -28,6 +28,7 @@ incrementally.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import numpy as np
@@ -45,6 +46,12 @@ from nstat.decoding_algorithms import (
 )
 
 _PORT_MSG = "Port in progress: see iter 29 of parity push"
+
+# PPLFP_EM / PPLFP_MStep progress messages go to this logger at INFO level --
+# silent unless the caller configures logging, e.g.
+# ``logging.basicConfig(level=logging.INFO)`` -- as in
+# nstat.decoding_algorithms (KF_EM / PP_EM).
+_logger = logging.getLogger(__name__)
 
 
 def _is_empty_value(v: Any) -> bool:
@@ -1897,7 +1904,7 @@ class PPLFP:
         stoppingCriteria = False
         dLikelihood: list[float] = [np.inf]
 
-        print(" Joint Point-Process/Gaussian Observation EM Algorithm ")
+        _logger.info(" Joint Point-Process/Gaussian Observation EM Algorithm ")
 
         # ---- Main EM loop ---------------------------------------------
         while not stoppingCriteria and cnt < maxIter:
@@ -1905,9 +1912,9 @@ class PPLFP:
             si_p1 = (cnt + 1) % numToKeep
             si_m1 = (cnt - 1) % numToKeep
 
-            print("-" * 104)
-            print(f"Iteration #{cnt + 1}")
-            print("-" * 104)
+            _logger.info("-" * 104)
+            _logger.info("Iteration #%s", cnt + 1)
+            _logger.info("-" * 104)
 
             # E-step
             x_K_buf[si], W_K_buf[si], ll_val, ExpSums_buf[si] = PPLFP.PPLFP_EStep(
@@ -1961,7 +1968,7 @@ class PPLFP:
 
             # ---- Optional Ikeda acceleration --------------------------
             if IkedaAcc:
-                print("****Ikeda Acceleration Step****")
+                _logger.info("****Ikeda Acceleration Step****")
                 rng = np.random.default_rng()
                 mean_y = (
                     Chat_buf[si_p1] @ x_K_buf[si]
@@ -2118,27 +2125,27 @@ class PPLFP:
                 dMax = max(diffs)
 
             if cnt == 0:
-                print("Max Parameter Change: N/A")
+                _logger.info("Max Parameter Change: N/A")
             else:
-                print(f"Max Parameter Change: {dMax}")
+                _logger.info("Max Parameter Change: %s", dMax)
 
             cnt += 1
 
             if dMax < tolAbs:
                 stoppingCriteria = True
-                print(
-                    f"         EM converged at iteration# {cnt} "
-                    f"b/c change in params was within criteria"
+                _logger.info(
+                    "         EM converged at iteration# %s b/c change in params was within criteria",
+                    cnt,
                 )
 
             if abs(dLikelihood[-1]) < llTol or dLikelihood[-1] < 0:
                 stoppingCriteria = True
-                print(
-                    f"         EM stopped at iteration# {cnt} "
-                    f"b/c change in likelihood was negative"
+                _logger.info(
+                    "         EM stopped at iteration# %s b/c change in likelihood was negative",
+                    cnt,
                 )
 
-        print("-" * 104)
+        _logger.info("-" * 104)
 
         # ---- Select best iteration ------------------------------------
         ll_arr = np.asarray(ll_list, dtype=float)
@@ -2867,7 +2874,7 @@ class PPLFP:
             )
 
         # ============== Newton-Raphson branch =========================
-        print("****M-step for beta****")
+        _logger.info("****M-step for beta****")
         McExp = 50
         rng = np.random.default_rng()
 
@@ -2908,9 +2915,11 @@ class PPLFP:
             converged = False
             it = 1
             maxIter = 100
-            print(f"neuron:{c + 1} iter: ", end="")
+            # One record per neuron, listing the Newton iterations (formerly
+            # written incrementally to stdout on a single line).
+            iters_done: list[int] = []
             while (not converged) and it < maxIter:
-                print(f"{it}" if it == 1 else f",{it}", end="")
+                iters_done.append(it)
                 HessianTerm = np.zeros((dx, dx))
                 GradTerm = np.zeros((dx, 1))
                 Hk = _Hk_for_cell(c)
@@ -2995,7 +3004,7 @@ class PPLFP:
                     converged = True
                 betahat_new[:, c] = betahat_newTemp.ravel()
                 it += 1
-            print()
+            _logger.info("neuron:%s iter: %s", c + 1, ",".join(str(i) for i in iters_done))
 
         # ----- CIF means (mu) -----------------------------------------
         for c in range(numCells):
