@@ -43,6 +43,18 @@ function export_pplfp_gold_fixtures(repoRoot, matlabRepoRoot)
 % pplfp_MStep.mat, is bit-identical to the previous capture.  Both saves
 % carry a matlab_source_note field recording the MATLAB source.
 %
+% 2026-10 recapture (pplfp_MStep.mat) from the final repaired MATLAB
+% -------------------------------------------------------------------
+% pplfp_MStep.mat was recaptured from fix/pp-em @ 8dbd0e4 (the frozen final
+% head; pending upstream merge), whose Monte Carlo state draws use the lower
+% Cholesky factor (F9: m + chol(W)'*z; it drew m + chol(W)*z, covariance
+% R*R').  Only betahat_new and muhat_new moved (the Newton-Raphson M-step's
+% draws); the other 26 fields, and every field of pplfp_EStep.mat, are
+% bit-identical.  The same run moves pplfp_EM.mat (F9 + F10: 12 fields) and
+% pplfp_SE.mat (F9: SE, Pvals) as the MATLAB track predicted; those two are
+% recaptured from the head that also carries the H1 information-block fix.
+% matlab_source_note records the MATLAB checkout's git commit.
+
 % USAGE
 % -----
 %   export_pplfp_gold_fixtures(<nstat-python repo root>, <MATLAB nSTAT repo root>)
@@ -415,7 +427,14 @@ end
 
 
 function note = pplfp_matlab_source_note()
-% Provenance of the 2026-10 recapture of pplfp_SE.mat / pplfp_EM.mat.
-note = ['Captured from the repaired MATLAB nSTAT fix/pp-em @ a457b54 ' ...
-        '(pending upstream merge), ' version];
+% Provenance of a recapture of pplfp_SE.mat / pplfp_EM.mat: the git commit
+% of the MATLAB checkout on the path (the repaired fix/pp-em branch, pending
+% upstream merge) and the MATLAB version.
+here = fileparts(which('nstat.decoding.PPLFP'));
+[status, sha] = system(['git -C "' here '" rev-parse --short HEAD']);
+if status ~= 0
+    sha = 'unknown commit';
+end
+note = ['Captured from the repaired MATLAB nSTAT fix/pp-em @ ' strtrim(sha) ...
+        ' (pending upstream merge), ' version];
 end

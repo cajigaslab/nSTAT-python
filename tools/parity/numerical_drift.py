@@ -659,6 +659,55 @@ def _recipe_pp_square_history(fixture: dict[str, Any], args: dict[str, Any]) -> 
     )
 
 
+def _recipe_em_glm_mstep(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
+    """One GLM M-step (``MstepMethod = 'GLM'``) of PP_MStep / PPLFP_MStep -- every output.
+
+    ``args.case`` selects a case of ``em_glm_mstep.mat`` (captured by
+    ``tools/parity/matlab/capture_em_glm_mstep.m`` from the repaired MATLAB,
+    fix/pp-em @ 8dbd0e4).  Returns the concatenation of every M-step output
+    (A, Q, [C, R, alpha,] mu, beta, gamma, x0, Px0) and its gold.  The GLM
+    branch never reads W_K (not in the fixture), so an all-NaN W_K is passed.
+    """
+    from nstat.decoding.PPLFP import PPLFP
+    from nstat.decoding_algorithms import DecodingAlgorithms
+
+    case = str(args["case"])
+
+    def f(key: str) -> np.ndarray:
+        return _as_float_array(fixture[f"{case}_{key}"])
+
+    family, fit = _string(fixture, f"{case}_family"), _string(fixture, f"{case}_fitType")
+    dN = np.atleast_2d(f("dN"))
+    C, N = dN.shape
+    x_K = f("x_K")
+    dx = x_K.shape[0]
+    wt = f("windowTimes").reshape(-1)
+    nW = wt.size - 1
+    H = f("HkAll").reshape(N, nW, C)
+    ES = {k[len(case) + 4:]: _as_float_array(v) for k, v in fixture.items() if k.startswith(f"{case}_ES_")}
+    for key in ("Sxkm1xkm1", "Sxkxkm1", "Sxkm1xk", "Sxkxk", "sumXkTerms"):
+        ES[key] = np.asarray(ES[key], dtype=float).reshape(dx, dx)
+    mu, beta, gamma = f("mu").reshape(C), f("beta").reshape(dx, C), f("gamma").reshape(nW, C)
+    x0, Px0, delta = f("x0").reshape(dx), f("Px0").reshape(dx, dx), _scalar(fixture, f"{case}_delta")
+    W_K = np.full((dx, dx, N), np.nan)
+    if family == "PP":
+        out = DecodingAlgorithms.PP_MStep(dN, x_K, W_K, x0, Px0, ES, fit, mu, beta, gamma, wt, H,
+                                          DecodingAlgorithms.PP_EMCreateConstraints(), "GLM", delta)
+        keys = ["Ahat", "Qhat", "muhat_new", "betahat_new", "gammahat_new", "x0hat", "Px0hat"]
+    else:
+        y = f("y")
+        ES["Sxkyk"] = np.asarray(ES["Sxkyk"], dtype=float).reshape(dx, y.shape[0])
+        ES["sumYkTerms"] = np.asarray(ES["sumYkTerms"], dtype=float).reshape(y.shape[0], y.shape[0])
+        out = PPLFP.PPLFP_MStep(dN, y, x_K, W_K, x0, Px0, ES, fit, mu, beta, gamma, wt, H,
+                                PPLFP.PPLFP_EMCreateConstraints(), "GLM", delta)
+        keys = ["Ahat", "Qhat", "Chat", "Rhat", "alphahat", "muhat_new", "betahat_new", "gammahat_new", "x0hat",
+                "Px0hat"]
+    return (
+        np.concatenate([_as_float_array(o).reshape(-1) for o in out]),
+        np.concatenate([f(k).reshape(-1) for k in keys]),
+    )
+
+
 def _recipe_pp_em_decoder_gold(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
     """Blocks of ``pp_square_history.mat`` captured from the repaired MATLAB
     (``fix/pp-em`` @ ``a457b54``, pending upstream merge); ``args.block`` selects:
@@ -1541,6 +1590,7 @@ RECIPES: dict[str, Callable[[dict[str, Any], dict[str, Any]], tuple[np.ndarray, 
     "pp_estep": _recipe_pp_estep,
     "pp_square_history": _recipe_pp_square_history,
     "pp_em_decoder_gold": _recipe_pp_em_decoder_gold,
+    "em_glm_mstep": _recipe_em_glm_mstep,
     # v9 iter 40 — wire 22 v9_* drift entries
     "v9_run_analysis_for_neuron": _recipe_v9_run_analysis_for_neuron,
     "v9_compute_ks_stats_full": _recipe_v9_compute_ks_stats_full,
