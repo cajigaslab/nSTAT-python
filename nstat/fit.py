@@ -1046,7 +1046,7 @@ class FitResult:
         merged = self.mergeResults(
             FitResult(
                 self.neuralSpikeTrain,
-                [list(labels) for labels in getattr(configColl, "configNames", [])] if False else self.covLabels[:0],
+                self.covLabels[:0],
                 [],
                 [],
                 [],
