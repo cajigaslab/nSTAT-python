@@ -336,7 +336,6 @@ def run_demo(
     if have_pyspike:
         from nstat.extras.metrics.spike_distances import (
             isi_distance,
-            spike_distance,
             spike_synchronization,
             pairwise_spike_distance_matrix,
         )

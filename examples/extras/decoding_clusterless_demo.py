@@ -212,6 +212,9 @@ def _run_sorted_vs_clusterless_comparison(seed: int = 0) -> dict:
     each ``sort_error_rate`` in ``_ERROR_RATES`` on labels corrupted by
     :func:`_corrupt_sorted_labels`, averaged over ``_N_REPEATS`` draws.
     """
+    # Imported only for the ``rtc.*`` sorted-spikes decoder used below -- not an
+    # availability guard: ``main()`` runs ``_demo_decoder()`` first, whose
+    # clusterless bridge already raises the install-hint ImportError.
     import replay_trajectory_classification as rtc
 
     from nstat.extras.decoding.clusterless_bridge import fit_clusterless_decoder

@@ -539,7 +539,6 @@ the population-size dependence Gallego et al. 2018/2020 report
 for manifold recovery.</div><details class="code-detail"><summary>Show generating code</summary><pre><code class="language-python">fig, (ax_phase, ax_fidelity) = plt.subplots(1, 2, figsize=(12.5, 5.5))
 
 cmap = plt.get_cmap(&quot;tab10&quot;)
-t_fine = np.arange(true_latents[0].shape[0]) * dt_fine
 plotted_condition: set[int] = set()
 for k, cond in enumerate(condition_ids):
     color = cmap(cond % 10)

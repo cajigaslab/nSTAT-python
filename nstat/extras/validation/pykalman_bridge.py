@@ -29,6 +29,9 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 
 def _require_pykalman():
+    # The install hint points at the broad ``[test-parity]`` bundle (nemos +
+    # pykalman + statsmodels + nitime); for just this bridge a standalone
+    # ``pip install pykalman`` is sufficient and much lighter.
     pyk = require_optional("pykalman", install_key="test-parity")
     return pyk.KalmanFilter
 

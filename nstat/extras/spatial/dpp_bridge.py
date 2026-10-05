@@ -26,6 +26,8 @@ References
 """
 from __future__ import annotations
 
+from importlib import import_module
+
 import numpy as np
 
 from nstat.extras._lazy import require_optional
@@ -125,8 +127,11 @@ def sample_dpp(
 
 def _sample_dppy(L: np.ndarray) -> np.ndarray:
     """DPPy-backed exact sampler (lazy import)."""
-    dppy = require_optional("dppy.finite_dpps", install_key="dpp")
-    FiniteDPP = dppy.FiniteDPP
+    # Gate on the top-level distribution so the install hint names ``'dppy'``
+    # (not the dotted submodule), then import the submodule we actually use.
+    require_optional("dppy", install_key="dpp")
+    dppy_finite_dpps = import_module("dppy.finite_dpps")
+    FiniteDPP = dppy_finite_dpps.FiniteDPP
     dpp = FiniteDPP("likelihood", **{"L": np.asarray(L, dtype=float)})
     dpp.sample_exact()
     return np.array(sorted(int(i) for i in dpp.list_of_samples[-1]), dtype=int)

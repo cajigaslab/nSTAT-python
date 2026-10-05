@@ -31,6 +31,7 @@ returns plain NumPy.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib import import_module
 
 import numpy as np
 
@@ -95,7 +96,10 @@ def fit_hawkes_exp(
     ImportError
         If ``tick`` is not installed (with the ``[hawkes]`` install hint).
     """
-    tick_hawkes = require_optional("tick.hawkes", install_key="hawkes")
+    # Gate on the top-level distribution so the install hint names ``'tick'``
+    # (not the dotted submodule), then import the submodule we actually use.
+    require_optional("tick", install_key="hawkes")
+    tick_hawkes = import_module("tick.hawkes")
     HawkesExpKern = tick_hawkes.HawkesExpKern
 
     events = [np.asarray(e, dtype=float) for e in event_times]

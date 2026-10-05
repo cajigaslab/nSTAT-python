@@ -30,6 +30,9 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 
 def _require_nemos() -> object:
+    # The install hint points at the broad ``[test-parity]`` bundle (nemos +
+    # pykalman + statsmodels + nitime); for just this bridge a standalone
+    # ``pip install nemos`` is sufficient and lighter (it still pulls JAX).
     return require_optional("nemos", install_key="test-parity")
 
 
