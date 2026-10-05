@@ -1321,3 +1321,30 @@ def test_pplfp_em_counts_r_parameters_with_r_flags(QhatDiag, RhatDiag, RhatIsotr
     expected = dx * dx + (dx if QhatDiag else dx * dx) + dy * dx + n_R + dy + C + dx * C
     assert round((IC["AIC"] + 2 * IC["llobs"]) / 2) == expected
     np.testing.assert_allclose((IC["BIC"] + 2 * IC["llobs"]) / np.log(K), expected, rtol=1e-9)
+
+
+@pytest.mark.parametrize("nW", [1, 2], ids=["scalar", "column"])
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_shared_gamma_column_standard_errors(family, nW) -> None:
+    # MATLAB F12 (testSharedGammaColumnStandardErrors): with 4 cells, a shared
+    # gamma -- a scalar for one window, a numWindows x 1 column for two -- is
+    # expanded per cell at the SE routine's entry, so SE, Pvals and nTerms are
+    # exactly those of the expanded numWindows x 4 gamma.  The column raised
+    # IndexError (gammahat[:, c]); the scalar returned a 1-D SE.gamma.
+    P = _mle_problem("poisson", C=4, nW=nW, K=600)
+    col = P["gamma"][:, :1]  # (nW, 1)
+    shared = np.asarray(float(col[0, 0])) if nW == 1 else col
+    expanded = np.tile(col, (1, 4))
+    if family == "PP":
+        got = _pp_se(dict(P, gamma_arg=shared))
+        want = _pp_se(dict(P, gamma_arg=expanded))
+    else:
+        extra = _pplfp_mle_extra(P)
+        got = _pplfp_se(dict(P, gamma_arg=shared), *extra)
+        want = _pplfp_se(dict(P, gamma_arg=expanded), *extra)
+    assert got[2] == want[2]
+    for part in (0, 1):
+        assert sorted(got[part]) == sorted(want[part])
+        for key in want[part]:
+            np.testing.assert_array_equal(np.asarray(got[part][key]), np.asarray(want[part][key]), err_msg=key)
+    assert np.shape(got[0]["gamma"]) == (nW, 4)

@@ -404,6 +404,33 @@ def _em_history_windows(gamma, windowTimes, delta, num_cells: int):
     return g, windowTimes
 
 
+def _expand_shared_se_gamma(gammahat, windowTimes, num_cells: int):
+    """Expand a shared history-coefficient column per cell (MATLAB F12).
+
+    Mirrors the repaired MATLAB ``PP_ComputeParamStandardErrors`` /
+    ``PPLFP_ComputeParamStandardErrors`` entry rule (fix/pp-em 1c051a9), the
+    B9 rule of the EM drivers: if ``windowTimes`` is non-empty, ``gammahat``
+    is one column (a scalar is one window), there is more than one cell,
+    the column has ``numel(windowTimes) - 1`` rows and a nonzero entry, then
+    ``gammahat = repmat(gammahat, 1, numCells)``.  An all-zero gamma is left
+    as passed.  A 1-D array is read as in :func:`_em_history_windows` (a
+    row when its length is the number of cells, else the shared column).
+    """
+    g = np.asarray(gammahat, dtype=float)
+    if _is_empty_value(windowTimes) or num_cells <= 1 or g.size == 0:
+        return g
+    if g.ndim == 0:
+        col = g.reshape(1, 1)
+    elif g.ndim == 1:
+        col = g.reshape(1, -1) if g.size == num_cells else g.reshape(-1, 1)
+    else:
+        col = g
+    n_windows = np.asarray(windowTimes, dtype=float).reshape(-1).size - 1
+    if col.ndim == 2 and col.shape[1] == 1 and col.shape[0] == n_windows and np.any(col != 0):
+        return np.tile(col, (1, num_cells))
+    return g
+
+
 def _mc_state_draws(m, W, M, normal, *, non_pd="eig_floor"):
     """``M`` Monte Carlo draws from ``N(m, W)``, returned as a ``dx x M`` array.
 
@@ -5506,6 +5533,13 @@ class DecodingAlgorithms:
         K = N
         numCells = betahat.shape[1]
         fitType = str(fitType).lower()
+        # MATLAB F12 (fix/pp-em 1c051a9): a shared history-coefficient column
+        # (numWindows x 1, a scalar for one window) with several cells is
+        # expanded to numWindows x numCells, the rule PP_EM applies before it
+        # calls this routine (B9).  The gamma blocks below are per cell, so a
+        # scalar counted C gamma parameters while returning a 1-D SE.gamma, and
+        # a column failed on gammahat[:, c] for c > 0.
+        gammahat = _expand_shared_se_gamma(gammahat, windowTimes, numCells)
         # MATLAB stores a one-cell N x nW x 1 history as an N x nW matrix and its
         # HkAll(k,:,c) slices read it as such (B6: single-cell history SEs).
         # Restore the cell axis; otherwise the ndim == 3 tests below silently

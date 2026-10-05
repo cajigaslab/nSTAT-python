@@ -37,6 +37,7 @@ import scipy.linalg  # noqa: F401  (used by ported method bodies)
 from nstat.decoding_algorithms import (
     _as_observation_matrix,
     _as_state_matrix,
+    _expand_shared_se_gamma,
     _is_empty_value,
     _mc_state_draws,
     _normalize_beta,
@@ -1011,6 +1012,11 @@ class PPLFP:
         dx = xKFinal.shape[0]
         K = y.shape[1]
         numCells = betahat.shape[1]
+        # MATLAB F12 (fix/pp-em 1c051a9): a shared history-coefficient column
+        # (numWindows x 1, a scalar for one window) with several cells is
+        # expanded to numWindows x numCells, the rule PPLFP_EM applies before
+        # it calls this routine (B9); the gamma blocks below are per cell.
+        gammahat = _expand_shared_se_gamma(gammahat, windowTimes, numCells)
 
         # Pre-broadcast WKFinal into 3D (dx, dx, K).
         if WKFinal.ndim == 2:
