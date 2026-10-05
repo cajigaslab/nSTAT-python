@@ -257,3 +257,78 @@ Tier C items stay as recommendations until you approve them individually.
 
 Review workflow: 10 agents, 1,525,372 subagent tokens, 551 tool calls, ~28 min.
 Measurement and synthesis were done in the main session.
+
+## Found during apply (2026-10-05)
+
+The apply phase (PRs #260 docs, #261 tests, #262 package) uncovered issues the review missed.
+Items below are verified; file:line references are as of the package PR.
+
+### Maintainer decisions, ranked
+
+1. **Two public EM routines don't work at all.**
+   - **`PP_EM`** fails on its first E-step. `PP_EStep` passes `k + 1` into the zero-based
+     `PPDecode_updateLinear`, an off-by-one left over from the 0-based migration. Every step reads
+     the next bin, and the last step raises `IndexError`.
+   - **`mPPCO_EM`** fails because `mPPCO_EStep` references an undefined `N`. In addition, an
+     undefined `nearestSPD` is called at 5 sites (`decoding_algorithms.py` ~7136, 7264, 7272, 7405,
+     8063). As a result `mPPCO_ComputeParamStandardErrors` always raises and its SE/p-values are
+     silently empty, and `mPPCO_MStep` crashes on its non-positive-definite fallback.
+   - Neither routine has an end-to-end test. The characterization tests pin the current behavior
+     as `KNOWN DEFECT`.
+   - Recommendation: a follow-up PR that fixes `k + 1` → `k` and `N`, binds the MATLAB-faithful
+     `nearestSPD` (this resolves C2), and captures MATLAB gold fixtures for `PP_EM` and `mPPCO_EM`.
+     MATLAB is available locally.
+2. **Environment (no code change).** The base anaconda env has NumPy 2.5.2.
+   - numba below 0.68 rejects it, so the JIT kernels are off. In a venv with numba 0.68 they give
+     **35×** (`pp_decode_filter_linear`) and **27.5×** (`kalman_filter`), which makes both 12–17×
+     faster than MATLAB. The "residual gap vs MATLAB" in the original report was this, not code.
+   - pandas, h5py and pyarrow are ABI-broken in that env.
+   - Fix: upgrade numba to ≥ 0.68 and rebuild those packages, or use a dedicated env. Make the
+     `[numba]` extra prominent in the install docs.
+3. **Release.** Cut v0.6.0, which is code-complete and version-synced but untagged, including the
+   `## Unreleased` notes. Decide what to do with the legacy `v1.0.0-rc1…rc6` tags (C7).
+4. **Numerics to check against MATLAB:**
+   - C2: the two `_nearestSPD` implementations;
+   - C1: the `_glm_deviance` `1e-12` floors;
+   - `GLMFitResult.AIC`: it is computed as `2k + deviance`, but the code comments say
+     `-2·logLL + 2k`. The two differ by the saturated log-likelihood.
+5. **C5 `k_inhom` border bug**, plus a second instance at `spatial_gof.py` ~261-286.
+6. **Smaller items:**
+   - `mPPCO_MStep` uses the legacy global `np.random.randn`; changing it alters numerics.
+   - `computeGrangerCausalityMatrix` raises `IndexError` on a fresh `Trial` unless
+     `computeNeighbors` has run.
+   - `nstat/decoding/PPLFP.py` has the same EM `print`s and literals that #262 fixed in
+     `decoding_algorithms.py`.
+   - The notebook/Simulink fidelity audit tests ignore `NSTAT_MATLAB_PATH` and look for a
+     sibling checkout only.
+   - `RELEASE_READINESS.md` still describes v0.4.x plans.
+   - C3, C4, C6, C9, C10 as listed above.
+
+### Fixed during apply (beyond the original findings)
+- **AGENT_GUIDE:** 6 of 12 python fences crashed (the review sampled 3); all now run. (#260)
+- **Docs strict gate:** CI and `make docs-strict` built incrementally after a warm-up and re-read
+  nothing, which hid 153 warnings. It now builds fresh, with 0 warnings. (#260)
+- **Data loss:** a dataset download deleted everything in the target directory that wasn't in the
+  archive, including the git-tracked Example 05 hybrid-filter files or anything in a custom
+  `NSTAT_DATA_DIR`. It hit a working copy during this review; the data was restored. (#262)
+- **Python 3.10 (declared minimum):** tests could not even be collected (`tomllib`). (#261)
+- **numba:** an ABI or decoration failure crashed `import nstat`. It now falls back to pure Python;
+  covered for every-decoration and later-decoration failures. (#262)
+- **pynapple:** its lazy loader masked a broken pandas backend as
+  `'_LazyModule' object has no attribute 'Ts'`. Tests now skip accurately, and the bridge reports
+  the real cause. (#261, #262)
+- **Error message:** the neuron-selector message said "one-based"; indexing is zero-based. (#262)
+
+### Final integrated result (all three PRs, main checkout)
+| Environment | `main` | With #260 + #261 + #262 |
+|---|---|---|
+| Venv (all extras, dataset present) | 1006 passed / 18 skipped / 0 failed | 1062 passed / 18 skipped / 0 failed |
+| Base anaconda (NumPy 2.5.2, broken numba/pandas/h5py) | 972 passed / **7 failed** / 45 skipped | 1025 passed / 55 skipped / **0 failed** |
+
+Other checks:
+- Numerical drift: 53/53.
+- Fresh strict docs build: 0 warnings.
+- Regen drift: none.
+- `import nstat`: ~1.1 s → ~0.5 s.
+- Hot paths: 0.94–1.02× of `main` (interleaved A/B).
+- Total cost: 4.33M subagent tokens (review 1.53M + apply 2.81M).
