@@ -25,6 +25,7 @@ kept flat to match the MATLAB layout.
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 
 import numpy as np
@@ -33,6 +34,12 @@ from scipy.stats import norm
 from .cif import CIF
 from .errors import UnsupportedWorkflowError
 from .nspikeTrain import nspikeTrain
+
+# EM progress messages (KF_EM / KF_EStep / PP_EM / mPPCO_EM) go to this
+# logger at INFO level -- silent unless the caller configures logging, e.g.
+# ``logging.basicConfig(level=logging.INFO)``.  MATLAB's DecodingAlgorithms.m
+# prints nothing here, so these are Python-only diagnostics.
+_logger = logging.getLogger(__name__)
 
 
 def _numba_kernels_module():
@@ -4530,16 +4537,16 @@ class DecodingAlgorithms:
         IkedaAcc = KFEM_Constraints["EnableIkeda"]
         stoppingCriteria = False
 
-        print("                       Kalman Filter/Gaussian Observation EM Algorithm                        ")
+        _logger.info("                       Kalman Filter/Gaussian Observation EM Algorithm                        ")
 
         while not stoppingCriteria and cnt < maxIter:
             storeInd = cnt % numToKeep
             storeIndP1 = (cnt + 1) % numToKeep
             storeIndM1 = (cnt - 1) % numToKeep
 
-            print("-" * 100)
-            print(f"Iteration #{cnt + 1}")
-            print("-" * 100)
+            _logger.info("-" * 100)
+            _logger.info("Iteration #%s", cnt + 1)
+            _logger.info("-" * 100)
 
             # E-step
             x_K_buf[storeInd], W_K_buf[storeInd], ll_val, ExpSums_buf[storeInd] = (
@@ -4566,7 +4573,7 @@ class DecodingAlgorithms:
 
             # Ikeda acceleration
             if IkedaAcc:
-                print("****Ikeda Acceleration Step****")
+                _logger.info("****Ikeda Acceleration Step****")
                 K_obs = x_K_buf[storeInd].shape[1]
                 mean_y = (
                     Chat_buf[storeIndP1] @ x_K_buf[storeInd]
@@ -4628,21 +4635,21 @@ class DecodingAlgorithms:
                 dMax = max(dQvals, dRvals, dAvals, dCvals, dAlphavals)
 
             if cnt == 0:
-                print("Max Parameter Change: N/A")
+                _logger.info("Max Parameter Change: N/A")
             else:
-                print(f"Max Parameter Change: {dMax}")
+                _logger.info("Max Parameter Change: %s", dMax)
 
             cnt += 1
 
             if dMax < tolAbs:
                 stoppingCriteria = True
-                print(f"         EM converged at iteration# {cnt} b/c change in params was within criteria")
+                _logger.info("         EM converged at iteration# %s b/c change in params was within criteria", cnt)
 
             if abs(dLikelihood_val) < llTol or dLikelihood_val < 0:
                 stoppingCriteria = True
-                print(f"         EM stopped at iteration# {cnt} b/c change in likelihood was negative")
+                _logger.info("         EM stopped at iteration# %s b/c change in likelihood was negative", cnt)
 
-        print("-" * 100)
+        _logger.info("-" * 100)
 
         # Select best iteration by max log-likelihood
         ll_arr = np.array(ll_list)
@@ -4917,7 +4924,7 @@ class DecodingAlgorithms:
             - Dx / 2.0
         )
         logll = float(logll)
-        print(f"logll: {logll}")
+        _logger.info("logll: %s", logll)
 
         ExpectationSums = {
             "Sxkm1xkm1": Sxkm1xkm1,
@@ -5869,15 +5876,15 @@ class DecodingAlgorithms:
         stoppingCriteria = False
         cnt = 0
 
-        print("                        Point-Process Observation EM Algorithm                        ")
+        _logger.info("                        Point-Process Observation EM Algorithm                        ")
         while not stoppingCriteria and cnt < maxIter:
             si = cnt % numToKeep
             si_p1 = (cnt + 1) % numToKeep
             si_m1 = (cnt - 1) % numToKeep
 
-            print("-" * 80)
-            print(f"Iteration #{cnt + 1}")
-            print("-" * 80)
+            _logger.info("-" * 80)
+            _logger.info("Iteration #%s", cnt + 1)
+            _logger.info("-" * 80)
 
             # E-step
             x_K_cur, W_K_cur, ll, ExpSums = DecodingAlgorithms.PP_EStep(
@@ -5922,20 +5929,20 @@ class DecodingAlgorithms:
                 dMax = max(dQvals, dAvals, dMuvals, dBetavals, dGammavals)
 
             if cnt == 0:
-                print("Max Parameter Change: N/A")
+                _logger.info("Max Parameter Change: N/A")
             else:
-                print(f"Max Parameter Change: {dMax:.6f}")
+                _logger.info("Max Parameter Change: %.6f", dMax)
 
             cnt += 1
             if dMax < tolAbs:
                 stoppingCriteria = True
-                print(f"         EM converged at iteration# {cnt} b/c change in params was within criteria")
+                _logger.info("         EM converged at iteration# %s b/c change in params was within criteria", cnt)
 
             if abs(dLikelihood[-1]) < llTol or dLikelihood[-1] < 0:
                 stoppingCriteria = True
-                print(f"         EM stopped at iteration# {cnt} b/c change in likelihood was negative")
+                _logger.info("         EM stopped at iteration# %s b/c change in likelihood was negative", cnt)
 
-        print("-" * 80)
+        _logger.info("-" * 80)
 
         # Select best iteration
         ll_arr = np.array(ll_list)
@@ -7555,16 +7562,16 @@ class DecodingAlgorithms:
         cnt = 0
         stoppingCriteria = False
 
-        print("                        Joint Point-Process/Gaussian Observation EM Algorithm                        ")
+        _logger.info("                        Joint Point-Process/Gaussian Observation EM Algorithm                        ")
 
         while not stoppingCriteria and cnt < maxIter:
             si = cnt % numToKeep
             si_p1 = (cnt + 1) % numToKeep
             si_m1 = (cnt - 1) % numToKeep
 
-            print("-" * 80)
-            print(f"Iteration #{cnt + 1}")
-            print("-" * 80)
+            _logger.info("-" * 80)
+            _logger.info("Iteration #%s", cnt + 1)
+            _logger.info("-" * 80)
 
             # E-step
             x_K_buf[si], W_K_buf[si], ll_val, ExpSums_buf[si] = DecodingAlgorithms.mPPCO_EStep(
@@ -7612,23 +7619,23 @@ class DecodingAlgorithms:
                 dMax = max(diffs) if diffs else np.inf
 
             if cnt == 0:
-                print("Max Parameter Change: N/A")
+                _logger.info("Max Parameter Change: N/A")
             else:
-                print(f"Max Parameter Change: {dMax}")
+                _logger.info("Max Parameter Change: %s", dMax)
 
             cnt += 1
 
             if dMax < tolAbs:
                 stoppingCriteria = True
-                print(f"         EM converged at iteration# {cnt} b/c change in params was within criteria")
+                _logger.info("         EM converged at iteration# %s b/c change in params was within criteria", cnt)
 
             if cnt >= 2:
                 dll = ll_list[-1] - ll_list[-2]
                 if abs(dll) < llTol or dll < 0:
                     stoppingCriteria = True
-                    print(f"         EM stopped at iteration# {cnt} b/c change in likelihood was negative or small")
+                    _logger.info("         EM stopped at iteration# %s b/c change in likelihood was negative or small", cnt)
 
-        print("-" * 80)
+        _logger.info("-" * 80)
 
         # Select best iteration
         ll_arr = np.array(ll_list)
