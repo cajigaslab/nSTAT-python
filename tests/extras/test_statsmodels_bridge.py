@@ -13,6 +13,8 @@ import inspect
 import numpy as np
 import pytest
 
+from tests._optional import importorskip_robust, skip_if_installed
+
 
 # ----------------------------------------------------------------------
 # Import-error pathway
@@ -22,11 +24,7 @@ import pytest
 def test_statsmodels_bridge_emits_install_hint_when_missing() -> None:
     """When statsmodels is absent, the bridge raises a clear ImportError
     naming the pip-install hint."""
-    try:
-        import statsmodels  # noqa: F401
-        pytest.skip("statsmodels is installed; import-error path unreachable")
-    except ImportError:
-        pass
+    skip_if_installed("statsmodels")
 
     from nstat.extras.validation.statsmodels_bridge import (
         cross_validate_poisson_glm,
@@ -59,7 +57,7 @@ def test_statsmodels_glm_agrees_with_nstat_to_machine_precision() -> None:
     to ~1e-2).  A regression that loosens this beyond ~1e-6 likely
     indicates a real bug in nstat's IRLS path.
     """
-    pytest.importorskip("statsmodels")
+    importorskip_robust("statsmodels")
     from nstat.extras.validation.statsmodels_bridge import (
         cross_validate_poisson_glm,
     )
@@ -95,7 +93,7 @@ def test_statsmodels_comparison_assertion_fires_when_tolerance_violated() -> Non
 def test_statsmodels_bridge_handles_no_intercept() -> None:
     """When ``include_intercept=False``, both fits omit the intercept
     and return shape-(p,) coef vectors."""
-    pytest.importorskip("statsmodels")
+    importorskip_robust("statsmodels")
     from nstat.extras.validation.statsmodels_bridge import (
         cross_validate_poisson_glm,
     )

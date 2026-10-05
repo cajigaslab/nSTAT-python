@@ -11,19 +11,47 @@ Two layers:
 
 Adding a new example file is the only required step; this test
 auto-discovers ``examples/extras/*.py`` and applies both layers.
+
+Environment variables
+---------------------
+``NSTAT_EXTRAS_SUBPROCESS_TIMEOUT``
+    Per-demo wall-clock timeout, in seconds, for the run-as-main subprocess
+    (default ``120``; values below 60 are raised to 60).  Raise it on
+    loaded or concurrent machines where the heavier demos (e.g.
+    ``latents_gpfa_demo``) can exceed the default.
+
+The run-as-main layer is gated on the backing package *importing cleanly*
+(see ``tests/_optional.py``): a package that is installed but broken
+(NumPy-ABI ``ValueError``, ``RuntimeError`` at import, ...) skips with the
+reason rather than failing the run.
 """
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
+from tests._optional import probe_optional
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES_DIR = REPO_ROOT / "examples" / "extras"
+
+_MIN_SUBPROCESS_TIMEOUT_S = 60
+
+
+def _subprocess_timeout() -> int:
+    """Demo subprocess timeout (s) from ``NSTAT_EXTRAS_SUBPROCESS_TIMEOUT``."""
+    raw = os.environ.get("NSTAT_EXTRAS_SUBPROCESS_TIMEOUT", "120")
+    try:
+        value = int(raw)
+    except ValueError:
+        return 120
+    return max(value, _MIN_SUBPROCESS_TIMEOUT_S)
 
 
 # Map: example script stem → name of the opt-dep package it requires.
@@ -105,13 +133,16 @@ def test_example_script_imports_cleanly(script: Path) -> None:
 def test_example_runs_when_backing_dep_installed(script: Path) -> None:
     """When the example's opt-dep is installed, ``python <script>`` exits 0.
 
-    Skips silently when the dep is absent (mirrors the
-    ``pytest.importorskip`` pattern in the per-bridge functional tests).
+    Skips (with the reason) when the dep is absent *or* installed but fails
+    to import (mirrors ``tests/_optional.importorskip_robust`` used in the
+    per-bridge functional tests).
     """
     pkg = EXAMPLE_BACKING_PACKAGE.get(script.stem)
     if pkg is None:
         pytest.skip(f"No backing-package mapping for {script.stem}")
-    pytest.importorskip(pkg)
+    probe = probe_optional(pkg)
+    if not probe.available:
+        pytest.skip(probe.reason)
 
     # Many opt-deps (notably nemos) lazily pull in jax, which in turn
     # is sensitive to numpy version mismatches.  When the env can't load
@@ -120,7 +151,6 @@ def test_example_runs_when_backing_dep_installed(script: Path) -> None:
     # Treat transitive ImportErrors as skip-worthy rather than failures.
     _TRANSITIVE_DEPS = {
         "nemos": ("jax",),
-        "em_dynamax_demo": ("jax", "dynamax"),
     }
     for transitive in _TRANSITIVE_DEPS.get(pkg, ()):
         try:
@@ -133,7 +163,6 @@ def test_example_runs_when_backing_dep_installed(script: Path) -> None:
     # PYTHONPATH must include REPO_ROOT — ``python examples/extras/X.py``
     # adds the *script's* directory to sys.path[0] (not the cwd), so the
     # editable nstat install is invisible without this.
-    import os
     env = dict(os.environ)
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = (
@@ -146,7 +175,7 @@ def test_example_runs_when_backing_dep_installed(script: Path) -> None:
         text=True,
         cwd=str(REPO_ROOT),
         env=env,
-        timeout=60,
+        timeout=_subprocess_timeout(),
     )
     assert result.returncode == 0, (
         f"{script.name} exited with code {result.returncode}.\n"

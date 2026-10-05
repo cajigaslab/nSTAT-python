@@ -15,15 +15,13 @@ import inspect
 import numpy as np
 import pytest
 
+from tests._optional import importorskip_robust, skip_if_installed
+
 
 def test_dynamax_bridge_emits_install_hint_when_missing() -> None:
     """When Dynamax is absent, the bridge raises a clear ImportError
     naming the pip-install hint."""
-    try:
-        import dynamax  # noqa: F401
-        pytest.skip("dynamax is installed; import-error path unreachable")
-    except ImportError:
-        pass
+    skip_if_installed("dynamax")
 
     from nstat.extras.em.dynamax_bridge import fit_linear_gaussian_em
 
@@ -43,7 +41,7 @@ def test_fit_linear_gaussian_em_runs_on_synthetic_data() -> None:
     """Smoke test: simulate a linear-Gaussian process, fit via EM,
     verify the result has the expected shapes and log-likelihood
     monotonically (or near-monotonically) improves."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_linear_gaussian_em
 
     rng = np.random.default_rng(0)
@@ -87,7 +85,7 @@ def test_fit_linear_gaussian_em_runs_on_synthetic_data() -> None:
 
 def test_fit_linear_gaussian_em_rejects_invalid_state_dim() -> None:
     """Input validation: state_dim must be >= 1."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_linear_gaussian_em
 
     with pytest.raises(ValueError, match="state_dim must be >= 1"):
@@ -96,7 +94,7 @@ def test_fit_linear_gaussian_em_rejects_invalid_state_dim() -> None:
 
 def test_fit_linear_gaussian_em_handles_1d_observations() -> None:
     """1D observation arrays are reshaped to (T, 1) automatically."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_linear_gaussian_em
 
     rng = np.random.default_rng(1)
@@ -108,7 +106,7 @@ def test_fit_linear_gaussian_em_handles_1d_observations() -> None:
 
 def test_fit_linear_gaussian_em_rejects_3d_observations() -> None:
     """Higher-rank observation arrays are rejected with a clear message."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_linear_gaussian_em
 
     with pytest.raises(ValueError, match=r"shape \(T, emission_dim\)"):
@@ -143,7 +141,7 @@ def _simulate_poisson_lgssm(
 
 def test_cmgf_poisson_filter_smoke() -> None:
     """CMGF Poisson filter runs end-to-end with expected output shapes."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import cmgf_poisson_filter
 
     y, A, C, Q, x0, P0, _ = _simulate_poisson_lgssm()
@@ -158,7 +156,7 @@ def test_cmgf_poisson_smoother_reduces_posterior_variance() -> None:
     (universal property of Gaussian smoothers — backward pass only adds
     information).
     """
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import (
         cmgf_poisson_filter, cmgf_poisson_smoother,
     )
@@ -183,7 +181,7 @@ def test_cmgf_poisson_filter_recovers_latent_state_qualitatively() -> None:
     true latent state with a much smaller squared error than the naive
     zero predictor.
     """
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import cmgf_poisson_filter
 
     # Use *informative* observation loadings.  With log-link Poisson
@@ -220,7 +218,7 @@ def test_cmgf_poisson_filter_recovers_latent_state_qualitatively() -> None:
 
 def test_cmgf_poisson_filter_handles_1d_observations() -> None:
     """Single-channel observations reshape to (T, 1) automatically."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import cmgf_poisson_filter
 
     rng = np.random.default_rng(2)
@@ -245,11 +243,7 @@ def test_cmgf_poisson_filter_handles_1d_observations() -> None:
 
 def test_cmgf_poisson_filter_emits_install_hint_when_dynamax_missing() -> None:
     """Same actionable-ImportError contract as the rest of the bridge."""
-    try:
-        import dynamax  # noqa: F401
-        pytest.skip("dynamax is installed; import-error path unreachable")
-    except ImportError:
-        pass
+    skip_if_installed("dynamax")
 
     from nstat.extras.em.dynamax_bridge import cmgf_poisson_filter
     with pytest.raises(ImportError) as excinfo:
@@ -265,7 +259,7 @@ def test_cmgf_poisson_filter_emits_install_hint_when_dynamax_missing() -> None:
 def test_fit_point_process_em_smoke_and_shape_contract() -> None:
     """PP_EM runs end-to-end on synthetic Poisson-LGSSM data; returned
     parameters have the expected shapes."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em
 
     y, *_ = _simulate_poisson_lgssm(T=150, state_dim=2, emission_dim=2, rng_seed=0)
@@ -296,7 +290,7 @@ def test_fit_point_process_em_is_finite_and_bounded() -> None:
     The raw |C| can still vary across seeds (the rotational gauge is
     not pinned); this is documented in the function's Warnings section.
     """
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import (
         fit_point_process_em, cmgf_poisson_smoother,
     )
@@ -360,7 +354,7 @@ def test_fit_point_process_em_gauge_is_canonical() -> None:
        after convergence; it fought the Newton trust-region and blew up
        to ``|C|~10²`` with NaNs.  This is the guard against that.
     """
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em
 
     y, *_ = _simulate_poisson_lgssm(T=300, state_dim=2, emission_dim=2, rng_seed=1)
@@ -395,14 +389,14 @@ def test_fit_point_process_em_gauge_is_canonical() -> None:
 
 
 def test_fit_point_process_em_rejects_invalid_state_dim() -> None:
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em
     with pytest.raises(ValueError, match="state_dim must be >= 1"):
         fit_point_process_em(np.zeros((10, 2), dtype=int), state_dim=0, n_iter=3)
 
 
 def test_fit_point_process_em_handles_1d_observations() -> None:
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em
     rng = np.random.default_rng(42)
     y = rng.poisson(np.exp(0.3 * np.ones(80)))
@@ -411,11 +405,7 @@ def test_fit_point_process_em_handles_1d_observations() -> None:
 
 
 def test_fit_point_process_em_emits_install_hint_when_dynamax_missing() -> None:
-    try:
-        import dynamax  # noqa: F401
-        pytest.skip("dynamax is installed; import-error path unreachable")
-    except ImportError:
-        pass
+    skip_if_installed("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em
     with pytest.raises(ImportError) as excinfo:
         fit_point_process_em(np.zeros((10, 1), dtype=int), state_dim=1)
@@ -455,7 +445,7 @@ def _simulate_hybrid(
 
 
 def test_fit_hybrid_em_smoke_and_shape_contract() -> None:
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_hybrid_em
 
     yp, yg = _simulate_hybrid(T=120, state_dim=2, p_dim=2, g_dim=1, rng_seed=0)
@@ -480,7 +470,7 @@ def test_fit_hybrid_em_recovers_gaussian_noise() -> None:
     quantity is the Gaussian noise covariance R — which the
     trace-corrected M-step recovers well.  Assert that instead.
     """
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_hybrid_em
 
     # Fixture with a Gaussian channel whose true noise variance is 0.05.
@@ -522,7 +512,7 @@ def test_fit_hybrid_em_gauge_is_canonical() -> None:
     3. Both emission matrices bounded across init seeds (regression guard
        for the per-iteration-canonicalization blow-up).
     """
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_hybrid_em
 
     yp, yg = _simulate_hybrid(T=300, state_dim=2, p_dim=2, g_dim=1, rng_seed=1)
@@ -557,14 +547,14 @@ def test_fit_hybrid_em_gauge_is_canonical() -> None:
 
 
 def test_fit_hybrid_em_rejects_mismatched_observation_lengths() -> None:
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_hybrid_em
     with pytest.raises(ValueError, match="same T"):
         fit_hybrid_em(np.zeros((100, 2), dtype=int), np.zeros((99, 1)), state_dim=2)
 
 
 def test_fit_hybrid_em_rejects_invalid_state_dim() -> None:
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_hybrid_em
     with pytest.raises(ValueError, match="state_dim must be >= 1"):
         fit_hybrid_em(
@@ -574,11 +564,7 @@ def test_fit_hybrid_em_rejects_invalid_state_dim() -> None:
 
 
 def test_fit_hybrid_em_emits_install_hint_when_dynamax_missing() -> None:
-    try:
-        import dynamax  # noqa: F401
-        pytest.skip("dynamax is installed; import-error path unreachable")
-    except ImportError:
-        pass
+    skip_if_installed("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_hybrid_em
     with pytest.raises(ImportError) as excinfo:
         fit_hybrid_em(
@@ -747,7 +733,7 @@ def test_predictive_ll_runs_on_em_output() -> None:
     """Integration smoke: the diagnostic scores real EM output and returns
     finite per-timestep values.  (No improvement assertion — held-out
     gains are observability-dependent; see the docs caveat.)"""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import (
         fit_point_process_em, point_process_predictive_ll,
     )
@@ -773,7 +759,7 @@ def test_fit_point_process_em_best_of_smoke_and_shapes() -> None:
     """Multi-restart end-to-end: runs n_restarts seeds, returns a
     MultiRestartResult whose ``best_*`` fields correspond to the
     argmax of ``all_predictive_lls``."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import (
         MultiRestartResult,
         PointProcessEMResult,
@@ -803,7 +789,7 @@ def test_fit_point_process_em_best_of_smoke_and_shapes() -> None:
 
 def test_fit_point_process_em_best_of_input_validation() -> None:
     """``n_restarts`` and ``holdout_fraction`` are validated upfront."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em_best_of
 
     y = np.zeros((100, 2), dtype=int)
@@ -822,7 +808,7 @@ def test_fit_point_process_em_best_of_input_validation() -> None:
 
 def test_fit_hybrid_em_best_of_smoke_and_shapes() -> None:
     """Hybrid multi-restart smoke + shape contract."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import (
         HybridEMResult,
         MultiRestartResult,
@@ -843,7 +829,7 @@ def test_fit_hybrid_em_best_of_smoke_and_shapes() -> None:
 
 
 def test_fit_hybrid_em_best_of_rejects_mismatched_lengths() -> None:
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_hybrid_em_best_of
 
     with pytest.raises(ValueError, match="same T"):
@@ -906,7 +892,7 @@ def test_log_empirical_rate_init_biases_x0_toward_empirical_rate() -> None:
 
 def test_invalid_init_string_is_rejected() -> None:
     """Unknown init keys raise immediately (not after wasted EM work)."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em
 
     with pytest.raises(ValueError, match="init must be"):
@@ -922,7 +908,7 @@ def test_ridge_lambda_keeps_A_persistent_under_weak_observability() -> None:
     ``A`` whose largest eigenvalue magnitude is closer to 1.  We assert
     the directional property only — the weak-observability regime is
     intrinsically noisy."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em
 
     rng = np.random.default_rng(11)
@@ -952,7 +938,7 @@ def test_ridge_lambda_keeps_A_persistent_under_weak_observability() -> None:
 def test_ridge_lambda_zero_is_byte_identical_to_default() -> None:
     """Backward-compat: ``ridge_lambda=0.0`` (the default) must produce
     bit-exactly the same fit as the implicit-default codepath."""
-    pytest.importorskip("dynamax")
+    importorskip_robust("dynamax")
     from nstat.extras.em.dynamax_bridge import fit_point_process_em
 
     y, *_ = _sim_pp_with_state(T=200, ed=3, c_scale=0.7)

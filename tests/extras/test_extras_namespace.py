@@ -22,6 +22,8 @@ import importlib
 import numpy as np
 import pytest
 
+from tests._optional import importorskip_robust, skip_if_installed
+
 import nstat.extras as extras
 
 
@@ -78,41 +80,17 @@ def _call_with_missing_dep_emits_install_hint(modname: str, callable_name: str) 
     # If the underlying library imports successfully, we can't exercise
     # the error path.  Skip rather than fail.
     if modname.endswith(".neo"):
-        try:
-            import neo  # noqa: F401
-            pytest.skip("neo is installed; import-error path unreachable")
-        except ImportError:
-            pass
+        skip_if_installed("neo")
     elif modname.endswith(".pynapple"):
-        try:
-            import pynapple  # noqa: F401
-            pytest.skip("pynapple is installed; import-error path unreachable")
-        except ImportError:
-            pass
+        skip_if_installed("pynapple")
     elif modname.endswith(".nwb"):
-        try:
-            import pynwb  # noqa: F401
-            pytest.skip("pynwb is installed; import-error path unreachable")
-        except ImportError:
-            pass
+        skip_if_installed("pynwb")
     elif modname.endswith(".nemos_bridge"):
-        try:
-            import nemos  # noqa: F401
-            pytest.skip("nemos is installed; import-error path unreachable")
-        except ImportError:
-            pass
+        skip_if_installed("nemos")
     elif modname.endswith(".pykalman_bridge"):
-        try:
-            import pykalman  # noqa: F401
-            pytest.skip("pykalman is installed; import-error path unreachable")
-        except ImportError:
-            pass
+        skip_if_installed("pykalman")
     elif modname.endswith(".spike_distances"):
-        try:
-            import pyspike  # noqa: F401
-            pytest.skip("pyspike is installed; import-error path unreachable")
-        except ImportError:
-            pass
+        skip_if_installed("pyspike")
 
     # Call with the right number of junk args — we expect ImportError to
     # fire *before* any value validation since the dep check is the
@@ -176,8 +154,8 @@ def test_spike_distances_emits_install_hint_when_missing() -> None:
 
 
 def test_neo_roundtrip_preserves_spike_times_and_window() -> None:
-    pytest.importorskip("neo")
-    pytest.importorskip("quantities")
+    importorskip_robust("neo")
+    importorskip_robust("quantities")
     from nstat import nspikeTrain
     from nstat.extras.interop.neo import to_neo_spiketrain, from_neo_spiketrain
 
@@ -198,7 +176,7 @@ def test_neo_roundtrip_preserves_spike_times_and_window() -> None:
 
 
 def test_pynapple_roundtrip_preserves_spike_times() -> None:
-    pytest.importorskip("pynapple")
+    importorskip_robust("pynapple")
     from nstat import nspikeTrain
     from nstat.extras.interop.pynapple import (
         to_pynapple_with_support,
@@ -222,7 +200,7 @@ def test_pynapple_roundtrip_preserves_spike_times() -> None:
 
 
 def test_spike_distance_returns_finite_scalar() -> None:
-    pytest.importorskip("pyspike")
+    importorskip_robust("pyspike")
     from nstat import nspikeTrain
     from nstat.extras.metrics.spike_distances import spike_distance, isi_distance
 
@@ -275,7 +253,7 @@ def test_kalman_filtered_means_agree_with_pykalman() -> None:
     fixture.  Tolerance is the documented empirical baseline (1e-2 for
     filter, very loose for smoother — see AUDIT D3).
     """
-    pytest.importorskip("pykalman")
+    importorskip_robust("pykalman")
     from nstat.extras.validation.pykalman_bridge import cross_validate_kalman
 
     rng = np.random.default_rng(0)
@@ -305,7 +283,7 @@ def test_kalman_filtered_means_agree_with_pykalman() -> None:
 
 
 def test_nemos_glm_agrees_with_nstat_within_tolerance() -> None:
-    pytest.importorskip("nemos")
+    importorskip_robust("nemos")
     # nemos transitively imports jax; some envs have a numpy/jax mismatch
     # that surfaces only when jax is actually loaded.  Treat as skip.
     try:
@@ -336,7 +314,7 @@ def test_to_neo_segment_iterates_collection_without_crashing() -> None:
     The fix iterates the collection directly.  This test guards against
     that bug recurring.
     """
-    pytest.importorskip("neo")
+    importorskip_robust("neo")
     from nstat import SpikeTrainCollection, nspikeTrain
     from nstat.extras.interop.neo import to_neo_segment
 
@@ -352,7 +330,7 @@ def test_to_neo_segment_iterates_collection_without_crashing() -> None:
 
 def test_to_pynapple_tsgroup_iterates_collection_without_crashing() -> None:
     """Regression: to_pynapple_tsgroup used to call ``getNST()`` with no arg."""
-    pytest.importorskip("pynapple")
+    importorskip_robust("pynapple")
     from nstat import SpikeTrainCollection, nspikeTrain
     from nstat.extras.interop.pynapple import to_pynapple_tsgroup
 
@@ -372,7 +350,7 @@ def test_from_pynapple_ts_rejects_empty_without_support() -> None:
     The fix raises ValueError; this test guards against the silent-
     corruption path coming back.
     """
-    pytest.importorskip("pynapple")
+    importorskip_robust("pynapple")
     import pynapple as nap
     from nstat.extras.interop.pynapple import from_pynapple_ts
 
@@ -389,7 +367,7 @@ def test_nwb_units_warns_when_falling_back_to_spike_bounds() -> None:
     nor explicit time_window is available.  This test verifies the
     warning fires.
     """
-    pynwb = pytest.importorskip("pynwb")
+    pynwb = importorskip_robust("pynwb")
     import warnings
     from datetime import datetime
     from dateutil.tz import tzlocal
@@ -414,7 +392,7 @@ def test_nwb_units_warns_when_falling_back_to_spike_bounds() -> None:
 
 def test_nwb_units_explicit_time_window_skips_warning() -> None:
     """Companion: passing time_window= silences the fallback warning."""
-    pynwb = pytest.importorskip("pynwb")
+    pynwb = importorskip_robust("pynwb")
     import warnings
     from datetime import datetime
     from dateutil.tz import tzlocal

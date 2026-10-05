@@ -121,6 +121,11 @@ def profile_path(name: str, n_runs: int = 3) -> dict[str, Any]:
         raise KeyError(f"unknown path: {name!r}; known: {sorted(closures)}")
     closure = closures[name]
 
+    # One unprofiled warm-up call: pays the one-time lazy imports inside the
+    # closure (nstat / scipy / matplotlib) and first-call caches so they do not
+    # dominate (65-97% of) the profile.
+    closure()
+
     prof = cProfile.Profile()
     for _ in range(n_runs):
         prof.enable()

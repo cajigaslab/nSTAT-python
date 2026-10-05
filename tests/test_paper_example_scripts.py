@@ -36,6 +36,7 @@ def test_paper_example_manifest_covers_canonical_scripts() -> None:
     ]
 
 
+@pytest.mark.slow
 def test_paper_example_scripts_exist_and_support_help() -> None:
     payload = yaml.safe_load(MANIFEST_PATH.read_text(encoding="utf-8"))
     for row in payload["examples"]:
@@ -75,12 +76,14 @@ def _run_export_smoke(row: dict[str, object], tmp_path: Path) -> None:
         assert (export_dir / filename).exists(), f"Missing exported figure {filename} for {example_id}"
 
 
+@pytest.mark.slow
 def test_data_free_canonical_example_supports_figure_export(tmp_path: Path) -> None:
     rows = _manifest_rows()
     example05 = next(row for row in rows if row["example_id"] == "example05")
     _run_export_smoke(example05, tmp_path)
 
 
+@pytest.mark.slow
 def test_dataset_backed_canonical_examples_support_figure_export_when_data_available(tmp_path: Path) -> None:
     if not data_manager.data_is_present(data_manager.get_data_dir()):
         pytest.skip("Dataset-backed paper example export smoke requires preinstalled example data.")

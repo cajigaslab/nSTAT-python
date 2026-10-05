@@ -198,6 +198,7 @@ class TestPythonBackendSmoke:
 # 5. Integration tests — skipped without MATLAB
 # ---------------------------------------------------------------------------
 
+@pytest.mark.matlab
 @pytest.mark.skipif(
     not is_matlab_available() or get_matlab_nstat_path() is None,
     reason="MATLAB Engine not installed or MATLAB nSTAT repo not found",
