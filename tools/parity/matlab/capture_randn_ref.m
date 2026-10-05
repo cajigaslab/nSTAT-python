@@ -1,11 +1,9 @@
 function capture_randn_ref(repoRoot)
 %CAPTURE_RANDN_REF  Gold-fixture capture for tests/test_matlab_rng.py.
 %
-% TODO (needs a MATLAB session): the fixture this function produces,
-%     tests/parity/fixtures/matlab_gold/randn_ref.mat
-% has NOT been captured/committed yet, so
-% tests/test_matlab_rng.py::TestMatlabRandnReference::test_known_divergence_from_matlab_randn
-% currently skips.  Run this once in MATLAB and commit the resulting .mat.
+% Produces tests/parity/fixtures/matlab_gold/randn_ref.mat (captured with
+% MATLAB R2025b, 2026-10-05), used by
+% tests/test_matlab_rng.py::TestMatlabRandnReference::test_known_divergence_from_matlab_randn.
 %
 % Saves the first 20 draws of MATLAB's ``randn`` (Ziggurat) under the
 % repo-wide ``rng(42)`` convention, as the column vector ``r``.  The Python
