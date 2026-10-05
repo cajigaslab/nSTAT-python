@@ -385,3 +385,90 @@ def test_pp_estep_invariant_to_an_appended_zero_history_window(case) -> None:
     np.testing.assert_array_equal(a[0], b[0])
     np.testing.assert_array_equal(a[1], b[1])
     assert a[2] == b[2]
+
+
+# ---------------------------------------------------------------------------
+# EM drivers: non-finite E-step log-likelihood (MATLAB bug 8 / B5) and the
+# PP_EM standard-error exception swallow
+# ---------------------------------------------------------------------------
+
+
+def _pp_em_gold_args():
+    A, Q, dN, mu, beta, fit, gamma, HkAll, x0, Px0 = _pp_estep_gold_case("c2")
+    cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0, 0, 30)
+    return (dN, A, Q, mu.reshape(-1), beta, fit, 0.001, gamma, [0.0, 0.001, 0.003], x0.reshape(-1), Px0, cons,
+            "NewtonRaphson")
+
+
+def _pplfp_em_gold_args():
+    from pathlib import Path
+
+    from scipy.io import loadmat
+
+    fx = loadmat(Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab_gold" / "pplfp_EM.mat",
+                 squeeze_me=True, struct_as_record=False)
+    f = lambda k: np.asarray(fx[k], dtype=float)  # noqa: E731
+    v = lambda k: np.asarray(fx[k], dtype=float).reshape(-1)  # noqa: E731
+    cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, int(fx["mcIter"]), 0)
+    return (f("y"), f("dN"), f("Ahat0"), f("Qhat0"), f("Chat0"), f("Rhat0"), v("alphahat0"), v("mu"), f("beta"),
+            "poisson", 0.001, None, None, v("x0"), f("Px0"), cons, "NewtonRaphson")
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+@pytest.mark.parametrize("bad", [np.nan, np.inf], ids=["nan", "inf"])
+def test_em_stops_on_a_non_finite_estep_loglikelihood(family, bad, monkeypatch) -> None:
+    # The second E-step reports a non-finite logll: EM must stop before the
+    # M-step and return the best FINITE iterate (here the first: the initial
+    # parameters).  It used to keep iterating (NaN) and np.argmax picked the
+    # NaN / +Inf iterate (IC['llcomp'] = nan / inf).
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    owner = DecodingAlgorithms if family == "PP" else PPLFP
+    estep_name = "PP_EStep" if family == "PP" else "PPLFP_EStep"
+    mstep_name = "PP_MStep" if family == "PP" else "PPLFP_MStep"
+    real_estep, real_mstep = getattr(owner, estep_name), getattr(owner, mstep_name)
+    calls = {"E": 0, "M": 0, "ll": []}
+
+    def estep(*a, **k):
+        out = list(real_estep(*a, **k))
+        calls["E"] += 1
+        if calls["E"] == 2:
+            out[2] = bad
+        calls["ll"].append(out[2])
+        return tuple(out)
+
+    def mstep(*a, **k):
+        calls["M"] += 1
+        return real_mstep(*a, **k)
+
+    monkeypatch.setattr(owner, estep_name, staticmethod(estep))
+    monkeypatch.setattr(owner, mstep_name, staticmethod(mstep))
+    with seeded_global_rng(3):
+        if family == "PP":
+            args = _pp_em_gold_args()
+            out = DecodingAlgorithms.PP_EM(*args)
+            IC, mu_out, mu_in, n_iter = out[9], out[4], args[3], out[12]
+            assert n_iter == 1
+        else:
+            args = _pplfp_em_gold_args()
+            out = PPLFP.PPLFP_EM(*args)
+            IC, mu_out, mu_in = out[12], out[7], args[7]
+    assert calls["E"] == 2 and calls["M"] == 1
+    assert np.isfinite(IC["llcomp"]) and IC["llcomp"] == calls["ll"][0]
+    np.testing.assert_array_equal(np.ravel(mu_out), np.ravel(mu_in))
+
+
+def test_pp_em_does_not_swallow_standard_error_failures(monkeypatch) -> None:
+    # MATLAB computes the SEs without a guard; the port used to wrap them in
+    # `except Exception: pass` and return SE = Pvals = {} silently.
+    class _SEFailure(RuntimeError):
+        pass
+
+    def boom(*_a, **_k):
+        raise _SEFailure("SE failure must propagate")
+
+    monkeypatch.setattr(DecodingAlgorithms, "PP_ComputeParamStandardErrors", staticmethod(boom))
+    np.random.seed(0)
+    args = list(_pp_em_gold_args())
+    with pytest.raises(_SEFailure):
+        DecodingAlgorithms.PP_EM(*args)

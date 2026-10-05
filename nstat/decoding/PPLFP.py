@@ -1951,6 +1951,18 @@ class PPLFP:
             )
             ll_list.append(float(ll_val))
 
+            # MATLAB (repaired, B5): stop before the M-step when the E-step
+            # log-likelihood is not a finite real number (e.g. Px0hat
+            # collapsing under EstimatePx0=1); the best finite iterate is
+            # selected below.  NaN comparisons are False, so the likelihood
+            # stopping rule alone kept iterating on NaN.
+            if not np.isfinite(ll_list[-1]):
+                _logger.info(
+                    " EM stopped at iteration# %s b/c the E-step log-likelihood was not a finite "
+                    "real number (%s)", cnt + 1, ll_list[-1],
+                )
+                break
+
             # M-step
             (
                 Ahat_buf[si_p1],
@@ -2166,8 +2178,10 @@ class PPLFP:
         ll_arr = np.asarray(ll_list, dtype=float)
         if ll_arr.size == 0:
             raise RuntimeError("PPLFP_EM: no EM iterations executed")
-        # first max (parity with MATLAB find(.., 1, 'first'))
-        maxLLIndex = int(np.argmax(ll_arr))
+        # Best FINITE iterate, first max (MATLAB, repaired: non-finite logll ->
+        # NaN, find(llSel == max(llSel), 1, 'first'); none finite -> 1).
+        finite = np.isfinite(ll_arr)
+        maxLLIndex = int(np.argmax(np.where(finite, ll_arr, -np.inf))) if np.any(finite) else 0
         maxLLIndMod = maxLLIndex % numToKeep
 
         xKFinal = x_K_buf[maxLLIndMod]

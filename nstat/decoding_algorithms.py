@@ -6032,6 +6032,18 @@ class DecodingAlgorithms:
             ExpSums_buf[si] = ExpSums
             ll_list.append(ll)
 
+            # MATLAB (repaired, PP_EM bug 8): stop before the M-step when the
+            # E-step log-likelihood is not a finite real number (a degenerate
+            # iterate, e.g. a collapsed Px0hat or a diverged filter).  The best
+            # finite iterate is selected below.  NaN comparisons are False, so
+            # the likelihood stopping rule alone never caught a NaN.
+            if not np.isfinite(ll):
+                _logger.info(
+                    "         EM stopped at iteration# %s b/c the E-step log-likelihood was not a finite "
+                    "real number (%s)", cnt + 1, ll,
+                )
+                break
+
             # M-step
             Anew, Qnew, munew, bnew, gnew, x0new, Px0new = DecodingAlgorithms.PP_MStep(
                 dN, x_K_cur, W_K_cur, x0_buf[si], Px0_buf[si], ExpSums,
@@ -6080,10 +6092,13 @@ class DecodingAlgorithms:
 
         _logger.info("-" * 80)
 
-        # Select best iteration
-        ll_arr = np.array(ll_list)
-        if ll_arr.size > 0:
-            maxLLIndex = int(np.argmax(ll_arr))
+        # Select the best FINITE iteration (MATLAB, repaired: non-finite /
+        # complex logll -> NaN, then the first maximum; no finite logll ->
+        # iteration 1).  np.argmax alone returned the first NaN, or a +Inf.
+        ll_arr = np.asarray(ll_list, dtype=float)
+        finite = np.isfinite(ll_arr)
+        if np.any(finite):
+            maxLLIndex = int(np.argmax(np.where(finite, ll_arr, -np.inf)))
         else:
             maxLLIndex = 0
         maxLLIndMod = maxLLIndex % numToKeep
@@ -6117,18 +6132,17 @@ class DecodingAlgorithms:
                 WKFinal[:, :, kk] = TqInv_unscale @ WKFinal[:, :, kk] @ TqInv_unscale.T
         betahat = (betahat.T @ Tq_unscale).T
 
-        # Compute standard errors
+        # Compute standard errors.  MATLAB computes them (when SE/Pvals are
+        # requested) without a guard, so a failure raises; the former blanket
+        # ``except Exception: pass`` silently returned SE = Pvals = {}.
         SE = {}
         Pvals = {}
         if ExpSumsFinal:
-            try:
-                SE, Pvals, _ = DecodingAlgorithms.PP_ComputeParamStandardErrors(
-                    dN, xKFinal, WKFinal, Ahat, Qhat, x0hat, Px0hat,
-                    ExpSumsFinal, fitType, muhat, betahat, gammahat,
-                    windowTimes, HkAll, PPEM_Constraints
-                )
-            except Exception:
-                pass
+            SE, Pvals, _ = DecodingAlgorithms.PP_ComputeParamStandardErrors(
+                dN, xKFinal, WKFinal, Ahat, Qhat, x0hat, Px0hat,
+                ExpSumsFinal, fitType, muhat, betahat, gammahat,
+                windowTimes, HkAll, PPEM_Constraints
+            )
 
         # Information criteria
         K_total = xKFinal.shape[1]
