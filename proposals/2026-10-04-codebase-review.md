@@ -67,7 +67,7 @@ B = 17 · C = 9**.
 |---|---|
 | Size | `nstat/` 104 modules, ~50.3 kLOC; 104 test files (docs claim ~50 modules / ~24 kLOC) |
 | Tests | 972 passed, 7 failed (all environment), 45 skipped, **7 min 22 s**. Five tests take ~310 s; the docs say `make test` takes ~25 s. |
-| Perf vs MATLAB | 8/10 paths faster; `pp_decode_filter_linear` 2.77×, `kalman_filter` 1.73× (Python per-step overhead; an opt-in Numba path exists) |
+| Perf vs MATLAB | 8/10 paths faster. `pp_decode_filter_linear` 2.77× and `kalman_filter` 1.73× **only because numba was broken in the base env**: in a venv with numba 0.68 (supports NumPy 2.5) they run in 0.0063 s / 0.0004 s, which is **12–17× faster than MATLAB**. Forcing the fallback in that venv reproduces the base-env times (35× / 27.5× numba speedup). So the gap is environmental, not code. |
 | Help gates | `helpfile-check` ✅, `readme-check` ✅ (presence and links only). A fresh `sphinx -E -W` build ❌ (153 warnings). |
 | Release | `pyproject` 0.6.0 is unreleased; the latest GitHub release is v0.5.7; legacy `v1.0.0-rc1…rc6` tags (March 2026) sort above both |
 
@@ -174,7 +174,9 @@ before and after with `make perf-check`.
 - **C7 · release**: cut v0.6.0, or record why it is held back. Retire or annotate the
   legacy `v1.0.0-rc*` tags; deleting public tags is destructive and needs your approval.
 - **C8 · environment**: the anaconda base env has NumPy 2.5.2 with `pandas`, `h5py` and
-  `pyarrow` built for NumPy 1.x, and a `numba` that rejects NumPy above 2.4. Rebuild those
+  `pyarrow` built for NumPy 1.x, and a `numba` that rejects NumPy above 2.4. Upgrading numba
+  to ≥ 0.68 alone restores the JIT kernels: a **27–35× speedup** on the two decoding hot paths
+  (measured). Consider making the `[numba]` extra more prominent in the install docs. Rebuild those
   packages, or use a dedicated dev environment or lockfile. This is the cause of the
   7 test failures.
 - **C9 · test-speed policy**: decide whether `make test` should skip `slow` / `matlab` tests
