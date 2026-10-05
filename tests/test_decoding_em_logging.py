@@ -71,12 +71,30 @@ def _run_pplfp_em():
             fitType=str(fx["fitType"]), delta=float(fx["delta"]), x0=f("x0").reshape(-1),
             Px0=f("Px0"), PPLFP_EM_Constraints=constraints, MstepMethod="NewtonRaphson",
         )
-    return out, f("xKFinal")
+    return out
 
 
-def test_pplfp_em_is_silent_by_default_and_logs_progress_at_info(capsys, caplog) -> None:
+def _assert_identical(a, b, path: str = "out") -> None:
+    """Bit-for-bit equality over nested tuples / dicts / arrays / scalars."""
+    if isinstance(a, dict):
+        assert isinstance(b, dict) and sorted(a) == sorted(b), path
+        for key in a:
+            _assert_identical(a[key], b[key], f"{path}[{key!r}]")
+    elif isinstance(a, (tuple, list)):
+        assert type(a) is type(b) and len(a) == len(b), path
+        for i, (x, y) in enumerate(zip(a, b)):
+            _assert_identical(x, y, f"{path}[{i}]")
+    elif a is None or isinstance(a, str):
+        assert a == b, path
+    else:
+        x, y = np.asarray(a), np.asarray(b)
+        assert x.shape == y.shape and x.dtype == y.dtype, path
+        assert np.array_equal(x, y, equal_nan=x.dtype.kind in "fc"), path
+
+
+def test_pplfp_em_is_silent_by_default_and_logs_progress_at_info(capsys, caplog, monkeypatch) -> None:
     with caplog.at_level(logging.INFO, logger="nstat.decoding.PPLFP"):
-        out, ml_xKFinal = _run_pplfp_em()
+        out = _run_pplfp_em()
     assert capsys.readouterr().out == ""
     records = [r for r in caplog.records if r.name == "nstat.decoding.PPLFP"]
     assert records, "expected EM progress records on the module logger"
@@ -87,9 +105,14 @@ def test_pplfp_em_is_silent_by_default_and_logs_progress_at_info(capsys, caplog)
     assert "****M-step for beta****" in messages  # PPLFP_MStep (NewtonRaphson)
     assert "neuron:1 iter: 1,2,3,4,5" in messages  # one record per neuron
     assert any(m.startswith("Max Parameter Change: ") for m in messages)
-    # Outputs unchanged: the same check (and tolerance) as the PPLFP_EM
-    # numerical-drift entry against the MATLAB gold.
-    np.testing.assert_allclose(np.asarray(out[0], dtype=float), ml_xKFinal, rtol=10.0, atol=0.1)
+    # Logging cannot change the numerics: the same seeded run with the logger
+    # disabled returns every output bit for bit.  (MATLAB parity of PPLFP_EM
+    # is the PPLFP_EM numerical-drift entry.)
+    monkeypatch.setattr(logging.getLogger("nstat.decoding.PPLFP"), "disabled", True)
+    caplog.clear()
+    silent = _run_pplfp_em()
+    assert not [r for r in caplog.records if r.name == "nstat.decoding.PPLFP"]
+    _assert_identical(out, silent)
 
 
 def test_pplfp_module_has_no_print_calls() -> None:
