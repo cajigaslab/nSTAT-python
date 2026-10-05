@@ -22,10 +22,10 @@
   returns, bit for bit. The previous standalone EM implementation could not
   run (`mPPCO_EStep` and `mPPCO_EM` raised `NameError`;
   `mPPCO_ComputeParamStandardErrors` always failed). Signatures are unchanged;
-  use the `PPLFP_*` names. (`mPPCODecode_update` is unchanged.) Known,
-  pre-existing and pending a fix: the default GLM M-step
-  (`MstepMethod='GLM'`, the default of `PPLFP_EM`, `PPLFP_MStep` and their
-  `mPPCO_*` aliases) raises `ValueError`; only `'NewtonRaphson'` runs.
+  use the `PPLFP_*` names (except the EM defaults, below). (`mPPCODecode_update`
+  is unchanged.) Known, pre-existing and pending a fix: the GLM M-step
+  (`MstepMethod='GLM'`, no longer the default) of `PPLFP_EM`, `PPLFP_MStep`
+  and their `mPPCO_*` aliases raises `ValueError`; `'NewtonRaphson'` runs.
 - Fix: `DecodingAlgorithms.PP_EStep` could not run: it passed MATLAB's 1-based
   bin index and MATLAB's permuted `(nW, C, N)` history tensor to the zero-based
   Python `PPDecode_updateLinear`, so it read the next bin at every step and
@@ -34,9 +34,9 @@
   time step on the captured cases: smoothed states, covariances,
   log-likelihood and sufficient statistics to ~1e-12 with nW != C (new gold
   fixture `pp_estep.mat`), and smoothed states and covariances with nW == C,
-  N == C and a single cell (`pp_square_history.mat`). The log-likelihood with
-  nW == C is not yet checked: MATLAB's is suspected wrong there and is being
-  fixed. `PP_EM` itself is not yet checked against MATLAB.
+  N == C and a single cell (`pp_square_history.mat`), and the log-likelihood
+  with nW == C too (see the EM subsection below). `PP_EM` itself is not yet
+  checked against MATLAB end to end.
 - Fix: a square history-coefficient matrix `gamma` (as many history windows as
   cells, nW == C) is no longer transposed. MATLAB transposes `gamma` only when
   it is not already `nW x C`; Python transposed every square one, so
@@ -52,18 +52,16 @@
   (a first window spanning a single bin was always empty). It now reproduces MATLAB's windows
   exactly, including edges off the time grid, and is ~500x faster; as in
   MATLAB, only bins with `dN == 1` count as spikes (bins holding larger counts
-  no longer add to the history). `PPLFP_EM`'s default windows (`windowTimes`
-  omitted) are now `0:delta:(length(gamma)+1)*delta` built element for element
-  as MATLAB's colon builds it (`np.arange` differs in the last bits for most
-  sizes, which moved spikes between windows), with `length` the largest
-  dimension of `gamma`; a scalar-zero `gamma` now means no history, as in
-  MATLAB. With `delta` other than 1 ms, `PPLFP_EM`'s history still differs
-  from MATLAB master's, which builds it from a 1 kHz spike train without
-  resampling. With history,
+  no longer add to the history). The default windows of `PP_EM` / `PPLFP_EM`
+  (`windowTimes` omitted) are described in the EM subsection below; MATLAB's
+  colon is reproduced element for element (`np.arange` differs in the last
+  bits for most sizes, which moved spikes between windows), and a scalar-zero
+  `gamma` means no history, as in MATLAB. With `delta` other than 1 ms,
+  `PPLFP_EM`'s history still differs from MATLAB's, which builds it from a
+  1 kHz spike train without resampling. With history,
   `PPDecodeFilterLinear` and `PP_fixedIntervalSmoother` now match MATLAB,
-  except that when the number of states equals the number of cells MATLAB's
-  `PPDecodeFilterLinear` transposes the square `beta` (a MATLAB defect, being
-  fixed upstream).
+  including a square `beta` (as many states as cells), which the repaired
+  MATLAB no longer transposes.
   Window edges at or before `-delta`, which reached the current and later
   bins, now raise `ValueError` (MATLAB fails on them too).
 - Fix: `PP_fixedIntervalSmoother` with `lags = 1` left the first predicted
@@ -77,6 +75,50 @@
   history whose shape fits more than one layout (MATLAB's `(nW, C, N)` with
   nW == C) now raises `ValueError` instead of being read one way silently;
   pass the canonical `(N, nW, C)` layout.
+**EM routines (`PP_EM` / `PPLFP_EM` families) mirror the repaired MATLAB**
+
+The MATLAB EM routines were corrected (MATLAB `fix/pp-em` @ `a457b54`,
+pending upstream merge); the Python port now matches them:
+
+- Defaults: `PP_EMCreateConstraints()` and `PPLFP_EMCreateConstraints()` no
+  longer estimate `x0` / `Px0` (`Estimatex0 = EstimatePx0 = 0`; that estimator
+  collapses `Px0` and stops EM after ~2 iterations), and `PPLFP_EM` /
+  `PPLFP_MStep` default to the `'NewtonRaphson'` M-step (was `'GLM'`, which
+  could not run). The deprecated `mPPCO_EMCreateConstraints`, `mPPCO_EM` and
+  `mPPCO_MStep` aliases follow. Bare `PP_EM(dN, A, Q, mu, beta)` /
+  `PPLFP_EM(y, dN, A, Q, C, R, alpha, mu, beta)` calls now converge.
+- Binomial fits: the Newton beta step of `PP_MStep` / `PPLFP_MStep` had a
+  Hessian of the wrong sign (one M-step moved beta by ~1e4-1e14); the
+  binomial beta information of both `*_ComputeParamStandardErrors` had the
+  same defect, and the binomial mu information used `-3 E[p^3]` instead of
+  `-2 E[p^3]`. Binomial EM fits and SEs now match finite differences.
+- `PP_ComputeParamStandardErrors`: `Pvals.gamma` paired the wrong SE with
+  each coefficient whenever there were several windows and cells; a one-cell
+  history stored as an `N x W` matrix was ignored (it raised in PPLFP). One
+  cell with one history window (a single coefficient, scalar or `1 x 1`) now
+  runs through `PP_MStep`, `PPLFP_MStep` and both SE routines as one `gamma`
+  parameter (a `1 x 1` / scalar `gamma` raised there).
+- `PP_EStep`: the log-likelihood with as many history windows as cells
+  (nW == C) paired coefficients with the wrong windows; fixed (new gold cases
+  in `pp_estep.mat`). The `log(max(p, 1e-30))` floor is gone, as in MATLAB.
+- `PP_EM` / `PPLFP_EM` stop before the M-step when the E-step
+  log-likelihood is not finite and return the best finite iterate (a NaN
+  iterate could be returned before). `PP_EM` no longer hides a failure of
+  its standard-error pass (it returned empty `SE` / `Pvals`).
+- `PP_MStep` no longer estimates an all-zero `gamma` ("no history").
+- History windows: with `windowTimes` omitted, `PP_EM` / `PPLFP_EM` use one
+  window per history coefficient, `0:delta:size(gamma,1)*delta` (it was one
+  window too many), and expand a nonzero shared `gamma` column to every
+  cell; `PP_EM` builds its history on the `delta` grid (it raised for
+  `delta` other than 1 ms). `PPDecodeFilterLinear` and `PPHybridFilterLinear`
+  accept MATLAB's shared `numWindows x 1` `gamma` column (it raised), and
+  `PPHybridFilterLinear` with history windows now matches MATLAB.
+- Gold fixtures recaptured from the repaired MATLAB: `pplfp_SE.mat` /
+  `pplfp_EM.mat` (`SE.beta` / `Pvals.beta` layout; the port's layout was
+  already right), `pp_estep.mat` (square-history cases added) and
+  `pp_square_history.mat` (default windows, 2 ms history, square `beta`,
+  hybrid filter). Every other field is unchanged.
+
 - Optional-dependency errors now distinguish "not installed" from "installed
   but failed to import" (for example an ABI mismatch).
 - A broken numba install no longer breaks `import nstat` or the decoders
