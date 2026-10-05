@@ -598,6 +598,79 @@ def _recipe_pp_estep(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.
     )
 
 
+def _recipe_pp_square_history(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
+    """PPAF filters with a square / N == C / C == 1 history -- one case of
+    ``pp_square_history.mat`` (see ``tools/parity/matlab/capture_pp_square_history.m``).
+
+    ``args.case`` selects the case prefix; the fixture's ``<case>_func`` names
+    the function.  Returns the concatenation of every output at every step:
+    x_p, W_p, x_u, W_u (PPDecodeFilterLinear); x_uLag, W_uLag and x_pLag,
+    W_pLag without column 1 (PP_fixedIntervalSmoother, lags = 1: that column
+    is an open, gamma-independent first-step divergence, pinned as a strict
+    xfail in tests/test_pp_square_history_matlab_gold.py); x_K, W_K (PP_EStep;
+    its logll is not captured).
+
+    The two filters build their history from ``windowTimes`` with
+    ``_compute_history_terms``, which bins lags one sample earlier than
+    MATLAB ``History.computeHistory`` (open divergence, same test file).  To
+    compare the filters themselves, the MATLAB history tensor the MATLAB
+    function consumed (``<case>_HkAll``) is substituted for the Python one for
+    the duration of the call.  PP_EStep takes ``HkAll`` as an argument and is
+    fed MATLAB's array exactly as saved (``N x nW`` when C == 1).
+    """
+    from unittest import mock
+
+    import nstat.decoding_algorithms as da
+
+    case = str(args["case"])
+
+    def f(key: str) -> np.ndarray:
+        return _as_float_array(fixture[f"{case}_{key}"])
+
+    N, nW, C, dx = (int(v) for v in f("sizes").reshape(-1))
+    func = _string(fixture, f"{case}_func")
+    fit = _string(fixture, f"{case}_fitType")
+    dN = f("dN").reshape(C, N)
+    mu = f("mu").reshape(C)
+    beta = f("beta").reshape(dx, C)
+    gamma = f("gamma").reshape(nW, C)
+    x0 = f("x0").reshape(dx)
+    delta = _scalar(fixture, f"{case}_delta")
+    windowTimes = f("windowTimes").reshape(-1)
+    HkAll = f("HkAll")
+
+    if func == "PP_EStep":
+        x_K, W_K, _, _ = da.DecodingAlgorithms.PP_EStep(
+            f("A"), f("Q"), dN, mu, beta, fit, gamma, HkAll, x0, f("Px0").reshape(dx, dx)
+        )
+        py: list[Any] = [x_K, W_K]
+        ml: list[Any] = [f("x_K"), f("W_K")]
+    else:
+        matlab_hk = HkAll.reshape(N, nW, C)
+        with mock.patch.object(da, "_compute_history_terms", side_effect=lambda *_a: matlab_hk.copy()):
+            if func == "PPDecodeFilterLinear":
+                out = da.DecodingAlgorithms.PPDecodeFilterLinear(
+                    f("A"), f("Q"), dN, mu, beta, fit, delta, gamma, windowTimes, x0, f("Pi0").reshape(dx, dx)
+                )
+                py = list(out[:4])
+                ml = [f("x_p"), f("W_p"), f("x_u"), f("W_u")]
+            elif func == "PP_fixedIntervalSmoother":
+                x_pLag, W_pLag, x_uLag, W_uLag = da.DecodingAlgorithms.PP_fixedIntervalSmoother(
+                    f("A"), f("Q"), dN, int(_scalar(fixture, f"{case}_lags")), mu, beta, fit, delta,
+                    gamma, windowTimes, x0, f("Pi0").reshape(dx, dx),
+                )
+                keep = np.ones(N + 1, dtype=bool)
+                keep[1] = False
+                py = [x_uLag, W_uLag, np.asarray(x_pLag)[:, keep], np.asarray(W_pLag)[:, :, keep]]
+                ml = [f("x_uLag"), f("W_uLag"), f("x_pLag")[:, keep], f("W_pLag")[:, :, keep]]
+            else:
+                raise ValueError(f"unknown pp_square_history function {func!r}")
+    return (
+        np.concatenate([_as_float_array(a).reshape(-1) for a in py]),
+        np.concatenate([_as_float_array(a).reshape(-1) for a in ml]),
+    )
+
+
 # ---------------------------------------------------------------------------
 # v9 iter 39/40 — recipes for the 22 v9_* drift entries.
 # Each pairs a MATLAB gold fixture with a thin call into the corresponding
@@ -1428,6 +1501,7 @@ RECIPES: dict[str, Callable[[dict[str, Any], dict[str, Any]], tuple[np.ndarray, 
     "pplfp_em": _recipe_pplfp_em,
     "pplfp_se_alpha": _recipe_pplfp_se_alpha,
     "pp_estep": _recipe_pp_estep,
+    "pp_square_history": _recipe_pp_square_history,
     # v9 iter 40 — wire 22 v9_* drift entries
     "v9_run_analysis_for_neuron": _recipe_v9_run_analysis_for_neuron,
     "v9_compute_ks_stats_full": _recipe_v9_compute_ks_stats_full,

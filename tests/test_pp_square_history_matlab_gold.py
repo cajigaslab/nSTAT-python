@@ -1,0 +1,235 @@
+"""PPAF filters with a square history (nW == C) against MATLAB gold.
+
+Gold: ``tests/parity/fixtures/matlab_gold/pp_square_history.mat``, captured
+from MATLAB master by ``tools/parity/matlab/capture_pp_square_history.m``
+(rng(42) synthetic inputs; dx = 2 states, delta = 1 ms, non-symmetric gamma).
+
+MATLAB reorients the history coefficients only with
+``if(size(gamma,2)~=C) gamma=gamma'; end`` (PPAF.m PPDecodeFilterLinear and
+PP_fixedIntervalSmoother) and ``PPDecode_updateLinear`` / ``PP_EStep`` use
+gamma as given, so a square ``nW x C`` gamma is never transposed.  The Python
+``_normalize_gamma`` used to transpose any gamma shaped ``(C, nW)`` -- which a
+square gamma always is -- so ``PPDecodeFilterLinear`` (one transpose) and
+``PP_EStep`` (one transpose, inside ``PPDecode_updateLinear``) used the wrong
+window/cell pairing whenever nW == C.  ``PP_fixedIntervalSmoother`` transposed
+twice (once itself, once in ``PPDecode_updateLinear``) and so already matched.
+
+Cases:
+
+* ``pdfl_pois_sq`` / ``pdfl_binom_sq`` -- ``PPDecodeFilterLinear``, nW == C
+  (3 and 4); every step of x_p, W_p, x_u, W_u, on both the Numba and the
+  pure-Python path.
+* ``pfis_pois_sq`` -- ``PP_fixedIntervalSmoother`` (lags = 1), nW == C = 3.
+* ``pdfl_pois_ctrl`` -- ``PPDecodeFilterLinear`` control, nW = 2 != C = 3.
+* ``estep_pois_sq`` -- ``PP_EStep`` x_K / W_K, nW == C = 3.  (Its log-likelihood
+  is not captured: MATLAB ``PP_EStep``'s logll transposes a square history
+  slice, pending a MATLAB fix.)
+
+History isolation.  ``PPDecodeFilterLinear`` and ``PP_fixedIntervalSmoother``
+build the history tensor internally from ``windowTimes`` with the private
+``_compute_history_terms``, which assigns each spike to the window one bin
+later than MATLAB's ``History.computeHistory`` (Python counts lags in
+``[t_start, t_stop)``, MATLAB in ``(t_start, t_stop]``).  That is a separate,
+still-open divergence, so these tests substitute the MATLAB history tensor the
+MATLAB function consumed (saved per case as ``HkAll``) for the Python one;
+``test_window_times_history_matches_matlab`` pins the open divergence as a
+strict xfail.  ``PP_EStep`` takes ``HkAll`` as an argument, so it needs no
+substitution.
+
+Tolerance: measured on macOS arm64 / Accelerate vs MATLAB R2025b, the largest
+absolute errors are 1.1e-15 (x_p / x_u, Numba path; 5.6e-16 pure Python),
+1.9e-16 (W_p / W_u), 3.3e-16 (smoother) and 1.6e-15 / 1.9e-16 (PP_EStep
+x_K / W_K).  ``rtol=1e-10, atol=1e-12`` (as in ``test_pp_estep_matlab_gold.py``)
+is >= ~600x above the worst error.  Before the fix the square
+``PPDecodeFilterLinear`` / ``PP_EStep`` cases were off by 1.6e-1 to 3.4e-1.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import pytest
+from scipy.io import loadmat
+
+import nstat.decoding_algorithms as da
+from nstat.decoding_algorithms import DecodingAlgorithms
+from tests._optional import probe_optional
+
+FIXTURE = Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab_gold" / "pp_square_history.mat"
+RTOL = 1e-10
+ATOL = 1e-12
+
+# case -> (MATLAB function, fitType, N, nW, C)
+CASES = {
+    "pdfl_pois_sq": ("PPDecodeFilterLinear", "poisson", 150, 3, 3),
+    "pdfl_binom_sq": ("PPDecodeFilterLinear", "binomial", 150, 4, 4),
+    "pfis_pois_sq": ("PP_fixedIntervalSmoother", "poisson", 150, 3, 3),
+    "pdfl_pois_ctrl": ("PPDecodeFilterLinear", "poisson", 150, 2, 3),
+    "estep_pois_sq": ("PP_EStep", "poisson", 150, 3, 3),
+    "estep_pois_NeqC": ("PP_EStep", "poisson", 6, 2, 6),
+    "estep_binom_C1": ("PP_EStep", "binomial", 150, 2, 1),
+}
+FILTER_CASES = ["pdfl_pois_sq", "pdfl_binom_sq", "pdfl_pois_ctrl"]
+
+_NUMBA_PROBE = probe_optional("numba")
+_NUMBA_SKIP_REASON = "numba unavailable: " + _NUMBA_PROBE.reason.removeprefix("numba ")
+PATHS = [
+    pytest.param(True, marks=pytest.mark.skipif(not _NUMBA_PROBE.available, reason=_NUMBA_SKIP_REASON), id="numba"),
+    pytest.param(False, id="pure-python"),
+]
+
+
+@pytest.fixture(scope="module")
+def gold() -> dict:
+    return loadmat(FIXTURE, squeeze_me=False, struct_as_record=False)
+
+
+def _case(gold: dict, case: str) -> dict:
+    """Inputs / outputs of one case, keyed by the MATLAB field names."""
+    prefix = f"{case}_"
+    out = {}
+    for key, value in gold.items():
+        if not key.startswith(prefix):
+            continue
+        name = key[len(prefix):]
+        if name in ("fitType", "func"):
+            out[name] = str(np.asarray(value).reshape(-1)[0])
+        else:
+            out[name] = np.asarray(value, dtype=float)
+    out["delta"] = float(out["delta"].reshape(-1)[0])
+    out["windowTimes"] = out["windowTimes"].reshape(-1)
+    return out
+
+
+def _use_matlab_history(monkeypatch, cs: dict) -> None:
+    """Make the filters consume MATLAB's history tensor (see module docstring)."""
+    N, nW, C, _ = (int(v) for v in cs["sizes"].reshape(-1))
+    matlab_hk = cs["HkAll"].reshape(N, nW, C)
+
+    def _matlab_history_terms(dN, delta, windowTimes):
+        assert np.array_equal(np.asarray(dN, dtype=float), cs["dN"])
+        assert float(delta) == cs["delta"]
+        assert np.array_equal(np.asarray(windowTimes, dtype=float).reshape(-1), cs["windowTimes"])
+        return matlab_hk.copy()
+
+    monkeypatch.setattr(da, "_compute_history_terms", _matlab_history_terms)
+
+
+def _run_filter(cs: dict):
+    return DecodingAlgorithms.PPDecodeFilterLinear(
+        cs["A"], cs["Q"], cs["dN"], cs["mu"], cs["beta"], cs["fitType"], cs["delta"],
+        cs["gamma"], cs["windowTimes"], cs["x0"], cs["Pi0"],
+    )[:4]
+
+
+def _run_smoother(cs: dict):
+    return DecodingAlgorithms.PP_fixedIntervalSmoother(
+        cs["A"], cs["Q"], cs["dN"], int(cs["lags"].reshape(-1)[0]), cs["mu"], cs["beta"],
+        cs["fitType"], cs["delta"], cs["gamma"], cs["windowTimes"], cs["x0"], cs["Pi0"],
+    )
+
+
+def _smoother_columns(n_cols: int) -> np.ndarray:
+    """x_pLag / W_pLag columns compared: all but column 1 (see xfail below)."""
+    keep = np.ones(n_cols, dtype=bool)
+    keep[1] = False
+    return keep
+
+
+def _assert_matches(actual, expected, label: str) -> None:
+    actual = np.asarray(actual, dtype=float)
+    assert actual.shape == expected.shape, label
+    np.testing.assert_allclose(actual, expected, rtol=RTOL, atol=ATOL, err_msg=label)
+
+
+def test_fixture_cases_are_the_documented_ones(gold) -> None:
+    assert [str(np.asarray(c).reshape(-1)[0]) for c in gold["case_names"].reshape(-1)] == list(CASES)
+    for case, (func, fit_type, N, nW, C) in CASES.items():
+        cs = _case(gold, case)
+        assert cs["func"] == func and cs["fitType"] == fit_type
+        assert [int(v) for v in cs["sizes"].reshape(-1)] == [N, nW, C, 2]
+        assert cs["dN"].shape == (C, N) and cs["windowTimes"].size == nW + 1
+        assert cs["gamma"].shape == (nW, C) and np.all(cs["gamma"] < 0)
+        if nW == C:
+            # Non-symmetric, so a window/cell transpose cannot pass.
+            assert np.max(np.abs(cs["gamma"] - cs["gamma"].T)) > 0.1
+        # MATLAB stores N x nW x C, dropping the trailing singleton when C == 1.
+        assert cs["HkAll"].shape == ((N, nW, C) if C > 1 else (N, nW))
+        assert np.any(cs["HkAll"] != 0)
+
+
+@pytest.mark.parametrize("force_numba", PATHS)
+@pytest.mark.parametrize("case", FILTER_CASES)
+def test_pp_decode_filter_linear_matches_matlab_gold_at_every_step(gold, case, force_numba, monkeypatch) -> None:
+    if not force_numba:
+        monkeypatch.setattr("nstat.extras._numba_kernels._NUMBA_AVAILABLE", False)
+    cs = _case(gold, case)
+    _use_matlab_history(monkeypatch, cs)
+    for name, actual in zip(("x_p", "W_p", "x_u", "W_u"), _run_filter(cs)):
+        _assert_matches(actual, cs[name], f"{case} {name}")
+
+
+def test_pp_fixed_interval_smoother_matches_matlab_gold(gold, monkeypatch) -> None:
+    cs = _case(gold, "pfis_pois_sq")
+    _use_matlab_history(monkeypatch, cs)
+    x_pLag, W_pLag, x_uLag, W_uLag = _run_smoother(cs)
+    _assert_matches(x_uLag, cs["x_uLag"], "x_uLag")
+    _assert_matches(W_uLag, cs["W_uLag"], "W_uLag")
+    keep = _smoother_columns(cs["x_pLag"].shape[1])
+    assert np.shape(x_pLag) == cs["x_pLag"].shape and np.shape(W_pLag) == cs["W_pLag"].shape
+    _assert_matches(np.asarray(x_pLag)[:, keep], cs["x_pLag"][:, keep], "x_pLag")
+    _assert_matches(np.asarray(W_pLag)[:, :, keep], cs["W_pLag"][:, :, keep], "W_pLag")
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "Open, gamma-independent divergence: with lags == 1, MATLAB "
+        "PP_fixedIntervalSmoother sets x_pLag(:,2) = x_u(:,1) and "
+        "W_pLag(:,:,2) = W_u(:,:,1) on its first step (else-branch of "
+        "if(lags>1), reached before n > lags); the Python port skips that step "
+        "and leaves column 1 zero."
+    ),
+)
+def test_pp_fixed_interval_smoother_lag1_first_prediction_column(gold, monkeypatch) -> None:
+    cs = _case(gold, "pfis_pois_sq")
+    _use_matlab_history(monkeypatch, cs)
+    x_pLag, W_pLag, _, _ = _run_smoother(cs)
+    _assert_matches(np.asarray(x_pLag)[:, 1], cs["x_pLag"][:, 1], "x_pLag[:, 1]")
+    _assert_matches(np.asarray(W_pLag)[:, :, 1], cs["W_pLag"][:, :, 1], "W_pLag[:, :, 1]")
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "Open divergence: _compute_history_terms (used by PPDecodeFilterLinear, "
+        "PP_fixedIntervalSmoother and PPHybridFilterLinear to build the history "
+        "from windowTimes) counts lags in [t_start, t_stop), one bin earlier than "
+        "MATLAB History.computeHistory's (t_start, t_stop]."
+    ),
+)
+@pytest.mark.parametrize("case", [*FILTER_CASES, "pfis_pois_sq"])
+def test_window_times_history_matches_matlab(gold, case) -> None:
+    cs = _case(gold, case)
+    if cs["func"] == "PPDecodeFilterLinear":
+        for name, actual in zip(("x_p", "W_p", "x_u", "W_u"), _run_filter(cs)):
+            _assert_matches(actual, cs[name], f"{case} {name}")
+    else:
+        x_pLag, W_pLag, x_uLag, W_uLag = _run_smoother(cs)
+        _assert_matches(x_uLag, cs["x_uLag"], "x_uLag")
+        _assert_matches(W_uLag, cs["W_uLag"], "W_uLag")
+
+
+@pytest.mark.parametrize("case", ["estep_pois_sq"])
+def test_pp_estep_matches_matlab_gold_at_every_step(gold, case) -> None:
+    cs = _case(gold, case)
+    N, nW, C, dx = (int(v) for v in cs["sizes"].reshape(-1))
+    x_K, W_K, _, _ = DecodingAlgorithms.PP_EStep(
+        cs["A"], cs["Q"], cs["dN"], cs["mu"], cs["beta"], cs["fitType"], cs["gamma"],
+        cs["HkAll"], cs["x0"], cs["Px0"],
+    )
+    assert cs["x_K"].shape == (dx, N) and cs["W_K"].shape == (dx, dx, N)
+    _assert_matches(x_K, cs["x_K"], f"{case} x_K")
+    _assert_matches(W_K, cs["W_K"], f"{case} W_K")

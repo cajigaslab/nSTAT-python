@@ -222,6 +222,47 @@ entries:
     output_field: c4_x_K
     tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
 
+  # 16. PPAF filters with a square history (nW == C: gamma is never
+  # transposed) plus an nW != C control.  Captured by
+  # tools/parity/matlab/capture_pp_square_history.m.  Each entry compares the
+  # concatenation of every output at every step of one case; the two filters
+  # run on the MATLAB history tensor (see the recipe docstring).  Measured
+  # max abs error <= 1.6e-15, so rtol 1e-10 / atol 1e-12 is a >=600x margin.
+  - name: PPDecodeFilterLinear_poisson_square_history
+    recipe: pp_square_history
+    args: { case: pdfl_pois_sq }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_pois_sq_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPDecodeFilterLinear_binomial_square_history
+    recipe: pp_square_history
+    args: { case: pdfl_binom_sq }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_binom_sq_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_fixedIntervalSmoother_poisson_square_history
+    recipe: pp_square_history
+    args: { case: pfis_pois_sq }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pfis_pois_sq_x_uLag
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPDecodeFilterLinear_poisson_history_control
+    recipe: pp_square_history
+    args: { case: pdfl_pois_ctrl }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_pois_ctrl_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_poisson_square_history
+    recipe: pp_square_history
+    args: { case: estep_pois_sq }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: estep_pois_sq_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
   # v9 iter 40 — recipe-backed entries for the 22 v9_* captures.
   # Each entry's recipe is defined in tools/parity/numerical_drift.py.
   # Tolerances per-entry: tightened where the Python port is bit-equivalent,

@@ -232,7 +232,14 @@ def _normalize_gamma(gamma, num_windows: int, num_cells: int) -> np.ndarray:
         raise ValueError("gamma must align with windowTimes or number of cells")
     if arr.ndim != 2:
         raise ValueError("gamma must be scalar, vector, or 2D array")
-    if arr.shape == (num_cells, num_windows):
+    # MATLAB reorients gamma only with ``if(size(gamma,2)~=C) gamma=gamma'; end``
+    # (PPAF.PPDecodeFilterLinear, PPAF.PP_fixedIntervalSmoother,
+    # PPLFP.PPLFP_fixedIntervalSmoother); PPAF.PPDecode_updateLinear,
+    # PointProcessEM.PP_EStep, PPLFP.PPLFP_DecodeLinear and
+    # PPHF.PPHybridFilterLinear never transpose it.  So a gamma that is already
+    # numWindows x C -- including a square one (numWindows == C) -- is kept as
+    # is; only a C x numWindows gamma is transposed.
+    if arr.shape != (num_windows, num_cells) and arr.shape == (num_cells, num_windows):
         arr = arr.T
     if arr.shape != (num_windows, num_cells):
         raise ValueError("gamma must be numWindows x C after normalization")
