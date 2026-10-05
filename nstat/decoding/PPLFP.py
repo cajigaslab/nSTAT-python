@@ -37,6 +37,8 @@ import scipy.linalg  # noqa: F401  (used by ported method bodies)
 from nstat.decoding_algorithms import (
     _as_observation_matrix,
     _as_state_matrix,
+    _check_mstep_method,
+    _em_glm_mstep,
     _expand_shared_se_gamma,
     _is_empty_value,
     _mc_state_draws,
@@ -1803,7 +1805,8 @@ class PPLFP:
           for numerical parity.
         - The optional Ikeda-acceleration branch is engaged when
           ``PPLFP_EM_Constraints['EnableIkeda']`` is truthy.
-        - ``MstepMethod`` is forwarded verbatim to :meth:`PPLFP_MStep`.
+        - ``MstepMethod`` and ``delta`` are forwarded to :meth:`PPLFP_MStep`
+          (``delta`` sets the GLM M-step's time base, MATLAB R4c).
         - The MATLAB convergence test uses elementwise sqrt(Q)/sqrt(R)
           which assumes the scaled (whitened) system; we preserve that.
         """
@@ -2018,6 +2021,7 @@ class PPLFP:
                 HkAll,
                 PPLFP_EM_Constraints,
                 MstepMethod,
+                delta,
             )
 
             # ---- Optional Ikeda acceleration --------------------------
@@ -2083,6 +2087,7 @@ class PPLFP:
                     HkAll,
                     PPLFP_EM_Constraints,
                     MstepMethod,
+                    delta,
                 )
 
                 Ahat_buf[si_p1] = 2 * Ahat_buf[si_p1] - AhatNew
@@ -2746,19 +2751,26 @@ class PPLFP:
         HkAll,
         PPLFP_EM_Constraints=None,
         MstepMethod=None,
+        delta=0.001,
     ):
         """PPLFP EM maximisation step.
 
-        Python port of MATLAB ``PPLFP_MStep`` (PPLFP.m lines 2207-3093).
+        Python port of MATLAB ``PPLFP_MStep`` (repaired, fix/pp-em @ 8dbd0e4).
         Closed-form updates for state-space params ``(A, Q, C, R, alpha,
         x0, Px0)`` from sufficient statistics in ``ExpectationSums``, then
-        CIF param updates ``(mu, beta, gamma)`` via either a GLM fit
-        (``MstepMethod='GLM'``) or Monte-Carlo Newton-Raphson
-        (``MstepMethod='NewtonRaphson'``, the default since the repaired
-        MATLAB, B8; it was 'GLM' -- see PPLFP_EM).
+        CIF param updates ``(mu, beta, gamma)`` via either a GLM fit on the
+        smoothed means (``MstepMethod='GLM'``, see
+        :func:`nstat.decoding_algorithms._em_glm_mstep`) or Monte-Carlo
+        Newton-Raphson (``MstepMethod='NewtonRaphson'``, the default since
+        the repaired MATLAB, B8; it was 'GLM' -- see PPLFP_EM).  Any other
+        ``MstepMethod`` raises ``ValueError`` (MATLAB runs Newton-Raphson for
+        it).  ``delta`` (seconds per bin, MATLAB's optional 16th input,
+        default 0.001, R4c) is the GLM M-step's time base; ``PPLFP_EM`` passes
+        its ``delta``.
         """
-        if MstepMethod is None:
-            MstepMethod = "NewtonRaphson"
+        MstepMethod = _check_mstep_method(MstepMethod)
+        if delta is None:
+            delta = 0.001
         if PPLFP_EM_Constraints is None:
             PPLFP_EM_Constraints = PPLFP.PPLFP_EMCreateConstraints()
 
@@ -2873,86 +2885,13 @@ class PPLFP:
             algorithm = "BNLRCG"
 
         if MstepMethod == "GLM":
-            try:
-                from nstat.analysis import Analysis
-                from nstat.fit import FitResSummary
-                from nstat.core import Covariate
-                from nstat.trial import (
-                    CovariateCollection as CovColl,
-                    SpikeTrainCollection as nstColl,
-                    Trial,
-                )
-                from nstat._spike_train_impl import nspikeTrain
-                from nstat._trial_config_impl import (
-                    TrialConfig,
-                    ConfigCollection as ConfigColl,
-                )
-            except Exception as exc:  # pragma: no cover
-                raise RuntimeError(
-                    "PPLFP_MStep(GLM) requires Analysis/Trial machinery: "
-                    f"{exc}"
-                )
-
-            time = np.arange(x_K.shape[1]) * 0.001
-            labels = [f"v{i + 1}" for i in range(dx)]
-            labels2 = ["vel"] + labels
-            vel = Covariate(time, x_K.T, "vel", "time", "s", "m/s", labels)
-            baseline = Covariate(
-                time, np.ones((len(time), 1)),
-                "Baseline", "time", "s", "", ["constant"],
-            )
-            nst = []
-            for i in range(numCells):
-                spikeTimes = time[np.where(dN[i, :] == 1)[0]]
-                nst.append(nspikeTrain(spikeTimes))
-            nspikeColl = nstColl(nst)
-            cc = CovColl([vel, baseline])
-            trial = Trial(nspikeColl, cc)
-            sampleRate = 1000
-
-            gamma_is_zero = (
-                gammahat_arr.size == 0
-                or (
-                    gammahat_arr.size == 1
-                    and float(gammahat_arr.ravel()[0]) == 0.0
-                )
-            )
-
-            if gamma_is_zero:
-                c0 = TrialConfig(
-                    [["Baseline", "constant"], labels2],
-                    sampleRate, None, None,
-                )
-            else:
-                c0 = TrialConfig(
-                    [["Baseline", "constant"], labels2],
-                    sampleRate, windowTimes, None,
-                )
-            try:
-                c0.setName("Baseline")
-            except Exception:
-                pass
-            cfgColl = ConfigColl([c0])
-
-            results = Analysis.RunAnalysisForAllNeurons(
-                trial, cfgColl, 0, algorithm,
-            )
-            temp = FitResSummary(results)
-            tempCoeffs = np.squeeze(np.asarray(temp.getCoeffs()))
-            if tempCoeffs.ndim == 1:
-                tempCoeffs = tempCoeffs.reshape(-1, 1)
-
-            betahat_new[:dx, :] = tempCoeffs[1: dx + 1, :]
-            muhat_new = tempCoeffs[0, :].reshape(-1)
-            if not gamma_is_zero:
-                histTemp = np.squeeze(np.asarray(temp.getHistCoeffs()))
-                nHist = len(windowTimes) - 1
-                histTemp = np.reshape(
-                    histTemp, (nHist, numCells), order="F",
-                )
-                histTemp = np.where(np.isnan(histTemp), 0.0, histTemp)
-                gammahat_new = histTemp
-
+            # MATLAB's GLM M-step (repaired: the getCoeffs() tuple is unpacked
+            # -- it crashed here -- and coefficients are mapped BY LABEL, F3 /
+            # R4a / F1, with keep-previous for unestimable ones; delta time
+            # base, R4c; scoped warnings).  The former positional read took
+            # neurons as labels and v1 as mu.  See _em_glm_mstep.
+            muhat_new, betahat_new, gammahat_new = _em_glm_mstep(
+                dN, x_K, fitType, muhat, betahat, gammahat_arr, windowTimes, delta)
             return (
                 Ahat, Qhat, Chat, Rhat, alphahat,
                 muhat_new, betahat_new, gammahat_new, x0hat, Px0hat,
@@ -2980,10 +2919,11 @@ class PPLFP:
         HkAll_arr = np.asarray(HkAll, dtype=float)
 
         def _Hk_for_cell(c):
-            Hk = HkAll_arr[:, :, c]
-            if Hk.shape[0] == numCells:
-                Hk = Hk.T
-            return Hk
+            # MATLAB R4d (fix/pp-em 605d9bc): no re-orientation.  HkAll(:,:,c)
+            # is (numTimeSteps x numWindows) by construction; the old
+            # `if size(Hk,1)==numCells, Hk = Hk'` fired when numTimeSteps ==
+            # numCells and then indexed Hk(k,:) on the transpose.
+            return HkAll_arr[:, :, c]
 
         def _gammaC(gamma_src, c):
             if np.size(gamma_src) == 1:

@@ -431,6 +431,136 @@ def _expand_shared_se_gamma(gammahat, windowTimes, num_cells: int):
     return g
 
 
+_MSTEP_METHODS = ("GLM", "NewtonRaphson")
+
+
+def _check_mstep_method(MstepMethod):
+    """Resolve ``MstepMethod`` (``None`` -> ``'NewtonRaphson'``) and reject unknown values.
+
+    MATLAB runs the Newton-Raphson M-step for any value other than ``'GLM'``;
+    this port raises instead (a misspelt ``'GLM'`` silently ran Newton-Raphson).
+    """
+    if MstepMethod is None or (isinstance(MstepMethod, str) and MstepMethod == ""):
+        return "NewtonRaphson"
+    if not isinstance(MstepMethod, str) or MstepMethod not in _MSTEP_METHODS:
+        raise ValueError(f"MstepMethod must be 'GLM' or 'NewtonRaphson' (got {MstepMethod!r})")
+    return MstepMethod
+
+
+def _em_glm_mstep(dN, x_K, fitType, muhat, betahat, gammahat, windowTimes, delta):
+    """GLM M-step for (mu, beta, gamma) of ``PP_MStep`` / ``PPLFP_MStep``.
+
+    Port of the repaired MATLAB GLM block (``PointProcessEM.PP_MStep`` /
+    ``PPLFP.PPLFP_MStep`` with ``MstepMethod = 'GLM'``, fix/pp-em @ 8dbd0e4;
+    the two MATLAB blocks are identical).  It regresses each cell's spikes on
+    the smoothed means ``x_K`` (a plug-in fit that ignores ``W_K``) through
+    the toolbox pipeline: ``Covariate`` -> ``Trial`` -> ``TrialConfig`` ->
+    ``Analysis.RunAnalysisForAllNeurons`` (``'GLM'`` for poisson,
+    ``'BNLRCG'`` otherwise) -> ``FitResSummary``.
+
+    * Time base (C6 / R4c): ``time = (0:K-1)*delta``, spike trains with
+      bin width ``delta`` and the Trial sample rate ``1/delta``.
+    * History: self-history windows ``windowTimes`` unless gamma is all zero
+      (MATLAB ``if(gammahat==0)``: no history term, gamma returned as passed).
+    * Coefficients are read BY LABEL (F3: ``'constant'`` -> mu, ``'v<i>'`` ->
+      beta row i; R4a: the window labels of the same ``History`` object the
+      Trial uses -> gamma rows).  A coefficient that MATLAB's
+      ``FitResSummary`` reports as NaN keeps its previous value: MATLAB's
+      ``computePlotParams`` drops every coefficient whose standard error is
+      not ``< 100`` (not identifiable, e.g. a history window separated by a
+      refractory period), and so does this port -- the Python
+      ``FitResSummary.getCoeffs`` returns the raw coefficients with their
+      standard errors, so the filter is applied here.  A label absent from
+      the fit (F1: no window estimable at all) also keeps the previous value.
+    * Warnings raised during the fit are silenced inside a scoped
+      ``warnings.catch_warnings()`` block (MATLAB ``warning('OFF')`` with
+      the caller's state restored, C9); no global state changes.
+
+    Returns ``(muhat_new, betahat_new, gammahat_new)``.
+    """
+    from .analysis import Analysis
+    from .core import Covariate
+    from .fit import FitResSummary
+    from .history import History
+    from ._spike_train_impl import nspikeTrain as _nst
+    from ._trial_config_impl import ConfigCollection, TrialConfig
+    from .trial import CovariateCollection, SpikeTrainCollection, Trial
+
+    dN = np.atleast_2d(np.asarray(dN, dtype=float))
+    x_K = np.atleast_2d(np.asarray(x_K, dtype=float))
+    dx, K = x_K.shape
+    numCells = dN.shape[0]
+    delta = 0.001 if delta is None else float(delta)
+    muhat_new = np.asarray(muhat, dtype=float).reshape(-1).copy()
+    betahat_new = np.atleast_2d(np.asarray(betahat, dtype=float)).copy()
+    gammahat_in = np.asarray(gammahat, dtype=float)
+    # MATLAB if(gammahat==0): true when every entry is 0 (false for an empty gamma).
+    gamma_is_zero = gammahat_in.size > 0 and bool(np.all(gammahat_in == 0))
+    wt = None if _is_empty_value(windowTimes) else np.asarray(windowTimes, dtype=float).reshape(-1)
+
+    time = np.arange(K) * delta  # MATLAB (0:K-1)*delta
+    labels = [f"v{i + 1}" for i in range(dx)]
+    labels2 = ["vel", *labels]
+    vel = Covariate(time, x_K.T, "vel", "time", "s", "m/s", labels)
+    baseline = Covariate(time, np.ones((K, 1)), "Baseline", "time", "s", "", ["constant"])
+    nst = [_nst(time[np.flatnonzero(dN[i, :] == 1)], "", binwidth=delta) for i in range(numCells)]
+    trial = Trial(SpikeTrainCollection(nst), CovariateCollection([vel, baseline]))
+    sampleRate = 1.0 / delta
+    selfHist = None if gamma_is_zero else wt
+    config = TrialConfig([["Baseline", "constant"], labels2], sampleRate, selfHist, None)
+    config.setName("Baseline")
+    algorithm = "GLM" if fitType == "poisson" else "BNLRCG"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        results = Analysis.RunAnalysisForAllNeurons(trial, ConfigCollection([config]), 0, algorithm)
+    summary = FitResSummary(results)
+
+    coeffMat, coeffLabels, seMat = summary.getCoeffs()  # numCells x numLabels
+    coeffMat = np.asarray(coeffMat, dtype=float).reshape(numCells, -1)
+    seMat = np.asarray(seMat, dtype=float).reshape(numCells, -1)
+    # MATLAB FitResSummary keeps a coefficient only when its se < 100 (NaN se
+    # fails the test too); everything else is NaN, i.e. "keep previous".
+    est = np.where(seMat < 100, coeffMat, np.nan)
+    coeffLabels = list(coeffLabels)
+
+    def _fitted(label):
+        return est[:, coeffLabels.index(label)] if label in coeffLabels else None
+
+    v = _fitted("constant")
+    if v is not None:
+        keep = ~np.isnan(v)
+        muhat_new[keep] = v[keep]
+    for i, label in enumerate(labels):
+        v = _fitted(label)
+        if v is not None:
+            keep = ~np.isnan(v)
+            betahat_new[i, keep] = v[keep]
+
+    if gamma_is_zero:
+        return muhat_new, betahat_new, gammahat_in.copy()
+    if wt is None or wt.size < 2:
+        return muhat_new, betahat_new, gammahat_in.copy()
+    nWin = wt.size - 1
+    winLabels = list(History(wt, float(time.min()), float(time.max())).computeHistory(nst[0]).getCov(0).dataLabels)
+    gPrev = gammahat_in
+    if gPrev.ndim == 1:  # NumPy 1-D: a row when its length is numCells, else the shared column
+        gPrev = gPrev.reshape(1, -1) if gPrev.size == numCells else gPrev.reshape(-1, 1)
+    if gPrev.size == 1:  # MATLAB isscalar(gPrev): gPrev*ones(nWin, numCells)
+        histTemp = float(gPrev.reshape(-1)[0]) * np.ones((nWin, numCells))
+    elif gPrev.shape[1] == 1:  # shared column: repmat(gPrev, 1, numCells)
+        histTemp = np.tile(gPrev, (1, numCells))
+    else:
+        histTemp = np.array(gPrev, dtype=float, copy=True)
+    for w in range(nWin):
+        v = _fitted(winLabels[w])
+        if v is not None:
+            keep = ~np.isnan(v)
+            histTemp[w, keep] = v[keep]
+    if gammahat_in.ndim == 0 and histTemp.size == 1:
+        histTemp = histTemp.reshape(())  # a 0-d coefficient comes back 0-d, as in the Newton-Raphson branch
+    return muhat_new, betahat_new, histTemp
+
+
 def _mc_state_draws(m, W, M, normal, *, non_pd="eig_floor"):
     """``M`` Monte Carlo draws from ``N(m, W)``, returned as a ``dx x M`` array.
 
@@ -6026,10 +6156,11 @@ class DecodingAlgorithms:
         estimated: that estimator collapses Px0 and stops EM after ~2
         iterations) and ``MstepMethod='NewtonRaphson'`` -- the Monte-Carlo
         Newton-Raphson M-step maximises the expected complete-data
-        log-likelihood over the smoothed state posterior.  (MATLAB's
-        alternative 'GLM' M-step is a plug-in regression on the smoothed means
-        that ignores W_K, inflates beta and drifts; this port's PP_MStep runs
-        the Newton-Raphson step for any MstepMethod.)  With ``gamma`` given and
+        log-likelihood over the smoothed state posterior.  (The alternative
+        'GLM' M-step is a plug-in regression on the smoothed means that
+        ignores W_K, inflates beta and drifts; it is still available by
+        passing it explicitly.  Any other MstepMethod raises ValueError.)
+        With ``gamma`` given and
         ``windowTimes`` empty there is one history window per coefficient,
         ``windowTimes = 0:delta:size(gamma,1)*delta``, and a nonzero shared
         ``numWindows x 1`` gamma is expanded to every cell.  History is built
@@ -6050,7 +6181,8 @@ class DecodingAlgorithms:
         x0 : (dx,) initial state (default zeros)
         Px0 : (dx, dx) initial state covariance
         PPEM_Constraints : dict from PP_EMCreateConstraints
-        MstepMethod : 'NewtonRaphson' or 'GLM'
+        MstepMethod : 'NewtonRaphson' or 'GLM' (passed to PP_MStep with
+            ``delta``)
 
         Returns
         -------
@@ -6190,7 +6322,7 @@ class DecodingAlgorithms:
             Anew, Qnew, munew, bnew, gnew, x0new, Px0new = DecodingAlgorithms.PP_MStep(
                 dN, x_K_cur, W_K_cur, x0_buf[si], Px0_buf[si], ExpSums,
                 fitType, mu_buf[si], beta_buf[si], gamma_buf[si],
-                windowTimes, HkAll, PPEM_Constraints, MstepMethod
+                windowTimes, HkAll, PPEM_Constraints, MstepMethod, delta
             )
             A_buf[si_p1] = Anew
             Q_buf[si_p1] = Qnew
@@ -6585,9 +6717,16 @@ class DecodingAlgorithms:
     def PP_MStep(
         dN, x_K, W_K, x0, Px0, ExpectationSums, fitType,
         muhat, betahat, gammahat, windowTimes, HkAll,
-        PPEM_Constraints=None, MstepMethod="NewtonRaphson",
+        PPEM_Constraints=None, MstepMethod="NewtonRaphson", delta=0.001,
     ):
         """M-step for PP EM: update all model parameters.
+
+        Matlab: ``PointProcessEM.PP_MStep`` (repaired, fix/pp-em @ 8dbd0e4).
+        A, Q, x0 and Px0 have closed-form updates; (mu, beta, gamma) are
+        updated by the Monte-Carlo Newton-Raphson step (``MstepMethod =
+        'NewtonRaphson'``, the default) or by a GLM fit on the smoothed means
+        (``'GLM'``).  Any other ``MstepMethod`` raises ``ValueError`` (MATLAB
+        runs Newton-Raphson for it).
 
         Parameters
         ----------
@@ -6606,14 +6745,20 @@ class DecodingAlgorithms:
         PPEM_Constraints : dict from PP_EMCreateConstraints (default
             ``PP_EMCreateConstraints()``: x0 / Px0 not estimated)
         MstepMethod : 'NewtonRaphson' (default, as in the repaired MATLAB) or
-            'GLM'.  This port runs the Monte-Carlo Newton-Raphson step for
-            either value (MATLAB's plug-in GLM M-step on the smoothed means is
-            not ported here).
+            'GLM'.  'GLM' regresses each cell's spikes on the smoothed means
+            ``x_K`` (a plug-in fit that ignores ``W_K``; see
+            :func:`_em_glm_mstep`), as MATLAB's GLM M-step does.
+        delta : float, default 0.001
+            Seconds per bin (MATLAB's optional 15th input): the GLM M-step's
+            time base.  ``PP_EM`` passes its ``delta``.
 
         Returns
         -------
         Ahat, Qhat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
         """
+        MstepMethod = _check_mstep_method(MstepMethod)
+        if delta is None:
+            delta = 0.001
         if PPEM_Constraints is None:
             PPEM_Constraints = DecodingAlgorithms.PP_EMCreateConstraints()
 
@@ -6683,6 +6828,14 @@ class DecodingAlgorithms:
         betahat_new = betahat.copy()
         gammahat_new = gammahat.copy() if gammahat.ndim > 0 else np.atleast_1d(gammahat).copy()
         muhat_new = muhat.copy()
+
+        if MstepMethod == "GLM":
+            # MATLAB's GLM M-step (repaired: written to the returned variables,
+            # coefficients mapped by label, keep-previous for unestimable ones,
+            # delta time base, scoped warnings) -- see _em_glm_mstep.
+            muhat_new, betahat_new, gammahat_new = _em_glm_mstep(
+                dN, x_K, fitType, muhat, betahat, gammahat, windowTimes, delta)
+            return Ahat, Qhat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
 
         # --- Newton-Raphson for beta, mu, gamma ---
         McExp = 50
@@ -7193,7 +7346,8 @@ class DecodingAlgorithms:
     @staticmethod
     def mPPCO_MStep(dN, y, x_K, W_K, x0, Px0, ExpectationSums, fitType='poisson',
                     muhat=None, betahat=None, gammahat=None, windowTimes=None,
-                    HkAll=None, mPPCOEM_Constraints=None, MstepMethod='NewtonRaphson'):
+                    HkAll=None, mPPCOEM_Constraints=None, MstepMethod='NewtonRaphson',
+                    delta=0.001):
         """[DEPRECATED] Alias of :meth:`PPLFP_MStep` (the EM maximisation step).
 
         Matlab: ``DecodingAlgorithms.mPPCO_MStep`` is a deprecation shim that
@@ -7213,7 +7367,10 @@ class DecodingAlgorithms:
         all six: omitting them is unsupported (MATLAB raises, here
         ``PPLFP_MStep`` receives ``None``). ``MstepMethod`` defaults to
         ``'NewtonRaphson'``, ``PPLFP_MStep``'s default since the repaired MATLAB
-        (B8), which the MATLAB alias inherits through ``varargin``.
+        (B8), which the MATLAB alias inherits through ``varargin``.  The
+        trailing ``delta`` (default 0.001) is ``PPLFP_MStep``'s optional 16th
+        input of the repaired MATLAB (R4c), which the MATLAB alias also
+        forwards through ``varargin``.
 
         Use :meth:`PPLFP_MStep` (or ``nstat.decoding.PPLFP.PPLFP_MStep``)
         instead.
@@ -7221,7 +7378,7 @@ class DecodingAlgorithms:
         _warn_mppco_deprecated("mPPCO_MStep", "PPLFP_MStep")
         return DecodingAlgorithms.PPLFP_MStep(
             dN, y, x_K, W_K, x0, Px0, ExpectationSums, fitType, muhat, betahat,
-            gammahat, windowTimes, HkAll, mPPCOEM_Constraints, MstepMethod,
+            gammahat, windowTimes, HkAll, mPPCOEM_Constraints, MstepMethod, delta,
         )
 
     # PPLFP family relocated above (between KF_MStep and PP_EMCreateConstraints)

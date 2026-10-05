@@ -665,18 +665,18 @@ def _em_problem(C=4, N=120, seed=21, delta=0.001):
     return dict(A=A, Q=Q, mu=mu, beta=beta, dN=dN, y=y, delta=delta, C=C)
 
 
-def _run_em(family, P, gamma, windowTimes, seed=5):
+def _run_em(family, P, gamma, windowTimes, seed=5, method="NewtonRaphson"):
     from nstat.extras.matlab_rng import seeded_global_rng
 
     with seeded_global_rng(seed):
         if family == "PP":
             cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0, 0, 20)
             return DecodingAlgorithms.PP_EM(P["dN"], P["A"], P["Q"], P["mu"], P["beta"], "poisson", P["delta"],
-                                            gamma, windowTimes, None, None, cons, "NewtonRaphson")
+                                            gamma, windowTimes, None, None, cons, method)
         cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, 20, 0)
         return PPLFP.PPLFP_EM(P["y"], P["dN"], P["A"], P["Q"], np.array([[1.0, 0.5]]), 0.01 * np.eye(1),
                               np.zeros(1), P["mu"], P["beta"], "poisson", P["delta"], gamma, windowTimes, None, None,
-                              cons, "NewtonRaphson")
+                              cons, method)
 
 
 def _assert_outputs_identical(a, b):
@@ -724,18 +724,36 @@ def test_zero_gamma_with_explicit_windows_is_not_expanded(family) -> None:
     assert np.asarray(gammahat).size == 1 and float(np.asarray(gammahat).reshape(-1)[0]) == 0.0
 
 
-def test_pp_em_time_base_equivalence() -> None:
+@pytest.mark.parametrize("method", ["NewtonRaphson", "GLM"])
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_em_time_base_equivalence(family, method) -> None:
     # The same spike matrix at delta = 2 ms with windows [0 4 10 20] ms is the
     # same per-bin model as at 1 ms with [0 2 5 10] ms (window w covers the
-    # same bins), so every PP_EM output must agree (MATLAB testTimeBaseEquivalence).
-    # The history used to be built on a 1 kHz grid regardless of delta: at
-    # 2 ms PP_EM raised "HkAll must align ..." in its first E-step.
+    # same bins), so every EM output must agree (MATLAB testTimeBaseEquivalence
+    # PP / PPLFP, testGLMTimeBaseEquivalencePPLFP).  PP_EM's history used to
+    # be built on a 1 kHz grid regardless of delta (at 2 ms it raised "HkAll
+    # must align ..."); PPLFP_EM's was already on the delta grid (MATLAB R4b;
+    # a pin); the GLM M-steps built their Trial on a hard-coded 1 ms grid
+    # (MATLAB C6 / R4c) -- PP_MStep had no GLM branch, PPLFP_MStep's crashed.
     P1 = _em_problem(C=3, delta=0.001)
     P2 = dict(P1, delta=0.002)
     wt1, wt2 = [0.0, 0.002, 0.005, 0.010], [0.0, 0.004, 0.010, 0.020]
     assert np.array_equal(_compute_history_terms(P1["dN"], 0.001, wt1), _compute_history_terms(P1["dN"], 0.002, wt2))
     gamma = np.array([[-0.8, -0.6, -0.7], [-0.4, -0.3, -0.5], [-0.2, -0.1, -0.15]])
-    _assert_outputs_identical(_run_em("PP", P1, gamma, wt1), _run_em("PP", P2, gamma, wt2))
+    a = _run_em(family, P1, gamma, wt1, method=method)
+    b = _run_em(family, P2, gamma, wt2, method=method)
+    if method == "NewtonRaphson":
+        _assert_outputs_identical(a, b)
+    else:  # the GLM fits of the two Trials agree to round-off
+        for i, (u, v) in enumerate(zip(a, b)):
+            if isinstance(u, dict):
+                assert sorted(u) == sorted(v), i
+                for key in u:
+                    np.testing.assert_allclose(np.asarray(u[key]), np.asarray(v[key]), rtol=1e-8, atol=1e-12,
+                                               err_msg=f"{i}.{key}")
+            else:
+                np.testing.assert_allclose(np.asarray(u, dtype=float), np.asarray(v, dtype=float), rtol=1e-8,
+                                           atol=1e-12, err_msg=str(i))
 
 
 # ---------------------------------------------------------------------------
@@ -1394,3 +1412,213 @@ def test_pp_em_standard_errors_honour_the_constraints(cfg, monkeypatch) -> None:
     else:
         assert "A" not in SE and "A" not in Pvals
         np.testing.assert_allclose(Ahat, A, rtol=1e-14, atol=0)  # A is held (scale / unscale round-off only)
+
+
+# ---------------------------------------------------------------------------
+# GLM M-step (MstepMethod = 'GLM'; MATLAB PP_MStep / PPLFP_MStep, repaired
+# through fix/pp-em @ 8dbd0e4: written to the returned variables, mu / beta /
+# gamma mapped BY LABEL (F3, R4a), keep-previous for unestimable coefficients
+# (FitResSummary se >= 100) and for an empty label list (F1), delta time base
+# (C6 / R4c)).  PP_MStep had no GLM branch (it ran Newton-Raphson for any
+# MstepMethod); PPLFP_MStep's crashed on the getCoeffs() tuple.
+# ---------------------------------------------------------------------------
+
+
+def _glm_problem(C=3, dx=2, K=1500, seed=11, refractory=False, delta=0.001, wt=(0.0, 0.002, 0.005, 0.010)):
+    """Smoothed means x_K and spikes from (mu, beta) (+ an optional hard 1-bin refractory period)."""
+    rng = np.random.default_rng(seed)
+    x = np.zeros((dx, K))
+    prev = np.zeros(dx)
+    for k in range(K):
+        prev = 0.98 * prev + 0.1 * rng.standard_normal(dx)
+        x[:, k] = prev
+    mu = np.log(np.linspace(40, 60, C) * delta)
+    beta = rng.uniform(-1.0, 1.0, (dx, C))
+    dN = np.zeros((C, K))
+    for c in range(C):
+        p = np.minimum(np.exp(mu[c] + beta[:, c] @ x), 1.0)
+        u = rng.random(K)
+        for k in range(K):
+            if u[k] < p[k] and not (refractory and k > 0 and dN[c, k - 1] == 1):
+                dN[c, k] = 1.0
+    wt = np.asarray(wt, dtype=float)
+    HkAll = _compute_history_terms(dN, delta, wt)
+    W_K = np.tile((0.01 * np.eye(dx))[:, :, None], (1, 1, K))
+    ES = dict(Sxkm1xkm1=x @ x.T, Sxkxkm1=x[:, 1:] @ x[:, :-1].T, Sxkm1xk=x[:, :-1] @ x[:, 1:].T, Sxkxk=x @ x.T,
+              sumXkTerms=0.01 * K * np.eye(dx), Sxkyk=x @ x[:1].T, sumYkTerms=0.1 * K * np.eye(1))
+    return dict(x=x, dN=dN, mu=mu, beta=beta, wt=wt, HkAll=HkAll, W_K=W_K, ES=ES, dx=dx, C=C, K=K, y=x[:1].copy(),
+                delta=delta)
+
+
+def _glm_mstep(family, P, mu, beta, gamma, wt="P", fit="poisson", delta=None):
+    """One GLM M-step; returns (mu, beta, gamma)."""
+    wt = P["wt"] if isinstance(wt, str) else wt
+    delta = P["delta"] if delta is None else delta
+    dx = P["dx"]
+    if family == "PP":
+        cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0)
+        out = DecodingAlgorithms.PP_MStep(P["dN"], P["x"], P["W_K"], np.zeros(dx), 1e-9 * np.eye(dx), P["ES"], fit,
+                                          mu, beta, gamma, wt, P["HkAll"], cons, "GLM", delta)
+        return out[2], out[3], out[4]
+    cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, 50, 0)
+    out = PPLFP.PPLFP_MStep(P["dN"], P["y"], P["x"], P["W_K"], np.zeros(dx), 1e-9 * np.eye(dx), P["ES"], fit, mu,
+                            beta, gamma, wt, P["HkAll"], cons, "GLM", delta)
+    return out[5], out[6], out[7]
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_mstep_rejects_an_unknown_mstep_method(family) -> None:
+    # MATLAB runs Newton-Raphson for any MstepMethod other than 'GLM'; the
+    # port used to ignore it in PP_MStep (no GLM branch at all).  Unknown
+    # values now raise, naming the two allowed methods.
+    P = _glm_problem(K=50)
+    for bad in ("NoSuchMethod", "glm"):
+        with pytest.raises(ValueError, match="'GLM' or 'NewtonRaphson'"):
+            if family == "PP":
+                DecodingAlgorithms.PP_MStep(P["dN"], P["x"], P["W_K"], np.zeros(2), 1e-9 * np.eye(2), P["ES"],
+                                            "poisson", P["mu"], P["beta"], np.array(0.0), None, P["HkAll"], None, bad)
+            else:
+                PPLFP.PPLFP_MStep(P["dN"], P["y"], P["x"], P["W_K"], np.zeros(2), 1e-9 * np.eye(2), P["ES"],
+                                  "poisson", P["mu"], P["beta"], np.array(0.0), None, P["HkAll"], None, bad)
+
+
+def _poisson_mle(Z, d):
+    return _cell_mle(Z, d, "poisson", np.zeros(Z.shape[1]))
+
+
+@pytest.mark.parametrize("case", ["dx10_C2", "dx2_C1", "dropped_v2"])
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_glm_mstep_maps_coefficients_by_label(family, case) -> None:
+    # MATLAB F3 (testGLMMStepMapsCoefficientsByLabel): one GLM M-step (no
+    # history) must equal the per-cell Poisson GLM of dN on [1, x_K'] (MATLAB:
+    # glmfit), mu from 'constant' and beta(i, :) from 'v<i>' -- for dx = 10
+    # ('v10' must not land in row 2), for a single cell, and when 'v2' is not
+    # identifiable for any cell (x_K row 2 ~ 1e-5 noise, se >= 100), where
+    # beta row 2 keeps its previous value.
+    if case == "dx10_C2":
+        P = _glm_problem(C=2, dx=10, K=2000)
+    elif case == "dx2_C1":
+        P = _glm_problem(C=1, dx=2, K=2000)
+    else:
+        P = _glm_problem(C=3, dx=2, K=2000)
+        P["x"][1, :] = 1e-5 * np.random.default_rng(2).standard_normal(P["K"])
+    prev_beta = np.full((P["dx"], P["C"]), 0.123)
+    mu, beta, gamma = _glm_mstep(family, P, np.full(P["C"], -9.0), prev_beta, np.array(0.0), wt=None)
+    assert np.asarray(gamma).shape == () and float(gamma) == 0.0
+    Z = np.column_stack([np.ones(P["K"]), P["x"].T])
+    for c in range(P["C"]):
+        theta = _poisson_mle(Z, P["dN"][c])
+        np.testing.assert_allclose(mu[c], theta[0], atol=1e-6, err_msg=f"mu cell {c}")
+        if case == "dropped_v2":
+            np.testing.assert_allclose(beta[0, c], theta[1], atol=1e-6)
+            assert beta[1, c] == 0.123  # not identifiable: previous value kept
+        else:
+            np.testing.assert_allclose(beta[:, c], theta[1:], atol=1e-6, err_msg=f"beta cell {c}")
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_glm_history_unestimable_window_keeps_previous(family) -> None:
+    # MATLAB R4a (testGLMHistoryUnestimableWindowKeepsPrevious): 4 cells, a
+    # hard 1-bin refractory period and windows [0 1 5 20] ms -- the (0, 1] ms
+    # window is separated for every cell (se >= 100), so its row is returned
+    # unchanged and the other rows are fitted (they used to be reshaped from a
+    # shorter label list, which raised).
+    P = _glm_problem(C=4, K=1500, refractory=True, wt=(0.0, 0.001, 0.005, 0.020))
+    g0 = np.full((3, 4), -0.25)
+    mu, beta, gamma = _glm_mstep(family, P, P["mu"], P["beta"], g0)
+    assert gamma.shape == (3, 4)
+    np.testing.assert_array_equal(gamma[0], g0[0])
+    assert np.all(gamma[1:] != g0[1:]) and np.all(np.isfinite(gamma))
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_glm_history_all_windows_unestimable(family) -> None:
+    # MATLAB F1 (testGLMHistoryAllWindowsUnestimable): one refractory window
+    # [0 1] ms -- no history label is estimable for any cell, so gamma comes
+    # back unchanged (MATLAB indexed an empty label list); mu / beta are fitted.
+    P = _glm_problem(C=3, K=1500, refractory=True, wt=(0.0, 0.001))
+    g0 = np.full((1, 3), -0.4)
+    mu, beta, gamma = _glm_mstep(family, P, P["mu"], P["beta"], g0)
+    np.testing.assert_array_equal(gamma, g0)
+    assert np.all(mu != P["mu"]) and np.all(np.isfinite(beta))
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_glm_mstep_time_base_equivalence(family) -> None:
+    # MATLAB R4c (testGLMTimeBaseEquivalence): the same spikes and smoothed
+    # means at delta = 2 ms with windows [0 4 10 20] ms are the same per-bin
+    # model as at 1 ms with [0 2 5 10] ms, so the GLM M-step outputs agree.
+    # The Trial used to be built on a hard-coded 1 ms grid.
+    P1 = _glm_problem(C=3, K=1500, wt=(0.0, 0.002, 0.005, 0.010))
+    P2 = dict(P1, delta=0.002, wt=np.array([0.0, 0.004, 0.010, 0.020]))
+    g0 = np.full((3, 3), -0.2)
+    a = _glm_mstep(family, P1, P1["mu"], P1["beta"], g0)
+    b = _glm_mstep(family, P2, P2["mu"], P2["beta"], g0)
+    for u, v in zip(a, b):
+        np.testing.assert_allclose(u, v, rtol=1e-9, atol=1e-12)
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_glm_em_returns_the_initial_gamma_when_no_window_is_estimable(family) -> None:
+    # MATLAB F1: PP_EM(..., 'GLM') with one refractory window [0 1] ms returns
+    # the initial gamma (no history label is ever estimable).
+    P = _glm_problem(C=3, K=600, refractory=True, wt=(0.0, 0.001))
+    E = dict(A=np.diag([0.98, 0.98]), Q=0.01 * np.eye(2), mu=P["mu"], beta=P["beta"], dN=P["dN"], y=P["y"],
+             delta=0.001, C=3)
+    g0 = np.full((1, 3), -0.4)
+    out = _run_em(family, E, g0, [0.0, 0.001], method="GLM")
+    np.testing.assert_array_equal(out[6] if family == "PP" else out[9], g0)
+
+
+def _nc_problem(seed=6):
+    """N == C == 6 (six time bins, six cells), two history windows."""
+    rng = np.random.default_rng(seed)
+    N, C, dx = 6, 6, 2
+    x = 0.3 * rng.standard_normal((dx, N))
+    dN = (rng.random((C, N)) < 0.4).astype(float)
+    wt = np.array([0.0, 0.001, 0.002])
+    HkAll = _compute_history_terms(dN, 0.001, wt)
+    W_K = np.tile((0.02 * np.eye(dx))[:, :, None], (1, 1, N))
+    ES = dict(Sxkm1xkm1=x @ x.T, Sxkxkm1=x[:, 1:] @ x[:, :-1].T, Sxkm1xk=x[:, :-1] @ x[:, 1:].T, Sxkxk=x @ x.T,
+              sumXkTerms=0.02 * N * np.eye(dx), Sxkyk=x @ x[:1].T, sumYkTerms=0.1 * N * np.eye(1))
+    return dict(x=x, dN=dN, wt=wt, HkAll=HkAll, W_K=W_K, ES=ES, mu=np.full(C, -0.5), beta=0.4 * rng.standard_normal((dx, C)),
+                gamma=-0.3 * np.ones((2, C)), y=x[:1].copy())
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_newton_raphson_mstep_with_as_many_bins_as_cells(family) -> None:
+    # MATLAB R4d (testMStepNumBinsEqualsNumCells): with N == numCells the
+    # M-step's per-cell history slice HkAll(:, :, c) (N x numWindows) was
+    # transposed ("if size(Hk,1)==numCells") and Hk(k, :) then read the wrong
+    # entries.  Adding a 7th dummy cell (same E-step output, same Monte Carlo
+    # draws) must leave cells 1..6 bit-identical.  PPLFP_MStep had the guard;
+    # PP_MStep did not (a pin).
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    P = _nc_problem()
+    Q = dict(P)
+    Q["dN"] = np.vstack([P["dN"], np.zeros((1, 6))])
+    Q["dN"][6, ::2] = 1.0
+    Q["HkAll"] = _compute_history_terms(Q["dN"], 0.001, P["wt"])
+    Q["mu"] = np.append(P["mu"], -0.5)
+    Q["beta"] = np.column_stack([P["beta"], np.array([0.1, -0.1])])
+    Q["gamma"] = np.column_stack([P["gamma"], -0.3 * np.ones(2)])
+    outs = []
+    for R in (P, Q):
+        with seeded_global_rng(4):
+            if family == "PP":
+                cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0)
+                o = DecodingAlgorithms.PP_MStep(R["dN"], R["x"], R["W_K"], np.zeros(2), 1e-9 * np.eye(2), R["ES"],
+                                                "poisson", R["mu"], R["beta"], R["gamma"], R["wt"], R["HkAll"], cons,
+                                                "NewtonRaphson")
+                outs.append((o[2], o[3], o[4]))
+            else:
+                cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, 50, 0)
+                o = PPLFP.PPLFP_MStep(R["dN"], R["y"], R["x"], R["W_K"], np.zeros(2), 1e-9 * np.eye(2), R["ES"],
+                                      "poisson", R["mu"], R["beta"], R["gamma"], R["wt"], R["HkAll"], cons,
+                                      "NewtonRaphson")
+                outs.append((o[5], o[6], o[7]))
+    (mu6, b6, g6), (mu7, b7, g7) = outs
+    np.testing.assert_array_equal(mu7[:6], mu6)
+    np.testing.assert_array_equal(b7[:, :6], b6)
+    np.testing.assert_array_equal(g7[:, :6], g6)

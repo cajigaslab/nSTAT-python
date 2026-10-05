@@ -42,8 +42,10 @@ FIXTURE_ROOT = Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab
 # (alias, PPLFP target, signature string on main @ 98d468d -- except the three
 # defaults the repaired MATLAB changed (B8): mPPCO_EMCreateConstraints'
 # Estimatex0 / EstimatePx0 (1 -> 0) and mPPCO_EM / mPPCO_MStep's MstepMethod
-# ('GLM' -> 'NewtonRaphson').  MATLAB's aliases forward varargin, so they
-# inherit PPLFP_*'s defaults; the Python aliases spell them out and follow.)
+# ('GLM' -> 'NewtonRaphson'), and mPPCO_MStep's trailing delta=0.001 (R4c:
+# PPLFP_MStep's new optional 16th input).  MATLAB's aliases forward varargin,
+# so they inherit PPLFP_*'s inputs and defaults; the Python aliases spell
+# them out and follow.)
 ALIASES = [
     (
         "mPPCO_fixedIntervalSmoother",
@@ -94,7 +96,7 @@ ALIASES = [
         "PPLFP_MStep",
         "(dN, y, x_K, W_K, x0, Px0, ExpectationSums, fitType='poisson', muhat=None, "
         "betahat=None, gammahat=None, windowTimes=None, HkAll=None, "
-        "mPPCOEM_Constraints=None, MstepMethod='NewtonRaphson')",
+        "mPPCOEM_Constraints=None, MstepMethod='NewtonRaphson', delta=0.001)",
     ),
 ]
 _ALIAS_IDS = [a[0] for a in ALIASES]
