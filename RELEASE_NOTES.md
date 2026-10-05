@@ -11,23 +11,46 @@
 - Faster hot paths with bit-identical results; gains grow with problem size:
   `cross_k_inhom` (isotropic) up to ~10x on typical radius grids,
   `PPSS_EStep` up to ~2.6x, `_ppem_newton_C` ~1.3-1.5x.
-- The EM routines (`KF_EM`, `PP_EM`) report progress through
-  `logging` (logger `nstat.decoding_algorithms`) instead of `print`; they are
-  silent by default.
-- `DecodingAlgorithms.mPPCO_fixedIntervalSmoother`, `mPPCO_EMCreateConstraints`,
+- The EM routines report progress through `logging` instead of `print` and are
+  silent by default: `KF_EM` and `PP_EM` on logger `nstat.decoding_algorithms`,
+  `PPLFP_EM` / `PPLFP_MStep` (and so `mPPCO_EM`) on `nstat.decoding.PPLFP`.
+- `DecodingAlgorithms.mPPCO_fixedIntervalSmoother`, `mPPCODecodeLinear`,
+  `mPPCODecode_predict`, `mPPCO_EMCreateConstraints`,
   `mPPCO_ComputeParamStandardErrors`, `mPPCO_EM`, `mPPCO_EStep` and
   `mPPCO_MStep` are now, as in MATLAB, deprecated aliases: each emits a
   `DeprecationWarning` and returns exactly what the matching `PPLFP_*` method
-  returns. The previous standalone implementation could not run (`mPPCO_EStep`
-  and `mPPCO_EM` raised `NameError`; `mPPCO_ComputeParamStandardErrors` always
-  failed). Signatures are unchanged; use the `PPLFP_*` names.
+  returns. The previous standalone EM implementation could not run
+  (`mPPCO_EStep` and `mPPCO_EM` raised `NameError`;
+  `mPPCO_ComputeParamStandardErrors` always failed). Signatures are unchanged;
+  use the `PPLFP_*` names. (`mPPCODecode_update` is unchanged.)
 - Fix: `DecodingAlgorithms.PP_EStep` could not run: it passed MATLAB's 1-based
   bin index and MATLAB's permuted `(nW, C, N)` history tensor to the zero-based
   Python `PPDecode_updateLinear`, so it read the next bin at every step and
   raised on the last one (or at once whenever the number of history windows
   differed from the number of cells). It now matches MATLAB `PP_EStep` at every
-  time step to ~1e-12 (new gold fixture `pp_estep.mat`), and `PP_EM` no longer
-  fails in its first E-step.
+  time step on the captured cases: smoothed states, covariances,
+  log-likelihood and sufficient statistics to ~1e-12 with nW != C (new gold
+  fixture `pp_estep.mat`), and smoothed states and covariances with nW == C,
+  N == C and a single cell (`pp_square_history.mat`). The log-likelihood with
+  nW == C is not yet checked: MATLAB's is suspected wrong there and is being
+  fixed. `PP_EM` itself is not yet checked against MATLAB.
+- Fix: a square history-coefficient matrix `gamma` (as many history windows as
+  cells, nW == C) is no longer transposed. MATLAB transposes `gamma` only when
+  it is not already `nW x C`; Python transposed every square one, so
+  `PPDecodeFilterLinear`, `PPDecode_updateLinear`, `PP_EStep` and
+  `PPLFP_Decode_update` (with its callers) paired history windows with the
+  wrong cells. Given the same history tensor, `PPDecodeFilterLinear` and
+  `PP_EStep` now match MATLAB with nW == C (new gold fixture
+  `pp_square_history.mat`). `PPDecodeFilterLinear`, `PP_fixedIntervalSmoother`
+  and `PPHybridFilterLinear` still build the history from `windowTimes` one bin
+  earlier than MATLAB's `History.computeHistory`, so with `windowTimes` their
+  output does not yet match MATLAB. The PPLFP family is not yet verified for
+  nW == C, where MATLAB's own handling is under review.
+- Fix: a history tensor `HkAll` with as many time bins as cells (N == C) was
+  silently transposed (time and cells swapped) by `PPDecode_updateLinear` and
+  `PPLFP_Decode_update`, and so by `PP_EStep` and the other filters that pass
+  a history to them. `PP_EStep` now also accepts a one-cell history as MATLAB
+  stores it (an `N x nW` matrix), which used to raise an error.
 - Optional-dependency errors now distinguish "not installed" from "installed
   but failed to import" (for example an ABI mismatch).
 - A broken numba install no longer breaks `import nstat` or the decoders

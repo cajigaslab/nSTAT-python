@@ -17,9 +17,12 @@ function capture_pp_estep()
 % History tensors are built exactly as nstat.decoding.PointProcessEM.PP_EM
 % builds them: HkAll(:,:,c) = History(windowTimes,0,maxTime)
 %                               .computeHistory(nst{c}).dataToMatrix
-% (N x nW x C).  nW ~= C on purpose: a square nW == C history would hide
-% window/cell orientation errors.  mu is moderate so that no exp() argument
-% comes near the clipping guards some ports apply.
+% (N x nW x C).  nW ~= C on purpose: with a square nW == C history,
+% PP_EStep's log-likelihood transposes the square history slice (a suspected
+% defect whose fix is pending), so square cases are left out of this fixture
+% until it is recaptured; capture_pp_square_history.m captures PP_EStep
+% x_K / W_K with nW == C.  mu is moderate so that no exp() argument comes
+% near the clipping guards some ports apply.
 %
 % Saved per case (prefix cK_): inputs A, Q, dN, mu, beta, fitType, gamma,
 % HkAll, x0, Px0, windowTimes, delta and outputs x_K, W_K, logll plus every

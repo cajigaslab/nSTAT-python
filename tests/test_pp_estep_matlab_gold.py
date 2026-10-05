@@ -75,7 +75,12 @@ def test_fixture_cases_are_the_documented_ones(gold) -> None:
         assert fit == fit_type
         assert HkAll.ndim == 3 and HkAll.shape[0] == N and HkAll.shape[2] == num_cells
         if has_history:
-            # nW != C, so a window/cell orientation mix-up cannot pass.
+            # nW != C on purpose.  With nW == C (a square history) MATLAB
+            # PP_EStep's log-likelihood transposes the square history slice --
+            # a suspected MATLAB defect whose fix is pending -- so square cases
+            # are left out of this fixture until it is recaptured from the fixed
+            # MATLAB.  x_K / W_K with nW == C are covered by
+            # pp_square_history.mat (tests/test_pp_square_history_matlab_gold.py).
             assert HkAll.shape[1] not in (1, num_cells)
             assert np.any(HkAll != 0) and np.ndim(gamma) == 2 and np.any(gamma != 0)
             assert gamma.shape == (HkAll.shape[1], num_cells)
