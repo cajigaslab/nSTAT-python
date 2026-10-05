@@ -1080,3 +1080,22 @@ def test_em_whitening_maps_a_nondiagonal_noise_covariance_to_the_identity(family
     assert len(ll) > 2 and ll[1] > ll[0], ll
     Ahat = out[2]
     assert np.max(np.abs(Ahat - P["A"])) > 1e-4
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_em_maps_covariances_back_with_the_transposed_factor(family, monkeypatch) -> None:
+    # The estimates are mapped back as MATLAB (T\S)/T' = T^-1 S T^-T.
+    # PPLFP_EM computed T^-1 S T^-1 (solve(T.T, X.T).T), the same only for a
+    # symmetric T (diagonal Q0 / R0): with a non-diagonal Q0 / R0 it returned
+    # non-symmetric Qhat, Rhat and WKFinal.  (PP_EM was already right: pin.)
+    P = _nondiag_problem()
+    out, _ = _run_nondiag_em(family, P, monkeypatch)
+    WK = out[1]
+    mats = {"Qhat": out[3], "WKFinal": WK}
+    mats.update({"Px0hat": out[8]} if family == "PP" else {"Rhat": out[5], "Px0hat": out[11]})
+    for key, M in mats.items():
+        M = np.asarray(M, dtype=float)
+        MT = M.transpose(1, 0, 2) if M.ndim == 3 else M.T
+        np.testing.assert_allclose(M, MT, rtol=0, atol=1e-12 * np.max(np.abs(M)), err_msg=key)
+    # Px0 is not estimated: it comes back exactly as passed (up to round-off).
+    np.testing.assert_allclose(mats["Px0hat"], P["Px0"], rtol=1e-12)

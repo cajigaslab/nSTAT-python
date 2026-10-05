@@ -68,6 +68,12 @@ def _is_empty_value(v: Any) -> bool:
     return arr.size == 0
 
 
+def _unwhiten(T, S):
+    """MATLAB ``(T\\S)/T'`` = ``T^-1 S T^-T``: a scaled-system covariance (or
+    second-moment sum) mapped back to the original scale."""
+    return np.linalg.solve(T, np.linalg.solve(T, S).T).T
+
+
 class PPLFP:
     """Point-process log-likelihood filter family (MATLAB ``PPLFP_*``).
 
@@ -2220,23 +2226,21 @@ class PPLFP:
 
             # Tq \ X  -> np.linalg.solve(Tq, X)
             Ahat_out = np.linalg.solve(Tq, Ahat_out) @ Tq
-            # (Tq\Qhat)/Tq'
-            Qhat_out = np.linalg.solve(Tq, Qhat_out)
-            Qhat_out = np.linalg.solve(Tq.T, Qhat_out.T).T
+            # Covariances: MATLAB (T\S)/T' = T^-1 S T^-T.  This used
+            # solve(T.T, (T\S).T).T = T^-1 S T^-1, which is the same only for
+            # a symmetric T (diagonal Q0 / R0); with a non-diagonal Q0 or R0
+            # it returned non-symmetric Qhat, Rhat, Px0hat and WKFinal.
+            Qhat_out = _unwhiten(Tq, Qhat_out)
             Chat_out = np.linalg.solve(Tr, Chat_out) @ Tq
-            Rhat_out = np.linalg.solve(Tr, Rhat_out)
-            Rhat_out = np.linalg.solve(Tr.T, Rhat_out.T).T
+            Rhat_out = _unwhiten(Tr, Rhat_out)
             alphahat_out = np.linalg.solve(Tr, alphahat_out)
             xKFinal = np.linalg.solve(Tq, xKFinal)
             x0hat_out = np.linalg.solve(Tq, x0hat_out)
-            Px0hat_out = np.linalg.solve(Tq, Px0hat_out)
-            Px0hat_out = np.linalg.solve(Tq.T, Px0hat_out.T).T
+            Px0hat_out = _unwhiten(Tq, Px0hat_out)
 
             tempWK = np.zeros_like(WKFinal)
             for kk in range(WKFinal.shape[2]):
-                wk_tmp = np.linalg.solve(Tq, WKFinal[:, :, kk])
-                wk_tmp = np.linalg.solve(Tq.T, wk_tmp.T).T
-                tempWK[:, :, kk] = wk_tmp
+                tempWK[:, :, kk] = _unwhiten(Tq, WKFinal[:, :, kk])
             WKFinal = tempWK
 
             # MATLAB: betahat=(betahat'*Tq)'  -> betahat = Tq.T @ betahat
