@@ -29,7 +29,6 @@ from .fit import (
 )
 from .glm import PoissonGLMResult, fit_poisson_glm
 from .history import History, HistoryBasis
-from .paper_examples_full import run_full_paper_examples
 from .plot_style import apply_plot_style, get_plot_style, set_plot_style
 from .signal import Covariate, Signal
 from .simulation import simulate_cif_from_stimulus, simulate_poisson_from_rate
@@ -77,6 +76,20 @@ def __getattr__(name: str):
         from .nstat_install import nSTAT_Install as _nSTAT_Install
 
         return _nSTAT_Install
+    if name == "run_full_paper_examples":
+        # Lazy: paper_examples_full imports scipy.signal (which pulls in
+        # scipy.stats) at module top; only pay for it when it is used.
+        from .paper_examples_full import run_full_paper_examples as _run_full_paper_examples
+
+        return _run_full_paper_examples
+    if name == "paper_examples_full":
+        # Keep ``import nstat; nstat.paper_examples_full`` working now that
+        # the submodule is no longer imported eagerly (parity/manifest.yml
+        # python_target entries resolve ``nstat.paper_examples_full.<fn>``
+        # by attribute walk).
+        import importlib as _importlib
+
+        return _importlib.import_module(f"{__name__}.paper_examples_full")
     if name == "extras":
         # ``nstat.extras`` is no longer loaded as a side effect of
         # ``import nstat`` (the opt-in numba probe is now lazy); keep the
