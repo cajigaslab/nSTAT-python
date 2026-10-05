@@ -2804,10 +2804,14 @@ class DecodingAlgorithms:
         for k in range(K):
             Wku[:, :, k, k] = W_K[:, :, k]
 
+        # Dk depends on k only, not on u: build it in one backward pass rather
+        # than re-inverting W_p inside the u-loop (K-1 inversions instead of
+        # K(K-1)/2; bit-identical output).
         Dk = np.zeros((R, R, K), dtype=float)
+        for k in range(K - 2, -1, -1):
+            Dk[:, :, k] = W_u[:, :, k] @ A_mat.T @ np.linalg.inv(W_p[:, :, k + 1] + 1e-12 * np.eye(R))
         for u in range(K - 1, 0, -1):
             for k in range(u - 1, -1, -1):
-                Dk[:, :, k] = W_u[:, :, k] @ A_mat.T @ np.linalg.inv(W_p[:, :, k + 1] + 1e-12 * np.eye(R))
                 Wku[:, :, k, u] = Dk[:, :, k] @ Wku[:, :, k + 1, u]
                 Wku[:, :, u, k] = Wku[:, :, k, u]
 
