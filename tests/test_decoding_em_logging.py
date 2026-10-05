@@ -1,9 +1,11 @@
 """EM progress output goes through ``logging``, not ``print`` (review C3 / B4).
 
-``KF_EM`` / ``KF_EStep`` / ``PP_EM`` / ``mPPCO_EM`` used to print iteration
-banners to stdout unconditionally (MATLAB's DecodingAlgorithms.m prints
-nothing there).  They now log at INFO on ``nstat.decoding_algorithms``:
-silent by default, visible when the caller configures logging.
+``KF_EM`` / ``KF_EStep`` / ``PP_EM`` used to print iteration banners to
+stdout unconditionally (MATLAB's DecodingAlgorithms.m prints nothing there).
+They now log at INFO on ``nstat.decoding_algorithms``: silent by default,
+visible when the caller configures logging.  (``mPPCO_EM`` is now a
+deprecated alias of ``PPLFP_EM``, whose progress output lives in
+``nstat/decoding/PPLFP.py``.)
 """
 from __future__ import annotations
 

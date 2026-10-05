@@ -7,10 +7,11 @@ loop hoists) cannot silently change it:
 
 * both ``_nearestSPD`` definitions and both ``_ztest_pvalue`` definitions in
   ``nstat/decoding_algorithms.py`` (review finding C2: they differ
-  numerically -- the module-level pair serves the KF / mPPCO families, the
+  numerically -- the module-level pair serves the KF family, the
   ``DecodingAlgorithms`` staticmethod pair serves the PP family);
-* ``KF_ComputeParamStandardErrors``, ``PP_ComputeParamStandardErrors`` and
-  ``mPPCO_ComputeParamStandardErrors``;
+* ``KF_ComputeParamStandardErrors`` and ``PP_ComputeParamStandardErrors``;
+  ``mPPCO_ComputeParamStandardErrors`` is pinned as an exact alias of
+  ``PPLFP_ComputeParamStandardErrors`` (MATLAB's deprecation shim);
 * every ``scipy.stats`` use site in ``decoding_algorithms.py`` and
   ``analysis.py`` (module ``_ztest_pvalue`` -> ``norm.sf``; staticmethod
   ``_ztest_pvalue`` -> ``norm.cdf``; ``ComputeStimulusCIs`` -> ``norm.ppf``;
@@ -21,10 +22,12 @@ loop hoists) cannot silently change it:
   ``analysis._time_rescaled_z`` had no callers and was deleted.)
 
 These are characterization tests, not correctness tests: where the current
-behavior is a known defect it is pinned and labelled as such (for example
-``mPPCO_ComputeParamStandardErrors`` raises ``NameError`` because it calls an
-undefined ``nearestSPD``).  A deliberate behavior change must update the pin
-in the same commit.
+behavior is a known defect it is pinned and labelled as such.  A deliberate
+behavior change must update the pin in the same commit.  (The former
+``KNOWN DEFECT`` pins -- ``mPPCO_ComputeParamStandardErrors`` raising
+``NameError`` on an undefined ``nearestSPD`` -- were replaced when the
+``mPPCO_*`` family became MATLAB's deprecated aliases of ``PPLFP_*``: the
+stale implementation they pinned was deleted.)
 
 Tolerance policy
 ----------------
@@ -99,7 +102,7 @@ def _assert_pinned(actual, shape, values, rtol: float) -> None:
 
 
 # ===========================================================================
-# 1. _nearestSPD -- module-level (KF/mPPCO family) vs staticmethod (PP family)
+# 1. _nearestSPD -- module-level (KF family) vs staticmethod (PP family)
 # ===========================================================================
 
 
@@ -427,7 +430,7 @@ def test_kf_se_pvalues_reach_module_ztest_large_z_tail() -> None:
 def test_pp_se_large_z_pvalues_underflow_to_exact_zero() -> None:
     # PP uses the staticmethod 1 - norm.cdf p-value: well-determined
     # parameters (9 < |z| < 35) get p == 0.0 exactly, whereas the module-level
-    # helper used by KF/mPPCO would report a positive tail probability.
+    # helper used by KF would report a positive tail probability.
     caller, build, spec, seed = _SE_CASES["PP-A"]
     inputs = build()
     with _legacy_global_rng(seed):
@@ -449,39 +452,95 @@ def test_pp_se_large_z_pvalues_underflow_to_exact_zero() -> None:
     assert hits >= 1
 
 
-def test_mppco_se_raises_nameerror_on_final_projection() -> None:
-    # KNOWN DEFECT, pinned: mPPCO_ComputeParamStandardErrors calls an undefined
-    # name ``nearestSPD`` on the inverse observed information, so every call
-    # that reaches the end raises NameError (mPPCO_EM swallows it and returns
-    # empty SE/Pvals).  All WKFinal slices / Px0hat are PD here, so the draw
-    # fallbacks are not taken and the final projection is the failing site.
-    constraints = _constraints(("mPPCO", dict(mcIter=50)))
-    with _legacy_global_rng(7), pytest.raises(NameError, match="nearestSPD") as excinfo:
-        _call_mppco(_mppco_inputs(13), constraints)
-    assert "nearestSPD(invIObs)" in str(excinfo.traceback[-1].statement)
+def _pplfp_se_gold_inputs(nonpd_slice=None):
+    """``PPLFP_ComputeParamStandardErrors`` inputs from the MATLAB gold fixture.
+
+    Mirrors ``tools/parity/matlab/export_pplfp_gold_fixtures.m``: the
+    ExpectationSums are rebuilt by ``PPLFP_EStep`` at the EM-converged
+    parameters; the fixture's gamma is all-zero (scalar 0 + zero HkAll).
+    """
+    from pathlib import Path
+
+    from scipy.io import loadmat
+
+    from nstat.decoding.PPLFP import PPLFP
+
+    fx = loadmat(
+        Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab_gold" / "pplfp_SE.mat",
+        squeeze_me=True,
+        struct_as_record=False,
+    )
+    f = lambda k: np.asarray(fx[k], dtype=float)  # noqa: E731
+    v = lambda k: np.asarray(fx[k], dtype=float).reshape(-1)  # noqa: E731
+    dN = f("dN")
+    HkAll = np.zeros((dN.shape[1], 1, dN.shape[0]))
+    fit, delta = str(fx["fitType"]), float(fx["delta"])
+    _, _, _, es = PPLFP.PPLFP_EStep(
+        f("Ahat"), f("Qhat"), f("Chat"), f("Rhat"), f("y"), v("alphahat"), dN,
+        v("muhat_new"), f("betahat_new"), fit, delta, np.array(0.0), HkAll, v("x0hat"), f("Px0hat"),
+    )
+    WK = f("WKFinal").copy()
+    if nonpd_slice is not None:
+        WK[:, :, nonpd_slice] = np.diag([0.02, -0.01])
+    return dict(
+        y=f("y"), dN=dN, xKFinal=f("xKFinal"), WKFinal=WK, Ahat=f("Ahat"), Qhat=f("Qhat"),
+        Chat=f("Chat"), Rhat=f("Rhat"), alphahat=v("alphahat"), x0hat=v("x0hat"),
+        Px0hat=f("Px0hat"), ExpectationSumsFinal=es, fitType=fit, muhat=v("muhat_new"),
+        betahat=f("betahat_new"), gammahat=np.array(0.0), windowTimes=None, HkAll=HkAll,
+    )
 
 
-def test_mppco_se_raises_nameerror_on_draw_fallback() -> None:
-    # KNOWN DEFECT, pinned: a non-PD WKFinal slice sends the first
-    # (expectation) Monte-Carlo draw loop into its Cholesky fallback, which
-    # references the same undefined name.
-    constraints = _constraints(("mPPCO", dict(mcIter=50)))
-    with _legacy_global_rng(7), pytest.raises(NameError, match="nearestSPD") as excinfo:
-        _call_mppco(_mppco_inputs(13, nonpd_slice=3), constraints)
-    assert "nearestSPD(WuTemp)" in str(excinfo.traceback[-1].statement)
+def _assert_mppco_se_is_pplfp_se(inputs, mc_iter=50) -> None:
+    """mPPCO_ComputeParamStandardErrors(...) is bit-identical to PPLFP's."""
+    from nstat.decoding.PPLFP import PPLFP
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    # PPLFP draws its Monte-Carlo samples via np.random.default_rng(); a
+    # fresh seeded_global_rng block per call gives both calls one stream.
+    with pytest.warns(DeprecationWarning, match="mPPCO_ComputeParamStandardErrors is deprecated"):
+        with seeded_global_rng(42):
+            got = _call_mppco(inputs, _constraints(("mPPCO", dict(mcIter=mc_iter))))
+    with seeded_global_rng(42):
+        expected = PPLFP.PPLFP_ComputeParamStandardErrors(
+            inputs["y"], inputs["dN"], inputs["xKFinal"], inputs["WKFinal"], inputs["Ahat"],
+            inputs["Qhat"], inputs["Chat"], inputs["Rhat"], inputs["alphahat"], inputs["x0hat"],
+            inputs["Px0hat"], inputs["ExpectationSumsFinal"], inputs["fitType"], inputs["muhat"],
+            inputs["betahat"], inputs["gammahat"], inputs["windowTimes"], inputs["HkAll"],
+            PPLFP.PPLFP_EMCreateConstraints(mcIter=mc_iter),
+        )
+    assert len(got) == 3 and got[2] == expected[2]
+    for part in (0, 1):
+        assert sorted(got[part]) == sorted(expected[part]) and len(got[part]) > 0
+        for key in got[part]:
+            a = np.asarray(got[part][key])
+            b = np.asarray(expected[part][key])
+            assert a.shape == b.shape and np.array_equal(a, b), (part, key)
+            assert np.all(np.isfinite(a.astype(float))), (part, key)
 
 
-def test_mppco_se_downstream_numerics_with_nearestSPD_bound_to_module_helper(monkeypatch) -> None:
-    # Pins the rest of mPPCO_ComputeParamStandardErrors (information assembly,
-    # Monte-Carlo missing information, module-level _ztest_pvalue p-values)
-    # under the ASSUMPTION that the undefined ``nearestSPD`` is meant to be the
-    # module-level ``_nearestSPD`` (the helper its sibling KF family uses).  If
-    # the NameError is fixed by binding a different helper, update this pin.
-    monkeypatch.setattr(da, "nearestSPD", da._nearestSPD, raising=False)
-    constraints = _constraints(("mPPCO", dict(mcIter=50)))
-    with _legacy_global_rng(7):
-        out = _call_mppco(_mppco_inputs(13), constraints)
-    _check_se_against_expected(out, _SE_EXPECTED["mPPCO-patched"])
+def test_mppco_se_final_projection_forwards_to_pplfp() -> None:
+    # Replaces the KNOWN DEFECT pin ``..._raises_nameerror_on_final_projection``:
+    # the stale body called an undefined ``nearestSPD(invIObs)``.  MATLAB's
+    # mPPCO_ComputeParamStandardErrors forwards to PPLFP_ComputeParamStandardErrors;
+    # so does the Python alias now.  All WKFinal slices are PD here, so the
+    # path through the end-of-function SPD projection is the one exercised.
+    _assert_mppco_se_is_pplfp_se(_pplfp_se_gold_inputs())
+
+
+def test_mppco_se_draw_fallback_forwards_to_pplfp() -> None:
+    # Replaces the KNOWN DEFECT pin ``..._raises_nameerror_on_draw_fallback``:
+    # a non-PD WKFinal slice sends the Monte-Carlo draw loop into its
+    # Cholesky fallback (formerly the undefined ``nearestSPD(WuTemp)``).
+    _assert_mppco_se_is_pplfp_se(_pplfp_se_gold_inputs(nonpd_slice=3))
+
+
+def test_mppco_se_synthetic_history_case_forwards_to_pplfp() -> None:
+    # Replaces ``..._downstream_numerics_with_nearestSPD_bound_to_module_helper``,
+    # which pinned the deleted stale implementation under a monkeypatched
+    # ``nearestSPD`` (its ``mPPCO-patched`` expected values were removed with
+    # it).  Same synthetic Poisson + 2-window-history input; the pinned
+    # behavior is now "identical to PPLFP".
+    _assert_mppco_se_is_pplfp_se(_mppco_inputs(13))
 
 
 # ===========================================================================
@@ -759,58 +818,6 @@ _SE_EXPECTED = {
             'x0': ((2,), (0.0, 0.6466045051468337), 1e-12),
             'mu': ((2,), (3.723481348050228e-05, 5.475520170428183e-05), 1e-12),
             'beta': ((2, 2), (0.0, 2.220446049250313e-16, 0.016607936804470924, 0.0), 1e-10),
-        },
-    },
-    'mPPCO-patched': {
-        'nTerms': 32,
-        'SE': {
-            'A': ((2, 2), (
-                0.08696694131962067, 0.0720582518790982, 0.08983525819026879, 0.10149969219349025,
-            ), 1e-11),
-            'Q': ((2, 2), (0.029448668453987005, 0.0, 0.0, 0.03347970676123971), 1e-11),
-            'C': ((3, 2), (
-                0.14360891658149041, 0.09184483730984976, 0.11708459313965337, 0.06894654082855643,
-                0.19350063721432678, 0.172516471816093,
-            ), 1e-11),
-            'R': ((3, 3), (
-                0.026725845634919674, 0.0, 0.0, 0.0, 0.01940519818273202, 0.0, 0.0, 0.0,
-                0.07138940384601193,
-            ), 1e-11),
-            'alpha': ((3,), (0.07238044386297557, 0.04057562296338655, 0.07825636703494673), 1e-11),
-            'Px0': ((2, 2), (0.16771600641037138, 0.0, 0.0, 0.22587419421759983), 1e-11),
-            'x0': ((2,), (0.3545840692502697, 0.07885493346507538), 1e-11),
-            'mu': ((2,), (0.35395112247984184, 0.3301799495480464), 1e-12),
-            'beta': ((2, 2), (
-                0.7694342052804476, 0.870450494434714, 0.7159408961567633, 0.6482653362590273,
-            ), 1e-12),
-            'gamma': ((2, 2), (
-                0.80419945600672, 0.600601136157147, 0.8670647251393258, 0.5995877365361024,
-            ), 1e-12),
-        },
-        'P': {
-            'A': ((2, 2), (
-                4.23941011084057e-25, 0.16520827725648224, 0.5778182861023762,
-                5.550139123287514e-17,
-            ), 1e-10),
-            'C': ((3, 2), (
-                4.557782551038908e-37, 2.7567769690903244e-246, 2.7763473439619e-16,
-                0.31248680257197137, 9.58242661738798e-12, 0.025396450557152783,
-            ), 1e-08),
-            'R': ((3, 3), (
-                1.0620057363290504e-07, 0.0, 0.0, 0.0, 0.009405161220405106, 0.0, 0.0, 0.0,
-                0.008967568357157974,
-            ), 1e-10),
-            'Q': ((2, 2), (0.08953236917764022, 0.0, 0.0, 0.0168709936656592), 1e-10),
-            'Px0': ((2, 2), (0.5510108915011129, 0.0, 0.0, 0.3759147040501679), 1e-11),
-            'x0': ((2,), (0.9443968120518555, 0.36157936753235276), 1e-11),
-            'alpha': ((3,), (1.0581938998794816e-15, 1.7545431479044646e-26, 5.11837493367227e-06), 1e-09),
-            'mu': ((2,), (1.599839568194773e-08, 5.546523879027795e-06), 1e-11),
-            'beta': ((2, 2), (
-                0.038314063522834764, 0.5444594641473165, 0.9339799705222734, 0.0005607887613551213,
-            ), 1e-11),
-            'gamma': ((2, 2), (
-                0.7241527982568494, 0.40555732018248336, 0.7304807007976486, 0.7790950046973549,
-            ), 1e-12),
         },
     },
 }

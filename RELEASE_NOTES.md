@@ -11,9 +11,16 @@
 - Faster hot paths with bit-identical results; gains grow with problem size:
   `cross_k_inhom` (isotropic) up to ~10x on typical radius grids,
   `PPSS_EStep` up to ~2.6x, `_ppem_newton_C` ~1.3-1.5x.
-- The EM routines (`KF_EM`, `PP_EM`, `mPPCO_EM`) report progress through
+- The EM routines (`KF_EM`, `PP_EM`) report progress through
   `logging` (logger `nstat.decoding_algorithms`) instead of `print`; they are
   silent by default.
+- `DecodingAlgorithms.mPPCO_fixedIntervalSmoother`, `mPPCO_EMCreateConstraints`,
+  `mPPCO_ComputeParamStandardErrors`, `mPPCO_EM`, `mPPCO_EStep` and
+  `mPPCO_MStep` are now, as in MATLAB, deprecated aliases: each emits a
+  `DeprecationWarning` and returns exactly what the matching `PPLFP_*` method
+  returns. The previous standalone implementation could not run (`mPPCO_EStep`
+  and `mPPCO_EM` raised `NameError`; `mPPCO_ComputeParamStandardErrors` always
+  failed). Signatures are unchanged; use the `PPLFP_*` names.
 - Optional-dependency errors now distinguish "not installed" from "installed
   but failed to import" (for example an ABI mismatch).
 - A broken numba install no longer breaks `import nstat` or the decoders
