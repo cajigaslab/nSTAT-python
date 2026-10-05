@@ -48,6 +48,7 @@ def test_estimate_variance_across_trials_is_physical():
     assert np.median(np.diag(Q)) < 10.0, np.diag(Q)
 
 
+@pytest.mark.slow
 def test_ssglmFB_runs_and_recovers_rate():
     """Full ssglmFB fit: documented return shape + a sane recovered state.
 
@@ -70,6 +71,7 @@ def test_ssglmFB_runs_and_recovers_rate():
     assert 0.4 * rate_hz < recovered_hz < 2.5 * rate_hz, recovered_hz
 
 
+@pytest.mark.slow
 def test_ssglmFB_does_not_abort_on_high_rate_bursty_unit():
     """Regularized E-step must not raise eigh non-convergence on a hard unit.
 

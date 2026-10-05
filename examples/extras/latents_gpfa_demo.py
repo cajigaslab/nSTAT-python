@@ -119,19 +119,6 @@ BASELINE_RATE_HZ = 20.0
 POPULATION_SIZES = (8, 20, 40, 80)
 
 
-def _skew_symmetric_generator(rotation_freq_hz: float) -> np.ndarray:
-    """2x2 skew-symmetric rotation generator ``A`` (``A.T == -A``).
-
-    The solution to ``dz/dt = A z`` is a pure rotation ``z(t) = R(omega
-    t) z0`` -- Churchland et al. (2012)'s central empirical claim: M1/PMd
-    population activity, once projected onto a shared low-D subspace,
-    rotates at a fixed angular frequency common to every reach condition;
-    only the initial state (amplitude + phase) differs across conditions.
-    """
-    omega = 2.0 * np.pi * rotation_freq_hz
-    return omega * np.array([[0.0, -1.0], [1.0, 0.0]])
-
-
 def _condition_initial_states(
     n_conditions: int, rng: np.random.Generator,
 ) -> np.ndarray:
@@ -362,7 +349,6 @@ def run_demo(
     fig, (ax_phase, ax_fidelity) = plt.subplots(1, 2, figsize=(12.5, 5.5))
 
     cmap = plt.get_cmap("tab10")
-    t_fine = np.arange(true_latents[0].shape[0]) * dt_fine
     plotted_condition: set[int] = set()
     for k, cond in enumerate(condition_ids):
         color = cmap(cond % 10)

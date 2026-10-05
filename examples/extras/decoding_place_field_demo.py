@@ -177,7 +177,7 @@ def _fit_tuning_curves(theta_train: np.ndarray, counts_train: np.ndarray):
 
     Returns
     -------
-    intercept_hat, coef_hat (n_neurons, 2), pd_hat, kappa_hat, n_converged
+    intercept_hat, coef_hat (n_neurons, 2), pd_hat, n_converged
     """
     from nstat import fit_poisson_glm
 
@@ -194,9 +194,8 @@ def _fit_tuning_curves(theta_train: np.ndarray, counts_train: np.ndarray):
         coef_hat[i] = fit.coefficients
         n_converged += int(fit.converged)
 
-    kappa_hat = np.hypot(coef_hat[:, 0], coef_hat[:, 1])
     pd_hat = np.arctan2(coef_hat[:, 1], coef_hat[:, 0])
-    return intercept_hat, coef_hat, pd_hat, kappa_hat, n_converged
+    return intercept_hat, coef_hat, pd_hat, n_converged
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +277,7 @@ def _run_experiment(seed: int) -> dict:
         theta_train, pd_true, baseline_log_rate, kappa_true, rng_train
     )
 
-    intercept_hat, coef_hat, pd_hat, kappa_hat, n_converged = _fit_tuning_curves(
+    intercept_hat, coef_hat, pd_hat, n_converged = _fit_tuning_curves(
         theta_train, counts_train
     )
     baseline_rate_hat = np.exp(intercept_hat)
@@ -295,7 +294,7 @@ def _run_experiment(seed: int) -> dict:
     ml_error = np.abs(_circular_diff(ml_decode, theta_test))
 
     per_direction = []
-    for j, target in enumerate(TARGET_ANGLES):
+    for target in TARGET_ANGLES:
         mask = theta_test == target
         pv_mean = np.arctan2(
             np.sin(pv_decode[mask]).mean(), np.cos(pv_decode[mask]).mean()
@@ -320,7 +319,6 @@ def _run_experiment(seed: int) -> dict:
         "kappa_true": kappa_true,
         "intercept_hat": intercept_hat,
         "coef_hat": coef_hat,
-        "kappa_hat": kappa_hat,
         "n_converged": n_converged,
         "theta_train": theta_train,
         "counts_train": counts_train,

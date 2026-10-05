@@ -20,6 +20,7 @@ SPHINX    ?= $(PY) -m sphinx
 REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
 .PHONY: help install test test-smoke test-fast test-datasets test-no-paper \
+        test-slow test-matlab test-quick numerical-drift-check \
         regen regen-gallery regen-parity regen-figures regen-notebook-fidelity \
         regen-notebook-galleries regen-visual-parity \
         docs docs-strict docs-open refresh-intersphinx-inv \
@@ -59,6 +60,18 @@ test-datasets:  ## Dataset-integrity tests only (figshare manifest hash checks).
 
 test-no-paper:  ## Full suite minus slow paper-example tests.
 	$(PYTEST) -q --ignore=tests/test_paper_example_scripts.py
+
+test-slow:  ## Only tests marked @pytest.mark.slow (>10s: paper-example exports, ssglm fits).
+	$(PYTEST) -q -m slow
+
+test-matlab:  ## Only tests marked @pytest.mark.matlab (need a local MATLAB engine).
+	$(PYTEST) -q -m matlab
+
+test-quick:  ## Everything except slow/matlab-marked tests (opt-in fast loop; `make test` is unchanged).
+	$(PYTEST) -q -m "not slow and not matlab"
+
+numerical-drift-check:  ## Re-evaluate parity/numerical_drift_spec.yml; exit 1 on any drift.
+	$(PY) tools/parity/numerical_drift.py --spec parity/numerical_drift_spec.yml --fail-on-drift
 
 # --- regenerated artifacts ------------------------------------------
 

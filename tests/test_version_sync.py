@@ -7,7 +7,10 @@ because release tags are pushed AFTER the version bump commit lands.
 from __future__ import annotations
 
 import re
-import tomllib
+try:  # Python >=3.11
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 (declared floor): backport
+    import tomli as tomllib
 from pathlib import Path
 
 import pytest

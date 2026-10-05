@@ -40,6 +40,7 @@ dev = [
   "sphinx-rtd-theme>=3.0",
   "myst-parser>=4.0",
   "packaging>=23.0",  # version-string parsing in tests/test_version_sync.py
+  "tomli>=2.0; python_version < '3.11'",  # tomllib backport for the pyproject-reading tests on 3.10
 ]
 
 # --- nstat.extras opt-in dependency groups ----------------------------
@@ -188,3 +189,13 @@ include = ["nstat*"]
 [project.scripts]
 nstat-paper-examples = "nstat.paper_examples:main"
 nstat-install = "nstat.install:main"
+
+[tool.pytest.ini_options]
+# Markers are *selection* labels only: the default `pytest` / `make test`
+# invocation still runs every test.  Select explicitly with e.g.
+# `pytest -m slow`, `pytest -m matlab`, or `pytest -m "not slow and not matlab"`.
+markers = [
+  "slow: long-running test (>10s: dataset-backed paper-example exports, long iterative ssglm fits)",
+  "matlab: requires a local MATLAB engine + MATLAB nSTAT checkout (also skipif-guarded)",
+  "timeout: per-test time limit in seconds (enforced only when pytest-timeout is installed; otherwise a no-op)",
+]

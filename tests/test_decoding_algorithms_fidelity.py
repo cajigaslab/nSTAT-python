@@ -6,13 +6,13 @@ import pytest
 from nstat.CIF import CIF
 from nstat.DecodingAlgorithms import DecodingAlgorithms
 from nstat.History import History
+from tests._optional import probe_optional
 
-try:  # noqa: SIM105 - explicit availability check for parametrize
-    import numba  # noqa: F401
-
-    _NUMBA = True
-except ImportError:  # pragma: no cover - default install path
-    _NUMBA = False
+# Third-party probe only (never wraps ``import nstat``): numba can be absent
+# *or* installed but ABI-incompatible with the installed NumPy.
+_NUMBA_PROBE = probe_optional("numba")
+_NUMBA = _NUMBA_PROBE.available
+_NUMBA_SKIP_REASON = "numba unavailable: " + _NUMBA_PROBE.reason.removeprefix("numba ")
 
 
 def test_ppdecodefilterlinear_matches_matlab_style_shapes() -> None:
@@ -181,7 +181,7 @@ def test_kalman_helper_methods_and_confidence_intervals_are_available() -> None:
     [
         pytest.param(
             True,
-            marks=pytest.mark.skipif(not _NUMBA, reason="numba not installed"),
+            marks=pytest.mark.skipif(not _NUMBA, reason=_NUMBA_SKIP_REASON),
             id="numba",
         ),
         pytest.param(False, id="pure-python"),
@@ -216,7 +216,7 @@ def test_pp_decode_filter_linear_dual_mode(force_numba, monkeypatch) -> None:
 def test_pp_decode_filter_linear_numba_matches_pure_python() -> None:
     """The Numba JIT and pure-Python implementations agree numerically."""
     if not _NUMBA:
-        pytest.skip("numba not installed")
+        pytest.skip(_NUMBA_SKIP_REASON)
 
     from nstat.extras import _numba_kernels as nk
 
@@ -253,7 +253,7 @@ def test_pp_decode_filter_linear_numba_matches_pure_python() -> None:
     [
         pytest.param(
             True,
-            marks=pytest.mark.skipif(not _NUMBA, reason="numba not installed"),
+            marks=pytest.mark.skipif(not _NUMBA, reason=_NUMBA_SKIP_REASON),
             id="numba",
         ),
         pytest.param(False, id="pure-python"),
@@ -292,7 +292,7 @@ def test_kalman_filter_dual_mode(force_numba, monkeypatch) -> None:
 def test_kalman_filter_numba_matches_pure_python() -> None:
     """The Numba JIT and pure-Python Kalman paths agree numerically."""
     if not _NUMBA:
-        pytest.skip("numba not installed")
+        pytest.skip(_NUMBA_SKIP_REASON)
 
     from nstat.extras import _numba_kernels as nk
 

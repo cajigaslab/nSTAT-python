@@ -13,15 +13,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from tests._optional import importorskip_robust, skip_if_installed
+
 
 def test_clusterless_bridge_emits_install_hint_when_missing() -> None:
     """When ``replay_trajectory_classification`` is absent, the bridge
     raises a clear ImportError naming the pip-install extras key."""
-    try:
-        import replay_trajectory_classification  # noqa: F401
-        pytest.skip("replay_trajectory_classification is installed; import-error path unreachable")
-    except ImportError:
-        pass
+    skip_if_installed("replay_trajectory_classification")
 
     from nstat.extras.decoding.clusterless_bridge import fit_clusterless_decoder
 
@@ -93,7 +91,7 @@ def test_clusterless_decoder_runs_on_synthetic_data() -> None:
     skipped in the default base CI; exercised under
     ``pip install nstat-toolbox[clusterless]``.
     """
-    pytest.importorskip("replay_trajectory_classification")
+    importorskip_robust("replay_trajectory_classification")
     from nstat.extras.decoding.clusterless_bridge import fit_clusterless_decoder
 
     rng = np.random.default_rng(0)
@@ -132,7 +130,7 @@ def test_clusterless_decoder_runs_on_synthetic_data() -> None:
 def test_clusterless_classifier_smoke_and_state_marginals() -> None:
     """Functional smoke: the classifier decode + classify, and the
     marginal state probabilities are a valid distribution per time."""
-    pytest.importorskip("replay_trajectory_classification")
+    importorskip_robust("replay_trajectory_classification")
     from nstat.extras.decoding.clusterless_bridge import fit_clusterless_classifier
 
     rng = np.random.default_rng(1)

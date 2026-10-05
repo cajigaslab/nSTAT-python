@@ -21,6 +21,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from tests._optional import importorskip_robust
+
 
 # ---------------------------------------------------------------------------
 # 1–3. GPFAConfig validation
@@ -163,9 +165,9 @@ def _make_synthetic_trials(
 
 
 def test_fit_gpfa_on_synthetic_trials() -> None:
-    pytest.importorskip("elephant")
-    pytest.importorskip("neo")
-    pytest.importorskip("quantities")
+    importorskip_robust("elephant")
+    importorskip_robust("neo")
+    importorskip_robust("quantities")
     from nstat.extras.latents import GPFAConfig, fit_gpfa
 
     n_trials = 5
@@ -233,9 +235,9 @@ def test_fit_gpfa_seed_reproducibility() -> None:
     synthetic data; we only assert the strictly stronger
     same-seed-reproducibility contract.
     """
-    pytest.importorskip("elephant")
-    pytest.importorskip("neo")
-    pytest.importorskip("quantities")
+    importorskip_robust("elephant")
+    importorskip_robust("neo")
+    importorskip_robust("quantities")
     from nstat.extras.latents import GPFAConfig, fit_gpfa
 
     neo_trials, _ = _make_synthetic_trials(
@@ -261,9 +263,9 @@ def test_fit_gpfa_seed_reproducibility() -> None:
 
 
 def test_fit_gpfa_preserves_caller_rng_state() -> None:
-    pytest.importorskip("elephant")
-    pytest.importorskip("neo")
-    pytest.importorskip("quantities")
+    importorskip_robust("elephant")
+    importorskip_robust("neo")
+    importorskip_robust("quantities")
     from nstat.extras.latents import GPFAConfig, fit_gpfa
 
     neo_trials, _ = _make_synthetic_trials(
