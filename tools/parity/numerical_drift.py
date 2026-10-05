@@ -605,11 +605,9 @@ def _recipe_pp_square_history(fixture: dict[str, Any], args: dict[str, Any]) -> 
 
     ``args.case`` selects the case prefix; the fixture's ``<case>_func`` names
     the function.  Returns the concatenation of every output at every step:
-    x_p, W_p, x_u, W_u (PPDecodeFilterLinear); x_uLag, W_uLag and x_pLag,
-    W_pLag without column 1 (PP_fixedIntervalSmoother, lags = 1: that column
-    is an open, gamma-independent first-step divergence, pinned as a strict
-    xfail in tests/test_pp_square_history_matlab_gold.py); x_K, W_K (PP_EStep;
-    its logll is not captured).
+    x_p, W_p, x_u, W_u (PPDecodeFilterLinear); x_uLag, W_uLag, x_pLag, W_pLag
+    (PP_fixedIntervalSmoother); x_K, W_K (PP_EStep; its logll is not
+    captured).
 
     The two filters run end to end from ``windowTimes`` (they build the history
     themselves); PP_EStep takes ``HkAll`` as an argument and is fed MATLAB's
@@ -651,10 +649,8 @@ def _recipe_pp_square_history(fixture: dict[str, Any], args: dict[str, Any]) -> 
             f("A"), f("Q"), dN, int(_scalar(fixture, f"{case}_lags")), mu, beta, fit, delta,
             gamma, windowTimes, x0, f("Pi0").reshape(dx, dx),
         )
-        keep = np.ones(N + 1, dtype=bool)
-        keep[1] = False
-        py = [x_uLag, W_uLag, np.asarray(x_pLag)[:, keep], np.asarray(W_pLag)[:, :, keep]]
-        ml = [f("x_uLag"), f("W_uLag"), f("x_pLag")[:, keep], f("W_pLag")[:, :, keep]]
+        py = [x_uLag, W_uLag, x_pLag, W_pLag]
+        ml = [f("x_uLag"), f("W_uLag"), f("x_pLag"), f("W_pLag")]
     else:
         raise ValueError(f"unknown pp_square_history function {func!r}")
     return (

@@ -261,16 +261,28 @@ def _normalize_history_tensor(HkAll, num_steps: int, num_windows: int, num_cells
     # silently swapped time and cells.)
     if arr.shape == (num_steps, num_windows, num_cells):
         return arr
-    # The other accepted layouts keep the precedence the dict lookup had --
-    # on a shape collision its later entry won -- so inputs that do not match
-    # the canonical shape normalize exactly as before.
-    for shape, axes in (
-        ((num_cells, num_steps, num_windows), (1, 2, 0)),
-        ((num_cells, num_windows, num_steps), (2, 1, 0)),
-        ((num_windows, num_cells, num_steps), (2, 0, 1)),
-    ):
-        if arr.shape == shape:
-            return np.transpose(arr, axes)
+    # Other layouts are accepted only when the shape identifies exactly one of
+    # them.  A shape that fits several (e.g. MATLAB's permute(HkAll,[2 3 1]) =
+    # (nW, C, N) when nW == C, which is also (C, nW, N)) cannot be read safely
+    # -- MATLAB's PPAF and PPLFP update steps read such a square slice
+    # differently -- so it is rejected instead of silently picking one.
+    matches = [
+        axes
+        for shape, axes in (
+            ((num_cells, num_steps, num_windows), (1, 2, 0)),
+            ((num_cells, num_windows, num_steps), (2, 1, 0)),
+            ((num_windows, num_cells, num_steps), (2, 0, 1)),
+        )
+        if arr.shape == shape
+    ]
+    if len(matches) == 1:
+        return np.transpose(arr, matches[0])
+    if len(matches) > 1:
+        raise ValueError(
+            f"HkAll of shape {arr.shape} is ambiguous for N={num_steps}, numWindows={num_windows}, "
+            f"C={num_cells}: it fits more than one permuted layout.  Only the canonical "
+            "(N, numWindows, C) layout is unambiguous; pass the history in that layout."
+        )
     raise ValueError("HkAll must align with N x numWindows x C MATLAB-style history storage")
 
 
@@ -311,6 +323,14 @@ def _compute_history_terms(dN: np.ndarray, delta: float, windowTimes) -> np.ndar
         last_lag = int(np.ceil(float(windows[window_index + 1]) * sample_rate))
         if last_lag < first_lag:
             continue  # empty window (MATLAB's b(StartSample:NumSamples) is empty)
+        if first_lag < 1:
+            # MATLAB's b(StartSample:NumSamples)=1 fails on a non-positive
+            # index; here it would sum the current and future bins.
+            raise ValueError(
+                f"windowTimes edge {float(windows[window_index])!r} reaches lag {first_lag} at "
+                f"delta={float(delta)!r}: history windows must lie at or after one bin back "
+                "(edges > -delta)"
+            )
         # Bins n - last_lag .. n - first_lag, clipped to the observed record.
         upper = np.clip(steps - first_lag + 1, 0, num_steps)
         lower = np.clip(steps - last_lag, 0, num_steps)
@@ -672,6 +692,13 @@ class DecodingAlgorithms:
                 Q_t,
             )
             if n < lag_count:
+                # MATLAB (PPAF.m:684-714) still runs its output block for the
+                # first ``lags`` steps with x_K = W_K = 0: x_uLag/W_uLag stay
+                # zero, and x_pLag(:,n+1) = x_K(:,lags-1) = 0 for lags > 1, but
+                # with lags == 1 it is x_u(:,n) / W_u(:,:,n).
+                if lag_count == 1:
+                    x_pLag[:, n + 1] = x_u[:, n]
+                    W_pLag[:, :, n + 1] = W_u[:, :, n]
                 continue
 
             x_bank: list[np.ndarray] = []

@@ -59,13 +59,20 @@
   MATLAB. With `delta` other than 1 ms, `PPLFP_EM`'s history still differs
   from MATLAB master's, which builds it from a 1 kHz spike train without
   resampling. With history,
-  `PPDecodeFilterLinear` and `PP_fixedIntervalSmoother` now match MATLAB
-  (except the smoother's first predicted column when `lags = 1`).
+  `PPDecodeFilterLinear` and `PP_fixedIntervalSmoother` now match MATLAB.
+  Window edges at or before `-delta`, which reached the current and later
+  bins, now raise `ValueError` (MATLAB fails on them too).
+- Fix: `PP_fixedIntervalSmoother` with `lags = 1` left the first predicted
+  column (`x_pLag[:, 1]`, `W_pLag[:, :, 1]`) at zero; like MATLAB it now holds
+  the first filtered estimate.
 - Fix: a history tensor `HkAll` with as many time bins as cells (N == C) was
   silently transposed (time and cells swapped) by `PPDecode_updateLinear` and
   `PPLFP_Decode_update`, and so by `PP_EStep` and the other filters that pass
   a history to them. `PP_EStep` now also accepts a one-cell history as MATLAB
-  stores it (an `N x nW` matrix), which used to raise an error.
+  stores it (an `N x nW` matrix), which used to raise an error. A permuted
+  history whose shape fits more than one layout (MATLAB's `(nW, C, N)` with
+  nW == C) now raises `ValueError` instead of being read one way silently;
+  pass the canonical `(N, nW, C)` layout.
 - Optional-dependency errors now distinguish "not installed" from "installed
   but failed to import" (for example an ABI mismatch).
 - A broken numba install no longer breaks `import nstat` or the decoders

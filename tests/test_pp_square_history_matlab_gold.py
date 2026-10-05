@@ -22,6 +22,8 @@ Cases:
   (3 and 4); every step of x_p, W_p, x_u, W_u, on both the Numba and the
   pure-Python path.
 * ``pfis_pois_sq`` -- ``PP_fixedIntervalSmoother`` (lags = 1), nW == C = 3.
+  Every column, including x_pLag(:,2) = x_u(:,1), which MATLAB fills on its
+  first step and the Python port used to leave at zero.
 * ``pdfl_pois_ctrl`` -- ``PPDecodeFilterLinear`` control, nW = 2 != C = 3.
 * ``estep_pois_sq`` -- ``PP_EStep`` x_K / W_K, nW == C = 3.
 * ``estep_pois_NeqC`` -- ``PP_EStep`` x_K / W_K, N == C = 6 time bins and
@@ -146,13 +148,6 @@ def _run_smoother(cs: dict):
     )
 
 
-def _smoother_columns(n_cols: int) -> np.ndarray:
-    """x_pLag / W_pLag columns compared: all but column 1 (see xfail below)."""
-    keep = np.ones(n_cols, dtype=bool)
-    keep[1] = False
-    return keep
-
-
 def _assert_matches(actual, expected, label: str) -> None:
     actual = np.asarray(actual, dtype=float)
     assert actual.shape == expected.shape, label
@@ -212,26 +207,16 @@ def test_pp_fixed_interval_smoother_matches_matlab_gold(gold) -> None:
     x_pLag, W_pLag, x_uLag, W_uLag = _run_smoother(cs)
     _assert_matches(x_uLag, cs["x_uLag"], "x_uLag")
     _assert_matches(W_uLag, cs["W_uLag"], "W_uLag")
-    keep = _smoother_columns(cs["x_pLag"].shape[1])
-    assert np.shape(x_pLag) == cs["x_pLag"].shape and np.shape(W_pLag) == cs["W_pLag"].shape
-    _assert_matches(np.asarray(x_pLag)[:, keep], cs["x_pLag"][:, keep], "x_pLag")
-    _assert_matches(np.asarray(W_pLag)[:, :, keep], cs["W_pLag"][:, :, keep], "W_pLag")
+    _assert_matches(x_pLag, cs["x_pLag"], "x_pLag")
+    _assert_matches(W_pLag, cs["W_pLag"], "W_pLag")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "Open, gamma-independent divergence: with lags == 1, MATLAB "
-        "PP_fixedIntervalSmoother sets x_pLag(:,2) = x_u(:,1) and "
-        "W_pLag(:,:,2) = W_u(:,:,1) on its first step (else-branch of "
-        "if(lags>1), reached before n > lags); the Python port skips that step "
-        "and leaves column 1 zero."
-    ),
-)
 def test_pp_fixed_interval_smoother_lag1_first_prediction_column(gold) -> None:
+    # MATLAB runs its output block on the first step too (x_K = 0 there), and
+    # with lags == 1 that sets x_pLag(:,2) = x_u(:,1), W_pLag(:,:,2) = W_u(:,:,1).
     cs = _case(gold, "pfis_pois_sq")
     x_pLag, W_pLag, _, _ = _run_smoother(cs)
+    assert np.any(cs["x_pLag"][:, 1] != 0)
     _assert_matches(np.asarray(x_pLag)[:, 1], cs["x_pLag"][:, 1], "x_pLag[:, 1]")
     _assert_matches(np.asarray(W_pLag)[:, :, 1], cs["W_pLag"][:, :, 1], "W_pLag[:, :, 1]")
 
@@ -289,10 +274,36 @@ def test_normalize_history_tensor_other_layouts_resolve_as_before() -> None:
     for permuted in (np.transpose(hk, (2, 0, 1)), np.transpose(hk, (2, 1, 0)), np.transpose(hk, (1, 2, 0))):
         # (C, N, nW), (C, nW, N) and MATLAB's permute(HkAll,[2 3 1]) = (nW, C, N).
         assert np.array_equal(da._normalize_history_tensor(permuted, N, nW, C), hk)
-    # A (C, C, N) input with nW == C is ambiguous between (nW, C, N) and
-    # (C, nW, N); it keeps the (C, nW, N) reading the dict lookup gave it.
+    # The helper maps each of these back given the true numWindows.  The public
+    # update steps infer numWindows from axis 1, so through them a permuted
+    # layout only resolves when that inference happens to be right.
+
+
+def test_normalize_history_tensor_rejects_ambiguous_square_layout() -> None:
+    # (C, C, N) with nW == C fits both MATLAB's permute(HkAll,[2 3 1]) =
+    # (nW, C, N) and (C, nW, N); MATLAB's PPAF and PPLFP updates read such a
+    # square slice differently, so it is refused rather than guessed.
     sq = np.random.default_rng(3).normal(size=(3, 3, 7))
-    assert np.array_equal(da._normalize_history_tensor(sq, 7, 3, 3), np.transpose(sq, (2, 1, 0)))
+    with pytest.raises(ValueError, match="ambiguous"):
+        da._normalize_history_tensor(sq, 7, 3, 3)
+    with pytest.raises(ValueError, match="only the canonical|Only the canonical"):
+        DecodingAlgorithms.PPDecode_updateLinear(
+            np.zeros(2), 0.1 * np.eye(2), np.zeros((3, 7)), -np.ones(3), np.ones((2, 3)),
+            "poisson", -0.5 * np.ones((3, 3)), sq, 2,
+        )
+
+
+def test_compute_history_terms_rejects_windows_reaching_the_current_bin() -> None:
+    # MATLAB History indexes b(ceil(t*sampleRate)+1 : ...), which fails for an
+    # edge at or before -delta; Python would otherwise sum current/future bins.
+    dN = np.array([[1.0, 0.0, 1.0, 0.0]])
+    with pytest.raises(ValueError, match="history windows must lie"):
+        da._compute_history_terms(dN, 0.001, [-0.001, 0.001])
+    # An edge in (-delta, 0] still starts at one bin back, as in MATLAB.
+    assert np.array_equal(
+        da._compute_history_terms(dN, 0.001, [-0.0005, 0.001]),
+        da._compute_history_terms(dN, 0.001, [0.0, 0.001]),
+    )
 
 
 def test_matlab_colon_exact_matches_matlab_bitwise(gold) -> None:
