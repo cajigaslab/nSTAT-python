@@ -23,9 +23,9 @@
   run (`mPPCO_EStep` and `mPPCO_EM` raised `NameError`;
   `mPPCO_ComputeParamStandardErrors` always failed). Signatures are unchanged;
   use the `PPLFP_*` names (except the EM defaults, below). (`mPPCODecode_update`
-  is unchanged.) Known, pre-existing and pending a fix: the GLM M-step
-  (`MstepMethod='GLM'`, no longer the default) of `PPLFP_EM`, `PPLFP_MStep`
-  and their `mPPCO_*` aliases raises `ValueError`; `'NewtonRaphson'` runs.
+  is unchanged.) The GLM M-step (`MstepMethod='GLM'`, no longer the default)
+  of `PPLFP_MStep`, which raised `ValueError`, is repaired (see the EM
+  subsection below).
 - Fix: `DecodingAlgorithms.PP_EStep` could not run: it passed MATLAB's 1-based
   bin index and MATLAB's permuted `(nW, C, N)` history tensor to the zero-based
   Python `PPDecode_updateLinear`, so it read the next bin at every step and
@@ -57,8 +57,8 @@
   colon is reproduced element for element (`np.arange` differs in the last
   bits for most sizes, which moved spikes between windows), and a scalar-zero
   `gamma` means no history, as in MATLAB. With `delta` other than 1 ms,
-  `PPLFP_EM`'s history still differs from MATLAB's, which builds it from a
-  1 kHz spike train without resampling. With history,
+  `PPLFP_EM` builds its history on the `delta` grid, as the repaired MATLAB
+  now does too (R4b). With history,
   `PPDecodeFilterLinear` and `PP_fixedIntervalSmoother` now match MATLAB,
   including a square `beta` (as many states as cells), which the repaired
   MATLAB no longer transposes.
@@ -106,11 +106,9 @@ pending upstream merge); the Python port now matches them:
   iterate could be returned before). `PP_EM` no longer hides a failure of
   its standard-error pass (it returned empty `SE` / `Pvals`). `PPLFP_EM` now
   returns its standard errors: its `SE` / `Pvals` were always empty (a
-  mis-unpacked call inside a blanket `except`). As in MATLAB, they are
-  computed from the whitened observations `Tr*y` (an open parity question:
-  MATLAB pairs them with the unscaled `C`, `alpha`, `R`), and with the default
-  `mcIter = 1000` they add measurable time (3.8 s of a 4.8 s fit at N = 600,
-  four cells).
+  mis-unpacked call inside a blanket `except`). They are computed from the
+  original observations (see below), and with the default `mcIter = 1000`
+  they add measurable time (3.8 s of a 4.8 s fit at N = 600, four cells).
 - `PP_MStep` no longer estimates an all-zero `gamma` ("no history").
 - History windows: with `windowTimes` omitted, `PP_EM` / `PPLFP_EM` use one
   window per history coefficient, `0:delta:size(gamma,1)*delta` (it was one
@@ -129,6 +127,40 @@ pending upstream merge); the Python port now matches them:
   already right), `pp_estep.mat` (square-history cases added) and
   `pp_square_history.mat` (default windows, 2 ms history, square `beta`,
   hybrid filter). Every other field is unchanged.
+
+Second pass, mirroring the final repaired MATLAB (`fix/pp-em` @ `8dbd0e4` and
+its review fixes G1-G3, H1; pending upstream merge):
+
+- Standard errors and information criteria on one scale. EM runs on a
+  whitened system `x_s = Tq x`, `y_s = Tr y`; the SE pass now receives the
+  original `y` and original-scale expectation sums (it mixed scales, so
+  `SE.A` / `SE.C` / `SE.Q` / `SE.R` depended on the units of `x` and `y`), and
+  `IC.llobs` / `AIC` / `AICc` / `BIC` / `IC.llcomp` are on the original scale
+  (`llcomp` gains the whitening Jacobian; they used to change when `x` or `y`
+  was rescaled). `PPLFP_EM` counts `R`'s parameters with `R`'s flags.
+- Whitening uses the lower Cholesky factor, so `Tq Q0 Tq' = I`: with a
+  non-diagonal `Q0` (or `R0`) and the default diagonal constraints, EM used to
+  return its initial parameters. `QhatDiag = 1` then means diagonal in the
+  `Q0`-whitened frame (an open design question, as in MATLAB). `PPLFP_EM` also
+  returned non-symmetric `Qhat` / `Rhat` / `WKFinal` for a non-diagonal `Q0` /
+  `R0` (a Python-only back-transform slip); fixed.
+- Monte Carlo state draws use the lower Cholesky factor (`m + chol(W)' z`):
+  their covariance was `R R'`, not `W`, whenever `W` was not diagonal (all
+  M-step and SE draws of both families).
+- Standard errors: `SE.A` (full `A`) and `SE.C` were transposed, and
+  `PP_ComputeParamStandardErrors`' `A` information block was a row
+  permutation of the Fisher information; a diagonal `A` with a full `Q` used
+  the wrong block (all Python-only; MATLAB's layout was right). A shared
+  `gamma` column passed directly to an SE routine is expanded per cell.
+- `MstepMethod='GLM'` now runs in `PP_MStep` (it silently ran Newton-Raphson)
+  and `PPLFP_MStep` (it raised): coefficients are read by label, an
+  unestimable one (standard error >= 100, as MATLAB's `FitResSummary` drops)
+  keeps its previous value, and the fit uses the `delta` time base. Both
+  M-steps take MATLAB's optional trailing `delta` (default 0.001; also
+  `mPPCO_MStep`) and reject an unknown `MstepMethod` with `ValueError`.
+- Gold: new `em_glm_mstep.mat` (one GLM M-step, nine cases) and
+  `pplfp_MStep.mat` recaptured (only the Monte Carlo-dependent `betahat_new`,
+  `muhat_new` moved).
 
 - Optional-dependency errors now distinguish "not installed" from "installed
   but failed to import" (for example an ABI mismatch).
