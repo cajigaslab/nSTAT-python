@@ -7,20 +7,21 @@ static-method namespace.
 Covered families (all entry points are ``@staticmethod``):
 
 - **Point-process adaptive filters (PPAF)** — ``PPDecodeFilter``,
-  ``PPDecodeFilterLinear``, ``PP_RTSSmoother``.
+  ``PPDecodeFilterLinear``, ``PP_fixedIntervalSmoother``.
 - **Point-process hybrid filters (PPHF)** — discrete + continuous
   hybrid recursions for mixed-mode decoding.
 - **Kalman filtering / smoothing** — ``kalman_filter``,
-  ``kalman_smoother``, ``RTSSmoother``, plus their static-coefficient
+  ``kalman_smoother``, ``kalman_smootherFromFiltered``,
+  ``kalman_fixedIntervalSmoother``, plus their static-coefficient
   variants.
 - **Expectation-maximisation** — ``PPSS_EMFB`` (state-space GLM EM) and
-  ``PPCO_EMFB`` (mixed point-process / continuous-observation EM).
+  ``mPPCO_EM`` (mixed point-process / continuous-observation EM).
 
 Most algorithms follow the derivations in the original 2012 paper (see
 :doc:`/PaperOverview`).  Spike trains are :class:`~nstat.nspikeTrain.nspikeTrain`
 objects; observations are ``CxN`` binary matrices; time is in **seconds**.
-This is the largest single module in the package (~7.9k lines) and is
-deliberately kept flat to match the MATLAB layout.
+This is the largest single module in the package and is deliberately
+kept flat to match the MATLAB layout.
 """
 from __future__ import annotations
 
@@ -31,13 +32,22 @@ from scipy.stats import norm
 
 from .cif import CIF
 from .errors import UnsupportedWorkflowError
-from .extras import _numba_kernels
 from .nspikeTrain import nspikeTrain
 
-# Module-level alias of the Numba-availability flag — kept module-local
-# so monkeypatch in tests can flip it back to ``False`` to exercise the
-# pure-Python parity path even when ``numba`` is installed.
-_NUMBA_AVAILABLE = _numba_kernels._NUMBA_AVAILABLE
+
+def _numba_kernels_module():
+    """Return :mod:`nstat.extras._numba_kernels`, importing it on first use.
+
+    The opt-in Numba accelerator is imported lazily -- at the first
+    fast-path dispatch, not at ``import nstat`` -- so the core package does
+    not depend on ``nstat.extras`` (or probe ``numba``) at import time.
+    Callers read ``_numba_kernels._NUMBA_AVAILABLE`` from the returned
+    module at call time, so tests can still monkeypatch that attribute to
+    ``False`` to force the pure-Python parity path.
+    """
+    from .extras import _numba_kernels
+
+    return _numba_kernels
 
 
 def _as_observation_matrix(dN) -> np.ndarray:
@@ -1007,6 +1017,7 @@ class DecodingAlgorithms:
         _Wconv_inactive_pre = (
             Wconv is None or (isinstance(Wconv, (list, tuple)) and len(Wconv) == 0)
         )
+        _numba_kernels = _numba_kernels_module()
         if (
             _numba_kernels._NUMBA_AVAILABLE
             and A_raw_pre.ndim != 3
@@ -1980,6 +1991,7 @@ class DecodingAlgorithms:
         # AND no pre-converged gain override.  Mirrors the Python loop
         # below line-for-line; gold-fixture-verified bit-equivalence.
         _gnconv_inactive = GnConv is None or _is_empty_value(GnConv)
+        _numba_kernels = _numba_kernels_module()
         if (
             _numba_kernels._NUMBA_AVAILABLE
             and _gnconv_inactive

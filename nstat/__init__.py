@@ -77,6 +77,13 @@ def __getattr__(name: str):
         from .nstat_install import nSTAT_Install as _nSTAT_Install
 
         return _nSTAT_Install
+    if name == "extras":
+        # ``nstat.extras`` is no longer loaded as a side effect of
+        # ``import nstat`` (the opt-in numba probe is now lazy); keep the
+        # ``import nstat; nstat.extras`` attribute access working.
+        import importlib as _importlib
+
+        return _importlib.import_module(f"{__name__}.extras")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
