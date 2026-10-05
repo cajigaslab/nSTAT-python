@@ -280,7 +280,8 @@ def _compute_history_terms(dN: np.ndarray, delta: float, windowTimes) -> np.ndar
     Reproduces what the MATLAB decoders build per cell with
     ``History(windowTimes,0,maxTime).computeHistory(nspikeTrain((find(dN(c,:)==1)-1)*delta)
     .resample(1/delta)).dataToMatrix`` (PPAF.m PPDecodeFilterLinear /
-    PP_fixedIntervalSmoother, PPLFP.m PPLFP_EM).  ``History`` filters the spike
+    PP_fixedIntervalSmoother; PPLFP.m PPLFP_EM builds it without the resample,
+    which is identical at delta = 1 ms).  ``History`` filters the spike
     train with ones on taps ``ceil(t_i*sampleRate)+1 : ceil(t_(i+1)*sampleRate)``
     and delays the result one sample, so window ``i`` counts the spikes
     ``L`` bins back for ``ceil(t_i*sampleRate) + 1 <= L <= ceil(t_(i+1)*sampleRate)``

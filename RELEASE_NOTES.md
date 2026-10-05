@@ -46,10 +46,12 @@
   nW == C (new gold fixture `pp_square_history.mat`). The PPLFP family is not
   yet verified for nW == C, where MATLAB's own handling is under review.
 - Fix: the history design built from `windowTimes` (`PPDecodeFilterLinear`,
-  `PP_fixedIntervalSmoother`, `PPHybridFilterLinear`, `PPLFP_EM`) counted each
-  spike one bin too early relative to MATLAB's `History.computeHistory` (the
-  first window was always empty). It now reproduces MATLAB's windows exactly,
-  including edges off the time grid, and is ~500x faster. With history,
+  `PP_fixedIntervalSmoother`, `PPHybridFilterLinear`, `PPLFP_EM`) assigned
+  each spike to the next window relative to MATLAB's `History.computeHistory`
+  (the first window was always empty). It now reproduces MATLAB's windows
+  exactly, including edges off the time grid, and is ~500x faster; as in
+  MATLAB, only bins with `dN == 1` count as spikes (bins holding larger counts
+  no longer add to the history). With history,
   `PPDecodeFilterLinear` and `PP_fixedIntervalSmoother` now match MATLAB
   (except the smoother's first predicted column when `lags = 1`).
 - Fix: a history tensor `HkAll` with as many time bins as cells (N == C) was
