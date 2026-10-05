@@ -598,17 +598,51 @@ def test_pp_em_time_base_equivalence() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_pp_decode_filter_linear_accepts_a_shared_gamma_column() -> None:
-    # MATLAB: if(size(gamma,2)==1 && C>1) gamma = repmat(gamma,1,C).  The port
-    # accepted a 1-D shared gamma but raised on MATLAB's numWindows x 1 column.
+_SHARED_CALLERS = [
+    "PPDecodeFilterLinear", "PP_fixedIntervalSmoother", "PPDecode_updateLinear", "PPHybridFilterLinear",
+    "PP_EStep", "PPLFP_Decode_update", "PPLFP_DecodeLinear", "PPLFP_fixedIntervalSmoother", "PPLFP_EStep",
+]
+
+
+@pytest.mark.parametrize("W", [2, 3], ids=["W2", "W3_square"])
+@pytest.mark.parametrize("caller", _SHARED_CALLERS)
+def test_shared_gamma_column_equals_the_replicated_gamma(caller, W) -> None:
+    # MATLAB's drivers expand a shared numWindows x 1 gamma with
+    # if(size(gamma,2)==1 && C>1) gamma = repmat(gamma,1,C) (PPAF #20, PPHF B2,
+    # PPLFP B3).  The port accepted a 1-D shared gamma but raised on MATLAB's
+    # column (except PPLFP_DecodeLinear / _fixedIntervalSmoother).  Every
+    # caller must now give exactly the replicated (W, C) result -- including
+    # PP_EStep's log-likelihood, which reads gamma itself.
     P = _em_problem(C=3)
-    wt = [0.0, 0.002, 0.005, 0.010]
-    col = np.array([[-0.8], [-0.4], [-0.2]])
-    args = (P["A"], P["Q"], P["dN"], P["mu"], P["beta"], "poisson", 0.001)
-    a = DecodingAlgorithms.PPDecodeFilterLinear(*args, col, wt, np.zeros(2), 1e-3 * np.eye(2))
-    b = DecodingAlgorithms.PPDecodeFilterLinear(*args, np.tile(col, (1, 3)), wt, np.zeros(2), 1e-3 * np.eye(2))
-    for u, v in zip(a[:4], b[:4]):
-        np.testing.assert_array_equal(u, v)
+    dN, mu, beta, A, Q = P["dN"], P["mu"], P["beta"], P["A"], P["Q"]
+    N = dN.shape[1]
+    wt = list(np.arange(W + 1) * 0.001)
+    H = _compute_history_terms(dN, 0.001, wt)
+    Cm, R, y, Pi0 = np.array([[1.0, 0.5]]), 0.01 * np.eye(1), P["y"], 1e-3 * np.eye(2)
+    run = {
+        "PPDecodeFilterLinear": lambda g: DecodingAlgorithms.PPDecodeFilterLinear(
+            A, Q, dN, mu, beta, "poisson", 0.001, g, wt, np.zeros(2), Pi0)[:4],
+        "PP_fixedIntervalSmoother": lambda g: DecodingAlgorithms.PP_fixedIntervalSmoother(
+            A, Q, dN, 2, mu, beta, "poisson", 0.001, g, wt, np.zeros(2), Pi0),
+        "PPDecode_updateLinear": lambda g: DecodingAlgorithms.PPDecode_updateLinear(
+            np.zeros(2), 0.1 * np.eye(2), dN, mu, beta, "poisson", g, H, N // 2),
+        "PPHybridFilterLinear": lambda g: DecodingAlgorithms.PPHybridFilterLinear(
+            [A, A], [Q, Q], np.array([[0.9, 0.1], [0.1, 0.9]]), np.array([0.5, 0.5]), dN, mu, beta, "poisson",
+            0.001, g, wt, [np.zeros(2)] * 2, [Pi0] * 2)[1:4],
+        "PP_EStep": lambda g: DecodingAlgorithms.PP_EStep(A, Q, dN, mu, beta, "poisson", g, H, np.zeros(2), Pi0)[:3],
+        "PPLFP_Decode_update": lambda g: PPLFP.PPLFP_Decode_update(
+            np.zeros(2), 0.1 * np.eye(2), Cm, R, y[:, N // 2], np.zeros(1), dN, mu, beta, "poisson", g, H, N // 2),
+        "PPLFP_DecodeLinear": lambda g: PPLFP.PPLFP_DecodeLinear(
+            A, Q, Cm, R, y, np.zeros(1), dN, mu, beta, "poisson", 0.001, g, wt, np.zeros(2), Pi0, H),
+        "PPLFP_fixedIntervalSmoother": lambda g: PPLFP.PPLFP_fixedIntervalSmoother(
+            A, Q, Cm, R, y, np.zeros(1), dN, 2, mu, beta, "poisson", 0.001, g, wt, np.zeros(2), Pi0),
+        "PPLFP_EStep": lambda g: PPLFP.PPLFP_EStep(
+            A, Q, Cm, R, y, np.zeros(1), dN, mu, beta, "poisson", 0.001, g, H, np.zeros(2), Pi0)[:3],
+    }[caller]
+    col = -0.3 * np.arange(1, W + 1, dtype=float).reshape(W, 1)
+    shared, replicated = run(col), run(np.tile(col, (1, 3)))
+    for u, v in zip(shared, replicated):
+        np.testing.assert_array_equal(np.asarray(u, dtype=float), np.asarray(v, dtype=float))
 
 
 @pytest.mark.parametrize("which", ["DecodeLinear", "fixedIntervalSmoother"])

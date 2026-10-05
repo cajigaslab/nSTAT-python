@@ -6316,6 +6316,13 @@ class DecodingAlgorithms:
         # HkAll[k, :, :]) sees the history, as the filter step already does.
         if numCells == 1 and np.ndim(HkAll) == 2:
             HkAll = np.asarray(HkAll, dtype=float).reshape(np.shape(HkAll)[0], np.shape(HkAll)[1], 1)
+        # A shared numWindows x 1 gamma column is repeated for every cell, as
+        # _normalize_gamma does for the filter step below (MATLAB's drivers
+        # repmat it before the E-step); without this the log-likelihood below
+        # would read the column as one cell's coefficients.
+        if (gamma.ndim == 2 and gamma.shape[1] == 1 and numCells > 1 and np.ndim(HkAll) == 3
+                and gamma.shape[0] == np.shape(HkAll)[1]):
+            gamma = np.repeat(gamma, numCells, axis=1)
 
         # Forward filter
         x_p = np.zeros((Dx, K + 1))
