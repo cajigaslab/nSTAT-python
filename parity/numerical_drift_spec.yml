@@ -434,6 +434,31 @@ entries:
     output_field: pp_2ms_betahat_new
     tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
 
+  # MATLAB's own by-label (F3) test construction: E-step output at A = 0.95 I,
+  # Q = 0.01 I, so [1 x_K'] is rank-deficient for dx > C and glmfit drops the
+  # dependent columns (b = 0, se = 0); Analysis.GLMFit mirrors it.  Measured
+  # <= 2.4e-12 absolute.
+  - name: PP_MStep_GLM_rank_deficient_single_cell
+    recipe: em_glm_mstep
+    args: { case: f3pp_dx2_C1 }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: f3pp_dx2_C1_betahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_MStep_GLM_rank_deficient_dx10
+    recipe: em_glm_mstep
+    args: { case: f3pp_dx10_C2 }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: f3pp_dx10_C2_betahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPLFP_MStep_GLM_rank_deficient_dx10
+    recipe: em_glm_mstep
+    args: { case: f3lfp_dx10_C2 }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: f3lfp_dx10_C2_betahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
   # v9 iter 40 — recipe-backed entries for the 22 v9_* captures.
   # Each entry's recipe is defined in tools/parity/numerical_drift.py.
   # Tolerances per-entry: tightened where the Python port is bit-equivalent,

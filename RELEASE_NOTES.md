@@ -158,8 +158,20 @@ Second pass, mirroring the final repaired MATLAB (`fix/pp-em` @ `aa88a2b`:
   keeps its previous value, and the fit uses the `delta` time base. Both
   M-steps take MATLAB's optional trailing `delta` (default 0.001; also
   `mPPCO_MStep`) and reject an unknown `MstepMethod` with `ValueError`.
+- `Analysis.GLMFit` (poisson, `'GLM'`) now handles a rank-deficient design as
+  MATLAB's `glmfit` does: a column-pivoted QR finds the rank, the fit uses the
+  independent columns, and the dependent columns get coefficient 0 and
+  standard error 0 (they used to get arbitrary coefficients, with standard
+  errors from the inverse of a singular matrix: NaN, or clipped to 0). This
+  changes results for rank-deficient designs only -- for example the GLM
+  M-step on collinear smoothed states (a single cell, or more states than
+  cells, with an isotropic state model), where MATLAB's own test case gave
+  beta [33.0, -620.7] instead of [10.66, 0]; every full-rank fit is
+  bit-identical. The binomial `'BNLRCG'` fit is unchanged (MATLAB's `bnlrCG`
+  has no rank handling).
 - Gold, captured from the final MATLAB head `aa88a2b`: new `em_glm_mstep.mat`
-  (one GLM M-step, nine cases); `pplfp_MStep.mat` (only the Monte
+  (one GLM M-step: nine cases, plus MATLAB's own by-label test cases with
+  rank-deficient designs); `pplfp_MStep.mat` (only the Monte
   Carlo-dependent `betahat_new`, `muhat_new` moved); `pplfp_EM.mat` (estimates,
   `IC`, `SE`, `Pvals`) and `pplfp_SE.mat` (`SE`, `Pvals`). `pp_estep.mat`,
   `pp_square_history.mat` and `pplfp_EStep.mat` are bit-identical.

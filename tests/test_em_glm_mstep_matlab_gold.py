@@ -18,6 +18,19 @@ parameters (rng(42) synthetic data, dx = 2, N = 1500, previous gamma -0.2):
 * ``pp_2ms`` -- PP_MStep at delta = 2 ms, windows [0 4 10 20] ms (the delta
   time base, MATLAB C6 / R4c).
 
+Plus six ``f3*`` cases, MATLAB's own by-label test construction
+(``testGLMMStepMapsCoefficientsByLabel``; rng(19) per case, no history): E-step
+output at ``A = 0.95 I``, ``Q = 0.01 I``, for PP_MStep (``f3pp_*``) and
+PPLFP_MStep (``f3lfp_*``) with dx = 10 / C = 2, dx = 2 / C = 1 and dx = 2 /
+C = 3 (x_K row 2 replaced by 1e-5 noise, so v2 is not identifiable).  With an
+isotropic state model the PP smoothed means stay in span(beta), so
+``[1 x_K']`` is rank-deficient for dx > C (rank 3 of 11 and 2 of 3; PPLFP
+dx = 10: 5 of 11): MATLAB ``glmfit`` drops the dependent columns (b = 0,
+se = 0) and the M-step returns those beta entries as 0.  ``Analysis.GLMFit``
+mirrors that rank handling; before it did, the PP dx = 2 / C = 1 beta was
+[33.0, -620.7] instead of MATLAB's [10.66, 0].  Each f3 case also stores
+MATLAB's per-cell ``glmfit`` reference (``glmfit_b``).
+
 Every output is compared: A, Q (C, R, alpha), x0, Px0 (closed form) and mu,
 beta, gamma (the GLM fit, mapped by label).  ``W_K`` is not in the fixture:
 the GLM branch never reads it, which the test checks by passing an all-NaN
@@ -27,8 +40,9 @@ Tolerance, from the measured agreement (macOS arm64 / Accelerate vs MATLAB
 R2025b):
 
 * closed-form outputs and every poisson GLM coefficient: <= 5.0e-14 absolute
-  (MATLAB ``glmfit`` and the Python IRLS converge to the same MLE), so
-  ``rtol = 1e-10``, ``atol = 1e-12``;
+  (<= 2.4e-12 on the f3 cases, coefficients up to ~17), as MATLAB ``glmfit``
+  and the Python IRLS converge to the same MLE, so ``rtol = 1e-10``,
+  ``atol = 1e-12``;
 * binomial GLM coefficients: <= 1.8e-4 absolute (pp_binom 8.4e-5, lfp_binom
   1.8e-4, lfp_c1 9.8e-6).  MATLAB's ``'BNLRCG'`` is Demba Ba's truncated
   conjugate-gradient logistic regression (``bnlrCG``), which stops short of the
@@ -48,6 +62,7 @@ from nstat.decoding_algorithms import DecodingAlgorithms
 
 FIXTURE = Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab_gold" / "em_glm_mstep.mat"
 CASES = ["pp_pois", "pp_binom", "lfp_pois", "lfp_binom", "pp_unest", "lfp_unest", "pp_c1", "lfp_c1", "pp_2ms"]
+F3_CASES = ["f3pp_dx10_C2", "f3pp_dx2_C1", "f3pp_dx2_C3_drop2", "f3lfp_dx10_C2", "f3lfp_dx2_C1", "f3lfp_dx2_C3_drop2"]
 RTOL, ATOL = 1e-10, 1e-12
 BINOMIAL_GLM_ATOL = 1e-3
 GLM_KEYS = ("muhat_new", "betahat_new", "gammahat_new")
@@ -94,7 +109,7 @@ def run_case(g, case, W_K=None):
     return dict(zip(keys, out))
 
 
-@pytest.mark.parametrize("case", CASES)
+@pytest.mark.parametrize("case", CASES + F3_CASES)
 def test_glm_mstep_matches_matlab(gold, case) -> None:
     out = run_case(gold, case)
     binomial = _s(gold, case, "fitType") == "binomial"
@@ -119,3 +134,28 @@ def test_glm_mstep_unestimable_window_keeps_previous_gamma(gold, case) -> None:
     np.testing.assert_array_equal(_f(gold, case, "gammahat_new")[0], previous[0])
     np.testing.assert_array_equal(gamma[0], previous[0])
     assert np.all(gamma[1:] != previous[1:])
+
+
+@pytest.mark.parametrize("case", F3_CASES)
+def test_glm_mstep_equals_glmfit_by_label(gold, case) -> None:
+    # MATLAB testGLMMStepMapsCoefficientsByLabel: mu(c) and beta(:, c) equal
+    # glmfit(x_K', dN(c,:)', 'poisson') for every cell (AbsTol 1e-6 there;
+    # measured <= 2.4e-12 here), the dropped (not identifiable) row keeping its
+    # previous value; on a rank-deficient design glmfit's dependent columns are
+    # exactly 0.
+    out = run_case(gold, case)
+    B = _f(gold, case, "glmfit_b")
+    beta_in = _f(gold, case, "beta")
+    dx, C = beta_in.shape
+    mu, beta = np.ravel(out["muhat_new"]), np.reshape(out["betahat_new"], (dx, C))
+    drop = _f(gold, case, "dropRow").reshape(-1)
+    np.testing.assert_allclose(mu, B[0], rtol=1e-10, atol=1e-12, err_msg="mu")
+    for i in range(dx):
+        if drop.size and i == int(drop[0]) - 1:
+            np.testing.assert_array_equal(beta[i], beta_in[i])
+        else:
+            np.testing.assert_allclose(beta[i], B[i + 1], rtol=1e-10, atol=1e-12, err_msg=f"beta row {i}")
+    zero_rows = np.all(B[1:] == 0, axis=1)
+    assert np.all(beta[zero_rows] == 0.0)
+    if case in ("f3pp_dx10_C2", "f3pp_dx2_C1", "f3lfp_dx10_C2"):  # rank-deficient: glmfit dropped columns
+        assert zero_rows.any()

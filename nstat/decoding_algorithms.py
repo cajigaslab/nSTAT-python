@@ -472,6 +472,10 @@ def _em_glm_mstep(dN, x_K, fitType, muhat, betahat, gammahat, windowTimes, delta
       ``FitResSummary.getCoeffs`` returns the raw coefficients with their
       standard errors, so the filter is applied here.  A label absent from
       the fit (F1: no window estimable at all) also keeps the previous value.
+      On a rank-deficient design (collinear smoothed means: one cell, or more
+      states than cells, under an isotropic state model) ``Analysis.GLMFit``
+      returns the dependent columns' coefficients as 0 with standard error 0,
+      as MATLAB ``glmfit`` does, so those entries become 0.
     * Warnings raised during the fit are silenced inside a scoped
       ``warnings.catch_warnings()`` block (MATLAB ``warning('OFF')`` with
       the caller's state restored, C9); no global state changes.

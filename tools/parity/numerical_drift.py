@@ -664,7 +664,8 @@ def _recipe_em_glm_mstep(fixture: dict[str, Any], args: dict[str, Any]) -> tuple
 
     ``args.case`` selects a case of ``em_glm_mstep.mat`` (captured by
     ``tools/parity/matlab/capture_em_glm_mstep.m`` from the repaired MATLAB,
-    fix/pp-em @ aa88a2b).  Returns the concatenation of every M-step output
+    fix/pp-em @ aa88a2b), including the ``f3*`` cases (MATLAB's by-label test
+    construction; rank-deficient designs for dx > C).  Returns the concatenation of every M-step output
     (A, Q, [C, R, alpha,] mu, beta, gamma, x0, Px0) and its gold.  The GLM
     branch never reads W_K (not in the fixture), so an all-NaN W_K is passed.
     """
@@ -682,12 +683,12 @@ def _recipe_em_glm_mstep(fixture: dict[str, Any], args: dict[str, Any]) -> tuple
     x_K = f("x_K")
     dx = x_K.shape[0]
     wt = f("windowTimes").reshape(-1)
-    nW = wt.size - 1
-    H = f("HkAll").reshape(N, nW, C)
+    H = f("HkAll").reshape(N, -1, C)
     ES = {k[len(case) + 4:]: _as_float_array(v) for k, v in fixture.items() if k.startswith(f"{case}_ES_")}
     for key in ("Sxkm1xkm1", "Sxkxkm1", "Sxkm1xk", "Sxkxk", "sumXkTerms"):
         ES[key] = np.asarray(ES[key], dtype=float).reshape(dx, dx)
-    mu, beta, gamma = f("mu").reshape(C), f("beta").reshape(dx, C), f("gamma").reshape(nW, C)
+    mu, beta = f("mu").reshape(C), f("beta").reshape(dx, C)
+    gamma = np.array(0.0) if wt.size == 0 else f("gamma").reshape(wt.size - 1, C)  # f3 cases: no history
     x0, Px0, delta = f("x0").reshape(dx), f("Px0").reshape(dx, dx), _scalar(fixture, f"{case}_delta")
     W_K = np.full((dx, dx, N), np.nan)
     if family == "PP":

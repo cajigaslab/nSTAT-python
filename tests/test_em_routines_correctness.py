@@ -1493,38 +1493,59 @@ def test_mstep_rejects_an_unknown_mstep_method(family) -> None:
                                   "poisson", P["mu"], P["beta"], np.array(0.0), None, P["HkAll"], None, bad)
 
 
-def _poisson_mle(Z, d):
-    return _cell_mle(Z, d, "poisson", np.zeros(Z.shape[1]))
+def _f3_gold_case(name):
+    """One f3 case of em_glm_mstep.mat: MATLAB's own by-label test inputs and outputs."""
+    from pathlib import Path
+
+    from scipy.io import loadmat
+
+    g = loadmat(Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab_gold" / "em_glm_mstep.mat")
+    return {k[len(name) + 1:]: g[k] for k in g if k.startswith(name + "_")}
 
 
-@pytest.mark.parametrize("case", ["dx10_C2", "dx2_C1", "dropped_v2"])
+@pytest.mark.parametrize("case", ["dx10_C2", "dx2_C1", "dx2_C3_drop2"])
 @pytest.mark.parametrize("family", ["PP", "PPLFP"])
 def test_glm_mstep_maps_coefficients_by_label(family, case) -> None:
-    # MATLAB F3 (testGLMMStepMapsCoefficientsByLabel): one GLM M-step (no
-    # history) must equal the per-cell Poisson GLM of dN on [1, x_K'] (MATLAB:
-    # glmfit), mu from 'constant' and beta(i, :) from 'v<i>' -- for dx = 10
-    # ('v10' must not land in row 2), for a single cell, and when 'v2' is not
-    # identifiable for any cell (x_K row 2 ~ 1e-5 noise, se >= 100), where
-    # beta row 2 keeps its previous value.
-    if case == "dx10_C2":
-        P = _glm_problem(C=2, dx=10, K=2000)
-    elif case == "dx2_C1":
-        P = _glm_problem(C=1, dx=2, K=2000)
+    # MATLAB F3 (testGLMMStepMapsCoefficientsByLabel), on MATLAB's own
+    # construction, captured from fix/pp-em @ aa88a2b: E-step output at
+    # A = 0.95 I, Q = 0.01 I (rng(19)); one GLM M-step (no history) must equal
+    # glmfit(x_K', dN(c,:)', 'poisson') per cell, mu from 'constant' and
+    # beta(i, :) from 'v<i>' -- for dx = 10 ('v10' must not land in row 2),
+    # for a single cell, and with x_K row 2 ~ 1e-5 noise (v2 not identifiable,
+    # se >= 100: beta row 2 keeps its previous value).  With the isotropic
+    # state model the PP smoothed means stay in span(beta), so [1 x_K'] is
+    # rank-deficient for dx > C (also PPLFP dx = 10): glmfit drops the dependent
+    # columns (b = 0, se = 0) and so must the port.  It returned garbage there
+    # (PP dx = 2, C = 1: beta [33.0, -620.7] vs MATLAB [10.66, 0]) -- the former
+    # version of this test simulated full-rank states and never reached it.
+    g = _f3_gold_case(("f3pp_" if family == "PP" else "f3lfp_") + case)
+    f = lambda k: np.asarray(g[k], dtype=float)  # noqa: E731
+    dN = np.atleast_2d(f("dN"))
+    C, N = dN.shape
+    x_K = f("x_K")
+    dx = x_K.shape[0]
+    ES = {k[3:]: np.asarray(v, dtype=float) for k, v in g.items() if k.startswith("ES_")}
+    mu_in, beta_in = f("mu").reshape(C), f("beta").reshape(dx, C)
+    W_K = np.full((dx, dx, N), np.nan)  # the GLM branch never reads W_K
+    H0 = np.zeros((N, 1, C))
+    if family == "PP":
+        out = DecodingAlgorithms.PP_MStep(dN, x_K, W_K, np.zeros(dx), 1e-9 * np.eye(dx), ES, "poisson", mu_in,
+                                          beta_in, np.array(0.0), None, H0, None, "GLM")
+        mu, beta = out[2], out[3]
     else:
-        P = _glm_problem(C=3, dx=2, K=2000)
-        P["x"][1, :] = 1e-5 * np.random.default_rng(2).standard_normal(P["K"])
-    prev_beta = np.full((P["dx"], P["C"]), 0.123)
-    mu, beta, gamma = _glm_mstep(family, P, np.full(P["C"], -9.0), prev_beta, np.array(0.0), wt=None)
-    assert np.asarray(gamma).shape == () and float(gamma) == 0.0
-    Z = np.column_stack([np.ones(P["K"]), P["x"].T])
-    for c in range(P["C"]):
-        theta = _poisson_mle(Z, P["dN"][c])
-        np.testing.assert_allclose(mu[c], theta[0], atol=1e-6, err_msg=f"mu cell {c}")
-        if case == "dropped_v2":
-            np.testing.assert_allclose(beta[0, c], theta[1], atol=1e-6)
-            assert beta[1, c] == 0.123  # not identifiable: previous value kept
+        out = PPLFP.PPLFP_MStep(dN, f("y"), x_K, W_K, np.zeros(dx), 1e-9 * np.eye(dx), ES, "poisson", mu_in,
+                                beta_in, np.array(0.0), None, H0, None, "GLM")
+        mu, beta = out[5], out[6]
+    B = f("glmfit_b")
+    np.testing.assert_allclose(mu, f("muhat_new").reshape(C), rtol=1e-10, atol=1e-12, err_msg="mu vs MATLAB")
+    np.testing.assert_allclose(beta, f("betahat_new").reshape(dx, C), rtol=1e-10, atol=1e-12,
+                               err_msg="beta vs MATLAB")
+    np.testing.assert_allclose(mu, B[0], rtol=1e-10, atol=1e-12, err_msg="mu vs glmfit")
+    for i in range(dx):
+        if case.endswith("drop2") and i == 1:
+            np.testing.assert_array_equal(beta[i], beta_in[i])  # not identifiable: previous value kept
         else:
-            np.testing.assert_allclose(beta[:, c], theta[1:], atol=1e-6, err_msg=f"beta cell {c}")
+            np.testing.assert_allclose(beta[i], B[i + 1], rtol=1e-10, atol=1e-12, err_msg=f"beta row {i} vs glmfit")
 
 
 @pytest.mark.parametrize("family", ["PP", "PPLFP"])
@@ -1905,3 +1926,4 @@ def test_covariance_information_forms_agree_for_one_state(family) -> None:
         assert sorted(out) == sorted(ref), name
         for key in ref:
             np.testing.assert_allclose(out[key], ref[key], rtol=1e-10, atol=0, err_msg=f"{name}: SE.{key}")
+

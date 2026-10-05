@@ -42,6 +42,9 @@ function capture_em_glm_mstep()
 % -0.2 everywhere (nonzero, so the history is fitted).  The constraints are
 % the PP_EMCreateConstraints() / PPLFP_EMCreateConstraints() defaults.
 %
+% Plus six F3 cases (f3pp_* / f3lfp_*, listed in f3_case_names; see below):
+% MATLAB's own by-label test construction, including rank-deficient designs.
+%
 % Saved per case (prefix <name>_): inputs dN, x_K, x0, Px0, every
 % ExpectationSums field (ES_<field>), fitType, mu, beta, gamma, windowTimes,
 % HkAll, delta (and y for PPLFP), and the M-step outputs Ahat, Qhat,
@@ -176,6 +179,99 @@ for i = 1:numel(cases)
     out.([p 'Px0hat']) = Px0hat;
 end
 out.case_names = {cases.name};
+
+% F3 cases: MATLAB's own GLM M-step by-label test (testGLMMStepMapsCoefficients-
+% ByLabel / glmMStepMatchesGlmfit in tests/unit/testPointProcessEMCorrectness.m),
+% reproduced draw for draw.  E-step output at A = 0.95 I, Q = 0.01 I: with an
+% isotropic state model the smoothed means stay in span(beta), so for dx > C
+% (dx = 2, C = 1 and dx = 10, C = 2) the design [1 x_K'] is rank-deficient and
+% glmfit drops dependent columns (b = 0, se = 0); dx = 2, C = 3 is full rank,
+% with x_K row 2 replaced by 1e-5 noise (rng(2)) so that v2 is not identifiable
+% (se >= 100) and beta row 2 keeps its previous value.  Each case seeds its own
+% rng(19), so the cases above are unaffected.  Saved per case (prefix <name>_):
+% dN, x_K (as passed to the M-step), x0, Px0, ES_<field>, mu, beta, gamma (0),
+% windowTimes ([]), HkAll, delta, dropRow, (y), the M-step outputs and
+% glmfit_b (glmfit(x_K', dN(c,:)', 'poisson') per cell, MATLAB's reference).
+f3 = struct( ...
+    'name',    {'f3pp_dx10_C2', 'f3pp_dx2_C1', 'f3pp_dx2_C3_drop2', ...
+                'f3lfp_dx10_C2', 'f3lfp_dx2_C1', 'f3lfp_dx2_C3_drop2'}, ...
+    'family',  {'PP', 'PP', 'PP', 'PPLFP', 'PPLFP', 'PPLFP'}, ...
+    'dx',      {10, 2, 2, 10, 2, 2}, ...
+    'C',       {2, 1, 3, 2, 1, 3}, ...
+    'dropRow', {[], [], 2, [], [], 2});
+for i = 1:numel(f3)
+    cs = f3(i); dxf = cs.dx; C = cs.C;
+    rng(19); Nf = 1000; delta = 0.001;
+    Af = 0.95*eye(dxf); Qf = 0.01*eye(dxf);
+    x = zeros(dxf, Nf);
+    for t = 2:Nf, x(:,t) = Af*x(:,t-1) + chol(Qf)'*randn(dxf,1); end
+    mu = log(40*delta)*ones(C,1); beta = 0.8*randn(dxf, C);
+    dN = double(rand(C, Nf) < min(exp(mu + beta'*x), 1));
+    H0 = zeros(Nf, 1, C); x0f = zeros(dxf,1); Px0f = 1e-9*eye(dxf);
+    p = [cs.name '_'];
+    if strcmp(cs.family, 'PP')
+        [x_K, W_K, ~, ES] = nstat.decoding.PointProcessEM.PP_EStep( ...
+            Af, Qf, dN, mu, beta, 'poisson', 0, H0, x0f, Px0f);
+    else
+        Cmf = randn(2, dxf); Rf = 0.05*eye(2); alphaf = [0.1; -0.1];
+        y = Cmf*x + alphaf + chol(Rf,'lower')*randn(2, Nf);
+        [x_K, W_K, ~, ES] = nstat.decoding.PPLFP.PPLFP_EStep( ...
+            Af, Qf, Cmf, Rf, y, alphaf, dN, mu, beta, 'poisson', delta, 0, H0, x0f, Px0f);
+        out.([p 'y']) = y;
+    end
+    if ~isempty(cs.dropRow)
+        rng(2); x_K(cs.dropRow,:) = 1e-5*randn(1, Nf);
+    end
+    if strcmp(cs.family, 'PP')
+        cons = nstat.decoding.PointProcessEM.PP_EMCreateConstraints();
+        [Ahat, Qhat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat] = ...
+            nstat.decoding.PointProcessEM.PP_MStep(dN, x_K, W_K, x0f, Px0f, ES, 'poisson', ...
+                mu, beta, 0, [], H0, cons, 'GLM');
+    else
+        cons = nstat.decoding.PPLFP.PPLFP_EMCreateConstraints();
+        [Ahat, Qhat, Chat, Rhat, alphahat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat] = ...
+            nstat.decoding.PPLFP.PPLFP_MStep(dN, y, x_K, W_K, x0f, Px0f, ES, 'poisson', ...
+                mu, beta, 0, [], H0, cons, 'GLM');
+        out.([p 'Chat']) = Chat;
+        out.([p 'Rhat']) = Rhat;
+        out.([p 'alphahat']) = alphahat;
+    end
+    ws = warning('off', 'all');
+    B = zeros(dxf + 1, C);
+    for c = 1:C
+        B(:, c) = glmfit(x_K', dN(c,:)', 'poisson');
+    end
+    warning(ws);
+    fprintf('  [%s] rank([1 x_K'']) = %d of %d, betahat_new = %s\n', cs.name, ...
+        rank([ones(Nf,1) x_K']), dxf + 1, mat2str(betahat_new, 4));
+    out.([p 'family']) = cs.family;
+    out.([p 'fitType']) = 'poisson';
+    out.([p 'dN']) = dN;
+    out.([p 'x_K']) = x_K;
+    out.([p 'x0']) = x0f;
+    out.([p 'Px0']) = Px0f;
+    out.([p 'mu']) = mu;
+    out.([p 'beta']) = beta;
+    out.([p 'gamma']) = 0;
+    out.([p 'windowTimes']) = [];
+    out.([p 'HkAll']) = H0;
+    out.([p 'delta']) = delta;
+    out.([p 'dropRow']) = cs.dropRow;
+    fn = fieldnames(ES);
+    for j = 1:numel(fn)
+        out.([p 'ES_' fn{j}]) = ES.(fn{j});
+    end
+    out.([p 'Ahat']) = Ahat;
+    out.([p 'Qhat']) = Qhat;
+    out.([p 'muhat_new']) = muhat_new;
+    out.([p 'betahat_new']) = betahat_new;
+    out.([p 'gammahat_new']) = gammahat_new;
+    out.([p 'x0hat']) = x0hat;
+    out.([p 'Px0hat']) = Px0hat;
+    out.([p 'glmfit_b']) = B;
+end
+out.f3_case_names = {f3.name};
+
 out.matlab_version = version;
 % The MATLAB checkout's git commit (the repaired fix/pp-em branch, pending
 % upstream merge), as export_pplfp_gold_fixtures.m records it.
