@@ -43,12 +43,13 @@
   `PPDecodeFilterLinear`, `PPDecode_updateLinear`, `PP_EStep` and
   `PPLFP_Decode_update` (with its callers) paired history windows with the
   wrong cells. `PPDecodeFilterLinear` and `PP_EStep` now match MATLAB with
-  nW == C (new gold fixture `pp_square_history.mat`). The PPLFP family is not
+  nW == C (new gold fixture `pp_square_history.mat`; for
+  `PPDecodeFilterLinear` with a square `beta`, see below). The PPLFP family is not
   yet verified for nW == C, where MATLAB's own handling is under review.
 - Fix: the history design built from `windowTimes` (`PPDecodeFilterLinear`,
   `PP_fixedIntervalSmoother`, `PPHybridFilterLinear`, `PPLFP_EM`) assigned
   each spike to the next window relative to MATLAB's `History.computeHistory`
-  (the first window was always empty). It now reproduces MATLAB's windows
+  (a first window spanning a single bin was always empty). It now reproduces MATLAB's windows
   exactly, including edges off the time grid, and is ~500x faster; as in
   MATLAB, only bins with `dN == 1` count as spikes (bins holding larger counts
   no longer add to the history). `PPLFP_EM`'s default windows (`windowTimes`
@@ -59,7 +60,10 @@
   MATLAB. With `delta` other than 1 ms, `PPLFP_EM`'s history still differs
   from MATLAB master's, which builds it from a 1 kHz spike train without
   resampling. With history,
-  `PPDecodeFilterLinear` and `PP_fixedIntervalSmoother` now match MATLAB.
+  `PPDecodeFilterLinear` and `PP_fixedIntervalSmoother` now match MATLAB,
+  except that when the number of states equals the number of cells MATLAB's
+  `PPDecodeFilterLinear` transposes the square `beta` (a MATLAB defect, being
+  fixed upstream).
   Window edges at or before `-delta`, which reached the current and later
   bins, now raise `ValueError` (MATLAB fails on them too).
 - Fix: `PP_fixedIntervalSmoother` with `lags = 1` left the first predicted

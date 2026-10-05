@@ -36,9 +36,11 @@ Cases:
   axis); this used to raise ``ValueError``.
 * ``pdfl_pois_offgrid`` / ``pdfl_pois_colon`` / ``pdfl_binom_delta2`` --
   ``PPDecodeFilterLinear`` with window edges off the 1 ms grid
-  ([0 1.5 4 6.5] ms), MATLAB's default ``0:delta:(numel(gamma)+1)*delta`` form
-  (nW = 10; its 0.009 s edge is 9.000000000000002 samples, so MATLAB leaves the
-  last window empty) and delta = 2 ms.
+  ([0 1.5 4 6.5] ms), edges ``0:delta:(9+1)*delta`` and delta = 2 ms.
+  ``pdfl_pois_colon`` pins MATLAB's rounding of those edges only (its 0.009 s
+  edge is 9.000000000000002 samples, so MATLAB leaves the last window empty); a
+  real default call with numel(gamma) = 9 would pass a 9-row gamma, this case a
+  10-row one.
 
 Outside ``case_names``:
 
@@ -58,8 +60,10 @@ History from ``windowTimes``.  ``PPDecodeFilterLinear`` and
 private ``_compute_history_terms``.  It used to count lags in
 ``[t_start, t_stop)`` -- one bin earlier than MATLAB's
 ``History.computeHistory``, whose window ``[t_i, t_(i+1)]`` counts the spikes
-``ceil(t_i/delta)+1 .. ceil(t_(i+1)/delta)`` bins back -- so the first window was
-always empty and no history case could match MATLAB.  It now follows MATLAB's
+``ceil(t_i*sampleRate)+1 .. ceil(t_(i+1)*sampleRate)`` samples back
+(History.m:283-285, sampleRate = 1/delta; the product, not ``t/delta``, is what
+MATLAB rounds) -- so a one-bin first window was always empty and no history
+case could match MATLAB.  It now follows MATLAB's
 rule; each case saves the tensor the MATLAB function consumed (``HkAll``) and
 ``test_compute_history_terms_matches_matlab_history`` checks it exactly, so the
 filters below run end to end from ``windowTimes``.
