@@ -51,9 +51,10 @@ Outside ``case_names``:
 * ``colon_*`` -- 487 MATLAB ``a:d:b`` outputs pinning
   ``nstat.core._matlab_colon_exact``.
 
-For the ``PP_EStep`` cases the log-likelihood is not captured: for nW == C
-MATLAB's logll transposes the square history slice, a suspected MATLAB defect
-pending a fix (the Python port mirrors it).
+For the ``PP_EStep`` cases the log-likelihood is not captured here (MATLAB
+master transposed a square history slice in it).  The repaired MATLAB orients
+the slice by its columns; the square-history logll is pinned by the
+recaptured ``pp_estep.mat`` cases c5 / c6 (``tests/test_pp_estep_matlab_gold.py``).
 
 History from ``windowTimes``.  ``PPDecodeFilterLinear`` and
 ``PP_fixedIntervalSmoother`` build the history tensor internally with the

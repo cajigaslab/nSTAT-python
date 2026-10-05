@@ -222,6 +222,24 @@ entries:
     output_field: c4_x_K
     tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
 
+  # c5 / c6: square history (nW == C == 3, non-symmetric gamma), appended when
+  # pp_estep.mat was recaptured from the repaired MATLAB (fix/pp-em @ a457b54,
+  # pending upstream merge), whose PP_EStep logll orients each history slice
+  # by its columns.  Measured max abs error 5.1e-12 (logll), arrays <= 2.3e-13.
+  - name: PP_EStep_poisson_square_history_logll
+    recipe: pp_estep
+    args: { case: c5 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c5_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_binomial_square_history_logll
+    recipe: pp_estep
+    args: { case: c6 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c6_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
   # 16. PPAF filters with a square history (nW == C: gamma is never
   # transposed) plus an nW != C control.  Captured by
   # tools/parity/matlab/capture_pp_square_history.m.  Each entry compares the

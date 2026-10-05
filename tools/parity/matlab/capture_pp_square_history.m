@@ -41,7 +41,8 @@ function capture_pp_square_history()
 % windowTimes, delta, x0, Pi0 (PP_EStep: Px0), lags (smoother), HkAll and
 % sizes = [N nW C dx]; outputs x_p, W_p, x_u, W_u (PPDecodeFilterLinear),
 % x_pLag, W_pLag, x_uLag, W_uLag (PP_fixedIntervalSmoother) or x_K, W_K
-% (PP_EStep; its logll is deliberately not captured here).
+% (PP_EStep; its logll is not captured here -- the square-history logll is in
+% pp_estep.mat c5 / c6).
 %
 % Appended after the ten cases (fields outside case_names, so every earlier
 % field is unchanged):
@@ -65,11 +66,13 @@ function capture_pp_square_history()
 % is built as PointProcessEM.PP_EM builds it and passed in.  MATLAB keeps
 % HkAll as N x nW x C, which it stores as N x nW when C == 1.
 %
-% MATLAB nSTAT repo is resolved from NSTAT_MATLAB_PATH, defaulting to
-% /Users/iahncajigas/projects/nstat.
+% The MATLAB nSTAT checkout is read from the NSTAT_MATLAB_PATH environment
+% variable (required).
 
 matlabRepo = getenv('NSTAT_MATLAB_PATH');
-if isempty(matlabRepo); matlabRepo = '/Users/iahncajigas/projects/nstat'; end
+if isempty(matlabRepo)
+    error('capture:noMatlabPath', 'Set NSTAT_MATLAB_PATH to the MATLAB nSTAT checkout.');
+end
 here = fileparts(mfilename('fullpath'));
 outMat = fullfile(here, '..', '..', '..', 'tests', 'parity', 'fixtures', ...
                   'matlab_gold', 'pp_square_history.mat');

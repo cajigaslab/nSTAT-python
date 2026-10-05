@@ -351,3 +351,37 @@ def test_all_zero_gamma_is_not_estimated(family) -> None:
     out = _run_pp_mstep(P, "poisson") if family == "PP" else _run_pplfp_mstep(P, "poisson")
     gamma_out = out[4] if family == "PP" else out[7]
     assert not np.array_equal(np.asarray(gamma_out), P["gamma"])
+
+
+# ---------------------------------------------------------------------------
+# PP_EStep log-likelihood with a square history (nW == C; MATLAB C3)
+# ---------------------------------------------------------------------------
+
+
+def _pp_estep_gold_case(case):
+    from pathlib import Path
+
+    from scipy.io import loadmat
+
+    g = loadmat(Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab_gold" / "pp_estep.mat")
+    f = lambda k: np.asarray(g[f"{case}_{k}"], dtype=float)  # noqa: E731
+    fit = str(np.asarray(g[f"{case}_fitType"]).reshape(-1)[0])
+    return f("A"), f("Q"), f("dN"), f("mu"), f("beta"), fit, f("gamma"), f("HkAll"), f("x0"), f("Px0")
+
+
+@pytest.mark.parametrize("case", ["c2", "c5", "c6"])
+def test_pp_estep_invariant_to_an_appended_zero_history_window(case) -> None:
+    # Appending an all-zero history window with a zero gamma row changes no
+    # model term, so x_K, W_K and logll must be unchanged.  c2 (nW = 2, C = 3)
+    # becomes square; the square c5 / c6 (nW = C = 3) become non-square.  The
+    # old rows-based orientation test transposed the square slice in the logll.
+    A, Q, dN, mu, beta, fit, gamma, HkAll, x0, Px0 = _pp_estep_gold_case(case)
+    N, nW, C = HkAll.shape
+    H2 = np.concatenate([HkAll, np.zeros((N, 1, C))], axis=1)
+    g2 = np.vstack([gamma, np.zeros((1, C))])
+    assert {nW, nW + 1} & {C}
+    a = DecodingAlgorithms.PP_EStep(A, Q, dN, mu, beta, fit, gamma, HkAll, x0, Px0)
+    b = DecodingAlgorithms.PP_EStep(A, Q, dN, mu, beta, fit, g2, H2, x0, Px0)
+    np.testing.assert_array_equal(a[0], b[0])
+    np.testing.assert_array_equal(a[1], b[1])
+    assert a[2] == b[2]

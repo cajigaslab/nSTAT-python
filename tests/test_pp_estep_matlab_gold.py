@@ -3,12 +3,19 @@
 Gold: ``tests/parity/fixtures/matlab_gold/pp_estep.mat``, captured from MATLAB
 ``nstat.decoding.PointProcessEM.PP_EStep`` by
 ``tools/parity/matlab/capture_pp_estep.m`` (rng(42) synthetic inputs; dx = 2
-states, C = 3 cells, N = 150 bins).  Cases:
+states, C = 3 cells, N = 150 bins; recaptured from the repaired MATLAB
+``fix/pp-em`` @ ``a457b54``, pending upstream merge, which added c5 / c6 and
+left c1-c4 bit-identical).  Cases:
 
 * ``c1`` poisson, no history (``HkAll = zeros(N, 1, C)``, ``gamma = 0``)
 * ``c2`` poisson, 2-window history, nonzero ``gamma``
 * ``c3`` binomial, 4-window history, nonzero ``gamma``
 * ``c4`` binomial, no history
+* ``c5`` / ``c6`` poisson / binomial, square history (nW == C == 3,
+  non-symmetric ``gamma``).  MATLAB's repaired PP_EStep orients each
+  ``nW x C`` history slice of its log-likelihood by its columns; the former
+  rows test (mirrored here until this fix) transposed a square slice and
+  paired ``gamma(w, c)`` with ``H(c, w)`` -- the logll was off by ~1.
 
 The MATLAB-computed ``HkAll`` (``History.computeHistory`` per cell, exactly as
 ``PP_EM`` builds it) is fed straight to Python, so the comparison isolates
@@ -45,7 +52,10 @@ CASES = {
     "c2": ("poisson", True),
     "c3": ("binomial", True),
     "c4": ("binomial", False),
+    "c5": ("poisson", True),
+    "c6": ("binomial", True),
 }
+SQUARE_CASES = ("c5", "c6")
 
 
 @pytest.fixture(scope="module")
@@ -75,13 +85,13 @@ def test_fixture_cases_are_the_documented_ones(gold) -> None:
         assert fit == fit_type
         assert HkAll.ndim == 3 and HkAll.shape[0] == N and HkAll.shape[2] == num_cells
         if has_history:
-            # nW != C on purpose.  With nW == C (a square history) MATLAB
-            # PP_EStep's log-likelihood transposes the square history slice --
-            # a suspected MATLAB defect whose fix is pending -- so square cases
-            # are left out of this fixture until it is recaptured from the fixed
-            # MATLAB.  x_K / W_K with nW == C are covered by
-            # pp_square_history.mat (tests/test_pp_square_history_matlab_gold.py).
-            assert HkAll.shape[1] not in (1, num_cells)
+            # c2 / c3 have nW not in {1, C}; c5 / c6 are square (nW == C) with a
+            # non-symmetric gamma, so a window/cell transpose cannot pass.
+            if case in SQUARE_CASES:
+                assert HkAll.shape[1] == num_cells
+                assert np.max(np.abs(gamma - gamma.T)) > 0.1
+            else:
+                assert HkAll.shape[1] not in (1, num_cells)
             assert np.any(HkAll != 0) and np.ndim(gamma) == 2 and np.any(gamma != 0)
             assert gamma.shape == (HkAll.shape[1], num_cells)
         else:

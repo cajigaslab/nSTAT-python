@@ -6314,8 +6314,12 @@ class DecodingAlgorithms:
         if fitType == "poisson":
             for k in range(K):
                 if HkAll.ndim == 3:
-                    Hk = HkAll[k, :, :]  # (nW, C) — need to handle orientation
-                    if Hk.shape[0] == numCells:
+                    # (nW, C).  MATLAB (repaired, C3) orients this slice by its
+                    # COLUMNS: if(size(Hk,2)~=numCells) Hk=Hk'.  The former
+                    # rows test also fired for nW == C and transposed a square
+                    # slice, pairing gamma(w,c) with H(c,w) in the logll only.
+                    Hk = HkAll[k, :, :]
+                    if Hk.shape[1] != numCells:
                         Hk = Hk.T
                 else:
                     Hk = np.zeros((0, numCells))
@@ -6342,8 +6346,8 @@ class DecodingAlgorithms:
         elif fitType == "binomial":
             for k in range(K):
                 if HkAll.ndim == 3:
-                    Hk = HkAll[k, :, :]
-                    if Hk.shape[0] == numCells:
+                    Hk = HkAll[k, :, :]  # (nW, C); column-based orientation as above
+                    if Hk.shape[1] != numCells:
                         Hk = Hk.T
                 else:
                     Hk = np.zeros((0, numCells))
@@ -6366,7 +6370,9 @@ class DecodingAlgorithms:
                 bt = beta
                 btWbt_diag = np.diag(bt.T @ Wk @ bt)
                 ExplambdaDelta = ld + 0.5 * (ld * (1 - ld) * (1 - 2 * ld)) * btWbt_diag
-                ExplogLD = np.log(np.maximum(ld, 1e-30)) + 0.5 * (-ld * (1 - ld)) * btWbt_diag
+                # MATLAB: ExplogLD = log(ld) + ... (no floor; the former
+                # log(max(ld, 1e-30)) floor had no MATLAB counterpart).
+                ExplogLD = np.log(ld) + 0.5 * (-ld * (1 - ld)) * btWbt_diag
                 sumPPll += float(np.sum(dN[:, k] * ExplogLD - ExplambdaDelta))
 
         det_Q = max(float(np.linalg.det(Q)), np.finfo(float).tiny)
