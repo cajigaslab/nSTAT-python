@@ -31,15 +31,30 @@ function export_pplfp_gold_fixtures(repoRoot, matlabRepoRoot)
 % Case-D entries should be added to `parity/matlab_defects.yml`. If Python
 % then FAILS drift on the new .mat, do not commit — investigate first.
 %
+% 2026-10 recapture (pplfp_SE.mat, pplfp_EM.mat)
+% ----------------------------------------------
+% pplfp_SE.mat and pplfp_EM.mat were recaptured from the repaired MATLAB
+% (fix/pp-em @ a457b54, pending upstream merge), whose
+% PPLFP_ComputeParamStandardErrors unpacks SE.beta / SE.gamma cell by cell
+% (reshape(v, dx, C) / reshape(v, W, C); it used reshape(v, C, dx)', which
+% scrambled them).  Only SE.beta and Pvals.beta moved (pplfp_SE: exact
+% transposes, betahat_new is all 0.5; pplfp_EM: SE.beta transposed and
+% Pvals.beta recomputed); every other field, and all of pplfp_EStep.mat /
+% pplfp_MStep.mat, is bit-identical to the previous capture.  Both saves
+% carry a matlab_source_note field recording the MATLAB source.
+%
 % USAGE
 % -----
-%   export_pplfp_gold_fixtures('/Users/iahncajigas/projects/nstat-python', ...
-%                              '/Users/iahncajigas/projects/nstat');
+%   export_pplfp_gold_fixtures(<nstat-python repo root>, <MATLAB nSTAT repo root>)
+% The MATLAB root defaults to the NSTAT_MATLAB_PATH environment variable.
 
 if nargin < 1 || isempty(repoRoot)
     error('repoRoot is required');
 end
 if nargin < 2 || isempty(matlabRepoRoot)
+    matlabRepoRoot = getenv('NSTAT_MATLAB_PATH');
+end
+if isempty(matlabRepoRoot)
     matlabRepoRoot = fullfile(fileparts(repoRoot), 'nSTAT');
 end
 
@@ -304,12 +319,13 @@ rng(42); %#ok<RNG>
         alphahat0, mu, beta, fitType, delta, 0, windowTimes, x0, Px0, ...
         constraints, 'NewtonRaphson');
 
+matlab_source_note = pplfp_matlab_source_note(); %#ok<NASGU>
 save(fixturePath, ...
     'y', 'dN', 'Ahat0', 'Qhat0', 'Chat0', 'Rhat0', 'alphahat0', ...
     'mu', 'beta', 'fitType', 'delta', 'x0', 'Px0', 'mcIter', ...
     'xKFinal', 'WKFinal', 'Ahat', 'Qhat', 'Chat', 'Rhat', 'alphahat', ...
     'muhat', 'betahat', 'gammahat', 'x0hat', 'Px0hat', ...
-    'IC', 'SE', 'Pvals', '-v7');
+    'IC', 'SE', 'Pvals', 'matlab_source_note', '-v7');
 fprintf('  [EM] saved %s\n', fixturePath);
 end
 
@@ -387,11 +403,19 @@ rng(42); %#ok<RNG>
         x0hat, Px0hat, ExpectationSumsFinal, fitType, muhat_new, ...
         betahat_new, gammaSEArg, [], HkAllSEArg, constraints);
 
+matlab_source_note = pplfp_matlab_source_note(); %#ok<NASGU>
 save(fixturePath, ...
     'A', 'Q', 'C', 'R', 'y', 'alpha', 'dN', 'mu', 'beta', 'gamma', ...
     'HkAll', 'x0', 'Px0', 'fitType', 'delta', ...
     'Ahat', 'Qhat', 'Chat', 'Rhat', 'alphahat', 'betahat_new', ...
     'gammahat_new', 'muhat_new', 'x0hat', 'Px0hat', ...
-    'xKFinal', 'WKFinal', 'SE', 'Pvals', 'nTerms', '-v7');
+    'xKFinal', 'WKFinal', 'SE', 'Pvals', 'nTerms', 'matlab_source_note', '-v7');
 fprintf('  [SE] saved %s\n', fixturePath);
+end
+
+
+function note = pplfp_matlab_source_note()
+% Provenance of the 2026-10 recapture of pplfp_SE.mat / pplfp_EM.mat.
+note = ['Captured from the repaired MATLAB nSTAT fix/pp-em @ a457b54 ' ...
+        '(pending upstream merge), ' version];
 end
