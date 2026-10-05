@@ -1,16 +1,21 @@
 """A numba whose ``njit`` decoration raises must never break nstat."""
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import textwrap
 from pathlib import Path
 
+import pytest
+
 _SCRIPT = textwrap.dedent(
     """
-    import importlib.abc, importlib.machinery, sys
+    import importlib.abc, importlib.machinery, os, sys
 
     CALLS = []
+    # Decorations 1..FAIL_FROM-1 "succeed" (identity), FAIL_FROM onward raise.
+    FAIL_FROM = int(os.environ["NJIT_FAIL_FROM"])
 
     class L(importlib.abc.Loader):
         def create_module(self, spec):
@@ -20,7 +25,9 @@ _SCRIPT = textwrap.dedent(
             def njit(*a, **k):
                 def deco(f):
                     CALLS.append(f.__name__)
-                    raise RuntimeError("cannot cache function: no locator available")
+                    if len(CALLS) >= FAIL_FROM:
+                        raise RuntimeError("cannot cache function: no locator available")
+                    return f
                 return deco
             module.njit = njit
 
@@ -57,7 +64,8 @@ _SCRIPT = textwrap.dedent(
     second = run()  # a second call must not re-run the kernels module body
     nk = sys.modules["nstat.extras._numba_kernels"]
     assert nk._NUMBA_AVAILABLE is False and nk._NUMBA_IMPORT_ERROR is not None
-    assert len(CALLS) == 1, CALLS  # module body ran once (first decoration failed)
+    # module body ran once: decorations stop at the first failure
+    assert len(CALLS) == FAIL_FROM, CALLS
     nk._NUMBA_AVAILABLE = False
     ref = run()
     for a, b, c in zip(flat(first), flat(second), flat(ref)):
@@ -71,14 +79,17 @@ _SCRIPT = textwrap.dedent(
 )
 
 
-def test_failing_njit_decoration_falls_back_to_pure_python():
+@pytest.mark.parametrize("fail_from", [1, 2], ids=["every-decoration", "later-decoration"])
+def test_failing_njit_decoration_falls_back_to_pure_python(fail_from):
+    """fail_from=1: every decoration raises. fail_from=2: the first kernel
+    decorates and a later one raises, so no mixed JIT/Python state may be used."""
     repo = Path(__file__).resolve().parents[1]
     proc = subprocess.run(
         [sys.executable, "-c", _SCRIPT],
         capture_output=True,
         text=True,
         cwd=repo,
-        env={**__import__("os").environ, "PYTHONPATH": str(repo)},
+        env={**os.environ, "PYTHONPATH": str(repo), "NJIT_FAIL_FROM": str(fail_from)},
         timeout=120,
     )
     assert proc.returncode == 0, proc.stderr
