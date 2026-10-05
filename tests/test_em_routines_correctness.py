@@ -1348,3 +1348,49 @@ def test_shared_gamma_column_standard_errors(family, nW) -> None:
         for key in want[part]:
             np.testing.assert_array_equal(np.asarray(got[part][key]), np.asarray(want[part][key]), err_msg=key)
     assert np.shape(got[0]["gamma"]) == (nW, 4)
+
+
+@pytest.mark.parametrize("cfg", ["AhatDiag", "EstimateA0"])
+def test_pp_em_standard_errors_honour_the_constraints(cfg, monkeypatch) -> None:
+    # MATLAB G2 (reviewer probe5): PointProcessEM.PP_ComputeParamStandardErrors
+    # tested nargin < 19 in a 15-input function, so it always replaced the
+    # caller's constraints with PP_EMCreateConstraints() -- SE.A full with
+    # AhatDiag = 1, SE.A reported with EstimateA = 0, mcIter always 1000.  The
+    # port always used the constraints it is given (a pin): SE.A is diagonal
+    # with AhatDiag = 1, absent with EstimateA = 0, and every Monte Carlo
+    # draw uses the caller's mcIter.
+    import nstat.decoding_algorithms as da
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    rng = np.random.default_rng(7)
+    N, C = 400, 3
+    A, Q = np.diag([0.95, 0.90]), np.diag([0.010, 0.020])
+    x = np.zeros((2, N))
+    prev = np.zeros(2)
+    for k in range(N):
+        prev = A @ prev + np.sqrt(np.diag(Q)) * rng.standard_normal(2)
+        x[:, k] = prev
+    mu = np.log(40e-3) * np.ones(C)
+    beta = np.array([[1.0, -0.6, 0.8], [0.4, 0.9, -0.7]])
+    dN = (rng.random((C, N)) < np.minimum(np.exp(mu[:, None] + beta.T @ x), 1)).astype(float)
+    flags = (1, 1) if cfg == "AhatDiag" else (0, 0)
+    cons = DecodingAlgorithms.PP_EMCreateConstraints(flags[0], flags[1], 1, 0, 0, 0, 0, 30)
+    draws = []
+    real = da._mc_state_draws
+
+    def spy(m, W, M, normal, **kw):
+        draws.append(M)
+        return real(m, W, M, normal, **kw)
+
+    monkeypatch.setattr(da, "_mc_state_draws", spy)
+    with seeded_global_rng(42):
+        out = DecodingAlgorithms.PP_EM(dN, A, Q, mu, beta, "poisson", 0.001, None, None, None, None, cons)
+    Ahat, SE, Pvals = out[2], out[10], out[11]
+    assert draws and set(draws) == {50, 30}  # the M-step's fixed McExp = 50; the SE pass uses mcIter
+    if cfg == "AhatDiag":
+        assert np.count_nonzero(Ahat - np.diag(np.diag(Ahat))) == 0
+        assert SE["A"].shape == (2, 2) and np.count_nonzero(SE["A"] - np.diag(np.diag(SE["A"]))) == 0
+        assert np.all(np.diag(SE["A"]) > 0) and "A" in Pvals
+    else:
+        assert "A" not in SE and "A" not in Pvals
+        np.testing.assert_allclose(Ahat, A, rtol=1e-14, atol=0)  # A is held (scale / unscale round-off only)
