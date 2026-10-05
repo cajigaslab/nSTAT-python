@@ -38,6 +38,7 @@ from nstat.decoding_algorithms import (
     _as_observation_matrix,
     _as_state_matrix,
     _is_empty_value,
+    _mc_state_draws,
     _normalize_beta,
     _normalize_gamma,
     _normalize_history_tensor,
@@ -1137,15 +1138,14 @@ class PPLFP:
         McExp = mcIter
         rng = np.random.default_rng()
 
+        def _normal(d, n):
+            return rng.standard_normal((d, n))
+
+        # Draws through _mc_state_draws (MATLAB mcStateDraws, F9: the draw
+        # was chol(W)*z, covariance R*R' instead of W).
         xKDrawExp = np.zeros((dx, K, McExp))
         for k in range(K):
-            WuTemp = WKFinal_3[:, :, k]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp).T
-            except np.linalg.LinAlgError:
-                chol_m = np.zeros_like(WuTemp)
-            z = rng.standard_normal((dx, McExp))
-            xKDrawExp[:, k, :] = xKFinal[:, k : k + 1] + (chol_m @ z)
+            xKDrawExp[:, k, :] = _mc_state_draws(xKFinal[:, k], WKFinal_3[:, :, k], McExp, _normal, non_pd="zero")
 
         xkPerm = np.transpose(xKDrawExp, (0, 2, 1))
 
@@ -1310,24 +1310,15 @@ class PPLFP:
         # ==================================================================
         # MISSING INFORMATION MATRIX (Monte Carlo)
         # ==================================================================
+        # Draws through _mc_state_draws (MATLAB mcStateDraws, F9).
         Mc = mcIter
         xKDraw = np.zeros((dx, N, Mc))
         for n_idx in range(N):
-            WuTemp = WKFinal_3[:, :, n_idx]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp).T
-            except np.linalg.LinAlgError:
-                chol_m = np.zeros_like(WuTemp)
-            z = rng.standard_normal((dx, Mc))
-            xKDraw[:, n_idx, :] = xKFinal[:, n_idx : n_idx + 1] + (chol_m @ z)
+            xKDraw[:, n_idx, :] = _mc_state_draws(xKFinal[:, n_idx], WKFinal_3[:, :, n_idx], Mc, _normal,
+                                                  non_pd="zero")
 
         if EstimatePx0 or Estimatex0:
-            try:
-                chol_p = np.linalg.cholesky(Px0hat).T
-            except np.linalg.LinAlgError:
-                chol_p = np.zeros_like(Px0hat)
-            zp = rng.standard_normal((dx, Mc))
-            x0Draw = x0hat + (chol_p @ zp)
+            x0Draw = _mc_state_draws(x0hat, Px0hat, Mc, _normal, non_pd="zero")
         else:
             x0Draw = np.tile(x0hat, (1, Mc))
 
@@ -2922,18 +2913,15 @@ class PPLFP:
         McExp = 50
         rng = np.random.default_rng()
 
+        def _normal(d, n):
+            return rng.standard_normal((d, n))
+
+        # Draws through _mc_state_draws (MATLAB mcStateDraws, F9: the draw
+        # was chol(W)*z, covariance R*R' instead of W).
         W_K_arr = np.asarray(W_K, dtype=float)
         xKDrawExp = np.zeros((dx, K, McExp))
         for k in range(K):
-            WuTemp = W_K_arr[:, :, k]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp).T
-            except np.linalg.LinAlgError:
-                chol_m = np.zeros_like(WuTemp)
-            z = rng.standard_normal((dx, McExp))
-            xKDrawExp[:, k, :] = (
-                np.tile(x_K[:, k:k + 1], (1, McExp)) + chol_m @ z
-            )
+            xKDrawExp[:, k, :] = _mc_state_draws(x_K[:, k], W_K_arr[:, :, k], McExp, _normal, non_pd="zero")
 
         # MATLAB permute(xKDrawExp,[1 3 2]) -> (dx, McExp, K)
         xkPerm = np.transpose(xKDrawExp, (0, 2, 1))

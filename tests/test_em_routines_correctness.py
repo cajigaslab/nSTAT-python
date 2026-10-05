@@ -272,8 +272,8 @@ def test_single_cell_history_stored_2d_equals_3d(family, fit) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _mstep_problem(fit="binomial", *, dx=2, C=3, nW=2, K=400, seed=4):
-    """Known state path x (W_K = 0.02 I) and spikes from the generating (mu, beta, gamma)."""
+def _mstep_problem(fit="binomial", *, dx=2, C=3, nW=2, K=400, seed=4, W=None):
+    """Known state path x (W_K = W, default 0.02 I) and spikes from the generating (mu, beta, gamma)."""
     rng = np.random.default_rng(seed)
     A = np.array([[0.95, 0.02], [-0.03, 0.9]])[:dx, :dx]
     x = np.zeros((dx, K))
@@ -288,7 +288,7 @@ def _mstep_problem(fit="binomial", *, dx=2, C=3, nW=2, K=400, seed=4):
     dN = (rng.random((C, K)) < np.minimum(p, 0.9)).astype(float)
     wt = np.arange(nW + 1) * 0.001
     HkAll = _compute_history_terms(dN, 0.001, wt)
-    W_K = np.tile((0.02 * np.eye(dx))[:, :, None], (1, 1, K))
+    W_K = np.tile((0.02 * np.eye(dx) if W is None else np.asarray(W, dtype=float))[:, :, None], (1, 1, K))
     ES = dict(Sxkm1xkm1=x @ x.T, Sxkxkm1=x[:, 1:] @ x[:, :-1].T, Sxkm1xk=x[:, :-1] @ x[:, 1:].T, Sxkxk=x @ x.T,
               sumXkTerms=0.02 * K * np.eye(dx), Sxkyk=x @ (np.array([[1.0, 0.5]])[:, :dx] @ x).T,
               sumYkTerms=0.1 * K * np.eye(1))
@@ -297,12 +297,17 @@ def _mstep_problem(fit="binomial", *, dx=2, C=3, nW=2, K=400, seed=4):
 
 
 def _mc_draws(P, z_source, McExp=50):
-    """The M-step's own draws x_K(:,k) + chol(W_K(:,:,k))' z, z from ``z_source`` in time order."""
+    """The M-step's own draws x_K(:,k) + R' z, R = chol(W_K(:,:,k)) (MATLAB mcStateDraws, F9).
+
+    ``R' = np.linalg.cholesky(W)``, the lower factor; z from ``z_source`` in
+    time order.  (The legacy upper-factor draw R z has covariance R R' != W
+    for a non-diagonal W.)
+    """
     dx, K = P["dx"], P["K"]
     draws = np.zeros((dx, McExp, K))
     for k in range(K):
         z = z_source((dx, McExp))
-        draws[:, :, k] = P["x"][:, k:k + 1] + np.linalg.cholesky(P["W_K"][:, :, k]).T @ z
+        draws[:, :, k] = P["x"][:, k:k + 1] + np.linalg.cholesky(P["W_K"][:, :, k]) @ z
     return draws
 
 
@@ -340,14 +345,18 @@ def _run_pplfp_mstep(P, fit="binomial", gamma=None, seed=42):
         )
 
 
+@pytest.mark.parametrize("W", [None, [[0.02, 0.012], [0.012, 0.03]]], ids=["Wdiag", "Wfull"])
 @pytest.mark.parametrize("family", ["PP", "PPLFP"])
 @pytest.mark.parametrize("fit", ["poisson", "binomial"])
-def test_newton_raphson_beta_step_reaches_a_stationary_point(family, fit) -> None:
+def test_newton_raphson_beta_step_reaches_a_stationary_point(family, fit, W) -> None:
     # The Newton beta step must end where the gradient of the Monte-Carlo
     # expected complete-data log-likelihood (with the step's own draws) is 0.
     # With the former positive-definite binomial Hessian the step moved
     # downhill: one M-step from the generating beta went to |beta| ~ 1e4-1e14.
-    P = _mstep_problem(fit)
+    # Wfull: the draws are x_K + chol(W)' z, covariance W (MATLAB F9); the
+    # former chol(W) z draws (covariance R R') end elsewhere for a
+    # non-diagonal W_K.
+    P = _mstep_problem(fit, W=W)
     if family == "PP":
         out = _run_pp_mstep(P, fit)
         beta_out = out[3]
@@ -380,6 +389,126 @@ def test_all_zero_gamma_is_not_estimated(family) -> None:
     out = _run_pp_mstep(P, "poisson") if family == "PP" else _run_pplfp_mstep(P, "poisson")
     gamma_out = out[4] if family == "PP" else out[7]
     assert not np.array_equal(np.asarray(gamma_out), P["gamma"])
+
+
+# ---------------------------------------------------------------------------
+# Monte Carlo state draws (MATLAB F9, fix/pp-em @ 8dbd0e4: mcStateDraws).
+# MATLAB drew m + chol(W)*z; chol is the UPPER factor R (R'R = W), so the
+# draws had covariance R R' -- W only for a diagonal W.  The draw is m + R'z.
+# ---------------------------------------------------------------------------
+
+_W3 = np.array([[1.0, 0.8, 0.3], [0.8, 2.0, -0.6], [0.3, -0.6, 1.5]])
+
+
+def _cov_se(W, n):
+    """Monte-Carlo SE of each sample-covariance entry of n N(., W) draws: sqrt((W_ii W_jj + W_ij^2) / n)."""
+    d = np.diag(W)
+    return np.sqrt((np.outer(d, d) + W ** 2) / n)
+
+
+def _assert_draw_covariance(X, W, m=None):
+    """Sample mean / covariance within 5 MC SEs of (m, W); the legacy R R' more than 50 SEs away."""
+    n = X.shape[1]
+    if m is not None:
+        assert np.all(np.abs(X.mean(axis=1) - m) < 5 * np.sqrt(np.diag(W) / n))
+    S = np.cov(X)
+    assert np.all(np.abs(S - W) < 5 * _cov_se(W, n)), S
+    R = np.linalg.cholesky(W).T  # MATLAB chol(W): upper, R'R = W
+    legacy = R @ R.T
+    assert np.max(np.abs(S - legacy) / _cov_se(legacy, n)) > 50
+
+
+def test_mc_state_draws_have_the_requested_covariance() -> None:
+    from nstat.decoding_algorithms import _mc_state_draws
+
+    n = 100_000
+    m = np.array([0.5, -1.0, 2.0])
+    gen = np.random.default_rng(11)
+    X = _mc_state_draws(m, _W3, n, lambda d, k: gen.standard_normal((d, k)))
+    assert X.shape == (3, n)
+    _assert_draw_covariance(X, _W3, m)
+
+
+def test_mc_state_draws_diagonal_w_is_the_legacy_draw() -> None:
+    # For a diagonal W, R' = R: the draws are bit-identical to the former
+    # chol(W)*z (MATLAB's own check), so no diagonal-W result moves.
+    from nstat.decoding_algorithms import _mc_state_draws
+
+    W = np.diag([0.3, 1.2, 0.05])
+    m = np.array([0.1, 0.2, -0.3])
+    z = np.random.default_rng(5).standard_normal((3, 200))
+    X = _mc_state_draws(m, W, 200, lambda d, k: z)
+    assert np.array_equal(X, m[:, None] + np.linalg.cholesky(W).T @ z)
+
+
+def _draw_site_problem(K=400, C=2):
+    rng = np.random.default_rng(8)
+    dx = 3
+    x = np.zeros((dx, K))  # draws centred at 0: pooled over k they are N(0, W)
+    W_K = np.tile(_W3[:, :, None], (1, 1, K))
+    dN = (rng.random((C, K)) < 0.05).astype(float)
+    mu = np.full(C, -3.0)
+    beta = 0.1 * rng.standard_normal((dx, C))
+    y = rng.standard_normal((1, K))
+    ES = dict(Sxkm1xkm1=K * _W3, Sxkxkm1=0.9 * K * _W3, Sxkm1xk=0.9 * K * _W3, Sxkxk=K * _W3,
+              sumXkTerms=0.2 * K * _W3, Sxkyk=np.zeros((dx, 1)), sumYkTerms=K * np.eye(1))
+    H = np.zeros((K, 1, C))
+    return dict(dx=dx, K=K, C=C, x=x, W_K=W_K, dN=dN, mu=mu, beta=beta, y=y, ES=ES, H=H)
+
+
+@pytest.mark.parametrize("site", ["PP_ComputeParamStandardErrors", "PP_MStep", "PPLFP_ComputeParamStandardErrors",
+                                  "PPLFP_MStep"])
+def test_every_monte_carlo_state_draw_uses_the_covariance(site, monkeypatch) -> None:
+    # Every Monte Carlo draw of the four routines goes through
+    # _mc_state_draws (the x_k draws for the expectations and for the missing
+    # information, and the x_0 draw), and the draws the routine actually uses
+    # have covariance W_K (pooled over k with x_K = 0).
+    import sys
+
+    import nstat.decoding_algorithms as da
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    lfp_mod = sys.modules[PPLFP.__module__]  # the module (nstat.decoding re-exports the class under its name)
+    real = da._mc_state_draws
+    seen = []
+
+    def spy(m, W, M, normal, **kw):
+        out = real(m, W, M, normal, **kw)
+        seen.append((np.asarray(W, dtype=float).copy(), out))
+        return out
+
+    monkeypatch.setattr(da, "_mc_state_draws", spy)
+    monkeypatch.setattr(lfp_mod, "_mc_state_draws", spy)
+    P = _draw_site_problem()
+    dx, K, C = P["dx"], P["K"], P["C"]
+    x0, Px0 = np.zeros(dx), _W3.copy()
+    with seeded_global_rng(3):
+        if site == "PP_ComputeParamStandardErrors":
+            cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 1, 1, 0, 50)
+            DecodingAlgorithms.PP_ComputeParamStandardErrors(
+                P["dN"], P["x"], P["W_K"], 0.9 * np.eye(dx), 0.2 * _W3, x0, Px0, P["ES"], "poisson", P["mu"],
+                P["beta"], np.array(0.0), [], P["H"], cons)
+            expected_calls = 2 * K + 1
+        elif site == "PP_MStep":
+            cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0)
+            DecodingAlgorithms.PP_MStep(P["dN"], P["x"], P["W_K"], x0, Px0, P["ES"], "poisson", P["mu"], P["beta"],
+                                        np.array(0.0), [], P["H"], cons, "NewtonRaphson")
+            expected_calls = K
+        elif site == "PPLFP_ComputeParamStandardErrors":
+            cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 1, 1, 0, 50, 0)
+            PPLFP.PPLFP_ComputeParamStandardErrors(
+                P["y"], P["dN"], P["x"], P["W_K"], 0.9 * np.eye(dx), 0.2 * _W3, np.ones((1, dx)), np.eye(1),
+                np.zeros(1), x0, Px0, P["ES"], "poisson", P["mu"], P["beta"], np.array(0.0), [], P["H"], cons)
+            expected_calls = 2 * K + 1
+        else:
+            cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, 50, 0)
+            PPLFP.PPLFP_MStep(P["dN"], P["y"], P["x"], P["W_K"], x0, Px0, P["ES"], "poisson", P["mu"], P["beta"],
+                              np.array(0.0), [], P["H"], cons, "NewtonRaphson")
+            expected_calls = K
+    assert len(seen) == expected_calls
+    assert all(np.array_equal(W, _W3) for W, _ in seen)
+    pooled = np.concatenate([out for _, out in seen], axis=1)
+    _assert_draw_covariance(pooled, _W3, np.zeros(dx))
 
 
 # ---------------------------------------------------------------------------

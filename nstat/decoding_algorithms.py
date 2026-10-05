@@ -404,6 +404,49 @@ def _em_history_windows(gamma, windowTimes, delta, num_cells: int):
     return g, windowTimes
 
 
+def _mc_state_draws(m, W, M, normal, *, non_pd="eig_floor"):
+    """``M`` Monte Carlo draws from ``N(m, W)``, returned as a ``dx x M`` array.
+
+    Private mirror of the repaired MATLAB helper ``mcStateDraws`` (F9;
+    ``PointProcessEM.m`` / ``PPLFP.m``, fix/pp-em @ 8dbd0e4), used by every
+    Monte Carlo state draw of ``PP_ComputeParamStandardErrors``,
+    ``PP_MStep``, ``PPLFP_ComputeParamStandardErrors`` and ``PPLFP_MStep``.
+
+    MATLAB drew ``m + chol(W)*z``; ``chol`` returns the UPPER factor ``R``
+    with ``R'*R = W``, so the draws had covariance ``R*R'``, which is ``W``
+    only for a diagonal ``W`` (or ``dx == 1``).  The repaired draw is
+    ``m + R'*z``, covariance ``R'*R = W``.  Here ``R' = L =
+    np.linalg.cholesky(W)`` (NumPy returns the lower factor), so the draw is
+    ``m + L @ z``; this port used to mirror the defect as
+    ``np.linalg.cholesky(W).T @ z``.  For a diagonal ``W`` both forms are
+    bit-identical.
+
+    ``normal(dx, M)`` returns the ``dx x M`` standard-normal matrix ``z`` --
+    each caller passes its own generator, so the random stream is unchanged
+    (MATLAB keeps ``normrnd(0,1,dx,M)`` too).
+
+    ``non_pd`` selects the Python-only fallback each call site already had
+    when ``W`` is not positive definite (MATLAB has none: its partial factor
+    raises a dimension error).  ``"eig_floor"`` (the PP sites) factors
+    ``W`` with its eigenvalues floored at ``1e-12``; ``"zero"`` (the PPLFP
+    sites) returns ``m`` repeated ``M`` times (a zero factor).
+    """
+    m = np.asarray(m, dtype=float).reshape(-1)
+    W = np.asarray(W, dtype=float).reshape(m.size, m.size)
+    try:
+        L = np.linalg.cholesky(W)
+    except np.linalg.LinAlgError:
+        if non_pd == "zero":
+            L = np.zeros_like(W)
+        elif non_pd == "eig_floor":
+            eigv, eigvec = np.linalg.eigh(W)
+            L = np.linalg.cholesky(eigvec @ np.diag(np.maximum(eigv, 1e-12)) @ eigvec.T)
+        else:  # pragma: no cover - internal misuse
+            raise ValueError(f"unknown non_pd fallback {non_pd!r}")
+    z = np.asarray(normal(m.size, int(M)), dtype=float).reshape(m.size, int(M))
+    return m[:, None] + L @ z
+
+
 def _lambda_delta_from_state(
     x_state: np.ndarray,
     mu: np.ndarray,
@@ -5557,19 +5600,13 @@ class DecodingAlgorithms:
         else:
             Ix0Comp = np.zeros((0, 0))
 
-        # Monte Carlo draws for expectation approximation
+        # Monte Carlo draws for expectation approximation: x_k ~ N(xKFinal_k,
+        # WKFinal_k) through _mc_state_draws (MATLAB mcStateDraws, F9: the
+        # draw was chol(W)*z, covariance R*R' instead of W).
         McExp = PPEM_Constraints["mcIter"]
         xKDrawExp = np.zeros((dx, K, McExp))
         for k in range(K):
-            WuTemp = WKFinal[:, :, k]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp).T  # upper triangular
-            except np.linalg.LinAlgError:
-                eigv, eigvec = np.linalg.eigh(WuTemp)
-                eigv = np.maximum(eigv, 1e-12)
-                chol_m = np.linalg.cholesky(eigvec @ np.diag(eigv) @ eigvec.T).T
-            z = np.random.randn(dx, McExp)
-            xKDrawExp[:, k, :] = xKFinal[:, k:k + 1] + chol_m @ z
+            xKDrawExp[:, k, :] = _mc_state_draws(xKFinal[:, k], WKFinal[:, :, k], McExp, np.random.randn)
 
         # Beta information (Hessian approximation via MC)
         IBetaComp = np.zeros((dx * numCells, dx * numCells))
@@ -5710,28 +5747,14 @@ class DecodingAlgorithms:
             IComp[off:off + n7, off:off + n7] = IGammaComp
 
         # ---- Missing Information Matrix (Monte Carlo) ----
+        # Draws through _mc_state_draws (MATLAB mcStateDraws, F9).
         Mc = PPEM_Constraints["mcIter"]
         xKDraw = np.zeros((dx, N, Mc))
         for n_idx in range(N):
-            WuTemp = WKFinal[:, :, n_idx]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp).T
-            except np.linalg.LinAlgError:
-                eigv, eigvec = np.linalg.eigh(WuTemp)
-                eigv = np.maximum(eigv, 1e-12)
-                chol_m = np.linalg.cholesky(eigvec @ np.diag(eigv) @ eigvec.T).T
-            z = np.random.randn(dx, Mc)
-            xKDraw[:, n_idx, :] = xKFinal[:, n_idx:n_idx + 1] + chol_m @ z
+            xKDraw[:, n_idx, :] = _mc_state_draws(xKFinal[:, n_idx], WKFinal[:, :, n_idx], Mc, np.random.randn)
 
         if PPEM_Constraints["EstimatePx0"] or PPEM_Constraints["Estimatex0"]:
-            try:
-                chol_m = np.linalg.cholesky(Px0hat).T
-            except np.linalg.LinAlgError:
-                eigv, eigvec = np.linalg.eigh(Px0hat)
-                eigv = np.maximum(eigv, 1e-12)
-                chol_m = np.linalg.cholesky(eigvec @ np.diag(eigv) @ eigvec.T).T
-            z = np.random.randn(dx, Mc)
-            x0Draw = x0hat[:, None] + chol_m @ z
+            x0Draw = _mc_state_draws(x0hat, Px0hat, Mc, np.random.randn)
         else:
             x0Draw = np.tile(x0hat[:, None], (1, Mc))
 
@@ -6606,16 +6629,9 @@ class DecodingAlgorithms:
         xKDrawExp = np.zeros((dx, K, McExp))
         diffTol = 1e-5
 
+        # Draws through _mc_state_draws (MATLAB mcStateDraws, F9).
         for k in range(K):
-            WuTemp = W_K[:, :, k]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp).T
-            except np.linalg.LinAlgError:
-                eigv, eigvec = np.linalg.eigh(WuTemp)
-                eigv = np.maximum(eigv, 1e-12)
-                chol_m = np.linalg.cholesky(eigvec @ np.diag(eigv) @ eigvec.T).T
-            z = np.random.randn(dx, McExp)
-            xKDrawExp[:, k, :] = x_K[:, k:k + 1] + chol_m @ z
+            xKDrawExp[:, k, :] = _mc_state_draws(x_K[:, k], W_K[:, :, k], McExp, np.random.randn)
 
         # xkPerm: (dx, McExp, K)
         xkPerm = np.transpose(xKDrawExp, (0, 2, 1))
