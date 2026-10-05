@@ -385,10 +385,12 @@ class STIntensityResult:
         edge correction).
     kernel
         ``"gaussian"`` or ``"epanechnikov"``.
-    points, times
+    points
         The original event coordinates/times, retained so
         :meth:`evaluate` can be called at arbitrary query points (not
         just grid interpolation).
+    times
+        See ``points``.
     """
 
     grid_x: np.ndarray

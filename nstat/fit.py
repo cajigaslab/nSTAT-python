@@ -442,12 +442,18 @@ class PopulationTimeRescaleResult:
     ground_uniforms
         Rescaled ground-process inter-event values, mapped to ``[0, 1]``
         via :math:`1-e^{-\\xi}` (uniform under the null).
-    ground_ks_stat, ground_ks_pvalue
+    ground_ks_stat
         KS statistic and asymptotic p-value of ``ground_uniforms`` vs.
         Uniform(0, 1).  ``nan`` if fewer than 2 pooled events.
-    mark_chi2_stat, mark_chi2_dof, mark_chi2_pvalue
+    ground_ks_pvalue
+        See ``ground_ks_stat``.
+    mark_chi2_stat
         Pearson :math:`\\chi^2` for uniform fill of :math:`R`, its
         degrees of freedom (``n_cells - 1``), and upper-tail p-value.
+    mark_chi2_dof
+        See ``mark_chi2_stat``.
+    mark_chi2_pvalue
+        See ``mark_chi2_stat``.
     expected_counts
         :math:`b(m)` per neuron — the model-expected spike count
         (:math:`\\int\\lambda_m`), shape ``(n_neurons,)``.

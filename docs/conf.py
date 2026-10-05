@@ -69,9 +69,15 @@ myst_heading_anchors = 3
 # The glossary terms have long headings ("Local field potential (LFP)") but
 # are linked by short slugs (``#local-field-potential``), so
 # ``docs/_glossary_slugs.py`` overrides the slug for exactly those headings
-# (it lives in an importable module because MyST's config is pickled into
-# Sphinx's environment cache, and a function defined in conf.py cannot be).
-myst_heading_slug_func = "docs._glossary_slugs.heading_slug"
+# (it reads the ``<a id="slug"></a>`` anchors in glossary.md).  This only
+# drives MyST link resolution; the HTML id of each heading is unchanged.
+# The module lives next to conf.py and is imported by its bare name (the docs
+# dir is put on sys.path below) because MyST's config is pickled into
+# Sphinx's environment cache, and a function defined in conf.py cannot be;
+# a ``docs.`` package prefix would collide with any installed top-level
+# ``docs`` package.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+myst_heading_slug_func = "_glossary_slugs.heading_slug"
 
 # MyST: enable LaTeX math via ``$...$`` (inline) and ``$$...$$`` (block), plus
 # ``\begin{align}...\end{align}`` AMS environments. Same syntax that GitHub's
@@ -92,31 +98,41 @@ autosummary_generate = True
 autosummary_imported_members = False  # only document symbols defined in nstat
 
 
-def _class_target(fullname: str) -> dict:
-    """Template helper for ``_templates/autosummary/class.rst``.
+def _build_class_targets() -> dict:
+    """Map each public ``nstat`` name that is a class to its real home.
 
-    Returns the real ``module``/``qualname`` of the class behind a public
-    name, and whether the public name is an alias of it.
+    Consumed by ``_templates/autosummary/class.rst``: ``module``/``qualname``
+    locate the class behind a public name and ``is_alias`` says whether the
+    public name is an alias of it (``nstat.CovColl = CovariateCollection``).
+    Plain data (no functions) so Sphinx can pickle it into its config cache.
     """
-    from sphinx.ext.autosummary import import_by_name
+    import inspect
 
-    obj = import_by_name(fullname)[1]
-    return {
-        "module": obj.__module__,
-        "qualname": obj.__qualname__,
-        "is_alias": obj.__name__ != fullname.rsplit(".", 1)[-1],
-    }
+    import nstat
+
+    targets: dict = {}
+    for name in nstat.__all__:
+        obj = getattr(nstat, name, None)
+        if inspect.isclass(obj):
+            targets[f"nstat.{name}"] = {
+                "module": obj.__module__,
+                "qualname": obj.__qualname__,
+                "is_alias": obj.__name__ != name,
+            }
+    return targets
 
 
-autosummary_context = {"class_target": _class_target}
+autosummary_context = {"class_targets": _build_class_targets()}
 # Case-insensitive filesystems (macOS default) cannot hold both
 # ``nstat.nstat_install.rst`` and ``nstat.nSTAT_Install.rst``; give the
 # second a distinct stub name so the toctree finds both everywhere.
-autosummary_filename_map = {"nstat.nSTAT_Install": "nstat.nSTAT_Install-case"}  # only document symbols defined in nstat
+autosummary_filename_map = {"nstat.nSTAT_Install": "nstat.nSTAT_Install-case"}
 
 # Document members by default, including dunders only when explicitly
-# documented in the source.  ``inherited-members`` would balloon every
-# class to show every Python object method; keep it off.
+# documented in the source.  Inherited members are NOT on by default (it
+# would add every ``object`` method to every class); the autosummary class
+# template turns on ``:inherited-members:`` for the non-alias ``autoclass`` so
+# thin subclasses (``nstColl``, ``Covariate``, ...) list their inherited API.
 autodoc_default_options = {
     "members": True,
     "undoc-members": False,
@@ -131,11 +147,7 @@ autodoc_class_signature = "mixed"   # show __init__ signature inline with class 
 # don't fail the build, just emit a warning.  CI's ``docs-build`` job
 # runs with -W (warnings as errors) so genuine doc gaps DO surface, but
 # missing-docstring warnings are noisy enough that we exempt them.
-# ``config.cache``: ``autosummary_context`` holds a function, which Sphinx
-# cannot pickle into its config cache; it is rebuilt from conf.py on every
-# run, so the "cannot cache unpickleable configuration value" notice is
-# harmless.
-suppress_warnings = ["autodoc.import_object", "config.cache"]
+suppress_warnings = ["autodoc.import_object"]
 
 
 # -- napoleon (NumPy-style docstrings) ---------------------------------------

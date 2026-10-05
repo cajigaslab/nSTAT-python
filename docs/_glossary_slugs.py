@@ -1,8 +1,11 @@
 """MyST heading-slug override for ``concepts/glossary.md`` (see ``conf.py``).
 
-Each glossary term is a ``###`` heading preceded by a ``<!-- slug: x -->``
-marker; the heading's anchor becomes ``x`` instead of the long auto-slug, so
-links such as ``glossary.md#local-field-potential`` resolve.
+Each glossary term is a ``###`` heading preceded by an ``<a id="x"></a>``
+anchor.  The anchor lines are the single source of truth: they give browsers
+the short fragment ids, and this module reads the same lines so MyST resolves
+links such as ``glossary.md#local-field-potential``.  The slug returned here
+only drives MyST link resolution; the HTML id Sphinx emits for a heading is
+the docutils id, unaffected by it.
 """
 from __future__ import annotations
 
@@ -12,6 +15,7 @@ from pathlib import Path
 from myst_parser.mdit_to_docutils.base import default_slugify
 
 _GLOSSARY = Path(__file__).resolve().parent / "concepts" / "glossary.md"
+
 
 def _key(title: str) -> str:
     # MyST passes only the text/code children of a heading to the slug
@@ -23,7 +27,7 @@ def _key(title: str) -> str:
 _SLUGS: dict[str, str] = {
     _key(title): slug
     for slug, title in re.findall(
-        r"<!-- slug: ([a-z0-9-]+) -->\n### (.+)", _GLOSSARY.read_text(encoding="utf-8")
+        r'<a id="([a-z0-9-]+)"></a>\n### (.+)', _GLOSSARY.read_text(encoding="utf-8")
     )
 }
 

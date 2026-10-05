@@ -278,10 +278,14 @@ class BSplineBasis2D:
 
     Attributes
     ----------
-    grid_x, grid_y
+    grid_x
         The 1-D evaluation grids the basis was built on.
-    n_knots_x, n_knots_y
+    grid_y
+        See ``grid_x``.
+    n_knots_x
         Number of basis functions per axis.
+    n_knots_y
+        See ``n_knots_x``.
     degree
         Polynomial degree.
     clamped

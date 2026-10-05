@@ -100,9 +100,9 @@ def simulate_cif_from_stimulus(
 
     Parameters
     ----------
-    time : ndarray, shape (T,)
+    time : ndarray, shape (n_time,)
         Time vector in seconds.
-    stimulus : ndarray, shape (T,)
+    stimulus : ndarray, shape (n_time,)
         Stimulus values at each time sample.
     beta0 : float
         Log-baseline rate (intercept of the log-linear CIF).
@@ -115,9 +115,9 @@ def simulate_cif_from_stimulus(
     -------
     spike_train : nspikeTrain
         Simulated spike train.
-    rate_hz : ndarray, shape (T,)
+    rate_hz : ndarray, shape (n_time,)
         The instantaneous CIF in spikes per second.
-    log_rate : ndarray, shape (T,)
+    log_rate : ndarray, shape (n_time,)
         The log-rate ``beta0 + beta1 * x(t)`` (useful for diagnostics).
     """
     t = np.asarray(time, dtype=float).reshape(-1)

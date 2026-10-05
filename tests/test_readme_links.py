@@ -225,3 +225,40 @@ def test_main_exits_one_on_broken_link(tmp_path: Path, capsys) -> None:
 def test_main_exits_two_on_missing_readme(tmp_path: Path, capsys) -> None:
     code = main(["--readme", str(tmp_path / "does-not-exist.md")])
     assert code == 2
+
+
+# ----------------------------------------------------------------------
+# Regression tests: silent misses found in the docs-T2 adversarial review
+# ----------------------------------------------------------------------
+
+class TestSilentMissRegressions:
+    def test_stray_backtick_does_not_hide_later_broken_link(self, tmp_path: Path) -> None:
+        """An unbalanced backtick must not swallow text across blank lines."""
+        readme = tmp_path / "README.md"
+        readme.write_text("A stray ` backtick here.\n\nLater [bad](ghost.md) link `x`.\n")
+        assert check_intra_repo_links(readme, tmp_path) == [("bad", "ghost.md")]
+
+    def test_inline_code_still_masks_link_placeholders(self, tmp_path: Path) -> None:
+        readme = tmp_path / "README.md"
+        readme.write_text("Use `[text](path)` syntax; wrapped `[a](b\nc)` too.\n")
+        assert check_intra_repo_links(readme, tmp_path) == []
+
+    def test_html_target_skipped_only_for_built_site_pages(self, tmp_path: Path) -> None:
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "docs" / "api.rst").write_text("API\n")
+        (tmp_path / "docs" / "real.html").write_text("<html></html>")
+        readme = tmp_path / "docs" / "page.md"
+        readme.write_text("[api](api.html) [real](real.html) [typo](ghost.html)\n")
+        assert check_intra_repo_links(readme, tmp_path) == [("typo", "ghost.html")]
+
+    def test_malformed_import_line_does_not_hide_broken_import(self, tmp_path: Path) -> None:
+        readme = tmp_path / "README.md"
+        readme.write_text(
+            "```python\n"
+            "from nstat import definitely_not_a_symbol\n"
+            "from nstat import (\n"
+            "x = = 1\n"
+            "```\n"
+        )
+        broken = check_code_snippet_imports(readme)
+        assert any("definitely_not_a_symbol" in b for _, b in broken)

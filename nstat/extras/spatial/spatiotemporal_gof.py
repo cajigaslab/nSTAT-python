@@ -186,13 +186,17 @@ class STEnvelopeResult:
 
     Attributes
     ----------
-    r_grid, t_grid
+    r_grid
         The lag grids the summary statistic was evaluated on.
+    t_grid
+        See ``r_grid``.
     observed
         The observed summary surface, shape ``(nr, nt)``.
-    lo, hi
+    lo
         Lower / upper global-rank envelope at the requested level, each
         shape ``(nr, nt)``.
+    hi
+        See ``lo``.
     inside
         ``True`` iff the observed surface lies inside ``[lo, hi]`` at
         every ``(r, t)`` cell — i.e. the global test does NOT reject the

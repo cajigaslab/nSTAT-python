@@ -1,8 +1,8 @@
 {{ fullname | escape | underline }}
 
 {#
-   ``class_target`` (defined in docs/conf.py via ``autosummary_context``)
-   resolves the public name to the class's real home.  Several public names
+   ``class_targets`` (a plain dict built in docs/conf.py and passed via
+   ``autosummary_context``) maps the public name to the class's real home.  Several public names
    are aliases (``nstat.CovColl = CovariateCollection``).  autodoc renders
    an alias as just "alias of ..." with no members, which is what registers
    the public name (so the api.rst table entry links).  For aliases we then
@@ -13,12 +13,17 @@
    template emits them): those resolve ``CovColl.add`` against same-named
    shim modules (``nstat.CovColl`` is a module AND the class) and fail.
    ``autodoc_default_options`` already renders every member.
+
+   ``:inherited-members:`` on the non-alias ``autoclass``: thin subclasses
+   (``nstColl``, ``Covariate``, ``FitResSummary``, ...) define almost nothing
+   themselves, so without it their pages list no members at all.
 #}
-{% set t = class_target(fullname) %}
+{% set t = class_targets[fullname] %}
 .. currentmodule:: {{ module }}
 
 .. autoclass:: {{ objname }}
 {%- if not t.is_alias %}
+   :inherited-members:
 
    .. automethod:: __init__
 {%- else %}

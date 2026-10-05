@@ -80,9 +80,13 @@ class MarkedGOFResult:
     ks_band
         The two-sided KS critical value at ``alpha`` for ``n`` events
         (Kolmogorov asymptotic ``c(alpha)/sqrt(n)``).
-    inside_uncorrected, inside_corrected, inside_mark
+    inside_uncorrected
         Whether each statistic falls inside the band (``< ks_band``).
         ``inside_*`` True ⇒ the test does NOT reject.
+    inside_corrected
+        See ``inside_uncorrected``.
+    inside_mark
+        See ``inside_uncorrected``.
     n_events
         Number of inter-event intervals used.
     u_corrected

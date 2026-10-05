@@ -18,8 +18,10 @@ What this script catches
    symbol no longer resolves via ``importlib``.  Imports are extracted
    with ``ast`` (multi-line parenthesised imports, trailing comments).
    Fenced blocks and inline code spans are ignored when scanning for
-   links/images, and ``.html`` targets (site-relative links to built
-   Sphinx pages) are not checked against the working tree.  Catches renames,
+   links/images, and ``.html`` targets that are site-relative links to
+   built Sphinx pages (their ``.md``/``.rst`` source exists next to them,
+   or they point into ``_autosummary/``) are not checked against the
+   working tree; every other ``.html`` target is.  Catches renames,
    removals, and additions-not-yet-exported.
 
 What this script does NOT catch
@@ -93,7 +95,10 @@ _PYTHON_FENCE_RE = re.compile(
 # Stripped before scanning for links/images so ``[text](path)`` placeholders
 # shown inside code are not mistaken for real links.
 _ANY_FENCE_RE = re.compile(r"^(```|~~~)[^\n]*\n.*?^\1[ \t]*$", re.DOTALL | re.MULTILINE)
-_INLINE_CODE_RE = re.compile(r"(`+)(?:(?!\1).)+?\1", re.DOTALL)
+# A span may wrap lines but never crosses a blank line (CommonMark: a code span
+# lives inside one paragraph), so a stray backtick cannot swallow the rest of
+# the document and hide later broken links.
+_INLINE_CODE_RE = re.compile(r"(`+)(?:(?!\1)(?:[^\n]|\n(?![ \t]*\n)))+?\1")
 
 
 def _strip_code(text: str) -> str:
@@ -143,15 +148,34 @@ def check_intra_repo_links(readme_path: Path, repo_root: Path) -> list[tuple[str
         clean = target.split("#", 1)[0]
         if not clean:  # pure anchor link, no file portion
             continue
-        if clean.endswith(".html"):
+        if clean.endswith(".html") and _is_built_site_page(readme_path.parent, clean):
             # Site-relative link to a built Sphinx page (docs/extras/*.md
             # link to ``../api.html``); not a repo path, so not checkable
-            # against the working tree.
+            # against the working tree.  Skipped ONLY when it plausibly is
+            # one (see ``_is_built_site_page``); any other ``.html`` target
+            # is still checked, so a typo'd link to a real file is caught.
             continue
         resolved = (readme_path.parent / clean).resolve()
         if not resolved.exists():
             broken.append((link_text, target))
     return broken
+
+
+def _is_built_site_page(base: Path, clean: str) -> bool:
+    """True if ``clean`` (a relative ``*.html`` target) names a built Sphinx page.
+
+    Built pages are not in the working tree, so we accept the target when its
+    Sphinx *source* exists (``foo.html`` -> ``foo.md`` / ``foo.rst`` /
+    ``foo.ipynb`` next to it) or when it points into the generated
+    ``_autosummary/`` tree.  Absolute-path targets are never accepted.
+    """
+    if clean.startswith("/"):
+        return False
+    resolved = (base / clean).resolve()
+    if "_autosummary" in resolved.parts:
+        return True
+    stem = resolved.with_suffix("")
+    return any(stem.with_suffix(ext).exists() for ext in (".md", ".rst", ".ipynb"))
 
 
 def check_image_existence(readme_path: Path, repo_root: Path) -> list[tuple[str, str]]:
@@ -248,12 +272,16 @@ def _import_lines_only(block: str) -> str:
                 i += 1
                 stmt.append(lines[i])
                 depth += lines[i].count("(") - lines[i].count(")")
-            out.extend(stmt)
+            # Each statement stands alone: one malformed import must not
+            # discard the valid ones around it.
+            candidate = "\n".join(stmt)
+            try:
+                ast.parse(candidate)
+            except SyntaxError:
+                pass
+            else:
+                out.append(candidate)
         i += 1
-    try:
-        ast.parse("\n".join(out))
-    except SyntaxError:
-        return ""
     return "\n".join(out)
 
 
