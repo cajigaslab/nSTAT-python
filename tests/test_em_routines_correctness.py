@@ -472,3 +472,142 @@ def test_pp_em_does_not_swallow_standard_error_failures(monkeypatch) -> None:
     args = list(_pp_em_gold_args())
     with pytest.raises(_SEFailure):
         DecodingAlgorithms.PP_EM(*args)
+
+
+# ---------------------------------------------------------------------------
+# History windows of the EM drivers: default rule and shared gamma (MATLAB
+# B9, a457b54) and the delta time base of PP_EM (MATLAB C6)
+# ---------------------------------------------------------------------------
+
+
+def _em_problem(C=4, N=120, seed=21, delta=0.001):
+    """Small EM problem, 150-200 Hz cells (enough spikes for finite history coefficients)."""
+    rng = np.random.default_rng(seed)
+    A = np.array([[0.98, 0.02], [-0.03, 0.96]])
+    Q = np.diag([0.01, 0.02])
+    x = np.zeros((2, N))
+    prev = np.zeros(2)
+    for k in range(N):
+        prev = A @ prev + rng.multivariate_normal(np.zeros(2), Q)
+        x[:, k] = prev
+    mu = np.log(np.linspace(150, 200, C) * 0.001)
+    beta = 0.7 * rng.standard_normal((2, C))
+    dN = (rng.random((C, N)) < np.minimum(np.exp(mu[:, None] + beta.T @ x), 1)).astype(float)
+    y = np.array([[1.0, 0.5]]) @ x + 0.1 * rng.standard_normal((1, N))
+    return dict(A=A, Q=Q, mu=mu, beta=beta, dN=dN, y=y, delta=delta, C=C)
+
+
+def _run_em(family, P, gamma, windowTimes, seed=5):
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    with seeded_global_rng(seed):
+        if family == "PP":
+            cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0, 0, 20)
+            return DecodingAlgorithms.PP_EM(P["dN"], P["A"], P["Q"], P["mu"], P["beta"], "poisson", P["delta"],
+                                            gamma, windowTimes, None, None, cons, "NewtonRaphson")
+        cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, 20, 0)
+        return PPLFP.PPLFP_EM(P["y"], P["dN"], P["A"], P["Q"], np.array([[1.0, 0.5]]), 0.01 * np.eye(1),
+                              np.zeros(1), P["mu"], P["beta"], "poisson", P["delta"], gamma, windowTimes, None, None,
+                              cons, "NewtonRaphson")
+
+
+def _assert_outputs_identical(a, b):
+    assert len(a) == len(b)
+    for i, (u, v) in enumerate(zip(a, b)):
+        if isinstance(u, dict):
+            assert sorted(u) == sorted(v), i
+            for key in u:
+                np.testing.assert_array_equal(np.asarray(u[key]), np.asarray(v[key]), err_msg=f"{i}.{key}")
+        else:
+            np.testing.assert_array_equal(np.asarray(u), np.asarray(v), err_msg=str(i))
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+@pytest.mark.parametrize("gamma", [-0.05, np.array([[-0.6, -0.3, -0.5, -0.2], [-0.2, -0.1, -0.3, -0.05]])],
+                         ids=["scalar", "2x4"])
+def test_default_history_windows_equal_the_explicit_call(family, gamma) -> None:
+    # windowTimes omitted: one window per history coefficient,
+    # 0:delta:numWindows*delta, and a shared column (a scalar is one shared
+    # window) expanded to every cell -- exactly the explicit call.  The former
+    # rule built length(gamma)+1 windows (2 for a scalar, 5 for 2 x 4), whose
+    # history no longer matched gamma.
+    from nstat.core import _matlab_colon_exact
+
+    P = _em_problem()
+    g = np.asarray(gamma, dtype=float)
+    W = 1 if g.ndim == 0 else g.shape[0]
+    explicit_gamma = np.full((1, P["C"]), float(g)) if g.ndim == 0 else g
+    a = _run_em(family, P, gamma, None)
+    b = _run_em(family, P, explicit_gamma, _matlab_colon_exact(0.0, P["delta"], W * P["delta"]))
+    _assert_outputs_identical(a, b)
+    gammahat = a[6] if family == "PP" else a[9]
+    assert np.shape(gammahat) == (W, P["C"])
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_zero_gamma_with_explicit_windows_is_not_expanded(family) -> None:
+    # MATLAB a457b54: an all-zero gamma means "no history coefficients" (the
+    # M-step skips it, the IC parameter count and the SE gamma block test
+    # gamma == 0), so it is not expanded to the cells.
+    P = _em_problem()
+    wt = [0.0, (P["dN"].shape[1] - 1) * P["delta"]]
+    out = _run_em(family, P, 0.0, wt)
+    gammahat = out[6] if family == "PP" else out[9]
+    assert np.asarray(gammahat).size == 1 and float(np.asarray(gammahat).reshape(-1)[0]) == 0.0
+
+
+def test_pp_em_time_base_equivalence() -> None:
+    # The same spike matrix at delta = 2 ms with windows [0 4 10 20] ms is the
+    # same per-bin model as at 1 ms with [0 2 5 10] ms (window w covers the
+    # same bins), so every PP_EM output must agree (MATLAB testTimeBaseEquivalence).
+    # The history used to be built on a 1 kHz grid regardless of delta: at
+    # 2 ms PP_EM raised "HkAll must align ..." in its first E-step.
+    P1 = _em_problem(C=3, delta=0.001)
+    P2 = dict(P1, delta=0.002)
+    wt1, wt2 = [0.0, 0.002, 0.005, 0.010], [0.0, 0.004, 0.010, 0.020]
+    assert np.array_equal(_compute_history_terms(P1["dN"], 0.001, wt1), _compute_history_terms(P1["dN"], 0.002, wt2))
+    gamma = np.array([[-0.8, -0.6, -0.7], [-0.4, -0.3, -0.5], [-0.2, -0.1, -0.15]])
+    _assert_outputs_identical(_run_em("PP", P1, gamma, wt1), _run_em("PP", P2, gamma, wt2))
+
+
+# ---------------------------------------------------------------------------
+# Decoders: a shared numWindows x 1 gamma column (MATLAB #20 / B2 / B3)
+# ---------------------------------------------------------------------------
+
+
+def test_pp_decode_filter_linear_accepts_a_shared_gamma_column() -> None:
+    # MATLAB: if(size(gamma,2)==1 && C>1) gamma = repmat(gamma,1,C).  The port
+    # accepted a 1-D shared gamma but raised on MATLAB's numWindows x 1 column.
+    P = _em_problem(C=3)
+    wt = [0.0, 0.002, 0.005, 0.010]
+    col = np.array([[-0.8], [-0.4], [-0.2]])
+    args = (P["A"], P["Q"], P["dN"], P["mu"], P["beta"], "poisson", 0.001)
+    a = DecodingAlgorithms.PPDecodeFilterLinear(*args, col, wt, np.zeros(2), 1e-3 * np.eye(2))
+    b = DecodingAlgorithms.PPDecodeFilterLinear(*args, np.tile(col, (1, 3)), wt, np.zeros(2), 1e-3 * np.eye(2))
+    for u, v in zip(a[:4], b[:4]):
+        np.testing.assert_array_equal(u, v)
+
+
+@pytest.mark.parametrize("which", ["DecodeLinear", "fixedIntervalSmoother"])
+def test_pplfp_shared_gamma_column_reaches_every_cell(which) -> None:
+    # MATLAB B3: PPLFP_DecodeLinear / PPLFP_fixedIntervalSmoother set only the
+    # last cell's column of a shared gamma (post-loop c); the repaired MATLAB
+    # repmats it, which is what the port does.  Shared == replicated, exactly.
+    P = _em_problem(C=3)
+    wt = [0.0, 0.002, 0.005, 0.010]
+    col = np.array([[-0.8], [-0.4], [-0.2]])
+    Cm, R = np.array([[1.0, 0.5]]), 0.01 * np.eye(1)
+    HkAll = np.zeros((120, 3, 3))  # non-empty: PPLFP_DecodeLinear then rebuilds it from windowTimes
+
+    def run(g):
+        if which == "DecodeLinear":
+            return PPLFP.PPLFP_DecodeLinear(P["A"], P["Q"], Cm, R, P["y"], np.zeros(1), P["dN"], P["mu"], P["beta"],
+                                            "poisson", 0.001, g, wt, np.zeros(2), 1e-3 * np.eye(2), HkAll)
+        return PPLFP.PPLFP_fixedIntervalSmoother(P["A"], P["Q"], Cm, R, P["y"], np.zeros(1), P["dN"], 2, P["mu"],
+                                                 P["beta"], "poisson", 0.001, g, wt, np.zeros(2), 1e-3 * np.eye(2))
+
+    shared, replicated = run(col), run(np.tile(col, (1, 3)))
+    zero_history = run(np.zeros((3, 3)))
+    for u, v in zip(shared, replicated):
+        np.testing.assert_array_equal(u, v)
+    assert not np.array_equal(shared[2], zero_history[2])  # the history does act

@@ -1806,32 +1806,24 @@ class PPLFP:
         else:
             x0 = np.asarray(x0, dtype=float).reshape(-1)
 
-        if delta is None:
-            delta = 0.001
-
-        if gamma is None:
-            gamma_arr = np.array([], dtype=float)
-        else:
-            gamma_arr = np.asarray(gamma, dtype=float)
-
-        if windowTimes is None or _is_empty_value(windowTimes):
-            # MATLAB (PPLFP.m PPLFP_EM, FIX #98): an empty or scalar-zero gamma
-            # means no history; otherwise windowTimes = 0:delta:(length(gamma)+1)*delta,
-            # with length() the largest dimension and the colon built element-
-            # exactly (np.arange differs in the last bits, which moves spikes
-            # between windows once they are binned with ceil(t*sampleRate)).
-            if gamma_arr.size == 0 or (gamma_arr.size == 1 and float(gamma_arr.reshape(-1)[0]) == 0.0):
-                windowTimes = None
-            else:
-                from nstat.core import _matlab_colon_exact
-
-                gamma_length = max(gamma_arr.shape) if gamma_arr.ndim else 1
-                windowTimes = _matlab_colon_exact(0.0, float(delta), (gamma_length + 1) * float(delta))
-
         dN_arr = np.asarray(dN, dtype=float)
         if dN_arr.ndim == 1:
             dN_arr = dN_arr.reshape(1, -1)
         K_cells, N = dN_arr.shape
+
+        # MATLAB (PPLFP.m PPLFP_EM, repaired B9; FIX #98): an empty or
+        # scalar-zero gamma with no windowTimes means no history; otherwise one
+        # default window per history coefficient, windowTimes =
+        # 0:deltaW:size(gamma,1)*deltaW (deltaW = delta, 0.001 if empty), built
+        # element-exactly; a nonzero shared gamma column is expanded to every
+        # cell.  See decoding_algorithms._em_history_windows.  (The former rule
+        # 0:delta:(length(gamma)+1)*delta gave length(gamma)+1 windows.)
+        from nstat.decoding_algorithms import _em_history_windows
+
+        gamma_arr, windowTimes = _em_history_windows(gamma, windowTimes, delta, K_cells)
+
+        if delta is None:
+            delta = 0.001
 
         # ---- Build history covariate HkAll (N, p_hist, K_cells) -------
         if windowTimes is not None and not _is_empty_value(windowTimes):

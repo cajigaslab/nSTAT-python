@@ -659,6 +659,56 @@ def _recipe_pp_square_history(fixture: dict[str, Any], args: dict[str, Any]) -> 
     )
 
 
+def _recipe_pp_em_decoder_gold(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
+    """Blocks of ``pp_square_history.mat`` captured from the repaired MATLAB
+    (``fix/pp-em`` @ ``a457b54``, pending upstream merge); ``args.block`` selects:
+
+    * ``emdef`` -- PP_EM / PPLFP_EM default history windows and HkAll (B9);
+    * ``pp2ms`` -- PP_EM history on the delta = 2 ms grid (C6);
+    * ``b1sq``  -- PPDecodeFilterLinear with ns == C (B1): x_p, W_p, x_u, W_u;
+    * ``pphf``  -- PPHybridFilterLinear with history windows (B2): X, W, MU_u,
+      pNGivenS.
+    """
+    import nstat.decoding_algorithms as da
+
+    block = str(args["block"])
+
+    def f(key: str) -> np.ndarray:
+        return _as_float_array(fixture[f"{block}_{key}"])
+
+    if block == "emdef":
+        dN = f("dN")
+        delta = _scalar(fixture, "emdef_delta")
+        _, wt = da._em_history_windows(f("gamma"), None, delta, dN.shape[0])
+        hk = da._compute_history_terms(dN, delta, wt)
+        py: list[Any] = [wt, hk]
+        ml: list[Any] = [f("windowTimes"), f("HkAll")]
+    elif block == "pp2ms":
+        py = [da._compute_history_terms(f("dN"), _scalar(fixture, "pp2ms_delta"), f("windowTimes").reshape(-1))]
+        ml = [f("HkAll")]
+    elif block == "b1sq":
+        out = da.DecodingAlgorithms.PPDecodeFilterLinear(
+            f("A"), f("Q"), f("dN"), f("mu").reshape(-1), f("beta"), "poisson", _scalar(fixture, "b1sq_delta"),
+            None, None, f("x0").reshape(-1), f("Pi0"),
+        )
+        py = list(out[:4])
+        ml = [f("x_p"), f("W_p"), f("x_u"), f("W_u")]
+    elif block == "pphf":
+        A, Q, x0, Pi0 = f("A"), f("Q"), f("x0").reshape(-1), f("Pi0")
+        out = da.DecodingAlgorithms.PPHybridFilterLinear(
+            [A, A], [Q, Q], f("p_ij"), f("Mu0").reshape(-1), f("dN"), f("mu").reshape(-1), f("beta"), "poisson",
+            _scalar(fixture, "pphf_binwidth"), f("gamma"), f("windowTimes").reshape(-1), [x0, x0], [Pi0, Pi0],
+        )
+        py = [out[1], out[2], out[3], out[6]]
+        ml = [f("X"), f("W"), f("MU_u"), f("pNGivenS")]
+    else:
+        raise ValueError(f"unknown pp_em_decoder_gold block {block!r}")
+    return (
+        np.concatenate([_as_float_array(a).reshape(-1) for a in py]),
+        np.concatenate([_as_float_array(a).reshape(-1) for a in ml]),
+    )
+
+
 # ---------------------------------------------------------------------------
 # v9 iter 39/40 — recipes for the 22 v9_* drift entries.
 # Each pairs a MATLAB gold fixture with a thin call into the corresponding
@@ -1490,6 +1540,7 @@ RECIPES: dict[str, Callable[[dict[str, Any], dict[str, Any]], tuple[np.ndarray, 
     "pplfp_se_alpha": _recipe_pplfp_se_alpha,
     "pp_estep": _recipe_pp_estep,
     "pp_square_history": _recipe_pp_square_history,
+    "pp_em_decoder_gold": _recipe_pp_em_decoder_gold,
     # v9 iter 40 — wire 22 v9_* drift entries
     "v9_run_analysis_for_neuron": _recipe_v9_run_analysis_for_neuron,
     "v9_compute_ks_stats_full": _recipe_v9_compute_ks_stats_full,

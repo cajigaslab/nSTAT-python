@@ -44,12 +44,22 @@ Cases:
 
 Outside ``case_names``:
 
-* ``emdef_*`` -- ``PPLFP_EM``'s default history (windowTimes = [] and a non-zero
-  gamma): MATLAB PPLFP.m:1613-1636 with ``length(gamma)`` = 8 (an 8 x 2 gamma)
-  at delta = 1 ms, where ``0:delta:9*delta`` differs bitwise from
-  ``np.arange(10) * delta`` and moves spikes between windows 4-7.
+* ``emdef_*`` -- ``PP_EM`` / ``PPLFP_EM``'s default history (windowTimes = []
+  and a non-zero 8 x 2 gamma, delta = 1 ms), recaptured from the repaired
+  MATLAB (``fix/pp-em`` @ ``a457b54``, pending upstream merge): one window per
+  history coefficient, ``windowTimes = 0:delta:size(gamma,1)*delta`` (8
+  windows).  MATLAB master's rule ``0:delta:(length(gamma)+1)*delta`` gave 9
+  windows for 8 coefficients (and failed downstream); P1b had mirrored it.
 * ``colon_*`` -- 487 MATLAB ``a:d:b`` outputs pinning
   ``nstat.core._matlab_colon_exact``.
+* ``pp2ms_*`` -- ``PP_EM``'s history at delta = 2 ms (repaired C6: each train is
+  ``nspikeTrain(t, '', delta)``, the delta grid).
+* ``b1sq_*`` -- ``PPDecodeFilterLinear`` with ns == C == 2 and a non-symmetric
+  beta (repaired B1: MATLAB no longer transposes a square ns x C beta; the
+  port never did).
+* ``pphf_*`` -- ``PPHybridFilterLinear`` with history windows and a shared
+  3 x 1 gamma (repaired B2: it could not run with windowTimes), two identical
+  models, plus ``PPDecodeFilterLinear`` on the same inputs.
 
 For the ``PP_EStep`` cases the log-likelihood is not captured here (MATLAB
 master transposed a square history slice in it).  The repaired MATLAB orients
@@ -168,7 +178,9 @@ def test_fixture_cases_are_the_documented_ones(gold) -> None:
         assert cs["dN"].shape == (C, N) and cs["windowTimes"].size == nW + 1
         assert cs["gamma"].shape == (nW, C) and np.all(cs["gamma"] < 0)
         if func == "PPDecodeFilterLinear":
-            # MATLAB PPDecodeFilterLinear transposes a square (dx == C) beta.
+            # These ten cases were captured from MATLAB master, whose
+            # PPDecodeFilterLinear transposed a square (dx == C) beta, so they
+            # keep C != dx; the ns == C case is b1sq_* (repaired MATLAB, B1).
             assert cs["beta"].shape == (2, C) and C != 2
         if nW == C:
             # Non-symmetric, so a window/cell transpose cannot pass.
@@ -326,9 +338,10 @@ def test_matlab_colon_exact_matches_matlab_bitwise(gold) -> None:
 def test_pplfp_em_default_history_matches_matlab(gold, monkeypatch) -> None:
     """PPLFP_EM with windowTimes omitted builds MATLAB's default history exactly.
 
-    MATLAB: windowTimes = 0:delta:(length(gamma)+1)*delta (PPLFP.m:1613), then
-    History.computeHistory per cell.  The E-step is stubbed to capture the
-    HkAll that PPLFP_EM hands it and stop there.
+    Repaired MATLAB (B9): windowTimes = 0:delta:size(gamma,1)*delta -- one
+    window per history coefficient -- then History.computeHistory per cell.
+    The E-step is stubbed to capture the HkAll that PPLFP_EM hands it and stop
+    there.
     """
     from nstat.decoding.PPLFP import PPLFP
 
@@ -358,8 +371,93 @@ def test_pplfp_em_default_history_matches_matlab(gold, monkeypatch) -> None:
 
     hk = _run(gamma)
     ml = gold["emdef_HkAll"].astype(float)
-    assert hk.shape == ml.shape == (N, 9, C)  # length(gamma) + 1 = 9 windows
+    assert hk.shape == ml.shape == (N, 8, C)  # size(gamma, 1) = 8 windows
     assert np.array_equal(hk, ml)
     # A scalar-zero gamma means "no history" (MATLAB PPLFP.m FIX #98).
     assert np.array_equal(_run(0.0), np.zeros((N, 1, C)))
+
+
+def _pp_em_history(monkeypatch, dN, delta, gamma, windowTimes=None):
+    """The HkAll that PP_EM hands its first E-step (the E-step is stubbed)."""
+
+    class _Captured(Exception):
+        pass
+
+    seen: dict = {}
+
+    def _capture_estep(*args, **_kwargs):
+        seen["HkAll"] = np.asarray(args[7], dtype=float)
+        seen["gamma"] = np.asarray(args[6], dtype=float)
+        raise _Captured
+
+    monkeypatch.setattr(DecodingAlgorithms, "PP_EStep", staticmethod(_capture_estep))
+    C = dN.shape[0]
+    with pytest.raises(_Captured):
+        DecodingAlgorithms.PP_EM(
+            dN, 0.99 * np.eye(2), 0.01 * np.eye(2), -2.0 * np.ones(C), 0.5 * np.ones((2, C)), "poisson",
+            delta, gamma, windowTimes,
+        )
+    return seen["HkAll"], seen["gamma"]
+
+
+def test_pp_em_default_history_matches_matlab(gold, monkeypatch) -> None:
+    # Repaired MATLAB PP_EM (B9): same default rule as PPLFP_EM; at 1 ms its
+    # nspikeTrain(t, '', delta) is MATLAB's default spike train.
+    dN = gold["emdef_dN"].astype(float)
+    gamma = gold["emdef_gamma"].astype(float)
+    hk, g = _pp_em_history(monkeypatch, dN, float(gold["emdef_delta"].reshape(-1)[0]), gamma)
+    assert hk.shape == (dN.shape[1], 8, 2)
+    assert np.array_equal(hk, gold["emdef_HkAll"].astype(float))
+    assert np.array_equal(g, gamma)  # already numWindows x C: not expanded
+
+
+def test_pp_em_history_on_the_delta_grid_matches_matlab(gold, monkeypatch) -> None:
+    # Repaired MATLAB PP_EM (C6) builds the history spike trains with
+    # binwidth = delta.  At delta = 2 ms it used to be the 1 kHz grid (2N-1
+    # rows; the port raised "HkAll must align ..." in its first E-step).
+    dN = gold["pp2ms_dN"].astype(float)
+    delta = float(gold["pp2ms_delta"].reshape(-1)[0])
+    wt = gold["pp2ms_windowTimes"].reshape(-1).astype(float)
+    ml = gold["pp2ms_HkAll"].astype(float)
+    assert delta == 0.002 and ml.shape == (dN.shape[1], 3, 2)
+    assert np.array_equal(da._compute_history_terms(dN, delta, wt), ml)
+    hk, _ = _pp_em_history(monkeypatch, dN, delta, -0.5 * np.ones((3, 2)), wt)
+    assert np.array_equal(hk, ml)
+
+
+@pytest.mark.parametrize("force_numba", PATHS)
+def test_pp_decode_filter_linear_square_beta_matches_matlab(gold, force_numba, monkeypatch) -> None:
+    # ns == C == 2 with a non-symmetric (ns x C) beta: the repaired MATLAB
+    # (B1) no longer transposes it, which is what the port always did.
+    if not force_numba:
+        monkeypatch.setattr("nstat.extras._numba_kernels._NUMBA_AVAILABLE", False)
+    f = lambda k: gold[f"b1sq_{k}"].astype(float)  # noqa: E731
+    beta = f("beta")
+    assert beta.shape == (2, 2) and abs(beta[0, 1] - beta[1, 0]) > 0.5
+    out = DecodingAlgorithms.PPDecodeFilterLinear(
+        f("A"), f("Q"), f("dN"), f("mu").reshape(-1), beta, "poisson", float(f("delta").reshape(-1)[0]),
+        None, None, f("x0").reshape(-1), f("Pi0"),
+    )
+    for name, actual in zip(("x_p", "W_p", "x_u", "W_u"), out[:4]):
+        _assert_matches(actual, f(name), f"b1sq {name}")
+
+
+def test_pp_hybrid_filter_linear_with_history_matches_matlab(gold) -> None:
+    # Repaired MATLAB (B2): PPHybridFilterLinear runs with windowTimes and
+    # expands a shared numWindows x 1 gamma to every cell.  With two
+    # identical models it is the single-model filter.
+    f = lambda k: gold[f"pphf_{k}"].astype(float)  # noqa: E731
+    gamma = f("gamma")
+    assert gamma.shape == (3, 1) and f("dN").shape[0] == 3
+    A, Q, x0, Pi0 = f("A"), f("Q"), f("x0").reshape(-1), f("Pi0")
+    S_est, X, W, MU_u, X_s, W_s, pNGivenS = DecodingAlgorithms.PPHybridFilterLinear(
+        [A, A], [Q, Q], f("p_ij"), f("Mu0").reshape(-1), f("dN"), f("mu").reshape(-1), f("beta"), "poisson",
+        float(f("binwidth").reshape(-1)[0]), gamma, f("windowTimes").reshape(-1), [x0, x0], [Pi0, Pi0],
+    )
+    _assert_matches(np.asarray(S_est, dtype=float).reshape(1, -1), f("S_est"), "S_est")
+    for name, actual in (("X", X), ("W", W), ("MU_u", MU_u), ("pNGivenS", pNGivenS),
+                         ("X_s1", X_s[0]), ("X_s2", X_s[1]), ("W_s1", W_s[0]), ("W_s2", W_s[1])):
+        _assert_matches(actual, f(name), f"pphf {name}")
+    _assert_matches(X, f("pdfl_x_u"), "hybrid X == single-model x_u")
+    _assert_matches(W, f("pdfl_W_u"), "hybrid W == single-model W_u")
 

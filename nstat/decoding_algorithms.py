@@ -232,6 +232,12 @@ def _normalize_gamma(gamma, num_windows: int, num_cells: int) -> np.ndarray:
         raise ValueError("gamma must align with windowTimes or number of cells")
     if arr.ndim != 2:
         raise ValueError("gamma must be scalar, vector, or 2D array")
+    if arr.shape == (num_windows, 1) and num_cells > 1:
+        # A shared numWindows x 1 column: MATLAB's drivers expand it with
+        # if(size(gamma,2)==1 && C>1) gamma = repmat(gamma,1,C)
+        # (PPAF.PPDecodeFilterLinear / PP_fixedIntervalSmoother, PPHF.
+        # PPHybridFilterLinear -- repaired B2 -- and PPLFP).  It used to raise.
+        return np.repeat(arr, num_cells, axis=1)
     # MATLAB reorients gamma only with ``if(size(gamma,2)~=C) gamma=gamma'; end``
     # (PPAF.PPDecodeFilterLinear, PPAF.PP_fixedIntervalSmoother,
     # PPLFP.PPLFP_fixedIntervalSmoother); PPAF.PPDecode_updateLinear,
@@ -336,6 +342,58 @@ def _compute_history_terms(dN: np.ndarray, delta: float, windowTimes) -> np.ndar
         lower = np.clip(steps - last_lag, 0, num_steps)
         out[:, window_index, :] = (counts[:, upper] - counts[:, lower]).T
     return out
+
+
+def _em_history_windows(gamma, windowTimes, delta, num_cells: int):
+    """History coefficients and windows of ``PP_EM`` / ``PPLFP_EM`` (MATLAB B9).
+
+    Mirrors the repaired MATLAB default rule (PointProcessEM.m PP_EM and
+    PPLFP.m PPLFP_EM, fix/pp-em @ a457b54):
+
+    * ``windowTimes`` empty and ``gamma`` empty or a scalar 0: no history
+      (returns ``windowTimes = None``).
+    * ``windowTimes`` empty otherwise: one window per history coefficient.
+      ``numWindows = size(gamma, 1)`` -- a scalar is one shared window, a
+      ``numWindows x C`` matrix one window per row, and a row whose length is
+      not the number of cells is the shared coefficient list, made a column
+      first -- and ``windowTimes = 0:deltaW:numWindows*deltaW`` (built
+      element-exactly), ``deltaW = delta`` (0.001 if ``delta`` is None).
+      (The former rule ``0:delta:(length(gamma)+1)*delta`` gave
+      ``length(gamma) + 1`` windows for ``length(gamma)`` coefficients.)
+    * A nonzero shared column (``numWindows x 1``, ``numWindows ==
+      numel(windowTimes) - 1``, more than one cell) is expanded with
+      ``repmat(gamma, 1, numCells)``.  An all-zero gamma is left as passed:
+      0 means "no history coefficients" downstream (M-step, SE gamma block,
+      IC parameter count).
+
+    NumPy has no row/column distinction for 1-D arrays: a 1-D ``gamma`` is
+    read as MATLAB's row, i.e. ``(1, C)`` when its length is the number of
+    cells and the shared ``(numWindows, 1)`` column otherwise.  A 0-d scalar
+    stays 0-d unless it is expanded.
+
+    Returns ``(gamma, windowTimes)`` with ``gamma`` a float array.
+    """
+    from .core import _matlab_colon_exact
+
+    g = np.zeros(0) if gamma is None else np.asarray(gamma, dtype=float)
+    if g.ndim == 1:
+        g = g.reshape(1, -1) if g.size == num_cells else g.reshape(-1, 1)
+    elif g.ndim > 2:
+        raise ValueError("gamma must be a scalar, vector or numWindows x C matrix")
+
+    if _is_empty_value(windowTimes):
+        if g.size == 0 or (g.size == 1 and float(g.reshape(-1)[0]) == 0.0):
+            return g, None
+        delta_w = 0.001 if delta is None else float(delta)
+        num_windows = 1 if g.ndim == 0 else g.shape[0]
+        windowTimes = _matlab_colon_exact(0.0, delta_w, num_windows * delta_w)
+    windowTimes = np.asarray(windowTimes, dtype=float).reshape(-1)
+
+    g2 = g.reshape(1, 1) if g.ndim == 0 else g
+    if (g.size > 0 and g2.shape[1] == 1 and num_cells > 1 and g2.shape[0] == windowTimes.size - 1
+            and np.any(g2 != 0)):
+        g = np.tile(g2, (1, num_cells))
+    return g, windowTimes
 
 
 def _lambda_delta_from_state(
@@ -5906,8 +5964,6 @@ class DecodingAlgorithms:
         xKFinal, WKFinal, Ahat, Qhat, muhat, betahat, gammahat,
         x0hat, Px0hat, IC, SE, Pvals, nIter
         """
-        from .history import History  # local import to avoid circular dependency
-
         Ahat0 = np.atleast_2d(Ahat0).astype(float)
         Qhat0 = np.atleast_2d(Qhat0).astype(float)
         numStates = Ahat0.shape[0]
@@ -5923,42 +5979,29 @@ class DecodingAlgorithms:
             x0 = np.zeros(numStates)
         else:
             x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if gamma is None:
-            gamma = np.zeros(0)
-        gamma = np.asarray(gamma, dtype=float)
+        K_cells = dN.shape[0]
+        N_time = dN.shape[1]
 
-        if delta is None or delta == 0:
+        # Default history windows and shared-gamma expansion (MATLAB B9; see
+        # _em_history_windows).  deltaW is taken before delta is defaulted, as
+        # in MATLAB (both give 0.001 for an empty delta).
+        if delta is None or delta == 0:  # (delta == 0 -> 1 ms is a Python extension)
+            delta = None
+        gamma, windowTimes = _em_history_windows(gamma, windowTimes, delta, K_cells)
+        windowTimes = [] if windowTimes is None else windowTimes
+        if delta is None:
             delta = 0.001
-
-        if windowTimes is None:
-            gamma_flat = gamma.ravel()
-            if gamma_flat.size == 0 or (gamma_flat.size == 1 and gamma_flat[0] == 0):
-                windowTimes = []
-            else:
-                windowTimes = np.arange(0, (gamma.shape[0] + 2) * delta, delta).tolist()
 
         mu = np.asarray(mu, dtype=float).reshape(-1)
         beta = np.atleast_2d(beta).astype(float)
 
-        # Build HkAll from spike trains and history windows
-        K_cells = dN.shape[0]
-        N_time = dN.shape[1]
-        minTime = 0.0
-        maxTime = (N_time - 1) * delta
-
+        # History on the delta grid (MATLAB, repaired C6): PP_EM builds each
+        # cell's train as nspikeTrain(t, '', delta), so window [t_i, t_(i+1)]
+        # counts the spikes ceil(t_i*fs)+1 .. ceil(t_(i+1)*fs) bins back,
+        # fs = 1/delta -- exactly _compute_history_terms.  The former 1 kHz nspikeTrain gave
+        # a (2N-1)-row history at delta = 2 ms (ValueError in the first E-step).
         if len(windowTimes) > 0:
-            histObj = History(windowTimes, minTime, maxTime)
-            HkAll_list = []
-            for k in range(K_cells):
-                spike_indices = np.where(dN[k, :] == 1)[0]
-                spike_times = (spike_indices) * delta
-                nst = nspikeTrain(spike_times)
-                nst.setMinTime(minTime)
-                nst.setMaxTime(maxTime)
-                hmat = histObj.computeHistory(nst).dataToMatrix()
-                HkAll_list.append(hmat)
-            # Stack: (N_time, nW, K_cells)
-            HkAll = np.stack(HkAll_list, axis=2)
+            HkAll = _compute_history_terms(dN, delta, windowTimes)
         else:
             HkAll = np.zeros((N_time, 0, K_cells))
             gamma = np.zeros(1)

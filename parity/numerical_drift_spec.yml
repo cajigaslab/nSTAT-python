@@ -320,6 +320,42 @@ entries:
     output_field: pdfl_binom_delta2_x_u
     tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
 
+  # 17. Blocks of pp_square_history.mat captured from the repaired MATLAB
+  # (fix/pp-em @ a457b54, pending upstream merge).  The two history entries
+  # are integer counts and edges, matched exactly; the filters measured
+  # <= 3.9e-16, so rtol 1e-10 / atol 1e-12 as in section 16.
+  # PP_EM / PPLFP_EM default history (B9): windowTimes = 0:delta:size(gamma,1)*delta.
+  - name: PP_EM_default_history_windows
+    recipe: pp_em_decoder_gold
+    args: { block: emdef }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: emdef_HkAll
+    tolerance: { rtol: 0.0, atol: 0.0 }
+
+  # PP_EM history on the delta grid at delta = 2 ms (C6).
+  - name: PP_EM_history_delta_2ms
+    recipe: pp_em_decoder_gold
+    args: { block: pp2ms }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pp2ms_HkAll
+    tolerance: { rtol: 0.0, atol: 0.0 }
+
+  # PPDecodeFilterLinear with ns == C == 2 (B1: a square beta is not transposed).
+  - name: PPDecodeFilterLinear_square_beta
+    recipe: pp_em_decoder_gold
+    args: { block: b1sq }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: b1sq_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # PPHybridFilterLinear with history windows and a shared gamma column (B2).
+  - name: PPHybridFilterLinear_history_windows
+    recipe: pp_em_decoder_gold
+    args: { block: pphf }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pphf_X
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
   # v9 iter 40 — recipe-backed entries for the 22 v9_* captures.
   # Each entry's recipe is defined in tools/parity/numerical_drift.py.
   # Tolerances per-entry: tightened where the Python port is bit-equivalent,
