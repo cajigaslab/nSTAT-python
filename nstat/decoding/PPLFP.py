@@ -2313,15 +2313,18 @@ class PPLFP:
 
         n3 = Chat_out.size
 
-        # NOTE: MATLAB has a transcription oddity at lines 1936-1942 — the
-        # second branch tests QhatDiag/QhatIsotropic instead of Rhat*.
-        # Mirror MATLAB verbatim (Case B; see parity/matlab_defects.yml).
+        # MATLAB F11 (fix/pp-em 564c207): the diagonal-R branch tests R's own
+        # flags.  It tested QhatDiag / QhatIsotropic (a transcription slip this
+        # port mirrored), so RhatDiag = 0 with QhatDiag = 1 counted dy instead
+        # of numel(Rhat) and RhatDiag = 1 with QhatDiag = 0 counted numel(Rhat)
+        # instead of dy.  Only IC used the count; the default flags (both
+        # diagonal, not isotropic) were unaffected.
         if PPLFP_EM_Constraints.get("RhatDiag", 0) and PPLFP_EM_Constraints.get(
             "RhatIsotropic", 0
         ):
             n4 = 1
-        elif PPLFP_EM_Constraints.get("QhatDiag", 0) and not PPLFP_EM_Constraints.get(
-            "QhatIsotropic", 0
+        elif PPLFP_EM_Constraints.get("RhatDiag", 0) and not PPLFP_EM_Constraints.get(
+            "RhatIsotropic", 0
         ):
             n4 = Rhat_out.shape[0]
         else:

@@ -1298,3 +1298,26 @@ def test_em_information_criteria_are_invariant_to_rescaling(family, problem) -> 
         shift = -K * dy * np.log(s)
         np.testing.assert_allclose(ob["llobs"], base["llobs"] + shift, rtol=1e-8)
         np.testing.assert_allclose(ob["llcomp"], base["llcomp"] + shift, rtol=1e-8)
+
+
+@pytest.mark.parametrize(("QhatDiag", "RhatDiag", "RhatIsotropic", "R_count"),
+                         [(1, 0, 0, "full"), (0, 1, 0, "diag"), (1, 1, 0, "diag"), (1, 1, 1, "iso")])
+def test_pplfp_em_counts_r_parameters_with_r_flags(QhatDiag, RhatDiag, RhatIsotropic, R_count, monkeypatch) -> None:
+    # MATLAB F11 (testInformationCriteriaCountRWithRFlags): R's parameter
+    # count follows R's own flags.  It tested QhatDiag / QhatIsotropic, so
+    # (1, 0, 0) counted dy instead of dy^2 and (0, 1, 0) dy^2 instead of dy.
+    # The count is recovered from IC: nTerms = (AIC + 2 llobs) / 2 and
+    # (BIC + 2 llobs) / log K.
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    monkeypatch.setattr(PPLFP, "PPLFP_ComputeParamStandardErrors", staticmethod(lambda *a, **k: ({}, {}, 0)))
+    P = _f8_problem()  # dx = 1, dy = 2, C = 3
+    dx, (dy, K), C = 1, P["y"].shape, P["dN"].shape[0]
+    cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, QhatDiag, 0, RhatDiag, RhatIsotropic, 0, 0, 0, 10, 0)
+    with seeded_global_rng(42):
+        IC = PPLFP.PPLFP_EM(P["y"], P["dN"], P["A"], P["Q"], P["Cm"], P["R"], P["alpha"], P["mu"], P["beta"],
+                            "poisson", P["delta"], None, None, P["x0"], P["Px0"], cons)[12]
+    n_R = {"full": dy * dy, "diag": dy, "iso": 1}[R_count]
+    expected = dx * dx + (dx if QhatDiag else dx * dx) + dy * dx + n_R + dy + C + dx * C
+    assert round((IC["AIC"] + 2 * IC["llobs"]) / 2) == expected
+    np.testing.assert_allclose((IC["BIC"] + 2 * IC["llobs"]) / np.log(K), expected, rtol=1e-9)
