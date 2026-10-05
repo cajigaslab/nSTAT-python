@@ -1034,14 +1034,14 @@ class DecodingAlgorithms:
         _Wconv_inactive_pre = (
             Wconv is None or (isinstance(Wconv, (list, tuple)) and len(Wconv) == 0)
         )
-        _numba_kernels = _numba_kernels_module()
-        if (
-            _numba_kernels._NUMBA_AVAILABLE
-            and A_raw_pre.ndim != 3
-            and Q_raw_pre.ndim != 3
-            and _Wconv_inactive_pre
-        ):
+        if A_raw_pre.ndim != 3 and Q_raw_pre.ndim != 3 and _Wconv_inactive_pre:
             try:
+                # Obtained only for eligible calls, inside the ``try``: any
+                # failure (import, decoration, kernel) falls back to the
+                # pure-Python path below.
+                _numba_kernels = _numba_kernels_module()
+                if not _numba_kernels._NUMBA_AVAILABLE:
+                    raise RuntimeError("numba fast path unavailable")
                 A_static_jit = _as_state_matrix(A_raw_pre, ns)
                 Q_static_jit = _as_state_matrix(Q_raw_pre, ns)
                 x_p_j, W_p_j, x_u_j, W_u_j = _numba_kernels.ppdecode_linear_loop(
@@ -2008,16 +2008,20 @@ class DecodingAlgorithms:
         # AND no pre-converged gain override.  Mirrors the Python loop
         # below line-for-line; gold-fixture-verified bit-equivalence.
         _gnconv_inactive = GnConv is None or _is_empty_value(GnConv)
-        _numba_kernels = _numba_kernels_module()
         if (
-            _numba_kernels._NUMBA_AVAILABLE
-            and _gnconv_inactive
+            _gnconv_inactive
             and A.ndim == 2
             and C.ndim == 2
             and Pv.ndim == 2
             and Pw.ndim == 2
         ):
             try:
+                # Obtained only for eligible calls, inside the ``try``: any
+                # failure (import, decoration, kernel) falls back to the
+                # pure-Python path below.
+                _numba_kernels = _numba_kernels_module()
+                if not _numba_kernels._NUMBA_AVAILABLE:
+                    raise RuntimeError("numba fast path unavailable")
                 return _numba_kernels.kalman_filter_loop(
                     A, C, Pv, Pw, Px0, x0_vec, y,
                 )

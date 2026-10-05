@@ -584,8 +584,8 @@ def test_analysis_compute_granger_causality_matrix_pinned() -> None:
 # analysis._time_rescaled_z (the C4 near-duplicate) had no callers and was
 # deleted in the review follow-up; only fit.py's helper remains to pin.
 
-_TR_COUNTS = np.array([0.0, 1.0, 0.0, 0.0, 2.0, 0.0, 0.99, 1.5, 0.0, 2.5, 1.0, 0.0, 1.0])
-_TR_LAM = np.array([0.1, 0.2, -0.5, 0.0, 0.3, 0.25, 0.125, 0.5, 1e-15, 0.75, 0.0625, np.nan, 0.5])
+_TR_COUNTS = np.array([0.0, 1.0, 0.0, 0.0, 2.0, 0.0, 0.99, 1.5, 0.0, 2.5, 1.0, 0.0, 1.0, 1.0])
+_TR_LAM = np.array([0.1, 0.2, -0.5, 0.0, 0.3, 0.25, 0.125, 0.5, 1e-15, 0.75, 0.0625, np.nan, 0.5, 1e-13])
 
 
 def test_time_rescaled_uniforms_values() -> None:
@@ -596,7 +596,9 @@ def test_time_rescaled_uniforms_values() -> None:
     b = 1e-12 + 1e-12 + 0.3
     c = 0.25 + 0.125 + 0.5
     d = 1e-12 + 0.75
-    z = np.array([a, b, 0.0, c, 0.0, d, 0.0, 0.0625, np.nan])
+    # Last interval: lam floors to 1e-12, so z = 1e-12 exactly; -expm1(-z) =
+    # 9.999999999995e-13 whereas 1-exp(-z) = 9.99978e-13 (pins the expm1 form).
+    z = np.array([a, b, 0.0, c, 0.0, d, 0.0, 0.0625, np.nan, 1e-12])
     u = fit_mod._time_rescaled_uniforms(_TR_COUNTS, _TR_LAM)
     assert u.shape == z.shape
     finite = np.isfinite(z)

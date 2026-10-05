@@ -58,6 +58,31 @@ except Exception as _exc:  # pragma: no cover - exercised on default install
     _NUMBA_IMPORT_ERROR = _exc
 
 
+def _njit(*args, **kwargs):
+    """``numba.njit`` that fails soft.
+
+    Decoration can raise even when ``import numba`` succeeded (e.g.
+    ``RuntimeError: cannot cache function ... no locator available`` on a
+    read-only site-packages).  Any such failure disables the fast path
+    (``_NUMBA_AVAILABLE = False``, error kept in ``_NUMBA_IMPORT_ERROR``)
+    and returns the function undecorated, so this module still imports
+    successfully and stays cached in ``sys.modules``.
+    """
+
+    def deco(func):
+        global _NUMBA_AVAILABLE, _NUMBA_IMPORT_ERROR
+        if not _NUMBA_AVAILABLE:
+            return func
+        try:
+            return _numba.njit(*args, **kwargs)(func)
+        except Exception as exc:
+            _NUMBA_AVAILABLE = False
+            _NUMBA_IMPORT_ERROR = exc
+            return func
+
+    return deco
+
+
 __all__ = [
     "_NUMBA_AVAILABLE",
     "_NUMBA_IMPORT_ERROR",
@@ -68,7 +93,7 @@ __all__ = [
 
 if _NUMBA_AVAILABLE:
 
-    @_numba.njit(cache=True, fastmath=False)
+    @_njit(cache=True, fastmath=False)
     def _ppdecode_linear_loop_jit(
         A_static,
         Q_static,
@@ -274,7 +299,7 @@ if _NUMBA_AVAILABLE:
 
         return x_p, W_p, x_u, W_u
 
-    @_numba.njit(cache=True, fastmath=False)
+    @_njit(cache=True, fastmath=False)
     def _kalman_filter_matlab_loop_jit(
         A_static,
         C_static,

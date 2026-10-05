@@ -663,6 +663,8 @@ def _ppem_newton_C(
     T, state_dim = smoothed_means.shape
     emission_dim = observations.shape[1]
     C = np.asarray(C_init, dtype=float).copy()
+    if int(n_newton) <= 0:
+        return C
     # Loop-invariant: E[x_t x_t'] = mu_t mu_t' + Sigma_t depends only on the
     # smoothed moments, which are fixed for the whole call -- build it once
     # rather than once per (Newton iteration, emission channel).

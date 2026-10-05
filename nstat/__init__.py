@@ -90,6 +90,11 @@ def __getattr__(name: str):
         import importlib as _importlib
 
         return _importlib.import_module(f"{__name__}.paper_examples_full")
+    if name == "zernike":
+        # Previously a side effect of the eager ``paper_examples_full`` import.
+        import importlib as _importlib
+
+        return _importlib.import_module(f"{__name__}.zernike")
     if name == "extras":
         # ``nstat.extras`` is no longer loaded as a side effect of
         # ``import nstat`` (the opt-in numba probe is now lazy); keep the
@@ -157,3 +162,17 @@ __all__ = [
     "nstColl",
     "verify_checksums",
 ]
+
+
+_LAZY_ATTRS = (
+    "nstat_install",
+    "nSTAT_Install",
+    "run_full_paper_examples",
+    "paper_examples_full",
+    "zernike",
+    "extras",
+)
+
+
+def __dir__():
+    return sorted(set(globals()) | set(_LAZY_ATTRS))
