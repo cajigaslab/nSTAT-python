@@ -1857,3 +1857,51 @@ def test_pp_diagonal_a_information_with_a_full_q(monkeypatch) -> None:
     expected = np.sqrt(np.diag(np.linalg.inv(np.linalg.inv(Q) * Sx1)))
     np.testing.assert_allclose(np.diag(SE["A"]), expected, rtol=1e-8)
     assert np.count_nonzero(SE["A"] - np.diag(np.diag(SE["A"]))) == 0
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_covariance_information_forms_agree_for_one_state(family) -> None:
+    # MATLAB H1 (testCovarianceInformationFormsAgree): with one state (and one
+    # LFP channel) the diagonal, full and isotropic forms of Q (and R), and the
+    # diagonal and isotropic forms of Px0, each describe a single parameter,
+    # so every SE must agree.  MATLAB's mis-parenthesised blocks made the Px0
+    # forms 2.2x apart; the port's forms agree (a pin).
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    rng = np.random.default_rng(12)
+    K, C = 200, 2
+    x = np.zeros((1, K))
+    prev = 0.0
+    for k in range(K):
+        prev = 0.97 * prev + 0.15 * rng.standard_normal()
+        x[0, k] = prev
+    mu, beta = np.log(0.05) * np.ones(C), np.array([[0.8, -0.6]])
+    dN = (rng.random((C, K)) < np.exp(mu[:, None] + beta.T @ x)).astype(float)
+    y = 0.9 * x + 0.1 + 0.2 * rng.standard_normal((1, K))
+    WK = np.full((1, 1, K), 1e-3)
+    xm1 = np.column_stack([[0.0], x[:, :-1]])
+    ES = dict(Sxkm1xkm1=xm1 @ xm1.T, Sxkxk=x @ x.T)
+    A, Q, Cm, R, alpha = np.array([[0.97]]), np.array([[0.02]]), np.array([[0.9]]), np.array([[0.04]]), np.array([0.1])
+    x0, Px0 = np.zeros(1), np.array([[0.05]])
+    H = np.zeros((K, 1, C))
+
+    def se(QDiag, QIso, RDiag, RIso, Px0Iso):
+        with seeded_global_rng(5):
+            if family == "PP":
+                cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, QDiag, QIso, 1, 1, Px0Iso, 30)
+                SE = DecodingAlgorithms.PP_ComputeParamStandardErrors(dN, x, WK, A, Q, x0, Px0, ES, "poisson", mu,
+                                                                      beta, np.array(0.0), [], H, cons)[0]
+            else:
+                cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, QDiag, QIso, RDiag, RIso, 1, 1, Px0Iso, 30, 0)
+                SE = PPLFP.PPLFP_ComputeParamStandardErrors(y, dN, x, WK, A, Q, Cm, R, alpha, x0, Px0, ES, "poisson",
+                                                            mu, beta, np.array(0.0), [], H, cons)[0]
+        return {k: np.asarray(v, dtype=float).reshape(-1) for k, v in SE.items()}
+
+    ref = se(1, 0, 1, 0, 0)
+    forms = {"Q full": se(0, 0, 1, 0, 0), "Q isotropic": se(1, 1, 1, 0, 0), "Px0 isotropic": se(1, 0, 1, 0, 1)}
+    if family == "PPLFP":
+        forms.update({"R full": se(1, 0, 0, 0, 0), "R isotropic": se(1, 0, 1, 1, 0)})
+    for name, out in forms.items():
+        assert sorted(out) == sorted(ref), name
+        for key in ref:
+            np.testing.assert_allclose(out[key], ref[key], rtol=1e-10, atol=0, err_msg=f"{name}: SE.{key}")
