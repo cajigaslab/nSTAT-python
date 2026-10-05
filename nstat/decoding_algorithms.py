@@ -6628,154 +6628,50 @@ class DecodingAlgorithms:
     def mPPCODecodeLinear(A, Q, C, R, y, alpha, dN, mu, beta,
                           fitType='poisson', delta=0.001, gamma=None,
                           windowTimes=None, x0=None, Px0=None, HkAll=None):
-        """Full mPPCO decode filter (linear CIF version).
+        """[DEPRECATED] Alias of :meth:`PPLFP_DecodeLinear` (the PPLFP forward filter).
 
-        Matlab: ``DecodingAlgorithms.mPPCODecodeLinear``  (lines 4689-4845)
+        Matlab: ``DecodingAlgorithms.mPPCODecodeLinear`` is a deprecation shim
+        that warns ``nSTAT:deprecated:mPPCO`` and forwards ``varargin{:}`` to
+        ``DecodingAlgorithms.PPLFP_DecodeLinear`` (the mPPCO family was renamed
+        PPLFP). This mirror emits a :class:`DeprecationWarning` with MATLAB's
+        message and forwards every argument positionally to
+        :meth:`PPLFP_DecodeLinear`, so it returns exactly what
+        ``PPLFP_DecodeLinear`` returns: ``(x_p, W_p, x_u, W_u)``.
 
-        Returns
-        -------
-        x_p, W_p, x_u, W_u  -- predicted / updated states & covariances
-            x_p : (ns, N+1),  W_p : (ns, ns, N+1)
-            x_u : (ns, N),    W_u : (ns, ns, N)
+        The legacy Python signature defaults ``fitType`` to ``'poisson'``,
+        which ``PPLFP_DecodeLinear`` (and MATLAB) do not; the signature is
+        frozen, so that default is forwarded as-is. ``delta=0.001`` equals
+        ``PPLFP_DecodeLinear``'s ``None`` default, which it resolves to
+        ``0.001``.
+
+        Use :meth:`PPLFP_DecodeLinear` (or
+        ``nstat.decoding.PPLFP.PPLFP_DecodeLinear``) instead.
         """
-        obs = _as_observation_matrix(dN)
-        numCells, N = obs.shape
-        A_arr = np.asarray(A, dtype=float)
-        ns = A_arr.shape[0]
-
-        # Defaults
-        if Px0 is None or _is_empty_value(Px0):
-            Px0 = np.zeros((ns, ns), dtype=float)
-        else:
-            Px0 = np.asarray(Px0, dtype=float).reshape(ns, ns)
-        if x0 is None or _is_empty_value(x0):
-            x0 = np.zeros(ns, dtype=float)
-        else:
-            x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if gamma is None:
-            gamma = 0
-        if delta is None:
-            delta = 0.001
-
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-
-        # Build history tensor if not provided
-        if HkAll is None or _is_empty_value(HkAll):
-            if windowTimes is not None and not _is_empty_value(windowTimes):
-                wt = np.asarray(windowTimes, dtype=float).reshape(-1)
-                HkAll = _compute_history_terms(dN, delta, wt)  # (N, numWindows, numCells)
-                gamma_arr = np.asarray(gamma, dtype=float)
-                if gamma_arr.ndim <= 1 and gamma_arr.size == 1 and numCells > 1:
-                    gamma = np.tile(gamma_arr.reshape(-1, 1), (1, numCells))
-            else:
-                HkAll = np.zeros((N, 1, numCells), dtype=float)
-                gamma = np.zeros(numCells, dtype=float)
-        else:
-            HkAll = np.asarray(HkAll, dtype=float)
-
-        gamma_arr = np.asarray(gamma, dtype=float)
-        if gamma_arr.ndim == 2 and gamma_arr.shape[1] != numCells:
-            gamma = gamma_arr.T
-
-        # Permute HkAll from (N, numWindows, numCells) to (numWindows, numCells, N)
-        # This is Matlab: permute(HkAll, [2 3 1])
-        if HkAll.ndim == 3 and HkAll.shape[0] == N:
-            Histtermperm = np.transpose(HkAll, (1, 2, 0))
-        else:
-            Histtermperm = HkAll
-
-        mu_vec = np.asarray(mu, dtype=float).reshape(-1)
-        beta_mat = np.asarray(beta, dtype=float)
-        if beta_mat.ndim == 1:
-            beta_mat = beta_mat.reshape(-1, 1)
-
-        # Allocate outputs
-        x_p = np.zeros((ns, N + 1), dtype=float)
-        x_u = np.zeros((ns, N), dtype=float)
-        W_p = np.zeros((ns, ns, N + 1), dtype=float)
-        W_u = np.zeros((ns, ns, N), dtype=float)
-
-        # Time-varying or static matrices: pick slice for time 0
-        def _sel_A(n):
-            if A_arr.ndim == 3:
-                return A_arr[:, :, min(n, A_arr.shape[2] - 1)]
-            return A_arr.reshape(ns, ns)
-
-        def _sel_Q(n):
-            Q_arr = np.asarray(Q, dtype=float)
-            if Q_arr.ndim == 3:
-                return Q_arr[:, :, min(n, Q_arr.shape[2] - 1)]
-            return Q_arr.reshape(ns, ns)
-
-        def _sel_C(n):
-            C_arr = np.asarray(C, dtype=float)
-            if C_arr.ndim == 3:
-                return C_arr[:, :, min(n, C_arr.shape[2] - 1)]
-            return C_arr
-
-        def _sel_R(n):
-            R_arr = np.asarray(R, dtype=float)
-            if R_arr.ndim == 3:
-                return R_arr[:, :, min(n, R_arr.shape[2] - 1)]
-            return R_arr
-
-        def _sel_alpha(n):
-            alpha_arr = np.asarray(alpha, dtype=float)
-            if alpha_arr.ndim >= 2 and alpha_arr.shape[-1] > 1:
-                return alpha_arr[:, min(n, alpha_arr.shape[-1] - 1)]
-            return alpha_arr.reshape(-1)
-
-        # Initial prediction
-        A1 = _sel_A(0)
-        Q1 = _sel_Q(0)
-        x_p[:, 0] = A1 @ x0
-        W_p[:, :, 0] = A1 @ Px0 @ A1.T + Q1
-
-        y_arr = np.asarray(y, dtype=float)
-
-        for n in range(N):
-            # 0-based time_index for mPPCODecode_update
-            x_u[:, n], W_u[:, :, n], _ = DecodingAlgorithms.mPPCODecode_update(
-                x_p[:, n], W_p[:, :, n],
-                _sel_C(n), _sel_R(n),
-                y_arr[:, n] if y_arr.ndim == 2 else y_arr,
-                _sel_alpha(n),
-                dN, mu_vec, beta_mat, fitType,
-                gamma, Histtermperm, n, None)
-            if n < N - 1:
-                x_p[:, n + 1], W_p[:, :, n + 1] = DecodingAlgorithms.mPPCODecode_predict(
-                    x_u[:, n], W_u[:, :, n], _sel_A(n), _sel_Q(n))
-
-        return x_p, W_p, x_u, W_u
+        _warn_mppco_deprecated("mPPCODecodeLinear", "PPLFP_DecodeLinear")
+        return DecodingAlgorithms.PPLFP_DecodeLinear(
+            A, Q, C, R, y, alpha, dN, mu, beta, fitType, delta, gamma,
+            windowTimes, x0, Px0, HkAll,
+        )
 
     @staticmethod
     def mPPCODecode_predict(x_u, W_u, A, Q):
-        """Predict step for the mPPCO filter.
+        """[DEPRECATED] Alias of :meth:`PPLFP_Decode_predict` (the PPLFP predict step).
 
-        Matlab: ``DecodingAlgorithms.mPPCODecode_predict``  (lines 4846-4854)
+        Matlab: ``DecodingAlgorithms.mPPCODecode_predict`` is a deprecation
+        shim that warns ``nSTAT:deprecated:mPPCO`` and forwards
+        ``varargin{:}`` to ``DecodingAlgorithms.PPLFP_Decode_predict`` (the
+        mPPCO family was renamed PPLFP). This mirror emits a
+        :class:`DeprecationWarning` with MATLAB's message and forwards every
+        argument positionally to :meth:`PPLFP_Decode_predict`, so it returns
+        exactly what ``PPLFP_Decode_predict`` returns: ``(x_p, W_p)`` with
+        ``x_p = A @ x_u`` (an ``(ns, 1)`` column ``x_u`` now gives an
+        ``(ns, 1)`` ``x_p``, as in MATLAB, where the old body flattened it).
 
-        Parameters
-        ----------
-        x_u : array (ns,)   -- updated state
-        W_u : array (ns,ns) -- updated covariance
-        A   : array (ns,ns) -- state transition
-        Q   : array (ns,ns) -- process noise
-
-        Returns
-        -------
-        x_p : array (ns,)
-        W_p : array (ns,ns)
+        Use :meth:`PPLFP_Decode_predict` (or
+        ``nstat.decoding.PPLFP.PPLFP_Decode_predict``) instead.
         """
-        x_u = np.asarray(x_u, dtype=float).reshape(-1)
-        ns = x_u.size
-        A = np.asarray(A, dtype=float).reshape(ns, ns)
-        Q = np.asarray(Q, dtype=float).reshape(ns, ns)
-        W_u = np.asarray(W_u, dtype=float).reshape(ns, ns)
-        x_p = A @ x_u
-        W_p = A @ W_u @ A.T + Q
-        W_p = _symmetrize(W_p)
-        return x_p, W_p
+        _warn_mppco_deprecated("mPPCODecode_predict", "PPLFP_Decode_predict")
+        return DecodingAlgorithms.PPLFP_Decode_predict(x_u, W_u, A, Q)
 
     @staticmethod
     def mPPCODecode_update(x_p, W_p, C, R, y, alpha, dN, mu, beta,

@@ -1,12 +1,16 @@
 """``DecodingAlgorithms.mPPCO_*`` are deprecated aliases of ``PPLFP_*``.
 
 MATLAB's ``DecodingAlgorithms.m`` defines ``mPPCO_fixedIntervalSmoother``,
-``mPPCO_EMCreateConstraints``, ``mPPCO_ComputeParamStandardErrors``,
-``mPPCO_EM``, ``mPPCO_EStep`` and ``mPPCO_MStep`` as deprecation shims: each
-warns ``nSTAT:deprecated:mPPCO`` and forwards ``varargin{:}`` to the matching
-``DecodingAlgorithms.PPLFP_*``.  The Python mirrors do the same (a
-``DeprecationWarning`` with MATLAB's text, positional forwarding), replacing a
-stale standalone implementation that raised ``NameError``.
+``mPPCODecodeLinear``, ``mPPCODecode_predict``, ``mPPCO_EMCreateConstraints``,
+``mPPCO_ComputeParamStandardErrors``, ``mPPCO_EM``, ``mPPCO_EStep`` and
+``mPPCO_MStep`` as deprecation shims: each warns ``nSTAT:deprecated:mPPCO`` and
+forwards ``varargin{:}`` to the matching ``DecodingAlgorithms.PPLFP_*``.  The
+Python mirrors do the same (a ``DeprecationWarning`` with MATLAB's text,
+positional forwarding), replacing stale standalone implementations (the EM
+ones raised ``NameError``).  ``mPPCODecode_update`` is not a forwarder: its
+Python body takes MATLAB's permuted ``(nW, C, N)`` history, which the Python
+``PPLFP_Decode_update`` does not accept, so forwarding it would change its
+contract (left as is pending a maintainer decision).
 
 Contract pinned here, per alias:
 
@@ -42,6 +46,17 @@ ALIASES = [
         "PPLFP_fixedIntervalSmoother",
         "(A, Q, C, R, y, alpha, dN, lags, mu, beta, fitType, delta=0.001, gamma=None, "
         "windowTimes=None, x0=None, Px0=None, HkAll=None)",
+    ),
+    (
+        "mPPCODecodeLinear",
+        "PPLFP_DecodeLinear",
+        "(A, Q, C, R, y, alpha, dN, mu, beta, fitType='poisson', delta=0.001, gamma=None, "
+        "windowTimes=None, x0=None, Px0=None, HkAll=None)",
+    ),
+    (
+        "mPPCODecode_predict",
+        "PPLFP_Decode_predict",
+        "(x_u, W_u, A, Q)",
     ),
     (
         "mPPCO_EMCreateConstraints",
@@ -172,6 +187,14 @@ def _calls(alias: str):
             _load("pplfp_EStep.mat")
         )
         return (A, Q, C, R, y, alpha, dN, 2, mu, beta, fit, delta, gamma, None, x0, Px0, HkAll), {}, {}
+    if alias == "mPPCODecodeLinear":
+        A, Q, C, R, y, alpha, dN, mu, beta, fit, delta, gamma, HkAll, x0, Px0 = _estep_args(
+            _load("pplfp_EStep.mat")
+        )
+        return (A, Q, C, R, y, alpha, dN, mu, beta, fit, delta, gamma, None, x0, Px0, HkAll), {}, {}
+    if alias == "mPPCODecode_predict":
+        fx = _load("pplfp_EStep.mat")
+        return (_v(fx, "x0"), _f(fx, "Px0"), _f(fx, "A"), _f(fx, "Q")), {}, {}
     if alias == "mPPCO_MStep":
         fx = _load("pplfp_MStep.mat")
         e = _estep_args(fx)
@@ -259,3 +282,24 @@ def test_mppco_estep_forwarder_no_longer_raises_nameerror() -> None:
     with pytest.warns(DeprecationWarning):
         x_K, W_K, logll, sums = DecodingAlgorithms.mPPCO_EStep(*args)
     assert x_K.shape == (2, 10) and W_K.shape == (2, 2, 10) and np.isfinite(logll)
+
+
+@pytest.mark.parametrize("case", ["pdfl_pois_sq", "pdfl_pois_ctrl"])
+def test_mppco_decode_linear_with_history_returns_exactly_the_pplfp_result(case) -> None:
+    # Nonzero history, square (nW == C) and not: the alias is PPLFP_DecodeLinear
+    # for every history layout, not just the zero-history gold inputs above.
+    fx = loadmat(FIXTURE_ROOT / "pp_square_history.mat", squeeze_me=False)
+    f = lambda key: np.asarray(fx[f"{case}_{key}"], dtype=float)  # noqa: E731
+    fit = str(np.asarray(fx[f"{case}_fitType"]).reshape(-1)[0])
+    dN = f("dN")
+    rng = np.random.default_rng(3)
+    C = np.array([[1.0, 0.3], [-0.2, 0.8]])
+    R = np.diag([0.05, 0.08])
+    y = 0.2 * rng.standard_normal((2, dN.shape[1]))
+    args = (
+        f("A"), f("Q"), C, R, y, np.array([0.1, -0.2]), dN, f("mu"), f("beta"), fit, 0.001,
+        f("gamma"), None, f("x0"), f("Pi0"), f("HkAll"),
+    )
+    with pytest.warns(DeprecationWarning, match=re.escape(_message("mPPCODecodeLinear", "PPLFP_DecodeLinear"))):
+        got = DecodingAlgorithms.mPPCODecodeLinear(*args)
+    _assert_identical(got, PPLFP.PPLFP_DecodeLinear(*args))
