@@ -1805,13 +1805,18 @@ class PPLFP:
             gamma_arr = np.asarray(gamma, dtype=float)
 
         if windowTimes is None or _is_empty_value(windowTimes):
-            if gamma_arr.size == 0:
+            # MATLAB (PPLFP.m PPLFP_EM, FIX #98): an empty or scalar-zero gamma
+            # means no history; otherwise windowTimes = 0:delta:(length(gamma)+1)*delta,
+            # with length() the largest dimension and the colon built element-
+            # exactly (np.arange differs in the last bits, which moves spikes
+            # between windows once they are binned with ceil(t*sampleRate)).
+            if gamma_arr.size == 0 or (gamma_arr.size == 1 and float(gamma_arr.reshape(-1)[0]) == 0.0):
                 windowTimes = None
             else:
-                # MATLAB: 0:delta:(length(gamma)+1)*delta
-                stop = (gamma_arr.size + 1) * delta
-                n_pts = int(round(stop / delta)) + 1
-                windowTimes = np.arange(n_pts, dtype=float) * delta
+                from nstat.core import _matlab_colon_exact
+
+                gamma_length = max(gamma_arr.shape) if gamma_arr.ndim else 1
+                windowTimes = _matlab_colon_exact(0.0, float(delta), (gamma_length + 1) * float(delta))
 
         dN_arr = np.asarray(dN, dtype=float)
         if dN_arr.ndim == 1:

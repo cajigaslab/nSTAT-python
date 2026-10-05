@@ -51,7 +51,14 @@
   (the first window was always empty). It now reproduces MATLAB's windows
   exactly, including edges off the time grid, and is ~500x faster; as in
   MATLAB, only bins with `dN == 1` count as spikes (bins holding larger counts
-  no longer add to the history). With history,
+  no longer add to the history). `PPLFP_EM`'s default windows (`windowTimes`
+  omitted) are now `0:delta:(length(gamma)+1)*delta` built element for element
+  as MATLAB's colon builds it (`np.arange` differs in the last bits for most
+  sizes, which moved spikes between windows), with `length` the largest
+  dimension of `gamma`; a scalar-zero `gamma` now means no history, as in
+  MATLAB. With `delta` other than 1 ms, `PPLFP_EM`'s history still differs
+  from MATLAB master's, which builds it from a 1 kHz spike train without
+  resampling. With history,
   `PPDecodeFilterLinear` and `PP_fixedIntervalSmoother` now match MATLAB
   (except the smoother's first predicted column when `lags = 1`).
 - Fix: a history tensor `HkAll` with as many time bins as cells (N == C) was

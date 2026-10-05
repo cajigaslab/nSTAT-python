@@ -24,8 +24,10 @@ function capture_pp_square_history()
 %   pdfl_pois_offgrid  PPDecodeFilterLinear    poisson,  C = 3, nW = 3, N = 150,
 %                    windowTimes [0 1.5 4 6.5] ms (edges off the 1 ms grid)
 %   pdfl_pois_colon  PPDecodeFilterLinear      poisson,  C = 3, nW = 10, N = 150,
-%                    windowTimes = 0:delta:(9+1)*delta (the PP_EM / PPLFP_EM
-%                    default form for numel(gamma) = 9)
+%                    windowTimes = 0:delta:(9+1)*delta.  Pins MATLAB's rounding
+%                    of these edges only: a real PP_EM / PPLFP_EM default call
+%                    with numel(gamma) = 9 would pass a 9-row gamma for these
+%                    10 windows; this case uses a 10-row gamma.
 %   pdfl_binom_delta2  PPDecodeFilterLinear    binomial, C = 3, nW = 3, N = 150,
 %                    delta = 2 ms, windowTimes [0 2 4 10] ms
 % The last three pin how History.computeHistory turns windowTimes into lags:
@@ -40,6 +42,22 @@ function capture_pp_square_history()
 % sizes = [N nW C dx]; outputs x_p, W_p, x_u, W_u (PPDecodeFilterLinear),
 % x_pLag, W_pLag, x_uLag, W_uLag (PP_fixedIntervalSmoother) or x_K, W_K
 % (PP_EStep; its logll is deliberately not captured here).
+%
+% Appended after the ten cases (fields outside case_names, so every earlier
+% field is unchanged):
+%   emdef_*   PPLFP_EM's default history: with windowTimes = [] and a
+%             non-zero gamma, PPLFP.m:1613 builds
+%             windowTimes = 0:delta:(length(gamma)+1)*delta and :1630-1636
+%             HkAll(:,:,k) = History(windowTimes,0,maxTime).computeHistory(
+%             nspikeTrain((find(dN(k,:)==1)-1)*delta)).dataToMatrix.  Those
+%             lines are reproduced here (PPLFP_EM itself continues into a
+%             Monte-Carlo EM that a gold cannot pin).  gamma is 8 x 2, so
+%             length(gamma) = 8 (largest dimension) and delta = 1 ms: a size at
+%             which the colon differs bitwise from (0:9)*delta and moves spikes
+%             between windows.
+%   colon_*   MATLAB a:d:b outputs (colon_v{i} = colon_a(i):colon_d(i):colon_b(i))
+%             for the default-edge family 0:d:(m+1)*d (7 deltas x m = 0..40)
+%             and 200 random signed triples, pinning nstat.core._matlab_colon_exact.
 %
 % HkAll is the history tensor each function consumes: for the two filters it
 % is rebuilt exactly as PPAF.m builds it internally from windowTimes
@@ -165,6 +183,62 @@ for i = 1:numel(cases)
     fprintf('  [%s] %s %s, N=%d nW=%d C=%d, size(HkAll)=%s, spikes per cell=%s\n', ...
         cs.name, cs.func, cs.fitType, N, nW, C, mat2str(size(HkAll)), mat2str(sum(dN, 2)'));
 end
+
+% --- PPLFP_EM default history edges (see header) -------------------------
+emC = 2; emN = 200; delta = 0.001;
+gamma = -0.2 - 0.8 * rand(8, emC);
+dN = double(rand(emC, emN) < 0.15);
+windowTimes = 0:delta:(length(gamma)+1)*delta;                 % PPLFP.m:1613
+minTime = 0; maxTime = (size(dN,2)-1)*delta;
+histObj = History(windowTimes,minTime,maxTime);                % PPLFP.m:1630
+HkAll = zeros(emN, numel(windowTimes)-1, emC);
+for k = 1:emC
+    nst = nspikeTrain((find(dN(k,:)==1)-1)*delta);
+    nst.setMinTime(minTime);
+    nst.setMaxTime(maxTime);
+    HkAll(:,:,k) = histObj.computeHistory(nst).dataToMatrix;    % PPLFP.m:1636
+end
+out.emdef_dN = dN;
+out.emdef_gamma = gamma;
+out.emdef_delta = delta;
+out.emdef_windowTimes = windowTimes;
+out.emdef_HkAll = HkAll;
+fprintf('  [emdef] PPLFP_EM default edges, length(gamma)=%d: %d windows, size(HkAll)=%s\n', ...
+    length(gamma), numel(windowTimes)-1, mat2str(size(HkAll)));
+
+% --- MATLAB colon outputs (see header) ------------------------------------
+colonA = []; colonD = []; colonB = []; colonV = {};
+for d = [0.001 0.002 0.0005 0.003 0.004 0.0001 0.01]
+    for m = 0:40
+        colonA(end+1) = 0; colonD(end+1) = d; colonB(end+1) = (m+1)*d; %#ok<AGROW>
+        colonV{end+1} = 0:d:(m+1)*d; %#ok<AGROW>
+    end
+end
+for i = 1:200
+    a = (rand-0.5) * 10^(randi([-3 2]));
+    if rand < 0.3, a = 0; end
+    d = (0.05 + rand) * 10^(randi([-4 1]));
+    if rand < 0.2, d = -d; end
+    n = randi([0 120]);
+    r = rand;
+    if r < 0.4
+        b = a + n*d;
+    elseif r < 0.6
+        b = a + (n + 0.5)*d;
+    elseif r < 0.8
+        b = a + n*d + randi([-4 4])*eps(a + n*d);
+    else
+        b = a + (n + 1e-11*(rand-0.5))*d;
+    end
+    colonA(end+1) = a; colonD(end+1) = d; colonB(end+1) = b; %#ok<AGROW>
+    colonV{end+1} = a:d:b; %#ok<AGROW>
+end
+out.colon_a = colonA;
+out.colon_d = colonD;
+out.colon_b = colonB;
+out.colon_v = colonV;
+fprintf('  [colon] %d MATLAB colon outputs\n', numel(colonV));
+
 out.case_names = {cases.name};
 out.matlab_version = version;
 

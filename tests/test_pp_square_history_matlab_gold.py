@@ -38,6 +38,15 @@ Cases:
   (nW = 10; its 0.009 s edge is 9.000000000000002 samples, so MATLAB leaves the
   last window empty) and delta = 2 ms.
 
+Outside ``case_names``:
+
+* ``emdef_*`` -- ``PPLFP_EM``'s default history (windowTimes = [] and a non-zero
+  gamma): MATLAB PPLFP.m:1613-1636 with ``length(gamma)`` = 8 (an 8 x 2 gamma)
+  at delta = 1 ms, where ``0:delta:9*delta`` differs bitwise from
+  ``np.arange(10) * delta`` and moves spikes between windows 4-7.
+* ``colon_*`` -- 487 MATLAB ``a:d:b`` outputs pinning
+  ``nstat.core._matlab_colon_exact``.
+
 For the ``PP_EStep`` cases the log-likelihood is not captured: for nW == C
 MATLAB's logll transposes the square history slice, a suspected MATLAB defect
 pending a fix (the Python port mirrors it).
@@ -284,3 +293,57 @@ def test_normalize_history_tensor_other_layouts_resolve_as_before() -> None:
     # (C, nW, N); it keeps the (C, nW, N) reading the dict lookup gave it.
     sq = np.random.default_rng(3).normal(size=(3, 3, 7))
     assert np.array_equal(da._normalize_history_tensor(sq, 7, 3, 3), np.transpose(sq, (2, 1, 0)))
+
+
+def test_matlab_colon_exact_matches_matlab_bitwise(gold) -> None:
+    from nstat.core import _matlab_colon_exact
+
+    a, d, b = (gold[f"colon_{k}"].reshape(-1).astype(float) for k in "adb")
+    expected = gold["colon_v"].reshape(-1)
+    assert a.size == d.size == b.size == expected.size == 487
+    for i in range(a.size):
+        want = np.asarray(expected[i], dtype=float).reshape(-1)
+        got = _matlab_colon_exact(a[i], d[i], b[i])
+        assert got.shape == want.shape and np.array_equal(got, want), (i, a[i], d[i], b[i])
+
+
+def test_pplfp_em_default_history_matches_matlab(gold, monkeypatch) -> None:
+    """PPLFP_EM with windowTimes omitted builds MATLAB's default history exactly.
+
+    MATLAB: windowTimes = 0:delta:(length(gamma)+1)*delta (PPLFP.m:1613), then
+    History.computeHistory per cell.  The E-step is stubbed to capture the
+    HkAll that PPLFP_EM hands it and stop there.
+    """
+    from nstat.decoding.PPLFP import PPLFP
+
+    class _Captured(Exception):
+        pass
+
+    seen: dict = {}
+
+    def _capture_estep(*args, **_kwargs):
+        seen["HkAll"] = np.asarray(args[12], dtype=float)
+        raise _Captured
+
+    monkeypatch.setattr(PPLFP, "PPLFP_EStep", staticmethod(_capture_estep))
+    dN = gold["emdef_dN"].astype(float)
+    gamma = gold["emdef_gamma"].astype(float)
+    delta = float(gold["emdef_delta"].reshape(-1)[0])
+    C, N = dN.shape
+    assert gamma.shape == (8, 2) and C == 2
+
+    def _run(g):
+        with pytest.raises(_Captured):
+            PPLFP.PPLFP_EM(
+                np.zeros((1, N)), dN, 0.99 * np.eye(2), 0.01 * np.eye(2), np.ones((1, 2)), np.eye(1),
+                np.zeros(1), -2.0 * np.ones(C), 0.5 * np.ones((2, C)), "poisson", delta, g,
+            )
+        return seen.pop("HkAll")
+
+    hk = _run(gamma)
+    ml = gold["emdef_HkAll"].astype(float)
+    assert hk.shape == ml.shape == (N, 9, C)  # length(gamma) + 1 = 9 windows
+    assert np.array_equal(hk, ml)
+    # A scalar-zero gamma means "no history" (MATLAB PPLFP.m FIX #98).
+    assert np.array_equal(_run(0.0), np.zeros((N, 1, C)))
+
