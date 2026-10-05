@@ -251,15 +251,26 @@ def _normalize_history_tensor(HkAll, num_steps: int, num_windows: int, num_cells
         return np.zeros((num_steps, num_windows, num_cells), dtype=float)
 
     arr = np.asarray(HkAll, dtype=float)
-    expected_shapes = {
-        (num_steps, num_windows, num_cells): arr,
-        (num_windows, num_cells, num_steps): np.transpose(arr, (2, 0, 1)),
-        (num_cells, num_windows, num_steps): np.transpose(arr, (2, 1, 0)),
-        (num_cells, num_steps, num_windows): np.transpose(arr, (1, 2, 0)),
-    }
-    for shape, normalized in expected_shapes.items():
+    # MATLAB stores a one-cell N x nW x 1 history as an N x nW matrix (it drops
+    # the trailing singleton dimension), so accept that 2-D form when C == 1.
+    if arr.ndim == 2 and num_cells == 1 and arr.shape == (num_steps, num_windows):
+        return arr.reshape(num_steps, num_windows, 1)
+    # The canonical (N, nW, C) layout is checked first so that it wins when
+    # N == C makes another layout's shape identical to it.  (The previous
+    # dict-keyed lookup let the colliding (C, nW, N) entry overwrite it and
+    # silently swapped time and cells.)
+    if arr.shape == (num_steps, num_windows, num_cells):
+        return arr
+    # The other accepted layouts keep the precedence the dict lookup had --
+    # on a shape collision its later entry won -- so inputs that do not match
+    # the canonical shape normalize exactly as before.
+    for shape, axes in (
+        ((num_cells, num_steps, num_windows), (1, 2, 0)),
+        ((num_cells, num_windows, num_steps), (2, 1, 0)),
+        ((num_windows, num_cells, num_steps), (2, 0, 1)),
+    ):
         if arr.shape == shape:
-            return normalized
+            return np.transpose(arr, axes)
     raise ValueError("HkAll must align with N x numWindows x C MATLAB-style history storage")
 
 
@@ -6138,6 +6149,11 @@ class DecodingAlgorithms:
 
         numCells, K = dN.shape
         Dx = A.shape[1]
+        # MATLAB stores a one-cell N x nW x 1 history as an N x nW matrix.
+        # Restore the cell axis so the log-likelihood below (which indexes
+        # HkAll[k, :, :]) sees the history, as the filter step already does.
+        if numCells == 1 and np.ndim(HkAll) == 2:
+            HkAll = np.asarray(HkAll, dtype=float).reshape(np.shape(HkAll)[0], np.shape(HkAll)[1], 1)
 
         # Forward filter
         x_p = np.zeros((Dx, K + 1))

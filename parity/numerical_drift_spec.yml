@@ -263,6 +263,22 @@ entries:
     output_field: estep_pois_sq_x_K
     tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
 
+  # N == C (6 time bins, 6 cells) and C == 1 (MATLAB's N x nW history, as
+  # MATLAB stores it) layouts of the PP_EStep history tensor.
+  - name: PP_EStep_poisson_steps_equal_cells
+    recipe: pp_square_history
+    args: { case: estep_pois_NeqC }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: estep_pois_NeqC_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_binomial_one_cell_2d_history
+    recipe: pp_square_history
+    args: { case: estep_binom_C1 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: estep_binom_C1_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
   # v9 iter 40 — recipe-backed entries for the 22 v9_* captures.
   # Each entry's recipe is defined in tools/parity/numerical_drift.py.
   # Tolerances per-entry: tightened where the Python port is bit-equivalent,

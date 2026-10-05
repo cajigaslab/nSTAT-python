@@ -21,9 +21,19 @@ Cases:
   pure-Python path.
 * ``pfis_pois_sq`` -- ``PP_fixedIntervalSmoother`` (lags = 1), nW == C = 3.
 * ``pdfl_pois_ctrl`` -- ``PPDecodeFilterLinear`` control, nW = 2 != C = 3.
-* ``estep_pois_sq`` -- ``PP_EStep`` x_K / W_K, nW == C = 3.  (Its log-likelihood
-  is not captured: MATLAB ``PP_EStep``'s logll transposes a square history
-  slice, pending a MATLAB fix.)
+* ``estep_pois_sq`` -- ``PP_EStep`` x_K / W_K, nW == C = 3.
+* ``estep_pois_NeqC`` -- ``PP_EStep`` x_K / W_K, N == C = 6 time bins and
+  cells.  ``_normalize_history_tensor`` used to look the layout up in a dict
+  keyed by candidate shapes; with N == C the canonical ``(N, nW, C)`` key
+  collided with ``(C, nW, N)`` and the tensor was silently transposed
+  (x_K off by 2.8e-1).
+* ``estep_binom_C1`` -- ``PP_EStep`` x_K / W_K, C = 1, fed MATLAB's ``N x nW``
+  history exactly as MATLAB stores it (it drops the trailing singleton cell
+  axis); this used to raise ``ValueError``.
+
+For the ``PP_EStep`` cases the log-likelihood is not captured: for nW == C
+MATLAB's logll transposes the square history slice, a suspected MATLAB defect
+pending a fix (the Python port mirrors it).
 
 History isolation.  ``PPDecodeFilterLinear`` and ``PP_fixedIntervalSmoother``
 build the history tensor internally from ``windowTimes`` with the private
@@ -39,8 +49,9 @@ substitution.
 Tolerance: measured on macOS arm64 / Accelerate vs MATLAB R2025b, the largest
 absolute errors are 1.1e-15 (x_p / x_u, Numba path; 5.6e-16 pure Python),
 1.9e-16 (W_p / W_u), 3.3e-16 (smoother) and 1.6e-15 / 1.9e-16 (PP_EStep
-x_K / W_K).  ``rtol=1e-10, atol=1e-12`` (as in ``test_pp_estep_matlab_gold.py``)
-is >= ~600x above the worst error.  Before the fix the square
+x_K / W_K; 2.2e-16 and 3.9e-16 for the N == C and C == 1 cases).
+``rtol=1e-10, atol=1e-12`` (as in ``test_pp_estep_matlab_gold.py``) is
+>= ~600x above the worst error.  Before the fixes the square
 ``PPDecodeFilterLinear`` / ``PP_EStep`` cases were off by 1.6e-1 to 3.4e-1.
 """
 from __future__ import annotations
@@ -222,7 +233,7 @@ def test_window_times_history_matches_matlab(gold, case) -> None:
         _assert_matches(W_uLag, cs["W_uLag"], "W_uLag")
 
 
-@pytest.mark.parametrize("case", ["estep_pois_sq"])
+@pytest.mark.parametrize("case", ["estep_pois_sq", "estep_pois_NeqC", "estep_binom_C1"])
 def test_pp_estep_matches_matlab_gold_at_every_step(gold, case) -> None:
     cs = _case(gold, case)
     N, nW, C, dx = (int(v) for v in cs["sizes"].reshape(-1))
@@ -233,3 +244,49 @@ def test_pp_estep_matches_matlab_gold_at_every_step(gold, case) -> None:
     assert cs["x_K"].shape == (dx, N) and cs["W_K"].shape == (dx, dx, N)
     _assert_matches(x_K, cs["x_K"], f"{case} x_K")
     _assert_matches(W_K, cs["W_K"], f"{case} W_K")
+
+
+def test_pp_estep_one_cell_2d_history_equals_explicit_3d(gold) -> None:
+    # Every output -- including logll and the sufficient statistics, which
+    # PP_EStep computes from HkAll itself -- is identical for MATLAB's
+    # N x nW one-cell history and the explicit (N, nW, 1) tensor.
+    cs = _case(gold, "estep_binom_C1")
+    N, nW, C, _ = (int(v) for v in cs["sizes"].reshape(-1))
+    assert C == 1 and cs["HkAll"].shape == (N, nW)
+    args = (cs["A"], cs["Q"], cs["dN"], cs["mu"], cs["beta"], cs["fitType"], cs["gamma"])
+    x_K2, W_K2, ll2, es2 = DecodingAlgorithms.PP_EStep(*args, cs["HkAll"], cs["x0"], cs["Px0"])
+    x_K3, W_K3, ll3, es3 = DecodingAlgorithms.PP_EStep(*args, cs["HkAll"].reshape(N, nW, 1), cs["x0"], cs["Px0"])
+    assert np.array_equal(x_K2, x_K3) and np.array_equal(W_K2, W_K3) and ll2 == ll3
+    assert sorted(es2) == sorted(es3)
+    for key in es2:
+        assert np.array_equal(np.asarray(es2[key]), np.asarray(es3[key])), key
+
+
+# ---------------------------------------------------------------------------
+# _normalize_history_tensor layout resolution
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_history_tensor_keeps_canonical_layout_when_n_equals_c() -> None:
+    hk = np.random.default_rng(0).normal(size=(6, 2, 6))  # N == C == 6, nW = 2
+    assert np.array_equal(da._normalize_history_tensor(hk, 6, 2, 6), hk)
+
+
+def test_normalize_history_tensor_accepts_2d_history_only_for_one_cell() -> None:
+    hk = np.random.default_rng(1).normal(size=(7, 2))
+    out = da._normalize_history_tensor(hk, 7, 2, 1)
+    assert out.shape == (7, 2, 1) and np.array_equal(out[:, :, 0], hk)
+    with pytest.raises(ValueError, match="HkAll must align"):
+        da._normalize_history_tensor(np.zeros((7, 2)), 7, 2, 3)
+
+
+def test_normalize_history_tensor_other_layouts_resolve_as_before() -> None:
+    N, nW, C = 7, 2, 3
+    hk = np.random.default_rng(2).normal(size=(N, nW, C))
+    for permuted in (np.transpose(hk, (2, 0, 1)), np.transpose(hk, (2, 1, 0)), np.transpose(hk, (1, 2, 0))):
+        # (C, N, nW), (C, nW, N) and MATLAB's permute(HkAll,[2 3 1]) = (nW, C, N).
+        assert np.array_equal(da._normalize_history_tensor(permuted, N, nW, C), hk)
+    # A (C, C, N) input with nW == C is ambiguous between (nW, C, N) and
+    # (C, nW, N); it keeps the (C, nW, N) reading the dict lookup gave it.
+    sq = np.random.default_rng(3).normal(size=(3, 3, 7))
+    assert np.array_equal(da._normalize_history_tensor(sq, 7, 3, 3), np.transpose(sq, (2, 1, 0)))
