@@ -8,8 +8,9 @@
   paper-example module now load lazily (`nstat.extras`, `nstat.zernike`,
   `nstat.paper_examples_full` and `nstat.run_full_paper_examples` still resolve
   on attribute access and appear in `dir(nstat)`).
-- Faster hot paths with bit-identical results: `cross_k_inhom` (isotropic)
-  ~10x, `PPSS_EStep` ~2-2.6x, `_ppem_newton_C` ~1.5x.
+- Faster hot paths with bit-identical results; gains grow with problem size:
+  `cross_k_inhom` (isotropic) up to ~10x on typical radius grids,
+  `PPSS_EStep` up to ~2.6x, `_ppem_newton_C` ~1.3-1.5x.
 - The EM routines (`KF_EM`, `PP_EM`, `mPPCO_EM`) report progress through
   `logging` (logger `nstat.decoding_algorithms`) instead of `print`; they are
   silent by default.
@@ -19,7 +20,8 @@
   (`kalman_filter`, `PPDecodeFilterLinear`): any numba failure falls back to the
   pure-Python path.
 - Fix: downloading the example dataset no longer deletes other files in the
-  data-cache directory (including the bundled Example 05 hybrid-filter data).
+  target directory (the repo data cache or a custom `NSTAT_DATA_DIR`), including
+  the bundled Example 05 hybrid-filter data.
 - Fix: the neuron-selector error message now says "zero-based".
 
 **Docs**
