@@ -1,8 +1,10 @@
-"""PPAF filters with a square history (nW == C) against MATLAB gold.
+"""PPAF filters with a square history (nW == C) and the MATLAB history-window
+rule, against MATLAB gold.
 
 Gold: ``tests/parity/fixtures/matlab_gold/pp_square_history.mat``, captured
 from MATLAB master by ``tools/parity/matlab/capture_pp_square_history.m``
-(rng(42) synthetic inputs; dx = 2 states, delta = 1 ms, non-symmetric gamma).
+(rng(42) synthetic inputs; dx = 2 states, delta = 1 ms unless noted,
+non-symmetric gamma).
 
 MATLAB reorients the history coefficients only with
 ``if(size(gamma,2)~=C) gamma=gamma'; end`` (PPAF.m PPDecodeFilterLinear and
@@ -30,29 +32,35 @@ Cases:
 * ``estep_binom_C1`` -- ``PP_EStep`` x_K / W_K, C = 1, fed MATLAB's ``N x nW``
   history exactly as MATLAB stores it (it drops the trailing singleton cell
   axis); this used to raise ``ValueError``.
+* ``pdfl_pois_offgrid`` / ``pdfl_pois_colon`` / ``pdfl_binom_delta2`` --
+  ``PPDecodeFilterLinear`` with window edges off the 1 ms grid
+  ([0 1.5 4 6.5] ms), MATLAB's default ``0:delta:(numel(gamma)+1)*delta`` form
+  (nW = 10; its 0.009 s edge is 9.000000000000002 samples, so MATLAB leaves the
+  last window empty) and delta = 2 ms.
 
 For the ``PP_EStep`` cases the log-likelihood is not captured: for nW == C
 MATLAB's logll transposes the square history slice, a suspected MATLAB defect
 pending a fix (the Python port mirrors it).
 
-History isolation.  ``PPDecodeFilterLinear`` and ``PP_fixedIntervalSmoother``
-build the history tensor internally from ``windowTimes`` with the private
-``_compute_history_terms``, which assigns each spike to the window one bin
-later than MATLAB's ``History.computeHistory`` (Python counts lags in
-``[t_start, t_stop)``, MATLAB in ``(t_start, t_stop]``).  That is a separate,
-still-open divergence, so these tests substitute the MATLAB history tensor the
-MATLAB function consumed (saved per case as ``HkAll``) for the Python one;
-``test_window_times_history_matches_matlab`` pins the open divergence as a
-strict xfail.  ``PP_EStep`` takes ``HkAll`` as an argument, so it needs no
-substitution.
+History from ``windowTimes``.  ``PPDecodeFilterLinear`` and
+``PP_fixedIntervalSmoother`` build the history tensor internally with the
+private ``_compute_history_terms``.  It used to count lags in
+``[t_start, t_stop)`` -- one bin earlier than MATLAB's
+``History.computeHistory``, whose window ``[t_i, t_(i+1)]`` counts the spikes
+``ceil(t_i/delta)+1 .. ceil(t_(i+1)/delta)`` bins back -- so the first window was
+always empty and no history case could match MATLAB.  It now follows MATLAB's
+rule; each case saves the tensor the MATLAB function consumed (``HkAll``) and
+``test_compute_history_terms_matches_matlab_history`` checks it exactly, so the
+filters below run end to end from ``windowTimes``.
 
 Tolerance: measured on macOS arm64 / Accelerate vs MATLAB R2025b, the largest
-absolute errors are 1.1e-15 (x_p / x_u, Numba path; 5.6e-16 pure Python),
+absolute errors are 1.1e-15 (x_p / x_u, Numba path; 6.7e-16 pure Python),
 1.9e-16 (W_p / W_u), 3.3e-16 (smoother) and 1.6e-15 / 1.9e-16 (PP_EStep
-x_K / W_K; 2.2e-16 and 3.9e-16 for the N == C and C == 1 cases).
-``rtol=1e-10, atol=1e-12`` (as in ``test_pp_estep_matlab_gold.py``) is
->= ~600x above the worst error.  Before the fixes the square
-``PPDecodeFilterLinear`` / ``PP_EStep`` cases were off by 1.6e-1 to 3.4e-1.
+x_K / W_K; 2.2e-16 and 3.9e-16 for the N == C and C == 1 cases); the history
+tensors match exactly.  ``rtol=1e-10, atol=1e-12`` (as in
+``test_pp_estep_matlab_gold.py``) is >= ~600x above the worst error.  Before
+the fixes the square ``PPDecodeFilterLinear`` / ``PP_EStep`` cases were off by
+1.6e-1 to 3.4e-1 even on MATLAB's history tensor.
 """
 from __future__ import annotations
 
@@ -79,8 +87,11 @@ CASES = {
     "estep_pois_sq": ("PP_EStep", "poisson", 150, 3, 3),
     "estep_pois_NeqC": ("PP_EStep", "poisson", 6, 2, 6),
     "estep_binom_C1": ("PP_EStep", "binomial", 150, 2, 1),
+    "pdfl_pois_offgrid": ("PPDecodeFilterLinear", "poisson", 150, 3, 3),
+    "pdfl_pois_colon": ("PPDecodeFilterLinear", "poisson", 150, 10, 3),
+    "pdfl_binom_delta2": ("PPDecodeFilterLinear", "binomial", 150, 3, 3),
 }
-FILTER_CASES = ["pdfl_pois_sq", "pdfl_binom_sq", "pdfl_pois_ctrl"]
+FILTER_CASES = [case for case, spec in CASES.items() if spec[0] == "PPDecodeFilterLinear"]
 
 _NUMBA_PROBE = probe_optional("numba")
 _NUMBA_SKIP_REASON = "numba unavailable: " + _NUMBA_PROBE.reason.removeprefix("numba ")
@@ -110,20 +121,6 @@ def _case(gold: dict, case: str) -> dict:
     out["delta"] = float(out["delta"].reshape(-1)[0])
     out["windowTimes"] = out["windowTimes"].reshape(-1)
     return out
-
-
-def _use_matlab_history(monkeypatch, cs: dict) -> None:
-    """Make the filters consume MATLAB's history tensor (see module docstring)."""
-    N, nW, C, _ = (int(v) for v in cs["sizes"].reshape(-1))
-    matlab_hk = cs["HkAll"].reshape(N, nW, C)
-
-    def _matlab_history_terms(dN, delta, windowTimes):
-        assert np.array_equal(np.asarray(dN, dtype=float), cs["dN"])
-        assert float(delta) == cs["delta"]
-        assert np.array_equal(np.asarray(windowTimes, dtype=float).reshape(-1), cs["windowTimes"])
-        return matlab_hk.copy()
-
-    monkeypatch.setattr(da, "_compute_history_terms", _matlab_history_terms)
 
 
 def _run_filter(cs: dict):
@@ -161,6 +158,9 @@ def test_fixture_cases_are_the_documented_ones(gold) -> None:
         assert [int(v) for v in cs["sizes"].reshape(-1)] == [N, nW, C, 2]
         assert cs["dN"].shape == (C, N) and cs["windowTimes"].size == nW + 1
         assert cs["gamma"].shape == (nW, C) and np.all(cs["gamma"] < 0)
+        if func == "PPDecodeFilterLinear":
+            # MATLAB PPDecodeFilterLinear transposes a square (dx == C) beta.
+            assert cs["beta"].shape == (2, C) and C != 2
         if nW == C:
             # Non-symmetric, so a window/cell transpose cannot pass.
             assert np.max(np.abs(cs["gamma"] - cs["gamma"].T)) > 0.1
@@ -169,20 +169,37 @@ def test_fixture_cases_are_the_documented_ones(gold) -> None:
         assert np.any(cs["HkAll"] != 0)
 
 
+@pytest.mark.parametrize("case", list(CASES))
+def test_compute_history_terms_matches_matlab_history(gold, case) -> None:
+    # The filters' history tensor equals MATLAB's History.computeHistory one
+    # (also the PP_EM-style tensors of the PP_EStep cases) element for element.
+    cs = _case(gold, case)
+    N, nW, C, _ = (int(v) for v in cs["sizes"].reshape(-1))
+    hk = da._compute_history_terms(cs["dN"], cs["delta"], cs["windowTimes"])
+    assert hk.shape == (N, nW, C)
+    assert np.array_equal(hk, cs["HkAll"].reshape(N, nW, C))
+
+
+def test_compute_history_terms_counts_only_unit_bins() -> None:
+    # MATLAB builds the spike train from find(dN(c,:)==1): a bin holding 2 is
+    # not a spike there, so it adds nothing to the history.
+    dN = np.array([[1.0, 2.0, 0.0, 1.0, 0.0]])
+    hk = da._compute_history_terms(dN, 0.001, [0.0, 0.001, 0.003])
+    assert hk[:, :, 0].tolist() == [[0, 0], [1, 0], [0, 1], [0, 1], [1, 0]]
+
+
 @pytest.mark.parametrize("force_numba", PATHS)
 @pytest.mark.parametrize("case", FILTER_CASES)
 def test_pp_decode_filter_linear_matches_matlab_gold_at_every_step(gold, case, force_numba, monkeypatch) -> None:
     if not force_numba:
         monkeypatch.setattr("nstat.extras._numba_kernels._NUMBA_AVAILABLE", False)
     cs = _case(gold, case)
-    _use_matlab_history(monkeypatch, cs)
     for name, actual in zip(("x_p", "W_p", "x_u", "W_u"), _run_filter(cs)):
         _assert_matches(actual, cs[name], f"{case} {name}")
 
 
-def test_pp_fixed_interval_smoother_matches_matlab_gold(gold, monkeypatch) -> None:
+def test_pp_fixed_interval_smoother_matches_matlab_gold(gold) -> None:
     cs = _case(gold, "pfis_pois_sq")
-    _use_matlab_history(monkeypatch, cs)
     x_pLag, W_pLag, x_uLag, W_uLag = _run_smoother(cs)
     _assert_matches(x_uLag, cs["x_uLag"], "x_uLag")
     _assert_matches(W_uLag, cs["W_uLag"], "W_uLag")
@@ -203,34 +220,11 @@ def test_pp_fixed_interval_smoother_matches_matlab_gold(gold, monkeypatch) -> No
         "and leaves column 1 zero."
     ),
 )
-def test_pp_fixed_interval_smoother_lag1_first_prediction_column(gold, monkeypatch) -> None:
+def test_pp_fixed_interval_smoother_lag1_first_prediction_column(gold) -> None:
     cs = _case(gold, "pfis_pois_sq")
-    _use_matlab_history(monkeypatch, cs)
     x_pLag, W_pLag, _, _ = _run_smoother(cs)
     _assert_matches(np.asarray(x_pLag)[:, 1], cs["x_pLag"][:, 1], "x_pLag[:, 1]")
     _assert_matches(np.asarray(W_pLag)[:, :, 1], cs["W_pLag"][:, :, 1], "W_pLag[:, :, 1]")
-
-
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "Open divergence: _compute_history_terms (used by PPDecodeFilterLinear, "
-        "PP_fixedIntervalSmoother and PPHybridFilterLinear to build the history "
-        "from windowTimes) counts lags in [t_start, t_stop), one bin earlier than "
-        "MATLAB History.computeHistory's (t_start, t_stop]."
-    ),
-)
-@pytest.mark.parametrize("case", [*FILTER_CASES, "pfis_pois_sq"])
-def test_window_times_history_matches_matlab(gold, case) -> None:
-    cs = _case(gold, case)
-    if cs["func"] == "PPDecodeFilterLinear":
-        for name, actual in zip(("x_p", "W_p", "x_u", "W_u"), _run_filter(cs)):
-            _assert_matches(actual, cs[name], f"{case} {name}")
-    else:
-        x_pLag, W_pLag, x_uLag, W_uLag = _run_smoother(cs)
-        _assert_matches(x_uLag, cs["x_uLag"], "x_uLag")
-        _assert_matches(W_uLag, cs["W_uLag"], "W_uLag")
 
 
 @pytest.mark.parametrize("case", ["estep_pois_sq", "estep_pois_NeqC", "estep_binom_C1"])

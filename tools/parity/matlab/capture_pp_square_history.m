@@ -1,5 +1,6 @@
 function capture_pp_square_history()
-%CAPTURE_PP_SQUARE_HISTORY  Gold fixture: PPAF filters with a square history.
+%CAPTURE_PP_SQUARE_HISTORY  Gold fixture: PPAF filters with a square history
+% and the History.computeHistory window rule.
 %
 % MATLAB reorients the history coefficients gamma only with
 %   if(size(gamma,2)~=C) gamma=gamma'; end
@@ -11,7 +12,7 @@ function capture_pp_square_history()
 %
 % Reproduces: tests/parity/fixtures/matlab_gold/pp_square_history.mat
 %
-% dx = 2 states, delta = 1 ms, rng(42) synthetic inputs (latent AR(1) path,
+% dx = 2 states, delta = 1 ms unless noted, rng(42) synthetic inputs (latent AR(1) path,
 % Bernoulli spikes), non-symmetric gamma = -0.2 - 0.8*rand(nW, C):
 %   pdfl_pois_sq     PPDecodeFilterLinear      poisson,  C = 3, nW = 3, N = 150
 %   pdfl_binom_sq    PPDecodeFilterLinear      binomial, C = 4, nW = 4, N = 150
@@ -20,6 +21,19 @@ function capture_pp_square_history()
 %   estep_pois_sq    PP_EStep                  poisson,  C = 3, nW = 3, N = 150
 %   estep_pois_NeqC  PP_EStep                  poisson,  C = 6, nW = 2, N = 6   (N == C)
 %   estep_binom_C1   PP_EStep                  binomial, C = 1, nW = 2, N = 150 (HkAll is N x nW)
+%   pdfl_pois_offgrid  PPDecodeFilterLinear    poisson,  C = 3, nW = 3, N = 150,
+%                    windowTimes [0 1.5 4 6.5] ms (edges off the 1 ms grid)
+%   pdfl_pois_colon  PPDecodeFilterLinear      poisson,  C = 3, nW = 10, N = 150,
+%                    windowTimes = 0:delta:(9+1)*delta (the PP_EM / PPLFP_EM
+%                    default form for numel(gamma) = 9)
+%   pdfl_binom_delta2  PPDecodeFilterLinear    binomial, C = 3, nW = 3, N = 150,
+%                    delta = 2 ms, windowTimes [0 2 4 10] ms
+% The last three pin how History.computeHistory turns windowTimes into lags:
+% window [t(i), t(i+1)] sums the spikes ceil(t(i)*sampleRate)+1 ..
+% ceil(t(i+1)*sampleRate) samples back, sampleRate = 1/delta.  They were
+% appended after the first seven, so the rng(42) draws (and data) of the
+% first seven are unchanged.  Every case keeps C ~= dx: MATLAB
+% PPDecodeFilterLinear transposes a square (dx == C) beta, which Python does not.
 %
 % Saved per case (prefix <name>_): inputs A, Q, dN, mu, beta, fitType, gamma,
 % windowTimes, delta, x0, Pi0 (PP_EStep: Px0), lags (smoother), HkAll and
@@ -46,7 +60,7 @@ addpath(matlabRepo);
 addpath(genpath(fullfile(matlabRepo, 'libraries')));
 
 rng(42);
-dx = 2; delta = 0.001;
+dx = 2;
 A   = [0.98 0.02; -0.03 0.96];
 Q   = diag([0.02 0.015]);
 x0  = [0.2; -0.1];
@@ -54,22 +68,28 @@ Pi0 = diag([0.05 0.08]);
 
 cases = struct( ...
     'name',        {'pdfl_pois_sq', 'pdfl_binom_sq', 'pfis_pois_sq', 'pdfl_pois_ctrl', ...
-                    'estep_pois_sq', 'estep_pois_NeqC', 'estep_binom_C1'}, ...
+                    'estep_pois_sq', 'estep_pois_NeqC', 'estep_binom_C1', ...
+                    'pdfl_pois_offgrid', 'pdfl_pois_colon', 'pdfl_binom_delta2'}, ...
     'func',        {'PPDecodeFilterLinear', 'PPDecodeFilterLinear', 'PP_fixedIntervalSmoother', ...
-                    'PPDecodeFilterLinear', 'PP_EStep', 'PP_EStep', 'PP_EStep'}, ...
-    'fitType',     {'poisson', 'binomial', 'poisson', 'poisson', 'poisson', 'poisson', 'binomial'}, ...
-    'C',           {3, 4, 3, 3, 3, 6, 1}, ...
-    'N',           {150, 150, 150, 150, 150, 6, 150}, ...
+                    'PPDecodeFilterLinear', 'PP_EStep', 'PP_EStep', 'PP_EStep', ...
+                    'PPDecodeFilterLinear', 'PPDecodeFilterLinear', 'PPDecodeFilterLinear'}, ...
+    'fitType',     {'poisson', 'binomial', 'poisson', 'poisson', 'poisson', 'poisson', 'binomial', ...
+                    'poisson', 'poisson', 'binomial'}, ...
+    'C',           {3, 4, 3, 3, 3, 6, 1, 3, 3, 3}, ...
+    'N',           {150, 150, 150, 150, 150, 6, 150, 150, 150, 150}, ...
+    'delta',       {0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.002}, ...
     'windowTimes', {[0 0.001 0.002 0.004], [0 0.001 0.002 0.004 0.008], [0 0.001 0.002 0.004], ...
-                    [0 0.001 0.003], [0 0.001 0.002 0.004], [0 0.001 0.002], [0 0.001 0.003]}, ...
+                    [0 0.001 0.003], [0 0.001 0.002 0.004], [0 0.001 0.002], [0 0.001 0.003], ...
+                    [0 0.0015 0.004 0.0065], 0:0.001:(9+1)*0.001, [0 0.002 0.004 0.010]}, ...
     'mu',          {[-2.2; -1.9; -2.5], [-1.6; -1.3; -1.9; -1.5], [-2.2; -1.9; -2.5], ...
-                    [-2.2; -1.9; -2.5], [-2.2; -1.9; -2.5], -0.4 * ones(6, 1), -1.3});
+                    [-2.2; -1.9; -2.5], [-2.2; -1.9; -2.5], -0.4 * ones(6, 1), -1.3, ...
+                    [-2.0; -1.7; -2.3], [-2.0; -1.7; -2.3], [-1.5; -1.2; -1.8]});
 lags = 1;
 
 out = struct();
 for i = 1:numel(cases)
     cs = cases(i);
-    C = cs.C; N = cs.N; wt = cs.windowTimes; nW = numel(wt) - 1;
+    C = cs.C; N = cs.N; wt = cs.windowTimes; nW = numel(wt) - 1; delta = cs.delta;
     maxTime = (N - 1) * delta;
 
     beta = 0.8 * randn(dx, C);

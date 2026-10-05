@@ -39,13 +39,16 @@
   it is not already `nW x C`; Python transposed every square one, so
   `PPDecodeFilterLinear`, `PPDecode_updateLinear`, `PP_EStep` and
   `PPLFP_Decode_update` (with its callers) paired history windows with the
-  wrong cells. Given the same history tensor, `PPDecodeFilterLinear` and
-  `PP_EStep` now match MATLAB with nW == C (new gold fixture
-  `pp_square_history.mat`). `PPDecodeFilterLinear`, `PP_fixedIntervalSmoother`
-  and `PPHybridFilterLinear` still build the history from `windowTimes` one bin
-  earlier than MATLAB's `History.computeHistory`, so with `windowTimes` their
-  output does not yet match MATLAB. The PPLFP family is not yet verified for
-  nW == C, where MATLAB's own handling is under review.
+  wrong cells. `PPDecodeFilterLinear` and `PP_EStep` now match MATLAB with
+  nW == C (new gold fixture `pp_square_history.mat`). The PPLFP family is not
+  yet verified for nW == C, where MATLAB's own handling is under review.
+- Fix: the history design built from `windowTimes` (`PPDecodeFilterLinear`,
+  `PP_fixedIntervalSmoother`, `PPHybridFilterLinear`, `PPLFP_EM`) counted each
+  spike one bin too early relative to MATLAB's `History.computeHistory` (the
+  first window was always empty). It now reproduces MATLAB's windows exactly,
+  including edges off the time grid, and is ~500x faster. With history,
+  `PPDecodeFilterLinear` and `PP_fixedIntervalSmoother` now match MATLAB
+  (except the smoother's first predicted column when `lags = 1`).
 - Fix: a history tensor `HkAll` with as many time bins as cells (N == C) was
   silently transposed (time and cells swapped) by `PPDecode_updateLinear` and
   `PPLFP_Decode_update`, and so by `PP_EStep` and the other filters that pass

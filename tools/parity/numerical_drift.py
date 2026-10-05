@@ -599,8 +599,9 @@ def _recipe_pp_estep(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.
 
 
 def _recipe_pp_square_history(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
-    """PPAF filters with a square / N == C / C == 1 history -- one case of
-    ``pp_square_history.mat`` (see ``tools/parity/matlab/capture_pp_square_history.m``).
+    """PPAF filters with a square / N == C / C == 1 history and MATLAB's
+    history-window rule -- one case of ``pp_square_history.mat`` (see
+    ``tools/parity/matlab/capture_pp_square_history.m``).
 
     ``args.case`` selects the case prefix; the fixture's ``<case>_func`` names
     the function.  Returns the concatenation of every output at every step:
@@ -610,16 +611,10 @@ def _recipe_pp_square_history(fixture: dict[str, Any], args: dict[str, Any]) -> 
     xfail in tests/test_pp_square_history_matlab_gold.py); x_K, W_K (PP_EStep;
     its logll is not captured).
 
-    The two filters build their history from ``windowTimes`` with
-    ``_compute_history_terms``, which bins lags one sample earlier than
-    MATLAB ``History.computeHistory`` (open divergence, same test file).  To
-    compare the filters themselves, the MATLAB history tensor the MATLAB
-    function consumed (``<case>_HkAll``) is substituted for the Python one for
-    the duration of the call.  PP_EStep takes ``HkAll`` as an argument and is
-    fed MATLAB's array exactly as saved (``N x nW`` when C == 1).
+    The two filters run end to end from ``windowTimes`` (they build the history
+    themselves); PP_EStep takes ``HkAll`` as an argument and is fed MATLAB's
+    array exactly as saved (``N x nW`` when C == 1).
     """
-    from unittest import mock
-
     import nstat.decoding_algorithms as da
 
     case = str(args["case"])
@@ -645,26 +640,23 @@ def _recipe_pp_square_history(fixture: dict[str, Any], args: dict[str, Any]) -> 
         )
         py: list[Any] = [x_K, W_K]
         ml: list[Any] = [f("x_K"), f("W_K")]
+    elif func == "PPDecodeFilterLinear":
+        out = da.DecodingAlgorithms.PPDecodeFilterLinear(
+            f("A"), f("Q"), dN, mu, beta, fit, delta, gamma, windowTimes, x0, f("Pi0").reshape(dx, dx)
+        )
+        py = list(out[:4])
+        ml = [f("x_p"), f("W_p"), f("x_u"), f("W_u")]
+    elif func == "PP_fixedIntervalSmoother":
+        x_pLag, W_pLag, x_uLag, W_uLag = da.DecodingAlgorithms.PP_fixedIntervalSmoother(
+            f("A"), f("Q"), dN, int(_scalar(fixture, f"{case}_lags")), mu, beta, fit, delta,
+            gamma, windowTimes, x0, f("Pi0").reshape(dx, dx),
+        )
+        keep = np.ones(N + 1, dtype=bool)
+        keep[1] = False
+        py = [x_uLag, W_uLag, np.asarray(x_pLag)[:, keep], np.asarray(W_pLag)[:, :, keep]]
+        ml = [f("x_uLag"), f("W_uLag"), f("x_pLag")[:, keep], f("W_pLag")[:, :, keep]]
     else:
-        matlab_hk = HkAll.reshape(N, nW, C)
-        with mock.patch.object(da, "_compute_history_terms", side_effect=lambda *_a: matlab_hk.copy()):
-            if func == "PPDecodeFilterLinear":
-                out = da.DecodingAlgorithms.PPDecodeFilterLinear(
-                    f("A"), f("Q"), dN, mu, beta, fit, delta, gamma, windowTimes, x0, f("Pi0").reshape(dx, dx)
-                )
-                py = list(out[:4])
-                ml = [f("x_p"), f("W_p"), f("x_u"), f("W_u")]
-            elif func == "PP_fixedIntervalSmoother":
-                x_pLag, W_pLag, x_uLag, W_uLag = da.DecodingAlgorithms.PP_fixedIntervalSmoother(
-                    f("A"), f("Q"), dN, int(_scalar(fixture, f"{case}_lags")), mu, beta, fit, delta,
-                    gamma, windowTimes, x0, f("Pi0").reshape(dx, dx),
-                )
-                keep = np.ones(N + 1, dtype=bool)
-                keep[1] = False
-                py = [x_uLag, W_uLag, np.asarray(x_pLag)[:, keep], np.asarray(W_pLag)[:, :, keep]]
-                ml = [f("x_uLag"), f("W_uLag"), f("x_pLag")[:, keep], f("W_pLag")[:, :, keep]]
-            else:
-                raise ValueError(f"unknown pp_square_history function {func!r}")
+        raise ValueError(f"unknown pp_square_history function {func!r}")
     return (
         np.concatenate([_as_float_array(a).reshape(-1) for a in py]),
         np.concatenate([_as_float_array(a).reshape(-1) for a in ml]),

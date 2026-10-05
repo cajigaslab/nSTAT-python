@@ -226,8 +226,8 @@ entries:
   # transposed) plus an nW != C control.  Captured by
   # tools/parity/matlab/capture_pp_square_history.m.  Each entry compares the
   # concatenation of every output at every step of one case; the two filters
-  # run on the MATLAB history tensor (see the recipe docstring).  Measured
-  # max abs error <= 1.6e-15, so rtol 1e-10 / atol 1e-12 is a >=600x margin.
+  # build their history from windowTimes.  Measured max abs error <= 1.6e-15,
+  # so rtol 1e-10 / atol 1e-12 is a >=600x margin.
   - name: PPDecodeFilterLinear_poisson_square_history
     recipe: pp_square_history
     args: { case: pdfl_pois_sq }
@@ -277,6 +277,29 @@ entries:
     args: { case: estep_binom_C1 }
     fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
     output_field: estep_binom_C1_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # History.computeHistory window rule: edges off the 1 ms grid, MATLAB's
+  # default 0:delta:(numel(gamma)+1)*delta windows, and delta = 2 ms.
+  - name: PPDecodeFilterLinear_poisson_offgrid_windows
+    recipe: pp_square_history
+    args: { case: pdfl_pois_offgrid }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_pois_offgrid_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPDecodeFilterLinear_poisson_default_colon_windows
+    recipe: pp_square_history
+    args: { case: pdfl_pois_colon }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_pois_colon_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPDecodeFilterLinear_binomial_delta_2ms
+    recipe: pp_square_history
+    args: { case: pdfl_binom_delta2 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_binom_delta2_x_u
     tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
 
   # v9 iter 40 — recipe-backed entries for the 22 v9_* captures.

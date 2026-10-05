@@ -275,25 +275,45 @@ def _normalize_history_tensor(HkAll, num_steps: int, num_windows: int, num_cells
 
 
 def _compute_history_terms(dN: np.ndarray, delta: float, windowTimes) -> np.ndarray:
+    """Spike-history design tensor ``HkAll`` (N x numWindows x C) from ``windowTimes``.
+
+    Reproduces what the MATLAB decoders build per cell with
+    ``History(windowTimes,0,maxTime).computeHistory(nspikeTrain((find(dN(c,:)==1)-1)*delta)
+    .resample(1/delta)).dataToMatrix`` (PPAF.m PPDecodeFilterLinear /
+    PP_fixedIntervalSmoother, PPLFP.m PPLFP_EM).  ``History`` filters the spike
+    train with ones on taps ``ceil(t_i*sampleRate)+1 : ceil(t_(i+1)*sampleRate)``
+    and delays the result one sample, so window ``i`` counts the spikes
+    ``L`` bins back for ``ceil(t_i*sampleRate) + 1 <= L <= ceil(t_(i+1)*sampleRate)``
+    (sampleRate = 1/delta) -- i.e. lags in ``(t_i, t_(i+1)]`` for edges on the
+    sample grid.  The edges use MATLAB's own ``t * sampleRate`` product, so an
+    edge such as 0.009 s at 1 kHz (9.000000000000002) rounds as it does in
+    MATLAB.  Only bins with ``dN == 1`` are spikes, as in MATLAB's ``find``.
+    """
     obs = _as_observation_matrix(dN)
     windows = np.asarray(windowTimes, dtype=float).reshape(-1)
     if windows.size <= 1:
         return np.zeros((obs.shape[1], 0, obs.shape[0]), dtype=float)
 
-    num_steps = obs.shape[1]
+    num_cells, num_steps = obs.shape
     num_windows = windows.size - 1
-    num_cells = obs.shape[0]
+    sample_rate = 1.0 / float(delta)
     out = np.zeros((num_steps, num_windows, num_cells), dtype=float)
 
-    for time_index in range(num_steps):
-        if time_index == 0:
-            continue
-        previous_indices = np.arange(time_index)
-        lag_times = (time_index - previous_indices) * float(delta)
-        for window_index, (window_start, window_stop) in enumerate(zip(windows[:-1], windows[1:])):
-            mask = (lag_times >= float(window_start)) & (lag_times < float(window_stop))
-            if np.any(mask):
-                out[time_index, window_index, :] = np.sum(obs[:, previous_indices[mask]], axis=1)
+    # counts[:, k] = number of spikes in bins 0 .. k-1, so the spikes in bins
+    # a .. b are counts[:, b + 1] - counts[:, a].
+    spikes = (obs == 1).astype(float)
+    counts = np.zeros((num_cells, num_steps + 1), dtype=float)
+    np.cumsum(spikes, axis=1, out=counts[:, 1:])
+    steps = np.arange(num_steps)
+    for window_index in range(num_windows):
+        first_lag = int(np.ceil(float(windows[window_index]) * sample_rate)) + 1
+        last_lag = int(np.ceil(float(windows[window_index + 1]) * sample_rate))
+        if last_lag < first_lag:
+            continue  # empty window (MATLAB's b(StartSample:NumSamples) is empty)
+        # Bins n - last_lag .. n - first_lag, clipped to the observed record.
+        upper = np.clip(steps - first_lag + 1, 0, num_steps)
+        lower = np.clip(steps - last_lag, 0, num_steps)
+        out[:, window_index, :] = (counts[:, upper] - counts[:, lower]).T
     return out
 
 
