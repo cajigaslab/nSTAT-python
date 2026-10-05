@@ -91,7 +91,42 @@ def nstat_install(
     clean_user_path_prefs: bool = False,
     download_example_data: str | bool = "prompt",
 ) -> dict[str, Any]:
-    """Configure the Python package and optionally install example data."""
+    """Configure the Python package and optionally install example data.
+
+    Parameters
+    ----------
+    rebuild_doc_search : bool, default True
+        Rebuild the Sphinx HTML search index under ``docs/_build/html``.  The
+        step is skipped (and reported as such) when the docs configuration or
+        Sphinx is not available.
+    clean_user_path_prefs : bool, default False
+        MATLAB-compatibility flag.  It is accepted and recorded in the
+        report, but has no effect in Python.
+    download_example_data : {'prompt', 'always', 'never'} or bool, default 'prompt'
+        Policy for the ~150 MB figshare paper dataset.  ``'always'`` downloads
+        it when it is not already installed; ``'never'`` never downloads;
+        ``'prompt'`` asks interactively and downloads only on ``y`` or
+        ``yes`` (no download happens when stdin or stdout is not a terminal).
+        ``True`` is equivalent to ``'always'`` and ``False`` to ``'never'``;
+        strings are case-insensitive.  Nothing is downloaded if the data is
+        already present.
+
+    Returns
+    -------
+    dict
+        JSON-serialisable report with the keys ``repo_root``,
+        ``package_root``, ``rebuild_doc_search``, ``clean_user_path_prefs``,
+        ``path_preferences``, ``download_example_data`` (the normalised
+        mode), ``example_data``, ``doc_search`` and ``notes``.  A failed
+        download is recorded under ``report["example_data"]["error"]`` rather
+        than raised.
+
+    Raises
+    ------
+    ValueError
+        If ``download_example_data`` is not a bool or one of ``'always'``,
+        ``'prompt'`` or ``'never'``.
+    """
 
     mode = _normalize_download_mode(download_example_data)
     repo_root = Path(__file__).resolve().parents[1]

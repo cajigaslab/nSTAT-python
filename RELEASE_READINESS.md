@@ -8,6 +8,10 @@
 >
 > _Last refresh: 2026-06-10 — post v0.4.5 (documentation hygiene, theme
 > polish, CI billing conservation, onboarding additions)._
+>
+> **Current state (2026-10):** v0.6.0 is code-complete and version-synced
+> (`pyproject.toml`, `CITATION.cff`, `docs/conf.py`, `AGENT_GUIDE.md`,
+> `RELEASE_NOTES.md`) but not yet tagged, released, or published.
 
 ## PyPI publishing — operational
 

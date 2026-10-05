@@ -291,7 +291,7 @@ class CoxHawkesResult:
     converged : bool
         True iff the relative log-likelihood change fell below ``tol``
         before ``max_outer`` was reached.
-    event_points, event_times : np.ndarray
+    event_points : np.ndarray
         The fitted event stream (row-aligned), stored so
         :meth:`intensity_fn` can evaluate the *exact* excitation term
         (summed over the observed triggering history) rather than a
@@ -300,6 +300,8 @@ class CoxHawkesResult:
         contract ("background + expected excitation") needs the
         observed history to be exact rather than a stationary
         :math:`1/(1-K)` mean-field surrogate.
+    event_times : np.ndarray
+        See ``event_points``.
     """
 
     background: LGCPSTResult

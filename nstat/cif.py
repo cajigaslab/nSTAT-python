@@ -790,16 +790,16 @@ class CIF:
 
         Parameters
         ----------
-        design_matrix : ndarray, shape (T, n_vars)
+        design_matrix : ndarray, shape (n_time, n_vars)
             Design matrix with one row per time step.
         delta : float, default 1.0
             Bin width (seconds).  The returned rate is λΔ / Δ.
         history_matrix : ndarray or None
-            Pre-computed history matrix, shape (T, n_hist).
+            Pre-computed history matrix, shape (n_time, n_hist).
 
         Returns
         -------
-        ndarray, shape (T,)
+        ndarray, shape (n_time,)
             Firing rate in Hz.
         """
         x = np.asarray(design_matrix, dtype=float)

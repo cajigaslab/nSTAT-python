@@ -35,8 +35,9 @@ class nspikeTrain:
         Spike times in seconds.
     name : str, optional
         Neuron / channel label.
-    binwidth : float, optional
-        Bin width in seconds for the signal representation (default 1 ms).
+    sampleRate : float, optional
+        Sampling rate in Hz of the bin grid used for the signal
+        representation (``sigRep``).  Default ``1000.0`` Hz (1 ms bins).
     minTime, maxTime : float, optional
         Observation window.  Defaults to ``min/max(spikeTimes)``.
     xlabelval, xunits, yunits : str, optional
@@ -47,6 +48,10 @@ class nspikeTrain:
         ``0`` — compute statistics silently (default);
         ``1`` — compute and plot;
         ``< 0`` — skip statistics entirely (fast construction).
+    binwidth : float, optional
+        Keyword-only, MATLAB-style alternative to ``sampleRate``: bin width in
+        seconds.  When given it overrides ``sampleRate`` with
+        ``1 / binwidth``.
 
     See Also
     --------

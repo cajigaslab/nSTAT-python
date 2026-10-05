@@ -1525,10 +1525,7 @@ def hybrid_predictive_ll(
     ----------
     poisson_observations, gaussian_observations
         Spike counts ``(T, p_dim)`` and continuous signal ``(T, g_dim)``.
-    transition_matrix, poisson_observation_matrix,
-    gaussian_observation_matrix, transition_covariance,
-    gaussian_observation_covariance, initial_state_mean,
-    initial_state_covariance
+    transition_matrix, poisson_observation_matrix, gaussian_observation_matrix, transition_covariance, gaussian_observation_covariance, initial_state_mean, initial_state_covariance
         Fitted :math:`A`, :math:`C_p`, :math:`C_g`, :math:`Q`, :math:`R`,
         :math:`\\hat x_0`, :math:`P_0`.
     n_quad
@@ -1766,8 +1763,7 @@ def fit_hybrid_em_best_of(
 
     Parameters
     ----------
-    poisson_observations, gaussian_observations, state_dim,
-    n_iter, n_newton_iter
+    poisson_observations, gaussian_observations, state_dim, n_iter, n_newton_iter
         Forwarded to :func:`fit_hybrid_em`.
     n_restarts, holdout_fraction, base_seed, n_quad
         See :func:`fit_point_process_em_best_of`.

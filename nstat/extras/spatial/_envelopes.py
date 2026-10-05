@@ -26,9 +26,11 @@ class EnvelopeResult:
         The lag values at which the summary statistic was evaluated.
     observed
         The observed summary curve, shape ``(len(r_grid),)``.
-    lo, hi
+    lo
         Lower / upper global-rank envelope at the requested level, each
         shape ``(len(r_grid),)``.
+    hi
+        See ``lo``.
     inside
         ``True`` iff the observed curve lies inside ``[lo, hi]`` at every
         lag — i.e. the global test does NOT reject the null.

@@ -63,6 +63,41 @@ def simulate_point_process(
     seed: int | None = None,
     uniform_values: np.ndarray | None = None,
 ) -> PointProcessSimulation:
+    """Simulate one spike train from a sampled rate by per-bin Bernoulli sampling.
+
+    In each time bin the spike probability is ``1 - exp(-rate_hz * dt)``
+    (``dt`` is the local bin width; the last bin reuses the previous width).
+    A spike is emitted, stamped at the bin's time value, when a uniform draw
+    falls below that probability.
+
+    Parameters
+    ----------
+    time : array_like, shape (n,)
+        Monotonic time grid in seconds.
+    rate_hz : array_like, shape (n,)
+        Conditional intensity in Hz on the same grid.  Negative values are
+        treated as zero.
+    seed : int, optional
+        Seed for ``numpy.random.default_rng`` when ``uniform_values`` is not
+        given.
+    uniform_values : array_like, shape (n,), optional
+        Pre-drawn uniform variates in ``[0, 1)``, for deterministic
+        reproduction.  When given, ``seed`` is ignored.
+
+    Returns
+    -------
+    PointProcessSimulation
+        Bundle with the time grid, rate, realised ``spikes``, per-bin spike
+        probability ``lambda_delta``, binary ``spike_indicator`` and the
+        ``uniform_values`` actually used.  When fewer than two time samples
+        are given, the spike train is empty.
+
+    Raises
+    ------
+    ValueError
+        If ``time`` and ``rate_hz`` differ in length, or ``uniform_values``
+        does not match the length of ``time``.
+    """
     t = np.asarray(time, dtype=float).reshape(-1)
     r = np.asarray(rate_hz, dtype=float).reshape(-1)
     if t.shape[0] != r.shape[0]:
@@ -109,13 +144,60 @@ def simulate_two_neuron_network(
 ) -> NetworkSimulationResult:
     """Standalone Python replacement for the MATLAB/Simulink 2-neuron NetworkTutorial.
 
+    Simulates two coupled neurons on the grid ``arange(0, duration_s + dt, dt)``.
+    In each bin the log-odds of spiking for neuron ``i`` is the baseline
+    plus self-history, a sinusoidal stimulus drive, and the other neuron's
+    previous-bin spike; the spike probability is the logistic function of that
+    sum.
+
     Parameters
     ----------
+    duration_s : float, default 50.0
+        Simulation length in seconds.  Must be positive.
+    dt : float, default 0.001
+        Time step (bin width) in seconds.  Must be positive.
+    baseline_mu : tuple of float, default (-3.0, -3.0)
+        Per-neuron baseline log-odds (one value per neuron).
+    history_kernel : tuple of float, default (-4.0, -2.0, -1.0)
+        Self-history filter coefficients shared by both neurons, ordered from
+        the most recent bin (lag 1) backwards.
+    stimulus_kernel : tuple of float, default (1.0, -1.0)
+        Per-neuron gain applied to the sinusoidal stimulus.
+    ensemble_kernel : tuple of float, default (1.0, -4.0)
+        Coupling coefficients: the first entry is the effect of neuron 2's
+        previous-bin spike on neuron 1, the second the effect of neuron 1 on
+        neuron 2.
+    stimulus_frequency_hz : float, default 1.0
+        Frequency of the sinusoidal stimulus ``sin(2*pi*f*t)``.
+    seed : int or None, default 13
+        Seed for ``numpy.random.default_rng``; ignored when
+        ``uniform_values`` is given.
+    uniform_values : numpy.ndarray, optional
+        Pre-drawn uniform variates of shape ``(len(time), 2)`` for
+        deterministic tests.  Used by the native Python backend only.
     backend : {'auto', 'matlab', 'python'}, default ``'auto'``
         Simulation backend.  ``'auto'`` uses MATLAB/Simulink when
         available and falls back to native Python with a warning.
         ``'matlab'`` forces Simulink (raises if unavailable).
         ``'python'`` forces the native implementation.
+
+    Returns
+    -------
+    NetworkSimulationResult
+        Time grid, latent drive, per-bin spike probabilities, the two
+        simulated spike trains (``neuron_1``, ``neuron_2``), the coupling
+        matrix and the kernels used.  The per-bin ``eta``, ``history_effect``,
+        ``ensemble_effect``, ``spike_indicator`` and ``uniform_values``
+        diagnostics are populated by the Python backend only.
+
+    Raises
+    ------
+    ValueError
+        If ``duration_s`` or ``dt`` is not positive, ``backend`` is not one
+        of the accepted values, or ``uniform_values`` has the wrong shape.
+    RuntimeError
+        If ``backend='matlab'`` is requested but MATLAB or the nSTAT MATLAB
+        path is unavailable.
     """
     if duration_s <= 0 or dt <= 0:
         raise ValueError("duration_s and dt must be > 0")

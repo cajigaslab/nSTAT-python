@@ -32,6 +32,37 @@ def simulate_poisson_from_rate(
     rate_hz: np.ndarray,
     rng: np.random.Generator | None = None,
 ) -> nspikeTrain:
+    """Simulate one spike train from a sampled rate by per-bin Bernoulli sampling.
+
+    In each time bin the spike probability is ``1 - exp(-rate_hz * dt)``
+    (``dt`` is the local bin width; the last bin reuses the previous width).
+    A spike is emitted, stamped at the bin's time value, when a uniform draw
+    falls below that probability.
+
+    Parameters
+    ----------
+    time : array_like, shape (n,)
+        Monotonic time grid in seconds.
+    rate_hz : array_like, shape (n,)
+        Conditional intensity in Hz on the same grid.  Negative values are
+        treated as zero.
+    rng : numpy.random.Generator, optional
+        Random generator used for the draws.  A fresh
+        ``numpy.random.default_rng()`` is created when omitted (not
+        reproducible); pass ``np.random.default_rng(seed)`` for repeatable
+        output.
+
+    Returns
+    -------
+    nspikeTrain
+        Simulated spike train.  It is empty when fewer than two time samples
+        are given.
+
+    Raises
+    ------
+    ValueError
+        If ``time`` and ``rate_hz`` differ in length.
+    """
     t = np.asarray(time, dtype=float).reshape(-1)
     r = np.asarray(rate_hz, dtype=float).reshape(-1)
     if t.shape[0] != r.shape[0]:
@@ -63,14 +94,15 @@ def simulate_cif_from_stimulus(
     """Simulate a spike train from a log-linear CIF driven by a stimulus.
 
     Computes the conditional intensity ``lambda(t) = exp(beta0 + beta1 * x(t))``
-    in spikes/second, then draws spikes via Bernoulli thinning at the time-grid
-    resolution implied by ``time``.
+    in spikes/second, then draws spikes by independent per-bin Bernoulli sampling
+    (``p = 1 - exp(-rate*dt)``) at the time-grid resolution implied by
+    ``time``.
 
     Parameters
     ----------
-    time : ndarray, shape (T,)
+    time : ndarray, shape (n_time,)
         Time vector in seconds.
-    stimulus : ndarray, shape (T,)
+    stimulus : ndarray, shape (n_time,)
         Stimulus values at each time sample.
     beta0 : float
         Log-baseline rate (intercept of the log-linear CIF).
@@ -83,9 +115,9 @@ def simulate_cif_from_stimulus(
     -------
     spike_train : nspikeTrain
         Simulated spike train.
-    rate_hz : ndarray, shape (T,)
+    rate_hz : ndarray, shape (n_time,)
         The instantaneous CIF in spikes per second.
-    log_rate : ndarray, shape (T,)
+    log_rate : ndarray, shape (n_time,)
         The log-rate ``beta0 + beta1 * x(t)`` (useful for diagnostics).
     """
     t = np.asarray(time, dtype=float).reshape(-1)

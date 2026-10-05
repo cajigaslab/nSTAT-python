@@ -14,7 +14,7 @@ finite bin width.
 It has **no MATLAB counterpart** and therefore **no `parity/manifest.yml`
 entry** — it lives in the opt-in `extras/` namespace precisely so the core
 `nstat` MATLAB-parity contract is preserved.  See the
-[methods roadmap](../../parity/methods_roadmap.md) "Spatial point
+[methods roadmap](https://github.com/cajigaslab/nSTAT-python/blob/main/parity/methods_roadmap.md) "Spatial point
 processes" tier.
 
 ## Install
@@ -94,7 +94,7 @@ augmenting the IRLS Hessian with `rho * basis.gram()`.
 | `uncorrected_rescaled(spike_bins, p_k)` | naive `1−exp(−Σp_k)` variates — **false-rejects** at finite bin width |
 | `corrected_rescaled(spike_bins, p_k, rng=None)` | `u_j=[∏(1−p_k)]·(1−r_j·p_{k_j})` — exactly Unif(0,1) (Haslinger-Pipa-Brown 2010) |
 | `multivariate_time_rescaling(spike_bins_per_channel, p_k_per_channel, ...)` | per-channel rescaling for a finite (channel) mark space (Gerhard-Haslinger-Pipa 2011) |
-| `multivariate_gof_with_coupling(spike_bins_per_channel, p_k_per_channel, *, n_tau_bins=4, ...)` | runs the per-channel test *and* the population coupling test ([`nstat.population_time_rescale`](../api.html#nstat.population_time_rescale), Tao et al. 2018) on the same data → `CoupledMarkedGOFResult` (`per_channel`, `population`). Per-channel passing is necessary but not sufficient; this wrapper closes that gap |
+| `multivariate_gof_with_coupling(spike_bins_per_channel, p_k_per_channel, *, n_tau_bins=4, ...)` | runs the per-channel test *and* the population coupling test (<a href="../_autosummary/nstat.population_time_rescale.html#nstat.population_time_rescale"><code>nstat.population_time_rescale</code></a>, Tao et al. 2018) on the same data → `CoupledMarkedGOFResult` (`per_channel`, `population`). Per-channel passing is necessary but not sufficient; this wrapper closes that gap |
 
 ### Marked-pattern second-order diagnostics (pure NumPy/SciPy)
 
@@ -180,7 +180,7 @@ Inhibitory or interactive point patterns whose Papangelou conditional
 intensity factors into a log-linear form — fit via the Berman-Turner
 device (Baddeley-Rubak-Turner 2015 §13.5) by reformulating
 pseudo-likelihood as a weighted Poisson GLM and delegating to
-[`nstat.glm.fit_poisson_glm`](../api.html#nstat.glm.fit_poisson_glm).
+<a href="../_autosummary/nstat.fit_poisson_glm.html#nstat.fit_poisson_glm"><code>nstat.fit_poisson_glm</code></a>.
 Companion to the cluster-Cox attractive models above.
 
 | Symbol | Notes |

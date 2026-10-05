@@ -1066,6 +1066,34 @@ def run_experiment6(
 
 
 def run_full_paper_examples(repo_root: Path) -> dict[str, dict[str, float]]:
+    """Run every native paper-example experiment and collect summary metrics.
+
+    Executes the eight native experiments (``experiment1`` through
+    ``experiment6``, including the ``3b`` and ``5b`` variants) with their
+    default settings and returns each one's scalar summary.  Figures are not
+    exported; the paper dataset is fetched on first use via
+    :func:`nstat.data_manager.ensure_example_data` (roughly 150 MB).
+
+    Parameters
+    ----------
+    repo_root : pathlib.Path
+        Repository root, used by ``experiment6`` to locate the bundled hybrid
+        filter fixture.
+
+    Returns
+    -------
+    dict of str to dict of str to float
+        Maps experiment names (``"experiment1"``, ``"experiment2"``,
+        ``"experiment3"``, ``"experiment3b"``, ``"experiment4"``,
+        ``"experiment5"``, ``"experiment5b"``, ``"experiment6"``) to their
+        dictionaries of summary metrics.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the example data is unavailable and cannot be downloaded (for
+        example when ``NSTAT_OFFLINE=1`` is set).
+    """
     data_dir = ensure_example_data(download=True)
 
     return {

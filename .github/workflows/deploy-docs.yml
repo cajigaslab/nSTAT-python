@@ -37,13 +37,11 @@ jobs:
       - name: Regenerate paper gallery artifacts
         run: python tools/paper_examples/build_gallery.py
 
-      - name: Pre-generate autosummary stubs
-        # Warm-up pass populates docs/_autosummary so the strict build
-        # below doesn't trip on "stub file not found" warnings.
-        run: python -m sphinx -b html docs docs/_build/html
-
       - name: Build Sphinx docs (strict)
-        run: python -m sphinx -W -b html docs docs/_build/html
+        # -E (fresh environment) forces every source to be re-read; a plain
+        # -W rebuild is incremental and silently hides warnings.  The output
+        # dir is what gets published below.
+        run: python -m sphinx -E -W -b html docs docs/_build/html
 
       - name: Add .nojekyll marker
         run: touch docs/_build/html/.nojekyll

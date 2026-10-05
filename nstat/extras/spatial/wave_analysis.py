@@ -31,8 +31,10 @@ class WaveAnalysisResult:
     ----------
     freq
         Frequencies of the accepted peaks (Hz).
-    kx, ky
+    kx
         Wave-vector components in rad / (position-unit).
+    ky
+        See ``kx``.
     power
         Peak power at the accepted ``(freq, k)`` cells (matches the
         ``return_complex=False`` output of ``bartlett_spectrum``).

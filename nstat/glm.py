@@ -86,6 +86,44 @@ def fit_poisson_glm(
     max_iter: int = 120,
     tol: float = 1e-8,
 ) -> PoissonGLMResult:
+    """Fit a Poisson GLM (log link) by Newton-Raphson with an L2 ridge penalty.
+
+    Maximises the L2-penalised Poisson log-likelihood
+    ``sum(y * eta - exp(eta))`` with ``eta = X @ beta + offset``.  The linear
+    predictor is clipped to ``[-20, 20]`` before exponentiation for numerical
+    stability.
+
+    Parameters
+    ----------
+    x : array_like, shape (n_samples,) or (n_samples, n_features)
+        Design matrix, or a single covariate vector (treated as one column).
+    y : array_like, shape (n_samples,)
+        Observed non-negative counts (for example spikes per bin).
+    offset : array_like, shape (n_samples,), optional
+        Per-sample additive offset to the linear predictor, for example
+        ``log(bin_width)`` to model a rate.  Defaults to zero.
+    include_intercept : bool, default True
+        Prepend a constant column to ``x``.  The intercept is not penalised.
+    l2 : float, default 1e-6
+        Ridge penalty applied to all non-intercept coefficients.
+    max_iter : int, default 120
+        Maximum number of Newton iterations.
+    tol : float, default 1e-8
+        Convergence tolerance on the L2 norm of the coefficient update.
+
+    Returns
+    -------
+    PoissonGLMResult
+        Frozen dataclass with ``intercept``, ``coefficients``, ``n_iter``,
+        ``converged`` and ``log_likelihood`` (the unpenalised Poisson
+        log-likelihood, up to the ``log(y!)`` constant) fields.
+
+    Raises
+    ------
+    ValueError
+        If ``x`` and ``y`` have different numbers of rows, or ``offset`` has
+        a different length than ``y``.
+    """
     x_arr = np.asarray(x, dtype=float)
     y_arr = np.asarray(y, dtype=float).reshape(-1)
     if x_arr.ndim == 1:

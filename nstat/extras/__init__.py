@@ -4,7 +4,7 @@ This namespace is the home for features that have no counterpart in
 upstream MATLAB nSTAT and would dilute the MATLAB-parity contract of
 the core :mod:`nstat` package if added there.
 
-Five subpackages ship today:
+Seven subpackages ship today:
 
 - :mod:`nstat.extras.interop` — converters between :class:`nstat.nspikeTrain`
   / :class:`nstat.SpikeTrainCollection` / :class:`nstat.Trial` and the
@@ -22,7 +22,27 @@ Five subpackages ship today:
   identifiability-gauge canonicalization, and multi-restart selection.
 - :mod:`nstat.extras.decoding` — Bayesian point-process decoders that
   extend nSTAT's PPAF / PPHF mathematics, including **clusterless**
-  marked point-process decoding via **replay_trajectory_classification**.
+  marked point-process decoding via **replay_trajectory_classification**,
+  and the pure-core place-field decoder wrapper.
+- :mod:`nstat.extras.latents` — latent-dynamics bridges, currently
+  Gaussian-Process Factor Analysis (GPFA) via **Elephant**.
+- :mod:`nstat.extras.spatial` — spatial and spatiotemporal point-process
+  methods (log-Gaussian Cox processes, spatial / marked goodness-of-fit,
+  Hawkes and cluster-Cox models); the core needs only NumPy / SciPy, and
+  optional heavier bridges (**gpflow**, **tick**, **DPPy**) are opt-in.
+
+Layout convention
+-----------------
+Use a **subpackage** when a feature area has two or more modules that share
+an install key or a private helper module (for example ``interop``, ``em``
+and ``spatial``).  Use a **flat module** for a single self-contained feature
+that needs only core (non-optional) dependencies.  The flat modules today
+are :mod:`nstat.extras.continuous_cif` (continuous-time CIF simulator) and
+:mod:`nstat.extras.matlab_rng` (MATLAB-aligned MT19937 stream), plus the
+private :mod:`nstat.extras._numba_kernels` and :mod:`nstat.extras._lazy`
+helpers.  The split is a convention, not a contract: existing modules are
+not relocated to match it, because moving one would change a public import
+path.
 
 Stability contract
 ------------------
@@ -34,20 +54,21 @@ Stability contract
   MATLAB-parity contract: removals/renames there require major-version
   bumps.
 
-Decision rule (also documented in :file:`CLAUDE.md` and
-:file:`AGENT_GUIDE.md`):
+Decision rule (also documented in :file:`AGENT_GUIDE.md`):
 
-  Goes in core ``nstat.*`` IF:
-  - The feature exists in MATLAB nSTAT (``.m`` source file present).
-  - Has an entry in ``parity/manifest.yml``.
-  - Removing it would break a MATLAB-faithful workflow.
+Goes in core ``nstat.*`` if:
 
-  Goes in ``nstat.extras.*`` IF:
-  - Python-only with no MATLAB counterpart.
-  - Depends on libraries outside core dependencies (PyTorch,
-    SpikeInterface, MNE, Neo, …).
-  - Uses Pythonic snake_case naming where the MATLAB-style would clash.
-  - Experimental — API may break across minor releases.
+- The feature exists in MATLAB nSTAT (``.m`` source file present).
+- It has an entry in ``parity/manifest.yml``.
+- Removing it would break a MATLAB-faithful workflow.
+
+Goes in ``nstat.extras.*`` if:
+
+- It is Python-only with no MATLAB counterpart.
+- It depends on libraries outside core dependencies (PyTorch,
+  SpikeInterface, MNE, Neo, …).
+- It uses Pythonic snake_case naming where the MATLAB-style would clash.
+- It is experimental — the API may break across minor releases.
 
 Optional dependencies
 ---------------------
@@ -60,10 +81,19 @@ dependency set.  Install them via the extras keys declared in
     pip install nstat-toolbox[nwb]              # pynwb
     pip install nstat-toolbox[metrics]          # pyspike
     pip install nstat-toolbox[test-parity]      # nemos, pykalman, statsmodels, nitime
-    pip install nstat-toolbox[all-extras]       # install everything
+    pip install nstat-toolbox[all-extras]       # the lightweight groups above
 
-Each extras module raises a clear, actionable ``ImportError`` at import
-time when its optional dependency is missing.
+The ``all-extras`` key is deliberately **not** a union of every group.  The
+heavy or niche groups ``dynamax``, ``clusterless``, ``spatial-gp``,
+``hawkes``, ``dpp``, ``latents`` and ``numba`` are excluded for install-size
+reasons and must be installed individually, for example
+``pip install nstat-toolbox[dynamax]``.
+
+Importing ``nstat.extras`` or one of its subpackages is safe without any
+optional dependency installed.  The bridges import their backing library
+lazily, inside the function that needs it; calling such a function without
+the dependency raises a clear, actionable ``ImportError`` that names the
+``pip install nstat-toolbox[<key>]`` line (see :mod:`nstat.extras._lazy`).
 
 Independence
 ------------

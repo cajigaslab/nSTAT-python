@@ -156,17 +156,17 @@ nstat-install --download-example-data always   # example dataset (figshare, ~150
 **Source layout:**
 
 ```
-nstat/                  ~50 modules, 24.7 kLOC — the package itself
+nstat/                  104 modules, ~50 kLOC — the package itself (re-derive: find nstat -name '*.py' | xargs wc -l)
 examples/paper/         5 canonical paper-example scripts (Cajigas 2012)
 examples/tutorials/     6 runnable end-to-end teaching scripts + 1 notebook
 examples/extras/        per-bridge demos for nstat.extras
 examples/readme_examples/   4 short snippets
-notebooks/              30+ Jupyter notebooks (many MATLAB-help-derived)
+notebooks/              Jupyter notebooks (many MATLAB-help-derived; count: ls notebooks/*.ipynb | wc -l)
 docs/                   Sphinx + MyST documentation
-docs/concepts/          neuroscience + statistics learning track (14 pages)
+docs/concepts/          neuroscience + statistics learning track (pages incl. index, glossary, bibliography; ls docs/concepts)
 parity/                 MATLAB↔Python parity manifests + audit report
-tests/                  48 test files, 268 tests
-tools/{notebooks,paper_examples,parity,release}/  build/maintenance scripts
+tests/                  pytest suite (re-derive counts: pytest --collect-only -q | tail -1)
+tools/{extras_build,notebook_build,paper_examples,parity,release}/  build/maintenance scripts
 ```
 
 ---
@@ -219,10 +219,10 @@ to re-verify).
 - `PoissonGLMResult`, `fit_poisson_glm` — standalone Poisson GLM utility (separate from `Analysis.GLMFit`).
 
 ### Simulation
-- `simulate_poisson_from_rate(rate_signal, ...)` — homogeneous/inhomogeneous Poisson simulator.
+- `simulate_poisson_from_rate(time, rate_hz, rng=None)` — homogeneous/inhomogeneous Poisson simulator.
 - `simulate_point_process(...)`, `PointProcessSimulation`.
 - `simulate_two_neuron_network(...)`, `NetworkSimulationResult`.
-- `run_full_paper_examples(...)` — runs all five paper examples programmatically.
+- `run_full_paper_examples(repo_root)` — runs the native paper experiments (eight summaries) programmatically.
 
 ### Plot style
 - `set_plot_style("modern" | "legacy")` — persists choice in a sidecar file.
@@ -253,7 +253,7 @@ to re-verify).
 
 ```python
 import numpy as np
-from nstat import Trial, TrialConfig, Covariate, nspikeTrain, nstColl
+from nstat import Trial, Covariate, CovariateCollection, nspikeTrain, nstColl
 
 sample_rate = 1000  # Hz
 
@@ -265,50 +265,49 @@ st = nspikeTrain(spike_times, name="n1", sampleRate=sample_rate,
 # A continuous covariate (e.g., whisker velocity)
 t = np.arange(0, 1.0, 1.0 / sample_rate)
 stim = np.sin(2 * np.pi * 5 * t).reshape(-1, 1)
-cov = Covariate(t, stim, name="stim", xlabelval="time", xunitval="s",
-                ylabelval="vel", yunitval="mm/s",
-                dataLabels=["stim"])
+cov = Covariate(t, stim, name="stim", xlabelval="time", xunits="s",
+                yunits="mm/s", dataLabels=["stim"])
 
 # A collection of spike trains (single neuron here)
 nstc = nstColl([st])
 nstc.setMinTime(0.0)
 nstc.setMaxTime(1.0)
 
-# Assemble Trial
-trial = Trial(nstc, ev=None, covarColl=None, neighbors=None)
+# A collection of covariates, then assemble the Trial
+covc = CovariateCollection([cov])
+trial = Trial(nstc, covc)
 ```
 
 ### Recipe B: fit a Poisson GLM with stimulus + history
 
 ```python
-from nstat import TrialConfig, ConfigColl, Analysis, CovColl
+from nstat import TrialConfig, ConfigCollection, Analysis
 
-cfg = TrialConfig(
-    covariate_specs=[("Baseline", "constant"), ("stim", "spline")],
-    sampleRate=sample_rate,
-    history_window_times=[0.001, 0.002, 0.005, 0.01],  # history kernel knots
-    ensCovHist=[],
-)
-configs = ConfigColl([cfg])
+cfg = TrialConfig(covMask=[["stim", "stim"]], sampleRate=sample_rate,
+                  history=[0.001, 0.002, 0.005, 0.01], name="stim_model")
+configs = ConfigCollection([cfg])
 
 # Run the analysis (model selection across configs)
-results = Analysis.runAnalysisForAllNeurons(trial, configs)
-fit = results[0][0]   # FitResult for neuron 0 under config 0
+results = Analysis.run_analysis_for_all_neurons(trial, configs)
+fit = results[0]   # FitResult for neuron 0 under config 0 (1 config here)
 print("AIC:", fit.AIC, "BIC:", fit.BIC)
 print("KS stat:", fit.computeKSStats())
+# NOTE: this 4-spike toy trial gives degenerate statistics (KS = 1.0); use a
+# real recording for meaningful AIC/KS values.
 ```
 
 For a single GLM fit (no model-selection sweep), use ``Analysis.GLMFit``
-directly.  It returns a ``GLMFitResult`` dataclass with both named-field
-and tuple-unpack access:
+directly (``neuronNumber`` is a 0-based index, name, or sequence of either).
+It returns a ``GLMFitResult`` dataclass with both named-field and
+tuple-unpack access:
 
 ```python
 from nstat.analysis import Analysis  # GLMFitResult is also exported
 
-result = Analysis.GLMFit(trial, neuron_number=1, lambdaIndex=1, Algorithm="GLM")
-print("AIC:", result.AIC, "BIC:", result.BIC)
-print("true log-lik:", result.loglik)         # AIC = -2*loglik + 2*k holds
-print("matlab logLL:", result.logLL)          # hybrid MATLAB-parity quantity
+result = Analysis.GLMFit(trial, neuronNumber=0, lambdaIndex=1, Algorithm="GLM")
+print("AIC:", result.AIC, "BIC:", result.BIC)   # AIC = 2*k + deviance
+print("log-lik:", result.loglik)   # per-bin Bernoulli log-likelihood (stats["loglik"])
+print("logLL:", result.logLL)      # same value, MATLAB-parity name
 
 # Legacy unpacking still works:
 lambda_sig, b, dev, stats, AIC, BIC, logLL, distribution = result
@@ -317,13 +316,12 @@ lambda_sig, b, dev, stats, AIC, BIC, logLL, distribution = result
 ### Recipe C: simulate spikes from a rate signal
 
 ```python
-from nstat import simulate_poisson_from_rate, Signal
+import numpy as np
+from nstat import simulate_poisson_from_rate
 
 t = np.arange(0, 5.0, 0.001)
 rate_hz = 20 + 10 * np.cos(2 * np.pi * 1.5 * t)
-rate_signal = Signal(t, rate_hz.reshape(-1, 1), sampleRate=1000.0,
-                     dataLabels=["rate"])
-spikes = simulate_poisson_from_rate(rate_signal, n_trials=5)
+spikes = simulate_poisson_from_rate(t, rate_hz, rng=np.random.default_rng(0))
 ```
 
 ### Recipe D: load the figshare paper dataset
@@ -358,10 +356,25 @@ python examples/paper/regenerate_all_figures.py --plot-style modern
 ### Recipe G: PPAF/PPHF adaptive decoding
 
 ```python
+import numpy as np
 from nstat import DecodingAlgorithms
-# Most methods are @staticmethod
-x_decoded, W, _ = DecodingAlgorithms.PPDecodeFilterLinear(
-    A, Q, C, lambda_cif, dN, x0, W0, delta)
+
+# Most methods are @staticmethod.  Simulate 2 cells that observe a 1-D
+# random-walk state through a log-linear (Poisson) CIF, then decode it.
+rng = np.random.default_rng(0)
+delta, n_steps = 0.001, 200                      # bin width (s), time bins
+A, Q = np.array([[1.0]]), np.array([[1e-3]])     # state transition / noise
+x_true = np.cumsum(rng.normal(0.0, 0.03, n_steps))
+mu = np.log(20.0 * delta) * np.ones(2)           # per-cell baseline (log rate/bin)
+beta = np.array([[1.0, -1.0]])                   # (state_dim, n_cells) tuning
+lam = np.exp(mu[:, None] + beta.T @ x_true[None, :])
+dN = (rng.random(lam.shape) < lam).astype(float) # (n_cells, n_steps) spikes
+
+# Returns (x_p, W_p, x_u, W_u, x_pT, W_pT, x_uT, W_uT); the *T entries are
+# empty unless a target (yT/PiT) is supplied.
+x_p, W_p, x_u, W_u, *_ = DecodingAlgorithms.PPDecodeFilterLinear(
+    A, Q, dN, mu, beta, "poisson", delta)
+print(x_u.shape)   # (1, n_steps) -- posterior mean state estimates
 ```
 
 ### Recipe H: 2-D place-cell encoding + PPAF decoding
@@ -370,13 +383,43 @@ For the canonical example08 pipeline (B-spline Poisson encoder per
 cell → quadratic-CIF refit → PPDecodeFilterLinear) wrapped behind one
 call, use `nstat.extras.decoding.fit_place_field_decoder`:
 
+First, a small synthetic ``trial`` and ``position`` so the recipe runs
+end to end (with real data, ``trial`` is your ``nstat.Trial`` and
+``position`` is ``(n_time, 2)``, aligned to the trial covariate sample grid,
+i.e. ``trial.covarColl.getCov(0).data``):
+
+```python
+import numpy as np
+from nstat import Trial, Covariate, CovariateCollection, nspikeTrain, nstColl
+
+# Synthetic stand-in data: a smooth 2-D trajectory in the unit box and three
+# Gaussian place cells (replace with your own Trial / position array).
+rng = np.random.default_rng(0)
+duration, fs = 60.0, 50.0
+t = np.arange(int(duration * fs)) / fs
+pos0 = 0.5 + 0.35 * np.column_stack([np.sin(2 * np.pi * t / 17.0),
+                                     np.cos(2 * np.pi * t / 23.0)])
+trains = []
+for cx, cy in [(0.25, 0.25), (0.75, 0.75), (0.5, 0.5)]:
+    rate = 20.0 * np.exp(-((pos0[:, 0] - cx) ** 2 + (pos0[:, 1] - cy) ** 2) / (2 * 0.15 ** 2))
+    spk = t[rng.random(t.size) < rate / fs]
+    trains.append(nspikeTrain(spk, minTime=0.0, maxTime=duration))
+covs = CovariateCollection([
+    Covariate(t, pos0[:, 0], "x_pos", "time", "s", "m", ["x"]),
+    Covariate(t, pos0[:, 1], "y_pos", "time", "s", "m", ["y"]),
+])
+trial = Trial(nstColl(trains), covs)
+position = np.column_stack([trial.covarColl.getCov(0).data.reshape(-1),
+                            trial.covarColl.getCov(1).data.reshape(-1)])
+```
+
 ```python
 from nstat.extras.decoding import (
     PlaceFieldDecoderConfig, fit_place_field_decoder,
 )
 
-# ``trial`` is an nstat.Trial; ``position`` is (n_time, 2) aligned to
-# the trial covariate sample grid (i.e. trial.covarColl.getCov(0).data).
+# On a short synthetic trial like the one above, decode_filter="nonlinear"
+# is more stable; "linear" suits long, smooth trajectories (example08).
 cfg = PlaceFieldDecoderConfig(
     bin_width_s=0.020,
     n_basis_per_dim=8,
@@ -484,7 +527,7 @@ Documented in [AUDIT_REPORT.md](AUDIT_REPORT.md) §4. The substantive ones:
 | `nspikeTrain` burst stats | Burst statistics go stale after `setMinTime`/`setMaxTime` in Python (cache invalidation gap). |
 | `SpikeTrainCollection.psthBars` | Uses a deterministic smoothing fallback, not the MATLAB BARS package. |
 
-### 5.3 Known Python-side bugs / footguns (status as of v0.3.0+post)
+### 5.3 Known Python-side bugs / footguns
 
 Most of the audit-reported bugs have been **fixed** in this branch; the
 list below records the current state.
@@ -504,8 +547,9 @@ list below records the current state.
   named fields *and* tuple-unpacking back-compat
   (`lambda_signal, b, dev, stats, AIC, BIC, logLL, distribution = GLMFit(...)`
   still works).  A true Bernoulli/Poisson log-likelihood is exposed at
-  `result.loglik` (and `stats["loglik"]`).  The legacy MATLAB-style
-  hybrid is retained at `result.logLL` and `stats["matlab_logLL"]`.
+  `result.loglik` (and `stats["loglik"]`).  `result.logLL` and
+  `stats["matlab_logLL"]` carry the same per-bin Bernoulli value under the
+  MATLAB-parity names.  (`AIC`/`BIC` are `2k + deviance` / `k*ln(n) + deviance`.)
 - ✅ `FitResult` lambda aliases: the 9 historical aliases
   (`lambda_obj`, `lambda_model`, `lambda_result`, `lambdaObj`,
   `lambdaCov`, `lambda_sig`, `lambda_data`, `lambda_values`, `lambda_time`,
@@ -536,11 +580,13 @@ list below records the current state.
 
 ### 5.4 Module layout (post-refactor)
 
-- `nstat/core.py` (~2,070 lines) hosts `SignalObj` + `Covariate`.  The
+Line counts below are approximate (re-derive: `wc -l nstat/core.py nstat/trial.py`).
+
+- `nstat/core.py` (~2,300 lines) hosts `SignalObj` + `Covariate`.  The
   `nspikeTrain` class was extracted to `nstat/_spike_train_impl.py`
   (private module).  `from nstat.core import nspikeTrain` and
   `from nstat.nspikeTrain import nspikeTrain` continue to work.
-- `nstat/trial.py` (~2,845 lines) hosts `CovariateCollection`,
+- `nstat/trial.py` (~3,150 lines) hosts `CovariateCollection`,
   `SpikeTrainCollection`, and `Trial`.  `TrialConfig`/`ConfigCollection`
   were extracted to `nstat/_trial_config_impl.py`.  All legacy import
   paths continue to work.
@@ -552,19 +598,19 @@ list below records the current state.
 - **MATLAB-style import shims** exist (e.g., `from nstat.SignalObj import
   SignalObj`); both shim paths and canonical paths work. Prefer canonical
   paths from `nstat/__init__.py` for new code.
-- **`core.py` (~2,074 lines) and `trial.py` (~2,849 lines)** still
+- **`core.py` (~2,300 lines) and `trial.py` (~3,150 lines)** still
   host several classes each, but the largest single classes (`nspikeTrain`,
   `TrialConfig`/`ConfigCollection`) were extracted to private impl modules
-  in v0.3.1 — see §5.4 above.  Further splits may land in v0.4; do not
-  rely on internal file layout.
+  in v0.3.1 — see §5.4 above.  No further splits are currently
+  planned; do not rely on internal file layout.
 - **Two parallel install entry points** exist: `nstat.install.main` and
   `nstat.nstat_install.nSTAT_Install`. Prefer the `nstat-install` CLI.
 - **Data sourcing**: paper-example data is on figshare (DOI
   10.6084/m9.figshare.4834640.v3, ~150 MB). It is **not** in the git repo.
   `ensure_example_data(download=True)` fetches it; `download=False` raises
-  if absent. There is no `--offline` flag yet — agents in offline contexts
-  should set `ensure_example_data(download=False)` and handle the
-  `DataNotFoundError`.
+  if absent. Set `NSTAT_OFFLINE=1` (or pass `download=False`) in offline
+  contexts and handle the resulting `FileNotFoundError`; point
+  `NSTAT_DATA_DIR` at an existing local copy to skip the download.
 
 ### 5.6 What the package is NOT (and where to look instead)
 
@@ -575,8 +621,8 @@ Python projects" table in `README.md` for install commands.
 - **Not** a real-time decoding pipeline.  Decoding methods are
   offline/batch.
 - **Not** a deep-learning toolkit. There are no neural-network models;
-  fits are GLM/state-space classical statistics.  Bridge to PyTorch
-  decoders is planned (`nstat.extras.deep_learning`, v0.4+).
+  fits are GLM/state-space classical statistics.  A bridge to PyTorch
+  decoders is a possible future `nstat.extras` addition; none exists today.
 - **Not** a spike-sorting toolkit.  Spike times are assumed to be
   pre-sorted.  Use [SpikeInterface](https://github.com/SpikeInterface/spikeinterface)
   upstream; pipe its output through `nstat.extras.interop.neo`.
@@ -1041,11 +1087,15 @@ declares its optional dep in `pyproject.toml` under
 
 ```bash
 pip install nstat-toolbox[spikeinterface]
-pip install nstat-toolbox[all-extras]   # everything at once
+pip install nstat-toolbox[all-extras]   # the lightweight groups only
 ```
 
-Each extras module should raise a clear, actionable `ImportError` at
-import time when its optional dependency is missing.
+`all-extras` deliberately excludes `dynamax`, `clusterless`, `spatial-gp`,
+`hawkes`, `dpp`, `latents` and `numba` (install size / opt-in
+acceleration); install those individually.  Each extras bridge should
+import its optional dependency lazily inside the function that needs it
+(see `nstat.extras._lazy.require_optional`) and raise a clear, actionable
+`ImportError` with the `pip install` hint when it is missing.
 
 ### 7.7.1 `nstat.extras._numba_kernels` — opt-in Numba JIT (v0.5.6+)
 
@@ -1203,5 +1253,5 @@ When an agent uses nSTAT to produce a scientific result, verify:
 ---
 
 *This file is intended to be loaded into the context of an AI agent
-before it begins work with `nstat-python`. Keep it under 600 lines so it
+before it begins work with `nstat-python`. Keep it as short as practical so it
 fits in a typical context window alongside actual code.*

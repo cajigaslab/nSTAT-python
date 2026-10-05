@@ -61,4 +61,5 @@ def test_ci_runs_docs_build_job() -> None:
     steps = jobs["docs-build"].get("steps", [])
     run_lines = [step.get("run", "") for step in steps if isinstance(step, dict)]
     assert any("build_gallery.py" in line for line in run_lines)
-    assert any("python -m sphinx -W -b html docs docs/_build/html" in line for line in run_lines)
+    # -E is required: a plain ``-W`` rebuild is incremental and hides warnings.
+    assert any("python -m sphinx -E -W -b html docs docs/_build/html" in line for line in run_lines)
