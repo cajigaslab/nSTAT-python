@@ -124,7 +124,7 @@ def _as_neuron_indices(trial: Trial, neuron_selector) -> list[int]:
         for item in neuron_selector:
             out.extend(_as_neuron_indices(trial, item))
         return out
-    raise TypeError("neuron selector must be a MATLAB-style one-based index, name, or sequence of either")
+    raise TypeError("neuron selector must be a zero-based index, name, or sequence of either")
 
 
 def _restore_trial_partition(trial: Trial, original_partition: np.ndarray) -> None:
