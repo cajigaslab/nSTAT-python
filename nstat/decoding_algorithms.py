@@ -462,6 +462,8 @@ def _em_glm_mstep(dN, x_K, fitType, muhat, betahat, gammahat, windowTimes, delta
       bin width ``delta`` and the Trial sample rate ``1/delta``.
     * History: self-history windows ``windowTimes`` unless gamma is all zero
       (MATLAB ``if(gammahat==0)``: no history term, gamma returned as passed).
+      A nonzero (or empty) gamma with an empty ``windowTimes`` raises
+      ``ValueError``, as MATLAB errors there.
     * Coefficients are read BY LABEL (F3: ``'constant'`` -> mu, ``'v<i>'`` ->
       beta row i; R4a: the window labels of the same ``History`` object the
       Trial uses -> gamma rows).  A coefficient that MATLAB's
@@ -501,6 +503,16 @@ def _em_glm_mstep(dN, x_K, fitType, muhat, betahat, gammahat, windowTimes, delta
     # MATLAB if(gammahat==0): true when every entry is 0 (false for an empty gamma).
     gamma_is_zero = gammahat_in.size > 0 and bool(np.all(gammahat_in == 0))
     wt = None if _is_empty_value(windowTimes) else np.asarray(windowTimes, dtype=float).reshape(-1)
+    if not gamma_is_zero and wt is None:
+        # MATLAB fits no history then, and errors when it reads the window
+        # labels: History([], ...).computeHistory(nst{1}).getCov(1) raises
+        # MATLAB:nonLogicalConditional (CovColl.getCov), for a scalar, row,
+        # column or matrix gamma alike (checked at fix/pp-em aa88a2b).  The EM
+        # drivers never get here (an empty windowTimes defaults to one window
+        # per coefficient, or gamma = 0 means no history).
+        raise ValueError(
+            "GLM M-step: nonzero (or empty) history coefficients gammahat need history windows "
+            "(windowTimes is empty); pass windowTimes, or gammahat = 0 for no history")
 
     time = np.arange(K) * delta  # MATLAB (0:K-1)*delta
     labels = [f"v{i + 1}" for i in range(dx)]
@@ -542,7 +554,7 @@ def _em_glm_mstep(dN, x_K, fitType, muhat, betahat, gammahat, windowTimes, delta
 
     if gamma_is_zero:
         return muhat_new, betahat_new, gammahat_in.copy()
-    if wt is None or wt.size < 2:
+    if wt.size < 2:  # no complete window: nothing to map (gamma kept)
         return muhat_new, betahat_new, gammahat_in.copy()
     nWin = wt.size - 1
     winLabels = list(History(wt, float(time.min()), float(time.max())).computeHistory(nst[0]).getCov(0).dataLabels)

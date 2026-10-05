@@ -1927,3 +1927,18 @@ def test_covariance_information_forms_agree_for_one_state(family) -> None:
         for key in ref:
             np.testing.assert_allclose(out[key], ref[key], rtol=1e-10, atol=0, err_msg=f"{name}: SE.{key}")
 
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_glm_mstep_history_coefficients_need_windows(family) -> None:
+    # MATLAB's GLM M-step with a nonzero gamma and windowTimes = [] errors
+    # (History([], ...).computeHistory(...).getCov(1): MATLAB:nonLogicalConditional,
+    # for a scalar, row, column or matrix gamma; checked at fix/pp-em aa88a2b).
+    # The port returned gamma unchanged; it now raises too.  gamma = 0 (no
+    # history) runs.
+    P = _glm_problem(C=2, K=300)
+    for g in (np.array(-0.2), np.array([[-0.2, -0.3]]), np.array([[-0.2], [-0.3]]), np.full((2, 2), -0.2)):
+        with pytest.raises(ValueError, match="need history windows"):
+            _glm_mstep(family, P, P["mu"], P["beta"], g, wt=None)
+    mu, beta, gamma = _glm_mstep(family, P, P["mu"], P["beta"], np.array(0.0), wt=None)
+    assert float(gamma) == 0.0 and np.all(np.isfinite(mu))
