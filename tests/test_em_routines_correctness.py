@@ -1108,6 +1108,17 @@ def test_em_whitening_maps_a_nondiagonal_noise_covariance_to_the_identity(family
     assert len(ll) > 2 and ll[1] > ll[0], ll
     Ahat = out[2]
     assert np.max(np.abs(Ahat - P["A"])) > 1e-4
+    # With a non-diagonal Q0, QhatDiag = 1 means "diagonal in the Q0-whitened
+    # frame" (MATLAB G1, a recorded open design question): Tq Qhat Tq' is
+    # diagonal for the returned Qhat (and Tr Rhat Tr' for RhatDiag = 1).
+    Tq = np.linalg.inv(np.linalg.cholesky(P["Q"]))
+    Qw = Tq @ out[3] @ Tq.T
+    assert abs(Qw[0, 1]) <= 1e-12 * np.max(np.abs(Qw)) and abs(Qw[1, 0]) <= 1e-12 * np.max(np.abs(Qw))
+    assert abs(out[3][0, 1]) > 1e-6  # ... and not diagonal in the original frame
+    if family == "PPLFP":
+        Tr = np.linalg.inv(np.linalg.cholesky(P["R"]))
+        Rw = Tr @ out[5] @ Tr.T
+        assert abs(Rw[0, 1]) <= 1e-12 * np.max(np.abs(Rw)) and abs(Rw[1, 0]) <= 1e-12 * np.max(np.abs(Rw))
 
 
 @pytest.mark.parametrize("family", ["PP", "PPLFP"])
@@ -1622,3 +1633,64 @@ def test_newton_raphson_mstep_with_as_many_bins_as_cells(family) -> None:
     np.testing.assert_array_equal(mu7[:6], mu6)
     np.testing.assert_array_equal(b7[:, :6], b6)
     np.testing.assert_array_equal(g7[:, :6], g6)
+
+
+# (EstimateA, AhatDiag, QhatDiag, QhatIsotropic, Estimatex0, EstimatePx0, Px0Isotropic): MATLAB G2's eight
+# constraint sets (testStandardErrorsHonourConstraints).
+_G2_CONSTRAINTS = [(1, 0, 1, 0, 0, 0, 0), (0, 0, 1, 0, 0, 0, 0), (1, 1, 1, 0, 0, 0, 0), (1, 0, 0, 0, 0, 0, 0),
+                   (1, 0, 1, 1, 0, 0, 0), (1, 0, 1, 0, 1, 0, 0), (1, 0, 1, 0, 0, 1, 0), (1, 0, 1, 0, 0, 1, 1)]
+
+
+def _g2_expected(v, dx, C, extra=0):
+    """MATLAB G2's count A + Q + Px0 + x0 + mu + beta (+ PPLFP's C, R, alpha) and SE fields."""
+    EstimateA, AhatDiag, QhatDiag, QhatIso, Ex0, EPx0, Px0Iso = v
+    n = (dx if AhatDiag else dx * dx) * EstimateA
+    n += (1 if QhatIso else dx) if QhatDiag else dx * dx
+    n += (1 if Px0Iso else dx) * EPx0 + dx * Ex0 + C + dx * C + extra
+    fields = {"Q", "mu", "beta"} | ({"A"} if EstimateA else set()) | ({"x0"} if Ex0 else set())
+    return n, fields | ({"Px0"} if EPx0 else set())
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_standard_errors_honour_every_constraint_set(family) -> None:
+    # MATLAB G2 (testStandardErrorsHonourConstraints): once MATLAB's PP SE
+    # routine honoured its constraints, EstimateA = 0, QhatIsotropic = 1 and
+    # Px0Isotropic = 1 crashed on undefined N / dx (fixed by defining them up
+    # front, as the PPLFP routine does).  Over the same eight constraint sets
+    # nTerms and the SE fields follow the constraints, SE.A is diagonal under
+    # AhatDiag = 1, and mcIter sets the Monte Carlo size.  Both Python
+    # routines already ran every set (a pin; PPLFP for completeness, with
+    # its default diagonal R).
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    P = _em_problem(C=4, N=300)
+    A, Q, dN, mu, beta, y = P["A"], P["Q"], P["dN"], P["mu"], P["beta"], P["y"]
+    C, dx = 4, 2
+    H = np.zeros((300, 1, C))
+    Cm, R = np.array([[1.0, 0.5]]), 0.01 * np.eye(1)
+    x0, Px0 = np.zeros(dx), 1e-6 * np.eye(dx)
+    if family == "PP":
+        xK, WK, _, ES = DecodingAlgorithms.PP_EStep(A, Q, dN, mu, beta, "poisson", np.array(0.0), H, x0, Px0)
+    else:
+        xK, WK, _, ES = PPLFP.PPLFP_EStep(A, Q, Cm, R, y, np.zeros(1), dN, mu, beta, "poisson", 0.001, np.array(0.0),
+                                          H, x0, Px0)
+
+    def se(v, mcIter):
+        with seeded_global_rng(1):
+            if family == "PP":
+                cons = DecodingAlgorithms.PP_EMCreateConstraints(*v, mcIter)
+                return DecodingAlgorithms.PP_ComputeParamStandardErrors(dN, xK, WK, A, Q, x0, Px0, ES, "poisson", mu,
+                                                                       beta, np.array(0.0), [], H, cons)
+            cons = PPLFP.PPLFP_EMCreateConstraints(v[0], v[1], v[2], v[3], 1, 0, v[4], v[5], v[6], mcIter, 0)
+            return PPLFP.PPLFP_ComputeParamStandardErrors(y, dN, xK, WK, A, Q, Cm, R, np.zeros(1), x0, Px0, ES,
+                                                          "poisson", mu, beta, np.array(0.0), [], H, cons)
+
+    extra, extra_fields = (0, set()) if family == "PP" else (dx + 1 + 1, {"C", "R", "alpha"})
+    for v in _G2_CONSTRAINTS:
+        SE, Pvals, nTerms = se(v, 20)
+        n, fields = _g2_expected(v, dx, C, extra)
+        assert nTerms == n, v
+        assert set(SE) == set(Pvals) == fields | extra_fields, v
+        if v[0] and v[1]:
+            assert np.count_nonzero(SE["A"] - np.diag(np.diag(SE["A"]))) == 0, v
+    assert not np.array_equal(se(_G2_CONSTRAINTS[0], 5)[0]["mu"], se(_G2_CONSTRAINTS[0], 7)[0]["mu"])
