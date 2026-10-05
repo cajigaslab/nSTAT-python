@@ -6296,10 +6296,21 @@ class DecodingAlgorithms:
 
         sumXkTerms_ic = ExpSumsFinal.get("sumXkTerms", np.zeros((Dx, Dx)))
         ll_best = ll_list[maxLLIndex] if ll_list else 0.0
+        # MATLAB F10 (fix/pp-em 8843a94): ll_best (the best E-step's expected
+        # complete-data log-likelihood) and its sumXkTerms belong to the SCALED
+        # system x_s = Tq x, while Qhat and Px0hat are back on the original
+        # scale, so llobs mixed scales and AIC / BIC depended on the units of
+        # x.  Map both to the original scale: S = (Tq\S_s)/Tq', and each of the
+        # K+1 state log-densities (x_0 .. x_K) gains log|det Tq|.  llobs is then
+        # the E-step's observation term sumPPll, and IC.llcomp the expected
+        # complete-data log-likelihood PP_EStep returns in the original
+        # coordinates at the returned estimates.
+        sumXkTerms_ic = TqInv_unscale @ np.asarray(sumXkTerms_ic, dtype=float) @ TqInv_unscale.T
+        llcomp = ll_best + (K_total + 1) * np.log(np.abs(np.linalg.det(Tq_unscale)))
         det_Q = max(float(np.linalg.det(Qhat)), np.finfo(float).tiny)
         det_Px0 = max(float(np.linalg.det(Px0hat)), np.finfo(float).tiny)
 
-        llobs = (ll_best
+        llobs = (llcomp
                  + Dx * K_total / 2.0 * np.log(2.0 * np.pi)
                  + K_total / 2.0 * np.log(det_Q)
                  + 0.5 * np.trace(np.linalg.solve(Qhat, sumXkTerms_ic))
@@ -6315,7 +6326,7 @@ class DecodingAlgorithms:
             "AICc": AICc,
             "BIC": BIC,
             "llobs": llobs,
-            "llcomp": ll_best,
+            "llcomp": llcomp,
         }
 
         return (xKFinal, WKFinal, Ahat, Qhat, muhat, betahat, gammahat,

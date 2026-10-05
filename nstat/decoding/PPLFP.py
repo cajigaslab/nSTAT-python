@@ -2354,11 +2354,26 @@ class PPLFP:
 
         K_T = y_arr.shape[1]
         Dx = Ahat_out.shape[1]
-        sumXkTerms = ExpectationSumsFinal["sumXkTerms"]
+        sumXkTerms = np.asarray(ExpectationSumsFinal["sumXkTerms"], dtype=float)
+        # MATLAB F10 (fix/pp-em 8843a94): ll_best (the best E-step's expected
+        # complete-data log-likelihood) and sumXkTerms belong to the SCALED
+        # system (x_s = Tq x, y_s = Tr y), while Qhat and Px0hat are back on
+        # the original scale, so llobs mixed scales and AIC / BIC depended on
+        # the units of x and of y.  Map both to the original scale:
+        # S = (Tq\S_s)/Tq'; each of the K+1 state log-densities gains
+        # log|det Tq| and each of the K observation log-densities log|det Tr|.
+        # llobs is then E[log p(dN, y | x)] on y's original scale, and
+        # IC.llcomp the expected complete-data log-likelihood PPLFP_EStep
+        # returns in the original coordinates at the returned estimates.
+        llcomp = ll_best
+        if scaledSystem:
+            sumXkTerms = _unwhiten(Tq, sumXkTerms)
+            llcomp = (ll_best + (K_T + 1) * np.log(np.abs(np.linalg.det(Tq)))
+                      + K_T * np.log(np.abs(np.linalg.det(Tr))))
         detQ = max(float(np.linalg.det(Qhat_out)), 1e-300)
         detPx0 = max(float(np.linalg.det(Px0hat_out)), 1e-300)
         llobs = (
-            ll_best
+            llcomp
             + Dx * K_T / 2.0 * np.log(2 * np.pi)
             + K_T / 2.0 * np.log(detQ)
             + 0.5 * np.trace(np.linalg.solve(Qhat_out, sumXkTerms))
@@ -2380,7 +2395,7 @@ class PPLFP:
             "AICc": AICc,
             "BIC": BIC,
             "llobs": llobs,
-            "llcomp": ll_best,
+            "llcomp": llcomp,
         }
 
         return (

@@ -612,7 +612,17 @@ def test_em_stops_on_a_non_finite_estep_loglikelihood(family, bad, monkeypatch) 
             out = PPLFP.PPLFP_EM(*args)
             IC, mu_out, mu_in = out[12], out[7], args[7]
     assert calls["E"] == 2 and calls["M"] == 1
-    assert np.isfinite(IC["llcomp"]) and IC["llcomp"] == calls["ll"][0]
+    # IC.llcomp is the first (best finite) E-step's logll on the original
+    # scale: the scaled-system logll plus the Jacobian of x_s = Tq x
+    # ((K+1) log|det Tq|) and, for PPLFP, of y_s = Tr y (K log|det Tr|)
+    # (MATLAB F10, which redesigned its own version of this test the same way).
+    K = np.asarray(args[1 if family == "PPLFP" else 0]).shape[1]
+    Q0 = np.asarray(args[3 if family == "PPLFP" else 2], dtype=float)
+    jac = (K + 1) * np.log(abs(np.linalg.det(np.linalg.inv(np.linalg.cholesky(Q0)))))
+    if family == "PPLFP":
+        jac += K * np.log(abs(np.linalg.det(np.linalg.inv(np.linalg.cholesky(np.asarray(args[5], dtype=float))))))
+    assert np.isfinite(IC["llcomp"])
+    np.testing.assert_allclose(IC["llcomp"], calls["ll"][0] + jac, rtol=1e-12)
     np.testing.assert_array_equal(np.ravel(mu_out), np.ravel(mu_in))
 
 
@@ -1215,3 +1225,76 @@ def test_em_standard_errors_are_equivariant_to_rescaling(family, problem, monkey
         for key in base:
             np.testing.assert_allclose(scaled[key], expect[key] * np.asarray(base[key]), rtol=1e-9, atol=0,
                                        err_msg=f"observation x{s}: SE.{key}")
+
+
+# ---------------------------------------------------------------------------
+# Information criteria on the original scale (MATLAB F10, fix/pp-em 8843a94),
+# including the dx = 2 non-diagonal Q0 / R0 cases (MATLAB G3)
+# ---------------------------------------------------------------------------
+
+
+def _run_em_with_estep_spy(family, P, monkeypatch, **scale):
+    owner = DecodingAlgorithms if family == "PP" else PPLFP
+    name = "PP_EStep" if family == "PP" else "PPLFP_EStep"
+    real = getattr(owner, name)
+    first = {}
+
+    def spy(*a, **k):
+        first.setdefault("args", a)
+        return real(*a, **k)
+
+    monkeypatch.setattr(owner, name, staticmethod(spy))
+    out = _run_scaled_em(family, P, **scale)
+    monkeypatch.setattr(owner, name, staticmethod(real))
+    return out, first["args"]
+
+
+@pytest.mark.parametrize("problem", sorted(_SCALE_PROBLEMS))
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_em_information_criteria_match_the_estep_at_the_estimates(family, problem, monkeypatch) -> None:
+    # MATLAB testInformationCriteriaMatchEStepAtEstimates: IC.llcomp is the
+    # expected complete-data log-likelihood that the E-step returns in the
+    # ORIGINAL coordinates at the returned estimates (the best iterate's
+    # parameters), and IC.llobs its observation term -- sumPPll (PP), or
+    # sumPPll + E[log p(y | x)] (PPLFP).  Both were scaled-system values.
+    P = _SCALE_PROBLEMS[problem]()
+    out, a = _run_em_with_estep_spy(family, P, monkeypatch)
+    if family == "PP":
+        IC = out[9]
+        _, _, ll, ES = DecodingAlgorithms.PP_EStep(out[2], out[3], P["dN"], out[4], out[5], "poisson", out[6], a[7],
+                                                   out[7], out[8])
+        obs = ES["sumPPll"]
+    else:
+        IC = out[12]
+        _, _, ll, ES = PPLFP.PPLFP_EStep(out[2], out[3], out[4], out[5], P["y"], out[6], P["dN"], out[7], out[8],
+                                         "poisson", P["delta"], out[9], a[12], out[10], out[11])
+        R, (dy, K) = out[5], P["y"].shape
+        obs = (ES["sumPPll"] - dy * K / 2 * np.log(2 * np.pi) - K / 2 * np.log(np.linalg.det(R))
+               - 0.5 * np.trace(np.linalg.solve(R, ES["sumYkTerms"])))
+    np.testing.assert_allclose(IC["llcomp"], ll, rtol=1e-9)
+    np.testing.assert_allclose(IC["llobs"], obs, rtol=1e-9)
+
+
+@pytest.mark.parametrize("problem", sorted(_SCALE_PROBLEMS))
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_em_information_criteria_are_invariant_to_rescaling(family, problem) -> None:
+    # MATLAB testInformationCriteriaInvariantToStateScaling: under x -> t x
+    # llobs, AIC, AICc and BIC are unchanged and llcomp shifts by
+    # -(K+1) dx log t (the state densities' Jacobian); under y -> s y (PPLFP)
+    # llobs and llcomp shift by -K dy log s.  They used to depend on the units
+    # (MATLAB: PP llobs 18680 -> 1342 at t = 3).
+    P = _SCALE_PROBLEMS[problem]()
+    iic = 9 if family == "PP" else 12
+    base = _run_scaled_em(family, P)[iic]
+    K, dx = P["dN"].shape[1], P["A"].shape[0]
+    t = 3.0
+    st = _run_scaled_em(family, P, t=t)[iic]
+    for key in ("llobs", "AIC", "AICc", "BIC"):
+        np.testing.assert_allclose(st[key], base[key], rtol=1e-8, err_msg=key)
+    np.testing.assert_allclose(st["llcomp"], base["llcomp"] - (K + 1) * dx * np.log(t), rtol=1e-8)
+    if family == "PPLFP":
+        s, dy = 2.0, P["y"].shape[0]
+        ob = _run_scaled_em(family, P, s=s)[iic]
+        shift = -K * dy * np.log(s)
+        np.testing.assert_allclose(ob["llobs"], base["llobs"] + shift, rtol=1e-8)
+        np.testing.assert_allclose(ob["llcomp"], base["llcomp"] + shift, rtol=1e-8)
