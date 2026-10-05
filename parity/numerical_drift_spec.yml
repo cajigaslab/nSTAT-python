@@ -139,8 +139,9 @@ entries:
   # now deterministic run-to-run. Box-Muller vs MATLAB Ziggurat keeps abs
   # error ~0.5 on betahat_new; atol tightened 1e+1 → 1.0 (10× win).
   # 2026-10: pplfp_MStep.mat recaptured from the repaired MATLAB (fix/pp-em @
-  # 8dbd0e4, pending upstream merge), whose Monte Carlo draws use the lower
-  # Cholesky factor (F9); only betahat_new / muhat_new moved.
+  # 8dbd0e4, bit-identical at the final head aa88a2b; pending upstream merge),
+  # whose Monte Carlo draws use the lower Cholesky factor (F9); only
+  # betahat_new / muhat_new moved.
   - name: PPLFP_MStep
     recipe: pplfp_mstep
     fixture: tests/parity/fixtures/matlab_gold/pplfp_MStep.mat
@@ -361,7 +362,7 @@ entries:
 
   # 18. GLM M-step (MstepMethod = 'GLM') of PP_MStep / PPLFP_MStep, captured by
   # tools/parity/matlab/capture_em_glm_mstep.m from the repaired MATLAB
-  # (fix/pp-em @ 8dbd0e4, pending upstream merge).  Each entry compares every
+  # (fix/pp-em @ aa88a2b, pending upstream merge).  Each entry compares every
   # M-step output of one case.  Deterministic (no Monte Carlo).  Measured:
   # poisson cases and every closed-form output <= 5.0e-14 absolute, so rtol
   # 1e-10 / atol 1e-12; binomial GLM coefficients <= 1.8e-4 absolute (MATLAB's

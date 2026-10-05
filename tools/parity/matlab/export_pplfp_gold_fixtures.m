@@ -43,16 +43,19 @@ function export_pplfp_gold_fixtures(repoRoot, matlabRepoRoot)
 % pplfp_MStep.mat, is bit-identical to the previous capture.  Both saves
 % carry a matlab_source_note field recording the MATLAB source.
 %
-% 2026-10 recapture (pplfp_MStep.mat) from the final repaired MATLAB
-% -------------------------------------------------------------------
-% pplfp_MStep.mat was recaptured from fix/pp-em @ 8dbd0e4 (the frozen final
-% head; pending upstream merge), whose Monte Carlo state draws use the lower
-% Cholesky factor (F9: m + chol(W)'*z; it drew m + chol(W)*z, covariance
-% R*R').  Only betahat_new and muhat_new moved (the Newton-Raphson M-step's
-% draws); the other 26 fields, and every field of pplfp_EStep.mat, are
-% bit-identical.  The same run moves pplfp_EM.mat (F9 + F10: 12 fields) and
-% pplfp_SE.mat (F9: SE, Pvals) as the MATLAB track predicted; those two are
-% recaptured from the head that also carries the H1 information-block fix.
+% 2026-10 recapture from the final repaired MATLAB (fix/pp-em @ aa88a2b)
+% ----------------------------------------------------------------------
+% Recaptured from the final frozen head aa88a2b (pending upstream merge):
+% * pplfp_MStep.mat: the Monte Carlo state draws use the lower Cholesky factor
+%   (F9: m + chol(W)'*z; it drew m + chol(W)*z, covariance R*R'), so only
+%   betahat_new and muhat_new moved (first captured at 8dbd0e4; bit-identical
+%   at aa88a2b);
+% * pplfp_EM.mat: F9 (the whole EM path), F8 (the SE call reads the original
+%   y and original-scale sums), F10 (IC on the original scale) and H1 (the
+%   Q / R / Px0 information blocks) -- Ahat, Chat, Qhat, Rhat, alphahat,
+%   betahat, muhat, xKFinal, WKFinal, SE, Pvals and IC moved;
+% * pplfp_SE.mat: F9 and H1 -- SE and Pvals moved.
+% Every other field, and all of pplfp_EStep.mat, is bit-identical.
 % matlab_source_note records the MATLAB checkout's git commit.
 
 % USAGE

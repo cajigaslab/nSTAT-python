@@ -4,8 +4,9 @@ function capture_em_glm_mstep()
 % One M-step call with MstepMethod = 'GLM' of
 %   nstat.decoding.PointProcessEM.PP_MStep  and
 %   nstat.decoding.PPLFP.PPLFP_MStep
-% from the repaired MATLAB (fix/pp-em, frozen head 8dbd0e4; pending upstream
-% merge).  The GLM M-step regresses each cell's spikes on the smoothed means
+% from the repaired MATLAB (fix/pp-em, final frozen head aa88a2b; pending
+% upstream merge; the M-steps are identical at 8dbd0e4, and a capture from
+% there was bit-identical apart from this note).  The GLM M-step regresses each cell's spikes on the smoothed means
 % x_K through Covariate -> Trial -> TrialConfig ->
 % Analysis.RunAnalysisForAllNeurons ('GLM' for poisson, 'BNLRCG' for
 % binomial) -> FitResSummary and reads mu ('constant'), beta ('v<i>') and the
@@ -175,7 +176,7 @@ for i = 1:numel(cases)
 end
 out.case_names = {cases.name};
 out.matlab_version = version;
-out.matlab_source_note = ['Captured from the repaired MATLAB nSTAT fix/pp-em @ 8dbd0e4 ' ...
+out.matlab_source_note = ['Captured from the repaired MATLAB nSTAT fix/pp-em @ aa88a2b ' ...
                           '(pending upstream merge)'];
 
 save(outMat, '-struct', 'out', '-v7');

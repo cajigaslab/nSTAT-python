@@ -664,7 +664,7 @@ def _recipe_em_glm_mstep(fixture: dict[str, Any], args: dict[str, Any]) -> tuple
 
     ``args.case`` selects a case of ``em_glm_mstep.mat`` (captured by
     ``tools/parity/matlab/capture_em_glm_mstep.m`` from the repaired MATLAB,
-    fix/pp-em @ 8dbd0e4).  Returns the concatenation of every M-step output
+    fix/pp-em @ aa88a2b).  Returns the concatenation of every M-step output
     (A, Q, [C, R, alpha,] mu, beta, gamma, x0, Px0) and its gold.  The GLM
     branch never reads W_K (not in the fixture), so an all-NaN W_K is passed.
     """

@@ -2,7 +2,7 @@
 
 Gold: ``tests/parity/fixtures/matlab_gold/em_glm_mstep.mat``, captured by
 ``tools/parity/matlab/capture_em_glm_mstep.m`` from the repaired MATLAB
-(``fix/pp-em`` @ ``8dbd0e4``, pending upstream merge): one M-step call with
+(``fix/pp-em`` @ ``aa88a2b``, pending upstream merge): one M-step call with
 ``MstepMethod = 'GLM'`` per case, on the output of one E-step at the generating
 parameters (rng(42) synthetic data, dx = 2, N = 1500, previous gamma -0.2):
 

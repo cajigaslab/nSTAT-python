@@ -128,8 +128,8 @@ pending upstream merge); the Python port now matches them:
   `pp_square_history.mat` (default windows, 2 ms history, square `beta`,
   hybrid filter). Every other field is unchanged.
 
-Second pass, mirroring the final repaired MATLAB (`fix/pp-em` @ `8dbd0e4` and
-its review fixes G1-G3, H1; pending upstream merge):
+Second pass, mirroring the final repaired MATLAB (`fix/pp-em` @ `aa88a2b`:
+`8dbd0e4` plus its review fixes G1-G4 and H1; pending upstream merge):
 
 - Standard errors and information criteria on one scale. EM runs on a
   whitened system `x_s = Tq x`, `y_s = Tr y`; the SE pass now receives the
@@ -158,9 +158,11 @@ its review fixes G1-G3, H1; pending upstream merge):
   keeps its previous value, and the fit uses the `delta` time base. Both
   M-steps take MATLAB's optional trailing `delta` (default 0.001; also
   `mPPCO_MStep`) and reject an unknown `MstepMethod` with `ValueError`.
-- Gold: new `em_glm_mstep.mat` (one GLM M-step, nine cases) and
-  `pplfp_MStep.mat` recaptured (only the Monte Carlo-dependent `betahat_new`,
-  `muhat_new` moved).
+- Gold, captured from the final MATLAB head `aa88a2b`: new `em_glm_mstep.mat`
+  (one GLM M-step, nine cases); `pplfp_MStep.mat` (only the Monte
+  Carlo-dependent `betahat_new`, `muhat_new` moved); `pplfp_EM.mat` (estimates,
+  `IC`, `SE`, `Pvals`) and `pplfp_SE.mat` (`SE`, `Pvals`). `pp_estep.mat`,
+  `pp_square_history.mat` and `pplfp_EStep.mat` are bit-identical.
 
 - Optional-dependency errors now distinguish "not installed" from "installed
   but failed to import" (for example an ABI mismatch).
