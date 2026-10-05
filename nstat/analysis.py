@@ -24,7 +24,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
-from scipy.stats import chi2, norm
 
 from .SignalObj import SignalObj
 from .fit import FitResult, _SingleFit, _ksdiscrete, _matlab_compute_ks_arrays
@@ -851,6 +850,8 @@ class Analysis:
             z = z[:, None]
         U = 1.0 - np.exp(-z)
         U = np.clip(U, 1e-6, 1.0 - 1e-6)
+        from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
         X = norm.ppf(U)
         if X.shape[0] <= 1:
             lags = np.asarray([], dtype=float)
@@ -1181,6 +1182,8 @@ class Analysis:
                 deviance = float(max(-2.0 * gamma, 0.0))
                 devianceMat[neighbor, neuron_index] = deviance
                 dim_diff = max(int(abs(np.diff(np.asarray(fit.numCoeffs, dtype=int))[0])), 1)
+                from scipy.stats import chi2  # lazy: keep scipy.stats out of `import nstat`
+
                 p_val = float(chi2.sf(deviance, dim_diff))
                 p_vals.append(p_val)
                 p_coords.append((neighbor, neuron_index))

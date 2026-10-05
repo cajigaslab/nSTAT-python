@@ -29,7 +29,6 @@ import logging
 from collections.abc import Sequence
 
 import numpy as np
-from scipy.stats import norm
 
 from .cif import CIF
 from .errors import UnsupportedWorkflowError
@@ -428,6 +427,8 @@ def _ztest_pvalue(param: float, se: float) -> float:
     """Two-tailed z-test p-value: H0 param == 0, matching Matlab ``ztest``."""
     if se <= 0 or not np.isfinite(se):
         return 1.0
+    from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
     z = param / se
     return float(2.0 * norm.sf(np.abs(z)))
 
@@ -3248,6 +3249,8 @@ class DecodingAlgorithms:
         # Fallback: 3-D covariance (N, Dx, Dx) from smoother — z-score CIs
         x_tm, W_tm, transposed = DecodingAlgorithms._state_history_time_major(xK, Wku)
         variances = np.clip(np.diagonal(W_tm, axis1=1, axis2=2), 0.0, None)
+        from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
         z = float(norm.ppf(1.0 - float(alphaVal) / 2.0))
         lower = x_tm - z * np.sqrt(variances)
         upper = x_tm + z * np.sqrt(variances)
@@ -5208,6 +5211,8 @@ class DecodingAlgorithms:
     @staticmethod
     def _ztest_pvalue(param, se):
         """Two-sided z-test p-value for H0: param == 0."""
+        from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
         se_safe = np.where(se > 0, se, 1.0)
         z = np.abs(param / se_safe)
         p = 2.0 * (1.0 - norm.cdf(z))
