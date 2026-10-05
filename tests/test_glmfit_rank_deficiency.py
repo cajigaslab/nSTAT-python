@@ -100,6 +100,44 @@ def test_glmfit_rank_deficiency_is_not_triggered_by_scaling(scale) -> None:
     assert _glmfit_independent_columns(X) is None
 
 
+def test_non_finite_design_runs_the_unchanged_solver() -> None:
+    # Pin of the behaviour before the rank handling (3543128): a design with a
+    # NaN sample goes straight to the solver, which returns an all-NaN fit, and
+    # neither GLMFit, RunAnalysisForNeuron nor the EM GLM M-step raises (scipy's
+    # qr, called with check_finite=True, used to raise "array must not contain
+    # infs or NaNs").  MATLAB glmfit drops the NaN rows (statremovenan); that is
+    # not mirrored (parity/matlab_defects.yml).
+    from nstat.decoding_algorithms import _em_glm_mstep
+
+    x, dN = _data()
+    x[0, 100] = np.nan
+    fit, X = _fit(x, dN)
+    assert _glmfit_independent_columns(X) is None
+    y = np.asarray(dN, dtype=float)[: X.shape[0]]
+    ref = fit_poisson_glm(X, y, include_intercept=False, l2=0.0, max_iter=120)
+    np.testing.assert_array_equal(np.asarray(fit.b, dtype=float), ref.coefficients)
+    assert np.all(np.isnan(np.asarray(fit.b, dtype=float)))
+    assert np.all(np.isnan(np.asarray(fit.stats["se"], dtype=float)))
+    assert np.isnan(float(fit.dev))
+
+    trial, configs = _trial(x, dN)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        result = Analysis.RunAnalysisForNeuron(trial, 0, configs, 0)
+    assert np.all(np.isnan(np.asarray(result.b[0], dtype=float)))
+
+    # The GLM M-step keeps every previous coefficient (a NaN se fails se < 100).
+    rng = np.random.default_rng(1)
+    xs = np.vstack([np.cumsum(0.05 * rng.standard_normal(800)), np.sin(np.arange(800) / 40.0)])
+    spikes = (rng.random((2, 800)) < 0.04).astype(float)
+    xs[0, 100] = np.nan
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        mu, beta, _ = _em_glm_mstep(spikes, xs, "poisson", np.full(2, -3.0), np.zeros((2, 2)), np.array(0.0), None, 0.001)
+    np.testing.assert_array_equal(mu, [-3.0, -3.0])
+    np.testing.assert_array_equal(beta, np.zeros((2, 2)))
+
+
 def test_ridge_fit_keeps_every_column() -> None:
     # MATLAB glmfit is unpenalized; with the Python-only ridge (l2 > 0)
     # X'WX + l2 I is invertible, so no column is dropped and every SE is finite.

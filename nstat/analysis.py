@@ -158,10 +158,19 @@ def _glmfit_independent_columns(X: np.ndarray) -> np.ndarray | None:
     ``rankx < ncolx`` MATLAB fits on ``x(:, perm(1:rankx))`` and forces the
     coefficients and standard errors of the other (dependent) columns to 0.
     Returns those kept column indices in MATLAB's pivot order.
+
+    A design with a non-finite entry returns ``None`` (no rank handling), so
+    ``GLMFit`` runs the unchanged solver on it and returns its all-NaN fit, as
+    it did before the rank handling was added (scipy's ``qr`` would raise on
+    it).  MATLAB ``glmfit`` instead drops the NaN rows (``statremovenan``)
+    and fits the rest; that is not mirrored (recorded in
+    ``parity/matlab_defects.yml``).
     """
     from scipy.linalg import qr
 
     X = np.asarray(X, dtype=float)
+    if not np.all(np.isfinite(X)):
+        return None
     n, ncolx = X.shape
     if n == 0 or ncolx == 0:
         return None
