@@ -29,7 +29,12 @@ dx = 10: 5 of 11): MATLAB ``glmfit`` drops the dependent columns (b = 0,
 se = 0) and the M-step returns those beta entries as 0.  ``Analysis.GLMFit``
 mirrors that rank handling; before it did, the PP dx = 2 / C = 1 beta was
 [33.0, -620.7] instead of MATLAB's [10.66, 0].  Each f3 case also stores
-MATLAB's per-cell ``glmfit`` reference (``glmfit_b``).
+MATLAB's per-cell ``glmfit`` reference (``glmfit_b``).  Platform note: which
+dependent column is zeroed is LAPACK ``geqp3``'s pivot choice; here the column
+norms are well separated and the kept set equals MATLAB's (MKL) on Accelerate,
+but a near-tie on another LAPACK build (e.g. OpenBLAS) could zero a different
+column with the same linear predictor -- read an f3 failure on such a platform
+in that light.
 
 Every output is compared: A, Q (C, R, alpha), x0, Px0 (closed form) and mu,
 beta, gamma (the GLM fit, mapped by label).  ``W_K`` is not in the fixture:

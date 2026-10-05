@@ -9,7 +9,8 @@ came from ``inv(X'WX)`` of a singular matrix, clipped at 0, so arbitrary
 coefficients passed the EM GLM M-step's ``se < 100`` filter (MATLAB's own F3
 test construction: beta [33.0, -620.7] instead of [10.66, 0]; see
 ``tests/test_em_glm_mstep_matlab_gold.py``).  A full-rank design keeps the
-unchanged solver, bit for bit.  (The binomial ``'BNLRCG'`` fit mirrors MATLAB's
+unchanged solver, bit for bit, and so does a ridge fit (``l2 > 0``, Python-only:
+MATLAB's glmfit is unpenalized).  (The binomial ``'BNLRCG'`` fit mirrors MATLAB's
 ``bnlrCG``, which has no rank handling, and is unchanged.)
 """
 from __future__ import annotations
@@ -41,12 +42,12 @@ def _trial(x, dN, delta=0.001):
     return trial, ConfigCollection([cfg])
 
 
-def _fit(x, dN):
+def _fit(x, dN, **kwargs):
     trial, configs = _trial(x, dN)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         configs.setConfig(trial, 0)
-        return Analysis.GLMFit(trial, 0, 0, "GLM"), np.asarray(trial.getDesignMatrix(0), dtype=float)
+        return Analysis.GLMFit(trial, 0, 0, "GLM", **kwargs), np.asarray(trial.getDesignMatrix(0), dtype=float)
 
 
 def _data(K=1500, seed=3):
@@ -97,3 +98,12 @@ def test_glmfit_rank_deficiency_is_not_triggered_by_scaling(scale) -> None:
     rng = np.random.default_rng(5)
     X = np.column_stack([np.ones(500), scale * rng.standard_normal((500, 2))])
     assert _glmfit_independent_columns(X) is None
+
+
+def test_ridge_fit_keeps_every_column() -> None:
+    # MATLAB glmfit is unpenalized; with the Python-only ridge (l2 > 0)
+    # X'WX + l2 I is invertible, so no column is dropped and every SE is finite.
+    x, dN = _data()
+    fit, _ = _fit(np.vstack([x, 2.0 * x[1]]), dN, l2=1e-3)
+    b, se = np.asarray(fit.b, dtype=float), np.asarray(fit.stats["se"], dtype=float)
+    assert np.all(b != 0.0) and np.all(np.isfinite(se)) and np.all(se > 0)

@@ -158,7 +158,8 @@ Second pass, mirroring the final repaired MATLAB (`fix/pp-em` @ `aa88a2b`:
   keeps its previous value, and the fit uses the `delta` time base. Both
   M-steps take MATLAB's optional trailing `delta` (default 0.001; also
   `mPPCO_MStep`) and reject an unknown `MstepMethod` with `ValueError`.
-- `Analysis.GLMFit` (poisson, `'GLM'`) now handles a rank-deficient design as
+- `Analysis.GLMFit` (poisson, `'GLM'`, unpenalized: the default `l2 = 0`) now
+  handles a rank-deficient design as
   MATLAB's `glmfit` does: a column-pivoted QR finds the rank, the fit uses the
   independent columns, and the dependent columns get coefficient 0 and
   standard error 0 (they used to get arbitrary coefficients, with standard

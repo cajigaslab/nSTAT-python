@@ -608,6 +608,15 @@ class Analysis:
             Log-likelihood evaluated with the fit parameters.
         distribution : str
             ``'poisson'`` or ``'binomial'``.
+
+        Notes
+        -----
+        A rank-deficient design in the unpenalized (``l2 = 0``) poisson
+        ``'GLM'`` fit is handled as MATLAB ``glmfit`` handles it: a
+        column-pivoted QR finds the rank, the fit uses the independent
+        columns, and each dependent column gets coefficient 0 and standard
+        error 0.  The binomial ``'BNLRCG'`` fit (MATLAB ``bnlrCG``) has no
+        rank handling.
         """
         algorithm = str(Algorithm or "GLM").upper()
         if algorithm not in {"GLM", "BNLRCG"}:
@@ -668,7 +677,9 @@ class Analysis:
             # (pivoted QR) and reports b = 0, se = 0 for them.  Only that case
             # takes the branch below; a full-rank design runs the unchanged
             # solver.  (BNLRCG -- MATLAB's bnlrCG -- has no rank handling.)
-            kept = _glmfit_independent_columns(X)
+            # Unpenalized fits only (MATLAB glmfit has no ridge); with l2 > 0
+            # X'WX + l2 I is invertible and the ridge solution is kept.
+            kept = _glmfit_independent_columns(X) if l2 == 0.0 else None
             if kept is None:
                 glm_res = fit_poisson_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
                 lambda_delta = glm_res.predict_rate(X)
