@@ -235,3 +235,119 @@ def test_single_cell_history_stored_2d_equals_3d(family, fit) -> None:
         assert sorted(out2[part]) == sorted(out3[part])
         for key in out3[part]:
             assert np.array_equal(np.asarray(out2[part][key]), np.asarray(out3[part][key])), (part, key)
+
+
+# ---------------------------------------------------------------------------
+# M-steps: binomial Newton-Raphson beta Hessian (MATLAB bug 6 / C5) and the
+# all-zero gamma skip (MATLAB ``any(any(gammahat_new~=0))``)
+# ---------------------------------------------------------------------------
+
+
+def _mstep_problem(fit="binomial", *, dx=2, C=3, nW=2, K=400, seed=4):
+    """Known state path x (W_K = 0.02 I) and spikes from the generating (mu, beta, gamma)."""
+    rng = np.random.default_rng(seed)
+    A = np.array([[0.95, 0.02], [-0.03, 0.9]])[:dx, :dx]
+    x = np.zeros((dx, K))
+    prev = np.zeros(dx)
+    for k in range(K):
+        prev = A @ prev + rng.multivariate_normal(np.zeros(dx), np.diag([0.02, 0.03])[:dx, :dx])
+        x[:, k] = prev
+    mu = np.linspace(-1.2, -0.6, C) if fit == "binomial" else np.linspace(-2.5, -2.0, C)
+    beta = 0.8 * rng.standard_normal((dx, C))
+    gamma = -0.3 - 0.5 * rng.random((nW, C))
+    p = _link(mu[:, None] + beta.T @ x, fit)
+    dN = (rng.random((C, K)) < np.minimum(p, 0.9)).astype(float)
+    wt = np.arange(nW + 1) * 0.001
+    HkAll = _compute_history_terms(dN, 0.001, wt)
+    W_K = np.tile((0.02 * np.eye(dx))[:, :, None], (1, 1, K))
+    ES = dict(Sxkm1xkm1=x @ x.T, Sxkxkm1=x[:, 1:] @ x[:, :-1].T, Sxkm1xk=x[:, :-1] @ x[:, 1:].T, Sxkxk=x @ x.T,
+              sumXkTerms=0.02 * K * np.eye(dx), Sxkyk=x @ (np.array([[1.0, 0.5]])[:, :dx] @ x).T,
+              sumYkTerms=0.1 * K * np.eye(1))
+    return dict(x=x, dN=dN, wt=wt, HkAll=HkAll, mu=mu, beta=beta, gamma=gamma, W_K=W_K, ES=ES, dx=dx, C=C, K=K,
+                y=np.array([[1.0, 0.5]])[:, :dx] @ x)
+
+
+def _mc_draws(P, z_source, McExp=50):
+    """The M-step's own draws x_K(:,k) + chol(W_K(:,:,k))' z, z from ``z_source`` in time order."""
+    dx, K = P["dx"], P["K"]
+    draws = np.zeros((dx, McExp, K))
+    for k in range(K):
+        z = z_source((dx, McExp))
+        draws[:, :, k] = P["x"][:, k:k + 1] + np.linalg.cholesky(P["W_K"][:, :, k]).T @ z
+    return draws
+
+
+def _beta_gradient(P, b, c, draws, fit="binomial"):
+    """GradTerm of the Newton beta step: d/d beta of the MC expected complete-data log-likelihood."""
+    G = np.zeros(P["dx"])
+    for k in range(P["K"]):
+        xk = draws[:, :, k]
+        p = _link(P["mu"][c] + b @ xk + P["gamma"][:, c] @ P["HkAll"][k, :, c], fit)
+        d = P["dN"][c, k]
+        if fit == "poisson":
+            G += d * P["x"][:, k] - np.mean(p * xk, axis=1)
+        else:
+            G += d * P["x"][:, k] - (d + 1) * np.mean(p * xk, axis=1) + np.mean(p ** 2 * xk, axis=1)
+    return G
+
+
+def _run_pp_mstep(P, fit="binomial", gamma=None, seed=42):
+    cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0)
+    np.random.seed(seed)
+    return DecodingAlgorithms.PP_MStep(
+        P["dN"], P["x"], P["W_K"], np.zeros(P["dx"]), 1e-9 * np.eye(P["dx"]), P["ES"], fit, P["mu"], P["beta"],
+        P["gamma"] if gamma is None else gamma, P["wt"], P["HkAll"], cons, "NewtonRaphson",
+    )
+
+
+def _run_pplfp_mstep(P, fit="binomial", gamma=None, seed=42):
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, 50, 0)
+    with seeded_global_rng(seed):
+        return PPLFP.PPLFP_MStep(
+            P["dN"], P["y"], P["x"], P["W_K"], np.zeros(P["dx"]), 1e-9 * np.eye(P["dx"]), P["ES"], fit, P["mu"],
+            P["beta"], P["gamma"] if gamma is None else gamma, P["wt"], P["HkAll"], cons, "NewtonRaphson",
+        )
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+@pytest.mark.parametrize("fit", ["poisson", "binomial"])
+def test_newton_raphson_beta_step_reaches_a_stationary_point(family, fit) -> None:
+    # The Newton beta step must end where the gradient of the Monte-Carlo
+    # expected complete-data log-likelihood (with the step's own draws) is 0.
+    # With the former positive-definite binomial Hessian the step moved
+    # downhill: one M-step from the generating beta went to |beta| ~ 1e4-1e14.
+    P = _mstep_problem(fit)
+    if family == "PP":
+        out = _run_pp_mstep(P, fit)
+        beta_out = out[3]
+        rs = np.random.RandomState()
+        rs.seed(42)
+        draws = _mc_draws(P, lambda shape: rs.randn(*shape))
+    else:
+        out = _run_pplfp_mstep(P, fit)
+        beta_out = out[6]
+        gen = np.random.default_rng(42)
+        draws = _mc_draws(P, gen.standard_normal)
+    assert np.all(np.isfinite(beta_out))
+    assert np.max(np.abs(beta_out - P["beta"])) < 2.0
+    for c in range(P["C"]):
+        g_in = _beta_gradient(P, P["beta"][:, c], c, draws, fit)
+        g_out = _beta_gradient(P, beta_out[:, c], c, draws, fit)
+        assert np.max(np.abs(g_out)) < 1e-4 * max(1.0, np.max(np.abs(g_in))), (c, g_in, g_out)
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_all_zero_gamma_is_not_estimated(family) -> None:
+    # MATLAB skips the gamma Newton step when ~any(any(gammahat_new~=0)): a
+    # zero gamma means "no history coefficients", even with windowTimes set.
+    P = _mstep_problem("poisson")
+    zero = np.zeros_like(P["gamma"])
+    out = _run_pp_mstep(P, "poisson", gamma=zero) if family == "PP" else _run_pplfp_mstep(P, "poisson", gamma=zero)
+    gamma_out = out[4] if family == "PP" else out[7]
+    assert np.array_equal(np.asarray(gamma_out), zero)
+    # ... while a nonzero gamma is estimated.
+    out = _run_pp_mstep(P, "poisson") if family == "PP" else _run_pplfp_mstep(P, "poisson")
+    gamma_out = out[4] if family == "PP" else out[7]
+    assert not np.array_equal(np.asarray(gamma_out), P["gamma"])

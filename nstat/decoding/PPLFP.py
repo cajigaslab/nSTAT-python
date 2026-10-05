@@ -2989,10 +2989,13 @@ class PPLFP:
                             - (dN[c, k] + 1) * ExpLambdaXk
                             + ExpLambdaSquaredXk
                         )
+                        # Jacobian of GradTerm (MATLAB PPLFP_MStep, repaired C5):
+                        # (-(dN+1)p + (dN+3)p^2 - 2p^3) x x'.  The former
+                        # E[p xx'] + E[p^2 xx'] - 2E[p^3 xx'] had the wrong sign.
                         HessianTerm = (
                             HessianTerm
-                            + ExplambdaDeltaXkXk
-                            + ExplambdaDeltaSqXkXkT
+                            - (dN[c, k] + 1) * ExplambdaDeltaXkXk
+                            + (dN[c, k] + 3) * ExplambdaDeltaSqXkXkT
                             - 2 * ExplambdaDeltaCubeXkXkT
                         )
                 if (

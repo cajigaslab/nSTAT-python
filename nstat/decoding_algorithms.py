@@ -6544,7 +6544,13 @@ class DecodingAlgorithms:
                         ExpLambdaXk = (1.0 / McExp) * np.sum(ld[None, :] * xk, axis=1)
                         ExpLambdaSquaredXk = (1.0 / McExp) * np.sum((ld ** 2)[None, :] * xk, axis=1)
                         GradTerm += dN[c, k] * x_K[:, k] - (dN[c, k] + 1) * ExpLambdaXk + ExpLambdaSquaredXk
-                        HessianTerm += ExplambdaDeltaXkXk + ExplambdaDeltaSqXkXkT - 2 * ExplambdaDeltaCubeXkXkT
+                        # Jacobian of GradTerm: (-(dN+1)p + (dN+3)p^2 - 2p^3) x x' (the
+                        # form the mu and gamma steps below use; MATLAB PP_MStep,
+                        # repaired).  The former E[p] + E[p^2] - 2E[p^3] is positive
+                        # definite, so the Newton step moved downhill and diverged.
+                        HessianTerm += (-(dN[c, k] + 1) * ExplambdaDeltaXkXk
+                                        + (dN[c, k] + 3) * ExplambdaDeltaSqXkXkT
+                                        - 2 * ExplambdaDeltaCubeXkXkT)
 
                 if np.any(np.isnan(HessianTerm)) or np.any(np.isinf(HessianTerm)):
                     betahat_newTemp = betahat_new[:, c]
@@ -6611,9 +6617,13 @@ class DecodingAlgorithms:
                     break
 
         # --- Gamma Newton-Raphson ---
+        # MATLAB: if(~isempty(windowTimes) && any(any(gammahat_new~=0))) -- an
+        # all-zero gamma means "no history coefficients" and is left at zero (as
+        # PPLFP_MStep does).  The former size-based test estimated gamma from an
+        # all-zero init whenever windowTimes was non-empty.
         gammahat_flat = gammahat_new.ravel()
         has_gamma = (windowTimes is not None and len(windowTimes) > 0
-                     and (gammahat_flat.size > 1 or (gammahat_flat.size == 1 and gammahat_flat[0] != 0)))
+                     and bool(np.any(gammahat_flat != 0)))
 
         if has_gamma and gammahat_new.ndim >= 1:
             nGamma = gammahat_new.shape[0] if gammahat_new.ndim == 1 else gammahat_new.shape[0]
