@@ -1831,6 +1831,19 @@ entries:
   fixture_impact: '`em_drivers.mat` recaptured from `aa88a2b` with the new walk_* / mldivide_* fields (the 284 existing fields bit-identical); the pp_sep tolerances re-measured.'
   discovered: P2b-2 review / 2026-10
   upstream_status: n/a
+- id: mppco-decode-update-linterm-clip
+  title: '`DecodingAlgorithms.mPPCODecode_update` still clips linTerm to +-500 (Python-only guard; follow-up)'
+  defect_class: Porting gap
+  matlab_location: '`DecodingAlgorithms.mPPCODecode_update` (`DecodingAlgorithms.m:1100`), a deprecated alias of `nstat.decoding.PPLFP.PPLFP_Decode_update` (`+nstat/+decoding/PPLFP.m:310`), at `fix/pp-em` @ `aa88a2b`.'
+  matlab_behavior: >-
+    `lambdaDeltaMat = exp(linTerm)` (binomial `exp(linTerm)./(1+exp(linTerm))`), unclipped, then every NaN / Inf
+    entry set to 1.
+  correct_behavior: As MATLAB (Python's `PPLFP_Decode_update` already is).
+  python_implementation:
+  - '`DecodingAlgorithms.mPPCODecode_update` is the legacy standalone body, not one of the `mPPCO_*` forwarders (it takes MATLAB''s permuted (nW, C, N) history; see `tests/test_mppco_aliases.py`).  It computes `exp(clip(linTerm, -500, 500))`.  A Poisson linTerm above 500 gets exp(500) where MATLAB gets exp(linTerm), or 1 above ~709 (Inf -> 1).  Below -500 either form gets exp(-500) instead of the smaller value (or 0); the binomial intensity differs only there.  The same kind of guard was removed from the EM routines and the linear decoders (`f5738cd`); this one is outside that scope (P2b-2 review, minor 5).  Follow-up: use `_matlab_lambda_delta`, or forward to `PPLFP_Decode_update` as MATLAB does once the history-layout question is decided.'
+  fixture_impact: none (no gold fixture or test calls `mPPCODecode_update`)
+  discovered: P2b-2 review / 2026-10
+  upstream_status: n/a
 - id: regen-notebook-fidelity-worktree-path
   title: '`make regen` from a worktree without a sibling ../nSTAT rewrites notebook_fidelity.yml (repo tooling)'
   defect_class: Tooling (repo, not a MATLAB defect)
