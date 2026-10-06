@@ -204,9 +204,14 @@ does about it, and the known gaps.
   rank-deficient (the history fits: design 5001 x 9 of rank 7, because the
   notebook's synthetic population had almost no spikes; see the ledger entry
   `history-examples-near-zero-spike-population`, now fixed). The population's
-  baseline rate was raised from ~0.1 Hz to ~30 Hz so every Fit1/Fit2 GLM is
-  full rank, and the gallery (`docs/notebook_galleries/HistoryExamples/`) was
-  regenerated to match.
+  baseline rate was raised from ~0.1 Hz to ~30 Hz; every Fit2 standard error
+  is now finite and nonzero (measured: fitted `mu` -4.4 to -3.7, was -120;
+  KS 0.03-0.12, was 1). The simulator has no self-history term, so the two
+  extra history regressors fit noise, not a real effect -- `dBIC` is
+  consistently positive (the AIC/BIC penalty), which is the correct,
+  non-degenerate outcome for this comparison. The gallery
+  (`docs/notebook_galleries/HistoryExamples/`) and the notebook's own
+  embedded cell outputs were both regenerated to match.
 - The EM routines report progress through `logging` instead of `print` and are
   silent by default (`KF_EM` and `PP_EM` on logger `nstat.decoding_algorithms`,
   `PPLFP_EM` / `PPLFP_MStep` on `nstat.decoding.PPLFP`).
