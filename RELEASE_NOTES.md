@@ -67,6 +67,13 @@
   any gold fixture (a singular Q, R or Px0 already makes EM's E-step
   log-likelihood non-finite first), so this is a stability fix, covered by
   a synthetic regression test.
+- Fix: `DecodingAlgorithms.mPPCODecode_update` is now a forwarder to
+  `PPLFP_Decode_update`, like the other `mPPCO_*` deprecated aliases
+  (`DeprecationWarning` with MATLAB's text; the alias's own frozen
+  signature still takes MATLAB's permuted `(numWindows, numCells, N)`
+  history, transposed to the canonical `(N, numWindows, numCells)` layout
+  before forwarding). Previously it was a stale standalone body with its
+  own `+-500` linTerm clip and never warned at all.
 
 **Point-process EM (`PP_EM`, `PPLFP_EM`, `mPPCO_*`) and the linear decoders
 mirror the repaired MATLAB**

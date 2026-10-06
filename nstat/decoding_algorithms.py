@@ -7485,134 +7485,38 @@ class DecodingAlgorithms:
     def mPPCODecode_update(x_p, W_p, C, R, y, alpha, dN, mu, beta,
                            fitType='poisson', gamma=None, HkAll=None,
                            time_index=0, WuConv=None):
-        """Update step for the mPPCO filter (PP + continuous observation).
+        """[DEPRECATED] Alias of :meth:`PPLFP_Decode_update` (the PPLFP measurement update).
 
-        Matlab: ``DecodingAlgorithms.mPPCODecode_update``  (lines 4855-4944)
+        Matlab: ``DecodingAlgorithms.mPPCODecode_update`` (lines 4855-4944) is
+        a deprecation shim that warns ``nSTAT:deprecated:mPPCO`` and forwards
+        ``varargin{:}`` to ``DecodingAlgorithms.PPLFP_Decode_update`` (the
+        mPPCO family was renamed PPLFP).  This mirror emits a
+        :class:`DeprecationWarning` with MATLAB's message and forwards to
+        :meth:`PPLFP_Decode_update`, so it returns exactly what
+        ``PPLFP_Decode_update`` returns: ``(x_u, W_u, lambdaDeltaMat)``.
 
-        This combines both the point-process update terms (sumValVec/sumValMat)
-        AND the Kalman/continuous-observation terms ``C'*R^{-1}*C`` and ``C'*R^{-1}*(y-Cx-alpha)``.
+        Unlike the other ``mPPCO_*`` aliases, this one's *documented* MATLAB
+        contract takes ``HkAll`` permuted as ``(numWindows, numCells, N)``
+        (time on the 3rd axis) -- the layout this alias's own standalone body
+        used before this fix, and the layout callers of this frozen API
+        signature still pass.  ``PPLFP_Decode_update`` takes the canonical
+        ``(N, numWindows, numCells)`` layout, so ``HkAll`` is transposed
+        (``np.transpose(HkAll, (2, 0, 1))``) before forwarding; every other
+        argument forwards unchanged.
 
-        Parameters
-        ----------
-        x_p   : (ns,)   -- predicted state
-        W_p   : (ns,ns) -- predicted covariance
-        C     : (nObs,ns) -- observation matrix
-        R     : (nObs,nObs) -- observation noise covariance
-        y     : (nObs,)  -- continuous observation at this time step
-        alpha : (nObs,)  -- observation offset
-        dN    : (numCells,N) -- spike matrix (full)
-        mu    : (numCells,) -- CIF baseline
-        beta  : (ns,numCells) -- CIF state coefficients
-        fitType : 'poisson' or 'binomial'
-        gamma : (numWindows,numCells) or scalar -- history coefficients
-        HkAll : (numWindows,numCells,N) -- permuted history tensor with time on 3rd axis
-        time_index : int -- 0-based time index
-        WuConv : converged covariance or None
-
-        Returns
-        -------
-        x_u : (ns,)
-        W_u : (ns,ns)
-        lambdaDeltaMat : (numCells,1)
+        Use :meth:`PPLFP_Decode_update` (or
+        ``nstat.decoding.PPLFP.PPLFP_Decode_update``, with the canonical
+        ``(N, numWindows, numCells)`` ``HkAll``) instead.
         """
-        x_p = np.asarray(x_p, dtype=float).reshape(-1)
-        ns = x_p.size
-        W_p = np.asarray(W_p, dtype=float).reshape(ns, ns)
-        obs = _as_observation_matrix(dN)
-        numCells = obs.shape[0]
-        C = np.asarray(C, dtype=float)
-        R = np.asarray(R, dtype=float)
-        y = np.asarray(y, dtype=float).reshape(-1)
-        alpha = np.asarray(alpha, dtype=float).reshape(-1)
-        mu_vec = np.asarray(mu, dtype=float).reshape(-1)
-        beta_mat = np.asarray(beta, dtype=float)
-        if beta_mat.ndim == 1:
-            beta_mat = beta_mat.reshape(-1, 1)
-
-        # Default gamma
-        if gamma is None or (np.isscalar(gamma) and gamma == 0):
-            gamma_mat = np.zeros((1, numCells), dtype=float)
+        _warn_mppco_deprecated("mPPCODecode_update", "PPLFP_Decode_update")
+        if HkAll is None or _is_empty_value(HkAll):
+            HkAll_canonical = HkAll
         else:
-            gamma_mat = np.asarray(gamma, dtype=float)
-            if gamma_mat.ndim == 1:
-                gamma_mat = gamma_mat.reshape(-1, 1)
-
-        # Default HkAll -- expects (numWindows, numCells, N) orientation
-        if HkAll is None:
-            HkAll_arr = np.zeros((1, numCells, 1), dtype=float)
-        else:
-            HkAll_arr = np.asarray(HkAll, dtype=float)
-
-        sumValVec = np.zeros(ns, dtype=float)
-        sumValMat = np.zeros((ns, ns), dtype=float)
-        lambdaDeltaMat = np.zeros(numCells, dtype=float)
-
-        # If gamma is scalar zero, expand
-        if gamma_mat.size == 1 and gamma_mat.flat[0] == 0:
-            gamma_mat = np.zeros_like(mu_vec).reshape(-1, 1)
-
-        # Ensure gamma_mat is (numWindows, numCells)
-        if gamma_mat.shape[1] != numCells:
-            if gamma_mat.shape[0] == numCells:
-                gamma_mat = gamma_mat.T
-
-        # Replicate gamma for all cells if needed
-        if gamma_mat.ndim == 2 and gamma_mat.shape[1] != numCells:
-            gamma_mat = np.tile(gamma_mat, (1, numCells))
-
-        # time_index is 0-based after the v0.5.0 migration.
-        tidx = int(time_index)
-        if HkAll_arr.ndim == 3 and HkAll_arr.shape[2] > tidx:
-            Histterm = HkAll_arr[:, :, tidx]  # (numWindows, numCells)
-        else:
-            Histterm = np.zeros((gamma_mat.shape[0], numCells), dtype=float)
-
-        if Histterm.shape[0] != numCells:
-            pass  # already (numWindows, numCells) orientation
-        else:
-            if Histterm.shape[0] == numCells and Histterm.shape[1] != numCells:
-                Histterm = Histterm.T
-
-        if str(fitType) == 'binomial':
-            # linTerm = mu + beta'*x_p + diag(gamma'*Histterm')
-            linTerm = mu_vec + beta_mat.T @ x_p + np.diag(gamma_mat.T @ Histterm)
-            exp_linTerm = np.exp(np.clip(linTerm, -500, 500))
-            lambdaDeltaMat = exp_linTerm / (1.0 + exp_linTerm)
-            lambdaDeltaMat = np.where(np.isnan(lambdaDeltaMat) | np.isinf(lambdaDeltaMat), 1.0, lambdaDeltaMat)
-
-            dN_t = obs[:, int(time_index)]
-            factor = (dN_t - lambdaDeltaMat) * (1.0 - lambdaDeltaMat)
-            sumValVec = np.sum(beta_mat * factor[None, :], axis=1)
-            tempVec = (dN_t + (1.0 - 2.0 * lambdaDeltaMat)) * (1.0 - lambdaDeltaMat) * lambdaDeltaMat
-            sumValMat = (beta_mat * tempVec[None, :]) @ beta_mat.T
-
-        elif str(fitType) == 'poisson':
-            linTerm = mu_vec + beta_mat.T @ x_p + np.diag(gamma_mat.T @ Histterm)
-            lambdaDeltaMat = np.exp(np.clip(linTerm, -500, 500))
-            lambdaDeltaMat = np.where(np.isnan(lambdaDeltaMat) | np.isinf(lambdaDeltaMat), 1.0, lambdaDeltaMat)
-
-            dN_t = obs[:, int(time_index)]
-            sumValVec = np.sum(beta_mat * (dN_t - lambdaDeltaMat)[None, :], axis=1)
-            sumValMat = (beta_mat * lambdaDeltaMat[None, :]) @ beta_mat.T
-
-        if WuConv is None or _is_empty_value(WuConv):
-            # sumValMat += C' * R^{-1} * C  (continuous observation term)
-            sumValMat = sumValMat + C.T @ np.linalg.solve(R, C)
-            I = np.eye(ns, dtype=float)
-            try:
-                Wu = W_p @ (I - np.linalg.solve(I + sumValMat @ W_p, sumValMat @ W_p))
-            except np.linalg.LinAlgError:
-                Wu = W_p.copy()
-            if np.any(np.isnan(Wu)) or np.any(np.isinf(Wu)):
-                Wu = W_p.copy()
-            W_u = _symmetrize(Wu)
-        else:
-            W_u = np.asarray(WuConv, dtype=float).reshape(ns, ns)
-
-        # x_u = x_p + W_u*sumValVec + (W_u*C'/R)*(y - C*x_p - alpha)
-        x_u = x_p + W_u @ sumValVec + W_u @ C.T @ np.linalg.solve(R, y - C @ x_p - alpha)
-
-        return x_u, W_u, lambdaDeltaMat.reshape(-1, 1)
+            HkAll_canonical = np.transpose(np.asarray(HkAll, dtype=float), (2, 0, 1))
+        return DecodingAlgorithms.PPLFP_Decode_update(
+            x_p, W_p, C, R, y, alpha, dN, mu, beta, fitType, gamma,
+            HkAll_canonical, time_index, WuConv,
+        )
 
     @staticmethod
     def mPPCO_EMCreateConstraints(EstimateA=1, AhatDiag=0, QhatDiag=1,
