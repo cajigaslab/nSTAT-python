@@ -1703,18 +1703,51 @@ entries:
   upstream_status: fixed-upstream-pending-merge
   resolved_in: nSTAT PR #137 (fix/se-singular-iobs @ c123ddf, issue #136); nstat-python fix/se-singular-projection
 - id: em-kf-family-not-repaired
-  title: 'KF_EM keeps the upper-factor Monte Carlo draws and whitening and the information-block precedence defect'
-  defect_class: Bug (upstream MATLAB, not fixed)
-  matlab_location: '`+nstat/+decoding/KF_EM.m:732, 739` (draws `chol_m*z`), `:136-137, 315-316` (`inv(chol(Q0))` whitening), `:510, 521, 577, 588, 623` (`N/2*(R)\e*e''/(R)` precedence) at `fix/pp-em` @ `aa88a2b` (outside nSTAT PR #135).'
-  matlab_behavior: The same defects F9, G1 and H1 fixed for the point-process EM routines.
-  correct_behavior: As F9 / G1 / H1 (lower factor; parenthesised information blocks).
+  title: 'KF_EM''s upper-factor Monte Carlo draws, upper-factor whitening, SE/IC scale mismatch, R''s IC parameter count, and the singular-information hang'
+  defect_class: Bug (upstream MATLAB, fixed)
+  matlab_location: '`+nstat/+decoding/KF_EM.m` at `fix/kf-em` @ `cb4edd2` (nSTAT PR #138, merged to `cajigaslab/nSTAT@master` `d2a8c85`): draws (pre-fix `:732, 739`, `chol_m*z`), whitening (pre-fix `:136-137, 315-316`, `inv(chol(Q0))`), the post-loop scale-back (SE/IC scale mismatch), the IC `R` parameter-count branch (pre-fix tested `QhatDiag`), and the SE pass''s `eye(n)/IObs` + `nearestSPD` (singular-information hang).'
+  matlab_behavior: >-
+    The same defect classes F9 (draws), G1 (whitening) and #136 (singular observed information) already fixed for
+    the point-process EM routines (nSTAT PR #135/#137), plus a KF-specific defect class: after the post-loop
+    un-scale, `xKFinal`/`WKFinal`/`ll`/`ExpectationSumsFinal` were left on the internal whitened-system scale
+    while `Ahat`/`Qhat`/.../`Px0hat` were mapped to the original scale and `y` was never restored, so the SE call
+    and the `IC` formula mixed scales (the same defect class as PP_EM/PPLFP_EM's pre-F8/F10 SE and IC bugs); and
+    `IC`'s `R` parameter-count branch tested `QhatDiag`/`QhatIsotropic` instead of `RhatDiag`/`RhatIsotropic` (F11
+    class).  The operator-precedence defect (H1) that affects PP/PPLFP's information blocks was investigated for
+    KF_EM too and found NOT present there (the five information-block sites already compute `(N/2) Q^-1 e e' Q^-1`
+    through parenthesised MATLAB source, confirmed by direct inspection at the repair commit).
+  correct_behavior: 'As F9 / G1 / F11 / #136 (lower factor; E-step recomputed at the unscaled parameters and the
+    original `y`; R''s own IC flags; pseudo-inverse with non-identifiable parameters flagged NaN instead of hanging).'
   python_implementation:
-  - '`DecodingAlgorithms.KF_ComputeParamStandardErrors` / `KF_EM` mirror the upper-factor draws and whitening (with Python-only `_nearestSPD` fallbacks before the Cholesky).'
-  - 'The KF information blocks use the intended `(N/2) Q^-1 e e'' Q^-1` / `(1/2) P^-1 e e'' P^-1` forms, i.e. they do NOT mirror MATLAB''s precedence defect: KF SE.Q / SE.R / SE.Px0 differ from MATLAB KF_EM.'
-  - 'Two SE conventions coexist: `PP_*` / `PPLFP_*` use MATLAB''s `nearestSPD` (`_matlab_nearest_spd`) and `ztest` p-values (`_matlab_ztest_p`: se = 0 gives p = 0), while `KF_ComputeParamStandardErrors` keeps the module-level `_nearestSPD` (Higham projection, then eigenvalues clamped at eps instead of MATLAB''s shift loop) and `_ztest_pvalue` (p = 1 for se <= 0 or non-finite).  Pinned by `tests/test_review_characterization.py::test_ztest_definitions_agree_in_the_large_z_tail`; aligning the KF family is part of its repair.'
-  fixture_impact: No KF EM gold fixture exercises these paths.
+  - '`DecodingAlgorithms.KF_EM` / `KF_ComputeParamStandardErrors` mirror every one of the five fixes above: Monte
+    Carlo draws through the shared `_mc_state_draws` helper (lower factor, as `PP_*`/`PPLFP_*`); whitening with the
+    lower Cholesky factor at both the scale-in and scale-back; the E-step recomputed once at the unscaled
+    parameters and `yOrig` after un-scaling, so `IC.llcomp` is self-consistent with the returned estimates; `IC`''s
+    `R` parameter count now tests `RhatDiag`/`RhatIsotropic`; and the SE pass''s observed-information inverse goes
+    through `_em_singular_information_inverse` / `_em_project_covariance` (as `PP_ComputeParamStandardErrors`), so
+    it returns instead of hanging on an exactly singular matrix.'
+  - 'SE/p-value conventions aligned too (track-P1 item 3): `KF_ComputeParamStandardErrors` now uses the same
+    MATLAB-exact `DecodingAlgorithms._nearestSPD` (`_matlab_nearest_spd`) / `._ztest_pvalue` (`_matlab_ztest_p`)
+    staticmethods `PP_*`/`PPLFP_*` already used, not the former module-level pair (a Higham `nearestSPD` with
+    eigenvalues clamped at eps, and p = 1 for an SE <= 0).  The module-level `_ztest_pvalue` had no remaining
+    callers once KF moved off it and was deleted; the module-level `_nearestSPD` is kept as the Python-only guard
+    for KF_EM''s whitening Cholesky fallback (no MATLAB counterpart there to mirror -- MATLAB''s `chol` simply
+    errors on a non-PD input).'
+  fixture_impact: No KF EM gold fixture exercises these paths; verified instead by
+    `tests/test_kf_em_matlab_pr138_mirror.py` (each fix pinned by a test that fails on the source immediately
+    before it) and by re-pinning `tests/test_review_characterization.py`'s KF-A/KF-B standard-error cases.
   discovered: EM final pass / 2026-10
-  upstream_status: not-fixed-upstream
+  upstream_issue: cajigaslab/nSTAT#138
+  upstream_status: adopted-upstream
+  resolved_in: 'nSTAT PR #138 (fix/kf-em @ cb4edd2, merged to cajigaslab/nSTAT@master @ d2a8c85); nstat-python
+    track-P1 (fix/kf-em-mirror)'
+  resolved_iter: track-P1 / 2026-10
+  resolved_notes: 'MATLAB''s own audit (track-M) also found a sixth, MATLAB-only defect with no Python analog: the
+    main EM driver was declared as a Static method literally named the same as its containing class, which MATLAB
+    always dispatches as the class constructor regardless of the `methods(Static)` block -- both of `KF_EM`''s
+    documented entry points were unreachable since the Phase 3 class extraction.  `DecodingAlgorithms.KF_EM`
+    (Python) is a plain staticmethod with no such name collision and already ran end to end
+    (`tests/test_expanded_coverage.py::test_kf_em_basic`), confirmed unaffected by this repair.'
 - id: em-design-conventions-mirrored
   title: 'EM conventions mirrored as is: whitened-frame diagonal constraints, numel parameter counts, nearestSPD, stop on the first decrease, GLM plug-in'
   defect_class: Stability (convention, mirrored)
@@ -1732,7 +1765,13 @@ entries:
     (5) The GLM M-step regresses dN on the smoothed means (ignores W_K), inflating beta (not the default).
   correct_behavior: Maintainer decisions; recorded, not changed.
   python_implementation:
-  - 'Mirrored (`c8b9b89` pins (1); `_matlab_nearest_spd` is MATLAB''s algorithm, `f5738cd`).'
+  - 'Mirrored (`c8b9b89` pins (1); `_matlab_nearest_spd` is MATLAB''s algorithm, `f5738cd`).  (1) now also applies
+    to `KF_EMCreateConstraints`/`KF_EM`, and (4) to `KF_EM`''s docstring noting that its closed-form E/M steps make
+    its own stopping iteration deterministic, unlike PP/PPLFP''s Monte Carlo M-step (track-P1 item 5, docs only;
+    mirrors nSTAT PR #138 @ 584ec96).'
+  - '(5) is unchanged numerically (user decision, not a bug) but now surfaced: `PP_EM`/`PP_MStep`/`PPLFP_EM`/
+    `PPLFP_MStep` emit a `GLMPlugInWarning` once per top-level call when `MstepMethod=''GLM''` (mirrors MATLAB''s
+    `nSTAT:EM:glmPlugIn`, nSTAT PR #138 @ 3f91924; track-P1 item 4).  KF has no `MstepMethod` and is out of scope.'
   fixture_impact: none
   discovered: EM track / 2026-10
   upstream_status: not-fixed-upstream
