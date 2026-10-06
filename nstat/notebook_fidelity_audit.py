@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,31 @@ def _repo_root() -> Path:
 def default_matlab_repo_root(repo_root: Path | None = None) -> Path:
     base = _repo_root() if repo_root is None else repo_root.resolve()
     return base.parent / "nSTAT"
+
+
+def _display_matlab_repo_root(matlab_root: Path, base: Path) -> str:
+    """Render ``matlab_root`` for the audit YAML in a checkout-stable form.
+
+    ``matlab_root`` is normally ``base.parent / "nSTAT"`` (see
+    :func:`default_matlab_repo_root`), i.e. a sibling of the repo checkout.
+    Storing its *absolute* path makes ``parity/notebook_fidelity.yml`` depend
+    on where this specific checkout happens to live on disk: regenerating
+    from a different clone, or a git worktree (which lives under e.g.
+    ``.worktrees/<branch>`` or a scratch directory, not next to a sibling
+    ``nSTAT`` checkout), rewrites this field to a different absolute path
+    even though nothing about the audit itself changed — pure machine/
+    checkout drift that trips ``make regen``'s drift check.
+
+    Store the path relative to the repo root instead (``../nSTAT`` in the
+    common case); it resolves to the same location under
+    :func:`default_matlab_repo_root` from any checkout. Fall back to the
+    absolute path only if no relative path exists (e.g. a different drive
+    on Windows).
+    """
+    try:
+        return Path(os.path.relpath(matlab_root, base)).as_posix()
+    except ValueError:
+        return str(matlab_root)
 
 
 def _count_matlab_sections(matlab_m_path: Path) -> int:
@@ -93,6 +119,7 @@ def build_notebook_fidelity_audit(
 ) -> dict[str, Any]:
     base = _repo_root() if repo_root is None else repo_root.resolve()
     matlab_root = default_matlab_repo_root(base) if matlab_repo_root is None else matlab_repo_root.resolve()
+    matlab_root_display = _display_matlab_repo_root(matlab_root, base)
     help_root = matlab_root / "helpfiles"
     notes = load_notebook_parity_notes(base)
     topic_groups = _load_notebook_groups(base)
@@ -134,7 +161,7 @@ def build_notebook_fidelity_audit(
             matlab_figures = _count_matlab_published_figures(matlab_html_path)
             item.update(
                 {
-                    "matlab_repo_root": str(matlab_root),
+                    "matlab_repo_root": matlab_root_display,
                     "matlab_sections": matlab_sections,
                     "matlab_published_figures": matlab_figures,
                     "section_delta": python_sections - matlab_sections,
@@ -144,7 +171,7 @@ def build_notebook_fidelity_audit(
         else:
             item.update(
                 {
-                    "matlab_repo_root": str(matlab_root),
+                    "matlab_repo_root": matlab_root_display,
                     "matlab_sections": None,
                     "matlab_published_figures": None,
                     "section_delta": None,
@@ -166,7 +193,7 @@ def build_notebook_fidelity_audit(
             "python": "https://github.com/cajigaslab/nSTAT-python",
         },
         "status_legend": ["exact", "high_fidelity", "partial", "missing"],
-        "matlab_repo_root": str(matlab_root),
+        "matlab_repo_root": matlab_root_display,
         "items": items,
     }
 

@@ -264,6 +264,13 @@ does about it, and the known gaps.
   see `DecodingAlgorithms.PP_EM`'s docstring). Verified by running each
   example's figure export twice and comparing SHA-256 of every PNG:
   byte-identical both times.
+- Fix: `make regen` (`nstat/notebook_fidelity_audit.py`) wrote the absolute,
+  checkout-specific MATLAB-repo path into `parity/notebook_fidelity.yml`'s
+  `matlab_repo_root` field, so regenerating from a git worktree or a fresh
+  clone (anywhere other than the exact checkout the committed file was last
+  built from) rewrote that one field and tripped the drift check for no
+  real reason. It now stores the path relative to the repo root
+  (`../nSTAT`), which is the same from any checkout with the same layout.
 - Tests skip, with accurate reasons, when an optional dependency is installed
   but broken.
 - Python 3.10 (the declared minimum) test collection is fixed and 3.10 is added

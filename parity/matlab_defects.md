@@ -1199,13 +1199,13 @@ Schema for each entry:
 
 ---
 
-### Tooling (repo, not a MATLAB defect): `make regen` from a worktree without a sibling ../nSTAT rewrites notebook_fidelity.yml (repo tooling)
+### Tooling (repo, not a MATLAB defect): `make regen` from a worktree without a sibling ../nSTAT rewrites notebook_fidelity.yml (repo tooling; fixed)
 
-- **MATLAB location:** n/a (nstat-python `tools/`, the notebook-fidelity audit's MATLAB root discovery)
+- **MATLAB location:** n/a (nstat-python `nstat/notebook_fidelity_audit.py`, the notebook-fidelity audit's MATLAB root discovery, ~L121/163/173/195 pre-fix)
 - **Defect class:** Tooling (repo, not a MATLAB defect)
-- **MATLAB behavior:** The audit looks for the MATLAB checkout at `../nSTAT`; from a git worktree without that sibling it records a machine-specific absolute `matlab_repo_root` and null MATLAB counts in `parity/notebook_fidelity.yml`.
-- **Correct behavior:** Do not commit such a rewrite; run regen where `../nSTAT` exists, or revert the file.
-- **Python implementation:** Pre-existing; recorded in the EM final pass, where the rewrite was reverted (the payload built with the real MATLAB root is identical to the committed file).
+- **MATLAB behavior:** The audit looks for the MATLAB checkout at `../nSTAT`; it recorded `matlab_repo_root` in `parity/notebook_fidelity.yml` as `str(matlab_root)` -- the *absolute*, checkout-specific path -- even though the MATLAB counts (null when the checkout is absent) already correctly reflect availability. Regenerating from any checkout other than the exact one the committed file was last built from (a git worktree, a fresh clone, CI) rewrites that one field to a different absolute path, tripping `make regen`'s `git diff --exit-code` drift check for a reason unrelated to the audit's actual content.
+- **Correct behavior:** Store a checkout-stable form of the path (relative to the repo root) so regenerating from any checkout with the same relative layout produces byte-identical output.
+- **Python implementation:** Fixed (P2b-2026-10): added `_display_matlab_repo_root`, which renders `matlab_root` relative to the repo root (`../nSTAT` in the default layout) via `os.path.relpath`, falling back to the absolute path only if no relative path exists (e.g. a different drive on Windows). Verified `make regen` from this worktree (no sibling `../nSTAT`) produces `matlab_repo_root: ../nSTAT` and leaves no further diff on a second run; `tests/test_notebook_fidelity_audit.py` still passes (the one test that compares against a live MATLAB checkout skips here, as before, since this worktree has none).
 - **Fixture impact:** none
 - **Discovered:** P2b-1 / 2026-10
 - **Upstream status:** n/a
