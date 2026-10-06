@@ -969,7 +969,9 @@ cons = DecodingAlgorithms.PP_EMCreateConstraints(mcIter=50)  # defaults, fewer S
   complete information are kept, so they are per-block conditional SEs.
   P-values are two-sided z-tests.  Python **always** computes them (MATLAB
   only when requested), which dominates run time at `mcIter = 1000` (about
-  4.5 s of a 6.2 s `PP_EM` fit at N = 800, C = 4); lower `mcIter` to speed up.
+  4.5 s of a 6.2 s `PP_EM` fit at N = 800, C = 4); lower `mcIter` to speed up,
+  but the SEs get noisy: at `mcIter = 100` the beta SEs varied by 10 to 60 %
+  between seeds on the gold cases, at 1000 (`PPLFP_EM`) every SE by <= 3 %.
 - Reproducibility: `np.random.seed(s)` (or
   `nstat.extras.matlab_rng.seeded_global_rng(s)`) makes a fit
   bit-reproducible.  MATLAB's `randn` stream is not reproduced, so Python and

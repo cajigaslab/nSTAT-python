@@ -182,7 +182,10 @@ does about it, and the known gaps.
 *Known limits* (details in `parity/matlab_defects.yml`)
 
 - Monte Carlo EM is compared with MATLAB within the measured spread of the
-  Monte Carlo, not bit for bit; the iteration at which EM stops (first
+  Monte Carlo, not bit for bit, and checked for bias against held-out seeds.
+  At `mcIter = 100` the beta SEs and the off-diagonal A SEs of `PP_EM` vary by
+  10 to 70 % from seed to seed, so they are not compared (at `mcIter = 1000`
+  every `PPLFP_EM` SE varies by <= 3 %). The iteration at which EM stops (first
   likelihood decrease) is itself random (on one data set: 6 to 11 iterations
   over MATLAB seeds and over Python seeds), and where EM is still moving the
   estimates depend on that iteration more than on the draws.

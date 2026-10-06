@@ -33,10 +33,13 @@ which Python does not reproduce, so the comparison is split:
   M-step updates (A, Q, [C, R, alpha,] x0, Px0) on those sums, for three
   constraint sets each (``ms1..3``), and the parameter count read from
   ``IC.AIC``.  Measured: <= 2.2e-13 relative.
-* **Monte Carlo dependent** (one Python seed, ``seeded_global_rng(1)``): every
-  estimate, ``xKFinal``, ``IC.llcomp`` and the SEs, each within twice the
-  largest deviation from the gold measured over Python seeds 1..8 (rounded up
-  to one significant digit; table in ``_MC_ATOL``).  For calibration, MATLAB's
+* **Monte Carlo dependent, regression pin** (one Python seed,
+  ``seeded_global_rng(1)``): every estimate, ``xKFinal``, ``IC.llcomp`` and
+  the checkable SEs, each within twice the largest deviation from the gold
+  measured over Python seeds 1..8 (rounded up to one significant digit; table
+  in ``_MC_ATOL``).  Seed 1 is one of those seeds, so this pins the seed-1 run
+  near MATLAB but cannot see a bias smaller than the tolerance; the bias check
+  below does that.  For calibration, MATLAB's
   own spread over ``rng(1..8)`` on pp_pois / pp_sep is of the same size
   (max |beta - gold| 0.078 / 0.185, Python 0.070 / 0.175).  The iteration at
   which EM stops (stop on the first likelihood decrease or a change below
@@ -54,6 +57,25 @@ which Python does not reproduce, so the comparison is split:
   (Before nstat-python's Newton step divided by its pivots, a denormal pivot
   made that step -Inf and every pp_sep run stopped by iteration 8, at about
   -694.5.)
+* **Not checkable at mcIter = 100** (``_MC_UNCHECKABLE``): in the PP cases
+  ``SE.beta`` and the off-diagonal ``SE.A`` vary from seed to seed by 10..71 %
+  of their value (coefficient of variation over held-out seeds 101..120), as
+  the 100-draw missing information is subtracted from a complete information
+  of similar size; they are only checked to be finite and positive (``SE.A``
+  is compared on its diagonal, CV <= 2 %).  At lfp_def's mcIter = 1000 every
+  SE block varies by <= 3 % and is compared.
+* **Bias check** (held-out seeds 101..106, ``test_monte_carlo_estimates_show_no_bias``):
+  for the cases whose stopping iteration is stable across seeds (pp_pois,
+  pp_binom, pp_defwin, lfp_def), MATLAB's value of every key estimate and
+  checkable SE against the Python seed mean: z = (MATLAB - mean) /
+  (sd sqrt(1 + 1/n)), the prediction-interval statistic of one more draw from
+  the same distribution.  Required: |z| <= 6 for each entry, and over a case
+  RMS(z) <= 2 and |mean(z)| <= 1, so a shift of the Python distribution by
+  about 2 Monte Carlo sd on average is caught.  Measured (51-53 entries per
+  case): seeds 101..106 max |z| 4.2, RMS 0.5..1.4; seeds 101..120 max |z| 2.8,
+  RMS 0.4..1.1, |mean z| <= 0.14.  pp_sep is not included: its estimates are set by
+  the stopping iteration (6..11 above), and of 28 Python seeds only seed 1
+  stops at MATLAB's 11.
 """
 from __future__ import annotations
 
@@ -71,16 +93,16 @@ CASES = ["pp_pois", "pp_binom", "pp_defwin", "lfp_def", "pp_sep"]
 RTOL, ATOL = 1e-10, 1e-12
 
 # 2 x the largest |Python - MATLAB| over Python seeds 1..8, one significant digit
-# (measured on macOS arm64 / Accelerate against MATLAB R2025b).
+# (measured on macOS arm64 / Accelerate against MATLAB R2025b).  "SE.A" in the
+# PP cases is its diagonal (the off-diagonal is in _MC_UNCHECKABLE).
 _MC_ATOL = {
     "pp_pois": {"muhat": 5e-02, "betahat": 2e-01, "gammahat": 9e-02, "Ahat": 4e-03, "Qhat": 2e-05, "xKFinal": 3e-01,
-                "IC.llcomp": 2e+00, "SE.A": 3e-03, "SE.Q": 1e-05, "SE.mu": 5e-03, "SE.beta": 2e+00, "SE.gamma": 4e-02},
+                "IC.llcomp": 2e+00, "SE.A": 7e-04, "SE.Q": 1e-05, "SE.mu": 5e-03, "SE.gamma": 4e-02},
     "pp_binom": {"muhat": 4e-02, "betahat": 2e-01, "gammahat": 2e-01, "Ahat": 2e-03, "Qhat": 3e-05, "xKFinal": 1e-01,
-                 "IC.llcomp": 5e-01, "SE.A": 2e-03, "SE.Q": 3e-06, "SE.mu": 2e-03, "SE.beta": 8e-01,
-                 "SE.gamma": 4e-02},
+                 "IC.llcomp": 5e-01, "SE.A": 3e-04, "SE.Q": 3e-06, "SE.mu": 2e-03, "SE.gamma": 4e-02},
     "pp_defwin": {"muhat": 2e-02, "betahat": 8e-02, "gammahat": 5e-02, "Ahat": 2e-03, "Qhat": 2e-05,
-                  "xKFinal": 6e-02, "IC.llcomp": 2e+00, "SE.A": 9e-04, "SE.Q": 4e-06, "SE.mu": 2e-03,
-                  "SE.beta": 5e-01, "SE.gamma": 4e-02},
+                  "xKFinal": 6e-02, "IC.llcomp": 2e+00, "SE.A": 4e-04, "SE.Q": 4e-06, "SE.mu": 2e-03,
+                  "SE.gamma": 4e-02},
     "lfp_def": {"muhat": 2e-02, "betahat": 3e-02, "Ahat": 5e-06, "Qhat": 7e-07, "Chat": 9e-05, "Rhat": 3e-06,
                 "alphahat": 2e-05, "xKFinal": 9e-04, "IC.llcomp": 7e-02, "SE.A": 2e-04, "SE.Q": 2e-05,
                 "SE.C": 4e-03, "SE.R": 2e-03, "SE.alpha": 2e-03, "SE.mu": 3e-03, "SE.beta": 8e-03},
@@ -90,6 +112,16 @@ _MC_ATOL = {
     "pp_sep": {"muhat": 2e-02, "betahat": 3e-01, "gammahat": 8e-02, "Ahat": 3e-03, "Qhat": 5e-05, "xKFinal": 5e-01,
                "IC.llcomp": 7e-01},
 }
+
+# Not determined at the PP cases' mcIter = 100: the seed-to-seed coefficient of
+# variation of each entry over held-out seeds 101..120 (20 runs).
+_MC_UNCHECKABLE = {
+    "pp_pois": {"SE.beta": "CV 0.27..0.64", "SE.A offdiag": "CV 0.46, 0.71"},
+    "pp_binom": {"SE.beta": "CV 0.10..0.58", "SE.A offdiag": "CV 0.40, 0.47"},
+    "pp_defwin": {"SE.beta": "CV 0.10..0.57", "SE.A offdiag": "CV 0.29, 0.49"},
+}
+_BIAS_SEEDS = range(101, 107)
+_BIAS_CASES = ["pp_pois", "pp_binom", "pp_defwin", "lfp_def"]
 
 
 @pytest.fixture(scope="module")
@@ -202,36 +234,39 @@ def _n_terms(IC) -> int:
     return int(round((IC.AIC + 2 * IC.llobs) / 2))
 
 
-@pytest.fixture(scope="module")
-def python_runs(gold) -> dict:
+def _run_driver(gold, case, seed) -> dict:
+    """Python's PP_EM / PPLFP_EM on the case's inputs, under seeded_global_rng(seed)."""
     import warnings
 
     from nstat.extras.matlab_rng import seeded_global_rng
 
-    runs = {}
-    for case in CASES:
-        f = _get(gold, case)
-        dN = np.atleast_2d(f("dN")).astype(float)
-        with seeded_global_rng(1), warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always", RuntimeWarning)
-            if f("family") == "PP":
-                wt = np.asarray(f("windowTimes"), dtype=float)
-                g0 = np.asarray(f("gamma0"), dtype=float)
-                if wt.size == 0 and g0.ndim == 1:
-                    g0 = g0.reshape(-1, 1)
-                o = DecodingAlgorithms.PP_EM(
-                    dN, f("A0"), f("Q0"), np.ravel(f("mu0")), f("beta0"), str(f("fitType")), float(f("delta")), g0,
-                    None if wt.size == 0 else wt, None, None,
-                    DecodingAlgorithms.PP_EMCreateConstraints(*[int(v) for v in np.ravel(f("cons"))]))
-                runs[case] = dict(xKFinal=o[0], Ahat=o[2], Qhat=o[3], muhat=o[4], betahat=o[5], gammahat=o[6],
-                                  IC=o[9], SE=o[10], Pvals=o[11], nIter=o[12])
-            else:
-                o = PPLFP.PPLFP_EM(np.atleast_2d(f("y")), dN, f("A0"), f("Q0"), f("C0"), f("R0"),
-                                   np.ravel(f("alpha0")), np.ravel(f("mu0")), f("beta0"))
-                runs[case] = dict(xKFinal=o[0], Ahat=o[2], Qhat=o[3], Chat=o[4], Rhat=o[5], alphahat=o[6],
-                                  muhat=o[7], betahat=o[8], IC=o[12], SE=o[13])
-        runs[case]["warnings"] = [str(w.message) for w in caught if issubclass(w.category, RuntimeWarning)]
-    return runs
+    f = _get(gold, case)
+    dN = np.atleast_2d(f("dN")).astype(float)
+    with seeded_global_rng(seed), warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", RuntimeWarning)
+        if f("family") == "PP":
+            wt = np.asarray(f("windowTimes"), dtype=float)
+            g0 = np.asarray(f("gamma0"), dtype=float)
+            if wt.size == 0 and g0.ndim == 1:
+                g0 = g0.reshape(-1, 1)
+            o = DecodingAlgorithms.PP_EM(
+                dN, f("A0"), f("Q0"), np.ravel(f("mu0")), f("beta0"), str(f("fitType")), float(f("delta")), g0,
+                None if wt.size == 0 else wt, None, None,
+                DecodingAlgorithms.PP_EMCreateConstraints(*[int(v) for v in np.ravel(f("cons"))]))
+            run = dict(xKFinal=o[0], Ahat=o[2], Qhat=o[3], muhat=o[4], betahat=o[5], gammahat=o[6],
+                       IC=o[9], SE=o[10], Pvals=o[11], nIter=o[12])
+        else:
+            o = PPLFP.PPLFP_EM(np.atleast_2d(f("y")), dN, f("A0"), f("Q0"), f("C0"), f("R0"),
+                               np.ravel(f("alpha0")), np.ravel(f("mu0")), f("beta0"))
+            run = dict(xKFinal=o[0], Ahat=o[2], Qhat=o[3], Chat=o[4], Rhat=o[5], alphahat=o[6],
+                       muhat=o[7], betahat=o[8], IC=o[12], SE=o[13])
+    run["warnings"] = [str(w.message) for w in caught if issubclass(w.category, RuntimeWarning)]
+    return run
+
+
+@pytest.fixture(scope="module")
+def python_runs(gold) -> dict:
+    return {case: _run_driver(gold, case, 1) for case in CASES}
 
 
 @pytest.mark.slow
@@ -252,6 +287,8 @@ def test_monte_carlo_estimates_within_the_measured_spread(gold, python_runs, cas
             got, ref = py[key], f(key)
         got = np.asarray(got, dtype=float)
         ref = np.asarray(ref, dtype=float).reshape(got.shape)
+        if key == "SE.A" and case in _MC_UNCHECKABLE:
+            got, ref = np.diag(got), np.diag(ref)
         if case == "pp_sep" and key == "gammahat":
             # The separated coefficients walk to the exp() underflow on both
             # sides (11 iterations each at seed 1; MATLAB keeps the previous
@@ -272,6 +309,11 @@ def test_monte_carlo_estimates_within_the_measured_spread(gold, python_runs, cas
             assert len(py["warnings"]) == 1 and "Not identifiable" in py["warnings"][0]
             got, ref = got[~sep], ref[~sep]
         np.testing.assert_allclose(got, ref, rtol=0, atol=atol, err_msg=key)
+    if case in _MC_UNCHECKABLE:
+        # Not determined at mcIter = 100 (see _MC_UNCHECKABLE): only sane.
+        for got in (np.asarray(py["SE"]["beta"], dtype=float),
+                    np.asarray(py["SE"]["A"], dtype=float)[~np.eye(2, dtype=bool)]):
+            assert np.all(np.isfinite(got)) and np.all(got > 0)
     if case != "pp_sep":
         assert not [w for w in py["warnings"] if "singular" in w]
     if f("family") == "PP":
@@ -282,3 +324,40 @@ def test_monte_carlo_estimates_within_the_measured_spread(gold, python_runs, cas
         # within round-off of a stopping threshold, not a parity regression.
         nIter = f("nIter") if f"{case}_nIter" in gold else np.size(f("ll_trace"))
         assert py["nIter"] == nIter
+
+
+def _bias_entries(src, case, matlab: bool) -> np.ndarray:
+    """The key estimates and checkable SEs of one run, flattened in a fixed order."""
+    get = (lambda key: src(key)) if matlab else (lambda key: src[key])
+    se = (lambda key: getattr(src("SE"), key)) if matlab else (lambda key: src["SE"][key])
+    ll = src("IC").llcomp if matlab else src["IC"]["llcomp"]
+    out = [np.ravel(get("muhat")), np.ravel(get("betahat")), np.ravel(get("Ahat")), np.diag(np.atleast_2d(get("Qhat"))),
+           np.atleast_1d(ll), np.ravel(se("mu")), np.diag(np.atleast_2d(se("Q")))]
+    if case == "lfp_def":
+        out += [np.ravel(get("Chat")), np.diag(np.atleast_2d(get("Rhat"))), np.ravel(get("alphahat"))]
+        out += [np.ravel(se(k)) for k in ("A", "C", "alpha", "beta")] + [np.diag(np.atleast_2d(se("R")))]
+    else:
+        out += [np.ravel(get("gammahat")), np.ravel(se("gamma")), np.diag(np.atleast_2d(se("A")))]
+    return np.concatenate([np.asarray(v, dtype=float).ravel() for v in out])
+
+
+@pytest.fixture(scope="module")
+def held_out_runs(gold) -> dict:
+    return {case: [_run_driver(gold, case, seed) for seed in _BIAS_SEEDS] for case in _BIAS_CASES}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("case", _BIAS_CASES)
+def test_monte_carlo_estimates_show_no_bias(gold, held_out_runs, case) -> None:
+    # MATLAB's value against the distribution of Python runs over seeds that
+    # were not used to set _MC_ATOL (see the module docstring).
+    f = _get(gold, case)
+    ref = _bias_entries(f, case, True)
+    P = np.array([_bias_entries(r, case, False) for r in held_out_runs[case]])
+    n = P.shape[0]
+    sd = P.std(axis=0, ddof=1)
+    assert np.all(sd > 0)
+    z = (ref - P.mean(axis=0)) / (sd * np.sqrt(1.0 + 1.0 / n))
+    assert np.max(np.abs(z)) <= 6.0, np.round(z, 2)
+    assert np.sqrt(np.mean(z ** 2)) <= 2.0, np.round(z, 2)
+    assert abs(np.mean(z)) <= 1.0, np.round(z, 2)
