@@ -1223,6 +1223,9 @@ class DecodingAlgorithms:
 
         Uses ``mu``, ``beta``, and optional ``gamma`` history coefficients
         instead of CIF objects.  Returns ``(x_u, W_u, lambda_delta)``.
+        As MATLAB's ``PPDecode_updateLinear``, ``lambda_delta`` is
+        ``exp(linTerm)`` (binomial ``exp./(1+exp)``), unclipped, with NaN / Inf
+        entries set to 1 (this port clipped ``linTerm`` to [-20, 20]).
         """
         x_vec = np.asarray(x_p, dtype=float).reshape(-1)
         W_mat = _as_state_matrix(W_p, x_vec.size)
@@ -5706,7 +5709,14 @@ class DecodingAlgorithms:
         """Compute standard errors via the observed information matrix.
 
         Uses a Monte-Carlo approximation of the missing information matrix
-        (McLachlan & Krishnan, Eq. 4.7).
+        (McLachlan & Krishnan, Eq. 4.7), with ``mcIter`` draws from NumPy's
+        global stream (seed with ``np.random.seed`` or
+        :func:`nstat.extras.matlab_rng.seeded_global_rng`).  As in MATLAB
+        (nSTAT PR #135): the constraints are honoured, the intensities are
+        unclipped, the inverse observed information is projected with
+        MATLAB's ``nearestSPD`` and the p-values are MATLAB ``ztest``'s
+        ``2*normcdf(-|z|)``.  An exactly singular observed information falls
+        back to ``pinv`` (Python-only: MATLAB's SE pass then never returns).
 
         Parameters
         ----------
@@ -6273,7 +6283,14 @@ class DecodingAlgorithms:
         on the ``delta`` grid.  EM stops before the M-step if the E-step
         log-likelihood is not finite and returns the best finite iterate.
         ``EnableIkeda = 1`` (MATLAB's Ikeda acceleration step) is not ported
-        and raises ``NotImplementedError``.
+        and raises ``NotImplementedError``; a ``Qhat0`` that is not positive
+        definite raises ``LinAlgError`` (MATLAB's ``chol`` errors).  The Monte
+        Carlo of the M-steps and the SE pass draws from NumPy's global
+        stream, so ``np.random.seed(s)`` (or
+        :func:`nstat.extras.matlab_rng.seeded_global_rng`) makes a fit
+        reproducible; MATLAB's randn stream is not reproduced (the end-to-end
+        gold ``em_drivers.mat`` is compared within the measured Monte Carlo
+        spread).
 
         ``SE`` / ``Pvals`` are always computed (MATLAB computes them only when
         more than 10 outputs are requested).  The Monte Carlo SE pass
@@ -6649,6 +6666,13 @@ class DecodingAlgorithms:
         W_K : (dx, dx, N) smoothed covariances
         logll : float, log-likelihood
         ExpectationSums : dict of sufficient statistics
+
+        Notes
+        -----
+        As in MATLAB the intensity is the unclipped ``exp(terms)`` (binomial
+        ``exp./(1+exp)``) and ``log(det(Q))`` / ``log(det(Px0))`` are
+        unfloored: a non-positive determinant gives a non-finite ``logll``,
+        on which ``PP_EM`` stops before the M-step.
         """
         A = np.atleast_2d(A).astype(float)
         Q = np.atleast_2d(Q).astype(float)
@@ -6860,6 +6884,15 @@ class DecodingAlgorithms:
         'NewtonRaphson'``, the default) or by a GLM fit on the smoothed means
         (``'GLM'``).  Any other ``MstepMethod`` raises ``ValueError`` (MATLAB
         runs Newton-Raphson for it).
+
+        As in MATLAB (nSTAT PR #135, ``aa88a2b``): the closed-form updates
+        have no ridges or eigenvalue floors (a single-sample ``Px0hat`` can
+        collapse to 0); each Newton loop runs at most 99 steps on the
+        unclipped ``exp(terms)`` (binomial ``exp./(1+exp)``), a 1 x 1 step is
+        ``g/H`` and a NaN step (MATLAB's result on a singular Hessian) keeps
+        the previous value.  The ``McExp = 50`` draws come from NumPy's
+        global stream (seed with ``np.random.seed`` or
+        :func:`nstat.extras.matlab_rng.seeded_global_rng`).
 
         Parameters
         ----------

@@ -624,8 +624,19 @@ class Analysis:
         ``'GLM'`` fit is handled as MATLAB ``glmfit`` handles it: a
         column-pivoted QR finds the rank, the fit uses the independent
         columns, and each dependent column gets coefficient 0 and standard
-        error 0.  The binomial ``'BNLRCG'`` fit (MATLAB ``bnlrCG``) has no
-        rank handling.
+        error 0.  A design with a NaN entry returns the solver's all-NaN fit
+        (MATLAB ``glmfit`` removes the NaN rows first; not mirrored).
+
+        The binomial ``'BNLRCG'`` fit is NOT a MATLAB mirror on a
+        rank-deficient design: neither MATLAB's ``bnlrCG`` nor this fit has
+        rank handling, but MATLAB's standard errors there come out complex
+        (an eigenvalue-clipped inverse) while these come from the singular
+        ``inv(X'WX)`` with negative variances clipped to 0, so different (and
+        larger, up to ~2.8e3 in the EM GLM M-step) coefficients pass the
+        M-step's ``se < 100`` filter.  On full-rank designs the binomial fit
+        reaches the MLE, which MATLAB's truncated ``bnlrCG`` approaches
+        (about 1e-4 apart on the EM GLM M-step gold).  See
+        ``parity/matlab_defects.yml`` (``em-binomial-glm-bnlrcg``).
         """
         algorithm = str(Algorithm or "GLM").upper()
         if algorithm not in {"GLM", "BNLRCG"}:
@@ -685,7 +696,8 @@ class Analysis:
             # which drops the dependent columns of a rank-deficient design
             # (pivoted QR) and reports b = 0, se = 0 for them.  Only that case
             # takes the branch below; a full-rank design runs the unchanged
-            # solver.  (BNLRCG -- MATLAB's bnlrCG -- has no rank handling.)
+            # solver.  (The BNLRCG branch above has no rank handling and is
+            # not a MATLAB mirror on rank-deficient designs; see the Notes.)
             # Unpenalized fits only (MATLAB glmfit has no ridge); with l2 > 0
             # X'WX + l2 I is invertible and the ridge solution is kept.
             kept = _glmfit_independent_columns(X) if l2 == 0.0 else None

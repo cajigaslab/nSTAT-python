@@ -474,18 +474,12 @@ workflow with held-out spatial GoF lives in
 ### 5.1 API gaps vs the MATLAB reference
 
 These MATLAB methods exist but are **not yet ported** to Python (tracked in
-[AUDIT_REPORT.md](AUDIT_REPORT.md) §3):
+[AUDIT_REPORT.md](AUDIT_REPORT.md) §3, which predates the EM ports: the
+`KF_EM`, `PP_EM`, `PPLFP_EM` and `mPPCO_*` state-space EM families **are**
+ported in core `DecodingAlgorithms` -- see §5.7):
 
-- `DecodingAlgorithms.KF_EM` family (Gaussian state-space EM)
-  — `KF_EM`, `KF_EStep`, `KF_MStep`, `KF_ComputeParamStandardErrors`,
-  `KF_EMCreateConstraints`.
-- `DecodingAlgorithms.PP_EM` family (point-process state-space EM, no basis)
-  — `PP_EM`, `PP_EStep`, `PP_MStep`, `PP_ComputeParamStandardErrors`,
-  `PP_EMCreateConstraints`.
-- `DecodingAlgorithms.mPPCO` family (mixed PP + Gaussian)
-  — `mPPCODecodeLinear`, `mPPCODecode_predict`, `mPPCODecode_update`,
-  `mPPCO_fixedIntervalSmoother`, `mPPCO_EM`, `mPPCO_EStep`, `mPPCO_MStep`,
-  `mPPCO_ComputeParamStandardErrors`, `mPPCO_EMCreateConstraints`.
+- `DecodingAlgorithms.PP_EM`'s Ikeda acceleration step (`EnableIkeda = 1`
+  raises `NotImplementedError`).
 - `DecodingAlgorithms.computeSpikeRateCIs`, `computeSpikeRateDiffCIs` (Monte Carlo CIs).
 - `FitResSummary.plotCoeffsWithoutHistory`, `plotHistCoeffs`.
 - `Trial.toStructure` / `fromStructure` (serialization round-trip),
@@ -493,10 +487,10 @@ These MATLAB methods exist but are **not yet ported** to Python (tracked in
 - Various `SignalObj` plotting/variability methods (`plotVariability`,
   `plotAllVariability`, `alignToMax`, `windowedSignal`, etc.).
 
-> **State-space EM is available via `nstat.extras`.** The KF_EM / PP_EM /
-> mPPCO_EM families above are not in **core** `nstat.*` (which holds the
-> strict MATLAB-parity contract), but functional Python equivalents ship
-> in the opt-in [`nstat.extras.em.dynamax_bridge`](docs/extras/em_dynamax.md)
+> **Python-only state-space EM alternatives in `nstat.extras`.** Besides the
+> core MATLAB mirrors (`DecodingAlgorithms.KF_EM` / `PP_EM` / `PPLFP_EM`,
+> §5.7), independent Python implementations ship in the opt-in
+> [`nstat.extras.em.dynamax_bridge`](docs/extras/em_dynamax.md)
 > module: `fit_linear_gaussian_em` (KF_EM), `fit_point_process_em` (PP_EM),
 > `fit_hybrid_em` (mPPCO_EM), plus `cmgf_poisson_filter` /
 > `cmgf_poisson_smoother` for point-process inference on a known model.
@@ -510,8 +504,7 @@ These MATLAB methods exist but are **not yet ported** to Python (tracked in
 > for the parity and weak-observability caveats.
 
 **If an agent needs one of these, raise the gap explicitly — do not silently
-substitute a related Python method.**  For state-space EM specifically,
-point users at the `nstat.extras.em` equivalents above.
+substitute a related Python method.**
 
 ### 5.2 Behavioral differences vs MATLAB
 
@@ -640,10 +633,11 @@ Python projects" table in `README.md` for install commands.
 - **Not** a spike-train distance-metric library.  Use the opt-in
   `nstat.extras.metrics.spike_distances` wrapper around PySpike
   (ISI / SPIKE / SPIKE-synchronization).
-- **Not** a state-space EM toolbox.  The MATLAB nSTAT `KF_EM` /
-  `PP_EM` / `mPPCO_EM` families are unported; use
-  [Dynamax](https://github.com/probml/dynamax) instead (planned
-  bridge `nstat.extras.em.dynamax`).
+- **Not** a general state-space EM toolbox.  The MATLAB nSTAT `KF_EM`,
+  `PP_EM` and `PPLFP_EM` (`mPPCO_*`) families are ported as MATLAB mirrors
+  (§5.7); for other state-space models use
+  [Dynamax](https://github.com/probml/dynamax) (opt-in bridge
+  `nstat.extras.em.dynamax_bridge`).
 - **Not** a spatial / spatiotemporal point-process estimator in core.
   The Python-only `nstat.extras.spatial` module adds LGCP rate maps
   (Laplace), inhomogeneous second-order goodness-of-fit, and the
@@ -899,6 +893,102 @@ Python projects" table in `README.md` for install commands.
 
 ---
 
+### 5.7 Point-process state-space EM (`PP_EM` / `PPLFP_EM`)
+
+`DecodingAlgorithms.PP_EM` (point-process observations) and
+`DecodingAlgorithms.PPLFP_EM` (point process plus a Gaussian "LFP" channel
+`y = C x + alpha + noise`) fit a linear-Gaussian state `x_k = A x_(k-1) + w`
+with each cell's log intensity `mu + beta' x_k + gamma' H_k` (`H_k`: spike
+counts in history windows).  Each family has `*_EStep` (filter, smoother,
+sufficient statistics, expected complete-data log-likelihood), `*_MStep`,
+`*_ComputeParamStandardErrors` and `*_EMCreateConstraints`; the
+`mPPCO_*` names are MATLAB's deprecated aliases of `PPLFP_*`.  They mirror the
+repaired MATLAB of nSTAT PR #135 (`fix/pp-em` @ `aa88a2b`, pending upstream
+merge), checked against MATLAB gold for every E-step, the GLM M-step and the
+drivers end to end (`tests/test_em_drivers_matlab_gold.py`).
+
+```python
+import numpy as np
+from nstat import DecodingAlgorithms
+
+# Simulate a 2-state AR(1) latent driving 3 Poisson cells (1 ms bins).
+rng = np.random.default_rng(0)
+K, delta = 600, 0.001
+A = np.array([[0.98, 0.02], [-0.03, 0.96]])
+Q = np.diag([0.01, 0.02])
+x = np.zeros((2, K))
+for k in range(1, K):
+    x[:, k] = A @ x[:, k - 1] + np.sqrt(np.diag(Q)) * rng.standard_normal(2)
+beta = np.array([[0.9, -0.7, 0.5], [0.4, 0.8, -0.6]])
+mu = np.log(np.full(3, 60 * delta))
+dN = (rng.random((3, K)) < np.exp(mu[:, None] + beta.T @ x)).astype(float)
+
+np.random.seed(1)  # the EM Monte Carlo draws from NumPy's global stream
+cons = DecodingAlgorithms.PP_EMCreateConstraints(mcIter=50)  # defaults, fewer SE draws
+(xK, WK, Ahat, Qhat, muhat, betahat, gammahat, x0hat, Px0hat,
+ IC, SE, Pvals, nIter) = DecodingAlgorithms.PP_EM(
+    dN, A, Q, mu + 0.3, 0.5 * beta, "poisson", delta, PPEM_Constraints=cons)
+```
+
+**Defaults and why.**
+- Constraints (`PP_EMCreateConstraints()`, `PPLFP_EMCreateConstraints()`):
+  `EstimateA=1, AhatDiag=0, QhatDiag=1, QhatIsotropic=0` (PPLFP also
+  `RhatDiag=1, RhatIsotropic=0`), `Estimatex0=0, EstimatePx0=0`,
+  `Px0Isotropic=0, mcIter=1000, EnableIkeda=0`.  x0 / Px0 are fixed because
+  the Px0 update is a single-sample estimate that collapses to ~0 after one
+  iteration, which sends the log-likelihood to +Inf and stops EM.
+- `MstepMethod='NewtonRaphson'`: a Monte Carlo Newton step on the expected
+  complete-data log-likelihood (50 state draws, at most 99 steps per
+  parameter group).  `'GLM'` (a regression of the spikes on the smoothed
+  *means*, ignoring their covariance) inflates beta and drifts; it is kept
+  for explicit use.  Any other value raises `ValueError`.
+- `x0 = 0`, `Px0 = 1e-9 I`.  With `gamma` given and `windowTimes` omitted
+  there is one history window per coefficient,
+  `windowTimes = 0:delta:size(gamma,1)*delta`; a nonzero shared
+  `numWindows x 1` column is used for every cell; `gamma = 0` means no
+  history.  History is counted on the `delta` grid.
+
+**What the outputs mean.**
+- EM runs on an internally whitened state (`Tq = inv(chol(Qhat0, 'lower'))`;
+  `Qhat0` must be positive definite); every returned estimate is on the
+  original scale.  With a non-diagonal `Qhat0` (`Rhat0`), `QhatDiag = 1`
+  (`RhatDiag = 1`) means diagonal in the whitened frame (as in MATLAB).
+- EM stops on the first log-likelihood decrease, a change below 1e-3, a
+  parameter change below 1e-3, a non-finite E-step log-likelihood (before
+  the M-step) or 100 iterations, and returns the best finite iterate.
+  Because the M-step is Monte Carlo, *when* it stops varies from run to run
+  (6 to 11 iterations over seeds on the same data, in MATLAB and Python).
+- `IC.llcomp` is the expected complete-data log-likelihood at the returned
+  estimates (what `PP_EStep` / `PPLFP_EStep` returns there), `IC.llobs` its
+  observation term; AIC / AICc / BIC count a full Q (R) by all d^2 entries.
+- `SE` / `Pvals` come from the observed information (complete information
+  minus a Monte Carlo missing information, McLachlan & Krishnan eq. 4.7),
+  projected with MATLAB's `nearestSPD`; only the diagonal blocks of the
+  complete information are kept, so they are per-block conditional SEs.
+  P-values are two-sided z-tests.  Python **always** computes them (MATLAB
+  only when requested), which dominates run time at `mcIter = 1000` (about
+  4.5 s of a 6.2 s `PP_EM` fit at N = 800, C = 4); lower `mcIter` to speed up.
+- Reproducibility: `np.random.seed(s)` (or
+  `nstat.extras.matlab_rng.seeded_global_rng(s)`) makes a fit
+  bit-reproducible.  MATLAB's `randn` stream is not reproduced, so Python and
+  MATLAB fits agree only within the Monte Carlo spread.
+
+**Known limits.**
+- A history window with no spike after a spike in it (a "separated" window,
+  common with a refractory cell and short windows) has no finite estimate: its
+  coefficient walks to the `exp()` underflow (about -743), as in MATLAB, and
+  MATLAB's SE pass never returns there.  Check that every cell has spikes in
+  every window.
+- `EnableIkeda = 1` is not ported in `PP_EM` (raises).
+- A full R (`RhatDiag = 0`) is a Python extension in the SE pass (MATLAB
+  errors there).
+- The binomial GLM M-step (`'BNLRCG'`) differs from MATLAB's truncated
+  conjugate-gradient fit by ~1e-4 and is not a mirror on rank-deficient
+  designs.
+- SE.x0 / SE.Px0 have no analytic check on either side.  The `KF_EM` family
+  was not part of this repair (its MATLAB draws and whitening use the upper
+  Cholesky factor; see `parity/matlab_defects.yml`).
+
 ## 6. Data flow patterns
 
 ### Typical workflow
@@ -1123,7 +1213,10 @@ Speedups on the maintainer's M2 Max baseline:
 ### 7.7.2 `nstat.extras.matlab_rng` — MT19937 RNG-stream parity (v0.5.6+)
 
 For Monte Carlo paths where matching MATLAB's RNG stream matters
-(`PPLFP_MStep`, `PPLFP_EM`, `v9_PPSS_EM` Case C drift entries).
+(`PPLFP_MStep`, `PPLFP_EM`, `v9_PPSS_EM` Case C drift entries).  The EM
+Monte Carlo of the `PP_*` and `PPLFP_*` routines draws from NumPy's global
+stream, so `seeded_global_rng(s)` -- or plain `np.random.seed(s)` --
+reproduces it bit for bit (MATLAB's own draws are not reproduced, see below).
 
 ```python
 from nstat.extras.matlab_rng import MatlabRNG, seeded_global_rng

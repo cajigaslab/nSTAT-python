@@ -923,7 +923,16 @@ class PPLFP:
                         = Ic(theta;y) - cov(Sc(X;theta) Sc(X;theta)')
 
         Ic is computed term by term; the covariance of the complete-data
-        score is approximated by Monte Carlo.
+        score is approximated by Monte Carlo (``mcIter`` draws from NumPy's
+        global stream: seed with ``np.random.seed`` or
+        :func:`nstat.extras.matlab_rng.seeded_global_rng`; MATLAB's randn
+        stream is not reproduced).  As in MATLAB (nSTAT PR #135) the inverse
+        observed information is projected with MATLAB's ``nearestSPD`` and the
+        p-values are MATLAB ``ztest``'s ``2*normcdf(-|z|)``.  With
+        ``RhatDiag = 0`` every entry of R is a parameter (row by row); MATLAB's
+        branch errors there for dy > 1.  An exactly singular observed
+        information falls back to ``pinv`` (Python-only: MATLAB's SE pass
+        then never returns).
 
         Returns
         -------
@@ -1779,7 +1788,10 @@ class PPLFP:
         coefficient (``0:delta:size(gamma,1)*delta``) and a nonzero shared
         gamma column is expanded to every cell.  EM stops before the M-step if
         the E-step log-likelihood is not finite and returns the best finite
-        iterate.
+        iterate.  The Monte Carlo of the M-steps and the SE pass draws from
+        NumPy's global stream, so ``np.random.seed(s)`` (or
+        :func:`nstat.extras.matlab_rng.seeded_global_rng`) makes a fit
+        reproducible; MATLAB's randn stream is not reproduced.
 
         ``SE`` / ``Pvals`` are always computed (MATLAB computes them only when
         more than 13 outputs are requested).  The Monte Carlo SE pass
@@ -2429,7 +2441,10 @@ class PPLFP:
         the linearised Gaussian terms (``sumXkTerms``, ``sumYkTerms``),
         the conditional-intensity contribution to the complete-data
         log-likelihood (``sumPPll``), and the best estimates of the
-        initial state (``Sx0``, ``Sx0x0``).
+        initial state (``Sx0``, ``Sx0x0``).  As in MATLAB the intensity is
+        the unclipped ``exp(terms)`` (binomial ``exp./(1+exp)``) and the
+        log-determinants are unfloored: a non-positive determinant gives a
+        non-finite ``logll``, on which ``PPLFP_EM`` stops.
 
         Parameters
         ----------
@@ -2752,6 +2767,14 @@ class PPLFP:
         it).  ``delta`` (seconds per bin, MATLAB's optional 16th input,
         default 0.001, R4c) is the GLM M-step's time base; ``PPLFP_EM`` passes
         its ``delta``.
+
+        As in MATLAB (nSTAT PR #135, ``aa88a2b``): the closed-form updates use
+        MATLAB's divisions (LU solves, no least squares); each Newton loop runs
+        at most 99 steps on MATLAB's unclipped ``exp(terms)`` (binomial
+        ``exp./(1+exp)``), a 1 x 1 step is ``g/H``, and a NaN step (MATLAB's
+        result on a singular Hessian) keeps the previous value.  The ``McExp =
+        50`` Monte Carlo draws come from NumPy's global stream (seed with
+        ``np.random.seed`` or :func:`nstat.extras.matlab_rng.seeded_global_rng`).
         """
         MstepMethod = _check_mstep_method(MstepMethod)
         if delta is None:
