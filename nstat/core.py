@@ -30,7 +30,8 @@ def _matlab_colon(start: float, step: float, stop: float) -> np.ndarray:
     helper got the *length* right (``m = fix((stop-start)/step)``, ``m+1``
     samples) but accumulated float error element-by-element via
     ``start + np.arange(m+1) * step``, differing from MATLAB's actual
-    build-from-both-ends algorithm in 132/200 bit-exactness test arrays.
+    build-from-both-ends algorithm in 385/487 bit-exactness test arrays
+    (measured against the colon_* MATLAB gold).
     """
     return _matlab_colon_exact(start, step, stop)
 

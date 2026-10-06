@@ -343,7 +343,8 @@ def test_matlab_colon_matches_matlab_bitwise(gold) -> None:
     (see ``test_matlab_colon_exact_matches_matlab_bitwise``).  Before that
     delegation, ``_matlab_colon`` built the vector as
     ``start + np.arange(m+1) * step`` and differed from MATLAB bitwise in
-    132/200 arrays sampled from this same gold set.
+    385/487 arrays of this same gold set (measured directly, not estimated:
+    see the commit introducing this test).
     """
     from nstat.core import _matlab_colon
 

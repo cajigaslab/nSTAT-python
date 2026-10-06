@@ -1857,8 +1857,8 @@ entries:
     `tests/test_glmfit_nan_rows_matlab_gold.py::test_glmfit_nan_row_matches_matlab_statremovenan` drives
     `Analysis.GLMFit` itself (via a minimal duck-typed `tObj` stub exposing only what `GLMFit` reads, since a real
     `Trial`/`nspikeTrain` cannot carry a NaN design entry or non-binary per-bin counts > 1 through its spike-binning
-    machinery) and matches MATLAB to 1e-6 (dev/AIC/BIC/b/se) and 1e-3 (logLL, looser only because of the `eps`-floor
-    cancellation''s sensitivity to float rounding in the sum); it fails on the pre-fix code (all-NaN `b`).  Full
+    machinery) and matches MATLAB to the measured diffs (`b` ~2.2e-16, `se` ~2.6e-10, `dev`/`AIC`/`BIC` exactly 0,
+    `logLL` ~7.1e-15 -- all tight round-off, not an estimate); it fails on the pre-fix code (all-NaN `b`).  Full
     gold suite and `numerical_drift.py --fail-on-drift` (96/96) pass unchanged -- no existing gold fixture has a
     NaN-containing `GLMFit` design.'
   fixture_impact: 'new fixture `glmfit_nan_rows.mat`; no existing fixture changed'
@@ -1946,10 +1946,15 @@ entries:
     separately-fixed singular-`IObs`-information handling of `em-singular-se-projection`, and the `pinv`-based
     `kalman_smootherFromFiltered` shared by the Gaussian E-steps, explicitly out of scope -- see the "Not changed"
     bullet on this same follow-up before this entry existed) now routes through these three helpers.'
-  - 'New `tests/test_em_singular_solves.py`: unit tests pin `_matlab_mldivide_matrix` / `_matlab_mrdivide` /
-    `_matlab_inv` against MATLAB''s documented singular-matrix behavior (`-[1 1;1 1]\[1;2] == [-Inf; Inf]`, the
-    same example `em-newton-solve-reciprocal-pivot` already verified for the vector `_matlab_mldivide`), each
-    first proving `np.linalg.solve`/`inv` raises on the same input; and two end-to-end tests feed `PP_MStep` /
+  - 'New `tests/test_em_singular_solves.py`: unit tests pin `_matlab_mldivide_matrix` / `_matlab_mrdivide` against
+    MATLAB''s documented singular-matrix behavior (checked directly against MATLAB R2026a: `[1 1;1 1]\[1;2] ==
+    [-Inf; Inf]`, the same result `em-newton-solve-reciprocal-pivot`''s NEGATED example gives for the vector
+    `_matlab_mldivide`), each first proving `np.linalg.solve`/`inv` raises on the same input.  `_matlab_inv` is
+    pinned only to "non-finite, not raising" -- checked directly against MATLAB, `inv([1 1;1 1])` (all `+Inf`) and
+    `[1 1;1 1]\eye(2)` (`[Inf -Inf; -Inf Inf]`) give DIFFERENT Inf sign patterns for the same singular input, so
+    `_matlab_inv`''s `A \ eye(n)` implementation is not claimed bit-exact against MATLAB''s `inv` builtin at an
+    exactly singular `A` (see its docstring); it reliably signals non-finite either way, which is what the EM
+    drivers'' finite-log-likelihood stop depends on. And two end-to-end tests feed `PP_MStep` /
     `PPLFP_MStep` an exactly singular `Sxkm1xkm1` (a constant state path) and assert `Ahat` comes back non-finite
     rather than raising. All fail to even import pre-fix (the new helpers did not exist). `tests/test_em_guards_rng.py`''s
     two closed-form-update pins (`test_pp_mstep_closed_form_updates_are_matlabs`,
@@ -2032,7 +2037,7 @@ entries:
   correct_behavior: As MATLAB, bit for bit.
   python_implementation:
   - '`_matlab_colon` computed `start + np.arange(m+1) * step` (`m = floor((stop-start)/step + 1e-12)`): the length
-    matched MATLAB in every case tested, but the element values differed bitwise from MATLAB in 132/200 sampled
+    matched MATLAB in every case tested, but the element values differed bitwise from MATLAB in 385/487 sampled
     arrays (float accumulation error), while the already-bit-exact `_matlab_colon_exact` (added for the history-window
     edge cases, verified bitwise against 4,337 MATLAB R2025b outputs) was a separate, unused-by-default function.'
   - '`_matlab_colon` now delegates to `_matlab_colon_exact` (`nstat/core.py`), so every caller (`core.py`''s
@@ -2041,7 +2046,7 @@ entries:
     instead of carrying their own length-only copy) gets the bit-exact vector.  New test
     `test_matlab_colon_matches_matlab_bitwise` (`tests/test_pp_square_history_matlab_gold.py`) pins `_matlab_colon`
     itself against the same 487-array `colon_*` gold that already pinned `_matlab_colon_exact`; it failed on the
-    pre-fix helper (132/487 mismatches) and passes post-fix.  Full gold suite (431 tests, including the new one) and
+    pre-fix helper (385/487 mismatches, measured directly: 15 of those also wrong in length) and passes post-fix.  Full gold suite (431 tests, including the new one) and
     `numerical_drift.py --fail-on-drift` (96/96) unaffected -- no gold fixture or drift recipe exercises a
     non-bit-exact `_matlab_colon` call site at a value where the two helpers previously disagreed. `example01`''s
     three committed PNGs were regenerated and diverge from the committed bytes by a pre-existing environment artifact

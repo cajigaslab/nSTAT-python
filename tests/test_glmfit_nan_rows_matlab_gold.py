@@ -86,12 +86,15 @@ def test_glmfit_nan_row_matches_matlab_statremovenan(gold) -> None:
     got_b = np.asarray(result.b, dtype=float).reshape(-1)
     got_se = np.asarray(result.stats["se"], dtype=float).reshape(-1)
 
-    np.testing.assert_allclose(got_b, want_b, rtol=0, atol=1e-6)
-    np.testing.assert_allclose(got_se, want_se, rtol=0, atol=1e-6)
-    assert np.isclose(result.dev, want_dev, atol=1e-6), (result.dev, want_dev)
-    assert np.isclose(result.AIC, want_AIC, atol=1e-6), (result.AIC, want_AIC)
-    assert np.isclose(result.BIC, want_BIC, atol=1e-6), (result.BIC, want_BIC)
-    assert np.isclose(result.logLL, want_logLL, atol=1e-3), (result.logLL, want_logLL)
+    # Tolerances are the measured diffs (b ~2.2e-16, se ~2.6e-10, dev/AIC/BIC
+    # exactly 0, logLL ~7.1e-15), not placeholders: this fixture converges to
+    # round-off, no eps-floor cancellation sensitivity in practice.
+    np.testing.assert_allclose(got_b, want_b, rtol=0, atol=1e-12)
+    np.testing.assert_allclose(got_se, want_se, rtol=0, atol=1e-8)
+    assert np.isclose(result.dev, want_dev, atol=1e-9), (result.dev, want_dev)
+    assert np.isclose(result.AIC, want_AIC, atol=1e-9), (result.AIC, want_AIC)
+    assert np.isclose(result.BIC, want_BIC, atol=1e-9), (result.BIC, want_BIC)
+    assert np.isclose(result.logLL, want_logLL, atol=1e-10), (result.logLL, want_logLL)
 
     # The NaN row of lambda (rate_hz / sampleRate) must itself still be NaN
     # (MATLAB's `data = exp(X*b)` is NaN there too); it is the *floored*

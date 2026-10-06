@@ -111,26 +111,65 @@ def test_poisson_predict_rate_still_uses_the_python_only_default_bound() -> None
     assert not np.isclose(rate[0], np.exp(25.0))
 
 
-def test_glmfit_poisson_path_uses_unclipped_exp_not_predict_rate() -> None:
-    # A constant design (one "one" intercept column) with a huge count rate
-    # drives the MLE intercept well past +-20 in magnitude (log(1e11) ~=
-    # 25.3): Analysis.GLMFit's lambda_signal must come out close to the
-    # TRUE exp(eta), not clamped to exp(+-20) as it would be if GLMFit
-    # still called PoissonGLMResult.predict_rate (whose own default clip is
-    # unrelated to Analysis.GLMFit and intentionally unchanged -- see the
-    # module docstring).
-    n = 50
-    X = np.ones((n, 1), dtype=float)
-    sample_rate = 1.0
-    y = np.full(n, 1.0e11, dtype=float)
-    trial = _StubTrial(X, y, sample_rate)
+def test_glmfit_poisson_path_passes_matlab_eta_bound_to_the_fit(monkeypatch) -> None:
+    # Structural test, not an end-to-end large-eta fit: a real Newton-IRLS
+    # fit from beta=0 on a huge-count design (e.g. y ~ 1e11) does not
+    # converge to the MLE either way (it diverges from its first step,
+    # unlike MATLAB glmfit, which starts from startingVals(y) --
+    # Analysis.GLMFit does not mirror that initialization; see the module
+    # docstring's "glmfit starting-value gap" note), so asserting against
+    # its *output* there would pass vacuously once both sides overflow to
+    # the same inf. Instead, intercept the fit_poisson_glm call itself and
+    # check Analysis.GLMFit passes MATLAB's bound.
+    import nstat.analysis as analysis_mod
+
+    captured_kwargs = {}
+    real_fit_poisson_glm = analysis_mod.fit_poisson_glm
+
+    def _spy(*args, **kwargs):
+        captured_kwargs.update(kwargs)
+        return real_fit_poisson_glm(*args, **kwargs)
+
+    monkeypatch.setattr(analysis_mod, "fit_poisson_glm", _spy)
+
+    n = 20
+    rng = np.random.default_rng(0)
+    X = np.column_stack([np.ones(n), rng.standard_normal(n)])
+    y = rng.poisson(2.0, size=n).astype(float)
+    trial = _StubTrial(X, y, 1.0)
+    Analysis.GLMFit(trial, 0, 0, "GLM", l2=0.0)
+
+    assert captured_kwargs.get("eta_bound") == _MATLAB_GLMFIT_POISSON_ETA_BOUND
+
+
+def test_glmfit_poisson_path_uses_unclipped_exp_not_predict_rate(monkeypatch) -> None:
+    # Fake a converged fit with a coefficient well past +-20 in magnitude
+    # (no real IRLS run needed -- beta=0 Newton genuinely diverges on a
+    # design extreme enough to need this, per the test above) and confirm
+    # Analysis.GLMFit's lambda_signal is the raw, unclipped exp(eta) that
+    # MATLAB's `data = exp(X*b)` computes, not exp(clip(eta, -20, 20))
+    # (what calling PoissonGLMResult.predict_rate would give -- its own
+    # default clip is unrelated to Analysis.GLMFit and intentionally
+    # unchanged; see the module docstring). This is the real fails-before:
+    # on base @ 2566769 (before any eta-bound fix), predict_rate clips at
+    # +-20 and this assertion fails (exp(20), not exp(25)).
+    import nstat.analysis as analysis_mod
+
+    # Analysis.GLMFit calls fit_poisson_glm with include_intercept=False (X
+    # already carries its own constant column), so only `coefficients` (not
+    # `intercept`, which Analysis.GLMFit never reads) determines eta = X@b.
+    fake_result = PoissonGLMResult(
+        intercept=0.0, coefficients=np.array([25.0]), n_iter=1, converged=True,
+        log_likelihood=0.0,
+    )
+    monkeypatch.setattr(analysis_mod, "fit_poisson_glm", lambda *a, **k: fake_result)
+
+    n = 5
+    X = np.ones((n, 1), dtype=float)  # one constant column; full rank, kept stays None
+    y = np.zeros(n, dtype=float)
+    trial = _StubTrial(X, y, 1.0)
     result = Analysis.GLMFit(trial, 0, 0, "GLM", l2=0.0)
 
-    got_eta = float(result.b[0])
-    assert got_eta > _DEFAULT_ETA_BOUND, got_eta  # the regime that exposes the bug
-
     lambda_got = np.asarray(result.lambda_signal.data, dtype=float).reshape(-1)[0]
-    # Raw, unclipped exp(eta) (what MATLAB's `data = exp(X*b)` computes),
-    # not exp(clip(eta, -20, 20)) (what calling predict_rate would give).
-    np.testing.assert_allclose(lambda_got, np.exp(got_eta), rtol=1e-9)
+    np.testing.assert_allclose(lambda_got, np.exp(25.0), rtol=1e-9)
     assert not np.isclose(lambda_got, np.exp(_DEFAULT_ETA_BOUND))

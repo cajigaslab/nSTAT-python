@@ -28,9 +28,11 @@ from nstat.decoding_algorithms import (
 from nstat.decoding.PPLFP import PPLFP
 
 
-# A 2x2 exactly singular matrix: MATLAB -[1 1;1 1]\[1;2] == [-Inf; Inf]
-# (parity/matlab_defects.yml: em-newton-solve-reciprocal-pivot cites this
-# exact example for _matlab_mldivide).
+# A 2x2 exactly singular matrix. em-newton-solve-reciprocal-pivot's own
+# example is the NEGATED matrix (-[1 1;1 1]\[1;2] == [-Inf; Inf]); checked
+# directly against MATLAB R2026a that the POSITIVE matrix used here gives
+# the identical result ([1 1;1 1]\[1;2] == [-Inf; Inf] too, not just its
+# negation) -- this is not simply inferred from the negated case.
 _SINGULAR = np.array([[1.0, 1.0], [1.0, 1.0]])
 
 

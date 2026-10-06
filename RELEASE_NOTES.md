@@ -23,7 +23,7 @@
 - Fix: `nstat.core._matlab_colon` is now bit-exact against MATLAB's `a:d:b`
   (it delegates to the already-bit-exact `_matlab_colon_exact`); the previous
   implementation got vector lengths right but differed bitwise from MATLAB in
-  132/200 sampled arrays. Affects `SignalObj` resampling and
+  385/487 sampled arrays. Affects `SignalObj` resampling and
   `examples/paper/example01_mepsc_poisson.py`.
 - Fix: `Analysis.GLMFit`'s poisson (`'GLM'`) path clipped its linear
   predictor to a flat `+-20` throughout (both the internal `glmfit`-mirroring

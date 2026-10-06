@@ -771,11 +771,28 @@ def _matlab_mrdivide(A, B):
 
 
 def _matlab_inv(A):
-    """MATLAB ``inv(A)`` via ``A \\ eye(n)``: the same LU/triangular detection
-    as :func:`_matlab_mldivide`, so an exactly singular ``A`` gives MATLAB's
-    +-Inf / NaN (with its unreproduced "singular to working precision"
-    warning) instead of raising ``LinAlgError``, matching MATLAB's own
-    ``inv`` (computed the same way, via mldivide against the identity).
+    """Approximation of MATLAB ``inv(A)`` via ``A \\ eye(n)``: the same
+    LU/triangular detection as :func:`_matlab_mldivide`, so an exactly
+    singular ``A`` gives +-Inf / NaN (with its unreproduced "singular to
+    working precision" warning) instead of raising ``LinAlgError``.
+
+    On a well-conditioned ``A`` this is bit-identical to MATLAB's own
+    ``inv`` (both ultimately solve the same system). On an EXACTLY
+    singular ``A`` it is NOT verified bit-identical to MATLAB's ``inv``
+    builtin, which can differ in the *sign pattern* of the resulting
+    Inf entries from ``A \\ eye(n)``: checked directly against MATLAB
+    R2026a, ``inv([1 1;1 1])`` gives all ``+Inf``, while
+    ``[1 1;1 1] \\ eye(2)`` gives ``[Inf -Inf; -Inf Inf]`` -- evidently
+    different internal algorithms (``inv`` likely uses LAPACK ``getri``
+    on the LU factors directly, not ``getrs`` against the identity).
+    Every call site here (``Qinv``, ``Px0inv`` in the EM standard-error
+    routines) is not reached by any gold input (see
+    ``parity/matlab_defects.yml``: ``em-closed-form-solves-reciprocal-pivot``),
+    so this does not corrupt any currently-tested result; it reliably
+    signals "singular, do not trust this value" (Inf/NaN rather than a
+    raised exception) either way, which is what the EM drivers' own
+    finite-log-likelihood stop depends on, but the exact Inf sign
+    pattern should not be relied on as a MATLAB-bit-exact result.
     """
     A = np.asarray(A, dtype=float)
     n = A.shape[0]
