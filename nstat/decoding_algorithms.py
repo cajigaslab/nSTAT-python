@@ -6882,7 +6882,9 @@ class DecodingAlgorithms:
         for c in range(numCells):
             converged = False
             maxIter_nr = 100
-            for iteration in range(maxIter_nr):
+            # MATLAB: iter = 1; while(~converged && iter < maxIter) -- at most
+            # maxIter - 1 = 99 Newton steps (this ran range(100), one more).
+            for iteration in range(maxIter_nr - 1):
                 HessianTerm = np.zeros((dx, dx))
                 GradTerm = np.zeros(dx)
 
@@ -6941,7 +6943,7 @@ class DecodingAlgorithms:
         for c in range(numCells):
             converged = False
             maxIter_nr = 100
-            for iteration in range(maxIter_nr):
+            for iteration in range(maxIter_nr - 1):  # MATLAB: at most maxIter - 1 steps (see beta)
                 HessianTerm = 0.0
                 GradTerm = 0.0
 
@@ -7001,7 +7003,7 @@ class DecodingAlgorithms:
                 gammaC = np.ravel(gammahat_new) if gammahat_new.size == 1 else gammahat_new[:, c] if gammahat_new.ndim == 2 else gammahat_new
                 gammaC = np.atleast_1d(gammaC).copy()
 
-                for iteration in range(maxIter_nr):
+                for iteration in range(maxIter_nr - 1):  # MATLAB: at most maxIter - 1 steps (see beta)
                     HessianTerm = np.zeros((nGamma, nGamma))
                     GradTerm = np.zeros(nGamma)
 
