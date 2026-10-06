@@ -45,6 +45,7 @@ from nstat.decoding_algorithms import (
     _expand_shared_se_gamma,
     _is_empty_value,
     _em_se_term_labels,
+    _em_project_covariance,
     _em_singular_information_inverse,
     _matlab_float_semantics,
     _matlab_mldivide,
@@ -1597,7 +1598,7 @@ class PPLFP:
                 ("beta", n9, betahat.shape, "cellmajor"), ("gamma", n10, gshape, "cellmajor")])
             invIObs, nonid = _em_singular_information_inverse(IObs, labels, "PPLFP_ComputeParamStandardErrors")
 
-        invIObs = _nearest_spd(invIObs)
+        invIObs = _em_project_covariance(invIObs, nonid, _nearest_spd)
         VarVec = np.diag(invIObs)
         SEVec = np.sqrt(VarVec)  # MATLAB sqrt(VarVec); positive after nearestSPD (was sqrt(|VarVec|))
         if nonid is not None:

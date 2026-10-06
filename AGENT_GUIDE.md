@@ -983,8 +983,8 @@ cons = DecodingAlgorithms.PP_EMCreateConstraints(mcIter=50)  # defaults, fewer S
   each Newton step moves its coefficient by -1 (at most 99 per EM iteration)
   until `exp()` underflows (about -743), as in MATLAB, so where it ends depends
   on when EM stops (about -397 after 6 iterations, the underflow after 10 or
-  more on the gold case).  MATLAB's SE pass never returns there.  Python
-  returns: once the coefficient's information is exactly 0 the observed
+  more on the gold case).  MATLAB's SE pass never returned there before nSTAT PR #137;
+  both now return: once the coefficient's information is exactly 0 the observed
   information is singular, the SEs come from its pseudo-inverse, and every
   parameter in its null space gets `SE` and `Pvals` NaN, with a
   `RuntimeWarning` naming them (e.g. `gamma[0, 1]`); before the underflow the
