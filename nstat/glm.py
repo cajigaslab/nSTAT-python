@@ -149,9 +149,15 @@ def fit_poisson_glm(
         (a Python-only stability guard with no MATLAB counterpart at this
         default). ``Analysis.GLMFit``'s poisson (``'GLM'``) path passes
         MATLAB's own ``glmfit`` log-link bound here instead
-        (``-log(realmin**0.25)``, from ``stattestlink.m``) so the fit
-        reaches the same basin MATLAB's IRLS does; every other caller
-        keeps the default.
+        (``-log(realmin**0.25)``, from ``stattestlink.m``); every other
+        caller keeps the default. This matches the BOUND glmfit's own
+        iterations use, not its full numerical path: MATLAB's ``glmfit``
+        initializes from ``startingVals(y)`` (a function of the data), while
+        this Newton-IRLS starts from ``beta = 0`` unconditionally, so on a
+        design whose MLE is far from 0 the two can still walk different
+        paths (and, on a sufficiently extreme design, Python can diverge
+        where MATLAB's better-initialized walk converges) even with the
+        bound matched.
 
     Returns
     -------

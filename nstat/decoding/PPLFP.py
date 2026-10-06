@@ -1176,14 +1176,20 @@ class PPLFP:
                     cnt += 1
 
         # ---- x0 complete information matrix ----
+        # MATLAB (+nstat/+decoding/PPLFP.m:669):
+        #   Ix0Comp = eye(size(Px0hat))/Px0hat + (Ahat'/Qhat)*Ahat;
+        # literally mrdivide (eye/Px0hat), not inv(Px0hat) -- mathematically
+        # identical, but not necessarily bit-identical through the
+        # hand-rolled LU (pivoting runs on Px0hat.T here, not Px0hat).
         Ix0Comp = None
         if Estimatex0 == 1:
-            term1 = _matlab_inv(Px0hat)
+            term1 = _matlab_mrdivide(np.eye(Px0hat.shape[0]), Px0hat)
             term2 = _matlab_mrdivide(Ahat.T, Qhat) @ Ahat
             Ix0Comp = term1 + term2
 
         # ---- Alpha complete information matrix ----
-        IAlphaComp = N * _matlab_inv(Rhat)
+        # MATLAB (PPLFP.m:672): IAlphaComp = N*eye(size(Rhat))/Rhat; (mrdivide).
+        IAlphaComp = N * _matlab_mrdivide(np.eye(Rhat.shape[0]), Rhat)
 
         # ==================================================================
         # Monte Carlo draws (expectation phase)

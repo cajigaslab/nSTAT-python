@@ -6075,10 +6075,17 @@ class DecodingAlgorithms:
             ISComp = np.zeros((0, 0))
 
         # x0 information
+        # MATLAB (+nstat/+decoding/PointProcessEM.m:247):
+        #   Ix0Comp = eye(size(Px0hat))/Px0hat + (Ahat'/Qhat)*Ahat;
+        # literally mrdivide (eye/Px0hat, Ahat'/Qhat), not inv(...) -- see
+        # _matlab_mrdivide's docstring and em-closed-form-solves-reciprocal-pivot
+        # for why this is not necessarily bit-identical to the inv() form
+        # through the hand-rolled LU.
         if PPEM_Constraints["Estimatex0"]:
-            Qinv = _matlab_inv(Qhat)
-            Px0inv = _matlab_inv(Px0hat)
-            Ix0Comp = Px0inv + Ahat.T @ Qinv @ Ahat
+            Ix0Comp = (
+                _matlab_mrdivide(np.eye(Px0hat.shape[0]), Px0hat)
+                + _matlab_mrdivide(Ahat.T, Qhat) @ Ahat
+            )
         else:
             Ix0Comp = np.zeros((0, 0))
 
@@ -6244,8 +6251,6 @@ class DecodingAlgorithms:
         else:
             x0Draw = np.tile(x0hat[:, None], (1, Mc))
 
-        Qinv = _matlab_inv(Qhat)
-        Px0inv = _matlab_inv(Px0hat)
         IMc = np.zeros((nTerms, nTerms, Mc))
 
         for c_mc in range(Mc):
@@ -6304,7 +6309,10 @@ class DecodingAlgorithms:
                 ScoreSMc = np.diag(ScorS)
 
             # Score for x0
-            Scorx0 = -_matlab_mldivide_matrix(Px0hat, x_0 - x0hat) + Ahat.T @ Qinv @ (x_K[:, 0] - Ahat @ x_0)
+            # MATLAB (PointProcessEM.m:722): Scorx0 = (-Px0hat\(x_0-x0hat))
+            # + Ahat'/Qhat*(x_K(:,1)-Ahat*x_0); -- Ahat'/Qhat is mrdivide,
+            # not Ahat.T @ inv(Qhat).
+            Scorx0 = -_matlab_mldivide_matrix(Px0hat, x_0 - x0hat) + _matlab_mrdivide(Ahat.T, Qhat) @ (x_K[:, 0] - Ahat @ x_0)
             Scorex0Mc = Scorx0.ravel()
 
             # Cell scores

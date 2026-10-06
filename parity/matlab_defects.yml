@@ -1965,6 +1965,24 @@ entries:
   - 'Full gold suite and `numerical_drift.py --fail-on-drift` (96/96) pass unchanged -- no gold fixture''s
     covariance matrices are singular (consistent with the "not reached by any gold input" note above); only the
     two round-off-sensitive pins in `test_em_guards_rng.py` needed updating.'
+  - 'A within-track review (reading `+nstat/+decoding/PointProcessEM.m:247` and `PPLFP.m:669,672,1237,1381`
+    directly, not inferring the operator from the pre-existing Python comment) found and fixed three more sites
+    that this same commit had ported as `inv(...)` when MATLAB literally writes `eye(...)/X` or `X''/Y`
+    (mrdivide): `Ix0Comp` in both `PP_ComputeParamStandardErrors` (`eye(size(Px0hat))/Px0hat + (Ahat''/Qhat)*Ahat`)
+    and `PPLFP_ComputeParamStandardErrors` (same form), and `Scorx0` in `PP_ComputeParamStandardErrors`
+    (`Ahat''/Qhat*(...)`, which had been ported as `Ahat.T @ _matlab_inv(Qhat)`; `PPLFP_ComputeParamStandardErrors`''s
+    `Scorx0` already used `_matlab_mrdivide` correctly).  Mathematically `eye/X == inv(X)` and `A''/Qhat ==
+    A.T @ inv(Qhat)`, but NOT necessarily bit-identical through the hand-rolled LU (different pivoting: on `X`
+    directly for mrdivide`B.T\A.T).T`, vs. on `X` for a literal `A\eye(n)` inv -- see `_matlab_inv`''s docstring).
+    Now `_matlab_mrdivide(np.eye(n), X)` / `_matlab_mrdivide(Ahat.T, Qhat)`, matching the literal MATLAB operator.
+    Two further sites (`IQComp`, `ISComp` -- the per-element diagonal Fisher-information terms in both SE
+    routines) remain a KNOWN, NOT-YET-CLOSED gap: MATLAB computes them as `N/2*((Qhat)\em*el''/(Qhat))` /
+    `0.5*((Px0hat)\em*el''/(Px0hat))` (one mldivide, one mrdivide, per element), while this port computes
+    `N/2 * Qinv @ outer(el,em) @ Qinv` (full matrix inverse, computed once, reused) -- mathematically equal,
+    structurally different, and NOT reconciled in this track (it needs restructuring the loop, not swapping a
+    solver call, and remains "not reached by any gold input" either way).  No exhaustive line-by-line audit of
+    every remaining linear-algebra call across both ~250-line SE routines was completed; these are the specific
+    sites checked.'
   fixture_impact: none
   discovered: P2a / 2026-10
   upstream_status: n/a
@@ -2096,15 +2114,28 @@ entries:
     actually governs (`eta_bound`, above), not to add a line search (no MATLAB basis) or revert the parity
     correction.'
   - 'New tests/test_glm_eta_bound.py pins `_MATLAB_GLMFIT_POISSON_ETA_BOUND` against the `stattestlink.m` formula,
-    confirms the Python-only default is unchanged (`20.0`), and drives `Analysis.GLMFit` itself (via the
-    `tests/test_glmfit_nan_rows_matlab_gold.py` duck-typed-stub pattern) with a one-column, huge-count design whose
-    MLE intercept exceeds 25 in magnitude, asserting `lambda_signal` equals raw `exp(eta)`, not `exp(clip(eta,
-    -20, 20))`.'
+    confirms the Python-only default is unchanged (`20.0`), and drives `Analysis.GLMFit` itself (the
+    `tests/test_glmfit_nan_rows_matlab_gold.py` duck-typed-stub pattern) two ways: (1) spies on the
+    `fit_poisson_glm` call to confirm `eta_bound=_MATLAB_GLMFIT_POISSON_ETA_BOUND` is passed; (2) monkeypatches
+    `fit_poisson_glm` to RETURN a fake converged result (coefficient 25.0) rather than running a real large-eta
+    fit, and asserts `lambda_signal` equals raw `exp(25.0)`, not `exp(clip(25.0, -20, 20))`.  An earlier version
+    of this test ran a real Newton-IRLS fit on a y~1e11 design and asserted against its output; that passed
+    VACUOUSLY (Newton from `beta=0` diverges there -- `converged=False`, `b~1e11`, not the true MLE ~25.3 --
+    because MATLAB''s `glmfit` initializes from `startingVals(y)` and this port starts from `beta=0`
+    unconditionally, a gap this track does not close; see `nstat.glm.fit_poisson_glm`''s `eta_bound` docstring),
+    so BOTH sides of the comparison overflowed to the same `inf` and the assertion passed without proving
+    anything.  Caught by a within-track review, not by any test run (`pytest` does not flag a passing assertion
+    on two `inf`s), and replaced with the two tests above.'
   fixture_impact: 'none (no gold fixture or drift recipe reaches |eta| > 20 in a poisson GLMFit); `make test`
-    (1388 passed, 19 skipped) and `numerical_drift.py --fail-on-drift` (96/96) re-run clean after the correction;
-    example01 and example03''s figures regenerated and confirmed byte-identical to a same-commit regen without
-    the `eta_bound` plumbing (isolating this change from the pre-existing example01 regen/environment drift noted
-    in `matlab-colon-public-helper-not-bitexact`)'
+    (1388 passed, 19 skipped) and `numerical_drift.py --fail-on-drift` (96/96) re-run clean after the correction.
+    The three example scripts that reach `Analysis.GLMFit` (01, 02, 03) were checked by regenerating their
+    figures at HEAD and bisecting commit by commit: example01 and example03 are byte-identical to their
+    pre-track regen (and example01''s AIC/BIC values match too); example02''s committed-figure diff traced to
+    PRE-EXISTING unseeded randomness in `example02_whisker_stimulus_thalamus.py`''s KS-optimal-window sweep
+    (three repeated runs of the identical commit gave three different window indices and three different PNG
+    hashes), not to anything in this track -- its AIC/BIC arrays (which depend only on the GLM fit, not the KS
+    sweep) are identical across every commit in this track. Flagged as a concern for the maintainer, not fixed
+    here (unrelated, pre-existing, out of this track''s scope).'
   discovered: P2a / 2026-10 (fixed, then its own scope corrected within the same track after `make test` surfaced
     the extras regression)
   upstream_status: n/a

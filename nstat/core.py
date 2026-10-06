@@ -27,11 +27,11 @@ def _matlab_colon(start: float, step: float, stop: float) -> np.ndarray:
     """Replicate MATLAB ``start:step:stop`` exactly, bit for bit.
 
     Delegates to :func:`_matlab_colon_exact`.  An earlier version of this
-    helper got the *length* right (``m = fix((stop-start)/step)``, ``m+1``
-    samples) but accumulated float error element-by-element via
-    ``start + np.arange(m+1) * step``, differing from MATLAB's actual
-    build-from-both-ends algorithm in 385/487 bit-exactness test arrays
-    (measured against the colon_* MATLAB gold).
+    helper computed ``m = fix((stop-start)/step)`` and returned ``m+1``
+    samples via ``start + np.arange(m+1) * step``, accumulating float error
+    element-by-element; against the ``colon_*`` MATLAB gold (487 arrays)
+    this differed from MATLAB's actual build-from-both-ends algorithm in
+    385/487 cases, 15 of those in LENGTH too (not just element values).
     """
     return _matlab_colon_exact(start, step, stop)
 

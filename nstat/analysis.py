@@ -770,10 +770,13 @@ class Analysis:
             kept = _glmfit_independent_columns(X_fit) if l2 == 0.0 else None
             # eta_bound: MATLAB glmfit's own 'log'-link iteration bound
             # (stattestlink.m, read directly: tiny = realmin^.25,
-            # bound = -log(tiny)), passed so the Newton walk below reaches
-            # the same basin MATLAB's glmfit does -- not an arbitrary
-            # widening (see parity/matlab_defects.yml
-            # glmfit-ilink-eta-bound-too-tight).
+            # bound = -log(tiny)) -- not an arbitrary widening (see
+            # parity/matlab_defects.yml glmfit-ilink-eta-bound-too-tight).
+            # This matches glmfit's BOUND, not its initialization: MATLAB
+            # starts from startingVals(y), this Newton-IRLS from beta = 0,
+            # so the two can still diverge on an extreme-enough design even
+            # with the bound matched (see nstat.glm.fit_poisson_glm's
+            # eta_bound docstring).
             if kept is None:
                 glm_res = fit_poisson_glm(
                     X_fit, y_fit, include_intercept=False, l2=l2, max_iter=max_iter,
