@@ -87,6 +87,7 @@ from scipy.io import loadmat
 
 from nstat.decoding.PPLFP import PPLFP
 from nstat.decoding_algorithms import DecodingAlgorithms, _compute_history_terms, _em_history_windows
+from nstat.extras.matlab_rng import seeded_global_rng
 
 FIXTURE = Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab_gold" / "em_drivers.mat"
 CASES = ["pp_pois", "pp_binom", "pp_defwin", "lfp_def", "pp_sep"]
@@ -208,24 +209,24 @@ def test_closed_form_mstep_updates_match_matlab(gold, case, j) -> None:
     for key in ("Sxkm1xkm1", "Sxkxkm1", "Sxkm1xk", "Sxkxk", "sumXkTerms"):
         ES[key] = ES[key].reshape(dx, dx)
     cons = [int(v) for v in np.ravel(q("cons"))]
-    np.random.seed(7)
-    if f("family") == "PP":
-        out = DecodingAlgorithms.PP_MStep(
-            dN, f("es_x_K"), f("es_W_K"), np.ravel(f("x0hat")), np.atleast_2d(f("Px0hat")), ES, str(f("fitType")),
-            np.ravel(f("muhat")), f("betahat"), np.asarray(f("gammahat"), dtype=float), wt, H,
-            DecodingAlgorithms.PP_EMCreateConstraints(*cons), "NewtonRaphson", float(f("delta")))
-        pairs = [(out[0], "Ahat"), (out[1], "Qhat"), (out[5], "x0hat"), (out[6], "Px0hat")]
-    else:
-        y = np.atleast_2d(f("y"))
-        ES["Sxkyk"] = ES["Sxkyk"].reshape(dx, y.shape[0])
-        for key in ("Sykyk", "sumYkTerms"):
-            ES[key] = ES[key].reshape(y.shape[0], y.shape[0])
-        out = PPLFP.PPLFP_MStep(
-            dN, y, f("es_x_K"), f("es_W_K"), np.ravel(f("x0hat")), np.atleast_2d(f("Px0hat")), ES,
-            str(f("fitType")), np.ravel(f("muhat")), f("betahat"), np.array(0.0), None, H,
-            PPLFP.PPLFP_EMCreateConstraints(*cons), "NewtonRaphson", float(f("delta")))
-        pairs = [(out[0], "Ahat"), (out[1], "Qhat"), (out[2], "Chat"), (out[3], "Rhat"), (out[4], "alphahat"),
-                 (out[8], "x0hat"), (out[9], "Px0hat")]
+    with seeded_global_rng(7):
+        if f("family") == "PP":
+            out = DecodingAlgorithms.PP_MStep(
+                dN, f("es_x_K"), f("es_W_K"), np.ravel(f("x0hat")), np.atleast_2d(f("Px0hat")), ES, str(f("fitType")),
+                np.ravel(f("muhat")), f("betahat"), np.asarray(f("gammahat"), dtype=float), wt, H,
+                DecodingAlgorithms.PP_EMCreateConstraints(*cons), "NewtonRaphson", float(f("delta")))
+            pairs = [(out[0], "Ahat"), (out[1], "Qhat"), (out[5], "x0hat"), (out[6], "Px0hat")]
+        else:
+            y = np.atleast_2d(f("y"))
+            ES["Sxkyk"] = ES["Sxkyk"].reshape(dx, y.shape[0])
+            for key in ("Sykyk", "sumYkTerms"):
+                ES[key] = ES[key].reshape(y.shape[0], y.shape[0])
+            out = PPLFP.PPLFP_MStep(
+                dN, y, f("es_x_K"), f("es_W_K"), np.ravel(f("x0hat")), np.atleast_2d(f("Px0hat")), ES,
+                str(f("fitType")), np.ravel(f("muhat")), f("betahat"), np.array(0.0), None, H,
+                PPLFP.PPLFP_EMCreateConstraints(*cons), "NewtonRaphson", float(f("delta")))
+            pairs = [(out[0], "Ahat"), (out[1], "Qhat"), (out[2], "Chat"), (out[3], "Rhat"), (out[4], "alphahat"),
+                     (out[8], "x0hat"), (out[9], "Px0hat")]
     for got, key in pairs:
         np.testing.assert_allclose(np.ravel(got), np.ravel(q(key)), rtol=RTOL, atol=ATOL, err_msg=key)
 

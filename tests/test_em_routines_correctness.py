@@ -40,6 +40,7 @@ from scipy.stats import norm
 
 from nstat.decoding.PPLFP import PPLFP
 from nstat.decoding_algorithms import DecodingAlgorithms, _compute_history_terms
+from nstat.extras.matlab_rng import seeded_global_rng
 
 FD_STEP = 1e-6
 
@@ -143,11 +144,12 @@ def _expected_se(P):
 
 def _pp_se(P, HkAll=None):
     cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0, 0, 10)
-    np.random.seed(0)
-    return DecodingAlgorithms.PP_ComputeParamStandardErrors(
-        P["dN"], P["x"], P["WK"], P["A"], P["Q"], P["x0"], 1e-9 * np.eye(P["dx"]), P["ES"], P["fit"],
-        P["mu"], P["beta"], P.get("gamma_arg", P["gamma"]), P["wt"], P["HkAll"] if HkAll is None else HkAll, cons,
-    )
+    with seeded_global_rng(0):
+        return DecodingAlgorithms.PP_ComputeParamStandardErrors(
+            P["dN"], P["x"], P["WK"], P["A"], P["Q"], P["x0"], 1e-9 * np.eye(P["dx"]), P["ES"], P["fit"],
+            P["mu"], P["beta"], P.get("gamma_arg", P["gamma"]), P["wt"], P["HkAll"] if HkAll is None else HkAll,
+            cons,
+        )
 
 
 def _pplfp_mle_extra(P, seed=1):
@@ -327,11 +329,11 @@ def _beta_gradient(P, b, c, draws, fit="binomial"):
 
 def _run_pp_mstep(P, fit="binomial", gamma=None, seed=42):
     cons = DecodingAlgorithms.PP_EMCreateConstraints(1, 0, 1, 0, 0, 0)
-    np.random.seed(seed)
-    return DecodingAlgorithms.PP_MStep(
-        P["dN"], P["x"], P["W_K"], np.zeros(P["dx"]), 1e-9 * np.eye(P["dx"]), P["ES"], fit, P["mu"], P["beta"],
-        P["gamma"] if gamma is None else gamma, P["wt"], P["HkAll"], cons, "NewtonRaphson",
-    )
+    with seeded_global_rng(seed):
+        return DecodingAlgorithms.PP_MStep(
+            P["dN"], P["x"], P["W_K"], np.zeros(P["dx"]), 1e-9 * np.eye(P["dx"]), P["ES"], fit, P["mu"], P["beta"],
+            P["gamma"] if gamma is None else gamma, P["wt"], P["HkAll"], cons, "NewtonRaphson",
+        )
 
 
 def _run_pplfp_mstep(P, fit="binomial", gamma=None, seed=42):
@@ -637,9 +639,8 @@ def test_pp_em_does_not_swallow_standard_error_failures(monkeypatch) -> None:
         raise _SEFailure("SE failure must propagate")
 
     monkeypatch.setattr(DecodingAlgorithms, "PP_ComputeParamStandardErrors", staticmethod(boom))
-    np.random.seed(0)
     args = list(_pp_em_gold_args())
-    with pytest.raises(_SEFailure):
+    with seeded_global_rng(0), pytest.raises(_SEFailure):
         DecodingAlgorithms.PP_EM(*args)
 
 
@@ -861,13 +862,11 @@ def test_mstep_defaults_equal_the_explicit_defaults() -> None:
     P = _mstep_problem("poisson")
     args_pp = (P["dN"], P["x"], P["W_K"], np.zeros(2), 1e-9 * np.eye(2), P["ES"], "poisson", P["mu"], P["beta"],
                P["gamma"], P["wt"], P["HkAll"])
-    np.random.seed(9)
-    a = DecodingAlgorithms.PP_MStep(*args_pp)
-    np.random.seed(9)
-    b = DecodingAlgorithms.PP_MStep(*args_pp, DecodingAlgorithms.PP_EMCreateConstraints(), "NewtonRaphson")
+    with seeded_global_rng(9):
+        a = DecodingAlgorithms.PP_MStep(*args_pp)
+    with seeded_global_rng(9):
+        b = DecodingAlgorithms.PP_MStep(*args_pp, DecodingAlgorithms.PP_EMCreateConstraints(), "NewtonRaphson")
     _assert_outputs_identical(a, b)
-    from nstat.extras.matlab_rng import seeded_global_rng
-
     args_lfp = (P["dN"], P["y"], P["x"], P["W_K"], np.zeros(2), 1e-9 * np.eye(2), P["ES"], "poisson", P["mu"],
                 P["beta"], P["gamma"], P["wt"], P["HkAll"])
     with seeded_global_rng(9):

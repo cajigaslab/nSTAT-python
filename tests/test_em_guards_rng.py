@@ -21,6 +21,7 @@ import pytest
 
 from nstat.decoding.PPLFP import PPLFP
 from nstat.decoding_algorithms import DecodingAlgorithms
+from nstat.extras.matlab_rng import seeded_global_rng
 
 
 def _nonconverging_mstep_problem(K=200, x=0.5):
@@ -39,11 +40,11 @@ def test_newton_raphson_runs_at_most_99_steps() -> None:
     # MATLAB (and this port now): 99 steps of -1 from mu = -3, gamma = -0.5 and
     # of -1/x = -2 from beta = 0.2.  The port ran 100.
     dN, x_K, W_K, HkAll, ES = _nonconverging_mstep_problem()
-    np.random.seed(0)
-    _, _, mu, beta, gamma, _, _ = DecodingAlgorithms.PP_MStep(
-        dN, x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson", np.array([-3.0]), np.array([[0.2]]),
-        np.array([[-0.5]]), np.array([0.0, 0.001]), HkAll, DecodingAlgorithms.PP_EMCreateConstraints(),
-        "NewtonRaphson", 0.001)
+    with seeded_global_rng(0):
+        _, _, mu, beta, gamma, _, _ = DecodingAlgorithms.PP_MStep(
+            dN, x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson", np.array([-3.0]), np.array([[0.2]]),
+            np.array([[-0.5]]), np.array([0.0, 0.001]), HkAll, DecodingAlgorithms.PP_EMCreateConstraints(),
+            "NewtonRaphson", 0.001)
     assert float(mu[0]) == -3.0 - 99
     assert float(np.ravel(gamma)[0]) == -0.5 - 99
     np.testing.assert_allclose(float(np.ravel(beta)[0]), 0.2 - 99 / 0.5, rtol=1e-12)
@@ -70,17 +71,17 @@ def test_newton_steps_walk_to_the_exp_underflow_as_matlab(family) -> None:
     wt = np.array([0.0, 0.001])
     out = []
     for mu0, beta0, gamma0 in ((-700.0, 0.0, -0.5), (-3.0, 0.2, -700.0)):
-        np.random.seed(0)
-        if family == "PP":
-            o = DecodingAlgorithms.PP_MStep(dN, x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson", np.array([mu0]),
-                                            np.array([[beta0]]), np.array([[gamma0]]), wt, HkAll,
-                                            DecodingAlgorithms.PP_EMCreateConstraints(), "NewtonRaphson", 0.001)
-            out.append((float(np.ravel(o[2])[0]), float(np.ravel(o[4])[0])))
-        else:
-            o = PPLFP.PPLFP_MStep(dN, np.zeros((1, x_K.shape[1])), x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson",
-                                  np.array([mu0]), np.array([[beta0]]), np.array([[gamma0]]), wt, HkAll,
-                                  PPLFP.PPLFP_EMCreateConstraints(), "NewtonRaphson", 0.001)
-            out.append((float(np.ravel(o[5])[0]), float(np.ravel(o[7])[0])))
+        with seeded_global_rng(0):
+            if family == "PP":
+                o = DecodingAlgorithms.PP_MStep(dN, x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson", np.array([mu0]),
+                                                np.array([[beta0]]), np.array([[gamma0]]), wt, HkAll,
+                                                DecodingAlgorithms.PP_EMCreateConstraints(), "NewtonRaphson", 0.001)
+                out.append((float(np.ravel(o[2])[0]), float(np.ravel(o[4])[0])))
+            else:
+                o = PPLFP.PPLFP_MStep(dN, np.zeros((1, x_K.shape[1])), x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson",
+                                      np.array([mu0]), np.array([[beta0]]), np.array([[gamma0]]), wt, HkAll,
+                                      PPLFP.PPLFP_EMCreateConstraints(), "NewtonRaphson", 0.001)
+                out.append((float(np.ravel(o[5])[0]), float(np.ravel(o[7])[0])))
     assert out[0][0] == -745.0
     assert out[1][1] == -743.0
 
@@ -116,15 +117,15 @@ def test_newton_walk_on_an_n_by_n_hessian_matches_matlab(em_gold, family) -> Non
           for k, v in em_gold.items() if k.startswith("walk_ES_")}
     ES["Sx0"] = ES["Sx0"].reshape(1)
     mu0, beta0 = np.array([float(f("mu0"))]), np.array([[float(f("beta0"))]])
-    np.random.seed(0)
-    if family == "PP":
-        o = DecodingAlgorithms.PP_MStep(dN, x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson", mu0, beta0, gamma0,
-                                        wt, HkAll, DecodingAlgorithms.PP_EMCreateConstraints(), "NewtonRaphson", 0.001)
-        mu, beta, gamma, pre = o[2], o[3], o[4], "walk_pp_"
-    else:
-        o = PPLFP.PPLFP_MStep(dN, np.zeros((1, K)), x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson", mu0, beta0,
-                              gamma0, wt, HkAll, PPLFP.PPLFP_EMCreateConstraints(), "NewtonRaphson", 0.001)
-        mu, beta, gamma, pre = o[5], o[6], o[7], "walk_lfp_"
+    with seeded_global_rng(0):
+        if family == "PP":
+            o = DecodingAlgorithms.PP_MStep(dN, x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson", mu0, beta0, gamma0,
+                                            wt, HkAll, DecodingAlgorithms.PP_EMCreateConstraints(), "NewtonRaphson", 0.001)
+            mu, beta, gamma, pre = o[2], o[3], o[4], "walk_pp_"
+        else:
+            o = PPLFP.PPLFP_MStep(dN, np.zeros((1, K)), x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson", mu0, beta0,
+                                  gamma0, wt, HkAll, PPLFP.PPLFP_EMCreateConstraints(), "NewtonRaphson", 0.001)
+            mu, beta, gamma, pre = o[5], o[6], o[7], "walk_lfp_"
     ref_gamma = np.asarray(em_gold[pre + "gamma"], dtype=float)
     gamma = np.ravel(gamma)
     assert ref_gamma[0] == -743.0 and gamma[0] == ref_gamma[0]  # exact: 43 steps of exactly -1
@@ -326,9 +327,13 @@ def test_em_monte_carlo_follows_the_global_seed(family) -> None:
 
     P = _em_problem()
     runs = []
-    for seed in (5, 5, 6):
-        np.random.seed(seed)
-        runs.append(_run_em(family, P))
+    saved = np.random.get_state()  # this test is about np.random.seed itself; restore afterwards
+    try:
+        for seed in (5, 5, 6):
+            np.random.seed(seed)
+            runs.append(_run_em(family, P))
+    finally:
+        np.random.set_state(saved)
     with seeded_global_rng(5):
         runs.append(_run_em(family, P))
     with seeded_global_rng(5):
