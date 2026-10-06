@@ -1199,6 +1199,21 @@ Schema for each entry:
 
 ---
 
+### Bug (Python port, fixed): `nstat.core._matlab_colon` was length-exact but not bit-exact against MATLAB `a:d:b` (Python port defect, fixed)
+
+- **MATLAB location:** MATLAB's colon operator (`a:d:b`), used e.g. `SignalObj.m:302` (`minTime:1/sampleRate:maxTime`) and `example01_mepsc_poisson.m`'s washout time vector.
+- **Defect class:** Bug (Python port, fixed)
+- **MATLAB behavior:** MATLAB builds the colon vector from both ends (n intervals rounded from (b-a)/d, with a tolerance-gated off-by-one and endpoint snap; see `_matlab_colon_exact`'s docstring), not by repeated addition of the step.
+- **Correct behavior:** As MATLAB, bit for bit.
+- **Python implementation:**
+  - `_matlab_colon` computed `start + np.arange(m+1) * step` (`m = floor((stop-start)/step + 1e-12)`): the length matched MATLAB in every case tested, but the element values differed bitwise from MATLAB in 132/200 sampled arrays (float accumulation error), while the already-bit-exact `_matlab_colon_exact` (added for the history-window edge cases, verified bitwise against 4,337 MATLAB R2025b outputs) was a separate, unused-by-default function.
+  - `_matlab_colon` now delegates to `_matlab_colon_exact` (`nstat/core.py`), so every caller (`core.py`'s `SignalObj` resampling, `examples/paper/example01_mepsc_poisson.py`, and the test copies in `tests/test_example01_parity.py` / `tests/test_example02_parity.py`, switched to import the package helper instead of carrying their own length-only copy) gets the bit-exact vector.  New test `test_matlab_colon_matches_matlab_bitwise` (`tests/test_pp_square_history_matlab_gold.py`) pins `_matlab_colon` itself against the same 487-array `colon_*` gold that already pinned `_matlab_colon_exact`; it failed on the pre-fix helper (132/487 mismatches) and passes post-fix.  Full gold suite (431 tests, including the new one) and `numerical_drift.py --fail-on-drift` (96/96) unaffected -- no gold fixture or drift recipe exercises a non-bit-exact `_matlab_colon` call site at a value where the two helpers previously disagreed. `example01`'s three committed PNGs were regenerated and diverge from the committed bytes by a pre-existing environment artifact (matplotlib/font-rendering version drift): a regen on this same commit with `_matlab_colon` reverted to its pre-fix body produces byte-identical PNGs to the post-fix regen, so the figures are not re-committed.
+- **Fixture impact:** none (existing `colon_*` gold in `pp_square_history.mat` already covered `_matlab_colon_exact`; no `.mat` changed)
+- **Discovered:** P2a / 2026-10
+- **Upstream status:** n/a
+
+---
+
 ### Tooling (repo, not a MATLAB defect): `make regen` from a worktree without a sibling ../nSTAT rewrites notebook_fidelity.yml (repo tooling)
 
 - **MATLAB location:** n/a (nstat-python `tools/`, the notebook-fidelity audit's MATLAB root discovery)

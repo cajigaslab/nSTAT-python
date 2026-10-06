@@ -336,6 +336,26 @@ def test_matlab_colon_exact_matches_matlab_bitwise(gold) -> None:
         assert got.shape == want.shape and np.array_equal(got, want), (i, a[i], d[i], b[i])
 
 
+def test_matlab_colon_matches_matlab_bitwise(gold) -> None:
+    """``_matlab_colon`` (the public helper used by ``core.py`` and the paper
+    examples) must now be bit-exact, not merely length-exact: it delegates to
+    ``_matlab_colon_exact``, which this same ``colon_*`` gold already pins
+    (see ``test_matlab_colon_exact_matches_matlab_bitwise``).  Before that
+    delegation, ``_matlab_colon`` built the vector as
+    ``start + np.arange(m+1) * step`` and differed from MATLAB bitwise in
+    132/200 arrays sampled from this same gold set.
+    """
+    from nstat.core import _matlab_colon
+
+    a, d, b = (gold[f"colon_{k}"].reshape(-1).astype(float) for k in "adb")
+    expected = gold["colon_v"].reshape(-1)
+    assert a.size == d.size == b.size == expected.size == 487
+    for i in range(a.size):
+        want = np.asarray(expected[i], dtype=float).reshape(-1)
+        got = _matlab_colon(a[i], d[i], b[i])
+        assert got.shape == want.shape and np.array_equal(got, want), (i, a[i], d[i], b[i])
+
+
 def test_pplfp_em_default_history_matches_matlab(gold, monkeypatch) -> None:
     """PPLFP_EM with windowTimes omitted builds MATLAB's default history exactly.
 

@@ -22,6 +22,7 @@ sys.path.insert(0, "/Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT
 from nstat import (
     Analysis, ConfigColl, CovColl, nspikeTrain, nstColl, Trial, TrialConfig,
 )
+from nstat.core import _matlab_colon
 from nstat.signal import Covariate
 from nstat.data_manager import ensure_example_data
 
@@ -30,12 +31,6 @@ NSTAT_MATLAB_PATH = "/Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTA
 # ── Tolerances ────────────────────────────────────────────────────────
 ATOL = 1e-8
 RTOL = 1e-6
-
-
-def _matlab_colon(start: float, step: float, stop: float) -> np.ndarray:
-    """Replicate MATLAB ``start:step:stop`` exactly."""
-    n = int(np.floor((stop - start) / step)) + 1
-    return start + np.arange(n) * step
 
 
 def _arr(matlab_val) -> np.ndarray:

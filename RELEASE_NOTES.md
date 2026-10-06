@@ -20,6 +20,11 @@
   target directory (the repo data cache or a custom `NSTAT_DATA_DIR`), including
   the bundled Example 05 hybrid-filter data.
 - Fix: the neuron-selector error message now says "zero-based".
+- Fix: `nstat.core._matlab_colon` is now bit-exact against MATLAB's `a:d:b`
+  (it delegates to the already-bit-exact `_matlab_colon_exact`); the previous
+  implementation got vector lengths right but differed bitwise from MATLAB in
+  132/200 sampled arrays. Affects `SignalObj` resampling and
+  `examples/paper/example01_mepsc_poisson.py`.
 
 **Point-process EM (`PP_EM`, `PPLFP_EM`, `mPPCO_*`) and the linear decoders
 mirror the repaired MATLAB**

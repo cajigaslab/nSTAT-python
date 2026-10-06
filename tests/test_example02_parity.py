@@ -23,16 +23,11 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+from nstat.core import _matlab_colon
 from nstat.data_manager import ensure_example_data
 
 MATLAB_NSTAT = Path("/Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT")
 TOL = 1e-4  # tolerance for floating-point comparisons
-
-
-def _matlab_colon(start: float, step: float, stop: float) -> np.ndarray:
-    """Replicate MATLAB ``start:step:stop`` exactly."""
-    n = int(np.floor((stop - start) / step)) + 1
-    return start + np.arange(n) * step
 
 
 # ═══════════════════════════════════════════════════════════════════════════
