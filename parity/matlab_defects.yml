@@ -1845,6 +1845,23 @@ entries:
   fixture_impact: none (no gold fixture or test calls `mPPCODecode_update`)
   discovered: P2b-2 review / 2026-10
   upstream_status: n/a
+- id: history-examples-near-zero-spike-population
+  title: '`HistoryExamples.ipynb`: the synthetic population of the Fit1-vs-Fit2 section has almost no spikes (Python notebook bug; follow-up)'
+  defect_class: Bug (Python notebook, not a MATLAB defect)
+  matlab_location: n/a (nstat-python `notebooks/HistoryExamples.ipynb`, SECTION 6 `_build_population`)
+  matlab_behavior: >-
+    The generator sets `rate = exp(eta)` with eta about -3 and draws spikes with probability `1 - exp(-rate*Ts)` per
+    1 ms bin, i.e. it treats exp(eta) as spikes per second: the per-bin probability is <= 3.3e-4, so run 1 gives 0
+    spikes for all 12 neurons and run 2 at most 1.  Every Fit1 / Fit2 GLM is then degenerate (b0 = -120 for an empty
+    train, KS = 1, Delta AIC = 4 from the two extra history columns), and the comparison figures (gallery fig_004 to
+    fig_006) show no history effect at all.
+  correct_behavior: A population with enough spikes for the fits to mean something (for example a per-bin intensity
+    exp(eta), or a rate in Hz of tens of spikes per second).
+  python_implementation:
+  - 'Not fixed (follow-up; found by the EM-branch review).  Since GLMFit''s rank handling (nstat-python `948b0ce`) the 19 rank-deficient history fits (design 5001 x 9, rank 7: the two history columns are all zero) report finite SEs of about 450-885 and 0 for the two empty columns instead of all NaN; b changes by <= 7e-12 and AIC not at all.  So fig_004 to fig_006 gain Fit2 error bars.  The committed gallery PNGs were not regenerated: they byte-match neither a run of the base nor of the branch, and no gate checks them.'
+  fixture_impact: none
+  discovered: EM-branch review / 2026-10
+  upstream_status: n/a
 - id: regen-notebook-fidelity-worktree-path
   title: '`make regen` from a worktree without a sibling ../nSTAT rewrites notebook_fidelity.yml (repo tooling)'
   defect_class: Tooling (repo, not a MATLAB defect)
