@@ -359,3 +359,33 @@ def test_mppco_decode_update_is_a_forwarder_over_a_transposed_hkall(case) -> Non
     # produce a same-shaped result.
     if HkAll_canonical.shape[1] != num_cells:
         assert HkAll_permuted.shape != HkAll_canonical.shape
+
+
+def test_mppco_decode_update_accepts_2d_single_cell_hkall() -> None:
+    # MATLAB drops the trailing singleton cell axis for a one-cell history,
+    # so this alias's documented (numWindows, numCells, N) permuted HkAll
+    # can arrive as a bare (numWindows, N) 2-D array. Regression: a first
+    # version of the forwarder (this same track) called
+    # np.transpose(HkAll, (2, 0, 1)) unconditionally, which raises
+    # ValueError on a 2-D input; the pre-forwarder standalone body never
+    # transposed at all, so it did not crash there (it silently zeroed the
+    # history instead, a different bug, not reproduced here).
+    rng = np.random.default_rng(5)
+    ns, nW, N = 2, 3, 6
+    x_p, W_p = np.zeros(ns), np.eye(ns)
+    C, R = np.array([[1.0, 0.3]]), np.array([[0.1]])
+    y, alpha = np.array([0.0]), np.array([0.0])
+    dN = (rng.random((1, N)) < 0.2).astype(float)
+    mu, beta = np.array([-2.0]), 0.3 * rng.standard_normal((ns, 1))
+    gamma = 0.1 * rng.standard_normal((nW, 1))
+    HkAll_2d = rng.standard_normal((nW, N))  # one cell, singleton axis dropped
+
+    with pytest.warns(DeprecationWarning):
+        got = DecodingAlgorithms.mPPCODecode_update(
+            x_p, W_p, C, R, y, alpha, dN, mu, beta, "poisson", gamma, HkAll_2d, 1,
+        )
+    HkAll_canonical = HkAll_2d[:, np.newaxis, :].transpose(2, 0, 1)
+    expected = PPLFP.PPLFP_Decode_update(
+        x_p, W_p, C, R, y, alpha, dN, mu, beta, "poisson", gamma, HkAll_canonical, 1,
+    )
+    _assert_identical(got, expected)

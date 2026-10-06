@@ -7544,7 +7544,15 @@ class DecodingAlgorithms:
         if HkAll is None or _is_empty_value(HkAll):
             HkAll_canonical = HkAll
         else:
-            HkAll_canonical = np.transpose(np.asarray(HkAll, dtype=float), (2, 0, 1))
+            HkAll_arr = np.asarray(HkAll, dtype=float)
+            if HkAll_arr.ndim == 2:
+                # MATLAB drops the trailing singleton cell axis for a
+                # one-cell history (this alias's permuted (numWindows,
+                # numCells, N) convention collapses to (numWindows, N));
+                # restore it before transposing, rather than letting
+                # np.transpose(..., (2, 0, 1)) raise on a 2-D input.
+                HkAll_arr = HkAll_arr[:, np.newaxis, :]
+            HkAll_canonical = np.transpose(HkAll_arr, (2, 0, 1))
         return DecodingAlgorithms.PPLFP_Decode_update(
             x_p, W_p, C, R, y, alpha, dN, mu, beta, fitType, gamma,
             HkAll_canonical, time_index, WuConv,
