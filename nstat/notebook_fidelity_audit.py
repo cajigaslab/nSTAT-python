@@ -24,9 +24,48 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+_SIBLING_MATLAB_DIRNAME = "nSTAT"
+_DISPLAY_MATLAB_REPO_ROOT = f"../{_SIBLING_MATLAB_DIRNAME}"
+
+
 def default_matlab_repo_root(repo_root: Path | None = None) -> Path:
+    """Resolve the MATLAB nSTAT checkout used to compute parity counts.
+
+    Resolution order mirrors :func:`nstat.matlab_engine.get_matlab_nstat_path`
+    (``NSTAT_MATLAB_PATH`` env var, then a sibling ``../nSTAT`` directory),
+    so this audit can find MATLAB from a git worktree or any checkout
+    location where ``NSTAT_MATLAB_PATH`` is set, not only from a checkout
+    that happens to have a literal sibling ``nSTAT`` directory.
+    """
     base = _repo_root() if repo_root is None else repo_root.resolve()
-    return base.parent / "nSTAT"
+    from nstat.matlab_engine import get_matlab_nstat_path
+
+    found = get_matlab_nstat_path()
+    if found is not None:
+        return found
+    return base.parent / _SIBLING_MATLAB_DIRNAME
+
+
+def _display_matlab_repo_root(matlab_root: Path | None) -> str:
+    """Render the MATLAB repo root for the audit YAML in a checkout-stable form.
+
+    ``matlab_root`` may be an absolute path resolved from ``NSTAT_MATLAB_PATH``
+    or from a sibling ``../nSTAT`` directory (see :func:`default_matlab_repo_root`);
+    either way it is specific to the machine/checkout that ran the regen, and
+    embedding it verbatim makes ``parity/notebook_fidelity.yml`` depend on
+    where MATLAB happens to live on whichever machine last ran
+    ``make regen`` — a git worktree in a scratch directory, a fresh clone, or
+    CI (which has no MATLAB checkout at all) each produce a different
+    absolute string even though nothing about the audit's actual content
+    changed, tripping the drift check for no real reason.
+
+    Always render the documented sibling-checkout convention
+    (``../nSTAT``) instead: a fixed, checkout-independent placeholder.  It is
+    informational only (nothing downstream parses this field back into a
+    path), so decoupling it from the path actually used to compute
+    ``matlab_sections`` / ``matlab_published_figures`` is safe.
+    """
+    return _DISPLAY_MATLAB_REPO_ROOT
 
 
 def _count_matlab_sections(matlab_m_path: Path) -> int:
@@ -93,6 +132,7 @@ def build_notebook_fidelity_audit(
 ) -> dict[str, Any]:
     base = _repo_root() if repo_root is None else repo_root.resolve()
     matlab_root = default_matlab_repo_root(base) if matlab_repo_root is None else matlab_repo_root.resolve()
+    matlab_root_display = _display_matlab_repo_root(matlab_root)
     help_root = matlab_root / "helpfiles"
     notes = load_notebook_parity_notes(base)
     topic_groups = _load_notebook_groups(base)
@@ -134,7 +174,7 @@ def build_notebook_fidelity_audit(
             matlab_figures = _count_matlab_published_figures(matlab_html_path)
             item.update(
                 {
-                    "matlab_repo_root": str(matlab_root),
+                    "matlab_repo_root": matlab_root_display,
                     "matlab_sections": matlab_sections,
                     "matlab_published_figures": matlab_figures,
                     "section_delta": python_sections - matlab_sections,
@@ -144,7 +184,7 @@ def build_notebook_fidelity_audit(
         else:
             item.update(
                 {
-                    "matlab_repo_root": str(matlab_root),
+                    "matlab_repo_root": matlab_root_display,
                     "matlab_sections": None,
                     "matlab_published_figures": None,
                     "section_delta": None,
@@ -166,7 +206,7 @@ def build_notebook_fidelity_audit(
             "python": "https://github.com/cajigaslab/nSTAT-python",
         },
         "status_legend": ["exact", "high_fidelity", "partial", "missing"],
-        "matlab_repo_root": str(matlab_root),
+        "matlab_repo_root": matlab_root_display,
         "items": items,
     }
 
