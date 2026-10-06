@@ -646,6 +646,12 @@ def _matlab_lambda_delta(lin_term: np.ndarray, binomial: bool) -> np.ndarray:
     [-20, 20], which changed the update wherever |linTerm| > 20 (e.g. a
     separated history coefficient in PP_EM) and has no MATLAB counterpart.
     """
+    lin_term = np.asarray(lin_term, dtype=float)
+    if lin_term.size and np.max(lin_term) < 709.0:
+        # exp cannot overflow, so nothing is non-finite: the same values without
+        # the per-call errstate / where (this runs once per decoder time step).
+        exp_term = np.exp(lin_term)
+        return exp_term / (1.0 + exp_term) if binomial else exp_term
     with np.errstate(over="ignore", invalid="ignore"):
         exp_term = np.exp(lin_term)
         lam = exp_term / (1.0 + exp_term) if binomial else exp_term

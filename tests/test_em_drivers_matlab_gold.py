@@ -245,4 +245,9 @@ def test_monte_carlo_estimates_within_the_measured_spread(gold, python_runs, cas
             got, ref = got[~sep], ref[~sep]
         np.testing.assert_allclose(got, ref, rtol=0, atol=atol, err_msg=key)
     if f("family") == "PP" and case != "pp_sep":
+        # The stopping iteration is Monte Carlo dependent (pp_pois stops after
+        # 8 instead of 6 iterations for Python seed 2), but seed 1 is fixed, so
+        # the draws -- and this count -- are reproducible; a failure here on
+        # another platform means a likelihood change landed within round-off
+        # of a stopping threshold, not a parity regression.
         assert py["nIter"] == f("nIter")
