@@ -48,7 +48,10 @@ from nstat.decoding_algorithms import (
     _em_project_covariance,
     _em_singular_information_inverse,
     _matlab_float_semantics,
+    _matlab_inv,
     _matlab_mldivide,
+    _matlab_mldivide_matrix,
+    _matlab_mrdivide,
     _matlab_nearest_spd,
     _matlab_ztest_p,
     _mc_state_draws,
@@ -1046,7 +1049,7 @@ class PPLFP:
                 cnt = 0
                 for l in range(n1A):
                     m = l
-                    qinv_el = np.linalg.solve(Qhat, elA[:, l : l + 1])
+                    qinv_el = _matlab_mldivide_matrix(Qhat, elA[:, l : l + 1])
                     termMat = (qinv_el @ emA[:, m : m + 1].T) @ Sxkm1xkm1 * np.eye(n1A, n2A)
                     termvec = np.diag(termMat)
                     IAComp[:, cnt] = termvec
@@ -1055,7 +1058,7 @@ class PPLFP:
                 size_a = int(np.size(Ahat))
                 IAComp = np.zeros((size_a, size_a))
                 cnt = 0
-                Qinv = np.linalg.inv(Qhat)
+                Qinv = _matlab_inv(Qhat)
                 for l in range(n1A):
                     for m in range(n2A):
                         termMat = Qinv @ elA[:, l : l + 1] @ emA[:, m : m + 1].T @ Sxkm1xkm1
@@ -1072,7 +1075,7 @@ class PPLFP:
         for l in range(n1C):
             for m in range(n2C):
                 termMat = (
-                    np.linalg.solve(Rhat, elC[:, l : l + 1]) @ emC[:, m : m + 1].T @ Sxkxk_ES
+                    _matlab_mldivide_matrix(Rhat, elC[:, l : l + 1]) @ emC[:, m : m + 1].T @ Sxkxk_ES
                 )
                 termvec = termMat.T.flatten(order="F")
                 ICComp[:, cnt] = termvec
@@ -1091,9 +1094,9 @@ class PPLFP:
                 cnt = 0
                 for l in range(n1R):
                     m = l
-                    left = np.linalg.solve(Rhat, emR[:, m : m + 1]) * (N / 2.0)
+                    left = _matlab_mldivide_matrix(Rhat, emR[:, m : m + 1]) * (N / 2.0)
                     termMat_full = left @ elR[:, l : l + 1].T
-                    termMat = np.linalg.solve(Rhat.T, termMat_full.T).T
+                    termMat = _matlab_mrdivide(termMat_full, Rhat)
                     termvec = np.diag(termMat)
                     IRComp[:, cnt] = termvec
                     cnt += 1
@@ -1112,9 +1115,9 @@ class PPLFP:
             cnt = 0
             for l in range(n1R):
                 for m in range(n2R):
-                    left = np.linalg.solve(Rhat, emR[:, m : m + 1]) * (N / 2.0)
+                    left = _matlab_mldivide_matrix(Rhat, emR[:, m : m + 1]) * (N / 2.0)
                     termMat_full = left @ elR[:, l : l + 1].T
-                    termMat = np.linalg.solve(Rhat.T, termMat_full.T).T
+                    termMat = _matlab_mrdivide(termMat_full, Rhat)
                     termvec = termMat.T.flatten(order="F")
                     IRComp[:, cnt] = termvec
                     cnt += 1
@@ -1132,9 +1135,9 @@ class PPLFP:
                 cnt = 0
                 for l in range(n1Q):
                     m = l
-                    left = np.linalg.solve(Qhat, emQ[:, m : m + 1]) * (N / 2.0)
+                    left = _matlab_mldivide_matrix(Qhat, emQ[:, m : m + 1]) * (N / 2.0)
                     termMat_full = left @ elQ[:, l : l + 1].T
-                    termMat = np.linalg.solve(Qhat.T, termMat_full.T).T
+                    termMat = _matlab_mrdivide(termMat_full, Qhat)
                     termvec = np.diag(termMat)
                     IQComp[:, cnt] = termvec
                     cnt += 1
@@ -1144,9 +1147,9 @@ class PPLFP:
             cnt = 0
             for l in range(n1Q):
                 for m in range(n2Q):
-                    left = np.linalg.solve(Qhat, emQ[:, m : m + 1]) * (N / 2.0)
+                    left = _matlab_mldivide_matrix(Qhat, emQ[:, m : m + 1]) * (N / 2.0)
                     termMat_full = left @ elQ[:, l : l + 1].T
-                    termMat = np.linalg.solve(Qhat.T, termMat_full.T).T
+                    termMat = _matlab_mrdivide(termMat_full, Qhat)
                     termvec = termMat.T.flatten(order="F")
                     IQComp[:, cnt] = termvec
                     cnt += 1
@@ -1165,9 +1168,9 @@ class PPLFP:
                 cnt = 0
                 for l in range(n1S):
                     m = l
-                    left = 0.5 * np.linalg.solve(Px0hat, emS[:, m : m + 1])
+                    left = 0.5 * _matlab_mldivide_matrix(Px0hat, emS[:, m : m + 1])
                     termMat_full = left @ elS[:, l : l + 1].T
-                    termMat = np.linalg.solve(Px0hat.T, termMat_full.T).T
+                    termMat = _matlab_mrdivide(termMat_full, Px0hat)
                     termvec = np.diag(termMat)
                     ISComp[:, cnt] = termvec
                     cnt += 1
@@ -1175,12 +1178,12 @@ class PPLFP:
         # ---- x0 complete information matrix ----
         Ix0Comp = None
         if Estimatex0 == 1:
-            term1 = np.linalg.solve(Px0hat.T, np.eye(Px0hat.shape[0])).T
-            term2 = np.linalg.solve(Qhat.T, Ahat).T @ Ahat
+            term1 = _matlab_inv(Px0hat)
+            term2 = _matlab_mrdivide(Ahat.T, Qhat) @ Ahat
             Ix0Comp = term1 + term2
 
         # ---- Alpha complete information matrix ----
-        IAlphaComp = np.linalg.solve(Rhat.T, N * np.eye(Rhat.shape[0])).T
+        IAlphaComp = N * _matlab_inv(Rhat)
 
         # ==================================================================
         # Monte Carlo draws (expectation phase)
@@ -1425,7 +1428,7 @@ class PPLFP:
             sumYkTerms = 0.5 * (sumYkTerms + sumYkTerms.T)
 
             if EstimateA == 1:
-                ScorA = np.linalg.solve(Qhat, Sxkxkm1 - Ahat @ Sxkm1xkm1_loc)
+                ScorA = _matlab_mldivide_matrix(Qhat, Sxkxkm1 - Ahat @ Sxkm1xkm1_loc)
                 if AhatDiag == 1:
                     ScoreAMc = np.diag(ScorA).reshape(-1, 1)
                 else:
@@ -1433,7 +1436,7 @@ class PPLFP:
             else:
                 ScoreAMc = np.zeros((0, 1))
 
-            ScorC = np.linalg.solve(Rhat, Sykxk - Chat @ Sxkxk_loc)
+            ScorC = _matlab_mldivide_matrix(Rhat, Sykxk - Chat @ Sxkxk_loc)
             ScoreCMc = ScorC.T.flatten(order="F").reshape(-1, 1)
 
             if QhatDiag:
@@ -1446,20 +1449,20 @@ class PPLFP:
                 else:
                     inner = (
                         K * np.eye(Qhat.shape[0])
-                        - np.linalg.solve(Qhat.T, sumXkTerms.T).T
+                        - _matlab_mrdivide(sumXkTerms, Qhat)
                     )
-                    ScoreQ = -0.5 * np.linalg.solve(Qhat, inner)
+                    ScoreQ = -0.5 * _matlab_mldivide_matrix(Qhat, inner)
                     ScoreQMc = np.diag(ScoreQ).reshape(-1, 1)
             else:
                 inner = (
                     K * np.eye(Qhat.shape[0])
-                    - np.linalg.solve(Qhat.T, sumXkTerms.T).T
+                    - _matlab_mrdivide(sumXkTerms, Qhat)
                 )
-                ScoreQ = -0.5 * np.linalg.solve(Qhat, inner)
+                ScoreQ = -0.5 * _matlab_mldivide_matrix(Qhat, inner)
                 ScoreQMc = ScoreQ.T.flatten(order="F").reshape(-1, 1)
 
             ScoreAlphaMc = np.sum(
-                np.linalg.solve(Rhat, y - Chat @ x_K - alphahat @ np.ones((1, N))),
+                _matlab_mldivide_matrix(Rhat, y - Chat @ x_K - alphahat @ np.ones((1, N))),
                 axis=1,
             ).reshape(-1, 1)
 
@@ -1473,16 +1476,16 @@ class PPLFP:
                 else:
                     inner = (
                         K * np.eye(Rhat.shape[0])
-                        - np.linalg.solve(Rhat.T, sumYkTerms.T).T
+                        - _matlab_mrdivide(sumYkTerms, Rhat)
                     )
-                    ScoreR = -0.5 * np.linalg.solve(Rhat, inner)
+                    ScoreR = -0.5 * _matlab_mldivide_matrix(Rhat, inner)
                     ScoreRMc = np.diag(ScoreR).reshape(-1, 1)
             else:
                 inner = (
                     K * np.eye(Rhat.shape[0])
-                    - np.linalg.solve(Rhat.T, sumYkTerms.T).T
+                    - _matlab_mrdivide(sumYkTerms, Rhat)
                 )
-                ScoreR = -0.5 * np.linalg.solve(Rhat, inner)
+                ScoreR = -0.5 * _matlab_mldivide_matrix(Rhat, inner)
                 ScoreRMc = ScoreR.T.flatten(order="F").reshape(-1, 1)
 
             if Px0Isotropic == 1:
@@ -1501,13 +1504,13 @@ class PPLFP:
             else:
                 diff = x_0 - x0hat
                 outer = diff @ diff.T
-                inner = np.eye(Px0hat.shape[0]) - np.linalg.solve(Px0hat.T, outer.T).T
-                ScorS = -0.5 * np.linalg.solve(Px0hat, inner)
+                inner = np.eye(Px0hat.shape[0]) - _matlab_mrdivide(outer, Px0hat)
+                ScorS = -0.5 * _matlab_mldivide_matrix(Px0hat, inner)
                 ScoreSMc = np.diag(ScorS).reshape(-1, 1)
 
             # x0 score
-            Scorx0 = -np.linalg.solve(Px0hat, x_0 - x0hat) + (
-                np.linalg.solve(Qhat.T, Ahat).T @ (x_K[:, 0:1] - Ahat @ x_0)
+            Scorx0 = -_matlab_mldivide_matrix(Px0hat, x_0 - x0hat) + (
+                _matlab_mrdivide(Ahat.T, Qhat) @ (x_K[:, 0:1] - Ahat @ x_0)
             )
             Scorex0Mc = Scorx0.T.flatten(order="F").reshape(-1, 1)
 
@@ -2857,12 +2860,12 @@ class PPLFP:
             I_dx = np.eye(dx)
             num = Sxkxkm1 * I_dx
             den = Sxkm1xkm1 * I_dx
-            Ahat = np.linalg.solve(den.T, num.T).T
+            Ahat = _matlab_mrdivide(num, den)
         else:
-            Ahat = np.linalg.solve(Sxkm1xkm1.T, Sxkxkm1.T).T
+            Ahat = _matlab_mrdivide(Sxkxkm1, Sxkm1xkm1)
 
         # ---- Chat: MATLAB Sxkyk' / Sxkxk ------------------------------
-        Chat = np.linalg.solve(Sxkxk.T, Sxkyk).T
+        Chat = _matlab_mrdivide(Sxkyk.T, Sxkxk)
 
         alphahat = np.sum(y - Chat @ x_K, axis=1, keepdims=True) / K
 
@@ -2891,12 +2894,11 @@ class PPLFP:
 
         # ---- x0hat ---------------------------------------------------
         if _gc("Estimatex0", 0):
-            Px0_inv = np.linalg.inv(Px0)
-            # MATLAB A'/Q -> A' * inv(Q) (mrdivide; this port used lstsq)
-            AtQinv = np.linalg.solve(Qhat.T, Ahat).T
+            Px0_inv = _matlab_inv(Px0)
+            AtQinv = _matlab_mrdivide(Ahat.T, Qhat)  # MATLAB Ahat'/Qhat
             lhs = Px0_inv + AtQinv @ Ahat
-            rhs = AtQinv @ x_K[:, 0:1] + np.linalg.solve(Px0, x0)
-            x0hat = np.linalg.solve(lhs, rhs)
+            rhs = AtQinv @ x_K[:, 0:1] + _matlab_mldivide_matrix(Px0, x0)
+            x0hat = _matlab_mldivide_matrix(lhs, rhs)
         else:
             x0hat = x0.copy()
 

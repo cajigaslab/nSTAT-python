@@ -55,6 +55,18 @@
   SE clip. MATLAB's own `bnlrCG` has no rank handling and returns complex
   (defective) standard errors there, so this is not something to mirror;
   see `parity/matlab_defects.yml` (`binomial-rank-deficiency-improvement`).
+- Fix: the closed-form M-step updates (`Ahat`, `Chat`, `AtQinv`, `x0hat` in
+  `PP_MStep` / `PPLFP_MStep`) and the SE information blocks (`Qinv`,
+  `Px0inv`, and the `Rhat`/`Qhat`/`Px0hat` solves of
+  `PP_ComputeParamStandardErrors` / `PPLFP_ComputeParamStandardErrors`) now
+  solve through new MATLAB-mirroring helpers (`_matlab_mldivide_matrix`,
+  `_matlab_mrdivide`, `_matlab_inv`) instead of `np.linalg.solve`/`inv`
+  directly, so an exactly singular matrix returns MATLAB's Inf/NaN instead
+  of raising `LinAlgError`; mirrors the earlier Newton-step fix
+  (`_matlab_mldivide`) for the remaining closed-form sites. Not reached by
+  any gold fixture (a singular Q, R or Px0 already makes EM's E-step
+  log-likelihood non-finite first), so this is a stability fix, covered by
+  a synthetic regression test.
 
 **Point-process EM (`PP_EM`, `PPLFP_EM`, `mPPCO_*`) and the linear decoders
 mirror the repaired MATLAB**

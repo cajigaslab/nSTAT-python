@@ -741,6 +741,47 @@ def _matlab_mldivide(H, g):
     return b.reshape(g.shape)
 
 
+def _matlab_mldivide_matrix(H, G):
+    """MATLAB ``H\\G`` for a square ``H`` and a matrix (or vector) ``G``.
+
+    MATLAB's mldivide factorizes ``H`` once and solves for every column of
+    ``G`` with the same factorization; looping :func:`_matlab_mldivide`
+    (which redoes the triangular/general detection and factorization per
+    column) gives the identical result since the pivoting depends on ``H``
+    alone, at the cost of some duplicated work -- the Hessians / covariance
+    matrices this is used on are small (a handful of states or history
+    windows), so that cost is microseconds.  Used where MATLAB's M-step /
+    standard-error closed forms solve with a matrix right-hand side (for
+    example ``Sxkm1xkm1\\Sxkxkm1`` by way of ``_matlab_mrdivide``, or
+    ``Px0\\x0`` and ``inv(Px0)`` below, both of which have a vector or a
+    square matrix on the right).
+    """
+    H = np.asarray(H, dtype=float)
+    G = np.asarray(G, dtype=float)
+    if G.ndim == 1:
+        return _matlab_mldivide(H, G)
+    return np.column_stack([_matlab_mldivide(H, G[:, j]) for j in range(G.shape[1])])
+
+
+def _matlab_mrdivide(A, B):
+    """MATLAB ``A/B`` (square ``B``) via the identity ``A/B = (B'\\A')'``."""
+    A = np.asarray(A, dtype=float)
+    B = np.asarray(B, dtype=float)
+    return _matlab_mldivide_matrix(B.T, A.T).T
+
+
+def _matlab_inv(A):
+    """MATLAB ``inv(A)`` via ``A \\ eye(n)``: the same LU/triangular detection
+    as :func:`_matlab_mldivide`, so an exactly singular ``A`` gives MATLAB's
+    +-Inf / NaN (with its unreproduced "singular to working precision"
+    warning) instead of raising ``LinAlgError``, matching MATLAB's own
+    ``inv`` (computed the same way, via mldivide against the identity).
+    """
+    A = np.asarray(A, dtype=float)
+    n = A.shape[0]
+    return _matlab_mldivide_matrix(A, np.eye(n))
+
+
 def _matlab_nearest_spd(A) -> np.ndarray:
     """MATLAB ``nearestSPD`` (J. D'Errico; ``libraries/NearestSymmetricPositiveDefinite``),
     as the EM standard-error routines call it on the inverse observed information.
@@ -5932,7 +5973,7 @@ class DecodingAlgorithms:
         # A information
         if PPEM_Constraints["EstimateA"]:
             n1_A, n2_A = Ahat.shape
-            Qinv = np.linalg.inv(Qhat)
+            Qinv = _matlab_inv(Qhat)
             # The A (and full-Q) parameters are ordered row by row, as in
             # MATLAB (loop l over rows, m over columns; termvec =
             # reshape(termMat', 1, n) and ScoreAMc = reshape(ScorA', n, 1) are
@@ -5971,7 +6012,7 @@ class DecodingAlgorithms:
 
         # Q information
         n1_Q, n2_Q = Qhat.shape
-        Qinv = np.linalg.inv(Qhat)
+        Qinv = _matlab_inv(Qhat)
         if PPEM_Constraints["QhatDiag"]:
             if PPEM_Constraints["QhatIsotropic"]:
                 IQComp = np.array([[0.5 * N * dx * Qhat[0, 0] ** (-2)]])
@@ -6000,7 +6041,7 @@ class DecodingAlgorithms:
 
         # Px0 information
         if PPEM_Constraints["EstimatePx0"]:
-            Px0inv = np.linalg.inv(Px0hat)
+            Px0inv = _matlab_inv(Px0hat)
             if PPEM_Constraints["Px0Isotropic"]:
                 ISComp = np.array([[0.5 * dx * Px0hat[0, 0] ** (-2)]])
             else:
@@ -6018,8 +6059,8 @@ class DecodingAlgorithms:
 
         # x0 information
         if PPEM_Constraints["Estimatex0"]:
-            Qinv = np.linalg.inv(Qhat)
-            Px0inv = np.linalg.inv(Px0hat)
+            Qinv = _matlab_inv(Qhat)
+            Px0inv = _matlab_inv(Px0hat)
             Ix0Comp = Px0inv + Ahat.T @ Qinv @ Ahat
         else:
             Ix0Comp = np.zeros((0, 0))
@@ -6186,8 +6227,8 @@ class DecodingAlgorithms:
         else:
             x0Draw = np.tile(x0hat[:, None], (1, Mc))
 
-        Qinv = np.linalg.inv(Qhat)
-        Px0inv = np.linalg.inv(Px0hat)
+        Qinv = _matlab_inv(Qhat)
+        Px0inv = _matlab_inv(Px0hat)
         IMc = np.zeros((nTerms, nTerms, Mc))
 
         for c_mc in range(Mc):
@@ -6215,7 +6256,7 @@ class DecodingAlgorithms:
 
             # Score for A
             if PPEM_Constraints["EstimateA"]:
-                ScorA = np.linalg.solve(Qhat, Sxkxkm1 - Ahat @ Sxkm1xkm1)
+                ScorA = _matlab_mldivide_matrix(Qhat, Sxkxkm1 - Ahat @ Sxkm1xkm1)
                 if PPEM_Constraints["AhatDiag"]:
                     ScoreAMc = np.diag(ScorA)
                 else:
@@ -6229,10 +6270,10 @@ class DecodingAlgorithms:
                     ScoreQ = -0.5 * (K * Dx * Qhat[0, 0] ** (-1) - Qhat[0, 0] ** (-2) * np.trace(sumXkTerms_mc))
                     ScoreQMc = np.atleast_1d(ScoreQ)
                 else:
-                    ScoreQ = -0.5 * np.linalg.solve(Qhat, K * np.eye(dx) - np.linalg.solve(Qhat, sumXkTerms_mc).T)
+                    ScoreQ = -0.5 * _matlab_mldivide_matrix(Qhat, K * np.eye(dx) - _matlab_mldivide_matrix(Qhat, sumXkTerms_mc).T)
                     ScoreQMc = np.diag(ScoreQ)
             else:
-                ScoreQ = -0.5 * np.linalg.solve(Qhat, K * np.eye(dx) - np.linalg.solve(Qhat, sumXkTerms_mc).T)
+                ScoreQ = -0.5 * _matlab_mldivide_matrix(Qhat, K * np.eye(dx) - _matlab_mldivide_matrix(Qhat, sumXkTerms_mc).T)
                 ScoreQMc = ScoreQ.ravel()  # row-major: MATLAB reshape(ScoreQ', n, 1)
 
             # Score for Px0
@@ -6242,11 +6283,11 @@ class DecodingAlgorithms:
                                                   - Px0hat[0, 0] ** (-2) * np.dot(diff, diff)))
             else:
                 diff = x_0 - x0hat
-                ScorS = -0.5 * np.linalg.solve(Px0hat, np.eye(dx) - np.linalg.solve(Px0hat, np.outer(diff, diff)).T)
+                ScorS = -0.5 * _matlab_mldivide_matrix(Px0hat, np.eye(dx) - _matlab_mldivide_matrix(Px0hat, np.outer(diff, diff)).T)
                 ScoreSMc = np.diag(ScorS)
 
             # Score for x0
-            Scorx0 = -np.linalg.solve(Px0hat, x_0 - x0hat) + Ahat.T @ Qinv @ (x_K[:, 0] - Ahat @ x_0)
+            Scorx0 = -_matlab_mldivide_matrix(Px0hat, x_0 - x0hat) + Ahat.T @ Qinv @ (x_K[:, 0] - Ahat @ x_0)
             Scorex0Mc = Scorx0.ravel()
 
             # Cell scores
@@ -7121,9 +7162,9 @@ class DecodingAlgorithms:
         # non-finite log-likelihood.
         I_dx = np.eye(dx)
         if PPEM_Constraints["AhatDiag"]:
-            Ahat = np.linalg.solve((Sxkm1xkm1 * I_dx).T, (Sxkxkm1 * I_dx).T).T
+            Ahat = _matlab_mrdivide(Sxkxkm1 * I_dx, Sxkm1xkm1 * I_dx)
         else:
-            Ahat = np.linalg.solve(Sxkm1xkm1.T, Sxkxkm1.T).T
+            Ahat = _matlab_mrdivide(Sxkxkm1, Sxkm1xkm1)
 
         # --- Q update ---
         if PPEM_Constraints["QhatDiag"]:
@@ -7138,9 +7179,11 @@ class DecodingAlgorithms:
 
         # --- x0 update: MATLAB (inv(Px0)+Ahat'/Qhat*Ahat)\(Ahat'/Qhat*x_K(:,1)+Px0\x0) ---
         if PPEM_Constraints["Estimatex0"]:
-            AtQinv = np.linalg.solve(Qhat.T, Ahat).T  # Ahat'/Qhat
-            x0hat = np.linalg.solve(np.linalg.inv(Px0) + AtQinv @ Ahat,
-                                    AtQinv @ x_K[:, 0] + np.linalg.solve(Px0, x0))
+            AtQinv = _matlab_mrdivide(Ahat.T, Qhat)  # Ahat'/Qhat
+            x0hat = _matlab_mldivide_matrix(
+                _matlab_inv(Px0) + AtQinv @ Ahat,
+                AtQinv @ x_K[:, 0] + _matlab_mldivide_matrix(Px0, x0),
+            )
         else:
             x0hat = x0.copy()
 
