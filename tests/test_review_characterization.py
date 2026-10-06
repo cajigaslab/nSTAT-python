@@ -181,7 +181,7 @@ def test_nearestSPD_both_definitions_on_general_indefinite_input() -> None:
 # ===========================================================================
 
 # (param, se, module-level p, staticmethod p).  The staticmethod is MATLAB's
-# ztest(param, 0, se) = 2*normcdf(-|param/se|) (MATLAB R2025b agrees to <= 2e-14
+# ztest(param, 0, se) = 2*normcdf(-|param/se|) (MATLAB R2025b agrees to <= 2.2e-13
 # relative on every finite case here, e.g. 1.1451142445050278e-299 at z = 37);
 # it used to be 2*(1 - normcdf(|z|)), which cancels to 0.0 for |z| >~ 8.3.  Its
 # se = 0 gives p = 0 (MATLAB: z = Inf), se = Inf p = 1 and se = NaN p = NaN,
