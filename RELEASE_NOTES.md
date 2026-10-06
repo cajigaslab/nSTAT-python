@@ -35,6 +35,19 @@
   whose fitted linear predictor exceeds 20 in magnitude; the bound is now
   computed from `np.finfo(float)` to match MATLAB's formula exactly. Affects
   `Analysis.GLMFit`'s `'GLM'` / `'BNLRCG'` paths.
+- Fix: `Analysis.GLMFit`'s poisson (`'GLM'`) path now drops rows with a NaN
+  design or spike-count entry before fitting, mirroring MATLAB `glmfit`'s
+  `statremovenan` (the fit, deviance and standard errors come from the
+  NaN-row-dropped data, matching MATLAB's `b`/`dev`/`stats.se`); previously
+  any NaN entry made the whole fit return all-NaN. `logLL`/`AIC`/`BIC` still
+  evaluate `lambda`/`data` over the *original* full design, as MATLAB's
+  `Analysis.GLMFit` does, using a new NaN-ignoring `max` helper
+  (`_matlab_max_scalar`) so a NaN row's `eps`-floor contribution to `logLL`
+  is finite rather than poisoning the whole sum with NaN -- matching
+  MATLAB's `max(NaN, eps) == eps` (unlike `np.maximum`). The binomial
+  (`'BNLRCG'`) path is unchanged. Affects `Analysis.GLMFit`,
+  `Analysis.RunAnalysisForNeuron`/`RunAnalysisForAllNeurons`, and the EM GLM
+  M-step (`PP_MStep`/`PPLFP_MStep`) on any design with a NaN sample.
 
 **Point-process EM (`PP_EM`, `PPLFP_EM`, `mPPCO_*`) and the linear decoders
 mirror the repaired MATLAB**

@@ -1788,9 +1788,53 @@ entries:
   correct_behavior: As MATLAB.
   python_implementation:
   - 'The QR check adds ~2 ms (~10%) per unpenalized poisson `GLMFit` (`analysis_run_for_neuron`); the dependent-column choice follows LAPACK geqp3 pivoting, so a near-tie may zero a different (equivalent) column on another BLAS build; the rank handling runs only for `l2 == 0` (MATLAB has no ridge).'
-  - 'NaN rows are not removed: a design with a NaN returns the all-NaN fit of the unchanged solver (nstat-python `be6ea09` restores that behaviour after the QR raised); mirroring `statremovenan` is a follow-up.'
+  - 'NaN rows: fixed (P2a) -- see `glmfit-statremovenan-nan-rows` below; `statremovenan` is now mirrored rather than being a follow-up.'
   fixture_impact: none
   discovered: P2b-1 review / 2026-10
+  upstream_status: n/a
+- id: glmfit-statremovenan-nan-rows
+  title: '`Analysis.GLMFit`''s poisson (''GLM'') path now mirrors glmfit''s `statremovenan` NaN-row removal (Python port defect, fixed)'
+  defect_class: Bug (Python port, fixed)
+  matlab_location: '`glmfit.m` (R2026a, `toolbox/stats/stats/glmfit.m`): `[anybad,wasnan,y,x,offset,pwts,N] = statremovenan(y,x,offset,pwts,N);` before fitting; `Analysis.GLMFit` (`Analysis.m:565-634`) evaluates `data = exp(X*b)` and `AIC`/`BIC`/`logLL` afterward on the *original* `X`/`y`.'
+  matlab_behavior: >-
+    `statremovenan` (`internal.stats.removenan`, read directly, not from memory) drops rows where X *or* y is NaN --
+    checked with `isnan` only, never `isinf` -- before the IRLS fit; `b`, `dev` and `stats.se`/`covb` come from the
+    reduced (NaN-row-dropped) design.  `Analysis.GLMFit` then evaluates `data = exp(X*b)` on the full, original `X`,
+    so a NaN row of `X` still gives a NaN row of `data`/`lambda` (dropped only from the regression, not from the
+    output).  Its `lambdaDelta = max(data*delta, eps)` / `oneMinusLambdaDelta = max(1-data*delta, eps)` floors use
+    MATLAB's `max`, which is NaN-ignoring (`max(NaN, eps) == eps`, verified directly against MATLAB R2026a: `disp(max(NaN,1))`
+    prints `1`) -- unlike `np.maximum`, which propagates NaN.  So that row's `logLL` contribution collapses to
+    exactly `log(eps) * (y + (1-y)) == log(eps)`, independent of `y` there, rather than NaN.
+  correct_behavior: As MATLAB.
+  python_implementation:
+  - 'Before this fix, `_glmfit_independent_columns` returned `None` for any non-finite `X` entry (NaN treated the
+    same as Inf, per the `glmfit-rank-handling-notes` entry above), so a NaN row made `GLMFit` run the unmodified
+    `fit_poisson_glm` solver directly on the NaN-containing design and return an all-NaN fit.'
+  - 'Added a `nan_rows = np.isnan(X).any(axis=1) | np.isnan(y)` mask in `Analysis.GLMFit`''s poisson branch (NaN
+    only, matching `statremovenan`/`isnan`; Inf still disables rank handling via the unchanged
+    `_glmfit_independent_columns` finite check, kept consistent).  The fit (`_glmfit_independent_columns`,
+    `fit_poisson_glm`) now runs on the NaN-row-dropped `X`/`y`; `lambda_delta` is still predicted over the full,
+    original `X` (`glm_res.predict_rate(X)`), matching `data = exp(X*b)`; `dev` and the standard-error `X''WX`
+    now use the NaN-dropped rows only (`valid_idx`), matching glmfit''s own deviance/covariance.  The binomial
+    (`BNLRCG`) path is unchanged -- `bnlrCG` is not mirrored on this axis either (`em-binomial-glm-bnlrcg`).'
+  - 'New helper `_matlab_max_scalar(a, b)` (`nstat/analysis.py`) replaces `np.maximum` for the `lambdaDelta` /
+    `oneMinusLambdaDelta` eps floors: `np.where(np.isnan(a), b, np.maximum(a, b))`, matching MATLAB''s NaN-ignoring
+    `max`.  Without it, `logLL` (and so the `stats["loglik"]` alias) would still come out NaN for any NaN-containing
+    design even after the fit itself mirrored `statremovenan`.'
+  - 'New MATLAB-captured fixture `tests/parity/fixtures/matlab_gold/glmfit_nan_rows.mat`
+    (`tools/parity/matlab/capture_glmfit_nan_rows.m`; rng(42); 30 x 3 poisson design, one NaN injected into row 7
+    column 2) pins `b`, `se`, `dev`, `AIC`, `BIC`, `logLL` and the full (including-NaN-row) `data`/`lambda` vector
+    from MATLAB `glmfit` + `Analysis.GLMFit`''s post-processing, ported verbatim for the capture script (no nSTAT
+    `Trial` needed to reproduce it).  New test
+    `tests/test_glmfit_nan_rows_matlab_gold.py::test_glmfit_nan_row_matches_matlab_statremovenan` drives
+    `Analysis.GLMFit` itself (via a minimal duck-typed `tObj` stub exposing only what `GLMFit` reads, since a real
+    `Trial`/`nspikeTrain` cannot carry a NaN design entry or non-binary per-bin counts > 1 through its spike-binning
+    machinery) and matches MATLAB to 1e-6 (dev/AIC/BIC/b/se) and 1e-3 (logLL, looser only because of the `eps`-floor
+    cancellation''s sensitivity to float rounding in the sum); it fails on the pre-fix code (all-NaN `b`).  Full
+    gold suite and `numerical_drift.py --fail-on-drift` (96/96) pass unchanged -- no existing gold fixture has a
+    NaN-containing `GLMFit` design.'
+  fixture_impact: 'new fixture `glmfit_nan_rows.mat`; no existing fixture changed'
+  discovered: P2a / 2026-10
   upstream_status: n/a
 - id: pp-em-ikeda-not-ported
   title: 'PP_EM Ikeda acceleration (EnableIkeda = 1) is not ported'
