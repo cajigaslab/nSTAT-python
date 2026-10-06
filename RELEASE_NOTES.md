@@ -25,6 +25,16 @@
   implementation got vector lengths right but differed bitwise from MATLAB in
   132/200 sampled arrays. Affects `SignalObj` resampling and
   `examples/paper/example01_mepsc_poisson.py`.
+- Fix: `nstat.glm.fit_poisson_glm` / `fit_binomial_glm` (and
+  `PoissonGLMResult.predict_rate` / `BinomialGLMResult.predict_probability`)
+  clipped the linear predictor to a flat `+-20` before the inverse link.
+  MATLAB `glmfit` itself clips there (`stattestlink.m`'s `constrain`), but to
+  a link-specific bound: `+-177.0991046330660...` for the Poisson `'log'`
+  link, `+-36.04365338911715...` for the binomial `'logit'` link. Both are
+  wider than the old `+-20`, which could diverge from MATLAB on designs
+  whose fitted linear predictor exceeds 20 in magnitude; the bound is now
+  computed from `np.finfo(float)` to match MATLAB's formula exactly. Affects
+  `Analysis.GLMFit`'s `'GLM'` / `'BNLRCG'` paths.
 
 **Point-process EM (`PP_EM`, `PPLFP_EM`, `mPPCO_*`) and the linear decoders
 mirror the repaired MATLAB**

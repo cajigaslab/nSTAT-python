@@ -29,6 +29,25 @@ from typing import Sequence
 
 import numpy as np
 
+# Bounds on the linear predictor before the inverse link, mirroring MATLAB
+# ``glmfit``'s ``stattestlink.m`` (R2026a
+# toolbox/stats/stats/private/stattestlink.m).  Each MATLAB canonical inverse
+# link constrains its argument to a link-specific bound -- not an arbitrary
+# value -- so that the elementary function always returns a finite, in-range
+# result:
+#
+#   'log'   (poisson):  tiny = realmin(class)^.25; bound = -log(tiny)
+#   'logit' (binomial): bound = -log(eps(class))
+#
+# i.e. ``ilink = @(eta) exp(constrain(eta, -bound, bound))`` for 'log' and
+# ``ilink = @(eta) 1 ./ (1 + exp(-constrain(eta, -bound, bound)))`` for
+# 'logit'.  Computed from ``np.finfo(float)`` so they track MATLAB's double
+# ``realmin``/``eps`` exactly; do not round these to -20/20 or any other
+# literal -- that was the bug (nstat-python parity/matlab_defects.yml
+# "glmfit-ilink-eta-bound-too-tight").
+_POISSON_ETA_BOUND = -np.log(np.finfo(float).tiny ** 0.25)
+_BINOMIAL_ETA_BOUND = -np.log(np.finfo(float).eps)
+
 
 @dataclass(frozen=True)
 class PoissonGLMResult:
@@ -47,7 +66,7 @@ class PoissonGLMResult:
         eta = self.intercept + x_arr @ self.coefficients
         if offset is not None:
             eta = eta + np.asarray(offset, dtype=float).reshape(-1)
-        return np.exp(np.clip(eta, -20.0, 20.0))
+        return np.exp(np.clip(eta, -_POISSON_ETA_BOUND, _POISSON_ETA_BOUND))
 
 
 @dataclass(frozen=True)
@@ -65,7 +84,7 @@ class BinomialGLMResult:
         if x_arr.ndim == 1:
             x_arr = x_arr[:, None]
         eta = self.intercept + x_arr @ self.coefficients
-        return 1.0 / (1.0 + np.exp(-np.clip(eta, -20.0, 20.0)))
+        return 1.0 / (1.0 + np.exp(-np.clip(eta, -_BINOMIAL_ETA_BOUND, _BINOMIAL_ETA_BOUND)))
 
     def predict_rate(
         self,
@@ -153,7 +172,7 @@ def fit_poisson_glm(
     n_iter = 0
     for n_iter in range(1, max_iter + 1):
         eta = x_aug @ beta + offset_arr
-        lam = np.exp(np.clip(eta, -20.0, 20.0))
+        lam = np.exp(np.clip(eta, -_POISSON_ETA_BOUND, _POISSON_ETA_BOUND))
 
         grad = x_aug.T @ (y_arr - lam) - l2 * (eye @ beta)
         hess_pos = x_aug.T @ (lam[:, None] * x_aug) + l2 * eye
@@ -170,7 +189,7 @@ def fit_poisson_glm(
         beta = beta_next
 
     eta = x_aug @ beta + offset_arr
-    lam = np.exp(np.clip(eta, -20.0, 20.0))
+    lam = np.exp(np.clip(eta, -_POISSON_ETA_BOUND, _POISSON_ETA_BOUND))
     log_likelihood = float(np.sum(y_arr * np.log(np.maximum(lam, 1e-12)) - lam))
 
     return PoissonGLMResult(
@@ -213,7 +232,7 @@ def fit_binomial_glm(
     converged = False
     n_iter = 0
     for n_iter in range(1, max_iter + 1):
-        eta = np.clip(x_aug @ beta, -20.0, 20.0)
+        eta = np.clip(x_aug @ beta, -_BINOMIAL_ETA_BOUND, _BINOMIAL_ETA_BOUND)
         p = 1.0 / (1.0 + np.exp(-eta))
         w = np.clip(p * (1.0 - p), 1e-9, None)
         grad = x_aug.T @ (y_arr - p) - l2 * (eye @ beta)
@@ -230,7 +249,7 @@ def fit_binomial_glm(
             break
         beta = beta_next
 
-    eta = np.clip(x_aug @ beta, -20.0, 20.0)
+    eta = np.clip(x_aug @ beta, -_BINOMIAL_ETA_BOUND, _BINOMIAL_ETA_BOUND)
     p = 1.0 / (1.0 + np.exp(-eta))
     log_likelihood = float(np.sum(y_arr * np.log(np.clip(p, 1e-12, 1.0)) + (1.0 - y_arr) * np.log(np.clip(1.0 - p, 1e-12, 1.0))))
 

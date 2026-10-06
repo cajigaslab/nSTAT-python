@@ -1214,6 +1214,19 @@ Schema for each entry:
 
 ---
 
+### Bug (Python port, fixed): `nstat.glm` clipped the linear predictor to +-20 before `exp`/logistic where MATLAB `glmfit`'s link-bound is wider (Python port defect, fixed)
+
+- **MATLAB location:** `stattestlink.m` (R2026a, `/Applications/MATLAB_R2026a.app/toolbox/stats/stats/private/stattestlink.m`), the ``log`` and ``logit`` inverse-link cases used by `glmfit(..., 'poisson')` / `glmfit(..., 'binomial')`.
+- **Defect class:** Bug (Python port, fixed)
+- **MATLAB behavior:** Each inverse link constrains `eta` before applying the elementary function, but to a link-specific bound, not +-20: `log` (poisson canonical) uses `tiny = realmin(class)^.25`, `lowerBnd = log(tiny)`, `upperBnd = -lowerBnd` (double: +-177.0991046330660); `logit` (binomial canonical) uses `lowerBnd = log(eps(class))`, `upperBnd = -lowerBnd` (double: +-36.04365338911715).  Verified by reading `stattestlink.m` directly (not from memory): `ilink = @(eta) exp(constrain(eta,lowerBnd,upperBnd))` for `log`, `ilink = @(eta) 1 ./ (1 + exp(-constrain(eta,lowerBnd,upperBnd)))` for `logit`.
+- **Correct behavior:** As MATLAB -- constrain `eta` to the link-specific bound above, not an arbitrary +-20.
+- **Python implementation:** `nstat/glm.py`'s `fit_poisson_glm` (`lam = np.exp(np.clip(eta, -20.0, 20.0))`, two call sites) and `fit_binomial_glm` (`eta = np.clip(x_aug @ beta, -20.0, 20.0)`, two call sites) both used a flat +-20 bound, tighter than MATLAB's actual +-177.1 (poisson) and +-36.04 (binomial) bounds.  `fit_poisson_glm` / `fit_binomial_glm` back `Analysis.GLMFit`'s GLM / BNLRCG paths (`nstat/analysis.py:688,705,709`), which is the MATLAB-mirroring entry point, so the tighter clip could diverge from MATLAB on any design whose fitted linear predictor exceeds +-20 in magnitude (e.g. a well-separated or large-count design) even though it would not have diverged from the true MATLAB bound.  Replaced the literal `20.0` with module-level constants `_POISSON_ETA_BOUND = 177.0991046330660...` and `_BINOMIAL_ETA_BOUND = 36.04365338911715...` (computed from `np.finfo(float)`, matching `stattestlink.m`'s formulas exactly) at all four call sites.  Not removed outright (the brief's guard rule): MATLAB itself clips here, just to a different, wider bound.
+- **Fixture impact:** none (no gold fixture or drift recipe reaches |eta| in (20, 36) or (20, 177); full gold suite and `numerical_drift.py --fail-on-drift` re-run after the change, unchanged)
+- **Discovered:** P2a / 2026-10
+- **Upstream status:** n/a
+
+---
+
 ### Tooling (repo, not a MATLAB defect): `make regen` from a worktree without a sibling ../nSTAT rewrites notebook_fidelity.yml (repo tooling)
 
 - **MATLAB location:** n/a (nstat-python `tools/`, the notebook-fidelity audit's MATLAB root discovery)
