@@ -1,6 +1,8 @@
 # Release Notes
 
-## Unreleased
+## v0.6.0 — 2026-10-06
+
+First release since v0.5.7. It contains the point-process and Kalman-filter EM repairs that mirror the repaired MATLAB nSTAT (PRs #135, #137, #138), the parity clean-up, and the spatiotemporal `extras` work that was code-complete on 2026-07-03 but not released then (last subsection). **Breaking changes are listed under each EM heading.**
 
 **Package**
 
@@ -425,7 +427,7 @@ change)**
 - New `slow` / `matlab` pytest markers with `make test-slow`, `make test-matlab`
   and `make test-quick`; new `make numerical-drift-check`.
 
-## v0.6.0 — 2026-07-03
+### Spatiotemporal point processes for `nstat.extras.spatial` (code-complete 2026-07-03)
 
 **Spatiotemporal point processes for `nstat.extras.spatial`.** Six new
 pure-NumPy/SciPy modules (21 new public symbols) extend the static-spatial
@@ -436,7 +438,7 @@ counterpart (so, like the rest of `nstat.extras.spatial`, there is no
 `parity/manifest.yml` entry). The stable `nstat.*` core is untouched;
 this is additive `extras`-only capability, hence a minor bump.
 
-### New modules
+#### New modules
 
 - **`st_intensity`** — boundary-corrected product-kernel space-time
   intensity `λ̂(x, t)` (`intensity_st_kde` → `STIntensityResult`, with an
@@ -472,7 +474,7 @@ this is additive `extras`-only capability, hence a minor bump.
   `simulate_modulated_renewal`; `renewal_hazard`; `renewal_cdf`).
   Barbieri-Quirk-Frank-Wilson-Brown (2001); Brown et al. (2002).
 
-### New examples — grounded in real recording modalities
+#### New examples — grounded in real recording modalities
 
 Four fully-synthetic, opt-dep-free demos in `examples/extras/` (each
 exports three figures, integrated into the extras gallery):
@@ -488,7 +490,7 @@ exports three figures, integrated into the extras gallery):
   whose sub-Poisson ISI structure a gamma modulated-renewal CIF captures
   and a naive Poisson (CV = 1) model fails, shown via the rescaled-ISI KS test.
 
-### Documentation
+#### Documentation
 
 - `docs/extras/spatial_point_processes.md` — a full space-time API section
   (per-symbol signatures, math, result-class fields), new gotchas, a
@@ -498,7 +500,7 @@ exports three figures, integrated into the extras gallery):
   spatiotemporal modules.
 - README extras-capability row and the regenerated extras gallery updated.
 
-### Also fixed
+#### Also fixed
 
 - **`_envelopes.global_rank_envelope`** — corrected from per-column order
   statistics to the Myllymäki (2017) **joint extreme-rank** envelope. This
@@ -506,7 +508,7 @@ exports three figures, integrated into the extras gallery):
   null-coverage calibration improves from ≈0.80 to ≈0.925 at the nominal
   0.95 level.
 
-### Verification
+#### Verification
 
 Full suite green (955 passed, 43 skipped); `docs-strict` (`-W`) build
 succeeds; freshness / helpfile / readme / extras-doc-contract gates pass;
