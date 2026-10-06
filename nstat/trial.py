@@ -1817,7 +1817,7 @@ class SpikeTrainCollection:
         windowTimes = history  # use unified name internally
         from .analysis import Analysis
         from .confidence_interval import ConfidenceInterval
-        from .glm import fit_poisson_glm
+        from .glm import _MATLAB_GLMFIT_POISSON_ETA_BOUND, fit_poisson_glm
 
         # Use MATLAB-compatible param names (selectorArray/minTime/maxTime/sampleRate unused in current impl)
         _sr = float(sampleRate) if sampleRate is not None else float(self.sampleRate)
@@ -1857,9 +1857,17 @@ class SpikeTrainCollection:
         y = np.concatenate(stacked_y)
 
         if algorithm == "GLM":
-            glm_res = fit_poisson_glm(X, y, include_intercept=False)
+            # eta_bound: MATLAB glmfit's own 'log'-link bound (stattestlink.m),
+            # matching Analysis.GLMFit's fix for the same reason (see
+            # parity/matlab_defects.yml glmfit-ilink-eta-bound-too-tight).
+            # The Fisher-information weight below uses the raw (unclipped)
+            # exp(X*b), as MATLAB's Analysis.GLMFit's own `data` does, not
+            # fit_poisson_glm.predict_rate's Python-only +-20 default.
+            glm_res = fit_poisson_glm(
+                X, y, include_intercept=False, eta_bound=_MATLAB_GLMFIT_POISSON_ETA_BOUND,
+            )
             raw_coeffs = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
-            lambda_hat = glm_res.predict_rate(X)
+            lambda_hat = np.exp(X @ raw_coeffs)
             W = np.maximum(lambda_hat, 1e-12)
         else:
             from .glm import fit_binomial_glm
