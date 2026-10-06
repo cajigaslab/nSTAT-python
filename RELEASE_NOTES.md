@@ -199,14 +199,14 @@ does about it, and the known gaps.
   briefly raised on it; MATLAB's `glmfit` would drop the NaN rows, which is not
   mirrored). The binomial `'BNLRCG'` fit is not a MATLAB mirror on
   rank-deficient designs (MATLAB's `bnlrCG` returns complex standard errors
-  there; see the ledger). This changes one notebook gallery: in
-  `notebooks/HistoryExamples.ipynb` 19 of 48 `GLMFit` calls are
+  there; see the ledger). This previously changed one notebook gallery: in
+  `notebooks/HistoryExamples.ipynb` 19 of 48 `GLMFit` calls were
   rank-deficient (the history fits: design 5001 x 9 of rank 7, because the
-  notebook's synthetic population has almost no spikes; see the ledger entry
-  `history-examples-near-zero-spike-population`). Their SEs go from all NaN to
-  finite values (about 450-885, and 0 for the two all-zero history columns),
-  so its figures 4-6 gain the Fit2 error bars; b and AIC are unchanged (b to
-  7e-12). The committed gallery PNGs were not regenerated.
+  notebook's synthetic population had almost no spikes; see the ledger entry
+  `history-examples-near-zero-spike-population`, now fixed). The population's
+  baseline rate was raised from ~0.1 Hz to ~30 Hz so every Fit1/Fit2 GLM is
+  full rank, and the gallery (`docs/notebook_galleries/HistoryExamples/`) was
+  regenerated to match.
 - The EM routines report progress through `logging` instead of `print` and are
   silent by default (`KF_EM` and `PP_EM` on logger `nstat.decoding_algorithms`,
   `PPLFP_EM` / `PPLFP_MStep` on `nstat.decoding.PPLFP`).

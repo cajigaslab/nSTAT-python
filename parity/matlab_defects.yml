@@ -1856,7 +1856,7 @@ entries:
   discovered: P2b-2 review / 2026-10
   upstream_status: n/a
 - id: history-examples-near-zero-spike-population
-  title: '`HistoryExamples.ipynb`: the synthetic population of the Fit1-vs-Fit2 section has almost no spikes (Python notebook bug; follow-up)'
+  title: '`HistoryExamples.ipynb`: the synthetic population of the Fit1-vs-Fit2 section has almost no spikes (Python notebook bug; fixed)'
   defect_class: Bug (Python notebook, not a MATLAB defect)
   matlab_location: n/a (nstat-python `notebooks/HistoryExamples.ipynb`, SECTION 6 `_build_population`)
   matlab_behavior: >-
@@ -1868,7 +1868,7 @@ entries:
   correct_behavior: A population with enough spikes for the fits to mean something (for example a per-bin intensity
     exp(eta), or a rate in Hz of tens of spikes per second).
   python_implementation:
-  - 'Not fixed (follow-up; found by the EM-branch review).  Since GLMFit''s rank handling (nstat-python `948b0ce`) the 19 rank-deficient history fits (design 5001 x 9, rank 7: the two history columns are all zero) report finite SEs of about 450-885 and 0 for the two empty columns instead of all NaN; b changes by <= 7e-12 and AIC not at all.  So fig_004 to fig_006 gain Fit2 error bars.  The committed gallery PNGs were not regenerated: they byte-match neither a run of the base nor of the branch, and no gate checks them.'
+  - 'Fixed (P2b-2026-10): `_build_population`''s `beta_true["mu"]` changed from -3.0 to 3.0, so the mean per-bin rate is ~30 Hz (~130-166 spikes per neuron over the 5 s / 1000 Hz run) instead of <0.1 Hz. Every Fit1 / Fit2 GLM is now well-identified (no rank-deficient designs), and the regenerated gallery figures (fig_004 to fig_007) show a real history effect. Regenerated via `tools/notebook_build/build_notebook_galleries.py --group full --topics HistoryExamples` then `--group full --skip-execute` to refresh the cross-notebook index.'
   fixture_impact: none
   discovered: EM-branch review / 2026-10
   upstream_status: n/a

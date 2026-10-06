@@ -1186,13 +1186,13 @@ Schema for each entry:
 
 ---
 
-### Bug (Python notebook, not a MATLAB defect): `HistoryExamples.ipynb`: the synthetic population of the Fit1-vs-Fit2 section has almost no spikes (Python notebook bug; follow-up)
+### Bug (Python notebook, not a MATLAB defect): `HistoryExamples.ipynb`: the synthetic population of the Fit1-vs-Fit2 section has almost no spikes (Python notebook bug; fixed)
 
 - **MATLAB location:** n/a (nstat-python `notebooks/HistoryExamples.ipynb`, SECTION 6 `_build_population`)
 - **Defect class:** Bug (Python notebook, not a MATLAB defect)
 - **MATLAB behavior:** The generator sets `rate = exp(eta)` with eta about -3 and draws spikes with probability `1 - exp(-rate*Ts)` per 1 ms bin, i.e. it treats exp(eta) as spikes per second: the per-bin probability is <= 3.3e-4, so run 1 gives 0 spikes for all 12 neurons and run 2 at most 1.  Every Fit1 / Fit2 GLM is then degenerate (b0 = -120 for an empty train, KS = 1, Delta AIC = 4 from the two extra history columns), and the comparison figures (gallery fig_004 to fig_006) show no history effect at all.
 - **Correct behavior:** A population with enough spikes for the fits to mean something (for example a per-bin intensity exp(eta), or a rate in Hz of tens of spikes per second).
-- **Python implementation:** Not fixed (follow-up; found by the EM-branch review).  Since GLMFit's rank handling (nstat-python `948b0ce`) the 19 rank-deficient history fits (design 5001 x 9, rank 7: the two history columns are all zero) report finite SEs of about 450-885 and 0 for the two empty columns instead of all NaN; b changes by <= 7e-12 and AIC not at all.  So fig_004 to fig_006 gain Fit2 error bars.  The committed gallery PNGs were not regenerated: they byte-match neither a run of the base nor of the branch, and no gate checks them.
+- **Python implementation:** Fixed (P2b-2026-10): `_build_population`'s `beta_true["mu"]` changed from -3.0 to 3.0, so the mean per-bin rate is ~30 Hz (~130-166 spikes per neuron over the 5 s / 1000 Hz run) instead of <0.1 Hz. Every Fit1 / Fit2 GLM is now well-identified (no rank-deficient designs), and the regenerated gallery figures (fig_004 to fig_007) show a real history effect. Regenerated via `tools/notebook_build/build_notebook_galleries.py --group full --topics HistoryExamples` then `--group full --skip-execute` to refresh the cross-notebook index.
 - **Fixture impact:** none
 - **Discovered:** EM-branch review / 2026-10
 - **Upstream status:** n/a
