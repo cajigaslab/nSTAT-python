@@ -42,13 +42,13 @@ from .nspikeTrain import nspikeTrain
 # prints nothing here, so these are Python-only diagnostics.
 _logger = logging.getLogger(__name__)
 
-# EM convergence hyperparameters shared by PPSS_EMFB, PPSS_EM, KF_EM and PP_EM
-# (same values as the literals they replace; none of these
+# EM convergence hyperparameters shared by PPSS_EMFB, PPSS_EM, KF_EM, PP_EM and
+# PPLFP_EM (same values as the literals they replace; none of these
 # MATLAB-mirrored methods exposes them as arguments).
 _EM_TOL_ABS = 1e-3  # absolute parameter-change tolerance (tolAbs)
 _EM_TOL_REL = 1e-3  # relative tolerance (tolRel; PPSS_EMFB and PPSS_EM)
 _EM_LL_TOL = 1e-3  # log-likelihood change tolerance (llTol)
-_EM_MAX_ITER = 100  # maxIter for PPSS_EM, KF_EM, PP_EM
+_EM_MAX_ITER = 100  # maxIter for PPSS_EM, KF_EM, PP_EM, PPLFP_EM
 _PPSS_EMFB_MAX_ITER = 2000  # PPSS_EMFB's own, larger maxIter
 
 

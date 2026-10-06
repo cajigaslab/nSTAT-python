@@ -35,6 +35,9 @@ import numpy as np
 import scipy.linalg  # noqa: F401  (used by ported method bodies)
 
 from nstat.decoding_algorithms import (
+    _EM_LL_TOL,
+    _EM_MAX_ITER,
+    _EM_TOL_ABS,
     _as_observation_matrix,
     _as_state_matrix,
     _check_mstep_method,
@@ -1910,12 +1913,12 @@ class PPLFP:
         yOrig = y_arr.copy()  # the original-scale y, for the SE call (MATLAB F8)
 
         # ---- EM tolerance settings ------------------------------------
-        # MATLAB references ``nstat.Defaults.EM_TolAbs`` / ``EM_LogLTol``;
-        # this Python port uses the same numerical constants as the
-        # mPPCO_EM port for parity.
-        tolAbs = 1e-3
-        llTol = 1e-3
-        maxIter = 100
+        # MATLAB: tolAbs = nstat.Defaults.EM_TolAbs (1e-3), llTol =
+        # nstat.Defaults.EM_LogLTol (1e-3), maxIter = 100 -- the values of the
+        # shared constants PP_EM / KF_EM use.
+        tolAbs = _EM_TOL_ABS
+        llTol = _EM_LL_TOL
+        maxIter = _EM_MAX_ITER
         numToKeep = 10
 
         # ---- Circular history buffers (parity with MATLAB cells) ------
