@@ -420,7 +420,10 @@ def test_singular_observed_information_flags_the_nonidentifiable_parameters(em_g
             SE, P, _ = PPLFP.PPLFP_ComputeParamStandardErrors(
                 y, dN, x_K, W_K, f("Ahat"), f("Qhat"), C, R, alpha, x0, Px0, ES, "poisson", np.ravel(f("muhat")),
                 f("betahat"), gamma, wt, H, PPLFP.PPLFP_EMCreateConstraints(mcIter=100))
-    assert len(record) == 1 and expected in str(record[0].message)
+    # Count only this warning: any other RuntimeWarning a NumPy / SciPy build
+    # may emit is not what is tested here.
+    singular = [str(w.message) for w in record if "observed information matrix is singular" in str(w.message)]
+    assert len(singular) == 1 and expected in singular[0]
     se_g, p_g = np.asarray(SE["gamma"], dtype=float), np.asarray(P["gamma"], dtype=float)
     assert np.all(np.isnan(se_g[sep])) and np.all(np.isnan(p_g[sep]))
     assert np.all(np.isfinite(se_g[~sep]) & (se_g[~sep] > 0)) and np.all(np.isfinite(p_g[~sep]))

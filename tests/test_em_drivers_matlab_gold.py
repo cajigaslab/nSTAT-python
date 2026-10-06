@@ -306,7 +306,10 @@ def test_monte_carlo_estimates_within_the_measured_spread(gold, python_runs, cas
             se, pv = np.asarray(py["SE"]["gamma"], dtype=float), np.asarray(py["Pvals"]["gamma"], dtype=float)
             assert np.all(np.isnan(se[sep])) and np.all(np.isnan(pv[sep]))
             assert np.all(np.isfinite(se[~sep])) and np.all(np.isfinite(pv[~sep]))
-            assert len(py["warnings"]) == 1 and "Not identifiable" in py["warnings"][0]
+            # Only the singular-information warning counts (other RuntimeWarnings
+            # a NumPy / SciPy build may emit are not tested here).
+            singular = [w for w in py["warnings"] if "observed information matrix is singular" in w]
+            assert len(singular) == 1 and "Not identifiable" in singular[0]
             got, ref = got[~sep], ref[~sep]
         np.testing.assert_allclose(got, ref, rtol=0, atol=atol, err_msg=key)
     if case in _MC_UNCHECKABLE:
@@ -315,7 +318,7 @@ def test_monte_carlo_estimates_within_the_measured_spread(gold, python_runs, cas
                     np.asarray(py["SE"]["A"], dtype=float)[~np.eye(2, dtype=bool)]):
             assert np.all(np.isfinite(got)) and np.all(got > 0)
     if case != "pp_sep":
-        assert not [w for w in py["warnings"] if "singular" in w]
+        assert not [w for w in py["warnings"] if "observed information matrix is singular" in w]
     if f("family") == "PP":
         # The stopping iteration is Monte Carlo dependent (pp_pois stops after
         # 8 instead of 6 iterations for Python seed 2; pp_sep after 6..11), but
