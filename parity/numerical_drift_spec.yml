@@ -237,8 +237,8 @@ entries:
 
   # c5 / c6: square history (nW == C == 3, non-symmetric gamma), appended when
   # pp_estep.mat was recaptured from the repaired MATLAB (fix/pp-em @ a457b54,
-  # pending upstream merge), whose PP_EStep logll orients each history slice
-  # by its columns.  Measured max abs error 5.1e-12 (logll), arrays <= 2.3e-13.
+  # pending upstream merge; recaptured bit-identically from aa88a2b), whose
+  # PP_EStep logll orients each history slice by its columns.  Measured max abs error 5.1e-12 (logll), arrays <= 2.3e-13.
   - name: PP_EStep_poisson_square_history_logll
     recipe: pp_estep
     args: { case: c5 }
@@ -334,7 +334,8 @@ entries:
     tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
 
   # 17. Blocks of pp_square_history.mat captured from the repaired MATLAB
-  # (fix/pp-em @ a457b54, pending upstream merge).  The two history entries
+  # (fix/pp-em @ a457b54, pending upstream merge; recaptured bit-identically
+  # from aa88a2b).  The two history entries
   # are integer counts and edges, matched exactly; the filters measured
   # <= 3.9e-16, so rtol 1e-10 / atol 1e-12 as in section 16.
   # PP_EM / PPLFP_EM default history (B9): windowTimes = 0:delta:size(gamma,1)*delta.

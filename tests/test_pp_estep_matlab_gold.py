@@ -5,7 +5,8 @@ Gold: ``tests/parity/fixtures/matlab_gold/pp_estep.mat``, captured from MATLAB
 ``tools/parity/matlab/capture_pp_estep.m`` (rng(42) synthetic inputs; dx = 2
 states, C = 3 cells, N = 150 bins; recaptured from the repaired MATLAB
 ``fix/pp-em`` @ ``a457b54``, pending upstream merge, which added c5 / c6 and
-left c1-c4 bit-identical).  Cases:
+left c1-c4 bit-identical; recaptured again from the final ``aa88a2b``, every
+field bit-identical except the provenance note).  Cases:
 
 * ``c1`` poisson, no history (``HkAll = zeros(N, 1, C)``, ``gamma = 0``)
 * ``c2`` poisson, 2-window history, nonzero ``gamma``

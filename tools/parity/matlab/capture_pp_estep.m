@@ -133,8 +133,15 @@ for i = 1:numel(cases)
 end
 out.case_names = {cases.name};
 out.matlab_version = version;
-out.matlab_source_note = ['Captured from the repaired MATLAB nSTAT fix/pp-em @ a457b54 ' ...
-                          '(pending upstream merge)'];
+% The MATLAB checkout's git commit (the repaired fix/pp-em branch, pending
+% upstream merge), as export_pplfp_gold_fixtures.m records it.
+srcDir = fileparts(which('nstat.decoding.PointProcessEM'));
+[status, sha] = system(['git -C "' srcDir '" rev-parse --short HEAD']);
+if status ~= 0
+    sha = 'unknown commit';
+end
+out.matlab_source_note = ['Captured from the repaired MATLAB nSTAT fix/pp-em @ ' strtrim(sha) ...
+                          ' (pending upstream merge)'];
 
 save(outMat, '-struct', 'out', '-v7');
 fprintf('Saved gold fixture: %s\n', outMat);

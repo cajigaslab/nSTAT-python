@@ -46,7 +46,8 @@ Outside ``case_names``:
 
 * ``emdef_*`` -- ``PP_EM`` / ``PPLFP_EM``'s default history (windowTimes = []
   and a non-zero 8 x 2 gamma, delta = 1 ms), recaptured from the repaired
-  MATLAB (``fix/pp-em`` @ ``a457b54``, pending upstream merge): one window per
+  MATLAB (``fix/pp-em`` @ ``a457b54``, pending upstream merge; recaptured
+  bit-identically from the final ``aa88a2b``): one window per
   history coefficient, ``windowTimes = 0:delta:size(gamma,1)*delta`` (8
   windows).  MATLAB master's rule ``0:delta:(length(gamma)+1)*delta`` gave 9
   windows for 8 coefficients (and failed downstream); P1b had mirrored it.

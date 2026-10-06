@@ -314,8 +314,15 @@ fprintf('  [pphf] PPHybridFilterLinear with history, max|X - x_u(PDFL)| = %g\n',
 
 out.case_names = {cases.name};
 out.matlab_version = version;
+% The MATLAB checkout's git commit (the repaired fix/pp-em branch, pending
+% upstream merge), as export_pplfp_gold_fixtures.m records it.
+srcDir = fileparts(which('nstat.decoding.PointProcessEM'));
+[status, sha] = system(['git -C "' srcDir '" rev-parse --short HEAD']);
+if status ~= 0
+    sha = 'unknown commit';
+end
 out.matlab_source_note = ['emdef_* / pp2ms_* / b1sq_* / pphf_* captured from the repaired MATLAB ' ...
-                          'nSTAT fix/pp-em @ a457b54 (pending upstream merge); the ten cases and ' ...
+                          'nSTAT fix/pp-em @ ' strtrim(sha) ' (pending upstream merge); the ten cases and ' ...
                           'colon_* are bit-identical to the MATLAB master capture'];
 
 save(outMat, '-struct', 'out', '-v7');
