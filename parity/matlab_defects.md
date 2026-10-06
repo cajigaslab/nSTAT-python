@@ -1050,6 +1050,7 @@ Schema for each entry:
 - **Python implementation:**
   - `DecodingAlgorithms.KF_ComputeParamStandardErrors` / `KF_EM` mirror the upper-factor draws and whitening (with Python-only `_nearestSPD` fallbacks before the Cholesky).
   - The KF information blocks use the intended `(N/2) Q^-1 e e' Q^-1` / `(1/2) P^-1 e e' P^-1` forms, i.e. they do NOT mirror MATLAB's precedence defect: KF SE.Q / SE.R / SE.Px0 differ from MATLAB KF_EM.
+  - Two SE conventions coexist: `PP_*` / `PPLFP_*` use MATLAB's `nearestSPD` (`_matlab_nearest_spd`) and `ztest` p-values (`_matlab_ztest_p`: se = 0 gives p = 0), while `KF_ComputeParamStandardErrors` keeps the module-level `_nearestSPD` (Higham projection, then eigenvalues clamped at eps instead of MATLAB's shift loop) and `_ztest_pvalue` (p = 1 for se <= 0 or non-finite).  Pinned by `tests/test_review_characterization.py::test_ztest_definitions_agree_in_the_large_z_tail`; aligning the KF family is part of its repair.
 - **Fixture impact:** No KF EM gold fixture exercises these paths.
 - **Discovered:** EM final pass / 2026-10
 - **Upstream status:** not-fixed-upstream

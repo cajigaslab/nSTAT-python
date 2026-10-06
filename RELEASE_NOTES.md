@@ -232,7 +232,10 @@ does about it, and the known gaps.
   `KF_EM.m` (`:510`, `:521`, `:577`, `:588`, `:623`) has the precedence defect
   fixed for the point-process routines (`N/2*(R)\e*e'/(R)` evaluates to
   `(2/N) R^-1 e e' R^-1`), so `KF_EM`'s `SE.Q` / `SE.R` / `SE.Px0` differ from
-  MATLAB's. Also not changed: counts of a full `Q` / `R` by all d^2 entries, the
+  MATLAB's. Its SE pass also keeps the older conventions: a Higham projection
+  with eigenvalues clamped at eps (not MATLAB's `nearestSPD` shift loop) and
+  p = 1 for an SE <= 0, where the point-process routines now give MATLAB's
+  p = 0 for an SE of 0. Also not changed: counts of a full `Q` / `R` by all d^2 entries, the
   non-scale-equivariant `nearestSPD`, the GLM M-step's plug-in drift, and the
   absence of an analytic check of `SE.x0` / `SE.Px0`.
 
