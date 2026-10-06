@@ -6198,7 +6198,9 @@ class DecodingAlgorithms:
             invIObs = np.linalg.inv(IObs)
         except np.linalg.LinAlgError:
             # Python-only: an exactly singular IObs.  MATLAB's eye/IObs warns and
-            # returns Inf, and nearestSPD's svd then errors.
+            # returns Inf / NaN; in R2025b svd and eig of NaN return NaN and
+            # chol keeps failing (p > 0), so nearestSPD's loop never ends and
+            # MATLAB never returns.
             invIObs = np.linalg.pinv(IObs)
         invIObs = DecodingAlgorithms._nearestSPD(invIObs)
 
