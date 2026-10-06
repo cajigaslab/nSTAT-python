@@ -378,3 +378,52 @@ def test_pp_em_rejects_ikeda_acceleration() -> None:
     with pytest.raises(NotImplementedError, match="EnableIkeda"):
         DecodingAlgorithms.PP_EM(np.zeros((1, 20)), np.eye(1), 0.01 * np.eye(1), np.array([-3.0]), np.zeros((1, 1)),
                                  PPEM_Constraints=cons)
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_singular_observed_information_flags_the_nonidentifiable_parameters(em_gold, family) -> None:
+    # At MATLAB's pp_sep estimates five history coefficients sit at the exp()
+    # underflow (separated windows): their information and scores are exactly
+    # 0, so IObs is singular.  MATLAB's SE pass never returns there (eye/IObs is
+    # Inf / NaN and nearestSPD loops); this port uses the pseudo-inverse.  It
+    # used to report SE ~1e-8 and p = 0 for those coefficients; now SE = p =
+    # NaN for every parameter in the null space, a RuntimeWarning names them,
+    # and every other SE stays finite and positive.
+    from nstat.decoding_algorithms import _compute_history_terms
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    f = lambda key: em_gold[f"pp_sep_{key}"]  # noqa: E731
+    dN = np.atleast_2d(f("dN")).astype(float)
+    wt = np.asarray(f("windowTimes"), dtype=float)
+    H = _compute_history_terms(dN, float(f("delta")), wt)
+    gamma = np.asarray(f("gammahat"), dtype=float)
+    sep = gamma < -100
+    assert sep.sum() == 5
+    x0, Px0 = np.ravel(f("x0hat")), np.atleast_2d(f("Px0hat"))
+    expected = ", ".join(f"gamma[{w}, {c}]" for c, w in sorted((c, w) for w, c in zip(*np.nonzero(sep))))
+    with seeded_global_rng(1), pytest.warns(RuntimeWarning, match="singular") as record:
+        if family == "PP":
+            ES = {k[len("pp_sep_es_ES_"):]: np.asarray(v, dtype=float)
+                  for k, v in em_gold.items() if k.startswith("pp_sep_es_ES_")}
+            for key in ("Sxkm1xkm1", "Sxkxkm1", "Sxkm1xk", "Sxkxk", "sumXkTerms"):
+                ES[key] = ES[key].reshape(2, 2)
+            SE, P, _ = DecodingAlgorithms.PP_ComputeParamStandardErrors(
+                dN, f("xKFinal"), f("WKFinal"), f("Ahat"), f("Qhat"), x0, Px0, ES, "poisson", np.ravel(f("muhat")),
+                f("betahat"), gamma, wt, H, DecodingAlgorithms.PP_EMCreateConstraints(mcIter=100))
+        else:
+            # The same cells plus one Gaussian channel y = C x + alpha + noise.
+            rng = np.random.default_rng(0)
+            C, R, alpha = np.array([[1.0, 0.5]]), np.array([[0.05]]), np.array([0.1])
+            y = C @ np.asarray(f("x"), dtype=float) + alpha[:, None] + np.sqrt(R[0, 0]) * rng.standard_normal((1, dN.shape[1]))
+            x_K, W_K, _, ES = PPLFP.PPLFP_EStep(f("Ahat"), f("Qhat"), C, R, y, alpha, dN, np.ravel(f("muhat")),
+                                                f("betahat"), "poisson", float(f("delta")), gamma, H, x0, Px0)
+            SE, P, _ = PPLFP.PPLFP_ComputeParamStandardErrors(
+                y, dN, x_K, W_K, f("Ahat"), f("Qhat"), C, R, alpha, x0, Px0, ES, "poisson", np.ravel(f("muhat")),
+                f("betahat"), gamma, wt, H, PPLFP.PPLFP_EMCreateConstraints(mcIter=100))
+    assert len(record) == 1 and expected in str(record[0].message)
+    se_g, p_g = np.asarray(SE["gamma"], dtype=float), np.asarray(P["gamma"], dtype=float)
+    assert np.all(np.isnan(se_g[sep])) and np.all(np.isnan(p_g[sep]))
+    assert np.all(np.isfinite(se_g[~sep]) & (se_g[~sep] > 0)) and np.all(np.isfinite(p_g[~sep]))
+    for key, value in SE.items():
+        if key != "gamma":
+            assert np.all(np.isfinite(np.asarray(value, dtype=float))), key

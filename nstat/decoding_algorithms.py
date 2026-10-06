@@ -793,6 +793,79 @@ def _matlab_ztest_p(param, se):
     return 2.0 * norm.cdf(-np.abs(z))
 
 
+def _em_se_term_labels(groups) -> list[str]:
+    """Names of the entries of an EM routine's stacked SE parameter vector.
+
+    ``groups`` lists ``(name, n_terms, shape, layout)`` in stacking order;
+    ``layout`` is ``"square"`` (a covariance-like or A-like matrix: ``n`` =
+    rows*cols is row by row, ``n`` = rows its diagonal, ``n`` = 1 an
+    isotropic value), ``"rowmajor"``, ``"cellmajor"`` (a states- or
+    windows-by-cells matrix, one cell's column after another) or
+    ``"vector"``.  Indices are zero-based, as in the returned arrays.
+    """
+    labels: list[str] = []
+    for name, n, shape, layout in groups:
+        if n <= 0:
+            continue
+        shape = tuple(int(v) for v in shape) + (1, 1)
+        r, c = shape[0], shape[1]
+        if layout == "vector" and n == r:
+            labels += [f"{name}[{i}]" for i in range(r)]
+        elif layout == "cellmajor" and n == r * c:
+            labels += [f"{name}[{i}, {j}]" for j in range(c) for i in range(r)]
+        elif layout in ("square", "rowmajor") and n == r * c:
+            labels += [f"{name}[{i}, {j}]" for i in range(r) for j in range(c)]
+        elif layout == "square" and n == r:
+            labels += [f"{name}[{i}, {i}]" for i in range(r)]
+        elif layout == "square" and n == 1:
+            labels.append(f"{name} (isotropic)")
+        else:
+            labels += [f"{name} term {k}" for k in range(n)]
+    return labels
+
+
+def _em_singular_information_inverse(IObs, labels, routine):
+    """Python-only inverse of an exactly singular observed information matrix.
+
+    MATLAB's SE routines compute ``eye(n)/IObs``, which is Inf / NaN here, and
+    ``nearestSPD`` of it then loops forever (in R2025b ``svd`` / ``eig`` of NaN
+    return NaN and ``chol`` keeps failing), so MATLAB never returns.  This port
+    returns, with these semantics:
+
+    * the inverse is the pseudo-inverse of ``IObs`` (singular values at or
+      below ``1e-15`` times the largest are dropped, NumPy's ``pinv``
+      default);
+    * a parameter is *not identifiable* when its unit vector has a component
+      larger than ``sqrt(eps)`` in the null space of ``IObs`` (the dropped
+      right singular vectors): the log-likelihood is flat along that
+      direction, so the data determine neither the estimate nor its
+      precision.  Its SE and p-value are NaN (the pseudo-inverse would give it
+      an SE of about 1e-8 and p = 0).  The usual cause is a separated history
+      window (no spike in it is followed by a spike), whose coefficient the
+      Newton steps walk to the ``exp()`` underflow, where its information and
+      score are exactly 0;
+    * a ``RuntimeWarning`` names those parameters.
+
+    Returns ``(invIObs, nonidentifiable)``, the latter a boolean mask over the
+    stacked parameter vector (in ``labels`` order).
+    """
+    IObs = np.asarray(IObs, dtype=float)
+    U, s, Vt = np.linalg.svd(IObs)
+    keep = s > 1e-15 * (s.max() if s.size else 0.0)
+    invIObs = (Vt[keep].T / s[keep]) @ U[:, keep].T
+    weight = np.sqrt(np.sum(Vt[~keep] ** 2, axis=0))
+    nonid = weight > np.sqrt(np.finfo(float).eps)
+    names = [labels[i] if i < len(labels) else f"term {i}" for i in np.flatnonzero(nonid)]
+    message = (f"{routine}: the observed information matrix is singular (MATLAB's SE pass never returns "
+               "here); the standard errors come from its pseudo-inverse.")
+    if names:
+        message += (" Not identifiable from the data, SE and p-value set to NaN: " + ", ".join(names)
+                    + ".  The log-likelihood is flat along them; a history coefficient is not identifiable "
+                    "when no spike in its window is followed by a spike (a separated window).")
+    warnings.warn(message, RuntimeWarning, stacklevel=2)
+    return invIObs, nonid
+
+
 def _likelihood_from_lambda(observed: np.ndarray, lambda_delta: np.ndarray, fitType: str) -> float:
     lam = np.clip(np.asarray(lambda_delta, dtype=float).reshape(-1), 1e-9, 1.0 - 1e-9 if fitType == "binomial" else np.inf)
     obs = np.asarray(observed, dtype=float).reshape(-1)
@@ -5768,8 +5841,13 @@ class DecodingAlgorithms:
         (nSTAT PR #135): the constraints are honoured, the intensities are
         unclipped, the inverse observed information is projected with
         MATLAB's ``nearestSPD`` and the p-values are MATLAB ``ztest``'s
-        ``2*normcdf(-|z|)``.  An exactly singular observed information falls
-        back to ``pinv`` (Python-only: MATLAB's SE pass then never returns).
+        ``2*normcdf(-|z|)``.  An exactly singular observed information
+        (MATLAB's SE pass never returns there) is a Python-only extension: the
+        SEs come from its pseudo-inverse, every parameter with a component in
+        its null space -- not identifiable from the data, typically the
+        coefficient of a separated history window at the ``exp()`` underflow
+        -- gets SE and p-value NaN, and a ``RuntimeWarning`` names those
+        parameters.
 
         Parameters
         ----------
@@ -6194,18 +6272,27 @@ class DecodingAlgorithms:
 
         IMissing = np.mean(IMc, axis=2)
         IObs = IComp - IMissing
+        nonid = None
         try:
             invIObs = np.linalg.inv(IObs)
         except np.linalg.LinAlgError:
             # Python-only: an exactly singular IObs.  MATLAB's eye/IObs warns and
             # returns Inf / NaN; in R2025b svd and eig of NaN return NaN and
             # chol keeps failing (p > 0), so nearestSPD's loop never ends and
-            # MATLAB never returns.
-            invIObs = np.linalg.pinv(IObs)
+            # MATLAB never returns.  The pseudo-inverse, with NaN SEs for the
+            # parameters in its null space (a warning names them).
+            labels = _em_se_term_labels([
+                ("A", n1, Ahat.shape, "square"), ("Q", n2, Qhat.shape, "square"),
+                ("Px0", n3, Px0hat.shape, "square"), ("x0", n4, x0hat.shape, "vector"),
+                ("mu", n5, muhat.shape, "vector"), ("beta", n6, betahat.shape, "cellmajor"),
+                ("gamma", n7, gammahat.shape if gammahat.ndim == 2 else (gammahat.size, 1), "cellmajor")])
+            invIObs, nonid = _em_singular_information_inverse(IObs, labels, "PP_ComputeParamStandardErrors")
         invIObs = DecodingAlgorithms._nearestSPD(invIObs)
 
         VarVec = np.diag(invIObs)
         SEVec = np.sqrt(VarVec)  # MATLAB sqrt(VarVec); positive after nearestSPD
+        if nonid is not None:
+            SEVec[nonid] = np.nan  # not identifiable: SE (and so the p-value) NaN
 
         # Unpack SE vector
         off = 0

@@ -204,13 +204,16 @@ def _n_terms(IC) -> int:
 
 @pytest.fixture(scope="module")
 def python_runs(gold) -> dict:
+    import warnings
+
     from nstat.extras.matlab_rng import seeded_global_rng
 
     runs = {}
     for case in CASES:
         f = _get(gold, case)
         dN = np.atleast_2d(f("dN")).astype(float)
-        with seeded_global_rng(1):
+        with seeded_global_rng(1), warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", RuntimeWarning)
             if f("family") == "PP":
                 wt = np.asarray(f("windowTimes"), dtype=float)
                 g0 = np.asarray(f("gamma0"), dtype=float)
@@ -221,12 +224,13 @@ def python_runs(gold) -> dict:
                     None if wt.size == 0 else wt, None, None,
                     DecodingAlgorithms.PP_EMCreateConstraints(*[int(v) for v in np.ravel(f("cons"))]))
                 runs[case] = dict(xKFinal=o[0], Ahat=o[2], Qhat=o[3], muhat=o[4], betahat=o[5], gammahat=o[6],
-                                  IC=o[9], SE=o[10], nIter=o[12])
+                                  IC=o[9], SE=o[10], Pvals=o[11], nIter=o[12])
             else:
                 o = PPLFP.PPLFP_EM(np.atleast_2d(f("y")), dN, f("A0"), f("Q0"), f("C0"), f("R0"),
                                    np.ravel(f("alpha0")), np.ravel(f("mu0")), f("beta0"))
                 runs[case] = dict(xKFinal=o[0], Ahat=o[2], Qhat=o[3], Chat=o[4], Rhat=o[5], alphahat=o[6],
                                   muhat=o[7], betahat=o[8], IC=o[12], SE=o[13])
+        runs[case]["warnings"] = [str(w.message) for w in caught if issubclass(w.category, RuntimeWarning)]
     return runs
 
 
@@ -260,8 +264,16 @@ def test_monte_carlo_estimates_within_the_measured_spread(gold, python_runs, cas
             assert sep.any() and np.array_equal(got < -100, sep)
             assert np.all(ref[sep] > -745.2) and np.all(ref[sep] < -741)
             np.testing.assert_allclose(got[sep], ref[sep], rtol=0, atol=1e-2, err_msg="separated gamma")
+            # Their information is then exactly 0: the SE pass (where MATLAB
+            # never returns) reports SE = p = NaN for them, and says so.
+            se, pv = np.asarray(py["SE"]["gamma"], dtype=float), np.asarray(py["Pvals"]["gamma"], dtype=float)
+            assert np.all(np.isnan(se[sep])) and np.all(np.isnan(pv[sep]))
+            assert np.all(np.isfinite(se[~sep])) and np.all(np.isfinite(pv[~sep]))
+            assert len(py["warnings"]) == 1 and "Not identifiable" in py["warnings"][0]
             got, ref = got[~sep], ref[~sep]
         np.testing.assert_allclose(got, ref, rtol=0, atol=atol, err_msg=key)
+    if case != "pp_sep":
+        assert not [w for w in py["warnings"] if "singular" in w]
     if f("family") == "PP":
         # The stopping iteration is Monte Carlo dependent (pp_pois stops after
         # 8 instead of 6 iterations for Python seed 2; pp_sep after 6..11), but

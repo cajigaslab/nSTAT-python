@@ -41,6 +41,8 @@ from nstat.decoding_algorithms import (
     _em_glm_mstep,
     _expand_shared_se_gamma,
     _is_empty_value,
+    _em_se_term_labels,
+    _em_singular_information_inverse,
     _matlab_float_semantics,
     _matlab_mldivide,
     _matlab_nearest_spd,
@@ -931,8 +933,12 @@ class PPLFP:
         p-values are MATLAB ``ztest``'s ``2*normcdf(-|z|)``.  With
         ``RhatDiag = 0`` every entry of R is a parameter (row by row); MATLAB's
         branch errors there for dy > 1.  An exactly singular observed
-        information falls back to ``pinv`` (Python-only: MATLAB's SE pass
-        then never returns).
+        information (MATLAB's SE pass never returns there) is a Python-only
+        extension: the SEs come from its pseudo-inverse, every parameter with
+        a component in its null space -- not identifiable from the data,
+        typically the coefficient of a separated history window at the
+        ``exp()`` underflow -- gets SE and p-value NaN, and a
+        ``RuntimeWarning`` names those parameters.
 
         Returns
         -------
@@ -1570,18 +1576,29 @@ class PPLFP:
         # ------------------------------------------------------------------
         # Invert IObs and project to nearest SPD
         # ------------------------------------------------------------------
+        nonid = None
         try:
             invIObs = np.linalg.solve(IObs, np.eye(IObs.shape[0]))
         except np.linalg.LinAlgError:
             # Python-only: an exactly singular IObs.  MATLAB's eye/IObs warns and
             # returns Inf / NaN; in R2025b svd and eig of NaN return NaN and
             # chol keeps failing (p > 0), so nearestSPD's loop never ends and
-            # MATLAB never returns.
-            invIObs = np.linalg.pinv(IObs)
+            # MATLAB never returns.  The pseudo-inverse, with NaN SEs for the
+            # parameters in its null space (a warning names them).
+            gshape = gammahat.shape if np.ndim(gammahat) == 2 else (np.size(gammahat), 1)
+            labels = _em_se_term_labels([
+                ("A", n1, Ahat.shape, "square"), ("Q", n2, Qhat.shape, "square"),
+                ("C", n3, Chat.shape, "rowmajor"), ("R", n4, Rhat.shape, "square"),
+                ("Px0", n5, Px0hat.shape, "square"), ("x0", n6, np.shape(x0hat)[:1], "vector"),
+                ("alpha", n7, (np.size(alphahat),), "vector"), ("mu", n8, np.shape(muhat)[:1], "vector"),
+                ("beta", n9, betahat.shape, "cellmajor"), ("gamma", n10, gshape, "cellmajor")])
+            invIObs, nonid = _em_singular_information_inverse(IObs, labels, "PPLFP_ComputeParamStandardErrors")
 
         invIObs = _nearest_spd(invIObs)
         VarVec = np.diag(invIObs)
         SEVec = np.sqrt(VarVec)  # MATLAB sqrt(VarVec); positive after nearestSPD (was sqrt(|VarVec|))
+        if nonid is not None:
+            SEVec[nonid] = np.nan  # not identifiable: SE (and so the p-value) NaN
 
         idx = 0
         SEAterms = SEVec[idx : idx + n1]

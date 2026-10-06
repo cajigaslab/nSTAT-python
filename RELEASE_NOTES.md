@@ -183,7 +183,10 @@ does about it, and the known gaps.
   over MATLAB seeds and over Python seeds), and where EM is still moving the
   estimates depend on that iteration more than on the draws.
 - A separated history window has no finite estimate, and MATLAB's SE pass
-  never returns on it (its observed information is singular).
+  never returns on it (its observed information is singular). Python returns:
+  the SEs come from the pseudo-inverse, and every parameter in its null space
+  (not identifiable) gets SE and p-value NaN, with a `RuntimeWarning` naming
+  them; this used to report an SE of about 1e-8 and p = 0 for them.
 - Not changed: the `KF_EM` family (MATLAB's upper-factor draws and whitening
   are mirrored), counts of a full `Q` / `R` by all d^2 entries, the
   non-scale-equivariant `nearestSPD`, the GLM M-step's plug-in drift, and the

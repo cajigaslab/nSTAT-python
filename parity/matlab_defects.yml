@@ -1689,7 +1689,7 @@ entries:
     killed; pp_sep with 10 outputs (no SE) returns in 8 s.
   correct_behavior: Detect a singular / non-finite observed information and report it instead of looping.
   python_implementation:
-  - 'Python-only (documented): `np.linalg.inv` raises on an exactly singular IObs and the routine falls back to `pinv` (`PP_ComputeParamStandardErrors`, `PPLFP_ComputeParamStandardErrors`); the mirrored nearestSPD raises LinAlgError on a non-finite matrix instead of looping (`_matlab_nearest_spd`, nstat-python `f5738cd`).'
+  - 'Python-only (documented): `np.linalg.inv` raises on an exactly singular IObs and both SE routines then use `_em_singular_information_inverse`: the pseudo-inverse (singular values <= 1e-15 x the largest dropped), SE = p-value = NaN for every parameter whose unit vector has a component > sqrt(eps) in the null space (not identifiable: the log-likelihood is flat along it), and a RuntimeWarning naming them (zero-based, e.g. `gamma[0, 1]`).  The pinv fallback used to report SE ~1e-8 and p = 0 for exactly those parameters (em_drivers pp_sep at MATLAB''s estimates: five separated gamma); after em-newton-solve-reciprocal-pivot every pp_sep run that reaches the underflow takes this branch.  The mirrored nearestSPD raises LinAlgError on a non-finite matrix instead of looping (`_matlab_nearest_spd`, nstat-python `f5738cd`).'
   fixture_impact: '`em_drivers.mat` case `pp_sep` is captured with 10 outputs for this reason.'
   discovered: EM final pass / 2026-10
   upstream_status: not-fixed-upstream
@@ -1805,7 +1805,7 @@ entries:
     singular Newton Hessian gives NaN (previous value kept).  SEs are computed only when requested.
   correct_behavior: n/a (behaviour where MATLAB fails).
   python_implementation:
-  - 'Kept: `_mc_state_draws` falls back to an eigenvalue floor (PP) / a zero factor (PPLFP) for a non-PD W; `pinv` for an exactly singular IObs and in PPLFP_EStep''s smoother solves; an exactly singular Newton Hessian keeps the previous value; `MstepMethod` validation; `PP_EM` treats delta = 0 as 1 ms.  None activated on any gold input (measured before `f5738cd`) or em_drivers case (final code, seed 1).'
+  - 'Kept: `_mc_state_draws` falls back to an eigenvalue floor (PP) / a zero factor (PPLFP) for a non-PD W; the pseudo-inverse for an exactly singular IObs, with NaN SEs for the non-identifiable parameters (em-se-singular-observed-information-never-returns), and `pinv` in PPLFP_EStep''s smoother solves; an exactly singular Newton Hessian keeps the previous value; `MstepMethod` validation; `PP_EM` treats delta = 0 as 1 ms.  None activated on any gold input (measured before `f5738cd`) or em_drivers case (final code, seed 1).'
   - 'Removed in nstat-python `f5738cd` (they changed results where MATLAB returns one): the +-30 / +-20 clips of the linear predictor, determinant / eigenvalue floors, ridges, the mu Newton guards, least squares for mrdivide, the AICc / BIC guards, the Tq = I fallback, the nearestSPD pass caps and spacing(norm) shift, the 1 - normcdf p-value.'
   - '`PP_EM` / `PPLFP_EM` always run the SE pass: 4.5 s of 6.2 s (PP_EM, N = 800, C = 4) and 2.4 s of 2.9 s (PPLFP_EM, N = 400) at the default mcIter = 1000.'
   - 'Not changed (a shared helper outside the EM routines; follow-up): `kalman_smootherFromFiltered`, which both E-steps call, uses `pinv(Pe_p)` where MATLAB uses `/Pe_p`; they agree to round-off on every gold input and differ only for a singular Pe_p.'
