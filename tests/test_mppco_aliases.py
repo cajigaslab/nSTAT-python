@@ -18,8 +18,8 @@ Contract pinned here, per alias:
 * it emits a ``DeprecationWarning`` whose text is MATLAB's message;
 * it returns exactly (``np.array_equal``, bit-for-bit) what the ``PPLFP_*``
   target returns on the same inputs -- the inputs of the MATLAB-gold-validated
-  ``pplfp_*.mat`` fixtures.  Monte-Carlo paths draw through
-  ``np.random.default_rng()``; each call runs in its own fresh
+  ``pplfp_*.mat`` fixtures.  Monte-Carlo paths draw from NumPy's global
+  stream (``np.random.randn``); each call runs in its own fresh
   ``seeded_global_rng(42)`` block so both see the same stream.
 """
 from __future__ import annotations

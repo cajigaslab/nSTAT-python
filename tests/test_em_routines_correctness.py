@@ -169,7 +169,7 @@ def _pplfp_se(P, y, Chat, alpha, R, HkAll=None, seed=0):
 
     cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 1, 0, 0, 0, 0, 10, 0)
     ES = dict(P["ES"])
-    with seeded_global_rng(seed):  # PPLFP draws through np.random.default_rng()
+    with seeded_global_rng(seed):  # PPLFP draws from NumPy's global stream (np.random.randn)
         return PPLFP.PPLFP_ComputeParamStandardErrors(
             y, P["dN"], P["x"], P["WK"], P["A"], P["Q"], Chat, R, alpha, P["x0"], 1e-9 * np.eye(P["dx"]), ES,
             P["fit"], P["mu"], P["beta"], P.get("gamma_arg", P["gamma"]), P["wt"],
