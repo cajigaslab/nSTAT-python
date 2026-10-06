@@ -222,10 +222,13 @@ does about it, and the known gaps.
   over MATLAB seeds and over Python seeds), and where EM is still moving the
   estimates depend on that iteration more than on the draws.
 - A separated history window has no finite estimate, and MATLAB's SE pass
-  never returns on it (its observed information is singular). Python returns:
+  never returned on it (its observed information is singular; fixed in nSTAT PR #137 with the same semantics). Python returns:
   the SEs come from the pseudo-inverse, and every parameter in its null space
   (not identifiable) gets SE and p-value NaN, with a `RuntimeWarning` naming
   them; this used to report an SE of about 1e-8 and p = 0 for them.
+  Only the identifiable block is projected with `nearestSPD`, which itself
+  never returns on a singular matrix (as in nSTAT PR #137); projecting the
+  whole pseudo-inverse could hang.
 - Not changed: the `KF_EM` family. MATLAB's upper-factor draws and whitening
   are mirrored, but its information blocks are not: Python uses the intended
   `(N/2) R^-1 e e' R^-1` (and `(1/2) P^-1 e e' P^-1`) forms, where MATLAB's

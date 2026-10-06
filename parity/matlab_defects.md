@@ -1028,16 +1028,19 @@ Schema for each entry:
 
 ---
 
-### Bug (upstream MATLAB, not fixed): EM standard errors never return when the observed information is singular (nearestSPD loops on NaN)
+### Bug (fixed upstream, pending merge): EM standard errors never return when the observed information is singular (nearestSPD loops on NaN)
 
 - **MATLAB location:** `PP_ComputeParamStandardErrors` (`invIObs = eye/IObs; nearestSPD(invIObs)`) and the same lines of `PPLFP_ComputeParamStandardErrors`, `libraries/NearestSymmetricPositiveDefinite/nearestSPD.m`, at `fix/pp-em` @ `aa88a2b`.
-- **Defect class:** Bug (upstream MATLAB, not fixed)
+- **Defect class:** Bug (fixed upstream, pending merge)
 - **MATLAB behavior:** A separated history window (no spike with a spike in that window) walks its coefficient to the exp() underflow, its information and score become exactly 0 and IObs is singular: `eye/IObs` is Inf / NaN, and in R2025b svd and eig of NaN return NaN while `[R,p] = chol(NaN)` returns p > 0, so nearestSPD's `while p ~= 0` never ends.  Observed: on a separated-window problem of the em_drivers pp_sep design, PP_EM with SEs requested was still in nearestSPD's chol loop (sampled in dpotrf) more than 4 minutes after EM had stopped, until killed; pp_sep with 10 outputs (no SE) returns in 8 s.
-- **Correct behavior:** Detect a singular / non-finite observed information and report it instead of looping.
-- **Python implementation:** Python-only (documented): `np.linalg.inv` raises on an exactly singular IObs and both SE routines then use `_em_singular_information_inverse`: the pseudo-inverse (singular values <= 1e-15 x the largest dropped), SE = p-value = NaN for every parameter whose unit vector has a component > sqrt(eps) in the null space (not identifiable: the log-likelihood is flat along it), and a RuntimeWarning naming them (zero-based, e.g. `gamma[0, 1]`).  The pinv fallback used to report SE ~1e-8 and p = 0 for exactly those parameters (em_drivers pp_sep at MATLAB's estimates: five separated gamma); after em-newton-solve-reciprocal-pivot every pp_sep run that reaches the underflow takes this branch.  The mirrored nearestSPD raises LinAlgError on a non-finite matrix instead of looping (`_matlab_nearest_spd`, nstat-python `f5738cd`).
+- **Correct behavior:** Detect a singular / non-finite observed information and report it instead of looping.  nSTAT PR #137 does this with the same semantics as the Python port: no LU zero pivot -> unchanged `nearestSPD(eye/IObs)`; zero pivot -> pseudo-inverse, NaN SE / p-value for the parameters in its null space (warning `nSTAT:EM:singularInformation`), and only the identifiable block projected with nearestSPD (which itself never returns on a singular matrix: when chol fails while min(eig) is a tiny positive rounding value, its shift -mineig*k^2 + eps(mineig) is negative); non-finite information -> error `nSTAT:EM:nonFiniteInformation`.  On the pp_sep problem PP_EM with SEs returns in 17 s and flags the same five gamma as Python.
+- **Python implementation:**
+  - Projection: `_em_project_covariance` applies `nearestSPD` to the identifiable block only, as nSTAT PR #137 (projecting the whole singular pseudo-inverse did not return in Python either: `_matlab_nearest_spd` on `pinv(blkdiag(4, [1 1; 1 1]))` was killed after 60 s).
+  - Python-only (documented): `np.linalg.inv` raises on an exactly singular IObs and both SE routines then use `_em_singular_information_inverse`: the pseudo-inverse (singular values <= 1e-15 x the largest dropped), SE = p-value = NaN for every parameter whose unit vector has a component > sqrt(eps) in the null space (not identifiable: the log-likelihood is flat along it), and a RuntimeWarning naming them (zero-based, e.g. `gamma[0, 1]`).  The pinv fallback used to report SE ~1e-8 and p = 0 for exactly those parameters (em_drivers pp_sep at MATLAB's estimates: five separated gamma); after em-newton-solve-reciprocal-pivot every pp_sep run that reaches the underflow takes this branch.  The mirrored nearestSPD raises LinAlgError on a non-finite matrix instead of looping (`_matlab_nearest_spd`, nstat-python `f5738cd`).
 - **Fixture impact:** `em_drivers.mat` case `pp_sep` is captured with 10 outputs for this reason.
 - **Discovered:** EM final pass / 2026-10
-- **Upstream status:** not-fixed-upstream
+- **Upstream status:** fixed-upstream-pending-merge
+- **Resolved in:** nSTAT PR
 
 ---
 

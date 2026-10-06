@@ -866,6 +866,28 @@ def _em_singular_information_inverse(IObs, labels, routine):
     return invIObs, nonid
 
 
+def _em_project_covariance(invIObs, nonid, nearest_spd):
+    """``nearestSPD`` projection of the inverse observed information (EM SE routines).
+
+    Without non-identifiable parameters (``nonid`` is ``None`` or all
+    ``False``) this is ``nearest_spd(invIObs)``, unchanged.  Otherwise only the
+    identifiable block is projected, as in MATLAB (nSTAT PR #137, issue #136):
+    ``nearestSPD`` does not return on a singular matrix (when ``chol`` fails
+    while ``min(eig)`` is a tiny positive rounding value its shift
+    ``-mineig*k^2 + eps(mineig)`` is negative), and the pseudo-inverse from
+    :func:`_em_singular_information_inverse` is singular along the
+    non-identifiable directions, whose SEs are reported as NaN anyway.  Their
+    rows and columns are left as they are.
+    """
+    if nonid is None or not np.any(nonid):
+        return nearest_spd(invIObs)
+    keep = ~np.asarray(nonid, dtype=bool)
+    out = np.array(invIObs, dtype=float, copy=True)
+    if keep.any():
+        out[np.ix_(keep, keep)] = nearest_spd(out[np.ix_(keep, keep)])
+    return out
+
+
 def _likelihood_from_lambda(observed: np.ndarray, lambda_delta: np.ndarray, fitType: str) -> float:
     lam = np.clip(np.asarray(lambda_delta, dtype=float).reshape(-1), 1e-9, 1.0 - 1e-9 if fitType == "binomial" else np.inf)
     obs = np.asarray(observed, dtype=float).reshape(-1)
@@ -6287,7 +6309,7 @@ class DecodingAlgorithms:
                 ("mu", n5, muhat.shape, "vector"), ("beta", n6, betahat.shape, "cellmajor"),
                 ("gamma", n7, gammahat.shape if gammahat.ndim == 2 else (gammahat.size, 1), "cellmajor")])
             invIObs, nonid = _em_singular_information_inverse(IObs, labels, "PP_ComputeParamStandardErrors")
-        invIObs = DecodingAlgorithms._nearestSPD(invIObs)
+        invIObs = _em_project_covariance(invIObs, nonid, DecodingAlgorithms._nearestSPD)
 
         VarVec = np.diag(invIObs)
         SEVec = np.sqrt(VarVec)  # MATLAB sqrt(VarVec); positive after nearestSPD
