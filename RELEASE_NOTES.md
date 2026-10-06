@@ -261,14 +261,19 @@ does about it, and the known gaps.
   briefly raised on it; MATLAB's `glmfit` would drop the NaN rows, which is not
   mirrored). The binomial `'BNLRCG'` fit is not a MATLAB mirror on
   rank-deficient designs (MATLAB's `bnlrCG` returns complex standard errors
-  there; see the ledger). This changes one notebook gallery: in
-  `notebooks/HistoryExamples.ipynb` 19 of 48 `GLMFit` calls are
+  there; see the ledger). This previously changed one notebook gallery: in
+  `notebooks/HistoryExamples.ipynb` 19 of 48 `GLMFit` calls were
   rank-deficient (the history fits: design 5001 x 9 of rank 7, because the
-  notebook's synthetic population has almost no spikes; see the ledger entry
-  `history-examples-near-zero-spike-population`). Their SEs go from all NaN to
-  finite values (about 450-885, and 0 for the two all-zero history columns),
-  so its figures 4-6 gain the Fit2 error bars; b and AIC are unchanged (b to
-  7e-12). The committed gallery PNGs were not regenerated.
+  notebook's synthetic population had almost no spikes; see the ledger entry
+  `history-examples-near-zero-spike-population`, now fixed). The population's
+  baseline rate was raised from ~0.1 Hz to ~30 Hz; every Fit2 standard error
+  is now finite and nonzero (measured: fitted `mu` -4.4 to -3.7, was -120;
+  KS 0.03-0.12, was 1). The simulator has no self-history term, so the two
+  extra history regressors fit noise, not a real effect -- `dBIC` is
+  consistently positive (the AIC/BIC penalty), which is the correct,
+  non-degenerate outcome for this comparison. The gallery
+  (`docs/notebook_galleries/HistoryExamples/`) and the notebook's own
+  embedded cell outputs were both regenerated to match.
 - The EM routines report progress through `logging` instead of `print` and are
   silent by default (`KF_EM` and `PP_EM` on logger `nstat.decoding_algorithms`,
   `PPLFP_EM` / `PPLFP_MStep` on `nstat.decoding.PPLFP`).
@@ -312,6 +317,37 @@ does about it, and the known gaps.
 
 **Tests and tooling**
 
+- Fix: `examples/paper/example02_whisker_stimulus_thalamus.py` (fig02) and
+  `examples/paper/example03_psth_and_ssglm.py` (fig04, fig06) produced a
+  different figure every run. The cause: `nstat/fit.py`'s `_ksdiscrete`
+  time-rescaling jitter (`np.random.random_sample`) and
+  `DecodingAlgorithms.computeSpikeRateCIs`'s Monte Carlo state draws
+  (`np.random.randn`) both read NumPy's legacy global RNG stream with no
+  seed, so fig02's KS-vs-history-window-count sweep curve and its final
+  `FitResult.KSPlot` panel, and the SSGLM learning-trial index (`lt`,
+  confirmed to take both 13 and 14 across runs), varied run to run even on
+  identical input data (`Analysis.computeHistLagForAll`'s actual history-
+  window *selection* is driven by deterministic AIC/BIC and did not vary).
+  Both examples now wrap the
+  affected sections in `nstat.extras.matlab_rng.seeded_global_rng`
+  (the documented fix for code that draws from NumPy's global stream;
+  see `DecodingAlgorithms.PP_EM`'s docstring). Verified by running each
+  example's figure export twice and comparing SHA-256 of every PNG:
+  byte-identical both times.
+- Fix: `make regen` (`nstat/notebook_fidelity_audit.py`) only looked for the
+  MATLAB checkout at a literal sibling `../nSTAT` directory, so from a git
+  worktree (no sibling checkout) every notebook's `matlab_sections` /
+  `matlab_published_figures` / `section_delta` / `figure_delta` in
+  `parity/notebook_fidelity.yml` went to `null` -- a real loss of audit
+  content. It also recorded `matlab_repo_root` as the absolute,
+  checkout-specific path, so regenerating from any checkout other than the
+  one the committed file was last built from rewrote that field and
+  tripped the drift check for no real reason. The MATLAB checkout is now
+  found the same way `nstat.matlab_engine.get_matlab_nstat_path` does
+  (`NSTAT_MATLAB_PATH` env var, then the sibling convention), so the real
+  counts are available from a worktree too; `matlab_repo_root` is now a
+  fixed, checkout-independent placeholder (`../nSTAT`) rather than the
+  resolved absolute path.
 - Tests skip, with accurate reasons, when an optional dependency is installed
   but broken.
 - Python 3.10 (the declared minimum) test collection is fixed and 3.10 is added

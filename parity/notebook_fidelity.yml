@@ -7,7 +7,7 @@ status_legend:
 - high_fidelity
 - partial
 - missing
-matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+matlab_repo_root: ../nSTAT
 items:
 - topic: nSTATPaperExamples
   source_matlab: nSTATPaperExamples.mlx
@@ -28,7 +28,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 31
   matlab_published_figures: 26
   section_delta: -2
@@ -51,7 +51,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 9
   matlab_published_figures: 7
   section_delta: -1
@@ -76,7 +76,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 7
   matlab_published_figures: 4
   section_delta: 0
@@ -101,7 +101,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 9
   matlab_published_figures: 5
   section_delta: 0
@@ -125,7 +125,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 4
   matlab_published_figures: 4
   section_delta: 0
@@ -149,7 +149,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 2
   matlab_published_figures: 2
   section_delta: 0
@@ -174,7 +174,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 8
   matlab_published_figures: 10
   section_delta: -1
@@ -200,7 +200,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 5
   matlab_published_figures: 9
   section_delta: 0
@@ -227,7 +227,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 7
   matlab_published_figures: 4
   section_delta: -1
@@ -251,7 +251,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 18
   matlab_published_figures: 6
   section_delta: -9
@@ -275,7 +275,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 25
   matlab_published_figures: 16
   section_delta: -15
@@ -300,7 +300,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 11
   matlab_published_figures: 9
   section_delta: 0
@@ -330,7 +330,7 @@ items:
   python_tracker_only_cells: 0
   python_contains_placeholders: false
   python_contains_tracker_only_cells: false
-  matlab_repo_root: /Users/iahncajigas/projects/nSTAT
+  matlab_repo_root: ../nSTAT
   matlab_sections: 4
   matlab_published_figures: 4
   section_delta: 0
