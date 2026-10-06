@@ -238,7 +238,7 @@ def test_standard_error_pvalues_pair_each_parameter_with_its_own_se(family) -> N
     else:
         SE, Pvals, _ = _pplfp_se(P, *_pplfp_mle_extra(P))
     for key, param in (("beta", P["beta"]), ("gamma", P["gamma"])):
-        expected = 2.0 * (1.0 - norm.cdf(np.abs(param / SE[key])))
+        expected = 2.0 * norm.cdf(-np.abs(param / SE[key]))  # MATLAB ztest: 2*normcdf(-|z|)
         np.testing.assert_allclose(Pvals[key], expected, rtol=1e-12, atol=1e-300, err_msg=key)
 
 

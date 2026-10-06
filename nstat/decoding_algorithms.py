@@ -632,13 +632,112 @@ def _lambda_delta_from_state(
     histterm = np.asarray(HkAll[time_index], dtype=float) if HkAll.size else np.zeros((0, mu.size), dtype=float)
     hist_effect = np.sum(gamma * histterm, axis=0) if histterm.size else np.zeros(mu.shape, dtype=float)
     lin_term = mu + beta.T @ x_state + hist_effect
-    clipped = np.clip(lin_term, -20.0, 20.0)
-    if fitType == "binomial":
-        exp_term = np.exp(clipped)
-        return exp_term / (1.0 + exp_term)
-    if fitType == "poisson":
-        return np.exp(clipped)
-    raise ValueError("fitType must be either 'poisson' or 'binomial'")
+    if fitType not in ("binomial", "poisson"):
+        raise ValueError("fitType must be either 'poisson' or 'binomial'")
+    return _matlab_lambda_delta(lin_term, fitType == "binomial")
+
+
+def _matlab_lambda_delta(lin_term: np.ndarray, binomial: bool) -> np.ndarray:
+    """lambda*delta of MATLAB ``PPAF.PPDecode_updateLinear``.
+
+    ``exp(linTerm)`` (poisson) or ``exp(linTerm)./(1+exp(linTerm))`` (binomial),
+    with no clipping, then every NaN / Inf entry set to 1 (the binomial form is
+    Inf/Inf = NaN once exp overflows).  This port used to clip linTerm to
+    [-20, 20], which changed the update wherever |linTerm| > 20 (e.g. a
+    separated history coefficient in PP_EM) and has no MATLAB counterpart.
+    """
+    with np.errstate(over="ignore", invalid="ignore"):
+        exp_term = np.exp(lin_term)
+        lam = exp_term / (1.0 + exp_term) if binomial else exp_term
+    return np.where(np.isfinite(lam), lam, 1.0)
+
+
+def _matlab_float_semantics(func):
+    """Run ``func`` with NumPy's overflow / divide / invalid warnings off.
+
+    The EM routines mirror MATLAB's unguarded arithmetic (``exp`` overflowing
+    to Inf, ``log(0) = -Inf``, ``0/0 = NaN``, a zero scalar Hessian giving
+    +-Inf), which MATLAB evaluates silently; the non-finite results are then
+    handled exactly where MATLAB handles them (the Newton steps' NaN checks,
+    the EM drivers' non-finite log-likelihood stop).
+    """
+    import functools
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+            return func(*args, **kwargs)
+
+    return wrapper
+
+
+def _matlab_mldivide(H, g):
+    """MATLAB ``H\\g`` for a Newton step: plain division when ``H`` is 1 x 1
+    (MATLAB's scalar mldivide is elementwise, so a zero or denormal Hessian
+    gives +-Inf or NaN exactly as ``g/H`` does), else ``np.linalg.solve``
+    (which raises LinAlgError on an exactly singular matrix, where MATLAB
+    warns and returns non-finite values; the callers keep the previous value
+    then, as MATLAB's isnan check does for its NaN result).  LAPACK's
+    triangular solve multiplies by a reciprocal pivot, which turns a denormal
+    1 x 1 Hessian into an Inf step that MATLAB never takes.
+    """
+    H = np.asarray(H, dtype=float)
+    g = np.asarray(g, dtype=float)
+    if H.size == 1:
+        return np.divide(g, H.reshape(()))
+    return np.linalg.solve(H, g)
+
+
+def _matlab_nearest_spd(A) -> np.ndarray:
+    """MATLAB ``nearestSPD`` (J. D'Errico; ``libraries/NearestSymmetricPositiveDefinite``),
+    as the EM standard-error routines call it on the inverse observed information.
+
+    Higham's projection ``(B + H)/2`` of ``B = (A + A')/2`` (``H`` the
+    symmetric polar factor, from the SVD), then, while ``chol`` fails,
+    ``Ahat += (-mineig*k^2 + eps(mineig)) * I`` for ``k = 1, 2, ...`` with
+    ``mineig = min(eig(Ahat))``; a 1 x 1 ``A <= 0`` returns ``eps``.  The
+    port used ``spacing(norm(A))`` for ``eps(mineig)`` and stopped after 100
+    (PP) / 50 (PPLFP) passes.
+    """
+    A = np.asarray(A, dtype=float)
+    r, c = A.shape
+    if r != c:
+        raise ValueError("A must be a square matrix.")
+    if r == 1 and A[0, 0] <= 0:
+        return np.array([[np.finfo(float).eps]])
+    B = (A + A.T) / 2.0
+    _, Sigma, Vt = np.linalg.svd(B)
+    H = Vt.T @ np.diag(Sigma) @ Vt
+    Ahat = (B + H) / 2.0
+    Ahat = (Ahat + Ahat.T) / 2.0
+    I = np.eye(r)
+    k = 0
+    while True:
+        try:
+            np.linalg.cholesky(Ahat)
+            return Ahat
+        except np.linalg.LinAlgError:
+            pass
+        k += 1
+        mineig = float(np.min(np.linalg.eigvalsh(Ahat)))
+        if not np.isfinite(mineig):  # MATLAB: eig of a non-finite matrix errors
+            raise np.linalg.LinAlgError("nearestSPD: non-finite matrix")
+        Ahat = Ahat + (-mineig * k ** 2 + np.spacing(abs(mineig))) * I
+
+
+def _matlab_ztest_p(param, se):
+    """Two-sided p-value of MATLAB ``ztest(param, 0, se)``: ``2*normcdf(-|param/se|)``.
+
+    ``se = 0`` gives ``z = +-Inf`` and ``p = 0`` (``NaN`` for ``param = 0``),
+    ``se = Inf`` gives ``p = 1`` and a NaN propagates.  The port computed
+    ``2*(1 - normcdf(|z|))``, which underflows to 0 for ``|z| > 8.3`` (the
+    gold p-values reach 1e-295), and returned 1 for ``se <= 0``.
+    """
+    from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        z = np.asarray(param, dtype=float) / np.asarray(se, dtype=float)
+    return 2.0 * norm.cdf(-np.abs(z))
 
 
 def _likelihood_from_lambda(observed: np.ndarray, lambda_delta: np.ndarray, fitType: str) -> float:
@@ -1475,12 +1574,8 @@ class DecodingAlgorithms:
                 lin_term = mu_vec + beta_mat.T @ x_vec_t + hist_effect
             else:
                 lin_term = mu_vec + beta_mat.T @ x_vec_t
-            clipped = np.clip(lin_term, -20.0, 20.0)
-            if is_binomial:
-                exp_term = np.exp(clipped)
-                lambda_delta = exp_term / (1.0 + exp_term)
-            else:
-                lambda_delta = np.exp(clipped)
+            # MATLAB's rule, no clipping (see _matlab_lambda_delta).
+            lambda_delta = _matlab_lambda_delta(lin_term, is_binomial)
 
             observed = obs[:, time_index]
             if is_binomial:
@@ -5574,48 +5669,21 @@ class DecodingAlgorithms:
 
     @staticmethod
     def _nearestSPD(A):
-        """Compute the nearest symmetric positive semi-definite matrix.
-
-        Uses the algorithm of Higham (1988).
+        """MATLAB ``nearestSPD`` (Higham 1988 projection, then the
+        ``-mineig*k^2 + eps(mineig)`` diagonal shift until ``chol`` succeeds);
+        see :func:`_matlab_nearest_spd`.
         """
-        B = 0.5 * (A + A.T)
-        _, S, Vt = np.linalg.svd(B)
-        H = Vt.T @ np.diag(S) @ Vt
-        Ahat = 0.5 * (B + H)
-        Ahat = 0.5 * (Ahat + Ahat.T)
-        # Test positive definiteness and fix if needed
-        try:
-            np.linalg.cholesky(Ahat)
-            return Ahat
-        except np.linalg.LinAlgError:
-            pass
-        spacing = np.spacing(np.linalg.norm(A))
-        I = np.eye(A.shape[0])
-        k = 1
-        while True:
-            try:
-                np.linalg.cholesky(Ahat)
-                return Ahat
-            except np.linalg.LinAlgError:
-                mineig = np.min(np.real(np.linalg.eigvalsh(Ahat)))
-                Ahat += I * (-mineig * k ** 2 + spacing)
-                k += 1
-            if k > 100:
-                return Ahat
+        return _matlab_nearest_spd(A)
 
     @staticmethod
     def _ztest_pvalue(param, se):
-        """Two-sided z-test p-value for H0: param == 0."""
-        from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
-
-        se_safe = np.where(se > 0, se, 1.0)
-        z = np.abs(param / se_safe)
-        p = 2.0 * (1.0 - norm.cdf(z))
-        # Where se was 0, return 1.0
-        p = np.where(se > 0, p, 1.0)
-        return p
+        """Two-sided z-test p-value for H0: param == 0, as MATLAB
+        ``ztest(param, 0, se)`` (see :func:`_matlab_ztest_p`).  Returns an
+        ndarray (0-d for scalar inputs)."""
+        return np.asarray(_matlab_ztest_p(param, se))
 
     @staticmethod
+    @_matlab_float_semantics
     def PP_ComputeParamStandardErrors(
         dN,
         xKFinal,
@@ -5818,10 +5886,10 @@ class DecodingAlgorithms:
 
                 terms = muhat[c] + betahat[:, c] @ xk + hist_term
                 if fitType == "poisson":
-                    ld = np.exp(np.clip(terms, -30, 30))
+                    ld = np.exp(terms)
                     HessianTerm[:, :, k] = -1.0 / McExp * (ld[None, :] * xk) @ xk.T
                 else:  # binomial
-                    ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                    ld = np.exp(terms) / (1.0 + np.exp(terms))
                     ExplambdaDeltaXkXk = 1.0 / McExp * (ld[None, :] * xk) @ xk.T
                     ExplambdaDeltaSqXkXkT = 1.0 / McExp * (ld[None, :] ** 2 * xk) @ xk.T
                     ExplambdaDeltaCubeXkXkT = 1.0 / McExp * (ld[None, :] ** 3 * xk) @ xk.T
@@ -5854,10 +5922,10 @@ class DecodingAlgorithms:
 
                 terms = muhat[c] + betahat[:, c] @ xk + hist_term
                 if fitType == "poisson":
-                    ld = np.exp(np.clip(terms, -30, 30))
+                    ld = np.exp(terms)
                     HessianTerm -= 1.0 / McExp * np.sum(ld)
                 else:
-                    ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                    ld = np.exp(terms) / (1.0 + np.exp(terms))
                     ExplambdaDelta = 1.0 / McExp * np.sum(ld)
                     ExplambdaDeltaSq = 1.0 / McExp * np.sum(ld ** 2)
                     ExplambdaDeltaCubed = 1.0 / McExp * np.sum(ld ** 3)
@@ -5884,11 +5952,11 @@ class DecodingAlgorithms:
                     hist_term = float(gammaC @ Hk_vec) if Hk_vec.size == gammaC.size else 0.0
                     terms = muhat[c] + betahat[:, c] @ xk + hist_term
                     if fitType == "poisson":
-                        ld = np.exp(np.clip(terms, -30, 30))
+                        ld = np.exp(terms)
                         ExplambdaDelta = 1.0 / McExp * np.sum(ld)
                         HessianTerm -= np.outer(Hk_vec, Hk_vec) * ExplambdaDelta
                     else:
-                        ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                        ld = np.exp(terms) / (1.0 + np.exp(terms))
                         ExplambdaDelta = 1.0 / McExp * np.sum(ld)
                         ExplambdaDeltaSq = 1.0 / McExp * np.sum(ld ** 2)
                         # Third moment of the binomial Monte Carlo estimate.  The
@@ -5939,6 +6007,10 @@ class DecodingAlgorithms:
 
         # ---- Missing Information Matrix (Monte Carlo) ----
         # Draws through _mc_state_draws (MATLAB mcStateDraws, F9).
+        # (MATLAB evaluates every ld above as exp(terms) or
+        # exp(terms)./(1+exp(terms)) with no clipping; this port clipped terms
+        # to +-30, which changed the information wherever |terms| > 30, e.g. a
+        # separated history coefficient.)
         Mc = PPEM_Constraints["mcIter"]
         xKDraw = np.zeros((dx, N, Mc))
         for n_idx in range(N):
@@ -6027,7 +6099,7 @@ class DecodingAlgorithms:
                 terms = muhat[nc] + betahat[:, nc] @ x_K + hist_terms
 
                 if fitType == "poisson":
-                    ld = np.exp(np.clip(terms, -30, 30))
+                    ld = np.exp(terms)
                     ScoreMuMc[nc] = np.sum(dN[nc, :] - ld)
                     ScoreBetaMc = np.concatenate([ScoreBetaMc,
                                                   np.sum((dN[nc, :] - ld)[None, :] * x_K, axis=1)])
@@ -6035,7 +6107,7 @@ class DecodingAlgorithms:
                         ScoreGammaMc = np.concatenate([ScoreGammaMc,
                                                        np.sum((dN[nc, :] - ld)[None, :] * Hk_full.T, axis=1)])
                 else:  # binomial
-                    ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                    ld = np.exp(terms) / (1.0 + np.exp(terms))
                     ScoreMuMc[nc] = np.sum(dN[nc, :] - (dN[nc, :] + 1) * ld + ld ** 2)
                     ScoreBetaMc = np.concatenate([ScoreBetaMc,
                                                   np.sum((dN[nc, :] * (1 - ld) - ld * (1 - ld))[None, :] * x_K, axis=1)])
@@ -6060,11 +6132,13 @@ class DecodingAlgorithms:
         try:
             invIObs = np.linalg.inv(IObs)
         except np.linalg.LinAlgError:
+            # Python-only: an exactly singular IObs.  MATLAB's eye/IObs warns and
+            # returns Inf, and nearestSPD's svd then errors.
             invIObs = np.linalg.pinv(IObs)
         invIObs = DecodingAlgorithms._nearestSPD(invIObs)
 
         VarVec = np.diag(invIObs)
-        SEVec = np.sqrt(np.maximum(VarVec, 0.0))
+        SEVec = np.sqrt(VarVec)  # MATLAB sqrt(VarVec); positive after nearestSPD
 
         # Unpack SE vector
         off = 0
@@ -6156,6 +6230,7 @@ class DecodingAlgorithms:
         return SE, Pvals, nTerms
 
     @staticmethod
+    @_matlab_float_semantics
     def PP_EM(
         dN,
         Ahat0,
@@ -6298,10 +6373,9 @@ class DecodingAlgorithms:
         # parameterisation, and with the default QhatDiag = 1 the first
         # M-step lowered the log-likelihood and EM returned the initial
         # parameters.  Identical for a diagonal Q0.
-        try:
-            Tq = np.linalg.solve(np.linalg.cholesky(Q_buf[0]), np.eye(numStates))
-        except np.linalg.LinAlgError:
-            Tq = np.eye(numStates)
+        # A Qhat0 that is not positive definite raises (MATLAB's chol errors);
+        # this port silently ran the EM unwhitened (Tq = I).
+        Tq = np.linalg.solve(np.linalg.cholesky(Q_buf[0]), np.eye(numStates))
         TqInv = np.linalg.inv(Tq)
 
         A_buf[0] = Tq @ A_buf[0] @ TqInv
@@ -6370,7 +6444,11 @@ class DecodingAlgorithms:
                 dMax = np.inf
             else:
                 dLikelihood.append(ll_list[cnt] - ll_list[cnt - 1])
-                dQvals = float(np.max(np.abs(np.sqrt(np.maximum(np.abs(Q_buf[si]), 0)) - np.sqrt(np.maximum(np.abs(Q_buf[si_m1]), 0)))))
+                # MATLAB max(max(abs(sqrt(Qhat{k}) - sqrt(Qhat{k-1})))): the
+                # elementwise sqrt is complex for a negative (off-diagonal) entry.
+                # This port took sqrt(|Q|), which differs when an entry changes sign.
+                dQvals = float(np.max(np.abs(np.sqrt(Q_buf[si].astype(complex))
+                                             - np.sqrt(Q_buf[si_m1].astype(complex)))))
                 dAvals = float(np.max(np.abs(A_buf[si] - A_buf[si_m1])))
                 dMuvals = float(np.max(np.abs(mu_buf[si] - mu_buf[si_m1])))
                 dBetavals = float(np.max(np.abs(beta_buf[si] - beta_buf[si_m1])))
@@ -6419,10 +6497,7 @@ class DecodingAlgorithms:
         ExpSumsFinal = ExpSums_buf[maxLLIndMod] if ExpSums_buf[maxLLIndMod] is not None else {}
 
         # Unscale system (the same Tq = inv(chol(Q0, 'lower')) as above)
-        try:
-            Tq_unscale = np.linalg.solve(np.linalg.cholesky(Q0), np.eye(numStates))
-        except np.linalg.LinAlgError:
-            Tq_unscale = np.eye(numStates)
+        Tq_unscale = np.linalg.solve(np.linalg.cholesky(Q0), np.eye(numStates))
         TqInv_unscale = np.linalg.inv(Tq_unscale)
 
         Ahat = TqInv_unscale @ Ahat @ Tq_unscale
@@ -6502,8 +6577,11 @@ class DecodingAlgorithms:
         # coordinates at the returned estimates.
         sumXkTerms_ic = TqInv_unscale @ np.asarray(sumXkTerms_ic, dtype=float) @ TqInv_unscale.T
         llcomp = ll_best + (K_total + 1) * np.log(np.abs(np.linalg.det(Tq_unscale)))
-        det_Q = max(float(np.linalg.det(Qhat)), np.finfo(float).tiny)
-        det_Px0 = max(float(np.linalg.det(Px0hat)), np.finfo(float).tiny)
+        # MATLAB log(det(Qhat)), log(det(Px0hat)) and 2n(n+1)/(K-n-1): no
+        # floors or guards (this port floored the determinants at the smallest
+        # normal double and the AICc denominator at 1).
+        det_Q = np.linalg.det(Qhat)
+        det_Px0 = np.linalg.det(Px0hat)
 
         llobs = (llcomp
                  + Dx * K_total / 2.0 * np.log(2.0 * np.pi)
@@ -6513,7 +6591,7 @@ class DecodingAlgorithms:
                  + 0.5 * np.log(det_Px0)
                  + 0.5 * Dx)
         AIC = 2 * nTerms_ic - 2 * llobs
-        AICc = AIC + 2 * nTerms_ic * (nTerms_ic + 1) / max(K_total - nTerms_ic - 1, 1)
+        AICc = AIC + np.divide(2.0 * nTerms_ic * (nTerms_ic + 1), np.float64(K_total - nTerms_ic - 1))
         BIC = -2 * llobs + nTerms_ic * np.log(K_total)
 
         IC = {
@@ -6528,6 +6606,7 @@ class DecodingAlgorithms:
                 x0hat, Px0hat, IC, SE, Pvals, nIter)
 
     @staticmethod
+    @_matlab_float_semantics
     def PP_EStep(A, Q, dN, mu, beta, fitType, gamma, HkAll, x0, Px0):
         """E-step for PP EM: forward filter + RTS smoother + cross-covariance.
 
@@ -6681,7 +6760,7 @@ class DecodingAlgorithms:
 
                 terms = mu + beta.T @ xk + hist_diag
                 Wk = W_K[:, :, k]
-                ld = np.exp(np.clip(terms, -30, 30))
+                ld = np.exp(terms)  # MATLAB: no clip (this port clipped terms to +-30)
                 bt = beta
                 ExplambdaDelta = ld + 0.5 * (ld * np.diag(bt.T @ Wk @ bt))
                 ExplogLD = terms
@@ -6709,8 +6788,9 @@ class DecodingAlgorithms:
 
                 terms = mu + beta.T @ xk + hist_diag
                 Wk = W_K[:, :, k]
-                ld_raw = np.clip(terms, -30, 30)
-                ld = 1.0 / (1.0 + np.exp(-ld_raw))
+                # MATLAB: ld = exp(terms)./(1+exp(terms)), no clip (NaN once exp
+                # overflows, which PP_EM's non-finite log-likelihood stop catches).
+                ld = np.exp(terms) / (1.0 + np.exp(terms))
                 bt = beta
                 btWbt_diag = np.diag(bt.T @ Wk @ bt)
                 ExplambdaDelta = ld + 0.5 * (ld * (1 - ld) * (1 - 2 * ld)) * btWbt_diag
@@ -6719,13 +6799,16 @@ class DecodingAlgorithms:
                 ExplogLD = np.log(ld) + 0.5 * (-ld * (1 - ld)) * btWbt_diag
                 sumPPll += float(np.sum(dN[:, k] * ExplogLD - ExplambdaDelta))
 
-        det_Q = max(float(np.linalg.det(Q)), np.finfo(float).tiny)
-        det_Px0 = max(float(np.linalg.det(Px0)), np.finfo(float).tiny)
+        # MATLAB log(det(Q)), log(det(Px0)): no floor.  A non-positive
+        # determinant gives -Inf (MATLAB: -Inf) or NaN (MATLAB: a complex
+        # logll); either stops PP_EM before the M-step.  This port floored the
+        # determinants at the smallest normal double, which kept a collapsed
+        # Px0 (EstimatePx0 = 1) iterating where MATLAB stops.
         logll = (
             -Dx * K / 2.0 * np.log(2.0 * np.pi)
-            - K / 2.0 * np.log(det_Q)
+            - K / 2.0 * np.log(np.linalg.det(Q))
             - Dx / 2.0 * np.log(2.0 * np.pi)
-            - 0.5 * np.log(det_Px0)
+            - 0.5 * np.log(np.linalg.det(Px0))
             + sumPPll
             - 0.5 * np.trace(np.linalg.solve(Q, sumXkTerms))
             - Dx / 2.0
@@ -6743,6 +6826,7 @@ class DecodingAlgorithms:
         return x_K, W_K, logll, ExpectationSums
 
     @staticmethod
+    @_matlab_float_semantics
     def PP_MStep(
         dN, x_K, W_K, x0, Px0, ExpectationSums, fitType,
         muhat, betahat, gammahat, windowTimes, HkAll,
@@ -6806,11 +6890,18 @@ class DecodingAlgorithms:
         gammahat = np.asarray(gammahat, dtype=float)
 
         # --- A update ---
+        # MATLAB: Ahat = (Sxkxkm1.*I)/(Sxkm1xkm1.*I) or Sxkxkm1/Sxkm1xkm1, and
+        # the Q, x0 and Px0 updates below, have no ridges or eigenvalue floors.
+        # This port added 1e-12*I to Sxkm1xkm1 (and to Px0 and Qhat in the x0
+        # update) and floored the eigenvalues of Qhat and Px0hat at 1e-10; the
+        # Px0 floor is what kept EM iterating after the single-sample Px0
+        # estimate collapsed (EstimatePx0 = 1), where MATLAB stops on the
+        # non-finite log-likelihood.
         I_dx = np.eye(dx)
         if PPEM_Constraints["AhatDiag"]:
-            Ahat = (Sxkxkm1 * I_dx) @ np.linalg.inv(Sxkm1xkm1 * I_dx + 1e-12 * I_dx)
+            Ahat = np.linalg.solve((Sxkm1xkm1 * I_dx).T, (Sxkxkm1 * I_dx).T).T
         else:
-            Ahat = np.linalg.solve(Sxkm1xkm1.T + 1e-12 * I_dx, Sxkxkm1.T).T
+            Ahat = np.linalg.solve(Sxkm1xkm1.T, Sxkxkm1.T).T
 
         # --- Q update ---
         if PPEM_Constraints["QhatDiag"]:
@@ -6823,34 +6914,24 @@ class DecodingAlgorithms:
             Qhat = (1.0 / K) * sumXkTerms
             Qhat = 0.5 * (Qhat + Qhat.T)
 
-        # Ensure positive definiteness
-        eigvals, eigvecs = np.linalg.eigh(Qhat)
-        eigvals = np.maximum(eigvals, 1e-10)
-        Qhat = eigvecs @ np.diag(eigvals) @ eigvecs.T
-        Qhat = 0.5 * (Qhat + Qhat.T)
-
-        # --- x0 update ---
+        # --- x0 update: MATLAB (inv(Px0)+Ahat'/Qhat*Ahat)\(Ahat'/Qhat*x_K(:,1)+Px0\x0) ---
         if PPEM_Constraints["Estimatex0"]:
-            Px0inv = np.linalg.inv(Px0 + 1e-12 * I_dx)
-            Qinv = np.linalg.inv(Qhat + 1e-12 * I_dx)
-            x0hat = np.linalg.solve(Px0inv + Ahat.T @ Qinv @ Ahat,
-                                    Ahat.T @ Qinv @ x_K[:, 0] + Px0inv @ x0)
+            AtQinv = np.linalg.solve(Qhat.T, Ahat).T  # Ahat'/Qhat
+            x0hat = np.linalg.solve(np.linalg.inv(Px0) + AtQinv @ Ahat,
+                                    AtQinv @ x_K[:, 0] + np.linalg.solve(Px0, x0))
         else:
             x0hat = x0.copy()
 
-        # --- Px0 update ---
+        # --- Px0 update: MATLAB's expanded form of (x0hat - x0)(x0hat - x0)' ---
         if PPEM_Constraints["EstimatePx0"]:
+            xh = x0hat.reshape(dx, 1)
+            xo = x0.reshape(dx, 1)
+            outer = xh @ xh.T - xo @ xh.T - xh @ xo.T + xo @ xo.T
             if PPEM_Constraints["Px0Isotropic"]:
-                diff = x0hat - x0
-                Px0hat = (np.dot(diff, diff) / (dx * K)) * I_dx
+                Px0hat = (np.trace(outer) / (dx * K)) * I_dx
             else:
-                diff = x0hat - x0
-                Px0hat = np.outer(diff, diff) * I_dx
-                Px0hat = 0.5 * (Px0hat + Px0hat.T)
-            # Ensure positive definiteness
-            eigvals, eigvecs = np.linalg.eigh(Px0hat)
-            eigvals = np.maximum(eigvals, 1e-10)
-            Px0hat = eigvecs @ np.diag(eigvals) @ eigvecs.T
+                Px0hat = outer * I_dx
+                Px0hat = (Px0hat + Px0hat.T) / 2.0
         else:
             Px0hat = Px0.copy()
 
@@ -6867,6 +6948,10 @@ class DecodingAlgorithms:
             return Ahat, Qhat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
 
         # --- Newton-Raphson for beta, mu, gamma ---
+        # Every ld below is MATLAB's exp(terms) or exp(terms)./(1+exp(terms)),
+        # unclipped (this port clipped terms to +-30): a separated history
+        # coefficient keeps walking as in MATLAB, and a binomial overflow gives a
+        # NaN Hessian that keeps the previous value, as MATLAB's isnan check does.
         McExp = 50
         xKDrawExp = np.zeros((dx, K, McExp))
         diffTol = 1e-5
@@ -6901,13 +6986,13 @@ class DecodingAlgorithms:
                     terms = muhat[c] + betahat_new[:, c] @ xk + hist_term
 
                     if fitType == "poisson":
-                        ld = np.exp(np.clip(terms, -30, 30))
+                        ld = np.exp(terms)
                         ExpLambdaXk = (1.0 / McExp) * np.sum(ld[None, :] * xk, axis=1)
                         ExpLambdaXkXkT = (1.0 / McExp) * (ld[None, :] * xk) @ xk.T
                         GradTerm += dN[c, k] * x_K[:, k] - ExpLambdaXk
                         HessianTerm -= ExpLambdaXkXkT
                     else:  # binomial
-                        ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                        ld = np.exp(terms) / (1.0 + np.exp(terms))
                         ExplambdaDeltaXkXk = (1.0 / McExp) * (ld[None, :] * xk) @ xk.T
                         ExplambdaDeltaSqXkXkT = (1.0 / McExp) * ((ld ** 2)[None, :] * xk) @ xk.T
                         ExplambdaDeltaCubeXkXkT = (1.0 / McExp) * ((ld ** 3)[None, :] * xk) @ xk.T
@@ -6926,7 +7011,7 @@ class DecodingAlgorithms:
                     betahat_newTemp = betahat_new[:, c]
                 else:
                     try:
-                        betahat_newTemp = betahat_new[:, c] - np.linalg.solve(HessianTerm, GradTerm)
+                        betahat_newTemp = betahat_new[:, c] - _matlab_mldivide(HessianTerm, GradTerm)
                     except np.linalg.LinAlgError:
                         betahat_newTemp = betahat_new[:, c]
                     if np.any(np.isnan(betahat_newTemp)):
@@ -6960,22 +7045,25 @@ class DecodingAlgorithms:
                     terms = muhat_new[c] + betahat[:, c] @ xk + hist_term
 
                     if fitType == "poisson":
-                        ld = np.exp(np.clip(terms, -30, 30))
+                        ld = np.exp(terms)
                         ExpLambdaDelta = (1.0 / McExp) * np.sum(ld)
                         GradTerm += dN[c, k] - ExpLambdaDelta
                         HessianTerm -= ExpLambdaDelta
                     else:  # binomial
-                        ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                        ld = np.exp(terms) / (1.0 + np.exp(terms))
                         ExpLambdaDelta = (1.0 / McExp) * np.sum(ld)
                         ExpLambdaDeltaSq = (1.0 / McExp) * np.sum(ld ** 2)
                         ExpLambdaDeltaCubed = (1.0 / McExp) * np.sum(ld ** 3)
                         GradTerm += dN[c, k] - (dN[c, k] + 1) * ExpLambdaDelta + ExpLambdaDeltaSq
                         HessianTerm += -(dN[c, k] + 1) * ExpLambdaDelta + (dN[c, k] + 3) * ExpLambdaDeltaSq - 2 * ExpLambdaDeltaCubed
 
-                if np.isnan(HessianTerm) or np.isinf(HessianTerm) or abs(HessianTerm) < 1e-30:
+                if np.isnan(HessianTerm) or np.isinf(HessianTerm):
                     muhat_newTemp = muhat_new[c]
                 else:
-                    muhat_newTemp = muhat_new[c] - GradTerm / HessianTerm
+                    # MATLAB HessianTerm\GradTerm: a zero Hessian gives +-Inf, which
+                    # MATLAB accepts, or NaN (0/0), which keeps the previous value.
+                    # This port also kept it for |HessianTerm| < 1e-30.
+                    muhat_newTemp = muhat_new[c] - np.divide(GradTerm, HessianTerm)
                     if np.isnan(muhat_newTemp):
                         muhat_newTemp = muhat_new[c]
 
@@ -7017,12 +7105,12 @@ class DecodingAlgorithms:
                         terms = muhat[c] + betahat[:, c] @ xk + hist_term
 
                         if fitType == "poisson":
-                            ld = np.exp(np.clip(terms, -30, 30))
+                            ld = np.exp(terms)
                             ExpLambdaDelta = (1.0 / McExp) * np.sum(ld)
                             GradTerm += (dN[c, k] - ExpLambdaDelta) * Hk_vec
                             HessianTerm -= ExpLambdaDelta * np.outer(Hk_vec, Hk_vec)
                         else:  # binomial
-                            ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                            ld = np.exp(terms) / (1.0 + np.exp(terms))
                             ExpLambdaDelta = (1.0 / McExp) * np.sum(ld)
                             ExpLambdaDeltaSq = (1.0 / McExp) * np.sum(ld ** 2)
                             ExpLambdaDeltaCubed = (1.0 / McExp) * np.sum(ld ** 3)
@@ -7033,7 +7121,7 @@ class DecodingAlgorithms:
                         gammahat_newTemp = gammaC
                     else:
                         try:
-                            gammahat_newTemp = gammaC - np.linalg.solve(HessianTerm, GradTerm)
+                            gammahat_newTemp = gammaC - _matlab_mldivide(HessianTerm, GradTerm)
                         except np.linalg.LinAlgError:
                             gammahat_newTemp = gammaC
                         if np.any(np.isnan(gammahat_newTemp)):

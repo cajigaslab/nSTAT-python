@@ -41,6 +41,10 @@ from nstat.decoding_algorithms import (
     _em_glm_mstep,
     _expand_shared_se_gamma,
     _is_empty_value,
+    _matlab_float_semantics,
+    _matlab_mldivide,
+    _matlab_nearest_spd,
+    _matlab_ztest_p,
     _mc_state_draws,
     _normalize_beta,
     _normalize_gamma,
@@ -74,29 +78,11 @@ def _is_empty_value(v: Any) -> bool:
 def _nearest_spd(A):
     """Nearest symmetric positive-definite matrix (MATLAB ``nearestSPD``, as
     used on the inverse observed information of
-    ``PPLFP_ComputeParamStandardErrors``)."""
-    B = 0.5 * (A + A.T)
-    try:
-        _, s, V = np.linalg.svd(B)
-        H = V.T @ np.diag(s) @ V
-        A2 = 0.5 * (B + H)
-        A3 = 0.5 * (A2 + A2.T)
-        eps_v = np.spacing(np.linalg.norm(A3))
-        I_e = np.eye(A.shape[0])
-        k_iter = 0
-        while True:
-            try:
-                np.linalg.cholesky(A3)
-                break
-            except np.linalg.LinAlgError:
-                mineig = np.min(np.real(np.linalg.eigvals(A3)))
-                A3 = A3 + I_e * (-mineig * (k_iter + 1) ** 2 + eps_v)
-                k_iter += 1
-                if k_iter > 50:
-                    break
-        return A3
-    except np.linalg.LinAlgError:
-        return B
+    ``PPLFP_ComputeParamStandardErrors``); see
+    :func:`nstat.decoding_algorithms._matlab_nearest_spd`.  (This port shifted
+    by ``spacing(norm(A))`` instead of ``eps(mineig)``, stopped after 50
+    passes and returned the unprojected ``B`` if the SVD failed.)"""
+    return _matlab_nearest_spd(A)
 
 
 def _unwhiten(T, S):
@@ -902,6 +888,7 @@ class PPLFP:
         return C
 
     @staticmethod
+    @_matlab_float_semantics
     def PPLFP_ComputeParamStandardErrors(
         y,
         dN,
@@ -947,8 +934,6 @@ class PPLFP:
         nTerms : int
             Total number of parameters in the score vector.
         """
-        from scipy.stats import norm as _norm  # local lazy import
-
         # ------------------------------------------------------------------
         # Default constraints
         # ------------------------------------------------------------------
@@ -1571,11 +1556,13 @@ class PPLFP:
         try:
             invIObs = np.linalg.solve(IObs, np.eye(IObs.shape[0]))
         except np.linalg.LinAlgError:
+            # Python-only: an exactly singular IObs.  MATLAB's eye/IObs warns and
+            # returns Inf, and nearestSPD's svd then errors.
             invIObs = np.linalg.pinv(IObs)
 
         invIObs = _nearest_spd(invIObs)
         VarVec = np.diag(invIObs)
-        SEVec = np.sqrt(np.abs(VarVec))
+        SEVec = np.sqrt(VarVec)  # MATLAB sqrt(VarVec); positive after nearestSPD (was sqrt(|VarVec|))
 
         idx = 0
         SEAterms = SEVec[idx : idx + n1]
@@ -1659,17 +1646,11 @@ class PPLFP:
         # p-values via two-sided z-tests (mu = 0)
         # ------------------------------------------------------------------
         def _ztest_p(params, ses):
-            params = np.asarray(params, dtype=float).reshape(-1)
-            ses = np.asarray(ses, dtype=float).reshape(-1)
-            out = np.zeros_like(params)
-            for i in range(params.size):
-                s = ses[i]
-                if s <= 0 or not np.isfinite(s):
-                    out[i] = 1.0
-                else:
-                    z = params[i] / s
-                    out[i] = 2.0 * (1.0 - _norm.cdf(abs(z)))
-            return out
+            # MATLAB ztest(param, 0, se): 2*normcdf(-|param/se|) (see
+            # _matlab_ztest_p; this port used 2*(1 - normcdf(|z|)), which
+            # underflows to 0 for |z| > 8.3, and returned 1 for se <= 0).
+            return _matlab_ztest_p(np.asarray(params, dtype=float).reshape(-1),
+                                   np.asarray(ses, dtype=float).reshape(-1))
 
         Pvals = {}
 
@@ -1755,6 +1736,7 @@ class PPLFP:
         return SE, Pvals, nTerms
 
     @staticmethod
+    @_matlab_float_semantics
     def PPLFP_EM(
         y,
         dN,
@@ -2118,32 +2100,13 @@ class PPLFP:
                 dMax = np.inf
             else:
                 diffs: list[float] = []
-                try:
-                    diffs.append(
-                        float(
-                            np.max(
-                                np.abs(
-                                    np.sqrt(np.abs(Qhat_buf[si]))
-                                    - np.sqrt(np.abs(Qhat_buf[si_m1]))
-                                )
-                            )
-                        )
-                    )
-                except Exception:
-                    pass
-                try:
-                    diffs.append(
-                        float(
-                            np.max(
-                                np.abs(
-                                    np.sqrt(np.abs(Rhat_buf[si]))
-                                    - np.sqrt(np.abs(Rhat_buf[si_m1]))
-                                )
-                            )
-                        )
-                    )
-                except Exception:
-                    pass
+                # MATLAB max(max(abs(sqrt(Qhat{k}) - sqrt(Qhat{k-1})))) (and R):
+                # the elementwise sqrt is complex for a negative (off-diagonal)
+                # entry.  This port took sqrt(|.|) (different when an entry
+                # changes sign) inside a try / except that could not fire.
+                for M_cur, M_prev in ((Qhat_buf[si], Qhat_buf[si_m1]), (Rhat_buf[si], Rhat_buf[si_m1])):
+                    diffs.append(float(np.max(np.abs(
+                        np.sqrt(np.asarray(M_cur, dtype=complex)) - np.sqrt(np.asarray(M_prev, dtype=complex))))))
                 diffs.append(float(np.max(np.abs(Ahat_buf[si] - Ahat_buf[si_m1]))))
                 diffs.append(float(np.max(np.abs(Chat_buf[si] - Chat_buf[si_m1]))))
                 diffs.append(
@@ -2389,8 +2352,11 @@ class PPLFP:
             sumXkTerms = _unwhiten(Tq, sumXkTerms)
             llcomp = (ll_best + (K_T + 1) * np.log(np.abs(np.linalg.det(Tq)))
                       + K_T * np.log(np.abs(np.linalg.det(Tr))))
-        detQ = max(float(np.linalg.det(Qhat_out)), 1e-300)
-        detPx0 = max(float(np.linalg.det(Px0hat_out)), 1e-300)
+        # MATLAB log(det(Qhat)), log(det(Px0hat)), 2n(n+1)/(K-n-1) and
+        # n*log(K): no floors or guards (this port floored both determinants
+        # at 1e-300, set AICc = Inf for K - n - 1 == 0 and used log(max(K, 1))).
+        detQ = np.linalg.det(Qhat_out)
+        detPx0 = np.linalg.det(Px0hat_out)
         llobs = (
             llcomp
             + Dx * K_T / 2.0 * np.log(2 * np.pi)
@@ -2401,13 +2367,8 @@ class PPLFP:
             + 0.5 * Dx
         )
         AIC = 2 * nTerms - 2 * llobs
-        denom = K_T - nTerms - 1
-        AICc = (
-            AIC + 2 * nTerms * (nTerms + 1) / denom
-            if denom != 0
-            else float("inf")
-        )
-        BIC = -2 * llobs + nTerms * np.log(max(K_T, 1))
+        AICc = AIC + np.divide(2.0 * nTerms * (nTerms + 1), np.float64(K_T - nTerms - 1))
+        BIC = -2 * llobs + nTerms * np.log(K_T)
 
         IC = {
             "AIC": AIC,
@@ -2436,6 +2397,7 @@ class PPLFP:
         )
 
     @staticmethod
+    @_matlab_float_semantics
     def PPLFP_EStep(A, Q, C, R, y, alpha, dN, mu, beta, fitType='poisson',
                      delta=0.001, gamma=None, HkAll=None, x0=None, Px0=None):
         """E-step for the PPLFP EM algorithm.
@@ -2704,13 +2666,12 @@ class PPLFP:
                 sumPPll += float(np.sum(obs[:, k] * ExplogLD - ExplambdaDelta))
 
         # Complete-data log-likelihood lower bound (MATLAB lines 2169-2173).
-        # MATLAB uses raw log(det(.)) — preserve that, falling back to a tiny
-        # floor only if det is non-positive to avoid -inf/NaN cascades.
+        # MATLAB log(det(.)), no floor: a non-positive determinant gives -Inf
+        # or NaN (MATLAB: complex), and PPLFP_EM stops before the M-step.  This
+        # port replaced it by log(max(|det|, 1e-300)), which kept a collapsed
+        # Px0 iterating where MATLAB stops.
         def _safe_logdet(M):
-            d = np.linalg.det(M)
-            if d <= 0 or not np.isfinite(d):
-                return float(np.log(max(abs(d), 1e-300)))
-            return float(np.log(d))
+            return float(np.log(np.linalg.det(M)))
 
         logll = (-Dx * K / 2.0 * np.log(2 * np.pi)
                  - K / 2.0 * _safe_logdet(Q_2d)
@@ -2740,6 +2701,7 @@ class PPLFP:
         return x_K, W_K, float(logll), ExpectationSums
 
     @staticmethod
+    @_matlab_float_semantics
     def PPLFP_MStep(
         dN,
         y,
@@ -2820,16 +2782,20 @@ class PPLFP:
             return getattr(PPLFP_EM_Constraints, name, default)
 
         # ---- Ahat: MATLAB Sxkxkm1 / Sxkm1xkm1 -------------------------
+        # MATLAB mrdivide: Ahat = (Sxkxkm1.*I)/(Sxkm1xkm1.*I) or
+        # Sxkxkm1/Sxkm1xkm1, Chat = Sxkyk'/Sxkxk (X/B = solve(B', X')').  This
+        # port used least squares (lstsq), whose minimum-norm answer differs
+        # from MATLAB's on a singular system and at round-off otherwise.
         if _gc("AhatDiag", 0) == 1:
             I_dx = np.eye(dx)
             num = Sxkxkm1 * I_dx
             den = Sxkm1xkm1 * I_dx
-            Ahat = np.linalg.lstsq(den.T, num.T, rcond=None)[0].T
+            Ahat = np.linalg.solve(den.T, num.T).T
         else:
-            Ahat = np.linalg.lstsq(Sxkm1xkm1.T, Sxkxkm1.T, rcond=None)[0].T
+            Ahat = np.linalg.solve(Sxkm1xkm1.T, Sxkxkm1.T).T
 
         # ---- Chat: MATLAB Sxkyk' / Sxkxk ------------------------------
-        Chat = np.linalg.lstsq(Sxkxk.T, Sxkyk, rcond=None)[0].T
+        Chat = np.linalg.solve(Sxkxk.T, Sxkyk).T
 
         alphahat = np.sum(y - Chat @ x_K, axis=1, keepdims=True) / K
 
@@ -2859,8 +2825,8 @@ class PPLFP:
         # ---- x0hat ---------------------------------------------------
         if _gc("Estimatex0", 0):
             Px0_inv = np.linalg.inv(Px0)
-            # MATLAB A'/Q -> A' * inv(Q)
-            AtQinv = np.linalg.lstsq(Qhat.T, Ahat, rcond=None)[0].T
+            # MATLAB A'/Q -> A' * inv(Q) (mrdivide; this port used lstsq)
+            AtQinv = np.linalg.solve(Qhat.T, Ahat).T
             lhs = Px0_inv + AtQinv @ Ahat
             rhs = AtQinv @ x_K[:, 0:1] + np.linalg.solve(Px0, x0)
             x0hat = np.linalg.solve(lhs, rhs)
@@ -3017,11 +2983,14 @@ class PPLFP:
                     betahat_newTemp = betahat_new[:, c:c + 1].copy()
                 else:
                     try:
-                        step = np.linalg.solve(HessianTerm, GradTerm)
+                        step = _matlab_mldivide(HessianTerm, GradTerm)
                     except np.linalg.LinAlgError:
-                        step = np.linalg.lstsq(
-                            HessianTerm, GradTerm, rcond=None,
-                        )[0]
+                        # An exactly singular Hessian (e.g. every lambda of a
+                        # term underflowed to 0): MATLAB's HessianTerm\GradTerm
+                        # warns and returns NaN there, so the previous value is
+                        # kept, as in PP_MStep.  This port took the lstsq
+                        # minimum-norm step instead.
+                        step = np.full_like(GradTerm, np.nan)
                     betahat_newTemp = betahat_new[:, c:c + 1] - step
                     if np.isnan(betahat_newTemp).any():
                         betahat_newTemp = betahat_new[:, c:c + 1].copy()
@@ -3080,12 +3049,10 @@ class PPLFP:
                 if np.isnan(HessianTerm) or np.isinf(HessianTerm):
                     muhat_newTemp = muhat_new[c]
                 else:
-                    if HessianTerm == 0.0:
-                        muhat_newTemp = muhat_new[c]
-                    else:
-                        muhat_newTemp = (
-                            muhat_new[c] - GradTerm / HessianTerm
-                        )
+                    # MATLAB HessianTerm\GradTerm: a zero Hessian gives +-Inf,
+                    # which MATLAB accepts, or NaN (0/0: keep).  This port kept
+                    # the previous value for HessianTerm == 0.
+                    muhat_newTemp = muhat_new[c] - np.divide(GradTerm, HessianTerm)
                     if np.isnan(muhat_newTemp):
                         muhat_newTemp = muhat_new[c]
                 mabsDiff = abs(muhat_newTemp - muhat_new[c])
@@ -3173,11 +3140,11 @@ class PPLFP:
                         )
                     else:
                         try:
-                            step = np.linalg.solve(HessianTerm, GradTerm)
+                            step = _matlab_mldivide(HessianTerm, GradTerm)
                         except np.linalg.LinAlgError:
-                            step = np.linalg.lstsq(
-                                HessianTerm, GradTerm, rcond=None,
-                            )[0]
+                            # Exactly singular: MATLAB returns NaN, so the
+                            # previous value is kept (see beta; was lstsq).
+                            step = np.full_like(GradTerm, np.nan)
                         gammahat_newTemp = (
                             gammahat_new[:, c:c + 1] - step
                         )
