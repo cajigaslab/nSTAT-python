@@ -6275,6 +6275,13 @@ class DecodingAlgorithms:
         ``EnableIkeda = 1`` (MATLAB's Ikeda acceleration step) is not ported
         and raises ``NotImplementedError``.
 
+        ``SE`` / ``Pvals`` are always computed (MATLAB computes them only when
+        more than 10 outputs are requested).  The Monte Carlo SE pass
+        dominates the run time at the default ``mcIter = 1000``: measured
+        4.5 s of 6.2 s for N = 800 bins, C = 4 cells, 3 history windows
+        (0.5 s of 2.1 s at ``mcIter = 100``); pass a smaller ``mcIter`` in
+        ``PPEM_Constraints`` to reduce it.
+
         Parameters
         ----------
         dN : (C, N) binary spike observations

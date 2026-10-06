@@ -1768,6 +1768,64 @@ _COV_CASES = {
 }
 
 
+def test_pplfp_full_r_standard_errors_match_the_complete_information() -> None:
+    # RhatDiag = 0: R has one parameter per entry (row by row, like a full Q).
+    # The block was allocated dy x dy (MATLAB allocates numel(diag(Rhat)) square
+    # and then writes numel(Rhat)-long columns, so its full-R branch errors for
+    # dy > 1); the port wrote what fitted and every RhatDiag = 0 call raised
+    # "could not broadcast".  With the states known and every parameter at its
+    # complete-data MLE (R = resres / K, not diagonal) the missing information
+    # vanishes, the R information is (K/2) (R^-1 (x) R^-1) times the commutation
+    # matrix -- the finite-difference Hessian of -K/2 log det R - tr(R^-1 S)/2
+    # in the dy^2 entries -- and nearestSPD keeps the positive (symmetric) part
+    # of its inverse, so SE.R(l, m) = sqrt((R_ll R_mm + R_lm^2) / K), the
+    # Wishart standard error of a covariance entry (r sqrt(2/K) on the diagonal,
+    # as for RhatDiag = 1).
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    P = _vanishing_problem()
+    K, dx = P["K"], P["dx"]
+    Q = np.diag(np.diag(P["sumX"])) / K
+    R = P["resres"] / K
+    cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 0, 0, 0, 0, 0, 20, 0)
+    with seeded_global_rng(1):
+        SE, _, nTerms = PPLFP.PPLFP_ComputeParamStandardErrors(
+            P["y"], P["dN"], P["x"], P["WK"], P["A"], Q, P["Chat"], R, P["alphahat"], np.zeros(dx),
+            1e-6 * np.eye(dx), P["ES"], "poisson", P["mu"], P["beta"], np.array(0.0), [], np.zeros((K, 1, 2)), cons)
+    assert SE["R"].shape == (2, 2)
+    expected = np.sqrt((np.outer(np.diag(R), np.diag(R)) + R ** 2) / K)
+    np.testing.assert_allclose(SE["R"], expected, rtol=1e-6)
+    # The same from a finite difference of the analytic R score.
+    S = K * R
+
+    def score(rvec):
+        Rm = rvec.reshape(2, 2)
+        Ri = np.linalg.inv(Rm).T
+        return (-K / 2 * Ri + 0.5 * Ri @ S.T @ Ri).ravel()
+
+    info = -_fd_jac(score, R.ravel())
+    w, V = np.linalg.eigh(np.linalg.inv(0.5 * (info + info.T)))
+    pos = (V * np.maximum(w, 0)) @ V.T
+    np.testing.assert_allclose(SE["R"].ravel(), np.sqrt(np.diag(pos)), rtol=1e-6)
+    # dx^2 (A) + dx (Q) + dy dx (C) + dy^2 (R) + dy (alpha) + C (mu) + dx C (beta)
+    assert nTerms == 4 + 2 + 4 + 4 + 2 + 2 + 4
+
+
+def test_pplfp_em_runs_with_a_full_r() -> None:
+    # The P2b-1 review repro: PPLFP_EM with RhatDiag = 0 and dy = 2 raised in its
+    # (always-on) SE pass.
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    P = _f8_problem()
+    cons = PPLFP.PPLFP_EMCreateConstraints(1, 0, 1, 0, 0, 0, 0, 0, 0, 10, 0)
+    with seeded_global_rng(42):
+        out = PPLFP.PPLFP_EM(P["y"], P["dN"], P["A"], P["Q"], P["Cm"], P["R"], P["alpha"], P["mu"], P["beta"],
+                             "poisson", P["delta"], None, None, P["x0"], P["Px0"], cons)
+    SE = out[13]
+    assert SE["R"].shape == (2, 2) and np.all(np.isfinite(SE["R"])) and np.all(SE["R"] > 0)
+    np.testing.assert_allclose(SE["R"], SE["R"].T, rtol=1e-12)
+
+
 @pytest.mark.parametrize("case", sorted(_COV_CASES))
 @pytest.mark.parametrize("family", ["PP", "PPLFP"])
 def test_covariance_information_blocks_match_the_complete_information(family, case, monkeypatch) -> None:

@@ -1079,9 +1079,16 @@ class PPLFP:
                     IRComp[:, cnt] = termvec
                     cnt += 1
         else:
-            # MATLAB pre-allocates diag-size but writes numel-size vectors here
-            # (apparent MATLAB inconsistency); preserve diag-size and write what fits.
-            size_r = int(np.size(np.diag(Rhat)))
+            # Full R (RhatDiag = 0): one parameter per entry, ordered row by row
+            # like the full-Q block and the R scores below, so the block is
+            # numel(Rhat) square.  MATLAB allocates it numel(diag(Rhat)) square
+            # and then writes numel(Rhat)-long columns into it, which errors for
+            # dy > 1 (Python extension where MATLAB errors; MATLAB computes SEs
+            # only when they are requested, PPLFP_EM here always does).  This
+            # port wrote the part that fitted, and the information matrix then
+            # no longer matched the dy^2 R scores (ValueError for every
+            # RhatDiag = 0 call of PPLFP_EM).
+            size_r = int(np.size(Rhat))
             IRComp = np.zeros((size_r, size_r))
             cnt = 0
             for l in range(n1R):
@@ -1090,10 +1097,7 @@ class PPLFP:
                     termMat_full = left @ elR[:, l : l + 1].T
                     termMat = np.linalg.solve(Rhat.T, termMat_full.T).T
                     termvec = termMat.T.flatten(order="F")
-                    if cnt < IRComp.shape[1]:
-                        IRComp[: min(termvec.size, IRComp.shape[0]), cnt] = termvec[
-                            : IRComp.shape[0]
-                        ]
+                    IRComp[:, cnt] = termvec
                     cnt += 1
 
         # ---- Q complete information matrix ----
@@ -1616,7 +1620,7 @@ class PPLFP:
         if RhatDiag == 1:
             SER = np.diag(SERterms)
         else:
-            SER = SERterms[: Rhat.size].reshape(Rhat.shape[1], Rhat.shape[0]).T
+            SER = SERterms.reshape(Rhat.shape)  # row-major, as MATLAB reshape(SERterms, ncol, nrow)'
 
         if QhatDiag == 1:
             SEQ = np.diag(SEQterms)
@@ -1776,6 +1780,15 @@ class PPLFP:
         gamma column is expanded to every cell.  EM stops before the M-step if
         the E-step log-likelihood is not finite and returns the best finite
         iterate.
+
+        ``SE`` / ``Pvals`` are always computed (MATLAB computes them only when
+        more than 13 outputs are requested).  The Monte Carlo SE pass
+        dominates the run time at the default ``mcIter = 1000``: measured
+        2.4 s of 2.9 s for N = 400 bins, C = 4 cells, dy = 2 (0.3 s of 0.8 s
+        at ``mcIter = 100``); pass a smaller ``mcIter`` in
+        ``PPLFP_EM_Constraints`` to reduce it.  With ``RhatDiag = 0`` (a full
+        R) the SE pass treats every entry of R as a parameter, row by row like
+        a full Q; MATLAB's full-R branch errors there for dy > 1.
 
         Direct port of MATLAB ``PPLFP_EM`` in
         ``+nstat/+decoding/PPLFP.m`` (lines 1577-1989).  Structurally
