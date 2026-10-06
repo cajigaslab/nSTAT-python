@@ -104,6 +104,31 @@ does about it, and the known gaps.
   effect, and under `seeded_global_rng` every M-step and both SE blocks drew
   the same normals. Seeded `PPLFP_*` outputs therefore change. MATLAB's own
   `randn` stream is not reproduced.
+- Decoder behaviour changes outside EM. These change the output of the public
+  decoders for users who never call the EM routines; the *Fixes* entries
+  below ("History (`windowTimes`)", "Square shapes", "`PP_fixedIntervalSmoother`
+  with `lags = 1`") give the details.
+  - History windows follow MATLAB's `History.computeHistory`
+    (`PPDecodeFilterLinear`, `PP_fixedIntervalSmoother`,
+    `PPHybridFilterLinear`): with `windowTimes` given, every history-dependent
+    output moves (the decoded states by up to ~0.08 on random 2- to 5-state
+    problems with windows `[0 2 5 10]` ms). Without history these decoders'
+    outputs were bit-identical on the same problems (apart from the `lags = 1`
+    column below).
+  - Only bins with `dN == 1` count as history spikes, as in MATLAB: count data
+    (`dN > 1` in a bin) silently drops those bins from the history.
+  - A square history-coefficient matrix (as many windows as cells) is no
+    longer transposed (`PPDecodeFilterLinear`, `PP_fixedIntervalSmoother`,
+    `PPHybridFilterLinear`, `PPDecode_updateLinear`, `PPLFP_Decode_update`,
+    and so `PPLFP_fixedIntervalSmoother` in that case).
+  - New `ValueError`s: a permuted `HkAll` whose shape fits two layouts
+    (`PPDecode_updateLinear`, `PPLFP_Decode_update`, which take `HkAll`
+    directly), and `windowTimes` edges at or before `-delta`
+    (`PPDecodeFilterLinear`, `PP_fixedIntervalSmoother`,
+    `PPHybridFilterLinear`, `PPLFP_fixedIntervalSmoother` and the EM drivers;
+    they ran before).
+  - `PP_fixedIntervalSmoother` with `lags = 1`: the first predicted column now
+    holds the first filtered estimate (it was zero).
 
 *Fixes*
 
