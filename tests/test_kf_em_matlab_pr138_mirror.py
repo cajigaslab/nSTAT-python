@@ -1,13 +1,13 @@
 """Python mirror of the repaired MATLAB Kalman-filter EM family (nSTAT PR #138).
 
 The MATLAB KF_EM / KF_ComputeParamStandardErrors routines
-(``+nstat/+decoding/KF_EM.m``) received a set of correctness fixes (repaired
-MATLAB ``fix/kf-em`` @ ``cb4edd2``, pending upstream merge; see
-``<SCRATCH>/b2/track-M-report.md``).  This file pins the Python mirror of
-each defect class with a test that is independent of the implementation, in
-the style of ``tests/test_em_routines_correctness.py``'s PP/PPLFP suite.
+(``+nstat/+decoding/KF_EM.m``) received a set of correctness fixes (MATLAB
+``fix/kf-em`` @ ``cb4edd2``, merged as nSTAT PR #138).  This file pins the
+Python mirror of each defect class with a test that is independent of the
+implementation, in the style of ``tests/test_em_routines_correctness.py``'s
+PP/PPLFP suite.
 
-Defect classes mirrored here (track-P1 item 2):
+Defect classes mirrored here:
 
 * C1 (F9): Monte Carlo state/x0 draws used the upper Cholesky factor.
 * C3 (G1): KF_EM whitened the state/observation system with the upper
@@ -22,9 +22,13 @@ Defect classes mirrored here (track-P1 item 2):
   ``_ztest_pvalue``) are aligned with MATLAB's ``nearestSPD`` / ``ztest``
   semantics, as PP/PPLFP already are.
 
-C2 (operator precedence) and the MATLAB-only C0 (unreachable entry point) are
-confirmed NOT present in Python (see ``<SCRATCH>/b2/track-P1-report.md``) and
-have no test here.
+C2 / H1 (operator precedence) WAS present in pre-fix MATLAB KF_EM.m (verified
+against ``git diff`` of the MATLAB repair commit) but never in Python, whose
+five information-block sites were always explicit nested function calls with
+no MATLAB-operator-chain ambiguity to get wrong; see
+``parity/matlab_defects.yml`` (``em-kf-family-not-repaired``). The
+MATLAB-only C0 (the KF_EM entry point was unreachable, a Static-method-name
+collision) has no Python analog. Neither has a test here.
 """
 from __future__ import annotations
 
@@ -85,6 +89,14 @@ def test_kf_em_information_criteria_is_self_consistent_with_a_nondiagonal_q0() -
     # magnitude (verified: reverting the C3+C4 edit on a stashed copy of
     # this file reproduces a llcomp vs. direct-recompute gap in the
     # thousands, not round-off).
+    #
+    # NOTE: this uses QhatDiag=RhatDiag=0 (an unconstrained Q/R), under
+    # which C3's choice of whitening basis provably does not change the
+    # final unscaled Qhat/Rhat/llobs (an unconstrained M-step estimate is
+    # invariant to the internal basis), so it does NOT cover C3 on its
+    # own -- see test_kf_em_whitening_matters_under_default_diagonal_constraints
+    # below for the test that does, and does not pass under the pre-fix
+    # upper-factor whitening.
     sys_ = _nondiag_system()
     cons = DecodingAlgorithms.KF_EMCreateConstraints(
         QhatDiag=0, RhatDiag=0, Estimatex0=0, EstimatePx0=0, mcIter=20)
@@ -108,20 +120,44 @@ def test_kf_em_information_criteria_is_self_consistent_with_a_nondiagonal_q0() -
     assert abs(IC["llobs"]) < 1000.0
 
 
-def test_kf_em_whitening_tq_satisfies_tq_q0_tqt_identity() -> None:
-    # Direct check of the C3 fix for a NON-diagonal Q0: the whitening
-    # transform KF_EM builds internally must satisfy Tq @ Q0 @ Tq.T == I.
-    # The pre-fix upper-factor Tq = inv(chol(Q0)) (MATLAB's chol returns the
-    # UPPER factor) only satisfies this for a diagonal Q0; reconstructed
-    # here exactly as KF_EM does (lower factor, L = np.linalg.cholesky).
-    Q0 = np.array([[0.08, 0.02], [0.02, 0.05]])
-    L = np.linalg.cholesky(Q0)
-    Tq = np.linalg.solve(L, np.eye(2))
-    np.testing.assert_allclose(Tq @ Q0 @ Tq.T, np.eye(2), rtol=0.0, atol=1e-12)
-    # The pre-fix upper-factor transform does NOT whiten a non-diagonal Q0.
-    U = np.linalg.cholesky(Q0).T
-    Tq_bug = np.linalg.solve(U, np.eye(2))
-    assert not np.allclose(Tq_bug @ Q0 @ Tq_bug.T, np.eye(2), atol=1e-6)
+def test_kf_em_whitening_matters_under_default_diagonal_constraints() -> None:
+    # C3 regression (review fix: the two tests above do not discriminate
+    # the whitening basis -- an unconstrained Q/R estimate is invariant to
+    # it, and the removed bare-NumPy identity check never called production
+    # code at all). Under the DEFAULT constraints (QhatDiag=RhatDiag=1,
+    # the common case), "Qhat/Rhat diagonal" is imposed in the frame
+    # whitened by the STARTING Q0/R0 (see KF_EMCreateConstraints' docstring),
+    # so which Cholesky factor builds that frame changes which Qhat the
+    # M-step actually lands on for a non-diagonal Q0/R0 -- this is exactly
+    # where C3 matters.
+    #
+    # Pinned against this exact fixture run with the pre-fix upper factor,
+    # confirmed by temporarily reverting both whitening sites (scale-in and
+    # scale-back) to `np.linalg.cholesky(...).T` on a scratch copy of
+    # decoding_algorithms.py and rerunning this exact call:
+    #   Qhat (upper, WRONG) = [[0.09336402, 0.01873653], [0.01873653, 0.05620959]]
+    #   llobs (upper, WRONG) = -195.60254017416165
+    # against the lower-factor (fixed) values pinned below -- the two
+    # differ well outside floating-point noise (Qhat by ~4%, llobs by ~1.4),
+    # so this test fails under the upper factor and passes under the lower.
+    sys_ = _nondiag_system()
+    cons = DecodingAlgorithms.KF_EMCreateConstraints(
+        Estimatex0=0, EstimatePx0=0, mcIter=20)  # QhatDiag=1, RhatDiag=1 (defaults)
+    result = DecodingAlgorithms.KF_EM(
+        sys_["y"], sys_["A0"], sys_["Q0"], sys_["C0"], sys_["R0"],
+        sys_["alpha0"], sys_["x0"], sys_["Px0"], cons)
+    Qhat, IC = result[3], result[9]
+
+    expected_Qhat = np.array([[0.08983826, 0.02245956], [0.02245956, 0.05970461]])
+    np.testing.assert_allclose(Qhat, expected_Qhat, rtol=1e-6, atol=0.0)
+    np.testing.assert_allclose(IC["llobs"], -197.0036984594129, rtol=1e-8, atol=0.0)
+
+    # Explicitly rule out the pre-fix (upper-factor) values, so a future
+    # change to this fixture that happens to coincide with the fixed value
+    # cannot silently also match the bug.
+    wrong_Qhat = np.array([[0.09336402, 0.01873653], [0.01873653, 0.05620959]])
+    assert not np.allclose(Qhat, wrong_Qhat, rtol=1e-3, atol=0.0)
+    assert abs(IC["llobs"] - (-195.60254017416165)) > 0.1
 
 
 # ===========================================================================
