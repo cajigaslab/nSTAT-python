@@ -713,6 +713,118 @@ def _recipe_em_glm_mstep(fixture: dict[str, Any], args: dict[str, Any]) -> tuple
     )
 
 
+def _em_drivers_history(f) -> tuple[Any, np.ndarray, np.ndarray]:
+    """Windows, history tensor and gamma the Python driver builds for one em_drivers.mat case."""
+    import nstat.decoding_algorithms as da
+
+    dN = np.atleast_2d(_as_float_array(f("dN")))
+    if str(f("family")) != "PP":
+        return None, np.zeros((dN.shape[1], 1, dN.shape[0])), np.array(0.0)
+    wt = _as_float_array(f("windowTimes")).reshape(-1)
+    g0 = _as_float_array(f("gamma0"))
+    if wt.size == 0 and g0.ndim == 1:
+        g0 = g0.reshape(-1, 1)
+    gamma, wt = da._em_history_windows(g0, None if wt.size == 0 else wt, float(f("delta")), dN.shape[0])
+    return wt, da._compute_history_terms(dN, float(f("delta")), wt), gamma
+
+
+def _recipe_em_drivers(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
+    """End-to-end PP_EM / PPLFP_EM gold (``em_drivers.mat``, captured by
+    ``tools/parity/matlab/capture_em_drivers.m`` from the repaired MATLAB,
+    fix/pp-em @ aa88a2b).  ``args.case`` selects the case, ``args.kind``:
+
+    * ``estep`` -- E-step at MATLAB's returned estimates (original coordinates,
+      Python-built history): x_K, W_K, logll vs MATLAB's es_x_K, es_W_K,
+      es_logll.  Deterministic.
+    * ``mstep`` -- closed-form M-step updates (A, Q, [C, R, alpha,] x0, Px0) on
+      those sums for the three constraint sets ms1..ms3.  Deterministic.
+    * ``em`` -- the driver itself in ``seeded_global_rng(1)``: [mu, beta, gamma]
+      (PP) or xKFinal (PPLFP) vs MATLAB.  Monte Carlo dependent (MATLAB randn
+      is not reproduced); see the tolerance comments in the spec.
+    """
+    from nstat.decoding.PPLFP import PPLFP
+    from nstat.decoding_algorithms import DecodingAlgorithms
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    case, kind = str(args["case"]), str(args["kind"])
+
+    def f(key: str) -> Any:
+        return fixture[f"{case}_{key}"]
+
+    dN = np.atleast_2d(_as_float_array(f("dN")))
+    family, fit, delta = str(f("family")), str(f("fitType")), float(f("delta"))
+    wt, H, _ = _em_drivers_history(f)
+    ests = {k: _as_float_array(f(k)) for k in ("Ahat", "Qhat", "muhat", "betahat", "gammahat", "x0hat", "Px0hat")}
+    x0hat, Px0hat = ests["x0hat"].reshape(-1), np.atleast_2d(ests["Px0hat"])
+    if kind == "estep":
+        if family == "PP":
+            x, W, ll, _ = DecodingAlgorithms.PP_EStep(ests["Ahat"], ests["Qhat"], dN, ests["muhat"].reshape(-1),
+                                                      ests["betahat"], fit, ests["gammahat"], H, x0hat, Px0hat)
+        else:
+            x, W, ll, _ = PPLFP.PPLFP_EStep(ests["Ahat"], ests["Qhat"], _as_float_array(f("Chat")),
+                                            _as_float_array(f("Rhat")), np.atleast_2d(_as_float_array(f("y"))),
+                                            _as_float_array(f("alphahat")).reshape(-1), dN,
+                                            ests["muhat"].reshape(-1), ests["betahat"], fit, delta, np.array(0.0),
+                                            H, x0hat, Px0hat)
+        py: list[Any] = [x, W, ll]
+        ml: list[Any] = [f("es_x_K"), f("es_W_K"), f("es_logll")]
+    elif kind == "mstep":
+        dx = ests["Ahat"].shape[0]
+        ES = {k[len(case) + 7:]: _as_float_array(v) for k, v in fixture.items() if k.startswith(f"{case}_es_ES_")}
+        for key in ("Sxkm1xkm1", "Sxkxkm1", "Sxkm1xk", "Sxkxk", "sumXkTerms"):
+            ES[key] = ES[key].reshape(dx, dx)
+        py, ml = [], []
+        for j in (1, 2, 3):
+            def q(key: str) -> Any:
+                return fixture[f"{case}_ms{j}_{key}"]
+            cons = [int(v) for v in _as_float_array(q("cons")).reshape(-1)]
+            np.random.seed(7)
+            if family == "PP":
+                out = DecodingAlgorithms.PP_MStep(dN, _as_float_array(f("es_x_K")), _as_float_array(f("es_W_K")),
+                                                  x0hat, Px0hat, ES, fit, ests["muhat"].reshape(-1),
+                                                  ests["betahat"], ests["gammahat"], wt, H,
+                                                  DecodingAlgorithms.PP_EMCreateConstraints(*cons), "NewtonRaphson",
+                                                  delta)
+                pairs = [(out[0], "Ahat"), (out[1], "Qhat"), (out[5], "x0hat"), (out[6], "Px0hat")]
+            else:
+                y = np.atleast_2d(_as_float_array(f("y")))
+                ES["Sxkyk"] = ES["Sxkyk"].reshape(dx, y.shape[0])
+                for key in ("Sykyk", "sumYkTerms"):
+                    ES[key] = ES[key].reshape(y.shape[0], y.shape[0])
+                out = PPLFP.PPLFP_MStep(dN, y, _as_float_array(f("es_x_K")), _as_float_array(f("es_W_K")), x0hat,
+                                        Px0hat, ES, fit, ests["muhat"].reshape(-1), ests["betahat"],
+                                        np.array(0.0), None, H, PPLFP.PPLFP_EMCreateConstraints(*cons),
+                                        "NewtonRaphson", delta)
+                pairs = [(out[0], "Ahat"), (out[1], "Qhat"), (out[2], "Chat"), (out[3], "Rhat"),
+                         (out[4], "alphahat"), (out[8], "x0hat"), (out[9], "Px0hat")]
+            py += [o for o, _ in pairs]
+            ml += [q(key) for _, key in pairs]
+    elif kind == "em":
+        with seeded_global_rng(1):
+            if family == "PP":
+                wt_in = _as_float_array(f("windowTimes")).reshape(-1)
+                g0 = _as_float_array(f("gamma0"))
+                if wt_in.size == 0 and g0.ndim == 1:
+                    g0 = g0.reshape(-1, 1)
+                cons = [int(v) for v in _as_float_array(f("cons")).reshape(-1)]
+                o = DecodingAlgorithms.PP_EM(dN, f("A0"), f("Q0"), _as_float_array(f("mu0")).reshape(-1),
+                                             f("beta0"), fit, delta, g0, None if wt_in.size == 0 else wt_in, None,
+                                             None, DecodingAlgorithms.PP_EMCreateConstraints(*cons))
+                py = [o[4], o[5], o[6]]
+                ml = [f("muhat"), f("betahat"), f("gammahat")]
+            else:
+                o = PPLFP.PPLFP_EM(np.atleast_2d(_as_float_array(f("y"))), dN, f("A0"), f("Q0"), f("C0"), f("R0"),
+                                   _as_float_array(f("alpha0")).reshape(-1), _as_float_array(f("mu0")).reshape(-1),
+                                   f("beta0"))
+                py, ml = [o[0]], [f("xKFinal")]
+    else:
+        raise ValueError(f"unknown em_drivers kind {kind!r}")
+    return (
+        np.concatenate([_as_float_array(a).reshape(-1) for a in py]),
+        np.concatenate([_as_float_array(a).reshape(-1) for a in ml]),
+    )
+
+
 def _recipe_pp_em_decoder_gold(fixture: dict[str, Any], args: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
     """Blocks of ``pp_square_history.mat`` captured from the repaired MATLAB
     (``fix/pp-em`` @ ``a457b54``, pending upstream merge); ``args.block`` selects:
@@ -1596,6 +1708,7 @@ RECIPES: dict[str, Callable[[dict[str, Any], dict[str, Any]], tuple[np.ndarray, 
     "pp_square_history": _recipe_pp_square_history,
     "pp_em_decoder_gold": _recipe_pp_em_decoder_gold,
     "em_glm_mstep": _recipe_em_glm_mstep,
+    "em_drivers": _recipe_em_drivers,
     # v9 iter 40 — wire 22 v9_* drift entries
     "v9_run_analysis_for_neuron": _recipe_v9_run_analysis_for_neuron,
     "v9_compute_ks_stats_full": _recipe_v9_compute_ks_stats_full,

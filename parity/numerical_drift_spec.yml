@@ -468,6 +468,102 @@ entries:
     output_field: f3lfp_dx10_C2_betahat_new
     tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
 
+  # 19. End-to-end EM drivers (PP_EM, PPLFP_EM), captured by
+  # tools/parity/matlab/capture_em_drivers.m from the repaired MATLAB
+  # (fix/pp-em @ aa88a2b, pending upstream merge): see
+  # tests/test_em_drivers_matlab_gold.py for the cases.  The Monte Carlo draws
+  # use MATLAB randn (not reproducible in Python), so:
+  # * kind estep -- the E-step at MATLAB's returned estimates (original
+  #   coordinates, Python-built history; for pp_defwin MATLAB's default
+  #   windows) reproduces MATLAB's E-step there: deterministic, measured
+  #   <= 2.2e-13 relative, so rtol 1e-10 / atol 1e-12 (logll is IC.llcomp);
+  # * kind mstep -- closed-form updates (A, Q, [C, R, alpha,] x0, Px0) on
+  #   those sums, three constraint sets: deterministic, same tolerance;
+  # * kind em -- the driver itself in seeded_global_rng(1), Monte Carlo
+  #   dependent.  Following the PPLFP_EM precedent the tolerance is set from
+  #   the measured spread: 2 x the largest |Python - MATLAB| over Python
+  #   seeds 1..8, one significant digit.  pp_pois [mu, beta, gamma]: max
+  #   0.070 (beta) -> atol 0.2; lfp_def xKFinal: max 4.3e-4 -> atol 9e-4.
+  #   MATLAB's own spread over rng(1..8) on pp_pois is the same size (max
+  #   |beta - gold| 0.078); the EM stopping iteration is itself Monte Carlo
+  #   dependent (pp_pois: 6 or 8 on both sides).
+  - name: EM_pp_pois_estep_at_estimates
+    recipe: em_drivers
+    args: { case: pp_pois, kind: estep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_pois_es_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_binom_estep_at_estimates
+    recipe: em_drivers
+    args: { case: pp_binom, kind: estep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_binom_es_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_defwin_estep_at_estimates
+    recipe: em_drivers
+    args: { case: pp_defwin, kind: estep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_defwin_es_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_lfp_def_estep_at_estimates
+    recipe: em_drivers
+    args: { case: lfp_def, kind: estep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: lfp_def_es_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_sep_estep_at_estimates
+    recipe: em_drivers
+    args: { case: pp_sep, kind: estep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_sep_es_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_pois_closed_form_mstep
+    recipe: em_drivers
+    args: { case: pp_pois, kind: mstep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_pois_ms1_Ahat
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_binom_closed_form_mstep
+    recipe: em_drivers
+    args: { case: pp_binom, kind: mstep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_binom_ms1_Ahat
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_defwin_closed_form_mstep
+    recipe: em_drivers
+    args: { case: pp_defwin, kind: mstep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_defwin_ms1_Ahat
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_lfp_def_closed_form_mstep
+    recipe: em_drivers
+    args: { case: lfp_def, kind: mstep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: lfp_def_ms1_Ahat
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EM_poisson_history_estimates
+    recipe: em_drivers
+    args: { case: pp_pois, kind: em }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_pois_betahat
+    tolerance: { rtol: 0.0, atol: 0.2 }
+
+  - name: PPLFP_EM_default_call_xKFinal
+    recipe: em_drivers
+    args: { case: lfp_def, kind: em }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: lfp_def_xKFinal
+    tolerance: { rtol: 0.0, atol: 9.0e-4 }
+
   # v9 iter 40 — recipe-backed entries for the 22 v9_* captures.
   # Each entry's recipe is defined in tools/parity/numerical_drift.py.
   # Tolerances per-entry: tightened where the Python port is bit-equivalent,
