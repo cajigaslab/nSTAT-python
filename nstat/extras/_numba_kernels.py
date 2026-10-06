@@ -164,7 +164,7 @@ if _NUMBA_AVAILABLE:
             x_vec_t = x_p[:, time_index]
             W_mat_t = W_p[:, :, time_index]
 
-            # lambda_delta = exp(clip(mu + beta.T @ x + sum(gamma * H[t]), -20, 20))
+            # lambda_delta = exp(mu + beta.T @ x + sum(gamma * H[t])) (binomial: logistic)
             for c in range(num_cells):
                 acc = mu_vec[c]
                 for k in range(ns):
@@ -177,17 +177,17 @@ if _NUMBA_AVAILABLE:
                         acc += gamma_mat[w, c] * H_tensor[time_index, w, c]
                     lin_term[c] += acc
 
+            # MATLAB PPDecode_updateLinear: no clipping; NaN / Inf -> 1
+            # (decoding_algorithms._matlab_lambda_delta).
             for c in range(num_cells):
-                v = lin_term[c]
-                if v > 20.0:
-                    v = 20.0
-                elif v < -20.0:
-                    v = -20.0
+                e = np.exp(lin_term[c])
                 if is_binomial:
-                    e = np.exp(v)
-                    lambda_delta[c] = e / (1.0 + e)
+                    ld = e / (1.0 + e)
                 else:
-                    lambda_delta[c] = np.exp(v)
+                    ld = e
+                if ld != ld or ld == np.inf:
+                    ld = 1.0
+                lambda_delta[c] = ld
 
             # factor / temp_vec
             for c in range(num_cells):

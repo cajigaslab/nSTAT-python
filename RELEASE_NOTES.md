@@ -11,9 +11,6 @@
 - Faster hot paths with bit-identical results; gains grow with problem size:
   `cross_k_inhom` (isotropic) up to ~10x on typical radius grids,
   `PPSS_EStep` up to ~2.6x, `_ppem_newton_C` ~1.3-1.5x.
-- The EM routines (`KF_EM`, `PP_EM`, `mPPCO_EM`) report progress through
-  `logging` (logger `nstat.decoding_algorithms`) instead of `print`; they are
-  silent by default.
 - Optional-dependency errors now distinguish "not installed" from "installed
   but failed to import" (for example an ABI mismatch).
 - A broken numba install no longer breaks `import nstat` or the decoders
@@ -23,6 +20,224 @@
   target directory (the repo data cache or a custom `NSTAT_DATA_DIR`), including
   the bundled Example 05 hybrid-filter data.
 - Fix: the neuron-selector error message now says "zero-based".
+
+**Point-process EM (`PP_EM`, `PPLFP_EM`, `mPPCO_*`) and the linear decoders
+mirror the repaired MATLAB**
+
+The MATLAB point-process EM routines were repaired upstream (nSTAT PR #135,
+`fix/pp-em` @ `aa88a2b`, pending merge). The Python `PP_*` / `PPLFP_*` families
+and the linear point-process decoders now mirror that MATLAB, checked against
+gold captured from it: `pp_estep.mat`, `pp_square_history.mat`,
+`pplfp_EStep.mat`, `pplfp_MStep.mat`, `pplfp_SE.mat`, `pplfp_EM.mat`,
+`em_glm_mstep.mat` and the new end-to-end `em_drivers.mat`.
+`parity/matlab_defects.yml` lists every MATLAB defect involved, what the port
+does about it, and the known gaps.
+
+*Breaking changes*
+
+- Defaults: `PP_EMCreateConstraints()` and `PPLFP_EMCreateConstraints()` no
+  longer estimate `x0` / `Px0` (`Estimatex0 = EstimatePx0 = 0`: that update is
+  a single-sample estimate that collapses `Px0` and stops EM after ~2
+  iterations), and `PPLFP_EM` / `PPLFP_MStep` default to the
+  `'NewtonRaphson'` M-step (was `'GLM'`, which could not run). Bare
+  `PP_EM(dN, A, Q, mu, beta)` / `PPLFP_EM(y, dN, A, Q, C, R, alpha, mu, beta)`
+  calls now converge.
+- The `mPPCO_*` methods of `DecodingAlgorithms`
+  (`mPPCO_fixedIntervalSmoother`, `mPPCODecodeLinear`, `mPPCODecode_predict`,
+  `mPPCO_EMCreateConstraints`, `mPPCO_ComputeParamStandardErrors`,
+  `mPPCO_EM`, `mPPCO_EStep`, `mPPCO_MStep`) are, as in MATLAB, deprecated
+  aliases: each emits a `DeprecationWarning` and returns exactly what the
+  matching `PPLFP_*` method returns, so they take the `PPLFP_*` defaults. Their
+  former standalone EM could not run (`NameError`). `mPPCODecode_update` is
+  unchanged.
+- `PP_MStep` / `PPLFP_MStep` (and `mPPCO_MStep`) reject an `MstepMethod` other
+  than `'GLM'` / `'NewtonRaphson'` with `ValueError` (MATLAB silently runs
+  Newton-Raphson) and take MATLAB's optional trailing `delta` (default 0.001).
+- `PP_EM` raises where it used to carry on: when its standard-error pass fails
+  (it returned empty `SE` / `Pvals`), for `EnableIkeda = 1`
+  (`NotImplementedError`: MATLAB's Ikeda acceleration step is not ported; the
+  option was ignored), and for a `Qhat0` that is not positive definite
+  (`LinAlgError`, as MATLAB's `chol`; it ran without whitening).
+- `PPLFP_EM` returns its standard errors (its `SE` / `Pvals` were always
+  empty), and both drivers always run the SE pass (MATLAB only when the outputs
+  are requested). At the default `mcIter = 1000` it dominates the run time:
+  4.5 s of 6.2 s for `PP_EM` at N = 800 bins and four cells, 2.4 s of 2.9 s for
+  `PPLFP_EM` at N = 400; lower `mcIter` to speed it up.
+- The Python-only numerical guards are gone wherever MATLAB computes a value:
+  the +-30 clips of the linear predictor in the E-step, M-step and SE routines,
+  the [-20, 20] clip of the decoders' intensity (`PPDecode_updateLinear`,
+  `PPDecodeFilterLinear` including its numba kernel, so also
+  `PP_fixedIntervalSmoother` and `PPHybridFilterLinear`: MATLAB's
+  `exp(linTerm)` with NaN / Inf set to 1), the determinant floors of the E-steps
+  and information criteria, the 1e-12 ridges and 1e-10 eigenvalue floors of
+  `PP_MStep`, the mu Newton guards, least squares for MATLAB's `/` in
+  `PPLFP_MStep`, and the AICc / BIC guards. Results change only where a guard
+  acted: a separated history coefficient (no spike after a spike in its window)
+  now stops at the `exp()` underflow, about -743, as in MATLAB (it walked past
+  it, to -892 on the gold case), and with `EstimatePx0 = 1` EM stops on the
+  collapsed `Px0` as MATLAB does. The decoder clip never acted in the eight
+  paper examples (which do not call the EM routines), and every decoder drift
+  entry is unchanged. The guards kept act only where MATLAB errors or never
+  returns (listed in the ledger).
+- Standard-error details now follow MATLAB: the inverse observed information
+  is projected with MATLAB's `nearestSPD` (shift `-mineig*k^2 + eps(mineig)`;
+  the port used `spacing(norm(A))` and stopped after 100 / 50 passes; SEs move
+  by <= 1e-10 relative on the characterization inputs), and p-values are
+  MATLAB `ztest`'s `2*normcdf(-|z|)`, so very small p-values are now positive
+  (they were 0.0 beyond |z| = 8.3) and an SE of 0 gives p = 0 (it gave 1).
+- Newton-Raphson M-steps take at most 99 steps per parameter group, as MATLAB
+  (`PP_MStep` took 100), and every Newton step is MATLAB's `H\g`: `g/H` for one
+  coefficient, and for several MATLAB's LU, which divides by the pivots.
+  `np.linalg.solve` multiplies by reciprocal pivots, which overflow to Inf for
+  a denormal pivot: on a separated history window near the `exp()` underflow
+  that step was -Inf, the next E-step NaN, and `PP_EM` stopped early (on the
+  gold case after 8 iterations at about -694.5, where MATLAB runs 11 and
+  reaches -743.5). An exactly singular Hessian now gives MATLAB's +-Inf / NaN
+  step (`np.linalg.solve` raised and the port kept the previous value, or took
+  a least-squares step in `PPLFP_MStep`): as in MATLAB, a step with a NaN keeps
+  the previous value and an infinite one is taken (`-[1 1;1 1]\[1;2]` is
+  `[-Inf; Inf]`).
+- Monte Carlo reproducibility: the `PPLFP_*` routines draw from NumPy's global
+  stream, as the `PP_*` routines already did, so `np.random.seed(s)` or
+  `nstat.extras.matlab_rng.seeded_global_rng(s)` reproduces any EM fit bit for
+  bit. They used an unseeded `default_rng()` per call: `np.random.seed` had no
+  effect, and under `seeded_global_rng` every M-step and both SE blocks drew
+  the same normals. Seeded `PPLFP_*` outputs therefore change. MATLAB's own
+  `randn` stream is not reproduced.
+- Decoder behaviour changes outside EM. These change the output of the public
+  decoders for users who never call the EM routines; the *Fixes* entries
+  below ("History (`windowTimes`)", "Square shapes", "`PP_fixedIntervalSmoother`
+  with `lags = 1`") give the details.
+  - History windows follow MATLAB's `History.computeHistory`
+    (`PPDecodeFilterLinear`, `PP_fixedIntervalSmoother`,
+    `PPHybridFilterLinear`): with `windowTimes` given, every history-dependent
+    output moves (the decoded states by up to ~0.08 on random 2- to 5-state
+    problems with windows `[0 2 5 10]` ms). Without history these decoders'
+    outputs were bit-identical on the same problems (apart from the `lags = 1`
+    column below).
+  - Only bins with `dN == 1` count as history spikes, as in MATLAB: count data
+    (`dN > 1` in a bin) silently drops those bins from the history.
+  - A square history-coefficient matrix (as many windows as cells) is no
+    longer transposed (`PPDecodeFilterLinear`, `PP_fixedIntervalSmoother`,
+    `PPHybridFilterLinear`, `PPDecode_updateLinear`, `PPLFP_Decode_update`,
+    and so `PPLFP_fixedIntervalSmoother` in that case).
+  - New `ValueError`s: a permuted `HkAll` whose shape fits two layouts
+    (`PPDecode_updateLinear`, `PPLFP_Decode_update`, which take `HkAll`
+    directly), and `windowTimes` edges at or before `-delta`
+    (`PPDecodeFilterLinear`, `PP_fixedIntervalSmoother`,
+    `PPHybridFilterLinear`, `PPLFP_fixedIntervalSmoother` and the EM drivers;
+    they ran before).
+  - `PP_fixedIntervalSmoother` with `lags = 1`: the first predicted column now
+    holds the first filtered estimate (it was zero).
+
+*Fixes*
+
+- `PP_EStep` could not run (it passed MATLAB's 1-based bin index and permuted
+  history tensor to the zero-based decoder update). It matches MATLAB at every
+  time step: states, covariances, log-likelihood and sufficient statistics to
+  ~1e-12.
+- History (`windowTimes`) in `PPDecodeFilterLinear`, `PP_fixedIntervalSmoother`,
+  `PPHybridFilterLinear` and the EM drivers: spikes were assigned to the next
+  window relative to MATLAB's `History.computeHistory` (a first window spanning
+  one bin was always empty); the windows are now MATLAB's exactly, including
+  edges off the time grid (MATLAB's colon is reproduced element for element),
+  and ~500x faster. Only bins with `dN == 1` count. Window edges at or before
+  `-delta` raise `ValueError`, as they fail in MATLAB.
+- Square shapes: a square history-coefficient matrix (as many windows as
+  cells) is no longer transposed (filters, smoother, E-steps), the E-step
+  log-likelihood orients each history slice by its columns, a square `beta`
+  (as many states as cells) is not transposed, a history tensor with as many
+  bins as cells is not transposed, and a one-cell history stored as an `N x nW`
+  matrix is accepted. A permuted tensor whose shape fits two layouts raises
+  `ValueError`.
+- `PP_fixedIntervalSmoother` with `lags = 1` left the first predicted column at
+  zero; it now holds the first filtered estimate.
+- Default history windows: with `windowTimes` omitted, `PP_EM` / `PPLFP_EM` use
+  one window per coefficient, `0:delta:size(gamma,1)*delta` (MATLAB's old rule
+  had one window too many), read a coefficient row whose length is not the
+  number of cells as one shared column, and use a nonzero shared column for
+  every cell (an all-zero `gamma` still means no history). That shared column
+  is accepted everywhere MATLAB's drivers pass it (the filters, smoother,
+  `PP_EStep`, `PPLFP_Decode_update`, `PPLFP_EStep`, both SE routines). History
+  is built on the `delta` grid (`PP_EM` raised for `delta` other than 1 ms).
+- Binomial fits: the Newton beta Hessian of `PP_MStep` / `PPLFP_MStep` had the
+  wrong sign (one M-step moved beta by ~1e4-1e14), the binomial beta
+  information of both SE routines had the same defect, and the binomial mu
+  information used `-3 E[p^3]` instead of `-2 E[p^3]`; they now match finite
+  differences.
+- EM drivers stop before the M-step on a non-finite E-step log-likelihood and
+  return the best finite iterate (a NaN iterate could be returned).
+  `PP_MStep` no longer estimates an all-zero `gamma`. One cell with one history
+  window (a scalar or `1 x 1` gamma) runs as one parameter.
+- Scales: EM runs on a whitened state; whitening now uses the lower Cholesky
+  factor (`Tq Q0 Tq' = I`; with a non-diagonal `Q0` / `R0` and the default
+  diagonal constraints EM returned its initial parameters, and `QhatDiag = 1`
+  now means diagonal in the whitened frame, as in MATLAB), `PPLFP_EM` maps
+  covariances back symmetrically, the SE pass receives the original `y` and
+  original-scale sums, and `IC` (`llobs`, `llcomp`, AIC, AICc, BIC) is on the
+  original scale (`IC.llcomp` equals the E-step log-likelihood at the returned
+  estimates). `PPLFP_EM` counts `R`'s parameters with `R`'s flags.
+- Monte Carlo state draws use the lower Cholesky factor (their covariance was
+  `R R'`, not `W`, for a non-diagonal `W`).
+- Standard-error layout: `Pvals.gamma`, `SE.A` (full `A`), `SE.C`, a full
+  `SE.Q`, and `PP_ComputeParamStandardErrors`' `A` information block (all
+  Python-only slips). With `RhatDiag = 0` (a full `R`)
+  `PPLFP_ComputeParamStandardErrors` now works (it raised for every call of
+  `PPLFP_EM`): every entry of `R` is a parameter, row by row like a full `Q`.
+  MATLAB's own full-R branch errors there; this is a Python extension.
+- `MstepMethod='GLM'` runs in `PP_MStep` (it silently ran Newton-Raphson) and
+  `PPLFP_MStep` (it raised): coefficients are read by label, an unestimable one
+  (standard error >= 100) keeps its previous value, and the fit uses the
+  `delta` time base.
+- `Analysis.GLMFit` (poisson, `'GLM'`, unpenalized: the default `l2 = 0`)
+  handles a rank-deficient design as MATLAB's `glmfit`: a column-pivoted QR
+  finds the rank, the fit uses the independent columns, and the dependent
+  columns get coefficient 0 and standard error 0 (they got arbitrary
+  coefficients with NaN or zero standard errors; MATLAB's own GLM M-step test
+  case gave beta [33.0, -620.7] instead of [10.66, 0]). Full-rank fits are
+  bit-identical, and a design with a NaN still returns the all-NaN fit (the QR
+  briefly raised on it; MATLAB's `glmfit` would drop the NaN rows, which is not
+  mirrored). The binomial `'BNLRCG'` fit is not a MATLAB mirror on
+  rank-deficient designs (MATLAB's `bnlrCG` returns complex standard errors
+  there; see the ledger). This changes one notebook gallery: in
+  `notebooks/HistoryExamples.ipynb` 19 of 48 `GLMFit` calls are
+  rank-deficient (the history fits: design 5001 x 9 of rank 7, because the
+  notebook's synthetic population has almost no spikes; see the ledger entry
+  `history-examples-near-zero-spike-population`). Their SEs go from all NaN to
+  finite values (about 450-885, and 0 for the two all-zero history columns),
+  so its figures 4-6 gain the Fit2 error bars; b and AIC are unchanged (b to
+  7e-12). The committed gallery PNGs were not regenerated.
+- The EM routines report progress through `logging` instead of `print` and are
+  silent by default (`KF_EM` and `PP_EM` on logger `nstat.decoding_algorithms`,
+  `PPLFP_EM` / `PPLFP_MStep` on `nstat.decoding.PPLFP`).
+
+*Known limits* (details in `parity/matlab_defects.yml`)
+
+- Monte Carlo EM is compared with MATLAB within the measured spread of the
+  Monte Carlo, not bit for bit, and checked for bias against held-out seeds.
+  At `mcIter = 100` the beta SEs and the off-diagonal A SEs of `PP_EM` vary by
+  10 to 70 % from seed to seed, so they are not compared (at `mcIter = 1000`
+  every `PPLFP_EM` SE varies by <= 3 %). The iteration at which EM stops (first
+  likelihood decrease) is itself random (on one data set: 6 to 11 iterations
+  over MATLAB seeds and over Python seeds), and where EM is still moving the
+  estimates depend on that iteration more than on the draws.
+- A separated history window has no finite estimate, and MATLAB's SE pass
+  never returns on it (its observed information is singular). Python returns:
+  the SEs come from the pseudo-inverse, and every parameter in its null space
+  (not identifiable) gets SE and p-value NaN, with a `RuntimeWarning` naming
+  them; this used to report an SE of about 1e-8 and p = 0 for them.
+- Not changed: the `KF_EM` family. MATLAB's upper-factor draws and whitening
+  are mirrored, but its information blocks are not: Python uses the intended
+  `(N/2) R^-1 e e' R^-1` (and `(1/2) P^-1 e e' P^-1`) forms, where MATLAB's
+  `KF_EM.m` (`:510`, `:521`, `:577`, `:588`, `:623`) has the precedence defect
+  fixed for the point-process routines (`N/2*(R)\e*e'/(R)` evaluates to
+  `(2/N) R^-1 e e' R^-1`), so `KF_EM`'s `SE.Q` / `SE.R` / `SE.Px0` differ from
+  MATLAB's. Its SE pass also keeps the older conventions: a Higham projection
+  with eigenvalues clamped at eps (not MATLAB's `nearestSPD` shift loop) and
+  p = 1 for an SE <= 0, where the point-process routines now give MATLAB's
+  p = 0 for an SE of 0. Also not changed: counts of a full `Q` / `R` by all d^2 entries, the
+  non-scale-equivariant `nearestSPD`, the GLM M-step's plug-in drift, and the
+  absence of an analytic check of `SE.x0` / `SE.Px0`.
 
 **Docs**
 

@@ -135,9 +135,9 @@ class TestMatlabRandnReference:
     bit-equivalence have a visible baseline to start from.
     """
 
-    # Not yet captured/committed: needs a MATLAB session.  Reproduce with
-    # tools/parity/matlab/capture_randn_ref.m (rng(42) convention), then
-    # commit the resulting .mat so this test runs in CI.
+    # Captured with tools/parity/matlab/capture_randn_ref.m (MATLAB R2025b,
+    # rng(42) convention) and committed, so this test runs in CI; the skip
+    # below only guards a checkout without the fixture.
     REF_PATH = (
         Path(__file__).resolve().parent
         / "parity" / "fixtures" / "matlab_gold" / "randn_ref.mat"

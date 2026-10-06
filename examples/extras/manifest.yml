@@ -78,8 +78,8 @@ extras:
       routine in ``nstat.extras.em.dynamax_bridge`` — linear-Gaussian EM,
       point-process filter/smoother (Eden et al. 2004), point-process EM,
       hybrid Poisson+Gaussian EM, and a pure-NumPy held-out predictive
-      log-likelihood — as an opt-in appendix, closing the
-      AUDIT_REPORT.md §3.2 gap (19 unported MATLAB methods).
+      log-likelihood — as an opt-in appendix: Dynamax alternatives to
+      the native MATLAB-mirror KF_EM / PP_EM / PPLFP_EM (mPPCO_EM).
     figures:
       - filename: fig01_bci_reach_trajectories.png
       - filename: fig02_acquisition_metrics.png

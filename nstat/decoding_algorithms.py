@@ -14,8 +14,9 @@ Covered families (all entry points are ``@staticmethod``):
   ``kalman_smoother``, ``kalman_smootherFromFiltered``,
   ``kalman_fixedIntervalSmoother``, plus their static-coefficient
   variants.
-- **Expectation-maximisation** — ``PPSS_EMFB`` (state-space GLM EM) and
-  ``mPPCO_EM`` (mixed point-process / continuous-observation EM).
+- **Expectation-maximisation** — ``PPSS_EMFB`` (state-space GLM EM),
+  ``KF_EM``, ``PP_EM`` and ``PPLFP_EM`` (mixed point-process /
+  continuous-observation EM; ``mPPCO_EM`` is its deprecated alias).
 
 Most algorithms follow the derivations in the original 2012 paper (see
 :doc:`/PaperOverview`).  Spike trains are :class:`~nstat.nspikeTrain.nspikeTrain`
@@ -26,6 +27,7 @@ kept flat to match the MATLAB layout.
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Sequence
 
 import numpy as np
@@ -34,19 +36,19 @@ from .cif import CIF
 from .errors import UnsupportedWorkflowError
 from .nspikeTrain import nspikeTrain
 
-# EM progress messages (KF_EM / KF_EStep / PP_EM / mPPCO_EM) go to this
+# EM progress messages (KF_EM / KF_EStep / PP_EM) go to this
 # logger at INFO level -- silent unless the caller configures logging, e.g.
 # ``logging.basicConfig(level=logging.INFO)``.  MATLAB's DecodingAlgorithms.m
 # prints nothing here, so these are Python-only diagnostics.
 _logger = logging.getLogger(__name__)
 
-# EM convergence hyperparameters shared by PPSS_EMFB, PPSS_EM, KF_EM, PP_EM
-# and mPPCO_EM (same values as the literals they replace; none of these
+# EM convergence hyperparameters shared by PPSS_EMFB, PPSS_EM, KF_EM, PP_EM and
+# PPLFP_EM (same values as the literals they replace; none of these
 # MATLAB-mirrored methods exposes them as arguments).
 _EM_TOL_ABS = 1e-3  # absolute parameter-change tolerance (tolAbs)
 _EM_TOL_REL = 1e-3  # relative tolerance (tolRel; PPSS_EMFB and PPSS_EM)
 _EM_LL_TOL = 1e-3  # log-likelihood change tolerance (llTol)
-_EM_MAX_ITER = 100  # maxIter for PPSS_EM, KF_EM, PP_EM, mPPCO_EM
+_EM_MAX_ITER = 100  # maxIter for PPSS_EM, KF_EM, PP_EM, PPLFP_EM
 _PPSS_EMFB_MAX_ITER = 2000  # PPSS_EMFB's own, larger maxIter
 
 
@@ -230,7 +232,20 @@ def _normalize_gamma(gamma, num_windows: int, num_cells: int) -> np.ndarray:
         raise ValueError("gamma must align with windowTimes or number of cells")
     if arr.ndim != 2:
         raise ValueError("gamma must be scalar, vector, or 2D array")
-    if arr.shape == (num_cells, num_windows):
+    if arr.shape == (num_windows, 1) and num_cells > 1:
+        # A shared numWindows x 1 column: MATLAB's drivers expand it with
+        # if(size(gamma,2)==1 && C>1) gamma = repmat(gamma,1,C)
+        # (PPAF.PPDecodeFilterLinear / PP_fixedIntervalSmoother, PPHF.
+        # PPHybridFilterLinear -- repaired B2 -- and PPLFP).  It used to raise.
+        return np.repeat(arr, num_cells, axis=1)
+    # MATLAB reorients gamma only with ``if(size(gamma,2)~=C) gamma=gamma'; end``
+    # (PPAF.PPDecodeFilterLinear, PPAF.PP_fixedIntervalSmoother,
+    # PPLFP.PPLFP_fixedIntervalSmoother); PPAF.PPDecode_updateLinear,
+    # PointProcessEM.PP_EStep, PPLFP.PPLFP_DecodeLinear and
+    # PPHF.PPHybridFilterLinear never transpose it.  So a gamma that is already
+    # numWindows x C -- including a square one (numWindows == C) -- is kept as
+    # is; only a C x numWindows gamma is transposed.
+    if arr.shape != (num_windows, num_cells) and arr.shape == (num_cells, num_windows):
         arr = arr.T
     if arr.shape != (num_windows, num_cells):
         raise ValueError("gamma must be numWindows x C after normalization")
@@ -242,39 +257,367 @@ def _normalize_history_tensor(HkAll, num_steps: int, num_windows: int, num_cells
         return np.zeros((num_steps, num_windows, num_cells), dtype=float)
 
     arr = np.asarray(HkAll, dtype=float)
-    expected_shapes = {
-        (num_steps, num_windows, num_cells): arr,
-        (num_windows, num_cells, num_steps): np.transpose(arr, (2, 0, 1)),
-        (num_cells, num_windows, num_steps): np.transpose(arr, (2, 1, 0)),
-        (num_cells, num_steps, num_windows): np.transpose(arr, (1, 2, 0)),
-    }
-    for shape, normalized in expected_shapes.items():
-        if arr.shape == shape:
-            return normalized
+    # MATLAB stores a one-cell N x nW x 1 history as an N x nW matrix (it drops
+    # the trailing singleton dimension), so accept that 2-D form when C == 1.
+    if arr.ndim == 2 and num_cells == 1 and arr.shape == (num_steps, num_windows):
+        return arr.reshape(num_steps, num_windows, 1)
+    # The canonical (N, nW, C) layout is checked first so that it wins when
+    # N == C makes another layout's shape identical to it.  (The previous
+    # dict-keyed lookup let the colliding (C, nW, N) entry overwrite it and
+    # silently swapped time and cells.)
+    if arr.shape == (num_steps, num_windows, num_cells):
+        return arr
+    # Other layouts are accepted only when the shape identifies exactly one of
+    # them.  A shape that fits several (e.g. MATLAB's permute(HkAll,[2 3 1]) =
+    # (nW, C, N) when nW == C, which is also (C, nW, N)) cannot be read safely
+    # -- MATLAB's PPAF and PPLFP update steps read such a square slice
+    # differently -- so it is rejected instead of silently picking one.
+    matches = [
+        axes
+        for shape, axes in (
+            ((num_cells, num_steps, num_windows), (1, 2, 0)),
+            ((num_cells, num_windows, num_steps), (2, 1, 0)),
+            ((num_windows, num_cells, num_steps), (2, 0, 1)),
+        )
+        if arr.shape == shape
+    ]
+    if len(matches) == 1:
+        return np.transpose(arr, matches[0])
+    if len(matches) > 1:
+        raise ValueError(
+            f"HkAll of shape {arr.shape} is ambiguous for N={num_steps}, numWindows={num_windows}, "
+            f"C={num_cells}: it fits more than one permuted layout.  Only the canonical "
+            "(N, numWindows, C) layout is unambiguous; pass the history in that layout."
+        )
     raise ValueError("HkAll must align with N x numWindows x C MATLAB-style history storage")
 
 
 def _compute_history_terms(dN: np.ndarray, delta: float, windowTimes) -> np.ndarray:
+    """Spike-history design tensor ``HkAll`` (N x numWindows x C) from ``windowTimes``.
+
+    Reproduces what the MATLAB decoders build per cell with
+    ``History(windowTimes,0,maxTime).computeHistory(nspikeTrain((find(dN(c,:)==1)-1)*delta)
+    .resample(1/delta)).dataToMatrix`` (PPAF.m PPDecodeFilterLinear /
+    PP_fixedIntervalSmoother; PPLFP.m PPLFP_EM builds it without the resample,
+    which is identical at delta = 1 ms).  ``History`` filters the spike
+    train with ones on taps ``ceil(t_i*sampleRate)+1 : ceil(t_(i+1)*sampleRate)``
+    and delays the result one sample, so window ``i`` counts the spikes
+    ``L`` bins back for ``ceil(t_i*sampleRate) + 1 <= L <= ceil(t_(i+1)*sampleRate)``
+    (sampleRate = 1/delta) -- i.e. lags in ``(t_i, t_(i+1)]`` for edges on the
+    sample grid.  The edges use MATLAB's own ``t * sampleRate`` product, so an
+    edge such as 0.009 s at 1 kHz (9.000000000000002) rounds as it does in
+    MATLAB.  Only bins with ``dN == 1`` are spikes, as in MATLAB's ``find``.
+    """
     obs = _as_observation_matrix(dN)
     windows = np.asarray(windowTimes, dtype=float).reshape(-1)
     if windows.size <= 1:
         return np.zeros((obs.shape[1], 0, obs.shape[0]), dtype=float)
 
-    num_steps = obs.shape[1]
+    num_cells, num_steps = obs.shape
     num_windows = windows.size - 1
-    num_cells = obs.shape[0]
+    sample_rate = 1.0 / float(delta)
     out = np.zeros((num_steps, num_windows, num_cells), dtype=float)
 
-    for time_index in range(num_steps):
-        if time_index == 0:
-            continue
-        previous_indices = np.arange(time_index)
-        lag_times = (time_index - previous_indices) * float(delta)
-        for window_index, (window_start, window_stop) in enumerate(zip(windows[:-1], windows[1:])):
-            mask = (lag_times >= float(window_start)) & (lag_times < float(window_stop))
-            if np.any(mask):
-                out[time_index, window_index, :] = np.sum(obs[:, previous_indices[mask]], axis=1)
+    # counts[:, k] = number of spikes in bins 0 .. k-1, so the spikes in bins
+    # a .. b are counts[:, b + 1] - counts[:, a].
+    spikes = (obs == 1).astype(float)
+    counts = np.zeros((num_cells, num_steps + 1), dtype=float)
+    np.cumsum(spikes, axis=1, out=counts[:, 1:])
+    steps = np.arange(num_steps)
+    for window_index in range(num_windows):
+        first_lag = int(np.ceil(float(windows[window_index]) * sample_rate)) + 1
+        last_lag = int(np.ceil(float(windows[window_index + 1]) * sample_rate))
+        if last_lag < first_lag:
+            continue  # empty window (MATLAB's b(StartSample:NumSamples) is empty)
+        if first_lag < 1:
+            # MATLAB's b(StartSample:NumSamples)=1 fails on a non-positive
+            # index; here it would sum the current and future bins.
+            raise ValueError(
+                f"windowTimes edge {float(windows[window_index])!r} reaches lag {first_lag} at "
+                f"delta={float(delta)!r}: history windows must lie at or after one bin back "
+                "(edges > -delta)"
+            )
+        # Bins n - last_lag .. n - first_lag, clipped to the observed record.
+        upper = np.clip(steps - first_lag + 1, 0, num_steps)
+        lower = np.clip(steps - last_lag, 0, num_steps)
+        out[:, window_index, :] = (counts[:, upper] - counts[:, lower]).T
     return out
+
+
+def _em_history_windows(gamma, windowTimes, delta, num_cells: int):
+    """History coefficients and windows of ``PP_EM`` / ``PPLFP_EM`` (MATLAB B9).
+
+    Mirrors the repaired MATLAB default rule (PointProcessEM.m PP_EM and
+    PPLFP.m PPLFP_EM, fix/pp-em @ a457b54):
+
+    * ``windowTimes`` empty and ``gamma`` empty or a scalar 0: no history
+      (returns ``windowTimes = None``).
+    * ``windowTimes`` empty otherwise: one window per history coefficient.
+      ``numWindows = size(gamma, 1)`` -- a scalar is one shared window, a
+      ``numWindows x C`` matrix one window per row, and a row whose length is
+      not the number of cells is the shared coefficient list, made a column
+      first -- and ``windowTimes = 0:deltaW:numWindows*deltaW`` (built
+      element-exactly), ``deltaW = delta`` (0.001 if ``delta`` is None).
+      (The former rule ``0:delta:(length(gamma)+1)*delta`` gave
+      ``length(gamma) + 1`` windows for ``length(gamma)`` coefficients.)
+    * A nonzero shared column (``numWindows x 1``, ``numWindows ==
+      numel(windowTimes) - 1``, more than one cell) is expanded with
+      ``repmat(gamma, 1, numCells)``.  An all-zero gamma is left as passed:
+      0 means "no history coefficients" downstream (M-step, SE gamma block,
+      IC parameter count).
+
+    NumPy has no row/column distinction for 1-D arrays: a 1-D ``gamma`` is
+    read as MATLAB's row, i.e. ``(1, C)`` when its length is the number of
+    cells and the shared ``(numWindows, 1)`` column otherwise (with explicit
+    ``windowTimes`` too, where MATLAB would reject a row).  A 2-D ``(1, n)``
+    row is made a column only in the default-window branch, as in MATLAB.  A
+    0-d scalar stays 0-d unless it is expanded.
+
+    Returns ``(gamma, windowTimes)`` with ``gamma`` a float array.
+    """
+    from .core import _matlab_colon_exact
+
+    g = np.zeros(0) if gamma is None else np.asarray(gamma, dtype=float)
+    if g.ndim == 1:
+        g = g.reshape(1, -1) if g.size == num_cells else g.reshape(-1, 1)
+    elif g.ndim > 2:
+        raise ValueError("gamma must be a scalar, vector or numWindows x C matrix")
+
+    if _is_empty_value(windowTimes):
+        if g.size == 0 or (g.size == 1 and float(g.reshape(-1)[0]) == 0.0):
+            return g, None
+        # MATLAB: if(isrow(gamma) && numel(gamma)~=size(dN,1)) gamma = gamma(:)
+        # -- in this default-window branch only.  A 2-D (1, n) row (what
+        # scipy.io.loadmat returns for a MATLAB row vector) with n != C is the
+        # shared coefficient list.
+        if g.ndim == 2 and g.shape[0] == 1 and g.size != num_cells:
+            g = g.reshape(-1, 1)
+        delta_w = 0.001 if delta is None else float(delta)
+        num_windows = 1 if g.ndim == 0 else g.shape[0]
+        windowTimes = _matlab_colon_exact(0.0, delta_w, num_windows * delta_w)
+    windowTimes = np.asarray(windowTimes, dtype=float).reshape(-1)
+
+    g2 = g.reshape(1, 1) if g.ndim == 0 else g
+    if (g.size > 0 and g2.shape[1] == 1 and num_cells > 1 and g2.shape[0] == windowTimes.size - 1
+            and np.any(g2 != 0)):
+        g = np.tile(g2, (1, num_cells))
+    return g, windowTimes
+
+
+def _expand_shared_se_gamma(gammahat, windowTimes, num_cells: int):
+    """Expand a shared history-coefficient column per cell (MATLAB F12).
+
+    Mirrors the repaired MATLAB ``PP_ComputeParamStandardErrors`` /
+    ``PPLFP_ComputeParamStandardErrors`` entry rule (fix/pp-em 1c051a9), the
+    B9 rule of the EM drivers: if ``windowTimes`` is non-empty, ``gammahat``
+    is one column (a scalar is one window), there is more than one cell,
+    the column has ``numel(windowTimes) - 1`` rows and a nonzero entry, then
+    ``gammahat = repmat(gammahat, 1, numCells)``.  An all-zero gamma is left
+    as passed.  A 1-D array is read as in :func:`_em_history_windows` (a
+    row when its length is the number of cells, else the shared column).
+    """
+    g = np.asarray(gammahat, dtype=float)
+    if _is_empty_value(windowTimes) or num_cells <= 1 or g.size == 0:
+        return g
+    if g.ndim == 0:
+        col = g.reshape(1, 1)
+    elif g.ndim == 1:
+        col = g.reshape(1, -1) if g.size == num_cells else g.reshape(-1, 1)
+    else:
+        col = g
+    n_windows = np.asarray(windowTimes, dtype=float).reshape(-1).size - 1
+    if col.ndim == 2 and col.shape[1] == 1 and col.shape[0] == n_windows and np.any(col != 0):
+        return np.tile(col, (1, num_cells))
+    return g
+
+
+_MSTEP_METHODS = ("GLM", "NewtonRaphson")
+
+
+def _check_mstep_method(MstepMethod):
+    """Resolve ``MstepMethod`` (``None`` -> ``'NewtonRaphson'``) and reject unknown values.
+
+    MATLAB runs the Newton-Raphson M-step for any value other than ``'GLM'``;
+    this port raises instead (a misspelt ``'GLM'`` silently ran Newton-Raphson).
+    """
+    if MstepMethod is None or (isinstance(MstepMethod, str) and MstepMethod == ""):
+        return "NewtonRaphson"
+    if not isinstance(MstepMethod, str) or MstepMethod not in _MSTEP_METHODS:
+        raise ValueError(f"MstepMethod must be 'GLM' or 'NewtonRaphson' (got {MstepMethod!r})")
+    return MstepMethod
+
+
+def _em_glm_mstep(dN, x_K, fitType, muhat, betahat, gammahat, windowTimes, delta):
+    """GLM M-step for (mu, beta, gamma) of ``PP_MStep`` / ``PPLFP_MStep``.
+
+    Port of the repaired MATLAB GLM block (``PointProcessEM.PP_MStep`` /
+    ``PPLFP.PPLFP_MStep`` with ``MstepMethod = 'GLM'``, fix/pp-em @ 8dbd0e4;
+    the two MATLAB blocks are identical).  It regresses each cell's spikes on
+    the smoothed means ``x_K`` (a plug-in fit that ignores ``W_K``) through
+    the toolbox pipeline: ``Covariate`` -> ``Trial`` -> ``TrialConfig`` ->
+    ``Analysis.RunAnalysisForAllNeurons`` (``'GLM'`` for poisson,
+    ``'BNLRCG'`` otherwise) -> ``FitResSummary``.
+
+    * Time base (C6 / R4c): ``time = (0:K-1)*delta``, spike trains with
+      bin width ``delta`` and the Trial sample rate ``1/delta``.
+    * History: self-history windows ``windowTimes`` unless gamma is all zero
+      (MATLAB ``if(gammahat==0)``: no history term, gamma returned as passed).
+      A nonzero (or empty) gamma with an empty ``windowTimes`` raises
+      ``ValueError``, as MATLAB errors there.
+    * Coefficients are read BY LABEL (F3: ``'constant'`` -> mu, ``'v<i>'`` ->
+      beta row i; R4a: the window labels of the same ``History`` object the
+      Trial uses -> gamma rows).  A coefficient that MATLAB's
+      ``FitResSummary`` reports as NaN keeps its previous value: MATLAB's
+      ``computePlotParams`` drops every coefficient whose standard error is
+      not ``< 100`` (not identifiable, e.g. a history window separated by a
+      refractory period), and so does this port -- the Python
+      ``FitResSummary.getCoeffs`` returns the raw coefficients with their
+      standard errors, so the filter is applied here.  A label absent from
+      the fit (F1: no window estimable at all) also keeps the previous value.
+      On a rank-deficient design (collinear smoothed means: one cell, or more
+      states than cells, under an isotropic state model) ``Analysis.GLMFit``
+      returns the dependent columns' coefficients as 0 with standard error 0,
+      as MATLAB ``glmfit`` does, so those entries become 0.
+    * Warnings raised during the fit are silenced inside a scoped
+      ``warnings.catch_warnings()`` block (MATLAB ``warning('OFF')`` with
+      the caller's state restored, C9); no global state changes.
+
+    Returns ``(muhat_new, betahat_new, gammahat_new)``.
+    """
+    from .analysis import Analysis
+    from .core import Covariate
+    from .fit import FitResSummary
+    from .history import History
+    from ._spike_train_impl import nspikeTrain as _nst
+    from ._trial_config_impl import ConfigCollection, TrialConfig
+    from .trial import CovariateCollection, SpikeTrainCollection, Trial
+
+    dN = np.atleast_2d(np.asarray(dN, dtype=float))
+    x_K = np.atleast_2d(np.asarray(x_K, dtype=float))
+    dx, K = x_K.shape
+    numCells = dN.shape[0]
+    delta = 0.001 if delta is None else float(delta)
+    muhat_new = np.asarray(muhat, dtype=float).reshape(-1).copy()
+    betahat_new = np.atleast_2d(np.asarray(betahat, dtype=float)).copy()
+    gammahat_in = np.asarray(gammahat, dtype=float)
+    # MATLAB if(gammahat==0): true when every entry is 0 (false for an empty gamma).
+    gamma_is_zero = gammahat_in.size > 0 and bool(np.all(gammahat_in == 0))
+    wt = None if _is_empty_value(windowTimes) else np.asarray(windowTimes, dtype=float).reshape(-1)
+    if not gamma_is_zero and wt is None:
+        # MATLAB fits no history then, and errors when it reads the window
+        # labels: History([], ...).computeHistory(nst{1}).getCov(1) raises
+        # MATLAB:nonLogicalConditional (CovColl.getCov), for a scalar, row,
+        # column or matrix gamma alike (checked at fix/pp-em aa88a2b).  The EM
+        # drivers never get here (an empty windowTimes defaults to one window
+        # per coefficient, or gamma = 0 means no history).
+        raise ValueError(
+            "GLM M-step: nonzero (or empty) history coefficients gammahat need history windows "
+            "(windowTimes is empty); pass windowTimes, or gammahat = 0 for no history")
+
+    time = np.arange(K) * delta  # MATLAB (0:K-1)*delta
+    labels = [f"v{i + 1}" for i in range(dx)]
+    labels2 = ["vel", *labels]
+    vel = Covariate(time, x_K.T, "vel", "time", "s", "m/s", labels)
+    baseline = Covariate(time, np.ones((K, 1)), "Baseline", "time", "s", "", ["constant"])
+    nst = [_nst(time[np.flatnonzero(dN[i, :] == 1)], "", binwidth=delta) for i in range(numCells)]
+    trial = Trial(SpikeTrainCollection(nst), CovariateCollection([vel, baseline]))
+    sampleRate = 1.0 / delta
+    selfHist = None if gamma_is_zero else wt
+    config = TrialConfig([["Baseline", "constant"], labels2], sampleRate, selfHist, None)
+    config.setName("Baseline")
+    algorithm = "GLM" if fitType == "poisson" else "BNLRCG"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        results = Analysis.RunAnalysisForAllNeurons(trial, ConfigCollection([config]), 0, algorithm)
+    summary = FitResSummary(results)
+
+    coeffMat, coeffLabels, seMat = summary.getCoeffs()  # numCells x numLabels
+    coeffMat = np.asarray(coeffMat, dtype=float).reshape(numCells, -1)
+    seMat = np.asarray(seMat, dtype=float).reshape(numCells, -1)
+    # MATLAB FitResSummary keeps a coefficient only when its se < 100 (NaN se
+    # fails the test too); everything else is NaN, i.e. "keep previous".
+    est = np.where(seMat < 100, coeffMat, np.nan)
+    coeffLabels = list(coeffLabels)
+
+    def _fitted(label):
+        return est[:, coeffLabels.index(label)] if label in coeffLabels else None
+
+    v = _fitted("constant")
+    if v is not None:
+        keep = ~np.isnan(v)
+        muhat_new[keep] = v[keep]
+    for i, label in enumerate(labels):
+        v = _fitted(label)
+        if v is not None:
+            keep = ~np.isnan(v)
+            betahat_new[i, keep] = v[keep]
+
+    if gamma_is_zero:
+        return muhat_new, betahat_new, gammahat_in.copy()
+    if wt.size < 2:  # no complete window: nothing to map (gamma kept)
+        return muhat_new, betahat_new, gammahat_in.copy()
+    nWin = wt.size - 1
+    winLabels = list(History(wt, float(time.min()), float(time.max())).computeHistory(nst[0]).getCov(0).dataLabels)
+    gPrev = gammahat_in
+    if gPrev.ndim == 1:  # NumPy 1-D: a row when its length is numCells, else the shared column
+        gPrev = gPrev.reshape(1, -1) if gPrev.size == numCells else gPrev.reshape(-1, 1)
+    if gPrev.size == 1:  # MATLAB isscalar(gPrev): gPrev*ones(nWin, numCells)
+        histTemp = float(gPrev.reshape(-1)[0]) * np.ones((nWin, numCells))
+    elif gPrev.shape[1] == 1:  # shared column: repmat(gPrev, 1, numCells)
+        histTemp = np.tile(gPrev, (1, numCells))
+    else:
+        histTemp = np.array(gPrev, dtype=float, copy=True)
+    for w in range(nWin):
+        v = _fitted(winLabels[w])
+        if v is not None:
+            keep = ~np.isnan(v)
+            histTemp[w, keep] = v[keep]
+    if gammahat_in.ndim == 0 and histTemp.size == 1:
+        histTemp = histTemp.reshape(())  # a 0-d coefficient comes back 0-d, as in the Newton-Raphson branch
+    return muhat_new, betahat_new, histTemp
+
+
+def _mc_state_draws(m, W, M, normal, *, non_pd="eig_floor"):
+    """``M`` Monte Carlo draws from ``N(m, W)``, returned as a ``dx x M`` array.
+
+    Private mirror of the repaired MATLAB helper ``mcStateDraws`` (F9;
+    ``PointProcessEM.m`` / ``PPLFP.m``, fix/pp-em @ 8dbd0e4), used by every
+    Monte Carlo state draw of ``PP_ComputeParamStandardErrors``,
+    ``PP_MStep``, ``PPLFP_ComputeParamStandardErrors`` and ``PPLFP_MStep``.
+
+    MATLAB drew ``m + chol(W)*z``; ``chol`` returns the UPPER factor ``R``
+    with ``R'*R = W``, so the draws had covariance ``R*R'``, which is ``W``
+    only for a diagonal ``W`` (or ``dx == 1``).  The repaired draw is
+    ``m + R'*z``, covariance ``R'*R = W``.  Here ``R' = L =
+    np.linalg.cholesky(W)`` (NumPy returns the lower factor), so the draw is
+    ``m + L @ z``; this port used to mirror the defect as
+    ``np.linalg.cholesky(W).T @ z``.  For a diagonal ``W`` both forms are
+    bit-identical.
+
+    ``normal(dx, M)`` returns the ``dx x M`` standard-normal matrix ``z`` --
+    each caller passes its own generator, so the random stream is unchanged
+    (MATLAB keeps ``normrnd(0,1,dx,M)`` too).
+
+    ``non_pd`` selects the Python-only fallback each call site already had
+    when ``W`` is not positive definite (MATLAB has none: its partial factor
+    raises a dimension error).  ``"eig_floor"`` (the PP sites) factors
+    ``W`` with its eigenvalues floored at ``1e-12``; ``"zero"`` (the PPLFP
+    sites) returns ``m`` repeated ``M`` times (a zero factor).
+    """
+    m = np.asarray(m, dtype=float).reshape(-1)
+    W = np.asarray(W, dtype=float).reshape(m.size, m.size)
+    try:
+        L = np.linalg.cholesky(W)
+    except np.linalg.LinAlgError:
+        if non_pd == "zero":
+            L = np.zeros_like(W)
+        elif non_pd == "eig_floor":
+            eigv, eigvec = np.linalg.eigh(W)
+            L = np.linalg.cholesky(eigvec @ np.diag(np.maximum(eigv, 1e-12)) @ eigvec.T)
+        else:  # pragma: no cover - internal misuse
+            raise ValueError(f"unknown non_pd fallback {non_pd!r}")
+    z = np.asarray(normal(m.size, int(M)), dtype=float).reshape(m.size, int(M))
+    return m[:, None] + L @ z
 
 
 def _lambda_delta_from_state(
@@ -289,13 +632,238 @@ def _lambda_delta_from_state(
     histterm = np.asarray(HkAll[time_index], dtype=float) if HkAll.size else np.zeros((0, mu.size), dtype=float)
     hist_effect = np.sum(gamma * histterm, axis=0) if histterm.size else np.zeros(mu.shape, dtype=float)
     lin_term = mu + beta.T @ x_state + hist_effect
-    clipped = np.clip(lin_term, -20.0, 20.0)
-    if fitType == "binomial":
-        exp_term = np.exp(clipped)
-        return exp_term / (1.0 + exp_term)
-    if fitType == "poisson":
-        return np.exp(clipped)
-    raise ValueError("fitType must be either 'poisson' or 'binomial'")
+    if fitType not in ("binomial", "poisson"):
+        raise ValueError("fitType must be either 'poisson' or 'binomial'")
+    return _matlab_lambda_delta(lin_term, fitType == "binomial")
+
+
+def _matlab_lambda_delta(lin_term: np.ndarray, binomial: bool) -> np.ndarray:
+    """lambda*delta of MATLAB ``PPAF.PPDecode_updateLinear``.
+
+    ``exp(linTerm)`` (poisson) or ``exp(linTerm)./(1+exp(linTerm))`` (binomial),
+    with no clipping, then every NaN / Inf entry set to 1 (the binomial form is
+    Inf/Inf = NaN once exp overflows).  This port used to clip linTerm to
+    [-20, 20], which changed the update wherever |linTerm| > 20 (e.g. a
+    separated history coefficient in PP_EM) and has no MATLAB counterpart.
+    """
+    lin_term = np.asarray(lin_term, dtype=float)
+    if lin_term.size and np.max(lin_term) < 709.0:
+        # exp cannot overflow, so nothing is non-finite: the same values without
+        # the per-call errstate / where (this runs once per decoder time step).
+        exp_term = np.exp(lin_term)
+        return exp_term / (1.0 + exp_term) if binomial else exp_term
+    with np.errstate(over="ignore", invalid="ignore"):
+        exp_term = np.exp(lin_term)
+        lam = exp_term / (1.0 + exp_term) if binomial else exp_term
+    return np.where(np.isfinite(lam), lam, 1.0)
+
+
+def _matlab_float_semantics(func):
+    """Run ``func`` with NumPy's overflow / divide / invalid warnings off.
+
+    The EM routines mirror MATLAB's unguarded arithmetic (``exp`` overflowing
+    to Inf, ``log(0) = -Inf``, ``0/0 = NaN``, a zero scalar Hessian giving
+    +-Inf), which MATLAB evaluates silently; the non-finite results are then
+    handled exactly where MATLAB handles them (the Newton steps' NaN checks,
+    the EM drivers' non-finite log-likelihood stop).
+    """
+    import functools
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+            return func(*args, **kwargs)
+
+    return wrapper
+
+
+def _matlab_mldivide(H, g):
+    """MATLAB ``H\\g`` for a Newton step (square ``H``, vector ``g``).
+
+    The algorithm of MATLAB's mldivide for a full square matrix: elementwise
+    division when ``H`` is 1 x 1; forward substitution when ``H`` is lower
+    triangular (a diagonal ``H`` counts as lower), back substitution when it
+    is upper triangular; otherwise LU with partial pivoting (the pivot is the
+    first entry of largest magnitude) and the two triangular solves.  Every
+    pivot is divided by, never multiplied by its reciprocal, and no zero is
+    skipped, so
+      * a denormal pivot (the Hessian entry of a history coefficient whose
+        ``exp`` has nearly underflowed, as in a separated window) gives the
+        finite step MATLAB takes: LAPACK's ``getrs`` / ``trsm``
+        (``np.linalg.solve``, ``scipy.linalg.solve`` / ``lu_solve``) multiply
+        by ``1/pivot``, which overflows to Inf for ``|pivot| < 5.6e-309``,
+        and turned that step into -Inf;
+      * an exactly singular ``H`` gives MATLAB's +-Inf / NaN (with MATLAB's
+        "singular to working precision" warning, which is not reproduced)
+        instead of raising; the callers then do what MATLAB does: a step
+        with a NaN keeps the previous value, an infinite one is taken.
+    Bit-identical to MATLAB R2025b's ``H\\g`` on the ``mldivide_*`` systems
+    of ``em_drivers.mat`` (denormal, singular, ill-conditioned, triangular,
+    Hessenberg, permuted triangular, symmetric definite of either sign) and
+    on the Newton walk there; MATLAB solves the symmetric positive definite
+    ones by LU too.  The Hessians are small (one cell's states or history
+    windows), so the Python loop costs microseconds per step.
+    """
+    H = np.asarray(H, dtype=float)
+    g = np.asarray(g, dtype=float)
+    if H.size == 1:
+        return np.divide(g, H.reshape(()))
+    b = g.reshape(-1).copy()
+    n = b.size
+    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+        if not np.any(np.triu(H, 1)):  # lower triangular (or diagonal)
+            for k in range(n):
+                b[k] = b[k] / H[k, k]
+                b[k + 1:] -= b[k] * H[k + 1:, k]
+            return b.reshape(g.shape)
+        if np.any(np.tril(H, -1)):  # general: LU with partial pivoting
+            LU = H.copy()
+            for k in range(n - 1):
+                col = np.abs(LU[k:, k])
+                # BLAS idamax: the first entry of largest magnitude; a NaN is
+                # never larger than anything (it is chosen only in first place).
+                if np.isnan(col[0]):
+                    p = k
+                else:
+                    p = k + int(np.argmax(np.where(np.isnan(col), -np.inf, col)))
+                if p != k:
+                    LU[[k, p]] = LU[[p, k]]
+                    b[[k, p]] = b[[p, k]]
+                if LU[k, k] != 0:
+                    LU[k + 1:, k] = LU[k + 1:, k] / LU[k, k]
+                LU[k + 1:, k + 1:] -= np.outer(LU[k + 1:, k], LU[k, k + 1:])
+            for k in range(n):  # unit lower triangular L
+                b[k + 1:] -= b[k] * LU[k + 1:, k]
+            H = LU
+        for k in range(n - 1, -1, -1):  # upper triangular (H itself or U)
+            b[k] = b[k] / H[k, k]
+            b[:k] -= b[k] * H[:k, k]
+    return b.reshape(g.shape)
+
+
+def _matlab_nearest_spd(A) -> np.ndarray:
+    """MATLAB ``nearestSPD`` (J. D'Errico; ``libraries/NearestSymmetricPositiveDefinite``),
+    as the EM standard-error routines call it on the inverse observed information.
+
+    Higham's projection ``(B + H)/2`` of ``B = (A + A')/2`` (``H`` the
+    symmetric polar factor, from the SVD), then, while ``chol`` fails,
+    ``Ahat += (-mineig*k^2 + eps(mineig)) * I`` for ``k = 1, 2, ...`` with
+    ``mineig = min(eig(Ahat))``; a 1 x 1 ``A <= 0`` returns ``eps``.  The
+    port used ``spacing(norm(A))`` for ``eps(mineig)`` and stopped after 100
+    (PP) / 50 (PPLFP) passes.
+    """
+    A = np.asarray(A, dtype=float)
+    r, c = A.shape
+    if r != c:
+        raise ValueError("A must be a square matrix.")
+    if r == 1 and A[0, 0] <= 0:
+        return np.array([[np.finfo(float).eps]])
+    B = (A + A.T) / 2.0
+    _, Sigma, Vt = np.linalg.svd(B)
+    H = Vt.T @ np.diag(Sigma) @ Vt
+    Ahat = (B + H) / 2.0
+    Ahat = (Ahat + Ahat.T) / 2.0
+    I = np.eye(r)
+    k = 0
+    while True:
+        try:
+            np.linalg.cholesky(Ahat)
+            return Ahat
+        except np.linalg.LinAlgError:
+            pass
+        k += 1
+        mineig = float(np.min(np.linalg.eigvalsh(Ahat)))
+        if not np.isfinite(mineig):  # MATLAB: eig of a non-finite matrix errors
+            raise np.linalg.LinAlgError("nearestSPD: non-finite matrix")
+        Ahat = Ahat + (-mineig * k ** 2 + np.spacing(abs(mineig))) * I
+
+
+def _matlab_ztest_p(param, se):
+    """Two-sided p-value of MATLAB ``ztest(param, 0, se)``: ``2*normcdf(-|param/se|)``.
+
+    ``se = 0`` gives ``z = +-Inf`` and ``p = 0`` (``NaN`` for ``param = 0``),
+    ``se = Inf`` gives ``p = 1`` and a NaN propagates.  The port computed
+    ``2*(1 - normcdf(|z|))``, which underflows to 0 for ``|z| > 8.3`` (the
+    gold p-values reach 1e-295), and returned 1 for ``se <= 0``.
+    """
+    from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        z = np.asarray(param, dtype=float) / np.asarray(se, dtype=float)
+    return 2.0 * norm.cdf(-np.abs(z))
+
+
+def _em_se_term_labels(groups) -> list[str]:
+    """Names of the entries of an EM routine's stacked SE parameter vector.
+
+    ``groups`` lists ``(name, n_terms, shape, layout)`` in stacking order;
+    ``layout`` is ``"square"`` (a covariance-like or A-like matrix: ``n`` =
+    rows*cols is row by row, ``n`` = rows its diagonal, ``n`` = 1 an
+    isotropic value), ``"rowmajor"``, ``"cellmajor"`` (a states- or
+    windows-by-cells matrix, one cell's column after another) or
+    ``"vector"``.  Indices are zero-based, as in the returned arrays.
+    """
+    labels: list[str] = []
+    for name, n, shape, layout in groups:
+        if n <= 0:
+            continue
+        shape = tuple(int(v) for v in shape) + (1, 1)
+        r, c = shape[0], shape[1]
+        if layout == "vector" and n == r:
+            labels += [f"{name}[{i}]" for i in range(r)]
+        elif layout == "cellmajor" and n == r * c:
+            labels += [f"{name}[{i}, {j}]" for j in range(c) for i in range(r)]
+        elif layout in ("square", "rowmajor") and n == r * c:
+            labels += [f"{name}[{i}, {j}]" for i in range(r) for j in range(c)]
+        elif layout == "square" and n == r:
+            labels += [f"{name}[{i}, {i}]" for i in range(r)]
+        elif layout == "square" and n == 1:
+            labels.append(f"{name} (isotropic)")
+        else:
+            labels += [f"{name} term {k}" for k in range(n)]
+    return labels
+
+
+def _em_singular_information_inverse(IObs, labels, routine):
+    """Python-only inverse of an exactly singular observed information matrix.
+
+    MATLAB's SE routines compute ``eye(n)/IObs``, which is Inf / NaN here, and
+    ``nearestSPD`` of it then loops forever (in R2025b ``svd`` / ``eig`` of NaN
+    return NaN and ``chol`` keeps failing), so MATLAB never returns.  This port
+    returns, with these semantics:
+
+    * the inverse is the pseudo-inverse of ``IObs`` (singular values at or
+      below ``1e-15`` times the largest are dropped, NumPy's ``pinv``
+      default);
+    * a parameter is *not identifiable* when its unit vector has a component
+      larger than ``sqrt(eps)`` in the null space of ``IObs`` (the dropped
+      right singular vectors): the log-likelihood is flat along that
+      direction, so the data determine neither the estimate nor its
+      precision.  Its SE and p-value are NaN (the pseudo-inverse would give it
+      an SE of about 1e-8 and p = 0).  The usual cause is a separated history
+      window (no spike in it is followed by a spike), whose coefficient the
+      Newton steps walk to the ``exp()`` underflow, where its information and
+      score are exactly 0;
+    * a ``RuntimeWarning`` names those parameters.
+
+    Returns ``(invIObs, nonidentifiable)``, the latter a boolean mask over the
+    stacked parameter vector (in ``labels`` order).
+    """
+    IObs = np.asarray(IObs, dtype=float)
+    U, s, Vt = np.linalg.svd(IObs)
+    keep = s > 1e-15 * (s.max() if s.size else 0.0)
+    invIObs = (Vt[keep].T / s[keep]) @ U[:, keep].T
+    weight = np.sqrt(np.sum(Vt[~keep] ** 2, axis=0))
+    nonid = weight > np.sqrt(np.finfo(float).eps)
+    names = [labels[i] if i < len(labels) else f"term {i}" for i in np.flatnonzero(nonid)]
+    message = (f"{routine}: the observed information matrix is singular (MATLAB's SE pass never returns "
+               "here); the standard errors come from its pseudo-inverse.")
+    if names:
+        message += (" Not identifiable from the data, SE and p-value set to NaN: " + ", ".join(names)
+                    + ".  The log-likelihood is flat along them; a history coefficient is not identifiable "
+                    "when no spike in its window is followed by a spike (a separated window).")
+    warnings.warn(message, RuntimeWarning, stacklevel=2)
+    return invIObs, nonid
 
 
 def _likelihood_from_lambda(observed: np.ndarray, lambda_delta: np.ndarray, fitType: str) -> float:
@@ -441,13 +1009,30 @@ def _ztest_pvalue(param: float, se: float) -> float:
     z = param / se
     return float(2.0 * norm.sf(np.abs(z)))
 
+
+def _warn_mppco_deprecated(old: str, new: str) -> None:
+    """Emit MATLAB's ``nSTAT:deprecated:mPPCO`` message as a DeprecationWarning.
+
+    Text mirrors the MATLAB ``DecodingAlgorithms.mPPCO_*`` shims verbatim;
+    ``stacklevel=3`` attributes the warning to the caller of the alias.
+    """
+    warnings.warn(
+        f"DecodingAlgorithms.{old} is deprecated; "
+        f"use DecodingAlgorithms.{new} instead. "
+        "See \u00a74.B.7 for the PPLFP derivation.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
 class DecodingAlgorithms:
     """Static-method library for neural decoding and state-space estimation.
 
     Provides Kalman filtering/smoothing, point-process adaptive filtering
     (PPAF), hybrid discrete–continuous decoding, unscented Kalman filtering
     (UKF), state-space GLM EM algorithms (SSGLM), and mixed point-process /
-    continuous-observation (mPPCO) EM algorithms.
+    continuous-observation EM algorithms (``PPLFP_*``, with the deprecated
+    ``mPPCO_*`` aliases).
 
     All methods are ``@staticmethod``; no instance is required.  Method
     signatures follow the Matlab ``DecodingAlgorithms`` class as closely
@@ -614,6 +1199,13 @@ class DecodingAlgorithms:
                 Q_t,
             )
             if n < lag_count:
+                # MATLAB (PPAF.m:684-714) still runs its output block for the
+                # first ``lags`` steps with x_K = W_K = 0: x_uLag/W_uLag stay
+                # zero, and x_pLag(:,n+1) = x_K(:,lags-1) = 0 for lags > 1, but
+                # with lags == 1 it is x_u(:,n) / W_u(:,:,n).
+                if lag_count == 1:
+                    x_pLag[:, n + 1] = x_u[:, n]
+                    W_pLag[:, :, n + 1] = W_u[:, :, n]
                 continue
 
             x_bank: list[np.ndarray] = []
@@ -757,6 +1349,9 @@ class DecodingAlgorithms:
 
         Uses ``mu``, ``beta``, and optional ``gamma`` history coefficients
         instead of CIF objects.  Returns ``(x_u, W_u, lambda_delta)``.
+        As MATLAB's ``PPDecode_updateLinear``, ``lambda_delta`` is
+        ``exp(linTerm)`` (binomial ``exp./(1+exp)``), unclipped, with NaN / Inf
+        entries set to 1 (this port clipped ``linTerm`` to [-20, 20]).
         """
         x_vec = np.asarray(x_p, dtype=float).reshape(-1)
         W_mat = _as_state_matrix(W_p, x_vec.size)
@@ -1108,12 +1703,8 @@ class DecodingAlgorithms:
                 lin_term = mu_vec + beta_mat.T @ x_vec_t + hist_effect
             else:
                 lin_term = mu_vec + beta_mat.T @ x_vec_t
-            clipped = np.clip(lin_term, -20.0, 20.0)
-            if is_binomial:
-                exp_term = np.exp(clipped)
-                lambda_delta = exp_term / (1.0 + exp_term)
-            else:
-                lambda_delta = np.exp(clipped)
+            # MATLAB's rule, no clipping (see _matlab_lambda_delta).
+            lambda_delta = _matlab_lambda_delta(lin_term, is_binomial)
 
             observed = obs[:, time_index]
             if is_binomial:
@@ -5148,13 +5739,24 @@ class DecodingAlgorithms:
         AhatDiag=0,
         QhatDiag=1,
         QhatIsotropic=0,
-        Estimatex0=1,
-        EstimatePx0=1,
+        Estimatex0=0,
+        EstimatePx0=0,
         Px0Isotropic=0,
         mcIter=1000,
         EnableIkeda=0,
     ):
         """Build a constraints dict for PP_EM.
+
+        Matlab: ``PointProcessEM.PP_EMCreateConstraints``.  Defaults follow the
+        repaired MATLAB (fix/pp-em round 2): ``EstimateA=1, AhatDiag=0,
+        QhatDiag=1, QhatIsotropic=0, Estimatex0=0, EstimatePx0=0,
+        Px0Isotropic=0, mcIter=1000, EnableIkeda=0``.  x0 and Px0 are NOT
+        estimated by default (they were 1 and 1): the Px0 M-step,
+        ``Px0hat = (x0hat - x0)(x0hat - x0)' .* I``, is a single-sample estimate
+        that collapses to ~0 after one iteration, which drives
+        ``-1/2 log det(Px0)`` and hence the E-step log-likelihood to +Inf and
+        stops EM after ~2 iterations (MATLAB report C2).  Pass
+        ``Estimatex0=1, EstimatePx0=1`` explicitly for the old behaviour.
 
         Parameters
         ----------
@@ -5167,15 +5769,17 @@ class DecodingAlgorithms:
         QhatIsotropic : int
             Constrain Q to be isotropic (scalar * I).
         Estimatex0 : int
-            Whether to estimate the initial state x0.
+            Whether to estimate the initial state x0 (default 0; see above).
         EstimatePx0 : int
-            Whether to estimate the initial state covariance Px0.
+            Whether to estimate the initial state covariance Px0 (default 0).
         Px0Isotropic : int
             Constrain Px0 to be isotropic.
         mcIter : int
             Number of Monte Carlo iterations for standard error estimation.
         EnableIkeda : int
-            Enable Ikeda acceleration.
+            Enable Ikeda acceleration.  Not ported: ``PP_EM`` raises
+            ``NotImplementedError`` when it is 1 (MATLAB runs an Ikeda step,
+            history-free models only).
 
         Returns
         -------
@@ -5196,48 +5800,21 @@ class DecodingAlgorithms:
 
     @staticmethod
     def _nearestSPD(A):
-        """Compute the nearest symmetric positive semi-definite matrix.
-
-        Uses the algorithm of Higham (1988).
+        """MATLAB ``nearestSPD`` (Higham 1988 projection, then the
+        ``-mineig*k^2 + eps(mineig)`` diagonal shift until ``chol`` succeeds);
+        see :func:`_matlab_nearest_spd`.
         """
-        B = 0.5 * (A + A.T)
-        _, S, Vt = np.linalg.svd(B)
-        H = Vt.T @ np.diag(S) @ Vt
-        Ahat = 0.5 * (B + H)
-        Ahat = 0.5 * (Ahat + Ahat.T)
-        # Test positive definiteness and fix if needed
-        try:
-            np.linalg.cholesky(Ahat)
-            return Ahat
-        except np.linalg.LinAlgError:
-            pass
-        spacing = np.spacing(np.linalg.norm(A))
-        I = np.eye(A.shape[0])
-        k = 1
-        while True:
-            try:
-                np.linalg.cholesky(Ahat)
-                return Ahat
-            except np.linalg.LinAlgError:
-                mineig = np.min(np.real(np.linalg.eigvalsh(Ahat)))
-                Ahat += I * (-mineig * k ** 2 + spacing)
-                k += 1
-            if k > 100:
-                return Ahat
+        return _matlab_nearest_spd(A)
 
     @staticmethod
     def _ztest_pvalue(param, se):
-        """Two-sided z-test p-value for H0: param == 0."""
-        from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
-
-        se_safe = np.where(se > 0, se, 1.0)
-        z = np.abs(param / se_safe)
-        p = 2.0 * (1.0 - norm.cdf(z))
-        # Where se was 0, return 1.0
-        p = np.where(se > 0, p, 1.0)
-        return p
+        """Two-sided z-test p-value for H0: param == 0, as MATLAB
+        ``ztest(param, 0, se)`` (see :func:`_matlab_ztest_p`).  Returns an
+        ndarray (0-d for scalar inputs)."""
+        return np.asarray(_matlab_ztest_p(param, se))
 
     @staticmethod
+    @_matlab_float_semantics
     def PP_ComputeParamStandardErrors(
         dN,
         xKFinal,
@@ -5258,7 +5835,19 @@ class DecodingAlgorithms:
         """Compute standard errors via the observed information matrix.
 
         Uses a Monte-Carlo approximation of the missing information matrix
-        (McLachlan & Krishnan, Eq. 4.7).
+        (McLachlan & Krishnan, Eq. 4.7), with ``mcIter`` draws from NumPy's
+        global stream (seed with ``np.random.seed`` or
+        :func:`nstat.extras.matlab_rng.seeded_global_rng`).  As in MATLAB
+        (nSTAT PR #135): the constraints are honoured, the intensities are
+        unclipped, the inverse observed information is projected with
+        MATLAB's ``nearestSPD`` and the p-values are MATLAB ``ztest``'s
+        ``2*normcdf(-|z|)``.  An exactly singular observed information
+        (MATLAB's SE pass never returns there) is a Python-only extension: the
+        SEs come from its pseudo-inverse, every parameter with a component in
+        its null space -- not identifiable from the data, typically the
+        coefficient of a separated history window at the ``exp()`` underflow
+        -- gets SE and p-value NaN, and a ``RuntimeWarning`` names those
+        parameters.
 
         Parameters
         ----------
@@ -5301,6 +5890,20 @@ class DecodingAlgorithms:
         K = N
         numCells = betahat.shape[1]
         fitType = str(fitType).lower()
+        # MATLAB F12 (fix/pp-em 1c051a9): a shared history-coefficient column
+        # (numWindows x 1, a scalar for one window) with several cells is
+        # expanded to numWindows x numCells, the rule PP_EM applies before it
+        # calls this routine (B9).  The gamma blocks below are per cell, so a
+        # scalar counted C gamma parameters while returning a 1-D SE.gamma, and
+        # a column failed on gammahat[:, c] for c > 0.
+        gammahat = _expand_shared_se_gamma(gammahat, windowTimes, numCells)
+        # MATLAB stores a one-cell N x nW x 1 history as an N x nW matrix and its
+        # HkAll(k,:,c) slices read it as such (B6: single-cell history SEs).
+        # Restore the cell axis; otherwise the ndim == 3 tests below silently
+        # dropped the history from every block.
+        HkAll = np.asarray(HkAll, dtype=float)
+        if numCells == 1 and HkAll.ndim == 2:
+            HkAll = HkAll.reshape(HkAll.shape[0], HkAll.shape[1], 1)
 
         # ---- Complete Information Matrices ----
 
@@ -5308,6 +5911,14 @@ class DecodingAlgorithms:
         if PPEM_Constraints["EstimateA"]:
             n1_A, n2_A = Ahat.shape
             Qinv = np.linalg.inv(Qhat)
+            # The A (and full-Q) parameters are ordered row by row, as in
+            # MATLAB (loop l over rows, m over columns; termvec =
+            # reshape(termMat', 1, n) and ScoreAMc = reshape(ScorA', n, 1) are
+            # row-major; SE.A = reshape(SEAterms, ncol, nrow)').  This port
+            # filled each column column-major (termMat.T.ravel()), so the A
+            # block was a row permutation of the Fisher information Q^-1 (x)
+            # Sxkm1xkm1 -- not symmetric for dx >= 2 -- and its scores and
+            # SE.A were column-major.
             if PPEM_Constraints["AhatDiag"]:
                 IAComp = np.zeros((n1_A, n1_A))
                 for l in range(n1_A):
@@ -5315,7 +5926,10 @@ class DecodingAlgorithms:
                     el[l] = 1.0
                     em = np.zeros(n2_A)
                     em[l] = 1.0
-                    termMat = Qinv @ np.outer(el, em) @ (ExpectationSumsFinal["Sxkm1xkm1"] * np.eye(n1_A))
+                    # MATLAB Qhat\el*em'*S.*eye (left to right):
+                    # ((Q^-1 e e' S) .* I).  The former Q^-1 e e' (S .* I) differs
+                    # whenever Q is not diagonal.
+                    termMat = (Qinv @ np.outer(el, em) @ ExpectationSumsFinal["Sxkm1xkm1"]) * np.eye(n1_A)
                     IAComp[:, l] = np.diag(termMat)
             else:
                 nA = Ahat.size
@@ -5328,7 +5942,7 @@ class DecodingAlgorithms:
                         em = np.zeros(n2_A)
                         em[m] = 1.0
                         termMat = Qinv @ np.outer(el, em) @ ExpectationSumsFinal["Sxkm1xkm1"]
-                        IAComp[:, cnt] = termMat.T.ravel()
+                        IAComp[:, cnt] = termMat.ravel()
                         cnt += 1
         else:
             IAComp = np.zeros((0, 0))
@@ -5359,7 +5973,7 @@ class DecodingAlgorithms:
                     em = np.zeros(n2_Q)
                     em[m] = 1.0
                     termMat = N / 2.0 * Qinv @ np.outer(em, el) @ Qinv
-                    IQComp[:, cnt] = termMat.T.ravel()
+                    IQComp[:, cnt] = termMat.ravel()  # row-major, as MATLAB (see the A block)
                     cnt += 1
 
         # Px0 information
@@ -5388,19 +6002,13 @@ class DecodingAlgorithms:
         else:
             Ix0Comp = np.zeros((0, 0))
 
-        # Monte Carlo draws for expectation approximation
+        # Monte Carlo draws for expectation approximation: x_k ~ N(xKFinal_k,
+        # WKFinal_k) through _mc_state_draws (MATLAB mcStateDraws, F9: the
+        # draw was chol(W)*z, covariance R*R' instead of W).
         McExp = PPEM_Constraints["mcIter"]
         xKDrawExp = np.zeros((dx, K, McExp))
         for k in range(K):
-            WuTemp = WKFinal[:, :, k]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp).T  # upper triangular
-            except np.linalg.LinAlgError:
-                eigv, eigvec = np.linalg.eigh(WuTemp)
-                eigv = np.maximum(eigv, 1e-12)
-                chol_m = np.linalg.cholesky(eigvec @ np.diag(eigv) @ eigvec.T).T
-            z = np.random.randn(dx, McExp)
-            xKDrawExp[:, k, :] = xKFinal[:, k:k + 1] + chol_m @ z
+            xKDrawExp[:, k, :] = _mc_state_draws(xKFinal[:, k], WKFinal[:, :, k], McExp, np.random.randn)
 
         # Beta information (Hessian approximation via MC)
         IBetaComp = np.zeros((dx * numCells, dx * numCells))
@@ -5413,7 +6021,7 @@ class DecodingAlgorithms:
                 Hk = HkAll[k, :, c] if HkAll.ndim == 3 else np.zeros(0)
                 xk = xkPerm[:, :, k]  # (dx, McExp)
 
-                gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, c]
+                gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, c]
                 gammaC = np.atleast_1d(gammaC)
 
                 Hk_vec = np.atleast_1d(Hk)
@@ -5421,14 +6029,21 @@ class DecodingAlgorithms:
 
                 terms = muhat[c] + betahat[:, c] @ xk + hist_term
                 if fitType == "poisson":
-                    ld = np.exp(np.clip(terms, -30, 30))
+                    ld = np.exp(terms)
                     HessianTerm[:, :, k] = -1.0 / McExp * (ld[None, :] * xk) @ xk.T
                 else:  # binomial
-                    ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                    ld = np.exp(terms) / (1.0 + np.exp(terms))
                     ExplambdaDeltaXkXk = 1.0 / McExp * (ld[None, :] * xk) @ xk.T
                     ExplambdaDeltaSqXkXkT = 1.0 / McExp * (ld[None, :] ** 2 * xk) @ xk.T
                     ExplambdaDeltaCubeXkXkT = 1.0 / McExp * (ld[None, :] ** 3 * xk) @ xk.T
-                    HessianTerm[:, :, k] = ExplambdaDeltaXkXk + ExplambdaDeltaSqXkXkT - 2 * ExplambdaDeltaCubeXkXkT
+                    # For log L = dN*log(p) - p with logistic p the beta Hessian is
+                    # -p(1-p)(1+dN-2p) x x' = (-(dN+1)p + (dN+3)p^2 - 2p^3) x x', the
+                    # form the mu and gamma blocks below use (MATLAB
+                    # PP_ComputeParamStandardErrors, repaired).  The former
+                    # E[p] + E[p^2] - 2E[p^3] made IBetaComp negative definite.
+                    HessianTerm[:, :, k] = (-(dN[c, k] + 1) * ExplambdaDeltaXkXk
+                                            + (dN[c, k] + 3) * ExplambdaDeltaSqXkXkT
+                                            - 2 * ExplambdaDeltaCubeXkXkT)
 
             startInd = dx * c
             endInd = dx * (c + 1)
@@ -5443,21 +6058,24 @@ class DecodingAlgorithms:
                 Hk_vec = Hk_full[k, :] if Hk_full.ndim == 2 and Hk_full.shape[0] > k else np.zeros(0)
                 xk = xkPerm[:, :, k]
 
-                gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, c]
+                gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, c]
                 gammaC = np.atleast_1d(gammaC)
                 Hk_vec = np.atleast_1d(Hk_vec)
                 hist_term = float(gammaC @ Hk_vec) if Hk_vec.size == gammaC.size and gammaC.size > 0 else 0.0
 
                 terms = muhat[c] + betahat[:, c] @ xk + hist_term
                 if fitType == "poisson":
-                    ld = np.exp(np.clip(terms, -30, 30))
+                    ld = np.exp(terms)
                     HessianTerm -= 1.0 / McExp * np.sum(ld)
                 else:
-                    ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                    ld = np.exp(terms) / (1.0 + np.exp(terms))
                     ExplambdaDelta = 1.0 / McExp * np.sum(ld)
                     ExplambdaDeltaSq = 1.0 / McExp * np.sum(ld ** 2)
                     ExplambdaDeltaCubed = 1.0 / McExp * np.sum(ld ** 3)
-                    HessianTerm += -(dN[c, k] + 1) * ExplambdaDelta + (dN[c, k] + 3) * ExplambdaDeltaSq - 3 * ExplambdaDeltaCubed
+                    # d/dmu of the score (dN-p)(1-p) is -(dN+1)p + (dN+3)p^2 - 2p^3; the
+                    # cubic coefficient was -3 (MATLAB, repaired, uses -2 as here and
+                    # in PP_MStep's mu Newton step).
+                    HessianTerm += -(dN[c, k] + 1) * ExplambdaDelta + (dN[c, k] + 3) * ExplambdaDeltaSq - 2 * ExplambdaDeltaCubed
             IMuComp[c, c] = -HessianTerm
 
         # Gamma information
@@ -5472,16 +6090,16 @@ class DecodingAlgorithms:
                 for k in range(K):
                     Hk_vec = Hk_full[k, :]
                     xk = xkPerm[:, :, k]
-                    gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, c]
+                    gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, c]
                     gammaC = np.atleast_1d(gammaC)
                     hist_term = float(gammaC @ Hk_vec) if Hk_vec.size == gammaC.size else 0.0
                     terms = muhat[c] + betahat[:, c] @ xk + hist_term
                     if fitType == "poisson":
-                        ld = np.exp(np.clip(terms, -30, 30))
+                        ld = np.exp(terms)
                         ExplambdaDelta = 1.0 / McExp * np.sum(ld)
                         HessianTerm -= np.outer(Hk_vec, Hk_vec) * ExplambdaDelta
                     else:
-                        ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                        ld = np.exp(terms) / (1.0 + np.exp(terms))
                         ExplambdaDelta = 1.0 / McExp * np.sum(ld)
                         ExplambdaDeltaSq = 1.0 / McExp * np.sum(ld ** 2)
                         # Third moment of the binomial Monte Carlo estimate.  The
@@ -5531,28 +6149,18 @@ class DecodingAlgorithms:
             IComp[off:off + n7, off:off + n7] = IGammaComp
 
         # ---- Missing Information Matrix (Monte Carlo) ----
+        # Draws through _mc_state_draws (MATLAB mcStateDraws, F9).
+        # (MATLAB evaluates every ld above as exp(terms) or
+        # exp(terms)./(1+exp(terms)) with no clipping; this port clipped terms
+        # to +-30, which changed the information wherever |terms| > 30, e.g. a
+        # separated history coefficient.)
         Mc = PPEM_Constraints["mcIter"]
         xKDraw = np.zeros((dx, N, Mc))
         for n_idx in range(N):
-            WuTemp = WKFinal[:, :, n_idx]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp).T
-            except np.linalg.LinAlgError:
-                eigv, eigvec = np.linalg.eigh(WuTemp)
-                eigv = np.maximum(eigv, 1e-12)
-                chol_m = np.linalg.cholesky(eigvec @ np.diag(eigv) @ eigvec.T).T
-            z = np.random.randn(dx, Mc)
-            xKDraw[:, n_idx, :] = xKFinal[:, n_idx:n_idx + 1] + chol_m @ z
+            xKDraw[:, n_idx, :] = _mc_state_draws(xKFinal[:, n_idx], WKFinal[:, :, n_idx], Mc, np.random.randn)
 
         if PPEM_Constraints["EstimatePx0"] or PPEM_Constraints["Estimatex0"]:
-            try:
-                chol_m = np.linalg.cholesky(Px0hat).T
-            except np.linalg.LinAlgError:
-                eigv, eigvec = np.linalg.eigh(Px0hat)
-                eigv = np.maximum(eigv, 1e-12)
-                chol_m = np.linalg.cholesky(eigvec @ np.diag(eigv) @ eigvec.T).T
-            z = np.random.randn(dx, Mc)
-            x0Draw = x0hat[:, None] + chol_m @ z
+            x0Draw = _mc_state_draws(x0hat, Px0hat, Mc, np.random.randn)
         else:
             x0Draw = np.tile(x0hat[:, None], (1, Mc))
 
@@ -5589,7 +6197,7 @@ class DecodingAlgorithms:
                 if PPEM_Constraints["AhatDiag"]:
                     ScoreAMc = np.diag(ScorA)
                 else:
-                    ScoreAMc = ScorA.T.ravel()
+                    ScoreAMc = ScorA.ravel()  # row-major: MATLAB reshape(ScorA', n, 1)
             else:
                 ScoreAMc = np.array([])
 
@@ -5603,7 +6211,7 @@ class DecodingAlgorithms:
                     ScoreQMc = np.diag(ScoreQ)
             else:
                 ScoreQ = -0.5 * np.linalg.solve(Qhat, K * np.eye(dx) - np.linalg.solve(Qhat, sumXkTerms_mc).T)
-                ScoreQMc = ScoreQ.T.ravel()
+                ScoreQMc = ScoreQ.ravel()  # row-major: MATLAB reshape(ScoreQ', n, 1)
 
             # Score for Px0
             if PPEM_Constraints["Px0Isotropic"]:
@@ -5627,14 +6235,14 @@ class DecodingAlgorithms:
             for nc in range(numCells):
                 Hk_full = HkAll[:, :, nc] if HkAll.ndim == 3 else np.zeros((K, 0))
                 nHist_c = Hk_full.shape[1]
-                gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, nc]
+                gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, nc]
                 gammaC = np.atleast_1d(gammaC)
 
                 hist_terms = Hk_full @ gammaC if gammaC.size == nHist_c and nHist_c > 0 else np.zeros(K)
                 terms = muhat[nc] + betahat[:, nc] @ x_K + hist_terms
 
                 if fitType == "poisson":
-                    ld = np.exp(np.clip(terms, -30, 30))
+                    ld = np.exp(terms)
                     ScoreMuMc[nc] = np.sum(dN[nc, :] - ld)
                     ScoreBetaMc = np.concatenate([ScoreBetaMc,
                                                   np.sum((dN[nc, :] - ld)[None, :] * x_K, axis=1)])
@@ -5642,7 +6250,7 @@ class DecodingAlgorithms:
                         ScoreGammaMc = np.concatenate([ScoreGammaMc,
                                                        np.sum((dN[nc, :] - ld)[None, :] * Hk_full.T, axis=1)])
                 else:  # binomial
-                    ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                    ld = np.exp(terms) / (1.0 + np.exp(terms))
                     ScoreMuMc[nc] = np.sum(dN[nc, :] - (dN[nc, :] + 1) * ld + ld ** 2)
                     ScoreBetaMc = np.concatenate([ScoreBetaMc,
                                                   np.sum((dN[nc, :] * (1 - ld) - ld * (1 - ld))[None, :] * x_K, axis=1)])
@@ -5664,14 +6272,27 @@ class DecodingAlgorithms:
 
         IMissing = np.mean(IMc, axis=2)
         IObs = IComp - IMissing
+        nonid = None
         try:
             invIObs = np.linalg.inv(IObs)
         except np.linalg.LinAlgError:
-            invIObs = np.linalg.pinv(IObs)
+            # Python-only: an exactly singular IObs.  MATLAB's eye/IObs warns and
+            # returns Inf / NaN; in R2025b svd and eig of NaN return NaN and
+            # chol keeps failing (p > 0), so nearestSPD's loop never ends and
+            # MATLAB never returns.  The pseudo-inverse, with NaN SEs for the
+            # parameters in its null space (a warning names them).
+            labels = _em_se_term_labels([
+                ("A", n1, Ahat.shape, "square"), ("Q", n2, Qhat.shape, "square"),
+                ("Px0", n3, Px0hat.shape, "square"), ("x0", n4, x0hat.shape, "vector"),
+                ("mu", n5, muhat.shape, "vector"), ("beta", n6, betahat.shape, "cellmajor"),
+                ("gamma", n7, gammahat.shape if gammahat.ndim == 2 else (gammahat.size, 1), "cellmajor")])
+            invIObs, nonid = _em_singular_information_inverse(IObs, labels, "PP_ComputeParamStandardErrors")
         invIObs = DecodingAlgorithms._nearestSPD(invIObs)
 
         VarVec = np.diag(invIObs)
-        SEVec = np.sqrt(np.maximum(VarVec, 0.0))
+        SEVec = np.sqrt(VarVec)  # MATLAB sqrt(VarVec); positive after nearestSPD
+        if nonid is not None:
+            SEVec[nonid] = np.nan  # not identifiable: SE (and so the p-value) NaN
 
         # Unpack SE vector
         off = 0
@@ -5692,7 +6313,9 @@ class DecodingAlgorithms:
                 SEA = np.diag(SEAterms)
                 pA = np.diag(DecodingAlgorithms._ztest_pvalue(np.diag(Ahat), np.diag(SEA)))
             else:
-                SEA = SEAterms.reshape(Ahat.shape[1], Ahat.shape[0]).T
+                # Row-major, as the parameters are ordered: MATLAB
+                # reshape(SEAterms, ncol, nrow)'.
+                SEA = SEAterms.reshape(Ahat.shape)
                 pA = DecodingAlgorithms._ztest_pvalue(Ahat.ravel(), SEA.ravel()).reshape(Ahat.shape)
             SE["A"] = SEA
             Pvals["A"] = pA
@@ -5705,7 +6328,7 @@ class DecodingAlgorithms:
             else:
                 pQ = np.diag(DecodingAlgorithms._ztest_pvalue(np.diag(Qhat), np.diag(SEQ)))
         else:
-            SEQ = SEQterms.reshape(Qhat.shape[1], Qhat.shape[0]).T
+            SEQ = SEQterms.reshape(Qhat.shape)  # row-major: MATLAB reshape(SEQterms, ncol, nrow)'
             pQ = DecodingAlgorithms._ztest_pvalue(Qhat.ravel(), SEQ.ravel()).reshape(Qhat.shape)
         SE["Q"] = SEQ
         Pvals["Q"] = pQ
@@ -5733,22 +6356,35 @@ class DecodingAlgorithms:
         SE["mu"] = SEMu
         Pvals["mu"] = pMu
 
-        # Beta
+        # Beta.  SEBetaTerms is stacked cell by cell (dx entries per cell), so the
+        # row-major reshape to (C, dx) followed by .T puts cell c's block in column
+        # c -- MATLAB's repaired reshape(SEBetaTerms, dx, C).  (MATLAB's former
+        # reshape(..., C, dx)' scrambled it; this port never did.)
         SEBeta = SEBetaTerms.reshape(betahat.shape[1], betahat.shape[0]).T
         pBeta = DecodingAlgorithms._ztest_pvalue(betahat.ravel(), SEBeta.ravel()).reshape(betahat.shape)
         SE["beta"] = SEBeta
         Pvals["beta"] = pBeta
 
-        # Gamma
+        # Gamma: same cell-by-cell layout (nW entries per cell) ->
+        # reshape(SEGammaTerms, nW, C).  The p-value pairs each gamma(w, c) with
+        # SEGamma(w, c), as MATLAB's ztest over reshape(gammahat) /
+        # reshape(SEGamma) does.  (It used to pair gammahat.ravel() -- window-major --
+        # with the cell-major SEGammaTerms, scrambling Pvals.gamma whenever nW > 1
+        # and C > 1.)
         if has_gamma and n7 > 0:
-            SEGamma = SEGammaTerms.reshape(gammahat.shape[1], gammahat.shape[0]).T if gammahat.ndim == 2 else SEGammaTerms
-            pGamma = DecodingAlgorithms._ztest_pvalue(gammahat.ravel(), SEGammaTerms).reshape(gammahat.shape) if gammahat.ndim == 2 else DecodingAlgorithms._ztest_pvalue(gammahat.ravel(), SEGammaTerms)
+            if gammahat.ndim == 2:
+                SEGamma = SEGammaTerms.reshape(gammahat.shape[1], gammahat.shape[0]).T
+                pGamma = DecodingAlgorithms._ztest_pvalue(gammahat.ravel(), SEGamma.ravel()).reshape(gammahat.shape)
+            else:
+                SEGamma = SEGammaTerms
+                pGamma = DecodingAlgorithms._ztest_pvalue(gammahat.ravel(), SEGammaTerms)
             SE["gamma"] = SEGamma
             Pvals["gamma"] = pGamma
 
         return SE, Pvals, nTerms
 
     @staticmethod
+    @_matlab_float_semantics
     def PP_EM(
         dN,
         Ahat0,
@@ -5771,6 +6407,40 @@ class DecodingAlgorithms:
         spike observations with explicit beta/mu/gamma parameters (no basis
         functions).
 
+        Matlab: ``PointProcessEM.PP_EM`` (repaired, fix/pp-em).  Defaults:
+        ``fitType='poisson'``, ``delta=0.001``, no history (``gamma`` empty or
+        0 with ``windowTimes`` empty), ``x0 = 0``, ``Px0 = 1e-9 I``,
+        ``PPEM_Constraints = PP_EMCreateConstraints()`` (x0 / Px0 not
+        estimated: that estimator collapses Px0 and stops EM after ~2
+        iterations) and ``MstepMethod='NewtonRaphson'`` -- the Monte-Carlo
+        Newton-Raphson M-step maximises the expected complete-data
+        log-likelihood over the smoothed state posterior.  (The alternative
+        'GLM' M-step is a plug-in regression on the smoothed means that
+        ignores W_K, inflates beta and drifts; it is still available by
+        passing it explicitly.  Any other MstepMethod raises ValueError.)
+        With ``gamma`` given and
+        ``windowTimes`` empty there is one history window per coefficient,
+        ``windowTimes = 0:delta:size(gamma,1)*delta``, and a nonzero shared
+        ``numWindows x 1`` gamma is expanded to every cell.  History is built
+        on the ``delta`` grid.  EM stops before the M-step if the E-step
+        log-likelihood is not finite and returns the best finite iterate.
+        ``EnableIkeda = 1`` (MATLAB's Ikeda acceleration step) is not ported
+        and raises ``NotImplementedError``; a ``Qhat0`` that is not positive
+        definite raises ``LinAlgError`` (MATLAB's ``chol`` errors).  The Monte
+        Carlo of the M-steps and the SE pass draws from NumPy's global
+        stream, so ``np.random.seed(s)`` (or
+        :func:`nstat.extras.matlab_rng.seeded_global_rng`) makes a fit
+        reproducible; MATLAB's randn stream is not reproduced (the end-to-end
+        gold ``em_drivers.mat`` is compared within the measured Monte Carlo
+        spread).
+
+        ``SE`` / ``Pvals`` are always computed (MATLAB computes them only when
+        more than 10 outputs are requested).  The Monte Carlo SE pass
+        dominates the run time at the default ``mcIter = 1000``: measured
+        4.5 s of 6.2 s for N = 800 bins, C = 4 cells, 3 history windows
+        (0.5 s of 2.1 s at ``mcIter = 100``); pass a smaller ``mcIter`` in
+        ``PPEM_Constraints`` to reduce it.
+
         Parameters
         ----------
         dN : (C, N) binary spike observations
@@ -5785,15 +6455,14 @@ class DecodingAlgorithms:
         x0 : (dx,) initial state (default zeros)
         Px0 : (dx, dx) initial state covariance
         PPEM_Constraints : dict from PP_EMCreateConstraints
-        MstepMethod : 'NewtonRaphson' or 'GLM'
+        MstepMethod : 'NewtonRaphson' or 'GLM' (passed to PP_MStep with
+            ``delta``)
 
         Returns
         -------
         xKFinal, WKFinal, Ahat, Qhat, muhat, betahat, gammahat,
         x0hat, Px0hat, IC, SE, Pvals, nIter
         """
-        from .history import History  # local import to avoid circular dependency
-
         Ahat0 = np.atleast_2d(Ahat0).astype(float)
         Qhat0 = np.atleast_2d(Qhat0).astype(float)
         numStates = Ahat0.shape[0]
@@ -5801,6 +6470,15 @@ class DecodingAlgorithms:
 
         if PPEM_Constraints is None:
             PPEM_Constraints = DecodingAlgorithms.PP_EMCreateConstraints()
+        if PPEM_Constraints.get("EnableIkeda", 0):
+            # MATLAB's PP_EM runs an Ikeda acceleration step after each M-step
+            # (re-simulated spikes, a second E-/M-step, 2*theta - thetaNew)
+            # when EnableIkeda = 1 -- for a model without history only; with
+            # history it errors (IkedaHistNotImplemented).  It is not ported:
+            # this port used to ignore the option silently.
+            raise NotImplementedError(
+                "PP_EM: PPEM_Constraints['EnableIkeda'] = 1 (Ikeda acceleration) is not ported; "
+                "pass EnableIkeda=0 (the default)")
         if Px0 is None:
             Px0 = 1e-9 * np.eye(numStates)
         else:
@@ -5809,42 +6487,29 @@ class DecodingAlgorithms:
             x0 = np.zeros(numStates)
         else:
             x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if gamma is None:
-            gamma = np.zeros(0)
-        gamma = np.asarray(gamma, dtype=float)
+        K_cells = dN.shape[0]
+        N_time = dN.shape[1]
 
-        if delta is None or delta == 0:
+        # Default history windows and shared-gamma expansion (MATLAB B9; see
+        # _em_history_windows).  deltaW is taken before delta is defaulted, as
+        # in MATLAB (both give 0.001 for an empty delta).
+        if delta is None or delta == 0:  # (delta == 0 -> 1 ms is a Python extension)
+            delta = None
+        gamma, windowTimes = _em_history_windows(gamma, windowTimes, delta, K_cells)
+        windowTimes = [] if windowTimes is None else windowTimes
+        if delta is None:
             delta = 0.001
-
-        if windowTimes is None:
-            gamma_flat = gamma.ravel()
-            if gamma_flat.size == 0 or (gamma_flat.size == 1 and gamma_flat[0] == 0):
-                windowTimes = []
-            else:
-                windowTimes = np.arange(0, (gamma.shape[0] + 2) * delta, delta).tolist()
 
         mu = np.asarray(mu, dtype=float).reshape(-1)
         beta = np.atleast_2d(beta).astype(float)
 
-        # Build HkAll from spike trains and history windows
-        K_cells = dN.shape[0]
-        N_time = dN.shape[1]
-        minTime = 0.0
-        maxTime = (N_time - 1) * delta
-
+        # History on the delta grid (MATLAB, repaired C6): PP_EM builds each
+        # cell's train as nspikeTrain(t, '', delta), so window [t_i, t_(i+1)]
+        # counts the spikes ceil(t_i*fs)+1 .. ceil(t_(i+1)*fs) bins back,
+        # fs = 1/delta -- exactly _compute_history_terms.  The former 1 kHz nspikeTrain gave
+        # a (2N-1)-row history at delta = 2 ms (ValueError in the first E-step).
         if len(windowTimes) > 0:
-            histObj = History(windowTimes, minTime, maxTime)
-            HkAll_list = []
-            for k in range(K_cells):
-                spike_indices = np.where(dN[k, :] == 1)[0]
-                spike_times = (spike_indices) * delta
-                nst = nspikeTrain(spike_times)
-                nst.setMinTime(minTime)
-                nst.setMaxTime(maxTime)
-                hmat = histObj.computeHistory(nst).dataToMatrix()
-                HkAll_list.append(hmat)
-            # Stack: (N_time, nW, K_cells)
-            HkAll = np.stack(HkAll_list, axis=2)
+            HkAll = _compute_history_terms(dN, delta, windowTimes)
         else:
             HkAll = np.zeros((N_time, 0, K_cells))
             gamma = np.zeros(1)
@@ -5880,11 +6545,16 @@ class DecodingAlgorithms:
         beta_buf[0] = beta.copy()
         gamma_buf[0] = gamma.copy()
 
-        # Apply scaling
-        try:
-            Tq = np.linalg.solve(np.linalg.cholesky(Q_buf[0]).T, np.eye(numStates))
-        except np.linalg.LinAlgError:
-            Tq = np.eye(numStates)
+        # Apply scaling.  Tq = inv(chol(Q0, 'lower')), so Tq*Q0*Tq' = I (MATLAB
+        # G1, repaired after fix/pp-em 8dbd0e4).  It was inv(chol(Q0)) with the
+        # UPPER factor R (R'R = Q0): then Tq*Q0*Tq' != I for a non-diagonal
+        # Q0, the diagonal / isotropic Q constraints acted on a mixed
+        # parameterisation, and with the default QhatDiag = 1 the first
+        # M-step lowered the log-likelihood and EM returned the initial
+        # parameters.  Identical for a diagonal Q0.
+        # A Qhat0 that is not positive definite raises (MATLAB's chol errors);
+        # this port silently ran the EM unwhitened (Tq = I).
+        Tq = np.linalg.solve(np.linalg.cholesky(Q_buf[0]), np.eye(numStates))
         TqInv = np.linalg.inv(Tq)
 
         A_buf[0] = Tq @ A_buf[0] @ TqInv
@@ -5918,11 +6588,23 @@ class DecodingAlgorithms:
             ExpSums_buf[si] = ExpSums
             ll_list.append(ll)
 
+            # MATLAB (repaired, PP_EM bug 8): stop before the M-step when the
+            # E-step log-likelihood is not a finite real number (a degenerate
+            # iterate, e.g. a collapsed Px0hat or a diverged filter).  The best
+            # finite iterate is selected below.  NaN comparisons are False, so
+            # the likelihood stopping rule alone never caught a NaN.
+            if not np.isfinite(ll):
+                _logger.info(
+                    "         EM stopped at iteration# %s b/c the E-step log-likelihood was not a finite "
+                    "real number (%s)", cnt + 1, ll,
+                )
+                break
+
             # M-step
             Anew, Qnew, munew, bnew, gnew, x0new, Px0new = DecodingAlgorithms.PP_MStep(
                 dN, x_K_cur, W_K_cur, x0_buf[si], Px0_buf[si], ExpSums,
                 fitType, mu_buf[si], beta_buf[si], gamma_buf[si],
-                windowTimes, HkAll, PPEM_Constraints, MstepMethod
+                windowTimes, HkAll, PPEM_Constraints, MstepMethod, delta
             )
             A_buf[si_p1] = Anew
             Q_buf[si_p1] = Qnew
@@ -5941,7 +6623,11 @@ class DecodingAlgorithms:
                 dMax = np.inf
             else:
                 dLikelihood.append(ll_list[cnt] - ll_list[cnt - 1])
-                dQvals = float(np.max(np.abs(np.sqrt(np.maximum(np.abs(Q_buf[si]), 0)) - np.sqrt(np.maximum(np.abs(Q_buf[si_m1]), 0)))))
+                # MATLAB max(max(abs(sqrt(Qhat{k}) - sqrt(Qhat{k-1})))): the
+                # elementwise sqrt is complex for a negative (off-diagonal) entry.
+                # This port took sqrt(|Q|), which differs when an entry changes sign.
+                dQvals = float(np.max(np.abs(np.sqrt(Q_buf[si].astype(complex))
+                                             - np.sqrt(Q_buf[si_m1].astype(complex)))))
                 dAvals = float(np.max(np.abs(A_buf[si] - A_buf[si_m1])))
                 dMuvals = float(np.max(np.abs(mu_buf[si] - mu_buf[si_m1])))
                 dBetavals = float(np.max(np.abs(beta_buf[si] - beta_buf[si_m1])))
@@ -5966,10 +6652,13 @@ class DecodingAlgorithms:
 
         _logger.info("-" * 80)
 
-        # Select best iteration
-        ll_arr = np.array(ll_list)
-        if ll_arr.size > 0:
-            maxLLIndex = int(np.argmax(ll_arr))
+        # Select the best FINITE iteration (MATLAB, repaired: non-finite /
+        # complex logll -> NaN, then the first maximum; no finite logll ->
+        # iteration 1).  np.argmax alone returned the first NaN, or a +Inf.
+        ll_arr = np.asarray(ll_list, dtype=float)
+        finite = np.isfinite(ll_arr)
+        if np.any(finite):
+            maxLLIndex = int(np.argmax(np.where(finite, ll_arr, -np.inf)))
         else:
             maxLLIndex = 0
         maxLLIndMod = maxLLIndex % numToKeep
@@ -5986,11 +6675,8 @@ class DecodingAlgorithms:
         Px0hat = Px0_buf[maxLLIndMod] if Px0_buf[maxLLIndMod] is not None else Px0
         ExpSumsFinal = ExpSums_buf[maxLLIndMod] if ExpSums_buf[maxLLIndMod] is not None else {}
 
-        # Unscale system
-        try:
-            Tq_unscale = np.linalg.solve(np.linalg.cholesky(Q0).T, np.eye(numStates))
-        except np.linalg.LinAlgError:
-            Tq_unscale = np.eye(numStates)
+        # Unscale system (the same Tq = inv(chol(Q0, 'lower')) as above)
+        Tq_unscale = np.linalg.solve(np.linalg.cholesky(Q0), np.eye(numStates))
         TqInv_unscale = np.linalg.inv(Tq_unscale)
 
         Ahat = TqInv_unscale @ Ahat @ Tq_unscale
@@ -6003,18 +6689,26 @@ class DecodingAlgorithms:
                 WKFinal[:, :, kk] = TqInv_unscale @ WKFinal[:, :, kk] @ TqInv_unscale.T
         betahat = (betahat.T @ Tq_unscale).T
 
-        # Compute standard errors
+        # Compute standard errors.  MATLAB computes them (when SE/Pvals are
+        # requested) without a guard, so a failure raises; the former blanket
+        # ``except Exception: pass`` silently returned SE = Pvals = {}.
         SE = {}
         Pvals = {}
         if ExpSumsFinal:
-            try:
-                SE, Pvals, _ = DecodingAlgorithms.PP_ComputeParamStandardErrors(
-                    dN, xKFinal, WKFinal, Ahat, Qhat, x0hat, Px0hat,
-                    ExpSumsFinal, fitType, muhat, betahat, gammahat,
-                    windowTimes, HkAll, PPEM_Constraints
-                )
-            except Exception:
-                pass
+            # MATLAB F8 (fix/pp-em bac99f9): the expectation sums come from the
+            # E-step of the SCALED system (x_s = Tq x) while every estimate
+            # passed here is back on the original scale; the SE routine reads
+            # ES.Sxkm1xkm1 (A information Q^-1 (x) Sxkm1xkm1) with the unscaled
+            # Qhat, so SE.A was off by the Tq factor whenever Q0 != I.  Map the
+            # sum it reads back: Sxkm1xkm1 = (Tq\S_s)/Tq'.  (A copy: the
+            # information criteria below read the buffer's own sums.)
+            ESforSE = dict(ExpSumsFinal)
+            ESforSE["Sxkm1xkm1"] = TqInv_unscale @ np.asarray(ExpSumsFinal["Sxkm1xkm1"]) @ TqInv_unscale.T
+            SE, Pvals, _ = DecodingAlgorithms.PP_ComputeParamStandardErrors(
+                dN, xKFinal, WKFinal, Ahat, Qhat, x0hat, Px0hat,
+                ESforSE, fitType, muhat, betahat, gammahat,
+                windowTimes, HkAll, PPEM_Constraints
+            )
 
         # Information criteria
         K_total = xKFinal.shape[1]
@@ -6051,10 +6745,24 @@ class DecodingAlgorithms:
 
         sumXkTerms_ic = ExpSumsFinal.get("sumXkTerms", np.zeros((Dx, Dx)))
         ll_best = ll_list[maxLLIndex] if ll_list else 0.0
-        det_Q = max(float(np.linalg.det(Qhat)), np.finfo(float).tiny)
-        det_Px0 = max(float(np.linalg.det(Px0hat)), np.finfo(float).tiny)
+        # MATLAB F10 (fix/pp-em 8843a94): ll_best (the best E-step's expected
+        # complete-data log-likelihood) and its sumXkTerms belong to the SCALED
+        # system x_s = Tq x, while Qhat and Px0hat are back on the original
+        # scale, so llobs mixed scales and AIC / BIC depended on the units of
+        # x.  Map both to the original scale: S = (Tq\S_s)/Tq', and each of the
+        # K+1 state log-densities (x_0 .. x_K) gains log|det Tq|.  llobs is then
+        # the E-step's observation term sumPPll, and IC.llcomp the expected
+        # complete-data log-likelihood PP_EStep returns in the original
+        # coordinates at the returned estimates.
+        sumXkTerms_ic = TqInv_unscale @ np.asarray(sumXkTerms_ic, dtype=float) @ TqInv_unscale.T
+        llcomp = ll_best + (K_total + 1) * np.log(np.abs(np.linalg.det(Tq_unscale)))
+        # MATLAB log(det(Qhat)), log(det(Px0hat)) and 2n(n+1)/(K-n-1): no
+        # floors or guards (this port floored the determinants at the smallest
+        # normal double and the AICc denominator at 1).
+        det_Q = np.linalg.det(Qhat)
+        det_Px0 = np.linalg.det(Px0hat)
 
-        llobs = (ll_best
+        llobs = (llcomp
                  + Dx * K_total / 2.0 * np.log(2.0 * np.pi)
                  + K_total / 2.0 * np.log(det_Q)
                  + 0.5 * np.trace(np.linalg.solve(Qhat, sumXkTerms_ic))
@@ -6062,7 +6770,7 @@ class DecodingAlgorithms:
                  + 0.5 * np.log(det_Px0)
                  + 0.5 * Dx)
         AIC = 2 * nTerms_ic - 2 * llobs
-        AICc = AIC + 2 * nTerms_ic * (nTerms_ic + 1) / max(K_total - nTerms_ic - 1, 1)
+        AICc = AIC + np.divide(2.0 * nTerms_ic * (nTerms_ic + 1), np.float64(K_total - nTerms_ic - 1))
         BIC = -2 * llobs + nTerms_ic * np.log(K_total)
 
         IC = {
@@ -6070,13 +6778,14 @@ class DecodingAlgorithms:
             "AICc": AICc,
             "BIC": BIC,
             "llobs": llobs,
-            "llcomp": ll_best,
+            "llcomp": llcomp,
         }
 
         return (xKFinal, WKFinal, Ahat, Qhat, muhat, betahat, gammahat,
                 x0hat, Px0hat, IC, SE, Pvals, nIter)
 
     @staticmethod
+    @_matlab_float_semantics
     def PP_EStep(A, Q, dN, mu, beta, fitType, gamma, HkAll, x0, Px0):
         """E-step for PP EM: forward filter + RTS smoother + cross-covariance.
 
@@ -6099,6 +6808,13 @@ class DecodingAlgorithms:
         W_K : (dx, dx, N) smoothed covariances
         logll : float, log-likelihood
         ExpectationSums : dict of sufficient statistics
+
+        Notes
+        -----
+        As in MATLAB the intensity is the unclipped ``exp(terms)`` (binomial
+        ``exp./(1+exp)``) and ``log(det(Q))`` / ``log(det(Px0))`` are
+        unfloored: a non-positive determinant gives a non-finite ``logll``,
+        on which ``PP_EM`` stops before the M-step.
         """
         A = np.atleast_2d(A).astype(float)
         Q = np.atleast_2d(Q).astype(float)
@@ -6112,6 +6828,18 @@ class DecodingAlgorithms:
 
         numCells, K = dN.shape
         Dx = A.shape[1]
+        # MATLAB stores a one-cell N x nW x 1 history as an N x nW matrix.
+        # Restore the cell axis so the log-likelihood below (which indexes
+        # HkAll[k, :, :]) sees the history, as the filter step already does.
+        if numCells == 1 and np.ndim(HkAll) == 2:
+            HkAll = np.asarray(HkAll, dtype=float).reshape(np.shape(HkAll)[0], np.shape(HkAll)[1], 1)
+        # A shared numWindows x 1 gamma column is repeated for every cell, as
+        # _normalize_gamma does for the filter step below (MATLAB's drivers
+        # repmat it before the E-step); without this the log-likelihood below
+        # would read the column as one cell's coefficients.
+        if (gamma.ndim == 2 and gamma.shape[1] == 1 and numCells > 1 and np.ndim(HkAll) == 3
+                and gamma.shape[0] == np.shape(HkAll)[1]):
+            gamma = np.repeat(gamma, numCells, axis=1)
 
         # Forward filter
         x_p = np.zeros((Dx, K + 1))
@@ -6121,12 +6849,15 @@ class DecodingAlgorithms:
         x_p[:, 0] = A @ x0
         W_p[:, :, 0] = A @ Px0 @ A.T + Q
 
-        # Permute HkAll for PPDecode_updateLinear: (nW, C, N)
-        HkPerm = np.transpose(HkAll, (1, 2, 0)) if HkAll.ndim == 3 else HkAll
-
+        # MATLAB passes HkPerm = permute(HkAll,[2 3 1]) (nW x C x N) and the
+        # 1-based k, because its PPDecode_updateLinear reads
+        # HkAll(:,:,time_index) and dN(:,time_index).  The Python
+        # PPDecode_updateLinear takes the canonical (N, nW, C) history tensor
+        # (it infers nW from axis 1 and slices time on axis 0) and a 0-based
+        # time index, so the faithful translation is HkAll as-is and k.
         for k in range(K):
             x_u[:, k], W_u[:, :, k], _ = DecodingAlgorithms.PPDecode_updateLinear(
-                x_p[:, k], W_p[:, :, k], dN, mu, beta, fitType, gamma, HkPerm, k + 1, None
+                x_p[:, k], W_p[:, :, k], dN, mu, beta, fitType, gamma, HkAll, k, None
             )
             A_k = A[:, :, min(k, A.shape[2] - 1)] if A.ndim == 3 else A
             Q_k = Q[:, :, min(k, Q.shape[2] - 1)] if Q.ndim == 3 else Q
@@ -6192,8 +6923,12 @@ class DecodingAlgorithms:
         if fitType == "poisson":
             for k in range(K):
                 if HkAll.ndim == 3:
-                    Hk = HkAll[k, :, :]  # (nW, C) — need to handle orientation
-                    if Hk.shape[0] == numCells:
+                    # (nW, C).  MATLAB (repaired, C3) orients this slice by its
+                    # COLUMNS: if(size(Hk,2)~=numCells) Hk=Hk'.  The former
+                    # rows test also fired for nW == C and transposed a square
+                    # slice, pairing gamma(w,c) with H(c,w) in the logll only.
+                    Hk = HkAll[k, :, :]
+                    if Hk.shape[1] != numCells:
                         Hk = Hk.T
                 else:
                     Hk = np.zeros((0, numCells))
@@ -6211,7 +6946,7 @@ class DecodingAlgorithms:
 
                 terms = mu + beta.T @ xk + hist_diag
                 Wk = W_K[:, :, k]
-                ld = np.exp(np.clip(terms, -30, 30))
+                ld = np.exp(terms)  # MATLAB: no clip (this port clipped terms to +-30)
                 bt = beta
                 ExplambdaDelta = ld + 0.5 * (ld * np.diag(bt.T @ Wk @ bt))
                 ExplogLD = terms
@@ -6220,8 +6955,8 @@ class DecodingAlgorithms:
         elif fitType == "binomial":
             for k in range(K):
                 if HkAll.ndim == 3:
-                    Hk = HkAll[k, :, :]
-                    if Hk.shape[0] == numCells:
+                    Hk = HkAll[k, :, :]  # (nW, C); column-based orientation as above
+                    if Hk.shape[1] != numCells:
                         Hk = Hk.T
                 else:
                     Hk = np.zeros((0, numCells))
@@ -6239,21 +6974,27 @@ class DecodingAlgorithms:
 
                 terms = mu + beta.T @ xk + hist_diag
                 Wk = W_K[:, :, k]
-                ld_raw = np.clip(terms, -30, 30)
-                ld = 1.0 / (1.0 + np.exp(-ld_raw))
+                # MATLAB: ld = exp(terms)./(1+exp(terms)), no clip (NaN once exp
+                # overflows, which PP_EM's non-finite log-likelihood stop catches).
+                ld = np.exp(terms) / (1.0 + np.exp(terms))
                 bt = beta
                 btWbt_diag = np.diag(bt.T @ Wk @ bt)
                 ExplambdaDelta = ld + 0.5 * (ld * (1 - ld) * (1 - 2 * ld)) * btWbt_diag
-                ExplogLD = np.log(np.maximum(ld, 1e-30)) + 0.5 * (-ld * (1 - ld)) * btWbt_diag
+                # MATLAB: ExplogLD = log(ld) + ... (no floor; the former
+                # log(max(ld, 1e-30)) floor had no MATLAB counterpart).
+                ExplogLD = np.log(ld) + 0.5 * (-ld * (1 - ld)) * btWbt_diag
                 sumPPll += float(np.sum(dN[:, k] * ExplogLD - ExplambdaDelta))
 
-        det_Q = max(float(np.linalg.det(Q)), np.finfo(float).tiny)
-        det_Px0 = max(float(np.linalg.det(Px0)), np.finfo(float).tiny)
+        # MATLAB log(det(Q)), log(det(Px0)): no floor.  A non-positive
+        # determinant gives -Inf (MATLAB: -Inf) or NaN (MATLAB: a complex
+        # logll); either stops PP_EM before the M-step.  This port floored the
+        # determinants at the smallest normal double, which kept a collapsed
+        # Px0 (EstimatePx0 = 1) iterating where MATLAB stops.
         logll = (
             -Dx * K / 2.0 * np.log(2.0 * np.pi)
-            - K / 2.0 * np.log(det_Q)
+            - K / 2.0 * np.log(np.linalg.det(Q))
             - Dx / 2.0 * np.log(2.0 * np.pi)
-            - 0.5 * np.log(det_Px0)
+            - 0.5 * np.log(np.linalg.det(Px0))
             + sumPPll
             - 0.5 * np.trace(np.linalg.solve(Q, sumXkTerms))
             - Dx / 2.0
@@ -6271,12 +7012,34 @@ class DecodingAlgorithms:
         return x_K, W_K, logll, ExpectationSums
 
     @staticmethod
+    @_matlab_float_semantics
     def PP_MStep(
         dN, x_K, W_K, x0, Px0, ExpectationSums, fitType,
         muhat, betahat, gammahat, windowTimes, HkAll,
-        PPEM_Constraints=None, MstepMethod="NewtonRaphson",
+        PPEM_Constraints=None, MstepMethod="NewtonRaphson", delta=0.001,
     ):
         """M-step for PP EM: update all model parameters.
+
+        Matlab: ``PointProcessEM.PP_MStep`` (repaired, fix/pp-em @ 8dbd0e4).
+        A, Q, x0 and Px0 have closed-form updates; (mu, beta, gamma) are
+        updated by the Monte-Carlo Newton-Raphson step (``MstepMethod =
+        'NewtonRaphson'``, the default) or by a GLM fit on the smoothed means
+        (``'GLM'``).  Any other ``MstepMethod`` raises ``ValueError`` (MATLAB
+        runs Newton-Raphson for it).
+
+        As in MATLAB (nSTAT PR #135, ``aa88a2b``): the closed-form updates
+        have no ridges or eigenvalue floors (a single-sample ``Px0hat`` can
+        collapse to 0); each Newton loop runs at most 99 steps on the
+        unclipped ``exp(terms)`` (binomial ``exp./(1+exp)``), each step is
+        MATLAB's ``H\\g`` (``g/H`` for one coefficient, MATLAB's LU dividing
+        by the pivots for several: a denormal pivot, as on a separated history
+        window near the ``exp()`` underflow, gives MATLAB's finite step); as
+        in MATLAB, a step with a NaN keeps the previous value and an infinite
+        one is taken (an exactly singular Hessian gives either, e.g.
+        ``-[1 1; 1 1]\\[1; 2] = [-Inf; Inf]``).  The ``McExp = 50`` draws come
+        from NumPy's
+        global stream (seed with ``np.random.seed`` or
+        :func:`nstat.extras.matlab_rng.seeded_global_rng`).
 
         Parameters
         ----------
@@ -6292,13 +7055,23 @@ class DecodingAlgorithms:
         gammahat : scalar or (nW, C) current history coefficients
         windowTimes : history window boundaries or None
         HkAll : (N, nW, C) history tensor
-        PPEM_Constraints : dict from PP_EMCreateConstraints
-        MstepMethod : 'NewtonRaphson' (default) or 'GLM'
+        PPEM_Constraints : dict from PP_EMCreateConstraints (default
+            ``PP_EMCreateConstraints()``: x0 / Px0 not estimated)
+        MstepMethod : 'NewtonRaphson' (default, as in the repaired MATLAB) or
+            'GLM'.  'GLM' regresses each cell's spikes on the smoothed means
+            ``x_K`` (a plug-in fit that ignores ``W_K``; see
+            :func:`_em_glm_mstep`), as MATLAB's GLM M-step does.
+        delta : float, default 0.001
+            Seconds per bin (MATLAB's optional 15th input): the GLM M-step's
+            time base.  ``PP_EM`` passes its ``delta``.
 
         Returns
         -------
         Ahat, Qhat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
         """
+        MstepMethod = _check_mstep_method(MstepMethod)
+        if delta is None:
+            delta = 0.001
         if PPEM_Constraints is None:
             PPEM_Constraints = DecodingAlgorithms.PP_EMCreateConstraints()
 
@@ -6317,11 +7090,18 @@ class DecodingAlgorithms:
         gammahat = np.asarray(gammahat, dtype=float)
 
         # --- A update ---
+        # MATLAB: Ahat = (Sxkxkm1.*I)/(Sxkm1xkm1.*I) or Sxkxkm1/Sxkm1xkm1, and
+        # the Q, x0 and Px0 updates below, have no ridges or eigenvalue floors.
+        # This port added 1e-12*I to Sxkm1xkm1 (and to Px0 and Qhat in the x0
+        # update) and floored the eigenvalues of Qhat and Px0hat at 1e-10; the
+        # Px0 floor is what kept EM iterating after the single-sample Px0
+        # estimate collapsed (EstimatePx0 = 1), where MATLAB stops on the
+        # non-finite log-likelihood.
         I_dx = np.eye(dx)
         if PPEM_Constraints["AhatDiag"]:
-            Ahat = (Sxkxkm1 * I_dx) @ np.linalg.inv(Sxkm1xkm1 * I_dx + 1e-12 * I_dx)
+            Ahat = np.linalg.solve((Sxkm1xkm1 * I_dx).T, (Sxkxkm1 * I_dx).T).T
         else:
-            Ahat = np.linalg.solve(Sxkm1xkm1.T + 1e-12 * I_dx, Sxkxkm1.T).T
+            Ahat = np.linalg.solve(Sxkm1xkm1.T, Sxkxkm1.T).T
 
         # --- Q update ---
         if PPEM_Constraints["QhatDiag"]:
@@ -6334,34 +7114,24 @@ class DecodingAlgorithms:
             Qhat = (1.0 / K) * sumXkTerms
             Qhat = 0.5 * (Qhat + Qhat.T)
 
-        # Ensure positive definiteness
-        eigvals, eigvecs = np.linalg.eigh(Qhat)
-        eigvals = np.maximum(eigvals, 1e-10)
-        Qhat = eigvecs @ np.diag(eigvals) @ eigvecs.T
-        Qhat = 0.5 * (Qhat + Qhat.T)
-
-        # --- x0 update ---
+        # --- x0 update: MATLAB (inv(Px0)+Ahat'/Qhat*Ahat)\(Ahat'/Qhat*x_K(:,1)+Px0\x0) ---
         if PPEM_Constraints["Estimatex0"]:
-            Px0inv = np.linalg.inv(Px0 + 1e-12 * I_dx)
-            Qinv = np.linalg.inv(Qhat + 1e-12 * I_dx)
-            x0hat = np.linalg.solve(Px0inv + Ahat.T @ Qinv @ Ahat,
-                                    Ahat.T @ Qinv @ x_K[:, 0] + Px0inv @ x0)
+            AtQinv = np.linalg.solve(Qhat.T, Ahat).T  # Ahat'/Qhat
+            x0hat = np.linalg.solve(np.linalg.inv(Px0) + AtQinv @ Ahat,
+                                    AtQinv @ x_K[:, 0] + np.linalg.solve(Px0, x0))
         else:
             x0hat = x0.copy()
 
-        # --- Px0 update ---
+        # --- Px0 update: MATLAB's expanded form of (x0hat - x0)(x0hat - x0)' ---
         if PPEM_Constraints["EstimatePx0"]:
+            xh = x0hat.reshape(dx, 1)
+            xo = x0.reshape(dx, 1)
+            outer = xh @ xh.T - xo @ xh.T - xh @ xo.T + xo @ xo.T
             if PPEM_Constraints["Px0Isotropic"]:
-                diff = x0hat - x0
-                Px0hat = (np.dot(diff, diff) / (dx * K)) * I_dx
+                Px0hat = (np.trace(outer) / (dx * K)) * I_dx
             else:
-                diff = x0hat - x0
-                Px0hat = np.outer(diff, diff) * I_dx
-                Px0hat = 0.5 * (Px0hat + Px0hat.T)
-            # Ensure positive definiteness
-            eigvals, eigvecs = np.linalg.eigh(Px0hat)
-            eigvals = np.maximum(eigvals, 1e-10)
-            Px0hat = eigvecs @ np.diag(eigvals) @ eigvecs.T
+                Px0hat = outer * I_dx
+                Px0hat = (Px0hat + Px0hat.T) / 2.0
         else:
             Px0hat = Px0.copy()
 
@@ -6369,21 +7139,26 @@ class DecodingAlgorithms:
         gammahat_new = gammahat.copy() if gammahat.ndim > 0 else np.atleast_1d(gammahat).copy()
         muhat_new = muhat.copy()
 
+        if MstepMethod == "GLM":
+            # MATLAB's GLM M-step (repaired: written to the returned variables,
+            # coefficients mapped by label, keep-previous for unestimable ones,
+            # delta time base, scoped warnings) -- see _em_glm_mstep.
+            muhat_new, betahat_new, gammahat_new = _em_glm_mstep(
+                dN, x_K, fitType, muhat, betahat, gammahat, windowTimes, delta)
+            return Ahat, Qhat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
+
         # --- Newton-Raphson for beta, mu, gamma ---
+        # Every ld below is MATLAB's exp(terms) or exp(terms)./(1+exp(terms)),
+        # unclipped (this port clipped terms to +-30): a separated history
+        # coefficient keeps walking as in MATLAB, and a binomial overflow gives a
+        # NaN Hessian that keeps the previous value, as MATLAB's isnan check does.
         McExp = 50
         xKDrawExp = np.zeros((dx, K, McExp))
         diffTol = 1e-5
 
+        # Draws through _mc_state_draws (MATLAB mcStateDraws, F9).
         for k in range(K):
-            WuTemp = W_K[:, :, k]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp).T
-            except np.linalg.LinAlgError:
-                eigv, eigvec = np.linalg.eigh(WuTemp)
-                eigv = np.maximum(eigv, 1e-12)
-                chol_m = np.linalg.cholesky(eigvec @ np.diag(eigv) @ eigvec.T).T
-            z = np.random.randn(dx, McExp)
-            xKDrawExp[:, k, :] = x_K[:, k:k + 1] + chol_m @ z
+            xKDrawExp[:, k, :] = _mc_state_draws(x_K[:, k], W_K[:, :, k], McExp, np.random.randn)
 
         # xkPerm: (dx, McExp, K)
         xkPerm = np.transpose(xKDrawExp, (0, 2, 1))
@@ -6392,7 +7167,9 @@ class DecodingAlgorithms:
         for c in range(numCells):
             converged = False
             maxIter_nr = 100
-            for iteration in range(maxIter_nr):
+            # MATLAB: iter = 1; while(~converged && iter < maxIter) -- at most
+            # maxIter - 1 = 99 Newton steps (this ran range(100), one more).
+            for iteration in range(maxIter_nr - 1):
                 HessianTerm = np.zeros((dx, dx))
                 GradTerm = np.zeros(dx)
 
@@ -6401,7 +7178,7 @@ class DecodingAlgorithms:
                     Hk_vec = Hk_full[k, :] if Hk_full.ndim == 2 and Hk_full.shape[0] > k else np.zeros(0)
                     xk = xkPerm[:, :, k]  # (dx, McExp)
 
-                    gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, c]
+                    gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, c]
                     gammaC = np.atleast_1d(gammaC)
                     Hk_vec = np.atleast_1d(Hk_vec)
                     hist_term = float(gammaC @ Hk_vec) if Hk_vec.size == gammaC.size and gammaC.size > 0 else 0.0
@@ -6409,28 +7186,31 @@ class DecodingAlgorithms:
                     terms = muhat[c] + betahat_new[:, c] @ xk + hist_term
 
                     if fitType == "poisson":
-                        ld = np.exp(np.clip(terms, -30, 30))
+                        ld = np.exp(terms)
                         ExpLambdaXk = (1.0 / McExp) * np.sum(ld[None, :] * xk, axis=1)
                         ExpLambdaXkXkT = (1.0 / McExp) * (ld[None, :] * xk) @ xk.T
                         GradTerm += dN[c, k] * x_K[:, k] - ExpLambdaXk
                         HessianTerm -= ExpLambdaXkXkT
                     else:  # binomial
-                        ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                        ld = np.exp(terms) / (1.0 + np.exp(terms))
                         ExplambdaDeltaXkXk = (1.0 / McExp) * (ld[None, :] * xk) @ xk.T
                         ExplambdaDeltaSqXkXkT = (1.0 / McExp) * ((ld ** 2)[None, :] * xk) @ xk.T
                         ExplambdaDeltaCubeXkXkT = (1.0 / McExp) * ((ld ** 3)[None, :] * xk) @ xk.T
                         ExpLambdaXk = (1.0 / McExp) * np.sum(ld[None, :] * xk, axis=1)
                         ExpLambdaSquaredXk = (1.0 / McExp) * np.sum((ld ** 2)[None, :] * xk, axis=1)
                         GradTerm += dN[c, k] * x_K[:, k] - (dN[c, k] + 1) * ExpLambdaXk + ExpLambdaSquaredXk
-                        HessianTerm += ExplambdaDeltaXkXk + ExplambdaDeltaSqXkXkT - 2 * ExplambdaDeltaCubeXkXkT
+                        # Jacobian of GradTerm: (-(dN+1)p + (dN+3)p^2 - 2p^3) x x' (the
+                        # form the mu and gamma steps below use; MATLAB PP_MStep,
+                        # repaired).  The former E[p] + E[p^2] - 2E[p^3] is positive
+                        # definite, so the Newton step moved downhill and diverged.
+                        HessianTerm += (-(dN[c, k] + 1) * ExplambdaDeltaXkXk
+                                        + (dN[c, k] + 3) * ExplambdaDeltaSqXkXkT
+                                        - 2 * ExplambdaDeltaCubeXkXkT)
 
                 if np.any(np.isnan(HessianTerm)) or np.any(np.isinf(HessianTerm)):
                     betahat_newTemp = betahat_new[:, c]
                 else:
-                    try:
-                        betahat_newTemp = betahat_new[:, c] - np.linalg.solve(HessianTerm, GradTerm)
-                    except np.linalg.LinAlgError:
-                        betahat_newTemp = betahat_new[:, c]
+                    betahat_newTemp = betahat_new[:, c] - _matlab_mldivide(HessianTerm, GradTerm)
                     if np.any(np.isnan(betahat_newTemp)):
                         betahat_newTemp = betahat_new[:, c]
 
@@ -6445,7 +7225,7 @@ class DecodingAlgorithms:
         for c in range(numCells):
             converged = False
             maxIter_nr = 100
-            for iteration in range(maxIter_nr):
+            for iteration in range(maxIter_nr - 1):  # MATLAB: at most maxIter - 1 steps (see beta)
                 HessianTerm = 0.0
                 GradTerm = 0.0
 
@@ -6454,7 +7234,7 @@ class DecodingAlgorithms:
                     Hk_vec = Hk_full[k, :] if Hk_full.ndim == 2 and Hk_full.shape[0] > k else np.zeros(0)
                     xk = xkPerm[:, :, k]
 
-                    gammaC = gammahat if gammahat.ndim == 0 or gammahat.size == 1 else gammahat[:, c]
+                    gammaC = np.ravel(gammahat) if gammahat.size == 1 else gammahat[:, c]
                     gammaC = np.atleast_1d(gammaC)
                     Hk_vec = np.atleast_1d(Hk_vec)
                     hist_term = float(gammaC @ Hk_vec) if Hk_vec.size == gammaC.size and gammaC.size > 0 else 0.0
@@ -6462,22 +7242,25 @@ class DecodingAlgorithms:
                     terms = muhat_new[c] + betahat[:, c] @ xk + hist_term
 
                     if fitType == "poisson":
-                        ld = np.exp(np.clip(terms, -30, 30))
+                        ld = np.exp(terms)
                         ExpLambdaDelta = (1.0 / McExp) * np.sum(ld)
                         GradTerm += dN[c, k] - ExpLambdaDelta
                         HessianTerm -= ExpLambdaDelta
                     else:  # binomial
-                        ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                        ld = np.exp(terms) / (1.0 + np.exp(terms))
                         ExpLambdaDelta = (1.0 / McExp) * np.sum(ld)
                         ExpLambdaDeltaSq = (1.0 / McExp) * np.sum(ld ** 2)
                         ExpLambdaDeltaCubed = (1.0 / McExp) * np.sum(ld ** 3)
                         GradTerm += dN[c, k] - (dN[c, k] + 1) * ExpLambdaDelta + ExpLambdaDeltaSq
                         HessianTerm += -(dN[c, k] + 1) * ExpLambdaDelta + (dN[c, k] + 3) * ExpLambdaDeltaSq - 2 * ExpLambdaDeltaCubed
 
-                if np.isnan(HessianTerm) or np.isinf(HessianTerm) or abs(HessianTerm) < 1e-30:
+                if np.isnan(HessianTerm) or np.isinf(HessianTerm):
                     muhat_newTemp = muhat_new[c]
                 else:
-                    muhat_newTemp = muhat_new[c] - GradTerm / HessianTerm
+                    # MATLAB HessianTerm\GradTerm: a zero Hessian gives +-Inf, which
+                    # MATLAB accepts, or NaN (0/0), which keeps the previous value.
+                    # This port also kept it for |HessianTerm| < 1e-30.
+                    muhat_newTemp = muhat_new[c] - np.divide(GradTerm, HessianTerm)
                     if np.isnan(muhat_newTemp):
                         muhat_newTemp = muhat_new[c]
 
@@ -6489,19 +7272,23 @@ class DecodingAlgorithms:
                     break
 
         # --- Gamma Newton-Raphson ---
+        # MATLAB: if(~isempty(windowTimes) && any(any(gammahat_new~=0))) -- an
+        # all-zero gamma means "no history coefficients" and is left at zero (as
+        # PPLFP_MStep does).  The former size-based test estimated gamma from an
+        # all-zero init whenever windowTimes was non-empty.
         gammahat_flat = gammahat_new.ravel()
         has_gamma = (windowTimes is not None and len(windowTimes) > 0
-                     and (gammahat_flat.size > 1 or (gammahat_flat.size == 1 and gammahat_flat[0] != 0)))
+                     and bool(np.any(gammahat_flat != 0)))
 
         if has_gamma and gammahat_new.ndim >= 1:
             nGamma = gammahat_new.shape[0] if gammahat_new.ndim == 1 else gammahat_new.shape[0]
             for c in range(numCells):
                 converged = False
                 maxIter_nr = 100
-                gammaC = gammahat_new if gammahat_new.ndim == 0 or gammahat_new.size == 1 else gammahat_new[:, c] if gammahat_new.ndim == 2 else gammahat_new
+                gammaC = np.ravel(gammahat_new) if gammahat_new.size == 1 else gammahat_new[:, c] if gammahat_new.ndim == 2 else gammahat_new
                 gammaC = np.atleast_1d(gammaC).copy()
 
-                for iteration in range(maxIter_nr):
+                for iteration in range(maxIter_nr - 1):  # MATLAB: at most maxIter - 1 steps (see beta)
                     HessianTerm = np.zeros((nGamma, nGamma))
                     GradTerm = np.zeros(nGamma)
 
@@ -6515,12 +7302,12 @@ class DecodingAlgorithms:
                         terms = muhat[c] + betahat[:, c] @ xk + hist_term
 
                         if fitType == "poisson":
-                            ld = np.exp(np.clip(terms, -30, 30))
+                            ld = np.exp(terms)
                             ExpLambdaDelta = (1.0 / McExp) * np.sum(ld)
                             GradTerm += (dN[c, k] - ExpLambdaDelta) * Hk_vec
                             HessianTerm -= ExpLambdaDelta * np.outer(Hk_vec, Hk_vec)
                         else:  # binomial
-                            ld = 1.0 / (1.0 + np.exp(-np.clip(terms, -30, 30)))
+                            ld = np.exp(terms) / (1.0 + np.exp(terms))
                             ExpLambdaDelta = (1.0 / McExp) * np.sum(ld)
                             ExpLambdaDeltaSq = (1.0 / McExp) * np.sum(ld ** 2)
                             ExpLambdaDeltaCubed = (1.0 / McExp) * np.sum(ld ** 3)
@@ -6530,10 +7317,7 @@ class DecodingAlgorithms:
                     if np.any(np.isnan(HessianTerm)) or np.any(np.isinf(HessianTerm)):
                         gammahat_newTemp = gammaC
                     else:
-                        try:
-                            gammahat_newTemp = gammaC - np.linalg.solve(HessianTerm, GradTerm)
-                        except np.linalg.LinAlgError:
-                            gammahat_newTemp = gammaC
+                        gammahat_newTemp = gammaC - _matlab_mldivide(HessianTerm, GradTerm)
                         if np.any(np.isnan(gammahat_newTemp)):
                             gammahat_newTemp = gammaC
 
@@ -6547,8 +7331,12 @@ class DecodingAlgorithms:
                 if gammahat_new.ndim == 2:
                     gammahat_new[:, c] = gammaC
                 else:
-                    gammahat_new = gammaC
+                    gammahat_new = gammaC.reshape(gammahat_new.shape)
 
+        if gammahat.ndim == 0:
+            # A scalar history coefficient comes back as a scalar (it is worked
+            # on as a 1-element vector above), as PPLFP_MStep returns it.
+            gammahat_new = gammahat_new.reshape(())
         return Ahat, Qhat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
 
 
@@ -6557,279 +7345,76 @@ class DecodingAlgorithms:
 
     @staticmethod
     def mPPCO_fixedIntervalSmoother(A, Q, C, R, y, alpha, dN, lags, mu, beta,
-                                     fitType, delta=0.001, gamma=None,
-                                     windowTimes=None, x0=None, Px0=None, HkAll=None):
-        """State-augmentation smoother for the mPPCO filter.
+                                    fitType, delta=0.001, gamma=None,
+                                    windowTimes=None, x0=None, Px0=None, HkAll=None):
+        """[DEPRECATED] Alias of :meth:`PPLFP_fixedIntervalSmoother` (fixed-interval lag smoother).
 
-        Matlab: ``DecodingAlgorithms.mPPCO_fixedIntervalSmoother``  (lines 4587-4688)
+        Matlab: ``DecodingAlgorithms.mPPCO_fixedIntervalSmoother`` is a
+        deprecation shim that warns ``nSTAT:deprecated:mPPCO`` and forwards
+        ``varargin{:}`` to ``DecodingAlgorithms.PPLFP_fixedIntervalSmoother``
+        (the mPPCO family was renamed PPLFP). This mirror emits a
+        :class:`DeprecationWarning` with MATLAB's message and forwards every
+        argument positionally to :meth:`PPLFP_fixedIntervalSmoother`, so it
+        returns exactly what ``PPLFP_fixedIntervalSmoother`` returns:
+        ``(x_pLag, W_pLag, x_uLag, W_uLag)``.
 
-        Returns
-        -------
-        x_pLag, W_pLag, x_uLag, W_uLag -- lagged state estimates
+        Use :meth:`PPLFP_fixedIntervalSmoother` (or
+        ``nstat.decoding.PPLFP.PPLFP_fixedIntervalSmoother``) instead.
         """
-        obs = _as_observation_matrix(dN)
-        numCells, N = obs.shape
-        A_arr = np.asarray(A, dtype=float)
-        ns = A_arr.shape[0]
-        nObs = np.asarray(C, dtype=float).shape[0]
-
-        if Px0 is None or _is_empty_value(Px0):
-            Px0 = np.zeros((ns, ns), dtype=float)
-        else:
-            Px0 = np.asarray(Px0, dtype=float).reshape(ns, ns)
-        if x0 is None or _is_empty_value(x0):
-            x0 = np.zeros(ns, dtype=float)
-        else:
-            x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if gamma is None:
-            gamma = 0
-        if delta is None:
-            delta = 0.001
-
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-
-        # Build history if needed
-        if HkAll is None or _is_empty_value(HkAll):
-            if windowTimes is not None and not _is_empty_value(windowTimes):
-                wt = np.asarray(windowTimes, dtype=float).reshape(-1)
-                HkAll = _compute_history_terms(dN, delta, wt)
-                gamma_arr = np.asarray(gamma, dtype=float)
-                if gamma_arr.ndim <= 1 and gamma_arr.size == 1 and numCells > 1:
-                    gamma = np.tile(gamma_arr.reshape(-1, 1), (1, numCells))
-            else:
-                HkAll = np.zeros((N, 1, numCells), dtype=float)
-                gamma = np.zeros(numCells, dtype=float)
-
-        gamma_arr = np.asarray(gamma, dtype=float)
-        if gamma_arr.ndim == 2 and gamma_arr.shape[1] != numCells:
-            gamma = gamma_arr.T
-
-        lags = int(lags)
-        nStates = ns
-
-        # Build augmented system
-        aug_dim = (lags + 1) * nStates
-
-        def _sel_A(n):
-            if A_arr.ndim == 3:
-                return A_arr[:, :, min(n, A_arr.shape[2] - 1)]
-            return A_arr.reshape(ns, ns)
-
-        def _sel_Q(n):
-            Q_arr = np.asarray(Q, dtype=float)
-            if Q_arr.ndim == 3:
-                return Q_arr[:, :, min(n, Q_arr.shape[2] - 1)]
-            return Q_arr.reshape(ns, ns)
-
-        def _sel_C(n):
-            C_arr = np.asarray(C, dtype=float)
-            if C_arr.ndim == 3:
-                return C_arr[:, :, min(n, C_arr.shape[2] - 1)]
-            return C_arr
-
-        def _sel_R(n):
-            R_arr = np.asarray(R, dtype=float)
-            if R_arr.ndim == 3:
-                return R_arr[:, :, min(n, R_arr.shape[2] - 1)]
-            return R_arr
-
-        Alag = np.zeros((aug_dim, aug_dim, N), dtype=float)
-        Qlag = np.zeros((aug_dim, aug_dim, N), dtype=float)
-        Clag = np.zeros((nObs, aug_dim, N), dtype=float)
-        Rlag = np.zeros((nObs, nObs, N), dtype=float)
-        x0lag = np.zeros(aug_dim, dtype=float)
-        Px0lag = np.zeros((aug_dim, aug_dim), dtype=float)
-        Px0lag[:nStates, :nStates] = Px0
-        x0lag[:nStates] = x0
-
-        for n in range(N):
-            offset = 0
-            for i in range(lags + 1):
-                if i == 0:
-                    Alag[offset:offset + nStates, offset:offset + nStates, n] = _sel_A(n)
-                    Qlag[offset:offset + nStates, offset:offset + nStates, n] = _sel_Q(n)
-                    Clag[:nObs, offset:offset + nStates, n] = _sel_C(n)
-                    Rlag[:nObs, :nObs, n] = _sel_R(n)
-                else:
-                    Alag[offset:offset + nStates, offset - nStates:offset, n] = np.eye(nStates)
-                    # Qlag block remains zeros
-                    # Clag block remains zeros
-                offset += nStates
-
-        betaLag = np.zeros((aug_dim, numCells), dtype=float)
-        beta_mat = np.asarray(beta, dtype=float)
-        if beta_mat.ndim == 1:
-            beta_mat = beta_mat.reshape(-1, 1)
-        betaLag[:nStates, :numCells] = beta_mat
-
-        x_p, W_p, x_u, W_u = DecodingAlgorithms.mPPCODecodeLinear(
-            Alag, Qlag, Clag, Rlag, y, alpha, dN,
-            mu, betaLag, fitType, delta, gamma, windowTimes,
-            x0lag, Px0lag, HkAll)
-
-        # Extract lagged portion
-        lag_start = lags * nStates
-        lag_end = (lags + 1) * nStates
-        x_pLag = x_p[lag_start:lag_end, :]
-        W_pLag = W_p[lag_start:lag_end, lag_start:lag_end, :]
-        x_uLag = x_u[lag_start:lag_end, :]
-        W_uLag = W_u[lag_start:lag_end, lag_start:lag_end, :]
-
-        return x_pLag, W_pLag, x_uLag, W_uLag
+        _warn_mppco_deprecated("mPPCO_fixedIntervalSmoother", "PPLFP_fixedIntervalSmoother")
+        return DecodingAlgorithms.PPLFP_fixedIntervalSmoother(
+            A, Q, C, R, y, alpha, dN, lags, mu, beta, fitType, delta, gamma,
+            windowTimes, x0, Px0, HkAll,
+        )
 
     @staticmethod
     def mPPCODecodeLinear(A, Q, C, R, y, alpha, dN, mu, beta,
                           fitType='poisson', delta=0.001, gamma=None,
                           windowTimes=None, x0=None, Px0=None, HkAll=None):
-        """Full mPPCO decode filter (linear CIF version).
+        """[DEPRECATED] Alias of :meth:`PPLFP_DecodeLinear` (the PPLFP forward filter).
 
-        Matlab: ``DecodingAlgorithms.mPPCODecodeLinear``  (lines 4689-4845)
+        Matlab: ``DecodingAlgorithms.mPPCODecodeLinear`` is a deprecation shim
+        that warns ``nSTAT:deprecated:mPPCO`` and forwards ``varargin{:}`` to
+        ``DecodingAlgorithms.PPLFP_DecodeLinear`` (the mPPCO family was renamed
+        PPLFP). This mirror emits a :class:`DeprecationWarning` with MATLAB's
+        message and forwards every argument positionally to
+        :meth:`PPLFP_DecodeLinear`, so it returns exactly what
+        ``PPLFP_DecodeLinear`` returns: ``(x_p, W_p, x_u, W_u)``.
 
-        Returns
-        -------
-        x_p, W_p, x_u, W_u  -- predicted / updated states & covariances
-            x_p : (ns, N+1),  W_p : (ns, ns, N+1)
-            x_u : (ns, N),    W_u : (ns, ns, N)
+        The legacy Python signature defaults ``fitType`` to ``'poisson'``,
+        which ``PPLFP_DecodeLinear`` (and MATLAB) do not; the signature is
+        frozen, so that default is forwarded as-is. ``delta=0.001`` equals
+        ``PPLFP_DecodeLinear``'s ``None`` default, which it resolves to
+        ``0.001``.
+
+        Use :meth:`PPLFP_DecodeLinear` (or
+        ``nstat.decoding.PPLFP.PPLFP_DecodeLinear``) instead.
         """
-        obs = _as_observation_matrix(dN)
-        numCells, N = obs.shape
-        A_arr = np.asarray(A, dtype=float)
-        ns = A_arr.shape[0]
-
-        # Defaults
-        if Px0 is None or _is_empty_value(Px0):
-            Px0 = np.zeros((ns, ns), dtype=float)
-        else:
-            Px0 = np.asarray(Px0, dtype=float).reshape(ns, ns)
-        if x0 is None or _is_empty_value(x0):
-            x0 = np.zeros(ns, dtype=float)
-        else:
-            x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if gamma is None:
-            gamma = 0
-        if delta is None:
-            delta = 0.001
-
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-
-        # Build history tensor if not provided
-        if HkAll is None or _is_empty_value(HkAll):
-            if windowTimes is not None and not _is_empty_value(windowTimes):
-                wt = np.asarray(windowTimes, dtype=float).reshape(-1)
-                HkAll = _compute_history_terms(dN, delta, wt)  # (N, numWindows, numCells)
-                gamma_arr = np.asarray(gamma, dtype=float)
-                if gamma_arr.ndim <= 1 and gamma_arr.size == 1 and numCells > 1:
-                    gamma = np.tile(gamma_arr.reshape(-1, 1), (1, numCells))
-            else:
-                HkAll = np.zeros((N, 1, numCells), dtype=float)
-                gamma = np.zeros(numCells, dtype=float)
-        else:
-            HkAll = np.asarray(HkAll, dtype=float)
-
-        gamma_arr = np.asarray(gamma, dtype=float)
-        if gamma_arr.ndim == 2 and gamma_arr.shape[1] != numCells:
-            gamma = gamma_arr.T
-
-        # Permute HkAll from (N, numWindows, numCells) to (numWindows, numCells, N)
-        # This is Matlab: permute(HkAll, [2 3 1])
-        if HkAll.ndim == 3 and HkAll.shape[0] == N:
-            Histtermperm = np.transpose(HkAll, (1, 2, 0))
-        else:
-            Histtermperm = HkAll
-
-        mu_vec = np.asarray(mu, dtype=float).reshape(-1)
-        beta_mat = np.asarray(beta, dtype=float)
-        if beta_mat.ndim == 1:
-            beta_mat = beta_mat.reshape(-1, 1)
-
-        # Allocate outputs
-        x_p = np.zeros((ns, N + 1), dtype=float)
-        x_u = np.zeros((ns, N), dtype=float)
-        W_p = np.zeros((ns, ns, N + 1), dtype=float)
-        W_u = np.zeros((ns, ns, N), dtype=float)
-
-        # Time-varying or static matrices: pick slice for time 0
-        def _sel_A(n):
-            if A_arr.ndim == 3:
-                return A_arr[:, :, min(n, A_arr.shape[2] - 1)]
-            return A_arr.reshape(ns, ns)
-
-        def _sel_Q(n):
-            Q_arr = np.asarray(Q, dtype=float)
-            if Q_arr.ndim == 3:
-                return Q_arr[:, :, min(n, Q_arr.shape[2] - 1)]
-            return Q_arr.reshape(ns, ns)
-
-        def _sel_C(n):
-            C_arr = np.asarray(C, dtype=float)
-            if C_arr.ndim == 3:
-                return C_arr[:, :, min(n, C_arr.shape[2] - 1)]
-            return C_arr
-
-        def _sel_R(n):
-            R_arr = np.asarray(R, dtype=float)
-            if R_arr.ndim == 3:
-                return R_arr[:, :, min(n, R_arr.shape[2] - 1)]
-            return R_arr
-
-        def _sel_alpha(n):
-            alpha_arr = np.asarray(alpha, dtype=float)
-            if alpha_arr.ndim >= 2 and alpha_arr.shape[-1] > 1:
-                return alpha_arr[:, min(n, alpha_arr.shape[-1] - 1)]
-            return alpha_arr.reshape(-1)
-
-        # Initial prediction
-        A1 = _sel_A(0)
-        Q1 = _sel_Q(0)
-        x_p[:, 0] = A1 @ x0
-        W_p[:, :, 0] = A1 @ Px0 @ A1.T + Q1
-
-        y_arr = np.asarray(y, dtype=float)
-
-        for n in range(N):
-            # 0-based time_index for mPPCODecode_update
-            x_u[:, n], W_u[:, :, n], _ = DecodingAlgorithms.mPPCODecode_update(
-                x_p[:, n], W_p[:, :, n],
-                _sel_C(n), _sel_R(n),
-                y_arr[:, n] if y_arr.ndim == 2 else y_arr,
-                _sel_alpha(n),
-                dN, mu_vec, beta_mat, fitType,
-                gamma, Histtermperm, n, None)
-            if n < N - 1:
-                x_p[:, n + 1], W_p[:, :, n + 1] = DecodingAlgorithms.mPPCODecode_predict(
-                    x_u[:, n], W_u[:, :, n], _sel_A(n), _sel_Q(n))
-
-        return x_p, W_p, x_u, W_u
+        _warn_mppco_deprecated("mPPCODecodeLinear", "PPLFP_DecodeLinear")
+        return DecodingAlgorithms.PPLFP_DecodeLinear(
+            A, Q, C, R, y, alpha, dN, mu, beta, fitType, delta, gamma,
+            windowTimes, x0, Px0, HkAll,
+        )
 
     @staticmethod
     def mPPCODecode_predict(x_u, W_u, A, Q):
-        """Predict step for the mPPCO filter.
+        """[DEPRECATED] Alias of :meth:`PPLFP_Decode_predict` (the PPLFP predict step).
 
-        Matlab: ``DecodingAlgorithms.mPPCODecode_predict``  (lines 4846-4854)
+        Matlab: ``DecodingAlgorithms.mPPCODecode_predict`` is a deprecation
+        shim that warns ``nSTAT:deprecated:mPPCO`` and forwards
+        ``varargin{:}`` to ``DecodingAlgorithms.PPLFP_Decode_predict`` (the
+        mPPCO family was renamed PPLFP). This mirror emits a
+        :class:`DeprecationWarning` with MATLAB's message and forwards every
+        argument positionally to :meth:`PPLFP_Decode_predict`, so it returns
+        exactly what ``PPLFP_Decode_predict`` returns: ``(x_p, W_p)`` with
+        ``x_p = A @ x_u`` (an ``(ns, 1)`` column ``x_u`` now gives an
+        ``(ns, 1)`` ``x_p``, as in MATLAB, where the old body flattened it).
 
-        Parameters
-        ----------
-        x_u : array (ns,)   -- updated state
-        W_u : array (ns,ns) -- updated covariance
-        A   : array (ns,ns) -- state transition
-        Q   : array (ns,ns) -- process noise
-
-        Returns
-        -------
-        x_p : array (ns,)
-        W_p : array (ns,ns)
+        Use :meth:`PPLFP_Decode_predict` (or
+        ``nstat.decoding.PPLFP.PPLFP_Decode_predict``) instead.
         """
-        x_u = np.asarray(x_u, dtype=float).reshape(-1)
-        ns = x_u.size
-        A = np.asarray(A, dtype=float).reshape(ns, ns)
-        Q = np.asarray(Q, dtype=float).reshape(ns, ns)
-        W_u = np.asarray(W_u, dtype=float).reshape(ns, ns)
-        x_p = A @ x_u
-        W_p = A @ W_u @ A.T + Q
-        W_p = _symmetrize(W_p)
-        return x_p, W_p
+        _warn_mppco_deprecated("mPPCODecode_predict", "PPLFP_Decode_predict")
+        return DecodingAlgorithms.PPLFP_Decode_predict(x_u, W_u, A, Q)
 
     @staticmethod
     def mPPCODecode_update(x_p, W_p, C, R, y, alpha, dN, mu, beta,
@@ -6966,1248 +7551,148 @@ class DecodingAlgorithms:
 
     @staticmethod
     def mPPCO_EMCreateConstraints(EstimateA=1, AhatDiag=0, QhatDiag=1,
-                                   QhatIsotropic=0, RhatDiag=1,
-                                   RhatIsotropic=0, Estimatex0=1,
-                                   EstimatePx0=1, Px0Isotropic=0,
-                                   mcIter=1000, EnableIkeda=0):
-        """Create constraint dictionary for mPPCO EM.
+                                  QhatIsotropic=0, RhatDiag=1,
+                                  RhatIsotropic=0, Estimatex0=0,
+                                  EstimatePx0=0, Px0Isotropic=0,
+                                  mcIter=1000, EnableIkeda=0):
+        """[DEPRECATED] Alias of :meth:`PPLFP_EMCreateConstraints` (EM constraints builder).
 
-        Matlab: ``DecodingAlgorithms.mPPCO_EMCreateConstraints`` (lines 4945-5005)
+        Matlab: ``DecodingAlgorithms.mPPCO_EMCreateConstraints`` is a
+        deprecation shim that warns ``nSTAT:deprecated:mPPCO`` and forwards
+        ``varargin{:}`` to ``DecodingAlgorithms.PPLFP_EMCreateConstraints``
+        (the mPPCO family was renamed PPLFP). This mirror emits a
+        :class:`DeprecationWarning` with MATLAB's message and forwards every
+        argument positionally to :meth:`PPLFP_EMCreateConstraints`, so it
+        returns exactly what ``PPLFP_EMCreateConstraints`` returns: the
+        constraints ``dict``.
+
+        Its defaults are ``PPLFP_EMCreateConstraints``'s (MATLAB forwards
+        ``varargin``, so the alias inherits them): ``Estimatex0=0`` and
+        ``EstimatePx0=0`` since the repaired MATLAB (B8).
+
+        Use :meth:`PPLFP_EMCreateConstraints` (or
+        ``nstat.decoding.PPLFP.PPLFP_EMCreateConstraints``) instead.
         """
-        C = {}
-        C['EstimateA'] = int(EstimateA)
-        C['AhatDiag'] = int(AhatDiag)
-        C['QhatDiag'] = int(QhatDiag)
-        C['QhatIsotropic'] = 1 if (QhatDiag and QhatIsotropic) else 0
-        C['RhatDiag'] = int(RhatDiag)
-        C['RhatIsotropic'] = 1 if (RhatDiag and RhatIsotropic) else 0
-        C['Estimatex0'] = int(Estimatex0)
-        C['EstimatePx0'] = int(EstimatePx0)
-        C['Px0Isotropic'] = 1 if (EstimatePx0 and Px0Isotropic) else 0
-        C['mcIter'] = int(mcIter)
-        C['EnableIkeda'] = int(EnableIkeda)
-        return C
+        _warn_mppco_deprecated("mPPCO_EMCreateConstraints", "PPLFP_EMCreateConstraints")
+        return DecodingAlgorithms.PPLFP_EMCreateConstraints(
+            EstimateA, AhatDiag, QhatDiag, QhatIsotropic, RhatDiag, RhatIsotropic,
+            Estimatex0, EstimatePx0, Px0Isotropic, mcIter, EnableIkeda,
+        )
 
     @staticmethod
     def mPPCO_ComputeParamStandardErrors(y, dN, xKFinal, WKFinal, Ahat, Qhat,
-                                          Chat, Rhat, alphahat, x0hat, Px0hat,
-                                          ExpectationSumsFinal, fitType,
-                                          muhat, betahat, gammahat,
-                                          windowTimes, HkAll,
-                                          mPPCOEM_Constraints=None):
-        """Compute standard errors for mPPCO EM parameters.
+                                         Chat, Rhat, alphahat, x0hat, Px0hat,
+                                         ExpectationSumsFinal, fitType,
+                                         muhat, betahat, gammahat,
+                                         windowTimes, HkAll,
+                                         mPPCOEM_Constraints=None):
+        """[DEPRECATED] Alias of :meth:`PPLFP_ComputeParamStandardErrors` (parameter standard errors).
 
-        Matlab: ``DecodingAlgorithms.mPPCO_ComputeParamStandardErrors``  (lines 5006-6138)
+        Matlab: ``DecodingAlgorithms.mPPCO_ComputeParamStandardErrors`` is a
+        deprecation shim that warns ``nSTAT:deprecated:mPPCO`` and forwards
+        ``varargin{:}`` to
+        ``DecodingAlgorithms.PPLFP_ComputeParamStandardErrors`` (the mPPCO
+        family was renamed PPLFP). This mirror emits a
+        :class:`DeprecationWarning` with MATLAB's message and forwards every
+        argument positionally to :meth:`PPLFP_ComputeParamStandardErrors`, so
+        it returns exactly what ``PPLFP_ComputeParamStandardErrors`` returns:
+        ``(SE, Pvals, nTerms)``. ``mPPCOEM_Constraints`` is the legacy name of
+        ``PPLFP_EM_Constraints``; it is passed positionally.
 
-        Uses the observed information matrix approach: Io = Ic - Im  (McLachlan & Krishnan Eq 4.7).
+        Use :meth:`PPLFP_ComputeParamStandardErrors` (or
+        ``nstat.decoding.PPLFP.PPLFP_ComputeParamStandardErrors``) instead.
         """
-        if mPPCOEM_Constraints is None:
-            mPPCOEM_Constraints = DecodingAlgorithms.mPPCO_EMCreateConstraints()
-
-        y = np.asarray(y, dtype=float)
-        obs = _as_observation_matrix(dN)
-        xKFinal = np.asarray(xKFinal, dtype=float)
-        Ahat = np.asarray(Ahat, dtype=float)
-        Qhat = np.asarray(Qhat, dtype=float)
-        Chat = np.asarray(Chat, dtype=float)
-        Rhat = np.asarray(Rhat, dtype=float)
-        alphahat = np.asarray(alphahat, dtype=float).reshape(-1)
-        x0hat = np.asarray(x0hat, dtype=float).reshape(-1)
-        Px0hat = np.asarray(Px0hat, dtype=float)
-        muhat = np.asarray(muhat, dtype=float).reshape(-1)
-        betahat = np.asarray(betahat, dtype=float)
-        if betahat.ndim == 1:
-            betahat = betahat.reshape(-1, 1)
-        gammahat = np.asarray(gammahat, dtype=float)
-        HkAll = np.asarray(HkAll, dtype=float)
-
-        dy, N = y.shape if y.ndim == 2 else (1, y.shape[0])
-        K = N
-        dx = xKFinal.shape[0]
-        numCells = betahat.shape[1]
-        McExp = mPPCOEM_Constraints['mcIter']
-
-        Qhat_inv = np.linalg.inv(Qhat)
-        Rhat_inv = np.linalg.inv(Rhat)
-        Px0hat_inv = np.linalg.inv(Px0hat + np.eye(Px0hat.shape[0]) * 1e-12)
-
-        # ---- Complete Information Matrices ----
-
-        # IAComp - A parameter
-        if mPPCOEM_Constraints['EstimateA']:
-            n1A, n2A = Ahat.shape
-            el = np.eye(n1A)
-            em = np.eye(n2A)
-            if mPPCOEM_Constraints['AhatDiag']:
-                IAComp = np.zeros((n1A, n1A))
-                for l in range(n1A):
-                    termMat = Qhat_inv @ np.outer(el[:, l], em[:, l]) @ ExpectationSumsFinal['Sxkm1xkm1'] * np.eye(n1A)
-                    IAComp[:, l] = np.diag(termMat)
-            else:
-                nA = Ahat.size
-                IAComp = np.zeros((nA, nA))
-                cnt = 0
-                for l in range(n1A):
-                    for m in range(n2A):
-                        termMat = Qhat_inv @ np.outer(el[:, l], em[:, m]) @ ExpectationSumsFinal['Sxkm1xkm1']
-                        IAComp[:, cnt] = termMat.T.reshape(-1)
-                        cnt += 1
-
-        # ICComp - C parameter
-        n1C, n2C = Chat.shape
-        nC = Chat.size
-        ICComp = np.zeros((nC, nC))
-        el = np.eye(n1C)
-        em = np.eye(n2C)
-        cnt = 0
-        for l in range(n1C):
-            for m in range(n2C):
-                termMat = Rhat_inv @ np.outer(el[:, l], em[:, m]) @ ExpectationSumsFinal['Sxkxk']
-                ICComp[:, cnt] = termMat.T.reshape(-1)
-                cnt += 1
-
-        # IRComp - R parameter
-        n1R, n2R = Rhat.shape
-        el = np.eye(n1R)
-        em = np.eye(n2R)
-        if mPPCOEM_Constraints['RhatDiag']:
-            if mPPCOEM_Constraints['RhatIsotropic']:
-                IRComp = np.array([[0.5 * N * dy * Rhat[0, 0] ** (-2)]])
-            else:
-                IRComp = np.zeros((n1R, n1R))
-                for l in range(n1R):
-                    termMat = N / 2.0 * Rhat_inv @ np.outer(em[:, l], el[:, l]) @ Rhat_inv
-                    IRComp[:, l] = np.diag(termMat)
-        else:
-            nR = Rhat.size
-            IRComp = np.zeros((nR, nR))
-            cnt = 0
-            for l in range(n1R):
-                for m in range(n2R):
-                    termMat = N / 2.0 * Rhat_inv @ np.outer(em[:, m], el[:, l]) @ Rhat_inv
-                    IRComp[:, cnt] = termMat.T.reshape(-1)
-                    cnt += 1
-
-        # IQComp - Q parameter
-        n1Q, n2Q = Qhat.shape
-        el = np.eye(n1Q)
-        em = np.eye(n2Q)
-        if mPPCOEM_Constraints['QhatDiag']:
-            if mPPCOEM_Constraints['QhatIsotropic']:
-                IQComp = np.array([[0.5 * N * dx * Qhat[0, 0] ** (-2)]])
-            else:
-                IQComp = np.zeros((n1Q, n1Q))
-                for l in range(n1Q):
-                    termMat = N / 2.0 * Qhat_inv @ np.outer(em[:, l], el[:, l]) @ Qhat_inv
-                    IQComp[:, l] = np.diag(termMat)
-        else:
-            nQ = Qhat.size
-            IQComp = np.zeros((nQ, nQ))
-            cnt = 0
-            for l in range(n1Q):
-                for m in range(n2Q):
-                    termMat = N / 2.0 * Qhat_inv @ np.outer(em[:, m], el[:, l]) @ Qhat_inv
-                    IQComp[:, cnt] = termMat.T.reshape(-1)
-                    cnt += 1
-
-        # ISComp - Px0 parameter
-        if mPPCOEM_Constraints['EstimatePx0']:
-            if mPPCOEM_Constraints['Px0Isotropic']:
-                ISComp = np.array([[0.5 * dx * Px0hat[0, 0] ** (-2)]])
-            else:
-                n1S, n2S = Px0hat.shape
-                ISComp = np.zeros((n1S, n1S))
-                el = np.eye(n1S)
-                em = np.eye(n2S)
-                for l in range(n1S):
-                    termMat = 0.5 * Px0hat_inv @ np.outer(em[:, l], el[:, l]) @ Px0hat_inv
-                    ISComp[:, l] = np.diag(termMat)
-
-        # Ix0Comp
-        if mPPCOEM_Constraints['Estimatex0']:
-            Ix0Comp = Px0hat_inv + Ahat.T @ Qhat_inv @ Ahat
-
-        # IAlphaComp
-        IAlphaComp = N * Rhat_inv
-
-        # IBetaComp - Monte Carlo
-        xKDrawExp = np.zeros((dx, K, McExp), dtype=float)
-        for k in range(K):
-            WuTemp = WKFinal[:, :, k]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp)
-            except np.linalg.LinAlgError:
-                chol_m = np.linalg.cholesky(nearestSPD(WuTemp))
-            z = np.random.randn(dx, McExp)
-            xKDrawExp[:, k, :] = xKFinal[:, k:k + 1] + chol_m @ z
-
-        IBetaComp = np.zeros((dx * numCells, dx * numCells), dtype=float)
-        xkPerm = np.transpose(xKDrawExp, (0, 2, 1))  # (dx, McExp, K)
-
-        for c in range(numCells):
-            HessianTerm = np.zeros((dx, dx), dtype=float)
-            for k in range(K):
-                Hk = HkAll[k, :, c] if HkAll.ndim == 3 else np.zeros(1)
-                xk = xkPerm[:, :, k]
-                gammaC = gammahat if gammahat.size == 1 else (gammahat[:, c] if gammahat.ndim == 2 else gammahat)
-                terms = muhat[c] + betahat[:, c] @ xk + float(np.dot(gammaC.reshape(-1), Hk.reshape(-1)))
-                if fitType == 'poisson':
-                    ld = np.exp(np.clip(terms, -500, 500))
-                    HessianTerm -= (1.0 / McExp) * (np.tile(ld, (dx, 1)) * xk) @ xk.T
-                else:
-                    ld = np.exp(np.clip(terms, -500, 500))
-                    ld = ld / (1.0 + ld)
-                    EldXkXk = (1.0 / McExp) * (np.tile(ld, (dx, 1)) * xk) @ xk.T
-                    EldSqXkXk = (1.0 / McExp) * (np.tile(ld ** 2, (dx, 1)) * xk) @ xk.T
-                    EldCubeXkXk = (1.0 / McExp) * (np.tile(ld ** 3, (dx, 1)) * xk) @ xk.T
-                    HessianTerm += EldXkXk + EldSqXkXk - 2.0 * EldCubeXkXk
-            si = dx * c
-            ei = dx * (c + 1)
-            IBetaComp[si:ei, si:ei] = -HessianTerm
-
-        # IMuComp
-        IMuComp = np.zeros((numCells, numCells), dtype=float)
-        for c in range(numCells):
-            HessianTerm = 0.0
-            for k in range(K):
-                Hk_full = HkAll[:, :, c] if HkAll.ndim == 3 else np.zeros((K, 1))
-                Hk = Hk_full[k, :]
-                xk = xkPerm[:, :, k]
-                gammaC = gammahat if gammahat.size == 1 else (gammahat[:, c] if gammahat.ndim == 2 else gammahat)
-                terms = muhat[c] + betahat[:, c] @ xk + float(np.dot(gammaC.reshape(-1), Hk.reshape(-1)))
-                if fitType == 'poisson':
-                    ld = np.exp(np.clip(terms, -500, 500))
-                    HessianTerm -= (1.0 / McExp) * float(np.sum(ld))
-                else:
-                    ld = np.exp(np.clip(terms, -500, 500)) / (1.0 + np.exp(np.clip(terms, -500, 500)))
-                    Eld = (1.0 / McExp) * float(np.sum(ld))
-                    EldSq = (1.0 / McExp) * float(np.sum(ld ** 2))
-                    EldCube = (1.0 / McExp) * float(np.sum(ld ** 3))
-                    HessianTerm += -(obs[c, k] + 1) * Eld + (obs[c, k] + 3) * EldSq - 3 * EldCube
-            IMuComp[c, c] = -HessianTerm
-
-        # IGammaComp
-        nHist = HkAll.shape[1] if HkAll.ndim == 3 else 1
-        IGammaComp = np.zeros((nHist * numCells, nHist * numCells), dtype=float)
-        has_gamma = (windowTimes is not None and not _is_empty_value(windowTimes)
-                     and np.any(gammahat != 0))
-        if has_gamma:
-            for c in range(numCells):
-                HessianTerm = np.zeros((nHist, nHist), dtype=float)
-                for k in range(K):
-                    Hk_full = HkAll[:, :, c] if HkAll.ndim == 3 else np.zeros((K, 1))
-                    Hk = Hk_full[k, :]
-                    xk = xkPerm[:, :, k]
-                    gammaC = gammahat if gammahat.size == 1 else (gammahat[:, c] if gammahat.ndim == 2 else gammahat)
-                    terms = muhat[c] + betahat[:, c] @ xk + float(np.dot(gammaC.reshape(-1), Hk.reshape(-1)))
-                    if fitType == 'poisson':
-                        ld = np.exp(np.clip(terms, -500, 500))
-                        Eld = (1.0 / McExp) * float(np.sum(ld))
-                        HessianTerm -= np.outer(Hk, Hk) * Eld
-                    else:
-                        ld_raw = np.exp(np.clip(terms, -500, 500))
-                        ld = ld_raw / (1.0 + ld_raw)
-                        Eld = (1.0 / McExp) * float(np.sum(ld))
-                        EldSq = (1.0 / McExp) * float(np.sum(ld ** 2))
-                        EldCube = (1.0 / McExp) * float(np.sum(ld ** 2))  # matches Matlab typo (ld.^2)
-                        HessianTerm += (-Eld * (obs[c, k] + 1) + EldSq * (obs[c, k] + 3) - 2 * EldCube) * np.outer(Hk, Hk)
-                si = nHist * c
-                ei = nHist * (c + 1)
-                IGammaComp[si:ei, si:ei] = -HessianTerm
-
-        # Assemble IComp
-        n1 = IAComp.shape[0] if mPPCOEM_Constraints['EstimateA'] else 0
-        n2 = IQComp.shape[0]
-        n3 = ICComp.shape[0]
-        n4 = IRComp.shape[0]
-        n5 = ISComp.shape[0] if mPPCOEM_Constraints['EstimatePx0'] else 0
-        n6 = Ix0Comp.shape[0] if mPPCOEM_Constraints['Estimatex0'] else 0
-        n7 = IAlphaComp.shape[0]
-        n8 = IMuComp.shape[0]
-        n9 = IBetaComp.shape[0]
-        if gammahat.size == 1 and float(gammahat.flat[0]) == 0:
-            n10 = 0
-        else:
-            n10 = IGammaComp.shape[0]
-        nTerms = n1 + n2 + n3 + n4 + n5 + n6 + n7 + n8 + n9 + n10
-        IComp = np.zeros((nTerms, nTerms), dtype=float)
-
-        offset = 0
-        if mPPCOEM_Constraints['EstimateA']:
-            IComp[offset:offset + n1, offset:offset + n1] = IAComp
-            offset += n1
-        IComp[offset:offset + n2, offset:offset + n2] = IQComp
-        offset += n2
-        IComp[offset:offset + n3, offset:offset + n3] = ICComp
-        offset += n3
-        IComp[offset:offset + n4, offset:offset + n4] = IRComp
-        offset += n4
-        if mPPCOEM_Constraints['EstimatePx0']:
-            IComp[offset:offset + n5, offset:offset + n5] = ISComp
-        offset += n5
-        if mPPCOEM_Constraints['Estimatex0']:
-            IComp[offset:offset + n6, offset:offset + n6] = Ix0Comp
-        offset += n6
-        IComp[offset:offset + n7, offset:offset + n7] = IAlphaComp
-        offset += n7
-        IComp[offset:offset + n8, offset:offset + n8] = IMuComp
-        offset += n8
-        IComp[offset:offset + n9, offset:offset + n9] = IBetaComp
-        offset += n9
-        if n10 > 0:
-            IComp[offset:offset + n10, offset:offset + n10] = IGammaComp
-
-        # ---- Missing Information Matrix (Monte Carlo) ----
-        Mc = McExp
-        xKDraw = np.zeros((dx, N, Mc), dtype=float)
-        for n in range(N):
-            WuTemp = WKFinal[:, :, n]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp)
-            except np.linalg.LinAlgError:
-                chol_m = np.linalg.cholesky(nearestSPD(WuTemp))
-            z = np.random.randn(dx, Mc)
-            xKDraw[:, n, :] = xKFinal[:, n:n + 1] + chol_m @ z
-
-        if mPPCOEM_Constraints['EstimatePx0'] or mPPCOEM_Constraints['Estimatex0']:
-            try:
-                chol_m = np.linalg.cholesky(Px0hat)
-            except np.linalg.LinAlgError:
-                chol_m = np.linalg.cholesky(nearestSPD(Px0hat))
-            z = np.random.randn(dx, Mc)
-            x0Draw = x0hat.reshape(-1, 1) + chol_m @ z
-        else:
-            x0Draw = np.tile(x0hat.reshape(-1, 1), (1, Mc))
-
-        IMc = np.zeros((nTerms, nTerms, Mc), dtype=float)
-        Dx = dx
-        Dy = dy
-
-        for c_mc in range(Mc):
-            x_K = xKDraw[:, :, c_mc]
-            x_0 = x0Draw[:, c_mc]
-
-            Sxkm1xk = np.zeros((Dx, Dx))
-            Sxkm1xkm1 = np.zeros((Dx, Dx))
-            Sxkxk = np.zeros((Dx, Dx))
-            Sykyk = np.zeros((Dy, Dy))
-            Sxkyk = np.zeros((Dx, Dy))
-
-            for k in range(K):
-                if k == 0:
-                    Sxkm1xk += np.outer(x_0, x_K[:, k])
-                    Sxkm1xkm1 += np.outer(x_0, x_0)
-                else:
-                    Sxkm1xk += np.outer(x_K[:, k - 1], x_K[:, k])
-                    Sxkm1xkm1 += np.outer(x_K[:, k - 1], x_K[:, k - 1])
-                Sxkxk += np.outer(x_K[:, k], x_K[:, k])
-                yk_alpha = y[:, k] - alphahat if y.ndim == 2 else y - alphahat
-                Sykyk += np.outer(yk_alpha, yk_alpha)
-                Sxkyk += np.outer(x_K[:, k], yk_alpha)
-
-            Sxkxk = _symmetrize(Sxkxk)
-            Sykyk = _symmetrize(Sykyk)
-            sumXkTerms_mc = Sxkxk - Ahat @ Sxkm1xk - Sxkm1xk.T @ Ahat.T + Ahat @ Sxkm1xkm1 @ Ahat.T
-            sumYkTerms_mc = Sykyk - Chat @ Sxkyk - Sxkyk.T @ Chat.T + Chat @ Sxkxk @ Chat.T
-            Sxkxkm1 = Sxkm1xk.T
-            sumXkTerms_mc = _symmetrize(sumXkTerms_mc)
-            sumYkTerms_mc = _symmetrize(sumYkTerms_mc)
-
-            # Score: A
-            if mPPCOEM_Constraints['EstimateA']:
-                ScorA = np.linalg.solve(Qhat, Sxkxkm1 - Ahat @ Sxkm1xkm1)
-                if mPPCOEM_Constraints['AhatDiag']:
-                    ScoreAMc = np.diag(ScorA)
-                else:
-                    ScoreAMc = ScorA.T.reshape(-1)
-            else:
-                ScoreAMc = np.array([], dtype=float)
-
-            # Score: C
-            ScorC = np.linalg.solve(Rhat, Sxkyk.T - Chat @ Sxkxk)
-            ScoreCMc = ScorC.T.reshape(-1)
-
-            # Score: Q
-            if mPPCOEM_Constraints['QhatDiag']:
-                if mPPCOEM_Constraints['QhatIsotropic']:
-                    ScoreQ = -0.5 * (K * Dx * Qhat[0, 0] ** (-1) - Qhat[0, 0] ** (-2) * np.trace(sumXkTerms_mc))
-                    ScoreQMc = np.array([ScoreQ])
-                else:
-                    ScoreQ = -0.5 * np.linalg.solve(Qhat, K * np.eye(Dx) - np.linalg.solve(Qhat, sumXkTerms_mc).T)
-                    ScoreQMc = np.diag(ScoreQ)
-            else:
-                ScoreQ = -0.5 * np.linalg.solve(Qhat, K * np.eye(Dx) - np.linalg.solve(Qhat, sumXkTerms_mc).T)
-                ScoreQMc = ScoreQ.T.reshape(-1)
-
-            # Score: alpha
-            resid = y - Chat @ x_K - alphahat.reshape(-1, 1) @ np.ones((1, N)) if y.ndim == 2 else y - Chat @ x_K - alphahat.reshape(-1, 1)
-            ScoreAlphaMc = np.sum(np.linalg.solve(Rhat, resid), axis=1)
-
-            # Score: R
-            if mPPCOEM_Constraints['RhatDiag']:
-                if mPPCOEM_Constraints['RhatIsotropic']:
-                    ScoreR = -0.5 * (K * Dy * Rhat[0, 0] ** (-1) - Rhat[0, 0] ** (-2) * np.trace(sumYkTerms_mc))
-                    ScoreRMc = np.array([ScoreR])
-                else:
-                    ScoreR = -0.5 * np.linalg.solve(Rhat, K * np.eye(Dy) - np.linalg.solve(Rhat, sumYkTerms_mc).T)
-                    ScoreRMc = np.diag(ScoreR)
-            else:
-                ScoreR = -0.5 * np.linalg.solve(Rhat, K * np.eye(Dy) - np.linalg.solve(Rhat, sumYkTerms_mc).T)
-                ScoreRMc = ScoreR.T.reshape(-1)
-
-            # Score: Px0
-            if mPPCOEM_Constraints['Px0Isotropic']:
-                diff0 = x_0 - x0hat
-                ScoreSMc = np.array([-0.5 * (Dx * Px0hat[0, 0] ** (-1) - Px0hat[0, 0] ** (-2) * np.trace(np.outer(diff0, diff0)))])
-            else:
-                diff0 = x_0 - x0hat
-                ScorS = -0.5 * np.linalg.solve(Px0hat, np.eye(Dx) - np.linalg.solve(Px0hat, np.outer(diff0, diff0)).T)
-                ScoreSMc = np.diag(ScorS)
-
-            # Score: x0
-            Scorx0 = -np.linalg.solve(Px0hat, x_0 - x0hat) + Ahat.T @ np.linalg.solve(Qhat, x_K[:, 0] - Ahat @ x_0)
-            Scorex0Mc = Scorx0.reshape(-1)
-
-            # Score: mu, beta, gamma per cell
-            ScoreMuMc = np.zeros(numCells)
-            ScoreBetaMc = np.array([], dtype=float)
-            ScoreGammaMc = np.array([], dtype=float)
-            for nc in range(numCells):
-                Hk_full = HkAll[:, :, nc] if HkAll.ndim == 3 else np.zeros((K, 1))
-                nHistC = Hk_full.shape[1]
-                gammaC = gammahat if gammahat.size == 1 else (gammahat[:, nc] if gammahat.ndim == 2 else gammahat)
-                terms = muhat[nc] + betahat[:, nc] @ x_K + gammaC.reshape(-1) @ Hk_full.T
-                if fitType == 'poisson':
-                    ld = np.exp(np.clip(terms, -500, 500))
-                    ScoreMuMc[nc] = float(np.sum(obs[nc, :] - ld))
-                    ScoreBetaMc = np.concatenate([ScoreBetaMc, np.sum(np.tile(obs[nc, :] - ld, (Dx, 1)) * x_K, axis=1)])
-                    ScoreGammaMc = np.concatenate([ScoreGammaMc, np.sum(np.tile(obs[nc, :] - ld, (nHistC, 1)) * Hk_full.T, axis=1)])
-                else:
-                    ld_raw = np.exp(np.clip(terms, -500, 500))
-                    ld = ld_raw / (1.0 + ld_raw)
-                    ScoreMuMc[nc] = float(np.sum(obs[nc, :] - (obs[nc, :] + 1) * ld + ld ** 2))
-                    ScoreBetaMc = np.concatenate([ScoreBetaMc, np.sum(np.tile(obs[nc, :] * (1 - ld) - ld * (1 - ld), (Dx, 1)) * x_K, axis=1)])
-                    ScoreGammaMc = np.concatenate([ScoreGammaMc, np.sum(np.tile(obs[nc, :] - (obs[nc, :] + 1) * ld + ld ** 2, (nHistC, 1)) * Hk_full.T, axis=1)])
-
-            ScoreVec = np.concatenate([ScoreAMc, ScoreQMc, ScoreCMc, ScoreRMc])
-            if mPPCOEM_Constraints['EstimatePx0']:
-                ScoreVec = np.concatenate([ScoreVec, ScoreSMc])
-            if mPPCOEM_Constraints['Estimatex0']:
-                ScoreVec = np.concatenate([ScoreVec, Scorex0Mc])
-            ScoreVec = np.concatenate([ScoreVec, ScoreAlphaMc, ScoreMuMc, ScoreBetaMc])
-            if n10 > 0:
-                ScoreVec = np.concatenate([ScoreVec, ScoreGammaMc])
-
-            IMc[:, :, c_mc] = np.outer(ScoreVec, ScoreVec)
-
-        IMissing = np.mean(IMc, axis=2)
-        IObs = IComp - IMissing
-        try:
-            invIObs = np.linalg.inv(IObs)
-        except np.linalg.LinAlgError:
-            invIObs = np.linalg.pinv(IObs)
-        invIObs = nearestSPD(invIObs)
-        VarVec = np.diag(invIObs)
-        SEVec = np.sqrt(np.maximum(VarVec, 0.0))
-
-        # Partition SE vector
-        off = 0
-        SEAterms = SEVec[off:off + n1]; off += n1
-        SEQterms = SEVec[off:off + n2]; off += n2
-        SECterms = SEVec[off:off + n3]; off += n3
-        SERterms = SEVec[off:off + n4]; off += n4
-        SEPx0terms = SEVec[off:off + n5]; off += n5
-        SEx0terms = SEVec[off:off + n6]; off += n6
-        SEAlphaterms = SEVec[off:off + n7]; off += n7
-        SEMuTerms = SEVec[off:off + n8]; off += n8
-        SEBetaTerms = SEVec[off:off + n9]; off += n9
-        SEGammaTerms = SEVec[off:off + n10]; off += n10
-
-        SE = {}
-        if mPPCOEM_Constraints['EstimateA']:
-            if mPPCOEM_Constraints['AhatDiag']:
-                SE['A'] = np.diag(SEAterms)
-            else:
-                SE['A'] = SEAterms.reshape(Ahat.shape[1], Ahat.shape[0]).T
-        SE['Q'] = np.diag(SEQterms) if mPPCOEM_Constraints['QhatDiag'] else SEQterms.reshape(Qhat.shape[1], Qhat.shape[0]).T
-        SE['C'] = SECterms.reshape(Chat.shape[1], Chat.shape[0]).T
-        SE['R'] = np.diag(SERterms) if mPPCOEM_Constraints['RhatDiag'] else SERterms.reshape(Rhat.shape[1], Rhat.shape[0]).T
-        SE['alpha'] = SEAlphaterms.reshape(alphahat.shape)
-        if mPPCOEM_Constraints['EstimatePx0']:
-            SE['Px0'] = np.diag(SEPx0terms)
-        if mPPCOEM_Constraints['Estimatex0']:
-            SE['x0'] = SEx0terms
-        SE['mu'] = SEMuTerms
-        SE['beta'] = SEBetaTerms.reshape(betahat.shape[1], betahat.shape[0]).T
-        if n10 > 0:
-            SE['gamma'] = SEGammaTerms.reshape(gammahat.shape[1], gammahat.shape[0]).T if gammahat.ndim == 2 else SEGammaTerms
-
-        # P-values (two-sided z-test)
-        Pvals = {}
-        if mPPCOEM_Constraints['EstimateA']:
-            pA_flat = np.array([_ztest_pvalue(p, s) for p, s in zip(Ahat.reshape(-1) if not mPPCOEM_Constraints['AhatDiag'] else np.diag(Ahat), SE['A'].reshape(-1) if not mPPCOEM_Constraints['AhatDiag'] else np.diag(SE['A']))])
-            Pvals['A'] = np.diag(pA_flat) if mPPCOEM_Constraints['AhatDiag'] else pA_flat.reshape(Ahat.shape)
-        pC_flat = np.array([_ztest_pvalue(p, s) for p, s in zip(Chat.reshape(-1), SE['C'].reshape(-1))])
-        Pvals['C'] = pC_flat.reshape(Chat.shape)
-        if mPPCOEM_Constraints['RhatDiag']:
-            pR_flat = np.array([_ztest_pvalue(p, s) for p, s in zip(np.diag(Rhat), np.diag(SE['R']))])
-            Pvals['R'] = np.diag(pR_flat)
-        else:
-            pR_flat = np.array([_ztest_pvalue(p, s) for p, s in zip(Rhat.reshape(-1), SE['R'].reshape(-1))])
-            Pvals['R'] = pR_flat.reshape(Rhat.shape)
-        if mPPCOEM_Constraints['QhatDiag']:
-            pQ_flat = np.array([_ztest_pvalue(p, s) for p, s in zip(np.diag(Qhat), np.diag(SE['Q']))])
-            Pvals['Q'] = np.diag(pQ_flat)
-        else:
-            pQ_flat = np.array([_ztest_pvalue(p, s) for p, s in zip(Qhat.reshape(-1), SE['Q'].reshape(-1))])
-            Pvals['Q'] = pQ_flat.reshape(Qhat.shape)
-        if mPPCOEM_Constraints['EstimatePx0']:
-            pPx0_flat = np.array([_ztest_pvalue(p, s) for p, s in zip(np.diag(Px0hat), np.diag(SE['Px0']))])
-            Pvals['Px0'] = np.diag(pPx0_flat)
-        if mPPCOEM_Constraints['Estimatex0']:
-            Pvals['x0'] = np.array([_ztest_pvalue(p, s) for p, s in zip(x0hat, SE['x0'])])
-        Pvals['alpha'] = np.array([_ztest_pvalue(p, s) for p, s in zip(alphahat.reshape(-1), SE['alpha'].reshape(-1))])
-        Pvals['mu'] = np.array([_ztest_pvalue(p, s) for p, s in zip(muhat, SE['mu'])])
-        pBeta_flat = np.array([_ztest_pvalue(p, s) for p, s in zip(betahat.reshape(-1), SE['beta'].reshape(-1))])
-        Pvals['beta'] = pBeta_flat.reshape(betahat.shape)
-        if n10 > 0:
-            pGamma_flat = np.array([_ztest_pvalue(p, s) for p, s in zip(gammahat.reshape(-1), SE['gamma'].reshape(-1))])
-            Pvals['gamma'] = pGamma_flat.reshape(gammahat.shape) if gammahat.ndim == 2 else pGamma_flat
-
-        return SE, Pvals, nTerms
+        _warn_mppco_deprecated("mPPCO_ComputeParamStandardErrors", "PPLFP_ComputeParamStandardErrors")
+        return DecodingAlgorithms.PPLFP_ComputeParamStandardErrors(
+            y, dN, xKFinal, WKFinal, Ahat, Qhat, Chat, Rhat, alphahat, x0hat, Px0hat,
+            ExpectationSumsFinal, fitType, muhat, betahat, gammahat, windowTimes,
+            HkAll, mPPCOEM_Constraints,
+        )
 
     @staticmethod
     def mPPCO_EM(y, dN, Ahat0, Qhat0, Chat0, Rhat0, alphahat0, mu, beta,
                  fitType='poisson', delta=0.001, gamma=None, windowTimes=None,
-                 x0=None, Px0=None, mPPCOEM_Constraints=None, MstepMethod='GLM'):
-        """Full EM algorithm for the mixed Point-Process / Continuous Observation model.
+                 x0=None, Px0=None, mPPCOEM_Constraints=None, MstepMethod='NewtonRaphson'):
+        """[DEPRECATED] Alias of :meth:`PPLFP_EM` (the full EM driver).
 
-        Matlab: ``DecodingAlgorithms.mPPCO_EM``  (lines 6139-6554)
+        Matlab: ``DecodingAlgorithms.mPPCO_EM`` is a deprecation shim that
+        warns ``nSTAT:deprecated:mPPCO`` and forwards ``varargin{:}`` to
+        ``DecodingAlgorithms.PPLFP_EM`` (the mPPCO family was renamed PPLFP).
+        This mirror emits a :class:`DeprecationWarning` with MATLAB's message
+        and forwards every argument positionally to :meth:`PPLFP_EM`, so it
+        returns exactly what ``PPLFP_EM`` returns: ``(xKFinal, WKFinal, Ahat,
+        Qhat, Chat, Rhat, alphahat, muhat, betahat, gammahat, x0hat, Px0hat,
+        IC, SE, Pvals)``. ``mPPCOEM_Constraints`` is the legacy name of
+        ``PPLFP_EM_Constraints``; it is passed positionally.  ``MstepMethod``
+        defaults to ``PPLFP_EM``'s ``'NewtonRaphson'`` (the repaired MATLAB's,
+        B8, which the MATLAB alias inherits through ``varargin``).
 
-        Returns
-        -------
-        xKFinal, WKFinal, Ahat, Qhat, Chat, Rhat, alphahat,
-        muhat, betahat, gammahat, x0hat, Px0hat, IC, SE, Pvals
+        Use :meth:`PPLFP_EM` (or ``nstat.decoding.PPLFP.PPLFP_EM``) instead.
         """
-        Ahat0 = np.asarray(Ahat0, dtype=float)
-        Qhat0 = np.asarray(Qhat0, dtype=float)
-        Chat0 = np.asarray(Chat0, dtype=float)
-        Rhat0 = np.asarray(Rhat0, dtype=float)
-        alphahat0 = np.asarray(alphahat0, dtype=float).reshape(-1)
-        mu = np.asarray(mu, dtype=float).reshape(-1)
-        beta = np.asarray(beta, dtype=float)
-        if beta.ndim == 1:
-            beta = beta.reshape(-1, 1)
-        numStates = Ahat0.shape[0]
-        obs = _as_observation_matrix(dN)
-        numCells_K, N = obs.shape
-
-        if mPPCOEM_Constraints is None:
-            mPPCOEM_Constraints = DecodingAlgorithms.mPPCO_EMCreateConstraints()
-        if Px0 is None or _is_empty_value(Px0):
-            Px0 = 1e-9 * np.eye(numStates)
-        else:
-            Px0 = np.asarray(Px0, dtype=float).reshape(numStates, numStates)
-        if x0 is None or _is_empty_value(x0):
-            x0 = np.zeros(numStates, dtype=float)
-        else:
-            x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if gamma is None:
-            gamma = np.array(0.0)
-        else:
-            gamma = np.asarray(gamma, dtype=float)
-        if delta is None:
-            delta = 0.001
-        if windowTimes is None or _is_empty_value(windowTimes):
-            if gamma is not None and np.any(gamma != 0):
-                windowTimes = np.arange(gamma.size + 2, dtype=float) * delta
-            else:
-                windowTimes = None
-
-        minTime = 0.0
-        maxTime = (N - 1) * delta
-        K_cells = numCells_K
-
-        # Build history
-        if windowTimes is not None and not _is_empty_value(windowTimes):
-            wt = np.asarray(windowTimes, dtype=float).reshape(-1)
-            HkAll = _compute_history_terms(dN, delta, wt)
-        else:
-            HkAll = np.zeros((N, 1, K_cells), dtype=float)
-            gamma = np.array(0.0)
-
-        y_arr = np.asarray(y, dtype=float)
-        yOrig = y_arr.copy()
-
-        tolAbs = _EM_TOL_ABS
-        llTol = _EM_LL_TOL
-        maxIter = _EM_MAX_ITER
-        numToKeep = 10
-
-        # Circular buffers
-        Ahat_buf = [None] * numToKeep
-        Qhat_buf = [None] * numToKeep
-        Chat_buf = [None] * numToKeep
-        Rhat_buf = [None] * numToKeep
-        alphahat_buf = [None] * numToKeep
-        muhat_buf = [None] * numToKeep
-        betahat_buf = [None] * numToKeep
-        gammahat_buf = [None] * numToKeep
-        x0hat_buf = [None] * numToKeep
-        Px0hat_buf = [None] * numToKeep
-        x_K_buf = [None] * numToKeep
-        W_K_buf = [None] * numToKeep
-        ExpSums_buf = [None] * numToKeep
-        ll_list = []
-
-        # Initialize (scaled system)
-        A0 = Ahat0.copy()
-        Q0 = Qhat0.copy()
-        C0 = Chat0.copy()
-        R0 = Rhat0.copy()
-
-        Tq = np.linalg.solve(np.linalg.cholesky(Q0), np.eye(numStates))
-        Tr = np.linalg.solve(np.linalg.cholesky(R0), np.eye(R0.shape[0]))
-
-        Ahat_buf[0] = Tq @ A0 @ np.linalg.inv(Tq)
-        Chat_buf[0] = Tr @ C0 @ np.linalg.inv(Tq)
-        Qhat_buf[0] = Tq @ Q0 @ Tq.T
-        Rhat_buf[0] = Tr @ R0 @ Tr.T
-        y_arr = Tr @ y_arr
-        x0hat_buf[0] = Tq @ x0
-        Px0hat_buf[0] = Tq @ Px0 @ Tq.T
-        alphahat_buf[0] = Tr @ alphahat0
-        betahat_buf[0] = np.linalg.solve(Tq.T, beta)
-        muhat_buf[0] = mu.copy()
-        gammahat_buf[0] = gamma.copy()
-
-        cnt = 0
-        stoppingCriteria = False
-
-        _logger.info("                        Joint Point-Process/Gaussian Observation EM Algorithm                        ")
-
-        while not stoppingCriteria and cnt < maxIter:
-            si = cnt % numToKeep
-            si_p1 = (cnt + 1) % numToKeep
-            si_m1 = (cnt - 1) % numToKeep
-
-            _logger.info("-" * 80)
-            _logger.info("Iteration #%s", cnt + 1)
-            _logger.info("-" * 80)
-
-            # E-step
-            x_K_buf[si], W_K_buf[si], ll_val, ExpSums_buf[si] = DecodingAlgorithms.mPPCO_EStep(
-                Ahat_buf[si], Qhat_buf[si], Chat_buf[si], Rhat_buf[si],
-                y_arr, alphahat_buf[si], dN,
-                muhat_buf[si], betahat_buf[si], fitType, delta,
-                gammahat_buf[si], HkAll, x0hat_buf[si], Px0hat_buf[si])
-            ll_list.append(ll_val)
-
-            # M-step
-            (Ahat_buf[si_p1], Qhat_buf[si_p1], Chat_buf[si_p1], Rhat_buf[si_p1],
-             alphahat_buf[si_p1], muhat_buf[si_p1], betahat_buf[si_p1],
-             gammahat_buf[si_p1], x0hat_buf[si_p1], Px0hat_buf[si_p1]) = \
-                DecodingAlgorithms.mPPCO_MStep(
-                    dN, y_arr, x_K_buf[si], W_K_buf[si],
-                    x0hat_buf[si], Px0hat_buf[si], ExpSums_buf[si],
-                    fitType, muhat_buf[si], betahat_buf[si],
-                    gammahat_buf[si], windowTimes, HkAll,
-                    mPPCOEM_Constraints, MstepMethod)
-
-            if not mPPCOEM_Constraints['EstimateA']:
-                Ahat_buf[si_p1] = Ahat_buf[si].copy()
-
-            # Convergence check
-            if cnt == 0:
-                dMax = np.inf
-            else:
-                diffs = []
-                for arr_curr, arr_prev in [
-                    (Qhat_buf[si], Qhat_buf[si_m1]),
-                    (Rhat_buf[si], Rhat_buf[si_m1]),
-                    (Ahat_buf[si], Ahat_buf[si_m1]),
-                    (Chat_buf[si], Chat_buf[si_m1]),
-                ]:
-                    if arr_curr is not None and arr_prev is not None:
-                        diffs.append(float(np.max(np.abs(np.sqrt(np.abs(arr_curr)) - np.sqrt(np.abs(arr_prev))))) if 'Q' in str(id(arr_curr)) else float(np.max(np.abs(arr_curr - arr_prev))))
-                for arr_curr, arr_prev in [
-                    (muhat_buf[si], muhat_buf[si_m1]),
-                    (alphahat_buf[si], alphahat_buf[si_m1]),
-                    (betahat_buf[si], betahat_buf[si_m1]),
-                    (gammahat_buf[si], gammahat_buf[si_m1]),
-                ]:
-                    if arr_curr is not None and arr_prev is not None:
-                        diffs.append(float(np.max(np.abs(np.asarray(arr_curr) - np.asarray(arr_prev)))))
-                dMax = max(diffs) if diffs else np.inf
-
-            if cnt == 0:
-                _logger.info("Max Parameter Change: N/A")
-            else:
-                _logger.info("Max Parameter Change: %s", dMax)
-
-            cnt += 1
-
-            if dMax < tolAbs:
-                stoppingCriteria = True
-                _logger.info("         EM converged at iteration# %s b/c change in params was within criteria", cnt)
-
-            if cnt >= 2:
-                dll = ll_list[-1] - ll_list[-2]
-                if abs(dll) < llTol or dll < 0:
-                    stoppingCriteria = True
-                    _logger.info("         EM stopped at iteration# %s b/c change in likelihood was negative or small", cnt)
-
-        _logger.info("-" * 80)
-
-        # Select best iteration
-        ll_arr = np.array(ll_list)
-        maxLLIndex = int(np.argmax(ll_arr))
-        maxLLIndMod = maxLLIndex % numToKeep
-
-        xKFinal = x_K_buf[maxLLIndMod]
-        WKFinal = W_K_buf[maxLLIndMod]
-        Ahat_out = Ahat_buf[maxLLIndMod]
-        Qhat_out = Qhat_buf[maxLLIndMod]
-        Chat_out = Chat_buf[maxLLIndMod]
-        Rhat_out = Rhat_buf[maxLLIndMod]
-        alphahat_out = alphahat_buf[maxLLIndMod]
-        muhat_out = muhat_buf[maxLLIndMod]
-        betahat_out = betahat_buf[maxLLIndMod]
-        gammahat_out = gammahat_buf[maxLLIndMod]
-        x0hat_out = x0hat_buf[maxLLIndMod]
-        Px0hat_out = Px0hat_buf[maxLLIndMod]
-        ExpectationSumsFinal = ExpSums_buf[maxLLIndMod]
-
-        # Unscale
-        Tq = np.linalg.solve(np.linalg.cholesky(Q0), np.eye(numStates))
-        Tr = np.linalg.solve(np.linalg.cholesky(R0), np.eye(R0.shape[0]))
-        Tq_inv = np.linalg.inv(Tq)
-        Tr_inv = np.linalg.inv(Tr)
-
-        Ahat_out = Tq_inv @ Ahat_out @ Tq
-        Qhat_out = Tq_inv @ Qhat_out @ np.linalg.inv(Tq.T)
-        Chat_out = Tr_inv @ Chat_out @ Tq
-        Rhat_out = Tr_inv @ Rhat_out @ np.linalg.inv(Tr.T)
-        alphahat_out = Tr_inv @ alphahat_out
-        xKFinal = Tq_inv @ xKFinal
-        x0hat_out = Tq_inv @ x0hat_out
-        Px0hat_out = Tq_inv @ Px0hat_out @ np.linalg.inv(Tq.T)
-        for kk in range(WKFinal.shape[2]):
-            WKFinal[:, :, kk] = Tq_inv @ WKFinal[:, :, kk] @ np.linalg.inv(Tq.T)
-        betahat_out = (betahat_out.T @ Tq).T
-
-        # Information criteria
-        ll_best = ll_arr[maxLLIndex]
-        # Count parameters
-        if mPPCOEM_Constraints['EstimateA'] and mPPCOEM_Constraints['AhatDiag']:
-            n1 = Ahat_out.shape[0]
-        elif mPPCOEM_Constraints['EstimateA']:
-            n1 = Ahat_out.size
-        else:
-            n1 = 0
-
-        if mPPCOEM_Constraints['QhatDiag'] and mPPCOEM_Constraints['QhatIsotropic']:
-            n2 = 1
-        elif mPPCOEM_Constraints['QhatDiag']:
-            n2 = Qhat_out.shape[0]
-        else:
-            n2 = Qhat_out.size
-
-        n3 = Chat_out.size
-
-        if mPPCOEM_Constraints['RhatDiag'] and mPPCOEM_Constraints['RhatIsotropic']:
-            n4 = 1
-        elif mPPCOEM_Constraints['RhatDiag']:
-            n4 = Rhat_out.shape[0]
-        else:
-            n4 = Rhat_out.size
-
-        if mPPCOEM_Constraints['EstimatePx0'] and mPPCOEM_Constraints['Px0Isotropic']:
-            n5 = 1
-        elif mPPCOEM_Constraints['EstimatePx0']:
-            n5 = Px0hat_out.shape[0]
-        else:
-            n5 = 0
-
-        n6 = x0hat_out.size if mPPCOEM_Constraints['Estimatex0'] else 0
-        n7 = alphahat_out.size
-        n8 = muhat_out.size
-        n9 = betahat_out.size
-        if gammahat_out.size == 1 and float(gammahat_out.flat[0]) == 0:
-            n10 = 0
-        else:
-            n10 = gammahat_out.size
-        nTerms = n1 + n2 + n3 + n4 + n5 + n6 + n7 + n8 + n9 + n10
-
-        Dx = Ahat_out.shape[1]
-        sumXkTerms = ExpectationSumsFinal['sumXkTerms']
-        llobs = (ll_best + Dx * N / 2.0 * np.log(2 * np.pi)
-                 + N / 2.0 * np.log(max(np.linalg.det(Qhat_out), 1e-300))
-                 + 0.5 * np.trace(np.linalg.solve(Qhat_out, sumXkTerms))
-                 + Dx / 2.0 * np.log(2 * np.pi)
-                 + 0.5 * np.log(max(np.linalg.det(Px0hat_out), 1e-300))
-                 + 0.5 * Dx)
-
-        AIC = 2 * nTerms - 2 * llobs
-        AICc = AIC + 2 * nTerms * (nTerms + 1) / max(N - nTerms - 1, 1)
-        BIC = -2 * llobs + nTerms * np.log(max(N, 1))
-
-        IC = {
-            'AIC': AIC, 'AICc': AICc, 'BIC': BIC,
-            'llobs': llobs, 'llcomp': ll_best,
-        }
-
-        # Standard errors
-        SE = {}
-        Pvals = {}
-        try:
-            SE, Pvals, _ = DecodingAlgorithms.mPPCO_ComputeParamStandardErrors(
-                yOrig, dN, xKFinal, WKFinal, Ahat_out, Qhat_out,
-                Chat_out, Rhat_out, alphahat_out, x0hat_out, Px0hat_out,
-                ExpectationSumsFinal, fitType, muhat_out, betahat_out,
-                gammahat_out, windowTimes, HkAll, mPPCOEM_Constraints)
-        except Exception:
-            pass
-
-        return (xKFinal, WKFinal, Ahat_out, Qhat_out, Chat_out, Rhat_out,
-                alphahat_out, muhat_out, betahat_out, gammahat_out,
-                x0hat_out, Px0hat_out, IC, SE, Pvals)
+        _warn_mppco_deprecated("mPPCO_EM", "PPLFP_EM")
+        return DecodingAlgorithms.PPLFP_EM(
+            y, dN, Ahat0, Qhat0, Chat0, Rhat0, alphahat0, mu, beta, fitType, delta,
+            gamma, windowTimes, x0, Px0, mPPCOEM_Constraints, MstepMethod,
+        )
 
     @staticmethod
     def mPPCO_EStep(A, Q, C, R, y, alpha, dN, mu, beta, fitType='poisson',
                     delta=0.001, gamma=None, HkAll=None, x0=None, Px0=None):
-        """E-step for the mPPCO EM algorithm.
+        """[DEPRECATED] Alias of :meth:`PPLFP_EStep` (the EM expectation step).
 
-        Matlab: ``DecodingAlgorithms.mPPCO_EStep``  (lines 6555-6772)
+        Matlab: ``DecodingAlgorithms.mPPCO_EStep`` is a deprecation shim that
+        warns ``nSTAT:deprecated:mPPCO`` and forwards ``varargin{:}`` to
+        ``DecodingAlgorithms.PPLFP_EStep`` (the mPPCO family was renamed
+        PPLFP). This mirror emits a :class:`DeprecationWarning` with MATLAB's
+        message and forwards every argument positionally to
+        :meth:`PPLFP_EStep`, so it returns exactly what ``PPLFP_EStep``
+        returns: ``(x_K, W_K, logll, ExpectationSums)``.
 
-        Returns
-        -------
-        x_K : (dx, K) -- smoothed states
-        W_K : (dx, dx, K) -- smoothed covariances
-        logll : float -- log-likelihood
-        ExpectationSums : dict
+        Use :meth:`PPLFP_EStep` (or ``nstat.decoding.PPLFP.PPLFP_EStep``)
+        instead.
         """
-        A = np.asarray(A, dtype=float)
-        Q = np.asarray(Q, dtype=float)
-        C = np.asarray(C, dtype=float)
-        R = np.asarray(R, dtype=float)
-        y = np.asarray(y, dtype=float)
-        alpha = np.asarray(alpha, dtype=float)
-        obs = _as_observation_matrix(dN)
-        numCells, K = obs.shape
-        Dx = A.shape[1] if A.ndim >= 2 else A.shape[0]
-        Dy = C.shape[0] if C.ndim >= 2 else 1
-        mu_vec = np.asarray(mu, dtype=float).reshape(-1)
-        beta_mat = np.asarray(beta, dtype=float)
-        if beta_mat.ndim == 1:
-            beta_mat = beta_mat.reshape(-1, 1)
-        if gamma is None:
-            gamma = 0
-        gamma_arr = np.asarray(gamma, dtype=float)
-        if x0 is None or _is_empty_value(x0):
-            x0 = np.zeros(Dx, dtype=float)
-        else:
-            x0 = np.asarray(x0, dtype=float).reshape(-1)
-        if Px0 is None or _is_empty_value(Px0):
-            Px0 = np.zeros((Dx, Dx), dtype=float)
-        else:
-            Px0 = np.asarray(Px0, dtype=float).reshape(Dx, Dx)
-
-        if HkAll is None or _is_empty_value(HkAll):
-            HkAll_arr = np.zeros((K, 1, numCells), dtype=float)
-        else:
-            HkAll_arr = np.asarray(HkAll, dtype=float)
-
-        # Forward filter
-        x_p, W_p, x_u, W_u = DecodingAlgorithms.mPPCODecodeLinear(
-            A, Q, C, R, y, alpha, dN, mu_vec, beta_mat, fitType,
-            delta, gamma, None, x0, Px0, HkAll_arr)
-
-        # Smoother -- x_p has N+1 columns, x_u has N columns
-        # kalman_smootherFromFiltered expects matching shapes
-        # Trim x_p and W_p to first N entries for smoother input
-        x_K, W_K, Lk = DecodingAlgorithms.kalman_smootherFromFiltered(
-            A, x_p[:, :N], W_p[:, :, :N], x_u, W_u)
-
-        # Handle Matlab-style output -- ensure x_K is (dx, K)
-        if x_K.ndim == 2 and x_K.shape[0] == K and x_K.shape[1] == Dx:
-            x_K = x_K.T
-        if W_K.ndim == 3 and W_K.shape[0] == K:
-            W_K = np.transpose(W_K, (1, 2, 0))
-
-        # Best estimates of initial state given data
-        W1G0 = A @ Px0 @ A.T + Q if A.ndim == 2 else A.reshape(Dx, Dx) @ Px0 @ A.reshape(Dx, Dx).T + Q.reshape(Dx, Dx)
-        A_2d = A.reshape(Dx, Dx) if A.ndim != 2 else A
-        L0 = Px0 @ A_2d.T @ np.linalg.pinv(W1G0)
-        Ex0Gy = x0 + L0 @ (x_K[:, 0] - x_p[:, 0])
-        Px0Gy = Px0 + L0 @ (np.linalg.pinv(W_K[:, :, 0]) - np.linalg.pinv(W1G0)) @ L0.T
-        Px0Gy = _symmetrize(Px0Gy)
-
-        # Cross-covariance matrices Wku
-        numStates = Dx
-        Wku = np.zeros((numStates, numStates, K, K), dtype=float)
-        for k in range(K):
-            Wku[:, :, k, k] = W_K[:, :, k]
-
-        for u in range(K - 1, 0, -1):
-            k = u - 1
-            Dk = W_u[:, :, k] @ A_2d.T @ np.linalg.pinv(W_p[:, :, k + 1])
-            Wku[:, :, k, u] = Dk @ Wku[:, :, k + 1, u]
-            Wku[:, :, u, k] = Wku[:, :, k, u].T
-
-        # Sufficient statistics
-        Sxkm1xk = np.zeros((Dx, Dx))
-        Sxkm1xkm1 = np.zeros((Dx, Dx))
-        Sxkxk = np.zeros((Dx, Dx))
-        Sykyk = np.zeros((Dy, Dy))
-        Sxkyk = np.zeros((Dx, Dy))
-
-        alpha_vec = alpha.reshape(-1)
-        for k in range(K):
-            if k == 0:
-                Sxkm1xk += Px0 @ A_2d.T @ np.linalg.pinv(W_p[:, :, 0]) @ Wku[:, :, 0, 0]
-                Sxkm1xkm1 += Px0 + np.outer(x0, x0)
-            else:
-                Sxkm1xk += Wku[:, :, k - 1, k] + np.outer(x_K[:, k - 1], x_K[:, k])
-                Sxkm1xkm1 += Wku[:, :, k - 1, k - 1] + np.outer(x_K[:, k - 1], x_K[:, k - 1])
-            Sxkxk += Wku[:, :, k, k] + np.outer(x_K[:, k], x_K[:, k])
-            yk = y[:, k] if y.ndim == 2 else y
-            Sykyk += np.outer(yk - alpha_vec, yk - alpha_vec)
-            Sxkyk += np.outer(x_K[:, k], yk - alpha_vec)
-
-        Sxkxk = _symmetrize(Sxkxk)
-        Sykyk = _symmetrize(Sykyk)
-        sumXkTerms = Sxkxk - A_2d @ Sxkm1xk - Sxkm1xk.T @ A_2d.T + A_2d @ Sxkm1xkm1 @ A_2d.T
-        sumYkTerms = Sykyk - C @ Sxkyk - Sxkyk.T @ C.T + C @ Sxkxk @ C.T
-        Sxkxkm1 = Sxkm1xk.T
-
-        # Log-likelihood with PP term
-        if str(fitType) == 'poisson':
-            sumPPll = 0.0
-            HkPerm = np.transpose(HkAll_arr, (1, 2, 0)) if HkAll_arr.ndim == 3 and HkAll_arr.shape[0] == K else HkAll_arr
-            for k in range(K):
-                Hk = HkPerm[:, :, k] if HkPerm.ndim == 3 else np.zeros((1, numCells))
-                if Hk.shape[0] == numCells and Hk.shape[1] != numCells:
-                    Hk = Hk.T
-                xk = x_K[:, k]
-                gammaC_mat = np.tile(gamma_arr.reshape(-1, 1), (1, numCells)) if gamma_arr.size == 1 else gamma_arr
-                if gammaC_mat.ndim == 2 and gammaC_mat.shape[1] != numCells:
-                    gammaC_mat = np.tile(gammaC_mat, (1, numCells))
-                terms = mu_vec + beta_mat.T @ xk + np.diag(gammaC_mat.T @ Hk) if Hk.size > 0 and gammaC_mat.size > 0 else mu_vec + beta_mat.T @ xk
-                Wk = W_K[:, :, k]
-                ld = np.exp(np.clip(terms, -500, 500))
-                bt = beta_mat
-                ExplambdaDelta = ld + 0.5 * (ld * np.diag(bt.T @ Wk @ bt))
-                ExplogLD = terms
-                sumPPll += float(np.sum(obs[:, k] * ExplogLD - ExplambdaDelta))
-        else:  # binomial
-            sumPPll = 0.0
-            HkPerm = np.transpose(HkAll_arr, (1, 2, 0)) if HkAll_arr.ndim == 3 and HkAll_arr.shape[0] == K else HkAll_arr
-            for k in range(K):
-                Hk = HkPerm[:, :, k] if HkPerm.ndim == 3 else np.zeros((1, numCells))
-                if Hk.shape[0] == numCells and Hk.shape[1] != numCells:
-                    Hk = Hk.T
-                xk = x_K[:, k]
-                gammaC_mat = np.tile(gamma_arr.reshape(-1, 1), (1, numCells)) if gamma_arr.size == 1 else gamma_arr
-                if gammaC_mat.ndim == 2 and gammaC_mat.shape[1] != numCells:
-                    gammaC_mat = np.tile(gammaC_mat, (1, numCells))
-                terms = mu_vec + beta_mat.T @ xk + np.diag(gammaC_mat.T @ Hk) if Hk.size > 0 and gammaC_mat.size > 0 else mu_vec + beta_mat.T @ xk
-                Wk = W_K[:, :, k]
-                ld_raw = np.exp(np.clip(terms, -500, 500))
-                ld = ld_raw / (1.0 + ld_raw)
-                bt = beta_mat
-                ExplambdaDelta = ld + 0.5 * (ld * (1 - ld) * (1 - 2 * ld)) * np.diag(bt.T @ Wk @ bt)
-                ExplogLD = np.log(np.clip(ld, 1e-300, None)) + 0.5 * (-ld * (1 - ld)) * np.diag(bt.T @ Wk @ bt)
-                sumPPll += float(np.sum(obs[:, k] * ExplogLD - ExplambdaDelta))
-
-        Q_2d = Q.reshape(Dx, Dx) if Q.ndim != 2 else Q
-        R_2d = R.reshape(Dy, Dy) if R.ndim != 2 else R
-        logll = (-Dx * K / 2.0 * np.log(2 * np.pi)
-                 - K / 2.0 * np.log(max(np.linalg.det(Q_2d), 1e-300))
-                 - Dy * K / 2.0 * np.log(2 * np.pi)
-                 - K / 2.0 * np.log(max(np.linalg.det(R_2d), 1e-300))
-                 - Dx / 2.0 * np.log(2 * np.pi)
-                 - 0.5 * np.log(max(np.linalg.det(Px0), 1e-300))
-                 + sumPPll
-                 - 0.5 * np.trace(np.linalg.solve(Q_2d, sumXkTerms))
-                 - 0.5 * np.trace(np.linalg.solve(R_2d, sumYkTerms))
-                 - Dx / 2.0)
-
-        ExpectationSums = {
-            'Sxkm1xkm1': Sxkm1xkm1,
-            'Sxkm1xk': Sxkm1xk,
-            'Sxkxkm1': Sxkxkm1,
-            'Sxkxk': Sxkxk,
-            'Sxkyk': Sxkyk,
-            'Sykyk': Sykyk,
-            'sumXkTerms': sumXkTerms,
-            'sumYkTerms': sumYkTerms,
-            'sumPPll': sumPPll,
-            'Sx0': Ex0Gy,
-            'Sx0x0': Px0Gy + np.outer(Ex0Gy, Ex0Gy),
-        }
-
-        return x_K, W_K, float(logll), ExpectationSums
+        _warn_mppco_deprecated("mPPCO_EStep", "PPLFP_EStep")
+        return DecodingAlgorithms.PPLFP_EStep(
+            A, Q, C, R, y, alpha, dN, mu, beta, fitType, delta, gamma, HkAll, x0, Px0,
+        )
 
     @staticmethod
     def mPPCO_MStep(dN, y, x_K, W_K, x0, Px0, ExpectationSums, fitType='poisson',
                     muhat=None, betahat=None, gammahat=None, windowTimes=None,
-                    HkAll=None, mPPCOEM_Constraints=None, MstepMethod='GLM'):
-        """M-step for the mPPCO EM algorithm.
+                    HkAll=None, mPPCOEM_Constraints=None, MstepMethod='NewtonRaphson',
+                    delta=0.001):
+        """[DEPRECATED] Alias of :meth:`PPLFP_MStep` (the EM maximisation step).
 
-        Matlab: ``DecodingAlgorithms.mPPCO_MStep``  (lines 6773-7662)
+        Matlab: ``DecodingAlgorithms.mPPCO_MStep`` is a deprecation shim that
+        warns ``nSTAT:deprecated:mPPCO`` and forwards ``varargin{:}`` to
+        ``DecodingAlgorithms.PPLFP_MStep`` (the mPPCO family was renamed
+        PPLFP). This mirror emits a :class:`DeprecationWarning` with MATLAB's
+        message and forwards every argument positionally to
+        :meth:`PPLFP_MStep`, so it returns exactly what ``PPLFP_MStep``
+        returns: ``(Ahat, Qhat, Chat, Rhat, alphahat, muhat_new, betahat_new,
+        gammahat_new, x0hat, Px0hat)``. ``mPPCOEM_Constraints`` is the legacy
+        name of ``PPLFP_EM_Constraints``; it is passed positionally.
 
-        Returns
-        -------
-        Ahat, Qhat, Chat, Rhat, alphahat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
+        Unlike the other aliases, the legacy Python signature gives
+        ``fitType`` / ``muhat`` / ``betahat`` / ``gammahat`` / ``windowTimes``
+        / ``HkAll`` defaults that ``PPLFP_MStep`` (and MATLAB) do not have;
+        the signature is frozen, so those defaults are forwarded as-is. Supply
+        all six: omitting them is unsupported (MATLAB raises, here
+        ``PPLFP_MStep`` receives ``None``). ``MstepMethod`` defaults to
+        ``'NewtonRaphson'``, ``PPLFP_MStep``'s default since the repaired MATLAB
+        (B8), which the MATLAB alias inherits through ``varargin``.  The
+        trailing ``delta`` (default 0.001) is ``PPLFP_MStep``'s optional 16th
+        input of the repaired MATLAB (R4c), which the MATLAB alias also
+        forwards through ``varargin``.
+
+        Use :meth:`PPLFP_MStep` (or ``nstat.decoding.PPLFP.PPLFP_MStep``)
+        instead.
         """
-        if mPPCOEM_Constraints is None:
-            mPPCOEM_Constraints = DecodingAlgorithms.mPPCO_EMCreateConstraints()
-
-        obs = _as_observation_matrix(dN)
-        numCells = obs.shape[0]
-        x_K = np.asarray(x_K, dtype=float)
-        y = np.asarray(y, dtype=float)
-        x0 = np.asarray(x0, dtype=float).reshape(-1)
-        Px0 = np.asarray(Px0, dtype=float)
-        muhat = np.asarray(muhat, dtype=float).reshape(-1)
-        betahat = np.asarray(betahat, dtype=float)
-        if betahat.ndim == 1:
-            betahat = betahat.reshape(-1, 1)
-        gammahat = np.asarray(gammahat, dtype=float)
-        if HkAll is None or _is_empty_value(HkAll):
-            HkAll = np.zeros((obs.shape[1], 1, numCells), dtype=float)
-        else:
-            HkAll = np.asarray(HkAll, dtype=float)
-
-        Sxkm1xkm1 = ExpectationSums['Sxkm1xkm1']
-        Sxkm1xk = ExpectationSums['Sxkm1xk']
-        Sxkxkm1 = ExpectationSums['Sxkxkm1']
-        Sxkxk = ExpectationSums['Sxkxk']
-        Sxkyk = ExpectationSums['Sxkyk']
-        Sykyk = ExpectationSums['Sykyk']
-        sumXkTerms = ExpectationSums['sumXkTerms']
-        sumYkTerms = ExpectationSums['sumYkTerms']
-        Sx0 = ExpectationSums['Sx0']
-        Sx0x0 = ExpectationSums['Sx0x0']
-
-        dx, K = x_K.shape
-        dy = y.shape[0] if y.ndim == 2 else 1
-        I_dx = np.eye(dx)
-
-        # A estimate
-        if mPPCOEM_Constraints['AhatDiag']:
-            Ahat = (Sxkxkm1 * I_dx) @ np.linalg.inv(Sxkm1xkm1 * I_dx)
-        else:
-            Ahat = Sxkxkm1 @ np.linalg.inv(Sxkm1xkm1)
-
-        # C estimate
-        Chat = Sxkyk.T @ np.linalg.inv(Sxkxk)
-
-        # alpha estimate
-        alphahat = np.sum(y - Chat @ x_K, axis=1) / K if y.ndim == 2 else (y - Chat @ x_K) / K
-
-        # Q estimate
-        if mPPCOEM_Constraints['QhatDiag']:
-            if mPPCOEM_Constraints['QhatIsotropic']:
-                Qhat = (1.0 / (dx * K)) * np.trace(sumXkTerms) * I_dx
-            else:
-                Qhat = (1.0 / K) * (sumXkTerms * I_dx)
-                Qhat = _symmetrize(Qhat)
-        else:
-            Qhat = (1.0 / K) * sumXkTerms
-            Qhat = _symmetrize(Qhat)
-
-        # R estimate
-        I_dy = np.eye(dy)
-        if mPPCOEM_Constraints['RhatDiag']:
-            if mPPCOEM_Constraints['RhatIsotropic']:
-                Rhat = (1.0 / (dy * K)) * np.trace(sumYkTerms) * I_dy
-            else:
-                Rhat = (1.0 / K) * (sumYkTerms * I_dy)
-                Rhat = _symmetrize(Rhat)
-        else:
-            Rhat = (1.0 / K) * sumYkTerms
-            Rhat = _symmetrize(Rhat)
-
-        # x0 estimate
-        if mPPCOEM_Constraints['Estimatex0']:
-            x0hat = np.linalg.solve(
-                np.linalg.inv(Px0) + Ahat.T @ np.linalg.solve(Qhat, Ahat),
-                Ahat.T @ np.linalg.solve(Qhat, x_K[:, 0]) + np.linalg.solve(Px0, x0))
-        else:
-            x0hat = x0.copy()
-
-        # Px0 estimate
-        if mPPCOEM_Constraints['EstimatePx0']:
-            if mPPCOEM_Constraints['Px0Isotropic']:
-                Px0hat = (np.trace(np.outer(x0hat, x0hat) - np.outer(x0, x0hat) - np.outer(x0hat, x0) + np.outer(x0, x0)) / (dx * K)) * I_dx
-            else:
-                Px0hat = (np.outer(x0hat, x0hat) - np.outer(x0, x0hat) - np.outer(x0hat, x0) + np.outer(x0, x0)) * I_dx
-                Px0hat = _symmetrize(Px0hat)
-        else:
-            Px0hat = Px0.copy()
-
-        # CIF parameter updates via Newton-Raphson
-        betahat_new = betahat.copy()
-        gammahat_new = gammahat.copy()
-        muhat_new = muhat.copy()
-
-        # Newton-Raphson for beta, mu, gamma
-        McExp = 50
-        diffTol = 1e-5
-        maxIter_nr = 100
-
-        xKDrawExp = np.zeros((dx, K, McExp), dtype=float)
-        for k in range(K):
-            WuTemp = W_K[:, :, k]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp)
-            except np.linalg.LinAlgError:
-                chol_m = np.linalg.cholesky(nearestSPD(WuTemp))
-            z = np.random.randn(dx, McExp)
-            xKDrawExp[:, k, :] = x_K[:, k:k + 1] + chol_m @ z
-
-        xkPerm = np.transpose(xKDrawExp, (0, 2, 1))  # (dx, McExp, K)
-
-        # -- beta update --
-        for c in range(numCells):
-            converged = False
-            iterNR = 0
-            while not converged and iterNR < maxIter_nr:
-                HessianTerm = np.zeros((dx, dx))
-                GradTerm = np.zeros(dx)
-                for k in range(K):
-                    Hk_full = HkAll[:, :, c] if HkAll.ndim == 3 else np.zeros((K, 1))
-                    Hk = Hk_full[k, :]
-                    xk = xkPerm[:, :, k]
-                    gammaC = gammahat if gammahat.size == 1 else (gammahat[:, c] if gammahat.ndim == 2 else gammahat)
-                    terms = muhat[c] + betahat_new[:, c] @ xk + float(np.dot(gammaC.reshape(-1), Hk.reshape(-1)))
-                    if fitType == 'poisson':
-                        ld = np.exp(np.clip(terms, -500, 500))
-                        ExpLambdaXk = (1.0 / McExp) * np.sum(np.tile(ld, (dx, 1)) * xk, axis=1)
-                        ExpLambdaXkXkT = (1.0 / McExp) * (np.tile(ld, (dx, 1)) * xk) @ xk.T
-                        GradTerm += obs[c, k] * x_K[:, k] - ExpLambdaXk
-                        HessianTerm -= ExpLambdaXkXkT
-                    else:
-                        ld_raw = np.exp(np.clip(terms, -500, 500))
-                        ld = ld_raw / (1.0 + ld_raw)
-                        EldXkXk = (1.0 / McExp) * (np.tile(ld, (dx, 1)) * xk) @ xk.T
-                        EldSqXkXk = (1.0 / McExp) * (np.tile(ld ** 2, (dx, 1)) * xk) @ xk.T
-                        EldCubeXkXk = (1.0 / McExp) * (np.tile(ld ** 3, (dx, 1)) * xk) @ xk.T
-                        ExpLambdaXk = (1.0 / McExp) * np.sum(np.tile(ld, (dx, 1)) * xk, axis=1)
-                        ExpLambdaSquaredXk = (1.0 / McExp) * np.sum(np.tile(ld ** 2, (dx, 1)) * xk, axis=1)
-                        GradTerm += obs[c, k] * x_K[:, k] - (obs[c, k] + 1) * ExpLambdaXk + ExpLambdaSquaredXk
-                        HessianTerm += EldXkXk + EldSqXkXk - 2 * EldCubeXkXk
-
-                if np.any(np.isnan(HessianTerm)) or np.any(np.isinf(HessianTerm)):
-                    betahat_newTemp = betahat_new[:, c]
-                else:
-                    try:
-                        betahat_newTemp = betahat_new[:, c] - np.linalg.solve(HessianTerm, GradTerm)
-                    except np.linalg.LinAlgError:
-                        betahat_newTemp = betahat_new[:, c]
-                    if np.any(np.isnan(betahat_newTemp)):
-                        betahat_newTemp = betahat_new[:, c]
-
-                mabsDiff = float(np.max(np.abs(betahat_newTemp - betahat_new[:, c])))
-                if mabsDiff < diffTol:
-                    converged = True
-                betahat_new[:, c] = betahat_newTemp
-                iterNR += 1
-
-        # -- mu update --
-        for c in range(numCells):
-            converged = False
-            iterNR = 0
-            while not converged and iterNR < maxIter_nr:
-                HessianTerm_mu = 0.0
-                GradTerm_mu = 0.0
-                for k in range(K):
-                    Hk_full = HkAll[:, :, c] if HkAll.ndim == 3 else np.zeros((K, 1))
-                    Hk = Hk_full[k, :]
-                    xk = xkPerm[:, :, k]
-                    gammaC = gammahat if gammahat.size == 1 else (gammahat[:, c] if gammahat.ndim == 2 else gammahat)
-                    terms = muhat_new[c] + betahat[:, c] @ xk + float(np.dot(gammaC.reshape(-1), Hk.reshape(-1)))
-                    if fitType == 'poisson':
-                        ld = np.exp(np.clip(terms, -500, 500))
-                        ExpLD = (1.0 / McExp) * float(np.sum(ld))
-                        GradTerm_mu += obs[c, k] - ExpLD
-                        HessianTerm_mu -= ExpLD
-                    else:
-                        ld_raw = np.exp(np.clip(terms, -500, 500))
-                        ld = ld_raw / (1.0 + ld_raw)
-                        ExpLD = (1.0 / McExp) * float(np.sum(ld))
-                        ExpLDSq = (1.0 / McExp) * float(np.sum(ld ** 2))
-                        ExpLDCube = (1.0 / McExp) * float(np.sum(ld ** 3))
-                        GradTerm_mu += obs[c, k] - (obs[c, k] + 1) * ExpLD + ExpLDSq
-                        HessianTerm_mu += -ExpLD * (obs[c, k] + 1) + ExpLDSq * (obs[c, k] + 3) - 2 * ExpLDCube
-
-                if np.isnan(HessianTerm_mu) or np.isinf(HessianTerm_mu) or abs(HessianTerm_mu) < 1e-300:
-                    muhat_newTemp = muhat_new[c]
-                else:
-                    muhat_newTemp = muhat_new[c] - GradTerm_mu / HessianTerm_mu
-                    if np.isnan(muhat_newTemp):
-                        muhat_newTemp = muhat_new[c]
-
-                mabsDiff = abs(muhat_newTemp - muhat_new[c])
-                if mabsDiff < diffTol:
-                    converged = True
-                muhat_new[c] = muhat_newTemp
-                iterNR += 1
-
-        # -- gamma update --
-        if (windowTimes is not None and not _is_empty_value(windowTimes)
-                and np.any(gammahat_new != 0)):
-            nGamma = gammahat.shape[0] if gammahat.ndim >= 1 else 1
-            for c in range(numCells):
-                converged = False
-                iterNR = 0
-                gammaC = gammahat_new.copy() if gammahat_new.size == 1 else (gammahat_new[:, c].copy() if gammahat_new.ndim == 2 else gammahat_new.copy())
-                while not converged and iterNR < maxIter_nr:
-                    HessianTerm_g = np.zeros((nGamma, nGamma))
-                    GradTerm_g = np.zeros(nGamma)
-                    for k in range(K):
-                        Hk_full = HkAll[:, :, c] if HkAll.ndim == 3 else np.zeros((K, 1))
-                        Hk = Hk_full[k, :]
-                        xk = xkPerm[:, :, k]
-                        terms = muhat[c] + betahat[:, c] @ xk + float(np.dot(gammaC.reshape(-1), Hk.reshape(-1)))
-                        if fitType == 'poisson':
-                            ld = np.exp(np.clip(terms, -500, 500))
-                            ExpLD = (1.0 / McExp) * float(np.sum(ld))
-                            GradTerm_g += (obs[c, k] - ExpLD) * Hk
-                            HessianTerm_g -= ExpLD * np.outer(Hk, Hk)
-                        else:
-                            ld_raw = np.exp(np.clip(terms, -500, 500))
-                            ld = ld_raw / (1.0 + ld_raw)
-                            ExpLD = (1.0 / McExp) * float(np.sum(ld))
-                            ExpLDSq = (1.0 / McExp) * float(np.sum(ld ** 2))
-                            ExpLDCube = (1.0 / McExp) * float(np.sum(ld ** 3))
-                            GradTerm_g += (obs[c, k] - (obs[c, k] + 1) * ExpLD + ExpLDSq) * Hk
-                            HessianTerm_g += (-ExpLD * (obs[c, k] + 1) + ExpLDSq * (obs[c, k] + 3) - 2 * ExpLDCube) * np.outer(Hk, Hk)
-
-                    if np.any(np.isnan(HessianTerm_g)) or np.any(np.isinf(HessianTerm_g)):
-                        gammahat_newTemp = gammaC.copy()
-                    else:
-                        try:
-                            gammahat_newTemp = gammaC - np.linalg.solve(HessianTerm_g, GradTerm_g)
-                        except np.linalg.LinAlgError:
-                            gammahat_newTemp = gammaC.copy()
-                        if np.any(np.isnan(gammahat_newTemp)):
-                            gammahat_newTemp = gammaC.copy()
-
-                    mabsDiff = float(np.max(np.abs(gammahat_newTemp - gammaC)))
-                    if mabsDiff < diffTol:
-                        converged = True
-                    gammaC = gammahat_newTemp
-                    iterNR += 1
-
-                if gammahat_new.ndim == 2:
-                    gammahat_new[:, c] = gammaC
-                else:
-                    gammahat_new = gammaC
-
-        return Ahat, Qhat, Chat, Rhat, alphahat, muhat_new, betahat_new, gammahat_new, x0hat, Px0hat
+        _warn_mppco_deprecated("mPPCO_MStep", "PPLFP_MStep")
+        return DecodingAlgorithms.PPLFP_MStep(
+            dN, y, x_K, W_K, x0, Px0, ExpectationSums, fitType, muhat, betahat,
+            gammahat, windowTimes, HkAll, mPPCOEM_Constraints, MstepMethod, delta,
+        )
 
     # PPLFP family relocated above (between KF_MStep and PP_EMCreateConstraints)
     # to match MATLAB DecodingAlgorithms.m method ordering.

@@ -115,6 +115,9 @@ entries:
     # floor switch (1e-12 → np.finfo(float).eps) shifted the MC envelope.
     # Observed actual drift ~1.4e-3 absolute / 3e-2 relative across runs;
     # tolerance widened to absorb without losing the Case C documentation.
+    # 2026-10 (EM final pass): the PPLFP Monte Carlo draws from NumPy's global
+    # stream (as the PP routines and MATLAB's normrnd do) and the recipe runs
+    # in seeded_global_rng(42), so the value is reproducible run to run.
     tolerance: { rtol: 1.0e-1, atol: 1.0e-2 }
 
   # 12. PPLFP.PPLFP_MStep — EM maximisation step. The Python port runs
@@ -138,6 +141,13 @@ entries:
   # v13 iter 60: recipe wrapped in seeded_global_rng(42) — Python output is
   # now deterministic run-to-run. Box-Muller vs MATLAB Ziggurat keeps abs
   # error ~0.5 on betahat_new; atol tightened 1e+1 → 1.0 (10× win).
+  # 2026-10: pplfp_MStep.mat recaptured from the repaired MATLAB (fix/pp-em @
+  # 8dbd0e4, bit-identical at the final head aa88a2b; pending upstream merge),
+  # whose Monte Carlo draws use the lower Cholesky factor (F9); only
+  # betahat_new / muhat_new moved.
+  # 2026-10 (EM final pass): PPLFP_MStep draws from NumPy's global stream (it
+  # called an unseeded default_rng(), which seeded_global_rng replaced by a
+  # fresh generator with the same seed); the value moved within tolerance.
   - name: PPLFP_MStep
     recipe: pplfp_mstep
     fixture: tests/parity/fixtures/matlab_gold/pplfp_MStep.mat
@@ -181,11 +191,379 @@ entries:
   # post-#98 MATLAB with the corrected `gamma=0` (not `[]`) capture
   # argument. End-to-end EM now runs cleanly; actual max_abs dropped
   # to ~0.034. atol further tightened 0.5 → 0.1 (5× additional, 10× total).
+  # 2026-10 (EM final pass): every PPLFP Monte Carlo block draws from NumPy's
+  # global stream, so successive M-steps no longer reuse one set of normals
+  # under seeded_global_rng; the value moved within tolerance.
   - name: PPLFP_EM
     recipe: pplfp_em
     fixture: tests/parity/fixtures/matlab_gold/pplfp_EM.mat
     output_field: xKFinal
     tolerance: { rtol: 1.0e+1, atol: 0.1 }
+
+  # 15. PointProcessEM.PP_EStep — point-process EM E-step (PPAF forward
+  # filter + RTS smoother + cross-covariances + sufficient statistics +
+  # expected log-likelihood).  Deterministic; captured by
+  # tools/parity/matlab/capture_pp_estep.m.  Each entry compares the
+  # concatenation of x_K (every step), W_K, logll and every ExpectationSums
+  # field for one case.  Measured max abs error <= 2.7e-12 (logll; arrays
+  # <= 1e-13), so rtol 1e-10 / atol 1e-12 is a >=100x margin.
+  - name: PP_EStep_poisson_nohist
+    recipe: pp_estep
+    args: { case: c1 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c1_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_poisson_hist
+    recipe: pp_estep
+    args: { case: c2 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c2_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_binomial_hist
+    recipe: pp_estep
+    args: { case: c3 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c3_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_binomial_nohist
+    recipe: pp_estep
+    args: { case: c4 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c4_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # c5 / c6: square history (nW == C == 3, non-symmetric gamma), appended when
+  # pp_estep.mat was recaptured from the repaired MATLAB (fix/pp-em @ a457b54,
+  # pending upstream merge; recaptured bit-identically from aa88a2b), whose
+  # PP_EStep logll orients each history slice by its columns.  Measured max abs error 5.1e-12 (logll), arrays <= 2.3e-13.
+  - name: PP_EStep_poisson_square_history_logll
+    recipe: pp_estep
+    args: { case: c5 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c5_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_binomial_square_history_logll
+    recipe: pp_estep
+    args: { case: c6 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_estep.mat
+    output_field: c6_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # 16. PPAF filters with a square history (nW == C: gamma is never
+  # transposed) plus an nW != C control.  Captured by
+  # tools/parity/matlab/capture_pp_square_history.m.  Each entry compares the
+  # concatenation of every output at every step of one case; the two filters
+  # build their history from windowTimes.  Measured max abs error <= 1.6e-15,
+  # so rtol 1e-10 / atol 1e-12 is a >=600x margin.
+  - name: PPDecodeFilterLinear_poisson_square_history
+    recipe: pp_square_history
+    args: { case: pdfl_pois_sq }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_pois_sq_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPDecodeFilterLinear_binomial_square_history
+    recipe: pp_square_history
+    args: { case: pdfl_binom_sq }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_binom_sq_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_fixedIntervalSmoother_poisson_square_history
+    recipe: pp_square_history
+    args: { case: pfis_pois_sq }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pfis_pois_sq_x_uLag
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPDecodeFilterLinear_poisson_history_control
+    recipe: pp_square_history
+    args: { case: pdfl_pois_ctrl }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_pois_ctrl_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_poisson_square_history
+    recipe: pp_square_history
+    args: { case: estep_pois_sq }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: estep_pois_sq_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # N == C (6 time bins, 6 cells) and C == 1 (MATLAB's N x nW history, as
+  # MATLAB stores it) layouts of the PP_EStep history tensor.
+  - name: PP_EStep_poisson_steps_equal_cells
+    recipe: pp_square_history
+    args: { case: estep_pois_NeqC }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: estep_pois_NeqC_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EStep_binomial_one_cell_2d_history
+    recipe: pp_square_history
+    args: { case: estep_binom_C1 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: estep_binom_C1_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # History.computeHistory window rule: edges off the 1 ms grid, MATLAB's
+  # default 0:delta:(numel(gamma)+1)*delta windows, and delta = 2 ms.
+  - name: PPDecodeFilterLinear_poisson_offgrid_windows
+    recipe: pp_square_history
+    args: { case: pdfl_pois_offgrid }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_pois_offgrid_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPDecodeFilterLinear_poisson_default_colon_windows
+    recipe: pp_square_history
+    args: { case: pdfl_pois_colon }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_pois_colon_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPDecodeFilterLinear_binomial_delta_2ms
+    recipe: pp_square_history
+    args: { case: pdfl_binom_delta2 }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pdfl_binom_delta2_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # 17. Blocks of pp_square_history.mat captured from the repaired MATLAB
+  # (fix/pp-em @ a457b54, pending upstream merge; recaptured bit-identically
+  # from aa88a2b).  The two history entries
+  # are integer counts and edges, matched exactly; the filters measured
+  # <= 3.9e-16, so rtol 1e-10 / atol 1e-12 as in section 16.
+  # PP_EM / PPLFP_EM default history (B9): windowTimes = 0:delta:size(gamma,1)*delta.
+  - name: PP_EM_default_history_windows
+    recipe: pp_em_decoder_gold
+    args: { block: emdef }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: emdef_HkAll
+    tolerance: { rtol: 0.0, atol: 0.0 }
+
+  # PP_EM history on the delta grid at delta = 2 ms (C6).
+  - name: PP_EM_history_delta_2ms
+    recipe: pp_em_decoder_gold
+    args: { block: pp2ms }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pp2ms_HkAll
+    tolerance: { rtol: 0.0, atol: 0.0 }
+
+  # PPDecodeFilterLinear with ns == C == 2 (B1: a square beta is not transposed).
+  - name: PPDecodeFilterLinear_square_beta
+    recipe: pp_em_decoder_gold
+    args: { block: b1sq }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: b1sq_x_u
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # PPHybridFilterLinear with history windows and a shared gamma column (B2).
+  - name: PPHybridFilterLinear_history_windows
+    recipe: pp_em_decoder_gold
+    args: { block: pphf }
+    fixture: tests/parity/fixtures/matlab_gold/pp_square_history.mat
+    output_field: pphf_X
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # 18. GLM M-step (MstepMethod = 'GLM') of PP_MStep / PPLFP_MStep, captured by
+  # tools/parity/matlab/capture_em_glm_mstep.m from the repaired MATLAB
+  # (fix/pp-em @ aa88a2b, pending upstream merge).  Each entry compares every
+  # M-step output of one case.  Deterministic (no Monte Carlo).  Measured:
+  # poisson cases and every closed-form output <= 5.0e-14 absolute, so rtol
+  # 1e-10 / atol 1e-12; binomial GLM coefficients <= 1.8e-4 absolute (MATLAB's
+  # BNLRCG is a truncated conjugate-gradient fit that stops short of the MLE
+  # the Python fit reaches), so atol 1e-3.
+  - name: PP_MStep_GLM_poisson_history
+    recipe: em_glm_mstep
+    args: { case: pp_pois }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: pp_pois_betahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_MStep_GLM_binomial_history
+    recipe: em_glm_mstep
+    args: { case: pp_binom }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: pp_binom_betahat_new
+    tolerance: { rtol: 0.0, atol: 1.0e-3 }
+
+  - name: PPLFP_MStep_GLM_poisson_history
+    recipe: em_glm_mstep
+    args: { case: lfp_pois }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: lfp_pois_betahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPLFP_MStep_GLM_binomial_history
+    recipe: em_glm_mstep
+    args: { case: lfp_binom }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: lfp_binom_betahat_new
+    tolerance: { rtol: 0.0, atol: 1.0e-3 }
+
+  # A separated (unestimable) history window keeps its previous gamma (R4a).
+  - name: PP_MStep_GLM_unestimable_window
+    recipe: em_glm_mstep
+    args: { case: pp_unest }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: pp_unest_gammahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPLFP_MStep_GLM_unestimable_window
+    recipe: em_glm_mstep
+    args: { case: lfp_unest }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: lfp_unest_gammahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # A single cell (F3).
+  - name: PP_MStep_GLM_single_cell
+    recipe: em_glm_mstep
+    args: { case: pp_c1 }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: pp_c1_betahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPLFP_MStep_GLM_single_cell_binomial
+    recipe: em_glm_mstep
+    args: { case: lfp_c1 }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: lfp_c1_betahat_new
+    tolerance: { rtol: 0.0, atol: 1.0e-3 }
+
+  # The delta = 2 ms time base (C6 / R4c).
+  - name: PP_MStep_GLM_delta_2ms
+    recipe: em_glm_mstep
+    args: { case: pp_2ms }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: pp_2ms_betahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # MATLAB's own by-label (F3) test construction: E-step output at A = 0.95 I,
+  # Q = 0.01 I, so [1 x_K'] is rank-deficient for dx > C and glmfit drops the
+  # dependent columns (b = 0, se = 0); Analysis.GLMFit mirrors it.  Measured
+  # <= 2.4e-12 absolute.
+  - name: PP_MStep_GLM_rank_deficient_single_cell
+    recipe: em_glm_mstep
+    args: { case: f3pp_dx2_C1 }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: f3pp_dx2_C1_betahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_MStep_GLM_rank_deficient_dx10
+    recipe: em_glm_mstep
+    args: { case: f3pp_dx10_C2 }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: f3pp_dx10_C2_betahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PPLFP_MStep_GLM_rank_deficient_dx10
+    recipe: em_glm_mstep
+    args: { case: f3lfp_dx10_C2 }
+    fixture: tests/parity/fixtures/matlab_gold/em_glm_mstep.mat
+    output_field: f3lfp_dx10_C2_betahat_new
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  # 19. End-to-end EM drivers (PP_EM, PPLFP_EM), captured by
+  # tools/parity/matlab/capture_em_drivers.m from the repaired MATLAB
+  # (fix/pp-em @ aa88a2b, pending upstream merge): see
+  # tests/test_em_drivers_matlab_gold.py for the cases.  The Monte Carlo draws
+  # use MATLAB randn (not reproducible in Python), so:
+  # * kind estep -- the E-step at MATLAB's returned estimates (original
+  #   coordinates, Python-built history; for pp_defwin MATLAB's default
+  #   windows) reproduces MATLAB's E-step there: deterministic, measured
+  #   <= 2.2e-13 relative, so rtol 1e-10 / atol 1e-12 (logll is IC.llcomp);
+  # * kind mstep -- closed-form updates (A, Q, [C, R, alpha,] x0, Px0) on
+  #   those sums, three constraint sets: deterministic, same tolerance;
+  # * kind em -- the driver itself in seeded_global_rng(1), Monte Carlo
+  #   dependent.  Following the PPLFP_EM precedent the tolerance is set from
+  #   the measured spread: 2 x the largest |Python - MATLAB| over Python
+  #   seeds 1..8, one significant digit.  pp_pois [mu, beta, gamma]: max
+  #   0.070 (beta) -> atol 0.2; lfp_def xKFinal: max 4.3e-4 -> atol 9e-4.
+  #   MATLAB's own spread over rng(1..8) on pp_pois is the same size (max
+  #   |beta - gold| 0.078); the EM stopping iteration is itself Monte Carlo
+  #   dependent (pp_pois: 6 or 8 on both sides).
+  - name: EM_pp_pois_estep_at_estimates
+    recipe: em_drivers
+    args: { case: pp_pois, kind: estep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_pois_es_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_binom_estep_at_estimates
+    recipe: em_drivers
+    args: { case: pp_binom, kind: estep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_binom_es_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_defwin_estep_at_estimates
+    recipe: em_drivers
+    args: { case: pp_defwin, kind: estep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_defwin_es_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_lfp_def_estep_at_estimates
+    recipe: em_drivers
+    args: { case: lfp_def, kind: estep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: lfp_def_es_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_sep_estep_at_estimates
+    recipe: em_drivers
+    args: { case: pp_sep, kind: estep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_sep_es_x_K
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_pois_closed_form_mstep
+    recipe: em_drivers
+    args: { case: pp_pois, kind: mstep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_pois_ms1_Ahat
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_binom_closed_form_mstep
+    recipe: em_drivers
+    args: { case: pp_binom, kind: mstep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_binom_ms1_Ahat
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_pp_defwin_closed_form_mstep
+    recipe: em_drivers
+    args: { case: pp_defwin, kind: mstep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_defwin_ms1_Ahat
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: EM_lfp_def_closed_form_mstep
+    recipe: em_drivers
+    args: { case: lfp_def, kind: mstep }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: lfp_def_ms1_Ahat
+    tolerance: { rtol: 1.0e-10, atol: 1.0e-12 }
+
+  - name: PP_EM_poisson_history_estimates
+    recipe: em_drivers
+    args: { case: pp_pois, kind: em }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: pp_pois_betahat
+    tolerance: { rtol: 0.0, atol: 0.2 }
+
+  - name: PPLFP_EM_default_call_xKFinal
+    recipe: em_drivers
+    args: { case: lfp_def, kind: em }
+    fixture: tests/parity/fixtures/matlab_gold/em_drivers.mat
+    output_field: lfp_def_xKFinal
+    tolerance: { rtol: 0.0, atol: 9.0e-4 }
 
   # v9 iter 40 — recipe-backed entries for the 22 v9_* captures.
   # Each entry's recipe is defined in tools/parity/numerical_drift.py.

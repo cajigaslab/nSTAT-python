@@ -7,13 +7,16 @@ loop hoists) cannot silently change it:
 
 * both ``_nearestSPD`` definitions and both ``_ztest_pvalue`` definitions in
   ``nstat/decoding_algorithms.py`` (review finding C2: they differ
-  numerically -- the module-level pair serves the KF / mPPCO families, the
-  ``DecodingAlgorithms`` staticmethod pair serves the PP family);
-* ``KF_ComputeParamStandardErrors``, ``PP_ComputeParamStandardErrors`` and
-  ``mPPCO_ComputeParamStandardErrors``;
+  numerically -- the module-level pair serves the KF family, the
+  ``DecodingAlgorithms`` staticmethod pair serves the PP family; the
+  staticmethods now mirror MATLAB's ``nearestSPD`` and ``ztest`` exactly,
+  nSTAT PR #135 EM pass, values checked in MATLAB R2025b);
+* ``KF_ComputeParamStandardErrors`` and ``PP_ComputeParamStandardErrors``;
+  ``mPPCO_ComputeParamStandardErrors`` is pinned as an exact alias of
+  ``PPLFP_ComputeParamStandardErrors`` (MATLAB's deprecation shim);
 * every ``scipy.stats`` use site in ``decoding_algorithms.py`` and
   ``analysis.py`` (module ``_ztest_pvalue`` -> ``norm.sf``; staticmethod
-  ``_ztest_pvalue`` -> ``norm.cdf``; ``ComputeStimulusCIs`` -> ``norm.ppf``;
+  ``_ztest_pvalue`` -> ``norm.cdf(-|z|)``; ``ComputeStimulusCIs`` -> ``norm.ppf``;
   ``Analysis.computeInvGausTrans`` -> ``norm.ppf``;
   ``Analysis.computeGrangerCausalityMatrix`` -> ``chi2.sf``);
 * the time-rescaling helper ``fit._time_rescaled_uniforms`` (review finding
@@ -21,10 +24,12 @@ loop hoists) cannot silently change it:
   ``analysis._time_rescaled_z`` had no callers and was deleted.)
 
 These are characterization tests, not correctness tests: where the current
-behavior is a known defect it is pinned and labelled as such (for example
-``mPPCO_ComputeParamStandardErrors`` raises ``NameError`` because it calls an
-undefined ``nearestSPD``).  A deliberate behavior change must update the pin
-in the same commit.
+behavior is a known defect it is pinned and labelled as such.  A deliberate
+behavior change must update the pin in the same commit.  (The former
+``KNOWN DEFECT`` pins -- ``mPPCO_ComputeParamStandardErrors`` raising
+``NameError`` on an undefined ``nearestSPD`` -- were replaced when the
+``mPPCO_*`` family became MATLAB's deprecated aliases of ``PPLFP_*``: the
+stale implementation they pinned was deleted.)
 
 Tolerance policy
 ----------------
@@ -99,7 +104,7 @@ def _assert_pinned(actual, shape, values, rtol: float) -> None:
 
 
 # ===========================================================================
-# 1. _nearestSPD -- module-level (KF/mPPCO family) vs staticmethod (PP family)
+# 1. _nearestSPD -- module-level (KF family) vs staticmethod (PP family)
 # ===========================================================================
 
 
@@ -109,17 +114,20 @@ def _assert_pinned(actual, shape, values, rtol: float) -> None:
         # Indefinite diagonal: the Higham projection is diag(max(d, 0)) exactly,
         # so Cholesky deterministically fails on the exact zero pivot and both
         # Cholesky-fallback branches run.  The module-level fallback clamps the
-        # eigenvalues to eps; the staticmethod fallback adds
-        # spacing(norm(A)) * I (k = 1 loop pass) to EVERY diagonal entry.
+        # eigenvalues to eps; the staticmethod is MATLAB's nearestSPD, which adds
+        # (-mineig*k^2 + eps(mineig)) * I with mineig = 0, i.e. eps(0) = 5e-324
+        # (k = 1), to every diagonal entry -- MATLAB R2025b returns
+        # [2 4.94e-324 0.5] and [4 4.94e-324 4.94e-324 0.001].  (The port added
+        # spacing(norm(A)) = 4.4e-16 instead.)
         (
             [2.0, -1.0, 0.5],
             [2.0, _EPS, 0.5],
-            [2.0000000000000004, 4.440892098500626e-16, 0.5000000000000004],
+            [2.0, 5e-324, 0.5],
         ),
         (
             [4.0, 0.0, -3.0, 1e-3],
             [4.0, _EPS, _EPS, 1e-3],
-            [4.000000000000001, 8.881784197001252e-16, 8.881784197001252e-16, 0.0010000000000008882],
+            [4.0, 5e-324, 5e-324, 1e-3],
         ),
         # Positive-definite diagonal: Cholesky succeeds; both return the input.
         ([1.0, 2.0, 3.0], [1.0, 2.0, 3.0], [1.0, 2.0, 3.0]),
@@ -169,27 +177,33 @@ def test_nearestSPD_both_definitions_on_general_indefinite_input() -> None:
 
 
 # ===========================================================================
-# 2. _ztest_pvalue -- module-level norm.sf (scalar) vs staticmethod 1 - norm.cdf
+# 2. _ztest_pvalue -- module-level norm.sf (scalar) vs staticmethod MATLAB ztest
 # ===========================================================================
 
-# (param, se, module-level p, staticmethod p)
+# (param, se, module-level p, staticmethod p).  The staticmethod is MATLAB's
+# ztest(param, 0, se) = 2*normcdf(-|param/se|) (MATLAB R2025b agrees to <= 2.2e-13
+# relative on every finite case here, e.g. 1.1451142445050278e-299 at z = 37);
+# it used to be 2*(1 - normcdf(|z|)), which cancels to 0.0 for |z| >~ 8.3.  Its
+# se = 0 gives p = 0 (MATLAB: z = Inf), se = Inf p = 1 and se = NaN p = NaN,
+# as in MATLAB; se < 0 gives the |z| p-value (MATLAB raises
+# stats:ztest:NonScalarSigma; an SE is never negative).
 _ZTEST_CASES = [
     (0.0, 1.0, 1.0, 1.0),
     (1.0, 1.0, 0.31731050786291415, 0.31731050786291415),
-    (-1.96, 1.0, 0.04999579029644087, 0.04999579029644097),
-    (5.0, 1.0, 5.733031437583869e-07, 5.733031438470704e-07),
-    (8.0, 1.0, 1.244192114854348e-15, 1.3322676295501878e-15),
-    # Large |z|: 1 - norm.cdf(z) cancels to exactly 0.0 for z >~ 8.3 while
-    # norm.sf keeps the tail (review C2 divergence).
-    (8.3, 1.0, 1.0411139489780493e-16, 0.0),
-    (9.0, 1.0, 2.2571768119076647e-19, 0.0),
-    (-20.0, 1.0, 5.50724823721231e-89, 0.0),
-    (37.0, 1.0, 1.1451142445047847e-299, 0.0),
+    (-1.96, 1.0, 0.04999579029644087, 0.04999579029644087),
+    (5.0, 1.0, 5.733031437583869e-07, 5.733031437583869e-07),
+    (8.0, 1.0, 1.244192114854348e-15, 1.244192114854348e-15),
+    # Large |z|: both keep the tail (norm.sf / normcdf(-|z|)).
+    (8.3, 1.0, 1.0411139489780493e-16, 1.0411139489780493e-16),
+    (9.0, 1.0, 2.2571768119076647e-19, 2.2571768119076647e-19),
+    (-20.0, 1.0, 5.50724823721231e-89, 5.50724823721231e-89),
+    (37.0, 1.0, 1.1451142445047847e-299, 1.1451142445047847e-299),
     (40.0, 1.0, 0.0, 0.0),
-    # Guard branches.
-    (1.0, 0.0, 1.0, 1.0),
-    (1.0, -1.0, 1.0, 1.0),
-    (1.0, np.nan, 1.0, 1.0),
+    # Guard branches of the module-level helper; MATLAB semantics for the
+    # staticmethod.
+    (1.0, 0.0, 1.0, 0.0),
+    (1.0, -1.0, 1.0, 0.31731050786291415),
+    (1.0, np.nan, 1.0, np.nan),
     (1.0, np.inf, 1.0, 1.0),
     (np.nan, 1.0, np.nan, np.nan),
 ]
@@ -220,9 +234,12 @@ def test_staticmethod_ztest_pvalue_vectorized_values() -> None:
     assert isinstance(p0, np.ndarray) and p0.shape == ()
 
 
-def test_ztest_definitions_diverge_in_the_large_z_tail() -> None:
-    assert da._ztest_pvalue(9.0, 1.0) > 0.0
-    assert float(DecodingAlgorithms._ztest_pvalue(9.0, 1.0)) == 0.0
+def test_ztest_definitions_agree_in_the_large_z_tail() -> None:
+    # Both keep the tail (the staticmethod used to cancel to 0.0 here); they
+    # differ only in the module-level helper's se <= 0 / non-finite guard.
+    for z in (9.0, 20.0, 37.0):
+        assert float(DecodingAlgorithms._ztest_pvalue(z, 1.0)) == da._ztest_pvalue(z, 1.0) > 0.0
+    assert float(DecodingAlgorithms._ztest_pvalue(1.0, 0.0)) == 0.0 and da._ztest_pvalue(1.0, 0.0) == 1.0
 
 
 # ===========================================================================
@@ -373,12 +390,15 @@ _SE_CASES = {
     # Poisson with 2-window history (gamma block present); WKFinal[:, :, 7]
     # non-PD -> inline eigh-clip fallback; staticmethod _nearestSPD on the
     # (indefinite) inverse observed information.
+    # (x0 / Px0 estimation is passed explicitly: PP_EMCreateConstraints no
+    # longer estimates them by default -- repaired MATLAB round 2 -- and these
+    # cases pin the Px0 / x0 blocks.)
     "PP-A": (_call_pp, lambda: _pp_inputs(12, nonpd_slice=7),
-             ("PP", dict(mcIter=50)), 6),
+             ("PP", dict(Estimatex0=1, EstimatePx0=1, mcIter=50)), 6),
     # Binomial without history; diagonal A, isotropic Q/Px0; Px0hat non-PD ->
     # inline eigh-clip fallback on the x0 draw.
     "PP-B": (_call_pp, lambda: _pp_inputs(22, fit="binomial", history=False, px0=(0.2, -0.1)),
-             ("PP", dict(AhatDiag=1, QhatIsotropic=1, Px0Isotropic=1, mcIter=50)), 6),
+             ("PP", dict(AhatDiag=1, QhatIsotropic=1, Estimatex0=1, EstimatePx0=1, Px0Isotropic=1, mcIter=50)), 6),
 }
 
 
@@ -424,10 +444,11 @@ def test_kf_se_pvalues_reach_module_ztest_large_z_tail() -> None:
     assert np.any((p > 0.0) & (p < 1e-20))
 
 
-def test_pp_se_large_z_pvalues_underflow_to_exact_zero() -> None:
-    # PP uses the staticmethod 1 - norm.cdf p-value: well-determined
-    # parameters (9 < |z| < 35) get p == 0.0 exactly, whereas the module-level
-    # helper used by KF/mPPCO would report a positive tail probability.
+def test_pp_se_large_z_pvalues_keep_the_tail() -> None:
+    # PP uses the staticmethod p-value, MATLAB's ztest 2*normcdf(-|z|): well-
+    # determined parameters (9 < |z| < 35) get the positive tail probability
+    # (equal to the module-level norm.sf helper's), where the former
+    # 2*(1 - normcdf(|z|)) returned exactly 0.0.
     caller, build, spec, seed = _SE_CASES["PP-A"]
     inputs = build()
     with _legacy_global_rng(seed):
@@ -443,45 +464,101 @@ def test_pp_se_large_z_pvalues_underflow_to_exact_zero() -> None:
             z = np.abs(theta / se)
         for zi, thi, sei, pi in zip(z, theta, se, p):
             if 9.0 < zi < 35.0:
-                assert pi == 0.0
-                assert da._ztest_pvalue(thi, sei) > 0.0
+                assert pi > 0.0
+                np.testing.assert_allclose(pi, da._ztest_pvalue(thi, sei), rtol=1e-12, atol=0.0)
                 hits += 1
     assert hits >= 1
 
 
-def test_mppco_se_raises_nameerror_on_final_projection() -> None:
-    # KNOWN DEFECT, pinned: mPPCO_ComputeParamStandardErrors calls an undefined
-    # name ``nearestSPD`` on the inverse observed information, so every call
-    # that reaches the end raises NameError (mPPCO_EM swallows it and returns
-    # empty SE/Pvals).  All WKFinal slices / Px0hat are PD here, so the draw
-    # fallbacks are not taken and the final projection is the failing site.
-    constraints = _constraints(("mPPCO", dict(mcIter=50)))
-    with _legacy_global_rng(7), pytest.raises(NameError, match="nearestSPD") as excinfo:
-        _call_mppco(_mppco_inputs(13), constraints)
-    assert "nearestSPD(invIObs)" in str(excinfo.traceback[-1].statement)
+def _pplfp_se_gold_inputs(nonpd_slice=None):
+    """``PPLFP_ComputeParamStandardErrors`` inputs from the MATLAB gold fixture.
+
+    Mirrors ``tools/parity/matlab/export_pplfp_gold_fixtures.m``: the
+    ExpectationSums are rebuilt by ``PPLFP_EStep`` at the EM-converged
+    parameters; the fixture's gamma is all-zero (scalar 0 + zero HkAll).
+    """
+    from pathlib import Path
+
+    from scipy.io import loadmat
+
+    from nstat.decoding.PPLFP import PPLFP
+
+    fx = loadmat(
+        Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab_gold" / "pplfp_SE.mat",
+        squeeze_me=True,
+        struct_as_record=False,
+    )
+    f = lambda k: np.asarray(fx[k], dtype=float)  # noqa: E731
+    v = lambda k: np.asarray(fx[k], dtype=float).reshape(-1)  # noqa: E731
+    dN = f("dN")
+    HkAll = np.zeros((dN.shape[1], 1, dN.shape[0]))
+    fit, delta = str(fx["fitType"]), float(fx["delta"])
+    _, _, _, es = PPLFP.PPLFP_EStep(
+        f("Ahat"), f("Qhat"), f("Chat"), f("Rhat"), f("y"), v("alphahat"), dN,
+        v("muhat_new"), f("betahat_new"), fit, delta, np.array(0.0), HkAll, v("x0hat"), f("Px0hat"),
+    )
+    WK = f("WKFinal").copy()
+    if nonpd_slice is not None:
+        WK[:, :, nonpd_slice] = np.diag([0.02, -0.01])
+    return dict(
+        y=f("y"), dN=dN, xKFinal=f("xKFinal"), WKFinal=WK, Ahat=f("Ahat"), Qhat=f("Qhat"),
+        Chat=f("Chat"), Rhat=f("Rhat"), alphahat=v("alphahat"), x0hat=v("x0hat"),
+        Px0hat=f("Px0hat"), ExpectationSumsFinal=es, fitType=fit, muhat=v("muhat_new"),
+        betahat=f("betahat_new"), gammahat=np.array(0.0), windowTimes=None, HkAll=HkAll,
+    )
 
 
-def test_mppco_se_raises_nameerror_on_draw_fallback() -> None:
-    # KNOWN DEFECT, pinned: a non-PD WKFinal slice sends the first
-    # (expectation) Monte-Carlo draw loop into its Cholesky fallback, which
-    # references the same undefined name.
-    constraints = _constraints(("mPPCO", dict(mcIter=50)))
-    with _legacy_global_rng(7), pytest.raises(NameError, match="nearestSPD") as excinfo:
-        _call_mppco(_mppco_inputs(13, nonpd_slice=3), constraints)
-    assert "nearestSPD(WuTemp)" in str(excinfo.traceback[-1].statement)
+def _assert_mppco_se_is_pplfp_se(inputs, mc_iter=50) -> None:
+    """mPPCO_ComputeParamStandardErrors(...) is bit-identical to PPLFP's."""
+    from nstat.decoding.PPLFP import PPLFP
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    # PPLFP draws its Monte-Carlo samples via np.random.default_rng(); a
+    # fresh seeded_global_rng block per call gives both calls one stream.
+    with pytest.warns(DeprecationWarning, match="mPPCO_ComputeParamStandardErrors is deprecated"):
+        with seeded_global_rng(42):
+            got = _call_mppco(inputs, _constraints(("mPPCO", dict(mcIter=mc_iter))))
+    with seeded_global_rng(42):
+        expected = PPLFP.PPLFP_ComputeParamStandardErrors(
+            inputs["y"], inputs["dN"], inputs["xKFinal"], inputs["WKFinal"], inputs["Ahat"],
+            inputs["Qhat"], inputs["Chat"], inputs["Rhat"], inputs["alphahat"], inputs["x0hat"],
+            inputs["Px0hat"], inputs["ExpectationSumsFinal"], inputs["fitType"], inputs["muhat"],
+            inputs["betahat"], inputs["gammahat"], inputs["windowTimes"], inputs["HkAll"],
+            PPLFP.PPLFP_EMCreateConstraints(mcIter=mc_iter),
+        )
+    assert len(got) == 3 and got[2] == expected[2]
+    for part in (0, 1):
+        assert sorted(got[part]) == sorted(expected[part]) and len(got[part]) > 0
+        for key in got[part]:
+            a = np.asarray(got[part][key])
+            b = np.asarray(expected[part][key])
+            assert a.shape == b.shape and np.array_equal(a, b), (part, key)
+            assert np.all(np.isfinite(a.astype(float))), (part, key)
 
 
-def test_mppco_se_downstream_numerics_with_nearestSPD_bound_to_module_helper(monkeypatch) -> None:
-    # Pins the rest of mPPCO_ComputeParamStandardErrors (information assembly,
-    # Monte-Carlo missing information, module-level _ztest_pvalue p-values)
-    # under the ASSUMPTION that the undefined ``nearestSPD`` is meant to be the
-    # module-level ``_nearestSPD`` (the helper its sibling KF family uses).  If
-    # the NameError is fixed by binding a different helper, update this pin.
-    monkeypatch.setattr(da, "nearestSPD", da._nearestSPD, raising=False)
-    constraints = _constraints(("mPPCO", dict(mcIter=50)))
-    with _legacy_global_rng(7):
-        out = _call_mppco(_mppco_inputs(13), constraints)
-    _check_se_against_expected(out, _SE_EXPECTED["mPPCO-patched"])
+def test_mppco_se_final_projection_forwards_to_pplfp() -> None:
+    # Replaces the KNOWN DEFECT pin ``..._raises_nameerror_on_final_projection``:
+    # the stale body called an undefined ``nearestSPD(invIObs)``.  MATLAB's
+    # mPPCO_ComputeParamStandardErrors forwards to PPLFP_ComputeParamStandardErrors;
+    # so does the Python alias now.  All WKFinal slices are PD here, so the
+    # path through the end-of-function SPD projection is the one exercised.
+    _assert_mppco_se_is_pplfp_se(_pplfp_se_gold_inputs())
+
+
+def test_mppco_se_draw_fallback_forwards_to_pplfp() -> None:
+    # Replaces the KNOWN DEFECT pin ``..._raises_nameerror_on_draw_fallback``:
+    # a non-PD WKFinal slice sends the Monte-Carlo draw loop into its
+    # Cholesky fallback (formerly the undefined ``nearestSPD(WuTemp)``).
+    _assert_mppco_se_is_pplfp_se(_pplfp_se_gold_inputs(nonpd_slice=3))
+
+
+def test_mppco_se_synthetic_history_case_forwards_to_pplfp() -> None:
+    # Replaces ``..._downstream_numerics_with_nearestSPD_bound_to_module_helper``,
+    # which pinned the deleted stale implementation under a monkeypatched
+    # ``nearestSPD`` (its ``mPPCO-patched`` expected values were removed with
+    # it).  Same synthetic Poisson + 2-window-history input; the pinned
+    # behavior is now "identical to PPLFP".
+    _assert_mppco_se_is_pplfp_se(_mppco_inputs(13))
 
 
 # ===========================================================================
@@ -711,106 +788,83 @@ _SE_EXPECTED = {
     },
     'PP-A': {
         'nTerms': 20,
+        # Repinned (EM final pass) for MATLAB's nearestSPD shift
+        # -mineig*k^2 + eps(mineig) (was spacing(norm(A)): SEs move <= 8e-11
+        # relative) and MATLAB's ztest p = 2*normcdf(-|z|) (the large-|z| tail
+        # p-values are now > 0 where 2*(1 - normcdf(|z|)) gave 0.0).  rtol =
+        # max(committed, the file's rule re-measured over 8 trials).
+        # Repinned for the Monte Carlo draws m + chol(W)' z (MATLAB F9,
+        # fix/pp-em @ 8dbd0e4; WKFinal is not diagonal here) and then for the
+        # row-major A information block (it was a row permutation of
+        # Q^-1 (x) Sxkm1xkm1, not symmetric; with the nearest-SPD projection
+        # of the inverse observed information every SE moves).  Each rtol
+        # is the file's rule, re-measured over 32 perturbation trials at the
+        # repinned code: SE.Px0, P.Px0 and SE.beta measured s = 3.9e-14,
+        # 2.6e-14 and 2.8e-14, so the rule gives 1e-11 (they were 1e-12);
+        # the others are unchanged.
         'SE': {
             'A': ((2, 2), (
-                0.06013266657213476, 0.06350251258338986, 0.06809217476544484, 0.0650667578445929,
+                0.06575029623415712, 0.07648745260370837, 0.1201989315364623, 0.06601777074606334,
             ), 1e-11),
-            'Q': ((2, 2), (0.0024831666432183945, 0.0, 0.0, 0.004592330650127187), 1e-09),
-            'Px0': ((2, 2), (0.31684378243445477, 0.0, 0.0, 0.3393741272010992), 1e-12),
-            'x0': ((2,), (0.03412819385742489, 0.04980907226161009), 1e-11),
-            'mu': ((2,), (0.329948147384861, 0.2729481261784977), 1e-12),
+            'Q': ((2, 2), (0.0036900067349321304, 0.0, 0.0, 0.0049428534838871045), 1e-08),
+            'Px0': ((2, 2), (0.45610886294336367, 0.0, 0.0, 0.34686528561771474), 1e-11),
+            'x0': ((2,), (0.03862459196195862, 0.04859985143849342), 1e-10),
+            'mu': ((2,), (0.3396816597596377, 0.2848200235022343), 1e-12),
             'beta': ((2, 2), (
-                1.1714608531082702, 0.8865662045352912, 1.233966459267492, 0.9365929454817485,
-            ), 1e-12),
+                1.2998989471838778, 0.8901538990902543, 1.6391916820702956, 0.9442503570746694,
+            ), 1e-11),
             'gamma': ((2, 2), (
-                0.7836513685452229, 0.5171729924589396, 0.8154577903881022, 0.5649207539407073,
+                0.7864483791419079, 0.5368141283393242, 0.8267673306622202, 0.5640744907950063,
             ), 1e-12),
         },
         'P': {
-            'A': ((2, 2), (0.0, 1.0, 0.4627666689738217, 0.0), 1e-11),
-            'Q': ((2, 2), (8.881784197001252e-16, 0.0, 0.0, 6.462430590659096e-11), 1e-12),
-            'Px0': ((2, 2), (0.7522963091431536, 0.0, 0.0, 0.5556465531050687), 1e-12),
-            'x0': ((2,), (0.0, 1.7121433160127708e-09), 1e-12),
-            'mu': ((2,), (1.3480883076510963e-09, 3.8949516945052665e-08), 1e-12),
+            'A': ((2, 2), (1.1951142682031024e-42, 1.0, 0.6774267783624657, 6.19807331830815e-38), 1e-08),
+            'Q': ((2, 2), (5.958426593265097e-08, 0.0, 0.0, 1.2841406493789566e-09), 1e-07),
+            'Px0': ((2, 2), (0.8264584989641035, 0.0, 0.0, 0.5642146153079923), 1e-11),
+            'x0': ((2,), (2.5036984378667575e-38, 6.70662838502796e-10), 1e-08),
+            'mu': ((2,), (3.9121476742646605e-09, 1.390616175225737e-07), 1e-10),
             'beta': ((2, 2), (
-                0.44940637758315494, 0.395355041021082, 0.48227775141545326, 0.11579933609187498,
+                0.4954491997820898, 0.3972624524456373, 0.596845020410617, 0.118783770819059,
             ), 1e-11),
+            # Pvals.gamma pairs each gamma(w, c) with SE.gamma(w, c) (it used to
+            # pair the window-major gammahat with the cell-major SE vector).
             'gamma': ((2, 2), (
-                0.8758981431049202, 0.8984254943129535, 0.7723754465777457, 0.40688448904635566,
+                0.8763359548268873, 0.8462462956071718, 0.8564081282673236, 0.4061809786986619,
             ), 1e-12),
         },
     },
     'PP-B': {
         'nTerms': 12,
+        # Repinned (EM final pass) for MATLAB's nearestSPD shift
+        # -mineig*k^2 + eps(mineig) (was spacing(norm(A)): SEs move <= 8e-11
+        # relative) and MATLAB's ztest p = 2*normcdf(-|z|) (the large-|z| tail
+        # p-values are now > 0 where 2*(1 - normcdf(|z|)) gave 0.0).  rtol =
+        # max(committed, the file's rule re-measured over 8 trials).
         'SE': {
-            'A': ((2, 2), (0.0935003345877258, 0.0, 0.0, 0.05529039187926433), 1e-11),
-            'Q': ((1, 1), (0.0009130221878309711,), 1e-07),
-            'Px0': ((1, 1), (0.40115888383317905,), 1e-12),
-            'x0': ((2,), (0.04655323846366523, 0.6543298619699379), 1e-11),
-            'mu': ((2,), (0.4849659972895409, 0.3718077183438585), 1e-12),
+            # Binomial: the beta information block has the repaired sign/form and
+            # the mu block the -2 cubic coefficient (MATLAB C4 / A1); every SE
+            # moves because the inverse observed information couples the blocks.
+            # Repinned for the chol(W)' z Monte Carlo draws (MATLAB F9).  SE.A
+            # measured s = 2.7e-13 (32 trials), so the file's rule gives 1e-10
+            # (it was 1e-11).
+            'A': ((2, 2), (0.08322154277514056, 0.0, 0.0, 0.05555200603966175), 1e-10),
+            'Q': ((1, 1), (0.0009607018974053231,), 1e-07),
+            'Px0': ((1, 1), (0.3500109179291209,), 1e-11),
+            'x0': ((2,), (0.03722489460341399, 0.5182822657943066), 1e-10),
+            'mu': ((2,), (0.4679246839392125, 0.37934442053898326), 1e-12),
             'beta': ((2, 2), (
-                0.10344969863385285, 0.14180593306432998, 0.18542978991097495, 0.06703763312987136,
+                1.541872494011121, 1.1557968418843962, 0.8903592379717556, 0.8243810326657305,
             ), 1e-11),
         },
         'P': {
-            'A': ((2, 2), (0.0, 0.0, 0.0, 0.0), 1e-12),
-            'Q': ((1, 1), (0.0,), 1e-12),
-            'Px0': ((1, 1), (0.6180925048535364,), 1e-12),
-            'x0': ((2,), (0.0, 0.6466045051468337), 1e-12),
-            'mu': ((2,), (3.723481348050228e-05, 5.475520170428183e-05), 1e-12),
-            'beta': ((2, 2), (0.0, 2.220446049250313e-16, 0.016607936804470924, 0.0), 1e-10),
-        },
-    },
-    'mPPCO-patched': {
-        'nTerms': 32,
-        'SE': {
-            'A': ((2, 2), (
-                0.08696694131962067, 0.0720582518790982, 0.08983525819026879, 0.10149969219349025,
-            ), 1e-11),
-            'Q': ((2, 2), (0.029448668453987005, 0.0, 0.0, 0.03347970676123971), 1e-11),
-            'C': ((3, 2), (
-                0.14360891658149041, 0.09184483730984976, 0.11708459313965337, 0.06894654082855643,
-                0.19350063721432678, 0.172516471816093,
-            ), 1e-11),
-            'R': ((3, 3), (
-                0.026725845634919674, 0.0, 0.0, 0.0, 0.01940519818273202, 0.0, 0.0, 0.0,
-                0.07138940384601193,
-            ), 1e-11),
-            'alpha': ((3,), (0.07238044386297557, 0.04057562296338655, 0.07825636703494673), 1e-11),
-            'Px0': ((2, 2), (0.16771600641037138, 0.0, 0.0, 0.22587419421759983), 1e-11),
-            'x0': ((2,), (0.3545840692502697, 0.07885493346507538), 1e-11),
-            'mu': ((2,), (0.35395112247984184, 0.3301799495480464), 1e-12),
+            'A': ((2, 2), (2.9386676793090395e-27, 0.0, 0.0, 7.5316750839335935e-53), 1e-08),
+            'Q': ((1, 1), (2.9664318223326936e-96,), 1e-04),
+            'Px0': ((1, 1), (0.5677212459400004,), 1e-12),
+            'x0': ((2,), (3.9334364408386243e-41, 0.5627004021191644), 1e-08),
+            'mu': ((2,), (1.918315702953099e-05, 7.679429492535372e-05), 1e-11),
             'beta': ((2, 2), (
-                0.7694342052804476, 0.870450494434714, 0.7159408961567633, 0.6482653362590273,
-            ), 1e-12),
-            'gamma': ((2, 2), (
-                0.80419945600672, 0.600601136157147, 0.8670647251393258, 0.5995877365361024,
-            ), 1e-12),
-        },
-        'P': {
-            'A': ((2, 2), (
-                4.23941011084057e-25, 0.16520827725648224, 0.5778182861023762,
-                5.550139123287514e-17,
+                0.5078045291044581, 0.3155250506765995, 0.617885456605275, 0.40023736582869474,
             ), 1e-10),
-            'C': ((3, 2), (
-                4.557782551038908e-37, 2.7567769690903244e-246, 2.7763473439619e-16,
-                0.31248680257197137, 9.58242661738798e-12, 0.025396450557152783,
-            ), 1e-08),
-            'R': ((3, 3), (
-                1.0620057363290504e-07, 0.0, 0.0, 0.0, 0.009405161220405106, 0.0, 0.0, 0.0,
-                0.008967568357157974,
-            ), 1e-10),
-            'Q': ((2, 2), (0.08953236917764022, 0.0, 0.0, 0.0168709936656592), 1e-10),
-            'Px0': ((2, 2), (0.5510108915011129, 0.0, 0.0, 0.3759147040501679), 1e-11),
-            'x0': ((2,), (0.9443968120518555, 0.36157936753235276), 1e-11),
-            'alpha': ((3,), (1.0581938998794816e-15, 1.7545431479044646e-26, 5.11837493367227e-06), 1e-09),
-            'mu': ((2,), (1.599839568194773e-08, 5.546523879027795e-06), 1e-11),
-            'beta': ((2, 2), (
-                0.038314063522834764, 0.5444594641473165, 0.9339799705222734, 0.0005607887613551213,
-            ), 1e-11),
-            'gamma': ((2, 2), (
-                0.7241527982568494, 0.40555732018248336, 0.7304807007976486, 0.7790950046973549,
-            ), 1e-12),
         },
     },
 }

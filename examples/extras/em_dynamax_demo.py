@@ -65,8 +65,9 @@ fixtures with known parameters:
 5. ``point_process_predictive_ll`` -- true held-out predictive log-
    likelihood, the honest fit-quality metric (pure NumPy, no dynamax)
 
-Together these close the AUDIT_REPORT.md Sec. 3.2 gap (KF_EM / PP_EM /
-mPPCO_EM, 19 unported MATLAB methods).  This appendix requires the
+Together these are Dynamax alternatives to the KF_EM / PP_EM / mPPCO_EM
+families, whose MATLAB mirrors are native in DecodingAlgorithms (KF_EM,
+PP_EM, PPLFP_EM).  This appendix requires the
 optional ``[dynamax]`` extra (JAX, ~200 MB) and is gracefully skipped
 (not a failure) when it is absent -- the naive-KF vs. ReFIT-KF contrast
 above already ran fully without it.

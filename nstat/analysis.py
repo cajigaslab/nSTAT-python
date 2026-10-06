@@ -148,6 +148,44 @@ def _fit_lambda_matrix_to_covariate(lambda_time: np.ndarray, lambda_columns: lis
     )
 
 
+def _glmfit_independent_columns(X: np.ndarray) -> np.ndarray | None:
+    """Columns MATLAB ``glmfit`` keeps for a rank-deficient design, or ``None`` if full rank.
+
+    Mirrors MATLAB ``glmfit`` (R2025b, ``toolbox/stats/stats/glmfit.m``): a
+    column-pivoted economy QR of the design (LAPACK ``geqp3``, as MATLAB's
+    ``[~,R,perm] = qr(x,0)``) and
+    ``rankx = sum(abs(diag(R)) > abs(R(1)) * max(n, ncolx) * eps)``.  When
+    ``rankx < ncolx`` MATLAB fits on ``x(:, perm(1:rankx))`` and forces the
+    coefficients and standard errors of the other (dependent) columns to 0.
+    Returns those kept column indices in MATLAB's pivot order.
+
+    A design with a non-finite entry returns ``None`` (no rank handling), so
+    ``GLMFit`` runs the unchanged solver on it and returns its all-NaN fit, as
+    it did before the rank handling was added (scipy's ``qr`` would raise on
+    it).  MATLAB ``glmfit`` instead drops the NaN rows (``statremovenan``)
+    and fits the rest; that is not mirrored (recorded in
+    ``parity/matlab_defects.yml``).
+    """
+    from scipy.linalg import qr
+
+    X = np.asarray(X, dtype=float)
+    if not np.all(np.isfinite(X)):
+        return None
+    n, ncolx = X.shape
+    if n == 0 or ncolx == 0:
+        return None
+    _, R, perm = qr(X, mode="economic", pivoting=True)
+    if R.size == 0:
+        rankx = 0
+    else:
+        # MATLAB: diagR = R(1) when R is a vector (one row or one column).
+        diagR = np.abs(np.diag(R)) if min(R.shape) > 1 else np.abs(R.reshape(-1)[:1])
+        rankx = int(np.sum(diagR > abs(R[0, 0]) * max(n, ncolx) * np.finfo(float).eps))
+    if rankx >= ncolx:
+        return None
+    return np.asarray(perm[:rankx], dtype=int)
+
+
 def _glm_deviance(y: np.ndarray, mean_counts: np.ndarray, distribution: str) -> float:
     observed = np.asarray(y, dtype=float).reshape(-1)
     expected = np.clip(np.asarray(mean_counts, dtype=float).reshape(-1), 1e-12, None)
@@ -579,6 +617,26 @@ class Analysis:
             Log-likelihood evaluated with the fit parameters.
         distribution : str
             ``'poisson'`` or ``'binomial'``.
+
+        Notes
+        -----
+        A rank-deficient design in the unpenalized (``l2 = 0``) poisson
+        ``'GLM'`` fit is handled as MATLAB ``glmfit`` handles it: a
+        column-pivoted QR finds the rank, the fit uses the independent
+        columns, and each dependent column gets coefficient 0 and standard
+        error 0.  A design with a NaN entry returns the solver's all-NaN fit
+        (MATLAB ``glmfit`` removes the NaN rows first; not mirrored).
+
+        The binomial ``'BNLRCG'`` fit is NOT a MATLAB mirror on a
+        rank-deficient design: neither MATLAB's ``bnlrCG`` nor this fit has
+        rank handling, but MATLAB's standard errors there come out complex
+        (an eigenvalue-clipped inverse) while these come from the singular
+        ``inv(X'WX)`` with negative variances clipped to 0, so different (and
+        larger, up to ~2.8e3 in the EM GLM M-step) coefficients pass the
+        M-step's ``se < 100`` filter.  On full-rank designs the binomial fit
+        reaches the MLE, which MATLAB's truncated ``bnlrCG`` approaches
+        (about 1e-4 apart on the EM GLM M-step gold).  See
+        ``parity/matlab_defects.yml`` (``em-binomial-glm-bnlrcg``).
         """
         algorithm = str(Algorithm or "GLM").upper()
         if algorithm not in {"GLM", "BNLRCG"}:
@@ -625,6 +683,7 @@ class Analysis:
         lambda_time_full = np.concatenate(lambda_time_segments) if lambda_time_segments else np.array([], dtype=float)
         sample_rate = float(tObj.sampleRate)
 
+        kept = None
         if algorithm == "BNLRCG":
             glm_res = fit_binomial_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
             lambda_delta = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
@@ -633,11 +692,26 @@ class Analysis:
             b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
             dev = _glm_deviance(y, lambda_delta, distribution)
         else:
-            glm_res = fit_poisson_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
-            lambda_delta = glm_res.predict_rate(X)
+            # MATLAB GLMFit calls glmfit(X, y, 'poisson', 'constant', 'off'),
+            # which drops the dependent columns of a rank-deficient design
+            # (pivoted QR) and reports b = 0, se = 0 for them.  Only that case
+            # takes the branch below; a full-rank design runs the unchanged
+            # solver.  (The BNLRCG branch above has no rank handling and is
+            # not a MATLAB mirror on rank-deficient designs; see the Notes.)
+            # Unpenalized fits only (MATLAB glmfit has no ridge); with l2 > 0
+            # X'WX + l2 I is invertible and the ridge solution is kept.
+            kept = _glmfit_independent_columns(X) if l2 == 0.0 else None
+            if kept is None:
+                glm_res = fit_poisson_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
+                lambda_delta = glm_res.predict_rate(X)
+                b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            else:
+                glm_res = fit_poisson_glm(X[:, kept], y, include_intercept=False, l2=l2, max_iter=max_iter)
+                lambda_delta = glm_res.predict_rate(X[:, kept])
+                b = np.zeros(X.shape[1], dtype=float)
+                b[kept] = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
             rate_hz = lambda_delta * sample_rate
             distribution = "poisson"
-            b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
             dev = _glm_deviance(y, lambda_delta, distribution)
 
         # MATLAB logLL — standard Bernoulli per-bin log-likelihood.  Upstream
@@ -677,18 +751,30 @@ class Analysis:
 
         # Compute standard errors from Fisher information (Hessian inverse)
         # Poisson: W = diag(mu);  Binomial: W = diag(mu*(1-mu))
+        # For a rank-deficient poisson design they are computed on the kept
+        # columns; the dependent columns get se = 0 and zero covariance, as
+        # MATLAB glmfit reports them (stats.se(perm) = se; stats.covb(perm,perm)).
+        X_se = X if distribution == "binomial" or kept is None else X[:, kept]
         try:
             if distribution == "binomial":
                 W = lambda_delta * (1.0 - lambda_delta)
             else:
                 W = lambda_delta.copy()
             W = np.maximum(W, 1e-12)
-            XtWX = X.T @ (X * W[:, None]) + l2 * np.eye(X.shape[1])
+            XtWX = X_se.T @ (X_se * W[:, None]) + l2 * np.eye(X_se.shape[1])
             covb = np.linalg.inv(XtWX)
             se = np.sqrt(np.maximum(np.diag(covb), 0.0))
         except np.linalg.LinAlgError:
-            se = np.full(b.size, np.nan, dtype=float)
+            se = np.full(X_se.shape[1], np.nan, dtype=float)
             covb = None
+        if X_se is not X:
+            se_full = np.zeros(b.size, dtype=float)
+            se_full[kept] = se
+            se = se_full
+            if covb is not None:
+                covb_full = np.zeros((b.size, b.size), dtype=float)
+                covb_full[np.ix_(kept, kept)] = covb
+                covb = covb_full
 
         stats = {
             "intercept": float(glm_res.intercept),
