@@ -437,8 +437,8 @@ _MSTEP_METHODS = ("GLM", "NewtonRaphson")
 class GLMPlugInWarning(UserWarning):
     """``MstepMethod='GLM'`` is a plug-in fit on the smoothed means.
 
-    Mirrors MATLAB's ``nSTAT:EM:glmPlugIn`` warning (nSTAT PR #138, user
-    decision track-M item M3): the GLM M-step regresses each cell's spikes
+    Mirrors MATLAB's ``nSTAT:EM:glmPlugIn`` warning (nSTAT PR #138, a
+    maintainer decision): the GLM M-step regresses each cell's spikes
     on the smoothed state means ``x_K`` and ignores the smoothed covariance
     ``W_K``, which inflates ``beta`` and can drift; ``MstepMethod =
     'NewtonRaphson'`` (the default) maximises the expected complete-data
