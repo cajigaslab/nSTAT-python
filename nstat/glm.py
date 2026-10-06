@@ -29,24 +29,38 @@ from typing import Sequence
 
 import numpy as np
 
-# Bounds on the linear predictor before the inverse link, mirroring MATLAB
-# ``glmfit``'s ``stattestlink.m`` (R2026a
-# toolbox/stats/stats/private/stattestlink.m).  Each MATLAB canonical inverse
-# link constrains its argument to a link-specific bound -- not an arbitrary
-# value -- so that the elementary function always returns a finite, in-range
-# result:
+# The bound MATLAB's own ``glmfit`` log-link iterations use internally,
+# via ``stattestlink.m`` (R2026a toolbox/stats/stats/private/stattestlink.m):
+# ``tiny = realmin(class)^.25; bound = -log(tiny)``, i.e.
+# ``ilink = @(eta) exp(constrain(eta, -bound, bound))``.  Computed from
+# ``np.finfo(float)`` so it tracks MATLAB's double ``realmin`` exactly.
 #
-#   'log'   (poisson):  tiny = realmin(class)^.25; bound = -log(tiny)
-#   'logit' (binomial): bound = -log(eps(class))
-#
-# i.e. ``ilink = @(eta) exp(constrain(eta, -bound, bound))`` for 'log' and
-# ``ilink = @(eta) 1 ./ (1 + exp(-constrain(eta, -bound, bound)))`` for
-# 'logit'.  Computed from ``np.finfo(float)`` so they track MATLAB's double
-# ``realmin``/``eps`` exactly; do not round these to -20/20 or any other
-# literal -- that was the bug (nstat-python parity/matlab_defects.yml
-# "glmfit-ilink-eta-bound-too-tight").
-_POISSON_ETA_BOUND = -np.log(np.finfo(float).tiny ** 0.25)
-_BINOMIAL_ETA_BOUND = -np.log(np.finfo(float).eps)
+# This is passed as ``eta_bound`` by ``Analysis.GLMFit``'s poisson ('GLM')
+# path ONLY, for ``fit_poisson_glm``'s *fitting iterations* (so the Newton
+# walk reaches the basin MATLAB's glmfit reaches); it is a true MATLAB
+# mirror there, read from stattestlink.m directly, not assumed. It is NOT
+# used as the default here, and there is no binomial counterpart: MATLAB's
+# BNLRCG algorithm ('Algorithm','BNLRCG') calls `Analysis.m`'s own nested
+# `bnlrCG` (Demba Ba's truncated conjugate-gradient logistic fit), which
+# computes `u = exp(n)./(1+exp(n))` with NO constrain at all -- stattestlink's
+# 'logit' bound belongs to `glmfit`, which BNLRCG does not call. See
+# parity/matlab_defects.yml ("glmfit-ilink-eta-bound-too-tight") for the
+# full before/after and the six affected call sites; every caller of
+# fit_poisson_glm / fit_binomial_glm with no MATLAB counterpart (the paper
+# examples, extras, tutorials, docs figures) keeps the original Python-only
+# +-20 default, unchanged, since widening it was shown to destabilize at
+# least one such caller (a near-collinear tensor-product B-spline design;
+# see tests/extras/test_spatial_basis.py) with no MATLAB basis for adding a
+# line search to compensate.
+_MATLAB_GLMFIT_POISSON_ETA_BOUND = -np.log(np.finfo(float).tiny ** 0.25)
+
+# Python-only default: a stability guard with no MATLAB counterpart (neither
+# glmfit's 'log'/'logit' links for the BNLRCG/bnlrCG path, which has no
+# constrain at all, nor any of the non-GLMFit callers of these two
+# functions). Kept at its original value so every caller that does not pass
+# ``eta_bound`` explicitly is unaffected by the stattestlink.m correction
+# above.
+_DEFAULT_ETA_BOUND = 20.0
 
 
 @dataclass(frozen=True)
@@ -66,7 +80,7 @@ class PoissonGLMResult:
         eta = self.intercept + x_arr @ self.coefficients
         if offset is not None:
             eta = eta + np.asarray(offset, dtype=float).reshape(-1)
-        return np.exp(np.clip(eta, -_POISSON_ETA_BOUND, _POISSON_ETA_BOUND))
+        return np.exp(np.clip(eta, -_DEFAULT_ETA_BOUND, _DEFAULT_ETA_BOUND))
 
 
 @dataclass(frozen=True)
@@ -84,7 +98,7 @@ class BinomialGLMResult:
         if x_arr.ndim == 1:
             x_arr = x_arr[:, None]
         eta = self.intercept + x_arr @ self.coefficients
-        return 1.0 / (1.0 + np.exp(-np.clip(eta, -_BINOMIAL_ETA_BOUND, _BINOMIAL_ETA_BOUND)))
+        return 1.0 / (1.0 + np.exp(-np.clip(eta, -_DEFAULT_ETA_BOUND, _DEFAULT_ETA_BOUND)))
 
     def predict_rate(
         self,
@@ -104,13 +118,14 @@ def fit_poisson_glm(
     l2: float = 1e-6,
     max_iter: int = 120,
     tol: float = 1e-8,
+    eta_bound: float = _DEFAULT_ETA_BOUND,
 ) -> PoissonGLMResult:
     """Fit a Poisson GLM (log link) by Newton-Raphson with an L2 ridge penalty.
 
     Maximises the L2-penalised Poisson log-likelihood
     ``sum(y * eta - exp(eta))`` with ``eta = X @ beta + offset``.  The linear
-    predictor is clipped to ``[-20, 20]`` before exponentiation for numerical
-    stability.
+    predictor is clipped to ``[-eta_bound, eta_bound]`` before exponentiation
+    for numerical stability.
 
     Parameters
     ----------
@@ -129,6 +144,14 @@ def fit_poisson_glm(
         Maximum number of Newton iterations.
     tol : float, default 1e-8
         Convergence tolerance on the L2 norm of the coefficient update.
+    eta_bound : float, default 20.0
+        Clip bound for the linear predictor during the Newton iterations
+        (a Python-only stability guard with no MATLAB counterpart at this
+        default). ``Analysis.GLMFit``'s poisson (``'GLM'``) path passes
+        MATLAB's own ``glmfit`` log-link bound here instead
+        (``-log(realmin**0.25)``, from ``stattestlink.m``) so the fit
+        reaches the same basin MATLAB's IRLS does; every other caller
+        keeps the default.
 
     Returns
     -------
@@ -172,7 +195,7 @@ def fit_poisson_glm(
     n_iter = 0
     for n_iter in range(1, max_iter + 1):
         eta = x_aug @ beta + offset_arr
-        lam = np.exp(np.clip(eta, -_POISSON_ETA_BOUND, _POISSON_ETA_BOUND))
+        lam = np.exp(np.clip(eta, -eta_bound, eta_bound))
 
         grad = x_aug.T @ (y_arr - lam) - l2 * (eye @ beta)
         hess_pos = x_aug.T @ (lam[:, None] * x_aug) + l2 * eye
@@ -189,7 +212,7 @@ def fit_poisson_glm(
         beta = beta_next
 
     eta = x_aug @ beta + offset_arr
-    lam = np.exp(np.clip(eta, -_POISSON_ETA_BOUND, _POISSON_ETA_BOUND))
+    lam = np.exp(np.clip(eta, -eta_bound, eta_bound))
     log_likelihood = float(np.sum(y_arr * np.log(np.maximum(lam, 1e-12)) - lam))
 
     return PoissonGLMResult(
@@ -209,7 +232,20 @@ def fit_binomial_glm(
     l2: float = 1e-6,
     max_iter: int = 120,
     tol: float = 1e-8,
+    eta_bound: float = _DEFAULT_ETA_BOUND,
 ) -> BinomialGLMResult:
+    """Fit a binomial GLM (logit link) by Newton-Raphson with an L2 ridge penalty.
+
+    ``eta_bound`` : float, default 20.0
+        Clip bound for the linear predictor during the Newton iterations --
+        a Python-only stability guard.  Unlike :func:`fit_poisson_glm`,
+        there is no MATLAB bound to adopt here: MATLAB's binomial path
+        (``Algorithm == 'BNLRCG'``) calls ``Analysis.m``'s own nested
+        ``bnlrCG`` (not ``glmfit``), which computes
+        ``u = exp(n)./(1+exp(n))`` with no constrain at all. Every caller
+        (including ``Analysis.GLMFit``'s ``'BNLRCG'`` path) keeps the
+        default.
+    """
     x_arr = np.asarray(x, dtype=float)
     y_arr = np.asarray(y, dtype=float).reshape(-1)
     if x_arr.ndim == 1:
@@ -232,7 +268,7 @@ def fit_binomial_glm(
     converged = False
     n_iter = 0
     for n_iter in range(1, max_iter + 1):
-        eta = np.clip(x_aug @ beta, -_BINOMIAL_ETA_BOUND, _BINOMIAL_ETA_BOUND)
+        eta = np.clip(x_aug @ beta, -eta_bound, eta_bound)
         p = 1.0 / (1.0 + np.exp(-eta))
         w = np.clip(p * (1.0 - p), 1e-9, None)
         grad = x_aug.T @ (y_arr - p) - l2 * (eye @ beta)
@@ -249,7 +285,7 @@ def fit_binomial_glm(
             break
         beta = beta_next
 
-    eta = np.clip(x_aug @ beta, -_BINOMIAL_ETA_BOUND, _BINOMIAL_ETA_BOUND)
+    eta = np.clip(x_aug @ beta, -eta_bound, eta_bound)
     p = 1.0 / (1.0 + np.exp(-eta))
     log_likelihood = float(np.sum(y_arr * np.log(np.clip(p, 1e-12, 1.0)) + (1.0 - y_arr) * np.log(np.clip(1.0 - p, 1e-12, 1.0))))
 

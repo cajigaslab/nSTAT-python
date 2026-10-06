@@ -25,16 +25,24 @@
   implementation got vector lengths right but differed bitwise from MATLAB in
   132/200 sampled arrays. Affects `SignalObj` resampling and
   `examples/paper/example01_mepsc_poisson.py`.
-- Fix: `nstat.glm.fit_poisson_glm` / `fit_binomial_glm` (and
-  `PoissonGLMResult.predict_rate` / `BinomialGLMResult.predict_probability`)
-  clipped the linear predictor to a flat `+-20` before the inverse link.
-  MATLAB `glmfit` itself clips there (`stattestlink.m`'s `constrain`), but to
-  a link-specific bound: `+-177.0991046330660...` for the Poisson `'log'`
-  link, `+-36.04365338911715...` for the binomial `'logit'` link. Both are
-  wider than the old `+-20`, which could diverge from MATLAB on designs
-  whose fitted linear predictor exceeds 20 in magnitude; the bound is now
-  computed from `np.finfo(float)` to match MATLAB's formula exactly. Affects
-  `Analysis.GLMFit`'s `'GLM'` / `'BNLRCG'` paths.
+- Fix: `Analysis.GLMFit`'s poisson (`'GLM'`) path clipped its linear
+  predictor to a flat `+-20` throughout (both the internal `glmfit`-mirroring
+  Newton iterations and the final returned `lambda`/`AIC`/`BIC`/`logLL`).
+  MATLAB's `glmfit` constrains `eta` during its IRLS iterations to a
+  `'log'`-link-specific bound (`stattestlink.m`: `-log(realmin**0.25)` =
+  `+-177.0991046330660...`), then `Analysis.GLMFit` evaluates its own
+  `data = exp(X*b)` afterward with **no clip at all** (can legitimately
+  overflow to `Inf`, as MATLAB's unclipped `exp` would). `fit_poisson_glm`
+  and `fit_binomial_glm` (`nstat.glm`) gained a keyword-only `eta_bound`
+  parameter (default `20.0`, unchanged, so every caller without a MATLAB
+  counterpart -- paper examples, `nstat.extras.spatial.*`, tutorials, docs
+  figures -- is unaffected); `Analysis.GLMFit`'s poisson path now passes
+  MATLAB's bound for the fit and computes the final `lambda` unclipped.
+  `nstat.trial.psthGLM` (MATLAB: `nstColl.psthGLM`, same underlying
+  `Analysis.GLMFit` call) got the same fix. The binomial (`'BNLRCG'`) path
+  is unaffected: MATLAB's `Algorithm == 'BNLRCG'` calls `Analysis.m`'s own
+  `bnlrCG`, not `glmfit`, which has no link-constrain at all, so there is no
+  MATLAB bound to adopt there; it keeps the Python-only `+-20` default.
 - Fix: `Analysis.GLMFit`'s poisson (`'GLM'`) path now drops rows with a NaN
   design or spike-count entry before fitting, mirroring MATLAB `glmfit`'s
   `statremovenan` (the fit, deviance and standard errors come from the

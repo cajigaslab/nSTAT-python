@@ -2051,31 +2051,57 @@ entries:
   discovered: P2a / 2026-10
   upstream_status: n/a
 - id: glmfit-ilink-eta-bound-too-tight
-  title: '`nstat.glm` clipped the linear predictor to +-20 before `exp`/logistic where MATLAB `glmfit`''s link-bound is wider (Python port defect, fixed)'
+  title: '`nstat.glm`''s flat +-20 linear-predictor clip did not match MATLAB everywhere it has one, nor the lack of one where it has none (Python port defect, fixed; scope corrected in the same track)'
   defect_class: Bug (Python port, fixed)
-  matlab_location: '`stattestlink.m` (R2026a, `/Applications/MATLAB_R2026a.app/toolbox/stats/stats/private/stattestlink.m`), the ``log`` and ``logit`` inverse-link cases used by `glmfit(..., ''poisson'')` / `glmfit(..., ''binomial'')`.'
+  matlab_location: 'Two different MATLAB sources, not one: `stattestlink.m` (R2026a, `toolbox/stats/stats/private/stattestlink.m`), the `log` inverse-link case used by `glmfit(..., ''poisson'')` (called only by `Analysis.GLMFit`''s `''GLM''` path); and `Analysis.m`''s own nested `bnlrCG` (Demba Ba''s truncated conjugate-gradient logistic fit), called by `Analysis.GLMFit`''s `''BNLRCG''` path instead of `glmfit`.'
   matlab_behavior: >-
-    Each inverse link constrains `eta` before applying the elementary function, but to a link-specific bound, not
-    +-20: `log` (poisson canonical) uses `tiny = realmin(class)^.25`, `lowerBnd = log(tiny)`, `upperBnd = -lowerBnd`
-    (double: +-177.0991046330660); `logit` (binomial canonical) uses `lowerBnd = log(eps(class))`,
-    `upperBnd = -lowerBnd` (double: +-36.04365338911715).  Verified by reading `stattestlink.m` directly (not from
-    memory): `ilink = @(eta) exp(constrain(eta,lowerBnd,upperBnd))` for `log`, `ilink = @(eta) 1 ./ (1 +
-    exp(-constrain(eta,lowerBnd,upperBnd)))` for `logit`.
-  correct_behavior: As MATLAB -- constrain `eta` to the link-specific bound above, not an arbitrary +-20.
+    `glmfit`''s `log` inverse link constrains its argument during the IRLS iterations only: `tiny =
+    realmin(class)^.25`, `bound = -log(tiny)` (double: +-177.0991046330660), i.e. `ilink = @(eta)
+    exp(constrain(eta,-bound,bound))`.  `Analysis.GLMFit` (Analysis.m:565-634) then evaluates its OWN `data =
+    exp(X*b)` afterward with NO clip at all -- a value that can legitimately overflow to Inf.  `bnlrCG` has no
+    constrain anywhere: `u = exp(n)./(1+exp(n))`, unbounded.  (An earlier draft of this fix, within the same P2a
+    track, incorrectly assumed `stattestlink.m`''s `logit` bound -- +-36.04365338911715 -- applied to the binomial
+    path too; it does not, since BNLRCG calls `bnlrCG`, never `glmfit`.)
+  correct_behavior: >-
+    `Analysis.GLMFit`''s poisson path: constrain `eta` to glmfit''s `log`-link bound during the Newton iterations,
+    then evaluate `exp(X*b)` with NO clip for the returned `lambda`/`AIC`/`BIC`/`logLL`.  Its binomial path: no
+    MATLAB bound exists to adopt; a Python-only stability guard may stay (the guard rule), unchanged.
   python_implementation:
-  - '`nstat/glm.py`''s `fit_poisson_glm` (`lam = np.exp(np.clip(eta, -20.0, 20.0))`, two call sites) and
-    `fit_binomial_glm` (`eta = np.clip(x_aug @ beta, -20.0, 20.0)`, two call sites) both used a flat +-20 bound,
-    tighter than MATLAB''s actual +-177.1 (poisson) and +-36.04 (binomial) bounds.  `fit_poisson_glm` /
-    `fit_binomial_glm` back `Analysis.GLMFit`''s GLM / BNLRCG paths (`nstat/analysis.py:688,705,709`), which is the
-    MATLAB-mirroring entry point, so the tighter clip could diverge from MATLAB on any design whose fitted linear
-    predictor exceeds +-20 in magnitude (e.g. a well-separated or large-count design) even though it would not have
-    diverged from the true MATLAB bound.  Replaced the literal `20.0` with module-level constants
-    `_POISSON_ETA_BOUND = 177.0991046330660...` and `_BINOMIAL_ETA_BOUND = 36.04365338911715...` (computed from
-    `np.finfo(float)`, matching `stattestlink.m`''s formulas exactly) at all four call sites.  Not removed outright
-    (the brief''s guard rule): MATLAB itself clips here, just to a different, wider bound.'
-  fixture_impact: none (no gold fixture or drift recipe reaches |eta| in (20, 36) or (20, 177); full gold suite and
-    `numerical_drift.py --fail-on-drift` re-run after the change, unchanged)
-  discovered: P2a / 2026-10
+  - '`nstat/glm.py`''s `fit_poisson_glm` and `fit_binomial_glm` both clipped `eta` to a flat `+-20.0` at every
+    internal site (the Newton-iteration `lam`/`p`, and in `PoissonGLMResult.predict_rate` /
+    `BinomialGLMResult.predict_probability`).  Both functions gained a keyword-only `eta_bound` parameter (default
+    `20.0`, the ORIGINAL value, so every caller that does not pass it -- `nstat.trial`''s other GLM use, the paper
+    examples, `nstat.extras.spatial.*`, the validation bridges, the tutorials, the docs-figure scripts -- is
+    unaffected).  `Analysis.GLMFit`''s poisson (`''GLM''`) path now passes `eta_bound=_MATLAB_GLMFIT_POISSON_ETA_BOUND`
+    (`-log(realmin**0.25)`, read from `stattestlink.m`) to `fit_poisson_glm`, and computes its own `lambda_delta =
+    np.exp(X @ b)` directly -- NOT `glm_res.predict_rate(X)`, which has its own unrelated `+-20` default -- matching
+    `data = exp(X*b)` with no clip.  `nstat.trial.py`''s `psthGLM` (MATLAB: `nstColl.psthGLM`, which also calls
+    `Analysis.RunAnalysisForAllNeurons` -> `Analysis.GLMFit`) got the identical fix for its Fisher-information
+    weight (its own PSTH output signal already computed raw `exp(bdata @ bVals)` with no clip, unaffected either
+    way).  `Analysis.GLMFit`''s binomial (`''BNLRCG''`) path passes nothing (keeps the `20.0` default): `bnlrCG` has
+    no bound to adopt, so the Python-only guard stays, per the guard rule.'
+  - 'An earlier draft of this fix (same P2a track) widened `fit_binomial_glm`''s default to a nonexistent
+    `+-36.04365338911715` "`_BINOMIAL_ETA_BOUND`" and widened `fit_poisson_glm` / `predict_rate` /
+    `predict_probability`''s DEFAULT to `+-177.1` for every caller.  That broke
+    `tests/extras/test_spatial_basis.py::test_recovers_log_gaussian_rate_under_glm` (`make test` caught it): a
+    near-collinear tensor-product B-spline design that converged under the old `+-20` clip (which acts as this
+    solver''s only globalization / trust-region surrogate -- it has no Newton line search or step damping)
+    diverged under the wider default (coefficients to ~2e4, `log_likelihood` to -1.5e79).  Per
+    AGENT_GUIDE.md''s parity principle, the fix is to scope the MATLAB-derived bound to the one call site it
+    actually governs (`eta_bound`, above), not to add a line search (no MATLAB basis) or revert the parity
+    correction.'
+  - 'New tests/test_glm_eta_bound.py pins `_MATLAB_GLMFIT_POISSON_ETA_BOUND` against the `stattestlink.m` formula,
+    confirms the Python-only default is unchanged (`20.0`), and drives `Analysis.GLMFit` itself (via the
+    `tests/test_glmfit_nan_rows_matlab_gold.py` duck-typed-stub pattern) with a one-column, huge-count design whose
+    MLE intercept exceeds 25 in magnitude, asserting `lambda_signal` equals raw `exp(eta)`, not `exp(clip(eta,
+    -20, 20))`.'
+  fixture_impact: 'none (no gold fixture or drift recipe reaches |eta| > 20 in a poisson GLMFit); `make test`
+    (1388 passed, 19 skipped) and `numerical_drift.py --fail-on-drift` (96/96) re-run clean after the correction;
+    example01 and example03''s figures regenerated and confirmed byte-identical to a same-commit regen without
+    the `eta_bound` plumbing (isolating this change from the pre-existing example01 regen/environment drift noted
+    in `matlab-colon-public-helper-not-bitexact`)'
+  discovered: P2a / 2026-10 (fixed, then its own scope corrected within the same track after `make test` surfaced
+    the extras regression)
   upstream_status: n/a
 - id: regen-notebook-fidelity-worktree-path
   title: '`make regen` from a worktree without a sibling ../nSTAT rewrites notebook_fidelity.yml (repo tooling)'

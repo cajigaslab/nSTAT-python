@@ -27,7 +27,7 @@ import numpy as np
 
 from .SignalObj import SignalObj
 from .fit import FitResult, _SingleFit, _ksdiscrete, _matlab_compute_ks_arrays
-from .glm import fit_binomial_glm, fit_poisson_glm
+from .glm import _MATLAB_GLMFIT_POISSON_ETA_BOUND, fit_binomial_glm, fit_poisson_glm
 from .signal import Covariate
 from .trial import ConfigCollection, SpikeTrainCollection, Trial
 
@@ -768,18 +768,32 @@ class Analysis:
             X_fit = X[valid_idx] if np.any(nan_rows) else X
             y_fit = y[valid_idx] if np.any(nan_rows) else y
             kept = _glmfit_independent_columns(X_fit) if l2 == 0.0 else None
+            # eta_bound: MATLAB glmfit's own 'log'-link iteration bound
+            # (stattestlink.m, read directly: tiny = realmin^.25,
+            # bound = -log(tiny)), passed so the Newton walk below reaches
+            # the same basin MATLAB's glmfit does -- not an arbitrary
+            # widening (see parity/matlab_defects.yml
+            # glmfit-ilink-eta-bound-too-tight).
             if kept is None:
-                glm_res = fit_poisson_glm(X_fit, y_fit, include_intercept=False, l2=l2, max_iter=max_iter)
-                # predict over the FULL (original) X, as MATLAB's
-                # Analysis.GLMFit does (`data = exp(X*b)`): a NaN row in X
-                # still gives a NaN row here, dropped only from the fit.
-                lambda_delta = glm_res.predict_rate(X)
+                glm_res = fit_poisson_glm(
+                    X_fit, y_fit, include_intercept=False, l2=l2, max_iter=max_iter,
+                    eta_bound=_MATLAB_GLMFIT_POISSON_ETA_BOUND,
+                )
                 b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
             else:
-                glm_res = fit_poisson_glm(X_fit[:, kept], y_fit, include_intercept=False, l2=l2, max_iter=max_iter)
-                lambda_delta = glm_res.predict_rate(X[:, kept])
+                glm_res = fit_poisson_glm(
+                    X_fit[:, kept], y_fit, include_intercept=False, l2=l2, max_iter=max_iter,
+                    eta_bound=_MATLAB_GLMFIT_POISSON_ETA_BOUND,
+                )
                 b = np.zeros(X.shape[1], dtype=float)
                 b[kept] = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            # MATLAB Analysis.GLMFit: `data = exp(X*b)` (Analysis.m:594), on
+            # the full original X, with NO clip at all (unlike glmfit's own
+            # internal ilink, this downstream evaluation is raw); a NaN row
+            # in X still gives a NaN row here, dropped only from the fit
+            # above, and an extreme eta can legitimately overflow to Inf,
+            # exactly as MATLAB's unclipped `exp` would.
+            lambda_delta = np.exp(X @ b)
             rate_hz = lambda_delta * sample_rate
             distribution = "poisson"
             # dev (and so AIC, which depends only on dev and n_params) comes
