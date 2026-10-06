@@ -1212,6 +1212,19 @@ Schema for each entry:
 
 ---
 
+### Bug (Python example script, not a MATLAB defect): `example02` fig02 and `example03` fig04/fig06 produce a different figure every run (Python example bug; fixed)
+
+- **MATLAB location:** n/a (nstat-python `nstat/fit.py` `_ksdiscrete`, `nstat/decoding_algorithms.py` `computeSpikeRateCIs`)
+- **Defect class:** Bug (Python example script, not a MATLAB defect)
+- **MATLAB behavior:** `_ksdiscrete`'s time-rescaling jitter draws `np.random.random_sample` and `computeSpikeRateCIs`'s Monte Carlo smoothing-distribution draws `np.random.randn`, both on NumPy's legacy global stream with no seed. MATLAB's own `Analysis.m` `ksdiscrete` has the same global-stream `rand` call by design (a comment in the local MATLAB checkout notes `rng('shuffle','twister')` was removed because it clobbered the caller's seed -- "caller controls RNG state"), so the Python mirror is correct; the bug was that `example02_whisker_stimulus_thalamus.py` and `example03_psth_and_ssglm.py` never seeded that global state before calling `Analysis.computeHistLagForAll` / `FitResult.KSPlot` / `DecodingAlgorithms.computeSpikeRateCIs`, so fig02's history-window selection and fig04/fig06's KS panel and learning-trial index (`lt`) varied run to run.
+- **Correct behavior:** The caller seeds NumPy's global RNG before invoking code that draws from it (as MATLAB callers do with `rng(N)`), per `DecodingAlgorithms.PP_EM`'s own docstring.
+- **Python implementation:** Fixed (P2b-2026-10): both example scripts wrap the affected sections in `nstat.extras.matlab_rng.seeded_global_rng(seed)`. Verified by running each example's figure export twice and comparing SHA-256 of every PNG: byte-identical both times (fig01_data_overview.png and example03's fig01/02/03/05 were already deterministic and are pixel-identical to the prior committed PNGs -- any raw-byte difference there is PNG-encoder noise from re-running in a different environment, not a content change, so those files were left untouched).
+- **Fixture impact:** none
+- **Discovered:** P2b-2026-10
+- **Upstream status:** n/a
+
+---
+
 ## Reviewer checklist for parity-affecting PRs
 
 - [ ] Every modified gold fixture has a defects-ledger entry

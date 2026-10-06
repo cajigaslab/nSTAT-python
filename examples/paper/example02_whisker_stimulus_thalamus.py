@@ -55,6 +55,7 @@ from nstat import (  # noqa: E402
 )
 from nstat.signal import Covariate  # noqa: E402
 from nstat.data_manager import ensure_example_data  # noqa: E402
+from nstat.extras.matlab_rng import seeded_global_rng  # noqa: E402
 
 
 # =========================================================================
@@ -269,169 +270,176 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     print(f"  Window boundaries: {len(windowTimes)} unique values")
     print(f"  Range: [{windowTimes[0]:.4f}, {windowTimes[-1]:.4f}] s")
 
-    historySweep = Analysis.computeHistLagForAll(
-        trialShifted, windowTimes,
-        CovLabels=[("Baseline", "\\mu"), ("Stimulus", "stim")],
-        Algorithm="GLM",
-        batchMode=0,
-        sampleRate=sampleRate,
-        makePlot=0,
-    )
+    # Seed the global RNG: Analysis.computeHistLagForAll / KSPlot draw
+    # time-rescaling jitter via np.random.random_sample (nstat/fit.py
+    # _ksdiscrete) on NumPy's legacy global stream -- unseeded, this made
+    # the history-window selection and fig02 KS/coefficient panels differ
+    # run to run (see RELEASE_NOTES.md / parity ledger).
+    seed = 20261006
+    with seeded_global_rng(seed):
+        historySweep = Analysis.computeHistLagForAll(
+            trialShifted, windowTimes,
+            CovLabels=[("Baseline", "\\mu"), ("Stimulus", "stim")],
+            Algorithm="GLM",
+            batchMode=0,
+            sampleRate=sampleRate,
+            makePlot=0,
+        )
 
-    # ==================================================================
-    # Select optimal history order
-    # ==================================================================
-    # historySweep is a list of FitResult objects (one per neuron)
-    sweep = historySweep[0]
-    aicArr = np.asarray(sweep.AIC, dtype=float)
-    bicArr = np.asarray(sweep.BIC, dtype=float)
-    ksArr = np.asarray(sweep.KSStats, dtype=float).ravel()
+        # ==================================================================
+        # Select optimal history order
+        # ==================================================================
+        # historySweep is a list of FitResult objects (one per neuron)
+        sweep = historySweep[0]
+        aicArr = np.asarray(sweep.AIC, dtype=float)
+        bicArr = np.asarray(sweep.BIC, dtype=float)
+        ksArr = np.asarray(sweep.KSStats, dtype=float).ravel()
 
-    # Delta AIC/BIC relative to no-history model (index 0)
-    dAIC = aicArr[1:] - aicArr[0]
-    dBIC = bicArr[1:] - bicArr[0]
+        # Delta AIC/BIC relative to no-history model (index 0)
+        dAIC = aicArr[1:] - aicArr[0]
+        dBIC = bicArr[1:] - bicArr[0]
 
-    # Find index of minimum delta (offset by +1 since we skipped index 0)
-    aicIdx = int(np.argmin(dAIC)) + 1 if dAIC.size > 0 else None
-    bicIdx = int(np.argmin(dBIC)) + 1 if dBIC.size > 0 else None
-    ksIdx = int(np.argmin(ksArr)) if ksArr.size > 0 else 0
+        # Find index of minimum delta (offset by +1 since we skipped index 0)
+        aicIdx = int(np.argmin(dAIC)) + 1 if dAIC.size > 0 else None
+        bicIdx = int(np.argmin(dBIC)) + 1 if dBIC.size > 0 else None
+        ksIdx = int(np.argmin(ksArr)) if ksArr.size > 0 else 0
 
-    # Take minimum of AIC and BIC optimal indices
-    candidates = []
-    if aicIdx is not None and aicIdx > 0:
-        candidates.append(aicIdx)
-    if bicIdx is not None and bicIdx > 0:
-        candidates.append(bicIdx)
-    windowIndex = min(candidates) if candidates else ksIdx
+        # Take minimum of AIC and BIC optimal indices
+        candidates = []
+        if aicIdx is not None and aicIdx > 0:
+            candidates.append(aicIdx)
+        if bicIdx is not None and bicIdx > 0:
+            candidates.append(bicIdx)
+        windowIndex = min(candidates) if candidates else ksIdx
 
-    if windowIndex > len(windowTimes):
-        windowIndex = ksIdx
+        if windowIndex > len(windowTimes):
+            windowIndex = ksIdx
 
-    # Extract selected history windows
-    # windowIndex is 0-based; MATLAB uses windowTimes(1:windowIndex) with 1-based
-    # indexing, which includes windowIndex elements.  Python equivalent is [:windowIndex+1].
-    if windowIndex > 1:
-        selectedHistory = list(windowTimes[:windowIndex + 1])
-    else:
-        selectedHistory = []
+        # Extract selected history windows
+        # windowIndex is 0-based; MATLAB uses windowTimes(1:windowIndex) with 1-based
+        # indexing, which includes windowIndex elements.  Python equivalent is [:windowIndex+1].
+        if windowIndex > 1:
+            selectedHistory = list(windowTimes[:windowIndex + 1])
+        else:
+            selectedHistory = []
 
-    print(f"  AIC optimal index: {aicIdx}")
-    print(f"  BIC optimal index: {bicIdx}")
-    print(f"  KS optimal index:  {ksIdx}")
-    print(f"  Selected window index: {windowIndex}")
-    print(f"  Selected history: {len(selectedHistory)} windows")
+        print(f"  AIC optimal index: {aicIdx}")
+        print(f"  BIC optimal index: {bicIdx}")
+        print(f"  KS optimal index:  {ksIdx}")
+        print(f"  Selected window index: {windowIndex}")
+        print(f"  Selected history: {len(selectedHistory)} windows")
 
-    # ==================================================================
-    # Final 3-model comparison
-    # ==================================================================
-    print("\n--- Fitting 3 nested models ---")
+        # ==================================================================
+        # Final 3-model comparison
+        # ==================================================================
+        print("\n--- Fitting 3 nested models ---")
 
-    cfg1 = TrialConfig([("Baseline", "\\mu")], sampleRate, [], [])
-    cfg1.setName("Baseline")
+        cfg1 = TrialConfig([("Baseline", "\\mu")], sampleRate, [], [])
+        cfg1.setName("Baseline")
 
-    cfg2 = TrialConfig(
-        [("Baseline", "\\mu"), ("Stimulus", "stim")],
-        sampleRate, [], [],
-    )
-    cfg2.setName("Baseline+Stimulus")
+        cfg2 = TrialConfig(
+            [("Baseline", "\\mu"), ("Stimulus", "stim")],
+            sampleRate, [], [],
+        )
+        cfg2.setName("Baseline+Stimulus")
 
-    cfg3 = TrialConfig(
-        [("Baseline", "\\mu"), ("Stimulus", "stim")],
-        sampleRate, selectedHistory, [],
-    )
-    cfg3.setName("Baseline+Stimulus+Hist")
+        cfg3 = TrialConfig(
+            [("Baseline", "\\mu"), ("Stimulus", "stim")],
+            sampleRate, selectedHistory, [],
+        )
+        cfg3.setName("Baseline+Stimulus+Hist")
 
-    modelCompare = Analysis.RunAnalysisForAllNeurons(
-        trialShifted, ConfigColl([cfg1, cfg2, cfg3]), 0)
-    modelCompare.lambda_signal.setDataLabels([
-        "\\lambda_{const}",
-        "\\lambda_{const+stim}",
-        "\\lambda_{const+stim+hist}",
-    ])
+        modelCompare = Analysis.RunAnalysisForAllNeurons(
+            trialShifted, ConfigColl([cfg1, cfg2, cfg3]), 0)
+        modelCompare.lambda_signal.setDataLabels([
+            "\\lambda_{const}",
+            "\\lambda_{const+stim}",
+            "\\lambda_{const+stim+hist}",
+        ])
 
-    print(f"  AIC: {modelCompare.AIC}")
-    print(f"  BIC: {modelCompare.BIC}")
+        print(f"  AIC: {modelCompare.AIC}")
+        print(f"  BIC: {modelCompare.BIC}")
 
-    # ==================================================================
-    # Figure 2: Lag selection, history diagnostics, KS, coefficients
-    # (Matlab uses subplot(7,2,...) layout)
-    # ==================================================================
-    # === FIGURE: fig02_lag_and_model_comparison.png ===
-    fig2 = plt.figure(figsize=(14, 9))
-    import matplotlib.gridspec as gridspec
-    gs = gridspec.GridSpec(7, 2, figure=fig2, hspace=0.5, wspace=0.3)
+        # ==================================================================
+        # Figure 2: Lag selection, history diagnostics, KS, coefficients
+        # (Matlab uses subplot(7,2,...) layout)
+        # ==================================================================
+        # === FIGURE: fig02_lag_and_model_comparison.png ===
+        fig2 = plt.figure(figsize=(14, 9))
+        import matplotlib.gridspec as gridspec
+        gs = gridspec.GridSpec(7, 2, figure=fig2, hspace=0.5, wspace=0.3)
 
-    numResults = len(ksArr)
+        numResults = len(ksArr)
 
-    # --- Left column, rows 1-3: Cross-correlation function ---
-    ax_xcov = fig2.add_subplot(gs[0:3, 0])
-    xcovWindowed.plot(handle=ax_xcov)
-    ax_xcov.plot(shiftTime, peakVal, "ro", linewidth=3,
-                 markerfacecolor="r", markeredgecolor="r")
-    ax_xcov.set_title(
-        f"Cross Correlation Function - Peak at t={shiftTime:g} sec",
-        fontweight="bold", fontsize=12, fontfamily="Arial")
-    ax_xcov.set_xlabel("Lag [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
-    ax_xcov.set_ylabel("")
+        # --- Left column, rows 1-3: Cross-correlation function ---
+        ax_xcov = fig2.add_subplot(gs[0:3, 0])
+        xcovWindowed.plot(handle=ax_xcov)
+        ax_xcov.plot(shiftTime, peakVal, "ro", linewidth=3,
+                     markerfacecolor="r", markeredgecolor="r")
+        ax_xcov.set_title(
+            f"Cross Correlation Function - Peak at t={shiftTime:g} sec",
+            fontweight="bold", fontsize=12, fontfamily="Arial")
+        ax_xcov.set_xlabel("Lag [s]", fontsize=12, fontweight="bold", fontfamily="Arial")
+        ax_xcov.set_ylabel("")
 
-    # --- Right column, row 1: KS statistic vs Q ---
-    ax_ks_sweep = fig2.add_subplot(gs[0, 1])
-    xvals = np.arange(numResults)
-    ax_ks_sweep.plot(xvals, ksArr, ".-")
-    if windowIndex < numResults:
-        ax_ks_sweep.plot(xvals[windowIndex], ksArr[windowIndex], "r*")
-    ax_ks_sweep.set_xlim(xvals[0], xvals[-1])
-    ax_ks_sweep.set_xticks(np.arange(0, numResults, 5))
-    ax_ks_sweep.set_xticklabels([])
-    ax_ks_sweep.tick_params(length=4, which="major")
-    ax_ks_sweep.minorticks_on()
-    ax_ks_sweep.set_ylabel("KS Statistic")
-    ax_ks_sweep.set_title("Model Selection via change\nin KS Statistic, AIC, and BIC",
-                          fontweight="bold", fontsize=12, fontfamily="Arial")
+        # --- Right column, row 1: KS statistic vs Q ---
+        ax_ks_sweep = fig2.add_subplot(gs[0, 1])
+        xvals = np.arange(numResults)
+        ax_ks_sweep.plot(xvals, ksArr, ".-")
+        if windowIndex < numResults:
+            ax_ks_sweep.plot(xvals[windowIndex], ksArr[windowIndex], "r*")
+        ax_ks_sweep.set_xlim(xvals[0], xvals[-1])
+        ax_ks_sweep.set_xticks(np.arange(0, numResults, 5))
+        ax_ks_sweep.set_xticklabels([])
+        ax_ks_sweep.tick_params(length=4, which="major")
+        ax_ks_sweep.minorticks_on()
+        ax_ks_sweep.set_ylabel("KS Statistic")
+        ax_ks_sweep.set_title("Model Selection via change\nin KS Statistic, AIC, and BIC",
+                              fontweight="bold", fontsize=12, fontfamily="Arial")
 
-    # --- Right column, row 2: Delta AIC vs Q ---
-    ax_daic = fig2.add_subplot(gs[1, 1])
-    dAIC_full = aicArr - aicArr[0]
-    ax_daic.plot(np.arange(len(dAIC_full)), dAIC_full, ".-")
-    if windowIndex < len(dAIC_full):
-        ax_daic.plot(windowIndex, dAIC_full[windowIndex], "r*")
-    ax_daic.set_xlim(0, numResults - 1)
-    ax_daic.set_xticks(np.arange(0, numResults, 5))
-    ax_daic.set_xticklabels([])
-    ax_daic.tick_params(length=4, which="major")
-    ax_daic.minorticks_on()
-    ax_daic.set_ylabel(r"$\Delta$ AIC")
+        # --- Right column, row 2: Delta AIC vs Q ---
+        ax_daic = fig2.add_subplot(gs[1, 1])
+        dAIC_full = aicArr - aicArr[0]
+        ax_daic.plot(np.arange(len(dAIC_full)), dAIC_full, ".-")
+        if windowIndex < len(dAIC_full):
+            ax_daic.plot(windowIndex, dAIC_full[windowIndex], "r*")
+        ax_daic.set_xlim(0, numResults - 1)
+        ax_daic.set_xticks(np.arange(0, numResults, 5))
+        ax_daic.set_xticklabels([])
+        ax_daic.tick_params(length=4, which="major")
+        ax_daic.minorticks_on()
+        ax_daic.set_ylabel(r"$\Delta$ AIC")
 
-    # --- Right column, row 3: Delta BIC vs Q ---
-    ax_dbic = fig2.add_subplot(gs[2, 1])
-    dBIC_full = bicArr - bicArr[0]
-    ax_dbic.plot(np.arange(len(dBIC_full)), dBIC_full, ".-")
-    if windowIndex < len(dBIC_full):
-        ax_dbic.plot(windowIndex, dBIC_full[windowIndex], "r*")
-    ax_dbic.set_xlim(0, numResults - 1)
-    ax_dbic.set_xticks(np.arange(0, numResults, 5))
-    ax_dbic.tick_params(length=4, which="major")
-    ax_dbic.minorticks_on()
-    ax_dbic.set_xlabel("# History Windows, Q",
-                       fontsize=12, fontweight="bold", fontfamily="Arial")
-    ax_dbic.set_ylabel(r"$\Delta$ BIC",
-                       fontsize=12, fontweight="bold", fontfamily="Arial")
+        # --- Right column, row 3: Delta BIC vs Q ---
+        ax_dbic = fig2.add_subplot(gs[2, 1])
+        dBIC_full = bicArr - bicArr[0]
+        ax_dbic.plot(np.arange(len(dBIC_full)), dBIC_full, ".-")
+        if windowIndex < len(dBIC_full):
+            ax_dbic.plot(windowIndex, dBIC_full[windowIndex], "r*")
+        ax_dbic.set_xlim(0, numResults - 1)
+        ax_dbic.set_xticks(np.arange(0, numResults, 5))
+        ax_dbic.tick_params(length=4, which="major")
+        ax_dbic.minorticks_on()
+        ax_dbic.set_xlabel("# History Windows, Q",
+                           fontsize=12, fontweight="bold", fontfamily="Arial")
+        ax_dbic.set_ylabel(r"$\Delta$ BIC",
+                           fontsize=12, fontweight="bold", fontfamily="Arial")
 
-    # --- Left column, rows 5-7: KS plot (3 models) ---
-    ax_ks = fig2.add_subplot(gs[4:7, 0])
-    modelCompare.KSPlot(handle=ax_ks)
+        # --- Left column, rows 5-7: KS plot (3 models) ---
+        ax_ks = fig2.add_subplot(gs[4:7, 0])
+        modelCompare.KSPlot(handle=ax_ks)
 
-    # --- Right column, rows 5-7: Coefficient comparison ---
-    ax_coeff = fig2.add_subplot(gs[4:7, 1])
-    modelCompare.plotCoeffs(handle=ax_coeff)
-    if ax_coeff.get_legend():
-        ax_coeff.get_legend().set_visible(False)
-    # === END FIGURE ===
-    figure_files.extend(_maybe_export(
-        fig2, export_dir, "fig02_lag_and_model_comparison", plot_style=plot_style))
+        # --- Right column, rows 5-7: Coefficient comparison ---
+        ax_coeff = fig2.add_subplot(gs[4:7, 1])
+        modelCompare.plotCoeffs(handle=ax_coeff)
+        if ax_coeff.get_legend():
+            ax_coeff.get_legend().set_visible(False)
+        # === END FIGURE ===
+        figure_files.extend(_maybe_export(
+            fig2, export_dir, "fig02_lag_and_model_comparison", plot_style=plot_style))
 
-    if visible:
-        plt.show()
+        if visible:
+            plt.show()
 
     print(f"\nExample 02 complete. Generated {len(figure_files)} figure(s).")
     return figure_files

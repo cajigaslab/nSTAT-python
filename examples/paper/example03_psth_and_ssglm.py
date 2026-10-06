@@ -64,6 +64,7 @@ from nstat.core import nspikeTrain  # noqa: E402
 from nstat.data_manager import ensure_example_data  # noqa: E402
 from nstat.decoding_algorithms import DecodingAlgorithms  # noqa: E402
 from nstat.trial import SpikeTrainCollection  # noqa: E402
+from nstat.extras.matlab_rng import seeded_global_rng  # noqa: E402
 
 
 # =====================================================================
@@ -476,138 +477,146 @@ def run_part_b(data_dir, export_dir=None):
     # ------------------------------------------------------------------
     # Figure 4: SSGLM vs PSTH diagnostics (2x2)
     # ------------------------------------------------------------------
-    # === FIGURE: fig04_ssglm_fit_diagnostics.png ===
-    fig4, axes4 = plt.subplots(2, 2, figsize=(14, 9))
-    tCompare.KSPlot(handle=axes4[0, 0])
-    tCompare.plotResidual(handle=axes4[0, 1])
-    tCompare.plotInvGausTrans(handle=axes4[1, 0])
-    tCompare.plotSeqCorr(handle=axes4[1, 1])
-    fig4.tight_layout()
-    # === END FIGURE ===
-    print("  Figure 4: SSGLM vs PSTH diagnostics")
+    # Seed the global RNG: tCompare.KSPlot draws time-rescaling jitter
+    # via np.random.random_sample (nstat/fit.py _ksdiscrete), and
+    # DecodingAlgorithms.computeSpikeRateCIs draws Monte Carlo state
+    # samples via np.random.randn -- both on NumPy's legacy global
+    # stream, unseeded.  That made fig04's KS panel and fig06's learning
+    # trial (lt) differ run to run (see RELEASE_NOTES.md / parity ledger).
+    seed = 20261006
+    with seeded_global_rng(seed):
+        # === FIGURE: fig04_ssglm_fit_diagnostics.png ===
+        fig4, axes4 = plt.subplots(2, 2, figsize=(14, 9))
+        tCompare.KSPlot(handle=axes4[0, 0])
+        tCompare.plotResidual(handle=axes4[0, 1])
+        tCompare.plotInvGausTrans(handle=axes4[1, 0])
+        tCompare.plotSeqCorr(handle=axes4[1, 1])
+        fig4.tight_layout()
+        # === END FIGURE ===
+        print("  Figure 4: SSGLM vs PSTH diagnostics")
 
-    # ------------------------------------------------------------------
-    # 5. Compute stimulus effect surfaces
-    # ------------------------------------------------------------------
-    sampleRate = 1 / delta
+        # ------------------------------------------------------------------
+        # 5. Compute stimulus effect surfaces
+        # ------------------------------------------------------------------
+        sampleRate = 1 / delta
 
-    unitPulseBasis = SpikeTrainCollection.generateUnitImpulseBasis(
-        basisWidth, 0.0, tmax, sampleRate,
-    )
-    basisMat = np.asarray(unitPulseBasis.data, dtype=float)  # (T, numBasis)
-    basis_time = np.asarray(unitPulseBasis.time, dtype=float).ravel()
+        unitPulseBasis = SpikeTrainCollection.generateUnitImpulseBasis(
+            basisWidth, 0.0, tmax, sampleRate,
+        )
+        basisMat = np.asarray(unitPulseBasis.data, dtype=float)  # (T, numBasis)
+        basis_time = np.asarray(unitPulseBasis.time, dtype=float).ravel()
 
-    # True stimulus effect (Poisson link, matching fitType for analysis)
-    u_basis = np.sin(2 * np.pi * f * basis_time)
-    actStimEffect = np.exp(np.outer(u_basis, b1) + b0) / delta  # (T, K)
+        # True stimulus effect (Poisson link, matching fitType for analysis)
+        u_basis = np.sin(2 * np.pi * f * basis_time)
+        actStimEffect = np.exp(np.outer(u_basis, b1) + b0) / delta  # (T, K)
 
-    # PSTH surface (constant across trials — replicate fresh psthGLM output)
-    psthSig_data = np.asarray(psthSig.data, dtype=float).ravel()
-    psthSurface2D = np.tile(psthSig_data[:, None], (1, numRealizations))
+        # PSTH surface (constant across trials — replicate fresh psthGLM output)
+        psthSig_data = np.asarray(psthSig.data, dtype=float).ravel()
+        psthSurface2D = np.tile(psthSig_data[:, None], (1, numRealizations))
 
-    # SSGLM estimated CIF from basis coefficients
-    estStimEffect = np.exp(basisMat @ xK) / delta  # (T, K)
+        # SSGLM estimated CIF from basis coefficients
+        estStimEffect = np.exp(basisMat @ xK) / delta  # (T, K)
 
-    # ------------------------------------------------------------------
-    # Figure 5: True/PSTH/SSGLM stimulus effect surfaces
-    # MATLAB: mesh(trial, time, data) with view([90 -90]) renders as a
-    # top-down colored heatmap (MATLAB applies its colormap to Z-values).
-    # Python equivalent: pcolormesh with viridis (≈MATLAB parula default).
-    # MATLAB orientation: trial on x-axis, time on y-axis (view [90 -90]).
-    # ------------------------------------------------------------------
-    # === FIGURE: fig05_stimulus_effect_surfaces.png ===
-    fig5, axes5 = plt.subplots(3, 1, figsize=(14, 9))
-    trial_axis = np.arange(1, numRealizations + 1)
-    T_act = min(actStimEffect.shape[0], len(basis_time))
+        # ------------------------------------------------------------------
+        # Figure 5: True/PSTH/SSGLM stimulus effect surfaces
+        # MATLAB: mesh(trial, time, data) with view([90 -90]) renders as a
+        # top-down colored heatmap (MATLAB applies its colormap to Z-values).
+        # Python equivalent: pcolormesh with viridis (≈MATLAB parula default).
+        # MATLAB orientation: trial on x-axis, time on y-axis (view [90 -90]).
+        # ------------------------------------------------------------------
+        # === FIGURE: fig05_stimulus_effect_surfaces.png ===
+        fig5, axes5 = plt.subplots(3, 1, figsize=(14, 9))
+        trial_axis = np.arange(1, numRealizations + 1)
+        T_act = min(actStimEffect.shape[0], len(basis_time))
 
-    surfaces = [
-        ("True Stimulus Effect", actStimEffect[:T_act, :]),
-        ("PSTH Estimated Stimulus Effect", psthSurface2D[:T_act, :]),
-        ("SSGLM Estimated Stimulus Effect", estStimEffect[:T_act, :]),
-    ]
-    for ax, (title, data) in zip(axes5, surfaces):
-        # MATLAB mesh(trial, time, data) viewed from above: x=trial, y=time
-        im = ax.pcolormesh(trial_axis, basis_time[:T_act], data,
-                            shading="gouraud", cmap="viridis")
-        fig5.colorbar(im, ax=ax, fraction=0.046, pad=0.04,
-                      label="Stimulus Effect [Hz]")
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_title(title, fontweight="bold", fontsize=14, fontfamily="Arial")
+        surfaces = [
+            ("True Stimulus Effect", actStimEffect[:T_act, :]),
+            ("PSTH Estimated Stimulus Effect", psthSurface2D[:T_act, :]),
+            ("SSGLM Estimated Stimulus Effect", estStimEffect[:T_act, :]),
+        ]
+        for ax, (title, data) in zip(axes5, surfaces):
+            # MATLAB mesh(trial, time, data) viewed from above: x=trial, y=time
+            im = ax.pcolormesh(trial_axis, basis_time[:T_act], data,
+                                shading="gouraud", cmap="viridis")
+            fig5.colorbar(im, ax=ax, fraction=0.046, pad=0.04,
+                          label="Stimulus Effect [Hz]")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_title(title, fontweight="bold", fontsize=14, fontfamily="Arial")
 
-    fig5.tight_layout()
-    # === END FIGURE ===
-    print("  Figure 5: Stimulus effect surfaces (top-down heatmap)")
+        fig5.tight_layout()
+        # === END FIGURE ===
+        print("  Figure 5: Stimulus effect surfaces (top-down heatmap)")
 
-    # ------------------------------------------------------------------
-    # 6. Learning-trial analysis: spike rate CIs
-    # ------------------------------------------------------------------
-    tRate, probMat, sigMat = DecodingAlgorithms.computeSpikeRateCIs(
-        xK, WkuFinal, dN, 0, tmax, fitType, delta, gammahat, windowTimes,
-    )
+        # ------------------------------------------------------------------
+        # 6. Learning-trial analysis: spike rate CIs
+        # ------------------------------------------------------------------
+        tRate, probMat, sigMat = DecodingAlgorithms.computeSpikeRateCIs(
+            xK, WkuFinal, dN, 0, tmax, fitType, delta, gammahat, windowTimes,
+        )
 
-    # Find first learning trial (first column where significance appears)
-    sig_cols = np.where(sigMat[0, :] == 1)[0]
-    lt = int(sig_cols[0]) if sig_cols.size > 0 else 2
-    if lt < 2:
-        lt = 2
+        # Find first learning trial (first column where significance appears)
+        sig_cols = np.where(sigMat[0, :] == 1)[0]
+        lt = int(sig_cols[0]) if sig_cols.size > 0 else 2
+        if lt < 2:
+            lt = 2
 
-    # ------------------------------------------------------------------
-    # Figure 6: Learning trial comparison + significance matrix (2x3)
-    # ------------------------------------------------------------------
-    # === FIGURE: fig06_learning_trial_comparison.png ===
-    fig6 = plt.figure(figsize=(14, 9))
+        # ------------------------------------------------------------------
+        # Figure 6: Learning trial comparison + significance matrix (2x3)
+        # ------------------------------------------------------------------
+        # === FIGURE: fig06_learning_trial_comparison.png ===
+        fig6 = plt.figure(figsize=(14, 9))
 
-    # (1,1): average spike rate with learning trial marker
-    ax1 = fig6.add_subplot(2, 3, 1)
-    rate_time = np.asarray(tRate.time, dtype=float).ravel()
-    rate_data = np.asarray(tRate.data, dtype=float).ravel()
-    ax1.plot(rate_time, rate_data, "k", linewidth=4)
-    ylims = ax1.get_ylim()
-    ax1.plot([lt, lt], ylims, "r", linewidth=2)
-    ax1.set_xlabel("Trial [k]")
-    ax1.set_ylabel("Average Firing Rate [spikes/sec]")
-    ax1.set_title(f"Learning Trial: {lt}", fontweight="bold", fontsize=12)
+        # (1,1): average spike rate with learning trial marker
+        ax1 = fig6.add_subplot(2, 3, 1)
+        rate_time = np.asarray(tRate.time, dtype=float).ravel()
+        rate_data = np.asarray(tRate.data, dtype=float).ravel()
+        ax1.plot(rate_time, rate_data, "k", linewidth=4)
+        ylims = ax1.get_ylim()
+        ax1.plot([lt, lt], ylims, "r", linewidth=2)
+        ax1.set_xlabel("Trial [k]")
+        ax1.set_ylabel("Average Firing Rate [spikes/sec]")
+        ax1.set_title(f"Learning Trial: {lt}", fontweight="bold", fontsize=12)
 
-    # (1,2)+(1,3)+(2,2)+(2,3): significance matrix
-    ax2 = fig6.add_subplot(2, 3, (2, 6))
-    ax2.imshow(probMat, cmap="gray_r", aspect="auto")
-    kTrials = sigMat.shape[0]
-    for k in range(kTrials):
-        for m in range(k + 1, kTrials):
-            if sigMat[k, m] == 1:
-                ax2.plot(m, k, "r*", markersize=6)
-    ax2.xaxis.set_ticks_position("top")
-    ax2.xaxis.set_label_position("top")
-    ax2.yaxis.set_ticks_position("right")
-    ax2.yaxis.set_label_position("right")
-    ax2.set_xlabel("Trial Number")
-    ax2.set_ylabel("Trial Number")
+        # (1,2)+(1,3)+(2,2)+(2,3): significance matrix
+        ax2 = fig6.add_subplot(2, 3, (2, 6))
+        ax2.imshow(probMat, cmap="gray_r", aspect="auto")
+        kTrials = sigMat.shape[0]
+        for k in range(kTrials):
+            for m in range(k + 1, kTrials):
+                if sigMat[k, m] == 1:
+                    ax2.plot(m, k, "r*", markersize=6)
+        ax2.xaxis.set_ticks_position("top")
+        ax2.xaxis.set_label_position("top")
+        ax2.yaxis.set_ticks_position("right")
+        ax2.yaxis.set_label_position("right")
+        ax2.set_xlabel("Trial Number")
+        ax2.set_ylabel("Trial Number")
 
-    # (2,1): CIF comparison for trial 1 vs learning trial
-    ax3 = fig6.add_subplot(2, 3, 4)
-    stim1_data = basisMat @ stimulus_true[:, 0]
-    stimlt_data = basisMat @ stimulus_true[:, lt - 1]
-    ci1_lo = basisMat @ stimCIs[:, 0, 0]
-    ci1_hi = basisMat @ stimCIs[:, 0, 1]
-    cilt_lo = basisMat @ stimCIs[:, lt - 1, 0]
-    cilt_hi = basisMat @ stimCIs[:, lt - 1, 1]
+        # (2,1): CIF comparison for trial 1 vs learning trial
+        ax3 = fig6.add_subplot(2, 3, 4)
+        stim1_data = basisMat @ stimulus_true[:, 0]
+        stimlt_data = basisMat @ stimulus_true[:, lt - 1]
+        ci1_lo = basisMat @ stimCIs[:, 0, 0]
+        ci1_hi = basisMat @ stimCIs[:, 0, 1]
+        cilt_lo = basisMat @ stimCIs[:, lt - 1, 0]
+        cilt_hi = basisMat @ stimCIs[:, lt - 1, 1]
 
-    ax3.fill_between(basis_time, ci1_lo, ci1_hi, alpha=0.3, color="gray")
-    ax3.fill_between(basis_time, cilt_lo, cilt_hi, alpha=0.3, color="red")
-    h1, = ax3.plot(basis_time, stim1_data, "k", linewidth=4,
-                   label=r"$\lambda_1(t)$")
-    h2, = ax3.plot(basis_time, stimlt_data, "r", linewidth=4,
-                   label=rf"$\lambda_{{{lt}}}(t)$")
-    ax3.legend(handles=[h1, h2])
-    ax3.set_xlabel("time [s]")
-    ax3.set_ylabel("Firing Rate [spikes/sec]")
-    ax3.set_title("Learning Trial Vs. Baseline Trial\nwith 95% CIs",
-                  fontweight="bold", fontsize=12)
+        ax3.fill_between(basis_time, ci1_lo, ci1_hi, alpha=0.3, color="gray")
+        ax3.fill_between(basis_time, cilt_lo, cilt_hi, alpha=0.3, color="red")
+        h1, = ax3.plot(basis_time, stim1_data, "k", linewidth=4,
+                       label=r"$\lambda_1(t)$")
+        h2, = ax3.plot(basis_time, stimlt_data, "r", linewidth=4,
+                       label=rf"$\lambda_{{{lt}}}(t)$")
+        ax3.legend(handles=[h1, h2])
+        ax3.set_xlabel("time [s]")
+        ax3.set_ylabel("Firing Rate [spikes/sec]")
+        ax3.set_title("Learning Trial Vs. Baseline Trial\nwith 95% CIs",
+                      fontweight="bold", fontsize=12)
 
-    fig6.tight_layout()
-    # === END FIGURE ===
-    print(f"  Figure 6: Learning trial = {lt}")
+        fig6.tight_layout()
+        # === END FIGURE ===
+        print(f"  Figure 6: Learning trial = {lt}")
 
     figures = {
         "fig03_ssglm_simulation_summary": fig3,

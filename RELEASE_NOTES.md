@@ -250,6 +250,20 @@ does about it, and the known gaps.
 
 **Tests and tooling**
 
+- Fix: `examples/paper/example02_whisker_stimulus_thalamus.py` (fig02) and
+  `examples/paper/example03_psth_and_ssglm.py` (fig04, fig06) produced a
+  different figure every run. The cause: `nstat/fit.py`'s `_ksdiscrete`
+  time-rescaling jitter (`np.random.random_sample`) and
+  `DecodingAlgorithms.computeSpikeRateCIs`'s Monte Carlo state draws
+  (`np.random.randn`) both read NumPy's legacy global RNG stream with no
+  seed, so `Analysis.computeHistLagForAll`'s history-window selection,
+  `FitResult.KSPlot`, and the SSGLM learning-trial index (`lt`) varied
+  run to run even on identical input data. Both examples now wrap the
+  affected sections in `nstat.extras.matlab_rng.seeded_global_rng`
+  (the documented fix for code that draws from NumPy's global stream;
+  see `DecodingAlgorithms.PP_EM`'s docstring). Verified by running each
+  example's figure export twice and comparing SHA-256 of every PNG:
+  byte-identical both times.
 - Tests skip, with accurate reasons, when an optional dependency is installed
   but broken.
 - Python 3.10 (the declared minimum) test collection is fixed and 3.10 is added
