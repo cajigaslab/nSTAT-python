@@ -4,10 +4,15 @@ Wraps [Dynamax](https://github.com/probml/dynamax) (JAX-based,
 MIT-licensed) to provide EM-trained linear-Gaussian state-space models
 without nstat having to re-implement the EM machinery.
 
-This is the **foundation** for closing the unported MATLAB nSTAT
-`KF_EM` / `PP_EM` / `mPPCO_EM` families documented in
+The MATLAB nSTAT `KF_EM` / `PP_EM` / `mPPCO_EM` families themselves are
+ported natively, as MATLAB mirrors, in `nstat.DecodingAlgorithms`
+(`KF_EM`, `PP_EM`, `PPLFP_EM`; the `mPPCO_*` names are deprecated aliases of
+`PPLFP_*`) — see [AGENT_GUIDE.md](https://github.com/cajigaslab/nSTAT-python/blob/main/AGENT_GUIDE.md) §5.7. This bridge is
+a separate, Python-only alternative: Dynamax's own EM for the same model
+classes, not a MATLAB mirror. (When
 [`AUDIT_REPORT.md`](https://github.com/cajigaslab/nSTAT-python/blob/main/AUDIT_REPORT.md)
-§3.2 (19 methods, ~7,500 LOC of MATLAB if ported verbatim).
+§3.2 was written, those 19 MATLAB methods were unported; the bridge was
+started to fill that gap.)
 
 ## Install
 

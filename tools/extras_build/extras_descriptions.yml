@@ -170,10 +170,10 @@ extras:
     acquires all 8 targets, illustrating in miniature the
     ReFIT-relabeling principle of Gilja et al. (2012) (this demo does
     not measure target-acquisition time and does not reproduce their
-    specific acquisition-time speedup).  Also closes the
-    AUDIT_REPORT.md §3.2 gap -- an opt-in, JAX-backed implementation
-    of the 19 unported KF_EM / PP_EM / mPPCO_EM MATLAB methods, plus
-    the honest fit-quality metric (predictive log-likelihood) on
+    specific acquisition-time speedup).  Also exercises the opt-in,
+    JAX-backed Dynamax alternatives to the KF_EM / PP_EM / mPPCO_EM
+    families (whose MATLAB mirrors are native in DecodingAlgorithms),
+    plus the honest fit-quality metric (predictive log-likelihood) on
     which all three EM workflows are compared.
   figures:
   - filename: fig01_bci_reach_trajectories.png

@@ -512,7 +512,7 @@ Documented in [AUDIT_REPORT.md](AUDIT_REPORT.md) §4. The substantive ones:
 
 | Class | Difference |
 |---|---|
-| `Analysis` | GLM solver is Newton-Raphson with L2=1e-6 regularization; MATLAB uses CG. Coefficients agree to ~1e-6 but are not bit-identical. |
+| `Analysis` | `GLMFit` fits the poisson `'GLM'` by Newton-Raphson with no ridge by default (`l2=0.0`; the standalone `nstat.glm.fit_poisson_glm` defaults to `l2=1e-6`), where MATLAB's `glmfit` uses IRLS: the same MLE, agreeing to solver tolerance, not bit for bit. A rank-deficient design is handled as `glmfit` does (dependent columns get coefficient 0, SE 0). The binomial `'BNLRCG'` fit runs to the MLE, where MATLAB's truncated conjugate-gradient `bnlrCG` stops short (about 1e-4 apart on the EM GLM M-step gold). |
 | `DecodingAlgorithms.kalman_fixedIntervalSmoother` | Python uses smoother-index extraction (approximation); MATLAB uses exact state augmentation. Differs at intermediate lags. |
 | `DecodingAlgorithms.ComputeStimulusCIs` | Python public path uses Gaussian approximation; MATLAB uses Monte Carlo. For Monte Carlo, call `_ComputeStimulusCIs_MC` explicitly. |
 | `DecodingAlgorithms.PPHybridFilter` | Python delegates to the linear version; **does not support nonlinear CIF models** in hybrid decoding. |

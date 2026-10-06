@@ -332,7 +332,7 @@ D = pairwise_spike_distance_matrix(trains)  # (N, N)</code></pre>
 <div class="bridge-card">
   <h4><span class="tier-tag a">A</span> nstat.extras.em.dynamax_bridge</h4>
   <p class="install"><code>pip install nstat-toolbox[dynamax]</code> (pulls JAX, ~200 MB)</p>
-  <p>State-space estimation closing the unported MATLAB <code>KF_EM</code> / <code>PP_EM</code> / <code>mPPCO_EM</code> families (AUDIT_REPORT.md §3.2 — 19 methods / ~7,500 LOC of MATLAB). Three EM trainers + two point-process inference routines:</p>
+  <p>State-space estimation via Dynamax: an opt-in, Python-only alternative to the native MATLAB-mirror <code>KF_EM</code> / <code>PP_EM</code> / <code>PPLFP_EM</code> (<code>mPPCO_EM</code>) in <code>DecodingAlgorithms</code>. Three EM trainers + two point-process inference routines:</p>
   <ul>
     <li><code>fit_linear_gaussian_em</code> — KF_EM equivalent (thin Dynamax <code>LinearGaussianSSM.fit_em</code> wrapper).</li>
     <li><code>cmgf_poisson_filter</code> / <code>cmgf_poisson_smoother</code> — point-process Kalman filter/smoother under the CMGF Gaussian approximation (<code>PPDecodeFilter</code> / <code>PP_fixedIntervalSmoother</code>).</li>

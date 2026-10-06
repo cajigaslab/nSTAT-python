@@ -102,5 +102,6 @@ periodic recalibration holds it near Day-0 levels, producing
 - pykalman: https://github.com/pykalman/pykalman
 - License: BSD-3-Clause (GPL-2 compatible)
 - Alternative (heavier, JAX-backed): [Dynamax](https://github.com/probml/dynamax)
-  — planned `nstat.extras.em.dynamax` bridge for EM-trained variants
-  (KF_EM / PP_EM / mPPCO_EM)
+  — the `nstat.extras.em.dynamax_bridge` bridge ([em_dynamax](em_dynamax.md))
+  provides Dynamax-trained EM variants; the MATLAB-mirror EM routines are
+  `DecodingAlgorithms.KF_EM` / `PP_EM` / `PPLFP_EM` (`mPPCO_EM`)
