@@ -68,12 +68,17 @@ def test_matlab_inv_singular_gives_inf_not_raise() -> None:
 
 
 def _singular_mstep_problem(dx=2, C=3, nW=2, K=50, seed=7):
-    """An M-step problem whose Sxkm1xkm1 is exactly singular (a constant
-    state path: every column of x identical, so its outer-product sum has
-    rank 1 for dx=2)."""
+    """An M-step problem whose Sxkm1xkm1 is exactly singular on every BLAS.
+
+    The last state component is identically 0, so Sxkm1xkm1 has an exact
+    zero row and column and LU meets an exact zero pivot whatever the
+    LAPACK build.  (Identical columns gave a matrix that is rank-deficient
+    only up to rounding: Accelerate found an exact zero pivot, Linux
+    OpenBLAS a tiny nonzero one, and the solve then returned finite values.)
+    """
     rng = np.random.default_rng(seed)
-    v = rng.standard_normal(dx)
-    x = np.tile(v[:, None], (1, K))  # every column identical -> rank-1 Sxkm1xkm1
+    x = rng.standard_normal((dx, K))
+    x[-1, :] = 0.0  # exact zero row/column in x @ x.T
     mu = np.linspace(-2.5, -2.0, C)
     beta = 0.8 * rng.standard_normal((dx, C))
     gamma = np.zeros((nW, C))
@@ -84,7 +89,7 @@ def _singular_mstep_problem(dx=2, C=3, nW=2, K=50, seed=7):
     HkAll = _compute_history_terms(dN, 0.001, wt)
     W_K = np.tile((0.02 * np.eye(dx))[:, :, None], (1, 1, K))
     ES = dict(
-        Sxkm1xkm1=x @ x.T,  # exactly singular: rank 1
+        Sxkm1xkm1=x @ x.T,  # exactly singular: zero last row/column
         Sxkxkm1=x[:, 1:] @ x[:, :-1].T,
         Sxkm1xk=x[:, :-1] @ x[:, 1:].T,
         Sxkxk=x @ x.T,
