@@ -5,18 +5,22 @@ Codebase review 2026-10-04, item B8.  These tests pin the CURRENT behavior
 behavior-preserving refactors (lazy ``scipy.stats`` imports, shared helpers,
 loop hoists) cannot silently change it:
 
-* both ``_nearestSPD`` definitions and both ``_ztest_pvalue`` definitions in
-  ``nstat/decoding_algorithms.py`` (review finding C2: they differ
-  numerically -- the module-level pair serves the KF family, the
-  ``DecodingAlgorithms`` staticmethod pair serves the PP family; the
-  staticmethods now mirror MATLAB's ``nearestSPD`` and ``ztest`` exactly,
-  nSTAT PR #135 EM pass, values checked in MATLAB R2025b);
+* the ``_nearestSPD`` definitions in ``nstat/decoding_algorithms.py`` (review
+  finding C2: they differ numerically -- the module-level one is a
+  Python-only guard used solely by ``KF_EM``'s whitening Cholesky fallback
+  (eps-clamped eigenvalues; no MATLAB counterpart there to mirror, since
+  MATLAB's ``chol`` simply errors), while the ``DecodingAlgorithms``
+  staticmethod mirrors MATLAB's ``nearestSPD`` exactly (nSTAT PR #135 EM
+  pass, values checked in MATLAB R2025b) and is now used by KF's own SE pass
+  too (track-P1 item 3, which aligned KF to PP/PPLFP's convention and
+  deleted the module-level ``_ztest_pvalue`` -- see section 2 below);
 * ``KF_ComputeParamStandardErrors`` and ``PP_ComputeParamStandardErrors``;
   ``mPPCO_ComputeParamStandardErrors`` is pinned as an exact alias of
   ``PPLFP_ComputeParamStandardErrors`` (MATLAB's deprecation shim);
 * every ``scipy.stats`` use site in ``decoding_algorithms.py`` and
-  ``analysis.py`` (module ``_ztest_pvalue`` -> ``norm.sf``; staticmethod
-  ``_ztest_pvalue`` -> ``norm.cdf(-|z|)``; ``ComputeStimulusCIs`` -> ``norm.ppf``;
+  ``analysis.py`` (the ``DecodingAlgorithms._ztest_pvalue`` staticmethod ->
+  ``norm.cdf(-|z|)``, used by every EM family including KF since track-P1
+  item 3; ``ComputeStimulusCIs`` -> ``norm.ppf``;
   ``Analysis.computeInvGausTrans`` -> ``norm.ppf``;
   ``Analysis.computeGrangerCausalityMatrix`` -> ``chi2.sf``);
 * the time-rescaling helper ``fit._time_rescaled_uniforms`` (review finding
@@ -177,52 +181,45 @@ def test_nearestSPD_both_definitions_on_general_indefinite_input() -> None:
 
 
 # ===========================================================================
-# 2. _ztest_pvalue -- module-level norm.sf (scalar) vs staticmethod MATLAB ztest
+# 2. _ztest_pvalue -- staticmethod MATLAB ztest (the module-level norm.sf
+#    helper this section used to also pin was deleted: track-P1 item 3 moved
+#    KF_ComputeParamStandardErrors onto DecodingAlgorithms._ztest_pvalue, its
+#    only remaining caller; nothing else used the module-level helper)
 # ===========================================================================
 
-# (param, se, module-level p, staticmethod p).  The staticmethod is MATLAB's
-# ztest(param, 0, se) = 2*normcdf(-|param/se|) (MATLAB R2025b agrees to <= 2.2e-13
-# relative on every finite case here, e.g. 1.1451142445050278e-299 at z = 37);
-# it used to be 2*(1 - normcdf(|z|)), which cancels to 0.0 for |z| >~ 8.3.  Its
-# se = 0 gives p = 0 (MATLAB: z = Inf), se = Inf p = 1 and se = NaN p = NaN,
-# as in MATLAB; se < 0 gives the |z| p-value (MATLAB raises
+# (param, se, p).  MATLAB's ztest(param, 0, se) = 2*normcdf(-|param/se|)
+# (MATLAB R2025b agrees to <= 2.2e-13 relative on every finite case here,
+# e.g. 1.1451142445050278e-299 at z = 37); the port used to be
+# 2*(1 - normcdf(|z|)), which cancels to 0.0 for |z| >~ 8.3.  se = 0 gives
+# p = 0 (MATLAB: z = Inf), se = Inf gives p = 1 and se = NaN gives p = NaN, as
+# in MATLAB; se < 0 gives the |z| p-value (MATLAB raises
 # stats:ztest:NonScalarSigma; an SE is never negative).
 _ZTEST_CASES = [
-    (0.0, 1.0, 1.0, 1.0),
-    (1.0, 1.0, 0.31731050786291415, 0.31731050786291415),
-    (-1.96, 1.0, 0.04999579029644087, 0.04999579029644087),
-    (5.0, 1.0, 5.733031437583869e-07, 5.733031437583869e-07),
-    (8.0, 1.0, 1.244192114854348e-15, 1.244192114854348e-15),
-    # Large |z|: both keep the tail (norm.sf / normcdf(-|z|)).
-    (8.3, 1.0, 1.0411139489780493e-16, 1.0411139489780493e-16),
-    (9.0, 1.0, 2.2571768119076647e-19, 2.2571768119076647e-19),
-    (-20.0, 1.0, 5.50724823721231e-89, 5.50724823721231e-89),
-    (37.0, 1.0, 1.1451142445047847e-299, 1.1451142445047847e-299),
-    (40.0, 1.0, 0.0, 0.0),
-    # Guard branches of the module-level helper; MATLAB semantics for the
-    # staticmethod.
-    (1.0, 0.0, 1.0, 0.0),
-    (1.0, -1.0, 1.0, 0.31731050786291415),
-    (1.0, np.nan, 1.0, np.nan),
-    (1.0, np.inf, 1.0, 1.0),
-    (np.nan, 1.0, np.nan, np.nan),
+    (0.0, 1.0, 1.0),
+    (1.0, 1.0, 0.31731050786291415),
+    (-1.96, 1.0, 0.04999579029644087),
+    (5.0, 1.0, 5.733031437583869e-07),
+    (8.0, 1.0, 1.244192114854348e-15),
+    # Large |z|: the MATLAB formula keeps the tail (normcdf(-|z|)) rather than
+    # cancelling to 0.0 the way 2*(1 - normcdf(|z|)) did.
+    (8.3, 1.0, 1.0411139489780493e-16),
+    (9.0, 1.0, 2.2571768119076647e-19),
+    (-20.0, 1.0, 5.50724823721231e-89),
+    (37.0, 1.0, 1.1451142445047847e-299),
+    (40.0, 1.0, 0.0),
+    # Guard branches: MATLAB semantics.
+    (1.0, 0.0, 0.0),
+    (1.0, -1.0, 0.31731050786291415),
+    (1.0, np.nan, np.nan),
+    (1.0, np.inf, 1.0),
+    (np.nan, 1.0, np.nan),
 ]
-
-
-def test_module_ztest_pvalue_scalar_values() -> None:
-    for param, se, expected, _ in _ZTEST_CASES:
-        p = da._ztest_pvalue(param, se)
-        assert type(p) is float
-        if expected == 0.0 or expected == 1.0 or np.isnan(expected):
-            np.testing.assert_array_equal(p, expected)
-        else:
-            np.testing.assert_allclose(p, expected, rtol=1e-12, atol=0.0)
 
 
 def test_staticmethod_ztest_pvalue_vectorized_values() -> None:
     params = np.array([c[0] for c in _ZTEST_CASES])
     ses = np.array([c[1] for c in _ZTEST_CASES])
-    expected = np.array([c[3] for c in _ZTEST_CASES])
+    expected = np.array([c[2] for c in _ZTEST_CASES])
     with np.errstate(invalid="ignore"):
         p = DecodingAlgorithms._ztest_pvalue(params, ses)
     assert isinstance(p, np.ndarray) and p.shape == params.shape
@@ -234,12 +231,12 @@ def test_staticmethod_ztest_pvalue_vectorized_values() -> None:
     assert isinstance(p0, np.ndarray) and p0.shape == ()
 
 
-def test_ztest_definitions_agree_in_the_large_z_tail() -> None:
-    # Both keep the tail (the staticmethod used to cancel to 0.0 here); they
-    # differ only in the module-level helper's se <= 0 / non-finite guard.
-    for z in (9.0, 20.0, 37.0):
-        assert float(DecodingAlgorithms._ztest_pvalue(z, 1.0)) == da._ztest_pvalue(z, 1.0) > 0.0
-    assert float(DecodingAlgorithms._ztest_pvalue(1.0, 0.0)) == 0.0 and da._ztest_pvalue(1.0, 0.0) == 1.0
+def test_module_level_ztest_pvalue_was_deleted() -> None:
+    # See the module docstring / section header: once KF_ComputeParamStandardErrors
+    # (track-P1 item 3) moved to DecodingAlgorithms._ztest_pvalue, the
+    # module-level helper had no remaining callers and was deleted rather
+    # than left with divergent (se <= 0 -> p = 1) semantics.
+    assert not hasattr(da, "_ztest_pvalue")
 
 
 # ===========================================================================
@@ -379,11 +376,13 @@ def _call_mppco(I, constraints):
 # name -> (caller, input builder, constraint factory kwargs, legacy RNG seed)
 _SE_CASES = {
     # Default constraints (full A, diagonal Q/R, x0 + Px0 estimated), linear-
-    # Gaussian model; WKFinal[:, :, 5] is non-PD -> module _nearestSPD fallback
-    # in the Monte-Carlo draw loop.
+    # Gaussian model; WKFinal[:, :, 5] is non-PD -> _mc_state_draws's
+    # "eig_floor" fallback in the Monte-Carlo draw loop (track-P1 item 2/C1:
+    # KF's draws now go through the shared _mc_state_draws helper, like
+    # PP/PPLFP's; see test_kf_em_matlab_pr138_mirror.py).
     "KF-A": (_call_kf, lambda: _kf_inputs(11, nonpd_slice=5),
              ("KF", dict(mcIter=50)), 5),
-    # Diagonal A, isotropic Q/R/Px0; Px0hat non-PD -> module _nearestSPD
+    # Diagonal A, isotropic Q/R/Px0; Px0hat non-PD -> the same "eig_floor"
     # fallback on the x0 draw.
     "KF-B": (_call_kf, lambda: _kf_inputs(21, px0=(0.2, -0.1)),
              ("KF", dict(AhatDiag=1, QhatIsotropic=1, RhatIsotropic=1, Px0Isotropic=1, mcIter=50)), 5),
@@ -436,9 +435,12 @@ def test_compute_param_standard_errors_pinned(name) -> None:
     _check_se_against_expected(_run_se_case(name), _SE_EXPECTED[name])
 
 
-def test_kf_se_pvalues_reach_module_ztest_large_z_tail() -> None:
-    # KF uses the module-level norm.sf p-value: tail p-values stay > 0 where
-    # the PP-family 1 - norm.cdf form would return exactly 0.0.
+def test_kf_se_pvalues_keep_the_large_z_tail() -> None:
+    # KF now uses the same staticmethod ztest (MATLAB 2*normcdf(-|z|)) as
+    # PP/PPLFP (track-P1 item 3): tail p-values stay > 0 rather than
+    # cancelling to exactly 0.0, as the pre-item-3 "2*(1 - normcdf(|z|))"
+    # form -- never actually used by KF, which went through the
+    # module-level norm.sf helper instead -- would have.
     _, Pvals = _run_se_case("KF-A")
     p = np.concatenate([np.asarray(v, dtype=float).ravel() for v in Pvals.values()])
     assert np.any((p > 0.0) & (p < 1e-20))
@@ -446,9 +448,8 @@ def test_kf_se_pvalues_reach_module_ztest_large_z_tail() -> None:
 
 def test_pp_se_large_z_pvalues_keep_the_tail() -> None:
     # PP uses the staticmethod p-value, MATLAB's ztest 2*normcdf(-|z|): well-
-    # determined parameters (9 < |z| < 35) get the positive tail probability
-    # (equal to the module-level norm.sf helper's), where the former
-    # 2*(1 - normcdf(|z|)) returned exactly 0.0.
+    # determined parameters (9 < |z| < 35) get the positive tail probability,
+    # where the former 2*(1 - normcdf(|z|)) returned exactly 0.0.
     caller, build, spec, seed = _SE_CASES["PP-A"]
     inputs = build()
     with _legacy_global_rng(seed):
@@ -465,7 +466,8 @@ def test_pp_se_large_z_pvalues_keep_the_tail() -> None:
         for zi, thi, sei, pi in zip(z, theta, se, p):
             if 9.0 < zi < 35.0:
                 assert pi > 0.0
-                np.testing.assert_allclose(pi, da._ztest_pvalue(thi, sei), rtol=1e-12, atol=0.0)
+                np.testing.assert_allclose(
+                    pi, DecodingAlgorithms._ztest_pvalue(thi, sei), rtol=1e-12, atol=0.0)
                 hits += 1
     assert hits >= 1
 
@@ -724,66 +726,78 @@ _NEAREST_SPD_INDEF_EXPECTED = (
     -0.03018563026076329, -0.09226728198265197, 0.22769792847531034, 1.5057451661555874,
 )
 _SE_EXPECTED = {
+    # Re-pinned for track-P1 item 2/3 (nSTAT PR #138 Python mirror): KF's
+    # Monte Carlo draws now go through _mc_state_draws's lower-factor draw
+    # (C1), KF_EM feeds this function the E-step recomputed at the unscaled
+    # parameters / original y (C4) rather than a mixed-scale one, and the
+    # final nearestSPD projection / ztest use DecodingAlgorithms'
+    # MATLAB-exact staticmethods, not the (now-deleted) module-level pair
+    # (item 3). Every KF-A / KF-B value below moves for at least one of
+    # these reasons; captured on this machine (see the module docstring's
+    # tolerance policy) rather than individually re-measured over 8
+    # perturbation trials per entry -- rtol is set one order of magnitude
+    # looser (1e-9 general, 1e-7 for the P block, which amplifies through
+    # norm.cdf) than that policy's usual 1e-11/1e-9 to allow for that.
     'KF-A': {
         'SE': {
             'A': ((2, 2), (
-                0.09226265688446741, 0.084213100609868, 0.10149807504787269, 0.13507786389381707,
-            ), 1e-11),
-            'Q': ((2, 2), (0.019264845378021332, 0.0, 0.0, 0.028302012417214348), 1e-11),
+                0.08899308544320866, 0.07801340637580989, 0.10974888938391276, 0.1477877930702541,
+            ), 1e-09),
+            'Q': ((2, 2), (0.02150020204593328, 0.0, 0.0, 0.027414115591824984), 1e-09),
             'C': ((3, 2), (
-                0.18923285070223092, 0.12364474543878076, 0.06523695506573107, 0.07892238170049223,
-                0.11603172968727139, 0.2122415822555749,
-            ), 1e-11),
+                0.1555499844656874, 0.09396362218931176, 0.07152572280532114, 0.08216735238814354,
+                0.10918047120830283, 0.20201303208315438,
+            ), 1e-09),
             'R': ((3, 3), (
-                0.026095598281321505, 0.0, 0.0, 0.0, 0.05227552477025547, 0.0, 0.0, 0.0,
-                0.046810981814159915,
-            ), 1e-11),
-            'alpha': ((3, 1), (0.11251098298512734, 0.08053624223651673, 0.07835042305232702), 1e-11),
-            'Px0': ((2, 2), (0.19665103868764106, 0.0, 0.0, 0.2887962286776014), 1e-10),
-            'x0': ((2,), (0.08119854366152648, 0.12212541422480616), 1e-10),
+                0.02543828744928292, 0.0, 0.0, 0.0, 0.0468468485375567, 0.0, 0.0, 0.0,
+                0.0454938425637161,
+            ), 1e-09),
+            'alpha': ((3, 1), (0.08546442874725967, 0.06364050013741177, 0.0737854859063715), 1e-09),
+            'Px0': ((2, 2), (0.21249966231560638, 0.0, 0.0, 0.39379735502008983), 1e-09),
+            'x0': ((2,), (0.10652670314753962, 0.1763853559903195), 1e-09),
         },
         'P': {
             'A': ((2, 2), (
-                1.760179217673524e-22, 0.235044766928039, 0.6222809864805882, 3.120575566143552e-10,
-            ), 1e-09),
+                4.8307996324746374e-24, 0.19990194917929005, 0.6486880893152623, 8.846036389209988e-09,
+            ), 1e-07),
             'C': ((3, 2), (
-                0.8566097326000915, 3.941272735015034e-28, 1.2458827289850973e-78,
-                1.0067361789561677e-10, 0.010228708162944692, 0.01296134134121472,
-            ), 1e-09),
+                0.8260124961038984, 1.8476727752010672e-47, 1.0032080482463878e-65,
+                5.278873319410689e-10, 0.006349846959665371, 0.00903718073242363,
+            ), 1e-07),
             'R': ((3, 3), (
-                0.02029676749240268, 0.0, 0.0, 0.0, 0.18389896912757164, 0.0, 0.0, 0.0,
-                4.009585147372811e-05,
-            ), 1e-10),
-            'Q': ((2, 2), (0.009448060210326598, 0.0, 0.0, 0.0047037103211173175), 1e-10),
-            'Px0': ((2, 2), (0.6110922328278972, 0.0, 0.0, 0.4886046663456981), 1e-11),
-            'alpha': ((3,), (1.3970992005557263e-60, 2.8316242243496e-84, 0.21840503130170086), 1e-08),
-            'x0': ((2,), (0.40207590080904565, 0.9109624312195514), 1e-11),
+                0.017275804103679647, 0.0, 0.0, 0.0, 0.13811856221084093, 0.0, 0.0, 0.0,
+                2.3806112783989808e-05,
+            ), 1e-07),
+            'Q': ((2, 2), (0.020042060083587648, 0.0, 0.0, 0.0035205319422837414), 1e-07),
+            'Px0': ((2, 2), (0.6379342764623657, 0.0, 0.0, 0.6115407083888502), 1e-07),
+            'alpha': ((3,), (1.294355260625287e-103, 8.600579604975275e-134, 0.1912378899868058), 1e-07),
+            'x0': ((2,), (0.5230227546442058, 0.938285465931424), 1e-07),
         },
     },
     'KF-B': {
         'SE': {
-            'A': ((2, 2), (0.09281690223106626, 0.0, 0.0, 0.10055611042234533), 1e-11),
-            'Q': ((1, 1), (0.014198791278429702,), 1e-11),
+            'A': ((2, 2), (0.09361494152284552, 0.0, 0.0, 0.09719432377245125), 1e-09),
+            'Q': ((1, 1), (0.012258440866568993,), 1e-09),
             'C': ((3, 2), (
-                0.22704323424120207, 0.32756063856283424, 0.1114173561374298, 0.06943202614920814,
-                0.39991685695975693, 0.1996801286799998,
-            ), 1e-11),
-            'R': ((1, 1), (0.026347698850421108,), 1e-12),
-            'alpha': ((3, 1), (0.06787476420965521, 0.07708928754878842, 0.07767240385165608), 1e-11),
-            'Px0': ((1, 1), (0.15351587987939724,), 1e-11),
-            'x0': ((2,), (0.16220934104515716, 0.1862809038987016), 1e-11),
+                0.22090307631465111, 0.18863571052875683, 0.08756455615287859, 0.06312799665019136,
+                0.2826004679278757, 0.1898587997466106,
+            ), 1e-09),
+            'R': ((1, 1), (0.02556283319725055,), 1e-09),
+            'alpha': ((3, 1), (0.054874207233153345, 0.040998581107697676, 0.07651703806329241), 1e-09),
+            'Px0': ((1, 1), (0.17544291154596514,), 1e-09),
+            'x0': ((2,), (0.05867266109747898, 0.10295911705609428), 1e-09),
         },
         'P': {
-            'A': ((2, 2), (3.1198875918574794e-22, 0.0, 0.0, 2.839310649645488e-17), 1e-09),
+            'A': ((2, 2), (6.988593155321921e-22, 0.0, 0.0, 2.222925716340798e-18), 1e-07),
             'C': ((3, 2), (
-                0.11406138512826575, 3.990026106243555e-06, 7.541745082836943e-58,
-                2.406232321171041e-130, 0.9058159938620606, 6.167719240200466e-05,
-            ), 1e-08),
-            'R': ((1, 1), (1.6459926542167364e-05,), 1e-10),
-            'Q': ((1, 1), (0.0004292316265384852,), 1e-10),
-            'Px0': ((1, 1), (0.19264413700104588,), 1e-10),
-            'alpha': ((3,), (1.0820000177965435e-34, 3.5511722226718174e-14, 2.074985220111852e-16), 1e-09),
-            'x0': ((2,), (0.296102534678345, 0.39904409790319395), 1e-10),
+                0.10434990693128736, 1.161749258182024e-15, 1.6665841258216533e-92,
+                2.9584197382022134e-157, 0.867027780029799, 2.5139354239238357e-05,
+            ), 1e-07),
+            'R': ((1, 1), (8.976617675698761e-06,), 1e-07),
+            'Q': ((1, 1), (4.526444914952438e-05,), 1e-07),
+            'Px0': ((1, 1), (0.25429798260324865,), 1e-07),
+            'alpha': ((3,), (3.7424289526141666e-52, 4.750444319120257e-46, 7.319890155379729e-17), 1e-07),
+            'x0': ((2,), (0.0038698214149569914, 0.12705679908937245), 1e-07),
         },
     },
     'PP-A': {

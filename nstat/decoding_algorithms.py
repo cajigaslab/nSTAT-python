@@ -1062,7 +1062,22 @@ def _nearestSPD(A: np.ndarray) -> np.ndarray:
     """Find the nearest symmetric positive-definite matrix to *A*.
 
     Uses the algorithm of Higham (1988) via polar decomposition plus
-    eigenvalue clamping, matching Matlab ``nearestSPD``.
+    eigenvalue clamping (not MATLAB's exact ``nearestSPD`` -- see
+    :func:`_matlab_nearest_spd` for that).
+
+    Python-only guard, used solely by ``KF_EM``'s whitening Cholesky
+    fallback (``cholesky(_nearestSPD(Q0))`` / ``cholesky(_nearestSPD(R0))``
+    when the caller's starting ``Q0``/``R0`` is not exactly positive
+    definite): MATLAB's ``chol`` simply errors there, so this fallback has
+    no MATLAB counterpart to mirror and is kept as the Python-only
+    eps-clamped projection it always was, by design simpler and always-
+    terminating -- unlike :func:`_matlab_nearest_spd`'s unbounded shift loop,
+    which does not return on an exactly singular input (see
+    :func:`_em_singular_information_inverse`, which exists precisely because
+    that loop cannot be used there).  KF's own standard-error pass (item 3,
+    track-P1) now uses :func:`DecodingAlgorithms._nearestSPD`
+    (:func:`_matlab_nearest_spd`) instead of this helper, aligning with
+    PP/PPLFP; see ``tests/test_review_characterization.py`` section 1.
     """
     B = 0.5 * (A + A.T)
     _, S, Vt = np.linalg.svd(B)
@@ -1080,16 +1095,6 @@ def _nearestSPD(A: np.ndarray) -> np.ndarray:
     Ahat = eigvecs @ np.diag(eigvals) @ eigvecs.T
     Ahat = 0.5 * (Ahat + Ahat.T)
     return Ahat
-
-
-def _ztest_pvalue(param: float, se: float) -> float:
-    """Two-tailed z-test p-value: H0 param == 0, matching Matlab ``ztest``."""
-    if se <= 0 or not np.isfinite(se):
-        return 1.0
-    from scipy.stats import norm  # lazy: keep scipy.stats out of `import nstat`
-
-    z = param / se
-    return float(2.0 * norm.sf(np.abs(z)))
 
 
 def _warn_mppco_deprecated(old: str, new: str) -> None:
@@ -4877,22 +4882,18 @@ class DecodingAlgorithms:
         Mc = KFEM_Constraints["mcIter"]
         xKDraw = np.zeros((dx, N, Mc), dtype=float)
 
+        # FIX (KF track M, item C1 / F9, mirrors nSTAT PR #138 @ 178917c):
+        # draws were m + chol(W)*z; MATLAB's chol returns the UPPER factor R
+        # (R'*R = W), so R*z has covariance R*R' != W for any non-diagonal W.
+        # Routed through the shared _mc_state_draws helper (x = m + L@z, L
+        # the lower Cholesky factor; same z stream; bit-identical for a
+        # diagonal W), matching PP_ComputeParamStandardErrors /
+        # PPLFP_ComputeParamStandardErrors's identical F9 fix.
         for n in range(N):
-            WuTemp = WKFinal[:, :, n]
-            try:
-                chol_m = np.linalg.cholesky(WuTemp).T  # upper Cholesky (Matlab chol returns upper)
-            except np.linalg.LinAlgError:
-                chol_m = np.linalg.cholesky(_nearestSPD(WuTemp)).T
-            z = np.random.randn(dx, Mc)
-            xKDraw[:, n, :] = x0hat[:, None] * 0 + xKFinal[:, n:n + 1] + chol_m @ z
+            xKDraw[:, n, :] = _mc_state_draws(xKFinal[:, n], WKFinal[:, :, n], Mc, np.random.randn)
 
         if KFEM_Constraints["EstimatePx0"] or KFEM_Constraints["Estimatex0"]:
-            try:
-                chol_m = np.linalg.cholesky(Px0hat).T
-            except np.linalg.LinAlgError:
-                chol_m = np.linalg.cholesky(_nearestSPD(Px0hat)).T
-            z = np.random.randn(dx, Mc)
-            x0Draw = x0hat[:, None] + chol_m @ z
+            x0Draw = _mc_state_draws(x0hat, Px0hat, Mc, np.random.randn)
         else:
             x0Draw = np.tile(x0hat[:, None], (1, Mc))
 
@@ -5011,11 +5012,30 @@ class DecodingAlgorithms:
         # Observed information = Complete - Missing
         IMissing = np.mean(IMc, axis=2)
         IObs = IComp - IMissing
-        invIObs = np.linalg.pinv(IObs)
-        invIObs = _nearestSPD(invIObs)
+        # FIX (KF track M, item C6 / #136, mirrors nSTAT PR #138 @ c7d177e):
+        # an exactly singular IObs (a parameter the data cannot identify)
+        # made eye(size(IObs))/IObs Inf/NaN, and nearestSPD's loop never
+        # returns on a NaN matrix, so this hung forever whenever SEs were
+        # requested. Mirrors PP_ComputeParamStandardErrors's identical #136
+        # fix: the regular inverse when IObs is nonsingular (bit-identical
+        # to the old pinv/nearestSPD path), otherwise the pseudo-inverse
+        # with the non-identifiable directions flagged (SE/p-value NaN).
+        nonid = None
+        try:
+            invIObs = np.linalg.inv(IObs)
+        except np.linalg.LinAlgError:
+            labels = _em_se_term_labels([
+                ("A", n1, Ahat.shape, "square"), ("Q", n2, Qhat.shape, "square"),
+                ("C", n3, Chat.shape, "square"), ("R", n4, Rhat.shape, "square"),
+                ("Px0", n5, Px0hat.shape, "square"), ("x0", n6, x0hat.shape, "vector"),
+                ("alpha", n7, alphahat.shape, "vector")])
+            invIObs, nonid = _em_singular_information_inverse(IObs, labels, "KF_ComputeParamStandardErrors")
+        invIObs = _em_project_covariance(invIObs, nonid, DecodingAlgorithms._nearestSPD)
 
         VarVec = np.diag(invIObs)
-        SEVec = np.sqrt(np.maximum(VarVec, 0.0))
+        SEVec = np.sqrt(VarVec)  # MATLAB sqrt(VarVec); nonnegative after nearestSPD
+        if nonid is not None:
+            SEVec[nonid] = np.nan  # not identifiable: SE (and so the p-value) NaN
 
         # Unpack SE vector
         off = 0
@@ -5043,59 +5063,61 @@ class DecodingAlgorithms:
         if KFEM_Constraints["Estimatex0"]:
             SE["x0"] = SEx0terms
 
-        # Compute p-values via z-tests
+        # Compute p-values via z-tests.
+        # ITEM 3 (align KF's SE conventions with MATLAB, see
+        # tests/test_review_characterization.py): KF used to go through the
+        # module-level ``_ztest_pvalue``/``_nearestSPD`` pair (se <= 0 -> p=1;
+        # Higham + eps clamp), unlike PP/PPLFP's staticmethod pair, which
+        # mirrors MATLAB's ``ztest``/``nearestSPD`` exactly (nSTAT PR #135 EM
+        # pass).  Now uses ``DecodingAlgorithms._ztest_pvalue`` throughout, so
+        # a non-identifiable parameter's NaN SE (set above by the C6 fix)
+        # propagates to a NaN p-value, as MATLAB's ztest(NaN, 0, NaN) does.
+        _zt = DecodingAlgorithms._ztest_pvalue
         Pvals = {}
         if KFEM_Constraints["EstimateA"]:
             if KFEM_Constraints["AhatDiag"]:
-                pA = np.diag([_ztest_pvalue(Ahat[i, i], SE["A"][i, i]) for i in range(Ahat.shape[0])])
+                pA = np.diag(_zt(np.diag(Ahat), np.diag(SE["A"])))
             else:
-                pA_flat = [_ztest_pvalue(Ahat.ravel()[i], SE["A"].ravel()[i]) for i in range(Ahat.size)]
-                pA = np.array(pA_flat).reshape(Ahat.shape)
+                pA = _zt(Ahat.ravel(), SE["A"].ravel()).reshape(Ahat.shape)
             Pvals["A"] = pA
 
         # C p-values
-        pC_flat = [_ztest_pvalue(Chat.ravel()[i], SE["C"].ravel()[i]) for i in range(Chat.size)]
-        Pvals["C"] = np.array(pC_flat).reshape(Chat.shape)
+        Pvals["C"] = _zt(Chat.ravel(), SE["C"].ravel()).reshape(Chat.shape)
 
         # R p-values
         if KFEM_Constraints["RhatDiag"]:
             if KFEM_Constraints["RhatIsotropic"]:
-                pR = np.diag([_ztest_pvalue(Rhat[0, 0], SE["R"][0, 0])])
+                pR = np.diag(_zt(np.atleast_1d(Rhat[0, 0]), np.atleast_1d(SE["R"][0, 0])))
             else:
-                pR = np.diag([_ztest_pvalue(Rhat[i, i], SE["R"][i, i]) for i in range(Rhat.shape[0])])
+                pR = np.diag(_zt(np.diag(Rhat), np.diag(SE["R"])))
         else:
-            pR_flat = [_ztest_pvalue(Rhat.ravel()[i], SE["R"].ravel()[i]) for i in range(Rhat.size)]
-            pR = np.array(pR_flat).reshape(Rhat.shape)
+            pR = _zt(Rhat.ravel(), SE["R"].ravel()).reshape(Rhat.shape)
         Pvals["R"] = pR
 
         # Q p-values
         if KFEM_Constraints["QhatDiag"]:
             if KFEM_Constraints["QhatIsotropic"]:
-                pQ = np.diag([_ztest_pvalue(Qhat[0, 0], SE["Q"][0, 0])])
+                pQ = np.diag(_zt(np.atleast_1d(Qhat[0, 0]), np.atleast_1d(SE["Q"][0, 0])))
             else:
-                pQ = np.diag([_ztest_pvalue(Qhat[i, i], SE["Q"][i, i]) for i in range(Qhat.shape[0])])
+                pQ = np.diag(_zt(np.diag(Qhat), np.diag(SE["Q"])))
         else:
-            pQ_flat = [_ztest_pvalue(Qhat.ravel()[i], SE["Q"].ravel()[i]) for i in range(Qhat.size)]
-            pQ = np.array(pQ_flat).reshape(Qhat.shape)
+            pQ = _zt(Qhat.ravel(), SE["Q"].ravel()).reshape(Qhat.shape)
         Pvals["Q"] = pQ
 
         # Px0 p-values
         if KFEM_Constraints["EstimatePx0"]:
             if KFEM_Constraints["Px0Isotropic"]:
-                pPx0 = np.diag([_ztest_pvalue(Px0hat[0, 0], SE["Px0"][0, 0])])
+                pPx0 = np.diag(_zt(np.atleast_1d(Px0hat[0, 0]), np.atleast_1d(SE["Px0"][0, 0])))
             else:
-                pPx0 = np.diag([_ztest_pvalue(Px0hat[i, i], SE["Px0"][i, i]) for i in range(Px0hat.shape[0])])
+                pPx0 = np.diag(_zt(np.diag(Px0hat), np.diag(SE["Px0"])))
             Pvals["Px0"] = pPx0
 
         # alpha p-values
-        alpha_flat_se = SE["alpha"].ravel()
-        pAlpha = np.array([_ztest_pvalue(alphahat.ravel()[i], alpha_flat_se[i]) for i in range(alphahat.size)])
-        Pvals["alpha"] = pAlpha
+        Pvals["alpha"] = _zt(alphahat.ravel(), SE["alpha"].ravel())
 
         # x0 p-values
         if KFEM_Constraints["Estimatex0"]:
-            pX0 = np.array([_ztest_pvalue(x0hat[i], SE["x0"][i]) for i in range(x0hat.size)])
-            Pvals["x0"] = pX0
+            Pvals["x0"] = _zt(x0hat, SE["x0"])
 
         return SE, Pvals
 
@@ -5200,18 +5222,26 @@ class DecodingAlgorithms:
         Px0hat_buf[0] = Px0.copy()
         alphahat_buf[0] = alpha0.copy()
 
-        # Scale the system via Cholesky transforms
-        # Matlab: Tq = eye(size(Q))/(chol(Q));  Tr = eye(size(R))/(chol(R))
+        # Scale the system via Cholesky transforms.
+        # FIX (KF track M, item C3 / G1, mirrors nSTAT PR #138 @ 6ba92cb):
+        # MATLAB's chol(Q) returns the UPPER factor R (R'*R = Q), so
+        # Tq = inv(R) whitens exactly only for a diagonal Q0 (Tq*Q0*Tq' != I
+        # in general). Use the LOWER factor L (Q0 = L*L'; np.linalg.cholesky
+        # already returns the lower factor, so no transpose), so
+        # Tq = inv(L) gives Tq*Q0*Tq' = I exactly. For diagonal Q0/R0, L = R
+        # and nothing changes (bit-identical).
+        # Matlab (repaired): Tq = eye(size(Q))/(chol(Q,'lower'));
+        #                     Tr = eye(size(R))/(chol(R,'lower'))
         scaledSystem = True
         if scaledSystem:
             try:
-                cholQ = np.linalg.cholesky(Qhat_buf[0]).T  # upper Cholesky
+                cholQ = np.linalg.cholesky(Qhat_buf[0])  # lower Cholesky
             except np.linalg.LinAlgError:
-                cholQ = np.linalg.cholesky(_nearestSPD(Qhat_buf[0])).T
+                cholQ = np.linalg.cholesky(_nearestSPD(Qhat_buf[0]))
             try:
-                cholR = np.linalg.cholesky(Rhat_buf[0]).T  # upper Cholesky
+                cholR = np.linalg.cholesky(Rhat_buf[0])  # lower Cholesky
             except np.linalg.LinAlgError:
-                cholR = np.linalg.cholesky(_nearestSPD(Rhat_buf[0])).T
+                cholR = np.linalg.cholesky(_nearestSPD(Rhat_buf[0]))
             Tq = np.linalg.solve(cholQ, np.eye(numStates))
             Tr = np.linalg.solve(cholR, np.eye(y.shape[0]))
 
@@ -5360,17 +5390,22 @@ class DecodingAlgorithms:
         x0hat_final = x0hat_buf[maxLLIndMod]
         Px0hat_final = Px0hat_buf[maxLLIndMod]
 
-        # Un-scale the system
+        ll_best = ll_list[maxLLIndex]
+        ExpectationSumsFinal = ExpSums_buf[maxLLIndMod]
+
+        # Un-scale the system.
+        # FIX (KF track M, item C3 / G1, mirrors #138 @ 6ba92cb): lower
+        # Cholesky factor; see the scale-in block above for why.
         if scaledSystem:
             # Reconstruct Tq, Tr from original Q0, R0
             try:
-                cholQ0 = np.linalg.cholesky(Q0).T
+                cholQ0 = np.linalg.cholesky(Q0)
             except np.linalg.LinAlgError:
-                cholQ0 = np.linalg.cholesky(_nearestSPD(Q0)).T
+                cholQ0 = np.linalg.cholesky(_nearestSPD(Q0))
             try:
-                cholR0 = np.linalg.cholesky(R0).T
+                cholR0 = np.linalg.cholesky(R0)
             except np.linalg.LinAlgError:
-                cholR0 = np.linalg.cholesky(_nearestSPD(R0)).T
+                cholR0 = np.linalg.cholesky(_nearestSPD(R0))
             Tq = np.linalg.solve(cholQ0, np.eye(numStates))
             Tr = np.linalg.solve(cholR0, np.eye(y.shape[0]))
 
@@ -5382,17 +5417,27 @@ class DecodingAlgorithms:
             Chat_final = Tr_inv @ Chat_final @ Tq
             Rhat_final = Tr_inv @ Rhat_final @ Tr_inv.T
             alphahat_final = Tr_inv @ alphahat_final
-            xKFinal = Tq_inv @ xKFinal
             x0hat_final = Tq_inv @ x0hat_final
             Px0hat_final = Tq_inv @ Px0hat_final @ Tq_inv.T
-            K_steps = WKFinal.shape[2]
-            tempWK = np.zeros_like(WKFinal)
-            for kk in range(K_steps):
-                tempWK[:, :, kk] = Tq_inv @ WKFinal[:, :, kk] @ Tq_inv.T
-            WKFinal = tempWK
 
-        ll_best = ll_list[maxLLIndex]
-        ExpectationSumsFinal = ExpSums_buf[maxLLIndMod]
+            # FIX (KF track M, item C4, mirrors #138 @ 6ba92cb): xKFinal,
+            # WKFinal, ll_best and ExpectationSumsFinal were left on the
+            # internal Tq/Tr-scaled system (the loop's buffers above), while
+            # Ahat/Qhat/Chat/Rhat/alphahat/x0hat/Px0hat are now on the
+            # original scale, and y (scaled at setup) was never restored.
+            # The SE call below and the IC formula further down then mixed
+            # scaled sums/y with original-scale estimates -- the same
+            # defect class as PP_EM/PPLFP_EM's pre-F8/F10 SE and IC bugs.
+            # Recompute the E-step once, from the unscaled parameters and
+            # the original y: the Kalman filter/RTS smoother is exactly
+            # equivariant under this linear change of variables, so this
+            # reproduces (rather than approximates) the original-coordinate
+            # xKFinal, WKFinal, ll_best and ExpectationSumsFinal, all
+            # mutually consistent on one scale.
+            xKFinal, WKFinal, ll_best, ExpectationSumsFinal = DecodingAlgorithms.KF_EStep(
+                Ahat_final, Qhat_final, Chat_final, Rhat_final,
+                yOrig, alphahat_final, x0hat_final, Px0hat_final,
+            )
 
         # Compute standard errors
         SE, Pvals = DecodingAlgorithms.KF_ComputeParamStandardErrors(
@@ -5421,8 +5466,11 @@ class DecodingAlgorithms:
 
         if KFEM_Constraints["RhatDiag"] and KFEM_Constraints["RhatIsotropic"]:
             np4 = 1
-        elif KFEM_Constraints["QhatDiag"] and not KFEM_Constraints["QhatIsotropic"]:
-            # Note: Matlab line 3618 checks QhatDiag here (likely a bug, but we match it)
+        elif KFEM_Constraints["RhatDiag"] and not KFEM_Constraints["RhatIsotropic"]:
+            # FIX (KF track M, item C5 / F11, mirrors #138 @ dcf03eb): this
+            # branch tested Q's flags instead of R's, so R's own parameter
+            # count (and therefore IC.nTerms/AIC/AICc/BIC) was wrong whenever
+            # QhatDiag/QhatIsotropic differed from RhatDiag=1/RhatIsotropic=0.
             np4 = Rhat_final.shape[0]
         else:
             np4 = Rhat_final.size
