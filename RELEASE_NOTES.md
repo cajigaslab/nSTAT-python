@@ -264,13 +264,20 @@ does about it, and the known gaps.
   see `DecodingAlgorithms.PP_EM`'s docstring). Verified by running each
   example's figure export twice and comparing SHA-256 of every PNG:
   byte-identical both times.
-- Fix: `make regen` (`nstat/notebook_fidelity_audit.py`) wrote the absolute,
-  checkout-specific MATLAB-repo path into `parity/notebook_fidelity.yml`'s
-  `matlab_repo_root` field, so regenerating from a git worktree or a fresh
-  clone (anywhere other than the exact checkout the committed file was last
-  built from) rewrote that one field and tripped the drift check for no
-  real reason. It now stores the path relative to the repo root
-  (`../nSTAT`), which is the same from any checkout with the same layout.
+- Fix: `make regen` (`nstat/notebook_fidelity_audit.py`) only looked for the
+  MATLAB checkout at a literal sibling `../nSTAT` directory, so from a git
+  worktree (no sibling checkout) every notebook's `matlab_sections` /
+  `matlab_published_figures` / `section_delta` / `figure_delta` in
+  `parity/notebook_fidelity.yml` went to `null` -- a real loss of audit
+  content. It also recorded `matlab_repo_root` as the absolute,
+  checkout-specific path, so regenerating from any checkout other than the
+  one the committed file was last built from rewrote that field and
+  tripped the drift check for no real reason. The MATLAB checkout is now
+  found the same way `nstat.matlab_engine.get_matlab_nstat_path` does
+  (`NSTAT_MATLAB_PATH` env var, then the sibling convention), so the real
+  counts are available from a worktree too; `matlab_repo_root` is now a
+  fixed, checkout-independent placeholder (`../nSTAT`) rather than the
+  resolved absolute path.
 - Tests skip, with accurate reasons, when an optional dependency is installed
   but broken.
 - Python 3.10 (the declared minimum) test collection is fixed and 3.10 is added

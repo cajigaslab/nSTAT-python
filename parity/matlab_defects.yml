@@ -1877,16 +1877,23 @@ entries:
   defect_class: Tooling (repo, not a MATLAB defect)
   matlab_location: n/a (nstat-python `nstat/notebook_fidelity_audit.py`, the notebook-fidelity audit's MATLAB root discovery, ~L121/163/173/195 pre-fix)
   matlab_behavior: >-
-    The audit looks for the MATLAB checkout at `../nSTAT`; it recorded `matlab_repo_root` in
-    `parity/notebook_fidelity.yml` as `str(matlab_root)` -- the *absolute*, checkout-specific path -- even though the
-    MATLAB counts (null when the checkout is absent) already correctly reflect availability. Regenerating from any
-    checkout other than the exact one the committed file was last built from (a git worktree, a fresh clone, CI)
-    rewrites that one field to a different absolute path, tripping `make regen`'s `git diff --exit-code` drift check
-    for a reason unrelated to the audit's actual content.
-  correct_behavior: Store a checkout-stable form of the path (relative to the repo root) so regenerating from any
-    checkout with the same relative layout produces byte-identical output.
+    The audit looked for the MATLAB checkout only at a literal sibling `../nSTAT` directory, and recorded
+    `matlab_repo_root` as `str(matlab_root)` -- the *absolute*, checkout-specific path. From a worktree in a scratch
+    directory (no sibling `../nSTAT`), the lookup failed outright: `matlab_sections`, `matlab_published_figures`,
+    `section_delta` and `figure_delta` all went to `null` for every one of the 13 `helpfile_full` notebooks, which is
+    a real loss of audit content, not just a cosmetic path issue. A first attempt at this fix (P2b-2026-10, commit
+    `262bde4`) only changed how the path was *displayed* (relative instead of absolute) without fixing the lookup, so
+    it silently committed those 13 notebooks' counts as `null` -- a regression caught in review, not by
+    `tests/test_notebook_fidelity_audit.py` (the one test that would have caught it, `..._matches_generator_...`,
+    skips whenever `../nSTAT` is absent, which was true both before and after that first attempt). Separately, even
+    with the lookup fixed, embedding the resolved absolute path verbatim still makes the field depend on where MATLAB
+    happens to live on whichever machine last ran `make regen`.
+  correct_behavior: Find the MATLAB checkout the same way `nstat.matlab_engine.get_matlab_nstat_path` does
+    (`NSTAT_MATLAB_PATH` env var, then the sibling `../nSTAT` convention) so the counts are available from any
+    checkout that sets the env var, and store a fixed, checkout-independent placeholder for the informational
+    `matlab_repo_root` field (nothing downstream parses it back into a path) rather than the resolved absolute path.
   python_implementation:
-  - 'Fixed (P2b-2026-10): added `_display_matlab_repo_root`, which renders `matlab_root` relative to the repo root (`../nSTAT` in the default layout) via `os.path.relpath`, falling back to the absolute path only if no relative path exists (e.g. a different drive on Windows). Verified `make regen` from this worktree (no sibling `../nSTAT`) produces `matlab_repo_root: ../nSTAT` and leaves no further diff on a second run; `tests/test_notebook_fidelity_audit.py` still passes (the one test that compares against a live MATLAB checkout skips here, as before, since this worktree has none).'
+  - 'Fixed (P2b-2026-10, this commit): `default_matlab_repo_root` now calls `nstat.matlab_engine.get_matlab_nstat_path()` first (honoring `NSTAT_MATLAB_PATH`), falling back to the sibling `../nSTAT` convention only if that returns nothing. `_display_matlab_repo_root` always renders the fixed string `"../nSTAT"`, independent of which lookup path actually resolved MATLAB. Regenerated with `NSTAT_MATLAB_PATH=/Users/iahncajigas/projects/nstat` (read-only use of the local MATLAB checkout): `git diff 2566769 -- parity/notebook_fidelity.yml` shows only the 14 `matlab_repo_root` lines changing (every count identical to `main`). `tests/test_notebook_fidelity_audit.py` run with that env var set passes all 8 tests with none skipped (the matches-generator test actually runs, not vacuously skips). `make regen` from this worktree with the env var set produces no further diff on a second run.'
   fixture_impact: none
   discovered: P2b-1 / 2026-10
   upstream_status: n/a
