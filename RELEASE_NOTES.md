@@ -194,8 +194,13 @@ does about it, and the known gaps.
   the SEs come from the pseudo-inverse, and every parameter in its null space
   (not identifiable) gets SE and p-value NaN, with a `RuntimeWarning` naming
   them; this used to report an SE of about 1e-8 and p = 0 for them.
-- Not changed: the `KF_EM` family (MATLAB's upper-factor draws and whitening
-  are mirrored), counts of a full `Q` / `R` by all d^2 entries, the
+- Not changed: the `KF_EM` family. MATLAB's upper-factor draws and whitening
+  are mirrored, but its information blocks are not: Python uses the intended
+  `(N/2) R^-1 e e' R^-1` (and `(1/2) P^-1 e e' P^-1`) forms, where MATLAB's
+  `KF_EM.m` (`:510`, `:521`, `:577`, `:588`, `:623`) has the precedence defect
+  fixed for the point-process routines (`N/2*(R)\e*e'/(R)` evaluates to
+  `(2/N) R^-1 e e' R^-1`), so `KF_EM`'s `SE.Q` / `SE.R` / `SE.Px0` differ from
+  MATLAB's. Also not changed: counts of a full `Q` / `R` by all d^2 entries, the
   non-scale-equivariant `nearestSPD`, the GLM M-step's plug-in drift, and the
   absence of an analytic check of `SE.x0` / `SE.Px0`.
 
