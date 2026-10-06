@@ -115,6 +115,9 @@ entries:
     # floor switch (1e-12 → np.finfo(float).eps) shifted the MC envelope.
     # Observed actual drift ~1.4e-3 absolute / 3e-2 relative across runs;
     # tolerance widened to absorb without losing the Case C documentation.
+    # 2026-10 (EM final pass): the PPLFP Monte Carlo draws from NumPy's global
+    # stream (as the PP routines and MATLAB's normrnd do) and the recipe runs
+    # in seeded_global_rng(42), so the value is reproducible run to run.
     tolerance: { rtol: 1.0e-1, atol: 1.0e-2 }
 
   # 12. PPLFP.PPLFP_MStep — EM maximisation step. The Python port runs
@@ -142,6 +145,9 @@ entries:
   # 8dbd0e4, bit-identical at the final head aa88a2b; pending upstream merge),
   # whose Monte Carlo draws use the lower Cholesky factor (F9); only
   # betahat_new / muhat_new moved.
+  # 2026-10 (EM final pass): PPLFP_MStep draws from NumPy's global stream (it
+  # called an unseeded default_rng(), which seeded_global_rng replaced by a
+  # fresh generator with the same seed); the value moved within tolerance.
   - name: PPLFP_MStep
     recipe: pplfp_mstep
     fixture: tests/parity/fixtures/matlab_gold/pplfp_MStep.mat
@@ -185,6 +191,9 @@ entries:
   # post-#98 MATLAB with the corrected `gamma=0` (not `[]`) capture
   # argument. End-to-end EM now runs cleanly; actual max_abs dropped
   # to ~0.034. atol further tightened 0.5 → 0.1 (5× additional, 10× total).
+  # 2026-10 (EM final pass): every PPLFP Monte Carlo block draws from NumPy's
+  # global stream, so successive M-steps no longer reuse one set of normals
+  # under seeded_global_rng; the value moved within tolerance.
   - name: PPLFP_EM
     recipe: pplfp_em
     fixture: tests/parity/fixtures/matlab_gold/pplfp_EM.mat

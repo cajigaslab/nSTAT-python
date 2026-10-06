@@ -1163,10 +1163,14 @@ class PPLFP:
         # Monte Carlo draws (expectation phase)
         # ==================================================================
         McExp = mcIter
-        rng = np.random.default_rng()
-
-        def _normal(d, n):
-            return rng.standard_normal((d, n))
+        # Standard normals from NumPy's global (legacy) generator, as in the PP
+        # EM routines: MATLAB's normrnd draws from its global stream, which
+        # rng(seed) controls; here np.random.seed(seed) (or
+        # nstat.extras.matlab_rng.seeded_global_rng) does.  This used an
+        # unseeded default_rng() per call, so PPLFP Monte Carlo could not be
+        # reproduced, and under seeded_global_rng every call restarted the
+        # same stream (each M-step and both SE blocks drew identical normals).
+        _normal = np.random.randn
 
         # Draws through _mc_state_draws (MATLAB mcStateDraws, F9: the draw
         # was chol(W)*z, covariance R*R' instead of W).
@@ -2014,14 +2018,15 @@ class PPLFP:
             # ---- Optional Ikeda acceleration --------------------------
             if IkedaAcc:
                 _logger.info("****Ikeda Acceleration Step****")
-                rng = np.random.default_rng()
                 mean_y = (
                     Chat_buf[si_p1] @ x_K_buf[si]
                     + alphahat_buf[si_p1].reshape(-1, 1)
                     @ np.ones((1, x_K_buf[si].shape[1]))
                 )
                 R_for_draw = Rhat_buf[si_p1]
-                ykNew = mean_y + rng.multivariate_normal(
+                # MATLAB mvnrnd from its global stream; NumPy's global
+                # generator here (see PPLFP_ComputeParamStandardErrors).
+                ykNew = mean_y + np.random.multivariate_normal(
                     np.zeros(R_for_draw.shape[0]),
                     R_for_draw,
                     size=mean_y.shape[1],
@@ -2871,10 +2876,7 @@ class PPLFP:
         # ============== Newton-Raphson branch =========================
         _logger.info("****M-step for beta****")
         McExp = 50
-        rng = np.random.default_rng()
-
-        def _normal(d, n):
-            return rng.standard_normal((d, n))
+        _normal = np.random.randn  # the global stream, as in the SE routine (see there)
 
         # Draws through _mc_state_draws (MATLAB mcStateDraws, F9: the draw
         # was chol(W)*z, covariance R*R' instead of W).

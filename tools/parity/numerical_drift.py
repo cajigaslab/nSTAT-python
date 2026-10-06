@@ -486,9 +486,12 @@ def _recipe_pplfp_se_alpha(fixture: dict[str, Any], _args: dict[str, Any]) -> tu
 
     All other SE entries depend on Monte-Carlo paths whose RNG stream
     differs from MATLAB ``normrnd``; see ``parity/matlab_defects.yml``
-    entry ``pplfp-se-mc-drift`` (Case C).
+    entry ``pplfp-se-mc-drift`` (Case C).  The call runs inside
+    ``seeded_global_rng(42)`` (the EM Monte Carlo draws from NumPy's global
+    stream), so the value is reproducible run to run.
     """
     from nstat.decoding.PPLFP import PPLFP
+    from nstat.extras.matlab_rng import seeded_global_rng
 
     # Reconstitute ExpectationSums dict from whatever sufficient stats
     # the fixture ships; fall back to deriving from xKFinal / y.
@@ -529,26 +532,27 @@ def _recipe_pplfp_se_alpha(fixture: dict[str, Any], _args: dict[str, Any]) -> tu
     dN_arr = _as_float_array(fixture["dN"])
     num_cells, K = dN_arr.shape if dN_arr.ndim == 2 else (1, dN_arr.size)
     HkAll = _pplfp_hkall_3d(fixture, K, num_cells)
-    SE, Pvals, nTerms = PPLFP.PPLFP_ComputeParamStandardErrors(
-        y,
-        dN_arr,
-        xKFinal,
-        _as_float_array(fixture["WKFinal"]),
-        _as_float_array(fixture["Ahat"]),
-        _as_float_array(fixture["Qhat"]),
-        _as_float_array(fixture["Chat"]),
-        _as_float_array(fixture["Rhat"]),
-        _vector(fixture, "alphahat"),
-        _vector(fixture, "x0hat"),
-        _as_float_array(fixture["Px0hat"]),
-        es,
-        _string(fixture, "fitType"),
-        _vector(fixture, "muhat_new"),
-        _as_float_array(fixture["betahat_new"]),
-        _vector(fixture, "gammahat_new"),
-        None,  # windowTimes
-        HkAll,
-    )
+    with seeded_global_rng(42):
+        SE, Pvals, nTerms = PPLFP.PPLFP_ComputeParamStandardErrors(
+            y,
+            dN_arr,
+            xKFinal,
+            _as_float_array(fixture["WKFinal"]),
+            _as_float_array(fixture["Ahat"]),
+            _as_float_array(fixture["Qhat"]),
+            _as_float_array(fixture["Chat"]),
+            _as_float_array(fixture["Rhat"]),
+            _vector(fixture, "alphahat"),
+            _vector(fixture, "x0hat"),
+            _as_float_array(fixture["Px0hat"]),
+            es,
+            _string(fixture, "fitType"),
+            _vector(fixture, "muhat_new"),
+            _as_float_array(fixture["betahat_new"]),
+            _vector(fixture, "gammahat_new"),
+            None,  # windowTimes
+            HkAll,
+        )
     se_alpha_py = _as_float_array(SE["alpha"]).reshape(-1)
     se_struct = fixture["SE"]
     se_alpha_ml = _as_float_array(getattr(se_struct, "alpha")).reshape(-1)

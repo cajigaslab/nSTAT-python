@@ -360,14 +360,15 @@ def test_newton_raphson_beta_step_reaches_a_stationary_point(family, fit, W) -> 
     if family == "PP":
         out = _run_pp_mstep(P, fit)
         beta_out = out[3]
-        rs = np.random.RandomState()
-        rs.seed(42)
-        draws = _mc_draws(P, lambda shape: rs.randn(*shape))
     else:
         out = _run_pplfp_mstep(P, fit)
         beta_out = out[6]
-        gen = np.random.default_rng(42)
-        draws = _mc_draws(P, gen.standard_normal)
+    # Both M-steps draw from NumPy's global stream, which seeded_global_rng(42)
+    # seeds (PPLFP drew from an unseeded default_rng(), patched to
+    # default_rng(42), before the EM final pass made its draws reproducible).
+    rs = np.random.RandomState()
+    rs.seed(42)
+    draws = _mc_draws(P, lambda shape: rs.randn(*shape))
     assert np.all(np.isfinite(beta_out))
     assert np.max(np.abs(beta_out - P["beta"])) < 2.0
     for c in range(P["C"]):

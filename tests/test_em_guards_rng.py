@@ -203,3 +203,90 @@ def test_pp_em_raises_for_a_non_positive_definite_qhat0() -> None:
     with pytest.raises(np.linalg.LinAlgError):
         DecodingAlgorithms.PP_EM(np.zeros((1, 20)), np.eye(2), np.diag([0.01, -0.01]), np.array([-3.0]),
                                  np.zeros((2, 1)))
+
+
+# ---------------------------------------------------------------------------
+# Reproducible Monte Carlo (brief item 3).  MATLAB's EM draws (normrnd, mvnrnd)
+# come from its global stream, which rng(seed) controls.  The PP routines drew
+# from NumPy's global legacy stream (np.random.randn); the PPLFP routines from an
+# unseeded np.random.default_rng() per call, so np.random.seed did not reproduce
+# them, and under nstat.extras.matlab_rng.seeded_global_rng (which patches
+# default_rng to a fresh generator with the same seed on every call) every
+# M-step and both SE blocks drew the same normals.  All EM Monte Carlo now draws
+# from NumPy's global stream.
+# ---------------------------------------------------------------------------
+def _em_problem(seed=11, K=150, C=3):
+    rng = np.random.default_rng(seed)  # data only
+    A = np.array([[0.95, 0.02], [-0.02, 0.93]])
+    Q = np.diag([0.01, 0.02])
+    x = np.zeros((2, K))
+    for k in range(1, K):
+        x[:, k] = A @ x[:, k - 1] + np.sqrt(np.diag(Q)) * rng.standard_normal(2)
+    beta = np.array([[0.8, -0.6, 0.4], [0.3, 0.7, -0.5]])[:, :C]
+    mu = np.log(np.full(C, 0.05))
+    dN = (rng.random((C, K)) < np.exp(mu[:, None] + beta.T @ x)).astype(float)
+    Cm, R, alpha = np.array([[1.0, 0.4], [-0.3, 1.0]]), np.diag([0.05, 0.08]), np.array([0.1, -0.1])
+    y = Cm @ x + alpha[:, None] + np.sqrt(np.diag(R))[:, None] * rng.standard_normal((2, K))
+    return dict(A=A, Q=Q, beta=beta, mu=mu, dN=dN, Cm=Cm, R=R, alpha=alpha, y=y)
+
+
+def _run_em(family, P):
+    if family == "PP":
+        out = DecodingAlgorithms.PP_EM(P["dN"], P["A"], P["Q"], P["mu"] + 0.3, 0.5 * P["beta"], "poisson", 0.001,
+                                       None, None, None, None, DecodingAlgorithms.PP_EMCreateConstraints(mcIter=20))
+        arrays = list(out[:9]) + [out[9][k] for k in sorted(out[9])] + [out[10][k] for k in sorted(out[10])]
+    else:
+        out = PPLFP.PPLFP_EM(P["y"], P["dN"], P["A"], P["Q"], P["Cm"], P["R"], P["alpha"], P["mu"] + 0.3,
+                             0.5 * P["beta"], PPLFP_EM_Constraints=PPLFP.PPLFP_EMCreateConstraints(mcIter=20))
+        arrays = list(out[:12]) + [out[12][k] for k in sorted(out[12])] + [out[13][k] for k in sorted(out[13])]
+    return [np.asarray(a, dtype=float) for a in arrays]
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_em_monte_carlo_follows_the_global_seed(family) -> None:
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    P = _em_problem()
+    runs = []
+    for seed in (5, 5, 6):
+        np.random.seed(seed)
+        runs.append(_run_em(family, P))
+    with seeded_global_rng(5):
+        runs.append(_run_em(family, P))
+    with seeded_global_rng(5):
+        runs.append(_run_em(family, P))
+    for a, b in zip(runs[0], runs[1]):
+        np.testing.assert_array_equal(a, b)
+    for a, b in zip(runs[3], runs[4]):
+        np.testing.assert_array_equal(a, b)
+    assert any(not np.array_equal(a, b) for a, b in zip(runs[0], runs[2]))
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_successive_monte_carlo_blocks_draw_fresh_normals(family, monkeypatch) -> None:
+    import sys
+
+    from nstat.extras.matlab_rng import seeded_global_rng
+
+    module = sys.modules["nstat.decoding_algorithms" if family == "PP" else "nstat.decoding.PPLFP"]
+    real = module._mc_state_draws
+    first_z = []  # the first standard-normal block of every Monte Carlo draw loop
+
+    def spy(m, W, M, normal, **kw):
+        def recording_normal(d, n):
+            z = normal(d, n)
+            first_z.append(np.array(z, dtype=float))
+            return z
+        return real(m, W, M, recording_normal, **kw)
+
+    monkeypatch.setattr(module, "_mc_state_draws", spy)
+    P = _em_problem()
+    with seeded_global_rng(3):
+        _run_em(family, P)
+    by_shape = {}
+    for z in first_z:
+        by_shape.setdefault(z.shape, []).append(z)
+    blocks = [zs for zs in by_shape.values() if len(zs) > 1]
+    assert blocks
+    for zs in blocks:  # every normal block of a run is distinct
+        assert len({z.tobytes() for z in zs}) == len(zs)

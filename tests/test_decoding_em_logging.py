@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ast
 import logging
+import re
 import sys
 from pathlib import Path
 
@@ -103,7 +104,10 @@ def test_pplfp_em_is_silent_by_default_and_logs_progress_at_info(capsys, caplog,
     assert "Joint Point-Process/Gaussian Observation EM Algorithm" in messages[0]
     assert "Iteration #1" in messages
     assert "****M-step for beta****" in messages  # PPLFP_MStep (NewtonRaphson)
-    assert "neuron:1 iter: 1,2,3,4,5" in messages  # one record per neuron
+    # one record per neuron; the Newton iteration count depends on the seeded
+    # Monte Carlo draws (PPLFP draws from NumPy's global stream since the EM
+    # final pass; it was 1,2,3,4,5 with the former per-call default_rng()).
+    assert any(re.fullmatch(r"neuron:1 iter: 1(,\d+)*", m) for m in messages)
     assert any(m.startswith("Max Parameter Change: ") for m in messages)
     # Logging cannot change the numerics: the same seeded run with the logger
     # disabled returns every output bit for bit.  (MATLAB parity of PPLFP_EM
