@@ -1908,12 +1908,18 @@ entries:
     notes `rng('shuffle','twister')` was removed because it clobbered the caller's seed -- "caller controls RNG
     state"), so the Python mirror is correct; the bug was that `example02_whisker_stimulus_thalamus.py` and
     `example03_psth_and_ssglm.py` never seeded that global state before calling
-    `Analysis.computeHistLagForAll` / `FitResult.KSPlot` / `DecodingAlgorithms.computeSpikeRateCIs`, so fig02's
-    history-window selection and fig04/fig06's KS panel and learning-trial index (`lt`) varied run to run.
+    `Analysis.computeHistLagForAll` / `FitResult.KSPlot` / `DecodingAlgorithms.computeSpikeRateCIs`. Measured
+    across 3 unseeded runs of the unmodified (pre-fix) scripts: fig02's final 3-model `AIC`/`BIC` values and the
+    *selected* history-window index (`min(aicIdx, bicIdx)`, both themselves from deterministic GLM fits) did **not**
+    vary -- only the `ksArr` sweep (the KS-vs-Q curve in fig02's top-right panel, and the `KS optimal index` that
+    would only matter as a fallback when `aicIdx`/`bicIdx` are unavailable) and the final `modelCompare.KSPlot` /
+    `plotCoeffs` panels varied, via the per-call jitter in every `FitResult._compute_diagnostics` call along the way.
+    fig04's KS panel and fig06's learning-trial index (`lt`) did vary run to run (confirmed: `lt` took both 13 and
+    14 across runs pre-fix).
   correct_behavior: The caller seeds NumPy's global RNG before invoking code that draws from it (as MATLAB callers do
     with `rng(N)`), per `DecodingAlgorithms.PP_EM`'s own docstring.
   python_implementation:
-  - 'Fixed (P2b-2026-10): both example scripts wrap the affected sections in `nstat.extras.matlab_rng.seeded_global_rng(seed)`. Verified by running each example''s figure export twice and comparing SHA-256 of every PNG: byte-identical both times (fig01_data_overview.png and example03''s fig01/02/03/05 were already deterministic and are pixel-identical to the prior committed PNGs -- any raw-byte difference there is PNG-encoder noise from re-running in a different environment, not a content change, so those files were left untouched).'
+  - 'Fixed (P2b-2026-10): both example scripts wrap the affected sections in `nstat.extras.matlab_rng.seeded_global_rng(seed)`. Verified by running each example''s figure export twice and comparing SHA-256 of every PNG: byte-identical both times. example02''s `fig01_data_overview.png` and example03''s fig01/02/03/05 are untouched by the seeded block and were confirmed pixel-identical (PIL, max abs diff 0) between a run of the pre-fix code and a run of the fixed code, so they were left out of this commit. They are NOT pixel-identical to the PNGs already committed on `main`: diffing against `main`''s committed example03 fig01/02/03/05 shows real content differences (up to 1.8M of 7.875M pixels differing) that reproduce identically with the unmodified pre-fix script too, i.e. pre-existing environment drift (this sandbox vs. whatever environment last regenerated `main`''s figures) unrelated to this fix. The P2b-2026-10 (commit 41f81cf) ledger/commit-message text calling these four files "pixel-identical to the prior committed PNGs" was imprecise -- they are pixel-identical to the pre-fix *code''s* output, not to what is committed on `main`.'
   fixture_impact: none
   discovered: P2b-2026-10
   upstream_status: n/a

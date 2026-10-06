@@ -261,9 +261,12 @@ does about it, and the known gaps.
   time-rescaling jitter (`np.random.random_sample`) and
   `DecodingAlgorithms.computeSpikeRateCIs`'s Monte Carlo state draws
   (`np.random.randn`) both read NumPy's legacy global RNG stream with no
-  seed, so `Analysis.computeHistLagForAll`'s history-window selection,
-  `FitResult.KSPlot`, and the SSGLM learning-trial index (`lt`) varied
-  run to run even on identical input data. Both examples now wrap the
+  seed, so fig02's KS-vs-history-window-count sweep curve and its final
+  `FitResult.KSPlot` panel, and the SSGLM learning-trial index (`lt`,
+  confirmed to take both 13 and 14 across runs), varied run to run even on
+  identical input data (`Analysis.computeHistLagForAll`'s actual history-
+  window *selection* is driven by deterministic AIC/BIC and did not vary).
+  Both examples now wrap the
   affected sections in `nstat.extras.matlab_rng.seeded_global_rng`
   (the documented fix for code that draws from NumPy's global stream;
   see `DecodingAlgorithms.PP_EM`'s docstring). Verified by running each
