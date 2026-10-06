@@ -27,7 +27,7 @@ import numpy as np
 
 from .SignalObj import SignalObj
 from .fit import FitResult, _SingleFit, _ksdiscrete, _matlab_compute_ks_arrays
-from .glm import fit_binomial_glm, fit_poisson_glm
+from .glm import _MATLAB_GLMFIT_POISSON_ETA_BOUND, fit_binomial_glm, fit_poisson_glm
 from .signal import Covariate
 from .trial import ConfigCollection, SpikeTrainCollection, Trial
 
@@ -159,12 +159,13 @@ def _glmfit_independent_columns(X: np.ndarray) -> np.ndarray | None:
     coefficients and standard errors of the other (dependent) columns to 0.
     Returns those kept column indices in MATLAB's pivot order.
 
-    A design with a non-finite entry returns ``None`` (no rank handling), so
-    ``GLMFit`` runs the unchanged solver on it and returns its all-NaN fit, as
-    it did before the rank handling was added (scipy's ``qr`` would raise on
-    it).  MATLAB ``glmfit`` instead drops the NaN rows (``statremovenan``)
-    and fits the rest; that is not mirrored (recorded in
-    ``parity/matlab_defects.yml``).
+    A design with a non-finite entry returns ``None`` (no rank handling);
+    the *caller* (``GLMFit``) is responsible for dropping any NaN rows
+    first (mirroring ``glmfit``'s ``statremovenan``) before calling this,
+    so what reaches here with a NaN is a column with Inf (or a design that
+    is still non-finite after dropping NaN rows) -- see
+    ``parity/matlab_defects.yml`` (``glmfit-rank-handling-notes``,
+    ``glmfit-statremovenan-nan-rows``).
     """
     from scipy.linalg import qr
 
@@ -184,6 +185,25 @@ def _glmfit_independent_columns(X: np.ndarray) -> np.ndarray | None:
     if rankx >= ncolx:
         return None
     return np.asarray(perm[:rankx], dtype=int)
+
+
+def _matlab_max_scalar(a: np.ndarray, b: float) -> np.ndarray:
+    """MATLAB ``max(a, b)`` (``b`` scalar): NaN-ignoring, unlike ``np.maximum``.
+
+    MATLAB's ``max`` treats a NaN operand as "missing" and returns the other
+    (non-NaN) operand -- ``max(NaN, eps) == eps`` -- while ``np.maximum``
+    propagates NaN (``np.maximum(nan, eps) is nan``).  ``Analysis.GLMFit``
+    (Analysis.m) floors ``lambdaDelta`` / ``oneMinusLambdaDelta`` with
+    ``max(..., eps)`` on values computed from the *full* design matrix
+    (including any NaN row dropped from the fit by ``glmfit``'s
+    ``statremovenan``), so that floor is what turns a NaN row's contribution
+    into a finite ``eps``, not NaN.  Verified against MATLAB R2026a
+    (``max(NaN, 1) == 1``); see ``parity/matlab_defects.yml``
+    (``glmfit-statremovenan-nan-rows``).
+    """
+    a = np.asarray(a, dtype=float)
+    out = np.maximum(a, b)
+    return np.where(np.isnan(a), b, out)
 
 
 def _glm_deviance(y: np.ndarray, mean_counts: np.ndarray, distribution: str) -> float:
@@ -624,19 +644,33 @@ class Analysis:
         ``'GLM'`` fit is handled as MATLAB ``glmfit`` handles it: a
         column-pivoted QR finds the rank, the fit uses the independent
         columns, and each dependent column gets coefficient 0 and standard
-        error 0.  A design with a NaN entry returns the solver's all-NaN fit
-        (MATLAB ``glmfit`` removes the NaN rows first; not mirrored).
+        error 0.  A design (or spike vector) with a NaN entry has that row
+        dropped before fitting -- ``b``, ``dev`` and ``stats["se"]`` come
+        from the NaN-row-dropped fit, as MATLAB ``glmfit``'s
+        ``statremovenan`` does -- but ``lambda_signal`` (and so ``AIC``,
+        ``BIC`` and ``logLL``, which read it) is evaluated over the
+        *original* full design, as MATLAB's ``Analysis.GLMFit`` does
+        (``data = exp(X*b)``); a NaN row there still gives NaN in
+        ``lambda_signal`` at that row, though ``logLL``'s own ``eps`` floor
+        (MATLAB's NaN-ignoring ``max``) keeps that row's contribution to
+        ``logLL`` finite.  Only the poisson ``'GLM'`` path mirrors
+        ``statremovenan``; see the binomial note below.
 
         The binomial ``'BNLRCG'`` fit is NOT a MATLAB mirror on a
-        rank-deficient design: neither MATLAB's ``bnlrCG`` nor this fit has
-        rank handling, but MATLAB's standard errors there come out complex
-        (an eigenvalue-clipped inverse) while these come from the singular
-        ``inv(X'WX)`` with negative variances clipped to 0, so different (and
-        larger, up to ~2.8e3 in the EM GLM M-step) coefficients pass the
-        M-step's ``se < 100`` filter.  On full-rank designs the binomial fit
-        reaches the MLE, which MATLAB's truncated ``bnlrCG`` approaches
-        (about 1e-4 apart on the EM GLM M-step gold).  See
-        ``parity/matlab_defects.yml`` (``em-binomial-glm-bnlrcg``).
+        rank-deficient design, and deliberately so: MATLAB's ``bnlrCG`` has
+        no rank handling at all, and its standard errors there come out
+        complex (an eigenvalue-clipped inverse) -- itself a MATLAB defect,
+        not something to reproduce.  Rather than leave the previous
+        Python-only behavior (SEs from the singular ``inv(X'WX)`` with
+        negative variances clipped to 0, letting different -- and larger,
+        up to ~2.8e3 in the EM GLM M-step -- coefficients pass the M-step's
+        ``se < 100`` filter), a rank-deficient binomial design now gets the
+        SAME column-pivoted-QR handling as the poisson path above:
+        dependent columns get ``b = 0``, ``se = 0``.  On full-rank designs
+        the binomial fit reaches the MLE, which MATLAB's truncated
+        ``bnlrCG`` approaches (about 1e-4 apart on the EM GLM M-step gold).
+        See ``parity/matlab_defects.yml`` (``em-binomial-glm-bnlrcg``,
+        ``binomial-rank-deficiency-improvement``).
         """
         algorithm = str(Algorithm or "GLM").upper()
         if algorithm not in {"GLM", "BNLRCG"}:
@@ -684,35 +718,91 @@ class Analysis:
         sample_rate = float(tObj.sampleRate)
 
         kept = None
+        # MATLAB glmfit (toolbox/stats/stats/glmfit.m) calls
+        # statremovenan(y, x, ...) before fitting: rows where X or y is NaN
+        # are dropped from the regression (b, dev, stats.se / covb), not
+        # rows with Inf (statremovenan checks isnan only; the non-finite
+        # guard in _glmfit_independent_columns, which also catches Inf and
+        # disables rank handling entirely, is unchanged -- see parity
+        # ledger glmfit-statremovenan-nan-rows).  This mirrors glmfit's
+        # call only for the 'GLM' (poisson) path below; BNLRCG is not a
+        # MATLAB mirror on this axis either (see em-binomial-glm-bnlrcg).
+        nan_rows = np.isnan(X).any(axis=1) | np.isnan(y)
         if algorithm == "BNLRCG":
-            glm_res = fit_binomial_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
-            lambda_delta = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
+            # Rank handling on a rank-deficient design: NOT a MATLAB mirror
+            # (MATLAB's bnlrCG has no rank handling at all, and its complex
+            # eigenvalue-clipped SEs there are themselves defective -- see
+            # em-binomial-glm-bnlrcg).  Rather than reproduce that defect or
+            # leave the Python-only singular-inverse clip (which let
+            # arbitrary, up to ~2.8e3, coefficients pass a se < 100 filter;
+            # see glmfit-rank-handling-notes), a rank-deficient design here
+            # applies the SAME column-pivoted-QR handling as the poisson
+            # branch below: dependent columns get b = 0, se = 0.  This is a
+            # deliberate Python improvement over defective MATLAB, recorded
+            # in parity/matlab_defects.yml (binomial-rank-deficiency-improvement).
+            valid_idx = np.ones(X.shape[0], dtype=bool)
+            kept = _glmfit_independent_columns(X) if l2 == 0.0 else None
+            if kept is None:
+                glm_res = fit_binomial_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
+                lambda_delta = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
+                b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            else:
+                glm_res = fit_binomial_glm(X[:, kept], y, include_intercept=False, l2=l2, max_iter=max_iter)
+                lambda_delta = np.clip(glm_res.predict_probability(X[:, kept]), 1e-12, 1.0 - 1e-9)
+                b = np.zeros(X.shape[1], dtype=float)
+                b[kept] = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
             rate_hz = lambda_delta * sample_rate
             distribution = "binomial"
-            b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
             dev = _glm_deviance(y, lambda_delta, distribution)
         else:
             # MATLAB GLMFit calls glmfit(X, y, 'poisson', 'constant', 'off'),
             # which drops the dependent columns of a rank-deficient design
             # (pivoted QR) and reports b = 0, se = 0 for them.  Only that case
             # takes the branch below; a full-rank design runs the unchanged
-            # solver.  (The BNLRCG branch above has no rank handling and is
-            # not a MATLAB mirror on rank-deficient designs; see the Notes.)
+            # solver.  (The BNLRCG branch above applies the same rank
+            # handling as a deliberate Python improvement, not a MATLAB
+            # mirror -- see its comment and the Notes.)
             # Unpenalized fits only (MATLAB glmfit has no ridge); with l2 > 0
             # X'WX + l2 I is invertible and the ridge solution is kept.
-            kept = _glmfit_independent_columns(X) if l2 == 0.0 else None
+            valid_idx = ~nan_rows
+            X_fit = X[valid_idx] if np.any(nan_rows) else X
+            y_fit = y[valid_idx] if np.any(nan_rows) else y
+            kept = _glmfit_independent_columns(X_fit) if l2 == 0.0 else None
+            # eta_bound: MATLAB glmfit's own 'log'-link iteration bound
+            # (stattestlink.m, read directly: tiny = realmin^.25,
+            # bound = -log(tiny)) -- not an arbitrary widening (see
+            # parity/matlab_defects.yml glmfit-ilink-eta-bound-too-tight).
+            # This matches glmfit's BOUND, not its initialization: MATLAB
+            # starts from startingVals(y), this Newton-IRLS from beta = 0,
+            # so the two can still diverge on an extreme-enough design even
+            # with the bound matched (see nstat.glm.fit_poisson_glm's
+            # eta_bound docstring).
             if kept is None:
-                glm_res = fit_poisson_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
-                lambda_delta = glm_res.predict_rate(X)
+                glm_res = fit_poisson_glm(
+                    X_fit, y_fit, include_intercept=False, l2=l2, max_iter=max_iter,
+                    eta_bound=_MATLAB_GLMFIT_POISSON_ETA_BOUND,
+                )
                 b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
             else:
-                glm_res = fit_poisson_glm(X[:, kept], y, include_intercept=False, l2=l2, max_iter=max_iter)
-                lambda_delta = glm_res.predict_rate(X[:, kept])
+                glm_res = fit_poisson_glm(
+                    X_fit[:, kept], y_fit, include_intercept=False, l2=l2, max_iter=max_iter,
+                    eta_bound=_MATLAB_GLMFIT_POISSON_ETA_BOUND,
+                )
                 b = np.zeros(X.shape[1], dtype=float)
                 b[kept] = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            # MATLAB Analysis.GLMFit: `data = exp(X*b)` (Analysis.m:594), on
+            # the full original X, with NO clip at all (unlike glmfit's own
+            # internal ilink, this downstream evaluation is raw); a NaN row
+            # in X still gives a NaN row here, dropped only from the fit
+            # above, and an extreme eta can legitimately overflow to Inf,
+            # exactly as MATLAB's unclipped `exp` would.
+            lambda_delta = np.exp(X @ b)
             rate_hz = lambda_delta * sample_rate
             distribution = "poisson"
-            dev = _glm_deviance(y, lambda_delta, distribution)
+            # dev (and so AIC, which depends only on dev and n_params) comes
+            # from glmfit's own deviance over the NaN-dropped rows only, as
+            # in MATLAB; not the full (possibly NaN-containing) lambda_delta.
+            dev = _glm_deviance(y[valid_idx], lambda_delta[valid_idx], distribution)
 
         # MATLAB logLL — standard Bernoulli per-bin log-likelihood.  Upstream
         # MATLAB "Task 0.1c" (Analysis.m:639) corrected a long-standing bug
@@ -727,9 +817,14 @@ class Analysis:
         # MATLAB's floor is ``eps`` (≈ 2.22e-16), not 1e-12.  Match it exactly:
         # several of the parity fixtures have λΔ ≈ 1 bins where the (1-λΔ)
         # term gets clipped at the floor, and a different floor shifts logLL.
+        # _matlab_max_scalar, not np.maximum: MATLAB's max(NaN, eps) == eps
+        # (NaN-ignoring), so a NaN row of rate_hz (dropped from the fit by
+        # glmfit's statremovenan but still evaluated over the full X here,
+        # as MATLAB does) floors to eps on both terms instead of poisoning
+        # logLL with NaN.
         _eps = float(np.finfo(float).eps)
-        matlab_bin_mass = np.maximum(rate_hz / max(sample_rate, 1e-12), _eps)
-        one_minus_bm = np.maximum(1.0 - rate_hz / max(sample_rate, 1e-12), _eps)
+        matlab_bin_mass = _matlab_max_scalar(rate_hz / max(sample_rate, 1e-12), _eps)
+        one_minus_bm = _matlab_max_scalar(1.0 - rate_hz / max(sample_rate, 1e-12), _eps)
         logLL = float(np.sum(y * np.log(matlab_bin_mass) + (1.0 - y) * np.log(one_minus_bm)))
 
         # True Bernoulli per-bin log-likelihood (numerically identical to
@@ -754,12 +849,17 @@ class Analysis:
         # For a rank-deficient poisson design they are computed on the kept
         # columns; the dependent columns get se = 0 and zero covariance, as
         # MATLAB glmfit reports them (stats.se(perm) = se; stats.covb(perm,perm)).
-        X_se = X if distribution == "binomial" or kept is None else X[:, kept]
+        # Rows dropped by glmfit's statremovenan (valid_idx) are excluded
+        # here too: lambda_delta there is NaN (it was evaluated over the
+        # full X), which would otherwise poison X'WX.
+        X_se_cols = X if kept is None else X[:, kept]
+        X_se = X_se_cols[valid_idx]
+        lambda_delta_valid = lambda_delta[valid_idx]
         try:
             if distribution == "binomial":
-                W = lambda_delta * (1.0 - lambda_delta)
+                W = lambda_delta_valid * (1.0 - lambda_delta_valid)
             else:
-                W = lambda_delta.copy()
+                W = lambda_delta_valid.copy()
             W = np.maximum(W, 1e-12)
             XtWX = X_se.T @ (X_se * W[:, None]) + l2 * np.eye(X_se.shape[1])
             covb = np.linalg.inv(XtWX)
@@ -767,7 +867,7 @@ class Analysis:
         except np.linalg.LinAlgError:
             se = np.full(X_se.shape[1], np.nan, dtype=float)
             covb = None
-        if X_se is not X:
+        if X_se_cols is not X:
             se_full = np.zeros(b.size, dtype=float)
             se_full[kept] = se
             se = se_full

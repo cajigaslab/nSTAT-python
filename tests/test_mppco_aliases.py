@@ -7,10 +7,15 @@ MATLAB's ``DecodingAlgorithms.m`` defines ``mPPCO_fixedIntervalSmoother``,
 forwards ``varargin{:}`` to the matching ``DecodingAlgorithms.PPLFP_*``.  The
 Python mirrors do the same (a ``DeprecationWarning`` with MATLAB's text,
 positional forwarding), replacing stale standalone implementations (the EM
-ones raised ``NameError``).  ``mPPCODecode_update`` is not a forwarder: its
-Python body takes MATLAB's permuted ``(nW, C, N)`` history, which the Python
-``PPLFP_Decode_update`` does not accept, so forwarding it would change its
-contract (left as is pending a maintainer decision).
+ones raised ``NameError``).  ``mPPCODecode_update`` is now a forwarder too
+(P2a): it still accepts MATLAB's documented permuted ``(nW, C, N)`` history
+in its own frozen signature (callers of this alias pass that layout), but
+transposes it to the canonical ``(N, nW, C)`` layout before forwarding to
+``PPLFP_Decode_update``.  Pinned separately in
+``test_mppco_decode_update_is_a_forwarder_over_a_transposed_hkall`` below,
+not via the generic ``ALIASES`` harness (which calls the alias and the
+target with the *same* positional args -- true for every other alias, not
+this one, since its ``HkAll`` layout differs from the target's).
 
 Contract pinned here, per alias:
 
@@ -309,3 +314,78 @@ def test_mppco_decode_linear_with_history_returns_exactly_the_pplfp_result(case)
     with pytest.warns(DeprecationWarning, match=re.escape(_message("mPPCODecodeLinear", "PPLFP_DecodeLinear"))):
         got = DecodingAlgorithms.mPPCODecodeLinear(*args)
     _assert_identical(got, PPLFP.PPLFP_DecodeLinear(*args))
+
+
+@pytest.mark.parametrize("case", ["pdfl_pois_sq", "pdfl_pois_ctrl"])
+def test_mppco_decode_update_is_a_forwarder_over_a_transposed_hkall(case) -> None:
+    # mPPCODecode_update's own frozen signature documents MATLAB's permuted
+    # (numWindows, numCells, N) HkAll (time on the 3rd axis); PPLFP_Decode_update
+    # takes the canonical (N, numWindows, numCells) layout. The forwarder must
+    # transpose, not pass HkAll through unchanged, and must still equal
+    # PPLFP_Decode_update bit-for-bit on the transposed input -- not merely
+    # avoid raising.  Before this fix, mPPCODecode_update was a stale
+    # standalone body with its own +-500 linTerm clip, not a forwarder at all.
+    fx = loadmat(FIXTURE_ROOT / "pp_square_history.mat", squeeze_me=False)
+    f = lambda key: np.asarray(fx[f"{case}_{key}"], dtype=float)  # noqa: E731
+    fit = str(np.asarray(fx[f"{case}_fitType"]).reshape(-1)[0])
+    dN = f("dN")
+    num_cells, N = dN.shape
+    rng = np.random.default_rng(4)
+    C = np.array([[1.0, 0.3], [-0.2, 0.8]])
+    R = np.diag([0.05, 0.08])
+    y = 0.2 * rng.standard_normal(2)
+    alpha = np.array([0.1, -0.2])
+    HkAll_canonical = f("HkAll")  # (N, numWindows, numCells), as PPLFP_Decode_update takes it
+    HkAll_permuted = np.transpose(HkAll_canonical, (1, 2, 0))  # MATLAB's (numWindows, numCells, N)
+    assert HkAll_permuted.shape == (HkAll_canonical.shape[1], num_cells, N)
+
+    x_p = f("x0")
+    Px0 = f("Pi0")
+    W_p = Px0 if Px0.ndim == 2 else np.diag(np.atleast_1d(Px0))
+    time_index = 1
+    alias_args = (x_p, W_p, C, R, y, alpha, dN, f("mu"), f("beta"), fit, f("gamma"), HkAll_permuted, time_index)
+    target_args = (x_p, W_p, C, R, y, alpha, dN, f("mu"), f("beta"), fit, f("gamma"), HkAll_canonical, time_index)
+
+    with pytest.warns(DeprecationWarning, match=re.escape(_message("mPPCODecode_update", "PPLFP_Decode_update"))) as record:
+        got = DecodingAlgorithms.mPPCODecode_update(*alias_args)
+    deps = [w for w in record if issubclass(w.category, DeprecationWarning)]
+    assert len(deps) == 1 and deps[0].filename == __file__
+    expected = PPLFP.PPLFP_Decode_update(*target_args)
+    _assert_identical(got, expected)
+
+    # The transpose is load-bearing on non-trivial history: a non-square
+    # history's canonical and permuted layouts have different shapes, so
+    # feeding the permuted array straight through (unchanged) would not even
+    # produce a same-shaped result.
+    if HkAll_canonical.shape[1] != num_cells:
+        assert HkAll_permuted.shape != HkAll_canonical.shape
+
+
+def test_mppco_decode_update_accepts_2d_single_cell_hkall() -> None:
+    # MATLAB drops the trailing singleton cell axis for a one-cell history,
+    # so this alias's documented (numWindows, numCells, N) permuted HkAll
+    # can arrive as a bare (numWindows, N) 2-D array. Regression: a first
+    # version of the forwarder (this same track) called
+    # np.transpose(HkAll, (2, 0, 1)) unconditionally, which raises
+    # ValueError on a 2-D input; the pre-forwarder standalone body never
+    # transposed at all, so it did not crash there (it silently zeroed the
+    # history instead, a different bug, not reproduced here).
+    rng = np.random.default_rng(5)
+    ns, nW, N = 2, 3, 6
+    x_p, W_p = np.zeros(ns), np.eye(ns)
+    C, R = np.array([[1.0, 0.3]]), np.array([[0.1]])
+    y, alpha = np.array([0.0]), np.array([0.0])
+    dN = (rng.random((1, N)) < 0.2).astype(float)
+    mu, beta = np.array([-2.0]), 0.3 * rng.standard_normal((ns, 1))
+    gamma = 0.1 * rng.standard_normal((nW, 1))
+    HkAll_2d = rng.standard_normal((nW, N))  # one cell, singleton axis dropped
+
+    with pytest.warns(DeprecationWarning):
+        got = DecodingAlgorithms.mPPCODecode_update(
+            x_p, W_p, C, R, y, alpha, dN, mu, beta, "poisson", gamma, HkAll_2d, 1,
+        )
+    HkAll_canonical = HkAll_2d[:, np.newaxis, :].transpose(2, 0, 1)
+    expected = PPLFP.PPLFP_Decode_update(
+        x_p, W_p, C, R, y, alpha, dN, mu, beta, "poisson", gamma, HkAll_canonical, 1,
+    )
+    _assert_identical(got, expected)

@@ -20,7 +20,12 @@ import numpy as np
 import pytest
 
 from nstat.decoding.PPLFP import PPLFP
-from nstat.decoding_algorithms import DecodingAlgorithms
+from nstat.decoding_algorithms import (
+    DecodingAlgorithms,
+    _matlab_inv,
+    _matlab_mldivide_matrix,
+    _matlab_mrdivide,
+)
 from nstat.extras.matlab_rng import seeded_global_rng
 
 
@@ -233,15 +238,20 @@ def test_pp_mstep_closed_form_updates_are_matlabs(cons) -> None:
         np.zeros((1, K)), x_K, np.zeros((dx, dx, K)), x0, Px0, ES, "poisson", np.array([-3.0]),
         np.zeros((dx, 1)), np.array(0.0), None, np.zeros((K, 0, 1)), c, "GLM")
     S, Sx, sx = ES["Sxkm1xkm1"], ES["Sxkxkm1"], ES["sumXkTerms"]
-    A_m = np.linalg.solve((S * I).T, (Sx * I).T).T if c["AhatDiag"] else np.linalg.solve(S.T, Sx.T).T
+    # MATLAB mrdivide / mldivide (_matlab_mrdivide / _matlab_mldivide_matrix),
+    # not raw np.linalg.solve: the port now routes these through the same
+    # MATLAB-mirroring LU solver PP_MStep itself uses (em-newton-solve-
+    # reciprocal-pivot's sibling fix for the closed-form updates), which
+    # differs from LAPACK's solve by round-off (~1e-17).
+    A_m = _matlab_mrdivide(Sx * I, S * I) if c["AhatDiag"] else _matlab_mrdivide(Sx, S)
     if c["QhatDiag"]:  # MATLAB 1/(dx*K)*trace(S)*eye, or 1/K*(S.*I) then (Q + Q')/2
         Q_m = (1.0 / (dx * K)) * np.trace(sx) * I if c["QhatIsotropic"] else (1.0 / K) * (sx * I)
     else:
         Q_m = (1.0 / K) * sx
     if not c["QhatIsotropic"]:
         Q_m = (Q_m + Q_m.T) / 2
-    AtQ = np.linalg.solve(Q_m.T, A_m).T
-    x0_m = np.linalg.solve(np.linalg.inv(Px0) + AtQ @ A_m, AtQ @ x_K[:, 0] + np.linalg.solve(Px0, x0))
+    AtQ = _matlab_mrdivide(A_m.T, Q_m)  # Ahat'/Qhat
+    x0_m = _matlab_mldivide_matrix(_matlab_inv(Px0) + AtQ @ A_m, AtQ @ x_K[:, 0] + _matlab_mldivide_matrix(Px0, x0))
     a, b = x0_m.reshape(dx, 1), x0.reshape(dx, 1)
     outer = a @ a.T - b @ a.T - a @ b.T + b @ b.T
     Px0_m = np.trace(outer) / (dx * K) * I if c["Px0Isotropic"] else ((outer * I) + (outer * I).T) / 2
@@ -263,8 +273,10 @@ def test_px0_estimate_collapses_as_in_matlab() -> None:
 
 
 def test_pplfp_mstep_divisions_are_matlabs_mrdivide() -> None:
-    # MATLAB Ahat = Sxkxkm1/Sxkm1xkm1 and Chat = Sxkyk'/Sxkxk (LU solves); the
-    # port used least squares.
+    # MATLAB Ahat = Sxkxkm1/Sxkm1xkm1 and Chat = Sxkyk'/Sxkxk, via the
+    # MATLAB-mirroring LU solver (_matlab_mrdivide), not raw np.linalg.solve
+    # (which differs by round-off, ~1e-17, and raises instead of returning
+    # Inf/NaN on an exactly singular matrix).
     ES, x_K = _closed_form_sums()
     dx, K = x_K.shape
     y = np.vstack([x_K[0] + 0.1, x_K[1] - 0.2])
@@ -273,8 +285,8 @@ def test_pplfp_mstep_divisions_are_matlabs_mrdivide() -> None:
     out = PPLFP.PPLFP_MStep(np.zeros((1, K)), y, x_K, np.zeros((dx, dx, K)), np.zeros(dx), np.eye(dx), ES, "poisson",
                             np.array([-3.0]), np.zeros((dx, 1)), np.array(0.0), None, np.zeros((K, 1, 1)),
                             PPLFP.PPLFP_EMCreateConstraints(), "GLM")
-    np.testing.assert_array_equal(out[0], np.linalg.solve(ES["Sxkm1xkm1"].T, ES["Sxkxkm1"].T).T)
-    np.testing.assert_array_equal(out[2], np.linalg.solve(ES["Sxkxk"].T, ES["Sxkyk"]).T)
+    np.testing.assert_array_equal(out[0], _matlab_mrdivide(ES["Sxkxkm1"], ES["Sxkm1xkm1"]))
+    np.testing.assert_array_equal(out[2], _matlab_mrdivide(ES["Sxkyk"].T, ES["Sxkxk"]))
 
 
 def test_pp_em_raises_for_a_non_positive_definite_qhat0() -> None:

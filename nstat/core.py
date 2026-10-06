@@ -24,18 +24,16 @@ import numpy as np
 
 
 def _matlab_colon(start: float, step: float, stop: float) -> np.ndarray:
-    """Replicate MATLAB ``start:step:stop`` exactly.
+    """Replicate MATLAB ``start:step:stop`` exactly, bit for bit.
 
-    MATLAB's colon operator computes ``m = fix((stop-start)/step)`` and
-    returns ``m+1`` samples.  ``np.arange`` accumulates float error and
-    occasionally produces one extra sample for stop values that lie just
-    below an integer multiple of step — silently corrupting any caller
-    that compares lengths or aligns with a MATLAB-generated time vector.
+    Delegates to :func:`_matlab_colon_exact`.  An earlier version of this
+    helper computed ``m = fix((stop-start)/step)`` and returned ``m+1``
+    samples via ``start + np.arange(m+1) * step``, accumulating float error
+    element-by-element; against the ``colon_*`` MATLAB gold (487 arrays)
+    this differed from MATLAB's actual build-from-both-ends algorithm in
+    385/487 cases, 15 of those in LENGTH too (not just element values).
     """
-    if step == 0.0:
-        raise ValueError("_matlab_colon: step must be non-zero")
-    m = int(np.floor((stop - start) / step + 1e-12))
-    return start + np.arange(m + 1) * step
+    return _matlab_colon_exact(start, step, stop)
 
 
 def _matlab_colon_exact(start: float, step: float, stop: float) -> np.ndarray:

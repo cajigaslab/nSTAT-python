@@ -20,6 +20,68 @@
   target directory (the repo data cache or a custom `NSTAT_DATA_DIR`), including
   the bundled Example 05 hybrid-filter data.
 - Fix: the neuron-selector error message now says "zero-based".
+- Fix: `nstat.core._matlab_colon` is now bit-exact against MATLAB's `a:d:b`
+  (it delegates to the already-bit-exact `_matlab_colon_exact`); the previous
+  implementation got vector lengths right but differed bitwise from MATLAB in
+  385/487 sampled arrays. Affects `SignalObj` resampling and
+  `examples/paper/example01_mepsc_poisson.py`.
+- Fix: `Analysis.GLMFit`'s poisson (`'GLM'`) path clipped its linear
+  predictor to a flat `+-20` throughout (both the internal `glmfit`-mirroring
+  Newton iterations and the final returned `lambda`/`AIC`/`BIC`/`logLL`).
+  MATLAB's `glmfit` constrains `eta` during its IRLS iterations to a
+  `'log'`-link-specific bound (`stattestlink.m`: `-log(realmin**0.25)` =
+  `+-177.0991046330660...`), then `Analysis.GLMFit` evaluates its own
+  `data = exp(X*b)` afterward with **no clip at all** (can legitimately
+  overflow to `Inf`, as MATLAB's unclipped `exp` would). `fit_poisson_glm`
+  and `fit_binomial_glm` (`nstat.glm`) gained a keyword-only `eta_bound`
+  parameter (default `20.0`, unchanged, so every caller without a MATLAB
+  counterpart -- paper examples, `nstat.extras.spatial.*`, tutorials, docs
+  figures -- is unaffected); `Analysis.GLMFit`'s poisson path now passes
+  MATLAB's bound for the fit and computes the final `lambda` unclipped.
+  `nstat.trial.psthGLM` (MATLAB: `nstColl.psthGLM`, same underlying
+  `Analysis.GLMFit` call) got the same fix. The binomial (`'BNLRCG'`) path
+  is unaffected: MATLAB's `Algorithm == 'BNLRCG'` calls `Analysis.m`'s own
+  `bnlrCG`, not `glmfit`, which has no link-constrain at all, so there is no
+  MATLAB bound to adopt there; it keeps the Python-only `+-20` default.
+- Fix: `Analysis.GLMFit`'s poisson (`'GLM'`) path now drops rows with a NaN
+  design or spike-count entry before fitting, mirroring MATLAB `glmfit`'s
+  `statremovenan` (the fit, deviance and standard errors come from the
+  NaN-row-dropped data, matching MATLAB's `b`/`dev`/`stats.se`); previously
+  any NaN entry made the whole fit return all-NaN. `logLL`/`AIC`/`BIC` still
+  evaluate `lambda`/`data` over the *original* full design, as MATLAB's
+  `Analysis.GLMFit` does, using a new NaN-ignoring `max` helper
+  (`_matlab_max_scalar`) so a NaN row's `eps`-floor contribution to `logLL`
+  is finite rather than poisoning the whole sum with NaN -- matching
+  MATLAB's `max(NaN, eps) == eps` (unlike `np.maximum`). The binomial
+  (`'BNLRCG'`) path is unchanged. Affects `Analysis.GLMFit`,
+  `Analysis.RunAnalysisForNeuron`/`RunAnalysisForAllNeurons`, and the EM GLM
+  M-step (`PP_MStep`/`PPLFP_MStep`) on any design with a NaN sample.
+- Improvement (deliberate, not a MATLAB mirror): `Analysis.GLMFit`'s binomial
+  (`'BNLRCG'`) path now applies the same column-pivoted-QR rank handling as
+  the poisson path on a rank-deficient design (dependent columns get
+  `b = 0`, `se = 0`), instead of the previous Python-only singular-inverse
+  SE clip. MATLAB's own `bnlrCG` has no rank handling and returns complex
+  (defective) standard errors there, so this is not something to mirror;
+  see `parity/matlab_defects.yml` (`binomial-rank-deficiency-improvement`).
+- Fix: the closed-form M-step updates (`Ahat`, `Chat`, `AtQinv`, `x0hat` in
+  `PP_MStep` / `PPLFP_MStep`) and the SE information blocks (`Qinv`,
+  `Px0inv`, and the `Rhat`/`Qhat`/`Px0hat` solves of
+  `PP_ComputeParamStandardErrors` / `PPLFP_ComputeParamStandardErrors`) now
+  solve through new MATLAB-mirroring helpers (`_matlab_mldivide_matrix`,
+  `_matlab_mrdivide`, `_matlab_inv`) instead of `np.linalg.solve`/`inv`
+  directly, so an exactly singular matrix returns MATLAB's Inf/NaN instead
+  of raising `LinAlgError`; mirrors the earlier Newton-step fix
+  (`_matlab_mldivide`) for the remaining closed-form sites. Not reached by
+  any gold fixture (a singular Q, R or Px0 already makes EM's E-step
+  log-likelihood non-finite first), so this is a stability fix, covered by
+  a synthetic regression test.
+- Fix: `DecodingAlgorithms.mPPCODecode_update` is now a forwarder to
+  `PPLFP_Decode_update`, like the other `mPPCO_*` deprecated aliases
+  (`DeprecationWarning` with MATLAB's text; the alias's own frozen
+  signature still takes MATLAB's permuted `(numWindows, numCells, N)`
+  history, transposed to the canonical `(N, numWindows, numCells)` layout
+  before forwarding). Previously it was a stale standalone body with its
+  own `+-500` linTerm clip and never warned at all.
 
 **Point-process EM (`PP_EM`, `PPLFP_EM`, `mPPCO_*`) and the linear decoders
 mirror the repaired MATLAB**
