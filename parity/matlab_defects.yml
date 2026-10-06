@@ -1972,17 +1972,24 @@ entries:
     and `PPLFP_ComputeParamStandardErrors` (same form), and `Scorx0` in `PP_ComputeParamStandardErrors`
     (`Ahat''/Qhat*(...)`, which had been ported as `Ahat.T @ _matlab_inv(Qhat)`; `PPLFP_ComputeParamStandardErrors`''s
     `Scorx0` already used `_matlab_mrdivide` correctly).  Mathematically `eye/X == inv(X)` and `A''/Qhat ==
-    A.T @ inv(Qhat)`, but NOT necessarily bit-identical through the hand-rolled LU (different pivoting: on `X`
-    directly for mrdivide`B.T\A.T).T`, vs. on `X` for a literal `A\eye(n)` inv -- see `_matlab_inv`''s docstring).
-    Now `_matlab_mrdivide(np.eye(n), X)` / `_matlab_mrdivide(Ahat.T, Qhat)`, matching the literal MATLAB operator.
-    Two further sites (`IQComp`, `ISComp` -- the per-element diagonal Fisher-information terms in both SE
-    routines) remain a KNOWN, NOT-YET-CLOSED gap: MATLAB computes them as `N/2*((Qhat)\em*el''/(Qhat))` /
-    `0.5*((Px0hat)\em*el''/(Px0hat))` (one mldivide, one mrdivide, per element), while this port computes
-    `N/2 * Qinv @ outer(el,em) @ Qinv` (full matrix inverse, computed once, reused) -- mathematically equal,
-    structurally different, and NOT reconciled in this track (it needs restructuring the loop, not swapping a
-    solver call, and remains "not reached by any gold input" either way).  No exhaustive line-by-line audit of
-    every remaining linear-algebra call across both ~250-line SE routines was completed; these are the specific
-    sites checked.'
+    A.T @ inv(Qhat)`, but NOT verified bit-identical through the hand-rolled LU (mrdivide pivots on `X.T` via
+    `(X.T\A.T).T`; a literal `A\eye(n)` inv pivots on `X` directly -- see `_matlab_inv`''s docstring, "agrees to
+    round-off" on a well-conditioned input, not claimed bit-identical to MATLAB''s `inv` builtin at a singular one).
+    Now `_matlab_mrdivide(np.eye(n), X)` / `_matlab_mrdivide(Ahat.T, Qhat)`, matching the literal MATLAB operator.'
+  - 'Same review, same two files, for `IAComp` / `IQComp` / `ISComp` (the per-element Fisher-information terms):
+    `PPLFP_ComputeParamStandardErrors` already used MATLAB''s literal per-element `mldivide`-then-`mrdivide`
+    sandwich (`PPLFP.m`: `N/2*((Qhat)\em*el''/(Qhat))`, `0.5*((Px0hat)\em*el''/(Px0hat))`) via
+    `_matlab_mldivide_matrix` / `_matlab_mrdivide`.  `PP_ComputeParamStandardErrors` (`PointProcessEM.m`) did not:
+    `IAComp`''s diagonal branch (~166), `IQComp` (both branches, ~201/213) and `ISComp` (237) used a precomputed
+    `Qinv`/`Px0inv` (`_matlab_inv`) sandwiched around `np.outer(el, em)` -- mathematically equal, but not the
+    literal MATLAB operator (`IAComp`''s NON-diagonal branch, ~176, is a literal `inv(Qhat)` call and was already
+    correct).  Rewritten to match `PPLFP.m`''s exact form: one `_matlab_mldivide_matrix(Qhat, em)` (or `Qhat, el`),
+    then one `_matlab_mrdivide(..., Qhat)` (or `Px0hat`), per element -- the same pattern already used in the
+    PPLFP port, copied over, not a new algorithm.  `Qinv` now survives only at `IAComp`''s literal-`inv(Qhat)`
+    site; the `Qinv`/`Px0inv` locals in the Monte Carlo block that `Scorx0`''s fix left dead were removed.  No
+    loop restructuring was needed -- each fix is a one-expression swap inside the existing loop, mirroring the
+    PPLFP port''s already-correct code.  No exhaustive line-by-line audit of every remaining linear-algebra call
+    across either ~250-line SE routine was completed beyond the sites named here and in the M-step entry above.'
   fixture_impact: none
   discovered: P2a / 2026-10
   upstream_status: n/a

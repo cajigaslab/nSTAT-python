@@ -776,10 +776,12 @@ def _matlab_inv(A):
     singular ``A`` gives +-Inf / NaN (with its unreproduced "singular to
     working precision" warning) instead of raising ``LinAlgError``.
 
-    On a well-conditioned ``A`` this is bit-identical to MATLAB's own
-    ``inv`` (both ultimately solve the same system). On an EXACTLY
-    singular ``A`` it is NOT verified bit-identical to MATLAB's ``inv``
-    builtin, which can differ in the *sign pattern* of the resulting
+    On a well-conditioned ``A`` this agrees with MATLAB's own ``inv`` to
+    round-off (not verified bit-identical: likely a different LAPACK
+    routine, ``getrs`` against the identity here vs. ``inv``'s own
+    algorithm). On an EXACTLY singular ``A`` it is NOT even verified to
+    agree with MATLAB's ``inv`` builtin, which can differ in the *sign
+    pattern* of the resulting
     Inf entries from ``A \\ eye(n)``: checked directly against MATLAB
     R2026a, ``inv([1 1;1 1])`` gives all ``+Inf``, while
     ``[1 1;1 1] \\ eye(2)`` gives ``[Inf -Inf; -Inf Inf]`` -- evidently
@@ -5990,7 +5992,6 @@ class DecodingAlgorithms:
         # A information
         if PPEM_Constraints["EstimateA"]:
             n1_A, n2_A = Ahat.shape
-            Qinv = _matlab_inv(Qhat)
             # The A (and full-Q) parameters are ordered row by row, as in
             # MATLAB (loop l over rows, m over columns; termvec =
             # reshape(termMat', 1, n) and ScoreAMc = reshape(ScorA', n, 1) are
@@ -6002,34 +6003,37 @@ class DecodingAlgorithms:
             if PPEM_Constraints["AhatDiag"]:
                 IAComp = np.zeros((n1_A, n1_A))
                 for l in range(n1_A):
-                    el = np.zeros(n1_A)
-                    el[l] = 1.0
-                    em = np.zeros(n2_A)
-                    em[l] = 1.0
-                    # MATLAB Qhat\el*em'*S.*eye (left to right):
-                    # ((Q^-1 e e' S) .* I).  The former Q^-1 e e' (S .* I) differs
-                    # whenever Q is not diagonal.
-                    termMat = (Qinv @ np.outer(el, em) @ ExpectationSumsFinal["Sxkm1xkm1"]) * np.eye(n1_A)
+                    el = np.zeros((n1_A, 1))
+                    el[l, 0] = 1.0
+                    em = np.zeros((n2_A, 1))
+                    em[l, 0] = 1.0
+                    # MATLAB (PointProcessEM.m ~166): Qhat\el*em'*S.*eye
+                    # -- one mldivide, not inv(Qhat).
+                    left = _matlab_mldivide_matrix(Qhat, el)
+                    termMat = (left @ em.T @ ExpectationSumsFinal["Sxkm1xkm1"]) * np.eye(n1_A)
                     IAComp[:, l] = np.diag(termMat)
             else:
                 nA = Ahat.size
                 IAComp = np.zeros((nA, nA))
                 cnt = 0
                 for l in range(n1_A):
-                    el = np.zeros(n1_A)
-                    el[l] = 1.0
+                    el = np.zeros((n1_A, 1))
+                    el[l, 0] = 1.0
                     for m in range(n2_A):
-                        em = np.zeros(n2_A)
-                        em[m] = 1.0
-                        termMat = Qinv @ np.outer(el, em) @ ExpectationSumsFinal["Sxkm1xkm1"]
+                        em = np.zeros((n2_A, 1))
+                        em[m, 0] = 1.0
+                        # MATLAB (PointProcessEM.m ~176): inv(Qhat)*el*em'*S --
+                        # the non-diagonal branch IS a literal inv() call.
+                        termMat = _matlab_inv(Qhat) @ (el @ em.T) @ ExpectationSumsFinal["Sxkm1xkm1"]
                         IAComp[:, cnt] = termMat.ravel()
                         cnt += 1
         else:
             IAComp = np.zeros((0, 0))
 
         # Q information
+        # MATLAB (PointProcessEM.m ~201,213): N/2*((Qhat)\em*el'/(Qhat)) --
+        # one mldivide, one mrdivide per element, not a Qinv sandwich.
         n1_Q, n2_Q = Qhat.shape
-        Qinv = _matlab_inv(Qhat)
         if PPEM_Constraints["QhatDiag"]:
             if PPEM_Constraints["QhatIsotropic"]:
                 IQComp = np.array([[0.5 * N * dx * Qhat[0, 0] ** (-2)]])
@@ -6037,9 +6041,10 @@ class DecodingAlgorithms:
                 IQComp = np.zeros((n1_Q, n1_Q))
                 cnt = 0
                 for l in range(n1_Q):
-                    el = np.zeros(n1_Q)
-                    el[l] = 1.0
-                    termMat = N / 2.0 * Qinv @ np.outer(el, el) @ Qinv
+                    el = np.zeros((n1_Q, 1))
+                    el[l, 0] = 1.0
+                    left = _matlab_mldivide_matrix(Qhat, el) * (N / 2.0)
+                    termMat = _matlab_mrdivide(left @ el.T, Qhat)
                     IQComp[:, cnt] = np.diag(termMat)
                     cnt += 1
         else:
@@ -6047,18 +6052,19 @@ class DecodingAlgorithms:
             IQComp = np.zeros((nQ, nQ))
             cnt = 0
             for l in range(n1_Q):
-                el = np.zeros(n1_Q)
-                el[l] = 1.0
+                el = np.zeros((n1_Q, 1))
+                el[l, 0] = 1.0
                 for m in range(n2_Q):
-                    em = np.zeros(n2_Q)
-                    em[m] = 1.0
-                    termMat = N / 2.0 * Qinv @ np.outer(em, el) @ Qinv
+                    em = np.zeros((n2_Q, 1))
+                    em[m, 0] = 1.0
+                    left = _matlab_mldivide_matrix(Qhat, em) * (N / 2.0)
+                    termMat = _matlab_mrdivide(left @ el.T, Qhat)
                     IQComp[:, cnt] = termMat.ravel()  # row-major, as MATLAB (see the A block)
                     cnt += 1
 
         # Px0 information
+        # MATLAB (PointProcessEM.m 237): 0.5*((Px0hat)\em*el'/(Px0hat)).
         if PPEM_Constraints["EstimatePx0"]:
-            Px0inv = _matlab_inv(Px0hat)
             if PPEM_Constraints["Px0Isotropic"]:
                 ISComp = np.array([[0.5 * dx * Px0hat[0, 0] ** (-2)]])
             else:
@@ -6066,9 +6072,10 @@ class DecodingAlgorithms:
                 ISComp = np.zeros((n1_S, n1_S))
                 cnt = 0
                 for l in range(n1_S):
-                    el = np.zeros(n1_S)
-                    el[l] = 1.0
-                    termMat = 0.5 * Px0inv @ np.outer(el, el) @ Px0inv
+                    el = np.zeros((n1_S, 1))
+                    el[l, 0] = 1.0
+                    left = _matlab_mldivide_matrix(Px0hat, el) * 0.5
+                    termMat = _matlab_mrdivide(left @ el.T, Px0hat)
                     ISComp[:, cnt] = np.diag(termMat)
                     cnt += 1
         else:
