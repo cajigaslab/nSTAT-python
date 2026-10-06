@@ -122,3 +122,35 @@ def test_notebook_fidelity_audit_matches_generator_when_matlab_repo_is_available
         pytest.skip(f"MATLAB reference repo not available at {matlab_repo}")
     committed = AUDIT_PATH.read_text(encoding="utf-8")
     assert committed == render_notebook_fidelity_audit(REPO_ROOT, matlab_repo_root=matlab_repo)
+
+
+def test_matlab_root_lookup_honours_env_and_yaml_path_is_stable(tmp_path, monkeypatch):
+    """Guard for the P2b regression: the audit must find MATLAB through
+    NSTAT_MATLAB_PATH (not only a literal sibling ../nSTAT), while the YAML
+    always records the checkout-stable ``../nSTAT``."""
+    import yaml
+
+    from nstat import notebook_fidelity_audit as nfa
+
+    fake = tmp_path / "matlab_nstat"
+    fake.mkdir()
+    monkeypatch.setenv("NSTAT_MATLAB_PATH", str(fake))
+    assert nfa.default_matlab_repo_root() == fake.resolve()
+    assert nfa._display_matlab_repo_root(fake.resolve()) == "../nSTAT"
+
+    committed = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / "parity" / "notebook_fidelity.yml").read_text())
+    roots = set()
+
+    def walk(node):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                if k == "matlab_repo_root":
+                    roots.add(v)
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(committed)
+    assert roots == {"../nSTAT"}, roots

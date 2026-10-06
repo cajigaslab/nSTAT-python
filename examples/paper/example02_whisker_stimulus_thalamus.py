@@ -273,8 +273,8 @@ def run_example02(*, export_figures: bool = False, export_dir: Path | None = Non
     # Seed the global RNG: Analysis.computeHistLagForAll / KSPlot draw
     # time-rescaling jitter via np.random.random_sample (nstat/fit.py
     # _ksdiscrete) on NumPy's legacy global stream -- unseeded, this made
-    # the history-window selection and fig02 KS/coefficient panels differ
-    # run to run (see RELEASE_NOTES.md / parity ledger).
+    # the fig02 KS-sweep and KS-plot panels differ run to run (the selected
+    # window comes from deterministic AIC/BIC; see RELEASE_NOTES.md / ledger).
     seed = 20261006
     with seeded_global_rng(seed):
         historySweep = Analysis.computeHistLagForAll(
