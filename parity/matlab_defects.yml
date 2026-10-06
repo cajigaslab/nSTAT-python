@@ -1801,12 +1801,14 @@ entries:
   matlab_location: '`PointProcessEM.m` / `PPLFP.m` at `fix/pp-em` @ `aa88a2b`.'
   matlab_behavior: >-
     A non-positive-definite W in `mcStateDraws` errors (partial chol factor); `eye/IObs` on an exactly singular
-    IObs is Inf and the SE pass never returns (see em-se-singular-observed-information-never-returns); an exactly
-    singular Newton Hessian gives NaN (previous value kept).  SEs are computed only when requested.
+    IObs is Inf and the SE pass never returns (see em-se-singular-observed-information-never-returns).  SEs are
+    computed only when requested.  (An exactly singular Newton Hessian is not such a case: MATLAB's H\g returns
+    +-Inf / NaN there, a NaN step keeps the previous value and an infinite one is taken, e.g. -[1 1;1 1]\[1;2] =
+    [-Inf; Inf]; mirrored since em-newton-solve-reciprocal-pivot.)
   correct_behavior: n/a (behaviour where MATLAB fails).
   python_implementation:
-  - 'Kept: `_mc_state_draws` falls back to an eigenvalue floor (PP) / a zero factor (PPLFP) for a non-PD W; the pseudo-inverse for an exactly singular IObs, with NaN SEs for the non-identifiable parameters (em-se-singular-observed-information-never-returns), and `pinv` in PPLFP_EStep''s smoother solves; an exactly singular Newton Hessian keeps the previous value; `MstepMethod` validation; `PP_EM` treats delta = 0 as 1 ms.  None activated on any gold input (measured before `f5738cd`) or em_drivers case (final code, seed 1).'
-  - 'Removed in nstat-python `f5738cd` (they changed results where MATLAB returns one): the +-30 / +-20 clips of the linear predictor, determinant / eigenvalue floors, ridges, the mu Newton guards, least squares for mrdivide, the AICc / BIC guards, the Tq = I fallback, the nearestSPD pass caps and spacing(norm) shift, the 1 - normcdf p-value.'
+  - 'Kept: `_mc_state_draws` falls back to an eigenvalue floor (PP) / a zero factor (PPLFP) for a non-PD W; the pseudo-inverse for an exactly singular IObs, with NaN SEs for the non-identifiable parameters (em-se-singular-observed-information-never-returns), and `pinv` in PPLFP_EStep''s smoother solves; `MstepMethod` validation; `PP_EM` treats delta = 0 as 1 ms.  None activated on any gold input (measured before `f5738cd`) or em_drivers case (final code, seed 1).'
+  - 'Removed in nstat-python `f5738cd` (they changed results where MATLAB returns one): the +-30 / +-20 clips of the linear predictor, determinant / eigenvalue floors, ridges, the mu Newton guards, least squares for mrdivide, the AICc / BIC guards, the Tq = I fallback, the nearestSPD pass caps and spacing(norm) shift, the 1 - normcdf p-value.  Removed with the MATLAB mldivide (em-newton-solve-reciprocal-pivot): the singular-Newton-Hessian guard, which kept the previous value (PPLFP: it took the lstsq step before f5738cd) where MATLAB can take an infinite step.'
   - '`PP_EM` / `PPLFP_EM` always run the SE pass: 4.5 s of 6.2 s (PP_EM, N = 800, C = 4) and 2.4 s of 2.9 s (PPLFP_EM, N = 400) at the default mcIter = 1000.'
   - 'Not changed (a shared helper outside the EM routines; follow-up): `kalman_smootherFromFiltered`, which both E-steps call, uses `pinv(Pe_p)` where MATLAB uses `/Pe_p`; they agree to round-off on every gold input and differ only for a singular Pe_p.'
   fixture_impact: '`em_drivers.mat` pp_sep: the separated coefficient now stops at the exp() underflow as in MATLAB (seed 1: 11 iterations as MATLAB, -741.5 .. -743.5, within 2.4e-3 of MATLAB''s); with the clip it walked to -892, and until the Newton solve divided by its pivots (em-newton-solve-reciprocal-pivot) EM stopped at iteration 8 (-694.5).'

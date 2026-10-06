@@ -92,7 +92,11 @@ does about it, and the known gaps.
   a denormal pivot: on a separated history window near the `exp()` underflow
   that step was -Inf, the next E-step NaN, and `PP_EM` stopped early (on the
   gold case after 8 iterations at about -694.5, where MATLAB runs 11 and
-  reaches -743.5). A singular Hessian keeps the previous value.
+  reaches -743.5). An exactly singular Hessian now gives MATLAB's +-Inf / NaN
+  step (`np.linalg.solve` raised and the port kept the previous value, or took
+  a least-squares step in `PPLFP_MStep`): as in MATLAB, a step with a NaN keeps
+  the previous value and an infinite one is taken (`-[1 1;1 1]\[1;2]` is
+  `[-Inf; Inf]`).
 - Monte Carlo reproducibility: the `PPLFP_*` routines draw from NumPy's global
   stream, as the `PP_*` routines already did, so `np.random.seed(s)` or
   `nstat.extras.matlab_rng.seeded_global_rng(s)` reproduces any EM fit bit for

@@ -2792,8 +2792,9 @@ class PPLFP:
         at most 99 steps on MATLAB's unclipped ``exp(terms)`` (binomial
         ``exp./(1+exp)``), each step is MATLAB's ``H\\g`` (``g/H`` for one
         coefficient, MATLAB's LU dividing by the pivots for several: a denormal
-        pivot gives MATLAB's finite step), and a NaN step (MATLAB's result on
-        a singular Hessian) keeps the previous value.  The ``McExp =
+        pivot gives MATLAB's finite step); as in MATLAB, a step with a NaN
+        keeps the previous value and an infinite one is taken (an exactly
+        singular Hessian gives either).  The ``McExp =
         50`` Monte Carlo draws come from NumPy's global stream (seed with
         ``np.random.seed`` or :func:`nstat.extras.matlab_rng.seeded_global_rng`).
         """

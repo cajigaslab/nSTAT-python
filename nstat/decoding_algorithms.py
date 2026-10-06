@@ -7033,9 +7033,11 @@ class DecodingAlgorithms:
         unclipped ``exp(terms)`` (binomial ``exp./(1+exp)``), each step is
         MATLAB's ``H\\g`` (``g/H`` for one coefficient, MATLAB's LU dividing
         by the pivots for several: a denormal pivot, as on a separated history
-        window near the ``exp()`` underflow, gives MATLAB's finite step) and a
-        NaN step (MATLAB's result on a singular Hessian) keeps the previous
-        value.  The ``McExp = 50`` draws come from NumPy's
+        window near the ``exp()`` underflow, gives MATLAB's finite step); as
+        in MATLAB, a step with a NaN keeps the previous value and an infinite
+        one is taken (an exactly singular Hessian gives either, e.g.
+        ``-[1 1; 1 1]\\[1; 2] = [-Inf; Inf]``).  The ``McExp = 50`` draws come
+        from NumPy's
         global stream (seed with ``np.random.seed`` or
         :func:`nstat.extras.matlab_rng.seeded_global_rng`).
 
