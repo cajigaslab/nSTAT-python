@@ -726,78 +726,97 @@ _NEAREST_SPD_INDEF_EXPECTED = (
     -0.03018563026076329, -0.09226728198265197, 0.22769792847531034, 1.5057451661555874,
 )
 _SE_EXPECTED = {
-    # Re-pinned for track-P1 item 2/3 (nSTAT PR #138 Python mirror): KF's
-    # Monte Carlo draws now go through _mc_state_draws's lower-factor draw
-    # (C1), KF_EM feeds this function the E-step recomputed at the unscaled
-    # parameters / original y (C4) rather than a mixed-scale one, and the
-    # final nearestSPD projection / ztest use DecodingAlgorithms'
+    # Re-pinned for track-P1 item 2/3 (nSTAT PR #138 Python mirror). _call_kf
+    # calls KF_ComputeParamStandardErrors directly (not through KF_EM), so
+    # C3 (whitening) and C4 (KF_EM's post-loop scale-back) cannot affect
+    # these values -- only two things moved them: (1) the Monte Carlo draws
+    # now go through _mc_state_draws's lower-factor draw, whose "eig_floor"
+    # non-PD fallback (eigenvalues floored at 1e-12) replaces the module-level
+    # eps-clamped _nearestSPD the draw loop used to fall back on (C1); and
+    # (2) the final nearestSPD projection / ztest use DecodingAlgorithms'
     # MATLAB-exact staticmethods, not the (now-deleted) module-level pair
     # (item 3). Every KF-A / KF-B value below moves for at least one of
-    # these reasons; captured on this machine (see the module docstring's
+    # these two reasons; captured on this machine (see the module docstring's
     # tolerance policy) rather than individually re-measured over 8
     # perturbation trials per entry -- rtol is set one order of magnitude
     # looser (1e-9 general, 1e-7 for the P block, which amplifies through
     # norm.cdf) than that policy's usual 1e-11/1e-9 to allow for that.
+    # rtol below is the file's own rule (module docstring "Tolerance
+    # policy"): max(1e-12, 10**ceil(log10(100 * s))), s the largest
+    # relative change of that array measured over 8 trials of 1e-15
+    # relative perturbation of every float input (y, xKFinal, WKFinal,
+    # Ahat, Qhat, Chat, Rhat, alphahat, x0hat, Px0hat, ExpectationSumsFinal),
+    # with the Monte Carlo draw stream reseeded identically per trial (same
+    # `_legacy_global_rng(seed)` as the unperturbed baseline). Per-array
+    # measured s: KF-A SE {A: 1.5e-14, Q: 5.7e-14, C: 2.3e-14, R: 6.9e-14,
+    # alpha: 2.3e-14, Px0: 3.9e-14, x0: 4.7e-14}, P {A: 9.8e-13, C: 4.9e-12,
+    # R: 4.5e-13, Q: 4.0e-13, Px0: 2.0e-14, alpha: 1.1e-11, x0: 1.6e-14};
+    # KF-B SE {A: 5.5e-15, Q: 3.0e-13, C: 1.5e-14, R: 7.6e-14, alpha: 2.2e-14,
+    # Px0: 1.4e-14, x0: 4.9e-14}, P {A: 5.3e-13, C: 1.2e-11, R: 1.6e-12,
+    # Q: 5.3e-12, Px0: 2.5e-14, alpha: 4.3e-12, x0: 2.9e-13}.  The P
+    # (p-value) block's s runs higher than SE's because a p-value's
+    # relative error scales roughly as z^2 times the SE's relative error
+    # (ztest's normcdf tail), not because of a looser measurement.
     'KF-A': {
         'SE': {
             'A': ((2, 2), (
                 0.08899308544320866, 0.07801340637580989, 0.10974888938391276, 0.1477877930702541,
-            ), 1e-09),
-            'Q': ((2, 2), (0.02150020204593328, 0.0, 0.0, 0.027414115591824984), 1e-09),
+            ), 1e-11),
+            'Q': ((2, 2), (0.02150020204593328, 0.0, 0.0, 0.027414115591824984), 1e-11),
             'C': ((3, 2), (
                 0.1555499844656874, 0.09396362218931176, 0.07152572280532114, 0.08216735238814354,
                 0.10918047120830283, 0.20201303208315438,
-            ), 1e-09),
+            ), 1e-11),
             'R': ((3, 3), (
                 0.02543828744928292, 0.0, 0.0, 0.0, 0.0468468485375567, 0.0, 0.0, 0.0,
                 0.0454938425637161,
-            ), 1e-09),
-            'alpha': ((3, 1), (0.08546442874725967, 0.06364050013741177, 0.0737854859063715), 1e-09),
-            'Px0': ((2, 2), (0.21249966231560638, 0.0, 0.0, 0.39379735502008983), 1e-09),
-            'x0': ((2,), (0.10652670314753962, 0.1763853559903195), 1e-09),
+            ), 1e-11),
+            'alpha': ((3, 1), (0.08546442874725967, 0.06364050013741177, 0.0737854859063715), 1e-11),
+            'Px0': ((2, 2), (0.21249966231560638, 0.0, 0.0, 0.39379735502008983), 1e-11),
+            'x0': ((2,), (0.10652670314753962, 0.1763853559903195), 1e-11),
         },
         'P': {
             'A': ((2, 2), (
                 4.8307996324746374e-24, 0.19990194917929005, 0.6486880893152623, 8.846036389209988e-09,
-            ), 1e-07),
+            ), 1e-10),
             'C': ((3, 2), (
                 0.8260124961038984, 1.8476727752010672e-47, 1.0032080482463878e-65,
                 5.278873319410689e-10, 0.006349846959665371, 0.00903718073242363,
-            ), 1e-07),
+            ), 1e-09),
             'R': ((3, 3), (
                 0.017275804103679647, 0.0, 0.0, 0.0, 0.13811856221084093, 0.0, 0.0, 0.0,
                 2.3806112783989808e-05,
-            ), 1e-07),
-            'Q': ((2, 2), (0.020042060083587648, 0.0, 0.0, 0.0035205319422837414), 1e-07),
-            'Px0': ((2, 2), (0.6379342764623657, 0.0, 0.0, 0.6115407083888502), 1e-07),
-            'alpha': ((3,), (1.294355260625287e-103, 8.600579604975275e-134, 0.1912378899868058), 1e-07),
-            'x0': ((2,), (0.5230227546442058, 0.938285465931424), 1e-07),
+            ), 1e-10),
+            'Q': ((2, 2), (0.020042060083587648, 0.0, 0.0, 0.0035205319422837414), 1e-10),
+            'Px0': ((2, 2), (0.6379342764623657, 0.0, 0.0, 0.6115407083888502), 1e-11),
+            'alpha': ((3,), (1.294355260625287e-103, 8.600579604975275e-134, 0.1912378899868058), 1e-08),
+            'x0': ((2,), (0.5230227546442058, 0.938285465931424), 1e-11),
         },
     },
     'KF-B': {
         'SE': {
-            'A': ((2, 2), (0.09361494152284552, 0.0, 0.0, 0.09719432377245125), 1e-09),
-            'Q': ((1, 1), (0.012258440866568993,), 1e-09),
+            'A': ((2, 2), (0.09361494152284552, 0.0, 0.0, 0.09719432377245125), 1e-12),
+            'Q': ((1, 1), (0.012258440866568993,), 1e-10),
             'C': ((3, 2), (
                 0.22090307631465111, 0.18863571052875683, 0.08756455615287859, 0.06312799665019136,
                 0.2826004679278757, 0.1898587997466106,
-            ), 1e-09),
-            'R': ((1, 1), (0.02556283319725055,), 1e-09),
-            'alpha': ((3, 1), (0.054874207233153345, 0.040998581107697676, 0.07651703806329241), 1e-09),
-            'Px0': ((1, 1), (0.17544291154596514,), 1e-09),
-            'x0': ((2,), (0.05867266109747898, 0.10295911705609428), 1e-09),
+            ), 1e-11),
+            'R': ((1, 1), (0.02556283319725055,), 1e-11),
+            'alpha': ((3, 1), (0.054874207233153345, 0.040998581107697676, 0.07651703806329241), 1e-11),
+            'Px0': ((1, 1), (0.17544291154596514,), 1e-11),
+            'x0': ((2,), (0.05867266109747898, 0.10295911705609428), 1e-11),
         },
         'P': {
-            'A': ((2, 2), (6.988593155321921e-22, 0.0, 0.0, 2.222925716340798e-18), 1e-07),
+            'A': ((2, 2), (6.988593155321921e-22, 0.0, 0.0, 2.222925716340798e-18), 1e-10),
             'C': ((3, 2), (
                 0.10434990693128736, 1.161749258182024e-15, 1.6665841258216533e-92,
                 2.9584197382022134e-157, 0.867027780029799, 2.5139354239238357e-05,
-            ), 1e-07),
-            'R': ((1, 1), (8.976617675698761e-06,), 1e-07),
-            'Q': ((1, 1), (4.526444914952438e-05,), 1e-07),
-            'Px0': ((1, 1), (0.25429798260324865,), 1e-07),
-            'alpha': ((3,), (3.7424289526141666e-52, 4.750444319120257e-46, 7.319890155379729e-17), 1e-07),
-            'x0': ((2,), (0.0038698214149569914, 0.12705679908937245), 1e-07),
+            ), 1e-08),
+            'R': ((1, 1), (8.976617675698761e-06,), 1e-09),
+            'Q': ((1, 1), (4.526444914952438e-05,), 1e-09),
+            'Px0': ((1, 1), (0.25429798260324865,), 1e-11),
+            'alpha': ((3,), (3.7424289526141666e-52, 4.750444319120257e-46, 7.319890155379729e-17), 1e-09),
+            'x0': ((2,), (0.0038698214149569914, 0.12705679908937245), 1e-10),
         },
     },
     'PP-A': {
