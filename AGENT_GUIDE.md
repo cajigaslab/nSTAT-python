@@ -941,7 +941,10 @@ cons = DecodingAlgorithms.PP_EMCreateConstraints(mcIter=50)  # defaults, fewer S
   complete-data log-likelihood (50 state draws, at most 99 steps per
   parameter group).  `'GLM'` (a regression of the spikes on the smoothed
   *means*, ignoring their covariance) inflates beta and drifts; it is kept
-  for explicit use.  Any other value raises `ValueError`.
+  for explicit use, and emits a `GLMPlugInWarning` once per `PP_EM` /
+  `PPLFP_EM` call (mirrors MATLAB's `nSTAT:EM:glmPlugIn`, nSTAT PR #138) --
+  a direct `PP_MStep`/`PPLFP_MStep` call with `MstepMethod='GLM'` also
+  warns once.  Any other value raises `ValueError`.
 - `x0 = 0`, `Px0 = 1e-9 I`.  With `gamma` given and `windowTimes` omitted
   there is one history window per coefficient,
   `windowTimes = 0:delta:size(gamma,1)*delta`; a nonzero shared
@@ -997,8 +1000,13 @@ cons = DecodingAlgorithms.PP_EMCreateConstraints(mcIter=50)  # defaults, fewer S
   conjugate-gradient fit by ~1e-4 and is not a mirror on rank-deficient
   designs.
 - SE.x0 / SE.Px0 have no analytic check on either side.  The `KF_EM` family
-  was not part of this repair (its MATLAB draws and whitening use the upper
-  Cholesky factor; see `parity/matlab_defects.yml`).
+  mirrors this same repair (nSTAT PR #138, merged upstream): its Monte Carlo
+  draws, whitening and SE/IC scale consistency, R's own IC parameter-count
+  flags, and the singular-observed-information hang are fixed the same way
+  as PP/PPLFP's; see `parity/matlab_defects.yml` and
+  `tests/test_kf_em_matlab_pr138_mirror.py`.  Unlike PP_EM/PPLFP_EM, `KF_EM`'s
+  E-step and M-step are both closed-form, so its stopping iteration is
+  deterministic for a fixed problem (not random run to run).
 
 ## 6. Data flow patterns
 

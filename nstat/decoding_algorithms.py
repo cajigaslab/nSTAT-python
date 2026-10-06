@@ -4571,6 +4571,20 @@ class DecodingAlgorithms:
         dict
             Constraint dictionary consumed by :meth:`KF_EM`,
             :meth:`KF_MStep`, and :meth:`KF_ComputeParamStandardErrors`.
+
+        Notes
+        -----
+        (Track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96.)
+        ``QhatDiag=1`` / ``RhatDiag=1`` impose diagonal structure on
+        ``Qhat`` / ``Rhat`` in the frame ``KF_EM`` internally whitens by the
+        STARTING covariances ``Q0`` / ``R0`` (``Tq = inv(chol(Q0,
+        'lower'))``, ``Tr = inv(chol(R0, 'lower'))``; see the C3/G1 fix in
+        ``<SCRATCH>/b2/track-M-report.md``), not in the caller's own state /
+        observation coordinates.  For a diagonal ``Q0`` / ``R0`` the two
+        frames coincide, so this is invisible.  For a non-diagonal ``Q0`` /
+        ``R0``, "``Qhat``/``Rhat`` is diagonal" means ``Tq @ Qhat @ Tq.T`` /
+        ``Tr @ Rhat @ Tr.T`` is diagonal; the returned ``Qhat`` / ``Rhat``
+        (mapped back to the caller's coordinates) generally is not.
         """
         C = {}
         C["EstimateA"] = int(EstimateA)
@@ -5194,6 +5208,17 @@ class DecodingAlgorithms:
         SE : dict of standard errors (or empty dict if not computed)
         Pvals : dict of p-values (or empty dict if not computed)
         nIter : int — number of EM iterations
+
+        Notes
+        -----
+        (Track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96 /
+        dd7c7d5.)  EM stops at the FIRST decrease of the log-likelihood, not
+        at convergence; see :meth:`PP_EM`'s identical note for the general
+        rule.  Unlike PP_EM / PPLFP_EM (whose Monte Carlo M-step makes the
+        stopping iteration random run to run), ``KF_EM``'s E-step and
+        M-step are both closed-form and deterministic, so its stopping
+        iteration is NOT random for a fixed problem -- though it still
+        depends on the starting parameters ``Ahat0``/``Qhat0``/.../``Px0``.
         """
         Ahat0 = np.asarray(Ahat0, dtype=float)
         Qhat0 = np.asarray(Qhat0, dtype=float)
@@ -5941,6 +5966,17 @@ class DecodingAlgorithms:
         -------
         dict
             Constraints dictionary with all fields.
+
+        Notes
+        -----
+        (Track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96.)
+        ``QhatDiag=1`` imposes diagonal structure on ``Qhat`` in the frame
+        ``PP_EM`` internally whitens by the STARTING covariance ``Q0``
+        (``Tq = inv(chol(Q0, 'lower'))``; see G1), not in the caller's own
+        state coordinates.  For a diagonal ``Q0`` the two frames coincide,
+        so this is invisible.  For a non-diagonal ``Q0``, "``Qhat`` is
+        diagonal" means ``Tq @ Qhat @ Tq.T`` is diagonal; the returned
+        ``Qhat`` (mapped back to the caller's coordinates) generally is not.
         """
         C = {}
         C["EstimateA"] = int(EstimateA)
@@ -6609,6 +6645,20 @@ class DecodingAlgorithms:
         4.5 s of 6.2 s for N = 800 bins, C = 4 cells, 3 history windows
         (0.5 s of 2.1 s at ``mcIter = 100``); pass a smaller ``mcIter`` in
         ``PPEM_Constraints`` to reduce it.
+
+        Note (track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96):
+        EM stops at the FIRST decrease of the log-likelihood
+        (``dLikelihood < 0``), not at convergence.  Under the Newton-Raphson
+        M-step's Monte Carlo expectation, successive iterations'
+        log-likelihoods are themselves noisy, so the iteration at which that
+        first decrease happens -- and hence ``nIter``, and which iterate
+        ``xKFinal``/``Ahat``/.../``IC`` come from -- is random (the same
+        problem, run repeatedly, was observed to stop anywhere from
+        iteration 6 to 11 on one problem).  This is a property of the
+        stopping rule, not a bug; a smaller ``mcIter`` increases the noise
+        and the variability.  :meth:`KF_EM`'s closed-form E/M steps make its
+        stopping iteration deterministic for a fixed problem, though it
+        still depends on the starting parameters; see its docstring.
 
         Parameters
         ----------

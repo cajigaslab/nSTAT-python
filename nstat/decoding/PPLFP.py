@@ -875,6 +875,20 @@ class PPLFP:
             ``RhatDiag``, ``RhatIsotropic``, ``Estimatex0``,
             ``EstimatePx0``, ``Px0Isotropic``, ``mcIter``,
             ``EnableIkeda``.
+
+        Notes
+        -----
+        (Track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96.)
+        ``QhatDiag=1`` / ``RhatDiag=1`` impose diagonal structure on
+        ``Qhat`` / ``Rhat`` in the frame ``PPLFP_EM`` internally whitens by
+        the STARTING covariances ``Q0`` / ``R0`` (``Tq = inv(chol(Q0,
+        'lower'))``, ``Tr = inv(chol(R0, 'lower'))``; see G1), not in the
+        caller's own state / observation coordinates.  For a diagonal
+        ``Q0`` / ``R0`` the two frames coincide, so this is invisible.  For
+        a non-diagonal ``Q0`` / ``R0``, "``Qhat``/``Rhat`` is diagonal"
+        means ``Tq @ Qhat @ Tq.T`` / ``Tr @ Rhat @ Tr.T`` is diagonal; the
+        returned ``Qhat`` / ``Rhat`` (mapped back to the caller's
+        coordinates) generally is not.
         """
         C: dict = {}
         C["EstimateA"] = EstimateA
@@ -1860,6 +1874,12 @@ class PPLFP:
           (``delta`` sets the GLM M-step's time base, MATLAB R4c).
         - The MATLAB convergence test uses elementwise sqrt(Q)/sqrt(R)
           which assumes the scaled (whitened) system; we preserve that.
+        - (Track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96.)
+          EM stops at the FIRST decrease of the log-likelihood, not at
+          convergence; see ``PP_EM``'s identical note for why this makes
+          the stopping iteration (and hence ``nIter`` and which iterate the
+          outputs come from) random under the NewtonRaphson M-step's Monte
+          Carlo expectation.
         """
         # ---- Defaults (mirror MATLAB ``nargin<...`` cascade) ----------
         Ahat0 = np.asarray(Ahat0, dtype=float)
