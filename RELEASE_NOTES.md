@@ -335,6 +335,15 @@ does (entry `em-kf-family-not-repaired`, status updated to `adopted-upstream`).
 - `IC`'s parameter count for `R` tested `QhatDiag`/`QhatIsotropic` instead of
   `RhatDiag`/`RhatIsotropic`, so `IC.nTerms`/`AIC`/`AICc`/`BIC` were wrong
   whenever they differed from the defaults.
+- Operator precedence (H1): MATLAB's `KF_EM.m` computed its `Q`/`R`/`Px0`
+  information blocks as `N/2*(Rhat)\em(:,m)*el(:,l)'/(Rhat)`, which MATLAB
+  parses as `((N/2)*Rhat)^-1 * em*el' / Rhat`, not the intended
+  `(N/2) * Rhat^-1 * em*el' * Rhat^-1` -- the same defect class H1 already
+  fixed for `PP_*`/`PPLFP_*` (nSTAT PR #135). **No Python change needed
+  here**: the Python port never had this defect, because its five
+  information-block sites were always written as explicit nested function
+  calls (`(N / 2.0) * np.linalg.solve(Rhat, ...) @ np.linalg.inv(Rhat)`),
+  which has no MATLAB-operator-chain ambiguity to get wrong.
 - `KF_ComputeParamStandardErrors`'s SE pass hung forever on an exactly
   singular observed information matrix (as in nSTAT PR #137 / #136, fixed for
   `PP_*`/`PPLFP_*` already): it now returns the pseudo-inverse, with every
@@ -346,12 +355,9 @@ does (entry `em-kf-family-not-repaired`, status updated to `adopted-upstream`).
   MATLAB-exact `nearestSPD`/`ztest` staticmethods `PP_*`/`PPLFP_*` already do
   (p = 0 for an SE of 0, not 1).
 
-*Not changed* (the operator-precedence defect, H1, is confirmed NOT present in
-the Python port: its five information-block sites already compute
-`(N/2) * solve(...) @ inv(...)` through explicit function calls, so there is
-nothing to mirror there). MATLAB's own C0 (the `KF_EM` entry point was
-unreachable, a `Static`-method-name collision fixed by the same MATLAB PR) has
-no Python analog: `DecodingAlgorithms.KF_EM` already ran end to end.
+MATLAB's own C0 (the `KF_EM` entry point was unreachable, a
+`Static`-method-name collision fixed by the same MATLAB PR) has no Python
+analog: `DecodingAlgorithms.KF_EM` already ran end to end.
 
 **GLM plug-in M-step now warns (user decision; mirrors nSTAT PR #138)**
 

@@ -1703,29 +1703,38 @@ entries:
   upstream_status: fixed-upstream-pending-merge
   resolved_in: nSTAT PR #137 (fix/se-singular-iobs @ c123ddf, issue #136); nstat-python fix/se-singular-projection
 - id: em-kf-family-not-repaired
-  title: 'KF_EM''s upper-factor Monte Carlo draws, upper-factor whitening, SE/IC scale mismatch, R''s IC parameter count, and the singular-information hang'
+  title: 'KF_EM''s upper-factor Monte Carlo draws, upper-factor whitening, operator-precedence information blocks, SE/IC scale mismatch, R''s IC parameter count, and the singular-information hang'
   defect_class: Bug (upstream MATLAB, fixed)
-  matlab_location: '`+nstat/+decoding/KF_EM.m` at `fix/kf-em` @ `cb4edd2` (nSTAT PR #138, merged to `cajigaslab/nSTAT@master` `d2a8c85`): draws (pre-fix `:732, 739`, `chol_m*z`), whitening (pre-fix `:136-137, 315-316`, `inv(chol(Q0))`), the post-loop scale-back (SE/IC scale mismatch), the IC `R` parameter-count branch (pre-fix tested `QhatDiag`), and the SE pass''s `eye(n)/IObs` + `nearestSPD` (singular-information hang).'
+  matlab_location: '`+nstat/+decoding/KF_EM.m` at `fix/kf-em` @ `cb4edd2` (nSTAT PR #138, merged to `cajigaslab/nSTAT@master` `d2a8c85`): draws (pre-fix `:732, 739`, `chol_m*z`), whitening (pre-fix `:136-137, 315-316`, `inv(chol(Q0))`), the information-block precedence (pre-fix `N/2*(Rhat)\em(:,m)*el(:,l)''/(Rhat)` at 5 sites, fixed by `5b942b3`), the post-loop scale-back (SE/IC scale mismatch), the IC `R` parameter-count branch (pre-fix tested `QhatDiag`), and the SE pass''s `eye(n)/IObs` + `nearestSPD` (singular-information hang).'
   matlab_behavior: >-
-    The same defect classes F9 (draws), G1 (whitening) and #136 (singular observed information) already fixed for
-    the point-process EM routines (nSTAT PR #135/#137), plus a KF-specific defect class: after the post-loop
-    un-scale, `xKFinal`/`WKFinal`/`ll`/`ExpectationSumsFinal` were left on the internal whitened-system scale
-    while `Ahat`/`Qhat`/.../`Px0hat` were mapped to the original scale and `y` was never restored, so the SE call
-    and the `IC` formula mixed scales (the same defect class as PP_EM/PPLFP_EM's pre-F8/F10 SE and IC bugs); and
-    `IC`'s `R` parameter-count branch tested `QhatDiag`/`QhatIsotropic` instead of `RhatDiag`/`RhatIsotropic` (F11
-    class).  The operator-precedence defect (H1) that affects PP/PPLFP's information blocks was investigated for
-    KF_EM too and found NOT present there (the five information-block sites already compute `(N/2) Q^-1 e e' Q^-1`
-    through parenthesised MATLAB source, confirmed by direct inspection at the repair commit).
-  correct_behavior: 'As F9 / G1 / F11 / #136 (lower factor; E-step recomputed at the unscaled parameters and the
-    original `y`; R''s own IC flags; pseudo-inverse with non-identifiable parameters flagged NaN instead of hanging).'
+    The same defect classes F9 (draws), G1 (whitening), H1 (operator precedence) and #136 (singular observed
+    information) already fixed for the point-process EM routines (nSTAT PR #135/#137), plus a KF-specific defect
+    class: after the post-loop un-scale, `xKFinal`/`WKFinal`/`ll`/`ExpectationSumsFinal` were left on the internal
+    whitened-system scale while `Ahat`/`Qhat`/.../`Px0hat` were mapped to the original scale and `y` was never
+    restored, so the SE call and the `IC` formula mixed scales (the same defect class as PP_EM/PPLFP_EM's
+    pre-F8/F10 SE and IC bugs); and `IC`'s `R` parameter-count branch tested `QhatDiag`/`QhatIsotropic` instead of
+    `RhatDiag`/`RhatIsotropic` (F11 class).  H1 WAS present in pre-fix MATLAB `KF_EM.m`: `N/2*(Rhat)\em(:,m)*el(:,l)'/(Rhat)`
+    (and the four analogous `Qhat`/`Px0hat` sites) parses as `((N/2)*Rhat)^-1 * em*el' / Rhat`, not the intended
+    `(N/2) * Rhat^-1 * em*el' * Rhat^-1`; confirmed via `git -C /Users/iahncajigas/projects/nstat diff 08eb128 d2a8c85
+    -- +nstat/+decoding/KF_EM.m`, which shows the pre-fix unparenthesised form at all 5 sites and #138's
+    `5b942b3` adding the parentheses.
+  correct_behavior: 'As F9 / G1 / H1 / F11 / #136 (lower factor; parenthesised information blocks; E-step
+    recomputed at the unscaled parameters and the original `y`; R''s own IC flags; pseudo-inverse with
+    non-identifiable parameters flagged NaN instead of hanging).'
   python_implementation:
-  - '`DecodingAlgorithms.KF_EM` / `KF_ComputeParamStandardErrors` mirror every one of the five fixes above: Monte
-    Carlo draws through the shared `_mc_state_draws` helper (lower factor, as `PP_*`/`PPLFP_*`); whitening with the
-    lower Cholesky factor at both the scale-in and scale-back; the E-step recomputed once at the unscaled
-    parameters and `yOrig` after un-scaling, so `IC.llcomp` is self-consistent with the returned estimates; `IC`''s
-    `R` parameter count now tests `RhatDiag`/`RhatIsotropic`; and the SE pass''s observed-information inverse goes
-    through `_em_singular_information_inverse` / `_em_project_covariance` (as `PP_ComputeParamStandardErrors`), so
-    it returns instead of hanging on an exactly singular matrix.'
+  - '`DecodingAlgorithms.KF_EM` / `KF_ComputeParamStandardErrors` mirror four of the five MATLAB fixes above (H1
+    needed no Python change -- see below): Monte Carlo draws through the shared `_mc_state_draws` helper (lower
+    factor, as `PP_*`/`PPLFP_*`); whitening with the lower Cholesky factor at both the scale-in and scale-back;
+    the E-step recomputed once at the unscaled parameters and `yOrig` after un-scaling, so `IC.llcomp` is
+    self-consistent with the returned estimates; `IC`''s `R` parameter count now tests `RhatDiag`/`RhatIsotropic`;
+    and the SE pass''s observed-information inverse goes through `_em_singular_information_inverse` /
+    `_em_project_covariance` (as `PP_ComputeParamStandardErrors`), so it returns instead of hanging on an exactly
+    singular matrix.'
+  - 'H1 required no Python fix: the Python port never had the MATLAB operator-precedence defect in the first
+    place, because the five information-block sites were always written as explicit nested function calls
+    (`(N / 2.0) * np.linalg.solve(Rhat, ...) @ np.linalg.inv(Rhat)`), not MATLAB''s ambiguous `\`/`/` operator
+    chain -- there is no Python operator-precedence equivalent of MATLAB''s `N/2*(R)\X/(R)` to get wrong. Verified
+    by direct inspection of `KF_ComputeParamStandardErrors`''s `IRComp`/`IQComp`/`ISComp` blocks (`decoding_algorithms.py`).'
   - 'SE/p-value conventions aligned too (track-P1 item 3): `KF_ComputeParamStandardErrors` now uses the same
     MATLAB-exact `DecodingAlgorithms._nearestSPD` (`_matlab_nearest_spd`) / `._ztest_pvalue` (`_matlab_ztest_p`)
     staticmethods `PP_*`/`PPLFP_*` already used, not the former module-level pair (a Higham `nearestSPD` with
