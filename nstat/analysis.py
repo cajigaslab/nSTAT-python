@@ -657,15 +657,20 @@ class Analysis:
         ``statremovenan``; see the binomial note below.
 
         The binomial ``'BNLRCG'`` fit is NOT a MATLAB mirror on a
-        rank-deficient design: neither MATLAB's ``bnlrCG`` nor this fit has
-        rank handling, but MATLAB's standard errors there come out complex
-        (an eigenvalue-clipped inverse) while these come from the singular
-        ``inv(X'WX)`` with negative variances clipped to 0, so different (and
-        larger, up to ~2.8e3 in the EM GLM M-step) coefficients pass the
-        M-step's ``se < 100`` filter.  On full-rank designs the binomial fit
-        reaches the MLE, which MATLAB's truncated ``bnlrCG`` approaches
-        (about 1e-4 apart on the EM GLM M-step gold).  See
-        ``parity/matlab_defects.yml`` (``em-binomial-glm-bnlrcg``).
+        rank-deficient design, and deliberately so: MATLAB's ``bnlrCG`` has
+        no rank handling at all, and its standard errors there come out
+        complex (an eigenvalue-clipped inverse) -- itself a MATLAB defect,
+        not something to reproduce.  Rather than leave the previous
+        Python-only behavior (SEs from the singular ``inv(X'WX)`` with
+        negative variances clipped to 0, letting different -- and larger,
+        up to ~2.8e3 in the EM GLM M-step -- coefficients pass the M-step's
+        ``se < 100`` filter), a rank-deficient binomial design now gets the
+        SAME column-pivoted-QR handling as the poisson path above:
+        dependent columns get ``b = 0``, ``se = 0``.  On full-rank designs
+        the binomial fit reaches the MLE, which MATLAB's truncated
+        ``bnlrCG`` approaches (about 1e-4 apart on the EM GLM M-step gold).
+        See ``parity/matlab_defects.yml`` (``em-binomial-glm-bnlrcg``,
+        ``binomial-rank-deficiency-improvement``).
         """
         algorithm = str(Algorithm or "GLM").upper()
         if algorithm not in {"GLM", "BNLRCG"}:
@@ -724,20 +729,39 @@ class Analysis:
         # MATLAB mirror on this axis either (see em-binomial-glm-bnlrcg).
         nan_rows = np.isnan(X).any(axis=1) | np.isnan(y)
         if algorithm == "BNLRCG":
+            # Rank handling on a rank-deficient design: NOT a MATLAB mirror
+            # (MATLAB's bnlrCG has no rank handling at all, and its complex
+            # eigenvalue-clipped SEs there are themselves defective -- see
+            # em-binomial-glm-bnlrcg).  Rather than reproduce that defect or
+            # leave the Python-only singular-inverse clip (which let
+            # arbitrary, up to ~2.8e3, coefficients pass a se < 100 filter;
+            # see glmfit-rank-handling-notes), a rank-deficient design here
+            # applies the SAME column-pivoted-QR handling as the poisson
+            # branch below: dependent columns get b = 0, se = 0.  This is a
+            # deliberate Python improvement over defective MATLAB, recorded
+            # in parity/matlab_defects.yml (binomial-rank-deficiency-improvement).
             valid_idx = np.ones(X.shape[0], dtype=bool)
-            glm_res = fit_binomial_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
-            lambda_delta = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
+            kept = _glmfit_independent_columns(X) if l2 == 0.0 else None
+            if kept is None:
+                glm_res = fit_binomial_glm(X, y, include_intercept=False, l2=l2, max_iter=max_iter)
+                lambda_delta = np.clip(glm_res.predict_probability(X), 1e-12, 1.0 - 1e-9)
+                b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
+            else:
+                glm_res = fit_binomial_glm(X[:, kept], y, include_intercept=False, l2=l2, max_iter=max_iter)
+                lambda_delta = np.clip(glm_res.predict_probability(X[:, kept]), 1e-12, 1.0 - 1e-9)
+                b = np.zeros(X.shape[1], dtype=float)
+                b[kept] = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
             rate_hz = lambda_delta * sample_rate
             distribution = "binomial"
-            b = np.asarray(glm_res.coefficients, dtype=float).reshape(-1)
             dev = _glm_deviance(y, lambda_delta, distribution)
         else:
             # MATLAB GLMFit calls glmfit(X, y, 'poisson', 'constant', 'off'),
             # which drops the dependent columns of a rank-deficient design
             # (pivoted QR) and reports b = 0, se = 0 for them.  Only that case
             # takes the branch below; a full-rank design runs the unchanged
-            # solver.  (The BNLRCG branch above has no rank handling and is
-            # not a MATLAB mirror on rank-deficient designs; see the Notes.)
+            # solver.  (The BNLRCG branch above applies the same rank
+            # handling as a deliberate Python improvement, not a MATLAB
+            # mirror -- see its comment and the Notes.)
             # Unpenalized fits only (MATLAB glmfit has no ridge); with l2 > 0
             # X'WX + l2 I is invertible and the ridge solution is kept.
             valid_idx = ~nan_rows
@@ -811,7 +835,7 @@ class Analysis:
         # Rows dropped by glmfit's statremovenan (valid_idx) are excluded
         # here too: lambda_delta there is NaN (it was evaluated over the
         # full X), which would otherwise poison X'WX.
-        X_se_cols = X if distribution == "binomial" or kept is None else X[:, kept]
+        X_se_cols = X if kept is None else X[:, kept]
         X_se = X_se_cols[valid_idx]
         lambda_delta_valid = lambda_delta[valid_idx]
         try:

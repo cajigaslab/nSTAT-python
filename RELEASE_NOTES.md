@@ -48,6 +48,13 @@
   (`'BNLRCG'`) path is unchanged. Affects `Analysis.GLMFit`,
   `Analysis.RunAnalysisForNeuron`/`RunAnalysisForAllNeurons`, and the EM GLM
   M-step (`PP_MStep`/`PPLFP_MStep`) on any design with a NaN sample.
+- Improvement (deliberate, not a MATLAB mirror): `Analysis.GLMFit`'s binomial
+  (`'BNLRCG'`) path now applies the same column-pivoted-QR rank handling as
+  the poisson path on a rank-deficient design (dependent columns get
+  `b = 0`, `se = 0`), instead of the previous Python-only singular-inverse
+  SE clip. MATLAB's own `bnlrCG` has no rank handling and returns complex
+  (defective) standard errors there, so this is not something to mirror;
+  see `parity/matlab_defects.yml` (`binomial-rank-deficiency-improvement`).
 
 **Point-process EM (`PP_EM`, `PPLFP_EM`, `mPPCO_*`) and the linear decoders
 mirror the repaired MATLAB**

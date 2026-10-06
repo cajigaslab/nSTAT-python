@@ -1105,10 +1105,25 @@ Schema for each entry:
 - **Defect class:** Stability (partial mirror)
 - **MATLAB behavior:** bnlrCG is a truncated conjugate-gradient logistic fit that stops short of the MLE (em_glm_mstep binomial cases: <= 1.8e-4 from Python's IRLS MLE).  It has no rank handling: on a rank-deficient design its eig-clipped inverse gives complex SEs, and the M-step's `se < 100` compares real parts, so it accepts some garbage beta rows (O(1-10)) and keeps others.
 - **Correct behavior:** Rank handling as glmfit's (pivoted QR) for the binomial fit too.
-- **Python implementation:** `Analysis.GLMFit` mirrors glmfit's rank handling for the poisson fit only (nstat-python `948b0ce`, `d535937`; unpenalized fits, `l2 == 0`).  The binomial (`BNLRCG`) path is NOT a mirror on rank-deficient designs: Python's SEs come from a singular `inv(X'WX)` clipped by the Python-only `se = sqrt(max(diag(inv(X'WX)), 0))`, so different -- and larger, up to ~2.8e3 -- beta rows pass `se < 100`.  That clip is the follow-up target; MATLAB's complex SEs are an upstream defect.  The single-cell case matches MATLAB (mu within 2.1e-5).
-- **Fixture impact:** `em_glm_mstep.mat` binomial cases compared at atol 1e-3 (truncation); no rank-deficient binomial gold.
+- **Python implementation:** `Analysis.GLMFit` mirrors glmfit's rank handling for the poisson fit (nstat-python `948b0ce`, `d535937`; unpenalized fits, `l2 == 0`).  Follow-up resolved (P2a): the binomial (`BNLRCG`) path now applies the SAME rank handling instead of leaving the singular-`inv(X'WX)` clip; see `binomial-rank-deficiency-improvement` below -- a deliberate Python improvement, NOT a mirror of MATLAB's own-defective complex-SE `bnlrCG`.  The single-cell case matches MATLAB (mu within 2.1e-5).
+- **Fixture impact:** `em_glm_mstep.mat` binomial cases compared at atol 1e-3 (truncation); no rank-deficient binomial gold, so this fix is covered only by `tests/test_glmfit_rank_deficiency.py`, not a `.mat` fixture.
 - **Discovered:** P2b-1 / 2026-10
 - **Upstream status:** not-fixed-upstream
+
+---
+
+### Stability (Python improvement; MATLAB upstream-defective here): `Analysis.GLMFit`'s binomial ('BNLRCG') path now applies the same rank handling as the poisson path on a rank-deficient design (Python improvement, not a MATLAB mirror)
+
+- **MATLAB location:** MATLAB's `bnlrCG` (not read for this entry; already documented as defective by `em-binomial-glm-bnlrcg`: no rank handling, complex eigenvalue-clipped SEs on a rank-deficient design).
+- **Defect class:** Stability (Python improvement; MATLAB upstream-defective here)
+- **MATLAB behavior:** bnlrCG has no rank handling; on a rank-deficient design it returns complex standard errors from an eigenvalue-clipped inverse (an upstream MATLAB defect, not something to reproduce).
+- **Correct behavior:** Not a MATLAB-mirror decision (MATLAB is defective here): apply the same rank handling as the poisson branch -- dependent columns get coefficient 0 and standard error 0 -- rather than mirror MATLAB''s defective complex SEs or leave the prior Python-only singular-inverse clip.
+- **Python implementation:**
+  - The binomial branch of `Analysis.GLMFit` (`nstat/analysis.py`) now calls `_glmfit_independent_columns` (the same column-pivoted-QR rank check the poisson path uses) when `l2 == 0.0`; on a rank-deficient design it fits `fit_binomial_glm` on only the independent columns and sets the dependent columns' `b = 0`, with `se = 0` from the shared standard-error block (which now reads `kept` regardless of distribution, not only for poisson).  Before this fix, `X_se_cols` for standard errors was selected by `distribution == "binomial" or kept is None`, which for binomial always used the full (not rank-reduced) `X`; that condition is now just `kept is None`.  Previously the binomial fit on a rank-deficient design used the Python-only `se = sqrt(max(diag(inv(X'WX)), 0))` clip of a singular matrix, letting different -- and potentially much larger -- coefficients pass a `se < 100` filter (e.g. the EM GLM M-step's coefficient-freeze logic).
+  - New test `test_bnlrcg_drops_dependent_columns_with_zero_coefficient_and_se` (`tests/test_glmfit_rank_deficiency.py`) mirrors the existing poisson rank-deficiency test for BNLRCG: a duplicated (rank 3 of 4) design drops exactly one column (`b = 0`, `se = 0`), and the kept columns' linear predictor matches the full-rank fit without the duplicate; it fails on the pre-fix code (0 columns dropped).
+- **Fixture impact:** none (no gold fixture has a rank-deficient binomial design; `em_glm_mstep.mat`'s binomial cases and `numerical_drift.py --fail-on-drift` (96/96) unaffected)
+- **Discovered:** P2a / 2026-10
+- **Upstream status:** n/a (deliberate Python improvement over a defective MATLAB path)
 
 ---
 

@@ -10,8 +10,11 @@ coefficients passed the EM GLM M-step's ``se < 100`` filter (MATLAB's own F3
 test construction: beta [33.0, -620.7] instead of [10.66, 0]; see
 ``tests/test_em_glm_mstep_matlab_gold.py``).  A full-rank design keeps the
 unchanged solver, bit for bit, and so does a ridge fit (``l2 > 0``, Python-only:
-MATLAB's glmfit is unpenalized).  (The binomial ``'BNLRCG'`` fit mirrors MATLAB's
-``bnlrCG``, which has no rank handling, and is unchanged.)
+MATLAB's glmfit is unpenalized).  The binomial ``'BNLRCG'`` fit now applies the
+SAME rank handling as a deliberate Python improvement (MATLAB's ``bnlrCG`` has
+no rank handling at all, and its own SEs there are defective -- see
+``parity/matlab_defects.yml``: ``em-binomial-glm-bnlrcg``,
+``binomial-rank-deficiency-improvement``).
 """
 from __future__ import annotations
 
@@ -21,7 +24,7 @@ import numpy as np
 import pytest
 
 from nstat.analysis import Analysis, _glmfit_independent_columns
-from nstat.glm import fit_poisson_glm
+from nstat.glm import fit_binomial_glm, fit_poisson_glm
 
 
 def _trial(x, dN, delta=0.001):
@@ -42,12 +45,12 @@ def _trial(x, dN, delta=0.001):
     return trial, ConfigCollection([cfg])
 
 
-def _fit(x, dN, **kwargs):
+def _fit(x, dN, algorithm="GLM", **kwargs):
     trial, configs = _trial(x, dN)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         configs.setConfig(trial, 0)
-        return Analysis.GLMFit(trial, 0, 0, "GLM", **kwargs), np.asarray(trial.getDesignMatrix(0), dtype=float)
+        return Analysis.GLMFit(trial, 0, 0, algorithm, **kwargs), np.asarray(trial.getDesignMatrix(0), dtype=float)
 
 
 def _data(K=1500, seed=3):
@@ -81,6 +84,25 @@ def test_glmfit_drops_dependent_columns_with_zero_coefficient_and_se() -> None:
     # full-rank fit without the duplicate.
     np.testing.assert_allclose(X_dup @ b, X_full @ np.asarray(full.b, dtype=float), rtol=1e-9, atol=1e-12)
     assert np.all(se[np.flatnonzero(b != 0.0)] > 0)
+
+
+def test_bnlrcg_drops_dependent_columns_with_zero_coefficient_and_se() -> None:
+    # Deliberate Python improvement, not a MATLAB mirror (MATLAB's bnlrCG has
+    # no rank handling at all): BNLRCG on a rank-deficient design now gets
+    # the same column-pivoted-QR treatment as the poisson 'GLM' path.
+    x, dN = _data()
+    full, X_full = _fit(x, dN, algorithm="BNLRCG")
+    dup, X_dup = _fit(np.vstack([x, 2.0 * x[1]]), dN, algorithm="BNLRCG")  # v3 = 2 v2: rank 3 of 4
+    b, se = np.asarray(dup.b, dtype=float), np.asarray(dup.stats["se"], dtype=float)
+    dropped = np.flatnonzero(b == 0.0)
+    assert dropped.size == 1 and se[dropped[0]] == 0.0
+    np.testing.assert_allclose(X_dup @ b, X_full @ np.asarray(full.b, dtype=float), rtol=1e-9, atol=1e-12)
+    assert np.all(se[np.flatnonzero(b != 0.0)] > 0)
+    # Pre-fix this would have been a singular inv(X'WX) with negative
+    # variances clipped to 0 instead -- no dropped column, and generally a
+    # different (and potentially much larger) coefficient vector.
+    pre_fix_ref = fit_binomial_glm(X_dup, np.asarray(dN, dtype=float)[: X_dup.shape[0]], include_intercept=False, l2=0.0, max_iter=120)
+    assert not np.allclose(pre_fix_ref.coefficients, b)
 
 
 def test_glmfit_full_rank_design_runs_the_unchanged_solver() -> None:
