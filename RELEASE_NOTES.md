@@ -86,8 +86,13 @@ does about it, and the known gaps.
   MATLAB `ztest`'s `2*normcdf(-|z|)`, so very small p-values are now positive
   (they were 0.0 beyond |z| = 8.3) and an SE of 0 gives p = 0 (it gave 1).
 - Newton-Raphson M-steps take at most 99 steps per parameter group, as MATLAB
-  (`PP_MStep` took 100), a one-coefficient step is MATLAB's `g/H` and a singular
-  Hessian keeps the previous value.
+  (`PP_MStep` took 100), and every Newton step is MATLAB's `H\g`: `g/H` for one
+  coefficient, and for several MATLAB's LU, which divides by the pivots.
+  `np.linalg.solve` multiplies by reciprocal pivots, which overflow to Inf for
+  a denormal pivot: on a separated history window near the `exp()` underflow
+  that step was -Inf, the next E-step NaN, and `PP_EM` stopped early (on the
+  gold case after 8 iterations at about -694.5, where MATLAB runs 11 and
+  reaches -743.5). A singular Hessian keeps the previous value.
 - Monte Carlo reproducibility: the `PPLFP_*` routines draw from NumPy's global
   stream, as the `PP_*` routines already did, so `np.random.seed(s)` or
   `nstat.extras.matlab_rng.seeded_global_rng(s)` reproduces any EM fit bit for
@@ -175,7 +180,8 @@ does about it, and the known gaps.
 - Monte Carlo EM is compared with MATLAB within the measured spread of the
   Monte Carlo, not bit for bit; the iteration at which EM stops (first
   likelihood decrease) is itself random (on one data set: 6 to 11 iterations
-  over MATLAB seeds, 6 to 8 over Python seeds).
+  over MATLAB seeds and over Python seeds), and where EM is still moving the
+  estimates depend on that iteration more than on the draws.
 - A separated history window has no finite estimate, and MATLAB's SE pass
   never returns on it (its observed information is singular).
 - Not changed: the `KF_EM` family (MATLAB's upper-factor draws and whitening

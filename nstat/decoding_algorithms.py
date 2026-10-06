@@ -678,20 +678,67 @@ def _matlab_float_semantics(func):
 
 
 def _matlab_mldivide(H, g):
-    """MATLAB ``H\\g`` for a Newton step: plain division when ``H`` is 1 x 1
-    (MATLAB's scalar mldivide is elementwise, so a zero or denormal Hessian
-    gives +-Inf or NaN exactly as ``g/H`` does), else ``np.linalg.solve``
-    (which raises LinAlgError on an exactly singular matrix, where MATLAB
-    warns and returns non-finite values; the callers keep the previous value
-    then, as MATLAB's isnan check does for its NaN result).  LAPACK's
-    triangular solve multiplies by a reciprocal pivot, which turns a denormal
-    1 x 1 Hessian into an Inf step that MATLAB never takes.
+    """MATLAB ``H\\g`` for a Newton step (square ``H``, vector ``g``).
+
+    The algorithm of MATLAB's mldivide for a full square matrix: elementwise
+    division when ``H`` is 1 x 1; forward substitution when ``H`` is lower
+    triangular (a diagonal ``H`` counts as lower), back substitution when it
+    is upper triangular; otherwise LU with partial pivoting (the pivot is the
+    first entry of largest magnitude) and the two triangular solves.  Every
+    pivot is divided by, never multiplied by its reciprocal, and no zero is
+    skipped, so
+      * a denormal pivot (the Hessian entry of a history coefficient whose
+        ``exp`` has nearly underflowed, as in a separated window) gives the
+        finite step MATLAB takes: LAPACK's ``getrs`` / ``trsm``
+        (``np.linalg.solve``, ``scipy.linalg.solve`` / ``lu_solve``) multiply
+        by ``1/pivot``, which overflows to Inf for ``|pivot| < 5.6e-309``,
+        and turned that step into -Inf;
+      * an exactly singular ``H`` gives MATLAB's +-Inf / NaN (with MATLAB's
+        "singular to working precision" warning, which is not reproduced)
+        instead of raising; the callers then do what MATLAB does: a step
+        with a NaN keeps the previous value, an infinite one is taken.
+    Bit-identical to MATLAB R2025b's ``H\\g`` on the ``mldivide_*`` systems
+    of ``em_drivers.mat`` (denormal, singular, ill-conditioned, triangular,
+    Hessenberg, permuted triangular, symmetric definite of either sign) and
+    on the Newton walk there; MATLAB solves the symmetric positive definite
+    ones by LU too.  The Hessians are small (one cell's states or history
+    windows), so the Python loop costs microseconds per step.
     """
     H = np.asarray(H, dtype=float)
     g = np.asarray(g, dtype=float)
     if H.size == 1:
         return np.divide(g, H.reshape(()))
-    return np.linalg.solve(H, g)
+    b = g.reshape(-1).copy()
+    n = b.size
+    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+        if not np.any(np.triu(H, 1)):  # lower triangular (or diagonal)
+            for k in range(n):
+                b[k] = b[k] / H[k, k]
+                b[k + 1:] -= b[k] * H[k + 1:, k]
+            return b.reshape(g.shape)
+        if np.any(np.tril(H, -1)):  # general: LU with partial pivoting
+            LU = H.copy()
+            for k in range(n - 1):
+                col = np.abs(LU[k:, k])
+                # BLAS idamax: the first entry of largest magnitude; a NaN is
+                # never larger than anything (it is chosen only in first place).
+                if np.isnan(col[0]):
+                    p = k
+                else:
+                    p = k + int(np.argmax(np.where(np.isnan(col), -np.inf, col)))
+                if p != k:
+                    LU[[k, p]] = LU[[p, k]]
+                    b[[k, p]] = b[[p, k]]
+                if LU[k, k] != 0:
+                    LU[k + 1:, k] = LU[k + 1:, k] / LU[k, k]
+                LU[k + 1:, k + 1:] -= np.outer(LU[k + 1:, k], LU[k, k + 1:])
+            for k in range(n):  # unit lower triangular L
+                b[k + 1:] -= b[k] * LU[k + 1:, k]
+            H = LU
+        for k in range(n - 1, -1, -1):  # upper triangular (H itself or U)
+            b[k] = b[k] / H[k, k]
+            b[:k] -= b[k] * H[:k, k]
+    return b.reshape(g.shape)
 
 
 def _matlab_nearest_spd(A) -> np.ndarray:
@@ -6894,9 +6941,12 @@ class DecodingAlgorithms:
         As in MATLAB (nSTAT PR #135, ``aa88a2b``): the closed-form updates
         have no ridges or eigenvalue floors (a single-sample ``Px0hat`` can
         collapse to 0); each Newton loop runs at most 99 steps on the
-        unclipped ``exp(terms)`` (binomial ``exp./(1+exp)``), a 1 x 1 step is
-        ``g/H`` and a NaN step (MATLAB's result on a singular Hessian) keeps
-        the previous value.  The ``McExp = 50`` draws come from NumPy's
+        unclipped ``exp(terms)`` (binomial ``exp./(1+exp)``), each step is
+        MATLAB's ``H\\g`` (``g/H`` for one coefficient, MATLAB's LU dividing
+        by the pivots for several: a denormal pivot, as on a separated history
+        window near the ``exp()`` underflow, gives MATLAB's finite step) and a
+        NaN step (MATLAB's result on a singular Hessian) keeps the previous
+        value.  The ``McExp = 50`` draws come from NumPy's
         global stream (seed with ``np.random.seed`` or
         :func:`nstat.extras.matlab_rng.seeded_global_rng`).
 
@@ -7069,10 +7119,7 @@ class DecodingAlgorithms:
                 if np.any(np.isnan(HessianTerm)) or np.any(np.isinf(HessianTerm)):
                     betahat_newTemp = betahat_new[:, c]
                 else:
-                    try:
-                        betahat_newTemp = betahat_new[:, c] - _matlab_mldivide(HessianTerm, GradTerm)
-                    except np.linalg.LinAlgError:
-                        betahat_newTemp = betahat_new[:, c]
+                    betahat_newTemp = betahat_new[:, c] - _matlab_mldivide(HessianTerm, GradTerm)
                     if np.any(np.isnan(betahat_newTemp)):
                         betahat_newTemp = betahat_new[:, c]
 
@@ -7179,10 +7226,7 @@ class DecodingAlgorithms:
                     if np.any(np.isnan(HessianTerm)) or np.any(np.isinf(HessianTerm)):
                         gammahat_newTemp = gammaC
                     else:
-                        try:
-                            gammahat_newTemp = gammaC - _matlab_mldivide(HessianTerm, GradTerm)
-                        except np.linalg.LinAlgError:
-                            gammahat_newTemp = gammaC
+                        gammahat_newTemp = gammaC - _matlab_mldivide(HessianTerm, GradTerm)
                         if np.any(np.isnan(gammahat_newTemp)):
                             gammahat_newTemp = gammaC
 

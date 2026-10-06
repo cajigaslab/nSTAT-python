@@ -957,7 +957,9 @@ cons = DecodingAlgorithms.PP_EMCreateConstraints(mcIter=50)  # defaults, fewer S
   parameter change below 1e-3, a non-finite E-step log-likelihood (before
   the M-step) or 100 iterations, and returns the best finite iterate.
   Because the M-step is Monte Carlo, *when* it stops varies from run to run
-  (6 to 11 iterations over seeds on the same data, in MATLAB and Python).
+  (6 to 11 iterations over seeds on the same data, in MATLAB and Python), and
+  if EM is still moving the estimates depend on that iteration more than on
+  the draws.
 - `IC.llcomp` is the expected complete-data log-likelihood at the returned
   estimates (what `PP_EStep` / `PPLFP_EStep` returns there), `IC.llobs` its
   observation term; AIC / AICc / BIC count a full Q (R) by all d^2 entries.
@@ -975,10 +977,12 @@ cons = DecodingAlgorithms.PP_EMCreateConstraints(mcIter=50)  # defaults, fewer S
 
 **Known limits.**
 - A history window with no spike after a spike in it (a "separated" window,
-  common with a refractory cell and short windows) has no finite estimate: its
-  coefficient walks to the `exp()` underflow (about -743), as in MATLAB, and
-  MATLAB's SE pass never returns there.  Check that every cell has spikes in
-  every window.
+  common with a refractory cell and short windows) has no finite estimate:
+  each Newton step moves its coefficient by -1 (at most 99 per EM iteration)
+  until `exp()` underflows (about -743), as in MATLAB, so where it ends depends
+  on when EM stops (about -397 after 6 iterations, the underflow after 10 or
+  more on the gold case).  MATLAB's SE pass never returns there.  Check that
+  every cell has spikes in every window.
 - `EnableIkeda = 1` is not ported in `PP_EM` (raises).
 - A full R (`RhatDiag = 0`) is a Python extension in the SE pass (MATLAB
   errors there).

@@ -15,9 +15,10 @@ real drivers on synthetic data (dx = 2, C = 4 cells, delta = 1 ms):
   ``mcIter = 1000``);
 * ``pp_sep`` -- PP_EM with a separated history window (a refractory cell
   with no spike after a spike in the (0, 1] ms window).  The Newton step walks
-  that coefficient by about -1 per step until exp() underflows (MATLAB keeps
-  the previous value on the 0/0 there), so it ends near -743; MATLAB returns
-  without SEs only (10 outputs): with SEs requested its observed information is
+  that coefficient by -1 per step (at most 99 per EM iteration) until exp()
+  underflows (MATLAB keeps the previous value on the 0/0 there): MATLAB's run
+  takes 11 iterations and ends at -741.5 .. -743.5.  MATLAB returns without
+  SEs only (10 outputs): with SEs requested its observed information is
   singular and nearestSPD never returns.
 
 The Monte Carlo draws (Newton M-step, SE pass) use MATLAB's Ziggurat ``randn``,
@@ -39,10 +40,20 @@ which Python does not reproduce, so the comparison is split:
   own spread over ``rng(1..8)`` on pp_pois / pp_sep is of the same size
   (max |beta - gold| 0.078 / 0.185, Python 0.070 / 0.175).  The iteration at
   which EM stops (stop on the first likelihood decrease or a change below
-  1e-3) is itself Monte Carlo dependent: on pp_sep MATLAB stopped after 6..11
-  iterations over ``rng(1..8)`` and Python after 6..8, so the separated
-  coefficient ends at one of -397.5, -496.5, -595.5, -694.5 or the underflow
-  limit near -743 on both sides; the test checks the walk, not the stop.
+  1e-3) is itself Monte Carlo dependent.  On pp_sep it ranges over 6..11 on
+  both sides (MATLAB ``rng(1..8)``: 11, 6, 8, 10, 9, 8, 10, 8; Python seeds
+  1..8 and 101..120: 6 (3 seeds), 7 (2), 8 (4), 9 (11), 10 (7), 11 (1)), and
+  it dominates the estimates: EM is still moving there, the separated
+  coefficient walks by up to -99 per iteration (it ends near -397.5, -496.5,
+  -595.5, -694.5 or at the underflow), and e.g. ``Ahat`` is off MATLAB's
+  11-iteration value by about 1.4e-3 per iteration short of 11, against a
+  spread of < 1e-3 among runs that stop at the same iteration.  So pp_sep is
+  compared at seed 1, which stops at MATLAB's 11 (asserted), with ``_MC_ATOL``
+  = 3 x the largest deviation from the mean of the runs that stop at the same
+  iteration (28 Python seeds), and the separated coefficients to 1e-2.
+  (Before nstat-python's Newton step divided by its pivots, a denormal pivot
+  made that step -Inf and every pp_sep run stopped by iteration 8, at about
+  -694.5.)
 """
 from __future__ import annotations
 
@@ -73,7 +84,10 @@ _MC_ATOL = {
     "lfp_def": {"muhat": 2e-02, "betahat": 3e-02, "Ahat": 5e-06, "Qhat": 7e-07, "Chat": 9e-05, "Rhat": 3e-06,
                 "alphahat": 2e-05, "xKFinal": 9e-04, "IC.llcomp": 7e-02, "SE.A": 2e-04, "SE.Q": 2e-05,
                 "SE.C": 4e-03, "SE.R": 2e-03, "SE.alpha": 2e-03, "SE.mu": 3e-03, "SE.beta": 8e-03},
-    "pp_sep": {"muhat": 8e-02, "betahat": 4e-01, "gammahat": 3e-01, "Ahat": 3e-02, "Qhat": 2e-04, "xKFinal": 2e+00,
+    # pp_sep: 3 x the largest deviation from the mean of the runs that stop at
+    # the same iteration, over Python seeds 1..8 and 101..120 (see the module
+    # docstring); seed 1 stops at MATLAB's 11.
+    "pp_sep": {"muhat": 2e-02, "betahat": 3e-01, "gammahat": 8e-02, "Ahat": 3e-03, "Qhat": 5e-05, "xKFinal": 5e-01,
                "IC.llcomp": 7e-01},
 }
 
@@ -235,19 +249,24 @@ def test_monte_carlo_estimates_within_the_measured_spread(gold, python_runs, cas
         got = np.asarray(got, dtype=float)
         ref = np.asarray(ref, dtype=float).reshape(got.shape)
         if case == "pp_sep" and key == "gammahat":
-            # The separated coefficients walk to large negative values on both
-            # sides and stop at most at the exp() underflow (MATLAB keeps the
-            # previous value on 0/0); this port's former +-30 clip let them
-            # walk past it (-892 here).
+            # The separated coefficients walk to the exp() underflow on both
+            # sides (11 iterations each at seed 1; MATLAB keeps the previous
+            # value on the 0/0 there), to -741.5 .. -743.5; Python's agree with
+            # MATLAB's to 2.4e-3 (the spread of the runs that stop at 10 or 11
+            # is 1.7e-3).  This port's former +-30
+            # clip walked them past it (-892), and its reciprocal-pivot Newton
+            # solve stopped EM at iteration 8 (-694.5).
             sep = ref < -100
             assert sep.any() and np.array_equal(got < -100, sep)
-            assert np.all(got[sep] > -745.2) and np.all(got[sep] < -300) and np.all(ref[sep] > -745.2)
+            assert np.all(ref[sep] > -745.2) and np.all(ref[sep] < -741)
+            np.testing.assert_allclose(got[sep], ref[sep], rtol=0, atol=1e-2, err_msg="separated gamma")
             got, ref = got[~sep], ref[~sep]
         np.testing.assert_allclose(got, ref, rtol=0, atol=atol, err_msg=key)
-    if f("family") == "PP" and case != "pp_sep":
+    if f("family") == "PP":
         # The stopping iteration is Monte Carlo dependent (pp_pois stops after
-        # 8 instead of 6 iterations for Python seed 2), but seed 1 is fixed, so
-        # the draws -- and this count -- are reproducible; a failure here on
-        # another platform means a likelihood change landed within round-off
-        # of a stopping threshold, not a parity regression.
-        assert py["nIter"] == f("nIter")
+        # 8 instead of 6 iterations for Python seed 2; pp_sep after 6..11), but
+        # seed 1 is fixed, so the draws -- and this count -- are reproducible; a
+        # failure here on another platform means a likelihood change landed
+        # within round-off of a stopping threshold, not a parity regression.
+        nIter = f("nIter") if f"{case}_nIter" in gold else np.size(f("ll_trace"))
+        assert py["nIter"] == nIter

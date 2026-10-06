@@ -2771,8 +2771,10 @@ class PPLFP:
         As in MATLAB (nSTAT PR #135, ``aa88a2b``): the closed-form updates use
         MATLAB's divisions (LU solves, no least squares); each Newton loop runs
         at most 99 steps on MATLAB's unclipped ``exp(terms)`` (binomial
-        ``exp./(1+exp)``), a 1 x 1 step is ``g/H``, and a NaN step (MATLAB's
-        result on a singular Hessian) keeps the previous value.  The ``McExp =
+        ``exp./(1+exp)``), each step is MATLAB's ``H\\g`` (``g/H`` for one
+        coefficient, MATLAB's LU dividing by the pivots for several: a denormal
+        pivot gives MATLAB's finite step), and a NaN step (MATLAB's result on
+        a singular Hessian) keeps the previous value.  The ``McExp =
         50`` Monte Carlo draws come from NumPy's global stream (seed with
         ``np.random.seed`` or :func:`nstat.extras.matlab_rng.seeded_global_rng`).
         """
@@ -3020,15 +3022,11 @@ class PPLFP:
                 ):
                     betahat_newTemp = betahat_new[:, c:c + 1].copy()
                 else:
-                    try:
-                        step = _matlab_mldivide(HessianTerm, GradTerm)
-                    except np.linalg.LinAlgError:
-                        # An exactly singular Hessian (e.g. every lambda of a
-                        # term underflowed to 0): MATLAB's HessianTerm\GradTerm
-                        # warns and returns NaN there, so the previous value is
-                        # kept, as in PP_MStep.  This port took the lstsq
-                        # minimum-norm step instead.
-                        step = np.full_like(GradTerm, np.nan)
+                    # MATLAB HessianTerm\GradTerm (an exactly singular Hessian
+                    # gives MATLAB's +-Inf / NaN; a NaN keeps the previous
+                    # value below).  This port took the lstsq minimum-norm
+                    # step on a singular Hessian.
+                    step = _matlab_mldivide(HessianTerm, GradTerm)
                     betahat_newTemp = betahat_new[:, c:c + 1] - step
                     if np.isnan(betahat_newTemp).any():
                         betahat_newTemp = betahat_new[:, c:c + 1].copy()
@@ -3177,12 +3175,7 @@ class PPLFP:
                             gammahat_new[:, c:c + 1].copy()
                         )
                     else:
-                        try:
-                            step = _matlab_mldivide(HessianTerm, GradTerm)
-                        except np.linalg.LinAlgError:
-                            # Exactly singular: MATLAB returns NaN, so the
-                            # previous value is kept (see beta; was lstsq).
-                            step = np.full_like(GradTerm, np.nan)
+                        step = _matlab_mldivide(HessianTerm, GradTerm)  # see beta
                         gammahat_newTemp = (
                             gammahat_new[:, c:c + 1] - step
                         )

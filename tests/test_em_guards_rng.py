@@ -6,11 +6,15 @@
 * No Python-only numerical guards where MATLAB returns a value: the E-step /
   M-step / SE terms are MATLAB's unclipped ``exp(terms)`` (this port clipped
   them to +-30, the decoder's to +-20), the log-determinants are unfloored, the
-  closed-form updates have no ridges or eigenvalue floors, and a scalar Newton
-  step is MATLAB's elementwise ``g/H``.  The expected values below were
-  produced by MATLAB R2025b at ``aa88a2b`` on the same inputs.
+  closed-form updates have no ridges or eigenvalue floors, and a Newton step
+  is MATLAB's ``H\\g``: elementwise ``g/H`` for one coefficient, MATLAB's LU
+  with division by the pivots otherwise (``_matlab_mldivide``).  The expected
+  values below were produced by MATLAB R2025b at ``aa88a2b`` on the same
+  inputs.
 """
 from __future__ import annotations
+
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -79,6 +83,80 @@ def test_newton_steps_walk_to_the_exp_underflow_as_matlab(family) -> None:
             out.append((float(np.ravel(o[5])[0]), float(np.ravel(o[7])[0])))
     assert out[0][0] == -745.0
     assert out[1][1] == -743.0
+
+
+_EM_GOLD = Path(__file__).resolve().parent / "parity" / "fixtures" / "matlab_gold" / "em_drivers.mat"
+
+
+@pytest.fixture(scope="module")
+def em_gold() -> dict:
+    from scipy.io import loadmat
+
+    return loadmat(_EM_GOLD, squeeze_me=True, struct_as_record=False)
+
+
+@pytest.mark.parametrize("family", ["PP", "PPLFP"])
+def test_newton_walk_on_an_n_by_n_hessian_matches_matlab(em_gold, family) -> None:
+    # MATLAB R2025b (aa88a2b; em_drivers.mat walk_*, capture_em_drivers.m): one
+    # cell on a known state, three history windows, window 1 separated.  Its
+    # coefficient walks from -700 by exactly -1 per Newton step to the exp()
+    # underflow (-743) while windows 2 and 3 converge (1.83, 0.377); on the way
+    # the 3 x 3 Hessian has a denormal pivot.  np.linalg.solve (LAPACK's
+    # reciprocal pivot) made that step -Inf: gamma [-inf, 1.83, 3.79], and in
+    # PP_EM the next E-step was NaN, which stopped every pp_sep run early.
+    f = lambda key: em_gold[f"walk_{key}"]  # noqa: E731
+    K = np.size(f("dN"))
+    dN = np.asarray(f("dN"), dtype=float).reshape(1, K)
+    x_K = np.asarray(f("x_K"), dtype=float).reshape(1, K)
+    W_K = np.asarray(f("W_K"), dtype=float).reshape(1, 1, K)
+    HkAll = np.asarray(f("HkAll"), dtype=float).reshape(K, -1, 1)
+    gamma0 = np.asarray(f("gamma0"), dtype=float).reshape(-1, 1)
+    wt = np.asarray(f("windowTimes"), dtype=float)
+    ES = {k[len("walk_ES_"):]: np.atleast_2d(np.asarray(v, dtype=float))
+          for k, v in em_gold.items() if k.startswith("walk_ES_")}
+    ES["Sx0"] = ES["Sx0"].reshape(1)
+    mu0, beta0 = np.array([float(f("mu0"))]), np.array([[float(f("beta0"))]])
+    np.random.seed(0)
+    if family == "PP":
+        o = DecodingAlgorithms.PP_MStep(dN, x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson", mu0, beta0, gamma0,
+                                        wt, HkAll, DecodingAlgorithms.PP_EMCreateConstraints(), "NewtonRaphson", 0.001)
+        mu, beta, gamma, pre = o[2], o[3], o[4], "walk_pp_"
+    else:
+        o = PPLFP.PPLFP_MStep(dN, np.zeros((1, K)), x_K, W_K, np.zeros(1), np.eye(1), ES, "poisson", mu0, beta0,
+                              gamma0, wt, HkAll, PPLFP.PPLFP_EMCreateConstraints(), "NewtonRaphson", 0.001)
+        mu, beta, gamma, pre = o[5], o[6], o[7], "walk_lfp_"
+    ref_gamma = np.asarray(em_gold[pre + "gamma"], dtype=float)
+    gamma = np.ravel(gamma)
+    assert ref_gamma[0] == -743.0 and gamma[0] == ref_gamma[0]  # exact: 43 steps of exactly -1
+    # The converged coefficients: MATLAB's randn vs NumPy's perturb the known
+    # state by ~1e-15 (W_K = 1e-30), hence not bit for bit.
+    np.testing.assert_allclose(gamma[1:], ref_gamma[1:], rtol=1e-12)
+    np.testing.assert_allclose(float(np.ravel(mu)[0]), float(em_gold[pre + "mu"]), rtol=1e-12)
+    np.testing.assert_allclose(float(np.ravel(beta)[0]), float(em_gold[pre + "beta"]), rtol=1e-12)
+
+
+def test_newton_solve_is_matlabs_mldivide(em_gold) -> None:
+    # MATLAB R2025b H\g on 20 square systems (em_drivers.mat mldivide_*), bit for
+    # bit: denormal pivots (pp_sep_hess is a pp_sep history Hessian: MATLAB's
+    # step is [1, 1, 5.4e-17], LAPACK's reciprocal pivot gives [Inf, 1, 5.4e-17]),
+    # exactly singular systems (MATLAB returns +-Inf / NaN; np.linalg.solve
+    # raised), ill-conditioned ones (-hilb(5): np.linalg.solve differs by
+    # 3e-12), triangular, Hessenberg, permuted triangular and symmetric definite
+    # ones of either sign (MATLAB solves them by LU too, not Cholesky).
+    from nstat.decoding_algorithms import _matlab_mldivide
+
+    names = [str(n) for n in np.atleast_1d(em_gold["mldivide_names"])]
+    assert len(names) == 20 and "pp_sep_hess" in names and "sing_sym" in names
+    for name in names:
+        H = np.atleast_2d(np.asarray(em_gold[f"mldivide_{name}_H"], dtype=float))
+        g = np.atleast_1d(np.asarray(em_gold[f"mldivide_{name}_g"], dtype=float))
+        ref = np.atleast_1d(np.asarray(em_gold[f"mldivide_{name}_x"], dtype=float))
+        got = _matlab_mldivide(H, g)
+        assert np.array_equal(got, ref, equal_nan=True), name
+        finite = np.isfinite(ref)
+        assert np.array_equal(np.signbit(got[finite]), np.signbit(ref[finite])), name
+        # A column right-hand side (PPLFP's GradTerm) gives the same column.
+        np.testing.assert_array_equal(_matlab_mldivide(H, g.reshape(-1, 1)), ref.reshape(-1, 1), err_msg=name)
 
 
 def test_estep_log_likelihood_is_not_floored() -> None:

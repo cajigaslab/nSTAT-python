@@ -66,6 +66,25 @@ function capture_em_drivers()
 % closed-form M-step outputs ms<j>_<output> for the constraint sets
 % ms<j>_cons, j = 1..3.
 %
+% After the cases (their random streams are unchanged), two deterministic
+% records of the Newton-Raphson step HessianTerm\GradTerm:
+%   walk_*      one PP_MStep and one PPLFP_MStep call (rng(0) before each)
+%               on a known state (W_K = 1e-30, so the Monte Carlo draws are
+%               the state to ~1e-15): one cell, x = 0.5, K = 200 bins, three
+%               history windows given as HkAll; window 1 is active only in
+%               bins 1-60, which have no spike (separated), windows 2 and 3
+%               in bins 61-200 / 131-200, which spike in every 3rd / 2nd
+%               bin.  From gamma0 = [-700 -0.5 -0.2]', mu0 = -3, beta0 = 0.2
+%               the separated coefficient walks by exactly -1 per step until
+%               exp() underflows (0\0 = NaN keeps the previous value); on the
+%               way its 3 x 3 Hessian has a denormal pivot.  Saved: the
+%               inputs, walk_ES_<field>, walk_pp_{mu,beta,gamma} and
+%               walk_lfp_{mu,beta,gamma}.
+%   mldivide_*  MATLAB's H\g on 20 square systems (denormal pivots, exactly
+%               singular, ill-conditioned, triangular, Hessenberg, permuted
+%               triangular, symmetric definite of either sign):
+%               mldivide_<name>_{H,g,x}, names in mldivide_names.
+%
 % Reproduces: tests/parity/fixtures/matlab_gold/em_drivers.mat
 %
 % The MATLAB nSTAT checkout is read from the NSTAT_MATLAB_PATH environment
@@ -306,6 +325,96 @@ for i = 1:numel(cases)
     out.([p 'll_trace']) = llTrace;
 end
 out.case_names = {cases.name};
+
+% --- the Newton-Raphson walk on an n x n history Hessian (walk_*) --------
+% (After the cases, so their random streams are unchanged.)
+K = 200; xw = 0.5;
+wdN = zeros(1, K);
+wHk = zeros(K, 3, 1);
+wHk(1:60, 1, 1) = 1;                                  % separated: no spike
+wHk(61:200, 2, 1) = 1;
+wdN(60 + find(mod(0:69, 3) == 0)) = 1;                % every 3rd bin of 61-130
+wHk(131:200, 3, 1) = 1;
+wdN(130 + find(mod(0:69, 2) == 0)) = 1;               % every 2nd bin of 131-200
+wx = xw * ones(1, K);
+wW = 1e-30 * ones(1, 1, K);
+wWt = [0 0.001 0.002 0.003];
+wg0 = [-700; -0.5; -0.2];
+wES = struct('Sxkm1xkm1', K * xw^2, 'Sxkxkm1', K * xw^2, 'sumXkTerms', 1e-3, ...
+             'Sxkm1xk', K * xw^2, 'Sxkxk', K * xw^2, 'Sxkyk', 0, 'Sykyk', 1, ...
+             'sumYkTerms', 1, 'Sx0', 0, 'Sx0x0', 1);
+pcons = nstat.decoding.PointProcessEM.PP_EMCreateConstraints(); %#ok<NASGU>
+lcons = nstat.decoding.PPLFP.PPLFP_EMCreateConstraints(); %#ok<NASGU>
+rng(0);
+evalc(['[~, ~, wmu, wbeta, wgamma] = ' PPEM '.PP_MStep(wdN, wx, wW, 0, 1, wES, ''poisson'', ' ...
+       '-3, 0.2, wg0, wWt, wHk, pcons, ''NewtonRaphson'', delta);']);
+rng(0);
+evalc(['[~, ~, ~, ~, ~, lmu, lbeta, lgamma] = nstat.decoding.PPLFP.PPLFP_MStep(wdN, zeros(1, K), ' ...
+       'wx, wW, 0, 1, wES, ''poisson'', -3, 0.2, wg0, wWt, wHk, lcons, ''NewtonRaphson'', delta);']);
+fprintf('  [walk] PP gamma = %s, PPLFP gamma = %s\n', mat2str(wgamma', 17), mat2str(lgamma', 17));
+if ~(isfinite(wgamma(1)) && wgamma(1) < -740 && isfinite(lgamma(1)) && lgamma(1) < -740)
+    error('capture:walk', 'the separated coefficient did not walk to the exp() underflow');
+end
+out.walk_dN = wdN;
+out.walk_x_K = wx;
+out.walk_W_K = wW;
+out.walk_HkAll = wHk;
+out.walk_windowTimes = wWt;
+out.walk_mu0 = -3;
+out.walk_beta0 = 0.2;
+out.walk_gamma0 = wg0;
+fn = fieldnames(wES);
+for j = 1:numel(fn)
+    out.(['walk_ES_' fn{j}]) = wES.(fn{j});
+end
+out.walk_pp_mu = wmu;
+out.walk_pp_beta = wbeta;
+out.walk_pp_gamma = wgamma;
+out.walk_lfp_mu = lmu;
+out.walk_lfp_beta = lbeta;
+out.walk_lfp_gamma = lgamma;
+
+% --- MATLAB's H\g on square systems (mldivide_*) ------------------------
+% The Newton steps are HessianTerm\GradTerm; these systems pin what MATLAB
+% returns (Python mirror: _matlab_mldivide).  pp_sep_hess is a 3 x 3 history
+% Hessian / gradient pair taken from a pp_sep M-step (two coefficients
+% walking, denormal pivots), given bit for bit.
+mH = {}; mG = {}; mNames = {};
+mH{end+1} = reshape(hex2num({'8002464926fdccda'; '0000000000000000'; '800007a6686d0c12'; ...
+                             '0000000000000000'; '800632cf786c0ed6'; '80001579b0346109'; ...
+                             '800007a6686d0c12'; '80001579b0346109'; 'bfeffffffffffffe'}), 3, 3);
+mG{end+1} = hex2num({'8002464926fdccda'; '800632cf786c0ed6'; 'bc8f000000000000'});
+mNames{end+1} = 'pp_sep_hess';
+H = diag([-3.16e-309, -2, -3]); H(2, 3) = 0.5; H(3, 2) = 0.5;
+mH{end+1} = H; mG{end+1} = [-3.16e-309; 0.5; -0.25]; mNames{end+1} = 'blk_denorm';
+mH{end+1} = [-2 0.3 0; 0.3 -3.16e-309 0; 0 0 -1]; mG{end+1} = [0.1; -3.16e-309; 0.2]; mNames{end+1} = 'mid_denorm';
+mH{end+1} = -[1 1; 1 1]; mG{end+1} = [1; 2]; mNames{end+1} = 'sing_sym';
+mH{end+1} = [-2 -1; -1 -0.5]; mG{end+1} = [1; 2]; mNames{end+1} = 'sing_sym2';
+mH{end+1} = zeros(2); mG{end+1} = [1; 2]; mNames{end+1} = 'zero_g';
+mH{end+1} = zeros(2); mG{end+1} = [0; 0]; mNames{end+1} = 'zero_0';
+mH{end+1} = [-1 0; 0 0]; mG{end+1} = [1; 0]; mNames{end+1} = 'diag_sing';
+mH{end+1} = [-1 0.5; 0.5 0]; mG{end+1} = [1; 0]; mNames{end+1} = 'sym_zero_diag';
+mH{end+1} = [1e-20 1; 1 1]; mG{end+1} = [1; 2]; mNames{end+1} = 'pivot';
+mH{end+1} = -hilb(5); mG{end+1} = ones(5, 1); mNames{end+1} = 'hilb5_neg';
+mH{end+1} = hilb(6); mG{end+1} = ones(6, 1); mNames{end+1} = 'hilb6_pos';
+rng(3); B = randn(6); mH{end+1} = -(B * B'); mG{end+1} = randn(6, 1); mNames{end+1} = 'spd_neg6';
+rng(4); B = randn(6); mH{end+1} = -(B * B') + 0.01 * randn(6); mG{end+1} = randn(6, 1); mNames{end+1} = 'nonsym6';
+rng(5); B = randn(5); mH{end+1} = B * B' + 0.5 * eye(5); mG{end+1} = randn(5, 1); mNames{end+1} = 'spd_pos5';
+mH{end+1} = [2 3 0 1; 3 1 2 0; 0 2 4 1; 1 0 1 3]; mG{end+1} = [1; -2; 0.5; 3]; mNames{end+1} = 'sym_pos_indef';
+rng(6); T = triu(randn(4)) + 3 * eye(4); mH{end+1} = T([3 1 4 2], :); mG{end+1} = randn(4, 1); mNames{end+1} = 'perm_tri';
+rng(7); mH{end+1} = triu(randn(5), -1); mG{end+1} = randn(5, 1); mNames{end+1} = 'hess5';
+rng(8); mH{end+1} = tril(randn(4)) - 2 * eye(4); mG{end+1} = randn(4, 1); mNames{end+1} = 'lower4';
+rng(9); mH{end+1} = triu(randn(4)) - 2 * eye(4); mG{end+1} = randn(4, 1); mNames{end+1} = 'upper4';
+ws = warning('off', 'MATLAB:singularMatrix');
+ws2 = warning('off', 'MATLAB:nearlySingularMatrix');
+ws3 = warning('off', 'MATLAB:illConditionedMatrix');
+for j = 1:numel(mH)
+    out.(['mldivide_' mNames{j} '_H']) = mH{j};
+    out.(['mldivide_' mNames{j} '_g']) = mG{j};
+    out.(['mldivide_' mNames{j} '_x']) = mH{j} \ mG{j};
+end
+warning(ws3); warning(ws2); warning(ws);
+out.mldivide_names = mNames;
 
 out.matlab_version = version;
 % The MATLAB checkout's git commit (the repaired fix/pp-em branch, pending
